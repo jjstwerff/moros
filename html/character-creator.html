@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moros Character Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title-main">Moros Character Generator</div>
+    <div class="title-sub"></div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('roster')">Roster</button>
+      <button class="nav-tab" onclick="showTab('create')">Create</button>
+      <button class="nav-tab" onclick="showTab('rules')">Rules</button>
+    </nav>
+  </header>
+
+  <!-- RULES -->
+  <div id="tab-rules" class="panel">
+    <div id="rules-container"></div>
+  </div>
+
+  <!-- CREATE -->
+  <div id="tab-create" class="panel">
+    <div class="section-title">Identity</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="char-name">Character Name</label><input type="text" id="char-name" placeholder="Enter name…">
+      </div>
+      <div class="form-group">
+        <label for="char-gender">Gender</label><input type="text" id="char-gender" placeholder="e.g. Female">
+      </div>
+      <div class="form-group">
+        <label for="char-category">Category</label>
+        <select id="char-category" onchange="charCategoryChanged()"></select>
+      </div>
+      <div class="form-group full">
+        <label for="place-grid">Origin place</label><div id="place-grid" class="place-grid"></div>
+        <div id="place-note"></div>
+      </div>
+      <div class="form-group full">
+        <label for="char-desc">Description</label><textarea id="char-desc" placeholder="Describe your character…"></textarea>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Choose Your Race</div>
+    <div class="race-grid" id="race-grid"></div>
+    <div id="race-preview">
+      <div class="section-title">Available Powers</div>
+      <div class="powers-preview-list" id="powers-preview-list"></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Progression</div>
+    <div class="hint-text">The first six progression steps do not cost any XP as part of a beginning character.</div>
+    <div id="slot-list" class="progress-slots"></div>
+    <div id="progression-notice" class="notice"></div>
+
+    <div class="divider"></div>
+    <div class="section-title">Equipment</div>
+    <div class="hint-text" id="items-note">Choose items from your backgrounds. Each background unlocks two items; repeated backgrounds add one. You may also add basic unrestricted items once.</div>
+    <div id="items-container"></div>
+    <div id="unrestricted-container"></div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="saveCharacter()">Forge Character</button>
+      <button class="btn-secondary" onclick="resetCreate()">Reset</button>
+      <span id="save-notice" class="notice success"></span>
+    </div>
+  </div>
+
+  <!-- ROSTER -->
+  <div id="tab-roster" class="panel active">
+    <div id="roster-empty">No characters forged yet.</div>
+    <div id="roster-filter"></div>
+    <div class="char-tabs" id="char-tabs"></div>
+    <div id="char-display"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="choice-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Choose Progression</div>
+    <div class="type-tabs" id="modal-type-tabs"></div>
+    <div class="choice-list" id="choice-list"></div>
+    <button class="modal-close" id="modal-close" onclick="closeModal()">✕ Cancel</button>
+  </div>
+</div>
+
+<script type="module">
+  import { renderRules, renderRaceGrid, renderPlaces, renderProgression, renderRoster, loadFromLocalStorage, initCategories } from "./character.js";
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && document.getElementById('modal-close')) {
+      document.getElementById('modal-close').click();
+    }
+  });
+
+  // ─────────────────────────────── INIT ──────────────────────────────────
+  loadFromLocalStorage();
+  initCategories();
+  renderRules();
+  renderRaceGrid();
+  renderProgression();
+  renderRoster();
+  renderPlaces();
+</script>
+</body>
+</html>

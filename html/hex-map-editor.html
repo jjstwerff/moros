@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="map.css">
+  <title>Moros World Editor</title>
+  <script type="module" src="map.js"></script>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>Moros World Editor</h1>
+  <a class="sidebar-back" href="index.html">← Suite Home</a>
+
+  <div class="section">
+    <div class="section-title">Map Size</div>
+    <div class="resize-controls">
+      <span style="font-size:11px;color:var(--text-dim)">W:</span>
+      <label for="map-w"></label><input type="number" id="map-w" value="20" min="5" max="60" style="width:65px">
+      <span style="font-size:11px;color:var(--text-dim)">H:</span>
+      <label for="map-h"></label><input type="number" id="map-h" value="15" min="5" max="40" style="width:65px">
+      <button class="btn" style="margin-top:0;flex:1" onclick="resizeMap()">Resize</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Edit Mode</div>
+    <div class="mode-row">
+      <button class="mode-btn active" id="mode-terrain" onclick="setMode('terrain')">Terrain</button>
+      <button class="mode-btn" id="mode-road" onclick="setMode('road')">Road</button>
+      <button class="mode-btn" id="mode-landmark" onclick="setMode('landmark')">Landmark</button>
+      <button class="mode-btn" id="mode-inspect" onclick="setMode('inspect')">Inspect</button>
+    </div>
+  </div>
+
+  <div class="section" id="terrain-section">
+    <div class="section-title">Terrain Type</div>
+    <div class="terrain-grid" id="terrain-grid"></div>
+    <div class="section-title" style="margin-top:8px">Brush Size</div>
+    <div class="brush-row">
+      <button class="brush-btn active" id="brush1" onclick="setBrush(1)">Single</button>
+      <button class="brush-btn" id="brush7" onclick="setBrush(7)">7-Tile</button>
+    </div>
+  </div>
+
+  <div class="section" id="landmark-section" style="display:none">
+    <div class="section-title">Landmarks</div>
+    <div class="landmark-row" id="landmark-grid"></div>
+    <button class="btn" style="margin-top:6px" onclick="clearLandmark()">Clear Landmark</button>
+  </div>
+
+  <div id="tile-info">
+    <div class="ti-name">No tile selected</div>
+    <div id="tile-details"></div>
+  </div>
+
+  <div id="landmark-edit-section" class="section" style="display:none">
+    <div class="section-title">Landmark Details</div>
+    <label>Name</label>
+    <label for="lm-name"></label><input type="text" id="lm-name" placeholder="Landmark name..." oninput="saveLandmarkDetails()">
+    <label>Description</label>
+    <label for="lm-desc"></label><textarea id="lm-desc" rows="3" placeholder="Description..." oninput="saveLandmarkDetails()"></textarea>
+    <label>DM Place</label>
+    <select id="lm-place" onchange="linkPlace(this.value)">
+      <option value="">— none —</option>
+    </select>
+    <a id="lm-place-link" href="dm.html" target="_blank" style="display:none;margin-top:4px;font-size:11px;color:var(--text-dim)">Open in DM Tools →</a>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Calculations</div>
+    <button class="btn" onclick="calcWaterFlow()">Calculate Water Flow</button>
+    <button class="btn" onclick="calcHeights()">Calculate Heights</button>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Map Storage</div>
+    <button class="btn primary" onclick="showSaveModal()">Save Map</button>
+    <button class="btn" onclick="showLoadModal()">Load Map</button>
+    <button class="btn" onclick="newMap()">New Map</button>
+  </div>
+</div>
+
+<div id="main">
+  <div id="toolbar">
+    <button class="tb-btn active-view" id="view-2d" onclick="switchView('2d')">2D Editor</button>
+    <button class="tb-btn" id="view-3d" onclick="switchView('3d')">3D View</button>
+    <div id="legend"></div>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="map-canvas"></canvas>
+    <canvas id="map3d-canvas" class="canvas-hidden"></canvas>
+    <div id="status">Ready</div>
+  </div>
+</div>
+
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <h2 id="modal-title">Modal</h2>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+</body>
+</html>

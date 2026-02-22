@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moros — Dungeon Master</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+    <header>
+        <div class="title-main">Moros — Dungeon Master</div>
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="contacts"
+                    onclick="DM.showTab('contacts')">Contacts</button>
+            <button class="nav-tab" data-tab="items"
+                    onclick="DM.showTab('items')">Special Items</button>
+            <button class="nav-tab" data-tab="monsters"
+                    onclick="DM.showTab('monsters')">Monsters</button>
+            <button class="nav-tab" data-tab="places"
+                    onclick="DM.showTab('places')">Places</button>
+            <button class="nav-tab" data-tab="scenarios"
+                    onclick="DM.showTab('scenarios')">Scenarios</button>
+        </nav>
+    </header>
+
+    <div class="dm-toolbar">
+        <a href="index.html" class="btn-secondary dm-back">← Game Suite</a>
+        <div class="dm-toolbar-right">
+            <button class="btn-primary" onclick="DM.download()">↓ Download Campaign</button>
+            <button class="btn-secondary" onclick="DM.upload()">↑ Upload Campaign</button>
+        </div>
+    </div>
+
+    <!-- ── Contacts ─────────────────────────────────────────────────────── -->
+    <div id="tab-contacts" class="panel active">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Contacts</h2>
+            <button class="btn-primary" onclick="DM.newContact()">+ New Contact</button>
+        </div>
+        <div class="dm-split">
+            <div id="contacts-list" class="dm-list-pane"></div>
+            <form id="contact-form" class="dm-form-pane"
+                  onsubmit="DM.saveContact(event)"></form>
+        </div>
+    </div>
+
+    <!-- ── Special Items ─────────────────────────────────────────────────── -->
+    <div id="tab-items" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Special Items</h2>
+            <button class="btn-primary" onclick="DM.newItem()">+ New Special Item</button>
+        </div>
+        <div class="dm-split">
+            <div id="items-list" class="dm-list-pane"></div>
+            <form id="item-form" class="dm-form-pane"
+                  onsubmit="DM.saveItem(event)"></form>
+        </div>
+    </div>
+
+    <!-- ── Monsters ──────────────────────────────────────────────────────── -->
+    <div id="tab-monsters" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Monsters</h2>
+            <button class="btn-primary" onclick="DM.newMonster()">+ New Monster</button>
+        </div>
+        <div class="dm-split">
+            <div id="monsters-list" class="dm-list-pane"></div>
+            <form id="monster-form" class="dm-form-pane"
+                  onsubmit="DM.saveMonster(event)"></form>
+        </div>
+    </div>
+
+    <!-- ── Places ───────────────────────────────────────────────────────── -->
+    <div id="tab-places" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Places</h2>
+            <button class="btn-primary" onclick="DM.newPlace()">+ New Place</button>
+        </div>
+        <div class="dm-split">
+            <div id="places-list" class="dm-list-pane"></div>
+            <form id="place-form" class="dm-form-pane dm-form-pane--scroll"
+                  onsubmit="DM.savePlace(event)"></form>
+        </div>
+    </div>
+
+    <!-- ── Scenarios ─────────────────────────────────────────────────────── -->
+    <div id="tab-scenarios" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Scenarios</h2>
+            <button class="btn-primary" onclick="DM.newScenario()">+ New Scenario</button>
+        </div>
+        <div class="dm-split">
+            <div id="scenarios-list" class="dm-list-pane"></div>
+            <form id="scenario-form" class="dm-form-pane dm-form-pane--scroll"
+                  onsubmit="DM.saveScenario(event)"></form>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="dm.js"></script>
+</body>
+</html>

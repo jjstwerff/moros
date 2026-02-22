@@ -1,0 +1,14 @@
+{ characters: [
+    { name: "Nadine", race: "Finch", gender: "Female", progression: [
+        { type: "background", name: "trader"},
+        { type: "power", name: "musical" },
+        { type: "specialisation", name: "navigation" },
+        { type: "power", name: "hearing" },
+        { type: "background", name: "trader" },
+        { type: "power", name: "flight" },
+      ],
+      items: [ "cart", "donkey", "knife", "tent", "bedroll" ],
+      place: "Raft city"
+    }
+  ]
+}

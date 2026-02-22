@@ -1,0 +1,346 @@
+{
+  "version": 1,
+  "date": "2026-03-04",
+  "contacts": [
+    {
+      "id": "mmb3hjo8t09rf9",
+      "name": "Farmer Joseph",
+      "gender": "Male",
+      "faction": "",
+      "town": "Elmsfield",
+      "race": "Raccoons",
+      "description": "A local farmer that came to the village in the aftermath of the last war.",
+      "specializations": [
+        "Sling"
+      ],
+      "items": []
+    }
+  ],
+  "items": [
+    {
+      "id": "mmb45fxcgxka5f",
+      "name": "Map of Elmsfield and the great swamp",
+      "type": "tools",
+      "description": "A rough but useful map to navigate the increasingly overgrown paths that lead there.",
+      "bonuses": [
+        {
+          "target": "Perc",
+          "value": 1
+        }
+      ]
+    }
+  ],
+  "monsters": [
+    {
+      "id": "mmb3vyssb5vxc7",
+      "name": "Dromo Bird",
+      "description": "A big walking bird that can be ridden. They generally are quite good tempered, but that doesn't prevent them from defending themselves or other the they deem part of their group.",
+      "stats": {
+        "Char": 1,
+        "Dex": 1,
+        "Endu": 3,
+        "Hand": 1,
+        "Might": 2,
+        "Perc": 1,
+        "Speed": 4,
+        "Will": 1
+      },
+      "attacks": [
+        {
+          "name": "Beak",
+          "description": "It's beak has a sharp rim with a strong bite.",
+          "damage": 2,
+          "damageType": "grab",
+          "reach": "1",
+          "bonus": [
+            {
+              "target": "Char",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "name": "Kick",
+          "description": "The strong legs of these birds can give a mean kick.",
+          "damage": 2,
+          "damageType": "pummel",
+          "reach": "1",
+          "bonus": []
+        }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "mmb45p71ld3w10",
+      "name": "Swamp problems",
+      "description": "",
+      "characters": [],
+      "contacts": [
+        "mmb3hjo8t09rf9"
+      ],
+      "scenes": [
+        {
+          "id": "mmb46fantfcg4n",
+          "name": "An unexpected guest",
+          "description": "Irma stumbles into town and faints.",
+          "characters": [
+            "Irna Bean",
+            "Elder Diedérik"
+          ],
+          "contacts": [],
+          "monsters": [],
+          "challenges": []
+        },
+        {
+          "id": "mmb48grdsvpvlh",
+          "name": "Inspecting the swamp",
+          "description": "The group travels to the swamp to investigate what instigated Irma's illness.",
+          "characters": [],
+          "contacts": [],
+          "monsters": [
+            "mmb3vyssb5vxc7"
+          ],
+          "challenges": []
+        }
+      ]
+    }
+  ],
+  "characters": [
+    {
+      "name": "Nadine",
+      "gender": "Female",
+      "desc": "Even while young, Nadine was never able to sit still for long. She was always looking outside, wanting to travel the world.\nNow as a fully grown Finch she is finally able to go along with a trader company and actually experience freedom.",
+      "place": "Raft city",
+      "race": "Finches",
+      "progression": [
+        {
+          "type": "background",
+          "name": "trader"
+        },
+        {
+          "type": "power",
+          "name": "musical"
+        },
+        {
+          "type": "specialization",
+          "name": "Navigation"
+        },
+        {
+          "type": "power",
+          "name": "hearing"
+        },
+        {
+          "type": "background",
+          "name": "trader"
+        },
+        {
+          "type": "power",
+          "name": "flight"
+        }
+      ],
+      "items": [
+        "cart",
+        "donkey",
+        "knife",
+        "clothes",
+        "bedroll",
+        "tent",
+        "food"
+      ]
+    },
+    {
+      "name": "Irna Bean",
+      "gender": "Female",
+      "desc": "Irna grew up at the farm of her father John with her slightly younger brother Ron.\nOnce she was saved by her father when playing in a tree near the local river, she fell in but was pulled out at a significant distance.\nHer brother Ron was enlisted by Hannes for soldier training. Irna did a non-lethal attack on prince Dietrich who came with two knights to get Ron.\nShe was taken and forced to work in a mine as repentance. Rhianna got her out of the mine but send her in exile to the monastery instead.",
+      "category": "active",
+      "place": "Blackwood freehold",
+      "race": "Pig men",
+      "progression": [
+        {
+          "type": "background",
+          "name": "Farmer"
+        },
+        {
+          "type": "power",
+          "name": "Charge"
+        },
+        {
+          "type": "background",
+          "name": "Miner"
+        },
+        {
+          "type": "specialization",
+          "name": "Brawl"
+        },
+        {
+          "type": "power",
+          "name": "Digging"
+        },
+        {
+          "type": "specialization",
+          "name": "Axes"
+        },
+        {
+          "type": "power",
+          "name": "Smell"
+        }
+      ],
+      "items": [
+        "leather",
+        "dog"
+      ]
+    },
+    {
+      "name": "Elder Diedérik",
+      "gender": "Male",
+      "desc": "The current leader of Elmsfield with Druidic training.\nThrown out of the druidic order after his ill advised travel to the next continent. He flew there with a friend but traveled back by a merchant ship.\nHe wants to aid everyone with his knowledge, but too many people are still too resentful from the last war.\nThe druids excommunicated him.\nHe has basic knowledge of ironwood, the tree in Elmsfield is the actual reason he came there. The next continent has more trees like that.",
+      "category": "active",
+      "place": "Steadington",
+      "race": "Owls",
+      "progression": [
+        {
+          "type": "background",
+          "name": "Farmer"
+        },
+        {
+          "type": "power",
+          "name": "Claw"
+        },
+        {
+          "type": "specialization",
+          "name": "Druid"
+        },
+        {
+          "type": "background",
+          "name": "Ascetic"
+        },
+        {
+          "type": "specialization",
+          "name": "Druid"
+        },
+        {
+          "type": "power",
+          "name": "Clan"
+        }
+      ],
+      "items": [
+        "clothes",
+        "staff"
+      ]
+    },
+    {
+      "name": "Hank (Hanny)",
+      "gender": "",
+      "desc": "Was brought together with Egbert to an orphanage by the Sargent Darrel. After leaving there Hanny wanted to chase her dream to get their own cottage. To be able to travel safely they presented themselves as men, they got a bag of money from Darrel that he left them though they think it was a relative.\nTheir farm is running well, they just sold a plot to Joseph so they regained the total sum of money again.\nThe house is always open for young people with little prospect.",
+      "category": "active",
+      "place": "Scarlet vale",
+      "race": "Rabbits",
+      "progression": [
+        {
+          "type": "background",
+          "name": "Back alley"
+        },
+        {
+          "type": "power",
+          "name": "Scrounger"
+        },
+        {
+          "type": "specialization",
+          "name": "Sneak"
+        },
+        {
+          "type": "background",
+          "name": "Farmer"
+        },
+        {
+          "type": "specialization",
+          "name": "Druid"
+        },
+        {
+          "type": "background",
+          "name": "Scholar"
+        },
+        {
+          "type": "specialization",
+          "name": "Healer"
+        }
+      ],
+      "items": []
+    },
+    {
+      "name": "Egbert",
+      "gender": "",
+      "desc": "Mate of Hanny. Secretly plowing the plots of land at night. Hunter several times to provide for food during winters.",
+      "category": "active",
+      "place": "Scarlet vale",
+      "race": "Wolf folk",
+      "progression": [
+        {
+          "type": "background",
+          "name": "Back alley"
+        },
+        {
+          "type": "specialization",
+          "name": "Scouting"
+        },
+        {
+          "type": "power",
+          "name": "Smell"
+        },
+        {
+          "type": "background",
+          "name": "Hunter"
+        },
+        {
+          "type": "power",
+          "name": "Control"
+        },
+        {
+          "type": "specialization",
+          "name": "Tracking"
+        },
+        {
+          "type": "power",
+          "name": "Jaws"
+        }
+      ],
+      "items": []
+    },
+    {
+      "name": "Innkeeper Bridget",
+      "gender": "",
+      "desc": "She Married to the farmer Wilfred, also a Badger. They have a slew of children helping on the farm or at the Inn. She herself is not interested in the farm, and very curious and independent. Bridget had rather moved to a city but the Inn was the second best opportunity. She wants to expand the Inn the moment that becomes a possibility.",
+      "category": "",
+      "place": "Elmsfield",
+      "race": "Badgers",
+      "progression": [
+        {
+          "type": "background",
+          "name": "Farmer"
+        },
+        {
+          "type": "power",
+          "name": "Camp"
+        },
+        {
+          "type": "background",
+          "name": "Trader"
+        },
+        {
+          "type": "power",
+          "name": "Ingenuity"
+        },
+        {
+          "type": "specialization",
+          "name": "Navigation"
+        },
+        {
+          "type": "power",
+          "name": "Camp"
+        }
+      ],
+      "items": []
+    }
+  ]
+}

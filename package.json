@@ -1,0 +1,25 @@
+{
+  "name": "moros",
+  "version": "1.0.0",
+  "description": "Role playing system and tools library",
+  "main": "html/character.js",
+  "type": "module",
+  "scripts": {
+    "test": "nyc --reporter=html mocha"
+  },
+  "author": "Jurjen Stellingwerff",
+  "license": "MIT",
+  "dependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "moros": "^0.4.2"
+  },
+  "directories": {
+    "doc": "doc",
+    "test": "test"
+  },
+  "keywords": [
+    "Roleplay",
+    "Tabletop"
+  ]
+}

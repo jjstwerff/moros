@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scenario Print</title>
+    <link rel="stylesheet" href="scenario-print.css">
+</head>
+<body>
+<div class="sp-toolbar no-print">
+    <a class="sp-toolbar-back" href="dm.html">← DM Tools</a>
+    <span id="sp-title" class="sp-toolbar-title"></span>
+    <div class="sp-toolbar-actions">
+        <button id="btn-toggle-all" class="sp-btn" onclick="spToggleAll()">⊖ Collapse All</button>
+        <button class="sp-btn" onclick="window.print()">⎙ Print</button>
+    </div>
+</div>
+<div class="sp-page">
+    <div id="sp-root"></div>
+</div>
+<script type="module" src="scenario-print.js"></script>
+</body>
+</html>

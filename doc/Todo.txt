@@ -1,0 +1,43 @@
+Character sheet:
+- Validate special powers like Magic, Druid, Shamanic or Religion. Do they produce cards?
+- List a description of the powers.
+- Add game rules about the use of powers.
+- List possible actions due to powers or statistics.
+- Show the corresponding statistic after specializations.
+
+Allow closing and open the town and race selection on editing a character.
+- Start the editor in that state when loading an existing character (with that choice already made)
+
+Easier progression on a character:
+- Allow increasing a current progression item with a button.
+- Allow removing the last progression step with a button.
+
+Extra info on progression:
+- Show the effect of progression on the stats.
+- Show the effect on XP. Skip the first 6 for XP.
+- Allow entering the total available XP in a field.
+
+Remove the rules about character generation/growth from the editor, it should already be clear from the implementation. Keep it around but closed by default.
+- Move the rules section after the generator / roster.
+
+Write rules about the use of powers and their relation with focus.
+- Multiple use of a power increases the focus on it.
+- This decreases the focus on other powers / statistics. Unless specifically stated in the power.
+- With more than one point of focus it is given a penalty on actions outside the same statistic.
+- Reducing this penalty again by defocusing the related statistic.
+- The maximum focus is limited to the level in the power.
+- Previous focus on the relevant statistic gives double growth.
+
+Allow adding and editing contacts:
+- Name, description and current town.
+- In relation to organizations.
+- With their own specializations.
+- Complex contacts with a full character sheet.
+- Shared with the whole group or only personally.
+
+
+
+Map editor:
+- Roads are broken.
+- Allow click on adjacent tiles to link a road to them.
+- This breaks when a non-adjacent tile is clicked.
