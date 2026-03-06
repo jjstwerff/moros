@@ -137,13 +137,13 @@ input[type=text]:focus, textarea:focus, select:focus {
 }
 
 textarea { resize: vertical; min-height: 80px; }
-.place-grid {
+.place-grid, .race-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: 0.75rem;
 }
 
-.place-card {
+.place-card, .race-card {
     background: rgba(15, 13, 11, 0.4);
     border: 1px solid rgba(218, 165, 32, 0.2);
     border-radius: 4px;
@@ -151,82 +151,37 @@ textarea { resize: vertical; min-height: 80px; }
     cursor: pointer;
     transition: all 0.2s ease;
 }
-.selected-place-card {
+.selected-place-card, .selected-race-card {
     background: rgba(15, 13, 11, 0.4);
     padding: 0.55rem;
-    cursor: pointer;
     transition: all 0.2s ease;
     width: 30em;
 }
-.place-card:hover {
+.selected-race-card { clear: both; }
+.place-card:hover, .race-card:hover {
     border-color: rgba(218, 165, 32, 0.5);
     background: rgba(15, 13, 11, 0.6);
     transform: translateY(-2px);
 }
-
-.place-card.selected {
+.place-card.selected, .race-card.selected {
     border-color: var(--gold);
     background: rgba(218, 165, 32, 0.1);
 }
-
-.place-name {
+.place-name, .race-name {
     font-family: 'Cinzel', serif;
     font-size: 0.95rem;
     color: var(--gold);
     margin-bottom: 0;
     letter-spacing: 0.03em;
 }
-
-.place-desc {
+.place-desc, .race-desc {
     font-family: 'Crimson Pro', serif;
     font-size: 0.85rem;
     color: rgba(242, 232, 213, 0.7);
     line-height: 1.4;
 }
 /* ── Race picker ── */
-.race-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-.race-card {
-    background: rgba(15, 13, 11, 0.4);
-    border: 1px solid rgba(218, 165, 32, 0.2);
-    border-radius: 4px;
-    padding: 0.55rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.selected-race-card {
-    background: rgba(15, 13, 11, 0.4);
-    padding: 0.55rem;
-    transition: all 0.2s ease;
-    width: 30em;
-    clear: both;
-}
-.race-card:hover {
-    border-color: rgba(218, 165, 32, 0.5);
-    background: rgba(15, 13, 11, 0.6);
-    transform: translateY(-2px);
-}
-.race-card.selected {
-    border-color: var(--gold);
-    background: rgba(218, 165, 32, 0.1);
-}
-.race-name {
-    font-family: 'Cinzel', serif;
-    font-size: 0.95rem;
-    color: var(--gold);
-    margin-bottom: 0;
-    letter-spacing: 0.03em;
-}
-.race-desc {
-    font-family: 'Crimson Pro', serif;
-    font-size: 0.85rem;
-    color: rgba(242, 232, 213, 0.7);
-    line-height: 1.4;
-}
+.race-grid { margin-bottom: 1.5rem; }
 
 /* ── Power preview ── */
 #race-preview {
@@ -521,12 +476,12 @@ textarea { resize: vertical; min-height: 80px; }
     border-radius: 4px;
     padding: 0.55rem 0.75rem;
 }
-.spec-action-name {
+.spec-action-name, .rules-action-name {
     font-family: 'Cinzel', serif;
     font-size: 0.78rem;
     color: var(--gold-light);
-    margin-bottom: 0.15rem;
 }
+.spec-action-name { margin-bottom: 0.15rem; }
 .spec-action-needs {
     font-size: 0.75rem;
     color: rgba(201,150,58,0.5);
@@ -759,12 +714,7 @@ textarea { resize: vertical; min-height: 80px; }
     gap: 0.6rem;
     margin-bottom: 0.1rem;
 }
-.rules-action-name {
-    font-family: 'Cinzel', serif;
-    font-size: 0.78rem;
-    color: var(--gold-light);
-    letter-spacing: 0.04em;
-}
+.rules-action-name { letter-spacing: 0.04em; }
 .rules-action-needs {
     font-size: 0.72rem;
     font-style: italic;
@@ -894,12 +844,12 @@ textarea { resize: vertical; min-height: 80px; }
 a.btn-secondary { display: inline-block; text-decoration: none; text-transform: uppercase; }
 
 /* Panel header */
-.dm-panel-header {
+.dm-panel-header, .dm-scenario-section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.25rem;
 }
+.dm-panel-header { margin-bottom: 1.25rem; }
 .dm-section-title {
     font-family: 'Cinzel', serif;
     font-size: 0.95rem;
@@ -1057,6 +1007,11 @@ select.dm-input option { background: var(--ink); }
 }
 
 /* ── Checkbox grids ── */
+.dm-checkbox-grid, .dm-picker-tokens, .dm-picker-list {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(201,150,58,0.14);
+    border-radius: 3px;
+}
 .dm-checkbox-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
@@ -1064,9 +1019,6 @@ select.dm-input option { background: var(--ink); }
     max-height: 11rem;
     overflow-y: auto;
     padding: 0.5rem;
-    background: rgba(0,0,0,0.2);
-    border: 1px solid rgba(201,150,58,0.14);
-    border-radius: 3px;
 }
 .dm-checkbox-item {
     display: flex;
@@ -1082,8 +1034,90 @@ select.dm-input option { background: var(--ink); }
 .dm-checkbox-item:hover { background: rgba(201,150,58,0.09); }
 .dm-checkbox-item input[type=checkbox] { accent-color: var(--gold); flex-shrink: 0; }
 
-/* ── Bonus rows ── */
-.dm-bonus-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.4rem; }
+/* ── Entity picker ── */
+.dm-picker { display: flex; flex-direction: column; gap: 0.4rem; }
+.dm-picker-tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    min-height: 2.1rem;
+    padding: 0.35rem 0.45rem;
+    align-items: center;
+}
+.dm-picker-empty {
+    font-size: 0.78rem;
+    color: rgba(242,232,213,0.3);
+    padding: 0 0.15rem;
+}
+.dm-picker-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    background: rgba(201,150,58,0.14);
+    border: 1px solid rgba(201,150,58,0.35);
+    border-radius: 3px;
+    padding: 0.15rem 0.3rem 0.15rem 0.45rem;
+    font-size: 0.8rem;
+    color: var(--parchment);
+    max-width: 15rem;
+}
+.dm-picker-token-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dm-picker-token-remove {
+    background: none;
+    border: none;
+    color: rgba(201,150,58,0.55);
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0 0.05rem;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+.dm-picker-token-remove:hover { color: var(--gold); }
+.dm-picker-controls { display: flex; gap: 0.4rem; }
+.dm-picker-search { flex: 1; }
+.dm-picker-place { flex: 0 0 auto; min-width: 8.5rem; }
+.dm-picker-list {
+    max-height: 8.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.dm-picker-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.28rem 0.55rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: rgba(242,232,213,0.78);
+    border-bottom: 1px solid rgba(201,150,58,0.06);
+    transition: background 0.1s;
+}
+.dm-picker-option:last-child { border-bottom: none; }
+.dm-picker-option:hover { background: rgba(201,150,58,0.1); }
+.dm-picker-option-name { flex: 1; }
+.dm-picker-option-place {
+    font-size: 0.72rem;
+    color: rgba(201,150,58,0.5);
+    white-space: nowrap;
+    font-style: italic;
+}
+.dm-picker-list-empty {
+    padding: 0.5rem;
+    font-size: 0.78rem;
+    color: rgba(242,232,213,0.28);
+    text-align: center;
+}
+
+/* ── Bonus / reward rows ── */
+.dm-bonus-list, .dm-reward-list { display: flex; flex-direction: column; }
+.dm-bonus-list { gap: 0.4rem; margin-bottom: 0.4rem; }
 .dm-bonus-row {
     display: grid;
     grid-template-columns: 1fr 4rem 2rem;
@@ -1094,25 +1128,26 @@ select.dm-input option { background: var(--ink); }
 
 /* ── Attack blocks ── */
 .dm-attacks-list { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 0.4rem; }
-.dm-attack-block {
+.dm-attack-block, .dm-faction-block {
     background: rgba(0,0,0,0.18);
     border: 1px solid rgba(201,150,58,0.18);
     border-radius: 3px;
     padding: 0.8rem;
 }
-.dm-attack-header {
+.dm-attack-header, .dm-challenge-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.7rem;
 }
-.dm-attack-num {
+.dm-attack-header { margin-bottom: 0.7rem; }
+.dm-attack-num, .dm-challenge-num {
     font-family: 'Cinzel', serif;
-    font-size: 0.72rem;
     color: var(--gold-dim);
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
+.dm-attack-num { font-size: 0.72rem; }
+.dm-challenge-num { font-size: 0.68rem; }
 .dm-attack-meta { grid-template-columns: 1fr 1fr 1fr; }
 
 /* ── Stat grid (monsters) ── */
@@ -1159,9 +1194,6 @@ select.dm-input option { background: var(--ink); }
 
 /* ── Scenario section header (Scenes / Challenges sub-labels) ── */
 .dm-scenario-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding: 0.5rem 0 0.4rem;
     margin-bottom: 0.5rem;
     border-bottom: 1px solid rgba(201,150,58,0.18);
@@ -1224,30 +1256,19 @@ select.dm-input option { background: var(--ink); }
 
 /* ── Challenges ── */
 .dm-challenges-list { display: flex; flex-direction: column; gap: 0.6rem; }
-.dm-challenge-block {
+.dm-challenge-block, .dm-struggle-block {
     background: rgba(0,0,0,0.15);
     border: 1px solid rgba(201,150,58,0.15);
     border-radius: 3px;
     padding: 0.65rem 0.75rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
 }
-.dm-challenge-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.dm-challenge-num {
-    font-family: 'Cinzel', serif;
-    font-size: 0.68rem;
-    color: var(--gold-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
+.dm-challenge-block { gap: 0.6rem; }
+.dm-struggle-block { gap: 0.5rem; }
 
 /* ── Rewards ── */
-.dm-reward-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.35rem; }
+.dm-reward-list { gap: 0.35rem; margin-bottom: 0.35rem; }
 .dm-reward-row {
     display: grid;
     grid-template-columns: 7rem 1fr 2rem;
@@ -1257,19 +1278,6 @@ select.dm-input option { background: var(--ink); }
 
 /* ── Factions & Struggles ── */
 .dm-faction-block {
-    background: rgba(0,0,0,0.18);
-    border: 1px solid rgba(201,150,58,0.18);
-    border-radius: 3px;
-    padding: 0.8rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.dm-struggle-block {
-    background: rgba(0,0,0,0.15);
-    border: 1px solid rgba(201,150,58,0.15);
-    border-radius: 3px;
-    padding: 0.65rem 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;

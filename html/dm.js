@@ -665,7 +665,8 @@ function buildFactionBlock(fi, faction) {
         value: c.id,
         label: c.name + (c.faction ? ` · ${c.faction}` : ''),
     }));
-    const chkContacts = new Set(faction.contacts || []);
+    const chkContacts    = new Set(faction.contacts || []);
+    const contactPlaceMap = Object.fromEntries(st.contacts.map(c => [c.id, c.town || '']));
     return `
     <div class="dm-faction-block" data-fi="${fi}">
         <div class="dm-attack-header">
@@ -678,7 +679,7 @@ function buildFactionBlock(fi, faction) {
         ${contactOpts.length ? `
         <div class="dm-form-group" style="margin-top:0.5rem">
             <label class="dm-label">Contacts at this place</label>
-            ${buildCheckboxGridVL(`faction-${fi}-contacts`, contactOpts, chkContacts)}
+            ${buildEntityPicker(`faction-${fi}-contacts`, contactOpts, chkContacts, contactPlaceMap)}
         </div>` : '<div class="dm-empty" style="padding:0.4rem 0;font-size:0.8rem">No contacts defined yet.</div>'}
     </div>`;
 }
@@ -724,6 +725,8 @@ function buildPlaceForm(place = null) {
     const chkMonsters  = new Set(place?.monsters     || []);
     const chkItems     = new Set(place?.items        || []);
     const chkSpecItems = new Set(place?.specialItems || []);
+    const monsterPlaceMap = {};
+    st.places.forEach(p => { if (p.id !== place?.id) (p.monsters || []).forEach(mid => { monsterPlaceMap[mid] = p.name; }); });
     return `
     <div class="dm-form-title">${place ? 'Edit Place' : 'New Place'}</div>
     <div class="dm-form-body">
@@ -753,7 +756,7 @@ function buildPlaceForm(place = null) {
         ${monsterOpts.length ? `
         <div class="dm-form-group">
             <label class="dm-label">Monsters present</label>
-            ${buildCheckboxGridVL('place-monsters', monsterOpts, chkMonsters)}
+            ${buildEntityPicker('place-monsters', monsterOpts, chkMonsters, monsterPlaceMap)}
         </div>` : ''}
         <div class="dm-form-group">
             <label class="dm-label">Items available</label>
@@ -761,7 +764,7 @@ function buildPlaceForm(place = null) {
             ${specItemOpts.length ? `
             <div style="margin-top:0.5rem">
                 <div class="dm-label" style="margin-bottom:0.25rem;opacity:0.75">Special Items</div>
-                ${buildCheckboxGridVL('place-special-items', specItemOpts, chkSpecItems)}
+                ${buildEntityPicker('place-special-items', specItemOpts, chkSpecItems)}
             </div>` : ''}
         </div>
         <div class="dm-form-row">
@@ -958,6 +961,140 @@ function buildCheckboxGridVL(name, options, checkedSet = new Set()) {
     }</div>`;
 }
 
+// ── Entity picker (replaces checkbox grids for large, growing lists) ────────
+// placeMap: { value → placeName string } — used for the place filter dropdown.
+function buildEntityPicker(name, options, checkedSet, placeMap = {}) {
+    const places = [...new Set(Object.values(placeMap).filter(Boolean))].sort();
+
+    const selectedOpts   = options.filter(o => checkedSet.has(o.value));
+    const unselectedOpts = options.filter(o => !checkedSet.has(o.value));
+
+    const placeFilterHtml = places.length > 0
+        ? `<select class="dm-input dm-picker-place"
+                   onchange="DM._pickerFilter(this.closest('.dm-picker'))">
+               <option value="">All places</option>
+               ${places.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+           </select>`
+        : '';
+
+    const tokensHtml = selectedOpts.length > 0
+        ? selectedOpts.map(o => `
+            <span class="dm-picker-token" data-place="${esc(placeMap[o.value] || '')}">
+                <input type="checkbox" name="${esc(name)}" value="${esc(o.value)}" checked hidden>
+                <span class="dm-picker-token-label">${esc(o.label)}</span>
+                <button type="button" class="dm-picker-token-remove"
+                        onclick="DM._pickerRemove(this)"
+                        data-value="${esc(o.value)}"
+                        data-label="${esc(o.label)}"
+                        data-place="${esc(placeMap[o.value] || '')}">×</button>
+            </span>`).join('')
+        : '<span class="dm-picker-empty">None selected</span>';
+
+    const listHtml = unselectedOpts.length > 0
+        ? unselectedOpts.map(o => `
+            <div class="dm-picker-option"
+                 data-value="${esc(o.value)}"
+                 data-label="${esc(o.label)}"
+                 data-place="${esc(placeMap[o.value] || '')}"
+                 onclick="DM._pickerAdd(this)">
+                <span class="dm-picker-option-name">${esc(o.label)}</span>
+                ${placeMap[o.value] ? `<span class="dm-picker-option-place">${esc(placeMap[o.value])}</span>` : ''}
+            </div>`).join('')
+        : '<div class="dm-picker-list-empty">All options selected.</div>';
+
+    return `<div class="dm-picker" data-name="${esc(name)}">
+        <div class="dm-picker-tokens">${tokensHtml}</div>
+        <div class="dm-picker-controls">
+            <input type="text" class="dm-input dm-picker-search" placeholder="Search by name…"
+                   oninput="DM._pickerFilter(this.closest('.dm-picker'))">
+            ${placeFilterHtml}
+        </div>
+        <div class="dm-picker-list">${listHtml}</div>
+    </div>`;
+}
+
+function _pickerFilter(picker) {
+    const search = (picker.querySelector('.dm-picker-search')?.value || '').toLowerCase();
+    const place  = picker.querySelector('.dm-picker-place')?.value || '';
+    picker.querySelectorAll('.dm-picker-option').forEach(opt => {
+        const nameOk  = !search || opt.dataset.label.toLowerCase().includes(search);
+        const placeOk = !place  || opt.dataset.place === place;
+        opt.style.display = nameOk && placeOk ? '' : 'none';
+    });
+}
+
+function _pickerAdd(optEl) {
+    const picker  = optEl.closest('.dm-picker');
+    const name    = picker.dataset.name;
+    const value   = optEl.dataset.value;
+    const label   = optEl.dataset.label;
+    const place   = optEl.dataset.place || '';
+
+    optEl.remove();
+
+    const tokensEl = picker.querySelector('.dm-picker-tokens');
+    tokensEl.querySelector('.dm-picker-empty')?.remove();
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.name = name; cb.value = value; cb.checked = true; cb.hidden = true;
+
+    const lbl = document.createElement('span');
+    lbl.className = 'dm-picker-token-label';
+    lbl.textContent = label;
+
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'dm-picker-token-remove'; btn.textContent = '×';
+    btn.dataset.value = value; btn.dataset.label = label; btn.dataset.place = place;
+    btn.onclick = function() { DM._pickerRemove(this); };
+
+    const token = document.createElement('span');
+    token.className = 'dm-picker-token'; token.dataset.place = place;
+    token.append(cb, lbl, btn);
+    tokensEl.appendChild(token);
+
+    picker.querySelector('.dm-picker-list-empty')?.remove();
+    _pickerFilter(picker);
+}
+
+function _pickerRemove(btn) {
+    const picker  = btn.closest('.dm-picker');
+    const value   = btn.dataset.value;
+    const label   = btn.dataset.label;
+    const place   = btn.dataset.place || '';
+
+    btn.closest('.dm-picker-token').remove();
+
+    const tokensEl = picker.querySelector('.dm-picker-tokens');
+    if (!tokensEl.querySelector('.dm-picker-token')) {
+        const hint = document.createElement('span');
+        hint.className = 'dm-picker-empty'; hint.textContent = 'None selected';
+        tokensEl.appendChild(hint);
+    }
+
+    const listEl = picker.querySelector('.dm-picker-list');
+    listEl.querySelector('.dm-picker-list-empty')?.remove();
+
+    const nameSp = document.createElement('span');
+    nameSp.className = 'dm-picker-option-name'; nameSp.textContent = label;
+
+    const opt = document.createElement('div');
+    opt.className = 'dm-picker-option';
+    opt.dataset.value = value; opt.dataset.label = label; opt.dataset.place = place;
+    opt.onclick = function() { DM._pickerAdd(this); };
+    opt.appendChild(nameSp);
+    if (place) {
+        const placeSp = document.createElement('span');
+        placeSp.className = 'dm-picker-option-place'; placeSp.textContent = place;
+        opt.appendChild(placeSp);
+    }
+
+    const existing = [...listEl.querySelectorAll('.dm-picker-option')];
+    const before = existing.find(o => o.dataset.label.localeCompare(label) > 0);
+    if (before) listEl.insertBefore(opt, before); else listEl.appendChild(opt);
+
+    _pickerFilter(picker);
+}
+
 let _editingScenario = null;
 let _expandedScenes  = new Set();
 
@@ -1063,12 +1200,17 @@ function renderChallenges(si) {
 }
 
 function buildSceneBlock(i, scene) {
-    const charOpts    = getCharacters().map(c => ({ value: c.name, label: c.name }));
+    const chars       = getCharacters();
+    const charOpts    = chars.map(c => ({ value: c.name, label: c.name }));
     const contactOpts = st.contacts.map(c => ({ value: c.id, label: c.name + (c.town ? ` · ${c.town}` : '') }));
     const monsterOpts = st.monsters.map(m => ({ value: m.id, label: m.name }));
     const chkChars    = new Set(scene.characters || []);
     const chkContacts = new Set(scene.contacts   || []);
     const chkMonsters = new Set(scene.monsters   || []);
+    const charPlaceMap    = Object.fromEntries(chars.map(c => [c.name, c.place || '']));
+    const contactPlaceMap = Object.fromEntries(st.contacts.map(c => [c.id, c.town || '']));
+    const monsterPlaceMap = {};
+    st.places.forEach(p => (p.monsters || []).forEach(mid => { monsterPlaceMap[mid] = p.name; }));
     return `
     <div class="dm-scene-block" data-si="${i}">
         <div class="dm-scene-header" onclick="DM._toggleScene(${i})">
@@ -1103,18 +1245,18 @@ function buildSceneBlock(i, scene) {
                     ${charOpts.length ? `
                     <div class="dm-form-group">
                         <label class="dm-label">Linked Characters</label>
-                        ${buildCheckboxGridVL(`scene-${i}-chars`, charOpts, chkChars)}
+                        ${buildEntityPicker(`scene-${i}-chars`, charOpts, chkChars, charPlaceMap)}
                     </div>` : ''}
                     ${contactOpts.length ? `
                     <div class="dm-form-group">
                         <label class="dm-label">Linked Contacts</label>
-                        ${buildCheckboxGridVL(`scene-${i}-contacts`, contactOpts, chkContacts)}
+                        ${buildEntityPicker(`scene-${i}-contacts`, contactOpts, chkContacts, contactPlaceMap)}
                     </div>` : ''}
                 </div>
                 ${monsterOpts.length ? `
                 <div class="dm-form-group">
                     <label class="dm-label">Linked Monsters</label>
-                    ${buildCheckboxGridVL(`scene-${i}-monsters`, monsterOpts, chkMonsters)}
+                    ${buildEntityPicker(`scene-${i}-monsters`, monsterOpts, chkMonsters, monsterPlaceMap)}
                 </div>` : ''}
                 <div class="dm-form-group">
                     <div class="dm-scenario-section-header">
@@ -1147,10 +1289,13 @@ function renderScenes() {
 }
 
 function buildScenarioForm(scenario = null) {
-    const charOpts    = getCharacters().map(c => ({ value: c.name, label: c.name }));
+    const chars       = getCharacters();
+    const charOpts    = chars.map(c => ({ value: c.name, label: c.name }));
     const contactOpts = st.contacts.map(c => ({ value: c.id, label: c.name + (c.town ? ` · ${c.town}` : '') }));
     const chkChars    = new Set(scenario?.characters || []);
     const chkContacts = new Set(scenario?.contacts   || []);
+    const charPlaceMap    = Object.fromEntries(chars.map(c => [c.name, c.place || '']));
+    const contactPlaceMap = Object.fromEntries(st.contacts.map(c => [c.id, c.town || '']));
     return `
     <div class="dm-form-title">${scenario ? 'Edit Scenario' : 'New Scenario'}</div>
     <div class="dm-form-body">
@@ -1173,13 +1318,13 @@ function buildScenarioForm(scenario = null) {
             <div class="dm-form-group">
                 <label class="dm-label">Linked Characters</label>
                 ${charOpts.length
-                    ? buildCheckboxGridVL('sc-characters', charOpts, chkChars)
+                    ? buildEntityPicker('sc-characters', charOpts, chkChars, charPlaceMap)
                     : '<div class="dm-empty" style="padding:0.5rem 0;font-size:0.8rem">No characters in roster yet</div>'}
             </div>
             <div class="dm-form-group">
                 <label class="dm-label">Linked Contacts</label>
                 ${contactOpts.length
-                    ? buildCheckboxGridVL('sc-contacts', contactOpts, chkContacts)
+                    ? buildEntityPicker('sc-contacts', contactOpts, chkContacts, contactPlaceMap)
                     : '<div class="dm-empty" style="padding:0.5rem 0;font-size:0.8rem">No contacts defined yet</div>'}
             </div>
         </div>
@@ -1511,6 +1656,7 @@ window.DM = {
     newScenario, editScenario, deleteScenario, saveScenario,
     download, upload,
     _catChanged, _setCatFilter,
+    _pickerFilter, _pickerAdd, _pickerRemove,
     _closeForm, _addBonus, _removeBonus, _setBonusField,
     _addAttack, _removeAttack, _setAtkField,
     _addFaction, _removeFaction, _setFactionName,
