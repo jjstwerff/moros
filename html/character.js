@@ -285,12 +285,21 @@ export function renderProgression() {
     const power = Logic.state.validProgress('power', null);
     const spec = Logic.state.validProgress('specialization', null);
     const bg = Logic.state.validProgress('background', null);
+    const notice = [power, spec, bg].find(r => r !== undefined) || '';
     d += `<div class="slot">
         <div class="slot-content">
-            <div><button class="btn-slot-edit ${power === undefined ? '' : 'btn-disabled'}" onclick="openAddPower()">+ Add power</button></div>
-            <div><button class="btn-slot-edit ${spec === undefined ? '' : 'btn-disabled'}" onclick="openAddSpecial()">+ Add specialization</button></div>
-            <div><button class="btn-slot-edit ${bg === undefined ? '' : 'btn-disabled'}" onclick="openAddBackground()">+ Add background</button></div>
+            <div><button class="btn-slot-edit ${power === undefined ? '' : 'btn-disabled'}" onclick="openAddPower()" title="${power || ''}">+ Add power</button></div>
+            <div><button class="btn-slot-edit ${spec === undefined ? '' : 'btn-disabled'}" onclick="openAddSpecial()" title="${spec || ''}">+ Add specialization</button></div>
+            <div><button class="btn-slot-edit ${bg === undefined ? '' : 'btn-disabled'}" onclick="openAddBackground()" title="${bg || ''}">+ Add background</button></div>
     </div></div>`;
+    document.getElementById('progression-notice').textContent = notice;
+    const free = Logic.freeProgressionsRemaining();
+    const hintEl = document.getElementById('progression-hint');
+    if (hintEl) {
+        hintEl.textContent = free > 0
+            ? `The first six progression steps do not cost any XP. [${free} free remaining]`
+            : 'All 6 free progressions used. Further steps cost XP.';
+    }
     list.innerHTML = d;
     renderItemsSection();
 }
@@ -311,10 +320,24 @@ export function openAddPower() {
     const race = DATA.races.find(r => r.name === Logic.state.race);
     list.innerHTML = race.powers.map(pname => {
         const pw = Logic.getPower(pname);
+        const reason = Logic.state.validProgress('power', pname);
+        const raises = Logic.projectedStat('power', pname);
+        const statsLine = `Stats: ${pw.statistics.join(', ')} · Special: ${pw.special}${raises ? ` · raises ${raises}` : ''}`;
+        if (reason) {
+            return `<div class="choice-item disabled">
+            <div>
+              <div class="choice-item-name">${pname}</div>
+              <div class="choice-item-meta">${statsLine}</div>
+              ${pw.description ? `<div class="choice-item-desc">${pw.description}</div>` : ''}
+              <div class="choice-item-meta">${reason}</div>
+            </div>
+          </div>`;
+        }
         return `<div class="choice-item" onclick="pickChoice('power','${pname}')">
         <div>
           <div class="choice-item-name">${pname}</div>
-          <div class="choice-item-meta">Stats: ${pw.statistics.join(', ')} · Special: ${pw.special}</div>
+          <div class="choice-item-meta">${statsLine}</div>
+          ${pw.description ? `<div class="choice-item-desc">${pw.description}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -324,13 +347,36 @@ export function openAddPower() {
 export function openAddBackground() {
     document.getElementById('modal-title').textContent = `Choose Background`;
     const list = document.getElementById('choice-list');
-    list.innerHTML = DATA.backgrounds.map(bg => `
-      <div class="choice-item" onclick="pickChoice('background','${bg.name}')">
-        <div>
-          <div class="choice-item-name">${bg.name}</div>
-          <div class="choice-item-meta">Stats: ${bg.statistics.join(', ')} · Specs: ${bg.specializations.join(', ')}</div>
-        </div>
-      </div>`).join('');
+    list.innerHTML = DATA.backgrounds.map(bg => {
+        const reason = Logic.state.validProgress('background', bg.name);
+        const contacts = Logic.getContacts(bg.name, Logic.state.place);
+        const contactLine = contacts.length > 0
+            ? `<div class="choice-item-meta">Contacts: ${contacts.join(', ')}</div>`
+            : '';
+        const raises = Logic.projectedStat('background', bg.name);
+        const statsLine = `Stats: ${bg.statistics.join(', ')} · Specs: ${bg.specializations.join(', ')}${raises ? ` · raises ${raises}` : ''}`;
+        if (reason) {
+            return `
+            <div class="choice-item disabled">
+              <div>
+                <div class="choice-item-name">${bg.name}</div>
+                <div class="choice-item-meta">${statsLine}</div>
+                ${bg.description ? `<div class="choice-item-desc">${bg.description}</div>` : ''}
+                ${contactLine}
+                <div class="choice-item-meta">${reason}</div>
+              </div>
+            </div>`;
+        }
+        return `
+        <div class="choice-item" onclick="pickChoice('background','${bg.name}')">
+          <div>
+            <div class="choice-item-name">${bg.name}</div>
+            <div class="choice-item-meta">${statsLine}</div>
+            ${bg.description ? `<div class="choice-item-desc">${bg.description}</div>` : ''}
+            ${contactLine}
+          </div>
+        </div>`;
+    }).join('');
     document.getElementById('choice-modal').classList.add('open');
 }
 
@@ -357,7 +403,12 @@ export function openAddSpecial() {
 }
 
 export function pickChoice(type, name) {
-    Logic.state.learn(type, name);
+    try {
+        Logic.state.learn(type, name);
+    } catch (e) {
+        alert(e.message);
+        return;
+    }
     closeModal();
     renderProgression();
 }
@@ -612,7 +663,7 @@ export function renderCharSheet() {
         <div>
           <button class="btn-secondary" onclick="editChar(${Logic.charIndex(Logic.state.name)})">✎ Edit</button>
           <div class="sheet-name">${Logic.state.name}</div>
-          <div class="sheet-meta">${Logic.state.gender ? Logic.state.gender + ' · ' : ''}${Logic.state.race || ''}${Logic.state.place ? ' · ' + Logic.state.place : ''}</div>
+          <div class="sheet-meta">${Logic.state.gender ? Logic.state.gender + ' · ' : ''}${Logic.state.race || ''}${Logic.state.place ? ' · ' + Logic.state.place : ''}${Logic.state.xp > 0 ? ' · XP: ' + Logic.state.xp : ''}</div>
           ${Logic.state.desc ? `<div class="sheet-desc">${Logic.state.desc}</div>` : ''}
         </div>
       </div>
@@ -633,7 +684,12 @@ export function renderCharSheet() {
           <div class="sheet-section">
             <div class="sheet-section-title">Backgrounds</div>
             <ul class="sheet-list">
-                ${DATA.backgrounds.map(b => Logic.stat(b.name) > 0 ? `<li>${b.name}: ${Logic.stat(b.name)}</li>` : '').join('')}
+                ${DATA.backgrounds.map(b => {
+                    if (Logic.stat(b.name) === 0) return '';
+                    const contacts = Logic.getContacts(b.name, Logic.state.place);
+                    const contactLine = contacts.length > 0 ? ` <span class="sheet-contacts">(${contacts.join(', ')})</span>` : '';
+                    return `<li>${b.name}: ${Logic.stat(b.name)}${contactLine}</li>`;
+                }).join('')}
             </ul>
           </div>
           <div class="sheet-section">
@@ -645,7 +701,11 @@ export function renderCharSheet() {
           <div class="sheet-section">
             <div class="sheet-section-title">Powers</div>
             <ul class="sheet-list">
-                ${DATA.powers.map(p => Logic.stat(p.name) > 0 ? `<li>${p.name}: ${Logic.stat(p.name)} · ${p.special} · ${p.description}</li>` : '').join('')}
+                ${DATA.powers.map(p => {
+                    if (Logic.stat(p.name) === 0) return '';
+                    const badge = Logic.isOverwhelmed(p.name) ? ' <span class="sheet-overwhelmed">Overwhelmed</span>' : '';
+                    return `<li>${p.name}: ${Logic.stat(p.name)} · ${p.special} · ${p.description}${badge}</li>`;
+                }).join('')}
             </ul>
           </div>
         </div>
@@ -655,34 +715,15 @@ export function renderCharSheet() {
             <ul class="sheet-list">
                 ${DATA.items.map(i => Logic.state.items.has(i.name) ? `<li>${i.name}${i.bulk !== undefined ?' · bulk: ' + i.bulk : ''}${i.description ? ' · ' + i.description : ''}</li>` : '').join('') }
             </ul>
+            ${(() => {
+                const weight = Logic.state.weight;
+                const capacity = Logic.carryCapacity();
+                const encumbered = weight > capacity;
+                return `<div class="sheet-bulk${encumbered ? ' sheet-bulk--over' : ''}">Bulk: ${weight} / ${capacity}${encumbered ? ' — encumbered' : ''}</div>`;
+            })()}
           </div>
         </div>
       </div>
-
-      <div class="divider"></div>
-      <div class="section-title">Specialization Actions !! A work in progress, mostly for inspiration !! </div>
-      ${(() => {
-        const learnedSpecs = Object.keys(DATA.specToStat).filter(s => Logic.stat(s) > 0);
-        if (learnedSpecs.length === 0) {
-            return '<div class="hint-text">Learn a specialization to unlock actions.</div>';
-        }
-        return learnedSpecs.map(spec => {
-            const actions = DATA.actions.filter(a => a.power === spec);
-            if (actions.length === 0) return '';
-            return `
-                <div class="spec-actions-group">
-                  <div class="spec-actions-title">${spec} <span class="spec-actions-level">lvl ${Logic.stat(spec)}</span></div>
-                  <div class="spec-actions-list">
-                    ${actions.map(a => `
-                      <div class="spec-action-row">
-                        <div class="spec-action-name">${a.name}</div>
-                        ${a.needs ? `<div class="spec-action-needs">${a.needs}</div>` : ''}
-                        <div class="spec-action-desc">${a.description}</div>
-                      </div>`).join('')}
-                  </div>
-                </div>`;
-        }).join('');
-    })()}
 
       <div class="divider"></div>
       <div class="section-title" id="cards-title">Cards</div>

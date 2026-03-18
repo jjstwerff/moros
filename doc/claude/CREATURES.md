@@ -29,8 +29,8 @@ in their dominant stats. Young or weakened ones run correspondingly lower.
 |---|---|---|---|---|---|---|---|
 | 1 | 4 | 4 | 1 | 3 | 5 | 5 | 2 |
 
-- **Bite** *(cutting, close)* — lunges for the throat; reduces target Dex by 1; a grabbed target also
-  loses their next Speed action
+- **Bite** *(cutting, close)* — lunges for the throat; reduces target Dex by 1; a grabbed target
+  also loses their next Speed action
 - **Trip** *(blunt, close)* — sweeps the legs from below; reduces target Might by 1; a target with
   Endu < 3 also loses their next action entirely
 
@@ -48,11 +48,11 @@ downed. Will not follow prey into enclosed spaces where coordinated flanking is 
 |---|---|---|---|---|---|---|---|
 | 2 | 3 | 7 | 1 | 8 | 4 | 4 | 4 |
 
-- **Claw swipe** *(cutting, close)* — wide arc that can hit two adjacent targets; reduces target Dex
-  by 1; +1 to Might total against targets who have not yet acted this round
+- **Claw swipe** *(cutting, close)* — wide arc that can hit two adjacent targets; reduces target
+  Dex by 1; +1 to Might total against targets who have not yet acted this round
 - **Bear hug** *(grab, close)* — pins the target against its body; reduces target Speed by 1 while
-  held; while held, target also takes blunt damage (Might −1) each round without requiring an attack
-  action
+  held; while held, target also takes blunt damage (Might −1) each round without requiring an
+  attack action
 
 **Motivation** — Food and security. A bear raiding food stores or surprised at a carcass attacks
 immediately. A mother bear with cubs is among the most dangerous encounters in the natural world.
@@ -71,9 +71,9 @@ escape route is available.
 
 - **Gore** *(impaling, close)* — drives a tusk into a target; reduces target Endu by 1; ignores
   leather armor special
-- **Charge** *(blunt, reach)* — builds momentum over open ground; reduces target Might by 1; a target
-  with Speed < 4 cannot avoid the collision; the boar takes 1 blunt damage per obstacle it crashes
-  through
+- **Charge** *(blunt, reach)* — builds momentum over open ground; reduces target Might by 1; a
+  target with Speed < 4 cannot avoid the collision; the boar takes 1 blunt damage per obstacle it
+  crashes through
 
 **Motivation** — Startlement and aggression. A boar grazing undisturbed will ignore the group.
 A boar crossed in its path, approached too quickly, or defending a litter of piglets charges
@@ -90,10 +90,10 @@ retreat and does not stop — it will charge until driven off, cornered into sti
 |---|---|---|---|---|---|---|---|
 | 1 | 5 | 3 | 3 | 3 | 4 | 4 | 2 |
 
-- **Bite** *(draining, close)* — venom slows the target; reduces target Will by 1 per bite; target's
-  Speed also drops by 1 for each bite until treated
-- **Web** *(grab, ranged)* — fired at a single target; reduces target Speed by 1; target with Dex < 4
-  is restricted for one full round; multiple webs stack
+- **Bite** *(draining, close)* — venom slows the target; reduces target Will by 1 per bite;
+  the venom also reduces Speed by 1 per bite until treated (venom effect, not additional damage)
+- **Web** *(grab, ranged)* — fired at a single target; reduces target Speed by 1; target with
+  Dex < 4 is restricted for one full round; multiple webs stack
 
 **Motivation** — Food. The spider does not distinguish between prey; anything that enters its
 web is a meal. It will not pursue beyond its web anchor points.
@@ -110,8 +110,8 @@ flees upward rather than fighting back.
 |---|---|---|---|---|---|---|---|
 | 1 | 5 | 2 | 1 | 2 | 3 | 5 | 1 |
 
-- **Bite** *(cutting, close)* — fast and indiscriminate; reduces target Dex by 1; targets the lowest
-  Endu character in reach by instinct
+- **Bite** *(cutting, close)* — fast and indiscriminate; reduces target Dex by 1; targets the
+  lowest Endu character in reach by instinct
 - **Swarm bite** *(pummel, area)* — three or more rats together overwhelm a single target; reduces
   target Endu by 1 and ignores armor specials
 
@@ -164,8 +164,8 @@ natural world.*
 |---|---|---|---|---|---|---|---|
 | 1 | 3 | 5 | 1 | 5 | 4 | 6 | 3 |
 
-- **Antler strike** *(impaling, close)* — a driving charge with lowered antlers; reduces target Endu
-  by 1; +1 Might if the stag has room to build speed first
+- **Antler strike** *(impaling, close)* — a driving charge with lowered antlers; reduces target
+  Endu by 1; +1 Might if the stag has room to build speed first
 - **Kick** *(blunt, close)* — rear hooves; used when cornered; reduces target Might by 1; a target
   with Endu < 4 is knocked back one position
 
@@ -187,8 +187,8 @@ decoy, using its speed to stay ahead of pursuit.
 |---|---|---|---|---|---|---|---|
 | 1 | 5 | 3 | 1 | 4 | 7 | 6 | 3 |
 
-- **Talon dive** *(cutting, close)* — drops from height onto a single target; reduces target Dex by
-  1; aimed at the head or hands; +1 Dex on the dive; retreats to altitude immediately after
+- **Talon dive** *(cutting, close)* — drops from height onto a single target; reduces target Dex
+  by 1; aimed at the head or hands; +1 Dex on the dive; retreats to altitude immediately after
 - **Buffet** *(blunt, close)* — wing strike at close range when a target approaches the nest;
   reduces target Might by 1; forces the target to spend their next action stabilising
 
@@ -210,8 +210,8 @@ Communicates what it has seen through the Druid power's nature connection.
 |---|---|---|---|---|---|---|---|
 | 3 | 4 | 2 | 2 | 1 | 5 | 5 | 4 |
 
-- **Peck** *(cutting, close)* — aimed at eyes and fingers; reduces target Dex by 1; more harassment
-  than damage, but forces the target to react or lose −1 Perc additionally
+- **Peck** *(cutting, close)* — aimed at eyes and fingers; reduces target Dex by 1; more
+  harassment than damage, but forces the target to react or lose −1 Perc additionally
 - **Snatch** *(cutting, close)* — lifts a small unsecured item from a target or surface; reduces
   target Dex by 1; requires a Dex check to recover the item before the raven lands
 
@@ -263,8 +263,8 @@ wick, a held key, a bowstring — with precision most weapons cannot match.
 
 - **Pounce** *(cutting, close)* — leaps from cover onto the target; reduces target Dex by 1; the
   pounce cannot be intercepted and ignores the target's first defensive action
-- **Bite** *(cutting, close)* — locks onto a downed or grabbed target; reduces target Dex by 1; held
-  until the lynx decides the target is no longer a threat
+- **Bite** *(cutting, close)* — locks onto a downed or grabbed target; reduces target Dex by 1;
+  held until the lynx decides the target is no longer a threat
 
 **Motivation** — Hunting. Solitary and deeply territorial. Rarely approaches human settlements
 unless pressed by hunger or the loss of its hunting range.
@@ -314,7 +314,7 @@ for subtle operations.
 - **Sting cloud** *(draining, area)* — reduces target Will by 1 per round while inside the swarm;
   always active, no attack action required; every target inside also loses −1 to all actions from
   pain and distraction
-- **Engulf** *(draining, close)* — targets one creature specifically; reduces target Perc by 1 per
+- **Engulf** *(draining, close)* — targets one creature specifically; reduces target Will by 1 per
   round until the target deals with it; that target must spend an action protecting face and eyes
   each round or take the reduction
 
@@ -327,7 +327,7 @@ for one round. Once defending the hive it does not stop until the threat leaves.
 
 **Druid bond** — Can be guided to a specific position and held there, creating a zone that
 enemies will not enter voluntarily. Directed against a single target, the engulf forces that
-target out of position each round or costs them their Perc action. A druid with Will ≥ 4 can
+target out of position each round or costs them their Will action. A druid with Will ≥ 4 can
 communicate with the hive-mind to locate the colony's range and learn what the bees have sensed
 moving through it — useful for tracking or camp early-warning.
 
@@ -363,9 +363,9 @@ movement above and below ground within twenty meters and communicates this to th
 |---|---|---|---|---|---|---|---|
 | 1 | 4 | 5 | 1 | 4 | 3 | 4 | 4 |
 
-- **Headbutt** *(blunt, close)* — a running charge aimed squarely at the chest; reduces target Might
-  by 1; a target with Speed < 4 on uneven terrain is also knocked off balance and cannot act next
-  round
+- **Headbutt** *(blunt, close)* — a running charge aimed squarely at the chest; reduces target
+  Might by 1; a target with Speed < 4 on uneven terrain is also knocked off balance and cannot
+  act next round
 - **Horn jab** *(impaling, close)* — used against predators; reduces target Endu by 1; short and
   sharp; forces the attacker back one position
 
@@ -550,8 +550,8 @@ group organises any real resistance.
 
 - **Knife** *(cutting, close)* — fast and opportunistic; reduces target Dex by 1; +1 Dex when
   striking a target already engaged with another goblin
-- **Thrown debris** *(blunt, ranged)* — stones, filth, or whatever is at hand; reduces target Might
-  by 1; used to distract while others close in
+- **Thrown debris** *(blunt, ranged)* — stones, filth, or whatever is at hand; reduces target
+  Might by 1; used to distract while others close in
 
 **Motivation** — Scavenging and petty malice. Goblins rarely have strategic goals. They want
 something the group has and are calculating the cheapest way to take it.
@@ -616,8 +616,8 @@ understands.*
 
 - **Bone strike** *(blunt, close)* — hammers with fist or weapon hilt; reduces target Might by 1;
   does not tire between rounds
-- **Armed attack** *(cutting or impaling, close)* — if raised with a weapon, uses it; reduces target
-  Dex by 1 (cutting) or Endu by 1 (impaling); the weapon type and reach apply normally
+- **Armed attack** *(cutting or impaling, close)* — if raised with a weapon, uses it; reduces
+  target Dex by 1 (cutting) or Endu by 1 (impaling); the weapon type and reach apply normally
 
 **Motivation** — None of its own. A skeleton follows the directive set at its raising: guard
 this room, attack the living, pursue this specific person. It has no goals beyond that
@@ -702,10 +702,10 @@ the moment they are losing.
 |---|---|---|---|---|---|---|---|
 | 5 | 5 | 3 | 2 | 3 | 4 | 6 | 3 |
 
-- **Talon dive** *(cutting, close)* — drops from flight onto a single target; reduces target Dex by
-  1; +1 Speed on the attack; the harpy immediately returns to altitude after the strike
-- **Screech** *(blunt, area)* — disorienting at close range; reduces target Might by 1; targets with
-  Perc ≥ 4 resist; all others also take −1 to their next action
+- **Talon dive** *(cutting, close)* — drops from flight onto a single target; reduces target Dex
+  by 1; +1 Speed on the attack; the harpy immediately returns to altitude after the strike
+- **Screech** *(blunt, area)* — disorienting at close range; reduces target Might by 1; targets
+  with Perc ≥ 4 resist; all others also take −1 to their next action
 
 **Motivation** — Cruelty and food, in roughly equal measure. Harpies lure prey with their song
 and attack once the prey is helpless, confused, or separated from the group.
@@ -724,8 +724,8 @@ one of the flock falls, but may return hours later when the group believes it is
 
 - **Claw** *(cutting, close)* — fast and relentless; reduces target Dex by 1 per hit; two claw
   attacks per round in beast form without spending additional actions
-- **Bite** *(draining, close)* — carries the curse; reduces target Will by 1; a bitten character who
-  does not purge it before the next full moon faces their own transformation
+- **Bite** *(draining, close)* — carries the curse; reduces target Will by 1; a bitten character
+  who does not purge it before the next full moon faces their own transformation
 
 **Motivation** — In human form, often horror at what it becomes and a desperate attempt to
 protect others from itself. In beast form, pure predatory hunger with no strategy and no memory
@@ -745,11 +745,11 @@ and can be spoken to.
 | 7 | 5 | 7 | 3 | 6 | 5 | 5 | 8 |
 
 - **Bite** *(draining, close)* — must be adjacent to an unresisting or dominated target; reduces
-  target Will by 1 per feeding; also reduces Endu by 1 per feeding; three feedings in a campaign
-  create a thrall
-- **Dominate** *(radiant, close)* — eye contact; reduces target Will by 1 if resisted; a target with
-  Will < 6 acts on the vampire's instruction for the remainder of the scene unless another character
-  intervenes
+  target Will by 1 and Endu by 1 per feeding (compound drain — both stats reduced by one attack);
+  three feedings in a campaign create a thrall
+- **Dominate** *(radiant, close)* — eye contact; reduces target Will by 1 if resisted; a target
+  with Will < 6 acts on the vampire's instruction for the remainder of the scene unless another
+  character intervenes
 
 **Motivation** — Survival and accumulation of power. The immediate need is feeding; the longer
 game is control — over territory, contacts, knowledge, and thralls.
@@ -870,8 +870,8 @@ strengthened near open water. Water damage from these creatures douses fire on c
 
 - **Cold touch** *(cold, close)* — chilling contact; reduces target Speed by 1 until they warm up
   at a fire or rest
-- **Douse** *(cold, ranged)* — reduces target Speed by 1; extinguishes any fire source; also forces
-  a Dex check to keep grip on any item carried when struck
+- **Douse** *(cold, ranged)* — reduces target Speed by 1; extinguishes any fire source; also
+  forces a Dex check to keep grip on any item carried when struck
 
 **Motivation** — Movement. A ripple sprite follows flowing water and is disoriented without it.
 One pulled from its stream is simply lost, and it lashes out from confusion.
@@ -887,8 +887,8 @@ merge into a larger form after a round of contact.
 |---|---|---|---|---|---|---|---|
 | 1 | 3 | 6 | 1 | 5 | 4 | 4 | 5 |
 
-- **Surge** *(cold, close)* — a powerful wave that pushes back; reduces target Speed by 1; a target
-  with Speed < 4 is also displaced two positions involuntarily
+- **Surge** *(cold, close)* — a powerful wave that pushes back; reduces target Speed by 1; a
+  target with Speed < 4 is also displaced two positions involuntarily
 - **Drown grip** *(grab, close)* — pulls the target into its body; reduces target Speed by 1; the
   target also loses one Endu per round and cannot breathe; requires cold, a Might ≥ 7 check, or
   an ally to break free
@@ -957,8 +957,8 @@ dangerous through accumulation rather than individual menace.
 
 - **Windshear** *(cutting, reach)* — a blade of compressed air; reduces target Dex by 1; bypasses
   all armor since there is no impact to deflect
-- **Lightning call** *(electric, ranged)* — draws a strike from nearby storm energy; reduces target
-  Perc by 1; cannot be used indoors or underground
+- **Lightning call** *(electric, ranged)* — draws a strike from nearby storm energy; reduces
+  target Perc by 1; cannot be used indoors or underground
 
 **Motivation** — Direction. A wind elemental follows a path the way water follows channels. It
 does not choose to cause harm; it simply goes, and anything in its path is harmed.
@@ -974,11 +974,12 @@ disperses it. It does not pursue — it continues going where it was going.
 |---|---|---|---|---|---|---|---|
 | 2 | 4 | 10 | 1 | 8 | 6 | 8 | 9 |
 
-- **Hurricane sweep** *(blunt, area)* — continuous wind fills the entire combat space; reduces target
-  Might by 1; all ranged attacks are impossible; all Speed actions by others also take −2 for as
-  long as it is present
-- **Storm strike** *(electric, ranged)* — lightning channeled through the elemental; reduces target
-  Perc by 1; a target struck also cannot use metal armor specials next round as the metal conducts
+- **Hurricane sweep** *(blunt, area)* — continuous wind fills the entire combat space; reduces
+  target Might by 1; all ranged attacks are impossible; all Speed actions by others also take −2
+  for as long as it is present
+- **Storm strike** *(electric, ranged)* — lightning channeled through the elemental; reduces
+  target Perc by 1; a target struck also cannot use metal armor specials next round as the metal
+  conducts
 
 **Motivation** — A storm contemplating itself. The tempest elemental does not have goals in any
 legible sense. It is weather that has become briefly self-aware.
@@ -1042,8 +1043,8 @@ and drive off rather than kill.
 |---|---|---|---|---|---|---|---|
 | 4 | 1 | 14 | 5 | 13 | 5 | 2 | 10 |
 
-- **Sweep** *(blunt, area)* — a single arm-branch clears all adjacent targets; reduces target Might
-  by 1; a character with Speed < 5 cannot dodge it in time
+- **Sweep** *(blunt, area)* — a single arm-branch clears all adjacent targets; reduces target
+  Might by 1; a character with Speed < 5 cannot dodge it in time
 - **Crushing grip** *(grab, close)* — a hand the size of a cart closes; reduces target Speed by 1;
   the target also takes blunt damage (Might −1) each round held; escaping requires Might ≥ 8 or
   an ally with a cutting weapon and two actions
@@ -1072,8 +1073,8 @@ non-blunt, non-stone physical attacks.*
 |---|---|---|---|---|---|---|---|
 | 1 | 4 | 3 | 2 | 3 | 2 | 5 | 3 |
 
-- **Splinter** *(cutting, ranged)* — fires a fragment of itself; reduces target Dex by 1; the shard
-  must be retrieved or the sprite weakens by 1 Might per lost fragment over the scene
+- **Splinter** *(cutting, ranged)* — fires a fragment of itself; reduces target Dex by 1; the
+  shard must be retrieved or the sprite weakens by 1 Might per lost fragment over the scene
 - **Magnetic pull** *(grab, close)* — draws metal toward it; reduces target Speed by 1; a target
   carrying iron weapons or armor is pulled one position closer involuntarily
 
@@ -1111,11 +1112,11 @@ discharges.
 |---|---|---|---|---|---|---|---|
 | 1 | 1 | 13 | 3 | 14 | 3 | 2 | 8 |
 
-- **Forge slam** *(pummel, area)* — drives both fists into the ground simultaneously; reduces target
-  Endu by 1 (bypasses armor); the ground also becomes difficult terrain for the scene
-- **Magnetic storm** *(grab, area)* — pulls all metal objects within range toward it; reduces target
-  Speed by 1; characters also lose iron weapons and armor specials unless they beat the colossus's
-  Might with their own
+- **Forge slam** *(pummel, area)* — drives both fists into the ground simultaneously; reduces
+  target Endu by 1 (bypasses armor); the ground also becomes difficult terrain for the scene
+- **Magnetic storm** *(grab, area)* — pulls all metal objects within range toward it; reduces
+  target Speed by 1; characters also lose iron weapons and armor specials unless they beat the
+  colossus's Might with their own
 
 **Motivation** — Accumulation. The colossus moves toward the largest nearby concentration of
 iron. It does not think; it is mass given gravity-like inevitability.
@@ -1179,10 +1180,12 @@ without a specific action. Water weakens it over extended encounters. Fire has n
 |---|---|---|---|---|---|---|---|
 | 2 | 1 | 15 | 4 | 14 | 3 | 2 | 10 |
 
-- **Mountain strike** *(pummel, close)* — a blow that shakes the ground for ten meters; any
-  character not braced (Endu ≥ 7) is knocked prone by the shockwave alone
+- **Mountain strike** *(pummel, close)* — a blow that shakes the ground for ten meters; reduces
+  target Endu by 1 (bypasses armor); any character not braced (Endu ≥ 7) is also knocked prone
+  by the shockwave alone
 - **Landslide** *(blunt, area)* — the titan partially dissolves into a rolling mass of rock and
-  debris, covering vast ground in one action; everything in its path takes damage
+  debris; reduces target Might by 1; everything in its path takes damage; covers vast ground in
+  one action
 
 **Motivation** — The mountain's refusal. A stone titan forms when something fundamental has
 been disturbed underground. It does not distinguish the group responsible from bystanders.
@@ -1206,10 +1209,10 @@ strengthened in open daylight. Their presence reveals all concealment within the
 |---|---|---|---|---|---|---|---|
 | 2 | 6 | 1 | 1 | 1 | 5 | 7 | 3 |
 
-- **Flash** *(radiant, ranged)* — a brief burst; targets with Perc ≥ 5 resist; all others take
-  −1 to all actions for one round
-- **Reveal** *(radiant, area)* — the mote's passive light means Stealth is impossible within
-  its range; no action required, always active
+- **Flash** *(radiant, ranged)* — a brief burst; reduces target Will by 1; targets with Perc ≥ 5
+  resist; all others also take −1 to all actions for one round
+- **Reveal** *(radiant, area)* — reduces target Will by 1; the mote's passive light means Stealth
+  is impossible within its range; no action required, always active
 
 **Motivation** — Warmth and reflection. A light mote is drawn to shining surfaces and natural
 light. It attacks only when physically touched — the harm is reflexive, not intentional.
@@ -1226,10 +1229,10 @@ light.
 |---|---|---|---|---|---|---|---|
 | 3 | 4 | 5 | 1 | 4 | 6 | 5 | 7 |
 
-- **Light lance** *(radiant, reach)* — a focused beam; a target with Will < 4 is stunned by
-  the intensity for one round in addition to taking damage
-- **Searing aura** *(radiant, area)* — the elemental constantly emits damaging light; all
-  adjacent targets take radiant damage each round; undead and dark elementals take double
+- **Light lance** *(radiant, reach)* — a focused beam; reduces target Will by 1; a target with
+  Will < 4 is also stunned by the intensity for one round
+- **Searing aura** *(radiant, area)* — the elemental constantly emits damaging light; reduces
+  target Will by 1 each round; undead and dark elementals take double; always active
 
 **Motivation** — Revelation. A radiant elemental is drawn to hidden things and illuminates
 them. It finds darkness personally offensive and moves to correct it.
@@ -1246,11 +1249,12 @@ causes it visible distress and can drive it back.
 |---|---|---|---|---|---|---|---|
 | 5 | 3 | 11 | 1 | 9 | 8 | 5 | 12 |
 
-- **Solar burst** *(radiant, area)* — a wave of intense light in all directions; targets without
-  eye protection take −2 to Perc for the rest of the scene; undead that fail a Will check are
-  destroyed outright
-- **Judgment beam** *(radiant, close)* — concentrated and precise; target's armor special is
-  bypassed as the light finds every gap; dark-element creatures take maximum damage
+- **Solar burst** *(radiant, area)* — a wave of intense light in all directions; reduces target
+  Will by 1; targets without eye protection also take −2 to Perc for the rest of the scene; undead
+  that fail a Will check are destroyed outright
+- **Judgment beam** *(radiant, close)* — concentrated and precise; reduces target Will by 1;
+  target's armor special is bypassed as the light finds every gap; dark-element creatures take
+  maximum damage
 
 **Motivation** — Order and illumination. A celestial elemental is not hostile to living beings,
 but its proximity is inherently dangerous, and any concentration of darkness provokes it.
@@ -1275,10 +1279,11 @@ within range.*
 |---|---|---|---|---|---|---|---|
 | 1 | 5 | 2 | 1 | 1 | 4 | 6 | 4 |
 
-- **Chill touch** *(draining, close)* — drains warmth on contact; the target's Endu drops by 1
-  until they rest near a fire source
-- **Obscure** *(draining, area)* — dims all light sources within its range; all Perc-based
-  actions take −1 while the mote is present; always active, no action required
+- **Chill touch** *(draining, close)* — drains warmth on contact; reduces target Will by 1; the
+  target's Endu also drops by 1 until they rest near a fire source
+- **Obscure** *(draining, area)* — dims all light sources within its range; reduces target Will by
+  1; all Perc-based actions also take −1 while the mote is present; always active, no action
+  required
 
 **Motivation** — Stillness and cold. Shadow motes fill quiet, dark spaces the way dust fills
 abandoned rooms. They do not attack; they resist being disturbed.
@@ -1295,10 +1300,11 @@ present — they become apparent only when someone blunders into one.
 |---|---|---|---|---|---|---|---|
 | 2 | 5 | 5 | 1 | 4 | 5 | 6 | 7 |
 
-- **Draining strike** *(draining, close)* — saps will on contact; the target's Will drops by 1
-  per hit; at Will 1 the target collapses and cannot act
-- **Shadow step** *(draining, area)* — moves through any shadow in the scene instantaneously;
-  cannot be intercepted or blocked during movement
+- **Draining strike** *(draining, close)* — saps will on contact; reduces target Will by 1 per
+  hit; at Will 1 the target collapses and cannot act
+- **Shadow step** *(draining, area)* — reduces target Will by 1 for targets caught in the passing;
+  moves through any shadow in the scene instantaneously; cannot be intercepted or blocked during
+  movement
 
 **Motivation** — Entropy. A shadow elemental is drawn to light in the same way a void is drawn
 to matter — not to experience it, but to absorb it.
@@ -1315,11 +1321,11 @@ between attacks.
 |---|---|---|---|---|---|---|---|
 | 3 | 3 | 12 | 1 | 9 | 6 | 5 | 13 |
 
-- **Absolute dark** *(draining, area)* — extinguishes all light in a vast radius; all Perc-based
-  actions become impossible; all combat actions take −3 for anyone without the Night power or
-  equivalent
-- **Consuming void** *(draining, close)* — pulls a target partially into shadow; the target
-  loses 2 Will and cannot be aided by allies until they escape (Will check against the
+- **Absolute dark** *(draining, area)* — extinguishes all light in a vast radius; reduces target
+  Will by 1; all Perc-based actions also become impossible; all combat actions take −3 for anyone
+  without the Night power or equivalent
+- **Consuming void** *(draining, close)* — pulls a target partially into shadow; reduces target
+  Will by 2; the target cannot be aided by allies until they escape (Will check against the
   colossus's Will)
 
 **Motivation** — Completion. The void colossus is not an elemental in the same sense as the

@@ -5,8 +5,8 @@ class Progres {
      * Progression of a character during their previous life or the game.
      * @param {string} type - Any of "power", "background", or "specialization".
      * @param {string} name - The name of the power, background, or specialization.
-     * @param {string} xp - The cost in terms of experience points.
-     * @param {int} level - The reached level of the power, background, or specialization.
+     * @param {number} xp - The cost in terms of experience points.
+     * @param {number} level - The reached level of the power, background, or specialization.
      * @param {string} stat - The statistic that increased.
      */
     constructor(type, name, xp, level, stat) {
@@ -46,7 +46,7 @@ class State {
      * @param {string} race - The race, allows for powers to be learned.
      * @param {Array.<Progres>} progression - The progression in terms of powers, backgrounds, and specializations.
      * @param {Object} stats - The stats, all learned levels of statistics, powers, backgrounds, and specializations.
-     * @param {int} xp - The total experience points needed for the progression.
+     * @param {number} xp - The total experience points needed for the progression.
      * @param {Set.<string>} items - The items the character has from their background or found during the game.
      */
     #place
@@ -127,12 +127,32 @@ class State {
         } else {
             return `Unknown progression type ${type}.`;
         }
+        // Progression rule 5: no stat may be raised more than 3 times in the initial 6 free progressions.
+        if (state.#progression.length < 6 && name) {
+            const projStat = state.#projectedStat(type, name);
+            if (projStat) {
+                const timesRaised = state.#progression.filter(p => p.stat === projStat).length;
+                if (timesRaised >= 3) {
+                    return `${projStat} has already been raised 3 times in the initial progressions.`;
+                }
+            }
+        }
+    }
+
+    /**
+     * Return the statistic that would be raised if type/name were learned next.
+     * @param {string} type - Any of "power", "background", or "specialization".
+     * @param {string} name - The name of the progression.
+     * @returns {string | null}
+     */
+    #projectedStat(type, name) {
+        return projectedStat(type, name);
     }
 
     /**
      * Calculate the combined level of backgrounds that provide for this specialization.
      * @param {string} spec
-     * @returns {int}
+     * @returns {number}
      */
     bgLevel(spec){
         let level = 0;
@@ -167,8 +187,8 @@ class State {
         if (test) {
             throw new Error(test);
         }
-        let statistic = null;
-        let level = 0;
+        let statistic;
+        let level;
         if (type === 'background') {
             const bg = getBg(name);
             name = bg.name;
@@ -210,7 +230,7 @@ class State {
             items.forEach(i => {
                 try {
                     this.addItem(i);
-                } catch (e) {}
+                } catch { /* item no longer allowed, skip */ }
             });
         }
     }
@@ -253,7 +273,7 @@ class State {
 
     /**
      * A list of items allowed per learned background.
-     * @returns {Map<string, int>}
+     * @returns {Map<string, number>}
      */
     itemAllowance() {
         const allowed = new Map();
@@ -376,8 +396,47 @@ export function fromJSON(json) {
 }
 
 /**
+ * Return the carry capacity of the character based on their Endurance statistic.
+ * @returns {number}
+ */
+export function carryCapacity() {
+    return stat('Endu') * 5;
+}
+
+/**
+ * Return the contacts a character has from a background at a given place.
+ * @param {string} backgroundName
+ * @param {string} placeName
+ * @returns {Array.<string>}
+ */
+export function getContacts(backgroundName, placeName) {
+    const bg = getBg(backgroundName);
+    if (!bg || !bg.contacts) return [];
+    return bg.contacts[placeName] || [];
+}
+
+/**
+ * Return true if a power would go Overwhelmed because either of its linked statistics is 0.
+ * @param {string} powerName
+ * @returns {boolean}
+ */
+export function isOverwhelmed(powerName) {
+    const pw = getPower(powerName);
+    if (!pw) return false;
+    return pw.statistics.some(s => stat(s) === 0);
+}
+
+/**
+ * Number of free progressions remaining in character creation.
+ * @returns {number}
+ */
+export function freeProgressionsRemaining() {
+    return Math.max(0, 6 - state.progressions);
+}
+
+/**
  * Number of characters saved in the game.
- * @returns {int}
+ * @returns {number}
  */
 export function noCharacters() {
     return characters.length;
@@ -410,8 +469,7 @@ export function loadDump(s) {
     s.items.forEach(i => {
         try {
             state.addItem(i)
-        } catch (e) {
-        }
+        } catch { /* item rejected on load, skip */ }
     });
     if ('unrestricted' in s) {
         s.unrestricted.forEach(i => state.addItem(i));
@@ -425,12 +483,35 @@ export function statAbbr(name) {
 
 export function statName(name) {
     const s = DATA.statistics.find(s => s.name === name || s.abbreviation === name);
-    return s ? s.abbreviation : name;
+    return s ? s.name : name;
 }
 
 export function statAction(name) {
     const s = DATA.statistics.find(s => s.name === name || s.abbreviation === name);
     return s ? s.action : name;
+}
+
+/**
+ * Return the statistic that would be raised if type/name were learned next.
+ * @param {string} type - Any of "power", "background", or "specialization".
+ * @param {string} name - The name of the progression.
+ * @returns {string | null}
+ */
+export function projectedStat(type, name) {
+    if (type === 'background') {
+        const bg = getBg(name);
+        if (!bg) return null;
+        const level = stat(bg.name) + 1;
+        return bg.statistics[(level + 1) % 2];
+    } else if (type === 'power') {
+        const power = getPower(name);
+        if (!power) return null;
+        const level = stat(power.name) + 1;
+        return power.statistics[(level + 1) % 2];
+    } else if (type === 'specialization') {
+        return DATA.specToStat[name] || null;
+    }
+    return null;
 }
 
 export function getPower(name) {

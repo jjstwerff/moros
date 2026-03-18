@@ -33,10 +33,13 @@ that makes others listen and believe.
 | market | Gather rumours, build relationships, open doors |
 | forage | Lift the group's spirits while searching |
 
-**Actions:**
-- **strategy** *(Char ≥ 3)* — All players may add another card to the pile; remove one card per
-  Char above 3.
-- **boost** *(Char ≥ 4)* — Players may play two cards next round instead of one.
+**Actions:** Declaring a Char action is the character's commit for the round; the committed
+card is discarded after the effect resolves.
+- **strategy** *(Char ≥ 3)* — All players draw one extra card this round. For each point of
+  Char above 3, one card drawn this round may be discarded from any player's hand before
+  committing, chosen by the Char character.
+- **boost** *(Char ≥ 4)* — All allies may commit two cards on their next action instead of one;
+  both cards' matching statistics contribute to the total. Raises Tension by 1.
 - **rallying cry** *(Char ≥ 5)* — Every ally recalls one card from their discard.
   Tension rises by 1.
 
@@ -62,7 +65,8 @@ over raw strength.
 **Actions:**
 - **feint** *(Dex ≥ 3)* — Swap your played card with another from your hand after your
   opponent commits.
-- **flourish** *(Dex ≥ 4)* — Force the enemy to waste their next action on you.
+- **flourish** *(Dex ≥ 4)* — Force the target to direct their next action at you; they cannot
+  target any other character on that turn. They do not lose the action.
 
 **Specializations:** Shield, Parry, Blocking, Sneak, Juggle, Climbing
 
@@ -88,8 +92,9 @@ they can carry and how much punishment they can absorb.
 **Actions:**
 - **dig in** *(Endu ≥ 3)* — Ignore the next source of damage or complication entirely.
   Cannot be used two rounds in a row.
-- **second wind** *(Endu ≥ 4)* — Discard your hand and draw three fresh cards; any Endu shown
-  on them may be added to your next action.
+- **second wind** *(Endu ≥ 4)* — Discard your hand. Draw three cards and commit one as your
+  action; add your Endu stat once for each of the three drawn cards that shows Endu, not only
+  for the card played.
 
 ---
 
@@ -111,10 +116,11 @@ they can make something useful out of almost anything.
 | forage | Identify edible plants, fashion snares |
 
 **Actions:**
-- **disarm** *(Hand > Dex + Might)* — Send the enemy's weapon flying; they can retrieve it in a
-  turn.
-- **improvise tool** *(Hand ≥ 4)* — Create a temporary item from nearby scraps; it acts as a
-  matching item for one scene then is used up.
+- **disarm** *(Hand > target's Dex + Might)* — Strip the target's held weapon out of reach;
+  they may spend one action to retrieve it. Deals no stat damage.
+- **improvise tool** *(Hand ≥ 4)* — Create a temporary tool or simple weapon from nearby scraps.
+  It carries Hand as its only contributing statistic, has no special, and is consumed at the
+  end of the scene.
 
 **Specializations:** Woodworking, Cloth, Leather, Smithing, Healer, Machinist, Jeweler, Cooking
 
@@ -165,10 +171,14 @@ information into decisive advantage before others realize something is there.
 | forage | Track animals, identify edible plants and safe water |
 
 **Actions:**
-- **called shot** *(Perc ≥ 4)* — Declare a specific effect before rolling (disarm, trip, blind);
-  success delivers that effect on top of normal damage.
-- **weak point** *(Perc > Dex + Might)* — Expose a gap in the enemy's defenses; an ally may
-  play a second card on their next attack against this target.
+- **called shot** *(Perc ≥ 4)* — Before committing a card, declare a targeting effect:
+  **disarm** (target drops their weapon; one action to retrieve), **trip** (target knocked
+  prone; standing costs one action; Speed actions cost +1 until standing), or **blind** (target
+  takes −1 to all Perc actions for one round). If your total exceeds theirs, the effect applies
+  alongside normal damage.
+- **weak point** *(Perc > target's Dex + Might)* — Expose a gap in the target's defenses. One
+  ally may commit one additional card on their next action against that target; the extra
+  card's statistics contribute normally. Does not raise Tension.
 
 **Specializations:** Bows, Crossbow, Sling, Darts, Scouting, Tracking, Navigation
 
@@ -193,7 +203,9 @@ determines who acts first, who escapes, and who arrives when it still matters.
 **Actions:**
 - **sprint** *(Speed ≥ 3)* — Move to any position in the scene without spending an action,
   once per round.
-- **dodge** *(Reaction, Speed > Dex)* — Step aside from an incoming blow.
+- **dodge** *(Reaction, Speed > attacker's Dex)* — When a hit is declared against you, step
+  aside — the blow misses entirely. No action cost; usable once per round outside your normal
+  turn.
 - **blur** *(Speed ≥ 5)* — Attack and immediately retreat; the enemy may not counter-attack
   this turn.
 
@@ -219,10 +231,82 @@ foundation the other statistics rest on when circumstances turn hostile.
 **Actions:**
 - **steel the mind** *(Will ≥ 3)* — Negate a fear, charm, or confusion effect on yourself or
   an adjacent ally.
-- **lock on** *(Will ≥ 4)* — Choose one target; all your cards count as having that target's
-  weakness for the rest of the scene.
+- **lock on** *(Will ≥ 4)* — Choose one target. For the rest of the scene, every card you commit
+  against that target contributes all of your possessed statistics to the total, regardless of
+  what the card shows.
 
 **Specializations:** Religion, Shamanic, Magic, Druid, Monk
+
+---
+
+## Specializations
+
+A specialization is a trained skill taught by a Master contact. Learning one raises its
+governing statistic by 1 and grants the mechanical effects listed below. A specialization can
+only be learned if a background that unlocks it has already been taken; its level is limited
+by the combined level in its supporting backgrounds.
+
+Where a specialization shares its name with a racial power (Druid, Magic, Religion, Shamanic),
+the two are independent — a character who holds both applies both effects. The specialization
+extends or upgrades the trained ability; the racial power grants its own card and scenario
+uses separately.
+
+### Dexterity specializations
+
+| Specialization | Effect |
+|---|---|
+| Climbing | Vertical surfaces require no Dex check; can carry one additional person while climbing without Speed penalty |
+| Blocking | The block special on any weapon or shield activates twice per scene instead of once |
+| Parry | The parry special also negates any secondary effect (trip, disarm, blind) carried by the deflected hit |
+| Shield | The block special protects any ally within Speed distance, not only adjacent allies |
+| Sneak | The sneaking special on dagger or Claw activates on any unaware target regardless of ambush position |
+| Juggle | Two items may be handled simultaneously without extra actions; feint may trigger from a thrown item at range |
+
+### Handiness specializations
+
+| Specialization | Effect |
+|---|---|
+| Woodworking | Crafting tier threshold for wooden items drops by 1; improvised wooden tools last the full scenario |
+| Cloth | Crafting tier threshold for cloth and leather accessories drops by 1; rope and netting can be fashioned from available fibers in one camp action |
+| Leather | Crafting tier threshold for leather items drops by 1; leather armor this character crafts regains its special after each scene |
+| Smithing | Crafting tier threshold for metal items drops by 1; improvised metal weapons carry Might + Hand instead of Hand only |
+| Healer | Bandages have 5 uses instead of 3; the bind special in combat costs no action; treating ongoing stat reductions requires one action, not a full camp stop |
+| Machinist | Mechanical devices (locks, traps, crossbow mechanisms) can be built or disabled in one camp action; disarm trap requires no Hand check when Tools are available |
+| Jeweler | Crafting tier threshold for accessories drops by 1; unusual items can be identified during a camp stop |
+| Cooking | Prepared food restores 1 additional stat point; food quality lasts twice as long; forage yields count as doubled when cooked immediately |
+
+### Might specializations
+
+| Specialization | Effect |
+|---|---|
+| Axes | Cutting damage bypasses the armor special of stationary or cornered targets; breaching actions require no Endu check |
+| Blunt | The stun special persists one additional round; stunned targets cannot use Speed-based defenses while stunned |
+| Brawl | Unarmed strikes deal blunt damage (Might −1); barehanded grab applies Speed −1; a pinned target cannot act until they commit a card showing Might with a total exceeding the Brawl character's Might |
+| Pole weapon | Stop and intercept specials may activate on the same turn as power through; effective reach extends one additional position |
+| Spear | Intercept activates without needing sprint; intercept may be used once per scene per mastery level |
+| Swords | Feint through a sword gains +1 Dex to the total; parry deflects grab damage in addition to cutting and impaling |
+
+### Perception specializations
+
+| Specialization | Effect |
+|---|---|
+| Bows | Called shot requires Perc ≥ 3 instead of ≥ 4 with a bow; cripple reduces both Speed and Dex simultaneously at mastery 2 |
+| Crossbow | Reload time is halved; the wound special also imposes −1 on the target's next action |
+| Sling | Called shot requires Perc ≥ 2 with this sling; stun also prevents Speed actions for one full round |
+| Darts | Six uses per scene instead of three; poison takes effect after one hit instead of two at mastery 2 |
+| Scouting | The scout secondary action reveals a creature's dominant stat; cannot be surprised while scouting is active |
+| Tracking | Hunter and Smell tracking requires no Perc check; trails up to two days old are followable |
+| Navigation | The navigate secondary action maps the area permanently; cannot be misled by false trails or illusions during travel |
+
+### Willpower specializations
+
+| Specialization | Effect |
+|---|---|
+| Religion | The bless special applies to the full group at once; blessed characters also reduce cold damage by 1 |
+| Shamanic | Bound spirits persist the full scenario instead of one scene; a second spirit may be bound simultaneously at mastery 2 |
+| Magic | Elemental damage deals −2 to the target stat instead of −1 at mastery 2; the chosen element may be changed between scenes |
+| Druid | One additional creature may be called per scene; summoned creatures remain for two scenes instead of one at mastery 2 |
+| Monk | Power Focus penalty is reduced by 1 at all levels; the Refocus action raises focus by 2 instead of 1 |
 
 ---
 

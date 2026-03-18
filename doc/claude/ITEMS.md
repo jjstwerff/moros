@@ -12,9 +12,14 @@ See RULES.md for the full style guide. Key rules for this file:
     **Bloodline** *(breed)* — animal variant from selective breeding (replaces Material)
     **Trained** *(trainer type)* — animal variant from expert training (replaces Masterwork)
     **Quality** *(description)* — for supplies where material and craft are the same axis
-    **Damage** *(type)* — damage type dealt and stat reduced on a hit; secondary effect of the item's special
+    **Damage** *(type)* — damage type dealt and stat reduced on a hit; secondary effect of the
+      item's special
     **Protects** *(type list)* — damage types mitigated and by how much; negation conditions
     **Treats** — what the item removes or repairs after damage has been taken
+  Special Materials section uses its own entry format:
+    **Effect** — general property of the material when worked into any item
+    **Weapon** / **Armor** / **Accessory** — crafting effects per item category
+    **Found** *(tier)* — discovery source; tier is common, rare, or legendary
   Conditions use stat abbreviations, action names, or scenario names (lowercase).
   Maximum line length: 100 characters. Table rows are exempt.
 -->
@@ -38,8 +43,8 @@ base item slots.
 
 ### Sword *(Might + Dex — parry)*
 *A balanced blade for close combat and quick defense.*
-- **Damage** *(cutting)* — hit reduces target Dex by 1; parry special deflects one incoming cutting or
-  impaling hit per round
+- **Damage** *(cutting)* — hit reduces target Dex by 1; parry special deflects one incoming
+  cutting or impaling hit per round
 - **Boost** *(Dex ≥ 3, combat)* — the parry special may be activated on the same turn as feint
   without spending a second action
 - **Boost** *(Might ≥ 3, combat)* — a successful parry in the same round as power through forces
@@ -53,8 +58,8 @@ base item slots.
 
 ### Glave *(Might + Endu — stop)*
 *A long polearm that holds enemies at distance.*
-- **Damage** *(impaling)* — hit reduces target Endu by 1; stop special prevents a charging target from
-  closing distance
+- **Damage** *(impaling)* — hit reduces target Endu by 1; stop special prevents a charging target
+  from closing distance
 - **Boost** *(Might ≥ 3, combat)* — the stop special and power through activate together on one
   action, halting the target and adding Might to the total simultaneously
 - **Boost** *(combat)* — reach allows the glave to intercept a charging enemy before they close
@@ -70,8 +75,8 @@ base item slots.
 
 ### Flail *(Might + Endu — stun)*
 *A heavy chained weapon with an unpredictable arc.*
-- **Damage** *(blunt)* — hit reduces target Might by 1; stun special causes the target to lose their
-  next action entirely
+- **Damage** *(blunt)* — hit reduces target Might by 1; stun special causes the target to lose
+  their next action entirely
 - **Boost** *(Might ≥ 3, combat)* — the stun special carries into power through; both effects
   trigger on the same action
 - **Boost** *(combat)* — the swing arc ignores shields and the block special on the round it
@@ -86,8 +91,8 @@ base item slots.
 
 ### Spear *(Might + Speed — intercept)*
 *A reach weapon that strikes before opponents can close.*
-- **Damage** *(impaling)* — hit reduces target Endu by 1; intercept special lands before a charging
-  target reaches melee range
+- **Damage** *(impaling)* — hit reduces target Endu by 1; intercept special lands before a
+  charging target reaches melee range
 - **Boost** *(Speed ≥ 3, combat)* — the intercept special triggers on the same turn as sprint;
   the character moves and stops the enemy's advance in one action
 - **Boost** *(combat)* — reach means the spear strikes at two adjacent targets simultaneously;
@@ -103,7 +108,8 @@ base item slots.
 
 ### Staff *(Dex + Speed — block)*
 *A reach weapon that defends as readily as it strikes.*
-- **Damage** *(blunt)* — hit reduces target Might by 1; block special deflects one incoming hit per round
+- **Damage** *(blunt)* — hit reduces target Might by 1; block special deflects one incoming hit
+  per round
 - **Boost** *(Dex ≥ 3, combat)* — the block special and feint action may both trigger on the
   same incoming attack without spending separate actions
 - **Boost** *(exploration)* — doubles as a tool for balancing over gaps, vaulting obstacles, or
@@ -119,8 +125,8 @@ base item slots.
 
 ### Bow *(Perc + Endu — cripple)*
 *A hunting and combat weapon that reaches where others cannot.*
-- **Damage** *(impaling)* — hit reduces target Endu by 1; cripple special additionally reduces target
-  Speed by 1
+- **Damage** *(impaling)* — hit reduces target Endu by 1; cripple special additionally reduces
+  target Speed by 1
 - **Boost** *(Perc ≥ 4, combat)* — called shot with the cripple special permanently reduces the
   target's Speed for the rest of the scene
 - **Boost** *(travel)* — doubles as a hunting tool; Perc actions to locate food along the route
@@ -136,8 +142,8 @@ base item slots.
 
 ### Crossbow *(Perc + Hand — wound)*
 *A mechanical ranged weapon with brutal stopping power.*
-- **Damage** *(impaling)* — hit reduces target Endu by 1; wound special: the Endu reduction persists
-  into the next scene if the wound is not treated
+- **Damage** *(impaling)* — hit reduces target Endu by 1; wound special: the Endu reduction
+  persists into the next scene if the wound is not treated
 - **Boost** *(Perc ≥ 4, combat)* — called shot combined with the wound special can disable a
   specific limb for the remainder of the scene
 - **Boost** *(stealth)* — can be fired from cover without breaking position if used at distance;
@@ -152,8 +158,8 @@ base item slots.
 
 ### Sling *(Perc + Dex — stun)*
 *A silent ranged weapon that requires only stones.*
-- **Damage** *(blunt)* — hit reduces target Might by 1; stun special causes the target to lose their
-  next action
+- **Damage** *(blunt)* — hit reduces target Might by 1; stun special causes the target to lose
+  their next action
 - **Boost** *(Perc ≥ 3, combat)* — the called shot action applies without the usual Perc ≥ 4
   requirement when activated through the sling
 - **Boost** *(stealth)* — the stun special is silent enough to leave the Stealth scenario intact
@@ -169,8 +175,8 @@ base item slots.
 
 ### Dagger *(Perc + Hand — sneaking)*
 *A concealable blade for close quarters and ambush.*
-- **Damage** *(cutting)* — hit reduces target Dex by 1; sneaking special: cutting mitigation from armor
-  does not apply if the strike lands before the target has acted
+- **Damage** *(cutting)* — hit reduces target Dex by 1; sneaking special: cutting mitigation from
+  armor does not apply if the strike lands before the target has acted
 - **Boost** *(Dex ≥ 3, stealth)* — the sneaking special stacks with the Claw power on the same
   attack; both bonuses apply when striking an unaware target
 - **Boost** *(Perc ≥ 3, combat)* — the dagger can be drawn and thrown in the same action without
@@ -185,10 +191,11 @@ base item slots.
 
 ### Darts *(Will + Perc — poison)*
 *Small thrown weapons that accumulate effect over time.*
-- **Damage** *(draining)* — hit reduces target Will by 1; poison accumulates — a second hit in the same
-  scene reduces Will by 1 more
-- **Boost** *(Perc ≥ 3, stealth)* — the poison special accumulates; two hits in a scene reduce
-  the target's Will by 1 for the rest of the encounter
+- **Damage** *(draining)* — hit reduces target Will by 1; poison accumulates — a second hit in
+  the same scene reduces Will by 1 more
+- **Boost** *(Perc ≥ 3, stealth)* — the poison persists even if the Will reduction is treated
+  with bandages; a treated target takes the second hit's −1 Will again at the start of the
+  next scene
 - **Boost** *(combat)* — the poison can be applied to an ally's weapon once per scene; the next
   hit from that weapon carries the poison effect
 - **Hinder** *(combat)* — limited supply; after three uses in a scene the darts are spent and
@@ -202,8 +209,8 @@ base item slots.
 
 ### Whip *(Dex + Will — steer)*
 *A control tool for animals and opportunistic reach strikes.*
-- **Damage** *(grab)* — hit reduces target Speed by 1; steer special can strip a held item instead of
-  dealing damage
+- **Damage** *(grab)* — hit reduces target Speed by 1; steer special can strip a held item
+  instead of dealing damage
 - **Boost** *(Dex ≥ 3, combat)* — the steer special pulls a weapon or carried object from a
   target's grip at distance without closing to melee
 - **Boost** *(travel)* — drives pack animals and livestock at full pace; the donkey's stubborn
@@ -239,8 +246,8 @@ base item slots.
 
 ### Armor *(Might + Char — imposing)*
 *Full military plate that commands attention in every room.*
-- **Protects** *(cutting, blunt)* — reduces each by 1; imposing special absorbs one damage source per
-  scene entirely before any stat reduction occurs
+- **Protects** *(cutting, blunt)* — reduces each by 1; imposing special absorbs one damage source
+  per scene entirely before any stat reduction occurs
 - **Boost** *(Might ≥ 3, negotiation)* — the imposing special makes threats physically credible;
   Might contributes to Char-based negotiation actions when the armor is visible
 - **Boost** *(combat)* — the imposing special absorbs one source of damage per scene before
@@ -271,8 +278,8 @@ base item slots.
 
 ### Leather *(Speed + Dex — armor)*
 *Light and flexible protection that does not slow the wearer.*
-- **Protects** *(cutting)* — reduces by 1; blunt damage from attackers with Might ≥ 4 bypasses this
-  entirely
+- **Protects** *(cutting)* — reduces by 1; blunt damage from attackers with Might ≥ 4 bypasses
+  this entirely
 - **Boost** *(stealth)* — soft and silent; the armor special carries no Stealth penalty, unlike
   metal alternatives
 - **Boost** *(travel)* — Speed on the card reflects the lack of restriction; no penalty to march
@@ -288,8 +295,8 @@ base item slots.
 
 ### Shield *(Dex + Endu — block)*
 *An off-hand defense that protects the bearer and those beside them.*
-- **Protects** *(any — block)* — block special negates one hit entirely regardless of damage type;
-  passive −1 to grab damage
+- **Protects** *(any — block)* — block special negates one hit entirely regardless of damage
+  type; passive −1 to grab damage
 - **Boost** *(Dex ≥ 3, combat)* — the block special and feint action both trigger on the same
   incoming blow without requiring separate actions
 - **Boost** *(combat)* — covering an adjacent ally with the block special does not raise Tension;
@@ -442,8 +449,8 @@ benefits only.*
 
 ### Knife *(Dex + Hand — cut)*
 *A small utility blade used mostly for cooking and fine work.*
-- **Damage** *(cutting)* — hit reduces target Dex by 1; too small to add Might to attacks regardless
-  of the character's Might level
+- **Damage** *(cutting)* — hit reduces target Dex by 1; too small to add Might to attacks
+  regardless of the character's Might level
 - **Boost** *(Hand ≥ 2, forage)* — the cut special allows edible plants and caught game to be
   prepared immediately in the field; no camp stop required
 - **Boost** *(exploration)* — cuts rope, leather, and light wood; counts as improvised tools for
@@ -531,8 +538,9 @@ benefits only.*
 *An alchemical draught that stabilises and revives.*
 - **Boost** *(combat)* — the restore special removes one active wound penalty immediately; the
   character acts on their next turn at full statistics
-- **Boost** *(camp)* — taken before sleep, the potion doubles the stat recovery from a full rest;
-  characters wake without penalties from the day's injuries
+- **Boost** *(camp)* — consumed before a full rest, the potion restores 1 point of maximum Endu
+  lost to mortal wounds; this is the only effect that repairs mortal wound damage outside of
+  DM-granted extended recovery
 - **Hinder** — consumed on use; each potion is a single dose and requires market access or a
   Healer contact to resupply
 - **Hinder** *(travel)* — glass containers break under hard falls or blunt impacts; Charge or
@@ -556,8 +564,8 @@ benefits only.*
 
 ### Ring *(Will + Char — ward)*
 *A fitted band worn on the finger; each carries a single focused property.*
-- **Protects** *(draining, fire, cold, electric, radiant — ward)* — ward special absorbs one magical or
-  elemental hit per scene before stat reduction occurs
+- **Protects** *(draining, fire, cold, electric, radiant — ward)* — ward special absorbs one
+  magical or elemental hit per scene before stat reduction occurs
 - **Boost** *(negotiation)* — the ward special adds quiet presence; Will contributes to Char
   totals in formal settings when the ring is visible
 - **Boost** *(combat)* — activated once per scene, the ward absorbs one magical attack or power
@@ -616,6 +624,165 @@ benefits only.*
 - **Masterwork** *(master jeweler, commissioned by a noble or religious contact)* — the market
   bonus extends to all contacts in the same faction or region; the Stealth penalty applies only
   when the medallion is uncovered and visible
+
+---
+
+## Special Materials
+
+Special materials are rare components found through exploration, foraging, and contacts. They
+cannot be purchased at market. A Crafter with appropriate Tools can work them into a target
+item during a camp scenario — see [RULES.md — Crafting](RULES.md#crafting) for the mechanic.
+Each material replaces or extends the target item's **Material** line when successfully crafted.
+
+### Volcanic iron *(fire — forge)*
+*Heat-hardened ore pulled from the throat of a dormant volcano; no forge can temper it further.*
+- **Effect** — items worked in volcanic iron do not rust, corrode, or warp from heat or flame
+- **Weapon** — a successful hit also deals fire damage (Endu −1) once per scene
+- **Armor** — fire damage against the wearer is reduced by 1 in addition to normal mitigation;
+  fire weather does not impose sustained-exertion penalties on the wearer
+- **Accessory** — fire-aspected powers used by the bearer gain +1 to their action total
+- **Found** *(common)* — Gather in volcanic terrain; mining contacts in Bockthicket or Rosepond
+
+### Greenwood *(wood — grow)*
+*A living branch cut from a tree still in growth, dried in open air without ever fully dying.*
+- **Effect** — creature abilities that sunder or destroy items fail; the item regains any lost
+  special at the end of each scene rather than only at camp
+- **Weapon** — the weapon's special cannot be removed by creature abilities; staffs and spears
+  crafted from greenwood are unbreakable
+- **Armor** — regains its protection special after each scene; wet-condition stiffening does
+  not apply
+- **Accessory** — in forage and camp the bearer may use one Druid-equivalent action per scene
+  without the power, gathering or calming as if holding it at level 1
+- **Found** *(common)* — Gather in ancient forests; Druid contacts; ruins near Raft city
+
+### Hearthstone *(stone — anchor)*
+*Dense quarried stone smoothed and tempered in a kiln; it absorbs force without fracturing.*
+- **Effect** — bulk increases by 1; the item absorbs one blunt hit per scene before that hit
+  reaches the bearer's statistics
+- **Weapon** — blunt damage dealt bypasses the armor special of targets who are stationary or
+  cornered at the moment of the strike
+- **Armor** — blunt mitigation increases by 1; the first blunt hit per scene that would deal
+  Might −2 is reduced to Might −1
+- **Accessory** — Speed-reducing grab effects require 1 additional grab-damage point to apply
+  to the bearer
+- **Found** *(common)* — Gather in quarries and ruins; Miner contacts in Clear water or World
+  edge; rubble in Exploration scenarios
+
+### Windbone *(air — carry)*
+*Hollow bone from a creature of the high peaks, dried by sustained wind until nearly weightless.*
+- **Effect** — the item's bulk drops by 1 (minimum 0); Speed actions while this is the only
+  carried weapon or tool take no encumbrance penalty
+- **Weapon** — thrown range doubles and does not cost an extra action; ranged weapons with
+  windbone shafts ignore the −1 wind penalty in air/storm weather
+- **Armor** — the armor's Stealth penalty drops by 1; the wearer's Speed is not reduced for
+  march pace calculations
+- **Accessory** — the item can be drawn or stowed without spending an action; it creates no
+  noise on its own
+- **Found** *(rare)* — Gather at mountain peaks after a storm; Hunter contacts; cliff ruins and
+  old aeries in Exploration scenarios
+
+### Coldsteel *(iron — edge)*
+*Ore pulled from the permafrost of the northern seams; no forge fully warms it.*
+- **Effect** — cold weather conditions do not impose Speed penalties on the bearer; the item
+  retains its edge or form in extreme cold without maintenance
+- **Weapon** — a successful hit also deals cold damage (Speed −1) once per scene
+- **Armor** — cold damage against the wearer is reduced by 1; the armor does not stiffen or
+  restrict movement in cold conditions
+- **Accessory** — fire-weather heat penalties are reduced by 1 for the bearer while worn or
+  carried
+- **Found** *(rare)* — mining contacts in Cliffside hold or Bockthicket; northern ruins near
+  Chatter Creek; Gather in permafrost terrain
+
+### Deepwater glass *(water — flow)*
+*Volcanic glass formed where lava met ocean depth; impossibly clear and never shatters.*
+- **Effect** — the item cannot be broken by physical force alone; sundering and destruction
+  creature abilities do not affect it
+- **Weapon** — wound and cripple specials persist for one additional scene; water-aspected hits
+  from this weapon ignore the target's armor special
+- **Armor** — wet conditions and flooding impose no penalties; the armor functions fully in
+  water without movement restriction
+- **Accessory** — containers of deepwater glass never break; potions stored in it remain potent
+  for twice as long before requiring resupply
+- **Found** *(rare)* — Fisher contacts in Linar harbour; submerged ruins near Lastwater;
+  retrieved by characters with the Swimmer power from deep water
+
+### Shadowsilk *(dark — veil)*
+*Thread woven in lightless caves from spider silk that absorbs sound and swallows light.*
+- **Effect** — detection checks targeting the bearer gain −1 when this is their only visible
+  equipment; the item reflects no light and creates no noise
+- **Weapon** — sneaking and stealth specials activate even when the bearer is partially visible;
+  no light-catching penalty applies
+- **Armor** — the armor's Stealth penalty drops to 0; the wearer moves silently unless
+  taking Speed actions at full sprint
+- **Accessory** — the item is visually absent in moonless-night or heavy-fog conditions; the
+  bearer cannot be identified by sight alone while wearing it
+- **Found** *(rare)* — cave exploration; Back alley contacts; ruins with undercrofts in
+  Blackwood freehold or Rakeville
+
+### Stormweave *(surge — charge)*
+*Cloth charged by repeated lightning strikes during a true storm; it crackles with latent force.*
+- **Effect** — once per scene the stored charge may be released as a free action, granting +1
+  to the bearer's next action total on the same turn
+- **Weapon** — a hit also deals electric damage (Perc −1) once per scene; the charge resets at
+  the start of each new scene
+- **Armor** — electric damage against the wearer is absorbed once per scene; on absorption the
+  charge discharges back, imposing −1 on the attacker's next action
+- **Accessory** — in surge or iron weather the stored charge resets every round instead of
+  once per scene
+- **Found** *(rare)* — storm-struck ruins; Shamanic or Druid contacts who work with storm
+  spirits; ruins near Gap city where lightning walks the shifting lands
+
+### Suncrystal *(light — reveal)*
+*Crystalline stone formed at desert noon, shaped by artisans who work only in direct sunlight.*
+- **Effect** — once per scene the item illuminates a hidden mechanism, concealed passage, or
+  disguised creature as a free action with no action cost
+- **Weapon** — a hit also deals radiant damage (Will −1) once per scene; invisible or disguised
+  creatures struck are revealed until the end of the round
+- **Armor** — the wearer cannot be rendered invisible or disguised by external effects; light-
+  aspected attacks do not penetrate the armor's mitigation
+- **Accessory** — in light weather the reveal action costs no scene charge; Lookout gains +1
+  when the bearer holds or wears suncrystal
+- **Found** *(legendary)* — desert ruins in Fata morgana; Scholar contacts with deep historical
+  knowledge; mountain summits in Exploration at noon
+
+### Heartwood *(life — sustain)*
+*The core of an ancient tree that died willingly; warm to the touch and still breathing, barely.*
+- **Effect** — at the end of each scene the bearer restores 1 point to their most-reduced stat
+  without requiring a rest action
+- **Weapon** — a hit drains the target (Will −1 as draining); the drained point may instead
+  be redirected to restore 1 stat point in any ally within reach
+- **Armor** — full rest restores 1 additional stat point; the tent bonus from full rest applies
+  even when sleeping without a tent while this armor is worn
+- **Accessory** — Bandages and Potions used on the bearer restore 1 additional stat point; the
+  Blood power near the bearer may target Endu instead of Will
+- **Found** *(legendary)* — deepest old-growth near Raft city; high-level Druid contacts;
+  sacred groves in Exploration scenarios linked to Ascetic or Monastery backgrounds
+
+### Veilthread *(veil — misdirect)*
+*Woven from morning fog gathered at an old crossroads; it holds misdirection in its fibres.*
+- **Effect** — once per scenario the bearer may declare their position uncertain; for one scene
+  Perc-based actions targeting them require one additional success to locate them
+- **Weapon** — a successful hit leaves a misleading wound impression; the target's nearby
+  allies misread the source and redirect their next action away from the true attacker
+- **Armor** — the wearer's identity cannot be confirmed by sight; they may pass as a different
+  character type once per scenario without a Char check
+- **Accessory** — Stealth scenarios treat the bearer as starting with 1 fewer detection point
+  against them; the Sly power gains +1 when this is worn or carried
+- **Found** *(legendary)* — fog marshes at dawn near Lastwater; Fox or Raccoon contacts with
+  Sly specialization; ruins at old crossroads in Exploration scenarios
+
+### Ashbone *(decay — erode)*
+*Calcified bones of the old world, pulled from the deepest ruins; they crumble and contaminate.*
+- **Effect** — the item inflicts the decay condition on contact; a target struck or touched
+  takes −1 to their next action as the effect erodes their focus
+- **Weapon** — a hit deals additional draining damage (Will −1) that continues once per scene
+  until treated; Bandages or the Blood power stop it, time alone does not
+- **Armor** — the armor absorbs the first ongoing effect per scene directed at the wearer;
+  the eroding quality dissolves the damage before it settles into the stat
+- **Accessory** — once per scene the bearer can apply the decay condition to an object — a
+  lock, a rope, a mechanism — causing it to fail on its next use without a Hand check
+- **Found** *(legendary)* — deepest ruins in Exploration scenarios; Miner contacts near
+  Rosepond or World edge; ruins beneath Steadington where old things have decayed for centuries
 
 ---
 

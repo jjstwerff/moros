@@ -15,11 +15,11 @@ All data is stored in `localStorage`. There is no backend.
 
 | File | What it contains |
 |---|---|
-| `doc/claude/RULES.md` | Full game rules — core mechanics, progression, races, backgrounds |
+| `doc/claude/RULES.md` | Full game rules — core mechanics, progression, races, backgrounds, contacts, crafting, weather |
 | `doc/claude/SCENARIOS.md` | All 8 scenarios — tension rules and per-scenario challenges |
 | `doc/claude/STATISTICS.md` | All 8 statistics — scenario uses, stat actions, specializations |
 | `doc/claude/POWERS.md` | All 36 racial powers — scenario uses and overwhelmed states per power |
-| `doc/claude/ITEMS.md` | All 30 items — boosts and hinders per item, tied to stats and scenarios |
+| `doc/claude/ITEMS.md` | All 30 items and 12 special materials — boosts, hinders, and crafting effects |
 | `doc/claude/CREATURES.md` | Creatures — stats, attacks, motivation, default behaviour, elementals, animals |
 | `doc/claude/DATA.md` | All data structures, where they live, how they are stored |
 | `doc/Todo.txt` | Current open tasks from the user |

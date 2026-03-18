@@ -38,6 +38,11 @@ consolidate enemy attention onto one character, reducing simultaneous threats. U
 let the group act more efficiently. Use *Blur* or *Sprint* to reposition and break out of a
 losing situation.
 
+**Ends when:** All enemies are downed, driven off, or have surrendered. A creature is downed
+when its most relevant combat stat (Might or Speed) reaches 0. Driven off means the creature
+has retreated beyond engagement range and cannot return this scene. If the group flees
+instead, the scenario ends when they are no longer pursued.
+
 **Challenges**
 
 **Enemies hold prepared high ground or a fortified chokepoint.** Attacking into the position
@@ -111,6 +116,11 @@ by too many people.
 deliberately draw the monster toward one character who has a prepared escape, clearing the path
 for the rest.
 
+**Ends when:** The group reaches their objective without being detected, or the threat is
+permanently removed or evaded. If the group is detected, the scenario shifts to combat or
+negotiation depending on what the threat does next. Partial detection — one character spotted
+while others remain hidden — does not end the scenario; it changes its conditions.
+
 **Challenges**
 
 **A patrol changes route unexpectedly and cuts across the group's planned path.** The safe
@@ -176,6 +186,12 @@ own interests appears and complicates the table.
 Use *Relaxed* to bring the room's temperature down. Use *Politics* to find the shared interest
 that makes agreement feel safe again. Use *Musical* to shift the emotional tone before words do
 more damage.
+
+**Ends when:** The other party agrees, refuses finally, or the situation shifts to a different
+scenario. Agreement means both sides have committed to terms — even partial terms count as a
+resolution. Final refusal means the other party will no longer engage this session; the group
+must find a new approach, a new contact, or accept the loss. Tension reaching the breaking point
+before agreement ends the negotiation in failure and may trigger combat.
 
 **Challenges**
 
@@ -246,6 +262,12 @@ space before entering it, reducing the need for reactive aid. Use *Handiness* to
 before they become problems. Use *Labyrinth* or *Travels* to navigate confidently so the group
 doesn't second-guess every turn.
 
+**Ends when:** The group finds what they came for, exhausts the space, or is forced out. Finding
+the objective — a treasure, a passage, a piece of information — resolves the scenario
+successfully. Exhausting the space means all accessible areas have been searched and the group
+leaves with what they found. Being forced out by collapse, flooding, or an overwhelming threat
+ends the scenario with whatever the group was carrying when they fled.
+
 **Challenges**
 
 **A passage is blocked — rubble from a collapse, a sealed door, flooded chambers.** The route
@@ -303,6 +325,10 @@ movement.** Crossing normally will trigger a collapse.
 
 Hurriedly moving through unknown terrain.
 
+**Pace:** Each round is one hour of travel. Characters whose Speed exceeds the group's slowest
+member by 2 or more may take one secondary action (scout, gather, navigate, or observe) while
+the others cover the same distance. See [Time-Based Scenarios](RULES.md#time-based-scenarios).
+
 **Why tension exists:** The group is moving fast across ground nobody knows well. Helping a
 companion who slips, sharing knowledge of the route, keeping a struggling member on pace — all of
 it adds up across the miles.
@@ -315,6 +341,12 @@ needs to speed up. An encounter on the road arrives while the group is already s
 the uncertainty that forces constant coordination. Use *Travels* or *Navigation* to orient the
 group so each person can move independently. Use *Speed* or *Nimble* to push through and reach
 safer ground before conditions deteriorate further.
+
+**Ends when:** The group arrives at the destination or is forced to stop. Arrival ends the
+scenario successfully regardless of condition on arrival. The group is forced to stop when a
+character's Speed or Endu reaches 0 from accumulated travel damage and cannot continue, or when
+an encounter overtakes them and another scenario begins. A deliberate decision to camp ends
+travel and starts the camp scenario.
 
 **Challenges**
 
@@ -371,6 +403,11 @@ condition; decisions about rationing create conflict.
 
 Trying to get some rest in a makeshift camp after a long and stressful day.
 
+**Pace:** Each round is one hour of camp time. Characters with *Sleeper* or Speed 2+ above the
+slowest member settle in faster and may take one secondary action — gathering morning herbs,
+scouting the perimeter, or mapping the area — while others are still occupied with rest.
+See [Time-Based Scenarios](RULES.md#time-based-scenarios).
+
 **Why tension exists:** Rest requires trust and stillness, but the group is in an unknown place.
 Setting watches, tending wounds, calming anxious companions — every act of care keeps people from
 fully unwinding, and the accumulated strain of the day sits on the camp like weight.
@@ -382,6 +419,12 @@ group has had a chance to recover. Morale frays and interpersonal tensions surfa
 **To ease tension:** Establish a defensible perimeter using *Lookout* or *Hearing* so that not
 everyone has to stay half-alert. Use *Camp* to find the best possible rest spot. Use *Relaxed*
 to help companions actually unwind. Use *Sleeper* to recover regardless of conditions.
+
+**Ends when:** The group wakes and breaks camp, or is forced out by a threat before full rest.
+A complete camp — uninterrupted overnight rest — restores all stat reductions. If the camp is
+interrupted by a threat, rest ends immediately; the group recovers only what the interrupted
+rest allows (1 stat point in the most-reduced stat) and transitions to whichever scenario the
+threat demands.
 
 **Challenges**
 
@@ -439,6 +482,11 @@ not enough; without treatment, the character will be worse by morning.
 
 Walking into town to gather information, buy supplies, and hopefully meet friends.
 
+**Pace:** Each round is one hour in town. Characters with Speed 2+ above the slowest member
+move through the streets faster and may take one secondary action — scouting a district,
+observing a contact's location, or noting faction activity — while others are still occupied.
+See [Time-Based Scenarios](RULES.md#time-based-scenarios).
+
 **Why tension exists:** Towns have their own politics and factions. Every favour asked, every
 contact approached, every attempt to steer a companion through a tricky social situation adds
 pressure to relationships that are not yet fully established.
@@ -451,6 +499,21 @@ A misunderstanding between group members and locals threatens to become an incid
 *Clan* to find kindred people already inclined to help. Use *Politics* to navigate the local
 power structure without antagonising anyone. Use *Musical* or *Sly* to warm the room before
 making the ask.
+
+**Ends when:** The group has accomplished what they came for or run out of time and standing.
+Running out of standing means Tension has made the group unwelcome; further approaches this
+session will be refused or hostile. The group can leave and return later in the campaign with
+restored goodwill if time passes.
+
+**Market outcomes:** Each successful market action produces one concrete result — the player
+chooses which to pursue before committing:
+
+- **Purchase** — acquire one common item or supply; rarer items require Perc ≥ 4 to locate and
+  a contact of level 3+ or higher to access at all
+- **Information** — learn one local fact (a faction's current position, a contact's whereabouts,
+  a rumour about a nearby location); the DM determines its accuracy based on the source
+- **Introduction** — meet a new contact at level 1; this requires a character already known to
+  the target or a Char check (threshold 3)
 
 **Challenges**
 
@@ -511,6 +574,11 @@ previous actions — and the market atmosphere sours.** Other contacts become ca
 
 Desperately scrounging for food in a forest because supplies are getting scarce.
 
+**Pace:** Each round is one hour of searching. Characters with Speed 2+ above the slowest
+member cover their area faster and may take one secondary action — scouting nearby terrain,
+gathering medicinal herbs, or navigating to a more productive area — while others are still
+working their ground. See [Time-Based Scenarios](RULES.md#time-based-scenarios).
+
 **Why tension exists:** Hunger sharpens fear. The group must spread out to cover ground, which
 means helping each other from a distance — calling across the undergrowth, regrouping at a
 sound, sharing finds. Every coordination costs composure in a place that rewards stillness.
@@ -524,6 +592,16 @@ task relieves the pressure to keep searching recklessly. Use *Hunter* or *Scroun
 food efficiently so the group can stop and regroup. Use *Smell* or *Druid* to locate resources
 without spreading out. Use *Camp* to find a safe clearing where the group can collect itself
 before continuing.
+
+**Ends when:** The group finds enough food for the next leg of the journey, exhausts the area,
+or is driven out. Enough food means three days of provisions per character. Exhausting the area
+means the land has been worked and nothing useful remains; the group must move on. Being driven
+out by a predator or threat ends the forage with only what had already been gathered.
+
+**Base yield:** One successful forage action yields 1 day of provisions for 1 character. Powers
+that grant "+1 additional character" extend that to 2 characters per action. One provision feeds
+one character for one day of travel or camp. Gathered food spoils after 3 days; the Cooking
+specialization extends shelf life to 6 days.
 
 **Challenges**
 
