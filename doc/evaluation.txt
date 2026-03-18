@@ -1,0 +1,53 @@
+create a separate doc/claude/POWERS.md and doc/claude/STATISTICS.md and move the powers and statistics to their corresponding files
+create a doc/claude/QUICK_START.md file with relevant links to the other files and remember to start reading that file for every sessions
+
+ Evaluation: Do the Rules Serve the Goals?
+
+  Goal 1 — Have fun together, reenact an adventure
+
+  Fits well. The card system creates shared drama without requiring a separate GM to adjudicate dice. Eight scenario types cover the full range of adventure situations. Heroic Actions produce memorable turning-point moments. The overwhelmed states for powers add narrative arc to characters who push too hard. The tension mechanic ensures every scene has stakes that build naturally. 
+ 
+  One structural gap: The rules describe playing cards and adding stat values, but never state what you're comparing the total against or what constitutes success. There is no target number, no opposition roll, no pass/fail condition anywhere in the rules. Either this is handled entirely by the DM at the table (reasonable), or it is an omission that will leave groups uncertain at the most critical moment of every scene.
+ 
+  ---
+  Goal 2 — Allow everyone to have a part in every scenario
+ 
+  Partially fits, but has a direct mechanical contradiction.
+ 
+  The supporting side is strong: every statistic has listed uses in all 8 scenario types, and powers each apply to multiple scenarios. A pure combat character still has listed contributions in a Market or Negotiation scene. The card draw ensures every player does something every round regardless of their build.
+ 
+  The contradiction: every act of aid raises Tension by 1. Helping someone participate costs the group. In a group of 5, if four players pass cards to a fifth who is struggling in a Negotiation scenario, Tension spikes toward 5 immediately. The mechanically optimal play is to pick the one strongest character per scenario and let them act alone — which directly undermines the goal of everyone having a part. Players must choose between inclusion and survival.
+
+  This is not necessarily a design flaw — managing that tension is explicitly the game's central challenge — but it means Goal 2 is achieved through social agreement, not through mechanics. The rules do not actually guarantee everyone a meaningful role; they guarantee everyone a hand of cards and a choice to stay quiet.
+ 
+  ---
+  Goal 3 — Room to improvise and interpret card specials and their powers
+ 
+  Fits well, and is the strongest alignment. The eight elemental card specials (fire, water, air, etc.) are deliberately left without mechanical definitions. The Heroic Action rule says the first card's special "fuels the feat" without prescribing what that means. Powers are described in terms of what they represent, not what they calculate. This design consistently opens space for interpretation rather than closing it.
+
+The scenario descriptions for each power (and now the overwhelmed states) provide enough thematic material that players have something to work with, without being told exactly what to do with it.
+
+  --- 
+  Other observations
+ 
+  Power Focus is underdeveloped. The rule says focusing beyond the first point imposes a −1 penalty to unrelated actions, and that defocus actions of the related statistic lower this penalty — but the stat entries list which actions are defocus/refocus without explaining when or how a player chooses to do one. The mechanic reads as more complex than it plays out in practice, and its relationship to actual power use is not made clear. 
+
+  Card deck exhaustion is unaddressed. With 4–7 players each drawing 2 cards per round, and the deck starting at 8 base cards plus 2 per player, a 6-player group has 20 cards and draws 12 per round. The deck runs out in round two. No reshuffle rule is stated.
+
+  The alternation rule serves mastery but adds friction. No two backgrounds or specializations in succession is a good constraint for long-term breadth. In practice it means a new player cannot build the character they imagine directly — they must take a detour through a power first. At character creation with 6 free slots this is fine; it is worth noting as a source of early confusion.
+ 
+  --- 
+  Summary 
+
+  ┌──────────────────────────┬──────────────────────────────────────────────────────────────────────────┐
+  │  Goal  │ Verdict│
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Fun together / adventure │ Supported well — tone, mechanics, and scenario variety all align│
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Everyone has a part │ Structurally intended but mechanically undermined by Tension cost of aid │
+  ├──────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+  │ Room to improvise │ Strongly supported — the rules leave the right things open │
+  └──────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
+
+  The most significant practical gap is the missing resolution condition. Everything else is either working as designed or a known trade-off.
+
