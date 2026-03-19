@@ -661,5 +661,161 @@ tree, a root cache.** Leaving it means losing half; multiple trips raise Tension
 
 ---
 
+## Repair
+
+The group tries to get an almost broken complex machine working again.
+
+**Why tension exists:** Fixing a failing machine demands close coordination — one person holds a
+component in place while another adjusts a mechanism, while a third manages power or fuel. Every
+act of assistance disturbs a system that is already at its limit.
+
+**When tension rises:** Parts break further during repair attempts. A critical component turns out
+to be damaged beyond use. The machine destabilises — pressure builds, something overheats, fluids
+leak toward exposed parts. Something is waiting on the machine to function, and the window is
+closing.
+
+**To ease tension:** Shut down non-essential systems to reduce instability before touching the
+root cause. Use *Ingenuity* to stabilise a failing component before it cascades. Use *Hearing* to
+listen to the machine's internal state before acting blindly. Use *Labyrinth* to understand the
+system's structure and work with it rather than against it.
+
+**Ends when:** The machine functions well enough to serve its purpose, is declared irreparable and
+stripped for parts, or the group is forced away by its failure. A functioning machine means the
+critical systems are running — it does not need to be perfect. Irreparable means a key component
+has failed beyond any available fix. Forced away means the machine has become immediately
+dangerous — fire, explosion, structural failure — and the group retreats.
+
+**Challenges**
+
+**No one in the group knows how this kind of machine works.** Trial and error risks making things
+worse; the machine's logic is not obvious from the outside.
+- *Ingenuity* — read the machine's design from its parts; infer how it works from what it does
+- *Labyrinth* — understand complex systems and internal logic; apply spatial reasoning to mechanism
+- Perc **weak point** — identify which part is failing rather than working backward from symptoms
+- Hand **disarm** — strip the faulty component carefully to examine it without causing secondary
+  damage
+
+**A critical part is broken, missing, or worn beyond use.** The repair cannot proceed without it,
+and there is no obvious replacement.
+- *Ingenuity* — fabricate or adapt a substitute from available materials; the power's core use
+- Hand **improvise tool** *(Hand ≥ 4)* — construct a working replacement from what is at hand
+- *Scrounger* — find a usable part in the surrounding area that no one else thought to check
+- *Travels* — know from prior experience where this kind of component might be found nearby
+
+**The machine is in an unstable state — overheating, pressurising, or leaking.** Working on it
+risks injury; the window for safe intervention is closing.
+- *Fur* or *Hide* — work in conditions that would injure others; heat, chemical exposure, sharp
+  edges
+- Dex **feint** *(Dex ≥ 3)* — act precisely in a very short window before the instability peaks
+- *Ingenuity* — vent, cool, or reduce the instability before working on the root cause
+- Endu **dig in** *(Endu ≥ 3)* — push through hazardous conditions long enough to complete the
+  repair
+
+**The machine requires more hands or more strength than one person has.** Simultaneous action at
+multiple points is the only way forward.
+- *Portage* — apply sustained force at one point while others handle the finer work
+- Might **power through** *(Might ≥ 3)* — hold a component in place against mechanical resistance
+- *Musical* — coordinate the group's simultaneous actions so they land at exactly the right moment
+- Char **strategy** *(Char ≥ 3)* — assign roles; the combined effort succeeds where one person
+  cannot
+
+**A repair has made things worse — something that was holding has now given way.** The group must
+stop a cascading failure before it ends the machine entirely.
+- *Ingenuity* — improvise a stop-gap that buys time for a proper fix
+- Hand **disarm** — interrupt the cascade at its mechanical source before it propagates further
+- *Hearing* — track exactly where the failure is spreading before acting; work on the right point
+- Will **steel the mind** *(Will ≥ 3)* — hold composure under crisis and direct others without
+  adding panic
+
+**The machine requires a precise sequence, but no one knows the correct order.** A wrong step
+could lock the system, damage it further, or create an immediate hazard.
+- *Labyrinth* — trace the system's internal logic to its correct sequence; the structure reveals
+  the order
+- Perc **weak point** — observe which components respond to which actions and build the sequence
+  empirically
+- *Ingenuity* — experiment methodically in a way that limits damage if a step is wrong
+- *Hearing* — listen to the machine's response at each step; sound indicates whether the sequence
+  is advancing correctly
+
+---
+
+## Cure
+
+The group needs to find or create a working medicine against an outbreak.
+
+**Why tension exists:** The sick need immediate care and the cure requires time, expertise, and
+hard-to-find ingredients. Every attempt to help one person — administering a partial remedy,
+guiding a panicking community, sharing limited supplies — diverts resources and attention from
+the larger task.
+
+**When tension rises:** The outbreak spreads faster than the cure progresses. Ingredients are
+harder to find or are controlled by others. A sick group member's condition deteriorates and
+demands immediate attention. The community loses faith in the group and becomes hostile or
+desperate.
+
+**To ease tension:** Stabilise the most critical patients to buy time without curing them. Use
+*Druid* or Healer specialization to work faster and more reliably. Use *Relaxed* or *Politics*
+to manage the community. Use *Smell* to identify effective ingredients without needing to test
+them destructively.
+
+**Ends when:** A working cure is produced and administered, the outbreak runs its course, or the
+group is driven out. A working cure means the medicine has been tested and distributed to the
+most critical cases. Running its course may mean recovery — or it may not. Driven out means the
+community has turned hostile or the source of the outbreak has made the area untenable.
+
+**Challenges**
+
+**The cause of the illness is unknown.** Treating symptoms without understanding the disease risks
+making patients worse.
+- Healer specialization — diagnose the disease accurately from its presentation; the direct use
+- *Smell* — identify the disease's source by scent — bad water, a toxic plant, a diseased animal
+- Perc **weak point** *(Perc ≥ 4)* — find the pattern distinguishing the sick from the healthy;
+  trace it to the source
+- *Druid* — ask nature about what is moving through the land; an outbreak leaves a trail
+
+**Key ingredients are not available nearby — too rare, out of season, or in dangerous territory.**
+The cure cannot be compounded without them.
+- *Druid* — ask the land where specific plants grow; find them faster than searching alone
+- *Scrounger* — find usable medicinal materials in unlikely places; dried remnants, abandoned
+  caches
+- *Travels* — know from prior experience which nearby location would have this ingredient
+- *Ingenuity* — identify a substitute that addresses the same mechanism with what is available
+
+**The cure must be compounded correctly — wrong ratios or contamination will make it ineffective
+or harmful.** Preparation requires precision under conditions that make precision difficult.
+- Healer specialization — compound medicine reliably; the most direct resolution
+- Hand **improvise tool** *(Hand ≥ 4)* — improvise clean equipment when proper tools are
+  unavailable
+- *Relaxed* — maintain the calm required for precise work when urgency is pulling in the other
+  direction
+- *Ingenuity* — find a way to achieve the necessary precision with the available means
+
+**Someone in the group is infected and their condition is deteriorating.** The group must divide
+attention between finding the cure and keeping this person alive long enough.
+- *Blood* — redirect life energy to slow the deterioration; buys time without curing
+- *Sleeper* — the infected character rests and recovers what the illness has not yet taken
+- Healer specialization — treat symptoms to stabilise without curing; allows the work to continue
+- *Religion* — bless the infected character; holds the illness at bay long enough
+
+**The affected community is panicking, hoarding supplies, or interfering with the group's work.**
+The social pressure is as dangerous as the disease itself.
+- *Relaxed* — a calm presence in the middle of crisis slows the panic before it becomes an
+  obstacle
+- *Politics* — understand who holds authority in the community and work through them
+- Char **rallying cry** *(Char ≥ 5)* — address the community directly; reframe the situation as
+  one the group can solve together
+- *Musical* — shift the emotional temperature before fear becomes active obstruction
+
+**The source of the outbreak is ongoing — a contaminated well, a diseased herd, an infected
+person still moving through the community.** Curing the sick will not help if exposure continues.
+- *Smell* — trace the source directly by following the contamination to its origin
+- Perc **weak point** *(Perc ≥ 4)* — identify the pattern of spread that points to a single
+  source
+- *Druid* — ask nature what is wrong with the land or water at the point of origin
+- *Sly* — manage the source discreetly before the community reacts in a way that worsens the
+  spread
+
+---
+
 → Back to [RULES.md](RULES.md) | See also [POWERS.md](POWERS.md) for how specific powers
 apply per scenario, and [STATISTICS.md](STATISTICS.md) for stat actions.

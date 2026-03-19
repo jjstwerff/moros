@@ -48,15 +48,16 @@ dice but by a shared deck of cards drawn fresh each round.
 6. [Core Mechanics](#core-mechanics)
 7. [Challenge Difficulty](#challenge-difficulty)
 8. [Damage and Mitigation](#damage-and-mitigation)
-9. [Character Creation](#character-creation)
-10. [Progression](#progression)
-11. [Races and Powers](#races-and-powers)
-12. [Backgrounds](#backgrounds)
-13. [Contacts](#contacts)
-14. [Inventory and Carrying](#inventory-and-carrying)
-15. [Crafting](#crafting)
-16. [Weather](#weather)
-17. [World: Places of Origin](#world-places-of-origin)
+9. [Fear and Flight](#fear-and-flight)
+10. [Character Creation](#character-creation)
+11. [Progression](#progression)
+12. [Races and Powers](#races-and-powers)
+13. [Backgrounds](#backgrounds)
+14. [Contacts](#contacts)
+15. [Inventory and Carrying](#inventory-and-carrying)
+16. [Crafting](#crafting)
+17. [Weather](#weather)
+18. [World: Places of Origin](#world-places-of-origin)
 
 ---
 
@@ -197,8 +198,8 @@ limit.
 
 ### Weather and Environment
 
-→ See [Weather](#weather) for the full daily weather system. Weather is drawn three times per day
-and applies to all scenarios during that period.
+→ See [Weather](#weather) for the full daily weather system. Weather is drawn once per day and
+applies to all scenarios that day.
 
 ### Playing Cards
 
@@ -343,16 +344,8 @@ Draw a card and add the leading character's Char plus any applicable bonuses. If
 reaches **4**, Tension drops by 1 at the end of the round. Only one social activity can lower
 Tension per round regardless of how many are attempted.
 
-**Modifiers to the activity total:**
-
-| Condition | Modifier |
-|---|---|
-| Open ground with active precipitation or wind (Water, Decay, Iron, Air severe) | −1 |
-| Flame weather (heat, restlessness) | −1 |
-| Dark weather (intimate by firelight) | +1 |
-| Sheltered position of any kind | negates the open-ground penalty |
-| Tent pitched | +1 |
-| *Relaxed* power present and active | the activity always succeeds without a draw |
+**Modifiers:** rough weather (Surge, Water, Air) imposes −1 to the total. *Relaxed* power present
+and active means the activity always succeeds without a draw.
 
 ### Time-Based Scenarios
 
@@ -377,22 +370,16 @@ with time to spare. They may use that spare time for one secondary action, chose
 Secondary actions are taken alone and do not raise Tension. They represent the faster character
 doing something useful while others are still occupied with the hour's primary demands.
 
-A character with Speed 4 or more above the slowest member can take two secondary actions in the
-same hour.
-
 The minimum group pace is Speed 2, regardless of the slowest member. A character below Speed 2
 does not slow the group further but is themselves impaired — they take −1 to their primary
 actions each round until they rest. This protects both the character and the group dynamic.
 
-### Power Focus
+### Power Strain
 
-Using the **same power on consecutive turns** raises focus by 1 each turn. Focus cannot exceed
-the power's mastery level. Taking a Refocus action for the power's linked statistic also raises
-focus by 1, in addition to the consecutive-use gain — it accelerates how quickly focus builds.
-
-Focusing on one power dulls focus on all others. Each point of focus beyond the first imposes a
-**−1 penalty to unrelated actions** — a character at focus 3 takes −2 on everything outside
-that power. Taking a Defocus action for the linked statistic lowers this penalty by 1.
+Using the same power on consecutive turns risks losing control of it. The cards are the signal:
+if the card you draw and commit shows at least one of that power's linked statistics, the power
+is fed and works normally. If neither linked stat appears on the committed card, the power
+Overwhelms — see below.
 
 ---
 
@@ -575,19 +562,58 @@ restored.
 Stat reductions persist across scenes within the same scenario — they are not reset between
 scenes. Only items, powers, and rest clear them.
 
-Powers that grant +1 to short rest recovery (Camp, Clan, Relaxed, Religion) do not stack —
-a character benefits from at most one such bonus per short rest, regardless of how many
-apply simultaneously.
-
-Forage Perc bonuses from powers do not stack above +2 total. If more than two powers grant
-a forage Perc bonus in the same scene, only the two highest apply.
-
 Potions are most effective mid-scenario. A potion consumed during a full camp rest provides no
 benefit — full rest clears all stat reductions regardless.
 
 A stat reduced by an ongoing effect (serpent venom, constriction, drowning grip) continues
 dropping each round until treated or the source is removed. Bandages and *Blood* stop ongoing
 effects; time alone does not.
+
+---
+
+## Fear and Flight
+
+When enemies are hurt or outmatched, their **Will** determines whether they hold or break. Will
+is already the stat that resists draining and radiant attacks — it is also the measure of a
+creature's nerve. A creature that has taken Will damage is correspondingly easier to rout.
+
+**Automatic check:** When any of the following first applies to a creature on its turn, the DM
+draws one card for it and adds its current **Will** only — other stats on the card do not apply,
+but the card's special shapes how the fear manifests (a *fire* draw: blind panic; *dark*: silent
+withdrawal; *iron*: a cold, deliberate break). If the total is less than **4**, the creature
+flees that turn.
+- Its Endu has dropped below half its starting value
+- A visible ally was downed this round
+
+Creatures whose Will is 4 or higher do not break from these triggers alone — only a player
+action can move them.
+
+**Player-triggered fear:** A player can actively break a creature's nerve. They play a card with
+**Might** (physical dominance) or **Char** (eroding confidence); the DM draws one card for the
+creature and adds its current **Will**. Normal resolution applies: higher total wins. If the
+player wins, the creature flees on its next turn. Powers that make this check possible:
+*Scolding*, Might **power through** *(Might ≥ 3)*, *Shamanic* binding.
+
+**Fleeing:** A fleeing creature moves toward the nearest available exit at full Speed and does
+not attack on the turn it flees. Once a creature has decided to flee it will not re-engage
+unless cornered or under a leader's direct command.
+
+**Alerting:** A fleeing creature that passes near enemies not yet in combat immediately triggers
+an automatic check for each of them. A creature that flees noisily — calling out, crashing
+through cover, visibly panicking — also alerts any enemy within earshot; those enemies join the
+combat next round rather than fleeing.
+
+**Stopping a fleeing creature:** The group has one round before the creature escapes and
+potentially alerts others.
+- Speed **chase** *(Speed ≥ creature's Speed)* — physically block the escape route before it
+  clears
+- *Scolding* — the active taunt holds the creature in place; it cannot flee while it is the
+  current target
+- Will **steel the mind** *(Will ≥ 3)* — project enough presence to freeze a fleeing creature
+  for one round
+- Dex **called shot** *(Dex ≥ 4)* — targeted strike; if it reduces the creature's Speed to 0,
+  escape is impossible
+- *Night* or *Adaptation* — slip ahead and seal the exit before the creature reaches it
 
 ---
 
@@ -656,22 +682,25 @@ power.
 
 ### Overwhelmed
 
-Each power has an **Overwhelmed** state described in POWERS.md. A character becomes Overwhelmed
-in a power when Power Focus is at its maximum and the character commits a card showing none of
-that power's linked statistics — the power strains beyond what the character can sustain. When
-Overwhelmed, the power's effect fails for that action and the Overwhelmed state applies for the
-remainder of the scene.
+Each power has an **Overwhelmed** state described in POWERS.md. When a power Overwhelms, the
+player does not control what it does. The DM draws one card and uses its special to interpret
+the Overwhelmed entry — the direction, target, and shape of the effect are the DM's to
+determine. The player's committed card is spent. The Overwhelmed state persists until the
+player spends one full turn without using that power, at which point it clears. A full rest
+always clears all Overwhelmed states.
 
-A power committed while either of its linked statistics is 0 also goes Overwhelmed immediately,
-regardless of Power Focus level. A power's two linked statistics exist because the power draws
-on both — committing it without one foundation in place is overreach by definition.
+Three things trigger Overwhelm:
 
-A character can also become Overwhelmed mid-scene when the DM judges that environmental or
-narrative conditions directly undermine the power's core function — a *Swimmer* in a desert with
-no water, a *Flight* power in a sealed cavern too low to use.
+1. **Consecutive strain** — using the same power as the previous turn while the committed card
+   shows neither of the power's linked statistics. The power has no card energy supporting it
+   and slips from control.
 
-**Recovery:** Taking a Defocus action for the power's governing statistic removes the Overwhelmed
-state. A full rest always clears all Overwhelmed states.
+2. **Broken foundation** — using a power while either of its linked statistics is currently 0.
+   A power draws on both its linked statistics; committing it with one collapsed is overreach.
+
+3. **Environmental impossibility** — the DM may rule that conditions directly make a power
+   impossible (a *Swimmer* in a desert, *Flight* in a cavern too low to spread wings). These
+   override rather than Overwhelm: the power simply cannot function here.
 
 | Race | Available Powers |
 |---|---|
@@ -945,14 +974,14 @@ duration to two scenarios instead of one.
 
 ## Weather
 
-Each day is divided into three periods: **morning**, **midday**, and **evening**. At the start of
-each period the DM draws one card from the top of the shared deck. The element on that card sets
-the weather for that period. Effects listed below apply to any scenario taking place during it.
+At the start of each day the DM draws one card from the top of the shared deck. The element on
+that card sets the weather for the day. Effects listed below apply to any scenario taking place
+during it.
 
 **Shelter** negates cold, wind, and rain penalties where noted. A tent, any permanent building,
 and any structure built by the *Ingenuity* or *Digging* power count as shelter.
 
-If the drawn element has no entry below (Wood or Stone), the period passes without weather
+If the drawn element has no entry below (Wood or Stone), the day passes without weather
 penalties.
 
 ### Light — Clear sky
@@ -967,14 +996,14 @@ Bright sun and excellent visibility.
 
 Mild, pleasant conditions with a light breeze.
 
-- **travel** — group pace counts as Speed +1 for this period
+- **travel** — group pace counts as Speed +1 for this day
 - **forage** — Perc +1; yield covers 1 additional character
 
 ### Flame — Hot and dry
 
 Scorching heat, no shade, air shimmers.
 
-- **travel** — each character takes Endu −1 at the end of the period; *Fur* and *Hide* negate this
+- **travel** — each character takes Endu −1 at the end of the day; *Fur* and *Hide* negate this
 - **combat** — fire-based *Magic* attacks deal Endu −2 instead of −1
 - **camp** — unsheltered rest restores 1 fewer stat point
 - **forage** — Perc −1 for locating water; water sources may be dry at DM discretion
@@ -984,7 +1013,7 @@ Scorching heat, no shade, air shimmers.
 Strong gusts, blown debris, constant noise.
 
 - **combat** — ranged attacks gain −1 to the action total
-- **travel** — *Flight* covers twice the normal distance this period; *Nimble* and *Scurry* gain +1
+- **travel** — *Flight* covers twice the normal distance this day; *Nimble* and *Scurry* gain +1
 - **stealth** — detection checks relying on sound gain −1 (wind masks movement)
 - **camp** — unsheltered rest restores 1 fewer stat point
 
@@ -1002,7 +1031,7 @@ Steady downpour, wet ground, reduced visibility.
 
 Biting cold, icy ground, frozen water sources.
 
-- **travel** — each character takes Endu −1 at the end of the period; shelter or *Fur* negates this
+- **travel** — each character takes Endu −1 at the end of the day; shelter or *Fur* negates this
 - **camp** — unsheltered rest restores 1 fewer stat point
 - **forage** — Perc −1
 
@@ -1018,10 +1047,10 @@ Near-darkness during the day, deep shadow throughout.
 
 Lightning, driving rain, violent gusts.
 
-- **travel** — Speed −2 for group pace; each character takes Endu −1 at the end of the period
+- **travel** — Speed −2 for group pace; each character takes Endu −1 at the end of the day
 - **combat** — ranged attacks gain −2
 - **stealth** — detection checks gain −2
-- **forage** — forage actions automatically fail; the group cannot gather food this period
+- **forage** — forage actions automatically fail; the group cannot gather food this day
 - **camp** — unsheltered rest restores no stat points; sheltered rest restores 1 fewer than normal
 
 ### Veil — Fog
@@ -1029,7 +1058,7 @@ Lightning, driving rain, violent gusts.
 Thick mist; visibility drops to a few paces.
 
 - **travel** — Perc checks for navigation gain −1; *Lookout* and *Travels* cannot identify
-  hazards in advance this period
+  hazards in advance this day
 - **combat** — ranged attacks gain −2
 - **stealth** — detection checks gain −1
 - **exploration** — Perc checks gain −1
@@ -1039,10 +1068,10 @@ Thick mist; visibility drops to a few paces.
 
 Persistent grey chill, everything damp.
 
-- **travel** — each character takes Endu −1 at the end of the period; shelter or *Fur* negates this
+- **travel** — each character takes Endu −1 at the end of the day; shelter or *Fur* negates this
 - **camp** — unsheltered rest restores 1 fewer stat point
 - **forage** — Perc −1
-- **negotiation** / **market** — Tension cannot drop below its current value this period
+- **negotiation** / **market** — Tension cannot drop below its current value this day
 
 ---
 

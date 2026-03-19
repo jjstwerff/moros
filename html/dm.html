@@ -22,15 +22,32 @@
                     onclick="DM.showTab('places')">Places</button>
             <button class="nav-tab" data-tab="scenarios"
                     onclick="DM.showTab('scenarios')">Scenarios</button>
+            <button class="nav-tab" data-tab="powers"
+                    onclick="DM.showTab('powers')">Powers</button>
+            <button class="nav-tab" data-tab="bestiary"
+                    onclick="DM.showTab('bestiary')">Bestiary</button>
+            <button class="nav-tab" data-tab="item-rules"
+                    onclick="DM.showTab('item-rules')">Item Rules</button>
+            <button class="nav-tab" data-tab="config"
+                    onclick="DM.showTab('config')">Config</button>
         </nav>
     </header>
 
     <div class="dm-toolbar">
         <a href="index.html" class="btn-secondary dm-back">← Game Suite</a>
-        <div class="dm-toolbar-right">
-            <button class="btn-primary" onclick="DM.download()">↓ Download Campaign</button>
-            <button class="btn-secondary" onclick="DM.upload()">↑ Upload Campaign</button>
+        <div class="dm-search-wrap">
+            <input id="dm-search-input" class="dm-input dm-search-input"
+                   type="search" placeholder="Search campaign…"
+                   oninput="DM._searchInput(this.value)">
+            <select id="dm-search-scenario" class="dm-input dm-search-scenario"
+                    onchange="DM._searchInput(document.getElementById('dm-search-input').value)">
+                <option value="">All sessions</option>
+            </select>
         </div>
+        <div class="dm-toolbar-right">
+            <button id="dm-session-toggle" class="btn-secondary" onclick="DM._toggleSessionMode()" title="Toggle session mode — in Session mode only entries in session-visible categories are shown">Prep</button>
+        </div>
+        <div id="dm-search-results" class="dm-search-results dm-hidden"></div>
     </div>
 
     <!-- ── Contacts ─────────────────────────────────────────────────────── -->
@@ -96,6 +113,34 @@
             <form id="scenario-form" class="dm-form-pane dm-form-pane--scroll"
                   onsubmit="DM.saveScenario(event)"></form>
         </div>
+    </div>
+    <!-- ── Item Rules ────────────────────────────────────────────────────── -->
+    <div id="tab-item-rules" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Item Rules</h2>
+        </div>
+        <div id="item-rules-list" class="dm-list-pane"></div>
+    </div>
+
+    <!-- ── Bestiary ──────────────────────────────────────────────────────── -->
+    <div id="tab-bestiary" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Bestiary</h2>
+        </div>
+        <div id="bestiary-list" class="dm-list-pane"></div>
+    </div>
+
+    <!-- ── Powers ────────────────────────────────────────────────────────── -->
+    <div id="tab-powers" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Powers</h2>
+        </div>
+        <div id="powers-list" class="dm-list-pane"></div>
+    </div>
+
+    <!-- ── Config ─────────────────────────────────────────────────────────── -->
+    <div id="tab-config" class="panel">
+        <div id="config-content"></div>
     </div>
 </div>
 

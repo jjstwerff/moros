@@ -2,7 +2,7 @@
 See RULES.md for the full style guide. Key rules for this file:
   ## for creature categories, ### for each creature entry.
   Stat table: one row of headers, one row of values. Table rows are exempt from line length.
-  Attack entries: **Name** *(damage type, reach)* — description
+  Attack entries: **Name** *(damage type, reach)* — description (also stored as attacks[].description in data.js)
   Damage types: fire, cold, electric, cutting, impaling, blunt, grab, radiant, draining, pummel
   Reach values: close, reach, ranged, area
   Motivation and Behaviour: bold label followed by em-dash and prose.

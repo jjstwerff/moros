@@ -4,8 +4,9 @@ See RULES.md for the full style guide. Key rules for this file:
   Power headers: ### Name *(Stat + Stat — special)*
   Power description: italics on the line after the header
   Scenario bullets: **Scenario** — description (primary use noted where applicable)
-  Overwhelmed entry: blank line before it, then **Overwhelmed** — what happens when the power
-    takes over the character
+  Overwhelmed entry: blank line before it, then **Overwhelmed** — what the power does when it
+    takes over the character; written as a state the character enters, not a mechanical effect;
+    the DM interprets the drawn card's special through this description to determine what happens
   Maximum line length: 100 characters. Table rows are exempt.
 -->
 

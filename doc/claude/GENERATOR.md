@@ -573,6 +573,290 @@ No unit test. Verified in the browser.
 
 ---
 
+---
+
+## Rules tab — gap analysis and update design
+
+The Rules tab (`renderRules()` in `character.js`) currently renders four sections from `data.js`:
+
+1. **Game header** — title, tagline, description paragraph
+2. **Rule cards** — 5 cards (`DATA.rules`): growth, cards, aid each other, heroic action, power focus
+3. **Statistics** — all 8 stats with scenario uses and stat actions
+4. **Default cards** — the 12 deck cards with stats and specials
+
+### What the rules cards get wrong
+
+The 5 existing cards in `DATA.rules` have inaccuracies relative to `doc/claude/RULES.md`:
+
+| Card | Error |
+|---|---|
+| cards | Says "8 default cards" — the deck has **12** |
+| cards | Says "each player adds 2 cards" — the contribution is **2–6** based on progressions taken |
+| growth | Says "every background, power, or specialization costs 2 XP plus 1 more for each level" — the actual table is: level 1 (within first 6) = 0 XP, level 2 = 2 XP, level 3 = 3 XP |
+| heroic action | Describes cards as "shuffled and revealed one by one" — they are revealed sequentially; each card after the first raises Tension by 1 and the DM draws one extra card for the opposition |
+| aid each other | Missing the **defensive spend** option: hold a card face down to reduce the next incoming damage by 1 before discarding it |
+
+### What sections are completely absent
+
+The following content exists in `doc/claude/RULES.md` but is not rendered in the Rules tab at all:
+
+| Missing section | Why it matters to a player |
+|---|---|
+| Progression rules (all 5) | Rule 5 (stat cap), rule 3 (spec needs bg), rule 4 (spec level limit) are needed to plan a character |
+| XP costs table (0 / 2 / 3) | Players need to know what post-creation advancement costs |
+| XP earning (secrets mechanic) | Players need to know how XP is gained to target correct play |
+| Character cards contribution table | Tells players how many cards they contribute per progression count |
+| Scenario cards table (all 8 scenarios) | Players choosing cards for a scenario need to know the scenario bias |
+| Discovery cards | DM and players need to know what they are and how they count |
+| Resolution mechanics | Core loop: draw 2, commit 1, add matching stats, compare to creature total |
+| Challenge specials (8 elements) | fire/water/air/wood/iron/stone/light/dark meanings for DM interpretation |
+| Passing cards — defensive spend | Third option in aid round (hold card to reduce next damage) |
+| Heroic action — full rules | Tension per revealed card; DM extra draws; no card next round |
+| Tension — full rules | Starts at 0, breaks at 5, resets per scenario; what "hostile" means |
+| Easing tension at camp | Fire prerequisite, three activity forms, threshold 4, modifiers table |
+| Overwhelmed — definition and recovery | When it triggers (stat 0, focus at max + wrong card, DM call); defocus or full rest clears it |
+| Power focus — refocus/defocus detail | Refocus adds +1 to focus in addition to consecutive-use gain |
+| Challenge difficulty — stat thresholds | ≥2 light / ≥3 meaningful / ≥4 serious / ≥5 peak table |
+| Creature difficulty tiers | 1–3 minor / 4–5 moderate / 6–7 major / 8+ formidable |
+| Damage types table | 10 damage types with stat reduced and meaning |
+| Broken and death rules | Endu 0 = Broken; mortal wounds; stabilisation; 3 mortal wounds = death |
+| Weapons table | 13 weapons with damage type and combat note |
+| Combat powers damage table | How Blood, Claw, Charge, Jaws, Magic, Druid deal damage |
+| Mitigation table | What each defensive item/power reduces |
+| Recovery table | Rest types with stat points restored and conditions |
+| Stacking cap rules | Camp/Clan/Relaxed/Religion short-rest bonus doesn't stack; forage Perc cap +2 |
+| Contacts level benefits | Levels 1–7: lodging, local knowledge, introductions, correspondence, workshop, teaching, materials |
+| Starting contacts rule | Each background grants level-2 contact at place of origin |
+| Inventory / bulk table | Full item bulk table; capacity formula (Endu × 5) |
+| Races and powers table | All 16 races with their 7 available powers |
+
+### Update design
+
+The update is split into content fixes (data.js), new data structures (data.js), and new rendering sections (character.js). No logic.js changes are needed; no unit tests apply. All steps are browser-verified only.
+
+---
+
+### Step R1 — Fix inaccuracies in existing rule cards · **Low**
+
+**data.js**: Rewrite the 5 existing `DATA.rules` card `text` arrays to match RULES.md exactly:
+
+- **cards**: "12 default cards", contribution table reference ("2 to 6 based on progressions taken")
+- **growth**: XP cost table inline ("free for the first 6; level 2 costs 2 XP, level 3 costs 3 XP")
+- **heroic action**: "each revealed card raises Tension by 1 and the DM draws one extra card for the opposition; the player draws no cards next round"
+- **aid each other**: add the defensive spend option ("hold a card face down; before the end of the round it reduces the next incoming damage by 1, then goes to the discard pile")
+
+No code change. No unit test. Verified by reading the Rules tab.
+
+---
+
+### Step R2 — Add progression rules section · **Low**
+
+**data.js**: Add a `progressionRules` array to DATA (or encode inline in character.js):
+
+```js
+progressionRules: [
+    "The first 6 progressions cost 0 XP. From progression 7 onward, cost = 1 + current level of that item.",
+    "No two backgrounds or specializations may be chosen in succession — a power must separate them.",
+    "A specialization can only be learned if a background that unlocks it has already been taken.",
+    "The level of a specialization is limited by the combined level in its supporting backgrounds.",
+    "No single statistic may be raised more than 3 times across the initial 6 free progressions."
+]
+```
+
+And a `xpCosts` table:
+
+```js
+xpCosts: [
+    { level: "1 (within first 6 progressions)", cost: 0 },
+    { level: "2", cost: 2 },
+    { level: "3", cost: 3 }
+]
+```
+
+**character.js** (`renderRules()`): After the rule cards grid, render a "Progression Rules" section with the 5 rules as a numbered list and the XP costs as a small table. Also add a short "Earning XP" paragraph (secrets — ruins and people).
+
+---
+
+### Step R3 — Add resolution and specials section · **Med**
+
+**data.js**: Add a `challengeSpecials` array:
+
+```js
+challengeSpecials: [
+    { name:"fire",  quality:"Aggression, heat, urgency — the challenge presses hard and punishes hesitation" },
+    { name:"water", quality:"Adaptability, flow, evasion — the challenge shifts and finds gaps to exploit" },
+    { name:"air",   quality:"Speed, unpredictability, distraction — the challenge moves before you can react" },
+    { name:"wood",  quality:"Patience, entanglement, weight — the challenge holds on and grows harder to remove" },
+    { name:"iron",  quality:"Determination, sharpness, inflexibility — the challenge does not bend or stop" },
+    { name:"stone", quality:"Endurance, solidity, obstruction — the challenge absorbs and blocks without relenting" },
+    { name:"light", quality:"Revelation, precision, exposure — the challenge sees clearly and leaves nowhere to hide" },
+    { name:"dark",  quality:"Concealment, hidden motive, deception — the challenge is not what it appears to be" }
+]
+```
+
+**character.js** (`renderRules()`): Add a "Resolution" section with:
+- One-paragraph summary: draw 2, commit 1, add matching stats, compare to creature total
+- Failure consequences (immediate damage or obstacle holds)
+- "Challenge Specials" table rendered from `DATA.challengeSpecials`
+
+---
+
+### Step R4 — Add character cards and scenario cards tables · **Low**
+
+**data.js**: Add `cardContribution` and `scenarioCards` arrays:
+
+```js
+cardContribution: [
+    { progressions: "1–3",  cards: 2 },
+    { progressions: "4–6",  cards: 3 },
+    { progressions: "7–9",  cards: 4 },
+    { progressions: "10–12",cards: 5 },
+    { progressions: "13+",  cards: 6 }
+],
+scenarioCards: [
+    { scenario:"Combat",      cards:["Might + Speed — surge","Might + Endu — iron","Dex + Will — veil"] },
+    { scenario:"Stealth",     cards:["Dex + Speed — veil","Perc + Will — dark","Char + Dex — air"] },
+    { scenario:"Negotiation", cards:["Char + Will — life","Perc + Char — light","Will + Hand — veil"] },
+    { scenario:"Exploration", cards:["Perc + Hand — stone","Endu + Will — decay","Dex + Perc — dark"] },
+    { scenario:"Travel",      cards:["Speed + Endu — surge","Perc + Speed — air","Char + Endu — life"] },
+    { scenario:"Camp",        cards:["Endu + Will — stone","Char + Endu — life","Will + Perc — dark"] },
+    { scenario:"Market",      cards:["Char + Hand — wood","Perc + Char — veil","Will + Char — light"] },
+    { scenario:"Forage",      cards:["Perc + Endu — wood","Hand + Will — decay","Dex + Perc — dark"] }
+]
+```
+
+**character.js** (`renderRules()`): After the default cards grid, add:
+- "Character Cards" subsection: contribution table + one-paragraph stakes decision description
+- "Scenario Cards" subsection: table of all 8 scenarios × 3 cards (cards not in deck this scenario are not drawn but stat bonuses still apply)
+- "Discovery Cards" paragraph: awarded by DM, count toward contribution limit
+
+---
+
+### Step R5 — Add Overwhelmed and power focus detail · **Low**
+
+**character.js** (`renderRules()`): Within or after the rule cards, add an "Overwhelmed" section:
+
+- When it triggers: (a) either linked stat is 0, (b) power focus at maximum and card shows none of the linked stats, (c) DM environmental call
+- Effect: power fails for that action, Overwhelmed state for the rest of the scene
+- Recovery: Defocus action on the governing stat, or full rest
+
+Also expand the existing "power focus" rule card text to mention that a Refocus action on the linked stat adds +1 to focus on top of the consecutive-use gain.
+
+No data.js change needed — this is inline HTML in `renderRules()`.
+
+---
+
+### Step R6 — Add challenge difficulty tables · **Low**
+
+**data.js**: Add `statThresholds` and `creatureTiers` arrays:
+
+```js
+statThresholds: [
+    { threshold:"≥ 2", level:"Light",       when:"One progression above the starting stat of 1" },
+    { threshold:"≥ 3", level:"Meaningful",  when:"A character who has built toward this area" },
+    { threshold:"≥ 4", level:"Serious",     when:"A character with dedicated progression in this stat" },
+    { threshold:"≥ 5", level:"Peak",        when:"A character with specialization-depth investment" }
+],
+creatureTiers: [
+    { stat:"1–3", tier:"Minor threat",    meaning:"A starting group handles this with basic tactics" },
+    { stat:"4–5", tier:"Moderate threat", meaning:"At least one character needs a relevant stat ≥ 3 to contribute meaningfully" },
+    { stat:"6–7", tier:"Major threat",    meaning:"Requires coordinated powers and items; a stat ≥ 4 in the key area" },
+    { stat:"8+",  tier:"Formidable",      meaning:"A well-progressed group relying on powers, items, and tight coordination" }
+]
+```
+
+**character.js** (`renderRules()`): Add a "Challenge Difficulty" section with the two tables and a short closing paragraph on how powers, items, and coordination close the gap.
+
+---
+
+### Step R7 — Add damage, mitigation, and recovery tables · **Med**
+
+**data.js**: Add `damageTypes`, `weapons`, `mitigation`, `recoveryTypes` arrays from the RULES.md tables:
+
+```js
+damageTypes: [
+    { type:"Cutting",  stat:"Dex",   desc:"Slashes impair precision and fine movement" },
+    { type:"Impaling", stat:"Endu",  desc:"Punctures drain stamina" },
+    { type:"Blunt",    stat:"Might", desc:"Impacts sap raw strength" },
+    { type:"Grab",     stat:"Speed", desc:"Locks and holds restrict movement" },
+    { type:"Draining", stat:"Will",  desc:"Life force or resolve drawn away" },
+    { type:"Pummel",   stat:"Endu",  desc:"Overwhelming force; bypasses armor" },
+    { type:"Fire",     stat:"Endu",  desc:"Burns consume stamina" },
+    { type:"Cold",     stat:"Speed", desc:"Cold stiffens limbs and slows reactions" },
+    { type:"Electric", stat:"Perc",  desc:"Shock scrambles senses and awareness" },
+    { type:"Radiant",  stat:"Will",  desc:"Divine or spiritual force tests resolve" }
+],
+weapons: [
+    { name:"Sword",     damage:"Cutting",  note:"Parry special deflects one incoming hit per round" },
+    { name:"Glave",     damage:"Impaling", note:"Stop special triggers on the same action as the hit" },
+    { name:"Flail",     damage:"Blunt",    note:"Stun: target loses their next action" },
+    { name:"Spear",     damage:"Impaling", note:"Intercept: lands before a charging target closes distance" },
+    { name:"Staff",     damage:"Blunt",    note:"Block special can deflect incoming hits" },
+    { name:"Bow",       damage:"Impaling", note:"Cripple: Speed reduced by 1 on a successful called shot" },
+    { name:"Crossbow",  damage:"Impaling", note:"Wound: damage persists into the next scene if untreated" },
+    { name:"Sling",     damage:"Blunt",    note:"Stun applies silently from range" },
+    { name:"Dagger",    damage:"Cutting",  note:"Sneaking: +1 Dex to total when striking unaware targets" },
+    { name:"Darts",     damage:"Draining", note:"Poison accumulates; second hit imposes −1 Will for the scene" },
+    { name:"Whip",      damage:"Grab",     note:"Steer: can strip a held item instead of dealing damage" },
+    { name:"Pickaxe",   damage:"Blunt",    note:"Bypasses the armor special of stone-skinned or heavily armored targets" },
+    { name:"Knife",     damage:"Cutting",  note:"Too small to add Might; Dex and Hand only" }
+]
+```
+
+**character.js** (`renderRules()`): Add a "Damage and Mitigation" section with:
+- Broken and death rules (Endu 0 = Broken; mortal wounds accumulate; 3 = death; stabilise with Hand ≥ 3)
+- Damage types table
+- Weapons table
+- Mitigation table (rendered inline; data can stay in character.js as a local constant since it mixes items and powers)
+- Recovery table (rendered inline similarly)
+- Stacking cap rule (Camp/Clan/Relaxed/Religion rest bonus does not stack; forage Perc cap is +2)
+
+---
+
+### Step R8 — Add contacts and inventory sections · **Low**
+
+**data.js**: Add `contactLevels` array:
+
+```js
+contactLevels: [
+    { level:1, benefit:"Lodging",        desc:"Quick place to sleep for the group without cost or questions" },
+    { level:2, benefit:"Local knowledge", desc:"Answers one question per visit about people, places, or events without a Char check" },
+    { level:3, benefit:"Introductions",  desc:"Arranges a meeting with one significant NPC or faction, bypassing the normal Char threshold" },
+    { level:4, benefit:"Correspondence", desc:"Send a written question from any location; answer arrives within one travel scenario" },
+    { level:5, benefit:"Workshop access",desc:"Grants use of their workspace for crafting; tier depends on the contact's trade" },
+    { level:6, benefit:"Teaching",       desc:"Teaches one specialization they know; follows normal progression rules" },
+    { level:7, benefit:"Special materials",desc:"Sources one special material per scenario; rarity depends on their specialty" }
+]
+```
+
+**character.js** (`renderRules()`): Add a "Contacts" section with the level-benefits table and the starting-contacts rule (each background grants level-2 contact at place of origin, accessible only when physically present there).
+
+Also add an "Inventory and Carrying" section that renders `DATA.items` bulk values as a table (already in data.js) and states the capacity formula: **Endu × 5**.
+
+---
+
+### Step R9 — Add races and powers reference table · **Low**
+
+**character.js** (`renderRules()`): Add a "Races and Powers" section that renders `DATA.races` as a two-column table: race name and comma-separated list of its 7 powers. This is already fully in `DATA.races` — no new data needed.
+
+---
+
+### Rules update steps summary
+
+| Step | Description | Data change | Render change | Effort | Done |
+|---|---|---|---|---|---|
+| R1 | Fix 5 existing rule card texts | data.js | — | Low | |
+| R2 | Progression rules + XP costs section | data.js | character.js | Low | |
+| R3 | Resolution mechanics + challenge specials table | data.js | character.js | Med | |
+| R4 | Character cards + scenario cards + discovery cards | data.js | character.js | Low | |
+| R5 | Overwhelmed definition + power focus detail | — | character.js | Low | |
+| R6 | Challenge difficulty tables | data.js | character.js | Low | |
+| R7 | Damage, mitigation, recovery tables | data.js | character.js | Med | |
+| R8 | Contacts levels + inventory / bulk section | data.js | character.js | Low | |
+| R9 | Races and powers reference table | — | character.js | Low | |
+
+---
+
 ## Steps summary
 
 | Step | Description | Gaps | Effort | Unit test | Coverage | Lint | Types | Blocked by | Done |
