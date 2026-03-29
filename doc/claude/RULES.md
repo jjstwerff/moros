@@ -714,11 +714,11 @@ Three things trigger Overwhelm:
 | Humans | Adaptation, Ingenuity, Balance, Portage, Politics, Sly, Lookout |
 | Otters | Hunter, Swimmer, Fur, Nimble, Scurry, Sly, Lookout |
 | Owls | Claw, Clan, Hunter, Lookout, Charge, Flight, Scolding |
-| Pig men | Digging, Hide, Camp, Smell, Sleeper, Charge, Scolding |
+| Boar folk | Digging, Hide, Camp, Smell, Sleeper, Charge, Scolding |
 | Rabbits | Camp, Labyrinth, Scrounger, Hearing, Sleeper, Fur, Digging |
 | Raccoons | Scurry, Camp, Relaxed, Sly, Scrounger, Clan, Control |
 | Rat folk | Clan, Scurry, Climber, Sleeper, Smell, Scrounger, Control |
-| Taurus | Portage, Swimmer, Charge, Labyrinth, Relaxed, Hide, Travels |
+| Bull folk | Portage, Swimmer, Charge, Labyrinth, Relaxed, Hide, Travels |
 | Wolf folk | Jaws, Travels, Control, Hide, Clan, Smell, Hearing |
 
 ---
@@ -944,8 +944,8 @@ Special materials cannot be purchased at market. They are found in the world:
   may trade them; some forage scenes yield them directly
 - **Rare** — ruins during exploration; specialist contacts (Healer, Hunter, Fisher); not grown
   or improvised in the field
-- **Legendary** — the deepest ruins only, or through a contact who has spent a lifetime seeking
-  them; unique and irreplaceable
+- **Legendary** — the blasted lands and the deepest ruins only, or through a contact who has
+  spent a lifetime seeking them; unique and irreplaceable
 
 → See [ITEMS.md — Special Materials](ITEMS.md#special-materials) for all 12 materials, their
 elements, crafting effects, and discovery sources.
@@ -1087,7 +1087,7 @@ Persistent grey chill, everything damp.
 | Bockthicket | Mining town of Brumal |
 | Elmsfield | Border town around a huge tree |
 | Fata morgana | Oasis city in the southern desert |
-| Gap city | Hanging city near the shifting lands |
+| Gap city | Last settlement before the shifting lands; built into a steep mountain gap |
 | Lastwater | Travel stop to the south |
 | Linar harbour | Small independent harbour town |
 | Raft city | On the river through the great forest |

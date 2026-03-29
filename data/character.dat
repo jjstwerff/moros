@@ -190,11 +190,11 @@
     { name: "Human", powers: [ "adaptation", "ingenuity", "balance", "portage", "politics", "sly", "lookout" ] },
     { name: "Otters", powers: [ "hunter", "swimmer", "fur", "nimble", "scurry", "sly", "lookout" ] },
     { name: "Owls", powers: [ "claw", "clan", "hunter", "lookout", "charge", "flight", "scolding" ] },
-    { name: "Pig men", powers: [ "digging", "hide", "camp", "smell", "sleeper", "charge", "scolding" ] },
+    { name: "Boar folk", powers: [ "digging", "hide", "camp", "smell", "sleeper", "charge", "scolding" ] },
     { name: "Rabbit", powers: [ "camp", "labyrinth", "scrounger", "hearing", "sleeper", "fur", "digging" ] },
     { name: "Raccoons", powers: [ "scurry", "camp", "relaxed", "sly", "scrounger", "clan", "control" ] },
     { name: "Rat folk", powers: [ "clan", "scurry", "climber", "sleeper", "smell", "scrounger", "control" ] },
-    { name: "Taurus", powers: [ "portage", "swimmer", "charge", "labyrinth", "relaxed", "hide", "travels" ] },
+    { name: "Bull folk", powers: [ "portage", "swimmer", "charge", "labyrinth", "relaxed", "hide", "travels" ] },
     { name: "Wolf folk", powers: [ "jaws", "travels", "control", "hide", "clan", "smell", "hearing" ] }
   ],
   background: [

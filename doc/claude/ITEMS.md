@@ -771,6 +771,24 @@ Each material replaces or extends the target item's **Material** line when succe
 - **Found** *(legendary)* — fog marshes at dawn near Lastwater; Fox or Raccoon contacts with
   Sly specialization; ruins at old crossroads in Exploration scenarios
 
+### Ironwood *(iron — endure)*
+*Wood from a tree that grew around a vein of iron ore over centuries; the grain is fused with
+metal and resists every tool. The white city's mage craftspeople were the last to work it at
+scale. Fragments surface occasionally in the ruins they left behind.*
+- **Effect** — the item cannot be broken by physical force and does not degrade from normal use;
+  the Brittle and Degraded flaws cannot apply to ironwood items; bulk increases by 1
+- **Weapon** — once per scene the weapon's impact carries the iron special (determination,
+  inflexibility): the target cannot be moved, repositioned, or disarmed for the rest of the
+  round; the weapon does not consume on the first use of any scene-limited special
+- **Armor** — armor and shield specials activate twice per scene instead of once; the armor's
+  bulk penalty to Speed is halved
+- **Accessory** — the item functions as a focus for iron-aspected powers; Will checks made
+  while holding it gain +1; the item also functions as an improvised weapon (blunt, Might +1)
+  regardless of its primary form
+- **Found** *(legendary)* — the blasted lands and ruins of white city construction; fragments
+  in the deepest mage castles; Haven — the independent puppets carry knowledge of where old
+  ironwood was worked and may share it with those they trust
+
 ### Ashbone *(decay — erode)*
 *Calcified bones of the old world, pulled from the deepest ruins; they crumble and contaminate.*
 - **Effect** — the item inflicts the decay condition on contact; a target struck or touched

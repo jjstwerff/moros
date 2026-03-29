@@ -15,6 +15,7 @@ All data is stored in `localStorage`. There is no backend.
 
 | File | What it contains |
 |---|---|
+| `doc/claude/LORE.md` | World history — the portal, the first mage, the animal-people, the rift, the current day |
 | `doc/claude/RULES.md` | Full game rules — core mechanics, progression, races, backgrounds, contacts, crafting, weather |
 | `doc/claude/SCENARIOS.md` | All 8 scenarios — tension rules and per-scenario challenges |
 | `doc/claude/STATISTICS.md` | All 8 statistics — scenario uses, stat actions, specializations |

@@ -426,11 +426,11 @@ export const DATA = {
         { name:"Humans", description:"Versatile and diplomatic survivors.", powers:["adaptation","ingenuity","balance","portage","politics","sly","lookout"] },
         { name:"Otters", description:"Playful swimmers and nimble scouts.", powers:["hunter","swimmer","fur","nimble","scurry","sly","lookout"] },
         { name:"Owls", description:"Silent hunters with commanding presence.", powers:["claw","clan","hunter","lookout","charge","flight","scolding"] },
-        { name:"Pig men", description:"Resilient diggers with thick hides.", powers:["digging","hide","camp","smell","sleeper","charge","scolding"] },
+        { name:"Boar folk", description:"Resilient diggers with thick hides.", powers:["digging","hide","camp","smell","sleeper","charge","scolding"] },
         { name:"Rabbits", description:"Alert burrowers quick to find shelter.", powers:["camp","labyrinth","scrounger","hearing","sleeper","fur","digging"] },
         { name:"Raccoons", description:"Resourceful scavengers and shapeshifters.", powers:["scurry","camp","relaxed","sly","scrounger","clan","control"] },
         { name:"Rat folk", description:"Adaptable urban survivors in tight-knit clans.", powers:["clan","scurry","climber","sleeper","smell","scrounger","control"] },
-        { name:"Taurus", description:"Strong wanderers with enduring calm.", powers:["portage","swimmer","charge","labyrinth","relaxed","hide","travels"] },
+        { name:"Bull folk", description:"Strong wanderers with enduring calm.", powers:["portage","swimmer","charge","labyrinth","relaxed","hide","travels"] },
         { name:"Wolf folk", description:"Pack hunters with keen senses.", powers:["jaws","travels","control","hide","clan","smell","hearing"] }
     ],
     backgrounds: [

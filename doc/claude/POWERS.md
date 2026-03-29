@@ -294,9 +294,16 @@ which powers.
 - **Overwhelmed** — Every shadow hides a threat. Every pause is betrayal. You cannot rest.
 
 ### Magic *(Will + Hand — elemental)*
-*Bend the existing elements to your will.*
+*A spirit was bound to you at initiation. Its elemental nature is yours to channel — and it has
+never stopped pushing back.*
+
+At character creation, choose the spirit's type:
+- **Broad spirit** — carries 2–4 elements (chosen at creation); the mage may use any of them
+- **Focused spirit** — carries one element (chosen at creation); all Magic action totals using
+  that element gain +1; the Overwhelmed draw is interpreted with added intensity
+
 - **Combat** — direct elemental force against enemies; damage type and stat reduced depend on the
-  element chosen: Flame → fire/Endu −1; Water → cold/Speed −1; Wind → electric/Perc −1;
+  element used: Flame → fire/Endu −1; Water → cold/Speed −1; Wind → electric/Perc −1;
   Earth → blunt/Might −1; Iron → impaling/Endu −1; Light → radiant/Will −1;
   Dark → draining/Will −1; Plants → grab/Speed −1
 - **Exploration** — one element per action: shift a physical obstacle, create torch-equivalent
@@ -307,7 +314,8 @@ which powers.
   stop, granting the Cooking quality bonus; Water locates the nearest water source without a
   Perc check
 
-- **Overwhelmed** — Elements act without direction. They answer your mood, not your intent.
+- **Overwhelmed** — The spirit finds the gap and takes it. What happens next is its will, not
+  yours — shaped by its element and its grievance at the arrangement.
 
 ### Musical *(Char + Dex — atmosphere)*
 *Influence the mood when people pay attention.*
@@ -403,7 +411,8 @@ which powers.
 - **Overwhelmed** — Nothing matters enough to act. Calm becomes indifference. The group moves on.
 
 ### Religion *(Char + Will — bless)*
-*Grant others physical and mental boosts.*
+*You have learned the church's practice of reaching the great spirits. Contact is brief and never
+certain — but when it lands, the blessing it carries is unlike anything a local spirit can offer.*
 - **Combat** — bless allies before or during a fight to improve their capability; blessed
   characters reduce incoming radiant and draining damage by 1 each for the scene
 - **Camp** — bless the camp; all resting characters restore 1 additional stat point from short

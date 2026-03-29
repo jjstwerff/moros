@@ -152,10 +152,10 @@ direct. Each entry includes a **Druid bond** describing what the animal will do 
 and what it can offer across different scenarios. Without the Druid power these animals behave
 as described under Behaviour; with it, their cooperation can be requested and usually obtained.*
 
-*Note: the playable races of Moros include badgers, bats, beavers, cats, crows, finches, foxes,
-otters, owls, raccoons, rabbits, rat folk, and wolves — these are sapient peoples, not animals
-to be commanded. The creatures in this section are their wild, non-sapient counterparts in the
-natural world.*
+*Note: the playable races of Moros include badgers, bats, beavers, boar folk, bull folk, cats,
+crows, finches, foxes, humans, otters, owls, rabbits, raccoons, rat folk, and wolves — these are
+sapient peoples, not animals to be commanded. The creatures in this section are their wild,
+non-sapient counterparts in the natural world.*
 
 ### Stag
 *A large forest deer that knows every path through its range.*
@@ -541,47 +541,6 @@ valuables first; starts violence only if refused or if they believe the group is
 dirty when cornered — throws dirt, targets the smallest member, picks at wounds. Scatters if the
 group organises any real resistance.
 
-### Goblin
-*Small, numerous, and entirely without honour in a fight.*
-
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 2 | 5 | 2 | 3 | 2 | 4 | 5 | 1 |
-
-- **Knife** *(cutting, close)* — fast and opportunistic; reduces target Dex by 1; +1 Dex when
-  striking a target already engaged with another goblin
-- **Thrown debris** *(blunt, ranged)* — stones, filth, or whatever is at hand; reduces target
-  Might by 1; used to distract while others close in
-
-**Motivation** — Scavenging and petty malice. Goblins rarely have strategic goals. They want
-something the group has and are calculating the cheapest way to take it.
-
-**Behaviour** — Swarms, distracts, and steals rather than fighting in the open. Uses terrain
-to create obstacles and block retreat. Runs at the first sign of organised resistance — a goblin
-group that loses its numerical advantage evaporates. Goblins driven off will circle back to steal
-rather than attack again directly. A goblin warchief changes all of this.
-
-### Orc Raider
-*A warrior who measures worth in what has been taken and what has been held against odds.*
-
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 3 | 3 | 5 | 2 | 6 | 3 | 3 | 4 |
-
-- **Axe** *(cutting, close)* — direct and heavy; reduces target Dex by 1; ignores the shield block
-  special on a roll where Might exceeds the defender's Endu
-- **Smash** *(blunt, close)* — drives through armor; reduces target Might by 1; reduces the
-  defender's armor or breastplate special for the rest of the scene on a successful hit
-
-**Motivation** — Plunder and the honour of victory. Orcs raid to take what others have and to
-prove strength. They respect force and despise submission without a fight.
-
-**Behaviour** — Direct and loud — announces intent before charging, which is not a courtesy but
-a display of confidence. Respects a defender who holds ground; treats fleeing prey as beneath
-pursuit. May be reasoned with through visible shows of strength or by pointing to a more
-profitable target nearby. Wounded orcs often fight harder rather than retreating — withdrawing
-is a statement, and they are careful about what statements they make.
-
 ### Town Guard
 *A professional whose first goal is to avoid trouble, not cause it.*
 
@@ -604,190 +563,390 @@ Bribery works better than force in most situations a guard will actually face.
 
 ---
 
-## Undead
+## Chaotic Spirit Constructs
 
-### Skeleton
-*The remnant of a will that outlasted its body — following a directive it no longer
-understands.*
+*When the rift tore open and released chaotic spirits into the world, many reached for the nearest
+available material and tried to build themselves bodies. They had no understanding of anatomy —
+only impulse and proximity. Most of what resulted is wrong in ways that range from pitiable to
+catastrophic. A few, by chance of material, assembled forms that work well enough to give the
+spirit inside a recognisable purpose. These too are listed here. All of them are products of the
+rift, not creatures of the world before it.*
 
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 1 | 3 | 4 | 1 | 4 | 2 | 3 | 5 |
-
-- **Bone strike** *(blunt, close)* — hammers with fist or weapon hilt; reduces target Might by 1;
-  does not tire between rounds
-- **Armed attack** *(cutting or impaling, close)* — if raised with a weapon, uses it; reduces
-  target Dex by 1 (cutting) or Endu by 1 (impaling); the weapon type and reach apply normally
-
-**Motivation** — None of its own. A skeleton follows the directive set at its raising: guard
-this room, attack the living, pursue this specific person. It has no goals beyond that
-instruction.
-
-**Behaviour** — Advances without hesitation toward any target that matches its directive. Does
-not react to pain, pleas, or threats. Will walk into fire or off a ledge if the path leads that
-way. Cannot be negotiated with, frightened, or deceived. Stops only when destroyed or when the
-controlling will — often a nearby necromancer or a sealed ward — is broken.
-
-### Zombie
-*Something that used to be a person, driven forward by an urge that has no language.*
+### Stitchling
+*A small chaotic spirit that grabbed whatever parts it could reach first — scraps of rodent,
+claw, wing fragment — and stitched them together without understanding how any of it works.*
 
 | Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
 |---|---|---|---|---|---|---|---|
-| 1 | 1 | 7 | 1 | 5 | 2 | 1 | 6 |
+| 1 | 4 | 2 | 2 | 2 | 3 | 5 | 1 |
 
-- **Grab** *(grab, close)* — does not release; reduces target Speed by 1; a grabbed target cannot
-  move until they beat the zombie's Might with their own or an ally breaks the grip
-- **Bite** *(cutting, close)* — reduces target Dex by 1; only usable against a grabbed or prone
-  target; triggers a Will check against contamination if the bite breaks skin
+- **Scrape** *(cutting, close)* — a limb goes the wrong way and catches the target; reduces target
+  Dex by 1; +1 Dex when two stitchlings strike the same target simultaneously
+- **Fling** *(blunt, ranged)* — hurls debris or a piece of its own body; reduces target Might by
+  1; if the piece was part of the stitchling it must spend an action recovering it or lose 1 Dex
 
-**Motivation** — None. An animalistic compulsion toward the living. No strategy, no memory, no
-preference — only the drive to close distance with warmth and breath.
+**Motivation** — The spirit inside is confused and in constant low-level pain. It scavenges
+instinctively and attacks anything that seems to have better parts.
 
-**Behaviour** — Shambles toward the loudest or closest living thing without deviation. Cannot be
-frightened, tricked, or stopped by speech. Ignores other undead entirely. Conventional damage
-slows but does not reliably stop them — blades that would kill a person may not drop a zombie.
-Dismemberment and fire are reliable; blunt trauma finishes what cutting begins.
+**Behaviour** — Moves wrong: joints bend backward, extra limbs drag. In groups they coordinate
+slightly — not through intelligence but because their spirits briefly resonate when close.
+Retreats fast when hurt. A wounded stitchling may attempt to tear a piece from a fallen ally to
+replace what it lost.
 
-### Wraith
-*Grief and rage given form, anchored to the world by something it cannot let go of.*
-
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 4 | 4 | 6 | 1 | 2 | 5 | 4 | 7 |
-
-- **Life drain** *(draining, close)* — touch attack; reduces target Will by 1 per hit; a target at
-  Will 1 collapses
-- **Terror** *(radiant, area)* — wave of dread; reduces target Will by 1; targets with Will < 4
-  must also spend their next action retreating
-
-**Motivation** — Unfinished business. Something keeps the wraith from passing: grief, rage,
-guilt, a promise unkept, a name unavenged. Understanding what anchors it is the only path to
-ending the encounter without destruction.
-
-**Behaviour** — Manifests first to observe or to communicate a fragment of what it once knew.
-Turns aggressive when its anchor is threatened, mocked, or ignored for too long. Physical
-attacks pass through it; it can only be harmed by Will-based actions, sacred items, or by
-directly engaging the anchor. A group that listens rather than fights has options a fighting
-group does not.
-
----
-
-## Fantastical Creatures
-
-### Troll
-*A regenerating wall of hunger that does not understand the concept of losing.*
+### Graftbeast
+*A spirit that spent weeks assembling a body from large animal kills — bear haunches, boar tusks,
+wolf skull — sewn with sinew and rot. It still does not understand why things hurt it.*
 
 | Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
 |---|---|---|---|---|---|---|---|
-| 1 | 2 | 9 | 2 | 9 | 3 | 3 | 3 |
+| 1 | 2 | 5 | 2 | 6 | 3 | 3 | 4 |
 
-- **Club** *(blunt, close)* — driven by full body weight; reduces target Might by 1; a target with
-  Endu < 5 is also knocked prone on a direct hit
-- **Claw rend** *(cutting, close)* — two-handed grip; reduces target Dex by 1; if both claws land
-  in the same round, the target also cannot use armor specials next round
+- **Wrong arm** *(blunt, close)* — a limb swings from an unexpected angle; reduces target Might
+  by 1; ignores shield block special as the arc comes from a direction the shield does not cover
+- **Tusk drive** *(impaling, close)* — animal tusks mounted on the body are driven forward;
+  reduces target Endu by 1; a target with Speed < 4 cannot step clear in time
 
-**Motivation** — Hunger. A troll wants to eat and will pursue anything edible into almost any
-environment. It is territorial only to protect its food sources.
+**Motivation** — Territory and confusion. The spirit assembled the body and now does not know
+what to do with it except defend the space it occupies.
 
-**Behaviour** — Crashes through obstacles rather than around them. Attacks the largest or
-slowest target first, having learned that big things hurt and slow things are easy. Regenerates
-wounds during combat, which makes it appear unstoppable — and it is, until the group discovers
-that fire and acid interrupt regeneration entirely. Does not retreat. Trolls do not recognise
-the moment they are losing.
+**Behaviour** — Slow to start but persistent once committed. Approaches directly — the body is
+difficult to operate and the spirit does not understand tactics. When wounded it becomes erratic
+as the spirit panics trying to understand why the body is failing.
 
-### Harpy
-*A predator that weaponises beauty before it weaponises talons.*
-
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 5 | 5 | 3 | 2 | 3 | 4 | 6 | 3 |
-
-- **Talon dive** *(cutting, close)* — drops from flight onto a single target; reduces target Dex
-  by 1; +1 Speed on the attack; the harpy immediately returns to altitude after the strike
-- **Screech** *(blunt, area)* — disorienting at close range; reduces target Might by 1; targets
-  with Perc ≥ 4 resist; all others also take −1 to their next action
-
-**Motivation** — Cruelty and food, in roughly equal measure. Harpies lure prey with their song
-and attack once the prey is helpless, confused, or separated from the group.
-
-**Behaviour** — Circles overhead singing, targeting characters with lower Will first. A target
-who resists the lure is ignored until the easy ones are dealt with. Dives to attack and returns
-immediately to altitude — a harpy grounded in melee is a harpy in serious trouble. Flees when
-one of the flock falls, but may return hours later when the group believes it is safe.
-
-### Werewolf
-*Two creatures sharing one body — one of them is asking for help.*
+### The Accumulator
+*A spirit that cannot stop adding. Every encounter leaves it larger and more contradictory —
+fur and scale and timber all pressed into a body that groans under its own weight.*
 
 | Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
 |---|---|---|---|---|---|---|---|
-| 2 | 5 | 6 | 2 | 7 | 6 | 6 | 3 |
+| 1 | 1 | 10 | 2 | 9 | 2 | 2 | 6 |
 
-- **Claw** *(cutting, close)* — fast and relentless; reduces target Dex by 1 per hit; two claw
-  attacks per round in beast form without spending additional actions
-- **Bite** *(draining, close)* — carries the curse; reduces target Will by 1; a bitten character
-  who does not purge it before the next full moon faces their own transformation
+- **Absorb** *(grab, close)* — pulls a grabbed target partially into its mass; reduces target
+  Speed by 1; the target also takes blunt damage each round until they break free (Might ≥ 7);
+  the accumulator heals 1 Endu by incorporating debris pulled from the environment
+- **Smash** *(pummel, close)* — drives its bulk forward; reduces target Might by 1; a target with
+  Endu < 5 is knocked prone and the accumulator moves into their position
 
-**Motivation** — In human form, often horror at what it becomes and a desperate attempt to
-protect others from itself. In beast form, pure predatory hunger with no strategy and no memory
-of anything it once valued.
+**Motivation** — More. The spirit's original elemental impulse was toward accumulation. It no
+longer has a purpose beyond taking in more material.
 
-**Behaviour** — The human form may seek out the group specifically to beg for help or to warn
-them away before nightfall. The beast form charges the nearest moving target without hesitation,
-ignores pain, and fights until something stops it. Will-based powers and silver disrupt the
-transformation. A werewolf beaten back to human form often comes around confused and grieving —
-and can be spoken to.
+**Behaviour** — Grows visibly during encounters as it absorbs fallen debris. Physical attacks
+that remove pieces do not reliably harm it — it recovers and reattaches. Fire destroys material
+before it can be recovered; sustained fire forces the spirit to abandon its body and flee.
 
-### Vampire
-*The most dangerous predator in any room, and usually the most charming person in it.*
-
-| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
-|---|---|---|---|---|---|---|---|
-| 7 | 5 | 7 | 3 | 6 | 5 | 5 | 8 |
-
-- **Bite** *(draining, close)* — must be adjacent to an unresisting or dominated target; reduces
-  target Will by 1 and Endu by 1 per feeding (compound drain — both stats reduced by one attack);
-  three feedings in a campaign create a thrall
-- **Dominate** *(radiant, close)* — eye contact; reduces target Will by 1 if resisted; a target
-  with Will < 6 acts on the vampire's instruction for the remainder of the scene unless another
-  character intervenes
-
-**Motivation** — Survival and accumulation of power. The immediate need is feeding; the longer
-game is control — over territory, contacts, knowledge, and thralls.
-
-**Behaviour** — Rarely engages directly unless certain of the outcome. Prefers to dominate one
-party member quietly and withdraw before the others realise what happened. Negotiates when it
-must and is often the most reasonable voice in the room — until its needs are no longer served.
-Sunlight and holy power are genuine vulnerabilities; a prepared group changes the encounter
-entirely. Beneath all other tactics lies one priority: a vampire that believes it is losing
-will abandon everything and flee without hesitation.
-
-### Young Dragon
-*Old enough to be terrifying. Not yet old enough to be patient.*
+### Screamer
+*A spirit that tried to build wings and a throat that could produce birdsong. The wings cannot
+carry it. The throat produces something that should not exist.*
 
 | Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
 |---|---|---|---|---|---|---|---|
-| 6 | 4 | 10 | 3 | 10 | 6 | 6 | 7 |
+| 1 | 5 | 3 | 1 | 3 | 4 | 5 | 3 |
 
-- **Bite** *(cutting, close)* — enormous jaw force; reduces target Dex by 1; a target who does not
-  have Endu ≥ 6 is also seized and cannot act until they beat the dragon's Might
-- **Claw** *(cutting, close)* — sweeping arc; reduces target Dex by 1; hits up to two adjacent
-  targets at once
-- **Breath weapon** *(fire / cold / electric, area)* — the type is fixed per dragon; fire reduces
-  Endu by 1, cold reduces Speed by 1, electric reduces Perc by 1; a wide cone that catches multiple
-  targets; unusable two rounds in a row
-- **Tail sweep** *(blunt, area)* — clears all adjacent targets; reduces target Might by 1; any
-  character with Speed < 5 is also knocked prone
+- **Scream** *(blunt, area)* — the sound is wrong in a way that bypasses normal resistance;
+  reduces target Will by 1; targets with Perc ≥ 5 also take −1 to all actions for one round;
+  cannot be blocked by armor
+- **Flail dive** *(cutting, close)* — the wings build momentum in a controlled fall rather than
+  flight; reduces target Dex by 1; the screamer also takes 1 blunt damage per use as the landing
+  tears the half-built body
 
-**Motivation** — Greed and pride. A young dragon is building its hoard and establishing its
-territory. It attacks those who trespass, challenge its pride, or represent a chance to acquire
-something of value.
+**Motivation** — The scream is an attempt to communicate or replicate the sound that first drew
+the spirit to birds. It has no idea it causes pain. It keeps trying.
 
-**Behaviour** — Assesses the group from a distance before committing. A dragon that does not
-think the fight is worth having may demand tribute instead, and this offer is genuine — it wants
-the hoard, not the bodies. Opens with the breath weapon to scatter the group, then picks off
-isolated targets. Uses height relentlessly; a dragon that descends to ground level is making a
-mistake it knows it is making. Will retreat if the fight clearly turns — a living dragon can
-rebuild a hoard, and it has the patience of something that expects to live for centuries.
+**Behaviour** — Approaches and screams first; the attack is an attempt to interact, not to harm.
+Attacks only when hurt directly. A character who does not attack and instead makes sound back
+may redirect it entirely. A killed screamer releases a sound — quieter than the scream and not
+entirely unpleasant — as the spirit disperses.
+
+### The Split
+*Two wills sharing one body: the person who was there first, and the chaotic spirit that seeped
+in through a wound or a moment of collapse. Neither has won. Both are exhausted.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 3 | 4 | 4 | 2 | 4 | 4 | 4 | 4 |
+
+- **Erratic strike** *(cutting, close)* — the spirit's reflexes, not the person's intent; reduces
+  target Dex by 1; the person's resistance means the attack may hesitate — DM may rule a miss
+  against a target the spirit would otherwise hit
+- **Plea** *(radiant, close)* — the person breaks through for a moment; instead of dealing
+  damage, a target who chooses not to attack for one round forces the spirit to lose 1 Will; the
+  person uses this window to communicate something true about their situation
+
+**Motivation** — The person wants to be helped, or at least stopped from causing harm. The
+spirit wants a body that works and does not understand why the person keeps interfering.
+
+**Behaviour** — Alternates between person-dominant rounds (pleading, communicating, trying to
+hinder its own attacks) and spirit-dominant rounds (direct and fast). A character with the
+Shamanic power can address both simultaneously. Resolution: sustained Will-based authority
+causes the spirit to withdraw; alternatively, giving the person room to act lets them drive the
+spirit out — either path ends the encounter without harm.
+
+### Memory Shade
+*A spirit that absorbed fragments of many dead colonists — those lost in the first years, in the
+rift disaster. It does not know which memories are whose. It keeps approaching the living to
+show them.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 5 | 4 | 5 | 1 | 2 | 5 | 4 | 8 |
+
+- **Memory intrusion** *(draining, close)* — forces a fragment of absorbed memory into the
+  target's mind; reduces target Will by 1; the target also experiences a false perception for one
+  round — DM describes a fragment of a dead person's last moments
+- **Grief wave** *(draining, area)* — a pulse of unresolved loss; reduces target Will by 1;
+  targets with Will < 4 must also spend their next action standing still, unable to act through
+  the weight of it
+
+**Motivation** — Connection. The shade cannot separate its own experience from the memories it
+carries. It approaches the living because the memories in it want to be remembered.
+
+**Behaviour** — Does not attack first. Approaches slowly, making gestures that reference the
+dead: a woman's way of holding her hands, a name in a language no one currently speaks. Turns
+aggressive only when ignored completely, physically attacked, or mocked. A character who
+genuinely engages with what the shade is showing gains a fragment of historical knowledge and
+can redirect it peacefully. The Shamanic power can address the spirits beneath the memories
+directly.
+
+### The Unfinished
+*A spirit that has been building for decades. No one agreed on what it was trying to make. What
+it has assembled — animal parts and stone and timber and iron rivets from ruined machinery — no
+longer fits through doorways and moves with the sound of things tearing.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 1 | 14 | 3 | 13 | 3 | 2 | 9 |
+
+- **Contradiction** *(pummel, area)* — multiple limbs moving in conflicting directions at once;
+  reduces target Might by 1; hits all adjacent targets regardless of approach direction; cannot
+  be flanked because it faces every direction simultaneously
+- **Absorb and crush** *(grab, close)* — seizes a target and begins incorporating them; reduces
+  target Speed by 1; the target takes blunt damage (Might −1) each round and begins losing Endu;
+  requires combined Might ≥ 12 or sustained fire to break free
+
+**Motivation** — Completion. The spirit has been trying to build something that works for so
+long it has forgotten what it was originally trying to make. Somewhere in the mass there is an
+original shape it keeps striving toward.
+
+**Behaviour** — Its size reshapes the landscape by moving through it. Direct combat at full
+strength is near impossible. The Shamanic power can reach the original spirit inside, which is
+tired and can be convinced to stop. Fire is the most reliable counter — the body contains
+decades of dry organic accumulation and burns catastrophically. Targeting the structural joints
+holding the mass together causes the spirit to lose coherence and eventually abandon the form.
+
+### Chimera
+*A spirit that seized lion, goat, and serpent parts and forced them together. None of the three
+anatomies is fully in charge. The fire that escapes its throat is not a weapon — it is the body
+arguing with itself.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 3 | 7 | 2 | 8 | 4 | 4 | 3 |
+
+- **Bite** *(cutting, close)* — whichever head reaches first; reduces target Dex by 1; on rounds
+  where the lion and serpent head both target the same opponent, add +1 Might to the attack
+- **Gout** *(fire, area)* — the serpent throat expels burning material; reduces target Endu by 1;
+  targets within reach must spend an action clearing flames; triggers without warning when the
+  three anatomies briefly agree on a direction
+
+**Motivation** — The three parts want different things. The lion wants territory. The goat wants
+to move. The serpent wants warmth. The spirit holding it together is exhausted by the argument.
+
+**Behaviour** — Erratic. Charges, then stops. Retreats, then charges again. The fire happens not
+because the chimera decides to breathe but because the three-way conflict briefly aligns. A
+character with the Shamanic power can address the central spirit and calm it; a calmed chimera
+often simply lies down, which is the most peace it has had.
+
+### Cockatrice
+*A spirit that found a rooster and a lizard in the same moment and could not choose. The result
+is half of each, joined at the wrong axis. What leaks from its eyes is the spirit's confusion
+made visible.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 6 | 3 | 1 | 3 | 5 | 6 | 4 |
+
+- **Gaze** *(draining, close)* — the spirit's confusion leaks as a visible distortion; reduces
+  target Will by 1; a target with Will < 4 also loses 1 Speed as the body stiffens before
+  something the mind cannot categorise
+- **Spur** *(cutting, close)* — the rooster legs drive forward; reduces target Dex by 1; +1 Dex
+  when attacking from the side or behind, where the gaze does not reach
+
+**Motivation** — The spirit attacks anything that stares at it, which everything does, because
+it is deeply unsettling to look at.
+
+**Behaviour** — Stays at distance, watching. Approaches only when it decides a target will not
+hold its gaze. Highly sensitive to being looked at directly — this is distress, not aggression.
+A character who looks away and does not advance may find the cockatrice simply leaves.
+
+### Hippogriff
+*A spirit drawn to speed. Horse legs, eagle wings, a head built for height. Of all the chaotic
+constructs it is among the least tortured — both animals it assembled are built for open ground
+and open air.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 5 | 5 | 1 | 6 | 5 | 8 | 4 |
+
+- **Talon strike** *(cutting, close)* — the eagle foreclaws at speed; reduces target Dex by 1;
+  the hippogriff retreats immediately to altitude after striking; cannot be caught in retaliation
+- **Trample** *(blunt, close)* — the horse hindquarters drive through a landing; reduces target
+  Might by 1; used only when the hippogriff commits to ground; a target with Endu < 4 is prone
+
+**Motivation** — Open space and the pleasure of movement. A hippogriff does not hunt; it moves.
+It attacks because it was moving through something that was in the way.
+
+**Behaviour** — Rarely still. Approaches fast, strikes, and is gone. Does not pursue into
+enclosed terrain — if the group reaches cover it circles and eventually loses interest.
+
+**Druid bond** — Will carry a druid or a designated ally as a mount at Speed 8 across open
+terrain, ignoring ground obstacles entirely. In flight the druid gains Lookout-equivalent range
+for the duration. The hippogriff will not be directed into enclosed spaces or sustained combat —
+it cooperates for movement, not for war.
+
+### Jackalope
+*A spirit that found a rabbit and then saw an elk and wanted that too. The result is quick, small,
+and deeply irritable. The antlers are not decorative.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 7 | 2 | 1 | 2 | 4 | 7 | 3 |
+
+- **Gore** *(impaling, close)* — a short thrust from the antlers; reduces target Dex by 1; can
+  be used mid-retreat — the jackalope drives forward once and immediately continues running
+- **Scatter** *(blunt, area)* — when cornered, kicks and bucks in every direction; reduces target
+  Might by 1; all adjacent targets must spend an action reacting or lose their footing
+
+**Motivation** — Flight, first. The antlers are entirely defensive. A jackalope with any escape
+route takes it; only in genuinely enclosed space does it stand and fight.
+
+**Behaviour** — Faster than anything nearby. In groups they scatter simultaneously in every
+direction, making targeting any one of them nearly impossible. A character with the Druid power
+can calm one and receive a clear sense of what has recently moved through the area — the spirit's
+speed-awareness makes them unwitting scouts.
+
+### Sphinx
+*A spirit that found a lion's body and a human skull and understood enough about human faces to
+want one. The voice is the worst part. It almost sounds like someone speaking.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 6 | 3 | 8 | 2 | 7 | 7 | 4 | 9 |
+
+- **Voice** *(draining, area)* — the almost-human speech causes deep unease; reduces target Will
+  by 1; targets with Will < 5 also take −1 to all actions for one round as the mind tries to
+  process what it is hearing
+- **Claw** *(cutting, close)* — a lion's force with something close to purpose behind it; reduces
+  target Dex by 1; the sphinx does not swipe — it reaches and places, which is worse
+
+**Motivation** — Understanding. The spirit assembled a human face because it had been watching
+humans long enough to want to communicate. It is trying to ask a question it cannot yet form
+into words, so it tests the people it encounters in other ways first.
+
+**Behaviour** — Does not attack first. Circles the group and speaks — sound that is not quite
+language but carries unmistakable intent. A character who responds (Will ≥ 5 or the Shamanic
+power) discovers the spirit wants to understand what humans are and why they build things. A
+group that engages honestly may end the encounter with knowledge the sphinx has been accumulating
+for a long time. Attacks only when the group refuses to engage entirely.
+
+### Typhon
+*The oldest of the constructs. A spirit that survived the rift itself and has been accumulating
+and reconfiguring ever since. Enormous. Wrong in too many dimensions to describe quickly.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 2 | 16 | 3 | 15 | 5 | 3 | 11 |
+
+- **Serpent mass** *(cutting, area)* — the snake portions strike independently of the main spirit;
+  reduces target Dex by 1; all adjacent targets are hit simultaneously; the serpent heads act on
+  their own even when the central spirit is focused elsewhere
+- **Downward force** *(pummel, close)* — drives a target into the ground; reduces target Endu by
+  1 (bypasses armor); a target with Might < 8 is pinned and cannot act until they break free or
+  an ally intervenes
+
+**Motivation** — Unknown. Typhon has been changing for so long that any original intent has been
+buried under decades of reconfiguration. What remains is immensity and a deep resistance to
+anything that tries to diminish it.
+
+**Behaviour** — Cannot be faced in direct combat by a normal group. It occupies too many attack
+angles simultaneously. The Shamanic power can reach the central spirit, which is ancient enough
+to respond to a serious argument. Dismantling the semi-autonomous serpent mass over several
+rounds creates openings. The central spirit can be convinced to withdraw from its accumulated
+form if the cost of maintaining it is made high enough.
+
+### Griffin
+*A spirit that found a lion and an eagle dead in the same valley and took both. It understood
+something about predation — unlike many constructs, it moves with actual coordination. Both
+animals it chose were hunters.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 5 | 6 | 2 | 8 | 6 | 6 | 5 |
+
+- **Dive** *(cutting, close)* — drops from height onto a single target; reduces target Dex by 1;
+  the griffin's Dex increases by 1 on this attack; cannot be intercepted; retreats to altitude
+  immediately after
+- **Pinion** *(grab, close)* — the lion forequarters pin a target while the wings hold ground;
+  reduces target Speed by 1; a held target also takes cutting damage (Dex −1) each round from
+  the talons; requires Might ≥ 7 or an ally to break free
+
+**Motivation** — Territory and the logic of predation. The spirit found something it understood
+in hunting. It guards its range and hunts within it; it does not pursue beyond it.
+
+**Behaviour** — Patrols from height. Does not attack without cause — entering its range is cause
+enough. A character who withdraws respectfully from griffin territory will not be pursued.
+
+**Druid bond** — Will permit a druid to pass through its territory freely and extend that
+permission to the group. Can be directed to patrol a specific area and report intrusions. Will
+not participate in combat outside its territory unless the druid has demonstrated consistent
+respect across multiple encounters.
+
+### Wyvern
+*A spirit that reached for something like a dragon and came close. Two legs, wings that work,
+a tail that produces venom. What it lacks in the dragon's full configuration it compensates for
+with spite.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 4 | 7 | 1 | 8 | 4 | 5 | 5 |
+
+- **Venom sting** *(draining, close)* — the tail drives forward; reduces target Will by 1; the
+  venom also reduces Endu by 1 per round until treated; the tail has longer reach than the body
+  suggests
+- **Wing buffet** *(blunt, area)* — grounds all adjacent targets; reduces target Speed by 1;
+  clears space for the tail; a character with Speed < 4 is also knocked prone
+
+**Motivation** — Hunger and the frustration of being almost something else. The spirit chose
+dragon as its model and knows it fell short. This produces an aggression that a more successful
+construct does not have.
+
+**Behaviour** — Attacks earlier than its size warrants. Uses the wings to create space and the
+tail to reach what the body cannot. Does not retreat while the venom is working in any target —
+it waits. Cold reduces venom potency; treating it requires Hand ≥ 3 and specific materials.
+
+### Cerberus
+*A spirit that found three dogs that had died together and could not choose among them. Three
+heads, one body, each head with its own sleep cycle and its own attention. It is never fully
+unaware.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 4 | 8 | 1 | 7 | 9 | 5 | 6 |
+
+- **Triple bite** *(cutting, close)* — three heads at three angles; reduces target Dex by 1; on
+  rounds where all three heads target the same opponent, add +1 Might; one head always faces a
+  different direction, making surprise from behind impossible
+- **Bay** *(blunt, area)* — all three heads sound at once; reduces target Will by 1; targets with
+  Will < 4 must also spend their next action covering their ears; audible from far away and may
+  draw other creatures
+
+**Motivation** — Nothing passes that it has not checked. The spirit chose dogs because dogs
+guard. It has been guarding the same location since shortly after the rift.
+
+**Behaviour** — Stationed, not wandering. The three heads rotate watch; there is no gap in its
+awareness. A character with Char ≥ 5 can approach slowly with empty hands — one head accepts
+this, one is uncertain, one has already decided to bite. Which wins depends on the round's Will.
+The Shamanic power can ask what it is guarding; the spirit always names the same location, and
+is always faintly surprised that so much time has passed.
 
 ---
 
