@@ -55,6 +55,7 @@ class State {
     #stats
     #xp
     #items
+    #elements
     constructor() {
         this.name = '';
         this.gender = '';
@@ -66,6 +67,7 @@ class State {
         this.#stats = {};
         this.#xp = 0;
         this.#items = new Set();
+        this.#elements = [];
         DATA.statistics.forEach(s => this.#stats[s.abbreviation] = 1);
     }
 
@@ -81,9 +83,13 @@ class State {
                 type: p.type,
                 name: p.name,
             })),
-            items: Array.from(this.#items)
+            items: Array.from(this.#items),
+            elements: this.#elements,
         };
     }
+
+    get elements() { return [...this.#elements]; }
+    set elements(arr) { this.#elements = [...arr].slice(0, 3); }
 
     get stats() {
         return this.#stats;
@@ -232,6 +238,12 @@ class State {
                     this.addItem(i);
                 } catch { /* item no longer allowed, skip */ }
             });
+        }
+        if (p.type === 'power') {
+            const pw = getPower(p.name);
+            if (pw?.special === 'elemental' && (state.#stats[p.name] ?? 0) === 0) {
+                state.#elements = [];
+            }
         }
     }
 
@@ -474,6 +486,7 @@ export function loadDump(s) {
     if ('unrestricted' in s) {
         s.unrestricted.forEach(i => state.addItem(i));
     }
+    if (Array.isArray(s.elements)) state.elements = s.elements;
 }
 
 export function statAbbr(name) {

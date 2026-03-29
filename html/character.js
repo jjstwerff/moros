@@ -161,11 +161,17 @@ export function renderRules() {
     <div class="rules-section-header">Default Cards</div>
     <div class="cards-grid">${
         DATA.cards.map(card => `
-            <div class="card-item">
-                <div class="card-source">${card.name}</div>
-                <div class="card-name">${card.statistics.map(s => Logic.statAction(s)).join(' / ')}</div>
-                <div class="card-stats">${card.statistics.join(' · ')}</div>
-                <div class="card-stats">Special: ${card.special}</div>
+            <div class="card-item" data-element="${card.name}">
+                <div class="card-top-band"></div>
+                <div class="card-body-inner">
+                    <div class="card-title">${card.name}</div>
+                    <div class="card-rule-line"></div>
+                    <div class="card-actions">
+                        ${card.statistics.map(s => `<div class="card-action">${Logic.statAction(s)}</div>`).join('')}
+                    </div>
+                    <div class="card-stats-row">${card.statistics.join(' · ')}</div>
+                    <div class="card-special-badge">${card.special}</div>
+                </div>
             </div>`).join('')
     }</div>`;
 
@@ -302,6 +308,89 @@ export function renderProgression() {
     }
     list.innerHTML = d;
     renderItemsSection();
+    renderElementsSection();
+}
+
+// ─────────────────────────────── ELEMENTAL ──────────────────────────────
+const ELEMENT_DAMAGE = {
+    Flame: 'fire · Endu −1', Water: 'cold · Speed −1', Wind: 'electric · Perc −1',
+    Earth: 'blunt · Might −1', Iron: 'impaling · Endu −1',
+    Light: 'radiant · Will −1', Dark: 'draining · Will −1', Plants: 'grab · Speed −1',
+};
+
+function renderElementsSection() {
+    const el = document.getElementById('elements-section');
+    if (!el) return;
+    if (Logic.stat('Magic') === 0) { el.innerHTML = ''; return; }
+    const elements = Logic.state.elements;
+    const canAdd = elements.length < 3;
+    let html = `
+    <div class="divider"></div>
+    <div class="section-title">Elemental Attunement</div>
+    <div class="hint-text">Choose 1–3 elements for Magic. Order sets priority in play.</div>`;
+    if (elements.length > 0) {
+        html += '<div class="elements-list">';
+        elements.forEach((e, i) => {
+            html += `<div class="element-row">
+                <span class="element-num">${i + 1}.</span>
+                <span class="element-name">${e}</span>
+                <span class="element-damage">${ELEMENT_DAMAGE[e] || ''}</span>
+                <div class="element-controls">
+                    <button class="btn-slot-edit" onclick="moveElement(${i},-1)"${i === 0 ? ' disabled' : ''}>▲</button>
+                    <button class="btn-slot-edit" onclick="moveElement(${i},1)"${i === elements.length - 1 ? ' disabled' : ''}>▼</button>
+                    <button class="btn-slot-edit" onclick="removeElement(${i})">✕</button>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    if (canAdd) {
+        html += `<button class="btn-slot-edit elements-add-btn" onclick="openAddElement()">+ Add element</button>`;
+    }
+    el.innerHTML = html;
+}
+
+export function openAddElement() {
+    document.getElementById('modal-title').textContent = 'Choose Element';
+    const chosen = new Set(Logic.state.elements);
+    const list = document.getElementById('choice-list');
+    list.innerHTML = DATA.cards.map(card => {
+        if (chosen.has(card.name)) {
+            return `<div class="choice-item disabled"><div>
+                <div class="choice-item-name">${card.name}</div>
+                <div class="choice-item-meta">Already chosen</div>
+            </div></div>`;
+        }
+        return `<div class="choice-item" onclick="pickElement('${card.name}')"><div>
+            <div class="choice-item-name">${card.name}</div>
+            <div class="choice-item-meta">${ELEMENT_DAMAGE[card.name] || card.special}</div>
+        </div></div>`;
+    }).join('');
+    document.getElementById('choice-modal').classList.add('open');
+}
+
+export function pickElement(element) {
+    const arr = Logic.state.elements;
+    arr.push(element);
+    Logic.state.elements = arr;
+    closeModal();
+    renderProgression();
+}
+
+export function removeElement(idx) {
+    const arr = Logic.state.elements;
+    arr.splice(idx, 1);
+    Logic.state.elements = arr;
+    renderProgression();
+}
+
+export function moveElement(idx, dir) {
+    const arr = Logic.state.elements;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= arr.length) return;
+    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+    Logic.state.elements = arr;
+    renderProgression();
 }
 
 export function dropProgression() {
@@ -704,7 +793,10 @@ export function renderCharSheet() {
                 ${DATA.powers.map(p => {
                     if (Logic.stat(p.name) === 0) return '';
                     const badge = Logic.isOverwhelmed(p.name) ? ' <span class="sheet-overwhelmed">Overwhelmed</span>' : '';
-                    return `<li>${p.name}: ${Logic.stat(p.name)} · ${p.special} · ${p.description}${badge}</li>`;
+                    const elemNote = p.special === 'elemental' && Logic.state.elements.length > 0
+                        ? ` <span class="sheet-elements">[${Logic.state.elements.join(' › ')}]</span>`
+                        : '';
+                    return `<li>${p.name}: ${Logic.stat(p.name)} · ${p.special} · ${p.description}${elemNote}${badge}</li>`;
                 }).join('')}
             </ul>
           </div>
@@ -728,13 +820,24 @@ export function renderCharSheet() {
       <div class="divider"></div>
       <div class="section-title" id="cards-title">Cards</div>
       <div class="cards-grid">
-        ${Logic.state.cards.map(c => `
-          <div class="card-item">
-            <div class="card-source">${c.source}</div>
-            <div class="card-name">${c.stats.map(s => Logic.statAction(s)).join(' / ')}</div>
-            <div class="card-stats">${c.stats.join(' · ')}</div>
-            <div class="card-stats">Special: ${c.special}</div>
-          </div>`).join('')}
+        ${Logic.state.cards.map(c => {
+            const elemLine = c.special === 'elemental' && Logic.state.elements.length > 0
+                ? `<div class="card-elements-row">${Logic.state.elements.join(' · ')}</div>`
+                : '';
+            return `<div class="card-item">
+                <div class="card-top-band"></div>
+                <div class="card-body-inner">
+                    <div class="card-title">${c.source}</div>
+                    <div class="card-rule-line"></div>
+                    <div class="card-actions">
+                        ${c.stats.map(s => `<div class="card-action">${Logic.statAction(s)}</div>`).join('')}
+                    </div>
+                    <div class="card-stats-row">${c.stats.join(' · ')}</div>
+                    ${elemLine}
+                    <div class="card-special-badge">${c.special}</div>
+                </div>
+            </div>`;
+        }).join('')}
       </div>
 
       <div class="btn-row btn-row--sheet">
@@ -804,3 +907,7 @@ window.removeChar = removeChar;
 window.downloadRoster = downloadRoster;
 window.uploadRoster = uploadRoster;
 window.showStatInfo = showStatInfo;
+window.openAddElement = openAddElement;
+window.pickElement = pickElement;
+window.removeElement = removeElement;
+window.moveElement = moveElement;
