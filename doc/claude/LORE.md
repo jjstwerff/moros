@@ -40,30 +40,70 @@ sealed it from their end. No one else came through. No one returned.
 
 ## The First Mage
 
-A young woman encountered something the others had not. A spirit — one of the ancient wanderers
-who had inhabited this world before the colonists arrived — took an interest in her specifically.
-What exactly passed between them is not known. What is known is that the spirit chose to merge
-with her, and the result was the first mage of the new world.
+Her name was Narissa. She was twenty-four years old and out on a lake, checking whether the fish
+stocks they had seeded were spreading, when a whirlpool opened without warning beneath her boat
+and pulled her under. An hour later she was washed ashore. She did not know what had happened to
+her.
 
-Her abilities were not subtle. She could shape elements, read the weather, speak to the land in
-ways that made things grow. She was not exceptionally powerful by later standards, but she was
-first, and the path she walked others would follow.
+She told no one. She had felt the spirit — water and a trace of earth — press itself into her
+during those lost minutes below the surface, and she understood, without being able to say how,
+that what now lived in her would not be welcomed. Instead she worked quietly. She traveled between
+settlements, coaxing plants to grow in places where people had given up trying, leaving behind
+the signs of whatever she had done before anyone could ask how. People noticed that wherever the
+traveling woman passed, things took root. They called it luck. She was always gone before they
+could thank her.
 
-When she died, something unusual happened. The spirit inside her had lived so close to her
-memories for so long that it retained them after she was gone. It still carries fragments of who
-she was. Some mages claim to have encountered it — an ancient spirit that knows things it should
-not, speaks with an old woman's cadence, and watches the current generation of mages with
-something that might be pride and might be grief.
+Her life was long. The fusion extended it past anything her body should have managed, and she
+lived well into her hundreds. But it was not a happy life. Every night her dreams were full of
+nightmares — not her own fears but something older and more formless. The spirit inside her had
+never needed sleep. It had no frame for the long motionless dark of a human night, and it moved
+through her sleep like a current through still water, restless and unable to adapt. She endured
+this for decades. She wrote it down.
+
+When she died, the spirit did not go with her. It had lived too close to her for too long — had
+learned the cadence of her breath, the particular texture of her grief, the way she moved through
+the world with her abilities carefully hidden. It carried those things forward. For a time it
+stayed with her cloak, which had been her constant companion, and people who found that cloak in
+the early forests reported that it seemed to move on its own, trailing water in its wake across
+dry ground.
+
+Her diary survived her. That is what started everything that came after.
+
+## The Age of Wild Magic
+
+The diary described what had happened to Narissa but not how to replicate it. She had not chosen
+the fusion; it had found her. What she described — a spirit pressing itself into her during a
+moment of crisis — was not something anyone could deliberately arrange.
+
+People tried anyway. The results were catastrophic. Many died in the attempt. Those who survived
+a partial fusion were changed in ways they could not control: abilities that appeared and
+vanished, elements that responded one moment and erupted the next, the spirit's presence not
+integrated but colliding endlessly with the person who carried it. A fusion made wrong produced
+not a mage but something unstable, dangerous to themselves and everyone nearby.
+
+For many years this was all anyone could achieve. The age of wild magic was not called that at
+the time — it was simply a period of disasters, of well-intentioned attempts that ended in
+death or worse, of hard-won partial knowledge passed between people trying to understand what
+Narissa's diary had set in motion.
+
+The stable ritual emerged slowly, from accumulated failure. It required force rather than
+invitation: the spirit had to be captured and confined before the merging, held until the
+initiate could press the binding home through sheer Will. The voluntary arrangement that had
+made Narissa what she was could not be reproduced. This was the solution that finally worked,
+and when it was established and proven, the age of wild magic was over.
+
+What was left was effective and deeply uncomfortable.
 
 ## The Mage Tradition
 
-After the first mage, others sought the same power. The spirit that had merged with her was
-cooperative — it chose the arrangement. Replicating this proved nearly impossible. The ancient
-elemental spirits had no interest in binding themselves to a human lifespan, and the spirits
-released by the rift were too chaotic to offer stable elemental power through any voluntary
-arrangement.
+After Narissa, others sought the same power. The spirit that had merged with her had chosen the
+arrangement voluntarily — it had found her and decided. Replicating this proved impossible. The
+ancient elemental spirits had no interest in binding themselves to a human lifespan, and nothing
+in Narissa's diary explained how to ask them to. What she had experienced could be described but
+not taught.
 
-A solution emerged that was effective and deeply uncomfortable: capture and force.
+The solution that eventually emerged after the long failure of the wild magic years was capture
+and force.
 
 A mage initiation begins with tracking a spirit attuned to a specific element — a fire spirit,
 an iron spirit, a creature of shadow or light — and drawing it into a prepared vessel. The
@@ -153,6 +193,27 @@ The confrontation did not go well for either side. What the shamans had feared h
 attempt tore a rift that was nothing like the original portal. It left no building in the white
 city intact. It let loose into the world every kind of chaotic spirit — formless things that had
 been bound by the world's natural arrangements, now free and desperate for form and direction.
+
+Mages who were far from the city felt it happen. There is a connection between mages — not
+spoken about much, not fully understood — that runs beneath ordinary awareness. When the city
+fell, that connection transmitted the loss immediately. Mages across the land knew before any
+messenger arrived.
+
+The rift also made the city unapproachable. Whatever it was doing to the spirit world around it
+sent mage workings into collapse at distance; flying castles, the great constructions of the
+white city's peak years, could not come near without falling from the sky. Those who might have
+helped could only watch from the horizon.
+
+What rescue happened was done on foot and by those already close enough. Among the mages who
+worked to guide survivors out, Laurent and Felicia are the names history kept. Laurent made a
+public pledge during the evacuation: his castle would carry as many as could reach it, and
+everyone would be welcome — humans and animal-people alike, those the old mage leadership had
+long treated as peripheral. He is not remembered for any working he ever performed. He is
+remembered for that.
+
+He also said, watching the city burn, that the destruction marked the end of the mage tradition
+as a unified force. The city had been what held it together. Without it, every mage would go
+their own way. He was right.
 
 The shamans eventually closed the rift, but the damage was done. The white city was gone. The
 world became harsher. The spirits released were not the orderly elemental wanderers of the old
@@ -353,12 +414,22 @@ They come from and return to what is now called the city of the dead.
 The city of the dead is their gathering place — a settlement built around the accumulation of
 skulls that once belonged to mages. When a mage dies, the spirit that was bound into them at
 initiation does not simply disperse. It lingers in the remains, tied to the body that contained
-it through decades of resistance and proximity. Left alone, a released mage's spirit will
-eventually seek its kin — the free spirits of its element, the chaotic ones scattered by the
-rift, anything that resonates with what it is. This seeking causes harm. It disturbs elemental
-patterns, draws chaotic spirits toward settled places, and can destabilise the workings of
-other mages nearby. A world full of the accumulated dead of a thousand years of mage tradition
-would be significantly more dangerous than the one that exists.
+it through decades of resistance and proximity. Left alone, it does not seek other spirits —
+there is no kinship there, no elemental family to return to. What it seeks instead is something
+it absorbed from the mage over a lifetime of forced proximity: the shape of a human life, the
+people at the edges of it, the distant relatives and half-remembered faces that the mage carried
+in their memory. The spirit reaches toward those people. It does not mean harm by this. It is
+simply following the only map it has.
+
+The result is what common people call ghosts. A dead mage's relatives find things moved in the
+night, fires that gutter toward them against the draft, the persistent sense of being watched
+from a corner of the room. Occasionally something more direct — a face at a window, a voice
+that knows things it should not. The spirit does not understand what it is doing or why. It is
+drawing close to the only warmth it can still locate.
+
+This can continue for generations, following family lines outward as the spirit exhausts one
+branch and finds the next. A mage dead for a hundred years can still be unsettling a household
+of people who never knew them.
 
 The skull gatherers prevent this. How exactly the skull holds the spirit — whether the bone
 retains enough of the mage's imprint to keep the spirit anchored, or whether the gatherers
