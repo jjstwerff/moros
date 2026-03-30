@@ -1533,10 +1533,13 @@ select.dm-input option { background: var(--ink); }
     .stats-grid {
         gap: 0.1em;
     }
-    .sheet-name, .sheet-section-title, .stat-name, .card-source, .card-name, .card-stats {
+    .sheet-name, .sheet-section-title, .stat-name,
+    .card-title, .card-action, .card-stats-row, .card-special-badge {
         color: black;
         margin-bottom: 0;
     }
+    .card-top-band { background: black; }
+    .card-rule-line { background: black; opacity: 0.3; }
     .sheet-list li::before {
         color: black;
     }
