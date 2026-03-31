@@ -214,6 +214,49 @@ describe('Logic utility functions', () => {
         assert.strictEqual(Logic.isOverwhelmed('flight'), false);
     });
 
+    it('validate detects missing fields and rule violations', () => {
+        // Empty state — missing name, race, place, and progressions
+        Logic.initState();
+        let v = Logic.validate();
+        assert.ok(v.errors.some(e => e.includes('Name')), 'missing name error');
+        assert.ok(v.errors.some(e => e.includes('Race')), 'missing race error');
+        assert.ok(v.errors.some(e => e.includes('Place')), 'missing place error');
+        assert.ok(v.warnings.some(w => w.includes('0 of 6')), 'incomplete progression warning');
+
+        // Valid complete character — no errors
+        Logic.initState();
+        Logic.state.name = 'Nadine';
+        Logic.state.race = 'Finches';
+        Logic.state.place = 'Raft city';
+        Logic.state.learn('background', 'trader');
+        Logic.state.learn('power', 'musical');
+        Logic.state.learn('specialization', 'Navigation');
+        Logic.state.learn('power', 'hearing');
+        Logic.state.learn('background', 'trader');
+        Logic.state.learn('power', 'flight');
+        v = Logic.validate();
+        assert.strictEqual(v.errors.length, 0, 'valid character has no errors');
+        assert.strictEqual(v.warnings.length, 0, 'valid character has no warnings');
+
+        // Race mismatch: load a character and corrupt a power name in progression
+        // (simulate by using loadDump with a wrong power)
+        Logic.loadDump({
+            name: 'Hank', gender: 'Male', desc: '', race: 'Badgers', place: 'Bockthicket',
+            category: '',
+            progression: [
+                { type: 'background', name: 'miner' },
+                { type: 'power', name: 'jaws' }, // jaws is a Beaver/Wolf power, not Badger
+                { type: 'background', name: 'farmer' },
+                { type: 'power', name: 'camp' },
+                { type: 'background', name: 'army' },
+                { type: 'power', name: 'digging' },
+            ],
+            items: [], elements: [],
+        });
+        v = Logic.validate();
+        assert.ok(v.errors.some(e => e.includes('"Jaws"') || e.includes('"jaws"')), 'race mismatch error');
+    });
+
     it('freeProgressionsRemaining counts down from 6 to 0', () => {
         Logic.initState();
         Logic.state.race = 'Finches';

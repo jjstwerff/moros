@@ -447,6 +447,68 @@ export function freeProgressionsRemaining() {
 }
 
 /**
+ * Validate the current character state against all creation rules.
+ * @returns {{ errors: string[], warnings: string[] }}
+ */
+export function validate() {
+    const errors = [];
+    const warnings = [];
+
+    if (!state.name?.trim()) errors.push('Name is missing.');
+    if (!state.race) errors.push('Race not chosen.');
+    if (!state.place) errors.push('Place of origin not chosen.');
+
+    const total = state.progressions;
+    if (total < 6) warnings.push(`${total} of 6 creation progressions used.`);
+
+    // No consecutive background or specialization — a power must separate them
+    for (let i = 1; i < total; i++) {
+        const prev = state.progres(i - 1);
+        const curr = state.progres(i);
+        if (prev.type === curr.type && curr.type !== 'power')
+            errors.push(`Steps ${i} and ${i + 1} are both "${curr.type}" — a power must separate them.`);
+    }
+
+    // No single stat raised more than 3 times in the first 6 free progressions
+    const statCounts = {};
+    for (let i = 0; i < Math.min(total, 6); i++) {
+        const p = state.progres(i);
+        if (p.stat) statCounts[p.stat] = (statCounts[p.stat] || 0) + 1;
+    }
+    Object.entries(statCounts).forEach(([s, n]) => {
+        if (n > 3) errors.push(`${s} raised ${n} times in the first 6 progressions (max 3).`);
+    });
+
+    // Powers must belong to the character's race
+    if (state.race) {
+        const raceData = DATA.races.find(r => r.name === state.race);
+        const raceSet = new Set((raceData?.powers || []).map(p => p.toLowerCase()));
+        for (let i = 0; i < total; i++) {
+            const p = state.progres(i);
+            if (p.type === 'power' && !raceSet.has(p.name.toLowerCase()))
+                errors.push(`"${p.name}" is not a ${state.race} power.`);
+        }
+    }
+
+    // Specialization level must not exceed combined background support
+    for (let i = 0; i < total; i++) {
+        const p = state.progres(i);
+        if (p.type === 'specialization') {
+            const supported = state.bgLevel(p.name);
+            if (supported < p.level)
+                errors.push(`Specialization "${p.name}" level ${p.level} exceeds background support (${supported}).`);
+        }
+    }
+
+    // Encumbrance
+    const w = state.weight;
+    const cap = carryCapacity();
+    if (w > cap) warnings.push(`Encumbered — bulk ${w} exceeds carry capacity ${cap}.`);
+
+    return { errors, warnings };
+}
+
+/**
  * Number of characters saved in the game.
  * @returns {number}
  */

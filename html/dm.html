@@ -28,6 +28,8 @@
                     onclick="DM.showTab('bestiary')">Bestiary</button>
             <button class="nav-tab" data-tab="item-rules"
                     onclick="DM.showTab('item-rules')">Item Rules</button>
+            <button class="nav-tab" data-tab="party"
+                    onclick="DM.showTab('party')">Party</button>
             <button class="nav-tab" data-tab="config"
                     onclick="DM.showTab('config')">Config</button>
         </nav>
@@ -136,6 +138,15 @@
             <h2 class="dm-section-title">Powers</h2>
         </div>
         <div id="powers-list" class="dm-list-pane"></div>
+    </div>
+
+    <!-- ── Party ─────────────────────────────────────────────────────────── -->
+    <div id="tab-party" class="panel">
+        <div class="dm-panel-header">
+            <h2 class="dm-section-title">Party</h2>
+            <button class="btn-secondary" onclick="DM.renderParty()">↺ Refresh</button>
+        </div>
+        <div id="party-list" class="party-grid"></div>
     </div>
 
     <!-- ── Config ─────────────────────────────────────────────────────────── -->

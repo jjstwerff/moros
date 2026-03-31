@@ -1,6 +1,7 @@
 import { DATA } from './data.js';
 import { loadCategories, addCategory, saveCategories } from './categories.js';
 import { search, createSnapshot, lastSeen, filterByScenario } from './dm-logic.js';
+import * as Logic from './logic.js';
 
 const DAMAGE_TYPES = [
     'fire', 'cold', 'electric', 'cutting', 'impaling',
@@ -3120,6 +3121,76 @@ function _toggleSessionMode() {
     _rerenderAll();
 }
 
+// ── Party ──────────────────────────────────────────────────────────────────
+function renderParty() {
+    const el = document.getElementById('party-list');
+    if (!el) return;
+
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(LS.chars) || '[]'); } catch { raw = []; }
+
+    if (raw.length === 0) {
+        el.innerHTML = '<div class="dm-empty">No characters found. Create characters in the Character Creator first.</div>';
+        return;
+    }
+
+    el.innerHTML = raw.map(charData => {
+        try { Logic.loadDump(charData); } catch { return ''; }
+        const v = Logic.validate();
+
+        const statsHtml = DATA.statistics.map(s =>
+            `<div class="party-stat">
+                <div class="party-stat-val">${Logic.stat(s.abbreviation)}</div>
+                <div class="party-stat-abbr">${s.abbreviation}</div>
+            </div>`
+        ).join('');
+
+        const powers = DATA.powers.filter(p => Logic.stat(p.name) > 0);
+        const powersHtml = powers.length > 0
+            ? powers.map(p => `<span class="party-tag">${p.name} <span class="party-tag-lvl">${Logic.stat(p.name)}</span></span>`).join('')
+            : '<span class="party-empty">—</span>';
+
+        const specs = Object.keys(DATA.specToStat).filter(s => Logic.stat(s) > 0);
+        const specsHtml = specs.length > 0
+            ? specs.map(s => `<span class="party-tag">${s} <span class="party-tag-lvl">${Logic.stat(s)}</span></span>`).join('')
+            : '<span class="party-empty">—</span>';
+
+        const weight = Logic.state.weight;
+        const cap = Logic.carryCapacity();
+        const overWeight = weight > cap;
+        const itemsHtml = Array.from(Logic.state.items).length > 0
+            ? Array.from(Logic.state.items).map(i => `<span class="party-tag">${i}</span>`).join('')
+            : '<span class="party-empty">—</span>';
+
+        const issuesHtml = [
+            ...v.errors.map(e => `<div class="party-issue party-issue--error">⚠ ${e}</div>`),
+            ...v.warnings.map(w => `<div class="party-issue party-issue--warn">◈ ${w}</div>`),
+        ].join('');
+
+        return `
+        <div class="party-card${v.errors.length > 0 ? ' party-card--invalid' : ''}">
+            <div class="party-card-header">
+                <div class="party-name">${Logic.state.name || '(unnamed)'}</div>
+                <div class="party-meta">${Logic.state.race || '?'}${Logic.state.place ? ' · ' + Logic.state.place : ''}</div>
+            </div>
+            <div class="party-stats-row">${statsHtml}</div>
+            <div class="party-section">
+                <div class="party-section-label">Powers</div>
+                <div class="party-tags">${powersHtml}</div>
+            </div>
+            <div class="party-section">
+                <div class="party-section-label">Specializations</div>
+                <div class="party-tags">${specsHtml}</div>
+            </div>
+            <div class="party-section">
+                <div class="party-section-label">Load <span class="party-load${overWeight ? ' party-load--over' : ''}">${weight} / ${cap}</span></div>
+                <div class="party-tags">${itemsHtml}</div>
+            </div>
+            ${issuesHtml ? `<div class="party-issues">${issuesHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 function init() {
     window.addEventListener('beforeunload', e => {
@@ -3146,6 +3217,7 @@ function init() {
     renderItemRules();
     renderBestiary();
     renderPowers();
+    renderParty();
     renderConfig();
 }
 
@@ -3194,6 +3266,7 @@ window.DM = {
     _wipeCancel,
     _wipeConfirm,
     _toggleSessionMode,
+    renderParty,
 };
 
 init();
