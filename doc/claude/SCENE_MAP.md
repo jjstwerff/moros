@@ -75,11 +75,97 @@ Chunk {
   cx:    i32,
   cy:    i32,
   cz:    i32,
-  hexes: [32][32] Hex,
+  kind:  ChunkKind,
+  hexes: [32][32] Hex,       // when kind == FULL
+  //  or
+  items: [32][32] OverlayHex, // when kind == ITEM_OVERLAY
+}
+
+ChunkKind: FULL | ITEM_OVERLAY
+```
+
+- **FULL** — default. All hex fields are active: height, material, walls, and item.
+- **ITEM_OVERLAY** — item-only layer. Uses `OverlayHex` layout (see below).
+
+Chunk footprint in world units: ≈ 37.0 m (E–W) × 32.0 m (N–S).
+
+### Item overlay layers
+
+An `ITEM_OVERLAY` chunk places extra items on hexes that already have a primary
+item in a `FULL` chunk. It carries no terrain, walls, or floor — only positioned
+items. This allows layered props such as a fallen beam resting on rubble, a
+skeleton beside a broken chest, or vines draped over a gravestone.
+
+#### OverlayHex structure
+
+The overlay reuses the same 8-byte slot as `Hex` but repurposes the terrain and
+wall bytes as sub-hex positioning. `item` and `item_rotation` stay at the same
+byte offsets.
+
+```
+OverlayHex {
+  offset_x:      i8,    // E–W displacement from hex centre in cm (±127 cm)
+  offset_z:      i8,    // N–S displacement from hex centre in cm (±127 cm)
+  offset_y:      u8,    // vertical offset above ground surface in cm (0–255 cm)
+  item:          u8,    // ItemPalette index (0 = empty, skip)
+  item_rotation: u8,    // bits 0–4: rotation 0–23; bit 5: spawn_flag; bit 6: waypoint_flag
+  flags:         u8,    // bit 0: tint_aged (weathered colour shift)
+                        // bits 1–7: reserved (0)
+  _reserved_0:   u8,    // must be 0
+  _reserved_1:   u8,    // must be 0
 }
 ```
 
-Chunk footprint in world units: ≈ 37.0 m (E–W) × 32.0 m (N–S).
+**Byte-level correspondence with Hex:**
+
+| Byte | Hex field | OverlayHex field | Purpose |
+|---|---|---|---|
+| 0 | `height` low | `offset_x` | E–W position within hex |
+| 1 | `height` high | `offset_z` | N–S position within hex |
+| 2 | `material` | `offset_y` | Height above ground surface |
+| 3 | `item` | `item` | Same — item palette index |
+| 4 | `item_rotation` | `item_rotation` | Same — rotation + flags |
+| 5 | `wall_n` | `flags` | Appearance modifiers |
+| 6 | `wall_ne` | `_reserved_0` | — |
+| 7 | `wall_se` | `_reserved_1` | — |
+
+**Offset coordinates:**
+
+All three offsets use **centimetres** as the unit. The hex centre is (0, 0, 0).
+
+- `offset_x`: i8, range ±127 cm. The hex E–W half-width is ≈ 57 cm, so values
+  beyond ±57 push the item visually into a neighbouring hex. This is intentional
+  — a fallen beam can span across a hex boundary.
+- `offset_z`: i8, range ±127 cm. The hex N–S half-width is ≈ 50 cm.
+- `offset_y`: u8, range 0–255 cm. Height above the ground surface of the
+  corresponding `FULL` hex below. 0 = resting on ground. A skeleton on a 50 cm
+  rubble pile uses `offset_y = 50`.
+
+**Rules:**
+
+1. An `ITEM_OVERLAY` chunk must share the same `(cx, cz)` as an existing `FULL`
+   chunk. Multiple overlays on the same full chunk are ordered by position in the
+   chunk list — each adds another item layer.
+2. Items inherit the **ground height** from the `FULL` chunk at the same
+   `(hx, hz)`. The rendered world-space height is `full_hex.height + offset_y`.
+3. Overlay hexes with `item == 0` are skipped — no storage or render cost.
+4. `spawn_flag` and `waypoint_flag` work normally. A spawn point or NPC waypoint
+   may reference an overlay hex.
+5. Pathfinding, collision, and line-of-sight use only `FULL` chunks. Overlay items
+   are visual and interactive props; they do not block movement or alter terrain.
+6. The `tint_aged` flag in `flags` tells the renderer to shift the item's colour
+   toward grey-brown and reduce saturation, giving a weathered or decayed look
+   without needing separate palette entries.
+7. The editor shows overlay items with a dashed selection outline to distinguish
+   them from the primary item layer.
+
+**Example — ruin hex with layered debris:**
+
+| Layer | item | offset_x | offset_z | offset_y | Effect |
+|---|---|---|---|---|---|
+| FULL (cy=0) | `rubble_pile` | — | — | — | Ground terrain + primary debris at hex centre |
+| ITEM_OVERLAY | `fallen_beam` | −30 | 10 | 40 | Beam shifted 30 cm west, 10 cm north, resting 40 cm up on rubble |
+| ITEM_OVERLAY | `skeleton` | 25 | −20 | 0 | Bones 25 cm east, 20 cm south, on ground beside the pile |
 
 ---
 
@@ -178,8 +264,12 @@ MaterialFlags {
 | 15 | `thatch_roof` | roof | |
 | 16 | `spiral_stair` | stair (SPIRAL) | loud |
 | 17 | `grand_arc_stair` | stair (GRAND_ARC) | loud |
+| 18 | `cracked_stone` | floor | loud |
+| 19 | `mossy_stone` | floor | slippery |
+| 20 | `scorched_wood` | floor | loud |
+| 21 | `rubble_floor` | terrain | loud |
 
-Well-known material indices now run 0–17. Indices 18–255 are map-specific.
+Well-known material indices now run 0–21. Indices 22–255 are map-specific.
 
 ---
 
@@ -420,8 +510,25 @@ ItemKind: PILLAR | TREE | LADDER | FURNITURE | CONTAINER | LIGHT | STATUE | MECH
 | 69 | `cooking_spit` | MECHANISM | no | Iron spit over an open fire for roasting; inn kitchen, outdoor feast |
 | 70 | `bread_oven` | MECHANISM | no | Domed stone oven for baking; bakery, inn kitchen |
 | 71 | `butcher_block` | FURNITURE | no | Heavy chopping block with iron hooks overhead; butcher's shop, kitchen |
+| **— Ruins and Decay —** | | | | |
+| 72 | `rubble_pile` | STATUE | yes | Heap of collapsed masonry; symmetric mound |
+| 73 | `fallen_beam` | FURNITURE | no | Collapsed timber; diagonal obstruction on the ground |
+| 74 | `broken_pillar` | PILLAR | yes | Shattered column stump; half-height or less |
+| 75 | `collapsed_arch` | STATUE | no | Partial stone arch; implies blocked passage |
+| 76 | `debris_scatter` | STATUE | yes | Low-profile scattered stone chips and dust |
+| 77 | `dead_tree` | TREE | yes | Leafless trunk and bare branches |
+| 78 | `root_growth` | STATUE | yes | Roots bursting through floor or foundation |
+| 79 | `vine_column` | STATUE | yes | Vegetation climbing a vertical surface |
+| 80 | `moss_patch` | STATUE | yes | Ground-level moss and lichen on stone |
+| 81 | `skeleton` | STATUE | no | Humanoid remains; facing = direction body fell |
+| 82 | `overturned_table` | FURNITURE | no | Toppled table; implies sudden departure or violence |
+| 83 | `broken_crate` | CONTAINER | yes | Splintered wooden crate; contents long gone |
+| 84 | `rusted_chain` | STATUE | no | Wall-mounted chains or restraints; facing = wall |
+| 85 | `old_campfire` | STATUE | yes | Cold ash ring with charred stones |
+| 86 | `pit` | MECHANISM | yes | Floor opening; collapsed cellar or trap hole |
+| 87 | `collapsed_floor` | MECHANISM | yes | Irregular hole spanning the hex; edges ragged |
 
-Well-known item indices now run 0–71. Indices 72–255 are map-specific.
+Well-known item indices now run 0–87. Indices 88–255 are map-specific.
 
 **ItemKind notes:**
 
@@ -479,7 +586,7 @@ Both flags may be set on the same hex (e.g., a guard captain who spawns at his p
 ```
 Map {
   name:             string,
-  chunks:           Map<(cx, cy, cz), Chunk>,
+  chunks:           Chunk[],               // ordered: FULL chunks first, then ITEM_OVERLAYs
   structures:       Structure[],
   blueprints:       Blueprint[],
   placements:       Placement[],

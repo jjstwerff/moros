@@ -15,5 +15,6 @@
 - [Scene Map](doc/claude/SCENE_MAP.md)
 - [Scene Map Renderer](doc/claude/SCENE_MAP_RENDER.md)
 - [Scene Editor](doc/claude/SCENE_EDITOR.md)
+- [Scene Editor Plan](doc/claude/SCENE_EDITOR_PLAN.md)
 - [Developer Art](doc/claude/DEVELOPER_ART.md)
 - [Loft Libraries](doc/claude/LOFT_LIBRARIES.md)
