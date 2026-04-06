@@ -373,12 +373,12 @@ is needed.  Phase 6b is the only hard blocker on loft's WebGL support.
 
 ## Priority order
 
-1. **Character editor UX** — progression buttons, power details, rules
+1. **Scene editor Sprint A** — data model + canvas (medium effort, unlocks
+   everything else, primary project focus)
+2. **Scene editor Sprints B-E** — sequential, depends on Sprint A
+3. **Character editor UX** — progression buttons, power details, rules
    placement (low effort, high user impact, no blockers)
-2. **Focus rules** — write the rules, add to data.js, add DM UI
+4. **Focus rules** — write the rules, add to data.js, add DM UI
    (medium effort, enables gameplay depth)
-3. **Road bug fix** — add hex pathfinding to road tool (low effort)
-4. **Scene editor Sprint A** — data model + canvas (medium effort, unlocks
-   everything else)
 5. **Contact system** — editor UI, sharing, complex contacts (medium effort)
-6. **Scene editor Sprints B-E** — sequential, depends on Sprint A
+6. **World map editor** — road bug and other fixes (deferred, not current focus)
