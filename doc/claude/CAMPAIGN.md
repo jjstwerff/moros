@@ -10,30 +10,106 @@
 
 A few years before the campaign begins, ships arrived from across the ocean. The lands
 beyond the sea are ruled by mages whose power is largely unchecked — chaotic spirits are
-rare there, so workings do not unravel as they do here. But their lands are poorly
-cultivated and their people struggle to grow enough food. They came for resources.
+rare there, so workings do not unravel as they do here. But their lands **were never
+properly cultivated**: the overseas mages lack the druids they would need to make land
+truly fruitful, and the druids who know anything about them *hate* them, because of how
+the mage tradition treats spirits. The overseas continent has therefore been gradually
+starving.
+
+The Overseas War was **not driven by conquest. It was driven by need.** The overseas
+continent had a surplus of demi-humans it could not feed, so it loaded them onto ships as
+soldiers and sent them to the homelands to bring back food. The war was, at its root, a
+mass demi-human emigration under arms. The current overseas mages, led at that time by
+**Thorgal** (now deceased), were not unanimous on the decision — but they had no workable
+alternative and those who opposed Thorgal could not offer one. The war happened.
 
 The war that followed was brief and inconclusive. It ended not through diplomacy or
 decisive battle but through a single unlikely event: John Bean, a boar folk farmer and
-ruin-crawler, inadvertently killed the invasion's main instigator. The story of how is
-tangled — John lost an arm to an ancient machine in a collapsed tower, gained an ironwood
-replacement from a white mouse named Rhianna Linthrope, and ended up in the right place
+ruin-crawler, inadvertently killed Thorgal, the invasion's main instigator and the
+overseas mage who had ordered it — remotely, through the scrying mirror Thorgal was using
+to command his forward commander **Raul** (an ox-tauren war-band leader whose forces had
+captured King Hannes). The mechanism was not John's ironwood arm — he did not yet have
+it. Thorgal's probe reached through the mirror into John's head and encountered the
+**phantom** of John's recently-lost arm, still present in his mind because he had
+forgotten he had lost it. That phantom was spell-shaped enough to travel the mirror the
+other way. John reached through it and pulled; the pull carried through; Thorgal fell in
+his own chambers overseas among breaking glass. The mirror in Raul's camp went dark in
+the same moment. Raul fell back to regroup, and the raccoon scout Felix slipped in during
+the retreat and freed Hannes. Three acts collapsed into one ending: John's phantom-reach,
+Raul's withdrawal, Felix's timing. (John's ironwood prosthetic came *afterwards*; Rhianna
+fitted it once the fighting had moved on.) The story of how is
+tangled — John lost an arm inside a long-abandoned ironwood-cutting mill on the edge of
+the blasted lands, one of the very few mills in the world capable of working that material.
+The raccoon scout Felix had talked him into it, finding the low feed-slot at ground level
+where whole trees once went in toward the cutters. Inside, the ancient cutting machine
+itself was still waiting. Rhianna Linthrope — a white mouse medic — fitted him afterward
+with an ironwood replacement salvaged from older mage work. He ended up in the right place
 at the worst time. He is not a hero in any clean sense. He is a stubborn man who survived
-things that should have killed him.
+things that should have killed him. (John himself does not yet know the building was an
+ironwood mill — he knows only that Felix found a way in and that something inside ate his
+arm.)
 
-The soldiers did not all go home. Some settled in the towns they had occupied. Others
-turned pirate, establishing a nest along the southern coast. The war's residue — stranded
-soldiers, displaced families, grudges, and unanswered questions — is the soil the campaign
-grows from.
+The war's campaign map, in short: the overseas force landed by sea and captured
+**Linar harbour** (on the east coast, the start of the main inland trade road) first.
+They pushed inland along that road, and **Elmsfield** fell quickly in the push, the next
+major inland stop. Before the occupation began, the Elmsfield townspeople hid a large
+amount of valuables inside the hollow of the great ironwood tree that the town is built
+around. The raiders could not open it — whatever tools the overseas soldiers had, the
+ironwood defeated them. The hoard survived intact, and parts of it may still be inside
+the tree (now Bridget's Inn) today.
+
+The soldiers did not all go home. They had *come from* a continent that could not feed
+them; for most of them, returning home meant returning to starvation, and many simply did
+not. **The post-war overseas settler population split into two halves.** Those who
+chose to settle took work in the towns they had occupied — most visibly in **Linar harbour**,
+whose working population (fishers, dock workers, net-makers) is now largely descended from
+those settlers, a generation on. Others turned pirate, establishing a nest well to the
+south of the main trade lanes. The war's residue — the settled half in Linar harbour and
+elsewhere, the pirate half further south (the two are sometimes related by blood), grudges
+on both sides, and a quiet awareness among the overseas mages that the food problem is still
+unsolved — is the soil the campaign grows from.
+
+The druid question remains the pivot. Druid-aided cultivation is what the overseas
+continent needs. The druids will not give it, for reasons (going back generations) that
+are not about to resolve themselves.
+
+### The Neighbour's Crisis
+
+Allondo's neighbour country is **Brumal**, and Brumal is running out of room to live. Its
+land is being overtaken by desert pushing up from the south — Steadington has already been
+lost. Capital Cliffside hold still stands; mining towns like Bockthicket still function;
+but the country is thinning from the southern edge inward and its options are running out.
+(Gap city, at the *other* side of the desert, belongs to neither kingdom — it is the last
+settlement before the shifting lands on that southern flank, and not part of this crisis
+as such, though it may know things about the desert that neither kingdom does.) A second war is brewing along that border — not because anyone wants one, but because
+a crisis on one side of a border does not stay there.
+
+Elmsfield, as the border town around the huge ironwood tree, is the first settlement most
+Brumal refugees reach on the Allondo side. **Elder Diederik** is one of them, early —
+originally of Steadington, he came to Elmsfield partly for the tree and partly because his
+home village was already being lost. He carries both the druidic knowledge to recognise
+ecological collapse when he sees it and the personal memory of being on the wrong side of
+it.
+
+For Allondo, Brumal's crisis lands on top of a kingdom still bleeding quietly from the
+Overseas War. It is part of the reason **King Hannes** is holding the Bean enlistment
+bargain so firmly: he cannot afford to look unprepared twice in a decade. It is also why
+the party's early decisions — who they help, who they refuse, how they treat refugees in
+Elmsfield's orphanage at **Hank**'s farm — will matter later. The pressure is on its way.
 
 ### Irna Bean
 
 Irna is John Bean's daughter. She was imprisoned in a mine on account of a political
-mishap involving the second prince of Allondo. Her brother has been proclaimed a "valiant
-spirit" by the church — a proclamation that originated from Luchebert Monastery and Father
-Elliot. Whether this is genuine prophecy, political convenience, or a mistake depends on
-who you ask. Rhianna Linthrope arranged Irna's release and sent her toward the monastery
-with a letter asking Father Elliot to correct the trouble he caused.
+mishap involving the second prince of Allondo. A proclamation about a Bean "valiant spirit"
+came out of Luchebert Monastery and Father Elliot, and her *brother* Ron has been enlisted
+on the strength of it. The underlying prophecy is actually about Irna — the "valiant
+spirit" refers to her potential to become a **spirit-shield** (see LORE.md §"Spirit
+Ecology"), not to a military protector. The misreading is what enlisted the wrong Bean.
+
+Rhianna Linthrope arranged Irna's release from the mine and sent her toward Luchebert
+Monastery — in part to save her, in part because Luchebert is the place where Irna's actual
+potential might be recognised and trained. The letter Rhianna wrote asks Father Elliot to
+correct the trouble he caused.
 
 Irna never reached the monastery. She was searching for a small vale leading past Laurent's
 downed city toward Luchebert, but could not find the entrance. Instead she wandered near
@@ -60,10 +136,15 @@ a vale beyond the downed city, reachable through a passage that Irna failed to f
 ### The Lake of Tears
 
 The lake sits in a depression fed by a small river from Elmsfield. Around it stand six
-wizard towers, erected by the overseas faction during the war. Their purpose: to capture a
-giant air elemental. This elemental once powered Laurent's flying city. When the city
-crashed, the elemental was trapped — and the overseas mages, recognising what it was, built
-the towers to bind it permanently.
+wizard towers. They were not built here: they were seized from their previous owners — some
+killed in the taking, others left surviving and aggrieved — and moved, whole, to ring this
+lake by a faction of old-order mages from Laurent's own era. Their purpose was to capture
+the giant air elemental that held Laurent's flying city aloft, and so to bring the city
+down. It worked: the towers captured the elemental, the city fell, and the elemental has
+remained bound in the cage of towers ever since. The old-order mages wanted the demi-humans
+aboard Laurent's city for their own service overseas. That old order is no longer what it
+was — it has diminished, fractured, or simply aged out — but some of the current overseas
+leaders still feel its heritage strongly, and carry forward what they inherited from it.
 
 The elemental wants to be free. Its struggle fuels a fungal growth spreading outward from
 the lake — a crystalline fungus that builds up on skin and in eyes, fed by the elemental's
@@ -87,8 +168,11 @@ Inside the tower, a small pot-person may still be active.
 ### Setup
 
 The players are in Elmsfield. They live here or are visiting — they are not yet a group.
-Elmsfield is a border town built around a huge tree. It is small enough that a stranger
-arriving attracts notice.
+Elmsfield is a border town built around a huge tree — and, crucially, it is **not part of
+Allondo**. The Great Swamp (which surrounds the Lake of Tears at its centre) separates the
+town from the kingdom, and Allondo's formal authority stops on the Allondan side of that
+barrier. Elmsfield is an independent wilderness town, elder-led (Elder Diederik) rather
+than crown-ruled. It is small enough that a stranger arriving attracts notice.
 
 ### The Arrival
 
@@ -102,9 +186,7 @@ distance, unsure what to do.
 Irna's condition is visible and alarming: crystalline growths on her skin, a film over her
 eyes, laboured breathing. She cannot speak.
 
-**Farmer Hendrik** (a local) reacts with fear rather than compassion. He has seen a cholera
-outbreak in the aftermath of the last war and fears contamination. He is loud about it. His
-fear is not irrational — he watched people die — but it risks turning the town against
+**Farmer Joseph** (a Raccoon post-war refugee now settled in Elmsfield) reacts with fear rather than compassion. He has seen a cholera outbreak in the aftermath of the last war and fears contamination. He is loud about it. His fear is not irrational — he watched people die — but it risks turning the town against
 helping Irna before anyone understands what is wrong with her.
 
 This is the players' entry point. They are bystanders who can choose to act.
@@ -113,7 +195,7 @@ This is the players' entry point. They are bystanders who can choose to act.
 
 **Scenario type:** Negotiation
 
-As the players get involved — calming the dog, examining Irna, managing Hendrik's fear —
+As the players get involved — calming the dog, examining Irna, managing Joseph's fear —
 the crowd grows. This is where they meet **Elder Diederik**, the local elder. Diederik is
 an owl with druid training who was exiled from his druidic order. He has knowledge of
 ironwood, of old workings, and of the natural world. He carries authority in Elmsfield.
@@ -122,11 +204,11 @@ Diederik can help with crowd management — he has standing and calm that the pl
 do not yet have. He is the first contact the group builds.
 
 **Challenge:** Convince the crowd that Irna is not contagious (she is not — the fungus
-requires prolonged direct exposure, not casual contact). Hendrik must be addressed directly;
+requires prolonged direct exposure, not casual contact). Joseph must be addressed directly;
 ignoring his fear lets it spread.
 
-- *Relaxed* — calm Hendrik before his fear infects others
-- *Politics* — identify that Hendrik's real concern is the town's safety, not Irna herself;
+- *Relaxed* — calm Joseph before his fear infects others
+- *Politics* — identify that Joseph's real concern is the town's safety, not Irna herself;
   address that directly
 - Healer specialization — diagnose that this is not cholera or any communicable disease
 - *Druid* — recognise the crystalline growth as fungal, not bacterial; it does not spread
@@ -159,7 +241,7 @@ the fungus and save Irna. Diederik stays in Elmsfield to keep Irna alive.
 |---|---|---|---|
 | Irna Bean | Boar folk | The patient | Cannot communicate; carries the letter; her dog is fiercely protective |
 | Elder Diederik | Owl | Local elder, druid | Exiled from druidic order; knowledge of ironwood and natural medicine; first contact (level 2) |
-| Farmer Hendrik | — | Fearful local | Not a villain; a man with trauma from the last war's aftermath |
+| Farmer Joseph | Raccoon | Fearful local | Post-war refugee; stretched thin after buying a plot from Hank; saw neighbours die of cholera after the war; not a villain |
 | Irna's dog | — | Guardian | Grey-muzzled, loyal, aggressive to strangers; can be calmed with *Druid* or patience |
 
 ---
@@ -173,9 +255,12 @@ the fungus and save Irna. Diederik stays in Elmsfield to keep Irna alive.
 The group follows the small river south from Elmsfield toward the Lake of Tears. The
 journey is half a day on foot — 4–5 travel rounds.
 
-**Terrain:** The river valley narrows as it approaches the lake. The vegetation becomes
-denser and stranger — fungal growths appear on trees and rocks, increasing as the group
-gets closer. The air takes on a metallic quality.
+**Terrain:** The river valley broadens into the **Great Swamp** — the wetland region that
+surrounds the Lake of Tears. Marshland, slow water, bogs, reedbeds. The vegetation becomes
+denser and stranger as the group presses into the swamp — fungal growths appear on trees,
+stones, and the standing water, increasing as they approach the lake at the swamp's centre.
+The air takes on a metallic quality. The Great Swamp is not a separate hazard from the
+lake; it is the marsh *around* the lake, and the fungus moves through both as one region.
 
 ### The Bear Cubs
 
@@ -250,72 +335,132 @@ The buried tower is half-submerged in sand, with fungal growth covering its expo
 sections. The exhaust vents fire periodically — the pattern is roughly regular but not
 perfectly predictable.
 
-**Challenge: Reaching the entrance.** The entrance is partially buried. Fungal growth
-covers the approach. The exhaust vents create windows of clear air between blasts, but
-the timing is tight.
+**Challenge: Reaching the entrance.** The formal entrance is partially buried and choked
+by fungus. The actual way in is **down the chimney from above**: the chimney leads directly
+into the furnace at the tower's heart, and it is the only route that is not sealed. This is
+also where the tower has been **defending itself against the fungus** — the chimney is the
+exhaust path, and the furnace periodically blasts hot air up through it to drive fungal
+growth back. Descending the chimney means entering a hazard that is actively firing on a
+schedule the party has to time correctly.
 
-- *Digging* — clear the sand from the entrance directly
-- Speed **sprint** — time the exhaust blasts and move between them
-- *Fur* or *Hide* — push through the fungal zone with reduced exposure
-- *Ingenuity* — improvise face coverings or breathing protection from available materials
-  (reduces Endu damage from spores)
+- Speed **sprint** — descend between exhaust blasts; tight timing, Endu cost if mistimed
+- *Fur* or *Hide* — push through the fungal zone around the tower's upper walls with
+  reduced exposure
+- *Ingenuity* — improvise face coverings or breathing protection; also useful for reading
+  the exhaust pattern well enough to predict it
+- *Shamanic* or spirit-aware characters — sense that the chimney is not an empty shaft but
+  part of a being (the furnace), and approach the descent as entering a creature
+
+**The key twist**: descending the chimney means entering *through* a pot-person. The furnace
+is not merely a forge; it is itself one of the two surviving pot-people of this experimental
+tower (see `doc/npcs/pot_person.md`). It has stubby legs and a will of its own, and it has
+not moved in a very long time — inertia, not absence. A party that treats the chimney as
+plumbing and fights its way down through the exhaust is assaulting a being. A party that
+approaches the descent respectfully — speaking to the chimney, asking to be admitted, timing
+the breath of it rather than beating it — will find the exhaust pauses long enough for the
+descent.
+
+### First sight of the boy
+
+The party's first sight of the other pot-person is almost certainly going to be the **boy**
+noticing strangers enter his home and, without thinking about it, **disguising himself as a
+normal pot**. He is fast. He squats down where he is, pulls his legs under him, and becomes,
+in the blink of an eye, an ordinary small pot sitting on a work surface.
+
+He does not, however, think to put down the tools he was using when the party entered. He
+will be sitting there, perfectly still, looking like a domestic pot — with a broom and a
+small chisel and whatever else he happened to be holding *still in his grip* beside him.
+
+Reading the scene correctly — noticing that this one particular pot has a woodworking tool
+leaning against it in a way pots do not generally arrange for themselves — is the moment
+the party realises the tower is inhabited. Pointing it out kindly, rather than laughing or
+grabbing, is the beginning of trust.
 
 ### Inside the Tower
 
 **Scenario type:** Exploration (potentially repair)
 
-The tower interior is a furnace — literally. This is not a wizard's library or study. It
-is a workshop built to create pot-people, small iron puppet constructs. The central feature
-is a large pot (the furnace) that serves as both the forge and the heart of the operation.
-The pot can move if it needs to — it has stubby legs and a will of its own, though it has
-not moved in a very long time.
+The tower interior is a furnace-workshop built to create pot-people, small iron puppet
+constructs — and, the party will learn, to host living quarters for the mage who ran the
+experiment. There are **two surviving pot-people** here:
 
-The furnace exhaust is what fights the fungus outside. It was not designed for this — the
-exhaust is a byproduct of the furnace's normal operation, and the furnace is running on
-minimal power because no one has tended it in years. The fungus is winning.
+- The **small pot-person** (knee-height, the quiet boy) maintains the mage's living
+  quarters day-to-day. Sweeps, straightens, keeps what survives in working order.
+- The **furnace itself** is the second pot-person. The large central pot is not a machine;
+  it is a being. It is what the party walked through to get in.
+
+The furnace exhaust is what fights the fungus outside. It was not designed for this —
+the exhaust is a byproduct of the furnace-being's natural operation, and the furnace is
+running on minimal power because no one has tended it in years. The fungus is winning.
 
 **What the group finds:**
 - Fungus samples growing on the tower's inner walls — enough for Diederik to compound
   Irna's cure
-- The furnace, dormant but not dead — a *Shamanic* character or one with Magic can sense
-  the spirit bound into it
+- The furnace, now understood as a person not a machine
+- The mage's living quarters, preserved with meticulous care by the boy
 - Tools and materials for pot-person construction, most degraded
 - Records of the tower's owner — an overseas mage whose name and purpose can be pieced
   together from surviving notes
-- A small pot-person, still active, hiding in a corner of the workshop
+- The small pot-person, initially hiding but curious if approached well
 
-### The Pot-Person
+### The Pot-People
 
-The pot-person is small — knee-height — and very old. It has been alone in this tower since
-its creator left (or died, or was recalled across the ocean — it does not know which). It
-has a spirit bound into it, like all iron puppets, and centuries of solitude have given that
-spirit something close to personality: cautious, methodical, deeply attached to the tower
-and its furnace.
+Both are small experimental constructs, both very old, both alone with each other since
+their creator left (or died, or was recalled across the ocean — the boy does not know which).
+Both have spirits bound into them, and centuries of solitude have given them something close
+to personality: cautious, methodical, deeply attached to the tower and to each other.
 
-It does not trust the group immediately. It has not seen people in a very long time, and the
-last people it saw were overseas mages who treated it as a tool.
+The **boy** is the social encounter. Quick-for-a-puppet, conversational, meticulous about
+the rooms he maintains. The **furnace** is much slower — a sentence from it may take a season
+to arrive — but it is willed, it is listening, and it was the threshold the party crossed.
 
-**Building trust:**
-- *Shamanic* — communicate with the bound spirit directly; acknowledge it as a person
+Neither trusts the group immediately. They have not seen people in a very long time, and the
+last people they saw were overseas mages who treated them as tools.
+
+**Building trust (with the boy):**
+- *Shamanic* — communicate with the bound spirit directly; acknowledge him as a person
 - *Ingenuity* or Hand — help repair something in the tower; demonstrate competence and
   goodwill
-- *Relaxed* — patience and calm; do not rush it; let it observe the group
-- *Politics* — recognise that it has interests (the tower, the furnace, survival) and
+- *Relaxed* — patience and calm; do not rush him; let him observe the group
+- *Politics* — recognise that he has interests (the tower, the furnace, survival) and
   address those
 
-**If the group earns the pot-person's trust:** It becomes a contact (level 1) and a source
-of information about the towers, the overseas mages, and the air elemental. It knows the
-towers were built to trap the elemental. It knows the fungus is getting worse. It does not
-know how to stop it.
+**Respecting the furnace:** treat it as the being it is, not as a tool. Speak to it even if
+it will not answer on party-scale timelines. Do not attempt to command it.
 
-### Rescuing the Tower
+**If the group earns the pot-people's trust:** Both become contacts (level 1). Together they
+are a source of information about the towers, the overseas mages, and the air elemental.
+They know the towers were seized and moved to bring Laurent's city down. They know the
+fungus is getting worse. They do not know how to stop it.
 
-**Scenario type:** Repair (optional)
+### Rescuing the Tower — and breaking the first shackle
+
+**Scenario type:** Repair + relational (optional in Session 3; becomes central later)
 
 The group can attempt to rescue the tower by clearing the fungus and restoring the furnace
-to fuller operation. This is not required for the main objective (they already have the
-fungus samples for Irna's cure) but it earns the pot-person's deep gratitude and
+to fuller operation. This is not required for Session 3's main objective (they already have
+the fungus samples for Irna's cure) but it earns the pot-people's deep trust and
 establishes a base of operations near the lake for future sessions.
+
+It is also the first half of something much larger. The six towers around the Lake of
+Tears are the **six shackles** that hold the bound air elemental in place. Breaking a
+shackle does not destroy the tower; it **moves the tower out of the ring**. For the
+buried tower specifically, the mechanism is known (to those who understand the tower's
+nature): *get the pot-boy to leave with the party, and the furnace will follow him as
+its companion*. The furnace has stubby legs and a will; it has not moved in centuries
+because the boy was there and there was no reason to. Give it a reason — the boy walking
+away with people it has learned to trust — and it will go after him.
+
+A tower that leaves the ring stops being a shackle. The cage weakens. Do this to all six,
+and the air elemental is freed — which is the **last-flight climax option**: the freed
+spirit re-lifts Laurent's downed city for one last journey (see the Campaign Threads
+table and `doc/npcs/laurent.md`).
+
+The buried tower is therefore the **first shackle** and the **first lesson** in how the
+cage comes apart: through relation, not through force. The other five towers will each
+have their own relational mechanism (Hermit Shaman's tower being the obvious next step).
+The buried tower is where the party learns that breaking shackles is social, slow, and
+earned — and that the cost to the rain-buffer is real.
 
 **Challenge: Clear the fungus.** The fungus is extensive. Cutting it back buys time;
 burning it is more effective but risks the tower itself.
@@ -369,9 +514,16 @@ With Irna mobile, the campaign opens outward. The following threads are availabl
 
 ### The Monastery Road
 
-Irna needs to reach Luchebert Monastery. The route passes through the vale beyond
-Laurent's downed city. Finding the vale entrance is the first challenge — Irna could not
-find it, and the passage may be deliberately hidden or naturally overgrown.
+Irna needs to reach Luchebert Monastery. The monastery sits in hills above a bend in the
+river, hard to reach from the river side — which is why she could not find it. The obvious
+approach (following the water from Elmsfield and the swamp) does not yield up the vale
+easily; the path is hidden, naturally overgrown, or simply on the wrong side of cliffs a
+traveller following the water cannot climb.
+
+Finding the real route is the first challenge. It probably means approaching from over the
+hills rather than along the river — an inland path rather than a water-route. Locals
+(Diederik, Corné Dunham, possibly Brother Darrel if the party has reached him) may know
+how it is done.
 
 **Scenario types:** Travel, exploration
 
@@ -395,10 +547,31 @@ group something to do while Irna's business with Father Elliot plays out.
 
 ### The Other Towers
 
-Five wizard towers remain around the Lake of Tears. Each was built by a different overseas
-mage. Each has its own character, its own defences, and its own secrets. The towers form
-the cage that holds the air elemental — understanding them is the key to the larger
-question of what to do about the elemental and the spreading fungus.
+Five wizard towers remain around the Lake of Tears. Each was taken from a different
+original owner when the old-order mages seized them to bring Laurent down, and each still
+carries its own character, its own defences, and its own secrets. Some of the original
+owners did not survive the taking; some did, and still remember. The towers form the cage
+that holds the air elemental — understanding them is the key to the larger question of
+what to do about the elemental and the spreading fungus.
+
+**Characterised so far:**
+
+- **The Hermit Shaman's tower** — inhabited; the Hermit Shaman is probably a surviving
+  original owner or heir. Their tower breaks when they leave. See `doc/npcs/hermit_shaman.md`.
+- **The Lightning Tower** — flies about six metres off the ground, not unreachable but not
+  at ground level either. Metal spikes jut from its sides, and lightning arcs between them
+  periodically, visibly lighting the night sky. The workings originally housed in this
+  tower involved storm-spirits or lightning-channelling, and those workings are still
+  active centuries on. Reaching it means climbing; interacting with it means dealing with
+  the lightning. **Its lever is the Storm Mage** — its original owner, still alive in the
+  surrounding hills, of unknown age, with a mind substantially broken by centuries and/or
+  by a chaos-spirit encounter. Restoring, accompanying, or simply bringing him back within
+  reach of the tower is what moves the shackle. The ethical cost of acting on a mind that
+  cannot give meaningful consent is part of the arc's weight. See `doc/npcs/storm_mage.md`.
+
+*Three other towers are still to be characterised. Each will have its own personality and
+its own relational lever (see the "Last Flight" campaign thread and `doc/npcs/pot_person.md`
+for the pattern).*
 
 **Scenario types:** Exploration, repair, combat
 
@@ -420,12 +593,17 @@ These are the long-running tensions that connect sessions:
 | Thread | Core question | Connects to |
 |---|---|---|
 | The air elemental | Should it be freed? Can it be freed safely? What happens to the region if it is? | The towers, the fungus, Laurent's city |
-| The overseas mages | Why did they build the towers? Are they coming back? What do they want with the elemental? | The war background, the pirate nest, the towers |
-| Irna's family | What is the truth about her brother's proclamation? What does Father Elliot know? | The monastery, the church, Allondo politics |
+| The old-order / overseas mages | Thorgal (deceased, killed by John) led the recent war out of need, not conquest — their continent was starving and they had a surplus of demi-humans to feed. The faction that crashed Laurent's city is an older, similar-flavour but not identical one. **The overseas continent's current political structure is deliberately unspecified in the setting**: no one on this continent knows who succeeded Thorgal, how the dissenters fared, or what the current leadership looks like. When a campaign moves toward the overseas side, the DM fills in whatever makes the arc work. Until then, the next pressure from overseas remains shape-unknown — which is exactly what it is, to characters here. **Partial channel**: Thorgal's **haunted mirror** still exists somewhere in a forest on this continent; his residue can, cautiously, be communicated with through it, and an aspiring mage can even **bond** with it to inherit overseas mage-craft in exchange for showing Thorgal the world he never got to set foot on. See `doc/npcs/thorgal.md`. | The war background, the pirate nest, the towers, Laurent's crash, druid relations, the haunted mirror, the bond |
+| Irna's family | The prophecy is about Irna as a potential *spirit-shield*, not Ron as a warrior; the martial misreading took hold as the news spread (Elliot did not circulate it himself). Elliot knows it went wrong and has chosen not to correct it because doing so means breaking his retirement from Allondan politics. Will Irna's arrival at Luchebert — as a living person — finally force him to act? | The monastery, the church, Allondo politics, spirit ecology |
 | Laurent | What has he become? What does he remember? Is he a threat or an ally? | The downed city, the elemental, mage history |
-| Felicia | What does a great spirit want? Can she communicate? Does she have an agenda? | The monastery, the church, spirit ecology |
+| Felicia | Great spirits do not want; they are driven. Felicia's drive is fear for the people she tried to save at the fall of Laurent's city. The Abbey is officially Saint Luchebert's; Felicia is its *true* saint, and her shrine is tended by the old rabbit granny Willow. Can the party earn Willow's trust and be told what the Abbey really is? Can they align with Felicia's drive, or condense her into a temporary body to speak directly (see LORE.md)? What does Felicia do when "her people" now includes Brumal refugees and the party itself? | The monastery, Saint Luchebert, the church, spirit ecology, Willow's succession |
 | The pirate nest | Stranded soldiers turned raiders along the southern coast — a threat that grows if ignored | The war background, trade routes, coastal towns |
-| The pot-people | Are there more? What is Haven? Does the buried tower connect to the larger puppet story? | The towers, mage history, iron puppets from lore |
+| The iron puppets | Haven is the puppets' settlement beside the shifting lands to the west — hard to reach, mostly humanoid wooden-bodied constructs with metal additions. The buried tower holds *two* experimental pot-people cousins (a small caretaker and the furnace itself, which is the only easy entry into the tower). If the party finds Haven, they inherit the responsibility of *keeping its location hidden* from the spirit-artefact buyers. | The towers, mage history, iron puppets from lore, the shifting lands |
+| Ironwood survival | Ironwood was engineered for the planet's original harsh climate; the homelands have only female trees (the males were all felled by the ancient mages for puppets); the overseas continent still has males. **Diederik's plan:** an overseas expedition to dig up young male sprouts (hard), transport them back alive, plant them close to Elmsfield's great female, wait roughly two years, and let a storm carry pollen across. Setting-scale, expedition-scale, and ends in the Elmsfield fruiting crisis (heavy fruit, gases, Inn closes for a season). | Elmsfield, Diederik's overseas journey, overseas diplomacy, the rain-buffer crisis, Brumal's collapse, the last flight (possible delivery method) |
+| Brumal's collapse | Brumal is being eaten by desert from the south — Steadington is gone. The desert is a **continental-width band** (south of the blasted lands, stopped only by Gap city's mountains); it bounds Allondo's southern flank too, though Brumal's crisis is visibly first. The driver is chaotic spirits that have migrated out of the blasted lands into the desert, making it much more hostile than natural. Fata morgana has unique (limited) protection against them. How much time is left before open war? Can the spirits still spread further — into Allondo's south, into the forbidden woods' region, into the settled inland area? Demi-human clans (see LORE.md) cut across the border between Brumal and Allondo: war between the kingdoms would not cleanly divide those clans, which is a political problem Hannes has not yet confronted. **Secondary complication:** Crown Prince Corven is secretly in love with a Brumal royal lady, Princess Penelope. That love is current, hidden, and the single most destabilising fact in the royal household — if the war happens, it falls on the one heir who cannot fight it. | Allondo politics, refugees, Hannes's bargain, Hank's orphanage, Elder Diederik's origin, the blasted lands, Fata morgana, clan networks, Corven/Penelope |
+| The rain-buffer | The Lake of Tears holds back the desert for the inland area but cannot reach the coastal mountains (the hills east of the lake block the rain). What happens to the surrounding region if the lake's weather-workings fail — through the elemental being freed, the fungus advancing, or the tower cage collapsing? | The air elemental, the towers, Brumal's collapse, Felicia's arrangements |
+| The last flight | Freeing the bound air elemental — the same spirit that once lifted Laurent's city — would let the wreck **rise for one last journey**, a few sessions of player-led flight rather than a revival. The elemental is held by **six shackles, one per tower around the Lake of Tears**; each shackle breaks by convincing that tower to leave the ring via its own relational lever (the buried tower's lever is the pot-boy, and the furnace follows; the Hermit Shaman's tower likely breaks when they leave). The cost is the rain-buffer: the region loses its shield and the desert starts reaching inland. Bittersweet campaign-climax option rather than a standard arc. | Laurent, the air elemental, the towers, the rain-buffer, overseas potential, Felicia's drive, pot-people, Hermit Shaman |
+| The shamans' long plan | The shamans have been working for generations on a deliberate reopening of the portal — controlled this time, with the aim of pushing the chaotic spirits back through it into the ether they came from. The portal is at the centre of the blasted lands (physical structure built by the first humans to stabilise it, still glowing and shimmering today); reaching it alive is itself the first problem. A flying city would solve that. Enormous risk; rift-scale if the ritual goes wrong. A second plausible campaign-climax option, **plausibly intersecting with the last flight** — Laurent's city could be the delivery method. | The Rift, the chaotic spirits, the portal, the shamans, the forbidden woods, the blasted lands, Fata morgana, the last flight |
 
 ---
 
@@ -443,13 +621,121 @@ The campaign naturally introduces scenario types in order:
 | 4 | Cure (resolution) | Payoff for earlier gathering; information from a recovering NPC |
 | 5+ | All types available | Full system in play |
 
+### Origin
+
+Moros started as **"a small town of hardy people beside the wilderness."** Every other layer
+— the cosmology, the kingdoms, the Bean family, the spirit ecology, the six shackles, the
+two climax options, the thirty-four NPCs — grew outward from that single image. When in
+doubt about tone, return to the seed. The town is **hardy, not heroic**. The wilderness is
+**near, not conquered**. The people **know each other**.
+
+### How to approach building a setting like this
+
+For any DM or campaign author building their own setting from scratch, these are the
+lessons Moros's construction quietly taught. None are rules. All are usable.
+
+1. **Start with a seed, not a system.** A phrase, an image, a mood. "A small town of hardy
+   people beside the wilderness" is enough. Don't start with a map, a magic system, or a
+   power hierarchy — those will grow when they are needed and will fit the seed if you let
+   them.
+
+2. **Let necessity pull the rest.** Do not invent what you do not yet need. When a scene
+   asks a question, answer it. When no scene asks, leave the question open. The setting's
+   shape emerges from what the stories you want to tell actually require, not from a
+   completionist instinct to document everything.
+
+3. **Trust the tone.** If a detail feels off-seed, it is. A hardy-town setting should not
+   have a mustache-twirling conquest villain; if you feel one pulling at the story, find
+   the more honest motivation. (Thorgal went to war over famine; nobody in Moros is trying
+   to be evil, and the setting is stronger for it.)
+
+4. **Layer places and characters.** Every location in Moros has three layers — visible,
+   uncoverable-with-time, and uncoverable-only-with-earned-standing. Every NPC has the same
+   shape. Nothing worth knowing is handed over on first contact. Return is the mechanism
+   that earns depth, not exposition.
+
+5. **Size characters to their role.** The setting has fifteen-plus all-rounders and two
+   characters at the 2.5 floor. Not every character needs to be an all-rounder. A village
+   smith who is only a smith *works*; forcing him to be a smith and a secret-keeper and a
+   spirit-shield and a teacher of arcane lore would *break* him. Size each character to the
+   story-slot they fill, and no further.
+
+6. **Internal consistency beats comprehensive coverage.** A small, coherent world where
+   every piece connects to every other piece plays better than a large world with
+   contradictions. If a reveal would break something already established, do not reveal it.
+   Find the reveal that *strengthens* what already exists.
+
+7. **Write the design principles down once they emerge.** Mid-construction, you will notice
+   patterns you have been following without stating — "compassion first," "trust-gated
+   teaching," "layered places." When you see one, write it down as a principle. Future
+   decisions will then have a legible rule to check against.
+
+8. **When in doubt, return to the seed.** It is the true north of the setting. Every
+   derivation should be consistent with it. A new NPC that doesn't feel like they belong in
+   the seed's world probably doesn't. A new plot thread that fights the seed will either
+   reshape the seed (rarely good) or undermine itself (reliably). Prefer to let the seed
+   win.
+
+9. **Don't over-elaborate the worldbuilding.** At some point the setting is rich enough to
+   run. Past that point, additional lore can actively hurt the table — too dense for the DM
+   to carry, too opaque for new players, diminishing returns. Know when to stop building
+   and start testing.
+
+10. **Trust that the DM will finish the rest at the table.** A campaign book is not a
+    script. Leave room. The best scenes Moros has were invented in conversations while
+    writing the docs; the best scenes Moros *will have* will be invented in play. Document
+    enough to support, not so much to constrain.
+
 ### Tone
 
 The campaign opens with compassion, not combat. The first decision is whether to help a
 stranger. The first antagonist is fear, not a monster. The bear encounter offers a choice
-between violence and patience. The pot-person rewards curiosity and kindness. This sets the
+between violence and patience. The pot-people reward curiosity and kindness. This sets the
 tone for Moros: a world where the most dangerous thing is usually not the creature in front
 of you, but the decision you make about it.
+
+### Layered places — the core design principle
+
+**Places in Moros are not solvable in a single session.** Every significant location the
+party visits is built with layers of meaning and mystery — things that can be seen on a
+first pass, things that only reveal themselves with time, and things that only become
+visible once other pieces of the setting have been encountered. Returning to a place the
+party thought they understood is always rewarded. First visits never exhaust a location.
+
+This is a **design constraint the DM should actively preserve**: when preparing a scene,
+ask what the party can find on this visit, what they can begin to notice, and what they
+must come back later (with more context, more trust, or more tools) to uncover. Do not
+flatten a location into a single session's worth of information.
+
+Existing locations already embody this. Examples:
+
+- **Elmsfield** — an ordinary border town on first visit. Over time: the ironwood tree
+  (Diederik's reveal), the hoard hidden inside it during the war (Bridget's reveal),
+  the tree being the last fertile female ironwood on this continent (LORE depth), the
+  fruiting cost if the tree is ever pollinated (a crisis for the Inn), Hank's
+  orphanage as clan-logic at scale, Joseph's war trauma and stretched finances as the town's darker memory.
+  Six or more layers, unfolding at different paces.
+- **Luchebert Monastery** — officially Saint Luchebert's abbey on arrival. Over time:
+  Elliot's past as Crown Prince, his penance for the war he led, Felicia as the *true*
+  saint tended by Willow, the shelter for the disappeared, the overseas demi-humans
+  quietly sheltered there, the monastery's role in the Bean affair. Revelation by
+  earned time, not interrogation.
+- **The buried tower** — a sealed ruin with a furnace inside. Over time: the furnace is
+  a being (the party walks through it to enter), the small pot-boy is another being
+  (hides by pretending to be a pot but forgets the tools), the mage's preserved living
+  quarters still being maintained, the tower is one of six shackles on the elemental,
+  the boy is the key that walks it out of the ring.
+- **The Lake of Tears** — a lake with six towers on a first look. Over time: six shackles
+  on a bound air elemental, each tower with its own relational lever, each requiring its
+  own session's trust-building; Laurent's wreck in the hills east; Luchebert beyond that;
+  the rain-buffer the whole region depends on; the cost of freeing any of it.
+- **The forbidden woods** — a dangerous forest. Over time: Tod (the chaos spirit's
+  accessible face), the spirit's nature (approximation not malice), its mass and
+  slowness, the mighty-spirit-readers ringing it, what teaching it looks like.
+
+**Practical consequence for prep:** when a DM builds a new location, they should plan
+for *at least three* layers that can only be uncovered by return visits. Revealing
+everything the first time means burning the place as a destination.
 
 ### The Fungus as Recurring Threat
 

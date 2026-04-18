@@ -24,6 +24,37 @@ A few curious people went to look. Then a small group went through, cautiously, 
 on the other side. Word spread. A larger group followed, and then a larger one, drawn by the
 possibility of something better than the world they were leaving.
 
+### There are only two known worlds
+
+The distant world the first humans came from is **Earth** — our own world, in its far future:
+the overcrowding, the poisoning, the stripping of its nature are the long consequences of its
+own history. By the time the portal was opened, Earth was still inhabited but struggling. The
+colonists who came through were Earth humans bringing what they could of a civilisation that
+had outrun its own land.
+
+The world they arrived in is **Moros** — the setting of this game, empty of plants and history
+but full of the eternal spirits that had wandered it uninterrupted until that day.
+
+**These are the only two known worlds.** "The others on the far side of the portal" who helped
+engineer ironwood in the early years were the Earth humans still on that side when the portal
+still worked. The "ancient holy book" Saint Luchebert found and built his religion from was an
+Earth book, carrying fragments of Earth's ancient religions through the portal with someone who
+thought to bring it. Everything strange about where the first humans came from is, underneath,
+strange because it is Earth's far future filtered through the crossing.
+
+The portal is not what it was. Whatever contact the colonists had with Earth during the
+crossing years has, for present purposes, ended. The two worlds are still presumably both
+there; they are no longer in meaningful conversation. Whether Earth now still has anyone on
+it to speak with, and whether the shamans' planned reopening would reach *anyone* on the
+other side, is an open question — one the campaign does not need to answer unless it
+chooses to.
+
+*The **ether** where the chaotic spirits came from is not a third world in this sense. It is
+the metaphysical adjacency the rift tore open when the mages tried to force the portal open
+badly — a between-place, not a place with a history or inhabitants of its own. Pushing the
+chaos spirits back "into the ether that spawned them" means returning them to an unformed
+elsewhere, not to a planet they have a home on.*
+
 ## The First Years
 
 The colonists arrived to find no food. Nothing grew. The animals they had brought through were
@@ -164,6 +195,67 @@ persons. The current playable peoples include badgers, bats, beavers, boar folk,
 crows, finches, foxes, humans, otters, owls, rabbits, raccoons, rat folk, and wolves — each with
 their own traditions and relationship to the world and its spirits.
 
+### Clans and their shape
+
+The animal-people (the "demi-humans" in common speech) organise themselves into **clans** —
+but the clans are typically **small and dispersed**, not concentrated in a single city or
+district. A clan's members are spread across several nearby towns, connected by kinship and
+the slow traffic of the road rather than by shared streets. When a Tusk Clan boar folk talks
+about "the clan," the nearest member may be in the next town over; when a Mouse clan priestess
+is consulted in the capital, her wider clan is quietly distributed across the surrounding
+region.
+
+This has several consequences:
+
+- **A clan figure in a capital is representing a network, not a local constituency.** Lady
+  Rhianna's Mouse clan standing means she speaks for mouse folk in Scarlet vale *and* in the
+  agricultural towns and villages whose mouse folk look to her.
+- **Clan allegiance does not track local politics cleanly.** A Brumal-side boar folk and an
+  Allondo-side boar folk can be clan kin; the coming war between the two kingdoms will cut
+  through clans, not between them.
+- **Clan knowledge travels.** Information that reaches one clan member reaches the network,
+  slowly but reliably — which is one way rumours of Luchebert's sheltering work, Fata
+  morgana's spirit defences, or the overseas mages' dissenters might already be moving
+  through demi-human kin-networks without the kingdoms' courts noticing.
+- **Clans are not nations.** They do not have armies, territories, or treaties. They have
+  obligations, memories, and a practical habit of watching out for each other across
+  distances that homelanders used to road-maps find inconvenient.
+
+Humans, by contrast, did not develop the same clan structure and still tend to organise
+around place-based polities. This is part of why humans often end up in formal leadership
+positions in the kingdoms: the political form of a kingdom matches the human mode of
+belonging more cleanly than it matches the demi-human one.
+
+## Saint Luchebert
+
+Among the first humans in the white city was a **priest named Luchebert**. He was one of
+the earliest to serve a spiritual vocation that was not mage-craft. The mages of the white
+city mostly ridiculed him — the dominant tradition there was to bind spirits, not to
+negotiate with them as peers, and a priest had no standing in that framework. Other people
+listened. Commoners, craftspeople, demi-humans who had never found a natural home in mage
+society — they heard him, and over time his congregation quietly became substantial.
+
+What gave Luchebert's teaching its particular shape was that he had found **an ancient
+holy book from the other side of the portal** — an Earth volume brought through in the
+early days of the crossing, carrying stories of Earth's own ancient religions (faiths
+the people of the colonists' Earth had themselves inherited from deeper antiquity and
+mostly forgotten). He read it, and he made up **his own version** of what he found. The
+synthesis was his; the fragments were older than anyone on this world — older than Earth
+itself remembered them being. What he taught was a religion of reaching toward presences older and vaster
+than oneself — which was not, in the mages' framework, useful, because it did not produce
+workings. The people who listened heard something else.
+
+Luchebert died long before the rift. His tradition survived him. His quiet congregation
+kept his rites and his readings going, the monastery that would later carry his name was
+founded in his memory (in a remote vale, away from the mages who had never respected the
+work), and by the time the church as such took its current shape, Luchebert-tradition was
+one of the quiet threads it was built on. A tradition of *reaching, not grasping* — of
+approaching great spirits as something that might be briefly attended to, not something
+that could be bound. This is the spiritual grammar that made it possible, centuries later,
+for **Felicia** to become venerated inside a Luchebert monastery: the framework Luchebert
+synthesised from his fragments was always flexible enough to receive a new great-spirit
+presence, and the Luchebert vale's monastic order was the kind of place that would.
+
 ## The White City
 
 Within a generation, the colonists had built something remarkable. The settlement that grew up
@@ -259,6 +351,53 @@ ones that need calming or binding, the elemental wanderers that can be communica
 do not reach for anything larger. Their practice is grounded, immediate, and shaped by the
 understanding that the spirit world is a community to be respected, not a resource to be used.
 
+### The shamans' long plan
+
+The chaotic spirits are not a solved problem. They are a **constant threat** — still pressing
+into the world, still capable of making life almost impossible wherever the shields around
+human and demi-human settlements are thin. The shamans know this. They have known it longer
+than anyone else, and they have carried the weight of knowing that the rift was partly their
+doing.
+
+They have not sat still during the centuries since. Out of public view — not secret exactly,
+but not advertised either — they have been working toward a specific, enormous plan:
+**reopening the portal.** Not as the mages attempted during the rift, but deliberately, slowly,
+with the aim of **pushing the chaotic spirits back through it into the ether that spawned
+them**. The same door that let them in would be used to send them home.
+
+### The portal itself
+
+The portal is **both a physical and a metaphorical thing, and both are at the same place:
+the centre of what are now the blasted lands.** The physical structure was built by the
+*first humans* to **stabilise the portal on this side** — an engineering project from the
+era when the connection to the others was still working and the first colonists had reason
+to want a durable bridgehead. That structure is still there. It is not a ruin in the usual
+sense; it is a thing that has outlasted almost everything else the first humans built. The
+metaphorical portal — the gateway itself — is a **glowing field** that occasionally
+**shimmers**, and in those shimmers short glimpses into **dimensions unknown** are briefly
+visible. Those glimpses are **not worth risking your mind for**. Anyone who stares long is
+not the same person afterwards.
+
+**Reaching the portal is hard.** The blasted lands are a *large* hazardous region under
+constant chaotic-spirit pressure (it is from here that spirits have been migrating into the
+desert), and the portal sits at their centre. Getting there is a journey, not a visit; doing
+so safely requires the kind of mighty-spirit-reader cover that most settlements cannot
+spare. The shamans' long plan includes, necessarily, the question of *how the ritual team
+reaches the portal alive and intact*. The answer has not been solved yet.
+
+The risks of the plan itself are on the scale of the rift. If the attempt goes wrong, or is
+done without sufficient preparation, it could unmake what the previous rift left behind. The
+shamans know this better than anyone. Their preparations are painstaking. The timing is
+conditional on circumstances that have not yet aligned. But the plan is real, it has been
+under construction for generations, and some shamans believe the conditions for it may be
+coming together.
+
+Whether this plan is ever *actually* attempted is a live campaign question. It is one of
+the two plausible climax-options currently visible in the setting — the other being the
+last flight of Laurent's city, which is also unrepeatable and also about using the world's
+limited chances properly. The two may even intersect: a flying city is precisely the kind of
+delivery method that solves "how do we reach the portal alive" for the ritual team.
+
 ## The Church
 
 Long after the first settlements stabilised, a different kind of spiritual practice emerged.
@@ -277,6 +416,42 @@ to be everywhere and precise enough to be nowhere.
 When contact is made, the great spirit offers what it can: a blessing that arrives like warmth
 from a direction that has no name and lasts as long as the connection holds. The church does
 not claim to understand these spirits. It claims only to have found a way to ask.
+
+### Great spirits do not want — they are driven
+
+A great spirit has no *wants* in the sense a human or demi-human has wants. Wants are a
+creature-scale category: a mind with goals, a self that weighs outcomes, an "I" that would
+be dissatisfied if things went another way. Great spirits are not that kind of thing. What
+they have instead are **drives** — persistent directions they are moving in, shaped by what
+they are and by what happened to them before they became great.
+
+Felicia, for instance, is still lingering in the fear for the people she tried to save at
+the fall of Laurent's city. That fear is not a grief she holds at arm's length and could
+choose to set down. It is the drive along which her presence runs: wherever her attention
+turns, it turns toward whether those she tried to protect (and by extension their
+descendants) are safe. Her settling of the demi-humans in the hills was that drive
+expressing itself over centuries. Her continued presence at Luchebert is the same drive,
+continuing.
+
+Drives are not negotiable the way wants are. A human can be persuaded to change a want. A
+great spirit cannot be persuaded out of its drive — it simply *is* that drive, in the way a
+river is water flowing downhill. What a supplicant can do is *align* with the drive. The
+church's blessings work because the clergy put themselves in the direction the great spirit
+is already moving.
+
+### Speaking with a great spirit directly
+
+Normally a great spirit cannot be conversed with as a person. It has no mouth, no "I," no
+attention held long enough to make a reply. But it is *possible*, by sufficient ritual and
+cost, to **condense a great spirit briefly into a temporary body**. The condensed form is
+not the great spirit entire; it is enough of the spirit, pressed into a provisional shape,
+that it can listen, answer, and be reasoned with for a time.
+
+This is a challenge in its own right. The ritual is expensive in what it asks of its
+performers, the temporary body is fragile, and the condensed form retains the underlying
+*drive* — the spirit will respond as what it is, not as the human-shaped speaker the
+supplicant wishes it were. Pressing a great spirit into a conversation is a real option for
+anyone determined enough to attempt it, and a real risk each time.
 
 The relationship between the church and the shamans is complicated. The shamans work with
 spirits as individuals — they negotiate, they bind, they listen. The church reaches past all
@@ -299,6 +474,124 @@ constant exhaustion.
 These creatures are not enemies in any simple sense. The shamans who encounter them try to reach
 the spirit within — to communicate, to offer the structure the spirit was denied, to help it
 find rest. Sometimes it works.
+
+### Why the chaos
+
+The havoc chaos spirits wreak is not *malicious*. They are not hostile to this world's rules.
+They simply do not **know** those rules. The natural laws that govern how things grow, how
+bodies work, how elements combine, how spirits interact with place, how time and season move
+— none of this is native to them. They came from somewhere else, and the local grammar was
+never explained.
+
+There is a second, subtler consequence of their presence: **the local spirits that live
+near them get pulled out of true**. A local spirit — one proper to this world, belonging
+to place and season — that spends long enough beside a chaos spirit's approximations picks
+up some of that warping. It starts moving wrong, behaving wrong, following rules that are
+slightly-not-the-rules. These are **highly influenced original spirits**. They are not
+chaos spirits; they still belong to this world; but they have been bent by proximity and
+no longer follow the natural laws cleanly. The blasted lands hold many of them — local
+spirits that spent generations too close to the portal and have taken on the warp of it.
+They are their own hazard, distinct from both untouched local spirits and the chaos
+spirits that caused them.
+
+They are not opposed to aligning with the way this place functions. They would, in principle,
+do so. What they lack is the ability to **grasp the finer details**. A chaos spirit taking a
+body does not know how joints work, so the body moves wrong. A chaos spirit near a mage's
+working does not know how the working is meant to propagate, so it nudges the pattern without
+intending to, and the working unravels. A chaos spirit standing near a tree does not know how
+the tree is supposed to grow, and the tree grows sideways, thickens where it should thin,
+makes bark that is almost but not quite bark. None of this is done to ruin anything. It is
+done by approximation — the spirit reaching for the nearest rule it can sense and getting
+it only broadly correct.
+
+This matters for how they are dealt with. Shamans reason with them not to change their
+*will* (they have no particular will against this world) but to offer them **structure they
+can mimic more closely**. A spirit that is taught more carefully what a body is, or what a
+working is, or what a tree is, can approximate better. It never becomes a local spirit — it
+will always be from elsewhere — but it can become less harmful by degrees.
+
+The problem is scale. There are many chaos spirits in the world, the shamans are few, and
+the finer details of reality are complicated enough that any given spirit only ever learns
+a small piece before something else nearby needs its attention. Most chaos spirits remain
+chaos because nobody has the time to teach them more. This is the fundamental condition
+their presence creates: *they are not trying to harm anything, but they cannot help it*.
+
+## Spirit Ecology: How Chaotic Spirits Are Held Off
+
+Spirits in Moros are **wild**. Free spirits — elemental, chaotic, or otherwise — migrate easily
+from one place to another. Nothing in the world's natural arrangement prevents them from going
+where they like. What there *is*, is an unwritten rule among spirits themselves: **a spirit
+respects a mightier one**. When a wild spirit encounters a greater presence already holding a
+place, it backs off. It looks for somewhere the greater spirit is not.
+
+**Chaotic spirits obey the same rule** — with one crucial limitation: they cannot distinguish
+between a true spirit and something that merely *reads* as one. A powerful mage carrying a bound
+spirit inside them reads as a mighty spirit. A shaman who has spent decades negotiating with
+spirits reads as mighty-adjacent. A druid deeply attuned to the local spirits reads the same way.
+A priest serving a great spirit carries some of that greatness with them. To a chaotic spirit,
+these are indistinguishable from actual powerful spirits, and the chaos spirit backs off from
+all of them.
+
+This is the mechanism behind nearly every defended place in the world:
+
+- A settlement with a resident shaman of real standing is safe from chaotic spirits drifting in.
+- A monastery tending the shrine of a great spirit carries that great spirit's weight around it.
+- A region with an established druidic circle reads as held territory.
+- A powerful mage living in a small town covers that town by presence alone.
+- A great spirit — or a being the chaos spirit cannot quite tell apart from one, such as a
+  demi-lich or a bound elemental — holds a region by simply existing there.
+
+The protection is **real, but fragile**. It depends on the specific figures staying alive, in
+place, and in standing. A priest who dies without a successor, a shaman who is driven out, a
+druid who is excommunicated and not replaced, a mage who moves on, a great spirit whose shrine
+is abandoned — any of these can open a door. The chaotic spirits that had been kept out will
+notice quickly, because the world they exist in is *exactly* the world of who reads as mighty
+and who does not. They do not hesitate to fill an opening.
+
+This is why Fata morgana is possible. It is also why its protection is limited: the city holds
+as much ground as its arrangement of mages, shamans, druids, and priests can cover, and no
+further. It is why the forbidden woods' chaos spirit has not spread — the surrounding region is
+ringed by mighty-spirit-readers, not because anyone deliberately trapped it. It is also why
+Brumal's southern edge broke: the cover there was insufficient to hold the blasted-lands
+chaotic spirits from crossing into the desert.
+
+For mages, this has a specific consequence. The chaotic spirit interference that makes their
+workings unreliable (see "Mage Initiation") is *also* kept at a distance by the same mechanism.
+A mage working in the presence of a great spirit's shrine, or alongside a senior shaman, or
+inside a druid-held wood, experiences less chaotic interference — because the chaotic spirits
+that would press against the working are themselves held back. Powerful practitioners protect
+each other by simply existing in the same space, whether they intend to or not.
+
+### The protection is largely unseen
+
+Most modern humans and demi-humans have **lost track of this protection**. The shield over
+their settlements is indirect and invisible to anyone who does not know to look for it.
+Townspeople do not feel a mage's presence holding chaotic spirits at bay; they feel only that
+their town is, as it has always been, a safe place to live. When the mage dies, they do not
+connect the funeral to the strange things that begin to happen in the following year.
+
+Worse, the people who still *do* care — who understand the work, who live it, who know what
+they are holding — have mostly moved out of the cities. The senior shamans prefer the
+countryside, where the spirits they negotiate with are strongest and where city politics do
+not interrupt their practice. Working druids live with the land. Priests who take the great
+spirits seriously tend to end up at remote shrines like Luchebert rather than urban monasteries.
+Powerful mages, for their own reasons, frequently retire to out-of-the-way towers, not to
+capital districts.
+
+The consequence is that **cities are not as well protected as their inhabitants assume**, and
+the regions that *are* well protected are usually borderlands, hermitages, shrine-vales, and
+other places most urban people never visit. Elmsfield is held because Elder Diederik chose a
+border town. The Luchebert region is held because a monastery sits in an isolated vale. Fata
+morgana survives in a desert precisely because its arrangement is deliberate and does not rely
+on the background assumption that cities are automatically safe. Scarlet vale, Cliffside hold,
+World edge, and the other major cities are held only as well as the few remaining urban
+practitioners inside them can manage, which is typically much less than the inhabitants would
+expect if they thought to ask.
+
+If the chaotic spirit pressure on the continent increases — through further migration from the
+blasted lands, through a failing Lake-of-Tears buffer, or through any of the individual
+protectors being lost — the cities are where the consequences land first, because the cities
+are where the cover is thinnest and the people are most surprised.
 
 ## The Shifting Lands
 
@@ -359,6 +652,85 @@ resists every tool, the wood itself seems to push back against being shaped. Mag
 bend elements worked it regardless, and the result was a material that holds form and function
 long past the point where either should have failed.
 
+### Ironwood itself
+
+Ironwood is not a natural species. It was **engineered by the first humans** — the Earth
+colonists who arrived on this world — back when they still had working access through the
+portal to **the Earth humans on the far side of it**, and the engineering knowledge (or
+direct collaboration) flowed through that connection (see "The Opening" above for the
+cosmology). The first humans shaped ironwood to survive the harsh
+climate that was then the planet's only climate: the landscape described at the beginning
+of this document, before plants as humans know them, before cultivation, before anything
+softer than survival. Ironwood is a living record of that first effort, and of the connection
+that made it possible.
+
+The portal is not what it was. Whatever contact the first humans had with the others on the
+far side has, for present purposes, ended. Ironwood-engineering knowledge of that calibre
+is not available on this continent now, and has not been for a very long time — which is
+part of why the living ironwood trees that remain are effectively irreplaceable, and why
+any future for ironwood on the homelands depends on the trees themselves surviving and
+reproducing, not on new ones being designed.
+
+Ironwood trees are **dioecious** — male and female trees exist as separate individuals, and a
+female cannot bear fruit without pollen from a male. The ancient mages who built the iron
+puppets preferred the male trees' wood for their work (or simply felled what was easiest and
+did not track what they were taking) and **cut down every male ironwood on this continent**.
+The homelands are therefore left with **female trees only** — sterile, unable to produce the
+next generation. Individual females are still alive, the great tree at the centre of Elmsfield
+being the most visible example. But they cannot reproduce without pollen from a male, and
+there are no males on this side of the ocean.
+
+**The overseas continent still has its males.** Whether by luck, different mage-tradition
+priorities, or deliberate conservation, the male population there survived. This is one of the
+continent's quietest but most strategic asymmetries: the homelands have the craftable material
+John Bean's arm, Bridget's Inn, and Laurent's city were built from only as existing stock that
+will one day run out. The overseas continent is the only place new ironwood could ever come
+from. Any future where ironwood remains a living material — rather than a slowly-depleting
+legacy — requires the two continents to cooperate enough that pollen can cross the sea.
+
+### How the pollen would actually cross
+
+Elder Diederik has worked out the practical method. The plan is not to ship pollen directly
+— pollen is too fragile to survive the crossing — but to **transplant live male sprouts**
+from the overseas continent to the homelands, plant them close to a surviving female (the
+Elmsfield tree is the obvious candidate), and let natural pollination take over once the
+young trees mature. The sequence:
+
+1. Go to the overseas continent and find *young male sprouts*. Full trees are too large
+   to move; sprouts are hard enough.
+2. Dig them up — a difficult job even for young ironwood, which resists tools at any age.
+3. Transport them back alive, kept watered and rooted through the crossing.
+4. Plant them close to the Elmsfield tree. A grove just outside the town works.
+5. Wait roughly two years for the sprouts to establish and mature enough to produce pollen.
+6. A storm blows pollen the female's way when the winds align, and natural fertilisation
+   follows.
+
+The sequence has a two-year hinge (the waiting period), a committed expedition (the
+overseas journey and sprout retrieval), and a known cost at the end (the female's fruiting,
+with its heavy fruit and noxious gases — see "Fruiting is not easy" above).
+
+### Fruiting is not easy
+
+Even once a female ironwood is pollinated, fruiting is not a clean benefit. The fruit itself
+is **heavy** — large enough that it damages what it falls on, including roofs and people —
+and it **releases gases** as it ripens and decays that make the immediate area around the
+tree **unpleasant to live in**: breathing is a burden, food spoils faster, work slows, and
+extended exposure is harmful rather than merely disagreeable. The gases are not lethal on
+short contact, but nobody chooses to sleep under a fruiting ironwood without reason.
+
+This creates an obvious tension. **Elder Diederik** wants the Elmsfield tree pollinated
+because its fruit is the only way a new generation of ironwood can exist on this continent.
+But Elmsfield is a town *built around the tree*. If it fruits, the town will have to live
+under the gases for the weeks or months the fruit takes to ripen and fall, and **Bridget's
+Inn** — which is inside the tree — becomes uninhabitable during that period. Pollination is
+therefore not a simple gift; it is a choice with a cost, and the cost lands on the people
+who live closest to the tree.
+
+Very few people on either continent have thought this through. **Elder Diederik** is one of
+the few who has; his journey overseas was in part a reconnaissance of the male population, and
+his settling in Elmsfield was in part a decision to stand next to one of the surviving females
+while the question of cross-pollination remained unanswered.
+
 The puppets were made in different sizes for different work. Smaller ones handled detail and
 precision; larger ones moved stone and raised walls. The castles and fortified towers that the
 mage society built across the land were largely their work. No human workforce could have built
@@ -385,8 +757,24 @@ personhood, not the animal-people's reincarnating spirit. Something slower, more
 built from the particular texture of iron and ironwood and the specific element of the spirit
 bound inside.
 
-They have gathered at a place called Haven — a settlement whose location is not widely known
-and which the puppets prefer to keep that way. Life there is slow in a literal sense: they do
+They have gathered at a place called **Haven** — a settlement located *beside the shifting
+lands to the west*, hard to reach unless someone actively sets out to seek it. The shifting
+lands bound the approach; the lack of a formal road keeps incidental visitors away. Its
+location is not widely known and the puppets prefer to keep it that way.
+
+Most of Haven's inhabitants are the **humanoid** puppets — roughly person-shaped constructs
+of ironwood reinforced with metal strips and plates, the sort that were built for heavy
+labour and detailed craft at person-scale. This is the template the old mage tradition
+settled on: wooden bodies with metal additions, spirit-bound, durable past the span of any
+life around them. The **two pot-people** in the buried tower at the Lake of Tears are
+different creatures entirely — survivors of an experimental side-programme by a mage whose
+goals diverged from the humanoid-puppet mainstream. The two are **a small caretaker and
+the tower's furnace itself**, both pot-shaped, both spirit-bound, both the work of the
+same unnamed experimenter. The experiment produced these two and never scaled; they are
+kin to Haven's humanoids (same bound-spirit principle, similar long survival) but not of
+them. If ever brought to Haven, they would find welcome and puzzlement in equal measure.
+
+Life at Haven is slow in a literal sense: they do
 not hurry, they do not require the urgencies that biological creatures are subject to, and their
 conversations take place over timeframes that make most visitors uncomfortable. They are not
 reclusive out of hostility. They are reclusive because experience has taught them what happens

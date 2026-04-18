@@ -37,12 +37,15 @@ possible that a white mouse half his size could tell a raccoon off where a pig o
 particular build had spent years struggling to. He reached absently to scratch his arm and was immediately aware, again, that
 it wasn't there anymore.
 
-He still didn't fully understand what had happened in those ruins. He had been following a
-lead — a collapsed tower on the edge of the blasted lands, old enough that the stone had
-started to look like it had always been there, a sealed door at the base that someone had
-already done half the work of opening. A good sign, usually. It meant something worth finding
-was inside, and that the last person to try had either succeeded and moved on or failed and
-wasn't in a position to argue over the share.
+He still didn't fully understand what had happened in those ruins. He had been following
+one of Felix's leads, which in hindsight should have been its own warning. Some old stone
+building on the edge of the blasted lands, long abandoned, the walls so weathered they
+looked like they had always been there. The main doors had been sealed by whoever last used
+the place, and nothing John had with him was going to persuade them — but Felix, with a
+raccoon's eye for the kind of opening a sensible person would leave alone, had found a low
+slot at ground level, wide and flat, meant for feeding something long and heavy into the
+building. John had not known what, and he still did not. Whatever was inside had been worth
+more than its owners had bothered to come back for.
 
 The machine had been just inside the entrance. Enormous, low to the ground, crouched in the
 dark like it had been placed there and forgotten. No markings he recognised. No obvious
@@ -103,7 +106,8 @@ him with an expression of mild professional interest, as though John were a prob
 solved before. John felt something move behind his eyes at the sight of the man, something
 that prowled slowly along the inside of his thoughts, searching for the edge of something.
 
-It found the ironwood arm instead. He felt it recoil.
+It found the arm instead — the one he no longer had, still there in his mind, shaped by
+habit and by forgetting. He felt it recoil.
 
 He did the only thing available to him. He reached out with his missing arm and pulled.
 

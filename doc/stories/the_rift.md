@@ -37,11 +37,15 @@ any element Felicia could name. The towers themselves, which she had always know
 and pale and certain, were swaying. Not in wind. In something else. None of them were
 untouched.
 
-The fires she could also see. They were enormous but they were ordinary. Ordinary fire meant
-people were still alive to cause it, or at least had been recently. Most of the people in that
-city were not mages. The mages might already be gone — might have been the first to go, given
-what was moving there — but the others could still run. The roads out of the city were wide.
-The fires lit the way.
+The fires she could also see. They were enormous. She wanted them to be ordinary — wanted
+to read them as signs of people still alive, still moving, still doing the things people do
+when they are trying to leave a place. Ordinary fire meant something like hope.
+
+They were not that. They were the buildings burning because buildings burn once nothing is
+left to keep them from it. Not beacons. Not escape-lights. The white city consuming itself
+after whatever had come through had moved on. She understood this and tried to hold the
+other reading alongside it anyway, because one of them felt survivable and the other did
+not.
 
 We cannot do nothing. There are so many people.
 

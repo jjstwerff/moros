@@ -232,9 +232,9 @@
     {
       "name": "Hank (Hanny)",
       "gender": "",
-      "desc": "Was brought together with Egbert to an orphanage by the Sargent Darrel. After leaving there Hanny wanted to chase her dream to get their own cottage. To be able to travel safely they presented themselves as men, they got a bag of money from Darrel that he left them though they think it was a relative.\nTheir farm is running well, they just sold a plot to Joseph so they regained the total sum of money again.\nThe house is always open for young people with little prospect.",
+      "desc": "Was brought together with Egbert to an orphanage by the Sargent Darrel. After leaving there Hanny wanted to chase her dream to get their own cottage. To be able to travel safely they presented themselves as men, they got a bag of money from Darrel that he left them though they think it was a relative.\nTheir farm is running well on the edge of Elmsfield, they just sold a plot to Joseph so they regained the total sum of money again.\nThe house is always open for young people with little prospect, and has grown into something close to an orphanage of its own.",
       "category": "active",
-      "place": "Scarlet vale",
+      "place": "Elmsfield",
       "race": "Rabbits",
       "progression": [
         {
@@ -273,7 +273,7 @@
       "gender": "",
       "desc": "Mate of Hanny. Secretly plowing the plots of land at night. Hunter several times to provide for food during winters.",
       "category": "active",
-      "place": "Scarlet vale",
+      "place": "Elmsfield",
       "race": "Wolf folk",
       "progression": [
         {

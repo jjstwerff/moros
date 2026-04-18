@@ -1093,5 +1093,6 @@ Persistent grey chill, everything damp.
 | Raft city | On the river through the great forest |
 | Rakeville | Village towards Allondo |
 | Rosepond | Mining village near the world edge |
+| Salmonswell | Independent small city well up-river; famous for salmon runs at the Upwelling |
 | Steadington | Village in Brumal overtaken by desert |
 | World edge | Mining city near the ocean |

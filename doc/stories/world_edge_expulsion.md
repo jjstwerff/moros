@@ -2,7 +2,7 @@
 
 I didn't do nothing!
 
-Egbert was pulled from behind the big machine by his tail. The hand that gripped him was the
+Remi was pulled from behind the big machine by his tail. The hand that gripped him was the
 size of a small tree. He could see the full frame of the bull against the hot metal glow of
 the furnaces — the one who had hunted him through the factory to this point.
 
@@ -20,9 +20,9 @@ was old enough to be part of his skin. He took in the scene without hurry.
 Master Darius. The bull's tone shifted only slightly. This rat will not bother you any longer.
 He is at the start of his journey out of this city, together with his extensive family.
 
-Darius looked at Egbert. Then back at the bull.
+Darius looked at Remi. Then back at the bull.
 
-But why? Egbert has only been helpful here. He did jobs that others were unwilling to do.
+But why? Remi has only been helpful here. He did jobs that others were unwilling to do.
 
 Not my call. The bull's voice was not unkind, exactly. It was the voice of someone who had
 thought about it and reached a conclusion and was done thinking about it. He may be the honest
@@ -31,7 +31,7 @@ of a cousin, or a cousin's cousin. No. The city of World Edge will not be their 
 
 Darius said nothing else. The apron moved slightly as he breathed.
 
-Egbert was still dangling by his tail.
+Remi was still dangling by his tail.
 
 ---
 
@@ -43,7 +43,7 @@ most days for two years.
 The street outside was already busy with it. Families with bundles. Children who did not
 understand the pace they were being asked to keep. An old rat woman sitting on a cart that
 held everything she owned, quite still, watching the city she was leaving with an expression
-that Egbert could not read and did not try to.
+that Remi could not read and did not try to.
 
 He had a mother somewhere in this. Two brothers and an uncle and a sprawl of cousins that
 extended further than he had ever fully mapped. He understood, in the abstract, what the bull
@@ -60,7 +60,7 @@ Master Darius appeared at the factory door behind him.
 
 Where will you go?
 
-Egbert hadn't thought about it yet. There was a lot he hadn't thought about yet.
+Remi hadn't thought about it yet. There was a lot he hadn't thought about yet.
 
 South, maybe. My uncle has talked about the river settlements. He says the work is different
 there.
@@ -71,7 +71,7 @@ That is a letter. It says you are a capable worker and an honest one, and that t
 reading it should give you a fair chance. My name on it will mean something in three or four
 places I can think of.
 
-Egbert took the letter. It was warm from the apron.
+Remi took the letter. It was warm from the apron.
 
 He wanted to say something about the years, about the lunch breaks, about the machine work in
 the dark. He couldn't find the shape of it.
