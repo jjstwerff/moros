@@ -53,6 +53,14 @@ Open questions:
 - Is the spirit related to the blasted-lands spirits, or independent?
 - Exactly *which* mighty-spirit-readers are holding the main spirit in place? (Useful to know before any of them leave or fall.)
 
+## The crashed Lightning Tower
+
+At the **fringes of the forbidden woods**, a **mage-era tower has recently crashed** — the **Lightning Tower**, once part of the cage-ring at the Lake of Tears (see `doc/npcs/storm_mage.md` §"When he enters his tower"). A broken-minded Storm Mage, returned to his old tower by the party, had a brief bout of lucidity there, activated the tower's workings, flew it north, and the working failed as the tower crossed into the woods' influence. The wreck is now here.
+
+**For the party, this turns the forbidden woods from backdrop into destination.** Investigating the crash means standing at the edge of Tod's territory. The Storm Mage is still at the wreck, wandering around it, even more confused than before. The tower itself is salvageable in parts — workings, levers, materials — for a party willing to camp in the chaos spirit's shadow. Tod may wander out to investigate the event.
+
+This is the in-world **entry point to the forbidden woods thread** for most parties: they follow a tower they were responsible for flying here, and the woods are where the tower came down.
+
 ## Campaign hooks
 
 - **A route problem, not a destination.** The woods obstruct travel to Raft city (and possibly to Salmonswell, if the rivers align that way). Any reason the party has to go north makes the woods a live scene.

@@ -27,6 +27,7 @@ Hannes is a king who calls in old favours, often more harshly than the favour wa
 - Held **John Bean**'s service and now holds the enlistment right to **Ron**. Likely owes John his life and freedom; this is not in the official record.
 - Captured during the Overseas War by **Raul**'s forward war band. Freed by **Felix** during the confusion after John broke Thorgal's scrying mirror.
 - Dealing with the fallout of **Irna Bean**'s attack on **Didrich** — an attack that is, by family relation, on his brother Elliot's nephew as much as on his own son.
+- Knows the location of the forward camp where he was held — the hills between the Great Swamp and Allondo where **Thorgal's haunted mirror** was left — but **will not speak of it**, because doing so means admitting the full shape of his captivity. See `doc/npcs/thorgal.md` §"Who knows the location".
 
 ## Sources
 

@@ -2,7 +2,7 @@
 
 - **Role:** Scout, opportunist, and instigator; John Bean's wartime companion
 - **Species:** Raccoon (animal-person)
-- **Location:** Current whereabouts unrecorded
+- **Location:** Itinerant; known to turn up at local fairs across the region
 - **Status:** Alive
 
 ## Summary
@@ -15,12 +15,19 @@ Felix was simply being his usual self. He had **no specific knowledge of the mil
 
 This is the texture of Felix as an asset and as a liability: he finds the openings that matter. He cannot see what matters about them until someone pays.
 
+## Where to find him
+
+Felix is **hard to pin down but not impossible**. He does not live in any one place anymore — after the war he took to moving — and a party looking for him by address will not find him by address. What he does is **visit local fairs**: market days, harvest festivals, town gatherings, the kinds of events where a raccoon with rings on his tail and an eye for openings can walk through a crowd and take in what is worth knowing. A party that cannot find Felix directly can reliably find him by *attending fairs* — if not the next one they pass through, then one soon after. He is on the circuit.
+
+This matters for the **mirror breadcrumb** (see `doc/npcs/thorgal.md` §"The chain, not the direct ask"). Felix is one of the five who know where the war-band settled, and he is the one who will mention it in casual conversation if the topic comes up. Reaching him is therefore a matter of patience and fair-hopping rather than detective work.
+
 ## Relationships
 
 - Wartime companion of **John Bean** and **Lady Rhianna Linthrope**.
 - The one who found the opening at the ironwood mill where John lost his arm.
 - **The one who actually freed King Hannes.** When John's ironwood-arm killing of **Thorgal** broke the scrying mirror and **Raul**'s forward war band fell back in confusion, Felix was the one who slipped in during the retreat and extracted Hannes. John's act ended the war; Felix's timing ended Hannes's captivity. The crown has never properly acknowledged this, in part because it has never properly acknowledged the capture at all.
 - **Pulled Lady Rhianna out of her own home** ahead of Crown Prince Elliot's liberating advance. Felix read the fog of war correctly: advancing armies are dangerous to whoever is in front of them, regardless of allegiance. Rhianna still does not live in that town.
+- Knows the **hills between the Great Swamp and Allondo** where Raul's forward war-band had settled — and where **Thorgal's haunted mirror** was left after his band fell back. Will mention it if a conversation goes there but does not bring it up on his own. See `doc/npcs/thorgal.md` §"Who knows the location".
 
 ## Sources
 

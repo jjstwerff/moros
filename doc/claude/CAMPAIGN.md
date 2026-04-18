@@ -136,9 +136,12 @@ a vale beyond the downed city, reachable through a passage that Irna failed to f
 ### The Lake of Tears
 
 The lake sits in a depression fed by a small river from Elmsfield. Around it stand six
-wizard towers. They were not built here: they were seized from their previous owners — some
-killed in the taking, others left surviving and aggrieved — and moved, whole, to ring this
-lake by a faction of old-order mages from Laurent's own era. Their purpose was to capture
+wizard towers. Five of them were not built here: they were seized from their previous
+owners — some killed in the taking, others left surviving and aggrieved — and moved,
+whole, to ring this lake by a faction of old-order mages from Laurent's own era. The
+sixth, standing on a hill above the lake, was already there — a **blood tower** whose
+original mage had to slaughter an animal each day to feed it, or be drained himself —
+and the old-order mages built their ring around it, using its hill as the anchor. Their purpose was to capture
 the giant air elemental that held Laurent's flying city aloft, and so to bring the city
 down. It worked: the towers captured the elemental, the city fell, and the elemental has
 remained bound in the cage of towers ever since. The old-order mages wanted the demi-humans
@@ -410,8 +413,10 @@ their creator left (or died, or was recalled across the ocean — the boy does n
 Both have spirits bound into them, and centuries of solitude have given them something close
 to personality: cautious, methodical, deeply attached to the tower and to each other.
 
-The **boy** is the social encounter. Quick-for-a-puppet, conversational, meticulous about
-the rooms he maintains. The **furnace** is much slower — a sentence from it may take a season
+The **boy** is the social encounter. Quick-for-a-puppet but **silent** — he has no mouth
+and cannot speak; he answers by **drawing on the ground** (chalk, furnace-ash, a finger
+in dust), responding to targeted questions with specific drawings. See
+`doc/npcs/pot_person.md` §"How he communicates". Meticulous about the rooms he maintains. The **furnace** is much slower — a sentence from it may take a season
 to arrive — but it is willed, it is listening, and it was the threshold the party crossed.
 
 Neither trusts the group immediately. They have not seen people in a very long time, and the
@@ -500,6 +505,15 @@ and her vision clears.
 - She mentions her father (John Bean) and her brother, but does not explain the full
   political situation unless pressed
 
+**Irna as companion.** Once recovered, Irna chooses to travel with the party — Luchebert
+is her destination and they saved her life. She is a capable Tusk Clan brawler with
+practical field-skills (Brawl, Axes, Charge, Digging, Smell) who pulls her own weight
+and will teach any of it to party members who show interest. She is **not a carry** —
+the players remain the protagonists and do their own work — and she has her own agenda
+(Luchebert, Father Elliot, the prophecy). When her path and theirs diverge, she follows
+hers. She is also the only person who can still reach **Ron**. See `doc/npcs/irna_bean.md`
+§"Once recovered — joining the party".
+
 ### The Mother Bear (optional)
 
 If the group wants to cure the mother bear, they can return with treatment. This is a
@@ -520,20 +534,30 @@ approach (following the water from Elmsfield and the swamp) does not yield up th
 easily; the path is hidden, naturally overgrown, or simply on the wrong side of cliffs a
 traveller following the water cannot climb.
 
-Finding the real route is the first challenge. It probably means approaching from over the
-hills rather than along the river — an inland path rather than a water-route. Locals
-(Diederik, Corné Dunham, possibly Brother Darrel if the party has reached him) may know
-how it is done.
+Finding the real route means approaching from over the hills rather than along the river
+— an inland path rather than a water-route. **The party's in-world pointer is Corné
+Dunham**, the Elmsfield badger who has walked the hill route himself and will describe
+it plainly, or guide the party along it for a day or two, if asked. See
+`doc/npcs/corne_dunham.md`. Other locals (Diederik, possibly Brother Darrel if the party
+has reached him) know of the route, but Corné is the primary guide.
+
+One caveat: Corné **will not lead the party into Laurent's fallen city**. His hill route
+actively avoids the wreck, which for most parties is a feature rather than a limitation.
+Parties who want the wreck itself need a different guide — or to go without one.
 
 **Scenario types:** Travel, exploration
 
 ### Laurent's Downed City
 
 The crashed flying castle is an enormous ruin in the hills near the lake. Laurent persists
-inside as a demi-lich. The city contains old mage-era construction, possibly functional
-iron puppets, and whatever Laurent has been doing for the past several centuries. Entering
-is dangerous. Laurent may or may not be hostile — he was a man who chose to help everyone;
-what a demi-lich remembers of that choice is unknown.
+inside as a demi-lich. The city is full of wall alcoves holding unactivated wooden
+puppets that Laurent animates remotely when intruders enter, throws fire at those who
+displease him (looting is the common trigger), and can be calmed by bringing him
+**Felicia's old intricate necklace** — which sits on Felicia's shrine at Luchebert in
+Willow's keeping. Reaching Laurent is also where the party *finally* learns the
+**six-shackle mechanism of the Lake-of-Tears ring**: he narrates his downfall freely,
+though agitatedly, to anyone who gets to him. See `doc/places/laurents_city.md` and
+`doc/npcs/laurent.md`.
 
 **Scenario types:** Exploration, negotiation, combat
 
@@ -547,17 +571,21 @@ group something to do while Irna's business with Father Elliot plays out.
 
 ### The Other Towers
 
-Five wizard towers remain around the Lake of Tears. Each was taken from a different
-original owner when the old-order mages seized them to bring Laurent down, and each still
-carries its own character, its own defences, and its own secrets. Some of the original
-owners did not survive the taking; some did, and still remember. The towers form the cage
-that holds the air elemental — understanding them is the key to the larger question of
-what to do about the elemental and the spreading fungus.
+Five wizard towers remain around the Lake of Tears besides the buried one. Four were
+seized and moved to ring the lake by the old-order mages; the fifth — Gerhald's hill
+tower — was already there, the anchor the ring was built around. Each still carries
+its own character, its own defences, and its own secrets. Together they form the cage
+that holds the air elemental.
 
-**Characterised so far:**
-
-- **The Hermit Shaman's tower** — inhabited; the Hermit Shaman is probably a surviving
-  original owner or heir. Their tower breaks when they leave. See `doc/npcs/hermit_shaman.md`.
+- **Gerhald's tower (the hill / blood tower)** — pre-existed the ring. A **blood tower**
+  in its original design: its first mage had to slaughter an animal every day to feed
+  it, or he himself would have been drained. Gerhald — an otter shaman who came later,
+  not the original owner — acquired the tower and broke the curse with a special
+  **spirit that mimics an animal**, which now feeds the tower in the sacrifice's place.
+  He guards the tower's secrets closely and is unwilling to share them with anyone.
+  **Its lever is Gerhald's consent** — this tower was never moved into the ring and
+  cannot be moved out of it; the last shackle opens only by agreement. Even if the
+  party breaks the other five, Gerhald can refuse. See `doc/npcs/hermit_shaman.md`.
 - **The Lightning Tower** — flies about six metres off the ground, not unreachable but not
   at ground level either. Metal spikes jut from its sides, and lightning arcs between them
   periodically, visibly lighting the night sky. The workings originally housed in this
@@ -565,15 +593,40 @@ what to do about the elemental and the spreading fungus.
   active centuries on. Reaching it means climbing; interacting with it means dealing with
   the lightning. **Its lever is the Storm Mage** — its original owner, still alive in the
   surrounding hills, of unknown age, with a mind substantially broken by centuries and/or
-  by a chaos-spirit encounter. Restoring, accompanying, or simply bringing him back within
-  reach of the tower is what moves the shackle. The ethical cost of acting on a mind that
-  cannot give meaningful consent is part of the arc's weight. See `doc/npcs/storm_mage.md`.
+  by a chaos-spirit encounter. Bringing him into the tower produces a **bout of clarity**
+  — he whirls through the place pulling levers, and the tower **lifts and flies north,
+  only to crash at the fringes of the forbidden woods** as the chaos spirit's influence
+  undoes the working. Shackle broken; the Storm Mage is left more confused than before,
+  poking the wreck. The ethical cost of acting on a mind that cannot give meaningful
+  consent is part of the arc's weight — and so is the wreck's new position adjacent to
+  Tod's territory. See `doc/npcs/storm_mage.md` §"When he enters his tower".
+- **The Volcano Tower** — shaped like a small volcano, stone cone with flames visible
+  inside. A large bound **fire elemental** is trapped within; it lashes out at anyone
+  trying to climb the rim. **Two levers, one relational and one violent.** *Relational*:
+  bring the elemental things to burn and befriend it; once fed and willing, it produces
+  enough energy to **lift the tower** so it can follow the group out of the ring.
+  *Violent*: enrage the elemental enough to break the tower's enclosure — the elemental
+  lashes out at everything present and eventually leaves for the mountain range. Shackle
+  broken either way, but the violent path is dangerous and ruins the tower. See
+  `doc/npcs/volcano_tower.md`.
+- **The Darkness Tower** — stands on the ground with a **pitch-black entrance**. Two
+  floors of rooms connected by several stairs; inside, sight fails and life drains from
+  whoever enters. A **light elemental** is trapped in one room beneath a large black
+  basket that suppresses its radiance — and, as a side effect, drains the life from
+  the area around it. **Its lever is a two-step puzzle**: free the light elemental, at
+  which point the walls reveal themselves to be lined with **light-and-dark mosaic
+  stones**; decoding the mosaic shows the party the mechanic that walks the tower out
+  of the ring. See `doc/npcs/darkness_tower.md`.
+- **The Sinking Tower** — floats on the lake. Any attempt to climb onto it causes the
+  tower to **sink straight to the lakebed** out of reach. The sinking is not a defence
+  but an **entry mechanism**: a brave player who clings to the tower all the way down
+  discovers the tower's **lower half**, an air-filled sealed living space at the bottom.
+  The original owner is dead; his **spirit is bound to the tower** and still inhabits
+  the lower half. **Its lever is fetch-quest in shape**: bring the spirit what he wants,
+  and he will float the tower **down the river to the sea** — a unique exit direction,
+  out of the watershed entirely. See `doc/npcs/sinking_tower.md`.
 
-*Three other towers are still to be characterised. Each will have its own personality and
-its own relational lever (see the "Last Flight" campaign thread and `doc/npcs/pot_person.md`
-for the pattern).*
-
-**Scenario types:** Exploration, repair, combat
+**Scenario types:** Exploration, repair, combat, negotiation, puzzle
 
 ### The Hermit Shaman
 
@@ -583,6 +636,36 @@ overseas mages better than anyone the group has met. Whether they are willing to
 understanding depends on how the group approaches.
 
 **Scenario types:** Negotiation, exploration
+
+### The War Pressure
+
+Brumal's collapse and the border tension it brings (see Campaign Threads §"Brumal's
+collapse") are **not invisible** once players start moving through the kingdoms. Two
+tiers of evidence are available:
+
+**If the party travels to Brumal itself**, the signs of war are unmissable: border
+fortifications being reworked, Steadington's fallen villages along the desert edge,
+refugees moving away from the southern frontier, the kind of collective urgency a
+country running out of land carries in every conversation. A party that goes will come
+back changed in how they read what Allondo's court pretends to be relaxed about.
+
+**Even in Scarlet Vale**, Allondo's capital, the gearing-up is plain to anyone looking.
+Training yards running in rotation. Smiths and mechanics behind on orders. Quartermasters
+making quiet passes through the trade districts. It is not announced, but it does not
+have to be announced; anyone with enough memory or enough eyes to notice can see the
+pattern. Hannes is preparing for a second war he would prefer not to fight (see
+`doc/npcs/king_hannes.md`), and his preparations are not subtle.
+
+**Irna can testify** to the specific shape of the iron demand. She spent her sentence
+at **Clear Water**, Allondo's mining town, and the reason the crown had capacity for
+convict labour at the scale it did was that the *demand for iron had gone up sharply*.
+The mines were running harder than they had in years, and the crown needed bodies who
+would not ask why. Her punishment was convenient for that need. If the party asks her
+about her time there, she will say so plainly; it is not news to her that the iron she
+dug was ending up in military hands. See `doc/npcs/irna_bean.md` §"What she saw at
+Clear Water".
+
+**Scenario types:** Travel, exploration, negotiation
 
 ---
 
@@ -597,13 +680,13 @@ These are the long-running tensions that connect sessions:
 | Irna's family | The prophecy is about Irna as a potential *spirit-shield*, not Ron as a warrior; the martial misreading took hold as the news spread (Elliot did not circulate it himself). Elliot knows it went wrong and has chosen not to correct it because doing so means breaking his retirement from Allondan politics. Will Irna's arrival at Luchebert — as a living person — finally force him to act? | The monastery, the church, Allondo politics, spirit ecology |
 | Laurent | What has he become? What does he remember? Is he a threat or an ally? | The downed city, the elemental, mage history |
 | Felicia | Great spirits do not want; they are driven. Felicia's drive is fear for the people she tried to save at the fall of Laurent's city. The Abbey is officially Saint Luchebert's; Felicia is its *true* saint, and her shrine is tended by the old rabbit granny Willow. Can the party earn Willow's trust and be told what the Abbey really is? Can they align with Felicia's drive, or condense her into a temporary body to speak directly (see LORE.md)? What does Felicia do when "her people" now includes Brumal refugees and the party itself? | The monastery, Saint Luchebert, the church, spirit ecology, Willow's succession |
-| The pirate nest | Stranded soldiers turned raiders along the southern coast — a threat that grows if ignored | The war background, trade routes, coastal towns |
+| The pirate nest | Stranded soldiers turned raiders along the southern coast — a threat that grows if ignored. **Discoverable through merchants passing through town**: every merchant who travels the trade road has sea-travel stories, and those stories all stop at **Linar harbour** — the coast past the harbour is *where colleagues have disappeared* (captured by the pirates, set to work for them). Merchants do not go further south, and will say plainly why if asked. A party that follows those stories is on the pirate thread. | The war background, trade routes, coastal towns, merchant rumours |
 | The iron puppets | Haven is the puppets' settlement beside the shifting lands to the west — hard to reach, mostly humanoid wooden-bodied constructs with metal additions. The buried tower holds *two* experimental pot-people cousins (a small caretaker and the furnace itself, which is the only easy entry into the tower). If the party finds Haven, they inherit the responsibility of *keeping its location hidden* from the spirit-artefact buyers. | The towers, mage history, iron puppets from lore, the shifting lands |
 | Ironwood survival | Ironwood was engineered for the planet's original harsh climate; the homelands have only female trees (the males were all felled by the ancient mages for puppets); the overseas continent still has males. **Diederik's plan:** an overseas expedition to dig up young male sprouts (hard), transport them back alive, plant them close to Elmsfield's great female, wait roughly two years, and let a storm carry pollen across. Setting-scale, expedition-scale, and ends in the Elmsfield fruiting crisis (heavy fruit, gases, Inn closes for a season). | Elmsfield, Diederik's overseas journey, overseas diplomacy, the rain-buffer crisis, Brumal's collapse, the last flight (possible delivery method) |
 | Brumal's collapse | Brumal is being eaten by desert from the south — Steadington is gone. The desert is a **continental-width band** (south of the blasted lands, stopped only by Gap city's mountains); it bounds Allondo's southern flank too, though Brumal's crisis is visibly first. The driver is chaotic spirits that have migrated out of the blasted lands into the desert, making it much more hostile than natural. Fata morgana has unique (limited) protection against them. How much time is left before open war? Can the spirits still spread further — into Allondo's south, into the forbidden woods' region, into the settled inland area? Demi-human clans (see LORE.md) cut across the border between Brumal and Allondo: war between the kingdoms would not cleanly divide those clans, which is a political problem Hannes has not yet confronted. **Secondary complication:** Crown Prince Corven is secretly in love with a Brumal royal lady, Princess Penelope. That love is current, hidden, and the single most destabilising fact in the royal household — if the war happens, it falls on the one heir who cannot fight it. | Allondo politics, refugees, Hannes's bargain, Hank's orphanage, Elder Diederik's origin, the blasted lands, Fata morgana, clan networks, Corven/Penelope |
 | The rain-buffer | The Lake of Tears holds back the desert for the inland area but cannot reach the coastal mountains (the hills east of the lake block the rain). What happens to the surrounding region if the lake's weather-workings fail — through the elemental being freed, the fungus advancing, or the tower cage collapsing? | The air elemental, the towers, Brumal's collapse, Felicia's arrangements |
-| The last flight | Freeing the bound air elemental — the same spirit that once lifted Laurent's city — would let the wreck **rise for one last journey**, a few sessions of player-led flight rather than a revival. The elemental is held by **six shackles, one per tower around the Lake of Tears**; each shackle breaks by convincing that tower to leave the ring via its own relational lever (the buried tower's lever is the pot-boy, and the furnace follows; the Hermit Shaman's tower likely breaks when they leave). The cost is the rain-buffer: the region loses its shield and the desert starts reaching inland. Bittersweet campaign-climax option rather than a standard arc. | Laurent, the air elemental, the towers, the rain-buffer, overseas potential, Felicia's drive, pot-people, Hermit Shaman |
-| The shamans' long plan | The shamans have been working for generations on a deliberate reopening of the portal — controlled this time, with the aim of pushing the chaotic spirits back through it into the ether they came from. The portal is at the centre of the blasted lands (physical structure built by the first humans to stabilise it, still glowing and shimmering today); reaching it alive is itself the first problem. A flying city would solve that. Enormous risk; rift-scale if the ritual goes wrong. A second plausible campaign-climax option, **plausibly intersecting with the last flight** — Laurent's city could be the delivery method. | The Rift, the chaotic spirits, the portal, the shamans, the forbidden woods, the blasted lands, Fata morgana, the last flight |
+| The last flight | Freeing the bound air elemental — the same spirit that once lifted Laurent's city — would let the wreck **rise for one last journey**, a few sessions of player-led flight rather than a revival. The elemental is held by **six shackles, one per tower around the Lake of Tears**. Five towers were seized and moved into the ring by the old-order mages and each breaks by its own relational lever — the buried tower (pot-boy walks out, furnace follows), the volcano tower (feed and befriend the fire elemental so it lifts the tower, or enrage it for the dangerous violent path), the darkness tower (free the light elemental, then decode the mosaic on the revealed walls), the sinking tower (bring the bound owner-spirit what he wants so he floats the tower down-river to the sea), and the Lightning Tower (restore or bring the Storm Mage back within reach). The sixth tower — **Gerhald's hill tower** — was already there before the ring was built, and its final shackle opens only by his **consent**. The cost is the rain-buffer: the region loses its shield and the desert starts reaching inland. Bittersweet campaign-climax option rather than a standard arc. | Laurent, the air elemental, the towers, the rain-buffer, overseas potential, Felicia's drive, pot-people, Gerhald, Storm Mage |
+| The shamans' long plan | The shamans have been working for generations on a deliberate reopening of the portal — controlled this time, with the aim of pushing the chaotic spirits back through it into the ether they came from. The portal is at the centre of the blasted lands (physical structure built by the first humans to stabilise it, still glowing and shimmering today); reaching it alive is itself the first problem. A flying city would solve that. Enormous risk; rift-scale if the ritual goes wrong. A second plausible campaign-climax option, **plausibly intersecting with the last flight** — Laurent's city could be the delivery method. The party's **in-world entry point** is **Wilder**, a beaver shaman on a hill-top at the edge of the blasted lands (see `doc/npcs/wilder.md`): he notices travellers before they arrive, warns the unprepared off, and speaks of the plan to a party that asks the right questions. | The Rift, the chaotic spirits, the portal, the shamans, the forbidden woods, the blasted lands, Fata morgana, the last flight |
 
 ---
 
@@ -620,6 +703,186 @@ The campaign naturally introduces scenario types in order:
 | 3 | Exploration, repair (optional) | Dungeon exploration; NPC trust-building; fungal hazard |
 | 4 | Cure (resolution) | Payoff for earlier gathering; information from a recovering NPC |
 | 5+ | All types available | Full system in play |
+
+### NPC pointers — who leads to what
+
+Quick DM reference. Each entry names the NPC, roughly where to find them, and what
+they point toward or teach. See each NPC's file for full detail.
+
+**Elmsfield (opening hub)**
+
+- **Elder Diederik** (his tree-house) — identifies the fungus → buried tower; ironwood
+  lore; overseas expedition plan; ecological collapse. `doc/npcs/elder_diederik.md`
+- **Bridget** (the Inn) — tree's ironwood nature once prompted; wartime hoard still
+  hidden; teaches navigation and trader-craft. `doc/npcs/bridget.md`
+- **Corné Dunham** — the hill route to Luchebert; will not lead parties into Laurent's
+  city; stories of hill disappearances. `doc/npcs/corne_dunham.md`
+- **Farmer Joseph** — Session 1 obstacle (fear at the gate); implicit pointer to Hank's
+  farm; teachable into an ally. `doc/npcs/farmer_joseph.md`
+- **Hank** — the orphanage farm; Brumal refugees arrive here as the crisis progresses.
+  `doc/npcs/hank.md`
+
+**Recovered and travelling (Session 4+)**
+
+- **Irna Bean** (party companion once cured) — Luchebert / Father Elliot / Rhianna's
+  letter; the only path to her brother **Ron**; first-hand testimony on Clear Water's
+  iron demand and war prep; teaches Brawl, Axes, Smell. `doc/npcs/irna_bean.md`
+
+**Lake of Tears region**
+
+- **The pot-people** (buried tower) — Haven (where the boy belongs); the towers were
+  placed to capture the elemental; first-level contacts. `doc/npcs/pot_person.md`
+- **Gerhald / the Hermit Shaman** (hill tower) — consent-gate on the last shackle;
+  guards his blood-tower secret; witness to the original taking; observant vantage
+  on the **sinking tower** (nightly descent, visible glow, "reaches its counterpart"
+  — a hint without a solution). `doc/npcs/hermit_shaman.md`
+- **Storm Mage** (hills, but periodically walks into small towns to trade for food —
+  locals across the valley recognise him and handle him gently) — is himself the
+  Lightning Tower's lever; broken mind; partial witness to the old-order faction; pays
+  in baubles (sometimes glass, sometimes genuinely valuable). Returning him to his
+  tower triggers a bout of clarity, flies the tower north, and crashes it at the
+  fringes of the forbidden woods — turning the woods into an in-world destination
+  for the party. `doc/npcs/storm_mage.md`
+- **Laurent** (downed city, dangerous) — narrates his downfall freely-but-agitated →
+  the six-shackle mechanism becomes legible here. Felicia's preserved room is the
+  observational hint to the necklace. `doc/npcs/laurent.md`,
+  `doc/places/laurents_city.md`
+
+**Luchebert Monastery**
+
+- **Father Elliot** — prophecy correction (if drawn out of retirement); expert
+  navigator; can teach terrain-reading. `doc/npcs/father_elliot.md`
+- **Willow** — Felicia's truth at the Abbey; the necklace-calms-Laurent mechanism
+  (trust-gated); Moth Hollow's location; draining curse on anyone who steals from the
+  shrine. `doc/npcs/willow.md`
+
+**Scarlet Vale (Allondan capital)**
+
+- **Lady Rhianna Linthrope** — teaches medicine, crafting, court-reading, priestly
+  practice to the worthy; knows the mirror location (won't volunteer, can be drawn
+  out by pointed questions); wrote the letter Irna carries.
+  `doc/npcs/rhianna_linthrope.md`
+- **King Hannes** — holds the Bean enlistment; preparing for war without saying so;
+  knows the mirror camp location but will never speak of it. `doc/npcs/king_hannes.md`
+- **Prince Corven** (often away from court; unexplained night rides in plain travel
+  gear are an open secret in Scarlet Vale) — Crown Prince on the surface, but his
+  rides lead to the hidden Corven/Penelope thread and the Brumal-war arc; teaches
+  leadership and swordsmanship once trust is earned. `doc/npcs/prince_corven.md`
+- **The Skull Gatherers** (periodically passing through; the party likely first sees
+  a group leaving Scarlet Vale as they arrive) — ignored if approached casually, but
+  **not unapproachable** — standing with them is earned through skull-related
+  offerings, proper addresses, vouches, or meeting on their terms. Connects to
+  Laurent-as-demi-lich and the missing-scholar thread.
+  `doc/npcs/skull_gatherers.md`
+- **Didrich** (Scarlet Vale; may arrive privately wherever the party is travelling
+  with Irna) — second prince, quietly druid-inclined and studying herbs on his own;
+  attacked by Irna and now seeking her out to apologise privately as rumours of her
+  disappearance reach the capital. Offers an unofficial royal ally if the scene is
+  handled well. `doc/npcs/didrich.md`
+
+**Itinerant / periphery**
+
+- **Felix** (local fairs; unpredictable otherwise) — will mention the mirror location
+  in conversation if the topic comes up; wartime scout; finder of openings.
+  `doc/npcs/felix.md`
+- **Nadine** (itinerant trader; passes through Elmsfield regularly, welcomed at
+  Bridget's Inn) — brings news of the larger world (Brumal, Linar, overseas),
+  teaches navigation, plays and sings. Her song about *the shimmering city*
+  (unspeakable riches for a merchant who could find it) is the **Fata morgana**
+  breadcrumb. `doc/npcs/nadine.md`
+- **John Bean** (Blackwood freehold farm) — close-range witness to the war's end but
+  *cannot* say where the mirror camp was. Worth visiting to hear the real story behind
+  Scarlet Vale's misguided heroic-arm legend; Irna makes the party curious about her
+  father before they visit, and can point at the sealed ironwood mill where the arm
+  was actually lost. `doc/npcs/john_bean.md`
+
+**Blasted lands edge**
+
+- **Wilder** (hill-top at the edge of the blasted lands) — notices travellers before
+  they arrive; warns parties away from the broken country; speaks of the **shamans'
+  long plan** when asked the right questions; teaches spirit-ecology of chaos-affected
+  regions. `doc/npcs/wilder.md`
+
+**Ambient sources**
+
+- **Travelling merchants** (inns, markets, along the trade road) — their sea-travel
+  stories are the **pirate-nest** breadcrumb: they stop at Linar harbour, do not
+  venture further south, and have tales of colleagues who tried and were never seen
+  again (captured by pirates, pressed into labour). Ambient rather than named; any
+  merchant will do.
+
+**DM-fill returns**
+
+- **Raul** — actively points to the mirror location and wants it delivered to him;
+  short-circuits the mirror-breadcrumb chain if the campaign brings him in.
+  `doc/npcs/raul.md`
+- **Brother Darrel** (possibly sheltered at Luchebert) — moral parallel to Elliot;
+  war-sergeant who walked away. `doc/npcs/brother_darrel.md`
+
+### If the party is lost
+
+- **Stuck in Elmsfield?** Diederik nudges them toward the buried tower's fungus cure;
+  once Irna recovers, she herself nudges them toward Luchebert.
+- **Solved the buried tower, losing the thread?** The pot-boy's story about the towers
+  being placed to capture the elemental hints at the larger cage; Laurent's narration
+  makes it explicit when they reach him.
+- **Don't know the necklace calms Laurent?** Willow (relational path, trust-gated) or
+  Felicia's preserved room in the city (observational path) will surface it. Laurent's
+  own narration mentions Felicia's evacuation work as a third overlapping pointer.
+- **Don't know the haunted mirror exists?** They don't have to know yet. Ask veterans
+  about the war — Felix at a fair, then Rhianna for confirmation under pointed
+  questions. Raul short-circuits if the campaign brings him in.
+- **Want to help Ron Bean?** Irna is the door; her story, told in her voice, is the
+  one thing Ron has not closed.
+- **Forgotten about Brumal?** A refugee arrives at Hank's, or Scarlet Vale's training
+  yards become visible, or Irna mentions the iron demand from Clear Water (see
+  §"The War Pressure").
+- **Need a smaller scene?** Corné for navigation, Bridget for trader-craft, Rhianna
+  for mentorship, Diederik for ecology, Elliot for terrain-reading.
+- **Campfire downtime, nothing pressing?** Let Irna talk about her father. Her
+  stories about John Bean — and her cringing at Scarlet Vale's misguided heroic-arm
+  legend — lead naturally to the **ironwood mill** where the arm was actually lost
+  (deep in the broken lands, past Wilder's hill, among the other ruins visible in
+  that region), and to a visit to John himself. A whole side-thread the party can
+  pick up on a quiet night.
+- **Stuck at the sinking tower?** Gerhald watches the lake from his hill. He can
+  tell the party the tower sinks every night with a visible glow and *reaches its
+  counterpart* — a hint toward the second half below without giving away the
+  cling-to-descend entry.
+- **Want to engage with the forbidden woods / Tod?** The natural path is through the
+  **Lightning Tower**: returning the Storm Mage to it flies the tower north and
+  crashes it at the woods' fringes — a concrete destination the party has created,
+  at the edge of Tod's territory. Alternatively: any traveller on the Raft-city
+  route touches the woods' edge.
+- **Close to all six shackles and expecting Gerhald to agree?** He wants the party's
+  *specifics* before he cooperates — what they'll do with the freed elemental, where
+  the last flight goes, what about the rain-buffer, who else is on board. A party
+  that has not done that thinking will not get his agreement, however well they
+  treated the other towers. See `doc/npcs/hermit_shaman.md` §"He wants specifics
+  before he cooperates."
+- **Pulled toward a larger climax?** If the party wants to engage with the shamans'
+  long plan or the blasted lands, **Wilder** (hill-top at the blasted lands' edge) is
+  their first contact: he notices them, warns them off, and tells them the plan if
+  asked the right questions.
+- **In a market or inn with merchants around?** Their sea-travel stories are the
+  **pirate-nest** breadcrumb. They will tell you the usual sea route **sails around
+  the coastal mountains, not through them**, and is storm-tossed but safe enough —
+  and that venturing past **Linar harbour** is where colleagues have disappeared
+  (captured by pirates, set to work for them). A party that presses the stories, or
+  follows them, is on the pirate thread.
+- **At the Inn when Nadine is in town?** Her song about *the shimmering city* —
+  never pinpointable, unspeakable riches for a merchant who could find it — is the
+  **Fata morgana** breadcrumb. A party that pursues the song ends up on the thread.
+  Penelope is the one who can confirm the city is real if the Corven/Penelope arc
+  is open.
+- **At court in Scarlet Vale with nothing obvious to pull on?** Corven's night rides
+  are an open secret — he leaves in plain travel gear on a fast horse, returns without
+  a story. Following that thread opens the hidden **Corven/Penelope** arc and, through
+  it, the wider Brumal-war crisis.
+- **Just entered Scarlet Vale?** A group of **Skull Gatherers** is leaving the city
+  as the party arrives — an immediate visible thread. Ignored if approached casually,
+  reachable with specific offerings or earned standing (`doc/npcs/skull_gatherers.md`).
+  Connects forward to Laurent.
 
 ### Origin
 

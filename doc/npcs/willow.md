@@ -25,6 +25,22 @@ Willow is the **revelation character** for the Felicia truth at Luchebert. In th
 
 She is also the living example of **how Felicia's drive (fear for the people she tried to save) has been sustained in ritual form for generations**. Without Willow and the grannies before her, the drive would have had no regular human vessel to reach; with them, it has had one continuous voice in the hill country for centuries. If she dies without a successor at the shrine, that line breaks — and Felicia becomes harder to reach, even as her presence remains in the arrangements she laid.
 
+## Closest to Felicia
+
+Willow knows Felicia **personally, directly** — more closely than anyone else alive. The shrine is not just her life's work; Felicia is her *companion* in the quiet way a great spirit can be a companion to a tender who has spent decades at her side. Willow has felt Felicia answer. She has watched her arrangements move through the hill country. She has listened to Felicia's drive (fear for the people she tried to save) express itself through the rhythm of the shrine's seasons. She does not speak of any of this lightly, but to a party that has genuinely earned her trust, she will.
+
+This is also how she knows about **the necklace**. The piece on the shrine is not a relic Willow keeps for sentiment; she understands what it is and what it *does* — that it can condense Felicia's presence near Laurent, and that bringing it to the wreck is the route to calming him. A party that wins her trust can learn this from her directly — the clean path to the necklace answer. A party that does not may still find the connection from the other side (Felicia has a preserved room in Laurent's crashed city; see `doc/places/laurents_city.md` §"Felicia's room"), but Willow is the relational path, and she is the one who can tell the party *why* the necklace works, not just *that* it does.
+
+## Willow as witch — when the shrine is crossed
+
+Willow's public face is an old rabbit-folk granny tending flowers at a shrine. That is not her full capacity. She is a **capable witch**, trained in the quiet traditions older grannies like her pass down, and she has workings to defend what she tends. This is not advertised, not displayed, and not hinted at in ordinary conversation. It comes out when someone crosses the line — specifically, when someone tries to **steal from Felicia's shrine**.
+
+Her curse is a **draining curse**: the thief slows, gradually, over hours and then over days, until eventually they cannot move at all. It does not kill outright; it immobilises. The undoing is difficult — requiring either Willow's own reversal or a comparably capable practitioner's patient work — and a party whose member is cursed and cannot find that help in time will watch them slow to a stop.
+
+This matters most for **Felicia's necklace** (see `doc/npcs/felicia.md` and `doc/places/laurents_city.md`). The necklace is at Willow's shrine. A party who steals it is stealing from the *life's work* Willow has repeatedly told strangers not to defile, and she will not treat the theft as a misunderstanding. A party who instead earns her trust, explains why they need the necklace (to calm Laurent; to let Felicia meet him), and demonstrates they will use it responsibly and return it — that party gets the necklace handed over, or at least permission to borrow it, without incident.
+
+The theft path is real and open. It is just expensive.
+
 ## Relationships
 
 - Tends **Felicia's** shrine at Luchebert; by implication a channel through which Felicia's drive has expressed itself in ritual for decades.

@@ -21,12 +21,25 @@ The mirror on the **homeland side** — the one in Raul's forward camp — did n
 
 Not Thorgal as a living mind with plans — that was pulled through the glass and killed on the other continent — but a residue. A lingering awareness. The kind of trace the LORE.md §"Mage ghosts" material describes: a dead mage's connection to an object dense enough with his working that something of him stays anyway. The mirror remembers Thorgal. When conditions are right, the mirror watches back.
 
-**Exactly which forest** is not fixed. Plausible candidates:
-- A stretch of wilderness near the Linar-to-Elmsfield road where Raul's camp stood during the push inland.
-- The outer fringe of the **forbidden woods**, if the retreat carried gear that far north before being discarded.
-- A smaller woodland nobody maps carefully, which a party travelling off the trade road might stumble into.
+**The location is the hills between the Great Swamp and the kingdom of Allondo** — where Raul's forward war-band had settled, well off any patrolled road, in terrain neither kingdom crosses often. The band fell back from there after the mirror went dark; the mirror was among what they did not carry out, and it has remained where it was dropped.
 
-The DM picks when the party is ready to find it.
+### Who knows the location
+
+Five living people know where the war-band's settlement was. Most will not volunteer it; one will push it into the party's hands actively.
+
+- **Rhianna Linthrope** knows. She has no direct reason to send anyone there — it is a closed chapter from her perspective, and she does not want the kingdoms pulling the residue of a dead overseas mage back open. A party that asks pointed, informed questions (having already learned the mirror exists from another source) can get it out of her; a party that asks vaguely will not.
+- **Felix** knows. He was there. He will mention it if the conversation goes there — Felix does not hide information he does not see a reason to protect — but he will not bring it up unprompted.
+- **King Hannes** knows. He was held there. He **will not speak of it**: doing so means admitting the full shape of his captivity, which he has never been able to say aloud. A party that somehow gets him to confirm the location has separately gotten the king of Allondo to say the thing he has spent years not saying.
+- **John Bean should know but does not.** He was present at close range for the war's end, but his attention in those days was task-focused — the phantom-mirror killing, Rhianna fitting his arm afterwards, the processing of what he had done — not geographical. He never catalogued where the camp was. Pressed, he will say honestly that he cannot say; he is not hiding it.
+- **Raul** knows, and **will actively direct the party to the location** if the party crosses paths with him. He wants the mirror delivered to him — it is his connection back to the overseas mage-tradition, and its residue is his former commander. For Raul the mirror is unfinished business. If the campaign brings Raul and the party into the same room, he is the breadcrumb that pushes rather than the one that holds.
+
+The DM picks how and when the knowledge crosses to the party.
+
+### The chain, not the direct ask
+
+In practice, the party does not walk up to Rhianna and say *where's the mirror?* — they have no reason to know to ask. They reach the mirror by **asking NPCs their war stories and following each story to the next person it names**. A conversation with Diederik or any Elmsfield veteran about the Overseas War will surface Felix, John, or Rhianna as figures worth finding. Felix (best found at a local fair; see `doc/npcs/felix.md` §"Where to find him") tells the story that leads to Rhianna. Rhianna, asked pointed informed questions about what Felix referenced, can confirm the location. John fills in the shape of the war's end but not the place. Hannes confirms nothing he is not pressed to. Raul, if the campaign brings him in, short-circuits the chain with a direct pointer.
+
+The discovery is a **chain of stories**, each leading to the next teller. That pattern is intentional — it rewards a party willing to listen to veterans rather than interrogate them, and it keeps the mirror behind the right kind of work.
 
 ### Campaign implications of the mirror
 

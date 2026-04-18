@@ -17,6 +17,16 @@ Whether John fully understood then (or fully understands now) that Thorgal was a
 
 Asked, as payment for his service, only a farm and the right never to fight again. **King Hannes** agreed only after John promised that the king could enlist John's eldest son in his place. That bargain is now active — **Ron** is in training. Only **Irna** inherited the Bean lineage's strong will; Ron did not, which the crown has not yet fully reckoned with.
 
+### What he does not remember
+
+A strange specific detail of John's war: he was *there* at the end, close enough to Raul's forward camp for the mirror-killing to happen at all — but he **cannot tell anyone where that camp actually was**. His attention in those days was task-focused: the phantom-mirror killing, Rhianna fitting his arm afterwards, the long slow processing of what he had done. He never catalogued the camp's location as a place, and time has not improved his memory on the point. Pressed by a party looking for **Thorgal's haunted mirror** (see `doc/npcs/thorgal.md` §"Who knows the location"), John will say honestly that he cannot say; he is not hiding it. Rhianna, Felix, Hannes, and Raul know. John does not.
+
+### The Scarlet Vale version
+
+In the capital, John is remembered through a public myth that is **mostly wrong**. The story Scarlet Vale tells: a boar-folk farmer with an *immeasurably strong arm* who, by pure physical strength, killed the overseas invader's leader and ended the war. Neither half is true. The arm is ironwood, salvaged by Rhianna, and its value is that it *channels latent telekinesis* John's lineage already carried — it is not inherently mighty. Thorgal was killed through a scrying mirror, by the phantom of the arm John had just lost. The heroic-punch version makes a better tavern story; it has therefore outcompeted the truth in casual conversation.
+
+John himself does not correct the version. He does not care about the version. **Irna does**, and will cringe at it over enough campfires that it lodges (see `doc/npcs/irna_bean.md` §"What she'll talk about on the road"). For a party that has spent time with her, the corrected story is one of the things they carry — and a reason, eventually, to visit John at his farm and hear it from the man himself. The ironwood-cutting mill where the arm was actually lost is still out there — **deep enough into the broken lands that its ruined structures stand clearly visible** among the other ruins of that region, not buried or obscured as a party might expect. Felix can find it again if asked. Reaching it means passing Wilder's hill and going further south than most travellers will willingly go (see `doc/npcs/wilder.md`).
+
 ## Relationships
 
 - Father of **Irna** and **Ron**.

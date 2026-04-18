@@ -20,6 +20,14 @@ Raul was a competent commander, not a villain. He was a demi-human officer follo
 - **Felix** — the raccoon scout who freed Hannes during Raul's withdrawal. Raul does not necessarily know Felix's name, but he knows *someone* slipped in during the retreat.
 - **John Bean** — the homelander responsible for breaking the mirror and killing Thorgal. Raul does not necessarily know which individual that was, but the method (an ironwood-driven force reaching through a scrying connection) is the kind of detail the overseas mage tradition would want studied. If Raul ever returns to this continent, John is the one he will be asked about.
 
+## Raul and the mirror
+
+Raul knows **exactly where his forward war-band's settlement was** — the hills between the Great Swamp and the kingdom of Allondo, well off any patrolled road (see `doc/npcs/thorgal.md` §"Who knows the location"). He left the scrying mirror there when his band fell back after it went dark, and he knows what he left. If the party crosses paths with him in any future arc — diplomatic envoy, returned overseas figure, any of the DM-fill framings below — he will **actively direct them to the location** and **ask them to bring the mirror to him**.
+
+His reasons are not hidden. The mirror is his connection back to overseas mage-work (rare to have on this continent), and the residue inside it — Thorgal's lingering awareness — is his former commander, the man whose death he lived through without finishing the command chain cleanly. The mirror is unfinished business. He wants it, and the party, if they trust him enough to listen, is the simplest means he has to retrieve it.
+
+A party that carries the mirror *to* Raul rather than keeping it themselves gets a different arc from a party that chooses to bond with the residue (see `doc/npcs/thorgal.md` §"The bond"). Both paths are legitimate; Raul is actively lobbying for the first.
+
 ## Open questions — for DM fill
 
 The overseas political structure after Thorgal's death is **deliberately unspecified** (see `thorgal.md` and CAMPAIGN.md). Raul's current situation is therefore genuinely unknowable from this continent and should be decided by the DM when a campaign actually needs him. Candidate framings to pick from when the time comes:

@@ -22,6 +22,14 @@ That also makes her **a DM-infrastructure NPC**: when the campaign needs to conv
 - **Sharp hearing.** Her **hearing** power runs deeper than average Finch senses. Conversations in the next room are not private to her. She does not advertise this. Whether she chooses to act on what she hears is a character question the party has to discover about her.
 - **Flight-speed messaging.** She has the **flight** power personally. Her body can fly; her cart cannot. Small urgent messages move through her network faster than overland caravans — she will, if it matters to her, deliver them on the wing.
 
+## The song of the shimmering city
+
+One song in Nadine's regular repertoire is about **the shimmering city** — a place she describes as never quite pinpointable, holding unspeakable riches for any merchant who could trade there. She sings it at Inns because traders love it: the dream of a market nobody else can reach and every competitor has *almost* found.
+
+The city in the song is **Fata morgana** (see `doc/places/fata_morgana.md`), whose protections against chaotic spirits and famed jewelry-craft are both real. Nadine herself has never been; she sings it because the song is part of the tradition, not because she knows the route. But for a party, the song is a **breadcrumb**: a legend that turns out to have a real place behind it, and a party curious about shimmering cities may end up pursuing the thread until they find someone who *has* been (Penelope of Brumal, if the Corven/Penelope arc is open; possibly a merchant with rare standing; possibly a shaman with a reason to go south).
+
+If the party asks her what she thinks the city really is, she will say honestly that she does not know. The song is older than her, older than the group she trades with. It might be a poet's fancy. It might not.
+
 ## What she won't say
 
 Nadine is indiscreet about the world. She is *less* indiscreet about her own merchant group. Their specific interests, the people who bankroll them, who is really making money on which route — she keeps those to herself with professional care. A party that tries to treat her as a resource to be pumped will find the tap slows considerably.

@@ -25,13 +25,21 @@ The *large pot at the centre of the tower is itself a pot-person*. It is the one
 
 The furnace's exhaust is its breath. Its inertia is not absence of will. It is patience, backed by mass. A party that treats the chimney as plumbing is assaulting the furnace; a party that asks to be let down *between breaths* finds the exhaust pauses long enough for the descent.
 
+### How he communicates
+
+The boy **cannot speak** — a pot has no mouth, and the spirit bound into him was not made with a voice. What he can do is **draw on the ground**: with chalk, with furnace-ash, with a finger in dust. His drawings are how he answers questions and makes himself understood.
+
+The drawings are **targeted**. Specific questions produce specific answers; he does not volunteer a running monologue the way a talking puppet might. A party that asks *which way to the workshop* gets a map on the floor. A party that asks *what happened to your maker* gets a sequence of images — the mage leaving, the door closing, the years passing. Vague or hostile questions get small shapes and silences; he thinks before committing ink to stone.
+
+Conversation with him is therefore **slow**, but not furnace-slow. DMs should lean into the drawing scenes rather than summarising them: a careful description of what the boy chooses to draw, and in what order, is often more informative than any sentence he could have produced. For spirit-aware characters, a **Shamanic** approach bypasses the drawing channel entirely — speaking directly with the bound spirit inside him, in whatever way spirits speak.
+
 ## Role in the campaign
 
 **The boy is the social encounter.** Trust-building (Shamanic, Ingenuity, Relaxed, patience) turns him into a level-1 contact. He knows the tower and its furnace-companion intimately.
 
 **The furnace is the threshold.** The party's entry into the tower is a negotiation with it. It has not moved in a very long time, but it has not stopped being willed, and anyone who tries to force their way through without acknowledging it as a person rather than a machine may trigger a response that is slow in arriving and very difficult to dismiss when it does. Approaching the furnace with the same respect the party would offer Haven's humanoid puppets (or the pot-boy himself) is the correct posture.
 
-**Together they are kin.** They were made by the same mage, for the same purpose, out of the same experimental tradition. The boy has lived with the furnace as his one companion for centuries. They do not think alike — the boy is quick-for-a-puppet and conversational; the furnace is vast and slow — but they are all each other has.
+**Together they are kin.** They were made by the same mage, for the same purpose, out of the same experimental tradition. The boy has lived with the furnace as his one companion for centuries. They do not think alike — the boy is quick-for-a-puppet, if silent (he cannot speak; he draws — see below); the furnace is vast and slow — but they are all each other has.
 
 ### They are the key to the first shackle
 

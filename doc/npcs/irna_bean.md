@@ -30,6 +30,30 @@ She never reached Luchebert. She was looking for a small vale leading past Laure
 
 She cannot currently speak.
 
+## Once recovered — joining the party
+
+When Diederik's cure takes and Irna can stand, speak, and travel, she is available as a **party companion** on the shared path toward Luchebert. She is not a guest the party has to protect; she is a capable Tusk Clan brawler — **Brawl, Axes, Charge, Digging, Smell** — who will pull her weight and **teach** any of it (by her usual delivery-by-free-lesson style; see Summary) to party members who show interest. Her **Smell** in particular is field-useful — tracking, reading honesty, sensing what has been in a room recently.
+
+She is **not a carry**. The campaign assumes the players stay the protagonists; Irna is an extra pair of hands, a teacher, and in specific moments a decisive contribution, but a party that tries to hide behind her in every fight will find the campaign still requires them to show up. She also has her own agenda — Luchebert, Father Elliot, the prophecy that is actually about her (see §"Role as a potential spirit-shield") — and when her path and the party's diverge, she follows hers.
+
+She is also the **only person who can still reach her brother Ron** (see `doc/npcs/ron_bean.md`). A party that wants to help with the Bean family situation travels with the person whose voice unlocks him.
+
+## What she'll talk about on the road
+
+On long walks and quiet evenings, Irna's stories come out. **Most of them are about her father.** She will tell the party about **John Bean** at length if there is time: what he was like before the war, his silences, the promise he made to Hannes that shaped her whole family's life.
+
+The subject that gets her going is **Scarlet Vale**, where people still talk about John's heroic deeds with the confident wrongness of those who were not there. The capital's version: a boar-folk farmer with an *immeasurably strong arm* who, by pure strength, killed the overseas leader and ended the war. Neither half is right. The arm is ironwood, salvaged by Rhianna, and its value is that it **channels latent telekinesis** that ran in John's lineage — it is not inherently extraordinary. And Thorgal was not killed by a punch; he was killed through a scrying mirror, by the *phantom* of the arm John did not yet have (see `doc/npcs/john_bean.md` and `doc/npcs/thorgal.md`).
+
+Irna **cringes** at these stories. She has heard them too many times. What she will tell, once prompted and only once, is **how her father actually lost the arm**: the sealed ironwood-processing mill that Felix found a way into, the low feed-slot at ground level, the ancient cutting machine still inside that had once been used to cut whole ironwood trees.
+
+The mill, the arm, and a visit to John himself are the natural next thread Irna's companionship opens up — not as a quest-giver speech, but as the weight of a daughter correcting a public myth about her father over enough campfires that it lodges.
+
+## What she saw at Clear Water
+
+Irna's time at Clear Water was forced, but she was not blind while she was there. The mines were **running harder than she had been told they would be**. The demand for iron had gone up sharply in the months before her arrival — a detail she only understood later, piecing it together from overheard orders, the grades of ore being prioritised, and the pace of extraction being sustained on the backs of convicts. The crown had capacity for her sentence at the scale it did because the mines needed bodies, and it did not matter to the pit whose bodies those were.
+
+If a party asks her about that time, she will tell them. It is not a secret to her. The iron she dug was ending up in military hands, and she has no doubt that **Hannes is quietly preparing for a second war** — see `doc/claude/CAMPAIGN.md` §"The War Pressure" and `doc/npcs/king_hannes.md` for the wider preparation the iron was going into. Irna's testimony is the concrete detail a party can carry back from their own travelling companion: the kingdom is not at peace, it is between peaces, and the mines know it before the court will say so.
+
 ## Late childhood — the story Irna will tell
 
 This is Irna's own memory of the months leading up to the attack on Didrich. She can tell it, roughly in her own voice, when she trusts the listener.
@@ -45,7 +69,7 @@ She did not regret attacking him. She regretted, sometimes, that she had not fou
 ## Relationships
 
 - Daughter of **John Bean**; older sister of **Ron**. Tusk Clan of the Boar folk — a small dispersed clan with kin across several nearby towns (see LORE.md §"Clans and their shape").
-- Attacked **Didrich of Allondo**; grievance undisclosed.
+- Attacked **Didrich of Allondo**; grievance undisclosed. Didrich has since, privately, come looking for her to apologise — once rumours of her disappearance reach Scarlet Vale (see `doc/npcs/didrich.md` §"Seeking Irna out"). A scene the party may be present for, wherever they happen to be travelling with Irna.
 - Released from forced mining and exiled through **Lady Rhianna Linthrope**'s intervention.
 - Expected at Luchebert by **Father Elliot**.
 - Carrying Rhianna's letter about the proclamation concerning Ron.

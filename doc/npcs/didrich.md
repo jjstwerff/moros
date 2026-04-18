@@ -25,6 +25,20 @@ He came with two knights to the Bean farm to enlist Ron on the strength of the "
 
 Her attack landed her in forced mining and then, by Rhianna's arrangement, on the road toward exile at the Luchebert monastery (a journey she has not yet completed). Whether Didrich understands that Irna's blow was not personal — that he was in the wrong place wearing the wrong uniform on a day she had been building toward — is a separate question. From his side of the incident, he was doing court business. From her side, he was the visible edge of a wound her family had been carrying in silence for months.
 
+### Seeking Irna out
+
+Some weeks after the attack, **rumours reach Scarlet Vale that Irna never arrived at Luchebert** — that she was last seen ill in Elmsfield, that she is missing. The capital does not treat it as a crisis. **Didrich** takes it as a call.
+
+He will **privately seek her out** — not on crown business, not with guards, not announced. He rides alone or with a single trusted servant, tells his father nothing (or a plausible half-truth), and makes the journey himself. It is not safe for a young prince to travel this way. He does it anyway.
+
+**Why.** He wants to apologise. Not because the court has told him to — the court has not told him to — but because he has thought about the attack in the months since, and concluded something the court would not: that Irna's blow was *not about him*, that she was hurting, that the crown's errand used him as the visible face of a pain her family could not stop, and that *she was the one more wronged*. He does not quite have the words for this. He is young enough that saying it aloud will embarrass him. He is going to say it anyway.
+
+**In play.** Didrich arrives wherever the party is travelling with Irna — Elmsfield, the road south, Luchebert, a town en route — and asks for her privately. He is nervous. He does not carry himself as a prince while he is there. He will wait if she does not want to speak to him. If she does — or if the party mediates — he says what he came to say.
+
+Irna's response is hers. She may forgive him; she may not; she may (in character) deck him first and then forgive him. What Didrich *leaves with* is not the point. What matters is that a young prince has crossed a line the court would not have crossed for him, and has done it for reasons he found on his own.
+
+For the party this is a **character moment without a quest attached** — one of the scenes the campaign is built to make room for. If they handle it well, Didrich becomes someone who owes the party a favour in a register the court does not know about. That favour may matter later (an unofficial bridge, the druidic connection via Diederik, a line to Elliot, a read on Corven's crisis).
+
 ## Relationships
 
 - Son of **King Hannes** and **Queen Fienna**.

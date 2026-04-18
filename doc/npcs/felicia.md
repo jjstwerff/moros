@@ -9,13 +9,13 @@
 
 In life, a researcher — a mage whose focus was intricate magical arrangements. She felt the thread of mage-awareness tear during the Rift, and she was three days into a pattern of iron and shadow threads when **Laurent** burst in with news that the White City was lost. She abandoned the work without argument and fell in beside him through the evacuation. She is one of only two mages whose names history kept from that day.
 
-She did not survive the fall in body. When Laurent's flying castle — which had grown into a flying city over the years, carrying refugees — was brought down and crashed in the hills near what is now called the Lake of Tears, Felicia was already dead. What came next was done as a spirit. She settled the demi-humans who survived the crash, piece by piece, over generations: wells, roads, boundary stones, quiet pacts with what already lived in the hills. The hill country and the settled area around it — Elmsfield included — still live on her arrangements, whether they remember her name or not.
+She did not survive the fall in body. When Laurent's flying castle — which had grown into a flying city over the years, carrying refugees — was brought down and crashed in the hills near what is now called the Lake of Tears, Felicia was already dead. What came next was done as a spirit. She settled the demi-humans who survived the crash, piece by piece, over generations: wells, roads, boundary stones, quiet pacts with what already lived in the hills. The ones she could not save were buried afterwards in a hollow in the hills — not by her (she was already dead by then) but by the survivors and by whatever hands remained. **Her spirit clung to the place afterwards** and has attended it since; it is now filled with large slow-moving white moths (see `doc/places/moth_hollow.md`). The hill country and the settled area around it — Elmsfield included — still live on her arrangements, whether they remember her name or not.
 
 She is now a **great spirit** — one of the vast, diffuse presences the church reaches toward in prayer. Her shrine is at **Luchebert Monastery**, tended by **Father Elliot** and a small order. Where her works still function, she can still be reached.
 
 ## Relationships
 
-- Worked alongside **Laurent** in life, and almost certainly also after his fall. The most likely person — living, dead, or spirit — to know what Laurent became as a demi-lich, and whether she allowed it.
+- Worked alongside **Laurent** in life, and almost certainly also after his fall. The most likely person — living, dead, or spirit — to know what Laurent became as a demi-lich, and whether she allowed it. Laurent has preserved her room in the crashed city for centuries since her death (see `doc/places/laurents_city.md` §"Felicia's room") — a fact the party can discover with observant exploration, and which serves as a parallel hint to Willow's trust-gated telling about the necklace.
 - Patron and settler of the demi-humans who survived Laurent's crash.
 - Enshrined at **Luchebert Monastery** — officially the Abbey is dedicated to **Saint Luchebert** (first-human priest of the white city, whose synthesis from an ancient cross-portal holy book became a tradition of *reaching, not grasping*; see LORE.md). That tie is loose but meaningful: Saint Luchebert's tradition was always flexible enough to receive a new great spirit, and Felicia stepped into that flexibility rather than breaking it. She is the monastery's *true* saint. Her shrine is tended day-to-day by **Willow**, an old rabbit-folk granny whose devotion to Felicia predates Father Elliot's arrival. Elliot knows; the rest of the order knows as much as asking Willow and being old enough to be told will give them.
 - Her arrangements underlie the hill country, and the great ironwood of Elmsfield may be part of her legacy.
@@ -32,9 +32,17 @@ Every visible thing she has done — settling the demi-humans who survived the c
 
 This is useful to remember when the campaign reaches her: she cannot be negotiated with the way a person can. She can be *met*, if the meeting is in the direction she is already moving (toward the safety of those she tried to protect — or their descendants, or anyone who can plausibly be assimilated to "her people"). She cannot be talked out of that movement.
 
+There is, practically, **only one reliable way to put a party *against* her drive**: disturb the graves at **Moth Hollow**, where the people she could not save are buried (see `doc/places/moth_hollow.md` §"Angering Felicia"). Almost every other misbehaviour a party commits will miss her entirely — she is too diffuse for casual offence. The hollow is the exception; the bodies there *are* the drive's object, and harming the site harms the thing her movement runs toward. A party that does this becomes the thing her drive is moving against, which is a serious and non-trivial cost to carry — most directly, the necklace stops condensing her, which closes the party's route to calming Laurent.
+
 ## Speaking with her directly
 
 It is possible to condense a great spirit into a temporary body for conversation (see LORE.md §"Speaking with a great spirit directly"). Doing so with Felicia would be a session-worthy ritual challenge: expensive, difficult, with a fragile outcome. The condensed Felicia would still be Felicia — still driven by fear for her people — not a more human-shaped version available for casual questioning. What the ritual buys is *listening and reply*, not a change in what she is.
+
+### Felicia's necklace — a specific contact channel
+
+There is one object that can condense her presence without a formal ritual: **her own old intricate necklace**, which she wore in life and which still carries enough of her working to channel her when the conditions are right. When brought within sensing range of **Laurent** (see `doc/npcs/laurent.md` and `doc/places/laurents_city.md`), it triggers Felicia to appear: she senses him through it, and the necklace becomes the condensation point. This is not a general-purpose contact method — the specific trigger is *Laurent and the necklace together*, the two pieces of her past that complete the circuit. Attempts to use the necklace for other conversations with her are not reliable. Its value is the Laurent encounter, and that is where it is meant to be used.
+
+The necklace itself sits on **Felicia's shrine at Luchebert**, tended by **Willow** (see `doc/npcs/willow.md`), who will not hand it over to anyone who has not earned her trust — and who has a capable witch's answer (a **draining curse**) for anyone who tries to take it without permission.
 
 ## Sources
 

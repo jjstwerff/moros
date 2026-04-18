@@ -15,6 +15,14 @@ What his father does not know is that Corven is **in love with Penelope**, a roy
 
 This is the fact that is breaking him. His training, his father's pride, Didrich's hero-worship, the whole court's expectation of him are organised around leading a war against a country whose royal court contains the person he loves. Every hour of his martial preparation is practice for hurting her. He does not yet know what to do with that. He is visibly a promising prince to anyone who does not look too closely; to anyone who does, he is a young man who has started to sleep badly and who has stopped laughing at things that used to work on him.
 
+## The night rides — what the court sees
+
+Corven is **often away from Scarlet Vale**, and not always as his father's envoy. The court has noticed a pattern. Some of his departures are formal diplomatic errands on Hannes's behalf; the rest are not. On the unofficial trips he dresses down — **"unseemly travel gear"** a courtier would sniff at, plain enough that nobody reads him as a prince at a glance — takes a **fast horse**, and rides off into the night. He leaves quickly, explains nothing, and returns a few days later without a story worth telling.
+
+The court **knows about this**. No one stops him; no one asks him to his face. But the gossip runs: courtiers speculate about a mistress in the countryside, an illegitimate child, a hidden drinking problem, a secret knightly order. The real answer — that he is riding to Brumal to meet **Princess Penelope** — is not among the common guesses, because the court's mental map of his options does not include *the enemy-in-waiting's royal house*. That hypothesis is too uncomfortable to have risen to the surface.
+
+For a party present at court, the pattern is **directly observable**. They see him leave, hear about his having left, or notice his absence being handled with a practised non-answer. Following that thread — asking who he was, where he went, whether anyone has seen his route — is the player-accessible entry into the Corven/Penelope arc and the larger Brumal-pressure thread it sits inside.
+
 ## Relationships
 
 - Elder son of **King Hannes** and **Queen Fienna**; Crown Prince of Allondo.

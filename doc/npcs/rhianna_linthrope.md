@@ -9,7 +9,7 @@
 
 A small white mouse who gives the impression of having seen most things and been impressed by few of them. She served with **John Bean** during the Overseas War — she is the one who attached an ironwood piece, salvaged from a walking statue of old mage work, to John's stump after his arm was taken by an ancient machine in a collapsed tower. That wartime bond is why she still speaks for the Beans inside Allondo's court.
 
-Her wartime story included losing her own home. Her residence was in one of the towns the overseas force had occupied; when Crown Prince Elliot's offensive advanced toward that town in the war's cleanup phase, **Felix** judged the situation and pulled her out under urgency. She did not stay to see what the liberation looked like. She fled ahead of her own side's army, because in the fog of war being the right person in the wrong place is still not safe, and Felix knew it. She has not returned.
+Her wartime story included losing her own home. Her residence was in **Rakeville**, where she had lived before the war as a local doctor and mechanic — practical, hands-on work at the scale of a small town's cuts, breaks, births, and broken tools. The overseas force occupied Rakeville during the invasion; when Crown Prince Elliot's offensive advanced toward it in the war's cleanup phase, **Felix** judged the situation and pulled her out under urgency. She did not stay to see what the liberation looked like. She fled ahead of her own side's army, because in the fog of war being the right person in the wrong place is still not safe, and Felix knew it. She has not returned.
 
 She was close enough to the events of that war to understand what John did not. John killed **Thorgal** — remotely, through the scrying mirror Thorgal was using to direct his forward commander **Raul**; it was that same breaking of the mirror that let **Felix** slip in to free Hannes. Rhianna knows (or has pieced together since) that Thorgal's war was about food, not conquest. The overseas continent could not feed itself; Thorgal shipped the surplus demi-humans here as soldiers because he had no better answer. John ended the war by killing him, and the food problem that drove it is still there. Rhianna has not told John any of this. She watches the coming next-war pressure with that knowledge in the background.
 
@@ -37,6 +37,7 @@ Per `doc/claude/LORE.md` §"Spirit Ecology," a serious priestess of the Mouse cl
 - Correspondent with **Father Elliot**.
 - Arranged **Irna Bean**'s release from mining and exile to Luchebert Monastery.
 - A figure of standing in the **Mouse clan** of Allondo. Per LORE.md §"Clans and their shape," demi-human clans are small and dispersed; Rhianna's standing in the Mouse clan represents a *network* of mouse folk distributed across Scarlet vale, the agricultural towns, and the villages whose mouse folk look to her — not a local constituency. Her political reach at court follows from that network, not the other way round.
+- Knows where Raul's forward war-band camped (the hills between the Great Swamp and Allondo) and where **Thorgal's haunted mirror** was left, though she has no direct reason to volunteer the location. A party that asks pointed, informed questions can draw it out of her; a party that asks vaguely cannot. See `doc/npcs/thorgal.md` §"Who knows the location".
 
 ## Sources
 
