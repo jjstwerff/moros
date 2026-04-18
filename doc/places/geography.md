@@ -6,6 +6,8 @@ Everything recorded here is a *relative* position (X is south of Y, X is on the 
 
 Cardinal directions are used as a convenience. They describe layout on a future flat map; they are not claims that real-world compass points correspond to anything in particular in the setting.
 
+**Note on `doc/Untitled.png`:** that image is an **external visual inspiration**, not a canonical Moros map. Pieces of it informed the geography documented here through the author's confirmations (Rakeville south-west of Elmsfield, Clear water north of Rakeville, Linar harbour visible on the east, the swamp surrounding the Lake of Tears, the coastal mountains hard to traverse, Luchebert's river-bend positioning, Lastwater's adjacency to the blasted lands). Those confirmations are canon. The image itself is not. A future Moros world map should respect what is written here; it need not match the inspiration pixel-for-pixel, and its labels were not meant to be adopted directly.
+
 ---
 
 ## All settlements at a glance
