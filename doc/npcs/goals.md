@@ -46,6 +46,8 @@ Two is the minimum; three is better. They should be *what hits the eye and ear i
 
 Every NPC's history should be **converted into short, trigger-keyed stories** the NPC tells when the relevant topic comes up — 3–7 sentences each, in the NPC's voice, italicised in quotes so the DM can deliver them close to verbatim. Each story has a trigger (what topic cues it) and the story itself. Six stories is a good target for a character with substantial history; fewer for a smaller role. See `doc/npcs/elder_diederik.md` §"Stories he tells" for the worked example.
 
+**Non-verbal NPCs** (mute beings, puppets without voice, spirits that don't speak in words) still need this section, but the *medium* changes. The structure is the same — trigger-keyed, sequential, in the NPC's own register — but the content is **described drawings, breath patterns, gesture sequences, or whatever the NPC's actual channel of expression is.** The DM should narrate the channel as it happens (*"He draws the door, then the dust line lengthening across the floor, then a small pot at the centre of the dust, sweeping"*) rather than summarise. See `doc/npcs/pot_person.md` §"Drawings he makes (his version of stories)" for the worked example.
+
 ### Reaction triggers — "if the party does X, they react Y"
 
 The topic table covers questions the party might *ask*. It does not cover actions the party might *take*. Every NPC file should include a short table of **specific actions the party might do, paired with the NPC's specific reaction** — boundary violations, surprising gifts, threats, alliances offered, betrayals, revelations.
@@ -59,6 +61,8 @@ Six to ten reaction triggers is a good target — cover the actions most likely 
 A one-line **opinion** per significant other NPC the party may ask about. Not a description of the relationship (that goes in the Relationships block); the NPC's *stance*. Players ask *"what do you think of X?"* constantly, and the file should answer in one line per significant figure.
 
 **Keep the list short — about 10 entries.** Longer lists overwhelm a DM scanning at the table. Pick the figures this character has the most *generative* opinions about and that the party is most likely to ask after. Italicised quotes the DM can deliver verbatim work best.
+
+The "about 10" is a **cap, not a floor**. NPCs who have genuinely met few people (recluses, non-verbal beings, beings who lived alone for centuries) can have *four* takes and be done. If the file feels short here, check whether the NPC has actually met anyone else; sometimes brevity is correct.
 
 ### Mannerisms for emotional states
 

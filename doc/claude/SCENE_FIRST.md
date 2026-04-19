@@ -175,6 +175,8 @@ When rewriting an existing file:
 - `doc/npcs/elder_diederik.md` — **rewritten** (the original worked example, solitary elder). Six stories, mannerisms, reaction triggers, cross-NPC takes. Speech-traits track still pending.
 - `doc/npcs/bridget.md` — **rewritten** (social hub, settled). Six stories, mannerisms, ten reaction triggers, ten cross-NPC takes.
 - `doc/npcs/felix.md` — **rewritten** (itinerant NPC — drove the *home → circuit* extension to goals.md). Six stories, mannerisms with a generative physical motif (rings on his tail), ten reaction triggers, ten cross-NPC takes.
+- `doc/npcs/father_elliot.md` — **rewritten** (withdrawn monk, royal-blood, single location). Six stories, mannerisms anchored on the navigator's compass, ten reaction triggers, ten cross-NPC takes.
+- `doc/npcs/pot_person.md` — **rewritten** (non-verbal pair — drove the *drawings replace verbal stories* extension to goals.md, and confirmed the *cross-NPC takes is a cap, not a floor* clarification). Six described drawings instead of spoken stories, mannerisms for both pot-people, eleven reaction triggers, six short cross-NPC entries.
 - All other NPC files — historical-format, queued for rewrite as the campaign needs them.
 - All place files — historical-format, queued. Each will need the *2–3 standout entry details* added at the top, then the same scene-first treatment as NPCs.
 - CAMPAIGN.md DM-notes sections — partially scene-first, can move further.
