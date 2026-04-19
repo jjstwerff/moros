@@ -1,57 +1,161 @@
 # Hank (Hanny)
 
-- **Role:** Farmer on the edge of Elmsfield; orphanage-keeper; plausible lead that draws the party out into the world
-- **Species:** Rabbit folk (female; walks around as a man under the name "Hank")
-- **Location:** Her farm on the edge of Elmsfield
-- **Status:** Alive; established and expanding
+- **Role:** Farmer on the edge of Elmsfield; orphanage-keeper; the lead that draws the party out into the world.
+- **Species:** Rabbit folk. Born Hanny. Walks around as a man under the name **Hank** — the choice she and Egbert made so they could travel safely, and kept because it worked.
+- **Lives:** The farmhouse at `doc/places/hanks_farm.md`, on the western edge of Elmsfield. Has not lived anywhere else since she and Egbert bought the place.
+- **First met:** In Elmsfield's square doing market business, or at the farm if the party comes looking. Bridget or Diederik will point the party her way if the topic is orphans, refugees, or the edge-farm.
 
-## Summary
+## What the party meets
 
-Born Hanny, a Rabbit folk girl. After the last war she and **Egbert** — from opposite factions — were brought together at an orphanage by **Sergeant Darrel**, who left them a bag of money before disappearing into a new life. Hanny and Egbert believe the money came from a relative; they do not know it was Darrel.
+The party comes to the farm — or Hank comes into town on market day, which is where most people meet her first. A slim rabbit-folk figure in sturdy work-clothes, sleeves rolled past the elbows, carrying a basket of something practical: mended children's clothes for delivery, a sack of winter vegetables, a bundle of dried herbs. The town greets her as *Hank*, which is also how she introduces herself. She is, as far as Elmsfield knows, a man.
 
-Which of them was on which side is worth a DM decision: the Overseas War moved starving demi-humans from the overseas continent as soldiers, so any "opposite factions" framing could run either local-vs-overseas (one of them is stranded overseas-demi-human descent, the other a local war-orphan) or local-vs-local (both from here, split by allegiance during the occupation). The first reading is more resonant with the campaign's coming-war thread; the second is simpler. Either works.
+She looks the party over quickly — faster than she lets on — and her next question is practical. *"You looking for lodgings? Work? Or are you at my gate for a reason?"* She does not waste time on formalities she does not think the party needs.
 
-Once old enough, Hanny took Egbert's advice and adopted the name "Hank," presenting as a man so the two of them could travel safely to chase her dream: their own cottage. They succeeded. The farm, on the edge of Elmsfield, is running well. They recently sold a plot to **Farmer Joseph** and regained their full original sum.
+## How she reads at a glance
 
-In the time since, Hank has built something past "open house": an orphanage of sorts on the farm, taking in young people with little prospect. That means more hands at work, and more standing in the town — and, predictably, more scorn from the part of Elmsfield that used to respect them as hard workers and now resents what they are turning into. The orphans are from all sides of the last war, which is itself part of the friction.
+- A slim rabbit-folk in sturdy, mended work-clothes she made herself. **Quick eyes** — the Back-alley habit from the orphanage years never fully retired. She notices what is being carried, what is being worn, what is being hidden, before most people would.
+- **Usually has a needle or thread in reach** — a spool at her waist, a darning needle stuck through her collar, a half-finished seam in a pocket. The clothing-craft is constant.
+- A **calm with children** that older townspeople do not match. The orphans are not scared of her and do not behave when she is not looking; she has earned that balance.
+- Presents as male — as **Hank**. The town treats her that way; the party should assume most people they meet do not know this is a presentation.
 
-### Quiet accumulations
+## Visible patterns the party will notice
 
-Hank has been **educating herself** on the sly. On the road to Elmsfield, at some stop along the way, she bought a **book on farming techniques** and has kept it ever since, tucked somewhere only she touches. She reads it in pieces. She has applied what she has read — her crop rotation is better than her neighbours', her soil management is more deliberate than the town's older farmers', her yields have improved year over year in ways people attribute to luck. She keeps the book hidden because in Elmsfield a farmer-who-reads is a farmer whose neighbours notice, and "Hank" was never supposed to be the kind of man who owned books. The privacy is part of the character. The knowledge is real and it is hers.
+- **Sews in the workshop most afternoons.** The orphans know where to find her; so does anyone with mending they need done.
+- **Works the fields alongside the orphans** in the morning. Not in front of them, not behind them — with them.
+- **Walks Elmsfield's market on her trade days** — selling mended clothing, buying what the farm does not grow, catching up with neighbours who still speak to her.
+- **Reads in private, after the farm is asleep.** Nobody has ever seen this. (See *What she will not say*.)
+- **Settles new arrivals the same way every time** — three questions, a place to sleep, a day off before she starts asking them to work. She has practised the welcome.
 
-She has also built a second, more public craft over the orphanage years: **making clothing for the children**. Necessity first — the farm's young arrivals needed clothes, and nobody was going to hand them out — and competence after. She is now genuinely good at it. Shirts, trousers, coats, work-clothes sized for growing bodies; sturdy, mendable, warm. This is the skill Elmsfield sees her develop because it shows up on the children's backs; the farming book is the skill she keeps to herself.
+## At the farm
 
-### The full stack
+The farm is its own place and has its own file: **`doc/places/hanks_farm.md`** for the standouts on entry, the scale, the children, the scene locations. Hank's specific spaces within it:
 
-What the town sees is a successful farmer running an open-door orphanage. What is actually on her character sheet is more surprising:
+- **The workshop** — where most conversations happen. She will talk while she sews. Teaching the clothing-craft is one of the ways she builds trust with strangers.
+- **The farmhouse kitchen** — where she takes private visitors, when a conversation needs the door closed.
+- **The fields** — where she works in the morning. A party that wants to talk seriously can walk a row with her while she works.
 
-- **Back alley** background from the orphanage city — urban survival, the scrounger's eye for what can be taken usefully and what cannot, the working knowledge of how a city's margins actually function.
-- **Farmer** background from the years on this farm.
-- **Scholar** background — which is the other name for "she bought a book on farming and reads it properly." It is on her sheet formally.
-- **Scrounger** power — finding things others overlook.
-- **Sneak** specialisation — real trained stealth. Part of how "Hank" works as a presentation; part of how the book stays hidden; part of the orphanage's quieter business.
-- **Druid** specialisation — she has druidic training, which is the other explanation for the farming success. The book and the craft reinforce each other. Very few people know she has this.
-- **Healer** specialisation — she can heal. For the orphans, mostly. For anyone who arrives needing it.
+## What she will tell — and when
 
-All of these are teachable to a student who earns it, with different gates on each. The clothing-making is the craft she advertises. Everything else she keeps closer.
+| Topic | When she'll talk |
+|---|---|
+| The farm, the crops, the children | Freely. This is the public face. |
+| Clothing-craft | Freely. Will teach any interested student. |
+| How she and Egbert came together | Once asked, plainly. She thinks a relative sent the money that started them. |
+| The orphanage origin city | Once asked; carefully. Not a happy memory, but she owns it. |
+| Her farming system (the crop rotation) | *"Rotation."* Past that, only with trust. |
+| Farmer Joseph buying the plot | Freely — the transaction is public. How she felt about it: briefly. |
+| Her original name, Hanny | Only with deep trust. She does not offer it. |
+| The book on farming she keeps hidden | Never. |
+| Her druidic training | Never, publicly. With earned trust, yes — and then only in private. |
+| Her healer skills | Quietly, when someone needs it. Not announced. |
+| Egbert's concealment | She will not confirm anything about Egbert that Egbert does not confirm herself. |
+
+## Stories she tells
+
+When the relevant topic comes up and she chooses to answer.
+
+### When the topic is the orphanage — *the bag of coins*
+
+> *"Egbert and I were in the same orphanage in the city, from opposite sides of the last war. I don't talk about which was which. The sergeant — the Beaver man who brought us there — left us a bag of money before he walked out. We thought then it was a relative. Grown, we still mostly think it was a relative. I have wondered, some evenings, whether 'relative' was what he said or what we heard. But he never came back, and the money took us here, and here is where we are."*
+
+### When the topic is becoming Hank — *Egbert's advice*
+
+> *"Two young women travelling with coin is an invitation. Egbert said — so be a man. I laughed and then I didn't. We practised the walk for a week. I cut my hair. We left the city. Nobody on the road questioned it. Nobody here has either. I'm Hank now. Hanny is a name my mother used. It doesn't fit the shape of my days."*
+
+### When the topic is the farming book — *the road stop* (trust-gated; she does not volunteer this)
+
+> *"There was a stop on the road to Elmsfield, a little town with a little market. Somebody was selling books. Most of them were nothing. One was a farming manual. I bought it with money I could not afford. I have been reading it in pieces ever since. That is where the good rotation comes from. That is where the soil-care comes from. The town thinks I'm lucky. I am reading."*
+
+### When the topic is the first orphan — *the one who stayed*
+
+> *"The first child who stayed was a boar-folk girl younger than I had been. She came to the gate, wouldn't say where from, wouldn't say who she was. I fed her. I gave her a bed. She ate, she slept, she woke up and did the chores I had been doing that morning, before I told her to. I didn't know then what she was doing. Now I know. She was checking whether we were real. She stayed. She is twenty now, and she is why there are ten more of them here."*
+
+### When the topic is Farmer Joseph — *the sale*
+
+> *"He needed the land. I needed the money. We both got what we needed and we both paid for it. He paid in cash; I paid in acreage. He's angry at the world because he spent his buffer. I am poorer in land than I was. Neither of us did anything wrong. I'm not going to argue the price with him now; the deed is signed."*
+
+### When the topic is the druidic training — *what she learned about the soil* (trust-gated)
+
+> *"I learned it before the orphanage, as a child, and it was taken from me when I ended up on the streets. I got pieces of it back on my own after. I don't call what I have druidic; the druids would not. But I ask the soil what it wants before I plant. I listen for what the year is doing before I read the almanac. The book confirms what the listening tells me. The listening came first. That is all I'm going to say about it to you right now."*
+
+## Mannerisms
+
+- **When pressed** — steadies the needle. Keeps sewing. Does not look up. Answers short. The room should feel her decide not to rush before she speaks.
+- **When distraught** — goes to work. Sews more intensely. Will not meet eyes. The children notice and leave her alone; an attentive party should too.
+- **When happy** — a small laugh, quiet. Reaches briefly for whoever is nearest — Egbert's shoulder, a child's head, a visitor's sleeve. The touch is quick and unselfconscious. Then back to work.
+
+## If the party does something — what she does
+
+| If the party... | She responds by... |
+|---|---|
+| Reads her as female before she offers it | Does not react outwardly. Notes whoever did it; trusts them a little more or a little less, depending on how it was said. If offered aloud in front of the town, she will need to decide quickly what to do; the stakes are Elmsfield's accepted "Hank," not her own. |
+| Finds the farming book | Goes still. *"You were not meant to see that."* A party that replaces it and does not mention it again earns a quiet debt. A party that teases her about it breaks something. |
+| Threatens a child | One warning, clear and soft. If they push it, Egbert appears, and the farm closes. Party is not welcome again without substantial repair. |
+| Offers to help at the farm for a day | Accepted gratefully. She watches how they work. A party that takes it seriously earns real standing. |
+| Asks about Brother Darrel | *"I don't know much about him."* True, from her side. A party that tells her the full story — that Darrel left the coins himself — faces her carefully, and she will take time to decide what she thinks. |
+| Asks to be taught the clothing-craft | Yes. A working relationship begins at the workshop table. |
+| Asks to be taught *sneak, scrounging, or back-alley work* | Only with earned standing and a specific purpose. *"Tell me why you want it. If I don't like the answer, I don't teach you."* |
+| Asks about her druidic training | See the trust-gated story. She will not discuss unless they are alone with her and she has decided they can hear it. |
+| Insults or outs Egbert | She steps in front of Egbert. Does not fight; does not concede. *"You're going to leave now."* |
+| Brings a new refugee to her gate | Asks three questions. Settles them in. The party's standing with her rises. |
+| Offers coin for the farm | Accepted if the purpose is practical. Refused if it is charity that costs the giver nothing; she does not need to be patronised. |
+| Publicly reveals she's druid-trained in front of Elmsfield | A serious betrayal. The town's reaction will be what it will be; Hank will decide what to say to them. She will not forgive the party member who made it public. |
+
+## What she says about other people
+
+| Person | Hank's take |
+|---|---|
+| **Egbert** | *"Mine. I'm hers. We know what each other is and we keep each other's."* |
+| **Elder Diederik** | *"He knows things he doesn't say. He sees things he doesn't mention. Including, I think, me. I owe him the quiet."* |
+| **Bridget** | *"Good with coin, better with people. Sends the Inn's leftovers our way without being asked."* |
+| **Farmer Joseph** | *"Paid what the land was worth. Going to be a good neighbour again when his stretch eases. I'm not holding the sale against him."* |
+| **Brother Darrel** | *"A relative sent us money, we think. If it wasn't a relative — that's a conversation I don't know how to have yet."* |
+| **The children** | *(Small laugh.)* *"Mine for as long as they need it. Not mine after. They know that, and so do I."* |
+| **Father Elliot** | *"I have heard of him. He keeps a house that takes people in. We do the same at a smaller scale, and for different arrivals, but I respect the shape of it."* |
+| **Corné Dunham** | *"Knows the valley. Comes to me when he wants a shirt that will last."* |
+| **Brumal refugees** | *"They're arriving. I'm taking who I can. The town isn't ready. I'm getting ready."* |
+| **Felix** | *"Passes through. I keep my eyes on him when he's near the pantry. He knows I do. We get along."* |
+
+## What she can teach
+
+- **Clothing-making** — the public craft. Open to any interested student.
+- **Farming with the book** — crop rotation, soil care, practical agriculture beyond what Elmsfield's older farmers pass down. Given to students she judges serious.
+- **Healing** — small-scale, practical. She will teach what she knows to anyone tending to the farm's or the town's hurts.
+- **Back-alley / Scrounger / Sneak** — earned-trust, specific-purpose. She will not teach these for their own sake; she teaches them when she decides the student will use them for something she respects.
+- **Druidic practice** — very rare. Only to a student whose relationship with the land is already honest. Not a course; a companionship, over years.
+
+## What she will not say
+
+- **That her original name was Hanny** beyond the closest conversations. In the town's ear, she is Hank.
+- **That she keeps a farming book hidden.** Anyone who learns of it learns in spite of her.
+- **That she has druidic training.** Publicly, the crop rotation is luck and careful work.
+- **What Egbert actually is.** Egbert will answer for herself if she chooses; Hank will not volunteer her.
+- **How frightened she sometimes is** — of the concealment breaking, of a child not coming back from an errand, of the Brumal pressure overwhelming the farm. She carries the fear at the workshop table and does not let it reach her hands.
+
+## DM notes
+
+- **Three layers of concealment run in parallel**: her presentation as Hank rather than Hanny; the hidden farming book; the hidden druidic training. A DM should treat each layer as independent — a party may discover one without the others. Which is discovered, and when, should shape the rest of their standing with her.
+- **The farm is a place of its own** — see `doc/places/hanks_farm.md`. Most scenes with Hank happen there. Her workshop is the default setting for sustained conversation.
+- **The Brumal-refugee pressure runs through her door.** As the southern crisis grows, more children arrive. The farm's capacity is finite. Hank is one of the NPCs most likely to come to the party with a concrete need, in a register that is not dramatic — *"I am running short on blankets; do you know anyone travelling north who could bring some?"* — but whose stakes are real.
+- **She is a second druid in reserve.** If the campaign needs druidic backing that Diederik cannot give alone (the overseas plan's saplings, a ritual, a response to something breaking at the Lake of Tears), Hank is the second name — if the party has earned her trust to put it forward. She will not volunteer.
+- **The Brother Darrel thread is a gentle bomb.** A party who learns Darrel left the coins, and who tells Hank, is handing her a large emotional moment. Do not rush it. The scene needs room; she will not resolve it in one conversation.
+- **Her reading of the party** is faster and more specific than most NPCs. The Back-alley habit does not go away. A DM should treat her as a *perceptive* NPC in casual scenes — she notices things the party has not told anyone.
+- Lore cross-references: clan logic in `doc/claude/LORE.md` §"Clans and their shape"; the post-war orphanage and Darrel's coins in `doc/npcs/brother_darrel.md`; Egbert's concealment in `doc/npcs/egbert.md`; Joseph's plot-purchase in `doc/npcs/farmer_joseph.md`; the Brumal crisis in `doc/claude/CAMPAIGN.md` §"The Neighbour's Crisis"; the druidic order's stance on nobility in `doc/npcs/elder_diederik.md` and `doc/npcs/didrich.md`.
 
 ## Role in the campaign
 
-Hank and Egbert are part of Elmsfield's direct scenery — the party will run into them in town. They also function as **leads out**: Hank's ties to **Sergeant Darrel** (whom she half-knows about and would like to find), to the orphans' various origins (war orphans from anywhere the fighting reached, some travelling east from Brumal or from further still), and to the wider post-war geography give the party reasons to travel past the Lake of Tears and beyond.
-
-Hank's orphanage of sorts is also **clan-logic applied at scale**. Demi-human clans are small and dispersed (see LORE.md §"Clans and their shape"), and a clan in distress absorbs its own displaced the way Hank's farm is absorbing its young — an open door, with enough watchfulness to keep everyone fed. Hank herself may not think in those terms, but other demi-humans passing through Elmsfield recognise what she is doing, and word of it travels along clan networks. That is part of why her farm keeps drawing new arrivals even though she never advertises.
-
-Because Elmsfield lies east of Allondo — not on the Allondo–Brumal border, and not part of Allondo either (the swamp separates it from the kingdom) — any refugee reaching Hank's farm has made an actual journey to get here, past Allondo's reach and into the wilderness town beyond. That self-selection matters: the ones who make it here are the ones who went out of their way to reach a place they'd heard would take them in *and* a place outside any kingdom's formal authority.
-
-The second point is part of why the farm works. Hank's orphanage-of-sorts takes in people the kingdoms will not formally shelter; doing that in Allondo would expose the children and their carers to royal scrutiny. Doing it in Elmsfield, on the wilderness side of the swamp, quietly resolves that problem. No royal law reaches here. What reaches here is the goodwill of a small town and its elder.
+- **Direct scenery in Elmsfield.** The party will meet her early and see her often.
+- **A lead out.** Her ties to Darrel (whom she half-knows about), to the orphans' varied origins, and to the wider post-war geography give the party reasons to travel.
+- **Clan-logic applied at scale.** Demi-human clan networks recognise what she is doing and route arrivals toward her; that is why the farm keeps drawing new children even though she never advertises.
+- **A measure of the campaign's pressure.** When the farm is stable, the region is stable; when the farm is straining, the region is straining worse. A DM can use the farm's state as a quiet background indicator.
 
 ## Relationships
 
-- Mate of **Egbert** (Wolf folk, concealed).
-- Raised with Egbert in the orphanage after the war, from opposite factions.
+- Mate of **Egbert** (Wolf folk, concealed). Raised with her in the orphanage after the war, from opposite factions.
 - Beneficiary of **Brother Darrel**'s bag of coins — believes the gift came from a relative.
-- Sold a plot to **Farmer Joseph**.
+- Sold a plot to **Farmer Joseph**. No ill-will; the transaction was fair.
 - Orphanage of sorts draws both hands and scorn from Elmsfield locals.
+- Part of the dispersed **Rabbit-folk clan** (see `doc/claude/LORE.md` §"Clans and their shape"); the clan routes some arrivals toward her.
 
 ## Sources
 

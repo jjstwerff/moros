@@ -1,40 +1,62 @@
 # Father Elliot
 
-- **Role:** Abbot of Luchebert Monastery. Tender of Felicia's shrine. Source of the "valiant spirit" proclamation that misnamed a Bean. Former Crown Prince of Allondo.
+- **Role:** Abbot of Luchebert Monastery. Leader of the community there; keeper of Saint Luchebert's tradition and of the monastery's library. Source of the "valiant spirit" proclamation that misnamed a Bean. Former Crown Prince of Allondo.
 - **Species:** Human (the human royal line of Allondo).
-- **Lives:** The abbot's spare quarters at Luchebert Monastery, in a vale beyond Laurent's downed city.
+- **Lives:** The abbot's quarters at Luchebert Monastery, in a vale beyond Laurent's downed city. Spends much of his work in the saint chapel and the library adjacent to it.
 - **First met:** When the party reaches Luchebert — usually mid-campaign, after the route through the hills (see `doc/npcs/corne_dunham.md`).
 
 ## What the party meets
 
-The party reaches the vale and is brought into the monastery — often by **Willow**, sometimes by **Brother Darrel**, occasionally by Elliot himself if he happens to be at the gate. He is the abbot, but he is not waiting to receive them. He is doing whatever he was doing — sitting on a bench near the shrine, walking the cloister with a hand on the wall, writing at a desk by an east-facing window. He looks up when they enter, sets down what he is holding, and says: *"Sit. Tell me what brought you here. Take your time."*
+The party reaches the vale and is brought into the monastery. He is the abbot, but he is not waiting to receive them. He is doing whatever he was doing — hearing a lay brother at the saint chapel's altar, sorting a damaged volume in the library, walking the cloister with a hand on the wall, writing at the desk in his quarters. He looks up when they enter, sets down what he is holding, and says: *"Sit. Tell me what brought you here. Take your time."*
 
 He does not raise his voice. He does not fill silences. He waits for them to speak, and when they speak he listens completely. The conversation moves at his pace, which is not fast.
+
+(The cave chapel below the gate is not his — that is **Willow**'s shrine for Felicia, and the party will be gated there by her, not by him. Elliot's work is the community, the saint chapel, and the books.)
 
 ## How he reads at a glance
 
 - A tall human in plain monastic wool, weathered around the eyes. Hands roughened by twenty years of work that does not fit his lineage.
 - **Stands very still when listening.** Standing-still is part of how he listens.
 - A **worn navigator's compass on a thong around his neck** — out of place at an abbey, never taken off in two decades.
+- **Ink on his fingers, often.** The library runs through his hands; copying and translation show up under his nails.
 - Speaks rarely. When he does, he is heard.
 - Carries a Crown Prince's bearing he has tried for twenty years to set aside; the body remembers what the title was, even when the man no longer wants it.
 
-## Visible patterns the party will notice
+## At the saint chapel
 
-- **Mornings at the shrine** with Willow. He does not pray aloud; he is present.
-- **Afternoons at his desk**, writing letters that may or may not be sent. The compass sits beside the inkwell.
-- **One walk a day along the vale's eastern wall**, alone, slow. He does not invite company on this walk.
-- **Sundown at the gate**, watching the road. He is waiting for someone (Irna). He has been waiting for months.
+The monastery's formal altar — the one dedicated to Saint Luchebert. Elliot is often here, and the party will find him here as often as anywhere.
+
+Three standouts on entering:
+
+- **The altar is dignified but simple** — a single stone block, a cloth over it, a candle at each end. No relics on display. The tradition Saint Luchebert founded was not about grasping, and the chapel reflects that: nothing here asks for veneration.
+- **The light is different.** A single east-facing window above the altar catches the morning, then leaves the chapel dim for the rest of the day. Elliot's usual hour here is the first after dawn.
+- **The lay brothers and sisters are often at the side pews**, individually, with the discipline of people who come here to work rather than to perform. Elliot is usually among them, not in front of them.
+
+This is where his *leadership* shows — not as a figure at a pulpit, but as the person other community members come to between the pews.
+
+## At the library
+
+A small room off the saint chapel, older than any other building in the vale. It holds the monastery's collection of **ancient books** — some going back to the white city, some said to have come through the portal itself with the first humans. **This is not incidental to the monastery's purpose; it is the heart of it.** Saint Luchebert founded his tradition by reading an ancient holy book carried through the portal and making up his own version of what it said (see `doc/claude/LORE.md` §"Saint Luchebert"). The library continues that original act at scale: **keeping ancient knowledge alive**, page by page, generation by generation. The saint chapel is where the tradition is *remembered*; the library is where it is *done*.
+
+Part of the present collection Elliot **brought home himself** from the travelling years. He was not in his right mind for most of that time — the places blurred — but the books did not blur. Whatever he found in abandoned towers, in remote monastic cells, in old traders' attics, in the occasional cache a villager did not understand they were sitting on, he carried back with him. Some are in tongues no one here speaks. Some are in scripts that look Earth-origin. Some are charred at the edges from whatever the villager had nearly done with them before he arrived. He does not talk much about where each volume came from; when pressed, he will name the region and little more. *"I found it. It came home with me."* The library is larger than it was when he inherited it, and the difference is his work.
+
+Three standouts:
+
+- **Stacks of old volumes** on trestle tables, many falling apart. Fragile pages, covers that have been rebound two or three times, spines separating from boards. The library is not archival; it is a **working library**, kept alive only by continuous effort.
+- **Copies in progress.** One or two of the lay community — and often Elliot himself — are always copying something out by hand, page by page, onto newer paper. Some of the originals will not survive another century. The copies buy time.
+- **Translations on separate tables**, in multiple scripts. Some of the books are in tongues no one on this continent speaks any more; Elliot and a handful of the community work on them slowly, comparing passages, arguing notation. Progress is measured in pages per year.
+
+The library is where Elliot spends most of his work-hours. A party who wants to find him on short notice should look here first.
 
 ## At the abbot's quarters
 
-A single small room off the cloister. Three things stand out:
+A single small room off the cloister, for sleep and for conversations that need the door closed. Three things stand out:
 
-- **Almost nothing in it.** A chair. A writing desk. A cot. An east-facing window that catches the morning. Nothing personal that a passing stranger would mark as his.
+- **Spare to the point of stark** — a chair, a writing desk, a cot, an east-facing window that catches the morning. Nothing personal that a passing stranger would mark as his.
 - **The compass on the desk, never put away.** It is older than the monastery has had him.
-- **A small stack of letters at the desk's edge.** Some sealed but not sent. Some opened and set aside. The party who looks closely will see Lady Rhianna Linthrope's seal on at least one of them.
+- **A small stack of letters and a working copy from the library** at the desk's edge. Some letters sealed but not sent. Some opened and set aside. The party who looks closely will see Lady Rhianna Linthrope's seal on at least one; beside them, a half-finished transcription he has been chipping at after hours.
 
-The party usually meets him in the cloister or at the shrine, not in the quarters. The quarters are where he sleeps, writes, and occasionally invites a single visitor whose conversation needs the door closed.
+The party usually meets him in the chapel or the library, not the quarters. The quarters are where conversations happen that he does not want overheard.
 
 ## What he will tell — and when
 
@@ -52,6 +74,7 @@ The party usually meets him in the cloister or at the shrine, not in the quarter
 | The disappeared he shelters | Carefully. Never names. Never confirms specific people. |
 | His brother Hannes | Sparingly. Loves him; will not perform the love. |
 | Royal court politics | Will not engage. |
+| The library — what it holds, what is being copied or translated | Freely; will walk a visitor in to show them, if they are patient. |
 
 ## Stories he tells
 
@@ -67,7 +90,7 @@ When the relevant topic comes up and he chooses to answer.
 
 ### When the topic is the travelling years — *what he can no longer find on a map*
 
-> *"For years I walked. I do not know how many. I do not know the order of the places. Mountains, marshes, dry country, coast. I was not in my right mind. The country was kind to me; I have not repaid it. What I kept was the reading of terrain — wind, sun, the way pine smells at altitude. The places blurred. The skill did not."*
+> *"For years I walked. I do not know how many. I do not know the order of the places. Mountains, marshes, dry country, coast. I was not in my right mind. The country was kind to me; I have not repaid it. What I kept was the reading of terrain — wind, sun, the way pine smells at altitude. The places blurred. The skill did not. And I kept the books. Whenever I found one, I carried it with me. By the time I reached Luchebert, my pack was mostly books. Half the library now is what I brought back. I could not say what a quarter of it means. That is work for people who come after me."*
 
 ### When the topic is Felicia, or what the monastery actually serves — *the shrine in the corner*
 
@@ -125,6 +148,7 @@ For students he judges have come honestly:
 - **Plain speech** — informally, by example. People who spend time with him learn to say less and mean more. Not a power; a habit.
 - **Monastic discipline** — the contemplative practice of the Saint Luchebert tradition. He will teach this to anyone who asks for it sincerely.
 - **Reading the field** — what to look for in a confused situation, drawn from his command experience. Only to someone he trusts not to use it for war.
+- **Old tongues and scribal copying** — through the library work. Slow; requires a student willing to sit at a bench for weeks. Useful for parties who want to read something that has not been translated yet.
 
 ## What he will not say
 
@@ -139,6 +163,7 @@ For students he judges have come honestly:
 - The **navigator's compass** is the visible reminder of the travelling years. He never takes it off. It surfaces in the *distraught* mannerism.
 - **Willow tends Felicia's shrine and predates him.** He arrived knowing what the abbey actually was; she gave him the continuity. The relationship is mutual; she does not defer. The shrine is reached through her, not through him.
 - **The travelling years are mechanically real**: he is the most capable navigator within reach. Late campaign, he can be asked to advise on terrain the party has not yet seen.
+- The **library is a late-campaign resource.** Some of the volumes predate the rift; some may be Earth books carried through the portal. A party that wants to read something that has not been translated yet goes to Elliot. Progress is slow; he will not rush a translation for impatient askers. The library is also a credible reason for the party to *return* to Luchebert after their first visit.
 - He carries the **spirit-shield** for Luchebert vale alongside Felicia herself — two layers of cover (the great spirit and her serving priest). See `doc/claude/LORE.md` §"Spirit Ecology."
 - Lore cross-references: Saint Luchebert's tradition in `doc/claude/LORE.md` §"Saint Luchebert"; the Overseas War in `doc/claude/CAMPAIGN.md`; Felicia's drive in `doc/npcs/felicia.md`; the proclamation thread in `doc/npcs/irna_bean.md`.
 

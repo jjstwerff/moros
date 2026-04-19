@@ -21,7 +21,7 @@ This is the moment the party realises the tower is inhabited. What they do next 
 - Moves in short, deliberate motions when not hiding. Never wastes a step.
 
 **The Furnace.**
-- A large central pot, twice a person's height, with **stubby iron legs partly buried in floor-ash**. Has not stood up in centuries.
+- A large central pot, twice a person's height, with **stubby iron legs partly buried in floor-ash**.
 - **Breathes**. Exhaust comes in pulses; the air around it warms and cools on a slow rhythm.
 - Glows faintly inside. Not fire; the spirit's presence.
 
@@ -58,20 +58,18 @@ DMs should **describe drawings in the moment** rather than summarising them — 
 
 ## What the boy will draw — and when
 
+Quick answers. The deeper topics (the mage, the furnace, Haven, what he wants) are full drawing-sequences — see §"Drawings he makes" below.
+
 | If asked about... | What he draws |
 |---|---|
 | The way to a part of the tower | A small floor-plan in chalk, accurate. |
-| The mage who made him | A figure in a coat, sometimes leaving, sometimes seated; **never a face**. |
-| Where the mage went | A door, then nothing. |
-| The furnace | A larger pot with a circle around it. *Family.* |
 | The fungus outside | The fungal shapes, then a short line of breath-marks pushing them back. |
 | The other towers around the lake | The towers as he has seen them from the chimney top — partial, accurate where he can see, blank where he cannot. |
-| Whether he wants to leave | A long pause. The workshop. Then the workshop with the door open. The second drawing is unfinished. |
 | Strangers he has just met | A small pot with eyes. He is drawing the party. They are now in his house. |
 
 ## Drawings he makes (his version of stories)
 
-The boy's history reaches the party through described drawings, not spoken words. The DM should *narrate the drawing* as it happens — what he draws, in what order, where he hesitates, what he erases.
+The DM should *narrate the drawing* as it happens — what he draws, in what order, where he hesitates, what he erases.
 
 ### When asked what happened to his maker — *the door closing*
 
@@ -129,13 +127,13 @@ He puts down the chalk. He goes to the far wall of the workshop where there is a
 
 ## What the boy and the furnace respond to in others
 
-The list is short on purpose — they have met almost no one.
+Short on purpose — they have met almost no one. For the Mage, Haven, and each other, the boy's response *is* one of his drawings (see §"Drawings he makes"); this table covers what the **furnace** does and what the boy does about people not covered there.
 
 | Person | Boy's response (drawn) | Furnace's response (felt) |
 |---|---|---|
-| **The Mage** (their maker) | Always faceless. Seated or leaving. | Long, slow exhalation. Memory at a timescale the party cannot share. |
-| **Each other** | The big pot, circled with the small one. *Family.* | Warmer for a moment. The boy is family. |
-| **Haven** (rumoured) | A horizon, taller pots, a question mark. Wants to believe. | A long pause. Has not heard the name in a very long time. Then steadies. It is thinking. |
+| **The Mage** (their maker) | — see *the door closing* | Long, slow exhalation. Memory at a timescale the party cannot share. |
+| **Each other** | — see *family* | Warmer for a moment. The boy is family. |
+| **Haven** (rumoured) | — see *the rumour he half-believes* | A long pause. Has not heard the name in a very long time. Then steadies. It is thinking. |
 | **The party — first arrival** | A small pot with eyes (himself), watching. | The chimney descent *was* the test. They passed or didn't. |
 | **The party — after trust** | Drawings of them at work in the workshop. | Steady warmth. The breath includes them in the rhythm. |
 | **The Hermit Shaman** (if mentioned) | A tower across water; he has seen it from the chimney top, never met the shaman. | (Has it noticed the shaman over centuries? The DM decides.) |
@@ -158,8 +156,8 @@ For students patient enough to learn from beings that do not speak in their rhyt
 
 ## DM notes
 
-- **Stories goal adapted: drawings replace verbal stories** for the boy. The trigger-keyed structure is identical; only the medium changes. The DM should describe the drawing in the moment — what is drawn, in what order, what is hesitated over, what is erased — rather than summarising. This pattern transfers to other non-verbal NPCs (Haven's puppets, certain spirits, mute beings).
-- **Voice samples adapted: breath patterns and visual signs** for the furnace. Speech is not the only voice. The breath is *its* voice; the warmth is *its* affect. A party that learns to read it has earned more than the file will ever spell out.
+- **Stories goal adapted: drawings replace verbal stories.** The pattern transfers to other non-verbal NPCs (Haven's puppets, certain spirits, mute beings).
+- **Voice samples adapted: breath patterns and visual signs** for the furnace. Speech is not the only voice. Transferable pattern for spirit-NPCs generally.
 - **Cross-NPC takes naturally short here.** The boy has met almost no one; the furnace fewer still. The "about 10" cap on cross-NPC takes works in both directions — sometimes the right answer is *four*.
 - **They are the key to the first shackle.** The boy walking out with the party — *genuinely*, after earned trust — is what makes the furnace stand up and follow. The buried tower then leaves the ring around the lake. This is the relational mechanism for the first of the six tower-shackles. See `doc/claude/CAMPAIGN.md` §"Sessions 5+ → The Other Towers" and the *last flight* thread.
 - **Haven is the obvious destination** if the party commits to relocating the boy. He has heard of it; he does not believe it; he wants to. See `doc/places/haven.md`.
