@@ -712,7 +712,18 @@ they point toward or teach. See each NPC's file for full detail.
 **Elmsfield (opening hub)**
 
 - **Elder Diederik** (his tree-house) — identifies the fungus → buried tower; ironwood
-  lore; overseas expedition plan; ecological collapse. `doc/npcs/elder_diederik.md`
+  lore; overseas expedition plan; ecological collapse. Carries the grief of his
+  overseas companion **Alita** (fox-folk mechanic, older than him; survived the
+  return in poor health and lived a few quiet years more before dying; grave on
+  a low hill a short walk outside Elmsfield, visited often — invitation along is
+  a trust gate; her overseas flower-and-vegetable seeds, propagated in her last
+  years, are still spreading through Elmsfield gardens). Secret correspondent
+  inside the druidic order: **Rowan**, otter-folk, lives north of Salmonswell
+  along the rapids (past the third fall), currently silent (recent letter
+  overdue). **By mid-campaign Diederik sends the party to Rowan** with a sealed
+  letter, a package of Alita's overseas seeds, and their own honest judgement of
+  the overseas plan — the sprouts will not survive without druidic
+  acknowledgement and Rowan is the only path. `doc/npcs/elder_diederik.md`
 - **Bridget** (the Inn) — tree's ironwood nature once prompted; wartime hoard still
   hidden; teaches navigation and trader-craft. `doc/npcs/bridget.md`
 - **Corné Dunham** — the hill route to Luchebert; will not lead parties into Laurent's
@@ -789,7 +800,10 @@ they point toward or teach. See each NPC's file for full detail.
   Bridget's Inn) — brings news of the larger world (Brumal, Linar, overseas),
   teaches navigation, plays and sings. Her song about *the shimmering city*
   (unspeakable riches for a merchant who could find it) is the **Fata morgana**
-  breadcrumb. `doc/npcs/nadine.md`
+  breadcrumb. Her quieter **lament for Linnet** — a fellow Finch trader captured
+  by the pirate nest south of Linar — is the *personal* face of the pirate-nest
+  thread, with compiled intelligence she gates behind earned trust and one
+  specific demand: bring Linnet back alive. `doc/npcs/nadine.md`
 - **John Bean** (Blackwood freehold farm) — close-range witness to the war's end but
   *cannot* say where the mirror camp was. Worth visiting to hear the real story behind
   Scarlet Vale's misguided heroic-arm legend; Irna makes the party curious about her
@@ -874,7 +888,10 @@ they point toward or teach. See each NPC's file for full detail.
   never pinpointable, unspeakable riches for a merchant who could find it — is the
   **Fata morgana** breadcrumb. A party that pursues the song ends up on the thread.
   Penelope is the one who can confirm the city is real if the Corven/Penelope arc
-  is open.
+  is open. Her *quieter* late-night song — the **lament for Linnet** — is the
+  pirate-nest breadcrumb in personal form: a captured friend, intelligence
+  Nadine has compiled but will only share with people who will use it to *get
+  the captives out*, not to burn the place down.
 - **At court in Scarlet Vale with nothing obvious to pull on?** Corven's night rides
   are an open secret — he leaves in plain travel gear on a fast horse, returns without
   a story. Following that thread opens the hidden **Corven/Penelope** arc and, through
@@ -883,6 +900,13 @@ they point toward or teach. See each NPC's file for full detail.
   as the party arrives — an immediate visible thread. Ignored if approached casually,
   reachable with specific offerings or earned standing (`doc/npcs/skull_gatherers.md`).
   Connects forward to Laurent.
+- **Mid-campaign and Diederik trusts them?** He sends them to **Rowan** — an otter
+  druid who lives north of Salmonswell along the rapids, past the third fall —
+  with a sealed letter, a package of Alita's overseas seeds, and the spoken
+  message that he wants Rowan to hear in *their* voice (their honest assessment of
+  the overseas plan). The errand is the only way to get druidic acknowledgement
+  for the male sprouts, without which the entire overseas expedition will fail.
+  See `doc/npcs/elder_diederik.md` §"The errand only the party can run".
 
 ### Origin
 

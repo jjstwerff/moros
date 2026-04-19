@@ -34,14 +34,14 @@ What stayed with him is the **navigation**. The memories of terrain blurred; the
 ## Relationships
 
 - **Older brother of King Hannes**; former Crown Prince of Allondo. Led the main offensive against the invaders during the Overseas War, saw the misery of the starving demi-humans Thorgal had sent as soldiers, and renounced the crown after the war on the strength of what he could not unsee.
-- Parallel moral arc to **Brother Darrel** (the Beaver folk sergeant who walked away from the same war for similar reasons, at a different rank). The two of them may or may not know each other directly, but they are the same response to the same experience at opposite ends of the chain of command.
+- Parallel moral arc to **Brother Darrel** (the Beaver folk sergeant who walked away from the same war for similar reasons, at a different rank), who **lives at the monastery**. They know each other well — same response to the same war at opposite ends of the chain of command — and they disagree on one issue, steadily: Darrel thinks Elliot should write the letter that corrects the Bean proclamation, because Elliot is the only person who can. Elliot has not. The disagreement does not break the relationship; it is the texture of it. See `doc/npcs/brother_darrel.md` §"What he and Elliot disagree about".
 - **Paternal uncle of Didrich** (and of the older heir).
 - **Brother-in-law of Queen Fienna.**
 - Correspondent with **Lady Rhianna Linthrope**.
 - Expecting **Irna Bean** as an exile; she is lost and ill and has not yet arrived.
 - Source of the prophecy about a Bean "valiant spirit" — the prophecy is about **Irna**, not Ron. He did not spread the news himself; someone else did, and the martial misreading took hold as it travelled. Elliot knows this has gone wrong and has **chosen not to correct it**, because doing so would mean breaking his retirement from Allondan politics.
 - Oversees the Abbey that officially belongs to **Saint Luchebert** (the saint the monastery is named for) but is, in practice, **Felicia**'s; her actual shrine inside Luchebert is tended day-to-day by **Willow**, an old rabbit-folk granny whose quiet authority on the matter predates Elliot's arrival.
-- Shelters others who wish to disappear, possibly including **Brother Darrel**.
+- Shelters others who wish to disappear, including **Brother Darrel**, who has lived at the monastery for years.
 
 ## Role as spirit-shield
 

@@ -1,6 +1,7 @@
 # Moros Documentation
 
 - [Quick Start](doc/claude/QUICK_START.md)
+- [Scene-first writing — documentation goal](doc/claude/SCENE_FIRST.md)
 - [Lore](doc/claude/LORE.md)
 - [Rules](doc/claude/RULES.md)
 - [Scenarios](doc/claude/SCENARIOS.md)

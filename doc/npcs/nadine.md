@@ -30,9 +30,29 @@ The city in the song is **Fata morgana** (see `doc/places/fata_morgana.md`), who
 
 If the party asks her what she thinks the city really is, she will say honestly that she does not know. The song is older than her, older than the group she trades with. It might be a poet's fancy. It might not.
 
+## The song for Linnet
+
+A second song in Nadine's repertoire — quieter, sung less often, never on request — is a **lament for Linnet**, a fellow Finch trader who sailed south past **Linar harbour** with a small load roughly eighteen months ago and did not come back. She and Nadine had run routes together for years; they had been friends; they had been, at times, partners in small ventures their respective groups did not need to know about. The song is short, in the older Finch lament-mode, and the tradition is that whoever sings it sings it alone, late, after most of the room has gone. Trader audiences know the name and fall silent when it starts. Inn-locals usually do not.
+
+Through the merchant network's ambient intelligence — colleagues at Linar who watch the docks, fishers who row out further than they admit — Nadine has pieced together that **Linnet is alive**, pressed into labour at the pirate nest south of Linar. Ransom approaches have gone nowhere; the nest does not negotiate with traders, only with their own kin. That is as far as Nadine's information has carried, and it has been at that point for months.
+
+If the party asks her about the song directly, she will tell them. Plainly, without making a scene of it. She has stopped crying. She has not stopped looking.
+
+## What she has compiled, and who she will give it to
+
+Behind the lament, Nadine has been **quietly compiling intelligence on the pirate nest** — names, schedules, the harbour they use, the kin connections back into Linar that keep them supplied. Her merchant group's network reaches further than any single fisher's, and over a year and a half she has built up a picture nobody else has.
+
+She will not hand the picture to the wrong people. **Not to an Allondan crown captain** who would burn the nest indiscriminately and lose Linnet in the fire. **Not to a freelancer** who would use the intelligence to rob the place and leave the captives behind. She wants it used to *get her friend out specifically* — and, by extension, the others held with her.
+
+The party is a candidate. Earning the intelligence is a layered process: she will not give it on first asking. She watches them across visits, pays attention to how they treat the captives in stories that come up incidentally — refugees at Hank's, sheltered overseas demi-humans at Luchebert, Irna herself. If the pattern is right, she will tell them what she knows and make a **Linar harbour contact** available to them: a fisher who will take a small party further south than fishers admit going. What she wants from them in return is plain — *bring Linnet back, alive, before whatever else they do at the nest.* The pirates are the larger problem; Linnet is hers.
+
+This places Nadine in friction with two other faction-adjacent voices the party will hear. **Brother Darrel** at Luchebert holds that the pirates are also victims of the war that produced them; Nadine does not see victims, she sees the people holding her friend. **Felix**, if the party reaches him on the same thread, knows old-comrade names on the pirate side from a different angle entirely; whether his names and her picture line up, and whether the two of them will share what they have, is a question the party gets to broker.
+
 ## What she won't say
 
 Nadine is indiscreet about the world. She is *less* indiscreet about her own merchant group. Their specific interests, the people who bankroll them, who is really making money on which route — she keeps those to herself with professional care. A party that tries to treat her as a resource to be pumped will find the tap slows considerably.
+
+The Linnet intelligence sits on the boundary of this rule. Linnet was group-adjacent, and the network Nadine used to compile what she has is the group's. She will speak about Linnet personally; she will not surface the network until the party has earned it.
 
 ## Relationships
 
@@ -40,12 +60,17 @@ Nadine is indiscreet about the world. She is *less* indiscreet about her own mer
 - Based out of **Raft city** — so she has the rare practical experience of *having travelled past the forbidden woods*. How she manages the crossing, or whether her group goes around by sea, is open.
 - Regular visitor to Elmsfield; welcomed at Bridget's Inn.
 - An occasional acquaintance of anyone in town who values news — Diederik, Bridget, Hank, Eric all plausibly have stories about her previous visits.
+- **Linnet** — fellow Finch trader, close friend, captured by the pirate nest south of Linar harbour roughly eighteen months ago; alive per the merchant network's most recent reads; the focus of Nadine's ongoing private project. The lament is for her.
+- Position-adjacent to **Brother Darrel** (disagrees on whether the pirates are victims) and to **Felix** (whose old-comrade names overlap her picture from a different angle). Whether either relationship becomes active depends on the party brokering the contact.
 
 ## Open questions
 
 - Who leads her merchant group, and what do they want?
 - How exactly does she get between Raft city and the southern continent? (Around the forbidden woods? By sea via the northern estuary? A quiet arrangement with someone in the woods themselves?)
 - Does she know Eric Randell's secret? Two regular Elmsfield visitors with reasons to keep their business off-record are the kind of pair that either ignore each other perfectly or eventually compare notes.
+- How current is the intelligence on Linnet? Months-old data is months-old; the pirate nest is not static, and a captive's situation can change in either direction without warning.
+- Who is Nadine's source at Linar harbour, and how exposed is that source if the party starts asking around?
+- How long will Nadine wait for the right people before acting on what she has herself? She is patient. She is not unlimited.
 
 ## Sources
 

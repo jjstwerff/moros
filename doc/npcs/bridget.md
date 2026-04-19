@@ -1,46 +1,150 @@
 # Innkeeper Bridget
 
-- **Role:** Innkeeper of the Elmsfield Inn
-- **Species:** Badger
-- **Location:** Elmsfield
-- **Status:** Alive
+- **Role:** Innkeeper of the Elmsfield Inn. Wanted a city; took a town instead.
+- **Species:** Badger. Wide-shouldered, tighter than her husband. Carries a leather apron and a slate.
+- **Lives:** Behind the bar of her own Inn, inside the hollow of the great ironwood at the centre of Elmsfield. Goes home to Wilfred's farm one evening a week.
+- **First met:** Whenever the party walks into the Inn — usually Session 1 or 2.
 
-## Summary
+## What the party meets
 
-Badger innkeeper of Elmsfield, married to **Wilfred** (also a Badger, a farmer). They have a slew of children who help on the farm and at the Inn. The farm is Wilfred's concern — Bridget has no interest in it. She is curious and independent, and would have moved to a city if that option had been available. The Inn was the second-best opportunity, and she took it. She wants to expand the Inn the moment that becomes possible.
+The party walks into the Inn looking for a bed, food, or a place to sit. Bridget is behind the bar, doing two things at once. She looks at them — looks them properly, the way a trader looks at a merchant she has not met before — and says something brisk and welcoming and slightly transactional, all at the same time. *"Two beds or one room? Tell me before I'm half-asleep counting tonight's coin."*
 
-### Not just an innkeeper
+Within ten minutes she knows roughly where the party is from, what they're carrying, and how long they're staying. She does not advertise that she knows. The Inn keeps moving around her — locals at their tables, a couple of merchants at the trader's corner, her children running plates — and she runs it without looking like she's running it.
 
-Bridget's character sheet is wider than "the woman who runs the Inn." Her background stack reads **Farmer → Trader**, with advanced **Camp** work and **Ingenuity** as powers and **Navigation** as a formal specialisation. She was a *trader* before she was an innkeeper, and a trained navigator before that again. That is why she wanted a city and settled for the Inn: the Inn at least sits at the starting point of the main southern trade road, where merchants actually come through, and a woman who knows how to read a route can put that knowledge to use over a counter even if her feet stopped moving.
+## How she reads at a glance
 
-This also explains several things the town's other Badgers would not quite explain. Her eye for how the Inn could be expanded is an engineering eye, not just an ambitious one. Her read on visiting traders is informed by having been one. Her understanding of the road is better than a settled innkeeper's ever ought to be. Somewhere in her earlier life, she travelled.
+- A wide-shouldered Badger in a leather apron, sleeves rolled past the elbow. Carries herself like she's used to being underestimated and finds it tactically useful.
+- **Eyes always on the door**, even mid-conversation. Notices everyone who comes in. Notices what they're carrying. Notices what they leave with.
+- A **slate behind her** with names and tabs in a hand only she fully reads. She does not look at it when she works the count; she looks at it when she wants somebody to *see her looking* at it.
+- Counts coin without looking down. The trader habit she will never put down.
 
-She can teach navigation and trader-craft to anyone she judges worth the time. She would rather teach them than run a farm.
+## Visible patterns the party will notice
 
-## The Elmsfield Inn
+- **Always behind the bar in the morning**, doing books. The slate gets updated then.
+- **Sits at the trader's corner table when merchants pass through** — Nadine especially. Negotiates and listens in equal measure.
+- **Goes home to Wilfred's farm one evening a week**, no more. Comes back tired but ready.
+- **Once a season she walks the upper hollow alone with a lantern**, on an evening she doesn't tell anybody about. The party will notice the absence; nobody else will say what she's doing.
 
-Built inside the hollow of Elmsfield's central tree — the huge tree the town itself is built around. The villagers call it a "stone tree" and cannot alter it with any tool they have; **Elder Diederik** knows it is ironwood, and that it is part of the reason he settled in Elmsfield. The tree once held several floors; only the lower floor and a limited cellar underneath are in use today, the roof a patchwork of repairs. Several rentable rooms have been built inside the hollow.
+## At the Inn
 
-The same material — ironwood — is what makes up **John Bean**'s arm.
+The Inn is the lower floor and a partial cellar of Elmsfield's great ironwood — and the moment the party steps through the door, three things should hit them:
 
-### The tree is a female, and sterile
+- The **walls and ceiling are grown wood, not built**. The grain curves through corners no carpenter could lay. The structure is *the inside of a tree*, hollowed out and lived in.
+- The **hearth fits a knothole-recess** that came pre-made; the smoke goes up a flue that simply *is* the tree's old central channel. The room smells of old wood layered with hearth-smoke and whatever Bridget's serving today.
+- A **staircase goes up from one corner and stops at a boarded ceiling**. Once there were upper floors. The boards are old, fitted carefully, and there is a clear question hanging in the air about what is up there and why nobody has reopened it.
 
-See `doc/claude/LORE.md` §"Ironwood itself." The Elmsfield tree is a **female ironwood**, and ironwood trees are dioecious — a female cannot bear fruit without pollen from a male. The ancient mages felled every male ironwood on this continent for their puppet work; what remains here are surviving females, unable to reproduce. The Elmsfield tree is among the most visible of them. The **overseas continent still has the male population**, which makes the tree doubly important: it is Elmsfield's landmark, and it is one of the last candidates on this side of the ocean for producing a new generation of ironwood if cross-pollination could ever be arranged. Very few people in Elmsfield understand any of this, Diederik excepted.
+The trader's corner has the best light. The cellar door is behind the bar and Bridget keeps the only key. Her slate hangs above the bar where everyone can see it and nobody can read it.
 
-### Pollination would be a crisis for the Inn
+## What she will tell — and when
 
-Ironwood fruit is heavy and releases gases that make the immediate area unpleasant, even harmful, to live in while the fruit ripens and falls (see LORE.md §"Fruiting is not easy"). If the Elmsfield tree is ever successfully pollinated, **the Inn will have to close for the duration** — the gases would fill the hollow that houses it. For Bridget, who wants to *expand* the Inn, the prospect of the tree fruiting is direct and personal trouble. Anyone who approaches her about the possibility is making a request that costs her her livelihood for a season or more. This is worth knowing before any session involves that conversation.
+| Topic | When she'll talk |
+|---|---|
+| The Inn — rates, food, what she's serving | Immediately. This is the job. |
+| Wanting to expand the Inn | Freely, once asked. She has thoughts. |
+| The road, trade routes, market conditions | Freely, with pleasure. She misses the work. |
+| The tree — visible features, public history | Freely. Repeats the war-day story regularly. |
+| Why she didn't get to the city | When asked sympathetically. Funny-bitter. |
+| Wilfred and the children | Briefly. Practical. Doesn't dwell. |
+| Politics (Allondo, Brumal, the war) | Has views; reads the news; doesn't speculate aloud. |
+| What's in the boarded upper floors | Speculates if pressed. She doesn't actually know. |
+| Badger clan business | Carefully. Acknowledges the network exists. Won't name names without reason. |
+| The hidden wartime hoard | Only in fragments. *"That isn't yours to ask about."* |
 
-### The tree in the last war
+## Stories she tells
 
-When Elmsfield was captured during the Overseas War (quickly, after the harbour fell first and the invaders pushed inland), the townspeople hid a large amount of valuables inside the hollow of the tree before the occupation began. The raiders could not get them out: whatever tools the overseas soldiers brought, the ironwood defeated them. The hoard survived the occupation intact. Some of it was quietly retrieved after the war; how much is still hidden inside the Inn's structure — and who in the town knows which is which — is Bridget's business, and not universally shared.
+When the relevant topic comes up and she chooses to answer.
+
+### When asked about the tree — *the day they couldn't get in*
+
+> *"You want to know about the tree? Sure. The story I like best — they tried to open it during the war. Overseas soldiers, fresh axes, all the time in the world. Not a chip. Not one. They put fire to it for a day and a night and the bark didn't even *blacken*. Eventually they gave up and went looking for the next thing to be cross at. Whatever's in there — and I am not telling you what's in there — it stayed in there."*
+
+### When asked why she runs an inn — *the city she didn't get*
+
+> *"I wanted Scarlet vale. Or Linar. Anywhere with a quay and a market and somebody new every week. I got Elmsfield instead. The Inn was the second-best opportunity. Some weeks I think it was the better one. Most weeks I just think I haven't given up yet."*
+
+### When asked about her trading days — *the road north*
+
+> *"I worked the road from Linar up past Salmonswell, before Wilfred happened. Three years of it. I learned more about people watching them count their own coin than from anything else they did. People you'd think would cheat don't, half the time. People you'd trust will rob you blind if they think you're not looking. I'm always looking now. It's the trader habit you can't put down."*
+
+### When asked about Wilfred — *the farm and the Inn*
+
+> *"He runs the farm. I don't go out there if I can help it. He doesn't come in here unless I ask. We've got the children running between us like ferries. It works because we don't pretend it's anything other than what it is."*
+
+### When asked about expanding the Inn — *the upstairs problem*
+
+> *"There used to be more floors above this one. The ceiling I've boarded over — that's a floor I can't get to. I've measured the gap three times. There's room up there. Whoever lived in this tree before us used the height. I want it back. I'll tell you when I figure out how."*
+
+### When asked about the war — *the night before they came*
+
+> *"We hid most of what mattered the night before they reached the gate. Everyone in town brought what they couldn't lose to the tree. Nobody's said exactly what went in; nobody asks. After the war some of it came out. Some of it didn't. I'm the one with the spare hour and the lantern, so I'm the one who knows. That's all I'll say about it."*
+
+## Mannerisms
+
+- **When pressed** — sets down whatever she's holding. Looks straight at the speaker. Does not move until they finish. Then her answer is shorter and slower than her usual rhythm, and she does not break eye contact.
+- **When distraught** — refills mugs that don't need refilling. Talks to herself in low Badger-folk syllables that don't translate. Will not sit.
+- **When happy** — laughs loudly, almost a bark. Slaps the bar once, palm flat. Pours something for the room without asking who wants it. The slate gets a small mark she will not explain.
+
+## If the party does something — what she does
+
+| If the party... | She responds by... |
+|---|---|
+| Tries to break through the boarded upper-floor ceiling | Stops them firmly. *"You break it, you pay for it. That's not a saying, that's the rule."* If they push, she fetches Diederik. |
+| Damages the tree itself (carves it, lights a fire against it) | Quieter outrage than they expect. The town knows within hours. The party is suddenly paying twice for everything in Elmsfield, and a meeting is called. |
+| Brings her useful trade intelligence | Sits down with them. Next round is on the house. Will remember it next time they pass through. |
+| Asks about the wartime hoard outright | *"That isn't yours to ask about."* If they push, she changes the subject and starts watching them more carefully than before. |
+| Brings news from the Linar–Salmonswell road | Lights up. Pulls a stool. Will sit and listen for an hour. May produce a small map she doesn't usually show. |
+| Insults Wilfred in her hearing | One warning. *"Don't."* If repeated, they're out of the Inn that night. She is harder to recover from than she looks. |
+| Proposes a plausible plan to reopen the upper floors | Will hear them out. Skeptical at first; if the plan is plausible, they have her attention permanently. |
+| Tells her the tree could fruit and the Inn would close | Goes quiet. Asks for the source. Will need to think about it before reacting; the party should not press for an answer in the moment. |
+| Tries to rob the Inn | She fights — Badger-folk *claw* and a heavy ledger that doubles as a club. The town arrives fast. She does not soften toward them again. |
+| Brings her a Brumal refugee looking for work | Asks them three questions. If the answers are right, hires them on the spot for the kitchen. |
+
+## What she says about other people
+
+| Person | Bridget's take |
+|---|---|
+| **Wilfred** | *"He's mine. I'm his. Don't read more into it than that."* |
+| **Elder Diederik** | *"He knows things he doesn't say. I respect that more than people who say things they don't know."* |
+| **Hank** | *"He does more than he tells. I send the Inn's leftovers his way. He doesn't ask."* |
+| **Corné Dunham** | *"Clan. He'd come if I called. I haven't had to call yet."* |
+| **Farmer Joseph** | *"Scared man. He'll work it out or he won't. I keep his tab open longer than the others'."* |
+| **Nadine** | *"Best customer of the season when she's in town. Best news, too. I don't ask her where her group is wintering."* |
+| **John Bean** | *"I knew his arm before I knew him. Most people did."* |
+| **Felix** | *"He passes through in the spring. I'd never trust him with money. I would trust him with a message."* |
+| **King Hannes** | *"Never met him. From what passes through here, he's holding more than he should be alone."* |
+| **Father Elliot** | *"Heard of him. The monastery is worth a visit if you can get there. People who come back from it look different."* |
+
+## What she can teach
+
+For students she judges have the head for it:
+
+- **Navigation** — her formal specialisation. Not given lightly; she takes the work seriously, and she expects the student to.
+- **Trader-craft** — reading a counterparty, pricing under uncertainty, the small habits that keep you from being cheated.
+- **Camp** work — practical wilderness craft from her road years.
+- **Ingenuity** — improvising tools and solutions when nothing standard fits.
+- **Reading a room** — informally, by example. She does not call it teaching; the habit rubs off on people who spend enough time near her bar.
+
+## What she will not say
+
+- **Exactly what's still in the wartime hoard, item by item.** She knows. Some of it was promised to specific townspeople and never returned for; some of it she has quietly redistributed; some of it she keeps because no one is alive who could claim it. She will not list it.
+- **Where the senior figures of the Badger clan are.** Asking is not impolite; answering would be.
+- **What she does on her once-a-season night in the upper hollow.** Not because it is dramatic — because it is *hers*, and she has earned the right to a private hour a quarter.
+- **Her trader-name from the Linar–Salmonswell road.** She prefers Bridget-the-Innkeeper as her current identity. She does not want her old reputation walking in the door behind a passing merchant.
+
+## DM notes
+
+- The Inn occupies the **lower floor and a partial cellar** of the great ironwood's hollow. **Upper floors exist** (the tree once held several) but are sealed behind a boarded ceiling. Bridget cannot reopen them with any tools she has. *Anyone who can may be very interesting to her.*
+- The **wartime hoard** was hidden in the tree the night before the overseas force arrived. The raiders could not get in (see *the day they couldn't get in*). Some was reclaimed after the war; the rest remains. Bridget alone keeps the inventory in her head.
+- **Pollination would close the Inn.** She knows the threat in principle; she does not yet know about Diederik's overseas plan in detail. *When she does, she has a direct stake* — and the conversation between her and Diederik about it is one the party may end up brokering.
+- The tree being a **sterile female ironwood** is a conversation Diederik could have with her. She has not yet had it. Her current understanding is: *very old, can't be cut, town is built around it, survived the war.* She would listen if Diederik (or a credible party) explained the rest.
+- Lore cross-references: ironwood biology in `doc/claude/LORE.md` §"Ironwood itself"; the fruiting cost in §"Fruiting is not easy"; the wartime occupation in `doc/claude/CAMPAIGN.md` §"The Overseas War."
 
 ## Relationships
 
-- Married to **Wilfred** (Badger farmer).
-- Many children, divided between farm and Inn.
-- Lives beside, but does not fully understand, Elmsfield's great ironwood tree — though **Elder Diederik** can explain it to her if she asked.
-- Part of a dispersed **Badger clan** (per LORE.md §"Clans and their shape"). The Badger presence in Elmsfield — Bridget, **Wilfred**, **Corné Dunham**, and possibly **Ralph Overhill** — is one of the denser local concentrations of that clan, but the wider clan extends across nearby towns. Clan kin watch out for Bridget and her family in a way most Elmsfield locals don't notice.
+- Married to **Wilfred** (Badger farmer). They run two operations from one household and respect the boundary.
+- Many children, divided between farm and Inn. They run between the two like ferries.
+- Part of the dispersed **Badger clan** (per `doc/claude/LORE.md` §"Clans and their shape"). Local concentrations include **Wilfred**, **Corné Dunham**, and possibly **Ralph Overhill**. The wider clan extends across nearby towns; clan kin watch out for Bridget's family in ways not always visible to non-Badgers.
+- Lives beside, but does not fully understand, Elmsfield's great ironwood tree. **Elder Diederik** could explain it to her if she asked — she has not yet asked.
 
 ## Sources
 

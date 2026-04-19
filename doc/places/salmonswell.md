@@ -24,6 +24,7 @@ The city is small — a working river-wharf, a row of smokehouses along the bank
 - **Brumal refugees by river.** Those fleeing overland from Brumal's desert advance can follow the valley up to Salmonswell. The council is quietly taking in as many as it can feed — a parallel, larger-scale version of Hank's orphanage in Elmsfield.
 - **Fish as leverage.** In a region whose food supply is under pressure, whoever controls the Upwelling controls something very valuable. Tensions around the fishing rights could draw either kingdom in.
 - **A neutral meeting ground.** When Allondo and Brumal need to talk — or when anyone wants to meet away from two royal courts — Salmonswell is the plausible inland venue.
+- **The otter druid up the rapids.** Locals know — by reputation, not by name — that a lone druid lives north of the city along the unnavigable tributary, somewhere past the third major fall, in a stand of rowan trees on the eastern bank. Fishers have spotted her at the water's edge; refugees have heard rumours; nobody bothers her. Her name is **Rowan** (see `doc/npcs/elder_diederik.md` §"Rowan's letters" and §"The errand only the party can run"). A party arriving on Diederik's errand can confirm direction at the wharf or the smokehouses before pushing on.
 
 ## Sources
 

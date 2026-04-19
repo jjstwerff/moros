@@ -1,8 +1,8 @@
 # Brother Darrel
 
-- **Role:** Former Sergeant; now a "Brother" who rejects money
+- **Role:** Former Sergeant; now a "Brother" at Luchebert Monastery who rejects money
 - **Species:** Beaver folk
-- **Location:** Unknown — possibly Luchebert Monastery
+- **Location:** Luchebert Monastery, under Father Elliot's roof
 - **Status:** Alive; walked away from his old life
 
 ## Summary
@@ -15,13 +15,23 @@ He will teach staff and monk fighting to the right student. Not to someone who w
 
 Before disappearing into a new life, he did one last thing: he went to the orphanage that held **Hank** (Hanny, Rabbit folk) and **Egbert** (Wolf folk) — from opposite factions of that war — brought them together, and left them a bag of money. He did not tell them who he was; they believe a relative gave them the coins.
 
-He is now called "Brother Darrel" and rejects money. Whether the "Brother" means a lay title he has adopted, or whether he has joined **Father Elliot**'s Luchebert Monastery — which is known to shelter those who want to disappear — is not established. The shoe fits. Given that Luchebert shelters the disappeared, and that some of those disappeared are stranded overseas demi-humans with nowhere else to be, it is a fit in more than one way.
+He is now "Brother Darrel," rejects money, and lives at **Luchebert Monastery** under **Father Elliot**. The fit is more than incidental: Luchebert shelters the disappeared, and some of the disappeared are stranded overseas demi-humans with nowhere else to be. Darrel — who fought them — is one of the few there who watched up close what their war cost them. He does not carry that as guilt to be unloaded; he carries it as a standing reminder that the monastery's open door is not abstract charity, and he tells the younger brothers so when they need to hear it.
+
+## What he and Elliot disagree about
+
+Darrel and Elliot share a war and a response to it; they do not share a stance on what comes next. The disagreement is one issue, and it is steady.
+
+Elliot has chosen **withdrawal** as his penance. He left the throne, retreated to the vale, and has held that retirement firmly — including by *not* correcting the misread Bean proclamation, because correcting it means stepping back into court politics he renounced.
+
+Darrel thinks withdrawal is not enough. His own response to the war was to put down the weapon and put down the coin, but he kept *acting* — bringing Hank and Egbert together, leaving the money, training students who can use the discipline well. To Darrel, Elliot's silence on the proclamation is a continuation of the war by other means: Ron is in danger because Elliot did not write a letter that only Elliot can write. Darrel has said so. He keeps saying so. He does not press it daily — he respects Elliot's reasoning even where he rejects it — but it is the one thing between them, and the party will hear it from Darrel before they hear it from anyone else inside the monastery.
+
+The disagreement does not break their relationship. It is the texture of it. They are the same response to the same war at opposite ends of the chain of command, and they have ended up in the same vale arguing about what *response* even means.
 
 ## Relationships
 
 - Brought **Hank** and **Egbert** together at the orphanage and left them the coins that funded their start.
 - Unknown, as a person, to either of them — they think the money came from a relative.
-- Possibly at the **Luchebert Monastery** under **Father Elliot**. Notably, Elliot is the *other* veteran of the same war who walked away from it for the same reason — Elliot, as Crown Prince, saw the misery of the starving overseas demi-humans he was ordered to fight and renounced the throne; Darrel, as Sergeant, saw the same thing from inside the ranks and rejected money and war together. They are the same moral response to the same experience at opposite ends of the chain of command. If Darrel has ended up at Luchebert, it is because Elliot's door is open to exactly the sort of person Darrel has become.
+- Lives at **Luchebert Monastery** under **Father Elliot**. Elliot is the *other* veteran of the same war who walked away from it for the same reason — Elliot, as Crown Prince, saw the misery of the starving overseas demi-humans he was ordered to fight and renounced the throne; Darrel, as Sergeant, saw the same thing from inside the ranks and rejected money and war together. They are the same moral response to the same experience at opposite ends of the chain of command. They know each other well, and they disagree on one thing: see §"What he and Elliot disagree about" above.
 
 ## Sources
 
