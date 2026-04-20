@@ -1,39 +1,192 @@
 # Brother Darrel
 
-- **Role:** Former Sergeant; now a "Brother" at Luchebert Monastery who rejects money
-- **Species:** Beaver folk
-- **Location:** Luchebert Monastery, under Father Elliot's roof
-- **Status:** Alive; walked away from his old life
+- **Role:** Former Sergeant who walked away from the last war; now a brother at Luchebert Monastery who refuses money and rationalises his staff as *not a weapon*.
+- **Species:** Beaver folk.
+- **Lives:** **Luchebert Monastery.** Sleeps in a plain cell in the central building's upper rooms; teaches in the front yard at dawn; walks the side buildings in the afternoon where the sheltered live. The monastery is his scope. (Place file: `doc/places/luchebert_monastery.md`.)
+- **First met:** The party usually reaches him through the monastery — introduced by Elliot, or noticed in the yard at dawn, or working with the sheltered in a side building. He does not come to them; he is where he is.
 
-## Summary
+## What the party meets
 
-A Beaver folk sergeant who survived the last war and walked away from it after seeing too much of its cruelty. The cruelty, now better understood, was layered: the overseas invaders were not conquerors but demi-humans sent by a starving continent under arms because their own land could not feed them. What Darrel watched in his war was people on both sides dying over food — the overseas soldiers expendable from the moment they boarded their ships, the homeland defenders killing people who would not have come at them if they had any other option. He has never been the same person since.
+The party is at Luchebert — on Diederik's direction, on Irna's business, on Corné's hill route. If they arrive at dawn and walk past the central building's front yard, they see a **stocky beaver-folk man in plain monk's robes working with a long wooden staff**. Alone, or with a young brother or lay student. The movements are not dance and not drill — they are a practice, patient, repetitive, corrective.
 
-He **vowed to never touch a weapon again**. He has not entirely followed through. The rationalisation he arrived at, which he half-believes and half-doesn't, is that **a staff is not a weapon** — it is a walking stick, a tool, a long piece of wood. On that basis he has spent the years since the war training seriously in **staff and monk fighting**, the kind of practice that runs in quiet monastic traditions where combat is rebranded as discipline and the combatants wear plain robes. He is, by now, an expert. An old soldier never truly learns how to back off; he finds a way to carry the work that does not use the word.
+He will notice the party without breaking his form. He finishes whatever sequence he is in, sets the staff down — **within arm's reach** — and acknowledges them with a nod. He does not come over.
 
-He will teach staff and monk fighting to the right student. Not to someone who wants weapons — *he rejects money and he rejects weapons*, and he means it — but to someone who understands why the rationalisation matters, who wants the discipline for its own sake, and who will not turn the practice into swordplay with a different name.
+Elliot, if asked, will name him *"Brother Darrel — once a sergeant, now one of ours."* Darrel himself, asked to introduce himself, says **"Darrel. Brother, here."** The short form is characteristic.
 
-Before disappearing into a new life, he did one last thing: he went to the orphanage that held **Hank** (Hanny, Rabbit folk) and **Egbert** (Wolf folk) — from opposite factions of that war — brought them together, and left them a bag of money. He did not tell them who he was; they believe a relative gave them the coins.
+## How he reads at a glance
 
-He is now "Brother Darrel," rejects money, and lives at **Luchebert Monastery** under **Father Elliot**. The fit is more than incidental: Luchebert shelters the disappeared, and some of the disappeared are stranded overseas demi-humans with nowhere else to be. Darrel — who fought them — is one of the few there who watched up close what their war cost them. He does not carry that as guilt to be unloaded; he carries it as a standing reminder that the monastery's open door is not abstract charity, and he tells the younger brothers so when they need to hear it.
+- **Stocky beaver-folk build.** Heavier in the shoulder and tail than most beaver-folk the party has met. Old soldier's carriage. Age starting to show at the muzzle; the hands are still strong.
+- **Plain monk's robes, no insignia.** His old rank, old unit, old allegiances — none of them displayed. A stranger wouldn't know what he was before.
+- **A staff, always within arm's reach.** Not carried for walking. Set against a wall, against a bench, leant by the door. The party will count the staff's position in every scene they have with him. It is never more than a lunge away.
+- **Hands that read as a soldier's.** Scarred across the knuckles; the thumbs sit at a specific angle from long weapon-work. The hands have had years to calm, not to forget.
+- **Refuses coin.** A party offering him payment will find it declined without speech — a small headshake, a gesture toward the monastery's general-use collection box, and the topic closes.
 
-## What he and Elliot disagree about
+## Visible patterns
 
-Darrel and Elliot share a war and a response to it; they do not share a stance on what comes next. The disagreement is one issue, and it is steady.
+- **Dawn in the front yard.** Staff forms, alone or with a student. Rain or clear, every morning, one hour before the kitchen fire is lit.
+- **Afternoons in the side buildings.** Walking slowly through the sheltered's rooms. Not preaching; not checking on them; being *there*. Some of the sheltered are overseas demi-humans he once fought.
+- **Meals in the dining hall, always at the far end.** He takes the seat with the best line-of-sight to the door. A soldier's habit nobody has asked him to unlearn.
+- **Silence during work.** He does not talk while practising with the staff. Students learn by watching and copying.
+- **A short specific nod to Willow** each time they pass in the cloister. No words. A nod Willow returns. They have respect for each other; neither is interested in more.
+- **An hour with Elliot most evenings.** Walking the side paths; arguing about the one thing (§"The disagreement with Elliot" below).
 
-Elliot has chosen **withdrawal** as his penance. He left the throne, retreated to the vale, and has held that retirement firmly — including by *not* correcting the misread Bean proclamation, because correcting it means stepping back into court politics he renounced.
+## At the front yard — his practice
 
-Darrel thinks withdrawal is not enough. His own response to the war was to put down the weapon and put down the coin, but he kept *acting* — bringing Hank and Egbert together, leaving the money, training students who can use the discipline well. To Darrel, Elliot's silence on the proclamation is a continuation of the war by other means: Ron is in danger because Elliot did not write a letter that only Elliot can write. Darrel has said so. He keeps saying so. He does not press it daily — he respects Elliot's reasoning even where he rejects it — but it is the one thing between them, and the party will hear it from Darrel before they hear it from anyone else inside the monastery.
+Where the party most reliably finds him at dawn.
 
-The disagreement does not break their relationship. It is the texture of it. They are the same response to the same war at opposite ends of the chain of command, and they have ended up in the same vale arguing about what *response* even means.
+- **The yard is paved.** Worn smooth at the centre where he works. The edges have grass; the centre has the print of decades of footwork.
+- **His staff is hard wood**, longer than a walking stick, shorter than a spear, carried with the balance that tells anyone who knows weapons that it is one. A party with *Axes* or *Sword* specialisation reads it in a breath; a casual party sees a walking stick with a man fussing over it.
+- **He teaches the right student here.** Students in plain clothes, no insignia, by invitation only. Sessions are at dawn because that is when he is at his best and his students have to make the effort.
 
-## Relationships
+## At the side buildings — where the sheltered live
 
-- Brought **Hank** and **Egbert** together at the orphanage and left them the coins that funded their start.
-- Unknown, as a person, to either of them — they think the money came from a relative.
-- Lives at **Luchebert Monastery** under **Father Elliot**. Elliot is the *other* veteran of the same war who walked away from it for the same reason — Elliot, as Crown Prince, saw the misery of the starving overseas demi-humans he was ordered to fight and renounced the throne; Darrel, as Sergeant, saw the same thing from inside the ranks and rejected money and war together. They are the same moral response to the same experience at opposite ends of the chain of command. They know each other well, and they disagree on one thing: see §"What he and Elliot disagree about" above.
+Shuttered to most of the cloister; open to a few. Overseas demi-humans quietly sheltered at Luchebert, and a handful of other disappeared (see `doc/places/luchebert_monastery.md` §"At the side buildings").
+
+- **He walks the rooms in the afternoon.** He speaks little; he is *present*. He knows some of the sheltered spoke the languages he once heard across a field at a distance with weapons between them. He does not bring it up.
+- **The sheltered know who he was.** Some of them. Not all. The ones who know do not resent him; most of them are post-war settlers whose war-memories land differently than a soldier-sergeant's.
+- **He is the monastery's most visible bridge** between *this side of the war* and *that side*. The younger brothers watch this without always naming it; Darrel intends them to watch.
+
+## At the side paths with Elliot — the disagreement
+
+Walking in the evenings, late light. The two of them, alone, arguing about the one thing that has sat between them for years. (See §"The disagreement with Elliot" below for what it is.)
+
+- **Not raised voices.** Two old veterans of the same war walking at the same pace. The disagreement is steady, familiar, unsolved.
+- **The path is specific.** They walk the upper path above the maze garden most evenings; a party invited to walk with them sees the rhythm from the inside.
+- **Neither expects to convince the other.** They walk because they are still arguing and still friends.
+
+## What he will tell — and when
+
+| Topic | When he'll speak |
+|---|---|
+| His being here at Luchebert, his refusal of money | Freely. His vow is an open fact. |
+| The staff rationalisation | Freely, with a dry smile. He knows it is rationalisation; so do his students. |
+| What he saw in the war | **Earned.** Not on first meeting. He will talk to a student who has stayed through a hard month of training, or to a party that has carried a refugee properly. |
+| Hank and Egbert at the orphanage | Only if the topic is raised honestly and the party already knows pieces. He will confirm what they know. He will not volunteer. |
+| His disagreement with Elliot | Freely, before the party hears it from anyone else inside the monastery. He is direct about it. |
+| The Bean proclamation — his view | Freely. Ron in the yards is wrong and Elliot should correct it. |
+| The pirate nest, as victims of the war | Freely if the topic comes up. He knows Nadine disagrees and he thinks she is carrying the pain into anger that will cost Linnet. |
+| His old unit's name, specific killings, specific faces | **Never.** |
+| Teaching staff-and-monk | To the right student, over sessions, no coin. |
+
+## Stories he tells
+
+When the relevant topic comes up.
+
+### When asked about why he stopped — *the field where nobody should have been*
+
+> *"My unit reached a village at dawn after a week's push. The overseas soldiers had taken the granary two days before and were eating out of it. They saw us coming. They did not run; they had nowhere to run to. They lined up in front of the granary and tried to hold it with the weapons they had, which were not good weapons. My unit killed them all. They had not eaten in days before they took the granary. They had not eaten enough after, either — we found what they had been eating; it was the seed-grain, which the villagers were keeping for next year. The villagers came out after and thanked us. I did not hear the words the way I had heard them before. I put the weapon down that night and I did not pick it up again."*
+
+### When asked about the staff — *not a weapon*
+
+*(Dry; half-smile; he is aware the rationalisation is thin.)*
+
+> *"A staff is a walking stick. A tool. A long piece of wood. I have trained with it for ten years because an old soldier does not truly learn how to back off; he learns how to carry the work under a different word. I know what I am doing. If you ever see me using it as a weapon, I will have broken my vow. I try not to let that happen. I am not always sure I succeed."*
+
+### When asked about Hank and Egbert — *the orphanage*
+
+> *"Before I came here, I went to an orphanage on the south road. It held children from the war on both sides. There was a rabbit-folk boy and a wolf-folk boy, from opposite factions, who had not spoken. I sat them together at a small table and did not leave until they had spoken. I left them a bag of coin — the last coin I touched with my hands. I told them a relative had sent it. They believed me. They still think that. I am not going to tell them otherwise, and I ask you not to either."*
+
+### When asked about his old unit — *what I will not say*
+
+> *"I will not name them. I will not say what we did specifically. Those who were there know; those who were not should not have to carry it. I am carrying it. That is my work. If you press me, I will not get angry — I will simply stop speaking."*
+
+### When asked about the coin-vow — *why no money*
+
+> *"Money made the war. The mages paid for the soldiers; the crown paid for the captains; the people who had it bought their way out of the consequences. I do not want to hold any of it again. I take what the monastery provides, which is not money — it is food, a cell, a place to sleep. The staff-work I teach is free. A payment offered is a relationship I do not want. I prefer the relationship I get when I teach someone who has no way to pay me."*
+
+### When asked about Elliot — *what we argue about*
+
+> *"Elliot chose withdrawal. He left the throne, came here, tends the shrine, keeps the abbey. It is a penance. I respect it. I think it is not enough. His silence about the Bean proclamation is a continuation of the war by a different method. Ron is in danger because Elliot did not write the letter only he can write. I have told him this. He has heard it. He does not change his mind. We walk in the evenings and keep arguing."*
+
+### When asked about the pirates — *victims, holding a friend*
+
+> *"The pirates south of Linar are the half of the war that could not go home. Their continent could not feed them. They did not become bad men; they became hungry men who stayed armed. I do not defend what they do. I defend the frame: they are not the enemy Nadine's song makes them. She is looking at the ones who hold her friend; she has a right to her anger. But a burning of the nest will kill the captives and the captors together, and the captors were soldiers once too. If her intelligence is used to *extract*, we can talk. If it is used to *burn*, I will not help."*
+
+## Mannerisms
+
+- **When pressed** — the staff comes into his hand **without him looking at it**. Not threat; habit. He does not raise it. It is just suddenly in his hand. The party will notice the first time and watch for it after.
+- **When distraught** — face still; tail *taps* slowly against the floor behind him, two beats then a pause then two beats. He does not know he does this. A party paying attention catches it as his only tell.
+- **When happy** — a single short laugh, like clearing a throat; then back to the work. He does not expand. A second beat of laughter is rare and means the party said something specifically right.
+
+## If the party does something — what he does
+
+| If the party... | What he does |
+|---|---|
+| Offers him coin | Declines with a small headshake and a gesture to the collection box. Topic closes. |
+| Offers him a weapon | Declines. *"I do not touch them."* If pressed, the conversation ends and he walks away. |
+| Asks to learn staff | Tests over several sessions. A party member who shows up at dawn, no coin, no pushing, stays as a student. Bad faith is read inside one morning. |
+| Asks about Hank and Egbert directly | Tells them (see story above), under the explicit ask that they do not reveal his role to Hank or Egbert themselves. |
+| Tells Hank or Egbert that he funded them | **He does not forbid; he feels the betrayal quietly.** The coin was meant to arrive as from a relative. The party has undone the frame. His trust in them narrows. |
+| Asks him about Elliot | He tells them the disagreement plainly (see story). He does not ask the party to take sides. |
+| Brings him news about Ron Bean in the yards | Registered. He will bring it up with Elliot that evening. The conversation is not new; Ron is the reason the disagreement has been fresh for a year. |
+| Asks him to intervene personally on Ron's behalf | He will not go to court. *"I left that work."* But he will press Elliot harder. |
+| Asks about his old unit | Refused. *"Names I will not say."* He does not elaborate. |
+| Offers to help the sheltered | Welcomed. A practical task — food, repair, a delivery — is accepted; showy charity is declined. |
+| Brings him a refugee the party has shepherded | Received. The sheltered make space. Darrel remembers the party for this. |
+| Threatens him | The staff is in his hand. He is **much more dangerous than his manner suggests** — a party that pushes to violence here will find an expert monk-fighter. He will not draw blood if he can avoid it; he will disarm and disperse. |
+| Asks about the pirate-nest position | Tells them (see story). Acknowledges Nadine disagrees and says why. |
+| Brings Nadine to the monastery | **Tension, not conflict.** They can sit at the same table. Neither will yield; both can eat. The DM can let the conversation turn into something if the party brokers it. |
+| Asks him to speak for the sheltered to a kingdom's envoy | He will not. *"I left that work."* Elliot can, and sometimes does; Darrel does not. |
+| Tries to recruit him for a campaign | Declined. He is done with that kind of work. He will teach the party to hold themselves better; he will not travel with them. |
+
+## What he says about other people
+
+| Figure | Darrel's take |
+|---|---|
+| **Father Elliot** | *"The prince who walked away. We saw the same war at opposite ends of the chain. He chose withdrawal; I chose work without coin and without weapons. We disagree on one thing, and we walk about it most evenings."* |
+| **Hank** | *"The rabbit-folk boy I sat at a table. He has become a kind man. I visit when I can. He does not know me from before."* |
+| **Egbert** | *"The wolf-folk boy at the same table. Harder life than Hank's, shorter fuse. He has done well. He does not know me either."* |
+| **Willow** | *"Old devotion. I do not disturb her work. She does not disturb mine. We nod."* |
+| **Nadine** | *"Her anger is a trader's anger — concentrated on her friend. I understand it; I do not share the conclusion. If she uses what she knows to *extract* I will help. Not to burn."* |
+| **Irna Bean** | *"The sister. The prophecy was hers, and the proclamation named her brother by mistake. Elliot has known this for a year and has not written the letter. I am angry about it."* |
+| **Ron Bean** | *"In the yards, wrong, on a misread. He is a farmer who was told he was a soldier. I want him back at his father's farm. Every day he is there is Elliot's silence."* |
+| **King Hannes** | *"The king who enlisted the wrong Bean. I do not think he is cruel. I think he is running a kingdom that has to look prepared, and he has made a choice that costs a particular family. The choice is still wrong."* |
+| **Felix** | *"The scout. I knew him by reputation during the war. I have not spoken with him since. He knows old names on the pirate side; Nadine and I and he, in a room together, could be useful."* |
+| **The overseas sheltered here** | *"Some of them fought my side. Some of them fed my unit by hiding food from their own. I do not sort them. They are here, and so am I."* |
+
+## What he will not say
+
+- **His old unit's name.** Not to students, not to Elliot, not to anyone. It is not amnesia; it is choice.
+- **Specific killings he is responsible for.** *"Those who were there know; those who were not should not have to carry it."*
+- **To Hank or Egbert: that the coin was his.** He has not told them in decades and will not tell them now.
+- **Court politics.** He left that work. He will comment on the Bean proclamation because it concerns a student and a family; he will not comment on succession, border policy, or Hannes's broader decisions.
+
+## What he can teach
+
+- **Staff and monk fighting.** Expert. Given for free, to the right student, over many sessions.
+- **Discipline under frustration.** His staff-work is the practice; the curriculum is larger. A student staying long enough learns to hold a position, carry a threat, and not escalate.
+- **How to walk through a room of people who used to be enemies.** The side-buildings work. He will teach this by example, not lecture.
+- **Survival-grade combat** — for a student who genuinely wants the discipline without the weapon. He can train a party member to *defend* without *attacking*. Specialist track.
+
+## DM notes
+
+- **Play him terse.** Short answers. Short sentences. He is not withholding; he does not waste words. A verbose Darrel is a wrong Darrel.
+- **The staff-as-not-a-weapon is open self-awareness.** Do not play it as unexamined. He is a man who watches himself rationalise and continues to rationalise because the alternative — picking up a sword — would be worse. The rationalisation is the practice.
+- **His disagreement with Elliot is campaign-live.** A party at Luchebert will hear it. A party that has met Ron in the yards, or Irna, or Rhianna, will see the stakes. A DM who underplays Darrel's opposition to Elliot's silence loses an important pressure on the abbot — Elliot is the one who can correct the proclamation, and Darrel is the one pushing him to.
+- **The orphanage-coin truth is his to disclose.** If the party is tempted to tell Hank or Egbert, stop them, or narrate Darrel's quiet trust-loss if they don't. This is one of his specific lines.
+- **Nadine friction is a feature.** If both come into the same room, run the tension. Neither yields; both eat. The DM can let the party broker.
+- **As a monk-fighter, he is dangerous.** A DM should flag this mechanically. Anyone who picks a fight with him — even armed — will lose quickly. He does not draw blood; he disarms and disperses. Use this if a player considers violence at the monastery.
+- **He teaches the discipline, not the weapon.** Students who frame the lessons as *how to fight* get turned away. Students who frame them as *how to carry themselves* are kept.
+- **Pair him with Elliot deliberately.** The two are the same moral response to the same war at opposite ends of the chain. A DM running both together should let the difference show. Darrel acts without coin; Elliot withdraws without acting. Neither is wrong; both are costly.
+- Lore cross-references: Father Elliot's position and the proclamation in `doc/npcs/father_elliot.md`; Hank's orphanage history in `doc/npcs/hank.md`; Egbert in `doc/npcs/egbert.md`; Nadine's pirate-nest disagreement in `doc/npcs/nadine.md`; Felix's old-comrade-names angle in `doc/npcs/felix.md`; the monastery as place in `doc/places/luchebert_monastery.md`; Ron's situation in `doc/npcs/ron_bean.md`; Irna's story in `doc/npcs/irna_bean.md`; Rhianna's letter to Elliot in `doc/npcs/rhianna_linthrope.md`; the overseas sheltered in `doc/claude/CAMPAIGN.md`.
+
+## Background — for the DM
+
+*Reference, not script.*
+
+- **Beaver-folk sergeant** in the last war. Fought against the overseas invasion up the trade road from Linar through Elmsfield and into the interior. The war ended with Thorgal's death and Raul's retreat (see `doc/claude/CAMPAIGN.md` §"The Overseas War").
+- **Broke at the granary incident** — the field where his unit killed starving overseas soldiers over seed-grain (the story he tells above). That was his last weapon.
+- **Did one last act with coin** before disappearing: went to the orphanage that held Hank and Egbert, sat the boys at a table, brought them together, and left them a bag of coin, telling them it was from a relative.
+- **Walked to Luchebert afterwards.** Elliot — the prince who had already walked away — recognised him and received him. They have lived at the monastery together for years.
+- **His practice** has developed from a defensive habit into a genuine monastic tradition. He is now sought out by a handful of students who want the discipline without the weapon. He takes those students seriously.
 
 ## Sources
 
-- doc/claude/CAMPAIGN.md
-- data/moros-campaign-2026-03-04.json
+- doc/claude/CAMPAIGN.md §"The Overseas War"
+- doc/npcs/father_elliot.md
+- doc/npcs/hank.md
+- doc/npcs/egbert.md
+- doc/npcs/nadine.md
+- doc/places/luchebert_monastery.md
+- doc/npcs/elder_diederik.md (scene-first NPC template)
+- User notes, 2026-04-19

@@ -374,6 +374,33 @@ The minimum group pace is Speed 2, regardless of the slowest member. A character
 does not slow the group further but is themselves impaired — they take −1 to their primary
 actions each round until they rest. This protects both the character and the group dynamic.
 
+### Party scope and cooperative specialization
+
+Two scopes govern how the party occupies space at the table.
+
+**At hour-scale scenarios** (travel, camp, market, forage) — a single party member may be in
+the **adjacent world-grid tile** while the rest are in the current tile. Communication across
+adjacent tiles remains possible: **shouting, hand signals, whistles, a reflective piece of
+metal catching the sun, a trained bird or companion animal carrying a short phrase**. More than
+adjacent-tile separation is forbidden — communication breaks down, and the tension mechanic
+cannot model a party that cannot reach each other. A forager at the far edge of a grain-field;
+a scout at the lip of a ravine across a gully; a watcher on the next hilltop over — each is at
+adjacent-tile maximum and no further.
+
+**At scene-scale** (combat, negotiation, stealth, exploration, repair, cure) — **the party
+stays on one tile**. No scene-scale separation. What looks like splitting is actually
+*specialization-in-shared-space*: different characters doing wildly different tasks in the same
+physical area, simultaneously, visibly. One character holds up a cloak to catch falling stones
+while another picks up what was beneath them. One warrior keeps wolves at the camp's edge while
+a shaman completes a working at the fire. One holds a door against an enemy push while the rest
+finish a ritual inside the room. The tasks can differ radically; the positions are adjacent;
+the tension rises from coordination, not from distance.
+
+This is the cooperative register Moros rewards. **Specialization within the shared tile is the
+default** — not geographic party-splits. A DM designing a cooperative setpiece should place all
+the tasks within one tile (or at most with one task at adjacent-tile reach), and let the
+characters cover them in parallel.
+
 ### Power Strain
 
 Using the same power on consecutive turns risks losing control of it. The cards are the signal:

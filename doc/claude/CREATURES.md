@@ -1498,5 +1498,544 @@ words. A character with the Night power is not harmed by it and may be treated a
 
 ---
 
+## Creatures of the Southern Desert
+
+*The desert is air-and-dust given will, plus a nested set of predators whose homes are older
+than the desert itself. The sanded-over ruins are not ancient mage-workings but recent human
+settlements the desert has crept over since the rift. The creatures here live in those ruins
+now — tenants of someone else's former lives. Combat against them is a fight in someone's
+former home; the DM should let that weight land. See `doc/places/southern_desert.md` for the
+region and its specific sites.*
+
+### Sphinx
+*A patient intelligence that sits at the edge of a sanded village or ruin and watches. Has
+been here since just after the settlers were not. Speaks in a register that drifts between
+conversation and riddle. Remembers what the sand is covering.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 8 | 4 | 8 | 2 | 7 | 9 | 4 | 12 |
+
+- **Riddle-weight** *(draining, ranged)* — asks a question the target does not know how to
+  answer; reduces target Will by 2; a target who answers truthfully (even *"I do not know"*)
+  takes no damage
+- **Paw-strike** *(cutting, close)* — used only under direct threat; reduces target Might by 1;
+  the sphinx will not follow up unless its lair or its young are touched
+
+**Motivation** — Witness. The sphinx is not hostile; it is *present*. It watches visitors who
+come to the ruins it lives beside. It has been waiting for someone to ask it the right
+questions for centuries.
+
+**Behaviour** — Approached correctly — addressed, greeted, asked rather than demanded of —
+it engages in a riddle-adjacent conversation. Good answers (truthful, reflective, about
+*home* or *loss* or *what was here*) earn real knowledge. Forced engagement with no respect
+ends the conversation; the sphinx walks into the sand and is gone. Fighting a sphinx is a
+last resort even for the sphinx; if cornered it fights to end the encounter, not to kill.
+Named sphinxes communicate with each other across the desert in ways that are not
+well-understood; offending one closes doors with its kin.
+
+### Desert Chimera
+*A hybrid whose lineage has lived in one specific ruin for so many generations that the form
+has narrowed to a consistent shape — lion-eagle-serpent, compact, territorial. It is not
+stalking anyone. It is at home.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 5 | 8 | 1 | 8 | 6 | 5 | 5 |
+
+- **Three-fang rake** *(cutting, close)* — lion-claw, eagle-beak, and serpent-fang in one
+  compound motion; reduces target Endu by 1; ignores light armor special
+- **Coil-whip tail** *(blunt, reach)* — the serpent-tail strikes at a second target; reduces
+  target Dex by 1; a target with Speed < 5 is knocked back into a wall or other obstacle
+
+**Motivation** — Territory and family. A chimera fights to keep visitors away from its
+nest-site. It does not pursue intruders who retreat. It attacks intruders who advance.
+
+**Behaviour** — Posture-display first: the lion-forepaws lifted, the eagle-wings half-spread,
+the serpent-tail raised above the back. Committing to attack only if the display is ignored.
+Retreats if young or eggs are threatened, to lead the threat away from them rather than to
+flee. A party that brings food as offering and does not approach the nest can sometimes pass.
+A party addressing it with a sphinx's introduction (see above) may be allowed much further in.
+
+### Sand-ruin Serpent
+*A large matriarchal serpent whose nest is beneath the three standing walls of what used to
+be a village hall. The clutches have been here for generations.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 4 | 10 | 1 | 7 | 6 | 5 | 6 |
+
+- **Strike** *(impaling, reach)* — the length of her body allows the head to cross a room;
+  reduces target Endu by 1; injected venom reduces Dex by 1 the following round
+- **Coil-crush** *(grab, close)* — wraps a target in body-coils; reduces target Speed by 2;
+  the target takes blunt damage each round until they break free (Might ≥ 7)
+
+**Motivation** — The clutch. She defends the nest absolutely. Visitors who stay away from the
+nest are ignored; visitors who approach are struck without warning.
+
+**Behaviour** — Stationary during the day, coiled under stone; active at night in the ruin's
+interior. The clutch is visible to any party that presses past her perimeter, which is the
+trigger for maximum aggression. Killed, her clutches die with her within a season — the
+young cannot feed themselves at the sizes they are. A sphinx's mediation can sometimes
+establish a no-fight corridor through the nest; her register accepts the older intelligence.
+Parties who kill her and then take the well-cache at the village's centre are doing two
+separate wrongs in one visit, and the sphinx that watches will leave and not return to speak
+with that party.
+
+### Dust-dervish
+*A desert-specific air elemental, condensed from the chaos-pressed wind and the dust of a
+thousand years of swallowed settlements. It moves in a rough spiral and carries what it has
+picked up from the ground.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 6 | 5 | 0 | 4 | 5 | 8 | 4 |
+
+- **Scouring sand** *(cutting, area)* — the dust in its body scours anyone inside its radius;
+  reduces target Dex by 1; also reduces target Perc by 1 for the scene (dust in eyes)
+- **Snatch-and-scatter** *(grab, ranged)* — picks up a loose item or small creature and
+  deposits it elsewhere; reduces target Will by 1 if the item was meaningful (a worn
+  belonging, a party member's pack); the item ends up at a ruin within a day's travel
+
+**Motivation** — Movement. The dervish does not hunt; it *moves*. It picks up what is loose.
+It drops what it has picked up.
+
+**Behaviour** — Present around sanded ruins and open stretches between them. Not aggressive
+unless attacked. A party with the Wind power or the Shamanic power can address it; it
+responds in the register a volcano tower's fire elemental responds in — with patience, with
+pattern-recognition, without words. Feeding it — offering a small item freely — earns it as
+an ally for a scene; it will carry a party's message, deliver a small item to a named ruin,
+or run a warning ahead. It does not fight *for* anyone. It can be asked. See also
+`doc/claude/CREATURES.md` §"Wind Elementals" for the genera; the dust-dervish is the
+desert-specific variant.
+
+---
+
+## Creatures of the Blasted Lands
+
+*The blasted lands were the continent's agricultural heart before the rift — vineyard
+terraces, grain fields, thickets, communal demi-human halls feeding the white city. The
+creatures now living in the ruins are still performing old roles whose reason has been gone
+for a thousand years. Every encounter carries a broken-promise echo from the pre-rift
+relationship. Combat against them is a fight that happens inside an old agreement. The DM
+should let the relational weight land; fighting is usually not the right answer, and rarely
+the interesting one. See `doc/places/blasted_lands.md` for the region and its specific sites.*
+
+### Commons-Guard Cerberus
+*A three-headed bound guard-spirit that has kept the door of a communal building for a
+thousand years. It does not know what is inside has changed. Its duty is the door.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 3 | 3 | 11 | 1 | 8 | 7 | 3 | 10 |
+
+- **Triple-bite** *(cutting, close)* — the three heads bite in sequence; reduces target Endu
+  by 1 per head that lands (three attacks total); a target struck by all three loses their
+  next action
+- **Ground-set stance** *(blunt, close)* — the cerberus plants itself and absorbs incoming
+  force; does not deal damage; the cerberus becomes immovable for the scene (cannot be
+  knocked clear of the threshold), and physical attacks targeting it take a cumulative -1 per
+  round to Might against it
+
+**Motivation** — Duty. The cerberus does not want to fight. It wants to keep the door.
+Addressed in its register, it stands aside for credible claimants.
+
+**Behaviour** — Stationary at the threshold. Three heads watch the path, the door, and the
+ground. A party addressing it formally — stating name, business, claim to lawful entry —
+is assessed with real attention. A token of the building's original community (a seal, a
+medallion, an inscribed item) earns passage without argument. Fighting it is possible and
+costly; it does not leave the threshold to pursue, but it does not yield either, and it has
+the Endu of a century of bound duty. Killing it kills the last active guardian of the
+building it watches; the building becomes vulnerable to further encroachment immediately.
+Telling it the hall it guards has been emptied is the hardest test — a DM-decision scene:
+discharge-and-fade, enraged pursuit of the thief, or refusal and double-down.
+
+### Hippogriff (Blasted Lands)
+*A flying creature that looks like a mount. It is not. It will not answer a call. It will
+fly close enough to read as help and then continue past.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 3 | 7 | 6 | 1 | 6 | 8 | 9 | 7 |
+
+- **Talon-graze** *(cutting, close)* — if forced into direct contact, a single strike as it
+  passes; reduces target Dex by 1; the hippogriff takes 1 blunt damage from the contact it
+  did not want
+- **Promise-pass** *(draining, reach)* — flies close enough to read as help, does not land,
+  continues; reduces target Will by 1 for any target who believed it was coming to help;
+  cumulative across encounters in the region
+
+**Motivation** — Flight without obligation. The hippogriff was bound to aid the community
+before the rift; the binding warped into *flight that no longer answers*. It still follows
+the old routes; it no longer completes the old function.
+
+**Behaviour** — Visible across the blasted lands at various distances. Will not land near a
+person who calls for it. Will leave easily if chased or shot at. May — rarely — land near a
+party that has *not* asked for help and walk with them for a stretch. Never becomes a mount;
+never carries anything; never completes the old function. A party that has one walking
+beside them has company, not a vehicle. A shaman addressing it finds it does not respond to
+words; a druid working with it finds the binding is not repairable from the outside. Its
+release would require understanding which community it was bound to — see DM notes at
+`doc/places/blasted_lands.md` on the moved-community-records mystery.
+
+### Field-flock Jackalope
+*Small horned hares in a pasture where livestock was once kept. They are what the chaos did
+to the animals that could not leave. Not aggressive; not useful; not natural.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 8 | 1 | 0 | 1 | 6 | 9 | 3 |
+
+- **Vanish-miss** *(special, area)* — any attack directed at a jackalope connects with where
+  it was; the attack resolves with no damage and no tracks where the arrow or blade should
+  be; reduces the hunter's Perc by 1 for the scene as certainty wobbles; cumulative across
+  attempts
+- **Twin-nip** *(cutting, close)* — only if truly cornered; two jackalopes strike together;
+  reduces target Dex by 1; the wound bleeds normally but the bite draws a fluid that is not
+  blood, from the jackalope
+
+**Motivation** — Grazing in a pasture that is wrong enough to support them. They do not
+aggress. They do not breed normally. They do not migrate.
+
+**Behaviour** — Scatter when a person appears; vanish when struck; reappear at the field's
+edges by the next morning. Cannot be herded, driven, or domesticated. Children sometimes play
+with them; the children come home cold and take a season to warm. A *Druid* senses the
+wrongness in the field; removing the flock requires a real working or the restoration of
+whatever ecological piece the chaos warped. The presence of a flock is a signal — not a
+threat in itself — that the field is chaos-touched. A farmstead near such a field is usually
+in the early stages of abandonment.
+
+### Warped Helper-Spirit
+*A spirit that once helped a community — a stream-spirit, a hearth-spirit, a harvest-spirit
+— and was warped by the rift into performing its helpful role wrong. Still attached to the
+place. Still trying.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 4 | 8 | 0 | 6 | 6 | 4 | 9 |
+
+- **Swallow-ground** *(grab, area)* — the ground in the spirit's old domain pulls down
+  whatever stands on it; reduces target Speed by 2; the target takes blunt damage each round
+  until they break free (Might ≥ 6); a target with Endu < 4 may be fully submerged
+- **Warp-gift** *(draining, close)* — the spirit delivers its "help" — water that is not
+  water, grain that is not grain, heat that is not heat; reduces target Endu by 1; the target
+  also carries the *wrongness* for a day, unsettling other workings they attempt
+
+**Motivation** — Help. The spirit does not know it has been warped. It is *trying to perform
+the old role*. The role has become its opposite; the spirit cannot see the inversion.
+
+**Behaviour** — Stationary within its old domain (a stream-bed, a hearth, a field). Does not
+pursue. Cannot be permanently killed without destroying the domain itself (draining the
+stream, breaking the hearth-stone) — and destroying the domain is often a greater loss than
+the spirit. Can be **un-warped** across a campaign: a shaman performing the old offering
+rituals correctly, with the community's names restored, can gradually return the spirit to
+its helpful function. This is a multi-session good. The Silvertrace stream (see
+`doc/places/blasted_lands.md`) is the worked example. Fighting the spirit directly is
+generally impossible — it is the domain — but a party can sometimes *contain* its warping
+briefly to allow passage.
+
+---
+
+## Swamp Fauna
+
+*The Great Swamp around the Lake of Tears is not a distinct chaos-region the way the desert and
+blasted lands are — it is an old wetland pressed by the fungal infestation that leaks from the
+bound air elemental at the lake's centre. Its creatures are not chaos-pressed in the desert's
+or blasted-lands' sense. They are **native swamp fauna doing their natural work in a marsh that
+has been slowly getting worse**. They are what makes camping here a scenario, not a rest. See
+`doc/places/great_swamp.md` for the region.*
+
+### Blood-gnat swarm
+*A cloud of biting midges dense enough to act as a single entity. Native to the swamp. Their
+numbers have risen since the fungus began spreading; they take longer to disperse than they once
+did.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 6 | 4 | 0 | 3 | 3 | 6 | 1 |
+
+- **Cloud-bite** *(draining, area)* — the swarm envelops any target in its radius; reduces target
+  Endu by 1 per scene spent inside; cumulative across scenes; cannot be blocked by ordinary armor
+- **Ear-press** *(pummel, area)* — the drone becomes *loud* at dusk and dawn; reduces Perc by 1
+  for every target within the swarm's radius; a watcher on watch duty cannot hear footfalls
+  beyond a few paces
+
+**Motivation** — Feed. The swarm follows heat, breath, and sweat. It is not malicious; it is
+insect in behaviour and overwhelming in quantity.
+
+**Behaviour** — Tightens at dawn and dusk; thins at midday. Cannot be killed in meaningful
+numbers by ordinary weapons. **Smoke disperses it** (cloth soaked in wet wood-smoke buys a
+scene's relief); **Druid** workings pause its pressure for longer; specific swamp-herbs crushed
+and smeared repel it for an evening. A party that has prepared at Elmsfield (with Diederik's
+guidance, with Bridget's stocked repellent-cloths) handles it. A party that has not suffers.
+
+### Mud-lurker
+*A long-bodied swamp-predator — crocodile-adjacent, lower and wider, with wide-set eyes and a
+tail that acts as a rudder. Ambushes from shallow water or mud-bank. Nocturnal.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 3 | 7 | 0 | 7 | 7 | 4 | 3 |
+
+- **Bank-strike** *(impaling, close)* — lunges from mud or water at a target passing above;
+  reduces target Endu by 1; a grabbed target is dragged toward the water
+- **Death-roll** *(grab, close)* — a grabbed target is rolled below the waterline; reduces target
+  Speed by 2; the target takes impaling damage each round until they break free (Might ≥ 6);
+  a target with Endu < 4 is fully submerged
+
+**Motivation** — Hunger. A mud-lurker hunts for what it can take. It does not stalk for fun.
+
+**Behaviour** — Perfectly still under mud or water for hours at a time; strikes when prey is
+within reach. Its *Perc* is high — it reads vibration through the water and ground. Stationary
+prey it ignores; **moving prey is its entire attention**. A party pausing often is safer than a
+party wading steadily. The lurker does not pursue on dry ground for long — heavy, slow, prefers
+water. *Druid* communication is possible but cold — it is not a spirit-creature, it is a predator;
+it will simply listen and continue being hungry. A camp on a high-ground island is exactly *what
+lurkers know to circle*.
+
+### Leech-vine
+*A plant-beast that hangs from swamp trees and drops when warm prey passes beneath. Not fast;
+not intelligent; just persistent once it has attached.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 2 | 3 | 1 | 2 | 4 | 1 | 1 |
+
+- **Drop-attach** *(grab, reach)* — falls from overhead onto a target passing beneath; reduces
+  target Speed by 1; the vine is now attached and must be removed (Hand ≥ 3 to pry off; a cutting
+  action also works but risks harming the victim)
+- **Blood-drink** *(draining, close)* — feeds while attached; reduces target Endu by 1 per scene
+  until removed; the victim does not feel it after the first round (the vine secretes a
+  pain-number)
+
+**Motivation** — Feed. It is a plant that has learned to move, barely. Its intelligence is
+*reflex*.
+
+**Behaviour** — Hangs above game-trails and river-crossings. A party looking up at the right
+moment sees the vines shift. *Lookout* catches them; *Smell* detects their scent (sour,
+specific); casual travellers do not. Once attached, it is stubborn — severing it is easy;
+fully removing it without leaving spider-like *threads* in the skin takes *Hand*. The threads
+left in cause slow ongoing Endu drain until a healer removes them. A party that lets the
+threads alone heals on their own in a week.
+
+### Rot-frog
+*A swamp-frog that has accommodated the fungus rather than succumbing to it. Larger than a
+normal frog. Feeds on insects drawn to the fungus. Carries spores in its skin.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 4 | 2 | 0 | 1 | 4 | 5 | 1 |
+
+- **Spore-puff** *(draining, area)* — when threatened, releases a cloud of fungal spores;
+  reduces Endu by 1 for any target within three paces who is not holding their breath; targets
+  who inhale carry the fungus-poisoning mechanism for a day (matching Irna's affliction path)
+- **Escape-hop** *(special, close)* — jumps clear of an attacker's range; no damage; the frog is
+  simply not where it was; any follow-up attack within the scene has -1 Perc
+
+**Motivation** — Survive and feed. The frog is not hostile. The spore-puff is *defence*, not
+attack.
+
+**Behaviour** — Sits at mud-banks and log-edges in the swamp. A party walking past is ignored;
+a party *disturbing* the frog (reaching for it, kicking it, trying to catch it for a meal)
+triggers the spore-puff. **Eating a rot-frog transmits the poisoning.** *Smell* detects the
+contamination; *Druid* vetting catches it. A party hungry enough to eat what they catch finds
+out the hard way.
+
+---
+
+## Encroachments — Strange Tidings in Settled Lands
+
+*The kingdoms still work. Farms are farmed. Towns are towned. But at the edges — where a
+homestead has been abandoned, where a road-inn has emptied, where a mill has fallen out of use
+— things have moved in. Some came with the chaos creeping out of the forbidden woods, the
+blasted lands, or the advancing desert. Some arrived by routes no one tracks. All of them nest
+in what people have left, and a few are bold enough to push into places where people still
+live, quietly, until those people leave too. These are the encroachments: creatures sized for
+a farm, a mill, an inn, a well, a church, rather than a region. Each carries the register of
+its source — the desert's archaeological grief, the blasted lands' betrayed reciprocity, the
+forbidden woods' approximation-wrongness — scaled down to one household's loss. They are not
+the wild animal a farmer knows to worry about. They are the wrong thing that arrives after
+the wild animal has been driven off. Combat is possible against any of them; costlier, most
+of the time, than respectful passage, patient address, or letting the place continue to empty.*
+
+### Hearth-dweller
+*Something small and hunched has taken the fireplace of an abandoned family home. It does not
+leave the hearth. The hearth no longer warms the room.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 2 | 3 | 1 | 3 | 4 | 2 | 3 |
+
+- **Ember-spit** *(fire, ranged)* — spits a live coal at a target disturbing the hearth; reduces
+  target Dex by 1; also sets cloth and paper alight on a hit
+- **Cold-grip** *(draining, close)* — hands that should be warm from the fire are not; reduces
+  target Endu by 1; the target also feels *cold for a day* regardless of weather
+
+**Motivation** — Inhabit the hearth. It does not know the family is gone; it has taken the
+warm place they left behind. It does not seek conflict. It defends the hearth when approached.
+
+**Behaviour** — Visible only from the right angle: a shape half-inside the fireplace, resolving
+into eyes and a curved back when firelight plays on it. Cannot be drawn out of the hearth — it
+will fade if moved more than a pace from the stone. Parties that leave the hearth untouched
+are unmolested; the rest of the house is safe. Parties that kindle the fire to cook by it find
+the coals do not take heat and the fire will not rise. A *Shamanic* character can speak with
+it; it remembers the family *dimly*, by the smell of what they used to cook. Taking anything
+from the mantelpiece provokes it; taking the hearth-stone itself is how the creature dies, and
+how the house loses its last occupant.
+
+### Door-kept
+*A guard-creature, cerberus-descended or merely cerberus-shaped, has taken the door of a
+farmhouse, a chapel, or a village gate. It watches. It will not let you in.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 2 | 5 | 1 | 5 | 5 | 2 | 6 |
+
+- **Threshold-swipe** *(blunt, close)* — the heads move in sequence to drive an intruder back;
+  reduces target Might by 1; a target still in the threshold after the swipe is knocked clear
+  of the door
+- **Triple-gaze** *(draining, close)* — each head fixes on a different part of the target at
+  once; reduces target Will by 1; a target with Will < 4 also loses their next action as the
+  watched-by-three-eyes feeling lands
+
+**Motivation** — Guard the door. It does not know who is supposed to pass and who is not; it
+has decided, across a long patient wait, that the answer is nobody. It will not pursue beyond
+the threshold.
+
+**Behaviour** — Stationary. Does not leave the door. Three heads that move in sequence — one
+watches the path, one watches the door, one watches the ground. Addressed correctly — by name,
+with a claim of lawful entry, or with a token the building's former community would have
+recognised — it may stand aside. Killed, it dies sadly; the building loses its last active
+guardian and whatever protection its presence offered. The household the door belongs to will
+have been empty for months when the door-kept arrived; communities sometimes leave *because*
+of a door-kept rather than before one. A DM running active-creation: the creature appears at
+a door one morning; by the end of the season the building is empty.
+
+### Mill-shade
+*A spirit that once helped turn a distant waterwheel has migrated and is now in the race at
+this mill. It turns the wheel when it remembers to. The flour comes out the wrong colour.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 1 | 4 | 1 | 3 | 3 | 1 | 4 |
+
+- **Wheel-drag** *(grab, close)* — a target standing at the wheel is pulled against the
+  mechanism; reduces target Speed by 1; the target takes blunt damage each round until they
+  break free (Might ≥ 5)
+- **Wrong-grind** *(draining, area)* — the stones turn with dust that reads as flour but is
+  not; reduces target Endu by 1 for any target eating bread made from the mill's output; the
+  effect accumulates across meals
+
+**Motivation** — Help the mill. The spirit does not know this mill is not its mill; it does
+not know the original mill is a shell a day's walk upstream. It is still *trying to turn a
+wheel for a community*. The help is broken; the help is continuing.
+
+**Behaviour** — Present in the water-race. Invisible except as a cold patch in the flow.
+Visible to a shaman or druid as a warped beneficial presence. Turns the wheel on its own at
+unpredictable hours; ignores the miller's signals. A *Shamanic* working can address it; naming
+the mill it actually came from (DM-fill: a specific ruined mill upstream or in the blasted
+lands) lets a party begin to guide it home. Driving it off destroys the mill's magical
+character and often cracks the stones in the process. A miller whose flour has gone wrong for
+three seasons and whose children are getting thin does not wait; the mill is abandoned, the
+family moves, the creature stays in a mill that is now also empty.
+
+### Wrong-flock
+*Hare-shapes in an abandoned pasture. They do not bleed when struck. They do not leave tracks.
+They are the reason the shepherd's family sold up and left two winters ago.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 7 | 1 | 1 | 1 | 5 | 8 | 2 |
+
+- **Vanish** *(special, area)* — when struck, the creature is simply elsewhere; the attack
+  connects with nothing; reduces the hunter's Perc by 1 for the scene as certainty wobbles;
+  cumulative across encounters
+- **Nip** *(cutting, close)* — only if truly cornered; reduces target Dex by 1; the wound
+  bleeds normally from the target, but the hare's own bite draws a fluid that is not blood
+
+**Motivation** — Exist where they should not. They are not aggressive. They graze on crops and
+grass that is wrong enough to support them, and nothing else can. They breed slowly and do not
+migrate. A field they occupy is a field normal animals stop visiting.
+
+**Behaviour** — Scatter when a person appears; vanish when struck; reappear at the field's
+edges the next morning. Cannot be herded, driven, or domesticated. Children sometimes play
+with them; the children come home cold and take a season to warm. A *Druid* can sense the
+wrongness in the field; cleansing it requires removing the flock (which is hard — see *Vanish*
+above) or restoring whatever ecological piece the chaos warped. Until then, the field cannot
+be farmed. A party asking in Elmsfield or Salmonswell about empty fields on the southern
+edge-country hears stories; a party visiting one is carrying the flock's attention home in
+the ordinary hare-carry-fleas sense, plus whatever the children catch from them.
+
+### Inn-walker
+*A roadside inn, three hours between better places, has been emptying. Guests who slept there
+in the last season have stories about a sound in the hallway at night. Some have stories
+about more than the sound.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 1 | 3 | 6 | 0 | 4 | 6 | 4 | 8 |
+
+- **Pass-through** *(draining, reach)* — the walker moves down the hallway past an open
+  doorway; reduces Endu by 1 for anyone in the room watching; stacks if the guest watches
+  across multiple nights
+- **Close-up** *(draining, close)* — a guest who sought the walker, left their room to see it,
+  or stood in the hallway as it passed is approached directly; reduces target Will by 2; the
+  target wakes the next morning unwilling to return to the inn, and carries the unwillingness
+  toward all such places for a season
+
+**Motivation** — Walk the hallway. It does not know why. It has walked the hallway for
+longer than the current inn-keeper has been alive, and it was walking a different hallway
+before that. Active creation: the inn empties around it, and when the inn is fully empty the
+walker moves to another — not teleporting; travelling slowly, at a walking pace, on roads at
+night, between one empty hallway and the next.
+
+**Behaviour** — Active only at night, between dark and a specific hour (DM-fill: the hour
+the walker first walked, a long time ago). Invisible in daylight. Same stride, same pace,
+same direction along the hallway each night. Does not enter closed rooms. A guest who stays
+in their room with the door shut is unmolested; a guest who opens the door to look is the
+target of *Pass-through*; a guest who steps into the hallway is the target of *Close-up*. The
+inn-keeper will not stay on the upper floor any more; they sleep in the kitchen. A *Shamanic*
+character who walks the hallway deliberately, at pace, beside the walker — matching it rather
+than stopping it — can speak with it, and what it says is not entirely intelligible. Naming
+the hallway it *actually* walks (DM-fill: a specific communal building in the blasted lands,
+or a specific ruined castle) can release it to find that place again. Killing it is possible
+and costly; the inn loses its residual mage-work along with the walker, and three nearby inns
+along the same road feel the change.
+
+### Using encroachments at the table — the themed note
+
+- **Each is a reason a place is empty, or about to be.** A DM running an encroachment should
+  first know *why the place is empty* — old plague, a bankruptcy, a debt, a crop failure, a
+  death. The encroachment sits in the aftermath or precipitates it. The emotional ground is
+  the *reason*, not the monster; the monster is the form the wrongness has taken.
+- **Compassion-first, as in the campaign's Session 1 frame.** These creatures can be fought.
+  Most of them *should not* be fought. Respect, address, naming, a clean pass-through, a
+  return of the creature to where it belongs — these are the good answers. A DM who hands the
+  party a sword and expects them to swing loses the register.
+- **Nadine carries the tidings.** World-news at Bridget's Inn. *"There's a farm past
+  Hanksroad where the dogs won't go up to the front door any more."* *"The Widder mill on the
+  east road is grinding wrong."* *"Travellers won't stop at the Wayhalt inn; something walks
+  the upstairs."* Use her voice (see `doc/npcs/nadine.md`) to seed an encroachment the party
+  can investigate.
+- **Diederik diagnoses.** An ecological reading of an encroachment is what he is *for*. A
+  party bringing him an encroachment's details gets a clear read on what kind it is, what it
+  came from, and whether it can be turned back. See `doc/npcs/elder_diederik.md`.
+- **Bridget collects stories.** Travellers' rumours at the Inn accumulate; she remembers them.
+  A party that asks her *"has anyone come through talking about weird happenings"* gets names,
+  places, specifics. See `doc/npcs/bridget.md`.
+- **Hank receives the displaced.** Families who lost a farm to a Door-kept, a flock-wrong
+  field, a Mill-shade come to Hank. Their children arrive at the orphanage. See
+  `doc/npcs/hank.md`.
+- **Scale down from the chaos regions.** The desert's archaeological grief, the blasted
+  lands' reciprocity betrayed, the forbidden woods' approximation-wrongness — all scaled to a
+  household. A DM who has internalised the regional registers will write encroachments that
+  fit the theme without needing a recipe.
+- **Active creations are rare.** A DM running a season's worth of sessions should run one
+  active creation at most. They are powerful precisely because they force the community's
+  hand. Too many make the kingdoms feel unplayable. One real one — a farm the party can still
+  save, or a mill the party watches fall — is a shape of dread that lasts.
+
+---
+
 → Back to [RULES.md](RULES.md) | See also [STATISTICS.md](STATISTICS.md) for stat actions and
 [ITEMS.md](ITEMS.md) for equipment the group may use against these creatures.
