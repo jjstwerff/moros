@@ -66,6 +66,43 @@ Every section of this roadmap is an *implementation* of this principle:
 
 Every setpiece written from this roadmap should pass one test: **did a thread close here, or did a new one open, or both — and could it have happened without the group?** If no thread moved, the setpiece is a side-scene; if a single character resolved it alone, the setpiece is not a tension moment in Moros's sense. It should be redesigned until both conditions are met.
 
+## Face-first — the emotional anchor of every tension moment
+
+A tension moment needs **two** things to land, not one:
+
+1. **Group-coordination palette** — the spine above; task-split, specialization-in-shared-space, different powers, outcome framework.
+2. **A face** — a named person or being, in a named situation, whose loss the party would feel.
+
+The Irna-at-the-gate scene has both: five simultaneous tasks, but centred on *Irna*. Without her, the tasks are abstract. With her, the coordination is *for someone specific*. The mother bear has cubs whose difference matters. The pot-boy is *that boy*, pretending to be a pot, with his tools still in his hands.
+
+**Every setpiece must pass the face-test:** before the task palette, *who or what is this scene for?* Name. Condition. Reason-to-care. Without all three, the scene reads as a tabletop challenge — sophisticated mechanics without the register Moros rewards.
+
+Scenarios that fail the face-test feel **correct** but do not **connect**. The work of face-first design is to ensure every coordination setpiece carries a specific face alongside its task palette.
+
+### Involvement-by-phase gradient
+
+The party's investment with a face grows across the campaign. The face-first work must land in whichever slot the scene sits.
+
+| Phase | Sessions | Expected involvement | What the face does |
+|---|---|---|---|
+| **Opening** | 1–3 | Low / fresh — strangers meeting | The face *creates* investment through compassion-first |
+| **Mid** | 4–8 | Building — returning NPCs, remembered places | The face *connects* to earlier scenes; returns deepen |
+| **Deep** | 9+ | High / accumulated — histories, commitments, losses | New faces carry *inherited* weight; old faces leverage history |
+
+A setpiece at Session 2 can introduce its face from scratch — the party has not built much yet, and the face's compassion-register does the work on first contact. A setpiece at Session 12 should leverage what the party has already built — returning NPCs, inherited stakes, losses remembered. **A late-campaign scene presented with a fresh stranger-face will feel thinner than an early-campaign scene with the same face**, because the expectation has risen. Design accordingly.
+
+### What elevates a face into a late-campaign-viable one
+
+Any of these raises investment beyond first-contact:
+
+- **A name.** Not "a wolf" — *"the old wolf the rangers know."*
+- **A specific cause.** Not "bandits" — *"Brumal refugees who did not reach Hank's in time."*
+- **Repeat context.** Not "the graftbeast" — *"the graftbeast the party spared last autumn."*
+- **Inheritance.** Not "an encroachment" — *"the Miller-place encroachment, whose children have arrived."*
+- **Connection to an established NPC.** Not "a dust-dervish" — *"the dust-dervish Nadine sent a message with."*
+
+A DM reaching a Sessions-9+ encounter should ask: *can I name why this particular face appears here, now, to these characters?* If yes, the scene is face-first. If no, it is a tabletop-challenge dressed up; redesign or skip.
+
 ## The pattern — extracted from the Irna entrance
 
 Session 1's opening has five simultaneous tasks, all in shared space at the gate:

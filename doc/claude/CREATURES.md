@@ -2037,5 +2037,51 @@ along the same road feel the change.
 
 ---
 
+## Creature usage — early freshness vs late-game fatigue
+
+Moros rewards emotional investment in encounters. The creature entries above support a wide range of scene-types, but **how** the DM uses them should scale with campaign phase.
+
+**Early (Sessions 1–5) — "creature-of-the-week" is fine.** A wolf pack on the road, a bandit
+ambush, a wandering graftbeast, a dust-dervish crossing the party's path, a single first-contact
+encroachment — each is legitimately a combat scene without deeper backstory. The party is still
+learning the world; meeting the world's creatures is itself the work. Use the register freely.
+
+**Mid (Sessions 6–10) — the register begins to fade.** The party has built relationships;
+encounters that do not connect to those relationships start to feel like filler. A straight
+creature-of-the-week slot is still playable but the DM should watch for diminishing returns.
+
+**Late (Sessions 11+) — creature-of-the-week is stale.** *"Oh no, another monster — can't we
+just ignore it?"* is the failure-mode. **If an encounter does not carry a face or an accumulated
+stake, redesign it or skip it.** The register Moros has built — Irna's rescue, the mother bear,
+the pot-people, Laurent's audience, and so on — would be wasted by a return to generic combat.
+
+### What elevates a creature-of-the-week scene into face-first
+
+Any of these raises an encounter beyond filler and keeps it viable across the mid-to-late
+campaign:
+
+- **A name.** *"That's the wolf the rangers know — she has two pups in the south range."*
+- **A specific cause.** *"These bandits are Brumal refugees who did not reach Hank's in time."*
+- **Repeat context.** *"The graftbeast from last autumn has come back to the same valley."*
+- **Inheritance.** *"The encroachment at the Miller place has children in it now."*
+- **Connection to an established NPC.** *"The dust-dervish carries a message from Nadine."*
+
+### The DM's session-prep test
+
+Before running a creature encounter past the early campaign, ask: **can I name why this
+particular creature appears here, now, to these characters?** If yes, the scene is face-first
+and the creature's stats from the entries above serve as the mechanical substrate. If no, it is
+stale — and a stale encounter in a late campaign is worse than no encounter at all.
+
+**Exceptions are fine.** Travel through the forbidden woods' fringe will still meet Tod; a
+caravan on the Linar trade road might still be ambushed by desperate drifters. These work
+*because* they sit in established threads (Tod is known; the bandits are Brumal-desperate). The
+test catches them correctly — the DM *can* name why.
+
+See also `doc/claude/COORDINATION_ROADMAP.md` §"Face-first — the emotional anchor of every
+tension moment" for the broader principle across all scenarios, not just creature encounters.
+
+---
+
 → Back to [RULES.md](RULES.md) | See also [STATISTICS.md](STATISTICS.md) for stat actions and
 [ITEMS.md](ITEMS.md) for equipment the group may use against these creatures.

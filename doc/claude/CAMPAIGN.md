@@ -711,6 +711,22 @@ A tension moment is a coordinated group scene — a setpiece where the party wor
 
 **Full exposition**: `doc/claude/COORDINATION_ROADMAP.md` §"The campaign's spine — tension moments as the shape of Moros" contains the complete principle with implications, what it rules out, what it rewards, and how every campaign-design decision flows from it.
 
+### Face-first — the emotional anchor
+
+A tension moment without a specific face is a task-table. Moros rewards scenes that **lead with the specific person or being** — Irna at the gate, the mother bear with cubs, the pot-boy hiding as a pot with his tools still in hand. The mechanics hang off the face; the face is the reason to care.
+
+**Before any task palette, name:**
+
+- A **name**.
+- A **condition** specific to them.
+- A **reason** the party would feel their loss.
+
+Without all three, the scene reads as a scenario-mechanic — *correct* but not *connected*. With them, it is an emotional act.
+
+**Involvement scales across the campaign.** In Sessions 1–3, every face is a stranger; the face itself creates investment. In Sessions 4–8, faces build on previous encounters; returns deepen. In Sessions 9+, every face should carry accumulated history — returning NPCs, inherited stakes, losses remembered. A late-campaign scene without this weight will feel thin no matter how well-designed its mechanics.
+
+Full principle, the involvement-by-phase gradient, and the criteria that elevate an encounter beyond generic combat: `doc/claude/COORDINATION_ROADMAP.md` §"Face-first — the emotional anchor of every tension moment."
+
 ### Scenario Progression
 
 The campaign naturally introduces scenario types in order:
