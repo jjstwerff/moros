@@ -17,6 +17,7 @@ Egbert does not introduce herself. If the party speaks to her, she returns a sho
 - **Eyes catch firelight more than they should.** The concealment does not cover this perfectly; at a lantern or a hearth, a sharp observer sees the reflection flare a beat longer than a mouse-folk or a squirrel-folk would. She knows this, and she keeps her back to the fire when she can.
 - **Long, strong fingers.** Quiet hands. She does not fidget, which is unusual for the *jittery* body-language her concealment projects; a party watching the hands rather than the frame sees a hunter's composure.
 - **Does not talk on arrival.** Hank mediates all first meetings. A stranger asking Egbert a direct question gets Hank's answer, not Egbert's.
+- **Animals give her space.** The farm's dogs do not approach her the way they approach Hank or the children. The cat sits and watches. A party who arrives with a horse, a hound, or any working animal will notice the animal reading her before the animal reads them — ears back, a cautious arc in its path. She knows this about herself and keeps a clear distance from other people's animals as a matter of practice.
 
 ## Visible patterns the party will notice
 
@@ -25,6 +26,7 @@ Egbert does not introduce herself. If the party speaks to her, she returns a sho
 - **Hunts in winter.** Gone for nights at a time when the farm needs meat; comes back with whatever the woods are giving. Hank does not ask how.
 - **A seat with a specific line-of-sight** at the farmhouse table — the one with the door and the window both in view. Nobody else uses that chair.
 - **Disappears briefly when strangers arrive in numbers.** If a cart pulls up with three or more new faces, Egbert is somewhere else until Hank has read the situation. This is not hiding; it is caution.
+- **Never near a working animal she does not know.** The farm's own dog has learned her; so has the cat. Any visiting horse, hound, or draft-beast she avoids by twenty paces. A party that has not yet figured out why she is suddenly absent when their hound is at the gate will figure it out in their own time.
 
 ## At Elmsfield's gate — Session 1
 
@@ -130,6 +132,8 @@ When the relevant topic comes up and she chooses to answer.
 | Offers to walk the night with her, no agenda | Accepted if the party has shown they can be quiet. She will not explain the work; she expects them to watch. A party that makes it through a full night with her earns something she does not give otherwise — an unguarded sentence or two at dawn. |
 | Backs her smell-read at the gate in Session 1 | She notices. She says nothing at the time. When the party comes to the farm later, she meets them in the yard instead of leaving it to Hank. An early, quiet standing with her — earned in the one scene where her wariness-from-the-town was on full display and the party chose her anyway. |
 | Dismisses her smell-read at the gate in Session 1 | She notices. She says nothing at the time. At the farm afterwards she lets Hank do all the talking; the party will not speak directly with Egbert for several visits. Recoverable, but slow. |
+| Brings a hound, horse, or other working animal close to her | The animal reads her before the party does — ears back, a cautious arc, a low sound. She steps away without comment. A party that takes the hint and walks the animal elsewhere keeps the evening on course; a party that presses forward *with* the animal, to see what happens, has picked a fight with her concealment in front of a creature that cannot be reasoned with. |
+| Keeps an animal at Hank's farm for any length of time | She will sleep elsewhere during the animal's stay — in the barn loft, the tool-shed, the woods. Hank will not volunteer the reason. A party that asks *why she keeps moving* either gets nothing or gets a single sentence: *"Your dog can tell."* |
 
 ## What she says about other people
 
@@ -162,6 +166,7 @@ When the relevant topic comes up and she chooses to answer.
 ## DM notes
 
 - **Her concealment is a Control power, not a disguise.** It can be seen through by observers with the right specialisations (Awareness, Scouting-to-spot, certain magical reads). When it is seen through privately, Egbert holds; when it is broken publicly, the farm is in crisis. Treat the public exposure as a campaign-grade event, not a scene.
+- **Animals see through the concealment.** Working animals — dogs, horses, trained hounds, even a wary cat — read *predator* through the Control where a townsperson's eye reads *jittery neighbour*. This is **canonical and usable**: it is why Egbert holds at the fence-line in Session 1 (Irna's dog would react), why the farm's own animals have to *learn* her over time, and why a party arriving with a hound will notice something it is not articulating. DMs should let the animal's body-language be the tell, not narration. Over the campaign this is the most reliable way for the party to piece Egbert's nature together without her disclosing it — the accumulation of *animals keep reacting to her* is the evidence.
 - **She is Hank's counterweight.** Hank is the daylight face — the workshop, the market, the children, the welcome. Egbert is the night face — the fields, the woods, the perimeter. A DM should run them as a pair even when they are not in the same scene. What Hank holds in the day, Egbert holds in the dark.
 - **The Ingram/Darrel coin-quest involves her only at the emotional tail.** Hank drives the project; Egbert goes along. At the end, when Hank learns the sergeant was Darrel and Darrel asks quietly after *the wolf-folk child's name*, Egbert is the one the question lands on. She may or may not let the name go. That beat is hers, and should be played with room.
 - **Her capability stack is deliberately bigger than the farm shows.** She is a trained Hunter with Scouting, Tracking, and wolf-folk powers (Smell, Control, Jaws). A DM can use this when the farm genuinely needs it — a child goes missing, a threat reaches the outer fence, the Brumal pressure pushes a wolf-hunt near the farm. Her *choice* to work quietly in a farm yard is a choice, not a limit.
