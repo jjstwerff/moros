@@ -17,6 +17,7 @@ Elliot, if asked, will name him *"Brother Darrel — once a sergeant, now one of
 
 - **Stocky beaver-folk build.** Heavier in the shoulder and tail than most beaver-folk the party has met. Old soldier's carriage. Age starting to show at the muzzle; the hands are still strong.
 - **Plain monk's robes, no insignia.** His old rank, old unit, old allegiances — none of them displayed. A stranger wouldn't know what he was before.
+- **A battle scar across the left cheek.** Old, well-healed, silver against the fur. A line-up wound from the war. He does not hide it; he does not mention it. New acquaintances stop looking at it after a minute. (*Hanny remembers this scar.* It is the face she looked up at, small, walking the road to Ingram's door — and it is the detail she will ask the party to confirm when they come back from Luchebert.)
 - **A staff, always within arm's reach.** Not carried for walking. Set against a wall, against a bench, leant by the door. The party will count the staff's position in every scene they have with him. It is never more than a lunge away.
 - **Hands that read as a soldier's.** Scarred across the knuckles; the thumbs sit at a specific angle from long weapon-work. The hands have had years to calm, not to forget.
 - **Refuses coin.** A party offering him payment will find it declined without speech — a small headshake, a gesture toward the monastery's general-use collection box, and the topic closes.
