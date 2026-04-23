@@ -205,30 +205,41 @@ This is the players' entry point. They are bystanders who can choose to act.
 **Scenario type:** Negotiation
 
 As the players get involved — calming the dog, examining Irna, managing Joseph's fear —
-the crowd grows. **[Egbert](../npcs/egbert.md) arrives at the gate before Diederik does.**
-She is [Hank](../npcs/hank.md)'s mate at the edge-farm; she is also the neighbour the town
-is wariest of (her concealment reads as *jittery, lesser*, and the townsfolk's hunches run
-stronger than they admit). She is not an authority figure — she is the one the town would
-rather *not* speak for them — and she is the first pair of competent hands at the gate.
+the crowd grows. **[Egbert](../npcs/egbert.md) contributes before Diederik arrives, but
+from outside the gate.** She is [Hank](../npcs/hank.md)'s mate at the edge-farm; she is
+also the neighbour the town is wariest of. She **cannot walk up to the gate**: Irna's
+dog would read her through her concealment as a predator and react, which Egbert and
+Hank both want to avoid. She holds at a fence-line upwind of the gate and reads Irna
+from there.
 
-She does not know what the crystal is. What she has is **wolf-folk Smell**. Her nose tells
-her Irna does not smell sick — no cholera-sourness, no fever-wrongness, no contagion
-signature — and that the crystal itself is almost scent-free. She reads Irna as *carrying
-something, not spreading something*, and says so, short. *"She's not sick the way you think.
-No smell on her."* A party that **backs her read** brings Joseph's temperature down
-meaningfully; a party that **dismisses her because the town is wary of her** leaves the
-read on the floor and Joseph holds his line longer. Egbert is usually gone by the time
-Diederik is speaking at length; the formal scene is not a place she wants to be seen in.
+She does not know what the crystal is. What she has is **wolf-folk Smell**, which works
+at distance. Her nose tells her Irna does not smell sick — no cholera-sourness, no
+fever-wrongness, no contagion signature — and the crystal itself is almost scent-free.
+The read is *carrying something, not spreading something*, and it reaches the party
+indirectly: a scrawled note from Hank brought by one of the farm's children, a party
+member going out the gate and spotting Egbert at the fence-line, or Hank in the square
+having just heard it from Egbert at the farm edge.
+
+**The dog notices Egbert anyway.** Hackles up, attention shifting toward something out
+past the gate, a different alertness in the body. An observant party may notice the dog
+is reacting to a *direction*, not to anyone in the crowd, and may piece together later
+what the dog was reading. This is the scene's first seed of Egbert's concealed nature —
+planted through the dog, not through any direct reveal.
+
+A party that **backs the read** — *"the farmer's mate got a smell off her, it's not a
+contagion we know"* — brings Joseph's temperature down meaningfully. A party that
+**dismisses the source because it is Egbert from the farm** leaves the read on the floor
+and Joseph holds his line longer.
 
 This is where they then meet **Elder Diederik**, the local elder. Diederik is an owl with
 druid training who was exiled from his druidic order. He has knowledge of ironwood, of old
 workings, and of the natural world. He carries authority in Elmsfield.
 
 Diederik gives the full diagnosis — crystalline growth is a fungus from the Lake of Tears,
-not contagious through air or contact. He confirms what Egbert's nose already ruled out,
-and adds the source and the cure path. He is the first *formal* contact the group builds;
-Egbert's earlier intervention is an *informal* contact that the party may or may not have
-accepted.
+not contagious through air or contact. He confirms what Egbert's nose already ruled out
+from the fence-line, and adds the source and the cure path. He is the first *formal*
+contact the group builds; Egbert's earlier intervention is an informal one that happened
+entirely off the main scene.
 
 **Challenge:** Convince the crowd that Irna is not contagious (she is not — the fungus
 requires prolonged direct exposure, not casual contact). Joseph must be addressed directly;
