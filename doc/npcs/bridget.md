@@ -33,7 +33,7 @@ The Inn is the lower floor and a partial cellar of Elmsfield's great ironwood �
 
 - The **walls and ceiling are grown wood, not built**. The grain curves through corners no carpenter could lay. The structure is *the inside of a tree*, hollowed out and lived in.
 - The **hearth fits a knothole-recess** that came pre-made; the smoke goes up a flue that simply *is* the tree's old central channel. The room smells of old wood layered with hearth-smoke and whatever Bridget's serving today.
-- A **staircase goes up from one corner and stops at a boarded ceiling**. Once there were upper floors. The boards are old, fitted carefully, and there is a clear question hanging in the air about what is up there and why nobody has reopened it.
+- A **staircase goes up from one corner and stops at a boarded ceiling**. Once there were upper floors. The boards are old and fitted carefully — and the ironwood has **gripped the planks**, bark curled over the edges, grain pressing each plank tight from all four sides. Nothing special about the tools it would take to pull them out. Everything special about the *work* — days of overhead crowbar, above your head until your shoulders give, with a tree that has had decades to tighten its hold.
 
 The trader's corner has the best light. The cellar door is behind the bar and Bridget keeps the only key. Her slate hangs above the bar where everyone can see it and nobody can read it.
 
@@ -76,7 +76,7 @@ When the relevant topic comes up and she chooses to answer.
 
 ### When asked about expanding the Inn — *the upstairs problem*
 
-> *"There used to be more floors above this one. The ceiling I've boarded over — that's a floor I can't get to. I've measured the gap three times. There's room up there. Whoever lived in this tree before us used the height. I want it back. I'll tell you when I figure out how."*
+> *"There used to be more floors above this one. The ceiling I've boarded over — that's a floor I can't get to. Not because it's magic. The tree's gripped the planks. It's been gripping them a little tighter every year since they were laid, and now every edge is pinched in bark on all four sides. You'd pull them out with an ordinary crowbar and a lot of sweat — days of it, above your head, and nobody in Elmsfield has a spare week to give me. I've measured the gap three times. There's room up there. Whoever lived in this tree before us used the height. I want it back. I'll tell you when I find hands for it."*
 
 ### When asked about the war — *the night before they came*
 
@@ -92,7 +92,8 @@ When the relevant topic comes up and she chooses to answer.
 
 | If the party... | She responds by... |
 |---|---|
-| Tries to break through the boarded upper-floor ceiling | Stops them firmly. *"You break it, you pay for it. That's not a saying, that's the rule."* If they push, she fetches Diederik. |
+| Offers to pry the planks out for her | Not a refusal — an interview. *"Not through the tree. Never through the tree. You prise the planks, you don't split the bark, and you don't stop halfway. If you can do that, I'll feed you and close the Inn an afternoon."* It is genuinely days of overhead work; she wants to see who's still willing once they've felt the first hour of it. |
+| Tries to smash or chop through the boarded upper-floor ceiling | Stops them firmly. *"You break bark, you pay for the tree, not the plank."* Redirects them to the edges — the grip is on the plank edges, and prising is the work, not smashing. If they push anyway, she fetches Diederik. |
 | Damages the tree itself (carves it, lights a fire against it) | Quieter outrage than they expect. The town knows within hours. The party is suddenly paying twice for everything in Elmsfield, and a meeting is called. |
 | Brings her useful trade intelligence | Sits down with them. Next round is on the house. Will remember it next time they pass through. |
 | Asks about the wartime hoard outright | *"That isn't yours to ask about."* If they push, she changes the subject and starts watching them more carefully than before. |
@@ -140,7 +141,7 @@ For students she judges have the head for it:
 
 ## DM notes
 
-- The Inn occupies the **lower floor and a partial cellar** of the great ironwood's hollow. **Upper floors exist** (the tree once held several) but are sealed behind a boarded ceiling. Bridget cannot reopen them with any tools she has. *Anyone who can may be very interesting to her.*
+- The Inn occupies the **lower floor and a partial cellar** of the great ironwood's hollow. **Upper floors exist** (the tree once held several) and are **physically reachable** — the blocker is not material, it is grip. The ironwood has tightened around the edges of each plank over decades; ordinary iron tools suffice, but removing them is days of brutal overhead crowbar work, and nobody in Elmsfield has the spare week. A party that offers the labor (or ingenuity to shorten it) has a direct path into Bridget's confidence. The *tree* must not be damaged in the process — splitting bark is the one line. That is the whole reason she hasn't hired it done on the cheap.
 - The **wartime hoard** was hidden in the tree the night before the overseas force arrived. The raiders could not get in (see *the day they couldn't get in*). Some was reclaimed after the war; the rest remains. Bridget alone keeps the inventory in her head — *and on the slate*. The non-tab marks (leaf, dot-in-square, crossed lines, and others) are the hoard ledger, encoded in Badger-road trader shorthand and sitting in plain view among the drinking debts. The top-left corner, which she never wipes, is the index. Anyone who can read Badger trader shorthand (rare outside the clan and the old road families) could start to make sense of it. Breaking the code is a genuine narrative prize — commit to it before you let the party crack it.
 - **Pollination would close the Inn.** She knows the threat in principle; she does not yet know about Diederik's overseas plan in detail. *When she does, she has a direct stake* — and the conversation between her and Diederik about it is one the party may end up brokering.
 - The tree being a **sterile female ironwood** is a conversation Diederik could have with her. She has not yet had it. Her current understanding is: *very old, can't be cut, town is built around it, survived the war.* She would listen if Diederik (or a credible party) explained the rest.
