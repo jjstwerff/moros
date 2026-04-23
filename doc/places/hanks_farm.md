@@ -33,7 +33,7 @@ The party reaches Hank's farm by following the western road out of Elmsfield unt
 The original building, plain stone lower, timber upper. Hank and Egbert's private space is on the upper floor, small and private. The lower floor is the kitchen, the common room, the household's daily life.
 
 - **A book tucked somewhere only Hank touches.** A farming manual she bought on the road to Elmsfield and has been reading in pieces for years. The source of the crop rotation. Hidden because Elmsfield notices when a farmer reads. See `doc/npcs/hank.md` §"Quiet accumulations."
-- **A drawer of Sergeant Darrel's coins**, long since spent — the original gift that founded the farm. Hank and Egbert still believe the money came from a relative; they do not know Darrel left it.
+- **A drawer with a leather purse, full again.** The original bag from the Salmonswell orphanage — left there by a Beaver-folk sergeant whose name Ingram would not give them — was spent to start the farm. Over ten years Hank has been replacing the sum coin by coin. The drawer now holds the full amount, ready to be carried back. She does not know the sergeant's name. She has the description Ingram gave her at eighteen, and a decade of resolve. See `../npcs/hank.md` and `../npcs/ingram.md`.
 
 ## At the dormitory outbuildings
 

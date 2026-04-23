@@ -82,9 +82,9 @@ When the relevant topic comes up.
 
 > *"A staff is a walking stick. A tool. A long piece of wood. I have trained with it for ten years because an old soldier does not truly learn how to back off; he learns how to carry the work under a different word. I know what I am doing. If you ever see me using it as a weapon, I will have broken my vow. I try not to let that happen. I am not always sure I succeed."*
 
-### When asked about Hank and Egbert — *the orphanage*
+### When asked about Hank and Egbert — *the orphanage at Salmonswell*
 
-> *"Before I came here, I went to an orphanage on the south road. It held children from the war on both sides. There was a rabbit-folk boy and a wolf-folk boy, from opposite factions, who had not spoken. I sat them together at a small table and did not leave until they had spoken. I left them a bag of coin — the last coin I touched with my hands. I told them a relative had sent it. They believed me. They still think that. I am not going to tell them otherwise, and I ask you not to either."*
+> *"Before I came here, I walked two children up the road to the orphanage in Salmonswell — old Ingram the Mouse kept it. A rabbit-folk girl called **Hanny**, from our side. A wolf-folk girl, from the other — her name I did not take. She was the enemy, or had been. I sat them at a table and did not leave until they had spoken. I left Ingram a bag — the last coin I touched with my hands. My wartime wages. I asked him to shelter them with it, and to tell them, if they ever asked, that a relative had sent it. I did not want my name walking alongside their lives. Ingram kept the bag and kept the name. He never used the coin. I only learned that later. I have not been back."*
 
 ### When asked about his old unit — *what I will not say*
 
@@ -116,7 +116,9 @@ When the relevant topic comes up.
 | Offers him a weapon | Declines. *"I do not touch them."* If pressed, the conversation ends and he walks away. |
 | Asks to learn staff | Tests over several sessions. A party member who shows up at dawn, no coin, no pushing, stays as a student. Bad faith is read inside one morning. |
 | Asks about Hank and Egbert directly | Tells them (see story above), under the explicit ask that they do not reveal his role to Hank or Egbert themselves. |
-| Tells Hank or Egbert that he funded them | **He does not forbid; he feels the betrayal quietly.** The coin was meant to arrive as from a relative. The party has undone the frame. His trust in them narrows. |
+| Tells Hank or Egbert that he funded them, *before* the Salmonswell/bag errand has happened | **He does not forbid; he feels the betrayal quietly.** The coin was meant to arrive as from a relative. The party has undone the frame early. His trust in them narrows. (If Hank has already sent them with the bag, the frame is already undone — see the next row.) |
+| Brings him a bag of coin sent by "Hank" from the edge of Elmsfield | The name *Hank* does not land. If the party adds the name **Hanny** — or describes the rabbit-folk farmer who fits — he sets the staff down (see *when pressed*). A long silence. He asks what Hanny has become. Then: *"Take it back. I gave it once. Giving it back undoes the giving."* He will not accept the bag. |
+| Presses the bag on him anyway | He will not touch it. If they leave it on a bench, he asks them to carry it to the monastery's alms-chest for the sheltered. Not to him; not back to Hanny. *"If she will not keep it and I will not take it, let it do work where neither of us are."* He asks them to tell Hanny what he said, and asks — quietly — what name the wolf-folk child uses now. |
 | Asks him about Elliot | He tells them the disagreement plainly (see story). He does not ask the party to take sides. |
 | Brings him news about Ron Bean in the yards | Registered. He will bring it up with Elliot that evening. The conversation is not new; Ron is the reason the disagreement has been fresh for a year. |
 | Asks him to intervene personally on Ron's behalf | He will not go to court. *"I left that work."* But he will press Elliot harder. |
@@ -134,8 +136,8 @@ When the relevant topic comes up.
 | Figure | Darrel's take |
 |---|---|
 | **Father Elliot** | *"The prince who walked away. We saw the same war at opposite ends of the chain. He chose withdrawal; I chose work without coin and without weapons. We disagree on one thing, and we walk about it most evenings."* |
-| **Hank** | *"The rabbit-folk boy I sat at a table. He has become a kind man. I visit when I can. He does not know me from before."* |
-| **Egbert** | *"The wolf-folk boy at the same table. Harder life than Hank's, shorter fuse. He has done well. He does not know me either."* |
+| **Hank (Hanny)** | *"The rabbit-folk child. Hanny. Our side of the war; I let myself have her name. She has become a kind adult, I hear. She does not know me from before, and Ingram kept my name from her at my asking."* |
+| **Egbert** | *"The wolf-folk child at the same table. Other side of the war. I would not take her name then. I do not know the name she uses now. I hear she has done well. That is as much as I let myself have of her."* |
 | **Willow** | *"Old devotion. I do not disturb her work. She does not disturb mine. We nod."* |
 | **Nadine** | *"Her anger is a trader's anger — concentrated on her friend. I understand it; I do not share the conclusion. If she uses what she knows to *extract* I will help. Not to burn."* |
 | **Irna Bean** | *"The sister. The prophecy was hers, and the proclamation named her brother by mistake. Elliot has known this for a year and has not written the letter. I am angry about it."* |
@@ -148,7 +150,7 @@ When the relevant topic comes up.
 
 - **His old unit's name.** Not to students, not to Elliot, not to anyone. It is not amnesia; it is choice.
 - **Specific killings he is responsible for.** *"Those who were there know; those who were not should not have to carry it."*
-- **To Hank or Egbert: that the coin was his.** He has not told them in decades and will not tell them now.
+- **To Hank or Egbert directly: that the coin was his.** He has not told them in decades and will not tell them to their faces. If Hanny's party delivers the bag and Hanny learns the name through Ingram or through them, that is a course he will not contest — but he will not be the one to speak the name to her.
 - **Court politics.** He left that work. He will comment on the Bean proclamation because it concerns a student and a family; he will not comment on succession, border policy, or Hannes's broader decisions.
 
 ## What he can teach
@@ -163,12 +165,12 @@ When the relevant topic comes up.
 - **Play him terse.** Short answers. Short sentences. He is not withholding; he does not waste words. A verbose Darrel is a wrong Darrel.
 - **The staff-as-not-a-weapon is open self-awareness.** Do not play it as unexamined. He is a man who watches himself rationalise and continues to rationalise because the alternative — picking up a sword — would be worse. The rationalisation is the practice.
 - **His disagreement with Elliot is campaign-live.** A party at Luchebert will hear it. A party that has met Ron in the yards, or Irna, or Rhianna, will see the stakes. A DM who underplays Darrel's opposition to Elliot's silence loses an important pressure on the abbot — Elliot is the one who can correct the proclamation, and Darrel is the one pushing him to.
-- **The orphanage-coin truth is his to disclose.** If the party is tempted to tell Hank or Egbert, stop them, or narrate Darrel's quiet trust-loss if they don't. This is one of his specific lines.
+- **The orphanage-coin quest is the live thread.** Hank does *not* know Darrel's name. She has only the description Ingram gave her at eighteen. She has saved the sum back and will send the party with it; the chain runs Elmsfield → Salmonswell (Ingram names Darrel to them at last, released by Hank's letter) → Luchebert (Darrel refuses). Darrel will not take the bag back; he will redirect it to the alms-chest. He will *also* quietly ask after the wolf-folk child's current name. See `ingram.md` and `hank.md`.
 - **Nadine friction is a feature.** If both come into the same room, run the tension. Neither yields; both eat. The DM can let the party broker.
 - **As a monk-fighter, he is dangerous.** A DM should flag this mechanically. Anyone who picks a fight with him — even armed — will lose quickly. He does not draw blood; he disarms and disperses. Use this if a player considers violence at the monastery.
 - **He teaches the discipline, not the weapon.** Students who frame the lessons as *how to fight* get turned away. Students who frame them as *how to carry themselves* are kept.
 - **Pair him with Elliot deliberately.** The two are the same moral response to the same war at opposite ends of the chain. A DM running both together should let the difference show. Darrel acts without coin; Elliot withdraws without acting. Neither is wrong; both are costly.
-- Lore cross-references: Father Elliot's position and the proclamation in `doc/npcs/father_elliot.md`; Hank's orphanage history in `doc/npcs/hank.md`; Egbert in `doc/npcs/egbert.md`; Nadine's pirate-nest disagreement in `doc/npcs/nadine.md`; Felix's old-comrade-names angle in `doc/npcs/felix.md`; the monastery as place in `doc/places/luchebert_monastery.md`; Ron's situation in `doc/npcs/ron_bean.md`; Irna's story in `doc/npcs/irna_bean.md`; Rhianna's letter to Elliot in `doc/npcs/rhianna_linthrope.md`; the overseas sheltered in `doc/claude/CAMPAIGN.md`.
+- Lore cross-references: Father Elliot's position and the proclamation in `doc/npcs/father_elliot.md`; Hank's orphanage history in `doc/npcs/hank.md`; Egbert in `doc/npcs/egbert.md`; **Ingram (the orphanage-keeper) in `doc/npcs/ingram.md`**; Nadine's pirate-nest disagreement in `doc/npcs/nadine.md`; Felix's old-comrade-names angle in `doc/npcs/felix.md`; the monastery as place in `doc/places/luchebert_monastery.md`; Ron's situation in `doc/npcs/ron_bean.md`; Irna's story in `doc/npcs/irna_bean.md`; Rhianna's letter to Elliot in `doc/npcs/rhianna_linthrope.md`; the overseas sheltered in `doc/claude/CAMPAIGN.md`.
 
 ## Background — for the DM
 
@@ -176,7 +178,7 @@ When the relevant topic comes up.
 
 - **Beaver-folk sergeant** in the last war. Fought against the overseas invasion up the trade road from Linar through Elmsfield and into the interior. The war ended with Thorgal's death and Raul's retreat (see `doc/claude/CAMPAIGN.md` §"The Overseas War").
 - **Broke at the granary incident** — the field where his unit killed starving overseas soldiers over seed-grain (the story he tells above). That was his last weapon.
-- **Did one last act with coin** before disappearing: went to the orphanage that held Hank and Egbert, sat the boys at a table, brought them together, and left them a bag of coin, telling them it was from a relative.
+- **Did one last act with coin** before disappearing: walked two children up the road to the Salmonswell orphanage — a rabbit-folk girl named **Hanny** (his own side) and a wolf-folk girl whose name he refused to learn (the enemy side). Sat them at a table, made them speak. Left the keeper, **Ingram**, a bag of his wartime wages and asked him to shelter them with it, and to tell them, if ever asked, that a relative had sent it. Ingram did neither — he never spent the coin, he handed the bag back at their coming of age, and he kept Darrel's name as asked. The two grew up with the relative-story publicly and a described-but-unnamed benefactor privately.
 - **Walked to Luchebert afterwards.** Elliot — the prince who had already walked away — recognised him and received him. They have lived at the monastery together for years.
 - **His practice** has developed from a defensive habit into a genuine monastic tradition. He is now sought out by a handful of students who want the discipline without the weapon. He takes those students seriously.
 

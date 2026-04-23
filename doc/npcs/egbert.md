@@ -7,7 +7,7 @@
 
 ## Summary
 
-Wolf folk, concealing what she is. A control power lets her pass as something lesser — pale, lanky, jittery — the kind of figure the neighbours have a hunch about but do not press. She came out of the same orphanage as **Hank** (Rabbit folk), brought there by **Sergeant Darrel** after the war, from the opposite faction.
+Wolf folk, concealing what she is. A control power lets her pass as something lesser — pale, lanky, jittery — the kind of figure the neighbours have a hunch about but do not press. She came out of the **Salmonswell orphanage**, brought there by a Beaver-folk sergeant after the war, from the opposite faction to Hank. The orphanage-keeper **Ingram** (old male Mouse) handed them the bag at their coming of age with a careful description of the benefactor but kept his name — per the sergeant's request at the door. Neither Hanny nor Egbert has the name; both have the description.
 
 She plows the plots of land at night and has gone hunting several times over the years to keep the household fed through winter. Hank knows at least some of this and is not entirely easy with how much Egbert does in secret. As the farm has expanded into Hank's orphanage of sorts, the pressure of concealment has not eased — more people on the property means more witnesses, and the scorn some of Elmsfield now directs at Hank would turn into something worse if anyone settled what Egbert actually is.
 
@@ -23,8 +23,8 @@ Part of Elmsfield's direct scenery. Egbert's concealment, her night-work, and he
 
 ## Relationships
 
-- Mate of **Hank** (Hanny); raised together in the orphanage after the war, from opposite factions.
-- Beneficiary of **Sergeant Darrel**'s bag of coins at the orphanage.
+- Mate of **Hank** (Hanny); raised together in the Salmonswell orphanage after the war, from opposite factions. Darrel — who brought them there — knew and used Hanny's name; he never took Egbert's. She was enemy-faction, and he would not let himself.
+- Beneficiary of a Beaver-folk sergeant's bag of coins at the orphanage. Same public-relative/private-doubt story as Hank, same description from Ingram, same absent name. Supports Hank's long project of returning the money; would not have started it herself.
 
 ## Note on the World Edge expulsion story
 

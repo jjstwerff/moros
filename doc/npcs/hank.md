@@ -40,7 +40,7 @@ The farm is its own place and has its own file: **`doc/places/hanks_farm.md`** f
 |---|---|
 | The farm, the crops, the children | Freely. This is the public face. |
 | Clothing-craft | Freely. Will teach any interested student. |
-| How she and Egbert came together | Once asked, plainly. She thinks a relative sent the money that started them. |
+| How she and Egbert came together | Once asked, plainly. Public line: a relative sent the money. Private doubt: the orphanage-keeper Ingram, at their coming of age, handed them the bag and said it had been set aside by someone who asked not to be named. He described the man. He would not give the name. She has been saving the sum back ever since, to return to whoever he turns out to be. |
 | The orphanage origin city | Once asked; carefully. Not a happy memory, but she owns it. |
 | Her farming system (the crop rotation) | *"Rotation."* Past that, only with trust. |
 | Farmer Joseph buying the plot | Freely — the transaction is public. How she felt about it: briefly. |
@@ -54,9 +54,9 @@ The farm is its own place and has its own file: **`doc/places/hanks_farm.md`** f
 
 When the relevant topic comes up and she chooses to answer.
 
-### When the topic is the orphanage — *the bag of coins*
+### When the topic is the orphanage — *the bag of coins, and the description Ingram would not name*
 
-> *"Egbert and I were in the same orphanage in the city, from opposite sides of the last war. I don't talk about which was which. The sergeant — the Beaver man who brought us there — left us a bag of money before he walked out. We thought then it was a relative. Grown, we still mostly think it was a relative. I have wondered, some evenings, whether 'relative' was what he said or what we heard. But he never came back, and the money took us here, and here is where we are."*
+> *"Egbert and I were in the same orphanage in Salmonswell, from opposite sides of the last war. I don't talk about which was which. A Beaver-folk sergeant brought us there and left a bag of money with Ingram — the old Mouse who ran the place. Growing up, we thought it was from a relative; that was the story. When we came of age, Ingram sat us down, opened the chest, handed us the bag, and said it had been set aside by someone who had asked not to be named. Then he described the man — stocky Beaver, heavy in the shoulder, hands scarred across the knuckles — so we would know him if we ever saw him. He would not give the name. I have been saving the money back ever since. Coin for coin, year by year. I've got it now. I don't know whose it is. I just know it isn't mine."*
 
 ### When the topic is becoming Hank — *Egbert's advice*
 
@@ -92,7 +92,8 @@ When the relevant topic comes up and she chooses to answer.
 | Finds the farming book | Goes still. *"You were not meant to see that."* A party that replaces it and does not mention it again earns a quiet debt. A party that teases her about it breaks something. |
 | Threatens a child | One warning, clear and soft. If they push it, Egbert appears, and the farm closes. Party is not welcome again without substantial repair. |
 | Offers to help at the farm for a day | Accepted gratefully. She watches how they work. A party that takes it seriously earns real standing. |
-| Asks about Brother Darrel | *"I don't know much about him."* True, from her side. A party that tells her the full story — that Darrel left the coins himself — faces her carefully, and she will take time to decide what she thinks. |
+| Asks about Brother Darrel by name | The name means nothing to her. If the party *also* describes him — stocky Beaver, heavy shoulder, scarred knuckles — she goes very still. *"Say that again."* |
+| Offers to carry the money to the man Ingram described | She goes very still, then nods. Fetches the bag from the drawer in the farmhouse. Gives them a sealed letter for **Ingram** at the Salmonswell orphanage (*"start with him — he'll tell you where the bag should go"*) and repeats the description she has carried for ten years. Asks them to return with whatever the recipient says — *"whatever he says, bring it back."* |
 | Asks to be taught the clothing-craft | Yes. A working relationship begins at the workshop table. |
 | Asks to be taught *sneak, scrounging, or back-alley work* | Only with earned standing and a specific purpose. *"Tell me why you want it. If I don't like the answer, I don't teach you."* |
 | Asks about her druidic training | See the trust-gated story. She will not discuss unless they are alone with her and she has decided they can hear it. |
@@ -109,7 +110,7 @@ When the relevant topic comes up and she chooses to answer.
 | **Elder Diederik** | *"He knows things he doesn't say. He sees things he doesn't mention. Including, I think, me. I owe him the quiet."* |
 | **Bridget** | *"Good with coin, better with people. Sends the Inn's leftovers our way without being asked."* |
 | **Farmer Joseph** | *"Paid what the land was worth. Going to be a good neighbour again when his stretch eases. I'm not holding the sale against him."* |
-| **Brother Darrel** | *"A relative sent us money, we think. If it wasn't a relative — that's a conversation I don't know how to have yet."* |
+| **Brother Darrel** | *"I don't know that name. If you mean the Beaver-folk sergeant Ingram described — stocky, heavy shoulder, scarred hands — that's the man I've been saving the bag back for. Ten years of coin. Ingram would never give the name. I'd go to him myself if the farm would let me."* |
 | **The children** | *(Small laugh.)* *"Mine for as long as they need it. Not mine after. They know that, and so do I."* |
 | **Father Elliot** | *"I have heard of him. He keeps a house that takes people in. We do the same at a smaller scale, and for different arrivals, but I respect the shape of it."* |
 | **Corné Dunham** | *"Knows the valley. Comes to me when he wants a shirt that will last."* |
@@ -138,7 +139,7 @@ When the relevant topic comes up and she chooses to answer.
 - **The farm is a place of its own** — see `doc/places/hanks_farm.md`. Most scenes with Hank happen there. Her workshop is the default setting for sustained conversation.
 - **The Brumal-refugee pressure runs through her door.** As the southern crisis grows, more children arrive. The farm's capacity is finite. Hank is one of the NPCs most likely to come to the party with a concrete need, in a register that is not dramatic — *"I am running short on blankets; do you know anyone travelling north who could bring some?"* — but whose stakes are real.
 - **She is a second druid in reserve.** If the campaign needs druidic backing that Diederik cannot give alone (the overseas plan's saplings, a ritual, a response to something breaking at the Lake of Tears), Hank is the second name — if the party has earned her trust to put it forward. She will not volunteer.
-- **The Brother Darrel thread is a gentle bomb.** A party who learns Darrel left the coins, and who tells Hank, is handing her a large emotional moment. Do not rush it. The scene needs room; she will not resolve it in one conversation.
+- **The Brother Darrel thread is an active quest — Hank's suspicion, not her knowledge.** Hank does not know the benefactor's name. Ingram has held it for decades at Darrel's request. What Hank has is the description and a decade-long resolve: the money isn't hers, and when she finds the man she wants it back in his hand. The quest chain: Elmsfield → Salmonswell (Ingram finally names the sergeant to the party — Hank's sealed letter is his release) → Luchebert (Darrel, who refuses). Party brings back Darrel's refusal *and* the name Hank has never had. The name, and whatever Darrel said, is Hank's actual emotional beat, and it lands *after* the monastery scene, not before. See `ingram.md` and `brother_darrel.md`.
 - **Her reading of the party** is faster and more specific than most NPCs. The Back-alley habit does not go away. A DM should treat her as a *perceptive* NPC in casual scenes — she notices things the party has not told anyone.
 - Lore cross-references: clan logic in `doc/claude/LORE.md` §"Clans and their shape"; the post-war orphanage and Darrel's coins in `doc/npcs/brother_darrel.md`; Egbert's concealment in `doc/npcs/egbert.md`; Joseph's plot-purchase in `doc/npcs/farmer_joseph.md`; the Brumal crisis in `doc/claude/CAMPAIGN.md` §"The Neighbour's Crisis"; the druidic order's stance on nobility in `doc/npcs/elder_diederik.md` and `doc/npcs/didrich.md`.
 
@@ -152,7 +153,7 @@ When the relevant topic comes up and she chooses to answer.
 ## Relationships
 
 - Mate of **Egbert** (Wolf folk, concealed). Raised with her in the orphanage after the war, from opposite factions.
-- Beneficiary of **Brother Darrel**'s bag of coins — believes the gift came from a relative.
+- Beneficiary of a Beaver-folk sergeant's bag of coins, given to the Salmonswell orphanage for her shelter; kept untouched by **Ingram** (the orphanage-keeper) and handed to her at eighteen with a description of the benefactor but not his name. Ingram has held the name at the sergeant's request all these years. She has been saving the full sum back ever since, to return to whoever he turns out to be.
 - Sold a plot to **Farmer Joseph**. No ill-will; the transaction was fair.
 - Orphanage of sorts draws both hands and scorn from Elmsfield locals.
 - Part of the dispersed **Rabbit-folk clan** (see `doc/claude/LORE.md` §"Clans and their shape"); the clan routes some arrivals toward her.

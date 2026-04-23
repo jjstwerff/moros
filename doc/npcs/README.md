@@ -62,7 +62,8 @@ Related: [cards.md](cards.md) — player-facing NPC cards (earned by the party t
 
 ## Wanderers, drifters, survivors of the last war
 
-- [Brother Darrel](brother_darrel.md) — Beaver folk ex-sergeant; rejects money; brought Hank and Egbert together.
+- [Brother Darrel](brother_darrel.md) — Beaver folk ex-sergeant; rejects money; brought Hank and Egbert to Ingram's orphanage in Salmonswell.
+- [Ingram](ingram.md) — very old male Mouse; keeper of the Salmonswell orphanage; held Darrel's name and wages for decades.
 - [Eric Randell](eric_randell.md) — fox animal wrangler with a transport Dromo bird, Gato-walker.
 - [Nadine](nadine.md) — Finch trader from Raft city; face of a travelling merchant group; brings news of the larger world when the campaign needs it.
 

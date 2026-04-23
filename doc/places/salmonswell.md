@@ -73,6 +73,15 @@ North of the city the tributary runs fast. A road leaves the northernmost edge o
 - **"The otter druid up the rapids."** Locals know her by reputation, not by name. Fishers have spotted her at the water's edge; refugees have heard rumours; nobody bothers her. A party with Diederik's errand can confirm direction here — *eastern bank, in a stand of rowans she planted around her cottage* — and press on past the third fall. See `doc/npcs/elder_diederik.md` §"The errand to Rowan."
 - **The path from the city is a day's walk to the third fall.** Beyond it, another half-day to Rowan's place, if the party knows what they are looking for.
 
+## At the orphanage — Ingram's house
+
+One of the buildings on the valley side was once a fisher-family home, expanded twice, and is now the **orphanage**. A party who has a reason to come here will be directed up the slope by any wharf-hand. Otherwise it is easy to walk past.
+
+- **A small front room with a desk.** Behind the desk sits **[Ingram](../npcs/ingram.md)** — a very old male Mouse, silver-furred, stooped, bright-eyed. A thin chain at his neck holds the key to a chest under the desk.
+- **Dormitories behind** — simple bunks, mixed origins of children, the same absorbing logic the party may have already seen at Hank's farm in Elmsfield. Salmonswell's version is larger and less personal.
+- **A ledger that runs back decades.** Ingram has kept every child who passed through by date, in a hand that has gone spidery with age. Two of the names in it are **Hanny** (rabbit-folk) and a wolf-folk girl brought in from the enemy side, dated just after the war.
+- **The chest under the desk** held a Beaver-folk sergeant's bag of wartime wages, untouched, for years — until the day the two girls came of age and Ingram handed it to them with a description of the sergeant but not his name. That name has lived in Ingram alone since the day the bag was left. A party arriving with the bag again — and **Hank's sealed letter** — is the release Ingram has waited for. See `../npcs/ingram.md` for the full scene, and `../npcs/hank.md` and `../npcs/brother_darrel.md` for the quest chain.
+
 ## At the refugee quarters — the other half of the current town
 
 Not one neighbourhood but **several**, spread through the fisher-dwellings on the valley sides. Guest-houses that were once family homes; rooms rented for low fees; whole buildings the council has taken over to keep people warm.
@@ -105,6 +114,8 @@ Not one neighbourhood but **several**, spread through the fisher-dwellings on th
 | Trade-road stories (Linar-Salmonswell) | Freely from any merchant. (Bridget, if she is with the party, has her own three-year history of this road — see `doc/npcs/bridget.md`.) |
 | That the council has quietly hosted inter-kingdom meetings | From a merchant-house chair on a good day; not mentioned in the open ledgers. |
 | Which smokehouse families are hiring refugees | Visible by watching; named at the wharf. |
+| Where the orphanage is and who keeps it | Any wharf-hand will point up the valley side to Ingram's house. The house's purpose is widely known; its chest is not. |
+| That the sergeant who left the bag was called **Darrel** | Only from Ingram, and only to a party carrying Hank's sealed letter. Not on the wharf. |
 
 ## If the party does something — what the place does
 
@@ -123,6 +134,7 @@ Not one neighbourhood but **several**, spread through the fisher-dwellings on th
 | Arrives badly under-equipped for the rapids walk | Locals will point this out; a refugee who made the walk in the other direction will often volunteer guidance. Nobody at Salmonswell profits from a party that goes unprepared. |
 | Asks to meet *here* with someone from Allondo or Brumal | Salmonswell is the plausible neutral inland venue. The council will receive the request. Logistics can be arranged at the Harbourmaster's Office. |
 | Causes a public disturbance | The clerks and fishers handle it together; no formal garrison, but the wharf crowd is not small. A party that escalates will be asked to leave the city and not return. |
+| Arrives carrying Hank's bag and Hank's sealed letter | Directed up the slope to Ingram. Ingram opens the letter, speaks **Darrel's name** for the first time in decades, confirms the description, and points the party onward to **Luchebert Monastery**. Tells them plainly he will refuse the bag. |
 
 ## DM notes
 
@@ -133,6 +145,7 @@ Not one neighbourhood but **several**, spread through the fisher-dwellings on th
 - **Rowan is not here.** Do not let the errand end at Salmonswell. The wilderness walk past the third fall is part of the scene — see `doc/npcs/elder_diederik.md` §"The errand to Rowan" for its weight. Salmonswell is the jumping-off, not the destination.
 - **The council is a slow instrument.** A party that wants a decision *today* will not get one. A party that can wait, or that has a compelling enough urgent case, will be heard next session. This is a feature of how Salmonswell has stayed independent; do not let it feel like a frustration without reason.
 - **Labour-trade custom at the wharf.** Carrying crates on arrival is *a thing locals do*. A party that does it unprompted signals something about themselves. A party told to do it and complying is still read as willing. A party that refuses is read as uninterested in Salmonswell's hospitality.
+- **Ingram's house is a quest stop, not just an atmosphere stop.** The orphanage is the middle scene of the Darrel-coin chain (Elmsfield → Salmonswell → Luchebert). If the party arrives from Hank with the bag and the sealed letter, Ingram releases the sergeant's name — long held at Darrel's request — and sends them onward. Without the letter, the name stays held. See `../npcs/ingram.md` §"The story of Darrel's coin" for the full scene.
 - **Bridget's trader history lands here.** If Bridget is with the party, her three years on the Linar-Salmonswell road will surface — named traders, specific families, specific cheats and honesties. See `doc/npcs/bridget.md` §"Her old road" for what she carries from this route.
 - Lore cross-references: the errand to Rowan in `doc/npcs/elder_diederik.md`; the geography in `doc/places/geography.md` §"Salmonswell's tributary"; Bridget's trader-road history in `doc/npcs/bridget.md`; Corven/Penelope potentially meeting here in `doc/npcs/prince_corven.md`; Linar harbour at the other end of the trade road in `doc/places/linar_harbour.md`; Brumal collapse context in `doc/claude/CAMPAIGN.md` §"Brumal's collapse."
 
