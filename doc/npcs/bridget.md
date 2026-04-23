@@ -25,17 +25,15 @@ Within ten minutes she knows roughly where the party is from, what they're carry
 - **Sits at the trader's corner table when merchants pass through** — Nadine especially. Negotiates and listens in equal measure.
 - **Goes home to Wilfred's farm one evening a week**, no more. Comes back tired but ready.
 - **Mornings, her daughters Elly and Nina fight about the flowers.** Each claims she's the one who tied the string on Bridget's wrist; each accuses the other of stealing credit. Bridget keeps pouring, eyes on the door, and lets it run itself out. The flowers are always there. Nobody ever quite catches either girl doing it.
-- **Once a season she walks the upper hollow alone with a lantern**, on an evening she doesn't tell anybody about. The party will notice the absence; nobody else will say what she's doing.
+- **Once a season she goes down into the cellar alone with a lantern**, for an hour, on an evening she doesn't tell anybody about. The party will notice the absence; nobody else will say what she's doing. (She is reconciling the slate against what is actually behind the fitted panels — see `../places/elmsfield_inn.md` §"The cellar".)
 
-## At the Inn
+## Where she lives — the Inn
 
-The Inn is the lower floor and a partial cellar of Elmsfield's great ironwood — and the moment the party steps through the door, three things should hit them:
+The physical Inn (layout, boarded ceiling, cellar, the branch-shaft beyond the upper floor, and the long-arc tree-hut) lives in its own place file: **[`../places/elmsfield_inn.md`](../places/elmsfield_inn.md)**. Read that for the space; read *this* file for Bridget's voice and reactions inside it. The three-line sketch, for quick recall:
 
-- The **walls and ceiling are grown wood, not built**. The grain curves through corners no carpenter could lay. The structure is *the inside of a tree*, hollowed out and lived in.
-- The **hearth fits a knothole-recess** that came pre-made; the smoke goes up a flue that simply *is* the tree's old central channel. The room smells of old wood layered with hearth-smoke and whatever Bridget's serving today.
-- A **staircase goes up from one corner and stops at a boarded ceiling**. Once there were upper floors. The boards are old and fitted carefully — and the ironwood has **gripped the planks**, bark curled over the edges, grain pressing each plank tight from all four sides. Nothing special about the tools it would take to pull them out. Everything special about the *work* — days of overhead crowbar, above your head until your shoulders give, with a tree that has had decades to tighten its hold.
-
-The trader's corner has the best light. The cellar door is behind the bar and Bridget keeps the only key. Her slate hangs above the bar where everyone can see it and nobody can read it.
+- It is the inside of a living ironwood hollow — walls and ceiling grown, not built.
+- A staircase ends at a boarded ceiling. Upper floor exists; the tree has gripped the planks.
+- Her slate hangs above the bar where everyone can see it and nobody can read it.
 
 ## What she will tell — and when
 
@@ -137,20 +135,17 @@ For students she judges have the head for it:
 
 - **Exactly what's still in the wartime hoard, item by item.** She knows. Some of it was promised to specific townspeople and never returned for; some of it she has quietly redistributed; some of it she keeps because no one is alive who could claim it. She will not list it.
 - **Where the senior figures of the Badger clan are.** Asking is not impolite; answering would be.
-- **What she does on her once-a-season night in the upper hollow.** Not because it is dramatic — because it is *hers*, and she has earned the right to a private hour a quarter.
+- **What she does on her once-a-season night in the cellar.** Not because it is dramatic — because it is *hers*, and she has earned the right to a private hour a quarter.
 - **Her trader-name from the Linar–Salmonswell road.** She prefers Bridget-the-Innkeeper as her current identity. She does not want her old reputation walking in the door behind a passing merchant.
 
 ## DM notes
 
-- The Inn occupies the **lower floor and a partial cellar** of the great ironwood's hollow. **Upper floors exist** (the tree once held several) and are **physically reachable** — the blocker is not material, it is grip. The ironwood has tightened around the edges of each plank over decades; ordinary iron tools suffice, but removing them is days of brutal overhead crowbar work, and nobody in Elmsfield has the spare week. The problem is two-part:
-  - **Labor.** Days of overhead prying, without splitting bark. Splitting bark is the line — damage the *tree* and the town turns on whoever did it (see the row for that).
-  - **Closure.** Bridget will not shut the Inn for several days of hammering overhead. The room has to stay drinking, sleeping, and eating through the work — or she needs a plan that compresses the disruption (night shifts while rooms are empty; a staged plank-by-plank approach over weeks; a way to muffle or tent the work area). A party that offers labor *and* solves the closure problem has a direct path into her confidence.
-- **What the upper floor actually is.** Once the planks are off, the space is *big* — a full second room of the Inn, easily doubling her capacity. But that is not the end of it. In one wall of the upper floor, a **narrow vertical shaft runs up inside one of the great branches**. A Badger-sized body can climb it with work; a human needs ingenuity (and may not fit at all without widening, which the tree will not forgive). At the top: a **small secret compartment inside the branch itself**, fitted by whoever lived in the tree before the town existed. Contents are the DM's to place — the natural candidate is the deepest, least-retrievable portion of the wartime hoard (Bridget has never climbed the shaft, so it cannot be something *she* put there; it is older). Bridget does not know the shaft exists. The moment the party finds it, her relationship with them changes.
-- **Long-arc: the tree-hut with terraces.** The same branch that holds the shaft is thick enough to carry a structure. Whoever lived in this tree before the town *used the height* — Bridget's own line already foreshadows it (see *the upstairs problem*). A party committed across many sessions, with Elmsfield's eventual help, can open the shaft into a proper **tree-hut with terraces overlooking the town**. Visible from every approach to Elmsfield. A public mark that the party changed the shape of the place. Bridget's unspoken wish; she will not name it aloud until the work on the upper floor is already under way, because she does not let herself want things she hasn't earned.
-- The **wartime hoard** was hidden in the tree the night before the overseas force arrived. The raiders could not get in (see *the day they couldn't get in*). Some was reclaimed after the war; the rest remains. Bridget alone keeps the inventory in her head — *and on the slate*. The non-tab marks (leaf, dot-in-square, crossed lines, and others) are the hoard ledger, encoded in Badger-road trader shorthand and sitting in plain view among the drinking debts. The top-left corner, which she never wipes, is the index. Anyone who can read Badger trader shorthand (rare outside the clan and the old road families) could start to make sense of it. Breaking the code is a genuine narrative prize — commit to it before you let the party crack it.
-- **Pollination would close the Inn.** She knows the threat in principle; she does not yet know about Diederik's overseas plan in detail. *When she does, she has a direct stake* — and the conversation between her and Diederik about it is one the party may end up brokering.
+- **The slate is a double ledger.** The tab marks are real drinking debts. The **non-tab marks** (leaf, dot-in-square, crossed lines, and others) are the **wartime hoard inventory**, encoded in Badger-road trader shorthand and sitting in plain view among the tabs. The top-left corner, which she never wipes, is the index. The hoard itself is hidden in fitted panels in the Inn's cellar walls (see `../places/elmsfield_inn.md` §"The cellar"); her once-a-season lantern visit is the physical reconciliation. Anyone who can read Badger trader shorthand — rare outside the clan and the old road families — could begin to make sense of the slate. Breaking the code is a genuine narrative prize; commit to it before letting the party crack it.
+- **The hoard on the slate is NOT the shaft-compartment.** The shaft and its older compartment (beyond the upper floor; see the Inn file) predate the town. Bridget does not know the shaft is there and cannot have hidden anything in it. If the party finds it, that is a separate, older thread — not the wartime hoard. Keep the two caches distinct.
+- **Pollination would close the Inn.** She knows the threat in principle; she does not yet know about Diederik's overseas plan in detail. When she does, she has a direct stake — and the conversation between her and Diederik is one the party may end up brokering.
 - The tree being a **sterile female ironwood** is a conversation Diederik could have with her. She has not yet had it. Her current understanding is: *very old, can't be cut, town is built around it, survived the war.* She would listen if Diederik (or a credible party) explained the rest.
-- Lore cross-references: ironwood biology in `doc/claude/LORE.md` §"Ironwood itself"; the fruiting cost in §"Fruiting is not easy"; the wartime occupation in `doc/claude/CAMPAIGN.md` §"The Overseas War."
+- **Physical Inn mechanics** (gripped planks, labor cost, closure cost, the shaft, the compartment, the tree-hut long-arc) live in `../places/elmsfield_inn.md`. This file covers her; that file covers the space.
+- Lore cross-references: ironwood biology in `../claude/LORE.md` §"Ironwood itself"; the fruiting cost in §"Fruiting is not easy"; the wartime occupation in `../claude/CAMPAIGN.md` §"The Overseas War."
 
 ## Relationships
 
@@ -161,5 +156,6 @@ For students she judges have the head for it:
 
 ## Sources
 
+- doc/places/elmsfield_inn.md — the physical Inn
 - doc/claude/CAMPAIGN.md
 - data/moros-campaign-2026-03-04.json

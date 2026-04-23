@@ -34,7 +34,7 @@ The heart of town. The square is not formal — it is the packed-earth space the
 
 The **ironwood tree** is the place that matters most, and the rest of the town defers to it:
 
-- **Bridget's Inn is inside the hollow** (lower floor + partial cellar; upper floors boarded and tree-gripped, reopenable by labor — see `doc/npcs/bridget.md` §"At the Inn" and §"DM notes").
+- **Bridget's Inn is inside the hollow** (lower floor + partial cellar; upper floors boarded and tree-gripped, reopenable by labor). See [`elmsfield_inn.md`](elmsfield_inn.md) for the space and [`../npcs/bridget.md`](../npcs/bridget.md) for the Innkeeper.
 - **The tree hid the town's wartime hoard** during the occupation; the overseas raiders could not open it with any tool they had. Parts of that hoard are still inside. Bridget alone keeps the inventory.
 - **The tree is a fertile female ironwood** — sterile because there are no males on this continent. Very few people in Elmsfield understand this; Diederik does, and the question of what to do about it drives much of what he is quietly preparing. See `doc/npcs/elder_diederik.md` §"The errand only the party can run".
 
