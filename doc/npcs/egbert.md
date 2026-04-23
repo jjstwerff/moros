@@ -26,6 +26,19 @@ Egbert does not introduce herself. If the party speaks to her, she returns a sho
 - **A seat with a specific line-of-sight** at the farmhouse table — the one with the door and the window both in view. Nobody else uses that chair.
 - **Disappears briefly when strangers arrive in numbers.** If a cart pulls up with three or more new faces, Egbert is somewhere else until Hank has read the situation. This is not hiding; it is caution.
 
+## At Elmsfield's gate — Session 1
+
+The opening scene of the campaign. Egbert arrives **second** — after [Farmer Joseph](farmer_joseph.md) has raised the first fear-voice, and before [Elder Diederik](elder_diederik.md) arrives with the full diagnosis. Hank sent her, or she heard the commotion from the farm; either way, she is the first competent pair of hands at the gate, and she is the one the town is most uneasy about.
+
+- **She does not know what the crystal is.** Fungus, mineral, spirit-work — she cannot say. This is not her lore.
+- **Her nose works.** Wolf-folk **Smell** applied to a fevered body reads, at close range, the specific *wrongness* of a contagious sickness — cholera-sourness, fever-stink, the body's alarm of *spreading something*. She gets none of that from Irna.
+- **The crystal is almost scent-free.** It has no smell a wolf-folk nose would flag. This is, the campaign will later confirm, part of *why* Irna could get infected — nothing in the body's natural warning system told her to stay away from the Lake-of-Tears fungus. Egbert is the first person at the gate to notice this absence, and she reads it correctly: *carrying something, not spreading something.*
+- **She says it short.** *"She's not sick the way you think. No smell on her."* She does not elaborate. She does not stay.
+- **The town listens to her despite themselves.** She is the neighbour they are wary of; she is also the one who has just given a concrete answer a frightened man can hold. A party that **backs her on the read** brings Joseph's temperature down meaningfully before Diederik even arrives. A party that **dismisses her because the town is wary of her** leaves the read on the floor; Joseph holds his line; Diederik has to do more work.
+- **She is gone before Diederik is speaking.** The town does not want her at a formal scene and she does not want to be at one. She goes back to the farm. The party who backed her will find her easier to approach at Hank's that evening.
+
+This scene is the party's *first* encounter with Egbert, almost certainly earlier than they would otherwise meet her. It plants three seeds: her **Smell** is real and usable; the town's wariness of her is something she lives with openly; and there is a quiet early alliance available to a party who reads the scene correctly.
+
 ## At the fields at night
 
 Where the party will see her most. The farm's outer plots at the edge of the treeline; lanterns staked at the corners; her work quiet and methodical.
@@ -112,6 +125,8 @@ When the relevant topic comes up and she chooses to answer.
 | Brings her the sergeant's description | Listens. Repeats nothing back. Finds Hank afterwards and tells her in her own way. |
 | Insults wolf-folk in her hearing | One warning, soft. *"Don't."* If repeated, she leaves the scene and the party's standing at the farm drops audibly. |
 | Offers to walk the night with her, no agenda | Accepted if the party has shown they can be quiet. She will not explain the work; she expects them to watch. A party that makes it through a full night with her earns something she does not give otherwise — an unguarded sentence or two at dawn. |
+| Backs her smell-read at the gate in Session 1 | She notices. She says nothing at the time. When the party comes to the farm later, she meets them in the yard instead of leaving it to Hank. An early, quiet standing with her — earned in the one scene where her wariness-from-the-town was on full display and the party chose her anyway. |
+| Dismisses her smell-read at the gate in Session 1 | She notices. She says nothing at the time. At the farm afterwards she lets Hank do all the talking; the party will not speak directly with Egbert for several visits. Recoverable, but slow. |
 
 ## What she says about other people
 

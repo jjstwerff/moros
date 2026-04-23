@@ -30,12 +30,14 @@ He is not shouting at the party specifically. He is shouting at the **gate**, at
 
 ## At the gate — Session 1
 
-The opening scene. See `../claude/SCENARIOS.md` or the DM notes below for where this sits in the campaign arc.
+The opening scene. See `../claude/CAMPAIGN.md` §"Session 1 — An Unexpected Guest" for where this sits in the campaign arc.
 
 - **Joseph arrives before most of the town does.** The gate sentry sent for Diederik, but Joseph lives close and heard the commotion.
 - **His sling is in his hand, not in his belt.** Not pointed; not loaded; out. The signal.
 - **His fear is not irrational.** He is not acting on prejudice against Brumal refugees, foreigners, or the Bean name. He is acting on a specific memory of the post-war cholera outbreak that killed people he knew. That memory does not distinguish between contagions; it has one lesson, and the lesson is *keep it outside*.
-- **Addressing him correctly moves the scene.** Acknowledge the town's safety — *not Irna's personhood yet* — and he will listen. Override him, and the rest of the townsfolk who are quietly backing him will back him more loudly. Mock his fear, and he stops listening at all.
+- **[Egbert](egbert.md) arrives second — a beat before Diederik.** Hank sent her, or she was close; either way, it is the person the town is wariest of who walks in with the first competent hands. She does *not* name the crystal; she cannot. What she does is **smell**. What her smell tells her is that Irna **does not smell sick** — no cholera-sourness, no fever-wrongness, nothing that a spreading sickness leaves on a body. The crystal itself is almost scent-free. To Egbert's nose, Irna reads as *carrying something, not spreading something*. She says as much, shortly, and the town listens despite wanting not to.
+- **Addressing Joseph correctly moves the scene.** Acknowledge the town's safety — *not Irna's personhood yet* — and he will listen. Egbert's smell-read is the kind of concrete answer his fear can hear; a party that *backs her on it* brings him down significantly. A party that dismisses Egbert because the town dismisses her leaves Joseph holding his line, and Diederik's arrival has to do more work to close the scene.
+- **[Elder Diederik](elder_diederik.md) arrives last.** He gives the full diagnosis — the crystalline growth is a fungus from the **Lake of Tears**, not contagious through air or contact. He confirms what Egbert's nose already ruled out and adds the source and the cure path. Egbert is usually gone by the time he is speaking; the town does not want her at a formal scene, and she does not want to be at one.
 
 ## At his smallholding
 

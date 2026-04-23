@@ -9,9 +9,9 @@
 
 Session 1's opening obstacle. Irna is feverish, half-blind, **crystalline fungal growths on her skin and over her eyes**, breathing laboured. She **cannot speak**. Her cloak is pulled tight. She is slumped against a post and the only thing keeping locals off her is **a large grey-muzzled dog** that has already driven off two of them.
 
-Whatever she came here to do, she is not doing it now. The party are bystanders who can choose to act. Diederik will arrive shortly and take charge of her care; before that, the party may calm the dog, examine her, and discover the letter she carries to Father Elliot. She will not consent or refuse — she is past that.
+Whatever she came here to do, she is not doing it now. The party are bystanders who can choose to act. **[Farmer Joseph](farmer_joseph.md)** is the first voice raised — loud, afraid, sling in hand. **[Egbert](egbert.md)** arrives a beat later and reads Irna with her nose: no contagion smell, and the crystal itself is almost scent-free. She says short: *"She's not sick the way you think."* **[Elder Diederik](elder_diederik.md)** arrives last and takes charge of her care, adding the full diagnosis (Lake of Tears fungus, not airborne, not contact-spread). Before that full arrival, the party may calm the dog, examine her, and discover the letter she carries to Father Elliot. She will not consent or refuse — she is past that.
 
-This phase is short. She is unconscious or near-unconscious for most of it. The dog speaks for her.
+This phase is short. She is unconscious or near-unconscious for most of it. The dog speaks for her; Egbert's nose speaks for the *not-sickness-you-think*; Diederik speaks for the cure path.
 
 ## What the party meets — Phase 2: once recovered
 
