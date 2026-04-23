@@ -23,7 +23,7 @@ Each card carries:
   Capital of Allondo
   Known for: The royal court; King Hannes; the training
              yards where enlisted soldiers learn
-  Who's there: Hannes, Fienna, Corven, Didrich, Ron,
+  Who's there: Hannes, Fienna, Corven, Steven, Ron,
                Lady Rhianna Linthrope
   Earned by: Having standing at court — invited, known,
              or welcomed by someone who lives there
@@ -51,7 +51,7 @@ Each card carries:
             visible on the campaign region map)
   Known for: The mines; forced-labour details assigned
              by the crown; where Irna was sent after
-             the Didrich incident
+             the Steven incident
   Who's there: No named NPCs currently
   Earned by: Having done work there or spoken to someone
              who was kept there

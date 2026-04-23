@@ -30,7 +30,7 @@ Depending on when the party arrives, they may also catch **a group of Skull Gath
 - **Prince Corven departing on night rides** — in plain travel gear, on a fast horse, with no announcement. The court knows. The court gossips. The true destination (Princess Penelope of Brumal) is not among the common guesses. See `doc/npcs/prince_corven.md` §"The night rides — what the court sees."
 - **Lady Rhianna Linthrope holding small court** at her residence — Mouse-clan priestess, court figure, teacher to the worthy. People come to her. See `doc/npcs/rhianna_linthrope.md`.
 - **Skull Gatherers passing through** periodically — townspeople fall quiet, look sideways, go about their business once the Gatherers are gone.
-- **Didrich, the second prince, often alone** — studying plants, walking the outer courtyard, not at his brother's side the way a second son "should" be. His herbalist's inclination is visible if anyone looks for it.
+- **Steven, the second prince, often alone** — studying plants, walking the outer courtyard, not at his brother's side the way a second son "should" be. His herbalist's inclination is visible if anyone looks for it.
 
 ## At the royal palace
 
@@ -38,7 +38,7 @@ The heart of the city. Stone, old, not grand. Smaller than visitors from larger 
 
 The party reaches the palace only with invitation or standing. Casual arrivals get as far as the outer courtyards and no further.
 
-**The royal family resides here.** For individual scene treatment of each family member — the king's public bearing, the queen's Leatherman expertise, Corven's martial façade, Didrich's herbal quietness — see the individual NPC files. This place file covers the palace as a place.
+**The royal family resides here.** For individual scene treatment of each family member — the king's public bearing, the queen's Leatherman expertise, Corven's martial façade, Steven's herbal quietness — see the individual NPC files. This place file covers the palace as a place.
 
 Features of the palace a party visiting will notice:
 
@@ -63,7 +63,7 @@ The residence is where:
 
 ## At the training yards
 
-East of the palace. Multiple yards; overlapping use; a kind of formal chaos. The master-at-arms runs them competently; the princes train here (Corven seriously, Didrich under duress).
+East of the palace. Multiple yards; overlapping use; a kind of formal chaos. The master-at-arms runs them competently; the princes train here (Corven seriously, Steven under duress).
 
 A party watching the yards will see a scale of preparation that does not match Allondo's public posture of peace. Informed observers (Irna, anyone with military background, Rhianna if she chooses to explain) will confirm what the yards' rhythm already says.
 
@@ -89,7 +89,7 @@ A party with something to hide will find the gate harder than Elmsfield's — Sc
 | That the court is uneasy about Queen Fienna | Felt in the room; nobody says it aloud. |
 | That King Hannes was a younger prince who did not expect the throne | Once asked of any senior courtier. Plainly. |
 | That Lady Rhianna is the capital's real spiritual practitioner | Once someone gets sick and is told where to go. |
-| That Didrich is herbalist-inclined | Only by observation, or through Diederik if the party has brought his name this far. |
+| That Steven is herbalist-inclined | Only by observation, or through Diederik if the party has brought his name this far. |
 | That Brumal pressure is growing and a war is being prepared for | Only if the party pieces the yards + the quartermasters + the lack of any announcement. |
 | Where the Skull Gatherers go | Nobody in the city knows. Asking does not help. |
 
@@ -101,7 +101,7 @@ A party with something to hide will find the gate harder than Elmsfield's — Sc
 | Follows Prince Corven on a night ride | Corven notices — he is not untrained. A party that catches up and confronts him honestly opens the Corven/Penelope arc; a party that spies on him without being caught carries the knowledge at their own risk. |
 | Presents themselves to Lady Rhianna with a credible introduction | Received. She judges them across one or two visits before committing to anything. A party she approves of opens her teaching and her network. |
 | Tries to see King Hannes without going through channels | Fails. Hannes is protected; the party is redirected, watched, or politely removed from court. |
-| Brings news of Irna to the palace | Depends who they bring it to. Rhianna: immediate action. Didrich: privately important (see his file §"Seeking Irna out"). Hannes: received coldly, noted, filed; the crown has not reversed anything about Ron's enlistment. |
+| Brings news of Irna to the palace | Depends who they bring it to. Rhianna: immediate action. Steven: privately important (see his file §"Seeking Irna out"). Hannes: received coldly, noted, filed; the crown has not reversed anything about Ron's enlistment. |
 | Speaks with Queen Fienna about the Leathermans | She opens up carefully — northern-coast networks, the railroad, the family's aims. This is a scene she rarely gets to have; a party that asks well earns access to a channel most Allondan courtiers do not know exists. |
 | Attempts to sell an item of unclear origin | The merchant will buy it, or refuse it, based on the item. A forged or stolen high-value item attracts the crown's attention within days. |
 | Approaches the Skull Gatherers | Ignored if the approach is casual. Specific offerings, proper forms of address, or a credible vouch may change this — see `doc/npcs/skull_gatherers.md`. |
@@ -113,7 +113,7 @@ A party with something to hide will find the gate harder than Elmsfield's — Sc
 - **The court is not on the party's side by default.** Even if their errand is legitimate, court politics will slow them down, interpret them uncharitably, and use them as moves in factional games the party does not know are being played. A party arriving with standing (via Rhianna, via Diederik's letter, via having saved Irna) has some protection; a party arriving cold has very little.
 - **Rhianna is the capital's real spiritual shield**, and she is thinner cover than the city thinks. If she ever leaves Scarlet Vale for any reason, the city's chaotic-spirit pressure rises quickly. This is not obvious to the party or to most courtiers; a shaman or druid visiting would see it at once. See `doc/claude/LORE.md` §"Spirit Ecology" and §"The protection is largely unseen."
 - **The hidden Corven/Penelope thread runs through this place** — it is the capital's single most destabilising fact, and nobody with the power to act on it has the information. The party may be the first outsiders to piece it together. See `doc/npcs/prince_corven.md` and `doc/npcs/princess_penelope.md`.
-- **Didrich's private arc** opens here. His druidic inclination, his quiet protectiveness of his mother, his intention to go find Irna privately after rumours reach the capital — all of these are threads the party can encounter in Scarlet Vale if they look. See `doc/npcs/didrich.md`.
+- **Steven's private arc** opens here. His druidic inclination, his quiet protectiveness of his mother, his intention to go find Irna privately after rumours reach the capital — all of these are threads the party can encounter in Scarlet Vale if they look. See `doc/npcs/steven.md`.
 - **The Skull Gatherers pass through periodically.** A DM can use their presence as an immediate visible thread for a party just arriving, without committing to more than that in the first visit.
 - Lore cross-references: Allondo's geography in `doc/places/geography.md` §"Allondo"; the Overseas War background in `doc/claude/CAMPAIGN.md` §"The Overseas War"; the coming Brumal war in `doc/claude/CAMPAIGN.md` §"The Neighbour's Crisis" and §"The War Pressure"; Irna's Clear Water testimony as concrete evidence in `doc/npcs/irna_bean.md` §"When the topic is Clear Water"; the Bean enlistment bargain in `doc/npcs/king_hannes.md`.
 
@@ -124,7 +124,7 @@ Named NPCs living in Scarlet Vale:
 - **King Hannes** — king of Allondo; palace. `doc/npcs/king_hannes.md`
 - **Queen Fienna** — queen; Leatherman-by-birth; palace. `doc/npcs/queen_fienna.md`
 - **Prince Corven** — Crown Prince; martial heir; palace (when not on a night ride). `doc/npcs/prince_corven.md`
-- **Didrich** — second prince; palace. `doc/npcs/didrich.md`
+- **Steven** — second prince; palace. `doc/npcs/steven.md`
 - **Lady Rhianna Linthrope** — Mouse-clan priestess; own residence. `doc/npcs/rhianna_linthrope.md`
 
 Passing through periodically:

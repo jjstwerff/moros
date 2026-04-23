@@ -27,7 +27,7 @@ He greets them correctly. He asks their business. He listens longer than most ki
 - **Morning audiences, midday councils, evening walks.** The schedule is public and posted. A party can aim for any hour of it.
 - **He reads reports himself.** A king's clerks exist; Hannes still reads the originals. The staff has stopped arguing about it.
 - **Fienna attends the harder audiences.** Not always visible; sometimes in the adjacent room with the door ajar. The court knows; the court does not discuss.
-- **He eats with his sons when they are in the palace.** Rarely both together. Corven is often away (see `doc/npcs/prince_corven.md` §"The night rides"); Didrich eats with his father when Corven is gone.
+- **He eats with his sons when they are in the palace.** Rarely both together. Corven is often away (see `doc/npcs/prince_corven.md` §"The night rides"); Steven eats with his father when Corven is gone.
 - **A specific hour in the chapel at dusk.** Alone. He does not announce it; the chapel servants know to leave. He prays to gods he is no longer sure he believes in and is certain he owes. This is the one hour of his day he has not ceded to the kingdom.
 - **A ledger he keeps personally.** Rhianna's debts, Felix's, John's. Not the debts owed *to* the crown — the debts owed *by* it. He does not show this ledger. He does not deny it.
 - **Signatures late at night.** The scribes' work comes to him after dinner. He signs in candlelight. The chamberlain has given up asking him to let a delegate sign for him.
@@ -114,11 +114,11 @@ When the topic comes up — and when the register permits it.
 
 > *"The desert is taking Brumal from the south. Steadington is already lost. Refugees are reaching Hank's farm; they are reaching Salmonswell; they will reach Scarlet Vale by autumn. Brumal will push back; what pushes back a kingdom losing its land is war. Allondo shares a border with Brumal; the border is undefended in the south where our attention was on Linar for a generation. I am preparing. I am not announcing that I am preparing, because announcing it makes Brumal more likely to push sooner. You will have seen the training yards running in rotation; you will have seen the quartermasters quiet in the markets. That is what it looks like. That is what I can do. I cannot undo the desert."*
 
-### When asked about the Didrich attack — *the second live embarrassment*
+### When asked about the Steven attack — *the second live embarrassment*
 
 *(Audience chamber; guardedly.)*
 
-> *"My second son was attacked by the Bean woman, non-lethally. She is in exile at Luchebert. The matter is closed. Didrich was not seriously harmed. I am not proud of the story, and I will not discuss it further at length."*
+> *"My second son was attacked by the Bean woman, non-lethally. She is in exile at Luchebert. The matter is closed. Steven was not seriously harmed. I am not proud of the story, and I will not discuss it further at length."*
 
 *(A hand on the signet. He means it; the topic is not open.)*
 
@@ -144,7 +144,7 @@ When the topic comes up — and when the register permits it.
 | Mentions Corven's night rides | Careful. He has noticed. He asks what the party knows; he does not commit to knowing it himself. |
 | Suggests Corven is in Brumal | Long silence. The signet turns several times. He does not deny; he does not confirm. *"Tell me why you say so."* |
 | Brings news about the coming war publicly | He accepts publicly in measured terms. He will thank the party formally. He will want them in the garden that evening. |
-| Brings news about Didrich's welfare | He listens. If Didrich is in trouble, his temperature rises visibly for the first time in the audience. |
+| Brings news about Steven's welfare | He listens. If Steven is in trouble, his temperature rises visibly for the first time in the audience. |
 | Asks about John Bean | He will not say much. A private word — rare — may surface *"I owe that man more than the bargain. I cannot say so in public."* |
 | Offers the crown's help with a campaign matter (a mission to Brumal, an escort to Fata morgana, an overseas envoy) | Considers seriously. Does not commit in the chamber. Sends word through Rhianna or through a direct message to the party's lodging within days. |
 | Threatens the crown | Cool. Not frightened. *"The crown has answered threats before. It is not what a man in my chair responds to in haste."* Guards are called without his voice rising. |
@@ -158,7 +158,7 @@ When the topic comes up — and when the register permits it.
 | **Father Elliot** | *"My brother. The prince who walked away. I carry what he put down."* |
 | **Queen Fienna** | *"The better half of this reign. The court does not see it; she does not need it seen. I am working on the voice I need for her."* |
 | **Prince Corven** | *"My heir. The prince I was meant to be. I watch him carefully. He is carrying more than I have asked him for."* |
-| **Didrich** | *"My second son. Quieter work than his brother's. A recent humiliation he does not deserve to carry alone."* |
+| **Steven** | *"My second son. Quieter work than his brother's. A recent humiliation he does not deserve to carry alone."* |
 | **John Bean** | *"The boar-folk farmer who killed the man who held me. The crown has not repaid what he is owed. The bargain is what the crown could bring itself to offer."* |
 | **Felix** | *"The scout who pulled me out. He has the harder thanks; he has not asked for any thanks at all. He appears at fairs; he drinks the ale the crown pays for; he leaves."* |
 | **Lady Rhianna Linthrope** | *"The priestess who stormed my castle over the Bean daughter. I could not refuse her. I owe her a ledger of favours I keep privately."* |
@@ -191,7 +191,7 @@ When the topic comes up — and when the register permits it.
 - **Corven is the thing Hannes cannot face.** A DM holding Corven back from Hannes until the campaign forces a confrontation preserves the arc. Hannes half-knows; he has chosen not to ask.
 - **The chapel hour is a trust-gated private access.** A party that has earned the walk in the garden many times, with Rhianna vouching, and with genuine kingdom-facing work in hand, may be admitted to the chapel once. Treat it as a rare currency.
 - **The ledger of debts is campaign-scale.** If the party earns sight of it (unlikely, but possible via Rhianna's deep trust), they see the shape of Hannes's accounting — who pulled him out of the war, who covered for him in the renunciation, who has quietly held the kingdom together while he learned. This is the kind of reveal a DM can play as a scene, not an info-dump.
-- Lore cross-references: the capture in `doc/claude/CAMPAIGN.md` §"The Overseas War"; Raul in `doc/npcs/raul.md`; Thorgal in `doc/npcs/thorgal.md`; the mirror in Thorgal's file §"Who knows the location"; Elliot's renunciation in `doc/npcs/father_elliot.md`; Fienna in `doc/npcs/queen_fienna.md`; Corven in `doc/npcs/prince_corven.md`; Didrich in `doc/npcs/didrich.md`; Rhianna in `doc/npcs/rhianna_linthrope.md`; John Bean and Felix in their files; Ron Bean's arc in `doc/npcs/ron_bean.md`; Irna's attack in `doc/npcs/irna_bean.md`; the palace and court context in `doc/places/scarlet_vale.md`; the Brumal collapse thread in `doc/claude/CAMPAIGN.md` §"Brumal's collapse."
+- Lore cross-references: the capture in `doc/claude/CAMPAIGN.md` §"The Overseas War"; Raul in `doc/npcs/raul.md`; Thorgal in `doc/npcs/thorgal.md`; the mirror in Thorgal's file §"Who knows the location"; Elliot's renunciation in `doc/npcs/father_elliot.md`; Fienna in `doc/npcs/queen_fienna.md`; Corven in `doc/npcs/prince_corven.md`; Steven in `doc/npcs/steven.md`; Rhianna in `doc/npcs/rhianna_linthrope.md`; John Bean and Felix in their files; Ron Bean's arc in `doc/npcs/ron_bean.md`; Irna's attack in `doc/npcs/irna_bean.md`; the palace and court context in `doc/places/scarlet_vale.md`; the Brumal collapse thread in `doc/claude/CAMPAIGN.md` §"Brumal's collapse."
 
 ## Background — for the DM
 
@@ -215,7 +215,7 @@ When the topic comes up — and when the register permits it.
 - doc/npcs/rhianna_linthrope.md
 - doc/npcs/queen_fienna.md
 - doc/npcs/prince_corven.md
-- doc/npcs/didrich.md
+- doc/npcs/steven.md
 - doc/npcs/ron_bean.md
 - doc/npcs/irna_bean.md
 - doc/places/scarlet_vale.md

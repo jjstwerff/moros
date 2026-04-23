@@ -119,7 +119,7 @@ When the relevant topic comes up. Shorter than most, because Ron is closed. A pa
 ## Mannerisms
 
 - **When pressed** — shoulders drop; sentences get shorter; eye contact goes to the yard's edge or the training post. The party will read this as withdrawal. It is — but not rejection. He cannot afford to let the anger show in a military yard.
-- **When distraught** (family mentioned, Irna's attack on Didrich brought up, the proclamation raised) — **the small tusks click once**, a tiny sound, a tell he does not know he has. A party paying attention catches it.
+- **When distraught** (family mentioned, Irna's attack on Steven brought up, the proclamation raised) — **the small tusks click once**, a tiny sound, a tell he does not know he has. A party paying attention catches it.
 - **When happy** (rare in Scarlet Vale, regular at the farm) — the farm-walk comes back. The gait slows; the shoulders rise. A specific dry laugh when the joke about the drill-master lands with Petra. He does not announce happiness; it shows in the body.
 
 ## If the party does something — what he does
@@ -139,7 +139,7 @@ When the relevant topic comes up. Shorter than most, because Ron is closed. A pa
 | Invites him to join the party after discharge | Takes it seriously. Does not commit on the spot. *"If they let me go, and my sister is alive, we will see."* |
 | Mocks or degrades a recruit near him | He intervenes short and firmly. (See story above.) |
 | Threatens his family | The shield-callused hands come up; the closed face does not change. He is trained. He will not strike first; he will not yield ground either. |
-| Mentions Didrich | *"My sister attacked him."* Neutral. He does not celebrate the attack; he also does not call it wrong. He has thought about it and has not landed. |
+| Mentions Steven | *"My sister attacked him."* Neutral. He does not celebrate the attack; he also does not call it wrong. He has thought about it and has not landed. |
 | Mentions Corven | *"The crown prince. I have seen him once. He looked away."* That is all. He does not volunteer more. |
 | Mentions the king directly | *"The king holds my family's bargain. I do my drill. I do not discuss the king in the yard."* |
 | Helps Petra specifically | Wins a small amount of Ron's openness. Petra is his one close tie here; kindness to Petra lands. |
@@ -153,7 +153,7 @@ When the relevant topic comes up. Shorter than most, because Ron is closed. A pa
 | **Father Elliot** | *"The abbot who named me by mistake. He knows he did it. He has not fixed it."* |
 | **King Hannes** | *"The king. He holds the bargain. I do my drill."* |
 | **Rhianna Linthrope** | *"The lady who wrote the letter trying to undo this. I have not met her. I would like to thank her."* |
-| **Prince Didrich** | *"My sister attacked him. I have thought about it. I have not landed."* |
+| **Prince Steven** | *"My sister attacked him. I have thought about it. I have not landed."* |
 | **Prince Corven** | *"The crown prince. I have seen him once."* |
 | **Petra** | *"Ox-folk. Same rank. Same drill. She makes the days bearable."* |
 | **The other recruits** | *"Some are fine. Some I watch. A yard is a yard."* |
@@ -164,7 +164,7 @@ When the relevant topic comes up. Shorter than most, because Ron is closed. A pa
 - **Court politics.** Not in the yards. Not to strangers. Possibly not even after discharge.
 - **His private anger at his father.** The farm knows; the yards do not; the party learns it only if earned.
 - **Names of trainees who treated him cruelly.** He will not inform on anyone. Not moral; survival.
-- **His full feelings about Irna attacking Didrich.** He has not landed, and he will not perform a landing for anyone.
+- **His full feelings about Irna attacking Steven.** He has not landed, and he will not perform a landing for anyone.
 - **His plans in detail until dismissal is near.** He keeps them private. Saying them in the yard makes them unlikely.
 
 ## What he can teach
@@ -185,8 +185,8 @@ Only after discharge, and only if he joins a party.
 - **Petra is small-scope on purpose.** An ox-folk recruit, no deeper backstory required. She makes Ron's yard-life bearable. The DM can develop her if the campaign wants; otherwise she is a walking hint that Ron is not alone.
 - **The small-tusks-click is the tell.** Use it sparingly. Once per scene at most. When it lands, the party knows the topic went deep.
 - **He joins the party post-discharge only if the campaign earns it.** A Ron travelling with the party is a valuable companion — defensive work, watch discipline, farm-sense — but only after dismissal. Do not have him desert; the story is that the kingdom lets him go because the proclamation was corrected.
-- **His disagreement with Didrich is unsettled.** If the party can arrange a conversation between them — Didrich quietly, Ron on leave — it is one of the campaign's more powerful private-scenes. Neither knows how to start it. The party can.
-- Lore cross-references: the proclamation and Elliot's silence in `doc/npcs/father_elliot.md`; Rhianna's letter trying to correct it in `doc/npcs/rhianna_linthrope.md`; Irna's history and the sister-channel in `doc/npcs/irna_bean.md`; John Bean's bargain in `doc/npcs/john_bean.md`; Hannes's side in `doc/npcs/king_hannes.md`; Didrich's story in `doc/npcs/didrich.md`; the training yards in `doc/places/scarlet_vale.md`; the Bean farm at Blackwood freehold (currently no place file — see audit).
+- **His disagreement with Steven is unsettled.** If the party can arrange a conversation between them — Steven quietly, Ron on leave — it is one of the campaign's more powerful private-scenes. Neither knows how to start it. The party can.
+- Lore cross-references: the proclamation and Elliot's silence in `doc/npcs/father_elliot.md`; Rhianna's letter trying to correct it in `doc/npcs/rhianna_linthrope.md`; Irna's history and the sister-channel in `doc/npcs/irna_bean.md`; John Bean's bargain in `doc/npcs/john_bean.md`; Hannes's side in `doc/npcs/king_hannes.md`; Steven's story in `doc/npcs/steven.md`; the training yards in `doc/places/scarlet_vale.md`; the Bean farm at Blackwood freehold (currently no place file — see audit).
 
 ## Background — for the DM
 

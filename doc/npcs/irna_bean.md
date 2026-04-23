@@ -27,7 +27,7 @@ She is **a different NPC after recovery**. Where the party met an unconscious pa
 - **An iron shackle on her ankle**, engraved with **the king of Allondo's crest**. The mine-mark from Clear Water. She wears it openly, **as defiance** — a deliberate sign that says *look what they have done to me*. It was never struck off when she was released, and she has chosen not to have it struck off since. The shackle clinks against rock and hard floors when she walks. A party will usually hear it before they see it on a patient day.
 - **The dog at her side, always.** Grey-muzzled, large, fiercely protective, unfriendly to strangers. He is part of how she reads. (See *The dog*, below.)
 - A direct gaze. Does not look away first.
-- **Hot-blooded under restraint.** She feels things quickly — anger, grief, loyalty — and most of the time she keeps the feeling on a leash she has practised. Her *unrestrained* episodes are rare and remembered (she attacked Didrich, once, on the worst morning of her life). The default Irna is *capable of* fighting and *choosing not to* — which is not the same as not feeling the urge.
+- **Hot-blooded under restraint.** She feels things quickly — anger, grief, loyalty — and most of the time she keeps the feeling on a leash she has practised. Her *unrestrained* episodes are rare and remembered (she attacked Steven, once, on the worst morning of her life). The default Irna is *capable of* fighting and *choosing not to* — which is not the same as not feeling the urge.
 
 ## The dog
 
@@ -75,7 +75,7 @@ Three things mark the experience of travelling with her:
 | Her father, in general | Freely. Once started, hard to stop. |
 | Scarlet Vale's myths about her father | She will correct them. Cringes when they are repeated approvingly. |
 | The mill where John lost his arm | Once prompted; she tells it once, in detail. |
-| Attacking Didrich | Yes, plainly. Does not hide it. |
+| Attacking Steven | Yes, plainly. Does not hide it. |
 | Clear Water and the iron-demand she watched | Once asked. She has thought about it. |
 | Ron, and what she fears for him | Yes, carefully, when alone or in trusted company. |
 | The letter she carries to Father Elliot | Yes. She knows roughly what it asks. |
@@ -96,7 +96,7 @@ When the relevant topic comes up and she trusts the listener.
 
 > *"Felix found the way in. The mill was sealed; everyone had given up. He spotted a low slot at ground level — where whole ironwood trees used to feed in toward the cutters, when the mill was running. Father went first. Father always went first. The cutting machine was still inside, and it was still working enough. They came out one short. Father has not said exactly what happened in there. I don't think he remembers all of it. Felix and I have not had our conversation about it yet. He was kind to me when I was a child; he can be kind to me now and we can still have it. When I'm ready."*
 
-### When the topic is attacking Didrich — *the morning they came*
+### When the topic is attacking Steven — *the morning they came*
 
 > *"They came to take Ron. Two knights and the second prince. I knew, the way you know, that they were the same people who had broken my mother's nights and my father's days for years. The day before, I would have stood there. I had been standing for months — for the way my mother cried, for my father's face at the table, for what I knew was coming. That morning I didn't. I flung myself at him. I did not know what I thought I could do. I did not stop them. I hurt him enough to turn it into a political incident, which is how I got the mine. I do not regret hitting him. I regret not finding a better way. I had been finding better ways for so long, and on the one morning when it counted —"* *(She breathes out.)* *"I didn't."*
 
@@ -133,7 +133,7 @@ When the relevant topic comes up and she trusts the listener.
 | Asks her to brawl-teach them seriously | Says yes; the lesson begins immediately, without warning. They will end up on the ground. They will not forget. |
 | Tries to leave her behind at Luchebert without seeing her arc through | Does not stop them. Looks at them in a way they remember. |
 | Brings her information about Ron | Stops everything. Asks them to tell her again, slowly. Will plan around it. |
-| Brings her the chance to face Didrich | Considers carefully. *"I'd like to."* Wants the meeting on her terms; will not ambush him. |
+| Brings her the chance to face Steven | Considers carefully. *"I'd like to."* Wants the meeting on her terms; will not ambush him. |
 | Hurts her dog | The party member who did it is no longer welcome around her. Recovery from this is long, and is by their work, not hers. |
 | Suggests she should let go of her grievance with the crown | *"You're new here."* Stops talking about it. Does not bring it up again with that party member. |
 | Refuses to share food with the dog | She notices. The dog notices. The party member is now eating alone. |
@@ -148,7 +148,7 @@ When the relevant topic comes up and she trusts the listener.
 | **John Bean (her father)** | *"He carried more than he should have. He still does. I am working on telling him so."* |
 | **Ron Bean (her brother)** | *"He should not be where he is. I will get to him. I do not yet know how."* |
 | **Her mother** | *(Pauses.)* *"She cried the nights she thought we couldn't hear. She heard us before we heard her."* |
-| **Didrich** | *"He came to take Ron. I attacked him. I do not regret it. If he comes to find me now, I will hear him. That is not the same as forgiveness."* |
+| **Steven** | *"He came to take Ron. I attacked him. I do not regret it. If he comes to find me now, I will hear him. That is not the same as forgiveness."* |
 | **Lady Rhianna Linthrope** | *"She got me out. I owe her the rest of my life and she will never ask."* |
 | **Father Elliot** | *"I have not met him. I have a letter for him from Rhianna. I do not know what I'll find when I get there."* |
 | **Diederik** | *"He kept me alive. I owe him. He doesn't say so."* |
@@ -179,7 +179,7 @@ For students who are willing to learn the way she learned — by doing, with bru
 - Irna is a **companion NPC**, not a destination — the *defined-home* goal adapts here to **wherever the party is** once she's recovered. Her Phase-1 location is her cot at Diederik's; from Phase 2 onward she is in motion with the party.
 - **Phase 1 is non-verbal.** She cannot speak until the cure takes. The dog speaks for her in this phase. The party's actions toward her while she is silent are remembered later.
 - The **dog is a recurring physical motif**, present in every scene. He functions as part of her reaction surface (see *The dog* and *If the party does something*). Treat him the way Felix's tail-rings work — always-present, generative, with his own minor agency.
-- **Play her hot-blooded but restrained.** Irna feels everything intensely — quick to anger, quick to loyalty, quick to grief. The discipline is hers; it is not the absence of feeling. Most provocations get her layered response (*sets her feet, voice shorter, dog closer*) before they get an actual fight; the layers are visible if a party watches for them. The Didrich attack was an exception, not a baseline. A DM playing her purely calm misses her register; a DM playing her as a brawler at every provocation misses her judgment. The interest is in the gap between *what she would like to do* and *what she chooses to do*, scene by scene.
+- **Play her hot-blooded but restrained.** Irna feels everything intensely — quick to anger, quick to loyalty, quick to grief. The discipline is hers; it is not the absence of feeling. Most provocations get her layered response (*sets her feet, voice shorter, dog closer*) before they get an actual fight; the layers are visible if a party watches for them. The Steven attack was an exception, not a baseline. A DM playing her purely calm misses her register; a DM playing her as a brawler at every provocation misses her judgment. The interest is in the gap between *what she would like to do* and *what she chooses to do*, scene by scene.
 - The **shackle is a second recurring physical motif**, audible as well as visible — it clinks when she walks. It is a **mine-mark from Clear Water** — a plain iron band engraved with the king of Allondo's crest, with a ring on the side. The ring is there as a **threat, not an active restraint**: most convicts worked unchained, because the mine itself was the prison and the shackle was the standing warning — *you are crown property, and you can be bound here any moment we decide*. Irna was never actually chained. There is nothing magical about it — any competent smith could strike it off in an hour. **She keeps it on as defiance**: a deliberate public sign that says *look what they have done to me*. People see it; people ask; she tells; the story spreads. Every time she is seen in a new place, the crown is on trial in front of her without anyone in the crown being there to defend it. The shackle comes off when the king explains it out loud — or when Irna decides she has made the point.
 - She is **the only path to Ron Bean** (see `doc/npcs/ron_bean.md`). The Bean family arc opens through her voice.
 - She is **the actual subject of the prophecy** that produced the misread "valiant spirit" proclamation. She does not yet know. Father Elliot is one of the few people who could tell her; Felicia at the shrine is another. Her arrival at Luchebert is the inflection point for that arc.
@@ -192,12 +192,12 @@ Per `doc/claude/LORE.md` §"Spirit Ecology," a true spirit-shield is a being tha
 
 The interpreters misread it. *"Valiant spirit"* was translated into martial imagery — a warrior, a protector, military might — and the conclusion drawn was that the prophecy concerned a Bean *son* destined for battle. Ron was enlisted on that reading. It is not what the prophecy meant.
 
-Irna's forced exile to Luchebert, arranged by Rhianna after the Didrich attack, is — by accident or providence — delivering her to the place where her actual potential could be recognised and trained: Felicia's shrine, Father Elliot's order, and the hill country whose quiet spiritual ecology is the densest concentration on the continent. Whether Elliot knows this about her, whether Rhianna suspects it, and whether Irna herself can survive long enough to find out, are all live questions.
+Irna's forced exile to Luchebert, arranged by Rhianna after the Steven attack, is — by accident or providence — delivering her to the place where her actual potential could be recognised and trained: Felicia's shrine, Father Elliot's order, and the hill country whose quiet spiritual ecology is the densest concentration on the continent. Whether Elliot knows this about her, whether Rhianna suspects it, and whether Irna herself can survive long enough to find out, are all live questions.
 
 ## Relationships
 
 - Daughter of **John Bean**; older sister of **Ron**. Tusk Clan of the Boar folk — small dispersed clan, kin across several nearby towns (see `doc/claude/LORE.md` §"Clans and their shape").
-- Attacked **Didrich of Allondo** non-lethally; grievance undisclosed at the time. Didrich has since, privately, gone looking for her to apologise once rumours of her disappearance reached Scarlet Vale (see `doc/npcs/didrich.md` §"Seeking Irna out"). A scene the party may be present for, wherever they are travelling with her.
+- Attacked **Steven of Allondo** non-lethally; grievance undisclosed at the time. Steven has since, privately, gone looking for her to apologise once rumours of her disappearance reached Scarlet Vale (see `doc/npcs/steven.md` §"Seeking Irna out"). A scene the party may be present for, wherever they are travelling with her.
 - Released from forced mining at **Clear Water** by **Lady Rhianna Linthrope**'s intervention.
 - Expected at **Luchebert** by **Father Elliot**.
 - Carrying Rhianna's **letter** to Elliot about the misread proclamation concerning Ron.

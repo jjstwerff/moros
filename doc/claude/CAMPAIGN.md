@@ -855,11 +855,11 @@ they point toward or teach. See each NPC's file for full detail.
   offerings, proper addresses, vouches, or meeting on their terms. Connects to
   Laurent-as-demi-lich and the missing-scholar thread.
   `doc/npcs/skull_gatherers.md`
-- **Didrich** (Scarlet Vale; may arrive privately wherever the party is travelling
+- **Steven** (Scarlet Vale; may arrive privately wherever the party is travelling
   with Irna) — second prince, quietly druid-inclined and studying herbs on his own;
   attacked by Irna and now seeking her out to apologise privately as rumours of her
   disappearance reach the capital. Offers an unofficial royal ally if the scene is
-  handled well. `doc/npcs/didrich.md`
+  handled well. `doc/npcs/steven.md`
 
 **Itinerant / periphery**
 

@@ -23,7 +23,7 @@ Related: [cards.md](cards.md) — player-facing NPC cards (earned by the party t
 - [King Hannes](king_hannes.md) — king of Allondo; holds John Bean's enlistment right to Ron.
 - [Queen Fienna](queen_fienna.md) — Hannes's wife and co-ruler.
 - [Prince Corven](prince_corven.md) — Crown Prince of Allondo; martial heir; secretly in love with a Brumal princess.
-- [Didrich](didrich.md) — second son of Hannes; young; target of Irna's non-lethal attack.
+- [Steven](steven.md) — second son of Hannes; young; target of Irna's non-lethal attack.
 
 ## Royal house of Brumal
 

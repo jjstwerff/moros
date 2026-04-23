@@ -23,7 +23,7 @@ This document lays out the four paths and catalogues the world-specific influenc
 
 **Register:** Negotiation, earned standing, public scandal as diplomatic lever. Courtroom scenes; garden walks; back-room tavern arrangements.
 
-**Lead NPCs:** Prince Corven, Princess Penelope, King Hannes, Queen Fienna (quietly), Lady Rhianna Linthrope (as fixer), Father Elliot (as corrective standing), Didrich (whose reaction shapes the court).
+**Lead NPCs:** Prince Corven, Princess Penelope, King Hannes, Queen Fienna (quietly), Lady Rhianna Linthrope (as fixer), Father Elliot (as corrective standing), Steven (whose reaction shapes the court).
 
 **Key locations:** Scarlet Vale court (`doc/places/scarlet_vale.md`), Cliffside Hold (Brumal's capital — currently no place file), Linar harbour as neutral venue (`doc/places/linar_harbour.md`), Luchebert Monastery for Elliot's legitimacy (`doc/places/luchebert_monastery.md`).
 
@@ -41,10 +41,10 @@ After the party has facilitated Corven and Penelope across sessions — carrying
 | Read the hard-liner faction's response | Perc + *Hearing* | Missing the counter-move brewing in court |
 | Offer terms (marriage-treaty, joint-kingdom, or novel structure) | *Ingenuity* | A diplomatic hole the courts cannot fill themselves |
 | Protect Penelope during the crisis hours | *Shield* or *Portage* | Hardliners acting on her physically |
-| Broker Didrich's reaction | *Clan* or *Politics* | Didrich fracturing from his brother |
+| Broker Steven's reaction | *Clan* or *Politics* | Steven fracturing from his brother |
 
 **Closes:** The war-brewing thread. Brumal and Allondo linked by succession rather than separated by border.
-**Opens:** Two-kingdom integration politics. Clan-loyalty tensions across the former border. Queen Fienna's non-royal example vindicated retroactively. Didrich's future role.
+**Opens:** Two-kingdom integration politics. Clan-loyalty tensions across the former border. Queen Fienna's non-royal example vindicated retroactively. Steven's future role.
 **Partial-failure shape:** Hannes accepts the relationship publicly but refuses formal union; the war is deferred, not closed; Brumal continues to collapse ecologically even as the border stays peaceful.
 
 ### World-specific influencers
@@ -106,7 +106,7 @@ A multi-faction working establishes a shielded line across Brumal's southern bor
 
 **Register:** Combat at scale. **Moros allows this but weighs it.** The compassion-first frame does not rule out war; it rules out *enjoying* war. The party's role in this path is not to win; it is to *fight it better* — civilians protected, specific excesses prevented, terms offered at the end.
 
-**Lead NPCs:** King Hannes and his war council, Prince Corven as field-commander (even if the Political path is not pursued, he has the training Hannes requires), Didrich (who may push too hard), Brumal's desperate generals (DM-fill — a senior commander pushed into the offensive by circumstance; a noble house trying to hold Cliffside), Raul (if he has re-entered the campaign as an overseas lever), Brother Darrel at Luchebert (the prior-war conscience).
+**Lead NPCs:** King Hannes and his war council, Prince Corven as field-commander (even if the Political path is not pursued, he has the training Hannes requires), Steven (who may push too hard), Brumal's desperate generals (DM-fill — a senior commander pushed into the offensive by circumstance; a noble house trying to hold Cliffside), Raul (if he has re-entered the campaign as an overseas lever), Brother Darrel at Luchebert (the prior-war conscience).
 
 **Key locations:** The border defense-line (specific site, DM-chosen — likely a gap in the southern hills where the desert-creep has opened passable terrain); Cliffside Hold if invasion proceeds; a specific field-battle site; Hannes's war-room at Scarlet Vale; the Linar trade road (caravan-bandit pre-war flashpoints).
 

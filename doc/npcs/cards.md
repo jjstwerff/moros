@@ -171,7 +171,7 @@ Location cards (same purpose, different subject) live at `doc/places/cards.md`.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   IRNA BEAN
   Boar folk (Tusk Clan); John's daughter; potential
-  spirit-shield; attacked Didrich
+  spirit-shield; attacked Steven
   Teaches: Brawling ("tease her too much and you get a
            free lesson"); farming; miner's craft; axe work;
            Tusk Clan charge; boar-folk smell-tracking

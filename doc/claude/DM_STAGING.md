@@ -42,7 +42,7 @@ Both are kin, both introduced in the same scene. One mental slot.
 
 ### Session 4 — Return and Recovery
 
-**New NPCs:** None in person. But **Irna names her relationships in conversation** — John Bean (father), Ron (brother), Lady Rhianna Linthrope (her advocate), Didrich (the prince she attacked), Father Elliot (her expected destination). These are *names attached to a story she tells*, not present NPCs. Players hear them; they don't meet them.
+**New NPCs:** None in person. But **Irna names her relationships in conversation** — John Bean (father), Ron (brother), Lady Rhianna Linthrope (her advocate), Steven (the prince she attacked), Father Elliot (her expected destination). These are *names attached to a story she tells*, not present NPCs. Players hear them; they don't meet them.
 
 ### Session 5+ — Vale and Monastery
 
@@ -88,7 +88,7 @@ When the campaign moves to Allondo's capital (for the Ron enlistment situation, 
 - **King Hannes** — only when the party is at court in a capacity that puts them in front of him.
 - **Queen Fienna** — observing, usually silent in public.
 - **Prince Corven** — visible before he is open.
-- **Didrich** — the prince Irna attacked; encounter is fraught.
+- **Steven** — the prince Irna attacked; encounter is fraught.
 - **Ron Bean** — in the training yard; closed off; only opens when Irna's story arrives.
 
 **Layered reveal:**
@@ -125,7 +125,7 @@ For the main NPCs, the difference between *first contact* and *earned depth* mat
 
 | NPC | First contact | Earned layer |
 |---|---|---|
-| Irna Bean | Silent, collapsed, fevered patient with crystalline growths and a protective dog | On recovery: Bean family, attack on Didrich, prophecy subject, brawler-teacher, full capability stack |
+| Irna Bean | Silent, collapsed, fevered patient with crystalline growths and a protective dog | On recovery: Bean family, attack on Steven, prophecy subject, brawler-teacher, full capability stack |
 | Joseph | Loud farmer shouting about cholera | Post-war refugee, specifics of his trauma, stretched finances, plot-bought-from-Hank, can be turned toward generosity |
 | Elder Diederik | Respected local elder with druidic training who calms the crowd | Excommunicated druid, traveller overseas, ironwood knowledge, refugee from Steadington, ascetic practice, his tree house, his proposal for ironwood survival |
 
@@ -152,7 +152,7 @@ For the main NPCs, the difference between *first contact* and *earned depth* mat
 | Hannes | King of Allondo | The capture, the John-Bean debt, the borrowed-throne weight, the brother in the monastery |
 | Fienna | Queen | Leatherman house, trade and machinery expertise, the Penelope secret she may have guessed, the railroad stake |
 | Corven | Crown Prince, martially trained | In love with Penelope; breaking apart; teaches swordsmanship and leadership to the trusted |
-| Didrich | The young prince Irna attacked | Druidic inclination, herbal study, rebuffed by formal druids, quietly hoping for Diederik's mentorship |
+| Steven | The young prince Irna attacked | Druidic inclination, herbal study, rebuffed by formal druids, quietly hoping for Diederik's mentorship |
 | Ron | Unhappy soldier in the training yard | Betrayed sense of family, defensive military training to teach, only reachable via Irna's story |
 
 ### Elmsfield on return

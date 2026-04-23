@@ -146,7 +146,7 @@ When the relevant topic comes up and she chooses to answer.
   - **Trip 2 — Elmsfield → Luchebert, with the bag.** Hank sends them on with the purse and a short unsealed note for the sergeant. Darrel refuses. Party returns with refusal and whatever Darrel redirected them to do with the coin (see `brother_darrel.md`).
   - The name, and whatever Darrel said, is Hank's actual emotional beat. It lands in pieces — the name between trips, the refusal after the monastery. See `ingram.md` and `brother_darrel.md`.
 - **Her reading of the party** is faster and more specific than most NPCs. The Back-alley habit does not go away. A DM should treat her as a *perceptive* NPC in casual scenes — she notices things the party has not told anyone.
-- Lore cross-references: clan logic in `doc/claude/LORE.md` §"Clans and their shape"; the post-war orphanage and Darrel's coins in `doc/npcs/brother_darrel.md`; Egbert's concealment in `doc/npcs/egbert.md`; Joseph's plot-purchase in `doc/npcs/farmer_joseph.md`; the Brumal crisis in `doc/claude/CAMPAIGN.md` §"The Neighbour's Crisis"; the druidic order's stance on nobility in `doc/npcs/elder_diederik.md` and `doc/npcs/didrich.md`.
+- Lore cross-references: clan logic in `doc/claude/LORE.md` §"Clans and their shape"; the post-war orphanage and Darrel's coins in `doc/npcs/brother_darrel.md`; Egbert's concealment in `doc/npcs/egbert.md`; Joseph's plot-purchase in `doc/npcs/farmer_joseph.md`; the Brumal crisis in `doc/claude/CAMPAIGN.md` §"The Neighbour's Crisis"; the druidic order's stance on nobility in `doc/npcs/elder_diederik.md` and `doc/npcs/steven.md`.
 
 ## Role in the campaign
 

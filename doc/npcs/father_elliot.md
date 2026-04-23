@@ -131,7 +131,7 @@ When the relevant topic comes up and he chooses to answer.
 |---|---|
 | **King Hannes** | *"My brother. He carries a kingdom I should have carried. I do not envy him; I owe him."* |
 | **Queen Fienna** | *"I do not know her well. From what I hear, she is good for him. That is enough."* |
-| **Didrich** | *"My nephew. I have not seen him since he was small. I would like to."* |
+| **Steven** | *"My nephew. I have not seen him since he was small. I would like to."* |
 | **Brother Darrel** | *"He is right about the letter. He is also patient. I owe him both."* |
 | **Willow** | *"She knows what we are. I have learned more from her in twenty years than I taught anyone in my old life."* |
 | **Felicia** | *"Not a person I can describe. A presence I attend to. The drive she carries is fear for those she could not save. I am one of those she did not save, and I am still here."* |
@@ -171,7 +171,7 @@ For students he judges have come honestly:
 
 - **Older brother of King Hannes**; former Crown Prince of Allondo. Led the main offensive against the invaders during the Overseas War, saw the misery of the starving demi-humans Thorgal had sent as soldiers, and renounced the crown after the war on the strength of what he could not unsee.
 - Parallel moral arc to **Brother Darrel** (the Beaver-folk sergeant who walked away from the same war for similar reasons, at a different rank), who **lives at the monastery**. They know each other well — same response to the same war at opposite ends of the chain of command — and they disagree on one issue, steadily: Darrel thinks Elliot should write the letter that corrects the Bean proclamation; Elliot has not. The disagreement does not break the relationship; it is the texture of it. See `doc/npcs/brother_darrel.md` §"What he and Elliot disagree about".
-- **Paternal uncle of Didrich** (and of the older heir).
+- **Paternal uncle of Steven** (and of the older heir).
 - **Brother-in-law of Queen Fienna.**
 - Correspondent with **Lady Rhianna Linthrope**.
 - Expecting **Irna Bean** as an exile; she is lost and ill and has not yet arrived.

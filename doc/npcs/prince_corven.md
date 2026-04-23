@@ -83,7 +83,7 @@ Rare. Earned. A DM who wants to run this scene gates it behind trust-building ac
 | The kingdoms, the news, the political questions | At court, in court-register. |
 | His mother Fienna, respectfully | Freely, with a warmth the court does not see. |
 | His father Hannes | Carefully. The register is *filial respect*. |
-| His brother Didrich | With a specific tenderness. Complicated — he loves him; he does not trust him not to pressure him into the war. |
+| His brother Steven | With a specific tenderness. Complicated — he loves him; he does not trust him not to pressure him into the war. |
 | His uncle Elliot | Quietly. Has met him privately at least once since taking on the crown-prince role; declines to say what they discussed. |
 | **Penelope** | **Never at court. Only in private, only with earned trust, only once the night rides have been surfaced honestly.** |
 | The night rides, at court | Deflected. A courteous non-answer. *"Crown business takes me to places I do not discuss."* |
@@ -112,9 +112,9 @@ When the relevant topic comes up.
 
 > *"She and I met at a meeting neither court recorded — a shared tutor travelling between us when we were fifteen, or a neutral conversation at Salmonswell, or at a court function the chroniclers did not think worth naming. I have not asked her to agree with me on which it was; we have different memories and the difference is ours. The year I understood I loved her was the year I realised I would be asked to lead a war against her country. I have been hiding it since. I am tired. She is tired. We are not as careful as we used to be. You have found me out because the cover is thinner than it was."*
 
-### When asked about his brother Didrich — *what he expects of me*
+### When asked about his brother Steven — *what he expects of me*
 
-> *"Didrich wants me to answer the Bean woman's attack on him. I will not. Not because he does not matter — he matters more than he knows — but because the answer he wants is a duel, and a duel is the opposite of what our family needs. I have told him so. He thinks I am pretending a dignity I do not feel. He does not know what I am actually carrying."*
+> *"Steven wants me to answer the Bean woman's attack on him. I will not. Not because he does not matter — he matters more than he knows — but because the answer he wants is a duel, and a duel is the opposite of what our family needs. I have told him so. He thinks I am pretending a dignity I do not feel. He does not know what I am actually carrying."*
 
 ### When asked about his uncle Elliot — *the one conversation we have had*
 
@@ -159,7 +159,7 @@ When the relevant topic comes up.
 | Offers to back him in a renunciation (the Elliot echo) | A complicated conversation. His uncle's path is known to him. He is not sure it is his. |
 | Asks him to teach | **Trust-gated.** A party that has earned his trust can learn leadership and swordsmanship from him. Not before. |
 | Tells him his mother is being slighted | The jaw sets. He thanks them; he does not go and do anything about it in the moment. He talks to Fienna later, in private. |
-| Brings word of Didrich | Careful attention. He loves his brother; he does not know how to close the distance the war is opening. |
+| Brings word of Steven | Careful attention. He loves his brother; he does not know how to close the distance the war is opening. |
 | Challenges him to a duel | He accepts, bemused. He will not hurt a challenger badly. He will not hesitate if they are a real threat. |
 | Tries to blackmail him | He refuses to be blackmailed. *"I will lose either way. Pick your loss."* He means it. |
 
@@ -170,7 +170,7 @@ When the relevant topic comes up.
 | **Princess Penelope** | *(The look.)* *"The person I love. The princess of the kingdom we are preparing to fight. I am working on the cost of loving her in this hour of the world."* |
 | **King Hannes** | *"My father. The king who gave my mother the throne she did not ask for. I respect him. I am not him. He does not know that I know that."* |
 | **Queen Fienna** | *"My mother. The kindest intelligence in the palace. The court does not see her. My father is learning to see her in public. I am learning, more slowly, to do the same."* |
-| **Didrich** | *"My brother. He does not know what I am carrying. He wants me to lead him into a fight. I love him; I will not lead him into that fight."* |
+| **Steven** | *"My brother. He does not know what I am carrying. He wants me to lead him into a fight. I love him; I will not lead him into that fight."* |
 | **Father Elliot** | *"My uncle. The prince who walked away. He told me both how to walk away and how to stay, and did not tell me which was right. I owe him a visit."* |
 | **Lady Rhianna Linthrope** | *"The priestess who reads courts. She has noticed. I do not know if she has acted. I would like to talk to her honestly; I have not risked it yet."* |
 | **John Bean** | *"The farmer. I have read the full story of what he did in the war. I am grateful to him. I would tell him so if I could do it without making it a scene."* |
@@ -202,15 +202,15 @@ When the relevant topic comes up.
 - **Gate Penelope.** The secret is the fulcrum of the whole arc. Do not let parties reach it cheaply. The sequence should run: notice the night rides → speculate (mistress? illness? knightly order?) → follow carefully → confront privately → confidence earned → eventual reveal. Skipping steps cheapens the arc.
 - **The four possible arcs, all legitimate.** From the previous historical version, preserved and available:
   - **Public-love reveal.** Corven brings Penelope to Allondo openly; forces a diplomatic crisis; by willingness to be the scandal, defuses the war. High-risk, high-reward.
-  - **Elliot echo.** Corven renounces. Didrich becomes Allondo's king in the worst crisis of his lifetime. A second abdication in two generations; the Hannes line bends at exactly the wrong moment.
+  - **Elliot echo.** Corven renounces. Steven becomes Allondo's king in the worst crisis of his lifetime. A second abdication in two generations; the Hannes line bends at exactly the wrong moment.
   - **Collaborator arc.** Corven and Penelope work in parallel from each side to prevent or shorten the war, quietly, without either kingdom acknowledging their relationship. The party as conspirators.
   - **Breakdown.** Corven cannot square it and falters at some ceremonial moment. The court loses confidence. Hannes must choose between protecting his son and protecting his succession.
 - **Rhianna has noticed.** She has not acted. A party asking her about Corven gets a careful reply — she confirms he is carrying something, declines to specify. If the party has helped surface the truth, Rhianna may partner with them quietly.
 - **Mira the attendant is a quiet access point.** She is not a conspirator. A party approaching her correctly — not bribery, not threat, *compassion for her position* — can learn small facts that confirm the pattern. Push her badly and she closes.
-- **Didrich is collateral.** Corven loves his brother; the gap between them is the gap between a prince who knows and a prince who does not. A DM can run Didrich as the one person Corven most hates lying to — worse than Hannes, because Didrich trusts Corven completely.
+- **Steven is collateral.** Corven loves his brother; the gap between them is the gap between a prince who knows and a prince who does not. A DM can run Steven as the one person Corven most hates lying to — worse than Hannes, because Steven trusts Corven completely.
 - **Elliot knows something.** Whether Corven has told him, or whether he has inferred in the way a retired prince reads his successor, is a DM decision. Either works. If the DM wants Elliot to act — writing the letter that corrects the Bean proclamation, pressing Hannes, intervening in the Brumal crisis — the nephew's situation can be the lever.
 - **Do not run him as the tragic-young-prince stereotype.** Corven is not a doomed figure; he is a young man choosing under bad conditions. A DM who plays him as capable, tired, and *deciding* plays him correctly. A DM who plays him as unable-to-act plays a weaker version of him and loses the arc's stakes.
-- Lore cross-references: Hannes's side in `doc/npcs/king_hannes.md`; Fienna in `doc/npcs/queen_fienna.md`; Didrich in `doc/npcs/didrich.md`; Elliot's renunciation and the one conversation in `doc/npcs/father_elliot.md`; Penelope's side and their relationship in `doc/npcs/princess_penelope.md`; Rhianna's noticing in `doc/npcs/rhianna_linthrope.md`; Ron Bean's situation in `doc/npcs/ron_bean.md`; the Bean affair in `doc/claude/CAMPAIGN.md` §"Irna Bean"; the Brumal-collapse thread in `doc/claude/CAMPAIGN.md` §"Brumal's collapse"; the Linar harbour back-room option in `doc/places/linar_harbour.md`; Salmonswell as possible meeting venue in `doc/places/salmonswell.md`.
+- Lore cross-references: Hannes's side in `doc/npcs/king_hannes.md`; Fienna in `doc/npcs/queen_fienna.md`; Steven in `doc/npcs/steven.md`; Elliot's renunciation and the one conversation in `doc/npcs/father_elliot.md`; Penelope's side and their relationship in `doc/npcs/princess_penelope.md`; Rhianna's noticing in `doc/npcs/rhianna_linthrope.md`; Ron Bean's situation in `doc/npcs/ron_bean.md`; the Bean affair in `doc/claude/CAMPAIGN.md` §"Irna Bean"; the Brumal-collapse thread in `doc/claude/CAMPAIGN.md` §"Brumal's collapse"; the Linar harbour back-room option in `doc/places/linar_harbour.md`; Salmonswell as possible meeting venue in `doc/places/salmonswell.md`.
 
 ## Background — for the DM
 
@@ -228,7 +228,7 @@ When the relevant topic comes up.
 - doc/npcs/king_hannes.md
 - doc/npcs/queen_fienna.md
 - doc/npcs/princess_penelope.md
-- doc/npcs/didrich.md
+- doc/npcs/steven.md
 - doc/npcs/father_elliot.md
 - doc/npcs/rhianna_linthrope.md
 - doc/places/scarlet_vale.md
