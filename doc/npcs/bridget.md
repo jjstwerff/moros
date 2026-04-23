@@ -15,14 +15,16 @@ Within ten minutes she knows roughly where the party is from, what they're carry
 
 - A wide-shouldered Badger in a leather apron, sleeves rolled past the elbow. Carries herself like she's used to being underestimated and finds it tactically useful.
 - **Eyes always on the door**, even mid-conversation. Notices everyone who comes in. Notices what they're carrying. Notices what they leave with.
-- A **slate behind her** with names and tabs in a hand only she fully reads. She does not look at it when she works the count; she looks at it when she wants somebody to *see her looking* at it.
+- A **slate behind her** with names and tabs in a hand only she fully reads — looping trader shorthand, most of it numeric. Among the tabs are **marks that clearly aren't tabs**: a clipped leaf, a dot inside a square, a short double-line crossed through twice. They sit in the same column as the drinking debts and in the same chalk, but they're *not* drinking debts. She does not look at the slate when she works the count; she looks at it when she wants somebody to *see her looking* at it.
 - Counts coin without looking down. The trader habit she will never put down.
+- **A string of small flowers tied around one wrist**, fresh most mornings, wilted by the next. She does not mention it and will not explain it. If the party asks, she shrugs — *"Somebody's work."* — but her eyes flick across the room to wherever her children are working, and linger a beat before she looks back. She does not know she does this.
 
 ## Visible patterns the party will notice
 
-- **Always behind the bar in the morning**, doing books. The slate gets updated then.
+- **Always behind the bar in the morning**, doing books. The slate gets wiped and rewritten — most of it. **The top-left corner she never wipes.** Those marks carry over, week after week.
 - **Sits at the trader's corner table when merchants pass through** — Nadine especially. Negotiates and listens in equal measure.
 - **Goes home to Wilfred's farm one evening a week**, no more. Comes back tired but ready.
+- **Mornings, her daughters Elly and Nina fight about the flowers.** Each claims she's the one who tied the string on Bridget's wrist; each accuses the other of stealing credit. Bridget keeps pouring, eyes on the door, and lets it run itself out. The flowers are always there. Nobody ever quite catches either girl doing it.
 - **Once a season she walks the upper hollow alone with a lantern**, on an evening she doesn't tell anybody about. The party will notice the absence; nobody else will say what she's doing.
 
 ## At the Inn
@@ -49,6 +51,8 @@ The trader's corner has the best light. The cellar door is behind the bar and Br
 | What's in the boarded upper floors | Speculates if pressed. She doesn't actually know. |
 | Badger clan business | Carefully. Acknowledges the network exists. Won't name names without reason. |
 | The hidden wartime hoard | Only in fragments. *"That isn't yours to ask about."* |
+| The slate — the tab marks | Freely, and with pride. Shows off the shorthand if asked politely. |
+| The slate — the *other* marks (leaf, dot-in-square, crossed lines) | Deflects. *"Old road habit."* Changes the subject. Watches them more carefully afterward. |
 
 ## Stories she tells
 
@@ -98,6 +102,9 @@ When the relevant topic comes up and she chooses to answer.
 | Tells her the tree could fruit and the Inn would close | Goes quiet. Asks for the source. Will need to think about it before reacting; the party should not press for an answer in the moment. |
 | Tries to rob the Inn | She fights — Badger-folk *claw* and a heavy ledger that doubles as a club. The town arrives fast. She does not soften toward them again. |
 | Brings her a Brumal refugee looking for work | Asks them three questions. If the answers are right, hires them on the spot for the kitchen. |
+| Lingers at the bar trying to read the slate | She notices immediately. First time: a small smile, a refilled mug, nothing said. Second time: she moves in front of it, pleasantly, and asks if they'd like to settle their own tab. Third time: the slate gets a new mark after they leave. |
+| Asks her to translate a specific non-tab mark | Pauses. Sets down what she's holding (see *when pressed*). *"That one's not for sale."* Does not wipe it. Does not explain. The party has her attention for the rest of the evening. |
+| Shows they can read trader shorthand themselves | Real interest. Sits down. Tests them with a line or two of her own. If they pass, she'll talk road-craft all night — but the non-tab marks stay off the table. |
 
 ## What she says about other people
 
@@ -134,7 +141,7 @@ For students she judges have the head for it:
 ## DM notes
 
 - The Inn occupies the **lower floor and a partial cellar** of the great ironwood's hollow. **Upper floors exist** (the tree once held several) but are sealed behind a boarded ceiling. Bridget cannot reopen them with any tools she has. *Anyone who can may be very interesting to her.*
-- The **wartime hoard** was hidden in the tree the night before the overseas force arrived. The raiders could not get in (see *the day they couldn't get in*). Some was reclaimed after the war; the rest remains. Bridget alone keeps the inventory in her head.
+- The **wartime hoard** was hidden in the tree the night before the overseas force arrived. The raiders could not get in (see *the day they couldn't get in*). Some was reclaimed after the war; the rest remains. Bridget alone keeps the inventory in her head — *and on the slate*. The non-tab marks (leaf, dot-in-square, crossed lines, and others) are the hoard ledger, encoded in Badger-road trader shorthand and sitting in plain view among the drinking debts. The top-left corner, which she never wipes, is the index. Anyone who can read Badger trader shorthand (rare outside the clan and the old road families) could start to make sense of it. Breaking the code is a genuine narrative prize — commit to it before you let the party crack it.
 - **Pollination would close the Inn.** She knows the threat in principle; she does not yet know about Diederik's overseas plan in detail. *When she does, she has a direct stake* — and the conversation between her and Diederik about it is one the party may end up brokering.
 - The tree being a **sterile female ironwood** is a conversation Diederik could have with her. She has not yet had it. Her current understanding is: *very old, can't be cut, town is built around it, survived the war.* She would listen if Diederik (or a credible party) explained the rest.
 - Lore cross-references: ironwood biology in `doc/claude/LORE.md` §"Ironwood itself"; the fruiting cost in §"Fruiting is not easy"; the wartime occupation in `doc/claude/CAMPAIGN.md` §"The Overseas War."
@@ -142,7 +149,7 @@ For students she judges have the head for it:
 ## Relationships
 
 - Married to **Wilfred** (Badger farmer). They run two operations from one household and respect the boundary.
-- Many children, divided between farm and Inn. They run between the two like ferries.
+- Many children, divided between farm and Inn. They run between the two like ferries. Daughters **Elly** and **Nina** work the Inn in the morning — the pair the party will see first, usually mid-argument over the flowers tied to their mother's wrist.
 - Part of the dispersed **Badger clan** (per `doc/claude/LORE.md` §"Clans and their shape"). Local concentrations include **Wilfred**, **Corné Dunham**, and possibly **Ralph Overhill**. The wider clan extends across nearby towns; clan kin watch out for Bridget's family in ways not always visible to non-Badgers.
 - Lives beside, but does not fully understand, Elmsfield's great ironwood tree. **Elder Diederik** could explain it to her if she asked — she has not yet asked.
 
