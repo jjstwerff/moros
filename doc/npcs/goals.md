@@ -4,6 +4,51 @@ Design goals for every named NPC in the setting. A well-rounded NPC fills **as m
 
 A character does not need to deliver all of these at once in play, but every NPC should be capable of at least two or three of them on the page, and every NPC should carry the last one.
 
+## Two layers — the file vs. the campaign document
+
+NPC and place files in this repo are written for **two readers** at two layers.
+
+**The full file** (this kind of file) is **deep reference** — the DM's prep material, and the place a DM looks when a specific question comes up. It carries everything needed to run the character or location across many sessions: stories, reaction triggers, mannerisms, cross-NPC takes, DM notes, background. Length is not the enemy here; *misleading brevity* is. A DM with a question should be able to find an answer.
+
+**The campaign document** (the actual PDF the DM uses at the table) is **brief** — just what is needed to grasp the NPC or place and play their role. It is compiled from one small dedicated section of each file. It does not duplicate the rest of the file; it does not try to summarise the whole. It gives the DM enough to play at speed and lets them open the file when they want more. **Help the DM; do not hinder them with detail at the table.**
+
+### The marker convention
+
+Each NPC or place file carries a **`## Campaign brief`** section near the top — placed after the header lines (Role, Species, Lives, First met) and before the file's first scene-section ("What the party meets" or equivalent).
+
+For an **NPC**, the Campaign brief contains:
+
+- **Role** — one line, restated from the header for context.
+- **Two or three standout descriptions** — the most distinctive sensory/behavioural cues, deliverable from memory.
+- **Speech tag** — one line on how they speak, or one trigger-keyed phrase a DM can deliver verbatim.
+- **What they ask the party for** — early-game and late-game quests in *one line each*, with a cross-reference to §"Personal goals — early and later" for specifics.
+- **One friction line** — the disagreement, the limit, the pressure that makes the NPC interesting.
+- **Pointer to the full file** — *"Full character: `doc/npcs/X.md`."*
+
+For a **place**, the Campaign brief contains:
+
+- **What kind of place it is** (one line).
+- **Two or three standouts on entry** — sensory, immediate.
+- **Named residents** with one-line roles.
+- **The thing that shapes scenes here** — the air, the rhythm, the pressure (one line).
+- **Pointer to the full place file** — *"Full place: `doc/places/X.md`."*
+
+The brief is **at most one page in the PDF** — typically ten to fifteen lines for a major NPC, fewer for minor ones. A brief that runs longer is the wrong document; the rest belongs in the file.
+
+### What does *not* go in the brief
+
+Full stories, full reaction-trigger tables, full cross-NPC takes, DM-strategic notes, background, open questions, sources, lore cross-references. The file holds these; the brief points to them.
+
+### No duplication
+
+The brief is *distinct, narrower content*, not a recap of the file. Anything in the brief should appear *only* in the brief, not also in the deeper sections. (The Role line, restated as both header and brief opener, is the only tolerated exception — and only because the brief gets compiled out, where the header does not travel.)
+
+### Leave room for the DM
+
+The brief gives the DM the spine; the DM provides the angles. A brief that hands the DM a sentence for every situation is overspecifying; a brief that gives them the shape of the character and lets them improvise from it is doing the work the PDF is for. *Help, don't hinder.*
+
+The full file is for the prep night and the question that comes up mid-session; the brief is for the table.
+
 ## 1. A unique view on the world
 
 Each NPC sees Moros from an angle the group does not. A forge-master in World Edge understands the politics of labour and expulsion differently from a mage in a castle, and differently again from a scavenger of the blasted lands. When the group talks to them, they should come away with a perspective they could not have reached on their own — even if they disagree with it.
