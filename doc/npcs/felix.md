@@ -13,6 +13,13 @@ His introduction is fast, casual, and slightly transactional. He asks where they
 
 If they're useful to him, he will turn up again. If they're not, they will not see him at this fair after today.
 
+## Personal goals — early and later
+
+He does not name his goals out loud. He carries one as a habit and one as a wound. A party that has earned standing reads them anyway.
+
+- **Early-game — the next find.** Felix lives by his *tingling feeling* for precious things and the openings that get him to them. A party with a place they cannot reach — a sealed door, a mage-era ruin nobody knows the way into, a contact who will not see them — has the most useful kind of conversation with him. *Where this goes:* through whatever the campaign brings him near. Notable existing opportunities the file already names: the **Storm Mage's cottage** in the hills, which he can find faster than any other living tracker (see `storm_mage.md`); **Raul's forward camp and Thorgal's mirror** (he knows the way and will draw it in air, not on paper, for a party that has earned it — see `thorgal.md`); the **graveless paths** through the broken-lands' edge a party transporting Andras's stolen crown will need (see `andras.md`). The fee is a *share* of whatever the party finds; the shape of the share is negotiable, the existence of one is not. He will not commit to a long arrangement; he will commit to the next thing.
+- **Later-game — face John, and the mill, and Ron.** *"Best friend I've ever had. I cost him an arm. He has never once held it against me. That makes it worse, not better."* John does not press; Felix does not visit. The wound has been sitting since the war. **John's own late-game** (see `john_bean.md`) is to *put the mill down* — to walk back into it once with Felix and Ron, the three of them: the farmer who went in, the scout who found the way, the son who has never been there. *Where this goes:* through the party as the people who finally bring Felix to the farm (he will not arrive on his own, ever); through whatever route to the mill Felix can still find, with **Wilder**'s stretch as regional context for the broken-lands' edge; into a dungeon Felix has not stepped inside since the day John came out short. He does not expect the visit to fix him. He expects it will let him stop dragging the mill behind him.
+
 ## How he reads at a glance
 
 - **A raccoon with rings on his tail** — tarnished silver, mismatched, possibly ten of them, possibly six. The count changes between meetings and he will not explain why.

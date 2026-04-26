@@ -24,6 +24,59 @@ NPCs can teach — skills, knowledge, or ways of seeing. Teaching is slow and pa
 
 Every NPC carries at least one thing in their history they do not want to talk about. It may be a failure, a shame, a crime, a betrayal, a loss, a debt, or simply something whose meaning they cannot yet face. The secret is not a puzzle for the party to solve; it is the pressure that gives the character shape. It answers questions the NPC themselves cannot: why they settled here, why they avoid that topic, why their generosity stops at a specific line. The party may uncover it, or may never. Either way, it should govern the NPC's choices before it governs the plot.
 
+## 6. Personal goals — early and later (the NPC's quests)
+
+Every substantial NPC has things they want done that they cannot, or will not, do themselves. These are the **quests** the NPC asks the party to undertake — by direct ask or by leaving a door open. A sustained relationship with an NPC produces a sequence of them: early-game quests land first, when trust is being earned; late-game quests land later, when standing is real.
+
+The framework distinguishes **goals** from **quests**:
+
+- A **goal** is what the NPC is *trying to accomplish* (close the Bean bargain honourably; bring her family home; hold the kingdom's quiet shields steady).
+- A **quest** is a *specific task* the party can take on toward that goal (read the orders book at Clear Water Mine; carry Elliot's corrected proclamation to Hannes; broker the meeting between Wilder and Gerhald).
+
+One goal often produces multiple quests. An NPC can carry several goals running in parallel.
+
+### Each quest, specific enough to play at the table
+
+A DM scanning the section should see, for every quest:
+
+- **A name** for the quest — short, concrete, scannable.
+- **What the NPC says** — in their voice, italicised, the line a DM can deliver close to verbatim. This is the hook: how the ask reaches the party, in which scene, after what trust has been earned. Include the *trigger* if it matters (*"around the second campfire after recovery"*, *"when the topic of her father comes up at length"*).
+- **Where** — the specific location the quest takes the party. A place file if one exists; otherwise a named region with cross-references. *"The mine"* is not a location; *"the locked drawer above the assay table at Clear Water"* is.
+- **What** — the concrete task. Operational. *"Find the locked drawer; access it; copy or take the orders book; bring it back"* — not *"investigate the mine."* A DM should be able to run the next session from this line alone.
+- **Reward** — what advances on success. Standing with the NPC, a piece of intelligence, an opened relationship with another NPC, a teaching, a capability, a thread closed. Concrete. Quests that pay only in mood-points are not quests.
+- **Complications** — what makes it hard. The shape of the problem. One or two lines is enough.
+
+### Multiple quests per goal
+
+The split into early-and-later is not a quota; it is an organisation. Examples in shorthand (each line is a quest, grouped by goal):
+
+- *Goal: find out what went wrong with her family.* Quests: read the orders book at Clear Water Mine; walk the old mill with Felix; meet Steven on her terms.
+- *Goal: be the king who did not start the second war.* Quests: surface the Corven–Penelope conspiracy safely; back Felicia's spirit-corridor with the abbot's voice; open the Leatherman channel through Queen Fienna.
+- *Goal: close the orphanage-coin chain.* Quests: carry Hank's letter to Ingram (trip 1, no bag); return with the name; carry the bag to Darrel (trip 2); accept the redirection to the alms-chest.
+
+A quest is *one specific thing* the party can decide to do this session, not next month.
+
+### Pacing across the campaign
+
+- **Early-game quests** land in the first sustained encounter with the NPC. Local in scale, modest in stakes, produce a tangible advance in the relationship. They do not require campaign-spanning standing to attempt.
+- **Late-game quests** require standing the party has earned. They are usually larger in scale (cross-kingdom travel, court audiences, dungeon-level engagements) and produce campaign-scale shifts. They often require an early-game quest to have completed first; flag the prerequisite.
+- A party can decline or defer. The NPC's goals continue without them; quests can wait. **Time pressure is internal to the NPC's situation, not arbitrary** — the family wondering, the working bleeding, the war approaching. Make it specific or do not invoke it.
+
+### Quest hooks vs. open doors
+
+Some quests are **explicit asks** — the NPC tells the party what they need done, plainly, after standing has been earned. Others are **open doors** — the NPC has not asked, but a party reading the situation can act without being told. Both are legitimate. The file should make the distinction visible where it matters (*"She does not ask. The door is open if the party walks through."*).
+
+### What this section is *not*
+
+- Not a chore list. *"Help her sort her shop"* is not a quest unless something specific is at stake.
+- Not a railroad. The party can refuse, defer, or take quests in any order; the file describes what is available, not what is required.
+- Not all quests need to fire. Some only activate if a particular campaign arc opens (the Brumal spiritual path, the last flight, the shamans' long plan); flag those as *conditional*.
+- Not a duplicate of the *aid* section (§3). Aid is what the NPC offers the party; quests are what the NPC asks of the party. They are reciprocal sides of the same relationship.
+
+### Worked examples
+
+Worked examples of the new specific-quest format are being rolled out across the NPC files. Existing files with prose-form goals describe the shape of each NPC's threads at a higher level; conversion to specific quests is a separate pass per file.
+
 ## Playable at the table
 
 Beyond what an NPC *carries* (above), every NPC file must also support the DM running the character at the table. The full conventions are in `doc/claude/SCENE_FIRST.md`; the requirements that matter for NPC writing specifically are:

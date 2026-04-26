@@ -13,6 +13,13 @@ He takes charge of Irna's care without asking permission, because nobody in Elms
 
 This is how he tends to enter scenes. Slowly. With standing the party has not earned. Saying things that turn out to be true.
 
+## Personal goals — early and later
+
+He has been holding the same plan for years. The party's role is to make it possible to act on.
+
+- **Early-game — send the party to Rowan with the sealed letter and Alita's seeds.** The overseas plan has a flaw only **Rowan** can fix: transplanted male sprouts will not survive this continent's spirit ecology without druidic acknowledgement, and the order has been silent. Rowan — younger otter-folk druid, still inside the order, secretly writing to him — is the only path back. Her most recent letter is overdue. Diederik cannot leave Elmsfield (he is the town's spirit-shield); the party can. *Where this goes:* through **Salmonswell** and the route north on foot along the rapids past the third major fall, on the eastern bank, in the stand of rowans she planted around her cottage; with the sealed letter, the small package of Alita's seeds for authentication, and the party's own honest assessment of whether the plan should proceed; back to Diederik with whatever Rowan agrees to. A party that runs this errand well unlocks the late-game; one that runs it poorly delays it indefinitely. See §"The errand to Rowan" for the full briefing.
+- **Later-game — bring the saplings home, plant them, wait the two years, and let the tree bear.** The overseas expedition is the work of the campaign's broader stretch. *Where this goes:* an overseas voyage (likely on **Laurent**'s last-flight if that path is taken; otherwise by ship or **Nadine**'s group); finding young male ironwood sprouts ("full trees won't move, even young ironwood resists the spade"); bringing them home alive across the crossing; planting them close to the great tree in Elmsfield; **Lady Rhianna**'s court-side standing if the kingdom needs to be told; **Bridget**'s preparation for the Inn's closure during fruiting (heavy fruit, noxious gases — see her late-game on the Inn's long safety, which intersects directly); **John Bean**'s arm and any future ironwood limbs **Rhianna** fits for **Irna** are downstream beneficiaries of the species' continuation. The party walks every leg of this. He does not. The tree's eventual pollination is the campaign's longest single arc he is asking for.
+
 ## How he reads at a glance
 
 - An old owl in plain wool, with feathers that have been grey for a long time.
