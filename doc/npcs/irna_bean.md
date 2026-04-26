@@ -19,6 +19,13 @@ When Diederik's cure takes (Session 4, give or take), Irna recovers her speech, 
 
 She is **a different NPC after recovery**. Where the party met an unconscious patient, they now meet a **22-year-old Boar folk brawler with a strong will and a clear destination**. She will accept the party's company on the road to Luchebert — she has earned the right to ask, and they have earned the right to be asked. From this point on, she is **a travelling companion**, not a charge.
 
+## Personal goals — early and later
+
+She has an early-adult sense of justice: sharp, impatient, more willing than her elders to use the upheavals around her as pry-bars rather than wait them out. The two threads scale years apart, and each pulls a specific cast of people and places into reach.
+
+- **Early-game — find out what actually went wrong with her family.** Her mother cried in the nights for a year before they came for Ron. Hannes's iron-demand at **Clear Water** was war preparation; she watched the orders come down to the pit. Steven has never explained the proclamation to her face. *Where this goes:* back into **Clear Water mine** for the orders book she did not get to read; to the **old mill** where her father lost his arm and **Felix** found the way in (Felix has the door-knowledge; her father has the rest); to a real conversation with **Steven** when his apology arrives (see `steven.md`); to **Lady Rhianna** on how the proclamation was framed; to **Father Elliot** on the prophecy that was actually about her, not Ron. She has the questions. She does not have the pieces. A party that runs these threads with her is a party she trusts at depth — and every answer feeds the later goal.
+- **Later-game — reunite the Beans and clear their names.** Get **Ron** out from under the crown's misread of the prophecy — which means **Father Elliot** publicly correcting it, **Felicia** at the shrine confirming it, and the court hearing it. Give her **mother** the explanation. Strip the Scarlet Vale myth off her **father** and let what he actually did (Thorgal through the mirror, not a punch) stand. She is willing to ride the campaign's wider troubles toward this — Brumal's refugees, **Hannes**'s war if it comes, an audience at court — when the door is there. The **shackle** comes off when this is done, or when the king explains it out loud, whichever happens first.
+
 ## How she reads at a glance
 
 - A young Boar folk — broader-shouldered than her age suggests. **Tusks visible** when she speaks; she does not hide them.

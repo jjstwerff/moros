@@ -13,6 +13,13 @@ She is small, bright-eyed, **quick-beaked**, and clearly accustomed to being hea
 
 She notices the party without turning her head, which is a Finch thing.
 
+## Personal goals — early and later
+
+She arrives with **two projects** the file has not previously named, on top of the Linnet thread.
+
+- **Early-game — trading contacts for the party.** A new party at Bridget's Inn with goods to move and a story worth telling earns introductions — to her merchant-group people at **Linar harbour** (the docks contacts who feed her Linnet intelligence); at **Salmonswell** for the Linar–Salmonswell road buyers; to **Master Darius** at World's End if the goods are metal-trade; to **Hank** at the farm if the goods are seed or tool; to **Bridget** herself if the goods are road-news. The cost is reciprocity: the party feeds her useful news as readily as she feeds them. This is the everyday relationship; the Linnet thread sits behind it and is earned by the treatment-of-captives pattern (see *If the party does something*).
+- **Later-game — an inland caravan to Raft city.** She wants an overland route from the southern continent up to her home base, regular enough to displace what currently has to go by sea. The reason is not on the map; it is in her. **Her sea years cost her Linnet, and the memory of that crossing is the worst thing she carries.** A reliable inland route is how she stops sending Finches into water she will not go back to. *Where this goes:* through or around the **forbidden woods** — her group's current arrangement is private and won't scale (see `doc/places/forbidden_woods.md` §"The river route"), so the route has to be made public, which means **Tod** at the fringe, the river leg through, and the **Lightning Tower** wreck route past the edge; to **Felix** for the road-craft and the names that used to walk that road; to **Corné Dunham** for the hill-country leg; into the same continental arc the **Leatherman railroad** is reaching for, which makes Nadine an early non-court ally for that project — or its competitor — and pulls her into **Queen Fienna**'s ambitions whether she wants in or not. A party that proves out a leg of the route, or that helps her group at **Raft city** think the long form through, moves this from private to actionable.
+
 ## How she reads at a glance
 
 - **Dust of the road, but neat.** Her clothes are trader-practical, not worn — she has money, and she puts some of it into looking presentable everywhere she arrives. A merchant who looks broke does not get invited into the good conversations.

@@ -13,6 +13,13 @@ He does not raise his voice. He does not fill silences. He waits for them to spe
 
 (The cave chapel below the gate is not his — that is **Willow**'s shrine for Felicia, and the party will be gated there by her, not by him. Elliot's work is the community, the saint chapel, and the books.)
 
+## Personal goals — early and later
+
+He has been holding two things he should already have done. The early one is small and decisive; the later one is the work of the rest of his life.
+
+- **Early-game — write the corrected proclamation.** The "valiant spirit" was always **Irna**. The reading that took hold was **Ron**, and on that reading the crown enlisted the wrong child. Elliot is the only person whose word would correct it; he has not written. **Brother Darrel** asks him about it every season; **Lady Rhianna** has written; **King Hannes** has decided he will release Ron the day the correction arrives. *Where this goes:* through Irna's actual arrival at Luchebert (the inflection point — see `irna_bean.md`); through a real conversation with **Felicia** at the shrine, mediated by **Willow**, on what the prophecy actually meant; through the **library** to check the older registers of how the line was originally rendered. The letter goes to Hannes; Hannes releases Ron; the Bean family begins to come home. A party that brings Irna *to him* gives him the moment he has not been able to give himself.
+- **Later-game — finish the corrections his life has not made.** The proclamation is one correction; there are more. Ratifying **Irna** as the spirit-shield-in-training the prophecy actually named, alongside **Felicia** and **Willow**, with whatever pieces of the library can support her formation. Sitting with **Hannes** once, plainly, on what the brotherly ledger has cost both of them. Walking the **maze garden** with **Corven** the second time, when the nephew comes asking which of the two paths Elliot was telling him about — *renunciation* or *staying*. If the **Brumal-resolution spiritual path** opens (the spirit-corridor at the southern border, Felicia's drive extended; see `doc/claude/BRUMAL_RESOLUTIONS.md`), Elliot's voice is one of the few that can carry it through the Allondan court. He cannot lead any of these from outside the abbey; he can ratify and write. The party brings the situations that need ratifying. He writes.
+
 ## How he reads at a glance
 
 - A tall human in plain monastic wool, weathered around the eyes. Hands roughened by twenty years of work that does not fit his lineage.

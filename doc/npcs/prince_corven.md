@@ -15,6 +15,13 @@ Later that evening — if the party is near the palace gate for any reason — *
 
 A party reading the two scenes together is reading the truer Corven.
 
+## Personal goals — early and later
+
+He has not stopped carrying. The two goals are the structure beneath the carrying.
+
+- **Early-game — a safer line to Penelope, before the night rides are caught.** The cover is thinning. Each ride is a round of dice he is going to lose eventually. He needs a courier route that does not depend on his own travel: trusted carriers, neutral handover points, a way **Princess Penelope** can write back without Brumal's court reading it. *Where this goes:* through **Mira** the attendant for the Scarlet Vale end (loyal but not a conspirator — see her in §"Visible patterns"); through **Salmonswell** as a plausible neutral venue (the orphanage and the wharf both quietly handle traffic the city does not); through **Linar harbour**'s back rooms if the carrier knows them; eventually through whichever of Penelope's circle the party meets first. **Felix** is one carrier the party can recruit if he will agree; **Nadine**'s merchant group is another, on terms. A party that proves trustworthy across one or two carries becomes part of the conspiracy. This is the door the file's four arcs open from.
+- **Later-game — choose and execute one of the four arcs that ends the war he is being asked to lead.** The DM-notes name them: public-love reveal, Elliot-echo renunciation, collaborator-arc parallel work, breakdown. *Where this goes — by arc:* **Public reveal** runs through **Queen Fienna**'s court-management craft, **Lady Rhianna**'s spiritual shield over the capital during the scandal, and **King Hannes**'s decision in the moment whether to back his son. **Elliot-echo** runs through **Father Elliot** at Luchebert (the one conversation Corven still owes him, in the maze garden) and **Steven** as the brother who would inherit the worst possible kingship. **Collaborator** runs through Penelope's side of the network, the **Leathermans**' cross-border commercial channels via Fienna, and **Andras** if the war comes anyway and the Skull Gatherers arrive at the battlefield. **Breakdown** runs through Mira and Steven as the people closest to where the breaking happens. A party in the conspiracy chooses with him. The campaign has been building to this for the whole reign.
+
 ## How he reads at a glance
 
 - **Tall, trained, impeccably carried at court.** The product of Hannes's martial priority. A duellist's shoulders; a commander's bearing; a prince's jaw. He has worked for all of it.

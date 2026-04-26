@@ -15,6 +15,13 @@ If Irna is with them, his face changes — he doesn't perform it, but the change
 
 If she's not with them, but they have news of her, he will hear it standing where he is, before going inside.
 
+## Personal goals — early and later
+
+He is not going to fight again. That decision is final; the goals run alongside it, not against it.
+
+- **Early-game — train Irna in the lineage's telekinesis through ironwood, properly.** She has the will; she has more of it than he does. She has not had the training. With his daughter on the road and her path opening, the training is finally possible — and necessary. *Where this goes:* to **Irna** at the farm or wherever the party brings her between travels (the lessons take weeks, repeated across visits); to **Lady Rhianna** if Irna is to have a working ironwood medium of her own — Rhianna fitted his arm and is the only craftsperson alive who has done that work; to **Elder Diederik** for the ironwood itself and what he knows about young growth that could become a fitted limb or a carried tool; to the **Tusk Clan kin** scattered through Blackwood freehold, who will want to be told that John Bean is finally teaching his daughter what runs in the line. He will not teach this for hire and will not teach for show. To his daughter, on his land, while he can — yes.
+- **Later-game — put the mill down.** Of all the unfinished pieces from the war, the **old mill** in the hills is the one he can close himself. He does not remember the middle of what happened to him in there; **Felix** does. **Ron** has never been. Once Ron is released — once the proclamation is corrected and the bargain ends — the three of them can walk back to it together. *Where this goes:* into the mill itself (a dungeon: a sealed mage-era cutting facility, the cutter still partly working, the ground-level slot Felix found, hazards real); through Felix's road-craft to get there safely (the route through the broken lands' edge, see `wilder.md` for the regional context); to the **fitting field** where Rhianna once worked on him, now overgrown, where some piece of the day he became *the man who survived the mill* may be findable. He does not expect catharsis. He expects that walking back through that door, with the people who were there and one who never has been, will let him stop carrying one specific weight. The mirror site — Raul's old forward camp — is *not* his to revisit; Felix and Rhianna can take a party there if needed. The mill is his.
+
 ## How he reads at a glance
 
 - A boar folk in plain farm clothes, older around the eyes than his actual years. Weather-worn. Tusks worn down — he uses them less than younger boar folk.
