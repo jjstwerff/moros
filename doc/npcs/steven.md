@@ -5,6 +5,15 @@
 - **Lives:** **Scarlet Vale**, the royal palace. The court-side rooms of the residential wing are his on paper; in practice he is more often found at **the herb-corner of the outer courtyard** he claimed for his own work, or at **the small drying-room** above it where his bunches and notebooks live. (Place file: `doc/places/scarlet_vale.md`.)
 - **First met:** Either at a court reception, where he is performing a role that does not fit him; or — if the rumours about Irna have already reached the capital — on the road, in plain travel clothes, with a single attendant, asking quietly after a Boar-folk woman who is missing.
 
+## Campaign brief
+
+- **Role:** Second son of Hannes and Fienna; herbalist-prince in private; debt to Irna he intends to pay in person; possible heir if the Elliot-echo fires.
+- **Standouts:** *Faintly green-stained at the fingertips* (he has stopped noticing). **A small leather-bound book in his coat pocket** — half notebook, half pressed-leaf collection; the hand goes to it rather than to a sword-hilt. **Watches doors for exits**; checks his mother's posture before he registers the rest of a room.
+- **Speech tag:** Court courtesy *applied, not yet inherited* — exact and slightly held by a young man who would rather be elsewhere. *"Not the throne. Not the sword. The plants."* Will say *"I do not know"* aloud in private — a thing the court has trained him not to say.
+- **Quests:** Early — *go to Irna privately and apologise; carry his question to Diederik for proper herbalist teaching.* Late (conditional on Corven's arc) — *stand in for his brother if the Elliot-echo fires; open a quiet druidic line from the crown.* See §"Personal goals — early and later".
+- **Friction:** *Gentle, not weak.* A party (or DM) reading him as soft misses him — he has been refused by three druids and kept working, decided to apologise to the Boar-folk woman who broke his collar, and is preparing to inherit a kingdom he does not want, if he must.
+- *Full character: `doc/npcs/steven.md`.*
+
 ## What the party meets
 
 A young human, slight by Allondan-court standards, in palace dress that has been cut correctly and fitted twice and still sits on him a beat awkwardly — the body has not fully grown into it. His **fingertips are faintly green-stained**, a tell he no longer thinks about, the colour of a herbalist who crushed leaves an hour ago. He carries **a small leather-bound book** in a coat pocket; if the conversation pauses he does not put a hand to a sword-hilt the way his brother does — he puts it to the book.
