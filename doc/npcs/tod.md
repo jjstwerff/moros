@@ -157,6 +157,14 @@ Short on purpose — his knowledge is narrow. Mostly he knows about people *thro
 - **The names of the other chaos spirits** in any usable way. They are shapes and presences, not named persons, in his experience.
 - **How to destroy the larger spirit.** He can describe what attempts feel like; he cannot construct an attack from the description. This is honest ignorance, not concealment.
 
+## What he carries — and will not share
+
+The four items above are **honest ignorance**: things he genuinely does not know. There is one thing he *does* know and chooses not to say. The party does not need to find it; it shapes him whether they do or not.
+
+- **The body remembers how it died.** The boy was hunted in the woods — by something the larger spirit recognises and will not name. Fragments reach Tod alone: a particular smell, the slope of a piece of ground, a sound at the edge of hearing. He pushes them away. He knows that to *speak* what killed the boy would oblige him to be the boy long enough to mourn it, and being the boy is not stable for him. The larger spirit lets him push the memory away because the alternative is worse.
+
+The secret governs his choices: why he never goes to the small clearing half a day in (where the body was killed); why he changes the subject when asked where he was *before* the edge; why he hesitates the longest before the *hiding* drawing. A party that earns the standing to be invited to that clearing gets the truth at the cost of briefly breaking the fiction that Tod is whole. He may not be the same after — and the larger spirit knows.
+
 ## What he can teach
 
 **Almost nothing directly.** He is learning, not teaching. But:

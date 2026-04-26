@@ -125,18 +125,20 @@ He puts down the chalk. He goes to the far wall of the workshop where there is a
 | Suggests the boy should leave *and* names somewhere he would be safer (Haven) | He listens completely. Draws a question mark, then a Haven-shape, then his own pot beside it. He is considering it. |
 | Threatens either of them | The furnace closes its exhaust upward and stops breathing for the duration of the threat. The room gets cold. The party realises that was the only way out. |
 
-## What the boy and the furnace respond to in others
+## Cross-NPC takes — drawings and breath
 
-Short on purpose — they have met almost no one. For the Mage, Haven, and each other, the boy's response *is* one of his drawings (see §"Drawings he makes"); this table covers what the **furnace** does and what the boy does about people not covered there.
+This serves the **cross-NPC quick takes** role for non-verbal NPCs: the medium changes (drawings for the boy, breath/heat for the furnace), the function is the same — *what each pot-person thinks of the people the party may ask after.* Short on purpose; they have met almost no one, and the goals.md cap-of-about-ten works in both directions. For the Mage, Haven, and each other, the boy's stance *is* one of his drawings (see §"Drawings he makes").
 
-| Person | Boy's response (drawn) | Furnace's response (felt) |
+| Person | Boy's stance (drawn) | Furnace's stance (felt) |
 |---|---|---|
 | **The Mage** (their maker) | — see *the door closing* | Long, slow exhalation. Memory at a timescale the party cannot share. |
 | **Each other** | — see *family* | Warmer for a moment. The boy is family. |
 | **Haven** (rumoured) | — see *the rumour he half-believes* | A long pause. Has not heard the name in a very long time. Then steadies. It is thinking. |
 | **The party — first arrival** | A small pot with eyes (himself), watching. | The chimney descent *was* the test. They passed or didn't. |
 | **The party — after trust** | Drawings of them at work in the workshop. | Steady warmth. The breath includes them in the rhythm. |
-| **The Hermit Shaman** (if mentioned) | A tower across water; he has seen it from the chimney top, never met the shaman. | (Has it noticed the shaman over centuries? The DM decides.) |
+| **The Hermit Shaman** (across the lake) | A tower across water; he has seen it from the chimney top, never met the shaman. Curious. | A slow attentiveness when the topic comes up. It has felt the shaman's tower across the centuries; whether they have communicated is a DM call. |
+| **The fungus** (the visitor outside) | A spreading shape, then a single line crossed through it. He does not draw it twice. | Exhausts come closer together. The room warms by a measurable amount. The fungus is the one outside thing the furnace responds to physically. |
+| **Tod / the forbidden woods** (if mentioned) | A small pot at one edge of the floor; an indistinct warped shape at the other; chalk-line of distance between. He has not seen it. He has heard chaos through the larger spirit network the furnace touches. | Steady. Does not want it nearer. |
 
 ## What they can teach
 
@@ -149,10 +151,19 @@ For students patient enough to learn from beings that do not speak in their rhyt
 
 ## What they cannot or will not communicate
 
+The four items below are **honest ignorance** — things they genuinely do not know, or cannot represent in their medium.
+
 - **The boy's name**, if he has one, is not something he can draw. He has no symbol for himself except the small-pot figure he draws. If the party gives him a name, he will accept it.
 - **What is inside the workshop's locked drawer.** He maintains it. He does not open it. The mage closed it; he has not.
 - **The reason the mage left.** He does not know. His drawings are observation, not explanation.
 - **The furnace's name.** It may not have one. It may not need one. The boy's symbol for it is *the big pot.* That may be enough.
+
+## What each carries — and will not share
+
+Distinct from the honest-ignorance list above: each pot-person carries one thing they *do* know and have chosen not to put into their medium. The party does not need to find these; they shape behaviour whether the party does or not.
+
+- **The boy is forgetting his maker's face.** In a corner of the workshop the boy never sweeps near, there is a faint ghost of a drawing he has made and erased many hundreds of times — the maker's face from memory, redrawn each time it has slipped a little further. Each pass is more abstract, more *shape* than person. He knows he is forgetting. He has not shown the corner. The dust on the floor in front of it is the only place in the workshop where his footprints overlap their own tracks; a careful party will see it before they understand it. To name it aloud would oblige him to say *I am losing him* — and that is a sentence he has not built a drawing for.
+- **The furnace knows the chimney can be sealed from the inside.** It has known this for centuries. A long, deliberate exhalation upward, held closed, would end the breath cycle and let it go dormant. The seal is structural; it would not be undoable from outside. The furnace has considered this many times — when the maker did not return; when the fungus first reached the lake; whenever the boy has been still for a season. It has not done so because the boy is still here. **If the boy walks out with the party, the furnace's silent question becomes *what now*.** The answer, on furnace-time, may be sealing. The party that takes the boy may be the party that takes the boy *and* the breath.
 
 ## DM notes
 

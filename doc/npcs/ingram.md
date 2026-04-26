@@ -96,6 +96,21 @@ This is the core of what Ingram carries, and the reason the party has come to hi
 | Asks him if Hank's choice is the right one | *"It is hers. I kept the bag; she kept the intention. Both of us were only ever waiting for a way to put it down. If the sergeant will not take it, what you do next is yours, and hers."* |
 | Asks what he would do if Darrel refuses | *"I would leave it with the monastery, marked for its sheltered. The sergeant might let that stand where he would not let his own bag stand. But that is my instinct, not his."* |
 
+## What he says about other people
+
+Short on purpose. He has met few people deeply and refuses to volunteer opinions on people he has not met.
+
+| Person | Ingram's take |
+|---|---|
+| **Hank (Hanny)** | *"She built her own door. We sheltered her once; she shelters more than we do now."* |
+| **Egbert** | *"He keeps his counsel. Hanny writes; Egbert reads. That works."* |
+| **Brother Darrel** | *"He gave me what he had and asked me to keep his name out of it. I have. He has not come back. I did not expect him to, and I have been wrong about that since."* |
+| **Father Elliot** | *"I have not met him. I do not have an opinion of a man I have not met."* |
+| **Lady Rhianna Linthrope** | *"I read her name in news the wharf brings. A woman who carries an old craft. I would have liked to learn from her, when I could still travel."* |
+| **The Salmonswell council** | *"They send what they send. I do not press. The house stands."* |
+| **The merchant-house that underwrites the orphanage** | *"They asked for quiet. I keep quiet."* |
+| **The Brumal refugees coming through now** | *"The new ones come thinner each year. I take them the same as the others. I do not have a longer answer than that."* |
+
 ## What he can teach
 
 - **Letters and ledger work** — in the manner of a career keeper of written records. Patient; exact. He will teach any child who stays long enough, and any adult who asks in a way he respects.

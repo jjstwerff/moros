@@ -20,6 +20,15 @@ This is how he tends to enter scenes. Slowly. With standing the party has not ea
 - Carries himself like a man who has been wrong before and remembers what it cost. There is no hurry in him.
 - People defer to him without being told to. The party will notice this before he does anything to deserve it.
 
+## Speech traits
+
+- **Slow start, slow finish.** He begins answers a beat after most people would. He ends them before they would. A reply that feels too short is usually complete; pressing for more reads as not having heard the first part.
+- **Present tense for past events.** *"They send me three letters"*; *"She insists on bringing seeds."* The past is alive in the way he tells it. The tense slips back to past only when he is being precise about a date.
+- **Repeats the question back when he is thinking.** *"Why I stay here."* Not stalling — letting the question settle. Then he answers.
+- **Names by what something does, not what it is.** *"The man who carried more than he should have"* rather than *"a great warrior"*; *"the tree that is fortunate to be hers"* rather than *"the Inn"*. Druid habit, never put down.
+- **Plain words; no flourish.** Calls a tree a tree, a death a death, the order *the order*. The flat naming is part of his weight.
+- **The voice gets quieter when he is upset, not louder.** A party watching for the tell will notice it before he says anything.
+
 ## Visible patterns the party will notice
 
 If the party stays in Elmsfield for any length of time, they will see Diederik on a rhythm:
