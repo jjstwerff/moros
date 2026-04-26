@@ -71,3 +71,8 @@ Related: [cards.md](cards.md) — player-facing NPC cards (earned by the party t
 
 - [Master Darius](master_darius.md) — badger forge-master.
 - [Remi](remi.md) — rat factory worker, expelled from World Edge with his kin; carries Darius's letter of recommendation.
+
+## The Skull Gatherers
+
+- [The Skull Gatherers](skull_gatherers.md) — the order itself; itinerant collectors of mage skulls; necropolis (the city of the dead) west of the blasted lands at the desert's edge.
+- [Andras](andras.md) — named gatherer; the party's earned entry to the order. Tracks a stolen relic (early-game dungeon); carries the late-game resting-place offer for Laurent. The door, deliberately, to a stranger follow-up campaign.

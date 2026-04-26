@@ -30,6 +30,16 @@ A party that invests in one of these paths gets an actual encounter.
 - **A missing scholar.** If the campaign needs a named figure to have been Gathered, the Gatherers' leaving Scarlet Vale can be that scholar's story — a mage the party has heard of, now reduced to what the Gatherers came here for.
 - **An offering request.** They may eventually ask something of a party with standing — a skull, a location, a witness. Accepting or refusing shapes the relationship.
 
+## Named contact — Andras
+
+The party's earned entry to the order is **[Andras](andras.md)**. He is **one of the gatherers in the canonical *Skull Gatherers leaving Scarlet Vale* scene** — visible to the party on their first arrival, walking out with the group along the road. The group split outside the wall; most of the gatherers continued west toward the necropolis, Andras turned north when his trail did. A party that pays attention to who walked out has the start of a vouch when they meet him later.
+
+He currently carries an active northern thread: a **golden crown set with jewels that light up in the dark** — a keeping-tool from the necropolis, holding the spirit of the war-mage who died wearing it — was stolen by **Eric**, a Brumal badger feeding his family while hiding from Brumal's conscription. The crown killed him in his own family's crypt where he had stashed it; the spirit inside has begun **reanimating the family's bones in a reenactment of the war the mage died in**. Andras meets the party at the threshold when called; he is on-call, not stationary. He is also authorised to extend the order's late-game **resting-place offer for Laurent**. See `doc/npcs/andras.md` for the full character, the dungeon's three levels and four resolution paths, the family-permission scene, and the pacing of the Laurent offer.
+
+## Origin — what no one knows
+
+**Nobody really knows where the skull gatherers came from.** The order is older than written record on this continent and does not publish its origin. Fragments suggest the gatherers serve, or extend, an **ancient off-world being whose interest in this world is the limiting of *other*, more chaotic ancient beings** — the same older presences the chaos spirits are downstream of. Even within the order the doctrine is held in pieces; junior gatherers are taught the work, senior gatherers carry more of the why. Full treatment in `doc/claude/LORE.md` §"Where the gatherers came from — what no one knows."
+
 ## Open questions
 
 - Their doctrine — why skulls?

@@ -840,6 +840,69 @@ city of the dead. Whether this is because the gatherers are not sellers, or beca
 buying has not yet thought to try, or because the gatherers have refused and the refusal has
 not become public knowledge, is unclear.
 
+### Where the gatherers came from — what no one knows
+
+**Nobody really knows where the skull gatherers came from.** Not common people, not the
+mage tradition, not the shamans, and not (as far as outsiders can tell) most gatherers
+themselves. The order is older than written record on this continent and does not publish
+its origin.
+
+What can be said in fragments — pieced together from very old shamanic memory, a few rare
+gatherer concessions across centuries, and the shape of the work itself — is this: **the
+gatherers serve, or are extensions of, an ancient being whose interest in this world is the
+limiting of *other* ancient beings.** That patron is not a great spirit in the local sense,
+not an elemental, not a god of any of the three local religions. It is something further
+off — an off-world presence, or a presence at one remove from this world, that has aligned
+itself against a class of older, more chaotic beings whose influence on this world is what
+the chaotic spirits are downstream of.
+
+In that frame:
+
+- **The chaotic spirits are not random.** They are emanations, footprints, or extensions of
+  these older chaotic beings, leaking through the same metaphysical thinness the rift first
+  tore. The ether the chaos spilled from is unformed *here*; what stands behind it,
+  elsewhere, is not.
+- **The skull gatherers' work is one front of a containment.** Mage-spirits, left to drift,
+  are a channel through which the chaotic patrons can deepen their grip — relatives
+  haunted, lineages destabilised, slowly more of the world made hostile in ways that
+  compound. Collecting and *keeping* mage-spirits in the necropolis closes that channel.
+  The work is local, generational, and apparently mundane. Underneath, it is one of the
+  few standing operations on the containment side.
+- **The gatherers' bodies show the work.** The too-thin frames, the wrong proportions, the
+  cumulative effect of long proximity to bound spirits — and to whatever the gatherers'
+  patron is. Senior gatherers are stranger again.
+- **No one in this world has met the patron, named the patron, or knows whether the patron
+  is one being or many.** Even within the order the doctrine is held in pieces — junior
+  gatherers are taught the work; senior gatherers carry more of the why; what the most
+  senior gatherers know is not asked outside their number.
+
+This places the gatherers, the chaos-spirit problem, and the shamans' long plan to push the
+chaos back through the rift into a single larger frame: **the campaign is staged on the
+visible edge of a quieter cosmic argument.** The shamans, the gatherers, Felicia, and the
+other standing spirit-shields are all (knowingly or not) on one side. The chaotic spirits —
+and whatever stands behind them — are the other. None of the campaign's NPCs is positioned
+to explain the whole. A party that pieces it together does so from fragments, and no
+fragment is conclusive on its own.
+
+**For DMs:** keep the reveal slow. The gatherers themselves do not announce it. Andras
+(see `doc/npcs/andras.md`) carries hints, will not confirm, and does not know the fullest
+version. The shamans hold a separate fragment. Wilder holds another. Felicia, if reached
+at sufficient depth, holds a piece. The party assembling the picture is end-game material,
+not single-session exposition.
+
+**The gatherers as the door to a follow-up campaign.** The order is positioned, deliberately,
+as the **bridge to a stranger campaign that follows this one**. The current campaign's
+resolutions (Brumal averted or fought better, Laurent's last flight, the chaos-spirit
+pressure managed by the shamans' long plan or by the spirit-corridor) are *local* — the
+visible argument settled, mostly, on this continent. The cosmology behind the gatherers is
+not local. A party that has earned the order's standing through this campaign — through
+Andras, through recovering the stolen relic, through carrying the resting-place offer to
+Laurent and seeing it through — is the natural protagonist for what comes after, on
+stranger ground than the current campaign visits. **Treat the gatherers' arc as a seed,
+not a payoff.** The picture they hint at is meant to remain mostly unanswered here. The
+follow-up campaign is where it gets answered, by a party that has earned the right to be
+the ones to ask.
+
 ## The Current Day
 
 Humans are rare. The original colonists and their descendants have intermarried with the
