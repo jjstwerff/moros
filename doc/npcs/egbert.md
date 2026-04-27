@@ -3,7 +3,16 @@
 - **Role:** [Hank](hank.md)'s mate; concealed wolf-folk; night-worker and winter hunter at the edge-farm in Elmsfield.
 - **Species:** Wolf folk — *concealed* by her own **Control** power. To the casual eye she is something lesser: pale, lanky, a little jittery.
 - **Lives:** [Hank's Farm](../places/hanks_farm.md), on the western edge of Elmsfield. Sleeps in the farmhouse by day, works the fields and the woods by night.
-- **First met:** At dusk, when the lanterns start moving across the fields and she comes out of the farmhouse. Or a party that stays over will see her at breakfast, when she eats with the household before going to sleep.
+- **First met:** At dusk, when the lanterns start moving across the fields and she comes out of the farmhouse. Or a party that stays over will see her at breakfast, when she eats with the household before going to sleep. (Session 1: she contributes from outside the gate, upwind, at range — see §"At Elmsfield's gate.")
+
+## Campaign brief
+
+- **Role.** Hank's mate at the edge-farm. Concealed wolf-folk; night-worker, winter hunter, and — if Elmsfield ever needs it — its actual defense.
+- **Standouts.** Pale, lanky, a slight tremor in the hands (the Control-cast concealment); eyes that catch firelight a beat longer than they should; quiet hands that do not fidget the way the projected jittery body-language would.
+- **Speech.** Small voice the party leans in to hear. Short sentences, *"Mm,"* a single nod. *"What."* (asking, not hostile) when she is interrupted at work. If a scene has her monologue, the scene is wrong.
+- **Quests.** *Early:* be a quiet ally to a party that has earned the night side of the farm (§"Personal goals — early and later"). *Later:* the name-question Darrel may ask the party to carry back; the disclosure-as-defense if a real threat reaches Elmsfield.
+- **Friction.** Animals see through her concealment in ways people don't. A party arriving with a hound or horse close to her has picked a fight with her concealment in front of a creature that cannot be reasoned with.
+- Full character: `doc/npcs/egbert.md`.
 
 ## What the party meets
 
@@ -13,10 +22,43 @@ Egbert does not introduce herself. If the party speaks to her, she returns a sho
 
 ## Personal goals — early and later
 
-She does not name her goals out loud, and would refuse if asked. The two beneath the quietness are both about names — one she has not yet given, one she has not yet had to use.
+She does not name her goals out loud, and would refuse if asked. The ones beneath the quietness are about names — one she has not yet given, one she has not yet had to use.
 
-- **Early-game — keep the night-side of the farm working as the pressure rises.** The Brumal collapse is sending more children to **Hank**'s gate every season; the perimeter takes more walking; the winter hunts go further. The party's role, when they are at the farm, is to be the kind of guests she can read as not-a-threat to the children and not-a-fool around her concealment. *Where this goes:* through scent-reads at the gate when needed (Session 1's *carrying something, not spreading something* read of **Irna** is the working model); through perimeter walks with the party that has earned the night; through small intelligence she carries home from the woods that Hank alone could not gather; through quiet support of the **orphanage-coin chain** as Hank's project (`brother_darrel.md`, `ingram.md`). She will not lead any of this. She will be *available* to a party that has shown they can be quiet around her.
-- **Later-game — give a name to a sergeant who once would not take it; and, when the town finally needs it, be its defense.** Two unresolved things, neither asked for, both probably arriving on their own. *The name:* when **Brother Darrel** asks the party, quietly, what name the wolf-folk child uses now (see his goals in `brother_darrel.md`), the question lands on Egbert. She may or may not let the name go. The party is the messenger; **Hank** carries the moment with her; the answer is hers alone. *The defense:* if a real threat reaches Elmsfield — a Brumal incursion, a raiding pack, a creature the town cannot hold — the town's defense *belongs to her*. She has known this for years. She does not advertise it. The concealment will come off in front of whoever is there to see it; she has decided in advance she is willing to pay the cost when the scale of the threat warrants. *Where this goes:* the moment the campaign brings a threat the farm-perimeter cannot absorb is the moment her late-game opens. The party's role may be to fight beside her, witness the disclosure, or carry the aftermath — Elmsfield's view of *Hank's mate* will not be the same on the morning after, and Hank will need help holding the town through that change.
+- **Goal: keep the night-side of the farm working as the pressure rises.** Perimeter, fields, winter hunt, refugee gate-reads. She will be *available* to a party that has shown they can be quiet around her — she will not lead.
+- **Goal: be the town's defense, if and only if the threat warrants the disclosure.** Decided in advance. Held in reserve. Hers alone to call.
+- **Goal: settle the name-question Darrel left in the air decades ago.** Whether or not she lets her wolf-folk name reach him is hers to decide; the party may be the messenger.
+
+### Early-game open door — *the gate-read* (Session 1)
+
+- **What she says** *(no direct contact in the scene; the message reaches the party indirectly — through one of Hank's children running into the square with a scrawled note, or Hank repeating it back, or a brief encounter at the fence-line where a party member has stepped out for air)* — *"Egbert smelled her from the fence. Not sick the way you think. No smell on her."*
+- **Where.** Outside Elmsfield's gate, upwind of the square, at the fence-line on the valley-side path (Session 1; see `doc/places/elmsfield.md`).
+- **What.** Believe the scent-read. Carry it back to Joseph and the crowd — *"the farmer's mate got a smell off her, it's not a contagion we know"* — and bring Joseph's temperature down before Diederik arrives to seal the call.
+- **Reward.** A quiet early standing with her. When the party reaches the farm afterwards, she meets them in the yard instead of leaving it to Hank. The night side of the farm is open to them sooner than it would be otherwise.
+- **Complications.** She will not come to the gate (Irna's grey-muzzled dog reads through Control as *predator*; the town does not want her at a formal scene; she does not want her capacity demonstrated in public). The read reaches the party indirectly or not at all — they have to *believe* it on its merits, sourced from *Hank's strange mate*. A party that dismisses it because of the source loses her quiet ally for a long time afterwards.
+
+### Early-game open door — *walk a row at night*
+
+- **What she says** *(at the lantern's edge in the outer plot, hands not stopping)* — *"What."* (Asking, not hostile.) Then, if the party is there to walk and not to extract: *"Stay back of the lantern. Keep your voice the way you have it now."*
+- **Where.** The outer plots at the edge of the treeline, after dark (`doc/places/hanks_farm.md`).
+- **What.** Walk a perimeter, a row of plough-work, a fence-line check — at her pace, on her terms. No agenda; no extraction; no pushing for stories. The party's job is to be quiet and useful, the way Wilfred is when he is on her side of the work.
+- **Reward.** An unguarded sentence or two at dawn — the closest thing she gives to a confidence. Standing that compounds: she will read for the party afterwards (a new arrival's intent at the gate, a stranger in the woods, a child's sleep-pattern they were not sure how to read). A party with a Tracker who lasts a full night earns her teaching of the craft.
+- **Complications.** A party that pushes for stories during the work is a party she does not walk with again. Bringing a hound or horse close to her ends the offer immediately — she will sleep elsewhere during the animal's stay, and Hank will not volunteer the reason. *Prerequisite:* Hank has said *these ones are alright*. Without that, the party gets the *"Mm"* and the back of her head.
+
+### Later-game quest — *the name Darrel asks for*
+
+- **What she says** *(she does not say anything; Darrel asks the party at Luchebert what name the wolf-folk child uses now; the party carries the question back to her at the farm; she sits with it a long time)* — *"He did not take it then. I do not owe it to him now. I will think."*
+- **Where.** The farmhouse, the workshop, or the field at night — wherever she lets the conversation happen. The answer eventually goes back to Luchebert in whatever form she chooses.
+- **What.** Carry Darrel's quiet question (see `brother_darrel.md` early-game) to her without pushing for an immediate answer. Wait. Carry her decision back — a name, or a refusal-with-context, or a single line for Hank to write in her next letter to Ingram.
+- **Reward.** A campaign-grade beat that closes the orphanage-coin chain on its emotional side. If she gives the name, she has chosen to. If she does not, the choice is hers and Hank carries the moment with her; the party is trusted with the *holding* of the question, which is its own standing. Standing with her shifts to a register the daylight scenes did not reach.
+- **Complications.** *Hers alone to call.* The party is the messenger, not the judge. A party that pushes her, lobbies her, or names her likely answer for her loses the offer. *Prerequisite:* the orphanage-coin chain Trip 2 has fired (`hank.md`); Darrel has refused the bag; the party has carried the refusal back to Hank and brought Darrel's quiet question with it.
+
+### Later-game quest — *fight beside her when the town cannot* (conditional)
+
+- **What she says** *(if and only if a real threat reaches Elmsfield — a Brumal incursion, a raiding pack, a creature the perimeter cannot hold — the concealment thinning at the edges as she steps from the farmhouse, her voice the same small one but her shape different)* — *"Stay back of me. The town does not see this twice."*
+- **Where.** Wherever the threat is — the edge of Elmsfield, the woods between the farm and the village, the road in.
+- **What.** Stand with her. Fight if the party can; witness if they cannot. After the threat is down, help Hank hold the town through what the morning brings — the parts of Elmsfield that saw her bulked, the parts that did not, and the conversation with Diederik that Hank will need somebody else in the room for.
+- **Reward.** Survival of the town — that is the reward, and it is hers, not the party's. Standing with both Hank and Egbert reaches its deepest point. The party becomes the ones who *were there* the night the concealment came off; her trust thereafter is unconditional.
+- **Complications.** Conditional and not on the party's clock — only fires if the campaign brings a threat the farm-perimeter cannot absorb. The disclosure is irreversible; Elmsfield's view of *Hank's mate* will not be the same on the morning after. She has decided in advance she is willing to pay the cost when the scale warrants — the cost is real, and the party's later visits to the farm will feel it. Some of the children may leave. Some of the townspeople will. *"You're going to have to be honest about what we are now,"* Hank says. *"All right,"* Egbert answers.
 
 ## How she reads at a glance
 
