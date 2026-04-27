@@ -135,7 +135,7 @@ When the relevant topic comes up and she trusts the listener.
 |---|---|
 | Doubts the Scarlet Vale myth about John | Lights up. Tells the truth in detail. Will return to the topic, unprompted, on the next campfire. |
 | Repeats the Scarlet Vale myth approvingly | Visibly cringes. *"That isn't what happened."* Will correct if pressed; will change the subject if not. |
-| Threatens her father, brother, or her mother's memory | The fight starts. She does not warn first. The dog joins. |
+| Threatens her father, her brother, or **Ellie** | The fight starts. She does not warn first. The dog joins. |
 | Tries to keep her out of a fight to "protect her" | Gets in anyway. Lets them know afterwards that it was patronising and she does not need it. |
 | Asks her to brawl-teach them seriously | Says yes; the lesson begins immediately, without warning. They will end up on the ground. They will not forget. |
 | Tries to leave her behind at Luchebert without seeing her arc through | Does not stop them. Looks at them in a way they remember. |
@@ -154,7 +154,7 @@ When the relevant topic comes up and she trusts the listener.
 |---|---|
 | **John Bean (her father)** | *"He carried more than he should have. He still does. I am working on telling him so."* |
 | **Ron Bean (her brother)** | *"He should not be where he is. I will get to him. I do not yet know how."* |
-| **Her mother** | *(Pauses.)* *"She cried the nights she thought we couldn't hear. She heard us before we heard her."* |
+| **Ellie (her mother)** | *(Pauses.)* *"She cried the nights she thought we couldn't hear, the year before they came for Ron. She heard me before I heard her. She is at the farm. Whoever is going through Blackwood — tell her I am alive."* |
 | **Steven** | *"He came to take Ron. I attacked him. I do not regret it. If he comes to find me now, I will hear him. That is not the same as forgiveness."* |
 | **Lady Rhianna Linthrope** | *"She got me out. I owe her the rest of my life and she will never ask."* |
 | **Father Elliot** | *"I have not met him. I have a letter for him from Rhianna. I do not know what I'll find when I get there."* |

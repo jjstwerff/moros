@@ -1,9 +1,18 @@
 # Thorgal
 
-- **Role:** Overseas mage; led the faction that ordered the Overseas War
-- **Species:** Human (overseas mage tradition)
-- **Location:** Historical — killed in the Overseas War, on this continent
-- **Status:** Deceased
+- **Role:** Overseas mage; led the faction that ordered the Overseas War; killed at distance through the scrying mirror that connected him to his forward commander; **his residue persists in the homeland mirror**, which lies where Raul's war-band left it.
+- **Species:** Human (overseas mage tradition).
+- **Location:** Historical — killed on the overseas continent through the mirror. **The homeland mirror sits in his old forward camp** in the hills between the Great Swamp and Allondo (`doc/places/mirror_camp.md`).
+- **Status:** Deceased; **the mirror is haunted**.
+
+## Campaign brief
+
+- **Role:** The dead overseas commander whose residue is still reachable through the mirror Raul's war-band left behind. The campaign's only direct line back to overseas mage-craft.
+- **Standouts:** *The mirror itself* — silvered glass, taller than a person, in a frame that has weathered the camp without rotting; **goes dark when Thorgal-the-living died and never quite went clear again**. When the residue is engaged, **the silvering shifts** — a movement the eye notices a beat after it happens.
+- **Speech tag:** When the residue speaks, it does so in fragments — overseas-tongue inflections in a voice that has not had a body in a generation. Imperative more than conversational: *"Bring it closer."* *"You are wearing iron from a forge I do not know."* *"Tell me what year it is. The number, plainly."*
+- **Quests:** Early — *the chain of war stories that brings the party to the mirror; let veterans lead each story to the next teller.* Late — *the bond, if an aspiring mage will carry the heavy glass and let a dead overseas commander watch the world he died for.* See §"Personal goals — early and later".
+- **Friction:** *He probed once and killed. The residue is weaker; reaching into a mind through the glass is what its old shape still does by habit.* A party that approaches the mirror without care can be probed in turn. The bond's early months are rough, possibly dangerous; the late stretch is the rare reward.
+- *Full character: `doc/npcs/thorgal.md`.*
 
 ## Summary
 
@@ -60,6 +69,80 @@ For an **aspiring mage** (party member or trusted NPC), carrying the mirror open
 Over time, as the residue accompanies the mage through the world, **Thorgal will come to an awareness of his own follies**. The war he ordered cost lives on both sides; the reason he ordered it (famine) is real, but the method (sending demi-humans to die for food) was a failure he had not reckoned with while alive. His residue *will*, given enough of the world to see, settle into a calmer and more rueful presence. Early in the bond he is hostile, confused, possibly still dangerous. Late in the bond he is a quiet scholar in the mage's head, pointing out what he finally understands.
 
 This is a **major late-campaign arc** available to a party willing to carry the heavy mirror and willing to let an aspiring mage in their number — or an aspiring mage they befriend — enter a bond with a dead overseas commander. The reward is genuinely rare magical knowledge. The cost is the duration of the bond's rough early months and the weight of the glass itself.
+
+## Personal goals — early and later
+
+A residue does not have *plans*. It has the pull its working still produces — to be reached, to be carried, to *see*. The two early-and-late frames are what a party can do with that pull.
+
+- **Early-game — be reached. Let the chain of war stories bring the right hands.** *What the residue says* (when first engaged honestly, fragments through the silvering): *"You came. The veterans told you. Which one of them did you believe. Tell me whose story it was."* — *Where:* through **Diederik** at Elmsfield, **Bridget** at the Inn, or any war-veteran the party honestly listens to — they surface **Felix**, **John Bean**, or **Lady Rhianna Linthrope** as the next tellers (`doc/npcs/felix.md`, `doc/npcs/john_bean.md`, `doc/npcs/rhianna_linthrope.md`); **Felix** at a fair gives the story that leads to Rhianna; **Rhianna** in her residence with her hour-glass turning gives the location to a party asking pointed informed questions; **John** fills in the war's end without the place; **Hannes** confirms nothing he is not pressed to (`doc/npcs/king_hannes.md`); **Raul**, if the campaign brings him in, short-circuits the chain (`doc/npcs/raul.md`); the **camp itself** in the hills (`doc/places/mirror_camp.md`); the **mirror** in the command tent. — *What:* listen to veterans rather than interrogate them; follow each story to the next teller; reach the camp with the right reasons rather than the right map; engage the mirror carefully when the party finally stands in front of it. **The discovery is the work.** — *Reward:* a working channel back to overseas mage knowledge — the only one on this continent. The residue answers, in fragments, to questions the party has earned by the chain. *What he can tell the party about the overseas continent, the dissenters, the war's real motives — no other source on this side has.* — *Complications:* approaching the mirror **without care** invites a probe in turn; the residue does what its old shape still does by habit. A party that comes to the mirror through Raul without working the chain first lands in front of glass that does not yet recognise their hands. **John Bean meeting the residue** is its own beat — he has been protected from knowing he killed someone trying to feed his people; the meeting is heavy, and the party should understand they are bringing it to him, not for him.
+
+- **Later-game — the bond, if an aspiring mage will carry the glass.** *Conditional — opens once the party has reached the mirror through the chain and has an aspiring mage (party-member or trusted NPC) willing to take the bond.* *What the residue says* (after the chain is honoured and the candidate has been brought to the camp): *"You will carry me. I will see the country I sent men to die for. You will learn what I learned in fifty years of working under a sky with no chaos in it. The first months will be hard. I am not patient. I have not been patient in a long time. If you are sure, set your hand on the glass."* — *Where:* the **command tent at the mirror camp** for the bond's beginning; the **road** itself afterwards — every place the carried mirror travels to is the residue's *first sight* of that place. **Mountains, forests, rivers, towns, the people he had only ever known as targets** — the bond is the journey he was killed for. — *What:* an aspiring mage commits to the bond and to carrying the heavy glass; the party hauls or trades the labour fairly across visits; weather the rough early months when the residue is hostile, confused, possibly dangerous; let the residue *see*. Over months and years the residue settles — Thorgal-the-rueful comes to the awareness Thorgal-the-commander could not. Late in the bond he is a quiet scholar in the mage's head, naming what he finally understands. — *Reward:* **overseas-tradition mage-craft** in the aspirant's hands — practice that developed under different conditions (fewer chaos spirits, unchecked power, no druidic partnership) with shapes the homeland tradition does not have. The closest any mage on this continent can come to overseas schooling without crossing the sea. **A bridge to the overseas continent** if the campaign ever turns that way; the residue, awakened and rueful, can speak to it. — *Complications:* the **mirror is heavy**; bulk and care are real costs across long road-stretches. The early bond is *rough* — the candidate may take damage of a kind that sleep does not heal; a party that ditches the bond mid-roughness loses both the mage and Thorgal's residue in the same hour. The dissenters from his old faction — if the campaign opens that thread — would have *opinions* about the bond, and their opinions reach across the sea slowly but not zero.
+
+## What the residue says — fragments through the silvering
+
+When the mirror is engaged honestly, what comes out is fragmentary — the residue does not have continuous attention. These are the lines a DM can deliver close to verbatim.
+
+### When first reached — *which veteran*
+
+> *"You came. The veterans told you. Which one of them did you believe. Tell me whose story it was. I do not remember most of them. I remember Raul. I remember the man who killed me, though we never met."*
+
+### When asked about the war — *the famine*
+
+> *"The continent was starving. There was a surplus of demi-humans the land could not feed. I sent them here as soldiers because feeding them by sending them was the answer I could find. The other answers required someone else feeding them, and no one else would. I would not send them now. I have had time to think."*
+
+### When asked about John Bean — *the man with the phantom*
+
+> *"He had lost an arm and not yet realised it. I reached into his head expecting thought and found a hand that was not there. The hand pulled. Through the glass. I have not been a continuous mind since. I do not blame him. I am surprised, still."*
+
+### When asked about Raul — *my forward*
+
+> *"Loyal. Slow with options. Held the line longer than was wise. He is not finished with what we did; he wants the mirror back. I am ambivalent on whether he should have it. He has the discipline. He does not have the dissenters' words."*
+
+### When asked about the dissenters — *the alternatives we could not find*
+
+> *"Some of them are still alive. They opposed the war. None of them had a plan that did not involve someone else feeding us. I did not credit them then. I credit them now. They will be elders when you find them, if you do; the ones I would name are mine to name only if you carry me to where they are."*
+
+### When asked what he wants — *to see*
+
+> *(A pause the party feels as the silvering settling.)* *"To see. The continent I died for. Mountains. Forests. Rivers. Towns. The people I knew only as targets. If you are willing to carry, I will look. The bond is what I have left."*
+
+## Mannerisms — what the residue's presence does
+
+- **When pressed** — the silvering darkens. Fragments shorten. The air in the command tent gets cold by a measurable degree.
+- **When recognised properly** — the silvering shifts toward stillness. The residue offers more. Its imperative softens.
+- **When threatened or insulted** — the residue probes. *Once* — a single attempted reach into the speaker's mind, brief, instinctive rather than vengeful. A character with Will ≥ 3 shrugs it off; a character with Will lower takes a stat reduction the bond would otherwise have softened.
+- **In the bond, early** — irritable, intrusive, the residue forgets which century it is. The candidate's dreams carry overseas geography they have never seen.
+- **In the bond, late** — quiet. Names what he understands. Will not interrupt the carrier's working unless asked.
+
+## What the residue says about other people
+
+| Figure | The residue's read |
+|---|---|
+| **John Bean** | *"The man who killed me. I am surprised at him still. I would have him at my table if a table were possible."* |
+| **Raul** | *"My forward. Wants me back. I have not decided what I owe him."* |
+| **Felix** | *"He saw the camp. He left. He has not been back. I respect the staying-away."* |
+| **Lady Rhianna** | *"The priestess who kept his arm working. She wants the mirror buried. She is not wrong; she is not entirely right."* |
+| **King Hannes** | *"The one we held. He has not said where he was held. That is the silence of a king who learned something we did not mean to teach."* |
+| **The dissenters** | *"My old colleagues who opposed me. Not all dead. Old now. The ones I would name are mine to name only after I have seen what they have seen."* |
+| **The current overseas leadership** | *"Heirs of my flavour. I do not know them. They do not know me. They should know me, before they decide what flavour to wear next."* |
+| **Laurent** | *"A mage who held when others would have set down. We are similar in shape. He is on this continent. I died trying to reach it. The asymmetry is not lost on me."* |
+| **The Skull Gatherers** | *"They would receive me, in time. I am not a skull they can collect — I am a mirror they cannot carry. They wait."* |
+| **The chaos spirits** | *"The presences my tradition did not learn to think about. The dissenters tried to. We did not listen. We are paying."* |
+
+## If the party does something — what the mirror does
+
+| If the party... | The mirror responds by... |
+|---|---|
+| Approaches it without engaging | Silvering stays dark. The residue notices; does not reach. |
+| Engages honestly with veteran-chain standing | Silvering shifts. Fragments come out. The conversation begins. |
+| Threatens the mirror | A single probe. *Once*. The party should understand what they are looking at afterwards. |
+| Tries to break or burn the mirror | The frame is older than the camp; it does not break easily. The residue does not retaliate; it goes dark. The bond becomes harder; the chain may close. |
+| Brings John Bean to the camp | The mirror responds *immediately* — the only NPC's presence that pulls the residue's attention without effort. The conversation that follows is the campaign's heaviest. |
+| Brings Raul to the camp | The residue speaks more freely; the party may not be welcome to stay for it. |
+| Volunteers an aspiring mage for the bond | The residue assesses. Will not commit on first asking; the candidate is told to come back. |
+| Carries the mirror without the bond | Possible; expensive; the residue sulks. Without a bonded mage, the mirror is just a heavy haunted glass. |
+| Carries the mirror *with* the bond | The bond runs as described above. The campaign's late-arc shape changes. |
+| Asks about the overseas continent | Fragments. Useful, partial, weighted toward what the residue still cares about. |
 
 ## Relationships
 
