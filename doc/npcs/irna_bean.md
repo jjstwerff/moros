@@ -5,6 +5,15 @@
 - **Lives:** *Currently* — wherever Diederik is keeping her alive. *Once recovered* — wherever the party is. She has no fixed home. The farm at Blackwood is her father's; her own life is in motion.
 - **First met:** Session 1, slumped against a post at Elmsfield's gate, her grey-muzzled dog standing guard.
 
+## Campaign brief
+
+- **Role.** John Bean's daughter, exile bound for Luchebert, the campaign's first patient and first travelling companion. The actual subject of the *valiant spirit* prophecy — though she does not yet know it.
+- **Standouts.** Young Boar folk, broader-shouldered than her age suggests; an iron shackle on her ankle engraved with the king of Allondo's crest, worn openly as defiance and audible on hard floors; a grey-muzzled dog at her side in every scene.
+- **Speech.** Direct, hot-blooded under restraint. *"That isn't what happened."* (cringes) when the Scarlet Vale myth about her father is repeated. *"I'd like to."* (carefully) when offered the chance to face Steven on her terms.
+- **Quests.** *Early:* run the threads that explain what went wrong with her family — Clear Water orders book, the old mill with Felix, Steven on her terms (§"Personal goals — early and later"). *Later:* reunite the Beans, clear their names, get Ron out from under the misread.
+- **Friction.** The shackle stays on until the king explains it out loud or she decides she has made the point. A party offering to find a smith gets *"When the king has explained it to me, I'll be ready"*; a party trying to remove it without consent breaks standing badly.
+- Full character: `doc/npcs/irna_bean.md`.
+
 ## What the party meets — Phase 1: at the gate
 
 Session 1's opening obstacle. Irna is feverish, half-blind, **crystalline fungal growths on her skin and over her eyes**, breathing laboured. She **cannot speak**. Her cloak is pulled tight. She is slumped against a post and the only thing keeping locals off her is **a large grey-muzzled dog** that has already driven off two of them.
@@ -21,10 +30,51 @@ She is **a different NPC after recovery**. Where the party met an unconscious pa
 
 ## Personal goals — early and later
 
-She has an early-adult sense of justice: sharp, impatient, more willing than her elders to use the upheavals around her as pry-bars rather than wait them out. The two threads scale years apart, and each pulls a specific cast of people and places into reach.
+She has an early-adult sense of justice: sharp, impatient, more willing than her elders to use the upheavals around her as pry-bars rather than wait them out.
 
-- **Early-game — find out what actually went wrong with her family.** Her mother cried in the nights for a year before they came for Ron. Hannes's iron-demand at **Clear Water** was war preparation; she watched the orders come down to the pit. Steven has never explained the proclamation to her face. *Where this goes:* back into **Clear Water mine** for the orders book she did not get to read; to the **old mill** where her father lost his arm and **Felix** found the way in (Felix has the door-knowledge; her father has the rest); to a real conversation with **Steven** when his apology arrives (see `steven.md`); to **Lady Rhianna** on how the proclamation was framed; to **Father Elliot** on the prophecy that was actually about her, not Ron. She has the questions. She does not have the pieces. A party that runs these threads with her is a party she trusts at depth — and every answer feeds the later goal.
-- **Later-game — reunite the Beans and clear their names.** Get **Ron** out from under the crown's misread of the prophecy — which means **Father Elliot** publicly correcting it, **Felicia** at the shrine confirming it, and the court hearing it. Give her **mother** the explanation. Strip the Scarlet Vale myth off her **father** and let what he actually did (Thorgal through the mirror, not a punch) stand. She is willing to ride the campaign's wider troubles toward this — Brumal's refugees, **Hannes**'s war if it comes, an audience at court — when the door is there. The **shackle** comes off when this is done, or when the king explains it out loud, whichever happens first.
+- **Goal: find out what actually went wrong with her family.** Her mother cried in the nights for a year before they came for Ron. Steven has never explained the proclamation to her face. The mine taught her things the court has not heard. She has the questions. She does not have the pieces.
+- **Goal: reunite the Beans and clear their names.** Ron out of the yards. Her mother given the explanation. The Scarlet Vale myth stripped off her father.
+- **Goal: meet what she actually is.** She does not yet know the prophecy was about her. The shackle stays on until the king explains it out loud or she decides she has made the point.
+
+### Early-game quest — *the orders book at Clear Water*
+
+- **What she says** *(at a campfire, after the party has been on the road with her long enough to hear her on the iron-demand, the dog at her leg)* — *"There's a book at Clear Water that the warden writes the day's orders into. I dug what they wrote. I never got to read what they wrote it for. I want to read it now."*
+- **Where.** Clear Water Mine — specifically **the locked drawer above the assay table**, where the warden keeps the orders book (`doc/places/clear_water_mine.md`; the warden is Calder, see `doc/npcs/calder.md`).
+- **What.** Get into the assay office, open the locked drawer, copy or take the orders book, bring it back. Run it through one of the people who can read what it means — **Lady Rhianna** for the political framing, **Osric Vey** at Clear Water itself for the food-crisis pattern argument, **Felix** for the older overlay he can put on it.
+- **Reward.** Concrete evidence that Hannes's iron-demand was war preparation. Confirmation of what Irna saw with her hands and could not name on her own. Standing with her shifts to *trusted at depth*: she will tell the trust-gated stories (her mother's nights, the shackle's full reason). The orders book becomes a piece the party can carry into the audience chamber later as material support for the corrected proclamation.
+- **Complications.** **Calder** is the warden — careful, decent, not corrupt; reading the book under his eyes is hard, and stealing it without leaving a trace is harder (see `calder.md`). **Trull**'s lost-key thread may help (see `trull.md`). The mine knows Irna's name and her shackle; a party arriving with her at the gate is a different problem from a party arriving without her. *She wants to be there.* Leaving her behind to read the book yourself is a betrayal of the quest's shape.
+
+### Early-game quest — *the old mill with Felix*
+
+- **What she says** *(at a campfire, when Felix has come around the fair circuit and the party has him in earshot for once; quietly so the dog is the only one who hears her start)* — *"I want to ask him what he was thinking. He found the door. Father went in. Father was kind to me when I was a child; Felix can be kind to me now and we can still have it."*
+- **Where.** The old ironwood mill where **John Bean** lost his arm (`doc/npcs/john_bean.md`); **Felix**'s fair circuit (`doc/npcs/felix.md`) for the conversation that has to happen before the visit.
+- **What.** Broker the conversation Irna has been waiting for — Felix and Irna at a campfire or in the mill itself, on what happened the day John lost his arm. Then walk the mill with both of them. The party's role is to make the meeting possible, not to mediate it; Irna takes the conversation from there.
+- **Reward.** A piece her father has not been able to give her about his own life. Standing with Felix advances (he has been waiting for this conversation longer than he says). The Scarlet Vale myth weakens at its source — Irna has the version *from the door's discoverer*, not the court's. The mill becomes a place the party can return to with John, late, if the campaign reaches that beat.
+- **Complications.** Felix may not come on a first ask — he prefers not to be in conversations he cannot end with a tail-ring shrug. The party has to make him want the hour. **Irna will not ambush him**; she wants the conversation on her terms but also on his — *"on her terms"* means *she has chosen it*, not *she has trapped him*. A party that traps Felix into the meeting costs Irna the conversation.
+
+### Early-game quest — *Steven on her terms*
+
+- **What she says** *(after the party has heard from Steven — directly or via Rhianna — that he is looking for her; not at a campfire, but on the road, pacing as she talks)* — *"I'd like to. Not at his gate. Not at court. Somewhere I am already standing. Bring him to me."*
+- **Where.** Wherever the party is travelling with her — the road, an inn, Hank's farm, a campfire she has chosen. Not Scarlet Vale; not Steven's house; not anywhere he is the host.
+- **What.** Carry word to **Steven** (see `steven.md` §"Seeking Irna out") that she will hear him, and on what terms. Broker the meeting — escort Steven, hold the dog if she asks (the dog reads Steven as the morning-they-came, regardless of the present scene), give Irna the room she needs. Carry whatever lands, in either direction, back to the people who need it.
+- **Reward.** An apology Irna has been owed. The proclamation thread acquires a witness in the second prince — Steven will, after this meeting, write the kind of letter to his father that Hannes will read seriously. Standing with Steven advances; standing with Irna deepens — she has been carrying the morning-they-came for longer than she lets on, and a meeting that goes well lifts a weight.
+- **Complications.** *Not the same as forgiveness.* The meeting going well does not mean Irna forgives Steven; it means she heard him. A party that pushes for reconciliation rather than acknowledgement breaks something. The dog is a real obstacle; if Irna does not call him off, the meeting does not happen at all. *Prerequisite:* the party has been on the road with Irna long enough to be allowed to broker something this personal — at minimum, they have heard her *attacking-Steven* story directly.
+
+### Late-game quest — *carry the Bean correction into the chamber*
+
+- **What she says** *(only after the proclamation correction is in motion — Elliot has written, Hannes is open to it, Rhianna is in the room — at the gates of Scarlet Vale, the shackle audible on the cobbles)* — *"I am going. I want them to see what was done before they hear what is corrected."*
+- **Where.** Scarlet Vale (`doc/places/scarlet_vale.md`) — audience chamber, palace garden if the register opens, Lady Rhianna's house as the staging ground.
+- **What.** Escort Irna into the audience with Hannes, alongside the corrected proclamation Elliot has finally written. The shackle stays on her ankle. Stand with her while the chamber sees her. Carry whatever Hannes says next — release order for Ron, request for an explanation, a private word in the garden — to the people who need it.
+- **Reward.** The Bean family's name clears in the place the slander was made. Ron is released. **Ellie** (Irna's mother, see `john_bean.md`) gets the explanation she has been crying in the nights for. The shackle either comes off — Hannes explains it out loud, in the garden, where she can hear him — or Irna decides she has made the point and walks to a smith with the party as witnesses. Standing with Hannes, Rhianna, Elliot, John, and Ron all advance together.
+- **Complications.** Irna will not be performed-with. The chamber sees her on her terms or not at all. The shackle is a deliberate political object; a party trying to soften the visit by getting it struck off in advance breaks the quest's shape. *Prerequisite:* Elliot has written the corrected proclamation (see `father_elliot.md`); the party has Lady Rhianna's standing introduction; Hannes has signaled in the garden register that he is ready to receive.
+
+### Late-game open door — *the prophecy was about her*
+
+- **What she says** *(she does not say it yet; the line lands on her, in the saint chapel at Luchebert, after Elliot and Willow have decided the time is right; the dog presses against her leg before she can name what she is feeling)* — *"That cannot be."* — *"I am not —"* — and then, after a long silence — *"Tell me what it would mean."*
+- **Where.** The saint chapel, the back-cloister shrine, and eventually the quieter spiritual ecology of the hill country (`doc/npcs/father_elliot.md`, `doc/npcs/willow.md`, `doc/npcs/felicia.md`).
+- **What.** Stand with her when Elliot and Willow tell her — without rushing the conversation, without leaving the room. Carry her writing back to Elliot for the ratification (see `father_elliot.md` later-game). Walk her to and from the shrine on the days Willow gates her in. The party is the support that makes the formation survivable.
+- **Reward.** Irna meets what she actually is. The prophecy gets the body it needed. The Bean family arc closes on a register the court did not know to read for. Standing with her becomes something else entirely — she is no longer their patient or their travelling companion, she is a peer working alongside them on the campaign's largest questions.
+- **Complications.** *Hers alone to carry.* The party cannot lead this; they can only stand with her. A party that pushes her toward the shrine, names her potential before Elliot does, or treats the prophecy as their discovery rather than hers, costs her the conversation. *Prerequisite:* the proclamation correction has fired; Willow has accepted the party at the shrine; Elliot has decided the time is right.
 
 ## How she reads at a glance
 
