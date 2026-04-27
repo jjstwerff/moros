@@ -10,7 +10,7 @@
 
 The party arrives overland. Salmonswell has no water approach — the tributary is rapids from here all the way north, and unsailable in the other direction past the first bend. Most parties come up the valley road from Allondo's interior, or down the main trade road from Linar harbour's direction. A few will have come *in* from Brumal — the refugee direction, which tells Salmonswell a lot about them before they have spoken.
 
-They crest the valley rim and see the city below. **A working river-wharf on one bank**, the row of smokehouses stretching along it, the salt-yards behind, merchant-houses tight at the centre, fisher-dwellings climbing the valley sides. The river itself is visible: a slow stretch with a clear *swell* at its middle — the Upwelling, the reason the city exists.
+They crest the valley rim and see the city below. **A working river-wharf on one bank**, the row of smokehouses stretching along it, the salt-yards behind, merchant-houses tight at the centre, fisher-dwellings climbing the valley sides. **At the northern edge — where the slow water turns to rapids — a cutting-yard with stacked timber and a covered wheel-house** sits on the bank, a thin steady plume of sawdust visible against the trees. The river itself is visible: a slow stretch with a clear *swell* at its middle — the Upwelling, the reason the city exists.
 
 The wind carries. **The smell of smoked salmon reaches them before the city does.**
 
@@ -59,10 +59,22 @@ A short walk upriver from the wharf. A broad slow stretch where the spring's lif
 
 A working building on the wharf's inland side, unimpressive in construction, well-used inside. A central room with a long table, a back room with the ledgers, a second floor where the rotating council meets.
 
-- **The title is older than the function.** "Harbourmaster" dates from when this stretch of river was the furthest inland point proper boats could reach. The council inherited the name because nobody agreed on a replacement.
+- **The title is older than the function.** "Harbourmaster" dates from when this stretch of river was the furthest inland point proper boats could reach. The council inherited the name because nobody agreed on a replacement. **The current scope is fishery-and-rights**, not sea trade: dock allocation among the salmon-fishing families, fishing-rights at the Upwelling, fee collection on the cured-fish and salt that leave overland, the rotating merchant-house seats. There is no sea to administer and no foreign shipping to clear — the rapids see to that. A traveller arriving with sea-port assumptions reads the title once and adjusts.
 - **The council rotates.** A dozen merchant-houses share seats; one chairs at a time; the chair changes every season. Decisions are **slow and compromise-shaped**, which is part of why Salmonswell has not fallen to either kingdom.
 - **The ledgers downstairs** hold every trade fee collected for the last century. A merchant tracing a family dispute can often settle it by an hour's reading. The clerks will help if asked courteously.
 - **Outside delegations are received here** — Allondan envoys, Brumal envoys, traders from Linar, occasionally a druid or priest with a message. The council receives them all. The council commits to almost nothing.
+
+## At the cutting-yard — where the rapids drive the saws
+
+The first stretch of rapids, just inside the northern edge of the settled area, is harnessed for the mill complex that keeps Salmonswell's other industries running. The yard is the loudest single piece of the city; the party will hear it before they see it, and the rhythm — *cut, pause, cut, pause* — is part of how the town keeps time. Three things stand out:
+
+- **The **wheel-house**.** Covered timber building over the bank, the under-shot wheel turning steadily on the rapids' first lift. The race that diverts water to it is a stone-cut channel a generation old, narrowed and re-narrowed across its length so the flow holds even when the river is high. **A small overshot wheel above it** runs slower, geared for the heavier cuts; the two wheels together drive most of what the yard does.
+- **The **saw-frames** and **stave-shop**.** Two reciprocating sash-saws driven from the wheel-house — one rough, biting through the long alder and oak logs that feed Smokehouse Row's fires; one finer, breaking down the cured oak that goes into salmon-crates and salt-barrels. **The stave-shop next door** uses a smaller water-driven trip-hammer to set barrel hoops; the hammer is unmistakable from the wharf in still air. Stacks of timber and finished barrels line the yard.
+- **The **millwright's shed**.** Smaller building behind the stave-shop. The yard's millwright — a carpenter-and-smith by combined trade — keeps spares for everything that breaks: gudgeons, hangers, replacement teeth for the gear ring, a half-cut mill-shaft of seasoned ironwood waiting to be turned. The shed is the first place the city looks when the wheels stop.
+
+**The yard's crew** is a mixed lot — old fishing-family members who chose wood over fish, two Brumal refugees the millwright took on for a season because they could read a saw-frame, the millwright herself (DM-fill on name and species). They are friendly to careful visitors and short with anyone who walks under the saw-frames without watching.
+
+**When something breaks** — and over a campaign it will — the breakdown is the city's problem and the party's opening. A stripped gudgeon stops the rough saw and Smokehouse Row's fuel supply with it; a cracked sluice gate floods the race and silts the wheel; a snapped mill-shaft is the rare disaster that puts the whole yard down for weeks. The millwright will accept help from any character with **Wright**, **Carpentry**, **Blacksmith**, *Ingenuity*, or *Hand* — and from a party that does not have those, will accept hauling, salvage, and timber-felling work. **Master Darius**'s forge at World Edge is the regional source of the heavier iron parts (`doc/npcs/master_darius.md`); a snapped shaft is one of the errands his letter can carry weight on. **Diederik**'s ironwood is the only viable replacement for a shaft if the seasoned one in the shed is already cut wrong.
 
 ## At the north gate — where the rapids begin
 

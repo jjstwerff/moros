@@ -1,6 +1,6 @@
 # Luchebert Monastery
 
-- **Type:** Small monastery in a remote hill vale, on top of cliffs above a curve of the river east of the Great Swamp.
+- **Type:** Small monastery in a remote hill vale, on top of cliffs above a curve of the river east of the Great Swamp. **The river the cliffs stand above is the Clear Water** — the Lake of Tears' outflow, continuing east past Luchebert and on south-east to Linar harbour (see `doc/places/geography.md` §"Rivers (inventory)"). The cliff path descends to its bend.
 - **Region:** The hills east of the Lake of Tears, beyond Laurent's downed city.
 - **Officially:** Saint Luchebert's Abbey. The saint himself was one of the first human priests on this world, who built his religion out of **an ancient holy book carried through the portal from the world the first humans came from** (see `doc/claude/LORE.md` §"Saint Luchebert"). The monastery's **library** is the living continuation of that work — ancient books being copied and translated, page by page, to keep knowledge from the other side of the portal alive on this one.
 - **In practice:** A monastery whose true devotion is **Felicia**, tended through **Willow**'s hands at a *cave chapel* just off the cloister grounds. The ancient-knowledge work and the great-spirit devotion run in parallel, not in competition — Saint Luchebert's tradition was always flexible enough to receive what came after.
@@ -40,6 +40,12 @@ In passing through, the party will also notice:
 - **A dining hall** in use but quieter than its size suggests — long benches sit half-empty at every meal.
 - **A small kitchen** open to the herb garden. Whoever has the cooking shift can be reached through the garden door.
 - **A stair** to upper rooms once used as cells, now thinly occupied.
+
+**Named volumes in the library** that DMs can hand a serious visitor (Elliot will walk a guest in once asked):
+- ***A Bestiary of Things That Are No Longer Here.*** Pre-rift; small, fragile, hand-illustrated. Names creatures the kingdoms have lost — settlers' livestock breeds, river-fish that vanished with the chaos pressure, a small civic puppet kind that lived in white-city households. A *Druid* or *Hunter* reading it at length recovers fragments useful for restoration work.
+- ***An Old Herbal in a Hand No One Currently Speaks.*** Older than the saint himself; carried through the portal. Names plants by sound rather than by leaf. Steven would give a season's wages to read it slowly; Diederik would do the same. Elliot has not let either of them, yet.
+- ***A Fragmentary Working-Manual.*** A single bound sheaf in a pre-rift mage's hand, copied and recopied over generations. Small workings, not the big arrangements. A serious mage student earns a real piece of pre-rift practice from sustained study; the manual's glossary alone is the work of a winter.
+- ***The Saint's Original.*** Locked. Brought through the portal by Saint Luchebert himself; the source the whole tradition was built from. Elliot's predecessor showed it to Elliot once. Elliot has not yet shown it to anyone else.
 
 ## At the cave chapel — Felicia's shrine
 

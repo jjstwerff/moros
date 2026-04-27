@@ -124,6 +124,18 @@ The wreck's most load-bearing terrain feature is its drops. A DM should know whe
 
 **A puppet thrown off any of these stays down.** A party member who falls takes the same damage the puppet would have taken, and does not have Laurent's workings to recover.
 
+## Hidden in the wreck — what survived the looters
+
+Anything obvious is gone (see `doc/claude/ITEMS.md` §"Where items come from"). What survives now survives because Laurent preserved it deliberately — Felicia's room, the audience hall, his own kept pieces — **or because it was hidden well enough that the looters never found it**. The hidden caches are pre-rift mage-aristocratic in register and live in places the puppets do not patrol:
+
+- **A pre-rift mage-traveller's pack** — between-deck cache; the *found-piece* Masterwork form of Backpack (`doc/claude/ITEMS.md` §"Backpack"). Not at any market; nobody alive can build a new one.
+- **One or two refreshment potions** — preserved by their bottles' workings; centuries on the shelf and still good for a single dose each. The bottles are themselves the late-game recipe for an alchemist who can read the working.
+- **A small piece of pre-rift court-blade or a wartime master-piece** — Sword's *found-piece* Masterwork form: easier to wield and carry, *not* more deadly. Hidden in a structural void Laurent does not visit.
+- **A piece of Felicia's life-practice** — set aside in her preserved room before the fall, in a small drawer Laurent has not opened since. Reaching this requires standing earned through the necklace path; he will tell some of what it is and reserve the rest.
+- **Inside the half-replaced lower decks** — small mage-craft fragments in the gap between the original trafficker's frame and Laurent's intended replacement; the renovation was halted mid-work and the gap is its own hiding place.
+
+A party that has earned the necklace path can ask Laurent about the wreck's contents directly; he will tell some, reserve some. A party opening caches without his standing risks the puppets — or worse, the fire.
+
 ## Visible patterns
 
 - **The puppets do not move while the party is welcome.** The moment the welcome ends, alcoves begin to animate — not all at once; in a rising wave.

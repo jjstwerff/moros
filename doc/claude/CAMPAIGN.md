@@ -270,7 +270,7 @@ does not know where Irna was or what she encountered.
   reputation for strange ailments and bad air
 - Diederik has heard of the wizard towers but has never visited them
 
-**Session 1 ends** when the group decides to travel south toward the Lake of Tears to find
+**Session 1 ends** when the group decides to travel **north** toward the Lake of Tears to find
 the fungus and save Irna. Diederik stays in Elmsfield to keep Irna alive.
 
 ### Key NPCs — Session 1
@@ -284,13 +284,13 @@ the fungus and save Irna. Diederik stays in Elmsfield to keep Irna alive.
 
 ---
 
-## Session 2 — The River South
+## Session 2 — The River North
 
 ### Travel to the Lake
 
 **Scenario type:** Travel
 
-The group follows the small river south from Elmsfield toward the Lake of Tears. The
+The group follows the small river **north** from Elmsfield toward the Lake of Tears. The
 journey is half a day on foot — 4–5 travel rounds.
 
 **Terrain:** The river valley broadens into the **Great Swamp** — the wetland region that

@@ -1,7 +1,7 @@
 # Linar Harbour
 
-- **Type:** Small independent harbour town at the east-coast foot of the coastal mountain range. The start of the main inland trade road.
-- **Region:** East coast; the trade road disappears west into a pass through the range's southern terminus. The coast stretches north toward World's End and south toward the pirate nest.
+- **Type:** Small independent harbour town at the east-coast foot of the coastal mountain range, **at the mouth of the Clear Water river** where it meets the ocean. The start of the main inland trade road.
+- **Region:** East coast; the trade road disappears west into a pass through the range's southern terminus. The coast stretches north toward World's End and south toward the pirate nest. **The Clear Water river arrives at the harbour from the inland north-west** — its full course runs from the foothills east of Scarlet Vale (where Clear Water mine sits at its head) → north into the Lake of Tears → out past Luchebert Monastery → through the hills → out here (see `doc/places/geography.md` §"Rivers (inventory)"). Whatever travels downstream — fish, silt, mine run-off, the occasional drowned letter — eventually arrives at this harbour.
 - **Officially:** Independent. Neither Allondo nor Brumal holds claim here. Self-governed through practical arrangements nobody has rewritten in a generation.
 - **In practice:** A working trade hub whose **working population is descended from the overseas soldiers who captured it in the war and never went home**. The town has spent a generation making itself the place where those descendants and the surrounding kingdoms can do business without either side having to explain anything.
 - **Status:** Stable. The peace is practical, not warm. Brumal's collapse and the prospect of a second war puts the harbour's neutrality under pressure it has not yet been asked to refuse.

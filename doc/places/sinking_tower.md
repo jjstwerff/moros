@@ -68,6 +68,16 @@ Bring the bound owner-spirit what he wants, and he will release the tower — **
 - **The owner-spirit goes with it.** He is heading wherever he is going. The fetch-quest resolved has given him a reason to move — a destination, a person to meet, a ritual to complete. The tower is his vehicle.
 - **Unique exit direction.** The pot-boy walks out with the furnace following. The volcano tower lifts on fire-elemental energy. The darkness tower moves by mosaic mechanic. The Storm Mage is brought back to the Lightning Tower. Gerhald consents. **The Sinking Tower floats away by water.** This matters for the campaign's sense that each shackle has its own logic.
 
+## Hidden in the sinking tower
+
+The original mage hid pieces here before the seizing (see `doc/claude/ITEMS.md` §"Where items come from"). The cache is **water-and-buoyancy-aspected**, in style with the tower, and the descent-glow that lit the lakebed once a night is part of why the seizing mages did not look closely:
+
+- **A piece of deepwater glass** — bound to the tower's nightly descent for so long it has taken some of the working in; functions as a focus for water-aspected powers.
+- **A windbone-and-water clasp** — small lift-aspected accessory; a Bracelet Material variant for a power-user already carrying a buoyancy or balance trade.
+- **A sealed scroll in waxed cloth** — the original mage's notes on the working that lifts the upper half and lowers the lower half; a Wright or Druid student can read pieces of it.
+
+Diving the lower half during the right hour of the descent is when the cache is reachable. After the tower floats away, what was not retrieved goes with it.
+
 ## Role as spirit-shield (partial)
 
 Per `doc/claude/LORE.md` §"Spirit Ecology," a bound owner-spirit inhabiting his old home for generations reads to chaotic spirits as a mighty-adjacent presence. The Sinking Tower contributes, quietly, to the Lake region's unusual shield cover. When it leaves — by the river, to the sea — that contribution departs with it.

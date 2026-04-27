@@ -18,6 +18,31 @@ and how it behaves by default before the players do anything to change that.
 Statistics reflect a typical specimen. Exceptional or aged individuals may run 1–3 points higher
 in their dominant stats. Young or weakened ones run correspondingly lower.
 
+## Powers on creatures
+
+**Player powers can be applied to creatures wherever the creature's nature makes the power
+applicable.** Some entries flag specific powers in their Behaviour line — *Druid* reads
+accommodated flora; *Smell* detects fungal contamination on a rot-frog; *Lookout* spots a
+leech-vine before it drops; the right command-phrase stops a Skeletal Guard. **Absence of a
+flag does not preclude the power's use** — DM judgement applies. The general shape:
+
+- ***Druid*** on plants and animals — calming, reading, redirecting, negotiating; works on
+  accommodated fauna and flora, *not* on chaos-touched specimens or constructs
+- ***Shaman*** on spirits, chaos creatures, and warped local spirits — patience-craft,
+  teaching small structure (the Tod-style mechanism)
+- ***Hunter*** on beasts — tracking, predicting movement, reading behaviour from sign
+- ***Smell*** on fungus, contamination, scent-trails, and the subtle differences between an
+  ordinary creature and a warped one
+- ***Lookout*** on anything hiding in waiting — leech-vines, ambush predators, the second
+  approach behind the obvious threat
+- ***Hand*** on prying, removing, severing — getting an attached creature off a party member
+  without inflicting more damage than necessary
+- ***Will*** and ***Char*** on social/animal-rapport — calming a frightened mount, holding
+  ground against intimidation, reading a creature's threat-level before it commits
+
+A creature's stat block tells the DM what the creature *does*; the powers tell the DM what
+the players can *do back*. The work is in the meeting between them.
+
 ---
 
 ## Common Beasts
@@ -60,7 +85,9 @@ immediately. A mother bear with cubs is among the most dangerous encounters in t
 **Behaviour** — False charges first — standing tall and slamming the ground to drive off the
 threat. Only commits to a real attack if the threat holds its ground through two bluffs. Once
 committed, it is relentless. Retreats only after taking significant damage and only if a clear
-escape route is available.
+escape route is available. *Druid* reads the bluff-window plainly and can negotiate a pass on
+the first or second charge; *Hunter* reads cub-presence sign before the encounter triggers and
+can route the party clear without ever meeting the bear.
 
 ### Giant Boar
 *A wall of muscle and tusk that charges in straight lines and refuses to stop.*
@@ -322,8 +349,10 @@ for subtle operations.
 moves within range will be swarmed without warning.
 
 **Behaviour** — Physical attacks do not harm the swarm. Fire disperses it. Smoke — produced
-with a camp fire action and Hand ≥ 2 — calms it temporarily and suppresses the sting cloud
-for one round. Once defending the hive it does not stop until the threat leaves.
+with a camp fire action and *Hand* ≥ 2 — calms it temporarily and suppresses the sting cloud
+for one round. *Smell* locates the hive at distance and reads whether the colony is calm or
+defending; *Druid* (see bond below) communicates with the hive-mind directly. Once defending
+the hive it does not stop until the threat leaves.
 
 **Druid bond** — Can be guided to a specific position and held there, creating a zone that
 enemies will not enter voluntarily. Directed against a single target, the engulf forces that
@@ -563,6 +592,41 @@ Bribery works better than force in most situations a guard will actually face.
 
 ---
 
+## Animated Guardians
+
+*Bound by mage-era workings or by a working-tool's lingering will. They are not undead in the
+usual sense — they have no spirit of their own — but they hold a station and they will not
+leave it without the right command.*
+
+### Skeletal Guard
+*Bone, wire, and a small bound working at the breastbone. Walks the post it was set on. Does
+not tire, does not turn aside, does not speak.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 0 | 3 | 6 | 2 | 4 | 3 | 3 | 5 |
+
+- **Bound blade** *(cutting, close)* — strikes with the weapon it was set with (sword, glave,
+  spear — depends on the post); reduces target Dex by 1; the blade does not break and the
+  guard does not disarm
+- **Hold the line** *(blunt, reach)* — steps into the path of a target trying to pass; reduces
+  target Speed by 1; a target with Will < 3 cannot move past the guard until it is downed or
+  the right command is given
+
+**Motivation** — None. *The guard has no wants.* It executes the working it was set with.
+
+**Behaviour** — Walks the post on a fixed pattern. Engages anything it does not recognise as
+permitted. Will not pursue beyond the post's edge — *the post is the working*, and stepping
+outside it shuts the guard down until the working is reset. The right command-phrase or
+sigil-token (the original maker's, sometimes the post's commissioner's) stops the guard
+without combat; *Reading* finds the phrase or the sigil in the place's records; *Hand* with
+the right tools disables the breastbone working in a single careful action; *Will* < 3
+cannot push past the *Hold the line* attack at all. **Finding the phrase or token is usually
+the work, not the fight.** Damaging the breastbone working ends the guard quickly; chopping
+limbs slows it without stopping it.
+
+---
+
 ## Chaotic Spirit Constructs
 
 *When the rift tore open and released chaotic spirits into the world, many reached for the nearest
@@ -591,7 +655,8 @@ instinctively and attacks anything that seems to have better parts.
 **Behaviour** — Moves wrong: joints bend backward, extra limbs drag. In groups they coordinate
 slightly — not through intelligence but because their spirits briefly resonate when close.
 Retreats fast when hurt. A wounded stitchling may attempt to tear a piece from a fallen ally to
-replace what it lost.
+replace what it lost. *Shaman* can teach a stitchling small structure (the same mechanism the
+shamans use with Tod); the pain eases for a moment and the spirit briefly stops attacking.
 
 ### Graftbeast
 *A spirit that spent weeks assembling a body from large animal kills — bear haunches, boar tusks,
@@ -611,7 +676,9 @@ what to do with it except defend the space it occupies.
 
 **Behaviour** — Slow to start but persistent once committed. Approaches directly — the body is
 difficult to operate and the spirit does not understand tactics. When wounded it becomes erratic
-as the spirit panics trying to understand why the body is failing.
+as the spirit panics trying to understand why the body is failing. *Shaman* addresses the
+panic-spirit beneath the wrong body and can settle it without combat; the body still has to be
+disassembled afterwards, but the fight ends.
 
 ### The Accumulator
 *A spirit that cannot stop adding. Every encounter leaves it larger and more contradictory —
@@ -633,6 +700,8 @@ longer has a purpose beyond taking in more material.
 **Behaviour** — Grows visibly during encounters as it absorbs fallen debris. Physical attacks
 that remove pieces do not reliably harm it — it recovers and reattaches. Fire destroys material
 before it can be recovered; sustained fire forces the spirit to abandon its body and flee.
+*Shaman* can name the *more*-impulse the spirit is acting on and offer it a smaller shape to
+hold instead; this is rare and slow, and a *Shaman* who tries it must be ready to be ignored.
 
 ### Screamer
 *A spirit that tried to build wings and a throat that could produce birdsong. The wings cannot
@@ -654,8 +723,9 @@ the spirit to birds. It has no idea it causes pain. It keeps trying.
 
 **Behaviour** — Approaches and screams first; the attack is an attempt to interact, not to harm.
 Attacks only when hurt directly. A character who does not attack and instead makes sound back
-may redirect it entirely. A killed screamer releases a sound — quieter than the scream and not
-entirely unpleasant — as the spirit disperses.
+may redirect it entirely. *Shaman* can teach the throat what a song should be — slow work, but
+a screamer half-taught is no longer dangerous to be near. A killed screamer releases a sound —
+quieter than the scream and not entirely unpleasant — as the spirit disperses.
 
 ### The Split
 *Two wills sharing one body: the person who was there first, and the chaotic spirit that seeped
@@ -732,6 +802,52 @@ strength is near impossible. The Shamanic power can reach the original spirit in
 tired and can be convinced to stop. Fire is the most reliable counter — the body contains
 decades of dry organic accumulation and burns catastrophically. Targeting the structural joints
 holding the mass together causes the spirit to lose coherence and eventually abandon the form.
+
+### The Almost-Construct
+*A specific, named entity at the heart of the **Generator** in the broken lands (`doc/places/generator.md`).
+The chaos has been trying to complete the Lethran Pair's missing system for a thousand years. The
+parts it gathered are wrong; the fittings are wrong; the shape is *almost*. Patient. Sad. Coherent
+in a way most chaos constructs are not.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 2 | 1 | 16 | 4 | 13 | 4 | 1 | 12 |
+
+- **Patient contradiction** *(pummel, area)* — the construct's many wrong-fitted limbs move in
+  conflicting directions but with *intention*; reduces target Might by 1; hits all adjacent
+  targets regardless of approach direction; cannot be flanked. Lower Might than The Unfinished's
+  contradiction — the construct has had centuries to *grow patient*; its blows land slower but
+  inevitably.
+- **Wrong-fitting embrace** *(grab, close)* — pulls a target into the wrong-construction; reduces
+  target Speed by 2; **the held target *becomes another wrong-fitting* unless freed within three
+  rounds** (Might ≥ 10 combined, or *Shaman* working at the chest-knot, or burning the immediate
+  embrace with sustained fire — the embrace releases the target but the construct loses some
+  coherence at that piece).
+- **Settle-call** *(special, area)* — when *Shaman*-addressed in the Tod-mechanism register with
+  the Memory Shade nearby, the construct *responds*. Not an attack — a *long pause*. The chaos
+  underneath stops fitting. **A successful address ends the encounter without combat.**
+
+**Motivation** — Completion. The construct has been trying to complete the missing half of the
+Lethran Pair's system for a thousand years. It does not know the half cannot be completed from
+parts. It does not know the original lies finished in the desert. It has been *patient with the
+not-knowing*.
+
+**Behaviour** — Sleeps in the Generator's working chamber until disturbed. *Does not engage on
+first entry.* The party can study the bench, the journal, the Memory Shade, and the wrong-fittings
+*while* the construct rests. Threatening the Memory Shade, removing a wrong-fitting it has spent
+decades on, or attempting to bind/dispel it wakes it. Once awake: slow, inexorable, hard to
+flank. The Shamanic address is the *clean* resolution — not always available; requires the
+Memory Shade settled and a *Shaman* of real standing. **Killing it ends the wrong-build entirely;
+the chaos in the broken lands does not lessen but does *stop seeking* a shape.** Forcing it
+(binding, dispelling) is *worse than killing* — the construct's confused awareness scatters,
+nearby Stitchlings amplify, and a chain reaction can set off the entire white-city centre's
+chaos pressure.
+
+**The construct is the campaign's emotional weight, not a fight.** Run it as *something patient
+and sad that has been trying for a long time*. A DM who plays it as a boss-monster loses what the
+Lethran Pair's correspondence is for — the construct is the chaos's grief at the unfinished work.
+See `doc/places/generator.md` §"The chaos almost-construct" for the encounter framing and
+`doc/claude/PRE_RIFT_PAIR.md` for the spine.
 
 ### Chimera
 *A spirit that seized lion, goat, and serpent parts and forced them together. None of the three
@@ -1011,7 +1127,9 @@ wants to be a wildfire. It will consume everything and move on.
 
 **Behaviour** — Advances without deviation, setting the environment alight. Cannot be negotiated
 with or frightened. Cutting off its fuel source starves it over time; overwhelming it with water
-or cold magic is faster. Splitting it only produces more flame elementals.
+or cold magic is faster. Splitting it only produces more flame elementals. *Shaman* can address
+the binding at the heart of the conflagration — it is rare, slow, and the elemental will burn
+the *Shaman*'s working space to the ground while they try; the practice is for emergency only.
 
 ---
 
@@ -1079,7 +1197,8 @@ sea bed.
 **Behaviour** — Moves with slow inevitability toward the coast or its anchor point. Cannot be
 stopped physically. Fire has no effect; lightning is partially effective. The only reliable
 approach is to break the elemental's anchor — the disturbance that summoned it. It does not
-pursue inland beyond sight of water.
+pursue inland beyond sight of water. *Shaman* can read the anchor at distance and name what
+needs to be unmade; *Will* resists the maelstrom's pull on a held target.
 
 ---
 
@@ -1283,7 +1402,9 @@ iron. It does not think; it is mass given gravity-like inevitability.
 **Behaviour** — Slow, enormous, nearly unstoppable physically. Fire weakens it by softening the
 metal; earth magic can entrap it beneath stone; water rusts it over many rounds. Lightning
 causes a brief discharge that creates an opening. The only reliable tactic is luring it into
-terrain where its weight is a liability — deep water, unstable ground, chasms.
+terrain where its weight is a liability — deep water, unstable ground, chasms. *Shaman* can
+address the accumulation-impulse and offer the colossus a fixed shape to settle into; the
+practice is rare and unreliable but *cheaper than the colossus's full path through a town*.
 
 ---
 
@@ -1420,8 +1541,9 @@ but its proximity is inherently dangerous, and any concentration of darkness pro
 
 **Behaviour** — Floats at height and surveys. Descends when it perceives significant darkness
 or concealment below. Can be reasoned with — it is among the most intelligent elemental forms
-and responds to clarity and honesty. Deception in its presence is immediately apparent; words
-spoken falsely are visibly lit. Will not engage trivial threats.
+and responds to clarity and honesty. *Char* and *Will* are the powers that matter here:
+deception in its presence is immediately apparent; words spoken falsely are visibly lit. Will
+not engage trivial threats.
 
 ---
 
@@ -1518,7 +1640,13 @@ conversation and riddle. Remembers what the sand is covering.*
 
 - **Riddle-weight** *(draining, ranged)* — asks a question the target does not know how to
   answer; reduces target Will by 2; a target who answers truthfully (even *"I do not know"*)
-  takes no damage
+  takes no damage. **Sphinx questions are rooted in ancient world lore** — what the first
+  humans brought through the portal, what Saint Luchebert was carrying when he came, why the
+  chaos spirits cannot find their own bodies, what the white city forgot before it fell, whose
+  work sleeps under sand and waits, what was older than the kingdoms but not older than the
+  rift. *"I do not know"* given honestly is always a true answer; *the riddle the sphinx
+  carries is whether the asker would have asked the question at all if they were not afraid
+  of the answer.* (See `doc/claude/LORE.md` for the world's deep lore the sphinx draws from.)
 - **Paw-strike** *(cutting, close)* — used only under direct threat; reduces target Might by 1;
   the sphinx will not follow up unless its lair or its young are touched
 
@@ -1528,11 +1656,12 @@ questions for centuries.
 
 **Behaviour** — Approached correctly — addressed, greeted, asked rather than demanded of —
 it engages in a riddle-adjacent conversation. Good answers (truthful, reflective, about
-*home* or *loss* or *what was here*) earn real knowledge. Forced engagement with no respect
-ends the conversation; the sphinx walks into the sand and is gone. Fighting a sphinx is a
-last resort even for the sphinx; if cornered it fights to end the encounter, not to kill.
-Named sphinxes communicate with each other across the desert in ways that are not
-well-understood; offending one closes doors with its kin.
+*home* or *loss* or *what was here*) earn real knowledge. *Char* and *Will* are the powers
+this register tests; deception or impatience close the conversation and the sphinx walks
+into the sand and is gone. Fighting a sphinx is a last resort even for the sphinx; if
+cornered it fights to end the encounter, not to kill. Named sphinxes communicate with each
+other across the desert in ways that are not well-understood; offending one closes doors
+with its kin.
 
 ### Desert Chimera
 *A hybrid whose lineage has lived in one specific ruin for so many generations that the form
@@ -1552,10 +1681,12 @@ stalking anyone. It is at home.*
 nest-site. It does not pursue intruders who retreat. It attacks intruders who advance.
 
 **Behaviour** — Posture-display first: the lion-forepaws lifted, the eagle-wings half-spread,
-the serpent-tail raised above the back. Committing to attack only if the display is ignored.
-Retreats if young or eggs are threatened, to lead the threat away from them rather than to
-flee. A party that brings food as offering and does not approach the nest can sometimes pass.
-A party addressing it with a sphinx's introduction (see above) may be allowed much further in.
+the serpent-tail raised above the back. *Hunter* reads the display before it commits and
+knows whether retreat is on the table this season. Committing to attack only if the display
+is ignored. Retreats if young or eggs are threatened, to lead the threat away from them
+rather than to flee. A party that brings food as offering and does not approach the nest can
+sometimes pass. A party addressing it with a sphinx's introduction (see above) may be allowed
+much further in.
 
 ### Sand-ruin Serpent
 *A large matriarchal serpent whose nest is beneath the three standing walls of what used to
@@ -1642,8 +1773,9 @@ Addressed in its register, it stands aside for credible claimants.
 
 **Behaviour** — Stationary at the threshold. Three heads watch the path, the door, and the
 ground. A party addressing it formally — stating name, business, claim to lawful entry —
-is assessed with real attention. A token of the building's original community (a seal, a
-medallion, an inscribed item) earns passage without argument. Fighting it is possible and
+is assessed with real attention. *Reading* and *Politics* are the powers this register
+tests; spoken claim plus a token of the building's original community (a seal, a medallion,
+an inscribed item) earns passage without argument. Fighting it is possible and
 costly; it does not leave the threshold to pursue, but it does not yield either, and it has
 the Endu of a century of bound duty. Killing it kills the last active guardian of the
 building it watches; the building becomes vulnerable to further encroachment immediately.
@@ -1673,8 +1805,8 @@ the old routes; it no longer completes the old function.
 person who calls for it. Will leave easily if chased or shot at. May — rarely — land near a
 party that has *not* asked for help and walk with them for a stretch. Never becomes a mount;
 never carries anything; never completes the old function. A party that has one walking
-beside them has company, not a vehicle. A shaman addressing it finds it does not respond to
-words; a druid working with it finds the binding is not repairable from the outside. Its
+beside them has company, not a vehicle. *Shaman* addressing it finds it does not respond to
+words; *Druid* working with it finds the binding is not repairable from the outside. Its
 release would require understanding which community it was bound to — see DM notes at
 `doc/places/blasted_lands.md` on the moved-community-records mystery.
 
@@ -1841,6 +1973,57 @@ triggers the spore-puff. **Eating a rot-frog transmits the poisoning.** *Smell* 
 contamination; *Druid* vetting catches it. A party hungry enough to eat what they catch finds
 out the hard way.
 
+### Spitting bush
+*A waist-high thorn bush that has accommodated the swamp's chemistry. Spits a sap-and-spore
+mixture at warm shapes that come within range. Otherwise unremarkable; the danger is the
+range, which is longer than its size suggests.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 0 | 2 | 4 | 0 | 1 | 3 | 0 | 1 |
+
+- **Sap-spit** *(draining, ranged)* — fires a wet glob at a target up to a long pace away;
+  reduces target Char by 1 (the sap reads sour and burns the skin); a target hit twice in the
+  same scene also takes Endu −1 from the spore content
+- **Thorn-bristle** *(impaling, close)* — passive defence; a target reaching into or pushing
+  through the bush takes Hand −1 from the inner thorns
+
+**Motivation** — Reflex. The bush does not *want* anything; it has a working that fires when
+warm shapes pass close.
+
+**Behaviour** — Stands still. Reads heat at range and aims roughly. *Lookout* spots the bush's
+distinctive lean before the spit; *Druid* reads it as accommodated rather than warped, and
+can pass the party around it without trigger. Burning the bush ends it cleanly; cutting it
+without protection invites the thorn-bristle. **Fields of spitting bushes** mark the swamp's
+old corduroy-road edges where the fungus is densest; the bushes have grown along the lines
+the road once carried.
+
+### Creeping vines
+*A mat of slow-moving vines that grows across a clearing or a path overnight, then withdraws
+before dawn. Moves at the speed of root-growth made fast. A party that camps in the wrong
+clearing wakes inside a tangle.*
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
+|---|---|---|---|---|---|---|---|
+| 0 | 2 | 5 | 1 | 3 | 2 | 1 | 2 |
+
+- **Wrap-and-hold** *(grab, area)* — vines tighten around legs and arms of anything inside the
+  mat at the moment of waking; reduces target Speed by 1; the wrap holds until cut, pried
+  (Hand ≥ 3), or until the vines withdraw at dawn
+- **Tug-down** *(blunt, close)* — once a target is held, the vines pull toward the mat's
+  centre; reduces target Might by 1; a target with Endu < 3 is pulled prone
+
+**Motivation** — Feed slowly. The vines are not predators; they are *opportunists* that
+absorb what the wrap-and-hold leaves over time.
+
+**Behaviour** — Withdraws into the swamp's warmer pools during the day. Surfaces at dusk and
+extends across nearby clearings, paths, and camp circles overnight. *Lookout* on a watch
+notices the first vines arriving and gives the party a chance to break camp before the mat
+closes; *Druid* reads the arrival and can negotiate the vines back. **Fire works** — the mat
+withdraws faster than it advanced. **Fungus-touched mats are different**: they do not
+withdraw at dawn and the wrap-and-hold inflicts the spore-poisoning on a held target. Avoid
+camping in low clearings near the lake's fungal front.
+
 ---
 
 ## Encroachments — Strange Tidings in Settled Lands
@@ -1905,7 +2088,9 @@ the threshold.
 **Behaviour** — Stationary. Does not leave the door. Three heads that move in sequence — one
 watches the path, one watches the door, one watches the ground. Addressed correctly — by name,
 with a claim of lawful entry, or with a token the building's former community would have
-recognised — it may stand aside. Killed, it dies sadly; the building loses its last active
+recognised — it may stand aside. *Reading* and *Politics* are the powers this register tests,
+the same way the Commons-Guard Cerberus's threshold tests them; *Shaman* can also reach the
+guard-spirit beneath the form when the community's name is known. Killed, it dies sadly; the building loses its last active
 guardian and whatever protection its presence offered. The household the door belongs to will
 have been empty for months when the door-kept arrived; communities sometimes leave *because*
 of a door-kept rather than before one. A DM running active-creation: the creature appears at

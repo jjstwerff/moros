@@ -79,6 +79,14 @@ Where the party arrives and leaves. The gate guards are formal but not hostile. 
 
 A party with something to hide will find the gate harder than Elmsfield's — Scarlet Vale has formal customs and formal record-keeping. Bribes are taken; bribes are remembered.
 
+## What the city's rooms hold
+
+Scarlet Vale is a working capital, not a treasure-trove — most of the items in play live with their owners (Rhianna's hour-glass, Corven's sword, Mira's set of gear, the king's ring). A small number of pieces are held by *the city* rather than by any one person, and a party that earns standing may carry them on an arc. Each is a real reward, not at any market (see `doc/claude/ITEMS.md` §"Where items come from"):
+
+- **A crown-issued seal-stamp** — held in the audience hall's record-room, signed out by the chamberlain to a party trusted with crown business for a specific errand. Functions as a Medallion *(Will + Might — authority)* with the **Material** *(genuine seal)* boost active anywhere Allondan law runs. Returned at the end of the errand; loss is not a casual matter.
+- **A court-tailored medallion** — given to a party that has performed a service the king cannot reward openly. Medallion *(authority)* with the existing Masterwork (gold-cast, genuine seal); the market bonus extends across the kingdom's courts and Mouse-clan network. This is the form Rhianna would arrange when she cannot use the king directly.
+- **The training yards' armoury** holds a single found-piece each season — usually a sword or mail recovered from a war-mage's grave, kept for a recruit who earns it. The master-at-arms decides; **Corven knows what is on the rack** and will name the right piece for a party member he has decided he trusts. Sword's *found-piece* Masterwork or Armor's *found-piece pre-rift mail-cut* per `ITEMS.md`. Not loot — a quiet gift, given by name.
+
 ## What you learn here, and when
 
 | Topic | When the city gives it up |

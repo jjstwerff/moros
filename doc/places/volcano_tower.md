@@ -71,6 +71,16 @@ Push the elemental until it breaks out. The containment is strong but not infini
 - **The tower is ruined.** The shackle is broken — but the tower is a pile of scorched stone. Nothing to lift, nothing to follow, no new companion.
 - **The cost is permanent.** The elemental's departure removes its presence from the Lake region's spirit-shield cover. Whatever shielding contribution it made (see below) is gone.
 
+## Hidden in the volcano tower
+
+The original mage hid pieces here before the seizing (see `doc/claude/ITEMS.md` §"Where items come from"). The cache is **fire-aspected**, in style with the tower:
+
+- **A volcanic-iron-glassed flask** — an old refreshment potion preserved by the bottle's working; the find is the bottle, the bottle is the recipe.
+- **A small fire-warding ring** — Material: silver, set with a chip of volcanic iron; Boost on negotiations where threats of force are made.
+- **A short iron-aspected accessory** — a brooch, a buckle, or a clasp; +1 Will to a wearer who already carries a fire-aspected power.
+
+Resolving the lever cleanly gives the party time to find one or two. Forcing the violent path destroys the cache.
+
 ## Role as spirit-shield (partial)
 
 Per `doc/claude/LORE.md` §"Spirit Ecology," a large bound fire elemental is a mighty-spirit-reader in the region's cover. The Lake of Tears is shielded by a stack — Felicia, Laurent, Gerhald, the pot-people, the tower elementals — and the volcano contributes its piece.

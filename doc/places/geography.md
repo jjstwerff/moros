@@ -41,7 +41,7 @@ These are not settlements per se, but they are named locations the campaign refe
 - **Luchebert Monastery** — in a vale beyond Laurent's downed city; named for Saint Luchebert (officially the Abbey's patron) but in practice Felicia's true shrine; Father Elliot's abbey. Detailed in *The Lake of Tears region*.
 - **The crashed flying city** — Laurent's wreck in the hills near the Lake of Tears. Detailed in *The Lake of Tears region*.
 - **The Lake of Tears** — lake ringed by six seized towers. Detailed in its own section.
-- **The Great Swamp** — wetland region surrounding the Lake of Tears; the small river from Elmsfield flows into it. Swamp and lake are one connected region. Detailed in *The Lake of Tears region*.
+- **The Great Swamp** — wetland region surrounding the Lake of Tears; **fed by two named rivers from the south** — Elmsfield's small river (a short tributary) and the **Clear Water** (the major through-river that originates in the foothills east of Scarlet Vale, carrying whatever the mine's wash-tables let into it). The lake's outflow is the Clear Water continuing past Luchebert and out to Linar harbour on the east coast. Swamp and lake are one connected region. Detailed in *The Lake of Tears region*.
 - **The forbidden woods** — chaos-spirit forest north of the Lake of Tears hills. Detailed in *The north*.
 - **The blasted lands** — large hazardous region south of the trade road. Detailed in *Trade → The blasted lands*.
 - **The mountains** north-east of the Lake of Tears (beside the forbidden woods). Detailed in *The north*.
@@ -87,10 +87,10 @@ Steadington has fallen; the capital and the mining towns still stand, but the co
 
 **Elmsfield lies east of Allondo but is not part of it.** The Great Swamp (with the Lake of Tears at its centre) forms a natural barrier between Allondo proper to the west and Elmsfield to the east. That barrier is not just inconvenient — it is large enough that the kingdom's formal reach stops on the Allondan side of it. Elmsfield sits in the wilderness beyond: an independent town in the current wilderness, elder-led (Diederik) rather than crown-ruled, effectively its own small polity even though the canonical list still treats it as a frontier settlement.
 
-It is still the canonical "border town around a huge tree" (per RULES.md): the border it sits on is the one between the known kingdoms and the wilderness that includes the Lake of Tears hills, the forbidden woods, and the coastal mountains beyond. From Allondo's perspective, Elmsfield is *over there* — across the swamp, not reachable by royal writ, a place Allondan law quietly stops short of.
+It is still the canonical "border town around a huge tree" (per RULES.md): the border it sits on is the one between the known kingdoms and the wilderness that includes the Lake of Tears hills, the forbidden woods, and the coastal mountains beyond. From Allondo's perspective, Elmsfield is *over there* — at the wilderness edge, not reachable by royal writ, a place Allondan law quietly stops short of.
 
 - Built around the ancient **ironwood tree** at its centre. The tree is a **female**, and ironwood is dioecious — she cannot bear fruit without pollen from a male. Every male ironwood on this continent was felled by the ancient mages for their puppet work; the overseas continent still has its male population (see `doc/claude/LORE.md` §"Ironwood itself"). The Elmsfield tree is therefore one of the last candidates on this side of the ocean for producing a new generation of ironwood, if cross-pollination could ever be arranged. Small enough that a stranger arriving attracts notice. The campaign starts here.
-- A **small river** flows south/southwest out of Elmsfield into the **Great Swamp**, the broad wetland that surrounds the Lake of Tears at its centre (per the `Map of Elmsfield and the great swamp` item). Swamp and lake are one region, not two separate features.
+- A **small river** flows **north** out of Elmsfield into the **Great Swamp**, the broad wetland that surrounds the Lake of Tears at its centre (per the `Map of Elmsfield and the great swamp` item). Swamp and lake are one region, not two separate features. **South of Elmsfield is the trade route, then the broken lands** (see §"The main inland trade route"); the swamp lies to the *north*.
 - **Hank and Egbert's farm** sits on Elmsfield's edge; it has grown into an orphanage-of-sorts that takes in young people from anywhere the war and its aftermath have broken.
 - In the Overseas War, Elmsfield was captured quickly — **but after Linar harbour fell first**. The invasion force landed at Linar harbour on the east coast, then pushed inland along the main trade road, and Elmsfield was the next major stop. Before the town fell, locals hid a large amount of valuables inside the hollow of the ironwood tree (now Bridget's Inn). The raiders could not open it; the ironwood defeated their tools. Parts of that hoard may still be inside.
 
@@ -98,9 +98,9 @@ It is still the canonical "border town around a huge tree" (per RULES.md): the b
 
 ## The Lake of Tears region
 
-South/southwest of Elmsfield, along the river:
+North of Elmsfield, along the river that flows out of the village toward the lake:
 
-- **The Great Swamp** — broad wetland region surrounding the Lake of Tears. Marshland, slow water, bogs, reedbeds. The small river from Elmsfield flows south into this region. The swamp is the terrain a party travelling from Elmsfield toward the lake actually crosses; it is the environment the mother-bear encounter in Session 2 takes place in; it is where the crystalline fungus spreads outward from the lake into the water and growth around it.
+- **The Great Swamp** — broad wetland region surrounding the Lake of Tears. Marshland, slow water, bogs, reedbeds. **Fed from the south by two named rivers**: Elmsfield's small river (a short tributary entering from the south) and the **Clear Water** from the foothills east of Scarlet Vale (entering from the south, carrying whatever the mine's wash-tables let into it — see `doc/places/clear_water_mine.md`). The swamp is the terrain a party travelling **north** from Elmsfield toward the lake actually crosses; it is the environment the mother-bear encounter in Session 2 takes place in; it is where the crystalline fungus spreads outward from the lake into the water and growth around it. **Whether the Clear Water's recent ramped-up output has shifted the swamp's chemistry** — and whether that is making the fungus worse — is a thread the campaign can open through Diederik or Wilder. **The lake's outflow** is the Clear Water continuing eastward past **Luchebert** (the cliff-bend the monastery sits above) and then **south-east through the hills** to **Linar harbour**, where the river meets the ocean. Pollution starting at the Clear Water mine therefore travels not just into the swamp but eventually into the harbour at Linar.
 - **The Lake of Tears** — lake at the centre of the Great Swamp, in the depression the river feeds. Ringed by **six wizard towers** (seized from their original owners by old-order mages and moved there centuries ago to capture the air elemental that once held Laurent's flying city aloft). Each tower is one of the **six shackles** holding the elemental; a shackle breaks not by destroying its tower but by **moving that tower out of the ring** through the tower's own relational lever — the buried tower's lever is the pot-boy (the furnace follows him), the Hermit Shaman's tower likely breaks when they leave, and the other four have their own keys. The towers stand in the swamp-and-lake complex, each partly soft ground, each partly approachable only by knowing the marsh.
 - **The buried tower** — one of the six, closest to the lake, almost consumed by crystalline fungus. Contains the **Pot-Person** and an old furnace for making pot-people.
 - **The hills east of the lake** — a belt of hills immediately east of the Lake of Tears. They hold **Laurent's downed flying city** (the vast ruin where **Laurent** persists as a demi-lich) and, in a vale beyond the downed city, **Luchebert Monastery** — home to **Father Elliot** and the shrine of **Felicia** (the great spirit). The monastery sits **in hills above a bend in the river**, and it is **hard to reach from the river side**: the obvious approach (following the water from Elmsfield and the swamp) does not yield up the vale easily, which is why Irna could not find the entrance. Reaching Luchebert typically means approaching from another direction — over the hills themselves, or via a known path that avoids the river-side cliffs.
@@ -109,7 +109,7 @@ South/southwest of Elmsfield, along the river:
   - **The Lightning Tower** — flies about six metres off the ground, not unreachable (climbable with rope or the right approach) but not sitting on it. Metal spikes jut from its sides; lightning arcs between them occasionally, lighting the night sky in visible flashes from a distance. Whatever workings the tower originally housed involved storm-spirits or lightning-channelling, and those workings are still visibly active centuries on. Its original owner — a **Storm Mage**, now of unknown age and broken mind — still lives in the hills nearby (see `doc/npcs/storm_mage.md`); he is the tower's lever, though reaching him and helping him is a campaign arc in its own right.
   - *(Three other towers still to be characterised.)*
 
-Directional relationship: Elmsfield → small river → Great Swamp → Lake of Tears (at the swamp's centre) → (east of the swamp-and-lake complex) hills → (in the hills) Laurent's city → (in a vale beyond the city) Luchebert Monastery → (further east) coastal mountains.
+Directional relationship: Elmsfield → small river *north* → Great Swamp → Lake of Tears (at the swamp's centre) → (the lake's outflow runs *east* past) Laurent's downed city in the hills → Luchebert Monastery (in the hills above the river bend) → (the river continues *south-east* through the hills) → Linar harbour (where the river meets the ocean) → (the coastal mountains run from Linar northward as the eastern spine of the continent). The whole eastward stretch is the **Clear Water river**'s course past the lake; the river originates south, in the foothills east of Scarlet Vale, and flows north into the lake before continuing this eastward arc.
 
 ### The Lake as rain-buffer
 
@@ -224,11 +224,19 @@ The trade road skirts around the blasted lands rather than crossing them, which 
 
 ### Inland alternatives more broadly
 
-- **Rivers** — the great river (through the forbidden woods and past the mountains to the northern estuary), Elmsfield's small southward river to the Lake of Tears, Salmonswell's salmon river, and any others.
+- **Rivers** — the great river (through the forbidden woods and past the mountains to the northern estuary), Elmsfield's small *northward* river to the Lake of Tears, the **Clear Water** (the spine river: foothills → lake → past Luchebert → ocean at Linar harbour), Salmonswell's salmon river, and any others.
 - **Overland caravans** — for cargo that cannot risk storms, or routes that do not want to engage with the sea at all.
 - **Salmonswell** as an inland alternative — its economic importance (smoked salmon, salt, river trade) comes partly from being a reliable inland node for traffic that prefers rivers to coasts.
 - **Linar harbour** — a small *independent* harbour town; its neutrality has commercial value of its own.
 - **Elmsfield** — the obvious refugee-entry by land from Brumal, and the gate onto the main southern trade road.
+
+### Water-powered industry — a regional feature
+
+**River-side towns each carry a water-powered industry**, sized to the water they have access to. Players will hear the wheel before they see the town — the rhythm of a saw-frame at Salmonswell's cutting-yard, the steady turn of Elmsfield's grain-mill a short walk *north* of the village, the wheels at Clear Water mine that pump and stamp and feed the bloomery, similar features at any other river-side settlement the campaign opens. **Monasteries, hill-shrines, and farms-with-only-a-stream are not towns and do not carry this feature**; the systemic point is *settled communities at workable water*, not every place that hears running water.
+
+The industries are present *as scenery* most of the time — a sensory standout on entry, a working crew the party may meet, a rhythm the town keeps time by. They become **active scenes** when something breaks: a stripped gudgeon, a snapped mill-shaft, a silted race after a flood-year, a cracked sluice gate. Breakdowns are **crafting-quest seeds** — the millwright accepts help from any character with **Wright**, **Carpentry**, **Blacksmith**, *Ingenuity*, or *Hand*, and from a party that does not have those, will accept hauling, salvage, and timber-felling work. Heavier iron parts trace back to **Master Darius**'s forge at World Edge (`doc/npcs/master_darius.md`); replacement shaft-timber traces back to **Diederik**'s ironwood and the woods around Elmsfield (`doc/npcs/elder_diederik.md`).
+
+A DM adding a new river-side town to the campaign should give it one such industry — small or large per the water — and *let the players notice it on entry*.
 
 ## Spirit ecology: why chaos spirits are held off
 
@@ -267,9 +275,10 @@ Also on the next continent: more ironwood trees than on this one (including the 
 
 Known named or described rivers:
 
-1. **The small river from Elmsfield** — flows south/southwest to the Lake of Tears. Short.
-2. **The great river** — Raft city sits on it, beyond the forbidden woods. Flows roughly north-westward past the forbidden woods; its estuary is on the northern sea, past the mountains and the volcanoes of World's End. Passes through territory warped by the chaos spirit somewhere along its course.
-3. **Salmonswell's tributary** — a branch of the great river system; Salmonswell sits on it, well inland. The salmon that run up to the Upwelling take this branch off the main course on their way further upstream to spawn. Waters from Salmonswell eventually reach the northern estuary via the great river — but the tributary itself is **not navigable**: rapids and hostile terrain make the route impassable for anything that isn't a fish. Salmonswell is reached overland.
+1. **The small river from Elmsfield** — short tributary flowing **north** out of the village into the Great Swamp. Drives Elmsfield's grain-mill a short walk *north* of the village. Joins the swamp's water alongside the Clear Water; *not* the same river as the Clear Water.
+2. **The Clear Water** — the campaign's **spine river**. Rises in the foothills east of Scarlet Vale (where the **Clear Water mine** sits at its head — the river is what makes the mine viable, and what the mine's wash-tables empty into). Flows **north into the Lake of Tears**, entering the swamp from the south. The lake is the river's expanded middle. **The lake's outflow is the Clear Water continuing east** past **Luchebert Monastery** (which sits in hills above the river bend the cliff path descends to). The river then runs **south-east through the hills** and **empties into the ocean at Linar harbour**, on the east coast. The full course: foothills east of Scarlet Vale → north → Lake of Tears → east past Luchebert → south-east through hills → ocean at Linar harbour. Drives the Clear Water mine's pumps, stamping mill, wash-tables, and bloomery bellows. **Pollution from the mine travels the full course** — through the lake, past Luchebert, and out at Linar.
+3. **The great river** — Raft city sits on it, beyond the forbidden woods. Flows roughly north-westward past the forbidden woods; its estuary is on the northern sea, past the mountains and the volcanoes of World's End. Passes through territory warped by the chaos spirit somewhere along its course.
+4. **Salmonswell's tributary** — a branch of the great river system; Salmonswell sits on it, well inland. The salmon that run up to the Upwelling take this branch off the main course on their way further upstream to spawn. Waters from Salmonswell eventually reach the northern estuary via the great river — but the tributary itself is **not navigable**: rapids and hostile terrain make the route impassable for anything that isn't a fish. Salmonswell is reached overland. Drives Salmonswell's cutting-yard at the rapids' first lift.
 
 ---
 
@@ -294,6 +303,6 @@ Add others as they come up.
 
 ## How to use this document
 
-- When writing new content, state relative position in terms already listed here ("south of Elmsfield, along the river"), not invented cardinal positions.
+- When writing new content, state relative position in terms already listed here ("**north** of Elmsfield, along the river toward the swamp"), not invented cardinal positions.
 - When revising, update *this* file first, then propagate to NPC / place / campaign files.
 - When the map is drawn, this list becomes the validation checklist — every entry here should survive onto the map unaltered.

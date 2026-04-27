@@ -1,14 +1,14 @@
 # The Great Swamp
 
 - **Type:** Wide wetland region surrounding the Lake of Tears. Marshland, bogs, reedbeds, slow water, fungal infestation thickening toward the lake at its centre.
-- **Region:** South of Elmsfield; surrounds the Lake of Tears (see `doc/places/laurents_city.md` for the hills east; the six towers ring the lake within the swamp).
+- **Region:** **North of Elmsfield**; surrounds the Lake of Tears (see `doc/places/laurents_city.md` for the hills east; the six towers ring the lake within the swamp).
 - **Officially:** Nobody's. Not claimed, not mapped, not policed.
-- **In practice:** **The barrier between Allondo and the wilderness at its heart.** Crossable, but *hostile to stay*. The party passes through the swamp on their way south from Elmsfield (Session 2); they do not settle in it. Anyone who tries pays.
+- **In practice:** **The barrier between Allondo and the wilderness at its heart.** Crossable, but *hostile to stay*. The party passes through the swamp on their way **north** from Elmsfield (Session 2); they do not settle in it. Anyone who tries pays.
 - **Status:** Stable — and stable here means *stably dangerous*. The fungus does not weaken. The insects do not migrate. The water stays unsafe.
 
 ## What the party meets
 
-The party comes south from Elmsfield by following the small river. For the first hour or two the terrain is ordinary hill-country. Then the ground changes. Water stands where it should drain. The grass gives way to reeds. The trees lean wrong — roots half-drowned, trunks dark with moisture, lichen where lichen should not be.
+The party comes **north** from Elmsfield by following the small river. For the first hour or two the terrain is ordinary hill-country. Then the ground changes. Water stands where it should drain. The grass gives way to reeds. The trees lean wrong — roots half-drowned, trunks dark with moisture, lichen where lichen should not be.
 
 Within the first half-day, **the three threats announce themselves in sequence**:
 
@@ -22,13 +22,13 @@ Within the first half-day, **the three threats announce themselves in sequence**
 
 - **The insect-drone.** Continuous; omnidirectional; rising to a roar at dusk and dawn. Not quiet any hour of the day. A party conversing normally raises their voices within minutes; by evening they are shouting.
 - **The water that is not water.** Channels the party's eyes register as *wet* but whose surface does not quite move like water should. Too thick. Too slow. Too *aware*. A stick dropped in sinks at the wrong angle.
-- **The fungal colour, intensifying south.** Thin on entry — a patch of crystalline growth on a fallen log; a thread of white moss that should be green. By the time the party is within sight of the Lake of Tears, the fungus is *everywhere* and the air has gone metallic.
+- **The fungal colour, intensifying as they near the lake.** Thin on entry — a patch of crystalline growth on a fallen log; a thread of white moss that should be green. By the time the party is within sight of the Lake of Tears, the fungus is *everywhere* and the air has gone metallic.
 
 ## At the swamp's edge — coming down from Elmsfield
 
-The transition from hill-country to marsh is not sharp; it grades. A party walking the Elmsfield road south for two hours is still on dry land; at three hours, they are squelching; at four, they are on actual footing that sinks under their weight.
+The transition from hill-country to marsh is not sharp; it grades. A party walking the Elmsfield road **north** for two hours is still on dry land; at three hours, they are squelching; at four, they are on actual footing that sinks under their weight.
 
-- **The river narrows and spreads.** The small watercourse from Elmsfield becomes a braided channel, then a maze. Following it south is still possible — the water leads to the lake — but navigation requires attention.
+- **The river narrows and spreads.** The small watercourse from Elmsfield becomes a braided channel, then a maze. Following it **north** is still possible — the water leads to the lake — but navigation requires attention.
 - **The path dies.** There is no maintained track. Hunters from Elmsfield know a few high-ground routes for specific game seasons; none of them lead where the party is going.
 - **Ground-cover shifts.** Reeds replace grass. Standing water replaces mud. The trees that stand here are **alder, willow, and something darker** that Diederik would name if he were with the party; on their own they see *wrong-coloured bark*.
 - **Animal sign thins.** A party used to reading forest-sign sees less — fewer tracks, fewer droppings, fewer bird-calls. The creatures that do live here are *not the animals the party recognises*.
@@ -53,7 +53,7 @@ Patches within the marsh where the bottom is peat and the water stands stagnant.
 
 ## At the fungus-zone — approaching the lake
 
-The southernmost stretch before the lake basin opens. **The fungus is thickest here.**
+The stretch closest to the lake before the lake basin opens. **The fungus is thickest here.**
 
 - **Crystalline growths on every surface.** Trees, stones, the water itself. A party in this zone without protection begins accumulating Endu damage each scene — the same process that afflicted Irna.
 - **The air is metallic.** Prolonged breathing tastes wrong. A face-covering of damp cloth helps; a priest-blessed kerchief helps more; a *Druid* working can hold the fungal spores back for a scene or two.
@@ -92,7 +92,7 @@ The swamp-approach to any of these is its own short scene. Crossing the last str
 
 - **Insect-drone continuous.** Loudest at dawn and dusk; quieter at noon.
 - **Predator circling after dark.** A watcher sees the reeds move on a calm night.
-- **The fungus intensifies southward.** The gradient is the party's map.
+- **The fungus intensifies toward the lake.** The gradient is the party's map.
 - **Trees die a specific way.** Fungus-accommodated trees are pale, half-hollow, still standing — and can be read by a druid as a regional indicator of how long the infestation has held.
 - **High-ground islands are fought-over.** The few dry patches are where predators den and where prey animals shelter briefly. Signs of both on every island.
 - **Bogs smell sharper than marsh.** A party's nose distinguishes them at ten paces, with training.
@@ -107,7 +107,7 @@ The swamp-approach to any of these is its own short scene. Crossing the last str
 | That the water is not water | First time the log drifts wrong, usually day one. |
 | That the insects are *this* many | First evening. |
 | That mud-lurkers exist | When one takes a boot, a dog, or a party-member. |
-| That the fungus intensifies southward | Over the crossing — the gradient becomes legible. |
+| That the fungus intensifies toward the lake | Over the crossing — the gradient becomes legible. |
 | That the towers are within the swamp | On sight, once the fungus-zone is reached. |
 | That the lake is at the centre | From the ridge approach on return, looking back. |
 
@@ -152,7 +152,7 @@ The swamp-approach to any of these is its own short scene. Crossing the last str
 
 ## Sources
 
-- doc/claude/CAMPAIGN.md §"Session 2 — The River South" and §"The Lake of Tears"
+- doc/claude/CAMPAIGN.md §"Session 2 — The River North" and §"The Lake of Tears"
 - doc/npcs/elder_diederik.md
 - doc/npcs/irna_bean.md
 - doc/npcs/willow.md
