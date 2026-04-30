@@ -76,3 +76,9 @@ Related: [cards.md](cards.md) — player-facing NPC cards (earned by the party t
 
 - [The Skull Gatherers](skull_gatherers.md) — the order itself; itinerant collectors of mage skulls; necropolis (the city of the dead) west of the blasted lands at the desert's edge.
 - [Andras](andras.md) — named gatherer; the party's earned entry to the order. Tracks a stolen relic (early-game dungeon); carries the late-game resting-place offer for Laurent. The door, deliberately, to a stranger follow-up campaign.
+
+## Generic faces
+
+Reusable portraits for unnamed encounters — drop in wherever the DM needs a fresh face without prep. No file: the slug exists only in `tools/generate_card_art.py` so the prompt is regen-able.
+
+- `mouse_traveller` (`html/icons/npcs/mouse_traveller.png`) — pale mouse-folk wanderer in patched road-clothes with a yellow scarf and walking staff. Reusable as any small mouse-folk traveller, refugee, or road-met smallholder.
