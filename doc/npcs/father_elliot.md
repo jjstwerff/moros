@@ -5,6 +5,15 @@
 - **Lives:** The abbot's quarters at Luchebert Monastery, in a vale beyond Laurent's downed city. Spends much of his work in the saint chapel and the library adjacent to it.
 - **First met:** When the party reaches Luchebert — usually mid-campaign, after the route through the hills (see `doc/npcs/corne_dunham.md`).
 
+## Campaign brief
+
+- **Role.** Abbot of Luchebert; former Crown Prince of Allondo who renounced after the Overseas War. The only person whose word can correct the misread proclamation that put Ron Bean in the yards.
+- **Standouts.** Tall human in plain monastic wool; a worn navigator's compass on a thong around his neck (never taken off in two decades); ink on his fingers from the library work.
+- **Speech.** Rare and unhurried. *"Sit. Tell me what brought you here. Take your time."* Stands very still when listening; pauses before answering; the answer is shorter than the question deserved.
+- **Quests.** *Early:* write the proclamation correction once Irna arrives (§"Personal goals — early and later"). *Later:* ratify Irna as a spirit-shield-in-training with Felicia and Willow; sit once with Hannes on the brotherly ledger; walk the maze garden with Corven; carry the spirit-corridor option through the Allondan court if the Brumal arc opens it.
+- **Friction.** He has not written the letter. *"I do not have a defence; I have a reason."* A party demanding it without bringing Irna to the saint chapel gets *"I will think about it"* and a closed conversation.
+- Full character: `doc/npcs/father_elliot.md`.
+
 ## What the party meets
 
 The party reaches the vale and is brought into the monastery. He is the abbot, but he is not waiting to receive them. He is doing whatever he was doing — hearing a lay brother at the saint chapel's altar, sorting a damaged volume in the library, walking the cloister with a hand on the wall, writing at the desk in his quarters. He looks up when they enter, sets down what he is holding, and says: *"Sit. Tell me what brought you here. Take your time."*
@@ -15,10 +24,50 @@ He does not raise his voice. He does not fill silences. He waits for them to spe
 
 ## Personal goals — early and later
 
-He has been holding two things he should already have done. The early one is small and decisive; the later one is the work of the rest of his life.
+He has been holding things he should already have done. The early one is small and decisive; the later ones are the work of the rest of his life.
 
-- **Early-game — write the corrected proclamation.** The "valiant spirit" was always **Irna**. The reading that took hold was **Ron**, and on that reading the crown enlisted the wrong child. Elliot is the only person whose word would correct it; he has not written. **Brother Darrel** asks him about it every season; **Lady Rhianna** has written; **King Hannes** has decided he will release Ron the day the correction arrives. *Where this goes:* through Irna's actual arrival at Luchebert (the inflection point — see `irna_bean.md`); through a real conversation with **Felicia** at the shrine, mediated by **Willow**, on what the prophecy actually meant; through the **library** to check the older registers of how the line was originally rendered. The letter goes to Hannes; Hannes releases Ron; the Bean family begins to come home. A party that brings Irna *to him* gives him the moment he has not been able to give himself.
-- **Later-game — finish the corrections his life has not made.** The proclamation is one correction; there are more. Ratifying **Irna** as the spirit-shield-in-training the prophecy actually named, alongside **Felicia** and **Willow**, with whatever pieces of the library can support her formation. Sitting with **Hannes** once, plainly, on what the brotherly ledger has cost both of them. Walking the **maze garden** with **Corven** the second time, when the nephew comes asking which of the two paths Elliot was telling him about — *renunciation* or *staying*. If the **Brumal-resolution spiritual path** opens (the spirit-corridor at the southern border, Felicia's drive extended; see `doc/claude/BRUMAL_RESOLUTIONS.md`), Elliot's voice is one of the few that can carry it through the Allondan court. He cannot lead any of these from outside the abbey; he can ratify and write. The party brings the situations that need ratifying. He writes.
+- **Goal: correct what his silence has continued.** The proclamation is one correction. The brotherly ledger with Hannes is another. The path Corven asks about is a third. He cannot lead any of these from outside the abbey; he can ratify and write. The party brings the situations that need ratifying.
+- **Goal: receive Irna properly.** The prophecy was always hers. Her formation — alongside Felicia and Willow, with whatever the library can support — is the work he has been preparing without knowing what for.
+
+### Early-game quest — *the corrected proclamation*
+
+- **What he says** *(in the abbot's quarters, the door closed, after Irna has arrived alive at Luchebert and he has spoken with her at the shrine)* — *"Bring me what was originally rendered. The library will have a register from the year. I will write."*
+- **Where.** The abbot's quarters at Luchebert (`doc/places/luchebert_monastery.md`); the library for the older registers; the saint chapel and the back-cloister shrine for the conversation with Felicia (mediated by **Willow**); Scarlet Vale for the delivery (`doc/npcs/king_hannes.md`).
+- **What.** Bring **Irna** to him alive. Help him through three preparations — a real conversation with Felicia at the shrine on what the prophecy actually meant, a check in the library against the older registers of how the line was originally rendered, and a letter back to **Lady Rhianna** to confirm the public framing. Then carry the corrected proclamation to **Hannes**, with **Brother Darrel**'s parallel pressure already in place.
+- **Reward.** Hannes releases Ron within a season. The Bean family begins to come home (see `john_bean.md`, `ron_bean.md`, `irna_bean.md`). Standing with Elliot deepens — he becomes available for navigation advice on terrain the party has not yet seen, and the library opens to them for translations he was not previously willing to rush.
+- **Complications.** *He will not commit on a first asking.* The letter waits on Irna; bringing the demand without bringing her gets *"I will think about it"* and a closed conversation. Willow gates the shrine; a party that bypasses her loses both her trust and any chance at the Felicia conversation. The library check is slow on purpose — Elliot will not rush a translation. *Prerequisite:* the party has reached Luchebert through the hills (see `corne_dunham.md`), Willow has gated them through to Felicia's shrine, and Irna is alive and present.
+
+### Later-game quest — *ratify Irna as a spirit-shield-in-training*
+
+- **What he says** *(at the saint chapel, Willow nearby, Felicia's shrine open through the back cloister, after the proclamation correction has fired)* — *"The prophecy was not about a sword. We have been preparing without knowing what for. The library will give what it can. Felicia will receive her. Willow will tend the formation. I will write what needs writing."*
+- **Where.** The saint chapel, the library, and Felicia's shrine at Luchebert. Eventually a quiet entry into the wider spiritual ecology of the hill country (see `doc/claude/LORE.md` §"Spirit Ecology").
+- **What.** Carry the work of receiving Irna into what she actually is — fetching specific volumes from the library Elliot points to, escorting Irna to the shrine on the days Willow gates her in, carrying her writing back to Elliot for the slow ratification. Stand with her when the formation reaches a point that requires a witness from outside the abbey.
+- **Reward.** Irna's formation begins on solid ground; the prophecy has the body it needed. The Allondan court has, through Elliot's voice, a line of ratified Bean spiritual standing it cannot fully ignore. Standing with Willow, Felicia (as much as a great spirit can be standing-with), and Irna all advance together. The library opens further — to translations relevant to what Irna is becoming.
+- **Complications.** Elliot will not lead Irna's formation; he ratifies it. Willow holds the shrine; a party that tries to push past her, or speed her, breaks the work. Felicia is a presence, not a counsellor — her drive is *fear for those she could not save*, and she is gentle with Irna only because she has decided to be. *Prerequisite:* the proclamation correction has fired; the party has earned Willow's trust at depth (see `willow.md`).
+
+### Later-game open door — *the brother conversation*
+
+- **What he says** *(only if the party brings Hannes-news that genuinely warrants it, in the abbot's quarters, the compass turned slowly in his hand)* — *"It has been twenty years. Tell him I will write a letter that says what we have not said. Bring his answer back."*
+- **Where.** The abbot's quarters; eventually the palace garden at Scarlet Vale, evening walk, with Hannes (`doc/places/scarlet_vale.md`).
+- **What.** Carry a letter from Elliot to Hannes that says, plainly, what they have not said in twenty years — the renunciation, the kingdom, what each cost the other. Carry Hannes's answer back. If the brothers eventually sit in the same room, the party may be there as Elliot's escort.
+- **Reward.** A weight neither brother has been able to set down begins to. Standing with both Elliot and Hannes deepens. The Allondan court reads, without being told, that something between the two has shifted.
+- **Complications.** Elliot will not start this without genuine cause; *"the party thinks it is time"* is not cause. The Hannes-news has to be substantive — a moment of crisis, an honest beat from the king, a question Hannes asked the party that points back to Elliot. Hannes will not be rushed; the answer may take a season.
+
+### Later-game open door — *Corven's second walk in the maze garden*
+
+- **What he says** *(only if Corven has come asking, in the cloister or the saint chapel, never the maze garden itself — that walk is for the nephew)* — *"He is asking which of the two paths I was telling him about. He should walk the garden with me again. Bring him."*
+- **Where.** The maze garden at Scarlet Vale (`doc/places/scarlet_vale.md`); the saint chapel at Luchebert for Elliot's reflection afterwards.
+- **What.** Broker a second walk in the maze garden between Elliot and Corven (see `prince_corven.md`). The first walk was years ago and was about *renunciation*. The second is about whether Corven stays. The party's role is to make the meeting possible — to carry word, to escort Elliot to Scarlet Vale (he does not travel often), to give Corven space afterwards.
+- **Reward.** Corven's path clarifies — toward Penelope, toward Brumal, toward whatever decision the night rides have been driving him toward. Standing with Hannes (who will have noticed without naming it) advances quietly.
+- **Complications.** Elliot will not push Corven toward either choice. *"I will tell him what I know; what he does is his."* If Hannes finds out the walk happened without him, the audience-chamber register cools for a season — though he will not deny the meeting was right.
+
+### Later-game open door — *the spirit-corridor at the Allondan court* (conditional)
+
+- **What he says** *(only if the Brumal-resolution spiritual path has opened — Felicia's drive extended, the corridor option real; see `doc/claude/BRUMAL_RESOLUTIONS.md`)* — *"This is mine to carry into the chamber. I will not lead the work; I will ratify it where it needs ratifying."*
+- **Where.** Scarlet Vale, the audience chamber and the chapel. The southern border at Brumal where the corridor would land.
+- **What.** Carry Elliot's voice through the Allondan court to make the spirit-corridor option survive the chamber's first encounter with it. Provide his ratification at the moments the work needs it; otherwise stay out of the way. The party is the carriers and the witnesses.
+- **Reward.** A Brumal-resolution path that is not war becomes politically possible. Standing with Hannes, with Felicia (through the work), with Lady Rhianna, and with the Brumal contacts the party has built all advance together. A late-campaign turn that the kingdom will tell stories about for a generation.
+- **Complications.** *Conditional and not on the party's clock.* Only fires if the Brumal arc opens the spiritual path. Elliot is one of *several* required voices; without **Felicia**'s shrine confirming, **Willow**'s tending, **Lady Rhianna**'s political work, the party's own kingdom-facing labour, the corridor does not survive. Elliot's contribution alone does not.
 
 ## How he reads at a glance
 

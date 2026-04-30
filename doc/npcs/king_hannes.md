@@ -5,6 +5,15 @@
 - **Lives:** **Scarlet Vale**, the capital. Throne room by day; his private study and the palace garden by evening; Fienna's rooms when he can. (Place file: `doc/places/scarlet_vale.md`.)
 - **First met:** Almost always in a formal context — audience, banquet, delegation reception. A party without credentials does not reach him. The credentials that work: Lady Rhianna's introduction; a matter connected to the Bean bargain; Elliot's name carried carefully.
 
+## Campaign brief
+
+- **Role.** King of Allondo, unexpected heir after Elliot's renunciation. The man who issued the misread proclamation that put Ron Bean in the yards, and the king who has decided privately he will release Ron the day Elliot corrects it.
+- **Standouts.** Middle-aged human in court formal without a crown; eyes that go to the doorway repeatedly (capture habit); the signet ring on the left hand he touches when listening, turns when thinking, sets flat when he has decided.
+- **Speech.** Measured. The pauses are calculation; the calculation is old. *"Tell me why you say so."* Listens longer than most kings would — a specific attentiveness that makes courtiers nervous.
+- **Quests.** *Early:* receive the corrected proclamation from Elliot through the party (§"Personal goals — early and later"). *Later:* surface the Corven–Penelope conspiracy safely; back Felicia's spirit-corridor through the chamber; open Fienna's Leatherman channel as the back-channel a king cannot officially have.
+- **Friction.** He will not break the Bean bargain on the party's word alone. *"The correction must come from its author."* A party trying to extract the capture story, the mirror location, or what he owes John Bean hits a hard wall.
+- Full character: `doc/npcs/king_hannes.md`.
+
 ## What the party meets
 
 The party is admitted to the audience chamber. **The king is not on the throne when they enter** — he is standing at a side-table reading a report, a courtier at his elbow. He looks up, registers the party, takes the seat on the raised chair, and motions for them to approach.
@@ -15,10 +24,51 @@ He greets them correctly. He asks their business. He listens longer than most ki
 
 ## Personal goals — early and later
 
-His private goals are debts to be repaid, not ambitions to be reached. The early one is small-scale and discreet; the later one is kingdom-scale and the test of his reign.
+His private goals are debts to be repaid, not ambitions to be reached.
 
-- **Early-game — close the Bean bargain honourably.** The crown enlisted Ron on a misread proclamation. **Father Elliot** could correct it and has not. Hannes has decided he will release Ron the day the proclamation is corrected by its author — privately, before the war announces itself, while the gesture still costs less than it will once the kingdoms are mobilised. *Where this goes:* through **Father Elliot** at Luchebert (the only authorised corrector); via **Lady Rhianna**, who has been pressing for this for years and whose introduction is the party's standing for the audience; with **Brother Darrel**, who carries a separate piece of pressure on Elliot from within the order; into the **Bean farm** at Blackwood freehold, where the announcement lands. A party that brings back a corrected letter from Elliot lifts a debt Hannes has been carrying since the war ended and has not been allowed to put down.
-- **Later-game — be the king who did not start the second war.** Brumal is collapsing; the desert is taking it; the training yards are running in rotation; the kingdom expects him to lead. Hannes does not want to be that king and does not yet know how not to be. *Where this goes:* into the **Brumal-resolution paths** (see `doc/claude/BRUMAL_RESOLUTIONS.md`) — **Corven**'s relationship with **Princess Penelope** as the political lever he has chosen not to know about; **Queen Fienna**'s Leatherman network as the back-channel the court will not see; **Lady Rhianna** to keep the spirit-shield over Scarlet Vale steady through the worst weeks; **Father Elliot** for the quieter spiritual ratification a kingdom-scale shift would need; **Felicia**'s shrine and the spirit-corridor option at Brumal's southern border; the **Skull Gatherers** if the war comes anyway, where **Andras**'s order arrives at the battlefield to collect what falls. He cannot do this alone, and he will not ask publicly. A party that brings him the levers — the Corven–Penelope conspiracy surfaced safely, the Leatherman channel made workable, the corridor option made real — gives him the reign he has been hoping he might be able to grow into.
+- **Goal: close the Bean bargain honourably.** The crown enlisted Ron on a misread proclamation. He has decided he will release Ron the day Elliot corrects it — privately, before the war announces itself, while the gesture still costs less than it will once the kingdoms are mobilised.
+- **Goal: be the king who did not start the second war.** Brumal is collapsing; the kingdom expects him to lead. He does not want to be that king and does not yet know how not to be. The work runs through levers he cannot pull publicly.
+- **Goal: not lose what he has not lost yet.** The capture, Elliot, Fienna, Corven — the things he has held together through twenty years of careful measurement.
+
+### Early-game quest — *carry the corrected proclamation*
+
+- **What he says** *(audience chamber, the signet ring touched then set flat against the chair arm, after the party has presented Elliot's letter)* — *"The bargain closes. Within a season, formally. Tell the family. Tell the boy. I owe the brother a reply; that is mine."*
+- **Where.** The audience chamber at Scarlet Vale (`doc/places/scarlet_vale.md`); Luchebert Monastery for Elliot's letter (`doc/npcs/father_elliot.md`); the Bean farm at Blackwood for the announcement (`doc/npcs/john_bean.md`); the training yards where Ron is currently posted (`doc/npcs/ron_bean.md`).
+- **What.** Carry Elliot's corrected proclamation, with the older library register attached, into the audience chamber under **Lady Rhianna**'s standing introduction. Receive Hannes's release order. Carry it to the yards (Ron's commanding officer) and to Blackwood (John and Ellie). Bring back John's response if there is one.
+- **Reward.** Ron comes home. The Bean bargain closes. Standing with Hannes shifts in a way the party will feel — the audience chamber becomes available to them on shorter notice, and the *garden* register opens (see §"At the palace garden — the evening walk"). A debt Hannes has been carrying since the war ended is one he has been allowed to put down.
+- **Complications.** He will not release Ron on the party's word alone — the correction must come from its author. A forged letter, a paraphrase, a verbal report from Elliot will all be cordially declined. **Lady Rhianna**'s introduction is required for the audience itself; without her, the chamber does not open. The seasonal delay is real — Ron is released *within a season, formally* — and the party should expect Hannes to keep the timing on his terms, not theirs.
+
+### Later-game quest — *the Corven–Penelope conspiracy, surfaced safely*
+
+- **What he says** *(garden walk, evening, after the party has earned the register; the chamberlain stays out of hearing)* — *"Tell me why you say so. I have not asked my son. I would prefer to know before he is forced to tell me."*
+- **Where.** The palace garden at Scarlet Vale (evening walk, `doc/places/scarlet_vale.md`); Brumal's court where Penelope is (`doc/npcs/princess_penelope.md`); Corven's night-ride paths (`doc/npcs/prince_corven.md`).
+- **What.** Surface what Corven has been doing on his night rides — the relationship with **Princess Penelope**, the route through Brumal, the political lever it could become if the kingdoms run for war — *to Hannes, in the garden, in pieces he can hold*. Do not surface it to the court, to Fienna in front of Hannes, or to Corven before Hannes has heard it. Bring back what Hannes asks for next: a confirmation, a private channel to Penelope, a meeting Hannes can arrange with deniability.
+- **Reward.** Hannes is no longer running the kingdom on a piece of information he chose not to know. The Brumal-resolution paths open from the Allondan side (see `doc/claude/BRUMAL_RESOLUTIONS.md`). Corven's standing with his father shifts — uncomfortably, but with relief on both sides. Standing with Hannes, Corven, and (eventually) Fienna all advance together.
+- **Complications.** Surfacing this loud or fast destroys it. *He has not asked his son*; he has chosen not to. The party's job is to give him the choice he has not had — without taking the choice from him. A party that brings the news in the audience chamber rather than the garden hardens his refusal; a party that goes to the court with it before Hannes does costs them the audience for a year. *Prerequisite:* the early-game quest has fired; the garden register is open; the party has at minimum *seen* one of Corven's night rides or carried a piece of evidence (a Brumal token, a marking on a route map) that gives Hannes something concrete to ask about.
+
+### Later-game quest — *make Fienna's Leatherman channel workable*
+
+- **What he says** *(garden, with Fienna present, late in the conversation; the smile he does not perform in public)* — *"What the court will not see, I cannot officially know. Bring her what she needs. I will look the other way."*
+- **Where.** Queen Fienna's rooms and the back-channel routes through World's End (`doc/npcs/queen_fienna.md`); the southern border with Brumal; the trade routes Nadine works.
+- **What.** Carry Fienna's Leatherman messages on the routes the court will not be told about. Move material — letters, signatures, intelligence — between Fienna's network and Brumal's softer voices in a way that gives Hannes deniability and gives Fienna her channel. The party becomes the *officially-unofficial* carriers.
+- **Reward.** A Brumal back-channel exists that the war faction cannot easily reach. Standing with Fienna deepens visibly (she will receive the party in her rooms; the court will notice without being able to name what it noticed). Hannes's private warmth toward the party becomes visible at meals and at the chapel hour. The kingdom inches back from war.
+- **Complications.** *Hannes cannot officially know.* A party that names what they are doing in the audience chamber, or in front of any courtier who carries gossip, breaks the deniability. Fienna will read the same line as Hannes and pull back. The work is genuinely dangerous — the war faction has its own watchers, and a leaked Leatherman route costs lives.
+
+### Later-game quest — *back the spirit-corridor through the audience chamber* (conditional)
+
+- **What he says** *(audience chamber, the party in attendance with Elliot's voice carried in writing, Rhianna in the room, Felicia's shrine ratification attached)* — *"I will hear it as a kingdom matter. The chamber will hear what I hear. Bring the voices."*
+- **Where.** The audience chamber at Scarlet Vale; Brumal's southern border where the corridor would land; Felicia's shrine at Luchebert (`doc/npcs/felicia.md`, `doc/npcs/willow.md`).
+- **What.** Carry Elliot's spirit-corridor proposal (see `father_elliot.md` later-game) through the chamber. Provide the supporting voices — **Rhianna** in the room, Felicia's shrine ratification in writing, Brother **Darrel** as a corroborating second from the order, the Brumal contacts the party has built. Stand witness as Hannes weighs whether he can carry it through the chamber.
+- **Reward.** A Brumal-resolution path that is not war becomes politically possible. Hannes becomes the king he has been hoping he might grow into. Standing with Hannes, Elliot, Felicia (through the work), Rhianna, and (if she has been brokered in) Penelope all advance together.
+- **Complications.** *Conditional.* Only fires if the Brumal-resolution spiritual path has opened. Hannes is one of *several* required hands; without Elliot's voice in writing, Felicia's ratification, and Rhianna's political work, the chamber does not move. The war faction will push hard against this in the same hour; the party may need to absorb the political damage that lands on Hannes's allies rather than on him.
+
+### Open door — *kneel beside him at the chapel*
+
+- **What he says** *(only if the party arrives genuinely, not as access-seeking; he says nothing in the chapel — the gesture is the conversation)* — (the next garden walk, days later) *"You came that evening. I noticed. Tell me what brought you."*
+- **Where.** The chapel at Scarlet Vale, dusk; specifically the hour Hannes keeps alone (`doc/places/scarlet_vale.md`).
+- **What.** Be admitted to the chapel hour (which requires Rhianna's deep trust and a real reason to be there). Kneel — quietly, briefly, without performing — and leave when he leaves. No conversation in the chapel itself; the conversation that follows lands in the garden later that week.
+- **Reward.** A trust register that nothing else opens. Hannes will speak the things he will not speak elsewhere — *"I do not fully believe I should wear this,"* *"Felix has not asked me for any thanks at all,"* *"I half-know where my son rides."* Standing that becomes load-bearing for the late-game quests.
+- **Complications.** *A rare currency.* A party that bargains the chapel access ahead of time, or makes the visit transactional, wastes it. The hour is not for parties ordinarily; *one* admission earns the conversation, *two* without genuine cause closes the chapel for them.
 
 ## How he reads at a glance
 

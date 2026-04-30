@@ -43,13 +43,22 @@ The party can follow Tod further in if he invites them. **Beyond the fringe, cos
 
 DMs should **set a soft time-limit** on deeper visits. A scene can happen here. A second one should cost something the first one did not. A third should start to scare the party.
 
+## Warped fauna — what lives at the edge
+
+The woods carry a small native fauna that has *accommodated* the chaos rather than been broken by it (the same register as the swamp's spitting bush and creeping vines, not the chaos-construct register). Two creatures are reliable enough at the edge to mention by name; both are DM-fill on stat blocks at the table, but the shape is consistent:
+
+- **A warped wolf-shadow** — a wolf-shape whose canopy-shadow is bluer than it should be, whose breath hangs in air it should not. It hunts the way a wolf hunts; it does not pack the way a wolf packs. *Hunter* reads its sign as wolf-near-but-wrong; *Druid* reads it as accommodated-not-warped, the same as the swamp's bushes — the wolf is local, the chaos is what it learned to live in. Stat as Wolf with Will +2 and the *Vanish-miss* mechanic from the Field-flock Jackalope replacing one Bite per scene. Not aggressive to a party that does not press deeper.
+- **A two-canopy spirit** — not a creature exactly; the local tree-spirit of a single ironwood-cousin tree the warping has pulled out of true (the canopy at one height; a second canopy half-realised at another). It will speak through the rustle of leaves to a *Shaman* or *Druid* who sits beneath it for an hour. It carries fragments of pre-rift forest-memory; a careful conversation surfaces names of demi-human villages that vanished with the rift. Stat as Warped Helper-Spirit (`doc/claude/CREATURES.md`) with Char +1 and immobile by canon.
+
+A party that has the patience for either does not need to fight; a party that does not, will lose to the woods before either creature finishes assessing them.
+
 ## At the Lightning Tower wreck — a fringe scene
 
 If the party has returned the Storm Mage to his tower (see `doc/npcs/storm_mage.md` §"When he enters his tower"), the tower **flew north in his bout of clarity and crashed at the woods' fringes** when the working failed. The wreck is here now.
 
 - **The crash-site straddles the tree line.** Parts rest on open ground; parts rest in warped trees. The wood around it is already beginning to *take* the metal — bark growing over fallen spars. A party that arrives within days of the crash sees it happening; a later party finds the tower half-absorbed.
 - **The Storm Mage is still at the wreck.** Wandering around it, more confused than before. See his file for how he reads here versus at his old tower.
-- **Materials are salvageable**, for a party willing to camp in the chaos spirit's shadow. Working salvage takes spirit-sensitive care; the workings resist being moved.
+- **Materials are salvageable**, for a party willing to camp in the chaos spirit's shadow. Working salvage takes spirit-sensitive care; the workings resist being moved. **Stormweave fragments** are the practical find — a small handful of charged threads from the tower's lift-array, usable as a Special Material per `doc/claude/ITEMS.md` §"Stormweave"; the woods' chaos pressure complicates the recovery and a careless party leaves charge behind in the bark, which the trees then *carry*. *Druid* reads which fragments can come clean and which the woods have already taken.
 - **Tod may wander out.** A tower crashing into his territory is new; he is curious. He will not demand anything. He will ask what it was.
 
 This is the **in-world entry point to the forbidden woods thread** for most parties: they follow a tower they were responsible for flying here, and the woods are where it came down.

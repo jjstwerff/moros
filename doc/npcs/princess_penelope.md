@@ -143,6 +143,7 @@ When the relevant topic comes up and she has decided to answer.
 | Threatens her | She does not flinch. *"I am a princess of a house that has been preparing for war for a decade. You are not the first person to threaten me here. The room behind me has more guards than you have noticed. Leave."* |
 | Threatens Corven | Cold. *"You have told me what you are, and saved me the discovery. Leave Brumal."* The line closes. |
 | Asks for help reaching Fata morgana's inner circle | Trust-gated. With trust, she writes a sealed introduction by name (DM-fill: one of her old tutors). Without it, she will not. The introduction opens the back-bench shop-floors and one inner-circle home. |
+| Asks specifically about *the Lethran Pair* or *the lost desert work* | She has heard the name. One of her old Fata-morgana tutors was the Pair's last surviving correspondent; the tutor died decades back but the inner-circle remembers. With trust, she names the tutor and the inner-circle home where the rest of the correspondence may still be held — **a second route to the Anchor that does not require the broken-lands Generator** (`doc/places/anchor.md`; `doc/claude/PRE_RIFT_PAIR.md`). |
 | Tells her about the Brumal refugee pressure on the north | Listens carefully. Asks named questions. May, in time, ask the party to carry the list (see her late-game refugee quest). |
 | Asks her about her position in the royal line | Briefly. *"I am where I am."* If pressed: *"Specific enough. You did not come here to read the genealogies."* She does not lie; she does not feed the question. |
 

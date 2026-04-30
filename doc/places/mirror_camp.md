@@ -64,7 +64,7 @@ The tents, the fires, the racks. What Raul's force left when the mirror went dar
 
 The centre of the camp. The tent-flap is pulled aside, the canvas blackened.
 
-- **The mirror is upright, propped against the central pole.** About a man's height. Silver-backed. **Cracked** in a long spider-web pattern from a single impact at the centre — John Bean's reach-through, a thousand miles of mage-working undone by one farmer's phantom-arm. The crack has not propagated further. The mirror is still whole.
+- **The mirror is upright, propped against the central pole.** About a man's height. Silver-backed. **Cracked** in a long spider-web pattern from a single impact at the centre — John Bean's reach-through, a thousand miles of mage-working undone by one farmer's phantom-arm. The crack has not propagated further. The mirror is still whole. *(Catalogued in `doc/claude/ITEMS.md` §"Unique items — campaign-specific" — the mirror is the bond-eligible Unique Item; carrying it is its own commitment, see §"At the mirror — the other options" below.)*
 - **Thorgal's residue is here.** A *Shamanic* or *Mage* character feels it immediately: a consciousness, thinned, weary, *still present*, occupying the mirror's workings.
 - **Approaching is physically easy.** The residue is not violent. It is *aware* and *waiting*. It has been waiting for centuries for the right visitor.
 - **A party with a mage-aspirant triggers Thorgal's attention.** The residue *reads the student* and decides whether to engage.

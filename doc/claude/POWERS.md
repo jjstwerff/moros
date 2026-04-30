@@ -17,6 +17,13 @@ give a meaningful advantage. Powers are race-specific — a character may only l
 their own race. Learning a power raises one of its two linked statistics by 1 and generates a
 card for play. There are 37 powers in total.
 
+**Powers apply to creatures, not only to scenarios.** A power's description does not list every
+creature it can be used on; the working principle is *if the creature's nature makes the power
+applicable, the power applies*. *Druid* on accommodated fauna and flora; *Shaman* on spirits
+and chaos creatures; *Hunter* tracking a beast; *Smell* on contamination; *Lookout* on
+something in ambush; the right command-phrase stopping a bound construct. See `CREATURES.md`
+§"Powers on creatures" for the cross-reference.
+
 See [RULES.md — Races and Powers](RULES.md#races-and-powers) for which races have access to
 which powers.
 

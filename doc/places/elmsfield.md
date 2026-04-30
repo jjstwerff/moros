@@ -16,7 +16,7 @@ For Session 1, the first thing they meet *at* the gate is a sick stranger and a 
 ## How it reads at a glance — the 2–3 standouts on entry
 
 - **The great ironwood tree at the centre** of the town — enormous, old beyond easy estimate, its trunk hollowed into a building's worth of rooms. **Bridget's Inn is inside it.** The whole town is arranged around the tree the way a camp is arranged around a fire. On first sight a visitor understands that the tree is not decoration; the tree is *why Elmsfield is here*.
-- **The wilderness at the edges.** Elmsfield has no defensible walls and no garrison. The Great Swamp begins a short walk south; hills rise east; the trade road runs west toward Allondo and north-east toward Linar. The town is deliberately *in* the wilderness rather than against it, and it shows — farms run up to the treeline, paths go where the ground allows, no one has tried to impose a grid on the place.
+- **The wilderness at the edges.** Elmsfield has no defensible walls and no garrison. The **Great Swamp begins a short walk north**; hills rise east; the **trade road runs south toward Allondo and east toward Linar harbour through the coastal pass**. **South of Elmsfield is the trade artery and, beyond it, the broken lands**; the wilderness with the swamp and the Lake of Tears is to the north. The town is deliberately *in* the wilderness rather than against it, and it shows — farms run up to the treeline, paths go where the ground allows, no one has tried to impose a grid on the place.
 - **The gate, reinforced once and never fully undone.** The wooden palisade that rings part of the town is modest; the gate itself carries the marks of the Overseas War — heavier timbers than the walls they sit in, scorch marks on one post, an iron bar at the base that does not match the rest of the ironmongery. The town's defensive habit is visible. The town's other defensive habit — hiding what matters inside the tree — is not.
 
 ## Visible patterns the party will notice
@@ -50,6 +50,16 @@ On the edge of Elmsfield. An orphanage-of-sorts as well as a working farm — se
 
 - **Wilfred's farm** — east of town. Bridget's husband, a Badger farmer, runs it. Their children split between the farm and the Inn. See `doc/npcs/wilfred.md`.
 - **Joseph's farm plot** — north of town. Joseph the Raccoon farmer recently bought this plot from Hank, exhausting his savings; he is land-rich and cash-poor, and it has made him the town's loudest post-war voice of fear. See `doc/npcs/farmer_joseph.md`.
+
+## At the river-mill — a short walk north
+
+The small river that leaves Elmsfield **northward** toward the Great Swamp does not run through the village itself; the town sits a *bit away* from the bank. A short walk north of the gate, where the ground falls toward the water, sits the town's **grain-mill** — a single modest building on the river's edge. It is small. It is also the only one Elmsfield has, and the bread on every table in town comes through it.
+
+- **A low timber-and-stone mill house with a single under-shot wheel.** The wheel is older than anyone living and has been re-bladed in pieces over generations. The race is short — a stone channel cut into the bank, narrowed where the flow needed slowing — and the wheel turns at the unhurried pace a small flow allows. *You hear the wheel before you see the mill.*
+- **The miller is a Badger named [DM-fill] who has held the post since long before the Overseas War.** Quiet, flour-dusted, slow with strangers and patient with everyone. Trades by weight, not by coin where the farmer would rather pay in grain; the books are kept by Bridget's accounting hand, not the miller's.
+- **Wagon-tracks on the path from the gate** — the rhythm of farmers bringing grain in and flour out is the town's other slow heartbeat, alongside Diederik at the tree. Joseph, Wilfred, Hank, the farms further out — all of them go through this one mill.
+
+**When something breaks** — a worn gudgeon, a slipped sluice gate, a tooth gone from the gear ring, a flood-year that puts silt where the race used to run clear — the town notices within a week, because the bread comes from somewhere worse and costs more. The miller will accept help from any character with **Wright**, **Carpentry**, **Blacksmith**, *Ingenuity*, or *Hand*. **Master Darius**'s forge at World Edge is the regional source of the heavier iron parts (`doc/npcs/master_darius.md`); **Diederik** can advise on suitable replacement timber from the woods around Elmsfield without cutting anything load-bearing. A breakdown that lasts more than a few weeks puts pressure on Hank's farm capacity — the orphanage feeds itself off the same flour as the Inn does.
 
 ## At the gate
 

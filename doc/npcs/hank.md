@@ -5,6 +5,15 @@
 - **Lives:** The farmhouse at `doc/places/hanks_farm.md`, on the western edge of Elmsfield. Has not lived anywhere else since she and Egbert bought the place.
 - **First met:** In Elmsfield's square doing market business, or at the farm if the party comes looking. Bridget or Diederik will point the party her way if the topic is orphans, refugees, or the edge-farm.
 
+## Campaign brief
+
+- **Role.** Edge-farmer at Elmsfield, orphanage-keeper, presents as a man under the name **Hank**. The lead that draws the party out of Elmsfield into the wider world.
+- **Standouts.** Slim rabbit-folk in mended work-clothes she made herself; quick eyes that read the party faster than she lets on; usually a needle or thread in reach (collar, pocket, half-finished seam).
+- **Speech.** Direct and economical. *"You looking for lodgings? Work? Or are you at my gate for a reason?"* Does not waste time on formalities she does not think the party needs.
+- **Quests.** *Early:* carry her letter to Ingram, then the bag to Darrel, then the redirect (§"Personal goals — early and later"). *Later:* hold the farm through the Brumal pressure with concrete material supports; stand as the second druid if the campaign reaches Diederik's saplings.
+- **Friction.** Three layers of concealment in parallel — Hank-not-Hanny, the hidden farming book, the hidden druidic training. A party that cracks any of them in public has broken something.
+- Full character: `doc/npcs/hank.md`.
+
 ## What the party meets
 
 The party comes to the farm — or Hank comes into town on market day, which is where most people meet her first. A slim rabbit-folk figure in sturdy work-clothes, sleeves rolled past the elbows, carrying a basket of something practical: mended children's clothes for delivery, a sack of winter vegetables, a bundle of dried herbs. The town greets her as *Hank*, which is also how she introduces herself. She is, as far as Elmsfield knows, a man.
@@ -13,16 +22,51 @@ She looks the party over quickly — faster than she lets on — and her next qu
 
 ## Personal goals — early and later
 
-Her goals are kept the same way she keeps the farm — practically, in pieces, without ceremony. The early one is a debt she has been saving to pay; the later one is the work of the kingdom's worst weeks.
+Her goals are kept the same way she keeps the farm — practically, in pieces, without ceremony.
 
-- **Early-game — close the orphanage-coin chain.** A decade of saved coin sits in a drawer in her workshop, set aside to return to whichever Beaver-folk sergeant left the bag with **Ingram** at Salmonswell. She has the description; she does not have the name. The chain runs Hank → party → **Ingram** (releases the name **Darrel** at last) → party → Hank (sends the bag) → party → **Luchebert** (Darrel refuses, redirects to the alms-chest). *Where this goes:* through `ingram.md`, `brother_darrel.md`, **Salmonswell** as place, **Luchebert** as place. Hank will not commit the bag on a first conversation with strangers; the first trip is the letter alone. Trip two carries the bag. Trip two ends with refusal.
+- **Goal: close the orphanage-coin chain.** A decade of saved coin sits in a drawer in her workshop, set aside to return to whichever Beaver-folk sergeant left the bag with Ingram. She has the description; she does not have the name. The chain runs Hank → Ingram (name released) → Hank → Darrel (refusal) → redirect.
+- **Goal: hold the farm open through the Brumal pressure.** Capacity is finite. She will not announce when she is at the edge; she will ask for specific things she has thought about.
+- **Goal: stand as the second druid when Elmsfield needs it.** Conditional — only if Diederik's overseas plan needs druidic backing he cannot give alone. Her concealment ends in that moment whether she means it to or not.
 
-  After the refusal, the bag has two settled destinations:
-  - **Default — the monastery's alms-chest at Luchebert**, where Darrel asked the party to leave it. For the sheltered there, where neither he nor Hank has to carry it.
-  - **If the party brings the question back to Hank** and asks plainly where it should go now — *"Now it is mine to give. Where does it really help?"* — **Hank will point to the Brumal refugees** as the way to spend her treasure, *conditional on the party showing it will really benefit them*. She wants a specific use (winter food, blankets, medicine), a named channel (her own farm's incoming children; Ingram's expanding orphanage at Salmonswell; a known household; **Nadine**'s merchants carrying needed goods on a specific run), and a way to verify the coin reached the people it was meant for. Vague charity — *"for the refugees"* — she refuses; she will hold the bag rather than spend it imprecisely. A party that arrives with a concrete proposal walks the coin where it is needed, and Hank gets the closure she has been working ten years toward.
+### Early-game quest — *the letter to Ingram* (trip 1)
 
-  Either destination closes the chain. Hank gets the name she has carried a description of since she was a child. The bag does work somewhere neither she nor Darrel has to carry it. That is what the chain was for.
-- **Later-game — hold the farm open through the Brumal refugee pressure, and step into the second druid's role when Elmsfield needs it.** The southern crisis is sending more children north every season. The farm's capacity is finite; her capacity is finite; she is not yet at either limit, and she will not announce it when she is. *Where this goes:* through **Brumal refugees** arriving at the gate (more each season; **Nadine**'s merchants bring some, **Brother Darrel** sends some, the **Mouse-clan network** routes some via **Lady Rhianna**); through **Bridget** sending the Inn's leftovers and the seasonal trades; through **Egbert**'s scent-tracking when a child wanders or a stranger's intent needs reading; through **Elder Diederik** if the campaign reaches the saplings — *if Diederik's overseas plan needs druidic backing he cannot give alone, Hank is the second name*, and her concealment ends in that moment whether she means it to or not. The party may be the people who carry the question to her. They may be the people in the room when she decides how she wants the answer to land.
+- **What she says** *(at her workshop table, sleeves rolled, a sealed letter in her hand, after the party has earned standing enough to be in that room)* — *"Go to Ingram first. Come back with what he tells you. If the road keeps its word on that, we'll talk about the bag."*
+- **Where.** The orphanage at Salmonswell (`doc/places/salmonswell.md`); Ingram's front room (`doc/npcs/ingram.md`).
+- **What.** Carry her sealed letter — *"is he alive, and where?"* — and Ingram's countersigning line back to her. *The bag stays in the drawer.* This trip is reconnaissance and trust-earning in equal measure.
+- **Reward.** Ingram releases the name **Darrel**, the description, and the rumour-pointer to Luchebert. Hank's standing with the party deepens — the workshop becomes a place she will talk in seriously. The path forward to Trip 2 opens.
+- **Complications.** She will not commit the bag on a first conversation with strangers; the bag is on Trip 2, not Trip 1. The party arriving at Salmonswell with the bag in hand on Trip 1 has gone past her instruction; she will not forgive it casually. The letter is sealed; opening it is a betrayal she will read in their faces when they return.
+
+### Early-game quest — *the bag to Darrel* (trip 2)
+
+- **What she says** *(in the workshop, the drawer open between them for the first time, the leather purse lifted out, after she has confirmed the cheek-scar detail)* — *"Take it to him. Whatever he says, bring it back."*
+- **Where.** Luchebert Monastery (`doc/places/luchebert_monastery.md`); Brother Darrel (`doc/npcs/brother_darrel.md`).
+- **What.** Carry the purse to Darrel with a short unsealed note for the sergeant; receive his refusal and his redirect; come back to her with both, and with the question — *where does it really go now?*
+- **Reward.** The decade-long resolve is in motion. Hank's emotional beat lands in pieces — the name between trips, the refusal after the monastery. The party is now her people; the rest of her teaching opens to them (clothing-craft freely; the farming book if they have not betrayed its existence; eventually the druidic line if their relationship with the land is honest).
+- **Complications.** Darrel will not take the bag back. He has *two* possible redirects (alms-chest at Luchebert, or Brumal refugees through Hank); the party carries the question, not the answer. Returning empty-handed without having raised the redirect question is a half-finished trip — Hank will send them on a third visit somewhere.
+
+### Early-game quest — *the redirect with a concrete proposal* (trip 3)
+
+- **What she says** *(workshop again, the bag returned to the drawer for the moment, after the party has reported Darrel's refusal)* — *"Now it is mine to give. Where does it really help?"*
+- **Where.** Either back to Luchebert's alms-chest (Darrel's preference), or through one of her own concrete refugee channels — winter food at her farm or Ingram's; blankets and medicine on **Nadine**'s next run; a named refugee household.
+- **What.** Propose a *specific* use, with a named channel, with a way to verify the coin reached the people it was meant for. Walk the coin to the proposed destination. Return and tell her how it landed.
+- **Reward.** The chain closes. Ten years of saving discharge in a single season. Standing with Hank reaches its deepest layer — the druidic disclosure becomes possible (still only in private, still on her terms). She owes the party a trip-debt and will not forget it.
+- **Complications.** Vague charity — *"for the refugees"* — she refuses; she will hold the bag rather than spend it imprecisely. A party that proposes well walks the coin; a party that proposes badly gets the bag back in the drawer and another conversation in a season. The verification matters as much as the destination — if the coin doesn't land where it was named, she wants to know.
+
+### Open door — *what the farm needs this season*
+
+- **What she says** *(market day in Elmsfield's square, basket in hand, in passing — never a formal ask)* — *"I'm running short on blankets this winter. If you know anyone travelling north."*
+- **Where.** The farm itself (`doc/places/hanks_farm.md`); the trade routes Nadine works (`doc/npcs/nadine.md`); Bridget's Inn for surplus from the kitchen (`doc/npcs/bridget.md`).
+- **What.** The seasonal practicalities of holding the farm open as more Brumal children arrive — winter food, blankets, medicine, fuel, mending. A party with a route and a contact can solve a specific shortfall in a way she cannot solve alone.
+- **Reward.** Standing with Hank that compounds. The farm becomes a base the party can rely on — a bed, a meal, mending, a healer's hand for small hurts — without paying for it. Egbert begins meeting the party's eyes at the table.
+- **Complications.** She does not announce the shortfall; the party has to be paying enough attention to hear it. She refuses charity offered as a gesture; she takes only material help that solves a specific named problem. A party trying to be patrons rather than neighbours finds the door narrow.
+
+### Late-game quest — *stand as the second druid* (conditional)
+
+- **What she says** *(only if Diederik has come to her himself, late evening at the workshop, the door closed)* — *"If you're asking me, then it has reached the place I knew it might. I will come. The town will see what it sees."*
+- **Where.** Wherever Diederik's saplings or a comparable druidic working takes them — likely the saplings out toward the Lake of Tears, or a ritual at the Elmsfield woods (`doc/npcs/elder_diederik.md`).
+- **What.** Walk with Diederik (and the party, if invited) to back the working. The concealment ends in front of whoever is there to see it; she has decided in advance she is willing to pay the cost when the scale warrants. The party's role is escort, witness, or protector.
+- **Reward.** Druidic backing the party's path could not have purchased. Hank's relationship with Elmsfield enters a new register — open, no longer hidden, and as such open to opposition the farm has not yet had to face. The party's standing with Diederik also advances.
+- **Complications.** *Conditional and not on the party's clock.* Hank will not volunteer; Diederik will only ask if his plan needs more than he can carry. After the disclosure, the town's view of *Hank's mate*, of the farm, of the children there, all change — and the party may be the people Hank needs to help her hold the town through that change. *Prerequisite:* the orphanage-coin chain has closed; Diederik's saplings arc has opened; the party has been to her farm enough times to be the people walking with her.
 
 ## How she reads at a glance
 

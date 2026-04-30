@@ -28,6 +28,7 @@ A caravan-stop on the last reliable well before the desert. A low cluster of sto
 - **A map-trader operates from a corner.** Maps of the desert that are *honest about what they do not know*. A route to Fata morgana marked in strong ink; routes to specific ruins marked with caveats; routes past the first day's travel marked with the warning *sand has moved*.
 - **Travellers bound the other way** come through here — refugees from Brumal, scholars returning from Fata morgana, merchants from Gap city on rare runs. A party buys stories for the price of a drink.
 - **Nobody offers to guide a stranger further south.** Guides exist; they work on arrangement, not walk-up.
+- **An old desert nomad** sits in one of the low buildings most evenings — a regular at Lastwater for decades, between his crossings. The keeper's wife knows his name; the rest of the town calls him *the one who has seen the rooftop*. *Char* and *Will* over an evening's drink earns the story: years ago, on a wrong-route between Half-Tower and the Anchor's ridge, he came over a sand-step and saw *a stone roof rising out of the dunes that should not have been there*. He did not investigate; he turned for known water and made it back. He has never gone back. He will tell a respectful party where he saw it. (The **Lethran dwelling** — `doc/places/lethran_dwelling.md`.) He does not know whose house it was.
 
 ## The crossing — travel under chaos-pressure
 
@@ -59,7 +60,7 @@ This was a mage-era flying castle that crashed here when the rift unmade its wor
 ### What is there to find
 
 - **The lord's personal quarters**, sand-sealed. Clothes in the wardrobes; a seal-ring on the desk; a mirror that has not aged. The room holds what the lord was using the day of the fall.
-- **A journal of the fall** lies open on the study desk. The last entries, in a shaking hand, describe the working giving way, the lord's awareness he was going to land badly, **the names of his wife and children who were with him at the fall**. A party reading it gets the castle's personal face.
+- **A journal of the fall** lies open on the study desk. The last entries, in a shaking hand, describe the working giving way, the lord's awareness he was going to land badly, **the names of his wife and children who were with him at the fall**. A party reading it gets the castle's personal face. **An earlier entry, dated months before the rift**, reads: *"Visited the Lethran household across the ridge today; pleasant evening; the child is bright; their work is the kind of work I hope my own children will live to see finished."* — one of the few surviving outside references to the family at the **Lethran dwelling** (`doc/places/lethran_dwelling.md`).
 - **The library** holds pre-rift mage-work — scrolls, working-diagrams, notes in the lord's own hand. Rare material; a *Mage* specialist recognises the value immediately.
 - **The children's chamber** is reachable off the lord's quarters. Toys; a small bed; a drawing on a slate that has kept its marks. A party that chooses to enter this room finds it hard to leave quickly.
 
@@ -101,14 +102,14 @@ Four days' walk south-east of Lastwater, a half-buried settlement. The name is w
 ### Combat framing — emotional investment
 
 - **The serpent matriarch as mother.** A party respecting distance from the nest can move through the village. A party approaching the clutches — even by accident — meets her full response. **The combat choice belongs to the party**: escalate, respect, negotiate (through a sphinx's mediation).
-- **The sphinxes are not combat.** They are conversation. Their mode is grief-adjacent riddle: *"what kind of home is this?"* They ask; the party answers; the quality of the answer shapes what they share.
+- **The sphinxes are not combat.** They are conversation. Their mode is **grief-adjacent riddle rooted in ancient world lore**: *"what did the first humans bring through the portal that they would not have come without?"*; *"what does a chaos spirit lack that you have?"*; *"whose work sleeps under sand and waits, and whose work was the sand?"*; *"the rift opened a door — what was the door for, before the chaos came through it?"* (See `doc/claude/LORE.md` for the world's deep lore the sphinxes draw from.) They ask; the party answers; the quality of the answer shapes what they share. **Honest *"I do not know"* is always a true answer.** Pretending to know is the wrong answer; thinking aloud is the right one.
 - **The emotional fulcrum is the personal things.** A DM who describes the comb, the wooden toy, the cooking-implements in specific detail lets the place weigh what it is. A party that pockets a named heirloom is carrying something home that has a real owner (a descendant — findable at Fata morgana, Gap city, or back through Brumal).
 
 ### Approach options
 
 - **Pass through respectfully.** The sphinxes may step out and speak. The serpent matriarch ignores. Personal things can be observed and left.
 - **Camp in the three walls.** Shelter is real; the serpent knows the party is there; the sphinxes watch. A night's rest is possible if the party carries themselves well.
-- **Address the sphinxes.** A riddle-conversation. Good answers earn real knowledge — village history, the well's cache, the route to Fata morgana or Gap city, names of descendants.
+- **Address the sphinxes.** A riddle-conversation. Good answers earn real knowledge — village history, the well's cache, the route to Fata morgana or Gap city, names of descendants. **A party that asks specifically about *Lethran* or *the Pair* or *a household near the Half-Tower's ridge*** receives the **Lethran dwelling**'s direction in the sphinx's register (`doc/places/lethran_dwelling.md`); the sphinxes have been watching that ridge as well, across the same generations they have watched here. *Char* and *Will* test for the trust that earns the directions in the right detail.
 - **Retrieve the well's cache.** Possible with rope and patience. The serpent matriarch will not interfere with the well itself — it is outside her defended perimeter. The water is bitter; the jar is sealed.
 - **Fight the matriarch.** Serious opposition. Possible. The clutches die with her if the party follows through; the sphinxes will leave silently and will not speak to that party again.
 

@@ -129,6 +129,10 @@ When the relevant topic comes up.
 
 > *"I have a piece of overseas mage-work in that chest. I was asked to repair it once, before the war, by a customer whose name I will not give you. The repair the customer wanted was the wrong repair. I declined the work. The customer did not come back. The piece has been with me ever since. I keep it because the right repair may come to me eventually, and because I do not yet trust where it would go if I sent it on. If you ever bring me reason to open the chest, I will open it. Not before."*
 
+### When asked about pre-rift forge correspondence — *the styles I have read about and not seen* (trust-gated; party brings the topic)
+
+> *"My grandfather kept letters from a forge correspondent in the broken lands — pre-rift, from a working-master at a grain-mill on the trade road's skirt. The grandfather's grandfather had trained that working-master, or near enough. The letters describe a stone-cutter sister-tradition to my own — agricultural-side cutting, large blanks for working-pieces. I have not seen the cutter; I would not go into the broken lands. If you do, and you come back with a piece — even a chip from one of the blanks — I will read what I can from the metal. The same letters mention a vineyard family on a ridge whose press-house was tied to the same commission line; a Pair of practitioners commissioning blanks across both sites. I do not know the Pair's name; my grandfather's letters did not. If you find their work and bring me a piece, I will know what I am reading."*
+
 ## Mannerisms
 
 - **When pressed** — sets down whatever is in his hand, deliberately, on the workbench. *Then* answers. The pause is the answer; the words are courtesy. Does not raise his voice.

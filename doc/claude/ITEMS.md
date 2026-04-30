@@ -39,6 +39,116 @@ base item slots.
 
 ---
 
+## Where items come from
+
+Most items in play are bought, made, or earned through contacts. A subset is **found** —
+recovered from places that were closed long enough that the find is still there. The campaign's
+working assumption is that *anything obvious is gone*; what survives in old places survives
+because it was deliberately put out of reach.
+
+### Hidden in the diverse towers — wartime concealment
+
+The **six wizard towers** at the Lake of Tears (volcano, darkness, sinking, lightning, buried,
+hill — see `doc/places/geography.md`) were the homes of mages who saw the old-order seizing
+coming and had time to *hide what mattered* before they were taken. The towers were moved with
+the original inhabitants' caches still inside them. The seizing mages knew this and did not
+look as carefully as they should have. **Each tower has wartime-hidden items** — usually one
+to three pieces, placed in spaces designed not to be the first place anyone would look:
+
+- Behind a working that still runs. Disabling the working without breaking the cache is the
+  test, not the lever.
+- Inside a piece of furniture that has been part of the tower long enough that nobody thinks
+  of it as a container. The buried tower's pot is the textbook case (see `doc/npcs/pot_person.md`).
+- Above a ceiling beam that has only been climbed to once.
+- Under a floor-stone that the daily traffic of the tower's working passes over without
+  catching the difference.
+- In the geometry of a sealed weather-glass, an inscribed slate, or a tool that *also* serves
+  another purpose.
+
+A party that resolves a tower's lever (its shackle-breaking arc) cleanly enough has time to
+find one or two of its hidden caches. A party that destroys the tower outright loses what was
+in it. The DM should plant **one specific item per tower** that the campaign has uses for —
+see `doc/places/volcano_tower.md`, `doc/places/darkness_tower.md`, `doc/places/sinking_tower.md`,
+`doc/npcs/storm_mage.md` (Lightning Tower), `doc/npcs/pot_person.md` (the buried tower), and
+`doc/npcs/hermit_shaman.md` (the hill tower) for placement.
+
+### Hidden in Laurent's flying city — concealed well enough to remain
+
+The **wreck of Laurent's flying city** (`doc/places/laurents_city.md`) has been tended for
+centuries by Laurent himself. **Anything obvious is gone** — looters reached the wreck early
+in its first decades and took what was at hand. What survives now survives because Laurent
+preserved it deliberately (Felicia's room; the audience hall; specific personal items he chose
+to keep) **or because it was hidden well enough that the looters never found it**.
+
+The hidden caches in the wreck are typically:
+
+- In a structural void designed by Laurent for the purpose — a between-deck space that does
+  not appear on any plan and is reached only by knowing it is there.
+- Inside a working that the alcove puppets have been instructed to ignore — the puppets do
+  not register the cache as part of their patrol.
+- Inside Felicia's room, in a piece she set aside before the fall and Laurent has not opened
+  since. (Reaching these requires standing — see `doc/npcs/laurent.md`.)
+- In the half-replaced lower decks where the old cages were partially built over. The mid-work
+  state of the renovation hides a small number of pieces in the gap between the original
+  trafficker's frame and Laurent's intended replacement.
+
+A party that has **earned the necklace path with Laurent** can ask him about the wreck's
+contents directly; he will tell some of them and reserve the rest. A party that opens the
+caches without his standing risks the puppets — or worse, the fire.
+
+### In dungeons broadly — items in the style of the dungeon
+
+The campaign's dungeons — Clear Water mine's Shaft Three, the Andras crypt, the old ironwood
+mill, the broken-lands ruins — each carry their own found items. The DM should populate them
+with **a small number of specific items**, not a hoard, and **the items must be in style with
+the dungeon they sit inside**. The Moros register is *the right item in the right place*, not
+loot drops. A working mid-campaign sword found in the Andras crypt should feel like the
+war-mage's kin — engraved with a campaign emblem, weighted for a hand that has been gone for
+decades. A potion found in the volcano tower should be glassed in volcanic iron rather than
+clay. The ironwood mill's items should taste of mage-cutting and old-order tools. Each
+dungeon's atmosphere is the constraint:
+
+- **Clear Water mine — Shaft Three.** Iron-y, mage-marked, war-quartermaster-sealed. What is
+  found is what the crown is quietly pulling up that the manifests do not show. Pre-rift
+  metallurgy fragments, old-order working components, occasionally something that should not
+  be in a working iron mine at all.
+- **The Andras crypt** (`doc/npcs/andras.md`). War-mage's family pieces, a generation of
+  small grave-goods, the *campaign emblem* recurring across small items. The golden crown is
+  the centre; everything else reads as the war-mage's household carrying through.
+- **The old ironwood mill.** Mage-era cutting tools that still hold an edge after centuries;
+  the cutter's own working components; the old-order tools John remembers from before he was
+  there. Anything organic was eaten by the years. Anything machined survived.
+- **The broken-lands ruins.** Pre-rift fragments warped by chaos-spirit proximity. Items here
+  read *almost-right* — a tool that does what a tool does in a way no tool should; a vessel
+  that holds what it should not. **Removing these items from the ruins does not always remove
+  the warping**; some of them are dangerous to carry in their found state and require
+  Wilder's reading or a druid's working before they are safe.
+- **The towers, the wreck, smaller dungeons** — the rules above. Each in its own register.
+
+A DM placing items in a new dungeon should pick the dungeon's *tone* before picking the
+items, then place pieces that read as having lived there.
+
+### The fresh-food rule for old places
+
+**Old dungeons cannot have fresh food.** Anything edible found in a closed mage-era space is
+either preserved by deliberate working (rare; usually the find of the room), dried beyond
+nutritional value (most common), or has gone in ways that make finding it interesting and
+eating it impossible. A party expecting to provision off a dungeon's stores is going hungry.
+The exceptions — preserved by working — are themselves the find: see "Refreshment potion"
+under Consumables, and the late-game ration entries under Food.
+
+### Attribute-bonus equipment broadly
+
+A subset of items at masterwork or material grade carries a **direct bonus to a single
+statistic** rather than a situational boost. The masterwork lines on the major equipment
+entries (sword, armor, ring, bracelet, etc.) describe the most reliable forms. **Late-game
+items**, found in the towers, the wreck, or the deepest dungeon stretches, can carry a
+**double bonus** — two attribute lifts at once, or one stat + one situational boost the
+single-bonus form does not give. These are rare, are usually quest items, and are not for
+sale at any market.
+
+---
+
 ## Weapons
 
 ### Sword *(Might + Dex — parry)*
@@ -55,6 +165,12 @@ base item slots.
   attacks; a silver edge bypasses undead damage resistances
 - **Masterwork** *(master smith, Swords specialization taught)* — the feint action gains +1 Dex
   when triggered through this sword; the blade never requires maintenance between scenarios
+- **Masterwork** *(found-piece — pre-rift court-blade or wartime master-piece, recovered from a
+  tower, the wreck, or a war-mage's grave)* — *easier to wield and carry, not specifically
+  more deadly*: bulk drops by 1 step (a sword that would be bulk 2 carries as bulk 1; a bulk-1
+  sword carries as bulk 0); Dex threshold for the parry special drops by 1; the blade is
+  perfectly balanced to the wearer's hand — Dex actions in close space gain +1; **does not
+  add Might damage beyond a normal sword's**, deliberately
 
 ### Glave *(Might + Endu — stop)*
 *A long polearm that holds enemies at distance.*
@@ -120,6 +236,10 @@ base item slots.
   the character before any words are spoken
 - **Material** *(ironwood or bonewood)* — the block special absorbs all damage on the turn it
   activates rather than just reducing it; the staff cannot be broken
+- **Material** *(thorn-grown greenwood — rare; cut by a Druid from a willing tree)* — the staff
+  grows live thorns at a word; the block special also damages an attacker's striking limb (Dex
+  −1 to attacker on a successful block); the thorns retract at a second word; *no smith makes
+  this — only the tree and the druid together*
 - **Masterwork** *(staff master, Monk or Blocking specialization)* — the staff's effective
   reach extends by one position; feint and block may be used together in the same turn
 
@@ -259,6 +379,10 @@ base item slots.
   special functions in all scenarios, not only combat
 - **Masterwork** *(master armorer, Noble or Army background contact)* — the Stealth penalty
   drops from −2 to −1; the armor can be donned or removed in a single action
+- **Masterwork** *(found-piece — pre-rift mail-cut, recovered from a tower or a war-mage's
+  household)* — *easier to wear, not heavier*: the travel hinder no longer applies; the
+  Stealth penalty falls to −1; the armor sits on the body the way well-fitted clothes do;
+  *not at any market — Master Darius can repair, no living smith can build new*
 
 ### Breastplate *(Might + Will — defend)*
 *Solid chest protection that holds the nerve as much as the body.*
@@ -292,6 +416,11 @@ base item slots.
   flail weapons as well as cutting; never stiffens in wet conditions
 - **Masterwork** *(master leather worker, Leather specialization)* — the Endu wet-condition
   penalty disappears entirely; the leather dries without requiring a camp stop
+- **Material** *(rare beast-hide — late-campaign quarry only, taken from a great creature
+  brought down once and replaced almost never)* — protects against cutting, impaling, *and*
+  blunt; the Might ≥ 4 bypass no longer applies; the wearer carries the beast's bearing as a
+  quiet presence — Char actions among rural and wilderness people gain +1; *the hunt for the
+  hide is itself the campaign-arc reward*
 
 ### Shield *(Dex + Endu — block)*
 *An off-hand defense that protects the bearer and those beside them.*
@@ -341,6 +470,10 @@ base item slots.
   accompanies the group
 - **Bloodline** *(mountain-bred stock)* — carries 12 bulk instead of 9; navigates rough terrain
   where a cart cannot go
+- **Bloodline** *(trail-bred sure-foot — narrow paths, cliff ledges, long descents)* — Dex
+  reads higher than a horse's; the stubborn special never triggers on a path the donkey
+  judges itself; *all other stats sit slightly below the standard donkey* except Endu, which
+  matches; rare; bred only by hill-country herders who walk the long passes
 - **Trained** *(experienced drover contact)* — the stubborn special never triggers against a
   handler with Will ≥ 2; the market Char bonus rises to +2
 
@@ -407,6 +540,9 @@ base item slots.
   pack does not catch on obstacles, removing the Stealth penalty
 - **Masterwork** *(expert leather worker, Leather specialization)* — the Dex penalty disappears;
   the pack is body-fitted and does not shift under combat movement
+- **Masterwork** *(found-piece — pre-rift mage-traveller's pack)* — bulk reduction rises to 5;
+  one internal pocket holds a piece a bulk-step too large for the geometry; both hinders
+  disappear; *not reproducible at market — Rhianna can repair, no living hand can build*
 
 ### Tools *(Hand + Will — craft)*
 *A complete set of hand tools for construction and repair.*
@@ -422,6 +558,11 @@ base item slots.
   an item that lasts the full scenario rather than a single scene
 - **Masterwork** *(master craftsperson matching the character's specialization)* — improvise
   tool requires Hand ≥ 3 instead of ≥ 4; repairs made with these tools are permanent
+- **Masterwork** *(ironwood-cutting set — found in a closed mage-era cache or commissioned
+  from Master Darius's forge against Diederik's reading of the right tree)* — the only kit on
+  the continent that can cleanly work **ironwood** (see Special Materials > Ironwood); a piece
+  cut high in the great tree at Elmsfield can be brought down without splitting the heart-grain;
+  craft scenarios using ironwood reduce their step-count by one when this set is in use
 
 ### Fishing net *(Perc + Will — restrict)*
 *A wide-mesh net for water-based food gathering or entangling prey.*
@@ -477,6 +618,25 @@ benefits only.*
 - **Quality** *(salted, smoked, or preserved by Cooking specialist)* — lasts six days instead
   of three without spoiling; the camp card bonus rises to two draws when the meal is freshly
   prepared by a character with Cooking specialization
+- **Quality** *(travel-meal recipes — found, taught by a Cook specialist, or recovered from a
+  closed mage-era space)* — the supply lasts ten days instead of three; the daily-harvest
+  burden during travel is halved (a character with *Hunter* or *Forager* tops up half a day's
+  rations in half the usual scene-time); the camp-card bonus from a fresh meal applies *also*
+  to the morning after a broken night, restoring 1 stat point taken to disrupted sleep
+
+### Animal-taming feed
+*A bag of feed in a recipe few hands hold — read by wild animals as not-a-threat.*
+- **Boost** *(forage, Char ≥ 2)* — Char actions to approach a wild animal gain +1; the animal
+  feeds rather than flees
+- **Boost** *(travel)* — three days of feeding makes a wild animal *familiar*; it tolerates the
+  party's presence and may follow for a stretch
+- **Hinder** *(forage)* — does not work on chaos-touched or fungus-affected animals; reads
+  *wrong* to them
+- **Hinder** — single bag is seven offerings; cannot be turned against a fed animal afterwards;
+  the recipe is **specialist-only** (Eric Randell's wrangler-line, a Druid, or a Hunter who
+  knows the fauna) — markets do not stock it
+- **Quality** *(specialist, regional)* — works strongly in one region the specialist knows;
+  +2 Char to approach there, nothing elsewhere
 
 ### Clothes
 *An extra set of presentable clothing.*
@@ -529,6 +689,10 @@ benefits only.*
   be done quietly
 - **Quality** *(wool-stuffed or down-filled, fitted cover)* — the stat restoration bonus doubles
   to two points; the partial-rest travel benefit applies to two stats instead of one
+- **Quality** *(light bedding — featherweight loft, sealed cover, found-piece or master-tailored)* —
+  the bedroll keeps the comfort of the wool-stuffed Quality form at half the bulk (rounds down
+  to bulk 0 for a single bedroll, bulk 1 for the party's set); the travel and stealth hinders
+  no longer apply; *the find-form is one of the items the towers and the wreck plausibly hold*
 
 ---
 
@@ -547,6 +711,40 @@ benefits only.*
   heavy blows against the carrier risk losing the dose
 - **Quality** *(master alchemist or Healer specialization)* — the restore special removes two
   wound penalties instead of one; does not require a full camp stop to take effect
+
+### Refreshment potion *(Will + Char — refresh)*
+*A small dark bottle that turns an hour of stillness into a full night's rest.*
+- **Boost** *(travel)* — refresh restores a full night's recovery in an hour off the road
+- **Boost** *(camp)* — covers a broken-night penalty when the watch will not let anyone sleep
+- **Hinder** — single dose; does not stack with actual sleep
+- **Material** *(found, preserved by the maker's working)* — the bottle's working is what kept
+  it fresh; the recipe is in the working, not the brew
+- **Masterwork** *(late-game recipe, read from a found dose)* — reproducible at a Healer's
+  contact; new doses keep six months on the shelf
+
+### Rage potion *(Might + Will — surge)*
+*A red glass vial in a battle-master's keeping. Power up; the body pays after.*
+- **Boost** *(combat)* — surge grants +2 Might for the scene; minor Endu reductions are ignored
+- **Hinder** *(combat)* — 1 Endu damage when the surge ends; Will actions during it take −1
+- **Hinder** — single dose; not at general markets — earned from a battle-master, found on a
+  fallen war-leader, or brewed by an alchemist the party has long-term standing with
+- **Material** *(volcanic iron or chaos residue, rare)* — surge rises to +3 Might; after-cost
+  rises to 2 Endu — *more dangerous, not safer*
+- **Masterwork** *(rare; master alchemist with Healer specialization, deep standing)* — the
+  after-cost and the Will penalty fall to none; nobody brews this casually
+
+### Effect potion *(Will + Char — channel)*
+*A draught that briefly briefs the body on a power it does not have.*
+- **Boost** *(scenario)* — channel grants one named power at level 1 for the scene; the power
+  is fixed at brew-time, not at drink-time
+- **Boost** *(camp)* — a drinker who *already carries* the named power gains +1 to it for the
+  next scene
+- **Hinder** *(combat)* — the body is doing something new; all other actions take −1 during
+  the channel scene
+- **Hinder** — single dose, single power, single scene
+- **Masterwork** *(master alchemist with the named power's specialization)* — loan rises to
+  level 2; the alchemist must hold the power themselves; lake-region traditions will not brew
+  chaos-adjacent powers
 
 ### Bandages *(Hand + Endu — bind)*
 *A roll of clean cloth for wounds that cannot wait.*
@@ -787,7 +985,10 @@ scale. Fragments surface occasionally in the ruins they left behind.*
   regardless of its primary form
 - **Found** *(legendary)* — the blasted lands and ruins of white city construction; fragments
   in the deepest mage castles; Haven — the independent puppets carry knowledge of where old
-  ironwood was worked and may share it with those they trust
+  ironwood was worked and may share it with those they trust; **fresh ironwood from the great
+  tree at Elmsfield** is also available, *high inside the canopy*, accessible only with the
+  ironwood-cutting set under §Tools and only with **Diederik**'s reading of which limb is the
+  right one (`doc/npcs/elder_diederik.md`); cutting wrong damages the tree
 
 ### Ashbone *(decay — erode)*
 *Calcified bones of the old world, pulled from the deepest ruins; they crumble and contaminate.*
@@ -801,6 +1002,55 @@ scale. Fragments surface occasionally in the ruins they left behind.*
   lock, a rope, a mechanism — causing it to fail on its next use without a Hand check
 - **Found** *(legendary)* — deepest ruins in Exploration scenarios; Miner contacts near
   Rosepond or World edge; ruins beneath Steadington where old things have decayed for centuries
+
+---
+
+## Unique items — campaign-specific
+
+A handful of items in Moros are not types but *individuals* — single found pieces tied to
+specific places and threads. They are real rewards: not at any market, not reproducible, and
+their finding is part of the campaign-arc that earns them.
+
+### Power-enhancing jewels
+*Worked stones set into a ring, bracelet, earring, or medallion that **lift a power the
+wearer already carries** rather than granting one.*
+- **Boost** — the named power gains +1 to all its actions while the jewel is worn; *the wearer
+  must already hold the power for the jewel to do anything at all*
+- **Hinder** — a jewel set for a power the wearer does not hold sits inert; it does not transfer
+- **Found** — towers, the wreck, war-mage graves, occasionally with a senior Mouse-clan jeweller
+  who recognises a stone for what it does; **never at general markets**; the matching of stone
+  to wearer is itself the work, and most jewels in the world are sitting in the wrong hands
+
+### Late-game attribute-bonus equipment
+*Weapons, armor, or worn clothing that lifts an attribute directly. Single-bonus pieces are
+the find-grade reward; **double-bonus pieces are late-campaign, and are usually quest items***
+(see §"Where items come from" — Attribute-bonus equipment broadly).
+- **Boost** — wearer's named attribute lifts by 1 while the piece is worn; double-bonus pieces
+  lift two
+- **Hinder** — the piece is fitted; on a different wearer it loses the bonus until refitted
+  by a master who recognises the working
+- **Found** — towers, wreck, deepest dungeon stretches, war-mage graves; **not for sale**
+
+### The talking puppet head
+*A wooden head with a working voice and a clear opinion: it wants a body, and it knows where
+the body should come from.*
+- The head is **not in Laurent's wreck** — it is somewhere in the kingdoms (DM-fill on which
+  town or hill), having travelled on its own terms a long way. It speaks plainly, with
+  surprisingly good manners, and *very much wants to go to the wreck*. It claims a body waits
+  for it among the alcove puppets.
+- **Boost** *(scenario)* — a party that takes the head on the road has a perceptive companion:
+  +1 to a different stat per day depending on which question it is asked; conversation with
+  it counts as a Char interaction even though it has no Char of its own
+- **Hinder** *(stealth)* — it does not whisper. A party that wants quiet must wrap or pocket
+  it, and it complains when wrapped
+- **Hinder** *(camp)* — it does not sleep; the watch finds it talking quietly to itself in the
+  small hours
+- **Reward** — bringing the head to the wreck and finding the right alcove body is one of the
+  campaign's quiet climaxes; **Laurent will receive the request once the necklace path is
+  earned** (`doc/npcs/laurent.md`); a successful match makes the puppet a full NPC the party
+  can travel with afterwards on its own terms
+- **Found** — once, in the campaign, in a place the DM places it; the head is itself the
+  thread that opens
 
 ---
 

@@ -5,6 +5,46 @@
 - **Lives:** The orphanage, in the refugee quarters on the valley side of Salmonswell (see `../places/salmonswell.md`). He has not travelled in a decade.
 - **First met:** When the party reaches Salmonswell carrying Hank's money and Hank's ask. Also reachable separately if the campaign goes that way first.
 
+## Campaign brief
+
+- **Role.** Very old mouse-folk keeper of the Salmonswell orphanage. Holder of the unspoken name in the orphanage-coin chain — the man who agreed to keep Darrel's name and kept it for decades.
+- **Standouts.** Small, silver-furred, stooped at the front desk; a fine thin chain at his neck with a single key on it; a cup of weak tea at his elbow that the children refill.
+- **Speech.** Short. He listens before he speaks; his answers are shorter than the asker expected. *"Tell me what you've come for. Sit if you need to."*
+- **Quests.** *Early:* deliver Hank's letter and receive the released name (§"Personal goals — early and later"). *Later:* return through Salmonswell on the way to Luchebert with the bag and a small token to carry to Darrel.
+- **Friction.** He will not name Darrel without Hank's sealed letter. A party arriving with the bag but no letter, or with a forged letter that doesn't read right, gets sent back. The name has been held under a request; he releases it on writing, not on speech.
+- Full character: `doc/npcs/ingram.md`.
+
+## Personal goals — early and later
+
+His goals are small in scale and old. He has waited for one thing for decades and is still alive to receive it.
+
+- **Goal: discharge the keeping he was asked for.** The sergeant left a bag and a name. Ingram has held both. Hank's decision to send the bag back is the release; speaking the name is the discharge.
+- **Goal: leave the orphanage in a shape that survives him.** He is old. The merchant-house's quiet underwriting, the wharf's modest funding, the older children's care of the younger — these need to keep working without him.
+
+### Early-game quest — *the letter, the chest, the name*
+
+- **What he says** *(at his desk in the front room, after he has read Hank's seal and sat with it a long moment)* — *"This is the release I have waited for. The man's name was **Darrel**. He came up the road from Linar carrying one child and walking beside the other. I have not said it aloud in decades. Carry it back to her, and bring her bag through here on your way."*
+- **Where.** The front room of the orphanage on the valley side of Salmonswell (`doc/places/salmonswell.md` §"At the refugee quarters").
+- **What.** Carry **Hank's sealed letter** to Ingram (no bag yet — this is the *first* trip); receive the spoken name **Darrel**, the full description, and the rumour-pointer to **Luchebert Monastery**; carry a short countersigning line back to Hank that confirms the party stood in his office and the name is his release, not their invention.
+- **Reward.** The name. The path forward to Luchebert (see `brother_darrel.md`). A countersigning line that Hank trusts. Standing with Ingram opens — he will write a letter to Hank with the party, will accept news from the wider world, will let the party walk the dormitories at his side.
+- **Complications.** *Without Hank's letter, Ingram does not name him.* The bag without the letter, a spoken claim of Hank's blessing, even a forged seal that doesn't read right — all get the same answer: go back, write a request, bring it sealed. Ingram will offer his desk for the writing if the party needs it; he countersigns Hank's request, not theirs. A party impatient enough to push him gets a long silence and a closed conversation. A party that arrives at dusk during dormitory rounds will be asked to wait until morning — the children come first.
+
+### Later-game quest — *the bag through Salmonswell*
+
+- **What he says** *(on the second trip, the bag in front of him, in the front room again)* — *"You came back. Take this for him."* (He hands a small token — a knot of cord, or a wax impression from the chest.) *"So he knows the bag was delivered through the keeper who held it."*
+- **Where.** The front room of the orphanage at Salmonswell, second visit, en route to Luchebert.
+- **What.** Stop at Salmonswell with **Hank's bag**, receive a small physical token from Ingram for Darrel, and carry both onward to Luchebert. On the return trip, stop again to tell Ingram what Darrel said and what redirect was chosen (alms-chest at Luchebert or Brumal refugees through Hank's farm).
+- **Reward.** Ingram closes the chain on his side. He writes a final letter to Hank. The orphanage's door opens to the party for any later business — a refugee who needs placing, a child the party finds on the road, a question about Salmonswell's quiet merchant-house. If Ingram is still alive late campaign, he becomes a reliable ear at the wharf-end of the kingdom.
+- **Complications.** No new disclosure is needed; the name was given on trip one. The complication is *time* — Ingram is old. The DM may decide a long detour means the second visit is to a new keeper at the desk, with Ingram's ledger left behind and a sealed letter for Hank in the chest. A party that returns within a season finds him alive; a party that takes a year may not.
+
+### Open door — *the orphanage's quiet needs*
+
+- **What he says** *(only after the conversation has settled, never as the lead)* — *"The wharf sends what it sends. We make it go. If you have something to spare for the house, the children take it well."*
+- **Where.** The orphanage itself.
+- **What.** Coin for the house (accepted gracefully, declined as personal charity); a delivery of food, cloth, or fuel; a session teaching the older children letters or a craft; brokering a question with the **merchant-house that quietly underwrites** the orphanage (Ingram keeps their name; a party who learns it elsewhere can bring it back to him).
+- **Reward.** Standing with the children — who will run errands for the party at Salmonswell freely thereafter — and a teaching from Ingram (letters and ledger work; the welcome-three-questions Hank learned here).
+- **Complications.** He is proud about *his* livelihood; not about the house's. Charity offered to him personally is declined. Charity offered to the orphanage is welcomed but never solicited. A party who tries to make the orphanage a transactional ally finds the door narrow.
+
 ## What the party meets
 
 The orphanage sits on one of the valley slopes above the wharf — a building that used to be a fisher-family's home, expanded twice, now holding more beds than its original rooms. The party finds Ingram at a small desk in the front room, working through a pile of mending or a ledger of who is sleeping where this week. He looks up, takes them in, and does not stand. *"Tell me what you've come for. Sit if you need to."*

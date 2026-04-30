@@ -74,6 +74,16 @@ The Darkness Tower's shackle does not break by relationship or violence. It brea
 
 Both steps are required. Freeing the elemental alone does not move the tower; the mosaic cannot be read without freeing the elemental first.
 
+## Hidden in the darkness tower
+
+The original mage hid pieces here before the seizing (see `doc/claude/ITEMS.md` §"Where items come from"). The cache is **shadow-aspected**, in style with the tower:
+
+- **A folded shadowsilk wrap** — small, dense, weighs nothing; cancels the wearer's reflected light for a scene; one of the pieces the seizing mages walked past.
+- **A veilthread cord** — Material: misdirection-aspected; concealable in a sleeve or a hem; a Boost to Stealth in lit rooms.
+- **A blackened glass scrying piece** — broken; reads only on its broken plane; once per scene shows the asker a glimpse of a place they have never been if the question is honest.
+
+Resolving Step 1 gently and reading the mosaic before disturbing the room uncovers the cache. Forcing Step 2 first scatters it.
+
 ## Role as spirit-shield (partial)
 
 Per `doc/claude/LORE.md` §"Spirit Ecology," a light elemental, even suppressed, is a mighty-spirit-reader presence. Its suppression does not fully remove it from the region's cover. Its release (Step 1) probably **strengthens the local cover** further in the short term, and its eventual departure with the tower removes it.

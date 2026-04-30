@@ -5,6 +5,15 @@
 - **Lives:** **Luchebert Monastery.** Sleeps in a plain cell in the central building's upper rooms; teaches in the front yard at dawn; walks the side buildings in the afternoon where the sheltered live. The monastery is his scope. (Place file: `doc/places/luchebert_monastery.md`.)
 - **First met:** The party usually reaches him through the monastery — introduced by Elliot, or noticed in the yard at dawn, or working with the sheltered in a side building. He does not come to them; he is where he is.
 
+## Campaign brief
+
+- **Role.** Former war-sergeant, now a brother at Luchebert who refuses coin and rationalises his staff as *not a weapon*. The other end of the orphanage-coin chain.
+- **Standouts.** Stocky beaver-folk in plain monk's robes; a silver battle-scar across the left cheek; a hard-wood staff always within arm's reach but never carried in hand.
+- **Speech.** Terse. Short sentences, short answers. Self-introduces as **"Darrel. Brother, here."** Does not waste words and does not fill silence.
+- **Quests.** *Early:* receive the bag Hank has saved back, and redirect it (§"Personal goals — early and later"). *Later:* press Elliot to write the Bean proclamation correction; weigh in on the pirate-nest as extraction-not-burning.
+- **Friction.** He will not take the bag back. *"I gave it once. Giving it back undoes the giving."* The party expecting closure-by-handover gets redirection-by-conscience instead.
+- Full character: `doc/npcs/brother_darrel.md`.
+
 ## What the party meets
 
 The party is at Luchebert — on Diederik's direction, on Irna's business, on Corné's hill route. If they arrive at dawn and walk past the central building's front yard, they see a **stocky beaver-folk man in plain monk's robes working with a long wooden staff**. Alone, or with a young brother or lay student. The movements are not dance and not drill — they are a practice, patient, repetitive, corrective.
@@ -15,10 +24,34 @@ Elliot, if asked, will name him *"Brother Darrel — once a sergeant, now one of
 
 ## Personal goals — early and later
 
-His goals are old. He has been working them for years. The party meets him already in motion.
+Old goals. He has been working them for years. The party meets him already in motion.
 
-- **Early-game — close the orphanage-coin chain.** Decades ago he walked **Hanny** and **Egbert** to **Ingram**'s door at Salmonswell, left his wartime wages with Ingram to shelter them, and asked that his name not walk with their lives. Ingram never spent the coin; Hanny — now **Hank** — has saved the sum back over a decade and wants to return it, in the benefactor's hand if one can be found. The chain runs Hank → party → Ingram (who finally releases the name *Darrel*) → party → Hank (who sends the bag) → party → Luchebert. *Where this goes:* through `hank.md`, `ingram.md`, and **Salmonswell** as place. **Darrel will not take the bag back.** *"I gave it once. Giving it back undoes the giving."* His suggested redirect is the **monastery's alms-chest** — *"let it do work where neither of us are."* The party may instead carry the question *back to Hank*, who has her own redirect in mind: **Brumal refugees**, conditional on the party showing the benefit will be real (see `hank.md`'s early-game). Either destination closes the chain in Darrel's eyes. He will, quietly, ask the party what name the wolf-folk child uses now. A party that runs this chain end to end gives Darrel a moment he has been waiting for and did not quite know he was waiting for.
-- **Later-game — win the two moral fights still on the table.** First, **the proclamation**: Elliot's silence has been a continuation of the war by another method, and Ron is in the wrong yard because of it. Darrel has been arguing this on the side paths every evening for a year. The party brings **Irna** to Luchebert; the party carries **Lady Rhianna**'s pressure; the party lets Darrel and Elliot's argument finally have material in the same room. The letter gets written. The Bean family comes home. *Where this goes:* through **Father Elliot**, **Lady Rhianna**, **Irna**, **Ron**. Second, **the pirate nest**: **Nadine**'s intelligence is the campaign's lever on the people holding her friend Linnet. Darrel will help if the work is **extraction**; he will not if the work is **burning**. *Where this goes:* through Nadine, **Felix** (old comrade names on the pirate side), and a planning session the three of them — Nadine, Felix, Darrel — can have at the monastery if the party brokers it. Both fights are about the *frame* of the war: Darrel's late-game is to keep that frame from collapsing back into *kill them all because they were on the wrong side*.
+- **Goal: close the orphanage-coin chain.** Two children sheltered with his wartime wages decades ago; the rabbit-folk one, now **Hank**, has saved the sum back and wants to return it. He gave it to be away from him; he wants it to land somewhere that is not him.
+- **Goal: keep the war's frame from collapsing back into *kill them all*.** The proclamation that put Ron Bean in the yards by misread is one front; the pirate nest as extraction-not-burning is another. Both are about whether the war stays ended.
+
+### Early-game quest — *the bag arrives*
+
+- **What he says** *(after the party has named **Hanny** and described the rabbit-folk farmer who fits, in his cell at Luchebert, the staff being set down for the first time in the conversation)* — *"Take it back. I gave it once. Giving it back undoes the giving."*
+- **Where.** His cell at Luchebert Monastery (`doc/places/luchebert_monastery.md`), or the front yard if he was in practice when they arrived. The bag travels Elmsfield → Salmonswell (Ingram releases the name) → Luchebert.
+- **What.** Carry the bag from Hank to Darrel; absorb the refusal; carry the question of where it should go to one of two redirects — **monastery's alms-chest for the sheltered**, his preference; or **Brumal refugees through Hank's farm**, hers, conditional on the party showing the benefit will be real (see `hank.md`).
+- **Reward.** The chain closes in Darrel's eyes. Standing with him opens to the next layer (he will teach staff-and-monk to a party member who asked at dawn; he will speak the disagreement with Elliot in front of the party, not just in the side paths). He asks — quietly, only once — what name the wolf-folk child uses now; a party that names **Egbert** has given him something he has been waiting decades for without quite knowing.
+- **Complications.** *He will not touch the bag.* If the party leaves it on a bench he will not pick it up; he will ask them to carry it. The redirect choice is theirs and Hank's, not his — and the two redirects are different in shape: alms-chest is anonymous, refugee-pass is *visible work* (Hank can describe it back to him in a letter). A party that pushes him on the bag past two refusals loses standing. A party that delivers it without going through Ingram first arrives without the released name and has to go back.
+
+### Later-game quest — *bring the proclamation correction into one room*
+
+- **What he says** *(in the side paths above the maze garden, evening, walking with the party after they have brought him news of Ron in the yards)* — *"Elliot is the only person who can correct it. He has not. I have argued for a year. Bring him the people whose lives this is, and the letter from Lady Rhianna, and let the disagreement have material in the room. I will be there."*
+- **Where.** The abbot's room at Luchebert, with Darrel present as the second voice (`doc/places/luchebert_monastery.md`).
+- **What.** Bring **Irna** to Luchebert; carry **Lady Rhianna**'s letter (see `rhianna_linthrope.md`); broker a sitting where Elliot has to look at the cost in the same room as the family and the noble whose pressure he respects. Let Darrel's standing argument finally have witnesses.
+- **Reward.** The letter gets written. Ron comes home (see `ron_bean.md`, `john_bean.md`). The Bean arc closes on the kingdom's side. Darrel's standing with the party becomes deep — he will train a member to *defend without attacking* (Specialist track) and will broker the pirate-nest meeting (next quest) on his own initiative.
+- **Complications.** Elliot does not write under public pressure; this has to feel private even with witnesses. The party arriving with only one of the three (Irna without Rhianna's letter, or the letter without Irna present) gets a sitting that does not move. Darrel will not pre-write it for Elliot. *Prerequisite:* the orphanage-coin chain has to have closed first — Elliot will not entertain the meeting from a party Darrel has not yet vouched for.
+
+### Later-game quest — *Nadine, Felix, and Darrel at the same table*
+
+- **What he says** *(at meals in the dining hall, after the party has spent time with Nadine and the topic of the pirate nest has been raised)* — *"Bring her here. Bring Felix if you can. The three of us in a room can plan an extraction. None of us alone can. I will not help with a burning."*
+- **Where.** The dining hall at Luchebert, late, after the kitchen fire is out (`doc/places/luchebert_monastery.md`).
+- **What.** Broker a sitting between **Nadine** (intelligence on the nest), **Felix** (old comrade-names on the pirate side; see `felix.md`), and Darrel (extraction discipline). Plan a route to lift **Linnet** without burning the nest.
+- **Reward.** A workable extraction plan with three named contributors. Linnet recovered without erasing the captors who were soldiers once. Standing with Darrel, Nadine, and Felix all advance together. The pirate-nest thread closes in a register that holds the war's frame.
+- **Complications.** Nadine's anger is real; she may walk out twice before she sits all the way through. Felix may not come on a first ask — he prefers not to be in monastery rooms with old unit-names floating. The party's job is to make all three want the same hour. Darrel will not chair the room; he will sit at it. *Prerequisite:* the proclamation quest above has fired first, or the orphanage-coin chain has closed; without one, Darrel does not feel his standing reaches to brokering this scale.
 
 ## How he reads at a glance
 
