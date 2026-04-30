@@ -194,6 +194,25 @@ def load_watermark(icon_path: pathlib.Path, target_w_pt: float, target_h_pt: flo
     w, h = img.size
     pad_w, pad_h = int(w * 0.15), int(h * 0.15)
     img = img.crop((pad_w, pad_h, w - pad_w, h - pad_h))
+    # Auto-trim to the bounding box of the actual subject (dark pixels),
+    # so off-centre compositions (subject hugging one edge, large empty
+    # parchment elsewhere) are recentred when drawn on the card.
+    gray = img.convert("L")
+    mask = gray.point(lambda v: 255 if v < 200 else 0)
+    bbox = mask.getbbox()
+    if bbox is not None:
+        # Pad the bbox 18% so the subject doesn't hit the watermark edge —
+        # tall subjects (swords, staves, etc.) need breathing room before
+        # they get scaled to fit the card's watermark area.
+        bx0, by0, bx1, by1 = bbox
+        bw, bh = img.size
+        margin_x = int((bx1 - bx0) * 0.18)
+        margin_y = int((by1 - by0) * 0.18)
+        bx0 = max(0, bx0 - margin_x)
+        by0 = max(0, by0 - margin_y)
+        bx1 = min(bw, bx1 + margin_x)
+        by1 = min(bh, by1 + margin_y)
+        img = img.crop((bx0, by0, bx1, by1))
     while img.size[0] > target_w_px * 2 and img.size[1] > target_h_px * 2:
         img = img.resize((img.size[0] // 2, img.size[1] // 2), Image.LANCZOS)
     img.thumbnail((target_w_px, target_h_px), Image.LANCZOS)
