@@ -231,6 +231,24 @@ Each card carries:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PIRATE COVE
+  Hidden raider stronghold on the south coast,
+  beyond Linar harbour
+  Known for: Stranded overseas soldiers who
+             turned pirate after the war; merchants'
+             colleagues disappear here, pressed into
+             labour; Nadine's captured friend Linnet
+             is held inside
+  Who's there: Pirate captains and crews;
+               Linnet (captive); DM-named figures
+  Earned by: Following the merchant rumours past
+             Linar; surviving the visit; carrying
+             Nadine's errand for Linnet
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   SALMONSWELL
   Independent small city well upriver
   Known for: The Upwelling (freshwater spring in
@@ -376,15 +394,15 @@ Each card carries:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  THE DESERT (SHIFTING LANDS)
+  THE DESERT
   Continental-width band south of the blasted
   lands; stopped by Gap city's mountains
   Known for: Chaotic spirits (the bigger ones
              migrated here from the blasted lands);
              advancing northward into Brumal; Fata
-             morgana survives inside it
-  Who's there: Whoever is in Fata morgana; Gap
-               city on the far side
+             morgana survives inside it; distinct
+             from the shifting lands beyond Gap city
+  Who's there: Whoever is in Fata morgana
   Earned by: Understanding what makes it hostile
              (spirit-driven, not just natural)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -452,14 +470,125 @@ Each card carries:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  THORGAL'S MIRROR (in a forest; location DM-
-  determined)
-  Haunted artefact
+  THORGAL'S MIRROR
+  Haunted artefact, somewhere in a forest
   Known for: Heavy scrying mirror; Thorgal's
              residue lingers in it; communication
              possible; aspiring mages may bond
              with it
-  Earned by: Finding it in a forest; approaching
-             carefully
+  Earned by: Finding it; approaching carefully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## Dungeons
+
+*Card text deliberately keeps these general — atmosphere and broad lore only. Specific encounters, layouts, and rewards are DM-discretion and live in each dungeon's own doc file.*
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE GENERATOR
+  Pre-rift mage laboratory at the white city's centre
+  Known for: Three levels cut into the ruin; the
+             chaos has been building toward this
+             place for centuries
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE ANCHOR
+  Pre-rift mage laboratory buried under sand
+  Known for: One end of the Lethran Pair's paired
+             chaos-management system; intact under
+             the dunes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE LETHRAN DWELLING
+  Pre-rift family home of one of the Lethran Pair
+  Known for: Preserved by a small thousand-year-old
+             working; the human centre of the Pair arc
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE PRE-RIFT GRAIN-MILL
+  Broken-lands pre-rift mill
+  Known for: Ground grain and cut stone-blanks for
+             mage workings; the wheel is silent now
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE PRESS-HOUSE RIDGE
+  Pre-rift vineyard hall on a broken-lands ridge
+  Known for: Ruined hall above; a sealed regional
+             supply-cache below
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE IRONWOOD MILL
+  Ruined ancient ironwood-cutting mill
+  Known for: One of the very few mills ever capable
+             of working ironwood; the cutter is
+             still inside
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE MIRROR CAMP
+  Abandoned overseas forward camp in hidden hills
+  Known for: Where the Overseas War turned;
+             Thorgal's scrying mirror still stands
+             at the camp's centre
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE TIDEHOLD
+  Pre-rift sea-mage's cliff-tower, half-claimed by the sea
+  Known for: Levels reached only at the right tide;
+             preserved working-stone still warm
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MOTH HOLLOW
+  Burial ground from Laurent's crashed flying city
+  Known for: One of Felicia's own places; she
+             stays with the dead here
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE FAMILY CRYPT
+  Active dungeon in a Brumal hill town
+  Known for: A badger family's mausoleum where
+             something pre-rift was brought that
+             should not have been; the seal is broken
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE NECROPOLIS
+  The Skull Gatherers' city of the dead
+  Known for: West of the blasted lands at the
+             desert's edge; home of the order;
+             keeping-place of mage-skulls; the
+             destination of Laurent's last flight
+             if the party brokers it
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

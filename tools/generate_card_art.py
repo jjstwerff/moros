@@ -5,13 +5,14 @@ Usage:
     python3 tools/generate_card_art.py pilot         # 5-card pilot only
     python3 tools/generate_card_art.py npcs          # all NPCs (skip existing)
     python3 tools/generate_card_art.py places        # all locations (skip existing)
+    python3 tools/generate_card_art.py icons         # all card-deck motifs
     python3 tools/generate_card_art.py single <slug> # one card, force re-render
     python3 tools/generate_card_art.py list          # show known slugs
 
 Reads FAL_KEY from ~/.config/moros/secrets.env. Never echoes the key.
-Writes PNGs to html/icons/npcs/ and html/icons/places/. Existing files
-are archived as {slug}_v{NN}.png on retry; the canonical slug.png always
-holds the latest.
+Writes PNGs to html/icons/npcs/, html/icons/places/, and
+html/icons/cards/{elements,powers,items}/. Existing files are archived
+as {slug}_v{NN}.png on retry; the canonical slug.png always holds the latest.
 """
 
 import hashlib
@@ -42,6 +43,15 @@ STYLE_LOC = (
     "slate and rust, atmospheric low-fantasy medieval setting in the style "
     "of a tabletop RPG location card, wide establishing three-quarter view, "
     "soft natural light, no figures, no text, no border, no logo"
+)
+
+STYLE_ICON = (
+    "single bold centred motif filling the frame on a warm cream parchment "
+    "background, ink woodcut style with hatching and crosshatching in dark "
+    "sepia ink, two-tone high contrast silhouette in the style of a medieval "
+    "bestiary plate or heraldic emblem, simple iconographic shape, hand-drawn "
+    "imperfect line, subtle parchment grain, no text, no letters, no border, "
+    "no frame, no logo, square composition"
 )
 
 NEGATIVE = (
@@ -246,6 +256,7 @@ LOCATIONS = [
 
     # ---- Independents ----
     ("linar_harbour", "a small independent harbour town on a rocky east coast, a stone breakwater and a wooden pier, fishing boats with overseas-style triangular sails moored along the dock, salt-bleached timber warehouses, gulls overhead, the start of a long inland trade road climbing away from the docks toward distant hills", "landscape_4_3"),
+    ("pirate_cove", "a hidden lawless raider's stronghold tucked into a deep narrow rocky cove on a wild south-coast cliff line, the cove invisible from the open sea behind a curtain of jagged sea-stacks; several overseas-style ships with patched triangular sails moored on dark water inside the cove, some half-careened on a stony beach being repaired; ramshackle pirate dwellings of salvaged ship-timbers and weathered planks built directly into clefts and caves in the cliff face, rope ladders and scaffold walkways lashed between them; cooking-fires burning on the beach, smoke threading up the cliffs, makeshift lookout platforms perched on the headland with watch-bells; weather-bleached debris and broken figureheads piled along the strand; overcast cold-grey light, a dangerous quiet, no figures clearly visible at this distance", "landscape_4_3"),
     ("salmonswell", "an independent river city built on terraces above a wide clear river, a strong freshwater spring boiling up at the river's edge inside a stone basin, fish-smoking-houses with thin grey smoke rising along the bank, arched stone bridges crossing side-channels, late summer light", "landscape_4_3"),
     ("fata_morgana", "a large fortified desert city walled in pale carved sandstone, narrow shaded jewel-bright streets visible inside the gates, hammered-bronze domes and slender towers, a faint protective shimmer in the air around the outer walls, golden dunes pressing in on every side, late afternoon heat haze", "landscape_4_3"),
     ("gap_city", "a town built into a steep narrow mountain pass, stone houses stacked against the cliffs on both sides of a single road, a heavy iron-bound gate at the far end facing out toward strange shifting hazy lands beyond, hardy alpine grass on the rocks", "landscape_4_3"),
@@ -264,6 +275,23 @@ LOCATIONS = [
     ("portal", "a tall standing rectangular stone gateway built by the first humans of this world, glyphs carved on its inner surfaces, the air within the frame shimmering with a soft prismatic glow that suggests dimensions beyond the landscape, the cracked salt-flats of the blasted lands stretching away around it", "portrait_4_3"),
     ("white_city", "the broken pale-stone ruins of a great old mage civilisation's capital, toppled fluted columns and the shells of vast halls half-buried in salt-flat, the suggestion of immense scale even in collapse, the bones of the city catching the colourless light of the blasted lands", "landscape_4_3"),
     ("thorgals_mirror", "a tall heavy ornate dark-wood-framed standing scrying mirror leaned against the mossy trunk of an old forest tree, the glass crazed with fine cracks, a faint sickly green light deep within the reflection that does not match the sunlit forest around it, fallen leaves scattered at its base, an unattended wrongness", "portrait_4_3"),
+
+    # ---- Dungeons — Pre-Rift Pair (broken lands) ----
+    ("generator", "the underground entry to a pre-rift mage laboratory cut three levels deep into pale-stone ruins at the centre of a vast dead city in cracked salt-flats; the partially-collapsed stone tower above is half-buried, its ground-floor doors gone leaving only a dark stairwell descending; carved over the threshold a faint circular Lethran seal bisected by two parallel lines; humanoid wooden-and-iron puppet-parts loosely fitted into wrong shapes patrol the ground floor in the gloom; pale dust hangs in slanted shafts of light, the suggestion of slow continuous fitting-sounds coming from below; cold haunted atmosphere, no living figures", "portrait_4_3"),
+    ("anchor", "a sphinx-guarded entrance buried in the side of a sand-swept low hill in pre-desert agricultural country; only the upper rim of a stone doorway and a carved Lethran seal (a circle bisected by two parallel lines) protrudes from drifting golden dunes; a colossal couchant stone sphinx with a weathered human face sits motionless on top of the mound, watching the approach; the buried laboratory beneath is intact and undisturbed; harsh midday desert light, the air still and waiting, no figures other than the stone guardian", "portrait_4_3"),
+    ("lethran_dwelling", "a modest pre-rift stone-and-timber family home preserved in unnatural good condition through a small thousand-year-old protective working, standing alone in faded wild fields with the broken lands on the horizon; the cottage roof is whole, the door slightly ajar, lamp-light still glowing in one window though no one has lived here in centuries; an ordinary domestic scene rendered uncanny by its very preservation, soft golden hour light, a cared-for quiet, no figures", "landscape_4_3"),
+    ("grain_mill", "a half-ruined pre-rift stone mill standing beside a slow choked river in cracked broken-lands country, its great wooden waterwheel collapsed and tilted, two large millstones inside still upright in the gloom — these millstones did not only grind grain but also cut flat stone-blanks for mage workings; pale dust on every surface, mill machinery ancient and partly intact, dim light through cracked shutters, no figures", "landscape_4_3"),
+    ("press_house", "a long ruined pre-rift vineyard hall on a high ridge overlooking the broken lands' middle stretches, large open stone wine-vats half-collapsed inside the roofless hall, twisted dead vine stocks growing across the stone floor, a partly-hidden iron-banded trapdoor in the corner leading down to a preserved supply-cache; sere golden grass on the ridge, a wide bleak vista beyond, late afternoon long shadows, no figures", "landscape_4_3"),
+
+    # ---- Dungeons — NPC-tied ----
+    ("ironwood_mill", "front-facing view of a long-abandoned ironwood-cutting mill at the edge of the blasted lands. The mill is a windowless heavy stone bunker — a featureless rectangular block of thick pale-grey stone walls under a flat stone roof. The wall facing the viewer is almost entirely unbroken solid stone. The ONLY opening anywhere on the wall is a single black horizontal LETTERBOX SLIT cut into the very base of the wall at ground level — the slit is a wide flat slot exactly like a giant mail slot or letterbox at the bottom of a wall, perhaps three metres wide but only half a metre tall, with a flat horizontal stone lintel. The slit's width-to-height ratio is roughly 6 to 1. A person could not walk through this slit standing up; only a tree-trunk could slide through it lying on the ground. The slit is at FLOOR level, NOT at chest level. There is NO arched doorway, NO normal door, NO archway, NO standing entrance anywhere in this image — only the low horizontal letterbox slit at ground level. Long weathered ironwood logs lie on the dirt in front of the slit, some partly fed into it lying flat on the ground. The blasted lands' bleached cracked landscape stretches behind the building, no figures.", "landscape_4_3"),
+    ("mirror_camp", "an abandoned overseas-forces forward war camp in a hidden valley between green hills, rotted canvas tents collapsed in rows on the trampled ground, a half-burnt watch-fire pit at the centre, weather-bleached weapon racks and broken equipment scattered around, foreign sigil banners faded and torn; in the centre of the largest collapsed tent stands a tall ornate dark-wood-framed scrying mirror still upright on its pedestal, the glass crazed with cracks, a faint sickly green light deep within the reflection; overcast cold light, the camp untouched for years, no figures", "landscape_4_3"),
+    ("tidehold", "a tall pre-rift sea-mage's cliff-tower built directly into a sheer dark cliff face where coastal mountains descend to a churning grey ocean, half-claimed by the sea; the lower two levels of the tower are submerged at high tide and visible now only as wave-battered stone arches and a half-flooded doorway awash with surf; the upper levels are reached by a worn cut stair carved up the cliff face; salt spray, kelp-draped stones at the base, gulls in the wind, no figures", "portrait_4_3"),
+
+    # ---- Other ----
+    ("moth_hollow", "a quiet shaded burial hollow tucked among low hills near the Lake of Tears, hundreds of weathered stone grave markers and small worn statuettes arranged in patient rows on a mossy slope under tall ancient trees, pale moths drifting in the dim air between the stones, a thin mist hanging close to the ground, a lit candle still burning at one of the graves although nobody is in sight, late dusk, a hush that feels watched-over rather than empty, no figures", "landscape_4_3"),
+    ("family_crypt", "a modest stone family mausoleum entrance set into a fitted-stone wall along a narrow cobbled street in a small Brumal hill town, the doorway framed by carved generations-old badger-clan motifs, the heavy stone door slightly ajar with broken old wax seals on the lintel, an unnatural cold blue-white light leaking faintly from inside the dark interior — a glow that should not be there — frost outlining the stone seams around the door; cold overcast twilight, a hill-town street empty of inhabitants, a dread quiet, no figures", "portrait_4_3"),
+    ("necropolis", "a vast quiet city of the dead built on a low rise at the desert's edge west of cracked salt-flats, hundreds of weathered pale-stone tombs, mausolea, tall obelisks and stepped burial-terraces arranged on long ordered avenues; a low encircling stone wall around the older inner sections, a single tall stone gate-arch at the entrance, thin threads of incense smoke rising from a few of the mausolea; the city is sparsely tended rather than abandoned, austere and patient, no crowds, no bustle, no figures, late golden-hour desert light", "landscape_4_3"),
 ]
 
 
@@ -385,6 +413,179 @@ def run_list() -> None:
         print(f"  {slug}")
 
 
+# --- Card-deck motifs ----------------------------------------------------
+# Single-subject woodcut icons used as watermarks on the playing-card
+# templates (base elements, racial powers, gear). 12 + 37 + 34 = 83 icons.
+
+ICON_ELEMENTS = [
+    ("flame",  "a single tall curling flame, tongues of fire rising upward"),
+    ("water",  "a single large water droplet with concentric ripples beneath it"),
+    ("wind",   "a curling spiral of wind, swirling air streams forming a vortex"),
+    ("plants", "a sprig of three broad leaves on a curving stem, simple herbal motif"),
+    ("iron",   "two crossed iron nails forming an X, forged metal motif"),
+    ("earth",  "a stylised mountain peak silhouette with layered stone strata"),
+    ("light",  "a radiant sun with eight long straight rays, simple solar emblem"),
+    ("dark",   "a crescent moon with a single small star, simple lunar emblem"),
+    ("blood",  "a single droplet of blood encircled by a hand-drawn ring"),
+    ("storm",  "a forked lightning bolt striking down through a thunder cloud"),
+    ("shadow", "a half-hooded face mask, one half black silhouette one half line"),
+    ("ruin",   "a cracked broken stone column toppled into rubble"),
+]
+
+ICON_POWERS = [
+    ("adaptation", "a hooded figure stepping through cast shadow, body half-merged with darkness"),
+    ("balance",    "an acrobat tumbling mid-roll, arching body silhouette in motion"),
+    ("blood",      "a single droplet of blood with a small green vine sprouting upward from it"),
+    ("camp",       "a triangular canvas tent in the centre of the frame with a small campfire burning prominently to the left of it, both tent and fire equally large and clearly visible, smoke rising upward from the flames, both subjects fill the centre of the frame"),
+    ("charge",     "a charging boar lowering its head and tusks forward, motion lines behind"),
+    ("clan",       "three concentric rings of clasped hands forming a circle of family"),
+    ("claw",       "a single curved animal claw, sharp talon silhouette"),
+    ("climber",    "a single hand grasping a jagged rock edge from below"),
+    ("control",    "two hands cupping a swirling cloud of dust between them"),
+    ("digging",    "a heavy pickaxe striking down into stone, sparks flying"),
+    ("druid",      "an antlered stag's head crowned with oak leaves and acorns"),
+    ("flight",     "a single outstretched feathered wing, mid-beat"),
+    ("fur",        "a thick bristled animal pelt with raised defensive fur"),
+    ("hearing",    "a large pricked pointed ear with curving sound-wave arcs around it"),
+    ("hide",       "an overlapping arrangement of thick scaled hide plates"),
+    ("hunter",     "a drawn longbow with arrow nocked and aimed forward"),
+    ("ingenuity",  "a large iron gear in the centre of the frame with a small wooden lever resting on top of it and a coiled rope wrapped around its teeth, the gear dominates the frame, mechanical icon"),
+    ("jaws",       "a snarling open mouth with bared canine teeth and fangs"),
+    ("labyrinth",  "a square unicursal maze pattern with intricate path lines"),
+    ("lookout",    "a tall stone watchtower silhouette against a high horizon"),
+    ("magic",      "an open upward-facing human hand in the centre of the frame, palm up, with three large bright sparks of magical energy rising prominently from the fingertips, the hand and the sparks together fill the centre of the frame"),
+    ("musical",    "a small wooden lute crossed with a wooden flute"),
+    ("night",      "a single watching eye glowing in surrounding darkness"),
+    ("nimble",     "a running figure mid-stride with motion lines trailing behind"),
+    ("politics",   "two hands clasping in agreement above a rolled scroll"),
+    ("portage",    "a heavy travelling pack and bedroll lashed onto bent shoulders"),
+    ("relaxed",    "a figure seated leaning back against a tree trunk, head tipped back"),
+    ("religion",   "a hand raised in benediction with rays radiating from the fingertips"),
+    ("scolding",   "a finger pointing forward beneath a wide open shouting mouth"),
+    ("scrounger",  "a worn rucksack overflowing with a loaf of bread and a flask"),
+    ("scurry",     "a small darting rodent silhouette in mid-run"),
+    ("shamanic",   "a single large feather standing upright in the centre of the frame with a knotted leather cord tied around its quill, several small bone beads threaded onto the cord — feather and beaded cord both clearly visible and prominent, ritual fetish icon"),
+    ("sleeper",    "a figure curled up sleeping under a wrapped travel cloak"),
+    ("sly",        "a fox face with one raised brow and a sly half-smile"),
+    ("smell",      "a long pointed snout sniffing forward, scent lines curling up from it"),
+    ("swimmer",    "a swimmer cleaving through a stylised cresting wave"),
+    ("travels",    "a worn travelling staff crossed with a leather walking boot"),
+]
+
+ICON_BACKGROUNDS = [
+    ("noble",         "an ornate noble's coronet — a small ring-shaped crown with several short rounded points around the rim, simple heraldic emblem filling the frame"),
+    ("farmer",        "a curved harvest scythe crossed with a tied bundle of wheat stalks, simple farm-tool icon"),
+    ("scholar",       "an open thick leather-bound book lying flat with a feathered quill resting across its pages"),
+    ("watch",         "a guard's iron helm with a vertical nose-piece, viewed from the front, three-quarter angle, military helmet icon"),
+    ("crafter",       "a heavy blacksmith's hammer with a thick wooden handle resting on top of a large iron anvil, both objects clearly visible, the hammer head sitting on the flat top of the anvil — both subjects equally prominent and filling the frame, craft-tool icon"),
+    ("monastery",     "a closed loop of round wooden prayer beads filling the centre of the frame, the beads clearly individual round shapes strung on a cord, a small simple Christian-style cross hangs from the bottom of the loop, the entire string of beads is the central subject and dominates the frame"),
+    ("ascetic",       "a tall walking staff leaning against a small empty wooden begging bowl on the ground"),
+    ("trader",        "a balance-scale with two round pans suspended from a horizontal beam, a small coin purse beneath it"),
+    ("fisher",        "a single curved fishing hook with a length of line, the hook taking up most of the frame"),
+    ("circus_troupe", "three juggling balls arranged in a triangular pattern with curving motion-arc lines between them"),
+    ("back_alley",    "a hooded figure in profile crouching low, holding a thin lockpick in one hand, simple thief silhouette"),
+    ("hunter",        "a large branched stag's antler standing upright in the centre of the frame, with several feathered arrows tucked behind it as if held in a quiver, the antler dominates the frame with its multiple curving tines and points, hunter's woodland emblem"),
+    ("miner",         "a round metal miner's helm worn high in the frame, with a small lit oil lamp mounted at the front of the helmet's brow — the lamp visibly burning with a small flame — and a heavy pickaxe leaning prominently behind the helm, both subjects clearly present"),
+    ("army",          "a tall pike crossed behind a kite-shaped shield with a heraldic boss, military emblem"),
+]
+
+ICON_ITEMS = [
+    ("sword",             "a straight long sword pointing upward, simple cruciform hilt"),
+    ("glave",             "a glaive — a long-handled curved blade pole-arm, point upward"),
+    ("flail",             "a flail — wooden handle with a chain ending in a spiked iron ball"),
+    ("spear",             "a simple spear with a leaf-shaped iron head, point upward"),
+    ("staff",             "a tall wooden walking staff with a knotted top"),
+    ("bow",               "a recurve longbow strung with a single arrow nocked"),
+    ("crossbow",          "a crossbow held flat, bolt loaded, simple wooden stock"),
+    ("sling",             "a leather sling with a stone in the pouch, mid-swing arc"),
+    ("dagger",            "a short straight dagger pointing upward, simple grip"),
+    ("darts",             "three crossed throwing darts with feathered fletchings"),
+    ("whip",              "a coiled leather whip with the tip uncoiled in an S-curve"),
+    ("pickaxe",           "a heavy iron pickaxe with a wooden haft, head pointed upward"),
+    ("armor",             "a full plate breastplate-and-pauldron silhouette, imposing armoured torso"),
+    ("breastplate",       "a single rounded chest breastplate with shoulder strap fittings"),
+    ("leather",           "a leather jerkin with cross-stitched seams, light armour"),
+    ("shield",            "a heater-shaped shield with a heraldic boss in the centre"),
+    ("horse",             "a saddled horse standing in profile, mane and tail flowing"),
+    ("donkey",            "a stout pack donkey standing in profile carrying bundles"),
+    ("dog",               "a hound dog in profile, alert posture with ears pricked up"),
+    ("falcon",            "a hooded hunting falcon perched on a leather glove"),
+    ("cart",              "a wooden two-wheeled cart in side view with simple plank boards"),
+    ("backpack",          "a stuffed travelling backpack viewed from the side filling most of the frame, leather shoulder straps, a tightly rolled bedroll lashed horizontally across the top, hand-drawn icon"),
+    ("tools",             "a hammer crossed with a small saw, basic crafting tools"),
+    ("fishing_net",       "a draped fishing net with knotted mesh and small floats"),
+    ("knife",             "a small belt knife in a simple sheath, blade exposed"),
+    ("potion",            "a small round-bellied glass phial with a cork stopper"),
+    ("refreshment_potion", "a tall thin glass phial with bubbles rising inside it"),
+    ("rage_potion",       "an angular glass phial with flickering flame sealed inside"),
+    ("effect_potion",     "a faceted glass phial with a swirling vapour curling out the top"),
+    ("bandages",          "a roll of linen bandages partly unspooled with a tied end"),
+    ("ring",              "a single finger ring shown in three-quarter view, a circular metal band with one large round gemstone set on top of the band, the band's circle clearly visible underneath the gem, jewellery icon filling the frame"),
+    ("bracelet",          "a circular beaded bracelet lying flat as seen from above, a closed loop of clearly individual round wooden beads strung on a leather cord, simple jewellery icon, NOT an animal"),
+    ("earring",           "a profile-view close-up of a human ear filling the centre of the frame, an ornate dangling silver earring hanging from the earlobe — a small hoop through the lobe with a teardrop pendant suspended below — the ear and earring are the entire subject, partial hair visible at the edges, hand-drawn icon"),
+    ("medallion",         "a round embossed metal medallion pendant hanging from a short chain, the medallion is a solid disc clearly stamped with a sun-and-star heraldic emblem on its face, the disc fills most of the frame"),
+]
+
+
+def run_icons() -> None:
+    key = load_key()
+    print(f"Loaded FAL_KEY ({len(key)} chars). Endpoint: {ENDPOINT_PRO}")
+    sets = [
+        ("elements",    ICON_ELEMENTS),
+        ("powers",      ICON_POWERS),
+        ("backgrounds", ICON_BACKGROUNDS),
+        ("items",       ICON_ITEMS),
+    ]
+    total = sum(len(s) for _, s in sets)
+    print(f"\nGenerating {total} card-deck motif icons (woodcut style) ...")
+    n_done = n_skip = 0
+    for subset_name, cards in sets:
+        out_dir = ROOT / "html" / "icons" / "cards" / subset_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n-- {subset_name} ({len(cards)}) -> {out_dir.relative_to(ROOT)}/")
+        for slug, body in cards:
+            out_path = out_dir / f"{slug}.png"
+            if out_path.exists():
+                print(f"  {subset_name}/{slug}: skip")
+                n_skip += 1
+                continue
+            seed_name = f"icon_{subset_name}_{slug}"
+            img = call_flux(key, body, seed_name,
+                            ratio="square_hd", style=STYLE_ICON)
+            archive_existing(out_path)
+            out_path.write_bytes(img)
+            print(f"    -> {out_path.relative_to(ROOT)}")
+            n_done += 1
+    print(f"\nIcons done. {n_done} new, {n_skip} skipped, {total} total.")
+
+
+def run_icon_single(slug: str, subset: str) -> None:
+    """Force re-render one card icon; subset must be elements|powers|items."""
+    cards_by_subset = {
+        "elements":    ICON_ELEMENTS,
+        "powers":      ICON_POWERS,
+        "backgrounds": ICON_BACKGROUNDS,
+        "items":       ICON_ITEMS,
+    }
+    if subset not in cards_by_subset:
+        raise SystemExit(f"Unknown subset: {subset!r}. Use elements|powers|backgrounds|items.")
+    cards = cards_by_subset[subset]
+    body = next((b for s, b in cards if s == slug), None)
+    if body is None:
+        raise SystemExit(f"Unknown {subset} slug: {slug!r}")
+    key = load_key()
+    out_dir = ROOT / "html" / "icons" / "cards" / subset
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Loaded FAL_KEY ({len(key)} chars). Endpoint: {ENDPOINT_PRO}")
+    print(f"\nGenerating single icon '{subset}/{slug}' (force re-render) ...")
+    img = call_flux(key, body, f"icon_{subset}_{slug}",
+                    ratio="square_hd", style=STYLE_ICON)
+    out_path = out_dir / f"{slug}.png"
+    archive_existing(out_path)
+    out_path.write_bytes(img)
+    print(f"    -> {out_path.relative_to(ROOT)}")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "pilot"
     if cmd == "pilot":
@@ -393,6 +594,12 @@ if __name__ == "__main__":
         run_npcs()
     elif cmd == "places":
         run_places()
+    elif cmd == "icons":
+        run_icons()
+    elif cmd == "icon":
+        if len(sys.argv) < 4:
+            raise SystemExit("Usage: generate_card_art.py icon <subset> <slug>")
+        run_icon_single(sys.argv[3], sys.argv[2])
     elif cmd == "single":
         if len(sys.argv) < 3:
             raise SystemExit("Usage: generate_card_art.py single <slug> [--ultra]")
@@ -403,5 +610,6 @@ if __name__ == "__main__":
     else:
         raise SystemExit(
             f"Unknown command: {cmd!r}. "
-            f"Try 'pilot', 'npcs', 'places', 'single <slug>', or 'list'."
+            f"Try 'pilot', 'npcs', 'places', 'icons', "
+            f"'icon <subset> <slug>', 'single <slug>', or 'list'."
         )

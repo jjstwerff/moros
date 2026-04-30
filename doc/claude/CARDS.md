@@ -1,5 +1,7 @@
 # Cards
 
+Related: [CARD_ART_PROMPTS.md](CARD_ART_PROMPTS.md) for the Flux art pipeline, [doc/npcs/cards.md](../npcs/cards.md) and [doc/places/cards.md](../places/cards.md) for per-card content, and the generated decks at `data/moros_cards.pdf` (NPC + place reference deck), `data/moros_playcards.pdf` (base + scenario + discovery play deck), and `data/moros_character_cards.pdf` (power + background + item template stock) — built by `tools/build_card_pdf.py`, `tools/build_play_card_pdf.py`, and `tools/build_character_cards_pdf.py`.
+
 ## Card types
 
 There are four card types in the shared deck:

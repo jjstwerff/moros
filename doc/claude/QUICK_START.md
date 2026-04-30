@@ -1,31 +1,29 @@
 # Moros — Quick Start for Claude
 
-Read this file at the start of every session before doing any work.
+Read this file at the start of every session before doing any work. The full topic index lives in the project-root **[CLAUDE.md](../../CLAUDE.md)**.
 
 ## What is this project?
 
-Moros is a browser-based toolkit for a tabletop RPG system. It has two tools:
+Moros is a tabletop RPG system, with two sides:
 
-- **Character Creator** (`html/character-creator.html`) — build and manage player characters
-- **Dungeon Master** (`html/dm.html`) — manage contacts, monsters, places, and scenarios
+- A **browser-based toolkit** — Character Creator (`html/character-creator.html`) and a DM tool (`html/dm.html`); all data in `localStorage`, no backend.
+- A **printed campaign** — lore, NPCs, places, scenarios, and a card deck. Source documents in `doc/`; generated PDFs in `data/`.
 
-All data is stored in `localStorage`. There is no backend.
+## Where things live
 
-## Key documentation
-
-| File | What it contains |
+| What | Where |
 |---|---|
-| `doc/claude/LORE.md` | World history — the portal, the first mage, the animal-people, the rift, the current day |
-| `doc/claude/RULES.md` | Full game rules — core mechanics, progression, races, backgrounds, contacts, crafting, weather |
-| `doc/claude/SCENARIOS.md` | All 8 scenarios — tension rules and per-scenario challenges |
-| `doc/claude/STATISTICS.md` | All 8 statistics — scenario uses, stat actions, specializations |
-| `doc/claude/POWERS.md` | All 36 racial powers — scenario uses and overwhelmed states per power |
-| `doc/claude/ITEMS.md` | All 30 items and 12 special materials — boosts, hinders, and crafting effects |
-| `doc/claude/CREATURES.md` | Creatures — stats, attacks, motivation, default behaviour, elementals, animals |
-| `doc/claude/DATA.md` | All data structures, where they live, how they are stored |
-| `doc/Todo.txt` | Current open tasks from the user |
+| Topic index for everything | [CLAUDE.md](../../CLAUDE.md) |
+| Game rules, stats, powers, items | [RULES.md](RULES.md), [STATISTICS.md](STATISTICS.md), [POWERS.md](POWERS.md), [ITEMS.md](ITEMS.md) |
+| World history, current campaign | [LORE.md](LORE.md), [CAMPAIGN.md](CAMPAIGN.md) |
+| Named NPCs (one file per character) | [doc/npcs/](../npcs/README.md) |
+| Locations (one file per place) | [doc/places/](../places/README.md) |
+| Long-form fiction | [doc/stories/](../stories/) |
+| Card system + printable decks | [CARDS.md](CARDS.md), [CARD_ART_PROMPTS.md](CARD_ART_PROMPTS.md), `data/moros_cards.pdf`, `data/moros_playcards.pdf` |
+| DM pacing across sessions | [DM.md](DM.md), [DM_STAGING.md](DM_STAGING.md) |
+| Open work | [OPEN_ISSUES.md](OPEN_ISSUES.md), [doc/Todo.txt](../Todo.txt) |
 
-## Source files
+## Source files (browser toolkit)
 
 | File | Role |
 |---|---|
@@ -37,6 +35,16 @@ All data is stored in `localStorage`. There is no backend.
 | `html/dm.html` | DM tool UI |
 | `html/style.css` | Shared styles |
 | `html/categories.js` | Shared category list |
+
+## Tooling (Python)
+
+| Script | Role |
+|---|---|
+| `tools/generate_card_art.py` | Generate NPC/place card art via Flux (fal.ai). Uses `FAL_KEY` from `~/.config/moros/secrets.env`. |
+| `tools/build_card_pdf.py` | Build the NPC + place reference deck PDF (`data/moros_cards.pdf`). |
+| `tools/build_play_card_pdf.py` | Build the base + scenario + discovery play-deck PDF (`data/moros_playcards.pdf`). |
+
+Python venv lives at `.venv-cards/`.
 
 ## Tests and commands
 
@@ -50,7 +58,7 @@ Test file: `test/progression.test.js` — covers character progression logic.
 
 ## Conventions
 
-- All game statistics, XP, and levels are **recalculated from the progression list** on load.
-  Never store derived values.
+- All game statistics, XP, and levels are **recalculated from the progression list** on load. Never store derived values.
 - Static game data in `data.js` is frozen and never written at runtime.
 - See `RULES.md` style guide comment for documentation formatting rules.
+- Documentation goal: see [SCENE_FIRST.md](SCENE_FIRST.md) — every page should describe scenes a DM can run, not just rules.

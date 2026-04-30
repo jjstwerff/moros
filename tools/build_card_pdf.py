@@ -107,6 +107,7 @@ LOC_NAME_TO_SLUG = {
     "LAURENT'S CRASHED FLYING CITY": "laurents_city",
     "LUCHEBERT MONASTERY": "luchebert_monastery",
     "LINAR HARBOUR": "linar_harbour",
+    "PIRATE COVE": "pirate_cove",
     "SALMONSWELL": "salmonswell",
     "FATA MORGANA": "fata_morgana",
     "GAP CITY": "gap_city",
@@ -117,12 +118,24 @@ LOC_NAME_TO_SLUG = {
     "LASTWATER": "lastwater",
     "THE FORBIDDEN WOODS": "forbidden_woods",
     "THE BLASTED LANDS": "blasted_lands",
-    "THE DESERT (SHIFTING LANDS)": "southern_desert",
+    "THE DESERT": "southern_desert",
     "THE COASTAL MOUNTAIN RANGE": "coastal_mountains",
     "THE VOLCANOES OF WORLD'S END": "worlds_end_volcanoes",
     "THE PORTAL (INSIDE THE BLASTED LANDS)": "portal",
     "THE WHITE CITY (RUINED)": "white_city",
-    "THORGAL'S MIRROR (IN A FOREST; LOCATION DM-": "thorgals_mirror",
+    "THORGAL'S MIRROR": "thorgals_mirror",
+    # ---- Dungeons ----
+    "THE GENERATOR": "generator",
+    "THE ANCHOR": "anchor",
+    "THE LETHRAN DWELLING": "lethran_dwelling",
+    "THE PRE-RIFT GRAIN-MILL": "grain_mill",
+    "THE PRESS-HOUSE RIDGE": "press_house",
+    "THE IRONWOOD MILL": "ironwood_mill",
+    "THE MIRROR CAMP": "mirror_camp",
+    "THE TIDEHOLD": "tidehold",
+    "MOTH HOLLOW": "moth_hollow",
+    "THE FAMILY CRYPT": "family_crypt",
+    "THE NECROPOLIS": "necropolis",
 }
 
 # Towers don't have card-text in places/cards.md but we generated images for
@@ -180,6 +193,101 @@ EXTRA_TOWERS = [
 
 XP_NPC = 100
 XP_LOC = 50
+
+# --- Flavour text --------------------------------------------------------
+# General lore/description text shown on each card. Mechanics (what the
+# NPC teaches, what earns the card) are intentionally NOT here — those are
+# DM discretion at the table.
+
+FLAVOR = {
+    # NPCs
+    "laurent": "A demi-lich older than the kingdoms, who once piloted his flying castle as a refuge during the Rift. Now only a floating skull remains, suspended above an empty throne in his crashed wreck. He still remembers everything; he chooses what to share.",
+    "felicia": "Saint Luchebert's order calls Felicia a great spirit; the people of the hill country know her as the patient kindness that keeps small things alive. Her shrine is a cave below the maze garden, tended by Willow's hands at dawn and at dusk.",
+    "narissa": "The first mage. A young colonist pulled under by a whirlpool and never wholly returned — bound to a water-spirit that extended her life and broke her sleep. Her diary became the foundation of every magecraft that followed.",
+    "thorgal": "Overseas mage, leader of an invasion driven by famine. Killed in his own chambers when he reached through a scrying mirror into the head of a boar-folk farmer. His residue lingers in that mirror still, somewhere in a forest.",
+    "raul": "Ox-tauren commander who once captured King Hannes and held him in a forward camp. When Thorgal's mirror went dark, he withdrew rather than entrench. He knows the war's true reasons better than the kingdoms he fought.",
+    "king_hannes": "King of Allondo, returned from captivity by a raccoon's quiet timing and a brother's quieter sacrifice. He preserves a small ledger of debts the crown will not say aloud.",
+    "queen_fienna": "Born to the Leatherman forge-houses of World's End, married into court for trade reasons. She brought iron-grade competence with her and a tendency to look people in the eye.",
+    "prince_corven": "Heir to Allondo's throne, the swordsman the court expects. In private he is unmaking himself over a Brumal princess he cannot publicly love.",
+    "didrich": "Allondo's second son, more comfortable in a herb garden than a war camp. His enlistment errands fool no one who watches him long enough.",
+    "princess_penelope": "Brumal royal lady, trained in jewelry at Fata morgana when both kingdoms still believed the desert could be argued with. She writes letters she does not send.",
+    "john_bean": "The boar-folk farmer whose phantom arm reached through a mirror and ended a war. Retired now, an ironwood prosthetic where the arm used to be, a quiet refusal to fight again.",
+    "irna_bean": "John's daughter, mine-shackle still on her wrist by choice. Walked out of Clear Water alive, walked into Elmsfield half-dead. The prophecy belongs to her; the proclamation went to her brother.",
+    "ron_bean": "John's son, conscripted on the strength of a prophecy meant for his sister. He has not opened the door to his family since.",
+    "rhianna_linthrope": "White-mouse priestess of Allondo's court, the medic who fitted John Bean's ironwood arm in the field. Iron-lady on the surface, the kingdom's quiet conscience underneath.",
+    "felix": "Raccoon scout, John's wartime companion. Slips into places the locks did not anticipate. Better at finding ways in than explaining how.",
+    "father_elliot": "Abbot of Luchebert, formerly Allondo's crown prince before he renounced the throne. He carries the prophecy's true reading; he has not yet said it aloud.",
+    "willow": "Old rabbit-folk granny, keeper of Felicia's true shrine. Climbs to the cave at dawn and at dusk with flowers and a candle. She is not the one to ask twice.",
+    "diederik": "Owl-folk druid exiled from his order, elder of Elmsfield. Reads ironwood, weather, and the slow shape of a dying land. The town's stability is largely his quiet work.",
+    "bridget": "Badger-folk innkeeper at the great ironwood. Trained navigator before she settled. Her slate at the bar runs two ledgers — drinking tabs and a wartime hoard, indexed in Badger trader-shorthand.",
+    "wilfred": "Bridget's husband, the town's almost-blacksmith and mostly-farmer. Honest hands, fair prices, a workbench rather than a forge.",
+    "farmer_joseph": "Raccoon-folk refugee who saw cholera take his neighbours after the war. Recently bought a plot from Hank. His fear is not malice; it is memory.",
+    "hank": "Rabbit-folk farmer presenting masculine, runs an open-door orphanage at Elmsfield's edge. Druid and healer, both quietly. Both books on the shelf, neither announced.",
+    "egbert": "Wolf-folk hunter who spends her days as someone smaller. Hank's partner. The concealment costs strength she cannot show; the truth costs a town she is not ready to lose.",
+    "corne_dunham": "Badger-folk hill-guide of Elmsfield. Knows the route to Luchebert from the high ground, and will not lead anyone into Laurent's wreck for any price.",
+    "ralph_overhill": "Young badger-folk animal-hand, more comfortable with horses than people. Will run with the mounts if a fight breaks out, and bring them back when it stops.",
+    "pot_boy": "Knee-height pot-person, caretaker of the buried tower's mage-quarters for centuries beyond his maker. He cannot speak; he draws on dust and ash.",
+    "furnace_pot_person": "The great pot at the buried tower's heart. The party walks through him to enter. A sentence from him takes a season to arrive.",
+    "hermit_shaman": "Otter shaman who came to a stolen tower long after its first owner. Broke the blood-rite with a spirit that mimics an animal. Guards what the towers know.",
+    "storm_mage": "The Lightning Tower's original mage, broken by centuries and by something that looked at him from a chaos-spirit's direction. Lucid for moments; wrong-headed in between.",
+    "tod": "A chaos spirit wearing the body of a fox-folk boy who ignored the forbidden woods. Named himself \"fox\" after the body. He warps the world simply by not knowing how worlds work.",
+    "brother_darrel": "Beaver-folk monk, formerly an Allondan sergeant. Renounced money and fighting, kept the staff. A stick is not a weapon if you call the practice discipline.",
+    "eric_randell": "Fox-folk farmer with a flock of birds in his yard. Free-thinker on the surface; secretly a druid sent to watch Diederik.",
+    "nadine": "Finch-folk trader from Raft city, face of a merchant group passing through. Carries the news the road has just heard, and fewer of her group's secrets than asked.",
+    "master_darius": "Badger forge-master of World Edge. Stood up for Remi when the mayor would not. Fair-minded on his own ground; cannot be bought off it.",
+    "remi": "Rat-folk factory worker expelled from World Edge after the order was rescinded. Carries Darius's letter of recommendation and not much else.",
+
+    # Locations
+    "scarlet_vale": "Capital of Allondo. Slate-roofed merchant streets spiral down to a riverside market under banners of forest green and iron grey. The training yards run in rotation behind the inner keep.",
+    "blackwood_freehold": "A quiet agricultural valley where the Bean farm has stood through three wars. Barley and turnips, dry-stone walls, working oxen at the field edge.",
+    "clear_water_mine": "Allondo's crown mining town on a treeless ridge. The mine itself is the prison; the shackle on a convict's wrist is a standing warning, not a restraint. Iron demand has run the shaft hard.",
+    "chatter_creek": "Northern Allondan border town. A watch-outpost, a packed-earth road into the pines, the kind of crossing one knows about only if one has crossed before.",
+    "rakeville": "A southern village on the trade road. Plaster-and-timber houses, an inn with a faded sign, the dust of summer caravans hanging in the air.",
+    "cliffside_hold": "Capital of Brumal. White walls and slate roofs step up the cliff face to a high keep. From the upper terraces, one already sees the dust haze of an advancing desert.",
+    "bockthicket": "A Brumal mining town set in dense hawthorn-and-blackthorn country. Dark timber buildings, a long ore-tip, the manner of a town hanging on rather than thriving.",
+    "steadington": "A Brumal village swallowed by the southern desert. Roof-peaks and a chimney still rise from the dunes. Diederik's birthplace; a warning to the rest of Brumal.",
+    "elmsfield": "An independent wilderness town built in a ring around a vast ancient ironwood. The trunk's hollow is the inn. Allondo's writ does not reach here; Diederik's quiet work keeps the chaos-spirit pressure away.",
+    "great_swamp": "Misty wetlands surrounding a still lake. Six wizard towers ring the water; five were seized and moved here by old-order mages; one was already there. A bound air elemental shimmers above the surface; a crystalline fungus spreads from the shore.",
+    "buried_tower": "One of the six wizard towers ringing the Lake of Tears, three-quarters under sand. The chimney vents fight the spreading fungus and lose ground each year. Two pot-people live within.",
+    "volcano_tower": "A wizard's tower built in the shape of a small volcano. A bound fire elemental rages within its rim. Its shackle opens through befriending or through fury.",
+    "darkness_tower": "A squat dark-stone tower whose entrance swallows light. A captive light elemental drains the life around it from beneath a great black basket. The walls are mosaic, only visible once it is freed.",
+    "sinking_tower": "A pale tower floating on the lake. Climb it and it sinks; ride it down and you find the lower half — a sealed living space at the lakebed where a bound spirit waits.",
+    "lightning_tower": "A metal-spiked tower hovering above the marsh, lightning arcing between its spurs. Its lever is the broken-minded mage who once owned it; bringing him aboard buys a single bout of clarity.",
+    "gerhald_tower": "The original blood-tower the ring was built around. Gerhald, an otter shaman, broke its sacrificial curse. The last shackle opens only by his consent.",
+    "laurents_city": "The wreckage of a flying castle that fell during the Rift, lying tilted in the hills east of the Lake of Tears. Laurent persists inside as a demi-lich. The walls are lined with wooden puppets that still answer to his hand.",
+    "luchebert_monastery": "A small isolated monastery on a clifftop above a river bend, reached by a hidden vale and a switchback path. The maze garden is the entry route. The cave chapel below is Felicia's true shrine.",
+    "linar_harbour": "Small independent east-coast harbour, the start of the inland trade road. The first town the overseas force took in the war; its fishers and dock workers are now largely descended from the soldiers who stayed.",
+    "pirate_cove": "A hidden cove on the rocky south coast, beyond where any merchant will sail. Stranded overseas soldiers built it when going home meant going hungry. Past Linar harbour the stories all stop — the colleagues who went on did not come back. Nadine's friend Linnet is held inside.",
+    "salmonswell": "An independent river city built on terraces above the Upwelling. Smoked-salmon trade, seasonal salmon runs, neutral ground between the kingdoms.",
+    "fata_morgana": "A walled city deep in the southern desert. Famous for jewelry-craft and for limited but real protection against chaos-spirits. The desert's heart, where neither kingdom holds sway.",
+    "gap_city": "Built into a steep mountain pass at the edge of the known world. South of the pass lie the shifting lands; the city is the last settlement before them. Knows things about that frontier neither kingdom admits.",
+    "raft_city": "A river port deep in the great forest, every house built on a barge lashed to the next. Reached past the forbidden woods. Nadine's home when she is not on the road.",
+    "world_edge": "A mining city at the foot of the northern volcanoes. Forges and ore-cart rails terraced into the slope. The Leatherman house's industrial base.",
+    "rosepond": "A mining village near World Edge, named for its rose-thorn hedgerows. A still pond reflects the volcanoes' red glow each evening.",
+    "haven": "The hidden settlement of the iron puppets, beside the western shifting lands. A slow community of humanoid wooden-and-metal constructs. Found only by their consent.",
+    "lastwater": "The last reliable spring on the southern road, where caravans rest before the blasted lands or the desert. A stone well-head and a few mudbrick shelters.",
+    "forbidden_woods": "A chaos-spirit forest north of the Lake of Tears. Trees bent into impossible curves, leaves the wrong colours for any season at once. Tod walks here; travellers do not.",
+    "blasted_lands": "A vast hazardous region of cracked salt-flats and broken mage-era ruins. The portal at its centre still glows. The chaotic spirits originated here and migrate outward.",
+    "southern_desert": "A continental band of dunes south of the blasted lands. Made hostile beyond natural by chaos-spirits migrated out from the lands' centre. Distinct from the shifting lands further south; Fata morgana endures inside it.",
+    "coastal_mountains": "The eastern spine of the continent, hard to traverse in most stretches. The trade road uses one specific southern pass near Linar; the rest is for the patient and the foolhardy.",
+    "worlds_end_volcanoes": "The most active northern volcanoes, glowing red against the cold sky. The source of World Edge's metals and its existence.",
+    "portal": "A standing stone gateway at the centre of the blasted lands, built by the first humans. Glyphs still glow within the frame. The shamans' long plan would reopen it.",
+    "white_city": "The ruin of the old mage civilisation's capital, broken stones half-buried in the salt-flats of the blasted lands. Enormous in scale even in collapse.",
+    "thorgals_mirror": "A heavy ornate scrying mirror somewhere in a forest, the glass crazed with cracks. Thorgal's residue lingers within. An aspiring mage may bond with it.",
+
+    # Dungeons — kept general; specifics are DM-discretion
+    "generator": "A pre-rift mage laboratory at the centre of the white city, three levels cut into the ruin. The chaos has been building toward this place for centuries with whatever it could lay hands on.",
+    "anchor": "One end of the Lethran Pair's paired chaos-management system. Buried intact under desert sand, sphinx-protected, untouched since the Rift.",
+    "lethran_dwelling": "The home of one of the Lethran Pair, preserved by a small thousand-year-old working that has not stopped. A door slightly ajar, a lamp still burning. The human centre of the Pair arc.",
+    "grain_mill": "A pre-rift mill on the broken-lands edge. It ground grain and cut stone-blanks for mage workings — the same blanks that ended up at the Anchor and the Generator. The wheel is silent now.",
+    "press_house": "A ruined pre-rift vineyard hall on a high broken-lands ridge. Stone wine-vats above, a sealed regional supply-cache below. The cache has not been opened in centuries.",
+    "ironwood_mill": "An ancient cutting-mill at the edge of the blasted lands, one of the very few ever capable of working ironwood. The cutter is still inside. The men who came here did not all leave whole.",
+    "mirror_camp": "An abandoned overseas-forces forward camp in a hidden valley north of the Lake of Tears. The scrying mirror Thorgal used to command his commander still stands at the centre, cracked but not destroyed.",
+    "tidehold": "A pre-rift sea-mage's cliff-tower built into the rock where the coastal mountains meet the ocean, half-claimed by the sea. Levels reached only at the right tide.",
+    "moth_hollow": "The burial ground from Laurent's crash, set in a hollow among the hills. One of Felicia's own places; she stays here with the dead.",
+    "family_crypt": "A badger family's mausoleum in a small Brumal hill town. Generations old at the surface, deeper than expected underneath. Something pre-rift was brought here that should not have been; the seal is broken.",
+    "necropolis": "The Skull Gatherers' city of the dead, west of the blasted lands at the desert's edge. The order keeps mage-skulls here, bound and at rest. The destination of Laurent's last flight, if the party brokers the offer.",
+}
 XP_OVERRIDE = {
     # Lift specific cards above the default if their reveal is bigger.
     "LAURENT": 250,
@@ -362,48 +470,45 @@ def draw_card(c: rl_canvas.Canvas, x: float, y: float,
             c.drawCentredString(x + CARD_W / 2, sub_y - i * 2.6 * mm, line)
         sub_y -= len(wrapped[:2]) * 2.6 * mm
 
-    # --- Body text (labels) ---
+    # --- Body: flavour text -----------------------------------------------
     body_y = sub_y - 2 * mm
     body_x = x + 3 * mm
     body_w = CARD_W - 6 * mm
 
-    # Label order priority: Type/Known for/Who's there/Earned by for locations,
-    # Teaches/Earned by for NPCs.
-    label_order = ["Known for", "Who's there", "Teaches", "Earned by"]
-    fields = []
-    for lbl in label_order:
-        if lbl in card["labels"]:
-            fields.append((lbl, card["labels"][lbl]))
+    slug = card.get("_slug")
+    flavour = FLAVOR.get(slug) if slug else None
+    if not flavour:
+        # Fallback to whatever label fields existed; lets us see missing flavour
+        flavour = card.get("labels", {}).get("Known for") \
+            or card.get("labels", {}).get("Teaches") \
+            or "—"
 
-    for lbl, text in fields:
-        # Label
-        c.setFont("Helvetica-Bold", 5.5)
-        c.setFillColor(border_color)
-        lbl_text = lbl + ":"
-        c.drawString(body_x, body_y, lbl_text)
-        lbl_w = c.stringWidth(lbl_text, "Helvetica-Bold", 5.5)
-        c.setFillColor(INK)
-        # First-line value
-        c.setFont("Helvetica", 5.5)
-        wrapped = wrap_text(text, "Helvetica", 5.5,
-                            body_w - lbl_w - 1 * mm, c)
-        if not wrapped:
-            wrapped = [""]
-        c.drawString(body_x + lbl_w + 1 * mm, body_y, wrapped[0])
-        body_y -= 2.4 * mm
-        for cont in wrapped[1:]:
-            if body_y < y + 6 * mm:
-                break
-            c.drawString(body_x, body_y, cont)
-            body_y -= 2.4 * mm
-        body_y -= 0.6 * mm  # paragraph spacing
+    # Auto-fit: try larger font first, fall back if it overflows
+    body_bottom_min = y + 6 * mm  # leave room for footer
+    fitted = None
+    for font_size, line_h in [(7.0, 3.1 * mm), (6.5, 2.9 * mm),
+                              (6.0, 2.7 * mm), (5.5, 2.5 * mm)]:
+        wrapped = wrap_text(flavour, "Helvetica", font_size, body_w, c)
+        if body_y - len(wrapped) * line_h >= body_bottom_min:
+            fitted = (font_size, line_h, wrapped)
+            break
+    if fitted is None:
+        # Worst case: use smallest size and truncate
+        font_size, line_h = 5.5, 2.5 * mm
+        wrapped = wrap_text(flavour, "Helvetica", font_size, body_w, c)
+        max_lines = int((body_y - body_bottom_min) / line_h)
+        wrapped = wrapped[:max_lines]
+        fitted = (font_size, line_h, wrapped)
 
-    # --- Footer: XP value + kind tag ---
+    font_size, line_h, wrapped = fitted
+    c.setFillColor(INK)
+    c.setFont("Helvetica", font_size)
+    for line in wrapped:
+        c.drawString(body_x, body_y, line)
+        body_y -= line_h
+
+    # --- Footer: kind tag only (XP is DM discretion at the table) ---
     footer_y = y + 2.5 * mm
-    xp = XP_OVERRIDE.get(card["name"], XP_NPC if kind == "npc" else XP_LOC)
-    c.setFont("Helvetica-Bold", 7)
-    c.setFillColor(border_color)
-    c.drawString(x + 3 * mm, footer_y, f"XP {xp}")
     c.setFont("Helvetica-Oblique", 5.5)
     c.setFillColor(HexColor("#777777"))
     kind_label = "NPC" if kind == "npc" else "PLACE"
@@ -510,6 +615,7 @@ def main() -> None:
         if image_path is None or not image_path.exists():
             n_missing_img += 1
             print(f"  ! no image for {kind} {card['name']!r} (slug={slug})")
+        card["_slug"] = slug  # for flavour-text lookup
         x, y = next(pos)
         draw_crop_marks(c, x, y)
         draw_card(c, x, y, card, image_path, border_color, kind)

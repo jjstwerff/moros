@@ -1,8 +1,13 @@
 target
 .idea
+.claude/
 data/pages.zip
 node_modules
 package-lock.json
 coverage
 .nyc_output
+
+# Auto-archived prior versions of generated card art (kept locally
+# by tools/generate_card_art.py archive_existing()).
+html/icons/**/*_v[0-9][0-9].png
 
