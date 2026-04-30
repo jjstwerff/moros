@@ -25,5 +25,6 @@
 - [Scene Editor Plan](doc/claude/SCENE_EDITOR_PLAN.md)
 - [Open Issues](doc/claude/OPEN_ISSUES.md)
 - [Developer Art](doc/claude/DEVELOPER_ART.md)
+- [Card Art Prompts — Flux prompts for NPC and location cards](doc/claude/CARD_ART_PROMPTS.md)
 - [Campaign](doc/claude/CAMPAIGN.md)
 - [Loft Libraries](doc/claude/LOFT_LIBRARIES.md)
