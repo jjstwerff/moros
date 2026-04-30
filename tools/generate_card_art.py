@@ -449,7 +449,7 @@ ICON_POWERS = [
     ("fur",        "a thick bristled animal pelt with raised defensive fur"),
     ("hearing",    "a large pricked pointed ear with curving sound-wave arcs around it"),
     ("hide",       "an overlapping arrangement of thick scaled hide plates"),
-    ("hunter",     "a drawn longbow with arrow nocked and aimed forward"),
+    ("hunter",     "an isolated heraldic emblem of a vertical longbow with a single nocked arrow, the bow stave forms a tall curving D-shape filling the full height of the frame, the bowstring drawn taut, the arrow aimed upward, dark silhouette filling the centre, no landscape, no background scenery, just the bow-and-arrow as a bold heraldic emblem"),
     ("ingenuity",  "a large iron gear in the centre of the frame with a small wooden lever resting on top of it and a coiled rope wrapped around its teeth, the gear dominates the frame, mechanical icon"),
     ("jaws",       "a snarling open mouth with bared canine teeth and fangs"),
     ("labyrinth",  "a square unicursal maze pattern with intricate path lines"),
