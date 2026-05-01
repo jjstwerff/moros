@@ -212,3 +212,25 @@ When the relevant topic comes up and she has decided to answer.
 - doc/claude/CAMPAIGN.md §"Brumal's collapse"
 - doc/places/linar_harbour.md (handover venue)
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Female · Humans · Cliffside hold**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 2 | 1 | 2 | 1 | 5 | 8 |
+
+- **Backgrounds** — Noble 1 *(Brumal court herald, master of coin)* · Scholar 2 *(royal archivist, court physician)*
+- **Specializations** — Jeweler 1 · Magic 2
+- **Powers** — Adaptation 1 (shadow step) · Politics 1 (common cause) · Magic 2 (elemental)
+- **Progression** — Scholar → Politics → Jeweler → Adaptation → Noble → Magic → Scholar → Magic
+- **Equipment** — horse, staff, backpack, knife, clothes *(bulk -5 / 3)*
+
+*Mentor — Jeweler: her teacher in Fata morgana's inner circle — a senior mighty-spirit-reader who took her on for the year the court sent her south; the inner-pattern ward-craft was *taught by hand at the bench*, not by lecture, and the pendant under her collar is her finishing piece from that year.*
+
+*Mentor — Magic: the same Fata morgana teacher and the senior practitioners at the inner-circle ward-rooms; Brumal had no one to teach this and her father's people sent her to Bockthicket hoping to extract the technique back, which failed because the technique cannot survive the wrong room.*
+
+
+> Royal lady of the Brumal court; secret love of Prince Corven of Allondo; the only Brumal royal who has lived inside Fata morgana's protection. A piece of work in her hand almost always; an inner-work pendant under her collar that diminishes her spirit-signature at distance.
+

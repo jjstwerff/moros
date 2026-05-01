@@ -221,3 +221,25 @@ For students who can work and who do not need to be entertained:
 - doc/places/geography.md §"The northern coast (World's End)"
 - doc/claude/BRUMAL_RESOLUTIONS.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Badgers · World edge**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 5 | 1 | 2 | 1 | 2 | 8 |
+
+- **Backgrounds** — Watch 1 · Crafter 2
+- **Specializations** — Smithing 2 · Machinist 1
+- **Powers** — Camp 1 (shielding) · Portage 1 (travel)
+- **Progression** — Crafter → Camp → Smithing → Portage → Watch → Machinist → Crafter → Smithing
+- **Equipment** — tools, knife, clothes *(bulk 2 / 6)*
+
+*Mentor — Smithing: the senior Badger forge-master who held this same district before him — twenty-odd years of senior apprenticeship under hands that had themselves apprenticed under World Edge's first forges. The patches on his apron are in his master's stitch.*
+
+*Mentor — Machinist: Leatherman house engineers, in correspondence — sealed packets read on Saturday mornings before the floor opens; never a face-to-face apprenticeship, but two decades of plans and corrections has the shape of one.*
+
+
+> Badger forge-master of World Edge; the quietly fair employer of his factory floor; the material spine of the Leatherman railroad project; the forge smell so old in his fur it is part of him.
+

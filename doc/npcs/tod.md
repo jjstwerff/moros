@@ -228,3 +228,7 @@ This makes Tod's continued existence a piece of the region's *equilibrium*. Dest
 - doc/places/forbidden_woods.md
 - doc/claude/LORE.md §"The Chaotic Spirits" and §"Spirit Ecology"
 - User notes, 2026-04-18
+
+## Character sheet
+
+*No sheet — chaos spirit wearing a fox body. The body is a worn skin and the inhabitant is not a person learning trades. Treat as a chaos-spirit encounter rather than a character.*

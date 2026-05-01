@@ -164,3 +164,19 @@ For students she judges have the head for it:
 - doc/places/elmsfield_inn.md — the physical Inn
 - doc/claude/CAMPAIGN.md
 - data/moros-campaign-2026-03-04.json
+
+## Character sheet
+
+**Badgers · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 3 | 2 | 1 | 2 | 1 | 1 | 0 |
+
+- **Backgrounds** — Farmer 1 *(orchard keeper, druid's apprentice)* · Trader 1
+- **Specializations** — Navigation 1
+- **Powers** — Camp 2 (shielding) · Ingenuity 1 (improvise)
+- **Progression** — Farmer → Camp → Trader → Ingenuity → Navigation → Camp
+
+> She Married to the farmer Wilfred, also a Badger. They have a slew of children helping on the farm or at the Inn. She herself is not interested in the farm, and very curious and independent. Bridget had rather moved to a city but the Inn was the second best opportunity. She wants to expand the Inn the moment that becomes a possibility.
+

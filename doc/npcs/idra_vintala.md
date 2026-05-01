@@ -155,3 +155,25 @@ Through cross-references and the studio's contents:
 - `doc/npcs/narissa.md` — the broader mage-tradition foundation Idra's line descended from
 - `doc/claude/PRE_RIFT_PAIR.md` — the adventure spine
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Female · Humans · White city (pre-rift)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 3 | 1 | 1 | 1 | 4 | 0 |
+
+- **Backgrounds** — Scholar 1 · Crafter 1
+- **Specializations** — Cloth 1 · Magic 1
+- **Powers** — Adaptation 1 (shadow step) · Politics 1 (common cause) · Magic 1 (elemental)
+- **Progression** — Crafter → Adaptation → Cloth → Politics → Scholar → Magic
+- **Equipment** — backpack, tools, clothes *(bulk -1 / 3)*
+
+*Mentor — Cloth: Felicia Vintala in the line's workshop on slow afternoons — never formal; the line worked threads and the apprentice was given the loom-side of the practice while she chose the painter's path; the discipline of the brush descends from the discipline of the warp.*
+
+*Mentor — Magic: the Vintala-line apprentice-stream at the white city; Idra was never granted the journeyman title because she chose the painter's path before completion.*
+
+
+> Pre-rift Vintala-line apprentice; chose the painter's path within the line rather than the working-mage's; signed four surviving works across the campaign; died at the white city when the rift came.
+

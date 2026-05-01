@@ -189,3 +189,25 @@ When the relevant topic comes up and he chooses to answer.
 - doc/npcs/elder_diederik.md
 - data/moros-campaign-2026-03-04.json
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Raccoons · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 2 | 3 | 2 | 1 | 1 | 0 |
+
+- **Backgrounds** — Farmer 1 *(orchard keeper, druid's apprentice)* · Army 1
+- **Specializations** — Brawl 1 · Sling 1
+- **Powers** — Camp 1 (shielding) · Scrounger 1 (provisions)
+- **Progression** — Farmer → Scrounger → Sling → Camp → Army → Brawl
+- **Equipment** — flail, sling, leather, spear, clothes *(bulk 10 / 6 — encumbered)*
+
+*Mentor — Sling: his wartime sergeant — a Beaver-folk hand who taught the working as a refugee-line tool, not a duellist's craft; aim at predators, aim past panicked crowds, never aim at the people you are protecting.*
+
+*Mentor — Brawl: the post-war army's drill, learned at speed because the war was already won and the camps were full; the lessons that landed were the ones a man could keep using on a farm afterwards.*
+
+
+> Raccoon farmer in Elmsfield; post-war refugee; the town's loudest voice of post-war fear; Session 1's opening obstacle. Stocky, scarred across one hand, voice carries further than his frame.
+

@@ -188,3 +188,25 @@ For students who can sit at a workbench in the dark:
 - doc/npcs/master_darius.md (the letter and the factory)
 - doc/places/geography.md §"The northern coast (World's End)" and §"The great river"
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Rat folk · On the road south (river settlements)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 2 | 4 | 2 | 1 | 1 | 1 | 0 |
+
+- **Backgrounds** — Crafter 1 · Miner 1
+- **Specializations** — Smithing 1 · Brawl 1
+- **Powers** — Scrounger 1 (provisions) · Scurry 1 (sneaking)
+- **Progression** — Crafter → Scurry → Smithing → Scrounger → Miner → Brawl
+- **Equipment** — backpack, tools, pickaxe, leather, clothes *(bulk 4 / 6)*
+
+*Mentor — Smithing: the World Edge factory floor he came up on — the senior smiths at the mid-bench who taught the practical cuts and held the line on quality; the letter Darius wrote him is the same hand's signature.*
+
+*Mentor — Brawl: the older miners on the city's lower-slope shifts — the practical contact-control technique a young rat-folk needs around mixed crews; learned at the bench, not in any school.*
+
+
+> Rat folk worker expelled from World Edge with the rest of his kin; carrier of Master Darius's letter; the honest outlier his city decided was no different from his cousins. Small frame, fingertips dark with old factory grease.
+

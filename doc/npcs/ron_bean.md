@@ -230,3 +230,25 @@ Only after discharge, and only if he joins a party.
 - doc/places/scarlet_vale.md
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Male · Boar folk · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 2 | 3 | 1 | 2 | 2 | 1 | 1 | 0 |
+
+- **Backgrounds** — Farmer 1 · Army 1 *(royal army quartermaster, veteran sergeant)*
+- **Specializations** — Shield 1 · Sling 1
+- **Powers** — Camp 1 (shielding) · Hide 1 (armor)
+- **Progression** — Farmer → Camp → Sling → Hide → Army → Shield
+- **Equipment** — donkey, sling, spear, shield, clothes *(bulk -3 / 9)*
+
+*Mentor — Sling: his father John, before he left the farm for Scarlet Vale — taught alongside fence-mending and field-walking, the way a farm boy learns the practical defenses against road-trouble and wolves at the edge of a field.*
+
+*Mentor — Shield: the drill-master at the Allondan second training yard — formal soldier-craft Ron took on because the bargain required it, learned at the rate the yard taught it; he is competent at the work and does not love it.*
+
+
+> Younger son of John Bean; reluctant enlistee in Scarlet Vale's training yards; subject of a misread proclamation that was never about him; future heir to the Bean farm. A boar-folk with small tusks and a uniform that does not fit at the shoulder.
+

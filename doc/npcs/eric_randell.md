@@ -255,3 +255,25 @@ For students he has watched carefully and decided to take:
 - doc/places/geography.md (Linar harbour as Gato-walker's origin)
 - doc/claude/DM_STAGING.md (Eric's known role)
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Foxes · Eric's farm (near Elmsfield)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 2 | 1 | 2 | 2 | 2 | 3 | 0 |
+
+- **Backgrounds** — Farmer 1 · Hunter 1
+- **Specializations** — Tracking 1 · Druid 1
+- **Powers** — Adaptation 1 (shadow step) · Hunter 1 (catching) · Travels 1 (scouting) · Druid 1 (nature)
+- **Progression** — Farmer → Adaptation → Druid → Travels → Hunter → Tracking
+- **Equipment** — flail, donkey, dog, bow, clothes *(bulk NaN / 6)*
+
+*Mentor — Druid: the formal druidic order he still belongs to — the senior masters who trained him and then placed him in undercover observation of Diederik; the order's curriculum is shaped by their excommunication of Diederik's branch, and Eric is reading the case from inside his own discipline.*
+
+*Mentor — Tracking: his farmer father and the wider fox-folk wrangler trade he came up through — reading bird-tracks in soft mud, reading where a strange-bird specimen has wandered to from a poorly-fenced pen; less formal than the order's craft, kept anyway.*
+
+
+> Fox-folk farmer with a flock of strange birds; also a druid in undercover observation of Elder Diederik on behalf of the formal druidic order; a thinking man who will not act against his own judgement to satisfy his sponsors. Travels on Gato-walker the Dromo.
+

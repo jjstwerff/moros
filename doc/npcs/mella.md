@@ -187,3 +187,25 @@ When the relevant topic comes up.
 - `doc/places/grain_mill.md`, `doc/places/anchor.md` — Pair-tradition cross-references
 - `doc/places/geography.md` — Clear Water river system
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Female · Beavers · Clear water**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 2 | 4 | 2 | 1 | 1 | 1 | 0 |
+
+- **Backgrounds** — Crafter 1 *(ore broker, equipment trader)* · Miner 1 *(mine surveyor, ore assessor)*
+- **Specializations** — Machinist 1 · Axes 1
+- **Powers** — Ingenuity 1 (improvise) · Swimmer 1 (survival)
+- **Progression** — Crafter → Ingenuity → Machinist → Swimmer → Miner → Axes
+- **Equipment** — backpack, tools, pickaxe, leather, clothes *(bulk 4 / 6)*
+
+*Mentor — Machinist: her grandmother's working-master line — apprenticed under a Lethran-line working-master at the Grain-mill in her grandmother's youth; the gentle-binding signature in the wheels Mella runs at Clear Water descends from that apprenticeship by three generations, scaled to a working mine.*
+
+*Mentor — Axes: the senior smiths at the bloomery — practical iron-shaping she learned because the works need it, not because she sought the title; the bloomery's hands taught the cuts she still uses on stamping-mill repairs.*
+
+
+> Beaver-folk chief engineer at Clear Water Mine; runs the water-works (race, wheels, pumps, stamping mill, bloomery bellows); the party's working channel into the mine that bypasses the warden when bypassing him is what the work needs.
+

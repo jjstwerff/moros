@@ -278,3 +278,25 @@ When the topic comes up — and when the register permits it.
 - doc/places/scarlet_vale.md
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Male · Humans · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 2 | 1 | 1 | 5 | 2 | 1 | 1 | 8 |
+
+- **Backgrounds** — Noble 2 *(Allondo chancellor, royal steward)* · Army 1 *(royal army quartermaster, veteran sergeant)*
+- **Specializations** — Shield 1 · Swords 2
+- **Powers** — Lookout 1 (guarding) · Politics 1 (common cause)
+- **Progression** — Noble → Politics → Swords → Lookout → Army → Shield → Noble → Swords
+- **Equipment** — horse, armor, sword, spear, shield, clothes *(bulk 5 / 3 — encumbered)*
+
+*Mentor — Swords: the Allondan royal-line drill-master who trained two princes and only one king — the elder son renounced before the master finished with him; Hannes finished the curriculum alone after Elliot left, then took it again under a war-master in the field.*
+
+*Mentor — Shield: the Allondan army's senior sergeants during the Overseas War — taught at speed because the war was already happening, kept because the post-capture work made it the discipline he used to walk through rooms afterwards.*
+
+
+> King of Allondo. Unexpected heir after his older brother Elliot renounced the crown. Veteran of a capture he has never reconciled with; quiet preparer for a second war. The signet ring on the left hand — touched when listening, turned when thinking, set flat when he has decided.
+

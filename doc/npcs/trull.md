@@ -195,3 +195,25 @@ When the relevant topic comes up.
 - `doc/places/linar_harbour.md` — the fisher-quarter
 - `doc/npcs/nadine.md`, `doc/npcs/bridget.md` — relocation routes
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Male · Beavers · Clear water**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 2 | 2 | 1 | 2 | 3 | 1 | 1 | 0 |
+
+- **Backgrounds** — Watch 1 · Hunter 1 · Miner 1 *(mine surveyor, ore assessor)*
+- **Specializations** — Blocking 1 · Brawl 1
+- **Powers** — Camp 1 (shielding) · Hunter 1 (catching)
+- **Progression** — Watch → Camp → Blocking → Hunter → Miner → Brawl
+- **Equipment** — glave, breastplate, pickaxe, leather, clothes *(bulk 13 / 6 — encumbered)*
+
+*Mentor — Blocking: the Watch-side master at the Cliffside provincial training rotation — Trull was one of the foreman candidates the post sent through the formal yard for a season; the discipline kept its shape because the convict-compound work uses it daily.*
+
+*Mentor — Brawl: the senior foremen who held the second compound before him — the practical contact-control technique a foreman has to know to break a fight without escalating it; learned at the post, not in any school.*
+
+
+> Foreman of the convict compound at Clear Water Mine; stoic; not the warden's man fully. The post permits very little; Trull uses the small room well — gives lighter shifts when he can; reports what standing orders require; does not report more.
+

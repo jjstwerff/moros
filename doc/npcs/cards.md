@@ -5,12 +5,14 @@ Cards serve **two purposes**:
 - **Player-facing** — issued when the party earns a relationship (see `doc/claude/DM_STAGING.md` §"Card issuance"). They are **records of standing**, not records of meeting.
 - **DM-facing** — a quick-reference summary when a rumour about an NPC comes up at the table. The DM keeps the full deck and pulls the relevant card instead of flipping through NPC files.
 
+**Earning a card grants 1 XP shared by the table** — the *"earned by"* trigger is also the XP trigger, per RULES.md §"Earning XP". Tracking cards tracks campaign depth in two ways at once.
+
 Each card carries:
 
 - **Name**
 - **Role** — who they are in the world, in one line
 - **Teaches** — what they will share, to whom, with what gate
-- **Earned by** — the trigger that lets the DM hand the card over to players
+- **Earned by** — the trigger that lets the DM hand the card over to players (and award the 1 XP)
 
 Location cards (same purpose, different subject) live at `doc/places/cards.md`.
 

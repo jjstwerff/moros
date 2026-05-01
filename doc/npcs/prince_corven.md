@@ -258,3 +258,25 @@ When the relevant topic comes up.
 - doc/places/salmonswell.md (plausible neutral meeting venue)
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Male · Humans · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 2 | 1 | 1 | 4 | 3 | 1 | 1 | 8 |
+
+- **Backgrounds** — Noble 2 *(Allondo chancellor, royal steward)* · Watch 1 *(city guard captain, magistrate)*
+- **Specializations** — Parry 1 · Swords 2
+- **Powers** — Lookout 1 (guarding) · Politics 1 (common cause)
+- **Progression** — Noble → Politics → Swords → Lookout → Watch → Parry → Noble → Swords
+- **Equipment** — horse, armor, sword, glave, breastplate, clothes *(bulk 7 / 3 — encumbered)*
+
+*Mentor — Swords: the Allondan crown's senior duellist-master, who has trained every prince in the line for four generations; Corven was named *the prince his father wanted* by this master after the third year and has not stopped working at the title since.*
+
+*Mentor — Parry: the Watch-side master at the second yard — supplementary work the crown ordered after the Overseas War on the principle that a duellist alone is a dead prince; defensive craft Corven took to immediately because it was the closest thing in the curriculum to *survive what is coming*.*
+
+
+> Crown Prince of Allondo; martial heir by training; in love with Penelope, princess of the kingdom he is being prepared to fight; visibly coming apart to anyone who looks. Hand on the hilt — trained, not hungry.
+

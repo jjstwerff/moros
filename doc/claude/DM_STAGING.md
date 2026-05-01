@@ -201,6 +201,8 @@ When any of these triggers fires, the DM hands over the NPC's card. The party no
 
 The number of cards a party has accumulated is the clearest measure of campaign depth: a party with 15 cards has meaningful standing across the setting; a party with 3 is still early.
 
+Card count is also XP: each card earned grants 1 XP shared by the table (RULES.md §"Earning XP"). Fifteen cards therefore equals 15 XP — under the quadratic cost curve, enough for a single-skill specialization to mastery 3 with breadth advances on top.
+
 ## Pacing notes
 
 - **Session 1 is the one exception** to the card-earning rule. Meeting the Session 1 NPCs well enough to know their names probably earns *two* cards (Irna, Diederik) by session's end. Joseph is a harder card — the party has to reconcile with him, not just shout him down.

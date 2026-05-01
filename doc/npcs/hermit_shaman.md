@@ -202,3 +202,25 @@ Losing him thins that cover. The campaign should account for this consequence al
 
 - doc/claude/CAMPAIGN.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Otters · Hill tower at the Lake of Tears**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 1 | 2 | 3 | 1 | 4 | 8 |
+
+- **Backgrounds** — Ascetic 2 · Hunter 1
+- **Specializations** — Tracking 1 · Shamanic 2
+- **Powers** — Hunter 1 (catching) · Lookout 1 (guarding) · Sly 1 (trick) · Shamanic 2 (binding)
+- **Progression** — Ascetic → Lookout → Shamanic → Sly → Hunter → Tracking → Ascetic → Shamanic
+- **Equipment** — dog, staff, bow, knife, clothes *(bulk NaN / 3)*
+
+*Mentor — Shamanic: the older shaman line he was apprenticed into before he took the hill tower — names not given, the line's discipline taught at the bench across years; the negotiation-with-spirits register that the kingdoms' mage tradition abandoned and the shamans kept.*
+
+*Mentor — Tracking: the same line — the water-and-hill craft of reading where a creature has been; the hill tower's long post made it the practical work of every season, not just the apprenticeship.*
+
+
+> Otter shaman; current inhabitant of the hill tower at the Lake of Tears; holder of the consent-veto on the last shackle. An old otter, sleek-fur grey-streaked at the muzzle and tail; a small stone on a string turning slowly between his fingers; a water basin at his feet.
+

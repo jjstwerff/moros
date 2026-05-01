@@ -164,3 +164,23 @@ The overseas continent's current political structure is **deliberately not speci
 
 - doc/claude/CAMPAIGN.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Humans · Overseas continent — pre-war mage chambers**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 1 | 1 | 2 | 1 | 6 | 5 |
+
+- **Backgrounds** — Noble 1 · Scholar 1 · Ascetic 1
+- **Specializations** — Magic 2
+- **Powers** — Adaptation 1 (shadow step) · Lookout 1 (guarding) · Politics 1 (common cause) · Magic 2 (elemental)
+- **Progression** — Scholar → Politics → Magic → Adaptation → Noble → Lookout → Ascetic → Magic
+- **Equipment** — sword, staff, clothes *(bulk 6 / 3 — encumbered)*
+
+*Mentor — Magic: the central overseas-tradition academy of his continent — institutional rather than master-and-apprentice; the names are not preserved on this side, and the tradition itself is what the bond of his residue passes on, not any one teacher.*
+
+
+> Senior overseas mage and commander of the Overseas War; ordered the invasion of the homelands as a starvation-driven mass emigration under arms; killed remotely through his own scrying mirror by John Bean's phantom-arm pull.
+

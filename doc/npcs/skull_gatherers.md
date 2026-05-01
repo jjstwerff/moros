@@ -230,3 +230,7 @@ For students the order recognises — and most students do not pass the threshol
 - doc/npcs/andras.md
 - doc/npcs/laurent.md
 - User notes, 2026-04-19
+
+## Character sheet
+
+*No sheet — order, not a single character. Stat individual gatherers (Andras has his own file) when the party meets them; the order itself does not get a sheet.*

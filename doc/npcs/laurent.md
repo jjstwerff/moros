@@ -211,3 +211,23 @@ Destroying him (or, more gently, releasing him at the last flight) would remove 
 - doc/claude/LORE.md
 - doc/stories/the_rift.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Humans · White city (pre-rift)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 1 | 1 | 3 | 1 | 7 | 18 |
+
+- **Backgrounds** — Noble 1 · Scholar 2 · Ascetic 1
+- **Specializations** — Magic 3
+- **Powers** — Adaptation 1 (shadow step) · Lookout 1 (guarding) · Politics 1 (common cause) · Magic 3 (elemental)
+- **Progression** — Scholar → Politics → Magic → Adaptation → Noble → Lookout → Ascetic → Magic → Scholar → Magic
+- **Equipment** — armor, sword, staff, clothes *(bulk 9 / 3 — encumbered)*
+
+*Mentor — Magic: Vintala-line working-mages at the white city — Felicia was a peer late in his apprenticeship rather than a master; the deepest later levels were earned alone, in his own audience hall, working past the ages of his teachers.*
+
+
+> Mage of the white city; owner of the flying castle that carried Rift survivors to the hill country; partner-in-the-work to Felicia Vintala in the evacuation; died in the fall of his own city and bound himself into the wreck as a demi-lich. The sheet captures the path he walked in life.
+

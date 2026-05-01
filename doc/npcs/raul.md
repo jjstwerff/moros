@@ -207,3 +207,25 @@ For students who can hear the word *war* without flinching at it:
 - doc/npcs/felix.md
 - doc/places/linar_harbour.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Bull folk · Overseas continent**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 1 | 4 | 1 | 3 | 1 | 0 |
+
+- **Backgrounds** — Noble 1 · Army 1
+- **Specializations** — Brawl 1 · Swords 1
+- **Powers** — Charge 1 (prone) · Travels 1 (scouting)
+- **Progression** — Army → Charge → Brawl → Travels → Noble → Swords
+- **Equipment** — horse, armor, spear, shield, clothes *(bulk 3 / 3)*
+
+*Mentor — Brawl: the overseas war-band drill — the discipline a forward-force commander uses to keep men coherent at the contact line; learned in the conflict that ended the previous overseas reform-cycle, kept because every campaign since has needed it.*
+
+*Mentor — Swords: the overseas mage-tradition's officer-school — formal duellist's craft layered onto the war-band drill; the curriculum was Thorgal's faction's, and the master who taught it died at the same time Thorgal did.*
+
+
+> Ox-tauren war-band leader; commanded the forward force that captured King Hannes during the Overseas War; left the scrying mirror in his old camp when Thorgal died and it went dark; currently overseas, with a standing the homelands cannot read.
+

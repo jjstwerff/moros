@@ -4,12 +4,24 @@ Related: [CARD_ART_PROMPTS.md](CARD_ART_PROMPTS.md) for the Flux art pipeline, [
 
 ## Card types
 
-There are four card types in the shared deck:
+There are five card types. Four enter the shared deck during play; the fifth (artifact) joins
+a holder's pool while they carry the object:
 
 - **Base cards** — 12 permanent cards, one per element
 - **Character cards** — added by powers, backgrounds, or items; contributed at stakes
 - **Scenario cards** — 3 per scenario, shuffled in and removed after
-- **Discovery cards** — unique, personal to one character
+- **Discovery cards** — unique, personal to one character; earned by uncovering a secret
+- **Artifact cards** — unique, tied to a recovered story-significant object; travels with the
+  holder; earned only through dungeon-level engagement or long quest chains
+
+## Cards and XP
+
+Three of the card types — **discovery**, **artifact**, and the **reference cards**
+(NPC and place; see [doc/npcs/cards.md](../npcs/cards.md) and
+[doc/places/cards.md](../places/cards.md)) — also award **1 XP per card to the whole table**
+when first earned. Base, character, and scenario cards are derived from progression or from
+the scenario itself and award no XP. See [RULES.md](RULES.md) §"Earning XP" for the full
+rule and §"XP Costs" for what XP buys (cost = level²).
 
 ## What goes on a card
 

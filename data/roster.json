@@ -1,0 +1,2058 @@
+[
+  {
+    "name": "Nadine",
+    "gender": "Female",
+    "desc": "Itinerant Finch trader; public face of a Raft city merchant group; the party's regular window on the larger world. Personal project: Linnet's extraction.",
+    "category": "NPC",
+    "place": "Raft city",
+    "race": "Finches",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Trader"
+      },
+      {
+        "type": "power",
+        "name": "Musical"
+      },
+      {
+        "type": "specialization",
+        "name": "Navigation"
+      },
+      {
+        "type": "power",
+        "name": "Hearing"
+      },
+      {
+        "type": "background",
+        "name": "Trader"
+      },
+      {
+        "type": "power",
+        "name": "Flight"
+      }
+    ],
+    "items": [
+      "donkey",
+      "cart",
+      "knife",
+      "clothes",
+      "tent",
+      "bedroll",
+      "food"
+    ],
+    "elements": [],
+    "mentors": {
+      "Navigation": "the Raft City navigator-schools — four years as a fledgling on a curriculum of unchanging roads and never-twice-the-same weather, taught in rotation by half a dozen senior navigators of her group rather than by a single master."
+    }
+  },
+  {
+    "name": "Irna Bean",
+    "gender": "Female",
+    "desc": "Irna grew up at the farm of her father John with her slightly younger brother Ron.\nOnce she was saved by her father when playing in a tree near the local river, she fell in but was pulled out at a significant distance.\nHer brother Ron was enlisted by Hannes for soldier training. Irna did a non-lethal attack on prince Dietrich who came with two knights to get Ron.\nShe was taken and forced to work in a mine as repentance. Rhianna got her out of the mine but send her in exile to the monastery instead.",
+    "category": "active",
+    "place": "Blackwood freehold",
+    "race": "Boar folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Charge"
+      },
+      {
+        "type": "background",
+        "name": "Miner"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      },
+      {
+        "type": "power",
+        "name": "Digging"
+      },
+      {
+        "type": "specialization",
+        "name": "Axes"
+      },
+      {
+        "type": "power",
+        "name": "Smell"
+      }
+    ],
+    "items": [
+      "leather",
+      "dog"
+    ],
+    "elements": []
+  },
+  {
+    "name": "Elder Diedérik",
+    "gender": "Male",
+    "desc": "The current leader of Elmsfield with Druidic training.\nThrown out of the druidic order after his ill advised travel to the next continent. He flew there with a friend but traveled back by a merchant ship.\nHe wants to aid everyone with his knowledge, but too many people are still too resentful from the last war.\nThe druids excommunicated him.\nHe has basic knowledge of ironwood, the tree in Elmsfield is the actual reason he came there. The next continent has more trees like that.",
+    "category": "active",
+    "place": "Steadington",
+    "race": "Owls",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Claw"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "power",
+        "name": "Clan"
+      }
+    ],
+    "items": [
+      "clothes",
+      "staff"
+    ],
+    "elements": []
+  },
+  {
+    "name": "Hank (Hanny)",
+    "gender": "",
+    "desc": "Was brought together with Egbert to an orphanage by the Sargent Darrel. After leaving there Hanny wanted to chase her dream to get their own cottage. To be able to travel safely they presented themselves as men, they got a bag of money from Darrel that he left them though they think it was a relative.\nTheir farm is running well on the edge of Elmsfield, they just sold a plot to Joseph so they regained the total sum of money again.\nThe house is always open for young people with little prospect, and has grown into something close to an orphanage of its own.",
+    "category": "active",
+    "place": "Elmsfield",
+    "race": "Rabbits",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Back alley"
+      },
+      {
+        "type": "power",
+        "name": "Scrounger"
+      },
+      {
+        "type": "specialization",
+        "name": "Sneak"
+      },
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      }
+    ],
+    "items": [],
+    "elements": []
+  },
+  {
+    "name": "Egbert",
+    "gender": "",
+    "desc": "Mate of Hanny. Secretly plowing the plots of land at night. Hunter several times to provide for food during winters.",
+    "category": "active",
+    "place": "Elmsfield",
+    "race": "Wolf folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Back alley"
+      },
+      {
+        "type": "specialization",
+        "name": "Scouting"
+      },
+      {
+        "type": "power",
+        "name": "Smell"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "power",
+        "name": "Control"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      },
+      {
+        "type": "power",
+        "name": "Jaws"
+      }
+    ],
+    "items": [],
+    "elements": []
+  },
+  {
+    "name": "Innkeeper Bridget",
+    "gender": "",
+    "desc": "She Married to the farmer Wilfred, also a Badger. They have a slew of children helping on the farm or at the Inn. She herself is not interested in the farm, and very curious and independent. Bridget had rather moved to a city but the Inn was the second best opportunity. She wants to expand the Inn the moment that becomes a possibility.",
+    "category": "",
+    "place": "Elmsfield",
+    "race": "Badgers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "background",
+        "name": "Trader"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "specialization",
+        "name": "Navigation"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      }
+    ],
+    "items": [],
+    "elements": []
+  },
+  {
+    "name": "Narissa",
+    "gender": "Female",
+    "desc": "The First Mage. A 24-year-old colonist whose involuntary fusion with a water-and-earth spirit became the foundation of all subsequent mage tradition; lived into her hundreds, withdrew from public life early, and left the diary that taught everyone who came after.",
+    "category": "Historical",
+    "place": "Early colony — pre-rift lake region",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "staff",
+      "backpack"
+    ],
+    "elements": [],
+    "mentors": {
+      "Druid": "no human master; her settler community kept the kindly old farming-rites she carried from across the sea, and the rites were enough to root her in the land before the spirit found her.",
+      "Magic": "the spirit itself, in the months underwater and the decades that followed; she had no human teacher and wrote the diary precisely because there was none to leave the knowledge with."
+    }
+  },
+  {
+    "name": "Thorgal",
+    "gender": "Male",
+    "desc": "Senior overseas mage and commander of the Overseas War; ordered the invasion of the homelands as a starvation-driven mass emigration under arms; killed remotely through his own scrying mirror by John Bean's phantom-arm pull.",
+    "category": "Historical",
+    "place": "Overseas continent — pre-war mage chambers",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "staff",
+      "sword"
+    ],
+    "elements": [],
+    "mentors": {
+      "Magic": "the central overseas-tradition academy of his continent — institutional rather than master-and-apprentice; the names are not preserved on this side, and the tradition itself is what the bond of his residue passes on, not any one teacher."
+    }
+  },
+  {
+    "name": "Felicia Vintala",
+    "gender": "Female",
+    "desc": "Pre-rift Vintala-line working-mage; partner-in-the-work to Laurent at the fall of the flying city; settled the survivor demi-humans across the hill country; died at the evacuation and continued as the great spirit at Luchebert.",
+    "category": "Historical",
+    "place": "White city (pre-rift)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "specialization",
+        "name": "Cloth"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "tools",
+      "backpack"
+    ],
+    "elements": [],
+    "mentors": {
+      "Cloth": "the Vintala-line house-school where her elders worked threads — practitioners senior to her by half a generation, who treated fabric as a tradition rather than a trade.",
+      "Magic": "Vintala-line working-mages at the white city — a long bench-side apprenticeship where Laurent was a peer late in the years rather than a master; the gentle-binding signature was learned by the practice itself, not by a single teacher."
+    }
+  },
+  {
+    "name": "Idra Vintala",
+    "gender": "Female",
+    "desc": "Pre-rift Vintala-line apprentice; chose the painter's path within the line rather than the working-mage's; signed four surviving works across the campaign; died at the white city when the rift came.",
+    "category": "Historical",
+    "place": "White city (pre-rift)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "specialization",
+        "name": "Cloth"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "tools",
+      "backpack"
+    ],
+    "elements": [],
+    "mentors": {
+      "Cloth": "Felicia Vintala in the line's workshop on slow afternoons — never formal; the line worked threads and the apprentice was given the loom-side of the practice while she chose the painter's path; the discipline of the brush descends from the discipline of the warp.",
+      "Magic": "the Vintala-line apprentice-stream at the white city; Idra was never granted the journeyman title because she chose the painter's path before completion."
+    }
+  },
+  {
+    "name": "Halen Lethran",
+    "gender": "Male",
+    "desc": "Older partner of the Lethran Pair; Generator-side practitioner at what is now the white city's centre; engineered the active half of the chaos-management system; wrote the system documentation; died at the rift when the Generator end ran on without backup.",
+    "category": "Historical",
+    "place": "White city (pre-rift)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "specialization",
+        "name": "Machinist"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "staff",
+      "tools"
+    ],
+    "elements": [],
+    "mentors": {
+      "Magic": "Lethran-line working-masters at the white city — the older partnership-line that worked the gentle-binding signature; Halen took the Lethran name at the working-bond with Sori, not by birth.",
+      "Machinist": "the Grain-mill working-master who cut their stone-blanks; not formally an apprenticeship but a long correspondence about how the active half of the system should be built."
+    }
+  },
+  {
+    "name": "Sori Lethran",
+    "gender": "Female",
+    "desc": "Younger partner of the Lethran Pair; Anchor-side practitioner in what is now the southern desert; the household-resident with the child while Halen travelled north; wrote the working-tongue inscriptions on the Anchor stone; died at the rift after the Anchor end was finished.",
+    "category": "Historical",
+    "place": "Lethran dwelling (pre-rift)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "specialization",
+        "name": "Cloth"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "tools",
+      "backpack"
+    ],
+    "elements": [],
+    "mentors": {
+      "Cloth": "the household weavers of her childhood line, before the working-bond; the patience of *not finishing* in her later writing comes from the same hand-rhythm she learned at the loom.",
+      "Magic": "Lethran-line working-masters at the white city; Sori took the Lethran name at the working-bond with Halen, not by birth, and apprenticed the receiver-side of the system from the line's most senior practitioners of the gentle-binding signature."
+    }
+  },
+  {
+    "name": "Laurent Gallagar",
+    "gender": "Male",
+    "desc": "Mage of the white city; owner of the flying castle that carried Rift survivors to the hill country; partner-in-the-work to Felicia Vintala in the evacuation; died in the fall of his own city and bound himself into the wreck as a demi-lich. The sheet captures the path he walked in life.",
+    "category": "Historical",
+    "place": "White city (pre-rift)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "clothes",
+      "staff",
+      "sword",
+      "armor"
+    ],
+    "elements": [],
+    "mentors": {
+      "Magic": "Vintala-line working-mages at the white city — Felicia was a peer late in his apprenticeship rather than a master; the deepest later levels were earned alone, in his own audience hall, working past the ages of his teachers."
+    }
+  },
+  {
+    "name": "Wilfred",
+    "gender": "Male",
+    "desc": "Badger farmer-and-smith; Bridget's husband; the farm half of the Inn-and-farm household. Quiet at two speeds — fast at the forge, slow everywhere else.",
+    "category": "NPC",
+    "place": "Elmsfield",
+    "race": "Badgers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "specialization",
+        "name": "Smithing"
+      },
+      {
+        "type": "power",
+        "name": "Portage"
+      },
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      }
+    ],
+    "items": [
+      "tools",
+      "flail",
+      "donkey",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Smithing": "his father, the previous Elmsfield smith — part-time forge work bound up with a working farm. Wilfred apprenticed at his elbow from childhood and took the forge over without ceremony when his father set the hammer down."
+    }
+  },
+  {
+    "name": "Corné Dunham",
+    "gender": "Male",
+    "desc": "Lean Badger valley guide; the local who knows the paths, the seasons, and the way over the ridges to Luchebert. Walks the valley's circuit weekly without calling it work.",
+    "category": "NPC",
+    "place": "Elmsfield",
+    "race": "Badgers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      },
+      {
+        "type": "power",
+        "name": "Scrounger"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      }
+    ],
+    "items": [
+      "bow",
+      "dog",
+      "staff",
+      "clothes",
+      "knife",
+      "bedroll"
+    ],
+    "elements": [],
+    "mentors": {
+      "Tracking": "the older generation of valley-folk badgers — his grandmother and her brothers, who walked the hill paths before him and taught the notch-and-mark count-system he still uses on his stick.",
+      "Druid": "the country grandmothers of Elmsfield's older households; the rowan-berry rite and the small-shrine pattern were handed across kitchen tables, not by any formal master."
+    }
+  },
+  {
+    "name": "Ralph Overhill",
+    "gender": "Male",
+    "desc": "Young Badger camp-follower and animal-handler; the eastern stable's working hand; loves horses more than he loves the idea of the clan; will flee with the animals rather than stand and fight.",
+    "category": "NPC",
+    "place": "Elmsfield",
+    "race": "Badgers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Sling"
+      },
+      {
+        "type": "power",
+        "name": "Portage"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      }
+    ],
+    "items": [
+      "donkey",
+      "dog",
+      "bow",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Sling": "his uncle who runs the eastern stable — taught it as predator-defense for the working animals, never as a soldier's craft. The pouch of brushes at his belt is the uncle's; the sling-skill is the uncle's too.",
+      "Tracking": "the same uncle and the older hands at the stable; reading a horse's gait at fifty paces is the same eye that reads its track in soft mud."
+    }
+  },
+  {
+    "name": "Farmer Joseph",
+    "gender": "Male",
+    "desc": "Raccoon farmer in Elmsfield; post-war refugee; the town's loudest voice of post-war fear; Session 1's opening obstacle. Stocky, scarred across one hand, voice carries further than his frame.",
+    "category": "NPC",
+    "place": "Elmsfield",
+    "race": "Raccoons",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Scrounger"
+      },
+      {
+        "type": "specialization",
+        "name": "Sling"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      }
+    ],
+    "items": [
+      "flail",
+      "sling",
+      "spear",
+      "leather",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Sling": "his wartime sergeant — a Beaver-folk hand who taught the working as a refugee-line tool, not a duellist's craft; aim at predators, aim past panicked crowds, never aim at the people you are protecting.",
+      "Brawl": "the post-war army's drill, learned at speed because the war was already won and the camps were full; the lessons that landed were the ones a man could keep using on a farm afterwards."
+    }
+  },
+  {
+    "name": "Master Darius",
+    "gender": "Male",
+    "desc": "Badger forge-master of World Edge; the quietly fair employer of his factory floor; the material spine of the Leatherman railroad project; the forge smell so old in his fur it is part of him.",
+    "category": "NPC",
+    "place": "World edge",
+    "race": "Badgers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Smithing"
+      },
+      {
+        "type": "power",
+        "name": "Portage"
+      },
+      {
+        "type": "background",
+        "name": "Watch"
+      },
+      {
+        "type": "specialization",
+        "name": "Machinist"
+      },
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "specialization",
+        "name": "Smithing"
+      }
+    ],
+    "items": [
+      "tools",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Smithing": "the senior Badger forge-master who held this same district before him — twenty-odd years of senior apprenticeship under hands that had themselves apprenticed under World Edge's first forges. The patches on his apron are in his master's stitch.",
+      "Machinist": "Leatherman house engineers, in correspondence — sealed packets read on Saturday mornings before the floor opens; never a face-to-face apprenticeship, but two decades of plans and corrections has the shape of one."
+    }
+  },
+  {
+    "name": "Father Elliot",
+    "gender": "Male",
+    "desc": "Abbot of Luchebert; former Crown Prince of Allondo who renounced after the Overseas War; keeper of the saint's tradition and the library; the only person whose word can correct the misread proclamation that put Ron Bean in the yards.",
+    "category": "NPC",
+    "place": "Luchebert Monastery",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Navigation"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Monastery"
+      },
+      {
+        "type": "specialization",
+        "name": "Religion"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Religion"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Navigation": "the court-tutors of his Allondan princely education — the same curriculum that produced his father's seafaring captains, learned in reverse for the prince who would never sail it; the worn compass on the thong around his neck is from those years.",
+      "Religion": "Saint Luchebert's tradition through the abbey he came to after renouncing — his predecessor as abbot and the long line of monks who copied the saint's books before him; renounced princes are taught the order's discipline at the speed of the order, not the speed of their grief."
+    }
+  },
+  {
+    "name": "Willow",
+    "gender": "Female",
+    "desc": "Old rabbit-folk granny of Luchebert; tender of Felicia's shrine; keeper of the Abbey's quiet truth and gatekeeper of the necklace. Always with flowers; hands stained with soil; a knife at her belt for cutting stems and a knife.",
+    "category": "NPC",
+    "place": "Luchebert Monastery",
+    "race": "Rabbits",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "power",
+        "name": "Hearing"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Druid": "the granny before her at Felicia's shrine — the same line that has held the cave chapel for generations; the formation is years, not weeks, and the elder granny named the younger when she met her.",
+      "Healer": "the same line — flower-and-stem craft and household-medicine learned at the maze-garden's herb plots and the abbey's library, knife-skill for cutting cleanly without bruising the cut stem."
+    }
+  },
+  {
+    "name": "John Bean",
+    "gender": "Male",
+    "desc": "Boar folk farmer (Tusk Clan); ruin-crawler before the war; the accidental hero who ended the Overseas War through a phantom-arm pull at distance; now formally out of the fight, by his own bargain. The ironwood prosthetic Rhianna fitted him is an artifact in its own right and is not on this sheet.",
+    "category": "NPC",
+    "place": "Blackwood freehold",
+    "race": "Boar folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Scouting"
+      },
+      {
+        "type": "power",
+        "name": "Hide"
+      },
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      },
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Charge"
+      }
+    ],
+    "items": [
+      "bow",
+      "dog",
+      "spear",
+      "leather",
+      "flail",
+      "donkey",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Scouting": "Felix the raccoon scout — his wartime companion across the broken-lands edge; the hand-signs and the silent-step craft are Felix's, kept in John's body though he has not used them in fifteen years.",
+      "Brawl": "the post-war army's drill — the lessons a soldier could carry home and use against a trespassing bear or a dog gone wrong, taught at the speed a wartime camp can teach anything."
+    }
+  },
+  {
+    "name": "Ron Bean",
+    "gender": "Male",
+    "desc": "Younger son of John Bean; reluctant enlistee in Scarlet Vale's training yards; subject of a misread proclamation that was never about him; future heir to the Bean farm. A boar-folk with small tusks and a uniform that does not fit at the shoulder.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Boar folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Sling"
+      },
+      {
+        "type": "power",
+        "name": "Hide"
+      },
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "specialization",
+        "name": "Shield"
+      }
+    ],
+    "items": [
+      "sling",
+      "donkey",
+      "spear",
+      "shield",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Sling": "his father John, before he left the farm for Scarlet Vale — taught alongside fence-mending and field-walking, the way a farm boy learns the practical defenses against road-trouble and wolves at the edge of a field.",
+      "Shield": "the drill-master at the Allondan second training yard — formal soldier-craft Ron took on because the bargain required it, learned at the rate the yard taught it; he is competent at the work and does not love it."
+    }
+  },
+  {
+    "name": "Lady Rhianna Linthrope",
+    "gender": "Female",
+    "desc": "Mouse-clan priestess and crafter; wartime medic; political fixer at Allondo's court; the one who got Irna out and wrote the letter Elliot has not yet answered. Receives in pieces; the hour-glass turns the moment a conversation begins.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Mouse folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "specialization",
+        "name": "Religion"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "tools",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Healer": "the Mouse-clan field-medic line and the Allondan court's senior physicians at the wartime hospital — taught at speed because the war did not pause; the medical satchel at her belt is the second one she owned, the first having been buried with the soldier who left it to her.",
+      "Religion": "the Mouse-clan priestess line, before she was sent to court; the line's daily rites taught at the family altar across her childhood, refined at the wartime hospital where the work and the rite became the same thing."
+    }
+  },
+  {
+    "name": "Ingram",
+    "gender": "Male",
+    "desc": "Very old male Mouse; long-time keeper of the Salmonswell orphanage that sheltered Hanny and Egbert after the war; the man who held Brother Darrel's wages untouched for years and returned them to the pair when they came of age.",
+    "category": "NPC",
+    "place": "Salmonswell",
+    "race": "Mouse folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Trader"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Navigation"
+      },
+      {
+        "type": "power",
+        "name": "Sleeper"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      }
+    ],
+    "items": [
+      "cart",
+      "donkey",
+      "staff",
+      "backpack",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Navigation": "the Mouse-clan postal-and-trade line of his middle years — the routes between Salmonswell, Linar, and the inland towns walked enough times that the count-system became a habit; never a formal navigator, never far from the road.",
+      "Healer": "the orphanage's lay community — children fall ill, fingers get cut, a body needs minding before any physician can be summoned; the hands that held a wage-bag untouched for decades also kept fevers down across the same decades."
+    }
+  },
+  {
+    "name": "King Hannes",
+    "gender": "Male",
+    "desc": "King of Allondo. Unexpected heir after his older brother Elliot renounced the crown. Veteran of a capture he has never reconciled with; quiet preparer for a second war. The signet ring on the left hand — touched when listening, turned when thinking, set flat when he has decided.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Swords"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "specialization",
+        "name": "Shield"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Swords"
+      }
+    ],
+    "items": [
+      "horse",
+      "armor",
+      "sword",
+      "shield",
+      "spear",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Swords": "the Allondan royal-line drill-master who trained two princes and only one king — the elder son renounced before the master finished with him; Hannes finished the curriculum alone after Elliot left, then took it again under a war-master in the field.",
+      "Shield": "the Allondan army's senior sergeants during the Overseas War — taught at speed because the war was already happening, kept because the post-capture work made it the discipline he used to walk through rooms afterwards."
+    }
+  },
+  {
+    "name": "Queen Fienna",
+    "gender": "Female",
+    "desc": "Queen of Allondo; daughter of the Leatherman house of World's End; the back-channel to the northern coast. Court-formal in public — perfectly performed, the over-precision is the tell; plain Leatherman in private. Hands that touch metal as if reading it.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Machinist"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Smithing"
+      }
+    ],
+    "items": [
+      "tools",
+      "backpack",
+      "horse",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Machinist": "the Leatherman house engineers of World's End — her father's senior staff, who taught a daughter the same curriculum they taught the sons; sealed packets of plans still arrive at her receiving rooms decades later.",
+      "Smithing": "the Leatherman forge-masters of her childhood, at the family's main works at World Edge — Master Darius's master and the line of senior smiths before him; she set down the hammer when she came south, and her hands still remember it."
+    }
+  },
+  {
+    "name": "Prince Corven",
+    "gender": "Male",
+    "desc": "Crown Prince of Allondo; martial heir by training; in love with Penelope, princess of the kingdom he is being prepared to fight; visibly coming apart to anyone who looks. Hand on the hilt — trained, not hungry.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Swords"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Watch"
+      },
+      {
+        "type": "specialization",
+        "name": "Parry"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Swords"
+      }
+    ],
+    "items": [
+      "horse",
+      "armor",
+      "sword",
+      "glave",
+      "breastplate",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Swords": "the Allondan crown's senior duellist-master, who has trained every prince in the line for four generations; Corven was named *the prince his father wanted* by this master after the third year and has not stopped working at the title since.",
+      "Parry": "the Watch-side master at the second yard — supplementary work the crown ordered after the Overseas War on the principle that a duellist alone is a dead prince; defensive craft Corven took to immediately because it was the closest thing in the curriculum to *survive what is coming*."
+    }
+  },
+  {
+    "name": "Princess Penelope",
+    "gender": "Female",
+    "desc": "Royal lady of the Brumal court; secret love of Prince Corven of Allondo; the only Brumal royal who has lived inside Fata morgana's protection. A piece of work in her hand almost always; an inner-work pendant under her collar that diminishes her spirit-signature at distance.",
+    "category": "NPC",
+    "place": "Cliffside hold",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Jeweler"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "horse",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Jeweler": "her teacher in Fata morgana's inner circle — a senior mighty-spirit-reader who took her on for the year the court sent her south; the inner-pattern ward-craft was *taught by hand at the bench*, not by lecture, and the pendant under her collar is her finishing piece from that year.",
+      "Magic": "the same Fata morgana teacher and the senior practitioners at the inner-circle ward-rooms; Brumal had no one to teach this and her father's people sent her to Bockthicket hoping to extract the technique back, which failed because the technique cannot survive the wrong room."
+    }
+  },
+  {
+    "name": "Steven",
+    "gender": "Male",
+    "desc": "Second son of King Hannes and Queen Fienna; nephew of Father Elliot; herbalist-prince in private with a debt to Irna Bean he intends to pay in person. Faintly green-stained at the fingertips; a small leather-bound book in his coat pocket where another prince would carry a sword-hilt.",
+    "category": "NPC",
+    "place": "Scarlet vale",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "horse",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Healer": "court-tutor herbalists of Scarlet Vale, the surface curriculum every Allondan prince receives; Steven took it seriously where his brother did not, and has been stretching it past what the tutors are comfortable with for several years."
+    }
+  },
+  {
+    "name": "Andras",
+    "gender": "Male",
+    "desc": "A named Skull Gatherer; the party's earned entry point into the order. Currently tracking a stolen relic. Tall and thin in the order's manner; voice level to flat; eyes that hold longer than is comfortable.",
+    "category": "NPC",
+    "place": "Necropolis (Skull Gatherers' city)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "specialization",
+        "name": "Religion"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      },
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "specialization",
+        "name": "Religion"
+      }
+    ],
+    "items": [
+      "staff",
+      "bow",
+      "dog",
+      "tools",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Religion": "the senior gatherers at the necropolis — the order's discipline taught at the work itself; junior gatherers walk beside the senior on graveyard circuits and learn the rite in the doing, not the doctrine in the saying.",
+      "Tracking": "the order's older trail-readers — the gatherers who walk between graveyards as a trade; reading recently-disturbed earth and a family's left-behind objects is a practical extension of religious work, not a separate craft."
+    }
+  },
+  {
+    "name": "Brother Darrel",
+    "gender": "Male",
+    "desc": "Former Sergeant who walked away from the last war; now a brother at Luchebert who refuses money and rationalises his staff as not a weapon. Stocky beaver-folk in plain monk's robes; a silver battle-scar across the left cheek.",
+    "category": "NPC",
+    "place": "Luchebert Monastery",
+    "race": "Beavers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      },
+      {
+        "type": "power",
+        "name": "Hunter"
+      },
+      {
+        "type": "background",
+        "name": "Monastery"
+      },
+      {
+        "type": "specialization",
+        "name": "Monk"
+      },
+      {
+        "type": "background",
+        "name": "Monastery"
+      },
+      {
+        "type": "specialization",
+        "name": "Monk"
+      }
+    ],
+    "items": [
+      "spear",
+      "shield",
+      "staff",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Brawl": "the Allondan army's senior sergeants during the Overseas War — the discipline he learned to keep men alive in the line; the same discipline he now keeps for the staff-and-monk practice he calls *not a weapon*.",
+      "Monk": "the senior brothers at Luchebert who took him in after the war — the staff-form he practises at dawn was theirs first; he turned the soldier's grammar into the monk's grammar at their bench, slowly, with corrections he accepted because they were correct."
+    }
+  },
+  {
+    "name": "Gerhald",
+    "gender": "Male",
+    "desc": "Otter shaman; current inhabitant of the hill tower at the Lake of Tears; holder of the consent-veto on the last shackle. An old otter, sleek-fur grey-streaked at the muzzle and tail; a small stone on a string turning slowly between his fingers; a water basin at his feet.",
+    "category": "NPC",
+    "place": "Hill tower at the Lake of Tears",
+    "race": "Otters",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "specialization",
+        "name": "Shamanic"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Shamanic"
+      }
+    ],
+    "items": [
+      "staff",
+      "bow",
+      "dog",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Shamanic": "the older shaman line he was apprenticed into before he took the hill tower — names not given, the line's discipline taught at the bench across years; the negotiation-with-spirits register that the kingdoms' mage tradition abandoned and the shamans kept.",
+      "Tracking": "the same line — the water-and-hill craft of reading where a creature has been; the hill tower's long post made it the practical work of every season, not just the apprenticeship."
+    }
+  },
+  {
+    "name": "Eric Randell",
+    "gender": "Male",
+    "desc": "Fox-folk farmer with a flock of strange birds; also a druid in undercover observation of Elder Diederik on behalf of the formal druidic order; a thinking man who will not act against his own judgement to satisfy his sponsors. Travels on Gato-walker the Dromo.",
+    "category": "NPC",
+    "place": "Eric's farm (near Elmsfield)",
+    "race": "Foxes",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Farmer"
+      },
+      {
+        "type": "power",
+        "name": "Adaptation"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "power",
+        "name": "Travels"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "specialization",
+        "name": "Tracking"
+      }
+    ],
+    "items": [
+      "flail",
+      "donkey",
+      "dog",
+      "bow",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Druid": "the formal druidic order he still belongs to — the senior masters who trained him and then placed him in undercover observation of Diederik; the order's curriculum is shaped by their excommunication of Diederik's branch, and Eric is reading the case from inside his own discipline.",
+      "Tracking": "his farmer father and the wider fox-folk wrangler trade he came up through — reading bird-tracks in soft mud, reading where a strange-bird specimen has wandered to from a poorly-fenced pen; less formal than the order's craft, kept anyway."
+    }
+  },
+  {
+    "name": "Felix",
+    "gender": "Male",
+    "desc": "Scout, opportunist, instigator. John Bean's wartime companion; the man who found the slot at the mill, freed Hannes, and pulled Rhianna out before Elliot's army arrived. A raccoon with rings on his tail; eyes that catch every movement at the periphery.",
+    "category": "NPC",
+    "place": "Linar harbour (winter); fair circuit (rest of year)",
+    "race": "Raccoons",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "power",
+        "name": "Scurry"
+      },
+      {
+        "type": "specialization",
+        "name": "Scouting"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      },
+      {
+        "type": "background",
+        "name": "Back alley"
+      },
+      {
+        "type": "specialization",
+        "name": "Sneak"
+      }
+    ],
+    "items": [
+      "bow",
+      "dog",
+      "dagger",
+      "darts",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Scouting": "the Allondan army's irregular-scouts during the Overseas War — taught at speed in the broken-lands edge; he learned to find a slot in fitted stone the way the order's quartermasters needed it found, then kept the craft for the fair-circuit afterwards.",
+      "Sneak": "the fair-circuit's lower-end operators across two decades — never a single master, never an apprenticeship, just enough hands at enough fairs that the craft accumulated; he gives a real ring to whoever makes him laugh, and that is also how he learned half of it."
+    }
+  },
+  {
+    "name": "Mella",
+    "gender": "Female",
+    "desc": "Beaver-folk chief engineer at Clear Water Mine; runs the water-works (race, wheels, pumps, stamping mill, bloomery bellows); the party's working channel into the mine that bypasses the warden when bypassing him is what the work needs.",
+    "category": "NPC",
+    "place": "Clear water",
+    "race": "Beavers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Ingenuity"
+      },
+      {
+        "type": "specialization",
+        "name": "Machinist"
+      },
+      {
+        "type": "power",
+        "name": "Swimmer"
+      },
+      {
+        "type": "background",
+        "name": "Miner"
+      },
+      {
+        "type": "specialization",
+        "name": "Axes"
+      }
+    ],
+    "items": [
+      "tools",
+      "backpack",
+      "pickaxe",
+      "leather",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Machinist": "her grandmother's working-master line — apprenticed under a Lethran-line working-master at the Grain-mill in her grandmother's youth; the gentle-binding signature in the wheels Mella runs at Clear Water descends from that apprenticeship by three generations, scaled to a working mine.",
+      "Axes": "the senior smiths at the bloomery — practical iron-shaping she learned because the works need it, not because she sought the title; the bloomery's hands taught the cuts she still uses on stamping-mill repairs."
+    }
+  },
+  {
+    "name": "Trull",
+    "gender": "Male",
+    "desc": "Foreman of the convict compound at Clear Water Mine; stoic; not the warden's man fully. The post permits very little; Trull uses the small room well — gives lighter shifts when he can; reports what standing orders require; does not report more.",
+    "category": "NPC",
+    "place": "Clear water",
+    "race": "Beavers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Watch"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Blocking"
+      },
+      {
+        "type": "power",
+        "name": "Hunter"
+      },
+      {
+        "type": "background",
+        "name": "Miner"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      }
+    ],
+    "items": [
+      "glave",
+      "breastplate",
+      "pickaxe",
+      "leather",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Blocking": "the Watch-side master at the Cliffside provincial training rotation — Trull was one of the foreman candidates the post sent through the formal yard for a season; the discipline kept its shape because the convict-compound work uses it daily.",
+      "Brawl": "the senior foremen who held the second compound before him — the practical contact-control technique a foreman has to know to break a fight without escalating it; learned at the post, not in any school."
+    }
+  },
+  {
+    "name": "Wilder",
+    "gender": "Male",
+    "desc": "Old beaver shaman; guardian-watcher at the approach to the blasted lands; the nearest accessible voice for the shamans' long plan. Eyes that move between sky and ground in equal measure; a small fire kept going outside the dwelling — more signal than warmth.",
+    "category": "NPC",
+    "place": "Wilder's hill (edge of the broken lands)",
+    "race": "Beavers",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "power",
+        "name": "Camp"
+      },
+      {
+        "type": "specialization",
+        "name": "Shamanic"
+      },
+      {
+        "type": "power",
+        "name": "Fur"
+      },
+      {
+        "type": "background",
+        "name": "Hunter"
+      },
+      {
+        "type": "specialization",
+        "name": "Druid"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Shamanic"
+      }
+    ],
+    "items": [
+      "staff",
+      "bow",
+      "dog",
+      "clothes",
+      "knife"
+    ],
+    "elements": [],
+    "mentors": {
+      "Shamanic": "the broader shamans' network — never a single master; he was apprenticed in pieces across several elders and walked between them on the broken-lands fringe before settling on his hill; the long plan is the work he was apprenticed into, not a project he came up with later.",
+      "Druid": "the formal druidic order, before he chose the shaman path; he took the discipline and left the order without rancour, and the order has not asked him back; the rite he practises at his hill is the rite he learned then, kept honest by use."
+    }
+  },
+  {
+    "name": "Calder",
+    "gender": "Male",
+    "desc": "Crown-appointed warden of Clear Water Mine; competent, tired, not cruel in the normal sense, loyal to the crown in the way that means he will not help the party beyond what his standing orders require. Drinks tea three times a day in the same chipped mug.",
+    "category": "NPC",
+    "place": "Clear water",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Watch"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Blocking"
+      },
+      {
+        "type": "power",
+        "name": "Lookout"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Pole weapon"
+      }
+    ],
+    "items": [
+      "glave",
+      "breastplate",
+      "horse",
+      "armor",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Blocking": "the Watch-side master at the Allondan provincial yard, twenty-odd years ago when he came up; the discipline kept its edge because every season at the mine requires walking the convict perimeter at least once.",
+      "Pole weapon": "the senior wardens who held Clear Water before him — taught not as duellist's craft but as the long-handled discipline a warden uses to walk between rows without escalating; the glave at his belt is the same one his predecessor handed over with the keys."
+    }
+  },
+  {
+    "name": "Osric Vey",
+    "gender": "Male",
+    "desc": "Pamphleteer-scholar imprisoned at Clear Water Mine for arguing in print that the Overseas War's root cause was the overseas continent's famine, not conquest. Tall, thin, ink-stained; a cough that rattles. Rhianna's named extraction target.",
+    "category": "NPC",
+    "place": "Clear water",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Healer"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Healer": "court-tutor herbalists of Scarlet Vale during his pre-pamphleteer years — surface curriculum he took past the surface; later refined by a wartime hospital rotation the court did not record because the rotation should not have included him.",
+      "Magic": "Scholar-side reading at Scarlet Vale's library and at correspondence with practitioners who are no longer named in his testimony — the pamphlet's analytical style is recognisable to readers who know the working-tongue, which is part of why the court called it sedition."
+    }
+  },
+  {
+    "name": "Ornalis",
+    "gender": "Male",
+    "desc": "The Storm Mage. Lightning Tower's original owner; survivor of both the towers' seizing and a chaos-spirit encounter; the lever that could, in principle, break the Lightning Tower's shackle. Very old; chaos-broken; the name Ornalis is reliably written only at his cottage. The sheet captures the path he walked before the break.",
+    "category": "NPC",
+    "place": "Storm Mage's cottage (hills near the Lake of Tears)",
+    "race": "Humans",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "power",
+        "name": "Politics"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "power",
+        "name": "Sly"
+      },
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "specialization",
+        "name": "Cooking"
+      },
+      {
+        "type": "background",
+        "name": "Ascetic"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      },
+      {
+        "type": "background",
+        "name": "Scholar"
+      },
+      {
+        "type": "specialization",
+        "name": "Magic"
+      }
+    ],
+    "items": [
+      "staff",
+      "backpack",
+      "tools",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Magic": "the old-order mage tradition that took the towers — he was apprenticed within it before the seizing turned him into one of its survivors; the deepest later levels were earned alone at the cottage in the years after, when the order's masters were no longer reachable and he was working the technique past where the tradition had taken it.",
+      "Cooking": "village cooks of the hill towns he walks into for supplies — neither apprenticeship nor formal teaching, simply the rhythm of decades of being attended-to and cooking for himself between visits; the only craft that survives every fragment-day clear."
+    }
+  },
+  {
+    "name": "Raul",
+    "gender": "Male",
+    "desc": "Ox-tauren war-band leader; commanded the forward force that captured King Hannes during the Overseas War; left the scrying mirror in his old camp when Thorgal died and it went dark; currently overseas, with a standing the homelands cannot read.",
+    "category": "NPC",
+    "place": "Overseas continent",
+    "race": "Bull folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Army"
+      },
+      {
+        "type": "power",
+        "name": "Charge"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      },
+      {
+        "type": "power",
+        "name": "Travels"
+      },
+      {
+        "type": "background",
+        "name": "Noble"
+      },
+      {
+        "type": "specialization",
+        "name": "Swords"
+      }
+    ],
+    "items": [
+      "spear",
+      "shield",
+      "horse",
+      "armor",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Brawl": "the overseas war-band drill — the discipline a forward-force commander uses to keep men coherent at the contact line; learned in the conflict that ended the previous overseas reform-cycle, kept because every campaign since has needed it.",
+      "Swords": "the overseas mage-tradition's officer-school — formal duellist's craft layered onto the war-band drill; the curriculum was Thorgal's faction's, and the master who taught it died at the same time Thorgal did."
+    }
+  },
+  {
+    "name": "Remi",
+    "gender": "Male",
+    "desc": "Rat folk worker expelled from World Edge with the rest of his kin; carrier of Master Darius's letter; the honest outlier his city decided was no different from his cousins. Small frame, fingertips dark with old factory grease.",
+    "category": "NPC",
+    "place": "On the road south (river settlements)",
+    "race": "Rat folk",
+    "progression": [
+      {
+        "type": "background",
+        "name": "Crafter"
+      },
+      {
+        "type": "power",
+        "name": "Scurry"
+      },
+      {
+        "type": "specialization",
+        "name": "Smithing"
+      },
+      {
+        "type": "power",
+        "name": "Scrounger"
+      },
+      {
+        "type": "background",
+        "name": "Miner"
+      },
+      {
+        "type": "specialization",
+        "name": "Brawl"
+      }
+    ],
+    "items": [
+      "tools",
+      "backpack",
+      "pickaxe",
+      "leather",
+      "clothes"
+    ],
+    "elements": [],
+    "mentors": {
+      "Smithing": "the World Edge factory floor he came up on — the senior smiths at the mid-bench who taught the practical cuts and held the line on quality; the letter Darius wrote him is the same hand's signature.",
+      "Brawl": "the older miners on the city's lower-slope shifts — the practical contact-control technique a young rat-folk needs around mixed crews; learned at the bench, not in any school."
+    }
+  }
+]

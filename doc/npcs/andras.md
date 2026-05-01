@@ -279,3 +279,25 @@ For students with the temperament and the standing:
 - doc/claude/LORE.md §"The Skull Gatherers"
 - doc/claude/CAMPAIGN.md §"The last flight"
 - User notes, 2026-04-26
+
+## Character sheet
+
+**Male · Humans · Necropolis (Skull Gatherers' city)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 1 | 2 | 2 | 3 | 1 | 5 | 5 |
+
+- **Backgrounds** — Crafter 1 · Ascetic 1 · Hunter 1
+- **Specializations** — Tracking 1 · Religion 2
+- **Powers** — Adaptation 1 (shadow step) · Hunter 1 (catching) · Lookout 1 (guarding) · Religion 2 (bless)
+- **Progression** — Ascetic → Adaptation → Religion → Lookout → Hunter → Tracking → Crafter → Religion
+- **Equipment** — dog, staff, tools, bow, clothes *(bulk NaN / 3)*
+
+*Mentor — Religion: the senior gatherers at the necropolis — the order's discipline taught at the work itself; junior gatherers walk beside the senior on graveyard circuits and learn the rite in the doing, not the doctrine in the saying.*
+
+*Mentor — Tracking: the order's older trail-readers — the gatherers who walk between graveyards as a trade; reading recently-disturbed earth and a family's left-behind objects is a practical extension of religious work, not a separate craft.*
+
+
+> A named Skull Gatherer; the party's earned entry point into the order. Currently tracking a stolen relic. Tall and thin in the order's manner; voice level to flat; eyes that hold longer than is comfortable.
+

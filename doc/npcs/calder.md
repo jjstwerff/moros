@@ -207,3 +207,25 @@ When the relevant topic comes up.
 - `doc/npcs/rhianna_linthrope.md` — twenty-year correspondence; her hour-glass
 - `doc/npcs/king_hannes.md` — quartermaster pressure
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Male · Humans · Clear water**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 2 | 1 | 1 | 2 | 3 | 1 | 1 | 0 |
+
+- **Backgrounds** — Noble 1 · Watch 1
+- **Specializations** — Blocking 1 · Pole weapon 1
+- **Powers** — Lookout 1 (guarding) · Politics 1 (common cause)
+- **Progression** — Watch → Politics → Blocking → Lookout → Noble → Pole weapon
+- **Equipment** — horse, armor, glave, breastplate, clothes *(bulk 5 / 3 — encumbered)*
+
+*Mentor — Blocking: the Watch-side master at the Allondan provincial yard, twenty-odd years ago when he came up; the discipline kept its edge because every season at the mine requires walking the convict perimeter at least once.*
+
+*Mentor — Pole weapon: the senior wardens who held Clear Water before him — taught not as duellist's craft but as the long-handled discipline a warden uses to walk between rows without escalating; the glave at his belt is the same one his predecessor handed over with the keys.*
+
+
+> Crown-appointed warden of Clear Water Mine; competent, tired, not cruel in the normal sense, loyal to the crown in the way that means he will not help the party beyond what his standing orders require. Drinks tea three times a day in the same chipped mug.
+

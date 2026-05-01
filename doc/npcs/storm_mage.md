@@ -234,3 +234,25 @@ His mage-craft ran through the Lightning Tower's working-space, and without that
 ## Sources
 
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Humans · Storm Mage's cottage (hills near the Lake of Tears)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 3 | 1 | 2 | 1 | 6 | 18 |
+
+- **Backgrounds** — Scholar 2 · Crafter 1 · Ascetic 1
+- **Specializations** — Cooking 1 · Magic 3
+- **Powers** — Politics 1 (common cause) · Sly 1 (trick) · Magic 3 (elemental)
+- **Progression** — Scholar → Politics → Magic → Sly → Crafter → Cooking → Ascetic → Magic → Scholar → Magic
+- **Equipment** — staff, backpack, tools, clothes *(bulk 2 / 3)*
+
+*Mentor — Magic: the old-order mage tradition that took the towers — he was apprenticed within it before the seizing turned him into one of its survivors; the deepest later levels were earned alone at the cottage in the years after, when the order's masters were no longer reachable and he was working the technique past where the tradition had taken it.*
+
+*Mentor — Cooking: village cooks of the hill towns he walks into for supplies — neither apprenticeship nor formal teaching, simply the rhythm of decades of being attended-to and cooking for himself between visits; the only craft that survives every fragment-day clear.*
+
+
+> The Storm Mage. Lightning Tower's original owner; survivor of both the towers' seizing and a chaos-spirit encounter; the lever that could, in principle, break the Lightning Tower's shackle. Very old; chaos-broken; the name Ornalis is reliably written only at his cottage. The sheet captures the path he walked before the break.
+

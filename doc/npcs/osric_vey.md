@@ -224,3 +224,25 @@ When the relevant topic comes up.
 - `doc/claude/CAMPAIGN.md` §"The Overseas War" — pamphlet-content cross-reference
 - `doc/npcs/nadine.md`, `doc/npcs/father_elliot.md`, `doc/npcs/princess_penelope.md` — second-pamphlet carrier network
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Male · Humans · Clear water**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 2 | 1 | 1 | 1 | 4 | 0 |
+
+- **Backgrounds** — Scholar 1 · Ascetic 1
+- **Specializations** — Healer 1 · Magic 1
+- **Powers** — Politics 1 (common cause) · Sly 1 (trick) · Magic 1 (elemental)
+- **Progression** — Scholar → Politics → Healer → Sly → Ascetic → Magic
+- **Equipment** — staff, backpack, clothes *(bulk 1 / 3)*
+
+*Mentor — Healer: court-tutor herbalists of Scarlet Vale during his pre-pamphleteer years — surface curriculum he took past the surface; later refined by a wartime hospital rotation the court did not record because the rotation should not have included him.*
+
+*Mentor — Magic: Scholar-side reading at Scarlet Vale's library and at correspondence with practitioners who are no longer named in his testimony — the pamphlet's analytical style is recognisable to readers who know the working-tongue, which is part of why the court called it sedition.*
+
+
+> Pamphleteer-scholar imprisoned at Clear Water Mine for arguing in print that the Overseas War's root cause was the overseas continent's famine, not conquest. Tall, thin, ink-stained; a cough that rattles. Rhianna's named extraction target.
+

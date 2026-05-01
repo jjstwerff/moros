@@ -191,11 +191,13 @@ There are 8 statistics: Charisma, Dexterity, Endurance, Handiness, Might, Percep
 { name: string, description: string }
 ```
 
-16 fixed world places (e.g. "Scarlet vale", "Cliffside hold").
+17 canonical world places (e.g. "Scarlet vale", "Cliffside hold", "Salmonswell"). RULES.md §"World: Places of Origin" is the master registry of valid place names; `DATA.places` mirrors that list.
 
 **Character Editor:** Displayed in the place-of-origin grid on the Create tab. The selected place is stored in the character's `place` field and shown in the character sheet header.
 
 **DM (contacts, places):** Used as `<option>` lists for the contact's "Town" field and the scene's place selector (though DM places are a separate user-created structure — see section 3.4).
+
+**Custom places.** `Logic.state.place` accepts any non-empty string, not just names from `DATA.places`. This is for NPCs whose origin has not yet been promoted to the canonical list (the Necropolis, Luchebert Monastery, hidden vales, etc.). The browser place card and the DM contact-town picker still only offer canonical options; custom places appear correctly on the rendered character sheet but are not selectable from the grid. To make a custom place selectable for everyone, add it to `DATA.places` and to RULES.md §"World: Places of Origin".
 
 ---
 
@@ -249,7 +251,7 @@ Defined in `html/logic.js`.
 | `gender` | `string` | Gender |
 | `desc` | `string` | Free-text description |
 | `category` | `string` | Roster category (see 2.5) |
-| `#place` | `string \| null` | Place of origin name (must exist in `DATA.places`) |
+| `#place` | `string \| null` | Place of origin name (any non-empty string; canonical values come from `DATA.places`, custom strings are allowed for NPCs from places not yet on the registry) |
 | `#race` | `string \| null` | Race name (must exist in `DATA.races`) |
 | `#progression` | `Progres[]` | Ordered list of progression steps |
 | `#stats` | `Object<string, number>` | All computed levels: statistic abbreviations, power names, background names, specialization names → number |
@@ -279,13 +281,17 @@ When saved, only the minimal data needed to reconstruct the state is persisted:
   "progression": [
     { "type": "power|background|specialization", "name": "string" }
   ],
-  "items": ["string"]
+  "items": ["string"],
+  "elements": ["string"],
+  "mentors": { "<Specialization>": "string (optional)" }
 }
 ```
 
 All statistics, XP, and levels are recomputed by replaying `state.learn()` for each progression entry on load. The `#stats` object therefore always starts with all 8 statistics at level 1.
 
-**Stored in:** `localStorage['moros-characters']` as a JSON array of these objects.
+**`mentors`** is a side-channel field used by `tools/character.js` only — `Logic.loadDump` ignores it. It maps each specialization to a one-line description of who taught it and where, and is rendered as italicised lines beneath the markdown sheet. See `doc/npcs/goals.md` §"Character sheet" for the convention.
+
+**Stored in:** `localStorage['moros-characters']` (browser) as a JSON array of these objects. The CLI roster file (`data/roster.json`, see §2.7) carries the same shape.
 
 **Also in:** The character roster download file (`moros-roster-YYYY-MM-DD.json`), which is the same array serialized to disk.
 
@@ -314,6 +320,24 @@ string   // integer as string
 ```
 
 Tracks which character is currently selected in the Roster tab.
+
+---
+
+### 2.7 Roster file (`data/roster.json`)
+
+The CLI roster, used by `tools/character.js`. A JSON array of serialized characters in the same shape as §2.4 — including the optional `mentors` map. This is the file-backed equivalent of the browser's `localStorage['moros-characters']` and the same shape the browser's "Save roster" button writes.
+
+The CLI is the canonical authoring path for NPC character sheets:
+
+```
+node tools/character.js apply <spec.json>                      # add or update
+node tools/character.js sheet <name> --inject doc/npcs/<f>.md  # render sheet
+node tools/character.js validate <name>                        # rules check
+```
+
+`apply` accepts a single spec object or an array. Validation errors block save unless `--force`. Specs that name unknown items or items not allowed by the chosen backgrounds emit a warning and the items are dropped (matching `loadDump`'s silent drop behaviour in the browser). Override the file path with `--file` or `MOROS_ROSTER`.
+
+**Stored at:** `data/roster.json` (project root).
 
 ---
 

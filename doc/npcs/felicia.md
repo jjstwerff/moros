@@ -228,3 +228,25 @@ Short on purpose. A great spirit's "opinions" are the directions her drive bends
 - doc/npcs/willow.md
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Female · Humans · White city (pre-rift)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 1 | 4 | 1 | 1 | 1 | 6 | 5 |
+
+- **Backgrounds** — Scholar 1 · Crafter 1 · Ascetic 1
+- **Specializations** — Cloth 1 · Magic 2
+- **Powers** — Adaptation 1 (shadow step) · Ingenuity 1 (improvise) · Magic 2 (elemental)
+- **Progression** — Crafter → Adaptation → Cloth → Ingenuity → Scholar → Magic → Ascetic → Magic
+- **Equipment** — backpack, tools, clothes *(bulk -1 / 3)*
+
+*Mentor — Cloth: the Vintala-line house-school where her elders worked threads — practitioners senior to her by half a generation, who treated fabric as a tradition rather than a trade.*
+
+*Mentor — Magic: Vintala-line working-mages at the white city — a long bench-side apprenticeship where Laurent was a peer late in the years rather than a master; the gentle-binding signature was learned by the practice itself, not by a single teacher.*
+
+
+> Pre-rift Vintala-line working-mage; partner-in-the-work to Laurent at the fall of the flying city; settled the survivor demi-humans across the hill country; died at the evacuation and continued as the great spirit at Luchebert.
+

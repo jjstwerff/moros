@@ -46,6 +46,14 @@ Moros is a tabletop RPG system, with two sides:
 
 Python venv lives at `.venv-cards/`.
 
+## Tooling (Node)
+
+| Script | Role |
+|---|---|
+| `tools/character.js` | Roster CLI for NPC/PC character sheets. Reuses `html/logic.js` for all rules. Subcommands: `list`, `show <name>`, `sheet <name> [--inject path.md]`, `apply <spec.json>`, `validate <name>`, `delete <name>`, `template`, `data <kind>`, `export [name]`. Default roster file: `data/roster.json` (override with `--file` or `MOROS_ROSTER`). The spec format matches the browser's "Save roster" output, plus an optional `mentors` map (`{"<Specialization>": "who taught it and where"}`). `sheet --inject` writes/replaces a `## Character sheet` block in an NPC's markdown file. |
+
+See `doc/npcs/goals.md` §"Character sheet" for the per-NPC sheet workflow.
+
 ## Tests and commands
 
 ```

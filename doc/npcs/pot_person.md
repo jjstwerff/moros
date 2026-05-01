@@ -196,3 +196,7 @@ If the boy walks out and the furnace follows, that shield thins by two. The cost
 
 - doc/claude/CAMPAIGN.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+*No sheet — bound spirit in a puppet body. The spirit does not progress through backgrounds and specializations; the body is a vessel. Stat as a creature if combat reach is needed; otherwise narrative-only.*

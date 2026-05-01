@@ -211,3 +211,25 @@ When the relevant topic comes up and he chooses to answer.
 - doc/places/luchebert_monastery.md
 - doc/places/laurents_city.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Badgers · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 2 | 2 | 2 | 1 | 3 | 0 |
+
+- **Backgrounds** — Ascetic 1 *(forest hermit, wandering sage)* · Hunter 1 *(forest warden, wolf-hunter)*
+- **Specializations** — Tracking 1 · Druid 1
+- **Powers** — Camp 1 (shielding) · Hunter 1 (catching) · Scrounger 1 (provisions) · Druid 1 (nature)
+- **Progression** — Hunter → Camp → Tracking → Scrounger → Ascetic → Druid
+- **Equipment** — dog, staff, bow, knife, clothes, bedroll *(bulk NaN / 3)*
+
+*Mentor — Tracking: the older generation of valley-folk badgers — his grandmother and her brothers, who walked the hill paths before him and taught the notch-and-mark count-system he still uses on his stick.*
+
+*Mentor — Druid: the country grandmothers of Elmsfield's older households; the rowan-berry rite and the small-shrine pattern were handed across kitchen tables, not by any formal master.*
+
+
+> Lean Badger valley guide; the local who knows the paths, the seasons, and the way over the ridges to Luchebert. Walks the valley's circuit weekly without calling it work.
+

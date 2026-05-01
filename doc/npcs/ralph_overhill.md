@@ -180,3 +180,25 @@ When the relevant topic comes up.
 - `doc/npcs/eric_randell.md` — wrangler-line offer
 - `doc/claude/LORE.md` §"Clans and their shape"
 - User notes, 2026-04-18 (original sketch)
+
+## Character sheet
+
+**Male · Badgers · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 3 | 1 | 2 | 3 | 1 | 1 | 0 |
+
+- **Backgrounds** — Farmer 1 *(orchard keeper, druid's apprentice)* · Hunter 1 *(forest warden, wolf-hunter)*
+- **Specializations** — Sling 1 · Tracking 1
+- **Powers** — Camp 1 (shielding) · Hunter 1 (catching) · Portage 1 (travel)
+- **Progression** — Farmer → Camp → Sling → Portage → Hunter → Tracking
+- **Equipment** — donkey, dog, bow, knife, clothes *(bulk NaN / 9)*
+
+*Mentor — Sling: his uncle who runs the eastern stable — taught it as predator-defense for the working animals, never as a soldier's craft. The pouch of brushes at his belt is the uncle's; the sling-skill is the uncle's too.*
+
+*Mentor — Tracking: the same uncle and the older hands at the stable; reading a horse's gait at fifty paces is the same eye that reads its track in soft mud.*
+
+
+> Young Badger camp-follower and animal-handler; the eastern stable's working hand; loves horses more than he loves the idea of the clan; will flee with the animals rather than stand and fight.
+

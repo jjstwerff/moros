@@ -233,3 +233,25 @@ When the relevant topic comes up.
 - doc/places/luchebert_monastery.md
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Male · Beavers · Luchebert Monastery**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 1 | 3 | 2 | 1 | 4 | 8 |
+
+- **Backgrounds** — Monastery 2 · Hunter 1 · Army 1
+- **Specializations** — Brawl 1 · Monk 2
+- **Powers** — Camp 1 (shielding) · Hunter 1 (catching)
+- **Progression** — Army → Camp → Brawl → Hunter → Monastery → Monk → Monastery → Monk
+- **Equipment** — staff, spear, shield, clothes *(bulk 9 / 6 — encumbered)*
+
+*Mentor — Brawl: the Allondan army's senior sergeants during the Overseas War — the discipline he learned to keep men alive in the line; the same discipline he now keeps for the staff-and-monk practice he calls *not a weapon*.*
+
+*Mentor — Monk: the senior brothers at Luchebert who took him in after the war — the staff-form he practises at dawn was theirs first; he turned the soldier's grammar into the monk's grammar at their bench, slowly, with corrections he accepted because they were correct.*
+
+
+> Former Sergeant who walked away from the last war; now a brother at Luchebert who refuses money and rationalises his staff as not a weapon. Stocky beaver-folk in plain monk's robes; a silver battle-scar across the left cheek.
+

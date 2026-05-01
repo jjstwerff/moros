@@ -239,3 +239,20 @@ This is also why he cannot personally make the journey to Rowan. If he leaves El
 
 - doc/claude/CAMPAIGN.md
 - data/moros-campaign-2026-03-04.json
+
+## Character sheet
+
+**Male · Owls · Steadington**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 1 | 2 | 1 | 1 | 4 | 0 |
+
+- **Backgrounds** — Farmer 1 *(desperate landowner, water diviner)* · Ascetic 1 *(dust wanderer, spirit talker)*
+- **Specializations** — Druid 2
+- **Powers** — Clan 1 (shelter) · Claw 1 (sneak) · Druid 2 (nature)
+- **Progression** — Farmer → Claw → Druid → Ascetic → Druid → Clan
+- **Equipment** — staff, clothes *(bulk 4 / 6)*
+
+> The current leader of Elmsfield with Druidic training. Thrown out of the druidic order after his ill advised travel to the next continent. He flew there with a friend but traveled back by a merchant ship. He wants to aid everyone with his knowledge, but too many people are still too resentful from the last war. The druids excommunicated him. He has basic knowledge of ironwood, the tree in Elmsfield is the actual reason he came there. The next continent has more trees like that.
+

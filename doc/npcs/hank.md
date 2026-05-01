@@ -226,3 +226,19 @@ When the relevant topic comes up and she chooses to answer.
 - doc/claude/CAMPAIGN.md
 - data/moros-campaign-2026-03-04.json
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Rabbits · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2 | 2 | 4 | 1 | 1 | 1 | 3 | 1 |
+
+- **Backgrounds** — Farmer 1 *(orchard keeper, druid's apprentice)* · Scholar 1 *(nature chronicler, healer)* · Back alley 1
+- **Specializations** — Sneak 1 · Healer 1 · Druid 1
+- **Powers** — Scrounger 1 (provisions) · Druid 1 (nature)
+- **Progression** — Back alley → Scrounger → Sneak → Farmer → Druid → Scholar → Healer
+
+> Was brought together with Egbert to an orphanage by the Sargent Darrel. After leaving there Hanny wanted to chase her dream to get their own cottage. To be able to travel safely they presented themselves as men, they got a bag of money from Darrel that he left them though they think it was a relative. Their farm is running well on the edge of Elmsfield, they just sold a plot to Joseph so they regained the total sum of money again. The house is always open for young people with little prospect, and has grown into something close to an orphanage of its own.
+

@@ -158,3 +158,25 @@ The cloak-spirit, through *Shaman*, gives readings on relevant figures across th
 - `doc/places/anchor.md`, `doc/places/grain_mill.md`, `doc/places/tidehold.md` — gentle-binding signature cross-references
 - `doc/places/luchebert_monastery.md` — likely diary venue
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet
+
+**Female · Humans · Early colony — pre-rift lake region**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 1 | 1 | 2 | 1 | 6 | 5 |
+
+- **Backgrounds** — Farmer 1 · Scholar 1 · Ascetic 1
+- **Specializations** — Magic 2 · Druid 1
+- **Powers** — Lookout 1 (guarding) · Sly 1 (trick) · Magic 2 (elemental) · Druid 1 (nature)
+- **Progression** — Farmer → Lookout → Druid → Sly → Ascetic → Magic → Scholar → Magic
+- **Equipment** — staff, backpack, clothes *(bulk 1 / 6)*
+
+*Mentor — Druid: no human master; her settler community kept the kindly old farming-rites she carried from across the sea, and the rites were enough to root her in the land before the spirit found her.*
+
+*Mentor — Magic: the spirit itself, in the months underwater and the decades that followed; she had no human teacher and wrote the diary precisely because there was none to leave the knowledge with.*
+
+
+> The First Mage. A 24-year-old colonist whose involuntary fusion with a water-and-earth spirit became the foundation of all subsequent mage tradition; lived into her hundreds, withdrew from public life early, and left the diary that taught everyone who came after.
+

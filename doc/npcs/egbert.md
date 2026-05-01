@@ -263,3 +263,19 @@ When the relevant topic comes up and she chooses to answer.
 - doc/claude/CAMPAIGN.md
 - data/moros-campaign-2026-03-04.json
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Wolf folk · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 2 | 2 | 3 | 4 | 1 | 1 | 1 |
+
+- **Backgrounds** — Back alley 1 · Hunter 1 *(forest warden, wolf-hunter)*
+- **Specializations** — Scouting 1 · Tracking 1
+- **Powers** — Control 1 (shape) · Hunter 1 (catching) · Jaws 1 (grab) · Smell 1 (tracking)
+- **Progression** — Back alley → Scouting → Smell → Hunter → Control → Tracking → Jaws
+
+> Mate of Hanny. Secretly plowing the plots of land at night. Hunter several times to provide for food during winters.
+

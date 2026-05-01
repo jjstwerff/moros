@@ -164,3 +164,43 @@ The campaign's deepest delivery of the Pair as people is the correspondence read
 - `doc/npcs/narissa.md` — broader mage-tradition foundation
 - `doc/places/tidehold.md` — cross-tradition gentle-binding (Lyrentine line)
 - User notes (this conversation, 2026-04-27)
+
+## Character sheet — Halen Lethran
+
+**Male · Humans · White city (pre-rift)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 3 | 1 | 1 | 1 | 6 | 5 |
+
+- **Backgrounds** — Scholar 1 · Crafter 1 · Ascetic 1
+- **Specializations** — Machinist 1 · Magic 2
+- **Powers** — Adaptation 1 (shadow step) · Politics 1 (common cause) · Magic 2 (elemental)
+- **Progression** — Scholar → Adaptation → Magic → Politics → Crafter → Machinist → Ascetic → Magic
+- **Equipment** — staff, tools, clothes *(bulk 5 / 3 — encumbered)*
+
+*Mentor — Magic: Lethran-line working-masters at the white city — the older partnership-line that worked the gentle-binding signature; Halen took the Lethran name at the working-bond with Sori, not by birth.*
+
+*Mentor — Machinist: the Grain-mill working-master who cut their stone-blanks; not formally an apprenticeship but a long correspondence about how the active half of the system should be built.*
+
+> Older partner of the Lethran Pair; Generator-side practitioner at what is now the white city's centre; engineered the active half of the chaos-management system; wrote the system documentation; died at the rift when the Generator end ran on without backup.
+
+## Character sheet — Sori Lethran
+
+**Female · Humans · Lethran dwelling (pre-rift)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 1 | 4 | 1 | 1 | 1 | 6 | 5 |
+
+- **Backgrounds** — Scholar 1 · Crafter 1 · Ascetic 1
+- **Specializations** — Cloth 1 · Magic 2
+- **Powers** — Adaptation 1 (shadow step) · Ingenuity 1 (improvise) · Magic 2 (elemental)
+- **Progression** — Crafter → Ingenuity → Cloth → Adaptation → Scholar → Magic → Ascetic → Magic
+- **Equipment** — backpack, tools, clothes *(bulk -1 / 3)*
+
+*Mentor — Cloth: the household weavers of her childhood line, before the working-bond; the patience of "not finishing" in her later writing comes from the same hand-rhythm she learned at the loom.*
+
+*Mentor — Magic: Lethran-line working-masters at the white city; Sori took the Lethran name at the working-bond with Halen, not by birth, and apprenticed the receiver-side of the system from the line's most senior practitioners of the gentle-binding signature.*
+
+> Younger partner of the Lethran Pair; Anchor-side practitioner in what is now the southern desert; the household-resident with the child while Halen travelled north; wrote the working-tongue inscriptions on the Anchor stone; died at the rift after the Anchor end was finished.

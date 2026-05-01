@@ -182,3 +182,23 @@ When the relevant topic comes up and he chooses to answer.
 - doc/places/elmsfield_inn.md
 - data/moros-campaign-2026-03-04.json
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Badgers · Elmsfield**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 3 | 4 | 1 | 1 | 1 | 1 | 0 |
+
+- **Backgrounds** — Farmer 1 *(orchard keeper, druid's apprentice)* · Crafter 1
+- **Specializations** — Smithing 1
+- **Powers** — Camp 1 (shielding) · Ingenuity 1 (improvise) · Portage 1 (travel)
+- **Progression** — Crafter → Ingenuity → Smithing → Portage → Farmer → Camp
+- **Equipment** — flail, donkey, tools, knife, clothes *(bulk -3 / 9)*
+
+*Mentor — Smithing: his father, the previous Elmsfield smith — part-time forge work bound up with a working farm. Wilfred apprenticed at his elbow from childhood and took the forge over without ceremony when his father set the hammer down.*
+
+
+> Badger farmer-and-smith; Bridget's husband; the farm half of the Inn-and-farm household. Quiet at two speeds — fast at the forge, slow everywhere else.
+

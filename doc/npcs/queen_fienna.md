@@ -253,3 +253,25 @@ To students who pass the trust gate (*"Cost it"* — same gate Corven uses):
 - doc/places/scarlet_vale.md
 - doc/places/geography.md §"The northern coast (World's End)"
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Female · Humans · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 4 | 1 | 2 | 1 | 1 | 0 |
+
+- **Backgrounds** — Noble 1 *(Allondo chancellor, royal steward)* · Crafter 1 *(guild master, merchant factor)*
+- **Specializations** — Smithing 1 · Machinist 1
+- **Powers** — Lookout 1 (guarding) · Politics 1 (common cause)
+- **Progression** — Crafter → Politics → Machinist → Lookout → Noble → Smithing
+- **Equipment** — horse, backpack, tools, clothes *(bulk -7 / 3)*
+
+*Mentor — Machinist: the Leatherman house engineers of World's End — her father's senior staff, who taught a daughter the same curriculum they taught the sons; sealed packets of plans still arrive at her receiving rooms decades later.*
+
+*Mentor — Smithing: the Leatherman forge-masters of her childhood, at the family's main works at World Edge — Master Darius's master and the line of senior smiths before him; she set down the hammer when she came south, and her hands still remember it.*
+
+
+> Queen of Allondo; daughter of the Leatherman house of World's End; the back-channel to the northern coast. Court-formal in public — perfectly performed, the over-precision is the tell; plain Leatherman in private. Hands that touch metal as if reading it.
+

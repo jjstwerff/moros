@@ -223,3 +223,23 @@ When the relevant topic comes up.
 - doc/npcs/felix.md (the itinerant-NPC template)
 - doc/npcs/elder_diederik.md (scene-first NPC template)
 - User notes, 2026-04-19
+
+## Character sheet
+
+**Female · Finches · Raft city**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 2 | 1 | 3 | 2 | 1 | 0 |
+
+- **Backgrounds** — Trader 2 *(river merchant, harbour master)*
+- **Specializations** — Navigation 1
+- **Powers** — Flight 1 (flying) · Hearing 1 (information) · Musical 1 (atmosphere)
+- **Progression** — Trader → Musical → Navigation → Hearing → Trader → Flight
+- **Equipment** — donkey, cart, knife, food, clothes, tent, bedroll *(bulk -24 / 3)*
+
+*Mentor — Navigation: the Raft City navigator-schools — four years as a fledgling on a curriculum of unchanging roads and never-twice-the-same weather, taught in rotation by half a dozen senior navigators of her group rather than by a single master.*
+
+
+> Itinerant Finch trader; public face of a Raft city merchant group; the party's regular window on the larger world. Personal project: Linnet's extraction.
+

@@ -45,10 +45,11 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 ## NPCs
 
 - Index: [doc/npcs/README.md](doc/npcs/README.md)
-- [NPC goals](doc/npcs/goals.md) — what every NPC should contribute to a session
+- [NPC goals](doc/npcs/goals.md) — what every NPC should contribute to a session, including the per-NPC character-sheet workflow
 - [DM staging](doc/claude/DM_STAGING.md) — session-by-session NPC introduction order and reveal layers
 - [Pre-rift pair](doc/claude/PRE_RIFT_PAIR.md) — the two ancient powers that pre-date the rift
 - [Face audit TODO](doc/claude/FACE_AUDIT_TODO.md) — open per-NPC art / scene notes
+- Roster CLI: [tools/character.js](tools/character.js) — apply specs, render markdown sheets into NPC pages, validate; data in [data/roster.json](data/roster.json)
 
 ## Creatures
 

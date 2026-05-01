@@ -172,3 +172,25 @@ For students he judges have the head for it — and the patience to learn from s
 
 - doc/stories/john_bean.md
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Raccoons · Linar harbour (winter); fair circuit (rest of year)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 3 | 1 | 2 | 2 | 2 | 1 | 1 | 0 |
+
+- **Backgrounds** — Back alley 1 · Hunter 1
+- **Specializations** — Sneak 1 · Scouting 1
+- **Powers** — Hunter 1 (catching) · Scurry 1 (sneaking) · Sly 1 (trick)
+- **Progression** — Hunter → Scurry → Scouting → Sly → Back alley → Sneak
+- **Equipment** — dog, dagger, darts, bow, clothes *(bulk NaN / 3)*
+
+*Mentor — Scouting: the Allondan army's irregular-scouts during the Overseas War — taught at speed in the broken-lands edge; he learned to find a slot in fitted stone the way the order's quartermasters needed it found, then kept the craft for the fair-circuit afterwards.*
+
+*Mentor — Sneak: the fair-circuit's lower-end operators across two decades — never a single master, never an apprenticeship, just enough hands at enough fairs that the craft accumulated; he gives a real ring to whoever makes him laugh, and that is also how he learned half of it.*
+
+
+> Scout, opportunist, instigator. John Bean's wartime companion; the man who found the slot at the mill, freed Hannes, and pulled Rhianna out before Elliot's army arrived. A raccoon with rings on his tail; eyes that catch every movement at the periphery.
+

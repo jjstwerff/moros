@@ -264,3 +264,20 @@ Irna's forced exile to Luchebert, arranged by Rhianna after the Steven attack, i
 
 - doc/claude/CAMPAIGN.md
 - doc/stories/irna_bean.md
+
+## Character sheet
+
+**Female · Boar folk · Blackwood freehold**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | 4 | 1 | 3 | 2 | 2 | 1 | 1 |
+
+- **Backgrounds** — Farmer 1 *(grain merchant, mill keeper)* · Miner 1
+- **Specializations** — Axes 1 · Brawl 1
+- **Powers** — Charge 1 (prone) · Digging 1 (breaching) · Smell 1 (tracking)
+- **Progression** — Farmer → Charge → Miner → Brawl → Digging → Axes → Smell
+- **Equipment** — dog, leather *(bulk NaN / 12)*
+
+> Irna grew up at the farm of her father John with her slightly younger brother Ron. Once she was saved by her father when playing in a tree near the local river, she fell in but was pulled out at a significant distance. Her brother Ron was enlisted by Hannes for soldier training. Irna did a non-lethal attack on prince Dietrich who came with two knights to get Ron. She was taken and forced to work in a mine as repentance. Rhianna got her out of the mine but send her in exile to the monastery instead.
+

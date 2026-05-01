@@ -239,3 +239,25 @@ For students he judges have come honestly:
 
 - doc/claude/CAMPAIGN.md
 - doc/stories/irna_bean.md
+
+## Character sheet
+
+**Male · Humans · Luchebert Monastery**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 2 | 1 | 1 | 2 | 1 | 6 | 5 |
+
+- **Backgrounds** — Scholar 1 · Monastery 1 · Ascetic 1
+- **Specializations** — Navigation 1 · Religion 2
+- **Powers** — Adaptation 1 (shadow step) · Politics 1 (common cause) · Religion 2 (bless)
+- **Progression** — Scholar → Politics → Navigation → Adaptation → Monastery → Religion → Ascetic → Religion
+- **Equipment** — staff, backpack, clothes *(bulk 1 / 6)*
+
+*Mentor — Navigation: the court-tutors of his Allondan princely education — the same curriculum that produced his father's seafaring captains, learned in reverse for the prince who would never sail it; the worn compass on the thong around his neck is from those years.*
+
+*Mentor — Religion: Saint Luchebert's tradition through the abbey he came to after renouncing — his predecessor as abbot and the long line of monks who copied the saint's books before him; renounced princes are taught the order's discipline at the speed of the order, not the speed of their grief.*
+
+
+> Abbot of Luchebert; former Crown Prince of Allondo who renounced after the Overseas War; keeper of the saint's tradition and the library; the only person whose word can correct the misread proclamation that put Ron Bean in the yards.
+

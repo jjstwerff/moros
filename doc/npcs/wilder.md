@@ -203,3 +203,25 @@ His presence is also part of why the blasted lands' chaos-pressure has not pushe
 - doc/claude/CAMPAIGN.md §"Campaign Threads"
 - doc/claude/LORE.md §"Spirit Ecology"
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Beavers · Wilder's hill (edge of the broken lands)**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 2 | 1 | 2 | 1 | 1 | 5 | 8 |
+
+- **Backgrounds** — Ascetic 2 · Hunter 1
+- **Specializations** — Shamanic 2 · Druid 1
+- **Powers** — Camp 1 (shielding) · Fur 1 (defense) · Hunter 1 (catching) · Shamanic 2 (binding) · Druid 1 (nature)
+- **Progression** — Ascetic → Camp → Shamanic → Fur → Hunter → Druid → Ascetic → Shamanic
+- **Equipment** — dog, staff, bow, knife, clothes *(bulk NaN / 6)*
+
+*Mentor — Shamanic: the broader shamans' network — never a single master; he was apprenticed in pieces across several elders and walked between them on the broken-lands fringe before settling on his hill; the long plan is the work he was apprenticed into, not a project he came up with later.*
+
+*Mentor — Druid: the formal druidic order, before he chose the shaman path; he took the discipline and left the order without rancour, and the order has not asked him back; the rite he practises at his hill is the rite he learned then, kept honest by use.*
+
+
+> Old beaver shaman; guardian-watcher at the approach to the blasted lands; the nearest accessible voice for the shamans' long plan. Eyes that move between sky and ground in equal measure; a small fire kept going outside the dwelling — more signal than warmth.
+

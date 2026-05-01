@@ -5,13 +5,15 @@ Cards serve **two purposes**:
 - **Player-facing** — issued when the party has been to a place long enough to *know* it (not just pass through). The card is a record of local standing: the party can invoke it for lodging, for local knowledge, for a name to drop. A place the party has *not* earned a card for is still mostly strangers to them.
 - **DM-facing** — a quick-reference summary when a rumour about a place comes up. Grab the card; remember what the setting says about this location without re-opening the full docs.
 
+**Earning a card grants 1 XP shared by the table** — the *"earned by"* trigger is also the XP trigger, per RULES.md §"Earning XP". Walking through a place earns no XP; *standing* earned in it does.
+
 Each card carries:
 
 - **Name**
 - **Type** — what kind of place it is, in a word or two
 - **Known for** — the rumour a stranger would hear about it
 - **Who's there** — named NPCs the party might find (links to NPC cards)
-- **Earned by** — what qualifies a party to hold the location card
+- **Earned by** — what qualifies a party to hold the location card (and earn the 1 XP)
 
 ---
 

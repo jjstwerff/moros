@@ -181,3 +181,25 @@ John is not a mighty-spirit-adjacent presence. The Tusk Clan lineage is not a ma
 - doc/claude/CAMPAIGN.md
 - doc/stories/john_bean.md
 - doc/stories/irna_bean.md
+
+## Character sheet
+
+**Male · Boar folk · Blackwood freehold**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 3 | 1 | 4 | 2 | 2 | 1 | 2 |
+
+- **Backgrounds** — Farmer 1 *(grain merchant, mill keeper)* · Hunter 1 *(gamekeeper, fur trader)* · Army 1
+- **Specializations** — Brawl 1 · Scouting 1
+- **Powers** — Camp 1 (shielding) · Charge 1 (prone) · Hide 1 (armor) · Hunter 1 (catching)
+- **Progression** — Hunter → Camp → Scouting → Hide → Army → Brawl → Farmer → Charge
+- **Equipment** — flail, donkey, dog, bow, leather, spear, knife, clothes *(bulk NaN / 9)*
+
+*Mentor — Scouting: Felix the raccoon scout — his wartime companion across the broken-lands edge; the hand-signs and the silent-step craft are Felix's, kept in John's body though he has not used them in fifteen years.*
+
+*Mentor — Brawl: the post-war army's drill — the lessons a soldier could carry home and use against a trespassing bear or a dog gone wrong, taught at the speed a wartime camp can teach anything.*
+
+
+> Boar folk farmer (Tusk Clan); ruin-crawler before the war; the accidental hero who ended the Overseas War through a phantom-arm pull at distance; now formally out of the fight, by his own bargain. The ironwood prosthetic Rhianna fitted him is an artifact in its own right and is not on this sheet.
+

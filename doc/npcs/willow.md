@@ -199,3 +199,25 @@ If she dies without a named successor, the shield thins. The shrine would still 
 ## Sources
 
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Female · Rabbits · Luchebert Monastery**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 2 | 1 | 2 | 1 | 5 | 8 |
+
+- **Backgrounds** — Scholar 1 · Ascetic 2
+- **Specializations** — Healer 1 · Druid 2
+- **Powers** — Camp 1 (shielding) · Hearing 1 (information) · Druid 2 (nature)
+- **Progression** — Ascetic → Hearing → Druid → Camp → Scholar → Healer → Ascetic → Druid
+- **Equipment** — staff, backpack, knife, clothes *(bulk 1 / 3)*
+
+*Mentor — Druid: the granny before her at Felicia's shrine — the same line that has held the cave chapel for generations; the formation is years, not weeks, and the elder granny named the younger when she met her.*
+
+*Mentor — Healer: the same line — flower-and-stem craft and household-medicine learned at the maze-garden's herb plots and the abbey's library, knife-skill for cutting cleanly without bruising the cut stem.*
+
+
+> Old rabbit-folk granny of Luchebert; tender of Felicia's shrine; keeper of the Abbey's quiet truth and gatekeeper of the necklace. Always with flowers; hands stained with soil; a knife at her belt for cutting stems and a knife.
+

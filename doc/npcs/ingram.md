@@ -187,3 +187,25 @@ Short on purpose. He has met few people deeply and refuses to volunteer opinions
 - doc/npcs/brother_darrel.md
 - doc/npcs/hank.md
 - doc/places/salmonswell.md
+
+## Character sheet
+
+**Male · Mouse folk · Salmonswell**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 3 | 1 | 1 | 3 | 1 | 3 | 1 | 3 | 8 |
+
+- **Backgrounds** — Scholar 2 · Trader 1
+- **Specializations** — Healer 2 · Navigation 1
+- **Powers** — Politics 1 (common cause) · Sleeper 1 (recover)
+- **Progression** — Trader → Politics → Navigation → Sleeper → Scholar → Healer → Scholar → Healer
+- **Equipment** — donkey, staff, backpack, cart, clothes *(bulk -28 / 3)*
+
+*Mentor — Navigation: the Mouse-clan postal-and-trade line of his middle years — the routes between Salmonswell, Linar, and the inland towns walked enough times that the count-system became a habit; never a formal navigator, never far from the road.*
+
+*Mentor — Healer: the orphanage's lay community — children fall ill, fingers get cut, a body needs minding before any physician can be summoned; the hands that held a wage-bag untouched for decades also kept fevers down across the same decades.*
+
+
+> Very old male Mouse; long-time keeper of the Salmonswell orphanage that sheltered Hanny and Egbert after the war; the man who held Brother Darrel's wages untouched for years and returned them to the pair when they came of age.
+

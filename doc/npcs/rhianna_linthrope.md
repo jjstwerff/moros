@@ -187,3 +187,25 @@ Per `doc/claude/LORE.md` §"Spirit Ecology," a serious priestess of the Mouse cl
 - doc/claude/CAMPAIGN.md
 - doc/stories/john_bean.md
 - doc/stories/irna_bean.md
+
+## Character sheet
+
+**Female · Mouse folk · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 5 | 1 | 2 | 1 | 3 | 8 |
+
+- **Backgrounds** — Scholar 2 *(university rector, master herbalist)* · Crafter 1 *(guild master, merchant factor)*
+- **Specializations** — Healer 2 · Religion 1
+- **Powers** — Ingenuity 1 (improvise) · Politics 1 (common cause) · Religion 1 (bless)
+- **Progression** — Scholar → Politics → Healer → Ingenuity → Crafter → Religion → Scholar → Healer
+- **Equipment** — staff, backpack, tools, knife, clothes *(bulk 2 / 3)*
+
+*Mentor — Healer: the Mouse-clan field-medic line and the Allondan court's senior physicians at the wartime hospital — taught at speed because the war did not pause; the medical satchel at her belt is the second one she owned, the first having been buried with the soldier who left it to her.*
+
+*Mentor — Religion: the Mouse-clan priestess line, before she was sent to court; the line's daily rites taught at the family altar across her childhood, refined at the wartime hospital where the work and the rite became the same thing.*
+
+
+> Mouse-clan priestess and crafter; wartime medic; political fixer at Allondo's court; the one who got Irna out and wrote the letter Elliot has not yet answered. Receives in pieces; the hour-glass turns the moment a conversation begins.
+

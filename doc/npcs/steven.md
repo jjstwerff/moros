@@ -212,3 +212,23 @@ When the relevant topic comes up.
 - doc/stories/john_bean.md
 - doc/claude/CAMPAIGN.md §"Brumal's collapse"
 - User notes, 2026-04-18
+
+## Character sheet
+
+**Male · Humans · Scarlet vale**
+
+| Char | Dex | Endu | Hand | Might | Perc | Speed | Will | XP |
+|---|---|---|---|---|---|---|---|---|
+| 4 | 1 | 1 | 2 | 1 | 1 | 1 | 3 | 0 |
+
+- **Backgrounds** — Noble 1 *(Allondo chancellor, royal steward)* · Scholar 1 *(university rector, master herbalist)*
+- **Specializations** — Healer 1
+- **Powers** — Adaptation 1 (shadow step) · Politics 1 (common cause) · Sly 1 (trick)
+- **Progression** — Scholar → Politics → Healer → Adaptation → Noble → Sly
+- **Equipment** — horse, staff, backpack, knife, clothes *(bulk -5 / 3)*
+
+*Mentor — Healer: court-tutor herbalists of Scarlet Vale, the surface curriculum every Allondan prince receives; Steven took it seriously where his brother did not, and has been stretching it past what the tutors are comfortable with for several years.*
+
+
+> Second son of King Hannes and Queen Fienna; nephew of Father Elliot; herbalist-prince in private with a debt to Irna Bean he intends to pay in person. Faintly green-stained at the fingertips; a small leather-bound book in his coat pocket where another prince would carry a sword-hilt.
+
