@@ -213,7 +213,9 @@ class State {
         }
         state.#stats[statistic]++;
         state.#stats[name] = level;
-        const xp = state.#progression.length < 6 ? 0 : level + 1;
+        // First 6 progressions are free; afterwards cost is level² — quadratic so
+        // breadth is generous early and peak mastery costs proportionally more.
+        const xp = state.#progression.length < 6 ? 0 : level * level;
         state.#xp += xp;
         state.#progression.push(new Progres(type, name, xp, level, statistic));
     }
@@ -261,9 +263,10 @@ class State {
     }
 
     set place(name) {
-        if (DATA.places.findIndex(p => p.name === name) === -1) {
-            throw new Error(`Place ${name} not found`);
+        if (typeof name !== 'string' || !name.trim()) {
+            throw new Error('Place must be a non-empty string');
         }
+        // Custom place names are allowed for NPCs from places not yet in DATA.places.
         state.#place = name;
     }
 
@@ -412,7 +415,7 @@ export function fromJSON(json) {
  * @returns {number}
  */
 export function carryCapacity() {
-    return stat('Endu') * 5;
+    return stat('Endu') * 3;
 }
 
 /**

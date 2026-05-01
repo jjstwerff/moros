@@ -99,7 +99,7 @@ describe('Check a character progression', () => {
             '{"source":"Claw","stats":["Might","Dex"],"special":"sneak"},' +
             '{"source":"Druid","stats":["Will","Might"],"special":"nature"},' +
             '{"source":"staff","stats":["Dex","Speed"],"special":"block"}');
-        assert.equal(Logic.state.unlockedSpecs().toString(), "Sling,Religion,Druid");
+        assert.equal(Logic.state.unlockedSpecs().toString(), "Sling,Religion,Shamanic,Magic,Druid");
     })
 });
 
@@ -139,15 +139,15 @@ describe('Logic utility functions', () => {
         assert.strictEqual(Logic.projectedStat('unknown_type', 'anything'), null);
     });
 
-    it('carryCapacity equals Endu times 5', () => {
+    it('carryCapacity equals Endu times 3', () => {
         Logic.initState();
         Logic.state.race = 'Finches';
-        assert.strictEqual(Logic.carryCapacity(), 5); // base Endu = 1
+        assert.strictEqual(Logic.carryCapacity(), 3); // base Endu = 1
         Logic.state.learn('background', 'farmer');    // farmer level 1 → raises Endu to 2
-        assert.strictEqual(Logic.carryCapacity(), 10);
+        assert.strictEqual(Logic.carryCapacity(), 6);
         Logic.state.learn('power', 'musical');        // alternation
         Logic.state.learn('background', 'monastery'); // monastery level 1 → raises Endu to 3
-        assert.strictEqual(Logic.carryCapacity(), 15);
+        assert.strictEqual(Logic.carryCapacity(), 9);
     });
 
     it('getContacts returns contacts for a background at a place', () => {

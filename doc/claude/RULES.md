@@ -196,6 +196,64 @@ A character may contribute at most one discovery card to the shared deck per sce
 as part of their stakes decision. Discovery cards count toward the character's contribution
 limit.
 
+### Artifact Cards
+
+A character who recovers a **story-significant object** earns an **artifact card** — a unique
+card representing the object itself, that permanently joins their personal card pool while
+they carry the artifact. Artifacts are physical things, not learned secrets: a pre-rift cloak
+with a spirit still inside it, a scrying mirror haunted by its dead maker, an ironwood limb,
+the necklace that condenses a great spirit. Like discovery cards, artifact cards are awarded
+by the DM, cannot be replicated, and contribute 1 XP to every player character when earned.
+
+Unlike discovery cards, artifacts can be **transferred** (handed to another character, lost,
+stolen, broken). The card travels with the object — a character without the artifact loses
+the card from their pool until it is recovered. An artifact destroyed permanently removes
+the card from circulation.
+
+| Example card | Statistics | Special | What it represents |
+|---|---|---|---|
+| Narissa's Cloak | Endu + Will | currents | Pre-rift water-and-earth spirit-bonded garment; trails water across dry ground |
+| Thorgal's Mirror | Will + Perc | reach | Scrying glass haunted by its dead overseas maker; heavy to carry, dangerous to engage |
+| Felicia's Necklace | Char + Will | presence | Condensation-trigger for a great spirit; Willow's to release |
+| Ironwood Limb | Might + Hand | telekinesis | Rare prosthetic that amplifies latent mental projection |
+
+**Hard by design.** Artifact cards are not the steady reward of play; they are the rare reward
+of a campaign's hardest work. A typical artifact requires:
+
+- A dungeon-level engagement *or* a long quest chain *or* the trust of a keeper who has held
+  the object for centuries.
+- A specific in-world cost paid by the party — a working performed correctly, a refusal
+  declined gracefully, a relationship deepened past polite distance.
+- A DM judgment that the artifact's appearance in the world is *earned*, not consolation.
+
+A campaign may produce zero, one, or a small handful of artifact cards across its full run.
+A campaign that produces five or more is either very long, has crossed into mythic territory,
+or is awarding artifacts too cheaply.
+
+**Sharing.** When the party finds an artifact and decides who carries it, the holder gains
+the card; if it changes hands, the card moves. The 1 XP awarded on first recovery is shared
+by the table regardless of who ends up holding the object.
+
+**Discovery and artifact are different aspects of an object — recovery and understanding.**
+Nothing gives XP twice for the same act, but the two acts are independent. Carrying an
+artifact across the world without yet learning its history earns the **artifact card** at
+recovery (1 XP, mechanism in the holder's pool); a later session in which the players
+finally read the secret of *what they have been carrying* earns the **discovery card**
+(1 XP, knowledge that survives them). The order can run the other way: studying the diary
+at Luchebert until the cloak's tradition is understood earns the discovery; finding the
+cloak itself, years later, earns the artifact. Either, both, or neither may be reached in
+a campaign.
+
+What this rules out is double-paying for the *same act*. A book read until its mystery
+yields earns one discovery card; carrying that book home in addition does not earn an
+artifact unless the *book itself* carries its own mechanism (a working in the binding, a
+ward in the cover, a thread of presence inside it). Most books are discoveries only; the
+rare ones are artifacts in their own right, and those few can pay both — once for the
+recovery, once for the understanding, on whatever schedule the players actually walk.
+
+Possession alone earns nothing. *Reading without reaching the mystery* earns nothing.
+*Carrying without understanding* earns nothing. The XP follows the act, not the prop.
+
 ### Weather and Environment
 
 → See [Weather](#weather) for the full daily weather system. Weather is drawn once per day and
@@ -666,8 +724,9 @@ Each character requires:
 
 ### Rules
 
-1. **The first 6 progressions cost 0 XP.** From progression 7 onward, cost = 1 + current level
-   of that item.
+1. **The first 6 progressions cost 0 XP.** From progression 7 onward, cost is the **square of
+   the level reached** — 1 / 4 / 9 / 16 / 25 XP for levels 1 / 2 / 3 / 4 / 5. See §"XP Costs"
+   for the full table; XP is earned by collecting cards (see §"Earning XP").
 2. **No two backgrounds or specializations may be chosen in succession.** A power must
    separate them.
 3. A specialization can only be learned if a background that unlocks it has already been taken.
@@ -677,30 +736,51 @@ Each character requires:
 
 ### Earning XP
 
-XP is gained by discovering secrets — things hidden from the world and waiting to be found.
-Secrets live in two places:
+XP is not awarded as a number. **Each card the party earns is worth 1 XP**, shared by the
+whole table — every player character gains 1 XP when the party gains the card. The cards
+themselves are the visible record of what the campaign has accomplished; the XP economy
+sits directly on top of the card economy with no separate accounting.
 
-- **Ruins and forgotten places** — a buried chamber, a collapsed vault, a mechanism no one has
-  touched in a century. Finding what was lost earns XP.
-- **The hearts of people** — a contact's grief, a merchant's double life, a guard captain's
-  private loyalties. Drawing out what someone keeps hidden earns XP.
+Four card types count toward XP:
 
-The DM awards XP when a secret is genuinely uncovered, not merely stumbled upon. Players must
-seek, interpret, and understand — the reward is for the discovery, not the luck of the path.
+- **Discovery cards** — earned when a character uncovers a significant secret (see §"Discovery
+  Cards" below). Permanent, personal, joins the character's card pool.
+- **NPC reference cards** — earned when the party reaches the standing each NPC's card
+  describes (see `doc/npcs/cards.md`). Each card lists an *"earned by"* condition; meeting
+  it grants the card and 1 XP.
+- **Place reference cards** — earned when the party reaches the standing each place's card
+  describes (see `doc/places/cards.md`). Same convention.
+- **Artifact cards** — earned when a character recovers a story-significant object. See
+  §"Artifact Cards" below. **Rare and hard to win** — typically a dungeon-level engagement
+  or a long quest chain.
+
+Base cards, character cards (powers / backgrounds / items), and scenario cards do *not* award
+XP — they are derived from progression or from the scenario itself, not earned by play.
+
+A typical session earns 0–3 cards depending on what the party engaged with; quiet sessions
+earn nothing, climactic ones can earn several. **Cards reward engagement, not exposure** —
+visiting a place or meeting an NPC does not by itself grant the card; the *"earned by"*
+criteria require real standing or a real discovery.
 
 ### XP Costs
+
+Past the first 6 free progressions, each progression's XP cost is the square of the level
+reached. Mastery is generous early and steep at the peaks:
 
 | Level reached | XP cost |
 |---|---|
 | 1 (within first 6 progressions) | 0 |
-| 2 | 2 |
-| 3 | 3 |
+| 1 (past the first 6) | 1 |
+| 2 | 4 |
+| 3 | 9 |
+| 4 | 16 |
+| 5 | 25 |
 
 ---
 
 ## Races and Powers
 
-Each of the 16 races has 7 available powers. A character may only learn powers from their own
+Each of the 17 races has 7 available powers. A character may only learn powers from their own
 race. Each power links to 2 statistics, has a special element or ability, generates a card for
 play, and can be learned multiple times to increase mastery. **Mastery level** equals the number
 of times the power has been learned — mastery 1 after the first learning, mastery 2 after the
@@ -747,6 +827,7 @@ Three things trigger Overwhelm:
 | Rat folk | Clan, Scurry, Climber, Sleeper, Smell, Scrounger, Control |
 | Bull folk | Portage, Swimmer, Charge, Labyrinth, Relaxed, Hide, Travels |
 | Wolf folk | Jaws, Travels, Control, Hide, Clan, Smell, Hearing |
+| Mouse folk | Clan, Hearing, Scurry, Ingenuity, Sly, Politics, Sleeper |
 
 ---
 
@@ -815,6 +896,35 @@ makes cultivating contacts along the way as valuable as deepening the ones left 
 
 Carrying capacity is determined by **Endurance**. Each item has a bulk value that reduces
 available capacity. Negative bulk items increase capacity.
+
+**Capacity = Endurance × 3.** A character with Endu 1 carries 3 bulk before they are encumbered;
+Endu 4 carries 12. Mounts, carts, and the backpack carry weight *for* the character — donkey
+−9, horse −6, cart −20, backpack −3 — and add directly to the capacity budget. A character
+with a donkey, a backpack, and Endu 2 has 6 + 9 + 3 = 18 bulk to spend before encumbrance.
+
+The multiplier is calibrated so that a cart (−20) is always meaningfully more than even an
+exceptional Endu 5 carrier (15), a donkey (−9) is roughly two strong people, and a horse (−6)
+is roughly one. A traveller with low Endurance cannot carry a full supply kit on their own
+back — they need a backpack or a mount, which matches the way the setting actually moves
+goods.
+
+**Encumbered** means total bulk exceeds capacity. The state is a flag, not a mechanical
+penalty: the DM applies the cost to the situation. A heavily-equipped soldier in full plate
+and pole-arm is *honestly* encumbered when they leave their mount behind, and the scene
+should reflect it — slower travel, no Speed-class actions in close quarters, audible
+movement that breaks Stealth. The flag is the rule; the consequences are scene-specific.
+
+**Some NPCs are encumbered by design.** Warriors in full regalia, court princes in
+duellist's kit, wardens with the foreman's full key-and-glave: their sheets read
+*encumbered* because their kit is honest about what they carry. They are not characters
+who travel light. A DM running them should remember the cost when they need to move.
+
+**Background allowance is a separate constraint.** Each background grants 2 item slots at
+level 1, +1 per additional level — this controls *which* items can be carried at all,
+independently of bulk. A character cannot carry an item their backgrounds do not unlock,
+even if they have the bulk to spare. Basic supplies (knife, food, clothes, tent, bedroll,
+rope, waterskin, lantern, writing kit, instrument, oil flask, leather repair) are
+unrestricted and do not count against background allowance.
 
 Items do not degrade from normal use. A specific flaw (Volatile material, Degraded flaw), a
 targeted disarm, or an explicit effect in a creature's attack can destroy or disable an item as

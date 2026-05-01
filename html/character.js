@@ -185,11 +185,13 @@ export function renderPlaces(forceGrid = false) {
     const g = document.getElementById('place-grid');
     if (Logic.state.place && !forceGrid) {
         const p = DATA.places.find(pl => pl.name === Logic.state.place);
+        const name = p ? p.name : Logic.state.place;
+        const desc = p ? p.description : 'Custom place — not yet on the canonical list.';
         g.innerHTML = `
             <div class="selected-place-card">
                 <div class="selected-info">
-                    <div class="place-name">${p.name}</div>
-                    <div class="place-desc">${p.description}</div>
+                    <div class="place-name">${name}</div>
+                    <div class="place-desc">${desc}</div>
                 </div>
                 <button class="btn-secondary btn-change-place" onclick="openPlaceGrid()">Change</button>
             </div>`;

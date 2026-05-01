@@ -431,7 +431,8 @@ export const DATA = {
         { name:"Raccoons", description:"Resourceful scavengers and shapeshifters.", powers:["scurry","camp","relaxed","sly","scrounger","clan","control"] },
         { name:"Rat folk", description:"Adaptable urban survivors in tight-knit clans.", powers:["clan","scurry","climber","sleeper","smell","scrounger","control"] },
         { name:"Bull folk", description:"Strong wanderers with enduring calm.", powers:["portage","swimmer","charge","labyrinth","relaxed","hide","travels"] },
-        { name:"Wolf folk", description:"Pack hunters with keen senses.", powers:["jaws","travels","control","hide","clan","smell","hearing"] }
+        { name:"Wolf folk", description:"Pack hunters with keen senses.", powers:["jaws","travels","control","hide","clan","smell","hearing"] },
+        { name:"Mouse folk", description:"Small careful folk in close-knit clans; line-keepers, precision crafters, and quiet diplomats.", powers:["clan","hearing","scurry","ingenuity","sly","politics","sleeper"] }
     ],
     backgrounds: [
         { name:"Noble", statistics:["Char","Might"], items:["horse","armor","sword"], specializations:["Parry","Swords"],
@@ -470,7 +471,7 @@ export const DATA = {
         Machinist:"Hand", Jeweler:"Hand", Cooking:"Hand",
         Axes:"Might", Blunt:"Might", Brawl:"Might", "Pole weapon":"Might", Spear:"Might", Swords:"Might",
         Bows:"Perc", Crossbow:"Perc", Sling:"Perc", Darts:"Perc", Scouting:"Perc", Tracking:"Perc", Navigation:"Perc",
-        Religion:"Will", Shaman:"Will", Mage:"Will", Druid:"Will", Monk:"Will"
+        Religion:"Will", Shamanic:"Will", Magic:"Will", Druid:"Will", Monk:"Will"
     },
     items: [
         { name:"horse", statistics:["Speed","Endu"], special:"travel", bulk:-6,
@@ -570,7 +571,13 @@ export const DATA = {
         { name:"clothes", bulk:1, description:"an extra set", restricted:false },
         { name:"leather repair", description:"will be used up", bulk:1, restricted:false },
         { name:"tent", bulk:2, description:"per person", restricted:false },
-        { name:"bedroll", bulk:1, restricted:false }
+        { name:"bedroll", bulk:1, restricted:false },
+        { name:"rope", bulk:1, description:"climb, tie, drag", restricted:false },
+        { name:"waterskin", bulk:1, description:"a day's water on the road", restricted:false },
+        { name:"lantern", bulk:1, description:"with oil for one long evening", restricted:false },
+        { name:"writing kit", bulk:0, description:"parchment, quill, sealing wax", restricted:false },
+        { name:"instrument", bulk:1, description:"a small stringed or wind piece", restricted:false },
+        { name:"oil flask", bulk:0, description:"refills lanterns; flammable", restricted:false }
     ],
     rules: [
         { about:"growth", text:[
@@ -724,6 +731,7 @@ export const DATA = {
         { name: "Raft city", description: "On the river through the great forest." },
         { name: "Rakeville", description: "The next village towards Allondo." },
         { name: "Rosepond", description: "Mining village near world edge." },
+        { name: "Salmonswell", description: "Independent small upriver city; salmon runs at the Upwelling." },
         { name: "Scarlet vale", description: "Capital of Allondo." },
         { name: "Steadington", description: "Village in Brumal overtaken by the desert." },
         { name: "World edge", description: "Mining city near the ocean." }
