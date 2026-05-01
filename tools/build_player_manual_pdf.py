@@ -280,6 +280,140 @@ def render_paragraphs(items, style_=BODY):
     return [Paragraph(md_to_html(p), style_) for p in items]
 
 
+# ── Items: categorise, render with damage/protects/reach/hands/consumable
+ITEM_SPECIAL_GLOSS = {
+    # Weapons — damage specials
+    "parry":     "pre-empt one incoming strike per round (trades cards)",
+    "stun":      "the target loses their next round's commit",
+    "stop":      "knocks the target back; reach prevents close-in this round",
+    "intercept": "counter an enemy's reach attack on the same turn",
+    "wound":     "damage persists each scene until tended",
+    "cripple":   "reduces target Speed for the rest of the scene",
+    "poison":    "the target loses Will or stat per round until tended",
+    "sneaking":  "retains Stealth even after the strike lands",
+    "breaching": "clears rubble or cave-ins in one action",
+    "cut":       "small-cut work — rope, leather, light wood",
+    "restrict":  "entangles the target; they lose movement options",
+    "steer":     "redirect a grabbed target's movement at distance",
+    # Armor specials
+    "imposing":  "absorbs one source of damage per scene before stats are counted",
+    "defend":    "adds to the carrier's defensive total without committing",
+    "armor":     "reduces typed incoming damage by the listed amount",
+    "block":     "counter one incoming strike; reduces grab",
+    # Mounts and load specials
+    "travel":    "sustained-pace travel without an Endurance check",
+    "stubborn":  "refuses panic; ignores Tension penalties on the round",
+    "tracking":  "retain a target's trail through one scene change",
+    "carry":     "adds to the carrier's bulk capacity",
+    "search":    "scout a full scene ahead",
+    "steady":    "fragile cargo or footing survives rough terrain",
+    # Tool specials
+    "craft":     "enables crafting actions otherwise impossible",
+}
+
+
+def categorise_item(i):
+    """Return one of: weapon / armor / mount-and-load / tool / basic."""
+    if i.get("restricted") is False and i.get("damage") is None and i.get("protects") is None:
+        return "basic"
+    if i.get("damage"):
+        return "weapon"
+    if i.get("protects"):
+        return "armor"
+    if i.get("bulk", 0) < 0:
+        return "mount-and-load"
+    return "tool"
+
+
+def render_items(data):
+    flow = []
+    groups = {
+        "weapon":         ("Weapons", []),
+        "armor":          ("Armor and Defense", []),
+        "mount-and-load": ("Mounts, Mounts' Kit, and Load-Carriers", []),
+        "tool":           ("Tools", []),
+        "basic":          ("Basic Supplies (anyone may take, once each)", []),
+    }
+    for i in data["items"]:
+        groups[categorise_item(i)][1].append(i)
+
+    # Render each category
+    for key in ("weapon", "armor", "mount-and-load", "tool", "basic"):
+        title, items = groups[key]
+        if not items:
+            continue
+        flow.append(Paragraph(title, H3))
+        rows = [[
+            Paragraph("<b>Item</b>", INLINE),
+            Paragraph("<b>Bulk</b>", INLINE),
+            Paragraph("<b>Mechanics</b>", INLINE),
+        ]]
+        for i in items:
+            bulk = str(i.get("bulk", 0))
+            notes = []
+            if i.get("statistics"):
+                notes.append(" · ".join(i["statistics"]))
+            if i.get("special"):
+                notes.append(f"<i>{i['special']}</i>")
+            if i.get("damage"):
+                d = i["damage"]
+                notes.append(f"<font color='#7a3a1a'>damage: {d['type']} → {d['statReduced']}</font>")
+            if i.get("protects"):
+                notes.append(f"<font color='#7a3a1a'>protects: {i['protects']}</font>")
+            tags = []
+            if i.get("reach"):
+                tags.append(f"<i>{i['reach']}</i>")
+            if i.get("hands"):
+                tags.append(f"<i>{i['hands']}-handed</i>")
+            if i.get("consumable"):
+                tags.append("<i>consumable</i>")
+            if tags:
+                notes.append(" · ".join(tags))
+            if i.get("description"):
+                notes.append(i["description"])
+            rows.append([
+                Paragraph(f"<b>{i['name']}</b>", INLINE),
+                Paragraph(bulk, INLINE),
+                Paragraph(" · ".join(notes), INLINE),
+            ])
+        t = Table(rows, colWidths=[28 * mm, 14 * mm, COL_W - 42 * mm])
+        t.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, ACCENT),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.25, MUTED),
+        ]))
+        flow.append(t)
+        flow.append(Spacer(1, 6))
+
+    # Specials glossary
+    used_specials = sorted({i["special"] for i in data["items"] if i.get("special")})
+    flow.append(Paragraph("Item Specials — what each keyword does", H3))
+    flow.append(Paragraph(
+        "Every card-producing item has a one-word <i>special</i> that fires "
+        "when the card is committed. The full meaning of each:",
+        BODY))
+    rows = [[Paragraph("<b>Special</b>", INLINE),
+             Paragraph("<b>Effect when the card is committed</b>", INLINE)]]
+    for s in used_specials:
+        gloss = ITEM_SPECIAL_GLOSS.get(s, "—")
+        rows.append([
+            Paragraph(f"<b><i>{s}</i></b>", INLINE),
+            Paragraph(gloss, INLINE),
+        ])
+    t = Table(rows, colWidths=[30 * mm, COL_W - 30 * mm])
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.5, ACCENT),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.25, MUTED),
+    ]))
+    flow.append(t)
+    return flow
+
+
 def render_table_source(source, data):
     flow = []
     if source == "DATA.places":
@@ -375,36 +509,7 @@ def render_table_source(source, data):
             flow.append(Paragraph(f"<b>{stat}</b>", H3))
             flow.append(Paragraph(", ".join(specs), BODY))
     elif source == "DATA.items":
-        rows = [[
-            Paragraph("<b>Item</b>", INLINE),
-            Paragraph("<b>Bulk</b>", INLINE),
-            Paragraph("<b>Notes</b>", INLINE),
-        ]]
-        for i in data["items"]:
-            bulk = str(i.get("bulk", 0))
-            notes = []
-            if i.get("statistics"):
-                notes.append(" · ".join(i["statistics"]))
-            if i.get("special"):
-                notes.append(f"<i>{i['special']}</i>")
-            if i.get("description"):
-                notes.append(i["description"])
-            if i.get("restricted") is False:
-                notes.append("<i>basic</i>")
-            rows.append([
-                Paragraph(f"<b>{i['name']}</b>", INLINE),
-                Paragraph(bulk, INLINE),
-                Paragraph(" · ".join(notes), INLINE),
-            ])
-        t = Table(rows, colWidths=[35 * mm, 15 * mm, COL_W - 50 * mm])
-        t.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("LINEBELOW", (0, 0), (-1, 0), 0.5, ACCENT),
-            ("LINEBELOW", (0, 1), (-1, -2), 0.25, MUTED),
-        ]))
-        flow.append(t)
+        flow.extend(render_items(data))
     elif source == "DATA.cards":
         # Element icons in a 4-up grid
         cells = []
