@@ -1,0 +1,315 @@
+{
+  "_about": "Build spec for the Moros Player Manual PDF. Sections render in order. References to DATA.x mean 'pull from html/data.js at build time'. Inline prose is curated, player-safe, no campaign spoilers. Image paths are relative to repo root.",
+  "_no_spoilers_policy": "Do not mention: the Rift, the white city, the Lake of Tears, the towers, the blasted lands, the forbidden woods, the historical mages (Narissa, Thorgal, Felicia, Idra, Lethran Pair, Laurent), the Skull Gatherers' deeper purpose, the Pot-people, Tod, the Storm Mage's chaos-break, the overseas continent's politics, named NPC secrets, plot threads, scenario solutions, or campaign-arc destinations. Stay at the surface a stranger entering the world for the first time would see.",
+
+  "title": "Moros",
+  "subtitle": "Player Manual",
+  "tagline": "An adventure game of cards, tension, and growing mastery",
+
+  "cover": {
+    "tagline_block": "From the river forests of the north to the southern desert and the volcanic coast at the world's edge, the lands between two kingdoms are crossed by traders, soldiers, and people who simply want a road home. You are about to make your way across them.",
+    "image": "images/manual_cover.png"
+  },
+
+  "sections": [
+    {
+      "id": "welcome",
+      "title": "Welcome to Moros",
+      "intro": "DATA.game.description",
+      "body": [
+        "This manual is everything a player needs to make a character and play the game. You will find the eight statistics that shape what a character can do, the seventeen races they can be born into, the backgrounds and powers that turn a body and a history into a hero, and the cards that resolve every test the world puts in front of them.",
+        "Read it from end to end the first time. After that, the *Statistics*, *Powers*, and *Backgrounds* sections work as quick reference at the table."
+      ]
+    },
+
+    {
+      "id": "world",
+      "title": "The World — At a Glance",
+      "intro": "Moros is a continent shaped by two kingdoms, an inland trade road, and the spaces between them. What follows is the surface a stranger sees on first arrival.",
+      "body": [
+        "**Allondo** is the older kingdom, holding the central river-valley, the agricultural belt, and the capital at Scarlet Vale. Its court still trains princes for war and its border watch still names the trees on its northern edge.",
+        "**Brumal** is its southern neighbour — a colder, harder kingdom whose southern villages have been thinning for a generation as a desert presses up from below. Its capital is Cliffside Hold, on the coast.",
+        "**The trade road** runs from Linar Harbour on the east coast inland through Elmsfield and beyond — the thread that ties the kingdoms to the harbours, the desert cities, and the river forests.",
+        "**The southern desert** is the frontier between known country and the shifting lands beyond. Fata Morgana, the oasis city, holds the deep south by reputation; Gap City watches the mountains beyond.",
+        "**The river forest of the north** is great enough that a city sits on rafts in its rivers — Raft City — and its trade reaches the harbours by routes only a few merchant groups know.",
+        "**The volcanic coast at the world's edge** holds World Edge, the mining city, and the small mining villages at Rosepond and beyond. Iron from these forges supplies both kingdoms.",
+        "Beyond these regions are wilder places, hazards, and the stories travellers carry home from them. *The DM will introduce these as the campaign reaches them.*"
+      ],
+      "subsections": [
+        {
+          "id": "places_of_origin",
+          "title": "Places of Origin",
+          "intro": "Every character starts from one of these. The character's place shapes who they know, who knows them, and what the road back to home would feel like.",
+          "table_source": "DATA.places",
+          "image_dir": "html/icons/places",
+          "image_for": "place_name_lowercase_with_underscores"
+        },
+        {
+          "id": "faces_to_meet",
+          "title": "Faces You'll Meet",
+          "intro": "A few public figures every party in Moros will cross paths with — landmarks of the road, not secrets of the campaign.",
+          "named_npcs": [
+            {
+              "name": "Innkeeper Bridget",
+              "role": "Badger; runs the Inn at the centre of Elmsfield's great ironwood tree. The Inn keeps moving around her; locals at their tables, merchants at the trader's corner, her children running plates. She knows roughly who has come through her door and roughly what they were carrying. A traveller's first proper meal in Elmsfield is at her bar.",
+              "image": "html/icons/npcs/bridget.png"
+            }
+          ],
+          "note": "The DM will introduce more figures as the campaign reaches them; the manual stops here so the rest land in play, not on this page."
+        }
+      ]
+    },
+
+    {
+      "id": "creation",
+      "title": "Making a Character",
+      "intro": "A character is built from six choices, taken in order. The order is the character's life so far — where they grew up, what they trained in, what they leaned into.",
+      "body": [
+        "**Choose a name, a gender, and a place of origin.** Any of the seventeen places listed above. The place gives no mechanical bonus; it gives the character a home.",
+        "**Choose a race.** This determines the seven powers your character can ever take.",
+        "**Take six progression steps in order.** Each step is one of three kinds — a *background* (a life history), a *power* (a racial ability), or a *specialization* (a trained skill).",
+        "The first six progression steps cost nothing. From the seventh step onward, advancement costs experience points (XP), earned through play."
+      ],
+      "subsections": [
+        {
+          "id": "cadence",
+          "title": "Cadence Rules",
+          "body": [
+            "**No two backgrounds in a row, and no two specializations in a row.** A power must separate them. Powers themselves can repeat — each repetition is a deeper mastery of the same power.",
+            "**A specialization can only be taken once a background that unlocks it has been taken.** A specialization's level can never exceed the combined level of all backgrounds that unlock it.",
+            "**No single statistic can be raised more than three times in the first six progressions.** Stats above 4 must be earned through XP-paid advancement after creation.",
+            "**A power must be on your race's list of seven.** Each race has its own list; consult the *Races* section."
+          ]
+        },
+        {
+          "id": "what_each_step_does",
+          "title": "What Each Step Does",
+          "body": [
+            "**Background** — adds 1 to one of two linked statistics, unlocks 2 item slots (+1 per additional level), and unlocks specific specializations.",
+            "**Power** — adds 1 to one of two linked statistics, gives the character a card they can play in scenarios, and reaches a new mastery level (deeper specials at higher mastery).",
+            "**Specialization** — adds 1 to its governing statistic and unlocks special actions tied to that statistic."
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "statistics",
+      "title": "The Eight Statistics",
+      "intro": "Every test in the game touches one or two of these. They are the spine of every character.",
+      "body": [
+        "Each statistic has an associated *action* — the broad way it expresses itself in play — and a description of what it covers in different kinds of scenes.",
+        "Stats start at 1 and can be raised through progression. A character at 4 in a stat is exceptional; a character at 6 is once-in-a-generation."
+      ],
+      "table_source": "DATA.statistics",
+      "image_dir": null
+    },
+
+    {
+      "id": "races",
+      "title": "The Seventeen Races",
+      "intro": "Moros's people are all demi-human — animal-folk and human alike share the same shape of life, with their own clans, traditions, and inherited powers.",
+      "body": [
+        "Each race has a list of seven powers. A character can only ever learn powers from their own race's list. The list is a statement about what the race *is* — Badgers dig and craft; Owls hunt and stand watch; Finches sing and fly; Humans are diplomats and adapters."
+      ],
+      "table_source": "DATA.races",
+      "image_dir": null,
+      "race_illustrations": {
+        "Mouse folk": {
+          "image": "html/icons/npcs/mouse_traveller.png",
+          "caption": "A Mouse-folk traveller on the trade road",
+          "note": "Anonymous, canonical generic-Mouse-folk art (the same image is preserved as html/icons/npcs/egbert_v01.png from when it was generated for Egbert before that NPC was retconned to wolf-folk). Pale mouse-folk wanderer in patched road-clothes with a yellow scarf and a walking staff."
+        }
+      }
+    },
+
+    {
+      "id": "powers",
+      "title": "Powers",
+      "intro": "Thirty-seven powers are available across the seventeen races. Each power has two linked statistics, a special card-effect, and a description.",
+      "body": [
+        "**Mastery** — each power can be learned multiple times. Mastery 1 is the basic form; mastery 2 and 3 add deeper effects called out in this section.",
+        "**Overwhelmed** — every power has a state where it slips from the player's control. A power Overwhelms when used two turns in a row without a stat-matching card, when one of its linked statistics is at 0, or when the environment makes it impossible. The full rule is in the *Card System* section."
+      ],
+      "table_source": "DATA.powers",
+      "image_dir": "html/icons/cards/powers",
+      "image_for": "power_name_lowercase"
+    },
+
+    {
+      "id": "backgrounds",
+      "title": "Backgrounds",
+      "intro": "A background is the life a character lived before the campaign began — the work they did, the people they knew, the masters who taught them. Each background adds two item slots, raises one of two linked statistics, and unlocks specific specializations.",
+      "body": [
+        "Backgrounds can be repeated to deepen them — a character with two levels of *Trader* has spent twice as long at the trader's bench, has wider contacts, and has unlocked deeper specialisations within the trade.",
+        "Each background's contacts vary by place of origin. A *Watch* who grew up in Cliffside Hold knows different people than one from Scarlet Vale. The DM keeps the contact list."
+      ],
+      "table_source": "DATA.backgrounds",
+      "image_dir": "html/icons/cards/backgrounds",
+      "image_for": "background_name_lowercase"
+    },
+
+    {
+      "id": "specializations",
+      "title": "Specializations",
+      "intro": "A specialization is a trained skill — taught by a master, sharpened through repetition, useful in specific tests. Each specialization is governed by one statistic, and adds its level to relevant actions.",
+      "body": [
+        "**You can only take a specialization if a background you have unlocks it.** The background represents the world you trained in; the specialization is what you trained at.",
+        "**A specialization's level cannot exceed the combined level of supporting backgrounds.** Two levels of *Crafter* support *Smithing 2*, but only *Smithing 1* if you have one level of *Crafter*."
+      ],
+      "table_source": "DATA.specializations",
+      "image_dir": null
+    },
+
+    {
+      "id": "items",
+      "title": "Items",
+      "intro": "Items are unlocked by backgrounds (each background lists what it can equip), with twelve basic supplies any character can take once. Some items grant a card; some carry the character's load.",
+      "body": [
+        "**Bulk** — every item has a bulk value. Carrying capacity is **Endurance × 3**. A character whose total bulk exceeds capacity is *encumbered* — slower on the road, no Speed-class actions in close quarters, and audible movement that breaks Stealth.",
+        "**Negative bulk** — mounts and the backpack carry weight *for* the character. A donkey at −9, a horse at −6, a cart at −20, a backpack at −3 — these add to the capacity budget.",
+        "**Basic supplies** are unrestricted: any character can take *knife, food, clothes, leather repair, tent, bedroll, rope, waterskin, lantern, writing kit, instrument, oil flask*. Each can be taken once."
+      ],
+      "table_source": "DATA.items",
+      "image_dir": "html/icons/cards/items",
+      "image_for": "item_name_lowercase"
+    },
+
+    {
+      "id": "example_character",
+      "title": "Example Character — Nadine",
+      "intro": "A complete sheet, assembled from the rules in the preceding sections — and a face you will actually meet in play. Nadine runs the trader's circuit through Elmsfield; the character on this page is the same character your DM will bring through the Inn one evening, calling Bridget by name and dropping a market rumour from Scarlet Vale. Read this as a worked example of how every part fits together; remember it the night her cart pulls up.",
+      "example_character": "Nadine",
+      "image": "html/icons/npcs/nadine.png",
+      "image_caption": "Nadine — Finch trader; the public face of a Raft city merchant group",
+      "biography": "Nadine left her family's counting house at the river port for the navigator-schools at fledgling age, spent four years on a curriculum of unchanging roads and never-twice-the-same weather, and returned to her merchant group as the navigator who could also talk. She runs the southern circuit now — Raft city to Linar, Linar to Salmonswell, the inland stops on the trade road — paying her room early, tipping fairly, and singing with the room when the room asks."
+    },
+
+    {
+      "id": "card_system",
+      "title": "The Card System",
+      "intro": "Moros is resolved with a shared deck of cards rather than dice. Every player draws from the same pile, every turn; the cards a character contributes shape what the table can do this scene.",
+      "body": [
+        "**Draw two, commit one.** Each round, every player draws two cards from the shuffled stack and commits one as their action. The committed card is spent. The other is held for next round.",
+        "**Statistics on the card.** Each card shows two statistics. If the action being attempted is one the character has trained for — a stat shown on the card matches a stat or specialization the character has — the character adds that stat's value to the total.",
+        "**Tension.** Every scenario starts with a tension value. Aid passed between players, complications in the scene, and reinforcements raise it. When tension breaks past five, the scene itself becomes hostile — every committed card may carry a complication.",
+        "**Aid each other.** A player can pass a card to another player during their own turn. The receiver must play that card on their next turn. Aiding raises tension by one but lets the table cover for a struggling member.",
+        "**Heroic action.** A player may, once per scenario, commit *both* cards drawn for a single action. The total is the sum of both cards' contributions — but the cards are spent, the round is theirs, and tension rises by two."
+      ],
+      "subsections": [
+        {
+          "id": "card_types",
+          "title": "Card Types",
+          "body": [
+            "**Base cards** — twelve permanent cards, one per element (Flame, Water, Wind, Plants, Iron, Earth, Light, Dark, and four more). Always in the deck.",
+            "**Character cards** — added by the powers, backgrounds, and items each character has learned. Contributed at the start of each scenario as the table's *stakes*.",
+            "**Scenario cards** — three per scenario, shuffled in at the start and removed at the end. Each scenario type has its own.",
+            "**Discovery cards** — earned when a character uncovers a significant secret. Permanent, personal to that character, joins their pool.",
+            "**Artifact cards** — earned when a character recovers a story-significant object. Travels with the holder while they carry it; can be transferred or lost."
+          ]
+        },
+        {
+          "id": "elements",
+          "title": "The Twelve Elements",
+          "intro": "These are the base cards always present in the deck. Each is a thread in the world's working — fire, water, iron, shadow.",
+          "table_source": "DATA.cards",
+          "image_dir": "html/icons/cards/elements",
+          "image_for": "element_name_lowercase"
+        }
+      ]
+    },
+
+    {
+      "id": "scenarios",
+      "title": "Scenario Types",
+      "intro": "A *scenario* is the type of situation the table faces. Tension behaves differently in each; the cards drawn read differently in each. The DM names the scenario type at the start of every scene.",
+      "body": [
+        "Scenarios are not exclusive — a travel scene can shift to combat; a market visit can become a negotiation. The rules of the dominant scenario apply.",
+        "The full rules for each scenario, including the challenges that arise and the powers most relevant to them, are kept by the DM. What follows is the player-facing summary."
+      ],
+      "list": [
+        { "name": "Combat", "summary": "The group is trying to gain the upper hand in a struggle. Cards passed for aid raise tension fast; coordination is the difference between a clean fight and a chaotic one." },
+        { "name": "Stealth", "summary": "Moving past a watching enemy, slipping through a guard line, escaping unseen. Speed and Dex stretch; loud actions break the scene." },
+        { "name": "Negotiation", "summary": "Talking through a problem the table cannot fight through. Charisma and Will lead; tension rises with every false note." },
+        { "name": "Exploration", "summary": "Working through unfamiliar terrain — caves, ruins, unmapped country. Perception and Hand do the heavy lifting." },
+        { "name": "Travel", "summary": "Crossing distance — road, river, hill, desert. Endurance and Speed pace the table; weather and encounters arrive without warning." },
+        { "name": "Camp", "summary": "Resting properly. Watch is set; the group can recover stat damage and clear Overwhelmed states. Camp is also where stories are told." },
+        { "name": "Market", "summary": "Trading at a town's market or a merchant's house. Charisma and Hand lead; word travels fast in a market." },
+        { "name": "Forage", "summary": "Living off the land — finding food, water, shelter. Perception and Endurance lead; what the land offers depends on weather and season." },
+        { "name": "Repair", "summary": "Fixing what has broken — gear, machines, structures. Hand and Will lead; specific tools change what is possible." },
+        { "name": "Cure", "summary": "Treating injury or illness. Hand and Will lead; the *Healer* specialization changes what can be done in time." }
+      ]
+    },
+
+    {
+      "id": "progression",
+      "title": "Progression — Earning XP and Advancing",
+      "intro": "The first six progression steps cost nothing — they are the character at the start of the game. Past that, every advancement costs XP, and XP comes from earning cards.",
+      "body": [
+        "**1 XP per card earned, shared by the table.** Each player character gains 1 XP when the party gains a card. The cards themselves are the visible record of what the campaign has accomplished.",
+        "Three card types count toward XP: **discovery cards**, **NPC reference cards**, **place reference cards**, and **artifact cards**. Base, character, and scenario cards do not — they are derived from progression or from the scenario itself.",
+        "**Cards reward engagement, not exposure.** Visiting a place or meeting an NPC does not by itself grant the card. The card's *earned by* condition has to be met.",
+        "**A card is awarded only once.** An object recovered as an artifact and an object understood as a discovery are different acts and each pays once; the same act does not pay twice."
+      ],
+      "subsections": [
+        {
+          "id": "xp_costs",
+          "title": "XP Costs",
+          "intro": "Past the first six progressions, each progression's XP cost is the square of the level reached. Mastery is generous early and steep at the peaks.",
+          "list": [
+            { "level": "1 (within first 6 progressions)", "xp": "0" },
+            { "level": "1 (past the first 6)", "xp": "1" },
+            { "level": "2", "xp": "4" },
+            { "level": "3", "xp": "9" },
+            { "level": "4", "xp": "16" },
+            { "level": "5", "xp": "25" }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "actions",
+      "title": "Stat and Specialization Actions",
+      "intro": "Every statistic and every specialization grants its character specific *actions* — named ways the stat or skill expresses in play. These are listed against the linked stat's *action* register.",
+      "body": [
+        "An action's prerequisite (where it has one) is in the form *Stat ≥ N*. Once the prerequisite is met, the action is available; using it costs that round's commit if it would not otherwise.",
+        "The DM resolves any ambiguity about whether an action applies."
+      ],
+      "table_source": "DATA.actions",
+      "image_dir": null
+    },
+
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "intro": "Quick reference for terms used in this manual.",
+      "list": [
+        { "term": "Background", "def": "A life history taken at character creation or through XP. Adds a stat, item slots, and unlocks specializations." },
+        { "term": "Bulk", "def": "An item's weight-on-the-back. Total bulk is compared against carrying capacity (Endurance × 3)." },
+        { "term": "Cadence", "def": "The rule that a background or specialization may not be taken twice in a row. A power must separate them." },
+        { "term": "Card", "def": "Either a play-deck card (drawn each round) or an earned card (NPC, place, discovery, artifact) that grants 1 XP and may join the player's pool." },
+        { "term": "Commit", "def": "To play a drawn card as your action this round. Spent." },
+        { "term": "Discovery card", "def": "A unique card a character earns by uncovering a significant secret. Permanent, personal." },
+        { "term": "Encumbered", "def": "Total bulk exceeds carrying capacity. Slower travel, no Speed-class close-quarters actions, audible movement." },
+        { "term": "Mastery", "def": "How many times a power has been learned. Mastery 2 unlocks deeper effects on that power." },
+        { "term": "Overwhelmed", "def": "A state where a power slips from the player's control. The DM directs the effect; the state clears after a full turn without using that power." },
+        { "term": "Power", "def": "A racial ability. Each race has seven; you can only ever learn from your own race's list." },
+        { "term": "Progression", "def": "A single step on the character sheet — a background, power, or specialization. The first six are free; later ones cost XP." },
+        { "term": "Specialization", "def": "A trained skill. Requires an unlocking background; level cannot exceed the combined level of supporting backgrounds." },
+        { "term": "Tension", "def": "A scenario's running pressure value. Rises with aid, complications, and reinforcements; past 5 the scene itself becomes hostile." },
+        { "term": "XP", "def": "Experience points, earned at 1 per card the party earns. Used to pay for advancement past the first six free progressions." }
+      ]
+    }
+  ],
+
+  "_image_inventory": {
+    "backgrounds": "html/icons/cards/backgrounds/<background_lowercase>.png — full set of 14",
+    "powers": "html/icons/cards/powers/<power_lowercase>.png — partial; not every power has art yet",
+    "elements": "html/icons/cards/elements/<element_lowercase>.png — full set of 12",
+    "items": "html/icons/cards/items/<item_lowercase>.png — partial",
+    "places": "html/icons/places/<place_with_underscores>.png — present for the 17 canonical places of origin (and many spoilery places we will NOT include in the manual)",
+    "races": "no general race art for most species; one canonical generic asset (html/icons/npcs/mouse_traveller.png) used as anonymous Mouse-folk illustration. The same image is preserved as egbert_v01.png — it was originally generated for Egbert before that NPC was retconned to wolf-folk; the proper Egbert wolf-folk art now lives at egbert.png, which we do NOT use in the manual because it would spoiler her concealed identity",
+    "named_npcs_player_safe": "html/icons/npcs/bridget.png — Bridget the Elmsfield innkeeper; she is a public figure players meet in their first session and her image is safe in the manual. No other NPC art is included; the rest are gated behind play."
+  }
+}

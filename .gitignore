@@ -10,4 +10,9 @@ coverage
 # Auto-archived prior versions of generated card art (kept locally
 # by tools/generate_card_art.py archive_existing()).
 html/icons/**/*_v[0-9][0-9].png
+images/*_v[0-9][0-9].png
+
+# Python bytecode caches from tooling.
+tools/__pycache__/
+__pycache__/
 
