@@ -153,54 +153,77 @@ sends a reader to the wrong subsystem, which is the expensive kind of wrong.
 
 ### What we saw
 
-At Moros commit `5e677b7`, `moros_render` exports GLB files whose position accessors carry
+At Moros commit `5e677b7`, the exporter writes
 
 ```json
 "min": [null, null, null]
 ```
 
-That is **malformed glTF** — `min`/`max` are required to be numbers. At the same commit:
+into **3 of 32** accessors — malformed glTF, since `min`/`max` must be numbers. At that same
+commit the package reports **161 tests passing and 0 warnings**, including zero null-flow
+warnings after a pass that discharged all 67 of them. `bdbce1b` exports 0/32 nulls, so the
+two commits bracket it. Reproducible with `native-auto/`, `.loft/` and `~/.loft/build-cache`
+all deleted, on the 15:05 build.
 
-- `loft test` in that package: **161 passed, 0 failed**;
-- warning count in that package: **0** — including zero null-flow warnings, after a
-  deliberate pass that discharged all 67 of them.
+### The null is created by the fold, not carried by the data
 
-So a null flowed all the way into an exported artifact while every diagnostic the toolchain
-offers said the code was clean. The accessor `max` is computed correctly in the same file, so
-whatever nulls the fold does it selectively.
+Measured, not assumed:
 
-### Reproducer
+- **No vertex is null.** A scan of every vertex in all 8 meshes reports `0 with a null
+  component`. The compiler agrees: `v.pos.x` is typed *not null*, and coalescing it warns
+  "Redundant null coalescing".
+- **A hand-written fold on the same data is correct.** Reproducing `glb_pos_min`'s exact
+  shape in Moros — seed from `verts[0]`, then `if v.pos.x < mx { mx = v.pos.x; }`, then
+  `vec3(mx, …)` — yields the right answer, in **both** the chained (`verts[0].pos.x`) and
+  bound (`e = verts[0]; e.pos.x`) forms.
+- So the value is real everywhere Moros can observe it, and becomes null inside
+  `glb::glb_pos_min` (glb-0.1.2, `src/glb.loft:51`) — whose seed
+  `mx = verts[0].pos.x` is nullable-typed via the fallible index, and which returns
+  `vec3(mx, my, mz)` into non-null parameters.
 
-```sh
-git clone https://github.com/jjstwerff/moros && cd moros && git checkout 5e677b7
-loft --interpret --path <loft-checkout>/ --lib lib/ \
-     lib/moros_render/examples/demo_village.loft out.glb
-python3 -c "…"   # read the JSON chunk; accessors[0].min is [null,null,null]
-```
+### Which accessors, and the pattern
 
-Moros `bdbce1b` (the next commit) exports valid minima — 32 accessors, zero nulls — so the
-two commits bracket it.
+| mesh | count | component-wise min | null? |
+|---|---|---|---|
+| `'1'` | 84 | `(-0.8660254, 0, -1)` | **yes** |
+| `'0'` | 6993 | `(-0.8660254, 0, -1)` | **yes** |
+| `'2'` | 63 | `(0.8660254, 1, 0.5)` | **yes** |
+| `'3'` | 128 | `(0, 0, -0.2598…)` | no |
+| `walls` | 240 | `(1.5820508…, 1, 1.87…)` | no |
+| `items`, both marker meshes | — | literals | no |
 
-### What we ruled out, each verified applied
+Every nulled mesh is one whose minimum x is exactly **±0.8660254**, the value Moros's local
+corner table produced as `HEX_WIDTH / 2.0`. Meshes whose minimum comes from a literal or a
+sum are unaffected. **`glb_pos_max` on the same meshes is always correct** — only the
+minimum nulls.
 
-Narrowing which part of `bdbce1b` fixed it. All three were tested individually against
-`5e677b7`, and **all three still exported nulls**:
+### What fixes it, and what does not — each verified applied
 
-1. the division `half_w = HEX_WIDTH / 2.0` replaced by a literal;
-2. `HEX_WIDTH` switched from a local literal to `hex_grid::HEX_LEN`;
-3. the corner function's early-`return` chain rewritten as a single tail expression.
+Only one change clears it:
 
-Only delegating the corner table to `hex_grid::hex_corner_offset` produces valid minima, and
-**we cannot explain why** — the three obvious mechanisms are eliminated. That is why this is
-filed rather than fixed locally: the remaining explanation is inside the toolchain.
+- **delegating the corner table to `hex_grid::hex_corner_offset`** → **0/32 nulls**, with
+  Moros's constant deliberately left as the local literal, so nothing about the *numbers*
+  changed.
 
-### A note on measurement
+These do **not** clear it, each confirmed to have actually applied before running:
 
-Comparing the two GLBs float-by-float suggested 19% of values differing by up to 31 hex
-steps. That is an artefact: the null-vs-number JSON changes the chunk length, which shifts
-accessor byte offsets, so the naive elementwise diff compares misaligned arrays. The
-trustworthy comparison is the scene summary, and it is **identical** across the two commits —
-8 meshes, 7796 vertices, 6448 triangles. No geometry moved.
+1. replacing the division `half_w = HEX_WIDTH / 2.0` with a literal of the same value;
+2. switching `HEX_WIDTH` from the local literal to `hex_grid::HEX_LEN`;
+3. rewriting the corner function's early-`return` chain as a single tail expression.
+
+So the same numbers, computed locally, null the minimum; **sourced from another package,
+they do not.** Whether the null appears depends on which module produced the value, not on
+the value, its type as the compiler reports it, or the shape of the function that returned
+it. That is why this goes upstream rather than being patched here — the remaining
+explanation is inside the toolchain.
+
+### Suggested starting point
+
+`glb-0.1.2/src/glb.loft:51` `glb_pos_min` seeds from a fallible index (`verts[0].pos.x`,
+typed `float?` even though the length is guarded one line above) and returns it through
+`vec3`'s non-null parameters. Discharging that seed explicitly would likely mask the symptom;
+the asymmetry with `glb_pos_max`, which has the identical shape and never fails, is the part
+worth understanding first.
 
 ---
 
