@@ -75,6 +75,7 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 
 ## Scene tools
 
+- [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands, decisions taken, what is open
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract
 - [Scene map](doc/claude/SCENE_MAP.md) — scene model
 - [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — renderer rules
