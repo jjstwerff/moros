@@ -27,21 +27,28 @@ References:
 
 ## Loft feature dependencies
 
-Features the scene editor needs from loft. Items marked BLOCKED cannot be worked
-around; items marked WORKAROUND have a pure-JS fallback path.
+**The three blockers this table used to list are gone.** `graphics` 0.5.0 ships the GL
+bindings, PNG and fonts; the interpreter loads hand-written native libraries; and
+`loft --html` runs the same source in the browser with every `gl_*` call bridged to
+WebGL2. There is no wall between platforms — see
+[EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § One program, four targets.
 
-| Feature | Status | Used by | Impact |
+| Feature | Status | Used by | Notes |
 |---|---|---|---|
-| Structs, enums, vectors, JSON | Working | moros_map | -- |
-| Pure-loft package deps | Working | moros_editor | -- |
-| WASM compilation (`--native-wasm`) | Working | all three | -- |
-| 2D Canvas rasterizer | Working | material swatches | -- |
-| GLB binary writer | Working | GLB export | -- |
-| Mat4/Vec3 math | Working | moros_render | -- |
-| Mesh/Scene/Material types | Working | moros_render | -- |
-| `#native` interpreter dispatch | Not yet | moros_render | BLOCKED for desktop test |
-| WebGL API bindings | Not yet | moros_render | BLOCKED for 3-D preview |
-| PNG/font native functions | Not yet | moros_render | WORKAROUND: procedural art |
+| Structs, enums, vectors, JSON | Working | data model | -- |
+| Pure-loft package deps | Working | editor ops | -- |
+| 2D Canvas rasterizer | Working | material swatches | `graphics` entry module |
+| GLB binary writer | Working | export | `save_glb` / `save_scene_glb` |
+| Mat4/Vec3 math, Mesh/Scene/Material | Working | render | `graphics` math + mesh + scene |
+| Native dispatch from the interpreter | **Working** | render | hand-written native libs are rustc-independent |
+| GL bindings | **Working** | render | windows, shaders, VAOs, textures, FBOs, `gl_draw` |
+| PNG + fonts | **Working** | art, labels | `png` / `fontdue` via the native cdylib |
+| Browser target (`--html`) | **Working** | the browser editor | one self-contained file; `gl_*` → WebGL2 imports |
+| Browser filesystem | **Absent by design** | save / load | goes through `host_output` / `loftPush` to a JS shell |
+
+`--native-wasm` is the *headless / server* target and is roughly 4× heavier; the browser
+build is `--html`. This plan (and [LOFT_LIBRARIES.md](LOFT_LIBRARIES.md)) targeted
+`--native-wasm` for the browser throughout, which would have shipped the wrong artifact.
 
 ---
 
@@ -61,9 +68,14 @@ Phase 1 ──────────────────┬──> Phase 4
 Phase 2 ──> Phase 3 ─────┼──> Phase 5
   2D canvas   JS editor   |     advanced tools
   (pure JS)   logic       |
-                          └──> Phase 6  (BLOCKED on loft WebGL)
+                          └──> Phase 6
                                 3-D preview
 ```
+
+The "pure JS" split above is itself under review — see
+[moros#6](https://github.com/jjstwerff/moros/issues/6). One loft source already reaches the
+interpreter, a native window, the browser and a phone, so a JavaScript editor model would
+serve exactly one of those hosts.
 
 ---
 
@@ -227,9 +239,10 @@ Produces: all 9 tool modes from [SCENE_EDITOR.md](SCENE_EDITOR.md).
 
 ## Phase 6 — 3-D preview (`moros_render`)
 
-BLOCKED on loft WebGL bindings and `#native` interpreter dispatch. Neither feature
-exists yet in `../loft/lib/graphics/`. See [LOFT_LIBRARIES.md](LOFT_LIBRARIES.md)
-section "Package: moros_render" for the full API.
+**No longer blocked.** `graphics` 0.5.0 ships the GL bindings and the interpreter loads
+them; `loft --html` bridges every `gl_*` call to WebGL2 from the same source. See
+[LOFT_LIBRARIES.md](LOFT_LIBRARIES.md) section "Package: moros_render" for the full API,
+and [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § One program, four targets.
 
 Geometry pseudocode: [SCENE_MAP_RENDER.md](SCENE_MAP_RENDER.md).
 Camera type: [LOFT_LIBRARIES.md](LOFT_LIBRARIES.md) section "Camera type".
@@ -260,9 +273,10 @@ Can start as soon as loft `graphics` package mesh/scene types work (they do).
 | 6a.17 | `materials.loft` — `material_swatch()` procedural swatch via graphics Canvas | M | swatch pixel data non-empty, correct dimensions |
 | 6a.18 | Native CLI tool `moros_glb_tool.loft` — reads map JSON, writes .glb file | L | `bin/moros_glb test.json out.glb` produces valid file |
 
-### 6b — Live WebGL preview (BLOCKED)
+### 6b — Live preview (desktop GL and WebGL from one source)
 
-Requires: loft WebGL bindings, `#native` dispatch.
+Requires nothing that does not exist. The realtime view belongs in the shared render
+package, not here — an in-world editor and the game draw the same field.
 
 | # | Step | Effort | Test |
 |---|---|---|---|
@@ -275,17 +289,12 @@ Requires: loft WebGL bindings, `#native` dispatch.
 | 6b.7 | Wire into editor — "3D" toolbar button, animation loop, sync on edit | M | edit in 2-D, 3-D updates |
 | 6b.8 | Makefile targets `wasm-render`, `glb-tool`, `glb` | L | all build without errors |
 
-### 6c — JS 3-D stopgap (optional, no loft blocker)
+### 6c — JS 3-D stopgap — **dropped**
 
-Lightweight JS WebGL that reads the same map JSON. Can be built any time after
-Phase 3 to give 3-D feedback before loft WebGL lands. Replaced by 6b when ready.
-
-| # | Step | Effort | Test |
-|---|---|---|---|
-| 6c.1 | Minimal WebGL hex surface renderer reading map JSON | M | flat-shaded hex grid visible |
-| 6c.2 | Thin wall slabs | M | walls visible between hexes |
-| 6c.3 | Orbit camera | L | drag to orbit |
-| 6c.4 | Wire into editor as "3D" button target | L | toggle between 2-D and 3-D |
+This was a lightweight JS WebGL renderer to give 3-D feedback "before loft WebGL lands".
+loft WebGL has landed, so the stopgap would be a **second renderer for the same data** —
+exactly the duplicate the no-two-copies rule forbids, built to route around a blocker that
+no longer exists. Do not build it.
 
 ---
 

@@ -109,6 +109,46 @@ scene editor top-down, waits for one to emerge from a real consumer, and states 
 `lib_plans/65-scriptable-scenes` is its eventual home. **We are that emergence.** What we
 build is what it adopts, so its constraints are ours to satisfy now, not later.
 
+### One program, four targets — there is no platform wall
+
+The configurations above look like they need different builds. They do not, because loft
+does not put a wall between platforms. **The same `.loft` source runs on desktop OpenGL
+through `graphics`'s native cdylib and on WebGL2 through the browser bridge** —
+`HTML_EXPORT.md` states it plainly, and the shader-version difference (desktop `#version
+330 core` → GLSL ES 3.00) is rewritten transparently in `gl_create_shader`, because the
+GLSL subset our shaders use is shared between the profiles.
+
+| Target | What it is | Where it serves us |
+|---|---|---|
+| interpreter | `loft --interpret`, loading hand-written native libs | tests and quick checks |
+| `--native` | a real binary in its own OpenGL window | the desktop editor, and the Workbench's game plane |
+| `--html` | `wasm32-unknown-unknown` cdylib + inline JS bridge, one self-contained file, compiled WASM at native speed | the browser editor |
+| `--html` on a phone | the same file, a mobile browser | a phone client — **reachable today, expect debugging** |
+| `--native-wasm` | `wasm32-wasip2`, full WASI | headless and server use — **not** for the browser; ~4× heavier |
+
+So the browser editor is not a port. It is `loft --html` over the same source, with every
+`gl_*` call becoming a WebGL2 import.
+
+**A phone client is already reachable** — it is the same `--html` artifact in a mobile
+browser, not a fifth codebase. Expect to spend the debugging there rather than the
+building: touch instead of mouse, a viewport that is not a desktop canvas, and mobile
+WebGL2's narrower tolerances. Worth naming because one of the consumers *requires* it —
+bumper airplanes puts each audience member's controls on their own phone while the
+projector shows the shared world. An editor whose input model assumes a mouse would not
+survive that, which is the second reason (after the Workbench) that tools take input events
+rather than reading a device.
+
+**The one honest difference:** `--html` has no filesystem, no args and no env. Loading and
+saving in the browser therefore go through the `host_output` / `loftPush` message channel to
+a JS shell — loft stays pure compute and JS owns the I/O. That is a named seam of two
+functions, not a platform wall, and it is the same seam the Workbench's protocol already
+uses.
+
+**A gate comes with it.** loft ships a browser render check (headless Chrome with WebGL2,
+zero console errors, then a canvas screenshot that must contain enough distinct colours to
+prove something was actually drawn) and states it is reusable for any browser-deployed
+page. It catches the failure that matters here — compiles clean, blank canvas.
+
 ### What those configurations demand of the design
 
 Three requirements follow directly, and each one rules out a shortcut that would otherwise
@@ -118,6 +158,9 @@ look reasonable:
    canvas or `localStorage`. Its tools take input events and produce edits; who collected
    the event and where the result is persisted is the host's business. Moros drives it from
    a page, the Workbench drives it over a protocol, a native window drives it directly.
+   Given the target table above, this is cheap rather than aspirational: the same program
+   already reaches all three, provided it does its I/O through the message channel instead
+   of reaching for a filesystem that the browser build does not have.
 2. **The palette is configuration, not constant.** Bumper airplanes maps a palette type to
    an extrusion rule; Moros maps a material to walkable / loud / tint. Same integers,
    different meanings, neither in the package — the opaque-ID seam, third instance.
