@@ -92,6 +92,22 @@ fn test_emit_wall_quad() {
 // hex_grid::hex_corner_offset with an index map (ours is its (6 - i) % 6), so
 // this test is what proves the map is the right one: get it wrong and the
 // corners come back in a different order, silently moving every wall.
+// Row parity must hold for NEGATIVE rows too.  `r % 2` is -1 for a negative odd
+// r in loft while `r & 1` is 1, so a hand-rolled odd-row shift displaces those
+// rows by a full hex step instead of half a step the other way.  hex_grid gets
+// this right; this pins us to it.
+fn test_hex_to_world_matches_hex_grid_on_negative_rows() {
+  for hng_i in 0..8 {
+    hng_r = hng_i - 4;
+    hng_w = hex_to_world(3, hng_r, 0);
+    (hng_gx, hng_gy) = hex_to_px(3, hng_r);
+    assert(abs(hng_w.x - hng_gx) < 0.000001,
+           "row {hng_r}: x is {hng_w.x}, hex_grid says {hng_gx}");
+    assert(abs(hng_w.z - hng_gy) < 0.000001,
+           "row {hng_r}: z is {hng_w.z}, hex_grid says {hng_gy}");
+  }
+}
+
 fn test_corner_ring_positions() {
   crp_hw = HEX_WIDTH / 2.0;
   crp_ex = [0.0, crp_hw, crp_hw, 0.0, 0.0 - crp_hw, 0.0 - crp_hw];

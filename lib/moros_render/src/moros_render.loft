@@ -21,7 +21,11 @@ use hex_grid;
 // The library value carries nine more digits, so geometry shifts by ~4e-9.
 pub HEX_WIDTH = HEX_LEN;
 
-// Vertical spacing between hex rows.
+// Vertical spacing between hex rows.  hex_grid uses this factor inline in
+// hex_to_px and exports no name for it, so this is a NAME for a lattice number
+// rather than a second implementation of one — nothing computes positions from
+// it any more.  It moves to hex_grid if that package ever exports a row
+// constant.  Tests still read it.
 pub HEX_ROW_HEIGHT = 1.5;
 
 // Height units to world-space Y scale.
@@ -29,16 +33,16 @@ pub HEIGHT_SCALE = 0.25;
 
 // ── Hex coordinate → world position ──────────────────────────────
 
-// Convert hex axial (q, r) + height to a 3D world position (centre).
-// Flat-top hex layout:
-//   x = q * hex_width + (r % 2) * (hex_width / 2)
-//   y = height * HEIGHT_SCALE
-//   z = r * HEX_ROW_HEIGHT
+// Hex (q, r) + height to a world-space centre.  The lattice comes from
+// hex_grid; only the height axis is ours.  hex_grid's plane y IS our world z.
+//
+// This used to compute the odd-row shift with `(r % 2)`, which is -1 for a
+// negative odd r in loft where `(r & 1)` is 1 — so every negative odd row sat a
+// full hex step (√3) west of where it belonged.  hex_grid's parity is correct
+// for both signs; see test_hex_to_world_matches_hex_grid_on_negative_rows.
 pub fn hex_to_world(q: integer, r: integer, height: integer) -> Vec3 {
-  x = q as float * HEX_WIDTH + (r % 2) as float * (HEX_WIDTH / 2.0);
-  y = height as float * HEIGHT_SCALE;
-  z = r as float * HEX_ROW_HEIGHT;
-  vec3(x, y, z)
+  (htw_x, htw_z) = hex_to_px(q, r);
+  vec3(htw_x, height as float * HEIGHT_SCALE, htw_z)
 }
 
 // The 6 corner offsets of a POINTY-TOP unit hex, in this file's index order —
@@ -797,16 +801,15 @@ pub fn ray_plane_y_intersect(origin: Vec3, dir: Vec3, plane_y: float) -> Vec3 {
   vec3(origin.x + ray_t * dir.x, plane_y, origin.z + ray_t * dir.z)
 }
 
-// Inverse of `hex_to_world`: snap a world-space (x, z) to the
-// nearest hex's axial (q, r).  Flat-top layout, odd-row offset.
+// Inverse of `hex_to_world` — snap a world (x, z) to the hex containing it.
+// Delegates to hex_grid, which rounds through cube coordinates rather than
+// rounding each axis separately, and carried the same negative-row parity fault
+// as hex_to_world above.  ha_cy = 0: single-layer pick, callers overwrite.
 pub fn world_to_hex(wx: float, wz: float) -> HexAddress {
-  r_approx = round(wz / HEX_ROW_HEIGHT);
-  r_int = r_approx as integer;
-  wh_offset = if r_int % 2 == 0 { 0.0 } else { HEX_WIDTH / 2.0 };
-  q_float = round((wx - wh_offset) / HEX_WIDTH);
+  (wth_q, wth_r) = px_to_hex(wx, wz);
   HexAddress {
-    ha_q:  q_float as integer,
-    ha_r:  r_int,
+    ha_q:  wth_q,
+    ha_r:  wth_r,
     ha_cy: 0,
   }
 }
