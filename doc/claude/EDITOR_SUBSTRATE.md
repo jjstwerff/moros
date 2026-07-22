@@ -312,6 +312,13 @@ save written by Moros and loaded by crawler yields nonsense, and that is intenti
 **4. Multi-layer is first-class, not opt-in.** `cy` is in every cell coordinate from the
 field model upward. Retrofitting a vertical axis costs more than passing `cy = 0`.
 
+**Open with crawler:** `hex_field` re-implements `hex_grid`'s lattice rather than depending
+on it (`lattice_k` / `lattice_m`, `nb_q` / `nb_r`, each with a comment saying it was verified
+against the library once). The two still agree — 0 disagreements over 100 cells, both
+parities, both signs — but this is the same shape that cost us a year of silently displaced
+negative odd rows, and the only thing between the implementations is a comment. Raised in
+that package's README with the evidence and a proposal; it is their API and crawler's call.
+
 **5. No two copies, ever.** If the editor needs something crawler has, it **moves** to the
 package — it is never duplicated. Changes flow through the library repo's own gate and PR
 loop, and an API change is done when **both** consumers are green.
