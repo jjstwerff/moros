@@ -123,20 +123,54 @@ GLSL subset our shaders use is shared between the profiles.
 | interpreter | `loft --interpret`, loading hand-written native libs | tests and quick checks |
 | `--native` | a real binary in its own OpenGL window | the desktop editor, and the Workbench's game plane |
 | `--html` | `wasm32-unknown-unknown` cdylib + inline JS bridge, one self-contained file, compiled WASM at native speed | the browser editor |
-| `--html` on a phone | the same file, a mobile browser | a phone client — **reachable today, expect debugging** |
+| `--native-android` | cross-compiled to a **signed APK**, EGL/GLES-3.0 on the native window | a native Android client |
 | `--native-wasm` | `wasm32-wasip2`, full WASI | headless and server use — **not** for the browser; ~4× heavier |
 
 So the browser editor is not a port. It is `loft --html` over the same source, with every
 `gl_*` call becoming a WebGL2 import.
 
-**A phone client is already reachable** — it is the same `--html` artifact in a mobile
-browser, not a fifth codebase. Expect to spend the debugging there rather than the
-building: touch instead of mouse, a viewport that is not a desktop canvas, and mobile
-WebGL2's narrower tolerances. Worth naming because one of the consumers *requires* it —
-bumper airplanes puts each audience member's controls on their own phone while the
-projector shows the shared world. An editor whose input model assumes a mouse would not
-survive that, which is the second reason (after the Workbench) that tools take input events
-rather than reading a device.
+### Android is native, and it is already shipped
+
+`loft --native-android prog.loft` produces a signed APK. It is not a repackaged web page: a
+build target is a **descriptor over one target-agnostic core**, so an **unchanged** loft
+program runs. Graphics, input and audio go through a cfg-gated Android backend — raw
+EGL/GLES-3.0 on the native window, `gl_mouse_*` fed from touch events, `gl_show_keyboard()`
+and `gl_key_pressed` from key events, audio via oboe/AAudio. All of it proven on an
+emulator with golden images.
+
+The line that matters most for us: **GLES 3.0 is WebGL2, so GL programs written for the
+browser run unchanged.** The editor's renderer therefore reaches desktop, browser and
+Android from one source.
+
+Expect the debugging to be in **text input**, not in rendering. The Android IME path covers
+key events only; NativeActivity has no text event, so *composing* text would need a
+`gl_text_input()` stream API that does not exist yet. An editor asks for typed text —
+naming a stencil, entering a height — so this is the seam we will meet first. It is a known
+follow-up upstream, not a wall.
+
+Prerequisites are toolchain, not code: `ANDROID_NDK_HOME`, `ANDROID_HOME`, `JAVA_HOME`, and
+the program needs a `fn main`.
+
+### macOS native is the one that costs
+
+Apple deprecated OpenGL, so the Mac desktop path is not GL — it runs through a portable
+renderer backend (wgpu → Vulkan/Metal/D3D/WebGPU). loft has that scoped as GFX.PORTABLE,
+effort **H**, and its stated precondition is exactly one sentence long:
+
+> no script reaches raw `gl_*`
+
+**That is a rule for us today, and it is free today.** If `hex_scene` draws through the
+`Renderer`/`Scene` layer rather than calling `gl_*` directly, macOS and iOS arrive as a
+backend swap we do not have to work for. If it reaches for raw GL because that is the
+shortest path to a triangle, we opt every consumer out of the Mac. The cost of obeying it
+now is nothing; the cost of retrofitting it is the whole renderer.
+
+**Why any of this belongs in an editor's design document:** bumper airplanes puts each
+audience member's controls on their own phone while the projector shows the shared world.
+An editor whose input model assumes a mouse cannot serve that — which is the second reason,
+independent of the Workbench, that tools take input events rather than reading a device.
+Android already routes touch into `gl_mouse_*`, so pointer input is unified for free; it is
+only text that needs care.
 
 **The one honest difference:** `--html` has no filesystem, no args and no env. Loading and
 saving in the browser therefore go through the `host_output` / `loftPush` message channel to
