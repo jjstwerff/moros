@@ -151,167 +151,131 @@ sends a reader to the wrong subsystem, which is the expensive kind of wrong.
 
 ---
 
-## H4 — a null reached an exported file with a clean analysis and a green suite
+## H4 — a null reaches exported glTF while the analysis reports clean
 
-**Status:** not filed · **Repo:** `loft-lang/loft` (or `loft-libs-graphics`)
-**Severity:** high — this is the silent class: no error, no warning, no failing test
-**Suggested title:** `null-flow: a null reaches exported glTF output while the analysis reports clean`
+**Status:** not filed · **Repo:** `loft-lang/loft`
+**Severity:** high — the silent class: no error, no warning, no failing test, corrupt output
+**Suggested title:** `runtime: a value arrives null at a non-null store in one consumer only, with no diagnostic`
 
-### What we saw
+### Summary
 
-At Moros commit `5e677b7`, the exporter writes
+A loft program writes `"min": [null, null, null]` into 3 of 32 glTF accessors. `min`/`max`
+must be numbers, so the file is malformed — and nothing anywhere reports a problem: the
+producing package passes its suite (161 tests) with **zero** warnings, and `loft --check`
+over the *consuming* library is clean too. The same fold computing `max` over the same
+vertices in the same run is always correct.
 
-```json
-"min": [null, null, null]
+### Reproducer
+
+```sh
+git clone https://github.com/jjstwerff/moros && cd moros && git checkout 5e677b7
+loft --interpret --path <loft-checkout>/ --lib lib/ \
+     lib/moros_render/examples/demo_village.loft out.glb
+# then read the GLB's JSON chunk: accessors[0].min == [null, null, null]
 ```
 
-into **3 of 32** accessors — malformed glTF, since `min`/`max` must be numbers. At that same
-commit the package reports **161 tests passing and 0 warnings**, including zero null-flow
-warnings after a pass that discharged all 67 of them. `bdbce1b` exports 0/32 nulls, so the
-two commits bracket it. Reproducible with `native-auto/`, `.loft/` and `~/.loft/build-cache`
-all deleted, on the 15:05 build.
+Confirmed on the 15:05, 15:13 and **16:34** builds of `loft 2026.7.2`, with `native-auto/`,
+`.loft/` and `~/.loft/build-cache` deleted. Neither `@PLN105` (scratch freeing) nor
+`@PLN116` (`x?` postfix default) changes it. Moros `bdbce1b` exports 0/32, so the two commits
+bracket it.
+
+### Verdict — this is loft's, not `glb`'s
+
+`glb` carries a latent defect: `glb_pos_min` (`glb-0.1.2`, `src/glb.loft:51`) seeds
+`mx = verts[0].pos.x` — a fallible index, hence `float?` — and returns `vec3(mx, my, mz)`
+through non-null parameters. The emptiness guard one line above shows the risk was expressed
+structurally rather than in the type. Worth discharging, but **that would mask this, not
+answer it**, for three reasons:
+
+1. **`glb` is identical in the failing and passing runs** — same registry package, same
+   binary. The only difference is which corner table the consumer calls. A component that
+   does not change cannot cause a difference; it can only be where the damage shows.
+2. **The same source shape behaves both ways.** `glb_pos_max` is `glb_pos_min` with `>` for
+   `<`, over the same vertices in the same run, and never fails. Six independent
+   reproductions of that shape (below) are clean. Deterministic semantics cannot yield
+   "identical code, one nulls and one does not".
+3. **The analysis is silent.** `loft --interpret --check` over `glb-0.1.2/src/glb.loft`
+   emits **zero** null-related diagnostics — nothing on the seed, nothing on the `vec3`
+   store. The consumer received **67** warnings of exactly that class for exactly that kind
+   of code. A textbook nullable-into-non-null in a registry package drawing nothing is a
+   finding on its own.
+
+If the runtime is exonerated, the fallback is that null-flow analysis missed `glb_pos_min` —
+still loft's — and `glb` should discharge the seed as defence in depth.
 
 ### The null is created by the fold, not carried by the data
 
-Measured, not assumed:
+- **No vertex is null.** A scan of all 7796 vertices across the 8 meshes reports zero null
+  components. The compiler agrees: `v.pos.x` is typed *not null*, and coalescing it warns
+  "Redundant null coalescing — 'x' is 'not null'".
+- **The same fold, written in the consumer, is correct** on the same meshes — in both the
+  chained (`verts[0].pos.x`) and bound (`e = verts[0]; e.pos.x`) forms.
 
-- **No vertex is null.** A scan of every vertex in all 8 meshes reports `0 with a null
-  component`. The compiler agrees: `v.pos.x` is typed *not null*, and coalescing it warns
-  "Redundant null coalescing".
-- **A hand-written fold on the same data is correct.** Reproducing `glb_pos_min`'s exact
-  shape in Moros — seed from `verts[0]`, then `if v.pos.x < mx { mx = v.pos.x; }`, then
-  `vec3(mx, …)` — yields the right answer, in **both** the chained (`verts[0].pos.x`) and
-  bound (`e = verts[0]; e.pos.x`) forms.
-- So the value is real everywhere Moros can observe it, and becomes null inside
-  `glb::glb_pos_min` (glb-0.1.2, `src/glb.loft:51`) — whose seed
-  `mx = verts[0].pos.x` is nullable-typed via the fallible index, and which returns
-  `vec3(mx, my, mz)` into non-null parameters.
+So the value is real everywhere it can be observed, and becomes null inside `glb_pos_min`.
 
-### Which accessors, and the pattern
+### Which meshes, and the correlation — with its limit
 
-| mesh | count | component-wise min | null? |
+| mesh | verts | component-wise min | nulled |
 |---|---|---|---|
 | `'1'` | 84 | `(-0.8660254, 0, -1)` | **yes** |
 | `'0'` | 6993 | `(-0.8660254, 0, -1)` | **yes** |
 | `'2'` | 63 | `(0.8660254, 1, 0.5)` | **yes** |
 | `'3'` | 128 | `(0, 0, -0.2598…)` | no |
 | `walls` | 240 | `(1.5820508…, 1, 1.87…)` | no |
-| `items`, both marker meshes | — | literals | no |
+| `items`, both marker meshes | 24–216 | literals | no |
 
-Every nulled mesh is one whose minimum x is exactly **±0.8660254**, the value Moros's local
-corner table produced as `HEX_WIDTH / 2.0`. Meshes whose minimum comes from a literal or a
-sum are unaffected. **`glb_pos_max` on the same meshes is always correct** — only the
-minimum nulls.
+Not by size — `'2'` nulls at 63 while `'3'` is clean at 128. Every nulled mesh's minimum x is
+±0.8660254, a value the consumer computed as `HEX_WIDTH / 2.0`; every clean one's minimum is
+a literal or a sum. **That correlation is real here but is not sufficient** — reduction rows
+3 and 5 below reproduce the value, the provenance and the counts, and stay clean.
 
-### What fixes it, and what does not — each verified applied
+### Ruled out — every one verified to have actually applied
 
-Only one change clears it:
+Changes to the consumer that do **not** clear it (only the last row does):
 
-- **delegating the corner table to `hex_grid::hex_corner_offset`** → **0/32 nulls**, with
-  Moros's constant deliberately left as the local literal, so nothing about the *numbers*
-  changed.
+| change | result |
+|---|---|
+| division `HEX_WIDTH / 2.0` replaced by a literal of the same value | still nulls |
+| `HEX_WIDTH` switched from a local literal to `hex_grid::HEX_LEN` | still nulls |
+| the corner function's early-`return` chain rewritten as one tail expression | still nulls |
+| **delegating the corner table to `hex_grid::hex_corner_offset`**, constant left as the local literal so no number changes | **0/32 — clears it** |
 
-These do **not** clear it, each confirmed to have actually applied before running:
+Standalone reductions, all against registry `graphics` 0.5.0 / `glb` 0.1.2, all with minimum
+x = `-1.7320508 / 2.0`, **all clean**:
 
-1. replacing the division `half_w = HEX_WIDTH / 2.0` with a literal of the same value;
-2. switching `HEX_WIDTH` from the local literal to `hex_grid::HEX_LEN`;
-3. rewriting the corner function's early-`return` chain as a single tail expression.
-
-An earlier version of this entry concluded from that "the same numbers computed locally null
-the minimum; sourced from another package they do not." **That is withdrawn** — the reduction
-attempts below falsify it.
-
-### Reduction attempts — all CLEAN, none reproduce it
-
-Every row was run on the 16:34 build against the registry `graphics` 0.5.0 / `glb` 0.1.2, and
-every row exports **correct minima**. The minimum x is `-1.7320508 / 2.0 = -0.866025` in each
-— the same value and the same provenance as the meshes that null in the real case.
-
-| # | What was tried | Result |
+| # | shape | result |
 |---|---|---|
 | 1 | 3-vertex mesh, minimum from a local division, single program | clean |
-| 2 | same, split across **two packages** (library builds, program exports) | clean |
-| 3 | vertex counts **3, 63, 84, 300, 1000, 6993** — 6993 is exactly the real nulled mesh's count | clean at every size |
-| 4 | minimum routed through a **struct field** (`Vec2` returned by a helper, read as `.x`) rather than a plain local, at all six sizes | clean at every size |
-| 5 | **eight meshes in one scene**, with the real case's names, counts (84 / 6993 / 63 / 128 / 240 / 216 / 24 / 48) and its mix of division-derived and literal minima | 0 / 32 null |
-| 6 | meshes built by **mutating a by-value `Mesh` parameter** in an `emit_*` helper (`fn emit_into(m: Mesh, …)`, no `&`) and accumulated into a `vector<Mesh>` — the shape `moros_render` uses since its `&` sweep | 0 / 12 null |
+| 2 | same, split across two packages (library builds, program exports) | clean |
+| 3 | vertex counts 3, 63, 84, 300, 1000, **6993** (the real nulled mesh's count) | clean at every size |
+| 4 | minimum routed through a struct field (`Vec2` read as `.x`), all six sizes | clean at every size |
+| 5 | eight meshes in one scene, real names, counts and mix of division/literal minima | 0/32 |
+| 6 | meshes built by mutating a **by-value** `Mesh` parameter in an `emit_*` helper, accumulated into `vector<Mesh>` | 0/12 |
 
-So none of these is the trigger: **not vertex count, not the value or how it was computed,
-not a package boundary, not scene size, not by-value mesh mutation.**
+So the trigger is **not** vertex count, the value, how it was computed, a package boundary,
+scene size, or by-value mesh mutation.
 
-### What still separates the real case
+### Untested differences, for whoever picks this up
 
-Only the real `moros_render` path reproduces it. What it has that none of the above do:
+What the real path has that none of the six reductions do:
 
-- coordinates derived from `moros_map`'s `Map` / `Hex` structures rather than a loop counter;
-- a **path dependency** (`moros_map = { path = "../moros_map" }`) in the dependency graph
-  alongside registry packages, resolved through `--lib`;
-- the material meshes are keyed and looked up **by name** while being built
-  (`emit_to_material` scans `meshes` for a matching `name` before appending a new one).
+- coordinates derived from the consumer's `Map` / `Hex` structures rather than a loop counter;
+- a **path dependency** (`{ path = "../moros_map" }`) in the graph beside registry packages,
+  resolved via `--lib`;
+- meshes looked up **by name** while being built (`emit_to_material` scans the accumulating
+  `vector<Mesh>` for a matching `name` before appending a new one).
 
-Those are the untested differences, listed so the next person does not re-run the six above.
+### Companion signal
 
-### The discriminator inside the real case
-
-Within one export, which meshes null is **not** random and **not** by size — mesh `'2'`
-(63 verts) nulls while mesh `'3'` (128 verts) is clean. The split is by the minimum's value:
-every nulled mesh has minimum x = ±0.8660254; every clean one has a minimum that is a literal
-`0` or a sum. That correlation is real in the failing case but, per row 3 and row 5 above, is
-**not sufficient** to cause it on its own.
-
-### One more signal from the same run
-
-Every H4 run ends with
+Every reproduction ends with
 
 ```
 Warning: 2 stores not freed at program exit: kt=66 Hex×10, kt=97 Vec3×2
 ```
 
-`Vec3` is the type `glb_pos_min` returns. Whether the unfreed store and the nulled minimum
-are the same fact is not something we can tell from outside, but they arrive together on
-every reproduction, and the leak persists on the 15:13 build.
-
-### Whose bug is it — loft's or `glb`'s?
-
-**Both are implicated, but `glb` cannot be the cause of the difference.** The reasoning, from
-the evidence above:
-
-**`glb` carries a latent defect.** `glb_pos_min` seeds `mx = verts[0].pos.x` — a fallible
-index, hence `float?` — and returns `vec3(mx, my, mz)` through non-null parameters. That is
-precisely the "a nullable is stored into a non-null slot; it becomes null there" pattern.
-The emptiness guard one line above shows the author knew the risk and expressed it
-structurally rather than in the type. Discharging that seed would be correct hygiene — but
-it would **mask** the question below rather than answer it.
-
-**`glb` is nevertheless identical in the failing and passing runs.** Same registry package
-(`glb-0.1.2`), same binary, same everything. The *only* difference between moros `5e677b7`
-(3 of 32 nulled) and `bdbce1b` (0 of 32) is which corner table Moros calls. A component that
-does not change cannot explain a difference — it can only be the place where the damage
-becomes visible.
-
-**Two facts point at the toolchain:**
-
-1. **The same source shape behaves both ways.** `glb_pos_max` is `glb_pos_min` with `>` for
-   `<` and never fails, in the same run, over the same vertices. Six independent
-   reproductions of the shape (table above) are clean. Deterministic language semantics
-   cannot produce "identical code, one nulls and one does not".
-2. **The analysis is silent on it.** `loft --interpret --check` over `glb-0.1.2/src/glb.loft`
-   passes with **zero** null-related diagnostics — no warning on the nullable seed, none on
-   the `vec3` store. Moros received **67** warnings of exactly that class for exactly that
-   kind of code. So a textbook instance in a registry package draws nothing, which is a
-   finding in its own right whatever the null turns out to be.
-
-**Verdict:** file against loft. If the runtime is exonerated, the fallback position is that
-loft's null-flow analysis missed `glb_pos_min` — still a loft issue — and `glb` should
-discharge the seed as defence in depth.
-
-### Suggested starting point
-
-`glb-0.1.2/src/glb.loft:51` `glb_pos_min` seeds from a fallible index (`verts[0].pos.x`,
-typed `float?` even though the length is guarded one line above) and returns it through
-`vec3`'s non-null parameters. Discharging that seed explicitly would likely mask the symptom;
-the asymmetry with `glb_pos_max`, which has the identical shape and never fails, is the part
-worth understanding first.
+`Vec3` is `glb_pos_min`'s return type. Whether the unfreed store and the nulled minimum are
+one fact is not visible from outside, but they have never appeared apart, and the leak
+survives the 16:34 build.
 
 ---
 
