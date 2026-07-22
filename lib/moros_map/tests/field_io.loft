@@ -109,3 +109,26 @@ fn test_moros_reads_the_shared_fixture() {
   assert(map_get_hex(m, -2, -1, 0).h_height == -3,
          "height at (-2,-1) is {map_get_hex(m, -2, -1, 0).h_height}, want -3 (from -3.5)");
 }
+
+// The wall fixture, read from OUR side.  Walls do not reach a Moros Map yet —
+// our cell has wall_n/ne/se and the reader has no home for them until the
+// edge-to-cell mapping is settled (#5) — so this asserts what DOES arrive and
+// pins the gap explicitly rather than leaving it unstated.
+const WALL_FIXTURE = "../../../../loft-libs-world/hex_field/tests/fixtures/walled.hxf";
+
+fn test_moros_reads_the_walled_fixture() {
+  ld = map_read_field(WALL_FIXTURE, 0);
+  assert(ld.ml_code == 0, "the wall fixture did not load: {ld.ml_code}");
+  filled = 0;
+  for q in 0..3 {
+    for r in 0..3 {
+      if map_get_hex(ld.ml_map, -1 + q, -1 + r, 0).h_material != 0 { filled = filled + 1; }
+    }
+  }
+  assert(filled == 9, "expected 9 cells from the wall fixture, got {filled}");
+  assert(map_get_hex(ld.ml_map, 0, 1, 0).h_material == 4, "material lost");
+  // THE GAP: the file carries a wall; our Map does not receive it yet.  When the
+  // reader learns to place edges on cells this assertion flips and says so.
+  assert(map_get_hex(ld.ml_map, 0, 1, 0).h_wall_se == 0,
+         "a wall reached the Map — the edge-to-cell mapping landed, carry it properly");
+}
