@@ -88,7 +88,7 @@ pub fn input_empty() -> InputState {
 // Facing convention: `pl_facing = 0` = looking down +Z.
 //   forward = ( sin(f), 0,  cos(f))
 //   right   = ( cos(f), 0, -sin(f))
-pub fn player_step(p: &Player, map: Map, dt: float, input: InputState) {
+pub fn player_step(p: Player, map: Map, dt: float, input: InputState) {
   // 1. Horizontal input in local axes
   lwx = 0.0;
   lwz = 0.0;

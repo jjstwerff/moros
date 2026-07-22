@@ -39,14 +39,14 @@ pub fn redo_depth(s: UndoStack) -> integer { len(s.us_redo) }
 
 // Group all subsequent edits until `batch_end` as one logical undo step.
 // Nested begin/end pairs collapse to the outermost batch.
-pub fn batch_begin(s: &UndoStack) {
+pub fn batch_begin(s: UndoStack) {
   if s.us_batch_id == 0 {
     s.us_batch_id = s.us_next_id;
     s.us_next_id = s.us_next_id + 1;
   }
 }
 
-pub fn batch_end(s: &UndoStack) {
+pub fn batch_end(s: UndoStack) {
   s.us_batch_id = 0;
 }
 
@@ -55,7 +55,7 @@ pub fn in_batch(s: UndoStack) -> boolean { s.us_batch_id != 0 }
 // ── Push / pop primitives ─────────────────────────────────────────
 
 // Capture the hex at (q, r, cy) before mutating it.  Clears the redo stack.
-pub fn undo_push(s: &UndoStack, m: Map, q: integer, r: integer, cy: integer) {
+pub fn undo_push(s: UndoStack, m: Map, q: integer, r: integer, cy: integer) {
   prev = map_get_hex(m, q, r, cy);
   s.us_entries += [UndoEntry {
     ue_q: q, ue_r: r, ue_cy: cy,
@@ -99,7 +99,7 @@ fn without_tail(v: vector<UndoEntry>, drop: integer) -> vector<UndoEntry> {
 // Returns true if anything was undone.  Each reverted entry is pushed
 // onto the redo stack carrying the post-edit state so `redo()` can
 // reapply it.
-pub fn undo_pop(s: &UndoStack, m: &Map) -> boolean {
+pub fn undo_pop(s: UndoStack, m: Map) -> boolean {
   n = len(s.us_entries);
   if n == 0 { return false; }
   count = count_logical_group(s.us_entries);
@@ -120,7 +120,7 @@ pub fn undo_pop(s: &UndoStack, m: &Map) -> boolean {
 
 // Redo the last undone operation (single edit or entire batch).
 // Returns true if anything was reapplied.
-pub fn redo(s: &UndoStack, m: &Map) -> boolean {
+pub fn redo(s: UndoStack, m: Map) -> boolean {
   n = len(s.us_redo);
   if n == 0 { return false; }
   count = count_logical_group(s.us_redo);
@@ -143,40 +143,40 @@ pub fn redo(s: &UndoStack, m: &Map) -> boolean {
 // Each wraps the corresponding moros_map convenience editor and
 // records a pre-edit snapshot so the mutation can be undone.
 
-pub fn paint_material_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, mat: integer) {
+pub fn paint_material_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, mat: integer) {
   undo_push(s, m, q, r, cy);
   map_paint_material(m, q, r, cy, mat);
 }
 
-pub fn set_height_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, height: integer) {
+pub fn set_height_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, height: integer) {
   undo_push(s, m, q, r, cy);
   map_set_height(m, q, r, cy, height);
 }
 
-pub fn adjust_height_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, delta: integer) {
+pub fn adjust_height_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, delta: integer) {
   cur = map_get_hex(m, q, r, cy);
   undo_push(s, m, q, r, cy);
   map_set_height(m, q, r, cy, cur.h_height + delta);
 }
 
-pub fn place_item_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
+pub fn place_item_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
   undo_push(s, m, q, r, cy);
   map_place_item(m, q, r, cy, item, rotation);
 }
 
-pub fn remove_item_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer) {
+pub fn remove_item_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer) {
   undo_push(s, m, q, r, cy);
   map_place_item(m, q, r, cy, 0, 0);
 }
 
-pub fn set_wall_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
+pub fn set_wall_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
   undo_push(s, m, q, r, cy);
   map_set_wall(m, q, r, cy, edge, wall);
 }
 
 // Wall with direction resolution (0-5) + undo.  Directions 3-5 store
 // the wall on a neighbour hex, so we snapshot THAT hex instead.
-pub fn set_wall_dir_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
+pub fn set_wall_dir_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
   if dir == 3 { undo_push(s, m, q, r + 1, cy); }
   if dir == 4 { undo_push(s, m, q - 1, r + 1, cy); }
   if dir == 5 { undo_push(s, m, q - 1, r, cy); }
@@ -186,7 +186,7 @@ pub fn set_wall_dir_with_undo(s: &UndoStack, m: &Map, q: integer, r: integer, cy
 
 // Slope path with batch undo — all hexes in the slope are one
 // logical undo step.
-pub fn slope_path_with_undo(s: &UndoStack, m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
+pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
   // Note: lerp_int and hex_distance are imported from moros_map.
   batch_begin(s);
   dist = hex_distance(q1, r1, q2, r2);
@@ -236,19 +236,19 @@ pub fn edit_kind_label(e: EditKind) -> text {
 }
 
 // Apply an undo for an EditKind entry: reverse the recorded operation.
-fn undo_hex_edit(m: &Map, q: integer, r: integer, cy: integer, prev: Hex) {
+fn undo_hex_edit(m: Map, q: integer, r: integer, cy: integer, prev: Hex) {
   map_set_hex(m, q, r, cy, prev);
 }
 
-fn undo_spawn_add(m: &Map, q: integer, r: integer, cy: integer, npc_id: integer) {
+fn undo_spawn_add(m: Map, q: integer, r: integer, cy: integer, npc_id: integer) {
   spawn_remove(m, q, r, cy, npc_id);
 }
 
-fn undo_spawn_remove(m: &Map, sp: SpawnPoint) {
+fn undo_spawn_remove(m: Map, sp: SpawnPoint) {
   spawn_add(m, sp);
 }
 
-pub fn edit_kind_undo(e: EditKind, m: &Map) {
+pub fn edit_kind_undo(e: EditKind, m: Map) {
   match e {
     HexEdit { ek_q, ek_r, ek_cy, ek_prev } => undo_hex_edit(m, ek_q, ek_r, ek_cy, ek_prev),
     SpawnAdd { ek_q, ek_r, ek_cy, ek_npc_id } => undo_spawn_add(m, ek_q, ek_r, ek_cy, ek_npc_id),
@@ -290,7 +290,7 @@ pub struct StencilDef {
 
 // Apply a stencil to the map at position (q, r, cy) with the given
 // merge mode (0–3).  Each stencil hex's offsets are added to (q, r).
-pub fn stencil_stamp(m: &Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
+pub fn stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
   for ss_sh in stencil.sd_hexes {
     tq = q + ss_sh.sh_dq - stencil.sd_origin_q;
     tr = r + ss_sh.sh_dr - stencil.sd_origin_r;
@@ -333,7 +333,7 @@ pub fn stencil_stamp(m: &Map, stencil: StencilDef, q: integer, r: integer, cy: i
 }
 
 // Stamp with undo — all hex writes are one batch.
-pub fn stencil_stamp_with_undo(s: &UndoStack, m: &Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
+pub fn stencil_stamp_with_undo(s: UndoStack, m: Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
   batch_begin(s);
   for su_sh in stencil.sd_hexes {
     tq = q + su_sh.sh_dq - stencil.sd_origin_q;

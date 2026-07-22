@@ -16,3 +16,11 @@ images/*_v[0-9][0-9].png
 tools/__pycache__/
 __pycache__/
 
+
+# loft build artifacts inside the lib/ packages: `native-auto/` holds the
+# auto-compiled native cdylib (14 MB and machine-specific), `.loft/` the
+# resolver cache.  The committed `.loft/api/*.api` stubs are the exception —
+# they are the readable public surface of a locked dependency.
+lib/**/native-auto/
+lib/**/.loft/
+!lib/**/.loft/api/

@@ -116,7 +116,7 @@ pub CAMERA_ZOOM_STEP = 1.0;
 // offsets are re-applied via `camera_orbit` AFTER the mode's base
 // pose is computed, so the user's orbit choice survives across
 // frames until the mode toggles.
-pub fn camera_apply_input(st: &EditorState, input: InputState) {
+pub fn camera_apply_input(st: EditorState, input: InputState) {
   // Wheel zoom first (mode-independent).
   if input.in_wheel != 0 {
     cai_dz = (input.in_wheel as float) * CAMERA_ZOOM_STEP;
@@ -149,7 +149,7 @@ pub fn camera_apply_input(st: &EditorState, input: InputState) {
 // floating-point error.  Called by `editor_tick`, but also exposed
 // for hosts that want to drive turn from a different source (e.g.
 // gamepad right-stick).
-pub fn apply_mouse_look(st: &EditorState, dx: integer) {
+pub fn apply_mouse_look(st: EditorState, dx: integer) {
   if dx == 0 { return; }
   ml_delta = (dx as float) * MOUSE_LOOK_SENSITIVITY;
   st.es_player.pl_facing = st.es_player.pl_facing + ml_delta;
@@ -162,7 +162,7 @@ pub fn apply_mouse_look(st: &EditorState, dx: integer) {
   }
 }
 
-pub fn editor_tick(st: &EditorState, input: InputState, dt: float) {
+pub fn editor_tick(st: EditorState, input: InputState, dt: float) {
   if input.in_tool_number >= 1 && input.in_tool_number <= 6 {
     st.es_tools.ts_current = tool_from_number(input.in_tool_number);
   }
@@ -344,7 +344,7 @@ pub fn editor_save_to_file(st: EditorState, path: text) -> boolean {
   true
 }
 
-pub fn editor_load_from_file(st: &EditorState, path: text) -> boolean {
+pub fn editor_load_from_file(st: EditorState, path: text) -> boolean {
   ef_lf = file(path);
   if !ef_lf.exists() { return false; }
   // `exists()` does not promise readable — a file can exist and still fail to
@@ -385,7 +385,7 @@ pub fn pick_hex_under_cursor(
 // hosts call this after `pick_hex_under_cursor` for click-where-you-
 // look editing.  Same no-op semantics as `editor_click`: tool
 // `None` does nothing.
-pub fn edit_at_hex(st: &EditorState, q: integer, r: integer) {
+pub fn edit_at_hex(st: EditorState, q: integer, r: integer) {
   if st.es_tools.ts_current == ToolKind.None { return; }
   batch_begin(st.es_undo);
   undo_push(st.es_undo, st.es_map, q, r, st.es_overlay_cy);

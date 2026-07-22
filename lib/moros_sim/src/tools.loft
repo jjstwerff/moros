@@ -65,7 +65,7 @@ fn stencil_by_index(i: integer) -> StencilDef {
 // ── Dispatch ────────────────────────────────────────────────────
 // Applies the currently-selected tool at the hex under (pos.x, pos.z),
 // at vertical layer cy.  Mutates the map in-place.
-pub fn tool_apply(pos: Vec3, cy: integer, m: &Map, t: ToolState) {
+pub fn tool_apply(pos: Vec3, cy: integer, m: Map, t: ToolState) {
   addr = world_to_hex(pos.x, pos.z);
   q = addr.ha_q;
   r = addr.ha_r;

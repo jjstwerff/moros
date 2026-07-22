@@ -91,7 +91,7 @@ fn build_chunk(cx: integer, cy: integer, cz: integer) -> Chunk {
 
 // Ensure a chunk exists at the given global coordinates.
 // Creates a 32x32 chunk filled with default hexes if absent.
-pub fn map_ensure_chunk(m: &Map, q: integer, r: integer, cy: integer) {
+pub fn map_ensure_chunk(m: Map, q: integer, r: integer, cy: integer) {
   cx = chunk_idx_32(q);
   cz = chunk_idx_32(r);
   for ec_c in m.m_chunks {
@@ -103,7 +103,7 @@ pub fn map_ensure_chunk(m: &Map, q: integer, r: integer, cy: integer) {
 }
 
 // Write a Hex at global coordinates. Creates the chunk if needed.
-pub fn map_set_hex(m: &Map, q: integer, r: integer, cy: integer, h: Hex) {
+pub fn map_set_hex(m: Map, q: integer, r: integer, cy: integer, h: Hex) {
   map_ensure_chunk(m, q, r, cy);
   cx = chunk_idx_32(q);
   cz = chunk_idx_32(r);
@@ -141,21 +141,21 @@ pub fn map_get_hex(m: Map, q: integer, r: integer, cy: integer) -> Hex {
 // Convenience editors.
 
 // Paint a hex's material at (q, r, cy).
-pub fn map_paint_material(m: &Map, q: integer, r: integer, cy: integer, material: integer) {
+pub fn map_paint_material(m: Map, q: integer, r: integer, cy: integer, material: integer) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_material = material;
   map_set_hex(m, q, r, cy, cur);
 }
 
 // Set a hex's height at (q, r, cy).
-pub fn map_set_height(m: &Map, q: integer, r: integer, cy: integer, height: integer) {
+pub fn map_set_height(m: Map, q: integer, r: integer, cy: integer, height: integer) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_height = height;
   map_set_hex(m, q, r, cy, cur);
 }
 
 // Place an item on a hex (item index + rotation, preserves spawn/waypoint flags).
-pub fn map_place_item(m: &Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
+pub fn map_place_item(m: Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_item = item;
   flags = cur.h_item_rotation & ~31;  // preserve bits 5+ (spawn, waypoint)
@@ -164,7 +164,7 @@ pub fn map_place_item(m: &Map, q: integer, r: integer, cy: integer, item: intege
 }
 
 // Set a wall on a hex edge.  edge: 0=N, 1=NE, 2=SE.
-pub fn map_set_wall(m: &Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
+pub fn map_set_wall(m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
   cur = map_get_hex(m, q, r, cy);
   if edge == 0 { cur.h_wall_n = wall; }
   if edge == 1 { cur.h_wall_ne = wall; }
@@ -177,7 +177,7 @@ pub fn map_set_wall(m: &Map, q: integer, r: integer, cy: integer, edge: integer,
 // Add a spawn point to the map.  The spawn's hex flag (bit 5 of
 // h_item_rotation) is set as a side-effect so renderers can show a
 // spawn marker without scanning the whole spawn list.
-pub fn spawn_add(m: &Map, sp: SpawnPoint) {
+pub fn spawn_add(m: Map, sp: SpawnPoint) {
   m.m_spawn_points += [sp];
   // Flag the hex: bit 5 = spawn, preserve other bits.
   cur = map_get_hex(m, sp.sp_hex.ha_q, sp.sp_hex.ha_r, sp.sp_hex.ha_cy);
@@ -201,7 +201,7 @@ pub fn spawn_at(m: Map, q: integer, r: integer, cy: integer) -> vector<SpawnPoin
 
 // Remove the spawn matching (q, r, cy, npc_id).  Returns true if one was
 // removed.  Clears the hex flag if no spawns remain on that hex.
-pub fn spawn_remove(m: &Map, q: integer, r: integer, cy: integer, npc_id: integer) -> boolean {
+pub fn spawn_remove(m: Map, q: integer, r: integer, cy: integer, npc_id: integer) -> boolean {
   keepers: vector<SpawnPoint> = [];
   removed = false;
   remaining_on_hex = 0;
@@ -227,7 +227,7 @@ pub fn spawn_remove(m: &Map, q: integer, r: integer, cy: integer, npc_id: intege
 // ── NPC routine CRUD (Phase 4.11) ─────────────────────────────────
 
 // Add a fresh NPC routine (no waypoints yet).
-pub fn routine_add(m: &Map, npc_id: integer, name: text, creature: integer) {
+pub fn routine_add(m: Map, npc_id: integer, name: text, creature: integer) {
   m.m_npc_routines += [NpcRoutine {
     nr_npc_id:    npc_id,
     nr_name:      name,
@@ -248,7 +248,7 @@ pub fn routine_index(m: Map, npc_id: integer) -> integer {
 }
 
 // Remove a routine by npc_id.  Returns true if one was removed.
-pub fn routine_remove(m: &Map, npc_id: integer) -> boolean {
+pub fn routine_remove(m: Map, npc_id: integer) -> boolean {
   keepers: vector<NpcRoutine> = [];
   removed = false;
   for rr_r in m.m_npc_routines {
@@ -267,7 +267,7 @@ pub fn routine_remove(m: &Map, npc_id: integer) -> boolean {
 // Add a waypoint to a routine identified by npc_id.  Flags the target
 // hex with the waypoint bit (bit 6).  Returns true if the routine was
 // found.
-pub fn waypoint_add(m: &Map, npc_id: integer, wp: NpcWaypoint) -> boolean {
+pub fn waypoint_add(m: Map, npc_id: integer, wp: NpcWaypoint) -> boolean {
   found = false;
   for wa_r in m.m_npc_routines {
     if wa_r.nr_npc_id == npc_id {
@@ -297,7 +297,7 @@ pub fn waypoint_count(m: Map, npc_id: integer) -> integer {
 // 5=NW).  Directions 0–2 are stored on the target hex; directions 3–5
 // are stored as the opposite edge on the appropriate neighbour hex.
 // Uses axial-coordinate neighbour offsets.
-pub fn map_set_wall_dir(m: &Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
+pub fn map_set_wall_dir(m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
   if dir == 0 { map_set_wall(m, q, r, cy, 0, wall); }
   if dir == 1 { map_set_wall(m, q, r, cy, 1, wall); }
   if dir == 2 { map_set_wall(m, q, r, cy, 2, wall); }
@@ -328,7 +328,7 @@ pub fn lerp_int(a: integer, b: integer, i: integer, n: integer) -> integer {
 // Linearly interpolate heights from h_start at (q1,r1) to h_end at
 // (q2,r2) along a straight hex-grid line.  All hexes on the path
 // (inclusive of both endpoints) have their height set.
-pub fn slope_path(m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
+pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
   dist = hex_distance(q1, r1, q2, r2);
   if dist == 0 {
     map_set_height(m, q1, r1, cy, h_start);
@@ -346,7 +346,7 @@ pub fn slope_path(m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, c
 // line, also set the `width` hexes perpendicular to the path
 // direction (centred on the path).  Only uniform height across the
 // band; no cross-section interpolation.
-pub fn slope_band(m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer, width: integer) {
+pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer, width: integer) {
   dist = hex_distance(q1, r1, q2, r2);
   if dist == 0 {
     map_set_height(m, q1, r1, cy, h_start);

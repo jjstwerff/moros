@@ -119,7 +119,7 @@ pub fn current_palette_selection(tools: ToolState) -> integer {
   -1
 }
 
-fn set_palette_selection(tools: &ToolState, idx: integer) {
+fn set_palette_selection(tools: ToolState, idx: integer) {
   if tools.ts_current == ToolKind.RaiseHex || tools.ts_current == ToolKind.LowerHex {
     if idx == 0 { tools.ts_height_step = 1; }
     if idx == 1 { tools.ts_height_step = 2; }
@@ -214,7 +214,7 @@ pub fn panel_hit_test(p: Panel, mx: integer, my: integer) -> UiHit {
 // Route a mouse click: panel widgets update `tools` in place;
 // world clicks leave `tools` unchanged.  Returns the hit so the
 // frame loop can decide whether to dispatch to `tool_apply`.
-pub fn route_click(p: Panel, tools: &ToolState, mx: integer, my: integer) -> UiHit {
+pub fn route_click(p: Panel, tools: ToolState, mx: integer, my: integer) -> UiHit {
   rc_hit = panel_hit_test(p, mx, my);
   if rc_hit is UhToolButton { tb_id } {
     tools.ts_current = tool_of_id(tb_id);

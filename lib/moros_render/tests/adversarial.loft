@@ -43,7 +43,7 @@ enum StairKind {
   }
 }
 
-fn emit_any_stair(m: &Mesh, k: StairKind) {
+fn emit_any_stair(m: Mesh, k: StairKind) {
   if k is Linear { from, to, width, steps } {
     emit_linear_stair(m, from, to, width, steps);
     return;

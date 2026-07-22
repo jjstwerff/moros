@@ -19,7 +19,7 @@ use moros_render;
 use graphics;
 use panel;
 
-pub fn editor_click(st: &EditorState, p: Panel, mx: integer, my: integer) -> UiHit {
+pub fn editor_click(st: EditorState, p: Panel, mx: integer, my: integer) -> UiHit {
   ec_hit = route_click(p, st.es_tools, mx, my);
   if ec_hit is UhWorld {
     if st.es_tools.ts_current != ToolKind.None {
