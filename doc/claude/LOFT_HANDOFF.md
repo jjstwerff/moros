@@ -9,20 +9,28 @@
 
 ## Context
 
-Found **2026-07-22** on toolchain **2026.7.2** (`/usr/local/bin/loft`), while recovering the
+**Re-tested 2026-07-22 on a newer `loft 2026.7.2` build (binary dated 15:05): H1, H2 and H3
+are all FIXED.** They are kept below, struck through, until the fix is released and the
+entries can be deleted — the reproducers are the re-verification. **H4 is new and open.**
+
+Originally found **2026-07-22** on the earlier 2026.7.2 build, while recovering the
 `moros_*` packages ([moros#2](https://github.com/jjstwerff/moros/issues/2)). The package test
 suites are unaffected — **435 tests green across five packages, zero warnings**. Everything
 below fails only when a program actually *runs*: the same code compiles clean and its unit
 tests pass.
 
-That split is the useful signal. `loft test` exercises these libraries thoroughly and stays
-green; the moment a `fn main()` builds a scene and writes a file, the store layer falls over.
+That split was the useful signal for H1–H3: `loft test` exercised these libraries thoroughly
+and stayed green, while the moment a `fn main()` built a scene and wrote a file, the store
+layer fell over. **H4 is the same split without the crash** — green suite, clean analysis,
+and a null in the output file — which is why it outlived the fixes.
 
 ---
 
-## H1 — `graphics::sphere()` panics at runtime, with a different index every run
+## ~~H1~~ — `graphics::sphere()` panics at runtime — **FIXED**
 
-**Status:** not filed · **Repo:** `loft-lang/loft` (or `loft-libs-graphics`)
+**Status:** FIXED on the 15:05 build — the reproducer below now prints `ok verts=16`,
+deterministically, three runs in a row. Nothing to file.
+**Was:** not filed · **Repo:** `loft-lang/loft` (or `loft-libs-graphics`)
 **Severity:** high — the published `graphics` 0.5.0 package, one call, no consumer code
 **Suggested title:** `runtime: graphics::sphere() panics in database/allocation.rs with a non-deterministic out-of-bounds index`
 
@@ -68,9 +76,18 @@ index out of bounds: the len is 4 but the index is 53216
 
 ---
 
-## H2 — three consumer-level crashes, three different symptoms, one suspected root
+## ~~H2~~ — three consumer-level crashes — **ALL FIXED**
 
-**Status:** not filed · **Repo:** `loft-lang/loft`
+**Status:** FIXED on the 15:05 build:
+- `demo_village` — runs clean, writes a 333468-byte GLB;
+- `moros_glb` — now reports `error: input file not found: /definitely/missing.json`, which is
+  exactly the wanted behaviour;
+- `isolated_stair` — runs to completion (exit 0). **Correction:** the "core dump" and the
+  later "NO FILE" were partly our harness — this example takes no output argument and writes
+  `isolated_stair.glb` cwd-relative. The core dump on the old build was real; the missing
+  file was us looking in the wrong place.
+
+**Was:** not filed · **Repo:** `loft-lang/loft`
 **Severity:** high — blocks the GLB export path entirely
 **Suggested title:** `runtime: store-lifetime faults on program exit / const init (3 reproducers, one consumer)`
 
@@ -109,9 +126,10 @@ pinned with a numeric test rather than a rendered comparison.
 
 ---
 
-## H3 — the crash location for H1 pointed at unrelated source
+## ~~H3~~ — misattributed crash location — **MOOT**
 
-**Status:** not filed · **Severity:** low — a diagnostics-quality issue, but it cost time
+**Status:** moot with H1 fixed; recorded because the failure mode is worth knowing.
+**Was:** not filed · **Severity:** low — a diagnostics-quality issue, but it cost time
 **Suggested title:** `diagnostics: runtime fault location points at an unrelated function`
 
 An earlier form of the H1 reproducer (sphere + scene + `save_scene_glb`) reported:
@@ -124,6 +142,65 @@ Line 1398 of `graphics.loft` is inside an **`sfx_*` audio helper** — a noise-b
 comprehension that the program never calls. The reduced reproducer points at the real call
 site, so the location is wrong specifically in the failing case. A misattributed location
 sends a reader to the wrong subsystem, which is the expensive kind of wrong.
+
+---
+
+## H4 — a null reached an exported file with a clean analysis and a green suite
+
+**Status:** not filed · **Repo:** `loft-lang/loft` (or `loft-libs-graphics`)
+**Severity:** high — this is the silent class: no error, no warning, no failing test
+**Suggested title:** `null-flow: a null reaches exported glTF output while the analysis reports clean`
+
+### What we saw
+
+At Moros commit `5e677b7`, `moros_render` exports GLB files whose position accessors carry
+
+```json
+"min": [null, null, null]
+```
+
+That is **malformed glTF** — `min`/`max` are required to be numbers. At the same commit:
+
+- `loft test` in that package: **161 passed, 0 failed**;
+- warning count in that package: **0** — including zero null-flow warnings, after a
+  deliberate pass that discharged all 67 of them.
+
+So a null flowed all the way into an exported artifact while every diagnostic the toolchain
+offers said the code was clean. The accessor `max` is computed correctly in the same file, so
+whatever nulls the fold does it selectively.
+
+### Reproducer
+
+```sh
+git clone https://github.com/jjstwerff/moros && cd moros && git checkout 5e677b7
+loft --interpret --path <loft-checkout>/ --lib lib/ \
+     lib/moros_render/examples/demo_village.loft out.glb
+python3 -c "…"   # read the JSON chunk; accessors[0].min is [null,null,null]
+```
+
+Moros `bdbce1b` (the next commit) exports valid minima — 32 accessors, zero nulls — so the
+two commits bracket it.
+
+### What we ruled out, each verified applied
+
+Narrowing which part of `bdbce1b` fixed it. All three were tested individually against
+`5e677b7`, and **all three still exported nulls**:
+
+1. the division `half_w = HEX_WIDTH / 2.0` replaced by a literal;
+2. `HEX_WIDTH` switched from a local literal to `hex_grid::HEX_LEN`;
+3. the corner function's early-`return` chain rewritten as a single tail expression.
+
+Only delegating the corner table to `hex_grid::hex_corner_offset` produces valid minima, and
+**we cannot explain why** — the three obvious mechanisms are eliminated. That is why this is
+filed rather than fixed locally: the remaining explanation is inside the toolchain.
+
+### A note on measurement
+
+Comparing the two GLBs float-by-float suggested 19% of values differing by up to 31 hex
+steps. That is an artefact: the null-vs-number JSON changes the chunk length, which shifts
+accessor byte offsets, so the naive elementwise diff compares misaligned arrays. The
+trustworthy comparison is the scene summary, and it is **identical** across the two commits —
+8 meshes, 7796 vertices, 6448 triangles. No geometry moved.
 
 ---
 

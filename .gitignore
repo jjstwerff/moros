@@ -24,3 +24,6 @@ __pycache__/
 lib/**/native-auto/
 lib/**/.loft/
 !lib/**/.loft/api/
+
+# The moros_render CLI examples write their .glb cwd-relative by design.
+*.glb
