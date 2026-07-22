@@ -218,21 +218,46 @@ These do **not** clear it, each confirmed to have actually applied before runnin
 3. rewriting the corner function's early-`return` chain as a single tail expression.
 
 An earlier version of this entry concluded from that "the same numbers computed locally null
-the minimum; sourced from another package they do not." **Two further controls falsify
-that**, so it is withdrawn:
+the minimum; sourced from another package they do not." **That is withdrawn** — the reduction
+attempts below falsify it.
 
-4. a **standalone program** (no Moros at all) that builds a 3-vertex mesh whose minimum x is
-   `-1.7320508 / 2.0` — a local division — and exports it through the registry
-   `save_scene_glb`: **min is correct**;
-5. the same thing **split across two packages**, the mesh built in a library and exported by
-   the program: **min is correct**.
+### Reduction attempts — all CLEAN, none reproduce it
 
-So neither "a locally computed division became the minimum" nor "the value crossed a package
-boundary" is sufficient to trigger it. What remains true is only the narrow fact: at
-`5e677b7` the export nulls 3 of 32 minima, and swapping *just* the corner table for
-`hex_grid`'s clears all of them — with no minimal reproducer yet isolating why. The
-difference must lie in something the small cases do not have: vertex counts in the
-thousands, eight meshes in one scene, or the `emit_*` mutation path that builds them.
+Every row was run on the 16:34 build against the registry `graphics` 0.5.0 / `glb` 0.1.2, and
+every row exports **correct minima**. The minimum x is `-1.7320508 / 2.0 = -0.866025` in each
+— the same value and the same provenance as the meshes that null in the real case.
+
+| # | What was tried | Result |
+|---|---|---|
+| 1 | 3-vertex mesh, minimum from a local division, single program | clean |
+| 2 | same, split across **two packages** (library builds, program exports) | clean |
+| 3 | vertex counts **3, 63, 84, 300, 1000, 6993** — 6993 is exactly the real nulled mesh's count | clean at every size |
+| 4 | minimum routed through a **struct field** (`Vec2` returned by a helper, read as `.x`) rather than a plain local, at all six sizes | clean at every size |
+| 5 | **eight meshes in one scene**, with the real case's names, counts (84 / 6993 / 63 / 128 / 240 / 216 / 24 / 48) and its mix of division-derived and literal minima | 0 / 32 null |
+| 6 | meshes built by **mutating a by-value `Mesh` parameter** in an `emit_*` helper (`fn emit_into(m: Mesh, …)`, no `&`) and accumulated into a `vector<Mesh>` — the shape `moros_render` uses since its `&` sweep | 0 / 12 null |
+
+So none of these is the trigger: **not vertex count, not the value or how it was computed,
+not a package boundary, not scene size, not by-value mesh mutation.**
+
+### What still separates the real case
+
+Only the real `moros_render` path reproduces it. What it has that none of the above do:
+
+- coordinates derived from `moros_map`'s `Map` / `Hex` structures rather than a loop counter;
+- a **path dependency** (`moros_map = { path = "../moros_map" }`) in the dependency graph
+  alongside registry packages, resolved through `--lib`;
+- the material meshes are keyed and looked up **by name** while being built
+  (`emit_to_material` scans `meshes` for a matching `name` before appending a new one).
+
+Those are the untested differences, listed so the next person does not re-run the six above.
+
+### The discriminator inside the real case
+
+Within one export, which meshes null is **not** random and **not** by size — mesh `'2'`
+(63 verts) nulls while mesh `'3'` (128 verts) is clean. The split is by the minimum's value:
+every nulled mesh has minimum x = ±0.8660254; every clean one has a minimum that is a literal
+`0` or a sum. That correlation is real in the failing case but, per row 3 and row 5 above, is
+**not sufficient** to cause it on its own.
 
 ### One more signal from the same run
 
