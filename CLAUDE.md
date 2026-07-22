@@ -91,5 +91,6 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 
 - [Plans](plans/README.md) — plan conventions; a plan's identity is its `jjstwerff/moros` issue number
   (`gh issue list -R jjstwerff/moros --label plan --state all`)
+- [Loft handoff](doc/claude/LOFT_HANDOFF.md) — upstream loft defects Moros surfaced, written ready to file
 - [Open issues](doc/claude/OPEN_ISSUES.md) — known issues and decisions
 - [doc/Todo.txt](doc/Todo.txt) — current open task list from the user
