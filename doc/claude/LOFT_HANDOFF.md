@@ -271,6 +271,40 @@ Warning: 2 stores not freed at program exit: kt=66 Hex×10, kt=97 Vec3×2
 are the same fact is not something we can tell from outside, but they arrive together on
 every reproduction, and the leak persists on the 15:13 build.
 
+### Whose bug is it — loft's or `glb`'s?
+
+**Both are implicated, but `glb` cannot be the cause of the difference.** The reasoning, from
+the evidence above:
+
+**`glb` carries a latent defect.** `glb_pos_min` seeds `mx = verts[0].pos.x` — a fallible
+index, hence `float?` — and returns `vec3(mx, my, mz)` through non-null parameters. That is
+precisely the "a nullable is stored into a non-null slot; it becomes null there" pattern.
+The emptiness guard one line above shows the author knew the risk and expressed it
+structurally rather than in the type. Discharging that seed would be correct hygiene — but
+it would **mask** the question below rather than answer it.
+
+**`glb` is nevertheless identical in the failing and passing runs.** Same registry package
+(`glb-0.1.2`), same binary, same everything. The *only* difference between moros `5e677b7`
+(3 of 32 nulled) and `bdbce1b` (0 of 32) is which corner table Moros calls. A component that
+does not change cannot explain a difference — it can only be the place where the damage
+becomes visible.
+
+**Two facts point at the toolchain:**
+
+1. **The same source shape behaves both ways.** `glb_pos_max` is `glb_pos_min` with `>` for
+   `<` and never fails, in the same run, over the same vertices. Six independent
+   reproductions of the shape (table above) are clean. Deterministic language semantics
+   cannot produce "identical code, one nulls and one does not".
+2. **The analysis is silent on it.** `loft --interpret --check` over `glb-0.1.2/src/glb.loft`
+   passes with **zero** null-related diagnostics — no warning on the nullable seed, none on
+   the `vec3` store. Moros received **67** warnings of exactly that class for exactly that
+   kind of code. So a textbook instance in a registry package draws nothing, which is a
+   finding in its own right whatever the null turns out to be.
+
+**Verdict:** file against loft. If the runtime is exonerated, the fallback position is that
+loft's null-flow analysis missed `glb_pos_min` — still a loft issue — and `glb` should
+discharge the seed as defence in depth.
+
 ### Suggested starting point
 
 `glb-0.1.2/src/glb.loft:51` `glb_pos_min` seeds from a fallible index (`verts[0].pos.x`,
