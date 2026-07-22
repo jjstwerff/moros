@@ -5,3 +5,6 @@ loft    = ">=0.8"
 
 [library]
 entry = "src/moros_map.loft"
+
+[dependencies]
+hex_field = { path = "../../../loft-libs-world/hex_field" }

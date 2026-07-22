@@ -13,6 +13,67 @@ hex-world author needs belongs in a package, even when Moros is the only caller 
 This document is the **architecture reference** for that shared layer: which packages
 exist, who owns each one, who consumes them, what may cross the seam, and what may not.
 
+---
+
+## Why this exists
+
+Not our framing — the stack's, stated one layer down and first. loft's `GOALS.md`:
+
+> *"loft is not the goal. loft is the **foundation**: the lowest layer of plumbing. The real
+> goal is the **libraries and tools built on top of it** — lavition (the engine), the
+> hex-world library, **the editor**, the games."*
+>
+> *"Do the hard plumbing yourself, deeply, so someone else can just pick it up and have fun."*
+
+The editor is one of four named layers there — *"the **editor** handles authoring, so you
+shape worlds"* — beside the language, the hex-world library and the server. So this is not a
+Moros feature that happens to be reusable. **It is the authoring layer of a stack that was
+designed expecting it.**
+
+**The audience is the reason.** loft's stated inversion is that today's engines are built
+*by programmers, from a programmer's point of view*, and the maker has to learn that
+worldview before building anything. crawler's `VISION.md` sharpens what that means for us:
+the audience is not merely *fewer people*, it is **people who should not have to think like
+programmers to build a world** — which is *"why the editor matters more than its line count
+suggests, and why content is a folder rather than a codebase."*
+
+**The economic argument underneath it.** A rich game world currently costs a studio, not
+because the techniques are secret but because worlds are *assembled from unique assets* —
+every building, tree and quest branch is somebody's week. Two people cannot hand-place a
+continent. The thesis is that **variety can be produced instead of stored**, so the content
+bill scales with mechanisms rather than headcount. An editor is what lets a small team drive
+those mechanisms without writing code.
+
+**And the editor earns its place twice**, because crawler's stack table lists it as *"the
+second consumer that proves the libraries are general"*. A package extracted against one
+caller has been shown nothing; the editor needs mutation, undo, partial views and
+serialisation that the game does not, so a package satisfying both has been tested where it
+would otherwise only have been asserted.
+
+### The clause our Definition of Done was missing
+
+> *"The acceptance test: a thing is done when picking it up is **fun**. Not feature-complete —
+> fun. A library can ship every feature and still be a fight to use. That library is not
+> done."* — loft `GOALS.md`
+
+Every clause in our DoD below is correctness or testing. **A package can satisfy all of them
+and still be miserable to pick up**, and by this standard that package is not finished. It is
+a higher bar than anything else in this document and the hardest to gate, which is exactly
+why it has to be written down rather than assumed.
+
+The mechanism it rests on is **mental load**: every unit of attention the tools demand for
+*correctness* is a unit stolen from the creative work. That is the same argument this stack
+makes about content volume, made about cognitive volume — and it is the standard the editor's
+own surface gets judged by, not just the libraries under it.
+
+### One principle that decides seam arguments
+
+> *"Over-engineer only where others build on it. The test is one question: does this make a
+> hard part reusable by someone else? Yes — build it exactly and gate it, because the cost is
+> paid once here and never again downstream. No — it is polish for one game, and it waits."*
+
+That is the tie-breaker whenever "should this be exact / gated / extracted?" comes up below.
+
 It replaces, on our side, loft's `doc/claude/lib_plans/73-universal-editor/` (the
 "universal hex-world editor" plan, drafted 2026-05-27 with Moros as first partner). Moros
 now owns this work; loft keeps its own state.
@@ -89,6 +150,14 @@ split (designed against gated code) rather than the earlier guesses.
 Dependencies flow strictly downward: `hex_grid` is leaf; `hex_editor` sits on
 `hex_field` + `hex_scene` + `shapes`; only `hex_scene` knows a renderer.
 
+**One package is missing from this table and belongs in the family.** crawler's `VISION.md`
+splits what is usually lumped together as "AI": *movement over the field* — flow-field
+pathing, steering, line of sight, hearing — operates on cells, blocked edges and heights, so
+it is a **hex-world** concern, not a genre one. *Deciding what to do* — needs, utility
+scoring, schedules — is genre-shaped and stays out. The editor wants the first half directly:
+**previewing reachability is an authoring feature**, and a room you cannot walk into is a bug
+the editor should show rather than the game discover.
+
 **A consumer takes what it needs.** The editor wants `hex_field + hex_scene + hex_editor`.
 A farming game wants `hex_field + hex_grow`. Nothing forces the whole stack.
 
@@ -110,6 +179,12 @@ fails the second consumer, and we already know who the second, third and fourth 
 | **crawler** | the roguelike's world — the field stack's originator | no authoring UI at all; consumes the same field, format and stencils from a game process, first-person |
 | **Bumper airplanes** (loft `@PLN51`) | a hex world for a projector-and-phones audience demo | a painted **palette-to-extrusion** mapping (`wall` → pillar, `wall_high` → cliff, `hill` → ramp) and nothing else — no items, no NPCs, no layers. The map *is* the physics geometry |
 | **loft Workbench** (loft `@PLN16 M5e` § 9) | scenes that loft scripts drive, inside the IDE | a **panel**, not a page — driven over the IDE's one-message-one-method protocol, where the browser renders state and never computes. The model runs server-side |
+| **crew_punk** (crawler `VISION.md`) | a six-player, six-phone game — the phone held flat is a console, held up is a window | **six concurrent clients**, orientation-aware phone surfaces, and a trigger engine that must be complete because *there is no director*. It will overtake crawler as the demanding consumer |
+
+**Two consumers on orthogonal axes is far stronger evidence of generality than two similar
+ones.** crawler proves the world layer; crew_punk will prove the session, network and trigger
+layers; the Workbench proves the model survives being driven remotely. None of them finds the
+others' gaps, which is the argument for having all of them rather than the nearest one.
 
 The Workbench's design already reserves this seam explicitly: it declines to specify a
 scene editor top-down, waits for one to emerge from a real consumer, and states that
@@ -423,7 +498,9 @@ Merges crawler's per-package DoD with loft's library checklist. A package is don
 5. the API stub (`.loft/api/<name>.api`) is committed, so the surface is readable in-tree;
 6. the package README states its convention and its contract;
 7. both consumers' gates are green — an API change is not done at merge, it is done when
-   the last consumer is green.
+   the last consumer is green;
+8. **picking it up is fun.** The clause the other seven cannot reach — see § Why this exists.
+   Not gateable by a test, which is why it is written here rather than left to taste.
 
 Tests travel with the package. When a second consumer finds a bug, the fix and its
 regression test land **in the shared package**, and the first consumer gets them for free.

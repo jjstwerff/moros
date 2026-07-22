@@ -6,6 +6,7 @@
 use types;
 use palette;
 use spawn;
+use hex_field;
 
 // Top-level map container. Holds chunks and palette definitions.
 pub struct Map {
@@ -362,4 +363,70 @@ pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
       map_set_height(m, q + offset, r, cy, h);
     }
   }
+}
+
+// ── The shared document format (moros#4) ─────────────────────────────────
+//
+// Moros's dense 8-byte cell and hex_field's parallel arrays are ONE model —
+// moros#1 probed it — with the cell as a storage concern over the field.  This
+// is that seam: a Map layer converts to a field, writes through hex_field's
+// format, and comes back.
+//
+// What crosses today: occupancy, height, material.  Items, item rotation and
+// the three wall bytes do NOT — hex_field has no EdgeSet or Features section
+// yet, so they are dropped rather than silently mangled.  test_items_and_walls
+// _do_not_survive_yet pins that, so the day a section appears the test fails and
+// tells us to carry them.
+
+pub struct MapLoad {
+  ml_code: integer,
+  ml_map:  Map,
+}
+
+// Convert one cy layer of `m` over the extent (q0,r0,w,h) and write it.
+pub fn map_write_field(
+  m: Map, cy: integer, q0: integer, r0: integer, w: integer, h: integer, path: text
+) {
+  fs = hexset_chunk(q0, r0, w, h);
+  fz = heights_new(q0, r0, w, h);
+  fl = labels_new(q0, r0, w, h);
+  for q in 0..w {
+    for r in 0..h {
+      cell = map_get_hex(m, q0 + q, r0 + r, cy);
+      if cell.h_material != 0 {
+        hexset_set(fs, q0 + q, r0 + r, true);
+        height_set(fz, q0 + q, r0 + r, cell.h_height as float);
+        label_set(fl, q0 + q, r0 + r, cell.h_material);
+      }
+    }
+  }
+  doc_write(path, fs, fz, fl, true, true);
+}
+
+// Read a field back into a Map at layer `cy`.  On refusal the code is non-zero
+// and the map is empty — never half-populated.
+pub fn map_read_field(path: text, cy: integer) -> MapLoad {
+  d = doc_read(path);
+  out = map_empty();
+  if d.doc_code != 0 {
+    return MapLoad { ml_code: d.doc_code, ml_map: out };
+  }
+  q0 = hexset_q0(d.doc_cells);
+  r0 = hexset_r0(d.doc_cells);
+  w  = hexset_w(d.doc_cells);
+  h  = hexset_h(d.doc_cells);
+  for q in 0..w {
+    for r in 0..h {
+      if hexset_get(d.doc_cells, q0 + q, r0 + r) {
+        mat = if d.doc_has_l { label_get(d.doc_labels, q0 + q, r0 + r) } else { 1 };
+        map_paint_material(out, q0 + q, r0 + r, cy, mat);
+        if d.doc_has_h {
+          // Our height unit is an integer; a fractional height from another
+          // consumer truncates HERE, visibly, rather than somewhere downstream.
+          map_set_height(out, q0 + q, r0 + r, cy, height_get(d.doc_heights, q0 + q, r0 + r) as integer);
+        }
+      }
+    }
+  }
+  MapLoad { ml_code: 0, ml_map: out }
 }

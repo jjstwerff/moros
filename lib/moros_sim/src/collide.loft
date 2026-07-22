@@ -83,16 +83,11 @@ pub fn floor_y_at(map: Map, wx: float, wz: float) -> float {
   hf.h_height as float * HEIGHT_SCALE
 }
 
-// Axial hex under a given world (wx, wz).
-pub fn hex_at(wx: float, wz: float) -> HexAddress {
-  world_to_hex(wx, wz)
-}
-
 // Internal: is the move from `fr` to `to` blocked by a wall or
 // an un-steppable height difference?
 fn move_blocked(map: Map, fr: Vec3, to: Vec3) -> boolean {
-  a = hex_at(fr.x, fr.z);
-  b = hex_at(to.x, to.z);
+  a = world_to_hex(fr.x, fr.z);
+  b = world_to_hex(to.x, to.z);
   if a.ha_q == b.ha_q && a.ha_r == b.ha_r { return false; }
   fy_to = floor_y_at(map, to.x, to.z);
   fy_fr = floor_y_at(map, fr.x, fr.z);

@@ -1,0 +1,80 @@
+// Moros's side of the shared document format (moros#4).  The format itself is
+// gated in hex_field; this gates OUR conversion into and out of it.
+use moros_map;
+use hex_field;
+
+fn authored() -> Map {
+  m = map_empty();
+  for q in 0..5 {
+    for r in 0..4 {
+      if (q + r) % 4 != 0 {
+        map_paint_material(m, q, r, 0, 1 + (q % 3));
+        map_set_height(m, q, r, 0, 10 + q * 2 + r);
+      }
+    }
+  }
+  m
+}
+
+fn test_layer_round_trips_through_the_format() {
+  m = authored();
+  p = "moros_field_rt.bin";
+  map_write_field(m, 0, 0, 0, 5, 4, p);
+  ld = map_read_field(p, 0);
+  assert(ld.ml_code == 0, "load refused with {ld.ml_code}");
+  for q in 0..5 {
+    for r in 0..4 {
+      a = map_get_hex(m, q, r, 0);
+      b = map_get_hex(ld.ml_map, q, r, 0);
+      assert(a.h_material == b.h_material, "material differs at {q},{r}: {a.h_material} vs {b.h_material}");
+      assert(a.h_height == b.h_height, "height differs at {q},{r}: {a.h_height} vs {b.h_height}");
+    }
+  }
+  delete(p);
+}
+
+// Honest about the seam: three of our six cell fields have no section yet.
+// When hex_field grows EdgeSet/Features this test FAILS, which is the point —
+// it is a reminder to carry them, not a claim that dropping them is correct.
+fn test_items_and_walls_do_not_survive_yet() {
+  m = map_empty();
+  map_paint_material(m, 1, 1, 0, 2);
+  map_place_item(m, 1, 1, 0, 7, 9);
+  map_set_wall(m, 1, 1, 0, 0, 4);
+  p = "moros_field_gap.bin";
+  map_write_field(m, 0, 0, 0, 3, 3, p);
+  ld = map_read_field(p, 0);
+  assert(ld.ml_code == 0, "load refused {ld.ml_code}");
+  back = map_get_hex(ld.ml_map, 1, 1, 0);
+  assert(back.h_material == 2, "material should survive");
+  assert(back.h_item == 0, "item survived unexpectedly — hex_field grew a section, carry it");
+  assert(back.h_wall_n == 0, "wall survived unexpectedly — hex_field grew a section, carry it");
+  delete(p);
+}
+
+// A fractional height from another consumer truncates at OUR boundary, not
+// silently somewhere downstream.  Pinned so the choice is visible.
+fn test_fractional_height_truncates_at_our_boundary() {
+  s = hexset_chunk(0, 0, 2, 2);
+  hz = heights_new(0, 0, 2, 2);
+  lb = labels_new(0, 0, 2, 2);
+  hexset_set(s, 0, 0, true);
+  height_set(hz, 0, 0, 12.5);
+  label_set(lb, 0, 0, 3);
+  p = "moros_field_frac.bin";
+  doc_write(p, s, hz, lb, true, true);
+  ld = map_read_field(p, 0);
+  assert(ld.ml_code == 0, "load refused {ld.ml_code}");
+  assert(map_get_hex(ld.ml_map, 0, 0, 0).h_height == 12, "12.5 should land on 12 here");
+  delete(p);
+}
+
+// Refusals must reach us as refusals, with an EMPTY map — never half-loaded.
+fn test_refusal_yields_an_empty_map() {
+  p = "moros_field_bad.bin";
+  { f = file(p); f#format = LittleEndian; f += (12345 as i32); f += (1 as i32); }
+  ld = map_read_field(p, 0);
+  assert(ld.ml_code != 0, "bad magic was accepted");
+  assert(len(ld.ml_map.m_chunks) == 0, "a refused load still produced chunks");
+  delete(p);
+}
