@@ -13,11 +13,11 @@
 are all FIXED.** They are kept below, struck through, until the fix is released and the
 entries can be deleted — the reproducers are the re-verification.
 
-**H4 is open and re-confirmed against the 15:13 build of `../loft` `bf53db82`** (the
-`@PLN105` "free the scratch on loop exit / on a return out of an exposed loop" work) — that
-series does not touch it: still **3 of 32** accessors, caches cleared. Our suite is green on
-that build too (435 tests, five packages), and Moros HEAD exports 0/32 nulls, so only the
-`5e677b7` reproducer shows it.
+**H4 is open and re-confirmed on the 16:34 build** — the one carrying `@PLN116`'s `x?`
+postfix default-fallback operator and `@PLN105`'s scratch-freeing series. Neither touches it:
+still **3 of 32** accessors, with `native-auto/`, `.loft/` and `~/.loft/build-cache` cleared.
+Our suite is green on that build (435 tests, five packages) and Moros HEAD exports 0/32
+nulls, so the `5e677b7` reproducer remains the only way to see it.
 
 Originally found **2026-07-22** on the earlier 2026.7.2 build, while recovering the
 `moros_*` packages ([moros#2](https://github.com/jjstwerff/moros/issues/2)). The package test
@@ -217,11 +217,22 @@ These do **not** clear it, each confirmed to have actually applied before runnin
 2. switching `HEX_WIDTH` from the local literal to `hex_grid::HEX_LEN`;
 3. rewriting the corner function's early-`return` chain as a single tail expression.
 
-So the same numbers, computed locally, null the minimum; **sourced from another package,
-they do not.** Whether the null appears depends on which module produced the value, not on
-the value, its type as the compiler reports it, or the shape of the function that returned
-it. That is why this goes upstream rather than being patched here — the remaining
-explanation is inside the toolchain.
+An earlier version of this entry concluded from that "the same numbers computed locally null
+the minimum; sourced from another package they do not." **Two further controls falsify
+that**, so it is withdrawn:
+
+4. a **standalone program** (no Moros at all) that builds a 3-vertex mesh whose minimum x is
+   `-1.7320508 / 2.0` — a local division — and exports it through the registry
+   `save_scene_glb`: **min is correct**;
+5. the same thing **split across two packages**, the mesh built in a library and exported by
+   the program: **min is correct**.
+
+So neither "a locally computed division became the minimum" nor "the value crossed a package
+boundary" is sufficient to trigger it. What remains true is only the narrow fact: at
+`5e677b7` the export nulls 3 of 32 minima, and swapping *just* the corner table for
+`hex_grid`'s clears all of them — with no minimal reproducer yet isolating why. The
+difference must lie in something the small cases do not have: vertex counts in the
+thousands, eight meshes in one scene, or the `emit_*` mutation path that builds them.
 
 ### One more signal from the same run
 
