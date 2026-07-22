@@ -319,7 +319,8 @@ pub fn hex_distance(q1: integer, r1: integer, q2: integer, r2: integer) -> integ
 // Integer linear interpolation: a + (b - a) * i / n.
 pub fn lerp_int(a: integer, b: integer, i: integer, n: integer) -> integer {
   if n == 0 { return a; }
-  a + (b - a) * i / n
+  // `n == 0` returned above, so the fallback is unreachable.
+  a + ((b - a) * i / n ?? 0)
 }
 
 // ── Slope operations (Phase 4.8–4.9) ──────────────────────────────

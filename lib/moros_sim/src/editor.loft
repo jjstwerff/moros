@@ -347,7 +347,10 @@ pub fn editor_save_to_file(st: EditorState, path: text) -> boolean {
 pub fn editor_load_from_file(st: &EditorState, path: text) -> boolean {
   ef_lf = file(path);
   if !ef_lf.exists() { return false; }
-  ef_text = ef_lf.content();
+  // `exists()` does not promise readable — a file can exist and still fail to
+  // read.  Treating unreadable as empty lets the existing length check reject
+  // it, so the failure returns false instead of parsing null as a map.
+  ef_text = ef_lf.content() ?? "";
   if len(ef_text) == 0 { return false; }
   st.es_map  = map_from_json(ef_text);
   st.es_undo = undo_empty();

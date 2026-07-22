@@ -120,6 +120,23 @@ fn test_cone_corner_hit() {
 
 // ── flag_occluders ────────────────────────────────────────────────
 
+// A node whose mesh_idx is negative must be flagged false, NOT tested against
+// some other mesh.  This is load-bearing: loft's negative index WRAPS
+// (`v[-1]` is the last element) rather than yielding null, so the explicit
+// `< 0` check cannot be folded into the indexing.
+fn test_flag_occluders_negative_mesh_idx() {
+  nsc = scene("neg");
+  nm1 = mesh("only");
+  emit_box(nm1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
+  add_mesh(nsc, nm1);
+  ndm = add_material(nsc, material("dm"));
+  add_node(nsc, node("broken", -1, ndm));
+  nc = view_cone(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 10.0), 15.0);
+  nflags = flag_occluders(nsc, nc);
+  assert(len(nflags) == 1, "one flag per node");
+  assert(!nflags[0], "negative mesh_idx is not an occluder");
+}
+
 fn test_flag_occluders_parallel_to_nodes() {
   sc = scene("t");
   // Two meshes: one at z=5 (on axis of cone pointing +Z), one at x=20 (far off).

@@ -30,7 +30,7 @@ fn test_save_writes_file() {
   assert(ok, "save reports success");
   f = file(sp);
   assert(f.exists(), "file exists after save");
-  content = f.content();
+  content = f.content() ?? "";
   assert(len(content) > 0, "json body non-empty, len={len(content)}");
   delete(sp);  // @P333: don't leave artifacts in the package dir
 }

@@ -110,9 +110,14 @@ pub fn emit_wall_quad(m: &Mesh, c1: Vec3, c2: Vec3, floor_y: float, ceil_y: floa
   // Normal: cross product of (c2-c1) × (up).
   dx = c2.x - c1.x;
   dz = c2.z - c1.z;
-  len_xz = sqrt(dx * dx + dz * dz);
-  nx = 0.0 - dz / len_xz;  // perpendicular in XZ plane
-  nz = dx / len_xz;
+  len_xz = sqrt(dx * dx + dz * dz) ?? 0.0;
+  // Coincident corners have no direction to be perpendicular to, so there is no
+  // normal to emit.  Every other emit_* here returns empty on a degenerate input
+  // (emit_box, emit_linear_stair, emit_thick_flat_wall — each with a test); this
+  // one divided by the length without checking it.
+  if len_xz == 0.0 { return; }
+  nx = (0.0 - dz / len_xz) ?? 0.0;  // perpendicular in XZ plane
+  nz = (dx / len_xz) ?? 0.0;
   normal = vec3(nx, 0.0, nz);
   base = len(m.vertices);
   // 4 corners: bottom-left, bottom-right, top-right, top-left
@@ -133,13 +138,17 @@ pub fn emit_slope_face(m: &Mesh, c1: Vec3, c2: Vec3, y_low: float, y_high: float
   // Slope normal: approximate as the average of horizontal and vertical.
   dx = c2.x - c1.x;
   dz = c2.z - c1.z;
-  len_xz = sqrt(dx * dx + dz * dz);
-  nx = 0.0 - dz / len_xz;
-  nz = dx / len_xz;
+  len_xz = sqrt(dx * dx + dz * dz) ?? 0.0;
+  // Same degenerate case as emit_wall_quad: coincident corners.  len_slope is
+  // then zero too (it is hypot(len_xz, dy) with dy the only term left), so this
+  // one check covers both divisions below.
+  if len_xz == 0.0 { return; }
+  nx = (0.0 - dz / len_xz) ?? 0.0;
+  nz = (dx / len_xz) ?? 0.0;
   dy = y_high - y_low;
-  len_slope = sqrt(len_xz * len_xz + dy * dy);
-  ny = len_xz / len_slope;
-  normal = vec3(nx * dy / len_slope, ny, nz * dy / len_slope);
+  len_slope = sqrt(len_xz * len_xz + dy * dy) ?? 0.0;
+  ny = (len_xz / len_slope) ?? 0.0;
+  normal = vec3((nx * dy / len_slope) ?? 0.0, ny, (nz * dy / len_slope) ?? 0.0);
   base = len(m.vertices);
   // Quad: low-left, low-right, high-right, high-left
   m.vertices += [vertex(vec3(c1.x, y_low, c1.z), normal, vec2(0.0, 0.0))];
@@ -252,8 +261,9 @@ pub fn emit_thick_flat_wall(
   tw_dz = p2.z - p1.z;
   tw_len = sqrt(tw_dx * tw_dx + tw_dz * tw_dz);
   if tw_len == 0.0 { return; }
-  tw_fx = tw_dx / tw_len;
-  tw_fz = tw_dz / tw_len;
+  // `tw_len == 0.0` returned above, so these fallbacks are unreachable.
+  tw_fx = (tw_dx / tw_len) ?? 0.0;
+  tw_fz = (tw_dz / tw_len) ?? 0.0;
   // Perpendicular in XZ (90° rotation, points "front").
   tw_px = -tw_fz;
   tw_pz = tw_fx;
@@ -319,7 +329,8 @@ pub fn emit_thick_curved_wall(
   if inner_r < 0.0 || outer_r <= inner_r { return; }
   if height <= 0.0 { return; }
   tcw_d2r = PI / 180.0;
-  tcw_seg = angle_sweep_deg / seg_count as float;
+  // `seg_count <= 0` returned above.
+  tcw_seg = (angle_sweep_deg / seg_count as float) ?? 0.0;
   tcw_y0 = base_y;
   tcw_y1 = base_y + height;
   tcw_up = vec3(0.0, 1.0, 0.0);
@@ -439,7 +450,8 @@ pub fn emit_cylinder_post(
 ) {
   if seg_count < 3 { return; }
   if radius <= 0.0 { return; }
-  cp_seg = 2.0 * PI / seg_count as float;
+  // `seg_count < 3` returned above.
+  cp_seg = (2.0 * PI / seg_count as float) ?? 0.0;
   for cp_i in 0..seg_count {
     i_cp = cp_i as float;
     a0 = i_cp * cp_seg;
@@ -491,14 +503,16 @@ pub fn emit_linear_stair(
   ls_dy = p_high.y - p_low.y;
   horiz = sqrt(ls_dx * ls_dx + ls_dz * ls_dz);
   if horiz == 0.0 { return; }
-  fwd_x = ls_dx / horiz;
-  fwd_z = ls_dz / horiz;
+  // `horiz == 0.0` returned above.
+  fwd_x = (ls_dx / horiz) ?? 0.0;
+  fwd_z = (ls_dz / horiz) ?? 0.0;
   // 90° rotation in XZ for the lateral direction.
   side_x = 0.0 - fwd_z;
   side_z = fwd_x;
   stair_half_w = width / 2.0;
-  step_run  = horiz / step_count as float;
-  step_rise = ls_dy / step_count as float;
+  // `step_count <= 0` returned above.
+  step_run  = (horiz / step_count as float) ?? 0.0;
+  step_rise = (ls_dy / step_count as float) ?? 0.0;
   stair_up = vec3(0.0, 1.0, 0.0);
   // Riser normal points backward (against travel direction).
   riser_n = vec3(0.0 - fwd_x, 0.0, 0.0 - fwd_z);
@@ -779,7 +793,8 @@ pub fn camera_ray_dir(cam: RenderCamera, ndc_x: float, ndc_y: float, aspect: flo
 // y matches `plane_y` before using the result.
 pub fn ray_plane_y_intersect(origin: Vec3, dir: Vec3, plane_y: float) -> Vec3 {
   if dir.y == 0.0 { return vec3(0.0, 0.0, 0.0); }
-  ray_t = (plane_y - origin.y) / dir.y;
+  // `dir.y == 0.0` returned above.
+  ray_t = ((plane_y - origin.y) / dir.y) ?? 0.0;
   if ray_t < 0.0 { return vec3(0.0, 0.0, 0.0); }
   vec3(origin.x + ray_t * dir.x, plane_y, origin.z + ray_t * dir.z)
 }
@@ -807,9 +822,15 @@ pub fn pick_hex(
   viewport_w: float, viewport_h: float,
   hex_floor_y: float
 ) -> HexAddress {
-  ndc_x = (2.0 * screen_x / viewport_w) - 1.0;
-  ndc_y = 1.0 - (2.0 * screen_y / viewport_h);
-  pk_aspect = viewport_w / viewport_h;
+  // A zero-sized viewport has no screen to pick in.  It happens for real — a
+  // canvas is 0x0 between creation and first layout — so answer with the origin
+  // hex rather than dividing by it.
+  if viewport_w == 0.0 || viewport_h == 0.0 {
+    return HexAddress { ha_q: 0, ha_r: 0, ha_cy: 0 };
+  }
+  ndc_x = ((2.0 * screen_x / viewport_w) ?? 0.0) - 1.0;
+  ndc_y = 1.0 - ((2.0 * screen_y / viewport_h) ?? 0.0);
+  pk_aspect = (viewport_w / viewport_h) ?? 1.0;
   pk_eye = camera_eye(cam);
   pk_dir = camera_ray_dir(cam, ndc_x, ndc_y, pk_aspect);
   world_pt = ray_plane_y_intersect(pk_eye, pk_dir, hex_floor_y);
@@ -828,9 +849,15 @@ fn emit_to_material(meshes: vector<Mesh>, mat: integer, q: integer, r: integer, 
       return;
     }
   }
-  meshes += [mesh(mat_name)];
-  nm = meshes[len(meshes) - 1];
+  // Build the mesh, then store it.  Appending first and indexing the tail back
+  // out types as `Mesh?` (indexing is fallible), and the obvious discharge —
+  // `?? mesh(mat_name)` — would be a silent data loss: the fallback is a
+  // DIFFERENT mesh, so the geometry would be emitted into an object nobody
+  // keeps.  Emitting before the append removes the optional instead of
+  // defaulting it.
+  nm = mesh(mat_name);
   emit_hex_surface(nm, q, r, height);
+  meshes += [nm];
 }
 
 // Emit wall geometry for a hex's 3 stored edges (N, NE, SE).
@@ -984,9 +1011,11 @@ fn emit_stair_hex(
       return;
     }
   }
-  meshes += [mesh(sh_mat_name)];
-  sh_nm = meshes[len(meshes) - 1];
+  // Build then store — see emit_to_material for why the append-then-index form
+  // cannot be discharged with `??`.
+  sh_nm = mesh(sh_mat_name);
   emit_stair_into(sh_nm, map, q, r, cy, h);
+  meshes += [sh_nm];
 }
 
 // Emit a small axis-aligned marker box at `pos`, offset by
@@ -1271,7 +1300,7 @@ pub fn view_cone(eye: Vec3, target: Vec3, half_angle_deg: float) -> ViewCone {
   vc_diff = sub3(target, eye);
   vc_len  = length3(vc_diff);
   vc_axis = if vc_len > 0.000001 {
-    scale3(vc_diff, 1.0 / vc_len)
+    scale3(vc_diff, (1.0 / vc_len) ?? 0.0)   // guarded by the branch condition
   } else {
     vec3(0.0, 0.0, 1.0)
   };
@@ -1328,11 +1357,16 @@ pub fn aabb_vs_cone(b: Aabb, c: ViewCone) -> boolean {
 pub fn flag_occluders(scene: Scene, cone: ViewCone) -> vector<boolean> {
   fo_flags: vector<boolean> = [];
   for fo_n in scene.nodes {
+    // The `< 0` half of this check is load-bearing and cannot be folded into the
+    // indexing: loft's negative index WRAPS (`v[-1]` is the last element) while
+    // only an over-range index yields null.  Dropping it would silently test a
+    // negative mesh_idx against the last mesh in the scene.
     fo_mi = fo_n.mesh_idx;
-    if fo_mi < 0 || fo_mi >= len(scene.meshes) {
+    fo_m = if fo_mi < 0 { null } else { scene.meshes[fo_mi] };
+    if !fo_m {
       fo_flags += [false];
     } else {
-      fo_box = mesh_aabb(scene.meshes[fo_mi]);
+      fo_box = mesh_aabb(fo_m);
       fo_flags += [aabb_vs_cone(fo_box, cone)];
     }
   }

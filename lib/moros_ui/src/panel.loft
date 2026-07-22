@@ -201,7 +201,9 @@ pub fn panel_hit_test(p: Panel, mx: integer, my: integer) -> UiHit {
   }
   if rect_contains(p.p_list.lb_rect, mx, my) {
     pht_local_y = my - p.p_list.lb_rect.r_y + p.p_list.lb_scroll;
-    pht_idx = pht_local_y / p.p_list.lb_item_height;
+    // A zero item height is a mis-built panel, not a hit: -1 falls outside the
+    // range check below, so it reports "no item" rather than a null index.
+    pht_idx = (pht_local_y / p.p_list.lb_item_height) ?? -1;
     if pht_idx >= 0 && pht_idx < len(p.p_list.lb_items) {
       return UhListItem { li_idx: pht_idx };
     }

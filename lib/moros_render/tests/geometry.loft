@@ -77,6 +77,30 @@ fn test_emit_wall_quad() {
   assert(tr.y == 2.0, "top-right y");
 }
 
+// Degenerate inputs emit nothing, matching emit_box / emit_linear_stair /
+// emit_thick_flat_wall.  Both of these divided by the edge length without
+// checking it, so coincident corners produced a null normal instead.
+fn test_emit_wall_quad_coincident_corners() {
+  wq_m = mesh("degenerate_wall");
+  emit_wall_quad(wq_m, vec3(1.0, 0.0, 1.0), vec3(1.0, 0.0, 1.0), 0.0, 2.0);
+  assert(len(wq_m.vertices) == 0, "zero-length wall → no geometry");
+}
+
+fn test_emit_slope_face_coincident_corners() {
+  sf_m = mesh("degenerate_slope");
+  emit_slope_face(sf_m, vec3(2.0, 0.0, 3.0), vec3(2.0, 0.0, 3.0), 0.0, 1.0);
+  assert(len(sf_m.vertices) == 0, "zero-length slope → no geometry");
+}
+
+// A 0x0 viewport is real — a canvas has no size between creation and first
+// layout — and used to divide by zero on the way to a hex address.
+fn test_pick_hex_zero_viewport() {
+  pz_cam = camera_default();
+  pz_a = pick_hex(pz_cam, 10.0, 10.0, 0.0, 0.0, 0.0);
+  assert(pz_a.ha_q == 0, "zero viewport picks origin q, got {pz_a.ha_q}");
+  assert(pz_a.ha_r == 0, "zero viewport picks origin r, got {pz_a.ha_r}");
+}
+
 fn test_emit_slope_face() {
   m = mesh("slope");
   c1 = vec3(0.0, 0.0, 0.0);
