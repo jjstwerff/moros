@@ -323,13 +323,33 @@ crawler while its kernel migration exercises them, and move once settled.
 in its own README: **stencils first** (the first new work built *in* the package), **the
 document format second** (it does not exist anywhere yet), the migrated modules last.
 
-One structural note for the data-model question in
-[issue #1](https://github.com/jjstwerff/moros/issues/1): `hex_field` keeps heights and
-labels as **parallel arrays over the same chunk window**, not as fields on a cell struct —
-"most of the world is flat and should not pay for a height it never reads". Our `Hex` packs
-height, material, item and three walls into one 8-byte cell. Those are opposite choices,
-and reconciling them is exactly what that issue's probe is for. `Heights` also stores a
-**float** z where ours stores `u16` height units.
+### The data-model question, settled by probe
+
+`hex_field` keeps heights and labels as **parallel arrays over the same chunk window**, not
+as fields on a cell struct — "most of the world is flat and should not pay for a height it
+never reads". Our `Hex` packs height, material, item and three walls into one 8-byte cell.
+Those look like opposite choices. [Issue #1](https://github.com/jjstwerff/moros/issues/1)
+probed whether they conflict; **they do not.**
+
+Authoring an inn ground floor in the dense model, converting to the field model and back:
+material and height round-trip with **zero** differences, and the field model's own gate
+passes on our authored geometry — `validate` returns 0 and `shoelace_total` is 288 for 24
+cells, exactly 12 × count. Item, rotation and walls drop, but only because `EdgeSet` /
+`Surfaces` / `Features` are still crawler-side; that is sequencing, not conflict.
+
+**So: one model.** The chunked dense cell is a *storage and serialisation* concern layered
+over the field model, not a rival representation of it.
+
+Two facts fell out of the reverse direction, and both belong to the document format
+([#4](https://github.com/jjstwerff/moros/issues/4)):
+
+- **Fractional heights are the one real representational difference.** `Heights` is `float`;
+  ours is integer units, and `12.5` truncates to `12`. Either the seam constrains heights to
+  integer units or our unit becomes fractional — a design choice, not a maturity gap.
+- **The documented byte widths are not enforced anywhere.** `height: u16`, `material: u8`
+  are SCENE_MAP.md's specification, but the implementation stores unbounded integers:
+  `70000`, `-3` and `300` all store and read back unchanged. A byte-packing writer would
+  silently truncate maps the editor happily produced.
 
 ---
 
