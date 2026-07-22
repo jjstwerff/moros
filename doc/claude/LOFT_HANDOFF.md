@@ -11,7 +11,13 @@
 
 **Re-tested 2026-07-22 on a newer `loft 2026.7.2` build (binary dated 15:05): H1, H2 and H3
 are all FIXED.** They are kept below, struck through, until the fix is released and the
-entries can be deleted — the reproducers are the re-verification. **H4 is new and open.**
+entries can be deleted — the reproducers are the re-verification.
+
+**H4 is open and re-confirmed against the 15:13 build of `../loft` `bf53db82`** (the
+`@PLN105` "free the scratch on loop exit / on a return out of an exposed loop" work) — that
+series does not touch it: still **3 of 32** accessors, caches cleared. Our suite is green on
+that build too (435 tests, five packages), and Moros HEAD exports 0/32 nulls, so only the
+`5e677b7` reproducer shows it.
 
 Originally found **2026-07-22** on the earlier 2026.7.2 build, while recovering the
 `moros_*` packages ([moros#2](https://github.com/jjstwerff/moros/issues/2)). The package test
@@ -216,6 +222,18 @@ they do not.** Whether the null appears depends on which module produced the val
 the value, its type as the compiler reports it, or the shape of the function that returned
 it. That is why this goes upstream rather than being patched here — the remaining
 explanation is inside the toolchain.
+
+### One more signal from the same run
+
+Every H4 run ends with
+
+```
+Warning: 2 stores not freed at program exit: kt=66 Hex×10, kt=97 Vec3×2
+```
+
+`Vec3` is the type `glb_pos_min` returns. Whether the unfreed store and the nulled minimum
+are the same fact is not something we can tell from outside, but they arrive together on
+every reproduction, and the leak persists on the 15:13 build.
 
 ### Suggested starting point
 
