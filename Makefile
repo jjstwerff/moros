@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test probe
+.PHONY: serve stop creator upload tests lib-test
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -35,7 +35,4 @@ lib-test:
 			|| { echo "FAILED: $$p"; exit 1; }; \
 	done
 
-# Standalone probes — checks that do not belong to a package suite.
-probe:
-	$(PY) tools/probes/neighbour_parity.py
 

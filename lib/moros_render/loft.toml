@@ -9,3 +9,4 @@ entry = "src/moros_render.loft"
 [dependencies]
 moros_map = { path = "../moros_map" }
 graphics  = ">=0.1"
+hex_grid  = ">=0.1"

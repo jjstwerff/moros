@@ -5,16 +5,19 @@
 
 use moros_map;
 use graphics;
+use hex_grid;
 
 // ── Constants ─────────────────────────────────────────────────────
 
-// Hex grid geometry (flat-top orientation, unit size = 1.0).
+// Hex grid geometry, POINTY-TOP odd-r (the comments here long said "flat-top";
+// the corner table below has vertices at top and bottom, which is pointy-top).
+// `HEX_SIZE` now comes from hex_grid, which holds the same 1.0.
 // Hex width  = sqrt(3) ≈ 1.732
 // Row height = 1.5
 
-pub HEX_SIZE = 1.0;
-
 // sqrt(3) approximation — loft has no sqrt() for floats yet.
+// DUPLICATE of hex_grid::HEX_LEN, kept until #3 reconciles this file's lattice
+// math with the library wholesale.
 pub HEX_WIDTH = 1.7320508;
 
 // Vertical spacing between hex rows.
@@ -46,7 +49,12 @@ pub fn hex_to_world(q: integer, r: integer, height: integer) -> Vec3 {
 //   corner 3: (0, -1)           bottom
 //   corner 4: (-√3/2, -0.5)    bottom-left
 //   corner 5: (-√3/2, +0.5)    top-left
-fn hex_corner_offset(i: integer) -> Vec2 {
+//
+// NOT hex_grid::hex_corner_offset, which walks the ring the other way:
+// this file's index i is hex_grid's (6 - i) % 6.  Wall emission reads corners
+// by index (5→0, 0→1, 1→2), so adopting the library table moves every wall to a
+// different edge — that is #3's edge-ownership work, not a rename.
+fn mr_corner_offset(i: integer) -> Vec2 {
   half_w = HEX_WIDTH / 2.0;
   if i == 0 { return vec2(0.0, 1.0); }
   if i == 1 { return vec2(half_w, 0.5); }
@@ -87,7 +95,7 @@ pub fn emit_hex_surface(m: Mesh, q: integer, r: integer, height: integer) -> int
   m.vertices += [vertex(centre, up, vec2(0.5, 0.5))];
   // 6 corner vertices
   for ci in 0..6 {
-    off = hex_corner_offset(ci);
+    off = mr_corner_offset(ci);
     pos = vec3(centre.x + off.x, centre.y, centre.z + off.y);
     u = (off.x / HEX_WIDTH) + 0.5;
     v = (off.y / 1.0) * 0.5 + 0.5;
@@ -166,23 +174,16 @@ pub fn emit_slope_face(m: Mesh, c1: Vec3, c2: Vec3, y_low: float, y_high: float)
 // Get the world-space position of hex corner `ci` (0-5) for hex (q,r,h).
 pub fn hex_corner_world(q: integer, r: integer, height: integer, ci: integer) -> Vec3 {
   centre = hex_to_world(q, r, height);
-  off = hex_corner_offset(ci);
+  off = mr_corner_offset(ci);
   vec3(centre.x + off.x, centre.y, centre.z + off.y)
 }
 
-// Axial neighbour offsets for the 6 hex directions (flat-top).
-// dir 0=N(+r), 1=NE(+q), 2=SE(+q,-r), 3=S(-r), 4=SW(-q), 5=NW(-q,+r)
-fn neighbour_dq(dir: integer) -> integer {
-  if dir == 1 || dir == 2 { return 1; }
-  if dir == 4 || dir == 5 { return -1; }
-  0
-}
-
-fn neighbour_dr(dir: integer) -> integer {
-  if dir == 0 || dir == 5 { return -1; }
-  if dir == 3 || dir == 2 { return 1; }
-  0
-}
+// Neighbours come from `hex_grid`, which owns the lattice for the whole hex_*
+// family.  The table that used to live here took only `dir` and so could not be
+// parity-aware, while `hex_to_world` above staggers odd rows — the two disagreed.
+// It cost one unreachable neighbour and one direction pointing two hexes out, in
+// each parity; see tools/probes/neighbour_parity.py.  `hex_neighbor(q, r, dir)`
+// takes `r` precisely because odd-r diagonals depend on it.
 
 // ── Box primitive (Phase 6a.12 prereq) ────────────────────────────
 
@@ -943,8 +944,7 @@ fn stair_target_dir(
   best_dir = -1;
   best_h = curr_h;
   for sd_d in 0..6 {
-    sd_nq = q + neighbour_dq(sd_d);
-    sd_nr = r + neighbour_dr(sd_d);
+    (sd_nq, sd_nr) = hex_neighbor(q, r, sd_d);
     sd_nh = map_get_hex(map, sd_nq, sd_nr, cy).h_height;
     if sd_nh > best_h {
       best_dir = sd_d;
@@ -982,14 +982,12 @@ fn emit_stair_into(
     sh_dir = DEFAULT_STAIR_DIR;
     sh_dest_h = h + DEFAULT_STAIR_RISE_UNITS;
   } else {
-    sh_ddq = neighbour_dq(sh_dir);
-    sh_ddr = neighbour_dr(sh_dir);
-    sh_dest_h = map_get_hex(map, q + sh_ddq, r + sh_ddr, cy).h_height;
+    (sh_ndq, sh_ndr) = hex_neighbor(q, r, sh_dir);
+    sh_dest_h = map_get_hex(map, sh_ndq, sh_ndr, cy).h_height;
   }
-  sh_dq = neighbour_dq(sh_dir);
-  sh_dr = neighbour_dr(sh_dir);
+  (sh_dq, sh_dr) = hex_neighbor(q, r, sh_dir);
   sh_p_low = hex_to_world(q, r, h);
-  sh_p_high = hex_to_world(q + sh_dq, r + sh_dr, sh_dest_h);
+  sh_p_high = hex_to_world(sh_dq, sh_dr, sh_dest_h);
   sh_steps = stair_step_count(sh_p_low.y, sh_p_high.y);
   emit_linear_stair(target, sh_p_low, sh_p_high, HEX_WIDTH * 0.6, sh_steps);
 }

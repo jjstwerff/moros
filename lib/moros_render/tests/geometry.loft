@@ -80,6 +80,63 @@ fn test_emit_wall_quad() {
 // Degenerate inputs emit nothing, matching emit_box / emit_linear_stair /
 // emit_thick_flat_wall.  Both of these divided by the edge length without
 // checking it, so coincident corners produced a null normal instead.
+// ── Neighbour lattice (the parity defect) ─────────────────────────
+//
+// The table this file used to rely on took only `dir`, so it could not be
+// parity-aware — while hex_to_world staggers odd rows.  The two disagreed:
+// in each parity one direction pointed a hex-and-a-half out (3.0 units, a
+// second-ring cell) and one true neighbour had no direction at all.  Both
+// checks below go red against it and green against hex_grid::hex_neighbor.
+
+fn test_neighbour_step_is_one_hex_in_both_parities() {
+  for nsp_r in 4..6 {                       // 4 = even row, 5 = odd row
+    for nsp_d in 0..6 {
+      (nsp_q2, nsp_r2) = hex_neighbor(10, nsp_r, nsp_d);
+      nsp_a = hex_to_world(10, nsp_r, 0);
+      nsp_b = hex_to_world(nsp_q2, nsp_r2, 0);
+      nsp_dx = nsp_b.x - nsp_a.x;
+      nsp_dz = nsp_b.z - nsp_a.z;
+      nsp_dist = sqrt(nsp_dx * nsp_dx + nsp_dz * nsp_dz) ?? 0.0;
+      assert(abs(nsp_dist - HEX_WIDTH) < 0.0001,
+             "row {nsp_r} dir {nsp_d}: neighbour is {nsp_dist} away, one step is {HEX_WIDTH}");
+    }
+  }
+}
+
+fn test_neighbour_direction_means_the_same_on_every_row() {
+  for nds_d in 0..6 {
+    (nds_eq, nds_er) = hex_neighbor(10, 4, nds_d);
+    (nds_oq, nds_or) = hex_neighbor(10, 5, nds_d);
+    nds_e0 = hex_to_world(10, 4, 0);
+    nds_e1 = hex_to_world(nds_eq, nds_er, 0);
+    nds_o0 = hex_to_world(10, 5, 0);
+    nds_o1 = hex_to_world(nds_oq, nds_or, 0);
+    nds_edx = nds_e1.x - nds_e0.x;
+    nds_edz = nds_e1.z - nds_e0.z;
+    nds_odx = nds_o1.x - nds_o0.x;
+    nds_odz = nds_o1.z - nds_o0.z;
+    assert(abs(nds_edx - nds_odx) < 0.0001,
+           "dir {nds_d} x-step differs by row parity: {nds_edx} vs {nds_odx}");
+    assert(abs(nds_edz - nds_odz) < 0.0001,
+           "dir {nds_d} z-step differs by row parity: {nds_edz} vs {nds_odz}");
+  }
+}
+
+fn test_six_directions_reach_six_distinct_neighbours() {
+  for nsd_r in 4..6 {
+    for nsd_a in 0..6 {
+      for nsd_b in 0..6 {
+        if nsd_a < nsd_b {
+          (nsd_qa, nsd_ra) = hex_neighbor(10, nsd_r, nsd_a);
+          (nsd_qb, nsd_rb) = hex_neighbor(10, nsd_r, nsd_b);
+          assert(nsd_qa != nsd_qb || nsd_ra != nsd_rb,
+                 "row {nsd_r}: dirs {nsd_a} and {nsd_b} reach the same cell");
+        }
+      }
+    }
+  }
+}
+
 fn test_emit_wall_quad_coincident_corners() {
   wq_m = mesh("degenerate_wall");
   emit_wall_quad(wq_m, vec3(1.0, 0.0, 1.0), vec3(1.0, 0.0, 1.0), 0.0, 2.0);
