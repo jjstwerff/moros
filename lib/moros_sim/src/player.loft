@@ -21,8 +21,8 @@ pub AVATAR_HEIGHT     = 1.8;
 pub struct Player {
   pl_pos:          Vec3,                // feet position, world units
   pl_vel:          Vec3,                // world units / second
-  pl_facing:       float not null,      // yaw in radians
-  pl_pitch:        float not null,      // camera pitch (avatar body upright)
+  pl_facing:       float,      // yaw in radians
+  pl_pitch:        float,      // camera pitch (avatar body upright)
   pl_holding_jump: boolean,
   pl_on_ground:    boolean,
   pl_current_tool: ToolKind,
@@ -48,15 +48,15 @@ pub struct InputState {
   in_strafe_right:     boolean,
   in_jump_held:        boolean,
 
-  in_mx:               integer not null,
-  in_my:               integer not null,
-  in_mouse_dx:         integer not null,
-  in_mouse_dy:         integer not null,
-  in_wheel:            integer not null,
+  in_mx:               integer,
+  in_my:               integer,
+  in_mouse_dx:         integer,
+  in_mouse_dy:         integer,
+  in_wheel:            integer,
   in_click:            boolean,
   in_rclick:           boolean,
 
-  in_tool_number:      integer not null,   // 0 = none, 1..6 = select tool
+  in_tool_number:      integer,   // 0 = none, 1..6 = select tool
   in_mode_toggle:      boolean,
   in_occlusion_toggle: boolean,
   in_undo:             boolean,

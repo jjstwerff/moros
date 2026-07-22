@@ -3,10 +3,10 @@
 // panel_render once loft_gl's sprite / text bridges are wired).
 
 pub struct Rect {
-  r_x: integer not null,
-  r_y: integer not null,
-  r_w: integer not null,
-  r_h: integer not null,
+  r_x: integer,
+  r_y: integer,
+  r_w: integer,
+  r_h: integer,
 }
 
 pub fn rect(x: integer, y: integer, w: integer, h: integer) -> Rect {
@@ -20,7 +20,7 @@ pub fn rect_contains(r: Rect, mx: integer, my: integer) -> boolean {
 // A clickable button in the toolbar.  `btn_id` is the integer
 // identity the panel uses in hit-test results (0..5 = ToolKind).
 pub struct Button {
-  btn_id:           integer not null,
+  btn_id:           integer,
   btn_rect:         Rect,
   btn_label:        text,
   btn_hotkey_label: text,      // e.g. "1" shown left of the label
@@ -32,9 +32,9 @@ pub struct Button {
 pub struct ListBox {
   lb_rect:        Rect,
   lb_items:       vector<text>,
-  lb_selected:    integer not null,
-  lb_scroll:      integer not null,   // pixel scroll offset
-  lb_item_height: integer not null,
+  lb_selected:    integer,
+  lb_scroll:      integer,   // pixel scroll offset
+  lb_item_height: integer,
 }
 
 // Single-line status strip at the bottom of the side panel.

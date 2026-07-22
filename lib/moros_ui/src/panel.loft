@@ -184,8 +184,8 @@ pub fn panel_build(
 // Struct-enum with field-bearing variants carrying per-hit payload.
 pub enum UiHit {
   UhWorld,
-  UhToolButton { tb_id: integer not null },
-  UhListItem   { li_idx: integer not null },
+  UhToolButton { tb_id: integer },
+  UhListItem   { li_idx: integer },
   UhNone,
 }
 

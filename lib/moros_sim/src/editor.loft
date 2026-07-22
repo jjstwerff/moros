@@ -25,8 +25,8 @@ use tools;
 // `camera_orbit` every frame AFTER `camera_follow` / `camera_overview`
 // compute the base pose.
 pub struct CameraControl {
-  cc_az_offset: float not null,
-  cc_el_offset: float not null,
+  cc_az_offset: float,
+  cc_el_offset: float,
 }
 
 pub fn camera_control_default() -> CameraControl {
@@ -39,7 +39,7 @@ pub struct EditorState {
   es_player:       Player,
   es_tools:        ToolState,
   es_undo:         UndoStack,
-  es_overlay_cy:   integer not null,   // vertical layer the next edit targets
+  es_overlay_cy:   integer,   // vertical layer the next edit targets
   es_occlusion_on: boolean,            // see-through toggle, honoured by renderer
   es_camera_mode:  CameraMode,
   es_camera:       RenderCamera,       // Step 17 — live camera state

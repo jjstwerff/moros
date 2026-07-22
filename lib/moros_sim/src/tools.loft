@@ -25,11 +25,11 @@ pub enum ToolKind {
 
 pub struct ToolState {
   ts_current:          ToolKind,
-  ts_selected_stencil: integer not null,
-  ts_selected_item:    integer not null,
-  ts_selected_wall:    integer not null,
-  ts_wall_direction:   integer not null,   // 0..5 = N NE SE S SW NW
-  ts_height_step:      integer not null,   // 1 | 2 | 4 | 8 height-units
+  ts_selected_stencil: integer,
+  ts_selected_item:    integer,
+  ts_selected_wall:    integer,
+  ts_wall_direction:   integer,   // 0..5 = N NE SE S SW NW
+  ts_height_step:      integer,   // 1 | 2 | 4 | 8 height-units
 }
 
 pub fn tool_state_default() -> ToolState {
