@@ -1,0 +1,93 @@
+// Moros stencils, on the library mechanism (moros#5).  Rotation, orientation and
+// stamping belong to hex_field; this gates the translation between our packed
+// cell and its layers.
+use moros_map;
+use hex_field;
+
+// A small room: floor, a raised step, an item, and a wall on each of the three
+// edges our cell actually stores.
+fn room() -> Map {
+  m = map_empty();
+  for q in 0..3 {
+    for r in 0..3 {
+      map_paint_material(m, q, r, 0, 2 + q);
+      map_set_height(m, q, r, 0, 10 + r);
+    }
+  }
+  map_place_item(m, 1, 1, 0, 21, 13);
+  map_set_wall(m, 1, 1, 0, 0, 5);      // h_wall_n  = the NW edge
+  map_set_wall(m, 1, 1, 0, 1, 6);      // h_wall_ne = the NE edge
+  map_set_wall(m, 1, 1, 0, 2, 7);      // h_wall_se = the E edge
+  m
+}
+
+fn test_a_region_survives_capture_and_stamp_in_place() {
+  m = room();
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  assert(hexset_count(st.sn_cells) == 9, "captured {hexset_count(st.sn_cells)} cells, want 9");
+  assert(edgeset_count(st.sn_edges) == 3, "captured {edgeset_count(st.sn_edges)} walls, want 3");
+  out = map_empty();
+  stencil_into_map(out, st, 0, 0, 0);
+  for q in 0..3 {
+    for r in 0..3 {
+      a = map_get_hex(m, q, r, 0);
+      b = map_get_hex(out, q, r, 0);
+      assert(a.h_material == b.h_material, "material at {q},{r}: {a.h_material} -> {b.h_material}");
+      assert(a.h_height == b.h_height, "height at {q},{r}: {a.h_height} -> {b.h_height}");
+      assert(a.h_item == b.h_item, "item at {q},{r}: {a.h_item} -> {b.h_item}");
+      assert(a.h_item_rotation == b.h_item_rotation, "rotation at {q},{r}");
+      assert(a.h_wall_n == b.h_wall_n, "NW wall at {q},{r}: {a.h_wall_n} -> {b.h_wall_n}");
+      assert(a.h_wall_ne == b.h_wall_ne, "NE wall at {q},{r}: {a.h_wall_ne} -> {b.h_wall_ne}");
+      assert(a.h_wall_se == b.h_wall_se, "E wall at {q},{r}: {a.h_wall_se} -> {b.h_wall_se}");
+    }
+  }
+}
+
+fn test_stamping_elsewhere_moves_everything_together() {
+  m = room();
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  out = map_empty();
+  stencil_into_map(out, st, 7, 5, 0);        // ODD anchor row
+  // the item was at (1,1); find it at the translated cell
+  dk = lattice_k(7, 5); dm = lattice_m(7, 5);
+  (tq, tr) = lattice_to_cell(lattice_k(1, 1) + dk, lattice_m(1, 1) + dm);
+  cell = map_get_hex(out, tq, tr, 0);
+  assert(cell.h_item == 21, "item did not arrive at {tq},{tr}: got {cell.h_item}");
+  assert(cell.h_item_rotation == 13, "item rotation lost");
+  assert(cell.h_wall_n == 5 && cell.h_wall_ne == 6 && cell.h_wall_se == 7,
+         "walls did not travel with the cell: {cell.h_wall_n}/{cell.h_wall_ne}/{cell.h_wall_se}");
+}
+
+fn test_rotation_keeps_the_room_intact() {
+  m = room();
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  for n in 1..6 {
+    rot = stencil_rotate(st, n);
+    assert(hexset_count(rot.sn_cells) == 9, "turn {n}: {hexset_count(rot.sn_cells)} cells, want 9");
+    assert(edgeset_count(rot.sn_edges) == 3, "turn {n}: {edgeset_count(rot.sn_edges)} walls, want 3");
+    out = map_empty();
+    stencil_into_map(out, rot, 0, 0, 0);
+    filled = 0;
+    items = 0;
+    for q in 0..12 {
+      for r in 0..12 {
+        c = map_get_hex(out, q - 6, r - 6, 0);
+        if c.h_material != 0 { filled = filled + 1; }
+        if c.h_item != 0 { items = items + 1; }
+      }
+    }
+    assert(filled == 9, "turn {n}: stamped {filled} cells, want 9");
+    assert(items == 1, "turn {n}: stamped {items} items, want 1");
+  }
+}
+
+// The whole point of the migration: twelve orientations, not four.
+fn test_twelve_orientations_all_stamp_a_whole_room() {
+  m = room();
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  for n in 0..6 {
+    rot = stencil_rotate(st, n);
+    assert(hexset_count(rot.sn_cells) == 9, "orientation {n}: lost cells");
+    assert(edgeset_count(rot.sn_edges) == 3, "orientation {n}: lost walls");
+  }
+}

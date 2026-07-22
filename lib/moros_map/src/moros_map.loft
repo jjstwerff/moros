@@ -430,3 +430,100 @@ pub fn map_read_field(path: text, cy: integer) -> MapLoad {
   }
   MapLoad { ml_code: 0, ml_map: out }
 }
+
+// ── Stencils, via the library mechanism (moros#5) ────────────────────────
+//
+// A Moros stencil is a hex_field Stencil: cells, heights, an unnamed label layer
+// for the material, named layers for the item and its rotation, and an EdgeSet
+// for the walls.  Rotation, the 12 orientations and stamping all come from the
+// library — this file only translates between our packed cell and those layers.
+//
+// The wall mapping is exact and not a coincidence.  Our cell stores three edges
+// and hex_field stores one slot per edge from a canonical direction set; ours
+// are NW, NE and E, and the canonical set is {3, 2, 0} — the same three.  So each
+// stored wall maps to a canonical slot with no re-keying.
+//
+// The field names still say n/ne/se; only `wall_ne` is accurate (moros#3).
+pub const DIR_E  = 0;      // h_wall_se
+pub const DIR_NE = 2;      // h_wall_ne
+pub const DIR_NW = 3;      // h_wall_n
+
+pub const LAYER_ITEM = "item";
+pub const LAYER_ROT  = "rotation";
+
+// Capture a region of a map as a stencil.
+pub fn map_to_stencil(m: Map, cy: integer, q0: integer, r0: integer, w: integer, h: integer) -> Stencil {
+  cells = hexset_chunk(q0, r0, w, h);
+  hz    = heights_new(q0, r0, w, h);
+  lb    = labels_new(q0, r0, w, h);
+  eg    = edgeset_new(q0, r0, w, h);
+  // Populate the field BEFORE constructing the stencil — it takes them by value.
+  for iq in 0..w {
+    for ir in 0..h {
+      cq = q0 + iq;
+      cr = r0 + ir;
+      cell = map_get_hex(m, cq, cr, cy);
+      if cell.h_material != 0 {
+        hexset_set(cells, cq, cr, true);
+        height_set(hz, cq, cr, cell.h_height as float);
+        label_set(lb, cq, cr, cell.h_material);
+        if cell.h_wall_n != 0  { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW), cell.h_wall_n); }
+        if cell.h_wall_ne != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE), cell.h_wall_ne); }
+        if cell.h_wall_se != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E),  cell.h_wall_se); }
+      }
+    }
+  }
+  st = stencil_with_edges(cells, hz, lb, eg, true, true);
+  layer_add(st.sn_layers, LAYER_ITEM);
+  layer_add(st.sn_layers, LAYER_ROT);
+  for iq in 0..w {
+    for ir in 0..h {
+      cq = q0 + iq;
+      cr = r0 + ir;
+      cell = map_get_hex(m, cq, cr, cy);
+      if cell.h_material != 0 {
+        layer_set(st.sn_layers, LAYER_ITEM, cq, cr, cell.h_item);
+        layer_set(st.sn_layers, LAYER_ROT,  cq, cr, cell.h_item_rotation);
+      }
+    }
+  }
+  st
+}
+
+// Stamp a stencil into a map so its (0,0) lands on (aq, ar).  The translation and
+// the wall re-keying are the LIBRARY's — this stamps into scratch field layers and
+// then reads them into the Map, rather than re-implementing the lattice arithmetic
+// a second time.
+pub fn stencil_into_map(m: Map, st: Stencil, aq: integer, ar: integer, cy: integer) {
+  sw = hexset_w(st.sn_cells);
+  sh = hexset_h(st.sn_cells);
+  // scratch, padded so a rotated or offset stamp still lands inside it
+  pq = aq - sw - 1;
+  pr = ar - sh - 1;
+  pw = sw * 3 + 2;
+  ph = sh * 3 + 2;
+  sc = hexset_chunk(pq, pr, pw, ph);
+  sz = heights_new(pq, pr, pw, ph);
+  sl = labels_new(pq, pr, pw, ph);
+  sy = layers_new(pq, pr, pw, ph);
+  se = edgeset_new(pq, pr, pw, ph);
+  stencil_stamp_all(sc, sz, sl, sy, se, st, aq, ar);
+  for iq in 0..pw {
+    for ir in 0..ph {
+      cq = pq + iq;
+      cr = pr + ir;
+      if hexset_get(sc, cq, cr) {
+        map_paint_material(m, cq, cr, cy, label_get(sl, cq, cr));
+        map_set_height(m, cq, cr, cy, height_get(sz, cq, cr) as integer);
+        map_place_item(m, cq, cr, cy, layer_get(sy, LAYER_ITEM, cq, cr),
+                       layer_get(sy, LAYER_ROT, cq, cr));
+        wn = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW));
+        we = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE));
+        ws = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E));
+        if wn != 0 { map_set_wall_dir(m, cq, cr, cy, 0, wn); }
+        if we != 0 { map_set_wall_dir(m, cq, cr, cy, 1, we); }
+        if ws != 0 { map_set_wall_dir(m, cq, cr, cy, 2, ws); }
+      }
+    }
+  }
+}
