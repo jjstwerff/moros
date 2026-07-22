@@ -312,6 +312,21 @@ save written by Moros and loaded by crawler yields nonsense, and that is intenti
 **4. Multi-layer is first-class, not opt-in.** `cy` is in every cell coordinate from the
 field model upward. Retrofitting a vertical axis costs more than passing `cy = 0`.
 
+**The wall layer is split, deliberately.** `hex_field::EdgeSet` is the **authoring** layer —
+a material per edge, what a stencil carries. crawler's `EdgeCollider` is the **collision**
+layer — the same edge identity and storage trick, plus surface ids, passability and swept
+paths. They already agree on the edge key (doubled midpoint), the canonical slot set
+`{0,2,3}` and the type widths, because ours was ported from theirs, so an eventual merge is a
+lift rather than a redesign. Still open, and scheduled after crawler's P5: **which layer owns
+`Surfaces`.**
+
+**Working in a shared tree has a cost, and it landed on crawler.** `loft-libs-world` `dev` is
+consumed via `--lib`, which reads the *working tree*: adding `EdgeSet` / `edgeset_new` /
+`edge_mat` to `hex_field` turned crawler's build red across ~38 files with no change on their
+side. A five-second `grep -rl EdgeSet ../crawler/src/` would have caught it. Two rules follow —
+**grep the sibling before adding a public name**, and **when a build breaks with nothing
+changed locally, read the sibling's `git log` before debugging.**
+
 **Open with crawler:** `hex_field` re-implements `hex_grid`'s lattice rather than depending
 on it (`lattice_k` / `lattice_m`, `nb_q` / `nb_r`, each with a comment saying it was verified
 against the library once). The two still agree — 0 disagreements over 100 cells, both
