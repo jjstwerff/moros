@@ -1,9 +1,17 @@
-# Editor Substrate — the shared hex libraries the scene editor stands on
+# Editor Substrate — the universal hex-world editor and the libraries under it
 
-The scene editor is not a Moros-only tool. It draws the same hex world that
-[crawler](https://github.com/jjstwerff/crawler) draws, and the geometry underneath it is
-game-agnostic. This document is the **architecture reference** for that shared layer: which
-packages exist, who owns each one, what may cross the seam, and what may not.
+**What we are building is not a Moros feature. It is the universal hex-world editor**, and
+Moros is one of its consumers. We build the libraries, and other projects configure them
+for their own worlds — a physics demo that extrudes a painted palette into geometry, a
+panel inside loft's IDE, a roguelike's world builder. Moros's scene editor is one
+configuration among those, not the product.
+
+That is the load-bearing framing, because it decides every boundary below. A routine that
+only makes sense for a tabletop RPG belongs in this repo's content layer; a routine any
+hex-world author needs belongs in a package, even when Moros is the only caller today.
+
+This document is the **architecture reference** for that shared layer: which packages
+exist, who owns each one, who consumes them, what may cross the seam, and what may not.
 
 It replaces, on our side, loft's `doc/claude/lib_plans/73-universal-editor/` (the
 "universal hex-world editor" plan, drafted 2026-05-27 with Moros as first partner). Moros
@@ -69,7 +77,7 @@ split (designed against gated code) rather than the earlier guesses.
 | `hex_grow` | canopy partition, crown profiles, skeleton, pipe model | crawler | designed, not started |
 | `hex_props` | primitives with axes, part-lists, seats, state | crawler | designed, not started |
 | `hex_scene` | field → triangles → GLB, **and** the realtime view | crawler + us | designed, not started |
-| `hex_editor` | tools, undo, selection, per-game hooks | **us** | not started |
+| `hex_editor` | tools, undo, selection, the configuration surface — **the universal editor itself** | **us** | not started |
 
 Dependencies flow strictly downward: `hex_grid` is leaf; `hex_editor` sits on
 `hex_field` + `hex_scene` + `shapes`; only `hex_scene` knows a renderer.
@@ -80,6 +88,42 @@ A farming game wants `hex_field + hex_grow`. Nothing forces the whole stack.
 The Moros-specific remainder — palettes, item and creature registries, spawn points, NPC
 routines, the campaign's meaning of material 5 — **stays in this repo**. It is content,
 not mechanism.
+
+---
+
+## Consumers, and the configurations they need
+
+Four known consumers, and no two of them want the same editor. This is the reason the
+seam rules below are rules rather than preferences — a boundary that only serves Moros
+fails the second consumer, and we already know who the second, third and fourth are.
+
+| Consumer | What it authors | The configuration it needs |
+|---|---|---|
+| **Moros** (this repo) | dungeons, inns, encounter maps for a tabletop campaign | a standalone browser page; palettes of materials, walls and items; spawn points and NPC routines; save to `localStorage` and JSON |
+| **crawler** | the roguelike's world — the field stack's originator | no authoring UI at all; consumes the same field, format and stencils from a game process, first-person |
+| **Bumper airplanes** (loft `@PLN51`) | a hex world for a projector-and-phones audience demo | a painted **palette-to-extrusion** mapping (`wall` → pillar, `wall_high` → cliff, `hill` → ramp) and nothing else — no items, no NPCs, no layers. The map *is* the physics geometry |
+| **loft Workbench** (loft `@PLN16 M5e` § 9) | scenes that loft scripts drive, inside the IDE | a **panel**, not a page — driven over the IDE's one-message-one-method protocol, where the browser renders state and never computes. The model runs server-side |
+
+The Workbench's design already reserves this seam explicitly: it declines to specify a
+scene editor top-down, waits for one to emerge from a real consumer, and states that
+`lib_plans/65-scriptable-scenes` is its eventual home. **We are that emergence.** What we
+build is what it adopts, so its constraints are ours to satisfy now, not later.
+
+### What those configurations demand of the design
+
+Three requirements follow directly, and each one rules out a shortcut that would otherwise
+look reasonable:
+
+1. **The editor model is host-agnostic.** `hex_editor` may not assume a browser, a DOM, a
+   canvas or `localStorage`. Its tools take input events and produce edits; who collected
+   the event and where the result is persisted is the host's business. Moros drives it from
+   a page, the Workbench drives it over a protocol, a native window drives it directly.
+2. **The palette is configuration, not constant.** Bumper airplanes maps a palette type to
+   an extrusion rule; Moros maps a material to walkable / loud / tint. Same integers,
+   different meanings, neither in the package — the opaque-ID seam, third instance.
+3. **The tool set is composable, not fixed.** A consumer that wants only paint-and-height
+   must not carry spawn points, NPC routines and stencil orientation. Nine tools is Moros's
+   configuration of the editor, not the editor.
 
 ---
 
@@ -233,9 +277,14 @@ The hook surface starts minimum-viable and grows only when a second consumer pus
 A too-rich hook struct is a maintenance burden, and every hook added speculatively is one
 nobody has yet needed.
 
-The right test for a boundary violation: **a third game built tomorrow must not inherit
-Moros's choices.** If the field model grows an `is_water(material)` helper, that is wrong —
-water is a game-specific concept.
+The right test for a boundary violation used to be hypothetical — *a third game built
+tomorrow must not inherit Moros's choices*. It is not hypothetical any more: ask whether
+**bumper airplanes** would carry the thing. It has no items, no NPCs, no layers and no
+tabletop anything; it paints a palette and extrudes it. If a routine would be dead weight
+there, it is Moros content wearing a library's name.
+
+If the field model grows an `is_water(material)` helper, that is wrong — water is a
+game-specific concept.
 
 ---
 
@@ -249,7 +298,8 @@ Merges crawler's per-package DoD with loft's library checklist. A package is don
    the consumer's job;
 4. **a second consumer exists**, even a trivial one. A package extracted against exactly
    one caller has not been shown to be general. A ten-line example scene is enough, and it
-   doubles as the docs;
+   doubles as the docs. We are not short of candidates — crawler, bumper airplanes and the
+   Workbench are all real, and each stresses a different axis;
 5. the API stub (`.loft/api/<name>.api`) is committed, so the surface is readable in-tree;
 6. the package README states its convention and its contract;
 7. both consumers' gates are green — an API change is not done at merge, it is done when
@@ -267,8 +317,10 @@ That accumulation across consumers is the main return on the whole exercise.
 - **Content enumerations** — which materials, item kinds, stencils, creatures and NPCs
   exist, per seam rule 1.
 - **Moros's palettes, spawn records and NPC routines** — they encode campaign meaning.
-- **Editor chrome** — the HTML shell, the three-column layout, the keyboard map. The
-  *tools* generalise; the page does not.
+- **The host** — our HTML shell, the three-column layout, the keyboard bindings, and where
+  a map is persisted. The *page* is ours; the tools, panels and widgets it arranges are
+  not. An earlier draft of this document put the whole UI layer on the Moros side of the
+  line; the Workbench, which needs the panels but not our page, is what proves that wrong.
 
 ---
 
@@ -284,4 +336,8 @@ That accumulation across consumers is the main return on the whole exercise.
 | Plan conventions and the tracker | [plans/README.md](../../plans/README.md) |
 | crawler's extraction contract | `../crawler/EXTRACTION.md` § *The editor as the second consumer* |
 | The hex family convergence plan | `../loft-libs-world/CONVERGENCE.md` |
+| The field package's own contract | `../loft-libs-world/hex_field/README.md` |
 | loft library authoring + checklist | `../loft/doc/claude/LIBRARY_AUTHORING.md`, `LIBRARY_CHECKLIST.md` |
+| The IDE that adopts this editor | `../loft/doc/claude/plans/16-debugger/WORKBENCH.md` § 9 |
+| Its eventual canonical home in loft | `../loft/doc/claude/lib_plans/65-scriptable-scenes/README.md` |
+| The audience-demo consumer | `../loft2/doc/claude/plans/51-bumper-airplanes/README.md` |
