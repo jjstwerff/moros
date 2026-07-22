@@ -282,7 +282,15 @@ pub struct StencilDef {
   sd_hexes:    vector<StencilHex>,
 }
 
-// Merge modes for stencil_stamp.
+// SUPERSEDED by hex_field's stencil mechanism (moros#5).  Renamed, not deleted:
+// the library now holds a stencil as a small FIELD with exact rotation, 12
+// orientations and walls, while this one is a flat list of per-hex records that
+// cannot rotate without transforming offsets and wall indices separately — two
+// transformations that can disagree.  Switching the callers over is the rest of
+// moros#5; the rename keeps the duplication VISIBLE until then rather than
+// letting two `moros_stencil_stamp`s sit in one namespace.
+//
+// Merge modes for moros_stencil_stamp.
 // 0 = REPLACE   — overwrite every field.
 // 1 = OVERLAY   — skip fields where the stencil value is 0.
 // 2 = HEIGHTS   — only write height; ignore material/item/walls.
@@ -290,7 +298,7 @@ pub struct StencilDef {
 
 // Apply a stencil to the map at position (q, r, cy) with the given
 // merge mode (0–3).  Each stencil hex's offsets are added to (q, r).
-pub fn stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
+pub fn moros_stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, cy: integer, mode: integer) {
   for ss_sh in stencil.sd_hexes {
     tq = q + ss_sh.sh_dq - stencil.sd_origin_q;
     tr = r + ss_sh.sh_dr - stencil.sd_origin_r;
@@ -340,7 +348,7 @@ pub fn stencil_stamp_with_undo(s: UndoStack, m: Map, stencil: StencilDef, q: int
     tr = r + su_sh.sh_dr - stencil.sd_origin_r;
     undo_push(s, m, tq, tr, cy);
   }
-  stencil_stamp(m, stencil, q, r, cy, mode);
+  moros_stencil_stamp(m, stencil, q, r, cy, mode);
   batch_end(s);
 }
 

@@ -88,7 +88,7 @@ pub fn tool_apply(pos: Vec3, cy: integer, m: Map, t: ToolState) {
 
   if t.ts_current == ToolKind.PlaceStencil {
     st = stencil_by_index(t.ts_selected_stencil);
-    stencil_stamp(m, st, q, r, cy, 0);   // mode 0 = Replace
+    moros_stencil_stamp(m, st, q, r, cy, 0);   // mode 0 = Replace
     return;
   }
 
