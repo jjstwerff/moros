@@ -35,6 +35,14 @@ Chunks are stored sparsely; a missing chunk is treated as all-`open` hexes at he
 
 ## Hex Geometry
 
+> **Contested — do not build against this section until
+> [moros#3](https://github.com/jjstwerff/moros/issues/3) settles it.** The implemented
+> convention (`moros_render.loft`, and the shipped `hex_grid` package) is **pointy-top,
+> odd-r offset, L = √3**, which is not what this section describes. Everything below that
+> depends on the orientation — edge ownership, the wall midpoint rule, the 12 building
+> orientations, the 90°-corner argument — is contested with it. See
+> [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § Lattice math is implemented once.
+
 Hexes use **flat-top orientation** — the N and S edges are horizontal (E–W).
 
 | Property | Value |

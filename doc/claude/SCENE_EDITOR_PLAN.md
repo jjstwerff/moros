@@ -5,7 +5,18 @@ three loft WASM libraries plus a JavaScript front-end. The existing world-level
 editor (`html/hex-map-editor.html`) will eventually share canvas and data format
 but stays separate for now.
 
+> **This plan predates two facts and is being rebased on them** — see
+> [moros#6](https://github.com/jjstwerff/moros/issues/6).
+> **(a)** Most of phases 1, 3, 4 and 6a are already written and tested: the
+> `moros_map` / `moros_editor` / `moros_render` / `moros_sim` / `moros_ui` packages live in
+> loft's git history at `ade530c2^` and are recovered by
+> [moros#2](https://github.com/jjstwerff/moros/issues/2).
+> **(b)** The data model, stencils and the renderer are now shared with crawler rather than
+> Moros-private — see [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md). Treat the phase tables
+> below as the UI/tool checklist, not as a from-scratch build order.
+
 References:
+- [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) — the shared package map and the seam rules
 - [SCENE_MAP.md](SCENE_MAP.md) — hex data format, coordinate system, chunk structure
 - [SCENE_MAP_RENDER.md](SCENE_MAP_RENDER.md) — 3-D geometry generation pseudocode
 - [SCENE_EDITOR.md](SCENE_EDITOR.md) — full UI design (layout, tools, palettes, keyboard)

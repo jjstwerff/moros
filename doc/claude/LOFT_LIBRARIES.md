@@ -1,5 +1,14 @@
 # Moros — Loft Library Design
 
+> **Partly superseded.** The package boundaries here are Moros-private; the substrate is
+> now shared with crawler and split differently — see
+> [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § The package map and
+> [moros#1](https://github.com/jjstwerff/moros/issues/1). The `StencilDef` sketch below is
+> superseded by the field-merge stencil mechanism
+> ([moros#5](https://github.com/jjstwerff/moros/issues/5)). The type and API listings remain
+> accurate as a description of the recovered `moros_*` packages
+> ([moros#2](https://github.com/jjstwerff/moros/issues/2)).
+
 Three loft packages implement the Moros scene system as WASM modules loadable into
 HTML pages. They live under `lib/` in this project and reference loft at `../loft`.
 
