@@ -279,6 +279,88 @@ survives the 16:34 build.
 
 ---
 
+## H5 — a nested `for _ in …` loop runs its OUTER body once
+
+**Status:** not filed · **Repo:** `loft-lang/loft`
+**Severity:** high — silent wrong answer, no error, no warning
+**Suggested title:** `loops: two \`for _ in …\` loops in one function make the outer run a single iteration`
+
+### Minimal reproducer
+
+```loft
+fn main() {
+  a = 0;
+  for _ in 0..3 { b = 0; for _ in 0..4 { b = b + 1; } a = a + b; }
+  println("{a}");     // prints 4 — should be 12
+}
+```
+
+The outer loop executes **once**. No diagnostic of any kind.
+
+### It is specifically two `_` in the SAME function
+
+Measured, all other combinations correct (each expecting 12):
+
+| shape | result |
+|---|---|
+| `_` outer, `_` inner, same function | **4** |
+| named outer, `_` inner | 12 |
+| `_` outer, named inner | 12 |
+| named outer, named inner | 12 |
+| `_` outer, `_` inner **in a called function** | 12 |
+
+So it is the two anonymous binders colliding within one body — the inner appears
+to clobber the outer's counter. Moving either loop into a function, or naming
+either variable, hides it.
+
+### Why it matters more than it looks
+
+`for _ in` is the idiomatic way to repeat something a fixed number of times, and
+loft's own libraries use it (`hex_field` had three). A loop that silently runs once
+produces a plausible-looking wrong answer rather than a crash.
+
+---
+
+## H6 — chaining a struct-returning call loses its contents (NOT REDUCED)
+
+**Status:** not filed, **not minimised** · **Severity:** unknown
+**Suggested title:** `stores: repeatedly reassigning a struct from its own transform empties it, shape-dependently`
+
+`hex_field`'s `stencil_rotate(st, n) -> Stencil` returns a new stencil holding
+freshly allocated `HexSet` / `Heights` / `Labels`. Composing it —
+
+```loft
+rot = st;
+for i in 0..6 { rot = stencil_rotate(rot, 1); }
+```
+
+— gives a correct result on the **first** call and an **empty** one on the second
+and every call after, with the extent frozen at the first rotation's value.
+Instrumented inside the failing test:
+
+```
+ri=0 count=5 q0=-2      <- correct
+ri=1 count=0 q0=-2      <- empty from here on
+ri=2 count=0 q0=-2
+```
+
+**It resisted five reduction attempts.** The same chain is *correct* when written
+standalone: built inline in `main`, built via a helper, with and without an alias
+binding, with and without height/label payloads, and with the loop inside a called
+function — each run repeatedly for determinism. Only inside the package's test file
+does it fail, consistently.
+
+`cell_rot` itself is provably exact (169 cells checked against a Python model:
+zero non-integer halvings, six steps the identity), so the arithmetic is not the
+fault.
+
+**Worked around, not fixed:** rotate from the source by `n` steps in one call.
+Composition buys nothing, since `cell_rot` accepts any `n`. Recorded here rather
+than left as folklore, because the workaround hides a real fault and the next
+person to compose a struct transform in a loop will meet it again.
+
+---
+
 ## Cross-reference
 
 | Topic | Where |
