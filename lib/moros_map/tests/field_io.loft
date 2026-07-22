@@ -78,3 +78,34 @@ fn test_refusal_yields_an_empty_map() {
   assert(len(ld.ml_map.m_chunks) == 0, "a refused load still produced chunks");
   delete(p);
 }
+
+// ── the interface gate ───────────────────────────────────────────────────
+//
+// ONE committed file, read by both consumers.  hex_field's own suite reads it
+// too (tests/03-fixture.loft); if either side's reader or writer drifts, the
+// other stops agreeing with a file neither can quietly regenerate.
+//
+// The path reaches into the sibling library checkout, which is the same
+// assumption our loft.toml path dependency already makes.  Relative paths
+// resolve from the TEST FILE's directory under `loft test`.
+const SHARED_FIXTURE = "../../../../loft-libs-world/hex_field/tests/fixtures/canonical.hxf";
+
+fn test_moros_reads_the_shared_fixture() {
+  ld = map_read_field(SHARED_FIXTURE, 0);
+  assert(ld.ml_code == 0, "the shared fixture did not load into a Map: code {ld.ml_code}");
+  // 8 authored cells over a NEGATIVE origin extent
+  m = ld.ml_map;
+  filled = 0;
+  for q in 0..4 {
+    for r in 0..3 {
+      if map_get_hex(m, -2 + q, -1 + r, 0).h_material != 0 { filled = filled + 1; }
+    }
+  }
+  assert(filled == 8, "expected 8 filled cells from the fixture, got {filled}");
+  // a label past u8 arrives intact as our material index
+  assert(map_get_hex(m, 1, -1, 0).h_material == 301,
+         "material at (1,-1) is {map_get_hex(m, 1, -1, 0).h_material}, want 301");
+  // -3.5 truncates toward zero at our integer boundary — pinned, not accidental
+  assert(map_get_hex(m, -2, -1, 0).h_height == -3,
+         "height at (-2,-1) is {map_get_hex(m, -2, -1, 0).h_height}, want -3 (from -3.5)");
+}

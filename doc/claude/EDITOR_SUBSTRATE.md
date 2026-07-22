@@ -463,6 +463,33 @@ The format carries a magic marker, a schema version and explicit dimensions.
 policy: include the version; refuse an unreadably old file with an error; accept unknown
 forward-compatible fields by ignoring them.
 
+### The format, as built
+
+Home: **`hex_field`** (`loft-libs-world`, `dev`). Magic `'HXF1'`, schema version 1, explicit
+extent, then a list of **tagged sections** — `OCCU`, `HGHT`, `LABL` — each with a byte length.
+
+Sections rather than a flags word, because a reader meeting a tag it does not know **skips it
+by that length** and keeps going, so a field written by a newer consumer still loads in an
+older one. A flags word cannot: an unknown bit means an array of unknown length, which is
+unskippable, so the only correct response would be refusing the file. That difference is
+testable, and it is tested.
+
+Two decisions the format settles, both from [#1](https://github.com/jjstwerff/moros/issues/1):
+**heights are `f64`**, so fractional heights survive and the consumer keeps its own unit;
+**labels are `i32`**, because our documented `u8`/`u16` widths are not enforced anywhere and a
+byte-packer built to them would silently truncate. Moros truncates a fractional height at its
+own boundary, visibly, and a test pins that.
+
+**One committed fixture is read by both consumers** —
+`hex_field/tests/fixtures/canonical.hxf`, carrying a negative extent origin, a label past
+`u8`, and a height both negative and fractional. Before it existed each side only ever read
+files it had written itself, so both could drift together and stay green. Flipping one bit in
+it turns both suites red.
+
+Not yet carried: items, item rotation and the three wall bytes, because `EdgeSet` and
+`Features` are still crawler-side. A Moros test asserts they are *absent*, so the day a
+section appears that test fails and says to carry them.
+
 This is [issue #4](https://github.com/jjstwerff/moros/issues/4), and it is gated on both
 sides before either side calls it done.
 
