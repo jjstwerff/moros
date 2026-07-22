@@ -15,10 +15,11 @@ use hex_grid;
 // Hex width  = sqrt(3) ≈ 1.732
 // Row height = 1.5
 
-// sqrt(3) approximation — loft has no sqrt() for floats yet.
-// DUPLICATE of hex_grid::HEX_LEN, kept until #3 reconciles this file's lattice
-// math with the library wholesale.
-pub HEX_WIDTH = 1.7320508;
+// One hex step, from hex_grid — the family's single √3.  This used to be a
+// local 1.7320508 with a note that loft had no float sqrt; it does (this file
+// calls it), and more to the point the constant belongs to the lattice owner.
+// The library value carries nine more digits, so geometry shifts by ~4e-9.
+pub HEX_WIDTH = HEX_LEN;
 
 // Vertical spacing between hex rows.
 pub HEX_ROW_HEIGHT = 1.5;
@@ -40,28 +41,24 @@ pub fn hex_to_world(q: integer, r: integer, height: integer) -> Vec3 {
   vec3(x, y, z)
 }
 
-// The 6 corner offsets of a flat-top unit hex (clockwise from top).
-// Corner i has angle = 60° * i, measured from 12-o'clock.
-// Using pre-computed sin/cos:
-//   corner 0: (0, +1)           top
-//   corner 1: (+√3/2, +0.5)    top-right
-//   corner 2: (+√3/2, -0.5)    bottom-right
-//   corner 3: (0, -1)           bottom
-//   corner 4: (-√3/2, -0.5)    bottom-left
-//   corner 5: (-√3/2, +0.5)    top-left
+// The 6 corner offsets of a POINTY-TOP unit hex, in this file's index order —
+// a vertex at top and bottom, flat edges left and right:
 //
-// NOT hex_grid::hex_corner_offset, which walks the ring the other way:
-// this file's index i is hex_grid's (6 - i) % 6.  Wall emission reads corners
-// by index (5→0, 0→1, 1→2), so adopting the library table moves every wall to a
-// different edge — that is #3's edge-ownership work, not a rename.
+//   corner 0: (0, +1)          top          corner 3: (0, -1)          bottom
+//   corner 1: (+√3/2, +0.5)   top-right    corner 4: (-√3/2, -0.5)   bottom-left
+//   corner 2: (+√3/2, -0.5)   bottom-right corner 5: (-√3/2, +0.5)   top-left
+//
+// hex_grid holds the same six corners but walks the ring the other way, so this
+// file's index i is its (6 - i) % 6.  The values now COME FROM hex_grid with
+// that map applied below, which is why this list still reads in the old order.
 fn mr_corner_offset(i: integer) -> Vec2 {
-  half_w = HEX_WIDTH / 2.0;
-  if i == 0 { return vec2(0.0, 1.0); }
-  if i == 1 { return vec2(half_w, 0.5); }
-  if i == 2 { return vec2(half_w, -0.5); }
-  if i == 3 { return vec2(0.0, -1.0); }
-  if i == 4 { return vec2(0.0 - half_w, -0.5); }
-  vec2(0.0 - half_w, 0.5)   // i == 5
+  // hex_grid owns the corner table.  It walks the ring the other way, so this
+  // file's index i is its (6 - i) % 6 — verified by comparing the two tables
+  // coordinate-for-coordinate.  Applying the map HERE keeps every caller's
+  // indices intact: wall emission reads corners 5→0, 0→1, 1→2 and still lands
+  // on the same three edges it always did.
+  (mco_x, mco_y) = hex_corner_offset((6 - i) % 6);
+  vec2(mco_x, mco_y)
 }
 
 // ── Dev-art material colours (Phase 6a.2) ─────────────────────────

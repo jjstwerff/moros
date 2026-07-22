@@ -88,6 +88,23 @@ fn test_emit_wall_quad() {
 // second-ring cell) and one true neighbour had no direction at all.  Both
 // checks below go red against it and green against hex_grid::hex_neighbor.
 
+// The corner ring, pinned numerically.  mr_corner_offset now delegates to
+// hex_grid::hex_corner_offset with an index map (ours is its (6 - i) % 6), so
+// this test is what proves the map is the right one: get it wrong and the
+// corners come back in a different order, silently moving every wall.
+fn test_corner_ring_positions() {
+  crp_hw = HEX_WIDTH / 2.0;
+  crp_ex = [0.0, crp_hw, crp_hw, 0.0, 0.0 - crp_hw, 0.0 - crp_hw];
+  crp_ez = [1.0, 0.5, 0.0 - 0.5, 0.0 - 1.0, 0.0 - 0.5, 0.5];
+  for crp_i in 0..6 {
+    crp_c = hex_corner_world(0, 0, 0, crp_i);
+    assert(abs(crp_c.x - (crp_ex[crp_i] ?? 0.0)) < 0.000001,
+           "corner {crp_i} x: got {crp_c.x}, want {crp_ex[crp_i]}");
+    assert(abs(crp_c.z - (crp_ez[crp_i] ?? 0.0)) < 0.000001,
+           "corner {crp_i} z: got {crp_c.z}, want {crp_ez[crp_i]}");
+  }
+}
+
 fn test_neighbour_step_is_one_hex_in_both_parities() {
   for nsp_r in 4..6 {                       // 4 = even row, 5 = odd row
     for nsp_d in 0..6 {
