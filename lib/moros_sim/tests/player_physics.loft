@@ -128,7 +128,9 @@ fn test_walk_diagonal_normalised() {
   dinp.in_strafe_right = true;
   ddt = 1.0 / 60.0;
   for _ in 0..30 { player_step(dp, dm, ddt, dinp); }
-  mag = sqrt(dp.pl_pos.x * dp.pl_pos.x + dp.pl_pos.z * dp.pl_pos.z);
+  // `sqrt` yields `float?`; the argument is a sum of squares, so the fallback
+  // is unreachable and only discharges the null for the comparisons below.
+  mag = sqrt(dp.pl_pos.x * dp.pl_pos.x + dp.pl_pos.z * dp.pl_pos.z) ?? 0.0;
   // 0.5 s at 6 u/s = 3.0 along the diagonal
   assert(mag > 2.9, "diagonal walked {mag}");
   assert(mag < 3.1, "diagonal not super-fast {mag}");

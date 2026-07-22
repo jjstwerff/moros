@@ -102,8 +102,11 @@ pub fn player_step(p: &Player, map: Map, dt: float, input: InputState) {
   if mag > 0.0 {
     cf = cos(p.pl_facing);
     sf = sin(p.pl_facing);
-    wx = (lwx * cf + lwz * sf) / mag * WALK_SPEED;
-    wz = (0.0 - lwx * sf + lwz * cf) / mag * WALK_SPEED;
+    // `/` yields `float?` (it can divide by zero), so discharge the null before
+    // it meets the `float` bindings above.  `mag > 0.0` is the guard on this
+    // branch, so the fallback is unreachable rather than a chosen default.
+    wx = ((lwx * cf + lwz * sf) / mag ?? 0.0) * WALK_SPEED;
+    wz = ((0.0 - lwx * sf + lwz * cf) / mag ?? 0.0) * WALK_SPEED;
   }
 
   // 2. Vertical velocity — hold-to-rise, release-for-gravity

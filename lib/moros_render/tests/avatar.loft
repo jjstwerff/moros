@@ -57,10 +57,14 @@ fn test_avatar_normals_point_outward() {
 fn test_avatar_offset_position() {
   m = mesh("avatar");
   emit_player_avatar(m, vec3(5.0, 2.0, -3.0), 0.3);
-  // Ball centre = (5, 2.3, -3), so +Y = (5, 2.6, -3)
+  // Ball centre = (5, 2.3, -3), so +Y = (5, 2.6, -3).
+  // y accumulates two additions (pos.y + radius, then + radius) and lands on
+  // 2.5999999999999996 — the geometry is exact, the decimal is not
+  // representable.  x and z take no arithmetic, so they stay exact compares;
+  // only the accumulated axis needs a tolerance.
   v_py = m.vertices[2];
   assert(v_py.pos.x == 5.0, "centre x {v_py.pos.x}");
-  assert(v_py.pos.y == 2.6, "+Y y {v_py.pos.y}");
+  assert(abs(v_py.pos.y - 2.6) < 0.000001, "+Y y {v_py.pos.y}");
   assert(v_py.pos.z == -3.0, "centre z {v_py.pos.z}");
 }
 
