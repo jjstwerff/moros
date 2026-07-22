@@ -1,0 +1,364 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// moros_map — shared data model for the Moros hex scene system.
+// Re-exports all types and public functions.
+
+use types;
+use palette;
+use spawn;
+
+// Top-level map container. Holds chunks and palette definitions.
+pub struct Map {
+  m_name:             text,
+  m_chunks:           vector<Chunk>,
+  m_material_palette: vector<MaterialDef>,
+  m_wall_palette:     vector<WallDef>,
+  m_item_palette:     vector<ItemDef>,
+  m_spawn_points:     vector<SpawnPoint>,
+  m_npc_routines:     vector<NpcRoutine>,
+}
+
+// ── Constructors ────────────────────────────────────────────────────
+
+// Create a new empty map with default name and empty palettes.
+pub fn map_empty() -> Map {
+  Map {
+    m_name: "untitled",
+    m_chunks: [],
+    m_material_palette: [],
+    m_wall_palette: [],
+    m_item_palette: [],
+    m_spawn_points: [],
+    m_npc_routines: [],
+  }
+}
+
+// ── MO.2: Serialization ────────────────────────────────────────────
+
+// Serialise the entire map to a JSON string.
+pub fn map_to_json(m: Map) -> text {
+  "{m:j}"
+}
+
+// Deserialise a JSON string back to a Map.
+// Returns a default empty Map on parse failure.
+pub fn map_from_json(json: text) -> Map {
+  if json == "" { return map_empty(); }
+  result = Map.parse(json);
+  if json_errors() != "" { return map_empty(); }
+  result
+}
+
+// ── MO.2: Hex-address helpers ───────────────────────────────────────
+
+// Euclidean-division helpers for chunk / intra-chunk indexing on a
+// 32-wide chunk grid.  C-style `q / 32` and `q % 32` produce negative
+// quotients and remainders for negative axial coordinates, which
+// silently maps (-1, 1) etc. to a wrong cell.  These helpers always
+// return `chunk_idx_32 = floor(v / 32)` and `hex_idx_32 ∈ [0, 31]`
+// so adjacent hexes across the origin behave consistently.
+fn chunk_idx_32(v: integer) -> integer {
+  vr = v % 32;
+  if vr < 0 { (v - vr - 32) / 32 } else { (v - vr) / 32 }
+}
+fn hex_idx_32(v: integer) -> integer {
+  vr = v % 32;
+  if vr < 0 { vr + 32 } else { vr }
+}
+
+// Check whether a chunk exists at the given global coordinates.
+pub fn map_has_chunk(m: Map, q: integer, r: integer, cy: integer) -> boolean {
+  cx = chunk_idx_32(q);
+  cz = chunk_idx_32(r);
+  for hc_c in m.m_chunks {
+    if hc_c.ck_cx == cx && hc_c.ck_cy == cy && hc_c.ck_cz == cz {
+      return true;
+    }
+  }
+  false
+}
+
+// ── MO.3: Hex edit operations ───────────────────────────────────────
+
+// Build a 32x32 chunk of default hexes at the given chunk coordinates.
+fn build_chunk(cx: integer, cy: integer, cz: integer) -> Chunk {
+  hexes: vector<Hex> = [];
+  for _ in 0..1024 {
+    hexes += [Hex {}];
+  }
+  Chunk { ck_cx: cx, ck_cy: cy, ck_cz: cz, ck_hexes: hexes }
+}
+
+// Ensure a chunk exists at the given global coordinates.
+// Creates a 32x32 chunk filled with default hexes if absent.
+pub fn map_ensure_chunk(m: &Map, q: integer, r: integer, cy: integer) {
+  cx = chunk_idx_32(q);
+  cz = chunk_idx_32(r);
+  for ec_c in m.m_chunks {
+    if ec_c.ck_cx == cx && ec_c.ck_cy == cy && ec_c.ck_cz == cz {
+      return;
+    }
+  }
+  m.m_chunks += [build_chunk(cx, cy, cz)];
+}
+
+// Write a Hex at global coordinates. Creates the chunk if needed.
+pub fn map_set_hex(m: &Map, q: integer, r: integer, cy: integer, h: Hex) {
+  map_ensure_chunk(m, q, r, cy);
+  cx = chunk_idx_32(q);
+  cz = chunk_idx_32(r);
+  hx = hex_idx_32(q);
+  hz = hex_idx_32(r);
+  idx = hx * 32 + hz;
+  for sh_c in m.m_chunks {
+    if sh_c.ck_cx == cx && sh_c.ck_cy == cy && sh_c.ck_cz == cz {
+      sh_c.ck_hexes[idx] = h;
+      return;
+    }
+  }
+}
+
+// ── MO.2: Hex-address read helpers ──────────────────────────────────
+
+// Resolve global (q, r, cy) to the Hex at that address.
+// Returns a default Hex (all zeros) if chunk is missing or index out of bounds.
+pub fn map_get_hex(m: Map, q: integer, r: integer, cy: integer) -> Hex {
+  cx = chunk_idx_32(q);
+  cz = chunk_idx_32(r);
+  hx = hex_idx_32(q);
+  hz = hex_idx_32(r);
+  idx = hx * 32 + hz;
+  for gh_c in m.m_chunks {
+    if gh_c.ck_cx == cx && gh_c.ck_cy == cy && gh_c.ck_cz == cz {
+      if idx >= 0 && idx < len(gh_c.ck_hexes) {
+        return gh_c.ck_hexes[idx];
+      }
+    }
+  }
+  Hex {}
+}
+
+// Convenience editors.
+
+// Paint a hex's material at (q, r, cy).
+pub fn map_paint_material(m: &Map, q: integer, r: integer, cy: integer, material: integer) {
+  cur = map_get_hex(m, q, r, cy);
+  cur.h_material = material;
+  map_set_hex(m, q, r, cy, cur);
+}
+
+// Set a hex's height at (q, r, cy).
+pub fn map_set_height(m: &Map, q: integer, r: integer, cy: integer, height: integer) {
+  cur = map_get_hex(m, q, r, cy);
+  cur.h_height = height;
+  map_set_hex(m, q, r, cy, cur);
+}
+
+// Place an item on a hex (item index + rotation, preserves spawn/waypoint flags).
+pub fn map_place_item(m: &Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
+  cur = map_get_hex(m, q, r, cy);
+  cur.h_item = item;
+  flags = cur.h_item_rotation & ~31;  // preserve bits 5+ (spawn, waypoint)
+  cur.h_item_rotation = (rotation & 31) | flags;
+  map_set_hex(m, q, r, cy, cur);
+}
+
+// Set a wall on a hex edge.  edge: 0=N, 1=NE, 2=SE.
+pub fn map_set_wall(m: &Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
+  cur = map_get_hex(m, q, r, cy);
+  if edge == 0 { cur.h_wall_n = wall; }
+  if edge == 1 { cur.h_wall_ne = wall; }
+  if edge == 2 { cur.h_wall_se = wall; }
+  map_set_hex(m, q, r, cy, cur);
+}
+
+// ── Spawn point CRUD (Phase 4.10) ─────────────────────────────────
+
+// Add a spawn point to the map.  The spawn's hex flag (bit 5 of
+// h_item_rotation) is set as a side-effect so renderers can show a
+// spawn marker without scanning the whole spawn list.
+pub fn spawn_add(m: &Map, sp: SpawnPoint) {
+  m.m_spawn_points += [sp];
+  // Flag the hex: bit 5 = spawn, preserve other bits.
+  cur = map_get_hex(m, sp.sp_hex.ha_q, sp.sp_hex.ha_r, sp.sp_hex.ha_cy);
+  cur.h_item_rotation = cur.h_item_rotation | 32;
+  map_set_hex(m, sp.sp_hex.ha_q, sp.sp_hex.ha_r, sp.sp_hex.ha_cy, cur);
+}
+
+// Count spawns on the map.
+pub fn spawn_count(m: Map) -> integer { len(m.m_spawn_points) }
+
+// Find all spawns at a given hex address.
+pub fn spawn_at(m: Map, q: integer, r: integer, cy: integer) -> vector<SpawnPoint> {
+  result: vector<SpawnPoint> = [];
+  for sa_sp in m.m_spawn_points {
+    if sa_sp.sp_hex.ha_q == q && sa_sp.sp_hex.ha_r == r && sa_sp.sp_hex.ha_cy == cy {
+      result += [sa_sp];
+    }
+  }
+  result
+}
+
+// Remove the spawn matching (q, r, cy, npc_id).  Returns true if one was
+// removed.  Clears the hex flag if no spawns remain on that hex.
+pub fn spawn_remove(m: &Map, q: integer, r: integer, cy: integer, npc_id: integer) -> boolean {
+  keepers: vector<SpawnPoint> = [];
+  removed = false;
+  remaining_on_hex = 0;
+  for sr_sp in m.m_spawn_points {
+    if sr_sp.sp_hex.ha_q == q && sr_sp.sp_hex.ha_r == r && sr_sp.sp_hex.ha_cy == cy && sr_sp.sp_npc_id == npc_id && !removed {
+      removed = true;
+    } else {
+      keepers += [sr_sp];
+      if sr_sp.sp_hex.ha_q == q && sr_sp.sp_hex.ha_r == r && sr_sp.sp_hex.ha_cy == cy {
+        remaining_on_hex = remaining_on_hex + 1;
+      }
+    }
+  }
+  m.m_spawn_points = keepers;
+  if removed && remaining_on_hex == 0 {
+    cur = map_get_hex(m, q, r, cy);
+    cur.h_item_rotation = cur.h_item_rotation & ~32;
+    map_set_hex(m, q, r, cy, cur);
+  }
+  removed
+}
+
+// ── NPC routine CRUD (Phase 4.11) ─────────────────────────────────
+
+// Add a fresh NPC routine (no waypoints yet).
+pub fn routine_add(m: &Map, npc_id: integer, name: text, creature: integer) {
+  m.m_npc_routines += [NpcRoutine {
+    nr_npc_id:    npc_id,
+    nr_name:      name,
+    nr_creature:  creature,
+    nr_waypoints: [],
+  }];
+}
+
+// Count routines.
+pub fn routine_count(m: Map) -> integer { len(m.m_npc_routines) }
+
+// Look up a routine's index by npc_id.  Returns -1 if absent.
+pub fn routine_index(m: Map, npc_id: integer) -> integer {
+  for ri_r in m.m_npc_routines {
+    if ri_r.nr_npc_id == npc_id { break ri_r#index; }
+  }
+  -1
+}
+
+// Remove a routine by npc_id.  Returns true if one was removed.
+pub fn routine_remove(m: &Map, npc_id: integer) -> boolean {
+  keepers: vector<NpcRoutine> = [];
+  removed = false;
+  for rr_r in m.m_npc_routines {
+    if rr_r.nr_npc_id == npc_id && !removed {
+      removed = true;
+    } else {
+      keepers += [rr_r];
+    }
+  }
+  m.m_npc_routines = keepers;
+  removed
+}
+
+// ── Waypoint CRUD (Phase 4.11) ────────────────────────────────────
+
+// Add a waypoint to a routine identified by npc_id.  Flags the target
+// hex with the waypoint bit (bit 6).  Returns true if the routine was
+// found.
+pub fn waypoint_add(m: &Map, npc_id: integer, wp: NpcWaypoint) -> boolean {
+  found = false;
+  for wa_r in m.m_npc_routines {
+    if wa_r.nr_npc_id == npc_id {
+      wa_r.nr_waypoints += [wp];
+      found = true;
+    }
+  }
+  if found {
+    cur = map_get_hex(m, wp.wp_hex.ha_q, wp.wp_hex.ha_r, wp.wp_hex.ha_cy);
+    cur.h_item_rotation = cur.h_item_rotation | 64;  // bit 6
+    map_set_hex(m, wp.wp_hex.ha_q, wp.wp_hex.ha_r, wp.wp_hex.ha_cy, cur);
+  }
+  found
+}
+
+// Count a routine's waypoints.  Returns 0 if the routine is absent.
+pub fn waypoint_count(m: Map, npc_id: integer) -> integer {
+  for wc_r in m.m_npc_routines {
+    if wc_r.nr_npc_id == npc_id { return len(wc_r.nr_waypoints); }
+  }
+  0
+}
+
+// ── Wall direction resolution (Phase 4.4) ─────────────────────────
+
+// Set a wall in any of the 6 directions (0=N, 1=NE, 2=SE, 3=S, 4=SW,
+// 5=NW).  Directions 0–2 are stored on the target hex; directions 3–5
+// are stored as the opposite edge on the appropriate neighbour hex.
+// Uses axial-coordinate neighbour offsets.
+pub fn map_set_wall_dir(m: &Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
+  if dir == 0 { map_set_wall(m, q, r, cy, 0, wall); }
+  if dir == 1 { map_set_wall(m, q, r, cy, 1, wall); }
+  if dir == 2 { map_set_wall(m, q, r, cy, 2, wall); }
+  if dir == 3 { map_set_wall(m, q, r + 1, cy, 0, wall); }   // S = neighbour (q, r+1)'s N
+  if dir == 4 { map_set_wall(m, q - 1, r + 1, cy, 1, wall); } // SW = neighbour (q-1, r+1)'s NE
+  if dir == 5 { map_set_wall(m, q - 1, r, cy, 2, wall); }   // NW = neighbour (q-1, r)'s SE
+}
+
+// ── Hex-grid geometry (Phase 4.8) ─────────────────────────────────
+
+// Distance between two hexes in axial coordinates (cube-distance).
+pub fn hex_distance(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
+  dq = abs(q2 - q1);
+  dr = abs(r2 - r1);
+  ds = abs((q2 + r2) - (q1 + r1));
+  max(dq, max(dr, ds))
+}
+
+// Integer linear interpolation: a + (b - a) * i / n.
+pub fn lerp_int(a: integer, b: integer, i: integer, n: integer) -> integer {
+  if n == 0 { return a; }
+  a + (b - a) * i / n
+}
+
+// ── Slope operations (Phase 4.8–4.9) ──────────────────────────────
+
+// Linearly interpolate heights from h_start at (q1,r1) to h_end at
+// (q2,r2) along a straight hex-grid line.  All hexes on the path
+// (inclusive of both endpoints) have their height set.
+pub fn slope_path(m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
+  dist = hex_distance(q1, r1, q2, r2);
+  if dist == 0 {
+    map_set_height(m, q1, r1, cy, h_start);
+    return;
+  }
+  for i in 0..=dist {
+    q = lerp_int(q1, q2, i, dist);
+    r = lerp_int(r1, r2, i, dist);
+    h = lerp_int(h_start, h_end, i, dist);
+    map_set_height(m, q, r, cy, h);
+  }
+}
+
+// Slope a band of hexes: for each step along the (q1,r1)→(q2,r2)
+// line, also set the `width` hexes perpendicular to the path
+// direction (centred on the path).  Only uniform height across the
+// band; no cross-section interpolation.
+pub fn slope_band(m: &Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer, width: integer) {
+  dist = hex_distance(q1, r1, q2, r2);
+  if dist == 0 {
+    map_set_height(m, q1, r1, cy, h_start);
+    return;
+  }
+  half = width / 2;
+  for i in 0..=dist {
+    q = lerp_int(q1, q2, i, dist);
+    r = lerp_int(r1, r2, i, dist);
+    h = lerp_int(h_start, h_end, i, dist);
+    for w in 0..width {
+      offset = w - half;
+      map_set_height(m, q + offset, r, cy, h);
+    }
+  }
+}
