@@ -340,6 +340,22 @@ cells, exactly 12 × count. Item, rotation and walls drop, but only because `Edg
 **So: one model.** The chunked dense cell is a *storage and serialisation* concern layered
 over the field model, not a rival representation of it.
 
+Holes, disconnected sets and layers were probed too:
+
+| case | result |
+|---|---|
+| **hole** (5×5 less the centre) | 2 loops, 1 outer, area identity holds — `validate = 0` |
+| **disconnected** (two blocks) | 2 outer loops — **`validate = 5`**, rejected |
+| **multi-layer** | `HexSet` has no `cy`; one field-set per level, each valid independently |
+
+The middle row is a live constraint, because painting two separate rooms is ordinary
+editing rather than an edge case. Note what it is *not*: the area identity still holds for
+the disconnected set (96 = 12 × 8), so the geometry is sound and only the **one-outer-loop**
+contract breaks. Therefore **outline and mesh generation must trace per connected
+component** — that is `hex_scene`'s and `hex_editor`'s problem — while **stamping is
+unaffected**, since a stencil is a field *merge* and never needs an outline. A stencil may
+be disconnected.
+
 Two facts fell out of the reverse direction, and both belong to the document format
 ([#4](https://github.com/jjstwerff/moros/issues/4)):
 
