@@ -1,0 +1,87 @@
+// The built-in stencils, on the library mechanism (moros#5).
+use moros_map;
+use moros_editor;
+use hex_field;
+
+fn test_flat_is_one_cell() {
+  st = builtin_flat();
+  assert(hexset_count(st.sn_cells) == 1, "flat has {hexset_count(st.sn_cells)} cells, want 1");
+  m = map_empty();
+  stencil_into_map_mode(m, st, 5, 5, 0, STAMP_REPLACE);
+  c = map_get_hex(m, 5, 5, 0);
+  assert(c.h_material == 3, "flat stamped material {c.h_material}, want 3");
+  assert(c.h_height == 5, "flat stamped height {c.h_height}, want 5");
+}
+
+// The ring is SIX cells all genuinely adjacent to the centre.  The old
+// StencilDef version used an axial neighbour table over odd-r offset
+// coordinates, which is not a ring on either parity.
+fn test_house_ring_is_actually_a_ring() {
+  st = builtin_house_small();
+  assert(hexset_count(st.sn_cells) == 7, "house has {hexset_count(st.sn_cells)} cells, want 7");
+  for d in 0..6 {
+    rq = nb_q(0, 0, d);
+    rr = nb_r(0, 0, d);
+    assert(hexset_get(st.sn_cells, rq, rr), "direction {d} ({rq},{rr}) is not in the ring");
+  }
+  // and every ring cell is one step from the centre, measured not assumed
+  for d in 0..6 {
+    assert(hex_dist(0, 0, nb_q(0, 0, d), nb_r(0, 0, d)) == 1,
+           "ring cell {d} is not adjacent to the centre");
+  }
+}
+
+// The old table, applied at an ODD anchor row, does not describe the neighbours.
+fn test_the_old_axial_ring_was_wrong() {
+  axial: vector<integer> = [1, 0, 0, 1, -1, 1, -1, 0, 0, -1, 1, -1];
+  wrong = 0;
+  for i in 0..6 {
+    dq = axial[i * 2] ?? 0;
+    dr = axial[i * 2 + 1] ?? 0;
+    if hex_dist(3, 3, 3 + dq, 3 + dr) != 1 { wrong = wrong + 1; }
+  }
+  assert(wrong > 0, "the axial table happened to be a ring here — pick another anchor");
+}
+
+fn test_house_walls_ring_the_outside() {
+  st = builtin_house_small();
+  assert(edgeset_count(st.sn_edges) > 0, "the house has no walls");
+  m = map_empty();
+  stencil_into_map_mode(m, st, 4, 3, 0, STAMP_REPLACE);   // ODD anchor row
+  filled = 0;
+  for q in 0..10 {
+    for r in 0..10 {
+      if map_get_hex(m, q, r, 0).h_material != 0 { filled = filled + 1; }
+    }
+  }
+  assert(filled == 7, "stamped {filled} cells, want 7");
+}
+
+// Twelve: six rotations, and the other six by flipping.  Counted with
+// edgeset_count_all, not edgeset_count — the latter walks only in-chunk cells, so
+// it moves when the extent does and cannot tell "the wall left" from "the wall is
+// now owned by a halo cell".  Nothing may be lost, so the measure has to cover
+// everything.
+fn test_builtins_rotate_through_twelve_orientations() {
+  st = builtin_house_small();
+  n0 = hexset_count(st.sn_cells);
+  e0 = edgeset_count_all(st.sn_edges);
+  flipped = stencil_mirror(st);
+  for n in 0..6 {
+    a = stencil_rotate(st, n);
+    b = stencil_rotate(flipped, n);
+    assert(hexset_count(a.sn_cells) == n0, "orientation {n}: {hexset_count(a.sn_cells)} cells, want {n0}");
+    assert(edgeset_count_all(a.sn_edges) == e0, "orientation {n}: {edgeset_count_all(a.sn_edges)} walls, want {e0}");
+    assert(hexset_count(b.sn_cells) == n0, "flipped {n}: cells lost");
+    assert(edgeset_count_all(b.sn_edges) == e0, "flipped {n}: walls lost");
+  }
+}
+
+fn test_spiral_stair_carries_its_item() {
+  st = builtin_spiral_stair();
+  m = map_empty();
+  stencil_into_map_mode(m, st, 2, 1, 0, STAMP_REPLACE);
+  c = map_get_hex(m, 2, 1, 0);
+  assert(c.h_material == 4, "stair material {c.h_material}, want 4");
+  assert(c.h_item == 12, "stair item {c.h_item}, want 12");
+}

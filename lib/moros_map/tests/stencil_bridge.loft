@@ -91,3 +91,75 @@ fn test_twelve_orientations_all_stamp_a_whole_room() {
     assert(edgeset_count(rot.sn_edges) == 3, "orientation {n}: lost walls");
   }
 }
+
+// ── merge modes: Moros policy over the library's stamp ───────────────────
+
+// A target with existing content, so each mode's "leaves alone" half is visible.
+fn occupied_target() -> Map {
+  t = map_empty();
+  for q in 0..3 {
+    for r in 0..3 {
+      map_paint_material(t, q, r, 0, 9);
+      map_set_height(t, q, r, 0, 99);
+      map_place_item(t, q, r, 0, 88, 4);
+    }
+  }
+  t
+}
+
+fn test_replace_overwrites_every_field() {
+  st = map_to_stencil(room(), 0, 0, 0, 3, 3);
+  t = occupied_target();
+  stencil_into_map_mode(t, st, 0, 0, 0, STAMP_REPLACE);
+  c = map_get_hex(t, 1, 1, 0);
+  assert(c.h_material == 3, "material not replaced: {c.h_material}");
+  assert(c.h_height == 11, "height not replaced: {c.h_height}");
+  assert(c.h_item == 21, "item not replaced: {c.h_item}");
+  assert(c.h_wall_n == 5, "wall not replaced: {c.h_wall_n}");
+}
+
+// REPLACE must be able to CLEAR — the old implementation did it with a recorded
+// material-0 hex, which the field model has no way to express, so the extent is
+// what defines the footprint.
+fn test_replace_clears_cells_the_stencil_does_not_occupy() {
+  m = map_empty();
+  map_paint_material(m, 0, 0, 0, 4);      // a one-cell stencil in a 3x3 extent
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  t = occupied_target();
+  stencil_into_map_mode(t, st, 0, 0, 0, STAMP_REPLACE);
+  assert(map_get_hex(t, 0, 0, 0).h_material == 4, "the occupied cell was not written");
+  assert(map_get_hex(t, 2, 2, 0).h_material == 0,
+         "a cell inside the extent but outside the stencil was left at {map_get_hex(t, 2, 2, 0).h_material}");
+}
+
+fn test_overlay_leaves_zero_valued_fields_alone() {
+  m = map_empty();
+  map_paint_material(m, 1, 1, 0, 3);      // material only: no item, no walls
+  st = map_to_stencil(m, 0, 0, 0, 3, 3);
+  t = occupied_target();
+  stencil_into_map_mode(t, st, 0, 0, 0, STAMP_OVERLAY);
+  c = map_get_hex(t, 1, 1, 0);
+  assert(c.h_material == 3, "material should be overlaid: {c.h_material}");
+  assert(c.h_item == 88, "item was cleared by an overlay: {c.h_item}");
+  assert(map_get_hex(t, 2, 2, 0).h_material == 9, "overlay touched a cell it should not have");
+}
+
+fn test_heights_only_writes_height() {
+  st = map_to_stencil(room(), 0, 0, 0, 3, 3);
+  t = occupied_target();
+  stencil_into_map_mode(t, st, 0, 0, 0, STAMP_HEIGHTS);
+  c = map_get_hex(t, 1, 1, 0);
+  assert(c.h_height == 11, "height not written: {c.h_height}");
+  assert(c.h_material == 9, "material changed under HEIGHTS: {c.h_material}");
+  assert(c.h_item == 88, "item changed under HEIGHTS: {c.h_item}");
+}
+
+fn test_structure_only_leaves_height() {
+  st = map_to_stencil(room(), 0, 0, 0, 3, 3);
+  t = occupied_target();
+  stencil_into_map_mode(t, st, 0, 0, 0, STAMP_STRUCTURE);
+  c = map_get_hex(t, 1, 1, 0);
+  assert(c.h_height == 99, "height changed under STRUCTURE: {c.h_height}");
+  assert(c.h_material == 3, "material not written: {c.h_material}");
+  assert(c.h_wall_ne == 6, "wall not written: {c.h_wall_ne}");
+}

@@ -462,3 +462,67 @@ pub fn editor_save(m: Map) -> text { map_to_json(m) }
 // Initialise the editor from a previously-saved JSON string.
 // Returns an empty map on parse failure.
 pub fn editor_init(json: text) -> Map { map_from_json(json) }
+
+// ── Built-in stencils, authored against the library mechanism (moros#5) ──
+//
+// These replace the StencilDef versions above.  They are CONTENT — which
+// stencils Moros ships — expressed in the shared field model, so they rotate
+// through twelve orientations exactly and stamp through the same merge modes as
+// anything a user draws.
+//
+// house_small's ring is the reason this is not just a port.  The old version
+// built it from an AXIAL neighbour table — [1,0] [0,1] [-1,1] [-1,0] [0,-1]
+// [1,-1] — applied to odd-r OFFSET coordinates.  Those disagree on both
+// parities: the axial set includes a cell that is not adjacent and misses one
+// that is.  Asking the lattice for its neighbours removes the whole class.
+
+pub fn builtin_flat() -> Stencil {
+  c = hexset_chunk(0, 0, 1, 1);
+  hz = heights_new(0, 0, 1, 1);
+  lb = labels_new(0, 0, 1, 1);
+  hexset_set(c, 0, 0, true);
+  height_set(hz, 0, 0, 5.0);
+  label_set(lb, 0, 0, 3);
+  stencil_from(c, hz, lb, true, true)
+}
+
+// A floor cell ringed by six walled cells.
+pub fn builtin_house_small() -> Stencil {
+  c  = hexset_chunk(-1, -1, 3, 3);
+  hz = heights_new(-1, -1, 3, 3);
+  lb = labels_new(-1, -1, 3, 3);
+  eg = edgeset_new(-1, -1, 3, 3);
+  hexset_set(c, 0, 0, true);
+  label_set(lb, 0, 0, 2);
+  for d in 0..6 {
+    rq = nb_q(0, 0, d);
+    rr = nb_r(0, 0, d);
+    hexset_set(c, rq, rr, true);
+    label_set(lb, rq, rr, 1);
+  }
+  // wall every edge between the ring and the world outside it
+  for d in 0..6 {
+    rq = nb_q(0, 0, d);
+    rr = nb_r(0, 0, d);
+    for e2 in 0..6 {
+      oq = nb_q(rq, rr, e2);
+      orr = nb_r(rq, rr, e2);
+      if !hexset_get(c, oq, orr) { edge_set_mat(eg, rq, rr, oq, orr, 1); }
+    }
+  }
+  stencil_with_edges(c, hz, lb, eg, true, true)
+}
+
+pub fn builtin_spiral_stair() -> Stencil {
+  c  = hexset_chunk(0, 0, 1, 1);
+  hz = heights_new(0, 0, 1, 1);
+  lb = labels_new(0, 0, 1, 1);
+  hexset_set(c, 0, 0, true);
+  label_set(lb, 0, 0, 4);
+  height_set(hz, 0, 0, 0.0);
+  st = stencil_from(c, hz, lb, true, true);
+  layer_add(st.sn_layers, LAYER_ITEM);
+  layer_add(st.sn_layers, LAYER_ROT);
+  layer_set(st.sn_layers, LAYER_ITEM, 0, 0, 12);
+  st
+}

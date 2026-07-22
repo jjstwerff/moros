@@ -50,6 +50,37 @@ caller has been shown nothing; the editor needs mutation, undo, partial views an
 serialisation that the game does not, so a package satisfying both has been tested where it
 would otherwise only have been asserted.
 
+### Nothing is approximated, and nothing is lost
+
+> *"Exact, not approximate. … Not 'within epsilon' — exactly. **Approximation accumulates;
+> exactness composes.**"* — crawler's `VISION.md`
+
+This is not a preference about numerical style. Derivation is unforgiving in a way
+asset-assembly is not: place a building by hand slightly wrong and you nudge it; get a
+*generator* slightly wrong and it is wrong ten thousand times, in ways nobody can see and
+nobody can nudge. So there is **no situation in which a destructive approximation is
+acceptable** anywhere in this substrate.
+
+Concretely, for the editor:
+
+- **A stencil loses nothing.** It carries cells, labels, heights, edge materials and named
+  layers, and an orientation change is a **relabelling of the lattice** — so nothing has
+  anywhere to go. Not "the cells survive": *everything* survives, exactly.
+- **Twelve orientations, all exact.** Six 60° rotations, and the other six by a reflection
+  (`k → −k`). Both are integer maps on the lattice, so a house stamped at 300° or flipped is
+  the same house, cell for cell — never a filtered approximation of one. Every other grid
+  pays for rotation with 90°-only placement or interpolation.
+- **Measure the whole thing, not the convenient part.** An edge is stored against one of its
+  two cells, and for a rim edge that owner sits *outside* the extent. A count that walks only
+  in-chunk cells therefore moves when the extent moves and cannot tell "the wall was lost"
+  from "the wall is now owned by a halo cell". The loss-free invariant has to be stated over
+  the entire layer, halo included.
+
+That last point is not hypothetical. An early version of the rotation walked the cell extent
+and **dropped 8 of 18 edge slots** while the cell count never moved and every in-chunk count
+looked plausible. The gate that catches it asserts the total is unchanged across all twelve
+orientations, and it goes red the moment the loop is narrowed again.
+
 ### The clause our Definition of Done was missing
 
 > *"The acceptance test: a thing is done when picking it up is **fun**. Not feature-complete —

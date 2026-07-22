@@ -527,3 +527,89 @@ pub fn stencil_into_map(m: Map, st: Stencil, aq: integer, ar: integer, cy: integ
     }
   }
 }
+
+// ── Merge modes — Moros POLICY over the library's stamp ──────────────────
+//
+// The library stamps a field: occupied cells win, everything else is untouched.
+// WHICH of our six cell fields a stamp writes is a Moros decision, so it lives
+// here rather than in hex_field — another consumer wants different modes, or
+// none.
+//
+// REPLACE works over the stencil's whole EXTENT, not just its occupied cells,
+// because "replace" has to be able to clear.  The old implementation could do
+// that by recording a hex with material 0; the field model has no such hex — an
+// unoccupied cell is *not part of the stencil* rather than *explicitly empty* —
+// so the extent is what defines the footprint being replaced.
+pub const STAMP_REPLACE   = 0;
+pub const STAMP_OVERLAY   = 1;
+pub const STAMP_HEIGHTS   = 2;
+pub const STAMP_STRUCTURE = 3;
+
+pub fn stencil_into_map_mode(m: Map, st: Stencil, aq: integer, ar: integer, cy: integer, mode: integer) {
+  sw = hexset_w(st.sn_cells);
+  sh = hexset_h(st.sn_cells);
+  pq = aq - sw - 1;
+  pr = ar - sh - 1;
+  pw = sw * 3 + 2;
+  ph = sh * 3 + 2;
+  sc = hexset_chunk(pq, pr, pw, ph);
+  sz = heights_new(pq, pr, pw, ph);
+  sl = labels_new(pq, pr, pw, ph);
+  sy = layers_new(pq, pr, pw, ph);
+  se = edgeset_new(pq, pr, pw, ph);
+  stencil_stamp_all(sc, sz, sl, sy, se, st, aq, ar);
+
+  // REPLACE also clears the footprint's unoccupied cells, so mark which target
+  // cells the extent covers at all.
+  cov = hexset_chunk(pq, pr, pw, ph);
+  dk = lattice_k(aq, ar);
+  dm = lattice_m(aq, ar);
+  sq0 = hexset_q0(st.sn_cells);
+  sr0 = hexset_r0(st.sn_cells);
+  for iq in 0..sw {
+    for ir in 0..sh {
+      (cq, cr) = lattice_to_cell(lattice_k(sq0 + iq, sr0 + ir) + dk,
+                                 lattice_m(sq0 + iq, sr0 + ir) + dm);
+      hexset_set(cov, cq, cr, true);
+    }
+  }
+
+  for iq in 0..pw {
+    for ir in 0..ph {
+      cq = pq + iq;
+      cr = pr + ir;
+      here = hexset_get(sc, cq, cr);
+      if hexset_get(cov, cq, cr) {
+        cur = map_get_hex(m, cq, cr, cy);
+        smat = if here { label_get(sl, cq, cr) } else { 0 };
+        shgt = if here { height_get(sz, cq, cr) as integer } else { 0 };
+        sitm = if here { layer_get(sy, LAYER_ITEM, cq, cr) } else { 0 };
+        srot = if here { layer_get(sy, LAYER_ROT, cq, cr) } else { 0 };
+        swn = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW)) } else { 0 };
+        swe = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE)) } else { 0 };
+        sws = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E))  } else { 0 };
+
+        if mode == STAMP_REPLACE {
+          cur.h_height = shgt; cur.h_material = smat;
+          cur.h_item = sitm; cur.h_item_rotation = srot;
+          cur.h_wall_n = swn; cur.h_wall_ne = swe; cur.h_wall_se = sws;
+        }
+        if mode == STAMP_OVERLAY {
+          if shgt != 0 { cur.h_height = shgt; }
+          if smat != 0 { cur.h_material = smat; }
+          if sitm != 0 { cur.h_item = sitm; }
+          if srot != 0 { cur.h_item_rotation = srot; }
+          if swn != 0 { cur.h_wall_n = swn; }
+          if swe != 0 { cur.h_wall_ne = swe; }
+          if sws != 0 { cur.h_wall_se = sws; }
+        }
+        if mode == STAMP_HEIGHTS { cur.h_height = shgt; }
+        if mode == STAMP_STRUCTURE {
+          cur.h_material = smat; cur.h_item = sitm; cur.h_item_rotation = srot;
+          cur.h_wall_n = swn; cur.h_wall_ne = swe; cur.h_wall_se = sws;
+        }
+        map_set_hex(m, cq, cr, cy, cur);
+      }
+    }
+  }
+}
