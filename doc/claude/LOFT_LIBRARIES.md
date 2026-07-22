@@ -9,64 +9,60 @@
 > accurate as a description of the recovered `moros_*` packages
 > ([moros#2](https://github.com/jjstwerff/moros/issues/2)).
 
-Three loft packages implement the Moros scene system as WASM modules loadable into
-HTML pages. They live under `lib/` in this project and reference loft at `../loft`.
+Five loft packages implement the Moros scene system. **They exist and are tested** — in
+loft's git history at `ade530c2^`, awaiting recovery into `lib/` by
+[moros#2](https://github.com/jjstwerff/moros/issues/2).
 
 ```
-../loft/                  ← loft interpreter + package toolchain
 moros/
   lib/
-    moros_map/            ← shared data model (no editor ops, no rendering)
-    moros_editor/         ← edit operations, undo/redo, stencils
-    moros_render/         ← 3-D WebGL renderer built on loft's graphics library
-  html/
-    moros_map.wasm        ← built by: make wasm-map
-    moros_editor.wasm     ← built by: make wasm-editor
-    moros_render.wasm     ← built by: make wasm-render
+    moros_map/       ← data model AND its verbs: paint, height, item, wall, spawn,
+                       routines, waypoints, slope  (364-line entry + types/palette/spawn)
+    moros_editor/    ← undo/redo stack and stencils only  (456 lines)
+    moros_render/    ← 3-D geometry generation  (1340 lines, 5 test files, 3 examples)
+    moros_sim/       ← collision, player, tools, editor state  (5 sources, 11 tests)
+    moros_ui/        ← panel, widgets, font, editor panel + click  (6 sources, 4 tests)
 ```
 
-All three compile to WASM with `../loft/target/release/loft --native-wasm`.
-The HTML pages load each WASM module independently; they do not share memory but
-exchange data as JSON text strings.
+**There is no WASM-module-per-package story.** That was this document's original design and
+it does not match how loft ships a program: `loft --html prog.loft` compiles the *whole
+program* to one self-contained HTML file, and the same source also builds native and
+Android. Packages are compile-time dependencies, not separately loaded modules — so nothing
+here "exchanges JSON between WASM modules".
+
+`--native-wasm` (used throughout this document's original build recipes) is the
+**headless/server** target, roughly 4× heavier, and is not the browser build.
+See [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § One program, four targets.
 
 ---
 
 ## Cross-project setup
 
+One program, several targets — the editor is built, not assembled from modules:
+
 ```
-# Makefile additions
-LOFT := ../loft/target/release/loft
-LIB_PATH := lib
+# Makefile sketch — one entry program, one target flag per output
+LOFT := loft
+EDITOR := src/scene_editor.loft
 
-wasm-map:
-	$(LOFT) --native-wasm $(LIB_PATH)/moros_map/src/moros_map.loft \
-	        -o html/moros_map.wasm
+editor-browser:                 # self-contained HTML, gl_* → WebGL2
+	$(LOFT) --html $(EDITOR) -o html/scene-editor.html
 
-wasm-editor:
-	$(LOFT) --native-wasm $(LIB_PATH)/moros_editor/src/moros_editor.loft \
-	        -o html/moros_editor.wasm
+editor-native:                  # desktop window, native GL
+	$(LOFT) --native $(EDITOR) -o bin/scene-editor
 
-wasm-render:
-	$(LOFT) --native-wasm $(LIB_PATH)/moros_render/src/moros_render.loft \
-	        -o html/moros_render.wasm
+editor-android:                 # signed APK; needs ANDROID_NDK_HOME/ANDROID_HOME/JAVA_HOME
+	$(LOFT) --native-android $(EDITOR) -o build/scene-editor.apk
 
-# Native GLB export tool (writes .glb files for Blender / viewer validation)
-glb-tool:
-	$(LOFT) --native $(LIB_PATH)/moros_render/src/moros_glb_tool.loft \
-	        -o bin/moros_glb
+glb: ; $(LOFT) --native lib/moros_render/examples/moros_glb.loft -o bin/moros_glb
 
-glb: glb-tool
-	bin/moros_glb $(MAP) html/scene-preview.glb
-
-wasm: wasm-map wasm-editor wasm-render
-
-editor: wasm
-	firefox html/scene-editor.html
+test: ; cd lib/moros_map && loft test    # and each sibling package
 ```
 
-The loft binary at `../loft` must be built first (`cd ../loft && cargo build --release`).
-The loft `graphics` package at `../loft/lib/graphics` is referenced by path from
-`moros_render/loft.toml`.
+`graphics` comes from the **registry** (`graphics = ">=0.1"` in the recovered
+`moros_render/loft.toml`), not by path from a loft checkout — it is a published package at
+0.5.0 with GL, PNG, fonts and audio. The GLB tool stays a native build because the browser
+target has no filesystem.
 
 ---
 
@@ -74,12 +70,15 @@ The loft `graphics` package at `../loft/lib/graphics` is referenced by path from
 
 ```
 moros_map  ←── moros_editor
-           ←── moros_render ←── graphics  (../loft/lib/graphics)
+           ←── moros_render ←── graphics (registry, 0.5.0)
+           ←── moros_sim
+                moros_ui
 ```
 
-`moros_map` has no loft-package dependencies. It is a pure-loft package.
-`moros_editor` and `moros_render` each compile to a self-contained WASM module
-that includes the `moros_map` types inline (no cross-WASM imports needed).
+`moros_map` has no loft-package dependencies. **This split is not final**: the data model,
+stencils and renderer are moving to the shared substrate (`hex_field`, `hex_scene`,
+`hex_editor`), which is [moros#1](https://github.com/jjstwerff/moros/issues/1). Read the
+package boundaries here as *what the recovered code does today*, not as the target.
 
 ---
 
@@ -94,15 +93,16 @@ produced by any module is interchangeable.
 lib/moros_map/
   loft.toml
   src/
-    moros_map.loft    ← entry; re-exports everything
-    types.loft        ← Hex, Chunk, Map, palette types
-    palette.loft      ← MaterialDef, WallDef, ItemDef; well-known index constants
-    spawn.loft        ← SpawnPoint, NpcRoutine, NpcWaypoint, enums
-    serial.loft       ← map_to_json(), map_from_json(); hex address helpers
+    moros_map.loft    ← entry: Map, serialisation, addressing, verbs, spawns, slope
+    types.loft        ← HexAddress, Hex, Chunk
+    palette.loft      ← MaterialDef, WallDef, ItemDef
+    spawn.loft        ← SpawnPoint, NpcWaypoint, NpcRoutine
   tests/
-    types.loft
-    serial.loft
+    address.loft  edit.loft  negative_coords.loft  serial.loft
+    slope.loft    smoke.loft spawn.loft            types.loft
 ```
+
+There is no `serial.loft` — serialisation is in the entry module.
 
 ### `loft.toml`
 
@@ -110,7 +110,7 @@ lib/moros_map/
 [package]
 name    = "moros_map"
 version = "0.1.0"
-loft    = ">=0.9"
+loft    = ">=0.8"        # as recovered; expect a bump to current loft
 
 [library]
 entry = "src/moros_map.loft"
@@ -149,16 +149,23 @@ pub struct Chunk {
 }
 
 pub struct Map {
-  m_name:             text not null,
-  m_chunks:           vector<Chunk> not null,
-  m_material_palette: vector<MaterialDef> not null,
-  m_wall_palette:     vector<WallDef> not null,
-  m_item_palette:     vector<ItemDef> not null,
-  m_door_states:      vector<DoorState> not null,
-  m_spawn_points:     vector<SpawnPoint> not null,
-  m_npc_routines:     vector<NpcRoutine> not null,
+  m_name:             text,
+  m_chunks:           vector<Chunk>,
+  m_material_palette: vector<MaterialDef>,
+  m_wall_palette:     vector<WallDef>,
+  m_item_palette:     vector<ItemDef>,
+  m_spawn_points:     vector<SpawnPoint>,
+  m_npc_routines:     vector<NpcRoutine>,
 }
 ```
+
+Two differences from the sketch this document used to carry, both checked against the
+recovered source: there is **no `m_door_states`** field, and booleans in the palette types
+are stored as `integer` (`md_walkable`, `id_symmetric`, …) rather than `boolean`.
+
+The recovered sources also mark fields `not null`, a modifier **current loft has retired** —
+`loft-libs-world` already migrated its own packages off it. Expect that cleanup as part of
+[moros#2](https://github.com/jjstwerff/moros/issues/2).
 
 ### Palette types (`palette.loft`)
 
@@ -228,51 +235,60 @@ pub struct NpcRoutine {
 }
 ```
 
-### Serialisation (`serial.loft`)
+### The real `moros_map` surface
+
+Verified against the recovered source. Note that **`moros_map` holds the paint verbs**, the
+spawn/routine/waypoint CRUD and the slope tools — this document originally placed those in
+`moros_editor`, which is not what was built.
 
 ```loft
-// Serialise the entire map to a JSON string.
-pub fn map_to_json(m: Map) -> text {
-  "{m:j}"
-}
+// Lifecycle + serialisation (serialisation lives in the entry module, not a serial.loft)
+pub fn map_empty() -> Map
+pub fn map_to_json(m: Map) -> text
+pub fn map_from_json(json: text) -> Map          // empty Map on parse failure
 
-// Deserialise a JSON string back to a Map.
-// Returns a default empty Map on parse failure.
-pub fn map_from_json(json: text) -> Map {
-  Map.parse(json) ?? map_empty()
-}
+// Addressing.  map_get_hex returns a Hex (a default one when absent), not an optional.
+pub fn map_has_chunk(m: Map, q, r, cy) -> boolean
+pub fn map_ensure_chunk(m: &Map, q, r, cy)
+pub fn map_get_hex(m: Map, q, r, cy) -> Hex
+pub fn map_set_hex(m: &Map, q, r, cy, h: Hex)
 
-pub fn map_empty() -> Map {
-  Map {
-    m_name: "untitled",
-    m_chunks: [],
-    m_material_palette: well_known_materials(),
-    m_wall_palette:     well_known_walls(),
-    m_item_palette:     well_known_items(),
-    m_door_states: [],
-    m_spawn_points: [],
-    m_npc_routines: [],
-  }
-}
+// Paint verbs — mutating, via &Map
+pub fn map_paint_material(m: &Map, q, r, cy, material: integer)
+pub fn map_set_height(m: &Map, q, r, cy, height: integer)
+pub fn map_place_item(m: &Map, q, r, cy, item: integer, rotation: integer)
+pub fn map_set_wall(m: &Map, q, r, cy, edge: integer, wall: integer)
+pub fn map_set_wall_dir(m: &Map, q, r, cy, dir: integer, wall: integer)
 
-// Resolve global (q, r, cy) to the Hex at that address.
-// Returns null if the chunk does not exist or the hex is out of bounds.
-pub fn map_get_hex(m: Map, q: integer, r: integer, cy: integer) -> Hex? {
-  cx = q / 32
-  hx = q % 32
-  cz = r / 32
-  hz = r % 32
-  chunk = m.m_chunks |> first(|c| { c.ck_cx == cx && c.ck_cy == cy && c.ck_cz == cz })
-  chunk ?? null |> map(|c| { c.ck_hexes[hx * 32 + hz] })
-}
+// Spawns, routines, waypoints
+pub fn spawn_add(m: &Map, sp: SpawnPoint)
+pub fn spawn_count(m: Map) -> integer
+pub fn spawn_at(m: Map, q, r, cy) -> vector<SpawnPoint>
+pub fn spawn_remove(m: &Map, q, r, cy, npc_id: integer) -> boolean
+pub fn routine_add(m: &Map, npc_id: integer, name: text, creature: integer)
+pub fn routine_count(m: Map) -> integer
+pub fn routine_index(m: Map, npc_id: integer) -> integer
+pub fn routine_remove(m: &Map, npc_id: integer) -> boolean
+pub fn waypoint_add(m: &Map, npc_id: integer, wp: NpcWaypoint) -> boolean
+pub fn waypoint_count(m: Map, npc_id: integer) -> integer
 
-pub fn map_set_hex(m: Map, q: integer, r: integer, cy: integer, h: Hex) -> Map {
-  // returns a new Map with the hex replaced (functional update)
-  ...
-}
+// Geometry + shaping
+pub fn hex_distance(q1, r1, q2, r2) -> integer
+pub fn lerp_int(a, b, i, n) -> integer
+pub fn slope_path(m: &Map, q1, r1, q2, r2, cy, h_start, h_end)
+pub fn slope_band(m: &Map, q1, r1, q2, r2, cy, h_start, h_end, width)
 ```
 
----
+**Two walls entry points exist** (`map_set_wall` by edge index, `map_set_wall_dir` by
+direction) — which of them survives depends on the edge-naming fix in
+[moros#3](https://github.com/jjstwerff/moros/issues/3).
+
+`hex_distance` is lattice math and should not live here at all: that belongs to `hex_grid`,
+which owns it once for every consumer.
+
+The addressing helpers carry a hard-won detail worth keeping — euclidean division for
+negative coordinates. C-style `%` maps `(-1, 1)` to the wrong cell *silently*, and
+`tests/negative_coords.loft` exists because of it.
 
 ## Package: `moros_editor`
 
@@ -285,18 +301,13 @@ and spawn/waypoint management. This is the logic backend for `scene-editor.html`
 lib/moros_editor/
   loft.toml
   src/
-    moros_editor.loft   ← entry; exports pub API; holds editor state as module-level Map
-    hex_ops.loft        ← material paint, height set, wall set, item place
-    undo.loft           ← HexEdit/SpawnEdit records, undo stack, undo()/redo()
-    slope.loft          ← slope_paint(): line interpolation across hex path
-    stencils.loft       ← StencilDef, built-in stencils, stamp()
-    spawn_ops.loft      ← spawn_add(), spawn_remove(), waypoint_add(), waypoint_remove()
+    moros_editor.loft   ← the whole package: UndoStack, verbs-with-undo, stencils
   tests/
-    hex_ops.loft
-    undo.loft
-    slope.loft
-    stencils.loft
+    editkind.loft  lifecycle.loft  slope.loft  stencil.loft  undo.loft
 ```
+
+One source file, not six — and no editor state module. The paint, slope and spawn
+operations the old layout listed here live in `moros_map`.
 
 ### `loft.toml`
 
@@ -304,7 +315,7 @@ lib/moros_editor/
 [package]
 name    = "moros_editor"
 version = "0.1.0"
-loft    = ">=0.9"
+loft    = ">=0.8"
 
 [library]
 entry = "src/moros_editor.loft"
@@ -313,85 +324,53 @@ entry = "src/moros_editor.loft"
 moros_map = { path = "../moros_map" }
 ```
 
-### Public API (`moros_editor.loft`)
+### The real `moros_editor` surface
 
-The editor holds one mutable `Map` as module-level state. All `pub fn` at the top level
-of this file are exported as WASM entry points.
+`moros_editor` is **undo and stencils only** — the paint verbs live in `moros_map`. And the
+undo stack is an **explicit value threaded through each call**, not module-level state as
+this document originally described. That matters: module state cannot serve two editor
+views, an undo-per-document model, or the Workbench's server-side hosting.
 
 ```loft
-use moros_map
+// Undo / redo — the stack is passed in
+pub fn undo_empty() -> UndoStack
+pub fn undo_depth(s: UndoStack) -> integer
+pub fn redo_depth(s: UndoStack) -> integer
+pub fn batch_begin(s: &UndoStack)
+pub fn batch_end(s: &UndoStack)
+pub fn in_batch(s: UndoStack) -> boolean
+pub fn undo_push(s: &UndoStack, m: Map, q, r, cy)
+pub fn undo_pop(s: &UndoStack, m: &Map) -> boolean
+pub fn redo(s: &UndoStack, m: &Map) -> boolean
 
-// ── Lifecycle ──────────────────────────────────────────────────────────────
+// Every verb has an undo-recording twin
+pub fn paint_material_with_undo(s: &UndoStack, m: &Map, q, r, cy, mat: integer)
+pub fn set_height_with_undo(...)      pub fn adjust_height_with_undo(...)
+pub fn place_item_with_undo(...)      pub fn remove_item_with_undo(...)
+pub fn set_wall_with_undo(...)        pub fn set_wall_dir_with_undo(...)
+pub fn slope_path_with_undo(...)      pub fn stencil_stamp_with_undo(...)
 
-// Initialise editor state from a JSON string (or start empty if json is "").
-pub fn editor_init(json: text) {
-  state_map = if json == "" { map_empty() } else { map_from_json(json) }
-  undo_clear()
-}
+// Stencils
+pub fn stencil_stamp(m: &Map, stencil: StencilDef, q, r, cy, mode: integer)
+pub fn stencil_save(m: Map, name, category, q1, r1, q2, r2, cy) -> StencilDef
+pub fn stencil_to_json(st: StencilDef) -> text
+pub fn stencil_from_json(json: text) -> StencilDef
+pub fn stencil_house_small() -> StencilDef
+pub fn stencil_flat() -> StencilDef
+pub fn stencil_spiral_stair() -> StencilDef
 
-// Serialise current map state to JSON.
-pub fn editor_save() -> text {
-  map_to_json(state_map)
-}
-
-// ── Hex operations ─────────────────────────────────────────────────────────
-
-pub fn hex_paint_material(q: integer, r: integer, cy: integer, material: integer) { ... }
-pub fn hex_set_height(q: integer, r: integer, cy: integer, height: integer) { ... }
-pub fn hex_adjust_height(q: integer, r: integer, cy: integer, delta: integer) { ... }
-pub fn hex_place_item(q: integer, r: integer, cy: integer, item: integer, rotation: integer) { ... }
-pub fn hex_remove_item(q: integer, r: integer, cy: integer) { ... }
-
-// ── Wall operations ────────────────────────────────────────────────────────
-
-// dir: "N"|"NE"|"SE"|"S"|"SW"|"NW"  (S/SW/NW are resolved to the owning neighbour)
-pub fn edge_set_wall(q: integer, r: integer, cy: integer, dir: text, wall: integer) { ... }
-
-// ── Slope tool ─────────────────────────────────────────────────────────────
-
-// Interpolate heights linearly along the shortest hex path from (q0,r0) to (q1,r1).
-pub fn slope_path(q0: integer, r0: integer, q1: integer, r1: integer, cy: integer,
-                  h_start: integer, h_end: integer) { ... }
-
-// As above but spread across a band of `width` hexes centred on the path.
-pub fn slope_band(q0: integer, r0: integer, q1: integer, r1: integer, cy: integer,
-                  h_start: integer, h_end: integer, width: integer) { ... }
-
-// ── Stencils ───────────────────────────────────────────────────────────────
-
-// orientation: 0-11 (6 rotations × 2 mirrors)
-// mode: "replace" | "overlay" | "heights" | "structure"
-pub fn stencil_stamp(name: text, q: integer, r: integer, cy: integer,
-                     orientation: integer, mode: text) { ... }
-
-// List available stencil names as a JSON array of strings.
-pub fn stencil_list() -> text { ... }
-
-// Return a stencil definition as JSON (for editor preview thumbnail).
-pub fn stencil_get(name: text) -> text { ... }
-
-// Save the currently selected hexes as a new named stencil.
-// selection_json: JSON array of {q,r,cy} objects.
-pub fn stencil_save(name: text, category: text, selection_json: text) { ... }
-
-// ── Spawn and waypoints ────────────────────────────────────────────────────
-
-pub fn spawn_add(q: integer, r: integer, cy: integer, spawn_json: text) { ... }
-pub fn spawn_remove(q: integer, r: integer, cy: integer, index: integer) { ... }
-pub fn spawn_list(q: integer, r: integer, cy: integer) -> text { ... }
-
-pub fn waypoint_add(npc_id: integer, waypoint_json: text) { ... }
-pub fn waypoint_remove(npc_id: integer, index: integer) { ... }
-pub fn routine_list() -> text { ... }
-pub fn routine_get(npc_id: integer) -> text { ... }
-
-// ── Undo / redo ────────────────────────────────────────────────────────────
-
-// Returns true if an edit was reverted; false if the stack was empty.
-pub fn undo() -> boolean { ... }
-pub fn redo() -> boolean { ... }
-pub fn undo_stack_depth() -> integer { ... }
+// Lifecycle
+pub fn editor_init(json: text) -> Map
+pub fn editor_save(m: Map) -> text
 ```
+
+`mode` is an **integer**, not one of `"replace" | "overlay" | …`.
+
+**The stencil half is superseded.** A stencil is a small field and stamping is a field
+merge, with the 12 orientations as exact integer maps — the recovered implementation
+transforms offsets and wall indices separately, which is two transformations that can
+disagree. See [moros#5](https://github.com/jjstwerff/moros/issues/5). The three built-in
+stencils are content and stay Moros-side wherever the mechanism ends up.
 
 ### Undo record types (`undo.loft`)
 
@@ -464,20 +443,19 @@ pseudocode, and submits it to a WebGL canvas via the loft `graphics` library.
 lib/moros_render/
   loft.toml
   src/
-    moros_render.loft   ← entry; holds render state (Scene, Camera, loaded textures)
-    geometry.loft       ← hex surfaces, wall slabs, slope faces, thick walls, cylinders
-    stairs.loft         ← linear stair steps, spiral newel, grand arc treads
-    items.loft          ← per-ItemKind 3-D geometry
-    materials.loft      ← material index → Rgba tint; dev-art flat-shade colours
-    camera.loft         ← Camera struct, orbit/pan/zoom, view+proj matrix
-    picker.loft         ← screen XY ray → hex address (ray–hex intersection)
-    glb_export.loft     ← map_export_glb(): build full scene, write GLB bytes
-    moros_glb_tool.loft ← native CLI entry point (main); not compiled to WASM
+    moros_render.loft   ← the whole renderer: constants, hex→world, corners, surfaces,
+                          walls (thin/thick/curved), slopes, stairs, camera, GLB  (~1340 lines)
   tests/
-    geometry.loft       ← emit counts, vertex correctness for known layouts
-    picker.loft
-    glb_export.loft     ← round-trip: export small map, check GLB header + chunk sizes
+    adversarial.loft  avatar.loft  camera_modes.loft  geometry.loft  occlusion.loft
+  examples/
+    demo_village.loft  isolated_stair.loft  moros_glb.loft
 ```
+
+One source file, not eight. **The API listings that follow are the original design sketch,
+not a description of this code** — read `moros_render.loft` for what exists. Two facts from
+it that the sketch gets wrong: `HEX_SIZE`/`HEX_WIDTH`/`HEX_ROW_HEIGHT` are unit-scale
+constants (not metres), and `hex_to_world` implements the pointy-top odd-r lattice while its
+own comments say "flat-top".
 
 ### `loft.toml`
 
@@ -485,14 +463,14 @@ lib/moros_render/
 [package]
 name    = "moros_render"
 version = "0.1.0"
-loft    = ">=0.9"
+loft    = ">=0.8"
 
 [library]
 entry = "src/moros_render.loft"
 
 [dependencies]
 moros_map = { path = "../moros_map" }
-graphics  = { path = "../../loft/lib/graphics" }
+graphics  = ">=0.1"        # the registry package, now at 0.5.0 — not a path into a checkout
 ```
 
 ### Public API (`moros_render.loft`)
@@ -688,80 +666,42 @@ fn resolve_material(m: Map, mat_index: integer) -> graphics::Material {
 
 ---
 
-## HTML integration pattern
+## Browser integration — how it actually works
 
-Each WASM module is loaded once and called by the host JavaScript throughout the
-page's lifetime. Loft's WASM host bridge (see `../loft/doc/claude/WASM.md`) provides
-the `loftHost` namespace; the calling convention for exported `pub fn` follows the
-standard loft WASM ABI.
+The pattern this document used to describe — load `moros_editor.wasm` and
+`moros_render.wasm` as separate modules, `call()` exported functions from JavaScript, pass
+JSON between them — is not how loft ships to a browser, and would be the wrong architecture
+even if it were possible.
 
-### Editor page (`scene-editor.html`)
+**`loft --html prog.loft` compiles one program to one self-contained HTML file.** The
+packages are compile-time dependencies linked into it. There is no per-package module, no
+`loft.load()`, and no JSON marshalling between packages — inside the program they are just
+function calls on shared values.
 
-```javascript
-// Load both WASM modules; share the same map JSON between them.
-const editor  = await loft.load('moros_editor.wasm');
-const preview = await loft.load('moros_render.wasm');
+What the browser build does need is a **host seam**, because `--html` has no filesystem, no
+args and no env:
 
-const saved = localStorage.getItem('moros_map') ?? '';
-editor.call('editor_init', saved);
-preview.call('render_init', 'preview-canvas');
+| Direction | Mechanism |
+|---|---|
+| loft → page | `host_output(msg)` → `globalThis.loftOutput(msg)` |
+| page → loft | `globalThis.loftPush(msg)`, popped by `host_input()` |
 
-// Paint a material when the user clicks a hex on the editor canvas.
-function onHexClick(q, r, cy, material) {
-  editor.call('hex_paint_material', q, r, cy, material);
-  syncPreview();
-}
+So saving a map is: the program `host_output`s a save request with the serialised document;
+the JS shell writes it to `localStorage` or offers a download; a completion comes back
+through `loftPush`. **loft stays pure compute and JavaScript owns the I/O** — which is the
+same shape the Workbench's protocol uses, so satisfying one satisfies the other.
 
-// Sync the 3-D preview after each edit.
-function syncPreview() {
-  const json = editor.call('editor_save');
-  localStorage.setItem('moros_map', json);
-  preview.call('render_frame', json);   // geometry rebuilds only if json changed
-}
+Rendering needs no bridge of ours at all: every `gl_*` call becomes a WebGL2 import
+automatically, and the desktop-vs-ES shader header is rewritten inside `gl_create_shader`.
 
-// Animation loop for the 3-D preview.
-function frame() {
-  preview.call('render_frame', lastJson);
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
-```
+**Verify with the gate loft already ships**: headless Chrome with WebGL2, assert zero
+console errors, then screenshot the canvas and require enough distinct colours to prove
+something drew. It catches "compiles clean, blank canvas", which is the failure this work
+will actually hit.
 
-### Game / DM rendering page
-
-The game client loads only `moros_render.wasm`; no editor logic is needed.
-
-```javascript
-const render = await loft.load('moros_render.wasm');
-render.call('render_init', 'game-canvas');
-render.call('render_set_active_layer', 0);
-
-// Receive updated map from the server (WebSocket or localStorage).
-function onMapUpdate(mapJson) {
-  lastJson = mapJson;
-}
-
-function frame() {
-  render.call('render_frame', lastJson);
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
-
-// Camera drag.
-canvas.addEventListener('mousemove', e => {
-  if (e.buttons & 1) render.call('camera_orbit', e.movementX, e.movementY);
-  if (e.buttons & 4) render.call('camera_pan',   e.movementX, e.movementY);
-});
-canvas.addEventListener('wheel', e => render.call('camera_zoom', e.deltaY));
-
-// Hex picking for DM interaction.
-canvas.addEventListener('click', e => {
-  const addr = render.call('render_pick', e.offsetX, e.offsetY);
-  if (addr !== '') onHexPicked(JSON.parse(addr));
-});
-```
-
----
+For the same source as a desktop window use `--native`; for a signed Android APK use
+`--native-android`. See [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § One program, four
+targets.
 
 ## Cross-reference
 

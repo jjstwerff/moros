@@ -35,21 +35,42 @@ Chunks are stored sparsely; a missing chunk is treated as all-`open` hexes at he
 
 ## Hex Geometry
 
-> **Contested — do not build against this section until
-> [moros#3](https://github.com/jjstwerff/moros/issues/3) settles it.** The implemented
-> convention (`moros_render.loft`, and the shipped `hex_grid` package) is **pointy-top,
-> odd-r offset, L = √3**, which is not what this section describes. Everything below that
-> depends on the orientation — edge ownership, the wall midpoint rule, the 12 building
-> orientations, the 90°-corner argument — is contested with it. See
-> [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § Lattice math is implemented once.
+Hexes use **pointy-top orientation** — a vertex at north and south, and the flat edges
+facing east and west. The addressing is **odd-r offset**: odd rows are shifted half a hex
+east.
 
-Hexes use **flat-top orientation** — the N and S edges are horizontal (E–W).
+This section previously described flat-top hexes. That was never what the code did — the
+renderer's own corner table puts vertices at top and bottom, and the shipped `hex_grid` and
+`hex_field` packages agree. The hex is the same size either way; only the orientation and
+the direction names change.
 
 | Property | Value |
 |---|---|
-| N–S diameter (flat to flat) | ≈ 1.000 m |
-| E–W diameter (vertex to vertex) | ≈ 1.155 m |
+| E–W diameter (flat to flat) | ≈ 1.000 m |
+| N–S diameter (vertex to vertex) | ≈ 1.155 m |
 | Edge length | ≈ 0.577 m |
+
+### The lattice is exact integers
+
+Positions are integer lattice points, not floats. For a hex at `(q, r)`:
+
+```
+   centre(q, r) = (k, m) = (2q + (r & 1),  3r)
+   world        = (x, y) = (k · s,  m · s / √3)        s = half the E–W diameter
+   corners      = (0, ±2), (±1, ±1)                    as (Δk, Δm) from the centre
+```
+
+Cell centres satisfy `k ≡ m (mod 2)`. Every centre **and every corner** lands on the
+lattice, so there is no epsilon compare and no drift anywhere in the geometry — which is
+what makes exact undo, exact diff and drift-free rotation possible.
+
+The six neighbours are **E, W, NE, NW, SE, SW**. There is no north or south neighbour: a
+pointy-top hex meets its northern neighbours at the NE and NW edges.
+
+**Corner order is canonical and load-bearing.** `hex_field` numbers corners so that
+consecutive indices bound one edge, and downstream code reads corner `i` by index. Do not
+introduce a second ordering — see [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § The lattice,
+concretely.
 
 ### Sub-triangle subdivision
 
@@ -62,7 +83,7 @@ Sub-triangle dimensions:
 | Property | Value |
 |---|---|
 | Sub-triangle side | ≈ 19.2 cm (= edge / 3) |
-| Sub-triangle height (top to bottom) | ≈ 16.6 cm (= N–S diameter / 6) |
+| Sub-triangle height (top to bottom) | ≈ 16.6 cm (= flat-to-flat diameter / 6) |
 
 The **16 cm height unit** is the resolution step used for wall placement and height transitions.
 
@@ -203,15 +224,31 @@ spawn_flag(hex)    = (hex.item_rotation >> 5) & 1   // bit 5
 waypoint_flag(hex) = (hex.item_rotation >> 6) & 1   // bit 6
 ```
 
-Each hex owns its **three outward edges** (N, NE, SE). The remaining three are read from neighbors:
+Each hex owns **three of its six edges**; the other three are read from neighbours, so every
+edge is stored exactly once.
+
+**The three field names are misleading, and two of them are simply wrong.** Read from the
+renderer's corner indices, the stored edges are **NW, NE and E** — the upper-and-eastern
+half of the hex:
+
+| Field | Corners it spans | Edge it actually is |
+|---|---|---|
+| `wall_n` | top-left → top | **NW** |
+| `wall_ne` | top → top-right | NE ✓ |
+| `wall_se` | top-right → bottom-right | **E** |
+
+The *scheme* is sound — `{NW, NE, E}` is a valid partition, since each hex's SE, SW and W
+edges are exactly its neighbours' NW, NE and E — but the names are left over from the
+flat-top reading. The remaining three edges are read as:
 
 | Edge | Source |
 |---|---|
-| `wall_s` | south neighbor's `wall_n` |
-| `wall_sw` | SW neighbor's `wall_ne` |
-| `wall_nw` | NW neighbor's `wall_se` |
+| SE | SE neighbour's stored NW edge (`wall_n`) |
+| SW | SW neighbour's stored NE edge (`wall_ne`) |
+| W | W neighbour's stored E edge (`wall_se`) |
 
-This avoids duplication while ensuring every edge is defined exactly once.
+Renaming the fields is [moros#3](https://github.com/jjstwerff/moros/issues/3); until then,
+trust this table over the identifiers.
 
 ---
 
@@ -718,7 +755,7 @@ Any number of `NpcWaypoint` entries from different routines may reference the sa
 
 ## Marketplace and Inn Layouts
 
-Standard layout patterns for recurring scene types. Hex counts are approximate; scale up or down by adding columns or rows. All dimensions use flat-top hex orientation: **N–S = HEX_NS ≈ 1 m** per hex, **E–W ≈ 1.15 m** per hex.
+Standard layout patterns for recurring scene types. Hex counts are approximate; scale up or down by adding columns or rows. Per-hex spacing on the pointy-top grid: **E–W ≈ 1 m** (flat to flat), **N–S ≈ 1.15 m** (vertex to vertex), rows offset half a hex.
 
 Notation used in diagrams:
 - `[ ]` — one hex; label is the primary item placed there
@@ -917,6 +954,14 @@ This means interior room dividers at equal floor height render correctly: the wa
 ### Wall physical position
 
 The wall is **centered on the shared edge** — it occupies 8 cm on each side of the hex boundary. This defines a consistent inside/outside boundary for collision and rendering.
+
+> **The two subsections below are the flat-top derivation and have not been re-derived for
+> the implemented pointy-top grid** —
+> [moros#3](https://github.com/jjstwerff/moros/issues/3). The *shapes* of the arguments
+> survive a 90° rotation (one edge is axis-aligned; the staggered pair zigzags and is drawn
+> at a midpoint), but every axis, letter and constant below is stated for the wrong
+> orientation. Re-derive against the exact lattice rather than relabelling — the invariant
+> to hold is that a wall's drawn line stays perpendicular to the edge it stands on.
 
 ### N wall — flat edge (E–W)
 
@@ -1153,17 +1198,18 @@ All layers of a building must share the same chunk `(cx, cz)` position. A 3-stor
 
 ### Building angles on a hex grid
 
-A flat-top hex grid exposes three flat-edge wall axes (0°, 60°, 120°) spaced 60° apart. Because diagonal walls use midpoint rendering (see Wall Geometry), they render as straight walls exactly perpendicular to the flat-edge axis — meaning **true 90° corners are achievable**.
+A hex grid exposes three wall axes spaced 60° apart. Because the staggered walls are drawn
+at a midpoint rather than following the zigzag boundary (see Wall Geometry), they render
+perpendicular to the axis-aligned edge — which is what makes **true 90° corners
+achievable** on a 60° lattice. That result is the reason the format is built this way, and
+it does not depend on the orientation.
 
-The two wall types pair as follows:
-
-| Flat edge wall | Diagonal wall | Corner angle |
-|---|---|---|
-| wall_n (E–W) | wall_ne / wall_se (rendered N–S) | 90° |
-| wall_ne (NE–SW flat) | wall_n / wall_se (rendered NW–SE) | 90° |
-| wall_se (SE–NW flat) | wall_n / wall_ne (rendered NE–SW) | 90° |
-
-Each pairing produces a rectangle with four 90° corners.
+> **The pairing table was removed rather than relabelled.** It named specific axes
+> (`wall_n` as the E–W edge, and so on) that belong to the flat-top reading; on the
+> implemented pointy-top grid the axis-aligned edge is **E**, not N. Restoring it means
+> re-deriving the perpendicularity argument on the exact lattice —
+> [moros#3](https://github.com/jjstwerff/moros/issues/3) — not renaming three rows. A table
+> that looks authoritative and is wrong costs more than a missing one.
 
 ### 12 building orientations
 
@@ -1220,6 +1266,18 @@ Structure {
 ---
 
 ## Blueprints
+
+> **Superseded in mechanism, kept for the requirements.** A blueprint is a stencil, and
+> stencils are now a shared library mechanism: a stencil is a **small field**, stamping is
+> **merging two fields**, and the 12 orientations come from the lattice as exact integer
+> maps rather than from transforming offsets and wall indices separately. See
+> [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) § What the editor may rely on and
+> [moros#5](https://github.com/jjstwerff/moros/issues/5).
+>
+> What stays true and useful here: **which** blueprints Moros wants, the terrain-conforming
+> behaviour on placement, and the orientation vocabulary. What is superseded: the record
+> layout below, and the separate rotation of hex offsets, wall directions and item rotation
+> — three transformations that can disagree, where a field merge has one.
 
 A **Blueprint** is a named hex template drawn in a canonical orientation. It can be stamped onto any map position in 12 orientations. When placed, the surrounding terrain is reshaped to meet the building foundation.
 
@@ -1484,7 +1542,9 @@ This section documents known design problems and the decisions made to resolve t
 
 **Problem**: The spec claimed buildings could have true 90° interior corners, but the three hex wall axes (0°, 60°, 120°) are all 60° apart. No two hex edges are 90° apart, and the original phrase "skipping a diagonal" was never demonstrated or explained.
 
-**Resolution**: True 90° corners are achievable through the **midpoint rendering rule for diagonal walls**. In a flat-top hex column the NE and SE edge zigzag oscillates between an inner x-position (shared NE/SE vertex, at cx + a/2) and an outer x-position (E vertex, at cx + a). Rendering the wall as a straight line at the midpoint (cx + 3a/4) makes it exactly perpendicular to the flat N edge. A N wall (running E–W) and a NE/SE wall (running N–S at the midpoint) therefore meet at a true 90° corner. The same principle applies in every 60° rotation. Full 90° rectangular buildings are possible in 12 orientations (6 rotations × 2 mirrors).
+**Resolution**: True 90° corners are achievable through the **midpoint rendering rule for staggered walls**. The staggered edge boundary zigzags between an inner and an outer position; drawing the wall as a straight line at the midpoint between those extremes makes it exactly perpendicular to the axis-aligned edge, so the two meet at a true 90° corner. The same principle applies in every 60° rotation, giving full 90° rectangular buildings in 12 orientations (6 rotations × 2 mirrors).
+
+*The original resolution stated this for flat-top hexes, with the zigzag in x and the axis-aligned edge as N. On the implemented pointy-top grid the same argument holds rotated 90° — the axis-aligned edge is E — but the constants have not been re-derived; that is [moros#3](https://github.com/jjstwerff/moros/issues/3).*
 
 ---
 

@@ -40,11 +40,18 @@ The deleted `moros_render.loft` computes `x = q·√3 + (r&1)·√3/2`, `z = 1.5
 odd-r offset, L = √3**. So does the shipped `hex_grid`, whose header calls it "the moros
 convention". So does `hex_field`, which states the same centre map in exact integers and
 notes it was "verified against the library before porting". So does crawler's `worldmesh`.
-But [SCENE_MAP.md](SCENE_MAP.md) documents **flat-top** hexes, and the whole N/NE/SE
-edge-ownership scheme is written against that reading. This is no longer a choice — it is a
-reconciliation, and it reaches further than a label: the pointy-top direction set is
-**E, W, NE, NW, SE, SW**, so our "each hex owns its N, NE and SE edges" rule names edges
-that do not exist in the implemented grid.
+[SCENE_MAP.md](SCENE_MAP.md) described **flat-top** hexes until 2026-07-22, and its
+N/NE/SE edge-ownership scheme was written against that reading. It has been reconciled, and
+doing so turned up something worse than a label problem: reading the renderer's corner
+indices, the three stored edges are **NW, NE and E**, so of the three field names
+`wall_n` / `wall_ne` / `wall_se`, **only `wall_ne` is correct**. The scheme is sound —
+`{NW, NE, E}` is a valid partition — but two fields have been named for edges they do not
+hold.
+
+What is **not** yet reconciled: the wall midpoint-rendering rule and the 90°-corner
+argument, both derived for flat-top. The shape of each argument survives a 90° rotation,
+but the axes and constants do not, and re-deriving them against the exact lattice is
+[issue #3](https://github.com/jjstwerff/moros/issues/3) rather than a doc edit.
 
 **3. `hex_grid` already shipped, from crawler.** It is homed in
 `loft-lang/loft-libs-world` beside `hex_world` (chunked storage) and `hex_terrain`. Its

@@ -1,5 +1,22 @@
 # SCENE_MAP — Wall and Roof Rendering Pseudocode
 
+> **Read the code first; this document is the design narrative behind it.** A real
+> implementation exists — `moros_render.loft`, ~1340 lines with five test files, recovered
+> by [moros#2](https://github.com/jjstwerff/moros/issues/2) — and where the two differ, the
+> code is authoritative.
+>
+> **The coordinate convention below is wrong in a specific, checkable way.** It uses
+> *flat-top axial* (`wx = a·1.5·q`, `wz = HEX_NS·(r + q/2)`, with N and S neighbours). The
+> implemented grid is **pointy-top odd-r** (`x = q·√3 + (r&1)·√3/2`, `z = 1.5·r`, neighbours
+> E/W/NE/NW/SE/SW). These are different lattices, not different spellings — the neighbour
+> sets do not even have the same members. Fixing it is
+> [moros#3](https://github.com/jjstwerff/moros/issues/3), and the wall and roof derivations
+> that follow inherit the error.
+>
+> What remains valuable and correct: the *structure* of the generation — one loop across all
+> `cy` layers with no special case for roofs, slope faces from height deltas, thick walls as
+> offset slabs with corner posts, the stair families. That is the part worth reading.
+
 Geometry generation for walls, slope faces, and roofs from SCENE_MAP hex data.
 The same `draw_building()` loop handles all cy layers — ground floors, upper floors,
 and roofs share identical rendering logic with no special cases.
@@ -31,14 +48,20 @@ thick_half = IF wall_def.thickness > 0.0 THEN wall_def.thickness / 2.0 ELSE WALL
 
 ## Coordinate Helpers
 
+> **Superseded — do not implement from this block.** Both functions below are flat-top
+> axial. The implemented forms are `hex_to_world` in `moros_render.loft` and
+> `lattice_k` / `lattice_m` / `nb_q` / `nb_r` in `hex_field`, and the neighbour direction
+> set is E/W/NE/NW/SE/SW with no N or S. Call the library rather than re-deriving either:
+> lattice math is implemented once, in `hex_grid`.
+
 ```
-// Flat-top axial (q, r) → world XZ.
+// SUPERSEDED — flat-top axial (q, r) → world XZ.
 FUNCTION world_pos(q, r) -> (wx, wz):
   wx = a * 1.5 * q
   wz = HEX_NS * (r + q * 0.5)
 
 
-// Six neighbour offsets in flat-top axial coordinates.
+// SUPERSEDED — six neighbour offsets in flat-top axial coordinates.
 FUNCTION axial_neighbour(q, r, dir) -> (q', r'):
   SWITCH dir:
     N:  RETURN (q,   r-1)

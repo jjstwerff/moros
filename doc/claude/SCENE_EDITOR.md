@@ -75,7 +75,10 @@ Layer: cy [ 0 ▲▼]
 
 ## Canvas
 
-The canvas renders the hex grid as a flat-top 2-D projection. Each hex is a regular hexagon.
+The canvas renders the hex grid as a **pointy-top** 2-D projection — a vertex at north and
+south, flat edges east and west, odd rows offset half a hex east. Each hex is a regular
+hexagon. (An earlier draft said flat-top; the implemented grid is pointy-top odd-r — see
+[SCENE_MAP.md](SCENE_MAP.md) § Hex Geometry.)
 
 ### View controls
 
@@ -142,8 +145,12 @@ active type.
 
 When the cursor is near a hex edge, the edge is highlighted before click.
 
-Edge ownership follows SCENE_MAP rules: the editor resolves which hex owns each edge (N, NE,
-SE) and writes to the correct field, even when the user clicks from the neighbour's side.
+Edge ownership follows SCENE_MAP rules: each hex stores three of its six edges — **NW, NE
+and E** — and the editor resolves which hex owns a clicked edge, writing to the correct
+field even when the user clicks from the neighbour's side. The stored fields are still
+*named* `wall_n` / `wall_ne` / `wall_se`, and two of those names are wrong for the edges
+they hold; the editor must follow the ownership table in
+[SCENE_MAP.md](SCENE_MAP.md) § Hex Structure, not the identifiers.
 
 ### Item (I)
 
@@ -195,8 +202,15 @@ material the surface.
 
 ### Stencil (T)
 
-A stencil is a saved rectangular or irregular group of hexes carrying materials, heights,
-walls, and items. It can be stamped onto the map in any of the 12 orientations.
+A stencil is a saved group of hexes carrying materials, heights, walls and items, stamped
+onto the map in any of the 12 orientations.
+
+**The mechanism is a shared library, not editor code.** A stencil is a *small field*;
+stamping is *merging two fields*, arbitrated nearest-wins and order-free; and the 12
+orientations are exact integer maps on the lattice, so a stamp at 300° is the same content
+as at 0°, cell for cell. The editor drives that mechanism and owns none of it — see
+[moros#5](https://github.com/jjstwerff/moros/issues/5). Which stencils exist stays Moros
+content.
 
 **While in Stencil mode**:
 - Hover shows a **ghost preview** of the stencil at the cursor position.
@@ -408,10 +422,10 @@ Updates live as the cursor moves in Select mode.
   │           (symmetric — rotation hidden │
   │            for symmetric items)        │
   │                                        │
-  │ Walls                                  │
-  │    NW [open    ▼]   N  [stone   ▼]    │
-  │    SW [open    ▼]   NE [open    ▼]    │
-  │    S  [open    ▼]   SE [open    ▼]    │
+  │ Walls          (stored: NW NE E)       │
+  │    NW*[stone   ▼]   NE*[open    ▼]    │
+  │    W  [open    ▼]   E *[open    ▼]    │
+  │    SW [open    ▼]   SE [open    ▼]    │
   │                                        │
   │ ☑ Spawn flag    [Edit spawn…]          │
   │ ☑ Waypoint flag [Edit waypoints…]      │
@@ -421,7 +435,7 @@ Updates live as the cursor moves in Select mode.
 Each field in the context panel is **directly editable**:
 - Clicking the height number opens a small number input.
 - Material and item dropdowns search the palette.
-- Wall dropdowns for all six directions; owns-edge rules are enforced (S, SW, NW write to
+- Wall dropdowns for all six directions; owns-edge rules are enforced (SE, SW, W write to
   the neighbour's field transparently).
 - Rotation `◄ ►` buttons step ±15°; clicking the angle opens a dial.
 - "Edit spawn…" / "Edit waypoints…" scrolls the panel to show the spawn / waypoint
@@ -501,14 +515,21 @@ undo list into a single shared undo stack — so Ctrl+Z always reverses the full
 
 ## File Structure
 
+> **This all-JavaScript layout is under review** —
+> [moros#6](https://github.com/jjstwerff/moros/issues/6). One loft source already reaches
+> the interpreter, a desktop window, the browser (`loft --html`) and a native Android APK,
+> so a JavaScript editor *model* would serve exactly one host of four — and could not serve
+> loft's Workbench at all, which needs the model server-side. The data model, tools, undo
+> and stencil engine below are library concerns
+> ([moros#7](https://github.com/jjstwerff/moros/issues/7)); what stays ours is the page.
+
 | File | Role |
 |---|---|
 | `html/scene-editor.html` | Editor shell — layout, toolbar, panel scaffolding |
-| `html/scene-editor.js` | All editor logic: tool modes, undo, stencil engine |
-| `html/scene-map.js` | Shared map data model: `Map`, `Hex`, `SpawnPoint`, `NpcRoutine` |
-| `html/scene-canvas.js` | 2-D hex canvas renderer: grid drawing, overlays, hit-testing |
-| `html/scene-stencils.js` | Built-in stencil definitions and stencil stamp logic |
+| `html/scene-editor.js` | Page glue: wiring the shell to the editor model |
 | `html/style.css` | Shared styles (extended with editor-specific classes) |
 
-`scene-map.js` is shared with any future 3-D renderer or DM playback tool so that the data
-model is defined in one place.
+The map model, the tool set, undo and the stencil engine are **not** in this table any
+more: they are `hex_field` / `hex_editor`, shared with crawler, bumper airplanes and the
+Workbench. Defining the data model in one place was always the goal — it just turned out
+that place is a package, not a page.

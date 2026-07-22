@@ -454,11 +454,17 @@ pub fn material_swatch(index: integer, w: integer, h: integer) -> graphics::Canv
 }
 ```
 
-### WASM output gap
+### Browser output gap
 
 `graphics::Canvas` stores pixels as a `vector<integer>` (packed RGBA). The
-only current native export op is `OpSavePng(canvas, path)`, which writes to a
-filesystem path — it doesn't work in a browser WASM context.
+package's only PNG export is `save_png(canvas, path)`, which writes to a
+filesystem path. The **`--html` build has no filesystem at all** (no args, no
+env either — by design), so that call has nowhere to write in a browser.
+
+This is not a missing feature so much as the browser seam: a `--html` program
+does its I/O by sending a message to the JS shell via `host_output`, and the
+shell replies through `loftPush`. Either option below still works; option B is
+the one that needs nothing from upstream.
 
 Two options, in order of preference:
 
@@ -559,7 +565,8 @@ Walls use the colour of their `WallBase`:
 
 ### Build target
 
-The GLB exporter compiles as a **native binary** (not WASM) so it can write
+The GLB exporter compiles as a **native binary** — the browser build has no
+filesystem, so file writing is a native-target capability — so it can write
 files directly. Add to the Makefile:
 
 ```makefile

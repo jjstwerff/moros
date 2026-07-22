@@ -117,7 +117,7 @@ Visual style: reuse `html/map.css` variables and fonts from existing editor.
 | # | Step | Effort | Test |
 |---|---|---|---|
 | 2.1 | `scene-canvas.js` — hex coordinate math: `world_pos(q,r)`, `hex_corners()`, axial neighbours | L | unit: known (q,r) produces expected (wx,wz) |
-| 2.2 | `scene-canvas.js` — flat-top hex grid drawing on Canvas 2D (single cy layer) | M | render 10x10 grid of hexes, visually correct |
+| 2.2 | hex grid drawing, **pointy-top odd-r** (single cy layer) | M | render 10x10 grid of hexes, visually correct |
 | 2.3 | `scene-canvas.js` — hit-testing: screen (x,y) to axial (q,r) | M | click centre of known hex, get correct coords |
 | 2.4 | `scene-canvas.js` — pan (middle-click / space+drag) and zoom (scroll wheel) | M | pan and zoom, grid stays aligned |
 | 2.5 | `scene-canvas.js` — material fill by tint colour | L | hexes with different materials show different colours |
