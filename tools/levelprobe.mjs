@@ -12,22 +12,42 @@
 //    the hill", and the control (levelling writes no terrain at all) PASSED with
 //    identical numbers. Only ground that would otherwise be flat can show that a
 //    ridge was built.
+// ⚠ Walks DISTANCES, not durations — see climbprobe. Fixed millisecond walks
+// hid the speed constant, so doubling it carried the character past the ridge's
+// far end and "ridge kept" failed against working code.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
-let st = 0; const ys = [];
+let st = 0; const ys = [], xs = [], zs = [];
 const y = () => ys[ys.length - 1];
+const here = () => [xs[xs.length-1], zs[zs.length-1]];
+async function walkFor(dist) {
+  const [x0, z0] = here();
+  ws.send('4:1');
+  for (let i = 0; i < 400; i++) {
+    await new Promise(r => setTimeout(r, 50));
+    const [x, z] = here();
+    if (Math.hypot(x - x0, z - z0) >= dist) break;
+  }
+  ws.send('4:0');
+  await new Promise(r => setTimeout(r, 300));
+}
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 ws.onopen = () => ws.send('1:');
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'T' && b.startsWith('0;')) ys.push(+b.slice(2).split(',')[13]);
+  // ⚠ x AND z, not just y. An earlier edit pushed only `ys`, so `here()`
+  // returned undefined, `walkFor`'s distance check was NaN, and it spun its full
+  // 20 s twice — walking 64 wu clean past the hill and reporting onHill 0
+  // against working code. A distance-based walk needs the distance.
+  if (t === 'T' && b.startsWith('0;')) { const m = b.slice(2).split(',').map(Number);
+    xs.push(m[12]); ys.push(m[13]); zs.push(m[14]); }
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
     for (let k = 0; k < 5; k++) { ws.send('5:1'); await wait(150); }   // a hill ahead
-    ws.send('4:1'); await wait(5200); ws.send('4:0'); await wait(300); // climb it
+    await walkFor(8.0);                                                 // climb it
     const onHill = y();
     ws.send('6:1'); await wait(300);                                    // freeze the level
     ws.send('3:524,0'); await wait(300);         // about-face: 524 px ≈ π rad
-    ws.send('4:1'); await wait(5200); ws.send('4:0'); await wait(400);  // back onto the plain
+    await walkFor(8.0);                                                 // back onto the plain
     const whileLevel = y();
     ws.send('6:0'); await wait(600);                                    // let go
     const afterLevel = y();
@@ -41,4 +61,4 @@ ws.onmessage = async (e) => {
                                  climbed, frozen, ridgeKept, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 30000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 90000);

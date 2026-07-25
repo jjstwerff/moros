@@ -141,9 +141,17 @@ const CHUNK_R = 4;             // chunk radius to consider: (25 >> 3) + 1
 const FIGURE_M = 1.75;
 const WU_PER_M = 0.8660254037844386;
 
-// Gait. A walk is ~1.4 m/s at a ~0.75 m stride; both convert here, so the metre
-// never reaches anything downstream (seam rule 2).
-const WALK_MS = 1.4;
+// Gait. 2.8 m/s at a ~0.75 m stride — twice an ordinary walk, which reads as a
+// brisk jog and covers ground at a rate that suits editing rather than
+// strolling. Both convert here, so the metre never reaches anything downstream
+// (seam rule 2).
+//
+// The CADENCE needs no adjustment, and that is the phase-from-distance model
+// paying off: the swing is a function of how far the character has gone, so
+// doubling the speed doubles the step rate automatically. Had the phase come
+// from elapsed time, this change would have left the legs ambling while the
+// body sped up — feet skating over the ground.
+const WALK_MS = 2.8;
 const STRIDE_M = 0.75;
 const LEG_SWING = 0.42;        // radians at the hip, peak
 const ARM_SWING = 0.30;
@@ -204,6 +212,27 @@ const PART_LEG_L = 1;
 const PART_LEG_R = 2;
 const PART_ARM_L = 3;
 const PART_ARM_R = 4;
+
+// ── THE DIRTY SET ──────────────────────────────────────────────────────────
+// One routine that answers "what changed?", instead of the question being
+// re-answered inline at every site that changes something.
+//
+// It was inline three times — the raise, the level, and the stream — and it was
+// WRONG in two of them: the raise tested against DRAW_HEXES (25) when the change
+// reached 7, rebuilding 36 chunks instead of 6; the level cleared the whole
+// loaded set, restreaming ~48 chunks per hex step until the server could not
+// keep up at walking speed. Both are the same mistake — re-deriving the region
+// you can SEE rather than the region that CHANGED — and both are the kind that
+// only shows up as a stall, never as a wrong picture.
+//
+// So: mark by (cell, reach), flush once. A caller states what it touched and how
+// far the touch carries; it never states which chunks, because that is exactly
+// the arithmetic it kept getting wrong.
+struct DirtyChunk {
+  id: integer,
+  cx: integer,
+  cz: integer
+}
 
 // Each client keeps its own aspect ratio, so the projection is solved per
 // client — but the character, its yaw and the streamed ground are ONE shared
@@ -488,6 +517,29 @@ fn chunk_in_range(cx: integer, cz: integer, hq: integer, hr: integer) -> boolean
   chunk_within(cx, cz, hq, hr, DRAW_HEXES)
 }
 
+// Mark every chunk a change at (mq, mr) reaching `reach` hexes can touch.
+// Idempotent — marking the same place twice adds nothing, so a caller may mark
+// freely without tracking what it has already marked.
+fn mark_dirty(dirty: vector<DirtyChunk>, mq: integer, mr: integer,
+              reach: integer) -> vector<DirtyChunk> {
+  out = dirty;
+  mc = chunk_of(mq, mr, CHUNK_SHIFT);
+  span = (reach / CHUNK ?? 0) + 1;
+  for dz in 0 - span..span + 1 {
+    for dx in 0 - span..span + 1 {
+      ccx = mc.cx + dx;
+      ccz = mc.cy + dz;
+      if chunk_within(ccx, ccz, mq, mr, reach) {
+        cid = enc_coord(ccx, ccz);
+        seen = false;
+        for dc in out { if dc.id == cid { seen = true; } }
+        if !seen { out += [DirtyChunk { id: cid, cx: ccx, cz: ccz }]; }
+      }
+    }
+  }
+  out
+}
+
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
   fs = mesh_to_floats(wm);
   out = "{wr},{wg},{wb};";
@@ -626,6 +678,7 @@ fn main() {
   peaks: vector<Peak> = [];
   levelling = false;
   level_h = 0;                 // the frozen foot height, in height units
+  dirty: vector<DirtyChunk> = [];
   clients: vector<Client> = [];
   keys = 0;
   last_us = ticks();
@@ -787,33 +840,9 @@ fn main() {
             // that disk change. Everything else on screen is still correct and
             // is not re-sent — the bounded, incremental re-derivation `L3` asks
             // for, at the granularity the change actually has.
-            t_raise = ticks();
-            rebuilt = 0;
-            for lid in loaded {
-              if !found { break; }
-              for rcz in -CHUNK_R..CHUNK_R + 1 {
-                for rcx in -CHUNK_R..CHUNK_R + 1 {
-                  tc = chunk_of(tq, tr, CHUNK_SHIFT);
-                  // ⚠ The dirty region is the PEAK's reach, not the draw
-                  // distance. Asking `chunk_in_range` here tested against
-                  // DRAW_HEXES = 25 and so rebuilt 36 chunks for a change that
-                  // touches 7 hexes — most of the visible world, every press.
-                  // The region re-derived must be the region that CHANGED.
-                  if enc_coord(tc.cx + rcx, tc.cy + rcz) == lid
-                     && chunk_within(tc.cx + rcx, tc.cy + rcz, tq, tr, PEAK_R) {
-                    rm = chunk_mesh(tc.cx + rcx, tc.cy + rcz, peaks);
-                    srv.broadcast("M:{lid};1;{mesh_wire(rm, GRASS_R, GRASS_G, GRASS_B)}");
-                    srv.broadcast("T:{lid};{mat_wire(mat4_identity())}");
-                    rebuilt = rebuilt + 1;
-                  }
-                }
-              }
-            }
-            py = terrain_y(px, pz, peaks);
-            moved = true;
-            ms = (ticks() - t_raise) / 1000 ?? 0;
-            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — {ms} ms — "
-                    + "{len(peaks)} peaks, {rebuilt} chunks rebuilt");
+            if found { dirty = mark_dirty(dirty, tq, tr, PEAK_R); }
+            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
+                    + "{len(peaks)} peaks, {len(dirty)} chunks dirty");
           }
         }
       }
@@ -868,6 +897,30 @@ fn main() {
       }
     }
 
+    // ── flush the dirty set ────────────────────────────────────────────────
+    // One place rebuilds. A chunk that is dirty but not on screen is simply
+    // dropped from the set: it will be built from the current peaks when it next
+    // comes into range, so remembering it would be work with no observer.
+    if len(dirty) != 0 {
+      t_flush = ticks();
+      nrebuilt = 0;
+      for dc2 in dirty {
+        live = false;
+        for lid2 in loaded { if lid2 == dc2.id { live = true; } }
+        if live {
+          dm = chunk_mesh(dc2.cx, dc2.cz, peaks);
+          srv.broadcast("M:{dc2.id};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          srv.broadcast("T:{dc2.id};{mat_wire(mat4_identity())}");
+          nrebuilt = nrebuilt + 1;
+        }
+      }
+      dirty = [];
+      if nrebuilt != 0 {
+        println("editor: rebuilt {nrebuilt} chunks in "
+                + "{(ticks() - t_flush) / 1000 ?? 0} ms");
+      }
+    }
+
     // ── stream the ground: chunks in, chunks out ───────────────────────────
     // Only when the character's HEX changes, not every tick — the visible set
     // is a function of the cell you stand in, so re-deriving it per frame would
@@ -901,9 +954,7 @@ fn main() {
           if !lmerged {
             peaks += [Peak { pq: last_hq, pr: last_hr, amp: gap, rad: LEVEL_R }];
           }
-          // Everything the level reaches must be redrawn; `loaded` is rebuilt
-          // wholesale below anyway, so force it by clearing the set.
-          loaded = [];
+          dirty = mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
         }
         py = (level_h as float) * HEIGHT_SCALE;
       }
