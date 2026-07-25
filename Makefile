@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test
+.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -36,3 +36,35 @@ lib-test:
 	done
 
 
+
+# ── the editor (W0) — the build service ───────────────────────────────────
+# One loft process serves the client page AND the model channel on one port,
+# so an ssh tunnel needs exactly one forward:
+#     ssh -L $(EDITOR_PORT):localhost:$(EDITOR_PORT) <this box>
+# then open http://localhost:$(EDITOR_PORT)/ in your own browser.
+#
+# `editor` runs in the foreground (Ctrl-C stops it); `editor-bg` + `editor-stop`
+# use a PID FILE rather than `killall`, which would take out every python/loft
+# on a box that other agents share.
+EDITOR_PORT ?= 18090
+EDITOR_PID  := .editor.pid
+LOFT_TOOLS  ?= ../loft/tools
+
+editor:
+	$(LOFT) --interpret --lib lib/ src/editor_server.loft
+
+editor-bg:
+	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
+	@until grep -q 'listening on port' .editor.log 2>/dev/null; do sleep 1; done
+	@echo "editor on http://localhost:$(EDITOR_PORT)/  (pid $$(cat $(EDITOR_PID)))"
+
+editor-stop:
+	@[ -f $(EDITOR_PID) ] && kill $$(cat $(EDITOR_PID)) 2>/dev/null && rm -f $(EDITOR_PID) && echo stopped || echo "not running"
+
+# THE GATE — loft's own headless check. Layer 1 fails on any console error;
+# Layer 2 screenshots the canvas and counts distinct colours, which is what
+# catches "compiles clean, blank canvas".  Control: break the draw and watch
+# distinctColors collapse to 1.
+editor-check:
+	node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)/ \
+	  --wait-ms 8000 --canvas '#gl' --canvas-min-colors 12 --screenshot /tmp/w0.png

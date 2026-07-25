@@ -1,0 +1,206 @@
+// editor_server — W0's first frame, as a server/client loop.
+//
+// The shape is `../loft/tools/audience-demo/dev_server.loft`: ONE port serves
+// both the client page (HTTP `/`) and the model channel (`ws://…/ws`), and the
+// page is re-read from disk on every request — so editing `html/editor.html`
+// and hitting refresh shows the change with no restart.
+//
+// Why server/client rather than a self-contained `--html` page: it is the seam
+// the Workbench already requires (*the model runs server-side, the browser
+// renders state and never computes*), it is D4's shape (the browser is one
+// protocol client among several), and it is the only thing that works over the
+// ssh tunnel this box is driven through — `ssh -L 18090:localhost:18090`, then
+// open `localhost:18090`.
+//
+// THE CLIENT COMPUTES NOTHING. It receives triangles and two matrices and
+// draws them. Every piece of model work — the lattice, the hex geometry, the
+// figure's proportions, the camera solve — happens here, in loft. That is what
+// keeps this from being a second renderer (seam rule 5): the browser is a
+// display, not a derivation.
+//
+// Run:  make serve-editor      (or: loft --lib lib/ src/editor_server.loft)
+use server;
+use moros_map;
+use moros_render;
+
+// The plane. Small on purpose — W0's budget number is measured before it grows.
+const PLANE_W = 14;
+const PLANE_H = 14;
+
+// The reference figure, from crawler's `src/figure.loft`: a proportioned human
+// for SCALE, at exactly 1.75 m. The proportions are the artist's canon — head =
+// H/7.5, shoulders 2 heads, hip at 0.53H — and they matter more than the shapes,
+// because a viewer reads scale from where the hip and shoulder sit.
+//
+// ⚠ DUPLICATION, recorded not hidden: crawler owns the original and we cannot
+// consume it (it is a program module, not a published library). Ours is boxes
+// where crawler's head is a sphere. The right home is a shared library; raised
+// in the plan's coordination list rather than silently forked.
+const FIGURE_M = 1.75;
+const WU_PER_M = 0.8660254037844386;
+
+// One hex step is 1.5 m N–S under the shared scale contract, and moros renders
+// a row at HEX_ROW_HEIGHT world units — so a world unit is one hex row and the
+// figure's height in those units is what makes it read correctly beside a hex.
+fn figure_wu() -> float { FIGURE_M / WU_PER_M ?? 0.0 }
+
+// A box limb, centred on (cx, cz) in plan, spanning y0..y1 vertically.
+// moros is Y-UP (crawler's figure is Z-up), so the axes are swapped here.
+fn limb(fm: Mesh, cx: float, cz: float, y0: float, y1: float, w: float, d: float) {
+  emit_box(fm, vec3(cx - w * 0.5, y0, cz - d * 0.5),
+               vec3(cx + w * 0.5, y1, cz + d * 0.5));
+}
+
+// Build the figure standing at (x, z) on ground y, facing +x.
+fn build_figure(x: float, y: float, z: float) -> Mesh {
+  fig = mesh("figure");
+  fh = figure_wu();
+  head = fh / 7.5 ?? 0.0;
+  sh_w = head * 2.0;
+  hip_y = y + fh * 0.53;
+  chest_y = y + fh * 0.72;
+  neck_y = y + fh * 0.855;
+  limb(fig, x, z - head * 0.42, y, hip_y, head * 0.62, head * 0.62);
+  limb(fig, x, z + head * 0.42, y, hip_y, head * 0.62, head * 0.62);
+  limb(fig, x, z, hip_y, chest_y, head * 0.72, sh_w * 0.80);
+  limb(fig, x, z, chest_y, neck_y, head * 0.80, sh_w);
+  limb(fig, x, z - sh_w * 0.5 - head * 0.16, y + fh * 0.40, neck_y - head * 0.10,
+       head * 0.42, head * 0.42);
+  limb(fig, x, z + sh_w * 0.5 + head * 0.16, y + fh * 0.40, neck_y - head * 0.10,
+       head * 0.42, head * 0.42);
+  limb(fig, x, z, neck_y, y + fh, head * 0.86, head * 0.78);
+  fig
+}
+
+// A mesh as wire text: "r,g,b;f0,f1,…" — 6 floats per vertex (position then
+// normal), which is exactly `mesh_to_floats`' layout and the client's stride.
+fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
+  fs = mesh_to_floats(wm);
+  out = "{wr},{wg},{wb};";
+  for wf in fs {
+    if wf#first { out += "{wf}"; } else { out += ",{wf}"; }
+  }
+  out
+}
+
+fn mat_wire(mw: Mat4) -> text {
+  out = "";
+  for mv in mw.m {
+    if mv#first { out += "{mv}"; } else { out += ",{mv}"; }
+  }
+  out
+}
+
+fn hostname() -> text {
+  hf = file("/etc/hostname");
+  if hf.format == Format.NotExists { return ""; }
+  hb = hf.content()?;
+  hb.trim()
+}
+
+// Re-read on every request, so editing the client and hitting refresh shows the
+// change with no restart — the audience demo's iteration loop.
+//
+// ⚠ The explicit `source_dir()` join is deliberate, and measured. A relative
+// path resolves against the PROGRAM's directory (`src/`), so `html/editor.html`
+// looked for `src/html/editor.html` and served the 500 page. But `..` does not
+// resolve either — a probe read `source_dir() = …/moros/src` and found
+// `../html/editor.html` NOT to exist while the joined absolute path did. So a
+// parent-directory asset needs the join; the "just pass the relative path" rule
+// covers children only, and the failure is silent (`NotExists`, no diagnostic).
+fn read_index() -> text {
+  ixf = file("{source_dir()}/../html/editor.html");
+  if ixf.format == Format.NotExists {
+    return "<!DOCTYPE html><html><body><h1>500 — html/editor.html missing</h1>"
+         + "<p>Expected it beside src/, one level up.</p></body></html>";
+  }
+  ixb = ixf.content()?;
+  ixb
+}
+
+fn handle_http(req: server::Request) {
+  if req.path == "/" || req.path == "/index.html" {
+    req.respond_html(read_index());
+  } else {
+    req.respond_404();
+  }
+}
+
+// The model channel. The client says "ready" and we send the world once, then
+// a camera whenever it asks. No model state crosses the wire — only triangles
+// and matrices, which is the whole point.
+fn handle_ws(ws: server::WebSocket) {
+  println("editor: client connected");
+
+  ground = mesh("ground");
+  for gr in 0..PLANE_H {
+    for gq in 0..PLANE_W {
+      emit_hex_surface(ground, gq, gr, 0);
+    }
+  }
+
+  // The figure stands in the middle of the plane, on the ground.
+  fx = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
+  fig = build_figure(fx.x, fx.y, fx.z);
+
+  while true {
+    raw = ws.next();
+    if raw == null { break; }
+    ci = raw.find(":");
+    if ci == null { continue; }
+    msg = raw[..ci];
+    body = raw[ci + 1..];
+
+    if msg == "ready" {
+      ws.send("M:{mesh_wire(ground, 0.42, 0.50, 0.30)}");
+      ws.send("M:{mesh_wire(fig, 0.80, 0.60, 0.45)}");
+      ws.send("E:");
+      println("editor: sent world — {len(ground.vertices)} ground verts, "
+              + "{len(fig.vertices)} figure verts");
+    } else if msg == "cam" {
+      // Over the shoulder, framed by hand rather than by `camera_follow` —
+      // measured: its default distance puts the figure at the size of a fence
+      // post, which is a follow-cam for a map overview, not an OTS shot.
+      //
+      // The framing: eye just behind and above the near shoulder, target a few
+      // steps AHEAD of the figure at chest height, so the figure sits low-left
+      // and the ground it is about to walk onto fills the frame. The figure
+      // faces +x, so "behind" is −x and "over the left shoulder" is +z.
+      asp = body as float ?? 1.6;
+      fh = figure_wu();
+      eye = vec3(fx.x - fh * 2.70, fx.y + fh * 1.40, fx.z + fh * 0.80);
+      tgt = vec3(fx.x + fh * 5.20, fx.y + fh * 0.40, fx.z - fh * 0.18);
+      ws.send("C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
+              + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}");
+    }
+  }
+  println("editor: client disconnected");
+}
+
+fn main() {
+  port = 18090;
+  srv = server::listen(port);
+  if srv.handle < 0 {
+    println("editor: FAILED to listen on port {port}");
+    return;
+  }
+  println("moros editor — W0 (a plane, and the reference figure)");
+  println("  listening on port {port}");
+  println("    http://localhost:{port}/");
+  hn = hostname();
+  if hn != "" { println("    http://{hn}:{port}/"); }
+  println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
+  println("             then open http://localhost:{port}/ in your own browser");
+
+  while true {
+    req = srv.next();
+    if req == null { continue; }
+    if req.path == "/ws" {
+      ws = server::ws_upgrade();
+      if ws == null { continue; }
+      handle_ws(ws);
+    } else {
+      handle_http(req);
+    }
+  }
+}
