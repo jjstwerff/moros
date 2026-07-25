@@ -313,24 +313,50 @@ fn corner_heights(cq: integer, cr: integer, peaks: vector<Peak>) -> vector<float
   out
 }
 
-// One triangle with a flat normal, forced to face up — terrain is a height
-// field, so a downward normal is always the winding being the other way round,
-// never a real underside.
-fn emit_tri(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
-  ux = b.x - a.x; uy = b.y - a.y; uz = b.z - a.z;
-  vx = c.x - a.x; vy = c.y - a.y; vz = c.z - a.z;
-  nx = uy * vz - uz * vy;
-  ny = uz * vx - ux * vz;
-  nz = ux * vy - uy * vx;
+fn nrm3(nx: float, ny: float, nz: float) -> Vec3 {
   ln = sqrt(nx * nx + ny * ny + nz * nz) ?? 0.0;
-  if ln == 0.0 { return; }
-  sgn = 1.0;
-  if ny < 0.0 { sgn = -1.0; }
-  nrm = vec3(sgn * nx / ln ?? 0.0, sgn * ny / ln ?? 0.0, sgn * nz / ln ?? 0.0);
+  if ln == 0.0 { return vec3(0.0, 1.0, 0.0); }
+  vec3(nx / ln ?? 0.0, ny / ln ?? 0.0, nz / ln ?? 0.0)
+}
+
+// THE SURFACE NORMAL AT A CELL, from the height field's own GRADIENT.
+//
+// Not averaged from the triangles that happen to be emitted. Triangle-averaging
+// makes the shading a property of the tessellation — change how the fan is cut
+// and the lighting moves — whereas the gradient is a property of the FIELD, so
+// it is the same value however the surface is chopped up. It is also seam-free
+// for free: two cells asking about the same place get the same answer.
+//
+// Least squares over the six neighbours: find (gx, gz) minimising the error in
+// `dy ≈ gx·dx + gz·dz`. The hex ring is symmetric, so the cross term Σ dx·dz
+// vanishes and the fit separates into two independent one-dimensional ones.
+fn cell_normal(cq: integer, cr: integer, peaks: vector<Peak>) -> Vec3 {
+  c0 = hex_to_world(cq, cr, 0);
+  h0 = (terrain_h(cq, cr, peaks) as float) * HEIGHT_SCALE;
+  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
+  for nd in 0..6 {
+    (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
+    nw = hex_to_world(nnq, nnr, 0);
+    dx = nw.x - c0.x;
+    dz = nw.z - c0.z;
+    dy = (terrain_h(nnq, nnr, peaks) as float) * HEIGHT_SCALE - h0;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxy = sxy + dx * dy;
+    szy = szy + dz * dy;
+  }
+  gx = sxy / sxx ?? 0.0;
+  gz = szy / szz ?? 0.0;
+  nrm3(0.0 - gx, 1.0, 0.0 - gz)
+}
+
+// One triangle with a normal PER VERTEX, so the shading interpolates across it
+// instead of flooding it with one facet's value.
+fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3) {
   base = len(m.vertices);
-  m.vertices += [vertex(a, nrm, vec2(0.0, 0.0))];
-  m.vertices += [vertex(b, nrm, vec2(1.0, 0.0))];
-  m.vertices += [vertex(c, nrm, vec2(0.0, 1.0))];
+  m.vertices += [vertex(a, na, vec2(0.0, 0.0))];
+  m.vertices += [vertex(b, nb, vec2(1.0, 0.0))];
+  m.vertices += [vertex(c, nc, vec2(0.0, 1.0))];
   m.triangles += [Triangle { a: base, b: base + 1, c: base + 2 }];
 }
 
@@ -339,18 +365,42 @@ fn emit_tri(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
 // edge table pairs them that way), and moros_render's corner order is the
 // reverse ring — "this file's index i is its (6 - i) % 6" — so the map is
 // applied at every crossing.
-fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>) {
+fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>,
+                   nx: vector<float>, ny: vector<float>, nz: vector<float>,
+                   q0: integer, r0: integer) {
   chh = terrain_h(cq, cr, peaks);
   cw = hex_to_world(cq, cr, chh);
   hs = corner_heights(cq, cr, peaks);
+
+  ci0 = (cr - r0 + 1) * (CHUNK + 2) + (cq - q0 + 1);
+  n0x = nx[ci0] ?? 0.0; n0y = ny[ci0] ?? 1.0; n0z = nz[ci0] ?? 0.0;
+  nc0 = vec3(n0x, n0y, n0z);
+
+  // A corner's normal is the mean of the THREE cells sharing it — the same
+  // three whose heights gave the corner its height, so the corner is smooth and
+  // both sides of every edge agree.
+  cnx: vector<float> = [n0x, n0x, n0x, n0x, n0x, n0x];
+  cny: vector<float> = [n0y, n0y, n0y, n0y, n0y, n0y];
+  cnz: vector<float> = [n0z, n0z, n0z, n0z, n0z, n0z];
+  for ed in 0..6 {
+    (gq, gr) = hex_grid::hex_neighbor(cq, cr, ed);
+    gi = (gr - r0 + 1) * (CHUNK + 2) + (gq - q0 + 1);
+    gx = nx[gi] ?? 0.0; gy = ny[gi] ?? 1.0; gz = nz[gi] ?? 0.0;
+    (ea, eb) = hex_grid::hex_edge_corners(ed);
+    cnx[ea] = cnx[ea] + gx; cny[ea] = cny[ea] + gy; cnz[ea] = cnz[ea] + gz;
+    cnx[eb] = cnx[eb] + gx; cny[eb] = cny[eb] + gy; cnz[eb] = cnz[eb] + gz;
+  }
+
   for fi in 0..6 {
     fj = (fi + 1) % 6 ?? 0;
     w1 = hex_corner_world(cq, cr, 0, (6 - fi) % 6 ?? 0);
     w2 = hex_corner_world(cq, cr, 0, (6 - fj) % 6 ?? 0);
     emit_tri(m,
-      vec3(cw.x, cw.y, cw.z),
+      vec3(cw.x, cw.y, cw.z), nc0,
       vec3(w1.x, (hs[fi] ?? 0.0) * HEIGHT_SCALE, w1.z),
-      vec3(w2.x, (hs[fj] ?? 0.0) * HEIGHT_SCALE, w2.z));
+      nrm3(cnx[fi] ?? 0.0, cny[fi] ?? 1.0, cnz[fi] ?? 0.0),
+      vec3(w2.x, (hs[fj] ?? 0.0) * HEIGHT_SCALE, w2.z),
+      nrm3(cnx[fj] ?? 0.0, cny[fj] ?? 1.0, cnz[fj] ?? 0.0));
   }
 }
 
@@ -358,9 +408,31 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>) {
 // so there is no gap left to close.
 fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
   cm = mesh("chunk");
-  for cr in cz * CHUNK..cz * CHUNK + CHUNK {
-    for cq in cx * CHUNK..cx * CHUNK + CHUNK {
-      emit_hex_sloped(cm, cq, cr, peaks);
+  q0 = cx * CHUNK;
+  r0 = cz * CHUNK;
+
+  // Normals for the chunk PLUS A ONE-CELL HALO, computed once.
+  //
+  // ⚠ Measured before this existed: 920 ms to rebuild 36 chunks — a visible
+  // stall on every arrow press. Each cell was computing its own normal and its
+  // six neighbours', so every normal in the chunk was derived SEVEN times. The
+  // halo is what lets it be computed once: a cell on the chunk's edge needs its
+  // neighbours' normals, and those live one cell outside.
+  nx: vector<float> = [];
+  ny: vector<float> = [];
+  nz: vector<float> = [];
+  for hr in r0 - 1..r0 + CHUNK + 1 {
+    for hq in q0 - 1..q0 + CHUNK + 1 {
+      hn = cell_normal(hq, hr, peaks);
+      nx += [hn.x];
+      ny += [hn.y];
+      nz += [hn.z];
+    }
+  }
+
+  for cr in r0..r0 + CHUNK {
+    for cq in q0..q0 + CHUNK {
+      emit_hex_sloped(cm, cq, cr, peaks, nx, ny, nz, q0, r0);
     }
   }
   cm
@@ -403,13 +475,17 @@ fn terrain_y(wx: float, wz: float, peaks: vector<Peak>) -> float {
 // Is any cell of this chunk within the draw distance of (hq, hr)? All-or-nothing
 // is what keeps the visible set stable; the cost is a rim slightly wider than
 // the stated distance, which is the honest trade and is stated rather than hidden.
-fn chunk_in_range(cx: integer, cz: integer, hq: integer, hr: integer) -> boolean {
+fn chunk_within(cx: integer, cz: integer, hq: integer, hr: integer, reach: integer) -> boolean {
   for kr in cz * CHUNK..cz * CHUNK + CHUNK {
     for kq in cx * CHUNK..cx * CHUNK + CHUNK {
-      if hex_distance(kq, kr, hq, hr) <= DRAW_HEXES { return true; }
+      if hex_distance(kq, kr, hq, hr) <= reach { return true; }
     }
   }
   false
+}
+
+fn chunk_in_range(cx: integer, cz: integer, hq: integer, hr: integer) -> boolean {
+  chunk_within(cx, cz, hq, hr, DRAW_HEXES)
 }
 
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
@@ -711,14 +787,20 @@ fn main() {
             // that disk change. Everything else on screen is still correct and
             // is not re-sent — the bounded, incremental re-derivation `L3` asks
             // for, at the granularity the change actually has.
+            t_raise = ticks();
             rebuilt = 0;
             for lid in loaded {
               if !found { break; }
               for rcz in -CHUNK_R..CHUNK_R + 1 {
                 for rcx in -CHUNK_R..CHUNK_R + 1 {
                   tc = chunk_of(tq, tr, CHUNK_SHIFT);
+                  // ⚠ The dirty region is the PEAK's reach, not the draw
+                  // distance. Asking `chunk_in_range` here tested against
+                  // DRAW_HEXES = 25 and so rebuilt 36 chunks for a change that
+                  // touches 7 hexes — most of the visible world, every press.
+                  // The region re-derived must be the region that CHANGED.
                   if enc_coord(tc.cx + rcx, tc.cy + rcz) == lid
-                     && chunk_in_range(tc.cx + rcx, tc.cy + rcz, tq, tr) {
+                     && chunk_within(tc.cx + rcx, tc.cy + rcz, tq, tr, PEAK_R) {
                     rm = chunk_mesh(tc.cx + rcx, tc.cy + rcz, peaks);
                     srv.broadcast("M:{lid};1;{mesh_wire(rm, GRASS_R, GRASS_G, GRASS_B)}");
                     srv.broadcast("T:{lid};{mat_wire(mat4_identity())}");
@@ -729,7 +811,8 @@ fn main() {
             }
             py = terrain_y(px, pz, peaks);
             moved = true;
-            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
+            ms = (ticks() - t_raise) / 1000 ?? 0;
+            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — {ms} ms — "
                     + "{len(peaks)} peaks, {rebuilt} chunks rebuilt");
           }
         }
