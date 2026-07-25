@@ -79,16 +79,24 @@ const PEAK_AHEAD = 10;
 const PEAK_R = 7;
 const PEAK_STEP = 6;           // height units per key press (1.5 wu, ~1.3 m)
 
-// LEVELLING. A toggle that flattens the ground back as you walk, over a gentler
-// 5-hex reach. It needs no new representation: a level is a peak whose height
-// is MINUS whatever is already there, so the sum at that cell comes to nothing.
+// LEVELLING — the ground is brought to THE LEVEL OF YOUR FEET, not to zero.
 //
-// Two properties fall out of expressing it that way rather than as a special
-// mode. It is IDEMPOTENT — over ground that is already flat the measured height
-// is 0, so the peak it drops is 0 and changes nothing, and walking the same
-// path twice cannot dig a trench. And it BLENDS, by the same falloff as a hill,
-// so the flattened path meets the hills beside it tangentially instead of
-// cutting a slot through them.
+// Toggling it on takes the height you are standing at and FREEZES it. From then
+// on the ground you walk over is brought to that height, feathered over a 5-hex
+// reach. So it does nothing at all where you already stand — you are, by
+// definition, at your own level — and everything interesting happens when you
+// EXTEND it: walk out over lower ground and the level follows you as a RIDGE;
+// walk into a hill and it cuts a CREVICE through it.
+//
+// It needs no new representation. A level step is a peak whose amplitude is the
+// DIFFERENCE between your frozen height and what is there — positive builds up
+// to you, negative cuts down to you, and the same falloff that shapes a hill
+// feathers the edge, so a ridge meets the plain tangentially instead of standing
+// on a wall.
+//
+// It is also self-limiting: once a cell has been brought to the level, the
+// difference is zero and re-entering it changes nothing. Walking the same path
+// twice cannot deepen it.
 const LEVEL_R = 5;
 
 // The ground's colour is a RAMP over height, sent as data: green at the bottom,
@@ -541,6 +549,7 @@ fn main() {
 
   peaks: vector<Peak> = [];
   levelling = false;
+  level_h = 0;                 // the frozen foot height, in height units
   clients: vector<Client> = [];
   keys = 0;
   last_us = ticks();
@@ -621,7 +630,35 @@ fn main() {
           keys = ev.payload as integer ?? 0;
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
-          println("editor: levelling {levelling}");
+          if levelling {
+            // Freeze the height you are standing at — read from THE FEET, not
+            // from the cell.
+            //
+            // ⚠ Measured: taking `terrain_h(cell)` instead jumped the character
+            // 2.22 → 3.25 wu the instant levelling came on. The feet stand on
+            // the INTERPOLATED surface, which equals the cell height only at the
+            // cell's centre; anywhere on a slope the two differ. Freezing from
+            // the cell froze a level the character was not actually at — the
+            // same two-derivations-of-one-surface class as everything else here.
+            lvf = py / HEIGHT_SCALE ?? 0.0;
+            if lvf >= 0.0 {
+              level_h = (lvf + 0.5) as integer;
+            } else {
+              level_h = (lvf - 0.5) as integer;
+            }
+            println("editor: levelling ON at height {level_h} (feet {py})");
+          } else {
+            // Releasing must put the feet back ON the ground immediately.
+            // Without this they keep the frozen height until the next step,
+            // because `terrain_y` is only read inside the walk tick — so you
+            // could stand in the air over a crevice you just cut and not know
+            // until you moved. Measured: it also made the levelling gate
+            // unfalsifiable, since the released height was the frozen one in
+            // both the real run and its control.
+            py = terrain_y(px, pz, peaks);
+            moved = true;
+            println("editor: levelling off — feet back on the ground at {py}");
+          }
         } else if ev.msg_id == MSG_RAISE {
           dirn = ev.payload as integer ?? 0;
           if dirn != 0 {
@@ -733,7 +770,17 @@ fn main() {
         // CLIMB. The feet follow the surface every tick, so walking into a
         // slope walks UP it. No jump, no fall, no step limit yet — this is the
         // ground being followed, not physics.
-        py = terrain_y(px, pz, peaks);
+        //
+        // While LEVELLING the relationship inverts: the feet hold their frozen
+        // height and the GROUND is brought to them. Following the surface here
+        // would be circular — the ground is being set from the feet, so reading
+        // the feet back off the ground would erase the very difference the level
+        // is meant to carry.
+        if levelling {
+          py = (level_h as float) * HEIGHT_SCALE;
+        } else {
+          py = terrain_y(px, pz, peaks);
+        }
         moved = true;
       }
     }
@@ -751,27 +798,31 @@ fn main() {
 
       // Levelling drops its counter-peak on entering a cell — once per hex, not
       // per tick, so how fast you walk cannot change the shape of the ground you
-      // leave behind. The amplitude is measured from the terrain as it stands,
-      // which is what makes it idempotent: already flat measures 0 and does
-      // nothing.
+      // leave behind.
       if levelling {
         cur_h = terrain_h(last_hq, last_hr, peaks);
-        if cur_h != 0 {
+        // The amplitude is the DIFFERENCE between the frozen foot height and
+        // what is here: positive builds the ground up to you (a ridge across
+        // low ground), negative cuts it down to you (a crevice through a hill).
+        // Zero where the ground already matches, which is why it does nothing
+        // where you switched it on and cannot deepen a path walked twice.
+        gap = level_h - cur_h;
+        if gap != 0 {
           lmerged = false;
           for lp in peaks {
             if lp.pq == last_hq && lp.pr == last_hr && lp.rad == LEVEL_R {
-              lp.amp = lp.amp - cur_h;
+              lp.amp = lp.amp + gap;
               lmerged = true;
             }
           }
           if !lmerged {
-            peaks += [Peak { pq: last_hq, pr: last_hr, amp: 0 - cur_h, rad: LEVEL_R }];
+            peaks += [Peak { pq: last_hq, pr: last_hr, amp: gap, rad: LEVEL_R }];
           }
           // Everything the level reaches must be redrawn; `loaded` is rebuilt
           // wholesale below anyway, so force it by clearing the set.
           loaded = [];
-          py = terrain_y(px, pz, peaks);
         }
+        py = (level_h as float) * HEIGHT_SCALE;
       }
       home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
