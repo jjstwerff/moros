@@ -278,56 +278,118 @@ fn terrain_h(hq: integer, hr: integer, peaks: vector<Peak>) -> integer {
   acc as integer
 }
 
-// One chunk of ground, its heights derived from the peaks — WITH SKIRTS.
+// CORNER HEIGHTS — the whole reason the ground can slope.
 //
-// ⚠ `emit_hex_surface` emits a flat top and no sides, so two neighbouring cells
-// at different heights leave a vertical gap you can see the sky through. The
-// first hill rendered as a shredded mess of floating slabs for exactly this
-// reason. `moros_render::build_hex_meshes` has the same hole — `emit_slope_face`
-// exists and nothing calls it — which is unsurprising: nothing in moros had ever
-// rendered a height difference, so no gate could have caught it.
+// A cell's height is one number, but a corner is shared by THREE cells, so give
+// it their mean. Every hex touching that corner then computes the SAME value,
+// which makes the surface continuous by construction — and that is what removes
+// the gaps, rather than skirting them. The blocks-and-walls version was flat
+// tops joined by vertical faces; this one is a tilted fan, so a hill reads as a
+// slope you could walk up instead of a staircase.
 //
-// The neighbour and the edge corners MUST come from `hex_grid` as a pair.
-// moros_render's own comment records what a private direction table cost here:
-// it could not be parity-aware while `hex_to_world` staggers odd rows, so the
-// two disagreed — one unreachable neighbour and one direction pointing two hexes
-// out, in each parity.
+// The cell heights stay integers (`L13`); the corner means are a RENDER
+// derivation, layer 2, never stored. Quantisation therefore shows as a gentle
+// facet rather than a terrace.
+fn corner_heights(cq: integer, cr: integer, peaks: vector<Peak>) -> vector<float> {
+  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for cd2 in 0..6 {
+    (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
+    nh2 = (terrain_h(nq2, nr2, peaks) as float);
+    (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
+    sums[ca2] = sums[ca2] + nh2;
+    sums[cb2] = sums[cb2] + nh2;
+  }
+  selfh = (terrain_h(cq, cr, peaks) as float);
+  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
+  out
+}
+
+// One triangle with a flat normal, forced to face up — terrain is a height
+// field, so a downward normal is always the winding being the other way round,
+// never a real underside.
+fn emit_tri(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
+  ux = b.x - a.x; uy = b.y - a.y; uz = b.z - a.z;
+  vx = c.x - a.x; vy = c.y - a.y; vz = c.z - a.z;
+  nx = uy * vz - uz * vy;
+  ny = uz * vx - ux * vz;
+  nz = ux * vy - uy * vx;
+  ln = sqrt(nx * nx + ny * ny + nz * nz) ?? 0.0;
+  if ln == 0.0 { return; }
+  sgn = 1.0;
+  if ny < 0.0 { sgn = -1.0; }
+  nrm = vec3(sgn * nx / ln ?? 0.0, sgn * ny / ln ?? 0.0, sgn * nz / ln ?? 0.0);
+  base = len(m.vertices);
+  m.vertices += [vertex(a, nrm, vec2(0.0, 0.0))];
+  m.vertices += [vertex(b, nrm, vec2(1.0, 0.0))];
+  m.vertices += [vertex(c, nrm, vec2(0.0, 1.0))];
+  m.triangles += [Triangle { a: base, b: base + 1, c: base + 2 }];
+}
+
+// A cell as a six-triangle fan: centre at the cell's own height, rim at the
+// shared corner means. Consecutive hex_grid corner indices are adjacent (its
+// edge table pairs them that way), and moros_render's corner order is the
+// reverse ring — "this file's index i is its (6 - i) % 6" — so the map is
+// applied at every crossing.
+fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>) {
+  chh = terrain_h(cq, cr, peaks);
+  cw = hex_to_world(cq, cr, chh);
+  hs = corner_heights(cq, cr, peaks);
+  for fi in 0..6 {
+    fj = (fi + 1) % 6 ?? 0;
+    w1 = hex_corner_world(cq, cr, 0, (6 - fi) % 6 ?? 0);
+    w2 = hex_corner_world(cq, cr, 0, (6 - fj) % 6 ?? 0);
+    emit_tri(m,
+      vec3(cw.x, cw.y, cw.z),
+      vec3(w1.x, (hs[fi] ?? 0.0) * HEIGHT_SCALE, w1.z),
+      vec3(w2.x, (hs[fj] ?? 0.0) * HEIGHT_SCALE, w2.z));
+  }
+}
+
+// One chunk of ground. No skirts: the corner means make the surface continuous,
+// so there is no gap left to close.
 fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
   cm = mesh("chunk");
   for cr in cz * CHUNK..cz * CHUNK + CHUNK {
     for cq in cx * CHUNK..cx * CHUNK + CHUNK {
-      ch = terrain_h(cq, cr, peaks);
-      emit_hex_surface(cm, cq, cr, ch);
-      for cd in 0..6 {
-        // ⚠ QUALIFIED, not `use hex_grid;`. Adding it as a top-level import
-        // changed the dependency resolution set and broke `glb` — the same
-        // transitive-registry-dep failure that has `moros_ui` red (plan §10.1).
-        // A qualified call auto-loads the library without touching the set.
-        (nq, nr) = hex_grid::hex_neighbor(cq, cr, cd);
-        nh = terrain_h(nq, nr, peaks);
-        // Only the HIGHER cell emits the wall between them, so the face is
-        // written once. If both emitted, every step would be double-sided and
-        // z-fighting would show as a shimmering seam.
-        if nh < ch {
-          // ⚠ TWO CORNER ORDERS, and they wind opposite ways. `hex_edge_corners`
-          // returns indices in hex_grid's order; `hex_corner_world` takes them
-          // in moros_render's. moros_render's own comment records the map —
-          // "hex_grid owns the corner table. It walks the ring the other way,
-          // so this file's index i is its (6 - i) % 6" — and applies it
-          // internally, so a caller crossing the two must apply it too.
-          // Feeding one order's indices to the other's table drew skirts
-          // between corners that do not share an edge: walls the height of the
-          // hill spanning the whole cell, the first render's giant dark slabs.
-          (ea, eb) = hex_grid::hex_edge_corners(cd);
-          p1 = hex_corner_world(cq, cr, ch, (6 - ea) % 6);
-          p2 = hex_corner_world(cq, cr, ch, (6 - eb) % 6);
-          emit_slope_face(cm, p1, p2,
-                          (nh as float) * HEIGHT_SCALE, (ch as float) * HEIGHT_SCALE);
-        }
-      }
+      emit_hex_sloped(cm, cq, cr, peaks);
     }
   }
   cm
+}
+
+// THE GROUND UNDER THE CHARACTER, sampled from THE SAME TRIANGLES THAT ARE DRAWN.
+//
+// Not a second approximation of the terrain — the identical fan, barycentrically
+// interpolated. A separate "height under the player" formula is the classic way
+// to get a character floating a few centimetres above a slope or sunk into it,
+// because two derivations of one surface disagree wherever they round
+// differently. There is one surface here and both the mesh and the feet read it.
+fn terrain_y(wx: float, wz: float, peaks: vector<Peak>) -> float {
+  addr = world_to_hex(wx, wz);
+  ch3 = terrain_h(addr.ha_q, addr.ha_r, peaks);
+  cw3 = hex_to_world(addr.ha_q, addr.ha_r, ch3);
+  hs3 = corner_heights(addr.ha_q, addr.ha_r, peaks);
+  for ti in 0..6 {
+    tj = (ti + 1) % 6 ?? 0;
+    v1 = hex_corner_world(addr.ha_q, addr.ha_r, 0, (6 - ti) % 6 ?? 0);
+    v2 = hex_corner_world(addr.ha_q, addr.ha_r, 0, (6 - tj) % 6 ?? 0);
+    y1 = (hs3[ti] ?? 0.0) * HEIGHT_SCALE;
+    y2 = (hs3[tj] ?? 0.0) * HEIGHT_SCALE;
+    // Barycentric weights in the xz plane for triangle (centre, v1, v2).
+    den = (v1.z - v2.z) * (cw3.x - v2.x) + (v2.x - v1.x) * (cw3.z - v2.z);
+    if den != 0.0 {
+      b1 = ((v1.z - v2.z) * (wx - v2.x) + (v2.x - v1.x) * (wz - v2.z)) / den ?? 0.0;
+      b2 = ((v2.z - cw3.z) * (wx - v2.x) + (cw3.x - v2.x) * (wz - v2.z)) / den ?? 0.0;
+      b3 = 1.0 - b1 - b2;
+      // A hair of tolerance so a point exactly on a shared edge belongs to one
+      // of the two triangles rather than to neither.
+      if b1 >= -0.0001 && b2 >= -0.0001 && b3 >= -0.0001 {
+        return b1 * cw3.y + b2 * y1 + b3 * y2;
+      }
+    }
+  }
+  cw3.y
 }
 
 // Is any cell of this chunk within the draw distance of (hq, hr)? All-or-nothing
@@ -628,6 +690,8 @@ fn main() {
                 }
               }
             }
+            py = terrain_y(px, pz, peaks);
+            moved = true;
             println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
                     + "{len(peaks)} peaks, {rebuilt} chunks rebuilt");
           }
@@ -666,6 +730,10 @@ fn main() {
         // the legs move either way, and a phase that ran backwards would
         // unwind the stride instead of taking one.
         walked = walked + step;
+        // CLIMB. The feet follow the surface every tick, so walking into a
+        // slope walks UP it. No jump, no fall, no step limit yet — this is the
+        // ground being followed, not physics.
+        py = terrain_y(px, pz, peaks);
         moved = true;
       }
     }
@@ -702,6 +770,7 @@ fn main() {
           // Everything the level reaches must be redrawn; `loaded` is rebuilt
           // wholesale below anyway, so force it by clearing the set.
           loaded = [];
+          py = terrain_y(px, pz, peaks);
         }
       }
       home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
