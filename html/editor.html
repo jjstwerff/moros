@@ -30,6 +30,7 @@
 // `<int>:<payload>` and silently drops anything else as malformed.
 //   ←  M:<i>;r,g,b;f0,f1,…    mesh i: colour, then 6 floats/vertex (pos, normal)
 //   ←  T:<i>;<16 model>       mesh i's placement — the ONLY thing a turn sends
+//   ←  X:<i>                  drop mesh i — a chunk left the draw distance
 //   ←  E:                     end of world
 //   ←  C:<16 view>;<16 proj>  column-major matrices
 const cv = document.getElementById('gl');
@@ -78,7 +79,10 @@ const uProj = gl.getUniformLocation(prog, 'uProj');
 const uColor = gl.getUniformLocation(prog, 'uColor');
 
 const IDENT = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
-const parts = [];          // index-addressed: {vao, count, color, model}
+// A MAP, not an array: chunk ids are sparse coordinate encodings, and the world
+// is infinite, so meshes arrive and leave for ever. A growing array would leak
+// a slot per chunk ever visited.
+const parts = new Map();   // id -> {vao, vbo, count, color, model}
 let view = null, proj = null;
 
 function addMesh(body) {
@@ -98,7 +102,19 @@ function addMesh(body) {
   gl.enableVertexAttribArray(1);
   gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
   gl.bindVertexArray(null);
-  parts[idx] = { vao, count: data.length / 6, color, model: IDENT };
+  dropMesh(idx);           // replacing an id must free the old GPU buffers
+  parts.set(idx, { vao, vbo, count: data.length / 6, color, model: IDENT });
+}
+
+// A chunk leaving the draw distance frees its GPU buffers. Without this the
+// client leaks a VAO and a VBO per chunk walked through — invisible until a
+// long session, which is exactly the kind of leak an infinite world produces.
+function dropMesh(id) {
+  const p = parts.get(id);
+  if (!p) return;
+  gl.deleteBuffer(p.vbo);
+  gl.deleteVertexArray(p.vao);
+  parts.delete(id);
 }
 
 function resize() {
@@ -116,8 +132,7 @@ function draw() {
     gl.useProgram(prog);
     gl.uniformMatrix4fv(uView, false, view);
     gl.uniformMatrix4fv(uProj, false, proj);
-    for (const p of parts) {
-      if (!p) continue;
+    for (const p of parts.values()) {
       gl.uniformMatrix4fv(uModel, false, p.model);
       gl.uniform3fv(uColor, p.color);
       gl.bindVertexArray(p.vao);
@@ -138,9 +153,10 @@ ws.onmessage = (ev) => {
   if (tag === 'M') { addMesh(body); }
   else if (tag === 'T') {
     const k = body.indexOf(';');
-    const i = Number(body.slice(0, k));
-    if (parts[i]) parts[i].model = new Float32Array(body.slice(k + 1).split(',').map(Number));
+    const p = parts.get(Number(body.slice(0, k)));
+    if (p) p.model = new Float32Array(body.slice(k + 1).split(',').map(Number));
   }
+  else if (tag === 'X') { dropMesh(Number(body)); }
   else if (tag === 'E') {
     hud.textContent = 'drag or A/D to turn · W/S to walk';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');

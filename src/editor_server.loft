@@ -19,12 +19,34 @@
 // Run:  make editor      (or: loft --interpret --lib lib/ src/editor_server.loft)
 use server;
 use web;          // sleep_ms — the idle tick of the manual connection pool
+use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
 use moros_map;
 use moros_render;
 
-// The plane. Small on purpose — W0's budget number is measured before it grows.
-const PLANE_W = 14;
-const PLANE_H = 14;
+// THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
+// wherever you ask for one, and the ground you can see is derived around the
+// character rather than stored. What bounds the work is the DRAW DISTANCE.
+//
+// This is `L3` made real rather than described: layer 1 is the (implicit) field,
+// layer 2 is the mesh, and layer 2 is derived on demand and never persisted. It
+// is also why the ground had to stop being one static mesh — an infinite world
+// has no "the ground", only the part of it you are near.
+const DRAW_HEXES = 25;
+
+// Ground is derived in CHUNKS, one mesh each, so walking one hex does not
+// re-derive the whole disk. A chunk is all-or-nothing: it enters the view when
+// ANY of its cells is in range, which makes the visible set stable — a cell on
+// the rim cannot flicker in and out as you shift a few centimetres.
+//
+// ⚠ The chunk table is `gridmesh`'s, not ours. It owns `chunk_of` (floor
+// division that is correct across the origin — its own comment says it mirrors
+// moros's `chunk_idx_32`) and `enc_coord` (coord → one integer key). Both were
+// hand-rolled here first; `L11` is explicit that where a sibling library owns a
+// table we consult it and never keep a private copy, because two tables that
+// agree today diverge silently later. Deleted in favour of the library's.
+const CHUNK_SHIFT = 3;         // 1 << 3 = 8 cells per axis
+const CHUNK = 8;
+const CHUNK_R = 4;             // chunk radius to consider: (25 >> 3) + 1
 
 // The reference figure, after crawler's `src/figure.loft`: a proportioned human
 // for SCALE, at exactly 1.75 m. The proportions are the artist's canon — head =
@@ -81,17 +103,16 @@ const MSG_KEYS = 4;
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
 // independently. Splitting it is also the shape `hex_entity` will formalise: a
 // part-tree whose every part carries its own transform.
-const PART_GROUND = 0;
-const PART_BODY = 1;
-const PART_LEG_L = 2;
-const PART_LEG_R = 3;
-const PART_ARM_L = 4;
-const PART_ARM_R = 5;
+const PART_BODY = 0;
+const PART_LEG_L = 1;
+const PART_LEG_R = 2;
+const PART_ARM_L = 3;
+const PART_ARM_R = 4;
 
 // Each client keeps its own aspect ratio, so the projection is solved per
-// client — but the character and its yaw are ONE shared thing, because there is
-// one character. Two tabs therefore walk and turn together, which is the
-// multi-client property being visible rather than claimed.
+// client — but the character, its yaw and the streamed ground are ONE shared
+// thing, because there is one character. Two tabs therefore walk, turn and load
+// chunks together: the multi-client property visible rather than claimed.
 struct Client {
   cid: integer,
   aspect: float
@@ -144,6 +165,31 @@ fn body_mesh() -> Mesh {
   emit_box(bm, vec3(0.0 - bhd * 0.43, b_neck, 0.0 - bhd * 0.39),
                vec3(bhd * 0.43, bh, bhd * 0.39));
   bm
+}
+
+// One chunk of ground. Flat for now — the height tool is W0's content step —
+// but the shape is already the right one: a function of the cell coordinate,
+// evaluated on demand, never stored.
+fn chunk_mesh(cx: integer, cz: integer) -> Mesh {
+  cm = mesh("chunk");
+  for cr in cz * CHUNK..cz * CHUNK + CHUNK {
+    for cq in cx * CHUNK..cx * CHUNK + CHUNK {
+      emit_hex_surface(cm, cq, cr, 0);
+    }
+  }
+  cm
+}
+
+// Is any cell of this chunk within the draw distance of (hq, hr)? All-or-nothing
+// is what keeps the visible set stable; the cost is a rim slightly wider than
+// the stated distance, which is the honest trade and is stated rather than hidden.
+fn chunk_in_range(cx: integer, cz: integer, hq: integer, hr: integer) -> boolean {
+  for kr in cz * CHUNK..cz * CHUNK + CHUNK {
+    for kq in cx * CHUNK..cx * CHUNK + CHUNK {
+      if hex_distance(kq, kr, hq, hr) <= DRAW_HEXES { return true; }
+    }
+  }
+  false
 }
 
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
@@ -233,27 +279,21 @@ fn main() {
   // changes, so re-serialising per connection was pure waste. When the height
   // tool lands this becomes "re-serialise the dirty part", which is the
   // incremental re-derivation obligation, not a rewrite of this shape.
-  ground = mesh("ground");
-  for gr in 0..PLANE_H {
-    for gq in 0..PLANE_W {
-      emit_hex_surface(ground, gq, gr, 0);
-    }
-  }
   fh = figure_wu();
   hd = head_wu();
   leg = limb_mesh("leg", hip_wu(), hd * 0.62, hd * 0.62);
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();
 
-  wire_ground = "M:{PART_GROUND};{mesh_wire(ground, 0.42, 0.50, 0.30)}";
   wire_body = "M:{PART_BODY};{mesh_wire(body, 0.80, 0.60, 0.45)}";
   wire_leg_l = "M:{PART_LEG_L};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
   wire_leg_r = "M:{PART_LEG_R};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
   wire_arm_l = "M:{PART_ARM_L};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
   wire_arm_r = "M:{PART_ARM_R};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
 
-  // The character's state — the whole of it.
-  start = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
+  // The character's state — the whole of it. It starts at the origin because an
+  // infinite world has no middle.
+  start = hex_to_world(0, 0, 0);
   px = start.x;
   py = start.y;
   pz = start.z;
@@ -266,20 +306,20 @@ fn main() {
   // has actually gone.
   walked = 0.0;
 
-  // The plane's world-space bounds, so the character cannot walk off it. Taken
-  // from the lattice rather than assumed: the corner cells' centres, inset by
-  // the figure's own width.
-  c00 = hex_to_world(0, 0, 0);
-  c11 = hex_to_world(PLANE_W - 1, PLANE_H - 1, 0);
-  min_x = c00.x + hd; max_x = c11.x - hd;
-  min_z = c00.z + hd; max_z = c11.z - hd;
+  // Which chunks each client currently holds. Tracked per client because a
+  // client that connects later is somewhere else in the stream, and because a
+  // reconnect must be able to start from nothing.
+  loaded: vector<integer> = [];
+  have_hex = false;
+  last_hq = 0;
+  last_hr = 0;
 
   clients: vector<Client> = [];
   keys = 0;
   last_us = ticks();
 
-  println("moros editor — W0 (a plane, a character, and the camera behind it)");
-  println("  world: {len(ground.vertices)} ground verts, figure in 5 parts");
+  println("moros editor — W0 (an infinite plane, a character, the camera behind it)");
+  println("  world: INFINITE, drawn to {DRAW_HEXES} hexes in {CHUNK}x{CHUNK} chunks");
   println("  listening on port {port}  — MULTI-CLIENT (open as many tabs as you like)");
   println("    http://localhost:{port}/");
   hn = hostname();
@@ -309,16 +349,20 @@ fn main() {
         println("editor: client {ev.cid} connected");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
-          srv.send_to(ev.cid, wire_ground);
           srv.send_to(ev.cid, wire_body);
           srv.send_to(ev.cid, wire_leg_l);
           srv.send_to(ev.cid, wire_leg_r);
           srv.send_to(ev.cid, wire_arm_l);
           srv.send_to(ev.cid, wire_arm_r);
-          srv.send_to(ev.cid, "T:{PART_GROUND};{mat_wire(mat4_identity())}");
           srv.send_to(ev.cid, "E:");
+          // A new client holds no chunks, so the stream has to start over for
+          // everyone. Correct rather than clever: W0's job is to be right about
+          // what is visible, and a per-client chunk set is the optimisation
+          // that belongs with the height tool, when a chunk can actually differ.
+          loaded = [];
+          have_hex = false;
           moved = true;
-          println("editor: client {ev.cid} — world sent");
+          println("editor: client {ev.cid} — figure sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
           if ci != null {
@@ -377,15 +421,53 @@ fn main() {
         ky = cos(yaw); sy = sin(yaw);
         px = px + ky * step * fwd;
         pz = pz + sy * step * fwd;
-        if px < min_x { px = min_x; }
-        if px > max_x { px = max_x; }
-        if pz < min_z { pz = min_z; }
-        if pz > max_z { pz = max_z; }
         // `step` is unsigned, so walking BACKWARD still advances the gait —
         // the legs move either way, and a phase that ran backwards would
         // unwind the stride instead of taking one.
         walked = walked + step;
         moved = true;
+      }
+    }
+
+    // ── stream the ground: chunks in, chunks out ───────────────────────────
+    // Only when the character's HEX changes, not every tick — the visible set
+    // is a function of the cell you stand in, so re-deriving it per frame would
+    // be work with no observable effect. This is the bounded, incremental
+    // re-derivation `L3` asks for, at the granularity the field itself has.
+    hxa = world_to_hex(px, pz);
+    if !have_hex || hxa.ha_q != last_hq || hxa.ha_r != last_hr {
+      have_hex = true;
+      last_hq = hxa.ha_q;
+      last_hr = hxa.ha_r;
+      home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
+      next_loaded: vector<integer> = [];
+      added = 0;
+      for scz in home.cy - CHUNK_R..home.cy + CHUNK_R + 1 {
+        for scx in home.cx - CHUNK_R..home.cx + CHUNK_R + 1 {
+          if chunk_in_range(scx, scz, hxa.ha_q, hxa.ha_r) {
+            cid = enc_coord(scx, scz);
+            next_loaded += [cid];
+            seen = false;
+            for lz in loaded { if lz == cid { seen = true; } }
+            if !seen {
+              cmesh = chunk_mesh(scx, scz);
+              srv.broadcast("M:{cid};{mesh_wire(cmesh, 0.42, 0.50, 0.30)}");
+              srv.broadcast("T:{cid};{mat_wire(mat4_identity())}");
+              added = added + 1;
+            }
+          }
+        }
+      }
+      dropped = 0;
+      for lz2 in loaded {
+        still = false;
+        for nz in next_loaded { if nz == lz2 { still = true; } }
+        if !still { srv.broadcast("X:{lz2}"); dropped = dropped + 1; }
+      }
+      loaded = next_loaded;
+      if added != 0 || dropped != 0 {
+        println("editor: hex ({last_hq},{last_hr}) — +{added} −{dropped} chunks, "
+                + "{len(loaded)} live");
       }
     }
 
