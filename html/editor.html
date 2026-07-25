@@ -23,7 +23,7 @@
 //   →  1:                     ready — client is up, send the world
 //   →  2:<aspect>,             give me a camera for this viewport
 //   →  3:<dx>,<dy>             mouse drag — turn the character (and us with it)
-//   →  4:<keybits>             W=1 S=2 A=4 D=8, held. Sent on CHANGE only —
+//   →  4:<keybits>             W=1 S=2 A=4 D=8, held (A/D turn). CHANGE only —
 //                              the walk integrates on the server's fixed tick,
 //                              so the client reports intent, never motion.
 // The outbound ids are NUMBERS because the server's event pump parses
@@ -142,7 +142,7 @@ ws.onmessage = (ev) => {
     if (parts[i]) parts[i].model = new Float32Array(body.slice(k + 1).split(',').map(Number));
   }
   else if (tag === 'E') {
-    hud.textContent = 'drag to look · WASD to walk';
+    hud.textContent = 'drag or A/D to turn · W/S to walk';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {

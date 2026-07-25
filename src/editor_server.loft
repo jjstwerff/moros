@@ -43,6 +43,11 @@ const WALK_MS = 1.4;
 const STRIDE_M = 0.75;
 const LEG_SWING = 0.42;        // radians at the hip, peak
 const ARM_SWING = 0.30;
+// A/D turn rather than strafe, so every steering input — mouse or key — moves
+// the SAME yaw. A strafe would have been a second way to change where the
+// character stands relative to the camera, and the camera's whole contract is
+// that it is derived from the facing.
+const TURN_RATE = 2.20;        // radians per second
 
 // Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
 // clamped rather than wrapped: past vertical, "behind the character" stops
@@ -63,7 +68,7 @@ const TICK_US = 33000;
 //   client → server   1:            ready — send me the world
 //                     2:<aspect>,   a camera for this viewport
 //                     3:<dx>,<dy>   drag — turn the character (and us with it)
-//                     4:<keybits>   W=1 S=2 A=4 D=8, held
+//                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
 //   server → client   M:<i>;r,g,b;… mesh i
 //                     T:<i>;<16>    mesh i's placement
 //                     E:            end of world
@@ -350,29 +355,36 @@ fn main() {
     if now_us - last_us >= TICK_US {
       steps = (now_us - last_us) / TICK_US ?? 1;
       last_us = last_us + steps * TICK_US;
+      dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
+
+      // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
+      // disagree — there is one facing and everything else is derived from it.
+      turn = 0.0;
+      if keys & 8 != 0 { turn = turn + 1.0; }
+      if keys & 4 != 0 { turn = turn - 1.0; }
+      if turn != 0.0 {
+        yaw = yaw + turn * TURN_RATE * dt;
+        moved = true;
+      }
+
+      // W/S walk along the facing. One axis, so there is no diagonal to
+      // normalise — turning replaced the strafe that made that necessary.
       fwd = 0.0;
-      side = 0.0;
       if keys & 1 != 0 { fwd = fwd + 1.0; }
       if keys & 2 != 0 { fwd = fwd - 1.0; }
-      if keys & 8 != 0 { side = side + 1.0; }
-      if keys & 4 != 0 { side = side - 1.0; }
-      if fwd != 0.0 || side != 0.0 {
-        // Normalise, so a diagonal is not faster than a straight line — the
-        // oldest bug in the genre, and free to avoid at the one site that moves.
-        mag = sqrt(fwd * fwd + side * side) ?? 1.0;
-        fwd = fwd / mag ?? 0.0;
-        side = side / mag ?? 0.0;
-        dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
-        dist = (WALK_MS / WU_PER_M ?? 0.0) * dt;
+      if fwd != 0.0 {
+        step = (WALK_MS / WU_PER_M ?? 0.0) * dt;
         ky = cos(yaw); sy = sin(yaw);
-        // Local +x is forward; local +z is the character's right.
-        px = px + (ky * fwd - sy * side) * dist;
-        pz = pz + (sy * fwd + ky * side) * dist;
+        px = px + ky * step * fwd;
+        pz = pz + sy * step * fwd;
         if px < min_x { px = min_x; }
         if px > max_x { px = max_x; }
         if pz < min_z { pz = min_z; }
         if pz > max_z { pz = max_z; }
-        walked = walked + dist;
+        // `step` is unsigned, so walking BACKWARD still advances the gait —
+        // the legs move either way, and a phase that ran backwards would
+        // unwind the stride instead of taking one.
+        walked = walked + step;
         moved = true;
       }
     }
