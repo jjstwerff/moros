@@ -893,15 +893,22 @@ fn dispatch_wall_edge(
   emit_wall_quad(m, c1, c2, floor_y, ceil_y);
 }
 
-// Resolve a 1-indexed wall reference (`h.h_wall_*`) against the
-// palette and dispatch.  `wall_ref == 0` means "no wall".
-// Out-of-range refs fall back to a plain solid quad.
+// Resolve a wall reference (`h.h_wall_*`) against the palette and dispatch.
+// `wall_ref == 0` means "no wall".  Out-of-range refs fall back to a plain
+// solid quad.
+//
+// ⚠ THE INDEX IS DIRECT — it used to subtract one.  Two conventions for "0 is
+// absence" lived in this file: walls and items were 1-indexed and subtracted,
+// materials indexed straight in, so `h_material == 0` resolved to the FIRST REAL
+// MATERIAL and empty space rendered as whatever the world defined first.  There
+// is now one convention — slot 0 of every palette IS the absence entry, seeded by
+// `map_empty` — so every table indexes the same way and the subtraction is gone.
 fn emit_hex_wall_edge(
   m: Mesh, walls: vector<WallDef>, wall_ref: integer,
   c1: Vec3, c2: Vec3, floor_y: float, ceil_y: float
 ) {
   if wall_ref <= 0 { return; }
-  hw_idx = wall_ref - 1;
+  hw_idx = wall_ref;
   if hw_idx >= 0 && hw_idx < len(walls) {
     dispatch_wall_edge(m, walls[hw_idx], c1, c2, floor_y, ceil_y);
   } else {
@@ -1028,15 +1035,16 @@ fn emit_marker(m: Mesh, pos: Vec3, y_offset: float, size: float) {
   );
 }
 
-// Resolve a 1-indexed item reference (`h.h_item`) and emit its
-// placeholder mesh at the hex's world-space centre.  `item_ref == 0`
-// means "no item"; out-of-range refs are a no-op.
+// Resolve an item reference (`h.h_item`) and emit its placeholder mesh at the
+// hex's world-space centre.  `item_ref == 0` means "no item"; out-of-range refs
+// are a no-op.  Direct index — see `emit_hex_wall_edge` for why it stopped
+// subtracting one.
 fn emit_hex_item(
   items_mesh: Mesh, q: integer, r: integer, height: integer,
   item_ref: integer, items: vector<ItemDef>
 ) {
   if item_ref <= 0 { return; }
-  hi_idx = item_ref - 1;
+  hi_idx = item_ref;
   if hi_idx < 0 || hi_idx >= len(items) { return; }
   hi_def = items[hi_idx];
   hi_pos = hex_to_world(q, r, height);
@@ -1053,13 +1061,10 @@ pub fn build_hex_meshes(map: Map) -> vector<Mesh> {
       r = bm_c.ck_cz * 32 + bm_h#index % 32;
       // Check if the hex's material category is a stair variant;
       // route to stair emission instead of a flat surface.
-      bm_is_stair = false;
-      if bm_h.h_material > 0 {
-        bm_mat_idx = bm_h.h_material - 1;
-        if bm_mat_idx < len(map.m_material_palette) {
-          bm_is_stair = is_stair_category(map.m_material_palette[bm_mat_idx].md_category);
-        }
-      }
+      // Through map_material rather than indexing the vector: it is the ONE place
+      // that knows slot 0 is absence and what an out-of-range index resolves to,
+      // and a second copy of that knowledge here is how the two drift apart.
+      bm_is_stair = is_stair_category(map_material(map, bm_h.h_material).md_category);
       if bm_is_stair {
         emit_stair_hex(meshes, bm_h.h_material, map, q, r, bm_c.ck_cy, bm_h.h_height);
       } else {

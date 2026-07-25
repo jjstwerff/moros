@@ -947,7 +947,7 @@ fn wd_new(dw_body: text, dw_thickness: float) -> WallDef {
 fn test_wall_dispatch_solid() {
   dm = map_empty();
   dm.m_wall_palette += [wd_new("SOLID", 0.0)];
-  map_set_wall(dm, 0, 0, 0, 0, 1);  // N wall, palette index 1 (= palette[0])
+  map_set_wall(dm, 0, 0, 0, 0, 1);  // N wall, palette index 1 — slot 0 is absence
   ds = build_hex_meshes(dm);
   for dwm in ds {
     if dwm.name == "walls" {

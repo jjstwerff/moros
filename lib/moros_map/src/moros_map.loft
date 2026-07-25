@@ -21,17 +21,103 @@ pub struct Map {
 
 // ── Constructors ────────────────────────────────────────────────────
 
-// Create a new empty map with default name and empty palettes.
+// Create a new empty map.  Each palette starts holding exactly ONE entry — the
+// absence entry at slot 0 — never zero.  See `palette.loft`: a defaulted `Hex` is
+// all zeroes and must read as empty, so slot 0 is spoken for before any caller
+// gets a say.  Seeding it here is what makes that true of every map rather than
+// of the maps whose author remembered.
 pub fn map_empty() -> Map {
   Map {
     m_name: "untitled",
     m_chunks: [],
-    m_material_palette: [],
-    m_wall_palette: [],
-    m_item_palette: [],
+    m_material_palette: [absent_material()],
+    m_wall_palette:     [absent_wall()],
+    m_item_palette:     [absent_item()],
     m_spawn_points: [],
     m_npc_routines: [],
   }
+}
+
+// ── The palette: resolving a cell's u8 into its definition ──────────
+//
+// Append and hand back THE INDEX A CELL SHOULD STORE, so the caller never
+// computes one.  Returns -1 when the table is full: past 256 there is no index
+// that would mean "the thing you just added", and appending anyway would produce
+// a definition no cell could ever name.
+pub fn map_add_material(m: Map, d: MaterialDef) -> integer {
+  if len(m.m_material_palette) >= PALETTE_MAX { return -1; }
+  m.m_material_palette += [d];
+  len(m.m_material_palette) - 1
+}
+
+pub fn map_add_wall_def(m: Map, d: WallDef) -> integer {
+  if len(m.m_wall_palette) >= PALETTE_MAX { return -1; }
+  m.m_wall_palette += [d];
+  len(m.m_wall_palette) - 1
+}
+
+pub fn map_add_item_def(m: Map, d: ItemDef) -> integer {
+  if len(m.m_item_palette) >= PALETTE_MAX { return -1; }
+  m.m_item_palette += [d];
+  len(m.m_item_palette) - 1
+}
+
+// An out-of-range index yields the ABSENCE entry rather than null, so nothing on
+// a render or collision hot path has to null-check and nothing can crash on a
+// world naming a definition this palette lacks.
+//
+// ⚠ That fallback is a SAFETY NET, NOT AN ANSWER.  An index past the table means
+// the world and its palette disagree, and drawing it as empty space silently
+// DELETES content.  The net keeps the frame drawing; `map_palette_gap` is how you
+// find out, and a loader should ask before it draws anything.
+// The out-of-range answer is the absence VALUE, not `table[0]` — a map whose
+// palette is empty is malformed (`map_empty` always seeds one) but reading its
+// slot 0 would be exactly the out-of-bounds the fallback exists to prevent.
+pub fn map_material(m: Map, i: u8) -> MaterialDef {
+  if i < 0 || i >= len(m.m_material_palette) { return absent_material(); }
+  m.m_material_palette[i]
+}
+
+pub fn map_wall_def(m: Map, i: u8) -> WallDef {
+  if i < 0 || i >= len(m.m_wall_palette) { return absent_wall(); }
+  m.m_wall_palette[i]
+}
+
+pub fn map_item_def(m: Map, i: u8) -> ItemDef {
+  if i < 0 || i >= len(m.m_item_palette) { return absent_item(); }
+  m.m_item_palette[i]
+}
+
+// Does an index name a REAL definition — neither absence nor off the end?  The
+// question the accessors deliberately cannot answer, kept separate so that asking
+// is a decision a caller makes rather than a null it trips over.
+pub fn map_has_material(m: Map, i: u8) -> boolean { i > 0 && i < len(m.m_material_palette) }
+pub fn map_has_wall_def(m: Map, i: u8) -> boolean { i > 0 && i < len(m.m_wall_palette) }
+pub fn map_has_item_def(m: Map, i: u8) -> boolean { i > 0 && i < len(m.m_item_palette) }
+
+// Walk every stored cell and report the first index that its palette cannot
+// resolve — the check a loader runs BEFORE it trusts a world.  Returns "" when
+// every index resolves.
+//
+// This exists because the accessors above cannot fail loudly and must not: the
+// alternative to a silent fallback is not a null on the hot path, it is asking
+// the question ONCE, here, where there is somewhere to report it to.
+pub fn map_palette_gap(m: Map) -> text {
+  for ck in m.m_chunks {
+    for h in ck.ck_hexes {
+      if h.h_material >= len(m.m_material_palette) {
+        return "material {h.h_material} but only {len(m.m_material_palette)} defined";
+      }
+      if h.h_item >= len(m.m_item_palette) {
+        return "item {h.h_item} but only {len(m.m_item_palette)} defined";
+      }
+      if h.h_wall_n >= len(m.m_wall_palette) || h.h_wall_ne >= len(m.m_wall_palette)
+         || h.h_wall_se >= len(m.m_wall_palette) {
+        return "wall index past the {len(m.m_wall_palette)} defined";
+      }
+    }
+  }
+  ""
 }
 
 // ── MO.2: Serialization ────────────────────────────────────────────

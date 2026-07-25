@@ -1,0 +1,135 @@
+// The palette: what the voxel's u8s actually point AT.
+//
+// The cell is seven integers and six of them are indexes.  An index is only worth
+// eight bytes-a-cell if it RESOLVES, so this gates the resolution: slot 0 means
+// absence in every table, an added definition hands back the index a cell should
+// store, and a world that names a definition its palette lacks can be caught
+// before anything draws it.
+//
+// ⚠ Every gate here that can be green for the wrong reason carries its CONTROL —
+// the same assertion run against a case that must FAIL.  Six gates in this
+// editor's history were green for the wrong reason and not one was caught by
+// reading the code; every one was caught by running the control.
+use moros_map;
+
+// ── Slot 0 ───────────────────────────────────────────────────────────
+
+fn test_every_table_is_seeded_with_absence() {
+  m = map_empty();
+  assert(m.m_material_palette[0].md_name == ABSENT_NAME, "material slot 0");
+  assert(m.m_wall_palette[0].wd_name == ABSENT_NAME, "wall slot 0");
+  assert(m.m_item_palette[0].id_name == ABSENT_NAME, "item slot 0");
+}
+
+// A defaulted Hex is all zeroes, and that is what an unwritten cell IS.  So the
+// zero it carries must resolve to absence — not to the first real definition
+// somebody happened to add.  This is the assertion that makes empty space empty.
+fn test_a_defaulted_cell_resolves_to_absence() {
+  m = map_empty();
+  map_add_material(m, MaterialDef {
+    md_name: "grass", md_category: "terrain", md_stair_kind: "",
+    md_texture: 0, md_tint_r: 40, md_tint_g: 160, md_tint_b: 40,
+    md_walkable: 1, md_swimmable: 0, md_climbable: 0, md_slippery: 0, md_loud: 0,
+  });
+  fresh = Hex {};
+  assert(map_material(m, fresh.h_material).md_name == ABSENT_NAME,
+         "an unwritten cell resolved to a REAL material — empty space would render as "
+         + "whatever was defined first");
+  // The control: the same lookup one index along must find the real thing, or the
+  // assertion above would pass on a palette that resolves everything to absence.
+  assert(map_material(m, 1).md_name == "grass", "index 1 must resolve to the added material");
+}
+
+fn test_absence_is_not_a_real_definition() {
+  m = map_empty();
+  assert(!map_has_material(m, 0), "slot 0 must not count as a definition");
+  i = map_add_material(m, absent_material());
+  assert(map_has_material(m, i as u8? ?? 0), "an added entry counts, even a blank one");
+}
+
+// ── Adding ───────────────────────────────────────────────────────────
+
+// The add hands back the index rather than letting the caller compute one: a
+// caller that computes `len(table) - 1` itself is a caller that can be wrong.
+fn test_add_returns_the_index_a_cell_should_store() {
+  m = map_empty();
+  a = map_add_wall_def(m, WallDef { wd_name: "fence", wd_body: "FENCE", wd_base: "",
+                                    wd_thickness: 0.1, wd_texture: 0,
+                                    wd_tint_r: 90, wd_tint_g: 60, wd_tint_b: 30 });
+  b = map_add_wall_def(m, WallDef { wd_name: "brick", wd_body: "SOLID", wd_base: "BRICKS",
+                                    wd_thickness: 0.4, wd_texture: 0,
+                                    wd_tint_r: 178, wd_tint_g: 34, wd_tint_b: 34 });
+  assert(a == 1 && b == 2, "first real index is 1 then 2, got {a} and {b}");
+  assert(map_wall_def(m, b as u8? ?? 0).wd_name == "brick", "the returned index resolves");
+  assert(map_wall_def(m, a as u8? ?? 0).wd_thickness == 0.1,
+         "the float lives in the palette — that is why the cell fits in eight bytes");
+}
+
+// 256 is not a limit to raise later, it is the width of the slot: a 257th entry
+// has no index a cell could hold, so appending it would create a definition the
+// world can never name.
+fn test_the_table_refuses_past_what_a_u8_can_name() {
+  m = map_empty();
+  last = 0;
+  for i in 1..PALETTE_MAX {
+    last = map_add_item_def(m, ItemDef { id_name: "i{i}", id_kind: "PILLAR",
+                                         id_model: 0, id_symmetric: 0, id_arc_radius: 0.0 });
+  }
+  // The control first: the table must actually be FULL, or the refusal below
+  // would be trivially true and this gate would prove nothing.
+  assert(last == PALETTE_MAX - 1, "filling stopped early at {last}");
+  assert(len(m.m_item_palette) == PALETTE_MAX, "table should be full");
+  assert(map_add_item_def(m, ItemDef { id_name: "one too many", id_kind: "PILLAR",
+                                       id_model: 0, id_symmetric: 0, id_arc_radius: 0.0 }) == -1,
+         "a 257th entry was accepted — no cell can name it");
+}
+
+// ── Resolving a world against its palette ────────────────────────────
+
+// The accessors cannot fail loudly and must not — nothing on a render path should
+// null-check.  So the question gets asked ONCE, here, where there is somewhere to
+// report it to.
+fn test_a_world_naming_a_missing_definition_is_caught() {
+  m = map_empty();
+  map_paint_material(m, 0, 0, 0, 3);          // index 3 with nothing defined at 3
+  gap = map_palette_gap(m);
+  assert(gap != "", "a cell named material 3 against an empty palette and nothing noticed");
+  assert(gap.contains("material 3"), "the report should name the index: {gap}");
+
+  // THE CONTROL — define through 3 and the same world must come back clean.
+  // Without this the test above passes on a map_palette_gap that always reports.
+  for i in 1..4 {
+    map_add_material(m, MaterialDef {
+      md_name: "m{i}", md_category: "floor", md_stair_kind: "",
+      md_texture: 0, md_tint_r: 0, md_tint_g: 0, md_tint_b: 0,
+      md_walkable: 1, md_swimmable: 0, md_climbable: 0, md_slippery: 0, md_loud: 0,
+    });
+  }
+  assert(map_palette_gap(m) == "", "a fully-defined world reported a gap: {map_palette_gap(m)}");
+}
+
+// Walls are the easy one to miss: three of them per cell, and a gap in any of the
+// three is a gap.  A loop that checked only `h_wall_n` would pass every test above.
+fn test_a_missing_wall_definition_is_caught_on_every_edge() {
+  for edge in 0..3 {
+    m = map_empty();
+    map_set_wall(m, 0, 0, 0, edge, 2);
+    assert(map_palette_gap(m) != "", "a wall index of 2 on edge {edge} went unnoticed");
+  }
+  // The control: the same three placements with the definition present are clean.
+  m2 = map_empty();
+  map_add_wall_def(m2, absent_wall());
+  map_add_wall_def(m2, absent_wall());
+  for edge in 0..3 { map_set_wall(m2, 0, 0, 0, edge, 2); }
+  assert(map_palette_gap(m2) == "", "defined walls reported a gap: {map_palette_gap(m2)}");
+}
+
+// An index past the table resolves to absence rather than crashing — the safety
+// net that keeps a frame drawing.  Pinned so that it stays a NET: the gate above
+// is what turns the silence into a report, and this one records what the silence
+// looks like when nobody asks.
+fn test_an_unresolvable_index_yields_absence_not_a_crash() {
+  m = map_empty();
+  assert(map_material(m, 200).md_name == ABSENT_NAME, "should fall back to absence");
+  assert(!map_has_material(m, 200), "and must not claim to be a real definition");
+}

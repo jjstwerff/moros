@@ -100,9 +100,14 @@ fn test_map_empty() {
   m = map_empty();
   assert(m.m_name == "untitled", "empty map name");
   assert(len(m.m_chunks) == 0, "no chunks");
-  assert(len(m.m_material_palette) == 0, "no materials");
-  assert(len(m.m_wall_palette) == 0, "no walls");
-  assert(len(m.m_item_palette) == 0, "no items");
+  // ⚠ CHANGED MEANING: these used to assert 0.  A palette is never empty — slot
+  // 0 is the absence entry, seeded by map_empty, because a defaulted Hex is all
+  // zeroes and `h_material == 0` means "empty" throughout the suite.  An empty
+  // table would make index 0 unresolvable on the very first cell anyone reads.
+  assert(len(m.m_material_palette) == 1, "the absence material must be seeded");
+  assert(len(m.m_wall_palette) == 1, "the absence wall must be seeded");
+  assert(len(m.m_item_palette) == 1, "the absence item must be seeded");
+  assert(m.m_material_palette[0].md_name == ABSENT_NAME, "slot 0 is absence");
   assert(len(m.m_spawn_points) == 0, "no spawns");
   assert(len(m.m_npc_routines) == 0, "no routines");
 }
@@ -173,20 +178,17 @@ fn test_item_def() {
 
 fn test_map_with_palettes() {
   m = map_empty();
-  m.m_material_palette += [MaterialDef {
-    md_name: "void", md_category: "void", md_stair_kind: "",
-    md_texture: 0, md_tint_r: 0, md_tint_g: 0, md_tint_b: 0,
-    md_walkable: 0, md_swimmable: 0, md_climbable: 0,
-    md_slippery: 0, md_loud: 0,
-  }];
-  m.m_material_palette += [MaterialDef {
+  // Go through map_add_material rather than appending: it hands back THE INDEX A
+  // CELL SHOULD STORE, so no caller ever computes one — which is the only way the
+  // index in a cell and the slot in the table cannot drift apart.
+  stone = map_add_material(m, MaterialDef {
     md_name: "stone_floor", md_category: "floor", md_stair_kind: "",
     md_texture: 1, md_tint_r: 160, md_tint_g: 160, md_tint_b: 160,
     md_walkable: 1, md_swimmable: 0, md_climbable: 0,
     md_slippery: 0, md_loud: 1,
-  }];
-  assert(len(m.m_material_palette) == 2, "two materials");
-  assert(m.m_material_palette[0].md_name == "void", "mat 0");
-  assert(m.m_material_palette[1].md_name == "stone_floor", "mat 1");
-  assert(m.m_material_palette[1].md_loud == 1, "stone is loud");
+  });
+  assert(stone == 1, "the first real material is index 1, not 0: {stone}");
+  assert(len(m.m_material_palette) == 2, "absence plus stone");
+  assert(map_material(m, stone as u8? ?? 0).md_name == "stone_floor", "resolves to stone");
+  assert(map_material(m, stone as u8? ?? 0).md_loud == 1, "stone is loud")
 }

@@ -1,6 +1,33 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // MO.1b: Palette types — materials, walls, items.
+//
+// ── WHAT THIS FILE IS FOR ────────────────────────────────────────────────────
+//
+// The voxel (`types.loft`) is seven integers and NOTHING ELSE: a `u16` height and
+// six `u8`s.  Those `u8`s are not values, they are INDEXES — every name, every
+// category, every float lives here instead, stored ONCE per definition rather
+// than once per cell.  That is the whole reason the cell fits in eight bytes:
+// `wd_thickness` is a `float` in `WallDef` and would be eight bytes on every hex
+// that had a wall if the cell carried it directly.
+//
+// hexbody's `tests/palette.loft` gates exactly this split from the outside — it
+// asserts the cell types contain no `float` and that `wd_thickness: float` is
+// here.  `X12` is the rule; this file is the other half of it.
+//
+// ── SLOT 0 IS ABSENCE, IN ALL THREE TABLES ───────────────────────────────────
+//
+// This is not a convention chosen here — it is already load-bearing in code that
+// predates the palette.  `h_material == 0` means "no cell" everywhere in the
+// suite; `collide.loft` says "a NON-ZERO wall palette index on the crossed edge
+// blocks motion"; `h_item == 0` means no item.  A freshly-defaulted `Hex` is all
+// zeroes and must read as empty, because that is what an unwritten cell IS.
+//
+// So slot 0 cannot be a real definition, and `map_empty` seeds it in every table
+// rather than leaving each caller to remember.  Getting this wrong would
+// not crash — it would make empty space render as whatever material happened to
+// be defined first, which is precisely the kind of failure that looks like a
+// texture bug for a week.
 
 // Material definition. Category determines rendering behaviour:
 // "terrain", "floor", "stair", "spiral_stair", "grand_arc_stair",
@@ -42,4 +69,44 @@ pub struct ItemDef {
   id_model:      integer,
   id_symmetric:  integer,
   id_arc_radius: float,
+}
+
+// ── The tables the voxel's u8s index into ────────────────────────────────────
+//
+// The tables themselves live on `Map` (`m_material_palette` / `m_wall_palette` /
+// `m_item_palette`) and the accessors are in `moros_map.loft` beside it — one
+// palette per world, because an index stored in one world's cells means nothing
+// against another's.  Only the shared constants live here, with the definitions
+// they describe.
+
+// The widest index a `u8` cell field can hold, and therefore the most entries a
+// table can usefully have.  A 257th material is not a small problem to fix later
+// — it is unaddressable, so `map_add_material` refuses rather than appending
+// something no cell could ever name.
+pub const PALETTE_MAX = 256;
+
+// The absence entry seeded at slot 0 of every table.  Named, so a renderer that
+// lands on it can say which it got rather than drawing a blank and leaving you
+// to guess whether the cell was empty or the lookup failed.
+pub const ABSENT_NAME = "-";
+
+// ONE definition of each absence entry, because there are two callers — the
+// seeding in `map_empty` and the guard in the accessors — and two literals that
+// agree today are two literals that disagree later (`L11`, in the small).
+pub fn absent_material() -> MaterialDef {
+  MaterialDef { md_name: ABSENT_NAME, md_category: "void", md_stair_kind: "",
+                md_texture: 0, md_tint_r: 0, md_tint_g: 0, md_tint_b: 0,
+                md_walkable: 0, md_swimmable: 0, md_climbable: 0,
+                md_slippery: 0, md_loud: 0 }
+}
+
+pub fn absent_wall() -> WallDef {
+  WallDef { wd_name: ABSENT_NAME, wd_body: "", wd_base: "",
+            wd_thickness: 0.0, wd_texture: 0,
+            wd_tint_r: 0, wd_tint_g: 0, wd_tint_b: 0 }
+}
+
+pub fn absent_item() -> ItemDef {
+  ItemDef { id_name: ABSENT_NAME, id_kind: "", id_model: 0,
+            id_symmetric: 0, id_arc_radius: 0.0 }
 }

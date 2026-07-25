@@ -61,9 +61,15 @@ fn test_roundtrip_full_map() {
   assert(len(m2.m_chunks) == 1, "chunks");
   assert(len(m2.m_chunks[0].ck_hexes) == 4, "hexes");
   assert(m2.m_chunks[0].ck_hexes[2].h_height == 32, "hex height");
-  assert(m2.m_material_palette[0].md_name == "stone", "mat");
-  assert(m2.m_wall_palette[0].wd_base == "BRICKS", "wall");
-  assert(m2.m_item_palette[0].id_kind == "FURNITURE", "item");
+  // Index 1, not 0: slot 0 is the absence entry every map is seeded with, so an
+  // appended definition is the SECOND thing in the table.  It used to read [0]
+  // here, which meant a real material sat where "this cell is empty" points.
+  assert(m2.m_material_palette[1].md_name == "stone", "mat");
+  assert(m2.m_wall_palette[1].wd_base == "BRICKS", "wall");
+  assert(m2.m_item_palette[1].id_kind == "FURNITURE", "item");
+  // The absence entry has to survive the round trip too — it is part of the
+  // world, not a runtime convenience the reader can re-seed on a whim.
+  assert(m2.m_material_palette[0].md_name == ABSENT_NAME, "absence entry lost in the round trip");
   assert(m2.m_spawn_points[0].sp_hex.ha_q == 2, "spawn q");
   assert(m2.m_npc_routines[0].nr_waypoints[0].wp_note == "main hall", "wp note");
 }
