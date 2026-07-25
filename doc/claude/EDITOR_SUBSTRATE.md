@@ -70,11 +70,32 @@ Concretely, for the editor:
   (`k → −k`). Both are integer maps on the lattice, so a house stamped at 300° or flipped is
   the same house, cell for cell — never a filtered approximation of one. Every other grid
   pays for rotation with 90°-only placement or interpolation.
+- **The twelve are twelve *placements*, and the reflected six land between the rotated six.**
+  A rotation moves 60°; the flipped set interleaves and never coincides with a turn, so the
+  editor can offer a twelve-position dial reading as hours on a clock
+  ([SCENE_EDITOR.md](SCENE_EDITOR.md) § stencils). **Do not verify this with a symmetric
+  feature.** A door in the middle of a wall is radial, sits exactly on a mirror axis, and
+  collapses the twelve to six — which reads as proof that only six exist. Measured off-axis:
+  twelve distinct cells on one ring, zero collisions.
 - **Measure the whole thing, not the convenient part.** An edge is stored against one of its
   two cells, and for a rim edge that owner sits *outside* the extent. A count that walks only
   in-chunk cells therefore moves when the extent moves and cannot tell "the wall was lost"
   from "the wall is now owned by a halo cell". The loss-free invariant has to be stated over
   the entire layer, halo included.
+
+> **The library kept that promise and our seam broke it** (found and fixed 2026-07-22, and
+> the single most expensive mistake in this file's history to *not* have written down).
+> `map_to_stencil` and both `stencil_into_map` paths read and wrote edges only for cells that
+> were **occupied** — but three of the six directions store the edge against the *neighbour*,
+> so the wall ringing a room is owned by the empty cell outside it. Measured on a house with
+> a door: the stencil held **17 walls and stamped 8**.
+>
+> Nothing caught it for as long as it existed, because every stencil in the palette was
+> rotationally symmetric and the loss was symmetric with them — every count agreed with every
+> other count. It took **asymmetric content** to make it visible. That is the general lesson
+> and it is worth more than the fix: *a symmetric test subject cannot detect a symmetric bug.*
+> The same blindness produced a wrong orientation count twice on the same day, once in a probe
+> and once in production code.
 
 That last point is not hypothetical. An early version of the rotation walked the cell extent
 and **dropped 8 of 18 edge slots** while the cell count never moved and every in-chunk count
@@ -343,13 +364,35 @@ save written by Moros and loaded by crawler yields nonsense, and that is intenti
 **4. Multi-layer is first-class, not opt-in.** `cy` is in every cell coordinate from the
 field model upward. Retrofitting a vertical axis costs more than passing `cy = 0`.
 
-**The wall layer is split, deliberately.** `hex_field::EdgeSet` is the **authoring** layer —
-a material per edge, what a stencil carries. crawler's `EdgeCollider` is the **collision**
-layer — the same edge identity and storage trick, plus surface ids, passability and swept
-paths. They already agree on the edge key (doubled midpoint), the canonical slot set
-`{0,2,3}` and the type widths, because ours was ported from theirs, so an eventual merge is a
-lift rather than a redesign. Still open, and scheduled after crawler's P5: **which layer owns
-`Surfaces`.**
+**The wall layer is one layer, and the split runs along the write policy** (settled
+2026-07-22; library `5b4bba1`, crawler `2a72763`). There was briefly a second `EdgeSet` —
+crawler's, renamed `EdgeCollider` to break a name collision — and that rename was never the
+answer. Two structures with the same edge key (doubled midpoint), the same canonical slot set
+`{0,2,3}` and the same type widths are one structure with two consumers, and holding them
+apart guaranteed drift. Crawler deleted theirs: 51 call sites across 15 files re-pointed,
+−192 lines, `edgetest` and `sweeptest` passing **unchanged**, and they now own no edge storage
+at all.
+
+The question was posed as *which layer owns `Surfaces`* and **that was the wrong axis.** The
+real one is **where the write policy lives:**
+
+> The library owns the **storage** and the surface slot. A consumer owns the **rule that
+> decides what goes in it.**
+
+`edge_set_surf` writes what it is told. First-writer-wins is
+`if edge_mat(…) == 0 { edge_set_mat(…) }` at the call site — three words longer and honest
+about itself. Baking arbitration into storage would silently settle junctions for every
+consumer of the library: a physics decision hidden in a data structure. `Surfaces`,
+`Materials` and `Features` did stay crawler-side, but as a *consequence* of that rule rather
+than as the answer to it.
+
+**What this costs us: the layout is now a two-consumer contract.** `eg_mat` / `eg_surf` /
+`eg_index` cannot change without breaking crawler's physics, so our rule *"grep the sibling
+before adding a public name"* now extends to *changing an existing field*. What it buys us:
+their `edgetest`/`sweeptest` gate our EdgeSet work as well as theirs, and
+`edgeset_equal`/`edgeset_digest`/`edgeset_bytes` let us compare, checksum and gate the
+footprint without reading the vectors — which would have made the layout contract by the back
+door. `eg_index` stays **private** for that reason.
 
 **Working in a shared tree has a cost, and it landed on crawler.** `loft-libs-world` `dev` is
 consumed via `--lib`, which reads the *working tree*: adding `EdgeSet` / `edgeset_new` /
@@ -357,6 +400,27 @@ consumed via `--lib`, which reads the *working tree*: adding `EdgeSet` / `edgese
 side. A five-second `grep -rl EdgeSet ../crawler/src/` would have caught it. Two rules follow —
 **grep the sibling before adding a public name**, and **when a build breaks with nothing
 changed locally, read the sibling's `git log` before debugging.**
+
+**And a third rule, which crawler paid for three times before finding the cause** (their
+`LOFT-HANDOFF.md` G4, 2026-07-22). `--lib` reads the *working tree*, but the **cdylib is
+built separately** — so any sibling save between the cdylib build and our run leaves us
+compiling loft-side against new source while calling an old binary. It presents as a native
+crash inside an unrelated shared function, or as a compile failure with no diagnostic text at
+all, and it self-heals on re-run, which is exactly what trains a reader to re-run instead of
+read. Their third instance was settled by timestamps: `hex_field.loft` at 20:00:30, its
+`libloft_auto_hex_field.so` at 19:59:57 — **the source was 33 seconds newer than the native
+artifact.**
+
+> A native crash or a diagnostic-free compile failure in a `--lib` sibling is a **staleness
+> symptom until proven otherwise.** Compare the two mtimes *before* debugging anything:
+> `ls -l --time-style=+%H:%M:%S hex_field/src/hex_field.loft
+> hex_field/native-auto/libloft_auto_hex_field.so`
+
+This applies to us directly and not by analogy: `moros_map/loft.toml` depends on `hex_field`
+by **path** into that same working tree. The file-level hazard is worse than the git one
+because it has no undo — two agents in one 1350-line module left it transiently uncompilable
+for both consumers, with one agent's edit silently not applying. `stat -c %Y` on the file,
+twice, is the whole detection.
 
 **Open with crawler:** `hex_field` re-implements `hex_grid`'s lattice rather than depending
 on it (`lattice_k` / `lattice_m`, `nb_q` / `nb_r`, each with a comment saying it was verified
@@ -443,9 +507,10 @@ approximation of it.
 
 **What `hex_field` 0.1.0 holds today:** `HexSet` (bounded-chunk occupancy), `Heights`,
 `Labels`, the lattice and adjacency functions, `hex_at`, corner offsets, the tracer
-(cells → exact integer loops), the shoelace, and `validate`. Deliberately *not* yet here:
-`EdgeSet`, `Surfaces`, `Materials`, `Features`, the region cache and levels — those stay in
-crawler while its kernel migration exercises them, and move once settled.
+(cells → exact integer loops), the shoelace, and `validate`. **`EdgeSet` has since arrived**
+(2026-07-22) and is now the *only* edge storage either consumer has. Still crawler-side, and
+deliberately so under the write-policy rule above: `Surfaces`, `Materials`, `Features`, the
+region cache and levels.
 
 **The order the package lands in** — and therefore the order our plans run in — is stated
 in its own README: **stencils first** (the first new work built *in* the package), **the
@@ -462,8 +527,21 @@ probed whether they conflict; **they do not.**
 Authoring an inn ground floor in the dense model, converting to the field model and back:
 material and height round-trip with **zero** differences, and the field model's own gate
 passes on our authored geometry — `validate` returns 0 and `shoelace_total` is 288 for 24
-cells, exactly 12 × count. Item, rotation and walls drop, but only because `EdgeSet` /
-`Surfaces` / `Features` are still crawler-side; that is sequencing, not conflict.
+cells, exactly 12 × count. Item, rotation and walls dropped at the time, but only for
+sequencing reasons, not conflicting ones. **Walls no longer drop through stencils** —
+`EdgeSet` landed in `hex_field`, `map_to_stencil` carries them, and item and rotation ride
+named integer layers.
+
+> **They still drop through the document format, and the tripwire that was supposed to catch
+> that is green for the wrong reason.** `map_write_field` calls the cells/heights/labels form
+> of `doc_write` and never builds an `EdgeSet`, so walls are gone before `hex_field` sees the
+> file. `test_items_and_walls_do_not_survive_yet` was written to fail *"the day a section
+> appears, and tell us to carry them"* — the section **has** appeared (`hex_field`'s
+> `test_walls_survive_the_document_format`, plus a committed wall fixture we already read in
+> `test_moros_reads_the_walled_fixture`) and the test stayed green, because it watches our
+> round trip rather than the format's capability. It cannot fail while our own writer is the
+> thing dropping the data. Open work, and it matters more than it did: a save we write is a
+> file crawler could read.
 
 **So: one model.** The chunked dense cell is a *storage and serialisation* concern layered
 over the field model, not a rival representation of it.

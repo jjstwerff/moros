@@ -122,11 +122,11 @@ fn test_mixed_standalone_and_batch() {
   paint_material_with_undo(s, m, 1, 0, 0, 200);       // batch edit 1
   paint_material_with_undo(s, m, 2, 0, 0, 201);       // batch edit 2
   batch_end(s);
-  paint_material_with_undo(s, m, 3, 0, 0, 300);       // standalone
+  paint_material_with_undo(s, m, 3, 0, 0, 250);       // standalone
 
   // Undo standalone 300.
   undo_pop(s, m);
-  assert(map_get_hex(m, 3, 0, 0).h_material == 0, "300 undone");
+  assert(map_get_hex(m, 3, 0, 0).h_material == 0, "250 undone");
   assert(map_get_hex(m, 2, 0, 0).h_material == 201, "batch still applied");
 
   // Undo the whole batch.

@@ -143,23 +143,33 @@ pub fn redo(s: UndoStack, m: Map) -> boolean {
 // Each wraps the corresponding moros_map convenience editor and
 // records a pre-edit snapshot so the mutation can be undone.
 
-pub fn paint_material_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, mat: integer) {
+pub fn paint_material_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, mat: u8) {
   undo_push(s, m, q, r, cy);
   map_paint_material(m, q, r, cy, mat);
 }
 
-pub fn set_height_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, height: integer) {
+pub fn set_height_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, height: u16) {
   undo_push(s, m, q, r, cy);
   map_set_height(m, q, r, cy, height);
 }
 
+// `delta` stays SIGNED — this is the raise/lower brush, and lowering is half of
+// what it is for — but `h_height` is `u16`, so the result has both a floor and a
+// ceiling that the type will not let us ignore.  We CLAMP rather than refuse:
+// dragging a brush past the bottom of the world should stop at the bottom, not
+// abort the stroke.  The clamp is written out because `as u16? ?? 0` would read
+// as the same thing and is NOT — it turns an OVERFLOW into a floor, silently
+// dropping a mountain to sea level.
 pub fn adjust_height_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, delta: integer) {
   cur = map_get_hex(m, q, r, cy);
   undo_push(s, m, q, r, cy);
-  map_set_height(m, q, r, cy, cur.h_height + delta);
+  want = cur.h_height + delta;
+  if want < 0 { want = 0; }
+  if want > 65535 { want = 65535; }
+  map_set_height(m, q, r, cy, want as u16? ?? 0);
 }
 
-pub fn place_item_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
+pub fn place_item_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, item: u8, rotation: u8) {
   undo_push(s, m, q, r, cy);
   map_place_item(m, q, r, cy, item, rotation);
 }
@@ -169,14 +179,14 @@ pub fn remove_item_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: i
   map_place_item(m, q, r, cy, 0, 0);
 }
 
-pub fn set_wall_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
+pub fn set_wall_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: u8) {
   undo_push(s, m, q, r, cy);
   map_set_wall(m, q, r, cy, edge, wall);
 }
 
 // Wall with direction resolution (0-5) + undo.  Directions 3-5 store
 // the wall on a neighbour hex, so we snapshot THAT hex instead.
-pub fn set_wall_dir_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
+pub fn set_wall_dir_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: u8) {
   if dir == 3 { undo_push(s, m, q, r + 1, cy); }
   if dir == 4 { undo_push(s, m, q - 1, r + 1, cy); }
   if dir == 5 { undo_push(s, m, q - 1, r, cy); }
@@ -186,7 +196,7 @@ pub fn set_wall_dir_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: 
 
 // Slope path with batch undo — all hexes in the slope are one
 // logical undo step.
-pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
+pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: u16, h_end: u16) {
   // Note: lerp_int and hex_distance are imported from moros_map.
   batch_begin(s);
   dist = hex_distance(q1, r1, q2, r2);
@@ -198,8 +208,11 @@ pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: 
   for i in 0..=dist {
     q = lerp_int(q1, q2, i, dist);
     r = lerp_int(r1, r2, i, dist);
+    // both endpoints are u16 and a lerp never leaves their interval, so the
+    // checked cast is a formality — written as one anyway rather than trusting
+    // that lerp_int stays interpolating.
     h = lerp_int(h_start, h_end, i, dist);
-    set_height_with_undo(s, m, q, r, cy, h);
+    set_height_with_undo(s, m, q, r, cy, h as u16? ?? 0);
   }
   batch_end(s);
 }
@@ -261,16 +274,18 @@ pub fn edit_kind_undo(e: EditKind, m: Map) {
 // One hex inside a stencil template.  Offsets are relative to the
 // stencil origin.  A value of 0 means "leave unchanged" for material,
 // item, and walls in overlay mode.
+// The per-hex record mirrors the VOXEL it stamps into — same widths, so a
+// stencil cannot hold a value the world could not receive.
 pub struct StencilHex {
   sh_dq:            integer,
   sh_dr:            integer,
-  sh_height:        integer,
-  sh_material:      integer,
-  sh_item:          integer,
-  sh_item_rotation: integer,
-  sh_wall_n:        integer,
-  sh_wall_ne:       integer,
-  sh_wall_se:       integer,
+  sh_height:        u16,
+  sh_material:      u8,
+  sh_item:          u8,
+  sh_item_rotation: u8,
+  sh_wall_n:        u8,
+  sh_wall_ne:       u8,
+  sh_wall_se:       u8,
 }
 
 // A named stamp template.
@@ -508,6 +523,45 @@ pub fn builtin_house_small() -> Stencil {
       oq = nb_q(rq, rr, e2);
       orr = nb_r(rq, rr, e2);
       if !hexset_get(c, oq, orr) { edge_set_mat(eg, rq, rr, oq, orr, 1); }
+    }
+  }
+  stencil_with_edges(c, hz, lb, eg, true, true)
+}
+
+// The same house with a DOOR — one ring-to-outside edge left open (material 0,
+// crawler's convention: a door is a gap).  The door is on the EAST ring cell's
+// outward east edge, so at facing 0 it points at 3 o'clock, and turning the
+// stencil turns the door with it.
+//
+// This is the first built-in whose orientation is VISIBLE: house_small is a
+// centre plus a full ring with one wall material everywhere, so all six turns
+// stamp identical geometry.  A door breaks that.
+pub fn builtin_house_door() -> Stencil {
+  c  = hexset_chunk(-1, -1, 3, 3);
+  hz = heights_new(-1, -1, 3, 3);
+  lb = labels_new(-1, -1, 3, 3);
+  eg = edgeset_new(-1, -1, 3, 3);
+  hexset_set(c, 0, 0, true);
+  label_set(lb, 0, 0, 2);
+  for d in 0..6 {
+    rq = nb_q(0, 0, d);
+    rr = nb_r(0, 0, d);
+    hexset_set(c, rq, rr, true);
+    label_set(lb, rq, rr, 1);
+  }
+  dq = nb_q(0, 0, DIR_E);
+  dr = nb_r(0, 0, DIR_E);
+  for d in 0..6 {
+    rq = nb_q(0, 0, d);
+    rr = nb_r(0, 0, d);
+    for e2 in 0..6 {
+      oq = nb_q(rq, rr, e2);
+      orr = nb_r(rq, rr, e2);
+      if !hexset_get(c, oq, orr) {
+        // the doorway: the east cell's own outward east edge stays open
+        gap = rq == dq && rr == dr && e2 == DIR_E;
+        if !gap { edge_set_mat(eg, rq, rr, oq, orr, 1); }
+      }
     }
   }
   stencil_with_edges(c, hz, lb, eg, true, true)

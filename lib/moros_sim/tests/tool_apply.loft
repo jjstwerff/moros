@@ -7,13 +7,14 @@ use graphics;
 // ── Stencil palette ───────────────────────────────────────────────
 
 fn test_palette_size() {
-  assert(stencil_palette_size() == 3, "three stencils in palette");
+  assert(stencil_palette_size() == 4, "four stencils in palette");
 }
 
 fn test_palette_names() {
   assert(stencil_palette_name(0) == "flat", "idx 0 flat");
   assert(stencil_palette_name(1) == "house_small", "idx 1 house");
   assert(stencil_palette_name(2) == "spiral_stair", "idx 2 stair");
+  assert(stencil_palette_name(3) == "house_door", "idx 3 door house");
   assert(stencil_palette_name(99) == "flat", "OOB falls back");
 }
 
@@ -188,4 +189,117 @@ fn test_cy_parameter_honoured() {
   h2 = map_get_hex(cm, 0, 0, 2);
   assert(h0.h_height == 0, "cy=0 untouched");
   assert(h2.h_height == 4, "cy=2 raised");
+}
+
+// ── Facing (moros#5) ─────────────────────────────────────────────
+
+// The house is the smallest built-in that can TELL two facings apart: `flat` is one
+// cell and rotation-invariant, so `test_place_stencil_flat` above would pass however
+// badly the facing were wired.  A ring of six is symmetric in its CELLS too, so the
+// discriminator has to be a wall — walls are what a facing actually moves.
+fn stamp_house_facing(n: integer) -> Map {
+  fm = map_empty();
+  ft = tool_state_default();
+  ft.ts_current = ToolKind.PlaceStencil;
+  ft.ts_selected_stencil = 1;        // house_small
+  ft.ts_facing = n;
+  tool_apply(hex_to_world(6, 6, 0), 0, fm, ft);
+  fm
+}
+
+// Count the walls stamped over a window big enough to hold the house wherever it turns.
+fn wall_signature(wm: Map) -> text {
+  sig = "";
+  for q in 0..14 {
+    for r in 0..14 {
+      c = map_get_hex(wm, q, r, 0);
+      if c.h_wall_n != 0 || c.h_wall_ne != 0 || c.h_wall_se != 0 {
+        sig = "{sig}({q},{r}:{c.h_wall_n},{c.h_wall_ne},{c.h_wall_se})";
+      }
+    }
+  }
+  sig
+}
+
+fn stamp_facing(idx: integer, f: integer) -> Map {
+  fm = map_empty();
+  ft = tool_state_default();
+  ft.ts_current = ToolKind.PlaceStencil;
+  ft.ts_selected_stencil = idx;
+  ft.ts_facing = f;
+  tool_apply(hex_to_world(6, 6, 0), 0, fm, ft);
+  fm
+}
+
+// The door house is the first palette entry whose facing is VISIBLE, so this is
+// the test that was impossible while every stencil was symmetric.
+fn test_the_door_house_stamps_differently_when_turned() {
+  a = wall_signature(stamp_facing(3, 0));
+  assert(a != "", "the door house stamped no walls — the discriminator is blind");
+  b = wall_signature(stamp_facing(3, 2));      // one 60° turn = two dial steps
+  assert(a != b, "turning the door house changed nothing — the facing is not wired");
+}
+
+fn test_the_door_house_returns_after_a_full_dial() {
+  assert(wall_signature(stamp_facing(3, 0)) == wall_signature(stamp_facing(3, 12)),
+         "twelve dial steps did not come back to the start");
+}
+
+// A door in the middle of a wall lies ON a mirror axis, so this house's mirror
+// image is also one of its rotations and its twelve placements collapse to six.
+// That is a fact about the CONTENT, not the dial — moros_map's clock tests prove
+// the twelve with an off-axis feature.  Pinned here so that adding a handed
+// stencil (a door plus an off-centre window) fails this and prompts the count to
+// be re-measured rather than assumed.
+fn test_the_door_house_has_six_distinct_placements() {
+  sigs: vector<text> = [];
+  for f in 0..12 { sigs += [wall_signature(stamp_facing(3, f))]; }
+  distinct = 0;
+  for a in 0..12 {
+    first = true;
+    for b in 0..a { if (sigs[b] ?? "") == (sigs[a] ?? "") { first = false; } }
+    if first { distinct = distinct + 1; }
+  }
+  assert(distinct == 6, "the door house gave {distinct} placements, want 6");
+}
+
+// The other three are fully symmetric, so their facing is exact and invisible.
+fn test_the_symmetric_stencils_stamp_the_same_at_every_facing() {
+  for i in 0..3 {
+    a = wall_signature(stamp_facing(i, 0));
+    for f in 1..12 {
+      assert(wall_signature(stamp_facing(i, f)) == a,
+             "{stencil_palette_name(i)} changed at {facing_text(f)} — re-measure its placement count");
+    }
+  }
+}
+
+// Every facing stamps the WHOLE house: turning must not cost a wall.
+fn test_no_facing_loses_a_wall() {
+  n0 = 0;
+  for q in 0..14 {
+    for r in 0..14 {
+      c = map_get_hex(stamp_house_facing(0), q, r, 0);
+      if c.h_wall_n  != 0 { n0 = n0 + 1; }
+      if c.h_wall_ne != 0 { n0 = n0 + 1; }
+      if c.h_wall_se != 0 { n0 = n0 + 1; }
+    }
+  }
+  for n in 0..12 {
+    cnt = 0;
+    fm = stamp_house_facing(n);
+    for q in 0..14 {
+      for r in 0..14 {
+        c = map_get_hex(fm, q, r, 0);
+        if c.h_wall_n  != 0 { cnt = cnt + 1; }
+        if c.h_wall_ne != 0 { cnt = cnt + 1; }
+        if c.h_wall_se != 0 { cnt = cnt + 1; }
+      }
+    }
+    assert(cnt == n0, "facing {facing_text(n)} stamped {cnt} walls, want {n0}");
+  }
+}
+
+fn test_default_facing_is_three_oclock() {
+  assert(facing_hour(tool_state_default().ts_facing) == 3, "the editor does not start at 3 o'clock");
 }

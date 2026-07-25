@@ -86,3 +86,51 @@ fn test_overlay_cy_change_surfaces_in_status() {
   assert(contains(p.p_status.ss_text, "cy=7"),
          "status mentions cy=7; got '{p.p_status.ss_text}'");
 }
+
+// ── Facing in the status strip (moros#5) ────────────────────────
+
+fn test_status_names_the_facing_for_the_stencil_tool() {
+  s = build();
+  s.es_tools.ts_current = ToolKind.PlaceStencil;
+  s.es_tools.ts_facing = 0;
+  p = editor_panel(s, 1280, 720, 60);
+  assert(contains(p.p_status.ss_text, "facing 3 o'clock"),
+         "status should name the facing; got '{p.p_status.ss_text}'");
+}
+
+fn test_the_facing_in_the_strip_follows_the_dial() {
+  s = build();
+  s.es_tools.ts_current = ToolKind.PlaceStencil;
+  s.es_tools.ts_facing = 4;                     // two turns, no flip
+  p = editor_panel(s, 1280, 720, 60);
+  assert(contains(p.p_status.ss_text, "facing 7 o'clock"),
+         "dial position 4 is 7 o'clock; got '{p.p_status.ss_text}'");
+}
+
+// A mirrored placement must SAY it is mirrored.  It is a different house, not the
+// same house turned, and nothing else on screen distinguishes them.
+fn test_the_strip_marks_a_mirrored_placement() {
+  s = build();
+  s.es_tools.ts_current = ToolKind.PlaceStencil;
+  s.es_tools.ts_facing = 1;                     // the flip between 3 and 5
+  p = editor_panel(s, 1280, 720, 60);
+  assert(contains(p.p_status.ss_text, "facing 4 o'clock mirrored"),
+         "dial position 1 is 4 o'clock mirrored; got '{p.p_status.ss_text}'");
+}
+
+fn test_the_strip_says_how_many_positions_the_dial_has() {
+  s = build();
+  s.es_tools.ts_current = ToolKind.PlaceStencil;
+  p = editor_panel(s, 1280, 720, 60);
+  assert(contains(p.p_status.ss_text, "12 positions"),
+         "status should say the dial has twelve; got '{p.p_status.ss_text}'");
+}
+
+// And it must not claim a facing for tools that do not have one.
+fn test_no_facing_claimed_for_other_tools() {
+  s = build();
+  s.es_tools.ts_current = ToolKind.PlaceWall;
+  p = editor_panel(s, 1280, 720, 60);
+  assert(!contains(p.p_status.ss_text, "facing"),
+         "the wall tool has no facing, but the strip claims one: '{p.p_status.ss_text}'");
+}

@@ -99,3 +99,68 @@ fn test_held_bracket_does_not_repeat() {
   irh = input_from_keys(irh_held, irh_pressed, 0, 0, 0, 0, 0, false, false, false);
   assert(!irh.in_wall_dir_next, "held ] without press: no edge");
 }
+
+// ── The same two keys turn a stencil's FACING (moros#5) ─────────
+
+fn facing_build() -> EditorState {
+  fb = editor_default();
+  fb.es_tools.ts_current = ToolKind.PlaceStencil;
+  fb.es_tools.ts_facing = 0;
+  fb.es_tools.ts_wall_direction = 0;
+  fb
+}
+
+// One step on the dial is one HOUR, not one 60° turn — because the next position
+// is the flipped one that sits between.
+fn test_bracket_right_steps_one_hour_onto_the_flip() {
+  t = facing_build();
+  ti = input_empty();
+  ti.in_wall_dir_next = true;
+  editor_tick(t, ti, 1.0 / 60.0);
+  assert(facing_hour(t.es_tools.ts_facing) == 4,
+         "3 o'clock + one step should be 4; got {facing_hour(t.es_tools.ts_facing)}");
+  assert(facing_flipped(t.es_tools.ts_facing), "4 o'clock should be a mirrored placement");
+}
+
+fn test_bracket_left_steps_back_onto_the_flip_below() {
+  t = facing_build();
+  ti = input_empty();
+  ti.in_wall_dir_prev = true;
+  editor_tick(t, ti, 1.0 / 60.0);
+  assert(facing_hour(t.es_tools.ts_facing) == 2,
+         "3 o'clock − one step should be 2; got {facing_hour(t.es_tools.ts_facing)}");
+  assert(facing_flipped(t.es_tools.ts_facing), "2 o'clock should be a mirrored placement");
+}
+
+fn test_the_dial_walks_all_twelve_hours_in_order() {
+  t = facing_build();
+  ti = input_empty();
+  ti.in_wall_dir_next = true;
+  hours = "";
+  for n in 0..12 {
+    hours = "{hours}{facing_hour(t.es_tools.ts_facing)} ";
+    editor_tick(t, ti, 1.0 / 60.0);
+  }
+  assert(hours == "3 4 5 6 7 8 9 10 11 12 1 2 ", "the dial walked {hours}");
+  assert(t.es_tools.ts_facing == 0, "twelve steps did not return to the start");
+}
+
+// The two tools must not steal each other's keys.
+fn test_turning_a_stencil_leaves_the_wall_direction_alone() {
+  t = facing_build();
+  ti = input_empty();
+  ti.in_wall_dir_next = true;
+  editor_tick(t, ti, 1.0 / 60.0);
+  assert(t.es_tools.ts_wall_direction == 0,
+         "the stencil facing moved the wall direction to {t.es_tools.ts_wall_direction}");
+}
+
+fn test_turning_a_wall_leaves_the_facing_alone() {
+  t = build();
+  t.es_tools.ts_current = ToolKind.PlaceWall;
+  ti = input_empty();
+  ti.in_wall_dir_next = true;
+  editor_tick(t, ti, 1.0 / 60.0);
+  assert(t.es_tools.ts_wall_direction == 1, "the wall direction did not move");
+  assert(t.es_tools.ts_facing == 0, "the wall tool moved the stencil facing");
+}

@@ -11,6 +11,7 @@
 
 use moros_sim;
 use moros_editor;
+use moros_map;
 use widgets;
 use font;
 
@@ -166,9 +167,18 @@ pub fn panel_build(
     lb_item_height: LIST_ITEM_HEIGHT,
   };
 
+  // A facing only means anything for the stencil tool, so the strip only claims one
+  // then.  All twelve hours are reachable: the odd ones by turning, the even ones
+  // by flipping, and the strip says "mirrored" on those rather than leaving the
+  // player to wonder why the shape came out handed.
+  pb_facing = "";
+  if tools.ts_current == ToolKind.PlaceStencil {
+    pb_facing = "  facing {facing_text(tools.ts_facing)} ([/] turns the dial, 12 positions)";
+  }
+
   pb_ss = StatusStrip {
     ss_rect: status_rect(window_h),
-    ss_text: "q={hex_q} r={hex_r} cy={hex_cy}  y={altitude:4.1}  FPS{fps:3}",
+    ss_text: "q={hex_q} r={hex_r} cy={hex_cy}{pb_facing}  y={altitude:4.1}  FPS{fps:3}",
   };
 
   Panel {

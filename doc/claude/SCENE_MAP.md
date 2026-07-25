@@ -227,6 +227,17 @@ waypoint_flag(hex) = (hex.item_rotation >> 6) & 1   // bit 6
 Each hex owns **three of its six edges**; the other three are read from neighbours, so every
 edge is stored exactly once.
 
+> **The consequence that bites: never iterate walls over *occupied* cells only.** Because a
+> hex owns only three of its edges, the wall on the far side of a room is owned by the empty
+> cell **outside** it. Any loop shaped `if cell has material { read its three walls }` silently
+> drops those — half of them, in practice. This was a live bug in `map_to_stencil` and both
+> `stencil_into_map` paths until 2026-07-22: a stencil holding 17 walls stamped 8 of them.
+>
+> It survived because it loses walls **symmetrically**, so every count still matched every
+> other count, and every stencil in the palette was symmetric enough to hide it. Walk the
+> whole window, occupied or not — the cost is one predicate and the alternative is invisible
+> data loss.
+
 **The three field names are misleading, and two of them are simply wrong.** Read from the
 renderer's corner indices, the stored edges are **NW, NE and E** — the upper-and-eastern
 half of the hex:

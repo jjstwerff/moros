@@ -194,13 +194,23 @@ pub fn editor_tick(st: EditorState, input: InputState, dt: float) {
   if input.in_layer_down && st.es_overlay_cy > 0 {
     st.es_overlay_cy = st.es_overlay_cy - 1;
   }
-  // Step 19 — wall direction cycling.  `ts_wall_direction` cycles
-  // through the six edges 0..5 (N / NE / SE / S / SW / NW) with wrap.
+  // Step 19 — "[" and "]" turn whatever the current tool points.  For the stencil
+  // tool that is its FACING — twelve dial positions, turns and flips alternating
+  // (moros#5) — and for everything else it is the wall edge, which has six.  One
+  // gesture rather than two, because it is one question: which way does this face?
   if input.in_wall_dir_next {
-    st.es_tools.ts_wall_direction = (st.es_tools.ts_wall_direction + 1) % 6;
+    if st.es_tools.ts_current == ToolKind.PlaceStencil {
+      st.es_tools.ts_facing = facing_norm(st.es_tools.ts_facing + 1);
+    } else {
+      st.es_tools.ts_wall_direction = (st.es_tools.ts_wall_direction + 1) % 6;
+    }
   }
   if input.in_wall_dir_prev {
-    st.es_tools.ts_wall_direction = (st.es_tools.ts_wall_direction + 5) % 6;
+    if st.es_tools.ts_current == ToolKind.PlaceStencil {
+      st.es_tools.ts_facing = facing_norm(st.es_tools.ts_facing - 1);
+    } else {
+      st.es_tools.ts_wall_direction = (st.es_tools.ts_wall_direction + 5) % 6;
+    }
   }
   apply_mouse_look(st, input.in_mouse_dx);
   player_step(st.es_player, st.es_map, dt, input);

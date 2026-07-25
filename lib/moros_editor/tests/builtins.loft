@@ -77,6 +77,35 @@ fn test_builtins_rotate_through_twelve_orientations() {
   }
 }
 
+// The count above says nothing LEFT.  It cannot say nothing MOVED: any permutation
+// that swaps two walls keeps the count exactly right.  So gate the orientations a
+// second way — rotate by n, rotate back by 6−n, and demand the edge layer come back
+// identical slot for slot.  `edgeset_equal` compares the halo as well, which is
+// where hex_field's own negative control once failed to fail.
+//
+// The two checks are complementary, not redundant: the round trip is blind to an
+// error that is its own inverse (a wrong-but-symmetric permutation composes back to
+// the identity), and the count is blind to movement.  Neither alone gates "a stencil
+// loses nothing".
+fn test_rotation_is_exactly_invertible() {
+  st = builtin_house_small();
+  for n in 0..6 {
+    back = stencil_rotate(stencil_rotate(st, n), 6 - n);
+    assert(edgeset_equal(st.sn_edges, back.sn_edges),
+           "rotate {n} then {6 - n} did not restore the edge layer");
+    assert(hexset_count(back.sn_cells) == hexset_count(st.sn_cells),
+           "rotate {n} then {6 - n} did not restore the cells");
+  }
+}
+
+// The flip is its own inverse, so it needs no partner rotation to be checked exactly.
+fn test_mirror_is_its_own_inverse() {
+  st = builtin_house_small();
+  back = stencil_mirror(stencil_mirror(st));
+  assert(edgeset_equal(st.sn_edges, back.sn_edges), "mirroring twice changed the edge layer");
+  assert(hexset_count(back.sn_cells) == hexset_count(st.sn_cells), "mirroring twice changed the cells");
+}
+
 fn test_spiral_stair_carries_its_item() {
   st = builtin_spiral_stair();
   m = map_empty();
@@ -84,4 +113,50 @@ fn test_spiral_stair_carries_its_item() {
   c = map_get_hex(m, 2, 1, 0);
   assert(c.h_material == 4, "stair material {c.h_material}, want 4");
   assert(c.h_item == 12, "stair item {c.h_item}, want 12");
+}
+
+// ── The door house (moros#5) ─────────────────────────────────────
+
+// A door is a GAP — crawler's convention, and the same one the towers/doors work
+// in their plan #11 P5 uses. So the door house is house_small minus exactly one
+// wall, and the missing one is the east cell's outward east edge.
+fn test_the_door_is_exactly_one_missing_wall() {
+  solid = edgeset_count_all(builtin_house_small().sn_edges);
+  holed = edgeset_count_all(builtin_house_door().sn_edges);
+  assert(holed == solid - 1, "the door house has {holed} walls, want {solid - 1}");
+}
+
+fn test_the_door_faces_three_oclock() {
+  st = builtin_house_door();
+  dq = nb_q(0, 0, DIR_E);
+  dr = nb_r(0, 0, DIR_E);
+  assert(edge_mat(st.sn_edges, dq, dr, nb_q(dq, dr, DIR_E), nb_r(dq, dr, DIR_E)) == 0,
+         "the east cell's outward east edge is walled — that is where the door goes");
+  // every other ring cell's radial edge is still solid
+  for d in 0..6 {
+    if d != DIR_E {
+      rq = nb_q(0, 0, d);
+      rr = nb_r(0, 0, d);
+      assert(edge_mat(st.sn_edges, rq, rr, nb_q(rq, rr, d), nb_r(rq, rr, d)) != 0,
+             "direction {d} ({dir_hour(d)} o'clock) has a second doorway");
+    }
+  }
+}
+
+// It keeps the floor plan: a door removes a wall, not a room.
+fn test_the_door_house_still_has_seven_cells() {
+  assert(hexset_count(builtin_house_door().sn_cells) == 7,
+         "the door house lost cells");
+}
+
+// Turning it must not close the door or open another.
+fn test_the_door_survives_every_placement() {
+  st = builtin_house_door();
+  n0 = edgeset_count_all(st.sn_edges);
+  for f in 0..12 {
+    p = stencil_placed(st, f);
+    assert(edgeset_count_all(p.sn_edges) == n0,
+           "{facing_text(f)}: {edgeset_count_all(p.sn_edges)} walls, want {n0}");
+    assert(hexset_count(p.sn_cells) == 7, "{facing_text(f)}: lost cells");
+  }
 }

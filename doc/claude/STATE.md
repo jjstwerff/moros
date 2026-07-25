@@ -17,18 +17,27 @@ recovered from loft's history at `ade530c2^`, where they had sat unmoved since J
 
 | package | tests |
 |---|---|
-| `moros_map` | 66 |
-| `moros_editor` | 50 |
+| `moros_map` | 76 |
+| `moros_editor` | 56 |
 | `moros_render` | 163 |
-| `moros_sim` | 137 |
-| `moros_ui` | 41 |
+| `moros_sim` | 148 |
+| `moros_ui` | 46 |
 
-**457 green, and zero warnings from Moros sources.** `make lib-test` runs them all and was
-proven to go red (a gate nobody has seen fail is not a gate).
+**489 green, and zero warnings from Moros sources.** `make lib-test` runs them all and was
+proven to go red (a gate nobody has seen fail is not a gate) — most recently for real, twice
+in one session, catching a wall-drop in the stamp bridge and a double halo in `hex_field`.
 
 **Contributions to the shared library** (`loft-libs-world` `dev`, package `hex_field`, 47
 tests): the interchange document format, the stencil mechanism, the authoring `EdgeSet`,
 named integer layers, and two committed fixtures both consumers read.
+
+> **One `hex_field` fix is UNCOMMITTED in that tree** (2026-07-22). `stencil_rotate` and
+> `stencil_mirror` passed an already-haloed extent into `edgeset_new`, which halos it again —
+> so a rotated stencil could never compare `edgeset_equal` to an unrotated one, and carried
+> roughly twice the edge storage (a 3×3 room: 375 → 735 bytes over a full turn). Content was
+> never lost, only the bookkeeping. `stencil_from` in the same file did it correctly, which is
+> what identified it as an oversight rather than a design. 47 library tests and all 485 of
+> ours are green on it. **It is crawler's tree too — commit needs a human call.**
 
 ## Decisions taken — do not re-litigate
 
@@ -44,13 +53,34 @@ named integer layers, and two committed fixtures both consumers read.
 4. **Heights are `f64`, labels are `i32`** in the format. Our documented `u8`/`u16` widths
    are enforced nowhere — `70000`, `-3` and `300` all round-trip in the live model — so a
    byte-packer built to the spec would silently truncate.
-5. **The edge layer is split:** `hex_field::EdgeSet` is *authoring* (a material per edge);
-   crawler's `EdgeCollider` is *collision* (surfaces, passability, swept paths).
+5. **There is ONE edge layer, and the split is over the write POLICY** — not over the
+   storage, and not over "who owns `Surfaces`", which was the wrong axis. `hex_field::EdgeSet`
+   owns the storage *and* the surface slot; a consumer owns the rule deciding what goes in it.
+   `edge_set_surf` writes what it is told, and first-writer-wins is
+   `if edge_mat(…) == 0 { edge_set_mat(…) }` at the call site, where a reader can see which
+   rule is in force. Crawler's `EdgeCollider` was a temporary rename to break a name collision
+   and **no longer exists** — they deleted their edge storage entirely (crawler `2a72763`,
+   2026-07-22) and their `collide`/`sweep_path`/`sight_clear` now take an `EdgeSet`.
+   *Consequence for us:* the layout is a two-consumer contract now, so it cannot be changed
+   unilaterally — and their `edgetest`/`sweeptest` are a second gate on our EdgeSet work.
 6. **`eg_index` stays private** and the write *policy* lives at the call site. Both were
    crawler's calls; I proposed the opposite and withdrew — publishing the index would freeze
    the storage layout into the contract for both consumers.
 7. **A stencil loses nothing, and there are twelve orientations** — six rotations and six
    more by reflection, all exact integer maps. No destructive approximation anywhere.
+8. **The twelve are twelve *placements*, and the reflected six land between the rotated six**
+   — so the editor offers a twelve-position dial named as hours on a clock, turns and flips
+   alternating (`SCENE_EDITOR.md` § stencils). **Never re-derive this from a radial feature.**
+   A door in the middle of a wall sits on a mirror axis, collapsing the twelve to six, which
+   reads exactly like proof that only six exist. Measured off-axis: twelve distinct cells on
+   one ring, zero collisions. Both the claim and the collapse are pinned in
+   `moros_map/tests/clock.loft`, the collapse as the negative control.
+9. **A symmetric test subject cannot detect a symmetric bug.** Earned twice on 2026-07-22:
+   a signature that read walls only from occupied cells reported the wrong orientation count,
+   and the *same* blindness in `map_to_stencil` / `stencil_into_map` silently dropped 9 of a
+   house's 17 walls. Both hid because every palette stencil was rotationally symmetric and the
+   loss was symmetric with them, so every count agreed with every other count. Asymmetric
+   content is what makes this class visible — which is the real argument for `house_door`.
 
 ## Open work
 
@@ -69,12 +99,41 @@ named integer layers, and two committed fixtures both consumers read.
 - The **cross-language parity fixture** (`hex_grid`'s tests and our Python tooling asserting
   one file) is not built.
 
-**#5 — stencils** (`status:active`). The mechanism is done. What remains is the **caller
-switch**: `moros_stencil_stamp`, `StencilDef`, the JSON pair and the three `StencilDef`
-built-ins are superseded by `builtin_flat` / `builtin_house_small` / `builtin_spiral_stair`
-and the library stamp, but callers in `moros_editor` and `moros_sim` (including the undo
-path, `stencil_stamp_with_undo`) have not moved. Also outstanding: a second consumer stamps
-at least one stencil.
+**#5 — stencils** (`status:active`). The mechanism is done, and **facing landed** — a
+stencil's placement is an hour on the clock, **twelve of them**: six turns and six flips,
+the flips landing between the turns and never coinciding. Derived from the lattice rather
+than declared (`moros_map/tests/clock.loft`, `SCENE_EDITOR.md` § stencils).
+
+> **Do not re-derive this from a door.** A radial feature sits on a mirror axis and collapses
+> the twelve to six, which is a fact about that content and not about the dial. Measured with
+> an off-axis marker: twelve distinct cells on one ring, zero collisions. The collapse is kept
+> as the negative control beside the claim.
+
+**Two real defects fell out of building it**, both invisible while every stencil was
+symmetric:
+- `stencil_rotate`/`stencil_mirror` in `hex_field` haloed an already-haloed extent, so a
+  rotated stencil could never compare equal to an unrotated one and carried ~2× the edge
+  storage. Fixed; content was never lost, only the bookkeeping. **Uncommitted in the shared
+  tree.**
+- **Our stamp bridge dropped walls.** `map_to_stencil` and both `stencil_into_map` paths
+  read and wrote edges only for *occupied* cells — but three of the six directions store an
+  edge against the neighbour, so a room's wall is owned by the empty cell outside it. The
+  door house held 17 walls and stamped 8. Now 17. No count ever caught it because the loss
+  was symmetric.
+
+The **caller switch is half done**. `tool_apply` moved to the library path — it was the one
+call site that had to, because a facing needs `stencil_rotate` — so `moros_sim` no longer
+touches `StencilDef`. Still on the old path: `moros_editor`'s `moros_stencil_stamp`,
+`StencilDef` itself, the JSON pair, `stencil_save`, the three `StencilDef` built-ins, and the
+undo path `stencil_stamp_with_undo`. That last one is the real work: the library stamp has no
+undo bracket yet.
+
+Two more outstanding:
+- **An asymmetric stencil.** Every palette entry is rotation-invariant today, so the facing
+  is exact and completely invisible. A **house with a door gap** is the obvious first one —
+  and it is the same shape as crawler's P5 tail, where *doors are gaps*.
+- **A second consumer stamps at least one stencil.** Crawler will not be it soon: they have
+  no stencil call sites at all (their world is procedural — `hexplace`, vaults, roofs).
 
 **#6, #7** — not started. #7 (`hex_editor`, the universal editor library) is the one that
 carries the framing; #6 is Moros's configuration of it.

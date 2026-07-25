@@ -8,8 +8,8 @@ fn authored() -> Map {
   for q in 0..5 {
     for r in 0..4 {
       if (q + r) % 4 != 0 {
-        map_paint_material(m, q, r, 0, 1 + (q % 3));
-        map_set_height(m, q, r, 0, 10 + q * 2 + r);
+        map_paint_material(m, q, r, 0, (1 + (q % 3)) as u8? ?? 0);
+        map_set_height(m, q, r, 0, (10 + q * 2 + r) as u16? ?? 0);
       }
     }
   }
@@ -90,25 +90,41 @@ fn test_refusal_yields_an_empty_map() {
 // resolve from the TEST FILE's directory under `loft test`.
 const SHARED_FIXTURE = "../../../../loft-libs-world/hex_field/tests/fixtures/canonical.hxf";
 
+// ⚠ THIS TEST CHANGED MEANING when the compact voxel landed (2026-07-25), and
+// the change is the point rather than a repair.
+//
+// It used to assert that the fixture's label of **301** "arrives intact as our
+// material index" — which was only ever true because the cell field was an
+// unbounded `integer`. `SCENE_MAP.md` has always specified `material: u8`, so
+// that assertion was pinning the IMPLEMENTATION's accident, not the design.
+//
+// `hex_field` keeps labels as i32 and heights as f64 deliberately, so another
+// consumer can hold its own unit. `L13` says the narrower binds, and moros's is
+// the narrower — so a 301 is now REFUSED at the seam with a named code, never
+// voided (losing the cell) and never clamped to 255 (a different material).
+// The fixture carries the 301 exactly to force this decision to be made.
 fn test_moros_reads_the_shared_fixture() {
   ld = map_read_field(SHARED_FIXTURE, 0);
-  assert(ld.ml_code == 0, "the shared fixture did not load into a Map: code {ld.ml_code}");
-  // 8 authored cells over a NEGATIVE origin extent
-  m = ld.ml_map;
-  filled = 0;
-  for q in 0..4 {
-    for r in 0..3 {
-      if map_get_hex(m, -2 + q, -1 + r, 0).h_material != 0 { filled = filled + 1; }
-    }
-  }
-  assert(filled == 8, "expected 8 filled cells from the fixture, got {filled}");
-  // a label past u8 arrives intact as our material index
-  assert(map_get_hex(m, 1, -1, 0).h_material == 301,
-         "material at (1,-1) is {map_get_hex(m, 1, -1, 0).h_material}, want 301");
-  // -3.5 truncates toward zero at our integer boundary — pinned, not accidental
-  assert(map_get_hex(m, -2, -1, 0).h_height == -3,
-         "height at (-2,-1) is {map_get_hex(m, -2, -1, 0).h_height}, want -3 (from -3.5)");
+  assert(ld.ml_code == ML_LABEL_TOO_WIDE,
+         "a label past the voxel's width must be REFUSED with a named reason, "
+         + "got code {ld.ml_code}");
+  // A refusal returns an EMPTY map, never a half-populated one — the same
+  // never-half-loaded rule map_read_field already states for a bad document.
+  assert(map_get_hex(ld.ml_map, 1, -1, 0).h_material == 0,
+         "a refused load must leave the map empty");
 }
+
+// ⚠ THE FIXTURE CARRIES A SECOND VALUE THE VOXEL CANNOT HOLD, and it is worth
+// naming even though the test above never reaches it: a height of **-3.5**.
+// `h_height` is `u16` — UNSIGNED — because SCENE_MAP.md's world floor is 0 and
+// a valley is made by raising everything around it. So a negative height is not
+// a truncation, it is unrepresentable, exactly like the 301.
+//
+// Both are the same seam question and neither is moros's to answer alone: the
+// shared format deliberately keeps the wider slot so other consumers hold their
+// own units, and the fixture exists to make a narrow consumer decide out loud.
+// Recorded here rather than asserted, because the label refuses first and this
+// path is unreachable until that changes.
 
 // The wall fixture, read from OUR side.  Walls do not reach a Moros Map yet —
 // our cell has wall_n/ne/se and the reader has no home for them until the

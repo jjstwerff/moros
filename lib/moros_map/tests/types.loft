@@ -50,7 +50,7 @@ fn test_hex_fields() {
 
 fn test_hex_rotation_extract() {
   // rotation 7, spawn_flag set (bit 5), no waypoint
-  h = Hex { h_item_rotation: 7 | (1 << 5) };
+  h = Hex { h_item_rotation: (7 | (1 << 5)) as u8? ?? 0 };
   assert(hex_rotation(h) == 7, "rotation extract");
   assert(hex_spawn_flag(h) == true, "spawn flag set");
   assert(hex_waypoint_flag(h) == false, "waypoint flag clear");
@@ -58,7 +58,7 @@ fn test_hex_rotation_extract() {
 
 fn test_hex_waypoint_flag() {
   // rotation 23, no spawn, waypoint set (bit 6)
-  h2 = Hex { h_item_rotation: 23 | (1 << 6) };
+  h2 = Hex { h_item_rotation: (23 | (1 << 6)) as u8? ?? 0 };
   assert(hex_rotation(h2) == 23, "rotation 23");
   assert(hex_spawn_flag(h2) == false, "spawn clear");
   assert(hex_waypoint_flag(h2) == true, "waypoint set");
@@ -66,7 +66,7 @@ fn test_hex_waypoint_flag() {
 
 fn test_hex_all_flags() {
   // rotation 15, both flags set
-  h3 = Hex { h_item_rotation: 15 | (1 << 5) | (1 << 6) };
+  h3 = Hex { h_item_rotation: (15 | (1 << 5) | (1 << 6)) as u8? ?? 0 };
   assert(hex_rotation(h3) == 15, "rotation 15");
   assert(hex_spawn_flag(h3) == true, "both: spawn");
   assert(hex_waypoint_flag(h3) == true, "both: waypoint");
@@ -85,7 +85,7 @@ fn test_chunk_empty() {
 fn test_chunk_with_hexes() {
   hexes: vector<Hex> = [];
   for ch_i in 0..3 {
-    hexes += [Hex { h_height: ch_i * 10, h_material: ch_i + 1 }];
+    hexes += [Hex { h_height: (ch_i * 10) as u16? ?? 0, h_material: (ch_i + 1) as u8? ?? 0 }];
   }
   c = Chunk { ck_cx: 0, ck_cy: 0, ck_cz: 0, ck_hexes: hexes };
   assert(len(c.ck_hexes) == 3, "3 hexes");

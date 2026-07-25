@@ -212,11 +212,53 @@ as at 0°, cell for cell. The editor drives that mechanism and owns none of it �
 [moros#5](https://github.com/jjstwerff/moros/issues/5). Which stencils exist stays Moros
 content.
 
+**A stencil's facing is an hour on the clock, and there are twelve of them.** Six come from
+turning and six from **flipping** — and the flipped six land *between* the turned six and
+never coincide with one.
+
+| dial | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **is** | turn | flip | turn | flip | turn | flip | turn | flip | turn | flip | turn | flip |
+| **o'clock** | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 1 | 2 |
+
+Turns keep the hours their own geometry produces — base facing is 3 o'clock (East) and
+`cell_rot` turns clockwise, two hours a step — and the flips fill the hours between.
+
+> **This was measured, and the obvious measurement gets it wrong.** Put the distinguishing
+> feature on a **radial** edge — a door in the middle of a wall — and it sits exactly on a
+> mirror axis, so the shape's mirror image is also one of its rotations and the twelve
+> collapse to six. That degenerate case is easy to build by accident and reads as proof that
+> only six facings exist. Move the feature off the axis (a marker two steps East and one
+> North-East) and the twelve are twelve: six rotated markers and six mirrored ones,
+> **twelve distinct cells on one ring, zero collisions**, alternating round the dial.
+>
+> Both are pinned in `moros_map/tests/clock.loft` — the twelve as the claim, and the
+> six-way collapse as the **negative control**, so the test is measuring handedness rather
+> than counting to twelve by construction.
+
+`stencil_placed` is the single place that turns a facing into a placement (mirror first,
+then rotate), so no caller can get the order wrong or forget the flip. Nothing is restated:
+the table is derived from `cell_rot` on every run, so if the lattice convention moves the
+tests fail instead of drifting.
+
 **While in Stencil mode**:
 - Hover shows a **ghost preview** of the stencil at the cursor position.
 - Left-click **stamps** the stencil (commits all hex data it contains).
 - R / Shift+R rotates the stencil (6 steps × 2 mirrors = 12 orientations).
 - Right-click **opens a radial menu**: rotate, mirror, cancel.
+
+In the **walkable editor** the same two keys that turn a wall turn a stencil: `[` and `]`
+step the dial one **hour** at a time — so consecutive presses alternate turn, flip, turn — 
+because it is one question, *which way does this face?*, and it should not need two gestures.
+The strip writes a mirrored placement as `4 o'clock mirrored`: it is a different house, not
+the same house turned, and nothing else on screen tells them apart.
+
+**`house_door` is the palette entry that makes any of this visible.** `flat` and
+`spiral_stair` are single cells and `house_small` is a centre plus a full ring with one wall
+material everywhere, so all twelve placements of those are identical — the facing is exact
+and invisible. The door house has **six** distinct placements, not twelve, because its door
+is radial and therefore on a mirror axis. A **door plus an off-centre window** would be the
+first genuinely handed stencil and would show all twelve.
 
 **Stencil palette** is shown in the palette panel (see below).
 

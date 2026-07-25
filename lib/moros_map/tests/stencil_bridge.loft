@@ -10,8 +10,8 @@ fn room() -> Map {
   m = map_empty();
   for q in 0..3 {
     for r in 0..3 {
-      map_paint_material(m, q, r, 0, 2 + q);
-      map_set_height(m, q, r, 0, 10 + r);
+      map_paint_material(m, q, r, 0, (2 + q) as u8? ?? 0);
+      map_set_height(m, q, r, 0, (10 + r) as u16? ?? 0);
     }
   }
   map_place_item(m, 1, 1, 0, 21, 13);
@@ -90,6 +90,36 @@ fn test_twelve_orientations_all_stamp_a_whole_room() {
     assert(hexset_count(rot.sn_cells) == 9, "orientation {n}: lost cells");
     assert(edgeset_count(rot.sn_edges) == 3, "orientation {n}: lost walls");
   }
+}
+
+// The room's three walls carry DISTINCT materials (5, 6, 7) precisely so that a
+// wall arriving on the wrong edge is a different answer, not the same one.  A count
+// cannot see that — three walls are three walls however they are permuted — so the
+// gate is a round trip through `edgeset_equal`, which compares every stored slot
+// including the halo.  If a rotation ever re-keys an edge to the wrong midpoint,
+// this is the assertion that fails and the count above is the one that does not.
+fn test_rotation_round_trips_the_walls_exactly() {
+  st = map_to_stencil(room(), 0, 0, 0, 3, 3);
+  for n in 0..6 {
+    back = stencil_rotate(stencil_rotate(st, n), 6 - n);
+    assert(edgeset_equal(st.sn_edges, back.sn_edges),
+           "rotate {n} then {6 - n} did not restore the walls");
+  }
+}
+
+// The control for the gate above, kept rather than spent.  It caught a real defect
+// once — `stencil_rotate` haloed an already-haloed extent, so a rotated stencil could
+// never compare equal to an unrotated one (hex_field, fixed 2026-07-22) — but that
+// was an EXTENT disagreement, and a comparison that only ever notices extents would
+// pass every content test by accident.  So break one wall by one material step and
+// require the comparison to notice.
+fn test_the_round_trip_gate_notices_a_changed_wall() {
+  st = map_to_stencil(room(), 0, 0, 0, 3, 3);
+  back = stencil_rotate(stencil_rotate(st, 2), 4);
+  assert(edgeset_equal(st.sn_edges, back.sn_edges), "baseline: the round trip should be exact");
+  edge_set_mat(back.sn_edges, 1, 1, nb_q(1, 1, DIR_NE), nb_r(1, 1, DIR_NE), 99);
+  assert(!edgeset_equal(st.sn_edges, back.sn_edges),
+         "NEGATIVE CONTROL FAILED: a changed wall material compared equal");
 }
 
 // ── merge modes: Moros policy over the library's stamp ───────────────────

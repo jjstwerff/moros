@@ -27,3 +27,6 @@ lib/**/.loft/
 
 # The moros_render CLI examples write their .glb cwd-relative by design.
 *.glb
+
+# runtime log from `make editor`
+.editor.log

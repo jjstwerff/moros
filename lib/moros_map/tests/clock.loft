@@ -1,0 +1,160 @@
+// Facing as an hour on the clock — TWELVE placements (moros#5).
+//
+// Nothing here restates the table; it is derived from `cell_rot` and
+// `stencil_mirror` on every run.  If the lattice convention ever moves, these
+// fail instead of quietly disagreeing with the world they name.
+use moros_map;
+use hex_field;
+
+fn dir_of(q: integer, r: integer) -> integer {
+  d = -1;
+  for i in 0..6 {
+    if nb_q(0, 0, i) == q && nb_r(0, 0, i) == r { d = i; }
+  }
+  d
+}
+
+// ── The dial ─────────────────────────────────────────────────────
+
+fn test_the_dial_has_twelve_distinct_hours() {
+  seen = "";
+  for f in 0..12 { seen = "{seen}{facing_hour(f)} "; }
+  for h in 1..13 {
+    assert(hour_facing(h) >= 0, "{h} o'clock is not on the dial: {seen}");
+  }
+  clash = 0;
+  for a in 0..12 {
+    for b in 0..12 { if a != b && facing_hour(a) == facing_hour(b) { clash = clash + 1; } }
+  }
+  assert(clash == 0, "two facings share an hour: {seen}");
+}
+
+// Turns take the odd hours, flips the even ones — so they alternate round the
+// dial, which is what "the flip lands in between" means.
+fn test_turns_and_flips_alternate() {
+  for f in 0..12 {
+    h = facing_hour(f);
+    if facing_flipped(f) {
+      assert((h % 2 ?? 0) == 0, "flip {f} sits at {h} o'clock, which is odd");
+    } else {
+      assert((h % 2 ?? 0) == 1, "turn {f} sits at {h} o'clock, which is even");
+    }
+  }
+}
+
+fn test_a_turn_faces_where_the_lattice_says() {
+  for n in 0..6 {
+    f = 2 * n;                              // the un-flipped facings
+    (tq, tr) = cell_rot(nb_q(0, 0, DIR_E), nb_r(0, 0, DIR_E), n);
+    d = dir_of(tq, tr);
+    assert(d >= 0, "turn {n} sent East to ({tq},{tr}), which is not a neighbour");
+    assert(dir_hour(d) == facing_hour(f),
+           "turn {n}: the lattice lands on {dir_hour(d)} o'clock, the dial says {facing_hour(f)}");
+  }
+}
+
+fn test_the_dial_wraps_and_survives_negatives() {
+  assert(facing_hour(12) == facing_hour(0), "a full dial is not the identity");
+  assert(facing_hour(-1) == facing_hour(11), "one back is not eleven forward");
+  assert(facing_hour(0) == FACING_BASE_HOUR, "base facing is not {FACING_BASE_HOUR} o'clock");
+  assert(!facing_flipped(0), "the base facing is mirrored");
+  assert(facing_flipped(1), "the second dial position is not a flip");
+}
+
+fn test_hour_round_trips_through_the_facing() {
+  for h in 1..13 {
+    f = hour_facing(h);
+    assert(facing_hour(f) == h, "{h} o'clock round-tripped to {facing_hour(f)}");
+  }
+}
+
+fn test_facing_text_names_the_mirror() {
+  assert(facing_text(0) == "3 o'clock", "got '{facing_text(0)}'");
+  assert(facing_text(1) == "4 o'clock mirrored", "got '{facing_text(1)}'");
+}
+
+// ── The twelve are really twelve ─────────────────────────────────
+
+// An origin-independent signature of a placement: every cell's label and the
+// material on each of its three canonical edges.  It walks EVERY cell rather
+// than the occupied ones, because a rim edge is often owned by the cell OUTSIDE
+// the shape — a loop over occupied cells silently drops half the walls, and a
+// signature blind to half the walls reports collisions that are not there.
+fn placement_sig(st: Stencil) -> text {
+  s = "";
+  for q in -8..9 {
+    for r in -8..9 {
+      lab = 0;
+      if hexset_get(st.sn_cells, q, r) { lab = label_get(st.sn_labels, q, r); }
+      e0 = edge_mat(st.sn_edges, q, r, nb_q(q, r, 0), nb_r(q, r, 0));
+      e2 = edge_mat(st.sn_edges, q, r, nb_q(q, r, 2), nb_r(q, r, 2));
+      e3 = edge_mat(st.sn_edges, q, r, nb_q(q, r, 3), nb_r(q, r, 3));
+      if lab != 0 || e0 != 0 || e2 != 0 || e3 != 0 { s = "{s}[{q},{r}:{lab}:{e0}{e2}{e3}]"; }
+    }
+  }
+  s
+}
+
+// Apply a dial position to a stencil the way a caller must.
+fn place(st: Stencil, f: integer) -> Stencil {
+  if facing_flipped(f) { return stencil_rotate(stencil_mirror(st), facing_turns(f)); }
+  stencil_rotate(st, facing_turns(f))
+}
+
+// A marker two steps East and one North-East: OFF every mirror axis.
+fn offaxis_marker() -> Stencil {
+  c  = hexset_chunk(-5, -5, 11, 11);
+  hz = heights_new(-5, -5, 11, 11);
+  lb = labels_new(-5, -5, 11, 11);
+  hexset_set(c, 0, 0, true);
+  label_set(lb, 0, 0, 1);
+  (aq, ar) = (nb_q(0, 0, DIR_E), nb_r(0, 0, DIR_E));
+  (bq, br) = (nb_q(aq, ar, DIR_E), nb_r(aq, ar, DIR_E));
+  (mq, mr) = (nb_q(bq, br, DIR_NE), nb_r(bq, br, DIR_NE));
+  hexset_set(c, mq, mr, true);
+  label_set(lb, mq, mr, 9);
+  stencil_from(c, hz, lb, true, true)
+}
+
+// The claim the dial rests on: twelve placements, and no flip is also a turn.
+fn test_an_offaxis_feature_has_twelve_distinct_placements() {
+  st = offaxis_marker();
+  sigs: vector<text> = [];
+  for f in 0..12 { sigs += [placement_sig(place(st, f))]; }
+  clash = 0;
+  for a in 0..12 {
+    for b in 0..12 { if a != b && (sigs[a] ?? "") == (sigs[b] ?? "") { clash = clash + 1; } }
+  }
+  assert(clash == 0, "{clash} of the twelve placements coincide");
+}
+
+// THE NEGATIVE CONTROL, and the mistake it encodes.
+//
+// Put the feature ON a mirror axis — a door in the middle of a wall, pointing
+// straight out along a radial edge — and the twelve really do collapse to six,
+// because the shape's mirror image is also one of its rotations.  That is a fact
+// about the CONTENT, not about the dial, and measuring it was what first
+// produced the wrong conclusion that only six facings exist.
+//
+// Keeping it green proves the test above is measuring handedness rather than
+// counting to twelve by construction.
+fn test_a_feature_on_the_mirror_axis_collapses_to_six() {
+  c  = hexset_chunk(-5, -5, 11, 11);
+  hz = heights_new(-5, -5, 11, 11);
+  lb = labels_new(-5, -5, 11, 11);
+  hexset_set(c, 0, 0, true);
+  label_set(lb, 0, 0, 1);
+  (mq, mr) = (nb_q(0, 0, DIR_E), nb_r(0, 0, DIR_E));      // one step East: ON the axis
+  hexset_set(c, mq, mr, true);
+  label_set(lb, mq, mr, 9);
+  st = stencil_from(c, hz, lb, true, true);
+  sigs: vector<text> = [];
+  for f in 0..12 { sigs += [placement_sig(place(st, f))]; }
+  distinct = 0;
+  for a in 0..12 {
+    first = true;
+    for b in 0..a { if (sigs[b] ?? "") == (sigs[a] ?? "") { first = false; } }
+    if first { distinct = distinct + 1; }
+  }
+  assert(distinct == 6, "a symmetric feature gave {distinct} placements, want 6");
+}

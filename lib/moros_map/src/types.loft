@@ -9,17 +9,34 @@ pub struct HexAddress {
   ha_cy: integer,
 }
 
-// A single hex cell.
+// A single hex cell — THE COMPACT VOXEL, and the only cell shape in use.
+//
+// EIGHT BYTES, exactly as SCENE_MAP.md § Hex Structure specifies. The fields
+// were declared `integer` (8 bytes each, 56 per cell) until 2026-07-25, which
+// was 7x the designed footprint and, worse, enforced none of the documented
+// widths: `70000`, `-3` and `300` all stored and read back unchanged, so a
+// byte-packing writer would have silently truncated maps the editor happily
+// produced. The sized aliases carry their own bounds — `u8` is
+// `integer limit(0, 255) size(1)` — so the width is now real in memory, real on
+// the wire, and checked instead of documented.
+//
+// It also makes the binary format fall out of the declaration: a strongly-typed
+// field writes at its declared width, so `f += h.h_height` writes two bytes and
+// `h.h_height = f#read` reads two, with no cast to keep in step.
+//
+// ⚠ `h_height` is UNSIGNED: the world floor is 0 and there is no digging below
+// it. A valley is made by raising everything around it, not by going negative.
+//
 // h_item_rotation packs rotation (bits 0-4), spawn_flag (bit 5),
-// waypoint_flag (bit 6).
+// waypoint_flag (bit 6); bit 7 is reserved.
 pub struct Hex {
-  h_height:        integer,
-  h_material:      integer,
-  h_item:          integer,
-  h_item_rotation: integer,
-  h_wall_n:        integer,
-  h_wall_ne:       integer,
-  h_wall_se:       integer,
+  h_height:        u16,
+  h_material:      u8,
+  h_item:          u8,
+  h_item_rotation: u8,
+  h_wall_n:        u8,
+  h_wall_ne:       u8,
+  h_wall_se:       u8,
 }
 
 // Extract the 5-bit rotation (0-23) from the packed item_rotation field.

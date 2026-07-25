@@ -142,30 +142,30 @@ pub fn map_get_hex(m: Map, q: integer, r: integer, cy: integer) -> Hex {
 // Convenience editors.
 
 // Paint a hex's material at (q, r, cy).
-pub fn map_paint_material(m: Map, q: integer, r: integer, cy: integer, material: integer) {
+pub fn map_paint_material(m: Map, q: integer, r: integer, cy: integer, material: u8) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_material = material;
   map_set_hex(m, q, r, cy, cur);
 }
 
 // Set a hex's height at (q, r, cy).
-pub fn map_set_height(m: Map, q: integer, r: integer, cy: integer, height: integer) {
+pub fn map_set_height(m: Map, q: integer, r: integer, cy: integer, height: u16) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_height = height;
   map_set_hex(m, q, r, cy, cur);
 }
 
 // Place an item on a hex (item index + rotation, preserves spawn/waypoint flags).
-pub fn map_place_item(m: Map, q: integer, r: integer, cy: integer, item: integer, rotation: integer) {
+pub fn map_place_item(m: Map, q: integer, r: integer, cy: integer, item: u8, rotation: u8) {
   cur = map_get_hex(m, q, r, cy);
   cur.h_item = item;
   flags = cur.h_item_rotation & ~31;  // preserve bits 5+ (spawn, waypoint)
-  cur.h_item_rotation = (rotation & 31) | flags;
+  cur.h_item_rotation = ((rotation & 31) | flags) as u8? ?? 0;
   map_set_hex(m, q, r, cy, cur);
 }
 
 // Set a wall on a hex edge.  edge: 0=N, 1=NE, 2=SE.
-pub fn map_set_wall(m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: integer) {
+pub fn map_set_wall(m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: u8) {
   cur = map_get_hex(m, q, r, cy);
   if edge == 0 { cur.h_wall_n = wall; }
   if edge == 1 { cur.h_wall_ne = wall; }
@@ -182,7 +182,7 @@ pub fn spawn_add(m: Map, sp: SpawnPoint) {
   m.m_spawn_points += [sp];
   // Flag the hex: bit 5 = spawn, preserve other bits.
   cur = map_get_hex(m, sp.sp_hex.ha_q, sp.sp_hex.ha_r, sp.sp_hex.ha_cy);
-  cur.h_item_rotation = cur.h_item_rotation | 32;
+  cur.h_item_rotation = (cur.h_item_rotation | 32) as u8? ?? 0;
   map_set_hex(m, sp.sp_hex.ha_q, sp.sp_hex.ha_r, sp.sp_hex.ha_cy, cur);
 }
 
@@ -278,7 +278,7 @@ pub fn waypoint_add(m: Map, npc_id: integer, wp: NpcWaypoint) -> boolean {
   }
   if found {
     cur = map_get_hex(m, wp.wp_hex.ha_q, wp.wp_hex.ha_r, wp.wp_hex.ha_cy);
-    cur.h_item_rotation = cur.h_item_rotation | 64;  // bit 6
+    cur.h_item_rotation = (cur.h_item_rotation | 64) as u8? ?? 0;  // bit 6
     map_set_hex(m, wp.wp_hex.ha_q, wp.wp_hex.ha_r, wp.wp_hex.ha_cy, cur);
   }
   found
@@ -298,7 +298,7 @@ pub fn waypoint_count(m: Map, npc_id: integer) -> integer {
 // 5=NW).  Directions 0–2 are stored on the target hex; directions 3–5
 // are stored as the opposite edge on the appropriate neighbour hex.
 // Uses axial-coordinate neighbour offsets.
-pub fn map_set_wall_dir(m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: integer) {
+pub fn map_set_wall_dir(m: Map, q: integer, r: integer, cy: integer, dir: integer, wall: u8) {
   if dir == 0 { map_set_wall(m, q, r, cy, 0, wall); }
   if dir == 1 { map_set_wall(m, q, r, cy, 1, wall); }
   if dir == 2 { map_set_wall(m, q, r, cy, 2, wall); }
@@ -329,7 +329,7 @@ pub fn lerp_int(a: integer, b: integer, i: integer, n: integer) -> integer {
 // Linearly interpolate heights from h_start at (q1,r1) to h_end at
 // (q2,r2) along a straight hex-grid line.  All hexes on the path
 // (inclusive of both endpoints) have their height set.
-pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer) {
+pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: u16, h_end: u16) {
   dist = hex_distance(q1, r1, q2, r2);
   if dist == 0 {
     map_set_height(m, q1, r1, cy, h_start);
@@ -338,7 +338,7 @@ pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
   for i in 0..=dist {
     q = lerp_int(q1, q2, i, dist);
     r = lerp_int(r1, r2, i, dist);
-    h = lerp_int(h_start, h_end, i, dist);
+    h = lerp_int(h_start, h_end, i, dist) as u16? ?? 0;
     map_set_height(m, q, r, cy, h);
   }
 }
@@ -347,7 +347,7 @@ pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
 // line, also set the `width` hexes perpendicular to the path
 // direction (centred on the path).  Only uniform height across the
 // band; no cross-section interpolation.
-pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: integer, h_end: integer, width: integer) {
+pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: u16, h_end: u16, width: integer) {
   dist = hex_distance(q1, r1, q2, r2);
   if dist == 0 {
     map_set_height(m, q1, r1, cy, h_start);
@@ -357,7 +357,7 @@ pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
   for i in 0..=dist {
     q = lerp_int(q1, q2, i, dist);
     r = lerp_int(r1, r2, i, dist);
-    h = lerp_int(h_start, h_end, i, dist);
+    h = lerp_int(h_start, h_end, i, dist) as u16? ?? 0;
     for w in 0..width {
       offset = w - half;
       map_set_height(m, q + offset, r, cy, h);
@@ -372,11 +372,21 @@ pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
 // is that seam: a Map layer converts to a field, writes through hex_field's
 // format, and comes back.
 //
-// What crosses today: occupancy, height, material.  Items, item rotation and
-// the three wall bytes do NOT — hex_field has no EdgeSet or Features section
-// yet, so they are dropped rather than silently mangled.  test_items_and_walls
-// _do_not_survive_yet pins that, so the day a section appears the test fails and
-// tells us to carry them.
+// What crosses today: occupancy, height, material.  Items, item rotation and the
+// three wall bytes do NOT — this writer calls the cells/heights/labels form of
+// doc_write and never builds an EdgeSet.
+//
+// That is now OUR gap, not the format's.  hex_field grew an edge section on
+// 2026-07-22 and we already read one (test_moros_reads_the_walled_fixture), so
+// walls could cross today.  Note that test_items_and_walls_do_not_survive_yet
+// does NOT catch this: it was written to fail "the day a section appears", but it
+// watches our round trip, and our round trip drops the walls before the format
+// ever sees them — so the section appeared and the test stayed green.  Carrying
+// the walls is what makes it fail, and then it wants deleting rather than fixing.
+
+// A label the voxel cannot hold. Named rather than numbered so a caller can say
+// WHY it refused, which is `K-FIT`'s rule: never a blank no.
+pub const ML_LABEL_TOO_WIDE = 64;
 
 pub struct MapLoad {
   ml_code: integer,
@@ -418,12 +428,27 @@ pub fn map_read_field(path: text, cy: integer) -> MapLoad {
   for q in 0..w {
     for r in 0..h {
       if hexset_get(d.doc_cells, q0 + q, r0 + r) {
-        mat = if d.doc_has_l { label_get(d.doc_labels, q0 + q, r0 + r) } else { 1 };
+        // ⚠ THE SEAM WHERE THE WIDER FORMAT MEETS THE NARROWER VOXEL.
+        //
+        // `hex_field` keeps labels as i32 and heights as f64 ON PURPOSE, so a
+        // consumer can hold its own unit; `L13` then says the NARROWER one binds,
+        // and moros's is the narrower. The compact voxel makes that a real limit
+        // rather than a documented one: a label past 255 has nowhere to go.
+        //
+        // It is REFUSED, not quietly substituted. Voiding the cell would lose it
+        // silently and clamping to 255 would make it a DIFFERENT material — the
+        // exact "silent wrong data" this stack refuses everywhere else. The
+        // shared fixture carries a 301 precisely to exercise this.
+        raw_mat = if d.doc_has_l { label_get(d.doc_labels, q0 + q, r0 + r) } else { 1 };
+        if raw_mat < 0 || raw_mat > 255 {
+          return MapLoad { ml_code: ML_LABEL_TOO_WIDE, ml_map: map_empty() };
+        }
+        mat = raw_mat as u8? ?? 0;
         map_paint_material(out, q0 + q, r0 + r, cy, mat);
         if d.doc_has_h {
           // Our height unit is an integer; a fractional height from another
           // consumer truncates HERE, visibly, rather than somewhere downstream.
-          map_set_height(out, q0 + q, r0 + r, cy, height_get(d.doc_heights, q0 + q, r0 + r) as integer);
+          map_set_height(out, q0 + q, r0 + r, cy, height_get(d.doc_heights, q0 + q, r0 + r) as u16? ?? 0);
         }
       }
     }
@@ -448,6 +473,101 @@ pub const DIR_E  = 0;      // h_wall_se
 pub const DIR_NE = 2;      // h_wall_ne
 pub const DIR_NW = 3;      // h_wall_n
 
+// ── Facing: TWELVE placements, named as hours on the clock (moros#5) ─────
+//
+// A pointy-top hex puts corner 0 straight up — `hex_grid::hex_corner_offset`
+// returns (0, 1) — so the clock face names real directions on this lattice.
+//
+// There are TWELVE facings, not six, and the second six come from the FLIP.
+// Six 60° turns give six placements two hours apart; mirroring gives six more
+// that land BETWEEN them and never coincide with a turn.  This was measured, on
+// a stencil with a marker cell two steps East and one North-East: the six rotated
+// markers and the six mirrored markers were twelve distinct cells on one ring,
+// with zero collisions, alternating round the dial.
+//
+// > The measurement matters because the obvious test gets the WRONG answer. Put
+// > the marker on a RADIAL edge — a door in the middle of a wall — and it sits
+// > exactly on a mirror axis, so its mirror orbit IS its rotation orbit and the
+// > twelve collapse to six.  That degenerate case is easy to build by accident
+// > and reads as proof that only six facings exist.  It is not: it is proof that
+// > the feature you measured was symmetric.
+//
+// So a facing is an index 0..11 over the dial:
+//
+//   EVEN index  → a turn:  rotation n,        at hour 3 + 2n   (3 5 7 9 11 1)
+//   ODD  index  → a flip:  mirror + rotate n, at hour 4 + 2n   (4 6 8 10 12 2)
+//
+// Turns keep the hours their own geometry produces — base facing is 3 o'clock
+// (East) and `cell_rot` turns clockwise — and the flips fill the hours between.
+// All twelve hours are reachable, which is why the dial can offer twelve.
+//
+// tests/clock.loft derives this from `cell_rot` on every run rather than
+// restating it, so if the lattice convention moves the table fails rather than
+// drifts.
+pub const FACING_BASE_HOUR = 3;
+pub const FACING_COUNT     = 12;
+
+// The clock hour a neighbour direction points at.  Edge directions are the odd
+// hours; the even hours are the corner directions between them.
+pub fn dir_hour(d: integer) -> integer {
+  if d == DIR_E  { return 3; }
+  if d == 1      { return 9; }     // W
+  if d == DIR_NE { return 1; }
+  if d == DIR_NW { return 11; }
+  if d == 4      { return 5; }     // SE
+  7                                // SW
+}
+
+// Normalise any integer onto the twelve-position dial.  The parentheses are
+// load-bearing: `x ?? 0 + FACING_COUNT` binds as `x ?? (0 + FACING_COUNT)`, which
+// silently skips the wrap and leaves a negative facing negative.
+pub fn facing_norm(f: integer) -> integer {
+  m = (f % FACING_COUNT) ?? 0;
+  ((m + FACING_COUNT) % FACING_COUNT) ?? 0
+}
+
+// Is this facing a mirrored placement rather than a plain turn?
+pub fn facing_flipped(f: integer) -> boolean { (facing_norm(f) % 2 ?? 0) == 1 }
+
+// How many 60° turns this facing applies (after the flip, if any).
+pub fn facing_turns(f: integer) -> integer { (facing_norm(f) / 2) ?? 0 }
+
+// The hour this facing sits at on the dial.
+pub fn facing_hour(f: integer) -> integer {
+  n = facing_turns(f);
+  base = FACING_BASE_HOUR;
+  if facing_flipped(f) { base = FACING_BASE_HOUR + 1; }
+  h = (base + 2 * n) % 12 ?? 0;
+  if h == 0 { return 12; }
+  h
+}
+
+// The facing that sits at hour `h`, or -1 if `h` is not an hour.  Every hour
+// 1..12 is reachable now — the odd ones by turning, the even ones by flipping.
+pub fn hour_facing(h: integer) -> integer {
+  out = -1;
+  for f in 0..FACING_COUNT { if facing_hour(f) == h { out = f; } }
+  out
+}
+
+pub fn hour_text(h: integer) -> text { "{h} o'clock" }
+
+// How a facing reads in the UI: the hour, and whether it is mirrored.
+pub fn facing_text(f: integer) -> text {
+  if facing_flipped(f) { return "{hour_text(facing_hour(f))} mirrored"; }
+  hour_text(facing_hour(f))
+}
+
+// Turn a stencil to a dial position.  THE one place that knows a facing is a
+// mirror-then-rotate: every caller goes through here, so none of them can get the
+// order wrong or forget the flip on the odd hours.  Mirroring first and rotating
+// second is what makes the twelve alternate — the other order gives the same
+// twelve placements but walks the dial backwards.
+pub fn stencil_placed(st: Stencil, f: integer) -> Stencil {
+  if facing_flipped(f) { return stencil_rotate(stencil_mirror(st), facing_turns(f)); }
+  stencil_rotate(st, facing_turns(f))
+}
+
 pub const LAYER_ITEM = "item";
 pub const LAYER_ROT  = "rotation";
 
@@ -467,10 +587,15 @@ pub fn map_to_stencil(m: Map, cy: integer, q0: integer, r0: integer, w: integer,
         hexset_set(cells, cq, cr, true);
         height_set(hz, cq, cr, cell.h_height as float);
         label_set(lb, cq, cr, cell.h_material);
-        if cell.h_wall_n != 0  { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW), cell.h_wall_n); }
-        if cell.h_wall_ne != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE), cell.h_wall_ne); }
-        if cell.h_wall_se != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E),  cell.h_wall_se); }
       }
+      // Walls come from EVERY cell, occupied or not.  An edge is stored against
+      // one of its two cells, and for three of the six directions that owner is
+      // the neighbour — so the wall ringing a room is often held by the empty cell
+      // outside it.  Reading walls only from material-bearing cells drops those,
+      // silently and asymmetrically.
+      if cell.h_wall_n != 0  { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW), cell.h_wall_n); }
+      if cell.h_wall_ne != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE), cell.h_wall_ne); }
+      if cell.h_wall_se != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E),  cell.h_wall_se); }
     }
   }
   st = stencil_with_edges(cells, hz, lb, eg, true, true);
@@ -513,19 +638,29 @@ pub fn stencil_into_map(m: Map, st: Stencil, aq: integer, ar: integer, cy: integ
       cq = pq + iq;
       cr = pr + ir;
       if hexset_get(sc, cq, cr) {
-        map_paint_material(m, cq, cr, cy, label_get(sl, cq, cr));
-        map_set_height(m, cq, cr, cy, height_get(sz, cq, cr) as integer);
-        map_place_item(m, cq, cr, cy, layer_get(sy, LAYER_ITEM, cq, cr),
-                       layer_get(sy, LAYER_ROT, cq, cr));
-        wn = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW));
-        we = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE));
-        ws = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E));
-        if wn != 0 { map_set_wall_dir(m, cq, cr, cy, 0, wn); }
-        if we != 0 { map_set_wall_dir(m, cq, cr, cy, 1, we); }
-        if ws != 0 { map_set_wall_dir(m, cq, cr, cy, 2, ws); }
+        map_paint_material(m, cq, cr, cy, label_get(sl, cq, cr) as u8? ?? 0);
+        map_set_height(m, cq, cr, cy, height_get(sz, cq, cr) as u16? ?? 0);
+        map_place_item(m, cq, cr, cy, layer_get(sy, LAYER_ITEM, cq, cr) as u8? ?? 0,
+                       layer_get(sy, LAYER_ROT, cq, cr) as u8? ?? 0);
       }
+      // Walls go to EVERY cell in the window, not only the occupied ones — the
+      // wall around a room is owned by the empty cell outside it for three of the
+      // six directions.  Gating this on occupancy dropped 9 of the door house's 17
+      // walls, and did it symmetrically enough that no count ever noticed.
+      write_stamped_walls(m, se, cq, cr, cy);
     }
   }
+}
+
+// Copy the three canonically-owned edges of one cell out of a stamped EdgeSet.
+// Shared by both stamp paths so they cannot drift apart on which edges they carry.
+fn write_stamped_walls(m: Map, se: EdgeSet, cq: integer, cr: integer, cy: integer) {
+  wn = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW));
+  we = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE));
+  ws = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E));
+  if wn != 0 { map_set_wall(m, cq, cr, cy, 0, wn as u8? ?? 0); }
+  if we != 0 { map_set_wall(m, cq, cr, cy, 1, we as u8? ?? 0); }
+  if ws != 0 { map_set_wall(m, cq, cr, cy, 2, ws as u8? ?? 0); }
 }
 
 // ── Merge modes — Moros POLICY over the library's stamp ──────────────────
@@ -581,13 +716,28 @@ pub fn stencil_into_map_mode(m: Map, st: Stencil, aq: integer, ar: integer, cy: 
       here = hexset_get(sc, cq, cr);
       if hexset_get(cov, cq, cr) {
         cur = map_get_hex(m, cq, cr, cy);
-        smat = if here { label_get(sl, cq, cr) } else { 0 };
-        shgt = if here { height_get(sz, cq, cr) as integer } else { 0 };
-        sitm = if here { layer_get(sy, LAYER_ITEM, cq, cr) } else { 0 };
-        srot = if here { layer_get(sy, LAYER_ROT, cq, cr) } else { 0 };
-        swn = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW)) } else { 0 };
-        swe = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE)) } else { 0 };
-        sws = if here { edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E))  } else { 0 };
+        // THE NARROWING HAPPENS ONCE, HERE — and it is CHECKED. `as u8?` yields
+        // null when the value does not fit and `?? 0` names the fallback, so an
+        // out-of-range index becomes void rather than wrapping into a different
+        // palette entry. loft refuses the unchecked form outright, which is what
+        // turned "the documented widths are enforced nowhere" into a compile
+        // error at all 31 sites that had been storing unbounded integers.
+        //
+        // where hex_field's wider model meets
+        // the voxel. `Heights` is float and `Labels` is i32 by design (the format
+        // keeps the wider slot so a consumer can keep its own unit), and the
+        // voxel is the narrower one, so `L13`'s "the narrower one binds" is a
+        // real conversion at a real boundary rather than a silent store.
+        smat = (if here { label_get(sl, cq, cr) } else { 0 }) as u8? ?? 0;
+        shgt = (if here { height_get(sz, cq, cr) as integer } else { 0 }) as u16? ?? 0;
+        sitm = (if here { layer_get(sy, LAYER_ITEM, cq, cr) } else { 0 }) as u8? ?? 0;
+        srot = (if here { layer_get(sy, LAYER_ROT, cq, cr) } else { 0 }) as u8? ?? 0;
+        // Walls are NOT gated on occupancy: three of the six directions store the
+        // edge against the neighbour, so a room's wall is owned by the empty cell
+        // outside it.  Material and height stay gated — those really are per-cell.
+        swn = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW)) as u8? ?? 0;
+        swe = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE)) as u8? ?? 0;
+        sws = edge_mat(se, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E)) as u8? ?? 0;
 
         if mode == STAMP_REPLACE {
           cur.h_height = shgt; cur.h_material = smat;
@@ -610,6 +760,19 @@ pub fn stencil_into_map_mode(m: Map, st: Stencil, aq: integer, ar: integer, cy: 
         }
         map_set_hex(m, cq, cr, cy, cur);
       }
+    }
+  }
+
+  // The rim.  A wall on the boundary of the stencil can be owned by a cell just
+  // OUTSIDE the stamped footprint, which the loop above never visits — `cov` is
+  // the extent, and the owner is one step beyond it.  Those walls are added, never
+  // cleared: we are outside the footprint, so REPLACE has no business erasing
+  // anything here.
+  for iq in 0..pw {
+    for ir in 0..ph {
+      cq = pq + iq;
+      cr = pr + ir;
+      if !hexset_get(cov, cq, cr) { write_stamped_walls(m, se, cq, cr, cy); }
     }
   }
 }
