@@ -157,23 +157,30 @@ discovering at the last.
 ⚠ **S8–S10 are one mechanism only if P6 said so.** If P6 falsified, they are three, and that is a
 domain axis the design did not see — record it, do not force it.
 
-### Phase D — the shell *(built once, at W0; every later rung reuses it)*
+### Phase D — what a hills editor needs *(thick, and deliberately not general)*
 
-W0 is **thick**: functional before anything else starts. That means the shell is bought here, in
-full, and no rung after this one re-buys it.
+W0 is **thick and narrow**: fully functional for the very little it does. These steps build what
+**hills** need — not a shell designed against nine unbuilt rungs. Whether a piece turns out to be
+reusable shell or hills-specific is **W1's** finding, not W0's declaration.
+
+⚠ **The failure to avoid in this phase is generalising early.** One tool, one view, one storey, no
+selection, no palette of kinds, no second client. A `ToolDef` *table* is not built here — there is
+one tool, so a table would be a boundary drawn against imagined cases.
 
 | # | change | gate · control | why it is safe |
 |---|---|---|---|
 | **S11** | camera — orbit · pan · zoom · zoom-to-fit, on `moros_render`'s (cross-checked, then promoted) | ray → plane → hex round-trips to the picked cell. **Control:** perturb the projection → the round trip fails | promotion of tested math; the old camera stays until it is unused |
 | **S12** | picking + hover: the hex under the cursor highlights, click selects | picked cell equals `hex_field::hex_at` over **both parities × both signs**, 0 disagreements. **Control:** perturb one side → it fires | S13's cross-check made concrete; the loser is deleted in its own step |
-| **S13** | the panel: toolbar, palette region, status strip — `moros_ui`, promoted | `panel_build` + `route_click` drive from a `ToolDef` **table**, not an enum. **Control:** add a tool to the table and it appears with no panel edit | `moros_ui` is already the best-tested module (46/46 with its lock) |
+| **S13** | the panel: a toolbar with **one** button, a palette region, a status strip — `moros_ui`, promoted | the panel renders and routes a click to the height tool. **Control:** click the gap between widgets → routed to the world, not the tool. *(No tool table: one tool. The table is W1's, when a second case exists)* | `moros_ui` is already the best-tested module (46/46 with its lock) |
 | **S14** | the status readout — `q · r · cy · h` under the cursor, live | it tracks the hover cell. **Control:** move the cursor off the map → it must read *nothing*, not stale | display only |
 | **S15** | **undo granularity**: a drag is **one** journal entry, not forty | `batch_begin`/`batch_end` around a drag; one `Ctrl-Z` reverts the whole stroke. **Control:** omit the batch → undo takes forty presses, and the gate counts them | the journal already exists (S8); this is a bracket over it |
 | **S16** | save / load to a file, driven from the shell | `save → load → save` byte-identical **through the UI path**, not just the API. **Control:** `doc_write` twice to one path → `L12`'s append bites, so a fresh path per write | S9's gate, now exercised the way a person exercises it |
 
-**The shell is the amortisation.** If W1 (roads) is not markedly cheaper than W0, the shell leaked
-into the content — that is a **checkable prediction**, and its failure is the signal that D5's
-`ToolDef` boundary is wrong.
+**W1 is what turns this into a shell.** Roads bring the second tool, the first anchor kind and the
+first doorstep — and *that* is when the boundary between "shell" and "hills-specific" gets drawn,
+by two real cases. If W1 lands cheaply the guess fit; if W1 forces these steps to be reshaped, the
+shell has been **earned**. Both are success; generalising here in advance is the only failure,
+because it makes W1's change expensive and arguable instead of cheap and obvious.
 
 ### Phase E — W0's content: hills, thick
 
@@ -183,7 +190,7 @@ into the content — that is a **checkable prediction**, and its failure is the 
 | **S18** | brush sizes 1 / 7 / 19 (centre + rings) | brush 7 writes exactly 7 cells, and **one** journal entry. **Control:** a brush at a chunk boundary must still write 7, not 4 | one parameter over S17 |
 | **S19** | absolute vs relative mode; scroll ±1, shift+scroll ±6 | relative adds to each cell's own height. **Control:** relative on a sloped patch must preserve the slope, absolute must flatten it | a mode flag over S17 |
 | **S20** | terrain rendering with height shading, so the hills are legible | the S5 budget still holds at the stated size. **Control:** rebuild the whole scene per edit → the budget breaks | rendering only |
-| **S21** | the height palette panel: value, step buttons, **gradient preview** against the map's range | the preview's min/max track the visible cells. **Control:** raise a hill past the old max → the scale must move | display over S13 |
+| **S21** | the height palette: value, step buttons, **gradient preview** against the map's range — **built for heights, not as a generic palette** | the preview's min/max track the visible cells. **Control:** raise a hill past the old max → the scale must move | display over S13 |
 | **S22** | **W0 acceptance — use it.** Build a small landscape by hand, save, reload, undo through it | the frame budget holds *while editing*, undo returns byte-identically from any depth, and the file reloads exactly. **Control:** the session must be reproducible from its journal alone | no new mechanism; this is the rung's own proof |
 
 **S22 is the rung, not a formality.** Thick means the acceptance is *use*, and the number that

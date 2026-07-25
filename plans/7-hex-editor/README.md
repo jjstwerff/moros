@@ -603,14 +603,43 @@ done when picking it up is **fun**"* — and a thin rung never clears it, becaus
 saves"* is still a claim about a thing nobody used. Thin would reproduce, at smaller scale, exactly
 the failure this ladder exists to prevent.
 
-**Why the up-front cost is smaller than it looks: the shell is built once.** W0 pays for the whole
-editor *shell* — host, camera, picking, panel, status, undo batching, save/load, tool dispatch —
-because a functional hills editor needs all of it. Every rung after W0 adds only **a `ToolDef`, a
-content kind, an anchor kind and a render path**; none of them re-buys the shell. So the ladder's
-cost curve is front-loaded by design: W0 is the expensive rung and W1–W8 are each a fraction of
-it. That is the *"pays off in heaps later"*, stated as a shape rather than a hope — and it is
-checkable: **if W1 is not markedly cheaper than W0, the shell leaked into the content and the
-`ToolDef` boundary (D5) is wrong.**
+**And thick is only affordable because the rung is NARROW** *(user, same day: "that is also exactly
+why the first editor is so limited, otherwise we get constraints that pull us in too many different
+ways")*. The two are a pair, not a tension: **fully functional for the very little it does.** W0 is
+a *hills* editor — one tool, one view, one storey — built properly. It is not a general editor
+shell that happens to start with hills.
+
+> **W0 does not generalise, and that is the rule.** Build what hills needs, thickly. Do **not**
+> design a tool table against nine unbuilt tool kinds, a document against eight unbuilt content
+> kinds, or a panel against a palette nobody has. Those constraints come from rungs that do not
+> exist, and satisfying imagined ones is precisely how a design gets pulled in every direction at
+> once.
+
+**Generality is earned at W1, by a second real case.** When roads arrive and need a second tool,
+*then* the `ToolDef` boundary is decided — by two cases that exist, not nine that are guessed.
+That is this family's own rule, twice over: crawler's *"over-engineer only where others build on
+it… no — it is polish for one game, and it waits"*, and hexbody's *"the restrictions are M0's
+**output**, not its input — defining the admitted space first would presuppose exactly the bounds
+being sought."*
+
+**So which parts of W0 are shell and which are hills-specific is DISCOVERED, not declared.** The
+honest prediction is not *"W1 is cheap because the shell was already right"* — it is that **W1 is
+the case that decides the shell's shape.** If W1 lands cheaply, the guess fit; if W1 forces the
+shell to change, the shell has been *earned* rather than guessed. Both are success. The only
+failure is W0 having generalised in advance, because then the change W1 wants is expensive and
+argued instead of cheap and obvious.
+
+**What W0 deliberately does NOT have** — the fence that keeps it narrow:
+
+| not in W0 | earned at |
+|---|---|
+| a second tool, or a tool *table* | W1 — two cases decide the boundary |
+| multiple storeys (`cy` stays 0) | the rung that needs a floor above another |
+| selection, multi-select, copy/paste | the rung whose content is worth selecting |
+| materials, items, walls, stencils | W2–W4, each with its own content kind |
+| a 2-D top-down view beside the 3-D one | never, unless a consumer asks |
+| a protocol server or a second client | P1 — the window is the only client until then |
+| anchors of any kind | W1 — hills have none (§7's table says so) |
 
 It is also hexbody's own method, applied to content instead of to forms — the stencil census grew
 *"the smallest closed form, then longer sides, more sides, unequal sides, reflex corners, features,
