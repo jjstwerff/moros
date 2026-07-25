@@ -23,12 +23,15 @@
 //   →  1:                     ready — client is up, send the world
 //   →  2:<aspect>,             give me a camera for this viewport
 //   →  3:<dx>,<dy>             mouse drag — turn the character (and us with it)
+//   →  5:<+1|-1>               raise / lower the ground ahead of the character
+//   →  6:<0|1>                 levelling toggle — flatten the ground as you walk
 //   →  4:<keybits>             W=1 S=2 A=4 D=8, held (A/D turn). CHANGE only —
 //                              the walk integrates on the server's fixed tick,
 //                              so the client reports intent, never motion.
 // The outbound ids are NUMBERS because the server's event pump parses
 // `<int>:<payload>` and silently drops anything else as malformed.
-//   ←  M:<i>;r,g,b;f0,f1,…    mesh i: colour, then 6 floats/vertex (pos, normal)
+//   ←  M:<i>;<ramp>;r,g,b;…   mesh i; ramp=1 means colour it by height
+//   ←  G:lo rgb,hi rgb,lo y,hi y   the ground's height ramp
 //   ←  T:<i>;<16 model>       mesh i's placement — the ONLY thing a turn sends
 //   ←  X:<i>                  drop mesh i — a chunk left the draw distance
 //   ←  E:                     end of world
@@ -58,14 +61,20 @@ const FS = `#version 300 es
 precision highp float;
 in vec3 vNrm;
 in vec3 vWorld;
-uniform vec3 uColor, uFogCentre, uFogColor;
-uniform float uFogFrom, uFogTo;
+uniform vec3 uColor, uFogCentre, uFogColor, uRampLo, uRampHi;
+uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp;
 out vec4 frag;
 void main(){
   // One directional light, flat-shaded — the reference look: matte, no specular.
   vec3 L = normalize(vec3(0.35,0.80,0.45));
   float d = max(dot(normalize(vNrm), L), 0.0);
-  vec3 lit = uColor * (0.45 + 0.55*d);
+  // Height ramp: green low, brown high. The RULE (which colours, over which
+  // heights) came from the server as data; only the lerp happens here — the
+  // same split as the camera, where the solve is server-side and the multiply
+  // is not.
+  float g = clamp((vWorld.y - uRampY0) / max(uRampY1 - uRampY0, 0.001), 0.0, 1.0);
+  vec3 base = mix(uColor, mix(uRampLo, uRampHi, g), uUseRamp);
+  vec3 lit = base * (0.45 + 0.55*d);
   // HORIZONTAL distance only. Using the full 3-D distance would fog the ground
   // at your feet whenever the camera is high, because the fade is centred on
   // the character and the camera looks down at it.
@@ -94,6 +103,11 @@ const uFogCentre = gl.getUniformLocation(prog, 'uFogCentre');
 const uFogColor = gl.getUniformLocation(prog, 'uFogColor');
 const uFogFrom = gl.getUniformLocation(prog, 'uFogFrom');
 const uFogTo = gl.getUniformLocation(prog, 'uFogTo');
+const uRampLo = gl.getUniformLocation(prog, 'uRampLo');
+const uRampHi = gl.getUniformLocation(prog, 'uRampHi');
+const uRampY0 = gl.getUniformLocation(prog, 'uRampY0');
+const uRampY1 = gl.getUniformLocation(prog, 'uRampY1');
+const uUseRamp = gl.getUniformLocation(prog, 'uUseRamp');
 
 const IDENT = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 // A MAP, not an array: chunk ids are sparse coordinate encodings, and the world
@@ -105,11 +119,15 @@ let view = null, proj = null;
 // and the fog target are one value — two copies would drift and leave a ring at
 // the horizon where the fog stopped matching the sky.
 let fog = { c: [0,0,0], from: 1e9, to: 1e9, sky: [0.48, 0.55, 0.64] };
+let ramp = { lo: [0.42,0.50,0.30], hi: [0.46,0.38,0.26], y0: 0, y1: 6 };
 
 function addMesh(body) {
   const h = body.indexOf(';');
   const idx = Number(body.slice(0, h));
-  const rest = body.slice(h + 1);
+  let rest = body.slice(h + 1);
+  const f = rest.indexOf(';');
+  const ramp = Number(rest.slice(0, f));      // 1 = colour this mesh by height
+  rest = rest.slice(f + 1);
   const semi = rest.indexOf(';');
   const color = rest.slice(0, semi).split(',').map(Number);
   const data = new Float32Array(rest.slice(semi + 1).split(',').map(Number));
@@ -124,7 +142,7 @@ function addMesh(body) {
   gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
   gl.bindVertexArray(null);
   dropMesh(idx);           // replacing an id must free the old GPU buffers
-  parts.set(idx, { vao, vbo, count: data.length / 6, color, model: IDENT });
+  parts.set(idx, { vao, vbo, count: data.length / 6, color, ramp, model: IDENT });
 }
 
 // A chunk leaving the draw distance frees its GPU buffers. Without this the
@@ -157,9 +175,14 @@ function draw() {
     gl.uniform3fv(uFogColor, fog.sky);
     gl.uniform1f(uFogFrom, fog.from);
     gl.uniform1f(uFogTo, fog.to);
+    gl.uniform3fv(uRampLo, ramp.lo);
+    gl.uniform3fv(uRampHi, ramp.hi);
+    gl.uniform1f(uRampY0, ramp.y0);
+    gl.uniform1f(uRampY1, ramp.y1);
     for (const p of parts.values()) {
       gl.uniformMatrix4fv(uModel, false, p.model);
       gl.uniform3fv(uColor, p.color);
+      gl.uniform1f(uUseRamp, p.ramp ? 1.0 : 0.0);
       gl.bindVertexArray(p.vao);
       gl.drawArrays(gl.TRIANGLES, 0, p.count);
     }
@@ -182,12 +205,16 @@ ws.onmessage = (ev) => {
     if (p) p.model = new Float32Array(body.slice(k + 1).split(',').map(Number));
   }
   else if (tag === 'X') { dropMesh(Number(body)); }
+  else if (tag === 'G') {
+    const v = body.split(',').map(Number);
+    ramp = { lo: v.slice(0,3), hi: v.slice(3,6), y0: v[6], y1: v[7] };
+  }
   else if (tag === 'F') {
     const v = body.split(',').map(Number);
     fog = { c: v.slice(0, 3), from: v[3], to: v[4], sky: v.slice(5, 8) };
   }
   else if (tag === 'E') {
-    hud.textContent = 'drag or A/D to turn · W/S to walk';
+    hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {
@@ -223,11 +250,19 @@ cv.addEventListener('pointermove', (e) => {
 // position, no velocity, no delta-time. Movement is integrated on the server's
 // fixed tick, which is what makes the walk reproducible from an input log
 // instead of from whatever frame rate this tab happened to run at.
-const KEYS = { KeyW: 1, KeyS: 2, KeyA: 4, KeyD: 8,
-               ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8 };
+// Arrows are NOT movement any more — they shape the ground. W/S/A/D move.
+const KEYS = { KeyW: 1, KeyS: 2, KeyA: 4, KeyD: 8 };
 let held = 0;
 function sendKeys() { if (ws.readyState === 1) ws.send('4:' + held); }
+let level = false;
 addEventListener('keydown', (e) => {
+  if (e.code === 'ArrowUp')   { ws.send('5:1');  e.preventDefault(); return; }
+  if (e.code === 'ArrowDown') { ws.send('5:-1'); e.preventDefault(); return; }
+  if (e.code === 'KeyL') {
+    level = !level; ws.send('6:' + (level ? 1 : 0)); e.preventDefault();
+    hud.textContent = 'levelling ' + (level ? 'ON — walk to flatten' : 'off');
+    return;
+  }
   const b = KEYS[e.code]; if (!b || (held & b)) return;
   held |= b; e.preventDefault(); sendKeys();
 });

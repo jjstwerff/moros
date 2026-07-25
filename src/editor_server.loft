@@ -61,6 +61,48 @@ const FADE_FROM = 0.55;        // fade begins at this fraction of the distance
 // target. Two copies would drift and leave a visible ring at the horizon where
 // the fog stopped matching the sky — the same "two derivations of one value"
 // class as everything else here, just wearing a colour.
+// ── TERRAIN ────────────────────────────────────────────────────────────────
+// A hill is NOT stored as heights. It is stored as the handful of points you
+// raised, and the height of any cell is DERIVED by summing their falloffs.
+//
+// That is `L3` in its natural shape rather than an imposed one: layer 1 is a
+// few integers per peak — tiny, permanent, and exactly what you authored —
+// while the height field is layer 2, computed on demand for the cells in view
+// and never persisted. And it is why hills BLEND for free: two peaks near each
+// other sum, so a second raise beside a first makes one ridge rather than two
+// domes with a crease. Nothing merges them; there was never anything to merge.
+//
+// The peak lands PEAK_AHEAD hexes in front of the character and its influence
+// reaches PEAK_R — with PEAK_R < PEAK_AHEAD the ground you stand on is
+// untouched, so raising a hill can never push you into the air or bury you.
+const PEAK_AHEAD = 10;
+const PEAK_R = 7;
+const PEAK_STEP = 6;           // height units per key press (1.5 wu, ~1.3 m)
+
+// LEVELLING. A toggle that flattens the ground back as you walk, over a gentler
+// 5-hex reach. It needs no new representation: a level is a peak whose height
+// is MINUS whatever is already there, so the sum at that cell comes to nothing.
+//
+// Two properties fall out of expressing it that way rather than as a special
+// mode. It is IDEMPOTENT — over ground that is already flat the measured height
+// is 0, so the peak it drops is 0 and changes nothing, and walking the same
+// path twice cannot dig a trench. And it BLENDS, by the same falloff as a hill,
+// so the flattened path meets the hills beside it tangentially instead of
+// cutting a slot through them.
+const LEVEL_R = 5;
+
+// The ground's colour is a RAMP over height, sent as data: green at the bottom,
+// brown at the top. The rule is the model's, the interpolation is the client's
+// — the same split as the camera matrices, where the solve is here and only the
+// multiply is there.
+const GRASS_R = 0.42;
+const GRASS_G = 0.50;
+const GRASS_B = 0.30;
+const ROCK_R = 0.46;
+const ROCK_G = 0.38;
+const ROCK_B = 0.26;
+const RAMP_TOP = 24.0;         // height units at which the ground is fully rock
+
 const SKY_R = 0.48;
 const SKY_G = 0.55;
 const SKY_B = 0.64;
@@ -123,8 +165,11 @@ const TICK_US = 33000;
 //                     2:<aspect>,   a camera for this viewport
 //                     3:<dx>,<dy>   drag — turn the character (and us with it)
 //                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
+//                     5:<+1|-1>     raise / lower the ground ahead
+//                     6:<0|1>       levelling on/off — flatten as you walk
 //   server → client   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>   fog + sky
-//                     M:<i>;r,g,b;… mesh i
+//                     M:<i>;<ramp>;r,g,b;…  mesh i; ramp=1 colours it by height
+//                     G:<lo rgb>,<hi rgb>,<lo y>,<hi y>   the ground ramp
 //                     T:<i>;<16>    mesh i's placement
 //                     E:            end of world
 //                     C:<view>;<proj>
@@ -132,6 +177,16 @@ const MSG_READY = 1;
 const MSG_CAM = 2;
 const MSG_LOOK = 3;
 const MSG_KEYS = 4;
+const MSG_RAISE = 5;
+const MSG_LEVEL = 6;
+
+// One authored peak. This — a vector of these — is the whole terrain.
+struct Peak {
+  pq: integer,
+  pr: integer,
+  amp: integer,
+  rad: integer
+}
 
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
 // independently. Splitting it is also the shape `hex_entity` will formalise: a
@@ -200,14 +255,76 @@ fn body_mesh() -> Mesh {
   bm
 }
 
-// One chunk of ground. Flat for now — the height tool is W0's content step —
-// but the shape is already the right one: a function of the cell coordinate,
-// evaluated on demand, never stored.
-fn chunk_mesh(cx: integer, cz: integer) -> Mesh {
+// The height of a cell: every peak's contribution, summed.
+//
+// The falloff is `(1 - (d/R)^2)^2` — a smooth bump that reaches zero WITH ZERO
+// SLOPE at the rim. A linear cone would meet the flat ground at an angle and
+// leave a visible crease ring around every hill; this one lands tangent, so a
+// hill blends into the plain and into its neighbours without a seam to hide.
+//
+// The result is an INTEGER height unit, because `L13` makes moros's cell the
+// storage of record and its height is an integer at 0.25 wu. Quantising here
+// rather than at the mesh keeps the field the thing that is true.
+fn terrain_h(hq: integer, hr: integer, peaks: vector<Peak>) -> integer {
+  acc = 0.0;
+  for pk in peaks {
+    d = hex_distance(hq, hr, pk.pq, pk.pr);
+    if d < pk.rad {
+      t = (d as float) / (pk.rad as float) ?? 0.0;
+      f = 1.0 - t * t;
+      acc = acc + (pk.amp as float) * f * f;
+    }
+  }
+  acc as integer
+}
+
+// One chunk of ground, its heights derived from the peaks — WITH SKIRTS.
+//
+// ⚠ `emit_hex_surface` emits a flat top and no sides, so two neighbouring cells
+// at different heights leave a vertical gap you can see the sky through. The
+// first hill rendered as a shredded mess of floating slabs for exactly this
+// reason. `moros_render::build_hex_meshes` has the same hole — `emit_slope_face`
+// exists and nothing calls it — which is unsurprising: nothing in moros had ever
+// rendered a height difference, so no gate could have caught it.
+//
+// The neighbour and the edge corners MUST come from `hex_grid` as a pair.
+// moros_render's own comment records what a private direction table cost here:
+// it could not be parity-aware while `hex_to_world` staggers odd rows, so the
+// two disagreed — one unreachable neighbour and one direction pointing two hexes
+// out, in each parity.
+fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
   cm = mesh("chunk");
   for cr in cz * CHUNK..cz * CHUNK + CHUNK {
     for cq in cx * CHUNK..cx * CHUNK + CHUNK {
-      emit_hex_surface(cm, cq, cr, 0);
+      ch = terrain_h(cq, cr, peaks);
+      emit_hex_surface(cm, cq, cr, ch);
+      for cd in 0..6 {
+        // ⚠ QUALIFIED, not `use hex_grid;`. Adding it as a top-level import
+        // changed the dependency resolution set and broke `glb` — the same
+        // transitive-registry-dep failure that has `moros_ui` red (plan §10.1).
+        // A qualified call auto-loads the library without touching the set.
+        (nq, nr) = hex_grid::hex_neighbor(cq, cr, cd);
+        nh = terrain_h(nq, nr, peaks);
+        // Only the HIGHER cell emits the wall between them, so the face is
+        // written once. If both emitted, every step would be double-sided and
+        // z-fighting would show as a shimmering seam.
+        if nh < ch {
+          // ⚠ TWO CORNER ORDERS, and they wind opposite ways. `hex_edge_corners`
+          // returns indices in hex_grid's order; `hex_corner_world` takes them
+          // in moros_render's. moros_render's own comment records the map —
+          // "hex_grid owns the corner table. It walks the ring the other way,
+          // so this file's index i is its (6 - i) % 6" — and applies it
+          // internally, so a caller crossing the two must apply it too.
+          // Feeding one order's indices to the other's table drew skirts
+          // between corners that do not share an edge: walls the height of the
+          // hill spanning the whole cell, the first render's giant dark slabs.
+          (ea, eb) = hex_grid::hex_edge_corners(cd);
+          p1 = hex_corner_world(cq, cr, ch, (6 - ea) % 6);
+          p2 = hex_corner_world(cq, cr, ch, (6 - eb) % 6);
+          emit_slope_face(cm, p1, p2,
+                          (nh as float) * HEIGHT_SCALE, (ch as float) * HEIGHT_SCALE);
+        }
+      }
     }
   }
   cm
@@ -280,6 +397,11 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
 // The fade is centred on the CHARACTER, not the camera, because the culling is:
 // the server keeps chunks within `DRAW_HEXES` of where the character stands, so
 // centring the fade anywhere else would let the two disagree at the rim.
+fn ramp_wire() -> text {
+  "G:{GRASS_R},{GRASS_G},{GRASS_B},{ROCK_R},{ROCK_G},{ROCK_B},"
+    + "{0.0},{RAMP_TOP * 0.25}"
+}
+
 fn fog_wire(fx: float, fy: float, fz: float) -> text {
   fto = (DRAW_HEXES as float) * FADE_TO;
   "F:{fx},{fy},{fz},{fto * FADE_FROM},{fto},{SKY_R},{SKY_G},{SKY_B}"
@@ -326,11 +448,11 @@ fn main() {
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();
 
-  wire_body = "M:{PART_BODY};{mesh_wire(body, 0.80, 0.60, 0.45)}";
-  wire_leg_l = "M:{PART_LEG_L};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
-  wire_leg_r = "M:{PART_LEG_R};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
-  wire_arm_l = "M:{PART_ARM_L};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
-  wire_arm_r = "M:{PART_ARM_R};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
+  wire_body = "M:{PART_BODY};0;{mesh_wire(body, 0.80, 0.60, 0.45)}";
+  wire_leg_l = "M:{PART_LEG_L};0;{mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_leg_r = "M:{PART_LEG_R};0;{mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_arm_l = "M:{PART_ARM_L};0;{mesh_wire(arm, 0.80, 0.60, 0.45)}";
+  wire_arm_r = "M:{PART_ARM_R};0;{mesh_wire(arm, 0.80, 0.60, 0.45)}";
 
   // The character's state — the whole of it. It starts at the origin because an
   // infinite world has no middle.
@@ -355,6 +477,8 @@ fn main() {
   last_hq = 0;
   last_hr = 0;
 
+  peaks: vector<Peak> = [];
+  levelling = false;
   clients: vector<Client> = [];
   keys = 0;
   last_us = ticks();
@@ -366,7 +490,7 @@ fn main() {
   hn = hostname();
   if hn != "" { println("    http://{hn}:{port}/"); }
   println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
-  println("  drag to look · WASD to walk");
+  println("  drag or A/D to turn · W/S walk · ↑/↓ raise/lower ground {PEAK_AHEAD} hexes ahead");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
@@ -397,6 +521,7 @@ fn main() {
           srv.send_to(ev.cid, wire_arm_r);
           srv.send_to(ev.cid, "E:");
           srv.send_to(ev.cid, fog_wire(px, py, pz));
+          srv.send_to(ev.cid, ramp_wire());
           // A new client holds no chunks, so the stream has to start over for
           // everyone. Correct rather than clever: W0's job is to be right about
           // what is visible, and a per-client chunk set is the optimisation
@@ -432,6 +557,80 @@ fn main() {
           }
         } else if ev.msg_id == MSG_KEYS {
           keys = ev.payload as integer ?? 0;
+        } else if ev.msg_id == MSG_LEVEL {
+          levelling = (ev.payload as integer ?? 0) != 0;
+          println("editor: levelling {levelling}");
+        } else if ev.msg_id == MSG_RAISE {
+          dirn = ev.payload as integer ?? 0;
+          if dirn != 0 {
+            // Find the cell PEAK_AHEAD hexes along the facing. Stepped out and
+            // MEASURED with `hex_distance` rather than converted from a world
+            // radius: a hex step is 1.5 wu north–south and √3 east–west, so a
+            // fixed world radius would put the peak at a different hex distance
+            // depending on which way you happen to face.
+            tq = last_hq;
+            tr = last_hr;
+            found = false;
+            ky2 = cos(yaw); sy2 = sin(yaw);
+            // ⚠ The bound must cover the LONGEST hex step. A step is 1.5 wu
+            // north–south but √3 ≈ 1.732 east–west, so a search that walks out
+            // `PEAK_AHEAD * 1.5` wu reaches ten hexes northward and only nine
+            // eastward. The first version stepped to 14.5 wu and simply never
+            // hit distance 10 facing east — and its fallback was the initial
+            // value, the CHARACTER'S OWN CELL, so the hill rose underfoot and
+            // buried the camera. Silent fallbacks are the failure; this one
+            // refuses instead.
+            for si in 1..PEAK_AHEAD * 8 {
+              probe = world_to_hex(px + ky2 * (si as float) * 0.5,
+                                   pz + sy2 * (si as float) * 0.5);
+              if hex_distance(probe.ha_q, probe.ha_r, last_hq, last_hr) >= PEAK_AHEAD {
+                tq = probe.ha_q;
+                tr = probe.ha_r;
+                found = true;
+                break;
+              }
+            }
+            if !found {
+              println("editor: no cell at {PEAK_AHEAD} hexes ahead — refusing");
+            }
+            // Raising the same cell twice deepens ONE peak rather than stacking
+            // two — otherwise a held key would grow the list without bound and
+            // the derived height would drift from what the author thinks is there.
+            merged = !found;   // not found → nothing to place
+            for pk2 in peaks {
+              if !found { break; }
+              if pk2.pq == tq && pk2.pr == tr {
+                pk2.amp = pk2.amp + dirn * PEAK_STEP;
+                merged = true;
+              }
+            }
+            if !merged {
+              peaks += [Peak { pq: tq, pr: tr, amp: dirn * PEAK_STEP, rad: PEAK_R }];
+            }
+
+            // THE DIRTY REGION: a peak reaches PEAK_R, so only chunks touching
+            // that disk change. Everything else on screen is still correct and
+            // is not re-sent — the bounded, incremental re-derivation `L3` asks
+            // for, at the granularity the change actually has.
+            rebuilt = 0;
+            for lid in loaded {
+              if !found { break; }
+              for rcz in -CHUNK_R..CHUNK_R + 1 {
+                for rcx in -CHUNK_R..CHUNK_R + 1 {
+                  tc = chunk_of(tq, tr, CHUNK_SHIFT);
+                  if enc_coord(tc.cx + rcx, tc.cy + rcz) == lid
+                     && chunk_in_range(tc.cx + rcx, tc.cy + rcz, tq, tr) {
+                    rm = chunk_mesh(tc.cx + rcx, tc.cy + rcz, peaks);
+                    srv.broadcast("M:{lid};1;{mesh_wire(rm, GRASS_R, GRASS_G, GRASS_B)}");
+                    srv.broadcast("T:{lid};{mat_wire(mat4_identity())}");
+                    rebuilt = rebuilt + 1;
+                  }
+                }
+              }
+            }
+            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
+                    + "{len(peaks)} peaks, {rebuilt} chunks rebuilt");
+          }
         }
       }
     }
@@ -481,6 +680,30 @@ fn main() {
       have_hex = true;
       last_hq = hxa.ha_q;
       last_hr = hxa.ha_r;
+
+      // Levelling drops its counter-peak on entering a cell — once per hex, not
+      // per tick, so how fast you walk cannot change the shape of the ground you
+      // leave behind. The amplitude is measured from the terrain as it stands,
+      // which is what makes it idempotent: already flat measures 0 and does
+      // nothing.
+      if levelling {
+        cur_h = terrain_h(last_hq, last_hr, peaks);
+        if cur_h != 0 {
+          lmerged = false;
+          for lp in peaks {
+            if lp.pq == last_hq && lp.pr == last_hr && lp.rad == LEVEL_R {
+              lp.amp = lp.amp - cur_h;
+              lmerged = true;
+            }
+          }
+          if !lmerged {
+            peaks += [Peak { pq: last_hq, pr: last_hr, amp: 0 - cur_h, rad: LEVEL_R }];
+          }
+          // Everything the level reaches must be redrawn; `loaded` is rebuilt
+          // wholesale below anyway, so force it by clearing the set.
+          loaded = [];
+        }
+      }
       home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
       added = 0;
@@ -492,8 +715,8 @@ fn main() {
             seen = false;
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
-              cmesh = chunk_mesh(scx, scz);
-              srv.broadcast("M:{cid};{mesh_wire(cmesh, 0.42, 0.50, 0.30)}");
+              cmesh = chunk_mesh(scx, scz, peaks);
+              srv.broadcast("M:{cid};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               srv.broadcast("T:{cid};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
