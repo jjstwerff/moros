@@ -20,9 +20,13 @@
 // thing to catch in review, not a style note.
 //
 // Wire (text frames, `<tag>:<body>`):
-//   →  ready:                 client is up, send the world
-//   →  cam:<aspect>           give me a camera for this viewport
-//   ←  M:r,g,b;f0,f1,…        one mesh: colour, then 6 floats/vertex (pos, normal)
+//   →  1:                     ready — client is up, send the world
+//   →  2:<aspect>,             give me a camera for this viewport
+//   →  3:<dx>,<dy>             mouse drag — turn the character (and us with it)
+// The outbound ids are NUMBERS because the server's event pump parses
+// `<int>:<payload>` and silently drops anything else as malformed.
+//   ←  M:<i>;r,g,b;f0,f1,…    mesh i: colour, then 6 floats/vertex (pos, normal)
+//   ←  T:<i>;<16 model>       mesh i's placement — the ONLY thing a turn sends
 //   ←  E:                     end of world
 //   ←  C:<16 view>;<16 proj>  column-major matrices
 const cv = document.getElementById('gl');
@@ -33,9 +37,14 @@ if (!gl) { hud.textContent = 'no WebGL2'; throw new Error('no webgl2'); }
 const VS = `#version 300 es
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNrm;
-uniform mat4 uView, uProj;
+uniform mat4 uModel, uView, uProj;
 out vec3 vNrm;
-void main(){ vNrm = aNrm; gl_Position = uProj * uView * vec4(aPos,1.0); }`;
+void main(){
+  // The model matrix is a rigid placement (rotate + translate, no scale), so
+  // the same upper-3x3 transforms the normal — no inverse-transpose needed.
+  vNrm = mat3(uModel) * aNrm;
+  gl_Position = uProj * uView * uModel * vec4(aPos,1.0);
+}`;
 
 const FS = `#version 300 es
 precision highp float;
@@ -60,17 +69,22 @@ gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
 gl.linkProgram(prog);
 if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
 gl.useProgram(prog);
+const uModel = gl.getUniformLocation(prog, 'uModel');
 const uView = gl.getUniformLocation(prog, 'uView');
 const uProj = gl.getUniformLocation(prog, 'uProj');
 const uColor = gl.getUniformLocation(prog, 'uColor');
 
-const parts = [];          // {vao, count, color}
+const IDENT = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+const parts = [];          // index-addressed: {vao, count, color, model}
 let view = null, proj = null;
 
 function addMesh(body) {
-  const semi = body.indexOf(';');
-  const color = body.slice(0, semi).split(',').map(Number);
-  const data = new Float32Array(body.slice(semi + 1).split(',').map(Number));
+  const h = body.indexOf(';');
+  const idx = Number(body.slice(0, h));
+  const rest = body.slice(h + 1);
+  const semi = rest.indexOf(';');
+  const color = rest.slice(0, semi).split(',').map(Number);
+  const data = new Float32Array(rest.slice(semi + 1).split(',').map(Number));
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
   const vbo = gl.createBuffer();
@@ -81,7 +95,7 @@ function addMesh(body) {
   gl.enableVertexAttribArray(1);
   gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
   gl.bindVertexArray(null);
-  parts.push({ vao, count: data.length / 6, color });
+  parts[idx] = { vao, count: data.length / 6, color, model: IDENT };
 }
 
 function resize() {
@@ -100,6 +114,8 @@ function draw() {
     gl.uniformMatrix4fv(uView, false, view);
     gl.uniformMatrix4fv(uProj, false, proj);
     for (const p of parts) {
+      if (!p) continue;
+      gl.uniformMatrix4fv(uModel, false, p.model);
       gl.uniform3fv(uColor, p.color);
       gl.bindVertexArray(p.vao);
       gl.drawArrays(gl.TRIANGLES, 0, p.count);
@@ -110,17 +126,21 @@ function draw() {
 
 const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')
                          + location.host + '/ws');
-ws.onopen = () => { hud.textContent = 'connected'; ws.send('ready:'); };
+ws.onopen = () => { hud.textContent = 'connected'; ws.send('1:'); };
 ws.onclose = () => { hud.textContent = 'server closed'; };
 ws.onerror = () => { hud.textContent = 'socket error'; };
 ws.onmessage = (ev) => {
   const s = ev.data, c = s.indexOf(':');
   const tag = s.slice(0, c), body = s.slice(c + 1);
   if (tag === 'M') { addMesh(body); }
+  else if (tag === 'T') {
+    const k = body.indexOf(';');
+    const i = Number(body.slice(0, k));
+    if (parts[i]) parts[i].model = new Float32Array(body.slice(k + 1).split(',').map(Number));
+  }
   else if (tag === 'E') {
-    hud.textContent = `world: ${parts.length} meshes, `
-      + `${parts.reduce((a, p) => a + p.count, 0)} verts`;
-    ws.send('cam:' + (cv.clientWidth / cv.clientHeight));
+    hud.textContent = 'drag to look — the character turns with you';
+    ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {
     const [v, p] = body.split(';');
@@ -131,7 +151,24 @@ ws.onmessage = (ev) => {
 
 // Ask for a fresh camera when the viewport changes — the solve stays server-side.
 addEventListener('resize', () => {
-  if (ws.readyState === 1) ws.send('cam:' + (cv.clientWidth / cv.clientHeight));
+  if (ws.readyState === 1) ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
+});
+
+// Drag to look. The client sends PIXELS and nothing else — the sensitivity,
+// the pitch fence, the character's facing and the camera solve are all the
+// server's. A raw delta is an input event, not a model decision.
+let dragging = false, lastX = 0, lastY = 0;
+cv.addEventListener('pointerdown', (e) => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY; cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointerup', (e) => {
+  dragging = false; cv.releasePointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', (e) => {
+  if (!dragging || ws.readyState !== 1) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  if (dx || dy) ws.send('3:' + dx + ',' + dy);
 });
 requestAnimationFrame(draw);
 </script></body></html>

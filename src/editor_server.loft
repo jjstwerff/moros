@@ -20,6 +20,7 @@
 //
 // Run:  make serve-editor      (or: loft --lib lib/ src/editor_server.loft)
 use server;
+use web;          // sleep_ms — the idle tick of the manual connection pool
 use moros_map;
 use moros_render;
 
@@ -51,7 +52,9 @@ fn limb(fm: Mesh, cx: float, cz: float, y0: float, y1: float, w: float, d: float
                vec3(cx + w * 0.5, y1, cz + d * 0.5));
 }
 
-// Build the figure standing at (x, z) on ground y, facing +x.
+// Build the figure at the ORIGIN, facing +x. Its position and facing ride a
+// model matrix instead of being baked into the vertices — so turning it is one
+// matrix on the wire, not a re-emitted mesh.
 fn build_figure(x: float, y: float, z: float) -> Mesh {
   fig = mesh("figure");
   fh = figure_wu();
@@ -126,55 +129,69 @@ fn handle_http(req: server::Request) {
   }
 }
 
-// The model channel. The client says "ready" and we send the world once, then
-// a camera whenever it asks. No model state crosses the wire — only triangles
-// and matrices, which is the whole point.
-fn handle_ws(ws: server::WebSocket) {
-  println("editor: client connected");
+// THE WIRE, and why the client→server ids are NUMBERS.
+//
+// `lib/server`'s event pump parses an inbound frame as `<msg_id>:<payload>`
+// with an INTEGER id, and silently drops anything else as malformed — so the
+// earlier `ready:` / `cam:` text tags would have vanished without a trace the
+// moment this moved to the pump. Measured, not guessed: that is what the
+// library's own doc-comment says it does with a bad frame.
+//
+//   client → server   1:            ready — send me the world
+//                     2:<aspect>    give me a camera for this viewport
+//   server → client   M:r,g,b;…     one mesh   (the client parses these itself,
+//                     E:            end of world   so they stay readable tags)
+//                     C:view;proj   two matrices
+const MSG_READY = 1;
+const MSG_CAM = 2;
+const MSG_LOOK = 3;
 
-  ground = mesh("ground");
-  for gr in 0..PLANE_H {
-    for gq in 0..PLANE_W {
-      emit_hex_surface(ground, gq, gr, 0);
-    }
-  }
+// Each client keeps its own aspect ratio, so the projection is solved per
+// client — but yaw and pitch are ONE shared value, because there is one
+// character and it turns with the view. Two tabs therefore turn together,
+// which is the multi-client property being visible rather than claimed.
+struct Client {
+  cid: integer,
+  aspect: float
+}
 
-  // The figure stands in the middle of the plane, on the ground.
-  fx = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
-  fig = build_figure(fx.x, fx.y, fx.z);
+// Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
+// clamped rather than wrapped: past vertical the "behind the character" framing
+// stops meaning anything, so the camera refuses to go there.
+const LOOK_PER_PX = 0.0060;
+const PITCH_MIN = -0.20;
+const PITCH_MAX = 0.75;
 
-  while true {
-    raw = ws.next();
-    if raw == null { break; }
-    ci = raw.find(":");
-    if ci == null { continue; }
-    msg = raw[..ci];
-    body = raw[ci + 1..];
+// The figure's placement: translate to its cell, turn by the shared yaw.
+// `mat4_trs` is column-major with +x rotating toward +z as `ry` grows, so a
+// figure modelled facing +x faces (cos yaw, 0, sin yaw) once placed.
+fn figure_model(fx: Vec3, yaw: float) -> Mat4 {
+  mat4_trs(fx.x, fx.y, fx.z, yaw, 1.0, 1.0, 1.0)
+}
 
-    if msg == "ready" {
-      ws.send("M:{mesh_wire(ground, 0.42, 0.50, 0.30)}");
-      ws.send("M:{mesh_wire(fig, 0.80, 0.60, 0.45)}");
-      ws.send("E:");
-      println("editor: sent world — {len(ground.vertices)} ground verts, "
-              + "{len(fig.vertices)} figure verts");
-    } else if msg == "cam" {
-      // Over the shoulder, framed by hand rather than by `camera_follow` —
-      // measured: its default distance puts the figure at the size of a fence
-      // post, which is a follow-cam for a map overview, not an OTS shot.
-      //
-      // The framing: eye just behind and above the near shoulder, target a few
-      // steps AHEAD of the figure at chest height, so the figure sits low-left
-      // and the ground it is about to walk onto fills the frame. The figure
-      // faces +x, so "behind" is −x and "over the left shoulder" is +z.
-      asp = body as float ?? 1.6;
-      fh = figure_wu();
-      eye = vec3(fx.x - fh * 2.70, fx.y + fh * 1.40, fx.z + fh * 0.80);
-      tgt = vec3(fx.x + fh * 5.20, fx.y + fh * 0.40, fx.z - fh * 0.18);
-      ws.send("C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
-              + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}");
-    }
-  }
-  println("editor: client disconnected");
+// The over-the-shoulder solve, as an orbit that is ALWAYS behind the facing.
+// Camera and character share one yaw, so the camera cannot drift off the
+// character's back — there is no second value to keep in step.
+fn cam_wire(fx: Vec3, yaw: float, pitch: float, asp: float) -> text {
+  fh = figure_wu();
+  cy = cos(yaw); sy = sin(yaw);
+  cp = cos(pitch); sp = sin(pitch);
+  dist = fh * 2.90;
+  // Pivot at chest height; the shoulder offset is lateral to the facing, which
+  // is what makes it over-the-SHOULDER rather than straight down the spine.
+  px = fx.x + (0.0 - sy) * fh * 0.34;
+  pz = fx.z + cy * fh * 0.34;
+  py = fx.y + fh * 0.70;
+  // The eye orbits the pivot; the TARGET stays near the pivot rather than at a
+  // fixed point far ahead. Measured: with a distant target the eye rose with
+  // pitch while the aim did not, so past ~40° the character dropped out of
+  // frame entirely — a follow camera that loses what it follows. A short lead
+  // keeps the character framed at every admissible pitch and still shows the
+  // ground ahead, which is what the lead was for.
+  eye = vec3(px - cy * dist * cp, py + dist * sp, pz - sy * dist * cp);
+  tgt = vec3(px + cy * fh * 1.20, py + fh * 0.05, pz + sy * fh * 1.20);
+  "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
+    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
 }
 
 fn main() {
@@ -184,23 +201,97 @@ fn main() {
     println("editor: FAILED to listen on port {port}");
     return;
   }
+
+  // The world is built ONCE, at startup, and its wire form is cached — W0's
+  // world never changes, so re-serialising it per connection was pure waste.
+  // When the height tool lands this becomes "rebuild the dirty part", which is
+  // the incremental re-derivation obligation, not a rewrite of this shape.
+  ground = mesh("ground");
+  for gr in 0..PLANE_H {
+    for gq in 0..PLANE_W {
+      emit_hex_surface(ground, gq, gr, 0);
+    }
+  }
+  fx = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
+  fig = build_figure(0.0, 0.0, 0.0);
+  ground_wire = "M:0;{mesh_wire(ground, 0.42, 0.50, 0.30)}";
+  fig_wire = "M:1;{mesh_wire(fig, 0.80, 0.60, 0.45)}";
+
+  clients: vector<Client> = [];
+  yaw = 0.0;
+  pitch = 0.35;
+
   println("moros editor — W0 (a plane, and the reference figure)");
-  println("  listening on port {port}");
+  println("  world: {len(ground.vertices)} ground verts, {len(fig.vertices)} figure verts");
+  println("  listening on port {port}  — MULTI-CLIENT (open as many tabs as you like)");
   println("    http://localhost:{port}/");
   hn = hostname();
   if hn != "" { println("    http://{hn}:{port}/"); }
   println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
   println("             then open http://localhost:{port}/ in your own browser");
 
+  // The manual connection pool. `srv.run(on_event)` is the supported
+  // multi-client path but it does not surface HTTP requests, so a server that
+  // must serve its own page drives the pump itself: drain every pending event,
+  // then idle-sleep when a pass produced nothing. Same shape as the audience
+  // demo's `single_port_server.loft`, which documents the same reason.
   while true {
-    req = srv.next();
-    if req == null { continue; }
-    if req.path == "/ws" {
-      ws = server::ws_upgrade();
-      if ws == null { continue; }
-      handle_ws(ws);
-    } else {
-      handle_http(req);
+    work = 0;
+    while true {
+      ev = srv.poll_event();
+      if ev == null { break; }
+      work = work + 1;
+      if ev.http {
+        if ev.path == "/" || ev.path == "/index.html" {
+          srv.respond_html(read_index());
+        } else {
+          srv.respond_404();
+        }
+      } else if ev.connected {
+        println("editor: client {ev.cid} connected");
+      } else if ev.message {
+        if ev.msg_id == MSG_READY {
+          srv.send_to(ev.cid, ground_wire);
+          srv.send_to(ev.cid, fig_wire);
+          srv.send_to(ev.cid, "T:0;{mat_wire(mat4_identity())}");
+          srv.send_to(ev.cid, "T:1;{mat_wire(figure_model(fx, yaw))}");
+          srv.send_to(ev.cid, "E:");
+          println("editor: client {ev.cid} — world sent");
+        } else if ev.msg_id == MSG_CAM {
+          ci = ev.payload.find(",");
+          if ci != null {
+            asp = ev.payload[..ci] as float ?? 1.6;
+            known = false;
+            for cl in clients {
+              if cl.cid == ev.cid { cl.aspect = asp; known = true; }
+            }
+            if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
+            srv.send_to(ev.cid, cam_wire(fx, yaw, pitch, asp));
+            srv.send_to(ev.cid, "T:1;{mat_wire(figure_model(fx, yaw))}");
+          }
+        } else if ev.msg_id == MSG_LOOK {
+          // A drag turns the CHARACTER, and the camera follows it round —
+          // "behind" is a property of the facing, not a free orbit. So yaw is
+          // the one value that moves and both the camera and the figure are
+          // derived from it; they cannot drift apart because there is nothing
+          // to keep in sync.
+          di = ev.payload.find(",");
+          if di != null {
+            dx = ev.payload[..di] as float ?? 0.0;
+            dy = ev.payload[di + 1..] as float ?? 0.0;
+            yaw = yaw + dx * LOOK_PER_PX;
+            pitch = pitch + dy * LOOK_PER_PX;
+            if pitch < PITCH_MIN { pitch = PITCH_MIN; }
+            if pitch > PITCH_MAX { pitch = PITCH_MAX; }
+            fig_t = "T:1;{mat_wire(figure_model(fx, yaw))}";
+            for lc in clients {
+              srv.send_to(lc.cid, cam_wire(fx, yaw, pitch, lc.aspect));
+              srv.send_to(lc.cid, fig_t);
+            }
+          }
+        }
+      }
     }
+    if work == 0 { web::sleep_ms(2); }
   }
 }
