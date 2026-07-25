@@ -30,7 +30,8 @@ duplication seam rule 5 forbids.
 | 8 | the gait — phase from **distance walked** | leg/arm swing derived from travel, never accumulated per frame | the same discipline `hex_body::wheel_value` uses for a rolling wheel; it is what stops feet skating, and it survived the walk speed doubling untouched | a character library (`hex_body` is rigs; this is authored motion, which `SPEC` **L5** puts on the consumer's side — so its own home) |
 | 9 | the wall/EdgeSet bridge *(not yet written)* | moros's three wall bytes per cell → an `EdgeSet`, **halo included** | three of six directions store the edge against the *neighbour*, so a loop over occupied cells drops every rim wall — the measured 17-stamped-as-8 bug | **`moros_map`**, then converge with `hex_field`'s `doc_write_edges` |
 | 10 | the mesh wire (`mesh_wire`, `mat_wire`) | mesh + matrices as text frames | any server/client renderer split needs it, and text is already the suspected bottleneck — a binary form belongs in a shared place, written once | a scene/protocol library |
-| 11 | `world_save` / `world_load` | the authored set to and from a file | **`hex_field` already has `doc_write_all` / `doc_read`** with tagged sections. Ours is local only because peaks are not a field; the moment they are expressible as a section this must converge | **`hex_field`** |
+| 11 | ~~`world_save` / `world_load`~~ | ~~the authored set to and from a file~~ | **WITHDRAWN — the premise was wrong.** It saved *peaks*; `L13` makes the **voxel** the storage of record, and voxel chunks are precisely what `hex_field`'s `doc_write_all`/`doc_read` already carry. So there is nothing to migrate: the local format is deleted, not promoted | **`hex_field`, by deletion** |
+| 12 | the peak **brush** (falloff + blend) | a raise writes heights into cells within a radius, summing with what is there | the brush survives the correction; only the storage changed. Any height-field editor wants a falloff brush that blends rather than replaces | a terrain-editing library, beside #6 |
 
 ## The rule that keeps this honest
 
@@ -42,6 +43,13 @@ duplication seam rule 5 forbids.
 2. **When a routine gets a second consumer, it moves.** That is the family's own bar
    (`EDITOR_SUBSTRATE` DoD clause 4: a package extracted against exactly one caller has not
    been shown to be general). Until then, local is the honest place for it.
+
+⚠ **Row 11 is the shape of the whole risk, and it is worth reading twice.** It
+was written locally, listed here as a candidate to promote — and it should never
+have existed, because the library already held the answer and the *premise* was
+wrong (peaks are not the world; voxels are). A candidates list makes a local
+routine visible; it does not make it correct. The question to ask before adding a
+row is not "where will this go?" but **"why is this not already somewhere?"**
 
 ⚠ **The one that is already a real divergence is #7.** `gridmesh` ships dirty-region tracking
 and we wrote a second one. It was the right call under time — ours is ~30 lines against a
