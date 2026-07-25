@@ -771,14 +771,17 @@ becoming five prototypes.
 5. **`map_set_wall_dir` directions 3/4/5 use parity-blind neighbour arithmetic** — #3, live code.
 6. **loft's `73-universal-editor` states `hex_grid` is flat-top**; the shipped one is pointy-top
    odd-r. Raise it there — the doc, not the code, is wrong.
-7. **`collide.loft` tunnels** — `move_blocked` tests start-hex vs end-hex only; a step crossing two
+7. **No stale-construction defects found** — `C86` H-Copy, `H5`, `H6` and cross-package duplicate
+   names are all **measured absent** (`SALVAGE.md` §2b). The cleanup work is duplication against
+   the shipped libraries, not repair. Keeping it absent is `toolchain.loft`'s job, armed at S3b.
+8. **`collide.loft` tunnels** — `move_blocked` tests start-hex vs end-hex only; a step crossing two
    boundaries yields `edge_direction = -1` → *open*. The fix is `hex_edge::sweep_path`, not a
    patch. **W2.**
-8. **`edge_direction`'s S/SW/NW deltas are parity-blind** on offset coordinates — same class as #5,
+9. **`edge_direction`'s S/SW/NW deltas are parity-blind** on offset coordinates — same class as #5,
    and it is on the live collision path. **W2.**
-9. **Collision is hard-coded to `cy = 0`** in `floor_y_at` and `blocked_by_wall`, against seam
+10. **Collision is hard-coded to `cy = 0`** in `floor_y_at` and `blocked_by_wall`, against seam
    rule 4 (*multi-layer is first-class, not opt-in*). **W2.**
-10. **`player_physics.loft` cannot detect any of 7–9**: both probes use `make_flat_map()`, a map
+11. **`player_physics.loft` cannot detect any of 8–10**: both probes use `make_flat_map()`, a map
     with **no walls**, so `test_frame_rate_independence` is structurally blind to tunnelling. The
     fixture is the defect. **W2.**
 

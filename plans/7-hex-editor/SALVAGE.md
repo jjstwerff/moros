@@ -19,8 +19,8 @@ and the gate it must pass to get one.**
 
 ## 1. The admission test — what "hexbody rigor" means, concretely
 
-Five questions, all five earned by a specific defect in this family. A routine is admitted when it
-answers all five, and **question 3 is the one that fails most of moros's current suite.**
+Six questions, each earned by a specific defect in this family. A routine is admitted when it
+answers all six, and **question 3 is the one that fails most of moros's current suite.**
 
 | # | question | the defect that earned it |
 |---|---|---|
@@ -29,6 +29,7 @@ answers all five, and **question 3 is the one that fails most of moros's current
 | **3** | **Can the fixture express the failure at all?** | `map_to_stencil` dropped 9 of 17 walls under a green suite because every palette stencil was **rotationally symmetric** — *a symmetric subject cannot detect a symmetric bug*. Its live twin: `player_physics.loft` tests collision on a map with **no walls** |
 | **4** | Is the comparison **exact** where the domain is exact — bytes, counts, integers, no ε? | `P4`: an ε in an R1 comparison means the admitted space is wider than the map is injective on |
 | **5** | Is it measured over the **whole** thing — both parities, both signs, halo included, no unchecked window? | `L10`, plus four separate parity bugs: `(r % 2)` for `(r & 1)`, a direction table that could not be parity-aware, an axial neighbour list on offset coordinates, negative indices that wrap |
+| **6** | Does it still **mean what it meant when it was written**? | the language moved underneath it. `hex_terrain 0.1.0` passes review and **fails its own test on current loft** — it uses the plain-bind write-through idiom that now **copies** (`C86` H-Copy), so it *silently computes a wrong answer*. A green suite on a stale idiom is worse than a red one |
 
 **The exemplar already exists on our side.** `moros_map/tests/clock.loft` measures twelve distinct
 placements with an **off-axis** marker and keeps the six-way collapse as an explicit negative
@@ -106,6 +107,48 @@ is not; rebuild on validated primitives. · **DELETE** — superseded by somethi
 
 ---
 
+## 2b. Cleaning — duplicates, stale constructions, and what the survey actually found
+
+*(user, 2026-07-25: "a part of our work will be cleaning moros code — of duplicates, broken
+constructions in the latest loft, parts we use and thus extract")*
+
+Three cleanup categories. Two were already in this file (duplicates are §2's **DELETE** rows;
+extraction-driven cleanup is its **SPLIT** rows). The third — **stale constructions** — is new, and
+it is the dangerous one, because it produces *silent wrong answers under a green suite*.
+
+**So it was surveyed rather than assumed, and the result is better than expected.**
+
+| class | what it looks like | moros, measured 2026-07-25 |
+|---|---|---|
+| **`C86` H-Copy** — a whole-value bind, then mutation through the local | `d = self.data; d[i] = …` — the failure that made loft's *whole software rasterizer silently draw nothing* | **absent.** Zero indexed assignments on a local; every heap-field bind in `src/` is a **scalar** read (`q = addr.ha_q`, `cx = pos.x`); and every `map_*` mutator is read-modify-**write-back**, which is the idiom that survives C86 |
+| in-place mutation through a plain parameter (`m: Map`, not `&Map`) | `m.m_chunks[i] = …` | **supported, not a defect.** `OWNERSHIP_MODEL` is explicit: *heap in-place mutate (`o.field = x`, `o.v[i] = y`) writes through*. `&` is needed only for a **bound local**, which is why `hex_world`'s `self: &World` and moros's `m: Map` are both correct |
+| **`H5`** — two `for _ in` in one function | the outer loop silently runs **once** | **absent.** The measured trigger is *nested* binders; moros's only two same-function pairs are **sequential**, and a probe confirms both run in full (`a=60 b=120`) |
+| **`H6`** — chaining a struct-returning call | the result comes back empty | **absent** — zero chained calls in `src/` |
+| duplicate `pub fn` across packages | two homes for one name | **absent** — zero |
+
+**[measured] The honest headline: moros's code is not rotten against current loft.** The cleanup
+work is therefore *not* a repair job — it is (a) the **DELETE** rows, which are duplication against
+the shipped `hex_*` libraries rather than internal duplication, (b) the **SPLIT** rows, and (c)
+keeping the absence true.
+
+**And (c) needs an instrument, which already exists here.** `moros_render/tests/adversarial.loft`
+is a **loft language probe suite** — unary minus on float, closure-over-`&Mesh`, iterator over
+`vector<Vec3>`, `is Variant { f }` dispatch, match-on-struct-enum returning a value, deep chaining
+on vector element fields — written because *"the conservative code avoided"* those constructions.
+§2 marks it **KEEP, and rename**: it is misfiled under a name implying adversarial *geometry*, and
+it is the right seed for a **standing toolchain canary**.
+
+| | |
+|---|---|
+| **rename** | `adversarial.loft` → `toolchain.loft`, stated as *"the constructions this codebase relies on, pinned against the current loft"* |
+| **extend** | one probe per construction the survey above cleared, so the next loft bump turns *this* red instead of turning a wrong answer green |
+| **gate** | it runs in `make edit-test` (the standalone suite, D2) — a language regression is caught by the editor's own loop, not by a consumer's |
+| **control** | pin a construction the current loft has already changed (`C86`'s bind-then-mutate) and confirm it goes **red** — a canary that cannot fire is not a canary |
+
+⚠ **The absence is a snapshot, not a property.** All five rows above were true on the loft installed
+today; none is guaranteed tomorrow, and question **6** exists because a stale idiom is invisible to
+questions 1–5. The canary is what turns a one-day survey into a standing check.
+
 ## 3. The promotion protocol — the exact steps for one routine
 
 Run per routine, never per module. Steps 2 and 3 are the ones that are skipped under pressure, and
@@ -139,13 +182,14 @@ they are the whole point.
 | **W6** decorative elements | `emit_item_placeholder` · `emit_cylinder_post` → `hex_entity` · `dev_art_color`/`material_swatch` → `moros_kit` | props are where sub-cell placement and the palette both land |
 | **W7** vehicles | `avatar` emitters → `hex_entity` | the first posed bodies; the avatar is the simplest one |
 | **W8** routines | spawn/waypoint **SPLIT** completes — anchor → `hex_anchor`, table → `moros_kit` | the payload-bearing anchors are authored here |
-| any rung | `adversarial.loft` **rename** to a toolchain canary | independent and cheap |
+| **S3b**, with the standalone suite | `adversarial.loft` → **`toolchain.loft`**, extended and gated (§2b) | the canary belongs in the loop that runs every day, armed before new code can rot |
 
 ---
 
 ## 5. What this ledger says, counted
 
-**39 routines adjudicated: 12 PROMOTE, 8 RE-DERIVE, 6 DELETE, 7 KEEP, 6 SPLIT.**
+**39 routines adjudicated: 12 PROMOTE, 8 RE-DERIVE, 6 DELETE, 7 KEEP, 6 SPLIT** — plus §2b's
+toolchain survey, which found **no stale-construction defects at all**.
 
 Two readings worth carrying:
 
