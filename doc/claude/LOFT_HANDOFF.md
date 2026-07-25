@@ -361,6 +361,63 @@ person to compose a struct transform in a loop will meet it again.
 
 ---
 
+
+## H7 — a vector accumulated through a helper INSIDE A LOOP keeps one element
+
+**Status:** not filed · **Repo:** `loft-lang/loft`
+**Severity:** high — silent wrong answer, no error, no warning
+**Suggested title:** `vectors: \`acc = grow(acc, x)\` inside a \`for\` loop discards all but one append`
+
+### Minimal reproducer
+
+```loft
+fn add_i(v: vector<integer>, x: integer) -> vector<integer> {
+  out = v;
+  out += [x];
+  out
+}
+
+fn main() {
+  a: vector<integer> = [];
+  for k in [10, 20, 30] { a = add_i(a, k); }
+  println("{len(a)}");        // prints 1 — should be 3
+}
+```
+
+No diagnostic of any kind.
+
+### It is specifically the LOOP
+
+Measured, all other shapes correct (each expecting 3):
+
+| shape | result |
+|---|---|
+| `for k in […] { a = add_i(a, k); }` | **1** |
+| three explicit `b = add_i(b, …)` statements | 3 |
+| inline `c += [k]` inside the loop, no helper | 3 |
+| a fresh variable per step (`d2 = add_i(d, 1); d3 = add_i(d2, 2); …`) | 3 |
+
+So it is **reassigning the same variable from a returning helper, inside a loop
+body**. Outside a loop the identical calls accumulate correctly.
+
+Element type does not matter — reproduced with `vector<integer>` and with a
+`vector<Struct>`. And appending to the **parameter** instead of a bound copy
+(`fn add(v: …) { v += […]; v }`) is worse: that shape returns **0**.
+
+### Why it matters
+
+`acc = step(acc, x)` in a loop is the ordinary way to fold a collection when the
+step needs a name, and the failure is a plausible-looking short answer rather
+than a crash. It cost a real defect here: a dirty-chunk set built this way marked
+**1 of 48** chunks, so a world reload rebuilt one chunk and left the rest stale —
+correct-looking terrain that was simply out of date.
+
+### Workaround in use
+
+Put the accumulator in a struct and mutate the field, which writes through
+(`OWNERSHIP_MODEL` — heap in-place mutate); or inline the append at the call site.
+
+
 ## Cross-reference
 
 | Topic | Where |

@@ -184,6 +184,8 @@ const TICK_US = 33000;
 //                     5:<+1|-1>     raise / lower the ground ahead
 //                     6:<0|1>       levelling on/off — flatten as you walk
 //                     7:<x>,<z>,<yaw>   place the character outright
+//                     8:<name>      save the world
+//                     9:<name>      load the world (empty name = new/empty)
 //   server → client   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>   fog + sky
 //                     M:<i>;<ramp>;r,g,b;…  mesh i; ramp=1 colours it by height
 //                     G:<lo rgb>,<hi rgb>,<lo y>,<hi y>   the ground ramp
@@ -206,6 +208,8 @@ const MSG_LEVEL = 6;
 // speed doubled, two of them failed against working code. A gate for the ground
 // should state where the character IS, not walk it there and hope.
 const MSG_PLACE = 7;
+const MSG_SAVE = 8;
+const MSG_LOAD = 9;
 
 // One authored peak. This — a vector of these — is the whole terrain.
 struct Peak {
@@ -214,6 +218,65 @@ struct Peak {
   amp: integer,
   rad: integer
 }
+
+// ── PERSISTENCE ────────────────────────────────────────────────────────────
+// What is saved is the AUTHORED SET — the peaks — and nothing derived. The
+// meshes, the corner heights, the normals are all layer 2 and are rebuilt from
+// the peaks on load, so a save cannot contain a half-built mesh and stays small
+// however far the world runs: an infinite world's CONTENT is bounded even when
+// its extent is not.
+//
+// ⚠ LOCAL ON PURPOSE, and recorded (plans/7-hex-editor/LIBRARY-CANDIDATES.md
+// #11). `hex_field` already ships `doc_write_all` / `doc_read` with tagged
+// sections that a newer writer can extend and an older reader skips by length —
+// which is where this belongs. It is here only because a peak list is not a
+// FIELD, so it has no section to ride yet; the moment it does, this converges
+// rather than persisting as a second format.
+const WORLD_MAGIC = 1213486160;    // 'HXW0'
+const WORLD_VERSION = 1;
+
+fn world_path(name: text) -> text {
+  "{source_dir()}/../worlds/{name}.hxw"
+}
+
+fn world_save(name: text, peaks: vector<Peak>) -> integer {
+  f = file(world_path(name));
+  f#format = LittleEndian;
+  f += (WORLD_MAGIC as i32);
+  f += (WORLD_VERSION as i32);
+  f += (len(peaks) as i32);
+  for wp in peaks {
+    f += (wp.pq as i32);
+    f += (wp.pr as i32);
+    f += (wp.amp as i32);
+    f += (wp.rad as i32);
+  }
+  len(peaks)
+}
+
+// Returns the peaks, or an empty list when the file is absent or not ours.
+// A refusal is data: an unreadable world opens as an empty one rather than
+// half-loading, which is the same never-half-populated rule `map_read_field`
+// states for the field format.
+fn world_load(name: text) -> vector<Peak> {
+  out: vector<Peak> = [];
+  f = file(world_path(name));
+  if f.format == Format.NotExists { return out; }
+  f#format = LittleEndian;
+  magic = f#read as i32;
+  ver = f#read as i32;
+  if magic != WORLD_MAGIC || ver != WORLD_VERSION { return out; }
+  n = f#read as i32;
+  for _ in 0..n {
+    lq = f#read as i32;
+    lr = f#read as i32;
+    la = f#read as i32;
+    ld = f#read as i32;
+    out += [Peak { pq: lq, pr: lr, amp: la, rad: ld }];
+  }
+  out
+}
+
 
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
 // independently. Splitting it is also the shape `hex_entity` will formalise: a
@@ -243,6 +306,18 @@ struct DirtyChunk {
   id: integer,
   cx: integer,
   cz: integer
+}
+
+// ⚠ The set is wrapped in a struct and MUTATED IN PLACE, never accumulated by
+// `dirty = mark(dirty, …)`. That returning-helper shape is broken in loft inside
+// a loop — it keeps ONE element and reports no error (filed as H7 in
+// doc/claude/LOFT_HANDOFF.md, minimal reproducer there). It cost exactly this
+// routine: marking 48 loaded chunks produced a set of 1, so a world reload
+// rebuilt one chunk and left the rest stale — correct-looking terrain that was
+// simply out of date. Field mutation on a heap value writes through, so this
+// shape is both correct and the documented idiom.
+struct DirtySet {
+  items: vector<DirtyChunk>
 }
 
 // Each client keeps its own aspect ratio, so the projection is solved per
@@ -531,9 +606,16 @@ fn chunk_in_range(cx: integer, cz: integer, hq: integer, hr: integer) -> boolean
 // Mark every chunk a change at (mq, mr) reaching `reach` hexes can touch.
 // Idempotent — marking the same place twice adds nothing, so a caller may mark
 // freely without tracking what it has already marked.
-fn mark_dirty(dirty: vector<DirtyChunk>, mq: integer, mr: integer,
-              reach: integer) -> vector<DirtyChunk> {
-  out = dirty;
+// Mark a chunk that is already known by id — used when EVERYTHING is dirty (a
+// world load), so the one flush path still owns the rebuild.
+fn mark_dirty_id(d: DirtySet, cid: integer) {
+  for dz in d.items { if dz.id == cid { return; } }
+  cx = (cid / 2097152 ?? 0) - 1048576;
+  cz = (cid % 2097152 ?? 0) - 1048576;
+  d.items += [DirtyChunk { id: cid, cx: cx, cz: cz }];
+}
+
+fn mark_dirty(d: DirtySet, mq: integer, mr: integer, reach: integer) {
   mc = chunk_of(mq, mr, CHUNK_SHIFT);
   span = (reach / CHUNK ?? 0) + 1;
   for dz in 0 - span..span + 1 {
@@ -543,12 +625,11 @@ fn mark_dirty(dirty: vector<DirtyChunk>, mq: integer, mr: integer,
       if chunk_within(ccx, ccz, mq, mr, reach) {
         cid = enc_coord(ccx, ccz);
         seen = false;
-        for dc in out { if dc.id == cid { seen = true; } }
-        if !seen { out += [DirtyChunk { id: cid, cx: ccx, cz: ccz }]; }
+        for dc in d.items { if dc.id == cid { seen = true; } }
+        if !seen { d.items += [DirtyChunk { id: cid, cx: ccx, cz: ccz }]; }
       }
     }
   }
-  out
 }
 
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
@@ -689,7 +770,7 @@ fn main() {
   peaks: vector<Peak> = [];
   levelling = false;
   level_h = 0;                 // the frozen foot height, in height units
-  dirty: vector<DirtyChunk> = [];
+  dirty = DirtySet { items: [] };
   clients: vector<Client> = [];
   keys = 0;
   last_us = ticks();
@@ -768,6 +849,21 @@ fn main() {
           }
         } else if ev.msg_id == MSG_KEYS {
           keys = ev.payload as integer ?? 0;
+        } else if ev.msg_id == MSG_SAVE {
+          nsaved = world_save(ev.payload, peaks);
+          srv.send_to(ev.cid, "S:saved {nsaved} peaks to {ev.payload}");
+          println("editor: saved {nsaved} peaks -> {ev.payload}");
+        } else if ev.msg_id == MSG_LOAD {
+          peaks = world_load(ev.payload);
+          // Everything visible is derived from the peaks, so a load invalidates
+          // all of it — this is the one case where the whole loaded set really
+          // is dirty, and saying so through the same routine keeps one path.
+          for ldc in loaded { mark_dirty_id(dirty, ldc); }
+          println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
+          py = terrain_y(px, pz, peaks);
+          moved = true;
+          srv.send_to(ev.cid, "S:loaded {len(peaks)} peaks from {ev.payload}");
+          println("editor: loaded {len(peaks)} peaks <- {ev.payload}");
         } else if ev.msg_id == MSG_PLACE {
           pi = ev.payload.find(",");
           if pi != null {
@@ -868,9 +964,9 @@ fn main() {
             // that disk change. Everything else on screen is still correct and
             // is not re-sent — the bounded, incremental re-derivation `L3` asks
             // for, at the granularity the change actually has.
-            if found { dirty = mark_dirty(dirty, tq, tr, PEAK_R); }
+            if found { mark_dirty(dirty, tq, tr, PEAK_R); }
             println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
-                    + "{len(peaks)} peaks, {len(dirty)} chunks dirty");
+                    + "{len(peaks)} peaks, {len(dirty.items)} chunks dirty");
           }
         }
       }
@@ -929,10 +1025,10 @@ fn main() {
     // One place rebuilds. A chunk that is dirty but not on screen is simply
     // dropped from the set: it will be built from the current peaks when it next
     // comes into range, so remembering it would be work with no observer.
-    if len(dirty) != 0 {
+    if len(dirty.items) != 0 {
       t_flush = ticks();
       nrebuilt = 0;
-      for dc2 in dirty {
+      for dc2 in dirty.items {
         live = false;
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
@@ -942,7 +1038,7 @@ fn main() {
           nrebuilt = nrebuilt + 1;
         }
       }
-      dirty = [];
+      dirty.items = [];
       if nrebuilt != 0 {
         println("editor: rebuilt {nrebuilt} chunks in "
                 + "{(ticks() - t_flush) / 1000 ?? 0} ms");
@@ -982,7 +1078,7 @@ fn main() {
           if !lmerged {
             peaks += [Peak { pq: last_hq, pr: last_hr, amp: gap, rad: LEVEL_R }];
           }
-          dirty = mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
+          mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
         }
         py = (level_h as float) * HEIGHT_SCALE;
       }

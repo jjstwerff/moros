@@ -1,0 +1,31 @@
+fn add_i(v: vector<integer>, x: integer) -> vector<integer> {
+  out = v;
+  out += [x];
+  out
+}
+
+fn main() {
+  // 1. scalar elements, accumulated in a loop
+  a: vector<integer> = [];
+  for k in [10, 20, 30] { a = add_i(a, k); }
+  println("loop, vector<integer>   expect 3 got {len(a)}");
+
+  // 2. scalar elements, three EXPLICIT calls — no loop at all
+  b: vector<integer> = [];
+  b = add_i(b, 1);
+  b = add_i(b, 2);
+  b = add_i(b, 3);
+  println("explicit calls          expect 3 got {len(b)}");
+
+  // 3. appending inline at the call site, no helper
+  c: vector<integer> = [];
+  for k2 in [10, 20, 30] { c += [k2]; }
+  println("inline append           expect 3 got {len(c)}");
+
+  // 4. helper into a DIFFERENT variable each time
+  d: vector<integer> = [];
+  d2 = add_i(d, 1);
+  d3 = add_i(d2, 2);
+  d4 = add_i(d3, 3);
+  println("fresh var per step      expect 3 got {len(d4)}");
+}
