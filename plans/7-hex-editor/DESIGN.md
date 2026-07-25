@@ -135,13 +135,56 @@ discovering at the last.
 **S2 gates everything after it.** If P1 or P5 falsifies, §1 changes before a line of S6 is written
 — which is the whole point of doing it here.
 
-### Phase B — the host, and the first frame *(W0)*
+### Phase B — the build service, and the first frame *(W0)*
+
+⚠ **The browser is the primary target, not a port** *(user, 2026-07-25: "we have to have a good
+build service; an OpenGL is in the works but a browser is easier to test for me. You are on a
+laptop but I connect to it with ssh")*. **Measured on this box, 2026-07-25:**
+
+| fact | measurement |
+|---|---|
+| `DISPLAY` / `WAYLAND_DISPLAY` | **both empty** — this is a headless SSH session (`SSH_CONNECTION` set) |
+| a native OpenGL window | **cannot open here, and could not be seen if it did** — so a "native smoke run" is not a gate, it is a wish |
+| `loft --html hello.html hello.loft` | ✅ **works** — one command, a 246 KB self-contained page (WASM 162 KB) |
+| `chromium` · `chromium-browser` · `firefox` | ✅ present; loft's checker looks for exactly those names, so it **runs rather than skips** |
+| `node` | ✅ v22.23.0 |
+| the whole loop, end to end | ✅ **proven**: build → serve → `tools/html_render_check.mjs` → `{"ok":true,"eventCount":11}`, exit 0 |
+
+**So `--html` is where every rung is verified, and native GL is a later concern** — D3's "one
+source, four targets" still holds, but the *testable* target here is one. Any step whose gate needs
+a window on this machine is unrunnable and must not be written.
+
+**The build service, as three targets** — "good" means the user can see a change without asking me
+to describe it:
+
+```
+make html     # loft --html html/editor.html src/editor.loft   → the artifact
+make serve    # http.server on $(PORT), 127.0.0.1              → reachable over the ssh tunnel
+make check    # node $(LOFT)/tools/html_render_check.mjs \
+              #      http://127.0.0.1:$(PORT)/editor.html \
+              #      --canvas '#gl' --canvas-min-colors N      → THE GATE
+```
+
+The user's path is an SSH forward — `ssh -L 8000:localhost:8000 …`, then `localhost:8000` in their
+own browser — which works regardless of LAN or firewall, and is why `serve` binds **127.0.0.1**
+rather than `0.0.0.0`.
+
+⚠ **`make stop` is `killall python3` today, and that is a hazard on a shared box** — it kills every
+Python on the machine, including another agent's. Replace it with a PID file in the same step that
+adds `make check`.
+
+**Reuse, do not rebuild:** `html_render_check.mjs` is loft's, and it already *is* the control this
+plan invented — Layer 1 fails on any console error or exception; Layer 2 screenshots the canvas and
+counts distinct RGB triples, catching *"a WebGL2 context that never gets drawn into stays in
+clearColor and the screenshot is one uniform color."* That is S4's control, already written, already
+upstream. Seam rule 5 applies: consume it.
+
 
 | # | change | gate · control | why it is safe |
 |---|---|---|---|
-| **S3** | a new **`lib/moros_app/`** package (in-tree per D2): `fn main`, window via `graphics::create_renderer`, clear to a colour | loft's headless browser check (WebGL2, zero console errors) + a native smoke run. **Control:** break the clear → the colour-count check goes red | a new package; nothing existing imports it |
+| **S3** | a new **`lib/moros_app/`** package (in-tree per D2) + **`make html` / `serve` / `check`**, and a PID file replacing `killall python3` | `make check` is green on a page that clears to a colour. **Control:** break the clear → Layer 2's colour count goes red | a new package and three Makefile targets; nothing existing imports it |
 | **S3b** | `make edit-test` — the editor suite, standalone, with its **own** door-house fixture | the suite passes with `../moros` renamed away. **Control:** have one test read a Moros path → it must go red | one Makefile target and one fixture; the moros suite is untouched |
-| **S4** | draw one hex — `hex_field` centre + `hex_grid` corners, through the renderer | the frame contains ≥ N distinct colours. **Control:** skip `upload_scene` → red | additive; the app is not yet a dependency of anything |
+| **S4** | draw one hex — `hex_field` centre + `hex_grid` corners, through the renderer | `make check --canvas-min-colors N` passes. **Control:** skip `upload_scene` → one uniform colour → red. *This is the check's own documented failure mode, so the control is known to fire before we write it* | additive; the app is not yet a dependency of anything |
 | **S5** | the frame-budget harness: print ms/frame at a stated map size, and **record the number in the plan** | a budget exists as a figure, not an impression. **Control:** draw 4× the cells → the number must move | measurement only |
 
 ### Phase C — the document and the chokepoint *(the load-bearing part)*

@@ -638,6 +638,7 @@ argued instead of cheap and obvious.
 | selection, multi-select, copy/paste | the rung whose content is worth selecting |
 | materials, items, walls, stencils | W2–W4, each with its own content kind |
 | a 2-D top-down view beside the 3-D one | never, unless a consumer asks |
+| a native desktop window | when there is a display to see it on — the browser is the target |
 | a protocol server or a second client | P1 — the window is the only client until then |
 | anchors of any kind | W1 — hills have none (§7's table says so) |
 
@@ -674,7 +675,7 @@ each one becomes violable at a specific rung, which is when its gate is first ar
 
 | obligation | first violable | the gate, and its control |
 |---|---|---|
-| **it renders in 3-D** | W0 | loft's headless browser check (WebGL2, zero console errors, canvas colour count) + a native smoke run. **Control:** unwire `upload_scene` → the colour count must go red. *A blank canvas that compiles clean is the failure this exists for* |
+| **it renders in 3-D, in a BROWSER** | W0 | `make check` — loft's `tools/html_render_check.mjs`: zero console errors (Layer 1) + a canvas screenshot with ≥ N distinct RGB triples (Layer 2). **Control:** unwire `upload_scene` → one uniform colour → red. ⚠ **Not a native window**: this box is a headless SSH session with no `DISPLAY`, so a GL window cannot open and could not be seen. `--html` is the verified target; native GL is later (`DESIGN.md` Phase B, measured) |
 | **it performs, and the budget is stated in ms** | W0 | a frame-time budget at a stated map size, measured every rung and **recorded as a number**, never "feels fine". **Control:** rebuild the whole scene on a one-cell edit → the budget breaks at the stated size (`L3`'s named violation) |
 | **it round-trips** | W0 | `save → load → save` byte-identical; undo of depth N restores byte-identically. **Control:** hand-perturb one byte and the digest must move |
 | **no edit is silently corrected** (inv **I**) | W1 | the doorstep shows reason + offer + residual; the editor's offer equals `snap_run_d24`/`snap_run_p` and its residual equals `run_end_dist`. **Control:** author a length between admissible multiples — it must refuse, not snap |
