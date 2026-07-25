@@ -594,6 +594,24 @@ green tests and zero frames.** The ladder makes that impossible, because *rung 0
 > it, undo it, and hit the frame budget — at every rung, from the first. Nothing is deferred to
 > the end, so nothing arrives unvalidated.
 
+**And "whole" means THICK, not a vertical slice** *(user, 2026-07-25: "we do thick all the way, I
+want to have it functional before we do anything next — yes there is up-front cost, but it pays
+off in heaps later")*. A rung is not done when the content type renders and saves; it is done when
+**someone could use it**: a comfortable camera, hover and pick, brush sizes, drag-paint, undo at a
+sane granularity, the palette panel, the status readout. That is loft's own bar — *"a thing is
+done when picking it up is **fun**"* — and a thin rung never clears it, because *"it renders and
+saves"* is still a claim about a thing nobody used. Thin would reproduce, at smaller scale, exactly
+the failure this ladder exists to prevent.
+
+**Why the up-front cost is smaller than it looks: the shell is built once.** W0 pays for the whole
+editor *shell* — host, camera, picking, panel, status, undo batching, save/load, tool dispatch —
+because a functional hills editor needs all of it. Every rung after W0 adds only **a `ToolDef`, a
+content kind, an anchor kind and a render path**; none of them re-buys the shell. So the ladder's
+cost curve is front-loaded by design: W0 is the expensive rung and W1–W8 are each a fraction of
+it. That is the *"pays off in heaps later"*, stated as a shape rather than a hope — and it is
+checkable: **if W1 is not markedly cheaper than W0, the shell leaked into the content and the
+`ToolDef` boundary (D5) is wrong.**
+
 It is also hexbody's own method, applied to content instead of to forms — the stencil census grew
 *"the smallest closed form, then longer sides, more sides, unequal sides, reflex corners, features,
 arcs — and finally combination"*, with the rule that **each rung is a green increment, and where a

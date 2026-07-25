@@ -93,7 +93,7 @@ land in `probes/`, are committed with their measured output, and are **throwaway
 
 **P5 is the one to run most honestly.** The anchor unification is the design's most elegant claim,
 it absorbed five different things in one afternoon, and elegance is exactly what the protocol says
-hides over-reach. Falsifying it is cheap now and expensive after S14.
+hides over-reach. Falsifying it is cheap now and expensive after S23.
 
 ---
 
@@ -157,34 +157,60 @@ discovering at the last.
 ⚠ **S8–S10 are one mechanism only if P6 said so.** If P6 falsified, they are three, and that is a
 domain axis the design did not see — record it, do not force it.
 
-### Phase D — W0's content: hills
+### Phase D — the shell *(built once, at W0; every later rung reuses it)*
+
+W0 is **thick**: functional before anything else starts. That means the shell is bought here, in
+full, and no rung after this one re-buys it.
 
 | # | change | gate · control | why it is safe |
 |---|---|---|---|
-| **S11** | the height op, through `doc_apply` | raise → see → save → reload → undo, all byte-exact. **Control:** bypass the chokepoint → the census fails | the first real op; the old height path still exists |
-| **S12** | terrain rendering from `Heights` | the budget from S5 still holds at the stated size. **Control:** rebuild everything per edit → the budget breaks | rendering only |
-| **S13** | picking: consume `hex_field::hex_at`; **cross-check** against `moros_render::world_to_hex` | 0 disagreements over **both parities × both signs**. **Control:** perturb one side → it must fire | a comparison first; the deletion of the loser is its own later step |
+| **S11** | camera — orbit · pan · zoom · zoom-to-fit, on `moros_render`'s (cross-checked, then promoted) | ray → plane → hex round-trips to the picked cell. **Control:** perturb the projection → the round trip fails | promotion of tested math; the old camera stays until it is unused |
+| **S12** | picking + hover: the hex under the cursor highlights, click selects | picked cell equals `hex_field::hex_at` over **both parities × both signs**, 0 disagreements. **Control:** perturb one side → it fires | S13's cross-check made concrete; the loser is deleted in its own step |
+| **S13** | the panel: toolbar, palette region, status strip — `moros_ui`, promoted | `panel_build` + `route_click` drive from a `ToolDef` **table**, not an enum. **Control:** add a tool to the table and it appears with no panel edit | `moros_ui` is already the best-tested module (46/46 with its lock) |
+| **S14** | the status readout — `q · r · cy · h` under the cursor, live | it tracks the hover cell. **Control:** move the cursor off the map → it must read *nothing*, not stale | display only |
+| **S15** | **undo granularity**: a drag is **one** journal entry, not forty | `batch_begin`/`batch_end` around a drag; one `Ctrl-Z` reverts the whole stroke. **Control:** omit the batch → undo takes forty presses, and the gate counts them | the journal already exists (S8); this is a bracket over it |
+| **S16** | save / load to a file, driven from the shell | `save → load → save` byte-identical **through the UI path**, not just the API. **Control:** `doc_write` twice to one path → `L12`'s append bites, so a fresh path per write | S9's gate, now exercised the way a person exercises it |
 
-**W0 is done here** — and W0 done means a walkable-in-3-D, savable, undoable, budgeted hill editor.
+**The shell is the amortisation.** If W1 (roads) is not markedly cheaper than W0, the shell leaked
+into the content — that is a **checkable prediction**, and its failure is the signal that D5's
+`ToolDef` boundary is wrong.
 
-### Phase E — the anchor layer's first kind, and W1: roads
-
-| # | change | gate · control | why it is safe |
-|---|---|---|---|
-| **S14** | anchor storage + `resolve`/`refuse` for a **line endpoint**, routed to `hex_fit` | the offer equals `snap_run_d24`/`snap_run_p`; the residual equals `run_end_dist`; **0 false accepts** against `rebuild`. **Control:** author a length between admissible multiples → must refuse, not snap | one anchor kind only. The closed set arrives kind by kind, each with its own gate |
-| **S15** | the doorstep **shown** — reason, offer, residual on screen; nominal vs ordinal distinguished | a material refusal offers **nothing** and says so (`X68`); a length refusal offers the nearest. **Control:** offer `255` for `256` → the gate must reject the offer as a category error | presentation over S14 |
-| **S16** | **`re-derive-or-report` inside `doc_apply`** — §1's invariant gets its home | delete geometry under an anchor → it is **reported**. **Control:** let it silently reattach to the nearest surviving surface → red | the checker runs and reports before anything acts on the report |
-| **S17** | roads on terrain; **measure** `hex_way`'s lattice anchoring | either it anchors, or the failure is **recorded as a restriction** and carried forward | measurement, then a written restriction — hexbody's own census rule |
-
-### Phase F — W2: fences, and the walk
+### Phase E — W0's content: hills, thick
 
 | # | change | gate · control | why it is safe |
 |---|---|---|---|
-| **S18** | fences as `EdgeSet` content via `hex_edge`; a fixture at **both row parities** | edges marked *along* the line form one chain (`I-ALONG`), not a comb. **Control:** the hand-built comb must fail | new content kind; no existing path changes |
-| **S19** | `hex_walk` — the swept controller on `hex_edge::sweep_path` with a `hex_body` proxy | **no speed and no `dt` crosses a wall**, on a fixture that *has* walls, both parities, two storeys. **Control:** the old instantaneous test at 5× speed **must tunnel** | lands **beside** `player.loft`; the app switches over in this step, the deletion is S20 |
-| **S20** | delete `moros_sim/player.loft` + `collide.loft`; replace `make_flat_map()` with a walled fixture | the suite stays green **with fewer lines**. **Control:** the new fixture must be able to fail — re-run S19's control against it | deletion only after S19 proved the replacement |
+| **S17** | the height op through `doc_apply`; click sets, drag paints | raise → see → save → reload → undo, byte-exact. **Control:** bypass the chokepoint → the census (S7) fails | the first real op |
+| **S18** | brush sizes 1 / 7 / 19 (centre + rings) | brush 7 writes exactly 7 cells, and **one** journal entry. **Control:** a brush at a chunk boundary must still write 7, not 4 | one parameter over S17 |
+| **S19** | absolute vs relative mode; scroll ±1, shift+scroll ±6 | relative adds to each cell's own height. **Control:** relative on a sloped patch must preserve the slope, absolute must flatten it | a mode flag over S17 |
+| **S20** | terrain rendering with height shading, so the hills are legible | the S5 budget still holds at the stated size. **Control:** rebuild the whole scene per edit → the budget breaks | rendering only |
+| **S21** | the height palette panel: value, step buttons, **gradient preview** against the map's range | the preview's min/max track the visible cells. **Control:** raise a hill past the old max → the scale must move | display over S13 |
+| **S22** | **W0 acceptance — use it.** Build a small landscape by hand, save, reload, undo through it | the frame budget holds *while editing*, undo returns byte-identically from any depth, and the file reloads exactly. **Control:** the session must be reproducible from its journal alone | no new mechanism; this is the rung's own proof |
 
-### Phase G onward — W3–W8, as a step template rather than invented detail
+**S22 is the rung, not a formality.** Thick means the acceptance is *use*, and the number that
+comes out of it — ms/frame while editing a real landscape — is the budget every later rung is held
+to.
+
+### Phase F — the anchor layer's first kind, and W1: roads
+
+| # | change | gate · control | why it is safe |
+|---|---|---|---|
+| **S23** | anchor storage + `resolve`/`refuse` for a **line endpoint**, routed to `hex_fit` | the offer equals `snap_run_d24`/`snap_run_p`; the residual equals `run_end_dist`; **0 false accepts** against `rebuild`. **Control:** author a length between admissible multiples → must refuse, not snap | one anchor kind only. The closed set arrives kind by kind, each with its own gate |
+| **S24** | the doorstep **shown** — reason, offer, residual on screen; nominal vs ordinal distinguished | a material refusal offers **nothing** and says so (`X68`); a length refusal offers the nearest. **Control:** offer `255` for `256` → the gate must reject the offer as a category error | presentation over S14 |
+| **S25** | **`re-derive-or-report` inside `doc_apply`** — §1's invariant gets its home | delete geometry under an anchor → it is **reported**. **Control:** let it silently reattach to the nearest surviving surface → red | the checker runs and reports before anything acts on the report |
+| **S26** | roads on terrain; **measure** `hex_way`'s lattice anchoring | either it anchors, or the failure is **recorded as a restriction** and carried forward | measurement, then a written restriction — hexbody's own census rule |
+
+### Phase G — W2: fences, and the walk
+
+*(W1's steps are written when W1 starts, per §5's tail — and are expected to be **markedly fewer
+than W0's**, because the shell is already paid for.)*
+
+| # | change | gate · control | why it is safe |
+|---|---|---|---|
+| **S27** | fences as `EdgeSet` content via `hex_edge`; a fixture at **both row parities** | edges marked *along* the line form one chain (`I-ALONG`), not a comb. **Control:** the hand-built comb must fail | new content kind; no existing path changes |
+| **S28** | `hex_walk` — the swept controller on `hex_edge::sweep_path` with a `hex_body` proxy | **no speed and no `dt` crosses a wall**, on a fixture that *has* walls, both parities, two storeys. **Control:** the old instantaneous test at 5× speed **must tunnel** | lands **beside** `player.loft`; the app switches over in this step, the deletion is S20 |
+| **S29** | delete `moros_sim/player.loft` + `collide.loft`; replace `make_flat_map()` with a walled fixture | the suite stays green **with fewer lines**. **Control:** the new fixture must be able to fail — re-run S28's control against it | deletion only after S19 proved the replacement |
+
+### Phase H onward — W3–W8, as a step template rather than invented detail
 
 **The design stops being decidable here, and saying so is the point.** Each remaining rung takes
 the same five-step shape; the specifics are written when the rung starts, informed by what the rung
