@@ -16,18 +16,24 @@
 // hid the speed constant, so doubling it carried the character past the ridge's
 // far end and "ridge kept" failed against working code.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+// Drives the character by PLACING it (7:<x>,<z>,<yaw>), never by walking.
+// This is a WORLD gate: it measures terrain, streaming or levelling, and must
+// not depend on locomotion — walking speed, stride or step timing. See
+// tools/gates/README.md for why (a fixed-millisecond walk made this fail
+// against working code the day the speed changed).
+const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
+
 let st = 0; const ys = [], xs = [], zs = [];
 const y = () => ys[ys.length - 1];
 const here = () => [xs[xs.length-1], zs[zs.length-1]];
-async function walkFor(dist) {
-  const [x0, z0] = here();
-  ws.send('4:1');
-  for (let i = 0; i < 400; i++) {
-    await new Promise(r => setTimeout(r, 50));
-    const [x, z] = here();
-    if (Math.hypot(x - x0, z - z0) >= dist) break;
+// March by PLACING, one hex-ish step at a time — levelling triggers on entering
+// a cell, so a sequence of places drives it exactly as walking would, minus the
+// dependence on how fast the character happens to move.
+async function march(fromX, toX, stepX) {
+  for (let x = fromX; (stepX > 0 ? x <= toX : x >= toX); x += stepX) {
+    place(x, 0, 0);
+    await new Promise(r => setTimeout(r, 220));
   }
-  ws.send('4:0');
   await new Promise(r => setTimeout(r, 300));
 }
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -43,11 +49,10 @@ ws.onmessage = async (e) => {
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
     for (let k = 0; k < 5; k++) { ws.send('5:1'); await wait(150); }   // a hill ahead
-    await walkFor(8.0);                                                 // climb it
+    await march(1.5, 12.0, 1.5);                        // out onto the hill's flank
     const onHill = y();
     ws.send('6:1'); await wait(300);                                    // freeze the level
-    ws.send('3:524,0'); await wait(300);         // about-face: 524 px ≈ π rad
-    await walkFor(8.0);                                                 // back onto the plain
+    await march(10.5, 0.0, -1.5);                       // back down onto the plain
     const whileLevel = y();
     ws.send('6:0'); await wait(600);                                    // let go
     const afterLevel = y();

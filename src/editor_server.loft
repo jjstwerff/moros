@@ -183,6 +183,7 @@ const TICK_US = 33000;
 //                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
 //                     5:<+1|-1>     raise / lower the ground ahead
 //                     6:<0|1>       levelling on/off — flatten as you walk
+//                     7:<x>,<z>,<yaw>   place the character outright
 //   server → client   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>   fog + sky
 //                     M:<i>;<ramp>;r,g,b;…  mesh i; ramp=1 colours it by height
 //                     G:<lo rgb>,<hi rgb>,<lo y>,<hi y>   the ground ramp
@@ -195,6 +196,16 @@ const MSG_LOOK = 3;
 const MSG_KEYS = 4;
 const MSG_RAISE = 5;
 const MSG_LEVEL = 6;
+
+// PLACE — put the character somewhere, without walking there.
+//
+// A real editor capability (jump to a location), and the thing that lets the
+// WORLD's gates stop depending on the CHARACTER's gait. Terrain, streaming and
+// levelling are properties of the world; driving them by holding W made every
+// one of them a hostage to walking speed, stride and collision — and when the
+// speed doubled, two of them failed against working code. A gate for the ground
+// should state where the character IS, not walk it there and hope.
+const MSG_PLACE = 7;
 
 // One authored peak. This — a vector of these — is the whole terrain.
 struct Peak {
@@ -757,6 +768,23 @@ fn main() {
           }
         } else if ev.msg_id == MSG_KEYS {
           keys = ev.payload as integer ?? 0;
+        } else if ev.msg_id == MSG_PLACE {
+          pi = ev.payload.find(",");
+          if pi != null {
+            rest2 = ev.payload[pi + 1..];
+            pj = rest2.find(",");
+            if pj != null {
+              px = ev.payload[..pi] as float ?? px;
+              pz = rest2[..pj] as float ?? pz;
+              yaw = rest2[pj + 1..] as float ?? yaw;
+              if levelling {
+                py = (level_h as float) * HEIGHT_SCALE;
+              } else {
+                py = terrain_y(px, pz, peaks);
+              }
+              moved = true;
+            }
+          }
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling {

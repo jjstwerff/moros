@@ -6,6 +6,13 @@
 //   nothing is dropped→ it is infinite but leaks; the client grows for ever
 //   count unbounded   → the draw distance is not bounding anything
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+// Drives the character by PLACING it (7:<x>,<z>,<yaw>), never by walking.
+// This is a WORLD gate: it measures terrain, streaming or levelling, and must
+// not depend on locomotion — walking speed, stride or step timing. See
+// tools/gates/README.md for why (a fixed-millisecond walk made this fail
+// against working code the day the speed changed).
+const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
+
 const live = new Set();
 let added = 0, dropped = 0, peak = 0, stage = 0;
 ws.onopen = () => ws.send('1:');
@@ -18,13 +25,16 @@ ws.onmessage = (e) => {
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && stage === 0) {
     stage = 1;
-    setTimeout(() => ws.send('4:1'), 300);        // walk straight, a long way
-    setTimeout(() => ws.send('4:0'), 9000);
+    // Placed in steps rather than walked: the chunk stream is a property of
+    // WHERE the character is, so stating the positions measures it directly.
+    let d = 0;
+    const march = setInterval(() => { d += 6; place(d, 0, 0);
+                                      if (d >= 60) clearInterval(march); }, 260);
     setTimeout(() => {
       const ok = added > 0 && dropped > 0 && live.size <= peak && peak < 200;
       console.log(JSON.stringify({ added, dropped, live: live.size, peak, ok }));
       ws.close(); process.exit(ok ? 0 : 1);
-    }, 9600);
+    }, 4200);
   }
 };
 ws.onerror = () => process.exit(2);

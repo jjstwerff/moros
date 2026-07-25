@@ -11,6 +11,13 @@
 // mesh vertex carries its world y, so the ground's actual shape is what is
 // measured, not the server's opinion of it.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+// Drives the character by PLACING it (7:<x>,<z>,<yaw>), never by walking.
+// This is a WORLD gate: it measures terrain, streaming or levelling, and must
+// not depend on locomotion — walking speed, stride or step timing. See
+// tools/gates/README.md for why (a fixed-millisecond walk made this fail
+// against working code the day the speed changed).
+const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
+
 let stage = 0;
 const chunks = new Map();
 const yStats = () => {
@@ -37,12 +44,11 @@ async function run() {
   await step(() => ws.send('5:1'), 300);      // raise once
   await step(() => ws.send('5:1'), 400);      // and again — same cell, one peak
   const raised = yStats();
-  await step(() => ws.send('4:1'), 300);      // walk toward it
-  await step(() => ws.send('4:0'), 2500);
+  await step(() => place(9.0, 0.0, 0.0), 700);   // stand on its flank
   const walked = yStats();
-  await step(() => ws.send('6:1'), 300);      // levelling on
-  await step(() => ws.send('4:1'), 300);
-  await step(() => ws.send('4:0'), 2500);
+  await step(() => ws.send('6:1'), 400);         // levelling on, at this height
+  await step(() => place(12.0, 0.0, 0.0), 700);  // step outward, one place at a time
+  await step(() => place(15.0, 0.0, 0.0), 700);
   const levelled = yStats();
   await step(() => {}, 400);
   const raises = raised.hi > flat.hi + 0.2;
