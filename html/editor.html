@@ -23,6 +23,9 @@
 //   →  1:                     ready — client is up, send the world
 //   →  2:<aspect>,             give me a camera for this viewport
 //   →  3:<dx>,<dy>             mouse drag — turn the character (and us with it)
+//   →  4:<keybits>             W=1 S=2 A=4 D=8, held. Sent on CHANGE only —
+//                              the walk integrates on the server's fixed tick,
+//                              so the client reports intent, never motion.
 // The outbound ids are NUMBERS because the server's event pump parses
 // `<int>:<payload>` and silently drops anything else as malformed.
 //   ←  M:<i>;r,g,b;f0,f1,…    mesh i: colour, then 6 floats/vertex (pos, normal)
@@ -139,7 +142,7 @@ ws.onmessage = (ev) => {
     if (parts[i]) parts[i].model = new Float32Array(body.slice(k + 1).split(',').map(Number));
   }
   else if (tag === 'E') {
-    hud.textContent = 'drag to look — the character turns with you';
+    hud.textContent = 'drag to look · WASD to walk';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {
@@ -170,5 +173,24 @@ cv.addEventListener('pointermove', (e) => {
   lastX = e.clientX; lastY = e.clientY;
   if (dx || dy) ws.send('3:' + dx + ',' + dy);
 });
+
+// WASD. The client sends a BITMASK of what is held and nothing else: no
+// position, no velocity, no delta-time. Movement is integrated on the server's
+// fixed tick, which is what makes the walk reproducible from an input log
+// instead of from whatever frame rate this tab happened to run at.
+const KEYS = { KeyW: 1, KeyS: 2, KeyA: 4, KeyD: 8,
+               ArrowUp: 1, ArrowDown: 2, ArrowLeft: 4, ArrowRight: 8 };
+let held = 0;
+function sendKeys() { if (ws.readyState === 1) ws.send('4:' + held); }
+addEventListener('keydown', (e) => {
+  const b = KEYS[e.code]; if (!b || (held & b)) return;
+  held |= b; e.preventDefault(); sendKeys();
+});
+addEventListener('keyup', (e) => {
+  const b = KEYS[e.code]; if (!b) return;
+  held &= ~b; e.preventDefault(); sendKeys();
+});
+// A tab that loses focus must not walk on for ever.
+addEventListener('blur', () => { if (held) { held = 0; sendKeys(); } });
 requestAnimationFrame(draw);
 </script></body></html>

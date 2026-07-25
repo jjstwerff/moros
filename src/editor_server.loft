@@ -1,4 +1,4 @@
-// editor_server — W0's first frame, as a server/client loop.
+// editor_server — W0: a plane, a character you steer, and the camera behind it.
 //
 // The shape is `../loft/tools/audience-demo/dev_server.loft`: ONE port serves
 // both the client page (HTTP `/`) and the model channel (`ws://…/ws`), and the
@@ -9,16 +9,14 @@
 // the Workbench already requires (*the model runs server-side, the browser
 // renders state and never computes*), it is D4's shape (the browser is one
 // protocol client among several), and it is the only thing that works over the
-// ssh tunnel this box is driven through — `ssh -L 18090:localhost:18090`, then
-// open `localhost:18090`.
+// ssh tunnel this box is driven through.
 //
-// THE CLIENT COMPUTES NOTHING. It receives triangles and two matrices and
-// draws them. Every piece of model work — the lattice, the hex geometry, the
-// figure's proportions, the camera solve — happens here, in loft. That is what
-// keeps this from being a second renderer (seam rule 5): the browser is a
-// display, not a derivation.
+// THE CLIENT COMPUTES NOTHING. It receives triangles and matrices and draws
+// them. The lattice, the hex geometry, the figure's proportions, the camera
+// solve, the walk — all here, in loft. That is what keeps this from being a
+// second renderer (seam rule 5): the browser is a display, not a derivation.
 //
-// Run:  make serve-editor      (or: loft --lib lib/ src/editor_server.loft)
+// Run:  make editor      (or: loft --interpret --lib lib/ src/editor_server.loft)
 use server;
 use web;          // sleep_ms — the idle tick of the manual connection pool
 use moros_map;
@@ -28,55 +26,121 @@ use moros_render;
 const PLANE_W = 14;
 const PLANE_H = 14;
 
-// The reference figure, from crawler's `src/figure.loft`: a proportioned human
+// The reference figure, after crawler's `src/figure.loft`: a proportioned human
 // for SCALE, at exactly 1.75 m. The proportions are the artist's canon — head =
-// H/7.5, shoulders 2 heads, hip at 0.53H — and they matter more than the shapes,
-// because a viewer reads scale from where the hip and shoulder sit.
+// H/7.5, shoulders two heads, hip at 0.53H — and they matter more than the
+// shapes do, because a viewer reads scale from where the hip and shoulder sit.
 //
 // ⚠ DUPLICATION, recorded not hidden: crawler owns the original and we cannot
-// consume it (it is a program module, not a published library). Ours is boxes
-// where crawler's head is a sphere. The right home is a shared library; raised
-// in the plan's coordination list rather than silently forked.
+// consume it (a program module, not a published library). The right home is a
+// shared one; raised in the plan rather than silently forked.
 const FIGURE_M = 1.75;
 const WU_PER_M = 0.8660254037844386;
 
-// One hex step is 1.5 m N–S under the shared scale contract, and moros renders
-// a row at HEX_ROW_HEIGHT world units — so a world unit is one hex row and the
-// figure's height in those units is what makes it read correctly beside a hex.
+// Gait. A walk is ~1.4 m/s at a ~0.75 m stride; both convert here, so the metre
+// never reaches anything downstream (seam rule 2).
+const WALK_MS = 1.4;
+const STRIDE_M = 0.75;
+const LEG_SWING = 0.42;        // radians at the hip, peak
+const ARM_SWING = 0.30;
+
+// Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
+// clamped rather than wrapped: past vertical, "behind the character" stops
+// meaning anything, so the camera refuses to go there.
+const LOOK_PER_PX = 0.0060;
+const PITCH_MIN = -0.20;
+const PITCH_MAX = 0.75;
+
+// The simulation tick. Movement integrates on the SERVER at a fixed rate, not
+// on the client and not per input event: a fixed step is what makes the walk
+// reproducible from an input log, which is `L7` (determinism) built in from
+// line one rather than retrofitted.
+const TICK_US = 33000;
+
+// The wire. Client→server ids are NUMBERS because `lib/server`'s event pump
+// parses `<int>:<payload>` and SILENTLY DROPS anything else as malformed.
+//
+//   client → server   1:            ready — send me the world
+//                     2:<aspect>,   a camera for this viewport
+//                     3:<dx>,<dy>   drag — turn the character (and us with it)
+//                     4:<keybits>   W=1 S=2 A=4 D=8, held
+//   server → client   M:<i>;r,g,b;… mesh i
+//                     T:<i>;<16>    mesh i's placement
+//                     E:            end of world
+//                     C:<view>;<proj>
+const MSG_READY = 1;
+const MSG_CAM = 2;
+const MSG_LOOK = 3;
+const MSG_KEYS = 4;
+
+// Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
+// independently. Splitting it is also the shape `hex_entity` will formalise: a
+// part-tree whose every part carries its own transform.
+const PART_GROUND = 0;
+const PART_BODY = 1;
+const PART_LEG_L = 2;
+const PART_LEG_R = 3;
+const PART_ARM_L = 4;
+const PART_ARM_R = 5;
+
+// Each client keeps its own aspect ratio, so the projection is solved per
+// client — but the character and its yaw are ONE shared thing, because there is
+// one character. Two tabs therefore walk and turn together, which is the
+// multi-client property being visible rather than claimed.
+struct Client {
+  cid: integer,
+  aspect: float
+}
+
 fn figure_wu() -> float { FIGURE_M / WU_PER_M ?? 0.0 }
+fn head_wu() -> float { figure_wu() / 7.5 ?? 0.0 }
+fn hip_wu() -> float { figure_wu() * 0.53 }
+fn shoulder_wu() -> float { figure_wu() * 0.855 - head_wu() * 0.10 }
 
-// A box limb, centred on (cx, cz) in plan, spanning y0..y1 vertically.
-// moros is Y-UP (crawler's figure is Z-up), so the axes are swapped here.
-fn limb(fm: Mesh, cx: float, cz: float, y0: float, y1: float, w: float, d: float) {
-  emit_box(fm, vec3(cx - w * 0.5, y0, cz - d * 0.5),
-               vec3(cx + w * 0.5, y1, cz + d * 0.5));
+// mesh3d ships `mat4_rotate_x` and `mat4_rotate_y` but no Z. A limb swings in
+// the plane of travel, and the figure is modelled facing +x, so that swing is a
+// rotation about the LOCAL z axis. Written here rather than worked around by
+// re-orienting the model, which would have hidden a 90° offset in every other
+// formula. (A small gap worth raising against mesh3d.)
+fn mat4_rotate_z(rz: float) -> Mat4 {
+  rzc = cos(rz);
+  rzs = sin(rz);
+  Mat4 { m: [
+    rzc, rzs, 0.0, 0.0,
+    0.0 - rzs, rzc, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+  ] }
 }
 
-// Build the figure at the ORIGIN, facing +x. Its position and facing ride a
-// model matrix instead of being baked into the vertices — so turning it is one
-// matrix on the wire, not a re-emitted mesh.
-fn build_figure(x: float, y: float, z: float) -> Mesh {
-  fig = mesh("figure");
-  fh = figure_wu();
-  head = fh / 7.5 ?? 0.0;
-  sh_w = head * 2.0;
-  hip_y = y + fh * 0.53;
-  chest_y = y + fh * 0.72;
-  neck_y = y + fh * 0.855;
-  limb(fig, x, z - head * 0.42, y, hip_y, head * 0.62, head * 0.62);
-  limb(fig, x, z + head * 0.42, y, hip_y, head * 0.62, head * 0.62);
-  limb(fig, x, z, hip_y, chest_y, head * 0.72, sh_w * 0.80);
-  limb(fig, x, z, chest_y, neck_y, head * 0.80, sh_w);
-  limb(fig, x, z - sh_w * 0.5 - head * 0.16, y + fh * 0.40, neck_y - head * 0.10,
-       head * 0.42, head * 0.42);
-  limb(fig, x, z + sh_w * 0.5 + head * 0.16, y + fh * 0.40, neck_y - head * 0.10,
-       head * 0.42, head * 0.42);
-  limb(fig, x, z, neck_y, y + fh, head * 0.86, head * 0.78);
-  fig
+// A limb with its PIVOT AT THE ORIGIN, hanging down −y. Pivot-at-origin is what
+// lets a joint angle be one rotation with no compensating translation.
+fn limb_mesh(ln: text, llen: float, lw: float, ld: float) -> Mesh {
+  lm = mesh(ln);
+  emit_box(lm, vec3(0.0 - lw * 0.5, 0.0 - llen, 0.0 - ld * 0.5),
+               vec3(lw * 0.5, 0.0, ld * 0.5));
+  lm
 }
 
-// A mesh as wire text: "r,g,b;f0,f1,…" — 6 floats per vertex (position then
-// normal), which is exactly `mesh_to_floats`' layout and the client's stride.
+// Pelvis, chest and head as one part — nothing in a walk moves them relative to
+// each other, so they are one mesh and one transform.
+fn body_mesh() -> Mesh {
+  bm = mesh("body");
+  bh = figure_wu();
+  bhd = head_wu();
+  bsw = bhd * 2.0;
+  b_hip = hip_wu();
+  b_chest = bh * 0.72;
+  b_neck = bh * 0.855;
+  emit_box(bm, vec3(0.0 - bhd * 0.36, b_hip, 0.0 - bsw * 0.40),
+               vec3(bhd * 0.36, b_chest, bsw * 0.40));
+  emit_box(bm, vec3(0.0 - bhd * 0.40, b_chest, 0.0 - bsw * 0.50),
+               vec3(bhd * 0.40, b_neck, bsw * 0.50));
+  emit_box(bm, vec3(0.0 - bhd * 0.43, b_neck, 0.0 - bhd * 0.39),
+               vec3(bhd * 0.43, bh, bhd * 0.39));
+  bm
+}
+
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
   fs = mesh_to_floats(wm);
   out = "{wr},{wg},{wb};";
@@ -94,6 +158,41 @@ fn mat_wire(mw: Mat4) -> text {
   out
 }
 
+// The figure's own frame: stand it at (px, pz) on the ground, turned by yaw.
+fn body_at(bx: float, by: float, bz: float, byaw: float) -> Mat4 {
+  mat4_mul(mat4_translate(bx, by, bz), mat4_rotate_y(byaw))
+}
+
+// A limb's world transform: the body's frame, then out to the joint, then the
+// joint's own angle. Composed in that order so the angle stays a pure joint
+// value — the same separation `hex_body` draws between a rig and its pose.
+fn limb_at(lbody: Mat4, jx: float, jy: float, jz: float, swing: float) -> Mat4 {
+  mat4_mul(mat4_mul(lbody, mat4_translate(jx, jy, jz)), mat4_rotate_z(swing))
+}
+
+// The over-the-shoulder solve, as an orbit that is ALWAYS behind the facing.
+// Camera and character share one yaw, so the camera cannot drift off the
+// character's back — there is no second value to keep in step.
+fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float) -> text {
+  fh = figure_wu();
+  ky = cos(cyaw); sy = sin(cyaw);
+  kp = cos(cpitch); sp = sin(cpitch);
+  dist = fh * 2.90;
+  // Pivot at chest height, offset LATERAL to the facing — which is what makes
+  // it over-the-SHOULDER rather than straight down the spine.
+  ox = cx + (0.0 - sy) * fh * 0.34;
+  oz = cz + ky * fh * 0.34;
+  oy = cyy + fh * 0.70;
+  // The eye orbits the pivot and the TARGET stays near it. Measured: with a
+  // target far ahead, the eye rose with pitch while the aim did not, so past
+  // ~40° the character dropped out of frame — a follow camera that loses what
+  // it follows.
+  eye = vec3(ox - ky * dist * kp, oy + dist * sp, oz - sy * dist * kp);
+  tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
+  "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
+    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
+}
+
 fn hostname() -> text {
   hf = file("/etc/hostname");
   if hf.format == Format.NotExists { return ""; }
@@ -101,16 +200,12 @@ fn hostname() -> text {
   hb.trim()
 }
 
-// Re-read on every request, so editing the client and hitting refresh shows the
-// change with no restart — the audience demo's iteration loop.
-//
 // ⚠ The explicit `source_dir()` join is deliberate, and measured. A relative
 // path resolves against the PROGRAM's directory (`src/`), so `html/editor.html`
-// looked for `src/html/editor.html` and served the 500 page. But `..` does not
+// looked for `src/html/editor.html` and served the 500 page. And `..` does not
 // resolve either — a probe read `source_dir() = …/moros/src` and found
 // `../html/editor.html` NOT to exist while the joined absolute path did. So a
-// parent-directory asset needs the join; the "just pass the relative path" rule
-// covers children only, and the failure is silent (`NotExists`, no diagnostic).
+// parent-directory asset needs the join, and the failure is silent.
 fn read_index() -> text {
   ixf = file("{source_dir()}/../html/editor.html");
   if ixf.format == Format.NotExists {
@@ -121,79 +216,6 @@ fn read_index() -> text {
   ixb
 }
 
-fn handle_http(req: server::Request) {
-  if req.path == "/" || req.path == "/index.html" {
-    req.respond_html(read_index());
-  } else {
-    req.respond_404();
-  }
-}
-
-// THE WIRE, and why the client→server ids are NUMBERS.
-//
-// `lib/server`'s event pump parses an inbound frame as `<msg_id>:<payload>`
-// with an INTEGER id, and silently drops anything else as malformed — so the
-// earlier `ready:` / `cam:` text tags would have vanished without a trace the
-// moment this moved to the pump. Measured, not guessed: that is what the
-// library's own doc-comment says it does with a bad frame.
-//
-//   client → server   1:            ready — send me the world
-//                     2:<aspect>    give me a camera for this viewport
-//   server → client   M:r,g,b;…     one mesh   (the client parses these itself,
-//                     E:            end of world   so they stay readable tags)
-//                     C:view;proj   two matrices
-const MSG_READY = 1;
-const MSG_CAM = 2;
-const MSG_LOOK = 3;
-
-// Each client keeps its own aspect ratio, so the projection is solved per
-// client — but yaw and pitch are ONE shared value, because there is one
-// character and it turns with the view. Two tabs therefore turn together,
-// which is the multi-client property being visible rather than claimed.
-struct Client {
-  cid: integer,
-  aspect: float
-}
-
-// Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
-// clamped rather than wrapped: past vertical the "behind the character" framing
-// stops meaning anything, so the camera refuses to go there.
-const LOOK_PER_PX = 0.0060;
-const PITCH_MIN = -0.20;
-const PITCH_MAX = 0.75;
-
-// The figure's placement: translate to its cell, turn by the shared yaw.
-// `mat4_trs` is column-major with +x rotating toward +z as `ry` grows, so a
-// figure modelled facing +x faces (cos yaw, 0, sin yaw) once placed.
-fn figure_model(fx: Vec3, yaw: float) -> Mat4 {
-  mat4_trs(fx.x, fx.y, fx.z, yaw, 1.0, 1.0, 1.0)
-}
-
-// The over-the-shoulder solve, as an orbit that is ALWAYS behind the facing.
-// Camera and character share one yaw, so the camera cannot drift off the
-// character's back — there is no second value to keep in step.
-fn cam_wire(fx: Vec3, yaw: float, pitch: float, asp: float) -> text {
-  fh = figure_wu();
-  cy = cos(yaw); sy = sin(yaw);
-  cp = cos(pitch); sp = sin(pitch);
-  dist = fh * 2.90;
-  // Pivot at chest height; the shoulder offset is lateral to the facing, which
-  // is what makes it over-the-SHOULDER rather than straight down the spine.
-  px = fx.x + (0.0 - sy) * fh * 0.34;
-  pz = fx.z + cy * fh * 0.34;
-  py = fx.y + fh * 0.70;
-  // The eye orbits the pivot; the TARGET stays near the pivot rather than at a
-  // fixed point far ahead. Measured: with a distant target the eye rose with
-  // pitch while the aim did not, so past ~40° the character dropped out of
-  // frame entirely — a follow camera that loses what it follows. A short lead
-  // keeps the character framed at every admissible pitch and still shows the
-  // ground ahead, which is what the lead was for.
-  eye = vec3(px - cy * dist * cp, py + dist * sp, pz - sy * dist * cp);
-  tgt = vec3(px + cy * fh * 1.20, py + fh * 0.05, pz + sy * fh * 1.20);
-  "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
-    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
-}
-
 fn main() {
   port = 18090;
   srv = server::listen(port);
@@ -202,41 +224,72 @@ fn main() {
     return;
   }
 
-  // The world is built ONCE, at startup, and its wire form is cached — W0's
-  // world never changes, so re-serialising it per connection was pure waste.
-  // When the height tool lands this becomes "rebuild the dirty part", which is
-  // the incremental re-derivation obligation, not a rewrite of this shape.
+  // The world is built ONCE and its wire form cached — W0's geometry never
+  // changes, so re-serialising per connection was pure waste. When the height
+  // tool lands this becomes "re-serialise the dirty part", which is the
+  // incremental re-derivation obligation, not a rewrite of this shape.
   ground = mesh("ground");
   for gr in 0..PLANE_H {
     for gq in 0..PLANE_W {
       emit_hex_surface(ground, gq, gr, 0);
     }
   }
-  fx = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
-  fig = build_figure(0.0, 0.0, 0.0);
-  ground_wire = "M:0;{mesh_wire(ground, 0.42, 0.50, 0.30)}";
-  fig_wire = "M:1;{mesh_wire(fig, 0.80, 0.60, 0.45)}";
+  fh = figure_wu();
+  hd = head_wu();
+  leg = limb_mesh("leg", hip_wu(), hd * 0.62, hd * 0.62);
+  arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
+  body = body_mesh();
 
-  clients: vector<Client> = [];
+  wire_ground = "M:{PART_GROUND};{mesh_wire(ground, 0.42, 0.50, 0.30)}";
+  wire_body = "M:{PART_BODY};{mesh_wire(body, 0.80, 0.60, 0.45)}";
+  wire_leg_l = "M:{PART_LEG_L};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_leg_r = "M:{PART_LEG_R};{mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_arm_l = "M:{PART_ARM_L};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
+  wire_arm_r = "M:{PART_ARM_R};{mesh_wire(arm, 0.80, 0.60, 0.45)}";
+
+  // The character's state — the whole of it.
+  start = hex_to_world(PLANE_W / 2 ?? 0, PLANE_H / 2 ?? 0, 0);
+  px = start.x;
+  py = start.y;
+  pz = start.z;
   yaw = 0.0;
   pitch = 0.35;
+  // THE GAIT PHASE IS DERIVED FROM DISTANCE WALKED, NOT FROM ELAPSED TIME.
+  // Same discipline as `hex_body::wheel_value` for a rolling wheel — phase from
+  // travel, never accumulated per frame — and it buys the same property: the
+  // feet cannot skate, because the swing is a function of how far the character
+  // has actually gone.
+  walked = 0.0;
 
-  println("moros editor — W0 (a plane, and the reference figure)");
-  println("  world: {len(ground.vertices)} ground verts, {len(fig.vertices)} figure verts");
+  // The plane's world-space bounds, so the character cannot walk off it. Taken
+  // from the lattice rather than assumed: the corner cells' centres, inset by
+  // the figure's own width.
+  c00 = hex_to_world(0, 0, 0);
+  c11 = hex_to_world(PLANE_W - 1, PLANE_H - 1, 0);
+  min_x = c00.x + hd; max_x = c11.x - hd;
+  min_z = c00.z + hd; max_z = c11.z - hd;
+
+  clients: vector<Client> = [];
+  keys = 0;
+  last_us = ticks();
+
+  println("moros editor — W0 (a plane, a character, and the camera behind it)");
+  println("  world: {len(ground.vertices)} ground verts, figure in 5 parts");
   println("  listening on port {port}  — MULTI-CLIENT (open as many tabs as you like)");
   println("    http://localhost:{port}/");
   hn = hostname();
   if hn != "" { println("    http://{hn}:{port}/"); }
   println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
-  println("             then open http://localhost:{port}/ in your own browser");
+  println("  drag to look · WASD to walk");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
   // must serve its own page drives the pump itself: drain every pending event,
-  // then idle-sleep when a pass produced nothing. Same shape as the audience
-  // demo's `single_port_server.loft`, which documents the same reason.
+  // run the fixed-rate tick, idle-sleep when a pass produced nothing. Same
+  // shape as the audience demo's `single_port_server.loft`.
   while true {
     work = 0;
+    moved = false;
     while true {
       ev = srv.poll_event();
       if ev == null { break; }
@@ -251,11 +304,15 @@ fn main() {
         println("editor: client {ev.cid} connected");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
-          srv.send_to(ev.cid, ground_wire);
-          srv.send_to(ev.cid, fig_wire);
-          srv.send_to(ev.cid, "T:0;{mat_wire(mat4_identity())}");
-          srv.send_to(ev.cid, "T:1;{mat_wire(figure_model(fx, yaw))}");
+          srv.send_to(ev.cid, wire_ground);
+          srv.send_to(ev.cid, wire_body);
+          srv.send_to(ev.cid, wire_leg_l);
+          srv.send_to(ev.cid, wire_leg_r);
+          srv.send_to(ev.cid, wire_arm_l);
+          srv.send_to(ev.cid, wire_arm_r);
+          srv.send_to(ev.cid, "T:{PART_GROUND};{mat_wire(mat4_identity())}");
           srv.send_to(ev.cid, "E:");
+          moved = true;
           println("editor: client {ev.cid} — world sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
@@ -266,32 +323,83 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
-            srv.send_to(ev.cid, cam_wire(fx, yaw, pitch, asp));
-            srv.send_to(ev.cid, "T:1;{mat_wire(figure_model(fx, yaw))}");
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, pitch, asp));
+            moved = true;
           }
         } else if ev.msg_id == MSG_LOOK {
           // A drag turns the CHARACTER, and the camera follows it round —
-          // "behind" is a property of the facing, not a free orbit. So yaw is
-          // the one value that moves and both the camera and the figure are
-          // derived from it; they cannot drift apart because there is nothing
-          // to keep in sync.
+          // "behind" is a property of the facing, not a free orbit. Yaw is the
+          // one value that moves; the camera and the figure are both derived
+          // from it, so they cannot drift apart.
           di = ev.payload.find(",");
           if di != null {
-            dx = ev.payload[..di] as float ?? 0.0;
-            dy = ev.payload[di + 1..] as float ?? 0.0;
-            yaw = yaw + dx * LOOK_PER_PX;
-            pitch = pitch + dy * LOOK_PER_PX;
+            yaw = yaw + (ev.payload[..di] as float ?? 0.0) * LOOK_PER_PX;
+            pitch = pitch + (ev.payload[di + 1..] as float ?? 0.0) * LOOK_PER_PX;
             if pitch < PITCH_MIN { pitch = PITCH_MIN; }
             if pitch > PITCH_MAX { pitch = PITCH_MAX; }
-            fig_t = "T:1;{mat_wire(figure_model(fx, yaw))}";
-            for lc in clients {
-              srv.send_to(lc.cid, cam_wire(fx, yaw, pitch, lc.aspect));
-              srv.send_to(lc.cid, fig_t);
-            }
+            moved = true;
           }
+        } else if ev.msg_id == MSG_KEYS {
+          keys = ev.payload as integer ?? 0;
         }
       }
     }
-    if work == 0 { web::sleep_ms(2); }
+
+    // ── the fixed-rate tick ────────────────────────────────────────────────
+    now_us = ticks();
+    if now_us - last_us >= TICK_US {
+      steps = (now_us - last_us) / TICK_US ?? 1;
+      last_us = last_us + steps * TICK_US;
+      fwd = 0.0;
+      side = 0.0;
+      if keys & 1 != 0 { fwd = fwd + 1.0; }
+      if keys & 2 != 0 { fwd = fwd - 1.0; }
+      if keys & 8 != 0 { side = side + 1.0; }
+      if keys & 4 != 0 { side = side - 1.0; }
+      if fwd != 0.0 || side != 0.0 {
+        // Normalise, so a diagonal is not faster than a straight line — the
+        // oldest bug in the genre, and free to avoid at the one site that moves.
+        mag = sqrt(fwd * fwd + side * side) ?? 1.0;
+        fwd = fwd / mag ?? 0.0;
+        side = side / mag ?? 0.0;
+        dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
+        dist = (WALK_MS / WU_PER_M ?? 0.0) * dt;
+        ky = cos(yaw); sy = sin(yaw);
+        // Local +x is forward; local +z is the character's right.
+        px = px + (ky * fwd - sy * side) * dist;
+        pz = pz + (sy * fwd + ky * side) * dist;
+        if px < min_x { px = min_x; }
+        if px > max_x { px = max_x; }
+        if pz < min_z { pz = min_z; }
+        if pz > max_z { pz = max_z; }
+        walked = walked + dist;
+        moved = true;
+      }
+    }
+
+    // ── publish, only when something actually changed ──────────────────────
+    if moved {
+      // One stride is half a cycle, so the phase advances by π per stride.
+      phase = walked / (STRIDE_M / WU_PER_M ?? 1.0) ?? 0.0;
+      swing = sin(phase * PI) * LEG_SWING;
+      aswing = sin(phase * PI) * ARM_SWING;
+      bmat = body_at(px, py, pz, yaw);
+      hipz = hd * 0.42;
+      shz = hd * 2.0 * 0.5 + hd * 0.16;
+      t_body = "T:{PART_BODY};{mat_wire(bmat)}";
+      t_leg_l = "T:{PART_LEG_L};{mat_wire(limb_at(bmat, 0.0, hip_wu(), 0.0 - hipz, swing))}";
+      t_leg_r = "T:{PART_LEG_R};{mat_wire(limb_at(bmat, 0.0, hip_wu(), hipz, 0.0 - swing))}";
+      t_arm_l = "T:{PART_ARM_L};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
+      t_arm_r = "T:{PART_ARM_R};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
+      for pc in clients {
+        srv.send_to(pc.cid, t_body);
+        srv.send_to(pc.cid, t_leg_l);
+        srv.send_to(pc.cid, t_leg_r);
+        srv.send_to(pc.cid, t_arm_l);
+        srv.send_to(pc.cid, t_arm_r);
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, pitch, pc.aspect));
+      }
+    }
+    if work == 0 && !moved { web::sleep_ms(2); }
   }
 }
