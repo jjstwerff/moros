@@ -12,6 +12,12 @@
 // does not touch a rotation, so with swing = 0 the leg's upper-3x3 is exactly
 // the body's, and the count collapses to 1. That is the difference between a
 // check that can fail and one that cannot.
+// ⚠ PART IDS ARE A CONTRACT WITH THE SERVER, and they moved once already.
+// When the world went infinite the static ground mesh went away and PART_BODY
+// slid from 1 to 0 — so this probe silently began reading the LEFT LEG as "the
+// body" and kept PASSING, because a leg does move. Named constants and this
+// note, because the failure was invisible: green, for the wrong reason.
+const BODY = '0;', LEG_L = '1;';
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const body = [], legL = [], bodyPos = [];
 let phase = 0;
@@ -23,8 +29,8 @@ const rot9 = (b) => {
 ws.onopen = () => ws.send('1:');
 ws.onmessage = (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'T' && b.startsWith('1;')) { body.push(rot9(b)); bodyPos.push(b); }
-  if (t === 'T' && b.startsWith('2;')) legL.push(rot9(b));
+  if (t === 'T' && b.startsWith(BODY)) { body.push(rot9(b)); bodyPos.push(b); }
+  if (t === 'T' && b.startsWith(LEG_L)) legL.push(rot9(b));
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && phase === 0) {
     phase = 1;

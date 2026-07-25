@@ -33,6 +33,38 @@ use moros_render;
 // has no "the ground", only the part of it you are near.
 const DRAW_HEXES = 25;
 
+// The world does not END at the draw distance, it FADES to the sky. Chunks
+// still arrive all-at-once as you walk, but they arrive already invisible, so
+// the seam the streaming produces is never on screen. Fog rather than alpha:
+// alpha needs the geometry sorted back-to-front, fog needs nothing.
+//
+// ⚠ AND THE BAND IS THE LOD SEAM, not a cosmetic (user, 2026-07-25: "this will
+// become our way to show the detailed closeup layer versus the more simple
+// longer view"). `FADE_FROM..FADE_TO` is where detail hands over to simplicity:
+// today it fades one representation to sky, later it cross-fades a detailed
+// derivation into a coarse one. Two consequences to hold on to before that
+// lands — both derivations must come from the SAME field (a coarse mesh
+// authored separately is a second source that drifts from the near one, and the
+// seam is precisely where a disagreement shows), and the band must stay wider
+// than one chunk, or a chunk can arrive mid-transition with nothing to fade
+// from.
+//
+// The fade must finish at or before the nearest distance a chunk can pop in, or
+// the pop happens in full view and the fade is decoration. `DRAW_HEXES` steps
+// measured at the SHORT step (N–S, 1.5 wu) is the conservative reading — in the
+// other directions a hex step is longer, so geometry is fogged out sooner than
+// it is culled, never later.
+const FADE_TO = 1.5;           // world units per hex step, the short axis
+const FADE_FROM = 0.55;        // fade begins at this fraction of the distance
+
+// ONE sky colour, sent to the client, used for BOTH the clear and the fog
+// target. Two copies would drift and leave a visible ring at the horizon where
+// the fog stopped matching the sky — the same "two derivations of one value"
+// class as everything else here, just wearing a colour.
+const SKY_R = 0.48;
+const SKY_G = 0.55;
+const SKY_B = 0.64;
+
 // Ground is derived in CHUNKS, one mesh each, so walking one hex does not
 // re-derive the whole disk. A chunk is all-or-nothing: it enters the view when
 // ANY of its cells is in range, which makes the visible set stable — a cell on
@@ -91,7 +123,8 @@ const TICK_US = 33000;
 //                     2:<aspect>,   a camera for this viewport
 //                     3:<dx>,<dy>   drag — turn the character (and us with it)
 //                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
-//   server → client   M:<i>;r,g,b;… mesh i
+//   server → client   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>   fog + sky
+//                     M:<i>;r,g,b;… mesh i
 //                     T:<i>;<16>    mesh i's placement
 //                     E:            end of world
 //                     C:<view>;<proj>
@@ -244,6 +277,14 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
     + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
 }
 
+// The fade is centred on the CHARACTER, not the camera, because the culling is:
+// the server keeps chunks within `DRAW_HEXES` of where the character stands, so
+// centring the fade anywhere else would let the two disagree at the rim.
+fn fog_wire(fx: float, fy: float, fz: float) -> text {
+  fto = (DRAW_HEXES as float) * FADE_TO;
+  "F:{fx},{fy},{fz},{fto * FADE_FROM},{fto},{SKY_R},{SKY_G},{SKY_B}"
+}
+
 fn hostname() -> text {
   hf = file("/etc/hostname");
   if hf.format == Format.NotExists { return ""; }
@@ -355,6 +396,7 @@ fn main() {
           srv.send_to(ev.cid, wire_arm_l);
           srv.send_to(ev.cid, wire_arm_r);
           srv.send_to(ev.cid, "E:");
+          srv.send_to(ev.cid, fog_wire(px, py, pz));
           // A new client holds no chunks, so the stream has to start over for
           // everyone. Correct rather than clever: W0's job is to be right about
           // what is visible, and a per-client chunk set is the optimisation
@@ -485,7 +527,9 @@ fn main() {
       t_leg_r = "T:{PART_LEG_R};{mat_wire(limb_at(bmat, 0.0, hip_wu(), hipz, 0.0 - swing))}";
       t_arm_l = "T:{PART_ARM_L};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
       t_arm_r = "T:{PART_ARM_R};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
+      fogw = fog_wire(px, py, pz);
       for pc in clients {
+        srv.send_to(pc.cid, fogw);
         srv.send_to(pc.cid, t_body);
         srv.send_to(pc.cid, t_leg_l);
         srv.send_to(pc.cid, t_leg_r);

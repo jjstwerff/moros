@@ -7,6 +7,12 @@
 //
 // Control: make A/D strafe again and turnedWithoutMouse goes false — the
 // position still moves, so a position-only check could not tell the difference.
+// ⚠ PART IDS ARE A CONTRACT WITH THE SERVER, and they moved once already.
+// When the world went infinite the static ground mesh went away and PART_BODY
+// slid from 1 to 0 — so this probe silently began reading the LEFT LEG as "the
+// body" and kept PASSING, because a leg does move. Named constants and this
+// note, because the failure was invisible: green, for the wrong reason.
+const BODY = '0;', LEG_L = '1;';
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const rot = [], pos = [];
 let stage = 0, sentLook = false;
@@ -22,7 +28,7 @@ const xz = (b) => {
 ws.onopen = () => send('1:');
 ws.onmessage = (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'T' && b.startsWith('1;')) { rot.push(rot9(b)); pos.push(xz(b)); }
+  if (t === 'T' && b.startsWith(BODY)) { rot.push(rot9(b)); pos.push(xz(b)); }
   if (t === 'E') send('2:1.5,');
   if (t === 'C' && stage === 0) {
     stage = 1;

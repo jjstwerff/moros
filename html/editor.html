@@ -33,6 +33,7 @@
 //   ←  X:<i>                  drop mesh i — a chunk left the draw distance
 //   ←  E:                     end of world
 //   ←  C:<16 view>;<16 proj>  column-major matrices
+//   ←  F:x,y,z,from,to,r,g,b  fade centre, its two radii, and the sky colour
 const cv = document.getElementById('gl');
 const hud = document.getElementById('hud');
 const gl = cv.getContext('webgl2', { antialias: true });
@@ -43,23 +44,35 @@ layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNrm;
 uniform mat4 uModel, uView, uProj;
 out vec3 vNrm;
+out vec3 vWorld;
 void main(){
   // The model matrix is a rigid placement (rotate + translate, no scale), so
   // the same upper-3x3 transforms the normal — no inverse-transpose needed.
   vNrm = mat3(uModel) * aNrm;
-  gl_Position = uProj * uView * uModel * vec4(aPos,1.0);
+  vec4 w = uModel * vec4(aPos,1.0);
+  vWorld = w.xyz;
+  gl_Position = uProj * uView * w;
 }`;
 
 const FS = `#version 300 es
 precision highp float;
 in vec3 vNrm;
-uniform vec3 uColor;
+in vec3 vWorld;
+uniform vec3 uColor, uFogCentre, uFogColor;
+uniform float uFogFrom, uFogTo;
 out vec4 frag;
 void main(){
   // One directional light, flat-shaded — the reference look: matte, no specular.
   vec3 L = normalize(vec3(0.35,0.80,0.45));
   float d = max(dot(normalize(vNrm), L), 0.0);
-  frag = vec4(uColor * (0.45 + 0.55*d), 1.0);
+  vec3 lit = uColor * (0.45 + 0.55*d);
+  // HORIZONTAL distance only. Using the full 3-D distance would fog the ground
+  // at your feet whenever the camera is high, because the fade is centred on
+  // the character and the camera looks down at it.
+  float r = distance(vWorld.xz, uFogCentre.xz);
+  float f = clamp((r - uFogFrom) / max(uFogTo - uFogFrom, 0.001), 0.0, 1.0);
+  f = f*f*(3.0-2.0*f);                    // smoothstep — no banding at the rim
+  frag = vec4(mix(lit, uFogColor, f), 1.0);
 }`;
 
 function shader(type, src) {
@@ -77,6 +90,10 @@ const uModel = gl.getUniformLocation(prog, 'uModel');
 const uView = gl.getUniformLocation(prog, 'uView');
 const uProj = gl.getUniformLocation(prog, 'uProj');
 const uColor = gl.getUniformLocation(prog, 'uColor');
+const uFogCentre = gl.getUniformLocation(prog, 'uFogCentre');
+const uFogColor = gl.getUniformLocation(prog, 'uFogColor');
+const uFogFrom = gl.getUniformLocation(prog, 'uFogFrom');
+const uFogTo = gl.getUniformLocation(prog, 'uFogTo');
 
 const IDENT = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 // A MAP, not an array: chunk ids are sparse coordinate encodings, and the world
@@ -84,6 +101,10 @@ const IDENT = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 // a slot per chunk ever visited.
 const parts = new Map();   // id -> {vao, vbo, count, color, model}
 let view = null, proj = null;
+// The sky is NOT a constant here. It arrives with the fog, so the clear colour
+// and the fog target are one value — two copies would drift and leave a ring at
+// the horizon where the fog stopped matching the sky.
+let fog = { c: [0,0,0], from: 1e9, to: 1e9, sky: [0.48, 0.55, 0.64] };
 
 function addMesh(body) {
   const h = body.indexOf(';');
@@ -126,12 +147,16 @@ function resize() {
 function draw() {
   resize();
   gl.enable(gl.DEPTH_TEST);
-  gl.clearColor(0.48, 0.55, 0.64, 1);           // the reference sky
+  gl.clearColor(fog.sky[0], fog.sky[1], fog.sky[2], 1);   // the SAME value the fog fades to
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   if (view && proj) {
     gl.useProgram(prog);
     gl.uniformMatrix4fv(uView, false, view);
     gl.uniformMatrix4fv(uProj, false, proj);
+    gl.uniform3fv(uFogCentre, fog.c);
+    gl.uniform3fv(uFogColor, fog.sky);
+    gl.uniform1f(uFogFrom, fog.from);
+    gl.uniform1f(uFogTo, fog.to);
     for (const p of parts.values()) {
       gl.uniformMatrix4fv(uModel, false, p.model);
       gl.uniform3fv(uColor, p.color);
@@ -157,6 +182,10 @@ ws.onmessage = (ev) => {
     if (p) p.model = new Float32Array(body.slice(k + 1).split(',').map(Number));
   }
   else if (tag === 'X') { dropMesh(Number(body)); }
+  else if (tag === 'F') {
+    const v = body.split(',').map(Number);
+    fog = { c: v.slice(0, 3), from: v[3], to: v[4], sky: v.slice(5, 8) };
+  }
   else if (tag === 'E') {
     hud.textContent = 'drag or A/D to turn · W/S to walk';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
