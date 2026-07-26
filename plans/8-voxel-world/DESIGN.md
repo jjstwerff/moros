@@ -460,6 +460,49 @@ second home for landscape, and a window leaking past storage.
 
 ---
 
+## 8b. OPEN DECISION — is the per-chunk window necessary at all?
+
+*(user, 2026-07-26: "the rest of the height of 16k meters (65536/4) should be enough to
+reach from almost the deepest place inside the ocean to the heightest peak we know")*
+
+That sentence reasons about `u16 × 0.25 m` as a **global** range, and if the world's whole
+vertical extent fits in one `u16`, the per-chunk window is machinery with nothing to do.
+
+**The numbers.** At `0.25 m`, `65536` units span **16 384 m**. Real relief from a deep
+trench to the highest peak is about 20 km, so 16.4 km covers a game world comfortably —
+roughly −8 000 m to +8 384 m — while leaving no room to make the unit finer.
+
+**What removing the window would delete**, which is the case for doing it:
+
+| goes | why |
+|---|---|
+| `b_K`, the per-chunk base | heights are already absolute |
+| rebase, and its re-encode of every layer | nothing to re-base |
+| `CW_WINDOW` | no span a chunk cannot hold |
+| **W1** and **S1** | both are about the window |
+| **Guard 1** — `StoredHex` vs `Hex` as distinct types | they become the same type |
+| the S1 probe and its careful control | nothing to test |
+
+That is one invariant pair, one refusal, one guard, one expensive write path and a type
+distinction — removed, not simplified. **Robustness by subtraction**: the shorter version is
+usually the more robust one.
+
+**What keeping it buys.** Exactly one thing: *resolution independent of world height.* With
+a window, `0.05 m` units give five times smoother terrain and still cover any tile. Without,
+resolution × 65536 must span the whole world, so `0.25 m` is forced and is the finest
+available.
+
+⚠ **The tension to resolve.** An earlier instruction — *"layers have a limited height axis
+we solve that via chunks"* — is what produced the window. It may have meant the numeric
+windowing built here, or it may simply have meant that vertical extent comes from having
+many layers and tiles. **This plan should not guess.** The two readings differ by everything
+in the table above.
+
+**Recommendation: drop the window**, if `0.25 m` resolution is acceptable. It is the larger
+subtraction, it matches the sentence that prompted this, and terrain smoothing already
+happens through shared corner heights and gradient normals rather than through height
+precision.
+
 ## 9. Assumed, not decided
 
 Inferences, not answers. Each is cheap now and expensive once files exist.
@@ -469,7 +512,8 @@ Inferences, not answers. Each is cheap now and expensive once files exist.
 | A1 | **64 layers per chunk**, 65 536 per world | resolved above: the cap is per tile, so regions no longer compete. 64 in one 32×32 tile is a tower and its cellars | widen the table; the id space already has room |
 | A2 | **headroom = one storey's clearance** | a cave you cannot stand in is legal and useless | a header constant; re-audit existing worlds |
 | ~~A3~~ | ~~the surface starts at layer 8~~ | **DISSOLVED** by global ids: the world defines as many sub-surface layers as it likes and a tile materialises only what it uses | — |
-| A4 | **window stays `u16`** | inherited from the voxel, not chosen. A per-chunk base is exactly what would let it shrink to `u8` (7-byte voxel) | two constants; the routine is unchanged |
+| A4 | **`0.25 m` per height unit** | the value `moros_sim/tests/collide.loft` already pins (`8 * HEIGHT_SCALE = 2.0`), and the one the 16 km figure assumes | see §8b — it decides whether the window exists |
+| A10 | **`ρ`, the floor reserve, is unset** | the deepest intended excavation; a world constant | terrain authored where cellars must go |
 | A5 | breaking the crystal is acceptable churn | it is a demo, not an end product | coordination with the sibling tree |
 
 ---

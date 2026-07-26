@@ -49,7 +49,10 @@ tick — age, wear, occupancy — is not a cell field; it belongs in a side tabl
   nothing outside it. There is no world-wide layer list and no global budget: a forty-storey
   tower's layers exist in the tile it stands on and nowhere else.
 - **Heights are windowed.** A stored height is a `u16` measured from its chunk's base, which
-  decouples the cell's height width from how tall the world is.
+  decouples the cell's height width from how tall the world is. *(Under review — see the
+  plan's open decision on whether a global `u16` makes the window unnecessary.)*
+- **The world floor is 0 and unsigned**, so nothing is below it. A floor reserve `ρ` keeps
+  authored terrain above the depth reserved for cellars, mines and dungeons (**R1**).
 
 **The unit of access is a column, not a cell.** Every rule in Part II is a property of a
 column, and a routine handing out cells could not check any of them.
@@ -114,6 +117,7 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
+| `ρ ∈ ℕ` | **floor reserve** — a world constant; terrain may not be authored below it |
 | `ε ∈ ℕ` | **headroom** — a world constant |
 | `θ ∈ ℕ` | **match tolerance** — a world constant; the largest step read as continuous |
 
@@ -193,6 +197,25 @@ check — it needs the size probes.
 This is why `Column` carries no base field: a value that has lost its chunk cannot be
 un-windowed, so the type never holds one.
 
+### R1 — Floor reserve
+
+> ```
+>     ∀ K, ∀ terrain λ ∈ Λ_K, ∀ x ∈ X_K :   occ_λ(x)  ⟹  H_λ(x) ≥ ρ
+> ```
+
+**Heights are unsigned: there is no digging below 0.** A structure authored with its ground
+floor at or near the world floor has nowhere to put a cellar, and the failure appears late —
+at the moment someone tries to excavate under a castle that is already built.
+
+`ρ` reserves that space structurally rather than by convention. It is the deepest intended
+excavation, expressed once: everything below `ρ` belongs to whatever gets dug later, and the
+brush refuses to author terrain into it. A world whose ground sits at `ρ` can always fit its
+dungeons, because the room was never available to spend.
+
+The reserve is a *floor on authoring*, not on the format: excavation writes below `ρ`
+deliberately, and reading is unrestricted. It exists to stop terrain being placed where a
+cellar will need to go.
+
 ### D1 — Dressing is inert
 
 > Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
@@ -267,6 +290,7 @@ Every refusal names what it refused and leaves the world unchanged.
 |---|---|---|
 | `CW_FOLD` | **F1** | a write would bring some consecutive pair closer than `ε` |
 | `CW_WINDOW` | **W1** | `max H − min H ≥ 2¹⁶` after the write; no base exists |
+| `CW_RESERVE` | **R1** | terrain would be authored below `ρ` |
 | `CW_LAYER_CAP` | §2 | the chunk would hold more than 64 layers |
 | world refused at creation | **C1** | `ε ≤ 2θ` |
 | torn chunk | — | CRC mismatch: that chunk is refused, the rest opens |
@@ -297,6 +321,7 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **W1** | every stored `s` in range after any write, including after rebase | force a span ≥ 2¹⁶ → `CW_WINDOW` |
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
 | **S1** | two chunks, **different bases**, one ridge → equal `H` from both sides | their stored `s` must **differ**, or the test is vacuous |
+| **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |
