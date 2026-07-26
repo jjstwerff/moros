@@ -126,7 +126,8 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `b_K ∈ ℕ` | its **window base**, an absolute height |
 | `Λ_K = ⟨λ₀ … λ_{n−1}⟩`, `n ≤ 64` | its layers, **an ordered sequence**, local to `K` |
 | `k(λ) ∈ {T, D}` | layer kind: **T**errain or **D**ressing |
-| `id(λ) ∈ [0, 2¹⁶)` | an optional **label**. `0` means unlabelled; non-zero claims correspondence with equally-labelled layers in other chunks |
+| `id(λ) ∈ [0, 2³²)` | an optional **label** — a name, not an ordinal. `0` means unlabelled |
+| `ν ∈ [0, 2³²)` | the world's **next free label**, in the header |
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
@@ -144,7 +145,8 @@ col_K(x)  =  ⟨ i : k(λᵢ) = T ∧ occ_{λᵢ}(x) ⟩   the column at x, in c
 
 ## 2. The objects
 
-**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)` and a palette.
+**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)`, the label
+counter `ν`, and a palette.
 
 **`u` is declared per world and the model never reads it.** Heights are integers; `u` says
 what one step means to a renderer, a collider or a player, and every other constant here is
@@ -164,7 +166,7 @@ exists, has a kind, and is excluded from every rule about columns, folding and c
 
 ## 3. Invariants
 
-A world satisfying **F1**, **W1**, **E1**, **S1**, **R1** and **I1** is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1** and **I3** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
@@ -255,6 +257,37 @@ a layer bearing a different label.
 
 `id = 0` is unlabelled and unconstrained, following the same convention as palette slot 0:
 zero is absence, and absence is never a claim.
+
+### A label is a NAME, not an ordinal
+
+This is the part that decides how labels are allocated, so it is stated rather than left
+implicit: **nothing in this model reads label order.** `I1` uses only equality. Stack order
+comes from the chunk's own layer sequence, and within a column `F1″` already makes it
+identical to height order.
+
+**Global label order would be a claim the world cannot honour.** "Below" is a *per-column*
+relation, not a world-wide one: a floor that is beneath another here may sit higher than it
+half a world away, because the ground between them rose. Two distinct decks of a station may
+cross in absolute height across its length while remaining perfectly ordered everywhere
+locally. Any scheme in which `id(a) < id(b)` meant "a is below b" would therefore be making
+a promise the geometry breaks, and breaking it silently.
+
+**So labels are never inserted *between* labels, and the exhaustion problem does not arise.**
+A world keeps `ν`, the next free label, in its header; allocation is `id := ν; ν := ν + 1`.
+Uniqueness is exact rather than probabilistic, needs no search of what neighbours already
+use, and 2³² is not a budget anyone spends — it is four billion *distinct layers ever
+created* across a world's entire authoring life.
+
+A world may still allocate with gaps or in blocks as a **convention**, so that a station's
+decks read 1000, 1001, 1002 and a mine's levels read 2000, 2001. That is a convenience for
+whoever reads the file, and the model neither enforces nor relies on it. **The moment
+anything depends on that ordering, the per-column argument above says it is wrong.**
+
+> ```
+>     I2 (uniqueness):   id(λ) ≠ 0  ∧  id(λ′) = id(λ)  ⟹  λ and λ′ are the same layer,
+>                        or corresponding layers of different chunks
+>     I3 (allocation):   every non-zero label was drawn from ν, and ν only increases
+> ```
 
 **What the label is for.** Given **I1**, an implementation may find the neighbour by label in
 `O(1)` instead of searching by height, and the result is *provably the same layer* — so this
@@ -373,6 +406,7 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **S1** | two chunks, **different bases**, one ridge → equal `H` from both sides | their stored `s` must **differ**, or the test is vacuous |
 | **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
 | **I1** | relabel one layer of a neighbouring chunk → the gate fires on the crossing match | leave labels agreeing → silent; set both to `0` → silent, since unlabelled is unconstrained |
+| **I3** | allocate a thousand labels across many chunks → all distinct, `ν` monotonic | reuse a label for an unrelated layer → **I1** fires at the first seam where it matters |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |
