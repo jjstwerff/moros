@@ -83,7 +83,7 @@ and nothing else:
 |---|---|---|
 | 1 | **voxel chunks** — the landscape | the authored thing itself |
 | 2 | **the palette** — material / wall / item definitions | `u8`s are indexes; without the tables they name nothing. Authored, not derived |
-| 3 | **world header** — name, version, chunk geometry | says how to read 1 and 2 |
+| 3 | **world header** — name, version, chunk geometry, headroom | says how to read 1 and 2, and what keeps layers apart (§3c) |
 
 Everything else is derived and must be deletable mid-session without loss: chunk meshes,
 normals, the collision structures below, the LOD height texture, the dirty set, the
@@ -132,13 +132,106 @@ otherwise: the surface starts at `cy = 8`**, leaving eight storeys of dungeon be
 default world. Cheap to change while no file exists; it is only a starting offset, and
 the format itself is indifferent to it.
 
+## 3c. Layers must not fold, and the height axis is windowed
+
+*(user, 2026-07-26: "we need to keep layers intact so they do NOT fold through each
+other, and chunks can have different heights though we stitch layers together
+seamlessly across their boundaries (layers have a limited height axis we solve that via
+chunks)")*
+
+This adds a kind of rule the design did not have. Everything above treats each
+`(q, r, cy)` as independent; this says **layers have a relationship to each other and to
+their neighbours that the format must keep true.**
+
+### The non-folding invariant
+
+> For every column `(q, r)`: `surface(cy) + headroom ≤ surface(cy + 1)`.
+
+Layers are stacked and stay stacked. A cave floor that rises through the ground above it
+is not a strange world, it is a **corrupt** one — two surfaces claiming the same space,
+with no answer to which one you stand on. So this is enforced at **apply**, not at save:
+a brush that would breach the layer above refuses, names the column and the layer it hit,
+and leaves the world unchanged. `K-FIT`, applied vertically.
+
+The headroom term is why it is `≤` with a margin rather than plain `<`: a cave you cannot
+stand up in is geometrically legal and useless. **Assumption until told otherwise:
+headroom is one storey's minimum clearance, expressed in height units and stored in the
+header** — it belongs to the world, not to the cell.
+
+### ⚠ Windowing has a hazard, and it is already in the code
+
+"Layers have a limited height axis, we solve that via chunks" means the cell's height
+field is **narrower than the world is tall**, and the chunk positions the window. That
+decouples the world's vertical extent from the cell's width — the property that makes a
+tall world cost nothing per cell, and the reason the voxel could later shrink its height
+field without changing the world model.
+
+The hazard is that it makes a height **meaningless without its chunk** — and moros
+already passes heights around detached from theirs:
+
+```
+moros_render.loft:955   sd_nh = map_get_hex(map, sd_nq, sd_nr, cy).h_height;
+moros_render.loft:993   sh_dest_h = map_get_hex(map, sh_ndq, sh_ndr, cy).h_height;
+```
+
+`map_get_hex` resolves the chunk internally and hands back a bare `Hex`. Both lines take
+a **neighbour's** height and compare it against the current cell's — and a neighbour
+reached by `hex_neighbor` crosses a chunk boundary roughly every 32 hexes. Under a
+windowed height those comparisons are wrong precisely at the seams, which is exactly
+where "stitch seamlessly" is the requirement. Nothing would crash; cliffs and stairs
+would simply be wrong at chunk edges, intermittently, in a pattern that looks like a
+geometry bug.
+
+### The rule that removes it
+
+> **The window is a STORAGE encoding and never leaves the storage layer. In memory a
+> height is absolute; on disk it is relative to its chunk. Conversion happens at chunk
+> read and chunk write, and nowhere else.**
+
+Then `.h_height` means one thing everywhere above storage, the two lines above stay
+correct without knowing they were at risk, and seamless stitching is true **by
+construction** rather than by every caller remembering. `N = 1`, at the one boundary that
+already exists.
+
+It also explains what I got wrong in §3b. Deleting `base_height` was right for the reason
+given — a *per-world* offset is a global constant that buys nothing and costs a re-
+assertion at every height site. A *per-chunk* window is a different thing entirely: not
+insurance, but the mechanism that makes a limited axis span a tall world. Same-looking
+field, opposite verdicts, and the difference is granularity.
+
+### Open: how the window is addressed
+
+Two readings of the brief survive, and they differ in the format:
+
+- **(A) explicit** — each chunk stores its own base height. Chunks at one `cy` can sit at
+  different heights; maximum freedom, one field per chunk, and the directory must carry
+  it.
+- **(B) implicit** — `cy` *is* the vertical band: band `k` covers `[k·BAND, (k+1)·BAND)`,
+  so the base is `cy · BAND` and no field is stored at all.
+
+(B) is smaller and self-describing; (A) lets a layer follow terrain rather than sit in a
+fixed slab, which matters if a dungeon should hug the hillside it is cut into. Everything
+above — non-folding, absolute-in-memory, the seam rule, the probes — is identical either
+way, so this is the only part waiting on an answer.
+
+### Probes this adds
+
+| # | claim | probe | control |
+|---|---|---|---|
+| P9 | layers never fold | raise a cave floor into the ground above → refused, named, world unchanged | raise it to just under → accepted |
+| P10 | **seams stitch** | author a ridge crossing a chunk boundary, read heights from both sides → identical | put the chunks at different windows → still identical |
+| P11 | headroom holds | every stored column satisfies the invariant after any brush | — |
+
+**P10's control is the one that matters** — it is the only version of the test that can
+fail if the window ever leaks out of the storage layer.
+
 ## 4. Layout
 
 A storage chunk is **32 × 32 hexes at one storey** — matching `moros_map`'s existing
 `Chunk` — which at 8 bytes a voxel is exactly **8 KB, two pages**.
 
 ```
-[header      ] magic, version, chunk_w, palette_off, dir_off, dir_len
+[header      ] magic, version, chunk_w, headroom, palette_off, dir_off, dir_len
 [palette     ] the three definition tables, length-prefixed
 [chunk dir   ] sorted (cx, cy, cz) → slot, one entry per EXISTING chunk
 [chunk slots ] 8 KB each: 1024 × Hex, row-major hx*32+hz, CRC32 trailer
