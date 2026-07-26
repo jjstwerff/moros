@@ -716,9 +716,8 @@ document rather than a fact about the tree.
 | character | `Player`, `player_step`, `avatar_mesh`, `emit_player_avatar`, `avatar_add_to_scene` | the single-player part we own; `hex_body` for the rig |
 
 **Four groups have no home**, and they are the substance of the editor rather than of the
-world: undo, camera, the tool/editor loop, and UI widgets. (Input looked like a fifth until
-`loft-libs-game`'s shipped `input` was checked — the same class of miss as `gridmesh`'s
-dirty tracking, and found the same way.) `#7` is where they land,
+world: undo, camera, the tool/editor loop, and UI widgets. Input is not among them —
+`loft-libs-game` ships `input`, so it converges rather than moving. `#7` is where they land,
 and this audit is the list `#7` should work from.
 
 ### ⚠ One finding the audit turned up
