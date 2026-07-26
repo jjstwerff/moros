@@ -119,6 +119,38 @@ own: **this plan owns how a thing attaches to geometry, never the payload.** A t
 is dense voxels because every hex has a height; a dressing layer is sparse records because
 almost none has a lamp, and the world model needs to know only that the two differ.
 
+### Why terrain layers stay dense — sparsity lives on the chunk axis
+
+*(user, 2026-07-26: "We will have many layers not on ground level, those will be sparse but
+our 32x32 chunk model saves us here (buildings/towers have them too)")*
+
+The dense/sparse split that reshaped dressing (#14) raises the obvious follow-up: a ground
+layer is genuinely dense — every hex has a height — but a dungeon corridor or a tower storey
+touches a fraction of its 1024 cells, and still costs 8 KB. Does terrain need a sparse form
+too?
+
+**No, because presence is already per-chunk.** A layer is not a world-wide sheet that must
+be paid for everywhere; it exists only in the tiles whose `ck_mask` names it. A tower's
+twentieth storey lives in the one tile the tower stands on and costs one bit in every other.
+The 32 × 32 granularity is what makes this work: structures with many layers — buildings,
+towers, mine shafts — are **compact in XY**, so the tiles they touch are few.
+
+The bound holds even where it is weakest, a long thin thing crossing many tiles:
+
+| structure | tiles touched | cost |
+|---|---|---|
+| 10-storey tower, 3 hexes across | 1 | 10 layers × 8 KB = **80 KB** |
+| winding corridor, ~500 hexes, one layer | ~30 | **240 KB** |
+| cave system 100 × 100 hexes, 3 layers | ~48 | **384 KB** |
+
+Hundreds of kilobytes for a whole dungeon level, against a format meant for worlds measured
+in gigabytes. **A second terrain representation would buy a rounding error and cost the
+uniformity that keeps the routine, the CRC and the window simple.** Dense stays.
+
+This is the same question that refuted the uniform dressing cell, asked in the other
+direction and answered the other way — which is the point: *dense or sparse* is not a
+property of a design's taste, it is a measurement, and the two cases measure differently.
+
 ### Addressing — axial throughout
 
 ```
@@ -376,9 +408,9 @@ Inferences, not answers. Each is cheap now and expensive once files exist.
 
 | # | assumption | why | cost if wrong |
 |---|---|---|---|
-| A1 | **64 layers per chunk** | a `u64` mask makes presence and slot one word | mask becomes a small directory; nothing else moves |
+| A1 | **64 layers per chunk** | a `u64` mask makes presence and slot one word. ⚠ **Sharpened, not settled:** "many layers not on ground level" plus towers above means the 64 is a real budget, not slack — a 30-level megadungeon under a 30-storey tower is 61 of it | mask becomes a small directory; nothing else moves |
 | A2 | **headroom = one storey's clearance** | a cave you cannot stand in is legal and useless | a header constant; re-audit existing worlds |
-| A3 | **the editor's surface starts at layer 8** | layer 0 is the bottom, so a surface at 0 can never be dug under | a starting offset only |
+| A3 | **the editor's surface starts at layer 8** | layer 0 is the bottom, so a surface at 0 can never be dug under. ⚠ **This is now the load-bearing one:** the surface index IS the maximum dungeon depth, so 8 allows only eight levels beneath | a starting offset while no files exist; a migration once they do |
 | A4 | **window stays `u16`** | inherited from the voxel, not chosen. A per-chunk base is exactly what would let it shrink to `u8` (7-byte voxel) | two constants; the routine is unchanged |
 | A5 | breaking the crystal is acceptable churn | it is a demo, not an end product | coordination with the sibling tree |
 

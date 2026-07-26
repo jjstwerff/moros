@@ -52,6 +52,11 @@ A layer is **terrain** or **dressing**. Terrain is a dense heightfield that coll
 takes part in non-folding. Dressing places things that **never collide** — seen, not stood
 on — and is skipped by both the fold check and the collider.
 
+**Terrain layers are dense and stay dense.** A layer exists only in the tiles whose mask
+names it, so a tower's twentieth storey costs 8 KB in the one tile it stands on and one bit
+everywhere else. Sparsity lives on the **chunk** axis, which is why structures with many
+layers — towers, shafts, dungeon levels — cost what they occupy rather than what they span.
+
 **Layer kind is world-global**, held in the header. A per-chunk kind would let one index be
 terrain in one tile and dressing in the next, making the fold check incoherent at the seam.
 
