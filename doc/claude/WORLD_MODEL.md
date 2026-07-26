@@ -48,16 +48,16 @@ tick — age, wear, occupancy — is not a cell field; it belongs in a side tabl
 
 ## ⏳ Layer kinds
 
-A layer is **terrain** or **dressing**. Terrain is a heightfield that collides and takes
-part in non-folding. Dressing places things — set dressing, kit-bashed elements, assets
-authored as houses or imported as `glb` — and **never collides**; it is seen, not stood on.
-
-Both are the same eight bytes per cell, reinterpreted: in a dressing layer the wall bytes
-become sub-hex offset and scale, which is what lets a kit piece sit off-centre rather than
-snapped to a hex. Chunks, the window, elision and the file are untouched.
+A layer is **terrain** or **dressing**. Terrain is a dense heightfield that collides and
+takes part in non-folding. Dressing places things that **never collide** — seen, not stood
+on — and is skipped by both the fold check and the collider.
 
 **Layer kind is world-global**, held in the header. A per-chunk kind would let one index be
 terrain in one tile and dressing in the next, making the fold check incoherent at the seam.
+
+The world model knows only that the kinds differ and that terrain is dense while dressing
+is sparse. *What a dressing layer contains* — records, offsets, `glb` assets, kit-bashing —
+belongs to [#14](https://github.com/jjstwerff/moros/issues/14).
 
 **The unit of access is a column, not a cell**, because every rule above is a property of a
 column and a routine handing out cells cannot check any of them.
