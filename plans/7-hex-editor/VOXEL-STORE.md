@@ -248,6 +248,144 @@ notices. If worlds want more, the mask becomes a small directory and nothing els
 **P10's control is the one that matters** — it is the only version of the test that can
 fail if the window ever leaks out of the storage layer.
 
+## 3d. THE ROUTINE
+
+Everything above is constraints. This is the thing they describe: the structures, the
+arithmetic, and the two calls that read and write a landscape.
+
+### The unit is a COLUMN, not a cell
+
+Every constraint that has come up is a property of a column, not of a cell. Layers must
+not fold — that compares a cell to the one above it. The window is per chunk — a column
+lies wholly inside one chunk, so it has exactly one base. Headroom is between layers.
+**A routine that hands out cells cannot check any of it**, so the routine hands out
+columns.
+
+The single-cell edit does not disappear; it stops being primitive. You read a column,
+change one layer of it, and write the column back — and the write is where everything is
+checked, once.
+
+### Structures
+
+```loft
+// Stored: height is RELATIVE to its chunk's base. Meaningless on its own.
+struct StoredHex { sv_height: u16, sv_material: u8, sv_item: u8, sv_item_rotation: u8,
+                   sv_wall_n: u8, sv_wall_ne: u8, sv_wall_se: u8 }
+
+// In memory: height is ABSOLUTE. This is the only form above the storage layer.
+//   (`Hex`, unchanged — the compact voxel)
+
+struct Layer  { ly_cells: vector<StoredHex> }          // exactly 1024
+
+struct Chunk  { ck_cx: integer, ck_cz: integer,
+                ck_base: integer,                       // absolute floor of the window
+                ck_mask: integer,                       // 64-bit: which layers exist
+                ck_layers: vector<Layer> }              // present ones only, mask order
+
+struct Column { co_q: integer, co_r: integer,
+                co_present: integer,                    // 64-bit: which layers are here
+                co_cells: vector<Hex> }                 // ABSOLUTE, indexed by layer
+```
+
+`Column` deliberately carries **no base**. It is the absolute form; the window does not
+exist at this level and cannot leak past it.
+
+### Addressing
+
+```
+cx = q >> 5           hx = q & 31          cell = hx * 32 + hz
+cz = r >> 5           hz = r & 31
+
+layer l is present in a chunk  ⟺  (ck_mask >> l) & 1 == 1
+its slot in ck_layers          =  popcount(ck_mask & ((1 << l) - 1))
+```
+
+The slot rule is why no per-layer offset table is stored: presence and position are the
+same word. A chunk with layers 0, 3 and 9 live stores three `Layer`s, and layer 9 is at
+slot 2.
+
+### Read
+
+```loft
+pub fn world_column(w: World, q: integer, r: integer) -> Column
+```
+
+Find the chunk for `(q, r)`; for each set bit of `ck_mask`, take that layer's cell at
+`hx*32+hz`; a cell whose material is 0 is **absent**, not present-and-empty. Every height
+that comes out has `ck_base` added — **this is the only place addition happens.**
+
+A missing chunk yields an empty `Column`, never a refusal: unauthored ground is a legal
+answer, and §slot-0 already makes absence indistinguishable from never-written.
+
+```loft
+pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex
+```
+Convenience over `world_column`. Read-only, and deliberately has no writing twin.
+
+### Write — the whole routine
+
+```loft
+pub const CW_OK            = 0;
+pub const CW_FOLD          = 1;   // a layer breached the one above it
+pub const CW_WINDOW        = 2;   // the chunk cannot hold this span, even rebased
+pub const CW_LAYER_CAP     = 3;   // layer index past the 64 the mask can address
+
+struct ColumnWrite { cw_code: integer, cw_layer: integer, cw_detail: text }
+
+pub fn world_set_column(w: World, col: Column) -> ColumnWrite
+```
+
+In order, and the order is the design:
+
+1. **Check the fold, in absolute space, before touching anything.** Walk the *present*
+   layers of `col` in ascending order; for each consecutive pair,
+   `height(lo) + headroom ≤ height(hi)`. An absent layer is a gap, not a constraint — a
+   dungeon at layer 3 under ground at layer 9 constrains 3 against 9 and nothing else.
+   On failure return `CW_FOLD` naming the layer, **having written nothing.**
+
+2. **Fit the window.** Let `lo` / `hi` be the min and max absolute height across *the
+   whole chunk* once this column is applied — not just this column, because one base
+   serves all of them.
+   - `hi - lo > 65535` → `CW_WINDOW`. The tile is asking for a vertical span one window
+     cannot express; refuse and say so rather than truncate.
+   - `lo < ck_base` or `hi > ck_base + 65535` → **rebase**: set `ck_base = lo` and
+     re-encode every present layer of the chunk. Expensive, correct, and rare.
+   - otherwise → the window stands.
+
+3. **Materialise absent layers.** Any layer present in `col` but not in `ck_mask` gets a
+   fresh zeroed `Layer` inserted at its slot and its mask bit set. This is the only place
+   a layer is created, which is what keeps "unneeded layers" from ever existing: a layer
+   exists because a column put something in it.
+
+4. **Encode and store.** Subtract `ck_base` from each height — **the only place
+   subtraction happens** — and write the cells into their slots.
+
+5. **Drop what emptied.** If a layer's 1024 cells are now all zero, clear its mask bit and
+   remove its slot; if `ck_mask` reaches 0, drop the chunk from the directory. Elision is
+   maintained on write, not swept later, so the file never carries garbage waiting for a
+   compaction pass that does not exist.
+
+### What the shape buys
+
+- **Steps 1 and 2 cannot be skipped**, because there is no other way to write a cell.
+  The chokepoint is not a convention; it is the only door.
+- **Steps 4 and 1's absolute comparison are the seam guard.** Addition happens in exactly
+  one place and subtraction in exactly one, both inside this file, and `Column` has no
+  base field to leak. Two chunks with different windows compare correctly because by the
+  time anything compares them, neither has a window.
+- **Step 5 makes sparsity an invariant instead of an optimisation.** A layer that
+  emptied is gone at the moment it emptied.
+- **Rebase is the price of the window**, and it is bounded: it touches one chunk's live
+  layers, and only when terrain leaves the tile's current vertical range.
+
+### The one thing left loose
+
+The window is `u16` because the voxel is what it is — 65536 steps inside a 32×32 tile is
+a very tall cliff, so rebase will be rare and `CW_WINDOW` rarer. **If the height field
+ever wants to shrink** — `u8` would take the voxel to seven bytes — the per-chunk base is
+exactly what makes that possible, and this routine does not change: only the two
+constants do. Worth knowing the door is there; not worth walking through it now.
+
 ## 4. Layout
 
 A **layer** is 32 × 32 hexes — matching `moros_map`'s existing `Chunk` width — which at
