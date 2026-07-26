@@ -131,6 +131,16 @@ named integer layers, and two committed fixtures both consumers read.
    loss was symmetric with them, so every count agreed with every other count. Asymmetric
    content is what makes this class visible — which is the real argument for `house_door`.
 
+## What to do next
+
+The sequential work list, with the points that need the user rather than a report, is
+**[EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work)**. It is the
+answer to "what now" — this section is the answer to "what is stuck".
+
+**Row 0 blocks row 1**: one world file, or a directory of region files. Multiplayer chunk
+shipping, per-region compaction and damage isolation argue for regions; simplicity and a
+single address space argue for one file. Unanswered.
+
 ## Open work
 
 **#8 — the world model** (`status:active`). Specified, unbuilt. V0 is the write chokepoint

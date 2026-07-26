@@ -87,7 +87,7 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 - [Scene map](doc/claude/SCENE_MAP.md) — scene model
 - [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — renderer rules
 - [Scene editor](doc/claude/SCENE_EDITOR.md) — editor docs
-- [Editor ladder](doc/claude/EDITOR_LADDER.md) — **the rungs and their plans**: hills → roads → fences → fields → houses → trees → props → routines
+- [Editor ladder](doc/claude/EDITOR_LADDER.md) — **the rungs, their plans, and [the order of work](doc/claude/EDITOR_LADDER.md#the-order-of-work)** with the checkpoints that need the user's eyes
 - [Scene editor plan](doc/claude/SCENE_EDITOR_PLAN.md) — editor roadmap
 - [Generator](doc/claude/GENERATOR.md) — random scenario/NPC generator
 
