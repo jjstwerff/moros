@@ -913,6 +913,69 @@ and needed repeated back-references for data it had left behind. The cost of ext
 is a rename; the cost of extracting early is a seam that has to be renegotiated while both
 sides are moving.
 
+### Naming — descriptive, never brand-prefixed
+
+⚠ **An earlier version of this section said the groups "keep a Moros-owned prefix until
+they leave". That was wrong, and it contradicted a governing document.**
+`loft/doc/claude/LAVITION.md` settles naming for the whole stack:
+
+> **`use X;` in `.loft` scripts — descriptive only, NO brand prefix.**
+> *Anti-rename:* don't add brand prefixes to data libraries — `use hex_world;` is cleaner
+> and more portable than `use lavition_hex_world;`, which would falsely imply engine
+> coupling.
+
+And the brand in question was the wrong one anyway. **Moros is the tabletop RPG**; the
+universal editor is **lavition**, its own product with its own org. A general package named
+`moros_*` claims a game that is merely one of its consumers.
+
+So the groups take **descriptive names in the `hex_*` family**, matching the inventory
+`LAVITION.md` already publishes for `loft-libs-world` — where `hex_world` is the hex-grid
+world-data axis, exactly what plan 8 builds. The package is `hex_world` from the first
+commit; there is no rename pending and never was.
+
+**Living in Moros's tree is design reuse, not ownership** (see *Build beside*). What keeps
+that honest is not the name but `tests/boundary.loft`, which fails if the package gains a
+`moros_*` dependency or grows any identifier the ownership audit put on the consumer's
+side — clause 1 of the extraction bar, checkable today.
+
+### The extraction bar, per group
+
+A group leaves this tree when **all four** hold. Three of them are cheap to check continuously;
+the fourth is the one that actually takes time, and is why extraction waits.
+
+1. **It builds and its gates pass with the Moros tree absent.** Checkable from day one — if a
+   gate reaches for a Moros type or fixture, the boundary has already been crossed.
+2. **Its dependencies point only outward** — at loft's stdlib, `hex_grid`, or another group
+   below it. No group depends on `edit`, `view`, `ui` or Moros content.
+3. **It has been battle-tested** — used in anger, through a real rung of the ladder, long
+   enough for its shape to stop moving. A package whose API changed last week is a package
+   still being designed.
+4. **It has a second consumer**, or a concrete one waiting. The DoD clause already says a
+   package validated against exactly one caller has not been shown to be general. `world` has
+   the crystal (`#8` V8); `ui` and `view` do not yet have one, and naming who they would serve
+   is part of earning the move.
+
+### Build beside, do not migrate
+
+A group whose target shape is already specified is **written fresh alongside** the code it
+will replace, not refactored out of it. The old package stays green and in service until the
+new one supersedes it.
+
+The reason is that the existing packages are at *predecessors* of their target designs, not
+merely in the wrong place — `moros_map`'s chunks are keyed one-layer-per-chunk with game
+state packed inside the voxel. Reshaping such code means carrying its compromises forward or
+clearing them as side-quests; writing beside it means the new package never has them.
+
+**Being in one tree is for design reuse, not code reuse.** A month of settled decisions —
+the scene model, stencils, the palette rule, the facing clock, the document format — is why
+this work happens here rather than in a fresh repository. hexbody's lesson was that leaving
+early costs you the *back-references*; it was never that the code had to travel.
+
+⚠ **Clause 3 is the whole reason for this section.** hexbody was extracted from crawler early
+and needed repeated back-references for data it had left behind. The cost of extracting late
+is a rename; the cost of extracting early is a seam that has to be renegotiated while both
+sides are moving.
+
 ### Naming, while they are here
 
 The groups keep a Moros-owned prefix until they leave, because that is what they honestly

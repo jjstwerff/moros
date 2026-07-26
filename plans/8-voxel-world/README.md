@@ -10,6 +10,12 @@ plan in **[doc/claude/WORLD_MODEL.md](../../doc/claude/WORLD_MODEL.md)**.
 
 This file is the *change*: the phases, their order, and how each is verified.
 
+> **Whose is this?** **Moros is the tabletop RPG** (`doc/` — rules, cards, NPCs, campaign);
+> the universal editor is **lavition**, its own product on its own org. This plan builds
+> lavition's world-data axis, and Moros is one consumer of it. The package is therefore
+> `hex_world` — descriptive, unprefixed, per `loft/doc/claude/LAVITION.md`'s naming
+> principle, and matching the slot its `loft-libs-world` inventory already publishes.
+
 ## What changes when this is done
 
 - `hex_world` stops being single-layer cell storage with decay and becomes the multi-layer

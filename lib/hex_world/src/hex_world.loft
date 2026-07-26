@@ -6,6 +6,11 @@
 // (`F1`, `W1`, `E1`, `S1`, `R1`, `Q1` …) are that document's; where this file and
 // the contract disagree, the contract is right and this file is a bug.
 //
+// The name is not a claim on Moros: `LAVITION.md`'s naming principle puts the
+// brand in org and repo names and keeps `use X;` descriptive, and its
+// `loft-libs-world` inventory already names this axis `hex_world`. Moros is one
+// consumer — the tabletop RPG — and lavition is the editor product this serves.
+//
 // ⚠ THIS IS NOT A REFACTOR OF `moros_map`. It is written fresh beside it, per
 // plan 8 § "How this is built". `moros_map` sits at a PREDECESSOR of the contract
 // — chunks keyed one-layer-each, no window, no labels, and game state packed into

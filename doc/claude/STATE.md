@@ -10,7 +10,13 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## Since 2026-07-25 — the world model, designed and specified
+## Since 2026-07-25 — the world model, designed, specified and started
+
+> ⚠ **Whose work is this?** **Moros is the tabletop RPG.** The universal editor is
+> **lavition** — a separate product with its own org, documented in
+> `loft/doc/claude/LAVITION.md`. Everything in plans 7–15 builds lavition; Moros is one
+> consumer, and its `doc/` is the RPG. Packages therefore take **descriptive `hex_*` names,
+> never a brand prefix** — LAVITION.md makes that an explicit anti-rename.
 
 Two things happened that reshape the rest of this file.
 

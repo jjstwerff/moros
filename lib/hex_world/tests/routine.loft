@@ -2,7 +2,7 @@
 //
 // One gate per rule, each with a CONTROL — the same assertion against a case that
 // must FAIL. A gate nobody has seen red is a claim with a test next to it.
-use moros_world;
+use hex_world;
 
 fn world_ok() -> World {
   // ε = 8, θ = 3 → 8 > 6, so `C1` holds with margin. ρ = 100 leaves room to dig.
