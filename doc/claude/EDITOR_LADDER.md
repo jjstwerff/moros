@@ -31,6 +31,44 @@ The substrate that carries them — the anchor, the layer stack, the seam rules 
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md). The landscape they all write into is
 [WORLD_MODEL.md](WORLD_MODEL.md).
 
+## The order of work
+
+Sequential — each row assumes the ones above it. **✋ marks a checkpoint that needs your
+eyes**, not a report: something to open, drive, and judge.
+
+| # | work | plan | size | done when |
+|---|---|---|---|---|
+| **0** | ✋ **decide: one world file, or a directory of region files** | #8 | — | answered; V2 depends on it |
+| 1 | the file — header, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` on open | #8 V2 | M | a world round-trips; a hand-corrupted chunk is refused by name and the rest opens |
+| 2 | sparsity — elision on both axes, maintained on write | #8 V3 | S | an empty 10⁶-tile world < 64 KB; file size tracks live data, not total writes |
+| 3 | change and cache — edit clock, per-layer versions, snapshot reads | #8 V4 | M | compaction invalidates no cache; one edit stales exactly one |
+| — | ✋ **worlds persist** | | | save a world, reload it, confirm it is the world you built |
+| 4 | the editor moves onto `hex_world`; `Peak` / `world_save` / `world_load` deleted | #8 V5 | L | hills, walking, climbing and the camera behave as they do today |
+| — | ✋ **the editor is no worse** | | | build hills, save, reload, walk around. This is the risky one — it replaces what works |
+| 5 | roads that follow the ground | #9 | M | a road crosses a hill without fighting it |
+| — | ✋ | | | draw one |
+| 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
+| — | ✋ | | | walk into a wall, orbit beside one |
+| 7 | fields — bounded regions | #11 | M | enclose an area, give it a character |
+| — | ✋ | | | |
+| 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
+| — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
+| 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
+| 10 | props and vehicles; the multi-rig connector | #14 | L | a cart whose wheels turn from distance travelled |
+| — | ✋ | | | |
+| 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
+| — | ✋ | | | |
+| ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
+
+**Two things deliberately not in the order.** *Extraction* has no row: a group leaves when it
+has been through a rung and earned it, which is a consequence of the work above rather than
+a step in it. And *multi-author* (#8 V6-V7) sits in the ∞ row because nothing above needs
+it — it lands when a second person is actually editing.
+
+**Where the risk is.** Row 4 replaces a working editor, and row 8 is where the layer stack,
+stencils and the fit doorstep all meet real pressure at once. Those two are worth slowing
+down for; the rest are additive and cheap to unwind.
+
 ## Why this order
 
 **Each rung adds exactly one representational kind**, and the order runs from the kind
