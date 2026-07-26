@@ -1,0 +1,52 @@
+// The extraction bar, clause 1, made CHECKABLE TODAY rather than at extraction.
+//
+// ⚠ This exists because the package's NAME is wrong and cannot be fixed yet.
+// `moros_world` is a placeholder: the package was written fresh against a
+// universal contract with Moros deliberately excluded, so unlike `edit`, `view`,
+// `ui` and `actor` — which are being extracted FROM Moros code and are honestly
+// prefixed — it never had Moros content to justify the prefix. Its destination is
+// `hex_world`, currently occupied by the audience-crystal package we reshape at V8.
+// Renaming twice to fix a name is worse than renaming once, so the name waits.
+//
+// But a name like this is an ACTIVE HAZARD, not merely inaccurate: a package
+// called `moros_world` invites Moros semantics to drift in, which is exactly how
+// spawn flags ended up packed into `moros_map`'s voxel against `L15`. So the
+// hazard is answered with a guard rather than with a name — a guard makes the leak
+// impossible where a name only discourages it.
+use moros_world;
+
+fn test_the_package_depends_on_nothing_of_moros() {
+  man = file("{source_dir()}/../loft.toml").content() ?? "";
+  assert(man != "", "could not read the manifest");
+  // Only the DEPENDENCIES section. The first version scanned the whole file and
+  // fired on `name = "moros_world"` — the gate catching itself and reporting it as
+  // a boundary violation, which is a failure for the wrong reason just as surely
+  // as a pass for the wrong reason would be.
+  in_deps = false;
+  offender = "";
+  for ln in file("{source_dir()}/../loft.toml").lines() {
+    if ln.contains("[dependencies]") { in_deps = true; }
+    else if ln.contains("[") { in_deps = false; }
+    if in_deps && ln.contains("moros_") { offender = ln; }
+  }
+  assert(offender == "",
+         "moros_world gained a dependency on a moros package. It must build with the "
+         + "Moros tree absent — that is clause 1 of the extraction bar, and the whole "
+         + "reason this package was written beside moros_map rather than out of it. "
+         + "Offending line: {offender}");
+}
+
+fn test_the_source_imports_nothing_of_moros() {
+  src = file("{source_dir()}/../src/moros_world.loft").content() ?? "";
+  assert(src != "", "could not read the source");
+  assert(!src.contains("use moros_"),
+         "moros_world imported a moros package — the boundary has already been crossed");
+  // ⚠ The load-bearing one. These are the names the ownership audit put firmly on
+  // the CONSUMER's side: what a material means is Moros's, never the substrate's.
+  // The day this package knows what a stair is, it has stopped being one.
+  for term in ["md_swimmable", "md_stair_kind", "wd_body", "SpawnPoint", "NpcRoutine"] {
+    assert(!src.contains(term),
+           "moros_world contains `{term}` — that is game semantics, and the library owns "
+           + "how a thing attaches to geometry, never the payload");
+  }
+}

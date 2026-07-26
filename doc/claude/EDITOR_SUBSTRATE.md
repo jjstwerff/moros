@@ -916,7 +916,26 @@ sides are moving.
 ### Naming, while they are here
 
 The groups keep a Moros-owned prefix until they leave, because that is what they honestly
-are: Moros's packages, shaped for a journey they have not made. Each carries a header naming
+are: Moros's packages, shaped for a journey they have not made.
+
+⚠ **`world` is the exception, and the exception is diagnostic.** `edit`, `view`, `ui` and
+`actor` are being extracted *from* Moros code full of Moros configuration — the prefix is
+accurate about what they contain today. `world` was written **fresh against a universal
+contract** with Moros deliberately excluded: it has zero dependencies, no game semantics, and
+a second consumer already scheduled. It never had Moros content to justify the prefix, so
+`moros_world` is a placeholder rather than a description.
+
+**It keeps the name anyway, because the alternative is renaming twice.** Its destination is
+`hex_world`, currently occupied by the audience-crystal package that V8 reshapes; renaming
+now would mean `moros_world` → something → `hex_world`.
+
+**But a wrong name is an active hazard, not merely untidy** — a package called `moros_world`
+invites Moros semantics to drift in, which is exactly how spawn flags ended up packed into
+`moros_map`'s voxel against `L15`. So the hazard is answered with a **guard rather than a
+name**, since a guard makes the leak impossible where a name only discourages it:
+`tests/boundary.loft` fails if the package gains a `moros_*` dependency or grows any of the
+identifiers the audit put on the consumer's side. That is clause 1 of the extraction bar,
+checkable today instead of at extraction time. Each carries a header naming
 its destination and its outstanding bar, so the intent is in the file rather than only in this
 document. The rename is part of the extraction, not a claim made in advance — `hex_world` in
 particular is a name that is currently occupied.
