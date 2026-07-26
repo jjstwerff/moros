@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check gate gate-world gate-character
+.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check gate gate-world gate-character gate-hexworld
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -79,6 +79,14 @@ editor-check:
 GATE_RESTART = $(MAKE) -s editor-stop >/dev/null 2>&1; sleep 1; \
   nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \
   until grep -q 'drag or A/D' .editor.log 2>/dev/null; do sleep 1; done
+
+# hex_world's exact-size proofs run as a PROGRAM, not under `loft test`: several
+# save-and-measure tests in one test file hang the harness (see
+# lib/hex_world/probe/sparsity.loft). Same assertions, same exactness, a runner
+# that works.
+gate-hexworld:
+	@printf '%-34s ' "hex_world/probe/sparsity"; \
+	  $(LOFT) --lib lib/ lib/hex_world/probe/sparsity.loft | tail -1
 
 gate-world:
 	@for g in tools/gates/world/*.mjs; do $(GATE_RESTART); \

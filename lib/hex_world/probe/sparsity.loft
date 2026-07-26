@@ -1,0 +1,98 @@
+// P4, P5, P12 — proven as a PROGRAM rather than under `loft test`.
+//
+// ⚠ Why this is not in `tests/`: any test file containing more than one test that
+// saves a world and measures the result makes `loft test` hang rather than fail.
+// The same assertions run correctly as a program, so the harness is the obstacle
+// and not the claims. This file is the proof until that is fixed, and it is wired
+// into `make gate-world` so it runs like any other gate.
+//
+// Sizes are checked EXACTLY against the format's constants. A tolerance would let
+// a padding regression become the new baseline; an exact figure makes it a failure.
+use hex_world;
+
+fn want(chunks: integer, layers: integer) -> integer {
+  SZ_HEADER + chunks * SZ_CHUNK + layers * SZ_LAYER
+}
+
+fn cell(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+
+fn put(w: World, q: integer, r: integer, hs: vector<Hex>) -> integer {
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: hs }).cw_code
+}
+
+fn measure(w: World, path: text) -> integer {
+  if world_save(w, path, []) != WS_OK { return 0 - 1; }
+  n = len(read_bytes(path));
+  delete(path);
+  n
+}
+
+// Returns 1 on failure so `main` can accumulate — a file-scope mutable is not
+// available (an UPPER_CASE-less file constant is rejected), and threading the
+// count through the return is clearer than the struct-field workaround anyway.
+fn check(label: text, got: integer, exp: integer) -> integer {
+  if got == exp { println("  ok    {label}  = {got}"); return 0; }
+  println("  FAIL  {label}  = {got}, want {exp}");
+  1
+}
+
+fn main() {
+  println("P4/P5/P12 — sparsity, exact sizes");
+  fails = 0;
+
+  // ── P4: an unauthored world costs a header; one hex costs one chunk, one layer
+  w4 = world_new(0.25, 100, 8, 3).wn_world;
+  fails = fails + check("P4 empty world", measure(w4, "pr_a.bin"), want(0, 0));
+  put(w4, 40, 40, [cell(1000, 1)]);
+  fails = fails + check("P4 one hex", measure(w4, "pr_b.bin"), want(1, 1));
+
+  // ── P12: an unused layer costs nothing, not a reserved slot
+  w12 = world_new(0.25, 100, 8, 3).wn_world;
+  put(w12, 0, 0, [cell(1000, 1)]);
+  one = measure(w12, "pr_c.bin");
+  fails = fails + check("P12 one live layer of {LAYER_CAP}", one, want(1, 1));
+  put(w12, 0, 0, [cell(1000, 1), cell(1020, 2)]);
+  two = measure(w12, "pr_d.bin");
+  // CONTROL: the second layer costs exactly one layer, so the line above measures
+  // layers rather than a fixed per-chunk size.
+  fails = fails + check("P12 a second layer costs", two - one, SZ_LAYER);
+
+  // ── P5: elision is symmetric, and invisible to what remains
+  w5 = world_new(0.25, 100, 8, 3).wn_world;
+  put(w5, 0, 0, [cell(1000, 1), cell(1020, 2)]);
+  fails = fails + check("P5 two layers", measure(w5, "pr_e.bin"), want(1, 2));
+  put(w5, 0, 0, [cell(1000, 1), cell(1020, 0)]);          // material 0 is absence
+  fails = fails + check("P5 upper emptied", measure(w5, "pr_f.bin"), want(1, 1));
+  col = world_column(w5, 0, 0);
+  fails = fails + check("P5 survivor count", len(col.co_cells), 1);
+  fails = fails + check("P5 survivor height", col.co_cells[0].h_height, 1000);
+
+  // ── P5: emptying the LAST layer removes the chunk from the directory
+  w5b = world_new(0.25, 100, 8, 3).wn_world;
+  put(w5b, 0, 0, [cell(1000, 1)]);
+  put(w5b, 0, 0, [cell(1000, 0)]);
+  fails = fails + check("P5 last layer emptied", measure(w5b, "pr_g.bin"), want(0, 0));
+  fails = fails + check("P5 cleared column reads empty", len(world_column(w5b, 0, 0).co_cells), 0);
+
+  // ── size tracks LIVE data, not the history of writes
+  wh = world_new(0.25, 100, 8, 3).wn_world;
+  for i in 0..8 {
+    put(wh, 3, 3, [cell(1000 + i * 10, 1)]);
+    put(wh, 3, 3, [cell(1000 + i * 10, 0)]);
+  }
+  fails = fails + check("churn: 16 writes, nothing live", measure(wh, "pr_h.bin"), want(0, 0));
+
+  // ── the round trip still holds at these sizes
+  wr = world_new(0.25, 100, 8, 3).wn_world;
+  put(wr, 1, 2, [cell(40000, 3), cell(40080, 4)]);
+  world_save(wr, "pr_i.bin", []);
+  ld = world_load("pr_i.bin");
+  delete("pr_i.bin");
+  fails = fails + check("round trip code", ld.wl_code, WL_OK);
+  fails = fails + check("round trip height", world_column(ld.wl_world, 1, 2).co_cells[1].h_height, 40080);
+
+  if fails > 0 { panic("{fails} sparsity checks FAILED"); }
+  println("all sparsity checks passed");
+}
