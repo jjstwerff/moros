@@ -892,6 +892,22 @@ the fourth is the one that actually takes time, and is why extraction waits.
    the crystal (`#8` V8); `ui` and `view` do not yet have one, and naming who they would serve
    is part of earning the move.
 
+### Build beside, do not migrate
+
+A group whose target shape is already specified is **written fresh alongside** the code it
+will replace, not refactored out of it. The old package stays green and in service until the
+new one supersedes it.
+
+The reason is that the existing packages are at *predecessors* of their target designs, not
+merely in the wrong place — `moros_map`'s chunks are keyed one-layer-per-chunk with game
+state packed inside the voxel. Reshaping such code means carrying its compromises forward or
+clearing them as side-quests; writing beside it means the new package never has them.
+
+**Being in one tree is for design reuse, not code reuse.** A month of settled decisions —
+the scene model, stencils, the palette rule, the facing clock, the document format — is why
+this work happens here rather than in a fresh repository. hexbody's lesson was that leaving
+early costs you the *back-references*; it was never that the code had to travel.
+
 ⚠ **Clause 3 is the whole reason for this section.** hexbody was extracted from crawler early
 and needed repeated back-references for data it had left behind. The cost of extracting late
 is a rename; the cost of extracting early is a seam that has to be renegotiated while both
