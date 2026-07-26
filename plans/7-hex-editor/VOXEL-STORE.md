@@ -411,10 +411,10 @@ it is **single-layer**, it has `tick_and_decay`, and it already ships `world_sav
 `world_load` for that model. Its own comment reads *"Same shape as moros_map's Chunk
 minus the cy layer (this world is single-layer)."*
 
-Growing it into the multi-layer voxel landscape would break its consumers (TTT v5,
-plan-36) and would mean one package holding two unrelated cell models. **So the name is
-not available and the design should not assume it.** Choosing the real one is a
-conversation with the sibling tree, not a decision to take here — two agents work in it.
+~~So the name is not available.~~ **It is — see §3f.** The incumbent is a demo, not an
+end product, and the call is that it follows our model rather than constraining it. What
+`hex_world` currently holds is recorded above because it stays useful: it is the second
+consumer the model has to survive.
 
 ### ⚠ A live duplication found on the way
 
@@ -430,8 +430,9 @@ the `L11` failure the seam rules name, already realised.
 
 Neither home is right: the helpers belong in **`hex_grid`**, the base. A consumer should
 not have to depend on a crystal-decay world model to divide a coordinate by 32 — which is
-plausibly *why* moros re-implemented rather than imported. **Recorded, not fixed**: the
-sibling tree has another agent in it, and this is a raise.
+plausibly *why* moros re-implemented rather than imported. Under §3f this stops being a
+raise and becomes **fixable**: move them down to `hex_grid`, and both sides import one
+copy.
 
 ### What the library owns, and what it must never absorb
 
@@ -453,6 +454,59 @@ definition it is forbidden to understand. So the palette is **an opaque section 
 consumer encodes and decodes**: the library owns its position, its count and the slot-0
 rule; the consumer owns the bytes. The durable set stays closed, and the substrate never
 learns what a stair is.
+
+## 3f. `hex_world` is ours to reshape, and the crystal is the model's proof
+
+*(user, 2026-07-26: "we can change current libraries, the audience crystal is not an end
+product (we are) so we can break it as much as we like and they have to follow our
+model")*
+
+So the name is taken back rather than worked around, and the incumbent becomes a
+**consumer** of the model instead of an obstacle to it. That is worth more than the name.
+
+### What happens to what is there
+
+| today | under the model |
+|---|---|
+| `c_color: u8` | a material palette index — colour moves into the definition, where §3 already puts it |
+| `c_height: u8` | `h_height: u16`, absolute in memory, windowed on disk |
+| single-layer `Chunk` | one layer, `mask = 1`. Elision means the other 63 cost a bit each |
+| `world_save` / `world_load` | the voxel format |
+| `chunk_idx_32` / `hex_idx_32` | move down to `hex_grid`; both sides import one copy (§3e) |
+| **`c_age: u16`** | **has no home in the cell, and that is the point — see below** |
+
+### ⚠ `c_age` is the best thing the crystal contributes
+
+The lazy migration adds an `age` field to the voxel and moves on. **The model must refuse
+it**, and the reason is already written down:
+
+- `L13` — the voxel is the ceiling on **permanent world state**. Age is not permanent; it
+  is the opposite, a value whose whole purpose is to change every tick.
+- `L15` — game state is not world state; *"now" is the only tense*.
+- `L14` — side tables are the home for the area- and time-limited.
+
+So decay becomes a **side table keyed by cell**, and the voxel stays seven integers. This
+is the first real test of the ceiling holding against a consumer who genuinely wants a
+field, and the outcome is falsifiable in one line: **if `hex_world`'s cell grows an
+`age`, the ceiling has failed.** Worth a probe of its own.
+
+| # | claim | probe | control |
+|---|---|---|---|
+| P14 | the ceiling holds against a real ask | port the crystal demo; its decay runs from a side table and the voxel is unchanged | if a field was added to the cell, `L13` is not a rule |
+
+### Why this makes the model better rather than merely unblocked
+
+The plan's own extraction bar says a package validated against exactly one caller has not
+been shown to be general. The crystal is unlike moros in every axis that matters — single
+layer, no walls, no items, no palette to speak of, and time-varying state moros does not
+have. **A model that serves both without special-casing either is evidence; one that
+serves moros alone is a moros file format with ambitions.**
+
+### One coordination note, not a caution
+
+The licence to break is a licence not to be blocked; it is not a reason to churn. Each
+break should be one the model actually requires — and since another agent works that
+tree, the changes here are worth announcing rather than merely landing.
 
 ## 4. Layout
 
