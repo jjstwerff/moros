@@ -83,7 +83,7 @@ and nothing else:
 |---|---|---|
 | 1 | **voxel chunks** — the landscape | the authored thing itself |
 | 2 | **the palette** — material / wall / item definitions | `u8`s are indexes; without the tables they name nothing. Authored, not derived |
-| 3 | **world header** — name, version, chunk geometry, base height | says how to read 1 and 2 |
+| 3 | **world header** — name, version, chunk geometry | says how to read 1 and 2 |
 
 Everything else is derived and must be deletable mid-session without loss: chunk meshes,
 normals, the collision structures below, the LOD height texture, the dirty set, the
