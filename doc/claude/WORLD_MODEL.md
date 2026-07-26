@@ -9,6 +9,10 @@ and probes.
 > else is live today. As each phase of plan 8 ships, its content moves *here* and the plan
 > keeps only the closure record.
 
+> The formal model — layers, chunks, fold-freedom, border alignment and the proofs that
+> tie them together — is **[the world contract](../../plans/8-voxel-world/CONTRACT.md)**,
+> which is normative. This page is the readable account of it.
+
 ## The one rule
 
 > Delete every file but the world file and the landscape comes back bit-exact. Delete the

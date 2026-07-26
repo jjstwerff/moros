@@ -2,7 +2,8 @@
 
 **Issue:** [jjstwerff/moros#8](https://github.com/jjstwerff/moros/issues/8) · `status:active` · `val:F`
 
-The concrete design is **[DESIGN.md](DESIGN.md)**; what fought back is
+The **normative contract** is **[CONTRACT.md](CONTRACT.md)** — the formal model, its
+invariants and their proofs. The concrete design is **[DESIGN.md](DESIGN.md)**; what fought back is
 **[STRUGGLES.md](STRUGGLES.md)**; the durable description of the model lives outside this
 plan in **[doc/claude/WORLD_MODEL.md](../../doc/claude/WORLD_MODEL.md)**.
 
@@ -25,7 +26,7 @@ enforced until the chokepoint exists.
 | # | phase | what lands | verified by |
 |---|---|---|---|
 | **V0** | **the chokepoint** | resolve whether `map_get_hex` aliases; one column-taking write path; the seven direct `h_height` writes stop | **P13** first — it decides the shape |
-| **V1** | the model | `Hex` / `StoredHex` / `Column` / `Chunk`, the routine (DESIGN §3), Guards 1 and 2 | P9, P10, P11 |
+| **V1** | the model | `Hex` / `StoredHex` / `Column` / `Chunk`, the routine (DESIGN §3), Guards 1 and 2 | CONTRACT §7 — one gate per rule, each seen red |
 | **V2** | the file | header, opaque palette section, chunk directory, chunk I/O, per-chunk CRC | P1, P7, P8 |
 | **V3** | sparsity | elision on both axes, maintained on write | P4, P5, P6, P12 |
 | **V4** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted**, not promoted | P2, P3 |

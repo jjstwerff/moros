@@ -1,5 +1,10 @@
 # The voxel world — design
 
+> **The formal contract is [CONTRACT.md](CONTRACT.md) and it is normative.** Layers,
+> chunks, fold-freedom (`F1`), border alignment (`B1`) and the constant constraint
+> `ε > 2θ` are stated and proved there. Where this document and the contract disagree,
+> the contract is right.
+
 The landscape model: what is stored, the routine that reads and writes it, and where every
 piece lives. Written before implementation so the **edges** can be checked first — §5 is
 the validation surface and is the point of this document.
