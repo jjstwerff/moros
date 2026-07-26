@@ -48,6 +48,9 @@ tick — age, wear, occupancy — is not a cell field; it belongs in a side tabl
 - **Layer order is local.** A layer's index is a position in *its own chunk* and means
   nothing outside it. There is no world-wide layer list and no global budget: a forty-storey
   tower's layers exist in the tile it stands on and nowhere else.
+- **A layer may carry a label**, so corresponding layers in neighbouring chunks share an id
+  and a deck or storey can be named once and recognised everywhere. The label is optional,
+  and it is a claim about the geometric match rather than a replacement for it (**I1**).
 - **Heights are windowed.** A stored height is a `u16` measured from its chunk's base, which
   decouples the cell's height width from how tall the world is — and therefore decouples
   **resolution from extent**. That decoupling is what lets one model serve a dungeon at
@@ -74,6 +77,11 @@ and which correctly answers *"nothing there"* when a floor stops at a wall.
 This needs no shared identity because of a result proved in Part II: the same constant that
 keeps layers from folding also guarantees at most one layer can match. **Seam alignment is
 not a second mechanism** — it falls out of the first.
+
+Labels are permitted on top of this and are useful — a deck or storey recognised across a
+whole station — but they never *define* the match, only assert it. **I1** makes the
+assertion checkable, so a label can be trusted as a fast path precisely because it can be
+caught lying.
 
 **Heights are absolute in memory and relative on disk.** The window is a storage encoding
 that never leaves the storage layer: one addition on read, one subtraction on write.
@@ -118,6 +126,7 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `b_K ∈ ℕ` | its **window base**, an absolute height |
 | `Λ_K = ⟨λ₀ … λ_{n−1}⟩`, `n ≤ 64` | its layers, **an ordered sequence**, local to `K` |
 | `k(λ) ∈ {T, D}` | layer kind: **T**errain or **D**ressing |
+| `id(λ) ∈ [0, 2¹⁶)` | an optional **label**. `0` means unlabelled; non-zero claims correspondence with equally-labelled layers in other chunks |
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
@@ -155,7 +164,7 @@ exists, has a kind, and is excluded from every rule about columns, folding and c
 
 ## 3. Invariants
 
-A world satisfying **F1**, **W1**, **E1**, **S1** and **R1** is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **S1**, **R1** and **I1** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
@@ -226,6 +235,36 @@ dungeons, because the room was never available to spend.
 The reserve is a *floor on authoring*, not on the format: excavation writes below `ρ`
 deliberately, and reading is unrestricted. It exists to stop terrain being placed where a
 cellar will need to go.
+
+### I1 — Labels do not lie
+
+Layers may carry a label so that corresponding layers in neighbouring chunks share an id —
+a deck, a storey, a dungeon level named once and recognised everywhere. **The label is not
+a second definition of continuity.** §4 defines continuity by height and proves it unique;
+a label is a claim *about* that match, and **I1** is the requirement that the claim is true:
+
+> For adjacent `x ∈ X_K`, `x' ∈ X_{K'}`, and `i ∈ col_K(x)` with `id(λᵢ) ≠ 0`:
+>
+> ```
+>     j ∈ M_{K'}(x', H_{λᵢ}(x))   ⟹   id(λ'ⱼ) = id(λᵢ)
+> ```
+
+In words: **the geometric match never crosses labels.** A labelled floor may end — no match
+is a legal answer, because a floor that meets a wall stops — but it may never continue into
+a layer bearing a different label.
+
+`id = 0` is unlabelled and unconstrained, following the same convention as palette slot 0:
+zero is absence, and absence is never a claim.
+
+**What the label is for.** Given **I1**, an implementation may find the neighbour by label in
+`O(1)` instead of searching by height, and the result is *provably the same layer* — so this
+is an accelerator, not an alternative. It also restores a gesture that chunk-local layers had
+cost: selecting "dungeon level 2" across a whole region becomes a lookup rather than a query
+over a height band.
+
+**What it is not.** There is no world-wide registry of labels, no definition attached to one,
+and no requirement that a label be used at all. A chunk remains free to hold a layer set
+shared with nobody.
 
 ### D1 — Dressing is inert
 
@@ -333,6 +372,7 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
 | **S1** | two chunks, **different bases**, one ridge → equal `H` from both sides | their stored `s` must **differ**, or the test is vacuous |
 | **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
+| **I1** | relabel one layer of a neighbouring chunk → the gate fires on the crossing match | leave labels agreeing → silent; set both to `0` → silent, since unlabelled is unconstrained |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |
