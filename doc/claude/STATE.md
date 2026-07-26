@@ -137,6 +137,17 @@ whether the guard is "add a check" or "stop handing out mutable views".
 separation) and `θ` (match tolerance) for moros's own world, subject to `ε > 2θ`. They are
 per-world declarations, so they can wait for V1 without blocking the format.
 
+**Camera occlusion is a GAME requirement, not an editor nicety.** A camera that
+enters geometry fills the whole screen, and for players sensitive to that it makes a
+game unplayable rather than untidy — an accessibility requirement, not polish. The
+editor's camera now guards it three ways (predictive arc sampling along the turn, a
+bounded smoothed pitch lift, a boom that gives way in one tick) with a hard backstop
+that the eye is never below the surface. Measured over a full orbit beside a 36 wu
+cone: no violation, worst margin +0.385 wu. ⚠ That margin is comparable to the
+measurement's own resolution, so it is *no violation detected*, not *proven safe* —
+and it is terrain only, deliberately (a tree costs a fraction of the frame; a
+hillside costs all of it).
+
 **One case the contract cannot express:** a collapse dropping a floor onto the one below
 violates `F1`, and refusing a physical event is wrong. The proposed answer — a collapse
 *removes* a layer rather than moving it — has not been shown to cover a partial collapse.

@@ -687,7 +687,21 @@ fn limb_at(lbody: Mat4, jx: float, jy: float, jz: float, swing: float) -> Mat4 {
 //
 // The march samples the SAME `terrain_y` the feet and the mesh use, so the camera
 // cannot disagree with the surface it is avoiding.
-const CAM_CLEAR      = 0.28;   // keep the eye this far above the surface
+//
+// ── WHAT THIS DELIBERATELY DOES NOT AVOID ────────────────────────────────────
+// Terrain only. A tree, a window frame or a fence post between eye and character
+// is left alone, because the failure being prevented is specifically the one that
+// takes the WHOLE SCREEN: inside a hillside there is nothing else to see. A
+// partial occluder costs a fraction of the frame and is far less jarring than a
+// camera that lurches every time a sapling passes. This also falls out of the
+// world model for free — dressing layers never collide (`D1`), so they are not in
+// the surface the camera solves against.
+// ⚠ PERPENDICULAR clearance, not vertical — and the distinction is the whole bug.
+// A point 0.28 ABOVE a steep face is barely off it: on a 3:1 slope the
+// perpendicular gap is 0.28·cos(72°) ≈ 0.09, inside the near plane, and the
+// hillside fills the screen. `cam_clear_at` converts this into the vertical
+// clearance that actually delivers it, using the local gradient.
+const CAM_CLEAR      = 0.45;   // how far off the SURFACE the eye must stay
 const CAM_MIN_FRAC   = 0.22;   // never pull closer than this fraction of the boom
 const CAM_STEPS      = 14;     // march resolution along the boom
 const CAM_EASE       = 3.2;    // world-units/s the boom may EXTEND
@@ -695,6 +709,19 @@ const CAM_PITCH_GIVE = 0.45;   // radians of lift the assist may borrow (~26°)
 const CAM_PITCH_RATE = 1.10;   // radians/s — the cap that makes it a drift, not a snap
 const CAM_PITCH_CEIL = 1.15;   // absolute ceiling, so the assist cannot go overhead
 const CAM_TRIES      = 5;      // candidate lifts tested between 0 and the full give
+const CAM_LOOK_S     = 0.40;   // seconds of rotation to ANTICIPATE
+const CAM_ARC        = 0.20;   // radians sampled either side even when still
+const CAM_ARC_N      = 4;      // samples across the anticipated arc
+
+// The vertical clearance that yields CAM_CLEAR PERPENDICULAR to the local surface.
+// Flat ground → CAM_CLEAR. A steep face → much more, which is exactly where the
+// old flat 0.28 was letting the eye graze the hillside and fill the screen.
+fn cam_clear_at(x: float, z: float, peaks: vector<Peak>) -> float {
+  e = 0.5;
+  gx = (terrain_y(x + e, z, peaks) - terrain_y(x - e, z, peaks)) / (2.0 * e) ?? 0.0;
+  gz = (terrain_y(x, z + e, peaks) - terrain_y(x, z - e, peaks)) / (2.0 * e) ?? 0.0;
+  CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
+}
 
 // How far the eye may travel along the boom before it is inside the ground.
 fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
@@ -706,7 +733,9 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
   for i in 1..(CAM_STEPS + 1) {
     if !hit {
       t = want * (i as float) / (CAM_STEPS as float) ?? 0.0;
-      if oy + t * sp < terrain_y(ox - ky * t * kp, oz - sy * t * kp, peaks) + CAM_CLEAR {
+      sx = ox - ky * t * kp;
+      sz = oz - sy * t * kp;
+      if oy + t * sp < terrain_y(sx, sz, peaks) + cam_clear_at(sx, sz, peaks) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -715,6 +744,36 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
   lo = want * CAM_MIN_FRAC;
   if free < lo { free = lo; }
   free
+}
+
+// The worst free distance across the arc the camera is ABOUT to occupy.
+//
+// Reacting to the ray we are on today is always one frame late: by the time the
+// current eye is inside a hill, the player has already seen it. We are turning,
+// so where the boom will be shortly is knowable — sample the arc from a little
+// behind to `rate × CAM_LOOK_S` ahead, and take the WORST. The boom is then
+// already short on arrival instead of catching up afterwards.
+//
+// A fixed ±CAM_ARC is sampled even when the rate is zero, so standing still
+// beside a wall still carries margin rather than sitting exactly on the edge of
+// being wrong.
+fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
+                cpitch: float, want: float, peaks: vector<Peak>) -> float {
+  ahead = rate * CAM_LOOK_S;
+  lo = 0.0 - CAM_ARC;
+  hi = CAM_ARC;
+  if ahead < lo { lo = ahead; }
+  if ahead > hi { hi = ahead; }
+  worst = want;
+  for i in 0..(CAM_ARC_N + 1) {
+    off = lo + (hi - lo) * (i as float) / (CAM_ARC_N as float) ?? 0.0;
+    y2 = cyaw + off;
+    // the pivot swings with yaw too, so it is recomputed per sample
+    f = cam_free_dist(cam_pivot_x(cx, y2), cam_pivot_y(cyy), cam_pivot_z(cz, y2),
+                      y2, cpitch, want, peaks);
+    if f < worst { worst = f; }
+  }
+  worst
 }
 
 // The SMALLEST lift that clears the whole boom, or the full give if none does.
@@ -747,7 +806,7 @@ fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() *
 fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
 
 fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
-            dist: float) -> text {
+            dist: float, peaks: vector<Peak>) -> text {
   fh = figure_wu();
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
@@ -762,7 +821,19 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // target far ahead, the eye rose with pitch while the aim did not, so past
   // ~40° the character dropped out of frame — a follow camera that loses what
   // it follows.
-  eye = vec3(ox - ky * dist * kp, oy + dist * sp, oz - sy * dist * kp);
+  ex = ox - ky * dist * kp;
+  ez = oz - sy * dist * kp;
+  ey = oy + dist * sp;
+  // ── THE BACKSTOP ──────────────────────────────────────────────────────────
+  // Everything above is best-effort: the arc sample can miss a thin ridge, and
+  // the minimum boom can itself be underground on a steep enough slope, in which
+  // case shortening cannot help. So the last act is a hard constraint rather than
+  // another heuristic: **the eye is never below the surface.** Obstruction is
+  // outright bad and a raised eye is merely an unusual angle, so when the two
+  // conflict the angle loses.
+  floor_at_eye = terrain_y(ex, ez, peaks) + cam_clear_at(ex, ez, peaks);
+  if ey < floor_at_eye { ey = floor_at_eye; }
+  eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
   "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
     + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
@@ -843,6 +914,8 @@ fn main() {
   // The pitch actually USED, which lags the player's `pitch` by at most
   // CAM_PITCH_RATE and rests exactly on it whenever the view is clear.
   cam_pitch = 0.35;
+  cam_yaw_prev = 0.0;
+  cam_rate = 0.0;
   // THE GAIT PHASE IS DERIVED FROM DISTANCE WALKED, NOT FROM ELAPSED TIME.
   // Same discipline as `hex_body::wheel_value` for a rolling wheel — phase from
   // travel, never accumulated per frame — and it buys the same property: the
@@ -922,7 +995,7 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist));
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, peaks));
             moved = true;
           }
         } else if ev.msg_id == MSG_LOOK {
@@ -1071,6 +1144,10 @@ fn main() {
       dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
       cam_want = cam_boom();
       cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
+      // Angular velocity, lightly smoothed so one jittery drag frame does not
+      // throw the prediction. This is the "we are already turning" signal.
+      cam_rate = cam_rate * 0.6 + ((yaw - cam_yaw_prev) / dt ?? 0.0) * 0.4;
+      cam_yaw_prev = yaw;
 
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
@@ -1086,7 +1163,7 @@ fn main() {
 
       // 2. The boom covers whatever the lift has not reached yet — including the
       //    whole of it during the drift, which is what stops the transient.
-      cam_free = cam_free_dist(cpx, cpy, cpz, yaw, cam_pitch, cam_want, peaks);
+      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, peaks);
       if cam_free < cam_dist {
         cam_dist = cam_free;                       // intrude: give way at once
       } else {
@@ -1251,7 +1328,7 @@ fn main() {
         srv.send_to(pc.cid, t_leg_r);
         srv.send_to(pc.cid, t_arm_l);
         srv.send_to(pc.cid, t_arm_r);
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist));
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, peaks));
       }
     }
     if work == 0 && !moved { web::sleep_ms(2); }
