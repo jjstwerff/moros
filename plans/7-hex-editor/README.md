@@ -691,6 +691,22 @@ to fire.** A rung that ships with an obligation deferred has moved the debt, not
 
 ### The rungs, as milestones
 
+> ⚠ **The rungs are now separate plans** — the editor in its completion is much too big for
+> one. The overall map lives outside the plans in
+> [doc/claude/EDITOR_LADDER.md](../../doc/claude/EDITOR_LADDER.md); each rung has its own
+> issue: persistence [#8](https://github.com/jjstwerff/moros/issues/8), roads
+> [#9](https://github.com/jjstwerff/moros/issues/9), fences
+> [#10](https://github.com/jjstwerff/moros/issues/10), fields
+> [#11](https://github.com/jjstwerff/moros/issues/11), houses
+> [#12](https://github.com/jjstwerff/moros/issues/12), trees
+> [#13](https://github.com/jjstwerff/moros/issues/13), props and vehicles
+> [#14](https://github.com/jjstwerff/moros/issues/14), routines
+> [#15](https://github.com/jjstwerff/moros/issues/15).
+>
+> **This plan keeps the substrate** — the anchor, the layer stack, the decisions and the
+> seam rules — and W0, which shipped. What follows is the reasoning that produced the
+> split, kept because the *order* is an argument and not a list.
+
 - **W0 — the flat plane and the hills.** Produce: the host (`fn main`, window, `--html`), the
   height tool, `hex_scene`'s terrain path, the journal, the frame-budget harness. Fix the
   `moros_ui` lock (§10.1). ⚠ **Orbit camera, not the player controller** — walking is W2+, on
