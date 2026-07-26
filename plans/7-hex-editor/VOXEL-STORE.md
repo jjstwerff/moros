@@ -508,6 +508,70 @@ The licence to break is a licence not to be blocked; it is not a reason to churn
 break should be one the model actually requires — and since another agent works that
 tree, the changes here are worth announcing rather than merely landing.
 
+## 3g. No competing libraries — where every piece of this lands
+
+*(user, 2026-07-26: "I do not want competing libraries inside the loft-lang repos. Things
+need to have a clear purpose and when writing two of them it needs to be clear when to use
+one versus the other")*
+
+The family already governs this and `CONVERGENCE.md` states the position plainly:
+*"Function-level overlap is ZERO today."* A second way to persist hex cells would be the
+first overlap, and it would be ours. So the design has to say where every piece lands and
+how to choose between neighbours.
+
+### This is not a hijack — it is `hex_world` doing its stated job
+
+`CONVERGENCE.md` already defines `hex_world` as **"chunked cell STORAGE: get/set,
+save/load, decay."** Storage is not a name we are taking; it is the purpose already on the
+page. What §3f removes is `decay` — which was never storage — and what it adds is the
+depth (layers, window, palette indexes) that storage needs to hold a real world.
+
+Two of its rulings also land on us directly, and we already agree with both:
+
+- **Axial is the storage convention.** The routine keys `(q, r)` axial throughout;
+  odd-r stays authoring/presentation, converted at the boundary.
+- **`hex_grid` owns geometry and has NO deps.** That is why `chunk_idx_32` /
+  `hex_idx_32` go down to it (§3e) rather than sideways.
+
+### The boundaries, as a question you can answer at the call site
+
+| this | vs this | the question | answer |
+|---|---|---|---|
+| `hex_world` | `hex_field` | **do you live in it, or hand it over?** | unbounded, mutable, multi-layer, narrow types, random access → `hex_world`. Bounded, portable, one layer, wider types so each consumer keeps its own units, stencils → `hex_field` |
+| `hex_world` | `hex_terrain` | **authored or generated?** | `hex_terrain` *makes* overland terrain; `hex_world` *stores whatever was made*, however it arose |
+| `hex_world` | `hex_edge` | **store it or be stopped by it?** | `hex_world` holds the wall index in the cell; `hex_edge` decides what blocks motion |
+| `hex_world` | `gridmesh` | **cells or triangles?** | `hex_world` never emits geometry and never tracks a mesh; `gridmesh` never persists |
+
+The `hex_field` line is the one that matters most, because it is the pair most easily
+confused — both write hex cells to a file. **A field is a document; a world is a
+residence.** They convert into each other, and moros already does exactly that
+(`map_read_field`); this design does not change it.
+
+### The correction this forces on §6
+
+§6 lists the derived structures without saying who owns them, which under this rule is
+how competition starts. None of them belongs in `hex_world`:
+
+| derived | home | why not `hex_world` |
+|---|---|---|
+| chunk mesh, normals | **`gridmesh`** | it is the grid→mesh toolkit, and it already ships `ChunkField` dirty rebuilds — which also settles `LIBRARY-CANDIDATES` row 7 as *converge*, not *keep* |
+| wall / edge collider | **`hex_edge`** | "collision as an EDGE SET" is its stated purpose |
+| item broadphase | consumer-side over `spatial<T>` | a stdlib collection, not a library |
+| LOD height texture | **`gridmesh`** | it is a mesh/texture product |
+| the dirty set | **`gridmesh`** | `ChunkField` already exists; a second one is the exact thing forbidden |
+
+`hex_world` therefore owns **cells, columns, chunks, the window, the routine, the guards
+and the file** — and nothing that draws, collides, or generates.
+
+### And the brush does not get a library
+
+`LIBRARY-CANDIDATES` row 12 proposed a home for the falloff brush "beside `hex_terrain`,
+the authored sibling". Under this rule an *authored sibling* to `hex_terrain` is precisely
+the thing being forbidden — two terrain libraries with a vague split. The brush is an
+**edit operation**: it computes heights and calls the routine, so it stays in the editor
+until a second consumer wants it, and then it joins `hex_terrain` rather than rivalling
+it. `LIBRARY-CANDIDATES` needs that row corrected.
+
 ## 4. Layout
 
 A **layer** is 32 × 32 hexes — matching `moros_map`'s existing `Chunk` width — which at
