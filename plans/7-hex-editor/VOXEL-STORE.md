@@ -386,6 +386,74 @@ ever wants to shrink** — `u8` would take the voxel to seven bytes — the per-
 exactly what makes that possible, and this routine does not change: only the two
 constants do. Worth knowing the door is there; not worth walking through it now.
 
+## 3e. The model is a library — and the name is already taken
+
+*(user, 2026-07-26: "The validated world model with modification/usage routines will live
+in its own library, but we build and validate it first")*
+
+Consistent with the standing rule that extraction waits: *"hexbody was extruded from
+crawler too early (many times I had to back reference for data) so we only extrude when
+the editor is in an almost finished state."*
+
+So the model is **package-shaped now, extracted later** — and the extraction bar is not
+an event, it is a property checkable every day: **its gates must pass with the moros tree
+absent.** If a gate needs a moros type or a moros fixture, the boundary has already been
+crossed and it is cheap to notice today rather than at extraction.
+
+Its dependency ceiling is loft's stdlib plus `hex_grid` / `hex_field`. Not
+`moros_render`, `moros_sim`, `moros_editor`, `moros_ui`.
+
+### ⚠ `hex_world` exists, and it is not this
+
+The obvious name is taken by something narrower: `../loft-libs-world/hex_world` is the
+audience-crystal / TTT world. Its `Cell` is `c_color: u8`, `c_height: u8`, `c_age: u16`;
+it is **single-layer**, it has `tick_and_decay`, and it already ships `world_save` /
+`world_load` for that model. Its own comment reads *"Same shape as moros_map's Chunk
+minus the cy layer (this world is single-layer)."*
+
+Growing it into the multi-layer voxel landscape would break its consumers (TTT v5,
+plan-36) and would mean one package holding two unrelated cell models. **So the name is
+not available and the design should not assume it.** Choosing the real one is a
+conversation with the sibling tree, not a decision to take here — two agents work in it.
+
+### ⚠ A live duplication found on the way
+
+`chunk_idx_32` and `hex_idx_32` exist **twice**:
+
+- `hex_world/src/hex_world.loft:66,72` — **public**, with a comment explaining it is
+  public *precisely so consumers do not re-implement the floor-division dance for
+  negatives* (`/` rounds toward zero, silently mapping cell −1 to chunk 0);
+- `moros_map/src/moros_map.loft:147,151` — **private**, re-implementing exactly that.
+
+Two copies of one arithmetic, one of which was made public to prevent the other. This is
+the `L11` failure the seam rules name, already realised.
+
+Neither home is right: the helpers belong in **`hex_grid`**, the base. A consumer should
+not have to depend on a crystal-decay world model to divide a coordinate by 32 — which is
+plausibly *why* moros re-implemented rather than imported. **Recorded, not fixed**: the
+sibling tree has another agent in it, and this is a raise.
+
+### What the library owns, and what it must never absorb
+
+The anchor principle the plan already states — *we own how a thing attaches to geometry,
+never the payload* — settles this without a new rule.
+
+**Owns:** the voxel, the column, the chunk with its window and mask, the addressing
+arithmetic, the routine (§3d), the index space (slot 0 is absence, 256 cap), the file
+format, and the guards.
+
+**Never absorbs: what a definition MEANS.** `md_swimmable`, `md_stair_kind`,
+`wd_body: "BATTLEMENT"` are moros's game semantics. The library knows a cell holds a `u8`
+that indexes a table and that index 0 is absence. It does not know what a material *is*,
+and the day it does is the day it stops being a substrate.
+
+**The consequence for the file, which is not obvious.** §3 says the palette must travel
+with the world — indexes without tables name nothing. But the library cannot serialise a
+definition it is forbidden to understand. So the palette is **an opaque section the
+consumer encodes and decodes**: the library owns its position, its count and the slot-0
+rule; the consumer owns the bytes. The durable set stays closed, and the substrate never
+learns what a stair is.
+
 ## 4. Layout
 
 A **layer** is 32 × 32 hexes — matching `moros_map`'s existing `Chunk` width — which at
