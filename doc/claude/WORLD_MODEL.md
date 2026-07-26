@@ -197,6 +197,7 @@ Every bound below is audited against `G0`:
 | edit clock | **T1** | `u64` — see below | ✓ |
 | world extent | **X1** | `CW_EXTENT` | ✓ |
 | one writer *per store* | **X2** | `CW_CONCURRENT`, detected not assumed. Many *authors* are normal (**M1**, **M2**) | ✓ |
+| free space over a long life | **X3** | fixed-size slots cannot fragment; variable regions size-classed | ✓ |
 
 ### I4 — Label exhaustion degrades, it does not fail
 
@@ -277,10 +278,62 @@ a torn entry; recovering it needs a journal, which loft's Tier 3 would provide a
 yet. Until then the honest position is: the window is small, torn entries are *detected*, and
 the chunk they point at is refused by name rather than silently misread.
 
+### X3 — Reclamation, and why the bulk cannot fragment
+
+*(user, 2026-07-26: "we need a system that can eventually remove chunks we not need anymore
+and we need a system that can clean-up long running stores, because of their nature
+fragmentation is not quick, but it is not impossible either")*
+
+> A layer slot freed by **E1** returns to a free list. Terrain layer slots are **fixed size**
+> (8 KB), so any free slot serves any layer.
+
+**Fixed-size slots mean the bulk of the file cannot fragment at all.** This is not a
+mitigation, it is the absence of the problem: fragmentation is the inability to use free
+space because the pieces are the wrong shape, and identical pieces are never the wrong shape.
+Since terrain layers dominate a world's bytes by orders of magnitude, the file's steady state
+is the high-water mark of *live* data rather than of total writes.
+
+**Fragmentation is therefore confined to the variable-size regions** — the chunk directory
+(entries vary with layer count) and dressing records (`#14`, inherently variable). Both are
+small beside layer data, and both are handled by size-classed free lists rather than by
+hoping. `G0`: the bound is small, and it is still checked.
+
+### X4 — Relocation preserves the world
+
+> Moving a chunk's bytes changes its `data_off` and nothing else. **`τ` does not advance and
+> no `ver` changes.**
+
+⚠ **This is the trap, and it is easy to fall into.** The obvious way to implement compaction
+is to route relocations through the ordinary write path — which stamps the clock (`T1`) and
+would therefore **invalidate every cache in the world on every maintenance pass**. LOD
+textures that took minutes to build would be discarded by an operation that changed nothing
+anyone can see.
+
+A relocation changes *where the bytes live*, not *what the world is*. The two must not share
+a stamp.
+
+### X5 — Compaction is the write path, minus the stamp
+
+> Relocating a chunk is: allocate a lower free slot, copy, republish the directory entry,
+> free the old — the same copy-on-write step as a normal write.
+
+So compaction needs **no new mechanism**: `M2` holds throughout, readers keep valid bytes
+until they release them, and a crash mid-compaction leaves the original chunk intact and
+reachable. It can run online, incrementally, and be interrupted.
+
+The file itself shrinks only by truncating trailing free space, so compaction is a policy
+for choosing which live chunks to move *down* — a policy question, deliberately not fixed
+here, because how aggressively a long-running store defragments depends on whether it is a
+server, an editor session, or a shipped world.
+
+**Removal and eviction are different things.** A chunk leaves the *file* only when it holds
+nothing (**E1**). A chunk leaves *memory* whenever the consumer likes — it is reloadable, so
+residency is a streaming decision and no concern of this model.
+
 ## 4. Invariants
 
 A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
-**M1** and **M2** is *well-formed*. The routine must
+**M1**, **M2** and **X4** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
@@ -574,6 +627,9 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **X2** | open twice for writing, write from the first → `CW_CONCURRENT` | one writer → silent |
 | **M1** | apply two disjoint-column edit sets in both orders → **worlds** identical | make them share a column → order matters, and the gate says so |
 | **M2** | read a chunk while a write to it is in flight → the value is wholly old or wholly new | never a mix of both |
+| **X3** | churn a world for many edit cycles → file size tracks LIVE data, not total writes | free slots are actually reused, not appended past |
+| **X4** | **compact a world → every cache stays valid** | make one real edit → that cache, and only that one, goes stale |
+| **X5** | kill the process mid-compaction → the world opens unchanged and complete | — |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |
