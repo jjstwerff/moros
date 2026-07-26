@@ -38,7 +38,7 @@ eyes**, not a report: something to open, drive, and judge.
 
 | # | work | plan | size | done when |
 |---|---|---|---|---|
-| **0** | ✋ **decide: one world file, or a directory of region files** | #8 | — | answered; V2 depends on it |
+| ~~0~~ | ~~decide: one world file or regions~~ — **answered: one file**; stencils and placeable assets live in separate files | #8 | — | ✅ 2026-07-26 |
 | 1 | the file — header, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` on open | #8 V2 | M | a world round-trips; a hand-corrupted chunk is refused by name and the rest opens |
 | 2 | sparsity — elision on both axes, maintained on write | #8 V3 | S | an empty 10⁶-tile world < 64 KB; file size tracks live data, not total writes |
 | 3 | change and cache — edit clock, per-layer versions, snapshot reads | #8 V4 | M | compaction invalidates no cache; one edit stales exactly one |

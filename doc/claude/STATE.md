@@ -137,9 +137,10 @@ The sequential work list, with the points that need the user rather than a repor
 **[EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work)**. It is the
 answer to "what now" — this section is the answer to "what is stuck".
 
-**Row 0 blocks row 1**: one world file, or a directory of region files. Multiplayer chunk
-shipping, per-region compaction and damage isolation argue for regions; simplicity and a
-single address space argue for one file. Unanswered.
+**Row 0 is answered (2026-07-26): one file per world**, with stencils and placeable assets
+in separate files. Row 1 is unblocked. ⚠ The consequence to carry: a world is self-contained
+for its *landscape* but not for its *dressing*, since a placement is a reference into an
+asset library.
 
 ## Open work
 

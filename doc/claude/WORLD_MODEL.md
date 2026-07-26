@@ -127,6 +127,37 @@ world, so a maintenance pass leaves every cache valid.
 A chunk leaves the *file* only when it holds nothing. It leaves *memory* whenever the
 consumer likes — residency is streaming, not storage.
 
+## What is NOT in the world file
+
+*(user, 2026-07-26: "the world lives in a single file, however, the stencils we use during
+the editor and the things we place into the world both as set dressing and as
+vehicles/part-of vehicles live in different files")*
+
+**One file per world.** Terrain, the palette and dressing *placements* live in it. Three
+kinds of thing deliberately do not, and they differ in whether the world depends on them:
+
+| | lives in | the world depends on it |
+|---|---|---|
+| terrain, palette, placements | **the world file** | — it *is* the world |
+| **stencils** — authoring templates | their own files | **no.** Stamping bakes the result into the world; afterwards nothing references the stencil |
+| **assets** — dressing models, vehicle parts | their own files | **yes.** A placement is a reference, resolved at load |
+
+**Stencils are the clean case.** A stencil is an editor tool, not world content: stamping a
+house writes cells, and the saved world neither knows nor cares which stencil produced them.
+So a stencil library can change, move or vanish without touching any world.
+
+⚠ **Assets are not, and it is worth being exact about what that costs.** A dressing placement
+stores a *reference*, so a world plus a missing asset library is a world with holes in it.
+That is the right trade — a tree model copied into every world that plants one is the
+opposite of "huge but efficient" — but it means **the one rule holds for the landscape and
+not for dressing**: delete everything but the world file and the terrain comes back
+bit-exact, while the props come back as unresolved references. `L13`'s *landscape* is
+self-contained; the scenery is not, by design.
+
+The mapping from a placement's index to an asset identity is **consumer-owned**, and it goes
+in the palette section the library already treats as opaque bytes — the same seam, reused
+rather than a new one.
+
 ## Addressing
 
 Axial `(q, r)` throughout, per the family's `CONVERGENCE.md`: **axial is the storage and

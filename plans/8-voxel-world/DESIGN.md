@@ -293,6 +293,12 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 
 ## 4. The file
 
+> **Row 0 is answered (2026-07-26): ONE FILE per world.** Not a directory of regions. The
+> chunk codec is unaffected either way; had regions been chosen, only the directory and free
+> list would have differed. Stencils and placeable assets live in *separate* files — see
+> `WORLD_MODEL.md` § What is NOT in the world file — which is what keeps the single file from
+> growing a copy of every tree model in it.
+
 ```
 [header     ] magic, version, chunk_w,
               u (height unit), rho (floor reserve), eps, theta,
