@@ -666,6 +666,65 @@ That accumulation across consumers is the main return on the whole exercise.
 
 ---
 
+## The ownership audit — every public name, adjudicated (2026-07-26)
+
+A re-verification over the **actual** public surface of `lib/moros_*`, not from memory. The
+question for each name: is it *this game*, or is it editor/world logic any game would need?
+
+**The headline is uncomfortable and worth stating first.** Of roughly 150 public names across
+five packages, **the great majority are general** — the `moros_*` packages are a universal
+editor with a thin moros configuration layered on, and the package names say the opposite.
+That gap is the substrate's whole reason for existing, but it is currently a claim in this
+document rather than a fact about the tree.
+
+### Genuinely Moros — the short list
+
+| what | why it stays |
+|---|---|
+| `MaterialDef` / `WallDef` / `ItemDef` **contents** | `md_swimmable`, `md_stair_kind`, `wd_body: "BATTLEMENT"` are this game's semantics. The *table mechanism* is the library's; the *fields* are ours (the contract's opaque-palette rule) |
+| `SpawnPoint`, `NpcRoutine`, `NpcWaypoint` and their fns | game state, not world state (`L15`). Already excluded from the world file |
+| `builtin_flat` / `house_small` / `spiral_stair` / `house_door` | content, authored in this game's idiom |
+| `dev_art_color`, `material_swatch` | Moros's developer-art palette |
+| `stencil_palette_*`, the tool set, `palette_items_for_tool` | *configuration* of the editor, which is what a consumer is supposed to supply |
+| everything in `doc/` | rules, cards, NPCs, campaign, places |
+
+### General — grouped by the home the design already names
+
+| group | names | home |
+|---|---|---|
+| world model | `Hex` `Chunk` `Map` `HexAddress`, `map_empty/get_hex/set_hex/paint_material/set_height/place_item/set_wall/set_wall_dir/ensure_chunk/has_chunk`, the palette *mechanism* (`map_add_*`, `map_*_def`, `map_has_*`, `map_palette_gap`, `absent_*`) | **`hex_world`** (#8) |
+| lattice | `hex_distance`, `hex_to_world`, `world_to_hex`, `hex_corner_world`, `chunk_idx_32`, `hex_idx_32`, the 12-position facing clock (`dir_hour`, `facing_*`, `hour_*`) | **`hex_grid`** |
+| documents | `map_read_field`, `map_write_field`, `map_to_stencil`, `stencil_into_map*`, `stencil_placed` | **`hex_field`** |
+| collision | `blocked_by_wall`, `wall_value_on_edge`, `edge_direction`, `resolve_move`, `floor_y_at` | **`hex_edge`** |
+| mesh + cull | `build_hex_meshes`, `emit_*` (box, cylinder, walls, all three stair kinds), `Aabb`, `aabb_*`, `view_cone`, `flag_occluders`, `mesh_aabb`, `scene_*_count`, `stair_step_count` | **`gridmesh`** / `mesh3d` |
+| terrain shaping | `slope_path`, `slope_band` | **`hex_terrain`** |
+| export | `map_export_glb` | **`glb`** |
+| **undo** | `UndoStack`, `UndoEntry`, `EditKind`, `undo_push/pop`, `redo`, `batch_*`, every `*_with_undo` | ⚠ **no home yet** — universal to editors, belongs to the editor substrate |
+| **camera** | `RenderCamera`, `CameraMode`, `camera_*`, `apply_mouse_look`, `camera_ray_dir`, `pick_hex`, `ray_plane_y_intersect` | ⚠ **no home yet** |
+| **input** | `InputState`, `input_*`, `keys_pressed_since` | ⚠ **no home yet** |
+| **tools + editor loop** | `ToolState`, `ToolKind`, `tool_apply`, `EditorState`, `editor_tick`, `edit_at_hex`, `editor_load/save_to_file` | ⚠ **no home yet** — the editor library itself (#7) |
+| **UI widgets** | `Rect`, `Button`, `ListBox`, `Panel`, `StatusStrip`, `panel_*`, `rect_*`, `list_rect`, `text_*`, `*_rect`, `route_click`, `editor_click`, `UiHit` | ⚠ **no home yet** |
+| character | `Player`, `player_step`, `avatar_mesh`, `emit_player_avatar`, `avatar_add_to_scene` | the single-player part we own; `hex_body` for the rig |
+
+**Five groups have no home**, and they are the substance of the editor rather than of the
+world: undo, camera, input, the tool/editor loop, and UI widgets. `#7` is where they land,
+and this audit is the list `#7` should work from.
+
+### ⚠ One finding the audit turned up
+
+**Game state is packed inside the voxel.** `hex_spawn_flag` and `hex_waypoint_flag` read
+bits 5 and 6 of `h_item_rotation`:
+
+```loft
+pub fn hex_spawn_flag(h: Hex)    -> boolean { (h.h_item_rotation >> 5) & 1 == 1 }
+pub fn hex_waypoint_flag(h: Hex) -> boolean { (h.h_item_rotation >> 6) & 1 == 1 }
+```
+
+A spawn point is game state, not world state — `L15` says so and `WORLD_MODEL.md` excludes
+spawns from the world file explicitly. Yet two bits of the storage of record hold exactly
+that, which is the same violation the crystal's `c_age` would have been if it had been let
+in. It is the cheaper kind to fix now than after worlds exist, and it belongs to `#8`'s V1.
+
 ## What stays out of the shared layer
 
 - **The metre**, per seam rule 2.
