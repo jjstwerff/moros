@@ -47,6 +47,23 @@ right home all along.
 **The lesson:** surveying the sibling caught the collision (good) and then over-concluded
 from it (bad). Finding an occupant answers "is this taken", not "may we have it".
 
+## Two claims about seams that were about nothing of the sort
+
+Layer *kind* was argued to be world-global because a per-chunk kind "would make the fold
+check incoherent across a seam". Two revisions later, layer *identity* was argued to be
+world-global because "folding is not detectable without it". Both were wrong, and wrong the
+same way: **the fold check is a property of a column, a column lies wholly inside one
+chunk, and so the check never crosses a seam at all.**
+
+What actually needs cross-chunk agreement is *continuity* — which surface you step onto in
+the next tile — and that is a different problem with a different answer (match by height,
+made unambiguous by the headroom constant that non-folding already requires).
+
+**The lesson:** both arguments sounded like seam arguments because they mentioned layers and
+chunks in one sentence. Neither was tested against the simplest question — *does this
+operation ever read two chunks?* — and the answer was no both times. A sentence that
+invokes a seam is not a seam argument.
+
 ## Still unresolved
 
 - **Does `map_get_hex` alias?** It returns a vector element, and loft's `#338` says

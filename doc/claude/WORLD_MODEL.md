@@ -57,13 +57,18 @@ names it, so a tower's twentieth storey costs 8 KB in the one tile it stands on 
 everywhere else. Sparsity lives on the **chunk** axis, which is why structures with many
 layers — towers, shafts, dungeon levels — cost what they occupy rather than what they span.
 
-**Layers have global ids and local allocation.** The header holds an ordered list of layer
-definitions — the order *is* stack order, so "below" is well-defined everywhere — and each
-chunk holds a small table of the ids it actually contains. Identity is global, so the same
-floor in two tiles is the same floor and a fold stays detectable; allocation is local, so a
-tower region and a dungeon region never compete for one budget.
+**Each chunk defines its own layers.** A tile holds an ordered list of the layers it
+actually has — terrain and dressing mixed freely — with the order being stack order within
+that tile. There is no world-wide layer list and no global budget: a forty-storey tower's
+layers exist in the tile it stands on and nowhere else.
 
-**Layer kind belongs to the id**, held in the header. A per-chunk kind would let one index be
+**Continuity across a seam is matched by height, not by name.** Stepping into the next tile,
+the surface you continue onto is the one nearest your current height — which is what walking
+physically is, and which correctly answers "nothing there" when a floor stops at a wall.
+`headroom` makes the match unambiguous: since consecutive layers of a column are separated
+by at least that much, at most one layer can ever be near a given height.
+
+ A per-chunk kind would let one index be
 terrain in one tile and dressing in the next, making the fold check incoherent at the seam.
 
 The world model knows only that the kinds differ and that terrain is dense while dressing
