@@ -74,16 +74,26 @@ level and therefore cannot leak past it.
 ### The chunk — a tile with a stack of layers
 
 ```loft
-struct Layer { ly_cells: vector<StoredHex> }        // exactly 1024
+struct Layer { ly_id:    integer,                    // u32 LABEL — a name, 0 = unlabelled
+               ly_kind:  integer,                    // 0 terrain, 1 dressing
+               ly_cells: vector<StoredHex> }         // exactly 1024, terrain only
 
 struct Chunk { ck_cx: integer, ck_cz: integer,
-               ck_base: integer,                     // absolute floor of the window
-               ck_mask: integer,                     // 64-bit: which layers exist
-               ck_layers: vector<Layer> }            // present ones only, mask order
+               ck_base:   integer,                   // absolute floor of the window
+               ck_layers: vector<Layer> }            // ORDERED, ≤ 64, this tile's own
 ```
 
 A **layer** is 32 × 32 hexes = 1024 cells = **8 KB, two pages**. A **chunk** is a `(cx, cz)`
-tile holding a base height and up to 64 layers, of which only used ones are stored.
+tile holding a base height and its own ordered list of layers, at most 64.
+
+**There is no presence mask.** An earlier draft carried a `u64 ck_mask` because layer
+*indices* were world-global and a chunk held a subset of them. Once layers became chunk-local
+the mask had nothing to index: the list *is* the layers, and a layer's slot is its position
+in it. Presence is membership.
+
+`ly_id` is the optional cross-chunk **label** (`I1`–`I3` of the contract): a `u32` name drawn
+from the world's `ν` counter, never an ordinal, never inserted between others. `0` is
+unlabelled.
 
 ### Vertical structure
 
@@ -186,7 +196,7 @@ touches a fraction of its 1024 cells, and still costs 8 KB. Does terrain need a 
 too?
 
 **No, because presence is already per-chunk.** A layer is not a world-wide sheet that must
-be paid for everywhere; it exists only in the tiles whose `ck_mask` names it. A tower's
+be paid for everywhere; it exists only in the tiles whose layer list holds it. A tower's
 twentieth storey lives in the one tile the tower stands on and costs one bit in every other.
 The 32 × 32 granularity is what makes this work: structures with many layers — buildings,
 towers, mine shafts — are **compact in XY**, so the tiles they touch are few.
@@ -213,12 +223,13 @@ property of a design's taste, it is a measurement, and the two cases measure dif
 cx = q >> 5      hx = q & 31        cell = hx * 32 + hz
 cz = r >> 5      hz = r & 31
 
-layer l present  ⟺  (ck_mask >> l) & 1 == 1
-its slot         =  popcount(ck_mask & ((1 << l) - 1))
+slot of layer i  =  i          it is simply its position in ck_layers
 ```
 
-Presence and position are the same word, so no per-layer offset table is stored. A chunk
-with layers 0, 3 and 9 live stores three `Layer`s, and layer 9 sits at slot 2.
+A chunk holding three layers stores three `Layer`s at slots 0, 1, 2, in stack order. Their
+labels may be `0`, `4711` and `4712` — the labels say what corresponds to a neighbour's
+layers, the slots say what sits above what *here*, and the two are unrelated by design
+(contract, *A label is a NAME, not an ordinal*).
 
 Axial `(q, r)` per `CONVERGENCE.md`: axial is the storage and interchange convention, odd-r
 is authoring and presentation, and `hex_grid` owns the bridge.
@@ -234,7 +245,7 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column
 pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex   // convenience
 ```
 
-Find the chunk; for each set bit of `ck_mask`, take that layer's cell at `hx*32+hz`; a cell
+Find the chunk; for each terrain layer in `ck_layers`, take its cell at `hx*32+hz`; a cell
 whose material is 0 is **absent**, not present-and-empty. Every height gets `ck_base`
 added — **the only addition in the design.**
 
@@ -263,11 +274,16 @@ Five steps, and the order is the design:
    - span > 65535 → `CW_WINDOW`; refuse rather than truncate.
    - outside the current window → **rebase**: `ck_base = lo`, re-encode every present layer.
    - otherwise the window stands.
-3. **Materialise absent layers** — a fresh zeroed `Layer` at its slot, mask bit set. The
-   only place a layer is ever created, which is what stops unneeded ones existing.
+3. **Materialise absent layers** — insert a fresh zeroed `Layer` at its position in
+   `ck_layers`. This is the only place a layer is ever created, which is what stops unneeded
+   ones existing. If the caller supplied a label, it is used; if it asked for a new one, it
+   is drawn as `id := ν; ν := ν + 1` (`I3`) — never chosen by looking at what neighbours
+   already use.
 4. **Encode** — subtract `ck_base`, **the only subtraction in the design**, and store.
-5. **Drop what emptied** — an all-zero layer loses its mask bit and slot; a chunk with
-   `ck_mask == 0` leaves the directory. Elision is maintained on write, not swept later.
+5. **Drop what emptied** — an all-zero layer is removed from `ck_layers`; a chunk with an
+   empty list leaves the directory. Elision is maintained on write, not swept later. A
+   dropped layer's label is *not* returned to `ν`: `ν` only increases (`I3`), and a `u32`
+   is not a budget anyone spends.
 
 A single-cell edit is not primitive: read the column, change one layer, write it back.
 
@@ -276,12 +292,20 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 ## 4. The file
 
 ```
-[header     ] magic, version, chunk_w, headroom, palette_off, dir_off, dir_len
+[header     ] magic, version, chunk_w,
+              u (height unit), rho (floor reserve), eps, theta, nu (next label),
+              palette_off, dir_off, dir_len
 [palette    ] OPAQUE to the library — the consumer's bytes (§6)
-[chunk dir  ] sorted (cx, cz) → { base_height, layers[≤64] of { kind }, data_off }
-[chunk data ] per chunk, only used layers in mask order:
+[chunk dir  ] sorted (cx, cz) → { base_height, layers[≤64] of { id:u32, kind:u8 }, data_off }
+[chunk data ] per chunk, its terrain layers in list order:
               8 KB each: 1024 × StoredHex, row-major, CRC32 trailer
 ```
+
+The header carries every world constant the contract names, so a file is self-describing:
+`u` says what a height step is worth, `rho`/`eps`/`theta` are the authoring floor, the
+minimum layer separation and the match tolerance, and `nu` is the label counter. **`eps > 2·theta`
+is checked when the file is opened, not assumed** — a world violating it fails `B1` silently
+(contract, `C1`).
 
 **Not mmap.** loft ships `store_persist_bind` ("the hash IS the file"), and it is wrong here
 on two counts from its own documentation: it is Tier-1 and says *"Do not use for data that
@@ -327,6 +351,7 @@ anything is built.
 |---|---|---|
 | palette table | 256 entries | `add` returns −1; no index could name a 257th |
 | layers per chunk | 64 | `CW_LAYER_CAP` — and there is no world-wide layer count at all |
+| distinct labels | 2³² over a world's whole life | `ν` only increases; dropped labels are never reused |
 | window span | 65535 height units per **chunk** | `CW_WINDOW` — refuse, never truncate |
 | height | `u16` above the world floor, unsigned | there is no below; layer 0 is the bottom |
 | chunk extent | 32 × 32 = 8 KB | fixed; two pages |
@@ -337,7 +362,7 @@ anything is built.
 | absence | representation | must equal |
 |---|---|---|
 | unwritten cell | all-zero `Hex` | material 0 → the absence definition |
-| unused layer | mask bit clear | a stored all-zero layer |
+| unused layer | absent from `ck_layers` | a stored all-zero layer |
 | untouched tile | no directory entry | a chunk whose layers are all zero |
 | no wall / no item | index 0 | the absence entry of that table |
 
