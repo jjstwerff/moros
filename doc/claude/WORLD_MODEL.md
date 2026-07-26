@@ -20,7 +20,9 @@ Rules are numbered so a gate, a refusal and a bug report can name the same thing
 > world file and no amount of derivation brings it back.
 
 Everything else — meshes, normals, colliders, LOD textures, dirty sets — is **derived and
-disposable**. The second half is the one that decays quietly: the moment some fact has a
+disposable**, and may be cached for as long or as briefly as it stays valid: the world
+stamps every write with an edit clock (**T1**), so a cache asks an exact question rather
+than guessing. The second half is the one that decays quietly: the moment some fact has a
 second home, two things are true and they disagree the first time one is rebuilt.
 
 ## The voxel — eight bytes
@@ -128,6 +130,8 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `k(λ) ∈ {T, D}` | layer kind: **T**errain or **D**ressing |
 | `id(λ) ∈ [0, 2³²)` | an optional **label** — a name, not an ordinal. `0` means unlabelled |
 | `ν ∈ [0, 2³²)` | the world's **next free label**, in the header |
+| `τ ∈ [0, 2³²)` | the world's **edit clock**, in the header — monotonic |
+| `ver(λ) ∈ [0, 2³²)` | the clock value at which `λ` was last written |
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
@@ -146,7 +150,7 @@ col_K(x)  =  ⟨ i : k(λᵢ) = T ∧ occ_{λᵢ}(x) ⟩   the column at x, in c
 ## 2. The objects
 
 **A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)`, the label
-counter `ν`, and a palette.
+counter `ν`, the edit clock `τ`, and a palette.
 
 **`u` is declared per world and the model never reads it.** Heights are integers; `u` says
 what one step means to a renderer, a collider or a player, and every other constant here is
@@ -166,7 +170,8 @@ exists, has a kind, and is excluded from every rule about columns, folding and c
 
 ## 3. Invariants
 
-A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1** and **I3** is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1** and **T2**
+is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
@@ -299,6 +304,50 @@ over a height band.
 and no requirement that a label be used at all. A chunk remains free to hold a layer set
 shared with nobody.
 
+### T1 — The edit clock
+
+> Every write that changes a layer's contents performs
+>
+> ```
+>     τ := τ + 1  ;  ver(λ) := τ
+> ```
+>
+> and therefore `ver(λ) ≤ τ` for every layer at all times.
+
+**A cache built at clock `c` over a set of layers `L` is valid iff `max{ ver(λ) : λ ∈ L } ≤ c`.**
+That is the whole protocol. It is an exact comparison, not a heuristic and not a timestamp:
+a clock value is a fact about what has happened, where a time is a guess about whether it
+has.
+
+**Versions live in the chunk DIRECTORY, never in the chunk payload.** Validating a cache
+must cost a directory lookup and not an 8 KB load, or the check becomes more expensive than
+the rebuild it was meant to avoid. This is a structural requirement, not an optimisation.
+
+### T2 — Versions are independent
+
+> A write to `λ` changes `ver` of no other layer.
+
+So a dressing change never invalidates a cache over terrain, a cellar's collapse never
+invalidates the LOD texture of the hillside above, and two derived products over one chunk
+are only coupled if they genuinely read the same layers. Without **T2** every cache in a
+chunk shares one fate and the separation of layers buys nothing.
+
+### T3 — No assumption about the rate of change
+
+> The model places no upper bound on how often a layer changes, and no writer is privileged.
+
+An LOD texture may stand for a year and a castle may be destroyed in one frame; **both are
+ordinary**. Authoring and runtime destruction use the same write path, take the same
+refusals, and stamp the same clock. Nothing may be built on the premise that world data is
+slow — an explosion, a crash or a fire is a first-class writer.
+
+⚠ **One consequence is not yet expressible and is called out rather than hidden.** A
+collapse that drops a floor onto the one beneath it would bring two layers closer than `ε`,
+which **F1** forbids. Refusing a physical event is the wrong answer. The right one is that
+**a collapse removes a layer rather than moving it**: the floor ceases to exist and its
+rubble becomes the surface below. Whether every destructive case can be expressed that way
+is open, and is the first thing to test when a destruction path is built.
+
 ### D1 — Dressing is inert
 
 > Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
@@ -407,6 +456,8 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
 | **I1** | relabel one layer of a neighbouring chunk → the gate fires on the crossing match | leave labels agreeing → silent; set both to `0` → silent, since unlabelled is unconstrained |
 | **I3** | allocate a thousand labels across many chunks → all distinct, `ν` monotonic | reuse a label for an unrelated layer → **I1** fires at the first seam where it matters |
+| **T1** | write a layer → `τ` advances and `ver(λ)` equals it; a cache at the old clock reports stale | write nothing → `τ` unchanged and the cache stays valid |
+| **T2** | write a dressing layer → a terrain cache over the same chunk stays valid | write the terrain layer → it goes stale |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |

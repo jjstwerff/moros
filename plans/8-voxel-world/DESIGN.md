@@ -279,7 +279,9 @@ Five steps, and the order is the design:
    ones existing. If the caller supplied a label, it is used; if it asked for a new one, it
    is drawn as `id := ν; ν := ν + 1` (`I3`) — never chosen by looking at what neighbours
    already use.
-4. **Encode** — subtract `ck_base`, **the only subtraction in the design**, and store.
+4. **Encode and stamp** — subtract `ck_base`, **the only subtraction in the design**, store,
+   then `τ := τ + 1` and set `ver` on each layer actually changed (`T1`), and only those
+   (`T2`).
 5. **Drop what emptied** — an all-zero layer is removed from `ck_layers`; a chunk with an
    empty list leaves the directory. Elision is maintained on write, not swept later. A
    dropped layer's label is *not* returned to `ν`: `ν` only increases (`I3`), and a `u32`
@@ -293,10 +295,12 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 
 ```
 [header     ] magic, version, chunk_w,
-              u (height unit), rho (floor reserve), eps, theta, nu (next label),
+              u (height unit), rho (floor reserve), eps, theta,
+              nu (next label), tau (edit clock),
               palette_off, dir_off, dir_len
 [palette    ] OPAQUE to the library — the consumer's bytes (§6)
-[chunk dir  ] sorted (cx, cz) → { base_height, layers[≤64] of { id:u32, kind:u8 }, data_off }
+[chunk dir  ] sorted (cx, cz) → { base_height, data_off,
+                                 layers[≤64] of { id:u32, kind:u8, ver:u32 } }
 [chunk data ] per chunk, its terrain layers in list order:
               8 KB each: 1024 × StoredHex, row-major, CRC32 trailer
 ```
@@ -352,6 +356,7 @@ anything is built.
 | palette table | 256 entries | `add` returns −1; no index could name a 257th |
 | layers per chunk | 64 | `CW_LAYER_CAP` — and there is no world-wide layer count at all |
 | distinct labels | 2³² over a world's whole life | `ν` only increases; dropped labels are never reused |
+| edit clock | 2³² writes over a world's whole life | at ~100 columns per destructive event that is tens of millions of events; exhaustion needs a renumber pass, not a format change |
 | window span | 65535 height units per **chunk** | `CW_WINDOW` — refuse, never truncate |
 | height | `u16` above the world floor, unsigned | there is no below; layer 0 is the bottom |
 | chunk extent | 32 × 32 = 8 KB | fixed; two pages |
