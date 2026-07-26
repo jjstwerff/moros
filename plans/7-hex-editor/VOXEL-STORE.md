@@ -83,7 +83,7 @@ and nothing else:
 |---|---|---|
 | 1 | **voxel chunks** — the landscape | the authored thing itself |
 | 2 | **the palette** — material / wall / item definitions | `u8`s are indexes; without the tables they name nothing. Authored, not derived |
-| 3 | **world header** — name, version, chunk geometry, headroom | says how to read 1 and 2, and what keeps layers apart (§3c) |
+| 3 | **world header** — name, version, chunk geometry, layer cap, headroom | says how to read 1 and 2, and what keeps layers apart (§3c) |
 
 Everything else is derived and must be deletable mid-session without loss: chunk meshes,
 normals, the collision structures below, the LOD height texture, the dirty set, the
@@ -199,20 +199,41 @@ assertion at every height site. A *per-chunk* window is a different thing entire
 insurance, but the mechanism that makes a limited axis span a tall world. Same-looking
 field, opposite verdicts, and the difference is granularity.
 
-### Open: how the window is addressed
+### Resolved: the window is per chunk, and a chunk holds a STACK of layers
 
-Two readings of the brief survive, and they differ in the format:
+*(user, 2026-07-26: "We can have a whole lot of layers in a chunk so that gives us wiggle
+room though it is inefficient to make ones that are unneeded/unused")*
 
-- **(A) explicit** — each chunk stores its own base height. Chunks at one `cy` can sit at
-  different heights; maximum freedom, one field per chunk, and the directory must carry
-  it.
-- **(B) implicit** — `cy` *is* the vertical band: band `k` covers `[k·BAND, (k+1)·BAND)`,
-  so the base is `cy · BAND` and no field is stored at all.
+This settles the open question in favour of the **explicit** window, and corrects a
+bigger assumption underneath it. The draft above keyed a chunk `(cx, cy, cz)` — one
+chunk, one layer. That is wrong:
 
-(B) is smaller and self-describing; (A) lets a layer follow terrain rather than sit in a
-fixed slab, which matters if a dungeon should hug the hillside it is cut into. Everything
-above — non-folding, absolute-in-memory, the seam rule, the probes — is identical either
-way, so this is the only part waiting on an answer.
+> **A chunk is a 32 × 32 tile keyed `(cx, cz)`, carrying its own base height and a sparse
+> stack of layers.**
+
+Each phrase of the brief lands somewhere: *"chunks can have different heights"* is the
+per-chunk base; *"layers have a limited height axis"* is the `u16` measured from it;
+*"a whole lot of layers in a chunk gives us wiggle room"* is many surfaces sharing one
+window, so caves and floors stack without needing a new chunk; *"inefficient to make ones
+that are unneeded/unused"* is the requirement that follows.
+
+**Elision now runs on two axes, and the second is new.** A chunk absent from the
+directory costs nothing — that was already true. What is new is that an **unused layer
+inside a present chunk must cost a bit, not 8 KB.** A world of open ground with one
+surface must not pay for the dungeon storeys it never dug. Concretely: a used-layer
+bitmask plus packed layer slots, so a chunk with three live layers stores three.
+
+**One consequence is worth having on purpose, because it makes a guard cheap.** A column
+`(q, r)` lies entirely inside one chunk, so *every layer of that column shares one base*.
+The non-folding check therefore never crosses a window: it compares stored values
+directly, in relative space, with no conversion at all. The rule that made seams
+dangerous makes this one free — and it means the two guards have genuinely different
+shapes rather than being one mechanism twice.
+
+⚠ **Where I am inferring.** The brief does not say whether the layer stack is bounded.
+A bitmask wants a cap — **assumption: 64 layers per chunk**, one `u64` mask, which is
+deep enough for a seabed, a dungeon complex and a tower without being an axis anyone
+notices. If worlds want more, the mask becomes a small directory and nothing else moves.
 
 ### Probes this adds
 
@@ -221,27 +242,35 @@ way, so this is the only part waiting on an answer.
 | P9 | layers never fold | raise a cave floor into the ground above → refused, named, world unchanged | raise it to just under → accepted |
 | P10 | **seams stitch** | author a ridge crossing a chunk boundary, read heights from both sides → identical | put the chunks at different windows → still identical |
 | P11 | headroom holds | every stored column satisfies the invariant after any brush | — |
+| P12 | **unused layers cost a bit** | a chunk with one live layer of 64 stores ~8 KB, not ~512 KB | dig a second layer → exactly one more slot appears |
 
 **P10's control is the one that matters** — it is the only version of the test that can
 fail if the window ever leaks out of the storage layer.
 
 ## 4. Layout
 
-A storage chunk is **32 × 32 hexes at one storey** — matching `moros_map`'s existing
-`Chunk` — which at 8 bytes a voxel is exactly **8 KB, two pages**.
+A **layer** is 32 × 32 hexes — matching `moros_map`'s existing `Chunk` width — which at
+8 bytes a voxel is exactly **8 KB, two pages**. A **chunk** is a `(cx, cz)` tile holding a
+base height and up to 64 such layers, of which only the used ones are stored.
 
 ```
-[header      ] magic, version, chunk_w, headroom, palette_off, dir_off, dir_len
+[header      ] magic, version, chunk_w, layer_cap, headroom, palette_off, dir_off, dir_len
 [palette     ] the three definition tables, length-prefixed
-[chunk dir   ] sorted (cx, cy, cz) → slot, one entry per EXISTING chunk
-[chunk slots ] 8 KB each: 1024 × Hex, row-major hx*32+hz, CRC32 trailer
+[chunk dir   ] sorted (cx, cz) → { base_height, used_mask: u64, data_off }
+[chunk data  ] per chunk, ONLY the used layers, in mask order:
+               8 KB each: 1024 × StoredHex, row-major hx*32+hz, CRC32 trailer
 ```
+
+`used_mask` is the second elision axis: an unused layer costs **one bit**, not 8 KB. Its
+population count gives the chunk's stored size, and a layer's slot is the count of set
+bits below it — so no per-layer offset table is needed.
 
 **Sparsity is the efficiency claim, and it falls straight out of §slot-0.** An
-unauthored region is all-zero voxels, and an all-zero chunk is *not written at all* — a
-missing chunk and a zeroed chunk read back identically. So a fresh infinite world costs a
-header, and a 1000×1000-chunk authored world costs 8 GB only if all 10⁶ chunks were
-actually touched. This is the same "slot 0 is absence" rule from the palette commit
+unauthored region is all-zero voxels, and an all-zero layer is *not written at all* — a
+missing layer and a zeroed layer read back identically, and the same holds one level up
+for a chunk with no layers left. So a fresh infinite world costs a header, and a
+1000×1000-tile world with a single ground surface costs one layer per tile rather than
+sixty-four. This is the same "slot 0 is absence" rule from the palette commit
 paying rent a second time: absence has one representation, and it is free.
 
 **The elision has no escape hatch and does not need one.** It works because the default
