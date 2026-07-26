@@ -49,8 +49,12 @@ tick — age, wear, occupancy — is not a cell field; it belongs in a side tabl
   nothing outside it. There is no world-wide layer list and no global budget: a forty-storey
   tower's layers exist in the tile it stands on and nowhere else.
 - **Heights are windowed.** A stored height is a `u16` measured from its chunk's base, which
-  decouples the cell's height width from how tall the world is. *(Under review — see the
-  plan's open decision on whether a global `u16` makes the window unnecessary.)*
+  decouples the cell's height width from how tall the world is — and therefore decouples
+  **resolution from extent**. That decoupling is what lets one model serve a dungeon at
+  centimetre precision and a planet at metre precision without either giving something up.
+- **Scale is a world constant, not a fixed number.** The model stores integer steps and
+  never learns what a step is worth. A space-station world declaring `u = 1 cm` and a
+  landscape declaring `u = 25 cm` are the *same model*, differently interpreted.
 - **The world floor is 0 and unsigned**, so nothing is below it. A floor reserve `ρ` keeps
   authored terrain above the depth reserved for cellars, mines and dungeons (**R1**).
 
@@ -117,8 +121,9 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
+| `u ∈ ℚ⁺` | the **height unit** — a world constant; what one height step means outside the model |
 | `ρ ∈ ℕ` | **floor reserve** — a world constant; terrain may not be authored below it |
-| `ε ∈ ℕ` | **headroom** — a world constant |
+| `ε ∈ ℕ` | **minimum layer separation** — a world constant. In a walkable world this is headroom; the model only requires that layers be distinguishable |
 | `θ ∈ ℕ` | **match tolerance** — a world constant; the largest step read as continuous |
 
 ```
@@ -130,7 +135,13 @@ col_K(x)  =  ⟨ i : k(λᵢ) = T ∧ occ_{λᵢ}(x) ⟩   the column at x, in c
 
 ## 2. The objects
 
-**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(ρ, ε, θ)` and a palette. A chunk absent from
+**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)` and a palette.
+
+**`u` is declared per world and the model never reads it.** Heights are integers; `u` says
+what one step means to a renderer, a collider or a player, and every other constant here is
+counted in steps rather than in metres. This is the whole of the model's scale-independence:
+a dungeon world may declare `u = 1 cm` and a planetary one `u = 1 m`, and nothing in Part II
+changes — the same invariants, the same proofs, the same file. A chunk absent from
 the map does not exist; it is not an empty chunk (**E1**).
 
 **A chunk** `K = (b_K, Λ_K)`.
