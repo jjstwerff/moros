@@ -102,28 +102,66 @@ kind 0  TERRAIN   a heightfield; collides; participates in non-folding
 kind 1  DRESSING  placed instances; never collides; transparent to non-folding
 ```
 
-**The same eight bytes, reinterpreted.** A dressing layer is still 1024 cells of 8 bytes,
-so chunks, the window, elision and the file are untouched — only the *meaning* of the
-fields changes:
+⚠ **The first version of this section was wrong, and `../crawler` had already solved it.**
+It made a dressing layer *the same 8 KB of cells as terrain, reinterpreted* — elegant,
+left chunks and elision untouched, and broken for two independent reasons that crawler's
+shipped props design (`crawler/PROPS.md`, plan 10, all nine phases gated) states outright:
 
-| byte | terrain | dressing |
-|---|---|---|
-| `h_height` u16 | surface height | vertical placement, same window |
-| `h_material` u8 | material index | asset index, high byte |
-| `h_item` u8 | item index | asset index, low byte — 65 536 assets |
-| `h_item_rotation` u8 | rotation + flags | orientation |
-| `h_wall_n/ne/se` u8 ×3 | wall indexes | sub-hex offset x, offset y, scale |
+> *"A level is a **sheet**, not a slot, so it does not limit one prop per cell. Within the
+> prop level the records are a **bucketed list** — cell → first prop, then a next-pointer
+> chain … A lamp and a trough on one hex is one cell, one level, two records."*
 
-The wall bytes becoming placement offsets is what makes kit-bashing possible at all: a
-piece can sit off-centre in its hex, which is the difference between a kit and a grid of
-stamps. **Nothing in §3 or §4 changes** — the routine, the window, the CRC, the elision all
-operate on bytes and do not read meaning.
+1. **A cell array is a slot, and one prop per hex is a limit nobody asked for.** Stacking
+   more dressing layers to get a second lamp does not work either, because layer kind is
+   world-global — a hex wanting five props would burn five layer indexes for every tile in
+   the world.
+2. **Terrain is dense; dressing is sparse.** Every hex has a height, so a 1024-cell array
+   is exactly right for terrain. Almost no hex has a lamp, so the same array spends 8 KB to
+   place three of them. Using the dense representation for sparse data is precisely the
+   inefficiency "huge but efficient worlds" forbids.
+
+The uniform-cell version absorbed dressing into terrain's shape because it *looked* like
+one mechanism serving two cases. It was one mechanism serving one case and disfiguring the
+other.
+
+**So the two layer kinds have two representations, and the layer-kind table says which.**
+
+```
+TERRAIN   dense    1024 × StoredHex, 8 KB           — every hex has a height
+DRESSING  sparse   bucketed records, cell → chain   — almost no hex has a prop
+```
+
+A dressing record carries what a placement needs and terrain has no room for: asset id,
+orientation, **sub-cell offset** (crawler's Part 1 — what keeps two props on one hex
+visually distinct), scale, and the next-pointer. It is not a voxel and does not pretend to
+be one.
+
+**Dressing may be DERIVED, and then it costs nothing at all.** crawler's sharpest result is
+that placement is mostly not authored data: `L_FIXED` — doors in openings, chimneys on
+ridges, fences on boundaries — is *"a pure function of the architecture level plus a
+seed"*, so **a village furnishes itself** and stores zero bytes. Only `L_MOVABLE` is
+authored, *"because where a cart is, is a fact about the world rather than a consequence of
+the buildings."*
+
+That axis was missing here entirely, and it is the same `L3` split the rest of this design
+runs on — applied one level up. A dressing layer is therefore marked **authored** or
+**derived** in the header; a derived one stores a seed and nothing else, and rebuilds
+exactly when the layers it derives from change.
 
 **Layer kind is world-global, and that is forced rather than chosen.** If a layer's kind
 varied per chunk, the same index could be terrain in one tile and dressing in the next, and
 the non-folding check would be incoherent across the seam — exactly the class of failure
 §5.4 exists to prevent. So the kinds live in the header: 64 entries, one per layer index,
 for the whole world.
+
+**⚠ The door is the hard case, and it is open in crawler too.** This design says flatly
+that a prop which blocks is not dressing — it is a wall or an item in a terrain layer. That
+relocates the problem rather than solving it: a door is *drawn* like a prop (parts, hinge,
+one stored angle) and *blocks* like a wall, and crawler lists exactly this under **Still
+open** — *"either doors move to a third level, or state is separated from placement — the
+second is probably right, since the door has not moved, only turned."* Their instinct is
+almost certainly right and this design should follow it rather than invent a third answer.
+Until it does, a door in moros loses its parts tree.
 
 **Two consequences carry weight:**
 
@@ -380,7 +418,9 @@ wrong reason; every one was caught by a control, none by reading.
 | P14 | the ceiling holds | port the crystal; decay runs from a side table, voxel unchanged | a field added to the cell → `L13` is not a rule |
 | P15 | **dressing never blocks** | walk through a hex whose dressing layer is full | the same asset in a terrain layer → blocked |
 | P16 | dressing is fold-transparent | terrain at 3 and 9 with dressing at 6 → fold checks 3 against 9 | remove the dressing → same verdict |
-| P17 | reinterpretation round-trips | write a dressing cell, reload, offsets and asset id identical | — |
+| P17 | dressing records round-trip | write two props on one hex, reload, both present with offsets intact | one prop → chain of one, not a special case |
+| P18 | **terrain is bit-identical with and without dressing** | crawler's bridge gate, adopted verbatim: build the terrain field, add props, rebuild | change a prop's asset → terrain still bit-identical |
+| P19 | a derived dressing layer stores only a seed | author nothing, derive, save → the layer contributes ~0 bytes | mark it authored → the records appear |
 
 P2 and P10 are the two most easily skipped and the two that catch what nothing else can: a
 second home for landscape, and a window leaking past storage.
@@ -398,9 +438,10 @@ Inferences, not answers. Each is cheap now and expensive once files exist.
 | A3 | **the editor's surface starts at layer 8** | layer 0 is the bottom, so a surface at 0 can never be dug under | a starting offset only |
 | A4 | **window stays `u16`** | inherited from the voxel, not chosen. A per-chunk base is exactly what would let it shrink to `u8` (7-byte voxel) | two constants; the routine is unchanged |
 | A5 | breaking the crystal is acceptable churn | it is a demo, not an end product | coordination with the sibling tree |
-| A6 | **one prop per hex per dressing layer** | keeps the cell uniform and the file unchanged | stack layers, or dressing needs a side table after all |
-| A7 | **256 orientations, one byte** | matches the item rotation terrain already uses | a continuous rotation needs a wider field or a side table |
-| A8 | **sub-hex offset and scale fit three bytes** | the wall bytes are free in a dressing layer | kit-bashing needs finer placement than one byte each affords |
+| ~~A6~~ | ~~one prop per hex per dressing layer~~ | **REFUTED** by `crawler/PROPS.md` — a level is a sheet, not a slot | corrected above: bucketed records |
+| ~~A8~~ | ~~offset and scale fit the three freed wall bytes~~ | **withdrawn with the uniform-cell model** | — |
+| A7 | orientation resolution on a dressing record | crawler stores a `Mat4` per part at *generation* time; what a *placement* needs is smaller | if a kit needs arbitrary orientation, the record widens |
+| A9 | **the two prop cadences are one kind here** | crawler splits `L_FIXED` (rebuilt when a building changes) from `L_MOVABLE` (constantly) | if rebuild cost bites, dressing splits the same way |
 
 ---
 
