@@ -88,6 +88,43 @@ caught lying.
 **Heights are absolute in memory and relative on disk.** The window is a storage encoding
 that never leaves the storage layer: one addition on read, one subtraction on write.
 
+## Change, and what may be cached
+
+Every write stamps a monotonic **edit clock**, and every layer remembers the clock value at
+which it was last written. A cache — an LOD texture, a baked collider, a mesh — records the
+clock it was built at, and validity is an exact comparison rather than a guess about time.
+
+Versions are **per layer**, so a prop change never invalidates a cache over terrain, and a
+cellar collapsing never invalidates the hillside above it.
+
+**Nothing may assume world data is slow.** An LOD texture may stand for a year and a castle
+may be destroyed in one frame; authoring and runtime destruction share the same write path,
+the same refusals and the same clock.
+
+## Many authors, one writer
+
+Concurrent **authors** are the normal case — people editing a world and playing in it
+together. A concurrent **writer to one store** is a bug, and is detected rather than assumed
+away.
+
+Edit streams merge into one serialised writer, and merging is cheap because writes touching
+different columns **commute**: only edits to the same column need their relative order kept.
+Readers take consistent snapshots, so derivation and validation run *alongside* editing
+rather than between edits.
+
+## Long-running stores
+
+Terrain layer slots are a fixed 8 KB, so the bulk of a file **cannot fragment** — free space
+is never the wrong shape. What can fragment is small and size-classed: the directory and
+dressing records.
+
+Compaction reuses the ordinary copy-on-write path and can run online, be interrupted, and
+survive a crash. Crucially it **does not touch the clock**: moving bytes is not changing the
+world, so a maintenance pass leaves every cache valid.
+
+A chunk leaves the *file* only when it holds nothing. It leaves *memory* whenever the
+consumer likes — residency is streaming, not storage.
+
 ## Addressing
 
 Axial `(q, r)` throughout, per the family's `CONVERGENCE.md`: **axial is the storage and
@@ -170,6 +207,8 @@ exists, has a kind, and is excluded from every rule about columns, folding and c
 
 ## 3. The governing rule
 
+*(this section is `G0` alone; every rule it audits is stated in §4)*
+
 *(user, 2026-07-26: "This should be a universal editor and world model. We do our best for
 efficiency but we can never assume something will not happen at all")*
 
@@ -184,7 +223,7 @@ edits* — is a statement about the worlds we imagined, and a universal model is
 people who imagined different ones. Efficiency arguments decide **what is cheap**, never
 **what is possible**.
 
-Every bound below is audited against `G0`:
+Every bound in §4 is audited against `G0`:
 
 | bound | check | at the limit | gate |
 |---|---|---|---|
@@ -198,6 +237,199 @@ Every bound below is audited against `G0`:
 | world extent | **X1** | `CW_EXTENT` | ✓ |
 | one writer *per store* | **X2** | `CW_CONCURRENT`, detected not assumed. Many *authors* are normal (**M1**, **M2**) | ✓ |
 | free space over a long life | **X3** | fixed-size slots cannot fragment; variable regions size-classed | ✓ |
+
+## 4. Invariants
+
+A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
+**M1**, **M2** and **X4** is *well-formed*. The routine must
+never produce one that is not, and must refuse rather than try.
+
+### Group 1 — geometry
+
+### F1 — Fold-freedom
+
+> For every chunk `K`, every `x ∈ X_K`, and every pair `i < j` **consecutive** in `col_K(x)`:
+>
+> ```
+>     H_{λⱼ}(x) − H_{λᵢ}(x)  ≥  ε
+> ```
+
+"Consecutive" means no occupied terrain layer lies between them in `col_K(x)`.
+
+**Lemma F1′ — separation extends to all pairs.** For any `i < j` in `col_K(x)`,
+`H_{λⱼ}(x) − H_{λᵢ}(x) ≥ ε`.
+
+*Proof.* The occupied layers between them form a chain `i = c₀ < … < c_p = j` of consecutive
+pairs with `p ≥ 1`. Each step contributes at least `ε` and all contributions are positive,
+so the total is at least `pε ≥ ε`. ∎
+
+**Corollary F1″ — order is height order.** `H` is strictly increasing along `col_K(x)`.
+Layer order and vertical order can never disagree, which is what non-folding *means*.
+
+**F1 is checkable inside one chunk.** A column lies wholly within `X_K`, so **F1** never
+reads a second chunk. It is not a seam rule.
+
+### Group 2 — storage
+
+### W1 — Window containment
+
+> ```
+>     ∀ K, ∀ terrain λ ∈ Λ_K, ∀ x ∈ X_K :   0 ≤ H_λ(x) − b_K < 2¹⁶
+> ```
+
+A chunk is **representable** iff `max H − min H < 2¹⁶`. When it is, `b_K = min H` satisfies
+**W1**, so a rebase succeeds whenever any base would.
+
+### E1 — Absence has one representation
+
+> 1. A terrain layer with no occupied cell is **not stored**.
+> 2. A chunk with `Λ_K = ⟨⟩` is **not in the directory**.
+> 3. Reading an absent layer or chunk yields exactly what reading a stored all-zero one
+>    would.
+
+(3) makes (1) and (2) sound rather than lossy, and it is the clause a round-trip test cannot
+check — it needs the size probes.
+
+### S1 — The window never escapes storage
+
+> Every comparison, difference or ordering of heights is performed on `H`, never on `s`.
+> `s` appears only inside chunk encode and decode.
+
+This is why `Column` carries no base field: a value that has lost its chunk cannot be
+un-windowed, so the type never holds one.
+
+### Group 3 — authoring and time
+
+### R1 — Floor reserve
+
+> ```
+>     ∀ K, ∀ terrain λ ∈ Λ_K, ∀ x ∈ X_K :   occ_λ(x)  ⟹  H_λ(x) ≥ ρ
+> ```
+
+**Heights are unsigned: there is no digging below 0.** A structure authored with its ground
+floor at or near the world floor has nowhere to put a cellar, and the failure appears late —
+at the moment someone tries to excavate under a castle that is already built.
+
+`ρ` reserves that space structurally rather than by convention. It is the deepest intended
+excavation, expressed once: everything below `ρ` belongs to whatever gets dug later, and the
+brush refuses to author terrain into it. A world whose ground sits at `ρ` can always fit its
+dungeons, because the room was never available to spend.
+
+The reserve is a *floor on authoring*, not on the format: excavation writes below `ρ`
+deliberately, and reading is unrestricted. It exists to stop terrain being placed where a
+cellar will need to go.
+
+### I1 — Labels do not lie
+
+Layers may carry a label so that corresponding layers in neighbouring chunks share an id —
+a deck, a storey, a dungeon level named once and recognised everywhere. **The label is not
+a second definition of continuity.** §5 defines continuity by height and proves it unique;
+a label is a claim *about* that match, and **I1** is the requirement that the claim is true:
+
+> For adjacent `x ∈ X_K`, `x' ∈ X_{K'}`, and `i ∈ col_K(x)` with `id(λᵢ) ≠ 0`:
+>
+> ```
+>     j ∈ M_{K'}(x', H_{λᵢ}(x))   ⟹   id(λ'ⱼ) = id(λᵢ)
+> ```
+
+In words: **the geometric match never crosses labels.** A labelled floor may end — no match
+is a legal answer, because a floor that meets a wall stops — but it may never continue into
+a layer bearing a different label.
+
+`id = 0` is unlabelled and unconstrained, following the same convention as palette slot 0:
+zero is absence, and absence is never a claim.
+
+### A label is a NAME, not an ordinal
+
+This is the part that decides how labels are allocated, so it is stated rather than left
+implicit: **nothing in this model reads label order.** `I1` uses only equality. Stack order
+comes from the chunk's own layer sequence, and within a column `F1″` already makes it
+identical to height order.
+
+**Global label order would be a claim the world cannot honour.** "Below" is a *per-column*
+relation, not a world-wide one: a floor that is beneath another here may sit higher than it
+half a world away, because the ground between them rose. Two distinct decks of a station may
+cross in absolute height across its length while remaining perfectly ordered everywhere
+locally. Any scheme in which `id(a) < id(b)` meant "a is below b" would therefore be making
+a promise the geometry breaks, and breaking it silently.
+
+**So labels are never inserted *between* labels, and the exhaustion problem does not arise.**
+A world keeps `ν`, the next free label, in its header; allocation is `id := ν; ν := ν + 1`.
+Uniqueness is exact rather than probabilistic, needs no search of what neighbours already
+use, and 2³² is not a budget anyone spends — it is four billion *distinct layers ever
+created* across a world's entire authoring life.
+
+A world may still allocate with gaps or in blocks as a **convention**, so that a station's
+decks read 1000, 1001, 1002 and a mine's levels read 2000, 2001. That is a convenience for
+whoever reads the file, and the model neither enforces nor relies on it. **The moment
+anything depends on that ordering, the per-column argument above says it is wrong.**
+
+> ```
+>     I2 (uniqueness):   id(λ) ≠ 0  ∧  id(λ′) = id(λ)  ⟹  λ and λ′ are the same layer,
+>                        or corresponding layers of different chunks
+>     I3 (allocation):   every non-zero label was drawn from ν, and ν only increases
+> ```
+
+**What the label is for.** Given **I1**, an implementation may find the neighbour by label in
+`O(1)` instead of searching by height, and the result is *provably the same layer* — so this
+is an accelerator, not an alternative. It also restores a gesture that chunk-local layers had
+cost: selecting "dungeon level 2" across a whole region becomes a lookup rather than a query
+over a height band.
+
+**What it is not.** There is no world-wide registry of labels, no definition attached to one,
+and no requirement that a label be used at all. A chunk remains free to hold a layer set
+shared with nobody.
+
+### T1 — The edit clock
+
+> Every write that changes a layer's contents performs
+>
+> ```
+>     τ := τ + 1  ;  ver(λ) := τ
+> ```
+>
+> and therefore `ver(λ) ≤ τ` for every layer at all times.
+
+**A cache built at clock `c` over a set of layers `L` is valid iff `max{ ver(λ) : λ ∈ L } ≤ c`.**
+That is the whole protocol. It is an exact comparison, not a heuristic and not a timestamp:
+a clock value is a fact about what has happened, where a time is a guess about whether it
+has.
+
+**Versions live in the chunk DIRECTORY, never in the chunk payload.** Validating a cache
+must cost a directory lookup and not an 8 KB load, or the check becomes more expensive than
+the rebuild it was meant to avoid. This is a structural requirement, not an optimisation.
+
+### T2 — Versions are independent
+
+> A write to `λ` changes `ver` of no other layer.
+
+So a dressing change never invalidates a cache over terrain, a cellar's collapse never
+invalidates the LOD texture of the hillside above, and two derived products over one chunk
+are only coupled if they genuinely read the same layers. Without **T2** every cache in a
+chunk shares one fate and the separation of layers buys nothing.
+
+### T3 — No assumption about the rate of change
+
+> The model places no upper bound on how often a layer changes, and no writer is privileged.
+
+An LOD texture may stand for a year and a castle may be destroyed in one frame; **both are
+ordinary**. Authoring and runtime destruction use the same write path, take the same
+refusals, and stamp the same clock. Nothing may be built on the premise that world data is
+slow — an explosion, a crash or a fire is a first-class writer.
+
+⚠ **One consequence is not yet expressible and is called out rather than hidden.** A
+collapse that drops a floor onto the one beneath it would bring two layers closer than `ε`,
+which **F1** forbids. Refusing a physical event is the wrong answer. The right one is that
+**a collapse removes a layer rather than moving it**: the floor ceases to exist and its
+rubble becomes the surface below. Whether every destructive case can be expressed that way
+is open, and is the first thing to test when a destruction path is built.
+
+### D1 — Dressing is inert
+
+> Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
+> Adding, removing or altering one leaves every terrain layer bit-identical.
+
+### Group 4 — labels, operation and concurrency
 
 ### I4 — Label exhaustion degrades, it does not fail
 
@@ -329,191 +561,6 @@ server, an editor session, or a shipped world.
 **Removal and eviction are different things.** A chunk leaves the *file* only when it holds
 nothing (**E1**). A chunk leaves *memory* whenever the consumer likes — it is reloadable, so
 residency is a streaming decision and no concern of this model.
-
-## 4. Invariants
-
-A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
-**M1**, **M2** and **X4** is *well-formed*. The routine must
-never produce one that is not, and must refuse rather than try.
-
-### F1 — Fold-freedom
-
-> For every chunk `K`, every `x ∈ X_K`, and every pair `i < j` **consecutive** in `col_K(x)`:
->
-> ```
->     H_{λⱼ}(x) − H_{λᵢ}(x)  ≥  ε
-> ```
-
-"Consecutive" means no occupied terrain layer lies between them in `col_K(x)`.
-
-**Lemma F1′ — separation extends to all pairs.** For any `i < j` in `col_K(x)`,
-`H_{λⱼ}(x) − H_{λᵢ}(x) ≥ ε`.
-
-*Proof.* The occupied layers between them form a chain `i = c₀ < … < c_p = j` of consecutive
-pairs with `p ≥ 1`. Each step contributes at least `ε` and all contributions are positive,
-so the total is at least `pε ≥ ε`. ∎
-
-**Corollary F1″ — order is height order.** `H` is strictly increasing along `col_K(x)`.
-Layer order and vertical order can never disagree, which is what non-folding *means*.
-
-**F1 is checkable inside one chunk.** A column lies wholly within `X_K`, so **F1** never
-reads a second chunk. It is not a seam rule.
-
-### W1 — Window containment
-
-> ```
->     ∀ K, ∀ terrain λ ∈ Λ_K, ∀ x ∈ X_K :   0 ≤ H_λ(x) − b_K < 2¹⁶
-> ```
-
-A chunk is **representable** iff `max H − min H < 2¹⁶`. When it is, `b_K = min H` satisfies
-**W1**, so a rebase succeeds whenever any base would.
-
-### E1 — Absence has one representation
-
-> 1. A terrain layer with no occupied cell is **not stored**.
-> 2. A chunk with `Λ_K = ⟨⟩` is **not in the directory**.
-> 3. Reading an absent layer or chunk yields exactly what reading a stored all-zero one
->    would.
-
-(3) makes (1) and (2) sound rather than lossy, and it is the clause a round-trip test cannot
-check — it needs the size probes.
-
-### S1 — The window never escapes storage
-
-> Every comparison, difference or ordering of heights is performed on `H`, never on `s`.
-> `s` appears only inside chunk encode and decode.
-
-This is why `Column` carries no base field: a value that has lost its chunk cannot be
-un-windowed, so the type never holds one.
-
-### R1 — Floor reserve
-
-> ```
->     ∀ K, ∀ terrain λ ∈ Λ_K, ∀ x ∈ X_K :   occ_λ(x)  ⟹  H_λ(x) ≥ ρ
-> ```
-
-**Heights are unsigned: there is no digging below 0.** A structure authored with its ground
-floor at or near the world floor has nowhere to put a cellar, and the failure appears late —
-at the moment someone tries to excavate under a castle that is already built.
-
-`ρ` reserves that space structurally rather than by convention. It is the deepest intended
-excavation, expressed once: everything below `ρ` belongs to whatever gets dug later, and the
-brush refuses to author terrain into it. A world whose ground sits at `ρ` can always fit its
-dungeons, because the room was never available to spend.
-
-The reserve is a *floor on authoring*, not on the format: excavation writes below `ρ`
-deliberately, and reading is unrestricted. It exists to stop terrain being placed where a
-cellar will need to go.
-
-### I1 — Labels do not lie
-
-Layers may carry a label so that corresponding layers in neighbouring chunks share an id —
-a deck, a storey, a dungeon level named once and recognised everywhere. **The label is not
-a second definition of continuity.** §5 defines continuity by height and proves it unique;
-a label is a claim *about* that match, and **I1** is the requirement that the claim is true:
-
-> For adjacent `x ∈ X_K`, `x' ∈ X_{K'}`, and `i ∈ col_K(x)` with `id(λᵢ) ≠ 0`:
->
-> ```
->     j ∈ M_{K'}(x', H_{λᵢ}(x))   ⟹   id(λ'ⱼ) = id(λᵢ)
-> ```
-
-In words: **the geometric match never crosses labels.** A labelled floor may end — no match
-is a legal answer, because a floor that meets a wall stops — but it may never continue into
-a layer bearing a different label.
-
-`id = 0` is unlabelled and unconstrained, following the same convention as palette slot 0:
-zero is absence, and absence is never a claim.
-
-### A label is a NAME, not an ordinal
-
-This is the part that decides how labels are allocated, so it is stated rather than left
-implicit: **nothing in this model reads label order.** `I1` uses only equality. Stack order
-comes from the chunk's own layer sequence, and within a column `F1″` already makes it
-identical to height order.
-
-**Global label order would be a claim the world cannot honour.** "Below" is a *per-column*
-relation, not a world-wide one: a floor that is beneath another here may sit higher than it
-half a world away, because the ground between them rose. Two distinct decks of a station may
-cross in absolute height across its length while remaining perfectly ordered everywhere
-locally. Any scheme in which `id(a) < id(b)` meant "a is below b" would therefore be making
-a promise the geometry breaks, and breaking it silently.
-
-**So labels are never inserted *between* labels, and the exhaustion problem does not arise.**
-A world keeps `ν`, the next free label, in its header; allocation is `id := ν; ν := ν + 1`.
-Uniqueness is exact rather than probabilistic, needs no search of what neighbours already
-use, and 2³² is not a budget anyone spends — it is four billion *distinct layers ever
-created* across a world's entire authoring life.
-
-A world may still allocate with gaps or in blocks as a **convention**, so that a station's
-decks read 1000, 1001, 1002 and a mine's levels read 2000, 2001. That is a convenience for
-whoever reads the file, and the model neither enforces nor relies on it. **The moment
-anything depends on that ordering, the per-column argument above says it is wrong.**
-
-> ```
->     I2 (uniqueness):   id(λ) ≠ 0  ∧  id(λ′) = id(λ)  ⟹  λ and λ′ are the same layer,
->                        or corresponding layers of different chunks
->     I3 (allocation):   every non-zero label was drawn from ν, and ν only increases
-> ```
-
-**What the label is for.** Given **I1**, an implementation may find the neighbour by label in
-`O(1)` instead of searching by height, and the result is *provably the same layer* — so this
-is an accelerator, not an alternative. It also restores a gesture that chunk-local layers had
-cost: selecting "dungeon level 2" across a whole region becomes a lookup rather than a query
-over a height band.
-
-**What it is not.** There is no world-wide registry of labels, no definition attached to one,
-and no requirement that a label be used at all. A chunk remains free to hold a layer set
-shared with nobody.
-
-### T1 — The edit clock
-
-> Every write that changes a layer's contents performs
->
-> ```
->     τ := τ + 1  ;  ver(λ) := τ
-> ```
->
-> and therefore `ver(λ) ≤ τ` for every layer at all times.
-
-**A cache built at clock `c` over a set of layers `L` is valid iff `max{ ver(λ) : λ ∈ L } ≤ c`.**
-That is the whole protocol. It is an exact comparison, not a heuristic and not a timestamp:
-a clock value is a fact about what has happened, where a time is a guess about whether it
-has.
-
-**Versions live in the chunk DIRECTORY, never in the chunk payload.** Validating a cache
-must cost a directory lookup and not an 8 KB load, or the check becomes more expensive than
-the rebuild it was meant to avoid. This is a structural requirement, not an optimisation.
-
-### T2 — Versions are independent
-
-> A write to `λ` changes `ver` of no other layer.
-
-So a dressing change never invalidates a cache over terrain, a cellar's collapse never
-invalidates the LOD texture of the hillside above, and two derived products over one chunk
-are only coupled if they genuinely read the same layers. Without **T2** every cache in a
-chunk shares one fate and the separation of layers buys nothing.
-
-### T3 — No assumption about the rate of change
-
-> The model places no upper bound on how often a layer changes, and no writer is privileged.
-
-An LOD texture may stand for a year and a castle may be destroyed in one frame; **both are
-ordinary**. Authoring and runtime destruction use the same write path, take the same
-refusals, and stamp the same clock. Nothing may be built on the premise that world data is
-slow — an explosion, a crash or a fire is a first-class writer.
-
-⚠ **One consequence is not yet expressible and is called out rather than hidden.** A
-collapse that drops a floor onto the one beneath it would bring two layers closer than `ε`,
-which **F1** forbids. Refusing a physical event is the wrong answer. The right one is that
-**a collapse removes a layer rather than moving it**: the floor ceases to exist and its
-rubble becomes the surface below. Whether every destructive case can be expressed that way
-is open, and is the first thing to test when a destruction path is built.
-
-### D1 — Dressing is inert
-
-> Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
-> Adding, removing or altering one leaves every terrain layer bit-identical.
 
 ## 5. The border contract
 

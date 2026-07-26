@@ -27,12 +27,18 @@ enforced until the chokepoint exists.
 | # | phase | what lands | verified by |
 |---|---|---|---|
 | **V0** | **the chokepoint** | resolve whether `map_get_hex` aliases; one column-taking write path; the seven direct `h_height` writes stop | **P13** first — it decides the shape |
-| **V1** | the model | `Hex` / `StoredHex` / `Column` / `Chunk`, the routine (DESIGN §3), Guards 1 and 2 | WORLD_MODEL Part II §7 — one gate per rule, each seen red |
-| **V2** | the file | header, opaque palette section, chunk directory, chunk I/O, per-chunk CRC | P1, P7, P8 |
+| **V1** | the model | `Hex` / `StoredHex` / `Column` / `Chunk`, the routine, Guards 1 and 2 | contract §8 — one gate per rule, each seen red |
+| **V2** | the file | header with every world constant, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` checked on open | P1, P7, P8 |
 | **V3** | sparsity | elision on both axes, maintained on write | P4, P5, P6, P12 |
-| **V4** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted**, not promoted | P2, P3 |
-| **V5** | the second consumer | crystal ports; decay becomes a side table | **P14** — the ceiling's real test |
-| **V6** | convergence | chunk helpers → `hex_grid`; dirty set → `gridmesh`; `LIBRARY-CANDIDATES` rows 7 and 12 closed | family has no duplicate function |
+| **V4** | **change and cache** | the edit clock, per-layer versions in the directory, snapshot reads | `T1`, `T2`, `M2` gates — and `X4`'s, that compaction voids nothing |
+| **V5** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted**, not promoted | P2, P3 |
+| **V6** | **many authors** | stream merge onto one writer, copy-on-write slots, owner marker | `M1`, `M2`, `X2` |
+| **V7** | **long-running stores** | free lists, size classes, online compaction | `X3`, `X4`, `X5` |
+| **V8** | the second consumer | crystal ports; decay becomes a side table | **P14** — the ceiling's real test |
+| **V9** | convergence | chunk helpers → `hex_grid`; dirty set → `gridmesh`; `LIBRARY-CANDIDATES` rows 7 and 12 closed | family has no duplicate function |
+
+**V4 before V5 is deliberate.** The editor is the first real consumer of the clock, so the
+cache protocol wants to exist before something depends on it informally.
 
 ## Verification standard
 
