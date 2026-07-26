@@ -848,6 +848,14 @@ with roughly 1.8× margin, **and that margin is the thing to watch** — raising
 terrain, or lowering `k` for a softer feel all eat it, and the symptom of eating it all is
 the backstop firing, which is visible as exactly the snap the smoothing was meant to remove.
 
+**Observed in use (2026-07-26):** dragging the mouse freely around a character beside steep
+authored hills no longer reaches the inside-the-world state at all. That is the case the
+automated orbit check *cannot* reach — it teleports between yaws, so it exercises **CAM1**'s
+backstop and never **CAM4**'s prediction — so hand-dragging is currently the only evidence
+the lookahead works at the rates a player actually produces. Evidence, not proof: it says the
+margin is adequate for one person on one terrain, which is exactly the claim the theorem
+above makes checkable rather than anecdotal.
+
 **Where the theorem does not reach**, stated so it is not mistaken for a proof of safety:
 it assumes `ω` predicts the next `L` seconds. An abrupt reversal points the lookahead the
 wrong way, and only the fixed `±ARC` term covers that — which is why **CAM4** carries a

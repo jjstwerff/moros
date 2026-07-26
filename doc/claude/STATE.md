@@ -143,8 +143,11 @@ game unplayable rather than untidy — an accessibility requirement, not polish.
 editor's camera now guards it three ways (predictive arc sampling along the turn, a
 bounded smoothed pitch lift, a boom that gives way in one tick) with a hard backstop
 that the eye is never below the surface. Measured over a full orbit beside a 36 wu
-cone: no violation, worst margin +0.385 wu. ⚠ That margin is comparable to the
-measurement's own resolution, so it is *no violation detected*, not *proven safe* —
+cone: no violation, worst margin +0.385 wu. Free mouse-dragging beside steep hills no longer reaches
+the inside-the-world state at all, which is the case the automated check cannot reach (it
+teleports, so it tests the backstop and not the prediction). ⚠ The measured margin is
+comparable to the measurement's own resolution, so it is *no violation detected*, not
+*proven safe* —
 and it is terrain only, deliberately (a tree costs a fraction of the frame; a
 hillside costs all of it).
 
