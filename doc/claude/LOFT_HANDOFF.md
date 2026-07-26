@@ -470,3 +470,57 @@ fn main() {
   println("{hits}");     // expected 6
 }
 ```
+
+---
+
+## H9 — `loft test` SIGSEGVs on a test file that saves and measures files repeatedly
+
+**Surfaced by:** `hex_world`'s sparsity gates, 2026-07-26. Reproducer preserved at
+`lib/hex_world/tests_wip/segv-repro.loft.wip` — move it to `tests/` to reproduce.
+
+```
+=== loft crash (loft) SIGSEGV caught ===
+  last op:  (opcode dispatch) (op=197)
+  pc:       1091
+  fn:       (?) (d_nr=311)
+  at:       /usr/local/share/loft/default/01_code.loft:979:22
+```
+
+**Shape.** Eight test functions in one file, each building a small world, calling a library
+function that writes a binary file (~8 KB via a loop of `f += (x as u16 / u8)`), reading it
+back with `read_bytes`, and `delete`ing it. The crash is immediate — about 1.7 s — not a
+hang, and produces **no test result line at all**, which is what made it read as a hang for
+several rounds.
+
+**What was ruled out**, each tested directly:
+
+- not the number of test *files* — reproduces within a single file;
+- not two file-writing tests — a minimal two-test file passes;
+- not the append volume — 7168 appends in one test runs in 0.07 s;
+- not a shared temp path — each test given a distinct filename still crashes;
+- not a parameterised helper doing file I/O — that alone passes;
+- not a nested call returning a struct — splitting it changes nothing;
+- not the undischarged `read_bytes(…)` nullable — the warnings it emits are real and worth
+  fixing separately, but discharging them leaves the crash.
+
+**Two tests of the same shape pass; eight crash.** The bisection was not carried further.
+
+**Why it matters beyond this project.** The failure mode is the worst available: a crash with
+no result line reads as a hang, and a developer's first response is to add a timeout and
+assume their own code loops. It cost several rounds here before the raw output was read
+instead of grepped.
+
+**Also worth a look while in there:** `read_bytes` returns a nullable vector, so
+`len(read_bytes(p))` warns. That is correct behaviour, but it is the overwhelmingly common
+use, and `read_bytes(p) ?? []` at every call site is noise — a non-null `read_bytes_or_empty`,
+or making the empty vector the failure value, would remove a warning nobody wants.
+
+---
+
+## H10 — text has no range slice
+
+`man[di..]` on a `text` gives *"Invalid index on string"*. Slicing a `text` by a range —
+`s[i..]`, `s[i..j]` — appears unsupported, so extracting a section of a file read as text
+means iterating `lines()` and tracking state by hand. Vectors slice; text does not, and the
+asymmetry is surprising rather than principled.
+

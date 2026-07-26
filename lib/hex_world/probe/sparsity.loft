@@ -24,7 +24,7 @@ fn put(w: World, q: integer, r: integer, hs: vector<Hex>) -> integer {
 
 fn measure(w: World, path: text) -> integer {
   if world_save(w, path, []) != WS_OK { return 0 - 1; }
-  n = len(read_bytes(path));
+  n = len(read_bytes(path) ?? []);
   delete(path);
   n
 }
