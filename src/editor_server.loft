@@ -704,14 +704,35 @@ fn limb_at(lbody: Mat4, jx: float, jy: float, jz: float, swing: float) -> Mat4 {
 const CAM_CLEAR      = 0.45;   // how far off the SURFACE the eye must stay
 const CAM_MIN_FRAC   = 0.22;   // never pull closer than this fraction of the boom
 const CAM_STEPS      = 14;     // march resolution along the boom
-const CAM_EASE       = 3.2;    // world-units/s the boom may EXTEND
+// ── Rates ────────────────────────────────────────────────────────────────────
+// Approach factors, not constant speeds: each tick closes a FRACTION of the gap,
+// so the camera decelerates into its target instead of sliding to it and
+// stopping. That difference is most of what reads as a transition rather than a
+// mechanism moving.
+//
+// Asymmetric on purpose. Coming IN is a correction and wants to be prompt; going
+// OUT is a return to rest and wants to be unnoticed. The in-rate is affordable
+// only because of the arc lookahead: it is sized to cover the worst pull-in
+// (~4.4 wu) inside the warning the prediction gives, so nothing is ever late.
+const CAM_K_IN       = 12.0;   // gap fraction/s while shortening
+const CAM_K_OUT      = 2.5;    // gap fraction/s while returning
+const CAM_K_PITCH    = 6.0;    // gap fraction/s for the pitch drift
 const CAM_PITCH_GIVE = 0.45;   // radians of lift the assist may borrow (~26°)
 const CAM_PITCH_RATE = 1.10;   // radians/s — the cap that makes it a drift, not a snap
 const CAM_PITCH_CEIL = 1.15;   // absolute ceiling, so the assist cannot go overhead
 const CAM_TRIES      = 5;      // candidate lifts tested between 0 and the full give
-const CAM_LOOK_S     = 0.40;   // seconds of rotation to ANTICIPATE
-const CAM_ARC        = 0.20;   // radians sampled either side even when still
+const CAM_LOOK_S     = 0.55;   // seconds of rotation to ANTICIPATE
+const CAM_ARC        = 0.28;   // radians sampled either side even when still
 const CAM_ARC_N      = 4;      // samples across the anticipated arc
+
+// Move `now` a bounded fraction of the way to `want`. `k` is gap-closed per
+// second; the clamp keeps a long frame from overshooting past the target.
+fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
+  f = k * dt;
+  if f > 1.0 { f = 1.0; }
+  if f < 0.0 { f = 0.0; }
+  now + (want - now) * f
+}
 
 // The vertical clearance that yields CAM_CLEAR PERPENDICULAR to the local surface.
 // Flat ground → CAM_CLEAR. A steep face → much more, which is exactly where the
@@ -1152,23 +1173,26 @@ fn main() {
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
       cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, peaks);
-      cam_step = CAM_PITCH_RATE * dt;
-      if cam_pitch < cam_pt {
-        cam_pitch = cam_pitch + cam_step;
-        if cam_pitch > cam_pt { cam_pitch = cam_pt; }
-      } else {
-        cam_pitch = cam_pitch - cam_step;
-        if cam_pitch < cam_pt { cam_pitch = cam_pt; }
-      }
+      // Eased toward the target and additionally rate-capped, so neither a large
+      // gap nor a long frame can turn the drift into a jump.
+      cam_prev_pitch = cam_pitch;
+      cam_pitch = cam_approach(cam_pitch, cam_pt, CAM_K_PITCH, dt);
+      cam_cap = CAM_PITCH_RATE * dt;
+      if cam_pitch - cam_prev_pitch > cam_cap { cam_pitch = cam_prev_pitch + cam_cap; }
+      if cam_prev_pitch - cam_pitch > cam_cap { cam_pitch = cam_prev_pitch - cam_cap; }
 
       // 2. The boom covers whatever the lift has not reached yet — including the
       //    whole of it during the drift, which is what stops the transient.
       cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, peaks);
       if cam_free < cam_dist {
-        cam_dist = cam_free;                       // intrude: give way at once
+        // Shortening. This used to snap in a single tick, which was the visible
+        // step: correct, and clearly a mechanism rather than a camera. It can be
+        // eased now only because `cam_free_arc` reports the constraint BEFORE we
+        // arrive — the lookahead is what buys the smoothness, and the backstop
+        // below still catches anything the prediction misses.
+        cam_dist = cam_approach(cam_dist, cam_free, CAM_K_IN, dt);
       } else {
-        cam_dist = cam_dist + CAM_EASE * dt;       // clear: return gently
-        if cam_dist > cam_free { cam_dist = cam_free; }
+        cam_dist = cam_approach(cam_dist, cam_free, CAM_K_OUT, dt);
       }
 
       // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
