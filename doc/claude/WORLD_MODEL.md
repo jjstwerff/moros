@@ -196,7 +196,7 @@ Every bound below is audited against `G0`:
 | labels, `2³²` | **I4** | **degrades**: new layers unlabelled, reported | ✓ |
 | edit clock | **T1** | `u64` — see below | ✓ |
 | world extent | **X1** | `CW_EXTENT` | ✓ |
-| one writer | **X2** | `CW_CONCURRENT`, detected not assumed | ✓ |
+| one writer *per store* | **X2** | `CW_CONCURRENT`, detected not assumed. Many *authors* are normal (**M1**, **M2**) | ✓ |
 
 ### I4 — Label exhaustion degrades, it does not fail
 
@@ -221,19 +221,66 @@ a bound anyone reaches by any means.
 
 That is ±68 billion hexes on each axis. It is stated and checked anyway, because `G0`.
 
-### X2 — Concurrent writers are detected
+### X2 — Many sources, one writer
+
+*(user, 2026-07-26: "I want to make everything multi-player enabled … multiple people
+editing a world and playing in it should be there from the start. This doesn't automatically
+mean that we need to have multiple threads write to the same store, but we need a way to
+make it as efficient as possible to mix data streams towards it with parallel routines to
+validate the other data structures")*
+
+**Concurrent *authors* are the normal case; a concurrent *writer to one store* is a bug.**
+These are different claims and the distinction is the whole design. Many players and editors
+produce many streams of edits; those streams **merge** into one serialised writer, and the
+owner marker below exists to catch two processes fighting over a file, never to limit how
+many people are in the world.
 
 > A world opened for writing records an owner marker. A write whose marker does not match
 > the file's is `CW_CONCURRENT`.
 
-Single-writer remains the *supported* model. `G0` is why it is not merely assumed: two
-processes writing one world is not prevented by hope, and undetected concurrent writes
-produce a corrupt file rather than an error.
+What makes merging cheap is that the model's write unit is already the right one:
+
+### M1 — Column-disjoint writes commute
+
+> Two writes touching disjoint sets of columns produce the same **world** in either order.
+> Writes to a shared column are ordered by `τ`.
+
+So a merger may reorder and batch freely, needing only to preserve the relative order of
+edits that touch the same column. That is the parallelism budget, and it is large: two
+players building in different rooms never interact.
+
+⚠ **Commutativity is on the world, not on the bytes.** A rebase triggered by one column
+re-encodes every layer of its chunk, so two orders can yield the same `H` everywhere and
+different `s`. Semantically identical, bit-wise not. This matters the moment two servers
+applying one edit set are compared by file hash — **compare worlds, not files.**
+
+### M2 — A reader sees a consistent snapshot
+
+> A read observes the world as of some single clock value. It never observes a partially
+> applied write.
+
+This is what lets validation and derivation run **in parallel with editing** rather than
+between edits: a derived structure takes a snapshot at clock `c`, rebuilds off the critical
+path, and `T1` tells it exactly whether its result is still current when it lands. Combined
+with `T2`'s independence, two derivations over disjoint layers never contend with each other
+*or* with the writer.
+
+**Mechanism: chunk slots are copy-on-write.** A write allocates a new slot, fills it, and
+then republishes the directory entry; readers holding the old offset keep reading valid
+bytes until they are done. Freed slots return to the free list once no reader holds them.
+
+⚠ **This improves crash behaviour but does not solve it, and the difference is worth
+stating.** Never overwriting a live chunk means a crash mid-write cannot damage the previous
+one — the old bytes are still there and still valid. But the **directory republish** is then
+the atomicity risk, moved from 8 KB to one entry rather than removed. A per-entry CRC detects
+a torn entry; recovering it needs a journal, which loft's Tier 3 would provide and does not
+yet. Until then the honest position is: the window is small, torn entries are *detected*, and
+the chunk they point at is refused by name rather than silently misread.
 
 ## 4. Invariants
 
-A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1** and **T2**
-is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
+**M1** and **M2** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
@@ -525,6 +572,8 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **I4** | force `ν` to its limit → the next layer is created unlabelled and says so | below the limit → labelled normally |
 | **X1** | write at `cx = 2³¹` → `CW_EXTENT` | `cx = 2³¹ − 1` → accepted |
 | **X2** | open twice for writing, write from the first → `CW_CONCURRENT` | one writer → silent |
+| **M1** | apply two disjoint-column edit sets in both orders → **worlds** identical | make them share a column → order matters, and the gate says so |
+| **M2** | read a chunk while a write to it is in flight → the value is wholly old or wholly new | never a mix of both |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |

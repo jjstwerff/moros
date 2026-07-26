@@ -321,6 +321,10 @@ store an arena containing some voxels. `seek()` + `write_bin` give a file whose 
 the voxels — what mmap would have done for fixed-size chunks, with the page cache still
 caching.
 
+**Chunk slots are copy-on-write** (`M2`): a write fills a new slot and republishes the
+directory entry, so readers never see a half-written chunk and a crash cannot damage the
+previous one. Freed slots return to a free list when no reader holds them.
+
 **Durability.** An 8 KB write is not atomic and whole-file rename is unaffordable at scale,
 so: per-chunk CRC32, a torn chunk **refused by name** while the rest opens; chunk writes
 independent, so a tear is a hole and never a cascade; `store_durable_seal` on clean exit,
