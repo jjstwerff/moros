@@ -750,7 +750,7 @@ comes before any extraction rather than after.
 |---|---|---|---|
 | **world** | the voxel, columns, chunks, the window, the routine, the file, the palette *mechanism*, the guards | what a material *means*; anything that draws or collides | lattice |
 | **edit** | undo, redo, batches, `EditKind`, tools and their dispatch, the editor loop and its state | which tools exist (that is configuration) | world |
-| **view** | camera model and modes, input state, picking, ray casts, frustum/occluder culling | what a scene contains | lattice, world |
+| **view** | camera model and modes, input state, picking, ray casts, frustum/occluder culling | what a scene contains, and **what counts as an occluder** | lattice, world |
 | **ui** | rectangles, buttons, list boxes, panels, status strips, layout, hit-testing, click routing | what the buttons *do* | nothing |
 | **actor** | the player, movement integration, collision resolution against the world, the avatar rig | AI, goals, NPC behaviour (crawler's) | world, lattice |
 
@@ -774,6 +774,32 @@ Some of the general code already has a shipped home. It does not become a group;
 
 **Building a local group for any of these would be the competing-library mistake**, in the
 small. The rule holds at function granularity, not just at package granularity.
+
+### The camera's occlusion class — decided now, because walls are coming
+
+The camera avoids terrain today. Walls will obstruct just as completely, so the rule
+needs stating before `#10` (fences) and `#12` (houses) land, or each will improvise one.
+
+**The discriminator is not "does it block movement".** A fence blocks a character and is
+visually almost nothing; avoiding it would make the camera lurch every time you walk beside
+a paddock. Nor is it "is it terrain" — a castle wall is not terrain and obstructs totally.
+
+**The discriminator is whether the camera can be INSIDE it**, because that is the failure
+worth preventing: a volume you are inside fills the entire screen, while a thing you merely
+see past costs a fraction of the frame. Moros already carries the classification —
+`WallDef.wd_body`:
+
+| body | camera |
+|---|---|
+| `SOLID`, `THICK_FLAT`, `THICK_CURVED` | **avoid** — a volume with an interior |
+| `FENCE`, `BATTLEMENT`, `ROAD_GUIDE` | **ignore** — see past it |
+| every dressing layer | **ignore** — `D1`, they do not even collide |
+
+⚠ **But `view` must not learn what `BATTLEMENT` means.** That is Moros's semantics, and the
+audit above puts `WallDef`'s contents firmly on the consumer's side. So the seam is a
+**predicate the consumer supplies** — *is this wall index view-blocking?* — with the library
+owning the query and the traversal and the consumer owning the answer. The same shape as the
+opaque palette in the world contract, and for the same reason.
 
 ### The extraction bar, per group
 
