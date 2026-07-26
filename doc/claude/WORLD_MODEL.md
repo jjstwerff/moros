@@ -130,7 +130,7 @@ col_K(x)  =  ⟨ i : k(λᵢ) = T ∧ occ_{λᵢ}(x) ⟩   the column at x, in c
 
 ## 2. The objects
 
-**A world** is a partial map `ℤ² ⇀ chunks`, plus `(ε, θ)` and a palette. A chunk absent from
+**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(ρ, ε, θ)` and a palette. A chunk absent from
 the map does not exist; it is not an empty chunk (**E1**).
 
 **A chunk** `K = (b_K, Λ_K)`.
@@ -144,7 +144,7 @@ exists, has a kind, and is excluded from every rule about columns, folding and c
 
 ## 3. Invariants
 
-A world satisfying **F1**, **W1**, **E1** and **S1** is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **S1** and **R1** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### F1 — Fold-freedom
