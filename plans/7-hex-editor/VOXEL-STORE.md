@@ -98,13 +98,47 @@ them here stops them being quietly absorbed into "the landscape" later.
 
 ---
 
+## 3b. The vertical model — settled
+
+*(user, 2026-07-26: "The lowest layer is always the lowest you can get (bottom of the
+sea, lowest cave/dungeon floor)")*
+
+Two things follow, and both make the format **smaller**.
+
+**A storey is a heightfield, and the door to volumes is now deliberately shut.** One
+surface per hex per `cy`; "under" always means *a storey below*, never an overhang inside
+one. A cave is a storey with the one above it absent; a bridge you walk beneath is an
+item with its own collider, not terrain. So the cell stays seven integers and the 8-byte
+claim holds — a column of spans would have ended it.
+
+**`cy` is ABSOLUTE, measured from the bottom of the world, not relative to the surface.**
+`cy = 0` is the deepest anything goes — seabed, lowest dungeon floor — so there is no
+storey below it and no negative coordinate anywhere in the format. The deepest dungeon
+and the sky share one coordinate system.
+
+⚠ **This deletes `base_height` from the header, and that is the point.** The previous
+draft carried it as insurance for "a world whose base plane is not 0". Under this rule
+that world cannot exist: the floor is canonical. Keeping the knob would mean every read
+and write of a height re-asserts the offset — `N > 1` sites, silent when forgotten, every
+one of them off by exactly the same amount and therefore invisible. Removing it is the
+protocol's `N × silence` cure applied by *subtraction*: a domain fact made a mechanism
+unnecessary, so the mechanism goes.
+
+⚠ **The consequence for the editor, flagged rather than assumed away.** The plane it
+builds today sits at `cy = 0`. If `cy = 0` is the absolute bottom, nothing can ever be
+dug beneath that plane. So the surface has to start at some `cy > 0`, and how much room
+to leave below is a worldbuilding call, not a format one. **Assumption until told
+otherwise: the surface starts at `cy = 8`**, leaving eight storeys of dungeon beneath a
+default world. Cheap to change while no file exists; it is only a starting offset, and
+the format itself is indifferent to it.
+
 ## 4. Layout
 
 A storage chunk is **32 × 32 hexes at one storey** — matching `moros_map`'s existing
 `Chunk` — which at 8 bytes a voxel is exactly **8 KB, two pages**.
 
 ```
-[header      ] magic, version, chunk_w, base_height, palette_off, dir_off, dir_len
+[header      ] magic, version, chunk_w, palette_off, dir_off, dir_len
 [palette     ] the three definition tables, length-prefixed
 [chunk dir   ] sorted (cx, cy, cz) → slot, one entry per EXISTING chunk
 [chunk slots ] 8 KB each: 1024 × Hex, row-major hx*32+hz, CRC32 trailer
@@ -117,10 +151,11 @@ header, and a 1000×1000-chunk authored world costs 8 GB only if all 10⁶ chunk
 actually touched. This is the same "slot 0 is absence" rule from the palette commit
 paying rent a second time: absence has one representation, and it is free.
 
-⚠ **The elision has a stated limit.** It works because the default is all-zero. A world
-whose base plane is not 0 makes every chunk non-default and stores everything. Hence
-`base_height` in the header — chunks store *height above base*, so raising sea level does
-not defeat the elision. This is cheap now and impossible to retrofit once files exist.
+**The elision has no escape hatch and does not need one.** It works because the default
+is all-zero, and §3b makes that canonical: heights are absolute from a world floor that
+is by definition the lowest anything gets. There is no "raised base plane" case to defend
+against, so there is no offset to carry — see §3b for why removing that knob was the
+correction and not a simplification.
 
 **Two chunk sizes coexist and must not be confused.** Storage chunks are 32×32; the
 editor's *mesh* chunks are 8×8 (`CHUNK=8`). One storage chunk is 16 mesh chunks. They are
@@ -237,3 +272,6 @@ reader, then the format is gone. Cheap (~20 lines) and it means no test world is
 - **No multi-writer.** One process owns a world file. Multi-client already means many
   viewers of one server-side model, so this costs nothing today.
 - **No spawn/NPC data.** §3.
+- **No volumetric terrain — overhangs, caves and arches inside a single storey.**
+  Closed deliberately in §3b, not deferred: it is the one decision here that a file
+  format cannot be talked into later.
