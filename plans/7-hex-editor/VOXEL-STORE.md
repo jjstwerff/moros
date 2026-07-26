@@ -243,6 +243,7 @@ notices. If worlds want more, the mask becomes a small directory and nothing els
 | P10 | **seams stitch** | author a ridge crossing a chunk boundary, read heights from both sides → identical | put the chunks at different windows → still identical |
 | P11 | headroom holds | every stored column satisfies the invariant after any brush | — |
 | P12 | **unused layers cost a bit** | a chunk with one live layer of 64 stores ~8 KB, not ~512 KB | dig a second layer → exactly one more slot appears |
+| P13 | **does the getter alias?** | mutate `map_get_hex(…)`'s result, never call `map_set_hex`, re-read the cell | if changed, the chokepoint is illusory (§6b) |
 
 **P10's control is the one that matters** — it is the only version of the test that can
 fail if the window ever leaks out of the storage layer.
@@ -343,6 +344,94 @@ invariant forbids — for no gain.
 
 ---
 
+## 6b. The guards — making the wrong write unwritable
+
+*(user, 2026-07-26: "So we need a guard against that and routines that are validated to
+be correct")*
+
+A guard is not a rule people remember. It is a mechanism that makes the mistake a
+**compile error or a named refusal**, so that forgetting is impossible rather than
+merely discouraged. Three are needed, and reading the current code before designing them
+turned up an obstacle that changes what they can be.
+
+### ⚠ There is no write chokepoint today, and the one that looks like it may not be one
+
+`h_height` is written at **seven sites** across two packages — `map_set_height`, three
+branches of `stencil_into_map_mode`, and three in `moros_editor`'s superseded stamp. All
+follow the same shape: `cur = map_get_hex(…)`, mutate `cur.h_field`, then
+`map_set_hex(…)`.
+
+That reads as a value discipline with `map_set_hex` as the chokepoint. It may not be
+one. `map_get_hex` returns `gh_c.ck_hexes[idx]` — **a vector element** — and loft's own
+rule (`#338`, in the writing guide) says `tmp = v[j]` is *a VIEW of slot j, not a copy*.
+If that holds here, the mutation has already landed in the map and the trailing
+`map_set_hex` is decorative: **any caller can write a cell without passing through any
+function at all.**
+
+Both readings are bad and they are bad in the same direction, which is why the design
+does not wait on resolving it:
+
+- **if it aliases** — the chokepoint is illusory and `N` is unbounded;
+- **if it copies** — seven sites each independently remember the trailing call, `N = 7`,
+  and omission is silent.
+
+It does change *what the guard must be*, so it is P13.
+
+**The irony worth naming:** the stencil stamps are the sites that bypass, and they are
+also the operation most likely to fold layers — a prefab house or stair writes a whole
+column stack in one go.
+
+### Guard 1 — the detached height, against seams
+
+> `StoredHex` (relative to its chunk base) and `Hex` (absolute) are **different types**,
+> and the only bridge is the chunk codec.
+
+Not a comment, a type. In loft `u16` is an **alias** of `integer`, so the compiler cannot
+tell a relative height from an absolute one — nominal separation is the only thing that
+turns "compared a windowed height against an absolute one" from a wrong number at a seam
+into a message at compile time. `N = 1`: one conversion, at chunk I/O, and nothing above
+storage can name the relative form.
+
+### Guard 2 — folded layers, against corruption
+
+A refusal at the write, plus an audit at load:
+
+- **at the write** — the column's layers share one base (§3c), so the check is a pure
+  relative comparison with no conversion. It refuses, names the column and the layer it
+  hit, and leaves the world unchanged.
+- **at load** — a whole-world walk shaped exactly like `map_palette_gap`: report the
+  first fold, by name, before anything draws. That pattern is already built and already
+  gated, so this is a second instance of a proven shape rather than a new mechanism.
+
+Guard 2 is **cheap but not free-standing** — it can only be `N = 1` if Guard 3 exists.
+
+### Guard 3 — the chokepoint, which is the actual work
+
+Every cell write passes through one function, and that function takes **the column**, not
+the cell — because non-folding is a property of a column, and a guard that can only see
+one cell cannot check it.
+
+If the getter aliases, this also means **the read path must stop handing out a mutable
+view**: `map_get_hex` yields an inert value. The voxel is eight bytes, so copying it
+costs nothing, and it is the difference between an invariant that can be enforced and one
+that can only be hoped for.
+
+### What "validated to be correct" has to mean
+
+Every guard ships with **three** things, not one:
+
+1. a **gate** asserting the guard holds;
+2. a **control** — the same assertion against a case that must FAIL, so a vacuously-true
+   gate is caught;
+3. a **mutation** — the guard deliberately broken, which must turn the gate red.
+
+The third is the one usually skipped and the only one that actually validates the gate
+rather than the code. Six gates in this editor were green for the wrong reason and not
+one was caught by reading; every one was caught by running the control. The palette work
+ran two mutations and both fired. **That is the bar for these routines** — a guard whose
+gate has never been seen red is not a validated guard, it is an untested claim with a
+test next to it.
+
 ## 7. Probes — the cheapest tests that could prove this wrong
 
 Each is written to *fail* if the claim is false, and each names its control, because six
@@ -369,6 +458,9 @@ catch a second home, and it is the half of the invariant that decays silently.
 
 Thick rungs, each ending green, per the standing rule.
 
+- **V0** — **the chokepoint** (§6b Guard 3), and P13 first because it decides the shape.
+  One column-taking write path; the stencil stamps stop writing cells directly. Nothing
+  below can be enforced until this exists, so it leads rather than follows.
 - **V1** — the file: header, palette, directory, one chunk in and out. P1, P8.
 - **V2** — sparsity and elision: all-zero chunks never written. P4, P5, P6.
 - **V3** — CRC and refusal: torn chunk named, rest opens. P7.
