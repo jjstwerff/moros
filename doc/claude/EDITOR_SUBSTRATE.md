@@ -15,6 +15,15 @@ exist, who owns each one, who consumes them, what may cross the seam, and what m
 
 ---
 
+> ⚠ **Whose product is this?** **Moros is the tabletop RPG** — `doc/` holds its rules,
+> cards, NPCs and campaign. The universal editor is **lavition**, a separate product with
+> its own org, specified in `loft/doc/claude/LAVITION.md`. This document describes
+> lavition's substrate; Moros is one consumer of it, and the work lives in Moros's tree for
+> design reuse rather than ownership.
+>
+> That governs naming: packages take **descriptive `hex_*` names with no brand prefix**,
+> per LAVITION.md's naming principle and its explicit anti-rename.
+
 ## Why this exists
 
 Not our framing — the stack's, stated one layer down and first. loft's `GOALS.md`:
@@ -701,13 +710,15 @@ document rather than a fact about the tree.
 | export | `map_export_glb` | **`glb`** |
 | **undo** | `UndoStack`, `UndoEntry`, `EditKind`, `undo_push/pop`, `redo`, `batch_*`, every `*_with_undo` | ⚠ **no home yet** — universal to editors, belongs to the editor substrate |
 | **camera** | `RenderCamera`, `CameraMode`, `camera_*`, `apply_mouse_look`, `camera_ray_dir`, `pick_hex`, `ray_plane_y_intersect` | ⚠ **no home yet** |
-| **input** | `InputState`, `input_*`, `keys_pressed_since` | ⚠ **no home yet** |
+| input | `InputState`, `input_*`, `keys_pressed_since` | **`input`** — ⚠ *ships already* (`loft-libs-game`, registry `input-0.2.0`). A convergence, not a homeless group |
 | **tools + editor loop** | `ToolState`, `ToolKind`, `tool_apply`, `EditorState`, `editor_tick`, `edit_at_hex`, `editor_load/save_to_file` | ⚠ **no home yet** — the editor library itself (#7) |
 | **UI widgets** | `Rect`, `Button`, `ListBox`, `Panel`, `StatusStrip`, `panel_*`, `rect_*`, `list_rect`, `text_*`, `*_rect`, `route_click`, `editor_click`, `UiHit` | ⚠ **no home yet** |
 | character | `Player`, `player_step`, `avatar_mesh`, `emit_player_avatar`, `avatar_add_to_scene` | the single-player part we own; `hex_body` for the rig |
 
-**Five groups have no home**, and they are the substance of the editor rather than of the
-world: undo, camera, input, the tool/editor loop, and UI widgets. `#7` is where they land,
+**Four groups have no home**, and they are the substance of the editor rather than of the
+world: undo, camera, the tool/editor loop, and UI widgets. (Input looked like a fifth until
+`loft-libs-game`'s shipped `input` was checked — the same class of miss as `gridmesh`'s
+dirty tracking, and found the same way.) `#7` is where they land,
 and this audit is the list `#7` should work from.
 
 ### ⚠ One finding the audit turned up
@@ -750,7 +761,7 @@ comes before any extraction rather than after.
 |---|---|---|---|
 | **world** | the voxel, columns, chunks, the window, the routine, the file, the palette *mechanism*, the guards | what a material *means*; anything that draws or collides | lattice |
 | **edit** | undo, redo, batches, `EditKind`, tools and their dispatch, the editor loop and its state | which tools exist (that is configuration) | world |
-| **view** | camera model and modes, input state, picking, ray casts, frustum/occluder culling | what a scene contains, and **what counts as an occluder** | lattice, world |
+| **view** | camera model and modes, picking, ray casts, frustum/occluder culling (input comes from the shipped `input` library) | what a scene contains, and **what counts as an occluder** | lattice, world |
 | **ui** | rectangles, buttons, list boxes, panels, status strips, layout, hit-testing, click routing | what the buttons *do* | nothing |
 | **actor** | the player, movement integration, collision resolution against the world, the avatar rig | AI, goals, NPC behaviour (crawler's) | world, lattice |
 

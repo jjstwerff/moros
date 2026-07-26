@@ -1,6 +1,8 @@
 # The world model
 
-How a Moros landscape is represented, stored and addressed.
+How a hex-grid landscape is represented, stored and addressed — the `hex_world` data axis of
+the `hex_*` family, built for **lavition** (the universal editor) with Moros as one consumer
+among several. `loft/doc/claude/LAVITION.md` publishes the family inventory this fills.
 
 **Part II is normative.** Where any other document disagrees with it, this one is right.
 Rules are numbered so a gate, a refusal and a bug report can name the same thing.

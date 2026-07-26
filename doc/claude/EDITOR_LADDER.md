@@ -1,5 +1,8 @@
 # The editor ladder
 
+*(**lavition**'s editor — Moros is a consumer, not the product. See
+`loft/doc/claude/LAVITION.md`.)*
+
 The editor is built one **rung** at a time, and each rung is a *complete editor* for
 everything below it. This is the overall map; each rung is its own plan, because the
 editor in its completion is far too big for one.

@@ -2,6 +2,12 @@
 
 A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/QUICK_START.md)** first.
 
+> **Two projects share this tree.** **Moros** is the tabletop RPG — the rules, cards, NPCs,
+> places and campaign under `doc/`. **lavition** is the universal hex-world editor those
+> scene tools are being built for; it is its own product (`loft/doc/claude/LAVITION.md`) and
+> Moros is one of its consumers. Everything under *Scene tools* below, and plans 7–15,
+> belong to lavition. Its packages take descriptive `hex_*` names with **no brand prefix**.
+
 ## Where to look
 
 | Looking for... | Go to |
