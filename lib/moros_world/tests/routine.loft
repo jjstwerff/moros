@@ -1,0 +1,148 @@
+// V1 gates for the world contract (`doc/claude/WORLD_MODEL.md` Part II).
+//
+// One gate per rule, each with a CONTROL — the same assertion against a case that
+// must FAIL. A gate nobody has seen red is a claim with a test next to it.
+use moros_world;
+
+fn world_ok() -> World {
+  // ε = 8, θ = 3 → 8 > 6, so `C1` holds with margin. ρ = 100 leaves room to dig.
+  n = world_new(0.25, 100, 8, 3);
+  assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
+  n.wn_world
+}
+
+// ── C1 — the constant constraint is checked, never assumed ──────────────────
+
+fn test_c1_refuses_a_world_that_would_fail_b1_silently() {
+  bad = world_new(0.25, 100, 6, 3);          // ε = 2θ exactly
+  assert(bad.wn_code == WC_CONSTANTS,
+         "a world with eps = 2*theta was accepted; B1 then fails SILENTLY and the "
+         + "symptom is intermittently wrong geometry at chunk borders");
+  // CONTROL: one unit more and it must be accepted, or the check is refusing
+  // everything and proving nothing.
+  good = world_new(0.25, 100, 7, 3);
+  assert(good.wn_code == WC_OK, "eps = 2*theta + 1 must be accepted");
+}
+
+// ── addressing — floor division, both signs ─────────────────────────────────
+
+fn test_chunk_of_floors_rather_than_truncating() {
+  assert(chunk_of(0) == 0, "0");
+  assert(chunk_of(31) == 0, "31");
+  assert(chunk_of(32) == 1, "32");
+  // The trap: C-style division rounds toward zero, which would put -1 in chunk 0.
+  assert(chunk_of(0 - 1) == 0 - 1, "-1 must be chunk -1, not chunk 0");
+  assert(chunk_of(0 - 32) == 0 - 1, "-32");
+  assert(chunk_of(0 - 33) == 0 - 2, "-33");
+  // and the local part must stay non-negative, or cell_index goes out of range
+  assert(local_of(0 - 1) == 31, "-1 is local 31");
+  assert(local_of(0 - 32) == 0, "-32 is local 0");
+  assert(cell_index(0 - 1, 0 - 1) == 31 * 32 + 31, "negative cell index");
+}
+
+// ── F1 — fold-freedom ───────────────────────────────────────────────────────
+
+fn col_of(w: World, hs: vector<integer>) -> Column {
+  cells: vector<Hex> = [];
+  for h in hs {
+    if h < 0 { cells += [Hex {}]; }                                  // absent
+    else { cells += [Hex { h_height: h as u16? ?? 0, h_material: 1 }]; }
+  }
+  Column { co_q: 0, co_r: 0, co_cells: cells }
+}
+
+fn test_f1_refuses_a_layer_that_breaches_the_one_above() {
+  w = world_ok();
+  // 100 then 105: a gap of 5 where eps is 8 — the cave floor has risen into the
+  // ground above it, which is two surfaces claiming one space.
+  r = world_set_column(w, col_of(w, [100, 105]));
+  assert(r.cw_code == CW_FOLD, "a fold was accepted: code {r.cw_code}");
+  assert(r.cw_layer == 1, "the refusal must name the layer, got {r.cw_layer}");
+  // CONTROL: exactly eps apart is legal, or the gate is refusing every column.
+  ok = world_set_column(w, col_of(w, [100, 108]));
+  assert(ok.cw_code == CW_OK, "a gap of exactly eps must be accepted: {ok.cw_code}");
+}
+
+fn test_f1_ignores_absent_layers_between_occupied_ones() {
+  w = world_ok();
+  // Occupied at 0 and 2, absent at 1. The constraint is 0 against 2 — and 20
+  // apart is fine — so an implementation that compared ADJACENT INDEXES rather
+  // than adjacent OCCUPIED layers would wrongly refuse this.
+  r = world_set_column(w, col_of(w, [100, 0 - 1, 120]));
+  assert(r.cw_code == CW_OK, "an absent layer is a gap, not a constraint: {r.cw_code}");
+  // CONTROL: bring the two occupied ones within eps and it must refuse, proving
+  // the check is running at all rather than skipping columns with holes.
+  bad = world_set_column(w, col_of(w, [100, 0 - 1, 104]));
+  assert(bad.cw_code == CW_FOLD, "occupied layers either side of a hole still constrain");
+}
+
+// ── R1 — the floor reserve ──────────────────────────────────────────────────
+
+fn test_r1_refuses_terrain_authored_into_the_reserve() {
+  w = world_ok();
+  r = world_set_column(w, col_of(w, [99]));           // reserve is 100
+  assert(r.cw_code == CW_RESERVE,
+         "terrain at 99 was authored into the reserve; a castle built there has "
+         + "nowhere to put its cellar");
+  // CONTROL: at the reserve exactly is legal.
+  ok = world_set_column(w, col_of(w, [100]));
+  assert(ok.cw_code == CW_OK, "authoring AT the reserve must be accepted: {ok.cw_code}");
+}
+
+// ── the refusals change nothing ─────────────────────────────────────────────
+
+fn test_a_refusal_leaves_the_world_untouched() {
+  w = world_ok();
+  assert(world_set_column(w, col_of(w, [100, 108])).cw_code == CW_OK, "setup");
+  before = world_column(w, 0, 0);
+  bad = world_set_column(w, col_of(w, [100, 102]));   // a fold
+  assert(bad.cw_code == CW_FOLD, "setup: expected a fold");
+  after = world_column(w, 0, 0);
+  assert(len(after.co_cells) == len(before.co_cells), "a refusal changed the layer count");
+  for i in 0..len(before.co_cells) {
+    assert(after.co_cells[i].h_height == before.co_cells[i].h_height,
+           "a refused write still altered layer {i}");
+  }
+}
+
+// ── the round trip ──────────────────────────────────────────────────────────
+
+fn test_a_written_column_reads_back_absolute() {
+  w = world_ok();
+  r = world_set_column(w, col_of(w, [1000, 1020]));
+  assert(r.cw_code == CW_OK, "write refused: {r.cw_code} {r.cw_detail}");
+  back = world_column(w, 0, 0);
+  assert(len(back.co_cells) == 2, "expected two layers, got {len(back.co_cells)}");
+  // The heights come back ABSOLUTE even though they are stored relative to the
+  // chunk's base — which is the whole of `S1` from the caller's side.
+  assert(back.co_cells[0].h_height == 1000, "layer 0 read back {back.co_cells[0].h_height}");
+  assert(back.co_cells[1].h_height == 1020, "layer 1 read back {back.co_cells[1].h_height}");
+}
+
+// ⚠ ADDED AFTER A MUTATION SLIPPED THROUGH. The round-trip above was blind to
+// `S1`: with a chunk based at zero, every stored height equals its absolute one,
+// so removing the base subtraction changed nothing and every gate stayed green.
+// A gate that cannot distinguish the rule from its absence is not gating it.
+//
+// This forces a NON-ZERO base — a fresh chunk is based on its first content — so
+// stored and absolute genuinely differ and the subtraction is load-bearing.
+fn test_s1_the_window_is_real_at_a_non_zero_base() {
+  w = world_ok();
+  r = world_set_column(w, col_of(w, [40000, 40050]));
+  assert(r.cw_code == CW_OK, "write refused: {r.cw_code} {r.cw_detail}");
+  // CONTROL that the base actually moved: if it were still 0 this test would be
+  // no stronger than the round-trip it was written to reinforce.
+  assert(w.w_chunks[0].ck_base == 40000,
+         "the chunk must be based on its content, got {w.w_chunks[0].ck_base}");
+  assert(w.w_chunks[0].ck_layers[0].ly_cells[cell_index(0, 0)].sv_height == 0,
+         "the lowest cell stores 0 relative to the base");
+  back = world_column(w, 0, 0);
+  assert(back.co_cells[0].h_height == 40000, "read back {back.co_cells[0].h_height}");
+  assert(back.co_cells[1].h_height == 40050, "read back {back.co_cells[1].h_height}");
+}
+
+fn test_an_unwritten_column_is_empty_not_a_refusal() {
+  w = world_ok();
+  col = world_column(w, 500, 500);
+  assert(len(col.co_cells) == 0, "unauthored ground must read as an empty column");
+}

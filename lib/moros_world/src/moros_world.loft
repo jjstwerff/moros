@@ -1,0 +1,358 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The voxel world — the implementation of the contract in
+// `doc/claude/WORLD_MODEL.md` Part II, which is NORMATIVE. Rule names below
+// (`F1`, `W1`, `E1`, `S1`, `R1`, `Q1` …) are that document's; where this file and
+// the contract disagree, the contract is right and this file is a bug.
+//
+// ⚠ THIS IS NOT A REFACTOR OF `moros_map`. It is written fresh beside it, per
+// plan 8 § "How this is built". `moros_map` sits at a PREDECESSOR of the contract
+// — chunks keyed one-layer-each, no window, no labels, and game state packed into
+// two bits of its voxel — so reshaping it would mean carrying those forward.
+// Being in one tree buys DESIGN reuse, not code reuse.
+//
+// Scope of V1: the model, the routine, and the guards. The file is V2, the edit
+// clock V4. Nothing here reads or writes bytes.
+// ⚠ No `use hex_grid` yet, and the reason is a finding rather than an oversight.
+// `chunk_idx_32` / `hex_idx_32` live in **`hex_world`** (the audience-crystal
+// package) and in `moros_map` privately — two copies, one of them made public
+// with a comment explaining it is public so nobody re-implements it, and the
+// other re-implementing it anyway. `hex_grid`, where they belong, has neither.
+//
+// Depending on `hex_world` here would mean importing a crystal-decay world model
+// in order to divide a coordinate by 32. So V1 carries them locally, deliberately
+// as a THIRD copy that is written down rather than hidden, and V9 moves the one
+// true version down into `hex_grid` and deletes all three.
+
+// ── The voxel ────────────────────────────────────────────────────────────────
+//
+// Seven integers, eight bytes. Every `u8` is an INDEX into a definition table,
+// never a value: names, categories and floats live once per definition rather
+// than once per cell, which is the whole reason a cell fits in eight bytes.
+//
+// In memory a height is ABSOLUTE. On disk it is relative to its chunk's window
+// (`S1`), and `StoredHex` is a DIFFERENT TYPE precisely so the two cannot be
+// confused — in loft `u16` is an alias of `integer`, so nominal separation is the
+// only thing that turns "compared a windowed height against an absolute one" into
+// a compile error rather than a wrong number at a chunk seam.
+pub struct Hex {
+  h_height:        u16,      // ABSOLUTE, above the world floor
+  h_material:      u8,
+  h_item:          u8,
+  h_item_rotation: u8,
+  h_wall_n:        u8,
+  h_wall_ne:       u8,
+  h_wall_se:       u8,
+}
+
+pub struct StoredHex {
+  sv_height:        u16,     // RELATIVE to its chunk's base — meaningless alone
+  sv_material:      u8,
+  sv_item:          u8,
+  sv_item_rotation: u8,
+  sv_wall_n:        u8,
+  sv_wall_ne:       u8,
+  sv_wall_se:       u8,
+}
+
+// A cell is OCCUPIED iff its material is not absence. Index 0 is absence in every
+// table, because a defaulted cell is all zeroes and that is what an unwritten cell
+// IS.
+pub fn hex_occupied(h: Hex) -> boolean { h.h_material != 0 }
+pub fn stored_occupied(s: StoredHex) -> boolean { s.sv_material != 0 }
+
+// ── Layers and chunks ────────────────────────────────────────────────────────
+
+pub const KIND_TERRAIN  = 0;
+pub const KIND_DRESSING = 1;
+
+pub const CHUNK_W    = 32;          // hexes per axis
+pub const CHUNK_CELLS = 1024;       // CHUNK_W * CHUNK_W
+pub const LAYER_CAP  = 64;          // layers per chunk
+pub const WINDOW     = 65536;       // what a u16 relative height spans
+
+// A layer is this tile's own, with an OPTIONAL cross-chunk label (`I1`-`I3`):
+// a u32 name drawn from the world's counter, never an ordinal, 0 = unlabelled.
+pub struct Layer {
+  ly_id:    integer,                // u32 label, 0 = unlabelled
+  ly_kind:  integer,                // KIND_TERRAIN | KIND_DRESSING
+  ly_cells: vector<StoredHex>,      // exactly CHUNK_CELLS, terrain only
+}
+
+// A chunk is a (cx, cz) tile: a base height and its OWN ORDERED list of layers.
+// The index of a layer is a position in THIS chunk and means nothing outside it —
+// there is no world-wide layer list and no global budget.
+pub struct Chunk {
+  ck_cx:     integer,
+  ck_cz:     integer,
+  ck_base:   integer,               // absolute floor of the window
+  ck_layers: vector<Layer>,
+}
+
+pub struct World {
+  w_chunks: vector<Chunk>,
+  w_unit:   float,                  // `u` — what one height step is worth
+  w_reserve: integer,               // `ρ` — authoring floor
+  w_eps:     integer,               // `ε` — minimum layer separation
+  w_theta:   integer,               // `θ` — match tolerance
+  w_next_id: integer,               // `ν` — next free label
+}
+
+// A column: ABSOLUTE heights, indexed by the chunk's layer order. It carries NO
+// base — it is the absolute form, so the window cannot leak past it (`S1`).
+pub struct Column {
+  co_q:     integer,
+  co_r:     integer,
+  co_cells: vector<Hex>,            // one per layer of the chunk, in its order
+}
+
+// ── World creation ───────────────────────────────────────────────────────────
+
+pub const WC_OK        = 0;
+pub const WC_CONSTANTS = 1;         // `C1`: ε > 2θ does not hold
+
+pub struct WorldNew { wn_code: integer, wn_world: World }
+
+// ⚠ `C1` is checked HERE and never assumed. A world with ε ≤ 2θ fails `B1`
+// SILENTLY — two layers can both fall within θ of one height — and the symptom is
+// intermittently wrong geometry at chunk borders, which reads as a renderer bug.
+pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) -> WorldNew {
+  if eps <= 2 * theta {
+    return WorldNew { wn_code: WC_CONSTANTS, wn_world: World { w_unit: 1.0 } };
+  }
+  WorldNew {
+    wn_code: WC_OK,
+    wn_world: World { w_chunks: [], w_unit: unit, w_reserve: reserve,
+                      w_eps: eps, w_theta: theta, w_next_id: 1 },
+  }
+}
+
+// ── Addressing ───────────────────────────────────────────────────────────────
+//
+// floor(v / 32), which is NOT `v / 32`: C-style division rounds toward zero, so
+// cell −1 would land in chunk 0 instead of chunk −1, and every negative
+// coordinate would fold onto its positive neighbour's tile. The same trap is
+// documented on `hex_world`'s public copy; see the note at the top of this file.
+pub fn chunk_of(v: integer) -> integer {
+  if v >= 0 { v / CHUNK_W ?? 0 } else { 0 - ((CHUNK_W - 1 - v) / CHUNK_W ?? 0) }
+}
+
+// The non-negative remainder, likewise: `v % 32` is negative for negative `v`.
+pub fn local_of(v: integer) -> integer { v - chunk_of(v) * CHUNK_W }
+
+pub fn cell_index(q: integer, r: integer) -> integer {
+  local_of(q) * CHUNK_W + local_of(r)
+}
+
+fn find_chunk(w: World, cx: integer, cz: integer) -> integer {
+  found = 0 - 1;
+  for i in 0..len(w.w_chunks) {
+    if found < 0 && w.w_chunks[i].ck_cx == cx && w.w_chunks[i].ck_cz == cz { found = i; }
+  }
+  found
+}
+
+pub fn world_has_chunk(w: World, q: integer, r: integer) -> boolean {
+  find_chunk(w, chunk_of(q), chunk_of(r)) >= 0
+}
+
+fn empty_cells() -> vector<StoredHex> {
+  [for i in 0..CHUNK_CELLS { StoredHex {} }]
+}
+
+// ── Read ─────────────────────────────────────────────────────────────────────
+//
+// Every height gets `ck_base` ADDED here. This is the only addition in the
+// design (`S1`); above this line a height is absolute and the window does not
+// exist.
+pub fn world_column(w: World, q: integer, r: integer) -> Column {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  // A missing chunk is an empty column, never a refusal: unauthored ground is a
+  // legal answer, and `E1` makes absent and all-zero indistinguishable.
+  if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
+  ch = w.w_chunks[ci];
+  ix = cell_index(q, r);
+  out: vector<Hex> = [];
+  for ly in ch.ck_layers {
+    if ly.ly_kind == KIND_TERRAIN {
+      c = ly.ly_cells[ix];
+      out += [Hex { h_height: (ch.ck_base + c.sv_height) as u16? ?? 0,
+                    h_material: c.sv_material, h_item: c.sv_item,
+                    h_item_rotation: c.sv_item_rotation,
+                    h_wall_n: c.sv_wall_n, h_wall_ne: c.sv_wall_ne,
+                    h_wall_se: c.sv_wall_se }];
+    } else {
+      out += [Hex {}];   // dressing holds no cell here; see #14
+    }
+  }
+  Column { co_q: q, co_r: r, co_cells: out }
+}
+
+// Convenience over `world_column`. Read-only, and deliberately WITHOUT a writing
+// twin — a single-cell write cannot check any rule in the contract, because every
+// rule is a property of a column.
+pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
+  col = world_column(w, q, r);
+  if l < 0 || l >= len(col.co_cells) { return Hex {}; }
+  col.co_cells[l]
+}
+
+// ── Write — the whole routine ────────────────────────────────────────────────
+
+pub const CW_OK        = 0;
+pub const CW_FOLD      = 1;   // a layer breached the one above (`F1`)
+pub const CW_WINDOW    = 2;   // the tile's span exceeds any window (`W1`)
+pub const CW_LAYER_CAP = 3;   // more layers than a chunk may hold
+pub const CW_RESERVE   = 4;   // terrain authored below `ρ` (`R1`)
+
+pub struct ColumnWrite { cw_code: integer, cw_layer: integer, cw_detail: text }
+
+fn ok_write() -> ColumnWrite { ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw_detail: "" } }
+
+// Steps 1 and 2 of the routine: the checks that run BEFORE anything is written,
+// so a refusal leaves the world untouched rather than half-applied.
+fn check_column(w: World, col: Column) -> ColumnWrite {
+  // `R1` — nothing authored below the reserve. The space beneath belongs to
+  // whatever gets dug later, and heights are unsigned so there is no digging
+  // below zero to fall back on.
+  for i in 0..len(col.co_cells) {
+    c = col.co_cells[i];
+    if hex_occupied(c) && c.h_height < w.w_reserve {
+      return ColumnWrite { cw_code: CW_RESERVE, cw_layer: i,
+                           cw_detail: "height {c.h_height} is below the reserve {w.w_reserve}" };
+    }
+  }
+  // `F1` — consecutive OCCUPIED layers separated by at least ε. Absent layers are
+  // gaps, not constraints: terrain at 3 under terrain at 9 constrains 3 against 9
+  // and nothing between. Compared in ABSOLUTE space, which is the only space a
+  // Column has.
+  prev = 0 - 1;
+  for i in 0..len(col.co_cells) {
+    if hex_occupied(col.co_cells[i]) {
+      if prev >= 0 {
+        gap = col.co_cells[i].h_height - col.co_cells[prev].h_height;
+        if gap < w.w_eps {
+          return ColumnWrite { cw_code: CW_FOLD, cw_layer: i,
+                               cw_detail: "layer {i} is {gap} above layer {prev}, needs {w.w_eps}" };
+        }
+      }
+      prev = i;
+    }
+  }
+  ok_write()
+}
+
+// Steps 3-6: fit the window, materialise layers, encode, drop what emptied.
+//
+// `w` is a reference because the routine may rebase the chunk and append to the
+// world's chunk list — the caller's world is the one that changes.
+pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
+  n = len(col.co_cells);
+  if n > LAYER_CAP {
+    return ColumnWrite { cw_code: CW_LAYER_CAP, cw_layer: LAYER_CAP,
+                         cw_detail: "{n} layers exceeds the cap of {LAYER_CAP}" };
+  }
+  // 1 and 2 — every check before any write, so a refusal changes nothing.
+  chk = check_column(w, col);
+  if chk.cw_code != CW_OK { return chk; }
+
+  cx = chunk_of(col.co_q);
+  cz = chunk_of(col.co_r);
+  ix = cell_index(col.co_q, col.co_r);
+
+  // The column's own extent, needed before the chunk exists so a NEW chunk can be
+  // based on its content rather than on zero.
+  clo = 0; chi = 0; cseen = false;
+  for i in 0..n {
+    if hex_occupied(col.co_cells[i]) {
+      h = col.co_cells[i].h_height;
+      if !cseen { clo = h; chi = h; cseen = true; }
+      if h < clo { clo = h; }
+      if h > chi { chi = h; }
+    }
+  }
+
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 {
+    // ⚠ A fresh chunk is based on its FIRST CONTENT, not on zero. Basing it at
+    // zero looks harmless and quietly disables the window: for any world under
+    // 65536 the base would then never move, every stored height would equal its
+    // absolute height, and `S1` would be unobservable — subtracting the base
+    // indistinguishable from subtracting nothing. Found by mutation: dropping the
+    // subtraction left every gate green.
+    nb = 0;
+    if cseen { nb = clo; }
+    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
+    ci = len(w.w_chunks) - 1;
+  }
+
+  // 3 — materialise absent layers. THE ONLY PLACE A LAYER IS EVER CREATED, which
+  // is what stops unneeded ones existing: a layer exists because a column put
+  // something in it.
+  while len(w.w_chunks[ci].ck_layers) < n {
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: 0, ly_kind: KIND_TERRAIN,
+                                         ly_cells: empty_cells() }];
+  }
+
+  // 4 — fit the window across the WHOLE chunk once this column is applied: one
+  // base serves every column in the tile, so the span is a tile-wide question.
+  lo = clo; hi = chi; seen = cseen;
+  for ly in w.w_chunks[ci].ck_layers {
+    if ly.ly_kind == KIND_TERRAIN {
+      for j in 0..CHUNK_CELLS {
+        if j != ix && stored_occupied(ly.ly_cells[j]) {
+          h = w.w_chunks[ci].ck_base + ly.ly_cells[j].sv_height;
+          if !seen { lo = h; hi = h; seen = true; }
+          if h < lo { lo = h; }
+          if h > hi { hi = h; }
+        }
+      }
+    }
+  }
+  if seen && hi - lo >= WINDOW {
+    return ColumnWrite { cw_code: CW_WINDOW, cw_layer: 0 - 1,
+                         cw_detail: "tile spans {hi - lo}, the window holds {WINDOW}" };
+  }
+  if seen && (lo < w.w_chunks[ci].ck_base
+              || hi >= w.w_chunks[ci].ck_base + WINDOW) {
+    // REBASE. Expensive, correct, and rare: every stored layer of the chunk is
+    // re-encoded against the new floor. `W1` guarantees this succeeds whenever
+    // any base would, because `lo` is by construction the lowest height present.
+    old = w.w_chunks[ci].ck_base;
+    for ly in w.w_chunks[ci].ck_layers {
+      if ly.ly_kind == KIND_TERRAIN {
+        for j in 0..CHUNK_CELLS {
+          if stored_occupied(ly.ly_cells[j]) {
+            ly.ly_cells[j].sv_height = (old + ly.ly_cells[j].sv_height - lo) as u16? ?? 0;
+          }
+        }
+      }
+    }
+    w.w_chunks[ci].ck_base = lo;
+  }
+
+  // 5 — encode. Subtracting the base is the ONLY subtraction in the design; above
+  // this line every height has been absolute.
+  base = w.w_chunks[ci].ck_base;
+  for i in 0..n {
+    c = col.co_cells[i];
+    w.w_chunks[ci].ck_layers[i].ly_cells[ix] =
+      StoredHex { sv_height: (c.h_height - base) as u16? ?? 0,
+                  sv_material: c.h_material, sv_item: c.h_item,
+                  sv_item_rotation: c.h_item_rotation,
+                  sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
+                  sv_wall_se: c.h_wall_se };
+  }
+
+  // 6 — drop what emptied, so elision is an invariant maintained on write rather
+  // than a compaction pass that does not exist (`E1`).
+  live: vector<Layer> = [];
+  for ly in w.w_chunks[ci].ck_layers {
+    any = false;
+    for j in 0..CHUNK_CELLS { if stored_occupied(ly.ly_cells[j]) { any = true; } }
+    if any { live += [ly]; }
+  }
+  w.w_chunks[ci].ck_layers = live;
+  ok_write()
+}
