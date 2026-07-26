@@ -142,6 +142,31 @@ kinds of thing deliberately do not, and they differ in whether the world depends
 | **stencils** — authoring templates | their own files | **no.** Stamping bakes the result into the world; afterwards nothing references the stencil |
 | **assets** — dressing models, vehicle parts | their own files | **yes.** A placement is a reference, resolved at load |
 
+**The dividing line is RATE OF CHANGE**, not ownership or duplication.
+
+*(user, 2026-07-26: "To place them in a different file makes that file much more stable than
+combining the actual world in them that can mutate by game mechanics.")*
+
+A world file mutates constantly and by design — authoring, and then game mechanics: an
+explosion, a fire, a collapse (`T3` forbids assuming otherwise). An asset file is
+near-static: a tree model, a cart's parts, a stencil, authored once and changed rarely.
+Storing them together would drag stable data through every volatile write, and four things
+fall out of keeping them apart:
+
+- **caching** — a static file is hashed once, shared between worlds and held read-only;
+- **shipping** — assets go to a client once and stay, where the world streams continuously.
+  Combined, every world update would re-send data that did not change;
+- **churn** — copy-on-write and compaction move a world's bytes around constantly (`X3`–`X5`),
+  and static assets living inside would be copied for nothing;
+- **versioning** — the world carries an edit clock because it changes (`T1`). Assets need at
+  most a version per library.
+
+**This is `T2` at a second scale.** Within the world file, per-layer versions stop a prop
+change from invalidating a terrain cache — things that change at different rates must not
+invalidate each other. The asset/world split is the same rule at file granularity, and it
+makes the boundary predictive rather than a matter of taste: **anything near-static and
+shared belongs outside; anything the game mutates belongs inside.**
+
 **Stencils are the clean case.** A stencil is an editor tool, not world content: stamping a
 house writes cells, and the saved world neither knows nor cares which stencil produced them.
 So a stencil library can change, move or vanish without touching any world.
