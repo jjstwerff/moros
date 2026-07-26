@@ -130,8 +130,8 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `k(λ) ∈ {T, D}` | layer kind: **T**errain or **D**ressing |
 | `id(λ) ∈ [0, 2³²)` | an optional **label** — a name, not an ordinal. `0` means unlabelled |
 | `ν ∈ [0, 2³²)` | the world's **next free label**, in the header |
-| `τ ∈ [0, 2³²)` | the world's **edit clock**, in the header — monotonic |
-| `ver(λ) ∈ [0, 2³²)` | the clock value at which `λ` was last written |
+| `τ ∈ [0, 2⁶⁴)` | the world's **edit clock**, in the header — monotonic |
+| `ver(λ) ∈ [0, 2⁶⁴)` | the clock value at which `λ` was last written |
 | `s_λ(x) ∈ [0, 2¹⁶)` | the **stored** height — relative to `b_K`, meaningless alone |
 | `m_λ(x) ∈ [0, 2⁸)` | the material index |
 | `H_λ(x) = b_K + s_λ(x)` | the **absolute** height, for `κ(x) = K` |
@@ -168,7 +168,69 @@ function on hexes. Its contents are specified by
 [#14](https://github.com/jjstwerff/moros/issues/14); this contract constrains only that it
 exists, has a kind, and is excluded from every rule about columns, folding and collision.
 
-## 3. Invariants
+## 3. The governing rule
+
+*(user, 2026-07-26: "This should be a universal editor and world model. We do our best for
+efficiency but we can never assume something will not happen at all")*
+
+> **G0 — every bound is checked, named and reachable.** For each limit in this model there
+> must be (a) a check, (b) a named refusal or a defined degradation, and (c) a gate that
+> actually reaches it. **"This will not happen in practice" is not a design; it is the
+> absence of one.**
+
+The failure this prevents is the one that arrives years later in someone else's world. A
+sizing argument — *a 32 m tile will never span 16 km of relief*, *nobody makes four billion
+edits* — is a statement about the worlds we imagined, and a universal model is used by
+people who imagined different ones. Efficiency arguments decide **what is cheap**, never
+**what is possible**.
+
+Every bound below is audited against `G0`:
+
+| bound | check | at the limit | gate |
+|---|---|---|---|
+| stored height, `2¹⁶` per chunk window | **W1** | `CW_WINDOW`, refuse not truncate | ✓ |
+| layers per chunk, `64` | §2 | `CW_LAYER_CAP` | ✓ |
+| palette entries, `256` | `add` | returns `−1` | ✓ |
+| authored depth | **R1** | `CW_RESERVE` | ✓ |
+| `ε > 2θ` | **C1** | refused at open | ✓ |
+| labels, `2³²` | **I4** | **degrades**: new layers unlabelled, reported | ✓ |
+| edit clock | **T1** | `u64` — see below | ✓ |
+| world extent | **X1** | `CW_EXTENT` | ✓ |
+| one writer | **X2** | `CW_CONCURRENT`, detected not assumed | ✓ |
+
+### I4 — Label exhaustion degrades, it does not fail
+
+> When `ν` reaches `2³²`, a request for a new label yields `0` (unlabelled) and reports it.
+> The layer is still created.
+
+Labels are optional by construction (`id = 0` is legal everywhere), so exhaustion costs the
+*convenience* and never the world. Renumbering is offline maintenance, not a crash.
+
+### The clock is `u64`, and that is a correctness choice
+
+`τ` and `ver` are **64-bit**, where `ν` is 32. The asymmetry is deliberate: a wrapped label
+collides and **I1** catches it at the first seam, but a wrapped clock makes a stale cache
+report *valid* — a silent wrong answer, the worst class this model has. Eight bytes per
+layer in the directory buys the elimination of that class outright, and `2⁶⁴` writes is not
+a bound anyone reaches by any means.
+
+### X1 — World extent
+
+> Chunk coordinates are signed 32-bit: `cx, cz ∈ [−2³¹, 2³¹)`. A write beyond that is
+> `CW_EXTENT`.
+
+That is ±68 billion hexes on each axis. It is stated and checked anyway, because `G0`.
+
+### X2 — Concurrent writers are detected
+
+> A world opened for writing records an owner marker. A write whose marker does not match
+> the file's is `CW_CONCURRENT`.
+
+Single-writer remains the *supported* model. `G0` is why it is not merely assumed: two
+processes writing one world is not prevented by hope, and undetected concurrent writes
+produce a corrupt file rather than an error.
+
+## 4. Invariants
 
 A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1** and **T2**
 is *well-formed*. The routine must
@@ -247,7 +309,7 @@ cellar will need to go.
 
 Layers may carry a label so that corresponding layers in neighbouring chunks share an id —
 a deck, a storey, a dungeon level named once and recognised everywhere. **The label is not
-a second definition of continuity.** §4 defines continuity by height and proves it unique;
+a second definition of continuity.** §5 defines continuity by height and proves it unique;
 a label is a claim *about* that match, and **I1** is the requirement that the claim is true:
 
 > For adjacent `x ∈ X_K`, `x' ∈ X_{K'}`, and `i ∈ col_K(x)` with `id(λᵢ) ≠ 0`:
@@ -353,7 +415,7 @@ is open, and is the first thing to test when a destruction path is built.
 > Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
 > Adding, removing or altering one leaves every terrain layer bit-identical.
 
-## 4. The border contract
+## 5. The border contract
 
 For adjacent hexes `x ∈ X_K`, `x' ∈ X_{K'}` with `K ≠ K'`, the **match** from a height `h`
 into `K'` is
@@ -414,7 +476,7 @@ never assumed.** Physically it is comfortable — `ε` is standing headroom, `θ
 step read as continuous, so it says a storey is more than twice a step. A world violating it
 fails **B1** *silently*, and the symptom is intermittently wrong geometry at chunk borders.
 
-## 5. Refusals, mapped to what they protect
+## 6. Refusals, mapped to what they protect
 
 Every refusal names what it refused and leaves the world unchanged.
 
@@ -424,6 +486,8 @@ Every refusal names what it refused and leaves the world unchanged.
 | `CW_WINDOW` | **W1** | `max H − min H ≥ 2¹⁶` after the write; no base exists |
 | `CW_RESERVE` | **R1** | terrain would be authored below `ρ` |
 | `CW_LAYER_CAP` | §2 | the chunk would hold more than 64 layers |
+| `CW_EXTENT` | **X1** | a chunk coordinate leaves the signed 32-bit range |
+| `CW_CONCURRENT` | **X2** | the writer's marker does not match the file's |
 | world refused at creation | **C1** | `ε ≤ 2θ` |
 | torn chunk | — | CRC mismatch: that chunk is refused, the rest opens |
 
@@ -431,7 +495,7 @@ Every refusal names what it refused and leaves the world unchanged.
 `b_K := min H` and every stored layer of `K` is re-encoded. **W1** guarantees this succeeds
 whenever any base would.
 
-## 6. What this contract does not constrain
+## 7. What this contract does not constrain
 
 Stated so the silence is deliberate:
 
@@ -442,7 +506,7 @@ Stated so the silence is deliberate:
 - **Dressing contents.** [#14](https://github.com/jjstwerff/moros/issues/14).
 - **Whether a surface continues at all.** A partial matching is the intended answer.
 
-## 7. Gates — one per rule
+## 8. Gates — one per rule
 
 A rule with no gate that has been **seen red** is a claim, not a contract.
 
@@ -458,6 +522,9 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **I3** | allocate a thousand labels across many chunks → all distinct, `ν` monotonic | reuse a label for an unrelated layer → **I1** fires at the first seam where it matters |
 | **T1** | write a layer → `τ` advances and `ver(λ)` equals it; a cache at the old clock reports stale | write nothing → `τ` unchanged and the cache stays valid |
 | **T2** | write a dressing layer → a terrain cache over the same chunk stays valid | write the terrain layer → it goes stale |
+| **I4** | force `ν` to its limit → the next layer is created unlabelled and says so | below the limit → labelled normally |
+| **X1** | write at `cx = 2³¹` → `CW_EXTENT` | `cx = 2³¹ − 1` → accepted |
+| **X2** | open twice for writing, write from the first → `CW_CONCURRENT` | one writer → silent |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |

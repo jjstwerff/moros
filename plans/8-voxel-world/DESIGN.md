@@ -296,11 +296,11 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 ```
 [header     ] magic, version, chunk_w,
               u (height unit), rho (floor reserve), eps, theta,
-              nu (next label), tau (edit clock),
+              nu (next label u32), tau (edit clock u64), owner (writer marker),
               palette_off, dir_off, dir_len
 [palette    ] OPAQUE to the library — the consumer's bytes (§6)
 [chunk dir  ] sorted (cx, cz) → { base_height, data_off,
-                                 layers[≤64] of { id:u32, kind:u8, ver:u32 } }
+                                 layers[≤64] of { id:u32, kind:u8, ver:u64 } }
 [chunk data ] per chunk, its terrain layers in list order:
               8 KB each: 1024 × StoredHex, row-major, CRC32 trailer
 ```
@@ -356,7 +356,8 @@ anything is built.
 | palette table | 256 entries | `add` returns −1; no index could name a 257th |
 | layers per chunk | 64 | `CW_LAYER_CAP` — and there is no world-wide layer count at all |
 | distinct labels | 2³² over a world's whole life | `ν` only increases; dropped labels are never reused |
-| edit clock | 2³² writes over a world's whole life | at ~100 columns per destructive event that is tens of millions of events; exhaustion needs a renumber pass, not a format change |
+| edit clock | `u64` | not a bound anyone reaches; `u32` was rejected because a wrapped clock reports a stale cache VALID — a silent wrong answer (`G0`) |
+| world extent | `cx, cz` signed 32-bit | `CW_EXTENT`; ±68 billion hexes per axis, checked anyway |
 | window span | 65535 height units per **chunk** | `CW_WINDOW` — refuse, never truncate |
 | height | `u16` above the world floor, unsigned | there is no below; layer 0 is the bottom |
 | chunk extent | 32 × 32 = 8 KB | fixed; two pages |
