@@ -119,6 +119,57 @@ own: **this plan owns how a thing attaches to geometry, never the payload.** A t
 is dense voxels because every hex has a height; a dressing layer is sparse records because
 almost none has a lamp, and the world model needs to know only that the two differ.
 
+### Layer identity — global ID, local allocation
+
+*(user, 2026-07-26: "So there is not identification of layers between chunks, only a
+corresponding hex, can we make that model work?")*
+
+**Identity between chunks cannot be dropped, and the reason is the fold check.** A fold is
+*layer 3 rising through layer 9* — and that is only an error because the two are ordered
+entities with identity. Take the identity away and a column is just a set of surfaces at
+various heights; one crossing another is not a fault, it is a different set. **Without
+layer identity, folding is not detectable — it is not even definable.** Correspondence by
+hex position alone cannot recover it.
+
+**But the first draft got the identity from the wrong place**, and the question exposes it.
+Using the layer *index* as the identity welds two things together that should be separate:
+
+- **identity** — which floor this is, so the same floor in two tiles is the same floor;
+- **allocation** — which slot it occupies in a chunk, capped at 64 by the mask.
+
+Welded, the cap becomes **world-wide**: 64 layers for the whole world, so a tower region and
+a megadungeon region compete for one budget, and the surface index doubles as the maximum
+dungeon depth (the A3 trap). Worse, with per-chunk base heights, "layer 20" in two distant
+tiles could sit at wildly different absolute heights and still claim to be one floor.
+
+**So separate them.**
+
+```
+header:  an ORDERED list of layer definitions — id → { kind, … }
+         order in this list IS stack order, so "below" is well-defined globally
+         id is u16: up to 65 536 layers may be DEFINED
+
+chunk:   a small LAYER TABLE — the ids this tile actually holds, ≤ 64, in stack order
+         slot = position in the table
+```
+
+Identity stays global and explicit; allocation becomes local. What this buys:
+
+- **The 64 is per chunk, not per world.** A mountain tile holds ids 300–340, a dungeon tile
+  holds 10–50, and neither pays for the other's.
+- **A3 dissolves.** A world may define two hundred layers below its surface; a tile
+  materialises only the ones it uses, so depth costs a header list rather than a budget.
+- **Folding stays well-defined**, because the header's order is global.
+- Cost is a 128-byte table per chunk against 8 KB per layer — noise. Slot lookup becomes a
+  scan of ≤64 entries instead of a popcount, which is not a hot path.
+
+⚠ **The new obligation this creates, which the mask did not have.** If two adjacent chunks
+both hold layer id 137, that id is a *claim that they are the same floor* — and nothing so
+far forces them to be spatially continuous. An id shared by two surfaces a hundred units
+apart is a lie the format tells the renderer and the collider. This needs a stated rule and
+a gate; the honest first rule is that **a shared id must be continuous across the seam
+within headroom**, refused at the write like a fold.
+
 ### Why terrain layers stay dense — sparsity lives on the chunk axis
 
 *(user, 2026-07-26: "We will have many layers not on ground level, those will be sparse but
@@ -220,10 +271,10 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 ## 4. The file
 
 ```
-[header     ] magic, version, chunk_w, layer_cap, headroom, layer_kinds[64],
+[header     ] magic, version, chunk_w, headroom, layer_defs[] (ordered: id → kind),
               palette_off, dir_off, dir_len
 [palette    ] OPAQUE to the library — the consumer's bytes (§6)
-[chunk dir  ] sorted (cx, cz) → { base_height, used_mask: u64, data_off }
+[chunk dir  ] sorted (cx, cz) → { base_height, layer_table[≤64] of u16 id, data_off }
 [chunk data ] per chunk, only used layers in mask order:
               8 KB each: 1024 × StoredHex, row-major, CRC32 trailer
 ```
@@ -271,7 +322,8 @@ anything is built.
 | edge | limit | at the limit |
 |---|---|---|
 | palette table | 256 entries | `add` returns −1; no index could name a 257th |
-| layer index | 64 per chunk | `CW_LAYER_CAP` |
+| layers per chunk | 64 | `CW_LAYER_CAP` |
+| layers per world | 65 536 defined | the id is `u16`; a tile holds ≤ 64 of them |
 | window span | 65535 height units per **chunk** | `CW_WINDOW` — refuse, never truncate |
 | height | `u16` above the world floor, unsigned | there is no below; layer 0 is the bottom |
 | chunk extent | 32 × 32 = 8 KB | fixed; two pages |
@@ -295,7 +347,8 @@ bound. **Round-tripping cannot catch this** — it needs the size checks (P4–P
 |---|---|
 | chunk ↔ chunk | comparisons happen in **absolute** space; neither side has a window by then |
 | layer ↔ layer above | non-folding with headroom, consecutive occupied **terrain** layers only; dressing is transparent |
-| layer kind ↔ chunk | kind is **world-global**, in the header — a per-chunk kind would make the fold check incoherent across a seam |
+| layer id ↔ layer id | a shared id **claims two tiles hold the same floor**; it must be continuous across the seam or the id is a lie |
+| layer kind ↔ chunk | kind belongs to the id in the header, never to the chunk |
 | dressing ↔ collision | dressing layers never reach `hex_edge`. A prop that blocks is not dressing |
 | memory ↔ disk | one addition (read), one subtraction (write); `Column` has no base field to leak |
 | world ↔ field | conversion is explicit, at the consumer, and lossy in known ways |
@@ -395,6 +448,7 @@ wrong reason; every one was caught by a control, none by reading.
 | P14 | the ceiling holds | port the crystal; decay runs from a side table, voxel unchanged | a field added to the cell → `L13` is not a rule |
 | P15 | **dressing never blocks** | walk through a hex whose dressing layer is full | the same asset in a terrain layer → blocked |
 | P16 | dressing is fold-transparent | terrain at 3 and 9 with dressing at 6 → fold checks 3 against 9 | remove the dressing → same verdict |
+| P20 | **a shared layer id is continuous** | a floor crossing a chunk boundary reads the same id and a continuous height from both sides | give the neighbour a different id → the seam is a step, not a lie |
 | P18 | **terrain is bit-identical with and without dressing** | crawler's bridge gate, adopted verbatim: build the terrain field, add props, rebuild | change a prop's asset → terrain still bit-identical |
 
 P2 and P10 are the two most easily skipped and the two that catch what nothing else can: a
@@ -408,9 +462,9 @@ Inferences, not answers. Each is cheap now and expensive once files exist.
 
 | # | assumption | why | cost if wrong |
 |---|---|---|---|
-| A1 | **64 layers per chunk** | a `u64` mask makes presence and slot one word. ⚠ **Sharpened, not settled:** "many layers not on ground level" plus towers above means the 64 is a real budget, not slack — a 30-level megadungeon under a 30-storey tower is 61 of it | mask becomes a small directory; nothing else moves |
+| A1 | **64 layers per chunk**, 65 536 per world | resolved above: the cap is per tile, so regions no longer compete. 64 in one 32×32 tile is a tower and its cellars | widen the table; the id space already has room |
 | A2 | **headroom = one storey's clearance** | a cave you cannot stand in is legal and useless | a header constant; re-audit existing worlds |
-| A3 | **the editor's surface starts at layer 8** | layer 0 is the bottom, so a surface at 0 can never be dug under. ⚠ **This is now the load-bearing one:** the surface index IS the maximum dungeon depth, so 8 allows only eight levels beneath | a starting offset while no files exist; a migration once they do |
+| ~~A3~~ | ~~the surface starts at layer 8~~ | **DISSOLVED** by global ids: the world defines as many sub-surface layers as it likes and a tile materialises only what it uses | — |
 | A4 | **window stays `u16`** | inherited from the voxel, not chosen. A per-chunk base is exactly what would let it shrink to `u8` (7-byte voxel) | two constants; the routine is unchanged |
 | A5 | breaking the crystal is acceptable churn | it is a demo, not an end product | coordination with the sibling tree |
 
