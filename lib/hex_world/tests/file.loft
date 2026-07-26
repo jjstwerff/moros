@@ -21,7 +21,7 @@ fn test_p1_a_world_round_trips_with_its_palette() {
   w = built();
   pal = [11, 22, 33, 250];
   p = "hexworld_rt.bin";
-  world_save(w, p, pal);
+  assert(world_save(w, p, pal) == WS_OK, "save refused");
   ld = world_load(p);
   assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
 
@@ -80,6 +80,16 @@ fn test_c1_is_rechecked_on_open() {
   assert(ld.wl_code == WL_CONSTANTS,
          "a world with eps <= 2*theta opened; B1 then fails silently and the symptom "
          + "is intermittently wrong geometry at chunk borders. Got {ld.wl_code}");
+  delete(p);
+}
+
+// A palette entry that is not a byte is refused rather than masked: handing back a
+// different palette than the one given is `ML_LABEL_TOO_WIDE` at another seam.
+fn test_a_palette_that_is_not_bytes_is_refused() {
+  w = built();
+  p = "hexworld_pal.bin";
+  assert(world_save(w, p, [1, 300]) == WS_PALETTE, "a 300 was accepted as a byte");
+  assert(world_save(w, p, [1, 255]) == WS_OK, "an in-range palette must be accepted");
   delete(p);
 }
 

@@ -359,6 +359,14 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     if any { live += [ly]; }
   }
   w.w_chunks[ci].ck_layers = live;
+  // `E1` clause 2 — a chunk whose last layer emptied leaves the directory
+  // entirely. Elision is maintained ON WRITE, so the file never carries an empty
+  // chunk waiting for a sweep that does not exist.
+  if len(live) == 0 {
+    keep: vector<Chunk> = [];
+    for k in w.w_chunks { if len(k.ck_layers) > 0 { keep += [k]; } }
+    w.w_chunks = keep;
+  }
   ok_write()
 }
 
@@ -375,6 +383,14 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
 //             is the consumer's, and a substrate that knows is not one).
 //   [chunks ] count, then per chunk: cx, cz, base, layer count,
 //             then per layer: id, kind, cells, CRC32
+// The format's EXACT sizes. Gates assert against these rather than against
+// whatever the writer happens to produce, so a padding regression is a failure
+// rather than a new baseline.
+pub const SZ_HEADER = 40;                     // 9 i32 + the chunk count
+pub const SZ_CHUNK  = 16;                     // cx, cz, base, layer count
+pub const SZ_CELL   = 8;                      // u16 + 6 * u8 — the voxel, exactly
+pub const SZ_LAYER  = 8201;                   // id i32 + kind u8 + 1024*8 + crc i32
+
 pub const WORLD_MAGIC   = 1213486167;   // 'HXW7'
 pub const WORLD_VERSION = 1;
 
@@ -426,7 +442,18 @@ fn layer_crc(ly: Layer) -> integer {
   (acc ^ U32_MASK) & U32_MASK
 }
 
-pub fn world_save(w: World, path: text, palette: vector<integer>) {
+pub const WS_OK      = 0;
+pub const WS_PALETTE = 1;   // a palette entry is not a byte
+
+// Returns a code because a save that cannot represent what it was handed must say
+// so. The palette is the CONSUMER's bytes and the library never interprets them —
+// but it does have to fit them in a byte, and silently masking a 300 would hand
+// back a different palette than the one given, which is the `ML_LABEL_TOO_WIDE`
+// lesson at a different seam.
+pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
+  for b in palette {
+    if b < 0 || b > 255 { return WS_PALETTE; }
+  }
   // ⚠ A save REPLACES; it does not append. `f += …` on an existing file appends,
   // so without this an ordinary second save produced a file containing two worlds
   // back to back — the first one read back fine and the rest was silently
@@ -443,7 +470,7 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) {
   f += (w.w_theta as i32);
   f += (w.w_next_id as i32);
   f += (len(palette) as i32);
-  for b in palette { f += (b as i32); }
+  for b in palette { f += (b as u8? ?? 0); }   // range already refused above
   f += (len(w.w_chunks) as i32);
   for ch in w.w_chunks {
     f += (ch.ck_cx as i32);
@@ -452,19 +479,24 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) {
     f += (len(ch.ck_layers) as i32);
     for ly in ch.ck_layers {
       f += (ly.ly_id as i32);
-      f += (ly.ly_kind as i32);
+      f += (ly.ly_kind as u8? ?? 0);          // KIND_TERRAIN | KIND_DRESSING
+      // ⚠ At their REAL widths. Writing each field as i32 padded the eight-byte
+      // voxel to twenty-eight on disk — a 3.5x bloat in the one structure the
+      // whole design exists to keep small, and invisible to a round-trip test
+      // because it read back perfectly. A layer is 1024 * 8 = 8192 bytes exactly.
       for c in ly.ly_cells {
-        f += (c.sv_height as i32);
-        f += (c.sv_material as i32);
-        f += (c.sv_item as i32);
-        f += (c.sv_item_rotation as i32);
-        f += (c.sv_wall_n as i32);
-        f += (c.sv_wall_ne as i32);
-        f += (c.sv_wall_se as i32);
+        f += (c.sv_height as u16);
+        f += (c.sv_material as u8);
+        f += (c.sv_item as u8);
+        f += (c.sv_item_rotation as u8);
+        f += (c.sv_wall_n as u8);
+        f += (c.sv_wall_ne as u8);
+        f += (c.sv_wall_se as u8);
       }
       f += (layer_crc(ly) as i32);
     }
   }
+  WS_OK
 }
 
 pub fn world_load(path: text) -> WorldLoad {
@@ -496,7 +528,7 @@ pub fn world_load(path: text) -> WorldLoad {
   }
   pal: vector<integer> = [];
   pn = f#read as i32;
-  for _pi in 0..pn { pal += [f#read as i32]; }
+  for _pi in 0..pn { pal += [f#read as u8]; }
 
   w = World { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
               w_theta: th, w_next_id: nid };
@@ -505,7 +537,7 @@ pub fn world_load(path: text) -> WorldLoad {
     cx = f#read as i32; cz = f#read as i32; cb = f#read as i32; nl = f#read as i32;
     lays: vector<Layer> = [];
     for _li in 0..nl {
-      lid = f#read as i32; lk = f#read as i32;
+      lid = f#read as i32; lk = f#read as u8;
       // ⚠ TWO SEQUENCING HAZARDS, both found by a round-trip that lost a layer.
       //
       // 1. NESTED LOOPS MUST NOT SHARE A COUNTER NAME. This reader has three
@@ -522,13 +554,13 @@ pub fn world_load(path: text) -> WorldLoad {
       // the format's correctness depends on it.
       cells: vector<StoredHex> = [];
       for _xi in 0..CHUNK_CELLS {
-        rh = f#read as i32;
-        rm = f#read as i32;
-        ri = f#read as i32;
-        rr = f#read as i32;
-        rn = f#read as i32;
-        re = f#read as i32;
-        rs = f#read as i32;
+        rh = f#read as u16;
+        rm = f#read as u8;
+        ri = f#read as u8;
+        rr = f#read as u8;
+        rn = f#read as u8;
+        re = f#read as u8;
+        rs = f#read as u8;
         cells += [StoredHex { sv_height: rh as u16? ?? 0, sv_material: rm as u8? ?? 0,
                               sv_item: ri as u8? ?? 0, sv_item_rotation: rr as u8? ?? 0,
                               sv_wall_n: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
