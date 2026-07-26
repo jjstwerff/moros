@@ -241,7 +241,7 @@ Every bound in §4 is audited against `G0`:
 ## 4. Invariants
 
 A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
-**M1**, **M2** and **X4** is *well-formed*. The routine must
+**M1**, **M2**, **X4** and **Q1** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### Group 1 — geometry
@@ -423,6 +423,25 @@ which **F1** forbids. Refusing a physical event is the wrong answer. The right o
 **a collapse removes a layer rather than moving it**: the floor ceases to exist and its
 rubble becomes the surface below. Whether every destructive case can be expressed that way
 is open, and is the first thing to test when a destruction path is built.
+
+### Q1 — One surface, queried once
+
+> The height of the ground at a world position is given by **one** derivation. Whatever
+> reads it — the mesh that is drawn, the feet that stand on it, a camera avoiding it, a
+> collider — reads that same function, never a reimplementation of it.
+
+This looks like tidiness and is not. A consumer that avoids the ground using its *own*
+notion of where the ground is has a guarantee about a surface **that is not the one on
+screen**: its logic can be perfectly correct and the result still wrong, and the failure
+appears as the consumer's bug rather than as the disagreement it is.
+
+The world therefore exposes the query, and the two derived quantities that go with it — the
+gradient (for anything needing a perpendicular distance rather than a vertical one) and the
+blocking predicate (`§7`, supplied by the consumer, since what *counts* as blocking is
+payload).
+
+**Q1 is what makes a camera contract possible at all**: without it, no consumer can promise
+anything about its relationship to the surface.
 
 ### D1 — Dressing is inert
 

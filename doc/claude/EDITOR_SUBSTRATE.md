@@ -801,6 +801,72 @@ audit above puts `WallDef`'s contents firmly on the consumer's side. So the seam
 owning the query and the traversal and the consumer owning the answer. The same shape as the
 opaque palette in the world contract, and for the same reason.
 
+### The `view` group's camera contract
+
+Formal, because the failure it prevents is an accessibility one rather than a cosmetic one:
+a camera inside geometry fills the entire screen, and for players sensitive to that it makes
+a game unplayable rather than untidy. Written in the same shape as the world contract, and
+resting on its **Q1** — a camera can only promise something about the surface if there is
+one surface to promise about.
+
+**Notation.** `p` the pivot; `ψ` requested pitch; `ψ̂` rendered pitch; `b` boom length;
+`B` its resting length; `E` the eye; `S(x,z)` the surface (**Q1**); `∇S` its gradient;
+`c` the required perpendicular clearance; `L` the lookahead; `ω` the measured yaw rate.
+
+| # | rule | |
+|---|---|---|
+| **CAM1** | **The eye is never inside.** `E.y ≥ S(E) + c·√(1+‖∇S‖²)` — always, unconditionally | the guarantee |
+| **CAM2** | **The angle never snaps.** `\|dψ̂/dt\| ≤ RATE` and `0 ≤ ψ̂ − ψ ≤ GIVE` | |
+| **CAM3** | **Rest is the player's intent.** With no obstruction, `ψ̂ → ψ` and `b → B` | |
+| **CAM4** | **The constraint is the worst over the arc about to be occupied**, sampled over `[−ARC, ARC] ∪ [0, ω·L]` | prediction |
+| **CAM5** | **Only terrain and volumes block.** Thin and non-colliding things are ignored (§ occlusion class) | |
+
+⚠ **CAM1 is unconditional and therefore never smoothed.** Every other rule may lag; this one
+may not, because a smoothed guarantee is not a guarantee. It is the backstop, and it is
+instant by design.
+
+#### The timeliness theorem — when the smoothing is free
+
+The tension is that **CAM1** wants instant correction and **CAM2/CAM3** want none. The
+prediction resolves it, and the condition is checkable rather than a matter of taste.
+
+> **Claim.** Let the boom approach its target by a fraction `k` of the gap per second, let
+> `R` be the largest correction the terrain demands (`B − b_min`), and let `ε` be the
+> tolerance. If
+> ```
+>     ln(R/ε) / k  ≤  L
+> ```
+> then the boom reaches its constraint before the constraint arrives, and **CAM1**'s backstop
+> never fires.
+
+*Sketch.* Under exponential approach the residual gap after `t` is `R·e^{−kt}`; it falls
+below `ε` at `t = ln(R/ε)/k`. **CAM4** supplies the constraint `L` seconds early, so the
+correction is complete on arrival whenever that time fits inside `L`. ∎
+
+Currently `R ≈ 4.4`, `ε = 0.1`, `k = 12`, `L = 0.55`: `ln(44)/12 ≈ 0.31 ≤ 0.55`. It holds
+with roughly 1.8× margin, **and that margin is the thing to watch** — raising `B`, steepening
+terrain, or lowering `k` for a softer feel all eat it, and the symptom of eating it all is
+the backstop firing, which is visible as exactly the snap the smoothing was meant to remove.
+
+**Where the theorem does not reach**, stated so it is not mistaken for a proof of safety:
+it assumes `ω` predicts the next `L` seconds. An abrupt reversal points the lookahead the
+wrong way, and only the fixed `±ARC` term covers that — which is why **CAM4** carries a
+constant arc as well as a predicted one, and why **CAM1** exists at all.
+
+#### Gates
+
+| rule | gate | control |
+|---|---|---|
+| **CAM1** | orbit a full turn beside a steep cone → eye above the surface at every yaw | ⚠ measure against the **nearest** drawn vertex; a max-within-radius estimator reads uphill and reports failures that are its own |
+| **CAM2** | drag hard → per-tick `Δψ̂` never exceeds `RATE·dt` | — |
+| **CAM3** | walk clear of everything → `ψ̂ = ψ` and `b = B` within a second | — |
+| **CAM4** | approach an obstruction at speed → the boom is already short on arrival | disable the lookahead → the backstop fires |
+| **CAM5** | put a fence between eye and character → the camera does not move | swap it for a solid wall → it does |
+
+⚠ The **CAM1** control is not incidental. An earlier measurement of exactly this reported
+14 of 24 yaws failing; the camera was correct and the estimator was reading the highest
+vertex within 0.9 wu, which on a 3:1 slope overstates the ground by metres.
+
 ### The extraction bar, per group
 
 A group leaves this tree when **all four** hold. Three of them are cheap to check continuously;
