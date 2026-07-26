@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-22)
+# STATE.md — where the editor work stands (2026-07-26)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -9,6 +9,37 @@ between them: read it first after a break.
 > product. loft's `GOALS.md` names the editor as one of four layers; crawler, bumper
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
+
+## Since 2026-07-25 — the world model, designed and specified
+
+Two things happened that reshape the rest of this file.
+
+**The compact voxel landed.** `Hex` is now `u16` height + six `u8` palette indexes — **8
+bytes against 56**. Narrowing it produced 31 compile errors, which was the defect `STATE`
+already recorded ("the documented byte widths are not enforced anywhere") finally surfacing.
+Public parameters narrowed at the boundary, checked casts inside, and three sites had to
+decide what out-of-range *means*: the brushes clamp, `map_read_field` refuses with
+`ML_LABEL_TOO_WIDE`, the stencil record mirrors the voxel. The palette became real at the
+same time — `map_empty` seeds slot 0 as absence, and `moros_render`'s `palette[i-1]`
+off-by-one (a second, hidden encoding of the same rule) is gone.
+
+**The world model is fully specified and not yet built.** It has its own plan
+([#8](https://github.com/jjstwerff/moros/issues/8)) and its own normative contract in
+**[WORLD_MODEL.md Part II](WORLD_MODEL.md)** — twelve invariants with proofs, a gate and a
+named control apiece. What it settles: chunk-local layer stacks, per-chunk windowed heights,
+continuity matched by height rather than name, an edit clock for caching, many authors
+merging onto one writer, and online compaction that leaves caches valid.
+
+**The editor split into a plan per rung**, because it was far too big for one:
+[#9](https://github.com/jjstwerff/moros/issues/9) roads · [#10](https://github.com/jjstwerff/moros/issues/10) fences ·
+[#11](https://github.com/jjstwerff/moros/issues/11) fields · [#12](https://github.com/jjstwerff/moros/issues/12) houses ·
+[#13](https://github.com/jjstwerff/moros/issues/13) trees · [#14](https://github.com/jjstwerff/moros/issues/14) props and vehicles ·
+[#15](https://github.com/jjstwerff/moros/issues/15) routines. The map is
+**[EDITOR_LADDER.md](EDITOR_LADDER.md)**.
+
+⚠ **Nothing of the world model is implemented.** `src/editor_server.loft` still stores peaks
+and sums them at query time; V0 (the write chokepoint) has not started. The contract is what
+the code will be built *against*, not a description of it.
 
 ## What exists
 
@@ -21,7 +52,7 @@ recovered from loft's history at `ade530c2^`, where they had sat unmoved since J
 | `moros_editor` | 56 |
 | `moros_render` | 163 |
 | `moros_sim` | 148 |
-| `moros_ui` | 46 |
+| `moros_ui` | 46 — **currently red**: no `loft.lock`, transitive `glb` unresolved |
 
 **489 green, and zero warnings from Moros sources.** `make lib-test` runs them all and was
 proven to go red (a gate nobody has seen fail is not a gate) — most recently for real, twice
@@ -83,6 +114,20 @@ named integer layers, and two committed fixtures both consumers read.
    content is what makes this class visible — which is the real argument for `house_door`.
 
 ## Open work
+
+**#8 — the world model** (`status:active`). Specified, unbuilt. V0 is the write chokepoint
+and is gated on **P13**: does `map_get_hex` alias? It returns a vector element, and loft's
+`#338` says `tmp = v[j]` is a view — if so, the `map_set_hex` following every mutation is
+decorative and any caller can write a cell through no function at all. That answer decides
+whether the guard is "add a check" or "stop handing out mutable views".
+
+**Numbers the contract needs and does not have:** `ρ` (floor reserve), `ε` (minimum layer
+separation) and `θ` (match tolerance) for moros's own world, subject to `ε > 2θ`. They are
+per-world declarations, so they can wait for V1 without blocking the format.
+
+**One case the contract cannot express:** a collapse dropping a floor onto the one below
+violates `F1`, and refusing a physical event is wrong. The proposed answer — a collapse
+*removes* a layer rather than moving it — has not been shown to cover a partial collapse.
 
 **#2 — recovery.** `loft.lock` in `moros_render` / `moros_sim` still pins June resolutions.
 `SCENE_EDITOR_PLAN.md` still needs rebasing against what demonstrably exists.
@@ -168,6 +213,26 @@ loft --interpret --path ../loft/ --lib lib/ --lib ../loft-libs-world/ prog.loft
   breaks with nothing changed locally, read the sibling's `git log` before debugging.
 - Both agents have edited the same file at once. **Check `git diff` for someone else's work
   before committing**, and stage-and-commit in one command.
+
+## Three things worth carrying forward from the design work
+
+**A. A mechanism that looks like overhead may be load-bearing for a case you did not
+measure.** Twice a "simplification" was recommended and withdrawn — the per-chunk window, and
+`base_height` before it. Both times the tell was identical: the mechanism had been measured
+against **one** use case. The window survives because it decouples resolution from extent,
+which is the only reason one model can serve a dungeon at centimetres and a planet at metres.
+
+**B. Two claims about seams were about nothing of the sort.** Layer kind, then layer identity,
+were each argued to need world-global scope "or the fold check is incoherent across a seam".
+The fold check reads one column, a column lies inside one chunk, and so it never crosses a
+seam at all. A sentence that mentions a seam is not a seam argument — ask instead whether the
+operation ever reads two chunks.
+
+**C. A sibling had already solved it, better.** `crawler/PROPS.md` refuted the dressing-layer
+design on three axes at once: a level is a *sheet, not a slot*; terrain is dense while
+dressing is sparse; and placement is mostly *derived* rather than authored. The uniform-cell
+version felt like one mechanism serving two cases — and that feeling was the tell that it was
+serving one and disfiguring the other.
 
 ## Three things worth carrying forward
 
