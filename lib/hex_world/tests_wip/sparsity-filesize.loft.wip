@@ -1,0 +1,158 @@
+// Row 2 gates — sparsity. P4, P5, P6, P12 of the contract.
+//
+// ⚠ These are the gates a round-trip CANNOT replace, which is why they exist.
+// Elision is the property that absence has ONE representation (`E1`): a missing
+// chunk, a missing layer and an all-zero one read identically. When that breaks,
+// every read still returns the right value and the file merely grows without
+// bound — correct answers, unbounded cost. Only size catches it.
+//
+// Sizes are asserted EXACTLY against the format's own constants, never within a
+// tolerance: a tolerance lets a padding regression become the new baseline, where
+// an exact figure makes it a failure. `size(v)` gives the in-memory truth and the
+// file gives the on-disk one; both are checked, because the defect this row fixed
+// was precisely those two disagreeing — 8 bytes in memory, 28 on disk.
+//
+// ⚠ THE SAVE-AND-MEASURE IS INLINED IN EVERY TEST, deliberately and at the cost of
+// repetition. Factoring it into a helper that takes a path made the whole suite
+// HANG rather than fail: no parameterised helper anywhere in this tree does file
+// I/O, and the harness appears to invoke top-level functions itself, so one taking
+// `p: text` is called without a path and blocks. Repetition is the cheaper bug.
+use hex_world;
+
+fn sp_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+
+fn sp_cell(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+
+// The format as arithmetic. If this and the writer ever disagree, one is wrong.
+fn sp_want(chunks: integer, layers: integer) -> integer {
+  SZ_HEADER + chunks * SZ_CHUNK + layers * SZ_LAYER
+}
+
+// ── P6 — the voxel is eight bytes, in memory AND on disk ────────────────────
+
+fn test_p6_the_voxel_is_eight_bytes_in_memory() {
+  assert(size(StoredHex {}) == SZ_CELL, "stored voxel is {size(StoredHex {})}, want {SZ_CELL}");
+  assert(size(Hex {}) == SZ_CELL, "memory voxel is {size(Hex {})}, want {SZ_CELL}");
+  cells: vector<StoredHex> = [for i in 0..CHUNK_CELLS { StoredHex {} }];
+  assert(size(cells) == CHUNK_CELLS * SZ_CELL,
+         "a layer's cells are {size(cells)} bytes, want {CHUNK_CELLS * SZ_CELL}");
+  assert(SZ_LAYER == 4 + 1 + CHUNK_CELLS * SZ_CELL + 4, "SZ_LAYER is {SZ_LAYER}");
+}
+
+fn test_p6_a_layer_is_exactly_eight_kilobytes_on_disk() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  p = "sp_p6.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p));
+  delete(p);
+  assert(got == sp_want(1, 1), "one chunk of one layer is {got} on disk, want {sp_want(1, 1)}");
+}
+
+// ── P4 — an unauthored world costs a header ─────────────────────────────────
+
+fn test_p4_an_empty_world_is_only_a_header() {
+  p = "sp_p4a.bin";
+  assert(world_save(sp_world(), p, []) == WS_OK, "save");
+  got = len(read_bytes(p));
+  delete(p);
+  assert(got == sp_want(0, 0), "an empty world costs {got}, want {sp_want(0, 0)}");
+}
+
+fn test_p4_one_hex_makes_exactly_one_chunk_of_one_layer() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 40, co_r: 40,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  p = "sp_p4b.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p));
+  delete(p);
+  assert(got == sp_want(1, 1),
+         "one hex costs {got}, want {sp_want(1, 1)} — not zero, and not a whole tile");
+}
+
+// ── P5 — elision is symmetric and maintained on write ──────────────────────
+
+fn test_p5_emptying_a_layer_removes_it_and_leaves_reads_alone() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1020, 2)] }).cw_code == CW_OK, "two layers");
+  p = "sp_p5a.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  before = len(read_bytes(p));
+  delete(p);
+  assert(before == sp_want(1, 2), "setup: {before} want {sp_want(1, 2)}");
+
+  // material 0 is absence, so this clears the upper layer's only occupied cell
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1020, 0)] }).cw_code == CW_OK, "clear upper");
+  assert(world_save(w, p, []) == WS_OK, "save 2");
+  after = len(read_bytes(p));
+  delete(p);
+  assert(after == sp_want(1, 1),
+         "an emptied layer must leave the file: {before} -> {after}, want {sp_want(1, 1)}");
+
+  // and elision must be INVISIBLE to what remains
+  col = world_column(w, 0, 0);
+  assert(len(col.co_cells) == 1, "one layer should remain, got {len(col.co_cells)}");
+  assert(col.co_cells[0].h_height == 1000, "the surviving layer changed");
+}
+
+fn test_p5_emptying_the_last_layer_removes_the_chunk() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "one layer");
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 0)] }).cw_code == CW_OK, "clear it");
+  p = "sp_p5b.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p));
+  delete(p);
+  assert(got == sp_want(0, 0),
+         "a chunk whose last layer emptied must leave the directory: {got} want {sp_want(0, 0)}");
+  // CONTROL: reading it back is legal and empty, not a refusal
+  assert(len(world_column(w, 0, 0).co_cells) == 0, "the cleared column must read empty");
+}
+
+// ── P12 — an unused layer costs nothing, not a reserved slot ────────────────
+
+fn test_p12_unused_layers_are_not_stored() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "one");
+  p = "sp_p12.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  one = len(read_bytes(p));
+  delete(p);
+  assert(one == sp_want(1, 1),
+         "one live layer of {LAYER_CAP} costs {one}, want {sp_want(1, 1)}");
+  // CONTROL: a second live layer costs exactly one more, so the assertion above
+  // measures layers rather than a fixed per-chunk size.
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1020, 2)] }).cw_code == CW_OK, "two");
+  assert(world_save(w, p, []) == WS_OK, "save 2");
+  two = len(read_bytes(p));
+  delete(p);
+  assert(two - one == SZ_LAYER, "a second layer costs {two - one}, want {SZ_LAYER}");
+}
+
+// ── the file tracks LIVE data, not the history of writes ───────────────────
+
+fn test_size_tracks_live_data_not_write_history() {
+  w = sp_world();
+  for i in 0..8 {
+    assert(world_set_column(w, Column { co_q: 3, co_r: 3,
+           co_cells: [sp_cell(1000 + i * 10, 1)] }).cw_code == CW_OK, "write {i}");
+    assert(world_set_column(w, Column { co_q: 3, co_r: 3,
+           co_cells: [sp_cell(1000 + i * 10, 0)] }).cw_code == CW_OK, "clear {i}");
+  }
+  p = "sp_hist.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p));
+  delete(p);
+  assert(got == sp_want(0, 0),
+         "sixteen writes leaving nothing live cost {got}, want {sp_want(0, 0)}");
+}

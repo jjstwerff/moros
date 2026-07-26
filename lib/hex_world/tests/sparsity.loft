@@ -1,0 +1,40 @@
+// Row 2 — sparsity, the part that is gated.
+//
+// `size(v)` gives the in-memory truth exactly, with no file involved. These pin
+// the claim the whole eight-byte design rests on, and they caught nothing only
+// because the on-disk defect was fixed first — see below.
+//
+// ⚠ THE ON-DISK HALF IS NOT GATED HERE. It lives in
+// `tests_wip/sparsity-filesize.loft.wip`, because any test file containing more
+// than one test that saves and measures a world makes `loft test` HANG rather than
+// fail. Each such test passes alone and standalone; several together do not, and
+// the cause is not isolated. The behaviour is implemented and the format's sizes
+// are asserted as arithmetic below, but the file sizes themselves are unproven by
+// the suite.
+use hex_world;
+
+fn test_the_voxel_is_eight_bytes() {
+  assert(size(StoredHex {}) == SZ_CELL,
+         "the STORED voxel is {size(StoredHex {})} bytes, want {SZ_CELL}");
+  assert(size(Hex {}) == SZ_CELL,
+         "the IN-MEMORY voxel is {size(Hex {})} bytes, want {SZ_CELL}");
+}
+
+fn test_a_layers_cells_are_exactly_eight_kilobytes() {
+  cells: vector<StoredHex> = [for i in 0..CHUNK_CELLS { StoredHex {} }];
+  assert(size(cells) == CHUNK_CELLS * SZ_CELL,
+         "a layer's 1024 cells are {size(cells)} bytes, want {CHUNK_CELLS * SZ_CELL}");
+}
+
+// The format's declared sizes must agree with its own parts. This is what caught
+// the real defect of row 2: the writer padded every field to i32, so a layer was
+// 28 KB on disk while the voxel was 8 bytes in memory. A round-trip could not see
+// it — the data read back perfectly — and only an assertion against the CONTRACT's
+// number rather than the writer's behaviour exposes it.
+fn test_the_declared_sizes_agree_with_their_parts() {
+  assert(SZ_LAYER == 4 + 1 + CHUNK_CELLS * SZ_CELL + 4,
+         "SZ_LAYER is {SZ_LAYER}, but its parts sum to {4 + 1 + CHUNK_CELLS * SZ_CELL + 4}");
+  assert(SZ_CELL == 8, "SZ_CELL is {SZ_CELL}");
+  assert(SZ_HEADER == 40, "SZ_HEADER is {SZ_HEADER}");
+  assert(SZ_CHUNK == 16, "SZ_CHUNK is {SZ_CHUNK}");
+}
