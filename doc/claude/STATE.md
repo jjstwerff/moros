@@ -37,6 +37,18 @@ merging onto one writer, and online compaction that leaves caches valid.
 [#15](https://github.com/jjstwerff/moros/issues/15) routines. The map is
 **[EDITOR_LADDER.md](EDITOR_LADDER.md)**.
 
+**The ownership audit ran** over every public name in `lib/moros_*`
+([EDITOR_SUBSTRATE](EDITOR_SUBSTRATE.md)). The great majority is general editor logic, and
+the target shape is **five groups** — `world`, `edit`, `view`, `ui`, `actor` — none of which
+is extracted, because extraction waits for battle-testing. The current packages cut *across*
+those groups (`moros_sim` alone holds four), which is what makes regrouping the first step
+rather than a later tidy-up.
+
+⚠ **The audit found game state inside the voxel.** `hex_spawn_flag` / `hex_waypoint_flag`
+read bits 5 and 6 of `h_item_rotation` — a spawn point is `L15` game state and is explicitly
+excluded from the world file, yet two bits of the storage of record hold it. Belongs to #8's
+V1, and is cheaper to fix before worlds exist.
+
 ⚠ **Nothing of the world model is implemented.** `src/editor_server.loft` still stores peaks
 and sums them at query time; V0 (the write chokepoint) has not started. The contract is what
 the code will be built *against*, not a description of it.

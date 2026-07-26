@@ -31,7 +31,17 @@ duplication seam rule 5 forbids.
 | 9 | the wall/EdgeSet bridge *(not yet written)* | moros's three wall bytes per cell → an `EdgeSet`, **halo included** | three of six directions store the edge against the *neighbour*, so a loop over occupied cells drops every rim wall — the measured 17-stamped-as-8 bug | **`moros_map`**, then converge with `hex_field`'s `doc_write_edges` |
 | 10 | the mesh wire (`mesh_wire`, `mat_wire`) | mesh + matrices as text frames | any server/client renderer split needs it, and text is already the suspected bottleneck — a binary form belongs in a shared place, written once | a scene/protocol library |
 | 11 | ~~`world_save` / `world_load`~~ | ~~the authored set to and from a file~~ | **WITHDRAWN — the premise was wrong.** It saved *peaks*; `L13` makes the **voxel** the storage of record, and voxel chunks are precisely what `hex_field`'s `doc_write_all`/`doc_read` already carry. So there is nothing to migrate: the local format is deleted, not promoted | **`hex_field`, by deletion** |
-| 12 | the peak **brush** (falloff + blend) | a raise writes heights into cells within a radius, summing with what is there | the brush survives the correction; only the storage changed. Any height-field editor wants a falloff brush that blends rather than replaces | a terrain-editing library, beside #6 |
+| 12 | the peak **brush** (falloff + blend) | a raise writes heights into cells within a radius, summing with what is there | ⚠ **CORRECTED.** "A terrain-editing library beside `hex_terrain`" is exactly the vague split the no-competing-libraries rule forbids — an *authored sibling* to a terrain library is two terrain libraries. The brush is an **edit operation**: it computes heights and calls the routine | **`edit` group**, then `hex_terrain` if a second consumer wants it — never a rival to it |
+
+## ⚠ This file is now subordinate to the grouping
+
+The 2026-07-26 ownership audit and
+[the five target groups](../../doc/claude/EDITOR_SUBSTRATE.md) supersede this list as the
+authority on *where code goes*. A row here answers "why is this local?"; the grouping answers
+"what package is it in?" and the four-clause bar answers "when does it leave?".
+
+Two rows were decided by that work: **row 7** (dirty tracking) is a *convergence with
+`gridmesh`*, not a promotion, and **row 12** is corrected above.
 
 ## The rule that keeps this honest
 

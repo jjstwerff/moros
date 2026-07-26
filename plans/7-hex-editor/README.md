@@ -7,6 +7,30 @@ Architecture: [EDITOR_SUBSTRATE.md](../../doc/claude/EDITOR_SUBSTRATE.md) · UI:
 [SCENE_EDITOR.md](../../doc/claude/SCENE_EDITOR.md) · State:
 [STATE.md](../../doc/claude/STATE.md).
 
+## Scope, after the 2026-07-26 ownership audit
+
+This plan's concrete work is now **the regrouping**, not a fresh design. An audit of every
+public name in `lib/moros_*`
+([EDITOR_SUBSTRATE § The ownership audit](../../doc/claude/EDITOR_SUBSTRATE.md)) found the
+great majority to be general editor logic, and named **five groups** it should be cut into:
+
+| group | this plan's share |
+|---|---|
+| **world** | not here — it is [#8](../8-voxel-world/README.md) |
+| **edit** | undo, redo, batches, tools and dispatch, the editor loop |
+| **view** | camera, input, picking, culling |
+| **ui** | widgets, layout, hit-testing, click routing |
+| **actor** | player, movement, collision resolution, avatar |
+
+**Nothing is extracted to a library here.** Extraction waits for the four-clause bar in
+EDITOR_SUBSTRATE, of which the binding one is *battle-tested through a real rung*. The
+rungs are [#9](https://github.com/jjstwerff/moros/issues/9)–[#15](https://github.com/jjstwerff/moros/issues/15);
+the ladder map is [EDITOR_LADDER.md](../../doc/claude/EDITOR_LADDER.md).
+
+⚠ **The current packages cut across the groups**, which is what blocks everything else:
+`moros_sim` alone holds four of the five. Regrouping is therefore the first step, not a
+tidy-up to do afterwards.
+
 ## 0. The framing *(user, 2026-07-25)*
 
 > 1. *"This editor needs to become a universal editor, thus the library layers, so many games can
