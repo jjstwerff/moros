@@ -81,8 +81,8 @@ tile holding a base height and up to 64 layers, of which only used ones are stor
 
 ### Vertical structure
 
-- A layer is a **heightfield**: one surface per hex. No overhangs, caves or arches *within*
-  a layer. A cave is a layer with the one above absent; a bridge you walk beneath is an
+- A **terrain** layer is a **heightfield**: one surface per hex. No overhangs, caves or
+  arches *within* a layer. (A **dressing** layer is not a heightfield at all — see below.) A cave is a layer with the one above absent; a bridge you walk beneath is an
   item with a collider.
 - Layer indexes are **absolute from the bottom**. Layer 0 is the deepest anything gets —
   seabed, lowest dungeon floor. No negative coordinate exists anywhere in the format.
@@ -90,6 +90,49 @@ tile holding a base height and up to 64 layers, of which only used ones are stor
   `height(lo) + headroom ≤ height(hi)`. An absent layer is a gap, not a constraint.
 - Heights are **windowed**: `u16` measured from the chunk's `ck_base`, decoupling the
   cell's height width from how tall the world is.
+
+### Layer kinds — terrain and dressing
+
+Not every layer is a heightfield. A **dressing layer** places things — set dressing and
+kit-bashed elements, authored with the house machinery or imported as `glb` — and those
+things **never collide**. They are seen, not stood on.
+
+```
+kind 0  TERRAIN   a heightfield; collides; participates in non-folding
+kind 1  DRESSING  placed instances; never collides; transparent to non-folding
+```
+
+**The same eight bytes, reinterpreted.** A dressing layer is still 1024 cells of 8 bytes,
+so chunks, the window, elision and the file are untouched — only the *meaning* of the
+fields changes:
+
+| byte | terrain | dressing |
+|---|---|---|
+| `h_height` u16 | surface height | vertical placement, same window |
+| `h_material` u8 | material index | asset index, high byte |
+| `h_item` u8 | item index | asset index, low byte — 65 536 assets |
+| `h_item_rotation` u8 | rotation + flags | orientation |
+| `h_wall_n/ne/se` u8 ×3 | wall indexes | sub-hex offset x, offset y, scale |
+
+The wall bytes becoming placement offsets is what makes kit-bashing possible at all: a
+piece can sit off-centre in its hex, which is the difference between a kit and a grid of
+stamps. **Nothing in §3 or §4 changes** — the routine, the window, the CRC, the elision all
+operate on bytes and do not read meaning.
+
+**Layer kind is world-global, and that is forced rather than chosen.** If a layer's kind
+varied per chunk, the same index could be terrain in one tile and dressing in the next, and
+the non-folding check would be incoherent across the seam — exactly the class of failure
+§5.4 exists to prevent. So the kinds live in the header: 64 entries, one per layer index,
+for the whole world.
+
+**Two consequences carry weight:**
+
+- **The fold check skips dressing layers entirely.** Non-folding is a statement about
+  surfaces, and a dressing layer has none. It is transparent: terrain at layer 3 and
+  terrain at layer 9 constrain each other whether or not dressing sits between them.
+- **Dressing never reaches the collider.** `hex_edge` reads terrain layers only. A prop
+  that blocks motion is not dressing — it is a wall or an item, and it belongs in a terrain
+  layer where the model already carries it.
 
 ### Addressing — axial throughout
 
@@ -160,7 +203,8 @@ A single-cell edit is not primitive: read the column, change one layer, write it
 ## 4. The file
 
 ```
-[header     ] magic, version, chunk_w, layer_cap, headroom, palette_off, dir_off, dir_len
+[header     ] magic, version, chunk_w, layer_cap, headroom, layer_kinds[64],
+              palette_off, dir_off, dir_len
 [palette    ] OPAQUE to the library — the consumer's bytes (§6)
 [chunk dir  ] sorted (cx, cz) → { base_height, used_mask: u64, data_off }
 [chunk data ] per chunk, only used layers in mask order:
@@ -215,6 +259,8 @@ anything is built.
 | height | `u16` above the world floor, unsigned | there is no below; layer 0 is the bottom |
 | chunk extent | 32 × 32 = 8 KB | fixed; two pages |
 | cell | 8 bytes, 7 integers, **no floats** | gated externally by hexbody's `palette.loft` |
+| dressing assets | 65 536 per world (two bytes) | wider than the 256-entry palettes on purpose — a kit is many parts |
+| props per hex | **one per dressing layer** | stack another dressing layer; unused ones cost a bit |
 
 ### 5.3 Absence edges — the ones that must be indistinguishable
 
@@ -233,7 +279,9 @@ bound. **Round-tripping cannot catch this** — it needs the size checks (P4–P
 | seam | rule |
 |---|---|
 | chunk ↔ chunk | comparisons happen in **absolute** space; neither side has a window by then |
-| layer ↔ layer above | non-folding with headroom, consecutive **occupied** layers only |
+| layer ↔ layer above | non-folding with headroom, consecutive occupied **terrain** layers only; dressing is transparent |
+| layer kind ↔ chunk | kind is **world-global**, in the header — a per-chunk kind would make the fold check incoherent across a seam |
+| dressing ↔ collision | dressing layers never reach `hex_edge`. A prop that blocks is not dressing |
 | memory ↔ disk | one addition (read), one subtraction (write); `Column` has no base field to leak |
 | world ↔ field | conversion is explicit, at the consumer, and lossy in known ways |
 | library ↔ palette | position, count and slot-0 owned by the library; bytes owned by the consumer |
@@ -330,6 +378,9 @@ wrong reason; every one was caught by a control, none by reading.
 | P12 | unused layers cost a bit | one live layer of 64 → ~8 KB, not ~512 KB | dig a second → one more slot |
 | P13 | **does the getter alias?** | mutate `map_get_hex`'s result, never call `map_set_hex`, re-read | decides Guard 3's shape |
 | P14 | the ceiling holds | port the crystal; decay runs from a side table, voxel unchanged | a field added to the cell → `L13` is not a rule |
+| P15 | **dressing never blocks** | walk through a hex whose dressing layer is full | the same asset in a terrain layer → blocked |
+| P16 | dressing is fold-transparent | terrain at 3 and 9 with dressing at 6 → fold checks 3 against 9 | remove the dressing → same verdict |
+| P17 | reinterpretation round-trips | write a dressing cell, reload, offsets and asset id identical | — |
 
 P2 and P10 are the two most easily skipped and the two that catch what nothing else can: a
 second home for landscape, and a window leaking past storage.
@@ -347,6 +398,9 @@ Inferences, not answers. Each is cheap now and expensive once files exist.
 | A3 | **the editor's surface starts at layer 8** | layer 0 is the bottom, so a surface at 0 can never be dug under | a starting offset only |
 | A4 | **window stays `u16`** | inherited from the voxel, not chosen. A per-chunk base is exactly what would let it shrink to `u8` (7-byte voxel) | two constants; the routine is unchanged |
 | A5 | breaking the crystal is acceptable churn | it is a demo, not an end product | coordination with the sibling tree |
+| A6 | **one prop per hex per dressing layer** | keeps the cell uniform and the file unchanged | stack layers, or dressing needs a side table after all |
+| A7 | **256 orientations, one byte** | matches the item rotation terrain already uses | a continuous rotation needs a wider field or a side table |
+| A8 | **sub-hex offset and scale fit three bytes** | the wall bytes are free in a dressing layer | kit-bashing needs finer placement than one byte each affords |
 
 ---
 
