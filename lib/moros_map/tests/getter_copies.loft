@@ -1,0 +1,39 @@
+// Does `map_get_hex` hand back a MUTABLE VIEW of the stored cell, or a copy?
+//
+// This is not curiosity — the answer decides what the write guard has to be
+// (plan 8, Guard 3). loft's writing guide warns that `tmp = v[j]` on a
+// `vector<STRUCT>` is a VIEW of slot j and not a copy (#338), and `map_get_hex`
+// returns `gh_c.ck_hexes[idx]` — a vector element. If that view survived the
+// return, every `cur = map_get_hex(…); cur.h_field = …` in the tree would already
+// have written the map, the trailing `map_set_hex` would be decorative, and ANY
+// caller could mutate a cell through no function at all.
+//
+// MEASURED: it copies. The map is unchanged until `map_set_hex` runs.
+//
+// So the chokepoint is real rather than illusory — and the remaining problem is
+// the opposite one: seven sites each independently REMEMBER to call it, and
+// forgetting is silent (the edit is simply lost). Guard 3 is therefore "route the
+// seven through one column-taking write", not "stop handing out views".
+//
+// ⚠ Pinned as a gate because the design depends on it and it may not be stable:
+// `Hex` became eight bytes of narrow integers in the compact-voxel migration, and
+// a small value may well copy where the old 56-byte record aliased. If loft's
+// semantics move, this fails and Guard 3 has to be rethought — which is exactly
+// the notice we would want.
+use moros_map;
+
+fn test_the_getter_returns_a_copy_not_a_view() {
+  m = map_empty();
+  map_set_height(m, 3, 4, 0, 100);
+
+  cur = map_get_hex(m, 3, 4, 0);
+  cur.h_height = 999;                    // mutate ONLY the returned value
+  // deliberately no map_set_hex
+
+  back = map_get_hex(m, 3, 4, 0);
+  // This assertion is its own control: reading 100 proves the store-and-read path
+  // works, so a pass cannot mean "the cell was never written in the first place".
+  assert(back.h_height == 100,
+         "the getter ALIASES — the map became {back.h_height} with no map_set_hex. "
+         + "Guard 3 must stop handing out mutable views, not merely add a chokepoint");
+}

@@ -661,19 +661,103 @@ fn limb_at(lbody: Mat4, jx: float, jy: float, jz: float, swing: float) -> Mat4 {
   mat4_mul(mat4_mul(lbody, mat4_translate(jx, jy, jz)), mat4_rotate_z(swing))
 }
 
+// ── Camera occlusion: two degrees of freedom, both smoothed ──────────────────
+//
+// A steep hill (and later a wall) can sit between the eye and the character, and
+// the eye ends up inside it — you lose the thing the camera exists to follow.
+//
+// Two ways out, used in order of how little they disturb the frame:
+//
+//   1. LIFT THE PITCH, within a bounded give, to look over the obstruction. The
+//      boom keeps its length, so the framing barely changes.
+//   2. SHORTEN THE BOOM for whatever the lift could not clear.
+//
+// The division of labour between them is the design, not an implementation
+// detail. **Pitch is rate-limited in BOTH directions and can never snap** — an
+// angle that jumps is worse than the occlusion it fixes, because the world
+// appears to move when the player did not move it. **The boom is the fast valve**:
+// it may give way in a single tick, because a shorter boom is a framing change,
+// not an apparent motion of the world.
+//
+// So pitch handles the SUSTAINED case (standing below a ridge) and the boom
+// handles the TRANSIENT (something abruptly between), which is exactly what each
+// is good at. Both return to their defaults gently when the view clears, and the
+// pitch the player asked for is always the resting position — the assist is a
+// deviation from their intent, never a replacement for it.
+//
+// The march samples the SAME `terrain_y` the feet and the mesh use, so the camera
+// cannot disagree with the surface it is avoiding.
+const CAM_CLEAR      = 0.28;   // keep the eye this far above the surface
+const CAM_MIN_FRAC   = 0.22;   // never pull closer than this fraction of the boom
+const CAM_STEPS      = 14;     // march resolution along the boom
+const CAM_EASE       = 3.2;    // world-units/s the boom may EXTEND
+const CAM_PITCH_GIVE = 0.45;   // radians of lift the assist may borrow (~26°)
+const CAM_PITCH_RATE = 1.10;   // radians/s — the cap that makes it a drift, not a snap
+const CAM_PITCH_CEIL = 1.15;   // absolute ceiling, so the assist cannot go overhead
+const CAM_TRIES      = 5;      // candidate lifts tested between 0 and the full give
+
+// How far the eye may travel along the boom before it is inside the ground.
+fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
+                 want: float, peaks: vector<Peak>) -> float {
+  ky = cos(cyaw); sy = sin(cyaw);
+  kp = cos(cpitch); sp = sin(cpitch);
+  free = want;
+  hit = false;
+  for i in 1..(CAM_STEPS + 1) {
+    if !hit {
+      t = want * (i as float) / (CAM_STEPS as float) ?? 0.0;
+      if oy + t * sp < terrain_y(ox - ky * t * kp, oz - sy * t * kp, peaks) + CAM_CLEAR {
+        free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
+        hit = true;
+      }
+    }
+  }
+  lo = want * CAM_MIN_FRAC;
+  if free < lo { free = lo; }
+  free
+}
+
+// The SMALLEST lift that clears the whole boom, or the full give if none does.
+// Smallest, so the assist takes only what the obstruction actually costs.
+fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
+                    want: float, peaks: vector<Peak>) -> float {
+  best = cpitch + CAM_PITCH_GIVE;
+  found = false;
+  for i in 0..(CAM_TRIES + 1) {
+    if !found {
+      lift = CAM_PITCH_GIVE * (i as float) / (CAM_TRIES as float) ?? 0.0;
+      p = cpitch + lift;
+      if p > CAM_PITCH_CEIL { p = CAM_PITCH_CEIL; }
+      if cam_free_dist(ox, oy, oz, cyaw, p, want, peaks) >= want - 0.001 {
+        best = p;
+        found = true;
+      }
+    }
+  }
+  if best > CAM_PITCH_CEIL { best = CAM_PITCH_CEIL; }
+  best
+}
+
 // The over-the-shoulder solve, as an orbit that is ALWAYS behind the facing.
 // Camera and character share one yaw, so the camera cannot drift off the
 // character's back — there is no second value to keep in step.
-fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float) -> text {
+fn cam_boom() -> float { figure_wu() * 2.90 }
+fn cam_pivot_x(cx: float, cyaw: float) -> float { cx + (0.0 - sin(cyaw)) * figure_wu() * 0.34 }
+fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() * 0.34 }
+fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
+
+fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
+            dist: float) -> text {
   fh = figure_wu();
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
-  dist = fh * 2.90;
   // Pivot at chest height, offset LATERAL to the facing — which is what makes
-  // it over-the-SHOULDER rather than straight down the spine.
-  ox = cx + (0.0 - sy) * fh * 0.34;
-  oz = cz + ky * fh * 0.34;
-  oy = cyy + fh * 0.70;
+  // it over-the-SHOULDER rather than straight down the spine.  `cam_pivot_*`
+  // repeat this so the tick's occlusion march starts from the same point; if the
+  // two ever drift the camera would avoid a hill it is not actually looking past.
+  ox = cam_pivot_x(cx, cyaw);
+  oz = cam_pivot_z(cz, cyaw);
+  oy = cam_pivot_y(cyy);
   // The eye orbits the pivot and the TARGET stays near it. Measured: with a
   // target far ahead, the eye rose with pitch while the aim did not, so past
   // ~40° the character dropped out of frame — a follow camera that loses what
@@ -752,6 +836,13 @@ fn main() {
   pz = start.z;
   yaw = 0.0;
   pitch = 0.35;
+  // The boom's CURRENT length. Pulls in instantly when the ground intrudes —
+  // any lag there means a frame spent inside the hill — and extends only at
+  // CAM_EASE, so leaving cover does not snap.
+  cam_dist = figure_wu() * 2.90;
+  // The pitch actually USED, which lags the player's `pitch` by at most
+  // CAM_PITCH_RATE and rests exactly on it whenever the view is clear.
+  cam_pitch = 0.35;
   // THE GAIT PHASE IS DERIVED FROM DISTANCE WALKED, NOT FROM ELAPSED TIME.
   // Same discipline as `hex_body::wheel_value` for a rolling wheel — phase from
   // travel, never accumulated per frame — and it buys the same property: the
@@ -831,7 +922,7 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, pitch, asp));
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist));
             moved = true;
           }
         } else if ev.msg_id == MSG_LOOK {
@@ -978,6 +1069,30 @@ fn main() {
       steps = (now_us - last_us) / TICK_US ?? 1;
       last_us = last_us + steps * TICK_US;
       dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
+      cam_want = cam_boom();
+      cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
+
+      // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
+      //    ways, so it never snaps and always settles back on the player's own.
+      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, peaks);
+      cam_step = CAM_PITCH_RATE * dt;
+      if cam_pitch < cam_pt {
+        cam_pitch = cam_pitch + cam_step;
+        if cam_pitch > cam_pt { cam_pitch = cam_pt; }
+      } else {
+        cam_pitch = cam_pitch - cam_step;
+        if cam_pitch < cam_pt { cam_pitch = cam_pt; }
+      }
+
+      // 2. The boom covers whatever the lift has not reached yet — including the
+      //    whole of it during the drift, which is what stops the transient.
+      cam_free = cam_free_dist(cpx, cpy, cpz, yaw, cam_pitch, cam_want, peaks);
+      if cam_free < cam_dist {
+        cam_dist = cam_free;                       // intrude: give way at once
+      } else {
+        cam_dist = cam_dist + CAM_EASE * dt;       // clear: return gently
+        if cam_dist > cam_free { cam_dist = cam_free; }
+      }
 
       // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
       // disagree — there is one facing and everything else is derived from it.
@@ -1136,7 +1251,7 @@ fn main() {
         srv.send_to(pc.cid, t_leg_r);
         srv.send_to(pc.cid, t_arm_l);
         srv.send_to(pc.cid, t_arm_r);
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, pitch, pc.aspect));
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist));
       }
     }
     if work == 0 && !moved { web::sleep_ms(2); }
