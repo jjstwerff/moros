@@ -426,3 +426,47 @@ Put the accumulator in a struct and mutate the field, which writes through
 | Our gate (unaffected by all of the above) | `make lib-test` |
 | The library contract these packages consume | [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) |
 | loft's own filing conventions | `../loft/doc/claude/` · crawler's `LOFT-HANDOFF.md` is the pattern this file follows |
+
+---
+
+## H8 — nested `for _ in …` loops silently share one counter
+
+**Surfaced by:** `hex_world`'s file reader, 2026-07-26. A world with two layers saved
+correctly (byte-for-byte the right size) and loaded back with **one**, reporting success.
+
+**Shape.** Three nested loops, each written with `_` as the loop variable:
+
+```loft
+for _ in 0..nc {          // chunks
+  …
+  for _ in 0..nl {        // layers
+    …
+    for _ in 0..1024 { … } // cells
+  }
+}
+```
+
+The inner loops clobber the outer counter, so an outer loop with `nc = 2` runs its body
+once. Renaming each level (`_ci`, `_li`, `_xi`) fixes it completely.
+
+**Why it is worth reporting rather than just avoiding.** `_` reads as *"a counter I am
+deliberately not using"* — it is the idiomatic way to say "repeat n times", and nesting two
+such loops is entirely natural. The failure is **silent and data-dependent**: the code runs,
+returns success, and produces a plausible short answer. Nothing distinguishes it from a file
+that genuinely held one layer.
+
+**Suggested fixes**, either would do:
+- treat `_` as a fresh binding per loop (each `_` its own slot), which is what a reader
+  expects; or
+- reject a nested `for` that reuses an enclosing loop's variable name, as a compile error —
+  the same class as a shadowing warning, and cheap.
+
+**Minimal reproducer:**
+
+```loft
+fn main() {
+  hits = 0;
+  for _ in 0..2 { for _ in 0..3 { hits = hits + 1; } }
+  println("{hits}");     // expected 6
+}
+```

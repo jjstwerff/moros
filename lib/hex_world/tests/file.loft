@@ -1,0 +1,92 @@
+// Row 1 gates — the world file. P1 (round-trip), P7 (a torn chunk is named),
+// P8 (the palette travels), and `C1` re-checked on open.
+use hex_world;
+
+fn built() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  // two columns in one chunk, and one far away so a second chunk exists
+  assert(world_set_column(w, Column { co_q: 1, co_r: 2,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3, h_wall_ne: 7 },
+               Hex { h_height: 40080 as u16? ?? 0, h_material: 4 }] }).cw_code == CW_OK, "c1");
+  assert(world_set_column(w, Column { co_q: 5, co_r: 5,
+    co_cells: [Hex { h_height: 40010 as u16? ?? 0, h_material: 2 }] }).cw_code == CW_OK, "c2");
+  assert(world_set_column(w, Column { co_q: 90, co_r: 90,
+    co_cells: [Hex { h_height: 500 as u16? ?? 0, h_material: 9 }] }).cw_code == CW_OK, "c3");
+  w
+}
+
+// P1 + P8 — everything comes back, including the consumer's opaque bytes.
+fn test_p1_a_world_round_trips_with_its_palette() {
+  w = built();
+  pal = [11, 22, 33, 250];
+  p = "hexworld_rt.bin";
+  world_save(w, p, pal);
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+
+  // the world constants survive
+  assert(ld.wl_world.w_reserve == 100 && ld.wl_world.w_eps == 8 && ld.wl_world.w_theta == 3,
+         "constants lost");
+  assert(ld.wl_world.w_unit == 0.25, "unit came back {ld.wl_world.w_unit}");
+
+  // P8 — the palette is carried verbatim without the library knowing what it is
+  assert(len(ld.wl_palette) == 4 && ld.wl_palette[3] == 250, "palette did not travel");
+
+  // the cells, read back ABSOLUTE through a non-zero chunk base
+  a = world_column(ld.wl_world, 1, 2);
+  assert(len(a.co_cells) == 2, "expected 2 layers, got {len(a.co_cells)}");
+  assert(a.co_cells[0].h_height == 40000 && a.co_cells[1].h_height == 40080, "heights");
+  assert(a.co_cells[0].h_material == 3 && a.co_cells[0].h_wall_ne == 7, "every field");
+  assert(world_column(ld.wl_world, 5, 5).co_cells[0].h_height == 40010, "second column");
+  assert(world_column(ld.wl_world, 90, 90).co_cells[0].h_height == 500, "second chunk");
+  // CONTROL: a cell nobody wrote is still absent after a round trip
+  assert(len(world_column(ld.wl_world, 300, 300).co_cells) == 0, "unwritten ground reappeared");
+  delete(p);
+}
+
+// P7 — a damaged chunk is refused BY NAME rather than read as a plausible world.
+fn test_p7_a_torn_chunk_is_refused_by_name() {
+  w = built();
+  p = "hexworld_torn.bin";
+  world_save(w, p, [1]);
+  // flip one byte deep inside the first chunk's cells
+  bs = read_bytes(p);
+  at = len(bs) / 2 ?? 0;
+  bs[at] = (bs[at] + 1) % 256;
+  write_bytes(p, bs);
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_CRC, "a corrupted world loaded as if fine: {ld.wl_code}");
+  assert(ld.wl_detail != "", "the refusal must name what it refused");
+  // CONTROL: the same file unmodified must load, or this proves only that the
+  // loader dislikes something about the fixture.
+  world_save(w, p, [1]);
+  assert(world_load(p).wl_code == WL_OK, "the untouched file must load");
+  delete(p);
+}
+
+// `C1` is re-checked on open, not trusted because the writer checked it.
+fn test_c1_is_rechecked_on_open() {
+  w = built();
+  p = "hexworld_c1.bin";
+  world_save(w, p, []);
+  bs = read_bytes(p);
+  // header layout: magic, version, chunk_w, unit, reserve, eps, theta, ... i32 each.
+  // eps is field 6 → byte offset 20. Set it to 6, which is exactly 2*theta.
+  bs[20] = 6; bs[21] = 0; bs[22] = 0; bs[23] = 0;
+  write_bytes(p, bs);
+  ld = world_load(p);
+  assert(ld.wl_code == WL_CONSTANTS,
+         "a world with eps <= 2*theta opened; B1 then fails silently and the symptom "
+         + "is intermittently wrong geometry at chunk borders. Got {ld.wl_code}");
+  delete(p);
+}
+
+fn test_a_missing_or_foreign_file_is_refused_not_guessed() {
+  assert(world_load("hexworld_nope.bin").wl_code == WL_MISSING, "missing file");
+  p = "hexworld_alien.bin";
+  { f = file(p); f#format = LittleEndian; f += (12345 as i32); f += (1 as i32); }
+  assert(world_load(p).wl_code == WL_MAGIC, "a foreign file was accepted");
+  delete(p);
+}

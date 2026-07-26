@@ -39,10 +39,11 @@ eyes**, not a report: something to open, drive, and judge.
 | # | work | plan | size | done when |
 |---|---|---|---|---|
 | ~~0~~ | ~~decide: one world file or regions~~ — **answered: one file**; stencils and placeable assets live in separate files | #8 | — | ✅ 2026-07-26 |
-| 1 | the file — header, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` on open | #8 V2 | M | a world round-trips; a hand-corrupted chunk is refused by name and the rest opens |
+| ~~1~~ | ~~the file~~ — header, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` on open | #8 V2 | M | ✅ 2026-07-26 — 15 gates, four mutations each seen red |
 | 2 | sparsity — elision on both axes, maintained on write | #8 V3 | S | an empty 10⁶-tile world < 64 KB; file size tracks live data, not total writes |
 | 3 | change and cache — edit clock, per-layer versions, snapshot reads | #8 V4 | M | compaction invalidates no cache; one edit stales exactly one |
 | — | ✋ **worlds persist** | | | save a world, reload it, confirm it is the world you built |
+|  | *(rows 1–3 are library work with no visible surface. An earlier checkpoint was offered — dual-writing through `hex_world` beside the peaks path — and declined 2026-07-26: their effect is checkable by gates, and the scaffolding would have been a temporary path with a habit of becoming permanent.)* | | | |
 | 4 | the editor moves onto `hex_world`; `Peak` / `world_save` / `world_load` deleted | #8 V5 | L | hills, walking, climbing and the camera behave as they do today |
 | — | ✋ **the editor is no worse** | | | build hills, save, reload, walk around. This is the risky one — it replaces what works |
 | 5 | roads that follow the ground | #9 | M | a road crosses a hill without fighting it |

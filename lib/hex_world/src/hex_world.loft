@@ -361,3 +361,189 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   w.w_chunks[ci].ck_layers = live;
   ok_write()
 }
+
+// ── The file ─────────────────────────────────────────────────────────────────
+//
+// ONE FILE per world (decided 2026-07-26). Stencils and placeable assets live in
+// their own files, because the world mutates constantly — authoring, then game
+// mechanics — while they are near-static, and storing them together would drag
+// stable bytes through every volatile write.
+//
+//   [header ] magic, version, chunk_w, u, rho, eps, theta, nu, tau, palette_len
+//   [palette] OPAQUE — the consumer's bytes. The library owns its length and
+//             position and never interprets it (it cannot: what a material MEANS
+//             is the consumer's, and a substrate that knows is not one).
+//   [chunks ] count, then per chunk: cx, cz, base, layer count,
+//             then per layer: id, kind, cells, CRC32
+pub const WORLD_MAGIC   = 1213486167;   // 'HXW7'
+pub const WORLD_VERSION = 1;
+
+pub const WL_OK        = 0;
+pub const WL_MISSING   = 1;   // no such file
+pub const WL_MAGIC     = 2;   // not one of ours, or a version we do not know
+pub const WL_CONSTANTS = 3;   // `C1` — the file's own constants fail eps > 2*theta
+pub const WL_CRC       = 4;   // a chunk's bytes are damaged
+
+pub struct WorldLoad {
+  wl_code:    integer,
+  wl_world:   World,
+  wl_palette: vector<integer>,
+  wl_detail:  text,
+}
+
+// CRC32, table-free. Small enough that pulling in a dependency for it would cost
+// more than it saves, and the polynomial is the standard reversed 0xEDB88320.
+fn crc32_of(acc: integer, v: integer) -> integer {
+  c = acc ^ (v & 255);
+  for _ in 0..8 {
+    if c & 1 == 1 { c = (c >> 1) ^ 3988292384; } else { c = c >> 1; }
+  }
+  c
+}
+
+fn crc_cell(acc: integer, s: StoredHex) -> integer {
+  a = crc32_of(acc, s.sv_height & 255);
+  a = crc32_of(a, (s.sv_height >> 8) & 255);
+  a = crc32_of(a, s.sv_material);
+  a = crc32_of(a, s.sv_item);
+  a = crc32_of(a, s.sv_item_rotation);
+  a = crc32_of(a, s.sv_wall_n);
+  a = crc32_of(a, s.sv_wall_ne);
+  crc32_of(a, s.sv_wall_se)
+}
+
+// ⚠ CRC32 is UNSIGNED 32-bit and the file stores i32, so a checksum above
+// 2^31 comes back NEGATIVE. Comparing the raw values then fails on a perfectly
+// intact file — which it did, on the first run of the round-trip gate. Both sides
+// are therefore masked to exactly 32 bits before comparison, and the mask is the
+// rule rather than a repair: a checksum is a bit pattern, and comparing it as a
+// signed quantity is a category error that happens to work half the time.
+const U32_MASK = 4294967295;
+
+fn layer_crc(ly: Layer) -> integer {
+  acc = U32_MASK;
+  for c in ly.ly_cells { acc = crc_cell(acc, c); }
+  (acc ^ U32_MASK) & U32_MASK
+}
+
+pub fn world_save(w: World, path: text, palette: vector<integer>) {
+  // ⚠ A save REPLACES; it does not append. `f += …` on an existing file appends,
+  // so without this an ordinary second save produced a file containing two worlds
+  // back to back — the first one read back fine and the rest was silently
+  // unreachable. Saving repeatedly over one path is the normal case, not an edge.
+  if exists(path) { delete(path); }
+  f = file(path);
+  f#format = LittleEndian;
+  f += (WORLD_MAGIC as i32);
+  f += (WORLD_VERSION as i32);
+  f += (CHUNK_W as i32);
+  f += ((w.w_unit * 1000000.0) as i32);      // `u` as micro-units, exactly
+  f += (w.w_reserve as i32);
+  f += (w.w_eps as i32);
+  f += (w.w_theta as i32);
+  f += (w.w_next_id as i32);
+  f += (len(palette) as i32);
+  for b in palette { f += (b as i32); }
+  f += (len(w.w_chunks) as i32);
+  for ch in w.w_chunks {
+    f += (ch.ck_cx as i32);
+    f += (ch.ck_cz as i32);
+    f += (ch.ck_base as i32);
+    f += (len(ch.ck_layers) as i32);
+    for ly in ch.ck_layers {
+      f += (ly.ly_id as i32);
+      f += (ly.ly_kind as i32);
+      for c in ly.ly_cells {
+        f += (c.sv_height as i32);
+        f += (c.sv_material as i32);
+        f += (c.sv_item as i32);
+        f += (c.sv_item_rotation as i32);
+        f += (c.sv_wall_n as i32);
+        f += (c.sv_wall_ne as i32);
+        f += (c.sv_wall_se as i32);
+      }
+      f += (layer_crc(ly) as i32);
+    }
+  }
+}
+
+pub fn world_load(path: text) -> WorldLoad {
+  empty = World { w_unit: 1.0 };
+  f = file(path);
+  if f.format == Format.NotExists {
+    return WorldLoad { wl_code: WL_MISSING, wl_world: empty, wl_palette: [], wl_detail: path };
+  }
+  f#format = LittleEndian;
+  if f#read as i32 != WORLD_MAGIC || f#read as i32 != WORLD_VERSION {
+    return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [], wl_detail: "not this format" };
+  }
+  cw = f#read as i32;
+  if cw != CHUNK_W {
+    return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [],
+                       wl_detail: "chunk width {cw}, this build is {CHUNK_W}" };
+  }
+  unit = (f#read as i32) as float / 1000000.0 ?? 1.0;
+  res = f#read as i32;
+  eps = f#read as i32;
+  th  = f#read as i32;
+  nid = f#read as i32;
+  // ⚠ `C1` is re-checked ON OPEN, not trusted because the writer checked it. A
+  // file with eps <= 2*theta makes `B1` fail SILENTLY, and the symptom is
+  // intermittently wrong geometry at chunk borders — a wrong answer, not a crash.
+  if eps <= 2 * th {
+    return WorldLoad { wl_code: WL_CONSTANTS, wl_world: empty, wl_palette: [],
+                       wl_detail: "eps {eps} <= 2*theta {th}" };
+  }
+  pal: vector<integer> = [];
+  pn = f#read as i32;
+  for _pi in 0..pn { pal += [f#read as i32]; }
+
+  w = World { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
+              w_theta: th, w_next_id: nid };
+  nc = f#read as i32;
+  for _ci in 0..nc {
+    cx = f#read as i32; cz = f#read as i32; cb = f#read as i32; nl = f#read as i32;
+    lays: vector<Layer> = [];
+    for _li in 0..nl {
+      lid = f#read as i32; lk = f#read as i32;
+      // ⚠ TWO SEQUENCING HAZARDS, both found by a round-trip that lost a layer.
+      //
+      // 1. NESTED LOOPS MUST NOT SHARE A COUNTER NAME. This reader has three
+      //    levels — chunks, layers, cells — and every one was written
+      //    `for _ in …`. The inner loops clobbered the outer counter, so a chunk
+      //    with two layers loaded exactly one and reported no error at all. Each
+      //    level now has its own name.
+      //
+      // 2. Every field is read into a LOCAL first and the record built after.
+      // `f#read` has a side effect, and field initialisers in a struct literal are
+      // not guaranteed to be evaluated in written order — so reads inside a
+      // literal can be issued in an order the file does not have, scrambling
+      // fields with nothing to show for it. Sequencing is explicit here because
+      // the format's correctness depends on it.
+      cells: vector<StoredHex> = [];
+      for _xi in 0..CHUNK_CELLS {
+        rh = f#read as i32;
+        rm = f#read as i32;
+        ri = f#read as i32;
+        rr = f#read as i32;
+        rn = f#read as i32;
+        re = f#read as i32;
+        rs = f#read as i32;
+        cells += [StoredHex { sv_height: rh as u16? ?? 0, sv_material: rm as u8? ?? 0,
+                              sv_item: ri as u8? ?? 0, sv_item_rotation: rr as u8? ?? 0,
+                              sv_wall_n: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
+                              sv_wall_se: rs as u8? ?? 0 }];
+      }
+      ly = Layer { ly_id: lid, ly_kind: lk, ly_cells: cells };
+      // A torn layer is refused BY NAME and the rest of the file is untouched —
+      // a hole, never a cascade, and never a plausible wrong landscape.
+      if ((f#read as i32) & U32_MASK) != layer_crc(ly) {
+        return WorldLoad { wl_code: WL_CRC, wl_world: empty, wl_palette: [],
+                           wl_detail: "chunk ({cx},{cz}) layer id {lid} failed CRC" };
+      }
+      lays += [ly];
+    }
+    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
+  }
+  WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
+}
