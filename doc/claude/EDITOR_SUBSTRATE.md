@@ -725,6 +725,86 @@ spawns from the world file explicitly. Yet two bits of the storage of record hol
 that, which is the same violation the crystal's `c_age` would have been if it had been let
 in. It is the cheaper kind to fix now than after worlds exist, and it belongs to `#8`'s V1.
 
+## The target grouping — five packages, none of them extracted yet
+
+*(user, 2026-07-26: "design groups for the remaining code, we do not push them directly into
+libraries that is a step I want to take when the code in these is actually battle tested")*
+
+The audit says what is general. This says what shape it takes **while it stays here**. Groups
+are designed now so that extraction is later a *move*, not a redesign — and each is sized to
+be exactly one future library, so the question at extraction time is "has this earned it?"
+rather than "what is this?".
+
+### Why the current cut is wrong
+
+The existing packages cut **across** the groups rather than along them. `moros_sim` alone
+holds character movement, the editor loop, tool dispatch, camera control and input — four
+groups in one package. `moros_render` holds camera, culling, mesh emission and Moros's
+developer-art palette. A group that is a quarter of one package and a third of another cannot
+be extracted, tested in isolation, or given a second consumer, which is why the regrouping
+comes before any extraction rather than after.
+
+### The five groups
+
+| group | owns | must not own | depends on |
+|---|---|---|---|
+| **world** | the voxel, columns, chunks, the window, the routine, the file, the palette *mechanism*, the guards | what a material *means*; anything that draws or collides | lattice |
+| **edit** | undo, redo, batches, `EditKind`, tools and their dispatch, the editor loop and its state | which tools exist (that is configuration) | world |
+| **view** | camera model and modes, input state, picking, ray casts, frustum/occluder culling | what a scene contains | lattice, world |
+| **ui** | rectangles, buttons, list boxes, panels, status strips, layout, hit-testing, click routing | what the buttons *do* | nothing |
+| **actor** | the player, movement integration, collision resolution against the world, the avatar rig | AI, goals, NPC behaviour (crawler's) | world, lattice |
+
+**`ui` depends on nothing**, which makes it the most obviously extractable and the best first
+test of the extraction bar. **`world` depends only on lattice**, which is why it is `#8` and
+leads.
+
+### Convergences — code that gets no local group
+
+Some of the general code already has a shipped home. It does not become a group; it becomes a
+**dependency**, once the duplication is resolved:
+
+| code | goes to | status |
+|---|---|---|
+| `chunk_idx_32`, `hex_idx_32`, `hex_distance`, world↔hex, corners, the facing clock | `hex_grid` | duplicated *today* — two copies, one public in `hex_world` written to prevent the other |
+| documents, stencils | `hex_field` | already a dependency; the wall/EdgeSet bridge is the remaining gap |
+| mesh emission, dirty rebuilds, LOD | `gridmesh` | `LIBRARY-CANDIDATES` row 7 — ours is a second dirty-tracker and must converge |
+| wall/edge collision | `hex_edge` | its stated purpose |
+| slope shaping | `hex_terrain` | authored shaping beside generated |
+| GLB export | `glb` | already exists |
+
+**Building a local group for any of these would be the competing-library mistake**, in the
+small. The rule holds at function granularity, not just at package granularity.
+
+### The extraction bar, per group
+
+A group leaves this tree when **all four** hold. Three of them are cheap to check continuously;
+the fourth is the one that actually takes time, and is why extraction waits.
+
+1. **It builds and its gates pass with the Moros tree absent.** Checkable from day one — if a
+   gate reaches for a Moros type or fixture, the boundary has already been crossed.
+2. **Its dependencies point only outward** — at loft's stdlib, `hex_grid`, or another group
+   below it. No group depends on `edit`, `view`, `ui` or Moros content.
+3. **It has been battle-tested** — used in anger, through a real rung of the ladder, long
+   enough for its shape to stop moving. A package whose API changed last week is a package
+   still being designed.
+4. **It has a second consumer**, or a concrete one waiting. The DoD clause already says a
+   package validated against exactly one caller has not been shown to be general. `world` has
+   the crystal (`#8` V8); `ui` and `view` do not yet have one, and naming who they would serve
+   is part of earning the move.
+
+⚠ **Clause 3 is the whole reason for this section.** hexbody was extracted from crawler early
+and needed repeated back-references for data it had left behind. The cost of extracting late
+is a rename; the cost of extracting early is a seam that has to be renegotiated while both
+sides are moving.
+
+### Naming, while they are here
+
+The groups keep a Moros-owned prefix until they leave, because that is what they honestly
+are: Moros's packages, shaped for a journey they have not made. Each carries a header naming
+its destination and its outstanding bar, so the intent is in the file rather than only in this
+document. The rename is part of the extraction, not a claim made in advance — `hex_world` in
+particular is a name that is currently occupied.
+
 ## What stays out of the shared layer
 
 - **The metre**, per seam rule 2.
