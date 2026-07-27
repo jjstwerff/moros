@@ -332,3 +332,52 @@ fn test_x2_a_second_writer_is_refused() {
   assert(world_save(w, p, []) == WS_OK, "OWNER_ANY must not be refused");
   delete(p);
 }
+
+// ── `M2` — a snapshot is consistent and does not move ───────────────────────
+
+fn test_m2_a_snapshot_does_not_see_later_writes() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 2, co_r: 2,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "setup");
+  snap = world_snapshot(w);
+  taken_at = snap.sn_tau;
+
+  // write AFTER the snapshot — a height, a second layer, and a whole new chunk
+  assert(world_set_column(w, Column { co_q: 2, co_r: 2,
+         co_cells: [sp_cell(1400, 1), sp_cell(1600, 2)] }).cw_code == CW_OK, "later write");
+  assert(world_set_column(w, Column { co_q: 70, co_r: 70,
+         co_cells: [sp_cell(900, 1)] }).cw_code == CW_OK, "new chunk");
+
+  sv = snap_world(snap);
+  assert(world_column(sv, 2, 2).co_cells[0].h_height == 1000,
+         "the snapshot moved: it reads {world_column(sv, 2, 2).co_cells[0].h_height}, want 1000");
+  assert(len(world_column(sv, 2, 2).co_cells) == 1,
+         "the snapshot gained a layer written after it was taken");
+  assert(len(world_column(sv, 70, 70).co_cells) == 0,
+         "the snapshot gained a CHUNK written after it was taken");
+  assert(snap.sn_tau == taken_at, "the snapshot's clock moved");
+
+  // CONTROL: the live world DID change — otherwise this passes on a world where
+  // nothing was written at all, and proves nothing about isolation.
+  assert(world_column(w, 2, 2).co_cells[0].h_height == 1400, "the live world did not change");
+  assert(len(world_column(w, 70, 70).co_cells) == 1, "the new chunk is missing live");
+  assert(w.w_tau > taken_at, "the clock did not advance past the snapshot");
+}
+
+// A snapshot answers as of ONE clock — every cell in it, not just the one written.
+fn test_m2_a_snapshot_is_one_consistent_instant() {
+  w = sp_world();
+  for i in 0..4 {
+    assert(world_set_column(w, Column { co_q: i, co_r: 0,
+           co_cells: [sp_cell(1000 + i * 20, 1)] }).cw_code == CW_OK, "seed {i}");
+  }
+  snap = world_snapshot(w);
+  for i in 0..4 {
+    world_set_column(w, Column { co_q: i, co_r: 0, co_cells: [sp_cell(5000, 2)] });
+  }
+  sv = snap_world(snap);
+  for i in 0..4 {
+    assert(world_column(sv, i, 0).co_cells[0].h_height == 1000 + i * 20,
+           "cell {i} of the snapshot moved — a snapshot must be ONE instant, not a mix");
+  }
+}

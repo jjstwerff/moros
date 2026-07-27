@@ -466,6 +466,42 @@ pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> bo
   world_chunk_version(w, q, r) > built_at
 }
 
+// ── `M2` — a reader sees a consistent snapshot ───────────────────────────────
+//
+// A read observes the world as of ONE clock value and never a half-applied write.
+// That is what lets derivation run ALONGSIDE editing rather than between edits: a
+// mesh builder or an LOD pass takes a snapshot, works off the critical path, and
+// `T1` tells it whether its result is still current when it lands.
+//
+// ⚠ THE CONTRACT NAMES COPY-ON-WRITE AND LOFT CANNOT EXPRESS IT — measured, not
+// assumed. Assignment into a struct field DEEP-COPIES:
+//
+//     h = Holder { ms: live };     live[0].xs[0].v = 99;
+//     → live reads 99, h reads 1
+//
+// So there is no shared representation to write-on-copy from: taking a snapshot
+// copies the world whether or not you ask it to. The GUARANTEE `M2` states is
+// intact and gated below; the O(1)-snapshot mechanism is simply not available at
+// this level, and would need explicit indirection (an arena with handles) rather
+// than a cleverer assignment. Recorded so nobody re-derives the same dead end.
+//
+// The copy is therefore written as the assignment it already is, rather than as a
+// hand-rolled loop that duplicates what the language does.
+pub struct Snapshot { sn_tau: integer, sn_chunks: vector<Chunk> }
+
+pub fn world_snapshot(w: World) -> Snapshot {
+  return Snapshot { sn_tau: w.w_tau, sn_chunks: w.w_chunks };
+}
+
+// Reading a snapshot is reading a World whose chunks are the frozen ones — the
+// same routine, so a snapshot cannot drift from a live read by having its own.
+pub fn snap_world(s: Snapshot) -> World {
+  w = World { w_chunks: s.sn_chunks, w_unit: 1.0, w_reserve: 0,
+              w_eps: 1, w_theta: 0, w_next_id: 1, w_tau: s.sn_tau };
+  reindex(w);
+  return w;
+}
+
 // ── The file ─────────────────────────────────────────────────────────────────
 //
 // ONE FILE per world (decided 2026-07-26). Stencils and placeable assets live in
