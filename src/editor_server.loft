@@ -1260,7 +1260,7 @@ fn main() {
           srv.respond_404();
         }
       } else if ev.connected {
-        println("editor: client {ev.cid} connected");
+        println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
           srv.send_to(ev.cid, wire_body);
@@ -1680,13 +1680,31 @@ fn main() {
       t_arm_l = "T:{PART_ARM_L};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
       t_arm_r = "T:{PART_ARM_R};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
       fogw = fog_wire(px, py, pz);
+      // ⚠ A CLOSED TAB IS INVISIBLE TO THIS LOOP. `server`'s own docs say it:
+      // disconnect events (kind 2) are "skipped internally", so `poll_event`
+      // never reports one, and `send_to`'s boolean is "true on success" —
+      // success meaning the frame was QUEUED, not that the peer is still there.
+      // Measured: a client that closed four seconds earlier still took `true`
+      // from every send. There is no prompt liveness signal to be had here.
+      //
+      // So do not ask. The six SHARED frames go through `broadcast`, which
+      // iterates the library's own active-client set in Rust — a departed client
+      // is not in it, by construction, and nothing here has to track departures
+      // to get that right.
+      //
+      // The camera cannot join them: it is solved per client, because each one
+      // has its own aspect ratio. That one frame still goes by `cid`, and a
+      // stale entry costs exactly that — one frame a tick, bounded by the
+      // high-water mark of concurrent clients, because the library REUSES a
+      // freed slot (measured: five sequential clients all came back as cid 0,
+      // and the list stayed at one entry).
+      srv.broadcast(fogw);
+      srv.broadcast(t_body);
+      srv.broadcast(t_leg_l);
+      srv.broadcast(t_leg_r);
+      srv.broadcast(t_arm_l);
+      srv.broadcast(t_arm_r);
       for pc in clients {
-        srv.send_to(pc.cid, fogw);
-        srv.send_to(pc.cid, t_body);
-        srv.send_to(pc.cid, t_leg_l);
-        srv.send_to(pc.cid, t_leg_r);
-        srv.send_to(pc.cid, t_arm_l);
-        srv.send_to(pc.cid, t_arm_r);
         srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, wld));
       }
     }

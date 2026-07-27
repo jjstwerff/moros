@@ -159,11 +159,30 @@ Rung 8's suite run exposed three defects in the harness itself, all now fixed in
    server. Every "isolated" gate run before this was sharing one long-lived
    world. The signal is `listening on port`, not the banner.
 
-**Still open.** With restarts genuinely happening, every world gate now times
-out — including gates untouched by rung 8, and including against the pre-storey
-editor, so this is not a rung-8 regression. The server logs `client 0 connected`
-for the first client and then stops logging connections at all while continuing
-to listen; a later client's frames are never answered. The editor advertises
-itself as MULTI-CLIENT, and that path looks like where this lives. Until it is
-fixed the gates can only be trusted **one per freshly started server**, which is
-how the storey gate above was verified.
+**And then the suite went green.** With restarts genuinely happening, every world
+gate timed out — which looked like a server that stops answering clients, and was
+not. Two more causes, both found by measuring instead of reasoning:
+
+- **A stale compile cache.** A `git checkout` round-trip on `editor_server.loft`
+  left `src/.loft/cache` holding a build that span at 100% CPU: it printed the
+  banner AND `listening on port`, accepted TCP connections, and never processed
+  an event. `rm -rf src/.loft/cache` fixed it outright. Worth knowing because
+  every readiness signal the harness could watch was already true — the only
+  symptom was CPU.
+- **A gate that slept instead of waiting.** `persist` read the restored height
+  after a fixed 1100 ms and got 5.583 instead of 6.25 on about one run in two —
+  visible only once gates stopped sharing a warm server. It now waits for the
+  server's own `S:loaded …` acknowledgement and THEN for the height to stop
+  moving. Both bounds are needed: stability alone settles on the value from
+  before the command landed, and reported a wipe that had done nothing.
+
+The multi-client path itself was never broken — measured with three concurrent
+clients (604/605/606 frames each) and with sequential reconnects. What WAS wrong
+is that the tick sent all seven frames per client by `cid`, and a departed client
+is invisible: `server` skips disconnect events internally, and `send_to` returns
+"true on success" meaning QUEUED, not delivered (measured: a client gone four
+seconds still took `true` from every send). The six shared frames now go through
+`broadcast`, which iterates the library's own active set in Rust. The camera
+frame cannot join them — it is solved per client from that client's aspect — and
+a stale entry costs exactly that one frame per tick, bounded, because the library
+reuses a freed slot (measured: five sequential clients all came back as `cid 0`).
