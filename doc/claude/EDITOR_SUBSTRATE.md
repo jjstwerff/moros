@@ -768,6 +768,36 @@ comes before any extraction rather than after.
 test of the extraction bar. **`world` depends only on lattice**, which is why it is `#8` and
 leads.
 
+### ⚠ The convergences are blocked on coordination, not on work
+
+*(established 2026-07-27)*
+
+Every remaining convergence needs an edit to a tree that is **not ours**, and loft has now
+written the symmetric half of the two-agent boundary down: *"edit only this repo"* — their
+agents are usually working in those checkouts at the same time, so a staged file or a
+`git checkout` lands in someone else's uncommitted work.
+
+So these are **asks, not tasks**, and each names exactly what it needs:
+
+| convergence | the ask | of whom |
+|---|---|---|
+| `chunk_idx_32` / `hex_idx_32` | add them to `hex_grid` (floor-division, both signs) and delete the copies | `loft-libs-world` |
+| dirty tracking | ours is a second `ChunkField`; adopt `gridmesh`'s or agree the shape | `loft-libs-graphics` |
+| `input` | adopt the shipped `input 0.2.0` and delete our `InputState` | ours, once `view` exists |
+| the crystal's model | migrate `hex_world` onto the voxel; `P14` proves it fits | `loft-libs-world` |
+
+**Three copies of the chunk arithmetic exist right now** — public in the sibling `hex_world`,
+private in `moros_map`, and local in ours — and ours is written down as deliberately the
+third rather than hidden. That is the honest state: the duplication is visible, its
+destination is agreed, and the move waits on the tree that owns the destination.
+
+⚠ **And a hazard worth carrying, which we caused.** `loft test` inside a package is not
+read-only: it rebuilds `native-auto/`, writes `.loft/` caches, and a file-writing test
+writes into the package's own directory. One of ours deleted a tracked file during loft's
+H9 work. Our test scratch is now gitignored and named distinctly, but the rule is the one
+loft names: **build a reproducer in a scratchpad package pointing at their libs by path**,
+never inside their checkout.
+
 ### Convergences — code that gets no local group
 
 Some of the general code already has a shipped home. It does not become a group; it becomes a

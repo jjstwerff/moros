@@ -30,3 +30,9 @@ lib/**/.loft/
 
 # runtime log from `make editor`
 .editor.log
+
+# test artefacts — loft tests run with cwd inside the package, so a file-writing
+# test drops its scratch here. Never tracked: a colliding name would let a test
+# DELETE a real file (loft recorded exactly that happening across repos).
+lib/*/tests/*.bin
+lib/*/probe/*.bin
