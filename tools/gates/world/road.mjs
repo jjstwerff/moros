@@ -1,17 +1,10 @@
-// ⚠ THIS GATE IS NOT TRUSTWORTHY YET — its CONTROL passes.
-//
-// Running the identical script with the `10:1` / `10:0` road toggles removed still
-// reports 72 road-material vertices and still returns ok:true. So it is green
-// whether or not a road was laid, which makes it a test with no discriminating
-// power, not a gate. Where those 72 vertices come from in a fresh world that had
-// no road laid into it is NOT diagnosed.
-//
-// Kept, and kept out of the passing claim, because the finding is worth more than
-// a green line: the road IS laid and IS graded when you drive it by hand (road
-// range 4.3 against ground range 10.3 across the same hill), but that is an
-// observation, not a proof.
-//
 // Road gate (rung W1, moros#9).
+//
+// ⚠ Its control is the point: run the same script with the `10:1`/`10:0` toggles
+// removed and it must FAIL (0 road cells). An earlier version passed the control,
+// because it counted the CHARACTER's limbs as road — mesh ids 0-15 are the figure,
+// and the left leg (1) and arm (3) are odd, which is the road parity. Filtering
+// that block is not tidiness; without it this gate was green with no road laid.
 //
 // The claim is not "some cells changed colour". It is that a road GRADES the
 // ground it crosses: walk a road over a hill and the strip must come out flatter
@@ -26,12 +19,15 @@ const chunks = new Map();
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 let st = 0;
 
-// One chunk carries two meshes and its id carries the PARITY: ground even, road
-// odd. An offset would have to out-range enc_coord, which reaches 2.2e12.
+// Chunk meshes live above the reserved low block (ids 0-15 are the FIGURE), and
+// within it the parity says which surface: ground even, road odd. ⚠ Not filtering
+// that block is what made this gate green with no road laid — the character's left
+// leg (id 1) and arm (id 3) are odd, so they counted as road.
 const stats = (road) => {
   let lo = 1e9, hi = -1e9, n = 0;
   for (const [id, d] of chunks) {
-    if (((id % 2) === 1) !== road) continue;
+    if (id <= 15) continue;
+    if (((id % 2) === 1) !== road) continue;   // ground even, road odd
     for (let i = 1; i < d.length; i += 6) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); n++; }
   }
   return { lo: +lo.toFixed(3), hi: +hi.toFixed(3), n };

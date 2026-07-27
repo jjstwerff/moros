@@ -265,6 +265,13 @@ fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
 // independently. Splitting it is also the shape `hex_entity` will formalise: a
 // part-tree whose every part carries its own transform.
+// ⚠ MESH IDS ARE ONE NAMESPACE, shared by the figure and the ground, and they
+// COLLIDED. The figure's parts are 0-4 and `enc_coord` returns 0 for the chunk at
+// the origin — so that chunk's mesh overwrote the character's body on the client,
+// and the surface split made it worse by claiming id 1 (the left leg) as well.
+// Chunk ids are therefore lifted clear of a reserved low block. The gates' old
+// `id > 1000` filter was working around exactly this without naming it.
+const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 const PART_BODY = 0;
 const PART_LEG_L = 1;
 const PART_LEG_R = 2;
@@ -1337,11 +1344,11 @@ fn main() {
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
           dm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
-          srv.broadcast("M:{dc2.id * 2};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
-          srv.broadcast("T:{dc2.id * 2};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 2 + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          srv.broadcast("T:{dc2.id * 2 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
           rm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, ROAD_MAT);
-          srv.broadcast("M:{dc2.id * 2 + 1};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
-          srv.broadcast("T:{dc2.id * 2 + 1};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 2 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
+          srv.broadcast("T:{dc2.id * 2 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -1392,11 +1399,11 @@ fn main() {
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
               cmesh = chunk_mesh(scx, scz, wld);
-              srv.broadcast("M:{cid * 2};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              srv.broadcast("M:{cid * 2 + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               rmesh = chunk_mesh_mat(scx, scz, wld, ROAD_MAT);
-              srv.broadcast("M:{cid * 2 + 1};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
-              srv.broadcast("T:{cid * 2};{mat_wire(mat4_identity())}");
-              srv.broadcast("T:{cid * 2 + 1};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 2 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
+              srv.broadcast("T:{cid * 2 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 2 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }
@@ -1410,8 +1417,8 @@ fn main() {
         // would otherwise linger on the client as a strip of road floating where
         // its ground used to be.
         if !still {
-          srv.broadcast("X:{lz2 * 2}");
-          srv.broadcast("X:{lz2 * 2 + 1}");
+          srv.broadcast("X:{lz2 * 2 + MESH_FIGURE_MAX + 1}");
+          srv.broadcast("X:{lz2 * 2 + MESH_FIGURE_MAX + 2}");
           dropped = dropped + 1;
         }
       }

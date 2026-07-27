@@ -46,7 +46,7 @@ eyes**, not a report: something to open, drive, and judge.
 |  | *(rows 1–3 are library work with no visible surface. An earlier checkpoint was offered — dual-writing through `hex_world` beside the peaks path — and declined 2026-07-26: their effect is checkable by gates, and the scaffolding would have been a temporary path with a habit of becoming permanent.)* | | | |
 | ~~4~~ | ~~the editor moves onto `hex_world`~~ — `Peak` and the local world format deleted | #8 V5 | L | ✅ 2026-07-27 — all seven gates green, each on a fresh server |
 | — | ✋ **the editor is no worse** | | | build hills, save, reload, walk around. This is the risky one — it replaces what works |
-| 5 | roads — a graded strip laid while walking | #9 | M | ⚠ **PART DONE** — laying, grading and a distinct road surface all work; the gate is NOT trustworthy (its control passes) |
+| ~~5~~ | ~~roads~~ — a graded strip laid while walking | #9 | M | ✅ 2026-07-27 — gate green, control red; all other gates still green |
 | — | ✋ | | | draw one |
 | 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
 | — | ✋ | | | walk into a wall, orbit beside one |
