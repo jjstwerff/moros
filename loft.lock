@@ -30,3 +30,10 @@ version = "0.1.2"
 url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/gridmesh-v0.1.2/gridmesh-0.1.2.tar.gz"
 sha256 = "97ac4a990c4501982e05f8a2bd65d6010527f3ace6b3f7598a262ef03ebe6b26"
 source = "registry"
+
+[[package]]
+name = "hex_world"
+version = "0.2.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_world-v0.2.0/hex_world-0.2.0.tar.gz"
+sha256 = "f7e7f41d3618607aa408c54676f28df51e0d3746e7b2f9eaa008c65b09b6f075"
+source = "registry"

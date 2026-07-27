@@ -627,3 +627,44 @@ a codebase that tolerates nulls would have got a plausible, wrong, empty world i
 **Suggested fix:** treat a returned vector element like a returned struct field — copy into
 the caller's return buffer, which is what H9's fix already does for the field case.
 
+---
+
+## H13 — `loft debug` cannot reach a server: `--lib` ignored, native libs error unnamed
+
+**Surfaced by:** trying to debug the editor server with a live websocket, 2026-07-27. Full
+write-up in [LOFT_DEBUGGER.md](LOFT_DEBUGGER.md).
+
+**(a) `--lib` is ignored in every position.** All three forms fail with
+`Undefined type Mat4`:
+
+```
+loft debug src/editor_server.loft:385 --lib lib/
+loft --lib lib/ debug src/editor_server.loft:385
+loft debug src/editor_server.loft:385
+```
+
+**Control:** `loft --interpret --lib lib/ src/editor_server.loft` compiles and runs the same
+file with zero errors.
+
+**(b) A program using a registry (native) library fails immediately, unnamed.**
+
+```loft
+use web;
+fn main() { sleep_ms(5); x = 1 + 1; println("web ok {x}"); }
+```
+→ `runtime error in the paused run — debug session abandoned (session preserved)`
+
+Same with `use server;`. Both run correctly under `loft --interpret`. No message, no
+location, and the prompt changes from `(dbg)` to `loft>` where `:continue` answers
+*"unknown command"* — which reads as a typo rather than as "the session is over".
+
+**Minor, and cheap:** `loft debug --lib lib/ f.loft:12` reports *"missing `:<line>`"*. The
+line is present; the argument order is wrong. Naming the real complaint would save the
+guess.
+
+**Why it matters.** The debugger is good — locals per frame, stepping, time-travel `:undo`,
+and assignment to a local so a hypothesis can be tested without editing source. None of it
+is reachable from the code that most needs it: anything with a server, a socket, or a local
+library. The consumer-visible shape is "the debugger does not work on real programs", which
+undersells it considerably.
+
