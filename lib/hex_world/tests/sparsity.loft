@@ -381,3 +381,85 @@ fn test_m2_a_snapshot_is_one_consistent_instant() {
            "cell {i} of the snapshot moved — a snapshot must be ONE instant, not a mix");
   }
 }
+
+// ── `X3`–`X5` — a store that survives a long life ───────────────────────────
+
+// An incremental save must cost what CHANGED, and must still round-trip. The
+// claim being gated is not "it is faster" — it is that the bytes of layers that
+// did not move are LEFT ALONE, which is what makes the cost proportional.
+fn test_x3_an_incremental_save_rewrites_only_what_moved() {
+  w = sp_world();
+  // three chunks, so there is plenty for an incremental save to leave untouched
+  assert(world_set_column(w, Column { co_q: 0,  co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "a");
+  assert(world_set_column(w, Column { co_q: 40, co_r: 0,
+         co_cells: [sp_cell(1100, 1)] }).cw_code == CW_OK, "b");
+  assert(world_set_column(w, Column { co_q: 80, co_r: 0,
+         co_cells: [sp_cell(1200, 1)] }).cw_code == CW_OK, "c");
+  p = "sp_x3.bin";
+  if exists(p) { delete(p); }
+  assert(world_save_as(w, p, [], OWNER_ANY) == WS_OK, "full save");
+  before = read_bytes(p) ?? [];
+
+  // change ONE column, then save incrementally
+  assert(world_set_column(w, Column { co_q: 40, co_r: 0,
+         co_cells: [sp_cell(1500, 1)] }).cw_code == CW_OK, "edit b");
+  st = world_save_incremental(w, p, [], OWNER_ANY);
+  assert(st.ss_code == WS_OK, "incremental save {st.ss_code}");
+  // ⚠ THE MECHANISM, not just the outcome. A byte comparison cannot tell a skipped
+  // payload from one rewritten with identical bytes — a mutation that rewrote
+  // every layer passed that check — so the count is what proves the work was
+  // avoided rather than merely that the answer came out right.
+  assert(st.ss_layers == 1,
+         "wrote {st.ss_layers} payloads for one changed layer — an incremental save "
+         + "that rewrites everything is a full save wearing the name");
+  after = read_bytes(p) ?? [];
+
+  assert(len(before) == len(after), "an incremental save changed the file SIZE");
+  // count the 8 KB payload regions that differ
+  moved = 0;
+  hdr = SZ_HEADER + 3 * SZ_CHUNK + 3 * SZ_LAYER_DIR;
+  for k in 0..3 {
+    diff = false;
+    for j in 0..SZ_LAYER {
+      at = hdr + k * SZ_LAYER + j;
+      if at < len(after) && before[at] != after[at] { diff = true; }
+    }
+    if diff { moved = moved + 1; }
+  }
+  assert(moved == 1, "{moved} of 3 payloads were rewritten; one layer changed");
+
+  // and it must still be a correct world
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "reload {ld.wl_code}: {ld.wl_detail}");
+  assert(world_column(ld.wl_world, 40, 0).co_cells[0].h_height == 1500, "the edit is missing");
+  assert(world_column(ld.wl_world, 0,  0).co_cells[0].h_height == 1000, "an untouched layer moved");
+  assert(world_column(ld.wl_world, 80, 0).co_cells[0].h_height == 1200, "an untouched layer moved");
+  delete(p);
+}
+
+// ⚠ The shape check: adding a chunk shifts every offset after it, so an
+// incremental write would scatter payloads. It must fall back to a full write —
+// and the CONTROL is that the world is still correct afterwards, which is the
+// thing a silent mis-offset would break.
+fn test_x5_a_shape_change_falls_back_to_a_full_write() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "a");
+  p = "sp_x5.bin";
+  if exists(p) { delete(p); }
+  assert(world_save_as(w, p, [], OWNER_ANY) == WS_OK, "full save");
+  small = len(read_bytes(p) ?? []);
+
+  assert(world_set_column(w, Column { co_q: 200, co_r: 200,
+         co_cells: [sp_cell(1300, 1)] }).cw_code == CW_OK, "new chunk");
+  assert(world_save_incremental(w, p, [], OWNER_ANY).ss_code == WS_OK, "save after shape change");
+  bigger = len(read_bytes(p) ?? []);
+  assert(bigger > small, "the file did not grow for a new chunk: {small} -> {bigger}");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "reload {ld.wl_code}: {ld.wl_detail}");
+  assert(world_column(ld.wl_world, 0, 0).co_cells[0].h_height == 1000, "old chunk lost");
+  assert(world_column(ld.wl_world, 200, 200).co_cells[0].h_height == 1300, "new chunk lost");
+  delete(p);
+}

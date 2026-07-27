@@ -736,6 +736,104 @@ pub fn world_scan_versions(path: text) -> VersionScan {
   VersionScan { vs_code: WL_OK, vs_tau: tau, vs_max: hi, vs_layers: cnt }
 }
 
+// ── `X3`-`X5` — a store that survives a long life ────────────────────────────
+//
+// A full rewrite satisfies `X3`, `X4` and `X5` trivially — nothing fragments,
+// nothing relocates, and every save is a compaction — but it costs O(world) to
+// change one chunk, which is the opposite of what a huge world needs. The point
+// of slots is that a save costs what CHANGED.
+//
+// This writes incrementally when it can: the header and directory are small and
+// always rewritten, and a layer's 8 KB of cells is rewritten only if its `ver`
+// says it moved since the file was written. Everything else is left where it lies,
+// which is `X3`'s reclamation in its simplest honest form — the slot a layer
+// already owns is the slot it keeps.
+//
+// ⚠ It falls back to a full write whenever the SHAPE changes — a chunk added or
+// dropped, or a layer count moved — because then offsets shift and every slot
+// after the change would have to move. That is `X5`'s compaction, and doing it as
+// "rewrite the file" rather than as a relocation pass is why `X4` never arises
+// here: nothing is ever moved while keeping its identity, so there is no
+// opportunity to stamp the clock for a move that changed nothing.
+fn same_shape(w: World, path: text) -> boolean {
+  sc = world_scan_versions(path);
+  if sc.vs_code != WL_OK { return false; }
+  n = 0;
+  for ch in w.w_chunks { n = n + len(ch.ck_layers); }
+  sc.vs_layers == n && sc.vs_tau <= w.w_tau
+}
+
+// ⚠ Returns HOW MANY payloads it wrote, not just whether it worked. Comparing the
+// file before and after cannot tell "skipped it" from "rewrote the same bytes" —
+// a mutation that rewrote every layer passed a byte-comparison gate — so the count
+// is what makes the saving observable rather than merely plausible.
+pub struct SaveStat { ss_code: integer, ss_layers: integer }
+
+pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
+                              owner: integer) -> SaveStat {
+  if !same_shape(w, path) {
+    n = 0;
+    for ch in w.w_chunks { n = n + len(ch.ck_layers); }
+    return SaveStat { ss_code: world_save_as(w, path, palette, owner), ss_layers: n };
+  }
+  if owner != OWNER_ANY {
+    held = file_owner(path);
+    if held != OWNER_ANY && held != owner {
+      return SaveStat { ss_code: WS_CONCURRENT, ss_layers: 0 };
+    }
+  }
+  for b in palette {
+    if b < 0 || b > 255 { return SaveStat { ss_code: WS_PALETTE, ss_layers: 0 }; }
+  }
+
+  was = world_scan_versions(path).vs_tau;
+  f = file(path);
+  f#format = LittleEndian;
+  // ⚠ Seek to 0 before writing. `f += …` APPENDS on an existing file — the same
+  // trap that made an ordinary second `world_save` produce a file holding two
+  // worlds — so an in-place update has to position itself explicitly.
+  seek(f, 0);
+
+  // header + directory, always — they are small and every version moved
+  f += (WORLD_MAGIC as i32); f += (WORLD_VERSION as i32); f += (CHUNK_W as i32);
+  f += ((w.w_unit * 1000000.0) as i32); f += (w.w_reserve as i32);
+  f += (w.w_eps as i32); f += (w.w_theta as i32); f += (w.w_next_id as i32);
+  f += ((w.w_tau >> 32) as i32); f += ((w.w_tau & 4294967295) as i32);
+  f += (owner as i32); f += (len(palette) as i32);
+  for b in palette { f += (b as u8? ?? 0); }
+  f += (len(w.w_chunks) as i32);
+  for ch in w.w_chunks {
+    f += (ch.ck_cx as i32); f += (ch.ck_cz as i32);
+    f += (ch.ck_base as i32); f += (len(ch.ck_layers) as i32);
+    for ly in ch.ck_layers {
+      f += (ly.ly_id as i32); f += (ly.ly_kind as u8? ?? 0);
+      f += ((ly.ly_ver >> 32) as i32); f += ((ly.ly_ver & 4294967295) as i32);
+    }
+  }
+
+  // the payload: seek past every layer that has not moved
+  dir = 0;
+  for ch in w.w_chunks { dir = dir + SZ_CHUNK + len(ch.ck_layers) * SZ_LAYER_DIR; }
+  at = SZ_HEADER + len(palette) + dir;
+  wrote = 0;
+  for ch in w.w_chunks {
+    for ly in ch.ck_layers {
+      if ly.ly_ver > was {
+        wrote = wrote + 1;
+        seek(f, at);
+        for c in ly.ly_cells {
+          f += (c.sv_height as u16); f += (c.sv_material as u8);
+          f += (c.sv_item as u8); f += (c.sv_item_rotation as u8);
+          f += (c.sv_wall_n as u8); f += (c.sv_wall_ne as u8); f += (c.sv_wall_se as u8);
+        }
+        f += (layer_crc(ly) as i32);
+      }
+      at = at + SZ_LAYER;
+    }
+  }
+  SaveStat { ss_code: WS_OK, ss_layers: wrote }
+}
+
 pub fn world_load(path: text) -> WorldLoad {
   empty = World { w_unit: 1.0 };
   f = file(path);

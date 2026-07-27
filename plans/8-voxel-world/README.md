@@ -64,7 +64,7 @@ Each ends green. `moros_map` is untouched until V9.
 | **V3** | sparsity | elision on both axes, maintained on write | P4, P5, P6, P12 |
 | **V4** | change and cache | the edit clock, per-layer versions in the directory, snapshot reads | `T1`, `T2`, `M2`, and `X4` — compaction voids nothing |
 | **V5** | many authors | stream merge onto one writer, snapshots, owner marker | `M1` ✅ · `M2` ✅ · `X2` ✅ — ⚠ snapshots COPY: loft deep-copies on assignment, so copy-on-write is not expressible here |
-| **V6** | long-running stores | free lists, size classes, online compaction | `X3`, `X4`, `X5` |
+| **V6** | long-running stores | incremental save — a save costs what CHANGED, with a full-write fallback when the shape moves | `X3` ✅ · `X5` ✅ · `X4` n/a — nothing relocates, so no move can stamp the clock |
 | **V7** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted** | P2, P3 |
 | **V8** | the second consumer | the crystal ports; decay becomes a side table | **P14** — the ceiling's real test |
 | **V9** | supersede and converge | `moros_map`'s world half retires; chunk helpers → `hex_grid`; dirty set → `gridmesh` | family has no duplicate function |
