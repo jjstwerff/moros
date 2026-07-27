@@ -152,17 +152,11 @@ named integer layers, and two committed fixtures both consumers read.
 
 Every entry re-run against the installed binary rather than taken from a commit message.
 
-| | |
-|---|---|
-| ✅ fixed | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H13` |
-| ⚠ **open** | **`H11`** `seek` documented but absent · **`H12`** returning a vector element of a local yields a dead value |
-| unverified | `H4` — the silent-null class, plausibly `H12`'s family |
-
-**`H12` is the one that still costs us.** `hex_world` copies field-by-field at two sites
-because of it, and it aborted the editor on its first terrain sample. Its shape is the
-nastiest available: every field reads `null`, which a consumer takes as *absent* rather than
-*broken* — and in a model where absence is a legal answer, a dead cell and an empty cell are
-indistinguishable.
+**Everything Moros filed is now fixed** — `H5`–`H13`, each re-run against the installed
+binary rather than taken from a commit message. `H11` and `H12` closed by loft `58b66993`,
+and the workarounds they forced in `hex_world` are removed with the suite green without
+them. Only `H4` is unverified, and it was plausibly `H12`'s family, so it may have gone with
+it.
 
 **`H13` is fixed and changes how to debug this.** The editor server IS debuggable now, over
 `loft debug src/editor_server.loft --rpc --lib lib/` — a breakpoint in the terrain brush,

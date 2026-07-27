@@ -19,13 +19,12 @@
 >
 > | | |
 > |---|---|
-> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H13` |
-> | ⚠ **still open** | **`H11`** (`seek` documented, absent), **`H12`** (returning a vector element of a local yields a dead value) |
-> | unverified | `H4` — the silent-null class; plausibly the same family as `H12` |
+> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H11`, `H12`, `H13` |
+> | unverified | `H4` — the silent-null class; was plausibly `H12`'s family, so likely closed with it |
 >
-> Every "fixed" row was re-run against the installed binary today, not taken from a commit
-> message. `H12` is the one that still costs us: `hex_world` copies field-by-field at two
-> sites because of it.
+> **Everything Moros filed is fixed.** Every row re-run against the installed binary, not
+> taken from a commit message. `H11` and `H12` closed by loft `58b66993`; the workarounds
+> they forced in `hex_world` are removed and the suite is green without them.
 
 # LOFT_HANDOFF.md — findings for the loft side, ready to file
 
@@ -577,9 +576,13 @@ asymmetry is surprising rather than principled.
 
 ---
 
-## H11 — `seek` is documented but not present
+## H11 ✅ FIXED (2026-07-27) — `seek` is documented but not present
 
 **Surfaced by:** `hex_world`'s version scan, 2026-07-27.
+
+**Fixed** (loft `58b66993`) — verified: `seek(g, 4)` then a read returns the second i32.
+The original report follows; the file layout it forced (directory before payload) is kept,
+because a version scan that stops after the index is better than one that seeks past cells.
 
 `STDLIB.md` lists `seek(self: File, pos: integer)` — *"Moves the read/write position to `pos`
 bytes from the start."* It is not available in the installed build, in any calling form:
@@ -605,10 +608,12 @@ consumers design around before discovering it is absent.
 
 ---
 
-## H12 — returning a vector ELEMENT of a local hands back a dead value, silently
+## H12 ✅ FIXED (2026-07-27) — returning a vector ELEMENT of a local hands back a dead value, silently
 
 **Surfaced by:** `hex_world.world_cell`, 2026-07-27. It aborted the editor
-(`SIGABRT`, op=242) on the first terrain sample; reduced, it returns nulls instead.
+(`SIGABRT`, op=242) on the first terrain sample; reduced, it returned nulls instead.
+**Fixed the same day** (loft `58b66993`) — verified: the reproducer now yields `h=42 m=2`,
+and `world_cell` returns the element directly again with the suite green.
 
 **Sibling of H9, not covered by its fix.** H9 was `fn f() -> T { mk().inn }` — a *field*
 projected off an inline call — and that is fixed and verified. This is the *vector element*
@@ -660,9 +665,9 @@ parts). Verified end to end: `--lib` resolves under `--rpc`, a session survives
 a browser client pressing a key, with `eval` and `setValue` working at the frame. The
 working recipe is in [LOFT_DEBUGGER.md](LOFT_DEBUGGER.md).
 
-**One residual, small:** a library-function call inside `eval` returns `null`
-(`hex_distance(tq, tr, 0, 0)` at a frame whose next line calls it). Arithmetic over locals
-works.
+**The residual is claimed fixed too** — loft `b6bffc27`, *"a rolled-back parse dropped every
+import, so eval could not call a library fn"*. Not re-verified here: the scripted check sent
+its `eval` before the breakpoint paused, so it produced no stop to evaluate at.
 
 The original report follows.
 

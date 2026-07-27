@@ -232,9 +232,10 @@ pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
   if ci < 0 { return Hex {}; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
   if w.w_chunks[ci].ck_layers[l].ly_kind != KIND_TERRAIN { return Hex {}; }
+  // The height is un-windowed here, so this builds a record regardless — the copy
+  // is the conversion, not a workaround. (It also WAS a workaround for loft H12,
+  // now fixed: returning `local.vec[i]` used to hand back a dead value.)
   e = w.w_chunks[ci].ck_layers[l].ly_cells[cell_index(q, r)];
-  // Copied field by field, never returned as the element: returning
-  // `local.vec[i]` hands back a dead value in loft (H12).
   return Hex { h_height: (w.w_chunks[ci].ck_base + e.sv_height) as u16? ?? 0,
                h_material: e.sv_material, h_item: e.sv_item,
                h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
