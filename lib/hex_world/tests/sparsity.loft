@@ -260,3 +260,75 @@ fn test_versions_are_readable_without_the_payload() {
          "the corruption was not in the payload, so the scan proves nothing");
   delete(p);
 }
+
+// ── Row 6 — many authors (`M1`, `X2`) ──────────────────────────────────────
+
+// `M1` — writes touching disjoint columns produce the same WORLD in either order.
+// This is what lets a merger reorder and batch freely: two players building in
+// different rooms never interact, and only edits sharing a column need their
+// relative order kept.
+//
+// ⚠ Compared on the WORLD, not on the bytes. A rebase triggered by one column
+// re-encodes its whole chunk, so two orders can yield identical absolute heights
+// and different stored ones. Comparing files here would fail on correct code.
+fn test_m1_disjoint_column_writes_commute() {
+  a = sp_world();
+  assert(world_set_column(a, Column { co_q: 1, co_r: 1,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "a1");
+  assert(world_set_column(a, Column { co_q: 9, co_r: 9,
+         co_cells: [sp_cell(2000, 2)] }).cw_code == CW_OK, "a2");
+
+  b = sp_world();                                   // the same two, reversed
+  assert(world_set_column(b, Column { co_q: 9, co_r: 9,
+         co_cells: [sp_cell(2000, 2)] }).cw_code == CW_OK, "b1");
+  assert(world_set_column(b, Column { co_q: 1, co_r: 1,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "b2");
+
+  for q in 0..12 {
+    for r in 0..12 {
+      ca = world_column(a, q, r);
+      cb = world_column(b, q, r);
+      assert(len(ca.co_cells) == len(cb.co_cells),
+             "layer count differs at ({q},{r}) — the order changed the world");
+      for i in 0..len(ca.co_cells) {
+        assert(ca.co_cells[i].h_height == cb.co_cells[i].h_height,
+               "height differs at ({q},{r}) layer {i} — disjoint writes did not commute");
+        assert(ca.co_cells[i].h_material == cb.co_cells[i].h_material,
+               "material differs at ({q},{r}) layer {i}");
+      }
+    }
+  }
+  // CONTROL: writes SHARING a column must NOT be expected to commute — the same
+  // two applied in both orders leave different heights, which is why `M1` is
+  // stated on disjoint columns rather than on writes in general.
+  c = sp_world();
+  world_set_column(c, Column { co_q: 3, co_r: 3, co_cells: [sp_cell(1000, 1)] });
+  world_set_column(c, Column { co_q: 3, co_r: 3, co_cells: [sp_cell(1500, 1)] });
+  d = sp_world();
+  world_set_column(d, Column { co_q: 3, co_r: 3, co_cells: [sp_cell(1500, 1)] });
+  world_set_column(d, Column { co_q: 3, co_r: 3, co_cells: [sp_cell(1000, 1)] });
+  assert(world_column(c, 3, 3).co_cells[0].h_height
+         != world_column(d, 3, 3).co_cells[0].h_height,
+         "shared-column writes commuted, so this test cannot tell order from disorder");
+}
+
+// `X2` — a second writer to one store is detected, not assumed away.
+fn test_x2_a_second_writer_is_refused() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  p = "sp_x2.bin";
+  // ⚠ Cleared FIRST. This test deliberately leaves a world owned by 9999 if it
+  // fails, and a stale one would make the next run refuse at its first line —
+  // failing for the previous run's reason rather than its own.
+  if exists(p) { delete(p); }
+  assert(world_save_as(w, p, [], 4242) == WS_OK, "first owner must be accepted");
+  assert(world_save_as(w, p, [], 9999) == WS_CONCURRENT,
+         "a different owner wrote over a world it does not hold — undetected, two "
+         + "processes on one file corrupt it rather than erroring");
+  // CONTROL: the SAME owner writes again freely, or this refuses everything.
+  assert(world_save_as(w, p, [], 4242) == WS_OK, "the holder must be able to write again");
+  // and OWNER_ANY opts a single-writer tool out entirely
+  assert(world_save(w, p, []) == WS_OK, "OWNER_ANY must not be refused");
+  delete(p);
+}

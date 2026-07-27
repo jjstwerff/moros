@@ -49,6 +49,7 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~5~~ | ~~roads~~ — a graded strip laid while walking | #9 | M | ✅ 2026-07-27 — gate green, control red; all other gates still green |
 | — | ✋ | | | draw one |
 | 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
+| — | *(#8's own rows 6–7 — many authors, long-running stores — run beside the ladder; `M1` and `X2` are done, `M2` needs copy-on-write)* | #8 | | ⚠ part done |
 | — | ✋ | | | walk into a wall, orbit beside one |
 | 7 | fields — bounded regions | #11 | M | enclose an area, give it a character |
 | — | ✋ | | | |

@@ -482,7 +482,7 @@ pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> bo
 // The format's EXACT sizes. Gates assert against these rather than against
 // whatever the writer happens to produce, so a padding regression is a failure
 // rather than a new baseline.
-pub const SZ_HEADER = 48;                     // 9 i32 + tau (8) + the chunk count
+pub const SZ_HEADER = 52;                     // 9 i32 + tau (8) + owner + chunk count
 pub const SZ_CHUNK  = 16;                     // cx, cz, base, layer count
 pub const SZ_CELL   = 8;                      // u16 + 6 * u8 — the voxel, exactly
 // The DIRECTORY and the PAYLOAD are separate regions, which the contract calls
@@ -544,8 +544,32 @@ fn layer_crc(ly: Layer) -> integer {
   (acc ^ U32_MASK) & U32_MASK
 }
 
-pub const WS_OK      = 0;
-pub const WS_PALETTE = 1;   // a palette entry is not a byte
+pub const WS_OK         = 0;
+pub const WS_PALETTE    = 1;   // a palette entry is not a byte
+pub const WS_CONCURRENT = 2;   // `X2` — someone else is writing this world
+
+// `X2` — MANY AUTHORS ARE NORMAL; A SECOND WRITER TO ONE STORE IS A BUG.
+//
+// Those are different claims. Players and editors produce many edit streams and
+// they merge into one serialised writer (`M1`); what this refuses is two
+// PROCESSES writing one file, which is not a use case and, undetected, corrupts
+// rather than errors.
+//
+// The marker is whatever the caller uses to mean "me" — a pid, a session id. A
+// save over a world last written by a different owner is refused, and passing
+// `OWNER_ANY` opts out for a single-writer tool that does not care.
+pub const OWNER_ANY = 0;
+
+fn file_owner(path: text) -> integer {
+  f = file(path);
+  if f.format == Format.NotExists { return OWNER_ANY; }
+  f#format = LittleEndian;
+  if f#read as i32 != WORLD_MAGIC { return OWNER_ANY; }
+  skipv = f#read as i32; skipw = f#read as i32; skipu = f#read as i32;
+  skipr = f#read as i32; skipe = f#read as i32; skipt = f#read as i32;
+  skipn = f#read as i32; skiph = f#read as i32; skipl = f#read as i32;
+  f#read as i32
+}
 
 // Returns a code because a save that cannot represent what it was handed must say
 // so. The palette is the CONSUMER's bytes and the library never interprets them —
@@ -553,8 +577,17 @@ pub const WS_PALETTE = 1;   // a palette entry is not a byte
 // back a different palette than the one given, which is the `ML_LABEL_TOO_WIDE`
 // lesson at a different seam.
 pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
+  return world_save_as(w, path, palette, OWNER_ANY);
+}
+
+pub fn world_save_as(w: World, path: text, palette: vector<integer>,
+                     owner: integer) -> integer {
   for b in palette {
     if b < 0 || b > 255 { return WS_PALETTE; }
+  }
+  if owner != OWNER_ANY {
+    held = file_owner(path);
+    if held != OWNER_ANY && held != owner { return WS_CONCURRENT; }
   }
   // ⚠ A save REPLACES; it does not append. `f += …` on an existing file appends,
   // so without this an ordinary second save produced a file containing two worlds
@@ -576,6 +609,7 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
   // report VALID — a silent wrong answer, the worst class this model has.
   f += ((w.w_tau >> 32) as i32);
   f += ((w.w_tau & 4294967295) as i32);
+  f += (owner as i32);
   f += (len(palette) as i32);
   for b in palette { f += (b as u8? ?? 0); }   // range already refused above
   f += (len(w.w_chunks) as i32);
@@ -642,6 +676,7 @@ pub fn world_scan_versions(path: text) -> VersionScan {
   thi = f#read as i32;
   tlo = f#read as i32;
   tau = (thi << 32) | (tlo & 4294967295);
+  ownr = f#read as i32;
   if eps <= 2 * th { return VersionScan { vs_code: WL_CONSTANTS }; }
   pn = f#read as i32;
   for _sp in 0..pn { skipb = f#read as u8; }
@@ -688,6 +723,7 @@ pub fn world_load(path: text) -> WorldLoad {
   thi = f#read as i32;
   tlo = f#read as i32;
   tau = (thi << 32) | (tlo & 4294967295);
+  ownr = f#read as i32;
   // ⚠ `C1` is re-checked ON OPEN, not trusted because the writer checked it. A
   // file with eps <= 2*theta makes `B1` fail SILENTLY, and the symptom is
   // intermittently wrong geometry at chunk borders — a wrong answer, not a crash.

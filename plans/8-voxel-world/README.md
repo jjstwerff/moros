@@ -63,7 +63,7 @@ Each ends green. `moros_map` is untouched until V9.
 | **V2** | the file | header with every world constant, opaque palette, directory, chunk I/O, per-chunk CRC, `ε > 2θ` checked on open | P1, P7, P8 |
 | **V3** | sparsity | elision on both axes, maintained on write | P4, P5, P6, P12 |
 | **V4** | change and cache | the edit clock, per-layer versions in the directory, snapshot reads | `T1`, `T2`, `M2`, and `X4` — compaction voids nothing |
-| **V5** | many authors | stream merge onto one writer, copy-on-write slots, owner marker | `M1`, `M2`, `X2` |
+| **V5** | many authors | ⚠ **part done** — `M1` (disjoint writes commute) and `X2` (a second writer refused) are gated. `M2` (snapshot reads) needs copy-on-write and is NOT built | `M1` ✅, `X2` ✅, `M2` ✗ |
 | **V6** | long-running stores | free lists, size classes, online compaction | `X3`, `X4`, `X5` |
 | **V7** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted** | P2, P3 |
 | **V8** | the second consumer | the crystal ports; decay becomes a side table | **P14** — the ceiling's real test |
