@@ -51,7 +51,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
 | — | *(#8's own rows run beside the ladder: many authors and long-running stores are both **DONE** — `M1` `M2` `X2` `X3` `X5` gated. What remains of #8 is the crystal port and the convergences)* | #8 | | ✅ |
 | — | ✋ | | | walk into a wall, orbit beside one |
-| 7 | fields — bounded regions | #11 | M | ⚠ **PART DONE** — fill implemented and the unbounded REFUSAL verified directly; the gate does not yet work, so the bounded case is unproven |
+| ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
 | — | ✋ | | | |
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |

@@ -440,6 +440,15 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
   }
 }
 
+// The flood's visited set, keyed on one integer because a loft hash keys on a
+// single field. The pack is the same shape the chunk index uses.
+struct SeenAt { sa_key: integer }
+struct Seen   { s_by: hash<SeenAt[sa_key]> }
+
+fn age_like_key(q: integer, r: integer) -> integer {
+  ((q & 4294967295) << 32) | (r & 4294967295)
+}
+
 // ── FIELDS (rung W3, moros#11) ───────────────────────────────────────────────
 //
 // **A field is the FILL; its boundary is derived, not stored.** That is #11's open
@@ -462,12 +471,18 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
      && world_cell(wld, sq, sr, SURFACE).h_material != 0 {
     return 0;                       // standing on something that is not open ground
   }
+  // ⚠ The visited set is a HASH, not a scanned vector. It was a vector, and the
+  // membership test made the flood O(n^2) — at the 4000 cap that is ~100 million
+  // comparisons, slow enough that a refusal took longer to arrive than the gate
+  // waited for it. The gate looked wrong; the fill was.
+  seen = Seen { s_by: [] };
   seen_q: vector<integer> = [];
   seen_r: vector<integer> = [];
   fq: vector<integer> = [sq];
   fr: vector<integer> = [sr];
   seen_q += [sq];
   seen_r += [sr];
+  seen.s_by += SeenAt { sa_key: age_like_key(sq, sr) };
   escaped = false;
   while len(fq) > 0 && !escaped {
     nq: vector<integer> = [];
@@ -478,13 +493,12 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
         ar = nb_r(fq[i], fr[i], d);
         m = world_cell(wld, aq, ar, SURFACE).h_material;
         if m == SURFACE_MAT || m == 0 {
-          fresh = true;
-          for k in 0..len(seen_q) {
-            if seen_q[k] == aq && seen_r[k] == ar { fresh = false; }
-          }
-          if fresh {
+          if seen.s_by[age_like_key(aq, ar)] == null {
             if len(seen_q) >= FIELD_CAP { escaped = true; }
-            else { seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar]; }
+            else {
+              seen.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
+              seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
+            }
           }
         }
       }
@@ -1215,12 +1229,19 @@ fn main() {
               px = ev.payload[..pi] as float ?? px;
               pz = rest2[..pj] as float ?? pz;
               yaw = rest2[pj + 1..] as float ?? yaw;
+              // ⚠ The road goes where the character NOW IS, from px/pz. It used
+              // `last_hq`/`last_hr`, which only the WALK TICK updates — so every
+              // placement laid road at the same stale hex and a placed path made a
+              // blob instead of a line. Row 5's gate passed anyway, because it
+              // asked whether road cells existed and were flat, not whether they
+              // followed the path.
               if roading {
-          road_lay(wld, last_hq, last_hr, road_h, ROAD_HALF);
-          mark_dirty(dirty, last_hq, last_hr, ROAD_HALF);
-          py = (road_h as float) * HEIGHT_SCALE;
-        }
-        if levelling {
+                rhx = world_to_hex(px, pz);
+                road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, ROAD_HALF);
+                mark_dirty(dirty, rhx.ha_q, rhx.ha_r, ROAD_HALF);
+                py = (road_h as float) * HEIGHT_SCALE;
+              }
+              if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
               } else {
                 py = terrain_y(px, pz, wld);

@@ -1,17 +1,10 @@
-// ⚠ THIS GATE DOES NOT YET WORK — kept out of the passing claim.
-//
-// It reports `refusedOnOpenGround: false` and a FRACTIONAL vertex count
-// (8.000000000000005), so both of its observations are wrong: the status capture
-// misses a message that demonstrably arrives, and the mesh slicing is off by
-// something that leaves a non-multiple of six.
-//
-// The BEHAVIOUR is verified directly — a probe that connects, places at the origin
-// and sends `11:` gets back exactly
-//     "field refused — the enclosure is not closed"
-// which is the refusal this rung is about. What is unproven is the bounded case,
-// and nothing here should be read as gating it.
-//
 // Field gate (rung W3, moros#11).
+//
+// ⚠ Getting this to pass found a bug in ROADS, not in fields: road was laid at
+// `last_hq`/`last_hr`, which only the walk tick updates, so every PLACEMENT paved
+// the same stale hex and a placed path made a blob instead of a line. Row 5's gate
+// passed anyway — it asked whether road cells existed and were flat, never whether
+// they followed the path. This gate needs a closed ring, so it could not.
 //
 // The claim: a fill is BOUNDED or it is REFUSED. Enclose ground with road and the
 // fill takes the inside; stand on open ground and it must refuse and change
@@ -40,7 +33,12 @@ ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'M') { const h = b.indexOf(';'), id = Number(b.slice(0, h));
     let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
-    chunks.set(id, rest.slice(rest.indexOf(';') + 1).split(',').map(Number)); }
+    const body = rest.slice(rest.indexOf(';') + 1);
+    // ⚠ An EMPTY mesh is the normal case here — a chunk with no field cells sends
+    // one — and `''.split(',')` is `['']`, which maps to `[NaN]` and counts as one
+    // element. Summing length/6 over those produced 8.000000000000005 vertices,
+    // a number that cannot be right and was the tell that the GATE was at fault.
+    chunks.set(id, body === '' ? [] : body.split(',').map(Number)); }
   if (t === 'X') chunks.delete(Number(b));
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
@@ -52,10 +50,20 @@ ws.onmessage = async (e) => {
     const refused = status.some(x => x.includes('field refused'));
 
     // ── enclose a small patch by walking a road ring around it
-    const ring = [[6,0],[6,2],[6,4],[4,6],[2,6],[0,6],[-2,6],[-4,4],[-4,2],[-4,0],
-                  [-4,-2],[-2,-4],[0,-4],[2,-4],[4,-4],[6,-2],[6,0]];
+    // ⚠ RADIUS MATTERS. The road is ROAD_HALF = 2 hexes each side (~3.5 wu), so a
+    // ring tighter than that paves its own interior — the first version used ~6 wu
+    // and the fill then refused because the character was standing ON the road,
+    // not inside an enclosure. 16 wu leaves roughly six hexes of open ground.
+    // 32 samples, not 16: the chord between placements must be comfortably under the
+    // road width or the ring leaks. At R=16 sixteen samples give a 6.2 wu chord
+    // against a ~7 wu strip — overlapping only just, and it did not close.
+    const R = 16, ring = [];
+    for (let k = 0; k <= 32; k++) {
+      const a = (k / 32) * Math.PI * 2;
+      ring.push([+(R * Math.cos(a)).toFixed(2), +(R * Math.sin(a)).toFixed(2)]);
+    }
     ws.send('10:1'); await wait(300);
-    for (const [x, z] of ring) { place(x, z, 0); await wait(240); }
+    for (const [x, z] of ring) { place(x, z, 0); await wait(150); }
     ws.send('10:0'); await wait(600);
 
     // stand inside and fill
@@ -66,7 +74,8 @@ ws.onmessage = async (e) => {
 
     const ok = refused && refusedField === 0 && okMsg && filled > 0;
     console.log(JSON.stringify({ refusedOnOpenGround: refused, fieldAfterRefusal: refusedField,
-                                 filledInsideRing: okMsg, fieldVerts: filled, ok }));
+                                 filledInsideRing: okMsg, fieldVerts: filled, ok,
+                                 status: status.slice(-4) }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
