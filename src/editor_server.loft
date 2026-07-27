@@ -104,6 +104,16 @@ const LEVEL_R = 5;
 // brown at the top. The rule is the model's, the interpolation is the client's
 // — the same split as the camera matrices, where the solve is here and only the
 // multiply is there.
+// One chunk carries two surfaces, so its mesh id carries a PARITY: ground is even,
+// road is odd. An offset was tried first and was wrong — `enc_coord` packs the
+// coordinates into ids reaching 2.2e12, so any constant big enough to clear them
+// is a guess about how far a world extends. Parity makes no range assumption at
+// all. `0` in the ramp slot keeps the road a flat colour rather than
+// height-ramped: a road is a surface, not a reading of the terrain.
+const ROAD_R = 0.28;
+const ROAD_G = 0.26;
+const ROAD_B = 0.24;
+
 const GRASS_R = 0.42;
 const GRASS_G = 0.50;
 const GRASS_B = 0.30;
@@ -184,6 +194,7 @@ const TICK_US = 33000;
 //                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
 //                     5:<+1|-1>     raise / lower the ground ahead
 //                     6:<0|1>       levelling on/off — flatten as you walk
+//                    10:<0|1>       road on/off — lay a graded strip as you walk
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -211,6 +222,7 @@ const MSG_LEVEL = 6;
 const MSG_PLACE = 7;
 const MSG_SAVE = 8;
 const MSG_LOAD = 9;
+const MSG_ROAD = 10;      // roads: lay a graded strip as you walk (moros#9)
 
 // One authored peak. This — a vector of these — is the whole terrain.
 // ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
@@ -231,6 +243,8 @@ const W_EPS        = 8;
 const W_THETA      = 3;
 const SURFACE      = 0;           // the editor authors one terrain layer
 const SURFACE_MAT  = 1;           // any non-zero index: 0 is absence (`E1`)
+const ROAD_MAT     = 2;           // the road surface
+const ROAD_HALF    = 2;           // road half-width, in hexes
 
 fn new_world() -> World {
   n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
@@ -373,6 +387,42 @@ fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
   c = world_cell(wld, hq, hr, SURFACE);
   h = c.h_height;
   h
+}
+
+// ── ROADS (rung W1, moros#9) ─────────────────────────────────────────────────
+//
+// **A road GRADES the ground; it does not drape over it.** That is #9's open
+// question, answered here: a surface that follows every bump is not a road, and a
+// graded one owns the heights of the cells it covers — which is also what lets it
+// satisfy the ladder's standing obligation that a rung survive edits underneath
+// it. Raise a hill under a road and the road is wrong until it is re-laid, which
+// is a visible, fixable state; a draped road would silently become a ripple.
+//
+// The width is a HALF-WIDTH in hexes rather than a falloff: a road has an edge.
+// The brush's `(1-(d/R)^2)^2` is right for a hill, which has no edge, and wrong
+// here for the same reason.
+//
+// ⚠ What this is NOT yet: `hex_way` models a way as ONE exact centreline with
+// offsets derived from it, which is how it escapes the half-hex quantisation floor
+// a rasterised band bottoms out at. This lays a band along the walked path, so it
+// IS on that floor. The seam to take when it matters is already clear —
+// `hex_way` owns the curve, `hex_world` owns the cells — and nothing here
+// contradicts it: the authoring gesture changes, the stamp does not.
+fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_distance(q, r, cq, cr) <= rad {
+        hh = h;
+        if hh < W_RESERVE { hh = W_RESERVE; }
+        if hh > 65535 { hh = 65535; }
+        world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
+          co_cells: [hex_world::Hex { h_height: hh as u16? ?? 0,
+                                      h_material: ROAD_MAT }] });
+      }
+    }
+  }
 }
 
 // The falloff brush, applied to CELLS rather than recorded as a peak.
@@ -527,7 +577,11 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
 
 // One chunk of ground. No skirts: the corner means make the surface continuous,
 // so there is no gap left to close.
-fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
+// `want_mat` selects which surface this mesh carries: one mesh per material per
+// chunk, because the client colours a whole mesh at once. Two small meshes beat a
+// per-vertex colour channel here — the client already keys meshes by id, so this
+// costs a second id and no protocol change.
+fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
   cm = mesh("chunk");
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
@@ -553,10 +607,18 @@ fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
 
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
-      emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0);
+      mat = world_cell(wld, cq, cr, SURFACE).h_material;
+      // An unwritten cell is absence (material 0) and counts as ground, which is
+      // what makes an unauthored world a flat plane rather than a hole.
+      if mat == 0 { mat = SURFACE_MAT; }
+      if mat == want_mat { emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0); }
     }
   }
   cm
+}
+
+fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
+  chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
 }
 
 // THE GROUND UNDER THE CHARACTER, sampled from THE SAME TRIANGLES THAT ARE DRAWN.
@@ -963,6 +1025,8 @@ fn main() {
   wld = new_world();
   levelling = false;
   level_h = 0;                 // the frozen foot height, in height units
+  roading = false;             // laying road as the character walks
+  road_h = 0;                  // the road's grade, frozen when it was switched on
   dirty = DirtySet { items: [] };
   clients: vector<Client> = [];
   keys = 0;
@@ -1075,7 +1139,12 @@ fn main() {
               px = ev.payload[..pi] as float ?? px;
               pz = rest2[..pj] as float ?? pz;
               yaw = rest2[pj + 1..] as float ?? yaw;
-              if levelling {
+              if roading {
+          road_lay(wld, last_hq, last_hr, road_h, ROAD_HALF);
+          mark_dirty(dirty, last_hq, last_hr, ROAD_HALF);
+          py = (road_h as float) * HEIGHT_SCALE;
+        }
+        if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
               } else {
                 py = terrain_y(px, pz, wld);
@@ -1083,6 +1152,18 @@ fn main() {
               moved = true;
             }
           }
+        } else if ev.msg_id == MSG_ROAD {
+          roading = (ev.payload as integer ?? 0) != 0;
+          if roading {
+            // The grade is frozen at the height the character stands on, exactly
+            // as levelling freezes its floor: a road laid while walking uphill
+            // should CUT into the hill rather than ride up it, which is what
+            // makes it a road and not a painted stripe.
+            rvf = py / HEIGHT_SCALE ?? 0.0;
+            road_h = (rvf + 0.5) as integer;
+          }
+          srv.send_to(ev.cid, "S:road {roading} at grade {road_h}");
+          println("editor: road {roading} at grade {road_h}");
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling {
@@ -1255,9 +1336,12 @@ fn main() {
         live = false;
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
-          dm = chunk_mesh(dc2.cx, dc2.cz, wld);
-          srv.broadcast("M:{dc2.id};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
-          srv.broadcast("T:{dc2.id};{mat_wire(mat4_identity())}");
+          dm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
+          srv.broadcast("M:{dc2.id * 2};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          srv.broadcast("T:{dc2.id * 2};{mat_wire(mat4_identity())}");
+          rm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, ROAD_MAT);
+          srv.broadcast("M:{dc2.id * 2 + 1};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
+          srv.broadcast("T:{dc2.id * 2 + 1};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -1308,8 +1392,11 @@ fn main() {
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
               cmesh = chunk_mesh(scx, scz, wld);
-              srv.broadcast("M:{cid};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
-              srv.broadcast("T:{cid};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 2};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              rmesh = chunk_mesh_mat(scx, scz, wld, ROAD_MAT);
+              srv.broadcast("M:{cid * 2 + 1};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
+              srv.broadcast("T:{cid * 2};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 2 + 1};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }
@@ -1319,7 +1406,14 @@ fn main() {
       for lz2 in loaded {
         still = false;
         for nz in next_loaded { if nz == lz2 { still = true; } }
-        if !still { srv.broadcast("X:{lz2}"); dropped = dropped + 1; }
+        // BOTH surfaces retire together: the road mesh rides on an offset id and
+        // would otherwise linger on the client as a strip of road floating where
+        // its ground used to be.
+        if !still {
+          srv.broadcast("X:{lz2 * 2}");
+          srv.broadcast("X:{lz2 * 2 + 1}");
+          dropped = dropped + 1;
+        }
       }
       loaded = next_loaded;
       if added != 0 || dropped != 0 {
