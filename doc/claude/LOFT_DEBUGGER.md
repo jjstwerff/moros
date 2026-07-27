@@ -1,11 +1,86 @@
-# The loft debugger — what it does, and what it cannot do yet
+# The loft debugger — how to drive it against the editor
 
 Tested 2026-07-27 against the installed `loft`, with the editor server as the target.
 
-**The short version: it is genuinely good on pure-loft code and cannot touch our server.**
-Two independent limitations stop it, both reproduced below, both filed as `H13`.
+> ## ✅ H13 is FIXED — the server IS debuggable, over `--rpc`
+>
+> Both limitations reported earlier are gone: `--lib` resolves, and a session survives
+> `server::listen` and a live websocket. Verified end to end below — a breakpoint inside
+> the terrain brush, hit by a browser client pressing a key, with locals readable and
+> editable at the frame.
+>
+> **The interactive `(dbg)` prompt is the human's tool; agents should use `--rpc`**, which
+> is what the `loft-debug` skill documents and what all of this was verified against.
 
-## Using it
+## The recipe that works — a live websocket server
+
+```sh
+printf '%s\n' \
+ '{"id":1,"req":"launch","file":"/abs/path/src/editor_server.loft"}' \
+ '{"id":2,"req":"setBreakpoints","file":"editor_server.loft","breakpoints":[{"line":385}]}' \
+ '{"id":3,"req":"run"}' \
+| loft debug src/editor_server.loft --rpc --lib lib/
+```
+
+**Order matters:** `launch` loads without running, `setBreakpoints` goes between, `run`
+starts it. Check `verified:true` in the `setBreakpoints` reply — `false` means the line has
+no breakable code and the stop will never come.
+
+Then connect a client and act. Program output arrives as events on the same pipe:
+
+```json
+{"event":"output","category":"stdout","text":"editor: client 0 connected"}
+{"event":"stopped","reason":"breakpoint","frame":{"function":"brush","line":385,
+  "locals":[{"name":"tq","value":"10"},{"name":"tr","value":"0"},
+            {"name":"amp","value":"6"},{"name":"rad","value":"7"},
+            {"name":"wld","value":"<&World>"},{"name":"dq#index","value":"<unset>"}]}}
+```
+
+That is the raise brush, paused mid-stroke, with the hex it is about to modify in view.
+
+### Inspecting and editing at the frame
+
+```json
+{"id":4,"req":"eval","expr":"amp * rad"}          → {"ok":true,"value":42}
+{"id":6,"req":"setValue","target":"amp","value":"99"}  → frame echoed, amp = 99
+{"id":7,"req":"eval","expr":"amp"}                → {"ok":true,"value":99}
+```
+
+**`setValue` is the one worth remembering.** A hypothesis about the brush can be tested by
+injecting a value into the running editor — no edit, no restart, no reconnecting a client.
+
+### Reading the frame honestly
+
+- `<&World>` — a reference, shown as its type rather than dumped.
+- `<unset>` — in lexical scope but not yet assigned on this path (`dq#index`, the loop
+  counter, before the loop runs). It is **not** a value; `eval` on it returns null.
+- `__ref_N` — compiler temporaries, not yours.
+
+⚠ **A `null` from `eval` is ambiguous** and the frame is what disambiguates it: out of
+scope, `<unset>`, or genuinely null all read the same. Check the `stopped` frame before
+concluding a field is empty.
+
+## Residual: library calls inside `eval`
+
+`eval` handles locals and operators. A call to a library function does not resolve:
+
+```json
+{"id":5,"req":"eval","expr":"hex_distance(tq, tr, 0, 0)"}  → {"ok":true,"value":null}
+```
+
+`hex_distance` is called on the very next line of the paused function, so it is available
+to the program but not to `eval`. Minor — arithmetic over locals covers most questions —
+but worth knowing before reading that `null` as an answer about the world.
+
+## Historical: what was broken (H13, fixed)
+
+Kept because the shape recurs. Before the fix, `--lib` was ignored in every position
+(`Undefined type Mat4`, while `loft --interpret --lib lib/` ran the same file fine), and a
+call reaching native code killed the session with an unnamed *"runtime error"* — bisected
+to the call rather than the package or the import, since `time::from_ymd` was fine and
+`random::rand_seed`, `web::sleep_ms` and `server::listen` were not.
+
+## The interactive prompt (`loft debug <file>:<line>`)
 
 ```bash
 loft debug <file>:<line>          # break at a line, then an interactive REPL
@@ -46,70 +121,12 @@ readable without any instrumentation. Being able to **assign** to a local is the
 knowing: a hypothesis can be tested by editing the value rather than editing the source and
 re-running.
 
-## ⚠ What it cannot do (yet)
+## Still worth reaching for instead, sometimes
 
-### 1. It ignores `--lib`, in every position
-
-```
-loft debug src/editor_server.loft:385 --lib lib/   → Error: Undefined type Mat4 …
-loft --lib lib/ debug src/editor_server.loft:385   → Error: Undefined type Mat4 …
-loft debug src/editor_server.loft:385              → Error: Undefined type Mat4 …
-```
-
-**Control:** `loft --interpret --lib lib/ src/editor_server.loft` compiles and runs the same
-file with zero errors. So the program is fine and the debugger's resolution differs.
-
-Any project whose libraries live in a local `lib/` — which is every group in this tree — is
-undebuggable by this route.
-
-### 2. A CALL that reaches native code kills the session
-
-Narrowed by bisection — it is neither "a registry package" nor "an import":
-
-| | under `loft debug` |
-|---|---|
-| `use web;` with **no call** | ✅ runs |
-| `use time;` + `from_ymd(2026, 7, 27)` — pure-loft arithmetic in a registry package | ✅ runs |
-| `use random;` + `rand_seed(7)` / `rand(1, 10)` | ❌ dies |
-| `use web;` + `sleep_ms(5)` | ❌ dies |
-| `use server;` + `listen(port)` | ❌ dies |
-
-```loft
-use web;
-fn main() { sleep_ms(5); x = 1 + 1; println("web ok {x}"); }
-```
-
-```
-(dbg) runtime error in the paused run — debug session abandoned (session preserved)
-loft>
-```
-
-So the boundary is **a call crossing into native code**, not the package it came from: the
-same package is fine until you call the part of it that is native, and a registry package
-whose functions are ordinary loft (`time`) is fine throughout. Everything above runs
-correctly under `loft --interpret`.
-
-**The error is never named** — no message, no location — and the prompt silently changes
-from `(dbg)` to `loft>`, a post-mortem REPL where `:continue` reports *"unknown command"*.
-The likeliest reading of that is a typo, not "the session ended".
-
-### What that means for a websocket server
-
-**A loft server with a live websocket cannot be debugged with `loft debug` today.** It needs
-`server` and `web`, which is limitation 2, and ours also needs `--lib`, which is limitation
-1. The breakpoint is never reached; the run fails before `listen`.
-
-## What to use instead, until then
-
-1. **`println` at the seam.** Crude and effective, and the editor's message loop is already
-   instrumented this way.
-2. **Lift the logic into a library and gate it.** `hex_world` is testable precisely because
-   the world model has no server in it — the same split that makes the model portable makes
-   it debuggable.
-3. **A probe program.** `lib/hex_world/probe/sparsity.loft` runs the same assertions as a
-   `main()`, which is also how row 2 was proven while `loft test` was crashing. A `main()`
-   using only pure loft *is* debuggable, so a probe that reproduces a library fault can be
-   stepped even when the server cannot.
+A **probe program** — `lib/hex_world/probe/sparsity.loft` — runs library assertions as a
+`main()`. It is how row 2 was proven while `loft test` was crashing, and it stays the
+cheaper tool when the question is about the library rather than about the running editor:
+no client to drive, no timing to arrange.
 
 ## See also
 

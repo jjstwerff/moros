@@ -629,10 +629,21 @@ the caller's return buffer, which is what H9's fix already does for the field ca
 
 ---
 
-## H13 — `loft debug` cannot reach a server: `--lib` ignored, native libs error unnamed
+## H13 ✅ FIXED (2026-07-27) — `loft debug` cannot reach a server: `--lib` ignored, native libs error unnamed
 
-**Surfaced by:** trying to debug the editor server with a live websocket, 2026-07-27. Full
-write-up in [LOFT_DEBUGGER.md](LOFT_DEBUGGER.md).
+**Surfaced by:** trying to debug the editor server with a live websocket, 2026-07-27.
+**Fixed the same day** (loft `216f8664`, `e8cb418e`, `55dd105c`, `887dd176` — the @PLN120
+arc, whose own summary names *reach, silence, discoverability*, which is this entry's three
+parts). Verified end to end: `--lib` resolves under `--rpc`, a session survives
+`server::listen` and a live websocket, and a breakpoint inside the terrain brush was hit by
+a browser client pressing a key, with `eval` and `setValue` working at the frame. The
+working recipe is in [LOFT_DEBUGGER.md](LOFT_DEBUGGER.md).
+
+**One residual, small:** a library-function call inside `eval` returns `null`
+(`hex_distance(tq, tr, 0, 0)` at a frame whose next line calls it). Arithmetic over locals
+works.
+
+The original report follows.
 
 **(a) `--lib` is ignored in every position.** All three forms fail with
 `Undefined type Mat4`:
