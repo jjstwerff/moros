@@ -15,6 +15,18 @@
 > is O(1) per append, where the temp-routing workaround loft's own commit calls out is
 > O(len) and quadratic.
 
+> ## Status at 2026-07-27
+>
+> | | |
+> |---|---|
+> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H13` |
+> | ⚠ **still open** | **`H11`** (`seek` documented, absent), **`H12`** (returning a vector element of a local yields a dead value) |
+> | unverified | `H4` — the silent-null class; plausibly the same family as `H12` |
+>
+> Every "fixed" row was re-run against the installed binary today, not taken from a commit
+> message. `H12` is the one that still costs us: `hex_world` copies field-by-field at two
+> sites because of it.
+
 # LOFT_HANDOFF.md — findings for the loft side, ready to file
 
 > Moros is a **consumer** of loft. This document holds defects Moros surfaced that belong
@@ -296,7 +308,10 @@ survives the 16:34 build.
 
 ---
 
-## H5 — a nested `for _ in …` loop runs its OUTER body once
+## H5 ✅ FIXED — a nested `for _ in …` loop runs its OUTER body once
+
+> Fixed by loft `b4f0cfa7`. ⚠ **This and `H8` are the same defect** — H8 was filed later
+> without noticing H5 already described it. Verified 2026-07-27: nested `for _` counts 6.
 
 **Status:** not filed · **Repo:** `loft-lang/loft`
 **Severity:** high — silent wrong answer, no error, no warning
@@ -338,7 +353,13 @@ produces a plausible-looking wrong answer rather than a crash.
 
 ---
 
-## H6 — chaining a struct-returning call loses its contents (NOT REDUCED)
+## H6 ✅ appears FIXED — chaining a struct-returning call loses its contents
+
+> Verified 2026-07-27 on the reported shape: `s = rot(s, 1)` four times over a struct
+> holding a vector gives `len=3 n=4 first=5`, all correct. Most likely carried by `H7`'s
+> fix (the return-buffer alias), whose commit says a struct target was already safe once
+> the vector case was handled. ⚠ It was **never minimised**, so this verifies the shape
+> described, not necessarily the original `hex_field` case — reopen if it recurs there.
 
 **Status:** not filed, **not minimised** · **Severity:** unknown
 **Suggested title:** `stores: repeatedly reassigning a struct from its own transform empties it, shape-dependently`
