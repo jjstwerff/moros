@@ -203,14 +203,32 @@ property guaranteed by construction; it is not evidence the gate would catch a
 regression. What IS mutation-verified is the density band and the dial: removing
 the density roll turns both red.
 
-**Not gated: that a tree stands on the ground it grows on.** `chunk_mesh_veg`
-places each tree at its own cell's height, and that is untested, because I could
-not pin down the mesh wire layout — index 7 stride 6 reads 0.707 for ground four
-raises high (a normal), index 4 reads 47.5 (a horizontal extent), and the older
-gates' `i = 1; i += 6` reads a sensible 6.25 from a series that CONTAINS index 7.
-Those cannot all be right. The older gates' height readings therefore rest on a
-convention nobody has verified — worth settling before another gate is built on
-it.
+**The mesh wire layout, settled.** I first shipped this rung claiming the gates
+disagreed about the layout and that the older ones rested on an unverified
+convention. That was wrong, and the correction is the useful part.
+
+`graphics::mesh_to_floats` writes POSITION FIRST — `x,y,z,nx,ny,nz` per vertex —
+confirmed against a captured payload:
+
+```
+M:<id>;<ramp>;0.42,0.5,0.3;13.856406,5.25,0,-0.5160468,0.76613086,-0.38306543,13.856406,4.5833335,1,…
+                └─ colour ─┘ └── x0 ──┘ y0 z0 └────────── normal0 ──────────┘ └── x1 ──┘ y1  z1
+```
+
+A reader must strip **three** fields — id, ramp, colour — before splitting on
+','; then a height is at index `1 + 6k`, which is what every other gate does and
+it is correct. Strip only two and the blue channel joins the first x as
+`"b;x0"`, index 2 parses to NaN, every offset shifts by two, and a height read
+lands on a normal (0.707) or a horizontal extent (47.5). That was my gate, not
+theirs. With it fixed, vegetation reads 1.1 on the flat and 7.1 on a 6.0 hill —
+a 0.55-scale tree is 1.1 tall, so both numbers are exactly what the geometry
+predicts, and pinning trees to y=0 turns the gate red while the ground still
+reads 6.
+
+The lesson is narrower than "verify your conventions": three readings that
+cannot all be right meant one reader was wrong, and the way to find out was to
+read the producer and capture one payload — not to infer from maxima, which is
+where I spent the time.
 
 **A bound expressed in the wrong unit re-tunes itself.** Adding the fourth
 surface moved every number in the stream gate by exactly 4/3 — peak 156 → 208 —

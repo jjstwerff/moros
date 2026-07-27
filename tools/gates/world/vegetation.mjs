@@ -9,15 +9,8 @@
 //     stroke would merely look thicker;
 //   · density is a dial, not a boolean — 80 must put down more than 20;
 //   · clearing empties it, and the mesh empties with it;
-//
-// ⚠ NOT GATED HERE: that a tree stands on the ground it grows on. Checking it
-// means reading a height off the mesh wire, and I could not pin that layout
-// down — index 7 stride 6 yields 0.707 for ground four raises high (a normal),
-// index 4 yields 47.5 (a horizontal extent), while the older gates' `i = 1;
-// i += 6` yields a sensible 6.25 from a series containing index 7. Those cannot
-// all be right, so the convention those gates rely on is not understood, and a
-// height assertion built on it would be decoration. `chunk_mesh_veg` does place
-// each tree at its own cell's height; that is untested. See EDITOR_LADDER.md.
+//   · a tree stands on the ground it grows on, so a wood scattered on a hill
+//     sits higher than one scattered on the flat.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -27,27 +20,31 @@ let st = 0;
 
 // vegetation is surface kind 3 of 4 (0 ground, 1 road, 2 field, 3 vegetation)
 //
-// ⚠ THE WIRE. The payload after the id and the flag is `r,g,b;` followed by six
-// floats a vertex, NORMAL FIRST: nx,ny,nz,x,y,z. Splitting on ',' yields
-// [r, g, "b;nx0", ny0, nz0, x0, y0, …] — index 2 is the join of the blue channel
-// and the first normal, and parses to NaN. So a HEIGHT sits at index 7 + 6k.
+// THE WIRE, settled against `graphics::mesh_to_floats` and a captured payload:
 //
-// This is worth spelling out because the layout is not the obvious one, and
-// reading it as position-first is self-consistent enough to fool a gate: it
-// yields ~9.165 for trees on flat ground, which is the disc's horizontal extent
-// wearing a height's clothes. The cross-check that settles it is the GROUND
-// mesh, whose height is known independently — four raises must read ~6.25.
-// An empty mesh is the three colour entries and nothing else.
+//   M:<id>;<flag>;<r>,<g>,<b>;x0,y0,z0,nx0,ny0,nz0,x1,y1,z1,…
+//
+// POSITION FIRST, six floats a vertex. So strip THREE semicolons — id, flag,
+// AND colour — and the array is pure floats with a height at index 1 + 6k.
+// That is the convention every gate in this directory uses, and it is correct.
+//
+// ⚠ Strip only two and the colour rides along: the array becomes
+// [r, g, "b;x0", y0, …], index 2 parses to NaN, and every offset shifts by two.
+// This gate did exactly that and then read index 7 (a normal, max 0.707) and
+// index 4 (a horizontal extent, 47.5) while `persist` read a correct 6.25 from
+// index 1 — which looked like three gates disagreeing about the layout, and was
+// really one gate parsing differently from the rest.
+// An empty mesh is one empty field, so fewer than six numbers.
 const isVeg = (id) => (id - 16) % 4 === 3;
 const vegVerts = () => {
   let n = 0;
-  for (const [id, d] of chunks) if (isVeg(id) && d.length > 3) n += Math.floor((d.length - 3) / 6);
+  for (const [id, d] of chunks) if (isVeg(id) && d.length >= 6) n += Math.floor(d.length / 6);
   return n;
 };
 const topYOfKind = (k) => {
   let y = -1e9;
-  for (const [id, d] of chunks) if ((id - 16) % 4 === k && d.length > 3)
-    for (let i = 7; i < d.length; i += 6) if (Number.isFinite(d[i])) y = Math.max(y, d[i]);
+  for (const [id, d] of chunks) if ((id - 16) % 4 === k && d.length >= 6)
+    for (let i = 1; i < d.length; i += 6) if (Number.isFinite(d[i])) y = Math.max(y, d[i]);
   return y === -1e9 ? null : +y.toFixed(3);
 };
 const vegTopY = () => topYOfKind(3);
@@ -85,8 +82,8 @@ const settleVerts = async (minMs = 2500, limitMs = 12000) => {
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'M') { const id = Number(b.slice(0, b.indexOf(';')));
-    const rest = b.slice(b.indexOf(';') + 1);
+  if (t === 'M') { const h = b.indexOf(';'), id = Number(b.slice(0, h));
+    let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
     if (id > 1000) chunks.set(id, rest.slice(rest.indexOf(';') + 1).split(',').map(Number)); }
   if (t === 'X') chunks.delete(Number(b));
   if (t === 'S') status.push(b);
@@ -112,15 +109,23 @@ ws.onmessage = async (e) => {
     const cleared = lastCount();
     const vertsCleared = await settleVerts();
 
-    // ── vegetation survives terrain being raised under it, and re-scatters on
-    //    the hill. Counts only: see the wire-layout note above for why there is
-    //    no height assertion here.
+    // ── a tree stands on the ground it grows on.
+    //
+    // ⚠ The raise lands PEAK_AHEAD (10) hexes along the facing, which is OUTSIDE
+    // a radius-6 scatter — an earlier version raised ground the trees were
+    // nowhere near and then wondered why they had not moved. So: scatter here,
+    // raise the hill over there, walk onto it, scatter again.
+    ws.send('13:1,60'); await ack();
+    await settleVerts();
+    const yFlat = vegTopY();
     for (let k = 0; k < 4; k++) { ws.send('5:1'); await wait(200); }
     await wait(1200);
     place(17.3, 0, 0); await wait(700);
     ws.send('13:1,60'); await ack();
     const onHill = lastCount();
     const vertsHill = await settleVerts();
+    const yHill = vegTopY();
+    const groundTop = topYOfKind(0);
     const kindTop = (k) => { let y=-1e9; for (const [id,d] of chunks) if ((id-16)%4===k && d.length>=6) for (let i=1;i+5<d.length;i+=6) y=Math.max(y,d[i]); return y===-1e9?null:+y.toFixed(3); };
 
 
@@ -130,10 +135,15 @@ ws.onmessage = async (e) => {
     const dialled   = dense > first;
     const emptied   = cleared === 0 && vertsCleared === 0;
     const grewOnHill = onHill > 0 && vertsHill > 0;
-    const ok = inBand && idempotent && dialled && emptied && grewOnHill;
+    // the hill is ~6.25wu, so a wood on it must clear a wood on the flat by a
+    // margin no jitter could account for
+    const standsOn = yHill !== null && yFlat !== null && yHill > yFlat + 3;
+    const ok = inBand && idempotent && dialled && emptied && grewOnHill && standsOn;
     console.log(JSON.stringify({ cells, first, second, dense, cleared, onHill,
                                  vertsFirst, vertsSecond, vertsCleared, vertsHill,
-                                 inBand, idempotent, dialled, emptied, grewOnHill, ok }));
+                                 yFlat, yHill, groundTop,
+                                 inBand, idempotent, dialled, emptied, grewOnHill,
+                                 standsOn, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');

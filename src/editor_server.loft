@@ -200,11 +200,22 @@ const TICK_US = 33000;
 //                     6:<0|1>       levelling on/off — flatten as you walk
 //                    10:<0|1>       road on/off — lay a graded strip as you walk
 //                    11:            field — fill the enclosure you stand in
+//                    12:<+1|-1>     storey — a floor above, a cellar below
+//                    13:<species>,<density>   scatter vegetation (species 0 clears)
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
 //   server → client   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>   fog + sky
-//                     M:<i>;<ramp>;r,g,b;…  mesh i; ramp=1 colours it by height
+//                     M:<i>;<ramp>;r,g,b;x0,y0,z0,nx0,ny0,nz0,x1,…
+//                          mesh i; ramp=1 colours it by height. The float run is
+//                          POSITION FIRST, six floats a vertex — the layout
+//                          `graphics::mesh_to_floats` writes. A reader must strip
+//                          THREE fields (id, ramp, colour) before splitting on
+//                          ',' — strip two and the blue channel joins the first x
+//                          as "b;x0", every offset shifts by two, and a height
+//                          read lands on a normal. That cost a rung: it looked
+//                          like the gates disagreed about the layout, and was one
+//                          gate parsing differently from the rest.
 //                     G:<lo rgb>,<hi rgb>,<lo y>,<hi y>   the ground ramp
 //                     T:<i>;<16>    mesh i's placement
 //                     E:            end of world
