@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-26)
+# STATE.md — where the editor work stands (2026-07-27)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -10,7 +10,7 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## Since 2026-07-25 — the world model, designed, specified and started
+## Since 2026-07-25 — the world model, specified AND BUILT to row 4
 
 > ⚠ **Whose work is this?** **Moros is the tabletop RPG.** The universal editor is
 > **lavition** — a separate product with its own org, documented in
@@ -55,9 +55,26 @@ read bits 5 and 6 of `h_item_rotation` — a spawn point is `L15` game state and
 excluded from the world file, yet two bits of the storage of record hold it. Belongs to #8's
 V1, and is cheaper to fix before worlds exist.
 
-⚠ **Nothing of the world model is implemented.** `src/editor_server.loft` still stores peaks
-and sums them at query time; V0 (the write chokepoint) has not started. The contract is what
-the code will be built *against*, not a description of it.
+**`lib/hex_world` exists and the editor runs on it.** Rows 1–4 of
+[the order of work](EDITOR_LADDER.md#the-order-of-work) are done:
+
+| | | |
+|---|---|---|
+| row 1 | the file — header, opaque palette, directory, per-chunk CRC, `ε > 2θ` on open | ✅ |
+| row 2 | sparsity — elision on both axes, exact sizes | ✅ |
+| row 3 | the edit clock, per-layer versions, a payload-free version scan | ✅ |
+| row 4 | **the editor moved onto it** — `Peak` and the local world format deleted | ✅ |
+
+`hex_world` is 29 tests plus `make gate-hexworld`; the editor's seven browser gates all pass
+on a fresh server. **Row 5 (roads, #9) is next**, and row 4's checkpoint — build hills, save,
+reload, walk — is the user's to judge.
+
+⚠ **Two things row 4 turned up that are worth carrying.** A read path that allocated a whole
+`Column` per cell, and a `find_chunk` that scanned every chunk *per cell sample* — together
+they made a mesh rebuild O(cells × chunks) and slow enough to reorder the gates. Both fixed
+(direct cell read; chunks indexed by a packed key). And the persist gate was **testing a
+bug**: it wiped the world by loading a name that did not exist, so a mistyped filename
+silently destroyed your work. That is now a named refusal that changes nothing.
 
 ## What exists
 
@@ -131,14 +148,26 @@ named integer layers, and two committed fixtures both consumers read.
    loss was symmetric with them, so every count agreed with every other count. Asymmetric
    content is what makes this class visible — which is the real argument for `house_door`.
 
-## loft defects: H7-H10 fixed upstream (2026-07-27)
+## loft defects — verified 2026-07-27
 
-All four Moros filed are fixed (loft `a1a07dcf`, `b4f0cfa7`, branch
-`tuxedo-h7-localization`) and verified against the installed binary. H9 is the one worth
-knowing: an **implicit tail returning a projected field of an inline call**
-(`fn f() -> T { mk().inn }`) handed back a reference into a freed store, which is how a
-crash in our test file presented as a hang and cost several rounds of wrong hypotheses.
-See [LOFT_HANDOFF.md](LOFT_HANDOFF.md).
+Every entry re-run against the installed binary rather than taken from a commit message.
+
+| | |
+|---|---|
+| ✅ fixed | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H13` |
+| ⚠ **open** | **`H11`** `seek` documented but absent · **`H12`** returning a vector element of a local yields a dead value |
+| unverified | `H4` — the silent-null class, plausibly `H12`'s family |
+
+**`H12` is the one that still costs us.** `hex_world` copies field-by-field at two sites
+because of it, and it aborted the editor on its first terrain sample. Its shape is the
+nastiest available: every field reads `null`, which a consumer takes as *absent* rather than
+*broken* — and in a model where absence is a legal answer, a dead cell and an empty cell are
+indistinguishable.
+
+**`H13` is fixed and changes how to debug this.** The editor server IS debuggable now, over
+`loft debug src/editor_server.loft --rpc --lib lib/` — a breakpoint in the terrain brush,
+hit by a browser client pressing a key, with `eval` and `setValue` live at the frame. That
+replaces `println` tracing; the recipe is in [LOFT_DEBUGGER.md](LOFT_DEBUGGER.md).
 
 ## What to do next
 
@@ -153,15 +182,15 @@ asset library.
 
 ## Open work
 
-**#8 — the world model** (`status:active`). Specified, unbuilt. V0 is the write chokepoint
-and is gated on **P13**: does `map_get_hex` alias? It returns a vector element, and loft's
-`#338` says `tmp = v[j]` is a view — if so, the `map_set_hex` following every mutation is
-decorative and any caller can write a cell through no function at all. That answer decides
-whether the guard is "add a check" or "stop handing out mutable views".
+**#8 — the world model** (`status:active`). Rows 1–4 done; rows 5–9 remain (many authors,
+long-running stores, the crystal port, the convergences). **P13 is answered:** `map_get_hex`
+returns a **copy**, so the chokepoint is real but *remembered* at seven sites — which is why
+`hex_world` was written fresh beside `moros_map` rather than retrofitted onto it.
 
-**Numbers the contract needs and does not have:** `ρ` (floor reserve), `ε` (minimum layer
-separation) and `θ` (match tolerance) for moros's own world, subject to `ε > 2θ`. They are
-per-world declarations, so they can wait for V1 without blocking the format.
+**The constants are now chosen for the editor's world** and live in `editor_server.loft`:
+`u = 0.25`, `ε = 8`, `θ = 3` (so `ε > 2θ` holds with margin), and `ρ = 0` — the floor
+reserve earns its keep when buildings arrive at row 8, and reserving space this rung cannot
+use would only shift the world up.
 
 **Camera occlusion is a GAME requirement, not an editor nicety.** A camera that
 enters geometry fills the whole screen, and for players sensitive to that it makes a
