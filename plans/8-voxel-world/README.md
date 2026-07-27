@@ -66,7 +66,7 @@ Each ends green. `moros_map` is untouched until V9.
 | **V5** | many authors | stream merge onto one writer, snapshots, owner marker | `M1` ✅ · `M2` ✅ · `X2` ✅ — ⚠ snapshots COPY: loft deep-copies on assignment, so copy-on-write is not expressible here |
 | **V6** | long-running stores | incremental save — a save costs what CHANGED, with a full-write fallback when the shape moves | `X3` ✅ · `X5` ✅ · `X4` n/a — nothing relocates, so no move can stamp the clock |
 | **V7** | the editor moves | brush writes voxels; `Peak`, `world_save`, `world_load` **deleted** | P2, P3 |
-| **V8** | the second consumer | the crystal ports; decay becomes a side table | **P14** — the ceiling's real test |
+| **V8** | the second consumer | ⚠ **part done** — the crystal's model is proven expressible on ours (`P14` gated: colour→material, height→height, **age→side table**, voxel unchanged at 8 bytes). The sibling package itself is NOT migrated — that is a shared tree with another agent, and a change to announce rather than land | **P14** ✅ |
 | **V9** | supersede and converge | `moros_map`'s world half retires; chunk helpers → `hex_grid`; dirty set → `gridmesh` | family has no duplicate function |
 
 **V0 is gone.** It existed to resolve P13 and then retrofit a chokepoint onto `moros_map`'s

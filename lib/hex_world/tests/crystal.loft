@@ -1,0 +1,111 @@
+// P14 — THE CEILING'S REAL TEST, with the audience-crystal world as the consumer.
+//
+// `L13` says the voxel is the ceiling on PERMANENT world state. The crystal's cell
+// is `c_color`, `c_height` and **`c_age`** — and `c_age` is the exact thing the
+// rule forbids: a value whose whole purpose is to change every tick. The lazy port
+// adds an `age` field to the voxel and moves on.
+//
+// So this is falsifiable in one line: **if the voxel grows an age, `L13` is not a
+// rule.** What is gated here is that the crystal's behaviour is reproducible with
+// the voxel UNCHANGED — colour and height in the cell, age in a side table
+// (`L14`), decay reading the table and writing the world.
+//
+// ⚠ SCOPE, stated so this is not mistaken for more than it is: the sibling package
+// `../loft-libs-world/hex_world` is NOT modified. It is a shared tree with another
+// agent in it, and replacing a shipped library's model there is a change to
+// announce rather than land from here. This proves the model CAN carry the
+// consumer; migrating the consumer is that tree's move to make.
+use hex_world;
+
+// The side table `L14` calls for: area- and time-limited state, keyed by cell,
+// living beside the world rather than inside it.
+struct AgeAt { ag_key: integer, ag_age: integer }
+struct Ages  { a_by: hash<AgeAt[ag_key]> }
+
+fn age_key(q: integer, r: integer) -> integer { q * 1000003 + r }
+
+fn age_of(ages: Ages, q: integer, r: integer) -> integer {
+  e = ages.a_by[age_key(q, r)];
+  if e == null { return 0; }
+  e.ag_age
+}
+
+fn age_set(ages: &Ages, q: integer, r: integer, v: integer) {
+  e = ages.a_by[age_key(q, r)];
+  if e == null { ages.a_by += AgeAt { ag_key: age_key(q, r), ag_age: v }; }
+  else { e.ag_age = v; }
+}
+
+fn cry_world() -> World { world_new(1.0, 0, 4, 1).wn_world }
+
+// A crystal cell: colour is a material index, height is the height. Both fit the
+// voxel as it stands — no field is added, which is the whole point.
+fn cry_place(w: World, q: integer, r: integer, colour: integer, h: integer) -> integer {
+  world_set_column(w, Column { co_q: q, co_r: r,
+    co_cells: [Hex { h_height: h as u16? ?? 0,
+                     h_material: colour as u8? ?? 0 }] }).cw_code
+}
+
+// ── the tests ──────────────────────────────────────────────────────────────
+
+fn test_p14_colour_and_height_fit_the_voxel_unchanged() {
+  w = cry_world();
+  assert(cry_place(w, 2, 3, 7, 40) == CW_OK, "place");
+  c = world_cell(w, 2, 3, 0);
+  assert(c.h_material == 7, "colour survives as a material index: {c.h_material}");
+  assert(c.h_height == 40, "height survives: {c.h_height}");
+  // ⚠ THE ASSERTION THAT MATTERS: the voxel is still eight bytes. If a port added
+  // an age field this fails, and `L13` would be a preference rather than a rule.
+  assert(size(Hex {}) == 8, "the voxel grew to {size(Hex {})} bytes — L13 has failed");
+  assert(size(StoredHex {}) == 8, "the stored voxel grew to {size(StoredHex {})}");
+}
+
+fn test_p14_age_lives_in_a_side_table_and_decays() {
+  w = cry_world();
+  ages = Ages { a_by: [] };
+  assert(cry_place(w, 0, 0, 3, 10) == CW_OK, "young");
+  assert(cry_place(w, 5, 5, 4, 10) == CW_OK, "old");
+  age_set(ages, 0, 0, 1);
+  age_set(ages, 5, 5, 90);
+
+  // one tick of the crystal's rule: age, then remove what outlived its lease
+  lifetime = 20;
+  for pass in 0..1 {
+    for qq in 0..8 {
+      for rr in 0..8 {
+        if world_cell(w, qq, rr, 0).h_material != 0 {
+          a = age_of(ages, qq, rr) + 1;
+          if a > 65535 { a = 65535; }
+          age_set(ages, qq, rr, a);
+          if a >= lifetime {
+            // decay writes the WORLD — material 0 is absence, so the cell simply
+            // stops being there, and `E1` drops the layer when the last one goes.
+            world_set_column(w, Column { co_q: qq, co_r: rr, co_cells: [Hex {}] });
+          }
+        }
+      }
+    }
+  }
+
+  assert(world_cell(w, 0, 0, 0).h_material == 3, "the young cell was removed");
+  assert(age_of(ages, 0, 0) == 2, "the young cell did not age: {age_of(ages, 0, 0)}");
+  assert(world_cell(w, 5, 5, 0).h_material == 0, "the old cell survived its lease");
+  // CONTROL: the age table is what decided it — without ageing, nothing decays.
+  w2 = cry_world();
+  assert(cry_place(w2, 5, 5, 4, 10) == CW_OK, "control place");
+  assert(world_cell(w2, 5, 5, 0).h_material == 4, "control: untouched cell must remain");
+}
+
+// `T2` earns its keep here: the crystal's age changes every tick and must NOT
+// invalidate a cache over the terrain, because the age is not in the world at all.
+fn test_p14_ageing_does_not_touch_the_worlds_clock() {
+  w = cry_world();
+  ages = Ages { a_by: [] };
+  assert(cry_place(w, 1, 1, 2, 30) == CW_OK, "place");
+  t0 = w.w_tau;
+  for i in 0..50 { age_set(ages, 1, 1, age_of(ages, 1, 1) + 1); }
+  assert(w.w_tau == t0,
+         "fifty ticks of ageing advanced the world clock — side-table state must not, "
+         + "or every cache over this region dies every frame");
+  assert(age_of(ages, 1, 1) == 50, "the side table did not age");
+}
