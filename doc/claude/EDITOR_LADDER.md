@@ -44,7 +44,7 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~3~~ | ~~change and cache~~ — edit clock, per-layer versions, payload-free scan | #8 V4 | M | ✅ 2026-07-27 — `T1`/`T2` gated, four mutations red. Snapshot reads (`M2`) move to row 6 with copy-on-write |
 | — | ✋ **worlds persist** | | | save a world, reload it, confirm it is the world you built |
 |  | *(rows 1–3 are library work with no visible surface. An earlier checkpoint was offered — dual-writing through `hex_world` beside the peaks path — and declined 2026-07-26: their effect is checkable by gates, and the scaffolding would have been a temporary path with a habit of becoming permanent.)* | | | |
-| 4 | the editor moves onto `hex_world`; `Peak` / `world_save` / `world_load` deleted | #8 V5 | L | hills, walking, climbing and the camera behave as they do today |
+| ~~4~~ | ~~the editor moves onto `hex_world`~~ — `Peak` and the local world format deleted | #8 V5 | L | ✅ 2026-07-27 — all seven gates green, each on a fresh server |
 | — | ✋ **the editor is no worse** | | | build hills, save, reload, walk around. This is the risky one — it replaces what works |
 | 5 | roads that follow the ground | #9 | M | a road crosses a hill without fighting it |
 | — | ✋ | | | draw one |

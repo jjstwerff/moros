@@ -96,8 +96,16 @@ pub struct Chunk {
   ck_layers: vector<Layer>,
 }
 
+// The chunk index. `find_chunk` was a linear scan over every chunk in the world,
+// and a terrain sample calls it ONCE PER CELL — so a mesh rebuild over 48 loaded
+// chunks was O(cells x chunks) and took seconds where the old peak-summing
+// version took a tenth of one. The key packs (cx, cz) into one integer because a
+// loft hash keys on a single field.
+pub struct ChunkAt { ca_key: integer, ca_at: integer }
+
 pub struct World {
   w_chunks: vector<Chunk>,
+  w_index:  hash<ChunkAt[ca_key]>,
   w_unit:   float,                  // `u` — what one height step is worth
   w_reserve: integer,               // `ρ` — authoring floor
   w_eps:     integer,               // `ε` — minimum layer separation
@@ -152,12 +160,25 @@ pub fn cell_index(q: integer, r: integer) -> integer {
   local_of(q) * CHUNK_W + local_of(r)
 }
 
+fn chunk_key(cx: integer, cz: integer) -> integer {
+  ((cx & 4294967295) << 32) | (cz & 4294967295)
+}
+
 fn find_chunk(w: World, cx: integer, cz: integer) -> integer {
-  found = 0 - 1;
+  e = w.w_index[chunk_key(cx, cz)];
+  if e == null { return 0 - 1; }
+  e.ca_at
+}
+
+// Rebuilt whenever the chunk vector is reordered — which only happens when an
+// emptied chunk is dropped. Every other path appends, and an append keeps every
+// existing index valid.
+fn reindex(w: &World) {
+  w.w_index = [];
   for i in 0..len(w.w_chunks) {
-    if found < 0 && w.w_chunks[i].ck_cx == cx && w.w_chunks[i].ck_cz == cz { found = i; }
+    w.w_index += ChunkAt { ca_key: chunk_key(w.w_chunks[i].ck_cx, w.w_chunks[i].ck_cz),
+                           ca_at: i };
   }
-  found
 }
 
 pub fn world_has_chunk(w: World, q: integer, r: integer) -> boolean {
@@ -199,18 +220,25 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
 // Convenience over `world_column`. Read-only, and deliberately WITHOUT a writing
 // twin — a single-cell write cannot check any rule in the contract, because every
 // rule is a property of a column.
+// ⚠ Reads the cell DIRECTLY — it does not go through `world_column`.
+//
+// The convenience version did, and it allocated a whole `Column` (a vector, plus
+// a `Hex` per layer) for every single cell anyone sampled. A mesh rebuild samples
+// thousands of cells, so the editor's chunk rebuilds slowed enough to reorder its
+// own gates. The column is the unit the WRITE path needs, because every invariant
+// is a column property; the read path needs one cell and should pay for one.
 pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
-  col = world_column(w, q, r);
-  if l < 0 || l >= len(col.co_cells) { return Hex {}; }
-  // ⚠ COPIED into a fresh record, never returned as the element itself. Returning
-  // `local.vec[i]` hands back a DEAD VALUE in loft — every field reads null —
-  // which is loft H12, filed with a minimal reproducer. An explicit `return` does
-  // not help; only the copy does. The cost is one struct per call and the
-  // alternative is a silent null reaching whatever asked for a height.
-  e = col.co_cells[l];
-  return Hex { h_height: e.h_height, h_material: e.h_material, h_item: e.h_item,
-               h_item_rotation: e.h_item_rotation, h_wall_n: e.h_wall_n,
-               h_wall_ne: e.h_wall_ne, h_wall_se: e.h_wall_se };
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return Hex {}; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
+  if w.w_chunks[ci].ck_layers[l].ly_kind != KIND_TERRAIN { return Hex {}; }
+  e = w.w_chunks[ci].ck_layers[l].ly_cells[cell_index(q, r)];
+  // Copied field by field, never returned as the element: returning
+  // `local.vec[i]` hands back a dead value in loft (H12).
+  return Hex { h_height: (w.w_chunks[ci].ck_base + e.sv_height) as u16? ?? 0,
+               h_material: e.sv_material, h_item: e.sv_item,
+               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
+               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
 }
 
 // ── Write — the whole routine ────────────────────────────────────────────────
@@ -300,6 +328,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     if cseen { nb = clo; }
     w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
     ci = len(w.w_chunks) - 1;
+    w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
   }
 
   // 3 — materialise absent layers. THE ONLY PLACE A LAYER IS EVER CREATED, which
@@ -401,6 +430,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     keep: vector<Chunk> = [];
     for k in w.w_chunks { if len(k.ck_layers) > 0 { keep += [k]; } }
     w.w_chunks = keep;
+    reindex(w);
   }
   ok_write()
 }
@@ -731,6 +761,7 @@ pub fn world_load(path: text) -> WorldLoad {
       lays += [ly];
     }
     w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
+    w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
   }
   WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
 }
