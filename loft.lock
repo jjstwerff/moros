@@ -37,3 +37,45 @@ version = "0.2.0"
 url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_world-v0.2.0/hex_world-0.2.0.tar.gz"
 sha256 = "f7e7f41d3618607aa408c54676f28df51e0d3746e7b2f9eaa008c65b09b6f075"
 source = "registry"
+
+[[package]]
+name = "random"
+version = "0.3.0"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/random-v0.3.0/random-0.3.0.tar.gz"
+sha256 = "beb7c5ec9ba5df00725ca776c3fa837e8757cff865589bcfb5ea85cd0fc53386"
+source = "registry"
+
+[[package]]
+name = "arguments"
+version = "0.2.0"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/arguments-v0.2.0/arguments-0.2.0.tar.gz"
+sha256 = "48e630689af512c7f7cabc47a93d590ab00a96cb119a54af760c6bb09ff7ad39"
+source = "registry"
+
+[[package]]
+name = "regex"
+version = "0.2.1"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/regex-v0.2.1/regex-0.2.1.tar.gz"
+sha256 = "2072064c1b2e38a243d709bc06813527ba1ab870eccd21fe02cfbb3c2aeda263"
+source = "registry"
+
+[[package]]
+name = "time"
+version = "0.3.0"
+url = "https://github.com/loft-lang/loft-libs-game/releases/download/time-v0.3.0/time-0.3.0.tar.gz"
+sha256 = "29968e0460f393e6b647d69fb06d8f244768155fef63ea0d77ca3a8e4ab87eb2"
+source = "registry"
+
+[[package]]
+name = "crypto"
+version = "0.3.6"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/crypto-v0.3.6/crypto-0.3.6.tar.gz"
+sha256 = "7bc58479f1407220fea004121a6b201258bf9194113d93165f283ff633a0be7b"
+source = "registry"
+
+[[package]]
+name = "cbor"
+version = "0.1.2"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/cbor-v0.1.2/cbor-0.1.2.tar.gz"
+sha256 = "4be2596769360f76a47ea73e318854573db3bf234c4d87bc30ee8e6cb01b514d"
+source = "registry"

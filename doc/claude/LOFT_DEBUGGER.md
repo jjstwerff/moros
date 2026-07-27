@@ -62,7 +62,17 @@ file with zero errors. So the program is fine and the debugger's resolution diff
 Any project whose libraries live in a local `lib/` — which is every group in this tree — is
 undebuggable by this route.
 
-### 2. A program using a REGISTRY (native) library errors immediately
+### 2. A CALL that reaches native code kills the session
+
+Narrowed by bisection — it is neither "a registry package" nor "an import":
+
+| | under `loft debug` |
+|---|---|
+| `use web;` with **no call** | ✅ runs |
+| `use time;` + `from_ymd(2026, 7, 27)` — pure-loft arithmetic in a registry package | ✅ runs |
+| `use random;` + `rand_seed(7)` / `rand(1, 10)` | ❌ dies |
+| `use web;` + `sleep_ms(5)` | ❌ dies |
+| `use server;` + `listen(port)` | ❌ dies |
 
 ```loft
 use web;
@@ -74,10 +84,14 @@ fn main() { sleep_ms(5); x = 1 + 1; println("web ok {x}"); }
 loft>
 ```
 
-Same for `use server;`. Both run correctly under `loft --interpret`. **The error is never
-named** — no message, no location — and the prompt silently changes from `(dbg)` to `loft>`,
-a post-mortem REPL where `:continue` reports *"unknown command"*. The most likely reading of
-"unknown command" is that you typed it wrong, not that the session ended.
+So the boundary is **a call crossing into native code**, not the package it came from: the
+same package is fine until you call the part of it that is native, and a registry package
+whose functions are ordinary loft (`time`) is fine throughout. Everything above runs
+correctly under `loft --interpret`.
+
+**The error is never named** — no message, no location — and the prompt silently changes
+from `(dbg)` to `loft>`, a post-mortem REPL where `:continue` reports *"unknown command"*.
+The likeliest reading of that is a typo, not "the session ended".
 
 ### What that means for a websocket server
 

@@ -646,7 +646,16 @@ loft debug src/editor_server.loft:385
 **Control:** `loft --interpret --lib lib/ src/editor_server.loft` compiles and runs the same
 file with zero errors.
 
-**(b) A program using a registry (native) library fails immediately, unnamed.**
+**(b) A CALL that reaches native code kills the session, with no message.** Bisected —
+it is neither the package nor the import:
+
+| | under `loft debug` |
+|---|---|
+| `use web;` with **no call** | ✅ runs |
+| `use time;` + `from_ymd(2026, 7, 27)` (pure-loft fn in a registry package) | ✅ runs |
+| `use random;` + `rand_seed(7)` | ❌ dies |
+| `use web;` + `sleep_ms(5)` | ❌ dies |
+| `use server;` + `listen(port)` | ❌ dies |
 
 ```loft
 use web;
@@ -654,9 +663,12 @@ fn main() { sleep_ms(5); x = 1 + 1; println("web ok {x}"); }
 ```
 → `runtime error in the paused run — debug session abandoned (session preserved)`
 
-Same with `use server;`. Both run correctly under `loft --interpret`. No message, no
-location, and the prompt changes from `(dbg)` to `loft>` where `:continue` answers
-*"unknown command"* — which reads as a typo rather than as "the session is over".
+Every row above runs correctly under `loft --interpret`. The boundary is **crossing into
+native code**, which is worth stating precisely: a fix aimed at "registry packages" would
+miss `random` and over-reach on `time`.
+
+No message, no location, and the prompt changes from `(dbg)` to `loft>` where `:continue`
+answers *"unknown command"* — which reads as a typo rather than as "the session is over".
 
 **Minor, and cheap:** `loft debug --lib lib/ f.loft:12` reports *"missing `:<line>`"*. The
 line is present; the argument order is wrong. Naming the real complaint would save the
