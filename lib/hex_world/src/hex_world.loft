@@ -82,6 +82,7 @@ pub const WINDOW     = 65536;       // what a u16 relative height spans
 pub struct Layer {
   ly_id:    integer,                // u32 label, 0 = unlabelled
   ly_kind:  integer,                // KIND_TERRAIN | KIND_DRESSING
+  ly_ver:   integer,                // `T1` — the clock value at its last write
   ly_cells: vector<StoredHex>,      // exactly CHUNK_CELLS, terrain only
 }
 
@@ -102,6 +103,7 @@ pub struct World {
   w_eps:     integer,               // `ε` — minimum layer separation
   w_theta:   integer,               // `θ` — match tolerance
   w_next_id: integer,               // `ν` — next free label
+  w_tau:     integer,               // `τ` — the edit clock, monotonic
 }
 
 // A column: ABSOLUTE heights, indexed by the chunk's layer order. It carries NO
@@ -129,7 +131,7 @@ pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) ->
   WorldNew {
     wn_code: WC_OK,
     wn_world: World { w_chunks: [], w_unit: unit, w_reserve: reserve,
-                      w_eps: eps, w_theta: theta, w_next_id: 1 },
+                      w_eps: eps, w_theta: theta, w_next_id: 1, w_tau: 1 },
   }
 }
 
@@ -297,7 +299,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   // something in it.
   while len(w.w_chunks[ci].ck_layers) < n {
     w.w_chunks[ci].ck_layers += [Layer { ly_id: 0, ly_kind: KIND_TERRAIN,
-                                         ly_cells: empty_cells() }];
+                                         ly_ver: 0, ly_cells: empty_cells() }];
   }
 
   // 4 — fit the window across the WHOLE chunk once this column is applied: one
@@ -319,11 +321,13 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     return ColumnWrite { cw_code: CW_WINDOW, cw_layer: 0 - 1,
                          cw_detail: "tile spans {hi - lo}, the window holds {WINDOW}" };
   }
+  rebased = false;
   if seen && (lo < w.w_chunks[ci].ck_base
               || hi >= w.w_chunks[ci].ck_base + WINDOW) {
     // REBASE. Expensive, correct, and rare: every stored layer of the chunk is
     // re-encoded against the new floor. `W1` guarantees this succeeds whenever
     // any base would, because `lo` is by construction the lowest height present.
+    rebased = true;
     old = w.w_chunks[ci].ck_base;
     for ly in w.w_chunks[ci].ck_layers {
       if ly.ly_kind == KIND_TERRAIN {
@@ -340,14 +344,37 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   // 5 — encode. Subtracting the base is the ONLY subtraction in the design; above
   // this line every height has been absolute.
   base = w.w_chunks[ci].ck_base;
+  // `T1` — one tick per write that changes anything, and `T2` — only the layers
+  // whose bytes ACTUALLY changed are stamped. Stamping every layer the column
+  // touched would invalidate caches over layers that did not move, which is
+  // exactly the coupling `T2` exists to forbid: a prop change must not stale a
+  // terrain cache.
+  changed = false;
   for i in 0..n {
     c = col.co_cells[i];
-    w.w_chunks[ci].ck_layers[i].ly_cells[ix] =
-      StoredHex { sv_height: (c.h_height - base) as u16? ?? 0,
-                  sv_material: c.h_material, sv_item: c.h_item,
-                  sv_item_rotation: c.h_item_rotation,
-                  sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
-                  sv_wall_se: c.h_wall_se };
+    nv = StoredHex { sv_height: (c.h_height - base) as u16? ?? 0,
+                     sv_material: c.h_material, sv_item: c.h_item,
+                     sv_item_rotation: c.h_item_rotation,
+                     sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
+                     sv_wall_se: c.h_wall_se };
+    prev = w.w_chunks[ci].ck_layers[i].ly_cells[ix];
+    same = prev.sv_height == nv.sv_height && prev.sv_material == nv.sv_material
+        && prev.sv_item == nv.sv_item && prev.sv_item_rotation == nv.sv_item_rotation
+        && prev.sv_wall_n == nv.sv_wall_n && prev.sv_wall_ne == nv.sv_wall_ne
+        && prev.sv_wall_se == nv.sv_wall_se;
+    if !same {
+      if !changed { w.w_tau = w.w_tau + 1; changed = true; }
+      w.w_chunks[ci].ck_layers[i].ly_cells[ix] = nv;
+      w.w_chunks[ci].ck_layers[i].ly_ver = w.w_tau;
+    }
+  }
+  // A rebase rewrites every layer's stored bytes, so every layer of the chunk is
+  // genuinely new on disk and must be stamped — the encoding changed even where
+  // the world did not. This is the one place `T2`'s independence yields to the
+  // truth that the bytes moved.
+  if rebased {
+    if !changed { w.w_tau = w.w_tau + 1; changed = true; }
+    for ly in w.w_chunks[ci].ck_layers { ly.ly_ver = w.w_tau; }
   }
 
   // 6 — drop what emptied, so elision is an invariant maintained on write rather
@@ -370,6 +397,36 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   ok_write()
 }
 
+// ── Change, and what a cache may ask ─────────────────────────────────────────
+//
+// A cache built at clock `c` over a region is valid iff every layer it read still
+// has `ver <= c`. That is an exact comparison, not a heuristic and not a
+// timestamp: a clock value is a fact about what HAS happened, where a time is a
+// guess about whether it has.
+
+// The newest write anywhere in the tile holding (q, r). 0 when the tile does not
+// exist, which is the right answer — nothing has happened there.
+pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return 0; }
+  hi = 0;
+  for ly in w.w_chunks[ci].ck_layers { if ly.ly_ver > hi { hi = ly.ly_ver; } }
+  hi
+}
+
+// One layer's version, for a cache that depends on a single layer rather than a
+// whole tile — which is the point of `T2`.
+pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return 0; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
+  w.w_chunks[ci].ck_layers[l].ly_ver
+}
+
+pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> boolean {
+  world_chunk_version(w, q, r) > built_at
+}
+
 // ── The file ─────────────────────────────────────────────────────────────────
 //
 // ONE FILE per world (decided 2026-07-26). Stencils and placeable assets live in
@@ -386,10 +443,16 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
 // The format's EXACT sizes. Gates assert against these rather than against
 // whatever the writer happens to produce, so a padding regression is a failure
 // rather than a new baseline.
-pub const SZ_HEADER = 40;                     // 9 i32 + the chunk count
+pub const SZ_HEADER = 48;                     // 9 i32 + tau (8) + the chunk count
 pub const SZ_CHUNK  = 16;                     // cx, cz, base, layer count
 pub const SZ_CELL   = 8;                      // u16 + 6 * u8 — the voxel, exactly
-pub const SZ_LAYER  = 8201;                   // id i32 + kind u8 + 1024*8 + crc i32
+// The DIRECTORY and the PAYLOAD are separate regions, which the contract calls
+// structural rather than an optimisation: validating a cache must cost a
+// directory read and never an 8 KB one. Every layer's id, kind and version live
+// in the directory; only cells and their CRC live in the data region.
+pub const SZ_VER       = 8;                   // `τ` and `ver`, as two i32 halves
+pub const SZ_LAYER_DIR = 13;                  // id i32 + kind u8 + ver 8
+pub const SZ_LAYER     = 8196;                // 1024 * 8 cells + crc i32
 
 pub const WORLD_MAGIC   = 1213486167;   // 'HXW7'
 pub const WORLD_VERSION = 1;
@@ -469,9 +532,15 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
   f += (w.w_eps as i32);
   f += (w.w_theta as i32);
   f += (w.w_next_id as i32);
+  // `τ` as two halves. It is 64-bit deliberately: a wrapped LABEL collides and
+  // `I1` catches it at the first seam, but a wrapped CLOCK makes a stale cache
+  // report VALID — a silent wrong answer, the worst class this model has.
+  f += ((w.w_tau >> 32) as i32);
+  f += ((w.w_tau & 4294967295) as i32);
   f += (len(palette) as i32);
   for b in palette { f += (b as u8? ?? 0); }   // range already refused above
   f += (len(w.w_chunks) as i32);
+  // ── the directory: everything a cache needs, and no voxels
   for ch in w.w_chunks {
     f += (ch.ck_cx as i32);
     f += (ch.ck_cz as i32);
@@ -480,6 +549,13 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
     for ly in ch.ck_layers {
       f += (ly.ly_id as i32);
       f += (ly.ly_kind as u8? ?? 0);          // KIND_TERRAIN | KIND_DRESSING
+      f += ((ly.ly_ver >> 32) as i32);
+      f += ((ly.ly_ver & 4294967295) as i32);
+    }
+  }
+  // ── the data
+  for ch in w.w_chunks {
+    for ly in ch.ck_layers {
       // ⚠ At their REAL widths. Writing each field as i32 padded the eight-byte
       // voxel to twenty-eight on disk — a 3.5x bloat in the one structure the
       // whole design exists to keep small, and invisible to a round-trip test
@@ -497,6 +573,57 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
     }
   }
   WS_OK
+}
+
+// ── Versions WITHOUT the payload ─────────────────────────────────────────────
+//
+// The contract calls this structural rather than an optimisation: validating a
+// cache must cost a directory lookup and not an 8 KB read, or the check becomes
+// dearer than the rebuild it was meant to avoid.
+//
+// So this walks the layer HEADERS and seeks past the cells — it never reads a
+// voxel. The gate proves that by scanning a file whose cells are deliberately
+// corrupt: the scan succeeds where a full load refuses on CRC, which is only
+// possible if the payload was never touched.
+pub struct VersionScan { vs_code: integer, vs_tau: integer, vs_max: integer, vs_layers: integer }
+
+pub fn world_scan_versions(path: text) -> VersionScan {
+  f = file(path);
+  if f.format == Format.NotExists { return VersionScan { vs_code: WL_MISSING }; }
+  f#format = LittleEndian;
+  if f#read as i32 != WORLD_MAGIC || f#read as i32 != WORLD_VERSION {
+    return VersionScan { vs_code: WL_MAGIC };
+  }
+  if (f#read as i32) != CHUNK_W { return VersionScan { vs_code: WL_MAGIC }; }
+  skip4 = f#read as i32;                                   // u
+  skip5 = f#read as i32;                                   // rho
+  eps = f#read as i32;
+  th  = f#read as i32;
+  skip8 = f#read as i32;                                   // nu
+  thi = f#read as i32;
+  tlo = f#read as i32;
+  tau = (thi << 32) | (tlo & 4294967295);
+  if eps <= 2 * th { return VersionScan { vs_code: WL_CONSTANTS }; }
+  pn = f#read as i32;
+  for _sp in 0..pn { skipb = f#read as u8; }
+  nc = f#read as i32;
+  hi = 0;
+  cnt = 0;
+  // The directory comes FIRST and is contiguous, so the scan simply stops when it
+  // ends — it never reaches a voxel. No seek is needed, which is just as well
+  // (`seek` is documented but not present in this build; see LOFT_HANDOFF H11).
+  for _sc in 0..nc {
+    skipx = f#read as i32; skipz = f#read as i32; skipb2 = f#read as i32;
+    nl = f#read as i32;
+    for _sl in 0..nl {
+      skipid = f#read as i32; skipk = f#read as u8;
+      vhi = f#read as i32; vlo = f#read as i32;
+      v = (vhi << 32) | (vlo & 4294967295);
+      if v > hi { hi = v; }
+      cnt = cnt + 1;
+    }
+  }
+  VersionScan { vs_code: WL_OK, vs_tau: tau, vs_max: hi, vs_layers: cnt }
 }
 
 pub fn world_load(path: text) -> WorldLoad {
@@ -519,6 +646,9 @@ pub fn world_load(path: text) -> WorldLoad {
   eps = f#read as i32;
   th  = f#read as i32;
   nid = f#read as i32;
+  thi = f#read as i32;
+  tlo = f#read as i32;
+  tau = (thi << 32) | (tlo & 4294967295);
   // ⚠ `C1` is re-checked ON OPEN, not trusted because the writer checked it. A
   // file with eps <= 2*theta makes `B1` fail SILENTLY, and the symptom is
   // intermittently wrong geometry at chunk borders — a wrong answer, not a crash.
@@ -531,13 +661,30 @@ pub fn world_load(path: text) -> WorldLoad {
   for _pi in 0..pn { pal += [f#read as u8]; }
 
   w = World { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
-              w_theta: th, w_next_id: nid };
+              w_theta: th, w_next_id: nid, w_tau: tau };
   nc = f#read as i32;
+  // ── the directory, read whole before any payload
+  dcx: vector<integer> = []; dcz: vector<integer> = []; dcb: vector<integer> = [];
+  dnl: vector<integer> = [];
+  lid_all: vector<integer> = []; lk_all: vector<integer> = []; lv_all: vector<integer> = [];
   for _ci in 0..nc {
-    cx = f#read as i32; cz = f#read as i32; cb = f#read as i32; nl = f#read as i32;
+    dcx += [f#read as i32]; dcz += [f#read as i32];
+    dcb += [f#read as i32]; dnl += [f#read as i32];
+    for _li in 0..dnl[len(dnl) - 1] {
+      lid_all += [f#read as i32];
+      lk_all += [f#read as u8];
+      vhi = f#read as i32; vlo = f#read as i32;
+      lv_all += [(vhi << 32) | (vlo & 4294967295)];
+    }
+  }
+  // ── the data
+  li_at = 0;
+  for _c2 in 0..nc {
+    cx = dcx[_c2]; cz = dcz[_c2]; cb = dcb[_c2]; nl = dnl[_c2];
     lays: vector<Layer> = [];
-    for _li in 0..nl {
-      lid = f#read as i32; lk = f#read as u8;
+    for _l2 in 0..nl {
+      lid = lid_all[li_at]; lk = lk_all[li_at]; lver = lv_all[li_at];
+      li_at = li_at + 1;
       // ⚠ TWO SEQUENCING HAZARDS, both found by a round-trip that lost a layer.
       //
       // 1. NESTED LOOPS MUST NOT SHARE A COUNTER NAME. This reader has three
@@ -566,7 +713,7 @@ pub fn world_load(path: text) -> WorldLoad {
                               sv_wall_n: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
                               sv_wall_se: rs as u8? ?? 0 }];
       }
-      ly = Layer { ly_id: lid, ly_kind: lk, ly_cells: cells };
+      ly = Layer { ly_id: lid, ly_kind: lk, ly_ver: lver, ly_cells: cells };
       // A torn layer is refused BY NAME and the rest of the file is untouched —
       // a hole, never a cascade, and never a plausible wrong landscape.
       if ((f#read as i32) & U32_MASK) != layer_crc(ly) {

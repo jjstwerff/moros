@@ -31,7 +31,9 @@ fn sp_cell(h: integer, m: integer) -> Hex {
 
 // The format as arithmetic. If this and the writer ever disagree, one is wrong.
 fn sp_want(chunks: integer, layers: integer) -> integer {
-  SZ_HEADER + chunks * SZ_CHUNK + layers * SZ_LAYER
+  // A layer costs its DIRECTORY entry plus its DATA. The two live in separate
+  // regions of the file so a version scan can stop after the directory.
+  SZ_HEADER + chunks * SZ_CHUNK + layers * (SZ_LAYER_DIR + SZ_LAYER)
 }
 
 // ── P6 — the voxel is eight bytes, in memory AND on disk ────────────────────
@@ -42,7 +44,8 @@ fn test_p6_the_voxel_is_eight_bytes_in_memory() {
   cells: vector<StoredHex> = [for i in 0..CHUNK_CELLS { StoredHex {} }];
   assert(size(cells) == CHUNK_CELLS * SZ_CELL,
          "a layer's cells are {size(cells)} bytes, want {CHUNK_CELLS * SZ_CELL}");
-  assert(SZ_LAYER == 4 + 1 + CHUNK_CELLS * SZ_CELL + 4, "SZ_LAYER is {SZ_LAYER}");
+  assert(SZ_LAYER == CHUNK_CELLS * SZ_CELL + 4, "SZ_LAYER is {SZ_LAYER}");
+  assert(SZ_LAYER_DIR == 4 + 1 + SZ_VER, "SZ_LAYER_DIR is {SZ_LAYER_DIR}");
 }
 
 fn test_p6_a_layer_is_exactly_eight_kilobytes_on_disk() {
@@ -140,7 +143,7 @@ fn test_p12_unused_layers_are_not_stored() {
   assert(world_save(w, p, []) == WS_OK, "save 2");
   two = len(read_bytes(p) ?? []);
   delete(p);
-  assert(two - one == SZ_LAYER, "a second layer costs {two - one}, want {SZ_LAYER}");
+  assert(two - one == SZ_LAYER_DIR + SZ_LAYER, "a second layer costs {two - one}, want {SZ_LAYER_DIR + SZ_LAYER}");
 }
 
 // ── the file tracks LIVE data, not the history of writes ───────────────────
@@ -159,4 +162,101 @@ fn test_size_tracks_live_data_not_write_history() {
   delete(p);
   assert(got == sp_want(0, 0),
          "sixteen writes leaving nothing live cost {got}, want {sp_want(0, 0)}");
+}
+
+// ── Row 3 — the edit clock and per-layer versions (`T1`, `T2`) ──────────────
+
+fn test_t1_a_write_advances_the_clock_and_stamps_the_layer() {
+  w = sp_world();
+  t0 = w.w_tau;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  assert(w.w_tau > t0, "the clock did not advance: {t0} -> {w.w_tau}");
+  assert(world_layer_version(w, 0, 0, 0) == w.w_tau,
+         "the layer was not stamped with the current clock");
+  assert(world_is_stale(w, 0, 0, t0), "a cache built before the write must be stale");
+  assert(!world_is_stale(w, 0, 0, w.w_tau), "a cache built after it must be valid");
+}
+
+// ⚠ The control that matters: a write that changes NOTHING must not tick. Without
+// it, re-authoring the same value would invalidate every cache over the region —
+// and re-authoring identical values is exactly what a levelling brush does.
+fn test_t1_a_write_that_changes_nothing_does_not_tick() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  t1 = w.w_tau;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "identical rewrite");
+  assert(w.w_tau == t1, "an identical rewrite ticked the clock: {t1} -> {w.w_tau}");
+}
+
+// `T2` — a write to one layer stales no other. Without this every cache in a
+// chunk shares one fate and the layer separation buys nothing.
+fn test_t2_versions_are_independent() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1020, 2)] }).cw_code == CW_OK, "two layers");
+  v_low = world_layer_version(w, 0, 0, 0);
+  v_high = world_layer_version(w, 0, 0, 1);
+
+  // change ONLY the upper layer
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1030, 2)] }).cw_code == CW_OK, "raise upper");
+  assert(world_layer_version(w, 0, 0, 0) == v_low,
+         "writing the upper layer staled the lower one — T2 is what stops a prop "
+         + "change invalidating a terrain cache");
+  assert(world_layer_version(w, 0, 0, 1) > v_high, "the upper layer was not stamped");
+}
+
+// The clock and every version survive a round trip — a cache outlives a session,
+// which is the whole reason for persisting them.
+fn test_t1_the_clock_and_versions_persist() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 1, co_r: 2,
+         co_cells: [sp_cell(1000, 1)] }).cw_code == CW_OK, "write");
+  tau = w.w_tau;
+  ver = world_layer_version(w, 1, 2, 0);
+  p = "sp_t1.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  ld = world_load(p);
+  delete(p);
+  assert(ld.wl_code == WL_OK, "load {ld.wl_code}");
+  assert(ld.wl_world.w_tau == tau, "clock came back {ld.wl_world.w_tau}, want {tau}");
+  assert(world_layer_version(ld.wl_world, 1, 2, 0) == ver, "version lost in the round trip");
+}
+
+// ⚠ THE STRUCTURAL ONE. Validating a cache must cost a DIRECTORY read and never
+// the payload. The proof is to corrupt the cells and scan anyway: the scan
+// succeeds where a full load refuses on CRC, which is only possible if it never
+// read a voxel.
+fn test_versions_are_readable_without_the_payload() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 1), sp_cell(1020, 2)] }).cw_code == CW_OK, "write");
+  p = "sp_scan.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+
+  clean = world_scan_versions(p);
+  assert(clean.vs_code == WL_OK, "scan refused {clean.vs_code}");
+  assert(clean.vs_tau == w.w_tau, "scan read tau {clean.vs_tau}, want {w.w_tau}");
+  assert(clean.vs_layers == 2, "scan saw {clean.vs_layers} layers, want 2");
+  assert(clean.vs_max == w.w_tau, "scan max version {clean.vs_max}, want {w.w_tau}");
+
+  // corrupt the LAST byte — deep in the data region, far past the directory
+  bs = read_bytes(p) ?? [];
+  at = len(bs) - 1;
+  bs[at] = (bs[at] + 1) % 256;
+  write_bytes(p, bs);
+
+  torn = world_scan_versions(p);
+  assert(torn.vs_code == WL_OK,
+         "the scan touched the payload — it must not, or validating a cache costs "
+         + "more than the rebuild it avoids");
+  assert(torn.vs_max == clean.vs_max, "the scan disagreed with itself after corruption");
+  // CONTROL: a FULL load of the same file must refuse, proving the corruption was
+  // real and inside data the scan deliberately skipped.
+  assert(world_load(p).wl_code == WL_CRC,
+         "the corruption was not in the payload, so the scan proves nothing");
+  delete(p);
 }

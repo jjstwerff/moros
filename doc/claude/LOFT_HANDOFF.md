@@ -554,3 +554,31 @@ The original report follows.
 means iterating `lines()` and tracking state by hand. Vectors slice; text does not, and the
 asymmetry is surprising rather than principled.
 
+---
+
+## H11 — `seek` is documented but not present
+
+**Surfaced by:** `hex_world`'s version scan, 2026-07-27.
+
+`STDLIB.md` lists `seek(self: File, pos: integer)` — *"Moves the read/write position to `pos`
+bytes from the start."* It is not available in the installed build, in any calling form:
+
+```
+f#seek(n)   → Expect token ;
+f.seek(n)   → Unknown field File.seek
+seek(f, n)  → Unknown function seek
+```
+
+The `File` methods actually defined in `default/*.loft` are `content`, `files`, `lines`,
+`ok`, `set_file_size`, `sync`, `write`. There is also **no position getter**, so an offset
+cannot be tracked by asking — only by arithmetic over a fixed layout.
+
+**Impact.** A random-access binary format cannot skip a region it does not need. The
+workaround was to restructure the file so the index comes first and is contiguous, which is
+a better format anyway — but it was forced rather than chosen, and a format that genuinely
+needs to jump (an update-in-place, a free-list walk) has no way to.
+
+**Either fix would do:** implement `seek` (and a position getter), or remove it from
+`STDLIB.md`. The present state is the worst of the two — a documented capability that
+consumers design around before discovering it is absent.
+

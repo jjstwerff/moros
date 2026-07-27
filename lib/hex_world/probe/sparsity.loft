@@ -11,7 +11,9 @@
 use hex_world;
 
 fn want(chunks: integer, layers: integer) -> integer {
-  SZ_HEADER + chunks * SZ_CHUNK + layers * SZ_LAYER
+  // A layer costs its DIRECTORY entry plus its DATA. The two live in separate
+  // regions of the file so a version scan can stop after the directory.
+  SZ_HEADER + chunks * SZ_CHUNK + layers * (SZ_LAYER_DIR + SZ_LAYER)
 }
 
 fn cell(h: integer, m: integer) -> Hex {
@@ -57,7 +59,7 @@ fn main() {
   two = measure(w12, "pr_d.bin");
   // CONTROL: the second layer costs exactly one layer, so the line above measures
   // layers rather than a fixed per-chunk size.
-  fails = fails + check("P12 a second layer costs", two - one, SZ_LAYER);
+  fails = fails + check("P12 a second layer costs", two - one, SZ_LAYER_DIR + SZ_LAYER);
 
   // ── P5: elision is symmetric, and invisible to what remains
   w5 = world_new(0.25, 100, 8, 3).wn_world;
