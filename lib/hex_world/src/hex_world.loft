@@ -202,7 +202,15 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
 pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
   col = world_column(w, q, r);
   if l < 0 || l >= len(col.co_cells) { return Hex {}; }
-  col.co_cells[l]
+  // ⚠ COPIED into a fresh record, never returned as the element itself. Returning
+  // `local.vec[i]` hands back a DEAD VALUE in loft — every field reads null —
+  // which is loft H12, filed with a minimal reproducer. An explicit `return` does
+  // not help; only the copy does. The cost is one struct per call and the
+  // alternative is a silent null reaching whatever asked for a height.
+  e = col.co_cells[l];
+  return Hex { h_height: e.h_height, h_material: e.h_material, h_item: e.h_item,
+               h_item_rotation: e.h_item_rotation, h_wall_n: e.h_wall_n,
+               h_wall_ne: e.h_wall_ne, h_wall_se: e.h_wall_se };
 }
 
 // ── Write — the whole routine ────────────────────────────────────────────────

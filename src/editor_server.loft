@@ -21,6 +21,7 @@ use server;
 use web;          // sleep_ms — the idle tick of the manual connection pool
 use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
 use moros_map;
+use hex_world;
 use moros_render;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
@@ -212,71 +213,40 @@ const MSG_SAVE = 8;
 const MSG_LOAD = 9;
 
 // One authored peak. This — a vector of these — is the whole terrain.
-struct Peak {
-  pq: integer,
-  pr: integer,
-  amp: integer,
-  rad: integer
+// ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
+//
+// It used to be `vector<Peak>` with heights summed at query time. That was wrong
+// twice over: `L13` makes the voxel the storage of record, and a derived-on-query
+// height is O(wld) for every sample the mesh, the feet and the camera take.
+// `hex_world` now holds it, and this file no longer has a world format of its own.
+//
+// The editor's own constants, chosen here because they are per-WORLD and this is
+// one world: `u = 0.25` matches HEIGHT_SCALE, `ε = 8` is two metres of layer
+// separation, `θ = 3` is a climbable step, and `ε > 2θ` holds with margin (`C1`).
+// `ρ = 0` for now — the floor reserve earns its keep when buildings arrive at
+// rung W4, and reserving space this rung cannot use would only shift the world up.
+const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
+const W_RESERVE    = 0;
+const W_EPS        = 8;
+const W_THETA      = 3;
+const SURFACE      = 0;           // the editor authors one terrain layer
+const SURFACE_MAT  = 1;           // any non-zero index: 0 is absence (`E1`)
+
+fn new_world() -> World {
+  n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
+  n.wn_world
 }
+
+fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
+
 
 // ── PERSISTENCE ────────────────────────────────────────────────────────────
-// What is saved is the AUTHORED SET — the peaks — and nothing derived. The
-// meshes, the corner heights, the normals are all layer 2 and are rebuilt from
-// the peaks on load, so a save cannot contain a half-built mesh and stays small
-// however far the world runs: an infinite world's CONTENT is bounded even when
-// its extent is not.
 //
-// ⚠ LOCAL ON PURPOSE, and recorded (plans/7-hex-editor/LIBRARY-CANDIDATES.md
-// #11). `hex_field` already ships `doc_write_all` / `doc_read` with tagged
-// sections that a newer writer can extend and an older reader skips by length —
-// which is where this belongs. It is here only because a peak list is not a
-// FIELD, so it has no section to ride yet; the moment it does, this converges
-// rather than persisting as a second format.
-const WORLD_MAGIC = 1213486160;    // 'HXW0'
-const WORLD_VERSION = 1;
-
-fn world_path(name: text) -> text {
-  "{source_dir()}/../worlds/{name}.hxw"
-}
-
-fn world_save(name: text, peaks: vector<Peak>) -> integer {
-  f = file(world_path(name));
-  f#format = LittleEndian;
-  f += (WORLD_MAGIC as i32);
-  f += (WORLD_VERSION as i32);
-  f += (len(peaks) as i32);
-  for wp in peaks {
-    f += (wp.pq as i32);
-    f += (wp.pr as i32);
-    f += (wp.amp as i32);
-    f += (wp.rad as i32);
-  }
-  len(peaks)
-}
-
-// Returns the peaks, or an empty list when the file is absent or not ours.
-// A refusal is data: an unreadable world opens as an empty one rather than
-// half-loading, which is the same never-half-populated rule `map_read_field`
-// states for the field format.
-fn world_load(name: text) -> vector<Peak> {
-  out: vector<Peak> = [];
-  f = file(world_path(name));
-  if f.format == Format.NotExists { return out; }
-  f#format = LittleEndian;
-  magic = f#read as i32;
-  ver = f#read as i32;
-  if magic != WORLD_MAGIC || ver != WORLD_VERSION { return out; }
-  n = f#read as i32;
-  for _ in 0..n {
-    lq = f#read as i32;
-    lr = f#read as i32;
-    la = f#read as i32;
-    ld = f#read as i32;
-    out += [Peak { pq: lq, pr: lr, amp: la, rad: ld }];
-  }
-  out
-}
-
+// ⚠ THE LOCAL FORMAT IS GONE. This file used to carry its own `world_save` /
+// `world_load` writing a list of peaks — recorded as `LIBRARY-CANDIDATES` #11 and
+// WITHDRAWN there, because the premise was wrong rather than the placement: peaks
+// were never the world. `hex_world` holds it now, and what is saved is voxel
+// chunks, so this file has no world format of its own to converge later.
 
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
 // independently. Splitting it is also the shape `hex_entity` will formalise: a
@@ -393,17 +363,48 @@ fn body_mesh() -> Mesh {
 // The result is an INTEGER height unit, because `L13` makes moros's cell the
 // storage of record and its height is an integer at 0.25 wu. Quantising here
 // rather than at the mesh keeps the field the thing that is true.
-fn terrain_h(hq: integer, hr: integer, peaks: vector<Peak>) -> integer {
-  acc = 0.0;
-  for pk in peaks {
-    d = hex_distance(hq, hr, pk.pq, pk.pr);
-    if d < pk.rad {
-      t = (d as float) / (pk.rad as float) ?? 0.0;
-      f = 1.0 - t * t;
-      acc = acc + (pk.amp as float) * f * f;
+// The surface height at a hex — ONE voxel read, not a sum over authored peaks.
+// An unwritten cell reads as absent, which is height 0: the flat plane, and the
+// same answer the peak version gave for ground nobody had touched.
+fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
+  // ⚠ Bound to a local, not `world_cell(…).h_height` in tail position — that is
+  // loft H9's shape (a field projected off an inline call) and it aborted the
+  // interpreter here even though H9 itself is fixed for the case it was filed as.
+  c = world_cell(wld, hq, hr, SURFACE);
+  h = c.h_height;
+  h
+}
+
+// The falloff brush, applied to CELLS rather than recorded as a peak.
+//
+// `(1-(d/R)^2)^2` has zero slope at the rim, so a hill meets flat ground without
+// a crease — the same shape the peak version derived, now written down once
+// instead of re-summed on every sample. Overlapping strokes add, which is what
+// makes two hills merge into one rather than replace each other.
+fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer) {
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = tq + dq;
+      r = tr + dr;
+      d = hex_distance(q, r, tq, tr);
+      if d < rad {
+        t = (d as float) / (rad as float) ?? 0.0;
+        f = 1.0 - t * t;
+        delta = ((amp as float) * f * f) as integer;
+        if delta != 0 {
+          h = world_cell(wld, q, r, SURFACE).h_height + delta;
+          if h < W_RESERVE { h = W_RESERVE; }
+          if h > 65535 { h = 65535; }
+          // ⚠ Qualified: `moros_map` and `hex_world` BOTH define a `Hex`, and they
+          // are different types — moros_map's is the scene cell, hex_world's is the
+          // stored voxel. The bare name resolves to the wrong one here.
+          world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
+            co_cells: [hex_world::Hex { h_height: h as u16? ?? 0,
+                                        h_material: SURFACE_MAT }] });
+        }
+      }
     }
   }
-  acc as integer
 }
 
 // CORNER HEIGHTS — the whole reason the ground can slope.
@@ -418,16 +419,16 @@ fn terrain_h(hq: integer, hr: integer, peaks: vector<Peak>) -> integer {
 // The cell heights stay integers (`L13`); the corner means are a RENDER
 // derivation, layer 2, never stored. Quantisation therefore shows as a gentle
 // facet rather than a terrace.
-fn corner_heights(cq: integer, cr: integer, peaks: vector<Peak>) -> vector<float> {
+fn corner_heights(cq: integer, cr: integer, wld: World) -> vector<float> {
   sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   for cd2 in 0..6 {
     (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
-    nh2 = (terrain_h(nq2, nr2, peaks) as float);
+    nh2 = (terrain_h(nq2, nr2, wld) as float);
     (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
     sums[ca2] = sums[ca2] + nh2;
     sums[cb2] = sums[cb2] + nh2;
   }
-  selfh = (terrain_h(cq, cr, peaks) as float);
+  selfh = (terrain_h(cq, cr, wld) as float);
   out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
   out
@@ -450,16 +451,16 @@ fn nrm3(nx: float, ny: float, nz: float) -> Vec3 {
 // Least squares over the six neighbours: find (gx, gz) minimising the error in
 // `dy ≈ gx·dx + gz·dz`. The hex ring is symmetric, so the cross term Σ dx·dz
 // vanishes and the fit separates into two independent one-dimensional ones.
-fn cell_normal(cq: integer, cr: integer, peaks: vector<Peak>) -> Vec3 {
+fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
   c0 = hex_to_world(cq, cr, 0);
-  h0 = (terrain_h(cq, cr, peaks) as float) * HEIGHT_SCALE;
+  h0 = (terrain_h(cq, cr, wld) as float) * HEIGHT_SCALE;
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
   for nd in 0..6 {
     (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
     nw = hex_to_world(nnq, nnr, 0);
     dx = nw.x - c0.x;
     dz = nw.z - c0.z;
-    dy = (terrain_h(nnq, nnr, peaks) as float) * HEIGHT_SCALE - h0;
+    dy = (terrain_h(nnq, nnr, wld) as float) * HEIGHT_SCALE - h0;
     sxx = sxx + dx * dx;
     szz = szz + dz * dz;
     sxy = sxy + dx * dy;
@@ -485,12 +486,12 @@ fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3) {
 // edge table pairs them that way), and moros_render's corner order is the
 // reverse ring — "this file's index i is its (6 - i) % 6" — so the map is
 // applied at every crossing.
-fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>,
+fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                    nx: vector<float>, ny: vector<float>, nz: vector<float>,
                    q0: integer, r0: integer) {
-  chh = terrain_h(cq, cr, peaks);
+  chh = terrain_h(cq, cr, wld);
   cw = hex_to_world(cq, cr, chh);
-  hs = corner_heights(cq, cr, peaks);
+  hs = corner_heights(cq, cr, wld);
 
   ci0 = (cr - r0 + 1) * (CHUNK + 2) + (cq - q0 + 1);
   n0x = nx[ci0] ?? 0.0; n0y = ny[ci0] ?? 1.0; n0z = nz[ci0] ?? 0.0;
@@ -526,7 +527,7 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, peaks: vector<Peak>,
 
 // One chunk of ground. No skirts: the corner means make the surface continuous,
 // so there is no gap left to close.
-fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
+fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
   cm = mesh("chunk");
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
@@ -543,7 +544,7 @@ fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
   nz: vector<float> = [];
   for hr in r0 - 1..r0 + CHUNK + 1 {
     for hq in q0 - 1..q0 + CHUNK + 1 {
-      hn = cell_normal(hq, hr, peaks);
+      hn = cell_normal(hq, hr, wld);
       nx += [hn.x];
       ny += [hn.y];
       nz += [hn.z];
@@ -552,7 +553,7 @@ fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
 
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
-      emit_hex_sloped(cm, cq, cr, peaks, nx, ny, nz, q0, r0);
+      emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0);
     }
   }
   cm
@@ -565,11 +566,11 @@ fn chunk_mesh(cx: integer, cz: integer, peaks: vector<Peak>) -> Mesh {
 // to get a character floating a few centimetres above a slope or sunk into it,
 // because two derivations of one surface disagree wherever they round
 // differently. There is one surface here and both the mesh and the feet read it.
-fn terrain_y(wx: float, wz: float, peaks: vector<Peak>) -> float {
+fn terrain_y(wx: float, wz: float, wld: World) -> float {
   addr = world_to_hex(wx, wz);
-  ch3 = terrain_h(addr.ha_q, addr.ha_r, peaks);
+  ch3 = terrain_h(addr.ha_q, addr.ha_r, wld);
   cw3 = hex_to_world(addr.ha_q, addr.ha_r, ch3);
-  hs3 = corner_heights(addr.ha_q, addr.ha_r, peaks);
+  hs3 = corner_heights(addr.ha_q, addr.ha_r, wld);
   for ti in 0..6 {
     tj = (ti + 1) % 6 ?? 0;
     v1 = hex_corner_world(addr.ha_q, addr.ha_r, 0, (6 - ti) % 6 ?? 0);
@@ -742,16 +743,16 @@ fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
 // The vertical clearance that yields CAM_CLEAR PERPENDICULAR to the local surface.
 // Flat ground → CAM_CLEAR. A steep face → much more, which is exactly where the
 // old flat 0.28 was letting the eye graze the hillside and fill the screen.
-fn cam_clear_at(x: float, z: float, peaks: vector<Peak>) -> float {
+fn cam_clear_at(x: float, z: float, wld: World) -> float {
   e = 0.5;
-  gx = (terrain_y(x + e, z, peaks) - terrain_y(x - e, z, peaks)) / (2.0 * e) ?? 0.0;
-  gz = (terrain_y(x, z + e, peaks) - terrain_y(x, z - e, peaks)) / (2.0 * e) ?? 0.0;
+  gx = (terrain_y(x + e, z, wld) - terrain_y(x - e, z, wld)) / (2.0 * e) ?? 0.0;
+  gz = (terrain_y(x, z + e, wld) - terrain_y(x, z - e, wld)) / (2.0 * e) ?? 0.0;
   CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
 }
 
 // How far the eye may travel along the boom before it is inside the ground.
 fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                 want: float, peaks: vector<Peak>) -> float {
+                 want: float, wld: World) -> float {
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
   free = want;
@@ -761,7 +762,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       t = want * (i as float) / (CAM_STEPS as float) ?? 0.0;
       sx = ox - ky * t * kp;
       sz = oz - sy * t * kp;
-      if oy + t * sp < terrain_y(sx, sz, peaks) + cam_clear_at(sx, sz, peaks) {
+      if oy + t * sp < terrain_y(sx, sz, wld) + cam_clear_at(sx, sz, wld) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -784,7 +785,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
 // beside a wall still carries margin rather than sitting exactly on the edge of
 // being wrong.
 fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
-                cpitch: float, want: float, peaks: vector<Peak>) -> float {
+                cpitch: float, want: float, wld: World) -> float {
   ahead = rate * CAM_LOOK_S;
   lo = 0.0 - CAM_ARC;
   hi = CAM_ARC;
@@ -796,7 +797,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
     y2 = cyaw + off;
     // the pivot swings with yaw too, so it is recomputed per sample
     f = cam_free_dist(cam_pivot_x(cx, y2), cam_pivot_y(cyy), cam_pivot_z(cz, y2),
-                      y2, cpitch, want, peaks);
+                      y2, cpitch, want, wld);
     if f < worst { worst = f; }
   }
   worst
@@ -805,7 +806,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
 // The SMALLEST lift that clears the whole boom, or the full give if none does.
 // Smallest, so the assist takes only what the obstruction actually costs.
 fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                    want: float, peaks: vector<Peak>) -> float {
+                    want: float, wld: World) -> float {
   best = cpitch + CAM_PITCH_GIVE;
   found = false;
   for i in 0..(CAM_TRIES + 1) {
@@ -813,7 +814,7 @@ fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       lift = CAM_PITCH_GIVE * (i as float) / (CAM_TRIES as float) ?? 0.0;
       p = cpitch + lift;
       if p > CAM_PITCH_CEIL { p = CAM_PITCH_CEIL; }
-      if cam_free_dist(ox, oy, oz, cyaw, p, want, peaks) >= want - 0.001 {
+      if cam_free_dist(ox, oy, oz, cyaw, p, want, wld) >= want - 0.001 {
         best = p;
         found = true;
       }
@@ -832,7 +833,7 @@ fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() *
 fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
 
 fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
-            dist: float, peaks: vector<Peak>) -> text {
+            dist: float, wld: World) -> text {
   fh = figure_wu();
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
@@ -857,7 +858,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // another heuristic: **the eye is never below the surface.** Obstruction is
   // outright bad and a raised eye is merely an unusual angle, so when the two
   // conflict the angle loses.
-  floor_at_eye = terrain_y(ex, ez, peaks) + cam_clear_at(ex, ez, peaks);
+  floor_at_eye = terrain_y(ex, ez, wld) + cam_clear_at(ex, ez, wld);
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
@@ -957,7 +958,9 @@ fn main() {
   last_hq = 0;
   last_hr = 0;
 
-  peaks: vector<Peak> = [];
+  // The world itself. An empty one is a flat plane at height 0 everywhere, because
+  // an unwritten cell reads as absent and absence IS the floor (`E1`).
+  wld = new_world();
   levelling = false;
   level_h = 0;                 // the frozen foot height, in height units
   dirty = DirtySet { items: [] };
@@ -1021,7 +1024,7 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, peaks));
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, wld));
             moved = true;
           }
         } else if ev.msg_id == MSG_LOOK {
@@ -1040,20 +1043,29 @@ fn main() {
         } else if ev.msg_id == MSG_KEYS {
           keys = ev.payload as integer ?? 0;
         } else if ev.msg_id == MSG_SAVE {
-          nsaved = world_save(ev.payload, peaks);
-          srv.send_to(ev.cid, "S:saved {nsaved} peaks to {ev.payload}");
-          println("editor: saved {nsaved} peaks -> {ev.payload}");
+          scode = world_save(wld, world_path(ev.payload), []);
+          nch = len(wld.w_chunks);
+          srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
+          println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
         } else if ev.msg_id == MSG_LOAD {
-          peaks = world_load(ev.payload);
-          // Everything visible is derived from the peaks, so a load invalidates
-          // all of it — this is the one case where the whole loaded set really
-          // is dirty, and saying so through the same routine keeps one path.
-          for ldc in loaded { mark_dirty_id(dirty, ldc); }
-          println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
-          py = terrain_y(px, pz, peaks);
-          moved = true;
-          srv.send_to(ev.cid, "S:loaded {len(peaks)} peaks from {ev.payload}");
-          println("editor: loaded {len(peaks)} peaks <- {ev.payload}");
+          lres = world_load(world_path(ev.payload));
+          if lres.wl_code == WL_OK {
+            wld = lres.wl_world;
+            // Everything visible is derived from the world, so a load invalidates
+            // all of it — the one case where the whole loaded set really is dirty,
+            // and saying so through the same routine keeps one path.
+            for ldc in loaded { mark_dirty_id(dirty, ldc); }
+            println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
+            py = terrain_y(px, pz, wld);
+            moved = true;
+            srv.send_to(ev.cid, "S:loaded {len(wld.w_chunks)} chunks from {ev.payload}");
+            println("editor: loaded {len(wld.w_chunks)} chunks <- {ev.payload}");
+          } else {
+            // A refusal NAMES itself and changes nothing — the world on screen is
+            // still the one you were editing, rather than half of two worlds.
+            srv.send_to(ev.cid, "S:load refused ({lres.wl_code}) {lres.wl_detail}");
+            println("editor: load refused {lres.wl_code}: {lres.wl_detail}");
+          }
         } else if ev.msg_id == MSG_PLACE {
           pi = ev.payload.find(",");
           if pi != null {
@@ -1066,7 +1078,7 @@ fn main() {
               if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
               } else {
-                py = terrain_y(px, pz, peaks);
+                py = terrain_y(px, pz, wld);
               }
               moved = true;
             }
@@ -1098,7 +1110,7 @@ fn main() {
             // until you moved. Measured: it also made the levelling gate
             // unfalsifiable, since the released height was the frozen one in
             // both the real run and its control.
-            py = terrain_y(px, pz, peaks);
+            py = terrain_y(px, pz, wld);
             moved = true;
             println("editor: levelling off — feet back on the ground at {py}");
           }
@@ -1135,28 +1147,18 @@ fn main() {
             if !found {
               println("editor: no cell at {PEAK_AHEAD} hexes ahead — refusing");
             }
-            // Raising the same cell twice deepens ONE peak rather than stacking
-            // two — otherwise a held key would grow the list without bound and
-            // the derived height would drift from what the author thinks is there.
-            merged = !found;   // not found → nothing to place
-            for pk2 in peaks {
-              if !found { break; }
-              if pk2.pq == tq && pk2.pr == tr {
-                pk2.amp = pk2.amp + dirn * PEAK_STEP;
-                merged = true;
-              }
-            }
-            if !merged {
-              peaks += [Peak { pq: tq, pr: tr, amp: dirn * PEAK_STEP, rad: PEAK_R }];
-            }
+            // The stroke is APPLIED, not recorded. Holding the key adds to the
+            // cells each time, which is what makes two strokes deepen one hill —
+            // the merge the peak version had to special-case is now just addition.
+            if found { brush(wld, tq, tr, dirn * PEAK_STEP, PEAK_R); }
 
             // THE DIRTY REGION: a peak reaches PEAK_R, so only chunks touching
             // that disk change. Everything else on screen is still correct and
             // is not re-sent — the bounded, incremental re-derivation `L3` asks
             // for, at the granularity the change actually has.
             if found { mark_dirty(dirty, tq, tr, PEAK_R); }
-            println("editor: peak ({tq},{tr}) {dirn * PEAK_STEP:+} — "
-                    + "{len(peaks)} peaks, {len(dirty.items)} chunks dirty");
+            println("editor: brush ({tq},{tr}) {dirn * PEAK_STEP:+} — "
+                    + "{len(wld.w_chunks)} chunks, {len(dirty.items)} dirty");
           }
         }
       }
@@ -1177,7 +1179,7 @@ fn main() {
 
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
-      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, peaks);
+      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld);
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
       cam_prev_pitch = cam_pitch;
@@ -1188,7 +1190,7 @@ fn main() {
 
       // 2. The boom covers whatever the lift has not reached yet — including the
       //    whole of it during the drift, which is what stops the transient.
-      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, peaks);
+      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld);
       if cam_free < cam_dist {
         // Shortening. This used to snap in a single tick, which was the visible
         // step: correct, and clearly a mechanism rather than a camera. It can be
@@ -1236,7 +1238,7 @@ fn main() {
         if levelling {
           py = (level_h as float) * HEIGHT_SCALE;
         } else {
-          py = terrain_y(px, pz, peaks);
+          py = terrain_y(px, pz, wld);
         }
         moved = true;
       }
@@ -1244,7 +1246,7 @@ fn main() {
 
     // ── flush the dirty set ────────────────────────────────────────────────
     // One place rebuilds. A chunk that is dirty but not on screen is simply
-    // dropped from the set: it will be built from the current peaks when it next
+    // dropped from the set: it will be built from the current world when it next
     // comes into range, so remembering it would be work with no observer.
     if len(dirty.items) != 0 {
       t_flush = ticks();
@@ -1253,7 +1255,7 @@ fn main() {
         live = false;
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
-          dm = chunk_mesh(dc2.cx, dc2.cz, peaks);
+          dm = chunk_mesh(dc2.cx, dc2.cz, wld);
           srv.broadcast("M:{dc2.id};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
           srv.broadcast("T:{dc2.id};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
@@ -1281,7 +1283,7 @@ fn main() {
       // per tick, so how fast you walk cannot change the shape of the ground you
       // leave behind.
       if levelling {
-        cur_h = terrain_h(last_hq, last_hr, peaks);
+        cur_h = terrain_h(last_hq, last_hr, wld);
         // The amplitude is the DIFFERENCE between the frozen foot height and
         // what is here: positive builds the ground up to you (a ridge across
         // low ground), negative cuts it down to you (a crevice through a hill).
@@ -1289,16 +1291,7 @@ fn main() {
         // where you switched it on and cannot deepen a path walked twice.
         gap = level_h - cur_h;
         if gap != 0 {
-          lmerged = false;
-          for lp in peaks {
-            if lp.pq == last_hq && lp.pr == last_hr && lp.rad == LEVEL_R {
-              lp.amp = lp.amp + gap;
-              lmerged = true;
-            }
-          }
-          if !lmerged {
-            peaks += [Peak { pq: last_hq, pr: last_hr, amp: gap, rad: LEVEL_R }];
-          }
+          brush(wld, last_hq, last_hr, gap, LEVEL_R);
           mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
         }
         py = (level_h as float) * HEIGHT_SCALE;
@@ -1314,7 +1307,7 @@ fn main() {
             seen = false;
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
-              cmesh = chunk_mesh(scx, scz, peaks);
+              cmesh = chunk_mesh(scx, scz, wld);
               srv.broadcast("M:{cid};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               srv.broadcast("T:{cid};{mat_wire(mat4_identity())}");
               added = added + 1;
@@ -1357,7 +1350,7 @@ fn main() {
         srv.send_to(pc.cid, t_leg_r);
         srv.send_to(pc.cid, t_arm_l);
         srv.send_to(pc.cid, t_arm_r);
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, peaks));
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, wld));
       }
     }
     if work == 0 && !moved { web::sleep_ms(2); }

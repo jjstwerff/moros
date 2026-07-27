@@ -582,3 +582,48 @@ needs to jump (an update-in-place, a free-list walk) has no way to.
 `STDLIB.md`. The present state is the worst of the two — a documented capability that
 consumers design around before discovering it is absent.
 
+---
+
+## H12 — returning a vector ELEMENT of a local hands back a dead value, silently
+
+**Surfaced by:** `hex_world.world_cell`, 2026-07-27. It aborted the editor
+(`SIGABRT`, op=242) on the first terrain sample; reduced, it returns nulls instead.
+
+**Sibling of H9, not covered by its fix.** H9 was `fn f() -> T { mk().inn }` — a *field*
+projected off an inline call — and that is fixed and verified. This is the *vector element*
+form, and an explicit `return` does **not** help; only copying into a fresh record does.
+
+**Minimal reproducer** (library + program, crossing a package boundary):
+
+```loft
+// library
+pub struct Cell { c_h: u16, c_m: u8 }
+pub struct Bag  { b_cells: vector<Cell> }
+
+fn make_bag() -> Bag {
+  v: vector<Cell> = [];
+  v += [Cell { c_h: 42 as u16? ?? 0, c_m: 2 }];
+  Bag { b_cells: v }
+}
+
+pub fn get_elem(i: integer) -> Cell { b = make_bag(); return b.b_cells[i]; }
+pub fn get_copy(i: integer) -> Cell {
+  b = make_bag(); e = b.b_cells[i];
+  return Cell { c_h: e.c_h, c_m: e.c_m };
+}
+```
+
+```
+get_elem(0) → c_h=null  c_m=null      ← every field dead
+get_copy(0) → c_h=42    c_m=2         ← correct
+```
+
+**Why it is worth the entry.** The value is not merely wrong, it is *uniformly* null, so a
+consumer reads it as "absent" rather than "broken" — and in a world model where absence is
+a legal, meaningful answer (`E1`: an unwritten cell IS empty), a dead cell and an empty cell
+are indistinguishable. It presented here as a crash only because the null reached arithmetic;
+a codebase that tolerates nulls would have got a plausible, wrong, empty world instead.
+
+**Suggested fix:** treat a returned vector element like a returned struct field — copy into
+the caller's return buffer, which is what H9's fix already does for the field case.
+
