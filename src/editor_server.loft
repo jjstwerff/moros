@@ -308,7 +308,12 @@ struct DirtyChunk {
   cz: integer
 }
 
-// ⚠ The set is wrapped in a struct and MUTATED IN PLACE, never accumulated by
+// ⚠ H7 IS FIXED UPSTREAM (loft a1a07dcf, verified 2026-07-27) — this wrapper is no
+// longer a workaround. It stays because it is the better shape anyway: mutating in
+// place is O(1) per append, where routing the result through a temp is O(len) and
+// therefore quadratic, as loft's own fix commit points out.
+//
+// The set is wrapped in a struct and MUTATED IN PLACE, never accumulated by
 // `dirty = mark(dirty, …)`. That returning-helper shape is broken in loft inside
 // a loop — it keeps ONE element and reports no error (filed as H7 in
 // doc/claude/LOFT_HANDOFF.md, minimal reproducer there). It cost exactly this

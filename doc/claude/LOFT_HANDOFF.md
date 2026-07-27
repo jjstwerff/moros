@@ -1,3 +1,20 @@
+> ## ✅ H7, H8, H9 and H10 are FIXED upstream (verified 2026-07-27)
+>
+> loft `a1a07dcf` ("Fix three defects moros reported: H7, H9 and H10's diagnostic") and
+> `b4f0cfa7` ("loops: give each `for _` its own counter") — on branch
+> `tuxedo-h7-localization`, so check they have reached the branch you build from.
+>
+> All four verified against the installed binary with a four-line probe: nested `for _`
+> counts 6, `acc = f(acc, x)` in a loop keeps 5, an implicit tail `mk().inn` returns its
+> value, and `s[2..5]` slices. Entries below are kept as the record of what was found and
+> how; the ⚠ notes say what each cost us.
+>
+> **Two workarounds in this tree are now unnecessary** and are noted where they live rather
+> than ripped out: `hex_world`'s explicit `return` in `sp_world` (H9) and `editor_server`'s
+> struct-wrapped `DirtySet` (H7). The latter STAYS regardless — it mutates in place, which
+> is O(1) per append, where the temp-routing workaround loft's own commit calls out is
+> O(len) and quadratic.
+
 # LOFT_HANDOFF.md — findings for the loft side, ready to file
 
 > Moros is a **consumer** of loft. This document holds defects Moros surfaced that belong
@@ -429,7 +446,7 @@ Put the accumulator in a struct and mutate the field, which writes through
 
 ---
 
-## H8 — nested `for _ in …` loops silently share one counter
+## H8 ✅ FIXED — nested `for _ in …` loops silently share one counter
 
 **Surfaced by:** `hex_world`'s file reader, 2026-07-26. A world with two layers saved
 correctly (byte-for-byte the right size) and loaded back with **one**, reporting success.
@@ -473,7 +490,7 @@ fn main() {
 
 ---
 
-## H9 — `loft test` SIGSEGVs on a test file that saves and measures files repeatedly
+## H9 ✅ FIXED — `loft test` SIGSEGVs on a test file that saves and measures files repeatedly
 
 **Surfaced by:** `hex_world`'s sparsity gates, 2026-07-26. Reproducer preserved at
 `lib/hex_world/tests_wip/segv-repro.loft.wip` — move it to `tests/` to reproduce.
@@ -485,6 +502,14 @@ fn main() {
   fn:       (?) (d_nr=311)
   at:       /usr/local/share/loft/default/01_code.loft:979:22
 ```
+
+⚠ **ROOT CAUSE, from loft's fix:** `fn f() -> T { mk().inn }` — an *implicit tail*
+returning a projected field of an inline call — returned a reference into a store the call
+had already freed. The interpreter read the stale bytes, so a `World` returned that way
+reached the vector code with a garbage handle. **Our `sp_world()` was exactly that shape**,
+which is why every version of the file containing it crashed and every version without it
+passed. Seven hypotheses were tested and all were wrong because none of them was about the
+helper's *return form*.
 
 **Shape.** Eight test functions in one file, each building a small world, calling a library
 function that writes a binary file (~8 KB via a loop of `f += (x as u16 / u8)`), reading it
@@ -517,10 +542,15 @@ or making the empty vector the failure value, would remove a warning nobody want
 
 ---
 
-## H10 — text has no range slice
+## H10 ✅ FIXED (diagnostic) — text range slicing works; the message did not say so
 
-`man[di..]` on a `text` gives *"Invalid index on string"*. Slicing a `text` by a range —
-`s[i..]`, `s[i..j]` — appears unsupported, so extracting a section of a file read as text
+⚠ **The feature was never missing.** `s[i..]` and `s[i..j]` work in every shape probed; the
+message *"Invalid index on string"* named neither the offending type nor the supported
+forms, so it read as "text cannot be sliced". loft now names the type and shows the forms.
+The original report follows.
+
+`man[di..]` on a `text` gave *"Invalid index on string"*. Slicing a `text` by a range —
+`s[i..]`, `s[i..j]` — appeared unsupported, so extracting a section of a file read as text
 means iterating `lines()` and tracking state by hand. Vectors slice; text does not, and the
 asymmetry is surprising rather than principled.
 

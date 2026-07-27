@@ -131,6 +131,15 @@ named integer layers, and two committed fixtures both consumers read.
    loss was symmetric with them, so every count agreed with every other count. Asymmetric
    content is what makes this class visible — which is the real argument for `house_door`.
 
+## loft defects: H7-H10 fixed upstream (2026-07-27)
+
+All four Moros filed are fixed (loft `a1a07dcf`, `b4f0cfa7`, branch
+`tuxedo-h7-localization`) and verified against the installed binary. H9 is the one worth
+knowing: an **implicit tail returning a projected field of an inline call**
+(`fn f() -> T { mk().inn }`) handed back a reference into a freed store, which is how a
+crash in our test file presented as a hang and cost several rounds of wrong hypotheses.
+See [LOFT_HANDOFF.md](LOFT_HANDOFF.md).
+
 ## What to do next
 
 The sequential work list, with the points that need the user rather than a report, is
