@@ -28,7 +28,7 @@ const roadCells = () => {
   const set = new Set();
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
-    if (((id - 16) % 3) !== 1) continue;              // 0 ground, 1 road, 2 field
+    if (((id - 16) % 4) !== 1) continue;              // 0 ground, 1 road, 2 field, 3 vegetation
     for (let i = 0; i + 2 < d.length; i += 6)
       set.add(`${Math.round(d[i])},${Math.round(d[i + 2])}`);
   }
@@ -60,7 +60,7 @@ const stats = (road) => {
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
     if (id <= 15) continue;
-    if ((((id - 16) % 3) === 1) !== road) continue;   // 0 ground, 1 road, 2 field
+    if ((((id - 16) % 4) === 1) !== road) continue;   // 0 ground, 1 road, 2 field, 3 vegetation
     for (let i = 1; i < d.length; i += 6) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); n++; }
   }
   return { lo: +lo.toFixed(3), hi: +hi.toFixed(3), n };

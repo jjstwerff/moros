@@ -57,6 +57,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs`; stencils, roofs and openings still open |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
+| 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
 | 10 | props and vehicles; the multi-rig connector | #14 | L | a cart whose wheels turn from distance travelled |
 | — | ✋ | | | |
 | 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
@@ -186,3 +187,34 @@ seconds still took `true` from every send). The six shared frames now go through
 frame cannot join them — it is solved per client from that client's aspect — and
 a stale entry costs exactly that one frame per tick, bounded, because the library
 reuses a freed slot (measured: five sequential clients all came back as `cid 0`).
+
+
+## What rung 9 found — a fourth surface, and a bound that re-tuned itself
+
+Vegetation is the item byte and nothing else: the author paints a DENSITY, and
+placement is a pure function of the cell coordinate. That buys idempotence (a
+stroke overlapping an earlier one does not thicken the wood), no scatter journal
+to keep in sync with the cells, and the same forest on every machine.
+
+**Idempotence here is structural, not gated.** With no stored randomness, ANY
+pure function of the cell is idempotent, so no local mutation can falsify that
+clause — I tried two and both stayed green for the right reason. It is a real
+property guaranteed by construction; it is not evidence the gate would catch a
+regression. What IS mutation-verified is the density band and the dial: removing
+the density roll turns both red.
+
+**Not gated: that a tree stands on the ground it grows on.** `chunk_mesh_veg`
+places each tree at its own cell's height, and that is untested, because I could
+not pin down the mesh wire layout — index 7 stride 6 reads 0.707 for ground four
+raises high (a normal), index 4 reads 47.5 (a horizontal extent), and the older
+gates' `i = 1; i += 6` reads a sensible 6.25 from a series that CONTAINS index 7.
+Those cannot all be right. The older gates' height readings therefore rest on a
+convention nobody has verified — worth settling before another gate is built on
+it.
+
+**A bound expressed in the wrong unit re-tunes itself.** Adding the fourth
+surface moved every number in the stream gate by exactly 4/3 — peak 156 → 208 —
+while streaming behaviour was unchanged, because the gate bounded MESHES. It now
+bounds chunks. The mesh-id scheme went `cid*3 + 15 + k` → `cid*4 + 15 + k`, and
+all three decoders moved with it in the same commit; the stream gate's counts did
+not, which is precisely the drift rung 7 was supposed to have taught me.

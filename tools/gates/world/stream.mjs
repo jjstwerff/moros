@@ -31,8 +31,18 @@ ws.onmessage = (e) => {
     const march = setInterval(() => { d += 6; place(d, 0, 0);
                                       if (d >= 60) clearInterval(march); }, 260);
     setTimeout(() => {
-      const ok = added > 0 && dropped > 0 && live.size <= peak && peak < 200;
-      console.log(JSON.stringify({ added, dropped, live: live.size, peak, ok }));
+      // ⚠ COUNT CHUNKS, NOT MESHES. Each chunk emits one mesh per surface, and
+      // that number is not a constant of the world — it went 3 → 4 the day
+      // vegetation arrived, and every count here moved by exactly 4/3 (peak
+      // 156 → 208) while the streaming behaviour was unchanged. A bound
+      // expressed in meshes silently re-tunes itself whenever a surface is
+      // added; a bound expressed in chunks does not.
+      const SURFACES = 4;                      // ground, road, field, vegetation
+      const liveChunks = new Set([...live].map(id => Math.floor((id - 16) / SURFACES)));
+      const ok = added > 0 && dropped > 0 && live.size <= peak
+                 && liveChunks.size < 60;      // the draw radius holds ~50 chunks
+      console.log(JSON.stringify({ added, dropped, live: live.size, peak,
+                                   liveChunks: liveChunks.size, ok }));
       ws.close(); process.exit(ok ? 0 : 1);
     }, 4200);
   }

@@ -230,6 +230,7 @@ const MSG_LOAD = 9;
 const MSG_ROAD = 10;      // roads: lay a graded strip as you walk (moros#9)
 const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (moros#11)
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
+const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 
 // One authored peak. This — a vector of these — is the whole terrain.
 // ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
@@ -256,6 +257,10 @@ const FIELD_MAT    = 3;           // an enclosed field
 const FIELD_CAP    = 4000;        // the most cells one fill may claim
 const FLOOR_MAT    = 4;           // a built floor, above or below ground
 const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
+const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
+const SPECIES_BUSH = 2;
+const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
+const TREE_R = 0.16; const TREE_G = 0.34; const TREE_B = 0.14;
 
 fn new_world() -> World {
   n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
@@ -623,6 +628,110 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
     }
   }
   built
+}
+
+// ── VEGETATION (rung W5, moros#13) ───────────────────────────────────────────
+//
+// "A forest that reads as landscape, not a list." The cell holds a SPECIES INDEX
+// and nothing else — the item byte the voxel already carries — and what the
+// author paints is a DENSITY, not instances.
+//
+// The placement is a pure function of the cell coordinate. That is the whole
+// trick, and it buys three things at once:
+//   · scattering the same ground twice is idempotent, so a stroke that overlaps
+//     an earlier one does not thicken the forest where they meet;
+//   · nothing has to store which cells were rolled, so there is no scatter
+//     journal to keep in sync with the cells;
+//   · the same seed gives the same wood on every machine, which is what makes a
+//     forest gateable at all.
+// A stored RNG would fail all three, and would fail the first one INVISIBLY.
+fn cell_hash(q: integer, r: integer) -> integer {
+  h = (q * 374761393 + r * 668265263) % 2147483647 ?? 0;
+  if h < 0 { h = 0 - h; }
+  h = (h * 1274126177 + 2654435761) % 2147483647 ?? 0;
+  if h < 0 { h = 0 - h; }
+  h
+}
+
+// The index of the topmost occupied cell, or -1. Vegetation grows on whatever
+// surface is uppermost — see `E1r`: position is not occupancy.
+fn col_top_index(c: hex_world::Column) -> integer {
+  i = 0 - 1;
+  for k in 0..len(c.co_cells) { if hex_world::hex_occupied(c.co_cells[k]) { i = k; } }
+  i
+}
+
+// `species` 0 CLEARS. Returns the number of cells now carrying the species.
+fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
+           species: integer, density: integer) -> integer {
+  n = 0;
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_distance(q, r, cq, cr) <= rad {
+        c = world_column(wld, q, r);
+        ti = col_top_index(c);
+        want = 0;
+        if species != 0 {
+          if (cell_hash(q, r) % 100 ?? 0) < density { want = species; }
+        }
+        rot = cell_hash(q + 7717, r + 31) % 256 ?? 0;
+        cells: vector<hex_world::Hex> = [];
+        if ti < 0 {
+          // Absence is the floor, so a tree on unauthored ground authors the
+          // ground under it — one cell, at height 0, carrying the species.
+          if want != 0 {
+            cells += [hex_world::Hex { h_height: 0, h_material: (SURFACE_MAT as u8? ?? 0),
+                                       h_item: (want as u8? ?? 0),
+                                       h_item_rotation: (rot as u8? ?? 0) }];
+          }
+        } else {
+          for k in 0..len(c.co_cells) {
+            e = c.co_cells[k];
+            if k == ti {
+              cells += [hex_world::Hex { h_height: e.h_height, h_material: e.h_material,
+                                         h_item: (want as u8? ?? 0),
+                                         h_item_rotation: (rot as u8? ?? 0),
+                                         h_wall_n: e.h_wall_n, h_wall_ne: e.h_wall_ne,
+                                         h_wall_se: e.h_wall_se }];
+            } else {
+              cells += [e];
+            }
+          }
+        }
+        if len(cells) > 0 {
+          w = world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells });
+          if w.cw_code == CW_OK && want != 0 { n = n + 1; }
+        }
+      }
+    }
+  }
+  n
+}
+
+// One chunk's vegetation. Every occupied cell carrying a species contributes a
+// placeholder at that cell's own height — so a tree on a roof stands on the roof
+// and a tree on the ground stands on the ground, with no layer assumption.
+fn chunk_mesh_veg(cx: integer, cz: integer, wld: World) -> Mesh {
+  vm = mesh("veg");
+  q0 = cx * CHUNK;
+  r0 = cz * CHUNK;
+  for cr in r0..r0 + CHUNK {
+    for cq in q0..q0 + CHUNK {
+      c = world_column(wld, cq, cr);
+      for e in c.co_cells {
+        if hex_world::hex_occupied(e) && e.h_item != 0 {
+          wp = hex_to_world(cq, cr, 0);
+          ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
+          sc = 0.55;
+          if e.h_item == SPECIES_BUSH { sc = 0.22; }
+          emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
+        }
+      }
+    }
+  }
+  vm
 }
 
 // The falloff brush, applied to CELLS rather than recorded as a peak.
@@ -1372,6 +1481,22 @@ fn main() {
             srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
             println("editor: storey {sdir:+} on {nb} cells");
           }
+        } else if ev.msg_id == MSG_SCATTER {
+          // payload "<species>,<density>"; species 0 clears the disc
+          sc_i = ev.payload.find(",");
+          sc_sp = 0;
+          sc_dn = 30;
+          if sc_i != null {
+            sc_sp = ev.payload[..sc_i] as integer ?? 0;
+            sc_dn = ev.payload[sc_i + 1..] as integer ?? 30;
+          } else {
+            sc_sp = ev.payload as integer ?? 0;
+          }
+          vhx = world_to_hex(px, pz);
+          nv = scatter(wld, vhx.ha_q, vhx.ha_r, SCATTER_R, sc_sp, sc_dn);
+          mark_dirty(dirty, vhx.ha_q, vhx.ha_r, SCATTER_R + 1);
+          srv.send_to(ev.cid, "S:scattered {nv} of species {sc_sp} at density {sc_dn}");
+          println("editor: scattered {nv} of species {sc_sp} at density {sc_dn}");
         } else if ev.msg_id == MSG_FIELD {
           fhx = world_to_hex(px, pz);
           nfilled = field_fill(wld, fhx.ha_q, fhx.ha_r);
@@ -1573,14 +1698,17 @@ fn main() {
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
           dm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
-          srv.broadcast("M:{dc2.id * 3 + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
-          srv.broadcast("T:{dc2.id * 3 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
           fm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, FIELD_MAT);
-          srv.broadcast("M:{dc2.id * 3 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
-          srv.broadcast("T:{dc2.id * 3 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
+          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
           rm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, ROAD_MAT);
-          srv.broadcast("M:{dc2.id * 3 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
-          srv.broadcast("T:{dc2.id * 3 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
+          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
+          vm2 = chunk_mesh_veg(dc2.cx, dc2.cz, wld);
+          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
+          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -1631,14 +1759,17 @@ fn main() {
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
               cmesh = chunk_mesh(scx, scz, wld);
-              srv.broadcast("M:{cid * 3 + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               fmesh = chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
-              srv.broadcast("M:{cid * 3 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
-              srv.broadcast("T:{cid * 3 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
+              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
               rmesh = chunk_mesh_mat(scx, scz, wld, ROAD_MAT);
-              srv.broadcast("M:{cid * 3 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
-              srv.broadcast("T:{cid * 3 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
-              srv.broadcast("T:{cid * 3 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
+              vmesh = chunk_mesh_veg(scx, scz, wld);
+              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
+              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }
@@ -1652,9 +1783,10 @@ fn main() {
         // would otherwise linger on the client as a strip of road floating where
         // its ground used to be.
         if !still {
-          srv.broadcast("X:{lz2 * 3 + MESH_FIGURE_MAX + 1}");
-          srv.broadcast("X:{lz2 * 3 + MESH_FIGURE_MAX + 2}");
-          srv.broadcast("X:{lz2 * 3 + MESH_FIGURE_MAX + 3}");
+          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 1}");
+          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 2}");
+          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 3}");
+          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 4}");
           dropped = dropped + 1;
         }
       }
