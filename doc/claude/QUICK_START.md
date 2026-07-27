@@ -1,5 +1,24 @@
 # Moros — Quick Start for Claude
 
+## Try the editor in one command
+
+```sh
+make play        # native build, then open a browser (or print the ssh tunnel)
+make play-fast   # interpreted — up in a second, for a quick look
+```
+
+Both free the port first, wait until the editor is actually listening, and print the
+real reason if it exits instead of hanging.
+
+⚠ **`make play` is slow the first time** — a native build compiles the whole graphics
+dependency tree, which is minutes. It is cached afterwards. Use `play-fast` while
+iterating; use `play` when you care how it performs.
+
+⚠ **No browser is opened over ssh, on purpose.** The check is *is there a display*,
+not *is this Linux*: on a desktop session you get a browser, and on an ssh session you
+get the `ssh -L` line you actually need, because a browser opened on the far machine
+helps nobody.
+
 Read this file at the start of every session before doing any work. The full topic index lives in the project-root **[CLAUDE.md](../../CLAUDE.md)**.
 
 ## What is this project?

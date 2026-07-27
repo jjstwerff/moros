@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check gate gate-world gate-character gate-hexworld
+.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -49,6 +49,60 @@ lib-test:
 EDITOR_PORT ?= 18090
 EDITOR_PID  := .editor.pid
 LOFT_TOOLS  ?= ../loft/tools
+
+# ── One command to try the editor: build, run, open a browser ────────────────
+#
+# `make play`      native build (fast at runtime, SLOW the first time — it compiles
+#                  the whole graphics dependency tree; cached afterwards)
+# `make play-fast` interpreted — starts in a second, for a quick look
+#
+# ⚠ THE BROWSER IS NOT OPENED OVER SSH, deliberately. On a headless session
+# `xdg-open` either fails or opens a browser on the machine nobody is sitting at.
+# The check is "is there a display", not "is this Linux": a local desktop session
+# gets a browser, an SSH session gets the tunnel command it actually needs.
+BROWSER_URL := http://127.0.0.1:$(EDITOR_PORT)/
+
+# Free the port before starting. `editor-stop` only knows the PID file, so an
+# editor started any other way — by hand, by a gate, by a previous run that was
+# interrupted — keeps the port and the next start dies with "Address already in
+# use". This looks the port up instead.
+#
+# ⚠ It kills ONLY a process it can identify as this editor, and BOTH forms have to
+# be recognised: interpreted runs carry `editor_server.loft` on the command line,
+# while a NATIVE run is a compiled binary called `loft_native_bin_<n>` and carries
+# no source name at all. The first version matched only the source, so it refused
+# to free the port after `make play` — correctly, since an unrecognised process is
+# exactly what must not be killed.
+#
+# A bare `pkill -f editor_server.loft` is the wrong tool: it matches the shell
+# running the command too, and has killed this session once already.
+port-free:
+	@pid=$$(ss -lptn 'sport = :$(EDITOR_PORT)' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -1); \
+	if [ -n "$$pid" ]; then \
+	  cmd=$$(tr '\0' ' ' < /proc/$$pid/cmdline 2>/dev/null); \
+	  if echo "$$cmd" | grep -qE 'editor_server\.loft|loft_native_bin_'; then \
+	    kill $$pid 2>/dev/null; sleep 2; \
+	  else \
+	    echo "port $(EDITOR_PORT) held by pid $$pid, which is NOT the editor — leaving it alone"; \
+	    exit 1; \
+	  fi; \
+	fi
+
+browser:
+	@if [ -z "$$DISPLAY" ] && [ -z "$$WAYLAND_DISPLAY" ] && [ "$$(uname -s)" = "Linux" ]; then 	  echo ""; 	  echo "  no display here — this looks like an ssh session, so run on YOUR machine:"; 	  echo "      ssh -L $(EDITOR_PORT):localhost:$(EDITOR_PORT) $$(whoami)@$$(hostname)"; 	  echo "  then open  $(BROWSER_URL)"; 	  echo ""; 	else 	  case "$$(uname -s)" in 	    Darwin)            open "$(BROWSER_URL)" ;; 	    Linux)             xdg-open "$(BROWSER_URL)" >/dev/null 2>&1 ;; 	    MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "" "$(BROWSER_URL)" ;; 	    *)                 echo "  open $(BROWSER_URL) in a browser" ;; 	  esac; 	  echo "  opened $(BROWSER_URL)"; 	fi
+
+play: port-free
+	@echo "building natively (first run compiles the graphics tree — minutes)…"
+	@nohup $(LOFT) --native --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
+	@until grep -q 'drag or A/D' .editor.log 2>/dev/null; do 	  if ! kill -0 $$(cat $(EDITOR_PID)) 2>/dev/null; then 	    echo "editor exited — last lines:"; grep -vE '^warning|^ *\||^ *-->' .editor.log | tail -5; exit 1; fi; 	  sleep 2; done
+	@echo "editor up (native) on port $(EDITOR_PORT)"
+	@$(MAKE) -s browser
+
+play-fast: port-free
+	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
+	@until grep -q 'drag or A/D' .editor.log 2>/dev/null; do 	  if ! kill -0 $$(cat $(EDITOR_PID)) 2>/dev/null; then 	    echo "editor exited — last lines:"; grep -vE '^warning|^ *\||^ *-->' .editor.log | tail -5; exit 1; fi; 	  sleep 1; done
+	@echo "editor up (interpreted) on port $(EDITOR_PORT)"
+	@$(MAKE) -s browser
 
 editor:
 	$(LOFT) --interpret --lib lib/ src/editor_server.loft
