@@ -130,9 +130,38 @@ editor-check:
 #              churn as locomotion grows a step limit, a fall, collision.
 # Each probe gets a FRESH SERVER: state persists (position, yaw, peaks, the
 # level flag), so back-to-back runs are not independent.
-GATE_RESTART = $(MAKE) -s editor-stop >/dev/null 2>&1; sleep 1; \
+# ⚠ TWO failures live here, both found by a suite that hung for forty minutes.
+#
+# 1. It called `editor-stop`, which knows only the PID FILE — so it was a no-op
+#    against an editor started any other way (`play-fast`, a previous gate loop,
+#    by hand). That editor kept the port, the gate's own server died on bind, and
+#    the loop below waited for a readiness line that was never coming.
+# 2. The readiness loop had NO failure path. A server that failed to start looked
+#    exactly like a server still starting, forever. Silence is not success: the
+#    wait must end in a ready line OR a named failure, never in neither.
+#
+# 3. It waited for the BANNER, which the editor prints BEFORE it binds. A server
+#    that then died on "address already in use" had already written the line the
+#    wait was watching for — so the wait went green, the gate connected to the
+#    PREVIOUS server, and every gate after the first talked to a stale world. The
+#    readiness signal has to be the thing that is only true once the socket is
+#    actually listening.
+#
+# So: free the port by PORT (`port-free` identifies the process as this editor),
+# wait for the LISTENING line rather than the banner, and bound the wait — 60s,
+# then print the log and fail the gate run.
+GATE_RESTART = $(MAKE) -s port-free >/dev/null 2>&1; sleep 1; \
+  : > .editor.log; \
   nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \
-  until grep -q 'drag or A/D' .editor.log 2>/dev/null; do sleep 1; done
+  for i in $$(seq 1 60); do \
+    grep -q 'listening on port' .editor.log 2>/dev/null && break; \
+    grep -qi 'cannot bind port' .editor.log 2>/dev/null && break; \
+    sleep 1; \
+  done; \
+  if ! grep -q 'listening on port' .editor.log 2>/dev/null; then \
+    echo "GATE HARNESS: the editor never listened — last 20 lines:"; \
+    grep -vE '^warning|^ *\||^ *-->|^ *=' .editor.log | tail -20; exit 1; \
+  fi
 
 # hex_world's exact-size proofs run as a PROGRAM, not under `loft test`: several
 # save-and-measure tests in one test file hang the harness (see

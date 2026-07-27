@@ -142,3 +142,28 @@ does removing the floor check.
 
 **Still open on #12**: stencils writing a whole column at once, roofs as their own
 geometry, openings (`X70` — an opening is not absence), and the `K-FIT` doorstep.
+
+### Open: the gate harness, and a server that stops answering
+
+Rung 8's suite run exposed three defects in the harness itself, all now fixed in
+`Makefile`'s `GATE_RESTART`, and one in the server that is **not** fixed:
+
+1. it stopped the editor via `editor-stop`, which knows only the PID file — a
+   no-op against a server started by `play-fast`, a previous gate loop, or by
+   hand. `port-free` (which identifies the process by port) is the right tool.
+2. its readiness wait had no failure path, so a server that never started looked
+   exactly like one still starting. It hung for forty minutes.
+3. it waited for the BANNER, which prints **before** the socket binds. A server
+   that then died on "address already in use" had already written the line the
+   wait watched for, so the wait went green and the gate talked to the PREVIOUS
+   server. Every "isolated" gate run before this was sharing one long-lived
+   world. The signal is `listening on port`, not the banner.
+
+**Still open.** With restarts genuinely happening, every world gate now times
+out — including gates untouched by rung 8, and including against the pre-storey
+editor, so this is not a rung-8 regression. The server logs `client 0 connected`
+for the first client and then stops logging connections at all while continuing
+to listen; a later client's frames are never answered. The editor advertises
+itself as MULTI-CLIENT, and that path looks like where this lives. Until it is
+fixed the gates can only be trusted **one per freshly started server**, which is
+how the storey gate above was verified.
