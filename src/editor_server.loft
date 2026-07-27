@@ -229,6 +229,7 @@ const MSG_SAVE = 8;
 const MSG_LOAD = 9;
 const MSG_ROAD = 10;      // roads: lay a graded strip as you walk (moros#9)
 const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (moros#11)
+const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 
 // One authored peak. This — a vector of these — is the whole terrain.
 // ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
@@ -253,6 +254,8 @@ const ROAD_MAT     = 2;           // the road surface
 const ROAD_HALF    = 2;           // road half-width, in hexes
 const FIELD_MAT    = 3;           // an enclosed field
 const FIELD_CAP    = 4000;        // the most cells one fill may claim
+const FLOOR_MAT    = 4;           // a built floor, above or below ground
+const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 
 fn new_world() -> World {
   n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
@@ -513,6 +516,113 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
       co_cells: [hex_world::Hex { h_height: h, h_material: FIELD_MAT }] });
   }
   len(seen_q)
+}
+
+// ── STOREYS (rung W4, moros#12) ──────────────────────────────────────────────
+//
+// This is where the layer stack meets real pressure, and it is the rung that would
+// invalidate the model if the model were wrong. A tower is layers ABOVE the
+// surface; a cellar is a layer BELOW it. Both are ordinary columns, so both go
+// through the one write — and `F1` refuses a storey that would breach the one
+// above it rather than letting two floors occupy one space.
+//
+// ⚠ ORDER IS THE POINT. A column is stack order, so a cellar is index 0 and the
+// surface moves up — the layer is INSERTED, not appended. Getting that wrong is
+// not a cosmetic bug: `F1` compares consecutive occupied layers, so a mis-ordered
+// column either refuses a legal build or accepts an illegal one, and both look
+// like the rule misbehaving rather than the caller.
+//
+// `dir` is +1 for a floor above, -1 for a cellar below.
+// The topmost / lowest OCCUPIED height in a column, or -1 for an empty column.
+//
+// ⚠ NOT `co_cells[len-1]` and NOT `co_cells[0]`. A column read returns one cell
+// per layer OF THE CHUNK, so a layer this column does not use comes back as an
+// absent cell — and an absent cell's height is 0, which is also a perfectly legal
+// ground height. Taking the last element read that zero as the roof and put the
+// first floor 12 above NOTHING, which then landed 7 above the real ground and was
+// refused as a fold. The refusal was right; the caller was wrong.
+//
+// This is `E1` seen from the consumer side: absence has one representation, and it
+// is the reader's job never to mistake it for a value.
+fn col_top(c: hex_world::Column) -> integer {
+  h = 0 - 1;
+  for e in c.co_cells { if hex_world::hex_occupied(e) { h = e.h_height as integer ?? 0; } }
+  h
+}
+fn col_low(c: hex_world::Column) -> integer {
+  for e in c.co_cells { if hex_world::hex_occupied(e) { return e.h_height as integer ?? 0; } }
+  0 - 1
+}
+
+fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
+              why: &text) -> integer {
+  // TWO PASSES, and the order is the point. Pass 1 asks whether EVERY cell in the
+  // disc can take the storey; pass 2 writes. A single pass that refused halfway
+  // would leave a building with some cells storeyed and some not — and the caller
+  // would be told "refused" while the world had already changed under it. A
+  // refusal must mean nothing happened.
+  //
+  // ⚠ What this does NOT promise: pass 2 goes through `world_set_column`, which
+  // may still refuse on `F1`. It cannot here — a storey sits `STOREY_H` (12)
+  // above the top and ε is 8 — but if `STOREY_H` ever drops below ε that write
+  // can fail mid-disc, and this pre-check would not have caught it. Named rather
+  // than assumed: the atomicity covers the floor, not the fold.
+  ok = 0;
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_distance(q, r, cq, cr) <= rad {
+        c = world_column(wld, q, r);
+        if col_top(c) >= 0 {
+          if dir < 0 {
+            // A cellar digs DOWN, and the world has a floor. Refusing is the
+            // honest answer — clamping would silently put the dungeon at a depth
+            // the caller did not ask for.
+            if col_low(c) < STOREY_H {
+              why = "floor at {col_low(c)} leaves no room for a storey of {STOREY_H}";
+              return 0 - 2;
+            }
+          }
+          ok = ok + 1;
+        }
+      }
+    }
+  }
+  if ok == 0 { why = "no cells here"; return 0 - 1; }
+
+  built = 0;
+  for dq2 in (0 - rad)..(rad + 1) {
+    for dr2 in (0 - rad)..(rad + 1) {
+      q2 = cq + dq2;
+      r2 = cr + dr2;
+      if hex_distance(q2, r2, cq, cr) <= rad {
+        c2 = world_column(wld, q2, r2);
+        if col_top(c2) >= 0 {
+          cells: vector<hex_world::Hex> = [];
+          if dir > 0 {
+            // a floor ABOVE the topmost OCCUPIED cell: append
+            cells += c2.co_cells;
+            cells += [hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
+                                       h_material: FLOOR_MAT }];
+          } else {
+            // a cellar BELOW the lowest OCCUPIED cell: INSERT at the front, so
+            // stack order still holds
+            cells += [hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
+                                       h_material: FLOOR_MAT }];
+            cells += c2.co_cells;
+          }
+          w = world_set_column(wld, hex_world::Column { co_q: q2, co_r: r2, co_cells: cells });
+          if w.cw_code != CW_OK {
+            why = "layer {w.cw_layer}: {w.cw_detail}";
+            return 0 - 10 - w.cw_code;
+          }
+          built = built + 1;
+        }
+      }
+    }
+  }
+  built
 }
 
 // The falloff brush, applied to CELLS rather than recorded as a peak.
@@ -1248,6 +1358,19 @@ fn main() {
               }
               moved = true;
             }
+          }
+        } else if ev.msg_id == MSG_STOREY {
+          sdir = ev.payload as integer ?? 1;
+          shx = world_to_hex(px, pz);
+          swhy = "";
+          nb = storey_add(wld, shx.ha_q, shx.ha_r, sdir, 2, swhy);
+          if nb < 0 {
+            srv.send_to(ev.cid, "S:storey refused ({nb}) {swhy}");
+            println("editor: storey refused ({nb}) at ({shx.ha_q},{shx.ha_r}) — {swhy}");
+          } else {
+            mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
+            srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
+            println("editor: storey {sdir:+} on {nb} cells");
           }
         } else if ev.msg_id == MSG_FIELD {
           fhx = world_to_hex(px, pz);

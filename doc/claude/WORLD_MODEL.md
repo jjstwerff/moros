@@ -348,6 +348,19 @@ A chunk is **representable** iff `max H − min H < 2¹⁶`. When it is, `b_K = 
 (3) makes (1) and (2) sound rather than lossy, and it is the clause a round-trip test cannot
 check — it needs the size probes.
 
+**E1 binds READERS as well as writers.** Because a column read returns one cell per layer
+*of the chunk*, a layer a column does not use comes back absent — and an absent cell's
+height is `0`, which is also a legal ground height. So a consumer may never infer occupancy
+from POSITION:
+
+> **E1r.** The topmost and lowest cells of a column are its topmost and lowest **occupied**
+> cells. `cells[0]` and `cells[n-1]` are positions, not the floor and the roof; the only
+> question that distinguishes absence from ground at zero is `occupied(c)`.
+
+Measured (rung W4): reading `cells[n-1]` as the roof put a building's first floor 12 above
+an absent layer rather than above the ground, landing it 7 above the real surface, where
+`F1` refused it. The contract held; the reader did not.
+
 ### S1 — The window never escapes storage
 
 > Every comparison, difference or ordering of heights is performed on `H`, never on `s`.
@@ -740,6 +753,7 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **F1′** | non-consecutive pairs also separated, over a random column | — |
 | **W1** | every stored `s` in range after any write, including after rebase | force a span ≥ 2¹⁶ → `CW_WINDOW` |
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
+| **E1r** | read `cells[n-1]` as the roof → the storey lands on an absent layer | `world/storey.mjs` |
 | **S1** | two chunks, **different bases**, one ridge → equal `H` from both sides | their stored `s` must **differ**, or the test is vacuous |
 | **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
 | **I1** | relabel one layer of a neighbouring chunk → the gate fires on the crossing match | leave labels agreeing → silent; set both to `0` → silent, since unlabelled is unconstrained |

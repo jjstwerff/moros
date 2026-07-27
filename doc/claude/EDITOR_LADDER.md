@@ -54,6 +54,7 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
 | — | ✋ | | | |
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
+| 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs`; stencils, roofs and openings still open |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 10 | props and vehicles; the multi-rig connector | #14 | L | a cart whose wheels turn from distance travelled |
@@ -108,3 +109,36 @@ anchor's whole subject: we own **how a thing attaches to geometry**, never the p
 - [World model](WORLD_MODEL.md) — the landscape every rung writes into
 - [Scene editor](SCENE_EDITOR.md) — the UI design
 - [Scene editor plan](SCENE_EDITOR_PLAN.md) — the older UI/tool checklist
+
+## What rung 8 found — absence is not a value (2026-07-27)
+
+The ladder says of W4: *"if the model is wrong, it is wrong here."* It was not the
+model that was wrong. The first multi-layer write in the editor's life was refused
+by `F1`, correctly, and the refusal read *"layer 2 is 7 above layer 0, needs 8"* —
+a fold nobody had asked for.
+
+The cause was in the CALLER, and it is the one mistake the voxel design invites.
+`world_column` returns one cell per layer **of the chunk**, so a layer a given
+column does not use comes back as an absent cell — and an absent cell's height is
+`0`. Taking `co_cells[len-1]` as "the roof" therefore read a zero as ground level
+and put the first floor 12 above nothing; it landed 7 above the real ground, and
+the model caught it. `E1` ("absence has one representation") is usually read as a
+rule for writers. It is just as much a rule for READERS: height `0` is a perfectly
+legal ground height, so the only safe question is *is this cell occupied*, never
+*what does the last slot say*.
+
+Two things follow, both now in the code:
+
+- a column's roof and floor are the topmost / lowest **occupied** cells (`col_top`,
+  `col_low`), never the ends of the vector;
+- a storey is applied in **two passes** — check the whole disc, then write — because
+  a refusal must mean nothing happened. Removing the check does not make illegal
+  cellars legal: the height underflows `u16`, `?? 0` turns it into ground level, and
+  `F1` rejects it as a fold. Right refusal, wrong reason, after a partial write.
+  The pre-check is what makes the refusal honest, not what makes it exist.
+
+The gate mutation-checks both: reinstating the last-cell read turns it red, and so
+does removing the floor check.
+
+**Still open on #12**: stencils writing a whole column at once, roofs as their own
+geometry, openings (`X70` — an opening is not absence), and the `K-FIT` doorstep.
