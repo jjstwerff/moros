@@ -23,11 +23,44 @@ let st = 0;
 // within it the parity says which surface: ground even, road odd. ⚠ Not filtering
 // that block is what made this gate green with no road laid — the character's left
 // leg (id 1) and arm (id 3) are odd, so they counted as road.
+// Road cells, as a set of 1-wu grid keys taken from the road mesh's vertices.
+const roadCells = () => {
+  const set = new Set();
+  for (const [id, d] of chunks) {
+    if (id <= 15) continue;
+    if (((id - 16) % 3) !== 1) continue;              // 0 ground, 1 road, 2 field
+    for (let i = 0; i + 2 < d.length; i += 6)
+      set.add(`${Math.round(d[i])},${Math.round(d[i + 2])}`);
+  }
+  return set;
+};
+
+// How many CONNECTED components those cells form, over an 8-neighbourhood.
+const components = (set) => {
+  const left = new Set(set);
+  let n = 0;
+  while (left.size) {
+    n++;
+    const start = left.values().next().value;
+    const q = [start];
+    left.delete(start);
+    while (q.length) {
+      const [x, z] = q.pop().split(',').map(Number);
+      for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+        const k = `${x + dx},${z + dz}`;
+        if (left.has(k)) { left.delete(k); q.push(k); }
+      }
+    }
+  }
+  return n;
+};
+
 const stats = (road) => {
   let lo = 1e9, hi = -1e9, n = 0;
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
-    if (((id % 2) === 1) !== road) continue;   // ground even, road odd
+    if (id <= 15) continue;
+    if ((((id - 16) % 3) === 1) !== road) continue;   // 0 ground, 1 road, 2 field
     for (let i = 1; i < d.length; i += 6) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); n++; }
   }
   return { lo: +lo.toFixed(3), hi: +hi.toFixed(3), n };
@@ -62,15 +95,37 @@ ws.onmessage = async (e) => {
     // What IS exact and worth gating: the road strip is markedly flatter than the
     // terrain it crosses. A road that merely draped would match the ground's range
     // rather than cutting it.
+    // ⚠ CONNECTED AND EXTENDED, not merely present. Measured on correct code:
+    //     components 1 · span 34 wu · 1602 road verts
+    // The walk runs x = 2 … 26, so a span of 34 is that path plus the strip width.
+    // A road laid at one stale hex would be a blob: one component, span ≈ 7.
+    //
+    // ⚠ NOT MUTATION-VERIFIED. Re-introducing the stale-hex bug makes the editor
+    // fail to START, so the mutated build cannot be driven. The evidence that this
+    // discriminates is indirect but real: with that bug present, the FIELD gate
+    // could not close a ring, which is what exposed it in the first place. A road laid at one stale hex
+    // is still road cells, still flatter than the hill, and still passed the
+    // earlier version of this gate — it was a blob, and only a rung that needed a
+    // closed ring (fields, #11) noticed. So the strip must be ONE component and
+    // must span the walk that drew it.
+    const cells = roadCells();
+    const comps = components(cells);
+    let xlo = 1e9, xhi = -1e9;
+    for (const k of cells) { const x = Number(k.split(',')[0]); xlo = Math.min(xlo, x); xhi = Math.max(xhi, x); }
+    const span = xhi - xlo;
+
     const groundRange = ground0.hi - ground0.lo;
     const roadRange   = road.hi - road.lo;
     const laid    = road.n > 0;
     const graded  = laid && roadRange < groundRange * 0.6;
     const crossed = groundRange > 2.0;                 // there WAS relief to cut
-    const ok = laid && graded && crossed;
+    const connected = comps === 1;
+    const follows   = span > 18;          // the walk ran x = 2 … 26
+    const ok = laid && graded && crossed && connected && follows;
     console.log(JSON.stringify({ groundRange: +groundRange.toFixed(3),
                                  roadRange: +roadRange.toFixed(3),
-                                 cells: road.n, laid, graded, crossed, ok }));
+                                 verts: road.n, components: comps, span,
+                                 laid, graded, crossed, connected, follows, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
