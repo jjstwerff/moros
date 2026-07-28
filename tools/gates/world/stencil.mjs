@@ -25,6 +25,11 @@ const ack = async (p, limitMs = 8000) => {
   return `(no "${p}" in ${limitMs}ms)`;
 };
 const nums = (m) => (m.match(/-?\d+/g) || []).map(Number);
+const column = async (q, r) => {
+  ws.send(`15:${q},${r}`);
+  const m = await ack(`column ${q},${r} =`);
+  return m.slice(m.indexOf('=') + 1).trim();
+};
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
@@ -76,7 +81,33 @@ ws.onmessage = async (e) => {
     // ── (4) the same deck, but a roof at 18 leaves only 6 under it
     const tightMsg = (ws.send('14:18'), await ack('stencil'));
 
-    // ── (5) the refusal changed NOTHING.
+    // ── (5) THE REFUSAL CHANGED NOTHING, with the conflict placed LATE.
+    //
+    // The clause below used to be untestable. A placement walks `dq` from -2 to
+    // +2, so when the offending column is the FIRST one examined nothing has been
+    // written yet and a missing pre-flight is invisible — the gate stayed green
+    // with the check deleted. The conflict has to land at the END of the walk.
+    //
+    // So build it deliberately, on virgin ground where every height is known:
+    //   · house A at hex (0,0) — floor 0, roof 12 — then two storeys, decks at
+    //     24 and 36, uniform because A's own floor levelled the footprint;
+    //   · stand 4 hexes west, at (-4,0), so B's footprint spans q -6..-2 and
+    //     meets A's only at q = -2 — B's LAST `dq` band;
+    //   · ask for a roof at 18. On the five virgin columns it simply builds; at
+    //     q = -2 it leaves 6 under A's deck at 24, and eps is 8, so `F1` refuses.
+    // Without the pre-flight the first four `dq` bands are already written when
+    // the fifth refuses, and `15:` can see it: q = -6 holds a floor and a roof
+    // instead of just the terrain it started with.
+    place(0, 0, 0); await wait(900);
+    ws.send('14:12'); await ack('stencil');
+    for (let k = 0; k < 2; k++) { ws.send('12:1'); await wait(900); }
+
+    place(-6.928, 0, 0); await wait(900);          // 4 hexes west: hex (-4,0)
+    const farBefore = await column(-6, 0);
+    const lateMsg = (ws.send('14:18'), await ack('stencil'));
+    const farAfter = await column(-6, 0);
+
+    // ── (6) the earlier refusal changed nothing either.
     //
     // Not a restatement of (4): a placement covers 19 columns and the tight roof
     // fits under the deck on some of them. Without the pre-flight, those would be
@@ -84,6 +115,7 @@ ws.onmessage = async (e) => {
     // as no house. It is observable: a partially written roof at 66 sits ABOVE
     // the next placement's band, so it would be COUNTED as kept, and this number
     // would exceed the 38 that the two real decks contribute.
+    place(-17.3, 0, 0); await wait(900);
     const againMsg = (ws.send('14:12'), await ack('stencil'));
     const againAbove = nums(againMsg)[2];
 
@@ -96,10 +128,19 @@ ws.onmessage = async (e) => {
     const keptCave   = caveCells === 19 && caveBelow === 56;
     const keptBridge = bridgeCells > 0 && bridgeAbove > 0;
     const refusedTight = tightMsg.startsWith('stencil refused (-11)');
+    const refusedLate = lateMsg.startsWith('stencil refused (-11)')
+                        && lateMsg.includes('(-2,0)');
+    // The claim is UNCHANGED, not empty: earlier scenes in this gate raised
+    // ground that reaches here, so the column legitimately holds terrain. Without
+    // the pre-flight it would hold that terrain PLUS a floor and a roof.
+    const untouched = farAfter === farBefore;
     const atomic = againAbove === bridgeAbove;
-    const ok = built && keptCave && keptBridge && refusedTight && atomic;
-    console.log(JSON.stringify({ openMsg, caveMsg, bridgeMsg, tightMsg, againMsg,
-                                 built, keptCave, keptBridge, refusedTight, atomic, ok }));
+    const ok = built && keptCave && keptBridge && refusedTight
+               && refusedLate && untouched && atomic;
+    console.log(JSON.stringify({ openMsg, caveMsg, bridgeMsg, tightMsg, lateMsg,
+                                 farBefore, farAfter, againMsg,
+                                 built, keptCave, keptBridge, refusedTight,
+                                 refusedLate, untouched, atomic, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');

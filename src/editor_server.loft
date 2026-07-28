@@ -203,6 +203,7 @@ const TICK_US = 33000;
 //                    12:<+1|-1>     storey — a floor above, a cellar below
 //                    13:<species>,<density>   scatter vegetation (species 0 clears)
 //                    14:<roof>     stencil — place a structure as a band (`P1`)
+//                    15:<q>,<r>    report that column's occupied heights
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -244,6 +245,8 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
+                          // is the only way to see what a write actually did
 
 // One authored peak. This — a vector of these — is the whole terrain.
 // ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
@@ -1570,6 +1573,28 @@ fn main() {
             srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
             println("editor: storey {sdir:+} on {nb} cells");
           }
+        } else if ev.msg_id == MSG_COLUMN {
+          // A read-back, because a structure is INVISIBLE: floors and roofs carry
+          // FLOOR_MAT, and the renderer draws ground, road, field and vegetation.
+          // Without this a gate can see that a placement was refused but not
+          // whether it changed anything first — which is the difference between
+          // "refused" and "half built, then refused".
+          pci = ev.payload.find(",");
+          pq = 0;
+          pr = 0;
+          if pci != null {
+            pq = ev.payload[..pci] as integer ?? 0;
+            pr = ev.payload[pci + 1..] as integer ?? 0;
+          }
+          pcol = world_column(wld, pq, pr);
+          phs = "";
+          for pe in pcol.co_cells {
+            if hex_world::hex_occupied(pe) {
+              if phs != "" { phs += ","; }
+              phs += "{pe.h_height}";
+            }
+          }
+          srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
         } else if ev.msg_id == MSG_STENCIL {
           // payload: the roof height above the floor, in height units
           roof_up = ev.payload as integer ?? STOREY_H;

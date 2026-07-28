@@ -270,8 +270,26 @@ between stabilises on the previous picture. The rebuild is now broadcast
 (`S:rebuilt N chunks`), which is the missing half of that handshake, and every
 mesh-reading gate can wait for it. Five consecutive green runs, then the suite.
 
-**Not mutation-verified: the pre-flight.** Removing it leaves the gate green,
-because in this scenario the refusing column is the FIRST one examined, so no
-partial house is written and nothing is observable. The single-column half of the
-claim IS gated, in `hex_world/tests/stencil.loft` — a refused band leaves the
-column untouched. The multi-column half is argued, not tested.
+**The pre-flight, now mutation-verified — by moving the conflict.** It first
+looked untestable: a placement walks `dq` from -2 to +2, and when the offending
+column is the FIRST one examined nothing has been written yet, so deleting the
+check left the gate green. The fix was not a better assertion but a better
+scene — put the conflict at the END of the walk:
+
+- house A at hex `(0,0)`, floor 0 and roof 12, then two storeys — decks at 24 and
+  36, uniform because A's own floor levelled its footprint;
+- stand 4 hexes west at `(-4,0)`, so B's footprint spans `q -6..-2` and meets A's
+  only at `q = -2` — B's LAST `dq` band;
+- ask for a roof at 18: it builds on the five clear columns, and at `q = -2`
+  leaves 6 under A's deck at 24, where ε is 8, so `F1` refuses.
+
+Deleting the pre-flight now writes four `dq` bands before the fifth refuses, and
+the gate sees it: column `(-6,0)` reads `1,19` — a floor and a roof, with the
+terrain at 17 swallowed by the band — instead of the `17` it started with.
+
+**That needed a new capability, and it is worth keeping.** A structure is
+INVISIBLE: floors and roofs carry `FLOOR_MAT`, and the renderer draws ground,
+road, field and vegetation. So the gate could see that a placement was refused
+but not whether it had changed anything first — the exact difference between
+"refused" and "half built, then refused". Message `15:<q>,<r>` reports a column's
+occupied heights, and it is the only way to check a write that draws nothing.
