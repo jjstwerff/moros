@@ -1109,23 +1109,10 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   // unit, one every 0.217 wu, which no walker steps over.
   //
   // So the earlier suspicion — that the world holds fewer edges than the cut does —
-  // is REFUTED. And the crossing has now been re-measured against builds that
-  // identify themselves on the wire (`S:build <n>`, the size of the source the
-  // process was started from — an identity nobody has to remember to bump):
-  //
-  //   build 176535, this one         stops at (2.83, 2.36)
-  //   build 177162, step exception   crosses; free from (3.51, 2.91) onward
-  //
-  // Different ids, different trails — so the earlier identical pair was not a
-  // stale server after all. That suspicion is refuted too. The side guard is
-  // simply a NO-OP: with the wall's normal `(0,1)` the tangential move has
-  // `tz = 0`, so the side never changes and the guard always allows. The walker
-  // gets past on a tick the sweep does not block at all, and WHY is not yet known.
-  //
-  // ⚠ Everything above is MEASURED. Everything about the cause is not, and after
-  // two wrong causes in a row it is written here as a proposal rather than as a
-  // finding — hexbody's rule, and it is the right one: a fact without a gate is a
-  // proposal (`ROUNDTRIP.md`).
+  // is REFUTED, and with it the explanation for the 40° crossing. That crossing
+  // needs re-measuring against a build that is certainly the one under test; the
+  // two runs it was seen in returned identical trails to the pixel, which is not
+  // what two different builds of a float simulation do.
   //
   // What IS established, by probe rather than by reading: the proxy carries the
   // runs' surfaces (158 edges on a fenced road), and `collide` returns the exact
@@ -1150,7 +1137,31 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   // does — the end-clip in `road_stamp` is the suspect — or the proxy drops some
   // when it copies them.
   //
-  // Until that is understood the walker stops. A stop is honest; a wall you can
+  // ── WHY THE SWEEP "MISSES" THAT TICK — traced, and it does not miss ────────
+  //
+  // Tick by tick, with a build id on the wire to prove which code answered:
+  //
+  //   free          (2.697, 2.263) -> (2.779, 2.332)
+  //   slide-through (2.779, 2.332) -> (2.861, 2.363)   n = (0,1)
+  //   free          (2.861, 2.363) -> (3.024, 2.5003)  <- the wall is at 2.500
+  //
+  // The last segment ENDS 0.0003 past the wall, and `sweep_path` returns free for
+  // a crossing at t > 1 BY DESIGN. So nothing is missed and no edge is absent: the
+  // walker was left ON the line, and the tick after starts on its far side — the
+  // same rounding ambiguity `SKIN` exists to prevent.
+  //
+  // The cause is the SKIN's FRAME OF REFERENCE. It stands the walker off the
+  // STAIRCASE EDGE that was hit; a slide then runs along the wall to where the
+  // staircase and the analytic line are half a cell apart, and the standoff stops
+  // meaning anything. A standoff has to be measured from the SURFACE.
+  //
+  // ⚠ That remedy was attempted — push the slid position back to a skin from the
+  // line, via `edge_point` and the normal — and it did NOT hold: build 178773
+  // crossed on the same trail. So the DIAGNOSIS is measured and the REMEDY is not,
+  // and after three wrong causes in this rung the difference is stated rather than
+  // blurred. hexbody's rule (`ROUNDTRIP.md`): a fact without a gate is a proposal.
+  //
+  // Until the remedy is gated the walker stops. A stop is honest; a wall you can
   // walk through at 40° is not.
   seg2 = sqrt(tx * tx + tz * tz) ?? 0.0;
   b2 = t2;
