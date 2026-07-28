@@ -760,7 +760,7 @@ fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float
 // one call rather than two: a part that cuts its boundary as it lands leaves stale
 // edges where a later part covers them, and the result depends on the order.
 fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
-              grade: integer, fenced: &integer) -> integer {
+              grade: integer, runs: WallRuns, fenced: &integer) -> integer {
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
 
@@ -809,6 +809,14 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
       if side == 1 { d = 0.0 - d; }
       if hex_way::offset_legal(t, d) {
         o = hex_way::track_offset(t, d);
+        // ⚠ THE RUN THAT IS DRAWN IS THIS OFFSET, not the road's centreline. The
+        // centreline is where the road is; the fences stand beside it, and a wall
+        // drawn along the centre would be a wall down the middle of the road —
+        // which is exactly what the straightness gate measured first time out.
+        (rax, raz) = hex_way::seg_point(o, 0, 0.0);
+        (rbx, rbz) = hex_way::seg_point(o, 0, hex_way::seg_len(o, 0));
+        runs.items += [WallRun { wr_x0: rax, wr_z0: raz, wr_x1: rbx, wr_z1: rbz,
+                                 wr_mat: fence_mat, wr_step: run.wr_step }];
         (tx, ty) = hex_way::seg_tangent(o, 0, 0.0);
         (ox, oy) = hex_way::seg_point(o, 0, 0.0);
         nx = 0.0 - ty;
@@ -1143,10 +1151,9 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
   run = WallRun { wr_x0: draft.wd_x, wr_z0: draft.wd_z,
                   wr_x1: draft.wd_x + cos(ang) * reach, wr_z1: draft.wd_z + sin(ang) * reach,
                   wr_mat: wmat, wr_step: step };
-  runs.items += [run];
   grade = py_of(wld, draft.wd_x, draft.wd_z);
   fenced = 0;
-  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, fenced);
+  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, runs, fenced);
   hx = world_to_hex(run.wr_x0, run.wr_z0);
   hx2 = world_to_hex(run.wr_x1, run.wr_z1);
   mark_dirty(dirty, hx.ha_q, hx.ha_r, ROAD_HALF + 4);
@@ -1434,10 +1441,72 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
   emit_tri(m, a, bck, d, bck, c, bck);
 }
 
-fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh) {
+// ── A WALL IS DRAWN FROM ITS RUN ────────────────────────────────────────────
+//
+// **The edges are the index; the run is the truth.** A wall panel per hex edge is
+// a staircase — the plan view showed 65 of them zigzagging along a road that is
+// dead straight — because an edge is a boundary between two cells and a line
+// crossing the lattice crosses a staircase of them. Nothing about the storage is
+// wrong; it is the wrong thing to *draw*.
+//
+// So the geometry is walked along the CENTRELINE, in even steps, and each span
+// takes its base from the ground beneath it: straight in plan, following the
+// ground in section, which is what a wall does. The normal is the RUN's — the one
+// `hex_edge` measured a hex edge's own as wrong by up to 90° against.
+fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
+  up = wall_up(run.wr_mat);
+  if up <= 0 { return; }
+  t = hex_way::track_new();
+  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+  ln = hex_way::seg_len(t, 0);
+  if ln <= 0.0 { return; }
+  steps = (ln / 0.5 ?? 0.0) as integer + 1;
+  (tx, tz) = hex_way::seg_tangent(t, 0, 0.0);
+  nrm = nrm3(0.0 - tz, 0.0, tx);
+  bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
+  for i in 0..steps {
+    sa = ln * (i as float) / (steps as float) ?? 0.0;
+    sb = ln * ((i + 1) as float) / (steps as float) ?? 0.0;
+    (ax, az) = hex_way::seg_point(t, 0, sa);
+    (bx, bz) = hex_way::seg_point(t, 0, sb);
+    // This chunk's span only — the midpoint decides, so a span belongs to exactly
+    // one chunk and no seam draws twice.
+    mh = world_to_hex((ax + bx) * 0.5, (az + bz) * 0.5);
+    if mh.ha_q >= q0 && mh.ha_q < q0 + CHUNK && mh.ha_r >= r0 && mh.ha_r < r0 + CHUNK {
+      ya = terrain_y(ax, az, wld);
+      yb = terrain_y(bx, bz, wld);
+      ta = ya + (up as float) * HEIGHT_SCALE;
+      tb = yb + (up as float) * HEIGHT_SCALE;
+      p0 = vec3(ax, ya, az); p1 = vec3(bx, yb, bz);
+      p2 = vec3(bx, tb, bz); p3 = vec3(ax, ta, az);
+      emit_tri(m, p0, nrm, p1, nrm, p2, nrm);
+      emit_tri(m, p0, nrm, p2, nrm, p3, nrm);
+      emit_tri(m, p0, bck, p2, bck, p1, bck);
+      emit_tri(m, p0, bck, p3, bck, p2, bck);
+    }
+  }
+}
+
+// Is this edge already carried by a run? One `Track` holding every run, so the
+// question is `hex_way::track_distance` — the library's own nearest-centreline —
+// rather than a distance test written again here. Half a hex is the threshold: an
+// edge a run crosses has its midpoint within that of the line by construction.
+fn runs_track(runs: WallRuns) -> Track {
+  t = hex_way::track_new();
+  for run in runs.items {
+    hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+  }
+  t
+}
+
+fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
+                    runs: WallRuns) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
+  for run in runs.items { emit_run_wall(wm, run, wld, q0, r0); }
+  rt = runs_track(runs);
+  have_runs = len(runs.items) > 0;
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
       // ⚠ DRESSING IS INVISIBLE TO A TERRAIN READ, by `D1` — so a props mesh
@@ -1461,9 +1530,23 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
         ews: vector<integer> = [e.h_wall_n as integer ?? 0,
                                 e.h_wall_ne as integer ?? 0,
                                 e.h_wall_se as integer ?? 0];
+        // ⚠ THE PER-EDGE PANEL IS NOW A FALLBACK, for edges nobody has a line
+        // for: the stencil's house walls, a single edge placed by hand. Where a
+        // run carries the edge the run is drawn instead, once, straight — drawing
+        // both would put a staircase inside a wall.
         for si in 0..3 {
           if ews[si] != 0 && wall_up(ews[si]) > 0 {
-            emit_wall_panel(wm, cq, cr, slot_dir[si], wall_up(ews[si]), wld);
+            (fq, fr) = hex_grid::hex_neighbor(cq, cr, slot_dir[si]);
+            aw = hex_to_world(cq, cr, 0);
+            bw = hex_to_world(fq, fr, 0);
+            carried = false;
+            if have_runs {
+              carried = hex_way::track_distance(rt, (aw.x + bw.x) * 0.5,
+                                                    (aw.z + bw.z) * 0.5) < 0.9;
+            }
+            if !carried {
+              emit_wall_panel(wm, cq, cr, slot_dir[si], wall_up(ews[si]), wld);
+            }
           }
         }
         if hex_world::hex_occupied(e) {
@@ -3181,7 +3264,7 @@ fn main() {
           vm2 = mesh("veg");
           km2 = mesh("roof");
           wm2 = mesh("wall");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, wall_runs);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -3269,7 +3352,7 @@ fn main() {
               vmesh = mesh("veg");
               kmesh = mesh("roof");
               wmesh = mesh("wall");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, wall_runs);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

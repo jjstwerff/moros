@@ -86,6 +86,7 @@ const FENCE = [0x4c, 0xd0, 0x6a], WALL = [0xe8, 0xe8, 0xe8], DOOR = [0xff, 0x8c,
 const matColour = (m) => (m === 1 ? WALL : m === 2 ? DOOR : FENCE);
 
 // ── talk to the editor ──────────────────────────────────────────────────────
+const meshes = new Map();
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const status = [];
@@ -128,6 +129,14 @@ const readWindow = async (q0, r0, q1, r1) => {
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
+  if (t === 'M') {
+    const hh = b.indexOf(';');
+    const id = Number(b.slice(0, hh));
+    let rest = b.slice(hh + 1); rest = rest.slice(rest.indexOf(';') + 1);
+    const body = rest.slice(rest.indexOf(';') + 1);
+    meshes.set(id, body === '' ? [] : body.split(',').map(Number));
+  }
+  if (t === 'X') meshes.delete(Number(b));
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
     // ── the scene the brief asks for: walk a road, then fence along it
@@ -137,6 +146,7 @@ ws.onmessage = async (e) => {
     ws.send('25:3'); const laid = await ack('road');
     console.log(laid);
 
+    await wait(2500);                          // let the mesh rebuild land
     const { walls, mats, want } = await readWindow(-4, -4, 20, 10);
     const pts = want.map(([q, r]) => cellXZ(q, r));
     const xs = pts.map((p) => p[0]), zs = pts.map((p) => p[1]);
@@ -176,6 +186,19 @@ ws.onmessage = async (e) => {
         cv.line(mx - px, mz - pz, mx + px, mz + pz, matColour(v[sI]), 1);
       }
     }
+    // ── and the WALL MESH over it: what is actually drawn, from the runs.
+    // The staircase below is the index; this is the wall. Seeing both at once is
+    // the point — they must agree in position and disagree in shape.
+    let wallVerts = 0;
+    const SURF = 6;
+    for (const [id, d] of meshes) {
+      if (id <= 15 || (id - 16) % SURF !== 5) continue;
+      for (let k = 0; k + 11 < d.length; k += 12) {         // two verts of a tri
+        cv.line(d[k], d[k + 2], d[k + 6], d[k + 8], [0xff, 0xff, 0xff], 0);
+        wallVerts += 2;
+      }
+    }
+    console.log('wall mesh vertices drawn:', wallVerts);
     writePNG(OUT, cv.w, cv.h, cv.buf);
     const sha = createHash('sha256').update(Buffer.from(cv.buf)).digest('hex').slice(0, 12);
     console.log(JSON.stringify({ out: OUT, size: [cv.w, cv.h], roadCells: road,

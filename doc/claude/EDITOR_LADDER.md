@@ -52,6 +52,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 6a | ↳ the exact perimeter, and the halo — one `edge_owner`, `6(2R+1)` edges | #10 | ✅ | `tools/gates/world/fence.mjs`; three mutations seen red |
 | 6b | ↳ collision — `hex_edge::sweep_path` over the wall bytes; a doorway is not a wall | #10 | ✅ | `tools/gates/character/collide.mjs`; three mutations seen red |
 | 6c | ↳ the camera's occlusion class — the predicate the consumer supplies | #10 | ✅ | `tools/gates/world/occlude.mjs`; the fence clause seen red |
+| 6d | ↳ a wall is a RUN — `hex_way` centreline, offset fences, geometry off the line | #10 | ✅ | `tools/gates/world/straight.mjs`; the staircase mutation seen red |
 | — | *(#8's own rows run beside the ladder: many authors and long-running stores are both **DONE** — `M1` `M2` `X2` `X3` `X5` gated. What remains of #8 is the crystal port and the convergences)* | #8 | | ✅ |
 | — | ✋ | | | walk into a wall, orbit beside one |
 | ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
@@ -760,3 +761,47 @@ On a loaded box it reported the FREE walk as shorter than the blocked one. Nothi
 here is timed now — "blocked" is *the position stopped moving while W was still
 held*, which is the thing itself rather than a proxy for it. Same lesson as rung
 8c's fixed sleeps, in a suite that had already learned it once.
+
+
+
+## What rung 6d found — the index is not the thing
+
+A wall marks a staircase of hex edges. It has to: an edge is a boundary between two
+cells, and a line crossing the lattice crosses a staircase of them. **That is the
+INDEX.** Drawing it is what made every fence wobble, and no amount of care in the
+marking could have fixed it, because the marking was never wrong.
+
+![road, its fence, and the wall drawn from the run](img-road-fence-plan.png)
+
+Green is what the world stores — the edges, zigzagging. White is what is drawn —
+the run, straight. Same place, different shape, and the picture is the only reason
+any of this was visible: a screenshot of the editor cannot answer "is this
+straight", because the camera sits behind the character at a shallow pitch and
+perspective bends everything. `tools/plan.mjs` draws the cells, the edges and the
+wall mesh in plan, to scale, into a PNG it writes itself.
+
+**Four corrections, each found by the one before it.**
+
+1. **A fence around the character is not a fence** — it is a cage. The order is
+   road first, along the walk, then the fence *along the road*.
+2. **A road is a centreline** (`hex_way`), not a strip laid per footfall, and its
+   heading snaps to one of the 24 compass steps with the residual reported.
+3. **A fence is the OFFSET LINE, not the band's outline.** `way_stamp`/`cut_arb`
+   cut the boundary of the marked cells — the outline of a set of hexes. 82 edges
+   wobbling around a 44-cell road. `track_offset` + `edges_halfplane_surf` gives 65
+   in two bounded parallel runs.
+4. **And the geometry comes from the run.** Measured: 1200 wall vertices, all at a
+   perpendicular distance of **exactly 2.5** from the centreline — one value, spread
+   0. Restoring the per-edge panels beside it takes that to 1980 vertices spread
+   across 0.93 of a hex, which is the staircase, measured.
+
+**The clip needed the library too, and not the obvious call.** `seg_param` returns
+the parameter of the NEAREST point on a segment and therefore CLAMPS, so it reports
+every point in the window as inside — the fence ran off both ends of its road.
+Distance-to-segment and distance-to-line are equal exactly where the nearest point
+is interior; two library calls, no arithmetic of ours.
+
+**What the run buys beyond looks:** the wall's true normal. `hex_edge` measured a
+hex edge's own normal as wrong by up to 90° against a wall crossing the lattice
+diagonally — which is why a slide was deferred at rung 6b. The run has the exact
+one, so the slide is now a small change rather than a wrong one.
