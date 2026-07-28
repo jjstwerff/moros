@@ -23,6 +23,8 @@ use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
 use moros_map;
 use hex_world;
 use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
+use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
+use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
@@ -210,6 +212,8 @@ const TICK_US = 33000;
 //                    18:<name>     anchor a trigger here, bound to <name>
 //                    19:<item>     place a prop here, as DRESSING
 //                    20:<q>,<r>    report that cell's dressing
+//                    21:<path>     import a .glb and place it here as a prop
+//                    22:<path>     export the cart body as a .glb
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -251,6 +255,8 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_IMPORT = 21;    // kit-bashing: import a .glb as a prop (moros#14)
+const MSG_EXPORT = 22;    // and out again, which is what makes it kit-bashing
 const MSG_PROP = 19;      // set dressing: place a prop in a DRESSING layer (moros#14)
 const MSG_DRESSING = 20;  // read the dressing at a cell back
 const MSG_TRIGGER = 18;   // routines: anchor a trigger to the ground (moros#15)
@@ -353,6 +359,12 @@ const CART_RADIUS  = 0.40;       // wheel radius in world units
 const CART_HALF_W  = 0.55;       // half the axle, body centre to wheel
 const PROP_MAT     = 7;          // dressing's own material — never terrain's
 const PROP_ITEM_MAX = 8;         // the prop palette; NOMINAL, so no offers
+// Imported props get mesh ids of their own out of the reserved 0-15 block. The
+// cart holds 5-7, so 8-15 is eight imports — enough to kit-bash with, and the
+// bound is CHECKED rather than trusted, because running off the end would
+// silently overwrite the figure.
+const IMPORT_BASE = 8;
+const IMPORT_MAX  = 8;
 const PART_BODY = 0;
 const PART_LEG_L = 1;
 const PART_LEG_R = 2;
@@ -1696,6 +1708,7 @@ fn main() {
   cart_travel = 0.0;           // SIGNED and cumulative — see the handler
   cart_slip = 0.0;             // the deliberate-defect knob; 0 is a true roll
   trigs: vector<Trigger> = [];
+  n_imported = 0;
   next_trig = 0;
 
   // Which chunks each client currently holds. Tracked per client because a
@@ -1896,6 +1909,59 @@ fn main() {
             }
           }
           srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+        } else if ev.msg_id == MSG_EXPORT {
+          // The other half of kit-bashing: editor geometry OUT, so an author can
+          // take a shape into Blender, work on it, and bring it back through 21.
+          xbm = mesh("cart");
+          emit_box(xbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+          save_glb(xbm, ev.payload);
+          srv.send_to(ev.cid,
+            "S:exported {len(xbm.vertices)} vertices to {ev.payload}");
+          println("editor: exported {len(xbm.vertices)} vertices to {ev.payload}");
+        } else if ev.msg_id == MSG_IMPORT {
+          if n_imported >= IMPORT_MAX {
+            srv.send_to(ev.cid,
+              "S:import refused — {IMPORT_MAX} imported props is the limit "
+              + "(offer {IMPORT_MAX}, residual {n_imported + 1 - IMPORT_MAX})");
+          } else {
+            gr = load_glb(ev.payload);
+            if gr.gr_code != GR_OK {
+              // The reader's refusal is already named; pass it through rather
+              // than flattening it to "could not import".
+              srv.send_to(ev.cid,
+                "S:import refused ({gr.gr_code}) {gr.gr_detail}");
+              println("editor: import refused ({gr.gr_code}) {gr.gr_detail}");
+            } else {
+              ihx = world_to_hex(px, pz);
+              icol = world_column(wld, ihx.ha_q, ihx.ha_r);
+              itop = 0;
+              for ie in icol.co_cells {
+                if hex_world::hex_occupied(ie) { itop = ie.h_height as integer ?? 0; }
+              }
+              // It is DRESSING, like any other prop — imported geometry is set
+              // dressing, not landscape, so it goes where `D1` puts it.
+              icur = world_dressing(wld, ihx.ha_q, ihx.ha_r);
+              icells: vector<hex_world::Hex> = [];
+              for ik in icur.co_cells {
+                if hex_world::hex_occupied(ik) { icells += [ik]; }
+              }
+              icells += [hex_world::Hex { h_height: (itop as u16? ?? 0),
+                                          h_material: (PROP_MAT as u8? ?? 0),
+                                          h_item: (PROP_ITEM_MAX as u8? ?? 0) }];
+              world_set_dressing(wld, hex_world::Column { co_q: ihx.ha_q,
+                                                          co_r: ihx.ha_r,
+                                                          co_cells: icells });
+              imid = IMPORT_BASE + n_imported;
+              n_imported = n_imported + 1;
+              iw = hex_to_world(ihx.ha_q, ihx.ha_r, itop);
+              srv.broadcast("M:{imid};0;{mesh_wire(gr.gr_mesh, 0.55, 0.45, 0.30)}");
+              srv.broadcast("T:{imid};{mat_wire(mat4_translate(iw.x, iw.y, iw.z))}");
+              srv.send_to(ev.cid,
+                "S:imported {len(gr.gr_mesh.vertices)} vertices as mesh {imid} "
+                + "at {ihx.ha_q},{ihx.ha_r}");
+              println("editor: imported {len(gr.gr_mesh.vertices)} vertices as {imid}");
+            }
+          }
         } else if ev.msg_id == MSG_PROP {
           pitem = ev.payload as integer ?? 1;
           // A prop's identity is a NAME in a palette, not a magnitude — so the
@@ -2223,7 +2289,28 @@ fn main() {
 
     // ── the fixed-rate tick ────────────────────────────────────────────────
     now_us = ticks();
-    if now_us - last_us >= TICK_US {
+    // ── ACTIVE WHILE WATCHED, ASLEEP WHEN NOT ────────────────────────────
+    //
+    // Measured: with no client ever connected the editor held ~85% of a core
+    // indefinitely — not the startup stream (it persists at 90s, after that
+    // completes) and not a broken sleep (`sleep_ms(2)` x500 measures 1025ms).
+    // It is the 30Hz tick running its FULL body for an audience of none: the
+    // walk, the terrain sample, the streaming scan and the rebuild check all
+    // run whether or not anyone is looking.
+    //
+    // So the tick is gated on having a watcher. Nothing it computes is
+    // observable without one — the character's position is resumed from state,
+    // not integrated from wall-clock, so no time passes that anyone can see.
+    // The idle loop below then falls back to a long sleep, and the first
+    // connection wakes it inside 50ms, which no browser notices.
+    //
+    // ⚠ NOT a substitute for blocking on the socket. `server` offers `next()`
+    // (blocks on ACCEPT) and `run()` (blocks forever, but does not surface HTTP,
+    // which is why this pump is manual) — there is no "wait for WS traffic or a
+    // timeout" to block on. Adding one is a library change, and it would let
+    // this fall to zero rather than to a 50ms poll.
+    watched = len(clients) > 0;
+    if watched && now_us - last_us >= TICK_US {
       steps = (now_us - last_us) / TICK_US ?? 1;
       last_us = last_us + steps * TICK_US;
       dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
@@ -2486,6 +2573,13 @@ fn main() {
         srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, wld));
       }
     }
-    if work == 0 && !moved { web::sleep_ms(2); }
+    if !watched {
+      // Nobody is looking: keep the clock from piling up a burst of catch-up
+      // steps for the first client, and wait long enough to cost nothing.
+      last_us = ticks();
+      web::sleep_ms(50);
+    } else if work == 0 && !moved {
+      web::sleep_ms(2);
+    }
   }
 }

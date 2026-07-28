@@ -570,5 +570,36 @@ indistinguishable from a parser until you hand it a file it did not write, which
 is exactly why that test exists and why the round trip alone would have shipped
 the wrong thing.
 
-**Not wired into the editor yet:** nothing imports a `.glb` as a prop. The reader
-returns a `Mesh`; placing one is the next step.
+**Wired in.** `22:<path>` exports editor geometry, `21:<path>` imports a `.glb`
+and places it as DRESSING — imported geometry is set dressing, not landscape, so
+`D1` owns where it goes. Imported meshes take ids 8-15 out of the reserved block
+(0-4 figure, 5-7 cart), and the bound is CHECKED: running off the end would
+silently overwrite the figure. `tools/gates/world/import.mjs` runs the loop an
+author actually uses — out to a file, back in as a prop — and requires the
+reader's own named refusal to survive the trip rather than being flattened to
+"could not import".
+
+## The editor was burning a core to watch nobody
+
+Asked why an `editor_server` sat at 100%, and the answer needed three
+measurements rather than a reading of the loop:
+
+- **not a broken sleep** — `sleep_ms(2)` × 500 takes 1025ms, so the primitive is
+  honest;
+- **not the startup stream** — with no client ever connected it held ~85% at 20s,
+  40s, 60s and 90s, flat, long after the one stream completed;
+- **the 30Hz tick, running its full body for an audience of none.** The walk, the
+  terrain sample, the streaming scan and the rebuild check all ran whether or not
+  anyone was looking.
+
+So the tick is gated on having a watcher, and the idle loop falls back to a 50ms
+sleep. Nothing the tick computes is observable without a client — the character's
+position is resumed from state rather than integrated from wall-clock, so no
+visible time passes. Measured properly (a `/proc` utime delta, since `ps %cpu` is
+a lifetime average and hid this): **idle 0% of a core, one client 12.9%.**
+
+⚠ **This is not blocking on the socket, and should not be mistaken for it.**
+`server` offers `next()` (blocks on ACCEPT) and `run()` (blocks forever, but does
+not surface HTTP, which is why this pump is manual). There is no "wait for WS
+traffic or a timeout". Adding one would let the idle path fall to a true zero
+instead of a 50ms poll, and it is a library change — ours to make.
