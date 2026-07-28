@@ -56,7 +56,8 @@ eyes**, not a report: something to open, drive, and judge.
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
 | 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft` |
-| 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact; openings (`X70`) and `K-FIT` still open |
+| 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact |
+| 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs`; `K-FIT` still open |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
@@ -325,3 +326,26 @@ genuine improvement — one pass over the columns instead of two — but it move
 number by one second. Measuring the PREVIOUS commit, which showed the same 70
 seconds, is what identified the box rather than the code. The rule: before
 optimising the thing you just changed, measure the thing you did not.
+
+
+## What rung 8d settled — `X70`, and the number that proves it
+
+A door is a WALL MATERIAL (`DOOR_MAT`), not a missing wall. Moros used to store
+one as material 0, and hexbody measured the cost: the wall run breaks, **38 edges
+with 0 ends becoming 36 with 2**. `X70` turned that into a decision, and `L13`
+makes us the palette's owner, so the opening material is ours to define.
+
+The claim is countable, so the gate counts it: a radius-2 footprint has twelve
+perimeter cells owning three edges each, and putting a door in must leave **36
+edges** standing — one of them simply a different material. Storing the door as 0
+instead gives **35 edges with one cleared**, which is hexbody's finding reproduced
+exactly, and three clauses go red.
+
+The control matters as much as the count: an interior cell reads `[0,0,0]`. Without
+it the gate would pass just as well for an editor that put walls on everything.
+
+**Named, not hidden:** the wall set is "the three owned edges of every outer-ring
+cell", not a geometrically exact perimeter. Which edges truly bound a footprint is
+the `K-FIT` question and is still open — and `wall_n`/`wall_se` are still named for
+edges they do not hold (plan §10.4). What `X70` needs is only that a doorway holds
+an opening rather than a zero, and that is what is gated.

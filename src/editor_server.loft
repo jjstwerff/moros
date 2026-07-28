@@ -204,6 +204,7 @@ const TICK_US = 33000;
 //                    13:<species>,<density>   scatter vegetation (species 0 clears)
 //                    14:<roof>     stencil — place a structure as a band (`P1`)
 //                    15:<q>,<r>    report that column's occupied heights
+//                    16:<q>,<r>    report that cell's three owned wall edges
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -245,6 +246,7 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_WALLS = 16;     // read one cell's three owned wall edges back
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -275,6 +277,18 @@ const FLOOR_MAT    = 4;           // a built floor, above or below ground
 const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
 const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
 const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
+// ── `X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
+//
+// A door is a WALL MATERIAL, not a missing wall. Moros used to store one as
+// material 0, and hexbody measured what that costs: the wall run breaks, 38
+// edges with 0 ends becoming 36 with 2. Absence says "there is no boundary
+// here", which is a different claim from "there is a boundary you can walk
+// through" — an enclosure with a door is still enclosed, and a fill must not
+// leak out of a doorway.
+//
+// `L13` makes us the palette's owner, so the opening material is ours to define.
+const WALL_MAT     = 1;           // a plain wall
+const DOOR_MAT     = 2;           // an opening: passable, and still a boundary
 const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
@@ -763,10 +777,27 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
       q2 = cq + dq2;
       r2 = cr + dr2;
       if hex_distance(q2, r2, cq, cr) <= rad {
-        hi2 = roof_height(anchor, roof_up, rad, hex_distance(q2, r2, cq, cr));
+        d2 = hex_distance(q2, r2, cq, cr);
+        hi2 = roof_height(anchor, roof_up, rad, d2);
+        // The outer ring is the wall. Every perimeter cell carries a wall on the
+        // three edges it owns, and ONE of them carries a door instead — a
+        // different material on the same edge, never a cleared one (`X70`).
+        //
+        // ⚠ This is "the three owned edges of every outer-ring cell", not a
+        // geometrically exact perimeter: which edges truly bound the footprint is
+        // the `K-FIT` question and is still open. What the rule under test needs
+        // is only that the door edge holds an OPENING rather than a zero.
+        wn2 = 0; wne2 = 0; wse2 = 0;
+        if d2 == rad {
+          wn2 = WALL_MAT; wne2 = WALL_MAT; wse2 = WALL_MAT;
+          if q2 == cq + rad && r2 == cr { wn2 = DOOR_MAT; }
+        }
         band2: vector<hex_world::Hex> = [
           hex_world::Hex { h_height: (anchor as u16? ?? 0),
-                           h_material: (FLOOR_MAT as u8? ?? 0) },
+                           h_material: (FLOOR_MAT as u8? ?? 0),
+                           h_wall_n: (wn2 as u8? ?? 0),
+                           h_wall_ne: (wne2 as u8? ?? 0),
+                           h_wall_se: (wse2 as u8? ?? 0) },
           hex_world::Hex { h_height: (hi2 as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
@@ -1645,6 +1676,23 @@ fn main() {
             }
           }
           srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+        } else if ev.msg_id == MSG_WALLS {
+          wci = ev.payload.find(",");
+          wq = 0;
+          wr = 0;
+          if wci != null {
+            wq = ev.payload[..wci] as integer ?? 0;
+            wr = ev.payload[wci + 1..] as integer ?? 0;
+          }
+          wcol = world_column(wld, wq, wr);
+          wtxt = "";
+          for we in wcol.co_cells {
+            if hex_world::hex_occupied(we) {
+              if wtxt != "" { wtxt += ";"; }
+              wtxt += "{we.h_wall_n},{we.h_wall_ne},{we.h_wall_se}";
+            }
+          }
+          srv.send_to(ev.cid, "S:walls {wq},{wr} = {wtxt}");
         } else if ev.msg_id == MSG_STENCIL {
           // payload: the roof height above the floor, in height units
           roof_up = ev.payload as integer ?? STOREY_H;
