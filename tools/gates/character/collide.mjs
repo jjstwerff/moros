@@ -100,6 +100,17 @@ ws.onmessage = async (e) => {
     const through = await walkTillStill();
     out.through = through;
 
+    // ── 4: the SLIDE. Meet the wall at an angle and travel ALONG it.
+    // Straight on it stops (clause 1) because there is no tangential component to
+    // keep; obliquely it must not. The measurement is that the walker keeps moving
+    // while the distance to the wall stops changing.
+    await placeAt(60, 0);
+    ws.send(`23:3,${R}`); await ack('fenced');
+    await placeAt(60, 0);
+    ws.send(`3:0,0`);                      // no look change; yaw is set by place
+    const oblique = await walkTillStill();
+    out.oblique = oblique;
+
     const controlRuns = !free.stopped && free.gone > fenceAt + 1.0;
     const stops = blocked.stopped;
     const stopsAtTheFence = blocked.gone > fenceAt - 1.2 && blocked.gone < fenceAt + 0.2;
