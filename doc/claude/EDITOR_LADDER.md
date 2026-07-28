@@ -409,6 +409,19 @@ That is the doorstep earning itself. Requiring every refusal to carry a reason,
 an offer and a residual forces you to ask what the code actually knows — and one
 of ours knew less than it claimed.
 
-**Still outside:** the road's grade quantisation (`(rvf + 0.5) as integer`) rounds
-a float foot-height to an integer grade and reports no residual. It is an
-approximation like the brush's, and owes the same report.
+**And the last one, the road's grade.** A quantisation IS an approximation: the
+feet stand at a real height, a grade is an integer, and freezing one from the
+other loses up to half a unit. Measured on a hill flank:
+
+> `road true at grade 15 (quantised from 14.834192462690478, residual 0.16580753730952225)`
+
+That difference is not cosmetic — it is exactly what decides whether the strip
+cuts into the hill or rides up it. Levelling froze its floor the same way and now
+reports the same, since it is the same operation on the same value.
+
+**Every author action in the editor is now through the doorstep.** Applied
+exactly, refused with reason + offer + residual (ordinal) or reason alone
+(nominal), or applied as an explicit approximation with its residual on the wire.
+Five mutations red: snapping the roof, offering a nominal value, clamping the
+density silently, leaving the brush's clamp unreported, and dropping the grade's
+residual.

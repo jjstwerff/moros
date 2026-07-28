@@ -66,6 +66,18 @@ ws.onmessage = async (e) => {
     ws.send('5:-1');
     const lowered = await ack('ground approximated');
 
+    // ── the LAST approximation: a grade is an integer frozen from a real foot
+    //    height, so switching a road on loses up to half a unit. Stand on a
+    //    slope, where the feet are genuinely between grades, and require the
+    //    residual to be reported rather than quietly discarded.
+    await placeAck(0, 0, 0);
+    for (let k = 0; k < 3; k++) { ws.send('5:1'); await wait(400); }
+    await wait(1500);
+    await placeAck(14, 0, 0);                      // partway up the hill's flank
+    ws.send('10:1');
+    const road = await ack('road true');
+    ws.send('10:0'); await ack('road false');
+
     // ── and the doorstep lets a good value through untouched
     ws.send('14:12');
     const good = await ack('stencil');
@@ -84,13 +96,15 @@ ws.onmessage = async (e) => {
     // the approximation must NAME itself and carry a residual — it is not a refusal
     const approxReported = lowered.includes('ground approximated')
                            && lowered.includes('residual');
+    // the grade must say what it quantised FROM and by how much
+    const gradeReported = road.includes('quantised from') && road.includes('residual');
     const ok = named && offered && residual && wroteNothing
                && nominalRefused && noOffer && applied
-               && densityRefused && approxReported;
-    console.log(JSON.stringify({ short, species, dense, lowered, good,
+               && densityRefused && approxReported && gradeReported;
+    console.log(JSON.stringify({ short, species, dense, lowered, road, good,
                                  named, offered, residual, wroteNothing,
                                  nominalRefused, noOffer, applied,
-                                 densityRefused, approxReported, ok }));
+                                 densityRefused, approxReported, gradeReported, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');

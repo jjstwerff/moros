@@ -1878,8 +1878,22 @@ fn main() {
             rvf = py / HEIGHT_SCALE ?? 0.0;
             road_h = (rvf + 0.5) as integer;
           }
-          srv.send_to(ev.cid, "S:road {roading} at grade {road_h}");
-          println("editor: road {roading} at grade {road_h}");
+          // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
+          // height and a grade is an integer, so freezing one from the other
+          // loses whatever was between — up to half a unit. That is invariant
+          // I's third state, and the author is owed the residual: a road laid at
+          // grade 12 from feet at 12.49 is not the road they were standing on,
+          // and the difference is exactly what makes the strip cut or ride.
+          rres = rvf - (road_h as float);
+          if rres < 0.0 { rres = 0.0 - rres; }
+          if roading {
+            srv.send_to(ev.cid,
+              "S:road true at grade {road_h} (quantised from {rvf}, residual {rres})");
+            println("editor: road on at grade {road_h}, residual {rres}");
+          } else {
+            srv.send_to(ev.cid, "S:road false at grade {road_h}");
+            println("editor: road off at grade {road_h}");
+          }
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling { level_warned = false; }
@@ -1899,7 +1913,13 @@ fn main() {
             } else {
               level_h = (lvf - 0.5) as integer;
             }
-            println("editor: levelling ON at height {level_h} (feet {py})");
+            // The same quantisation as the road's, and owed the same report:
+            // the floor you froze is not quite the floor you were standing on.
+            lres2 = lvf - (level_h as float);
+            if lres2 < 0.0 { lres2 = 0.0 - lres2; }
+            srv.send_to(ev.cid,
+              "S:level true at height {level_h} (quantised from {lvf}, residual {lres2})");
+            println("editor: levelling ON at height {level_h} (feet {py}), residual {lres2}");
           } else {
             // Releasing must put the feet back ON the ground immediately.
             // Without this they keep the frozen height until the next step,
