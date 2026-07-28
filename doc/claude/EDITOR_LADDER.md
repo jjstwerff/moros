@@ -518,3 +518,35 @@ difference is entirely whether the scenario reaches the line.
 That is the third time this session a green clause turned out to be measuring
 nothing (`> 0` on the cave, the pre-flight's first-column refusal, and now this),
 and each time the fix was the SCENE rather than the assertion.
+
+
+## `glb` import is ours to build, and it needs two pieces
+
+Measured 2026-07-28, before writing anything: **`glb` 0.1.2 is a writer.** Its own
+catalog line says so — *"glTF 2.0 binary (.glb) **writer** — exports Mesh / Scene"* —
+and `save_glb` / `save_scene_glb` are its whole public surface. Nothing in the
+registry reads one, and nothing in the registry parses JSON either.
+
+So importing a `.glb` needs **a JSON parser and a glTF accessor reader**, and both
+are ours to write — a library gap is never an upstream ask, because upstream
+cannot verify a library against the use that needs it.
+
+The shape is already known from reading the writer:
+
+- 12-byte header — magic `0x46546C67`, version 2, total length;
+- chunks of `[len i32][type i32][data]`, JSON `0x4E4F534A` then BIN `0x004E4942`,
+  the JSON padded to 4 bytes with ASCII spaces;
+- positions / normals / UVs as f32 triples and pairs, indices as u32, reached
+  through `accessors` → `bufferViews` → the BIN chunk.
+
+**And the verification is unusually clean**: the writer exists, so a round trip is
+exact. Write a known mesh, read it back, compare vertices and triangles — no
+fixture to trust, no external tool in the loop.
+
+⚠ **The trap to avoid.** Our writer emits a fixed JSON layout, so a reader could
+skip real parsing and seek to known offsets. That reads *our* files and nothing
+from Blender, which is the entire point of importing. The round-trip test would
+pass and the feature would not exist — the same "green for the wrong reason" this
+plan has now hit four times.
+
+**Not started.** This is a package with a parser in it, not a rung tail-end.

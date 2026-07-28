@@ -15,6 +15,13 @@
 > is O(1) per append, where the temp-routing workaround loft's own commit calls out is
 > O(len) and quadratic.
 
+> **Scope: loft the LANGUAGE and its TOOLING — never a library gap.** A compiler bug, a
+> debugger that cannot reach a server, a missing `seek`: those belong here. A library that
+> lacks a capability we need does **not**. We create and update libraries ourselves,
+> because upstream cannot verify one against our use — verification is only possible where
+> the consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
+> battle-tested.
+
 > ## Status at 2026-07-27
 >
 > | | |
