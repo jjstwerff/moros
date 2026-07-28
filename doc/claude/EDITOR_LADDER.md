@@ -57,7 +57,8 @@ eyes**, not a report: something to open, drive, and judge.
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
 | 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft` |
 | 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact |
-| 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs`; `K-FIT` still open |
+| 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs` |
+| 8e | ↳ the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | #12 | ✅ | `tools/gates/world/doorstep.mjs`, both leak-site controls seen red |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
@@ -349,3 +350,40 @@ cell", not a geometrically exact perimeter. Which edges truly bound a footprint 
 the `K-FIT` question and is still open — and `wall_n`/`wall_se` are still named for
 edges they do not hold (plan §10.4). What `X70` needs is only that a doorway holds
 an opening rather than a zero, and that is what is gated.
+
+
+## What rung 8e installed — the doorstep, and why an offer is not always a kindness
+
+Invariant **I** says no edit is ever silently corrected: an action is applied
+exactly, refused with a NAMED REASON plus an OFFER and a RESIDUAL, or applied as
+an explicit approximation with its residual shown. A refusal that says only "no"
+is half the obligation — the author is owed what they can have instead, and how
+far off they were.
+
+The editor was violating it in the plainest way. `if roof_up <= 0 { roof_up =
+STOREY_H; }` is leak site 1 verbatim: the author asked for one thing and got
+another with nothing said. It now reads
+
+> `stencil refused — roof 5 is below the minimum 8 (offer 8, residual 3)`
+
+and nothing is written. Mutating it back to a silent snap turns four clauses
+red, `wroteNothing` among them, because the house gets built at a height nobody
+asked for.
+
+**The second half is the one worth keeping in mind.** An offer is only meaningful
+for an ORDINAL parameter — a height, a length — where a nearest admissible value
+exists and the distance to it is a correction. For a NOMINAL one — a material, a
+species, a palette index — there is no "nearly": 255 is not almost 256, and
+offering it reads as a small correction while changing what the wall is made of
+(`X68`). So:
+
+> `scatter refused — species 9 is not a species; nominal, so there is no nearest one`
+
+The distinction lives in the `Fit` type and in one rendering function, not in each
+caller's memory — a nominal refusal cannot grow an offer by someone forgetting.
+Mutating `fit_nominal` to offer the nearest index turns exactly one clause red,
+which is the control the plan asks for.
+
+**Not yet through the doorstep:** the brush's height clamps, the road grade, and
+the field fill's cap. They refuse or clamp on their own terms. The doorstep exists
+and two tools use it; routing the rest is mechanical and unstarted.
