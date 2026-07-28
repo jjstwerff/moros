@@ -143,8 +143,21 @@ for loft the language and its tooling only.
 
 ### Open
 
-- **#3** `moros_map::hex_distance` is axial and still exported — the trap that sheared every
-  disc in the editor. The editor no longer calls it; nothing else has been checked.
+- **#3** ✅ **the axial `hex_distance` is deleted, not fixed.** `hex_grid` already exported
+  the right one, so removing moros_map's copy put the correct function in scope under the
+  same name and every call site became right without moving. Two implementations of one
+  lattice rule was the defect; a corrected second copy would still be one. It took two test
+  assertions with it — they had been stating the bug's answers ((1,-1) adjacent, (5,5) ten
+  steps) — and the control that separates the conventions is now named as such.
+- **The slope tools were drawing a dotted line.** `slope_path` walked its own axial distance
+  by lerping q and r INDEPENDENTLY, which on an offset lattice is a line only along the
+  axes: measured, a (0,0)→(5,5) run had THREE consecutive pairs that are not neighbours, so
+  the ridge it drew had holes in it. All four of its tests were axis-aligned. Now
+  `hex_line_at` — an axial lerp rounded by `hex_grid::hex_round` — and
+  `moros_map/probe/slopeline.loft` prints the old shape beside the new one on every run.
+- **`moros_ui` is GREEN — 46 tests, and `make lib-test` is 499 across five packages.** The
+  record of why it was red was stale: not a missing `loft.lock` but two narrowing errors left
+  by the 8-byte voxel, in the toolbar's palette selection. Range-checked, then cast.
 - **#13** LOD banding and instanced draw.
 - **#14** the general multi-rig connector (the cart's is one frame with fixed offsets).
 - **#15** the sandbox seam — what a routine may touch. Only *attachment* is built.
@@ -152,7 +165,6 @@ for loft the language and its tooling only.
 - **`server`'s blocking wait** — designed in EDITOR_LADDER.md, not built. The idle path is a
   50ms poll because there is nothing to block on; `loft-libs-net` is a shared checkout and
   it wants a session with room for a native rebuild.
-- **`moros_ui`** still red on a pre-existing missing `loft.lock`.
 - **✋ Checkpoints never walked:** the layer stack (build a tower with a dungeon under it),
   and everything after it. All are gated, none have had your eyes.
 
@@ -233,9 +245,9 @@ recovered from loft's history at `ade530c2^`, where they had sat unmoved since J
 | `moros_editor` | 56 |
 | `moros_render` | 163 |
 | `moros_sim` | 148 |
-| `moros_ui` | 46 — **currently red**: no `loft.lock`, transitive `glb` unresolved |
+| `moros_ui` | 46 — green since 2026-07-28 |
 
-**489 green, and zero warnings from Moros sources.** `make lib-test` runs them all and was
+**499 green, and zero warnings from Moros sources.** `make lib-test` runs them all and was
 proven to go red (a gate nobody has seen fail is not a gate) — most recently for real, twice
 in one session, catching a wall-drop in the stamp bridge and a double halo in `hex_field`.
 

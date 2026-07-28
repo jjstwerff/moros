@@ -172,6 +172,8 @@ gate-hexworld:
 	  $(LOFT) --lib lib/ lib/hex_world/probe/sparsity.loft | tail -1
 	@printf '%-34s ' "hex_world/probe/edgehold"; \
 	  $(LOFT) --lib lib/ lib/hex_world/probe/edgehold.loft | tail -1
+	@printf '%-34s ' "moros_map/probe/slopeline"; \
+	  $(LOFT) --lib lib/ lib/moros_map/probe/slopeline.loft | tail -1
 
 gate-world:
 	@for g in tools/gates/world/*.mjs; do $(GATE_RESTART); \

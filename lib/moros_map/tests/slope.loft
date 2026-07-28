@@ -1,22 +1,72 @@
 // Tests for hex geometry, wall direction resolution, and slope operations.
 use moros_map;
+use hex_grid;
 
 // ── Hex distance ─────────────────────────────────────────────────
+//
+// ⚠ THESE TESTS USED TO ASSERT THE BUG. `hex_distance` was moros_map's own AXIAL
+// cube distance applied to ODD-R OFFSET coordinates, and two assertions here
+// stated its answers as if they were the lattice's: that `(1,-1)` is adjacent to
+// the origin (it is two steps away) and that `(5,5)` is ten steps off (it is
+// eight). The wrong function and the wrong test agreed, which is what let it
+// survive — and it sheared every disc in the editor until rung W2 measured one
+// (moros#10). The function is gone; `hex_grid` owns the lattice.
 
 fn test_hex_distance_same() {
   assert(hex_distance(5, 7, 5, 7) == 0, "same hex → 0");
 }
 
 fn test_hex_distance_adjacent() {
-  assert(hex_distance(0, 0, 1, 0) == 1, "adjacent q+1");
-  assert(hex_distance(0, 0, 0, 1) == 1, "adjacent r+1");
-  assert(hex_distance(0, 0, 1, -1) == 1, "adjacent q+1,r-1 (diagonal)");
+  // The six neighbours of an EVEN row, which is where offset and axial agree
+  // least: odd rows are shifted half a hex right, so the diagonals differ by
+  // parity and there is no single (dq, dr) pair that names a neighbour.
+  assert(hex_distance(0, 0, 1, 0) == 1, "E");
+  assert(hex_distance(0, 0, 0, 1) == 1, "NE of an even row");
+  assert(hex_distance(0, 0, -1, 1) == 1, "NW of an even row");
+  assert(hex_distance(0, 0, 0, -1) == 1, "SE of an even row");
+  assert(hex_distance(0, 0, -1, -1) == 1, "SW of an even row");
+  assert(hex_distance(0, 0, -1, 0) == 1, "W");
+  // and the same for an ODD row, where the diagonals move
+  assert(hex_distance(0, 1, 1, 2) == 1, "NE of an odd row");
+  assert(hex_distance(0, 1, 0, 2) == 1, "NW of an odd row");
 }
 
-fn test_hex_distance_far() {
-  assert(hex_distance(0, 0, 5, 5) == 10, "5,5 → dist 10");
+// THE CONTROL. `(1,-1)` is what the axial reading called adjacent, and it is the
+// single assertion that separates the two conventions at distance one. Without a
+// cell that the wrong answer gets wrong, every test above passes under both.
+fn test_hex_distance_the_axial_reading_is_not_this_lattice() {
+  assert(hex_distance(0, 0, 1, -1) == 2, "(1,-1) is TWO steps, not one");
+  assert(hex_distance(0, 0, 5, 5) == 8, "(5,5) is eight steps, not ten");
   assert(hex_distance(0, 0, 3, 0) == 3, "straight line q");
   assert(hex_distance(0, 0, 0, 4) == 4, "straight line r");
+}
+
+// ── The line ─────────────────────────────────────────────────────
+//
+// A path is a LINE only if consecutive cells are neighbours. Lerping q and r
+// independently is exact along the axes and disconnected everywhere else — three
+// broken steps on a (0,0)→(5,5) run — so the four slope tests below, all
+// axis-aligned, could not see it. This one is diagonal on purpose.
+
+fn test_hex_line_is_connected_in_every_direction() {
+  ends_q: vector<integer> = [5, 5, -3, -1, 0, 7];
+  ends_r: vector<integer> = [5, 6, 2, -6, -7, -3];
+  starts_q: vector<integer> = [0, 0, -3, -4, 2, -2];
+  starts_r: vector<integer> = [0, 1, -3, -1, 3, 4];
+  for k in 0..len(ends_q) {
+    q1 = starts_q[k]; r1 = starts_r[k]; q2 = ends_q[k]; r2 = ends_r[k];
+    d = hex_distance(q1, r1, q2, r2);
+    pq = q1; pr = r1;
+    for i in 0..=d {
+      (q, r) = hex_line_at(q1, r1, q2, r2, i, d);
+      if i > 0 {
+        step = hex_distance(pq, pr, q, r);
+        assert(step == 1, "({q1},{r1})->({q2},{r2}) step {i} jumps {step} cells");
+      }
+      pq = q; pr = r;
+    }
+    assert(pq == q2 && pr == r2, "({q1},{r1})->({q2},{r2}) ends at ({pq},{pr})");
+  }
 }
 
 // ── Wall direction resolution ────────────────────────────────────

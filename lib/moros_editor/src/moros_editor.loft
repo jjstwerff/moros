@@ -197,7 +197,9 @@ pub fn set_wall_dir_with_undo(s: UndoStack, m: Map, q: integer, r: integer, cy: 
 // Slope path with batch undo — all hexes in the slope are one
 // logical undo step.
 pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy: integer, h_start: u16, h_end: u16) {
-  // Note: lerp_int and hex_distance are imported from moros_map.
+  // `lerp_int` and `hex_line_at` come from moros_map; `hex_distance` is
+  // `hex_grid`'s, which is the point — moros_map's own copy was the axial one and
+  // is gone (moros#3).
   batch_begin(s);
   dist = hex_distance(q1, r1, q2, r2);
   if dist == 0 {
@@ -206,8 +208,7 @@ pub fn slope_path_with_undo(s: UndoStack, m: Map, q1: integer, r1: integer, q2: 
     return;
   }
   for i in 0..=dist {
-    q = lerp_int(q1, q2, i, dist);
-    r = lerp_int(r1, r2, i, dist);
+    (q, r) = hex_line_at(q1, r1, q2, r2, i, dist);
     // both endpoints are u16 and a lerp never leaves their interval, so the
     // checked cast is a formality — written as one anyway rather than trusting
     // that lerp_int stays interpolating.

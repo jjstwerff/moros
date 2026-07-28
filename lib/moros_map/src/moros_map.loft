@@ -7,6 +7,7 @@ use types;
 use palette;
 use spawn;
 use hex_field;
+use hex_grid;    // the lattice — rounding and distance are ITS parity to get right
 
 // Top-level map container. Holds chunks and palette definitions.
 pub struct Map {
@@ -395,19 +396,54 @@ pub fn map_set_wall_dir(m: Map, q: integer, r: integer, cy: integer, dir: intege
 
 // ── Hex-grid geometry (Phase 4.8) ─────────────────────────────────
 
-// Distance between two hexes in axial coordinates (cube-distance).
-pub fn hex_distance(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
-  dq = abs(q2 - q1);
-  dr = abs(r2 - r1);
-  ds = abs((q2 + r2) - (q1 + r1));
-  max(dq, max(dr, ds))
-}
+// ⚠ `hex_distance` USED TO LIVE HERE, and it was the AXIAL cube distance —
+// `max(|dq|, |dr|, |dq+dr|)` — applied to coordinates that are odd-r OFFSET
+// (`SCENE_MAP.md`, decision 2). It called `(0,0)` and its SW neighbour `(-1,-1)`
+// two steps apart, and every caller inherited that: the editor's road width,
+// scatter reach, storey footprint and house outline were all sheared blobs rather
+// than discs until rung W2 measured one (moros#10).
+//
+// It is not fixed here, it is GONE: `hex_grid` owns the lattice and already
+// exports the right one, so `use hex_grid` above puts the correct `hex_distance`
+// in scope under the same name and every call site becomes right without moving.
+// Two implementations of one lattice rule is the defect; a corrected second copy
+// would still be a second copy.
 
 // Integer linear interpolation: a + (b - a) * i / n.
+//
+// ⚠ For a HEIGHT, a count, anything scalar. NOT for a coordinate pair — see
+// `hex_line_at`, which is what a lattice line needs and what this was doing.
 pub fn lerp_int(a: integer, b: integer, i: integer, n: integer) -> integer {
   if n == 0 { return a; }
   // `n == 0` returned above, so the fallback is unreachable.
   a + ((b - a) * i / n ?? 0)
+}
+
+// ── A LINE ON THE LATTICE ───────────────────────────────────────────────────
+//
+// The `i`-th of `n` steps from (q1,r1) to (q2,r2), in odd-r offset coordinates.
+//
+// **Lerping q and r independently does not draw a line.** It was what `slope_path`
+// did, and measured (`probe/slopeline.loft`) a diagonal run came out with THREE
+// disconnected steps — consecutive cells that are not neighbours — so the "slope"
+// it drew was a dotted line with holes in it. Along the axes it was exact, which
+// is why four axis-aligned tests never noticed.
+//
+// The line is interpolated in AXIAL space and rounded by `hex_grid::hex_round`, so
+// the parity-sensitive part is the library's and not a fourth copy of it here. The
+// epsilon nudge is the standard one: a point landing exactly on a cell boundary
+// rounds arbitrarily, and an arbitrary choice is where a path loses its
+// connectedness.
+pub fn hex_line_at(q1: integer, r1: integer, q2: integer, r2: integer,
+                   i: integer, n: integer) -> (integer, integer) {
+  if n == 0 { return (q1, r1); }
+  aq1 = q1 - ((r1 - (r1 & 1)) / 2 ?? 0);
+  aq2 = q2 - ((r2 - (r2 & 1)) / 2 ?? 0);
+  t = (i as float) / (n as float) ?? 0.0;
+  qf = (aq1 as float) + ((aq2 - aq1) as float) * t + 0.000001;
+  rf = (r1 as float) + ((r2 - r1) as float) * t + 0.000002;
+  (raq, rar) = hex_grid::hex_round(qf, rf);
+  (raq + ((rar - (rar & 1)) / 2 ?? 0), rar)
 }
 
 // ── Slope operations (Phase 4.8–4.9) ──────────────────────────────
@@ -422,8 +458,7 @@ pub fn slope_path(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
     return;
   }
   for i in 0..=dist {
-    q = lerp_int(q1, q2, i, dist);
-    r = lerp_int(r1, r2, i, dist);
+    (q, r) = hex_line_at(q1, r1, q2, r2, i, dist);
     h = lerp_int(h_start, h_end, i, dist) as u16? ?? 0;
     map_set_height(m, q, r, cy, h);
   }
@@ -441,9 +476,12 @@ pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
   }
   half = width / 2;
   for i in 0..=dist {
-    q = lerp_int(q1, q2, i, dist);
-    r = lerp_int(r1, r2, i, dist);
+    (q, r) = hex_line_at(q1, r1, q2, r2, i, dist);
     h = lerp_int(h_start, h_end, i, dist) as u16? ?? 0;
+    // ⚠ The band's own offset is `q + offset`, which is perpendicular to the path
+    // only when the path runs north-south. That crudeness is older than this fix
+    // and is left named rather than quietly widened: a real perpendicular needs
+    // the path's direction, which is a different change.
     for w in 0..width {
       offset = w - half;
       map_set_height(m, q + offset, r, cy, h);

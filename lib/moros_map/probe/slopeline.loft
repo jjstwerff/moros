@@ -1,0 +1,71 @@
+// Does `slope_path` draw a LINE on this lattice?
+//
+// `slope_path` used to lerp q and r independently and count its steps with an AXIAL
+// distance. Both are statements about an axial lattice, and Moros's is odd-r
+// OFFSET (`SCENE_MAP.md`, decision 2).
+//
+// The number that matters is DISCONNECTED STEPS: consecutive cells that are not
+// neighbours. A path with any is a dotted line, and a slope drawn along it leaves
+// a ridge with holes in it. Measured before the fix, a (0,0) -> (5,5) run had
+// three — and along the axes it had none, which is why four axis-aligned tests
+// never saw it.
+//
+// The old shape is kept here as the CONTROL and printed beside the new one, so the
+// fix is a measurement rather than a claim. Both parities, both signs.
+use moros_map;
+use hex_grid;
+
+// How many consecutive cells are NOT neighbours — the number that says whether a
+// path is a line at all.
+fn breaks_in(qs: vector<integer>, rs: vector<integer>) -> integer {
+  n = 0;
+  for i in 1..len(qs) {
+    if hex_grid::hex_distance(qs[i - 1], rs[i - 1], qs[i], rs[i]) > 1 { n = n + 1; }
+  }
+  n
+}
+
+fn report(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
+  d = hex_distance(q1, r1, q2, r2);
+
+  // THE FIX: the axial lerp, rounded by hex_grid.
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  for i in 0..=d {
+    (q, r) = hex_line_at(q1, r1, q2, r2, i, d);
+    fq += [q]; fr += [r];
+  }
+
+  // THE CONTROL, and it is the code this replaced: lerp q and r independently.
+  // Keeping it here is what stops the fix being a claim — the two numbers are
+  // printed side by side on the same run.
+  oq: vector<integer> = [];
+  orr: vector<integer> = [];
+  for i in 0..=d {
+    oq += [lerp_int(q1, q2, i, d)];
+    orr += [lerp_int(r1, r2, i, d)];
+  }
+
+  fb = breaks_in(fq, fr);
+  ob = breaks_in(oq, orr);
+  ends_right = fq[len(fq) - 1] == q2 && fr[len(fr) - 1] == r2;
+  bad = 0;
+  if fb != 0 { bad = bad + 1; }
+  if !ends_right { bad = bad + 1; }
+  println("  ({q1},{r1}) -> ({q2},{r2}): {d} steps · breaks: line {fb}, "
+          + "independent lerp {ob} · ends on target {ends_right}");
+  bad
+}
+
+fn main() {
+  println("slope_path on an odd-r offset lattice");
+  bad = 0;
+  bad = bad + report(0, 0, 4, 0);          // due east, even row
+  bad = bad + report(5, 0, 5, 3);          // down the rows
+  bad = bad + report(0, 0, 5, 5);          // diagonal, the interesting one
+  bad = bad + report(0, 1, 5, 6);          // the same, odd row
+  bad = bad + report(0 - 3, 0 - 3, 2, 2);  // across the origin, negative
+  bad = bad + report(0 - 4, 0 - 1, 0 - 1, 0 - 6);
+  if bad == 0 { println("slopeline: every line is connected and lands on target"); }
+  else { println("slopeline: {bad} claim(s) fail — the line is not a line"); }
+}

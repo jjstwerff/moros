@@ -129,8 +129,23 @@ fn set_palette_selection(tools: ToolState, idx: integer) {
     return;
   }
   if tools.ts_current == ToolKind.PlaceStencil { tools.ts_selected_stencil = idx; return; }
-  if tools.ts_current == ToolKind.PlaceItem    { tools.ts_selected_item    = idx; return; }
-  if tools.ts_current == ToolKind.PlaceWall    { tools.ts_selected_wall    = idx; return; }
+  // A palette selection is a u8 in `ToolState`, the same width as the voxel slot
+  // it ends up in, and a click index is an `integer`. The cast is CHECKED and the
+  // fallback keeps the current selection rather than silently choosing 0 — a
+  // click that cannot name a palette entry should change nothing.
+  // ⚠ RANGE FIRST, THEN CAST. A palette selection is a `u8` in `ToolState` — the
+  // same width as the voxel slot it ends up in — and a click index is an
+  // `integer`. Checking the range and then narrowing is what makes the cast
+  // lossless; an out-of-range click changes nothing, which is the right answer
+  // for an index that cannot name a palette entry.
+  if tools.ts_current == ToolKind.PlaceItem {
+    if idx >= 0 && idx <= 255 { tools.ts_selected_item = idx as u8? ?? 0; }
+    return;
+  }
+  if tools.ts_current == ToolKind.PlaceWall {
+    if idx >= 0 && idx <= 255 { tools.ts_selected_wall = idx as u8? ?? 0; }
+    return;
+  }
 }
 
 // ── Panel build ──────────────────────────────────────────────────
