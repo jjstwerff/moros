@@ -603,3 +603,37 @@ a lifetime average and hid this): **idle 0% of a core, one client 12.9%.**
 not surface HTTP, which is why this pump is manual). There is no "wait for WS
 traffic or a timeout". Adding one would let the idle path fall to a true zero
 instead of a 50ms poll, and it is a library change — ours to make.
+
+### The blocking wait, designed and not yet built
+
+The idle path is a 50ms poll because `server` has nothing to block on. What it
+needs, located: the event queue is a `VecDeque` in
+`loft-libs-net/server/native/src/lib.rs`, with **no condvar** — `poll_event` calls
+`ws_next_event_native`, which drains or returns immediately.
+
+**The change is one native function and one loft wrapper:**
+
+```
+ws_wait_event_native(timeout_ms: i32) -> bool     // native/src/lib.rs
+pub fn poll_event_wait(self: Server, timeout_ms: integer) -> WsEvent   // server.loft
+```
+
+Two implementations are possible and the cheap one is worth measuring first:
+
+1. **Sleep-poll inside Rust** — loop on the queue with a 1ms sleep until an event
+   or the timeout. Crude, but it moves the wait OFF the loft interpreter, and
+   that is where the cost actually is: the editor's 12.9% is the interpreter
+   running the pump ~500×/s, not the syscall. Likely most of the win for an
+   afternoon's work.
+2. **A condvar on the queue** — the accept/read threads signal, the waiter blocks
+   properly and wakes on the frame. True zero idle, and the right end state.
+
+**Why it is not built here.** `loft-libs-net` is a SHARED checkout. The change
+needs a native rebuild, a version bump, a lock update in moros, and verification
+on both sides — and a half-finished edit in a tree another agent may pick up is
+worse than none. It is ours to make (a library gap is never an upstream ask), but
+it wants a session with room for it, not the tail of one.
+
+**What it would buy:** the editor's idle path falls from a 50ms poll to a true
+zero, and the watched path drops well below 12.9%, because most of those wakeups
+find nothing to do.
