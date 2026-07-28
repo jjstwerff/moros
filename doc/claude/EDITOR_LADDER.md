@@ -63,7 +63,8 @@ eyes**, not a report: something to open, drive, and judge.
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
 | 10 | props and vehicles; the multi-rig connector | #14 | L | a cart whose wheels turn from distance travelled |
-| 10a | ↳ the cart — three rigs, one frame, a derived roll | #14 | ✅ | `tools/gates/world/cart.mjs`; dressing layers and `glb` import still open |
+| 10a | ↳ the cart — three rigs, one frame, a derived roll | #14 | ✅ | `tools/gates/world/cart.mjs` |
+| 10b | ↳ props as dressing — `D1` in a running editor | #14 | ✅ | `tools/gates/world/prop.mjs`; `glb` import still open |
 | — | ✋ | | | |
 | 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
 | 11a | ↳ anchors — follow, break, or foreign (invariant II) | #15 | ✅ | `tools/gates/world/trigger.mjs`; the sandbox seam still open |
@@ -489,3 +490,31 @@ search of everything seen so far.
 isolated. This rung establishes only how a routine's binding ATTACHES to
 geometry, which is the half we own; *condition → content* belongs to the engine we
 build no part of.
+
+
+## What rung 10b caught — a clause about nothing
+
+Props go into real `KIND_DRESSING` layers now (`19:<item>`), read back through
+`20:<q>,<r>`, and draw in the same per-column traversal vegetation and roofs use
+— which they must, because `D1` makes dressing invisible to a terrain read, so a
+props mesh built from `world_column` alone would draw nothing at all.
+
+The gate's interesting clause is *a terrain write does not delete a prop*, and
+the first version of it **passed with the protection deleted**. The reason is
+worth keeping:
+
+- the **brush** writes a ONE-CELL terrain column, so it only ever addresses layer
+  0 and can never reach a dressing layer appended after it. Raising the ground
+  over a prop therefore proves nothing;
+- a **storey** builds its column from `world_column`, which carries one entry per
+  chunk layer INCLUDING the absent placeholders for dressing. That column
+  addresses layer 1, and the skip in `world_set_column` is exactly what stops the
+  placeholder being written back over the prop.
+
+Swapping the raise for a storey makes the mutation red: both props vanish and the
+dressing view comes back empty. Same assertion, same code under test — the
+difference is entirely whether the scenario reaches the line.
+
+That is the third time this session a green clause turned out to be measuring
+nothing (`> 0` on the cave, the pre-flight's first-column refusal, and now this),
+and each time the fix was the SCENE rather than the assertion.

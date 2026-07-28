@@ -208,6 +208,8 @@ const TICK_US = 33000;
 //                    16:<q>,<r>    report that cell's three owned wall edges
 //                    17:<delta>    move the cart along its facing (signed, wu)
 //                    18:<name>     anchor a trigger here, bound to <name>
+//                    19:<item>     place a prop here, as DRESSING
+//                    20:<q>,<r>    report that cell's dressing
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -249,6 +251,8 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_PROP = 19;      // set dressing: place a prop in a DRESSING layer (moros#14)
+const MSG_DRESSING = 20;  // read the dressing at a cell back
 const MSG_TRIGGER = 18;   // routines: anchor a trigger to the ground (moros#15)
 const MSG_CART = 17;      // vehicles: move the cart, roll its wheels (moros#14)
 const MSG_WALLS = 16;     // read one cell's three owned wall edges back
@@ -347,6 +351,8 @@ const CART_WHEEL_L = 6;
 const CART_WHEEL_R = 7;
 const CART_RADIUS  = 0.40;       // wheel radius in world units
 const CART_HALF_W  = 0.55;       // half the axle, body centre to wheel
+const PROP_MAT     = 7;          // dressing's own material — never terrain's
+const PROP_ITEM_MAX = 8;         // the prop palette; NOMINAL, so no offers
 const PART_BODY = 0;
 const PART_LEG_L = 1;
 const PART_LEG_R = 2;
@@ -733,6 +739,17 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh) {
   r0 = cz * CHUNK;
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
+      // ⚠ DRESSING IS INVISIBLE TO A TERRAIN READ, by `D1` — so a props mesh
+      // built from `world_column` alone draws no props at all. It needs the
+      // other view, and this is the loop that already visits every column.
+      dcol = world_dressing(wld, cq, cr);
+      for de in dcol.co_cells {
+        if hex_world::hex_occupied(de) {
+          dwp = hex_to_world(cq, cr, 0);
+          dy = (de.h_height as float ?? 0.0) * HEIGHT_SCALE;
+          emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
+        }
+      }
       c = world_column(wld, cq, cr);
       for e in c.co_cells {
         if hex_world::hex_occupied(e) {
@@ -1879,6 +1896,62 @@ fn main() {
             }
           }
           srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+        } else if ev.msg_id == MSG_PROP {
+          pitem = ev.payload as integer ?? 1;
+          // A prop's identity is a NAME in a palette, not a magnitude — so the
+          // doorstep refuses it without an offer (`X68`).
+          pfit = fit_nominal(pitem, PROP_ITEM_MAX, "prop");
+          if !pfit.ft_ok {
+            srv.send_to(ev.cid, "S:prop refused — {fit_text(pfit)}");
+            println("editor: prop refused — {fit_text(pfit)}");
+            continue;
+          }
+          phx = world_to_hex(px, pz);
+          pcl = world_column(wld, phx.ha_q, phx.ha_r);
+          ptop = 0;
+          for pe2 in pcl.co_cells {
+            if hex_world::hex_occupied(pe2) { ptop = pe2.h_height as integer ?? 0; }
+          }
+          // Everything already in this cell's dressing stays; a prop is ADDED to
+          // the set, not a replacement for it. `world_set_dressing` writes the
+          // whole dressing column, so read it, extend it, write it back.
+          pcur = world_dressing(wld, phx.ha_q, phx.ha_r);
+          pcells: vector<hex_world::Hex> = [];
+          for pk in pcur.co_cells {
+            if hex_world::hex_occupied(pk) { pcells += [pk]; }
+          }
+          pcells += [hex_world::Hex { h_height: (ptop as u16? ?? 0),
+                                      h_material: (PROP_MAT as u8? ?? 0),
+                                      h_item: (pitem as u8? ?? 0) }];
+          pw = world_set_dressing(wld, hex_world::Column { co_q: phx.ha_q,
+                                                           co_r: phx.ha_r,
+                                                           co_cells: pcells });
+          if pw.cw_code != CW_OK {
+            srv.send_to(ev.cid, "S:prop refused — {pw.cw_detail}");
+          } else {
+            mark_dirty(dirty, phx.ha_q, phx.ha_r, 2);
+            srv.send_to(ev.cid,
+              "S:prop {pitem} placed at {phx.ha_q},{phx.ha_r} height {ptop} "
+              + "({len(pcells)} in this cell)");
+            println("editor: prop {pitem} at ({phx.ha_q},{phx.ha_r}) height {ptop}");
+          }
+        } else if ev.msg_id == MSG_DRESSING {
+          dci = ev.payload.find(",");
+          dq2 = 0;
+          dr2 = 0;
+          if dci != null {
+            dq2 = ev.payload[..dci] as integer ?? 0;
+            dr2 = ev.payload[dci + 1..] as integer ?? 0;
+          }
+          dcol2 = world_dressing(wld, dq2, dr2);
+          dtxt = "";
+          for dd in dcol2.co_cells {
+            if hex_world::hex_occupied(dd) {
+              if dtxt != "" { dtxt += ","; }
+              dtxt += "{dd.h_height}/{dd.h_item}";
+            }
+          }
+          srv.send_to(ev.cid, "S:dressing {dq2},{dr2} = {dtxt}");
         } else if ev.msg_id == MSG_TRIGGER {
           tname = ev.payload;
           thx = world_to_hex(px, pz);
