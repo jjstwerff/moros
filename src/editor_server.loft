@@ -1068,15 +1068,9 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   (blocked, nx, nz) = hex_edge::collide(coll, sf, hq, hr,
                                         nb_q(hq, hr, hd), nb_r(hq, hr, hd));
   if !blocked { return (sx, sz); }
-  // ⚠ NOT YET REACHED IN PRACTICE, and the honest state of it: the proxy DOES
-  // carry surfaces — 158 of them on a fenced road, measured — and the walk still
-  // takes this bail rather than sliding, so `collide` is not yielding a usable
-  // normal at the hit edge. Marking is proven; the lookup is not. The next probe
-  // is what `edge_surf` returns for the edge `sweep_path` reports, since that is
-  // the one link between them that has not been read out.
-  //
-  // It fails SAFE — a stop is what rung 6b shipped — so this is unfinished rather
-  // than broken, and it is written down instead of left as a surprise.
+  // A degenerate normal is the honest stop: `edge_block` records SURF_NONE for an
+  // edge no run claims — the stencil's house, an edge placed by hand — and sliding
+  // along a normal that is not recoverable is worse than not sliding.
   if nx * nx + nz * nz < 0.5 { return (sx, sz); }
   rx = (x1 - x0) * (1.0 - back);
   rz = (z1 - z0) * (1.0 - back);
@@ -1084,10 +1078,50 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   tx = rx - nx * dot;
   tz = rz - nz * dot;
   if tx * tx + tz * tz < 0.0000001 { return (sx, sz); }
-  // One more sweep, so the slide cannot pass through a second wall — a corner
+  // One more sweep, so the slide cannot pass through a SECOND wall — a corner
   // stops the walker rather than squeezing them round it.
-  (t2, _q2, _r2, d2) = hex_edge::sweep_path(coll, sx, sz, sx + tx, sz + tz);
+  (t2, q2, r2, d2) = hex_edge::sweep_path(coll, sx, sz, sx + tx, sz + tz);
   if d2 < 0 { return (sx + tx, sz + tz); }
+
+  // ⚠ THE WALL YOU ARE SLIDING ALONG CANNOT STOP YOU SLIDING ALONG IT, and this
+  // is the whole difficulty of the slide rather than a detail of it. The geometry
+  // is a straight line; the PROXY is the staircase of edges that line crosses. A
+  // walker pressed against the wall and moving parallel to it meets the steps of
+  // its own staircase within a millimetre, so every slide stopped dead — which
+  // looked exactly like no slide at all.
+  //
+  // The surface is what tells them apart. If the blocking edge belongs to the same
+  // wall — its normal parallel to the one we are sliding on — it is a step, not an
+  // obstacle, and the tangential move stands. A different wall is a corner and
+  // stops us. Nothing here compares positions or invents a tolerance in the
+  // lattice: it is one dot product between two exact normals.
+  // ⚠ HERE IS WHERE THE SLIDE STOPS, AND WHY IT IS NOT FINISHED.
+  //
+  // What IS established, by probe rather than by reading: the proxy carries the
+  // runs' surfaces (158 edges on a fenced road), and `collide` returns the exact
+  // normal at the hit — `(0,1)` against an east-west road, which is the run's own
+  // and not one of a hex's six. The tangent is therefore right, and the slide code
+  // below runs. So the earlier note in this file, that the degenerate-normal bail
+  // was being taken, was simply wrong.
+  //
+  // What defeats it is the PROXY, not the geometry. The wall is a line; the thing
+  // swept against is the staircase of edges that line crosses. A walker pressed
+  // against the wall and moving parallel to it meets the steps of its OWN
+  // staircase within a millimetre, so the second sweep blocks at t ≈ 0 and the
+  // slide is a dead stop.
+  //
+  // Waving those steps through — "the blocking edge belongs to the wall I am
+  // sliding along, so it is a step and not an obstacle" — was tried and is WRONG:
+  // measured, a walker at 40° then crossed the fence outright, and adding a
+  // which-side-of-the-line guard did not stop it, because the crossing happens on
+  // a tick where the sweep does not block at all. That last part is unexplained
+  // and is the thread to pull next: a cut is supposed to separate in all 24
+  // headings BY CONSTRUCTION, so either the world holds fewer edges than the cut
+  // does — the end-clip in `road_stamp` is the suspect — or the proxy drops some
+  // when it copies them.
+  //
+  // Until that is understood the walker stops. A stop is honest; a wall you can
+  // walk through at 40° is not.
   seg2 = sqrt(tx * tx + tz * tz) ?? 0.0;
   b2 = t2;
   if seg2 > 0.0 { b2 = t2 - (SKIN / seg2 ?? 0.0); }
