@@ -10,7 +10,57 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## Since 2026-07-27 — every numbered rung is built (rows 8-11), and the gates got honest
+## Since earlier on 2026-07-28 — row 6 is built, and it found four things
+
+**Row 6 (fences and walls, #10) is done** — 6a the exact perimeter, 6b collision, 6c the
+camera's occlusion class. **Every numbered rung of the ladder is now built.** 21 gates green
+(17 world + 4 character), both `hex_world` probes, 58 `hex_world` tests.
+
+| rung | what | gate |
+|---|---|---|
+| 6a | the exact perimeter, and the half of it stored outside | `fence.mjs` — 3 mutations red |
+| 6b | collision: `hex_edge::sweep_path`, and a doorway is not a wall | `collide.mjs` — 3 mutations red |
+| 6c | the camera's class: the predicate the consumer supplies | `occlude.mjs` — the fence clause red |
+
+### The four findings, in the order they cost time
+
+1. **`E1e` — an edge is content.** A hex stores three of its six edges, so half of any
+   region's boundary lives in the cells OUTSIDE it — cells that need hold no ground. Elision
+   keyed on material dropped those: a layer whose only content was walls was deleted whole,
+   silently. Asked before building on it (`hex_world/probe/edgehold.loft`) and fixed at the
+   chokepoint — `hex_present`/`stored_present` govern elision and the window; occupancy
+   (material) stays what `E1r` asks and `F1` stacks.
+2. **⚠ EVERY DISC IN THE EDITOR WAS A SHEARED BLOB.** `moros_map::hex_distance` is the AXIAL
+   cube distance and this editor is odd-r OFFSET, so the unqualified name called `(0,0)` and
+   its SW neighbour two steps apart. The road's width, the scatter's reach, the storey's
+   footprint and the house's outline had all been sheared. No gate could see it because each
+   measured the shape the editor drew — `opening.mjs` walked the house ring with the same
+   axial formula, so gate and editor agreed *by making the same mistake*. Every
+   `hex_distance` in `editor_server.loft` is now `hex_grid::`-qualified; **removing the
+   parity-blind copy from `moros_map` is #3's, and it is still exported.**
+3. **loft #654** — past ~32 KB of body the interpreter stops taking a `while true`'s backward
+   jump: the loop runs ONE pass and the process exits 0. Two `println` lines in the editor's
+   dispatch were enough, and *removing two unrelated lines elsewhere* fixed it. Filed
+   upstream with a generated reproducer (1484 statements loops, 1485 does not; `--native` is
+   correct). The workaround is to lift handlers out of `main` — measured margin now ~120
+   statements, where it was two. **When the next rung runs out of room, extract; do not go
+   hunting for a bug.**
+4. **Collision worked for exactly one tick**, which is indistinguishable from never working.
+   Stopping exactly ON the bisector leaves the position ambiguous — `hex_at` rounds to the
+   far cell and the next tick starts beyond the wall. The fix is a `SKIN` (stop 1 cm short),
+   not a better test: a cell test cannot be made exact at its own boundary. Raised in
+   `hex_edge`'s README — **that note is UNCOMMITTED in the shared tree**, like the
+   `hex_field` fix below.
+
+### New this rung
+
+`23:<mat>,<rad>` rings the disc you stand in · `24:<dir>,<mat>` sets one edge (which is what
+puts a gateway in a fence) · walls draw as a **sixth** chunk surface, and the stride is now a
+named `SURFACES` constant on both sides of the wire · a field fill stops at any edge, so
+`X70`'s "a doorway is still a boundary" is the difference between a fill of 19 and a refusal
+· `F`/`G` in the browser fence and wall the ground you stand on.
+
+## Since 2026-07-27 — rows 8-11 built, and the gates got honest
 
 **Branch `plan/7-hex-editor`.** Working tree clean, everything pushed. ⚠ The remote's
 `main` is still at `4ffa03e`; all of this lives on the plan branch. Pushing `main` from
@@ -93,6 +143,8 @@ for loft the language and its tooling only.
 
 ### Open
 
+- **#3** `moros_map::hex_distance` is axial and still exported — the trap that sheared every
+  disc in the editor. The editor no longer calls it; nothing else has been checked.
 - **#13** LOD banding and instanced draw.
 - **#14** the general multi-rig connector (the cart's is one frame with fixed offsets).
 - **#15** the sandbox seam — what a routine may touch. Only *attachment* is built.
