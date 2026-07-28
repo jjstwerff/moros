@@ -202,6 +202,7 @@ const TICK_US = 33000;
 //                    11:            field — fill the enclosure you stand in
 //                    12:<+1|-1>     storey — a floor above, a cellar below
 //                    13:<species>,<density>   scatter vegetation (species 0 clears)
+//                    14:<roof>     stencil — place a structure as a band (`P1`)
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -242,6 +243,7 @@ const MSG_ROAD = 10;      // roads: lay a graded strip as you walk (moros#9)
 const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (moros#11)
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
+const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
 
 // One authored peak. This — a vector of these — is the whole terrain.
 // ── The world is a VOXEL STORE, not a list of peaks ──────────────────────────
@@ -272,6 +274,8 @@ const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
 const TREE_R = 0.16; const TREE_G = 0.34; const TREE_B = 0.14;
+const STENCIL_R    = 2;           // hexes, the footprint of the built-in house
+const FOUNDATION   = 12;          // how far a structure may cut into the ground
 
 fn new_world() -> World {
   n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
@@ -639,6 +643,80 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
     }
   }
   built
+}
+
+// ── STENCILS (rung W4, moros#12) — `P1`, a band and not a column ────────────
+//
+// The editor's half of `P1`. The model decides whether a band may be written;
+// what belongs HERE is the placement policy — where the band sits and how deep
+// it reaches — because that is a choice about buildings, not about columns.
+//
+// The anchor is THE SURFACE YOU ARE STANDING ON, read from the feet. So the band
+// is `[anchor - FOUNDATION, anchor + roof]`:
+//   · the floor replaces the ground it meets, up to one storey of foundation —
+//     a house cuts into a slope rather than hovering over it;
+//   · a cave deeper than the foundation is BELOW `lo`, and survives;
+//   · a bridge deck above the roof is ABOVE `hi`, and survives;
+//   · a deck too close above the roof is neither — `F1` refuses the placement,
+//     which is the honest answer, because the house does not fit there.
+//
+// ⚠ ATOMIC ACROSS THE FOOTPRINT. A house is many columns and a refusal must mean
+// no house, not half a house on the columns that happened to come first. So
+// every column is asked with `world_band_check` before any is written — the same
+// check the write runs, exposed rather than reimplemented.
+fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
+                 anchor: integer, roof_up: integer,
+                 kept_below: &integer, kept_above: &integer, why: &text) -> integer {
+  lo = anchor - FOUNDATION;
+  if lo < W_RESERVE { lo = W_RESERVE; }
+  hi = anchor + roof_up;
+  band: vector<hex_world::Hex> = [
+    hex_world::Hex { h_height: (anchor as u16? ?? 0), h_material: (FLOOR_MAT as u8? ?? 0) },
+    hex_world::Hex { h_height: (hi as u16? ?? 0), h_material: (FLOOR_MAT as u8? ?? 0) }
+  ];
+
+  // PASS 1 — may every column take it?
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_distance(q, r, cq, cr) <= rad {
+        c = world_band_check(wld, q, r, lo, hi, band);
+        if c.cw_code != CW_OK {
+          why = "({q},{r}) layer {c.cw_layer}: {c.cw_detail}";
+          return 0 - 10 - c.cw_code;
+        }
+      }
+    }
+  }
+
+  // PASS 2 — write, and count what the band left alone
+  placed = 0;
+  kept_below = 0;
+  kept_above = 0;
+  for dq2 in (0 - rad)..(rad + 1) {
+    for dr2 in (0 - rad)..(rad + 1) {
+      q2 = cq + dq2;
+      r2 = cr + dr2;
+      if hex_distance(q2, r2, cq, cr) <= rad {
+        w = world_merge_band(wld, q2, r2, lo, hi, band);
+        if w.cw_code != CW_OK {
+          why = "({q2},{r2}) refused on write: {w.cw_detail}";
+          return 0 - 10 - w.cw_code;
+        }
+        placed = placed + 1;
+        col = world_column(wld, q2, r2);
+        for e in col.co_cells {
+          if hex_world::hex_occupied(e) {
+            eh = e.h_height as integer ?? 0;
+            if eh < lo { kept_below = kept_below + 1; }
+            if eh > hi { kept_above = kept_above + 1; }
+          }
+        }
+      }
+    }
+  }
+  placed
 }
 
 // ── VEGETATION (rung W5, moros#13) ───────────────────────────────────────────
@@ -1492,6 +1570,24 @@ fn main() {
             srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
             println("editor: storey {sdir:+} on {nb} cells");
           }
+        } else if ev.msg_id == MSG_STENCIL {
+          // payload: the roof height above the floor, in height units
+          roof_up = ev.payload as integer ?? STOREY_H;
+          if roof_up <= 0 { roof_up = STOREY_H; }
+          shx2 = world_to_hex(px, pz);
+          anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
+          kb = 0; ka = 0; swhy2 = "";
+          np = stencil_place(wld, shx2.ha_q, shx2.ha_r, STENCIL_R, anch, roof_up,
+                             kb, ka, swhy2);
+          if np < 0 {
+            srv.send_to(ev.cid, "S:stencil refused ({np}) {swhy2}");
+            println("editor: stencil refused ({np}) — {swhy2}");
+          } else {
+            mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
+            srv.send_to(ev.cid,
+              "S:stencil placed {np} cells, kept {kb} below and {ka} above");
+            println("editor: stencil placed {np} cells, kept {kb} below, {ka} above");
+          }
         } else if ev.msg_id == MSG_SCATTER {
           // payload "<species>,<density>"; species 0 clears the disc
           sc_i = ev.payload.find(",");
@@ -1727,6 +1823,13 @@ fn main() {
       if nrebuilt != 0 {
         println("editor: rebuilt {nrebuilt} chunks in "
                 + "{(ticks() - t_flush) / 1000 ?? 0} ms");
+        // Say it on the wire, not only to the console. A client — a gate above
+        // all — can otherwise learn that the WORLD changed (the load is
+        // acknowledged) but never that the PICTURE caught up, and the two are
+        // several ticks apart. Every mesh-reading gate that "settled" on a value
+        // was really settling on the last one, and `persist` did it about one run
+        // in five. This is the missing half of that handshake.
+        srv.broadcast("S:rebuilt {nrebuilt} chunks");
       }
     }
 

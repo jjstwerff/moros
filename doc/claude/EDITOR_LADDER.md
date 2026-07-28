@@ -54,7 +54,8 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
 | — | ✋ | | | |
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
-| 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs`; stencils, roofs and openings still open |
+| 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
+| 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft`; roofs and openings still open |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
@@ -236,3 +237,41 @@ while streaming behaviour was unchanged, because the gate bounded MESHES. It now
 bounds chunks. The mesh-id scheme went `cid*3 + 15 + k` → `cid*4 + 15 + k`, and
 all three decoders moved with it in the same commit; the stream gate's counts did
 not, which is precisely the drift rung 7 was supposed to have taught me.
+
+
+## What rung 8b found — the picture is not the world
+
+Stencils are wired to key `14:<roof>`. The band is `[anchor - FOUNDATION, anchor
++ roof]` where the anchor is the surface you are standing on, so a house cuts up
+to one storey into a slope, keeps a cave deeper than that, keeps a deck above it,
+and is refused whole when a deck is too close to fit. The placement is atomic
+across its 19 columns: every column is asked with `world_band_check` — the same
+check the write runs, exposed rather than reimplemented — before any is written.
+
+**A refusal that was the rule working.** The first bridge scenario built decks on
+raw hillside, where a storey is added `STOREY_H` above each column's OWN top, so
+the decks follow the terrain while a roof is flat. Over a radius-2 footprint the
+two pinched to 4 apart and `F1` refused. That was correct — no flat house fits
+under a sloping deck — and the fix was to level the ground with the thing that
+levels it: a stencil floor is flat across its footprint, so the gate places one,
+raises the decks off that, and the deck is uniform by construction.
+
+**`> 0` is not a gate.** The cave clause first asserted `keptBelow > 0` and stayed
+GREEN under a mutation that replaced the whole column — because
+`world_set_column` writes only layers `0..n-1`, so layers deeper than the band
+survive by accident. 18 cells of a 56-cell cave looked like preservation. The
+clause now asserts the number the rule predicts: 19 columns × 3 cellars, less the
+one whose top cellar fell inside the band, is 56.
+
+**The server said the world had changed but not that the picture had.** `persist`
+kept flaking — about one run in five — because a load is acknowledged when the
+CELLS change, while the meshes are rebuilt several ticks later, so a settle in
+between stabilises on the previous picture. The rebuild is now broadcast
+(`S:rebuilt N chunks`), which is the missing half of that handshake, and every
+mesh-reading gate can wait for it. Five consecutive green runs, then the suite.
+
+**Not mutation-verified: the pre-flight.** Removing it leaves the gate green,
+because in this scenario the refusing column is the FIRST one examined, so no
+partial house is written and nothing is observable. The single-column half of the
+claim IS gated, in `hex_world/tests/stencil.loft` — a refused band leaves the
+column untouched. The multi-column half is argued, not tested.

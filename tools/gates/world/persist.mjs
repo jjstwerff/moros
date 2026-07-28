@@ -24,10 +24,15 @@ const hi = () => {
 };
 const status = [];
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
-// Wait for the SERVER to say the command landed, then for the picture to stop
-// moving. Two different signals on purpose: the acknowledgement is independent
-// of the height this gate asserts, so waiting on it cannot make the assertion
-// vacuous the way "wait until the height is what I expect" would.
+// Wait for the SERVER to say the command landed, then that it has REBUILT the
+// meshes, then for the picture to stop moving. Three signals, none of them the
+// height this gate asserts — so waiting cannot make the assertion vacuous the
+// way "wait until the height is what I expect" would.
+//
+// ⚠ `loaded` alone is not enough, and that is the whole flake: the world changes
+// when the load is acknowledged, the MESHES change several ticks later, and a
+// settle in between stabilises on the picture from before the load. It read a
+// wiped world as still 6.25 about one run in five.
 const ack = async (match, limitMs = 8000) => {
   const from = status.length;
   for (let t = 0; t < limitMs; t += 100) {
@@ -76,9 +81,11 @@ ws.onmessage = async (e) => {
     ws.send('8:gate'); await wait(700);            // save the raised world
     ws.send('9:gateflat');                         // wipe by loading the flat one
     const ackFlat = await ack('loaded');
+    await ack('rebuilt');
     const wiped = await settle();
     ws.send('9:gate');                             // load the raised one back
     const ackRaised = await ack('loaded');
+    await ack('rebuilt');
     const restored = await settle();
 
     // CONTROL, and the behaviour the old wipe depended on being broken: loading a

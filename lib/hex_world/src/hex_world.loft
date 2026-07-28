@@ -338,22 +338,13 @@ fn check_column(w: World, col: Column) -> ColumnWrite {
 // Validation is NOT duplicated here. This composes the merged column and hands it
 // to `world_set_column`, so there is exactly one place that decides whether a
 // column is legal, and a band cannot acquire a weaker rule than a plain write.
-pub fn world_merge_band(w: &World, cq: integer, cr: integer,
-                        lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
-  if hi < lo {
-    return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
-                         cw_detail: "band [{lo},{hi}] is inverted" };
-  }
-  // `G0` — the caller's declared band is CHECKED, not trusted. A cell outside it
-  // would silently overwrite something the interval promised to preserve, and the
-  // promise is the whole point of the operation.
-  for b in band {
-    bh = b.h_height as integer ?? 0;
-    if hex_occupied(b) && (bh < lo || bh > hi) {
-      return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
-                           cw_detail: "stencil cell at {bh} is outside its band [{lo},{hi}]" };
-    }
-  }
+// The column a band placement WOULD produce. Split out so a caller can ask
+// before it writes: a placement covering many columns must be able to refuse as
+// a whole, and the only honest way to know is to compose and check each one
+// first. This is not a second validator — `world_band_check` runs the same
+// `check_column` the write runs.
+fn band_column(w: World, cq: integer, cr: integer,
+               lo: integer, hi: integer, band: vector<Hex>) -> Column {
   cur = world_column(w, cq, cr);
 
   // What survives, plus what the band brings, in ascending height — the order
@@ -388,7 +379,34 @@ pub fn world_merge_band(w: &World, cq: integer, cr: integer,
   // appending keeps the ascending order the slot assignment above relies on.
   while taken < len(keep) { out += [keep[taken]]; taken = taken + 1; }
 
-  world_set_column(w, Column { co_q: cq, co_r: cr, co_cells: out })
+  Column { co_q: cq, co_r: cr, co_cells: out }
+}
+
+// Would this placement be accepted? Read-only, and the SAME check the write runs.
+pub fn world_band_check(w: World, cq: integer, cr: integer,
+                        lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
+  if hi < lo {
+    return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
+                         cw_detail: "band [{lo},{hi}] is inverted" };
+  }
+  // `G0` — the caller's declared band is CHECKED, not trusted. A cell outside it
+  // would silently overwrite something the interval promised to preserve, and the
+  // promise is the whole point of the operation.
+  for b in band {
+    bh = b.h_height as integer ?? 0;
+    if hex_occupied(b) && (bh < lo || bh > hi) {
+      return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
+                           cw_detail: "stencil cell at {bh} is outside its band [{lo},{hi}]" };
+    }
+  }
+  check_column(w, band_column(w, cq, cr, lo, hi, band))
+}
+
+pub fn world_merge_band(w: &World, cq: integer, cr: integer,
+                        lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
+  pre = world_band_check(w, cq, cr, lo, hi, band);
+  if pre.cw_code != CW_OK { return pre; }
+  world_set_column(w, band_column(w, cq, cr, lo, hi, band))
 }
 
 pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
