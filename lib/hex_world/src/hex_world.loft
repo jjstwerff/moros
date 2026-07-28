@@ -409,6 +409,99 @@ pub fn world_merge_band(w: &World, cq: integer, cr: integer,
   world_set_column(w, band_column(w, cq, cr, lo, hi, band))
 }
 
+// ── `D1` — DRESSING IS INERT, AND IT NEEDS A WAY IN ─────────────────────────
+//
+// > Dressing layers are excluded from `col_K`, from `F1`, and from every
+// > collision query. Adding, removing or altering one leaves every terrain layer
+// > bit-identical.
+//
+// Until now nothing could CREATE one: `world_set_column` materialises every
+// layer as terrain, so `P2` was enforced against a case that could not arise.
+// A rule with no reachable instance is a rule nobody has tested.
+//
+// Dressing gets its own view. A terrain column is index-aligned to the chunk's
+// layers because `F1` reads consecutive occupied cells in order; dressing has no
+// `F1`, so its view is simply "the dressing layers, in order" — and that
+// independence is the point. A prop moving must not renumber a terrain slot.
+pub fn world_set_dressing(w: &World, col: Column) -> ColumnWrite {
+  // `R1` still applies — dressing shares the window, so it cannot sit below the
+  // floor any more than terrain can. `F1` does NOT: two props may overlap, and a
+  // lantern may hang inside the arch it lights.
+  for i in 0..len(col.co_cells) {
+    c = col.co_cells[i];
+    if hex_occupied(c) && c.h_height < w.w_reserve {
+      return ColumnWrite { cw_code: CW_RESERVE, cw_layer: i,
+                           cw_detail: "dressing at {c.h_height} is below the reserve {w.w_reserve}" };
+    }
+  }
+
+  cx = chunk_of(col.co_q);
+  cz = chunk_of(col.co_r);
+  ix = cell_index(col.co_q, col.co_r);
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 {
+    nb = 0;
+    for c2 in col.co_cells { if hex_occupied(c2) { nb = c2.h_height; } }
+    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
+    ci = len(w.w_chunks) - 1;
+    w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
+  }
+
+  // Where the dressing layers are. New ones are APPENDED, so terrain slots keep
+  // their indices — `D1`'s "leaves every terrain layer bit-identical" is a
+  // statement about the bytes, and renumbering would break it even if every
+  // value survived.
+  slots: vector<integer> = [];
+  for li in 0..len(w.w_chunks[ci].ck_layers) {
+    if w.w_chunks[ci].ck_layers[li].ly_kind == KIND_DRESSING { slots += [li]; }
+  }
+  while len(slots) < len(col.co_cells) {
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: 0, ly_kind: KIND_DRESSING,
+                                         ly_ver: 0, ly_cells: empty_cells() }];
+    slots += [len(w.w_chunks[ci].ck_layers) - 1];
+  }
+
+  base = w.w_chunks[ci].ck_base;
+  changed = false;
+  for k in 0..len(col.co_cells) {
+    c3 = col.co_cells[k];
+    l = slots[k];
+    nv = StoredHex { sv_height: (c3.h_height - base) as u16? ?? 0,
+                     sv_material: c3.h_material, sv_item: c3.h_item,
+                     sv_item_rotation: c3.h_item_rotation,
+                     sv_wall_n: c3.h_wall_n, sv_wall_ne: c3.h_wall_ne,
+                     sv_wall_se: c3.h_wall_se };
+    prev = w.w_chunks[ci].ck_layers[l].ly_cells[ix];
+    if prev.sv_height != nv.sv_height || prev.sv_material != nv.sv_material
+       || prev.sv_item != nv.sv_item || prev.sv_item_rotation != nv.sv_item_rotation {
+      if !changed { w.w_tau = w.w_tau + 1; changed = true; }
+      w.w_chunks[ci].ck_layers[l].ly_cells[ix] = nv;
+      w.w_chunks[ci].ck_layers[l].ly_ver = w.w_tau;
+    }
+  }
+  ok_write()
+}
+
+// The dressing at a cell — its own index space, over dressing layers only.
+pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
+  ch = w.w_chunks[ci];
+  ix = cell_index(q, r);
+  out: vector<Hex> = [];
+  for ly in ch.ck_layers {
+    if ly.ly_kind == KIND_DRESSING {
+      c = ly.ly_cells[ix];
+      out += [Hex { h_height: (ch.ck_base + c.sv_height) as u16? ?? 0,
+                    h_material: c.sv_material, h_item: c.sv_item,
+                    h_item_rotation: c.sv_item_rotation,
+                    h_wall_n: c.sv_wall_n, h_wall_ne: c.sv_wall_ne,
+                    h_wall_se: c.sv_wall_se }];
+    }
+  }
+  Column { co_q: q, co_r: r, co_cells: out }
+}
+
 pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {

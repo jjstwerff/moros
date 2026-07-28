@@ -562,6 +562,22 @@ anything about its relationship to the surface.
 > Dressing layers are excluded from `col_K`, from **F1**, and from every collision query.
 > Adding, removing or altering one leaves every terrain layer bit-identical.
 
+Dressing is written by `world_set_dressing` and read by `world_dressing`, and it needs its
+own pair because a terrain write cannot create it: `world_set_column` materialises every
+layer as terrain. Until that pair existed **P2 guarded a case that could not arise** —
+enforced, never exercised, which is a rule nobody has tested.
+
+The two views differ in a way worth stating. A **terrain** column is index-aligned to the
+chunk's layers, because **F1** reads consecutive occupied cells in vector order. A
+**dressing** column is simply *the dressing layers, in order* — it has no **F1**, so it
+needs no alignment, and that independence is the point: moving a prop must not renumber a
+terrain slot. New dressing layers are therefore **appended**, never inserted, since D1's
+"bit-identical" is a claim about the bytes and renumbering would break it even if every
+value survived.
+
+`R1` still applies — dressing shares the window, so it cannot sit below the floor. `F1`
+does not: two props may overlap, and a lantern may hang inside the arch it lights.
+
 ### Group 4 — labels, operation and concurrency
 
 ### I4 — Label exhaustion degrades, it does not fail
@@ -816,6 +832,9 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **X4** | **compact a world → every cache stays valid** | make one real edit → that cache, and only that one, goes stale |
 | **X5** | kill the process mid-compaction → the world opens unchanged and complete | — |
 | **D1** | terrain bit-identical with and without dressing | change a prop → still bit-identical |
+| **D1** | create a dressing layer as terrain → `P2` fires on real content | `tests/dressing.loft` |
+| **D1** | apply `F1` to dressing → two props one unit apart are refused | `tests/dressing.loft` |
+| **D1** | a prop survives save and load, layer KIND included | `tests/dressing.loft` |
 | **B1** | at every border hex, `|M| ≤ 1` | set `ε = 2θ` → a second candidate appears and the gate fires |
 | **B3** | no two layers at `x` match one at `x'` | — |
 | **C1** | world creation refuses `ε = 2θ` | `ε = 2θ + 1` accepted |

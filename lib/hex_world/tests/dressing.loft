@@ -1,0 +1,146 @@
+// `D1` gates — dressing is inert (`doc/claude/WORLD_MODEL.md` Part II).
+//
+// > Dressing layers are excluded from `col_K`, from `F1`, and from every
+// > collision query. Adding, removing or altering one leaves every terrain layer
+// > bit-identical.
+//
+// Until `world_set_dressing` existed nothing could create a dressing layer, so
+// `P2` was a rule guarding a case that could not arise — enforced, never
+// exercised. These gates are what make it reachable.
+use hex_world;
+
+fn world_ok() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
+  n.wn_world
+}
+
+fn ground(h: integer) -> Hex { Hex { h_height: (h as u16? ?? 0), h_material: 1 } }
+fn prop(h: integer, item: integer) -> Hex {
+  Hex { h_height: (h as u16? ?? 0), h_material: 7, h_item: (item as u8? ?? 0) }
+}
+
+fn heights_of(c: Column) -> vector<integer> {
+  out: vector<integer> = [];
+  for e in c.co_cells { if hex_occupied(e) { out += [e.h_height as integer ?? 0]; } }
+  out
+}
+
+// ── dressing exists, and reads back ─────────────────────────────────────────
+
+fn test_d1_dressing_is_written_and_read() {
+  w = world_ok();
+  r = world_set_dressing(w, Column { co_q: 0, co_r: 0, co_cells: [prop(300, 4)] });
+  assert(r.cw_code == CW_OK, "a prop was refused: {r.cw_detail}");
+  d = world_dressing(w, 0, 0);
+  assert(len(heights_of(d)) == 1, "the prop did not read back: {heights_of(d)}");
+  assert(d.co_cells[0].h_item == 4, "the prop lost its item index");
+  assert(world_layer_kind(w, 0, 0, 0) == KIND_DRESSING,
+         "the layer created for a prop is kind {world_layer_kind(w, 0, 0, 0)}, not dressing — "
+         + "which is the gap this exists to close: nothing used to CREATE one");
+}
+
+// ── it is invisible to terrain, and leaves terrain bit-identical ────────────
+
+fn test_d1_dressing_is_invisible_to_a_terrain_read() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  before = heights_of(world_column(w, 0, 0));
+
+  d = world_set_dressing(w, Column { co_q: 0, co_r: 0, co_cells: [prop(305, 4)] });
+  assert(d.cw_code == CW_OK, "the prop was refused: {d.cw_detail}");
+
+  after = heights_of(world_column(w, 0, 0));
+  assert(len(after) == len(before) && after[0] == before[0],
+         "adding a prop changed the TERRAIN read: {before} became {after}. `D1` says "
+         + "altering dressing leaves every terrain layer bit-identical");
+}
+
+// ── and a terrain write does not clear it ──────────────────────────────────
+
+fn test_d1_a_terrain_write_leaves_dressing_alone() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  d = world_set_dressing(w, Column { co_q: 0, co_r: 0, co_cells: [prop(305, 4)] });
+  assert(d.cw_code == CW_OK, "setup refused: {d.cw_detail}");
+
+  // move the ground; the prop must survive it
+  s2 = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(340)] });
+  assert(s2.cw_code == CW_OK, "the terrain write was refused: {s2.cw_detail}");
+  assert(len(heights_of(world_dressing(w, 0, 0))) == 1,
+         "a TERRAIN write deleted the dressing: {heights_of(world_dressing(w, 0, 0))}. The "
+         + "absent placeholder a terrain read produces for a dressing slot must never be "
+         + "written back");
+}
+
+// ── INERT: `F1` does not apply to it ───────────────────────────────────────
+
+fn test_d1_dressing_does_not_fold() {
+  w = world_ok();
+  // one unit apart — terrain at this spacing is a fold, dressing is a lantern
+  // hanging inside the arch it lights
+  r = world_set_dressing(w, Column { co_q: 0, co_r: 0,
+                                     co_cells: [prop(300, 4), prop(301, 5)] });
+  assert(r.cw_code == CW_OK,
+         "two props one unit apart were refused ({r.cw_code}) — `F1` was applied to "
+         + "dressing, and it is INERT: it does not collide, so it does not constrain");
+  assert(len(heights_of(world_dressing(w, 0, 0))) == 2, "one of the props was lost");
+}
+
+// CONTROL — the same spacing in TERRAIN must still be a fold, or the gate above
+// proves nothing about dressing.
+fn test_d1_control_terrain_at_that_spacing_still_folds() {
+  w = world_ok();
+  r = world_set_column(w, Column { co_q: 0, co_r: 0,
+                                   co_cells: [ground(300), ground(301)] });
+  assert(r.cw_code == CW_FOLD,
+         "terrain one unit apart was ACCEPTED (code {r.cw_code}); then the dressing gate "
+         + "above is not measuring an exemption, it is measuring nothing");
+}
+
+// ── `P2`, now against a case that can actually arise ───────────────────────
+
+fn test_p2_terrain_still_refuses_a_dressing_slot_created_this_way() {
+  w = world_ok();
+  d = world_set_dressing(w, Column { co_q: 0, co_r: 0, co_cells: [prop(300, 4)] });
+  assert(d.cw_code == CW_OK, "setup refused: {d.cw_detail}");
+  // layer 0 of this chunk is now dressing, created by the writer above
+  r = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(r.cw_code == CW_MIX,
+         "terrain was written into a layer that a PROP created (code {r.cw_code})");
+}
+
+// ── and it survives the file, which is where a silent loss would hide ───────
+//
+// A prop that vanishes on reload is the worst version of this bug: the editor
+// shows it, the world file does not carry it, and nobody notices until someone
+// reopens the scene. The layer KIND has to round-trip too — a dressing layer
+// that comes back as terrain would resurrect `P2` against real content.
+fn test_d1_dressing_survives_save_and_load() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  d = world_set_dressing(w, Column { co_q: 0, co_r: 0,
+                                     co_cells: [prop(305, 4), prop(306, 5)] });
+  assert(d.cw_code == CW_OK, "setup refused: {d.cw_detail}");
+
+  p = "hexworld_dressing_rt.bin";
+  assert(world_save(w, p, [1]) == WS_OK, "save refused");
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+
+  back = world_dressing(ld.wl_world, 0, 0);
+  hs = heights_of(back);
+  assert(len(hs) == 2, "the props did not survive the file: {hs}");
+  assert(hs[0] == 305 && hs[1] == 306, "the props came back at {hs}");
+  assert(back.co_cells[0].h_item == 4 && back.co_cells[1].h_item == 5,
+         "the props lost their item indexes across the file");
+  assert(world_layer_kind(ld.wl_world, 0, 0, 1) == KIND_DRESSING,
+         "a dressing layer came back as kind {world_layer_kind(ld.wl_world, 0, 0, 1)} — "
+         + "the kind must round-trip, or `P2` fires against real content on reload");
+  // and the terrain is still there and still terrain
+  t = heights_of(world_column(ld.wl_world, 0, 0));
+  assert(len(t) == 1 && t[0] == 300, "the terrain came back as {t}");
+}
