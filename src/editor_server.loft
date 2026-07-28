@@ -23,6 +23,7 @@ use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
 use moros_map;
 use hex_world;
 use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
+use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's query
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
@@ -727,6 +728,95 @@ fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
     }
   }
   n
+}
+
+// ── COLLISION (rung W2, moros#10) — what the walk cannot cross ─────────────
+//
+// **The query is `hex_edge`'s; the ANSWER is ours.** `sweep_path` walks a SEGMENT
+// across the lattice one edge at a time and stops at the first blocked one, so the
+// result is a function of where you are and where you are going — never of how
+// many ticks the motion was cut into. A dropped frame cannot tunnel through a
+// fence, and there is no step size anywhere to tune.
+//
+// What belongs here is the PREDICATE, and there are two of them:
+//
+//   material   stops a walker   stops the camera
+//   WALL       yes              yes
+//   DOOR       no               no
+//   FENCE      yes              **no**
+//
+// That last row is the whole reason they are two functions rather than one. The
+// camera's discriminator is NOT "does it block movement" — a fence stops a
+// character and is visually almost nothing, so avoiding it would make the camera
+// lurch every time you walked beside a paddock. It is whether the camera can be
+// INSIDE the thing, because a volume you are inside fills the entire screen while
+// a thing you see past costs a fraction of the frame (`EDITOR_SUBSTRATE.md`).
+//
+// The library owns the traversal and knows nothing about materials; the consumer
+// supplies the answer. Same seam as the opaque palette in the world contract.
+fn wall_stops_walk(mat: integer) -> boolean { mat == WALL_MAT || mat == FENCE_MAT }
+fn wall_stops_view(mat: integer) -> boolean { mat == WALL_MAT }
+
+const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs four
+
+// The collision proxy over a window around the character.
+//
+// ⚠ IT READS ONE RING WIDER THAN THE WINDOW, and that is not a margin — it is
+// `E1e`. Half of the edges bounding the window's rim are stored in the cells
+// OUTSIDE it, so a loop over the window alone builds a proxy with holes in it, and
+// the holes are exactly where a character walks out.
+fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
+                view: boolean) -> EdgeSet {
+  n = 2 * reach + 1;
+  e = edgeset_new(cq - reach, cr - reach, n, n);
+  slot_dir: vector<integer> = [4, 5, 0];        // SLOT_NW, SLOT_NE, SLOT_E
+  for r in (cr - reach - 1)..(cr + reach + 2) {
+    for q in (cq - reach - 1)..(cq + reach + 2) {
+      c = world_cell(wld, q, r, SURFACE);
+      mats: vector<integer> = [c.h_wall_n as integer ?? 0,
+                               c.h_wall_ne as integer ?? 0,
+                               c.h_wall_se as integer ?? 0];
+      for si in 0..3 {
+        stops = wall_stops_walk(mats[si]);
+        if view { stops = wall_stops_view(mats[si]); }
+        if stops {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, slot_dir[si]);
+          hex_edge::edge_block(e, q, r, nq, nr);
+        }
+      }
+    }
+  }
+  e
+}
+
+// Move toward a point, stopping at the first wall in the way.
+//
+// Stopping DEAD rather than sliding is this rung's answer, and it is deliberate:
+// a slide needs the wall's true normal, and a hex edge carries only six of them —
+// measured by `hex_edge` as wrong by up to 90° against a wall crossing the lattice
+// diagonally. A slide along the wrong normal is worse than a stop, so the surface
+// that carries the exact geometry comes first, and the slide after it.
+//
+// ⚠ IT STOPS A SKIN SHORT OF THE WALL, and that is not a fudge — it is what makes
+// the stop hold. `sweep_path` reports the exact fraction at which the segment
+// meets the bisector, and standing exactly THERE is standing exactly between two
+// cells: `hex_at` has to round, and when it rounds to the far one the next tick
+// begins on the other side of the wall with the wall behind it. Measured — the
+// character stopped dead on the fence for one tick and walked through on the next,
+// which reads as "collision does not work" and is really "collision worked once".
+//
+// A cell test cannot be made exact at its own boundary, so the position is kept
+// unambiguously on the walkable side instead. `SKIN` is 1 cm at this scale.
+const SKIN = 0.01;
+
+fn walk_to(coll: EdgeSet, x0: float, z0: float, x1: float, z1: float) -> (float, float) {
+  (t, _hq, _hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
+  if hd < 0 { return (x1, z1); }
+  seg = sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)) ?? 0.0;
+  back = t;
+  if seg > 0.0 { back = t - (SKIN / seg ?? 0.0); }
+  if back < 0.0 { back = 0.0; }
+  (x0 + (x1 - x0) * back, z0 + (z1 - z0) * back)
 }
 
 // Ring the disc you stand in. A MATERIAL IS NOMINAL and a RADIUS IS ORDINAL, and
@@ -1848,9 +1938,22 @@ fn cam_clear_at(x: float, z: float, wld: World) -> float {
   CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
 }
 
-// How far the eye may travel along the boom before it is inside the ground.
+// How far the eye may travel along the boom before it is inside the ground — or
+// inside a wall (rung W2).
+//
+// **A SOLID WALL OBSTRUCTS EXACTLY AS TERRAIN DOES, AND A FENCE NOT AT ALL.** The
+// discriminator is `wall_stops_view`, which the CONSUMER supplies: a fence stops a
+// character and is visually almost nothing, so giving way to one would make the
+// camera lurch every time you walked beside a paddock, while a castle wall is not
+// terrain and obstructs totally. What matters is whether the camera can be INSIDE
+// the thing (`EDITOR_SUBSTRATE.md`).
+//
+// The wall test is a SWEEP rather than a sample: `sweep_path` finds the exact
+// crossing, so a wall cannot slip between two samples the way a thin thing can.
+// Height is honoured — the boom is only shortened while the eye is BELOW the
+// wall's top, so a camera looking over a low wall keeps its full length.
 fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                 want: float, wld: World) -> float {
+                 want: float, wld: World, coll: EdgeSet) -> float {
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
   free = want;
@@ -1864,6 +1967,17 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
+    }
+  }
+  (wt, wq, wr, wd) = hex_edge::sweep_path(coll, ox, oz,
+                                          ox - ky * want * kp, oz - sy * want * kp);
+  if wd >= 0 {
+    (wnq, wnr) = hex_grid::hex_neighbor(wq, wr, wd);
+    wh = terrain_h(wq, wr, wld);
+    if terrain_h(wnq, wnr, wld) > wh { wh = terrain_h(wnq, wnr, wld); }
+    if oy + want * wt * sp < ((wh + WALL_UP) as float) * HEIGHT_SCALE {
+      stop = want * wt - SKIN;
+      if stop < free { free = stop; }
     }
   }
   lo = want * CAM_MIN_FRAC;
@@ -1883,7 +1997,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
 // beside a wall still carries margin rather than sitting exactly on the edge of
 // being wrong.
 fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
-                cpitch: float, want: float, wld: World) -> float {
+                cpitch: float, want: float, wld: World, coll: EdgeSet) -> float {
   ahead = rate * CAM_LOOK_S;
   lo = 0.0 - CAM_ARC;
   hi = CAM_ARC;
@@ -1895,7 +2009,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
     y2 = cyaw + off;
     // the pivot swings with yaw too, so it is recomputed per sample
     f = cam_free_dist(cam_pivot_x(cx, y2), cam_pivot_y(cyy), cam_pivot_z(cz, y2),
-                      y2, cpitch, want, wld);
+                      y2, cpitch, want, wld, coll);
     if f < worst { worst = f; }
   }
   worst
@@ -1904,7 +2018,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
 // The SMALLEST lift that clears the whole boom, or the full give if none does.
 // Smallest, so the assist takes only what the obstruction actually costs.
 fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                    want: float, wld: World) -> float {
+                    want: float, wld: World, coll: EdgeSet) -> float {
   best = cpitch + CAM_PITCH_GIVE;
   found = false;
   for i in 0..(CAM_TRIES + 1) {
@@ -1912,7 +2026,7 @@ fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       lift = CAM_PITCH_GIVE * (i as float) / (CAM_TRIES as float) ?? 0.0;
       p = cpitch + lift;
       if p > CAM_PITCH_CEIL { p = CAM_PITCH_CEIL; }
-      if cam_free_dist(ox, oy, oz, cyaw, p, want, wld) >= want - 0.001 {
+      if cam_free_dist(ox, oy, oz, cyaw, p, want, wld, coll) >= want - 0.001 {
         best = p;
         found = true;
       }
@@ -2069,6 +2183,15 @@ fn main() {
   // The world itself. An empty one is a flat plane at height 0 everywhere, because
   // an unwritten cell reads as absent and absence IS the floor (`E1`).
   wld = new_world();
+
+  // The collision proxy and its validity, keyed on the cell and the edit clock.
+  coll_move = edges_around(wld, 0, 0, COLL_R, false);
+  coll_view = edges_around(wld, 0, 0, COLL_R, true);
+  coll_q = 0;
+  coll_r = 0;
+  coll_tau = 0 - 1;                   // never a real clock value, so the first
+  coll_have = false;                  // tick always builds
+
   levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
   level_h = 0;                 // the frozen foot height, in height units
@@ -2657,6 +2780,19 @@ fn main() {
       steps = (now_us - last_us) / TICK_US ?? 1;
       last_us = last_us + steps * TICK_US;
       dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
+
+      // The collision proxy, refreshed when it can no longer be right: when the
+      // character has changed cell, or when the world's EDIT CLOCK has moved.
+      // `τ` is what makes the second one exact — a cache is valid while nothing
+      // has been written, which is a fact about what happened rather than a guess
+      // about how long ago (`T1`). Building it every tick would be a 289-cell scan
+      // at 30Hz for a world that mostly does not change.
+      chx = world_to_hex(px, pz);
+      if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r || coll_tau != wld.w_tau {
+        coll_move = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, false);
+        coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true);
+        coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau; coll_have = true;
+      }
       cam_want = cam_boom();
       cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
       // Angular velocity, lightly smoothed so one jittery drag frame does not
@@ -2666,7 +2802,7 @@ fn main() {
 
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
-      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld);
+      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
       cam_prev_pitch = cam_pitch;
@@ -2677,7 +2813,8 @@ fn main() {
 
       // 2. The boom covers whatever the lift has not reached yet — including the
       //    whole of it during the drift, which is what stops the transient.
-      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld);
+      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld,
+                              coll_view);
       if cam_free < cam_dist {
         // Shortening. This used to snap in a single tick, which was the visible
         // step: correct, and clearly a mechanism rather than a camera. It can be
@@ -2707,12 +2844,21 @@ fn main() {
       if fwd != 0.0 {
         step = (WALK_MS / WU_PER_M ?? 0.0) * dt;
         ky = cos(yaw); sy = sin(yaw);
-        px = px + ky * step * fwd;
-        pz = pz + sy * step * fwd;
-        // `step` is unsigned, so walking BACKWARD still advances the gait —
-        // the legs move either way, and a phase that ran backwards would
-        // unwind the stride instead of taking one.
-        walked = walked + step;
+        // WALLS STOP THE WALK (rung W2). The intended position goes through
+        // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step
+        // is not a step size to tune and a slow tick cannot cross a fence.
+        (wpx, wpz) = walk_to(coll_move, px, pz,
+                             px + ky * step * fwd, pz + sy * step * fwd);
+        gone = sqrt((wpx - px) * (wpx - px) + (wpz - pz) * (wpz - pz)) ?? 0.0;
+        px = wpx;
+        pz = wpz;
+        // The gait advances by what was actually TRAVELLED, not by what was
+        // asked for: legs that keep striding into a wall you are not moving
+        // along is the tell that collision was bolted on outside the walk.
+        // `gone` is unsigned, so walking BACKWARD still advances it — the legs
+        // move either way, and a phase that ran backwards would unwind the
+        // stride instead of taking one.
+        walked = walked + gone;
         // CLIMB. The feet follow the surface every tick, so walking into a
         // slope walks UP it. No jump, no fall, no step limit yet — this is the
         // ground being followed, not physics.

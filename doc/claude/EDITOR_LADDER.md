@@ -50,6 +50,8 @@ eyes**, not a report: something to open, drive, and judge.
 | — | ✋ | | | draw one |
 | 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
 | 6a | ↳ the exact perimeter, and the halo — one `edge_owner`, `6(2R+1)` edges | #10 | ✅ | `tools/gates/world/fence.mjs`; three mutations seen red |
+| 6b | ↳ collision — `hex_edge::sweep_path` over the wall bytes; a doorway is not a wall | #10 | ✅ | `tools/gates/character/collide.mjs`; three mutations seen red |
+| 6c | ↳ the camera's occlusion class — the predicate the consumer supplies | #10 | ✅ | `tools/gates/world/occlude.mjs`; the fence clause seen red |
 | — | *(#8's own rows run beside the ladder: many authors and long-running stores are both **DONE** — `M1` `M2` `X2` `X3` `X5` gated. What remains of #8 is the crystal port and the convergences)* | #8 | | ✅ |
 | — | ✋ | | | walk into a wall, orbit beside one |
 | ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
@@ -688,3 +690,73 @@ the same mistake. Two wrongs that agree read exactly like a right.
   map cannot check itself;
 - a fill inside the fence takes exactly `3R²+3R+1 = 19` cells, through the gateway
   and no further.
+
+
+## What rung 6b found — collision worked once, which reads as never
+
+`hex_edge` owns the query and it is the right one: `sweep_path` walks a SEGMENT
+across the lattice one edge at a time, so there is no step size to tune and a
+dropped frame cannot tunnel through a fence. What is ours is the PREDICATE —
+which materials stop a walker, which stop the camera — and those are two
+different functions for one reason:
+
+| material | stops a walker | stops the camera |
+|---|---|---|
+| `WALL` | yes | yes |
+| `DOOR` | no | no |
+| `FENCE` | yes | **no** |
+
+**The camera's discriminator is not "does it block movement".** A fence stops a
+character and is visually almost nothing, so giving way to one would make the
+camera lurch every time you walked beside a paddock. It is whether the camera can
+be INSIDE the thing. That was settled before walls existed
+([EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md)) and this rung is where it was spent.
+
+**The bug worth keeping.** Wired up, the character walked straight through the
+fence — and the proxy was right, the sweep was right, and a long sweep from the
+character's own position reported the wall at exactly the distance it should be.
+The per-tick sweeps reported nothing. One line of the log had the answer:
+
+```
+walk_to from (109.89788) to (110.00457)  t=0.8186  hd=0     ← blocked, stops at 109.98522
+walk_to from (109.98522) to (110.09192)  t=1       hd=-1    ← and walks straight through
+```
+
+**Stopping exactly ON the bisector puts the next query on the far side of it.**
+The stop is correct, and the position it leaves you in is ambiguous: `hex_at` has
+to round, it rounds to the cell beyond the wall, and the next tick begins there
+with the wall behind it. So collision worked for exactly one tick, which is
+indistinguishable from never working.
+
+A cell test cannot be made exact at its own boundary, so the fix is not a better
+test but a `SKIN` — the walk stops 1 cm short, unambiguously on the walkable
+side. The gate measures it: the fence is at 6.062 and the character stops at
+6.052.
+
+⚠ **`hex_edge`'s own comment anticipates half of this** — it excludes the cell you
+came from precisely so that a sweep starting on a bisector is not lost — but that
+memory only exists WITHIN one `sweep_path` call. A fresh call starting exactly on
+a bisector has no previous cell, and is genuinely ambiguous. Worth telling the
+library.
+
+**A stop, not a slide.** Sliding needs the wall's true normal, and a hex edge
+carries six of them — `hex_edge` measures the error against a wall crossing the
+lattice diagonally at up to 90°. A slide along the wrong normal is worse than a
+stop, so the analytic surface comes first and the slide after it.
+
+### The mutations
+
+| mutation | what the gate saw |
+|---|---|
+| ignore the sweep's hit | walks 19.4 wu through the fence |
+| stop exactly on the bisector (no skin) | walks 19.5 — *further than the free run*, which is the tell that it stopped once and resumed |
+| a doorway blocks like a wall | the gateway leg stops at 6.05 like the fence, and it is the only clause that moves |
+| the camera avoids fences too | the eye beside a fence becomes identical to the eye beside a wall — the lurch, measured |
+
+### And the gate that had to be rewritten before it measured anything
+
+The first collision gate timed the walk: hold W for 2600 ms and compare distances.
+On a loaded box it reported the FREE walk as shorter than the blocked one. Nothing
+here is timed now — "blocked" is *the position stopped moving while W was still
+held*, which is the thing itself rather than a proxy for it. Same lesson as rung
+8c's fixed sleeps, in a suite that had already learned it once.
