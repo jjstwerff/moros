@@ -53,6 +53,19 @@ ws.onmessage = async (e) => {
     ws.send('13:9,30');
     const species = await ack('scatter');
 
+    // ── leak 1 again, on a tool that had NO check at all: the scatter's
+    //    density was unvalidated, so `13:1,500` placed on every cell and called
+    //    it density 500. Ordinal, so it refuses with an offer and a residual.
+    ws.send('13:1,500');
+    const dense = await ack('scatter');
+
+    // ── invariant I's THIRD state: applied as an explicit approximation, with
+    //    the residual REPORTED. Lowering ground that is already at the floor
+    //    cannot deliver what was asked; clamping is legitimate, silence is not.
+    await placeAck(0, 0, 0);
+    ws.send('5:-1');
+    const lowered = await ack('ground approximated');
+
     // ── and the doorstep lets a good value through untouched
     ws.send('14:12');
     const good = await ack('stencil');
@@ -65,11 +78,19 @@ ws.onmessage = async (e) => {
     const nominalRefused = species.includes('refused') && species.includes('species 9');
     const noOffer = !species.includes('offer');
     const applied = good.startsWith('stencil placed');
+    const densityRefused = dense.includes('density 500')
+                           && dense.includes('above the maximum 100')
+                           && dense.includes('offer 100') && dense.includes('residual 400');
+    // the approximation must NAME itself and carry a residual — it is not a refusal
+    const approxReported = lowered.includes('ground approximated')
+                           && lowered.includes('residual');
     const ok = named && offered && residual && wroteNothing
-               && nominalRefused && noOffer && applied;
-    console.log(JSON.stringify({ short, species, good, before, after,
+               && nominalRefused && noOffer && applied
+               && densityRefused && approxReported;
+    console.log(JSON.stringify({ short, species, dense, lowered, good,
                                  named, offered, residual, wroteNothing,
-                                 nominalRefused, noOffer, applied, ok }));
+                                 nominalRefused, noOffer, applied,
+                                 densityRefused, approxReported, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');

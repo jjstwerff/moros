@@ -528,6 +528,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
   seen_r += [sr];
   seen.s_by += SeenAt { sa_key: age_like_key(sq, sr) };
   escaped = false;
+  capped = false;
   while len(fq) > 0 && !escaped {
     nq: vector<integer> = [];
     nr: vector<integer> = [];
@@ -538,7 +539,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
         m = world_cell(wld, aq, ar, SURFACE).h_material;
         if m == SURFACE_MAT || m == 0 {
           if seen.s_by[age_like_key(aq, ar)] == null {
-            if len(seen_q) >= FIELD_CAP { escaped = true; }
+            if len(seen_q) >= FIELD_CAP { escaped = true; capped = true; }
             else {
               seen.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
               seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
@@ -550,6 +551,12 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
     fq = nq;
     fr = nr;
   }
+  // ⚠ TWO different refusals wore one message. "It never closed" and "it grew
+  // past the cap" are not the same fact: the first says the enclosure is open,
+  // the second says it may well be closed and simply larger than this tool will
+  // claim — and only the second has an offer to make (the cap itself). Telling
+  // an author the wrong one sends them looking for a gap that is not there.
+  if capped { return 0 - 2; }
   if escaped { return 0; }          // it never closed — refuse, and change nothing
   for k in 0..len(seen_q) {
     h = world_cell(wld, seen_q[k], seen_r[k], SURFACE).h_height;
@@ -970,7 +977,13 @@ fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
 // a crease — the same shape the peak version derived, now written down once
 // instead of re-summed on every sample. Overlapping strokes add, which is what
 // makes two hills merge into one rather than replace each other.
-fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer) {
+// `clamped` counts the cells that could not take the full stroke, and `residual`
+// is the largest amount lost. The brush is the one tool that legitimately lands
+// in invariant I's THIRD state — an explicit approximation — because a stroke
+// covers many cells and the floor is a property of each. What the invariant
+// forbids is doing it SILENTLY, so the caller reports both.
+fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer,
+         clamped: &integer, residual: &integer) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = tq + dq;
@@ -982,8 +995,18 @@ fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer) {
         delta = ((amp as float) * f * f) as integer;
         if delta != 0 {
           h = world_cell(wld, q, r, SURFACE).h_height + delta;
-          if h < W_RESERVE { h = W_RESERVE; }
-          if h > 65535 { h = 65535; }
+          if h < W_RESERVE {
+            lost = W_RESERVE - h;
+            if lost > residual { residual = lost; }
+            clamped = clamped + 1;
+            h = W_RESERVE;
+          }
+          if h > 65535 {
+            lost2 = h - 65535;
+            if lost2 > residual { residual = lost2; }
+            clamped = clamped + 1;
+            h = 65535;
+          }
           // ⚠ Qualified: `moros_map` and `hex_world` BOTH define a `Hex`, and they
           // are different types — moros_map's is the scene cell, hex_world's is the
           // stored voxel. The bare name resolves to the wrong one here.
@@ -1563,6 +1586,7 @@ fn main() {
   // an unwritten cell reads as absent and absence IS the floor (`E1`).
   wld = new_world();
   levelling = false;
+  level_warned = false;        // one residual report per levelling run, not per step
   level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
   road_h = 0;                  // the road's grade, frozen when it was switched on
@@ -1795,6 +1819,12 @@ fn main() {
           } else {
             sc_sp = ev.payload as integer ?? 0;
           }
+          dfit = fit_ordinal(sc_dn, 0, 100, "density");
+          if !dfit.ft_ok {
+            srv.send_to(ev.cid, "S:scatter refused — {fit_text(dfit)}");
+            println("editor: scatter refused — {fit_text(dfit)}");
+            continue;
+          }
           sfit = fit_nominal(sc_sp, SPECIES_BUSH, "species");
           if !sfit.ft_ok {
             srv.send_to(ev.cid, "S:scatter refused — {fit_text(sfit)}");
@@ -1809,12 +1839,28 @@ fn main() {
         } else if ev.msg_id == MSG_FIELD {
           fhx = world_to_hex(px, pz);
           nfilled = field_fill(wld, fhx.ha_q, fhx.ha_r);
-          if nfilled == 0 {
-            // The refusal NAMES itself. An unbounded fill is the common case when
-            // you forget to close the boundary, and silently painting to a cap
-            // would look like a bug in the fill rather than a gap in the fence.
-            srv.send_to(ev.cid, "S:field refused — the enclosure is not closed");
-            println("editor: field refused at ({fhx.ha_q},{fhx.ha_r}) — not enclosed");
+          if nfilled == 0 - 2 {
+            // The cap is its own refusal, and unlike the open-enclosure one it
+            // HAS an offer to make: the cap itself. Wearing the other message
+            // sent an author hunting for a gap in a fence that was closed.
+            // ⚠ THE REASON IS NOW THE REASON. This used to say "the enclosure is
+            // not closed", which the code had never determined: `escaped` is set
+            // at exactly one place, the cap, so the fill has NO way to observe an
+            // open boundary except by growing until it gives up. The old message
+            // stated a diagnosis the fill could not make, and an author who
+            // believed it went looking for a gap that might not exist. Splitting
+            // the two refusals for the doorstep is what surfaced it — the "open"
+            // branch turned out to be unreachable.
+            srv.send_to(ev.cid,
+              "S:field refused — grew past the cap {FIELD_CAP} without closing "
+              + "(offer {FIELD_CAP}; the boundary is open, or the enclosure is "
+              + "larger than this tool will claim)");
+            println("editor: field refused at ({fhx.ha_q},{fhx.ha_r}) — over cap");
+          } else if nfilled == 0 {
+            // Reachable only if `field_fill` gains another way to decline. Kept
+            // as a fallback rather than a claim about the boundary.
+            srv.send_to(ev.cid, "S:field refused — nothing to fill here");
+            println("editor: field refused at ({fhx.ha_q},{fhx.ha_r})");
           } else {
             // Everything the fill touched changed, and it is bounded by
             // construction — so one dirty mark over its extent is honest.
@@ -1836,6 +1882,7 @@ fn main() {
           println("editor: road {roading} at grade {road_h}");
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
+          if levelling { level_warned = false; }
           if levelling {
             // Freeze the height you are standing at — read from THE FEET, not
             // from the cell.
@@ -1901,7 +1948,17 @@ fn main() {
             // The stroke is APPLIED, not recorded. Holding the key adds to the
             // cells each time, which is what makes two strokes deepen one hill —
             // the merge the peak version had to special-case is now just addition.
-            if found { brush(wld, tq, tr, dirn * PEAK_STEP, PEAK_R); }
+            bclamp = 0;
+            bres = 0;
+            if found { brush(wld, tq, tr, dirn * PEAK_STEP, PEAK_R, bclamp, bres); }
+            if bclamp != 0 {
+              // Applied, but not as asked — say so, with the residual. This is
+              // invariant I's third state, and the only thing that makes it
+              // legitimate rather than a silent correction.
+              srv.send_to(ev.cid,
+                "S:ground approximated — {bclamp} cells hit the floor (residual {bres})");
+              println("editor: ground approximated — {bclamp} clamped, residual {bres}");
+            }
 
             // THE DIRTY REGION: a peak reaches PEAK_R, so only chunks touching
             // that disk change. Everything else on screen is still correct and
@@ -2062,8 +2119,20 @@ fn main() {
         // where you switched it on and cannot deepen a path walked twice.
         gap = level_h - cur_h;
         if gap != 0 {
-          brush(wld, last_hq, last_hr, gap, LEVEL_R);
+          lclamp = 0;
+          lvres = 0;
+          brush(wld, last_hq, last_hr, gap, LEVEL_R, lclamp, lvres);
           mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
+          // Levelling runs per STEP as the character walks, so a per-cell report
+          // here would be a stream of noise. It is still an approximation and
+          // still owed a residual — reported once, when the stroke first cannot
+          // deliver what was asked, rather than on every footfall.
+          if lclamp != 0 && !level_warned {
+            level_warned = true;
+            srv.broadcast("S:level approximated — {lclamp} cells hit the floor "
+                          + "(residual {lvres})");
+            println("editor: level approximated — {lclamp} clamped, residual {lvres}");
+          }
         }
         py = (level_h as float) * HEIGHT_SCALE;
       }

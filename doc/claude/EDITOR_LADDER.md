@@ -384,6 +384,31 @@ caller's memory — a nominal refusal cannot grow an offer by someone forgetting
 Mutating `fit_nominal` to offer the nearest index turns exactly one clause red,
 which is the control the plan asks for.
 
-**Not yet through the doorstep:** the brush's height clamps, the road grade, and
-the field fill's cap. They refuse or clamp on their own terms. The doorstep exists
-and two tools use it; routing the rest is mechanical and unstarted.
+**Routing the rest found a message that was a story.** The brush's clamps, the
+scatter's density and the field's cap have now gone through:
+
+- **the density had no check at all** — `13:1,500` placed on every cell and called
+  it density 500. Ordinal, so it refuses with `offer 100, residual 400`;
+- **the brush clamps at the floor**, and that is invariant I's THIRD state, not a
+  violation: a stroke covers many cells and the floor is a property of each. What
+  the invariant forbids is silence, so it reports `ground approximated — 91 cells
+  hit the floor (residual 6)`. Levelling reports once per run rather than per
+  footfall;
+- **the field's cap is its own refusal**, and unlike an open boundary it has an
+  offer to make — the cap itself.
+
+Splitting that last one exposed the real find. The fill used to answer *"the
+enclosure is not closed"*, and the code had never determined that: `escaped` is
+set at exactly ONE place, the cap, so the fill has no way to observe an open
+boundary except by growing until it gives up. The "open" branch was unreachable,
+and the message stated a diagnosis the tool could not make — sending an author to
+hunt for a gap that might not exist. It now says what actually happened: it grew
+past the cap without closing, and either reading is possible.
+
+That is the doorstep earning itself. Requiring every refusal to carry a reason,
+an offer and a residual forces you to ask what the code actually knows — and one
+of ours knew less than it claimed.
+
+**Still outside:** the road's grade quantisation (`(rvf + 0.5) as integer`) rounds
+a float foot-height to an integer grade and reports no residual. It is an
+approximation like the brush's, and owes the same report.
