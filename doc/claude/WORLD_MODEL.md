@@ -361,6 +361,49 @@ Measured (rung W4): reading `cells[n-1]` as the roof put a building's first floo
 an absent layer rather than above the ground, landing it 7 above the real surface, where
 `F1` refused it. The contract held; the reader did not.
 
+### P1 — A stencil writes a band, not a column
+
+> A placement declares the closed height interval `[lo, hi]` it **owns**. The write
+> 1. replaces every occupied cell whose height lies in `[lo, hi]`;
+> 2. keeps every occupied cell outside it, unchanged;
+> 3. is **refused** — never clipped, never partially applied — if the result would
+>    breach `F1` against the nearest kept cell below `lo` or above `hi`, or if any
+>    cell offered sits outside the declared band.
+
+One rule serves the three cases a builder actually meets. Under a bridge: the deck is
+above `hi`, so it is kept. Over a cave: the floor is below `lo`, so it is kept. On the
+surface: the surface cell is inside the band, so the stencil's floor **replaces** it —
+the terrain layer takes the stencil's content rather than acquiring a second surface
+beside it or being buried under one. *That* is what "a stencil interacts with the
+surface" means operationally: **the ground layer reforms to the stencil.**
+
+Clause 3's second half is `G0` applied to a caller's promise: the interval is what
+guarantees preservation, so an offered cell outside it is refused rather than trusted.
+
+**Index is not identity.** A column is height-ascending because `F1` compares
+consecutive occupied cells in vector order, so when a band's cell count differs from
+what it replaced, every cell **above** it shifts slot; cells below keep theirs.
+Anything needing a stable handle across a merge holds the layer's `ly_id`, not its
+index — the same shape of error as reading `cells[n-1]` for the roof (`E1r`).
+
+### P2 — Terrain and dressing do not mix
+
+> No occupied terrain cell may be written into a layer of kind `DRESSING`, and a
+> terrain column write leaves dressing layers **entirely untouched** — it does not
+> write to them, not even to blank them.
+
+A column write addresses layers **by index**, so a miscount does not produce a shifted
+picture — it produces terrain inside a dressing layer, and nothing downstream can see
+it: `world_column` reads a dressing layer as absent, so the cell vanishes and the
+terrain it displaced goes with it. The guard therefore sits in `check_column`, the one
+place a cell reaches a layer; in the callers it would be N places that must each
+remember.
+
+The second half is not decoration. A band merge hands back the absent placeholder a
+read produces for a dressing slot, and writing that placeholder **clears** the dressing
+content — after which the emptied layer is dropped by `E1`. Measured: the layer ceased
+to exist, and the only symptom was its absence.
+
 ### S1 — The window never escapes storage
 
 > Every comparison, difference or ordering of heights is performed on `H`, never on `s`.
@@ -754,6 +797,10 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **W1** | every stored `s` in range after any write, including after rebase | force a span ≥ 2¹⁶ → `CW_WINDOW` |
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
 | **E1r** | read `cells[n-1]` as the roof → the storey lands on an absent layer | `world/storey.mjs` |
+| **P1** | replace the column instead of the band → the cave under the house is deleted | `tests/stencil.loft` |
+| **P1** | trust the declared band → a cell outside it overwrites what was promised kept | `tests/stencil.loft` |
+| **P2** | drop the guard → terrain lands in a dressing layer and reads back absent | `tests/stencil.loft` |
+| **P2** | compact the merge → survivors slide into the dressing slot | `tests/stencil.loft` |
 | **S1** | two chunks, **different bases**, one ridge → equal `H` from both sides | their stored `s` must **differ**, or the test is vacuous |
 | **R1** | author terrain at `ρ − 1` → `CW_RESERVE` | author at `ρ` → accepted; **excavate** below `ρ` → accepted |
 | **I1** | relabel one layer of a neighbouring chunk → the gate fires on the crossing match | leave labels agreeing → silent; set both to `0` → silent, since unlabelled is unconstrained |

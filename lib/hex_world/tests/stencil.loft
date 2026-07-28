@@ -1,0 +1,200 @@
+// `P1` gates — a stencil writes a BAND, not a column
+// (`doc/claude/WORLD_MODEL.md` Part II).
+//
+// The three cases are the ones a builder actually hits: a house over a cave, a
+// house under a bridge, and a house meeting the surface. One rule serves all
+// three, so each gate here is the same rule seen from a different side, and each
+// carries a CONTROL that must fail.
+use hex_world;
+
+fn world_ok() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
+  n.wn_world
+}
+
+fn ground(h: integer) -> Hex { Hex { h_height: (h as u16? ?? 0), h_material: 1 } }
+fn floor_at(h: integer) -> Hex { Hex { h_height: (h as u16? ?? 0), h_material: 4 } }
+
+// Heights of the occupied cells of a column, low to high.
+fn heights(w: World, q: integer, r: integer) -> vector<integer> {
+  out: vector<integer> = [];
+  c = world_column(w, q, r);
+  for e in c.co_cells { if hex_occupied(e) { out += [e.h_height as integer ?? 0]; } }
+  out
+}
+
+fn has_height(w: World, q: integer, r: integer, h: integer) -> boolean {
+  for x in heights(w, q, r) { if x == h { return true; } }
+  false
+}
+
+// ── the band writes its own content ─────────────────────────────────────────
+
+fn test_p1_a_band_places_its_own_cells() {
+  w = world_ok();
+  r = world_merge_band(w, 0, 0, 200, 240, [floor_at(200), floor_at(220), floor_at(240)]);
+  assert(r.cw_code == CW_OK, "a band on an empty column was refused: {r.cw_detail}");
+  assert(len(heights(w, 0, 0)) == 3, "expected three storeys, got {len(heights(w, 0, 0))}");
+}
+
+// ── over a deep cave: what is BELOW the band survives ───────────────────────
+
+fn test_p1_keeps_what_lies_below_the_band() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(120), ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+
+  b = world_merge_band(w, 0, 0, 290, 330, [floor_at(300), floor_at(330)]);
+  assert(b.cw_code == CW_OK, "a house over a cave was refused: {b.cw_detail}");
+  assert(has_height(w, 0, 0, 120),
+         "THE CAVE WAS DELETED TO BUILD THE HOUSE. Heights now {heights(w, 0, 0)} — a "
+         + "stencil that replaces the column instead of its band does exactly this, "
+         + "and the loss is invisible from the surface");
+  assert(has_height(w, 0, 0, 330), "the house's own roof is missing");
+}
+
+// ── under a bridge: what is ABOVE the band survives ─────────────────────────
+
+fn test_p1_keeps_what_lies_above_the_band() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(200), ground(400)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+
+  b = world_merge_band(w, 0, 0, 195, 235, [floor_at(200), floor_at(235)]);
+  assert(b.cw_code == CW_OK, "a house under a bridge was refused: {b.cw_detail}");
+  assert(has_height(w, 0, 0, 400),
+         "THE BRIDGE DECK WAS DELETED. Heights now {heights(w, 0, 0)}");
+  assert(has_height(w, 0, 0, 235), "the house's own roof is missing");
+}
+
+// ── the surface is INSIDE the band, so the stencil replaces it ──────────────
+
+fn test_p1_replaces_the_surface_it_meets() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+
+  b = world_merge_band(w, 0, 0, 295, 335, [floor_at(305), floor_at(335)]);
+  assert(b.cw_code == CW_OK, "refused: {b.cw_detail}");
+  assert(!has_height(w, 0, 0, 300),
+         "the old surface at 300 survived INSIDE the band — the stencil's floor and "
+         + "the ground it replaced are then two cells 5 apart, which is the fold "
+         + "`F1` exists to prevent");
+  assert(has_height(w, 0, 0, 305), "the stencil's own floor is missing");
+}
+
+// ── refusals: the band is checked, and a fold is refused rather than clipped ─
+
+fn test_p1_refuses_a_cell_outside_its_declared_band() {
+  w = world_ok();
+  r = world_merge_band(w, 0, 0, 200, 240, [floor_at(200), floor_at(999)]);
+  assert(r.cw_code == CW_BAND,
+         "a stencil cell at 999 was accepted into a band of [200,240] (code {r.cw_code}); "
+         + "the interval's promise to preserve everything outside it is then worthless");
+}
+
+fn test_p1_refuses_a_band_that_would_fold_against_what_it_keeps() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(200), ground(400)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+
+  b = world_merge_band(w, 0, 0, 195, 395, [floor_at(200), floor_at(395)]);
+  assert(b.cw_code == CW_FOLD,
+         "a roof 5 under the bridge deck was accepted (code {b.cw_code}); eps is 8");
+  assert(has_height(w, 0, 0, 400) && has_height(w, 0, 0, 200),
+         "a REFUSED band still altered the column: {heights(w, 0, 0)}");
+  assert(len(heights(w, 0, 0)) == 2,
+         "a refused band left extra cells behind: {heights(w, 0, 0)}");
+}
+
+// ── CONTROL — proves these gates are not green because every merge is refused
+fn test_p1_control_an_ordinary_band_still_writes() {
+  w = world_ok();
+  r = world_merge_band(w, 0, 0, 200, 240, [floor_at(200)]);
+  assert(r.cw_code == CW_OK, "the control band was refused: {r.cw_detail}");
+  assert(has_height(w, 0, 0, 200), "the control band wrote nothing");
+}
+
+// ── `P1` interacting with the layers that are already there ─────────────────
+//
+// "The ground layer reforms to the stencil." A stencil meeting the surface does
+// not add a second surface beside the old one, and does not leave the old one
+// underneath: the TERRAIN LAYER ITSELF takes the stencil's floor. Same layer,
+// new content. That is what makes a house sit ON the ground rather than near it.
+
+fn test_p1_the_ground_layer_reforms_to_the_stencil() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  assert(world_cell(w, 0, 0, 0).h_height == 300, "setup: ground should start at 300");
+
+  // a stencil floor 12 above the old ground, inside a band that owns the surface
+  b = world_merge_band(w, 0, 0, 295, 340, [floor_at(312), floor_at(340)]);
+  assert(b.cw_code == CW_OK, "refused: {b.cw_detail}");
+
+  g = world_cell(w, 0, 0, 0);
+  assert(g.h_height == 312,
+         "the GROUND LAYER did not reform: layer 0 is still at {g.h_height}, so the "
+         + "stencil's floor went in above it and the old surface is buried under the "
+         + "house instead of becoming it");
+  assert(g.h_material == 4,
+         "layer 0 kept material {g.h_material}: the slot moved but the stencil's own "
+         + "content did not land in it");
+  assert(len(heights(w, 0, 0)) == 2,
+         "expected floor and roof only, got {heights(w, 0, 0)} — an extra cell means "
+         + "the old ground survived alongside the stencil rather than reforming to it");
+}
+
+// A column the stencil does not touch keeps its ground. Without this the gate
+// above passes just as well for a stencil that reforms the WHOLE world.
+fn test_p1_control_a_column_outside_the_stencil_keeps_its_ground() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  s2 = world_set_column(w, Column { co_q: 5, co_r: 0, co_cells: [ground(300)] });
+  assert(s2.cw_code == CW_OK, "setup refused: {s2.cw_detail}");
+
+  b = world_merge_band(w, 0, 0, 295, 340, [floor_at(312), floor_at(340)]);
+  assert(b.cw_code == CW_OK, "refused: {b.cw_detail}");
+  assert(world_cell(w, 5, 0, 0).h_height == 300,
+         "a neighbouring column reformed too: the stencil is reshaping ground it was "
+         + "never placed on");
+}
+
+// ── `P2` — terrain and dressing do not mix ─────────────────────────────────
+
+fn test_p2_refuses_terrain_written_into_a_dressing_layer() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [ground(300), ground(400)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  // make the upper layer dressing — set dressing, vehicles, the things #14 places
+  w.w_chunks[0].ck_layers[1].ly_kind = KIND_DRESSING;
+
+  r = world_set_column(w, Column { co_q: 0, co_r: 0,
+                                   co_cells: [ground(300), ground(400)] });
+  assert(r.cw_code == CW_MIX,
+         "terrain was written into a DRESSING layer (code {r.cw_code}). Nothing "
+         + "downstream can see this: `world_column` reads a dressing layer as absent, "
+         + "so the cell vanishes and the terrain it displaced goes with it");
+  assert(r.cw_layer == 1, "the refusal named layer {r.cw_layer}, not the dressing one");
+}
+
+fn test_p2_a_band_merge_does_not_slide_terrain_into_a_dressing_slot() {
+  w = world_ok();
+  s = world_set_column(w, Column { co_q: 0, co_r: 0,
+                                   co_cells: [ground(300), ground(400), ground(500)] });
+  assert(s.cw_code == CW_OK, "setup refused: {s.cw_detail}");
+  w.w_chunks[0].ck_layers[1].ly_kind = KIND_DRESSING;
+
+  // The band owns the surface only. A merge that COMPACTED its survivors would
+  // pack the 500 cell down into slot 1 — the dressing layer — and `P2` would
+  // catch it. Staying index-aligned means it never gets there.
+  b = world_merge_band(w, 0, 0, 295, 340, [floor_at(312)]);
+  assert(b.cw_code == CW_OK,
+         "the merge was refused ({b.cw_code}: {b.cw_detail}) — a band that packs its "
+         + "survivors slides terrain into the dressing slot and trips `P2`");
+  assert(world_layer_kind(w, 0, 0, 1) == KIND_DRESSING,
+         "the dressing layer stopped being dressing");
+  assert(world_cell(w, 0, 0, 0).h_height == 312, "the ground layer did not reform");
+}

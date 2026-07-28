@@ -249,6 +249,8 @@ pub const CW_FOLD      = 1;   // a layer breached the one above (`F1`)
 pub const CW_WINDOW    = 2;   // the tile's span exceeds any window (`W1`)
 pub const CW_LAYER_CAP = 3;   // more layers than a chunk may hold
 pub const CW_RESERVE   = 4;   // terrain authored below `ρ` (`R1`)
+pub const CW_BAND      = 5;   // a stencil cell sat outside its declared band (`P1`)
+pub const CW_MIX       = 6;   // terrain content aimed at a dressing layer (`P2`)
 
 pub struct ColumnWrite { cw_code: integer, cw_layer: integer, cw_detail: text }
 
@@ -257,6 +259,23 @@ fn ok_write() -> ColumnWrite { ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw
 // Steps 1 and 2 of the routine: the checks that run BEFORE anything is written,
 // so a refusal leaves the world untouched rather than half-applied.
 fn check_column(w: World, col: Column) -> ColumnWrite {
+  // `P2` — TERRAIN AND DRESSING DO NOT MIX. A column write addresses layers BY
+  // INDEX, so a caller that miscounts does not get a shifted picture — it gets
+  // terrain written into a dressing layer, which is the one thing the two-kind
+  // split exists to prevent. Nothing downstream could detect it afterwards:
+  // `world_column` reads dressing layers as absent, so the mixed cell would
+  // simply be invisible, and the terrain it displaced would be gone.
+  //
+  // The guard lives HERE because this is the only place a cell reaches a layer.
+  // Put it in the callers and it is N places that must each remember; put it
+  // here and forgetting is impossible.
+  for k in 0..len(col.co_cells) {
+    if hex_occupied(col.co_cells[k])
+       && world_layer_kind(w, col.co_q, col.co_r, k) != KIND_TERRAIN {
+      return ColumnWrite { cw_code: CW_MIX, cw_layer: k,
+                           cw_detail: "layer {k} is dressing; terrain cannot be written into it" };
+    }
+  }
   // `R1` — nothing authored below the reserve. The space beneath belongs to
   // whatever gets dug later, and heights are unsigned so there is no digging
   // below zero to fall back on.
@@ -291,6 +310,87 @@ fn check_column(w: World, col: Column) -> ColumnWrite {
 //
 // `w` is a reference because the routine may rebase the chunk and append to the
 // world's chunk list — the caller's world is the one that changes.
+// ── `P1` — A STENCIL WRITES A BAND, NOT A COLUMN ─────────────────────────────
+//
+// A stencil is content with a vertical extent, placed into a column that may
+// already hold other things: a cave under it, a bridge over it, the surface it
+// meets. Replacing the column would be the easy write and the wrong one — it
+// would delete the cave to build the house.
+//
+// So a placement declares the closed interval `[lo, hi]` it OWNS, and the write:
+//   · replaces every occupied cell whose height lies in `[lo, hi]`,
+//   · keeps every occupied cell outside it, unchanged,
+//   · refuses if the result would breach `F1` against the nearest kept cell
+//     below `lo` or above `hi` — refuses, never clips, never silently drops.
+//
+// That one rule is all three cases the editor needs. Under a bridge: the deck is
+// above `hi`, so it is kept. Over a cave: the floor is below `lo`, so it is kept.
+// On the surface: the surface cell is inside the band, so the stencil's own floor
+// replaces it — which is what "interacts with the surface" means concretely.
+//
+// ⚠ INDEX IS NOT IDENTITY. A column is height-ascending because `F1` compares
+// CONSECUTIVE occupied cells in vector order, so when a band's cell count differs
+// from what it replaced, every cell ABOVE it shifts slot. Cells below keep theirs.
+// Anything needing a stable handle across a merge must hold the layer's `ly_id`,
+// not its index — the same shape of mistake as reading `cells[n-1]` for the roof
+// (`E1r`): a position is not a name.
+//
+// Validation is NOT duplicated here. This composes the merged column and hands it
+// to `world_set_column`, so there is exactly one place that decides whether a
+// column is legal, and a band cannot acquire a weaker rule than a plain write.
+pub fn world_merge_band(w: &World, cq: integer, cr: integer,
+                        lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
+  if hi < lo {
+    return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
+                         cw_detail: "band [{lo},{hi}] is inverted" };
+  }
+  // `G0` — the caller's declared band is CHECKED, not trusted. A cell outside it
+  // would silently overwrite something the interval promised to preserve, and the
+  // promise is the whole point of the operation.
+  for b in band {
+    bh = b.h_height as integer ?? 0;
+    if hex_occupied(b) && (bh < lo || bh > hi) {
+      return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
+                           cw_detail: "stencil cell at {bh} is outside its band [{lo},{hi}]" };
+    }
+  }
+  cur = world_column(w, cq, cr);
+
+  // What survives, plus what the band brings, in ascending height — the order
+  // `F1` reads.
+  keep: vector<Hex> = [];
+  for e in cur.co_cells {
+    if hex_occupied(e) && (e.h_height as integer ?? 0) < lo { keep += [e]; }
+  }
+  for b2 in band { if hex_occupied(b2) { keep += [b2]; } }
+  for e2 in cur.co_cells {
+    if hex_occupied(e2) && (e2.h_height as integer ?? 0) > hi { keep += [e2]; }
+  }
+
+  // ⚠ REBUILD INDEX-ALIGNED, do not compact. A column read carries one entry per
+  // layer OF THE CHUNK, dressing layers included as absent placeholders, and a
+  // write puts entry `i` into layer `i`. Packing the survivors into a dense
+  // vector therefore slides terrain DOWN into whatever slots the dressing layers
+  // held — `P2` violated, and invisibly, since a dressing layer reads back as
+  // absent. So terrain goes only into terrain slots, ascending, and the dressing
+  // slots keep the placeholder they came with.
+  out: vector<Hex> = [];
+  taken = 0;
+  for i in 0..len(cur.co_cells) {
+    if world_layer_kind(w, cq, cr, i) == KIND_TERRAIN && taken < len(keep) {
+      out += [keep[taken]];
+      taken = taken + 1;
+    } else {
+      out += [Hex {}];
+    }
+  }
+  // Anything that did not fit extends the stack. These are the HIGHEST cells, so
+  // appending keeps the ascending order the slot assignment above relies on.
+  while taken < len(keep) { out += [keep[taken]]; taken = taken + 1; }
+
+  world_set_column(w, Column { co_q: cq, co_r: cr, co_cells: out })
+}
+
 pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {
@@ -389,6 +489,14 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   // terrain cache.
   changed = false;
   for i in 0..n {
+    // ⚠ A TERRAIN WRITE DOES NOT TOUCH A DRESSING LAYER — not even to blank it.
+    // `check_column` already refused an OCCUPIED cell aimed at one (`P2`); what
+    // reaches here is the absent placeholder a column read produces for a
+    // dressing slot, and writing that placeholder would CLEAR the dressing
+    // content at this cell. Step 6 would then drop the emptied layer outright.
+    // Measured: a band merge over a column with a dressing layer deleted the
+    // layer, and the only visible symptom was that it had stopped existing.
+    if w.w_chunks[ci].ck_layers[i].ly_kind != KIND_TERRAIN { continue; }
     c = col.co_cells[i];
     nv = StoredHex { sv_height: (c.h_height - base) as u16? ?? 0,
                      sv_material: c.h_material, sv_item: c.h_item,
@@ -455,6 +563,17 @@ pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
 
 // One layer's version, for a cache that depends on a single layer rather than a
 // whole tile — which is the point of `T2`.
+// The kind of layer `l` of the chunk holding (q, r). A layer that does not exist
+// yet is KIND_TERRAIN: `world_set_column` materialises new layers as terrain, so
+// that is what the slot WILL be, and a caller reasoning about a future slot must
+// get the same answer as one reasoning about a present one.
+pub fn world_layer_kind(w: World, q: integer, r: integer, l: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return KIND_TERRAIN; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return KIND_TERRAIN; }
+  w.w_chunks[ci].ck_layers[l].ly_kind
+}
+
 pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
   if ci < 0 { return 0; }
