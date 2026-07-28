@@ -1,0 +1,70 @@
+// Does a WALL survive in a cell that holds no material?
+//
+// The question rung W2 has to answer before it can author a fence. Each hex
+// stores three of its six edges, so the boundary of a region is stored HALF in
+// the region's own cells and half in the cells outside it — and a cell outside
+// may hold no ground at all. If the store drops such a cell, half of every
+// perimeter is lost on save.
+//
+// Three cases, because "it survived" and "it survived for a reason that holds"
+// are different claims:
+//   A — a wall cell beside occupied ones, in memory
+//   B — the same, through save and load
+//   C — a layer whose ONLY content is walls
+use hex_world;
+
+fn cell(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+
+fn wallcell(h: integer, m: integer, w: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0, h_wall_se: w as u8? ?? 0 }
+}
+
+fn put(w: World, q: integer, r: integer, hs: vector<Hex>) -> integer {
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: hs }).cw_code
+}
+
+fn check(label: text, got: integer, exp: integer) -> integer {
+  if got == exp { println("  ok    {label}  = {got}"); return 0; }
+  println("  FAIL  {label}  = {got}, want {exp}");
+  1
+}
+
+fn wall_of(w: World, q: integer, r: integer) -> integer {
+  c = world_cell(w, q, r, 0);
+  v = c.h_wall_se as integer ?? 0;
+  v
+}
+
+fn main() {
+  println("W2 — a wall in a cell with no material");
+  fails = 0;
+
+  // ── A: ground at (5,5), a bare wall at (6,5), same layer, same chunk
+  wa = world_new(0.25, 0, 8, 3).wn_world;
+  put(wa, 5, 5, [cell(100, 1)]);
+  put(wa, 6, 5, [wallcell(100, 0, 3)]);
+  fails = fails + check("A wall byte, in memory", wall_of(wa, 6, 5), 3);
+  fails = fails + check("A the ground beside it", world_cell(wa, 5, 5, 0).h_material as integer ?? 0, 1);
+
+  // ── B: the same world, saved and loaded
+  sc = world_save(wa, "pr_edge_a.bin", []);
+  fails = fails + check("B save code", sc, WS_OK);
+  lb = world_load("pr_edge_a.bin");
+  fails = fails + check("B load code", lb.wl_code, WL_OK);
+  fails = fails + check("B wall byte, reloaded", wall_of(lb.wl_world, 6, 5), 3);
+  delete("pr_edge_a.bin");
+
+  // ── C: a world whose ONLY content is a wall
+  wc = world_new(0.25, 0, 8, 3).wn_world;
+  put(wc, 6, 5, [wallcell(100, 0, 3)]);
+  fails = fails + check("C wall byte, in memory", wall_of(wc, 6, 5), 3);
+  sc2 = world_save(wc, "pr_edge_c.bin", []);
+  lc = world_load("pr_edge_c.bin");
+  fails = fails + check("C wall byte, reloaded", wall_of(lc.wl_world, 6, 5), 3);
+  delete("pr_edge_c.bin");
+
+  if fails == 0 { println("edgehold: all clauses hold"); }
+  else { println("edgehold: {fails} clause(s) failed"); }
+}

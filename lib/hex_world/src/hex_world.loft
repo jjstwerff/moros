@@ -67,6 +67,34 @@ pub struct StoredHex {
 pub fn hex_occupied(h: Hex) -> boolean { h.h_material != 0 }
 pub fn stored_occupied(s: StoredHex) -> boolean { s.sv_material != 0 }
 
+// ── `E1e` — AN EDGE IS CONTENT, WHATEVER THE CELL UNDER IT HOLDS ─────────────
+//
+// OCCUPIED and PRESENT are different questions, and collapsing them loses data.
+//
+//   occupied — is there GROUND here? The floor-and-roof question (`E1r`), what
+//              `F1` stacks, what a column read means by a surface.
+//   present  — does this cell RECORD carry anything at all? The storage question:
+//              may elision drop it, must the window span its height.
+//
+// They part company because a hex stores three of its six edges, so the boundary
+// of a region lives HALF in the region's cells and half in the cells outside it —
+// and the cell that owns a slot need hold no ground. Keying elision on material
+// alone therefore made a fence survive or vanish according to which SIDE of it the
+// ground happened to be, an anisotropy with no physical meaning.
+//
+// Measured before it was fixed (`probe/edgehold.loft`): a wall beside occupied
+// cells survived save and load, and a layer whose only content was walls was
+// dropped whole at step 6 — silently, since a dropped layer reads back as absence.
+pub fn hex_present(h: Hex) -> boolean {
+  h.h_material != 0 || h.h_item != 0
+    || h.h_wall_n != 0 || h.h_wall_ne != 0 || h.h_wall_se != 0
+}
+
+pub fn stored_present(s: StoredHex) -> boolean {
+  s.sv_material != 0 || s.sv_item != 0
+    || s.sv_wall_n != 0 || s.sv_wall_ne != 0 || s.sv_wall_se != 0
+}
+
 // ── Layers and chunks ────────────────────────────────────────────────────────
 
 pub const KIND_TERRAIN  = 0;
@@ -270,7 +298,7 @@ fn check_column(w: World, col: Column) -> ColumnWrite {
   // Put it in the callers and it is N places that must each remember; put it
   // here and forgetting is impossible.
   for k in 0..len(col.co_cells) {
-    if hex_occupied(col.co_cells[k])
+    if hex_present(col.co_cells[k])
        && world_layer_kind(w, col.co_q, col.co_r, k) != KIND_TERRAIN {
       return ColumnWrite { cw_code: CW_MIX, cw_layer: k,
                            cw_detail: "layer {k} is dressing; terrain cannot be written into it" };
@@ -281,7 +309,7 @@ fn check_column(w: World, col: Column) -> ColumnWrite {
   // below zero to fall back on.
   for i in 0..len(col.co_cells) {
     c = col.co_cells[i];
-    if hex_occupied(c) && c.h_height < w.w_reserve {
+    if hex_present(c) && c.h_height < w.w_reserve {
       return ColumnWrite { cw_code: CW_RESERVE, cw_layer: i,
                            cw_detail: "height {c.h_height} is below the reserve {w.w_reserve}" };
     }
@@ -349,13 +377,16 @@ fn band_column(w: World, cq: integer, cr: integer,
 
   // What survives, plus what the band brings, in ascending height — the order
   // `F1` reads.
+  // PRESENT, not occupied (`E1e`): a cell holding only the boundary edges of the
+  // region beside it is content, and compacting by material would drop it here as
+  // surely as elision did.
   keep: vector<Hex> = [];
   for e in cur.co_cells {
-    if hex_occupied(e) && (e.h_height as integer ?? 0) < lo { keep += [e]; }
+    if hex_present(e) && (e.h_height as integer ?? 0) < lo { keep += [e]; }
   }
-  for b2 in band { if hex_occupied(b2) { keep += [b2]; } }
+  for b2 in band { if hex_present(b2) { keep += [b2]; } }
   for e2 in cur.co_cells {
-    if hex_occupied(e2) && (e2.h_height as integer ?? 0) > hi { keep += [e2]; }
+    if hex_present(e2) && (e2.h_height as integer ?? 0) > hi { keep += [e2]; }
   }
 
   // ⚠ REBUILD INDEX-ALIGNED, do not compact. A column read carries one entry per
@@ -520,7 +551,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   // based on its content rather than on zero.
   clo = 0; chi = 0; cseen = false;
   for i in 0..n {
-    if hex_occupied(col.co_cells[i]) {
+    if hex_present(col.co_cells[i]) {
       h = col.co_cells[i].h_height;
       if !cseen { clo = h; chi = h; cseen = true; }
       if h < clo { clo = h; }
@@ -557,7 +588,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   for ly in w.w_chunks[ci].ck_layers {
     if ly.ly_kind == KIND_TERRAIN {
       for j in 0..CHUNK_CELLS {
-        if j != ix && stored_occupied(ly.ly_cells[j]) {
+        if j != ix && stored_present(ly.ly_cells[j]) {
           h = w.w_chunks[ci].ck_base + ly.ly_cells[j].sv_height;
           if !seen { lo = h; hi = h; seen = true; }
           if h < lo { lo = h; }
@@ -581,7 +612,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     for ly in w.w_chunks[ci].ck_layers {
       if ly.ly_kind == KIND_TERRAIN {
         for j in 0..CHUNK_CELLS {
-          if stored_occupied(ly.ly_cells[j]) {
+          if stored_present(ly.ly_cells[j]) {
             ly.ly_cells[j].sv_height = (old + ly.ly_cells[j].sv_height - lo) as u16? ?? 0;
           }
         }
@@ -639,7 +670,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   live: vector<Layer> = [];
   for ly in w.w_chunks[ci].ck_layers {
     any = false;
-    for j in 0..CHUNK_CELLS { if stored_occupied(ly.ly_cells[j]) { any = true; } }
+    for j in 0..CHUNK_CELLS { if stored_present(ly.ly_cells[j]) { any = true; } }
     if any { live += [ly]; }
   }
   w.w_chunks[ci].ck_layers = live;

@@ -108,6 +108,47 @@ fn test_p5_emptying_a_layer_removes_it_and_leaves_reads_alone() {
   assert(col.co_cells[0].h_height == 1000, "the surviving layer changed");
 }
 
+// ── `E1e` — an edge is content, whatever the cell under it holds ────────────
+//
+// A hex stores three of its six edges, so half of any region's boundary lives in
+// the cells OUTSIDE it — cells that need hold no ground. Elision keyed on material
+// alone dropped those, which made a fence survive or vanish according to which
+// side of it the ground happened to be. The two tests are one claim and its
+// control: walls must hold a layer open, and nothing else about elision moves.
+
+fn test_e1e_a_layer_whose_only_content_is_walls_survives() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_se: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
+         "a bare boundary edge");
+  p = "sp_e1e.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p) ?? []);
+  delete(p);
+  assert(got == sp_want(1, 1),
+         "walls alone must keep their layer: {got} want {sp_want(1, 1)}");
+  col = world_column(w, 0, 0);
+  assert(len(col.co_cells) == 1, "the layer is gone: {len(col.co_cells)} cells");
+  assert(col.co_cells[0].h_wall_se == 3, "the wall byte did not survive");
+  // and the cell is still ABSENT as ground — present is not occupied
+  assert(!hex_occupied(col.co_cells[0]), "a wall must not read as ground");
+}
+
+fn test_e1e_control_a_layer_with_no_content_at_all_is_still_removed() {
+  w = sp_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_se: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
+         "a bare boundary edge");
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+         co_cells: [sp_cell(1000, 0)] }).cw_code == CW_OK, "clear the edge too");
+  p = "sp_e1e2.bin";
+  assert(world_save(w, p, []) == WS_OK, "save");
+  got = len(read_bytes(p) ?? []);
+  delete(p);
+  assert(got == sp_want(0, 0),
+         "clearing the last edge must still remove the chunk: {got} want {sp_want(0, 0)}");
+}
+
 fn test_p5_emptying_the_last_layer_removes_the_chunk() {
   w = sp_world();
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,

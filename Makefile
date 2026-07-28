@@ -170,6 +170,8 @@ GATE_RESTART = $(MAKE) -s port-free >/dev/null 2>&1; sleep 1; \
 gate-hexworld:
 	@printf '%-34s ' "hex_world/probe/sparsity"; \
 	  $(LOFT) --lib lib/ lib/hex_world/probe/sparsity.loft | tail -1
+	@printf '%-34s ' "hex_world/probe/edgehold"; \
+	  $(LOFT) --lib lib/ lib/hex_world/probe/edgehold.loft | tail -1
 
 gate-world:
 	@for g in tools/gates/world/*.mjs; do $(GATE_RESTART); \

@@ -361,6 +361,22 @@ Measured (rung W4): reading `cells[n-1]` as the roof put a building's first floo
 an absent layer rather than above the ground, landing it 7 above the real surface, where
 `F1` refused it. The contract held; the reader did not.
 
+**E1 binds the STORE by a wider question than occupancy.** A hex stores three of its six
+edges, so half of any region's boundary is stored in the cells *outside* it — and such a
+cell need hold no ground at all. "Is there ground here" and "does this record carry
+anything" are therefore different questions, and elision must ask the second:
+
+> **E1e.** A cell is **present** iff any of its fields is non-zero — material, item, or one
+> of its three edges. Elision drops what is not present; the window spans what is present.
+> **Occupancy** (material alone) remains the floor-and-roof question `E1r` asks, and the one
+> `F1` stacks: a cell holding only edges is present, and is not ground.
+
+Measured (rung W2, `probe/edgehold.loft`): with elision keyed on material, a boundary edge
+beside occupied cells survived save and load while a layer whose only content was edges was
+dropped whole — so a fence survived or vanished according to which **side** of it the ground
+happened to be, an anisotropy with no physical meaning. The loss was silent, because a
+dropped layer reads back exactly as absence.
+
 ### P1 — A stencil writes a band, not a column
 
 > A placement declares the closed height interval `[lo, hi]` it **owns**. The write
@@ -813,6 +829,7 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **W1** | every stored `s` in range after any write, including after rebase | force a span ≥ 2¹⁶ → `CW_WINDOW` |
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
 | **E1r** | read `cells[n-1]` as the roof → the storey lands on an absent layer | `world/storey.mjs` |
+| **E1e** | key elision on material → a layer of edges alone is dropped whole | clear the edges too → the chunk still leaves the file (`tests/sparsity.loft`, `probe/edgehold.loft`) |
 | **P1** | replace the column instead of the band → the cave under the house is deleted | `tests/stencil.loft` |
 | **P1** | trust the declared band → a cell outside it overwrites what was promised kept | `tests/stencil.loft` |
 | **P2** | drop the guard → terrain lands in a dressing layer and reads back absent | `tests/stencil.loft` |
