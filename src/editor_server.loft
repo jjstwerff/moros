@@ -760,7 +760,8 @@ fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float
 // one call rather than two: a part that cuts its boundary as it lands leaves stale
 // edges where a later part covers them, and the result depends on the order.
 fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
-              grade: integer, runs: WallRuns, fenced: &integer) -> integer {
+              grade: integer, runs: WallRuns, fenced: &integer,
+              cut_total: &integer) -> integer {
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
 
@@ -803,6 +804,7 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
   // which is a thin connected chain rather than a fat ring. Same library, same
   // track; the difference is reading the offset instead of the rasterisation.
   fenced = 0;
+  cut = 0;
   if fence_mat != 0 {
     for side in 0..2 {
       d = half + 0.5;
@@ -840,6 +842,7 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
             for dd in 0..6 {
               (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
               if edge_blocked(eg, q, r, nq, nr) {
+                cut = cut + 1;
                 cw = hex_to_world(q, r, 0);
                 nw = hex_to_world(nq, nr, 0);
                 mx = (cw.x + nw.x) * 0.5;
@@ -859,6 +862,7 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
       }
     }
   }
+  cut_total = cut;
   paved
 }
 
@@ -1097,6 +1101,19 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   // lattice: it is one dot product between two exact normals.
   // ⚠ HERE IS WHERE THE SLIDE STOPS, AND WHY IT IS NOT FINISHED.
   //
+  // COUNTED, since the last attempt guessed: for a 27.71 wu road the halfplane cut
+  // marks 214 edges over the padded window, 128 reach the world, and a radius-8
+  // proxy round the walker holds 36-42 of those. Nothing is lost — the window runs
+  // ~45 wu along the line against a 27.71 wu run, and 214 x 27.71/45 = 132 against
+  // 128 observed. The fence in the world is COMPLETE and dense: 4.6 edges per world
+  // unit, one every 0.217 wu, which no walker steps over.
+  //
+  // So the earlier suspicion — that the world holds fewer edges than the cut does —
+  // is REFUTED, and with it the explanation for the 40° crossing. That crossing
+  // needs re-measuring against a build that is certainly the one under test; the
+  // two runs it was seen in returned identical trails to the pixel, which is not
+  // what two different builds of a float simulation do.
+  //
   // What IS established, by probe rather than by reading: the proxy carries the
   // runs' surfaces (158 edges on a fenced road), and `collide` returns the exact
   // normal at the hit — `(0,1)` against an east-west road, which is the run's own
@@ -1251,14 +1268,15 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
                   wr_mat: wmat, wr_step: step };
   grade = py_of(wld, draft.wd_x, draft.wd_z);
   fenced = 0;
-  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, runs, fenced);
+  cut = 0;
+  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, runs, fenced, cut);
   hx = world_to_hex(run.wr_x0, run.wr_z0);
   hx2 = world_to_hex(run.wr_x1, run.wr_z1);
   mark_dirty(dirty, hx.ha_q, hx.ha_r, ROAD_HALF + 4);
   mark_dirty(dirty, hx2.ha_q, hx2.ha_r, ROAD_HALF + 4);
   srv.send_to(cid, "S:road laid {paved} cells and {fenced} fence edges, "
-                 + "heading {step} of {HEADINGS} (snapped, residual {resid}°), "
-                 + "length {reach}");
+                 + "cut {cut}, heading {step} of {HEADINGS} "
+                 + "(snapped, residual {resid}°), length {reach}");
   println("editor: road {paved} cells, fence {fenced} edges, heading {step}, "
           + "residual {resid}°");
 }
