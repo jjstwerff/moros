@@ -24,6 +24,7 @@ use moros_map;
 use hex_world;
 use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's query
+use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band is derived
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
@@ -217,6 +218,8 @@ const TICK_US = 33000;
 //                    22:<path>     export the cart body as a .glb
 //                    23:<mat>,<rad>  fence the disc you stand in, exactly
 //                    24:<dir>,<mat>  set ONE edge of the cell you stand in
+//                    25:<mat>      road — press to start a run, again to close it
+//                    26:<q>,<r>    report that cell's surface material and height
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -267,6 +270,8 @@ const MSG_CART = 17;      // vehicles: move the cart, roll its wheels (moros#14)
 const MSG_WALLS = 16;     // read one cell's three owned wall edges back
 const MSG_FENCE = 23;     // fences: ring the disc you stand in (moros#10)
 const MSG_EDGE = 24;      // and the atomic half of it — one edge, one material
+const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
+const MSG_CELL = 26;      // read one cell's surface material and height back
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -539,9 +544,7 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
         hh = h;
         if hh < W_RESERVE { hh = W_RESERVE; }
         if hh > 65535 { hh = 65535; }
-        world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
-          co_cells: [hex_world::Hex { h_height: hh as u16? ?? 0,
-                                      h_material: ROAD_MAT }] });
+        terrain_set(wld, q, r, hh, ROAD_MAT);
       }
     }
   }
@@ -647,6 +650,33 @@ fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
   w.cw_code
 }
 
+// ── A HEIGHT IS NOT A BOUNDARY (rung W2, moros#10) ──────────────────────────
+//
+// **Changing the ground must never take the walls with it.** Every terrain writer
+// used to compose a fresh `Hex` from a height and a material, and a fresh `Hex`
+// has zero in its three edge bytes — so raising a hill under a fence DELETED the
+// fence, silently, on every cell the brush touched.
+//
+// It is the same shape as `P2`, where a terrain write must not blank a dressing
+// layer "not even to blank it": absence in a value the caller never mentioned is
+// not a decision to clear it. The model cannot tell the two apart — an all-zero
+// edge byte means both "no wall" and "I did not say" — so the distinction lives
+// where the intent does, in ONE helper every ground writer goes through.
+//
+// An edge is written by `wall_set` and cleared by writing 0 to it, deliberately.
+// Nothing else touches it.
+fn terrain_set(wld: &World, q: integer, r: integer, h: integer, mat: integer) -> integer {
+  c = world_cell(wld, q, r, SURFACE);
+  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+                        h_material: mat as u8? ?? 0,
+                        h_item: c.h_item,
+                        h_item_rotation: c.h_item_rotation,
+                        h_wall_n: c.h_wall_n,
+                        h_wall_ne: c.h_wall_ne,
+                        h_wall_se: c.h_wall_se };
+  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: [nc] }).cw_code
+}
+
 // How tall a wall of this material stands. A DOOR draws nothing: the boundary is
 // still there in the storage, which is what `X70` is about, and what an opening
 // looks like is a hole you can see through.
@@ -656,7 +686,179 @@ fn wall_up(mat: integer) -> integer {
   WALL_UP
 }
 
+// ── A WALL IS A STRAIGHT LINE (rung W2, moros#10) ───────────────────────────
+//
+// **A wall is an analytic straight run, and the marked hex edges are its INDEX.**
+// Not the other way round. Authoring a wall as a set of hex edges makes it wobble
+// by construction — a hex edge turns 60° at every step — and it also loses the
+// only thing a bounce, a slide or a slice needs: the wall's true normal. `hex_edge`
+// measured that directly: against the 24 headings, using a hex edge's own normal
+// instead of the wall's is wrong by **up to 90°**.
+//
+// So the run is the record:
+//   · the heading is one of the **24 compass steps of 15°** (`SCENE_MAP.md` § item
+//     rotation), which is the same set `hex_edge` verified a one-edge-thick cut
+//     separates in — 24 of 24, where a CELL-thick wall manages 6;
+//   · the cells' wall bytes are DERIVED from it, marked where the segment crosses;
+//   · the geometry drawn is the run, straight in plan, following the ground.
+//
+// A heading is ORDINAL, so snapping it is `K-FIT`'s third state — applied as an
+// explicit approximation, with its residual reported in degrees, never silently.
+const HEADINGS = 24;                   // 15° apart
+const WALL_SNAP = 0.26179938779914946; // 2π / 24
+
+struct WallRun {
+  wr_x0: float, wr_z0: float,
+  wr_x1: float, wr_z1: float,
+  wr_mat: integer,
+  wr_step: integer,                    // which of the 24, for the record
+}
+struct WallRuns { items: vector<WallRun> }
+
+// The run being drawn — two presses, so the first has to be remembered.
+//
+// ⚠ A STRUCT RATHER THAN A `&boolean` OUT-PARAMETER, and not by preference: loft
+// #655 panics codegen on a `&boolean` that is assigned ("Unknown referenced
+// variable type: boolean"), while `&integer`, `&float` and `&text` all work. A
+// struct mutates in place and propagates without `&` anyway, so this is the
+// better shape — it was simply not a free choice.
+struct WallDraft { wd_open: boolean, wd_x: float, wd_z: float }
+
+// The nearest of the 24 headings to (dx, dz), and how far off the author was.
+fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float {
+  a = atan2(dz, dx);
+  k = a / WALL_SNAP ?? 0.0;
+  ki = 0;
+  if k >= 0.0 { ki = (k + 0.5) as integer; } else { ki = (k - 0.5) as integer; }
+  snapped = (ki as float) * WALL_SNAP;
+  d = a - snapped;
+  if d < 0.0 { d = 0.0 - d; }
+  residual = d * 180.0 / PI ?? 0.0;
+  step = ((ki % HEADINGS ?? 0) + HEADINGS) % HEADINGS ?? 0;
+  snapped
+}
+
+// ── A ROAD IS A CENTRELINE, AND ITS FENCE IS ITS OWN BOUNDARY ───────────────
+//
+// `hex_way` already models this and the editor's road did not: *"a way is an exact
+// centreline plus offsets, never a rasterised band"*. Laying a strip per walked
+// footfall put the road on the half-hex quantisation floor — it wobbled because it
+// was made of hexes — and there was nothing for a fence to run ALONGSIDE, because
+// there was no line, only cells.
+//
+// So the walk records two ends, the heading snaps to one of the 24, and
+// `way_stamp` does both halves in one pass over the finished footprint:
+//
+//   · the cells within the half-width become the road, and
+//   · the boundary edges of exactly those cells become the roadside — each tagged
+//     with the SURFACE of the nearest segment, so the fence carries the road's true
+//     normal rather than the six a hex edge can offer.
+//
+// ⚠ MARK, THEN CUT — the library's own `P3` lesson, and the reason `way_stamp` is
+// one call rather than two: a part that cuts its boundary as it lands leaves stale
+// edges where a later part covers them, and the result depends on the order.
+fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
+              grade: integer, fenced: &integer) -> integer {
+  t = hex_way::track_new();
+  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+
+  a0 = world_to_hex(run.wr_x0, run.wr_z0);
+  a1 = world_to_hex(run.wr_x1, run.wr_z1);
+  q0 = a0.ha_q; if a1.ha_q < q0 { q0 = a1.ha_q; }
+  q1 = a0.ha_q; if a1.ha_q > q1 { q1 = a1.ha_q; }
+  r0 = a0.ha_r; if a1.ha_r < r0 { r0 = a1.ha_r; }
+  r1 = a0.ha_r; if a1.ha_r > r1 { r1 = a1.ha_r; }
+  pad = (half as integer ?? 0) + 3;
+  q0 = q0 - pad; r0 = r0 - pad;
+  w = q1 - q0 + pad + 1;
+  h = r1 - r0 + pad + 1;
+
+  // THE ROAD is the band: the cells within `half` of the centreline. A
+  // rasterisation, and the library says so — which is exactly why the fence must
+  // not be derived from it.
+  cells = hexset_chunk(q0, r0, w, h);
+  hex_way::way_mark(t, half, cells);
+  paved = 0;
+  for r in r0..r0 + h {
+    for q in q0..q0 + w {
+      if hexset_get(cells, q, r) {
+        terrain_set(wld, q, r, grade, ROAD_MAT);
+        paved = paved + 1;
+      }
+    }
+  }
+
+  // ── THE FENCE IS THE OFFSET LINE, NOT THE BAND'S OUTLINE ─────────────────
+  //
+  // ⚠ This is the whole lesson of the rung, and the plan view is what showed it.
+  // `way_stamp`/`cut_arb` cut the boundary of the MARKED CELLS, which is the
+  // outline of a set of hexes — a zigzag, by construction, however straight the
+  // road under it is. Rendered, an 82-edge fence wobbled around a 44-cell road.
+  //
+  // A wall is a LINE. `track_offset` gives the parallel curve exactly — for a
+  // straight it is another straight, so equidistance is exact rather than
+  // approximated — and `edges_halfplane_surf` marks the edges that LINE crosses,
+  // which is a thin connected chain rather than a fat ring. Same library, same
+  // track; the difference is reading the offset instead of the rasterisation.
+  fenced = 0;
+  if fence_mat != 0 {
+    for side in 0..2 {
+      d = half + 0.5;
+      if side == 1 { d = 0.0 - d; }
+      if hex_way::offset_legal(t, d) {
+        o = hex_way::track_offset(t, d);
+        (tx, ty) = hex_way::seg_tangent(o, 0, 0.0);
+        (ox, oy) = hex_way::seg_point(o, 0, 0.0);
+        nx = 0.0 - ty;
+        nz = tx;
+        eg = edgeset_new(q0, r0, w, h);
+        sfo = surfaces_new();
+        sid = surf_straight(sfo, nx, nz, nx * ox + nz * oy);
+        edges_halfplane_surf(eg, q0, r0, w, h, nx, nz, nx * ox + nz * oy, sid);
+        // ⚠ CLIPPED TO THE RUN, and NOT with `seg_param`. That routine returns the
+        // parameter of the NEAREST point on the segment and therefore CLAMPS —
+        // correct for what it is, and useless as an inside test, since every point
+        // in the window comes back inside. Rendered, the fence ran the full width
+        // of the plan and off both ends of its road.
+        //
+        // The exact test is already here in two pieces: distance to the SEGMENT
+        // clamps at the ends, distance to the infinite LINE does not, so they are
+        // equal exactly where the nearest point is interior. No new geometry, and
+        // no parameter arithmetic of our own.
+        for r in r0..r0 + h {
+          for q in q0..q0 + w {
+            for dd in 0..6 {
+              (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
+              if edge_blocked(eg, q, r, nq, nr) {
+                cw = hex_to_world(q, r, 0);
+                nw = hex_to_world(nq, nr, 0);
+                mx = (cw.x + nw.x) * 0.5;
+                mz = (cw.z + nw.z) * 0.5;
+                dseg = hex_way::seg_distance(o, 0, mx, mz);
+                dline = surf_distance(sfo, sid, mx, mz);
+                over = dseg - dline;
+                if over < 0.0 { over = 0.0 - over; }
+                if over < 0.000001 {
+                  wall_set(wld, q, r, dd, fence_mat, grade);
+                  fenced = fenced + 1;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  paved
+}
+
 // ── The exact perimeter ─────────────────────────────────────────────────────
+//
+// ⚠ THIS IS A REGION'S BOUNDARY, NOT A WALL. The two were conflated in this rung's
+// first version, and the tell was visible the moment anyone looked: a fence laid
+// this way follows the hexes and wobbles. A field's edge genuinely IS the set of
+// cell boundaries between inside and outside — that is what makes the count exact —
+// while a wall is a straight run that happens to cross some of them.
 //
 // A region's boundary is **every edge between a member and a non-member** — not
 // "the outer ring's own three edges", which is the approximation rung W4 left
@@ -899,6 +1101,68 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
           + "stored at ({eoq},{eor})");
 }
 
+// Lay a wall by walking it: press once to plant the near end, once to close it.
+//
+// The heading SNAPS to one of the 24, and the far end is the author's position
+// projected onto it — so the wall is straight by construction rather than by a
+// steady hand. The snap is an approximation and says so: `K-FIT`'s third state is
+// "applied, with its residual on the wire", and the residual here is an angle.
+fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
+           wld: &World, dirty: DirtySet, runs: WallRuns, draft: WallDraft) {
+  wmat = payload as integer ?? FENCE_MAT;
+  wfit = fit_nominal(wmat, FENCE_MAT, "wall material");
+  if !wfit.ft_ok {
+    srv.send_to(cid, "S:road refused — {fit_text(wfit)}");
+    println("editor: road refused — {fit_text(wfit)}");
+    return;
+  }
+  if !draft.wd_open {
+    draft.wd_open = true;
+    draft.wd_x = px;
+    draft.wd_z = pz;
+    srv.send_to(cid, "S:road started at {px},{pz}");
+    println("editor: road started at {px},{pz}");
+    return;
+  }
+  draft.wd_open = false;
+  dx = px - draft.wd_x;
+  dz = pz - draft.wd_z;
+  if dx * dx + dz * dz < 0.25 {
+    srv.send_to(cid, "S:road refused — a way needs two ends; walk away from the first");
+    return;
+  }
+  step = 0;
+  resid = 0.0;
+  ang = snap_heading(dx, dz, step, resid);
+  // The length is what the author walked measured ALONG the snapped heading, not
+  // the straight-line distance — which would run the way past where they stopped
+  // whenever they drifted off the line.
+  reach = dx * cos(ang) + dz * sin(ang);
+  run = WallRun { wr_x0: draft.wd_x, wr_z0: draft.wd_z,
+                  wr_x1: draft.wd_x + cos(ang) * reach, wr_z1: draft.wd_z + sin(ang) * reach,
+                  wr_mat: wmat, wr_step: step };
+  runs.items += [run];
+  grade = py_of(wld, draft.wd_x, draft.wd_z);
+  fenced = 0;
+  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, fenced);
+  hx = world_to_hex(run.wr_x0, run.wr_z0);
+  hx2 = world_to_hex(run.wr_x1, run.wr_z1);
+  mark_dirty(dirty, hx.ha_q, hx.ha_r, ROAD_HALF + 4);
+  mark_dirty(dirty, hx2.ha_q, hx2.ha_r, ROAD_HALF + 4);
+  srv.send_to(cid, "S:road laid {paved} cells and {fenced} fence edges, "
+                 + "heading {step} of {HEADINGS} (snapped, residual {resid}°), "
+                 + "length {reach}");
+  println("editor: road {paved} cells, fence {fenced} edges, heading {step}, "
+          + "residual {resid}°");
+}
+
+// The ground height at a world point, as an integer grade — a road is GRADED, so it
+// takes one height for its whole run rather than following every bump.
+fn py_of(wld: World, x: float, z: float) -> integer {
+  a = world_to_hex(x, z);
+  terrain_h(a.ha_q, a.ha_r, wld)
+}
+
 // A cell's three owned edges, one group per PRESENT cell of its column.
 //
 // PRESENT, not occupied (`E1e`): a cell holding the boundary of the region beside
@@ -991,8 +1255,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
   if escaped { return 0; }          // it never closed — refuse, and change nothing
   for k in 0..len(seen_q) {
     h = world_cell(wld, seen_q[k], seen_r[k], SURFACE).h_height;
-    world_set_column(wld, hex_world::Column { co_q: seen_q[k], co_r: seen_r[k],
-      co_cells: [hex_world::Hex { h_height: h, h_material: FIELD_MAT }] });
+    terrain_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
   }
   len(seen_q)
 }
@@ -1574,9 +1837,7 @@ fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer,
           // ⚠ Qualified: `moros_map` and `hex_world` BOTH define a `Hex`, and they
           // are different types — moros_map's is the scene cell, hex_world's is the
           // stored voxel. The bare name resolves to the wrong one here.
-          world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
-            co_cells: [hex_world::Hex { h_height: h as u16? ?? 0,
-                                        h_material: SURFACE_MAT }] });
+          terrain_set(wld, q, r, h, SURFACE_MAT);
         }
       }
     }
@@ -2184,6 +2445,12 @@ fn main() {
   // an unwritten cell reads as absent and absence IS the floor (`E1`).
   wld = new_world();
 
+  // The wall runs authored so far, and the run being drawn. A run is the RECORD —
+  // the cells' edge bytes are derived from it — so this is what a save has to
+  // carry, and what a bounce reads its exact normal from.
+  wall_runs = WallRuns { items: [] };
+  wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
+
   // The collision proxy and its validity, keyed on the cell and the edit clock.
   coll_move = edges_around(wld, 0, 0, COLL_R, false);
   coll_view = edges_around(wld, 0, 0, COLL_R, true);
@@ -2541,6 +2808,18 @@ fn main() {
           do_fence(srv, ev.cid, ev.payload, px, pz, wld, dirty);
         } else if ev.msg_id == MSG_EDGE {
           do_edge(srv, ev.cid, ev.payload, px, pz, wld, dirty);
+        } else if ev.msg_id == MSG_CELL {
+          cci = ev.payload.find(",");
+          cq2 = 0;
+          cr2 = 0;
+          if cci != null {
+            cq2 = ev.payload[..cci] as integer ?? 0;
+            cr2 = ev.payload[cci + 1..] as integer ?? 0;
+          }
+          ccell = world_cell(wld, cq2, cr2, SURFACE);
+          srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
+        } else if ev.msg_id == MSG_WALL {
+          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, wall_runs, wall_draft);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: the roof height above the floor, in height units
           roof_up = ev.payload as integer ?? STOREY_H;
