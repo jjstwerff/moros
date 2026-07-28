@@ -717,11 +717,13 @@ struct WallRuns { items: vector<WallRun> }
 
 // The run being drawn — two presses, so the first has to be remembered.
 //
-// ⚠ A STRUCT RATHER THAN A `&boolean` OUT-PARAMETER, and not by preference: loft
-// #655 panics codegen on a `&boolean` that is assigned ("Unknown referenced
-// variable type: boolean"), while `&integer`, `&float` and `&text` all work. A
-// struct mutates in place and propagates without `&` anyway, so this is the
-// better shape — it was simply not a free choice.
+// A struct rather than a `&boolean` out-parameter — it mutates in place and
+// propagates without `&`, which is the better shape for a two-field draft anyway.
+//
+// ✅ It was not a free choice when written: loft #655 panicked codegen on a
+// `&boolean` that is assigned, while `&integer`, `&float` and `&text` all worked.
+// **Fixed upstream (`5565278f`) and verified here on both backends.** That fix too
+// was wider than the report — four sites, where this consumer hit one.
 struct WallDraft { wd_open: boolean, wd_x: float, wd_z: float }
 
 // The nearest of the 24 headings to (dx, dz), and how far off the author was.
@@ -889,21 +891,21 @@ fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer)
   }
 }
 
-// ⚠ THE HANDLERS BELOW LIVE OUT HERE UNDER DURESS, not by design — `main` is up
-// against loft #654. Past roughly 32 KB of body the interpreter stops taking a
-// `while true`'s backward jump: the pump runs ONE pass and the process exits 0,
-// after printing its whole startup banner. Two `println` lines in the dispatch
-// were enough, and removing two UNRELATED lines elsewhere fixed it, which is what
-// identified size rather than the statements as the cause. Native is correct at
-// the same size; `make play-fast` is the interpreted path.
+// The handlers below live out here because a dispatch arm that grows past a few
+// lines belongs in a function — which is now a plain style choice again.
 //
-// So a handler that grows goes into a function. That is better code anyway — but
-// it is being chosen by a compiler limit rather than by the design, which is worth
-// saying out loud so nobody folds them back in.
+// ✅ IT WAS NOT ALWAYS ONE. These were extracted under duress against loft #654:
+// past ~32 KB of body the interpreter stopped taking a `while true`'s backward
+// jump, so the pump ran ONE pass and the process exited 0 after printing its whole
+// startup banner. Two `println` lines in the dispatch were enough to cross it.
+// **Fixed upstream (`c9f1c0b1`, jumps carry a 32-bit displacement) and verified
+// here against the installed binary on both backends** — a loop body of 6000
+// statements, four times the old threshold, iterates correctly. The fix was
+// broader than the report: every loop AND branch was jumping arbitrarily, where
+// this consumer only ever saw the backward one.
 //
-// Margin, measured rather than hoped for: `main` takes another ~120 statements and
-// still loops, and dies somewhere before 300. Before the extraction it was TWO.
-// When the next rung runs out of room, extract — do not go hunting for a bug.
+// So `main` may grow again. The extraction stays because it reads better, not
+// because anything forces it.
 
 // What is standing there now, read back: how many boundary edges carry `mat`, and
 // how many of those are stored OUTSIDE the disc. The second number is the halo,

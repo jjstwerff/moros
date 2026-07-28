@@ -727,7 +727,16 @@ undersells it considerably.
 
 ---
 
-## H14 — past ~32 KB of body, a `while true` runs its body ONCE and the program exits 0
+## H14 ✅ FIXED — past ~32 KB of body, a `while true` runs its body ONCE and exits 0
+
+> **Fixed by loft `c9f1c0b1`** — *"jumps: carry a 32-bit displacement"*. Verified 2026-07-28
+> against the INSTALLED binary, both backends: a loop body of 1485 statements (the old flip
+> point), 3000 and 6000 all iterate correctly.
+>
+> ⚠ **The fix was wider than the report.** The commit says *every loop and branch* jumped
+> somewhere arbitrary past the limit; this consumer only ever observed the backward jump,
+> because that is the one a server's pump depends on. A reproducer that pins a symptom does
+> not measure the class — worth remembering before filing the next one.
 
 **Status:** filed as [loft-lang/loft#654](https://github.com/loft-lang/loft/issues/654)
 (`bug` `sev:high` `area:codegen` `area:runtime` `wa:partial` `hit-by:moros`)
@@ -790,3 +799,41 @@ compile error naming the limit is recoverable, and this is not.
 Lift code out of the function holding the loop. Moros extracted its message handlers into
 functions to get back under the limit — better code, but taken under duress rather than
 chosen.
+
+
+---
+
+## H15 ✅ FIXED — a mutated `&boolean` parameter panicked codegen
+
+> **Fixed by loft `5565278f`** — *"codegen: `&boolean` reads and writes on both backends —
+> four sites, not the one filed"*. Verified 2026-07-28 against the installed binary: the
+> reproducer prints `true` under `--interpret` and `--native`.
+>
+> ⚠ Wider than the report again — four sites where this consumer hit one.
+
+**Status:** filed as [loft-lang/loft#655](https://github.com/loft-lang/loft/issues/655)
+(`bug` `sev:medium` `area:codegen` `both-backends` `wa:clean` `hit-by:moros`)
+
+### Minimal reproducer
+
+```loft
+fn flip(b: &boolean) { b = !b; }
+
+fn main() {
+  x = false;
+  flip(x);
+  println("{x}");     // printed nothing: codegen panicked
+}
+```
+
+```
+thread 'main' panicked at src/state/codegen.rs:3648:22:
+Unknown referenced variable type: boolean
+```
+
+`&integer`, `&float` and `&text` all worked with the same shape, which is what made it
+boolean-specific rather than a limit on reference parameters.
+
+**What it cost:** a two-press authoring tool wanted `open: &boolean` beside `ax: &float`,
+and the float compiled while the boolean did not. The workaround — a struct holding the
+draft — is the better shape and stays.

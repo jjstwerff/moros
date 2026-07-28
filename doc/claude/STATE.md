@@ -38,13 +38,16 @@ camera's occlusion class. **Every numbered rung of the ladder is now built.** 21
    axial formula, so gate and editor agreed *by making the same mistake*. Every
    `hex_distance` in `editor_server.loft` is now `hex_grid::`-qualified; **removing the
    parity-blind copy from `moros_map` is #3's, and it is still exported.**
-3. **loft #654** — past ~32 KB of body the interpreter stops taking a `while true`'s backward
-   jump: the loop runs ONE pass and the process exits 0. Two `println` lines in the editor's
-   dispatch were enough, and *removing two unrelated lines elsewhere* fixed it. Filed
-   upstream with a generated reproducer (1484 statements loops, 1485 does not; `--native` is
-   correct). The workaround is to lift handlers out of `main` — measured margin now ~120
-   statements, where it was two. **When the next rung runs out of room, extract; do not go
-   hunting for a bug.**
+3. **loft #654 ✅ and #655 ✅ — both filed and both already fixed upstream.** #654: past
+   ~32 KB of body the interpreter stopped taking a `while true`'s backward jump, so the pump
+   ran ONE pass and the process exited 0 — two `println` lines in the dispatch were enough,
+   and *removing two unrelated lines elsewhere* fixed it. #655: a mutated `&boolean`
+   parameter panicked codegen while `&integer`/`&float`/`&text` worked. Both **verified
+   against the installed binary on both backends**, not taken from the commit messages.
+   ⚠ **Both fixes were wider than the reports** — "every loop and branch", and "four sites,
+   not the one filed". A reproducer that pins a symptom does not measure the class. The two
+   workarounds (handlers out of `main`, a struct for the draft) are kept because they read
+   better, no longer because anything forces them.
 4. **Collision worked for exactly one tick**, which is indistinguishable from never working.
    Stopping exactly ON the bisector leaves the position ambiguous — `hex_at` rounds to the
    far cell and the next tick starts beyond the wall. The fix is a `SKIN` (stop 1 cm short),
