@@ -13,6 +13,11 @@
 //
 // A WORLD gate: places, never walks. Surfaces are one mesh each, id ≡ 0/1/2 mod 3
 // above the reserved figure block (0-15): ground, road, field.
+// ⚠ THE SURFACE STRIDE IS NAMED, not spelled 5 or 6 in a comparison. A chunk
+// draws one mesh per surface on consecutive ids, so every decoder here depends on
+// how many there are — and when the roof made it five, three decoders moved and
+// the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
+const SURFACES = 6;   // ground, road, field, vegetation, roof, wall
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -33,7 +38,7 @@ const verts = (kind) => {           // 0 ground, 1 road, 2 field
   let n = 0;
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
-    if ((id - 16) % 5 !== kind) continue;
+    if ((id - 16) % SURFACES !== kind) continue;
     n += d.length / 6;
   }
   return n;

@@ -11,6 +11,11 @@
 //     does not fit, and the editor does not build half of it anyway;
 //   · the ROOF is its own geometry: derived from the footprint, pitched by
 //     ring, and actually drawn.
+// ⚠ THE SURFACE STRIDE IS NAMED, not spelled 5 or 6 in a comparison. A chunk
+// draws one mesh per surface on consecutive ids, so every decoder here depends on
+// how many there are — and when the roof made it five, three decoders moved and
+// the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
+const SURFACES = 6;   // ground, road, field, vegetation, roof, wall
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -153,7 +158,7 @@ ws.onmessage = async (e) => {
     // the roof is DRAWN — surface kind 4 of 5. A rule nobody can see is a rule
     // that will rot; vegetation taught this gate that the model and the picture
     // are two claims.
-    const roofVerts = [...chunks].filter(([id, d]) => (id - 16) % 5 === 4 && d.length >= 6)
+    const roofVerts = [...chunks].filter(([id, d]) => (id - 16) % SURFACES === 4 && d.length >= 6)
                                  .reduce((n, [, d]) => n + Math.floor(d.length / 6), 0);
     const refusedLate = lateMsg.startsWith('stencil refused (-11)')
                         && lateMsg.includes('(-2,0)');

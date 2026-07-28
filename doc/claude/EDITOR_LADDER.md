@@ -49,6 +49,7 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~5~~ | ~~roads~~ — a graded strip laid while walking | #9 | M | ✅ 2026-07-27 — gate green, control red; all other gates still green |
 | — | ✋ | | | draw one |
 | 6 | fences and walls; `hex_edge` collision; the camera's occlusion class | #10 | L | walls block movement; the camera treats solid walls like terrain and fences not at all |
+| 6a | ↳ the exact perimeter, and the halo — one `edge_owner`, `6(2R+1)` edges | #10 | ✅ | `tools/gates/world/fence.mjs`; three mutations seen red |
 | — | *(#8's own rows run beside the ladder: many authors and long-running stores are both **DONE** — `M1` `M2` `X2` `X3` `X5` gated. What remains of #8 is the crystal port and the convergences)* | #8 | | ✅ |
 | — | ✋ | | | walk into a wall, orbit beside one |
 | ~~7~~ | ~~fields~~ — a bounded fill, refused when open | #11 | M | ✅ 2026-07-27 — gate green: refuses on open ground, fills 167 cells inside a road ring |
@@ -637,3 +638,53 @@ it wants a session with room for it, not the tail of one.
 **What it would buy:** the editor's idle path falls from a 50ms poll to a true
 zero, and the watched path drops well below 12.9%, because most of those wakeups
 find nothing to do.
+
+
+## What rung 6a found — every disc in the editor was a sheared blob
+
+A region's boundary is **every edge between a member and a non-member**, and a hex
+stores three of its six edges — so half of any boundary is stored in the cells
+OUTSIDE the region. That is #10's design question, and as a count it is closed
+rather than approximate: a disc of radius `R` has `6(2R+1)` boundary edges, of
+which exactly `3(2R+1)` are stored outside, because each of the six directions
+faces `2R+1` of the ring and three of the six belong to the neighbour.
+
+The gate asserts that arithmetic — and it did not hold. It read **34 edges where
+the geometry says 30**, at every centre, in both parities and both signs.
+
+**The cause was not the fence.** `moros_map` exports a `hex_distance` that is the
+AXIAL cube distance, `max(|dq|, |dr|, |dq+dr|)`, and this editor's coordinates are
+odd-r OFFSET. The unqualified name resolved to it, so "distance" called `(0,0)` and
+its SW neighbour `(-1,-1)` two steps apart. The disc it defined was a sheared blob
+whose true boundary really is 34 edges — the count was right about the shape, and
+the shape was wrong.
+
+⚠ **It was wrong for every other disc too**: the road's width, the scatter's reach,
+the storey's footprint and the house's own outline had all been sheared, and no gate
+could see it because each measured the shape the editor drew. Rung 6 is where it
+showed, because a fence is the first thing whose count is a closed form. Every
+`hex_distance` in `editor_server.loft` is now qualified to `hex_grid`'s; removing
+the parity-blind copy from `moros_map` is moros#3's.
+
+**What the fix cost, and what that says.** `opening.mjs` went red — it walked the
+house's ring with the same axial formula, so gate and editor had agreed by making
+the same mistake. Two wrongs that agree read exactly like a right.
+
+### Three mutations, each red for its own reason
+
+| mutation | what the gate saw |
+|---|---|
+| mark the ring's own three edges (the naive loop) | 15 of 30 boundary edges, **0 stored outside**, and 36 bytes written — too many edges AND too few of the right ones |
+| store the gateway as absence (`X70`) | 29 edges, and the fill **leaks out and is refused** — "an enclosure with a doorway is still enclosed" is the difference between 19 cells and no field at all |
+| the parity-blind distance, in the fence alone | 16 edges — and `7` outside at even rows against `9` at odd, which is the parity signature made visible, and why the gate rings four centres |
+
+### The counts that are now pinned
+
+- 30 boundary edges for `R = 2`, at four centres — even and odd rows, positive and negative;
+- 15 of them stored outside the disc — the halo, counted rather than asserted;
+- the same 30 arrived at independently, by summing every non-zero wall byte in a
+  window: the server's own count comes from the same `edge_owner` map the write
+  used, so two directions colliding in one byte would report 30 and store 25. The
+  map cannot check itself;
+- a fill inside the fence takes exactly `3R²+3R+1 = 19` cells, through the gateway
+  and no further.

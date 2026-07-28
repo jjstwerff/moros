@@ -13,6 +13,11 @@
 // A WORLD gate — it places the character rather than walking it, so it cannot
 // break when locomotion changes. Road laying happens on the walk tick, so the
 // placements are what drive it.
+// ⚠ THE SURFACE STRIDE IS NAMED, not spelled 5 or 6 in a comparison. A chunk
+// draws one mesh per surface on consecutive ids, so every decoder here depends on
+// how many there are — and when the roof made it five, three decoders moved and
+// the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
+const SURFACES = 6;   // ground, road, field, vegetation, roof, wall
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const chunks = new Map();
@@ -28,7 +33,7 @@ const roadCells = () => {
   const set = new Set();
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
-    if (((id - 16) % 5) !== 1) continue;              // 0 ground, 1 road, 2 field, 3 veg, 4 roof
+    if (((id - 16) % SURFACES) !== 1) continue;              // 0 ground, 1 road, 2 field, 3 veg, 4 roof, 5 wall
     for (let i = 0; i + 2 < d.length; i += 6)
       set.add(`${Math.round(d[i])},${Math.round(d[i + 2])}`);
   }
@@ -60,7 +65,7 @@ const stats = (road) => {
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
     if (id <= 15) continue;
-    if ((((id - 16) % 5) === 1) !== road) continue;   // 0 ground, 1 road, 2 field, 3 veg, 4 roof
+    if ((((id - 16) % SURFACES) === 1) !== road) continue;   // 0 ground, 1 road, 2 field, 3 veg, 4 roof, 5 wall
     for (let i = 1; i < d.length; i += 6) { lo = Math.min(lo, d[i]); hi = Math.max(hi, d[i]); n++; }
   }
   return { lo: +lo.toFixed(3), hi: +hi.toFixed(3), n };

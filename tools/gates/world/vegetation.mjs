@@ -11,6 +11,11 @@
 //   · clearing empties it, and the mesh empties with it;
 //   · a tree stands on the ground it grows on, so a wood scattered on a hill
 //     sits higher than one scattered on the flat.
+// ⚠ THE SURFACE STRIDE IS NAMED, not spelled 5 or 6 in a comparison. A chunk
+// draws one mesh per surface on consecutive ids, so every decoder here depends on
+// how many there are — and when the roof made it five, three decoders moved and
+// the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
+const SURFACES = 6;   // ground, road, field, vegetation, roof, wall
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -35,7 +40,7 @@ let st = 0;
 // index 1 — which looked like three gates disagreeing about the layout, and was
 // really one gate parsing differently from the rest.
 // An empty mesh is one empty field, so fewer than six numbers.
-const isVeg = (id) => (id - 16) % 5 === 3;
+const isVeg = (id) => (id - 16) % SURFACES === 3;
 const vegVerts = () => {
   let n = 0;
   for (const [id, d] of chunks) if (isVeg(id) && d.length >= 6) n += Math.floor(d.length / 6);
@@ -43,7 +48,7 @@ const vegVerts = () => {
 };
 const topYOfKind = (k) => {
   let y = -1e9;
-  for (const [id, d] of chunks) if ((id - 16) % 5 === k && d.length >= 6)
+  for (const [id, d] of chunks) if ((id - 16) % SURFACES === k && d.length >= 6)
     for (let i = 1; i < d.length; i += 6) if (Number.isFinite(d[i])) y = Math.max(y, d[i]);
   return y === -1e9 ? null : +y.toFixed(3);
 };

@@ -729,9 +729,9 @@ undersells it considerably.
 
 ## H14 — past ~32 KB of body, a `while true` runs its body ONCE and the program exits 0
 
-**Status:** not filed · **Repo:** `loft-lang/loft`
+**Status:** filed as [loft-lang/loft#654](https://github.com/loft-lang/loft/issues/654)
+(`bug` `sev:high` `area:codegen` `area:runtime` `wa:partial` `hit-by:moros`)
 **Severity:** high — silent wrong control flow, exit code 0, no diagnostic
-**Suggested title:** `interpreter: a long loop body breaks the backward jump — the loop runs one iteration and falls through`
 **Backend:** `--interpret` only. `--native` is correct on the same source.
 
 ### Minimal reproducer

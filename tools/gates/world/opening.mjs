@@ -43,12 +43,22 @@ ws.onmessage = async (e) => {
 
     // The footprint is a radius-2 disc centred on hex (0,0), so its perimeter is
     // the twelve cells at distance 2. Walk them and count.
+    //
+    // ⚠ DISTANCE IS ODD-R OFFSET, not axial. This read `(|dq| + |dr| + |dq+dr|)/2`
+    // straight off (dq, dr) — the AXIAL cube distance — which is a different set of
+    // cells on an offset lattice: it calls (0,0) and (-1,-1) two steps apart where
+    // they are neighbours. It agreed with the editor only because the editor was
+    // making the same mistake, through `moros_map::hex_distance` (moros#3). Both
+    // now go through the one convention `hex_grid` owns.
+    const axial = (q, r) => q - ((r - (r & 1)) / 2);
+    const dist = (q, r) => {
+      const dq = axial(q, r) - axial(0, 0), dr = r;
+      return (Math.abs(dq) + Math.abs(dq + dr) + Math.abs(dr)) / 2;
+    };
     const ring = [];
-    for (let dq = -2; dq <= 2; dq++)
-      for (let dr = -2; dr <= 2; dr++) {
-        const dist = (Math.abs(dq) + Math.abs(dr) + Math.abs(-dq - dr)) / 2;
-        if (dist === 2) ring.push([dq, dr]);
-      }
+    for (let dq = -3; dq <= 3; dq++)
+      for (let dr = -3; dr <= 3; dr++)
+        if (dist(dq, dr) === 2) ring.push([dq, dr]);
 
     let edges = 0, doors = 0, cleared = 0;
     for (const [dq, dr] of ring) {

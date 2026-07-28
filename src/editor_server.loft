@@ -534,7 +534,7 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         hh = h;
         if hh < W_RESERVE { hh = W_RESERVE; }
         if hh > 65535 { hh = 65535; }
@@ -581,6 +581,17 @@ fn age_like_key(q: integer, r: integer) -> integer {
 // two of the three names are simply wrong (`SCENE_MAP.md`: they hold NW, NE, E).
 // Renaming them is moros#3 and touches a shared struct; until then this function
 // is the only place that has to know, which is the point of having it.
+//
+// ⚠ AND EVERY `hex_distance` IN THIS FILE IS QUALIFIED, for a reason this rung
+// found the hard way. `moros_map` exports a `hex_distance` that is the AXIAL cube
+// distance — `max(|dq|, |dr|, |dq+dr|)` — and this editor's coordinates are odd-r
+// OFFSET, so the unqualified name resolved to a function that is simply wrong
+// here: it reports the SW neighbour `(-1,-1)` of `(0,0)` as two steps away.
+// Measured through this rung's own gate: a "disc" of radius 2 came out as a
+// sheared blob whose true boundary is 34 edges rather than the 30 a hex disc has.
+// It was wrong for the road width, the scatter disc, the storey disc and the house
+// footprint too — every one of them had been drawing a sheared shape. `hex_grid`
+// owns the lattice (decision 2); the parity-blind copy is moros#3's to remove.
 const SLOT_NW = 0;                // h_wall_n
 const SLOT_NE = 1;                // h_wall_ne
 const SLOT_E  = 2;                // h_wall_se
@@ -664,16 +675,32 @@ fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer)
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         h = terrain_h(q, r, wld);
         for d in 0..6 {
           (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_distance(nq, nr, cq, cr) > rad { wall_set(wld, q, r, d, mat, h); }
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad { wall_set(wld, q, r, d, mat, h); }
         }
       }
     }
   }
 }
+
+// ⚠ THE HANDLERS BELOW LIVE OUT HERE UNDER DURESS, not by design — `main` is up
+// against loft #654. Past roughly 32 KB of body the interpreter stops taking a
+// `while true`'s backward jump: the pump runs ONE pass and the process exits 0,
+// after printing its whole startup banner. Two `println` lines in the dispatch
+// were enough, and removing two UNRELATED lines elsewhere fixed it, which is what
+// identified size rather than the statements as the cause. Native is correct at
+// the same size; `make play-fast` is the interpreted path.
+//
+// So a handler that grows goes into a function. That is better code anyway — but
+// it is being chosen by a compiler limit rather than by the design, which is worth
+// saying out loud so nobody folds them back in.
+//
+// Margin, measured rather than hoped for: `main` takes another ~120 statements and
+// still loops, and dies somewhere before 300. Before the extraction it was TWO.
+// When the next rung runs out of room, extract — do not go hunting for a bug.
 
 // What is standing there now, read back: how many boundary edges carry `mat`, and
 // how many of those are stored OUTSIDE the disc. The second number is the halo,
@@ -687,19 +714,116 @@ fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         for d in 0..6 {
           (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_distance(nq, nr, cq, cr) > rad && wall_of(wld, q, r, d) == mat {
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad && wall_of(wld, q, r, d) == mat {
             n = n + 1;
             (oq, orr, _slot) = edge_owner(q, r, d);
-            if hex_distance(oq, orr, cq, cr) > rad { outside = outside + 1; }
+            if hex_grid::hex_distance(oq, orr, cq, cr) > rad { outside = outside + 1; }
           }
         }
       }
     }
   }
   n
+}
+
+// Ring the disc you stand in. A MATERIAL IS NOMINAL and a RADIUS IS ORDINAL, and
+// the doorstep tells them apart: 4 is not nearly a fence, so there is no nearest
+// one to offer (`X68`), while a radius of 40 has a largest admissible value and
+// the distance to it is a correction the author can use.
+fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
+            wld: &World, dirty: DirtySet) {
+  fci = payload.find(",");
+  fmat = FENCE_MAT;
+  frad = FENCE_R;
+  if fci != null {
+    fmat = payload[..fci] as integer ?? FENCE_MAT;
+    frad = payload[fci + 1..] as integer ?? FENCE_R;
+  } else {
+    fmat = payload as integer ?? FENCE_MAT;
+  }
+  fmfit = fit_nominal(fmat, FENCE_MAT, "wall material");
+  frfit = fit_ordinal(frad, 1, 12, "radius");
+  if !fmfit.ft_ok {
+    srv.send_to(cid, "S:fence refused — {fit_text(fmfit)}");
+    println("editor: fence refused — {fit_text(fmfit)}");
+    return;
+  }
+  if !frfit.ft_ok {
+    srv.send_to(cid, "S:fence refused — {fit_text(frfit)}");
+    println("editor: fence refused — {fit_text(frfit)}");
+    return;
+  }
+  fhx = world_to_hex(px, pz);
+  fence_disc(wld, fhx.ha_q, fhx.ha_r, frad, fmat);
+  fout = 0;
+  fn2 = fence_count(wld, fhx.ha_q, fhx.ha_r, frad, fmat, fout);
+  mark_dirty(dirty, fhx.ha_q, fhx.ha_r, frad + 2);
+  srv.send_to(cid,
+    "S:fenced {fn2} edges, {fout} stored outside, radius {frad} material {fmat}");
+  println("editor: fenced {fn2} edges ({fout} stored outside) "
+          + "at ({fhx.ha_q},{fhx.ha_r}) radius {frad}");
+}
+
+// One edge of the cell you stand in — the atomic half of the fence. This is what
+// puts a gateway in a run of fence, and what an author draws a single segment
+// with. The reply names the cell the edge was STORED in, because for three of the
+// six directions that is not the cell you are standing on, and an author who
+// cannot see that will not believe the read-back.
+fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
+           wld: &World, dirty: DirtySet) {
+  eci = payload.find(",");
+  edir = 0;
+  emat = WALL_MAT;
+  if eci != null {
+    edir = payload[..eci] as integer ?? 0;
+    emat = payload[eci + 1..] as integer ?? WALL_MAT;
+  }
+  edfit = fit_nominal(edir, 5, "direction");
+  emfit = fit_nominal(emat, FENCE_MAT, "wall material");
+  if !edfit.ft_ok {
+    srv.send_to(cid, "S:edge refused — {fit_text(edfit)}");
+    println("editor: edge refused — {fit_text(edfit)}");
+    return;
+  }
+  if !emfit.ft_ok {
+    srv.send_to(cid, "S:edge refused — {fit_text(emfit)}");
+    println("editor: edge refused — {fit_text(emfit)}");
+    return;
+  }
+  ehx = world_to_hex(px, pz);
+  ecode = wall_set(wld, ehx.ha_q, ehx.ha_r, edir, emat,
+                   terrain_h(ehx.ha_q, ehx.ha_r, wld));
+  if ecode != CW_OK {
+    srv.send_to(cid, "S:edge refused — the world declined it ({ecode})");
+    println("editor: edge refused with code {ecode}");
+    return;
+  }
+  (eoq, eor, _eslot) = edge_owner(ehx.ha_q, ehx.ha_r, edir);
+  mark_dirty(dirty, ehx.ha_q, ehx.ha_r, 2);
+  srv.send_to(cid, "S:edge {edir} of ({ehx.ha_q},{ehx.ha_r}) = {emat}, "
+                 + "stored at ({eoq},{eor})");
+  println("editor: edge {edir} of ({ehx.ha_q},{ehx.ha_r}) = {emat} "
+          + "stored at ({eoq},{eor})");
+}
+
+// A cell's three owned edges, one group per PRESENT cell of its column.
+//
+// PRESENT, not occupied (`E1e`): a cell holding the boundary of the region beside
+// it has no ground of its own, and reporting only occupied cells hid exactly the
+// edges this read-back exists to show — the read side of the 17-stamped-as-8 loss.
+fn walls_text(wld: World, q: integer, r: integer) -> text {
+  wcol = world_column(wld, q, r);
+  wtxt = "";
+  for we in wcol.co_cells {
+    if hex_world::hex_present(we) {
+      if wtxt != "" { wtxt += ";"; }
+      wtxt += "{we.h_wall_n},{we.h_wall_ne},{we.h_wall_se}";
+    }
+  }
+  wtxt
 }
 
 // ── FIELDS (rung W3, moros#11) ───────────────────────────────────────────────
@@ -837,7 +961,7 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         c = world_column(wld, q, r);
         if col_top(c) >= 0 {
           if dir < 0 {
@@ -861,7 +985,7 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
     for dr2 in (0 - rad)..(rad + 1) {
       q2 = cq + dq2;
       r2 = cr + dr2;
-      if hex_distance(q2, r2, cq, cr) <= rad {
+      if hex_grid::hex_distance(q2, r2, cq, cr) <= rad {
         c2 = world_column(wld, q2, r2);
         if col_top(c2) >= 0 {
           cells: vector<hex_world::Hex> = [];
@@ -1171,8 +1295,8 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
-        hi = roof_height(anchor, roof_up, rad, hex_distance(q, r, cq, cr));
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
+        hi = roof_height(anchor, roof_up, rad, hex_grid::hex_distance(q, r, cq, cr));
         band: vector<hex_world::Hex> = [
           hex_world::Hex { h_height: (anchor as u16? ?? 0),
                            h_material: (FLOOR_MAT as u8? ?? 0) },
@@ -1196,8 +1320,8 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
     for dr2 in (0 - rad)..(rad + 1) {
       q2 = cq + dq2;
       r2 = cr + dr2;
-      if hex_distance(q2, r2, cq, cr) <= rad {
-        d2 = hex_distance(q2, r2, cq, cr);
+      if hex_grid::hex_distance(q2, r2, cq, cr) <= rad {
+        d2 = hex_grid::hex_distance(q2, r2, cq, cr);
         hi2 = roof_height(anchor, roof_up, rad, d2);
         // The outer ring is the wall. Every perimeter cell carries a wall on the
         // three edges it owns, and ONE of them carries a door instead — a
@@ -1280,7 +1404,7 @@ fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
       r = cr + dr;
-      if hex_distance(q, r, cq, cr) <= rad {
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         c = world_column(wld, q, r);
         ti = col_top_index(c);
         want = 0;
@@ -1338,7 +1462,7 @@ fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer,
     for dr in (0 - rad)..(rad + 1) {
       q = tq + dq;
       r = tr + dr;
-      d = hex_distance(q, r, tq, tr);
+      d = hex_grid::hex_distance(q, r, tq, tr);
       if d < rad {
         t = (d as float) / (rad as float) ?? 0.0;
         f = 1.0 - t * t;
@@ -1573,7 +1697,7 @@ fn terrain_y(wx: float, wz: float, wld: World) -> float {
 fn chunk_within(cx: integer, cz: integer, hq: integer, hr: integer, reach: integer) -> boolean {
   for kr in cz * CHUNK..cz * CHUNK + CHUNK {
     for kq in cx * CHUNK..cx * CHUNK + CHUNK {
-      if hex_distance(kq, kr, hq, hr) <= reach { return true; }
+      if hex_grid::hex_distance(kq, kr, hq, hr) <= reach { return true; }
     }
   }
   false
@@ -2289,81 +2413,11 @@ fn main() {
             wq = ev.payload[..wci] as integer ?? 0;
             wr = ev.payload[wci + 1..] as integer ?? 0;
           }
-          wcol = world_column(wld, wq, wr);
-          wtxt = "";
-          // PRESENT, not occupied (`E1e`). A cell holding the boundary of the
-          // region beside it has no ground of its own, and reporting only
-          // occupied cells hid exactly the edges this read-back exists to show —
-          // the read side of the 17-stamped-as-8 loss.
-          for we in wcol.co_cells {
-            if hex_world::hex_present(we) {
-              if wtxt != "" { wtxt += ";"; }
-              wtxt += "{we.h_wall_n},{we.h_wall_ne},{we.h_wall_se}";
-            }
-          }
-          srv.send_to(ev.cid, "S:walls {wq},{wr} = {wtxt}");
+          srv.send_to(ev.cid, "S:walls {wq},{wr} = {walls_text(wld, wq, wr)}");
         } else if ev.msg_id == MSG_FENCE {
-          // payload "<material>,<radius>" — ring the disc you stand in.
-          fci = ev.payload.find(",");
-          fmat = FENCE_MAT;
-          frad = FENCE_R;
-          if fci != null {
-            fmat = ev.payload[..fci] as integer ?? FENCE_MAT;
-            frad = ev.payload[fci + 1..] as integer ?? FENCE_R;
-          } else {
-            fmat = ev.payload as integer ?? FENCE_MAT;
-          }
-          // A MATERIAL IS NOMINAL and a RADIUS IS ORDINAL, and the doorstep tells
-          // them apart: 4 is not nearly a fence, so there is no nearest one to
-          // offer (`X68`), while a radius of 40 has a largest admissible value and
-          // the distance to it is a correction the author can use.
-          fmfit = fit_nominal(fmat, FENCE_MAT, "wall material");
-          frfit = fit_ordinal(frad, 1, 12, "radius");
-          if !fmfit.ft_ok {
-            srv.send_to(ev.cid, "S:fence refused — {fit_text(fmfit)}");
-            println("editor: fence refused — {fit_text(fmfit)}");
-          } else if !frfit.ft_ok {
-            srv.send_to(ev.cid, "S:fence refused — {fit_text(frfit)}");
-            println("editor: fence refused — {fit_text(frfit)}");
-          } else {
-            fhx2 = world_to_hex(px, pz);
-            fence_disc(wld, fhx2.ha_q, fhx2.ha_r, frad, fmat);
-            fout = 0;
-            fn2 = fence_count(wld, fhx2.ha_q, fhx2.ha_r, frad, fmat, fout);
-            mark_dirty(dirty, fhx2.ha_q, fhx2.ha_r, frad + 2);
-            srv.send_to(ev.cid,
-              "S:fenced {fn2} edges, {fout} stored outside, radius {frad} material {fmat}");
-            println("editor: filler one — {fit_text(fmfit)}");
-            println("editor: filler two — {fit_text(frfit)}");
-            println("editor: fenced {fn2} edges ({fout} stored outside) "
-                    + "at ({fhx2.ha_q},{fhx2.ha_r}) radius {frad}");
-          }
+          do_fence(srv, ev.cid, ev.payload, px, pz, wld, dirty);
         } else if ev.msg_id == MSG_EDGE {
-          eci = ev.payload.find(",");
-          edir = 0;
-          emat = WALL_MAT;
-          if eci != null {
-            edir = ev.payload[..eci] as integer ?? 0;
-            emat = ev.payload[eci + 1..] as integer ?? WALL_MAT;
-          }
-          edfit = fit_nominal(edir, 5, "direction");
-          emfit = fit_nominal(emat, FENCE_MAT, "wall material");
-          if !edfit.ft_ok {
-            srv.send_to(ev.cid, "S:edge refused — {fit_text(edfit)}");
-          } else if !emfit.ft_ok {
-            srv.send_to(ev.cid, "S:edge refused — {fit_text(emfit)}");
-          } else {
-            ehx = world_to_hex(px, pz);
-            ecode = wall_set(wld, ehx.ha_q, ehx.ha_r, edir, emat,
-                             terrain_h(ehx.ha_q, ehx.ha_r, wld));
-            if ecode != CW_OK {
-              srv.send_to(ev.cid, "S:edge refused — the world declined it ({ecode})");
-              println("editor: edge refused with code {ecode}");
-            } else {
-              mark_dirty(dirty, ehx.ha_q, ehx.ha_r, 2);
-              srv.send_to(ev.cid, "S:edge {edir} = {emat}");
-            }
-          }
+          do_edge(srv, ev.cid, ev.payload, px, pz, wld, dirty);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: the roof height above the floor, in height units
           roof_up = ev.payload as integer ?? STOREY_H;
@@ -2539,7 +2593,7 @@ fn main() {
             for si in 1..PEAK_AHEAD * 8 {
               probe = world_to_hex(px + ky2 * (si as float) * 0.5,
                                    pz + sy2 * (si as float) * 0.5);
-              if hex_distance(probe.ha_q, probe.ha_r, last_hq, last_hr) >= PEAK_AHEAD {
+              if hex_grid::hex_distance(probe.ha_q, probe.ha_r, last_hq, last_hr) >= PEAK_AHEAD {
                 tq = probe.ha_q;
                 tr = probe.ha_r;
                 found = true;
@@ -2826,7 +2880,6 @@ fn main() {
       }
     }
 
-    println("PROBE: past stream");
     // ── publish, only when something actually changed ──────────────────────
     if moved {
       // One stride is half a cycle, so the phase advances by π per stride.
@@ -2870,7 +2923,6 @@ fn main() {
         srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, wld));
       }
     }
-    println("PROBE: end of body");
     if !watched {
       // Nobody is looking: keep the clock from piling up a burst of catch-up
       // steps for the first client, and wait long enough to cost nothing.

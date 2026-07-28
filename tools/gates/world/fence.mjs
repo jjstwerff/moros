@@ -106,8 +106,12 @@ ws.onmessage = async (e) => {
     report.byMaterial = [...sum.by.entries()];
     const bytesExact = sum.set === wantEdges;
 
-    // ── the control: an interior cell bounds nothing, so it owns no wall
-    const inner = (win.get('0,0') || '').split(';')[0].split(',').map(Number);
+    // ── the control: an interior cell bounds nothing, so it owns no wall.
+    // ⚠ An empty reply IS the bare answer, not a missing one: a cell with no
+    // ground and no edges is absent, so `16:` reports nothing for it (`E1`).
+    const innerBody = win.get('0,0') ?? '(unanswered)';
+    const inner = innerBody === '' ? [0, 0, 0]
+                                   : innerBody.split(';')[0].split(',').map(Number);
     report.centreCell = inner;
     const innerBare = inner.length === 3 && inner.every((v) => v === 0);
 
