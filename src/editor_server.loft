@@ -1603,7 +1603,13 @@ fn main() {
               }
               moved = true;
             }
-          }
+            // Acknowledge it. A gate that walks a path — laying a road ring, say — has
+          // nothing else to wait on, so it sleeps a fixed 150ms per step and the ring
+          // LEAKS the moment the box is busy. Measured: the field gate laid an open
+          // ring under load and then reported the fill refusing, which looks exactly
+          // like the feature being broken.
+          srv.send_to(ev.cid, "S:placed {px},{pz}");
+        }
         } else if ev.msg_id == MSG_STOREY {
           sdir = ev.payload as integer ?? 1;
           shx = world_to_hex(px, pz);

@@ -16,6 +16,16 @@
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
+const ack = async (needle, limitMs = 40000) => {
+  const from = status.length;
+  for (let t = 0; t < limitMs; t += 100) {
+    await wait(100);
+    const m = status.slice(from).find(x => x.includes(needle));
+    if (m) return m;
+  }
+  return `(no "${needle}" in ${limitMs}ms)`;
+};
+const placeAck = async (x, z, yaw) => { place(x, z, yaw); return ack('placed'); };
 const chunks = new Map();
 let st = 0, status = [];
 
@@ -43,11 +53,17 @@ ws.onmessage = async (e) => {
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
+    // ⚠ WAIT FOR THE SERVER, NOT THE CLOCK. Every step below used a fixed sleep,
+    // and on a busy box they all came up short: the fill's refusal arrived after
+    // the gate had already read "no refusal", and the road ring leaked because
+    // 150ms per placement was not enough for the server to lay each segment. Both
+    // look exactly like the feature being broken.
     // ── CONTROL FIRST: open ground has no boundary, so the fill must refuse.
-    place(0, 0, 0); await wait(500);
-    ws.send('11:'); await wait(1200);
+    await placeAck(0, 0, 0);
+    ws.send('11:');
+    const refused = await ack('field');
+    await wait(400);
     const refusedField = verts(2);
-    const refused = status.some(x => x.includes('field refused'));
 
     // ── enclose a small patch by walking a road ring around it
     // ⚠ RADIUS MATTERS. The road is ROAD_HALF = 2 hexes each side (~3.5 wu), so a
@@ -62,17 +78,20 @@ ws.onmessage = async (e) => {
       const a = (k / 32) * Math.PI * 2;
       ring.push([+(R * Math.cos(a)).toFixed(2), +(R * Math.sin(a)).toFixed(2)]);
     }
-    ws.send('10:1'); await wait(300);
-    for (const [x, z] of ring) { place(x, z, 0); await wait(150); }
-    ws.send('10:0'); await wait(600);
+    ws.send('10:1'); await ack('road');
+    for (const [x, z] of ring) { await placeAck(x, z, 0); }
+    ws.send('10:0'); await ack('road');
 
     // stand inside and fill
-    place(1, 1, 0); await wait(600);
-    ws.send('11:'); await wait(1800);
+    await placeAck(1, 1, 0);
+    ws.send('11:');
+    const fillMsg = await ack('field');
+    await wait(1200);
     const filled = verts(2);
-    const okMsg  = status.some(x => x.includes('field filled'));
+    const okMsg  = fillMsg.includes('field filled');
 
-    const ok = refused && refusedField === 0 && okMsg && filled > 0;
+    const ok = refused.includes('field refused') && refusedField === 0
+               && okMsg && filled > 0;
     console.log(JSON.stringify({ refusedOnOpenGround: refused, fieldAfterRefusal: refusedField,
                                  filledInsideRing: okMsg, fieldVerts: filled, ok,
                                  status: status.slice(-4) }));

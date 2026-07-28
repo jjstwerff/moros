@@ -55,7 +55,8 @@ eyes**, not a report: something to open, drive, and judge.
 | — | ✋ | | | |
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
-| 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft`; roofs and openings still open |
+| 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft` |
+| 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact; openings (`X70`) and `K-FIT` still open |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
@@ -293,3 +294,34 @@ road, field and vegetation. So the gate could see that a placement was refused
 but not whether it had changed anything first — the exact difference between
 "refused" and "half built, then refused". Message `15:<q>,<r>` reports a column's
 occupied heights, and it is the only way to check a write that draws nothing.
+
+
+## What rung 8c found — a gate that measures the machine
+
+Roofs are verified: eave 61, mid 65, ridge 69 — four units a ring, exactly as
+`roof_height` derives them — with 1368 roof vertices drawn. Flattening the pitch
+turns the gate red. All nine world gates and all three character gates pass.
+
+Getting there cost a detour worth recording. The gates began failing on a box
+running a sibling agent's test suite, and the failures looked like defects: the
+field gate reported a fill refusing inside a closed ring, and the storey gate
+read `(none)` for every step. Both were the gates measuring the MACHINE.
+
+**Fixed sleeps encode an assumption about how fast the box is.** `wait(1200)`
+after a fill meant "the refusal will have arrived by now", and under load it had
+not, so the gate read no-refusal and failed a working feature. Worse, the field
+gate's road ring placed 32 points at 150ms each; when the server fell behind, the
+ring LEAKED and the fill correctly refused an open enclosure — a green feature
+failing a red gate for a reason that looked exactly like the feature being wrong.
+
+The fix is the one `persist` already had: wait for what the server SAYS. That
+needed one new acknowledgement — `S:placed x,z` — because walking a path had
+nothing to wait on at all. With placements, roads, fills, storeys and rebuilds
+all acknowledged, a gate no longer has an opinion about timing.
+
+**And a false trail.** I blamed the fifth surface for a 70-second first-client
+latency and merged the vegetation and roof traversals to fix it. The merge is a
+genuine improvement — one pass over the columns instead of two — but it moved the
+number by one second. Measuring the PREVIOUS commit, which showed the same 70
+seconds, is what identified the box rather than the code. The rule: before
+optimising the thing you just changed, measure the thing you did not.
