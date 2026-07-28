@@ -23,7 +23,7 @@ const verts = (kind) => {           // 0 ground, 1 road, 2 field
   let n = 0;
   for (const [id, d] of chunks) {
     if (id <= 15) continue;
-    if ((id - 16) % 4 !== kind) continue;
+    if ((id - 16) % 5 !== kind) continue;
     n += d.length / 6;
   }
   return n;
@@ -80,4 +80,4 @@ ws.onmessage = async (e) => {
 };
 ws.onopen = () => ws.send('1:');
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 60000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

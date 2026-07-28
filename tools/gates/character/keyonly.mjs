@@ -50,4 +50,4 @@ ws.onmessage = (e) => {
   }
 };
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 20000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

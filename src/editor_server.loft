@@ -272,6 +272,9 @@ const ROAD_HALF    = 2;           // road half-width, in hexes
 const FIELD_MAT    = 3;           // an enclosed field
 const FIELD_CAP    = 4000;        // the most cells one fill may claim
 const FLOOR_MAT    = 4;           // a built floor, above or below ground
+const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
+const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
+const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
 const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
@@ -648,6 +651,62 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
   built
 }
 
+// ── ROOFS (rung W4, moros#12) — their own geometry ──────────────────────────
+//
+// A roof is not a floor with a different colour. Its height is DERIVED from the
+// footprint rather than authored: a cell on the outer ring is an eave, and each
+// ring inward gains `ROOF_PITCH`, so the middle is the ridge. Nothing stores the
+// pitch — it is a function of how deep the cell sits in the footprint, which is
+// what makes a roof follow whatever shape the footprint happens to be.
+//
+// The consequence for `P1` is that the band's `hi` is NOT one number for the
+// whole placement: each column claims up to ITS OWN roof, so a deck above an
+// eave is only inside the band if it is actually under that eave. Declaring the
+// ridge everywhere would have been simpler and would have swallowed things the
+// house does not occupy.
+fn roof_height(anchor: integer, eave_up: integer, rad: integer, dist: integer) -> integer {
+  depth = rad - dist;
+  if depth < 0 { depth = 0; }
+  anchor + eave_up + depth * ROOF_PITCH
+}
+
+// Vegetation and roofs in ONE traversal.
+//
+// ⚠ MEASURED, and it is why they share a function they would otherwise not.
+// Both need every LAYER of every column — a tree sits on whatever surface is
+// uppermost, a roof sits well above it — and `world_column` allocates a whole
+// column per call. Two separate passes is 128 of those per chunk over 48 chunks
+// at stream time, and it took the first client's service from a few seconds to
+// SEVENTY-ONE: the pump drains events before the tick, so a client connecting
+// during that first stream waits for all of it, and every gate timed out.
+//
+// One pass, two meshes. The rule to carry forward: a per-cell scan added to the
+// stream path costs the whole stream, so a sixth surface joins this loop rather
+// than bringing its own.
+fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh) {
+  q0 = cx * CHUNK;
+  r0 = cz * CHUNK;
+  for cr in r0..r0 + CHUNK {
+    for cq in q0..q0 + CHUNK {
+      c = world_column(wld, cq, cr);
+      for e in c.co_cells {
+        if hex_world::hex_occupied(e) {
+          if e.h_item != 0 {
+            wp = hex_to_world(cq, cr, 0);
+            ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
+            sc = 0.55;
+            if e.h_item == SPECIES_BUSH { sc = 0.22; }
+            emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
+          }
+          if e.h_material == ROOF_MAT {
+            emit_hex_surface(km, cq, cr, e.h_height as integer ?? 0);
+          }
+        }
+      }
+    }
+  }
+}
+
 // ── STENCILS (rung W4, moros#12) — `P1`, a band and not a column ────────────
 //
 // The editor's half of `P1`. The model decides whether a band may be written;
@@ -672,11 +731,6 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
                  kept_below: &integer, kept_above: &integer, why: &text) -> integer {
   lo = anchor - FOUNDATION;
   if lo < W_RESERVE { lo = W_RESERVE; }
-  hi = anchor + roof_up;
-  band: vector<hex_world::Hex> = [
-    hex_world::Hex { h_height: (anchor as u16? ?? 0), h_material: (FLOOR_MAT as u8? ?? 0) },
-    hex_world::Hex { h_height: (hi as u16? ?? 0), h_material: (FLOOR_MAT as u8? ?? 0) }
-  ];
 
   // PASS 1 — may every column take it?
   for dq in (0 - rad)..(rad + 1) {
@@ -684,6 +738,13 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
       q = cq + dq;
       r = cr + dr;
       if hex_distance(q, r, cq, cr) <= rad {
+        hi = roof_height(anchor, roof_up, rad, hex_distance(q, r, cq, cr));
+        band: vector<hex_world::Hex> = [
+          hex_world::Hex { h_height: (anchor as u16? ?? 0),
+                           h_material: (FLOOR_MAT as u8? ?? 0) },
+          hex_world::Hex { h_height: (hi as u16? ?? 0),
+                           h_material: (ROOF_MAT as u8? ?? 0) }
+        ];
         c = world_band_check(wld, q, r, lo, hi, band);
         if c.cw_code != CW_OK {
           why = "({q},{r}) layer {c.cw_layer}: {c.cw_detail}";
@@ -702,7 +763,14 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
       q2 = cq + dq2;
       r2 = cr + dr2;
       if hex_distance(q2, r2, cq, cr) <= rad {
-        w = world_merge_band(wld, q2, r2, lo, hi, band);
+        hi2 = roof_height(anchor, roof_up, rad, hex_distance(q2, r2, cq, cr));
+        band2: vector<hex_world::Hex> = [
+          hex_world::Hex { h_height: (anchor as u16? ?? 0),
+                           h_material: (FLOOR_MAT as u8? ?? 0) },
+          hex_world::Hex { h_height: (hi2 as u16? ?? 0),
+                           h_material: (ROOF_MAT as u8? ?? 0) }
+        ];
+        w = world_merge_band(wld, q2, r2, lo, hi2, band2);
         if w.cw_code != CW_OK {
           why = "({q2},{r2}) refused on write: {w.cw_detail}";
           return 0 - 10 - w.cw_code;
@@ -713,7 +781,7 @@ fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
           if hex_world::hex_occupied(e) {
             eh = e.h_height as integer ?? 0;
             if eh < lo { kept_below = kept_below + 1; }
-            if eh > hi { kept_above = kept_above + 1; }
+            if eh > hi2 { kept_above = kept_above + 1; }
           }
         }
       }
@@ -800,30 +868,6 @@ fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
     }
   }
   n
-}
-
-// One chunk's vegetation. Every occupied cell carrying a species contributes a
-// placeholder at that cell's own height — so a tree on a roof stands on the roof
-// and a tree on the ground stands on the ground, with no layer assumption.
-fn chunk_mesh_veg(cx: integer, cz: integer, wld: World) -> Mesh {
-  vm = mesh("veg");
-  q0 = cx * CHUNK;
-  r0 = cz * CHUNK;
-  for cr in r0..r0 + CHUNK {
-    for cq in q0..q0 + CHUNK {
-      c = world_column(wld, cq, cr);
-      for e in c.co_cells {
-        if hex_world::hex_occupied(e) && e.h_item != 0 {
-          wp = hex_to_world(cq, cr, 0);
-          ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
-          sc = 0.55;
-          if e.h_item == SPECIES_BUSH { sc = 0.22; }
-          emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
-        }
-      }
-    }
-  }
-  vm
 }
 
 // The falloff brush, applied to CELLS rather than recorded as a peak.
@@ -1830,17 +1874,21 @@ fn main() {
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
           dm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
-          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
-          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 5 + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          srv.broadcast("T:{dc2.id * 5 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
           fm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, FIELD_MAT);
-          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
-          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 5 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
+          srv.broadcast("T:{dc2.id * 5 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
           rm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, ROAD_MAT);
-          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
-          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
-          vm2 = chunk_mesh_veg(dc2.cx, dc2.cz, wld);
-          srv.broadcast("M:{dc2.id * 4 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
-          srv.broadcast("T:{dc2.id * 4 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 5 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
+          srv.broadcast("T:{dc2.id * 5 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
+          vm2 = mesh("veg");
+          km2 = mesh("roof");
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2);
+          srv.broadcast("M:{dc2.id * 5 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
+          srv.broadcast("T:{dc2.id * 5 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * 5 + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
+          srv.broadcast("T:{dc2.id * 5 + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -1898,17 +1946,21 @@ fn main() {
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
               cmesh = chunk_mesh(scx, scz, wld);
-              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              srv.broadcast("M:{cid * 5 + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               fmesh = chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
-              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
-              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 5 + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
+              srv.broadcast("T:{cid * 5 + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
               rmesh = chunk_mesh_mat(scx, scz, wld, ROAD_MAT);
-              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
-              vmesh = chunk_mesh_veg(scx, scz, wld);
-              srv.broadcast("M:{cid * 4 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
-              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
-              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
-              srv.broadcast("T:{cid * 4 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 5 + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
+              vmesh = mesh("veg");
+              kmesh = mesh("roof");
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh);
+              srv.broadcast("M:{cid * 5 + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
+              srv.broadcast("T:{cid * 5 + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * 5 + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
+              srv.broadcast("T:{cid * 5 + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 5 + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * 5 + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }
@@ -1922,10 +1974,11 @@ fn main() {
         // would otherwise linger on the client as a strip of road floating where
         // its ground used to be.
         if !still {
-          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 1}");
-          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 2}");
-          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 3}");
-          srv.broadcast("X:{lz2 * 4 + MESH_FIGURE_MAX + 4}");
+          srv.broadcast("X:{lz2 * 5 + MESH_FIGURE_MAX + 1}");
+          srv.broadcast("X:{lz2 * 5 + MESH_FIGURE_MAX + 2}");
+          srv.broadcast("X:{lz2 * 5 + MESH_FIGURE_MAX + 3}");
+          srv.broadcast("X:{lz2 * 5 + MESH_FIGURE_MAX + 4}");
+          srv.broadcast("X:{lz2 * 5 + MESH_FIGURE_MAX + 5}");
           dropped = dropped + 1;
         }
       }

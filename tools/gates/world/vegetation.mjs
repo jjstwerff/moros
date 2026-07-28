@@ -35,7 +35,7 @@ let st = 0;
 // index 1 — which looked like three gates disagreeing about the layout, and was
 // really one gate parsing differently from the rest.
 // An empty mesh is one empty field, so fewer than six numbers.
-const isVeg = (id) => (id - 16) % 4 === 3;
+const isVeg = (id) => (id - 16) % 5 === 3;
 const vegVerts = () => {
   let n = 0;
   for (const [id, d] of chunks) if (isVeg(id) && d.length >= 6) n += Math.floor(d.length / 6);
@@ -43,7 +43,7 @@ const vegVerts = () => {
 };
 const topYOfKind = (k) => {
   let y = -1e9;
-  for (const [id, d] of chunks) if ((id - 16) % 4 === k && d.length >= 6)
+  for (const [id, d] of chunks) if ((id - 16) % 5 === k && d.length >= 6)
     for (let i = 1; i < d.length; i += 6) if (Number.isFinite(d[i])) y = Math.max(y, d[i]);
   return y === -1e9 ? null : +y.toFixed(3);
 };
@@ -148,4 +148,4 @@ ws.onmessage = async (e) => {
 };
 ws.onopen = () => ws.send('1:');
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 90000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

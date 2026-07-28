@@ -8,11 +8,14 @@
 //   · a house over a deep cave keeps the cave (cells BELOW the band survive);
 //   · a house under a high bridge keeps the deck (cells ABOVE it survive);
 //   · a house under a deck too close to fit is REFUSED, whole — `F1` says it
-//     does not fit, and the editor does not build half of it anyway.
+//     does not fit, and the editor does not build half of it anyway;
+//   · the ROOF is its own geometry: derived from the footprint, pitched by
+//     ring, and actually drawn.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
+const chunks = new Map();
 let st = 0;
 const lastLike = (p) => [...status].reverse().find(x => x.startsWith(p)) || '(none)';
 const ack = async (p, limitMs = 8000) => {
@@ -33,6 +36,10 @@ const column = async (q, r) => {
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
+  if (t === 'M') { const h2 = b.indexOf(';'), id = Number(b.slice(0, h2));
+    let rest = b.slice(h2 + 1); rest = rest.slice(rest.indexOf(';') + 1);
+    if (id > 1000) chunks.set(id, rest.slice(rest.indexOf(';') + 1).split(',').map(Number)); }
+  if (t === 'X') chunks.delete(Number(b));
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
@@ -81,6 +88,21 @@ ws.onmessage = async (e) => {
     // ── (4) the same deck, but a roof at 18 leaves only 6 under it
     const tightMsg = (ws.send('14:18'), await ack('stencil'));
 
+    // ── (4b) THE ROOF IS PITCHED, and the pitch is DERIVED, not stored.
+    //
+    // On open ground the house at hex (10,0) has floor = anchor and a roof that
+    // gains ROOF_PITCH (4) per ring inward from the eave: the outer ring at
+    // distance 2 is `anchor + 12`, distance 1 is `+16`, and the centre is `+20`.
+    // Exact numbers, because a derived pitch has no freedom in it — if the ridge
+    // is not 8 above the eave the rule is not the rule.
+    place(17.3, 0, 0); await wait(900);
+    const centreCol = await column(10, 0);
+    const midCol    = await column(11, 0);
+    const eaveCol   = await column(12, 0);
+    const roofOf = (c) => { const h = c.split(',').map(Number); return h[h.length - 1]; };
+    const ridge = roofOf(centreCol), mid = roofOf(midCol), eave = roofOf(eaveCol);
+    const pitched = ridge - mid === 4 && mid - eave === 4;
+
     // ── (5) THE REFUSAL CHANGED NOTHING, with the conflict placed LATE.
     //
     // The clause below used to be untestable. A placement walks `dq` from -2 to
@@ -128,6 +150,11 @@ ws.onmessage = async (e) => {
     const keptCave   = caveCells === 19 && caveBelow === 56;
     const keptBridge = bridgeCells > 0 && bridgeAbove > 0;
     const refusedTight = tightMsg.startsWith('stencil refused (-11)');
+    // the roof is DRAWN — surface kind 4 of 5. A rule nobody can see is a rule
+    // that will rot; vegetation taught this gate that the model and the picture
+    // are two claims.
+    const roofVerts = [...chunks].filter(([id, d]) => (id - 16) % 5 === 4 && d.length >= 6)
+                                 .reduce((n, [, d]) => n + Math.floor(d.length / 6), 0);
     const refusedLate = lateMsg.startsWith('stencil refused (-11)')
                         && lateMsg.includes('(-2,0)');
     // The claim is UNCHANGED, not empty: earlier scenes in this gate raised
@@ -135,14 +162,16 @@ ws.onmessage = async (e) => {
     // the pre-flight it would hold that terrain PLUS a floor and a roof.
     const untouched = farAfter === farBefore;
     const atomic = againAbove === bridgeAbove;
+    const drawn = roofVerts > 0;
     const ok = built && keptCave && keptBridge && refusedTight
-               && refusedLate && untouched && atomic;
+               && refusedLate && untouched && atomic && pitched && drawn;
     console.log(JSON.stringify({ openMsg, caveMsg, bridgeMsg, tightMsg, lateMsg,
                                  farBefore, farAfter, againMsg,
+                                 ridge, mid, eave, roofVerts,
                                  built, keptCave, keptBridge, refusedTight,
-                                 refusedLate, untouched, atomic, ok }));
+                                 refusedLate, untouched, atomic, pitched, drawn, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 90000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

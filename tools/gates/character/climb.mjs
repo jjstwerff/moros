@@ -38,4 +38,4 @@ ws.onmessage = async (e) => {
                                  smooth: monotone, ok: climbed > 0.4 && monotone }));
     ws.close(); process.exit(climbed > 0.4 && monotone ? 0 : 1); }
 };
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 25000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

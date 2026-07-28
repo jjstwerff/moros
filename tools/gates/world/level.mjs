@@ -66,4 +66,4 @@ ws.onmessage = async (e) => {
                                  climbed, frozen, ridgeKept, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 90000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

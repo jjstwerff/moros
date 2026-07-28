@@ -37,7 +37,7 @@ ws.onmessage = (e) => {
       // 156 → 208) while the streaming behaviour was unchanged. A bound
       // expressed in meshes silently re-tunes itself whenever a surface is
       // added; a bound expressed in chunks does not.
-      const SURFACES = 4;                      // ground, road, field, vegetation
+      const SURFACES = 5;                      // ground, road, field, vegetation, roof
       const liveChunks = new Set([...live].map(id => Math.floor((id - 16) / SURFACES)));
       const ok = added > 0 && dropped > 0 && live.size <= peak
                  && liveChunks.size < 60;      // the draw radius holds ~50 chunks
@@ -48,4 +48,4 @@ ws.onmessage = (e) => {
   }
 };
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 30000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);

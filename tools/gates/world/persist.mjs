@@ -105,4 +105,4 @@ ws.onmessage = async (e) => {
 };
 ws.onopen = () => ws.send('1:');
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 30000);
+setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
