@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-27)
+# STATE.md — where the editor work stands (2026-07-28)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -9,6 +9,100 @@ between them: read it first after a break.
 > product. loft's `GOALS.md` names the editor as one of four layers; crawler, bumper
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
+
+## Since 2026-07-27 — every numbered rung is built (rows 8-11), and the gates got honest
+
+**Branch `plan/7-hex-editor`.** Working tree clean, everything pushed. ⚠ The remote's
+`main` is still at `4ffa03e`; all of this lives on the plan branch. Pushing `main` from
+here is a no-op that exits 0 — it looked like a successful push five times before
+`git ls-remote` showed the truth. Always verify against the remote, never against `&& echo`.
+
+### What runs
+
+`make play-fast` (interpreted, ~1s) or `make play` (native). One loft process serves the
+page and the model channel on port 18090. Multi-client, measured with three concurrent
+clients and sequential reconnects.
+
+**Gates: 15 world + 3 character + 56 `hex_world` tests + the sparsity proof.** All green,
+each on a freshly started server (`make gate-world`, `make gate-character`,
+`make gate-hexworld`, `cd lib/hex_world && loft test`).
+
+| rung | what | gate |
+|---|---|---|
+| 8a | storeys and cellars — the layer stack end to end | `storey.mjs` |
+| 8b | stencils as a BAND, `P1`/`P2` | `stencil.mjs`, `hex_world/tests/stencil.loft` |
+| 8c | roofs — derived pitch, own material, own mesh | `stencil.mjs` (eave 61 → mid 65 → ridge 69) |
+| 8d | openings — a door is a material, never a cleared edge (`X70`) | `opening.mjs` |
+| 8e | the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | `doorstep.mjs` |
+| 9a | trees at density — the forest as a field | `vegetation.mjs` |
+| 10a | the cart — three rigs, one frame, a derived roll | `cart.mjs` |
+| 10b | props as dressing — `D1` in the editor | `prop.mjs` |
+| 10c | glb import/export as a prop | `import.mjs` |
+| 11a | anchors — follow, break, or foreign (invariant II) | `trigger.mjs` |
+
+### Rules added to the contract (WORLD_MODEL.md Part II)
+
+- **`E1r`** — absence binds READERS: a column's roof and floor are its topmost and lowest
+  **occupied** cells. `cells[0]`/`cells[n-1]` are positions, not the floor and the roof.
+- **`P1`** — a stencil writes a BAND, not a column: `[lo, hi]` is replaced, everything
+  outside is kept, and a fold against a kept neighbour refuses rather than clips. Under a
+  bridge, over a cave, and *the ground layer reforms to the stencil* are one rule.
+- **`P2`** — terrain and dressing never mix. The guard is in `check_column`, the only place
+  a cell reaches a layer. A terrain write does not touch a dressing layer, **not even to
+  blank it**.
+- **`D1`** gained a way in — `world_set_dressing` / `world_dressing`. Nothing could create a
+  `KIND_DRESSING` layer before, so `P2` guarded a case that could not arise.
+- **`K-FIT` invariant I** — every author action ends applied exactly, refused with a reason
+  **plus an offer and a residual** (ordinal) or a reason alone (nominal, `X68`), or applied
+  as an explicit approximation with its residual on the wire. Every tool is through it.
+
+### New protocol messages
+
+`12` storey · `13` scatter · `14` stencil · `15` column read-back · `16` wall read-back ·
+`17` cart · `18` trigger · `19` prop · `20` dressing read-back · `21` glb import ·
+`22` glb export. The read-backs exist because **floors, walls and dressing draw nothing** —
+without them a gate can see a refusal but not whether anything changed first.
+
+### New library: `lib/glb_read/`
+
+A JSON reader and a glTF 2.0 binary reader (`glb` 0.1.2 is write-only, and nothing in the
+registry parses JSON). **Libraries are ours to build and verify — never an upstream ask,
+because upstream cannot verify one against the use that needs it.** `LOFT_HANDOFF.md` is
+for loft the language and its tooling only.
+
+### Operational lessons that cost real time
+
+1. **Gates measured the machine.** Fixed sleeps encode an assumption about box speed; under
+   load a fill's refusal arrived after the gate read "no refusal", and a road ring laid at
+   150ms/point LEAKED so the fill correctly refused an open enclosure. Everything now waits
+   on what the server SAYS — placements, roads, fills, storeys and **rebuilds** are all
+   acknowledged (`S:rebuilt N chunks` is the missing half: the world changes when the load
+   is acknowledged, the MESHES follow several ticks later).
+2. **`ack` vs volunteered reports.** `ack` only sees messages arriving after it is called —
+   right for a reply, wrong for something the world volunteers (the trigger's BROKEN
+   notice). Search everything seen so far for those.
+3. **A stale compile cache spins at 100%** while printing the banner AND `listening on
+   port`. `rm -rf src/.loft/cache`. A `git checkout` round-trip caused it.
+4. **`ps %cpu` is a lifetime average** and hid a real measurement behind startup cost. Use a
+   `/proc` utime delta.
+5. **Four green clauses turned out to measure nothing**, and each time the fix was the
+   SCENE, not the assertion: `> 0` on a cave that a whole-column replace still half-filled;
+   a pre-flight whose conflict landed on the first column; a dressing clause whose terrain
+   write never reached a dressing slot; and the glb reader, where a seeker passes every
+   round-trip test against files it wrote.
+
+### Open
+
+- **#13** LOD banding and instanced draw.
+- **#14** the general multi-rig connector (the cart's is one frame with fixed offsets).
+- **#15** the sandbox seam — what a routine may touch. Only *attachment* is built.
+- **#8** the crystal port and the convergences.
+- **`server`'s blocking wait** — designed in EDITOR_LADDER.md, not built. The idle path is a
+  50ms poll because there is nothing to block on; `loft-libs-net` is a shared checkout and
+  it wants a session with room for a native rebuild.
+- **`moros_ui`** still red on a pre-existing missing `loft.lock`.
+- **✋ Checkpoints never walked:** the layer stack (build a tower with a dungeon under it),
+  and everything after it. All are gated, none have had your eyes.
 
 ## Since 2026-07-25 — the world model, specified AND BUILT to row 4
 
