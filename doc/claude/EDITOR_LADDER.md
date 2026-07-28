@@ -66,6 +66,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 10a | ↳ the cart — three rigs, one frame, a derived roll | #14 | ✅ | `tools/gates/world/cart.mjs`; dressing layers and `glb` import still open |
 | — | ✋ | | | |
 | 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
+| 11a | ↳ anchors — follow, break, or foreign (invariant II) | #15 | ✅ | `tools/gates/world/trigger.mjs`; the sandbox seam still open |
 | — | ✋ | | | |
 | ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
 
@@ -457,3 +458,34 @@ dressing layer, which it does not, because it is not landscape.
 creates one yet, `world_set_column` materialises every layer as terrain — and
 `glb` import. The connector here is one frame with fixed offsets, which is what a
 cart needs; trains and robots need the general case.
+
+
+## What rung 11a established — the three outcomes, and only three
+
+Invariant II is the one that separates an editor from a paint program: *no anchor,
+and no binding to one, ever silently dangles.* An anchor names GROUND at a hex,
+and every geometry change resolves it into exactly one of three states:
+
+- **it followed** — the hill rose from 13 to 25 and the anchor went with it;
+- **it broke** — paving over it makes the ground it named *gone*, and it says so
+  (`the ground it named at (10,0) is now material 2`);
+- **it is foreign** — `story::act2_begins` is not ours to resolve, so it is shown
+  as foreign and left exactly as found.
+
+**The middle one is the whole invariant, and its mutation is the comfortable
+bug.** Deleting the material check makes the anchor quietly re-point at the road:
+everything keeps working, nothing reports anything, and the trigger now means
+something nobody chose. The gate goes red on `reported`. Resolving a foreign name
+instead of leaving it alone reds `foreignKept`.
+
+**A gate-writing lesson worth keeping.** `ack` only sees messages arriving AFTER
+it is called — right for a reply, wrong for a report the world VOLUNTEERS. The
+BROKEN notice is broadcast the moment the road lands, several steps before the
+gate thinks to look, so the gate missed a message that had already arrived and
+reported the feature broken. Replies need `ack`; volunteered reports need a
+search of everything seen so far.
+
+**Still open on #15:** the sandbox seam — what a routine may touch and how it is
+isolated. This rung establishes only how a routine's binding ATTACHES to
+geometry, which is the half we own; *condition → content* belongs to the engine we
+build no part of.

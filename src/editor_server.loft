@@ -207,6 +207,7 @@ const TICK_US = 33000;
 //                    15:<q>,<r>    report that column's occupied heights
 //                    16:<q>,<r>    report that cell's three owned wall edges
 //                    17:<delta>    move the cart along its facing (signed, wu)
+//                    18:<name>     anchor a trigger here, bound to <name>
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -248,6 +249,7 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_TRIGGER = 18;   // routines: anchor a trigger to the ground (moros#15)
 const MSG_CART = 17;      // vehicles: move the cart, roll its wheels (moros#14)
 const MSG_WALLS = 16;     // read one cell's three owned wall edges back
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
@@ -746,6 +748,68 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh) {
           }
         }
       }
+    }
+  }
+}
+
+// ── TRIGGERS AND THEIR ANCHORS (rung W8, moros#15) — invariant II ───────────
+//
+// > No anchor, and no binding to one, ever silently dangles. When geometry
+// > changes under an attached thing, its anchor moves with it or is REPORTED
+// > BROKEN — and so is every routine binding that names it. Never dropped, never
+// > silently relocated. A FOREIGN name the editor cannot resolve is neither: it
+// > is shown as foreign, and left alone.
+//
+// This is the invariant that separates an editor from a paint program, and it is
+// the anchor's whole subject: we own HOW A THING ATTACHES TO GEOMETRY, never the
+// payload. A trigger here carries a name and nothing else — what the name means
+// is the routine engine's business, and we build no part of that.
+//
+// An anchor names GROUND at a hex. Three outcomes, and exactly three:
+//   · the ground moved      → the anchor follows, and says so;
+//   · the ground is no longer ground (paved, built on, roofed)
+//                           → BROKEN, and says so. Not relocated to whatever is
+//                             there now, which would silently re-point a trigger
+//                             at a surface nobody attached it to;
+//   · the name is foreign   → untouched, and shown as foreign. We neither
+//                             resolve it nor drop it, because it is not ours.
+struct Trigger {
+  tg_id:      integer,
+  tg_q:       integer,
+  tg_r:       integer,
+  tg_h:       integer,
+  tg_name:    text,
+  tg_broken:  boolean,
+  tg_foreign: boolean,
+}
+
+// A name we do not own. The editor resolves its OWN bindings; anything qualified
+// into another namespace belongs to someone else and is left exactly as found.
+fn name_is_foreign(n: text) -> boolean { n.find("::") != null }
+
+// Re-resolve every anchor against the world as it is NOW. Called after edits
+// land, which is the only moment geometry can have moved under one.
+fn triggers_resolve(trigs: vector<Trigger>, wld: World, srv: Server) {
+  for tg in trigs {
+    if tg.tg_broken || tg.tg_foreign { continue; }
+    col = world_column(wld, tg.tg_q, tg.tg_r);
+    top = 0 - 1;
+    mat = 0;
+    for e in col.co_cells {
+      if hex_world::hex_occupied(e) {
+        top = e.h_height as integer ?? 0;
+        mat = e.h_material as integer ?? 0;
+      }
+    }
+    if top < 0 || mat != SURFACE_MAT {
+      tg.tg_broken = true;
+      srv.broadcast("S:trigger {tg.tg_id} BROKEN — the ground it named at "
+                    + "({tg.tg_q},{tg.tg_r}) is now material {mat}");
+      println("editor: trigger {tg.tg_id} BROKEN at ({tg.tg_q},{tg.tg_r})");
+    } else if top != tg.tg_h {
+      tg.tg_h = top;
+      srv.broadcast("S:trigger {tg.tg_id} followed to height {top}");
+      println("editor: trigger {tg.tg_id} followed to {top}");
     }
   }
 }
@@ -1614,6 +1678,8 @@ fn main() {
   cart_yaw = 0.0;
   cart_travel = 0.0;           // SIGNED and cumulative — see the handler
   cart_slip = 0.0;             // the deliberate-defect knob; 0 is a true roll
+  trigs: vector<Trigger> = [];
+  next_trig = 0;
 
   // Which chunks each client currently holds. Tracked per client because a
   // client that connects later is somewhere else in the stream, and because a
@@ -1813,6 +1879,28 @@ fn main() {
             }
           }
           srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+        } else if ev.msg_id == MSG_TRIGGER {
+          tname = ev.payload;
+          thx = world_to_hex(px, pz);
+          tcol = world_column(wld, thx.ha_q, thx.ha_r);
+          ttop = 0;
+          for te in tcol.co_cells {
+            if hex_world::hex_occupied(te) { ttop = te.h_height as integer ?? 0; }
+          }
+          tforeign = name_is_foreign(tname);
+          trigs += [Trigger { tg_id: next_trig, tg_q: thx.ha_q, tg_r: thx.ha_r,
+                              tg_h: ttop, tg_name: tname,
+                              tg_broken: false, tg_foreign: tforeign }];
+          if tforeign {
+            srv.send_to(ev.cid,
+              "S:trigger {next_trig} binding {tname} is foreign — left alone");
+            println("editor: trigger {next_trig} foreign binding {tname}");
+          } else {
+            srv.send_to(ev.cid,
+              "S:trigger {next_trig} at {thx.ha_q},{thx.ha_r} height {ttop} bound to {tname}");
+            println("editor: trigger {next_trig} at ({thx.ha_q},{thx.ha_r}) height {ttop}");
+          }
+          next_trig = next_trig + 1;
         } else if ev.msg_id == MSG_CART {
           // ⚠ TRAVEL IS SIGNED, AND THE VALUE IS DERIVED FROM IT — never
           // accumulated per move. `hex_body::wheel_value` is `travel / (2πr)`, so
@@ -2181,6 +2269,9 @@ fn main() {
         // was really settling on the last one, and `persist` did it about one run
         // in five. This is the missing half of that handshake.
         srv.broadcast("S:rebuilt {nrebuilt} chunks");
+        // Anchors are re-resolved HERE, where geometry has just changed, so a
+        // trigger cannot be left pointing at a world that no longer exists.
+        triggers_resolve(trigs, wld, srv);
       }
     }
 
