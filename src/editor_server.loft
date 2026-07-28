@@ -978,10 +978,21 @@ const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs fou
 // OUTSIDE it, so a loop over the window alone builds a proxy with holes in it, and
 // the holes are exactly where a character walks out.
 fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
-                view: boolean) -> EdgeSet {
+                view: boolean, runs: WallRuns, sf: Surfaces) -> EdgeSet {
   n = 2 * reach + 1;
   e = edgeset_new(cq - reach, cr - reach, n, n);
   slot_dir: vector<integer> = [4, 5, 0];        // SLOT_NW, SLOT_NE, SLOT_E
+  // ⚠ EACH BLOCKED EDGE CARRIES THE SURFACE OF THE RUN THAT PUT IT THERE. That is
+  // the whole reason `hex_edge` stores a surface rather than a boolean: a hex has
+  // six normals, and against a wall crossing the lattice diagonally its own edge
+  // normal is wrong by up to 90° — measured by the library, not assumed here. A
+  // slide along that normal would send a walker sideways or backwards.
+  //
+  // `nearest_seg` is the library's own arbitration — nearest wins, ties to the
+  // lower index — the same rule `way_stamp` cuts boundaries with.
+  rt = runs_track(runs);
+  first = 0;
+  if len(runs.items) > 0 { first = hex_way::way_surfaces(rt, sf); }
   for r in (cr - reach - 1)..(cr + reach + 2) {
     for q in (cq - reach - 1)..(cq + reach + 2) {
       c = world_cell(wld, q, r, SURFACE);
@@ -993,7 +1004,19 @@ fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
         if view { stops = wall_stops_view(mats[si]); }
         if stops {
           (nq, nr) = hex_grid::hex_neighbor(q, r, slot_dir[si]);
-          hex_edge::edge_block(e, q, r, nq, nr);
+          sid = 0;
+          if first > 0 {
+            aw = hex_to_world(q, r, 0);
+            bw = hex_to_world(nq, nr, 0);
+            mx = (aw.x + bw.x) * 0.5;
+            mz = (aw.z + bw.z) * 0.5;
+            if hex_way::track_distance(rt, mx, mz) < 0.9 {
+              seg = hex_way::nearest_seg(rt, mx, mz);
+              if seg >= 0 { sid = first + seg; }
+            }
+          }
+          if sid > 0 { hex_edge::edge_block_surf(e, q, r, nq, nr, sid); }
+          else { hex_edge::edge_block(e, q, r, nq, nr); }
         }
       }
     }
@@ -1021,14 +1044,55 @@ fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
 // unambiguously on the walkable side instead. `SKIN` is 1 cm at this scale.
 const SKIN = 0.01;
 
-fn walk_to(coll: EdgeSet, x0: float, z0: float, x1: float, z1: float) -> (float, float) {
-  (t, _hq, _hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
+fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
+           x1: float, z1: float) -> (float, float) {
+  (t, hq, hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
   if hd < 0 { return (x1, z1); }
   seg = sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)) ?? 0.0;
   back = t;
   if seg > 0.0 { back = t - (SKIN / seg ?? 0.0); }
   if back < 0.0 { back = 0.0; }
-  (x0 + (x1 - x0) * back, z0 + (z1 - z0) * back)
+  sx = x0 + (x1 - x0) * back;
+  sz = z0 + (z1 - z0) * back;
+
+  // ── SLIDE ────────────────────────────────────────────────────────────────
+  //
+  // Stopping dead is what rung 6b shipped, and only because the normal was not
+  // available: a hex edge carries six of them and the true wall's is not among
+  // them. Now the edge carries its RUN's surface, so `collide` returns the exact
+  // one and the leftover motion can be projected onto the wall.
+  //
+  // A degenerate normal is the honest stop: `edge_block` records SURF_NONE for an
+  // edge no run claims — the stencil's house, an edge placed by hand — and sliding
+  // along a normal that is not recoverable is worse than not sliding.
+  (blocked, nx, nz) = hex_edge::collide(coll, sf, hq, hr,
+                                        nb_q(hq, hr, hd), nb_r(hq, hr, hd));
+  if !blocked { return (sx, sz); }
+  // ⚠ NOT YET REACHED IN PRACTICE, and the honest state of it: the proxy DOES
+  // carry surfaces — 158 of them on a fenced road, measured — and the walk still
+  // takes this bail rather than sliding, so `collide` is not yielding a usable
+  // normal at the hit edge. Marking is proven; the lookup is not. The next probe
+  // is what `edge_surf` returns for the edge `sweep_path` reports, since that is
+  // the one link between them that has not been read out.
+  //
+  // It fails SAFE — a stop is what rung 6b shipped — so this is unfinished rather
+  // than broken, and it is written down instead of left as a surprise.
+  if nx * nx + nz * nz < 0.5 { return (sx, sz); }
+  rx = (x1 - x0) * (1.0 - back);
+  rz = (z1 - z0) * (1.0 - back);
+  dot = rx * nx + rz * nz;
+  tx = rx - nx * dot;
+  tz = rz - nz * dot;
+  if tx * tx + tz * tz < 0.0000001 { return (sx, sz); }
+  // One more sweep, so the slide cannot pass through a second wall — a corner
+  // stops the walker rather than squeezing them round it.
+  (t2, _q2, _r2, d2) = hex_edge::sweep_path(coll, sx, sz, sx + tx, sz + tz);
+  if d2 < 0 { return (sx + tx, sz + tz); }
+  seg2 = sqrt(tx * tx + tz * tz) ?? 0.0;
+  b2 = t2;
+  if seg2 > 0.0 { b2 = t2 - (SKIN / seg2 ?? 0.0); }
+  if b2 < 0.0 { b2 = 0.0; }
+  (sx + tx * b2, sz + tz * b2)
 }
 
 // Ring the disc you stand in. A MATERIAL IS NOMINAL and a RADIUS IS ORDINAL, and
@@ -2537,8 +2601,9 @@ fn main() {
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // The collision proxy and its validity, keyed on the cell and the edit clock.
-  coll_move = edges_around(wld, 0, 0, COLL_R, false);
-  coll_view = edges_around(wld, 0, 0, COLL_R, true);
+  coll_sf = surfaces_new();
+  coll_move = edges_around(wld, 0, 0, COLL_R, false, wall_runs, coll_sf);
+  coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new());
   coll_q = 0;
   coll_r = 0;
   coll_tau = 0 - 1;                   // never a real clock value, so the first
@@ -3153,8 +3218,11 @@ fn main() {
       // at 30Hz for a world that mostly does not change.
       chx = world_to_hex(px, pz);
       if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r || coll_tau != wld.w_tau {
-        coll_move = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, false);
-        coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true);
+        coll_sf = surfaces_new();
+        coll_move = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, false,
+                                 wall_runs, coll_sf);
+        coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
+                                 wall_runs, surfaces_new());
         coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau; coll_have = true;
       }
       cam_want = cam_boom();
@@ -3211,7 +3279,7 @@ fn main() {
         // WALLS STOP THE WALK (rung W2). The intended position goes through
         // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step
         // is not a step size to tune and a slow tick cannot cross a fence.
-        (wpx, wpz) = walk_to(coll_move, px, pz,
+        (wpx, wpz) = walk_to(coll_move, coll_sf, px, pz,
                              px + ky * step * fwd, pz + sy * step * fwd);
         gone = sqrt((wpx - px) * (wpx - px) + (wpz - pz) * (wpz - pz)) ?? 0.0;
         px = wpx;
