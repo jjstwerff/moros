@@ -1109,10 +1109,23 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, x0: float, z0: float,
   // unit, one every 0.217 wu, which no walker steps over.
   //
   // So the earlier suspicion — that the world holds fewer edges than the cut does —
-  // is REFUTED, and with it the explanation for the 40° crossing. That crossing
-  // needs re-measuring against a build that is certainly the one under test; the
-  // two runs it was seen in returned identical trails to the pixel, which is not
-  // what two different builds of a float simulation do.
+  // is REFUTED. And the crossing has now been re-measured against builds that
+  // identify themselves on the wire (`S:build <n>`, the size of the source the
+  // process was started from — an identity nobody has to remember to bump):
+  //
+  //   build 176535, this one         stops at (2.83, 2.36)
+  //   build 177162, step exception   crosses; free from (3.51, 2.91) onward
+  //
+  // Different ids, different trails — so the earlier identical pair was not a
+  // stale server after all. That suspicion is refuted too. The side guard is
+  // simply a NO-OP: with the wall's normal `(0,1)` the tangential move has
+  // `tz = 0`, so the side never changes and the guard always allows. The walker
+  // gets past on a tick the sweep does not block at all, and WHY is not yet known.
+  //
+  // ⚠ Everything above is MEASURED. Everything about the cause is not, and after
+  // two wrong causes in a row it is written here as a proposal rather than as a
+  // finding — hexbody's rule, and it is the right one: a fact without a gate is a
+  // proposal (`ROUNDTRIP.md`).
   //
   // What IS established, by probe rather than by reading: the proxy carries the
   // runs' surfaces (158 edges on a fenced road), and `collide` returns the exact
@@ -2566,6 +2579,20 @@ fn hostname() -> text {
 // resolve either — a probe read `source_dir() = …/moros/src` and found
 // `../html/editor.html` NOT to exist while the joined absolute path did. So a
 // parent-directory asset needs the join, and the failure is silent.
+// WHICH BUILD IS ANSWERING? The size of the source this process was started from.
+//
+// Not a version anybody has to remember to bump — the point is exactly that. Two
+// measurements of a walk once came back identical to the pixel across what were
+// supposed to be different builds, and there was no way to tell a real result from
+// a stale server. A probe can now assert what it is talking to before it believes
+// what it is told.
+fn build_id() -> integer {
+  bf = file("{source_dir()}/editor_server.loft");
+  if bf.format == Format.NotExists { return 0; }
+  bt = bf.content()?;
+  len(bt)
+}
+
 fn read_index() -> text {
   ixf = file("{source_dir()}/../html/editor.html");
   if ixf.format == Format.NotExists {
@@ -2707,6 +2734,7 @@ fn main() {
           srv.send_to(ev.cid, wire_leg_r);
           srv.send_to(ev.cid, wire_arm_l);
           srv.send_to(ev.cid, wire_arm_r);
+          srv.send_to(ev.cid, "S:build {build_id()}");
           srv.send_to(ev.cid, "E:");
           srv.send_to(ev.cid, fog_wire(px, py, pz));
           srv.send_to(ev.cid, ramp_wire());
