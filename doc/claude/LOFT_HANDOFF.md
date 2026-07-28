@@ -724,3 +724,69 @@ is reachable from the code that most needs it: anything with a server, a socket,
 library. The consumer-visible shape is "the debugger does not work on real programs", which
 undersells it considerably.
 
+
+---
+
+## H14 — past ~32 KB of body, a `while true` runs its body ONCE and the program exits 0
+
+**Status:** not filed · **Repo:** `loft-lang/loft`
+**Severity:** high — silent wrong control flow, exit code 0, no diagnostic
+**Suggested title:** `interpreter: a long loop body breaks the backward jump — the loop runs one iteration and falls through`
+**Backend:** `--interpret` only. `--native` is correct on the same source.
+
+### Minimal reproducer
+
+Generated, because the trigger is SIZE rather than shape:
+
+```sh
+python3 -c "
+n = 1485
+lines = '\n'.join(f'    f{i} = {i} + 1;' for i in range(n))
+open('loop.loft','w').write('''fn main() {
+  i = 0;
+  while true {
+    i = i + 1;
+    println(\"tick {i}\");
+    if i > 3 { return; }
+''' + lines + '''
+  }
+}
+''')"
+loft --interpret loop.loft      # prints ONE tick, exits 0
+loft --native    loop.loft      # prints four ticks — correct
+```
+
+`n = 1484` prints four ticks and is correct; `n = 1485` prints one and exits. The flip is
+that sharp — one statement — which is what says "offset", not "resource".
+
+### What it looks like from outside
+
+The loop does not hang, crash, or warn. The body completes, the backward jump does not
+happen, execution falls out of the loop and `main` returns cleanly with status 0. Every
+`println` in the body runs exactly once, so a log ends mid-story with nothing wrong in it.
+
+### The number points at the mechanism
+
+1485 statements of that filler is roughly **32 KB of emitted body**, and 32768 is where a
+signed 16-bit relative jump stops reaching. The reproducer's `if i > 3 { return; }`
+FORWARD jump is fine at the same size; only the loop's backward jump misbehaves — so the
+suspicion is a `i16` (or otherwise truncated) branch offset in the interpreter's encoder,
+taken without a range check.
+
+### What it cost here
+
+`src/editor_server.loft`'s `main` sits just under the threshold, so **adding two `println`
+lines anywhere in it stopped the editor's connection pump after one pass** — the server
+printed its full startup banner, streamed the world, and exited 0 before any client could
+connect. It reads exactly like "the server dies on startup", and the two lines that
+"caused" it had nothing to do with the loop: removing two *unrelated* lines elsewhere in
+the same function fixed it, which is what identified size as the trigger.
+
+**A range check that refuses to emit is worth more than the fix**, if the fix is hard: a
+compile error naming the limit is recoverable, and this is not.
+
+### Workaround
+
+Lift code out of the function holding the loop. Moros extracted its message handlers into
+functions to get back under the limit — better code, but taken under duress rather than
+chosen.
