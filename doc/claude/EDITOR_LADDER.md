@@ -63,6 +63,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |
 | 10 | props and vehicles; the multi-rig connector | #14 | L | a cart whose wheels turn from distance travelled |
+| 10a | ↳ the cart — three rigs, one frame, a derived roll | #14 | ✅ | `tools/gates/world/cart.mjs`; dressing layers and `glb` import still open |
 | — | ✋ | | | |
 | 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
 | — | ✋ | | | |
@@ -425,3 +426,34 @@ exactly, refused with reason + offer + residual (ordinal) or reason alone
 Five mutations red: snapping the roof, offering a nominal value, clamping the
 density silently, leaving the brush's clamp unreported, and dropping the grade's
 residual.
+
+
+## What rung 10a used rather than wrote
+
+`hex_body` already owns the roll: `wheel_value = travel / (2πr)`, `wheel_angle`,
+and `wheel_skid` — with the skid documented as **machine-ε rather than algebraic
+zero**, because `travel → value → r·θ` is a float round-trip f64 does not close
+bit-for-bit. Writing our own would have been a second definition of a rule that
+already has one, and a worse one.
+
+Measured: travel 10 gives value `3.9788735772973833`, which is `10/(2π·0.4)`;
+travel 20 doubles it to the bit; travel back to 0 returns the value to exactly 0.
+That last one is the point of deriving rather than accumulating — a running total
+drifts and never quite closes, and the gate catches a drift of one part in ten
+million.
+
+The **skid mutation is the library's own control**: `slip = 0.05` makes
+`wheel_skid` non-zero and turns the clause red, so "no-slip holds by
+construction" is a measurement here, not a quotation.
+
+**The cart is deliberately NOT in the world.** It is rigs and transforms, like
+the character. The world file mutates under game mechanics while the things
+placed into it — dressing, vehicles, parts of vehicles — live in their own files
+so they stay stable, which is the split decided earlier in this plan. A cart
+written into terrain layers would also collide with `P2` the moment it wanted a
+dressing layer, which it does not, because it is not landscape.
+
+**Still open on #14:** set dressing in an actual `KIND_DRESSING` layer — nothing
+creates one yet, `world_set_column` materialises every layer as terrain — and
+`glb` import. The connector here is one frame with fixed offsets, which is what a
+cart needs; trains and robots need the general case.

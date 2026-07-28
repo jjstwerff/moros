@@ -22,6 +22,7 @@ use web;          // sleep_ms — the idle tick of the manual connection pool
 use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
 use moros_map;
 use hex_world;
+use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
@@ -205,6 +206,7 @@ const TICK_US = 33000;
 //                    14:<roof>     stencil — place a structure as a band (`P1`)
 //                    15:<q>,<r>    report that column's occupied heights
 //                    16:<q>,<r>    report that cell's three owned wall edges
+//                    17:<delta>    move the cart along its facing (signed, wu)
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -246,6 +248,7 @@ const MSG_FIELD = 11;     // fields: fill the enclosure you are standing in (mor
 const MSG_STOREY = 12;    // storeys: a floor above, a cellar below (moros#12)
 const MSG_SCATTER = 13;   // vegetation: scatter a species at density (moros#13)
 const MSG_STENCIL = 14;   // stencils: place a structure as a BAND (moros#12, `P1`)
+const MSG_CART = 17;      // vehicles: move the cart, roll its wheels (moros#14)
 const MSG_WALLS = 16;     // read one cell's three owned wall edges back
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
@@ -324,6 +327,24 @@ fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 // Chunk ids are therefore lifted clear of a reserved low block. The gates' old
 // `id > 1000` filter was working around exactly this without naming it.
 const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
+// ── THE CART (rung W7, moros#14) — a multi-rig, and its wheels ──────────────
+//
+// Three rigs that move as one: a body and two wheels. The connector is the
+// body's frame — each wheel hangs off it at a fixed offset, so moving the cart
+// moves one thing and the parts follow. That is the whole of "multi-rig" at this
+// scale; a prop is the degenerate case with no moving parts at all.
+//
+// ⚠ THE CART IS NOT IN THE WORLD. It is rigs and transforms, like the character,
+// and it stays out of the voxel store on purpose: the world file mutates under
+// game mechanics, while the things placed INTO it — set dressing, vehicles, the
+// parts of vehicles — live in their own files precisely so they stay stable.
+// A cart written into terrain layers would also trip `P2` the moment it needed a
+// dressing layer, which it does not, because it is not landscape.
+const CART_BODY    = 5;
+const CART_WHEEL_L = 6;
+const CART_WHEEL_R = 7;
+const CART_RADIUS  = 0.40;       // wheel radius in world units
+const CART_HALF_W  = 0.55;       // half the axle, body centre to wheel
 const PART_BODY = 0;
 const PART_LEG_L = 1;
 const PART_LEG_R = 2;
@@ -727,6 +748,19 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh) {
       }
     }
   }
+}
+
+// The cart's three rigs, placed from ONE frame. The wheels are children of the
+// body in the only sense that matters here: their transform is the body's, times
+// a fixed offset, times the roll. Nothing else in the editor knows where a wheel
+// is, so nothing else can disagree about it.
+fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float) {
+  base = mat4_mul(mat4_translate(cx, CART_RADIUS, cz), mat4_rotate_y(cyaw));
+  srv.broadcast("T:{CART_BODY};{mat_wire(base)}");
+  srv.broadcast("T:{CART_WHEEL_L};{mat_wire(mat4_mul(mat4_mul(base,
+                  mat4_translate(0.0, 0.0, 0.0 - CART_HALF_W)), mat4_rotate_z(roll)))}");
+  srv.broadcast("T:{CART_WHEEL_R};{mat_wire(mat4_mul(mat4_mul(base,
+                  mat4_translate(0.0, 0.0, CART_HALF_W)), mat4_rotate_z(roll)))}");
 }
 
 // ── THE DOORSTEP (`K-FIT`, invariant I) ─────────────────────────────────────
@@ -1574,6 +1608,13 @@ fn main() {
   // has actually gone.
   walked = 0.0;
 
+  // The cart's own frame, and the ONE number its wheels are derived from.
+  cart_x = 3.0;
+  cart_z = 0.0;
+  cart_yaw = 0.0;
+  cart_travel = 0.0;           // SIGNED and cumulative — see the handler
+  cart_slip = 0.0;             // the deliberate-defect knob; 0 is a true roll
+
   // Which chunks each client currently holds. Tracked per client because a
   // client that connects later is somewhere else in the stream, and because a
   // reconnect must be able to start from nothing.
@@ -1641,6 +1682,15 @@ fn main() {
           loaded = [];
           have_hex = false;
           moved = true;
+          cbm = mesh("cart");
+          emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+          srv.send_to(ev.cid, "M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}");
+          cwm = mesh("wheel");
+          emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
+                                  vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
+          srv.send_to(ev.cid, "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
+          srv.send_to(ev.cid, "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
+          cart_send(srv, cart_x, cart_z, cart_yaw, 0.0);
           println("editor: client {ev.cid} — figure sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
@@ -1763,6 +1813,24 @@ fn main() {
             }
           }
           srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+        } else if ev.msg_id == MSG_CART {
+          // ⚠ TRAVEL IS SIGNED, AND THE VALUE IS DERIVED FROM IT — never
+          // accumulated per move. `hex_body::wheel_value` is `travel / (2πr)`, so
+          // rolling forward ten and back ten returns the wheel to EXACTLY where it
+          // started; a per-move accumulation would drift and never quite close.
+          // The same discipline as the gait phase, and for the same reason.
+          cdelta = ev.payload as float ?? 0.0;
+          cart_travel = cart_travel + cdelta;
+          cart_x = cart_x + cos(cart_yaw) * cdelta;
+          cart_z = cart_z + sin(cart_yaw) * cdelta;
+
+          cval = hex_body::wheel_value(cart_travel, CART_RADIUS, cart_slip);
+          cang = hex_body::wheel_angle(cval);
+          cskid = hex_body::wheel_skid(CART_RADIUS, cval, cart_travel);
+          cart_send(srv, cart_x, cart_z, cart_yaw, cang);
+          srv.send_to(ev.cid,
+            "S:cart travel {cart_travel} value {cval} angle {cang} skid {cskid}");
+          println("editor: cart travel {cart_travel} angle {cang} skid {cskid}");
         } else if ev.msg_id == MSG_WALLS {
           wci = ev.payload.find(",");
           wq = 0;
