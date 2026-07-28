@@ -549,4 +549,26 @@ from Blender, which is the entire point of importing. The round-trip test would
 pass and the feature would not exist — the same "green for the wrong reason" this
 plan has now hit four times.
 
-**Not started.** This is a package with a parser in it, not a rung tail-end.
+**Built** — `lib/glb_read/`, 2026-07-28. A JSON reader (`json.loft`, ~230 lines:
+objects, arrays, strings, numbers, booleans, null, with a flat node vector so
+recursion stays cheap) and a glTF reader over it that walks
+`meshes → primitives → attributes → accessors → bufferViews → BIN`. Refusals are
+named: `GR_MISSING`, `GR_MAGIC`, `GR_VERSION`, `GR_TRUNCATED`, `GR_JSON`,
+`GR_SHAPE`, `GR_COMPONENT`.
+
+Four gates. Three are the round trip — write a cube with `glb::save_glb`, read it
+back, and compare positions, normals and winding. **The fourth is the one that
+matters**: a hand-built glb with a JSON shape our writer never emits — members in
+a different order, newlines where ours is compact, members the reader ignores
+(`extras`, `name`, `mode`), `NORMAL` listed after `POSITION` with accessor index
+2, and u16 indices where ours writes u32.
+
+The mutation proves the split. Replace the two attribute lookups with our
+writer's fixed indices — `POSITION = 0`, `NORMAL = 1` — and **all three
+round-trip tests still pass** while the foreign one fails. A seeker is
+indistinguishable from a parser until you hand it a file it did not write, which
+is exactly why that test exists and why the round trip alone would have shipped
+the wrong thing.
+
+**Not wired into the editor yet:** nothing imports a `.glb` as a prop. The reader
+returns a `Mesh`; placing one is the next step.

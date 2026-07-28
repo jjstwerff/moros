@@ -1,0 +1,228 @@
+// A JSON reader, because nothing in the family has one and glTF is JSON.
+//
+// ⚠ THIS IS THE PART THAT MAKES IT AN IMPORT. Our own `glb` writer emits a fixed
+// layout, so a "reader" could seek to known offsets and pass a round-trip test
+// while reading nothing Blender produces — which is the entire point of
+// importing. So the JSON is genuinely PARSED: key order, whitespace and unused
+// members are all free to vary, and the tests prove it by feeding shapes our
+// writer never emits.
+//
+// Scope is glTF's subset, deliberately: objects, arrays, strings, numbers,
+// booleans, null. No escapes beyond the ones glTF names can contain, and numbers
+// are read as float with an integer view — glTF indices are integers that JSON
+// spells as numbers.
+
+// One parsed value. Loft has no sum-of-anything, so a node carries a kind and
+// the fields that kind uses; children are INDEXES into the flat node vector,
+// which keeps the whole document one allocation and makes recursion iterative.
+pub const J_NULL = 0;
+pub const J_BOOL = 1;
+pub const J_NUM  = 2;
+pub const J_STR  = 3;
+pub const J_ARR  = 4;
+pub const J_OBJ  = 5;
+
+pub struct GJNode {
+  jn_kind:  integer,
+  jn_num:   float,
+  jn_str:   text,
+  jn_kids:  vector<integer>,     // ARR: elements. OBJ: values, paired with jn_keys
+  jn_keys:  vector<text>,        // OBJ only
+}
+
+pub struct GJson {
+  js_nodes: vector<GJNode>,
+  js_root:  integer,
+  js_ok:    boolean,
+  js_error: text,
+}
+
+struct Cursor { cu_at: integer }
+
+fn is_ws(c: character) -> boolean { c == ' ' || c == '\t' || c == '\n' || c == '\r' }
+
+fn skip_ws(s: text, cu: Cursor) {
+  while cu.cu_at < len(s) && is_ws(s[cu.cu_at]) { cu.cu_at = cu.cu_at + 1; }
+}
+
+// Returns the index of the node it parsed, or -1 with `err` set.
+fn parse_value(s: text, cu: Cursor, nodes: vector<GJNode>, err: &text) -> integer {
+  skip_ws(s, cu);
+  if cu.cu_at >= len(s) { err = "input ended where a value was expected"; return 0 - 1; }
+  c = s[cu.cu_at];
+
+  if c == '{' {
+    cu.cu_at = cu.cu_at + 1;
+    keys: vector<text> = [];
+    kids: vector<integer> = [];
+    skip_ws(s, cu);
+    if cu.cu_at < len(s) && s[cu.cu_at] == '}' {
+      cu.cu_at = cu.cu_at + 1;
+    } else {
+      done = false;
+      while !done {
+        skip_ws(s, cu);
+        if cu.cu_at >= len(s) || s[cu.cu_at] != '"' {
+          err = "expected a key at {cu.cu_at}"; return 0 - 1;
+        }
+        k = parse_string(s, cu, err);
+        if err != "" { return 0 - 1; }
+        skip_ws(s, cu);
+        if cu.cu_at >= len(s) || s[cu.cu_at] != ':' {
+          err = "expected a colon after key {k}"; return 0 - 1;
+        }
+        cu.cu_at = cu.cu_at + 1;
+        v = parse_value(s, cu, nodes, err);
+        if err != "" { return 0 - 1; }
+        keys += [k];
+        kids += [v];
+        skip_ws(s, cu);
+        if cu.cu_at < len(s) && s[cu.cu_at] == ',' { cu.cu_at = cu.cu_at + 1; }
+        else if cu.cu_at < len(s) && s[cu.cu_at] == '}' { cu.cu_at = cu.cu_at + 1; done = true; }
+        else { err = "expected a comma or a closing brace at {cu.cu_at}"; return 0 - 1; }
+      }
+    }
+    nodes += [GJNode { jn_kind: J_OBJ, jn_num: 0.0, jn_str: "",
+                      jn_kids: kids, jn_keys: keys }];
+    return len(nodes) - 1;
+  }
+
+  if c == '[' {
+    cu.cu_at = cu.cu_at + 1;
+    kids2: vector<integer> = [];
+    skip_ws(s, cu);
+    if cu.cu_at < len(s) && s[cu.cu_at] == ']' {
+      cu.cu_at = cu.cu_at + 1;
+    } else {
+      done2 = false;
+      while !done2 {
+        v2 = parse_value(s, cu, nodes, err);
+        if err != "" { return 0 - 1; }
+        kids2 += [v2];
+        skip_ws(s, cu);
+        if cu.cu_at < len(s) && s[cu.cu_at] == ',' { cu.cu_at = cu.cu_at + 1; }
+        else if cu.cu_at < len(s) && s[cu.cu_at] == ']' { cu.cu_at = cu.cu_at + 1; done2 = true; }
+        else { err = "expected a comma or a closing bracket at {cu.cu_at}"; return 0 - 1; }
+      }
+    }
+    nodes += [GJNode { jn_kind: J_ARR, jn_num: 0.0, jn_str: "",
+                      jn_kids: kids2, jn_keys: [] }];
+    return len(nodes) - 1;
+  }
+
+  if c == '"' {
+    st = parse_string(s, cu, err);
+    if err != "" { return 0 - 1; }
+    nodes += [GJNode { jn_kind: J_STR, jn_num: 0.0, jn_str: st, jn_kids: [], jn_keys: [] }];
+    return len(nodes) - 1;
+  }
+
+  if c == 't' || c == 'f' {
+    b = c == 't';
+    n = 4;
+    if !b { n = 5; }
+    cu.cu_at = cu.cu_at + n;
+    bn = 0.0;
+    if b { bn = 1.0; }
+    nodes += [GJNode { jn_kind: J_BOOL, jn_num: bn, jn_str: "", jn_kids: [], jn_keys: [] }];
+    return len(nodes) - 1;
+  }
+
+  if c == 'n' {
+    cu.cu_at = cu.cu_at + 4;
+    nodes += [GJNode { jn_kind: J_NULL, jn_num: 0.0, jn_str: "", jn_kids: [], jn_keys: [] }];
+    return len(nodes) - 1;
+  }
+
+  // a number
+  start = cu.cu_at;
+  if cu.cu_at < len(s) && (s[cu.cu_at] == '-' || s[cu.cu_at] == '+') { cu.cu_at = cu.cu_at + 1; }
+  while cu.cu_at < len(s) {
+    ch = s[cu.cu_at];
+    if (ch >= '0' && ch <= '9') || ch == '.' || ch == 'e' || ch == 'E'
+       || ch == '-' || ch == '+' {
+      cu.cu_at = cu.cu_at + 1;
+    } else { break; }
+  }
+  if cu.cu_at == start { err = "not a value at {start}: '{c}'"; return 0 - 1; }
+  numtxt = s[start..cu.cu_at];
+  nv = numtxt as float?;
+  if nv == null { err = "bad number '{numtxt}'"; return 0 - 1; }
+  nodes += [GJNode { jn_kind: J_NUM, jn_num: nv ?? 0.0, jn_str: "",
+                    jn_kids: [], jn_keys: [] }];
+  len(nodes) - 1
+}
+
+fn parse_string(s: text, cu: Cursor, err: &text) -> text {
+  cu.cu_at = cu.cu_at + 1;                 // the opening quote
+  out = "";
+  while cu.cu_at < len(s) {
+    c = s[cu.cu_at];
+    if c == '"' { cu.cu_at = cu.cu_at + 1; return out; }
+    if c == '\\' {
+      cu.cu_at = cu.cu_at + 1;
+      if cu.cu_at >= len(s) { err = "string ended inside an escape"; return ""; }
+      e = s[cu.cu_at];
+      if e == 'n' { out += "\n"; }
+      else if e == 't' { out += "\t"; }
+      else if e == 'r' { out += "\r"; }
+      else { out += "{e}"; }
+      cu.cu_at = cu.cu_at + 1;
+    } else {
+      out += "{c}";
+      cu.cu_at = cu.cu_at + 1;
+    }
+  }
+  err = "unterminated string";
+  ""
+}
+
+pub fn gj_parse(s: text) -> GJson {
+  nodes: vector<GJNode> = [];
+  cu = Cursor { cu_at: 0 };
+  err = "";
+  root = parse_value(s, cu, nodes, err);
+  if err != "" || root < 0 {
+    return GJson { js_nodes: nodes, js_root: 0 - 1, js_ok: false, js_error: err };
+  }
+  GJson { js_nodes: nodes, js_root: root, js_ok: true, js_error: "" }
+}
+
+// ── navigation ─────────────────────────────────────────────────────────────
+// Every accessor returns -1 / 0 / "" for "not there" rather than refusing, so a
+// caller walks a path and checks once at the end. glTF is full of optional
+// members and a hard error per lookup would drown the reader in plumbing.
+
+pub fn gj_member(j: GJson, node: integer, key: text) -> integer {
+  if node < 0 || node >= len(j.js_nodes) { return 0 - 1; }
+  n = j.js_nodes[node];
+  if n.jn_kind != J_OBJ { return 0 - 1; }
+  for i in 0..len(n.jn_keys) {
+    if n.jn_keys[i] == key { return n.jn_kids[i]; }
+  }
+  0 - 1
+}
+
+pub fn gj_at(j: GJson, node: integer, i: integer) -> integer {
+  if node < 0 || node >= len(j.js_nodes) { return 0 - 1; }
+  n = j.js_nodes[node];
+  if n.jn_kind != J_ARR || i < 0 || i >= len(n.jn_kids) { return 0 - 1; }
+  n.jn_kids[i]
+}
+
+pub fn gj_len(j: GJson, node: integer) -> integer {
+  if node < 0 || node >= len(j.js_nodes) { return 0; }
+  len(j.js_nodes[node].jn_kids)
+}
+
+pub fn gj_int(j: GJson, node: integer, dflt: integer) -> integer {
+  if node < 0 || node >= len(j.js_nodes) { return dflt; }
+  n = j.js_nodes[node];
+  if n.jn_kind != J_NUM { return dflt; }
+  n.jn_num as integer ?? dflt
+}
+
+pub fn gj_text(j: GJson, node: integer) -> text {
+  if node < 0 || node >= len(j.js_nodes) { return ""; }
+  j.js_nodes[node].jn_str
+}

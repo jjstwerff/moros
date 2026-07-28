@@ -1,0 +1,103 @@
+// THE CONTROL THAT DECIDES WHETHER THIS IS AN IMPORT.
+//
+// Our own writer emits one fixed JSON layout, so a "reader" that seeks to known
+// offsets would pass every round-trip test and still read nothing Blender
+// produces. That is the failure this file exists to catch: the glb below is
+// hand-built with a JSON shape our writer NEVER emits —
+//
+//   · members in a different order (`type` before `count`, `indices` before
+//     `attributes`, `asset` last rather than first);
+//   · newlines and indentation, where ours is compact;
+//   · members this reader does not use at all (`extras`, `name`, `mode`);
+//   · u16 indices, where ours writes u32.
+//
+// A seeker cannot read it. A parser cannot tell it apart from ours.
+use glb_read;
+use mesh3d;
+
+fn pad4(n: integer) -> integer { (4 - (n % 4 ?? 0)) % 4 ?? 0 }
+
+fn write_foreign(p: text) {
+  j = "{{\n"
+    + "  \"meshes\": [ {{\n"
+    + "      \"name\": \"from_somewhere_else\",\n"
+    + "      \"primitives\": [ {{\n"
+    + "          \"indices\": 1,\n"
+    + "          \"mode\": 4,\n"
+    + "          \"attributes\": {{ \"NORMAL\": 2, \"POSITION\": 0 }}\n"
+    + "      }} ]\n"
+    + "  }} ],\n"
+    + "  \"accessors\": [\n"
+    + "    {{ \"type\": \"VEC3\", \"componentType\": 5126, \"bufferView\": 0, \"count\": 3 }},\n"
+    + "    {{ \"type\": \"SCALAR\", \"componentType\": 5123, \"bufferView\": 1, \"count\": 3 }},\n"
+    + "    {{ \"type\": \"VEC3\", \"componentType\": 5126, \"bufferView\": 2, \"count\": 3 }}\n"
+    + "  ],\n"
+    + "  \"bufferViews\": [\n"
+    + "    {{ \"byteLength\": 36, \"buffer\": 0, \"byteOffset\": 0 }},\n"
+    + "    {{ \"byteLength\": 6,  \"buffer\": 0, \"byteOffset\": 36 }},\n"
+    + "    {{ \"byteLength\": 36, \"buffer\": 0, \"byteOffset\": 44 }}\n"
+    + "  ],\n"
+    + "  \"extras\": {{ \"unused\": [ 1, 2, 3 ], \"deeper\": {{ \"still\": null }} }},\n"
+    + "  \"buffers\": [ {{ \"byteLength\": 80 }} ],\n"
+    + "  \"asset\": {{ \"version\": \"2.0\", \"generator\": \"a hand\" }}\n"
+    + "}}\n";
+  jpad = pad4(len(j));
+  jchunk = len(j) + jpad;
+  bin = 80;                                  // 36 pos + 6 idx + 2 pad + 36 nrm
+  total = 12 + 8 + jchunk + 8 + bin;
+
+  delete(p);
+  f = file(p);
+  f#format = LittleEndian;
+  f += 0x46546C67 as i32;
+  f += 2 as i32;
+  f += total as i32;
+  f += jchunk as i32;
+  f += 0x4E4F534A as i32;
+  f += j;
+  for _p in 0..jpad { f += 32 as u8; }
+  f += bin as i32;
+  f += 0x004E4942 as i32;
+  // positions
+  f += 0.0 as single; f += 0.0 as single; f += 0.0 as single;
+  f += 4.0 as single; f += 0.0 as single; f += 0.0 as single;
+  f += 4.0 as single; f += 6.5 as single; f += 0.0 as single;
+  // indices, u16 — our writer never emits these
+  f += 0 as u16; f += 1 as u16; f += 2 as u16;
+  f += 0 as u16;                              // pad to 4
+  // normals
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+}
+
+fn near(x: float, y: float) -> boolean {
+  d = x - y;
+  if d < 0.0 { d = 0.0 - d; }
+  d < 0.0001
+}
+
+fn test_a_foreign_glb_reads() {
+  p = "glbread_foreign.glb";
+  write_foreign(p);
+  r = load_glb(p);
+  assert(r.gr_code == GR_OK,
+         "a glb our writer would never emit was refused ({r.gr_code}): {r.gr_detail}. "
+         + "That is the whole failure this file exists to catch — a reader that only "
+         + "reads our own files is not an import");
+  assert(len(r.gr_mesh.vertices) == 3, "got {len(r.gr_mesh.vertices)} vertices, wrote 3");
+  assert(len(r.gr_mesh.triangles) == 1, "got {len(r.gr_mesh.triangles)} triangles, wrote 1");
+
+  v2 = r.gr_mesh.vertices[2].pos;
+  assert(near(v2.x, 4.0) && near(v2.y, 6.5) && near(v2.z, 0.0),
+         "vertex 2 came back ({v2.x},{v2.y},{v2.z}), wrote (4,6.5,0)");
+  // NORMAL sits AFTER POSITION in the attributes object here, and its accessor
+  // is index 2 rather than 1 — following the indirection is the only way to it
+  n2 = r.gr_mesh.vertices[2].normal;
+  assert(near(n2.z, 1.0),
+         "the normal came back ({n2.x},{n2.y},{n2.z}), wrote (0,0,1) — the reader is not "
+         + "following the attribute's accessor index");
+  t = r.gr_mesh.triangles[0];
+  assert(t.a == 0 && t.b == 1 && t.c == 2,
+         "u16 indices came back ({t.a},{t.b},{t.c}), wrote (0,1,2)");
+}

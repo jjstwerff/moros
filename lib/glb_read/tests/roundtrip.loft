@@ -1,0 +1,74 @@
+// The reader, verified against the writer that already exists.
+//
+// This is an unusually clean verification: `glb::save_glb` produces the file, so
+// a round trip needs no fixture to trust and no external tool in the loop. Write
+// a known mesh, read it back, compare.
+use glb_read;
+use glb;
+use mesh3d;
+
+fn a_cube() -> Mesh {
+  m = mesh("cube");
+  m.vertices += [vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec2(0.0, 0.0))];
+  m.vertices += [vertex(vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec2(0.0, 0.0))];
+  m.vertices += [vertex(vec3(1.0, 2.5, 0.0), vec3(1.0, 0.0, 0.0), vec2(0.0, 0.0))];
+  m.vertices += [vertex(vec3(0.0, 2.5, 3.25), vec3(0.0, 0.0, 1.0), vec2(0.0, 0.0))];
+  m.triangles += [Triangle { a: 0, b: 1, c: 2 }];
+  m.triangles += [Triangle { a: 0, b: 2, c: 3 }];
+  m
+}
+
+fn near(x: float, y: float) -> boolean {
+  d = x - y;
+  if d < 0.0 { d = 0.0 - d; }
+  d < 0.0001
+}
+
+fn test_a_written_glb_reads_back() {
+  src = a_cube();
+  p = "glbread_rt.glb";
+  save_glb(src, p);
+
+  r = load_glb(p);
+  assert(r.gr_code == GR_OK, "load refused {r.gr_code}: {r.gr_detail}");
+  assert(len(r.gr_mesh.vertices) == 4,
+         "got {len(r.gr_mesh.vertices)} vertices, wrote 4");
+  assert(len(r.gr_mesh.triangles) == 2,
+         "got {len(r.gr_mesh.triangles)} triangles, wrote 2");
+
+  // positions survive, in order
+  for i in 0..4 {
+    a = src.vertices[i].pos;
+    b = r.gr_mesh.vertices[i].pos;
+    assert(near(a.x, b.x) && near(a.y, b.y) && near(a.z, b.z),
+           "vertex {i} came back at ({b.x},{b.y},{b.z}), wrote ({a.x},{a.y},{a.z})");
+  }
+  // normals too — the reader follows the NORMAL accessor, not a guess
+  n0 = r.gr_mesh.vertices[2].normal;
+  assert(near(n0.x, 1.0) && near(n0.y, 0.0),
+         "vertex 2's normal came back ({n0.x},{n0.y},{n0.z}), wrote (1,0,0)");
+  // and the winding
+  t0 = r.gr_mesh.triangles[1];
+  assert(t0.a == 0 && t0.b == 2 && t0.c == 3,
+         "triangle 1 came back ({t0.a},{t0.b},{t0.c}), wrote (0,2,3)");
+}
+
+// ── refusals, each NAMED ───────────────────────────────────────────────────
+
+fn test_a_missing_file_is_named() {
+  r = load_glb("glbread_no_such.glb");
+  assert(r.gr_code == GR_MISSING, "a missing file gave {r.gr_code}");
+}
+
+fn test_a_non_glb_is_refused_on_magic() {
+  p = "glbread_notglb.bin";
+  delete(p);
+  f2 = file(p);
+  f2#format = LittleEndian;
+  f2 += 0x11223344 as i32;
+  f2 += 2 as i32;
+  f2 += 20 as i32;
+  r = load_glb(p);
+  assert(r.gr_code == GR_MAGIC,
+         "a file that is not a glb gave {r.gr_code}: {r.gr_detail}");
+}

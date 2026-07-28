@@ -1,0 +1,189 @@
+// glTF 2.0 binary (.glb) READER — the half `glb` does not have.
+//
+// `glb` 0.1.2 is a writer: `save_glb` / `save_scene_glb` and nothing else, and
+// nothing in the family parses JSON. Importing therefore needs both, and both are
+// ours — a library gap is never an upstream ask, because upstream cannot verify a
+// library against the use that needs it.
+//
+// ⚠ THE TRAP THIS AVOIDS. Our own writer emits a FIXED JSON layout, so a reader
+// could skip parsing entirely and seek to known offsets: it would pass a
+// round-trip test against our files and read nothing Blender produces, which is
+// the whole point of importing. So the JSON is genuinely parsed (`json.loft`) and
+// the accessors are genuinely followed — attribute order, key order and unused
+// members are all free to vary.
+use mesh3d;
+use json;
+
+pub const GR_OK        = 0;
+pub const GR_MISSING   = 1;   // no such file
+pub const GR_MAGIC     = 2;   // not a glb
+pub const GR_VERSION   = 3;   // not glTF 2
+pub const GR_TRUNCATED = 4;   // a chunk runs past the end
+pub const GR_JSON      = 5;   // the JSON chunk did not parse
+pub const GR_SHAPE     = 6;   // valid JSON, but not a mesh we can read
+pub const GR_COMPONENT = 7;   // an accessor type this reader does not implement
+
+pub struct GlbRead {
+  gr_code:   integer,
+  gr_mesh:   Mesh,
+  gr_detail: text,
+}
+
+const GLB_MAGIC = 0x46546C67;
+const CHUNK_JSON = 0x4E4F534A;
+const CHUNK_BIN  = 0x004E4942;
+const COMP_U16 = 5123;
+const COMP_U32 = 5125;
+const COMP_F32 = 5126;
+
+fn fail(code: integer, detail: text) -> GlbRead {
+  GlbRead { gr_code: code, gr_mesh: mesh("empty"), gr_detail: detail }
+}
+
+// A bufferView's window into the BIN chunk, resolved through its accessor.
+struct View {
+  vw_offset: integer,
+  vw_count:  integer,
+  vw_comp:   integer,
+  vw_ncomp:  integer,       // 3 for VEC3, 2 for VEC2, 1 for SCALAR
+}
+
+fn ncomp_of(t: text) -> integer {
+  if t == "VEC3" { return 3; }
+  if t == "VEC2" { return 2; }
+  if t == "VEC4" { return 4; }
+  if t == "SCALAR" { return 1; }
+  0
+}
+
+// accessor index → where its bytes are and how to read them
+fn view_of(j: GJson, root: integer, acc_i: integer, out: View, why: &text) -> boolean {
+  accs = gj_member(j, root, "accessors");
+  acc = gj_at(j, accs, acc_i);
+  if acc < 0 { why = "accessor {acc_i} is missing"; return false; }
+  bv_i = gj_int(j, gj_member(j, acc, "bufferView"), 0 - 1);
+  if bv_i < 0 { why = "accessor {acc_i} has no bufferView"; return false; }
+  bvs = gj_member(j, root, "bufferViews");
+  bv = gj_at(j, bvs, bv_i);
+  if bv < 0 { why = "bufferView {bv_i} is missing"; return false; }
+
+  out.vw_offset = gj_int(j, gj_member(j, bv, "byteOffset"), 0)
+                + gj_int(j, gj_member(j, acc, "byteOffset"), 0);
+  out.vw_count  = gj_int(j, gj_member(j, acc, "count"), 0);
+  out.vw_comp   = gj_int(j, gj_member(j, acc, "componentType"), 0);
+  out.vw_ncomp  = ncomp_of(gj_text(j, gj_member(j, acc, "type")));
+  if out.vw_ncomp == 0 {
+    why = "accessor {acc_i} has type '{gj_text(j, gj_member(j, acc, "type"))}'";
+    return false;
+  }
+  true
+}
+
+pub fn load_glb(path: text) -> GlbRead {
+  f = file(path);
+  if f.format == Format.NotExists { return fail(GR_MISSING, path); }
+  f#format = LittleEndian;
+
+  if f#read as i32 != GLB_MAGIC { return fail(GR_MAGIC, "not a glb: bad magic"); }
+  ver = f#read as i32;
+  if ver != 2 { return fail(GR_VERSION, "glTF version {ver}, this reader is 2"); }
+  total = f#read as i32;
+
+  // ── the chunks. Order is JSON then BIN by spec, but the length-prefixed walk
+  //    below does not depend on it, and a file with extra chunks is fine.
+  jtext = "";
+  bin_at = 0 - 1;
+  bin_len = 0;
+  at = 12;
+  while at + 8 <= total {
+    clen = f#read as i32;
+    ctype = f#read as i32;
+    at = at + 8;
+    if at + clen > total {
+      return fail(GR_TRUNCATED, "a chunk of {clen} runs past the file end");
+    }
+    if ctype == CHUNK_JSON {
+      jt = "";
+      for _b in 0..clen { jt += "{f#read as u8 as character}"; }
+      jtext = jt;
+    } else if ctype == CHUNK_BIN {
+      bin_at = at;
+      bin_len = clen;
+      for _s in 0..clen { f#read as u8; }
+    } else {
+      for _s2 in 0..clen { f#read as u8; }
+    }
+    at = at + clen;
+  }
+  if jtext == "" { return fail(GR_SHAPE, "no JSON chunk"); }
+
+  j = gj_parse(jtext);
+  if !j.js_ok { return fail(GR_JSON, j.js_error); }
+  root = j.js_root;
+
+  meshes = gj_member(j, root, "meshes");
+  if gj_len(j, meshes) == 0 { return fail(GR_SHAPE, "no meshes"); }
+  prims = gj_member(j, gj_at(j, meshes, 0), "primitives");
+  if gj_len(j, prims) == 0 { return fail(GR_SHAPE, "the first mesh has no primitives"); }
+  prim = gj_at(j, prims, 0);
+  attrs = gj_member(j, prim, "attributes");
+  pos_i = gj_int(j, gj_member(j, attrs, "POSITION"), 0 - 1);
+  if pos_i < 0 { return fail(GR_SHAPE, "the primitive has no POSITION"); }
+  nrm_i = gj_int(j, gj_member(j, attrs, "NORMAL"), 0 - 1);
+  idx_i = gj_int(j, gj_member(j, prim, "indices"), 0 - 1);
+
+  why = "";
+  pv = View { vw_offset: 0, vw_count: 0, vw_comp: 0, vw_ncomp: 0 };
+  if !view_of(j, root, pos_i, pv, why) { return fail(GR_SHAPE, why); }
+  if pv.vw_comp != COMP_F32 || pv.vw_ncomp != 3 {
+    return fail(GR_COMPONENT, "POSITION is component {pv.vw_comp} x {pv.vw_ncomp}");
+  }
+
+  out = mesh("glb");
+  // positions, and normals when the file carries them
+  nv = View { vw_offset: 0, vw_count: 0, vw_comp: 0, vw_ncomp: 0 };
+  has_n = false;
+  if nrm_i >= 0 {
+    if !view_of(j, root, nrm_i, nv, why) { return fail(GR_SHAPE, why); }
+    has_n = nv.vw_comp == COMP_F32 && nv.vw_ncomp == 3;
+  }
+  for vi in 0..pv.vw_count {
+    seek(f, bin_at + pv.vw_offset + vi * 12);
+    px = f#read as single as float ?? 0.0;
+    py = f#read as single as float ?? 0.0;
+    pz = f#read as single as float ?? 0.0;
+    nx = 0.0; ny = 1.0; nz = 0.0;
+    if has_n {
+      seek(f, bin_at + nv.vw_offset + vi * 12);
+      nx = f#read as single as float ?? 0.0;
+      ny = f#read as single as float ?? 0.0;
+      nz = f#read as single as float ?? 0.0;
+    }
+    out.vertices += [vertex(vec3(px, py, pz), vec3(nx, ny, nz), vec2(0.0, 0.0))];
+  }
+
+  if idx_i >= 0 {
+    iv = View { vw_offset: 0, vw_count: 0, vw_comp: 0, vw_ncomp: 0 };
+    if !view_of(j, root, idx_i, iv, why) { return fail(GR_SHAPE, why); }
+    if iv.vw_comp != COMP_U32 && iv.vw_comp != COMP_U16 {
+      return fail(GR_COMPONENT, "indices are component {iv.vw_comp}");
+    }
+    wide = iv.vw_comp == COMP_U32;
+    step = 2;
+    if wide { step = 4; }
+    ti = 0;
+    while ti + 2 < iv.vw_count {
+      seek(f, bin_at + iv.vw_offset + ti * step);
+      a = 0; b2 = 0; c = 0;
+      if wide {
+        a = f#read as i32; b2 = f#read as i32; c = f#read as i32;
+      } else {
+        a = f#read as u16; b2 = f#read as u16; c = f#read as u16;
+      }
+      out.triangles += [Triangle { a: a, b: b2, c: c }];
+      ti = ti + 3;
+    }
+  }
+
+  GlbRead { gr_code: GR_OK, gr_mesh: out, gr_detail: "" }
+}
