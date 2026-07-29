@@ -105,12 +105,16 @@ play-fast: port-free
 	@$(MAKE) -s browser
 
 # ── the client (plan #16, S1) ─────────────────────────────────────────────
-# ⚠ `--lib ../loft-libs-net/` is not a convenience: the REGISTRY's `web` 0.3.2 is
-# missing the whole `wasm/` directory its own manifest declares, so `--html`
-# cannot link the WebSocket bridge and the browser has no transport at all. 0.3.3
-# in the source tree carries it. Drop this flag when a fixed `web` is published.
+# No `--lib` flag: `web` resolves from the registry (0.3.3), whose tarball carries
+# the `wasm/` bridge `--html` needs.
+#
+# ⚠ If this ever fails again with `web_wasm` unresolved, the cause is a stale
+# ~/.loft/lib/web SHADOWING the registry copy — `loft install <dir>` copies only
+# loft.toml, src/*.loft, tests/ and native/, so a locally installed library loses
+# its wasm bridge (loft-lang/loft#667). `rm -rf ~/.loft/lib/web` is the fix; the
+# published package was never at fault.
 client:
-	$(LOFT) --html --lib ../loft-libs-net/ src/editor_client.loft
+	$(LOFT) --html src/editor_client.loft
 	@echo "wrote src/.loft/editor_client.html"
 
 editor:

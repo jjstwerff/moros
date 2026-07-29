@@ -103,8 +103,11 @@ JavaScript renderer and nothing else** — same wire, same frames, same picture.
 *Risk:* the whole four-target story (`loft-ship`) meets a real consumer. Expect this step to
 cost more than it looks.
 
-**⚠ S1 IS BLOCKED ON A PACKAGING DEFECT, found 2026-07-29 by compiling.** `src/editor_client.loft`
-is written and its own code compiles; `loft --html` then fails downstream:
+**✅ THE `--html` LINK FAILURE IS UNDERSTOOD AND GONE (2026-07-29).** It cost two wrong
+diagnoses before the right one, and the wrong ones are kept here because both were reached
+by *reading* and both survived until something was measured.
+
+The symptom, from `loft --html src/editor_client.loft`:
 
 ```
 loft: --html: [wasm.bridge] declared `crate = "web-wasm"` but
@@ -112,31 +115,27 @@ loft: --html: [wasm.bridge] declared `crate = "web-wasm"` but
 error[E0433]: cannot find module or crate `web_wasm` in this scope
 ```
 
-The **installed `web` 0.3.2 has no `wasm/` directory at all** — no `host.js`, no
-`src/lib.rs` — while its own `loft.toml` declares `[wasm.bridge] crate = "web-wasm"` and
-`host_js = "wasm/host.js"`. The source tree `../loft-libs-net/web` (**0.3.3**) has all of it.
-So the published tarball omits the directory its manifest requires, and **every `--html`
-program that uses `web`'s WebSocket fails to link** — which is the only browser transport
-there is.
+| # | the diagnosis | what killed it |
+|---|---|---|
+| 1 | "the published 0.3.2 tarball omits `wasm/`" | `tar tzf web-0.3.2.tar.gz` lists `wasm/host.js`, `wasm/Cargo.toml`, `wasm/src/lib.rs` — and the file's sha256 matches the registry entry byte for byte |
+| 2 | "0.3.3 was never published, so cut the release" | the live index has 0.3.3, published 2026-07-28T16:34Z — *before* the diagnosis. Our `../loft-registry` checkout was stale |
+| 3 | **`loft install <dir>` drops `wasm/`, and that copy shadows the registry's** | moving `~/.loft/lib/web` aside made `--html` link with no flag, no publish, no edit |
 
-This is exactly what S0's reconnaissance could not see: the documentation says WebSocket
-works in the browser target, and it does — the *package* does not carry it. Reading told us
-yes; compiling told us no.
+`install_package` copies `loft.toml`, `src/*.loft`, `tests/` and `native/` — a whitelist
+that has no `wasm/` in it — and `~/.loft/lib/<name>` is searched *before* the registry
+cache. So a local install of a bridged library replaces a complete package with an
+incomplete one and the error points at the library. Filed as
+[loft#667](https://github.com/loft-lang/loft/issues/667); it is the second instance of a
+class that function's own comment says it closed once already, for `native/`.
 
-**✅ RESOLVED THE SAME DAY: `web` 0.3.3 from the source tree links it.**
-`loft --html --lib ../loft-libs-net/ src/editor_client.loft` writes a 483 KB page (321 KB
-WASM). So the bridge is not missing from the LIBRARY — it is missing from the published
-0.3.2 tarball, and the fix upstream is a republish rather than any code.
+`make client` therefore carries **no `--lib` flag** and resolves `web` 0.3.3 from the
+registry: a 484 KB page, 322 KB WASM. **S1 is unblocked**; what remains of it is the
+drawing.
 
-`make client` carries the flag, with the reason on it, and the flag comes out when a fixed
-`web` is published. **S1 is unblocked**; what remains of it is the drawing.
-
-**And the republish is ours to do.** Fix `web` in `../loft-libs-net/` and publish it — the
-condition is the unified library CI, which each library repo delegates to
-(`loft-lang/loft/.github/workflows/library-ci-reusable.yml@main`); that reusable is the gate
-and defines the requirements, so read it before publishing rather than after a red run.
-Doing so deletes the `--lib` flag from `make client` and from every other consumer that has
-not yet discovered the hole.
+⚠ **The lesson is about the instrument, not the package.** Both wrong diagnoses were about
+*what someone else had shipped*, and both were reachable without looking at this box. The
+thing that settled it was one `mv` — the cheapest probe that could have proved the claim
+wrong, and it was available from the first minute.
 
 ### S2 — voxels on the wire, meshes still from the server
 

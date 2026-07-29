@@ -12,19 +12,21 @@ between them: read it first after a break.
 
 ## ⏭ PICK UP HERE (2026-07-29, end of session)
 
-Four things are ready to start, in this order. Each is short and each has its unknown
+Three things are ready to start, in this order. Each is short and each has its unknown
 already answered — none of them needs re-diagnosing.
 
-1. **Publish `web` 0.3.3.** ⚠ Corrected diagnosis: `wasm/` is NOT missing from the package —
-   **0.3.3 has never been published.** The source tree `../loft-libs-net/web` is 0.3.3 with
-   `wasm/{Cargo.toml,host.js,src/lib.rs}` all tracked; the installed 0.3.2 predates the
-   bridge. So this is a release to cut, not a packaging bug to fix.
-   *Gate:* each library repo's `library-ci.yml` only lists packages and delegates to
-   `loft-lang/loft/.github/workflows/library-ci-reusable.yml@main` — **read that reusable
-   first**; it is where the requirements live. Then tag, tarball, sha256, registry entry,
-   signature.
-   *Then:* drop `--lib ../loft-libs-net/` from `make client` and note the flag expired in
-   plan 16.
+1. ✅ **The `web` publish was never needed — done and closed.** The `--html` link failure was
+   `loft install <dir>` dropping a package's `wasm/` directory into `~/.loft/lib/web`, which
+   is searched *before* the registry cache, so an incomplete local copy shadowed a complete
+   published one. `rm -rf ~/.loft/lib/web` fixed it; `make client` now carries no `--lib`
+   flag and links `web` 0.3.3 from the registry (484 KB page, 322 KB WASM). Filed as
+   [loft#667](https://github.com/loft-lang/loft/issues/667).
+   ⚠ **Two diagnoses died before this one**, and both were reached by reading: "the 0.3.2
+   tarball omits `wasm/`" (its sha256 matches the registry and `tar tzf` lists all three
+   files) and "0.3.3 was never published" (it was, on 2026-07-28T16:34Z — our
+   `../loft-registry` checkout was stale). One `mv` of the shadowing directory settled it,
+   and that probe was available from the first minute. The trail is in
+   `plans/16-client-split/DESIGN.md` § S1.
 2. **S1's drawing** (`plans/16-client-split/DESIGN.md`). `src/editor_client.loft` already
    connects, drains frames and compiles to a page (`make client`). What remains: read the
    `scene` package's API (`Scene`, `Camera` — `graphics` only references them), then map
@@ -40,7 +42,8 @@ already answered — none of them needs re-diagnosing.
 4. **The `hex_edge` README note is uncommitted in the shared tree**, alongside the older
    `hex_field` fix. Both need a human call before committing in `../loft-libs-world/`.
 
-**How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (the wasm page) ·
+**How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (the wasm page,
+no `--lib` flag) ·
 `make gate` (all 22, and it now stops the server after) · `make stop-editor` (three
 platforms, by pid file OR port) · `27:1` on the wire turns on the phase trace ·
 `node tools/plan.mjs out.png` draws the world in plan view.
