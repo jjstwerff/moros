@@ -1,0 +1,263 @@
+// A9 — `A-PROXY`, which is `hex_body`'s `I4` verbatim:
+//
+//     proxy ⊇ shape,  and the overshoot BOUNDED AND STATED
+//
+// Containment is measured by SAMPLING the shape's surface, not by comparing two
+// formulas — a proxy derived from the same algebra as its shape would agree with
+// itself whatever either said.
+use moros_sim;
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 4096.0;
+const PI = 3.14159265358979;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ── I4 itself: every point the SHAPE contains, the PROXY contains ───────────
+//
+// The direct form, over a volume grid: `shape_has` decides membership and
+// `obb_has` must agree wherever it says yes. The surface samples below are the
+// sharper test — they hit the extremes a grid can miss — but this is the
+// invariant as written, and without it the shape's own definition goes unchecked.
+fn test_the_proxy_contains_every_point_of_the_shape() {
+  kinds = [ShapeKind.Disc, ShapeKind.Capsule, ShapeKind.Box];
+  for kd in kinds {
+    e = 0.5;
+    g = 0.12;
+    o = shape_proxy(kd, e, g);
+    inside = 0;
+    escaped = 0;
+    for ix in 0..25 {
+      for iy in 0..25 {
+        for iz in 0..13 {
+          x = 0.0 - 0.8 + 1.6 * (ix as float) / 24.0 ?? 0.0;
+          y = 0.0 - 0.8 + 1.6 * (iy as float) / 24.0 ?? 0.0;
+          z = 0.0 - 0.3 + 0.6 * (iz as float) / 12.0 ?? 0.0;
+          if shape_has(kd, e, g, x, y, z) {
+            inside = inside + 1;
+            if !obb_has(o, x, y, z) { escaped = escaped + 1; }
+          }
+        }
+      }
+    }
+    // a void guard, not a volume measurement: the thinnest of the three kinds
+    // (the capsule) puts about 240 cells inside, so 100 is comfortably met
+    assert(inside > 100, "the grid actually met the shape");
+    assert(escaped == 0, "and no point of it is outside the proxy");
+  }
+}
+
+// ── I4 at the extremes: the proxy contains the shape, sampled on its surface ─
+
+fn test_a_disc_is_contained() {
+  o = shape_proxy(ShapeKind.Disc, RADIUS, 0.06);
+  worst = 0;
+  for a in 0..64 {
+    th = 2.0 * PI * (a as float) / 64.0 ?? 0.0;
+    for k in 0..3 {
+      zz = 0.06 * ((k as float) - 1.0);
+      x = RADIUS * cos(th);
+      y = RADIUS * sin(th);
+      if !obb_has(o, x, y, zz) { worst = worst + 1; }
+    }
+  }
+  assert(worst == 0, "every point of a disc's rim is inside its proxy");
+  // and the proxy really does reach R in BOTH in-plane axes, which is P4's point
+  assert(fabs(o.ob_hx - RADIUS) < BOUND && fabs(o.ob_hy - RADIUS) < BOUND,
+         "the proxy is (R, R, g), not (R/2 + w, w, w)");
+}
+
+fn test_a_capsule_is_contained() {
+  e = 0.5;
+  g = 0.09;
+  o = shape_proxy(ShapeKind.Capsule, e, g);
+  bad = 0;
+  for a in 0..32 {
+    th = 2.0 * PI * (a as float) / 32.0 ?? 0.0;
+    for k in 0..9 {
+      // the cylinder's wall, and the two spherical caps
+      xx = 0.0 - e + 2.0 * e * (k as float) / 8.0 ?? 0.0;
+      if !obb_has(o, xx, g * cos(th), g * sin(th)) { bad = bad + 1; }
+      if !obb_has(o, 0.0 - e - g * cos(th), g * sin(th), 0.0) { bad = bad + 1; }
+      if !obb_has(o, e + g * cos(th), g * sin(th), 0.0) { bad = bad + 1; }
+    }
+  }
+  assert(bad == 0, "a capsule's wall and both caps are inside its proxy");
+}
+
+fn test_a_box_is_its_own_proxy() {
+  o = shape_proxy(ShapeKind.Box, 0.7, 0.2);
+  assert(fabs(o.ob_hx - 0.7) < BOUND, "half-length");
+  assert(fabs(o.ob_hy - 0.2) < BOUND, "half-width");
+  assert(fabs(shape_overshoot(ShapeKind.Box, 0.7, 0.2) - 1.0) < BOUND,
+         "a box overshoots by exactly nothing");
+}
+
+// ── the overshoot is STATED, and matches its closed form ────────────────────
+
+fn test_a_discs_overshoot_is_four_over_pi() {
+  want = 4.0 / PI ?? 0.0;
+  for k in 1..7 {
+    r = 0.2 * (k as float);
+    for j in 1..5 {
+      g = 0.02 * (j as float);
+      got = shape_overshoot(ShapeKind.Disc, r, g);
+      assert(fabs(got - want) < BOUND,
+             "4/pi for every radius and every thickness");
+    }
+  }
+  assert(fabs(want - 1.2732395447351628) < 0.000001, "which is 1.2732");
+}
+
+fn test_a_capsules_overshoot_brackets_its_two_limits() {
+  // a sphere: a cube around a ball is 6/pi
+  ball = shape_overshoot(ShapeKind.Capsule, 0.0, 0.3);
+  assert(fabs(ball - 6.0 / PI ?? 0.0) < BOUND, "a sphere overshoots by 6/pi");
+  // long and thin: it tends to a disc's 4/pi from above
+  // ⚠ `??` binds LOOSEST: `thin < 4.0 / PI ?? 0.0 + 0.01` is
+  // `thin < (4.0/PI ?? (0.0 + 0.01))`, so the tolerance silently vanished.
+  // Second time in this session — discharge into a local and compare that.
+  disc_limit = 4.0 / PI ?? 0.0;
+  thin = shape_overshoot(ShapeKind.Capsule, 40.0, 0.05);
+  assert(thin > disc_limit, "a long capsule is above 4/pi");
+  assert(thin < disc_limit + 0.01, "and converging on it");
+  mid = shape_overshoot(ShapeKind.Capsule, 0.5, 0.09);
+  assert(mid > thin && mid < ball, "and the middle lies between the two limits");
+}
+
+// ── ⚠ P4, kept as a clause so the falsification cannot come back ────────────
+//
+// The design hoped `bone_obb` would serve. It bounds a bone's CAPSULE, and a
+// wheel's disc reaches `R` perpendicular to the spoke where the capsule's box
+// reaches only `w`. So the inherited proxy MISSES — the one thing `I4` forbids.
+fn test_a_spokes_capsule_does_not_bound_its_disc() {
+  omega = 0.06;
+  // bone_obb's half-extents for a spoke of length R: (R/2 + w, w)
+  inherited = Obb3 { ob_hx: RADIUS * 0.5 + omega, ob_hy: omega, ob_hz: omega };
+  // a point on the rim, perpendicular to the spoke
+  assert(!obb_has(inherited, 0.0, RADIUS, 0.0),
+         "the inherited proxy misses the rim — I4 violated");
+  assert(spoke_obb_shortfall(RADIUS, omega) > 0.0,
+         "and it misses by R - w, which is positive whenever w < R");
+  // the derived one does not
+  derived = shape_proxy(ShapeKind.Disc, RADIUS, omega);
+  assert(obb_has(derived, 0.0, RADIUS, 0.0), "the derived proxy contains it");
+  assert(obb_has(derived, RADIUS, 0.0, 0.0), "in both in-plane directions");
+}
+
+// ── the control: a shape one size too small ─────────────────────────────────
+
+fn test_a_shrunken_proxy_is_caught() {
+  g = 0.06;
+  full = shape_proxy(ShapeKind.Disc, RADIUS, g, 1.0);
+  small = shape_proxy(ShapeKind.Disc, RADIUS, g, 0.99);
+  missed = 0;
+  for a in 0..64 {
+    th = 2.0 * PI * (a as float) / 64.0 ?? 0.0;
+    x = RADIUS * cos(th);
+    y = RADIUS * sin(th);
+    if !obb_has(full, x, y, 0.0) { missed = missed - 1000; }
+    if !obb_has(small, x, y, 0.0) { missed = missed + 1; }
+  }
+  assert(missed > 0, "a proxy one per cent small misses the rim");
+  assert(missed < 1000, "while the full one misses nothing");
+  // and the capsule and box kinds are caught too
+  cs = shape_proxy(ShapeKind.Capsule, 0.5, 0.09, 0.99);
+  assert(!obb_has(cs, 0.5 + 0.09, 0.0, 0.0), "a shrunken capsule misses its cap");
+  bs = shape_proxy(ShapeKind.Box, 0.7, 0.2, 0.99);
+  assert(!obb_has(bs, 0.7, 0.0, 0.0), "and a shrunken box misses its corner");
+}
+
+// ── the extent is DERIVED, which is the re-assertion-site payoff ────────────
+
+fn test_a_wheels_radius_comes_from_its_rig() {
+  c = asm_cart(HALF, RADIUS);
+  assert(fabs(body_extent(c, 1) - RADIUS) < BOUND, "the wheel's extent is rg_len");
+  big = asm_cart(HALF, 0.9);
+  assert(fabs(body_extent(big, 1) - 0.9) < BOUND, "and it follows the data");
+  // so the proxy follows too, with nothing written twice
+  p = body_proxy(big, 1);
+  assert(fabs(p.ob_hx - 0.9) < BOUND, "a bigger wheel gets a bigger proxy");
+}
+
+// A chassis has no rig, so its extent is derived from the furthest thing bolted
+// to it — whatever a body carries, its proxy covers.
+// A chassis has no rig, so its box is derived PER AXIS from what is bolted to it.
+// ⚠ Per axis, not as one distance: the cart's wheels are out along z, and a box
+// that put that reach on x left the mount outside its own body.
+fn test_a_chassis_covers_its_own_mounts() {
+  c = asm_cart(HALF, RADIUS);
+  p = body_proxy(c, 0);
+  assert(fabs(p.ob_hz - HALF) < BOUND, "the reach lands on z, where the wheels are");
+  for w in 1..3 {
+    l = c.am_link[w] ?? link_none();
+    assert(obb_has(p, l.lk_ox, l.lk_oy, l.lk_oz),
+           "and the proxy contains every mount point");
+  }
+  wide = body_proxy(asm_cart(1.2, RADIUS), 0);
+  assert(fabs(wide.ob_hz - 1.2) < BOUND, "a wider cart, a wider chassis");
+  // the girth is a floor, so a body with nothing bolted to it is still a body
+  lone = asm_add(asm_new("lone"), 0 - 1, link_none(),
+                 body_of(SupportKind.Ground, 3, 0, 2, ShapeKind.Box, 0.3));
+  q = body_proxy(lone, 0);
+  assert(fabs(q.ob_hx - 0.3) < BOUND && fabs(q.ob_hz - 0.3) < BOUND,
+         "with the girth as its floor on every axis");
+}
+
+// ── a girth of zero means NO SHAPE, which is a real case and not a default ──
+
+fn test_no_girth_means_no_shape() {
+  a = asm_new("marker");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  assert(asm_admissible(a), "a body with no shape is still a body");
+  b = a.am_body[0] ?? body_of(SupportKind.Unsupported, 0, 0);
+  assert(b.bd_girth == 0.0, "and its girth says so");
+  assert(shape_overshoot(ShapeKind.Box, 1.0, 0.0) == 0.0,
+         "a shapeless body has no overshoot to state");
+  // a negative girth is not "no shape", it is nonsense
+  bad = asm_add(asm_new("bad"), 0 - 1, link_none(),
+                body_of(SupportKind.Ground, 3, 0, 2, ShapeKind.Disc, 0.0 - 0.1));
+  assert(!asm_admissible(bad), "a negative girth is refused");
+}
+
+// ── the shape survives the document, or it is not part of the description ────
+
+fn test_the_shape_round_trips() {
+  c = asm_cart(HALF, RADIUS);
+  back = asm_read(asm_write(c));
+  assert(asm_admissible(back), "it reads back");
+  assert(asm_eq(c, back), "with its shapes and girths");
+  assert(asm_write(back) == asm_write(c), "byte for byte");
+  b1 = back.am_body[1] ?? body_of(SupportKind.Unsupported, 0, 0);
+  assert(b1.bd_shape is Disc, "the wheel is still a disc");
+  assert(fabs(body_extent(back, 1) - RADIUS) < BOUND,
+         "and its extent still derives from the rig");
+  bad = asm_read(asm_write(c).replace("shape disc", "shape wheel"));
+  assert(!asm_admissible(bad), "an unknown shape kind is refused");
+}
+
+// ── the proxy in the world, placed by A3's frame ─────────────────────────────
+
+fn test_the_proxy_travels_with_the_body() {
+  c = asm_cart(HALF, RADIUS);
+  fs = asm_frames(c, [0.0, 0.31, 0.31], frame_trans(5.0, 0.4, 0.0 - 2.0));
+  p = body_proxy(c, 1);
+  hub = frame_origin(fs[1] ?? frame_id());
+  worst = 0.0;
+  for k in 0..8 {
+    sx = 1.0;
+    sy = 1.0;
+    sz = 1.0;
+    if k >= 4 { sx = 0.0 - 1.0; }
+    if k % 2 == 1 { sy = 0.0 - 1.0; }
+    if k == 2 || k == 3 || k == 6 || k == 7 { sz = 0.0 - 1.0; }
+    d = v3_dist(proxy_corner(fs[1] ?? frame_id(), p, sx, sy, sz), hub);
+    if d > worst { worst = d; }
+  }
+  // every corner is the box's own half-diagonal from the hub, wherever the cart is
+  want = sqrt(p.ob_hx*p.ob_hx + p.ob_hy*p.ob_hy + p.ob_hz*p.ob_hz) ?? 0.0;
+  assert(fabs(worst - want) < BOUND,
+         "the proxy is rigid with its body — A-RIGID, carried to the proxy");
+}

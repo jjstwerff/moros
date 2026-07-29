@@ -44,6 +44,14 @@ pub enum LinkKind { NoLink, Mount, Hitch, Shaft, Spring, Tether }
 // wheels; a crate is supported by the attachment itself.
 pub enum SupportKind { Unsupported, Ground, Carried, Buoyant }
 
+// ⚠ ADDED BY `A9`, and `P4` is why it exists. The design hoped a wheel's proxy
+// would fall out of `hex_body::bone_obb` — but that bounds a bone's CAPSULE, and
+// a wheel's disc reaches `R` in every in-plane direction, so `disc ⊄ bone_obb`
+// whenever the half-width is under `R`, which is always. A proxy that misses an
+// overlap is the one thing `I4` forbids. So a body carries its shape KIND and
+// derives its proxy from that: inherited was wrong, derived is not.
+pub enum ShapeKind { Box, Disc, Capsule }
+
 pub struct Link {
   lk_kind: LinkKind,
   lk_ox: float, lk_oy: float, lk_oz: float,   // offset in the parent's frame
@@ -61,7 +69,14 @@ pub struct Body {
   // the support term, and without it the ledger cannot be a pure function of the
   // description. Nothing had been written to disk yet, so the format grew for
   // free; after `A5` it would have been a version bump.
-  bd_contacts: integer
+  bd_contacts: integer,
+  // The shape's kind, and its GIRTH — a half-thickness for a disc, a radius for a
+  // capsule, a half-width for a box. ⚠ A girth of 0 means **no shape declared**,
+  // which is a real case (a marker, a trigger) and not a defaulted one. The
+  // EXTENT is never stored: it is derived from the rig, or from the body's own
+  // attachment points. See `shape.loft`.
+  bd_shape: ShapeKind = ShapeKind.Box,
+  bd_girth: float
 }
 
 // A revolute joint with no authored limits. `hex_body` measures joint limits in
@@ -136,9 +151,10 @@ pub fn link_tether(ox: float, oy: float, oz: float, length: float) -> Link {
 }
 
 pub fn body_of(sup: SupportKind, driven: integer, solved: integer,
-               contacts: integer = 0) -> Body {
+               contacts: integer = 0, shape: ShapeKind = ShapeKind.Box,
+               girth: float = 0.0) -> Body {
   Body { bd_support: sup, bd_driven: driven, bd_solved: solved,
-         bd_contacts: contacts }
+         bd_contacts: contacts, bd_shape: shape, bd_girth: girth }
 }
 
 // Append one body with the link that reaches it. Index order IS the canonical
@@ -176,6 +192,7 @@ fn body_admissible(i: integer, p: integer, l: Link, b: Body) -> boolean {
   }
   if l.lk_lo > l.lk_hi { return false; }
   if b.bd_driven < 0 || b.bd_solved < 0 || b.bd_contacts < 0 { return false; }
+  if b.bd_girth < 0.0 { return false; }
   // A body "supported by the ground" with no contacts is supported by nothing,
   // and contacts on a body the ground never touches are a number with no reader.
   if b.bd_support is Ground { if b.bd_contacts < 1 { return false; } }
@@ -246,6 +263,23 @@ fn lk_from(c: integer) -> LinkKind {
   LinkKind.NoLink
 }
 
+fn sh_name(k: ShapeKind) -> text {
+  match k { Box => "box", Disc => "disc", Capsule => "capsule" }
+}
+
+fn sh_code(t: text) -> integer {
+  if t == "box" { return 0; }
+  if t == "disc" { return 1; }
+  if t == "capsule" { return 2; }
+  0 - 1
+}
+
+fn sh_from(c: integer) -> ShapeKind {
+  if c == 1 { return ShapeKind.Disc; }
+  if c == 2 { return ShapeKind.Capsule; }
+  ShapeKind.Box
+}
+
 fn sp_name(k: SupportKind) -> text {
   match k {
     Unsupported => "none", Ground => "ground",
@@ -286,7 +320,8 @@ pub fn asm_write(a: Assembly) -> text {
         + " support {sp_name(b.bd_support)}"
         + " driven {b.bd_driven} solved {b.bd_solved}"
         + " contacts {b.bd_contacts}"
-        + " rig {a.am_bodyrig[i] ?? 0 - 1}";
+        + " rig {a.am_bodyrig[i] ?? 0 - 1}"
+        + " shape {sh_name(b.bd_shape)} girth {b.bd_girth}";
   }
   // Each rig is written by `hex_body` itself — one home for a rig's text — and
   // named by its INDEX, so the name carries no information a reader must trust.
@@ -336,12 +371,15 @@ fn read_body_line(ln: text, ri: integer) -> ParsedBody {
   if word(ln, 23) != "solved" { return parse_fail(); }
   if word(ln, 25) != "contacts" { return parse_fail(); }
   if word(ln, 27) != "rig" { return parse_fail(); }
+  if word(ln, 29) != "shape" { return parse_fail(); }
+  if word(ln, 31) != "girth" { return parse_fail(); }
   lc = lk_code(word(ln, 5));
   sc = sp_code(word(ln, 20));
-  if lc < 0 || sc < 0 { return parse_fail(); }
+  hc = sh_code(word(ln, 30));
+  if lc < 0 || sc < 0 || hc < 0 { return parse_fail(); }
   // A line missing its last field would otherwise read as 0, so the field itself
   // — not just the keyword before it — has to be there.
-  if word(ln, 28) == "" { return parse_fail(); }
+  if word(ln, 32) == "" { return parse_fail(); }
   ParsedBody { pb_ok: true, pb_parent: word_int(ln, 3),
     pb_link: Link { lk_kind: lk_from(lc),
            lk_ox: word_float(ln, 7), lk_oy: word_float(ln, 8),
@@ -352,7 +390,8 @@ fn read_body_line(ln: text, ri: integer) -> ParsedBody {
            lk_len: word_float(ln, 18) },
     pb_body: Body { bd_support: sp_from(sc),
            bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24),
-           bd_contacts: word_int(ln, 26) },
+           bd_contacts: word_int(ln, 26),
+           bd_shape: sh_from(hc), bd_girth: word_float(ln, 32) },
     pb_rig: word_int(ln, 28) }
 }
 
@@ -446,6 +485,8 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
     if sp_name(ba.bd_support) != sp_name(bb.bd_support) { return false; }
     if ba.bd_driven != bb.bd_driven || ba.bd_solved != bb.bd_solved { return false; }
     if ba.bd_contacts != bb.bd_contacts { return false; }
+    if sh_name(ba.bd_shape) != sh_name(bb.bd_shape) { return false; }
+    if ba.bd_girth != bb.bd_girth { return false; }
     if (a.am_bodyrig[i] ?? 0) != (b.am_bodyrig[i] ?? 0) { return false; }
   }
   true
@@ -473,11 +514,14 @@ pub fn asm_cart(half: float, radius: float) -> Assembly {
   a = asm_new("cart");
   spoke = asm_rig(a, rig_bone(rig_new(), 0 - 1, 0.0, 0.0, radius,
                               FREE_LO, FREE_HI));
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  a = asm_add(a, 0 - 1, link_none(),
+              body_of(SupportKind.Ground, 3, 0, 2, ShapeKind.Box, radius * 0.5));
   a = asm_add(a, 0, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
-              body_of(SupportKind.Carried, 1, 0), spoke);
+              body_of(SupportKind.Carried, 1, 0, 0, ShapeKind.Disc, radius * 0.15),
+              spoke);
   a = asm_add(a, 0, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
-              body_of(SupportKind.Carried, 1, 0), spoke);
+              body_of(SupportKind.Carried, 1, 0, 0, ShapeKind.Disc, radius * 0.15),
+              spoke);
   a
 }
 

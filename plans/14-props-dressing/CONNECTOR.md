@@ -357,7 +357,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A6** ✅ | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
 | **A7** ✅ | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** ✅ | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
-| **A9** | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
+| **A9** ✅ | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
 | **A9b** | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
 | **A9c** | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
 | **A10** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
@@ -1165,6 +1165,51 @@ control pass for the wrong reason.
 **Seen red three ways:** a rope that is really a rod breaks 4 clauses, reporting the pull
 unclamped so a slack rope "pushes" breaks 3, and projecting along the vertical instead of
 along the rope breaks 1.
+
+---
+
+### `A9` — BUILT. `P4`'s falsification is now a clause, not a memory
+
+`lib/moros_sim/src/shape.loft`, 13 tests. **620 green** across the five packages, all 124
+functions in the package entered.
+
+Three shape kinds, each with a derived proxy and a **stated** overshoot:
+
+| shape | proxy | overshoot | measured |
+|---|---|---|---|
+| **Disc** `R`, half-thickness `g` | `(R, R, g)` | `4/π` | **exactly `1.27324`, for every `R` and every `g`** |
+| **Capsule** half-length `e`, radius `g` | `(e+g, g, g)` | `4(e+g)/(π(e+2g/3))` | `6/π` for a sphere, → `4/π` as `g → 0`, and the middle brackets between them |
+| **Box** | itself | `1` | exactly |
+
+**`I4` is stated two ways, deliberately.** Over a volume grid, every point `shape_has`
+accepts must be inside the proxy — the invariant as written, and what keeps the shape's own
+definition from going unchecked. And on each shape's *surface*, where the extremes a grid
+misses actually live: a disc's whole rim, a capsule's wall and both caps.
+
+⚠ **`P4` is a clause now.** `bone_obb`'s half-extents for a spoke are `(R/2 + ω, ω)`, and a
+test asserts that box does **not** contain the rim point at `(0, R, 0)` while the derived
+`(R, R, g)` does — in both in-plane directions. The falsification was on paper before A1;
+it is executable now, so the inherited proxy cannot come back. Mutation 1 restores it and
+**6 clauses go red**.
+
+**The extents are derived and only the girth is declared.** A wheel's radius is its rig's
+`rg_len` — the one home `A5` gave it for exactly this — so a bigger wheel gets a bigger proxy
+with nothing written twice. A girth of **0 means no shape declared**, which is a real case (a
+marker, a trigger) rather than a defaulted one; a *negative* girth is refused.
+
+⚠ **A single number cannot describe a box, and the test that caught it was the right one.**
+The first version derived a chassis's reach as one distance and put it on `x` — so the cart's
+wheel mount at `(0, 0, ±half)` fell **outside its own body's proxy**. The clause that failed
+was *"a body's proxy contains what is bolted to it"*, which is the question worth asking of a
+derived extent. Fixed by deriving **per axis**, with the girth as a floor so a body with
+nothing mounted is still a body. Mutation 3 collapses it back and that clause alone goes red.
+
+**Seen red three ways:** the inherited `(R/2+ω, ω, ω)` proxy breaks 6 clauses, leaving the
+`shrink` knob at 0.99 breaks 6, and collapsing the box's three axes breaks 1.
+
+⚠ **And the `??` precedence trap cost a second failure this session** — `thin < 4.0 / PI ?? 0.0
++ 0.01` parses as `thin < (4.0/PI ?? (0.0 + 0.01))`, so the tolerance silently vanished.
+`??` binds loosest; discharge into a local and compare that.
 
 ---
 

@@ -1,0 +1,193 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Per-body SHAPE and PROXY.
+// Step `A9` of plans/14-props-dressing/CONNECTOR.md, proving `A-PROXY` — which is
+// `hex_body`'s `I4`, verbatim:
+//
+//     proxy ⊇ shape,  and the overshoot BOUNDED AND STATED
+//
+// ── why the proxy is not inherited ──────────────────────────────────────────
+//
+// ⚠ `P4` was falsified on paper before any of this was built, and that is what
+// this file is shaped by. The design hoped a wheel's proxy would fall out of
+// `hex_body::bone_obb` — but `bone_obb` bounds a bone's **capsule**: for a spoke
+// of length `R` and half-width `ω` it returns half-extents `(R/2 + ω, ω)`. A
+// wheel's shape is the **disc**, reaching `R` in *every* in-plane direction, so
+//
+//     disc ⊄ bone_obb(spoke)        whenever ω < R — which is always
+//
+// and a proxy that misses an overlap is the one thing `I4` forbids. So a body
+// carries its shape KIND and the proxy is derived from that. Still derived, never
+// hand-authored; just not inherited.
+//
+// ── the extents are derived, and the girth is declared ──────────────────────
+//
+// A wheel's radius is its rig's `rg_len` — the one home `A5` gave it for exactly
+// this. A chassis has no rig, so its extent is derived from its own attachment
+// points: whatever a body is bolted to, its proxy covers. Only the GIRTH is
+// declared, because a wheel's width is a choice independent of its radius and
+// there is nothing to derive it from.
+use assembly;
+use frames;
+use graphics;
+
+// An axis-aligned box in the BODY's own frame — `A-PLANE`'s frame, so a disc's
+// plane is the frame's `z = 0` plane.
+pub struct Obb3 { ob_hx: float, ob_hy: float, ob_hz: float }
+
+const PI = 3.14159265358979;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ── the extent, derived ─────────────────────────────────────────────────────
+
+// A body's shape extent: a disc's radius or a capsule's half-length from its
+// RIG; a box's half-length from the furthest thing bolted to it.
+//
+// Returns 0 when there is nothing to derive from, which `shape_proxy` then
+// reports rather than guessing at.
+pub fn body_extent(a: Assembly, i: integer) -> float {
+  ri = a.am_bodyrig[i] ?? 0 - 1;
+  if ri >= 0 {
+    rg = a.am_rig[ri] ?? rig_new();
+    return rg.rg_len[0] ?? 0.0;
+  }
+  // no rig: the box must at least reach its own mounts
+  n = asm_count(a);
+  reach = 0.0;
+  for k in 0..n {
+    if (a.am_parent[k] ?? 0 - 1) == i {
+      l = a.am_link[k] ?? link_none();
+      d = sqrt(l.lk_ox * l.lk_ox + l.lk_oy * l.lk_oy + l.lk_oz * l.lk_oz) ?? 0.0;
+      if d > reach { reach = d; }
+    }
+  }
+  reach
+}
+
+// ── the shape ───────────────────────────────────────────────────────────────
+//
+// `extent` and `girth` mean different things per kind, and saying so once here is
+// cheaper than a struct per kind:
+//
+//   Disc     radius = extent, half-thickness = girth, in the frame's z = 0 plane
+//   Capsule  half-length = extent along x, radius = girth
+//   Box      half-length = extent along x, half-width = half-height = girth
+pub fn shape_has(kind: ShapeKind, extent: float, girth: float,
+                 x: float, y: float, z: float) -> boolean {
+  match kind {
+    Disc => {
+      if fabs(z) > girth { return false; }
+      (sqrt(x * x + y * y) ?? 0.0) <= extent
+    },
+    Capsule => {
+      // the distance to the segment from (−extent,0,0) to (extent,0,0)
+      cx = x;
+      if cx > extent { cx = extent; }
+      if cx < 0.0 - extent { cx = 0.0 - extent; }
+      dx = x - cx;
+      (sqrt(dx * dx + y * y + z * z) ?? 0.0) <= girth
+    },
+    Box => fabs(x) <= extent && fabs(y) <= girth && fabs(z) <= girth,
+  }
+}
+
+// ── the proxy ───────────────────────────────────────────────────────────────
+//
+// `shrink` is the deliberate defect: at 1 the box contains the shape, and below
+// it the containment test must fail. *"A shape one size too small; containment
+// must catch it."*
+pub fn shape_proxy(kind: ShapeKind, extent: float, girth: float,
+                   shrink: float = 1.0) -> Obb3 {
+  match kind {
+    // ⚠ (R, R, g) — NOT (R/2 + ω, ω, ω). That is the whole of `P4`.
+    Disc => Obb3 { ob_hx: extent * shrink, ob_hy: extent * shrink,
+                   ob_hz: girth * shrink },
+    Capsule => Obb3 { ob_hx: (extent + girth) * shrink,
+                      ob_hy: girth * shrink, ob_hz: girth * shrink },
+    Box => Obb3 { ob_hx: extent * shrink, ob_hy: girth * shrink,
+                  ob_hz: girth * shrink },
+  }
+}
+
+pub fn obb_has(o: Obb3, x: float, y: float, z: float) -> boolean {
+  fabs(x) <= o.ob_hx && fabs(y) <= o.ob_hy && fabs(z) <= o.ob_hz
+}
+
+pub fn obb_volume(o: Obb3) -> float {
+  8.0 * o.ob_hx * o.ob_hy * o.ob_hz
+}
+
+pub fn shape_volume(kind: ShapeKind, extent: float, girth: float) -> float {
+  match kind {
+    Disc => PI * extent * extent * 2.0 * girth,
+    // a cylinder of length 2·extent plus a sphere of radius girth
+    Capsule => 2.0 * PI * girth * girth * extent
+               + 4.0 / 3.0 * PI * girth * girth * girth ?? 0.0,
+    Box => 8.0 * extent * girth * girth,
+  }
+}
+
+// The overshoot, STATED. `I4` allows a proxy to be bigger than its shape and
+// requires the factor to be a known number rather than a hope.
+//
+//   Disc     4/π ≈ 1.2732, exactly, for every R and g
+//   Capsule  4(e + g) / (π(e + 2g/3)) — 4/π as g → 0, 6/π for a sphere
+//   Box      1
+pub fn shape_overshoot(kind: ShapeKind, extent: float, girth: float) -> float {
+  sv = shape_volume(kind, extent, girth);
+  if sv <= 0.0 { return 0.0; }
+  obb_volume(shape_proxy(kind, extent, girth)) / sv ?? 0.0
+}
+
+// A box's reach along EACH AXIS, from its own attachment points.
+//
+// ⚠ The first version collapsed all three into one distance and put it on `x` —
+// and the cart's wheel mount at `(0, 0, ±half)` then fell OUTSIDE its own body's
+// proxy, because a chassis whose wheels are out along `z` is not a box that is
+// long in `x`. A single number cannot describe a box, and the test that caught it
+// was the one asking whether a body contains what is bolted to it.
+//
+// The girth is a floor on every axis, so a body with no mounts is still a body.
+pub fn body_box(a: Assembly, i: integer, girth: float) -> Obb3 {
+  n = asm_count(a);
+  hx = girth;
+  hy = girth;
+  hz = girth;
+  for k in 0..n {
+    if (a.am_parent[k] ?? 0 - 1) == i {
+      l = a.am_link[k] ?? link_none();
+      if fabs(l.lk_ox) > hx { hx = fabs(l.lk_ox); }
+      if fabs(l.lk_oy) > hy { hy = fabs(l.lk_oy); }
+      if fabs(l.lk_oz) > hz { hz = fabs(l.lk_oz); }
+    }
+  }
+  Obb3 { ob_hx: hx, ob_hy: hy, ob_hz: hz }
+}
+
+// ── the proxy in the WORLD, which is what a broadphase wants ────────────────
+pub fn body_proxy(a: Assembly, i: integer, shrink: float = 1.0) -> Obb3 {
+  b = a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
+  if b.bd_shape is Box {
+    o = body_box(a, i, b.bd_girth);
+    return Obb3 { ob_hx: o.ob_hx * shrink, ob_hy: o.ob_hy * shrink,
+                  ob_hz: o.ob_hz * shrink };
+  }
+  shape_proxy(b.bd_shape, body_extent(a, i), b.bd_girth, shrink)
+}
+
+pub fn proxy_corner(f: Frame, o: Obb3, sx: float, sy: float, sz: float) -> Vec3 {
+  frame_apply(f, vec3(sx * o.ob_hx, sy * o.ob_hy, sz * o.ob_hz))
+}
+
+// ── `P4`, kept as a function so the falsification cannot come back ──────────
+//
+// `hex_body::bone_obb` for a spoke of length `R` and half-width `ω`: half-extents
+// `(R/2 + ω, ω)`. Handed a disc of radius `R`, it MISSES — and by how much is the
+// number that killed the idea.
+pub fn spoke_obb_shortfall(radius: float, omega: float) -> float {
+  // the disc reaches `radius` perpendicular to the spoke; the capsule's box
+  // reaches only `omega` there
+  radius - omega
+}

@@ -266,10 +266,30 @@ written and not built.** In priority order:
 
    **A7 and A8 were the steps the design said would decide it** — *"if the structure holds for
    both without a special case, `A-DOF` was the right invariant."* It held.
-   **Next is `A9`** — per-body shape and proxy, proving `A-PROXY` (`I4`). ⚠ `P4` already
-   falsified the easy route: `bone_obb` bounds a spoke's *capsule* and a wheel's disc reaches
-   `R` in every in-plane direction, so the proxy must come from a per-body **shape kind**,
-   derived from the rig's `rg_len` — which `A5` put in one place for exactly this.
+10. ✅ **`A9` is BUILT** — `lib/moros_sim/src/shape.loft`, 13 tests, **620 green**, all 124
+    functions entered. Three kinds with derived proxies and **stated** overshoots: a disc's is
+    `4/π` = `1.27324` exactly for every `R` and `g`; a capsule's brackets between `6/π` (a
+    sphere) and `4/π` (long and thin); a box's is 1.
+    - **`I4` is stated two ways**: over a volume grid via `shape_has` (the invariant as
+      written, which keeps the shape's own definition checked) *and* on each surface, where
+      the extremes a grid misses live.
+    - ⚠ **`P4` is a clause now, not a memory.** A test asserts `bone_obb`'s `(R/2+ω, ω)` box
+      does **not** contain the rim at `(0, R, 0)` while the derived `(R, R, g)` does.
+      Restoring the inherited proxy turns **6 clauses** red.
+    - **Extents derived, girth declared.** A wheel's radius is its rig's `rg_len`; girth 0
+      means *no shape declared* (a real case), and a negative girth is refused.
+    ⚠ **A single number cannot describe a box.** The first version put a chassis's derived
+    reach on `x`, so the cart's wheel mount at `(0,0,±half)` fell **outside its own body's
+    proxy**. The clause that caught it — *"a body's proxy contains what is bolted to it"* — is
+    the question worth asking of any derived extent. Fixed per axis, girth as a floor.
+    **Seen red**: inherited proxy (6), `shrink` left at 0.99 (6), box axes collapsed (1).
+    ⚠ **The `??` precedence trap bit twice this session**: `x < 4.0 / PI ?? 0.0 + 0.01` is
+    `x < (4.0/PI ?? (0.0 + 0.01))`. Discharge into a local and compare that.
+
+    **Next is `A9b`** — `A-SKIN` as a constructor rule in the library, which `P7` measured and
+    the editor's hip already applies. Then `A9c` (a `SOLVED` state — the wing's bend on `A6`'s
+    solver shape; ⚠ `P6` says budget ~80 rounds, it is only linearly convergent) and `A10`,
+    where the editor switches over and `cart.mjs` loses its `1.1`.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

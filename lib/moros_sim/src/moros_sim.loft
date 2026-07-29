@@ -12,3 +12,4 @@ use assembly;
 use frames;
 use ground;
 use tether;
+use shape;
