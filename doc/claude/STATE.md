@@ -217,9 +217,34 @@ written and not built.** In priority order:
    **Seen red** three ways: inverted bank (6 clauses), re-derived gap (5), clamp instead of
    refuse (2).
 
-   **Next is `A7`** — `HITCH` + `SHAFT` and a second body behind the first, where `A-DOF`
-   must close at 6 for both. The design calls A7 and A8 the steps where it earns or loses:
-   A7 is the first *second frame*, and `P5` already measured what a towed chain does.
+8. ✅ **`A7` is BUILT** — the first *second frame*. 12 tests in `tests/hitch.loft`,
+   **595 green**, all 104 functions entered.
+   **The ledger dictated the geometry.** `hitch removes 3 (position) · contacts give 2 ·
+   yaw 1` says the child's position is the pin's business and its two remaining rotations are
+   what its contacts supply — so the solve is a two-unknown fixed point about a fixed pin:
+   `sin θ = (P_y − h)/L` for pitch, `sin φ = d/(2w·cos θ)` for roll. The counting rule was
+   written before this geometry existed and it named the unknowns, which is the design's
+   *"A-DOF was the right invariant"* coming out in favour.
+   - **`A-HITCH` holds by construction** — the hitched frame's ORIGIN is the pin, so the pin
+     from either side is one point (measured anyway, over eight yaws).
+   - **Both bodies touch at once** on terrain sloping in both axes, and a cart behind a cart
+     works — three frames, no special case.
+   - **A second doorstep**: the pin can be further above the ground than the drawbar is long,
+     and no pitch reaches it. Named refusal, offer, residual — `A-FIT` twice from one body.
+   - **`SHAFT` is over-constrained in the geometry exactly as `A2` counted it** — inheriting
+     the horse's pitch and roll lifts the cart's own wheels off a cross-slope. The ledger's
+     *"over by two"* is a measurement of where the `SPRING` has to go.
+   ⚠ **A `cos(pitch)` factor nearly shipped.** The height difference across the axle carries
+   a `cos θ`, so the two closed forms are coupled. Without it the solve converged on terrain
+   sloping along ONE axis and failed on two — the single-axis clauses passed. **An
+   axis-aligned fixture cannot see a cross-axis error**: same shape as the flat wheel and the
+   flat-ground convention check.
+   **Seen red**: no `cos(pitch)` (4 clauses), axle from a literal (1), frame origin at the
+   axle instead of the pin (6).
+
+   **Next is `A8`** — `TETHER` + `CARRIED`, a crate under a balloon: the first body with no
+   ground under it at all. `A-TAUT`'s control is sharp — drive the crate past `L` and a
+   rigid-rod implementation pushes the anchor **up**, which the sign test catches.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

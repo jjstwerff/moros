@@ -1,0 +1,211 @@
+// A7 — a second body behind the first: `HITCH`, `SHAFT`, and `A-DOF` closing at
+// six for both.
+//
+// The design calls A7 and A8 the steps where it earns or loses: *"A7 is the
+// first SECOND FRAME … if the structure holds for both without a special case,
+// `A-DOF` was the right invariant."*
+use moros_sim;
+use hex_body::(rig_new, rig_bone);
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+const DRAWBAR = 1.6;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 4096.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+fn flat_ground(x: float, z: float) -> float { 0.0 }
+fn slope_z(x: float, z: float) -> float { 0.15 * z }
+fn slope_x(x: float, z: float) -> float { 0.12 * x }
+fn hillside(x: float, z: float) -> float { 0.10 * x + 0.15 * z }
+fn ridge_x(x: float, z: float) -> float { 0.7 - 0.7 / (1.0 + x * x) ?? 0.0 }
+fn cliff_z(x: float, z: float) -> float { if z > 0.0 { 3.0 } else { 0.0 } }
+
+// ── the axle is DERIVED, which is the whole re-assertion-site payoff ────────
+
+fn test_the_axle_comes_from_the_mounted_children() {
+  c = asm_cart(HALF, RADIUS);
+  ax = body_axle(c, 0);
+  assert(ax.ax_n == 2, "two wheels found");
+  assert(fabs(ax.ax_half - HALF) < BOUND, "the half-axle IS the mount offset");
+  assert(fabs(ax.ax_radius - RADIUS) < BOUND, "the radius IS the rig's bone length");
+  // a wheel has no wheels of its own
+  assert(body_axle(c, 1).ax_n == 0, "a wheel carries no axle");
+  // and changing the data changes the derivation, so nothing is carried
+  wide = body_axle(asm_cart(0.8, 0.25), 0);
+  assert(fabs(wide.ax_half - 0.8) < BOUND && fabs(wide.ax_radius - 0.25) < BOUND,
+         "both are read, not remembered");
+}
+
+// ── A-HITCH: the pin, from both sides ───────────────────────────────────────
+
+fn test_the_pin_is_one_point() {
+  t = asm_towed(HALF, DRAWBAR);
+  horse = ground_axle(hillside, 0.0, 0.0, 0.3, HALF, RADIUS, 30);
+  l = t.am_link[1] ?? link_none();
+  pin = frame_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+  for k in 0..8 {
+    yaw = 0.3 + 0.15 * (k as float);
+    cart = hitched_rest(hillside, pin.x, pin.y, pin.z, yaw,
+                        DRAWBAR, HALF, RADIUS, 30);
+    assert(cart.rt_ok, "the cart rests");
+    assert(hitch_slack(horse.rt_frame, cart.rt_frame, l) < BOUND,
+           "the pin from the horse and the pin from the cart are one point");
+  }
+}
+
+// ── A-GROUND for BOTH bodies at once, which is what "two frames" means ──────
+
+fn test_both_bodies_touch_the_ground() {
+  t = asm_towed(HALF, DRAWBAR);
+  l = t.am_link[1] ?? link_none();
+  for k in 0..8 {
+    hz = 0.0 - 1.0 + 0.3 * (k as float);
+    horse = ground_axle(hillside, 0.0, hz, 0.25, HALF, RADIUS, 30);
+    assert(horse.rt_ok, "the horse rests");
+    assert(ground_worst_gap(horse, HALF, RADIUS, hillside) < BOUND,
+           "the horse's own contacts are on the ground");
+    pin = frame_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+    cart = hitched_rest(hillside, pin.x, pin.y, pin.z, 0.25,
+                        DRAWBAR, HALF, RADIUS, 30);
+    assert(cart.rt_ok, "and so does the cart");
+    gl = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 0.0 - 1.0, hillside);
+    gr = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, hillside);
+    assert(fabs(gl) < BOUND && fabs(gr) < BOUND,
+           "the CART's own two wheels are on the ground too — its own support");
+  }
+}
+
+// The pin fixes the height, so the cart's pitch is what the contacts give. On a
+// slope ALONG the drawbar that pitch is real and nonzero — the case a parented
+// frame would get wrong, because the cart is not lying in the horse's plane.
+fn test_the_cart_pitches_independently_of_the_horse() {
+  horse = ground_axle(flat_ground, 0.0, 0.0, 0.0, HALF, RADIUS, 30);
+  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  // ground that falls away behind the horse: the cart must pitch nose-up
+  cart = hitched_rest(slope_x, pin.x, pin.y, pin.z, 0.0,
+                      DRAWBAR, HALF, RADIUS, 30);
+  assert(cart.rt_ok, "it rests");
+  gl = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 0.0 - 1.0, slope_x);
+  assert(fabs(gl) < BOUND, "with its wheels down");
+  // the horse is level and the cart is not: two frames, not one
+  assert(fabs(horse.rt_bank) < BOUND, "the horse is unbanked on flat ground");
+  axle = hitched_wheel(cart.rt_frame, DRAWBAR, HALF, 0.0);
+  assert(fabs(axle.y - pin.y) > 0.05,
+         "and the cart's axle is at a different height from its own pin");
+}
+
+fn test_a_roll_and_a_pitch_at_once() {
+  horse = ground_axle(hillside, 2.0, 1.0, 0.4, HALF, RADIUS, 30);
+  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  cart = hitched_rest(hillside, pin.x, pin.y, pin.z, 0.4,
+                      DRAWBAR, HALF, RADIUS, 30);
+  assert(cart.rt_ok, "a cross-slope is rideable");
+  assert(fabs(cart.rt_bank) > 0.05, "the cart rolls");
+  gl = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 0.0 - 1.0, hillside);
+  gr = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, hillside);
+  assert(fabs(gl) < BOUND && fabs(gr) < BOUND, "and both wheels still touch");
+}
+
+fn test_curved_ground_under_a_hitched_cart() {
+  for k in 0..6 {
+    cxp = 0.0 - 1.0 + 0.4 * (k as float);
+    cart = hitched_rest(ridge_x, cxp, 0.55, 0.0, 0.0, DRAWBAR, HALF, RADIUS, 40);
+    assert(cart.rt_ok, "a ridge under the drawbar");
+    assert(fabs(hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, ridge_x)) < BOUND,
+           "and the wheels find it");
+  }
+}
+
+// ── A-FIT: the hitched body has TWO doorsteps, not one ──────────────────────
+
+fn test_a_cliff_across_the_axle_is_refused() {
+  cart = hitched_rest(cliff_z, 0.0, 0.55, 0.0, 0.0, DRAWBAR, HALF, RADIUS, 30);
+  assert(!cart.rt_ok, "no roll rests on a drop longer than the axle");
+  assert(cart.rt_reason.contains("across an axle"), "and it says so");
+  assert(cart.rt_over > 1.8, "with the overshoot stated");
+}
+
+// ⚠ A SECOND doorstep the mounted case does not have: the pin can be further
+// above the ground than the drawbar is long, and then no pitch reaches down to
+// it. Same shape as the axle's — a named refusal with an offer and a residual.
+fn test_a_pin_beyond_the_drawbars_reach_is_refused() {
+  cart = hitched_rest(flat_ground, 0.0, 9.0, 0.0, 0.0, DRAWBAR, HALF, RADIUS, 30);
+  assert(!cart.rt_ok, "a pin 9 wu up cannot be reached by a 1.6 wu drawbar");
+  assert(cart.rt_reason.contains("drawbar"), "and the refusal names the drawbar");
+  assert(cart.rt_over > 6.0, "with the residual it overshot by");
+  assert(fabs(cart.rt_offer) > 1.5, "and the nearest admissible pitch offered");
+  // and just inside the reach it is fine
+  ok = hitched_rest(flat_ground, 0.0, 0.4 + 1.0, 0.0, 0.0, DRAWBAR, HALF, RADIUS, 30);
+  assert(ok.rt_ok, "a pin one wu above the axle is within reach");
+}
+
+// ── A-DOF closing at six for BOTH, and the control the design named ─────────
+
+fn test_the_ledger_closes_for_both_bodies() {
+  t = asm_towed(HALF, DRAWBAR);
+  assert(asm_closes(t), "every body of a towed cart closes at six");
+  horse = body_ledger(t, 0);
+  cart = body_ledger(t, 1);
+  assert(horse.dg_total == 6 && cart.dg_total == 6, "both at six");
+  assert(cart.dg_links == 3, "the hitch removes three — position");
+  assert(cart.dg_support == 2, "and the cart's own two contacts give the two rotations");
+  assert(cart.dg_driven == 1, "leaving yaw");
+}
+
+// *"unhitch the cart: the ledger must drop to 5 and the pitch become
+// unsupported"* — the design's own control for this step.
+fn test_unhitching_drops_the_ledger_to_five() {
+  hitched = body_ledger(asm_towed(HALF, DRAWBAR), 1);
+  loose = body_ledger(asm_cart(HALF, RADIUS), 0);
+  assert(hitched.dg_total == 6, "hitched: six");
+  assert(loose.dg_total == 5, "unhitched: five");
+  assert(loose.dg_residual == 1, "one degree supplied by nothing");
+  assert(hitched.dg_links - loose.dg_links == 3, "and the hitch is what supplied it");
+}
+
+// A `SHAFT` leaves yaw only, so the cart's pitch and roll come from the horse —
+// and its wheels are then on the ground only by luck. The ledger says so before
+// any geometry does: over-constrained by two.
+fn test_rigid_shafts_are_over_constrained_and_the_wheels_show_it() {
+  s = asm_shafted(HALF);
+  g = body_ledger(s, 1);
+  assert(g.dg_total == 8, "shaft 5 + contacts 2 + yaw 1");
+  assert(g.dg_residual == 0 - 2, "over-constrained by two");
+  assert(!asm_closes(s), "so the assembly does not close");
+  // and the geometry agrees: inheriting the horse's pitch and roll leaves the
+  // cart's own wheels off the ground on a cross-slope
+  horse = ground_axle(hillside, 0.0, 0.0, 0.3, HALF, RADIUS, 30);
+  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  inherited = frame_mul(horse.rt_frame, frame_trans(0.0 - DRAWBAR - 0.2, 0.0, 0.0));
+  gl = hitched_gap(inherited, 0.0, HALF, RADIUS, 0.0 - 1.0, hillside);
+  gr = hitched_gap(inherited, 0.0, HALF, RADIUS, 1.0, hillside);
+  assert(fabs(gl) > 0.01 || fabs(gr) > 0.01,
+         "a shafted cart's wheels are off the ground — which is what over-constrained MEANS");
+  // …while solving it its own way puts them down
+  solved = hitched_rest(hillside, pin.x, pin.y, pin.z, 0.3, DRAWBAR, HALF, RADIUS, 30);
+  assert(fabs(hitched_gap(solved.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, hillside)) < BOUND,
+         "so the SPRING the ledger asks for is what a shaft needs");
+}
+
+// ── the chain: a cart behind a cart, which is P5's subject ──────────────────
+
+fn test_a_second_cart_behind_the_first() {
+  horse = ground_axle(hillside, 0.0, 0.0, 0.2, HALF, RADIUS, 30);
+  pin1 = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  c1 = hitched_rest(hillside, pin1.x, pin1.y, pin1.z, 0.2, DRAWBAR, HALF, RADIUS, 30);
+  assert(c1.rt_ok, "the first cart rests");
+  // the second cart's pin hangs off the FIRST cart's own frame
+  pin2 = hitched_wheel(c1.rt_frame, DRAWBAR + 0.3, 0.0, 0.0);
+  c2 = hitched_rest(hillside, pin2.x, pin2.y, pin2.z, 0.18, 1.2, HALF, RADIUS, 30);
+  assert(c2.rt_ok, "and so does the second");
+  for k in 0..2 {
+    side = 1.0;
+    if k == 0 { side = 0.0 - 1.0; }
+    assert(fabs(hitched_gap(c1.rt_frame, DRAWBAR, HALF, RADIUS, side, hillside)) < BOUND,
+           "cart one's wheels are down");
+    assert(fabs(hitched_gap(c2.rt_frame, 1.2, HALF, RADIUS, side, hillside)) < BOUND,
+           "and cart two's are too — three frames, no special case");
+  }
+}

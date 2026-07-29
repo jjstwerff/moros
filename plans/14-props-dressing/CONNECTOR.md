@@ -355,7 +355,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A4** ✅ | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** ✅ | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
 | **A6** ✅ | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
-| **A7** | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
+| **A7** ✅ | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
 | **A9b** | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
@@ -1063,6 +1063,63 @@ tuned.*
 
 **Seen red three ways:** inverting the solved bank breaks 6 clauses; re-deriving the gap
 breaks 5; clamping the steep case instead of refusing breaks 2.
+
+---
+
+### `A7` — BUILT. The first second frame, and the ledger told it how
+
+`ground.loft` gains the hitched solve; 12 tests in `tests/hitch.loft`. **595 green** across
+the five packages, all 104 functions in the package entered.
+
+**The ledger dictated the geometry, which is the strongest thing that happened here.**
+`A-DOF`'s row reads `hitch removes 3 (position) · contacts give 2 · yaw 1`. Read literally
+that says the child's *position* is entirely the pin's business and its **two remaining
+rotations are what its contacts supply** — so the solve is a two-unknown fixed point about a
+fixed pin, not a parented frame and not a copy of `A6`:
+
+```
+    sin θ = (P_y − h) / L        h = (g_L + g_R)/2 + R      pitch, about the pin
+    sin φ = d / (2w·cos θ)      d = g_L − g_R               roll, across the axle
+```
+
+That is the design's *"if the structure holds for both without a special case, `A-DOF` was
+the right invariant"* coming out in favour: the counting rule was written before any of this
+geometry existed, and it named the unknowns.
+
+**`A-HITCH` holds by construction, not by check.** The hitched frame's ORIGIN is the pin, so
+the pin computed from the parent and from the child is the same point — measured at the float
+bound over eight yaws anyway, because a coupling that merely *looks* right still moves
+convincingly.
+
+**Both bodies touch the ground at once**, which is what "two frames" means: the horse's
+contacts and the cart's own two wheels are all down, on terrain sloping in **both** axes, and
+the cart pitches to a height its own pin does not share. A chain works too — a cart behind a
+cart, three frames, no special case.
+
+⚠ **A `cos(pitch)` factor nearly shipped, and single-axis terrain was why.** A wheel centre
+sits at `y = P_y − L·sin θ − side·w·sin φ·cos θ`, so the height difference across the axle
+carries a `cos θ` and the two closed forms are **coupled** through it. Without it the solve
+converged on terrain sloping along one axis and failed on terrain sloping along two — and the
+single-axis clauses passed, so only the doubly-sloped fixtures caught it. *An axis-aligned
+fixture cannot see a cross-axis error*, which is the same shape as the flat-wheel bug and the
+flat-ground convention check.
+
+**A second doorstep the mounted case does not have.** The pin can sit further above the
+ground than the drawbar is long, and then no pitch reaches down to it — a named refusal with
+an offer and a residual, beside the axle's own. `A-FIT` twice over, from one body.
+
+**And the `SHAFT` case is over-constrained in the geometry exactly as `A2` counted it.**
+Inheriting the horse's pitch and roll leaves the cart's own wheels off the ground on a
+cross-slope; solving it its own way puts them down. So the ledger's *"over by two — refuse,
+or absorb it in a `SPRING`"* is not bookkeeping, it is a measurement of where the compliance
+has to go.
+
+The design's own control holds: unhitching drops the ledger from 6 to 5 with a residual of 1,
+and the hitch is what supplied the missing three.
+
+**Seen red three ways:** dropping the `cos(pitch)` coupling breaks 4 clauses, deriving the
+axle from a literal instead of the mounted children breaks 1, and putting the hitched frame's
+origin at the axle instead of the pin breaks 6.
 
 ---
 

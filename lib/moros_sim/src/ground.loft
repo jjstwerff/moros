@@ -125,3 +125,152 @@ pub fn ground_worst_gap(g: Rest, half: float, radius: float,
   r = fabs(ground_gap(g.rt_frame, half, radius, 1.0, sample));
   if l > r { l } else { r }
 }
+
+// ── `A7` — a second body behind the first ────────────────────────────────────
+//
+// A `MOUNT` child's frame is its parent's, turned. **A `HITCH` child's is not**,
+// and that is the correction the design's first draft needed: a towed cart has
+// its own ground contacts, so the drawbar COUPLES TWO FRAMES rather than
+// parenting one to the other.
+//
+// The ledger says how: `hitch removes 3 (position) · contacts give 2 · yaw 1`.
+// So the child's POSITION is fully determined by the pin, the drawbar and its
+// yaw — and its two remaining rotations, pitch and roll, are what its contacts
+// supply. Pivoting about a fixed pin, two wheel contacts pin down exactly two
+// rotations, which is why the count closes at six.
+//
+// Each round has two closed forms rather than one:
+//
+//     sin θ = (P_y − h) / L          h = (g_L + g_R)/2 + R      pitch, about the pin
+//     sin φ = (g_L − g_R) / 2w                                  roll, across the axle
+//
+// ⚠ The axle used here is DERIVED from the body's own mounted children — the
+// half-axle from the mount offset, the radius from the wheel rig's bone length.
+// That is the re-assertion-site table paying out: neither number is written twice.
+
+pub struct Axle {
+  ax_half: float,
+  ax_radius: float,
+  ax_n: integer          // how many wheels were found; 0 means "no axle here"
+}
+
+pub fn body_axle(a: Assembly, i: integer) -> Axle {
+  n = asm_count(a);
+  half = 0.0;
+  radius = 0.0;
+  found = 0;
+  for k in 0..n {
+    if (a.am_parent[k] ?? 0 - 1) == i {
+      l = a.am_link[k] ?? link_none();
+      if l.lk_kind is Mount {
+        off = l.lk_oz;
+        if off < 0.0 { off = 0.0 - off; }
+        if off > half { half = off; }
+        ri = a.am_bodyrig[k] ?? 0 - 1;
+        if ri >= 0 {
+          rg = a.am_rig[ri] ?? rig_new();
+          bl = rg.rg_len[0] ?? 0.0;
+          if bl > radius { radius = bl; }
+        }
+        found = found + 1;
+      }
+    }
+  }
+  Axle { ax_half: half, ax_radius: radius, ax_n: found }
+}
+
+// A hitched body's frame: origin AT THE PIN, so the coupling holds by
+// construction and `A-HITCH` is unbreakable rather than merely checked.
+pub fn hitched_frame(px: float, py: float, pz: float,
+                     yaw: float, pitch: float, roll: float) -> Frame {
+  frame_mul(frame_mul(frame_mul(frame_trans(px, py, pz),
+                                frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+                      frame_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
+            frame_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
+}
+
+// Where a hitched body's wheel sits, in the world: back along the drawbar, out
+// along the axle. Read from the FRAME, for the reason `A6` records.
+pub fn hitched_wheel(f: Frame, drawbar: float, half: float, side: float) -> Vec3 {
+  frame_apply(f, vec3(0.0 - drawbar, 0.0, side * half))
+}
+
+pub fn hitched_gap(f: Frame, drawbar: float, half: float, radius: float,
+                   side: float, sample: fn(float, float) -> float) -> float {
+  w = hitched_wheel(f, drawbar, half, side);
+  w.y - radius - sample(w.x, w.z)
+}
+
+// The fixed point for a hitched body. Two unknowns, two closed forms, seeded
+// level — and it refuses on the same doorstep `A6` has, because a drop the axle
+// cannot straddle is a drop the axle cannot straddle whoever is towing.
+pub fn hitched_rest(sample: fn(float, float) -> float,
+                    px: float, py: float, pz: float, yaw: float,
+                    drawbar: float, half: float, radius: float,
+                    rounds: integer = 6) -> Rest {
+  pitch = 0.0;
+  roll = 0.0;
+  resid = 0.0;
+  used = 0;
+  for it in 0..rounds {
+    f = hitched_frame(px, py, pz, yaw, pitch, roll);
+    gl = 0.0;
+    gr = 0.0;
+    wl = hitched_wheel(f, drawbar, half, 0.0 - 1.0);
+    wr = hitched_wheel(f, drawbar, half, 1.0);
+    gl = sample(wl.x, wl.z);
+    gr = sample(wr.x, wr.z);
+    d = gl - gr;
+    // ⚠ THE `cos(pitch)` IS NOT DECORATION. A wheel centre sits at
+    //     y = P_y − L·sin(pitch) − side·w·sin(roll)·cos(pitch)
+    // so the height DIFFERENCE across the axle is `2w·sin(roll)·cos(pitch)`, and
+    // the two closed forms are coupled through it. Dropping the factor gave a
+    // solve that converged on terrain sloping along ONE axis and failed on
+    // terrain sloping along two — four clauses, and the single-axis ones passed,
+    // which is how the omission nearly survived.
+    reach = 2.0 * half * cos(pitch);
+    flat = reach * reach - d * d;
+    if flat <= 0.0 {
+      off = reach;
+      if d < 0.0 { off = 0.0 - off; }
+      return Rest { rt_ok: false, rt_frame: f, rt_bank: roll,
+                    rt_rounds: used, rt_resid: resid,
+                    rt_reason: "ground drops {fabs(d)} across an axle of {reach}",
+                    rt_offer: off, rt_over: fabs(d) - reach };
+    }
+    // sin(roll) = d / reach, so the angle is atan2(d, sqrt(reach² − d²))
+    nroll = atan2(d, sqrt(flat) ?? 0.0);
+    // the axle centre must reach `h`; it hangs `drawbar` behind the pin, so the
+    // pitch that gets it there is a sine away
+    h = (gl + gr) * 0.5 + radius;
+    sp = (py - h) / drawbar ?? 0.0;
+    if sp > 1.0 || sp < 0.0 - 1.0 {
+      npitch = 0.0;
+      if sp > 0.0 { npitch = TURN * 0.25; } else { npitch = 0.0 - TURN * 0.25; }
+      return Rest { rt_ok: false, rt_frame: f, rt_bank: roll,
+                    rt_rounds: used, rt_resid: resid,
+                    rt_reason: "the pin is {fabs(py - h)} above the axle, past a drawbar of {drawbar}",
+                    rt_offer: npitch, rt_over: fabs(py - h) - drawbar };
+    }
+    npitch = asin(sp) ?? 0.0;
+    resid = fabs(nroll - roll) + fabs(npitch - pitch);
+    roll = nroll;
+    pitch = npitch;
+    used = it + 1;
+  }
+  Rest { rt_ok: true,
+         rt_frame: hitched_frame(px, py, pz, yaw, pitch, roll),
+         rt_bank: roll, rt_rounds: used, rt_resid: resid,
+         rt_reason: "", rt_offer: 0.0, rt_over: 0.0 }
+}
+
+// ── `A-HITCH` — the pin, from both sides ────────────────────────────────────
+//
+// The coupling's con-rod. A `HITCH` removes three degrees of POSITION, so the
+// pin computed from the parent and the pin computed from the child must be the
+// same point — and a composition that merely *looks* right still moves
+// convincingly, which is why this is measured and not assumed.
+pub fn hitch_slack(parent: Frame, child: Frame, l: Link) -> float {
+  from_parent = frame_apply(parent, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+  v3_dist(from_parent, frame_origin(child))
+}
