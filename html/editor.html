@@ -191,6 +191,15 @@ function draw() {
   requestAnimationFrame(draw);
 }
 
+// Non-null only while a rebuild transaction is open — see the `Z:` handler.
+let staging = null;
+
+function placeMesh(body) {
+  const k = body.indexOf(';');
+  const p = parts.get(Number(body.slice(0, k)));
+  if (p) p.model = new Float32Array(body.slice(k + 1).split(',').map(Number));
+}
+
 const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://')
                          + location.host + '/ws');
 ws.onopen = () => { hud.textContent = 'connected'; ws.send('1:'); };
@@ -199,12 +208,23 @@ ws.onerror = () => { hud.textContent = 'socket error'; };
 ws.onmessage = (ev) => {
   const s = ev.data, c = s.indexOf(':');
   const tag = s.slice(0, c), body = s.slice(c + 1);
-  if (tag === 'M') { addMesh(body); }
-  else if (tag === 'T') {
-    const k = body.indexOf(';');
-    const p = parts.get(Number(body.slice(0, k)));
-    if (p) p.model = new Float32Array(body.slice(k + 1).split(',').map(Number));
+  // A REBUILD IS ONE TRANSACTION. The ground carries no skirts — neighbouring
+  // chunks meet exactly because their shared corners are the same average — so a
+  // chunk swapped in beside a stale neighbour leaves a real GAP, and you see sky
+  // through the hill being raised. Staging between `Z:1` and `Z:0` and applying
+  // the batch in ONE task is what makes that unobservable: rendering happens in
+  // requestAnimationFrame, and no frame can run in the middle of a synchronous
+  // loop. The cost is one longer frame instead of several torn ones, which is the
+  // right way round.
+  if (tag === 'Z') {
+    if (body === '1') { staging = []; }
+    else {
+      const batch = staging || []; staging = null;
+      for (const [bt, bb] of batch) { if (bt === 'M') addMesh(bb); else placeMesh(bb); }
+    }
   }
+  else if (tag === 'M') { if (staging) staging.push(['M', body]); else addMesh(body); }
+  else if (tag === 'T') { if (staging) staging.push(['T', body]); else placeMesh(body); }
   else if (tag === 'X') { dropMesh(Number(body)); }
   else if (tag === 'G') {
     const v = body.split(',').map(Number);

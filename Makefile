@@ -155,6 +155,39 @@ client-check:
 client-console:
 	node tools/page_console.mjs http://127.0.0.1:$(EDITOR_PORT)/client --wait-ms 15000
 
+# ── looking at the world without being at the keyboard ────────────────────
+# A PICTURE OF WHAT THE HUMAN IS LOOKING AT. This attaches a headless client and
+# screenshots its canvas, so a description of an artefact can be checked instead
+# of imagined.
+#
+# ⚠ It is PASSIVE — it sends no key and no `7:` placement, so the SHARED character
+# does not move and a person already driving this server is undisturbed. That is
+# the whole reason it is separate from the gates, which all drive.
+#
+#   make shot                            the wasm client, to shot.png
+#   make shot PAGE=/ CANVAS='#gl'        the JavaScript one, for comparison
+SHOT   ?= shot.png
+PAGE   ?= /client
+CANVAS ?= \#c
+shot:
+	@node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)$(PAGE) \
+	  --wait-ms 20000 --canvas '$(CANVAS)' --canvas-min-colors 2 --screenshot $(SHOT)
+	@echo "wrote $(SHOT)"
+
+# IS THE GROUND WATERTIGHT, AND IS IT SMOOTH? Two different questions that look
+# identical on screen — a crack shows background through a gap, a facet is a real
+# fold in the surface — and they have completely different fixes. Reads the drawn
+# triangles off the wire; also passive.
+seam:
+	@node tools/seam.mjs $(EDITOR_PORT)
+
+# THE SAME QUESTION, ASKED WHILE THE WORLD IS MOVING. The settled world is the one
+# state in which a rebuild-order crack cannot appear, so `seam` alone will always
+# call a transient artefact clean. Run this, then raise a hill while it watches.
+WATCH ?= 20
+seam-watch:
+	@node tools/seam.mjs $(EDITOR_PORT) --watch $(WATCH)
+
 # ── the editor's gates, split by what they are allowed to break ───────────
 # world/     — drive the character by PLACING it; measure terrain, streaming,
 #              levelling. Must not depend on locomotion.

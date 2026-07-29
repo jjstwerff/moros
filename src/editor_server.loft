@@ -237,6 +237,13 @@ const TICK_US = 33000;
 //                          gate parsing differently from the rest.
 //                     G:<lo rgb>,<hi rgb>,<lo y>,<hi y>   the ground ramp
 //                     T:<i>;<16>    mesh i's placement
+//                     Z:1 / Z:0     open / commit a REBUILD TRANSACTION. Every
+//                          M: and T: between them belongs to one rebuild and must
+//                          be applied together — the ground carries no skirts, so
+//                          a chunk swapped in beside a stale neighbour leaves a
+//                          hole you can see through. A client that ignores Z:
+//                          still works and still tears; one that stages between
+//                          the brackets does not.
 //                     E:            end of world
 //                     C:<view>;<proj>
 const MSG_READY = 1;
@@ -2210,6 +2217,25 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
   cw = hex_to_world(cq, cr, chh);
   hs = corner_heights(cq, cr, wld);
 
+  // ⚠ THE CENTRE IS THE MEAN OF ITS OWN CORNERS, NOT THE RAW CELL HEIGHT.
+  //
+  // The rim of this fan is smoothed — every corner is the average of the three
+  // cells touching it — so taking the centre from the unsmoothed height mixes two
+  // different surfaces in one triangle. The residual is the cell's local
+  // CURVATURE, which means it is smallest on a flat plain and largest exactly at a
+  // summit, where the centre sits above all six corners and the cell is drawn as a
+  // little pyramid. Measured before this line existed: mean bias 0.027 wu over
+  // 2816 cells, but 17 summit cells spiking a full 0.5 wu — a ~27° pip on every
+  // top, and a row of them along a crest is the serrated ridge that reads as a
+  // tent against the sky.
+  //
+  // Averaging the six corners makes the drawn surface the smoothed field
+  // everywhere instead of almost everywhere. `terrain_y` samples these same
+  // triangles, so the ground walked on follows the ground drawn, as before.
+  csum = 0.0;
+  for hi2 in 0..6 { csum = csum + (hs[hi2] ?? 0.0); }
+  cy = (csum / 6.0 ?? 0.0) * HEIGHT_SCALE;
+
   ci0 = (cr - r0 + 1) * (CHUNK + 2) + (cq - q0 + 1);
   n0x = nx[ci0] ?? 0.0; n0y = ny[ci0] ?? 1.0; n0z = nz[ci0] ?? 0.0;
   nc0 = vec3(n0x, n0y, n0z);
@@ -2234,7 +2260,7 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
     w1 = hex_corner_world(cq, cr, 0, (6 - fi) % 6 ?? 0);
     w2 = hex_corner_world(cq, cr, 0, (6 - fj) % 6 ?? 0);
     emit_tri(m,
-      vec3(cw.x, cw.y, cw.z), nc0,
+      vec3(cw.x, cy, cw.z), nc0,
       vec3(w1.x, (hs[fi] ?? 0.0) * HEIGHT_SCALE, w1.z),
       nrm3(cnx[fi] ?? 0.0, cny[fi] ?? 1.0, cnz[fi] ?? 0.0),
       vec3(w2.x, (hs[fj] ?? 0.0) * HEIGHT_SCALE, w2.z),
@@ -2700,8 +2726,139 @@ fn read_client() -> text {
   cxb
 }
 
+// ── THE MESH-FIT PROBE (moros#16) ─────────────────────────────────────────
+//
+// THE INVARIANT: there must be no instant at which a published mesh does not fit
+// its neighbours.
+//
+// A chunk's ground mesh is NOT a function of its own cells alone. `corner_heights`
+// averages every corner over the THREE cells touching it, and `cell_normal` takes
+// a gradient over SIX neighbours whose own normals then feed the corner means — so
+// a cell one or two hexes OUTSIDE a chunk still moves that chunk's vertices. An
+// edit must therefore dirty a wider region than it writes, and every other writer
+// in this file adds a margin for exactly that reason (`frad + 2`, `ROAD_HALF + 4`,
+// `STENCIL_R + 2`, `SCATTER_R + 1`).
+//
+// This measures the two sets directly, with no server, no browser and no timing:
+//   CHANGED — every chunk whose mesh text differs after the edit (the truth)
+//   MARKED  — every chunk `mark_dirty` would rebuild (what the server does)
+// CHANGED minus MARKED is exactly the set of stale meshes left on screen, and it
+// is a set the running editor can never show you, because by the time you look
+// something else has re-streamed them.
+//
+// Run:  EDITOR_PROBE=fit loft --interpret --lib lib/ src/editor_server.loft
+fn probe_fit() {
+  wld = new_world();
+  span = 4;                       // chunks each way — wider than any reach here
+
+  // ⚠ ONE FLAT BUFFER, NOT A vector<vector<single>>. The nested form read back as
+  // empty — every comparison then ran against zeros and reported "movements" of
+  // 47-69 wu, which are chunk COORDINATES, not displacements. Offsets into one
+  // buffer keep the storage a shape loft hands back intact.
+  before: vector<single> = [];
+  offs: vector<integer> = [];
+  lens: vector<integer> = [];
+  for bz in 0 - span..span + 1 {
+    for bx in 0 - span..span + 1 {
+      bm = chunk_mesh_mat(bx, bz, wld, SURFACE_MAT);
+      bf = mesh_to_floats(bm);
+      offs += [len(before)];
+      lens += [len(bf)];
+      before += bf;
+    }
+  }
+
+  // ⚠ THE NEGATIVE CONTROL, AND IT IS NOT OPTIONAL. Building a chunk mesh reads
+  // the world through paths that materialise columns, so a second snapshot can
+  // differ from the first with no edit at all. Two earlier versions of this probe
+  // reported a violation that was entirely their own doing. Any nonzero here
+  // invalidates every number below it.
+  nctrl = 0;
+  cidx = 0;
+  for cz2 in 0 - span..span + 1 {
+    for cx2 in 0 - span..span + 1 {
+      cm2 = chunk_mesh_mat(cx2, cz2, wld, SURFACE_MAT);
+      ctrl = mesh_to_floats(cm2);
+      coff = offs[cidx] ?? 0;
+      cworst = 0.0f;
+      if len(ctrl) != (lens[cidx] ?? 0) {
+        cworst = 999.0f;                       // a different vertex COUNT is a change
+      } else {
+        for cvi in 0..len(ctrl) {
+          cd = (ctrl[cvi] ?? 0.0f) - (before[coff + cvi] ?? 0.0f);
+          if cd < 0.0f { cd = 0.0f - cd; }
+          if cd > cworst { cworst = cd; }
+        }
+      }
+      if cworst > 0.001f { nctrl = nctrl + 1; }
+      cidx = cidx + 1;
+    }
+  }
+
+  pclamp = 0;
+  pres = 0;
+  brush(wld, 0, 0, PEAK_STEP, PEAK_R, pclamp, pres);
+
+  dirty = DirtySet { items: [] };
+  mark_dirty(dirty, 0, 0, PEAK_R);
+
+  nchanged = 0;
+  nmarked = 0;
+  nstale = 0;
+  idx = 0;
+  for az in 0 - span..span + 1 {
+    for ax in 0 - span..span + 1 {
+      am = chunk_mesh_mat(ax, az, wld, SURFACE_MAT);
+      after = mesh_to_floats(am);
+      aoff = offs[idx] ?? 0;
+      worst = 0.0f;
+      if len(after) != (lens[idx] ?? 0) {
+        worst = 999.0f;
+      } else {
+        for avi in 0..len(after) {
+          ad = (after[avi] ?? 0.0f) - (before[aoff + avi] ?? 0.0f);
+          if ad < 0.0f { ad = 0.0f - ad; }
+          if ad > worst { worst = ad; }
+        }
+      }
+      // A vertex that moved less than a millimetre is not a seam anyone sees;
+      // above it, the two sides of a chunk edge are visibly apart.
+      changed = worst > 0.001f;
+      marked = false;
+      for pc in dirty.items { if pc.cx == ax && pc.cz == az { marked = true; } }
+      if changed { nchanged = nchanged + 1; }
+      if marked { nmarked = nmarked + 1; }
+      if changed && !marked {
+        nstale = nstale + 1;
+        println("  STALE ({ax},{az}) moved {worst:6.3} wu - changed, nothing rebuilds it");
+      }
+      idx = idx + 1;
+    }
+  }
+  println("probe fit - one raise at (0,0), brush radius PEAK_R={PEAK_R}");
+  println("  CONTROL, re-read with no edit: {nctrl} changed  (must be 0, or ignore the rest)");
+  println("  chunks whose mesh CHANGED: {nchanged}");
+  println("  chunks MARKED dirty:       {nmarked}");
+  println("  CHANGED but NOT MARKED:    {nstale}   <- meshes that do not fit");
+  if nctrl > 0 {
+    println("  VOID - the control moved, so this run measured the probe, not the server");
+  } else if nstale == 0 {
+    println("  PASS - every mesh the edit changed is rebuilt");
+  } else {
+    println("  FAIL - the invariant is violated: a published mesh does not fit");
+  }
+}
+
 fn main() {
-  port = 18090;
+  // The probe runs the mesh code and nothing else — no socket, no client.
+  if env_variable("EDITOR_PROBE") == "fit" { probe_fit(); return; }
+
+  // 18090 is the port everything documented points at, and `EDITOR_PORT` moves it.
+  // The reason is a gate: a check that DRIVES the world — raising ground, walking,
+  // placing — cannot run against the server a person is looking at, because it
+  // would edit their world and steer their character. A second server on a second
+  // port is how a driving gate and a human session coexist.
+  port = env_variable("EDITOR_PORT") as integer ?? 18090;
   srv = server::listen(port);
   if srv.handle < 0 {
     println("editor: FAILED to listen on port {port}");
@@ -3360,6 +3517,23 @@ fn main() {
             // the merge the peak version had to special-case is now just addition.
             bclamp = 0;
             bres = 0;
+            // ⚠ THE FLANKS ARE 83° AND THAT IS WHY HILLS READ AS TENTS.
+            // The falloff `(1 - t²)²` is smooth at BOTH ends, so one stroke is a
+            // gentle dome and the shape was never the fault. Strokes ADD while
+            // the radius stays pinned, so twenty presses is that dome scaled
+            // twenty times vertically: 39° at the apex, 74-77° on the flanks.
+            //
+            // ⚠ DO NOT "FIX" THIS. The steep flanks are WANTED — they are the
+            // author's call, confirmed 2026-07-29. Two ways to soften them were
+            // measured and both are rejected: growing the radius with the pile
+            // (83° to 68°, still a cliff, six times the footprint per keypress),
+            // and an angle-of-repose limit (34.5°, but it flattens exactly the
+            // slopes that are wanted).
+            //
+            // What DID read as a tent was never the brush: `emit_hex_sloped` took
+            // its fan centre from the raw cell height while every rim corner was a
+            // three-cell average, so each summit cell was drawn as a pyramid. That
+            // is fixed there, not here.
             if found { brush(wld, tq, tr, dirn * PEAK_STEP, PEAK_R, bclamp, bres); }
             if bclamp != 0 {
               // Applied, but not as asked — say so, with the residual. This is
@@ -3370,11 +3544,17 @@ fn main() {
               println("editor: ground approximated — {bclamp} clamped, residual {bres}");
             }
 
-            // THE DIRTY REGION: a peak reaches PEAK_R, so only chunks touching
-            // that disk change. Everything else on screen is still correct and
-            // is not re-sent — the bounded, incremental re-derivation `L3` asks
-            // for, at the granularity the change actually has.
-            if found { mark_dirty(dirty, tq, tr, PEAK_R); }
+            // THE DIRTY REGION IS WIDER THAN THE BRUSH, and this is the one
+            // writer in the file that used to forget it (`frad + 2`,
+            // `ROAD_HALF + 4`, `STENCIL_R + 2`, `SCATTER_R + 1` all carry a
+            // margin; this carried none). A chunk's mesh is not a function of its
+            // own cells: `corner_heights` averages every corner over the THREE
+            // cells touching it, and `cell_normal` takes a gradient over SIX
+            // neighbours whose normals then feed those corner means — so a cell
+            // two hexes outside the brush still moves. Marking exactly PEAK_R
+            // left the ring just outside it holding a stale mesh, and because the
+            // ground carries no skirts that stale ring is a GAP you see through.
+            if found { mark_dirty(dirty, tq, tr, PEAK_R + 2); }
             println("editor: brush ({tq},{tr}) {dirn * PEAK_STEP:+} — "
                     + "{len(wld.w_chunks)} chunks, {len(dirty.items)} dirty");
           }
@@ -3602,6 +3782,20 @@ fn main() {
     if len(dirty.items) != 0 {
       t_flush = ticks();
       nrebuilt = 0;
+      // ── A REBUILD IS ONE TRANSACTION (`Z:1` … `Z:0`) ──────────────────────
+      //
+      // ⚠ THE GROUND HAS NO SKIRTS. `chunk_mesh_mat` emits a cell as a fan and
+      // nothing vertical, because the corner means make neighbouring chunks meet
+      // exactly — which they do, once BOTH have been rebuilt. In between, the
+      // step between a new chunk and its stale neighbour is not a shading seam
+      // but an actual GAP, and you see sky through the hill you are raising.
+      //
+      // Sending the batch back-to-back does not fix that: the client renders
+      // frames as the messages arrive, so it draws several partial states
+      // whatever order the server writes them in. The swap has to be atomic AT
+      // THE CLIENT, so the batch is bracketed and the client stages everything
+      // between the brackets and applies it in one go.
+      srv.broadcast("Z:1");
       for dc2 in dirty.items {
         live = false;
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
@@ -3628,6 +3822,7 @@ fn main() {
           nrebuilt = nrebuilt + 1;
         }
       }
+      srv.broadcast("Z:0");
       dirty.items = [];
       if nrebuilt != 0 {
         println("editor: rebuilt {nrebuilt} chunks in "
@@ -3687,6 +3882,12 @@ fn main() {
       }
       home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
+      // STREAMING IS A TRANSACTION TOO. A chunk arriving beside one that is still
+      // being retired, or six surfaces of one chunk landing across two frames,
+      // is the same tear as a partial rebuild — the ground has no skirts either
+      // way. This is the second mesh path; the flush below is the first, and both
+      // now bracket what they publish.
+      sbatch = false;
       added = 0;
       for scz in home.cy - CHUNK_R..home.cy + CHUNK_R + 1 {
         for scx in home.cx - CHUNK_R..home.cx + CHUNK_R + 1 {
@@ -3696,6 +3897,10 @@ fn main() {
             seen = false;
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
+              // Open the transaction on the FIRST add, not on every tick: the
+              // streaming pass runs each tick and almost always has nothing to
+              // say, so an unconditional bracket would be 30 empty pairs a second.
+              if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
               cmesh = chunk_mesh(scx, scz, wld);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               fmesh = chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
@@ -3728,6 +3933,7 @@ fn main() {
         // otherwise linger on the client — a strip of road, or a fence, floating
         // where its ground used to be.
         if !still {
+          if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
           srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 1}");
           srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 2}");
           srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 3}");
@@ -3738,6 +3944,7 @@ fn main() {
         }
       }
       loaded = next_loaded;
+      if sbatch { srv.broadcast("Z:0"); }
       if added != 0 || dropped != 0 {
         println("editor: hex ({last_hq},{last_hr}) — +{added} −{dropped} chunks, "
                 + "{len(loaded)} live");

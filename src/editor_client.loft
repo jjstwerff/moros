@@ -198,6 +198,14 @@ struct Client {
   c_drop: integer,
   c_cam: integer,
   c_status: integer,
+  // A REBUILD IS ONE TRANSACTION. The pump drains every queued message before the
+  // frame is drawn, so a batch that arrives all at once is already atomic here —
+  // but a large rebuild spans several pumps, and then the frames in between show
+  // a new chunk beside a stale one. The ground has no skirts, so that is a hole,
+  // not a seam. `c_staging` holds the batch between `Z:1` and `Z:0`; each entry is
+  // its tag character followed by the body.
+  c_staging: boolean,
+  c_pending: vector<text>,
 }
 
 fn ident4() -> vector<float> {
@@ -437,8 +445,31 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
     if msg.size() > 1 {
       tag = msg[0..1];
       body = msg[2..msg.size()];
-      if tag == "M" { st.c_mesh = st.c_mesh + 1; add_mesh(st, body); }
-      else if tag == "T" { st.c_place = st.c_place + 1; place_mesh(st, body); }
+      if tag == "Z" {
+        if body == "1" {
+          st.c_staging = true;
+          st.c_pending = [];
+        } else {
+          // Apply the whole rebuild before this frame is drawn. Nothing renders
+          // between the first chunk and the last, which is the entire point.
+          for pmsg in st.c_pending {
+            ptag = pmsg[0..1];
+            pbody = pmsg[1..pmsg.size()];
+            if ptag == "M" { st.c_mesh = st.c_mesh + 1; add_mesh(st, pbody); }
+            else { st.c_place = st.c_place + 1; place_mesh(st, pbody); }
+          }
+          st.c_pending = [];
+          st.c_staging = false;
+        }
+      }
+      else if tag == "M" {
+        if st.c_staging { st.c_pending += ["M{body}"]; }
+        else { st.c_mesh = st.c_mesh + 1; add_mesh(st, body); }
+      }
+      else if tag == "T" {
+        if st.c_staging { st.c_pending += ["T{body}"]; }
+        else { st.c_place = st.c_place + 1; place_mesh(st, body); }
+      }
       else if tag == "X" { st.c_drop = st.c_drop + 1; drop_part(st, body as integer ?? -1); }
       else if tag == "C" { st.c_cam = st.c_cam + 1; set_camera(st, body); }
       else if tag == "G" { set_ramp(st, body); }
@@ -562,6 +593,7 @@ fn main() {
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0,
+    c_staging: false, c_pending: [],
   };
 
   // ⚠ NOT `if prog == 0 { fail }`, which is what the API's own doc says to write
