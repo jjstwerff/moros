@@ -1920,8 +1920,15 @@ fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: W
     cs_bank = atan2(cs_d, sqrt(cs_flat) ?? 0.0);
     cs_y = (cs_gl + cs_gr) * 0.5 + CART_RADIUS;
   }
+  // ⚠ THE BANK IS NEGATED HERE, AND THAT IS A CONVENTION CONVERSION, NOT A FUDGE.
+  // mesh3d's `mat4_rotate_x` is `[[1,0,0],[0,c,s],[0,-s,c]]` — a rotation about
+  // **−x**, the transpose of the standard sense that `mat4_rotate_z` above uses.
+  // The solve produces `sin β = d/2w` in the standard sense, so applying it
+  // directly banked the cart THE WRONG WAY: measured, one wheel floated 0.0914 wu
+  // and the other sank the same, on a 4.8° slope, while `gapl`/`gapr` both read
+  // zero because they re-derived the lift instead of reading the matrix.
   base = mat4_mul(mat4_mul(mat4_translate(cx, cs_y, cz), mat4_rotate_y(cyaw)),
-                  mat4_rotate_x(cs_bank));
+                  mat4_rotate_x(0.0 - cs_bank));
   srv.broadcast("T:{CART_BODY};{mat_wire(base)}");
   srv.broadcast("T:{CART_WHEEL_L};{mat_wire(mat4_mul(mat4_mul(base,
                   mat4_translate(0.0, 0.0, 0.0 - CART_HALF_W)), mat4_rotate_z(roll)))}");
@@ -1941,7 +1948,13 @@ fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: W
   // gates its con-rod because a stretching linkage still MOVES convincingly;
   // the honest form of that check reads the two wheel transforms actually put
   // on the wire, so it lives in `cart.mjs`, where those messages arrive.
-  cs_lift = cs_half * sin(cs_bank);
+  // ⚠ READ FROM `base`, NOT RE-DERIVED. `base`'s third column is the axle's own
+  // direction, so `m[9]` IS the lift per unit of half-axle that the transform
+  // actually applies — and the wheels are placed by that same matrix. The old form
+  // computed `cs_half * sin(cs_bank)` independently, which is how a sign flip in
+  // the rotation could leave both gaps reading zero while the wheels were 9 cm out.
+  // Same lesson as the axle clause: measure what was emitted.
+  cs_lift = 0.0 - cs_half * (base.m[9] ?? 0.0);
   cs_span = cs_half * cos(cs_bank);
   cs_el = cs_y + cs_lift - CART_RADIUS
           - terrain_y(cx - cs_ax * cs_span, cz - cs_az * cs_span, wld);

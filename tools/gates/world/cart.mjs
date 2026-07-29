@@ -89,15 +89,40 @@ ws.onmessage = async (e) => {
     await wait(200);
     for (let k = 0; k < 5; k++) { ws.send('5:1'); await wait(150); }
 
-    const poses = [], axles = [];
+    const poses = [], axles = [], axleEnds = [];
     for (let k = 0; k < 10; k++) {
       ws.send('17:1.5');
       poses.push(await ack('cart pose'));
-      if (wheelL && wheelR) axles.push(Math.hypot(
-        wheelL[0] - wheelR[0], wheelL[1] - wheelR[1], wheelL[2] - wheelR[2]));
+      if (wheelL && wheelR) {
+        axles.push(Math.hypot(
+          wheelL[0] - wheelR[0], wheelL[1] - wheelR[1], wheelL[2] - wheelR[2]));
+        axleEnds.push({ l: wheelL.slice(), r: wheelR.slice() });
+      } else { axleEnds.push(null); }
     }
     const gaps = poses.flatMap(p => [num(p, 'gapl'), num(p, 'gapr')]);
     const banks = poses.map(p => Math.abs(num(p, 'bank')));
+
+    // ── ⚠ THE BANK'S SIGN, WHICH WAS WRONG FOR A WHOLE RUNG AND INVISIBLE ────
+    //
+    // `gapl`/`gapr` used to be re-derived as `y ± half·sin(bank)` while the
+    // wheels were placed by `mat4_rotate_x(bank)` — and mesh3d's `rotate_x`
+    // turns about **−x**, the transpose of the sense the solve uses. The two
+    // disagreed by `2·half·sin(bank)`: measured, one wheel FLOATED 0.0914 wu and
+    // the other SANK the same on a 4.8° slope, while both gaps reported zero.
+    //
+    // Neither the gap clause nor the axle clause could see it. The gaps were the
+    // solve's own arithmetic; the axle is a length, and tilting an axle the wrong
+    // way does not change its length. What gives it away is the RELATION between
+    // the two hub HEIGHTS and the bank, so that is what this reads — off the
+    // transforms, the one place it cannot be re-derived away.
+    const hubRel = poses.map((p, i) => {
+      const w = axleEnds[i];
+      if (!w) return NaN;
+      const half = Math.hypot(w.l[0] - w.r[0], w.l[1] - w.r[1], w.l[2] - w.r[2]) / 2;
+      return (w.l[1] - w.r[1]) - 2 * half * Math.sin(num(p, 'bank'));
+    }).filter(v => Number.isFinite(v));
+    const bankSigned = hubRel.length > 0 && Math.max(...hubRel.map(Math.abs)) < 1e-9;
+    const worstHubRel = hubRel.length > 0 ? Math.max(...hubRel.map(Math.abs)) : NaN;
 
     // a wheel is ON the ground: a millimetre, not a hand's width
     const grounded = gaps.every(g => Number.isFinite(g) && Math.abs(g) < 1e-3);
@@ -108,10 +133,12 @@ ws.onmessage = async (e) => {
     const worstGap = Math.max(...gaps.map(Math.abs));
     const maxBank = Math.max(...banks);
 
-    const ok = doubles && closes && noSlip && grounded && rigid && banked;
+    const ok = doubles && closes && noSlip && grounded && rigid && banked
+               && bankSigned;
     console.log(JSON.stringify({ a, b2, back, v1, v2, v0, t0, skid,
                                  doubles, closes, noSlip,
-                                 worstGap, maxBank, grounded, rigid, banked, ok }));
+                                 worstGap, maxBank, grounded, rigid, banked,
+                                 worstHubRel, bankSigned, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
