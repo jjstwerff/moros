@@ -356,7 +356,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A5** ✅ | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
 | **A6** ✅ | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
 | **A7** ✅ | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
-| **A8** | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
+| **A8** ✅ | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
 | **A9b** | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
 | **A9c** | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
@@ -1120,6 +1120,51 @@ and the hitch is what supplied the missing three.
 **Seen red three ways:** dropping the `cos(pitch)` coupling breaks 4 clauses, deriving the
 axle from a literal instead of the mounted children breaks 1, and putting the hitched frame's
 origin at the axle instead of the pin breaks 6.
+
+---
+
+### `A8` — BUILT. A rope never pushes, and the sign is what says so
+
+`lib/moros_sim/src/tether.loft`, 12 tests. **607 green** across the five packages, all 109
+functions in the package entered.
+
+**The design's control is the whole point, so the sign is a returned value.** `rp_pull` is
+the correction's radial component against the outward radial: **≤ 0 for a rope, always**, and
+`> 0` the moment a rod holds the crate from the inside. That is *"only the SIGN of the
+constraint tells you"* made into a number rather than left as a remark.
+
+- **A rope acts only outward-inward.** Over a sweep from well inside the ball to well outside
+  it, `rp_pull ≤ 0` throughout and `‖p − a‖ ≤ L` never breaks.
+- **A rod pushes, and by exactly how far inside the crate was.** With the crate 1 wu inside a
+  3 wu rope: the rope goes slack and does nothing; the rod stays taut, reports `rp_pull = 2`,
+  and drives the crate 2 wu further from the anchor — which on the anchor is a shove upward.
+- ⚠ **Outside the ball a rope and a rod are indistinguishable**, measured to the float bound.
+  So a test that only ever *pulls* cannot tell them apart, and the control has to put the
+  crate **inside**. That is why the design specified it that way.
+
+**Slack removes nothing — not "removes one, weakly".** The crate's position is returned
+untouched, with no overshoot and no constraint acting. Which is why `A2`'s slack ledger
+carries one state more than the taut one and still closes at six, and both are checked here
+against the geometry: taut fixes the radial at `L`, slack leaves it at whatever it was.
+
+**`CARRIED` is visible in the signature.** Nothing in this file takes a terrain sampler,
+because there is nowhere a dangling crate could consult one. The design's first draft said
+*"one frame solved from the ground contacts"*; this is the body that has none, and it needed
+no special case — only its own link.
+
+⚠ **A crate CONSTRUCTED on the sphere read as slack, and the fix was to separate two
+concerns.** `crate_swing` puts it at exactly `L`, so `dist − L` comes out at ±1e-16 and an
+exclusive test on the boundary is a coin flip. **Third time a float boundary has bitten in
+this plan** — the hip's coincident faces and the wing's coincident end plane were the others.
+So the **state** is a doorstep with a named tolerance (`TAUT_EPS`: a rope within it of `L` is
+straight, taut, tension zero) while the **projection** stays strict, happening only for a
+real outward violation. That is what keeps `rp_pull ≤ 0` a property of the *mechanism* rather
+than of a clamp — and the difference matters, because a clamped sign would have made the
+control pass for the wrong reason.
+
+**Seen red three ways:** a rope that is really a rod breaks 4 clauses, reporting the pull
+unclamped so a slack rope "pushes" breaks 3, and projecting along the vertical instead of
+along the rope breaks 1.
 
 ---
 

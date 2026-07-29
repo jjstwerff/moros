@@ -1,0 +1,201 @@
+// A8 — `A-TAUT`: a crate under a balloon, and the one link that is an inequality.
+//
+// The design's control is unusually sharp: *"drive the crate past L; a rigid-rod
+// implementation pushes the anchor UP, which the sign test catches."* So the sign
+// is the subject here, not the distance.
+use moros_sim;
+
+const L = 3.0;
+const AX = 2.0;
+const AY = 8.0;
+const AZ = 0.0 - 1.0;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 4096.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+fn resolve_at(px: float, py: float, pz: float) -> Rope {
+  tether_resolve(AX, AY, AZ, L, px, py, pz)
+}
+
+// ── taut: the crate hangs, and the radial is removed ────────────────────────
+
+fn test_hanging_straight_down_is_taut_wirp_nothing_to_project() {
+  p = crate_swing(AX, AY, AZ, L, 0.0, 0.0);
+  assert(fabs(p.y - (AY - L)) < BOUND, "straight down is L below the anchor");
+  t = resolve_at(p.x, p.y, p.z);
+  assert(t.rp_state is Taut, "and it is taut");
+  assert(fabs(t.rp_over) < BOUND, "with nothing to project out");
+  assert(fabs(t.rp_dist - L) < BOUND, "at exactly L");
+  assert(t.rp_reason != "", "and the state is REPORTED, not inferred");
+  assert(taut_violation(t, L) < TAUT_EPS, "A-TAUT holds: never past L");
+}
+
+// The two swing angles are 2 of the crate's 5 states; every one of them lands on
+// the sphere, so the constructor and the constraint agree by construction.
+fn test_every_swing_lands_on_the_sphere() {
+  worst = 0.0;
+  for a in 0..7 {
+    for b in 0..9 {
+      sa = 0.2 * (a as float);
+      sb = 0.7 * (b as float);
+      p = crate_swing(AX, AY, AZ, L, sa, sb);
+      t = resolve_at(p.x, p.y, p.z);
+      assert(t.rp_state is Taut, "a swung crate is taut");
+      e = fabs(t.rp_over);
+      if e > worst { worst = e; }
+    }
+  }
+  assert(worst < BOUND, "and every swing is already exactly at L");
+}
+
+// ── the overshoot is projected out, and REPORTED as a residual ──────────────
+
+fn test_past_the_length_is_projected_wirp_the_residual_stated() {
+  // straight down but too far: the balloon rose, or the crate was dragged
+  t = resolve_at(AX, AY - L - 1.25, AZ);
+  assert(t.rp_state is Taut, "taut");
+  assert(fabs(t.rp_over - 1.25) < BOUND, "the overshoot is stated exactly");
+  assert(fabs(t.rp_dist - L) < BOUND, "and the crate ends up on the sphere");
+  assert(fabs(t.rp_pos.y - (AY - L)) < BOUND, "pulled straight back in");
+  assert(t.rp_reason.contains("overshoot"), "with the reason named");
+}
+
+fn test_the_projection_is_along_the_rope() {
+  // off-axis, so a projection along the wrong direction would show
+  t = resolve_at(AX + 4.0, AY - 4.0, AZ + 2.0);
+  assert(t.rp_state is Taut, "taut");
+  assert(fabs(t.rp_dist - L) < BOUND, "on the sphere");
+  // the resolved point, the anchor and the request are collinear
+  dx = t.rp_pos.x - AX;
+  dy = t.rp_pos.y - AY;
+  dz = t.rp_pos.z - AZ;
+  rx = 4.0;
+  ry = 0.0 - 4.0;
+  rz = 2.0;
+  cx = dy * rz - dz * ry;
+  cy = dz * rx - dx * rz;
+  cz = dx * ry - dy * rx;
+  // ⚠ `??` binds LOOSEST, so `sqrt(x) ?? 0.0 < BOUND` is `sqrt(x) ?? (0.0 < BOUND)`
+  // and the default becomes a boolean. Parenthesise the discharge.
+  colin = sqrt(cx*cx + cy*cy + cz*cz) ?? 0.0;
+  assert(colin < BOUND,
+         "the crate moved along the rope and nowhere else");
+}
+
+// ── slack: the tether removes NOTHING ───────────────────────────────────────
+
+fn test_slack_leaves_the_crate_alone() {
+  t = resolve_at(AX, AY - 1.0, AZ);
+  assert(t.rp_state is Slack, "a crate inside the ball is slack");
+  assert(fabs(t.rp_pos.y - (AY - 1.0)) < BOUND, "and is not moved at all");
+  assert(t.rp_over == 0.0, "with no overshoot");
+  assert(t.rp_pull == 0.0, "and no constraint acting");
+  assert(t.rp_reason == "", "nothing to report — nothing was done");
+}
+
+fn test_the_transition_is_named_at_the_crossing() {
+  slack = resolve_at(AX, AY - L + 0.01, AZ);
+  taut = resolve_at(AX, AY - L - 0.01, AZ);
+  assert(slack.rp_state is Slack, "just inside: slack");
+  assert(taut.rp_state is Taut, "just outside: taut");
+  assert(slack.rp_reason == "" && taut.rp_reason != "",
+         "and the crossing is reported, not hidden in a branch");
+  // and a rope exactly AT L is straight, with zero tension and nothing projected
+  at = resolve_at(AX, AY - L, AZ);
+  assert(at.rp_state is Taut, "exactly at L is taut, not a coin flip");
+  assert(at.rp_pull == 0.0, "with zero tension");
+  assert(at.rp_over == 0.0, "and nothing projected out");
+}
+
+// ── ⚠ THE SIGN TEST: A ROPE NEVER PUSHES ────────────────────────────────────
+//
+// This is the design's own control. A rope acts only outward-inward; a rod holds
+// the crate on the sphere from BOTH sides, so a crate that swings inside gets
+// shoved back out — and the reaction on the anchor is upward. *Everything still
+// moves convincingly and only the sign of the constraint tells you.*
+
+fn test_a_rope_never_pushes() {
+  worst = 0.0;
+  for k in 0..12 {
+    // a sweep from well inside the ball to well outside it
+    d = 0.4 + 0.45 * (k as float);
+    t = resolve_at(AX, AY - d, AZ);
+    if t.rp_pull > worst { worst = t.rp_pull; }
+    assert(t.rp_dist <= L + BOUND, "A-TAUT: never past L");
+  }
+  assert(worst <= 0.0, "and the constraint is never positive — a rope only pulls");
+}
+
+fn test_a_rigid_rod_pushes_and_the_sign_says_so() {
+  inside = 1.0;
+  rope = tether_resolve(AX, AY, AZ, L, AX, AY - inside, AZ, false);
+  rod = tether_resolve(AX, AY, AZ, L, AX, AY - inside, AZ, true);
+  assert(rope.rp_state is Slack, "the rope goes slack");
+  assert(rope.rp_pull == 0.0, "and does nothing");
+  assert(rod.rp_state is Taut, "the rod stays taut");
+  assert(rod.rp_pull > 0.0, "and PUSHES — the sign is positive");
+  assert(fabs(rod.rp_pull - (L - inside)) < BOUND,
+         "by exactly how far inside the crate was");
+  // …and it moves the crate DOWN AND AWAY, which on the anchor is a shove upward
+  assert(rod.rp_pos.y < rope.rp_pos.y - 1.9,
+         "the rod drives the crate 2 wu further from the anchor than the rope does");
+  assert(rod.rp_reason.contains("RIGID"), "and it says which it was");
+}
+
+// The two differ ONLY inside the ball. Outside it a rope and a rod are the same
+// thing, which is why a test that only ever pulls cannot tell them apart — and
+// why the control has to place the crate inside.
+fn test_outside_the_ball_a_rope_and_a_rod_agree() {
+  worst = 0.0;
+  for k in 0..8 {
+    d = L + 0.3 + 0.4 * (k as float);
+    rope = tether_resolve(AX, AY, AZ, L, AX + 1.0, AY - d, AZ, false);
+    rod = tether_resolve(AX, AY, AZ, L, AX + 1.0, AY - d, AZ, true);
+    e = v3_dist(rope.rp_pos, rod.rp_pos);
+    if e > worst { worst = e; }
+    assert(rope.rp_pull < 0.0 && rod.rp_pull < 0.0, "both pull, both negative");
+  }
+  assert(worst < BOUND, "beyond L they are indistinguishable");
+}
+
+// ── CARRIED: the crate's frame, with no ground anywhere near it ──────────────
+
+fn test_the_crate_is_carried_by_its_attachment() {
+  p = crate_swing(AX, AY, AZ, L, 0.4, 1.1);
+  t = resolve_at(p.x, p.y, p.z);
+  f = crate_frame(t, 0.3, 0.0 - 0.2, 0.15);
+  assert(v3_dist(frame_origin(f), t.rp_pos) < BOUND,
+         "the crate's frame sits where the tether put it");
+  // its three rotations are its own, and they do not move it
+  g = crate_frame(t, 2.0, 1.0, 0.0 - 1.5);
+  assert(v3_dist(frame_origin(g), frame_origin(f)) < BOUND,
+         "rotating a hanging crate does not move it");
+  assert(fabs(f.fm_r.r11 - g.fm_r.r11) > 0.1, "but it does rotate it");
+}
+
+// ── A-DOF, both ledgers, and the geometry that matches them ─────────────────
+
+fn test_the_balloon_ledger_closes_borp_ways() {
+  b = asm_balloon(L);
+  assert(asm_admissible(b), "a crate under a balloon is well formed");
+  assert(asm_closes(b), "and both bodies close at six");
+  taut = body_ledger(b, 1);
+  slack = body_ledger_slack(b, 1);
+  assert(taut.dg_links == 1 && taut.dg_driven == 5, "taut: 1 removed, 5 carried");
+  assert(slack.dg_links == 0 && slack.dg_driven == 6, "slack: 0 removed, 6 carried");
+  assert(ledger_closed(taut) && ledger_closed(slack), "and both close");
+  // the geometry agrees with the count: taut fixes the radial, slack does not
+  hang = crate_swing(AX, AY, AZ, L, 0.3, 0.5);
+  t = resolve_at(hang.x, hang.y, hang.z);
+  assert(fabs(t.rp_dist - L) < BOUND, "taut: the radial is fixed at L");
+  s = resolve_at(AX, AY - 1.0, AZ);
+  assert(fabs(s.rp_dist - 1.0) < BOUND, "slack: the radial is whatever it was");
+}
+
+fn test_a_degenerate_rope_is_reported_not_divided_by() {
+  t = tether_resolve(AX, AY, AZ, L, AX, AY, AZ, false);
+  assert(t.rp_state is Slack, "a crate at the anchor is slack");
+  assert(t.rp_reason.contains("no radial"), "and says why it could do nothing");
+  assert(t.rp_pos.y == AY, "leaving it exactly where it was");
+}

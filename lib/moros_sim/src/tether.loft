@@ -1,0 +1,135 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `TETHER` and `CARRIED`: a crate under a balloon.
+// Step `A8` of plans/14-props-dressing/CONNECTOR.md, proving `A-TAUT`.
+//
+// ── the one link that is an INEQUALITY ───────────────────────────────────────
+//
+//     `A-TAUT`   ‖p_child − p_anchor‖ ≤ L,  with taut/slack a NAMED, REPORTED state
+//
+// Every other link is an equation. A rope is `≤`, and **taut and slack have
+// different DOF counts**: slack it removes nothing and the crate is in free fall;
+// taut it removes one, the radial. So the transition is a `K-FIT` doorstep — the
+// state named, the transition reported, and the residual on the taut side the
+// overshoot `‖p − a‖ − L` that had to be projected out.
+//
+// ⚠ **A ROPE NEVER PUSHES, and that is what `rp_pull` is for.** Model a rope as a
+// rigid rod of length `L` and a crate that swings inward gets pushed back out —
+// a rope in compression, which is the tether's version of a stretching con-rod.
+// *Everything still moves convincingly and only the SIGN of the constraint tells
+// you.* So the sign is computed and returned, not left implicit: `rp_pull ≤ 0`
+// for a rope, always, and `> 0` for a rod the moment the crate comes inside.
+//
+// ── `CARRIED` ───────────────────────────────────────────────────────────────
+//
+// The link IS the support, so it removes nothing further — and nothing here takes
+// a terrain sampler, which is the point. `A6`'s first draft of this design said
+// *"one frame solved from the ground contacts"*; a dangling crate has no ground
+// contacts at all, and that is the case that broke it.
+use frames;
+use graphics;
+
+pub enum RopeState { Slack, Taut }
+
+pub struct Rope {
+  rp_state: RopeState,
+  rp_pos: Vec3,          // where the crate ends up
+  rp_dist: float,        // ‖p − a‖ after resolving
+  rp_over: float,        // `K-FIT` residual: the overshoot projected out
+  // The radial component of the correction, against the OUTWARD radial.
+  // **≤ 0 for a rope, always.** A positive value is a rope in compression.
+  rp_pull: float,
+  rp_reason: text        // named, and empty when nothing had to be done
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// A rope within this of `L` is straight. Named, because the boundary is where a
+// constructed-on-the-sphere point lives and an exclusive test there is a coin
+// flip — see `tether_resolve`.
+pub const TAUT_EPS = 0.000000001;
+
+// Resolve a crate's requested position against its tether.
+//
+// `rigid` is the deliberate defect: at `false` this is a rope and only an OUTWARD
+// violation is projected; at `true` it is a rod and the crate is held on the
+// sphere from both sides, which is the failure the sign test catches.
+pub fn tether_resolve(ax: float, ay: float, az: float, length: float,
+                      px: float, py: float, pz: float,
+                      rigid: boolean = false) -> Rope {
+  dx = px - ax;
+  dy = py - ay;
+  dz = pz - az;
+  dist = sqrt(dx*dx + dy*dy + dz*dz) ?? 0.0;
+  if dist <= 0.0 {
+    // The crate is AT the anchor: there is no radial direction, so there is
+    // nothing to project along. Slack, and said so rather than divided by.
+    return Rope { rp_state: RopeState.Slack, rp_pos: vec3(px, py, pz),
+                    rp_dist: 0.0, rp_over: 0.0, rp_pull: 0.0,
+                    rp_reason: "the crate is at the anchor; no radial to project along" };
+  }
+  over = dist - length;
+  // ⚠ THE LABEL AND THE PROJECTION ARE SEPARATE CONCERNS, and conflating them
+  // made a crate CONSTRUCTED on the sphere read as slack. `crate_swing` puts it
+  // at exactly `L`, and `dist − L` then comes out at ±1e-16 — so an exclusive
+  // test on the boundary is a coin flip. Third time a float boundary has bitten
+  // in this plan: the hip's coincident faces and the wing's coincident end plane
+  // were the others.
+  //
+  // So: the STATE is a doorstep with a named tolerance — a rope within
+  // `TAUT_EPS` of `L` is straight, and taut with zero tension. The PROJECTION is
+  // strict — it happens only for a real outward violation, which is what keeps
+  // `rp_pull ≤ 0` true of the MECHANISM rather than of a clamp.
+  taut = over >= 0.0 - TAUT_EPS;
+  if over > 0.0 {
+    k = length / dist ?? 0.0;
+    return Rope { rp_state: RopeState.Taut,
+                  rp_pos: vec3(ax + dx * k, ay + dy * k, az + dz * k),
+                  rp_dist: length, rp_over: over, rp_pull: 0.0 - over,
+                  rp_reason: "tether taut: {over} of overshoot projected out of {length}" };
+  }
+  if rigid && over < 0.0 {
+    // A ROD, and this is the defect. It holds the crate on the sphere from the
+    // inside too, so a crate that swung in gets shoved back out — and the
+    // reaction on the anchor is upward. The sign is what says so.
+    k = length / dist ?? 0.0;
+    return Rope { rp_state: RopeState.Taut,
+                  rp_pos: vec3(ax + dx * k, ay + dy * k, az + dz * k),
+                  rp_dist: length, rp_over: 0.0, rp_pull: 0.0 - over,
+                  rp_reason: "RIGID: the crate was {fabs(over)} inside and was pushed back out" };
+  }
+  // straight but unstretched, or genuinely slack: nothing is projected, so
+  // nothing is removed and the constraint does nothing.
+  st = RopeState.Slack;
+  why = "";
+  if taut { st = RopeState.Taut; why = "tether straight at {length}, tension zero"; }
+  Rope { rp_state: st, rp_pos: vec3(px, py, pz), rp_dist: dist,
+         rp_over: 0.0, rp_pull: 0.0, rp_reason: why }
+}
+
+// The crate hanging at swing angles `(a, b)` on the taut sphere — 2 of the 5
+// states `A-DOF` gives it, with the other 3 its own rotation. Straight down at
+// `(0, 0)`, which is the hanging rest a `SOLVED` state would settle to.
+pub fn crate_swing(ax: float, ay: float, az: float, length: float,
+                   sw_a: float, sw_b: float) -> Vec3 {
+  // `sw_a` tips away from straight down, `sw_b` swings that around
+  s = sin(sw_a);
+  vec3(ax + length * s * cos(sw_b),
+       ay - length * cos(sw_a),
+       az + length * s * sin(sw_b))
+}
+
+// A crate's frame: the position is the tether's, the orientation is its own three
+// states. `CARRIED` — no ground is consulted, and there is nowhere here it could
+// be.
+pub fn crate_frame(t: Rope, yaw: float, pitch: float, roll: float) -> Frame {
+  frame_mul(frame_mul(frame_mul(frame_trans(t.rp_pos.x, t.rp_pos.y, t.rp_pos.z),
+                                frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+                      frame_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
+            frame_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
+}
+
+// `A-TAUT` itself, as one number: how far the inequality is violated. Zero or
+// negative is admissible; positive is a stretched rope.
+pub fn taut_violation(t: Rope, length: float) -> float { t.rp_dist - length }

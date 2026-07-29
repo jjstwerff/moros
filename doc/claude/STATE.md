@@ -242,9 +242,34 @@ written and not built.** In priority order:
    **Seen red**: no `cos(pitch)` (4 clauses), axle from a literal (1), frame origin at the
    axle instead of the pin (6).
 
-   **Next is `A8`** — `TETHER` + `CARRIED`, a crate under a balloon: the first body with no
-   ground under it at all. `A-TAUT`'s control is sharp — drive the crate past `L` and a
-   rigid-rod implementation pushes the anchor **up**, which the sign test catches.
+9. ✅ **`A8` is BUILT** — `lib/moros_sim/src/tether.loft`, 12 tests, **607 green**, all 109
+   functions entered. **The sign is a returned value**: `rp_pull` is ≤ 0 for a rope always,
+   and > 0 the moment a rod holds the crate from the inside. *"Only the sign of the constraint
+   tells you"* as a number rather than a remark.
+   - A rod with the crate 1 wu inside a 3 wu rope reports `rp_pull = 2` and drives it 2 wu
+     further out — a shove upward on the anchor. The rope goes slack and does nothing.
+   - ⚠ **Outside the ball a rope and a rod are indistinguishable** to the float bound, so a
+     test that only pulls cannot tell them apart. The control has to put the crate INSIDE,
+     which is why the design specified it that way.
+   - **Slack removes nothing**, so `A2`'s slack ledger carries one state more and still closes
+     at six — checked against the geometry both ways.
+   - **`CARRIED` is visible in the signature**: nothing in the file takes a terrain sampler,
+     because a dangling crate has nowhere to consult one.
+   ⚠ **A crate CONSTRUCTED on the sphere read as slack** (`dist − L` = ±1e-16 — an exclusive
+   test on the boundary is a coin flip). **Third float boundary in this plan.** The fix
+   separates the **state** (a doorstep with a named `TAUT_EPS`) from the **projection**
+   (strict, only for a real outward violation) — which keeps `rp_pull ≤ 0` a property of the
+   mechanism and not of a clamp. A clamped sign would have made the control pass for the
+   wrong reason.
+   **Seen red**: rope-is-really-a-rod (4 clauses), unclamped pull (3), projecting along the
+   vertical instead of the rope (1).
+
+   **A7 and A8 were the steps the design said would decide it** — *"if the structure holds for
+   both without a special case, `A-DOF` was the right invariant."* It held.
+   **Next is `A9`** — per-body shape and proxy, proving `A-PROXY` (`I4`). ⚠ `P4` already
+   falsified the easy route: `bone_obb` bounds a spoke's *capsule* and a wheel's disc reaches
+   `R` in every in-plane direction, so the proxy must come from a per-body **shape kind**,
+   derived from the rig's `rg_len` — which `A5` put in one place for exactly this.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
