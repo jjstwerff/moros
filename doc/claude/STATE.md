@@ -10,6 +10,42 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
+## ⏭ PICK UP HERE (2026-07-29, end of session)
+
+Four things are ready to start, in this order. Each is short and each has its unknown
+already answered — none of them needs re-diagnosing.
+
+1. **Publish `web` 0.3.3.** ⚠ Corrected diagnosis: `wasm/` is NOT missing from the package —
+   **0.3.3 has never been published.** The source tree `../loft-libs-net/web` is 0.3.3 with
+   `wasm/{Cargo.toml,host.js,src/lib.rs}` all tracked; the installed 0.3.2 predates the
+   bridge. So this is a release to cut, not a packaging bug to fix.
+   *Gate:* each library repo's `library-ci.yml` only lists packages and delegates to
+   `loft-lang/loft/.github/workflows/library-ci-reusable.yml@main` — **read that reusable
+   first**; it is where the requirements live. Then tag, tarball, sha256, registry entry,
+   signature.
+   *Then:* drop `--lib ../loft-libs-net/` from `make client` and note the flag expired in
+   plan 16.
+2. **S1's drawing** (`plans/16-client-split/DESIGN.md`). `src/editor_client.loft` already
+   connects, drains frames and compiles to a page (`make client`). What remains: read the
+   `scene` package's API (`Scene`, `Camera` — `graphics` only references them), then map
+   `M:` → a `mesh3d::Mesh` built from the 6-floats-per-vertex run, `T:` → its model matrix,
+   `X:` → remove, `C:` → the camera. The server builds those very types, so the client is
+   deserialising into the type it came from.
+   *Done when:* the browser gates pass against the page as they do against `editor.html`,
+   which then gets deleted.
+3. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
+   re-measures the perpendicular stop rather than the slide. It needs a yaw the `7:` placement
+   actually applies. The slide itself IS verified — trail in the 6d notes — this is a gate
+   defect, not a feature one.
+4. **The `hex_edge` README note is uncommitted in the shared tree**, alongside the older
+   `hex_field` fix. Both need a human call before committing in `../loft-libs-world/`.
+
+**How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (the wasm page) ·
+`make gate` (all 22, and it now stops the server after) · `make stop-editor` (three
+platforms, by pid file OR port) · `27:1` on the wire turns on the phase trace ·
+`node tools/plan.mjs out.png` draws the world in plan view.
+⚠ **Stop the server when done.** It is not idle when forgotten — that was 76% of a core.
+
 ## Since 2026-07-29 — row 6 finished, and the design turned toward the client
 
 **Row 6 is complete: 6a-6d.** A wall is now an analytic **run**, not a set of edges. That
