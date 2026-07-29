@@ -2783,6 +2783,11 @@ fn main() {
   acc_proxy = 0; acc_cam = 0; acc_rest = 0;
   nticks = 0; nrebuild = 0; acc_since = ticks(); tph = ticks();
   tracing = false;             // `27:1` turns it on; it costs three `ticks()` a tick
+  // What the camera was last solved for. A pose unequal to this, or a moved
+  // edit clock, is what makes it solve again.
+  cam_lx = 0.0 - 1.0; cam_ly = 0.0; cam_lz = 0.0;
+  cam_lyaw = 0.0; cam_lpitch = 0.0; cam_ltau = 0 - 1;
+  cam_rested = false;
   keys = 0;
   last_us = ticks();
 
@@ -3445,6 +3450,23 @@ fn main() {
       //    ways, so it never snaps and always settles back on the player's own.
       acc_proxy = acc_proxy + (ticks() - tph);
       tph = ticks();
+
+      // ── A STATIC CAMERA IS NOT RE-SOLVED ──────────────────────────────────
+      //
+      // Eleven solves a tick, 770 terrain reads, ~100% of a core — and on a tick
+      // where nothing moved, every one recomputes a number that cannot have
+      // changed. The camera is a function of the character's pose, the viewer's
+      // pitch and the ground; when none of those has moved and the boom has
+      // finished easing, last tick's answer IS this tick's answer.
+      //
+      // The test is the INPUTS, not a timer: pose, pitch, and the world's edit
+      // clock — so raising ground under a standing camera still re-solves, which
+      // a "no input for N ms" rule would miss. `cam_rested` keeps it solving
+      // through the ease after a change, because the boom is still moving then
+      // even though nothing else is.
+      cam_moved = px != cam_lx || py != cam_ly || pz != cam_lz
+               || yaw != cam_lyaw || pitch != cam_lpitch || wld.w_tau != cam_ltau;
+      if cam_moved || !cam_rested {
       cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
@@ -3467,6 +3489,14 @@ fn main() {
         cam_dist = cam_approach(cam_dist, cam_free, CAM_K_IN, dt);
       } else {
         cam_dist = cam_approach(cam_dist, cam_free, CAM_K_OUT, dt);
+      }
+      // Rested once the boom and the lift have both arrived: until then the
+      // solve has to keep running, because the ease is what is still moving.
+      dd1 = cam_dist - cam_free; if dd1 < 0.0 { dd1 = 0.0 - dd1; }
+      dd2 = cam_pitch - cam_pt; if dd2 < 0.0 { dd2 = 0.0 - dd2; }
+      cam_rested = dd1 < 0.001 && dd2 < 0.001;
+      cam_lx = px; cam_ly = py; cam_lz = pz;
+      cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
       }
       acc_cam = acc_cam + (ticks() - tph);
       tph = ticks();
@@ -3534,7 +3564,7 @@ fn main() {
           samples = per_tick * CAM_STEPS * 5;
           msg = "TRACE {nticks} ticks/s: proxy {acc_proxy / 1000 ?? 0}ms "
               + "({nrebuild} rebuilds)  camera {acc_cam / 1000 ?? 0}ms  "
-              + "rest {acc_rest / 1000 ?? 0}ms | camera does {per_tick} solves/tick "
+              + "rest {acc_rest / 1000 ?? 0}ms | when it solves: {per_tick} solves/tick "
               + "x {CAM_STEPS} steps x 5 terrain reads = {samples} samples/tick, "
               + "{samples * nticks} a second, each one a cell and its six neighbours";
           println(msg);

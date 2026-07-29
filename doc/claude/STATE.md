@@ -146,7 +146,7 @@ for loft the language and its tooling only.
 
 ### Open
 
-- ⚠ **THE TICK COSTS ~100% OF A CORE FOR ONE WATCHING CLIENT, AND IT IS ALL THE CAMERA.**
+- ✅ **THE TICK IS 0% FOR A WATCHING CLIENT WHO IS NOT MOVING** — it was ~100%, all camera.
   Attributed, not guessed — `27:1` turns on a per-second phase trace:
 
   ```
@@ -163,9 +163,15 @@ for loft the language and its tooling only.
   samples, each sample costing a `terrain_y` **plus the four more inside `cam_clear_at`** —
   770 terrain reads a tick, and every one of them reads a cell and its six neighbours.
   The tick rate is collapsing under it (31 → 15/s), which is why the walk feels heavy.
-  **The fix is arithmetic, not micro-optimisation**: cache the terrain read per sample
-  (`cam_clear_at` re-reads what `cam_free_dist` just read), or sample the arc lazily —
-  the numbers are now on the wire to check any of it against.
+  **The fix was none of the optimisations that suggested themselves.** A static camera does
+  not need solving at all: it is a function of the character's pose, the viewer's pitch and
+  the ground, so when none of those has moved and the boom has finished easing, last tick's
+  answer is this tick's. Gated on those INPUTS — pose, pitch, and the world's edit clock, so
+  raising ground under a standing camera still re-solves, which a "no input for N ms" rule
+  would miss — plus a `cam_rested` flag that keeps it solving through the ease afterwards.
+  Measured after: **0%**, camera 0 ms, and the tick holds a full 31/s where it had collapsed
+  to 15. `occlude`, `terrain`, `climb` and `collide` all still green, which is what says the
+  camera still works when something does move.
   ⚠ It is NOT this rung's regression to blame: the 9-point wall-sweep skip was aimed at
   the obvious candidate and was mostly wrong, and the 12.9% on record predates the
   predictive-arc camera.
