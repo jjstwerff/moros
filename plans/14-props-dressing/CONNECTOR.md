@@ -216,6 +216,14 @@ straight down and never *swings*. Both are often what you want and both are far 
 The error to prevent is picking one by accident, which is why the kind is declared per
 state and appears in the ledger rather than being implied by the link type.
 
+⚠ **And `DRIVEN` hides two cases that behave differently, which `P5` measured.** A
+*commanded* angle cannot run away; an *integrated* one can, because its equilibrium may
+be **unstable**. A trailer's yaw is the example: forward it converges, and the same state
+under the same law diverges the moment the speed changes sign. No amount of exactness
+helps there — an unstable equilibrium amplifies whatever it is given, including the last
+bit of a perfect integrator. **Only a declared limit does**, which is why the jackknife
+belongs in the ledger as a `K-FIT` doorstep rather than in the solver as a clamp.
+
 ### ⚠ "hexbody needs no skinning" is true of the RIG and false of the PICTURE — measured
 
 Joints answer where a part is. They do not answer what it *looks like*, and the gap
@@ -386,7 +394,7 @@ and records it, as `wheel_skid` records machine-ε rather than claiming algebrai
 |---|---|---|---|
 | **P1** | `rig_world_seg` is enough to place a part for rendering | build the cart's transforms from the rig and diff against the current matrices | the rig cannot express something render needs without a second source |
 | ~~P3~~ | ~~a 3-DOF joint is three `MOUNT`s in series~~ | — | **run below: confirmed for REACH, refuted for RANK** |
-| **P5** | **a towed chain stays stable** | two carts behind a horse through a tight turn and a reversal | the yaw states oscillate or the chain jack-knifes without the geometry saying it should |
+| ~~P5~~ | ~~a towed chain stays stable~~ | — | **run below: not falsified — every divergence is one the geometry predicts** |
 | **P6** | **N bones approximate a continuous bend to a stated bound** | discretise a cantilever under uniform load into `N` segments; measure tip error against the analytic elastica for `N = 2, 4, 8, 16` | the error does not fall predictably with `N`, or the `N` needed for a visually acceptable wing is large enough that the rig is the wrong representation |
 | **P7** | **a joint can be skinned by overlap alone** | for the character's hip, extend the pelvis by the maximum wedge and sweep the full swing range looking for background through the joint; then repeat for a 10-station wing | overlap cannot close a wing's joints without visible bulging — then the wing needs real skinning and `hex_body`'s *"no skinning"* is true only of the rig |
 | ~~P4~~ | ~~`bone_obb` proxies a wheel~~ | — | **falsified analytically above** |
@@ -546,6 +554,68 @@ of thickness at 60°**: visible, and the case overlap does not serve.
    so an inclusive test on a rotated point is a coin flip — the first run reported a 1 mm
    seam on a straight wing. Sampling one micron inboard fixes it, and the θ = 0 row is the
    control that says so.
+
+---
+
+### `P5` — RUN. Not falsified, and it adds a doorstep
+
+`probe/towed_chain.loft`, pure and serverless: a horse, a cart, and a cart behind that,
+on standard on-axle N-trailer kinematics. The yaw rate is not a chosen law — it is the
+non-holonomic condition (*the wheels do not slide sideways*) solved for `θ̇`.
+
+**The falsifier is not "does it diverge".** Reversing a two-trailer rig really is
+unstable; that is a fact about trailers, not a defect in a model of them. The words that
+matter are *"without the geometry saying it should"*, so **every divergence here is
+measured against a closed form** and the claim is that the two agree.
+
+**Forward, a steady turn settles exactly where the geometry says** — worst departure
+`5.9 × 10⁻⁹` over five radii, against
+
+```
+    sin φ₁ = L₁/R        sin φ₂ = L₂/(R·cos φ₁)
+    R₁ = √(R² − L₁²)     R₂ = √(R² − L₁² − L₂²)      the trailers cut the corner
+```
+
+Three results follow, and two of them are new to the design:
+
+- **A new doorstep: `R ≥ √(Σ Lᵢ²)`.** `sin φ₂ = L₂/(R·cos φ₁)` has **no solution** below
+  it, so there is no steady state and the chain jackknifes on a turn it cannot hold.
+  Measured with `L₁ = 1.6`, `L₂ = 1.2` — a minimum of exactly `2.0` — and the sweep
+  settles at 2.40, 2.10, 2.02 and does not at 1.98, 1.90, 1.70. ⚠ **The SECOND cart sets
+  it**: cart 1 alone would manage down to `R = L₁ = 1.6`. A chain's minimum radius is the
+  Euclidean norm of the drawbar lengths, not the longest one.
+- **The solve goes marginal exactly where the doorstep bites**, which is the same shape
+  the cart's bank solve already has (*"converges while `tan β < 1/L`, and that degrades
+  exactly where the `|d| ≤ 2w` doorstep bites"*). Settling rate `9.4 × 10⁻¹²` at `R = 2.40`,
+  `1.5 × 10⁻⁷` at `2.10`, `7.2 × 10⁻⁵` at `2.02` — because `φ₂ → 90°` and the fixed point's
+  own rate carries a `cos φ₂`. **Two independent solves in this design share that
+  structure**, so solver and refusal fail together rather than one failing quietly first.
+- **The reversal diverges at exactly the predicted rate.** Linearised, `φ̇ = −v·φ/L`:
+  forward that decays, reversing it grows, and the sign is the whole physics. Measured
+  `0.6249999999983603` against `0.625`, and **halving the step moves it by 1.1 × 10⁻¹⁴** —
+  which is what says the jackknife is the geometry and not the integrator. That is the
+  falsifier answered in its own terms.
+
+⚠ **The chain AMPLIFIES, and my prediction of that was wrong.** The downstream hitch was
+predicted to grow at its own eigenvalue `|v|/L₂ = 0.833`. It grows at **1.286** — faster
+than *both* modes — because `φ₂` starts at zero and is **driven** by the hitch ahead, so
+the linearised pair solves to a difference of two exponentials:
+
+```
+    φ₂(t) = a·φ₁(0)·(e^{−at} − e^{−bt}) / (b − a)        a = v/L₁,  b = v/L₂
+```
+
+Against that, the measurement agrees to `1.4 × 10⁻¹¹`. **The transient cannot be waited
+out**: the modes separate as `e^{(b−a)t}` while `φ₂` leaves the linear regime far sooner,
+so the honest move is to predict the transient rather than measure past it. The
+consequence for the design is concrete — *"the shortest link folds first"* understates it,
+and **the last cart folds sooner than its own link length predicts**.
+
+**And the con-rod, for a towed chain.** Deriving cart 1's axle from the yaw state makes
+`A-RIGID` true by construction; integrating its pose separately — *storing a transform* —
+walks it off the drawbar by `8.4 × 10⁻¹²` over a 60 s turn, and that grows. Small, and
+the point is that it is not zero: *"nothing stores a transform"* is buying exactness, not
+tidiness.
 
 ---
 

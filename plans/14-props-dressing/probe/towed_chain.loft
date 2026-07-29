@@ -1,0 +1,314 @@
+// P5 — DOES A TOWED CHAIN STAY STABLE?
+//
+// `A-DOF` gives a towed cart `hitch removes 3 … contacts give 2 … yaw 1`, and
+// the design's line on history is that the yaw is *"a named scalar advanced by
+// the simulation"* with the pose a pure function of it. Two carts behind a
+// horse is the case that tests whether that survives.
+//
+// ── the falsifier, and why it is not "does it diverge" ───────────────────────
+//
+// *"the yaw states oscillate or the chain jack-knifes WITHOUT THE GEOMETRY
+// SAYING IT SHOULD."* Those last six words are the whole probe. Reversing a
+// two-trailer rig really is unstable — that is a fact about trailers, not a
+// defect in a model of them — so a probe that only reported "it diverged"
+// could not tell the physics from a broken integrator.
+//
+// So every divergence here is measured against a CLOSED FORM, and the claim is
+// that the two agree. Where they do, the model is reporting the world. The
+// step-halving control is the other half: a numerical instability changes when
+// the step changes, and a geometric one does not.
+//
+// ── the model ───────────────────────────────────────────────────────────────
+//
+// Standard on-axle N-trailer kinematics. Unit i's axle sits `Lᵢ` behind unit
+// (i−1)'s along unit i's own heading, and its wheels do not slide sideways:
+//
+//     θ̇ᵢ = v_{i−1}·sin(θ_{i−1} − θᵢ) / Lᵢ        vᵢ = v_{i−1}·cos(θ_{i−1} − θᵢ)
+//
+// which is the non-holonomic condition solved for the yaw rate, not a chosen
+// law. Everything below follows from it.
+//
+// run: loft --interpret --path ../loft/ plans/14-props-dressing/probe/towed_chain.loft
+
+const PI = 3.14159265358979;
+
+// A horse, a cart, and a second cart. L1 and L2 are chosen so the predicted
+// minimum turn radius √(L1² + L2²) lands on exactly 2.0 — a round number to
+// sweep across, not a coincidence to explain away.
+const L1 = 1.6;
+const L2 = 1.2;
+const SPEED = 1.0;
+
+struct St {
+  s_x: float, s_y: float,          // the lead's axle
+  s_t0: float, s_t1: float, s_t2: float,
+  s_qx: float, s_qy: float         // cart 1's axle, INTEGRATED rather than derived
+}
+
+struct Run {
+  rn_p1: float, rn_p2: float,      // hitch angles at the end
+  rn_r1: float, rn_r2: float,      // …and their rates, so "settled" is measurable
+  rn_drift: float,                 // worst |‖p0 − q‖ − L1| along the way
+  rn_rad1: float, rn_rad2: float   // the trailers' own turn radii
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+fn deriv(s: St, v: float, om: float) -> St {
+  p1 = s.s_t0 - s.s_t1;
+  p2 = s.s_t1 - s.s_t2;
+  v1 = v * cos(p1);
+  St { s_x: v * cos(s.s_t0), s_y: v * sin(s.s_t0),
+       s_t0: om,
+       s_t1: v * sin(p1) / L1 ?? 0.0,
+       s_t2: v1 * sin(p2) / L2 ?? 0.0,
+       // ⚠ The independently-integrated copy: this is what "storing a
+       // transform" looks like, and case C is what it costs.
+       s_qx: v1 * cos(s.s_t1), s_qy: v1 * sin(s.s_t1) }
+}
+
+fn st_step(s: St, k: St, h: float) -> St {
+  St { s_x: s.s_x + k.s_x*h, s_y: s.s_y + k.s_y*h,
+       s_t0: s.s_t0 + k.s_t0*h, s_t1: s.s_t1 + k.s_t1*h,
+       s_t2: s.s_t2 + k.s_t2*h,
+       s_qx: s.s_qx + k.s_qx*h, s_qy: s.s_qy + k.s_qy*h }
+}
+
+fn rk4(s: St, v: float, om: float, h: float) -> St {
+  k1 = deriv(s, v, om);
+  k2 = deriv(st_step(s, k1, h * 0.5), v, om);
+  k3 = deriv(st_step(s, k2, h * 0.5), v, om);
+  k4 = deriv(st_step(s, k3, h), v, om);
+  g = h / 6.0 ?? 0.0;
+  St { s_x: s.s_x + g*(k1.s_x + 2.0*k2.s_x + 2.0*k3.s_x + k4.s_x),
+       s_y: s.s_y + g*(k1.s_y + 2.0*k2.s_y + 2.0*k3.s_y + k4.s_y),
+       s_t0: s.s_t0 + g*(k1.s_t0 + 2.0*k2.s_t0 + 2.0*k3.s_t0 + k4.s_t0),
+       s_t1: s.s_t1 + g*(k1.s_t1 + 2.0*k2.s_t1 + 2.0*k3.s_t1 + k4.s_t1),
+       s_t2: s.s_t2 + g*(k1.s_t2 + 2.0*k2.s_t2 + 2.0*k3.s_t2 + k4.s_t2),
+       s_qx: s.s_qx + g*(k1.s_qx + 2.0*k2.s_qx + 2.0*k3.s_qx + k4.s_qx),
+       s_qy: s.s_qy + g*(k1.s_qy + 2.0*k2.s_qy + 2.0*k3.s_qy + k4.s_qy) }
+}
+
+fn fresh(p1: float) -> St {
+  // the lead at the origin heading +x; cart 1 hinged by p1, cart 2 in line.
+  // The integrated copy starts ON the derived position, so any later
+  // separation is drift and nothing else.
+  t1 = 0.0 - p1;
+  St { s_x: 0.0, s_y: 0.0, s_t0: 0.0, s_t1: t1, s_t2: t1,
+       s_qx: 0.0 - L1 * cos(t1), s_qy: 0.0 - L1 * sin(t1) }
+}
+
+// A steady turn of radius `rad`, driven long enough to settle — or to show
+// that it will not. Rates are read from the derivative at the end, because
+// "settled" is a statement about motion, not about the value reached.
+fn turn(rad: float, secs: float, h: float) -> Run {
+  s = fresh(0.0);
+  om = SPEED / rad ?? 0.0;
+  n = (secs / h ?? 0.0) as integer;
+  drift = 0.0;
+  for it in 0..n {
+    s = rk4(s, SPEED, om, h);
+    dx = s.s_x - s.s_qx;
+    dy = s.s_y - s.s_qy;
+    d = fabs(sqrt(dx*dx + dy*dy) - L1);
+    if d > drift { drift = d; }
+  }
+  dd = deriv(s, SPEED, om);
+  // the trailers' own axle positions, DERIVED from the yaw states
+  ax1 = s.s_x - L1 * cos(s.s_t1);
+  ay1 = s.s_y - L1 * sin(s.s_t1);
+  ax2 = ax1 - L2 * cos(s.s_t2);
+  ay2 = ay1 - L2 * sin(s.s_t2);
+  // the turn centre is `rad` to the lead's left
+  cx = s.s_x - rad * sin(s.s_t0);
+  cy = s.s_y + rad * cos(s.s_t0);
+  Run { rn_p1: s.s_t0 - s.s_t1, rn_p2: s.s_t1 - s.s_t2,
+        rn_r1: dd.s_t0 - dd.s_t1, rn_r2: dd.s_t1 - dd.s_t2,
+        rn_drift: drift,
+        rn_rad1: sqrt((ax1-cx)*(ax1-cx) + (ay1-cy)*(ay1-cy)),
+        rn_rad2: sqrt((ax2-cx)*(ax2-cx) + (ay2-cy)*(ay2-cy)) }
+}
+
+// A straight line at speed `v` (negative to reverse) from a small kink. The
+// growth rate is read between two times inside the LINEAR regime — outside it
+// sin φ ≠ φ and an exponential fit measures the wrong thing.
+fn kink_rate(v: float, h: float, ta: float, tb: float, second: boolean) -> float {
+  s = fresh(0.000001);
+  na = (ta / h ?? 0.0) as integer;
+  nb = (tb / h ?? 0.0) as integer;
+  pa = 0.0;
+  for ia in 0..nb {
+    if ia == na {
+      if second { pa = fabs(s.s_t1 - s.s_t2); } else { pa = fabs(s.s_t0 - s.s_t1); }
+    }
+    s = rk4(s, v, 0.0, h);
+  }
+  pb = fabs(s.s_t0 - s.s_t1);
+  if second { pb = fabs(s.s_t1 - s.s_t2); }
+  if pa <= 0.0 { return 0.0; }
+  // `??` binds LOOSEST, so `ln(x) ?? 0.0 / (tb - ta)` parses as
+  // `ln(x) ?? (0.0 / (tb - ta))` — discharge each step on its own line.
+  g = ln(pb / pa ?? 0.0) ?? 0.0;
+  g / (tb - ta) ?? 0.0
+}
+
+// ⚠ THE DOWNSTREAM HITCH'S APPARENT RATE IS NOT ITS OWN EIGENVALUE, and the
+// first version of this probe predicted that it was and called the model wrong.
+// φ₂ starts at ZERO and is DRIVEN by the hitch ahead of it, so the linearised
+// pair solves to a DIFFERENCE of two exponentials:
+//
+//     φ₂(t) = a·φ₁(0)·(e^{−at} − e^{−bt}) / (b − a)      a = v/L1,  b = v/L2
+//
+// which over any window rises FASTER than either mode — 1.2857 against
+// eigenvalues of 0.625 and 0.833. φ₁(0) cancels in a ratio, so the predicted
+// window rate needs only a, b and the two times. The transient cannot be waited
+// out either: the modes separate as e^{(b−a)t} while φ₂ leaves the linear
+// regime far sooner, so the honest move is to predict the transient, not to
+// measure past it.
+fn chain_rate_pred(v: float, ta: float, tb: float) -> float {
+  a = v / L1 ?? 0.0;
+  b = v / L2 ?? 0.0;
+  fa = exp(0.0 - a * ta) - exp(0.0 - b * ta);
+  fb = exp(0.0 - a * tb) - exp(0.0 - b * tb);
+  g = ln(fabs(fb) / fabs(fa) ?? 0.0) ?? 0.0;
+  g / (tb - ta) ?? 0.0
+}
+
+fn main() {
+  println("P5 — a towed chain: a horse, a cart, and a cart behind that");
+  println("");
+  println("  L1 {L1}   L2 {L2}   speed {SPEED}");
+  println("  predicted minimum steady turn radius  sqrt(L1^2 + L2^2) = {sqrt(L1*L1 + L2*L2)}");
+  fails = 0;
+
+  // ── A: a steady turn, forward, against the closed form ────────────────────
+  // In a steady turn the yaw rates all equal ω, which pins the hitch angles:
+  //     sin φ1 = L1/R          sin φ2 = L2/(R·cos φ1)
+  // and the trailers ride concentric circles R1 = √(R²−L1²), R2 = √(R²−L1²−L2²).
+  println("");
+  println("  A  a steady turn, forward — measured against the closed form");
+  println("");
+  println("      R     phi1    pred    phi2    pred    R1      pred    R2      pred");
+  worst_a = 0.0;
+  rads = [6.0, 4.0, 3.0, 2.5, 2.2];
+  for rr in rads {
+    ru = turn(rr, 60.0, 0.002);
+    q1 = asin(L1 / rr ?? 0.0);
+    q2 = asin(L2 / (rr * cos(q1)) ?? 0.0);
+    e1 = sqrt(rr*rr - L1*L1);
+    e2 = sqrt(rr*rr - L1*L1 - L2*L2);
+    println("    {rr:4.2}  {ru.rn_p1:6.4}  {q1:6.4}  {ru.rn_p2:6.4}  {q2:6.4}  "
+            + "{ru.rn_rad1:6.4}  {e1:6.4}  {ru.rn_rad2:6.4}  {e2:6.4}");
+    d = fabs(ru.rn_p1 - q1);
+    if fabs(ru.rn_p2 - q2) > d { d = fabs(ru.rn_p2 - q2); }
+    if fabs(ru.rn_rad1 - e1) > d { d = fabs(ru.rn_rad1 - e1); }
+    if fabs(ru.rn_rad2 - e2) > d { d = fabs(ru.rn_rad2 - e2); }
+    if d > worst_a { worst_a = d; }
+  }
+  println("     worst departure from the closed form  {worst_a}");
+  if worst_a < 0.000001 {
+    println("   ok    the chain settles exactly where the geometry says");
+  } else {
+    println("   FAIL  the settled state is not the geometric one");
+    fails = fails + 1;
+  }
+
+  // ── B: the doorstep — a turn too tight to have a steady state ─────────────
+  // `sin φ2 = L2/(R·cos φ1)` has NO SOLUTION below R = √(L1² + L2²). Same shape
+  // as the cart's `sin β = d/2w`: the solve and the refusal fail together.
+  println("");
+  println("  B  the minimum radius — where the steady state stops existing");
+  println("");
+  println("      R     phi2      rate      settled");
+  rmin = sqrt(L1*L1 + L2*L2);
+  bad = 0;
+  tight = [2.40, 2.10, 2.02, 1.98, 1.90, 1.70];
+  for tr in tight {
+    ru = turn(tr, 60.0, 0.002);
+    st = fabs(ru.rn_r2) < 0.0001;
+    mark = "no ";
+    if st { mark = "yes"; }
+    println("    {tr:4.2}  {ru.rn_p2:7.4}  {ru.rn_r2}   {mark}");
+    if tr > rmin && !st { bad = bad + 1; }
+    if tr < rmin && st { bad = bad + 1; }
+  }
+  if bad == 0 {
+    println("   ok    settles above {rmin} and does not below — the doorstep is");
+    println("         geometric, and it is the SECOND cart that sets it: cart 1");
+    println("         alone would manage down to R = {L1}");
+    println("   ⚠     and settling SLOWS as R approaches it, because φ2 -> 90° and");
+    println("         the fixed point's own rate carries a cos φ2. Same shape as");
+    println("         the cart's bank solve: the solver goes marginal exactly");
+    println("         where the doorstep bites, so neither fails quietly first");
+  } else {
+    println("   FAIL  {bad} radii fell on the wrong side of the predicted minimum");
+    fails = fails + 1;
+  }
+
+  // ── C: forward is stable, reverse is not, and both at the predicted rate ──
+  // Linearised, φ̇ = −v·φ/L. Forward that decays; reversing it grows. The rate
+  // is |v|/L either way, so the SIGN is the whole physics and the MAGNITUDE is
+  // what says the model is reporting it rather than inventing it.
+  println("");
+  println("  C  a small kink, driven straight");
+  fwd1 = kink_rate(SPEED, 0.002, 1.0, 3.0, false);
+  rev1 = kink_rate(0.0 - SPEED, 0.002, 1.0, 3.0, false);
+  rev2 = kink_rate(0.0 - SPEED, 0.002, 1.0, 3.0, true);
+  pf1 = 0.0 - SPEED / L1 ?? 0.0;
+  pr1 = SPEED / L1 ?? 0.0;
+  pr2 = SPEED / L2 ?? 0.0;
+  pc2 = chain_rate_pred(0.0 - SPEED, 1.0, 3.0);
+  println("     forward, hitch 1   rate {fwd1}   predicted {pf1}");
+  println("     reverse, hitch 1   rate {rev1}   predicted {pr1}");
+  println("     reverse, hitch 2   rate {rev2}   predicted {pc2}");
+  println("       …hitch 2's own eigenvalue is only {pr2:7.5}; it runs ahead of");
+  println("       that because it starts at zero and is DRIVEN by hitch 1");
+  cw = fabs(fwd1 - pf1);
+  if fabs(rev1 - pr1) > cw { cw = fabs(rev1 - pr1); }
+  if fabs(rev2 - pc2) > cw { cw = fabs(rev2 - pc2); }
+  println("     worst departure  {cw}");
+  if fwd1 < 0.0 && rev1 > 0.0 && cw < 0.0000001 {
+    println("   ok    forward converges and reverse diverges, both at |v|/L —");
+    println("         so the jackknife is the GEOMETRY, not the integrator");
+    println("   ok    and the chain AMPLIFIES: the downstream hitch outruns both");
+    println("         eigenvalues, so the last cart folds first and sooner than");
+    println("         its own link length predicts");
+  } else {
+    println("   FAIL  the rates do not match the linearised prediction");
+    fails = fails + 1;
+  }
+
+  // ── D: the control that separates physics from arithmetic ─────────────────
+  // A numerical instability moves when the step moves. A geometric one does not.
+  rev_h = kink_rate(0.0 - SPEED, 0.001, 1.0, 3.0, false);
+  println("");
+  println("  D  the same reversal at half the step");
+  println("     rate {rev_h:9.6}  against {rev1:9.6}   difference {fabs(rev_h - rev1)}");
+  if fabs(rev_h - rev1) < 0.000001 {
+    println("   ok    halving the step does not move the growth rate");
+  } else {
+    println("   FAIL  the growth rate depends on the step — it is the integrator");
+    fails = fails + 1;
+  }
+
+  // ── E: the con-rod, for a towed chain ─────────────────────────────────────
+  // `A-RIGID` says a drawbar cannot stretch. Deriving cart 1's axle from the
+  // yaw state makes that true by construction; INTEGRATING its position
+  // separately — storing a transform — does not.
+  ru = turn(3.0, 60.0, 0.002);
+  println("");
+  println("  E  the drawbar, over a 60 s turn");
+  println("     derived from the yaw state    stretch 0 by construction");
+  println("     integrated as its own pose    stretch {ru.rn_drift}");
+  if ru.rn_drift > 0.0 {
+    println("   ok    an independently integrated pose DOES walk off the drawbar,");
+    println("         which is what 'nothing stores a transform' is buying");
+  } else {
+    println("   FAIL  the integrated copy did not drift — E measures nothing");
+    fails = fails + 1;
+  }
+
+  println("");
+  if fails == 0 { println("towed_chain: every clause holds"); }
+  else { println("towed_chain: {fails} clause(s) failed"); }
+}

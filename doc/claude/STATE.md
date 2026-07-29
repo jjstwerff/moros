@@ -37,7 +37,24 @@ written and not built.** In priority order:
    `Rz·Ry(π/2)·Rx` leaves ~1.6e-15 in `cos β` and `atan2` divides it straight out; a matrix
    read from text — which is how `A-EXACT` says an assembly arrives — has literal zeros and
    the naive decomposition misses by 2.0. The first control passed and was worthless.
-   What is left is **`P1`, `P5`, `P6`**.
+   **`P5` is RUN too** (`probe/towed_chain.loft`) — **not falsified**. Forward, a steady
+   turn settles exactly where the closed form says (worst departure `5.9e-9`), and the
+   reversal diverges at exactly `|v|/L₁`, with **halving the step moving the rate by
+   1.1e-14** — which is what says the jackknife is the geometry and not the integrator.
+   Two things to carry into the build:
+   - **A new doorstep, `R ≥ √(Σ Lᵢ²)`** — below it no steady state exists. ⚠ **The LAST
+     cart sets it**, not the longest link: `L₁ = 1.6`, `L₂ = 1.2` gives 2.0, where cart 1
+     alone would manage 1.6. And the solve goes marginal exactly where the doorstep bites,
+     the same shape the cart's bank solve already has.
+   - ⚠ **A chain AMPLIFIES, and the obvious prediction is wrong.** The downstream hitch
+     grows at **1.286**, faster than *both* eigenvalues (0.625, 0.833), because it starts
+     at zero and is *driven* by the hitch ahead — the linearised pair is a difference of
+     two exponentials. The transient cannot be waited out. So "the shortest link folds
+     first" understates it: the last cart folds sooner than its own length predicts.
+   The design gained one ⚠ from this: **`DRIVEN` hides two cases.** A *commanded* angle
+   cannot run away; an *integrated* one can, because its equilibrium may be unstable — and
+   there no amount of exactness helps, only a declared limit.
+   What is left is **`P1`, `P6`**.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
