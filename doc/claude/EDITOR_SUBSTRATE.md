@@ -1105,6 +1105,24 @@ receives the geometry it draws, so the question is whether it queries the meshes
 keeps a light copy of the columns in view — a real design question, and the first one #7
 (`hex_editor`) has to answer about its client.
 
+**And the server need not be in the building.** This is the strongest of the four and the
+one the others only hint at: the editor is routinely driven over an ssh tunnel from off the
+LAN — that is how it is being used today — so a camera solved server-side puts *the whole
+internet* inside a mouse-drag. The wire makes it worse than one round trip: `3:<dx>,<dy>`
+travels, waits for the server's next 30 Hz tick, and the `C:` matrix travels back, so the
+floor is RTT plus up to 33 ms of tick quantisation, every drag, for ever.
+
+That reframes it from an optimisation to a **requirement about feel**, in the same class as
+the occlusion rule already recorded here: a camera that lags its input is not a slow camera,
+it is a camera you cannot aim. Nobody tunes their way out of a round trip.
+
+⚠ **And it forces one real design point.** A drag is BOTH things at once — it turns the
+character (world state, must reach the server) and it moves the camera (a view, must never
+leave the machine). So the client applies the look immediately and *reports the facing*;
+the server owns where the character ends up, the client owns what you see while getting
+there. Any design that sends pixels and waits for a matrix has put the seam in the wrong
+place, whatever language the client is written in.
+
 **What must NOT move:** the walk. Movement integrates on the server's fixed tick because
 that is what makes it reproducible from an input log (`L7`), and a client that solves its
 own position is a client that can disagree with the world. The seam is *the camera is a
