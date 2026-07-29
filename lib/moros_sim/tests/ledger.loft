@@ -1,0 +1,188 @@
+// A2 — the DOF ledger.
+//
+// `A-DOF` is a counting argument, so this walks the design's own table and
+// requires the count to reproduce every row — including the two the prose calls
+// out by hand: a four-wheel trailer over-constrained by its fourth wheel, and
+// today's unhitched cart short by one.
+use moros_sim;
+
+const HALF = 0.55;
+
+fn ledger_of(a: Assembly, i: integer) -> Ledger { body_ledger(a, i) }
+
+// ── the control the design named: TODAY's cart must report 5 ─────────────────
+//
+// State carries x, z and yaw = 3; the two wheel contacts give height and bank
+// = 2. That is five. The sixth is PITCH, supplied by nothing and pinned to zero
+// by fiat — and a real two-wheeled cart with no horse in the shafts tips
+// forward onto them. The arithmetic says so before any physics does.
+fn test_todays_cart_reports_five_not_six() {
+  c = asm_cart(HALF);
+  assert(asm_admissible(c), "the cart is still a well-formed assembly");
+  g = ledger_of(c, 0);
+  assert(g.dg_links == 0, "the chassis is reached by no link");
+  assert(g.dg_support == 2, "two contacts give height and bank");
+  assert(g.dg_driven == 3, "x, z, yaw");
+  assert(g.dg_total == 5, "five, not six");
+  assert(g.dg_residual == 1, "one degree supplied by nothing");
+  assert(!ledger_closed(g), "so the chassis does NOT close");
+  assert(!asm_closes(c), "and neither does the assembly");
+}
+
+// The wheels themselves are fine, which is what makes the failure specific
+// rather than a whole-assembly shrug.
+fn test_the_cart_wheels_close() {
+  c = asm_cart(HALF);
+  for i in 1..3 {
+    g = ledger_of(c, i);
+    assert(g.dg_links == 5, "a mount removes five");
+    assert(g.dg_support == 0, "Carried adds nothing further");
+    assert(g.dg_driven == 1, "the spin, from travel");
+    assert(ledger_closed(g), "a wheel closes at six");
+  }
+}
+
+// ── the rest of the table ───────────────────────────────────────────────────
+
+fn test_towed_cart_closes_everywhere() {
+  t = asm_towed(HALF, 1.6);
+  assert(asm_closes(t), "every body of a towed cart closes");
+  horse = ledger_of(t, 0);
+  assert(horse.dg_support == 3, "four legs give three, not four");
+  cart = ledger_of(t, 1);
+  assert(cart.dg_links == 3, "a hitch removes position only");
+  assert(cart.dg_support == 2, "the cart keeps its own two contacts");
+  assert(cart.dg_driven == 1, "yaw lags the horse");
+}
+
+// The hitch is what completes a two-wheel cart: the same chassis that reported
+// five, reached by a hitch, closes at six.
+fn test_the_hitch_is_what_completes_the_cart() {
+  loose = ledger_of(asm_cart(HALF), 0);
+  hitched = ledger_of(asm_towed(HALF, 1.6), 1);
+  assert(loose.dg_total == 5, "unhitched: five");
+  assert(hitched.dg_total == 6, "hitched: six");
+  assert(hitched.dg_links - loose.dg_links == 3, "the hitch supplied exactly three");
+  assert(loose.dg_driven - hitched.dg_driven == 2,
+         "and two of the chassis's own states became the horse's business");
+}
+
+fn test_balloon_and_crate_close() {
+  b = asm_balloon(3.0);
+  assert(asm_admissible(b), "a crate under a balloon is well-formed");
+  assert(asm_closes(b), "and both bodies close");
+  bal = ledger_of(b, 0);
+  assert(bal.dg_links == 0 && bal.dg_support == 1, "buoyancy gives altitude only");
+  assert(bal.dg_solved == 2, "pitch and roll settle to a hanging rest");
+  crate = ledger_of(b, 1);
+  assert(crate.dg_links == 1, "a taut tether removes one");
+  assert(crate.dg_support == 0, "the crate is Carried by the attachment itself");
+  assert(crate.dg_driven == 5, "two swing plus three of its own rotation");
+}
+
+// A tether has two ledgers, and the slack one closes exactly when the taut one
+// does — the degree the rope stops removing becomes a state instead.
+fn test_a_slack_tether_closes_too() {
+  b = asm_balloon(3.0);
+  taut = body_ledger(b, 1);
+  slack = body_ledger_slack(b, 1);
+  assert(slack.dg_links == 0, "slack, the rope removes nothing");
+  assert(slack.dg_driven == taut.dg_driven + 1, "the released degree becomes a state");
+  assert(slack.dg_total == taut.dg_total, "so the total is unchanged");
+  assert(ledger_closed(slack), "and the slack ledger closes");
+  // and on a body with no tether the two ledgers are the same thing
+  c = asm_cart(HALF);
+  assert(body_ledger_slack(c, 1).dg_links == 5, "a mount has only one ledger");
+}
+
+fn test_wing_stations_all_close() {
+  w = asm_wing(10, 0.577);
+  assert(asm_count(w) == 11, "a fuselage and ten stations");
+  assert(asm_admissible(w), "the chain is admissible");
+  assert(asm_closes(w), "every station closes");
+  st = ledger_of(w, 10);
+  assert(st.dg_solved == 1, "a station's bend is SOLVED from the load");
+  assert(st.dg_driven == 0, "and nothing about it is commanded");
+}
+
+// ── over-constraint, which must be reported and not averaged ─────────────────
+
+// The design's prose says the FOURTH wheel is over-constrained. The count says
+// exactly one, which is the same claim arrived at by arithmetic.
+fn test_four_wheel_trailer_is_over_by_exactly_one() {
+  t = asm_trailer4();
+  g = ledger_of(t, 1);
+  assert(g.dg_links == 3, "a ball hitch removes three");
+  assert(g.dg_support == 3, "four contacts give three — the bound bites");
+  assert(g.dg_total == 7, "seven");
+  assert(g.dg_residual == 0 - 1, "over-constrained by one: the fourth wheel");
+  assert(!asm_closes(t), "so the assembly does not close");
+}
+
+fn test_rigid_shafts_are_over_by_two() {
+  s = asm_shafted(HALF);
+  g = ledger_of(s, 1);
+  assert(g.dg_links == 5, "rigid shafts leave yaw only");
+  assert(g.dg_total == 8, "eight");
+  assert(g.dg_residual == 0 - 2, "over-constrained by two");
+}
+
+// ── the bound on ground contacts, which is what makes the above true ────────
+
+fn test_contacts_saturate_at_three() {
+  assert(dof_support(SupportKind.Ground, 1) == 1, "one contact gives height");
+  assert(dof_support(SupportKind.Ground, 2) == 2, "two give height and bank");
+  assert(dof_support(SupportKind.Ground, 3) == 3, "three give height, bank, pitch");
+  assert(dof_support(SupportKind.Ground, 4) == 3, "a fourth is redundant");
+  assert(dof_support(SupportKind.Ground, 40) == 3, "and so is the fortieth");
+  assert(dof_support(SupportKind.Carried, 0) == 0, "Carried adds nothing");
+  assert(dof_support(SupportKind.Buoyant, 0) == 1, "buoyancy gives one");
+  assert(dof_support(SupportKind.Unsupported, 0) == 0, "nothing gives nothing");
+}
+
+fn test_link_costs_are_the_tables() {
+  assert(dof_link(LinkKind.NoLink) == 0, "the root is reached by nothing");
+  assert(dof_link(LinkKind.Mount) == 5, "mount");
+  assert(dof_link(LinkKind.Shaft) == 5, "shaft");
+  assert(dof_link(LinkKind.Spring) == 5, "spring, one compliantly");
+  assert(dof_link(LinkKind.Hitch) == 3, "hitch: position only");
+  assert(dof_link(LinkKind.Tether) == 1, "tether: radial, when taut");
+}
+
+// ── the contact count has to be declared where it means something ───────────
+
+fn test_ground_needs_a_contact() {
+  a = asm_add(asm_new("hover"), 0 - 1, link_none(),
+              body_of(SupportKind.Ground, 3, 0, 0));
+  assert(!asm_admissible(a), "ground support with no contacts is nothing");
+}
+
+fn test_contacts_only_on_ground() {
+  a = asm_add(asm_new("odd"), 0 - 1, link_none(),
+              body_of(SupportKind.Buoyant, 5, 0, 2));
+  assert(!asm_admissible(a), "contacts on a body the ground never touches");
+}
+
+// ── the report is a reason plus a residual, not a boolean ────────────────────
+
+fn test_the_report_names_the_failure() {
+  r = asm_ledger_report(asm_cart(HALF));
+  assert(r.contains("UNDER-DETERMINED by 1"), "it says how short, and by how much");
+  assert(r.contains("total 5"), "and shows the sum it got");
+  o = asm_ledger_report(asm_trailer4());
+  assert(o.contains("OVER-CONSTRAINED by 1"), "and names the other direction");
+  assert(o.contains("SPRING"), "with the two ways out");
+  g = asm_ledger_report(asm_towed(HALF, 1.6));
+  assert(!g.contains("CONSTRAINED") && !g.contains("DETERMINED"),
+         "a closing assembly reports no failure");
+}
+
+// The contact count is part of the description, so it must survive the round
+// trip — a field that writes but does not read back is worse than absent.
+fn test_contacts_survive_the_round_trip() {
+  t = asm_towed(HALF, 1.6);
+  back = asm_read(asm_write(t));
+  assert(asm_eq(t, back), "the towed cart round-trips with its contacts");
+  assert(asm_write(back) == asm_write(t), "byte for byte");
+  assert(asm_ledger_report(back) == asm_ledger_report(t), "and its ledger is the same");
+}

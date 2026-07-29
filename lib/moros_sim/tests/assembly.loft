@@ -38,23 +38,23 @@ fn test_empty_is_refused() {
 }
 
 fn test_root_must_have_no_parent() {
-  a = asm_add(asm_new("bad"), 0, link_none(), body_of(SupportKind.Ground, 0, 0));
+  a = asm_add(asm_new("bad"), 0, link_none(), body_of(SupportKind.Ground, 0, 0, 2));
   assert(!asm_admissible(a), "body 0 with a parent is refused");
 }
 
 fn test_root_must_have_no_link() {
   a = asm_add(asm_new("bad"), 0 - 1, wheel_mount(0.0),
-              body_of(SupportKind.Ground, 0, 0));
+              body_of(SupportKind.Ground, 0, 0, 2));
   assert(!asm_admissible(a), "the root carries no link");
 }
 
 fn test_forward_parent_is_refused() {
   a = asm_new("fwd");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 1, wheel_mount(0.1), body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(a), "a body cannot be its own parent");
   b = asm_new("fwd2");
-  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   b = asm_add(b, 2, wheel_mount(0.1), body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(b), "a parent later in the order is refused");
 }
@@ -63,7 +63,7 @@ fn test_forward_parent_is_refused() {
 // hangs off body 2. Structurally a tree; not in canonical order, so refused.
 fn test_relabelled_tree_is_refused() {
   a = asm_new("relabelled");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 2, wheel_mount(0.0 - HALF), body_of(SupportKind.Carried, 1, 0));
   a = asm_add(a, 0, wheel_mount(HALF), body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(a), "a relabelling that breaks the order is refused");
@@ -71,7 +71,7 @@ fn test_relabelled_tree_is_refused() {
 
 fn test_child_must_have_a_link() {
   a = asm_new("nolink");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_none(), body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(a), "a non-root body reached by no link is refused");
 }
@@ -80,7 +80,7 @@ fn test_child_must_have_a_link() {
 
 fn test_mount_needs_an_axis() {
   a = asm_new("noaxis");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 0.0),
               body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(a), "a revolute axis of length zero names no axis");
@@ -101,14 +101,14 @@ fn test_tether_needs_a_length() {
 
 fn test_limits_must_be_ordered() {
   a = asm_new("lim");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 1.0, 1.0, 0.0 - 1.0),
               body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(a), "lo above hi is refused");
   // and the default range is FREE rather than pinned, so a mount with no
   // authored limits is admissible instead of a joint stuck at zero
   d = asm_new("free");
-  d = asm_add(d, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  d = asm_add(d, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   d = asm_add(d, 0, wheel_mount(HALF), body_of(SupportKind.Carried, 1, 0));
   dl = d.am_link[1] ?? link_none();
   assert(dl.lk_lo < 0.0 && dl.lk_hi > 0.0, "the default range is free");
@@ -125,16 +125,16 @@ fn test_carried_root_is_refused() {
 
 fn test_negative_state_count_is_refused() {
   a = asm_add(asm_new("neg"), 0 - 1, link_none(),
-              body_of(SupportKind.Ground, 0 - 1, 0));
+              body_of(SupportKind.Ground, 0 - 1, 0, 2));
   assert(!asm_admissible(a), "a negative state count is refused");
 }
 
 fn test_name_must_be_one_word() {
   a = asm_add(asm_new("two words"), 0 - 1, link_none(),
-              body_of(SupportKind.Ground, 3, 0));
+              body_of(SupportKind.Ground, 3, 0, 2));
   assert(!asm_admissible(a), "a space in the name would not read back");
   b = asm_add(asm_new(""), 0 - 1, link_none(),
-              body_of(SupportKind.Ground, 3, 0));
+              body_of(SupportKind.Ground, 3, 0, 2));
   assert(!asm_admissible(b), "an empty name is refused");
 }
 
@@ -153,7 +153,7 @@ fn test_round_trip_is_byte_exact() {
 // behind, so an awkward value is the honest fixture.
 fn test_round_trip_keeps_awkward_floats() {
   a = asm_new("awkward");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_mount(0.1, 0.0 - 0.3333333333333333,
                                1.0 / 3.0 ?? 0.0,
                                0.0, 0.7071067811865476, 0.0 - 0.7071067811865476,

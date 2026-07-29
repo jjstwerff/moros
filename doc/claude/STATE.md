@@ -104,8 +104,34 @@ written and not built.** In priority order:
    - **No wheel radius in `asm_cart`** — it is a *shape*, and shapes arrive at `A9`.
      Carrying it now would be a home for a number with no reader.
 
-   **Next is `A2` — the DOF ledger**, which the design says to build before any geometry:
-   run it on today's unhitched cart and it must report **5**, not pass.
+3. ✅ **`A2` — the DOF ledger — is BUILT**, 15 tests, **538 green** across the five
+   packages, all 65 functions in the package entered. Three lines of arithmetic plus one
+   bound reproduce **every row** of `A-DOF`'s own table:
+   ```
+   dof_link:    none 0 · mount/shaft/spring 5 · hitch 3 · tether 1 (taut)
+   dof_support: unsupported/carried 0 · buoyant 1 · ground min(contacts, 3)
+   ```
+   **`GROUND_MAX = 3` is the interesting part** — a fourth contact on a rigid body is
+   redundant with the first three, and that single bound turns the design's prose into
+   arithmetic: the towed 4-wheel trailer comes out **over-constrained by exactly 1**
+   (*"the 4th wheel"*), and **today's cart reports 5** with a residual of 1. Its two wheels
+   close, so what is under-determined is the chassis's pitch and nothing else.
+   - **The hitch is measurably what completes the cart**: the same chassis is 5 loose and 6
+     hitched, the hitch supplied exactly 3, and 2 of its own states became the horse's.
+   - **A slack tether closes exactly when the taut one does** — the released degree becomes
+     a state, so one declaration covers both and `A-TAUT` can stay a reported doorstep.
+   - **Rigid shafts on the ground are over by 2**, which is true, not a bug — the ledger
+     says where a `SPRING` goes.
+   - ⚠ **`bd_contacts` was added by `A2`, not foreseen by `A1`.** Nothing was on disk yet so
+     the format grew for free; **after `A5` it would have been a version bump** — a second
+     argument for keeping the ledger ahead of the geometry.
+   - ⚠ **It counts NOMINAL degrees**, and `P3` found a mechanism that passes the count while
+     losing a direction. A closed ledger is necessary, not sufficient.
+   **Seen red under three mutations**: `GROUND_MAX = 4`, a support giving one degree too
+   many, and a hitch that removes 5.
+
+   **Next is `A3`** — `MOUNT` composition (`body_frame`), proving `A-RIGID`, with a `scale`
+   term defaulting to 1 as its deliberate-defect knob. That is where geometry starts.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

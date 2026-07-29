@@ -50,7 +50,13 @@ pub struct Link {
 pub struct Body {
   bd_support: SupportKind,
   bd_driven: integer,                         // advanced from outside
-  bd_solved: integer                          // determined by equilibrium
+  bd_solved: integer,                         // determined by equilibrium
+  // ⚠ ADDED BY `A2`, not foreseen by `A1`. `A-DOF` says GROUND support *"removes
+  // height, and bank/pitch per contact count"* — so the count is what decides
+  // the support term, and without it the ledger cannot be a pure function of the
+  // description. Nothing had been written to disk yet, so the format grew for
+  // free; after `A5` it would have been a version bump.
+  bd_contacts: integer
 }
 
 // A revolute joint with no authored limits. `hex_body` measures joint limits in
@@ -109,8 +115,10 @@ pub fn link_tether(ox: float, oy: float, oz: float, length: float) -> Link {
          lk_lo: 0.0, lk_hi: 0.0, lk_len: length }
 }
 
-pub fn body_of(sup: SupportKind, driven: integer, solved: integer) -> Body {
-  Body { bd_support: sup, bd_driven: driven, bd_solved: solved }
+pub fn body_of(sup: SupportKind, driven: integer, solved: integer,
+               contacts: integer = 0) -> Body {
+  Body { bd_support: sup, bd_driven: driven, bd_solved: solved,
+         bd_contacts: contacts }
 }
 
 // Append one body with the link that reaches it. Index order IS the canonical
@@ -145,7 +153,11 @@ fn body_admissible(i: integer, p: integer, l: Link, b: Body) -> boolean {
     if l.lk_kind is NoLink { return false; }
   }
   if l.lk_lo > l.lk_hi { return false; }
-  if b.bd_driven < 0 || b.bd_solved < 0 { return false; }
+  if b.bd_driven < 0 || b.bd_solved < 0 || b.bd_contacts < 0 { return false; }
+  // A body "supported by the ground" with no contacts is supported by nothing,
+  // and contacts on a body the ground never touches are a number with no reader.
+  if b.bd_support is Ground { if b.bd_contacts < 1 { return false; } }
+  else { if b.bd_contacts != 0 { return false; } }
   // A revolute axis of length zero names no axis, and `P3` showed the axis is
   // what decides whether a chain of mounts spans SO(3) at all.
   if l.lk_kind is Mount { return has_axis(l); }
@@ -240,7 +252,8 @@ pub fn asm_write(a: Assembly) -> text {
         + " axis {l.lk_ax} {l.lk_ay} {l.lk_az}"
         + " lim {l.lk_lo} {l.lk_hi} len {l.lk_len}"
         + " support {sp_name(b.bd_support)}"
-        + " driven {b.bd_driven} solved {b.bd_solved}";
+        + " driven {b.bd_driven} solved {b.bd_solved}"
+        + " contacts {b.bd_contacts}";
   }
   s
 }
@@ -280,12 +293,13 @@ pub fn asm_read(t: text) -> Assembly {
     if word(ln, 19) != "support" { return asm_new(""); }
     if word(ln, 21) != "driven" { return asm_new(""); }
     if word(ln, 23) != "solved" { return asm_new(""); }
+    if word(ln, 25) != "contacts" { return asm_new(""); }
     lc = lk_code(word(ln, 5));
     sc = sp_code(word(ln, 20));
     if lc < 0 || sc < 0 { return asm_new(""); }
-    // A line missing its last field would otherwise read as 0; the keyword at 23
-    // is present only if 24 exists, so check the field itself is a number.
-    if word(ln, 24) == "" { return asm_new(""); }
+    // A line missing its last field would otherwise read as 0, so the field
+    // itself — not just the keyword before it — has to be there.
+    if word(ln, 26) == "" { return asm_new(""); }
     out = asm_add(out, word_int(ln, 3),
       Link { lk_kind: lk_from(lc),
              lk_ox: word_float(ln, 7), lk_oy: word_float(ln, 8),
@@ -295,7 +309,8 @@ pub fn asm_read(t: text) -> Assembly {
              lk_lo: word_float(ln, 15), lk_hi: word_float(ln, 16),
              lk_len: word_float(ln, 18) },
       Body { bd_support: sp_from(sc),
-             bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24) });
+             bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24),
+             bd_contacts: word_int(ln, 26) });
   }
   out
 }
@@ -318,6 +333,7 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
     bb = b.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
     if sp_name(ba.bd_support) != sp_name(bb.bd_support) { return false; }
     if ba.bd_driven != bb.bd_driven || ba.bd_solved != bb.bd_solved { return false; }
+    if ba.bd_contacts != bb.bd_contacts { return false; }
   }
   true
 }
@@ -337,7 +353,7 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
 // for a number with no reader, which is the defect this design exists to remove.
 pub fn asm_cart(half: float) -> Assembly {
   a = asm_new("cart");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
               body_of(SupportKind.Carried, 1, 0));
   a = asm_add(a, 0, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
@@ -354,12 +370,186 @@ pub fn asm_cart(half: float) -> Assembly {
 // `link_hitch` from being a name nothing exercises.
 pub fn asm_towed(half: float, drawbar: float) -> Assembly {
   a = asm_new("towed");
-  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 4));
   a = asm_add(a, 0, link_hitch(0.0 - drawbar, 0.0, 0.0),
-              body_of(SupportKind.Ground, 1, 0));
+              body_of(SupportKind.Ground, 1, 0, 2));
   a = asm_add(a, 1, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
               body_of(SupportKind.Carried, 1, 0));
   a = asm_add(a, 1, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
               body_of(SupportKind.Carried, 1, 0));
+  a
+}
+
+// ── `A-DOF` — the ledger ─────────────────────────────────────────────────────
+//
+// > Every body's six degrees of freedom are accounted for exactly once: removed
+// > by a link, removed by a support, or carried as a named state.
+//
+//     dof(links) + dof(support) + dof(driven) + dof(solved) = 6      per body
+//
+// Under-count and something is pinned by accident — a value nobody chose and no
+// test names. Over-count and the body is over-constrained, which is a real
+// physical situation that must be **refused or sprung**, never silently averaged
+// away. It is a COUNTING argument, so it can be checked rather than argued, and
+// that is the whole of this section.
+//
+// ⚠ **It reproduces every row of the design's own table**, including the two the
+// prose calls out: a towed 4-wheel trailer comes out over-constrained by exactly
+// one — *"the 4th wheel"* — and today's unhitched cart comes out at **5**.
+//
+// ⚠ **It counts NOMINAL degrees.** `P3` measured a mechanism that satisfies the
+// count and still loses a direction at a gimbal pose, so a closed ledger is
+// necessary and not sufficient. Rank is geometry, and geometry is `A3` onward.
+pub const DOF_PER_BODY = 6;
+
+// Contacts constrain height and two rotations, and no more: on a rigid body a
+// fourth contact is redundant with the first three. That bound is what turns a
+// four-wheeled trailer's extra wheel into a stated over-constraint instead of a
+// silent average.
+pub const GROUND_MAX = 3;
+
+pub struct Ledger {
+  dg_links: integer,
+  dg_support: integer,
+  dg_driven: integer,
+  dg_solved: integer,
+  dg_total: integer,
+  // 6 − total. Positive is UNDER-determined, negative is OVER-constrained, and
+  // the sign is what tells a caller whether to refuse or to look for what is
+  // being pinned by nothing.
+  dg_residual: integer
+}
+
+fn min_i(a: integer, b: integer) -> integer { if a < b { a } else { b } }
+
+// What each family removes. The design's first draft had only `MOUNT`, and
+// flattening the rest into it is what made a towed cart and a dangling crate
+// look like the same problem.
+pub fn dof_link(k: LinkKind) -> integer {
+  match k {
+    NoLink => 0,
+    Mount => 5,                 // rigid but for one revolute axis
+    Shaft => 5,                 // a pair of rigid shafts: yaw only
+    Spring => 5,                // five, one of them compliantly
+    Hitch => 3,                 // a ball or pin: position only
+    Tether => 1,                // radial, and only when TAUT — see below
+  }
+}
+
+pub fn dof_support(k: SupportKind, contacts: integer) -> integer {
+  match k {
+    Unsupported => 0,
+    Carried => 0,               // the link IS the support; it already did this
+    Buoyant => 1,               // an equilibrium altitude, and nothing else
+    Ground => min_i(contacts, GROUND_MAX),
+  }
+}
+
+pub fn body_ledger(a: Assembly, i: integer) -> Ledger {
+  l = a.am_link[i] ?? link_none();
+  b = a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
+  dl = dof_link(l.lk_kind);
+  ds = dof_support(b.bd_support, b.bd_contacts);
+  t = dl + ds + b.bd_driven + b.bd_solved;
+  Ledger { dg_links: dl, dg_support: ds,
+           dg_driven: b.bd_driven, dg_solved: b.bd_solved,
+           dg_total: t, dg_residual: DOF_PER_BODY - t }
+}
+
+// A tether is an INEQUALITY, so it has TWO ledgers. Taut it removes one degree;
+// slack it removes nothing and that degree becomes a state — which is why the
+// slack ledger closes exactly when the taut one does, and why one declaration
+// suffices for both. The transition is a reported doorstep (`A-TAUT`), not a
+// branch hidden inside a solver.
+pub fn body_ledger_slack(a: Assembly, i: integer) -> Ledger {
+  l = a.am_link[i] ?? link_none();
+  g = body_ledger(a, i);
+  if !(l.lk_kind is Tether) { return g; }
+  Ledger { dg_links: 0, dg_support: g.dg_support,
+           dg_driven: g.dg_driven + g.dg_links, dg_solved: g.dg_solved,
+           dg_total: g.dg_total, dg_residual: g.dg_residual }
+}
+
+pub fn ledger_closed(g: Ledger) -> boolean { g.dg_residual == 0 }
+
+pub fn asm_closes(a: Assembly) -> boolean {
+  n = len(a.am_parent);
+  if n == 0 { return false; }
+  for i in 0..n { if !ledger_closed(body_ledger(a, i)) { return false; } }
+  true
+}
+
+// `K-FIT`'s shape: a reason, and a RESIDUAL. A ledger that failed silently would
+// be no better than the pitch nobody was supplying.
+pub fn ledger_verdict(g: Ledger) -> text {
+  if g.dg_residual == 0 { return "closes"; }
+  if g.dg_residual > 0 {
+    return "UNDER-DETERMINED by {g.dg_residual} — that many degrees are supplied by nothing";
+  }
+  "OVER-CONSTRAINED by {0 - g.dg_residual} — refuse with this residual, or absorb it in a SPRING"
+}
+
+pub fn asm_ledger_report(a: Assembly) -> text {
+  n = len(a.am_parent);
+  s = "ledger {a.am_name} bodies {n}";
+  for i in 0..n {
+    g = body_ledger(a, i);
+    s = s + "\nbody {i} links {g.dg_links} support {g.dg_support}"
+        + " driven {g.dg_driven} solved {g.dg_solved} total {g.dg_total}"
+        + " {ledger_verdict(g)}";
+  }
+  s
+}
+
+// ── the fixtures the table names, so the count is checked and not argued ─────
+
+// A cart in RIGID SHAFTS, on the ground. The shafts leave yaw only, the wheels
+// still touch — and the ledger says over-constrained by two, which is true: a
+// real cart in rigid shafts on uneven ground has compliance somewhere.
+pub fn asm_shafted(half: float) -> Assembly {
+  a = asm_new("shafted");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 4));
+  a = asm_add(a, 0, Link { lk_kind: LinkKind.Shaft,
+                           lk_ox: 0.0 - 1.6, lk_oy: 0.0, lk_oz: 0.0,
+                           lk_ax: 0.0, lk_ay: 0.0, lk_az: 0.0,
+                           lk_lo: 0.0, lk_hi: 0.0, lk_len: 0.0 },
+              body_of(SupportKind.Ground, 1, 0, 2));
+  a = asm_add(a, 1, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  a
+}
+
+// The four-wheel trailer, which the design's prose says is over-constrained by
+// its fourth wheel. The count agrees, and says exactly one.
+pub fn asm_trailer4() -> Assembly {
+  a = asm_new("trailer4");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 4));
+  a = asm_add(a, 0, link_hitch(0.0 - 1.6, 0.0, 0.0),
+              body_of(SupportKind.Ground, 1, 0, 4));
+  a
+}
+
+// A crate under a balloon: the case that broke the design's first draft, because
+// nothing about "solved from the ground contacts" applies to it. The balloon's
+// pitch and roll are SOLVED — it hangs to rest — while the crate's five are
+// DRIVEN, which is the declaration that lets it swing.
+pub fn asm_balloon(rope: float) -> Assembly {
+  a = asm_new("balloon");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Buoyant, 3, 2));
+  a = asm_add(a, 0, link_tether(0.0, 0.0 - 0.2, 0.0, rope),
+              body_of(SupportKind.Carried, 5, 0));
+  a
+}
+
+// A wing as `n` stations off a parked fuselage, each `CARRIED` by its mount with
+// its bend SOLVED from the load. `P6` measured what `n` costs in shape error;
+// this is what it costs in the ledger, which is nothing — every station closes.
+pub fn asm_wing(n: integer, seg: float) -> Assembly {
+  a = asm_new("wing");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 3));
+  for i in 0..n {
+    a = asm_add(a, i, link_mount(0.0, 0.0 - seg, 0.0, 0.0, 0.0, 1.0),
+                body_of(SupportKind.Carried, 0, 1));
+  }
   a
 }

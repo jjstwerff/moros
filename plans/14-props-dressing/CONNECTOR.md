@@ -350,7 +350,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 |---|---|---|---|---|
 | **A0** ✅ | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run; none falsified** | the design before the code | — | M |
 | **A1** ✅ | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
-| **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
+| **A2** ✅ | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
@@ -780,6 +780,67 @@ Two decisions worth recording:
 - ⚠ **No wheel radius in `asm_cart`.** It is real data about a wheel, but it is a *shape*,
   and shapes arrive at `A9`. Carrying it now would be a home for a number with no reader —
   the exact defect *What this costs, in re-assertion sites* exists to remove.
+
+---
+
+### `A2` — BUILT. The ledger reproduces every row of its own table
+
+`lib/moros_sim/src/assembly.loft`, 15 tests, **seen red under three mutations**. It is
+three lines of arithmetic plus a bound:
+
+```
+    dof_link:     none 0 · mount/shaft/spring 5 · hitch 3 · tether 1 (taut)
+    dof_support:  unsupported/carried 0 · buoyant 1 · ground min(contacts, 3)
+    total = links + support + driven + solved        residual = 6 − total
+```
+
+**`GROUND_MAX = 3` is the whole of the interesting part.** Contacts constrain height and
+two rotations and no more, so on a rigid body a fourth contact is redundant with the first
+three — and that single bound is what turns the design's hand-written prose into
+arithmetic:
+
+| the table's row | counted | the design said |
+|---|---|---|
+| wheel on a chassis | 5 + 0 + 1 = 6 | closes |
+| two-wheel cart, hitched | 3 + 2 + 1 = 6 | closes |
+| **towed 4-wheel trailer** | 3 + 3 + 1 = 7 | *"the 4th wheel is over-constrained"* — **over by exactly 1** |
+| crate under a balloon | 1 + 0 + 5 = 6 | closes |
+| balloon | 0 + 1 + 5 = 6 | closes |
+| robot arm segment | 5 + 0 + 1 = 6 | closes |
+| wing station | 5 + 0 + 0 + 1 = 6 | closes |
+| **today's cart, unhitched** | 0 + 2 + 3 = **5** | *"the sixth is pitch, supplied by nothing"* |
+
+Every row, from one rule. **The control the design asked for holds**: today's cart reports
+5 with a residual of 1, and the failure is *specific* — its two wheels close, so what is
+under-determined is the chassis's pitch and nothing else.
+
+Results worth carrying:
+
+- **The hitch is measurably what completes the cart.** The same chassis reports 5 loose and
+  6 hitched; the hitch supplied exactly 3, and 2 of the chassis's own states became the
+  horse's business. That is the design's sentence — *"either something supplies the pitch,
+  or the cart falls over"* — as a subtraction.
+- **A slack tether's ledger closes exactly when the taut one does.** Taut it removes 1;
+  slack it removes nothing and the released degree becomes a state, so the total is
+  unchanged. **One declaration covers both**, which is why `A-TAUT`'s transition can be a
+  reported doorstep rather than a second description. Tested both ways, and on a body with
+  no tether the two ledgers are the same object.
+- **Rigid shafts on the ground are over-constrained by two**, which is true rather than a
+  bug: a real cart in rigid shafts on uneven ground has compliance somewhere. The ledger
+  says where to put a `SPRING`.
+- ⚠ **`bd_contacts` was added by `A2`, not foreseen by `A1`.** `A-DOF` makes GROUND's term
+  a function of the contact count, so without it the ledger could not be a pure function of
+  the description. Nothing had been written to disk yet, so the format grew for free —
+  **after `A5` it would have been a version bump**, which is an argument for keeping A2
+  ahead of the geometry beyond the one the design already gives.
+- ⚠ **It counts NOMINAL degrees.** `P3` measured a mechanism that satisfies this count and
+  still loses a direction at a gimbal pose, so a closed ledger is **necessary and not
+  sufficient**. Rank is geometry; geometry starts at `A3`.
+
+**Seen red on the clauses that should catch it:** `GROUND_MAX = 4` breaks the trailer's
+"over by exactly one" and the saturation test; a support giving one degree too many breaks
+the cart's 5; a hitch that removes 5 breaks the towed cart and the hitch subtraction.
+**538 tests green** across the five packages, all 65 functions in the package entered.
 
 ---
 
