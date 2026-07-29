@@ -57,10 +57,46 @@ Two constraints that shape the client, both from loft's `WEB_APPS.md`:
   WebSocket is the only browser transport. The editor serves its page over HTTP and then
   talks WS, so this costs nothing here; it would matter for anything that wanted to fetch.
 
+## The structure to copy: loft's crystal audience demo
+
+`../loft/tools/audience-demo/` has already solved this shape, and the editor borrowed half
+of it without taking the rest — `editor_server.loft` says *"same shape as the audience
+demo's `single_port_server.loft`"*. The half not yet taken is the CLIENT.
+
+| audience demo | what it is | the editor's equivalent |
+|---|---|---|
+| `dev_server.loft` | single port: HTTP `/` + WS `/ws` from one process, **re-reading the page from disk every request** | `editor_server.loft` — already this |
+| `server.loft` | the multi-client world server, WS only, holds the world, broadcasts changes, **replays current state to new connections** | the world half after the split |
+| `projector.loft` | a **client program that dials the server** — its render loop IS the connector tick, one `on_tick` = one frame, deltas arrive by `on_event` | `src/editor_client.loft`, built `--html` |
+| `server_kernel.loft` | the kernel the client pairs with | `hex_world` + the authoring routines |
+
+**Three things to take, not just the layout:**
+
+1. **The client is a separate PROGRAM that dials in**, not a page the server prints. So
+   `src/editor_client.loft` compiled with `--html`, served by the single-port server that
+   already exists. It also means the client can be run against a server on another machine
+   without changing either — which is the remote case that made the camera's latency a
+   requirement rather than a preference.
+2. **One `on_tick` is one frame.** The demo's render loop is the connector's tick, so the
+   client's frame rate is the client's business. That settles S5's shape before S5: the
+   camera solves in the frame that draws it, and the server's 30 Hz stops being anything
+   the viewer can feel.
+3. **A snapshot re-request heals the world.** The projector survives a server restart
+   mid-show by asking for the state again. That is the answer to this plan's named risk —
+   a stale cache — and to a client joining: `world_snapshot` (`M2`) on connect, deltas
+   after, and the digest heartbeat to notice when the two have drifted. Reconnection is not
+   a special case; it is the same request the first connection makes.
+
+⚠ Worth checking rather than assuming: the projector uses `engine_host::run_client` for
+"auto-hello, keepalives, zero transport code", and the browser target has WebSocket only.
+Whether that connector reaches `--html` is the first question S1 asks — if it does not, the
+client speaks the editor's existing wire directly, which is a smaller step anyway.
+
 ### S1 — a wasm client that is loft at all
 
-A wasm/loft client that connects, receives today's mesh frames and draws them. **It replaces
-the JavaScript renderer and nothing else** — same wire, same frames, same picture.
+`src/editor_client.loft` — built `--html`, served by the server that already serves
+`editor.html`. It connects, receives today's mesh frames and draws them. **It replaces the
+JavaScript renderer and nothing else** — same wire, same frames, same picture.
 
 *Done when:* the browser gates pass against the wasm client exactly as against `editor.html`.
 *Deletes:* nothing yet. `editor.html` stays until S1 is green, then goes.
