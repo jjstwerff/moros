@@ -1,0 +1,154 @@
+// P1 — IS `rig_world_seg` ENOUGH TO PLACE A PART FOR RENDERING?
+//
+// The last of `A0`'s probes, and the only one that needs the running world —
+// so it is split. This half is pure: what a rig's segment CARRIES and what it
+// loses. `probe/rig_place.mjs` is the other half: whether the design's
+// composition reproduces the cart's broadcast matrices.
+//
+// ── the claim, and the two ways it could fail ───────────────────────────────
+//
+// Falsified if *"the rig cannot express something render needs without a second
+// source."* A render transform is six numbers. `rig_world_seg` returns four,
+// of which the segment's length is fixed by `rg_len` — so **three**, and they
+// are the base point and one in-plane direction. The other three have to come
+// from the node frame, which `A-PLANE` already says is where the rig lives.
+//
+// So the question is not "does the rig give six" — it cannot — but whether
+// **(node frame) + (rig segment)** is the whole of it, with no third source.
+// This half establishes what the second term contributes exactly.
+//
+// ── the wheel is the interesting case ───────────────────────────────────────
+//
+// A wheel's spin looks like the thing a segment cannot hold: rotating a disc
+// about its own axle leaves the disc where it was. But `hex_body` does not model
+// a wheel as a disc — it models it as a **spoke**, and a spoke's direction IS
+// the spin. Which is measured below rather than assumed, because the opposite
+// conclusion is the intuitive one.
+//
+// run: loft --interpret --path ../loft/ --lib ../loft-libs-world/ \
+//        plans/14-props-dressing/probe/rig_place.loft
+use hex_body;
+
+const CART_RADIUS = 0.40;
+const TAU = 6.283185307179586;
+const EPS64 = 1.0 / 4503599627370496.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// The signed angle from `b` to `a`, always in (−π, π] — no `round`, no branch,
+// and correct across the wrap, which is the whole difficulty here.
+fn angdiff(a: float, b: float) -> float { atan2(sin(a - b), cos(a - b)) }
+
+fn spoke() -> Rig {
+  rig_bone(rig_new(), 0 - 1, 0.0, 0.0, CART_RADIUS, 0.0 - 1000.0, 1000.0)
+}
+
+fn main() {
+  println("P1 — what a rig's segment carries, and what it does not");
+  println("");
+  rr = spoke();
+  println("  a wheel as ONE spoke bone: length {CART_RADIUS}, offset 0, one joint");
+  println("  admissible {rig_admissible(rr)}   bones {rig_count(rr)}");
+  println("");
+  println("  ⚠ joint values are in TURNS, and `wheel_value` returns turns — so the");
+  println("    rig's joint value IS the wheel's state, with no conversion between.");
+  fails = 0;
+
+  // ── A: the spin IS in the segment ─────────────────────────────────────────
+  println("");
+  println("  A  recover the spin from the spoke's direction");
+  println("");
+  println("      travel     value(turns)   wheel_angle   from segment   diff");
+  worst_a = 0.0;
+  span = 0.0;
+  prev = 9.0;
+  for it in 0..=8 {
+    tv = 3.7 * (it as float);
+    val = wheel_value(tv, CART_RADIUS, 0.0);
+    ang = wheel_angle(val);
+    (x0, y0, x1, y1) = rig_world_seg(rr, [val], 0);
+    got = atan2(y1 - y0, x1 - x0);
+    d = fabs(angdiff(got, ang));
+    if d > worst_a { worst_a = d; }
+    // the control's raw material: does the segment MOVE at all?
+    if prev < 9.0 {
+      mv = fabs(angdiff(got, prev));
+      if mv > span { span = mv; }
+    }
+    prev = got;
+    println("     {tv:7.3}   {val:12.7}   {ang:11.6}   {got:12.6}   {d}");
+  }
+  println("     worst |recovered − wheel_angle|  {worst_a}");
+  if worst_a < EPS64 * 64.0 {
+    println("   ok    the spoke's DIRECTION is the spin, exactly — a wheel's own");
+    println("         rotation is in the segment after all");
+  } else {
+    println("   FAIL  the segment does not carry the spin");
+    fails = fails + 1;
+  }
+  if span > 0.5 {
+    println("   ok    and the segment really moves ({span:6.4} rad between samples),");
+    println("         so A is not passing because nothing changed");
+  } else {
+    println("   FAIL  the segment barely moved — A is vacuous");
+    fails = fails + 1;
+  }
+
+  // ── B: the WINDING is not in the segment, and render does not want it ─────
+  println("");
+  println("  B  the same pose, whole turns apart");
+  println("");
+  println("      extra turns   segment differs by   wheel_angle differs by");
+  base_v = wheel_value(3.7, CART_RADIUS, 0.0);
+  (bx0, by0, bx1, by1) = rig_world_seg(rr, [base_v], 0);
+  worst_b = 0.0;
+  for ik in 1..=5 {
+    kv = base_v + (ik as float);
+    (kx0, ky0, kx1, ky1) = rig_world_seg(rr, [kv], 0);
+    sd = fabs(kx1 - bx1);
+    if fabs(ky1 - by1) > sd { sd = fabs(ky1 - by1); }
+    if fabs(kx0 - bx0) > sd { sd = fabs(kx0 - bx0); }
+    if fabs(ky0 - by0) > sd { sd = fabs(ky0 - by0); }
+    if sd > worst_b { worst_b = sd; }
+    println("       {ik}            {sd}      {wheel_angle(kv) - wheel_angle(base_v):9.6}");
+  }
+  if worst_b < EPS64 * 64.0 {
+    println("   ok    whole turns are INVISIBLE in the segment while the state counts");
+    println("         them — so rendering loses nothing, and anything wanting total");
+    println("         revolutions (odometry, wear, a gear ratio) must read the state");
+  } else {
+    println("   FAIL  a whole turn moved the segment");
+    fails = fails + 1;
+  }
+
+  // ── C: the count, which is the answer to the falsifier ────────────────────
+  // Sweeping the joint value moves the segment along a ONE-parameter curve, and
+  // the base never moves at all. So one bone contributes exactly 1 DOF — which
+  // is what `A-DOF`'s `joint angle 1` says — and the remaining five of a render
+  // transform are the node frame's. That is a second source, and `A-PLANE`
+  // already names it; the question the .mjs answers is whether there is a THIRD.
+  println("");
+  println("  C  what one bone contributes");
+  base_moved = 0.0;
+  for ic in 0..=8 {
+    (cx0, cy0, cx1, cy1) = rig_world_seg(rr, [0.31 * (ic as float)], 0);
+    if fabs(cx0) > base_moved { base_moved = fabs(cx0); }
+    if fabs(cy0) > base_moved { base_moved = fabs(cy0); }
+  }
+  println("     the base moved by {base_moved} over the whole sweep");
+  println("     the tip traced a circle of radius {CART_RADIUS} about it");
+  if base_moved < EPS64 * 64.0 {
+    println("   ok    one bone = 1 DOF, and it is the in-plane direction. The other");
+    println("         five a render transform needs are the NODE FRAME's, which is");
+    println("         what A-PLANE says. `rig_world_seg` alone is NOT enough — and");
+    println("         that was never the design's claim; whether the pair is enough");
+    println("         is what rig_place.mjs measures against the wire.");
+  } else {
+    println("   FAIL  the base moved with the joint value");
+    fails = fails + 1;
+  }
+
+  println("");
+  if fails == 0 { println("rig_place: every clause holds"); }
+  else { println("rig_place: {fails} clause(s) failed"); }
+}

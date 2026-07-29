@@ -348,7 +348,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 
 | | step | proves | control | size |
 |---|---|---|---|---|
-| **A0** | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run but `P1`** | the design before the code | — | M |
+| **A0** ✅ | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run; none falsified** | the design before the code | — | M |
 | **A1** | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
 | **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
@@ -392,7 +392,7 @@ and records it, as `wheel_skid` records machine-ε rather than claiming algebrai
 
 | | claim | probe | falsified if |
 |---|---|---|---|
-| **P1** | `rig_world_seg` is enough to place a part for rendering | build the cart's transforms from the rig and diff against the current matrices | the rig cannot express something render needs without a second source |
+| ~~P1~~ | ~~`rig_world_seg` is enough to place a part for rendering~~ | — | **run below: the rig alone is not, and rig + node frame is — no third source** |
 | ~~P3~~ | ~~a 3-DOF joint is three `MOUNT`s in series~~ | — | **run below: confirmed for REACH, refuted for RANK** |
 | ~~P5~~ | ~~a towed chain stays stable~~ | — | **run below: not falsified — every divergence is one the geometry predicts** |
 | ~~P6~~ | ~~N bones approximate a continuous bend to a stated bound~~ | — | **run below: not falsified — the error is a closed form, and one half-step decides its order** |
@@ -673,6 +673,59 @@ called it discretisation error — it reported a scheme converging to 0.789 and 
 derivation wrong. **A closed form is only a reference inside the regime it was derived
 for.** (The same run also reported 200 passes for a solve that settled in two: assigning
 the loop bound to a `for` variable does not break the loop.)
+
+---
+
+### `P1` — RUN. The rig alone is not enough, the pair is, and there is no third source
+
+Two halves, because this is the one probe that needs a running world:
+`probe/rig_place.loft` (pure — what a segment carries) and `probe/rig_place.mjs`
+(the wire — whether the composition reproduces the cart's broadcast matrices).
+
+**What the segment carries.** `rig_world_seg` returns four floats of which the length is
+fixed by `rg_len`, so **three**: a base point and one in-plane direction.
+
+- **The spin IS in it, which is the opposite of the intuitive answer.** Rotating a disc
+  about its own axle leaves the disc where it was — but `hex_body` does not model a wheel
+  as a disc, it models it as a **spoke**, and a spoke's direction *is* the spin. Recovered
+  from the segment to `2.9 × 10⁻¹⁵` across a travel sweep, with the segment moving 2.97 rad
+  between samples so the recovery is not reading a constant.
+- **Joint values are in TURNS and `wheel_value` returns turns**, so the rig's joint value
+  *is* the wheel's state with no conversion between them.
+- **The WINDING is not in it, and rendering does not want it.** A joint value and the same
+  value plus `k` whole turns give segments identical to `1.2 × 10⁻¹⁵` while `wheel_angle`
+  differs by `k·τ`. So the picture loses nothing — and **anything counting total
+  revolutions (odometry, wear, a gear ratio) must read the state, not the pose.**
+- **One bone is exactly 1 DOF** and its base never moves over a full sweep, so the other
+  five of a render transform are the node frame's. `A-PLANE` already says that, so the
+  literal claim — *`rig_world_seg` is enough* — is **false and was never what the design
+  asserted**. The real question is whether there is a THIRD source.
+
+**There is not.** Against the wire, on a slope, with a spun wheel:
+
+| | measured |
+|---|---|
+| `T_wheel = T_body · translate(0,0,±w) · rotZ(spin)` vs the broadcast matrix | **`5.6 × 10⁻¹⁷`** — one machine epsilon |
+| drop the mount offset | off by **exactly `w` = 0.55** |
+| drop the spin | off by **1.99** |
+| drop the node frame's out-of-plane rotation | off by **0.083**, the bank itself |
+
+`w` is measured once on flat ground and then used to predict the **sloped** case — reading
+it from the sloped frames would be the same circularity as the axle clause that computed
+`2·half·√(cos²+sin²)` and could not fail. The run is guarded on having reached a bank
+(0.083) *and* a spin away from a whole turn (3.03 rad), because on flat ground with a still
+wheel all four rows pass for free.
+
+⚠ **And the instrument was wrong in a way the design's own checklist predicts.** The
+convention check `T_body = translate · rotY(yaw) · rotX(bank)` read **exactly 0 on the
+first run while `rotX` was transposed** — because that run was on FLAT ground, where the
+bank rotation is the identity and its sign cannot matter. *"The run that proves it actually
+reached a slope — on flat ground the rest passes trivially and proves nothing"* is already
+in *What would say this is right*; this is its second instance, and this time it caught a
+live defect rather than a void clause. Two smaller ones from the same probe: the
+mount-offset control compared an elementwise matrix max against a length (0.5481 against
+0.55 — the offset lies along the node frame's z, so its largest single component is
+`w·|z|`), and the spin guard took a `min` where every measurement it guards is a `max`.
 
 ---
 

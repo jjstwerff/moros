@@ -71,7 +71,25 @@ written and not built.** In priority order:
    reference inside the regime it was derived for.** `wL⁴/8EI` is the small-deflection
    solution, so running the sweep at a tip deflection of a full span measured the geometric
    nonlinearity and called it discretisation error.
-   **Only `P1` is left.**
+   **`P1` is RUN, so `A0` IS COMPLETE — every probe run, none falsified.**
+   `probe/rig_place.loft` (pure) + `probe/rig_place.mjs` (the wire). `rig_world_seg` alone
+   is **not** enough and never was the claim: it carries a base point and one in-plane
+   direction, so 3 of a render transform's 6. The pair **(node frame + rig segment) is the
+   whole of it** — `T_body · translate(0,0,±w) · rotZ(spin)` reproduces the broadcast wheel
+   matrices to **`5.6e-17`** on a slope with a spun wheel, and dropping the offset, the spin
+   or the bank each breaks it (0.55 / 1.99 / 0.083). **No third source.**
+   - **The spin IS in the segment**, which is the opposite of the intuitive answer:
+     `hex_body` models a wheel as a **spoke**, not a disc, and a spoke's direction is the
+     spin. Joint values are in TURNS, so the rig's joint value *is* `wheel_value`.
+   - **The winding is not** — `v` and `v + k` turns give identical segments. Rendering
+     loses nothing; anything counting revolutions must read the **state**, not the pose.
+   ⚠ **A flat world made the convention check vacuous.** `T_body = translate·rotY·rotX`
+   read exactly 0 while `rotX` was **transposed**, because on flat ground that rotation is
+   the identity. *"On flat ground the rest passes trivially"* is already in the design's own
+   checklist; this is its second instance, and this time it hid a live defect.
+
+   **Next is `A1`** — `Body`/`Link`/`Support` + admissibility + `write`/`read`, then `A2`
+   the DOF ledger, which the design says to build before any geometry.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
