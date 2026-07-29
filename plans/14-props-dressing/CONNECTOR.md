@@ -248,6 +248,140 @@ The order:
 
 ---
 
+## Formal definitions
+
+Written down first, because a property test needs a proposition and an example does
+not. Notation: `SE(3)` is the group of rigid motions, `T(o)` a translation, `R(a, θ)` a
+rotation of `θ` about unit axis `a`.
+
+### The mount
+
+A connector node `i` carries a parent `p(i)`, an offset `oᵢ ∈ ℝ³` in the parent's
+frame, a unit axis `aᵢ`, and an angle `θᵢ`. Its **local transform** and its **world
+frame** are
+
+```
+  Mᵢ = T(oᵢ) · R(aᵢ, θᵢ)                    Wᵢ = W_p(i) · Mᵢ            W_root = F
+```
+
+where `F` is the vehicle frame (§ *the frame*). Nothing else exists: a part's position
+is `Wᵢ` applied to a point of its rig, and is computed on demand.
+
+### The invariants
+
+| id | statement | why it is the one |
+|---|---|---|
+| **`C-TOPO`** | `p(0) = −1`, and `0 ≤ p(i) < i` for `i > 0` | canonical labelling. A tree can be relabelled and describe the same assembly; topological order fixes the labels, exactly as `rig_admissible` does for a rig and `form_read` does for a form |
+| **`C-EXACT`** | `write(read(C)) = C`, byte-for-byte; a malformed text is **refused, never repaired** | the assembly is a *description*. loft's float↔text round trip is byte-exact, so this needs no tolerance |
+| **`C-RIGID`** | for every node `i` and all `u, v ∈ ℝ³`: `‖Wᵢu − Wᵢv‖ = ‖u − v‖` | **the con-rod, stated once for everything.** Equivalent to `RᵢᵀRᵢ = I ∧ det Rᵢ = +1`. It holds *by construction* — `T` and `R` are in `SE(3)`, `SE(3)` is closed under composition, so `Wᵢ ∈ SE(3)` by induction over `C-TOPO`'s order — which is the point: there is no site left that could stretch anything |
+| **`C-PLANE`** | the rig plane embeds as `ι(x, y) = (x, y, 0)` in the node frame, and `ι` is an isometry | a spoke's length is `rg_len[i]` for **every** joint value. `hex_body`'s `I6` purity carried into 3D without adding a way to deform |
+| **`C-GROUND`** | for every wheel `i`: `lowest(wheelᵢ) − g(contactᵢ) = 0` | the frame is solved against the world, and this is what "solved" means |
+| **`C-FIT`** | admissible iff `|d| ≤ 2w`; otherwise refuse with residual `|d| − 2w` | `K-FIT` invariant I for a pose. An ordinal quantity, so a refusal owes an offer and a residual |
+| **`C-PROXY`** | proxy `⊇` shape, with the overshoot **bounded and stated** | `hex_body`'s `I4`, verbatim |
+
+### The frame solve, in closed form
+
+Let `w` be the half-axle, `R` the wheel radius, `u` the axle's unit direction in the
+ground plane, `c` the vehicle's ground position, and `g(·)` the terrain height.
+
+```
+  x_L(β) = c − u·w·cos β          g_L = g(x_L)
+  x_R(β) = c + u·w·cos β          g_R = g(x_R)          d = g_L − g_R
+
+  sin β = d / 2w                  y = (g_L + g_R)/2 + R
+```
+
+The contacts depend on `β` and `β` depends on the contacts, so this is a fixed point
+`β_{n+1} = Φ(β_n)`, seeded at `β₀ = 0`. Differentiating, with `s_L`, `s_R` the terrain
+slopes along `u` at the two contacts:
+
+```
+  d′(β) = w·sin β·(s_L + s_R)
+  Φ′(β) = sin β·(s_L + s_R) / (2·cos Φ(β))
+```
+
+Two consequences worth having on the page:
+
+- **`Φ′(0) = 0`.** The iteration is *quadratically* convergent near level — which is
+  why three rounds measured a residual of `1.5 × 10⁻⁸` rather than something linear in
+  the slope. That is a prediction the probe can check, not a hope.
+- **It converges while `tan β < 1/L`**, where `L` bounds `|s|`. The bound degrades
+  exactly where `C-FIT` bites, so the doorstep and the solver fail together rather than
+  the solver silently diverging inside the admissible region.
+
+### ⚠ `P4` is falsified on paper — a spoke's capsule does not bound its disc
+
+The design above hoped the proxy would fall out of `hex_body::bone_obb`. Working the
+algebra says it does not, and it is worth stating before anyone builds it.
+
+`bone_obb` bounds the **capsule** of a bone: for a spoke of length `R` and half-width
+`ω` it returns half-extents `(R/2 + ω, ω)`. A wheel's shape is the **disc** — every
+point within `R` of the hub in the wheel plane. The disc reaches `R` in *every* in-plane
+direction; the spoke's OBB reaches `ω` perpendicular to the spoke. So
+
+```
+  disc ⊄ bone_obb(spoke)      whenever ω < R
+```
+
+which is always. **`I4` is violated — the proxy would miss overlaps**, the one thing a
+proxy may never do.
+
+The wheel therefore needs its own shape, and it is trivial: the OBB with half-extents
+`(R, R, t/2)` in the wheel frame, `t` the width. Then
+
+```
+  disc ⊆ OBB                  exactly
+  vol(OBB)/vol(disc) = 4R²t / πR²t = 4/π ≈ 1.2732
+```
+
+— **bounded and stated**, which is what `I4` asks. So the connector carries a **shape
+kind per node** (capsule for a bone, disc for a wheel, box for a chassis) and derives
+the proxy from *that*. Still derived, never hand-authored; just not inherited.
+
+This shrinks the claim exactly where the design said it might: the connector's payoff
+is one home for the connection, not free collision. It is worth building anyway, but on
+the smaller argument.
+
+---
+
+## The steps
+
+Each ships alone, is testable in loft with no server, and carries a **control** — a
+knob that must make its own test fail, because a gate nobody has seen fail is not a
+gate. `slip` is the model: `hex_body` keeps a deliberate-defect term precisely so
+`wheel_skid` cannot pass vacuously.
+
+| | step | proves | control | size |
+|---|---|---|---|---|
+| **C0** | run `P1`–`P3` (`P4` is answered above) | the design before the code | — | S |
+| **C1** | `Connector` + `connector_admissible` + `write`/`read` | `C-TOPO`, `C-EXACT` | a forward parent reference; a relabelled tree; a truncated text — each must be **refused**, not repaired | S |
+| **C2** | mount composition — `node_frame(tree, i)` | `C-RIGID` | a `scale` term, defaulting to 1, wired into `Mᵢ`. Set it to 1.01 and the isometry test must go red | M |
+| **C3** | embed a `hex_body` rig at a node | `C-PLANE` | the same scale knob, applied to `ι` | S |
+| **C4** | **the cart as data** — three nodes, no behaviour change | that the structure can express what exists | *the previous implementation itself*: assert the connector's transforms equal the hand-composed ones **to the bit**, on flat ground | M |
+| **C5** | the frame solve as a pure function | `C-GROUND`, `C-FIT` | pin the frame to a constant and the gap clause must go red (**already demonstrated** — 0.204 wu) | M |
+| **C6** | per-node shape and its proxy | `C-PROXY` (`I4`) | a shape deliberately one size too small; the containment test must catch it | M |
+| **C7** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
+
+**C4 is the safety step and the reason this order is safe.** Before any behaviour
+changes, the connector must reproduce the transforms the current code produces —
+*byte-identical, on flat ground, where the two agree by construction*. That converts
+"did I break the cart" from a judgement into a diff. Only C5 then changes what the cart
+does, and it changes it in one place, with the gap clause already known to go red.
+
+**What is testable without a world, and therefore where the tests go.** `C1`–`C4` and
+`C6` are pure functions of their arguments — no terrain, no wire, no browser — so they
+are loft tests in `lib/moros_sim/tests/`. Only `C5`'s *sampling* touches terrain and
+only `C7` needs a server, which is why `cart.mjs` shrinks to the single clause that
+genuinely needs a running world.
+
+**Property, not example.** `C-RIGID` is checked by generating point pairs and mount
+angles and asserting `‖Wu − Wv‖ = ‖u − v‖` across them — not by placing one cart and
+eyeballing one distance. The float composition will drift; the test asserts the drift
+**bound** and the suite records it, the way `wheel_skid` records machine-ε rather than
+claiming algebraic zero.
+
+---
+
 ## What would say this is right
 
 Not "the cart looks better". The design is validated when:
