@@ -2508,8 +2508,21 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       }
     }
   }
-  (wt, wq, wr, wd) = hex_edge::sweep_path(coll, ox, oz,
-                                          ox - ky * want * kp, oz - sy * want * kp);
+  // ⚠ THE SWEEP IS SKIPPED WHEN THERE ARE NO WALLS NEAR, and that is not a
+  // micro-optimisation. `cam_free_dist` is called once per arc sample and once per
+  // pitch try — about fifteen times a tick — so a sweep inside it is fifteen
+  // lattice walks per frame. Measured: one watching client went from 12.9% of a
+  // core to 90% when this was added, on a world with no walls in sight at all.
+  //
+  // The proxy knows: `eg_count` is zero when nothing near the character blocks the
+  // view, and the whole cost disappears for every world that has no walls yet.
+  wd = 0 - 1;
+  wt = 0.0; wq = 0; wr = 0;
+  if coll.eg_count > 0 {
+    (wt2, wq2, wr2, wd2) = hex_edge::sweep_path(coll, ox, oz,
+                                                ox - ky * want * kp, oz - sy * want * kp);
+    wt = wt2; wq = wq2; wr = wr2; wd = wd2;
+  }
   if wd >= 0 {
     (wnq, wnr) = hex_grid::hex_neighbor(wq, wr, wd);
     wh = terrain_h(wq, wr, wld);
@@ -2760,6 +2773,8 @@ fn main() {
   road_h = 0;                  // the road's grade, frozen when it was switched on
   dirty = DirtySet { items: [] };
   clients: vector<Client> = [];
+  live_clients = 0;            // what the LIBRARY says is connected, not our list
+  probe_us = ticks();          // when the liveness probe last went out
   keys = 0;
   last_us = ticks();
 
@@ -2791,6 +2806,9 @@ fn main() {
           srv.respond_404();
         }
       } else if ev.connected {
+        // The gate OPENS here and closes on the broadcast count: a connect is the
+        // one liveness signal that does reach this loop.
+        live_clients = len(clients) + 1;
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
@@ -3349,7 +3367,38 @@ fn main() {
     // which is why this pump is manual) — there is no "wait for WS traffic or a
     // timeout" to block on. Adding one is a library change, and it would let
     // this fall to zero rather than to a 50ms poll.
-    watched = len(clients) > 0;
+    // ── WHO IS ACTUALLY THERE ────────────────────────────────────────────
+    //
+    // ⚠ NOT `len(clients)`, and this cost 76% of a core. `poll_event` absorbs
+    // disconnects internally — the library says so — so `clients` only ever GROWS,
+    // and the moment one tab had connected the watcher gate was true for ever. The
+    // tick then ran its full body at 30Hz for an audience of none, exactly the
+    // waste it was written to prevent.
+    //
+    // Measured, and the measurement is the lesson: a server that had never had a
+    // client idled at 0%, and the same server after one client came and went sat
+    // at 76%. The original fix was verified in the only state where the bug cannot
+    // appear, which is why it looked done.
+    //
+    // `broadcast` returns the number of ACTIVE clients it reached, counted in Rust
+    // over the library's own set — the one place that knows. A connect event opens
+    // the gate; the broadcast count closes it. Nothing here tracks departures,
+    // because nothing here can.
+    // ⚠ AND THE PROBE RUNS WHETHER OR NOT ANYTHING MOVED. The first attempt took
+    // the count off the tick's own broadcast, which lives inside `if moved` — so a
+    // client that connected, sat still and left was never counted again and the
+    // gate stayed open exactly as before. Measured at 76% twice for two different
+    // reasons, which is the argument for measuring after every attempt rather than
+    // after the last one.
+    //
+    // `P:` is a tag no client handles; it exists to be counted. Once a second is
+    // enough — it costs one frame per client per second and closes the gate within
+    // a second of the last one leaving.
+    if now_us - probe_us >= 1000000 {
+      probe_us = now_us;
+      live_clients = srv.broadcast("P:");
+    }
+    watched = live_clients > 0;
     if watched && now_us - last_us >= TICK_US {
       steps = (now_us - last_us) / TICK_US ?? 1;
       last_us = last_us + steps * TICK_US;
@@ -3637,7 +3686,7 @@ fn main() {
       // high-water mark of concurrent clients, because the library REUSES a
       // freed slot (measured: five sequential clients all came back as cid 0,
       // and the list stayed at one entry).
-      srv.broadcast(fogw);
+      live_clients = srv.broadcast(fogw);
       srv.broadcast(t_body);
       srv.broadcast(t_leg_l);
       srv.broadcast(t_leg_r);
