@@ -5,10 +5,11 @@ sibling of [DESIGN.md](DESIGN.md), which names this as the open half:
 *"the multi-rig connector (rungs W6/W7's other half), which `hex_body` does not have."*
 
 A wheel on a chassis. A cart towed behind a horse, and a second cart behind that. A
-crate swinging under a balloon. `hex_body` owns a **single rig** — bones, revolute
-joints, a pure pose, a derived proxy. It does not own **how two bodies link**, and it
-does not own **what holds a body up**. This design is those two, and the second one is
-the harder half.
+crate swinging under a balloon. A robot's arm, which touches nothing. A wing that warps
+upward under air pressure. `hex_body` owns a **single rig** — bones, revolute joints, a
+pure pose, a derived proxy. It does not own **how two bodies link**, and it does not own
+**what holds a body up**. This design is those two, and the second one is the harder
+half.
 
 > **⚠ THIS REPLACED AN EARLIER VERSION THAT WAS WRONG, AND THE WAY IT WAS WRONG IS THE
 > DESIGN.** The first draft said: *one frame, solved from the ground contacts, and
@@ -73,6 +74,8 @@ it can be checked rather than argued.
 | **towed 4-wheel trailer** | ball hitch removes **3** | contacts give **2**, the 4th wheel is over-constrained → sprung, residual stated | yaw **1** | 6 |
 | **crate under a balloon** | tether removes **1** (radial, and only when taut) | — | 2 swing + 3 own rotation = **5** | 6 |
 | balloon | — | buoyancy gives **1** (equilibrium altitude) | x, z, yaw **3**; pitch, roll **2** | 6 |
+| **robot arm segment** | mount removes **5** | `CARRIED` — the mount *is* the support | joint angle **1**, *commanded* | 6 |
+| **wing station** | mount removes **5** | `CARRIED` | bend angle **1**, *solved from load* | 6 |
 
 ### ⚠ The count predicts a real fact, which is the best evidence it is the right rule
 
@@ -171,6 +174,78 @@ normal use, not at the margins.
 
 ---
 
+## Bodies that touch nothing: the arm, and the wing
+
+**The arm needs no new mechanism, and that is a result rather than a relief.** A robot's
+arm is a chain of `MOUNT`s off the torso, supported `CARRIED` — the mount *is* what holds
+it up — and the ledger closes at 6 per segment with the joint angle as the state. It is
+the same shape as a wheel on a hub. The one thing it changes is a scheduling decision:
+
+> **⚠ `P3` is no longer deferrable.** It was parked on the grounds that *"nothing in
+> Moros has an articulated limb yet"*. An arm is an articulated limb, so the claim that
+> a 3-DOF shoulder is three zero-offset `MOUNT`s in series is now load-bearing and must
+> be probed before it is built on.
+
+**The wing is different, and it splits one term of the ledger in two.**
+
+`hex_body` already answers where a bending part *is*: ***"flex is joints, not
+deformation … a part that bends is more bones on more joints, so this survives a
+flexing wing unchanged and hexbody needs no skinning."*** That is the right answer to
+the kinematics, and the wing is exactly the case it names. But the wing asks two
+questions the wheel never did.
+
+### What drives the state — and this is a new axis
+
+A wheel's spin comes from `travel`; an arm's joint angle is *commanded*. A wing's bend
+comes from neither: **the air pushes, the spar resists, and the angle settles where the
+moments balance.** So a state is one of two kinds, and a body must say which:
+
+```
+  DRIVEN   advanced by something outside — travel, a command, an integrator
+  SOLVED   determined by equilibrium — moment balance, spring compression, hanging rest
+```
+
+A `SOLVED` state is a fixed point in exactly the shape the ground contact already is —
+the pose depends on the load and the load depends on the pose — so it reuses the
+machinery rather than adding any. That is the unification worth having, and it is a
+narrow one: **the same solver shape, a different residual.**
+
+⚠ **`SOLVED` is quasi-static, and choosing it is choosing to have no dynamics.** A wing
+solved to equilibrium bends but never *flutters*; a crate solved to equilibrium hangs
+straight down and never *swings*. Both are often what you want and both are far cheaper.
+The error to prevent is picking one by accident, which is why the kind is declared per
+state and appears in the ledger rather than being implied by the link type.
+
+### ⚠ "hexbody needs no skinning" is true of the RIG and false of the PICTURE — measured
+
+Joints answer where a part is. They do not answer what it *looks like*, and the gap
+between those is not hypothetical here:
+
+> **The editor's own character already shows this defect, and it was measured today.**
+> `limb_mesh` builds a leg as a box from `y = −len` to `y = 0`, and `limb_at` pivots it
+> about `y = 0` — so **the box's top face lies in the pivot plane**. The torso's pelvis
+> box has its flat bottom at exactly that same height. Rotate the joint by `θ` and one
+> corner of the leg's top face dips below the torso by `(half-width)·sin θ`, opening a
+> wedge that nothing fills. In the rendered frame the band reads as the light tan
+> `ab8060` of a *lit top face* — the top of the thigh, seen from above, through the gap.
+
+One hinge, one visible seam. A wing discretised into ten stations has **ten of them**,
+along the one edge a viewer looks straight down. So:
+
+- **the rig** may be rigid segments — kinematics and collision are satisfied by joints;
+- **the skin** must be continuous across a joint, and that needs either geometry that
+  *overlaps* the joint by at least the maximum wedge `(half-width)·sin θ_max`, or a mesh
+  that genuinely deforms.
+
+For the character, the overlap is the right answer and it is one number: the pelvis box
+extends below the hip plane by the maximum wedge, and since the torso is already wider
+than the leg (`0.36·h` against `0.31·h` in x) it covers from every angle. For a wing,
+overlap is unlikely to survive ten joints and a smooth aerofoil, so **the wing is the
+case that decides whether skinning is needed** — which makes it a probe, not an
+assumption inherited from a comment.
+
+---
+
 ## History lives in the state, so the pose stays pure
 
 `hex_body`'s `L15` boundary says it answers *where a part is NOW, never what it will
@@ -204,7 +279,8 @@ constraint `Cℓ(W_a, W_b, θℓ) = 0` (or `≤ 0` for `TETHER`). A support cont
 
 | id | statement | why it is the one |
 |---|---|---|
-| **`A-DOF`** | `dof(links) + dof(support) + dof(state) = 6`, per body | the invariant above. Every other rule here is a way of making one term of it honest |
+| **`A-DOF`** | `dof(links) + dof(support) + dof(driven) + dof(solved) = 6`, per body | the invariant above. Every other rule here is a way of making one term of it honest. A state's kind — `DRIVEN` or `SOLVED` — is **declared**, never inferred from the link |
+| **`A-SKIN`** | across any joint, the drawn geometry leaves **no gap at any admissible joint value** | joints answer where a part *is*; they do not answer what it looks like. Violated today by the character's hip — a wedge of `(half-width)·sin θ` that nothing fills |
 | **`A-TOPO`** | the link graph is a **tree**: `p(0) = −1`, `0 ≤ p(i) < i` | canonical labelling, as `rig_admissible` does for a rig. ⚠ A **team** — two horses abreast on one cart — is two links to one body and is *not* a tree; see *open* below |
 | **`A-EXACT`** | `write(read(A)) = A` byte-for-byte; malformed is **refused, never repaired** | an assembly is a description; loft's float↔text round trip is byte-exact, so no tolerance is needed |
 | **`A-RIGID`** | for a `MOUNT` chain, `‖Wᵢu − Wᵢv‖ = ‖u − v‖` for all `u, v` | **the con-rod, once, for everything rigid.** Holds *by construction*: `SE(3)` is closed under composition, so `Wᵢ ∈ SE(3)` by induction over `A-TOPO`'s order. There is no site left that could stretch anything |
@@ -264,9 +340,9 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 
 | | step | proves | control | size |
 |---|---|---|---|---|
-| **A0** | probe `P1`, `P3`, `P5` (`P4` is answered above) | the design before the code | — | S |
+| **A0** | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) | the design before the code | — | M |
 | **A1** | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
-| **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, state)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
+| **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
@@ -274,6 +350,8 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A7** | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
+| **A9b** | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
+| **A9c** | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
 | **A10** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
 
 **A2 before any geometry.** The ledger is a few lines, it needs no frames, and it is
@@ -309,11 +387,15 @@ and records it, as `wheel_skid` records machine-ε rather than claiming algebrai
 | **P1** | `rig_world_seg` is enough to place a part for rendering | build the cart's transforms from the rig and diff against the current matrices | the rig cannot express something render needs without a second source |
 | **P3** | a 3-DOF joint is three `MOUNT`s in series | pose a known shoulder both ways, compare exactly | composing planar rigs through single-axis mounts diverges from the 3D rotation |
 | **P5** | **a towed chain stays stable** | two carts behind a horse through a tight turn and a reversal | the yaw states oscillate or the chain jack-knifes without the geometry saying it should |
+| **P6** | **N bones approximate a continuous bend to a stated bound** | discretise a cantilever under uniform load into `N` segments; measure tip error against the analytic elastica for `N = 2, 4, 8, 16` | the error does not fall predictably with `N`, or the `N` needed for a visually acceptable wing is large enough that the rig is the wrong representation |
+| **P7** | **a joint can be skinned by overlap alone** | for the character's hip, extend the pelvis by the maximum wedge and sweep the full swing range looking for background through the joint; then repeat for a 10-station wing | overlap cannot close a wing's joints without visible bulging — then the wing needs real skinning and `hex_body`'s *"no skinning"* is true only of the rig |
 | ~~P4~~ | ~~`bone_obb` proxies a wheel~~ | — | **falsified analytically above** |
 
-**`P3` is deferrable.** Nothing in Moros has an articulated limb yet, and generality is
-earned by a second real case rather than predicted from the first. Scope this to
-vehicles and suspended loads; let a robot earn the rest.
+**`P3` is now required, not deferrable.** It was parked because nothing here had an
+articulated limb; a robot arm is one. **`P7` is the one that decides how big this
+design is** — if overlap suffices, the rig stays rigid everywhere and `A-SKIN` is a
+constructor rule. If it does not, a deforming skin is a second representation, and that
+is a much larger claim than this plan currently makes.
 
 ---
 
@@ -353,4 +435,9 @@ harder linkage case.
 - the run that proves it **actually reached a slope** — on flat ground the rest passes
   trivially and proves nothing;
 - a **rope never pushes**, and the taut/slack transition is reported rather than hidden;
-- and the steep case **refuses with a residual** rather than reporting success.
+- the steep case **refuses with a residual** rather than reporting success;
+- **no joint shows a gap at any admissible value** — starting with the character's hip,
+  which shows one today;
+- and every state says whether it is **`DRIVEN` or `SOLVED`**, so a wing that cannot
+  flutter and a crate that cannot swing are decisions on the page rather than
+  discoveries in the frame.
