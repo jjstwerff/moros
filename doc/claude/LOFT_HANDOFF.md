@@ -22,16 +22,25 @@
 > the consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
 > battle-tested.
 
-> ## Status at 2026-07-27
+> ## Status at 2026-07-29
 >
 > | | |
 > |---|---|
-> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H11`, `H12`, `H13` |
+> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H11`, `H12`, `H13`, `H14`, `H15` |
+> | **open** | `H16` [#667](https://github.com/loft-lang/loft/issues/667) · `H17` [#668](https://github.com/loft-lang/loft/issues/668) · `H18` [#669](https://github.com/loft-lang/loft/issues/669) · `H19` [#670](https://github.com/loft-lang/loft/issues/670) — all filed 2026-07-29 |
 > | unverified | `H4` — the silent-null class; was plausibly `H12`'s family, so likely closed with it |
 >
-> **Everything Moros filed is fixed.** Every row re-run against the installed binary, not
-> taken from a commit message. `H11` and `H12` closed by loft `58b66993`; the workarounds
-> they forced in `hex_world` are removed and the suite is green without them.
+> Everything filed before 2026-07-29 is fixed, every row re-run against the installed
+> binary rather than taken from a commit message. `H11` and `H12` closed by loft
+> `58b66993`; the workarounds they forced in `hex_world` are removed and the suite is green
+> without them.
+>
+> **`H16`–`H19` are the wasm client's four**, and three of them are one shape: **a sentinel
+> or a contract that differs between native and browser, with nothing at the boundary to say
+> so.** `--html` is not a build flag, it is a second implementation. Every one of the four
+> presented as the same symptom — a canvas holding one flat colour — which is why the
+> session needed a second instrument (`tools/page_console.mjs`) before it could tell them
+> apart at all.
 
 # LOFT_HANDOFF.md — findings for the loft side, ready to file
 
@@ -837,3 +846,118 @@ boolean-specific rather than a limit on reference parameters.
 **What it cost:** a two-press authoring tool wanted `open: &boolean` beside `ax: &float`,
 and the float compiled while the boolean did not. The workaround — a struct holding the
 draft — is the better shape and stays.
+
+---
+
+## H16 — `loft install <dir>` drops a package's `wasm/`, and the copy SHADOWS a good one
+
+**Status:** filed as [loft-lang/loft#667](https://github.com/loft-lang/loft/issues/667)
+(`bug` `sev:medium` `area:packages` `area:wasm` `wa:partial` `hit-by:moros`)
+**Severity:** medium — silent, and the error points at the library rather than the install
+**Backend:** `--html` (any target that links a `[wasm.bridge]`)
+
+`install_package` copies `loft.toml`, `src/*.loft`, `tests/` and `native/`. A package's
+`wasm/` directory is not on that list, so a library with a `[wasm.bridge]` loses its bridge
+on a local install — and `~/.loft/lib/<name>` is searched *before* the registry cache, so
+the incomplete copy shadows a complete published one.
+
+```
+loft: --html: [wasm.bridge] declared `crate = "web-wasm"` but
+      ~/.loft/lib/web/wasm/src/lib.rs is missing — skipping bridge link
+error[E0433]: cannot find module or crate `web_wasm` in this scope
+```
+
+It is the **second instance of a class that function's own comment says it closed once**,
+for `native/`: *"a LOCAL `loft install <dir>` of a native lib silently dropped its FFI …
+while the registry path (from the tarball) carried it — an asymmetry this closes."*
+
+⚠ **What it cost is the lesson, not the bug.** Two diagnoses died first, and both were
+reached by *reading* rather than measuring: "the published tarball omits `wasm/`" (its
+sha256 matches the registry byte for byte, and `tar tzf` lists all three files) and "0.3.3
+was never published" (it was, the day before — our registry checkout was stale). Both were
+claims about *what someone else had shipped*, and neither needed this box. One `mv` of the
+shadowing directory settled it, and that probe was available from the first minute.
+
+---
+
+## H17 — a `--html` program that calls a missing `gl_*` is a LinkError at page load
+
+**Status:** filed as [loft-lang/loft#668](https://github.com/loft-lang/loft/issues/668)
+(`bug` `sev:medium` `area:wasm` `area:packages` `wa:partial` `hit-by:moros`)
+**Severity:** medium — the whole page dies, and the error names an import index
+**Backend:** `--html` only
+
+`doc/loft-gl-wasm.js` provides a SUBSET of `lib/graphics`'s native surface — no
+`gl_window_width`/`gl_window_height`, no `gl_mouse_wheel`, no `gl_set_uniform_vec2`/`vec4`,
+no event queue, no fullscreen, no screenshot. Calling one compiles cleanly and then fails
+at instantiate:
+
+```
+LinkError: WebAssembly.instantiate(): Import #7 "loft_gl" "loft_gl_window_width":
+           function import requires a callable
+```
+
+A subset is reasonable; the browser genuinely cannot do all of it. The defect is that the
+boundary is invisible until runtime and crossing it kills the page rather than the call —
+decidable at build time, since the reached `#native` symbols and the shim's import list are
+both known then.
+
+**What it cost:** the client asked the canvas for its size to send the server an aspect
+ratio — the one thing the JavaScript it replaces did with `canvas.clientWidth`.
+`WEB_APPS.md` §3 calls the browser surface *"the full WebGL2 canvas surface
+(`lib/graphics`)"*, which is the sentence a consumer plans against.
+
+---
+
+## H18 — browser GL handles start at 0, where the doc says 0 means failure
+
+**Status:** filed as [loft-lang/loft#669](https://github.com/loft-lang/loft/issues/669)
+(`bug` `sev:medium` `area:wasm` `wa:clean` `hit-by:moros`)
+**Severity:** medium — two silent failures, in opposite directions
+**Backend:** `--html` only; native returns real GL names and does not have the ambiguity
+
+`gl_create_shader` and `gl_upload_vertices` are documented as returning 0 on failure. In
+the browser shim they return an **index into a JS array that starts at zero** — and 0 on
+failure too, so the two are indistinguishable. Both readings then bite:
+
+- `if prog == 0 { fail }` — the documented check — rejects the first successful shader on
+  every page.
+- a `vao == 0` "this slot is free" marker loses the first mesh AND hands its slot to the
+  next one: 296 meshes into one slot, and a canvas showing nothing.
+
+**What it cost:** roughly half a session across both, and the two are *opposite* mistakes
+made from the same sentence — which is what makes it worth fixing rather than documenting.
+
+---
+
+## H19 — writes through a local captured from a `vector<Struct>` FIELD are discarded
+
+**Status:** filed as [loft-lang/loft#670](https://github.com/loft-lang/loft/issues/670)
+(`bug` `sev:high` `area:store-lifetime` `both-backends` `wa:clean` `hit-by:moros`)
+**Severity:** high — silent, and the losing idiom is the RECOMMENDED one
+**Backend:** identical under `--interpret` and `--native`, so semantics rather than codegen
+
+Assigning a `vector<Struct>` field to a local gives a copy. Writes through it evaporate:
+
+| write | result |
+|---|---|
+| `rows = bag.rows; r = rows[i]; r.f = x` | **LOST** |
+| `rows = bag.rows; rows[i] = Row { … }` | **LOST** |
+| `bag.rows[i].f = x` | sticks |
+| `bag.rows[i] = Row { … }` | sticks |
+| `for r in bag.rows { r.f = x }` | sticks |
+
+`bag` itself aliases fine — it is the field-to-local assignment that copies. The matrix is
+`plans/16-client-split/probe/vector_field_write.loft`, and it prints a MATRIX rather than a
+verdict on purpose: what is useful is where the boundary runs.
+
+⚠ **The loft-write reference recommends the losing form**, as the warning-clean way to
+index a field: *"capture into a local, then bound-guard … the local aliases the same
+underlying vector, so indexed writes propagate."* For `vector<text>` that may hold; for
+`vector<Struct>` it does not, and nothing in the sentence suggests a difference.
+
+**What it cost:** the wasm client held its meshes in a `vector<Part>` on a struct and had
+all three of its writes on the losing side at once — so nothing was ever placed and no slot
+was ever freed, and the world drew entirely at the origin. Nothing is wrong at the point of
+failure: the reads are right, `len` is right, `#index` is right, and the write statement is
+ordinary. Found only by writing the matrix, not by reading the code.
