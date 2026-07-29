@@ -12,29 +12,18 @@ between them: read it first after a break.
 
 ## ⏭ PICK UP HERE (2026-07-29, end of session)
 
-Three things are ready to start, in this order. Each is short and each has its unknown
-already answered — none of them needs re-diagnosing.
+**S1 draws.** The wasm/loft client renders the world — same wire, same picture as
+`editor.html` — and the two are gated side by side. What is ready to start next:
 
-1. ✅ **The `web` publish was never needed — done and closed.** The `--html` link failure was
-   `loft install <dir>` dropping a package's `wasm/` directory into `~/.loft/lib/web`, which
-   is searched *before* the registry cache, so an incomplete local copy shadowed a complete
-   published one. `rm -rf ~/.loft/lib/web` fixed it; `make client` now carries no `--lib`
-   flag and links `web` 0.3.3 from the registry (484 KB page, 322 KB WASM). Filed as
-   [loft#667](https://github.com/loft-lang/loft/issues/667).
-   ⚠ **Two diagnoses died before this one**, and both were reached by reading: "the 0.3.2
-   tarball omits `wasm/`" (its sha256 matches the registry and `tar tzf` lists all three
-   files) and "0.3.3 was never published" (it was, on 2026-07-28T16:34Z — our
-   `../loft-registry` checkout was stale). One `mv` of the shadowing directory settled it,
-   and that probe was available from the first minute. The trail is in
-   `plans/16-client-split/DESIGN.md` § S1.
-2. **S1's drawing** (`plans/16-client-split/DESIGN.md`). `src/editor_client.loft` already
-   connects, drains frames and compiles to a page (`make client`). What remains: read the
-   `scene` package's API (`Scene`, `Camera` — `graphics` only references them), then map
-   `M:` → a `mesh3d::Mesh` built from the 6-floats-per-vertex run, `T:` → its model matrix,
-   `X:` → remove, `C:` → the camera. The server builds those very types, so the client is
-   deserialising into the type it came from.
-   *Done when:* the browser gates pass against the page as they do against `editor.html`,
-   which then gets deleted.
+1. **✋ A CHECKPOINT FIRST: look at the wasm client.** `make play-fast`, then
+   `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
+   ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
+   the window, so an unclicked page is deaf where `editor.html` was not. Everything below
+   assumes the new renderer is the one to build on, and that is your call, not a gate's.
+   **`editor.html` is deliberately NOT deleted** — it is the control the comparison is made
+   against.
+2. **S2 — voxels on the wire** (`plans/16-client-split/DESIGN.md`). The step is designed;
+   S1 supplies the lesson to carry into it, below.
 3. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
    re-measures the perpendicular stop rather than the slide. It needs a yaw the `7:` placement
    actually applies. The slide itself IS verified — trail in the 6d notes — this is a gate
@@ -42,12 +31,66 @@ already answered — none of them needs re-diagnosing.
 4. **The `hex_edge` README note is uncommitted in the shared tree**, alongside the older
    `hex_field` fix. Both need a human call before committing in `../loft-libs-world/`.
 
-**How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (the wasm page,
-no `--lib` flag) ·
+**How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (build the wasm
+page) · `make client-check` / `make editor-check` (the two renderers, one claim) ·
+`make client-console` (what the page SAID, when it drew nothing) ·
 `make gate` (all 22, and it now stops the server after) · `make stop-editor` (three
 platforms, by pid file OR port) · `27:1` on the wire turns on the phase trace ·
 `node tools/plan.mjs out.png` draws the world in plan view.
 ⚠ **Stop the server when done.** It is not idle when forgotten — that was 76% of a core.
+
+## Since 2026-07-29 (later) — S1 draws, and `--html` is a second implementation
+
+**The wasm client renders the world.** `src/editor_client.loft` is ~500 lines of loft that
+dials the server, parses the wire and draws it on WebGL2 through `graphics`' raw `gl_*`
+surface. Served at **`/client`**, gated by `make client-check` — the same headless-browser
+check `editor-check` runs against `editor.html`, so one claim is measured against two
+renderers. Control seen red: skipping every part in the draw loop drops the canvas from 258
+distinct colours to 2. **All 22 protocol gates stay green** on the server that now serves
+both pages.
+
+**It drives, not just draws** — measured, not assumed. Idle, the counters freeze over 600
+frames (296 meshes, 301 placements, 0 drops, 2 cameras); holding `W` for four seconds moves
+all of them (320 / 715 / 48 / 80). Key → bitmask → `4:` → the server's tick → new frames.
+⚠ **The canvas must be CLICKED first**: loft's shell binds keys to the canvas element, not
+the window, and `editor.html` listened at the document. Nothing in the client can fix that
+— focus is the host's business and `--html` exposes none of it.
+
+**The plan's own instruction was wrong, and building it showed why.** It said to map the
+wire onto `mesh3d::Scene` / `Camera`. But the wire carries a flat run of 6 floats per vertex
+and two 4×4 matrices — exactly what `gl_upload_vertices(data, 6)` and `gl_set_uniform_mat4`
+take. The scene graph would mean un-flattening a vertex run so `mesh_to_floats` can flatten
+it again, and inverting a look-at matrix so the renderer can rebuild the one we were handed.
+
+### ⚠ `--html` IS NOT A BUILD FLAG, IT IS A SECOND IMPLEMENTATION
+
+Four defects cost the session, **and every one of them presented as the same symptom** — a
+canvas holding one flat colour. Three are the same shape: a sentinel or a contract that
+differs between native and browser, with nothing at the boundary to say so.
+
+| what | filed |
+|---|---|
+| `gl_window_width` is not in the browser's host-import set. Calling it is a **LinkError at instantiate** — the page never runs, and the error names an import index, not a function | [loft#668](https://github.com/loft-lang/loft/issues/668) |
+| browser `gl_create_shader` / `gl_upload_vertices` return an index **starting at 0**, while the doc says 0 means failure. The documented check rejects the first working shader; a `vao == 0` free marker sends all 296 meshes into one slot | [loft#669](https://github.com/loft-lang/loft/issues/669) |
+| **writes through a local captured from a `vector<Struct>` field are silently discarded** — and that is the idiom the loft-write reference recommends. This client had all three of its writes on the losing side | [loft#670](https://github.com/loft-lang/loft/issues/670) |
+| `web`'s `send` DROPS a message on a still-connecting browser socket. One `send(h, "1:")` after `ws_handler` sends into a closed socket and then waits for ever — the server logs the client as connected and never hears from it. The retry IS the fix, and `send`'s own doc says so | — |
+
+**Carry into S2:** check every handle, sentinel and lifecycle assumption against
+`loft/doc/loft-gl-wasm.js` rather than against the API doc. Also noted, not yet filed:
+`gl_clear`'s doc says `0xRRGGBBAA` and **both** implementations decode `0xAARRGGBB` — they
+agree with each other and not with the sentence (a doc fix in `../loft-libs-graphics`).
+
+### Two instruments, and the reason there had to be two
+
+`html_render_check.mjs` answers *whether* it drew — one bit and a colour count. All four
+defects set that bit to 0, and it has nothing further to say. **`tools/page_console.mjs`**
+is the attribution half: it prints what the page SAID — the `<pre id="out">` the shell
+*hides* the moment a window is created, plus console messages, plus `--hook-shaders` to log
+the source WebGL actually received and each compile's status. Building it is what turned a
+guessing game into four measurements.
+`plans/16-client-split/probe/vector_field_write.loft` is the same idea in the language: it
+prints the write MATRIX rather than a verdict, because what is useful is *where the boundary
+runs*, not that one line is broken.
 
 ## Since 2026-07-29 — row 6 finished, and the design turned toward the client
 

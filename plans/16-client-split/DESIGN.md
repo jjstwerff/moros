@@ -103,6 +103,78 @@ JavaScript renderer and nothing else** — same wire, same frames, same picture.
 *Risk:* the whole four-target story (`loft-ship`) meets a real consumer. Expect this step to
 cost more than it looks.
 
+## ✅ S1 DRAWS (2026-07-29)
+
+`src/editor_client.loft` is a 500-line loft program that connects, parses the wire and
+renders it. `make client` builds it, the server serves it at **`/client`** beside the
+JavaScript at `/`, and `make client-check` is the same headless-browser gate
+`editor-check` runs — same claim, two renderers, so a divergence is one green and one
+red rather than a picture somebody has to remember. Both are green; the picture matches
+(figure, limbs, cart, wheel, height ramp, horizontal fog fading into the sky).
+**Control seen red:** skipping every part in the draw loop collapses the canvas from 258
+distinct colours to 2.
+
+**It drives, not just draws.** Measured rather than assumed: with no input the counters
+freeze (296 meshes, 301 placements, 0 drops, 2 cameras, over 600 frames), and holding `W`
+for four seconds moves every one of them — 320 meshes, 715 placements, 48 drops, 80
+cameras. The character walked, chunks streamed in and out, the camera re-solved. That is
+the whole loop — key → bitmask → `4:` → the server's tick → new frames → the picture.
+
+⚠ **The canvas has to be CLICKED before a key reaches the page.** loft's shell binds
+keydown/keyup to the canvas element, not to the window; `editor.html` listened at the
+document and needed no click. Nothing in the client can fix it — focus is the host's, and
+`--html` exposes none of it. It is the one behaviour difference a person will notice, and
+it is why `page_console.mjs --press` focuses the canvas before dispatching.
+
+**`editor.html` is NOT deleted yet.** It is the reference the comparison is made against,
+and it is the only one of the two that has had the user's eyes. It goes when S2 has a
+second thing to compare, or when the user says so — deleting the control the moment the
+new path goes green is how you lose the ability to tell which one changed.
+
+### The scene graph was the wrong altitude, and that is a design correction
+
+This plan said *"map `M:` → a `mesh3d::Mesh`, `T:` → its model matrix, `C:` → the camera"*.
+Built that way it would have been slower and wronger. The wire carries a **flat run of 6
+floats per vertex** and **two 4×4 matrices** — precisely what `gl_upload_vertices(data, 6)`
+and `gl_set_uniform_mat4` take. Going through `mesh3d::Scene` means un-flattening a vertex
+run into `Vertex`/`Triangle` records so `mesh_to_floats` can flatten it again, and
+inverting a look-at matrix into the position/target pair a `scene::Camera` holds so the
+renderer can rebuild the matrix we were handed. The wire speaks GL because the renderer it
+was written for was WebGL. The client keeps that, and the shader is ported verbatim.
+
+### What it actually cost: four defects, none of them in the loft code
+
+Every one was invisible at the point of failure, and all four presented as *the same
+symptom* — a canvas holding one flat colour.
+
+| # | what | filed |
+|---|---|---|
+| 1 | `gl_window_width` is not in the browser host-import set; calling it is a **LinkError at instantiate**, not a compile error — the page never runs | [loft#668](https://github.com/loft-lang/loft/issues/668) |
+| 2 | browser `gl_create_shader` / `gl_upload_vertices` return an index **starting at 0**, while the doc says 0 means failure. The documented check rejects the first working shader; a `vao == 0` free-slot marker sends all 296 meshes into one slot | [loft#669](https://github.com/loft-lang/loft/issues/669) |
+| 3 | **writes through a local captured from a `vector<Struct>` field are silently discarded** — the client had all three of its writes on the losing side, so nothing was ever placed and no slot ever freed | [loft#670](https://github.com/loft-lang/loft/issues/670) |
+| 4 | `web`'s `send` DROPS a message on a still-connecting browser socket. A single `send(h, "1:")` after `ws_handler` connects, sends into a closed socket, and waits for ever — the server logs the client as connected and never hears from it | — the retry is the fix, and `send`'s own doc says so |
+
+⚠ **Three of the four are the same shape: a sentinel or a contract that differs between
+native and browser, with nothing at the boundary to say so.** `--html` is not a build
+flag; it is a second implementation, and a consumer meets its differences one at a time,
+each as a blank page. That is the finding S1 was worth, and it is worth carrying into S2:
+*every* handle, sentinel and lifecycle assumption should be checked against the shim
+rather than against the API doc.
+
+### The instrument that ended it
+
+`tools/page_console.mjs` — loads the page in headless Chrome and prints what it SAID: the
+`<pre id="out">` the shell writes `println` into (which the shell HIDES the moment a window
+is created), plus every console message, plus `--hook-shaders` to log the source WebGL
+actually received and the compile status of each.
+
+`html_render_check.mjs` answers *whether* it drew — one bit and a colour count. When that
+bit is 0 it has nothing more to say, and defects 1–4 all set it to 0. Attribution needed a
+second instrument, and building it was the step that turned a guessing game into four
+measurements. `plans/16-client-split/probe/vector_field_write.loft` is the other half: it
+prints the write matrix rather than a verdict, because the useful thing is *where the
+boundary runs*.
+
 **✅ THE `--html` LINK FAILURE IS UNDERSTOOD AND GONE (2026-07-29).** It cost two wrong
 diagnoses before the right one, and the wrong ones are kept here because both were reached
 by *reading* and both survived until something was measured.

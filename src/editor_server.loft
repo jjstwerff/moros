@@ -2682,6 +2682,24 @@ fn read_index() -> text {
   ixb
 }
 
+// The wasm client (plan #16, S1), served at `/client` beside the JavaScript one at
+// `/`. Both are the SAME wire — that is the whole point of S1, and serving them
+// side by side is what lets a gate run against each and compare. `editor.html` and
+// this route go together when the comparison is done.
+//
+// The page is a build artefact (`make client`), not a source file, so a missing one
+// is an ordinary state and says so rather than 404ing into a puzzle.
+fn read_client() -> text {
+  cxf = file("{source_dir()}/.loft/editor_client.html");
+  if cxf.format == Format.NotExists {
+    return "<!DOCTYPE html><html><body><h1>404 — the wasm client is not built</h1>"
+         + "<p>Run <code>make client</code>, which writes "
+         + "<code>src/.loft/editor_client.html</code>.</p></body></html>";
+  }
+  cxb = cxf.content()?;
+  cxb
+}
+
 fn main() {
   port = 18090;
   srv = server::listen(port);
@@ -2815,6 +2833,8 @@ fn main() {
       if ev.http {
         if ev.path == "/" || ev.path == "/index.html" {
           srv.respond_html(read_index());
+        } else if ev.path == "/client" || ev.path == "/client.html" {
+          srv.respond_html(read_client());
         } else {
           srv.respond_404();
         }

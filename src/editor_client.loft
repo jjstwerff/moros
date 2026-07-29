@@ -26,6 +26,17 @@
 // else — same wire, same frames, same picture — because every later step in plan 16
 // is gated on comparing two paths, and there is nothing to compare against until
 // this one draws what the old one drew.
+//
+// ⚠ THE SCENE GRAPH IS THE WRONG ALTITUDE HERE, and that is a finding rather than a
+// preference. `mesh3d` offers `Scene` / `Node` / `Camera`, and plan 16 named them —
+// but the wire carries a FLAT run of 6 floats per vertex and two 4x4 MATRICES, which
+// is what `gl_upload_vertices(data, 6)` and `gl_set_uniform_mat4` take directly.
+// Going through the scene graph would mean un-flattening a vertex run into Vertex /
+// Triangle records so `mesh_to_floats` could flatten it back, and inverting a
+// look-at matrix into the position/target pair a `Camera` wants so the renderer
+// could rebuild the matrix we were handed. Both are round trips through a structure
+// nobody reads. The wire speaks GL because the renderer it was written for was
+// WebGL; the port keeps that.
 use web;
 use graphics;
 
@@ -40,9 +51,148 @@ use graphics;
 //   S:<text>                                    status, for gates and for people
 // and client -> server, ids as NUMBERS because the pump parses `<int>:<payload>`:
 //   1: ready · 2:<aspect> camera · 3:<dx>,<dy> drag · 4:<keybits> · 5:<±1> raise
+//   6:<0|1> levelling · 23:<mat>,<rad> fence or wall
+//
+// ⚠ THE HOST IS A CONSTANT, where the JavaScript read `location.host`. A `--html`
+// program has no `location` — the browser surface is closed (loft's `WEB_APPS.md`
+// §3) — so a page served from anywhere but this box's tunnel would dial the wrong
+// server. It costs nothing today (one process serves the page and the socket on one
+// port) and it is the first thing to fix when the client is served from elsewhere.
 const WS_URL = "ws://127.0.0.1:18090/ws";
 
-struct Counts {
+// The keys, as the ASCII codes `gl_key_pressed` takes. `graphics` exports names for
+// most of them, but its `KEY_F` is documented as "lower-layer" — a meaning from a
+// different editor. Naming them by what they do HERE keeps that confusion out.
+const KEY_FORWARD = 119;      // w
+const KEY_BACK = 115;         // s
+const KEY_LEFT_TURN = 97;     // a
+const KEY_RIGHT_TURN = 100;   // d
+const KEY_LEVEL = 108;        // l — toggle levelling
+const KEY_FENCE = 102;        // f — fence the ground you stand in
+const KEY_WALL = 103;         // g — wall it
+
+// `23:<material>,<radius>`. A fence you see over, a wall you do not, and the camera
+// treats them differently for exactly that reason — same tool, different material.
+const FENCE_CMD = "23:3,3";
+const WALL_CMD = "23:1,3";
+
+const WIN_W = 1280;
+const WIN_H = 800;
+
+// The reference look, ported verbatim from `html/editor.html`. Written as desktop
+// GLSL (`#version 330 core`) because loft's browser shell rewrites the version
+// directive to `#version 300 es` and injects the precision qualifiers — so ONE
+// source serves the native window and the canvas. ⚠ Braces are doubled: a loft
+// backtick string interpolates `{…}`.
+const WORLD_VERT = `
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNrm;
+uniform mat4 uModel, uView, uProj;
+out vec3 vNrm;
+out vec3 vWorld;
+void main() {{
+  // The model matrix is a rigid placement (rotate + translate, no scale), so
+  // the same upper-3x3 transforms the normal -- no inverse-transpose needed.
+  vNrm = mat3(uModel) * aNrm;
+  vec4 w = uModel * vec4(aPos, 1.0);
+  vWorld = w.xyz;
+  gl_Position = uProj * uView * w;
+}}
+`;
+
+const WORLD_FRAG = `
+#version 330 core
+in vec3 vNrm;
+in vec3 vWorld;
+uniform vec3 uColor, uFogCentre, uFogColor, uRampLo, uRampHi;
+uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp;
+out vec4 frag;
+void main() {{
+  // One directional light, flat-shaded -- the reference look: matte, no specular.
+  vec3 L = normalize(vec3(0.35, 0.80, 0.45));
+  float d = max(dot(normalize(vNrm), L), 0.0);
+  // Height ramp: green low, brown high. The RULE (which colours, over which
+  // heights) came from the server as data; only the lerp happens here -- the
+  // same split as the camera, where the solve is server-side and the multiply
+  // is not.
+  float g = clamp((vWorld.y - uRampY0) / max(uRampY1 - uRampY0, 0.001), 0.0, 1.0);
+  vec3 base = mix(uColor, mix(uRampLo, uRampHi, g), uUseRamp);
+  vec3 lit = base * (0.45 + 0.55 * d);
+  // HORIZONTAL distance only. Using the full 3-D distance would fog the ground
+  // at your feet whenever the camera is high, because the fade is centred on
+  // the character and the camera looks down at it.
+  float r = distance(vWorld.xz, uFogCentre.xz);
+  float f = clamp((r - uFogFrom) / max(uFogTo - uFogFrom, 0.001), 0.0, 1.0);
+  f = f * f * (3.0 - 2.0 * f);            // smoothstep -- no banding at the rim
+  frag = vec4(mix(lit, uFogColor, f), 1.0);
+}}
+`;
+
+// One drawable: a chunk surface, or a limb of the figure. `vao < 0` marks the slot
+// FREE rather than deleting it, so a world walked through for an hour reuses slots
+// instead of growing a vector for ever — the same reason the JavaScript kept a Map
+// and not an array.
+//
+// ⚠ THE FREE MARKER IS -1, NOT 0, AND THAT IS NOT A STYLE CHOICE. In the browser
+// `gl_upload_vertices` returns an INDEX into a table that starts at zero, so the
+// first mesh a page uploads has handle 0 — while `graphics`' own doc says 0 means
+// FAILURE (loft-lang/loft#669: the two are indistinguishable there, and native does
+// not agree). With 0 meaning "free", that first mesh is never drawn AND the slot
+// search hands its slot to the next mesh, so all 296 chunks land in slot 0 one after
+// another and the canvas shows an empty sky. The symptom (nothing draws at all) sits
+// a long way from the cause (one valid handle read as a hole), which is what earns
+// it a comment rather than a silent fix.
+struct Part {
+  pid: integer,
+  vao: integer,
+  vcount: integer,
+  cr: float,
+  cg: float,
+  cb: float,
+  ramped: float,
+  model: vector<float>,
+}
+
+struct Client {
+  parts: vector<Part>,
+  prog: integer,
+  view: vector<float>,
+  proj: vector<float>,
+  has_cam: boolean,
+  // The ground ramp and the fog both arrive as data. The sky is NOT a constant
+  // here: it comes with the fog, so the clear colour and the fog target are one
+  // value — two copies would drift and leave a ring at the horizon.
+  ramp_lo_r: float,
+  ramp_lo_g: float,
+  ramp_lo_b: float,
+  ramp_hi_r: float,
+  ramp_hi_g: float,
+  ramp_hi_b: float,
+  ramp_y0: float,
+  ramp_y1: float,
+  fog_x: float,
+  fog_y: float,
+  fog_z: float,
+  fog_from: float,
+  fog_to: float,
+  sky_r: float,
+  sky_g: float,
+  sky_b: float,
+  // Has the ready message actually gone out? See the loop in `main`.
+  hello: boolean,
+  // Input, as EDGES rather than states: the socket carries a change, not a poll.
+  held: integer,
+  was_up: boolean,
+  was_down: boolean,
+  was_level: boolean,
+  was_fence: boolean,
+  was_wall: boolean,
+  levelling: boolean,
+  dragging: boolean,
+  last_x: float,
+  last_y: float,
+  // What arrived, for the gate and for a person watching the console.
   c_mesh: integer,
   c_place: integer,
   c_drop: integer,
@@ -50,58 +200,424 @@ struct Counts {
   c_status: integer,
 }
 
-// One frame's worth of socket: drain what is waiting, count what arrived.
+fn ident4() -> vector<float> {
+  [1.0, 0.0, 0.0, 0.0,
+   0.0, 1.0, 0.0, 0.0,
+   0.0, 0.0, 1.0, 0.0,
+   0.0, 0.0, 0.0, 1.0]
+}
+
+// The byte offset of the next `;` at or after `from`, or -1. Used only over a
+// message's short HEAD (an id, a flag, three colours), so the one-character slices
+// cost nothing — the megabyte-long vertex tail is sliced exactly once, after it.
+fn semi_from(src: text, from: integer) -> integer {
+  si = from;
+  sn = src.size();
+  while si < sn {
+    if src[si..si + 1] == ";" { return si; }
+    si = si + 1;
+  }
+  -1
+}
+
+fn parse_floats(src: text) -> vector<float> {
+  fout: vector<float> = [];
+  for ftok in src.split(',') {
+    if ftok.size() > 0 { fout += [ftok as float ?? 0.0]; }
+  }
+  fout
+}
+
+// The vertex run, as the 32-bit floats the GPU takes. Kept separate from
+// `parse_floats` rather than converted afterwards: the run is the big one (a wall
+// is 1200 vertices = 7200 numbers), and building it twice is the whole cost twice.
+fn parse_singles(src: text) -> vector<single> {
+  sout: vector<single> = [];
+  for stok in src.split(',') {
+    if stok.size() > 0 { sout += [stok as single ?? 0.0f]; }
+  }
+  sout
+}
+
+// ⚠ EVERY ACCESS BELOW GOES THROUGH `st.parts` DIRECTLY, never through a local
+// capture, and that is load-bearing rather than tidy. Measured on both backends:
+//
+//   rows = bag.rows;  r = rows[i];  r.field = x     the write is LOST
+//   rows = bag.rows;  rows[i] = Row { … }           the write is LOST
+//   bag.rows[i].field = x                           the write STICKS
+//   bag.rows[i] = Row { … }                         the write STICKS
+//   for r in bag.rows { r.field = x }               the write STICKS
+//
+// Assigning a vector FIELD to a local copies the vector; the local is not an alias.
+// Nothing warns, the code reads correctly, and every write through it evaporates.
+// This client had all three of its writes on the losing side at once, and the
+// symptom was a world drawn entirely at the origin — no placement ever applied, no
+// slot ever freed. The probe is
+// `plans/16-client-split/probe/vector_field_write.loft`.
+fn find_part(st: Client, want: integer) -> integer {
+  for fp in st.parts {
+    if fp.vao >= 0 && fp.pid == want { return fp#index; }
+  }
+  -1
+}
+
+// A chunk leaving the draw distance frees its GPU buffer. Without this the client
+// leaks a VAO per chunk walked through — invisible until a long session, which is
+// exactly the kind of leak an infinite world produces.
+fn drop_part(st: Client, want: integer) {
+  for dp in st.parts {
+    if dp.vao >= 0 && dp.pid == want {
+      graphics::gl_delete_vao(dp.vao);
+      dp.vao = -1;
+      dp.vcount = 0;
+      return;
+    }
+  }
+}
+
+// M:<i>;<ramp>;r,g,b;<6 floats per vertex>
+fn add_mesh(st: Client, body: text) {
+  h1 = semi_from(body, 0);
+  if h1 < 0 { return; }
+  h2 = semi_from(body, h1 + 1);
+  if h2 < 0 { return; }
+  h3 = semi_from(body, h2 + 1);
+  if h3 < 0 { return; }
+  mid = body[0..h1] as integer ?? -1;
+  if mid < 0 { return; }
+  mramp = body[h1 + 1..h2] as float ?? 0.0;
+  mcol = parse_floats(body[h2 + 1..h3]);
+  if len(mcol) < 3 { return; }
+  mverts = parse_singles(body[h3 + 1..body.size()]);
+  if len(mverts) < 6 { return; }
+
+  // Replacing an id must free the old buffer FIRST — the server re-sends a chunk
+  // under the same id when it rebuilds, and keeping both would leak one per edit.
+  drop_part(st, mid);
+  mvao = graphics::gl_upload_vertices(mverts, 6);
+  mpart = Part {
+    pid: mid,
+    vao: mvao,
+    vcount: len(mverts) / 6,
+    cr: mcol[0] ?? 1.0,
+    cg: mcol[1] ?? 1.0,
+    cb: mcol[2] ?? 1.0,
+    ramped: mramp,
+    model: ident4(),
+  };
+  // Reuse a freed slot before growing: the world is infinite and meshes arrive and
+  // leave for ever.
+  mfree = -1;
+  for mp in st.parts {
+    if mp.vao < 0 { mfree = mp#index; break; }
+  }
+  if mfree >= 0 {
+    st.parts[mfree] = mpart;
+  } else {
+    st.parts += [mpart];
+  }
+}
+
+// T:<i>;<16 floats, column-major>
+fn place_mesh(st: Client, body: text) {
+  t1 = semi_from(body, 0);
+  if t1 < 0 { return; }
+  tid = body[0..t1] as integer ?? -1;
+  ti = find_part(st, tid);
+  // A placement for a mesh we do not hold is ordinary, not an error: the server
+  // broadcasts a chunk's transform to everyone, and a client that has not been sent
+  // that chunk — or that connected mid-tick — simply has nowhere to put it. The
+  // JavaScript dropped these the same way (`parts.get(id)` returning undefined).
+  if ti < 0 { return; }
+  tmat = parse_floats(body[t1 + 1..body.size()]);
+  if len(tmat) != 16 { return; }
+  st.parts[ti].model = tmat;
+}
+
+// G:<lo rgb>,<hi rgb>,<lo y>,<hi y>
+fn set_ramp(st: Client, body: text) {
+  gv = parse_floats(body);
+  if len(gv) < 8 { return; }
+  st.ramp_lo_r = gv[0] ?? 0.0;
+  st.ramp_lo_g = gv[1] ?? 0.0;
+  st.ramp_lo_b = gv[2] ?? 0.0;
+  st.ramp_hi_r = gv[3] ?? 0.0;
+  st.ramp_hi_g = gv[4] ?? 0.0;
+  st.ramp_hi_b = gv[5] ?? 0.0;
+  st.ramp_y0 = gv[6] ?? 0.0;
+  st.ramp_y1 = gv[7] ?? 1.0;
+}
+
+// F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>
+fn set_fog(st: Client, body: text) {
+  fv = parse_floats(body);
+  if len(fv) < 8 { return; }
+  st.fog_x = fv[0] ?? 0.0;
+  st.fog_y = fv[1] ?? 0.0;
+  st.fog_z = fv[2] ?? 0.0;
+  st.fog_from = fv[3] ?? 0.0;
+  st.fog_to = fv[4] ?? 1.0;
+  st.sky_r = fv[5] ?? 0.0;
+  st.sky_g = fv[6] ?? 0.0;
+  st.sky_b = fv[7] ?? 0.0;
+}
+
+// C:<view>;<proj> — both already 4x4. The solve is the server's; the multiply is
+// not, which is the same split the height ramp draws.
+fn set_camera(st: Client, body: text) {
+  c1 = semi_from(body, 0);
+  if c1 < 0 { return; }
+  cview = parse_floats(body[0..c1]);
+  cproj = parse_floats(body[c1 + 1..body.size()]);
+  if len(cview) != 16 || len(cproj) != 16 { return; }
+  st.view = cview;
+  st.proj = cproj;
+  st.has_cam = true;
+}
+
+fn chan255(cv: float) -> integer {
+  ci = (cv * 255.0) as integer;
+  if ci < 0 { return 0; }
+  if ci > 255 { return 255; }
+  ci
+}
+
+// `gl_clear` takes **0xAARRGGBB**. ⚠ Its doc comment in `graphics` 0.5.0 says
+// `0xRRGGBBAA`, and that comment is wrong: both implementations — `loft_gl_clear`
+// in the native cdylib and the same name in loft's browser shim — decode alpha
+// from the top byte. They AGREE with each other and disagree with the doc, which
+// is the safe direction to be wrong in, but a caller who trusts the sentence gets
+// a sky whose red and blue are its alpha and green.
+//
+// The clear colour IS the fog target — one value, so there is no ring at the
+// horizon where the fog stops matching the sky.
+fn sky_packed(st: Client) -> integer {
+  (255 << 24) | (chan255(st.sky_r) << 16) | (chan255(st.sky_g) << 8) | chan255(st.sky_b)
+}
+
+fn draw_world(st: Client) {
+  graphics::gl_enable(graphics::GL_DEPTH_TEST);
+  graphics::gl_clear(sky_packed(st));
+  // Nothing is drawn before the first camera: without a view and a projection
+  // every vertex would land in the same place, which reads as a blank canvas
+  // rather than as "waiting".
+  if !st.has_cam { return; }
+  graphics::gl_use_shader(st.prog);
+  graphics::gl_set_uniform_mat4(st.prog, "uView", st.view);
+  graphics::gl_set_uniform_mat4(st.prog, "uProj", st.proj);
+  graphics::gl_set_uniform_vec3(st.prog, "uFogCentre", st.fog_x, st.fog_y, st.fog_z);
+  graphics::gl_set_uniform_vec3(st.prog, "uFogColor", st.sky_r, st.sky_g, st.sky_b);
+  graphics::gl_set_uniform_float(st.prog, "uFogFrom", st.fog_from);
+  graphics::gl_set_uniform_float(st.prog, "uFogTo", st.fog_to);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampLo", st.ramp_lo_r, st.ramp_lo_g, st.ramp_lo_b);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampHi", st.ramp_hi_r, st.ramp_hi_g, st.ramp_hi_b);
+  graphics::gl_set_uniform_float(st.prog, "uRampY0", st.ramp_y0);
+  graphics::gl_set_uniform_float(st.prog, "uRampY1", st.ramp_y1);
+  for dp in st.parts {
+    if dp.vao >= 0 {
+      graphics::gl_set_uniform_mat4(st.prog, "uModel", dp.model);
+      graphics::gl_set_uniform_vec3(st.prog, "uColor", dp.cr, dp.cg, dp.cb);
+      graphics::gl_set_uniform_float(st.prog, "uUseRamp", dp.ramped);
+      graphics::gl_draw(dp.vao, dp.vcount);
+    }
+  }
+}
+
+// One frame's worth of socket: drain what is waiting, draw what arrived.
 //
 // ⚠ DRAIN, do not read one. `try_recv` returns "" when nothing is waiting, so a
 // single read per frame would fall behind at exactly the moment the server has
 // most to say — the initial stream is ~48 chunks of geometry — and the client
 // would take a minute to show a world the server sent in a second.
-fn drain(h: web::WsHandler, n: Counts) -> integer {
+fn drain(h: web::WsHandler, st: Client) -> integer {
   got = 0;
-  msg = web::try_recv(h);
+  msg = web::try_recv(h) ?? "";
   while msg != "" {
     got = got + 1;
-    if msg.len() > 1 {
-      tag = msg[..1];
-      if tag == "M" { n.c_mesh = n.c_mesh + 1; }
-      else if tag == "T" { n.c_place = n.c_place + 1; }
-      else if tag == "X" { n.c_drop = n.c_drop + 1; }
-      else if tag == "C" { n.c_cam = n.c_cam + 1; }
-      else if tag == "S" { n.c_status = n.c_status + 1; }
+    if msg.size() > 1 {
+      tag = msg[0..1];
+      body = msg[2..msg.size()];
+      if tag == "M" { st.c_mesh = st.c_mesh + 1; add_mesh(st, body); }
+      else if tag == "T" { st.c_place = st.c_place + 1; place_mesh(st, body); }
+      else if tag == "X" { st.c_drop = st.c_drop + 1; drop_part(st, body as integer ?? -1); }
+      else if tag == "C" { st.c_cam = st.c_cam + 1; set_camera(st, body); }
+      else if tag == "G" { set_ramp(st, body); }
+      else if tag == "F" { set_fog(st, body); }
+      else if tag == "S" { st.c_status = st.c_status + 1; println("server: {body}"); }
       else if tag == "E" {
         // End of world: the server has sent everything it means to send for this
         // connection, and wants an aspect back before it will solve a camera.
-        web::send(h, "2:1.5,");
+        send_aspect(h);
       }
     }
-    msg = web::try_recv(h);
+    msg = web::try_recv(h) ?? "";
   }
   got
 }
 
+// The viewport, as the server's camera needs it — sent on `E:`, because the server
+// will not solve a camera before it knows the shape of what it is solving for.
+//
+// ⚠ A CONSTANT, where the JavaScript read the live canvas size and re-sent on every
+// resize. That is not a shortcut: `gl_create_window(w, h)` in the browser shell sets
+// `canvas.width`/`canvas.height` to exactly those numbers and nothing else changes
+// them, so the canvas IS `WIN_W x WIN_H` for the life of the page. The two calls
+// that could report otherwise — `gl_window_width` / `gl_window_height` — are not in
+// the browser's host-import set at all, and calling one is not a compile error but a
+// LinkError at instantiate (loft-lang/loft#668).
+fn send_aspect(h: web::WsHandler) {
+  web::send(h, "2:{(WIN_W as float) / (WIN_H as float)},");
+}
+
+// Input, all of it edge-triggered against last frame.
+//
+// The client sends PIXELS and BITS and nothing else: no position, no velocity, no
+// delta-time. Sensitivity, the pitch fence, the character's facing and the camera
+// solve are all the server's, and movement is integrated on its fixed tick — which
+// is what makes the walk reproducible from an input log instead of from whatever
+// frame rate this tab happened to run at.
+//
+// ⚠ THE CANVAS MUST BE CLICKED BEFORE ANY KEY ARRIVES. loft's browser shell binds
+// keydown/keyup to the CANVAS element (it carries `tabindex="0"`), not to the
+// window — so a freshly loaded page that nobody has clicked is deaf, and the
+// JavaScript this replaces was not, because it listened at the document. There is
+// nothing this file can do about it from inside: focus is the host's business and
+// `--html` exposes none of it. It is why `page_console.mjs --press` focuses the
+// canvas first, and it is the one behaviour difference a person will notice.
+fn poll_input(h: web::WsHandler, st: Client) {
+  bits = 0;
+  if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | 1; }
+  if graphics::gl_key_pressed(KEY_BACK) { bits = bits | 2; }
+  if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | 4; }
+  if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | 8; }
+  if bits != st.held {
+    st.held = bits;
+    web::send(h, "4:{bits}");
+  }
+
+  // Arrows shape the ground rather than move — one step per PRESS, so they are
+  // edges where W/S/A/D are a held state.
+  kup = graphics::gl_key_pressed(graphics::KEY_UP);
+  if kup && !st.was_up { web::send(h, "5:1"); }
+  st.was_up = kup;
+  kdown = graphics::gl_key_pressed(graphics::KEY_DOWN);
+  if kdown && !st.was_down { web::send(h, "5:-1"); }
+  st.was_down = kdown;
+
+  klevel = graphics::gl_key_pressed(KEY_LEVEL);
+  if klevel && !st.was_level {
+    st.levelling = !st.levelling;
+    if st.levelling { web::send(h, "6:1"); } else { web::send(h, "6:0"); }
+  }
+  st.was_level = klevel;
+
+  kfence = graphics::gl_key_pressed(KEY_FENCE);
+  if kfence && !st.was_fence { web::send(h, FENCE_CMD); }
+  st.was_fence = kfence;
+  kwall = graphics::gl_key_pressed(KEY_WALL);
+  if kwall && !st.was_wall { web::send(h, WALL_CMD); }
+  st.was_wall = kwall;
+
+  // Drag to look. A raw delta is an input event, not a model decision.
+  mbtn = graphics::gl_mouse_button();
+  mx = graphics::gl_mouse_x();
+  my = graphics::gl_mouse_y();
+  if (mbtn & 1) != 0 {
+    if st.dragging {
+      ddx = (mx - st.last_x) as integer;
+      ddy = (my - st.last_y) as integer;
+      if ddx != 0 || ddy != 0 { web::send(h, "3:{ddx},{ddy}"); }
+    }
+    st.dragging = true;
+    st.last_x = mx;
+    st.last_y = my;
+  } else {
+    st.dragging = false;
+  }
+}
+
 fn main() {
   println("moros editor client — S1 (plan #16): the wire, in loft");
-  n = Counts { c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0 };
+
+  if !graphics::gl_create_window(WIN_W, WIN_H, "Moros editor — S1 client") {
+    println("client: no window — this build needs a display (or run it with --html)");
+    return;
+  }
+
+  st = Client {
+    parts: [],
+    prog: 0,
+    view: ident4(),
+    proj: ident4(),
+    has_cam: false,
+    ramp_lo_r: 0.42, ramp_lo_g: 0.50, ramp_lo_b: 0.30,
+    ramp_hi_r: 0.46, ramp_hi_g: 0.38, ramp_hi_b: 0.26,
+    ramp_y0: 0.0, ramp_y1: 6.0,
+    fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
+    fog_from: 1000000000.0, fog_to: 1000000000.0,
+    sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,
+    held: 0,
+    was_up: false, was_down: false, was_level: false,
+    was_fence: false, was_wall: false, levelling: false,
+    dragging: false, last_x: 0.0, last_y: 0.0,
+    hello: false,
+    c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0,
+  };
+
+  // ⚠ NOT `if prog == 0 { fail }`, which is what the API's own doc says to write
+  // ("Returns the program ID (0 on failure)"). In the browser `gl_create_shader`
+  // returns an INDEX into a program table that starts at zero, so the first shader
+  // any page compiles succeeds with 0 — and a compile failure returns 0 as well.
+  // The two are indistinguishable there (loft-lang/loft#669); the check that reads
+  // as defensive is the one that rejects every working page.
+  //
+  // So there is no useful test here. A shader that did not compile shows up as a
+  // canvas holding one colour, which is exactly what the browser gate measures —
+  // the failure is caught, one layer out, by something that can actually see it.
+  st.prog = graphics::gl_create_shader(WORLD_VERT, WORLD_FRAG);
 
   h = web::ws_handler(WS_URL);
-  web::send(h, "1:");                       // ready — send me the world
 
-  // The frame loop. `frame_yield` is load-bearing in the browser: a loop that
-  // never yields freezes the page AND never receives, because the socket is
-  // delivered by the host between frames. On native it is a no-op, which is what
-  // lets the same source run under `--interpret` while it is being written.
+  // ⚠ THE READY MESSAGE IS A RETRY, NOT A CALL. `ws_handler` returns a usable
+  // handle immediately — it does not wait for the socket to open — and a browser
+  // `send` on a still-connecting socket returns false and DROPS the message. So a
+  // single `send(h, "1:")` here connects, sends into a closed socket, and then
+  // waits for ever for a world nobody was ever asked for: the symptom is a client
+  // that the server logs as connected and never hears from again.
+  //
+  // The JavaScript had no such trap because a browser gives it `onopen`. The loft
+  // surface has no callback, so the open is discovered by the send SUCCEEDING —
+  // which is also exactly what `send`'s own doc says to do with a false ("the
+  // caller may retry after the next pump"). One re-send a frame, until one lands.
+  // The server streams the world on the first `1:` it receives, so stopping at the
+  // first success is what keeps that from happening twice.
+
+  // The frame loop. `gl_swap_buffers` is load-bearing twice over in the browser:
+  // it presents the frame AND it is the yield. A loop that never yields freezes
+  // the page and never receives, because the socket is delivered by the host
+  // between frames — so the swap is what lets `onmessage` fill the queue that the
+  // next `try_recv` drains. On native it blocks for the frame instead, which is
+  // what lets the same source run under `--interpret` while it is being written.
   frames = 0;
   reported = 0;
-  while frames < 100000 {
+  while graphics::gl_poll_events() {
     frames = frames + 1;
-    drain(h, n);
+    if !st.hello {
+      st.hello = web::send(h, "1:");
+      if st.hello { println("client: connected — asked for the world"); }
+    }
+    drain(h, st);
+    poll_input(h, st);
+    draw_world(st);
+    graphics::gl_swap_buffers();
     // Report once every ~300 frames rather than per frame: a gate reads this, and
     // a person watching a console should see progress without a flood.
     if frames - reported >= 300 {
       reported = frames;
-      println("client: {frames} frames — meshes {n.c_mesh}, placements {n.c_place}, "
-              + "drops {n.c_drop}, cameras {n.c_cam}, status {n.c_status}");
+      println("client: {frames} frames — meshes {st.c_mesh}, placements {st.c_place}, "
+              + "drops {st.c_drop}, cameras {st.c_cam}, status {st.c_status}, "
+              + "parts {len(st.parts)}");
     }
-    web::frame_yield();
   }
+  graphics::gl_destroy_window();
 }

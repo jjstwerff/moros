@@ -1,4 +1,4 @@
-.PHONY: client serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -138,6 +138,22 @@ stop-editor editor-stop:
 editor-check:
 	node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)/ \
 	  --wait-ms 8000 --canvas '#gl' --canvas-min-colors 12 --screenshot /tmp/w0.png
+
+# The SAME check against the wasm client (plan #16, S1) — same server, same wire,
+# same claim: it drew a world and not a flat sky. The canvas is `#c` because that is
+# what loft's `--html` shell names its own, and the wait is longer because the page
+# boots a 670 KB wasm before it dials.
+#
+# ⚠ THIS IS S1'S DONE-WHEN, and the pair is the point: `editor-check` and
+# `client-check` measure one claim about two renderers, so a divergence shows up as
+# one green and one red rather than as a picture somebody has to remember.
+client-check:
+	node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)/client \
+	  --wait-ms 20000 --canvas '#c' --canvas-min-colors 12 --screenshot /tmp/w0-client.png
+
+# What the wasm client SAID, when it drew nothing and the check cannot say why.
+client-console:
+	node tools/page_console.mjs http://127.0.0.1:$(EDITOR_PORT)/client --wait-ms 15000
 
 # ── the editor's gates, split by what they are allowed to break ───────────
 # world/     — drive the character by PLACING it; measure terrain, streaming,

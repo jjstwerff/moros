@@ -1,0 +1,101 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHICH WRITES INTO A `vector<STRUCT>` FIELD ACTUALLY STICK.
+//
+// Run it:  loft --interpret plans/16-client-split/probe/vector_field_write.loft
+//
+// This is the instrument that ended a long hunt in S1. The wasm client held its
+// meshes in a `vector<Part>` on a struct, and drew the entire world at the origin:
+// no placement was ever applied and no freed slot was ever reused. Every read was
+// right, every id matched, the wire arrived in the correct order — and three
+// separate writes evaporated.
+//
+// The cause is one rule with no warning attached to it: **assigning a vector FIELD
+// to a local gives a COPY, not an alias.** Writes through that local are lost. The
+// code reads exactly like code that works, which is why this prints a MATRIX rather
+// than a verdict — the point is not "one of these is broken", it is *where the
+// boundary runs*, so the next person can see which side any given line falls on.
+//
+// ⚠ The losing idiom is the one the loft-write reference recommends for
+// warning-cleanliness ("capture into a local, then bound-guard — the local aliases
+// the same underlying vector, so indexed writes propagate"). It does not. Reported
+// as loft-lang/loft#670.
+
+struct Row { id: integer, n: float, v: vector<float> }
+struct Bag { rows: vector<Row> }
+
+// ── the four ways to write ────────────────────────────────────────────────────
+
+// Capture the field, index it, write the element's field.
+fn w_local_view(bag: Bag, at: integer) {
+  rows = bag.rows;
+  r = rows[at];
+  r.n = 1.5;
+  r.v = [1.5];
+}
+
+// Capture the field, assign a whole element into it.
+fn w_local_slot(bag: Bag, at: integer) {
+  rows = bag.rows;
+  rows[at] = Row { id: 1, n: 2.5, v: [2.5] };
+}
+
+// Write the element's field through the field path itself.
+fn w_field_index(bag: Bag, at: integer) {
+  bag.rows[at].n = 3.5;
+  bag.rows[at].v = [3.5];
+}
+
+// Assign a whole element through the field path.
+fn w_field_slot(bag: Bag, at: integer) {
+  bag.rows[at] = Row { id: 3, n: 4.5, v: [4.5] };
+}
+
+// Write through the loop variable of a `for` over the field.
+fn w_loop_var(bag: Bag, at: integer) {
+  for lr in bag.rows {
+    if lr#index == at { lr.n = 5.5; lr.v = [5.5]; }
+  }
+}
+
+fn report(bag: Bag, at: integer, what: text, want: float) -> integer {
+  got_n = bag.rows[at].n ?? 0.0;
+  got_v = bag.rows[at].v[0] ?? 0.0;
+  ok = got_n == want && got_v == want;
+  if ok {
+    println("  STICKS   {what}");
+    return 1;
+  }
+  println("  LOST     {what}   (n {got_n}, v0 {got_v} — wanted {want})");
+  0
+}
+
+fn main() {
+  println("vector<struct> field writes — which ones reach the caller");
+  b = Bag { rows: [] };
+  for i in 0..5 { b.rows += [Row { id: i, n: 0.0, v: [0.0] }]; }
+
+  w_local_view(b, 0);
+  w_local_slot(b, 1);
+  w_field_index(b, 2);
+  w_field_slot(b, 3);
+  w_loop_var(b, 4);
+
+  n_stick = 0;
+  n_stick = n_stick + report(b, 0, "rows = bag.rows; r = rows[i]; r.f = x", 1.5);
+  n_stick = n_stick + report(b, 1, "rows = bag.rows; rows[i] = Row {{ ... }}", 2.5);
+  n_stick = n_stick + report(b, 2, "bag.rows[i].f = x", 3.5);
+  n_stick = n_stick + report(b, 3, "bag.rows[i] = Row {{ ... }}", 4.5);
+  n_stick = n_stick + report(b, 4, "for r in bag.rows {{ r.f = x }}", 5.5);
+
+  // The expected shape, as of loft 0.8 on both backends: the two LOCAL-CAPTURE
+  // forms lose the write, the three that touch the field path keep it. Asserted as
+  // a NUMBER so this probe fails loudly if either side changes — a fix upstream
+  // should be noticed here, not silently absorbed.
+  if n_stick == 3 {
+    println("3 of 5 stick — the two local-capture forms lose the write (expected)");
+  } else {
+    println("CHANGED: {n_stick} of 5 stick, expected 3 — re-read the matrix above");
+  }
+}
