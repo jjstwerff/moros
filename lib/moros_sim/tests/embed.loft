@@ -1,0 +1,207 @@
+// A4 — `A-PLANE`: a `hex_body` rig embedded at a body.
+//
+//     ι(x, y) = (x, y, 0)   in the node frame, and ι is an isometry
+//
+// Two claims, two controls. `iota` scales the plane and breaks the isometry;
+// `warp` tilts z with x and breaks the planarity. Neither knob can fail the
+// other's clause, which is why there are two of them.
+use moros_sim;
+use hex_body::(Rig, rig_new, rig_bone, rig_world_seg, wheel_value, wheel_angle);
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 512.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// A wheel, the way `hex_body` models one: a single SPOKE of length `radius`.
+fn spoke() -> Rig {
+  rig_bone(rig_new(), 0 - 1, 0.0, 0.0, RADIUS, 0.0 - 1000.0, 1000.0)
+}
+
+// Two bones in series, so the rig's OWN forward kinematics is in play and not
+// only the embedding — a one-bone rig cannot tell a broken chain from a good one.
+fn arm() -> Rig {
+  r = rig_bone(rig_new(), 0 - 1, 0.0, 0.0, 0.9, 0.0 - 1000.0, 1000.0);
+  rig_bone(r, 0, 0.0, 0.0 - 0.9, 0.7, 0.0 - 1000.0, 1000.0)
+}
+
+// A frame that is nowhere near the identity, so nothing passes because the
+// rotation happened to be trivial — the mistake `P1`'s flat-ground run made.
+fn awkward_frame() -> Frame {
+  frame_mul(frame_trans(3.0, 0.4, 0.0 - 2.0),
+            frame_rot(rot_axis(0.3, 1.0, 0.0 - 0.4, 0.19)))
+}
+
+fn probe_values(n: integer, k: integer) -> vector<float> {
+  [for i in 0..n { sin((i as float) * 0.61 + (k as float) * 0.37) * 0.8 }]
+}
+
+// ── ι is an isometry ────────────────────────────────────────────────────────
+
+fn test_iota_preserves_distance() {
+  f = awkward_frame();
+  worst = 0.0;
+  for k in 0..9 {
+    for j in 0..9 {
+      ux = sin((k as float) * 1.3) * 1.2;
+      uy = cos((k as float) * 0.9) * 0.8;
+      vx = sin((j as float) * 2.1) * 0.7;
+      vy = cos((j as float) * 1.7) * 1.5;
+      flat = sqrt((ux - vx) * (ux - vx) + (uy - vy) * (uy - vy)) ?? 0.0;
+      solid = v3_dist(embed(f, ux, uy), embed(f, vx, vy));
+      e = fabs(solid - flat);
+      if e > worst { worst = e; }
+    }
+  }
+  assert(worst < BOUND, "a distance in the plane is the same distance in the world");
+}
+
+// `hex_body`'s `I6`, carried into 3D: a bone's length is `rg_len[i]` whatever its
+// joint value, and the embedding must not touch that.
+fn test_a_bone_keeps_its_length() {
+  f = awkward_frame();
+  s = spoke();
+  worst = 0.0;
+  for k in 0..16 {
+    v = wheel_value(1.3 * (k as float), RADIUS, 0.0);
+    e = fabs(seg_len(rig_seg_at(s, [v], 0, f)) - RADIUS);
+    if e > worst { worst = e; }
+  }
+  assert(worst < BOUND, "a spoke is RADIUS long at every joint value");
+}
+
+fn test_a_two_bone_rig_keeps_both_lengths() {
+  f = awkward_frame();
+  a = arm();
+  worst = 0.0;
+  for k in 0..12 {
+    e = rig_plane_err(a, probe_values(2, k), f);
+    if e > worst { worst = e; }
+  }
+  assert(worst < BOUND, "both bones survive the rig's own chain and the embedding");
+}
+
+// ── the image is the node frame's own plane ─────────────────────────────────
+
+fn test_the_rig_stays_in_its_plane() {
+  f = awkward_frame();
+  a = arm();
+  worst = 0.0;
+  for k in 0..12 {
+    vals = probe_values(2, k);
+    for i in 0..2 {
+      w = rig_seg_at(a, vals, i, f);
+      if fabs(plane_off(f, w.sg_a)) > worst { worst = fabs(plane_off(f, w.sg_a)); }
+      if fabs(plane_off(f, w.sg_b)) > worst { worst = fabs(plane_off(f, w.sg_b)); }
+    }
+  }
+  assert(worst < BOUND, "every embedded point lies in the frame's z = 0 plane");
+}
+
+// Planarity survives `A3`'s composition without the embedding re-establishing it,
+// because a plane maps to a plane under SE(3). Ten levels deep is where that
+// would show if it were not true.
+fn test_planarity_survives_the_mount_chain() {
+  w = asm_wing(10, 0.577);
+  fs = asm_frames(w, probe_values(11, 3), awkward_frame());
+  s = spoke();
+  worst = 0.0;
+  for i in 0..11 {
+    fi = fs[i] ?? frame_id();
+    seg = rig_seg_at(s, [0.37], 0, fi);
+    if fabs(plane_off(fi, seg.sg_a)) > worst { worst = fabs(plane_off(fi, seg.sg_a)); }
+    if fabs(plane_off(fi, seg.sg_b)) > worst { worst = fabs(plane_off(fi, seg.sg_b)); }
+  }
+  assert(worst < BOUND, "a rig at station ten is still flat in station ten's plane");
+}
+
+// ── the two knobs, each failing its own clause and not the other's ──────────
+
+fn test_the_iota_knob_breaks_the_isometry() {
+  f = awkward_frame();
+  s = spoke();
+  clean = fabs(seg_len(rig_seg_at(s, [0.31], 0, f)) - RADIUS);
+  bent = fabs(seg_len(rig_seg_at(s, [0.31], 0, f, 1.01)) - RADIUS);
+  assert(clean < BOUND, "at iota 1 the spoke is exactly RADIUS");
+  assert(bent > RADIUS * 0.005, "at 1.01 it is not");
+  grew = bent / RADIUS ?? 0.0;
+  assert(grew > 0.005 && grew < 0.02, "and it is wrong by about the scale");
+  // ⚠ and it leaves the plane clause GREEN, which is why warp exists
+  seg = rig_seg_at(s, [0.31], 0, f, 1.01);
+  assert(fabs(plane_off(f, seg.sg_b)) < BOUND,
+         "a scaled plane is still a plane — this knob cannot fail planarity");
+}
+
+fn test_the_warp_knob_breaks_the_planarity() {
+  f = awkward_frame();
+  s = spoke();
+  worst = 0.0;
+  for k in 1..9 {
+    seg = rig_seg_at(s, [0.11 * (k as float)], 0, f, 1.0, 0.25);
+    o = fabs(plane_off(f, seg.sg_b));
+    if o > worst { worst = o; }
+  }
+  assert(worst > 0.01, "a warped embedding leaves the plane");
+  // and it breaks the isometry too, so it is the stronger of the two knobs —
+  // which is exactly why it cannot substitute for iota's precise 1% signature
+  assert(rig_plane_err(s, [0.31], f, 1.0, 0.25) > 0.001,
+         "and stretches the bone as well");
+}
+
+// ── the spin is in the segment: P1's finding, as a function ─────────────────
+
+fn test_a_spoke_gives_back_its_spin() {
+  f = awkward_frame();
+  s = spoke();
+  worst = 0.0;
+  for k in 0..16 {
+    v = 0.06 * (k as float);
+    got = seg_plane_angle(f, rig_seg_at(s, [v], 0, f));
+    want = wheel_angle(v);
+    // compare as an angle, so the wrap at ±π is not mistaken for an error
+    d = fabs(atan2(sin(got - want), cos(got - want)));
+    if d > worst { worst = d; }
+  }
+  assert(worst < BOUND, "the spoke's in-plane direction IS the joint value");
+}
+
+// The other half of `P1`: whole turns are invisible in the segment, so rendering
+// loses nothing and anything counting revolutions must read the state.
+fn test_whole_turns_are_invisible_in_the_segment() {
+  f = awkward_frame();
+  s = spoke();
+  base = rig_seg_at(s, [0.37], 0, f);
+  for k in 1..6 {
+    later = rig_seg_at(s, [0.37 + (k as float)], 0, f);
+    assert(v3_dist(base.sg_b, later.sg_b) < BOUND, "a whole turn moves nothing");
+    assert(wheel_angle(0.37 + (k as float)) - wheel_angle(0.37) > 6.0,
+           "while the state has counted them");
+  }
+}
+
+// ── A3 and A4 together: the cart's wheel, from the library ──────────────────
+//
+// `P1` measured this against the wire. Here it is rebuilt from `asm_frames` plus
+// the embedding, with no server and no broadcast matrix: the hub sits at the
+// wheel body's own origin, and the spoke reaches RADIUS from it at every joint
+// value and from any root.
+fn test_the_cart_wheel_as_a_rig_at_a_body() {
+  c = asm_cart(HALF);
+  s = spoke();
+  for k in 0..10 {
+    vals = probe_values(3, k);
+    fs = asm_frames(c, vals, awkward_frame());
+    for b in 1..3 {
+      fb = fs[b] ?? frame_id();
+      seg = rig_seg_at(s, [vals[b] ?? 0.0], 0, fb);
+      // the spoke's base is the hub, which is the body's own origin
+      assert(v3_dist(seg.sg_a, frame_origin(fb)) < BOUND, "the hub is the origin");
+      assert(fabs(v3_dist(seg.sg_b, frame_origin(fb)) - RADIUS) < BOUND,
+             "and the rim is RADIUS away, whatever the wheel is doing");
+      // the rig's plane is the wheel's plane, so the spoke never leaves it
+      assert(fabs(plane_off(fb, seg.sg_b)) < BOUND, "in the wheel's own plane");
+    }
+  }
+}

@@ -151,8 +151,29 @@ written and not built.** In priority order:
      frame, so a non-`MOUNT` chain returns empty — `asm_read`'s contract.
    **Seen red** three ways: no axis normalisation, values as radians, reversed order.
 
-   **Next is `A4`** — embed a `hex_body` rig at a body, proving `A-PLANE`, with the same
-   scale knob applied to `ι`. The dependency is already in place.
+5. ✅ **`A4` is BUILT** — `A-PLANE`, 10 tests in `tests/embed.loft`, **562 green**, all 89
+   functions in the package entered.
+   ⚠ **`A-PLANE` is TWO claims and the design's knob can only fail one.** `iota` scales the
+   plane → breaks the isometry, **leaves the image planar**; `warp` tilts z with x → breaks
+   planarity. So there are two knobs, and a test asserts the scale *cannot* fail the plane
+   clause — which makes the second knob a measured need, not a preference.
+   - **A bone's length is `rg_len[i]` at every joint value** — `I6` into 3D, checked on a
+     spoke and a two-bone arm so the rig's own kinematics is in play too.
+   - **Planarity survives `A3`'s chain** without being re-established: a plane maps to a
+     plane under `SE(3)`. Measured at station ten of a wing.
+   - **`seg_plane_angle` recovers a spoke's spin** from the embedded segment, agreeing with
+     `wheel_angle` to the float bound — `P1`'s result as a *function*, not a wire read. And
+     the cart's wheel is now rebuilt from the library with **no server**.
+   **Seen red three ways**, and *which* clauses fail is the evidence the two claims are
+   separate: `y = 0` instead of `z = 0` breaks 5; the wrong normal column breaks 4 (plane
+   only); `iota` defaulted to 1.01 breaks 1, because `rig_seg_at` threads its own default.
+   ⚠ **A4 does NOT store rigs in the document**, deliberately — a rig is multi-line, so the
+   format needs a **section**, the same call the world file already made. That is `A5`'s.
+
+   **Next is `A5` — the cart as data**, with no behaviour change: the assembly must reproduce
+   the transforms the current code produces, byte-identical on flat ground where the two
+   agree by construction. The previous implementation is its own control, which turns *"did
+   I break the cart"* into a diff.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

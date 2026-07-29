@@ -34,9 +34,10 @@
 // what the design's first draft got wrong and what `P5` measured. That is `A7`.
 use assembly;
 use graphics;
-// Qualifier only, deliberately: a wildcard would pull `Rig`, `Joint` and
-// `pose_of` into bare scope and this file has its own rotation type.
-use hex_body as hb;
+// SELECTIVE, deliberately: a wildcard would pull `Joint`, `Obb`, `pose_of` and
+// the rest of `hex_body` into this package's bare surface, where a consumer would
+// meet names moros_sim never meant to re-export.
+use hex_body::(Rig, rig_world_seg);
 
 // Radians in one turn. ⚠ A SECOND HOME for a number `hex_body` already owns —
 // so `test_a_turn_is_hex_bodys_turn` asserts the two agree instead of trusting
@@ -222,6 +223,86 @@ pub fn asm_rigid_err(fs: vector<Frame>, u: Vec3, v: Vec3) -> float {
   worst = 0.0;
   for i in 0..len(fs) {
     e = frame_pair_err(fs[i] ?? frame_id(), u, v);
+    if e > worst { worst = e; }
+  }
+  worst
+}
+
+// ── `A-PLANE` — a `hex_body` rig, embedded at a body ─────────────────────────
+//
+//     ι(x, y) = (x, y, 0)   in the node frame, and ι is an isometry
+//
+// `hex_body` owns a rig: bones, revolute joints, a pure pose. It is PLANAR —
+// `rig_world_seg` returns `(x0, y0, x1, y1)` and nothing else — so a rig placed
+// at a body needs a way into 3D, and `A-PLANE` says that way is the flattest one
+// there is: drop it in the node frame's own `z = 0` plane and change nothing.
+//
+// The claim has real content. Composed with `A3`'s frame the whole map from
+// rig-local 2D to world 3D is an isometry, so **a spoke's length is `rg_len[i]`
+// for every joint value** — `hex_body`'s `I6` carried into 3D with no way to
+// deform added. `P4` is what makes that matter: the wheel's proxy has to be
+// derived from a shape whose size is exactly what the rig says.
+//
+// ⚠ **TWO knobs, because `A-PLANE` is TWO claims.** `iota` scales the plane —
+// that breaks the isometry and leaves the image planar. `warp` tilts `z` with
+// `x` — that breaks the planarity. The design named the first; the second is here
+// because the first CANNOT fail the plane clause, and a claim with no control is
+// not a checked claim.
+
+pub struct Seg3 { sg_a: Vec3, sg_b: Vec3 }
+
+pub fn embed(f: Frame, x: float, y: float,
+             iota: float = 1.0, warp: float = 0.0) -> Vec3 {
+  frame_apply(f, vec3(x * iota, y * iota, x * warp))
+}
+
+// One bone of a rig, posed by its joint values and placed at a body's frame.
+pub fn rig_seg_at(r: Rig, values: vector<float>, i: integer, f: Frame,
+                  iota: float = 1.0, warp: float = 0.0) -> Seg3 {
+  (x0, y0, x1, y1) = rig_world_seg(r, values, i);
+  Seg3 { sg_a: embed(f, x0, y0, iota, warp),
+         sg_b: embed(f, x1, y1, iota, warp) }
+}
+
+pub fn seg_len(s: Seg3) -> float { v3_dist(s.sg_a, s.sg_b) }
+
+// How far a world point lies off the node frame's own plane — the frame's third
+// column is that plane's normal. Zero for everything `ι` produces, and it stays
+// zero through `A3`'s composition because a plane maps to a plane under `SE(3)`:
+// planarity is not something the embedding has to re-establish per body.
+pub fn plane_off(f: Frame, p: Vec3) -> float {
+  (p.x - f.fm_x) * f.fm_r.r13
+  + (p.y - f.fm_y) * f.fm_r.r23
+  + (p.z - f.fm_z) * f.fm_r.r33
+}
+
+// A bone's in-plane direction, read back in the node frame's own coordinates.
+//
+// `P1` measured that for a spoke this IS the joint value: rotating a disc about
+// its axle leaves the disc where it was, but `hex_body` models a wheel as a
+// SPOKE, and a spoke's direction is the spin. This is that result as a function
+// rather than a measurement, and the test asserts it against `wheel_angle`.
+pub fn seg_plane_angle(f: Frame, s: Seg3) -> float {
+  dx = s.sg_b.x - s.sg_a.x;
+  dy = s.sg_b.y - s.sg_a.y;
+  dz = s.sg_b.z - s.sg_a.z;
+  ax = dx * f.fm_r.r11 + dy * f.fm_r.r21 + dz * f.fm_r.r31;
+  ay = dx * f.fm_r.r12 + dy * f.fm_r.r22 + dz * f.fm_r.r32;
+  atan2(ay, ax)
+}
+
+// The worst `A-PLANE` isometry departure over a rig's own endpoints: every pair
+// of bone ends must keep the separation the rig gives it in 2D.
+pub fn rig_plane_err(r: Rig, values: vector<float>, f: Frame,
+                     iota: float = 1.0, warp: float = 0.0) -> float {
+  n = len(r.rg_parent);
+  worst = 0.0;
+  for i in 0..n {
+    (ax, ay, bx, by) = rig_world_seg(r, values, i);
+    w = rig_seg_at(r, values, i, f, iota, warp);
+    flat = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) ?? 0.0;
+    e = seg_len(w) - flat;
+    if e < 0.0 { e = 0.0 - e; }
     if e > worst { worst = e; }
   }
   worst

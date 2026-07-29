@@ -352,7 +352,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A1** ✅ | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
 | **A2** ✅ | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** ✅ | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
-| **A4** | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
+| **A4** ✅ | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
 | **A6** | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
 | **A7** | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
@@ -900,6 +900,59 @@ Three more decisions:
 **Seen red:** dropping the axis normalisation (2 clauses), treating values as radians
 (1 clause), and reversing the composition order (1 clause — the perpendicular one).
 **552 tests green**, all 83 functions in the package entered.
+
+---
+
+### `A4` — BUILT. `A-PLANE`, and it needed a second knob
+
+Added to `lib/moros_sim/src/frames.loft`, 10 tests in `tests/embed.loft`.
+`embed(f, x, y) = frame_apply(f, (x, y, 0))` is `ι`, and `rig_seg_at` poses one bone of a
+`hex_body` rig and places it at a body's frame.
+
+⚠ **`A-PLANE` is TWO claims, and the design's knob can only fail one of them.**
+
+| claim | control | what it does |
+|---|---|---|
+| `ι` is an **isometry** | `iota` — scales the plane | breaks distance, **leaves the image planar** |
+| the image is the node frame's **`z = 0` plane** | `warp` — tilts z with x | breaks planarity |
+
+So there are two knobs. The design named the scale; the warp is here because *a claim with
+no control is not a checked claim*, and the scale provably cannot fail the plane clause —
+the test asserts that it doesn't, which is what makes the second knob's existence a measured
+need rather than a preference.
+
+What holds, over an awkward frame (translated and rotated, so nothing passes because the
+rotation was trivial — `P1`'s flat-ground lesson applied up front):
+
+- **`ι` preserves distance** to the float bound, over 81 point pairs.
+- **A bone's length is `rg_len[i]` at every joint value** — `hex_body`'s `I6` carried into
+  3D with no way to deform added. Checked on a spoke and on a two-bone arm, so the rig's own
+  forward kinematics is in play and not only the embedding.
+- **Planarity survives `A3`'s composition** without the embedding re-establishing it,
+  because a plane maps to a plane under `SE(3)`. Measured at station ten of a wing.
+- **A spoke gives back its spin.** `seg_plane_angle` recovers the joint value from the
+  embedded segment's in-plane direction, agreeing with `wheel_angle` to the float bound —
+  `P1`'s counter-intuitive result (*a wheel is a spoke, not a disc*) as a **function** rather
+  than a wire measurement. And whole turns move the segment by nothing while the state
+  counts them, which is the other half of it.
+- **The cart's wheel, rebuilt with no server.** `asm_frames` + `rig_seg_at`: the hub is the
+  wheel body's own origin, the rim is `RADIUS` away at every joint value from any root, and
+  the spoke never leaves the wheel's plane. That is `P1`'s wire measurement re-derived from
+  the library, which is what `A5` will need.
+
+**Seen red three ways**, and the pattern of *which* clauses fail is itself the evidence the
+two claims are separate: embedding into the `y = 0` plane instead of `z = 0` breaks
+planarity, the spin recovery and the cart wheel (5 clauses); reading the plane normal from
+the wrong column breaks only the plane clauses (4); leaving `iota` defaulted to 1.01 breaks
+only the direct-`embed` isometry clause — because `rig_seg_at` threads its own default
+rather than re-defaulting, which is worth knowing.
+
+⚠ **A4 does NOT store rigs in the document, deliberately.** A rig is multi-line text
+(`rig_write`), so putting one on a body's line is impossible and the format needs a
+**section** — the same decision the world file already took (*tagged sections, not a flags
+word*). That is `A5`'s, where the cart becomes data and a rig has to survive the round trip.
+
+**562 tests green**, all 89 functions in the package entered.
 
 ---
 
