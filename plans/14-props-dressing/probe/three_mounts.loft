@@ -1,0 +1,431 @@
+// P3 — IS A 3-DOF JOINT THREE ZERO-OFFSET `MOUNT`s IN SERIES?
+//
+// `A-DOF` gives a robot-arm segment `mount removes 5 … joint angle 1`, and the
+// shoulder it hangs from has three. The design's claim is that this needs no new
+// link kind: three `MOUNT`s in series, each a single revolute axis, each with a
+// zero offset, IS a ball joint. `P3` was parked while nothing here had an
+// articulated limb; an arm is one, so it is load-bearing now.
+//
+// ── what would falsify it ───────────────────────────────────────────────────
+//
+// *"composing planar rigs through single-axis mounts diverges from the 3D
+// rotation."* Two separable things hide in that sentence and this probe splits
+// them, because they have different answers:
+//
+//   REACH — can three single-axis mounts produce an arbitrary orientation?
+//   RANK  — can they MOVE in three directions from wherever they are?
+//
+// Reach is the classical Euler theorem and it holds. Rank does not hold
+// everywhere, and that is the finding: at the gimbal poses the ledger counts
+// three states and the joint delivers two. `A-DOF` exists to catch exactly that
+// — *"under-count and something is being pinned by accident"* — so a mechanism
+// whose rank collapses is a term of the ledger going quietly wrong.
+//
+// ── how the targets are built, and why not from Euler angles ────────────────
+//
+// A target built as Rz·Ry·Rx and then decomposed back into three angles tests
+// `atan2` against itself. The targets here are AXIS-ANGLE (Rodrigues) over a
+// lattice of axes on the sphere and a sweep of angles — an independent
+// construction, so agreeing with the mount chain is evidence rather than
+// bookkeeping.
+//
+// run: loft --interpret --path ../loft/ plans/14-props-dressing/probe/three_mounts.loft
+
+const PI = 3.14159265358979;
+// 2^-52. Written as a division rather than a decimal so it cannot be a typo.
+const EPS64 = 1.0 / 4503599627370496.0;
+
+const N_POLAR = 7;
+const N_AZIM = 12;
+const N_ANGLE = 9;
+
+struct M3 {
+  a11: float, a12: float, a13: float,
+  a21: float, a22: float, a23: float,
+  a31: float, a32: float, a33: float
+}
+
+// A frame: rotation and translation. The translation is here ONLY so the
+// zero-offset half of the claim can be tested — see case E.
+struct Fr {
+  fr_r: M3,
+  fr_x: float, fr_y: float, fr_z: float
+}
+
+struct Euler { eu_a: float, eu_b: float, eu_c: float, eu_sing: boolean }
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+fn fmax(p: float, q: float) -> float { if p > q { p } else { q } }
+
+fn m3_id() -> M3 {
+  M3 { a11: 1.0, a12: 0.0, a13: 0.0,
+       a21: 0.0, a22: 1.0, a23: 0.0,
+       a31: 0.0, a32: 0.0, a33: 1.0 }
+}
+
+fn m3_mul(p: M3, q: M3) -> M3 {
+  M3 { a11: p.a11*q.a11 + p.a12*q.a21 + p.a13*q.a31,
+       a12: p.a11*q.a12 + p.a12*q.a22 + p.a13*q.a32,
+       a13: p.a11*q.a13 + p.a12*q.a23 + p.a13*q.a33,
+       a21: p.a21*q.a11 + p.a22*q.a21 + p.a23*q.a31,
+       a22: p.a21*q.a12 + p.a22*q.a22 + p.a23*q.a32,
+       a23: p.a21*q.a13 + p.a22*q.a23 + p.a23*q.a33,
+       a31: p.a31*q.a11 + p.a32*q.a21 + p.a33*q.a31,
+       a32: p.a31*q.a12 + p.a32*q.a22 + p.a33*q.a32,
+       a33: p.a31*q.a13 + p.a32*q.a23 + p.a33*q.a33 }
+}
+
+// Rodrigues. The independent construction the mount chain is measured against.
+fn rot_axis(ux: float, uy: float, uz: float, th: float) -> M3 {
+  c = cos(th);
+  s = sin(th);
+  k = 1.0 - c;
+  M3 { a11: c + ux*ux*k,      a12: ux*uy*k - uz*s,  a13: ux*uz*k + uy*s,
+       a21: uy*ux*k + uz*s,   a22: c + uy*uy*k,     a23: uy*uz*k - ux*s,
+       a31: uz*ux*k - uy*s,   a32: uz*uy*k + ux*s,  a33: c + uz*uz*k }
+}
+
+fn rot_z(t: float) -> M3 { rot_axis(0.0, 0.0, 1.0, t) }
+fn rot_y(t: float) -> M3 { rot_axis(0.0, 1.0, 0.0, t) }
+fn rot_x(t: float) -> M3 { rot_axis(1.0, 0.0, 0.0, t) }
+
+fn m3_maxdiff(p: M3, q: M3) -> float {
+  d = fabs(p.a11 - q.a11);
+  d = fmax(d, fabs(p.a12 - q.a12));
+  d = fmax(d, fabs(p.a13 - q.a13));
+  d = fmax(d, fabs(p.a21 - q.a21));
+  d = fmax(d, fabs(p.a22 - q.a22));
+  d = fmax(d, fabs(p.a23 - q.a23));
+  d = fmax(d, fabs(p.a31 - q.a31));
+  d = fmax(d, fabs(p.a32 - q.a32));
+  d = fmax(d, fabs(p.a33 - q.a33));
+  d
+}
+
+// ── the decomposition: R = Rz(α)·Ry(β)·Rx(γ), intrinsic ─────────────────────
+//
+// A chain of mounts is intrinsic by construction — each child's frame is its
+// parent's, turned — so intrinsic Tait-Bryan is the composition the mechanism
+// actually performs, not a convention chosen for convenience.
+//
+// ⚠ `guard` switches the SINGULAR BRANCH on and off, and case D is what says it
+// is load-bearing. At cos β = 0 the first and third axes are parallel, so only
+// α − γ is determined; the general formula reads atan2(0, 0) for BOTH and
+// silently returns zero for each, which is right only when α = γ.
+fn decompose(r: M3, guard: boolean) -> Euler {
+  s = 0.0 - r.a31;
+  if s > 1.0 { s = 1.0; }
+  if s < 0.0 - 1.0 { s = 0.0 - 1.0; }
+  b = asin(s);
+  cb = cos(b);
+  if guard && fabs(cb) < 0.000001 {
+    // β = ±90°. Only α − γ survives, so γ is named zero and α carries it.
+    if r.a31 < 0.0 { return Euler { eu_a: atan2(r.a23, r.a22), eu_b: b,
+                                    eu_c: 0.0, eu_sing: true }; }
+    return Euler { eu_a: atan2(0.0 - r.a23, r.a22), eu_b: b,
+                   eu_c: 0.0, eu_sing: true };
+  }
+  Euler { eu_a: atan2(r.a21, r.a11), eu_b: b,
+          eu_c: atan2(r.a32, r.a33), eu_sing: false }
+}
+
+// THREE ZERO-OFFSET MOUNTS, composed exactly as the design says they compose.
+fn chain3(e: Euler) -> M3 {
+  m3_mul(m3_mul(rot_z(e.eu_a), rot_y(e.eu_b)), rot_x(e.eu_c))
+}
+
+// ── the rank: can it MOVE in three directions from here? ────────────────────
+// The three mount axes expressed in the world are a₁ = z, a₂ = Rz(α)·y and
+// a₃ = Rz(α)Ry(β)·x. Their determinant is the instantaneous rank measure; it
+// is what an inverse-kinematics solve inverts, and its collapse is the ledger's
+// third state going missing.
+fn axis_det(e: Euler) -> float {
+  r1 = rot_z(e.eu_a);
+  r12 = m3_mul(r1, rot_y(e.eu_b));
+  // a₁ = (0,0,1); a₂ = second column of r1; a₃ = first column of r12
+  a2x = r1.a12;  a2y = r1.a22;
+  a3x = r12.a11; a3y = r12.a21;
+  // det[a₁ a₂ a₃] expanded on a₁ = e₃
+  a2x * a3y - a2y * a3x
+}
+
+// ── frames, for the zero-offset half of the claim ───────────────────────────
+fn fr_mul(p: Fr, q: Fr) -> Fr {
+  Fr { fr_r: m3_mul(p.fr_r, q.fr_r),
+       fr_x: p.fr_x + p.fr_r.a11*q.fr_x + p.fr_r.a12*q.fr_y + p.fr_r.a13*q.fr_z,
+       fr_y: p.fr_y + p.fr_r.a21*q.fr_x + p.fr_r.a22*q.fr_y + p.fr_r.a23*q.fr_z,
+       fr_z: p.fr_z + p.fr_r.a31*q.fr_x + p.fr_r.a32*q.fr_y + p.fr_r.a33*q.fr_z }
+}
+
+fn fr_of(r: M3, ox: float, oy: float, oz: float) -> Fr {
+  Fr { fr_r: r, fr_x: ox, fr_y: oy, fr_z: oz }
+}
+
+// How far the JOINT CENTRE moves when the three angles change. A 3-DOF joint
+// has a fixed centre; a chain with offsets is a linkage, not a joint.
+fn pivot_walk(off: float) -> float {
+  worst = 0.0;
+  for pa in 0..5 {
+    for pb in 0..5 {
+      ea = PI * 2.0 * (pa as float) / 5.0 ?? 0.0;
+      eb = PI * (pb as float) / 5.0 ?? 0.0 - PI * 0.5;
+      f = fr_mul(fr_mul(fr_of(rot_z(ea), 0.0, 0.0, 0.0),
+                        fr_of(rot_y(eb), off, 0.0, 0.0)),
+                 fr_of(rot_x(0.3), off, 0.0, 0.0));
+      d = sqrt(f.fr_x*f.fr_x + f.fr_y*f.fr_y + f.fr_z*f.fr_z);
+      if d > worst { worst = d; }
+    }
+  }
+  worst
+}
+
+// ── A-RIGID, for a 3-DOF joint ──────────────────────────────────────────────
+// Two points of the child's PLANAR rig — `A-PLANE` embeds it as ι(x,y)=(x,y,0)
+// — carried through the chain must keep their separation. This is the con-rod
+// test, and it is the half of the falsifier that mentions planar rigs.
+fn rigid_err(r: M3, ux: float, uy: float, vx: float, vy: float) -> float {
+  wux = r.a11*ux + r.a12*uy;
+  wuy = r.a21*ux + r.a22*uy;
+  wuz = r.a31*ux + r.a32*uy;
+  wvx = r.a11*vx + r.a12*vy;
+  wvy = r.a21*vx + r.a22*vy;
+  wvz = r.a31*vx + r.a32*vy;
+  dx = wux - wvx;
+  dy = wuy - wvy;
+  dz = wuz - wvz;
+  got = sqrt(dx*dx + dy*dy + dz*dz);
+  ex = ux - vx;
+  ey = uy - vy;
+  want = sqrt(ex*ex + ey*ey);
+  fabs(got - want)
+}
+
+// A gimbal pose written in CLOSED FORM, so a11, a21, a31, a32 and a33 are
+// literal zeros and ±1 rather than values a composition happened to land near.
+// `d` is the one angle that survives at the singularity — α − γ at β = +90°,
+// α + γ at β = −90°. Everything else about the pose is unrecoverable, which is
+// the whole point.
+fn gimbal_exact(d: float, up: boolean) -> M3 {
+  sd = sin(d);
+  cd = cos(d);
+  if up {
+    return M3 { a11: 0.0, a12: 0.0 - sd, a13: cd,
+                a21: 0.0, a22: cd,       a23: sd,
+                a31: 0.0 - 1.0, a32: 0.0, a33: 0.0 };
+  }
+  M3 { a11: 0.0, a12: 0.0 - sd, a13: 0.0 - cd,
+       a21: 0.0, a22: cd,       a23: 0.0 - sd,
+       a31: 1.0, a32: 0.0,      a33: 0.0 }
+}
+
+fn main() {
+  println("P3 — a 3-DOF joint as three zero-offset MOUNTs in series");
+  println("");
+  println("  machine epsilon {EPS64}");
+
+  // ── the target set: axis-angle over the sphere, built independently ───────
+  targets: vector<M3> = [];
+  for ip in 0..N_POLAR {
+    for ia in 0..N_AZIM {
+      for it in 0..N_ANGLE {
+        pol = PI * (ip as float) / ((N_POLAR - 1) as float) ?? 0.0;
+        azi = PI * 2.0 * (ia as float) / (N_AZIM as float) ?? 0.0;
+        ang = PI * (it as float) / ((N_ANGLE - 1) as float) ?? 0.0;
+        targets += [rot_axis(sin(pol) * cos(azi), sin(pol) * sin(azi),
+                             cos(pol), ang)];
+      }
+    }
+  }
+  ngrid = len(targets);
+
+  // ── and the gimbal poses, which the grid does NOT reach on its own ────────
+  // ⚠ Worth stating plainly: the axis-angle grid happens to hit β = ±90° only
+  // where α = γ, and there the unguarded formula is accidentally right. A
+  // control that is never exercised is not a control, so the singular poses are
+  // constructed on purpose, with α ≠ γ.
+  gimbal: vector<M3> = [];
+  for ga in 0..4 {
+    for gc in 0..4 {
+      aa = PI * 2.0 * (ga as float) / 4.0 ?? 0.0;
+      cc = PI * 0.5 * (gc as float) / 4.0 ?? 0.0;
+      gimbal += [m3_mul(m3_mul(rot_z(aa), rot_y(PI * 0.5)), rot_x(cc))];
+      gimbal += [m3_mul(m3_mul(rot_z(aa), rot_y(0.0 - PI * 0.5)), rot_x(cc))];
+    }
+  }
+
+  // ⚠ AND THE SAME POSES AS AUTHORED DATA, which is a different case entirely.
+  // Composing rot_z·rot_y(π/2)·rot_x leaves ~1.6e-15 in cos β, and `atan2`
+  // divides that residue straight out — atan2(cβ·sin γ, cβ·cos γ) returns γ to
+  // the last bit. So a COMPOSED gimbal pose does not defeat the naive formula
+  // and cannot serve as its control. A pose that arrives as a matrix — read
+  // from a file, which `A-EXACT` says is how an assembly arrives — carries
+  // literal zeros, and atan2(0, 0) is 0 with no ratio left to recover.
+  exact: vector<M3> = [];
+  for gd in 0..6 {
+    dd = PI * 2.0 * (gd as float) / 6.0 ?? 0.0;
+    exact += [gimbal_exact(dd, true)];
+    exact += [gimbal_exact(dd, false)];
+  }
+
+  fails = 0;
+
+  // ── A: REACH, over the independent grid ───────────────────────────────────
+  worst_grid = 0.0;
+  worst_rigid = 0.0;
+  for tg in targets {
+    e = decompose(tg, true);
+    ch = chain3(e);
+    d = m3_maxdiff(tg, ch);
+    if d > worst_grid { worst_grid = d; }
+    // the same chain must not stretch the child's rig
+    rr = rigid_err(ch, 0.7, 0.0, 0.0, 1.3);
+    if rr > worst_rigid { worst_rigid = rr; }
+  }
+  println("");
+  println("  A  REACH over {ngrid} axis-angle targets");
+  println("     worst |R_target − R_chain|   {worst_grid}");
+  println("     …in units of machine epsilon {worst_grid / EPS64 ?? 0.0:8.1}");
+  println("     worst A-RIGID separation err {worst_rigid}");
+  if worst_grid < EPS64 * 64.0 {
+    println("   ok    three single-axis mounts reproduce every target");
+  } else {
+    println("   FAIL  the chain cannot reach some orientation");
+    fails = fails + 1;
+  }
+  if worst_rigid < EPS64 * 64.0 {
+    println("   ok    A-RIGID holds through the chain — nothing stretches");
+  } else {
+    println("   FAIL  the chain stretched the child's rig by {worst_rigid}");
+    fails = fails + 1;
+  }
+
+  // ── B: REACH at the gimbal poses, with the branch ─────────────────────────
+  worst_gim = 0.0;
+  nsing = 0;
+  for tj in gimbal {
+    e = decompose(tj, true);
+    if e.eu_sing { nsing = nsing + 1; }
+    d = m3_maxdiff(tj, chain3(e));
+    if d > worst_gim { worst_gim = d; }
+  }
+  worst_ex = 0.0;
+  for tx in exact {
+    ex = decompose(tx, true);
+    if ex.eu_sing { nsing = nsing + 1; }
+    d = m3_maxdiff(tx, chain3(ex));
+    if d > worst_ex { worst_ex = d; }
+  }
+  ntot = len(gimbal) + len(exact);
+  println("");
+  println("  B  REACH at {len(gimbal)} composed and {len(exact)} authored gimbal poses");
+  println("     ({nsing} of {ntot} taken as singular)");
+  println("     worst |R_target − R_chain|, composed  {worst_gim}");
+  println("     worst |R_target − R_chain|, authored  {worst_ex}");
+  worst_gim = fmax(worst_gim, worst_ex);
+  if worst_gim < EPS64 * 64.0 && nsing == ntot {
+    println("   ok    the singular poses are reached too — the SET is all of SO(3)");
+  } else {
+    println("   FAIL  a gimbal pose is out of reach, or was not detected as singular");
+    fails = fails + 1;
+  }
+
+  // ── C: RANK, which is where the answer stops being yes ────────────────────
+  println("");
+  println("  C  RANK — |det| of the three mount axes in the world, against cos β");
+  println("");
+  println("        beta     |det|     |cos b|");
+  worst_det = 0.0;
+  for ib in 0..=9 {
+    bb = PI * 0.5 * (ib as float) / 9.0 ?? 0.0;
+    ee = Euler { eu_a: 0.7, eu_b: bb, eu_c: 0.4, eu_sing: false };
+    dt = fabs(axis_det(ee));
+    cb = fabs(cos(bb));
+    println("       {bb * 180.0 / PI ?? 0.0:5.1}   {dt:8.6}   {cb:8.6}");
+    if fabs(dt - cb) > worst_det { worst_det = fabs(dt - cb); }
+  }
+  println("     worst |det − cos β| {worst_det}");
+  if worst_det < EPS64 * 64.0 {
+    println("   ok    the rank measure IS cos β — so it vanishes at ±90°");
+  } else {
+    println("   FAIL  the rank does not follow cos β");
+    fails = fails + 1;
+  }
+
+  // ── D: the singular branch must be LOAD-BEARING ───────────────────────────
+  naive_comp = 0.0;
+  for tk in gimbal {
+    d = m3_maxdiff(tk, chain3(decompose(tk, false)));
+    if d > naive_comp { naive_comp = d; }
+  }
+  naive_exact = 0.0;
+  for tm in exact {
+    d = m3_maxdiff(tm, chain3(decompose(tm, false)));
+    if d > naive_exact { naive_exact = d; }
+  }
+  println("");
+  println("  D  the same poses with the singular branch OFF");
+  println("     composed poses  worst error {naive_comp}");
+  println("     authored poses  worst error {naive_exact:8.6}");
+  if naive_exact > 0.1 && naive_comp < EPS64 * 64.0 {
+    println("   ok    the branch is load-bearing for AUTHORED poses and changes");
+    println("         nothing for composed ones — atan2 divides out a 1.6e-15");
+    println("         residue but has nothing to divide when the zeros are exact");
+  } else {
+    println("   FAIL  the branch did not separate authored poses from composed ones");
+    fails = fails + 1;
+  }
+
+  // ── E: why the claim says ZERO-offset ─────────────────────────────────────
+  w0 = pivot_walk(0.0);
+  w1 = pivot_walk(0.25);
+  println("");
+  println("  E  the joint CENTRE, as the three angles move");
+  println("     zero offset      moves {w0}");
+  println("     0.25 wu offsets  moves {w1:8.6}");
+  if w0 < EPS64 * 64.0 && w1 > 0.1 {
+    println("   ok    zero offset holds the centre exactly; an offset chain is a");
+    println("         LINKAGE, not a joint — which is what the word is doing there");
+  } else {
+    println("   FAIL  the offset test does not separate the two cases");
+    fails = fails + 1;
+  }
+
+  // ── F: chains that CANNOT span SO(3), so the reach measure can fail ───────
+  // A representative target with all three angles live. The residual is the
+  // best the deficient chain can do, found by sweeping its whole reachable set
+  // — not by feeding it the three-axis answer, which would prove nothing.
+  tgt = rot_axis(0.5773502691896258, 0.5773502691896258, 0.5773502691896258,
+                 1.7453292519943295);
+  best1 = 9.0;
+  for iz in 0..720 {
+    zz = PI * 2.0 * (iz as float) / 720.0 ?? 0.0;
+    d = m3_maxdiff(tgt, rot_z(zz));
+    if d < best1 { best1 = d; }
+  }
+  best2 = 9.0;
+  for jz in 0..360 {
+    for jy in 0..360 {
+      zz2 = PI * 2.0 * (jz as float) / 360.0 ?? 0.0;
+      yy2 = PI * 2.0 * (jy as float) / 360.0 ?? 0.0;
+      d = m3_maxdiff(tgt, m3_mul(rot_z(zz2), rot_y(yy2)));
+      if d < best2 { best2 = d; }
+    }
+  }
+  println("");
+  println("  F  chains that cannot span SO(3), swept over their WHOLE reach");
+  println("     one axis, three times   best miss {best1:8.6}");
+  println("     two mounts (z then y)   best miss {best2:8.6}");
+  println("     target a32 {tgt.a32:8.6}  — the two agree because BOTH deficient");
+  println("     chains force a32 = 0, so the target's own a32 is the floor");
+  if best1 > 0.1 && best2 > 0.1 {
+    println("   ok    both miss by O(1) — the reach measure in A can fail, so its");
+    println("         green is a measurement and not a tautology");
+  } else {
+    println("   FAIL  a deficient chain reached the target — A proves nothing");
+    fails = fails + 1;
+  }
+
+  println("");
+  if fails == 0 { println("three_mounts: every clause holds"); }
+  else { println("three_mounts: {fails} clause(s) failed"); }
+}

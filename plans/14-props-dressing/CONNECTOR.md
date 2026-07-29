@@ -279,7 +279,7 @@ constraint `Cℓ(W_a, W_b, θℓ) = 0` (or `≤ 0` for `TETHER`). A support cont
 
 | id | statement | why it is the one |
 |---|---|---|
-| **`A-DOF`** | `dof(links) + dof(support) + dof(driven) + dof(solved) = 6`, per body | the invariant above. Every other rule here is a way of making one term of it honest. A state's kind — `DRIVEN` or `SOLVED` — is **declared**, never inferred from the link |
+| **`A-DOF`** | `dof(links) + dof(support) + dof(driven) + dof(solved) = 6`, per body | the invariant above. Every other rule here is a way of making one term of it honest. A state's kind — `DRIVEN` or `SOLVED` — is **declared**, never inferred from the link. ⚠ It counts **nominal** states; `P3` below measures a mechanism that satisfies the count and still loses a direction |
 | **`A-SKIN`** | across any joint, the drawn geometry leaves **no gap at any admissible joint value** | joints answer where a part *is*; they do not answer what it looks like. Violated today by the character's hip — a wedge of `(half-width)·sin θ` that nothing fills |
 | **`A-TOPO`** | the link graph is a **tree**: `p(0) = −1`, `0 ≤ p(i) < i` | canonical labelling, as `rig_admissible` does for a rig. ⚠ A **team** — two horses abreast on one cart — is two links to one body and is *not* a tree; see *open* below |
 | **`A-EXACT`** | `write(read(A)) = A` byte-for-byte; malformed is **refused, never repaired** | an assembly is a description; loft's float↔text round trip is byte-exact, so no tolerance is needed |
@@ -385,15 +385,15 @@ and records it, as `wheel_skid` records machine-ε rather than claiming algebrai
 | | claim | probe | falsified if |
 |---|---|---|---|
 | **P1** | `rig_world_seg` is enough to place a part for rendering | build the cart's transforms from the rig and diff against the current matrices | the rig cannot express something render needs without a second source |
-| **P3** | a 3-DOF joint is three `MOUNT`s in series | pose a known shoulder both ways, compare exactly | composing planar rigs through single-axis mounts diverges from the 3D rotation |
+| ~~P3~~ | ~~a 3-DOF joint is three `MOUNT`s in series~~ | — | **run below: confirmed for REACH, refuted for RANK** |
 | **P5** | **a towed chain stays stable** | two carts behind a horse through a tight turn and a reversal | the yaw states oscillate or the chain jack-knifes without the geometry saying it should |
 | **P6** | **N bones approximate a continuous bend to a stated bound** | discretise a cantilever under uniform load into `N` segments; measure tip error against the analytic elastica for `N = 2, 4, 8, 16` | the error does not fall predictably with `N`, or the `N` needed for a visually acceptable wing is large enough that the rig is the wrong representation |
 | **P7** | **a joint can be skinned by overlap alone** | for the character's hip, extend the pelvis by the maximum wedge and sweep the full swing range looking for background through the joint; then repeat for a 10-station wing | overlap cannot close a wing's joints without visible bulging — then the wing needs real skinning and `hex_body`'s *"no skinning"* is true only of the rig |
 | ~~P4~~ | ~~`bone_obb` proxies a wheel~~ | — | **falsified analytically above** |
 
-**`P3` is now required, not deferrable.** It was parked because nothing here had an
-articulated limb; a robot arm is one. **`P7` is the one that decides how big this
-design is** — if overlap suffices, the rig stays rigid everywhere and `A-SKIN` is a
+**`P3` was required, not deferrable, and is now answered below.** It was parked because
+nothing here had an articulated limb; a robot arm is one. **`P7` was the one that decided
+how big this design is** — if overlap suffices, the rig stays rigid everywhere and `A-SKIN` is a
 constructor rule. If it does not, a deforming skin is a second representation, and that
 is a much larger claim than this plan currently makes.
 
@@ -436,6 +436,52 @@ more than that number:
   armpit, and nothing is wrong with either. The clause that fixed it is *"and there is
   parent material directly above"*: it separates a pocket from a shoulder, and without it
   the measure condemns `E`, the joint that works.
+
+### `P3` — RUN. Confirmed for REACH, refuted for RANK
+
+`probe/three_mounts.loft`, pure and serverless. Targets are built by **Rodrigues over a
+lattice of axes and angles**, not as `Rz·Ry·Rx` — a target built from Euler angles and
+decomposed back tests `atan2` against itself and proves nothing.
+
+The falsifier — *"composing planar rigs through single-axis mounts diverges from the 3D
+rotation"* — hides two separable claims, and **they have different answers**:
+
+| | claim | measured |
+|---|---|---|
+| **REACH** | three single-axis mounts produce an arbitrary orientation | **holds.** Worst `\|R_target − R_chain\|` over 756 targets is `6.2 × 10⁻¹⁵` — **28 machine epsilons**, the drift bound the design asked for rather than an algebraic zero |
+| **`A-RIGID`** | the child's planar rig is not stretched through the chain | **holds.** Worst separation error `4.4 × 10⁻¹⁶` = 2 ε |
+| **RANK** | it can *move* in three directions from wherever it is | **fails on a set.** `\|det[a₁ a₂ a₃]\| = \|cos β\|` exactly, so at `β = ±90°` the ledger counts **three** states and the joint delivers **two** |
+
+**The consequence is not "use quaternions", it is a scoping line that the design already
+has an axis for.** States are `DRIVEN` or `SOLVED`. Forward, angles → pose, the rank never
+enters: a commanded shoulder is fine everywhere, and `A-DOF`'s own row for the arm says
+*joint angle 1, commanded*. It is `SOLVED` — an IK reach, a bend solved from a load — that
+inverts the axis matrix, and that is exactly what `cos β → 0` makes singular. So:
+
+> **Three zero-offset `MOUNT`s are sufficient for a `DRIVEN` 3-DOF joint, and are
+> singular on a set for a `SOLVED` one.** `A-DOF` counts nominal states; passing it is not
+> the same as having three usable directions.
+
+Three more results, each from a control that had to fail first:
+
+- ⚠ **The singular branch is load-bearing for AUTHORED poses and does nothing for composed
+  ones**, and the first version of this probe could not tell — its control passed, which is
+  how the distinction surfaced. Composing `Rz·Ry(π/2)·Rx` leaves ~`1.6 × 10⁻¹⁵` in `cos β`,
+  and `atan2(cβ·sin γ, cβ·cos γ)` divides that residue straight out, returning `γ` to the
+  last bit. A pose that arrives as a **matrix** — read from text, which is exactly what
+  `A-EXACT` says an assembly does — carries literal zeros, `atan2(0, 0)` is `0`, and the
+  naive decomposition misses by **2.0**. The normal case for this design is the one that
+  breaks.
+- **`zero-offset` is doing real work in the claim.** With 0.25 wu offsets the joint centre
+  wanders **0.5 wu** as the three angles move; at zero it is fixed exactly. An offset chain
+  is a *linkage*, not a joint.
+- **The reach measure can fail**, checked by sweeping deficient chains over their *whole*
+  reachable set rather than feeding them the three-axis answer: one axis used three times
+  misses by 0.96, and two mounts miss by the same 0.96 — both because they force `a₃₂ = 0`,
+  so the target's own `a₃₂` is the floor. Same number, one cause, and stated so it does not
+  read later as a copy-paste.
+
+---
 
 ### `P7`, the wing half — RUN, and the prediction from the hip was WRONG
 

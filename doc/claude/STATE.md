@@ -26,8 +26,18 @@ written and not built.** In priority order:
    ⚠ The hip's prediction into the wing (*"the stations are the same size, so an overlap
    must protrude"*) was right about the mechanism and **wrong about the magnitude** — the
    overlap's own depth is `a·sin θ`, so the seam is first order and the step is second.
-   What is left is **`P1`, `P3`, `P5`, `P6`**. `P3` is no longer optional — a robot arm is
-   an articulated limb, so "a 3-DOF shoulder is three zero-offset mounts" is load-bearing.
+   **`P3` is RUN too** (`probe/three_mounts.loft`) — **confirmed for REACH, refuted for
+   RANK**. Three zero-offset mounts reproduce every one of 756 independently-built
+   axis-angle targets to 28 machine epsilons, and `A-RIGID` holds through the chain. But
+   `|det[a₁ a₂ a₃]| = |cos β|` exactly, so at `β = ±90°` **the ledger counts three states
+   and the joint delivers two**. The line that follows is on the design's own axis: three
+   mounts are **sufficient for a `DRIVEN` 3-DOF joint** (angles → pose never inverts
+   anything) and **singular on a set for a `SOLVED` one**. `A-DOF` counts *nominal* states.
+   ⚠ Carry this: **the gimbal branch is load-bearing only for AUTHORED poses.** A composed
+   `Rz·Ry(π/2)·Rx` leaves ~1.6e-15 in `cos β` and `atan2` divides it straight out; a matrix
+   read from text — which is how `A-EXACT` says an assembly arrives — has literal zeros and
+   the naive decomposition misses by 2.0. The first control passed and was worthless.
+   What is left is **`P1`, `P5`, `P6`**.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
