@@ -1125,6 +1125,10 @@ place, whatever language the client is written in.
 
 ## The seam, stated once: the world stays, the view goes
 
+> **The route is [plan #16](../../plans/16-client-split/DESIGN.md)** — voxels cached and
+> meshed in the client, then the camera, in steps that each ship and are each gated on the
+> two paths being measured equal before one is deleted.
+
 Most of a game built on this runs in **wasm/loft on the client** — but **the world modelling
 routines stay in the server**, and that is not a compromise between the two positions, it is
 the line itself:
