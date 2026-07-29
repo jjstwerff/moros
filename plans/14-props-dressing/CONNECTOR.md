@@ -437,14 +437,69 @@ more than that number:
   parent material directly above"*: it separates a pocket from a shoulder, and without it
   the measure condemns `E`, the joint that works.
 
-**What this does NOT settle.** The refutation clause names the *wing*, and that half is
-unrun. The hip result carries a prediction into it rather than an answer: **overlap is
-hidden here only because the parent is bigger than the child** — the pelvis outreaches
-the leg by 13 mm in x and 19 mm in z, so a 3 cm skirt disappears inside the silhouette.
-A wing's consecutive stations have *the same* cross-section, so an equivalent overlap has
-nowhere to hide and must protrude by `ext` at every one of ten stations. If that is right,
-the wing needs either a taper per station or a real skin, and `P7`'s wing half fails as
-written. It is a prediction from one measured case, and the wing probe is what tests it.
+### `P7`, the wing half — RUN, and the prediction from the hip was WRONG
+
+`probe/wing_skin.loft`: ten frustum stations, sections matching exactly at each joint so
+the discretisation contributes no staircase of its own, chord tapering 1.2 m → 0.6 m over
+a 5 m semi-span at 12 % thickness. Every clause holds.
+
+The hip predicted failure: a wing's stations are the same size as each other, so an
+overlap has nowhere to hide and must protrude. **The mechanism is right and the magnitude
+is not.** The overlap protrudes — but its depth is itself `a·sin θ`, so what it leaves is
+
+```
+    seam without overlap    a·sin θ           first order in θ
+    step with overlap       a·cos θ(1 − cos θ)    SECOND order in θ
+```
+
+and as a fraction of the local thickness that is `cos θ(1 − cos θ)/2` — **free of the
+wing**: no chord, no span, no station count, no taper. Measured against the closed form at
+every angle in the sweep:
+
+| per joint | total over 10 stations | seam, no overlap | seam, overlap | step / thickness |
+|---|---|---|---|---|
+| 2° | 20° | 3.3 mm | **0** | 0.03 % |
+| 6° | 60° | 8.9 mm | **0** | 0.27 % |
+| 15° | 150° | 21 mm | **0** | 1.6 % |
+| 30° | 300° | 40 mm | **0** | 5.8 % |
+| 45° | 450° | 57 mm | **0** | 10.3 % |
+
+A second step, an order smaller and from a different cause, is reported separately because
+one combined number hid it: at 2° the total read seven times the thickness term. It comes
+from the **taper**, not the bend — a stub carrying the joint's section is wider in chord
+than the wing has become by the depth it reaches. It is ≤ 0.4 % of chord, and it is
+*movable but not removable*: taper the stub instead and the same quantity reappears as a
+hairline sliver at the leading and trailing edges.
+
+**So `P7` is not falsified, and the answer is a bound rather than a yes.** A wing that
+*flexes* spreads its bend over its stations, so the per-joint angle is small and the step
+is invisible — a 60° total flex over ten stations leaves 0.27 % of thickness. A wing that
+*folds* puts the whole angle through one joint, and a two-station fold measures **12.3 %
+of thickness at 60°**: visible, and the case overlap does not serve.
+
+- **`A-SKIN` stays a constructor rule.** No deforming skin, no second representation, so
+  this plan stays the size it is and `hex_body`'s *"no skinning"* survives — as a statement
+  about the rig, with the picture fixed by a derived overlap.
+- **The governing variable is the per-joint angle alone.** Not the size, not `N`. That is
+  what makes it a rule rather than a measurement of one wing.
+- ⚠ **The wedge is governed by the THICKNESS, not the chord** — a wing bends across its
+  thin dimension. The hip could not show this: a leg's section is square, so which
+  half-extent drives the wedge never came up.
+
+**Three instrument defects, all found by controls, all worth carrying to the next probe:**
+
+1. **The overhang ray must follow the PARENT's axis** — not the child's, and not world up.
+   At the hip all three coincide and the choice was invisible. At a 90° fold the child's
+   axis is perpendicular to the parent, so the march left along the fold instead of into
+   it and **reported a folded joint as sealed** — a zero in the worst row of the table.
+2. **The overlap is a prismatic stub at the joint's own section, not a continuation of the
+   taper.** Extrapolated, it is a hair narrower in chord than the face it must cover, so
+   the child's face pokes through along the edges. The first run read that as *the overlap
+   failing at every angle* when it had merely been built 0.2 mm too small.
+3. **The interface face and the parent's end plane are exactly coincident at zero bend**,
+   so an inclusive test on a rotated point is a coin flip — the first run reported a 1 mm
+   seam on a straight wing. Sampling one micron inboard fixes it, and the θ = 0 row is the
+   control that says so.
 
 ---
 

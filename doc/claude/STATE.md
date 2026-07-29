@@ -16,14 +16,18 @@ between them: read it first after a break.
 written and not built.** In priority order:
 
 1. **`A0` — run the remaining probes in `plans/14-props-dressing/CONNECTOR.md`.**
-   **`P7`'s character half is RUN and overlap holds** (six cases, four required red, all
-   green — `probe/skin_joint.loft` + `probe/emitted_boxes.mjs`). What is left is **`P7`'s
-   wing half**, which is the one that decides how big the design is, plus **`P1`, `P3`,
-   `P5`, `P6`**. `P3` is no longer optional — a robot arm is an articulated limb, so "a
-   3-DOF shoulder is three zero-offset mounts" is load-bearing now.
-   ⚠ The hip result carries a **prediction** into the wing, not an answer: overlap hides
-   at the hip only because the pelvis is *bigger* than the leg (13 mm in x, 19 mm in z).
-   A wing's stations are the same size as each other, so the same overlap must protrude.
+   **`P7` is RUN, both halves, and it is not falsified** — `probe/skin_joint.loft` (the
+   hip, six cases, four required red) and `probe/wing_skin.loft` (ten stations plus a
+   fold). **`A-SKIN` stays a constructor rule: no deforming skin, so the design stays the
+   size it is.** The bound is the **per-joint angle alone** — the step overlap leaves is
+   `cos θ(1 − cos θ)/2` of the local thickness, free of the wing's size, `N`, chord and
+   taper. A 60° flex over ten stations leaves 0.27 %; a 60° *fold* in one joint leaves
+   12.3 % and is the case overlap does not serve.
+   ⚠ The hip's prediction into the wing (*"the stations are the same size, so an overlap
+   must protrude"*) was right about the mechanism and **wrong about the magnitude** — the
+   overlap's own depth is `a·sin θ`, so the seam is first order and the step is second.
+   What is left is **`P1`, `P3`, `P5`, `P6`**. `P3` is no longer optional — a robot arm is
+   an articulated limb, so "a 3-DOF shoulder is three zero-offset mounts" is load-bearing.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

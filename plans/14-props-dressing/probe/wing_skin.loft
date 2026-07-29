@@ -1,0 +1,383 @@
+// P7, the wing half — DOES OVERLAP CLOSE TEN JOINTS WITHOUT VISIBLE BULGING?
+//
+// The character half is answered: `ext = (w/2)·sin θ_max` closes the hip, and
+// the overlap is free there because the pelvis is BIGGER than the leg — a 3 cm
+// skirt disappears inside a silhouette that was already wider. A wing has no
+// such luck. Its stations are the same size as each other, so the material an
+// overlap adds has nowhere to hide, and `P7`'s refutation clause is exactly
+// that: *overlap cannot close a wing's joints without visible bulging*.
+//
+// ── the model ───────────────────────────────────────────────────────────────
+//
+// Ten stations, each a FRUSTUM whose end sections match its neighbours exactly,
+// so the wing is a smooth lofted surface when straight — no staircase from the
+// discretisation itself, which would swamp what is being measured. Chord tapers
+// linearly root to tip; thickness is a fixed fraction of chord. The bend is
+// about the chord axis, so the half-extent in the rotation plane is the
+// half-THICKNESS. That is the first thing the hip does not tell you: a leg
+// swings across its own thickness and so does a wing, but a wing's thickness is
+// a tenth of its chord, and the wedge is governed by the SMALL dimension.
+//
+// ── the two measures, and three ways the first draft got them wrong ─────────
+//
+// SEAM is the hip's measure carried over: a point of the child's inboard face
+// that is outside the parent AND has parent material on the far side of it.
+//
+// ⚠ The ray is cast along the PARENT's +y — "toward the parent's body" — and
+// the first draft cast it along the CHILD's. At the hip those and world-up are
+// all the same direction and the choice was invisible. At a 90° fold the
+// child's +y is perpendicular to the parent, so the march left along the fold
+// instead of into it, found nothing, and reported a folded joint as SEALED.
+// A measure that reads zero for the worst case in the table is worse than no
+// measure.
+//
+// ⚠ The overlap is a PRISMATIC STUB carrying the joint's own section, not a
+// continuation of the taper. Extrapolating the taper makes the stub narrower in
+// CHORD than the face it has to cover, so the child's face pokes through along
+// the leading and trailing edges — a sliver 0.2 mm wide and 70 mm long, which
+// the first draft duly reported as a seam the overlap had failed to close. It
+// had not failed; it had been built a hair too small. A stub is also strictly
+// inside the child's prolonged section in both axes, so it costs no bulge.
+//
+// BULGE needs a reference surface, and picking the wrong one is how this
+// measurement goes wrong. It is NOT "how far the overlap sticks out of the
+// union" — the overlap's whole job is to stick out into the wedge. The
+// reference is the wing's own lofted surface: the CHILD's FRUSTUM PROLONGED
+// INBOARD past the joint. Material inside that prolongation is filling the
+// wedge and is invisible; material outside it is a step in a surface that
+// should be smooth.
+//
+// That reference carries its own control: with the bend at zero the stub is
+// strictly inside the prolongation, so the bulge must read EXACTLY zero. Any
+// taper leaking into the number shows up there.
+//
+// run: loft --interpret --path ../loft/ plans/14-props-dressing/probe/wing_skin.loft
+
+const WU_PER_M = 0.8660254037844386;
+const PI = 3.14159265358979;
+
+// A 5 m semi-span, 1.2 m root chord tapering to 0.6 m, 12% thick. Concrete
+// because "a wing" is not measurable; the RELATIVE numbers below turn out not
+// to depend on any of it, which is the useful part.
+const N_ST = 10;
+const SEMI_M = 5.0;
+const CROOT_M = 1.2;
+const CTIP_M = 0.6;
+const T_RATIO = 0.12;
+
+// The interface face and the parent's end plane are EXACTLY coincident when the
+// bend is zero, so an inclusive box test on a rotated point is a coin flip and
+// the first draft read a 1 mm seam on a straight wing. The face is sampled one
+// micron inboard instead — four orders below the smallest wedge in the table,
+// and the θ = 0 row is the control that says it is doing its job.
+const NUDGE = 0.000001;
+
+const NF = 31;                 // the interface face, per axis
+const NH = 81;                 // the search for material on the far side
+const NE = 9;                  // across the overlap's own depth
+const NB = 31;                 // across the overlap's section, per axis
+
+struct Station {
+  st_ox: float, st_oy: float, st_phi: float,   // its frame in the world
+  st_len: float, st_ext: float,                // span, and the overlap past it
+  st_a0: float, st_a1: float,                  // half-THICKNESS, in and out
+  st_b0: float, st_b1: float                   // half-CHORD, in and out
+}
+
+struct Res {
+  rs_seam: float,      // deepest seam, wu
+  rs_bx: float,        // tallest step across the THICKNESS, wu
+  rs_bxr: float,       // …as a fraction of the local thickness
+  rs_bz: float         // tallest step across the CHORD, wu
+}
+
+// The step has two causes with different orders, and reporting one number hid
+// that: at 2° per joint the total read seven times the thickness term's
+// prediction. They are separated here rather than explained away.
+struct Bulge {
+  bg_x: float,         // from the JOINT ANGLE — irreducible, second order
+  bg_z: float          // from the TAPER — first order, and only movable
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// The chain. Station i's frame is station (i−1)'s, walked out by its span and
+// turned by the joint angle — so the bend is spread evenly, which is what a
+// smooth flex is. The overlap is derived per station from the JOINT section and
+// the angle, never a constant: the hip's case C is what says a literal here
+// would reopen every seam the moment the range grew.
+fn wing_build(nst: integer, span: float, croot: float, ctip: float,
+              tr: float, th: float, overlap: boolean) -> vector<Station> {
+  sts: vector<Station> = [];
+  seg = span / (nst as float) ?? 0.0;
+  ox = 0.0;
+  oy = 0.0;
+  phi = 0.0;
+  for si in 0..nst {
+    u0 = (si as float) / (nst as float) ?? 0.0;
+    u1 = ((si + 1) as float) / (nst as float) ?? 0.0;
+    c0 = croot + (ctip - croot) * u0;
+    c1 = croot + (ctip - croot) * u1;
+    a1 = tr * c1 * 0.5;
+    ex = 0.0;
+    if overlap && si < nst - 1 { ex = a1 * sin(th); }
+    sts += [Station { st_ox: ox, st_oy: oy, st_phi: phi,
+                      st_len: seg, st_ext: ex,
+                      st_a0: tr * c0 * 0.5, st_a1: a1,
+                      st_b0: c0 * 0.5,      st_b1: c1 * 0.5 }];
+    ox = ox + seg * sin(phi);
+    oy = oy - seg * cos(phi);
+    phi = phi + th;
+  }
+  sts
+}
+
+fn st_local_x(s: Station, wx: float, wy: float) -> float {
+  (wx - s.st_ox) * cos(s.st_phi) + (wy - s.st_oy) * sin(s.st_phi)
+}
+fn st_local_y(s: Station, wx: float, wy: float) -> float {
+  0.0 - (wx - s.st_ox) * sin(s.st_phi) + (wy - s.st_oy) * cos(s.st_phi)
+}
+fn st_world_x(s: Station, lx: float, ly: float) -> float {
+  s.st_ox + lx * cos(s.st_phi) - ly * sin(s.st_phi)
+}
+fn st_world_y(s: Station, lx: float, ly: float) -> float {
+  s.st_oy + lx * sin(s.st_phi) + ly * cos(s.st_phi)
+}
+
+// The section at span fraction `u`, linearly interpolated — and deliberately
+// EXTRAPOLATED outside [0, 1] rather than clamped. Prolonging the child inboard
+// is what gives the bulge a reference surface to be measured against.
+fn sec_a(s: Station, u: float) -> float { s.st_a0 + (s.st_a1 - s.st_a0) * u }
+fn sec_b(s: Station, u: float) -> float { s.st_b0 + (s.st_b1 - s.st_b0) * u }
+
+// The station's own body, plus its stub. Inside the body the section tapers;
+// inside the stub it is frozen at the joint's own section.
+fn st_has(s: Station, wx: float, wy: float, wz: float) -> boolean {
+  ly = st_local_y(s, wx, wy);
+  if ly > 0.0 { return false; }
+  if ly < 0.0 - (s.st_len + s.st_ext) { return false; }
+  u = (0.0 - ly) / s.st_len ?? 0.0;
+  a = s.st_a1;
+  b = s.st_b1;
+  if u < 1.0 { a = sec_a(s, u); b = sec_b(s, u); }
+  lx = st_local_x(s, wx, wy);
+  if lx < 0.0 - a || lx > a { return false; }
+  if wz < 0.0 - b || wz > b { return false; }
+  true
+}
+
+// ── the seam, at one joint ──────────────────────────────────────────────────
+// The interface is the child's inboard face. A sample is a leak when it is not
+// inside anything inboard of it AND there is parent material on the far side —
+// the overhang clause the hip half had to learn, which is what separates a
+// pocket from an honest open end.
+fn joint_seam(par: Station, kid: Station, prv: Station, has_prv: boolean) -> float {
+  fa = kid.st_a0;
+  fb = kid.st_b0;
+  du = (fa * 2.0) / ((NF - 1) as float) ?? 0.0;
+  dv = (fb * 2.0) / ((NF - 1) as float) ?? 0.0;
+  reach = fa + 0.01;
+  dh = reach / ((NH - 1) as float) ?? 0.0;
+  // toward the parent's BODY, which is its own +y — not the child's, and not
+  // world up. At a fold those are three different directions.
+  ux = 0.0 - sin(par.st_phi);
+  uy = cos(par.st_phi);
+  deep = 0.0;
+  for iu in 0..NF {
+    for iv in 0..NF {
+      fx = 0.0 - fa + (iu as float) * du;
+      fz = 0.0 - fb + (iv as float) * dv;
+      px = st_world_x(kid, fx, NUDGE);
+      py = st_world_y(kid, fx, NUDGE);
+      inb = st_has(par, px, py, fz);
+      if !inb && has_prv { inb = st_has(prv, px, py, fz); }
+      if !inb {
+        ih = 1;
+        while ih < NH {
+          t = (ih as float) * dh;
+          if st_has(par, px + ux * t, py + uy * t, fz) {
+            if t > deep { deep = t; }
+            ih = NH;
+          } else { ih = ih + 1; }
+        }
+      }
+    }
+  }
+  deep
+}
+
+// ── the bulge, at one joint ─────────────────────────────────────────────────
+// Sample the stub's own body, put each point in the CHILD's frame, and ask how
+// far outside the child's prolonged surface it sits. Points that land inboard
+// of the joint plane in that frame are inside the prolongation by construction
+// — they are the wedge being filled, and they read zero.
+fn joint_bulge(par: Station, kid: Station) -> Bulge {
+  if par.st_ext <= 0.0 { return Bulge { bg_x: 0.0, bg_z: 0.0 }; }
+  ea = par.st_a1;
+  eb = par.st_b1;
+  wx_ = 0.0;
+  wz_ = 0.0;
+  for ie in 0..NE {
+    ly = 0.0 - par.st_len
+         - par.st_ext * (ie as float) / ((NE - 1) as float) ?? 0.0;
+    for ib in 0..NB {
+      for ic in 0..NB {
+        lx = 0.0 - ea + (ea * 2.0) * (ib as float) / ((NB - 1) as float) ?? 0.0;
+        lz = 0.0 - eb + (eb * 2.0) * (ic as float) / ((NB - 1) as float) ?? 0.0;
+        wx = st_world_x(par, lx, ly);
+        wy = st_world_y(par, lx, ly);
+        cx = st_local_x(kid, wx, wy);
+        cy = st_local_y(kid, wx, wy);
+        uc = (0.0 - cy) / kid.st_len ?? 0.0;
+        if uc <= 1.0 {
+          ox = fabs(cx) - sec_a(kid, uc);
+          oz = fabs(lz) - sec_b(kid, uc);
+          if ox > wx_ { wx_ = ox; }
+          if oz > wz_ { wz_ = oz; }
+        }
+      }
+    }
+  }
+  Bulge { bg_x: wx_, bg_z: wz_ }
+}
+
+fn measure(sts: vector<Station>, nst: integer) -> Res {
+  seam = 0.0;
+  bx = 0.0;
+  bxr = 0.0;
+  bz = 0.0;
+  for jj in 0..(nst - 1) {
+    if jj + 1 < len(sts) {
+      par = sts[jj];
+      kid = sts[jj + 1];
+      prv = sts[jj];
+      has_prv = false;
+      if jj > 0 { prv = sts[jj - 1]; has_prv = true; }
+      thick = par.st_a1 * 2.0;
+      sm = joint_seam(par, kid, prv, has_prv);
+      if sm > seam { seam = sm; }
+      bg = joint_bulge(par, kid);
+      if bg.bg_x > bx { bx = bg.bg_x; }
+      if bg.bg_z > bz { bz = bg.bg_z; }
+      br = bg.bg_x / thick ?? 0.0;
+      if br > bxr { bxr = br; }
+    }
+  }
+  Res { rs_seam: seam, rs_bx: bx, rs_bxr: bxr, rs_bz: bz }
+}
+
+fn main() {
+  span = SEMI_M / WU_PER_M ?? 0.0;
+  croot = CROOT_M / WU_PER_M ?? 0.0;
+  ctip = CTIP_M / WU_PER_M ?? 0.0;
+
+  println("P7 — the wing half: ten joints, and what overlap costs at each");
+  println("");
+  println("  {N_ST} stations   semi-span {span:6.4} wu ({SEMI_M} m)");
+  println("  chord {croot:6.4} -> {ctip:6.4} wu   thickness {T_RATIO} of chord");
+  println("  root half-thickness {T_RATIO * croot * 0.5:7.5} wu"
+          + "   root half-chord {croot * 0.5:7.5} wu");
+  println("");
+  println("  Two steps, because they have different causes and different orders.");
+  println("  `step-t` is across the THICKNESS and comes from the joint angle;");
+  println("  `/t` is it as a fraction of the local thickness, which is the number");
+  println("  an eye reads and the one that does not depend on the wing at all.");
+  println("  `step-c` is across the CHORD and comes from the TAPER, not the bend.");
+  println("");
+  println("    per-jt   total    seam(none)   seam(ext)    step-t     /t      pred"
+          + "      step-c");
+
+  degs = [0.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0, 45.0];
+  fails = 0;
+  bulge_at_zero = 0.0;
+  for dg in degs {
+    th = dg * PI / 180.0 ?? 0.0;
+    bare = measure(wing_build(N_ST, span, croot, ctip, T_RATIO, th, false), N_ST);
+    over = measure(wing_build(N_ST, span, croot, ctip, T_RATIO, th, true), N_ST);
+    // the step a rigid stub leaves on the compression side, as a fraction of
+    // thickness: cos θ (1 − cos θ) / 2 — second order in θ where the seam it
+    // replaces is first order.
+    pred = cos(th) * (1.0 - cos(th)) * 0.5;
+    mark = "  ";
+    if over.rs_seam > 0.0 { mark = "!!"; }
+    println("   {mark} {dg:5.1}   {dg * (N_ST as float):5.1}    "
+            + "{bare.rs_seam:8.6}    {over.rs_seam:8.6}   "
+            + "{over.rs_bx:8.6}  {over.rs_bxr:6.4}  {pred:6.4}   {over.rs_bz:8.6}");
+    if dg == 0.0 {
+      bulge_at_zero = over.rs_bx + over.rs_bz;
+      if bare.rs_seam > 0.0 {
+        println("   FAIL  a STRAIGHT wing has a seam of {bare.rs_seam} wu");
+        fails = fails + 1;
+      }
+    } else {
+      if bare.rs_seam <= 0.0 {
+        println("   FAIL  no-overlap seam is zero at {dg} deg — the measure is blind");
+        fails = fails + 1;
+      }
+      if over.rs_seam > 0.0 {
+        println("   FAIL  overlap left a seam of {over.rs_seam} wu at {dg} deg");
+        fails = fails + 1;
+      }
+      if over.rs_bx <= 0.0 {
+        println("   FAIL  bulge is zero at {dg} deg — the measure cannot see a step");
+        fails = fails + 1;
+      }
+    }
+  }
+
+  println("");
+  if bulge_at_zero == 0.0 {
+    println("   ok    control: straight, the stub is strictly inside the child's");
+    println("         prolonged section and the bulge reads {bulge_at_zero} — the");
+    println("         taper is not leaking into the number");
+  } else {
+    println("   FAIL  control: a straight wing bulges by {bulge_at_zero} wu");
+    fails = fails + 1;
+  }
+
+  // ── the regime the smooth sweep cannot reach ───────────────────────────────
+  // Ten stations over a smooth flex keeps the per-joint angle small, and that
+  // is the whole reason the numbers above are what they are. An articulated
+  // wing — a wrist that FOLDS — puts the same total bend through ONE joint.
+  println("");
+  println("  a two-station FOLD, where the whole angle is one joint:");
+  println("");
+  println("    angle    seam(none)   seam(ext)    step-t      /t     step-c");
+  // ⚠ A seam reading of ONE march step is the floor, not a leak. The 120° row
+  // lands on exactly that, and without the floor printed beside it the number
+  // reads as "overlap nearly failed" instead of "nothing resolvable here".
+  fold_floor = (0.12 * ctip * 0.5 + 0.5 * (croot - ctip) * 0.12 * 0.5 + 0.01)
+               / ((NH - 1) as float) ?? 0.0;
+  println("    (a seam of one march step, {fold_floor:8.6} wu, is the floor)");
+  println("");
+  fdegs = [30.0, 60.0, 90.0, 120.0];
+  fold_bad = 0;
+  fold_blind = 0;
+  for fd in fdegs {
+    fth = fd * PI / 180.0 ?? 0.0;
+    fbare = measure(wing_build(2, span, croot, ctip, T_RATIO, fth, false), 2);
+    fover = measure(wing_build(2, span, croot, ctip, T_RATIO, fth, true), 2);
+    println("    {fd:5.1}    {fbare.rs_seam:8.6}    {fover.rs_seam:8.6}   "
+            + "{fover.rs_bx:8.6}  {fover.rs_bxr:6.4}   {fover.rs_bz:8.6}");
+    if fover.rs_bxr > 0.10 { fold_bad = fold_bad + 1; }
+    if fbare.rs_seam <= 0.0 { fold_blind = fold_blind + 1; }
+  }
+  if fold_blind > 0 {
+    println("   FAIL  a FOLDED joint read as sealed with no overlap at all —");
+    println("         the march is not reaching the parent");
+    fails = fails + 1;
+  }
+  if fold_bad > 0 {
+    println("   ok    the fold reaches a step past 10% of thickness — the bulge");
+    println("         measure bites where it should, so the small numbers above");
+    println("         are a fact about the ANGLE and not about the measure");
+  } else {
+    println("   FAIL  even a fold bulges by under 10% — nothing here can fail");
+    fails = fails + 1;
+  }
+
+  println("");
+  if fails == 0 { println("wing_skin: every clause holds"); }
+  else { println("wing_skin: {fails} clause(s) failed"); }
+}
