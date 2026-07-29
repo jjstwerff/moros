@@ -220,6 +220,7 @@ const TICK_US = 33000;
 //                    24:<dir>,<mat>  set ONE edge of the cell you stand in
 //                    25:<mat>      road — press to start a run, again to close it
 //                    26:<q>,<r>    report that cell's surface material and height
+//                    27:<0|1>      trace the tick's phases (off by default)
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -272,6 +273,7 @@ const MSG_FENCE = 23;     // fences: ring the disc you stand in (moros#10)
 const MSG_EDGE = 24;      // and the atomic half of it — one edge, one material
 const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
 const MSG_CELL = 26;      // read one cell's surface material and height back
+const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -2775,6 +2777,12 @@ fn main() {
   clients: vector<Client> = [];
   live_clients = 0;            // what the LIBRARY says is connected, not our list
   probe_us = ticks();          // when the liveness probe last went out
+  // Phase attribution for the tick — three buckets and a rebuild counter, printed
+  // once a second. Three numbers settle where the per-client cost went; guessing
+  // at it has already produced one fix aimed at the wrong candidate.
+  acc_proxy = 0; acc_cam = 0; acc_rest = 0;
+  nticks = 0; nrebuild = 0; acc_since = ticks(); tph = ticks();
+  tracing = false;             // `27:1` turns it on; it costs three `ticks()` a tick
   keys = 0;
   last_us = ticks();
 
@@ -3121,6 +3129,10 @@ fn main() {
           do_fence(srv, ev.cid, ev.payload, px, pz, wld, dirty);
         } else if ev.msg_id == MSG_EDGE {
           do_edge(srv, ev.cid, ev.payload, px, pz, wld, dirty);
+        } else if ev.msg_id == MSG_TRACE {
+          tracing = (ev.payload as integer ?? 0) != 0;
+          srv.send_to(ev.cid, "S:trace {tracing}");
+          println("editor: trace {tracing}");
         } else if ev.msg_id == MSG_CELL {
           cci = ev.payload.find(",");
           cq2 = 0;
@@ -3410,8 +3422,10 @@ fn main() {
       // has been written, which is a fact about what happened rather than a guess
       // about how long ago (`T1`). Building it every tick would be a 289-cell scan
       // at 30Hz for a world that mostly does not change.
+      tph = ticks();
       chx = world_to_hex(px, pz);
       if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r || coll_tau != wld.w_tau {
+        nrebuild = nrebuild + 1;
         coll_sf = surfaces_new();
         coll_rt = runs_track(wall_runs);
         coll_move = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, false,
@@ -3429,6 +3443,8 @@ fn main() {
 
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
+      acc_proxy = acc_proxy + (ticks() - tph);
+      tph = ticks();
       cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
@@ -3452,6 +3468,8 @@ fn main() {
       } else {
         cam_dist = cam_approach(cam_dist, cam_free, CAM_K_OUT, dt);
       }
+      acc_cam = acc_cam + (ticks() - tph);
+      tph = ticks();
 
       // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
       // disagree — there is one facing and everything else is derived from it.
@@ -3501,6 +3519,29 @@ fn main() {
           py = terrain_y(px, pz, wld);
         }
         moved = true;
+      }
+      acc_rest = acc_rest + (ticks() - tph);
+      nticks = nticks + 1;
+      if ticks() - acc_since >= 1000000 {
+        if tracing {
+          // Per second: where the time went, and the arithmetic that explains the
+          // camera's share. `cam_free_dist` runs once per arc sample and once per
+          // pitch try; each walks CAM_STEPS samples; each sample costs a
+          // `terrain_y` plus the FOUR more inside `cam_clear_at`; and each
+          // `terrain_y` reads a cell and its six neighbours. The product is the
+          // number to argue with, not the millisecond total.
+          per_tick = (CAM_ARC_N + 1) + (CAM_TRIES + 1);
+          samples = per_tick * CAM_STEPS * 5;
+          msg = "TRACE {nticks} ticks/s: proxy {acc_proxy / 1000 ?? 0}ms "
+              + "({nrebuild} rebuilds)  camera {acc_cam / 1000 ?? 0}ms  "
+              + "rest {acc_rest / 1000 ?? 0}ms | camera does {per_tick} solves/tick "
+              + "x {CAM_STEPS} steps x 5 terrain reads = {samples} samples/tick, "
+              + "{samples * nticks} a second, each one a cell and its six neighbours";
+          println(msg);
+          srv.broadcast("S:{msg}");
+        }
+        acc_since = ticks(); acc_proxy = 0; acc_cam = 0; acc_rest = 0;
+        nticks = 0; nrebuild = 0;
       }
     }
 

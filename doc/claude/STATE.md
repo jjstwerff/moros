@@ -146,14 +146,29 @@ for loft the language and its tooling only.
 
 ### Open
 
-- ⚠ **THE TICK COSTS 81% OF A CORE FOR ONE WATCHING CLIENT**, where rung 11a measured
-  12.9%. Taken with a `/proc` utime delta on an empty world with no walls in sight.
-  Skipping the camera's wall sweep when the collision proxy is empty buys 9 points of it
-  (90 → 81) and is kept; the other 68 are unexplained. Suspects in order: the collision
-  proxy rebuild (`edges_around` runs twice over a 19×19 window, and may fire more often
-  than its cell-change/edit-clock test suggests), then the sixth surface in the chunk
-  traversal. **Measure which before optimising** — the 9-point fix was aimed at the obvious
-  candidate and was mostly wrong.
+- ⚠ **THE TICK COSTS ~100% OF A CORE FOR ONE WATCHING CLIENT, AND IT IS ALL THE CAMERA.**
+  Attributed, not guessed — `27:1` turns on a per-second phase trace:
+
+  ```
+  TRACE 15 ticks/s: proxy 0ms (0 rebuilds)  camera 1008ms  rest 0ms
+        | camera does 11 solves/tick x 14 steps x 5 terrain reads = 770 samples/tick
+  ```
+
+  **Both suspects are exonerated**: the collision proxy costs 0 ms and rebuilds 0 times
+  (its cell-change/edit-clock test is exact), and the rest of the tick — walk, streaming
+  check, publish — is 0 ms. Shrinking the proxy from radius 8 to 2 changed nothing, so it
+  is not the EdgeSet copy either.
+  The camera's own arithmetic is the answer: `cam_pitch_target` (`CAM_TRIES + 1`) plus
+  `cam_free_arc` (`CAM_ARC_N + 1`) is **11 solves a tick**, each walking `CAM_STEPS = 14`
+  samples, each sample costing a `terrain_y` **plus the four more inside `cam_clear_at`** —
+  770 terrain reads a tick, and every one of them reads a cell and its six neighbours.
+  The tick rate is collapsing under it (31 → 15/s), which is why the walk feels heavy.
+  **The fix is arithmetic, not micro-optimisation**: cache the terrain read per sample
+  (`cam_clear_at` re-reads what `cam_free_dist` just read), or sample the arc lazily —
+  the numbers are now on the wire to check any of it against.
+  ⚠ It is NOT this rung's regression to blame: the 9-point wall-sweep skip was aimed at
+  the obvious candidate and was mostly wrong, and the 12.9% on record predates the
+  predictive-arc camera.
 - ✅ **The idle gate is fixed, and it was a real 76%.** `poll_event` absorbs disconnects
   internally, so `clients` only ever grew and `len(clients) > 0` stayed true for ever once
   one tab had connected; the 30Hz tick then ran for nobody. It gates on what `broadcast`
