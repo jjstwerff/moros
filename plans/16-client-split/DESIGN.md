@@ -131,6 +131,13 @@ WASM). So the bridge is not missing from the LIBRARY — it is missing from the 
 `make client` carries the flag, with the reason on it, and the flag comes out when a fixed
 `web` is published. **S1 is unblocked**; what remains of it is the drawing.
 
+**And the republish is ours to do.** Fix `web` in `../loft-libs-net/` and publish it — the
+condition is the unified library CI, which each library repo delegates to
+(`loft-lang/loft/.github/workflows/library-ci-reusable.yml@main`); that reusable is the gate
+and defines the requirements, so read it before publishing rather than after a red run.
+Doing so deletes the `--lib` flag from `make client` and from every other consumer that has
+not yet discovered the hole.
+
 ### S2 — voxels on the wire, meshes still from the server
 
 Add `world → client` chunk-layer frames: `(cx, cz, layer, τ, bytes)`, the same encoding the
