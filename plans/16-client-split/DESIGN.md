@@ -103,6 +103,30 @@ JavaScript renderer and nothing else** — same wire, same frames, same picture.
 *Risk:* the whole four-target story (`loft-ship`) meets a real consumer. Expect this step to
 cost more than it looks.
 
+**⚠ S1 IS BLOCKED ON A PACKAGING DEFECT, found 2026-07-29 by compiling.** `src/editor_client.loft`
+is written and its own code compiles; `loft --html` then fails downstream:
+
+```
+loft: --html: [wasm.bridge] declared `crate = "web-wasm"` but
+      ~/.loft/lib/web/wasm/src/lib.rs is missing — skipping bridge link
+error[E0433]: cannot find module or crate `web_wasm` in this scope
+```
+
+The **installed `web` 0.3.2 has no `wasm/` directory at all** — no `host.js`, no
+`src/lib.rs` — while its own `loft.toml` declares `[wasm.bridge] crate = "web-wasm"` and
+`host_js = "wasm/host.js"`. The source tree `../loft-libs-net/web` (**0.3.3**) has all of it.
+So the published tarball omits the directory its manifest requires, and **every `--html`
+program that uses `web`'s WebSocket fails to link** — which is the only browser transport
+there is.
+
+This is exactly what S0's reconnaissance could not see: the documentation says WebSocket
+works in the browser target, and it does — the *package* does not carry it. Reading told us
+yes; compiling told us no.
+
+*Next:* try `web` 0.3.3 from the source tree (a path dependency, as `moros_map` already does
+for `hex_field`) and see whether the bridge links. If it does, the fix is a republish and
+S1 continues; if it does not, the bridge itself needs building, and that is ours.
+
 ### S2 — voxels on the wire, meshes still from the server
 
 Add `world → client` chunk-layer frames: `(cx, cz, layer, τ, bytes)`, the same encoding the

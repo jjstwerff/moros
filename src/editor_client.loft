@@ -1,0 +1,107 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The editor's client — plan #16, step S1.
+//
+// A CLIENT PROGRAM THAT DIALS THE SERVER, not a page the server prints. Same shape
+// as loft's crystal audience demo (`../loft/tools/audience-demo/projector.loft`):
+// the render loop IS the connection's loop, one pass is one frame, and frames
+// arrive by polling the socket inside it.
+//
+//   loft --html src/editor_client.loft      -> a self-contained page
+//   loft --interpret src/editor_client.loft -> the same source, on the desktop
+//
+// ⚠ `--html`, never `--native-wasm`: the latter is the headless WASI build, four
+// times the size, needs `wasmtime`, and does not run in a browser at all
+// (loft's `WEB_APPS.md` §1).
+//
+// WHY THIS EXISTS AT ALL. `html/editor.html` says the rule it was built to: "The
+// client DRAWS. It does not model." That rule was never about the camera — it is
+// about not writing a second implementation of the model in a second language, and
+// the server was simply the only place loft ran. This file removes that constraint:
+// once the client is loft, "client-side" stops meaning "JavaScript-side", and the
+// view can live where the eyes are (`EDITOR_SUBSTRATE.md` § the seam).
+//
+// S1 IS DELIBERATELY NOT THAT YET. It replaces the JavaScript renderer and nothing
+// else — same wire, same frames, same picture — because every later step in plan 16
+// is gated on comparing two paths, and there is nothing to compare against until
+// this one draws what the old one drew.
+use web;
+use graphics;
+
+// The wire, server -> client. Unchanged from `html/editor.html`, deliberately:
+//   M:<i>;<ramp>;r,g,b;x0,y0,z0,nx0,ny0,nz0,…   mesh i, POSITION FIRST, 6 floats/vertex
+//   T:<i>;<16>                                  mesh i's placement
+//   X:<i>                                       drop mesh i
+//   G:<lo rgb>,<hi rgb>,<lo y>,<hi y>           the ground ramp
+//   F:<x>,<y>,<z>,<from>,<to>,<r>,<g>,<b>       fog centre, radii, sky
+//   C:<view>;<proj>                             the camera, solved server-side
+//   E:                                          end of world
+//   S:<text>                                    status, for gates and for people
+// and client -> server, ids as NUMBERS because the pump parses `<int>:<payload>`:
+//   1: ready · 2:<aspect> camera · 3:<dx>,<dy> drag · 4:<keybits> · 5:<±1> raise
+const WS_URL = "ws://127.0.0.1:18090/ws";
+
+struct Counts {
+  c_mesh: integer,
+  c_place: integer,
+  c_drop: integer,
+  c_cam: integer,
+  c_status: integer,
+}
+
+// One frame's worth of socket: drain what is waiting, count what arrived.
+//
+// ⚠ DRAIN, do not read one. `try_recv` returns "" when nothing is waiting, so a
+// single read per frame would fall behind at exactly the moment the server has
+// most to say — the initial stream is ~48 chunks of geometry — and the client
+// would take a minute to show a world the server sent in a second.
+fn drain(h: web::WsHandler, n: Counts) -> integer {
+  got = 0;
+  msg = web::try_recv(h);
+  while msg != "" {
+    got = got + 1;
+    if msg.len() > 1 {
+      tag = msg[..1];
+      if tag == "M" { n.c_mesh = n.c_mesh + 1; }
+      else if tag == "T" { n.c_place = n.c_place + 1; }
+      else if tag == "X" { n.c_drop = n.c_drop + 1; }
+      else if tag == "C" { n.c_cam = n.c_cam + 1; }
+      else if tag == "S" { n.c_status = n.c_status + 1; }
+      else if tag == "E" {
+        // End of world: the server has sent everything it means to send for this
+        // connection, and wants an aspect back before it will solve a camera.
+        web::send(h, "2:1.5,");
+      }
+    }
+    msg = web::try_recv(h);
+  }
+  got
+}
+
+fn main() {
+  println("moros editor client — S1 (plan #16): the wire, in loft");
+  n = Counts { c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0 };
+
+  h = web::ws_handler(WS_URL);
+  web::send(h, "1:");                       // ready — send me the world
+
+  // The frame loop. `frame_yield` is load-bearing in the browser: a loop that
+  // never yields freezes the page AND never receives, because the socket is
+  // delivered by the host between frames. On native it is a no-op, which is what
+  // lets the same source run under `--interpret` while it is being written.
+  frames = 0;
+  reported = 0;
+  while frames < 100000 {
+    frames = frames + 1;
+    drain(h, n);
+    // Report once every ~300 frames rather than per frame: a gate reads this, and
+    // a person watching a console should see progress without a flood.
+    if frames - reported >= 300 {
+      reported = frames;
+      println("client: {frames} frames — meshes {n.c_mesh}, placements {n.c_place}, "
+              + "drops {n.c_drop}, cameras {n.c_cam}, status {n.c_status}");
+    }
+    web::frame_yield();
+  }
+}
