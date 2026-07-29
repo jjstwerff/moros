@@ -42,6 +42,21 @@ reads, the server owns the clock.
 
 ## The steps
 
+### S0 — reconnaissance, done 2026-07-29
+
+**S1 is a port, not a research project.** `loft --html` produces a self-contained browser
+page with a **WebGL2 canvas, keyboard and mouse**, and — the make-or-break question —
+**WebSocket works in the browser target** through the `web` library. That is the editor's
+exact transport, so the client can speak the wire it already speaks.
+
+Two constraints that shape the client, both from loft's `WEB_APPS.md`:
+
+- **`--html`, never `--native-wasm`.** The latter is the headless WASI build: ~4× larger,
+  needs `wasmtime`, and does not run in a browser at all.
+- **No HTTP client in the browser** — `web`'s `http_get`/`http_post` are native-only, and
+  WebSocket is the only browser transport. The editor serves its page over HTTP and then
+  talks WS, so this costs nothing here; it would matter for anything that wanted to fetch.
+
 ### S1 — a wasm client that is loft at all
 
 A wasm/loft client that connects, receives today's mesh frames and draws them. **It replaces
@@ -61,6 +76,23 @@ into its own `World`. **It still draws the server's meshes.**
 *Done when:* for every loaded chunk, the client's cached bytes and the server's agree —
 compared by the format's own per-chunk CRC, not by a hash we invent.
 *Control that must be seen red:* mutate one cell on one side and watch the comparison fail.
+
+**⚠ THE VALIDATION IS SMALL, FREQUENT AND AHEAD OF THE BULK.** It is not a periodic audit
+that walks the world; it is a heartbeat that has to stay cheap enough to run all the time:
+
+- **Small.** One frame carries a DIGEST of the visible set — `(chunk key, τ, crc)` per
+  chunk, twelve-ish bytes each, a few hundred bytes for a whole draw distance. Never the
+  cells themselves. The client answers only about what it disagrees on.
+- **High priority means FIRST AND UNBLOCKED.** One WebSocket is FIFO, so priority is not a
+  flag — it is an ordering discipline: the digest goes out at the head of the tick, before
+  any bulk voxel frame, and **bulk transfers are chunked small enough that a digest never
+  waits behind one**. A 200 KB layer burst that delays the heartbeat by a second has
+  converted a fast check into a slow one without changing a line of it.
+- **Cheap to compute.** `τ` is already maintained per layer (`T1`/`T2`) and the CRC is
+  already computed on save, so the common answer — nothing changed — costs a comparison of
+  integers the server already has, not a walk over cells.
+- **What it buys:** divergence is caught in the tick it happens rather than at the next
+  save, which matters because a stale cache's only symptom is an old picture.
 *Deletes:* nothing. This is the measurement step.
 
 ### S3 — the client derives one surface
