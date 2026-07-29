@@ -1073,3 +1073,43 @@ particular is a name that is currently occupied.
 | The IDE that adopts this editor | `../loft/doc/claude/plans/16-debugger/WORKBENCH.md` § 9 |
 | Its eventual canonical home in loft | `../loft/doc/claude/lib_plans/65-scriptable-scenes/README.md` |
 | The audience-demo consumer | `../loft2/doc/claude/plans/51-bumper-airplanes/README.md` |
+
+## Why the camera solve is in the server, and why that stops being true
+
+**It is there because the client is JavaScript, not because the server is the right home.**
+`html/editor.html` states the rule at the top: *"The client DRAWS. It does not model … If a
+computation about the world ever appears below this line, the seam has been broken."* That
+rule is sound and was never about the camera — it is about **not writing a second
+implementation of the model in a second language**. The server is simply the only place
+loft ran.
+
+A **wasm client** dissolves the premise: the same loft code runs in the browser, so
+client-side no longer means JavaScript-side. And once that is true, three things say the
+camera belongs there:
+
+1. **It is per-viewer, and nothing else in the tick is.** The code already records the
+   consequence — the camera frame *"cannot join the broadcast: it is solved per client from
+   that client's aspect"*. Every other frame is shared; this one is N solves for N viewers,
+   on one core.
+2. **It is latency-bound.** A boom that gives way to a wall should respond at the viewer's
+   frame rate, not after a round trip and a 30 Hz tick. Mouse-look through a network hop is
+   the oldest bad feel in the book.
+3. **It is what the cost measurement said.** One watching client cost ~100% of a core, all
+   of it camera: eleven solves a tick × 14 samples × 5 terrain reads. Gating it on its
+   inputs took that to 0% — but the shape is unchanged. It is O(clients) on the server and
+   O(1) on each client.
+
+**What would have to move with it:** `cam_free_dist` / `cam_free_arc` / `cam_pitch_target` /
+`cam_clear_at` all query `terrain_y`, so the client needs the height field. It already
+receives the geometry it draws, so the question is whether it queries the meshes it holds or
+keeps a light copy of the columns in view — a real design question, and the first one #7
+(`hex_editor`) has to answer about its client.
+
+**What must NOT move:** the walk. Movement integrates on the server's fixed tick because
+that is what makes it reproducible from an input log (`L7`), and a client that solves its
+own position is a client that can disagree with the world. The seam is *the camera is a
+view, the walk is the world* — and stated that way it is obvious which side each belongs on.
+
+⚠ Until that client exists this stays where it is, gated on its inputs. The gating is not a
+substitute for the move; it is what makes the current shape affordable while the move is
+still #7's to make.
