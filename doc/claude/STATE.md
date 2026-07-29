@@ -192,9 +192,34 @@ written and not built.** In priority order:
      Four closer minimal cases did not reproduce it. `wa:clean`: **the parsers are pure now**.
      Second time this idiom has bitten Moros; #670 was the silent-write half.
 
-   **Next is `A6`** — `GROUND` support and the contact fixed point, proving `A-GROUND` and
-   `A-FIT`. ⚠ Read A5's handedness note first: the bank is where the two rotation
-   conventions meet, and the gap clause has already been demonstrated red at 0.204 wu.
+7. ✅ **`A6` is BUILT — and starting it found a LIVE DEFECT in the shipped cart.**
+   `lib/moros_sim/src/ground.loft`, 11 tests, **583 green**, all 98 functions entered. The
+   terrain arrives as a **function argument**, so every clause is pure and the answers are
+   closed-form: `β = −atan(s)` and `y = g(centre) + R` to the float bound.
+
+   ⚠ **THE CART BANKED THE WRONG WAY SINCE RUNG 10a, AND BOTH GAP CLAUSES READ ZERO.**
+   Measured off the wire: true gaps **+0.0914 / −0.0914** (one wheel floating 9 cm, one
+   buried 9 cm) while `gapl`/`gapr` reported ~0 and `cart.mjs` was green. Cause: mesh3d's
+   `mat4_rotate_x` turns about **−x**, so the solve's bank was applied inverted. Neither
+   clause could see it — the gaps were the solve's *own arithmetic*, and the axle is a
+   *length*, which tilting the wrong way does not change. **Fixed in `5ffdf2c`**: the sign
+   converted at one named site, and the lift now **read from `base.m[9]`**. Reverting the
+   sign alone now turns the gap clause red too. 23 gates green.
+   - **`A-GROUND` is measured from the FRAME** in the library — `frame_apply` for the hub,
+     terrain at the hub's own x/z. A wrong pose cannot report a right gap. Mutation 2 is the
+     proof: re-deriving the gap breaks **five** clauses.
+   - **`A-FIT` refuses**: a cliff returns a named reason, an offer (±2w) and a residual, and
+     keeps the last admissible bank rather than a NaN.
+   - ⚠ **The convergence clause guessed and was wrong.** It asserted a magnitude (1e-6 after
+     three rounds) instead of the design's *prediction* (rate `≈ s²`), and failed. Now it
+     asserts the **ratio** over four round counts. *A prediction can be tested; a threshold
+     can only be tuned.*
+   **Seen red** three ways: inverted bank (6 clauses), re-derived gap (5), clamp instead of
+   refuse (2).
+
+   **Next is `A7`** — `HITCH` + `SHAFT` and a second body behind the first, where `A-DOF`
+   must close at 6 for both. The design calls A7 and A8 the steps where it earns or loses:
+   A7 is the first *second frame*, and `P5` already measured what a towed chain does.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

@@ -1,0 +1,182 @@
+// A6 — `A-GROUND` and `A-FIT`.
+//
+// The terrain arrives as a function, so every clause is a pure function of its
+// arguments and the answers are known in closed form.
+use moros_sim;
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 4096.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ── the terrains, each with an answer that can be written down ──────────────
+fn flat_ground(x: float, z: float) -> float { 0.0 }
+// yaw 0 puts the axle along +z, so a terrain varying in z tilts it
+fn slope_15(x: float, z: float) -> float { 0.15 * z }
+fn slope_84(x: float, z: float) -> float { 0.084 * z }
+fn slope_60(x: float, z: float) -> float { 0.60 * z }
+// nonlinear, so the fixed point has something to iterate ON
+fn ridge(x: float, z: float) -> float { 0.9 - 0.9 / (1.0 + z * z) ?? 0.0 }
+fn bumpy(x: float, z: float) -> float { 0.25 * sin(z * 1.7) + 0.1 * cos(x * 2.1) }
+// a cliff across the axle: the drop exceeds the axle, so no bank can rest on it
+fn cliff(x: float, z: float) -> float { if z > 0.0 { 3.0 } else { 0.0 } }
+
+// ── A-GROUND: every contact's gap is zero ───────────────────────────────────
+
+fn test_flat_ground_is_the_trivial_answer() {
+  g = ground_axle(flat_ground, 3.0, 0.0, 0.0, HALF, RADIUS);
+  assert(g.rt_ok, "flat ground is admissible");
+  assert(fabs(g.rt_bank) < BOUND, "no bank");
+  assert(fabs(g.rt_frame.fm_y - RADIUS) < BOUND, "the hubs sit one radius up");
+  assert(ground_worst_gap(g, HALF, RADIUS, flat_ground) < BOUND, "and both wheels touch");
+}
+
+// On a linear slope the fixed point has a closed form: `sin β = −s·cos β`, so
+// `β = −atan(s)` exactly, and the height is the terrain under the centre plus R.
+fn test_a_plane_matches_the_closed_form() {
+  g = ground_axle(slope_15, 3.0, 0.0, 0.0, HALF, RADIUS, 30);
+  want = 0.0 - atan(0.15);
+  assert(fabs(g.rt_bank - want) < BOUND, "beta is -atan(s), exactly");
+  assert(fabs(g.rt_frame.fm_y - RADIUS) < BOUND, "and y is g(centre) + R");
+  assert(ground_worst_gap(g, HALF, RADIUS, slope_15) < BOUND, "both wheels touch");
+}
+
+fn test_curved_ground_still_lands_both_wheels() {
+  for k in 0..7 {
+    cz = 0.0 - 1.5 + 0.5 * (k as float);
+    r = ground_axle(ridge, 0.0, cz, 0.0, HALF, RADIUS, 30);
+    assert(r.rt_ok, "the ridge is rideable");
+    assert(ground_worst_gap(r, HALF, RADIUS, ridge) < BOUND, "both wheels on a ridge");
+    b = ground_axle(bumpy, 1.0 + (k as float), cz, 0.4, HALF, RADIUS, 30);
+    assert(b.rt_ok, "and bumpy ground");
+    assert(ground_worst_gap(b, HALF, RADIUS, bumpy) < BOUND, "both wheels on bumps");
+  }
+}
+
+// ── the control the design names: pin the frame and the gap opens ────────────
+//
+// *"pin the frame to a constant → gap clause red (already demonstrated,
+// 0.204 wu)"*. A cart at a fixed height with no bank hovers or digs in by the
+// terrain's own relief, and the clause has to see it.
+fn test_a_pinned_frame_opens_the_gap() {
+  pinned = ground_frame(3.0, RADIUS, 0.0, 0.0, 0.0);
+  worst = 0.0;
+  for k in 0..2 {
+    side = 1.0;
+    if k == 0 { side = 0.0 - 1.0; }
+    e = fabs(ground_gap(pinned, HALF, RADIUS, side, slope_15));
+    if e > worst { worst = e; }
+  }
+  // the hub sits half a cos-span out along the axle, so the relief there is
+  // 0.15 * 0.55 either side
+  assert(fabs(worst - 0.15 * HALF) < BOUND, "the pinned gap IS the terrain relief");
+  assert(worst > 0.08, "which is two orders above the solved bound");
+  solved = ground_axle(slope_15, 3.0, 0.0, 0.0, HALF, RADIUS, 30);
+  assert(ground_worst_gap(solved, HALF, RADIUS, slope_15) < BOUND,
+         "while solving it closes the gap entirely");
+}
+
+// ── ⚠ the defect this step found, as a permanent clause ─────────────────────
+//
+// The editor banked its cart through mesh3d's `mat4_rotate_x`, which turns about
+// **−x**. So the bank the solve produced was applied inverted: one wheel floated
+// `2·w·sin β` and the other sank the same, while both reported gaps read zero
+// because the report re-derived `y ± w·sin(bank)` instead of reading the pose.
+//
+// Here the gap comes out of the frame, so the inverted bank is caught by
+// `A-GROUND` itself rather than needing a separate clause.
+fn test_an_inverted_bank_is_caught_by_the_gap() {
+  g = ground_axle(slope_15, 3.0, 0.0, 0.0, HALF, RADIUS, 30);
+  wrong = ground_frame(3.0, g.rt_frame.fm_y, 0.0, 0.0, 0.0 - g.rt_bank);
+  l = ground_gap(wrong, HALF, RADIUS, 0.0 - 1.0, slope_15);
+  r = ground_gap(wrong, HALF, RADIUS, 1.0, slope_15);
+  assert(fabs(l) > 0.05 && fabs(r) > 0.05, "one wheel floats and one sinks");
+  assert(l * r < 0.0, "in opposite directions — the axle is tilted the wrong way");
+  // and the size is exactly the doubled lift, which is how it was recognised
+  assert(fabs(fabs(l) - 2.0 * HALF * fabs(sin(g.rt_bank))) < 0.01,
+         "by 2*w*sin(bank), which on the editor's 4.8 degree slope was 0.0914 wu");
+}
+
+// ── convergence: Φ′(0) = 0, and the rate is s² at the fixed point ───────────
+
+// The prediction is a RATE, not a magnitude: `Φ′` at the fixed point is `≈ s²`,
+// so each round should shrink the step by about `s²`. Asserting the ratio checks
+// the claim; asserting a threshold would only check a guess — and the first
+// version of this clause guessed 1e-6 and was wrong.
+fn test_the_step_shrinks_by_s_squared_each_round() {
+  s2 = 0.084 * 0.084;
+  prev = 0.0;
+  for n in 3..=6 {
+    g = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, n);
+    if prev > 0.0 {
+      ratio = g.rt_resid / prev ?? 0.0;
+      assert(ratio < s2 * 4.0, "each round shrinks the step by about s^2");
+      assert(ratio > s2 / 4.0 ?? 0.0, "and not faster than that either");
+    }
+    prev = g.rt_resid;
+  }
+}
+
+fn test_three_rounds_is_enough_on_a_shallow_slope() {
+  g = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
+  assert(g.rt_rounds == 3, "three rounds");
+  // with a per-round rate of s^2 ~ 0.007 and a first step of ~s, the third step
+  // is around s^5 — so the wheels are down to well inside a millimetre
+  assert(ground_worst_gap(g, HALF, RADIUS, slope_84) < 0.001,
+         "and both wheels are on the ground to inside a millimetre");
+  assert(g.rt_resid < 0.0001, "with the step already five orders below the bank");
+}
+
+// The rate at the fixed point is `≈ s²`, so a steeper slope needs more rounds
+// for the same residual — a prediction, not a hope.
+fn test_a_steeper_slope_converges_more_slowly() {
+  shallow = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
+  steep = ground_axle(slope_60, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
+  assert(steep.rt_resid > shallow.rt_resid * 100.0,
+         "the steep slope is far from settled after the same three rounds");
+  more = ground_axle(slope_60, 3.0, 0.0, 0.0, HALF, RADIUS, 40);
+  assert(fabs(more.rt_bank + atan(0.60)) < BOUND,
+         "and given rounds it finds -atan(s) too");
+  assert(ground_worst_gap(more, HALF, RADIUS, slope_60) < BOUND, "with both wheels down");
+}
+
+// ── A-FIT: the steep case refuses with a reason, an offer and a residual ────
+
+fn test_a_cliff_is_refused_not_clamped() {
+  g = ground_axle(cliff, 0.0, 0.0, 0.0, HALF, RADIUS, 3);
+  assert(!g.rt_ok, "no bank rests on a drop longer than the axle");
+  assert(g.rt_reason != "", "and the refusal is NAMED");
+  assert(g.rt_reason.contains("across an axle"), "saying what could not be done");
+  assert(fabs(g.rt_offer) == 2.0 * HALF, "with the nearest admissible drop offered");
+  assert(g.rt_over > 0.0, "and the residual it overshot by");
+  assert(g.rt_over > 1.8, "a 3 wu step against a 1.1 wu axle overshoots by 1.9");
+  // ⚠ and it holds the last admissible bank rather than emitting a NaN: the
+  // GROUND is what has to give here, not the cart
+  assert(g.rt_bank == g.rt_bank, "the bank it keeps is a number, not NaN");
+}
+
+fn test_the_doorstep_and_the_solver_fail_together() {
+  // just inside: a drop the axle can straddle
+  ok = ground_axle(slope_60, 3.0, 0.0, 0.0, HALF, RADIUS, 40);
+  assert(ok.rt_ok, "a 31 degree slope is rideable");
+  assert(ok.rt_reason == "", "with nothing to report");
+  // and the refusal arrives before the solve starts producing nonsense, which is
+  // the design's point: solver and doorstep degrade together rather than one
+  // failing quietly inside the region the other claims to handle
+  bad = ground_axle(cliff, 0.0, 0.0, 0.0, HALF, RADIUS, 40);
+  assert(!bad.rt_ok, "and the cliff is refused however many rounds are allowed");
+}
+
+// ── the frame is the pose, and the gap reads it ──────────────────────────────
+
+fn test_the_gap_reads_the_frame_and_nothing_else() {
+  g = ground_axle(slope_15, 3.0, 0.0, 0.0, HALF, RADIUS, 30);
+  // move the frame up by a millimetre and BOTH gaps must move by a millimetre
+  lifted = ground_frame(3.0, g.rt_frame.fm_y + 0.001, 0.0, 0.0, g.rt_bank);
+  l = ground_gap(lifted, HALF, RADIUS, 0.0 - 1.0, slope_15);
+  r = ground_gap(lifted, HALF, RADIUS, 1.0, slope_15);
+  assert(fabs(l - 0.001) < BOUND && fabs(r - 0.001) < BOUND,
+         "a millimetre of hover reads as a millimetre in both gaps");
+}

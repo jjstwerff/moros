@@ -1,0 +1,127 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `GROUND` support: solving where a body rests on the terrain.
+// Step `A6` of plans/14-props-dressing/CONNECTOR.md, proving `A-GROUND` and
+// `A-FIT`.
+//
+// ── the solve, in closed form ───────────────────────────────────────────────
+//
+// For one axle — half-length `w`, wheel radius `R`, axle direction `u` in the
+// ground plane, body centre `c`, terrain `g(·)`:
+//
+//     x_L(β) = c − u·w·cos β        g_L = g(x_L)
+//     x_R(β) = c + u·w·cos β        g_R = g(x_R)      d = g_L − g_R
+//
+//     sin β = d / 2w                y = (g_L + g_R)/2 + R
+//
+// The contacts depend on `β` and `β` on the contacts, so it is a fixed point
+// seeded at `β₀ = 0`. `Φ′(0) = 0`, so it is quadratically convergent near level;
+// at the fixed point the rate is `≈ s²` in the terrain slope, which is why three
+// rounds on a 4.8° slope leave a residual around `10⁻⁸` rather than something
+// linear in the slope.
+//
+// ⚠ **The formula above is correct in the STANDARD rotation sense**, which is
+// what `A3`'s `rot_axis` uses. The editor applied it through mesh3d's
+// `mat4_rotate_x`, which turns about **−x** — so it banked the cart the wrong
+// way, and one wheel floated `0.0914 wu` while the other sank the same on a 4.8°
+// slope. See `A-GROUND` below for why that stayed invisible.
+//
+// ── the terrain arrives as an argument ──────────────────────────────────────
+//
+// `sample` is a function, not a world. That keeps every clause here a pure
+// function of its arguments — the tests hand it analytic terrains whose answers
+// are known in closed form — and it keeps this file free of `moros_map`.
+use assembly;
+use frames;
+use graphics;
+
+pub struct Rest {
+  rt_ok: boolean,
+  rt_frame: Frame,        // the solved base frame; the pose, not a description of it
+  rt_bank: float,         // radians
+  rt_rounds: integer,     // rounds actually taken
+  rt_resid: float,        // the last change in β — how far from settled
+  rt_reason: text,        // `K-FIT`: named, and empty when applied exactly
+  rt_offer: float,        // `K-FIT`: the nearest admissible drop across the axle
+  rt_over: float          // `K-FIT`: the residual, |d| − 2w
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// The base frame for a given height and bank. ONE expression, used by the solve
+// and by the gap measurement alike — which is the whole point of `A6`.
+pub fn ground_frame(cx: float, cy: float, cz: float,
+                    yaw: float, bank: float) -> Frame {
+  frame_mul(frame_mul(frame_trans(cx, cy, cz),
+                      frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+            frame_rot(rot_axis(1.0, 0.0, 0.0, bank / TURN ?? 0.0)))
+}
+
+// ── `A-GROUND` ───────────────────────────────────────────────────────────────
+//
+//     for every contact:  lowest(part) − g(contact) = 0
+//
+// ⚠ **MEASURED FROM THE FRAME, and that is not a stylistic choice.** The editor
+// reported both of its cart's gaps as zero for an entire rung while one wheel
+// floated `0.0914 wu` and the other sank the same, because the report computed
+// `y ± w·sin(bank)` — the solve's own arithmetic — while the wheels were placed
+// by a transposed rotation. Two homes for one quantity, and the check sat in the
+// wrong one. Here the hub comes out of `frame_apply`, so a wrong pose cannot
+// report a right gap.
+pub fn ground_gap(f: Frame, half: float, radius: float, side: float,
+                  sample: fn(float, float) -> float) -> float {
+  hub = frame_apply(f, vec3(0.0, 0.0, side * half));
+  hub.y - radius - sample(hub.x, hub.z)
+}
+
+// ── the fixed point ─────────────────────────────────────────────────────────
+pub fn ground_axle(sample: fn(float, float) -> float,
+                   cx: float, cz: float, yaw: float,
+                   half: float, radius: float, rounds: integer = 3) -> Rest {
+  // the axle runs ACROSS the travel direction
+  ux = sin(yaw);
+  uz = cos(yaw);
+  bank = 0.0;
+  cy = radius;
+  resid = 0.0;
+  used = 0;
+  for it in 0..rounds {
+    span = half * cos(bank);
+    gl = sample(cx - ux * span, cz - uz * span);
+    gr = sample(cx + ux * span, cz + uz * span);
+    d = gl - gr;
+    flat = 4.0 * half * half - d * d;
+    if flat <= 0.0 {
+      // ⚠ `A-FIT`. `sin β = d/2w` has NO solution when the ground drops more
+      // across the axle than the axle is long, and this is not a margin case:
+      // the raise brush's own documentation records flanks of 74–83° against an
+      // axle of 1.1 wu. So it is a named refusal with an OFFER and a RESIDUAL,
+      // not a clamp — and it keeps the last admissible bank rather than emitting
+      // a NaN, because the GROUND is what has to give here, not the cart.
+      off = 2.0 * half;
+      if d < 0.0 { off = 0.0 - off; }
+      return Rest { rt_ok: false,
+                      rt_frame: ground_frame(cx, cy, cz, yaw, bank),
+                      rt_bank: bank, rt_rounds: used, rt_resid: resid,
+                      rt_reason: "ground drops {fabs(d)} across an axle of {2.0 * half}",
+                      rt_offer: off, rt_over: fabs(d) - 2.0 * half };
+    }
+    nb = atan2(d, sqrt(flat) ?? 0.0);
+    resid = fabs(nb - bank);
+    bank = nb;
+    cy = (gl + gr) * 0.5 + radius;
+    used = it + 1;
+  }
+  Rest { rt_ok: true, rt_frame: ground_frame(cx, cy, cz, yaw, bank),
+           rt_bank: bank, rt_rounds: used, rt_resid: resid,
+           rt_reason: "", rt_offer: 0.0, rt_over: 0.0 }
+}
+
+// The worse of the two contacts, which is the number `A-GROUND` is about.
+pub fn ground_worst_gap(g: Rest, half: float, radius: float,
+                        sample: fn(float, float) -> float) -> float {
+  l = fabs(ground_gap(g.rt_frame, half, radius, 0.0 - 1.0, sample));
+  r = fabs(ground_gap(g.rt_frame, half, radius, 1.0, sample));
+  if l > r { l } else { r }
+}

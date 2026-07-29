@@ -354,7 +354,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A3** ✅ | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** ✅ | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** ✅ | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
-| **A6** | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
+| **A6** ✅ | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
 | **A7** | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
@@ -1005,6 +1005,64 @@ Whatever leniency the sub-parser has cannot smuggle a repaired rig through.
   it narrows where to look. `wa:clean`, and the workaround is better code: **the parsers are
   pure now**, returning parsed pieces that one place appends. It is the second time this
   idiom has bitten Moros — #670 was the silent-write half of the same family.
+
+---
+
+### `A6` — BUILT, and starting it found a live defect
+
+`lib/moros_sim/src/ground.loft`, 11 tests. **583 green** across the five packages, all 98
+functions in the package entered. **The terrain arrives as a function argument**, not a
+world — so every clause is a pure function whose answer is known in closed form, and the
+file never mentions `moros_map`.
+
+**The closed form checks out exactly.** On a linear slope `s` the fixed point satisfies
+`sin β = −s·cos β`, so `β = −atan(s)` and `y = g(centre) + R` — both to the float bound, at
+`s = 0.15` and `s = 0.60`. Curved ground (a ridge, a sinusoid) lands both wheels too.
+
+⚠ **THE DEFECT THIS STEP FOUND, before a line of it was written.** The design's control is
+*"pin the frame to a constant → gap clause red (already demonstrated, 0.204 wu)"*. Checking
+what the editor's gap clause actually measured turned up this, off the wire:
+
+| | |
+|---|---|
+| `wheelL_is_at_sampleL` | **0** — the pairing is exact, so this is not a labelling mix-up |
+| terrain under the two wheels | 0.15865 / 0.25 |
+| **TRUE gap, left wheel** | **+0.09135** — floating |
+| **TRUE gap, right wheel** | **−0.09135** — buried |
+| reported `gapl` / `gapr` | −1.5 × 10⁻⁸ / 0 |
+
+On every slope since rung 10a, one wheel hovered 9 cm and the other sank 9 cm, and the gate
+was green. The cause is the convention `A5` uncovered: mesh3d's `mat4_rotate_x` turns about
+**−x**, so the bank the solve produced was applied inverted. **Neither existing clause could
+see it** — the gaps were the solve's own arithmetic (zero by construction whatever the
+transform then does), and the axle is a *length*, which tilting an axle the wrong way does
+not change. Fixed in `5ffdf2c`: the sign converted at the one site where the conventions
+meet, and the lift now **read from `base.m[9]`** instead of re-derived. Controls on fresh
+servers: reverting the sign alone now turns the **gap** clause red as well
+(`grounded: false`, `worstGap 0.0914`), where the original code reported `grounded: true`.
+
+**So `A-GROUND` is measured from the FRAME here, and that is the structural fix.**
+`ground_gap` puts the hub through `frame_apply` and samples the terrain at the hub's own
+`x, z` — no re-derived lift, no recomputed span. A wrong pose cannot report a right gap.
+Mutation 2 below is the evidence: swapping it back to a re-derived lift breaks **five**
+clauses, including *"a millimetre of hover reads as a millimetre in both gaps"*.
+
+**`A-FIT` refuses rather than clamps.** `sin β = d/2w` has no solution when the ground drops
+more across the axle than the axle is long, and the design notes this fires in normal use —
+the raise brush documents 74–83° flanks against a 1.1 wu axle. A cliff comes back with a
+**named reason**, an **offer** (the nearest admissible drop, ±2w) and a **residual** (1.9 wu
+of overshoot on a 3 wu step), and it **keeps the last admissible bank rather than emitting a
+NaN**, because the ground is what has to give.
+
+⚠ **And the convergence clause guessed, and was wrong.** The design predicts `Φ′(0) = 0` and
+a rate of `≈ s²` at the fixed point. The first version of the test asserted a *magnitude* —
+"residual under 1e-6 after three rounds" — which was a guess, not the prediction, and it
+failed. Rewritten to assert the **ratio**: each round shrinks the step by about `s²`,
+checked over four round counts. *A prediction can be tested; a threshold can only be
+tuned.*
+
+**Seen red three ways:** inverting the solved bank breaks 6 clauses; re-deriving the gap
+breaks 5; clamping the steep case instead of refusing breaks 2.
 
 ---
 
