@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test editor editor-stop editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
+.PHONY: serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -112,8 +112,11 @@ editor-bg:
 	@until grep -q 'listening on port' .editor.log 2>/dev/null; do sleep 1; done
 	@echo "editor on http://localhost:$(EDITOR_PORT)/  (pid $$(cat $(EDITOR_PID)))"
 
-editor-stop:
-	@[ -f $(EDITOR_PID) ] && kill $$(cat $(EDITOR_PID)) 2>/dev/null && rm -f $(EDITOR_PID) && echo stopped || echo "not running"
+# ONE STOP, THREE PLATFORMS, TWO WAYS IN — see tools/editor-stop.sh for why each
+# step is spelled differently on each, and why it kills only what it can identify.
+# `editor-stop` is kept as an alias because muscle memory and older docs use it.
+stop-editor editor-stop:
+	@EDITOR_PORT=$(EDITOR_PORT) EDITOR_PID=$(EDITOR_PID) sh tools/editor-stop.sh
 
 # THE GATE — loft's own headless check. Layer 1 fails on any console error;
 # Layer 2 screenshots the canvas and counts distinct colours, which is what
@@ -183,4 +186,8 @@ gate-character:
 	@for g in tools/gates/character/*.mjs; do $(GATE_RESTART); \
 	  printf '%-34s ' "$$g"; node $$g || exit 1; done
 
+# ⚠ THE SUITE STOPS WHAT IT STARTED. Each gate gets a fresh server and the last one
+# used to be left running — for days, at 76% of a core once a client had connected
+# and left. A suite that leaves a process behind on a shared box is not finished.
 gate: gate-world gate-character
+	@$(MAKE) -s stop-editor
