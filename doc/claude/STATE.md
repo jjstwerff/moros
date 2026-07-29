@@ -15,20 +15,28 @@ between them: read it first after a break.
 **The cart's two visible defects are fixed and gated; the design for doing it properly is
 written and not built.** In priority order:
 
-1. **`A0` — run the probes in `plans/14-props-dressing/CONNECTOR.md`.** The design says
-   probe before building and they are unrun. **`P7` decides how big the design is** (can a
-   joint be skinned by overlap alone, or does a wing need real skinning?) and **`P3` is no
-   longer optional** (a robot arm is an articulated limb, so "a 3-DOF shoulder is three
-   zero-offset mounts" is load-bearing now).
+1. **`A0` — run the remaining probes in `plans/14-props-dressing/CONNECTOR.md`.**
+   **`P7`'s character half is RUN and overlap holds** (six cases, four required red, all
+   green — `probe/skin_joint.loft` + `probe/emitted_boxes.mjs`). What is left is **`P7`'s
+   wing half**, which is the one that decides how big the design is, plus **`P1`, `P3`,
+   `P5`, `P6`**. `P3` is no longer optional — a robot arm is an articulated limb, so "a
+   3-DOF shoulder is three zero-offset mounts" is load-bearing now.
+   ⚠ The hip result carries a **prediction** into the wing, not an answer: overlap hides
+   at the hip only because the pelvis is *bigger* than the leg (13 mm in x, 19 mm in z).
+   A wing's stations are the same size as each other, so the same overlap must protrude.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
    the window. Which renderer continues is your call, not a gate's; `editor.html` is
    deliberately NOT deleted, it is the control.
-3. **The character's hip shows a gap, and it is a live visible defect.** Small and
-   self-contained — extend the pelvis box below the hip plane by the maximum wedge. It is
-   step `A9b` in CONNECTOR.md with the current gap as its own negative control, but it does
-   not need the rest of that design.
+3. **The character's hip shows a gap, and the fix is now a measured number.** Extend the
+   pelvis box below the hip plane by `(leg half-width)·sin(LEG_SWING)` = **0.0341 wu
+   (2.95 cm)** — `P7` above measured it and its controls. Two things to build with it:
+   **derive it from `LEG_SWING`, never write the literal** (the fix is exactly tangent at
+   the range's edge, so a wider gait reopens the seam silently), and consider instead
+   **moving the pivot inside the pelvis box**, which is what the shoulder already does and
+   which costs nothing. It is step `A9b` in CONNECTOR.md and does not need the rest of that
+   design.
 4. **S2 — voxels on the wire** (`plans/16-client-split/DESIGN.md`), unchanged from before.
 5. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
    re-measures the perpendicular stop rather than the slide. The slide itself IS verified —

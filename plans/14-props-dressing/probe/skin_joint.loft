@@ -1,0 +1,331 @@
+// P7, the character half — CAN A JOINT BE SKINNED BY OVERLAP ALONE?
+//
+// `hex_body` says "flex is joints, not deformation … hexbody needs no
+// skinning". That is a claim about where a part IS. `A-SKIN` is a claim about
+// what it LOOKS like, and the editor's own hip already breaks it: `limb_mesh`
+// builds the leg from y = −len to y = 0 and `limb_at` pivots about y = 0, so
+// the leg's top face lies IN the pivot plane — which is exactly where the
+// pelvis box's flat bottom is. Swing the joint and one corner of that face
+// dips below the torso, opening a wedge nothing fills.
+//
+// The proposed skin is OVERLAP: extend the parent below the pivot plane by the
+// maximum wedge. This probe measures whether that closes it, and it measures
+// rather than asserts, because the closed form below is a DERIVATION and the
+// point of a probe is to find out where a derivation is wrong.
+//
+// ── what counts as a leak, and the measure that had to be thrown away ───────
+//
+// The defect on screen is the light-tan `ab8060` band: the thigh's LIT TOP
+// FACE, seen from above through the wedge. A top face is an INTERFACE — it
+// exists only because the figure is two boxes — so the invariant is that it
+// stays buried.
+//
+// ⚠ The first version of this probe measured "air with the child below it and
+// the parent above it" and it was WRONG, in the direction that matters: it
+// called case B red. That criterion catches every CONCAVITY, and the outer hip
+// is one — as the leg swings, its side face slopes away from the pelvis's
+// lower edge and leaves air under an overhang. So does an armpit. Nothing is
+// wrong there and nothing is hidden: what you see is the leg's SIDE face, an
+// outward-pointing surface that is supposed to be outward-pointing.
+//
+// The measure that survives is narrower and is exactly the observed defect:
+//
+//     a point of the child's TOP FACE that is outside the parent
+//     AND has parent material directly above it
+//
+// The second clause is what separates a hole from a shoulder. Case E is the
+// editor's own arm: its cap is exposed for most of its area and that is
+// correct, because nothing overhangs it. An exposed-face measure with no
+// overhang clause would call the WORKING joint broken.
+//
+// ── the closed form this is checked against ─────────────────────────────────
+//
+// Rotating the top face by θ about the pivot sends its corner at x = ±w/2 to
+// y = ±(w/2)·sin θ, so the deepest point of the pocket is
+//
+//     depth(θ)  = max(0, (w/2)·sin|θ| − ext)
+//     exposed(θ) = max(0, (w/2) − ext/sin|θ|) / w        — of the face's area
+//
+// and ext = (w/2)·sin θ_max closes it for every admissible θ — with EQUALITY
+// at θ_max, which is why case C sweeps past it.
+//
+// run: loft --interpret --path ../loft/ plans/14-props-dressing/probe/skin_joint.loft
+
+// ── the figure, copied from src/editor_server.loft ──────────────────────────
+// ⚠ A COPY IS A SECOND HOME FOR A NUMBER, and the flat-wheel bug is what
+// happens when a check re-derives instead of reading. The header prints every
+// box it used so a wire read can confirm the server emits these and no others.
+const FIGURE_M = 1.75;
+const WU_PER_M = 0.8660254037844386;
+const LEG_SWING = 0.42;              // radians at the hip, peak
+const ARM_SWING = 0.30;
+
+// Face grid and the upward scan. dh lands near 0.9 mm against a wedge of
+// 34 mm; the exposed fraction is good to one part in NU.
+const NU = 81;                       // across the face, in the swing plane
+const NV = 33;                       // across the face, along the joint axis
+const NH = 161;                      // the search upward for an overhang
+
+struct Box {
+  bx0: float, bx1: float,
+  by0: float, by1: float,
+  bz0: float, bz1: float
+}
+
+struct Leak {
+  lk_frac: float,      // of the top face, exposed under an overhang
+  lk_deep: float,      // deepest pocket, wu
+  lk_vol: float        // pocket volume, wu^3
+}
+
+fn fig() -> float { FIGURE_M / WU_PER_M ?? 0.0 }
+fn hdw() -> float { fig() / 7.5 ?? 0.0 }
+fn hipw() -> float { fig() * 0.53 }
+fn shw() -> float { fig() * 0.855 - hdw() * 0.10 }
+
+// `body_mesh()`: pelvis-to-chest, chest-to-neck, head. `ext_p` / `ext_c` lower
+// the bottom face of the first two — the overlap under test, and 0 is today.
+fn torso(ext_p: float, ext_c: float) -> vector<Box> {
+  tb = fig();
+  thd = hdw();
+  tsw = thd * 2.0;
+  t_hip = hipw();
+  t_chest = tb * 0.72;
+  t_neck = tb * 0.855;
+  [ Box { bx0: 0.0 - thd * 0.36, bx1: thd * 0.36,
+          by0: t_hip - ext_p,    by1: t_chest,
+          bz0: 0.0 - tsw * 0.40, bz1: tsw * 0.40 },
+    Box { bx0: 0.0 - thd * 0.40, bx1: thd * 0.40,
+          by0: t_chest - ext_c,  by1: t_neck,
+          bz0: 0.0 - tsw * 0.50, bz1: tsw * 0.50 },
+    Box { bx0: 0.0 - thd * 0.43, bx1: thd * 0.43,
+          by0: t_neck,           by1: tb,
+          bz0: 0.0 - thd * 0.39, bz1: thd * 0.39 } ]
+}
+
+// `limb_mesh()`: pivot at the origin, hanging down −y.
+fn limb_box(llen: float, lw: float, ld: float) -> Box {
+  Box { bx0: 0.0 - lw * 0.5, bx1: lw * 0.5,
+        by0: 0.0 - llen,     by1: 0.0,
+        bz0: 0.0 - ld * 0.5, bz1: ld * 0.5 }
+}
+
+fn in_box(b: Box, px: float, py: float, pz: float) -> boolean {
+  if px < b.bx0 || px > b.bx1 { return false; }
+  if py < b.by0 || py > b.by1 { return false; }
+  if pz < b.bz0 || pz > b.bz1 { return false; }
+  true
+}
+
+fn in_any(bs: vector<Box>, ax: float, ay: float, az: float) -> boolean {
+  for ab in bs { if in_box(ab, ax, ay, az) { return true; } }
+  false
+}
+
+// The child's top face, sampled in its OWN frame and placed by the same
+// composition `limb_at` uses — translate to the pivot, then rotate about z.
+// Sampling the face rather than a volume is what keeps this measuring the
+// interface and not the silhouette.
+fn seam(par: vector<Box>, cb: Box, jx: float, jy: float, jz: float,
+        th: float, reach: float) -> Leak {
+  hw = cb.bx1;
+  hz = cb.bz1;
+  cc = cos(th);
+  cs = sin(th);
+  du = (hw * 2.0) / ((NU - 1) as float) ?? 0.0;
+  dv = (hz * 2.0) / ((NV - 1) as float) ?? 0.0;
+  dh = reach / ((NH - 1) as float) ?? 0.0;
+  patch = du * dv;
+  hit = 0;
+  total = 0;
+  deep = 0.0;
+  vol = 0.0;
+  for iu in 0..NU {
+    for iv in 0..NV {
+      fu = 0.0 - hw + (iu as float) * du;      // along the swing plane
+      fv = 0.0 - hz + (iv as float) * dv;      // along the joint axis
+      // local (fu, 0, fv) → world, by rotate_z then translate
+      wx = jx + fu * cc;
+      wy = jy + fu * cs;
+      wz = jz + fv;
+      total = total + 1;
+      if !in_any(par, wx, wy, wz) {
+        // Exposed. Is it under an overhang, or is it a shoulder?
+        roof = 0.0;
+        ih = 1;
+        while ih < NH {
+          if in_any(par, wx, wy + (ih as float) * dh, wz) {
+            roof = (ih as float) * dh;
+            ih = NH;
+          } else { ih = ih + 1; }
+        }
+        if roof > 0.0 {
+          hit = hit + 1;
+          vol = vol + roof * patch;
+          if roof > deep { deep = roof; }
+        }
+      }
+    }
+  }
+  Leak { lk_frac: (hit as float) / (total as float) ?? 0.0,
+         lk_deep: deep, lk_vol: vol }
+}
+
+// One row of the sweep: measured beside the closed form, because a probe that
+// only printed its own number could not tell a wrong scan from a wrong formula.
+fn row(par: vector<Box>, cb: Box, jx: float, jy: float, jz: float,
+       th: float, ext: float, reach: float, covered: boolean) -> integer {
+  lk = seam(par, cb, jx, jy, jz, th, reach);
+  sth = sin(th);
+  if sth < 0.0 { sth = 0.0 - sth; }
+  p_deep = cb.bx1 * sth - ext;
+  if p_deep < 0.0 { p_deep = 0.0; }
+  // ⚠ The area form assumes the parent covers the face's whole footprint. The
+  // ARM's does not — most of its cap hangs outboard of the chest — so the
+  // number is printed only where its domain holds. A prediction quoted outside
+  // its domain reads later as a discrepancy in the measurement.
+  fcol = "   n/a";
+  if covered {
+    p_frac = 0.0;
+    if sth > 0.0 {
+      p_frac = (cb.bx1 - ext / sth ?? 0.0) / (cb.bx1 * 2.0) ?? 0.0;
+      if p_frac < 0.0 { p_frac = 0.0; }
+    }
+    fcol = "{p_frac:5.3}";
+  }
+  mark = "  ";
+  if lk.lk_deep > 0.0 { mark = "!!"; }
+  println("   {mark} th {th:5.3}  deep {lk.lk_deep:7.5} (pred {p_deep:7.5})"
+          + "  face {lk.lk_frac:5.3} (pred {fcol})  vol {lk.lk_vol:9.7}");
+  if lk.lk_deep > 0.0 { return 1; }
+  0
+}
+
+fn sweep(title: text, par: vector<Box>, cb: Box, jx: float, jy: float,
+         jz: float, ext: float, tmax: float, covered: boolean) -> integer {
+  println("");
+  println("  {title}");
+  reach = cb.bx1 + ext + 0.02;
+  red = 0;
+  for it in 0..=6 {
+    red = red + row(par, cb, jx, jy, jz,
+                    tmax * (it as float) / 6.0 ?? 0.0, ext, reach, covered);
+  }
+  red
+}
+
+fn verdict(label: text, red: integer, want_red: boolean) -> integer {
+  if want_red && red > 0 { println("   ok    {label}: {red} row(s) leak, as required"); return 0; }
+  if !want_red && red == 0 { println("   ok    {label}: the interface stays buried"); return 0; }
+  if want_red { println("   FAIL  {label}: nothing leaked — the measure cannot see its own defect"); }
+  else { println("   FAIL  {label}: {red} row(s) leak"); }
+  1
+}
+
+fn main() {
+  fh = fig();
+  hd = hdw();
+  hip = hipw();
+  sh = shw();
+  hipz = hd * 0.42;
+  shz = hd * 2.0 * 0.5 + hd * 0.16;
+
+  leg = limb_box(hip, hd * 0.62, hd * 0.62);
+  arm = limb_box(sh - fh * 0.40, hd * 0.42, hd * 0.42);
+
+  wedge = leg.bx1 * sin(LEG_SWING);
+  awedge = arm.bx1 * sin(ARM_SWING);
+
+  println("P7 — a joint skinned by overlap alone");
+  println("");
+  println("  figure {fh:6.4} wu   head {hd:6.4}   hip plane {hip:6.4}   shoulder {sh:6.4}");
+  println("  leg  half-width {leg.bx1:7.5}  half-depth {leg.bz1:7.5}  at z {hipz:7.5}");
+  println("  arm  half-width {arm.bx1:7.5}  half-depth {arm.bz1:7.5}  at z {shz:7.5}");
+  println("  wedge at the hip      {wedge:7.5} wu  = {wedge * WU_PER_M:6.4} m");
+  println("  wedge at the shoulder {awedge:7.5} wu");
+
+  // ── the two static conditions, which no sweep can see ─────────────────────
+  // Overlap only helps where the parent is there to overlap WITH, and the swing
+  // is about z — so these two margins do not depend on θ at all. They are
+  // separate claims and get their own numbers.
+  tb = torso(0.0, 0.0);
+  pel = tb[0];
+  mx = pel.bx1 - leg.bx1;
+  mz = pel.bz1 - (hipz + leg.bz1);
+  println("");
+  println("  static margins at the hip (θ-independent — the swing is about z)");
+  println("   {if mx > 0.0 { \"ok  \" } else { \"FAIL\" }}  pelvis wider than the leg in x by {mx:7.5} wu");
+  println("   {if mz > 0.0 { \"ok  \" } else { \"FAIL\" }}  pelvis outreaches the leg in z by {mz:7.5} wu");
+
+  fails = 0;
+  if mx <= 0.0 { fails = fails + 1; }
+  if mz <= 0.0 { fails = fails + 1; }
+
+  // ── A — today. The negative control the whole probe rests on ──────────────
+  ra = sweep("A  the hip as built (ext = 0) — must leak",
+             torso(0.0, 0.0), leg, 0.0, hip, hipz, 0.0, LEG_SWING, true);
+  fails = fails + verdict("A", ra, true);
+
+  // ── B — the proposal ──────────────────────────────────────────────────────
+  rb = sweep("B  the hip with the pelvis extended by the wedge — must be clean",
+             torso(wedge, 0.0), leg, 0.0, hip, hipz, wedge, LEG_SWING, true);
+  fails = fails + verdict("B", rb, false);
+
+  // ── C — B is TANGENT at θ_max, so it must fail the moment the range grows.
+  // A run, a kick, a seated pose: any of them reopens it, silently.
+  rc = sweep("C  the same overlap swept to 1.5 x the range — must leak past θ_max",
+             torso(wedge, 0.0), leg, 0.0, hip, hipz, wedge, LEG_SWING * 1.5, true);
+  fails = fails + verdict("C", rc, true);
+
+  // ── D — 90% of the wedge. Proves the scan resolves the QUANTITY and not
+  // just the sign: the leak must appear AND match the closed form.
+  rd = sweep("D  the overlap 10% short — must leak, and match the prediction",
+             torso(wedge * 0.9, 0.0), leg, 0.0, hip, hipz, wedge * 0.9,
+             LEG_SWING, true);
+  fails = fails + verdict("D", rd, true);
+
+  // ── E — the shoulder as built. Same limb code, same rotation, and it does
+  // NOT leak — because `shoulder_wu()` lands INSIDE the chest box instead of
+  // on its face. That is the whole discriminating variable.
+  re = sweep("E  the shoulder as built (pivot INSIDE the chest) — must be clean",
+             torso(0.0, 0.0), arm, 0.0, sh, shz, 0.0, ARM_SWING, false);
+  fails = fails + verdict("E", re, false);
+
+  // ── F — the same arm hung from the chest box's bottom FACE. If E is green
+  // because the measure is blind to arms, F is green too. It must not be.
+  rf = sweep("F  the arm moved onto the chest's bottom face — must leak",
+             torso(0.0, 0.0), arm, 0.0, fig() * 0.72, shz, 0.0, ARM_SWING, false);
+  fails = fails + verdict("F", rf, true);
+
+  // ── the numbers, written out for the wire to be checked against ───────────
+  // ⚠ Everything above is a COPY of `body_mesh()` and `limb_mesh()`, so a green
+  // sweep proves a fact about a figure that may not be the one drawn. The fix
+  // is not to re-type the constants in a second checker — that is a THIRD home
+  // — but to emit the ones actually used and have `emitted_boxes.mjs` compare
+  // the wire against THESE. One home, and the drift becomes visible.
+  bmin = fh;
+  bmax = hip;
+  bxh = 0.0;
+  bzh = 0.0;
+  for eb in tb {
+    if eb.by0 < bmin { bmin = eb.by0; }
+    if eb.by1 > bmax { bmax = eb.by1; }
+    if eb.bx1 > bxh { bxh = eb.bx1; }
+    if eb.bz1 > bzh { bzh = eb.bz1; }
+  }
+  ex = file("expect.txt");
+  ex.write("# written by skin_joint.loft — the geometry the sweep above used\n"
+    + "box body {0.0 - bxh} {bxh} {bmin} {bmax} {0.0 - bzh} {bzh}\n"
+    + "box leg_l {leg.bx0} {leg.bx1} {leg.by0} {leg.by1} {leg.bz0} {leg.bz1}\n"
+    + "box arm_l {arm.bx0} {arm.bx1} {arm.by0} {arm.by1} {arm.bz0} {arm.bz1}\n"
+    + "pivot leg_l 0.0 {hip} {0.0 - hipz}\n"
+    + "pivot arm_l 0.0 {sh} {0.0 - shz}\n"
+    + "wedge hip {wedge}\n");
+  println("");
+  println("  wrote expect.txt — run emitted_boxes.mjs against a live server to");
+  println("  confirm these are the boxes the server actually puts on the wire.");
+
+  println("");
+  if fails == 0 { println("skin_joint: every clause holds"); }
+  else { println("skin_joint: {fails} clause(s) failed"); }
+}

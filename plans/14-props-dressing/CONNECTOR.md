@@ -397,6 +397,55 @@ design is** — if overlap suffices, the rig stays rigid everywhere and `A-SKIN`
 constructor rule. If it does not, a deforming skin is a second representation, and that
 is a much larger claim than this plan currently makes.
 
+### `P7`, the character half — RUN, and overlap holds
+
+`probe/skin_joint.loft` (pure geometry, no server) with `probe/emitted_boxes.mjs` (the
+wire, so the sweep is about the figure the server actually draws). Six cases, four of
+them required to go red. **All six hold.**
+
+| | case | result |
+|---|---|---|
+| A | the hip as built | **leaks at every θ ≠ 0** — depth `(w/2)·sin θ`, up to **0.0341 wu (2.95 cm)** at `LEG_SWING` |
+| B | pelvis extended by the wedge | clean across the whole range |
+| C | the same, swept to 1.5 × the range | **leaks past `θ_max`** — the fix is exactly tangent, not safe |
+| D | the overlap 10 % short | leaks, and the depth matches the closed form |
+| E | the **shoulder as built** | clean — and it needed no overlap |
+| F | the same arm hung from the chest's bottom face | leaks |
+
+So: **`ext = (w/2)·sin θ_max` closes the hip**, measured depth tracking
+`max(0, (w/2)·sin|θ| − ext)` to within one grid step everywhere. Four results are worth
+more than that number:
+
+- **The wedge is not what makes a joint leak — a pivot plane ON the parent's boundary
+  face is.** `E` and `F` are the same arm, the same rotation, the same code, and differ
+  only in whether the pivot lands inside the chest box or on its underside. `shoulder_wu()`
+  happens to land at `0.842·h` while the chest box runs `0.72 → 0.855·h`, so **the editor
+  has been drawing one correct joint and one broken one all along**, for a reason nobody
+  chose. Overlap is one way to put the pivot plane in the interior; picking the pivot there
+  in the first place is another, and it costs nothing.
+- **`ext` must be DERIVED from `θ_max`, never written as a literal.** `C` is not a curiosity:
+  the fix is tangent at the range's edge, so a run cycle, a kick or a seated pose reopens
+  the seam the moment `LEG_SWING` grows — silently, since the rig is still exact. That is a
+  re-assertion site in the sense of the table above, and it is the reason the number belongs
+  next to the swing constant.
+- **The exposed AREA is constant at half the face**, for every `θ ≠ 0`; only the depth
+  varies. The defect is therefore present in every walking frame, and what changes over a
+  stride is how deep the pocket is, not whether there is one.
+- ⚠ **The first measure was wrong and called `B` red.** It counted "air with the child
+  below and the parent above", which is every CONCAVITY — the outer hip is one, so is an
+  armpit, and nothing is wrong with either. The clause that fixed it is *"and there is
+  parent material directly above"*: it separates a pocket from a shoulder, and without it
+  the measure condemns `E`, the joint that works.
+
+**What this does NOT settle.** The refutation clause names the *wing*, and that half is
+unrun. The hip result carries a prediction into it rather than an answer: **overlap is
+hidden here only because the parent is bigger than the child** — the pelvis outreaches
+the leg by 13 mm in x and 19 mm in z, so a 3 cm skirt disappears inside the silhouette.
+A wing's consecutive stations have *the same* cross-section, so an equivalent overlap has
+nowhere to hide and must protrude by `ext` at every one of ten stations. If that is right,
+the wing needs either a taper per station or a real skin, and `P7`'s wing half fails as
+written. It is a prediction from one measured case, and the wing probe is what tests it.
+
 ---
 
 ## Open
