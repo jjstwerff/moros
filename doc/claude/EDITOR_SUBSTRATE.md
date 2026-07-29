@@ -1123,6 +1123,32 @@ the server owns where the character ends up, the client owns what you see while 
 there. Any design that sends pixels and waits for a matrix has put the seam in the wrong
 place, whatever language the client is written in.
 
+## The seam, stated once: the world stays, the view goes
+
+Most of a game built on this runs in **wasm/loft on the client** — but **the world modelling
+routines stay in the server**, and that is not a compromise between the two positions, it is
+the line itself:
+
+| server | client (wasm/loft) |
+|---|---|
+| the voxel store, and every write to it | the camera solve, and the look |
+| `K-FIT` refusals, `F1`/`P1`/`E1e` — the rules an author meets | drawing, and what is drawn from |
+| persistence, the edit clock, who is allowed to change what | input, and how it feels |
+| the walk, integrated on a fixed tick (`L7`) | everything that must answer at frame rate |
+
+The test for which side a routine belongs on is not "is it expensive" or "does it touch the
+world". It is **who is allowed to disagree**. Two viewers may hold different cameras and
+nothing is wrong; two viewers holding different ground is a corrupted world. So the state of
+record has exactly one home, and everything derived from it for one pair of eyes has as many
+homes as there are eyes.
+
+**What the client needs is a read-only view, not a second model.** It already receives the
+geometry it draws; the occlusion query runs against that. And because both sides are loft,
+the client can `use hex_world` and read the same structures the server writes — the thing
+the JavaScript seam made impossible, and the reason the camera ended up server-side to begin
+with. Sharing the CODE is not sharing the AUTHORITY: the client reads a snapshot, the server
+owns the clock.
+
 **What must NOT move:** the walk. Movement integrates on the server's fixed tick because
 that is what makes it reproducible from an input log (`L7`), and a client that solves its
 own position is a client that can disagree with the world. The seam is *the camera is a
