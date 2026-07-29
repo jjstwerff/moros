@@ -276,6 +276,77 @@ fn test_emit_cylinder_post_zero_radius() {
   assert(len(cp_mesh.vertices) == 0, "zero radius → no geometry");
 }
 
+// ── THE AXIS INVARIANT: a cylinder's cross-section is perpendicular to its
+//    axis (moros#14 — the cart's flat wheel) ────────────────────────────────
+//
+// Every test above passes a VERTICAL axis, so they agreed with a bug rather
+// than catching it. `emit_cylinder_post` took two endpoints — a signature that
+// promises an arbitrary axis — and built the ring in the XZ plane regardless,
+// which is right for a post and for nothing else. The cart's wheel rides a Z
+// axle, so it came out as a flat ring lying on the ground: measured, a bounding
+// box of x 0.80 · y 0.00 · z 0.92 where a wheel is 0.80 · 0.80 · 0.12.
+//
+// Stated as "the ring is horizontal" the rule covers a post alone. Stated as
+// **every vertex is `radius` from the axis LINE, and every normal is
+// perpendicular to it**, it covers every axis — so this is ONE check run over
+// several axes, not one test per shape.
+fn ca_fabs(ca_x: float) -> float { if ca_x < 0.0 { 0.0 - ca_x } else { ca_x } }
+
+fn ca_check(ca_a: Vec3, ca_b: Vec3, ca_r: float, ca_label: text) {
+  ca_m = mesh("axis");
+  emit_cylinder_post(ca_m, ca_a, ca_b, ca_r, 12);
+  assert(len(ca_m.vertices) == 48,
+         "{ca_label}: 12 segments → 48 verts, got {len(ca_m.vertices)}");
+  ca_dx = ca_b.x - ca_a.x;
+  ca_dy = ca_b.y - ca_a.y;
+  ca_dz = ca_b.z - ca_a.z;
+  ca_len = sqrt(ca_dx * ca_dx + ca_dy * ca_dy + ca_dz * ca_dz) ?? 0.0;
+  ca_ux = ca_dx / ca_len ?? 0.0;
+  ca_uy = ca_dy / ca_len ?? 0.0;
+  ca_uz = ca_dz / ca_len ?? 0.0;
+  for ca_v in ca_m.vertices {
+    ca_px = ca_v.pos.x - ca_a.x;
+    ca_py = ca_v.pos.y - ca_a.y;
+    ca_pz = ca_v.pos.z - ca_a.z;
+    // split the vertex into ALONG the axis and ACROSS it
+    ca_t = ca_px * ca_ux + ca_py * ca_uy + ca_pz * ca_uz;
+    ca_qx = ca_px - ca_t * ca_ux;
+    ca_qy = ca_py - ca_t * ca_uy;
+    ca_qz = ca_pz - ca_t * ca_uz;
+    ca_d = sqrt(ca_qx * ca_qx + ca_qy * ca_qy + ca_qz * ca_qz) ?? 0.0;
+    assert(ca_fabs(ca_d - ca_r) < 0.000001,
+           "{ca_label}: vertex sits {ca_d} from the axis, want {ca_r}");
+    // and it must lie BETWEEN the endpoints, or the tube is sheared rather
+    // than swept — the exact shape a flat ring on a short axle takes.
+    assert(ca_t > 0.0 - 0.000001 && ca_t < ca_len + 0.000001,
+           "{ca_label}: vertex projects {ca_t} along an axis of {ca_len}");
+    ca_n = ca_v.normal.x * ca_ux + ca_v.normal.y * ca_uy + ca_v.normal.z * ca_uz;
+    assert(ca_fabs(ca_n) < 0.000001,
+           "{ca_label}: normal leans {ca_n} along the axis, want 0");
+  }
+}
+
+// THE CONTROL. A vertical post is what every other caller passes and it was
+// right all along; if this goes red, the fix broke the fence posts and trees.
+fn test_cylinder_axis_vertical_post() {
+  ca_check(vec3(0.0, 0.0, 0.0), vec3(0.0, 2.0, 0.0), 0.4, "vertical post");
+}
+
+// The cart's wheel at its real radius and width — the case that was drawn flat.
+fn test_cylinder_axis_wheel_on_z_axle() {
+  ca_check(vec3(0.0, 0.0, 0.0 - 0.06), vec3(0.0, 0.0, 0.06), 0.40, "wheel on a z axle");
+}
+
+fn test_cylinder_axis_wheel_on_x_axle() {
+  ca_check(vec3(0.0 - 0.06, 0.0, 0.0), vec3(0.06, 0.0, 0.0), 0.40, "wheel on an x axle");
+}
+
+// An oblique axis is the one no special case can satisfy by accident — a strut
+// or a spoke, and the reason this is an axis rule rather than three cases.
+fn test_cylinder_axis_oblique_strut() {
+  ca_check(vec3(0.0, 0.0, 0.0), vec3(1.0, 2.0, 0.5), 0.3, "oblique strut");
+}
+
 // ── Linear stair tests (MO.8a) ────────────────────────────────────
 
 fn test_stair_step_count_basic() {

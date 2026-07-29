@@ -1834,13 +1834,93 @@ fn triggers_resolve(trigs: vector<Trigger>, wld: World, srv: Server) {
 // body in the only sense that matters here: their transform is the body's, times
 // a fixed offset, times the roll. Nothing else in the editor knows where a wheel
 // is, so nothing else can disagree about it.
-fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float) {
-  base = mat4_mul(mat4_translate(cx, CART_RADIUS, cz), mat4_rotate_y(cyaw));
+//
+// ── THE POSE IS SOLVED FROM THE CONTACTS, NOT DECLARED ──────────────────────
+//
+// The wheels are where this thing MEETS THE WORLD; the body is what they hold
+// up. This used to read `translate(cx, CART_RADIUS, cz)` — a constant height
+// above y = 0 — which inverts that dependency, and once the body's height is
+// decided no amount of terrain sampling afterwards can make both wheels touch a
+// slope. So it runs contact-outward, and every term is DERIVED:
+//
+//     contact xz  ← the axle's ends, from yaw and the half-axle
+//     contact y   ← `terrain_y`, the world's answer, one per wheel
+//     body height ← the mean contact, plus exactly one wheel radius
+//     bank        ← the angle the axle makes with level
+//     spin        ← `hex_body::wheel_value(travel, r, slip)`   [already derived]
+//
+// Nothing is stored between ticks, so nothing can drift out of step — the same
+// property `wheel_value` buys for the spin, applied to the placement. It is
+// `hex_body`'s `I-POSE` for a vehicle: never store a pose, compute it.
+//
+// ⚠ THE AXLE MUST NOT STRETCH, and that is why the wheels are still placed
+// FROM the body frame rather than each dropped onto its own contact. Two wheels
+// each parked at `contact + R` sit `√(4w² + d²)` apart — the axle grows with
+// the slope, which is crawler's `hexlink` con-rod failure exactly: every part
+// still moves, the picture still looks like a cart, and only measuring the rod
+// tells you. Placing them through one rigid frame makes the length true by
+// construction, so there is no invariant left to violate.
+//
+// ⚠ AND ONE AXLE FIXES NO PITCH. Two contacts determine a height and a bank and
+// nothing else. A cart that should also nose up a hill needs a second contact
+// along the travel axis — shafts, or a second axle — and inventing a pitch from
+// one axle would be a number with no measurement under it.
+fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: World) {
+  // The axle runs ACROSS the travel direction: yaw, turned a quarter.
+  cs_ax = 0.0 - sin(cyaw);
+  cs_az = cos(cyaw);
+  // A FIXED POINT, because where the wheels touch depends on the bank and the
+  // bank depends on where they touch. Level is the seed; on the ground this
+  // editor makes, two rounds move the answer by less than a millimetre.
+  cs_bank = 0.0;
+  cs_y = CART_RADIUS;
+  cs_half = CART_HALF_W;
+  for cs_it in 0..3 {
+    cs_reach = cs_half * cos(cs_bank);        // the axle's horizontal half-span
+    cs_gl = terrain_y(cx - cs_ax * cs_reach, cz - cs_az * cs_reach, wld);
+    cs_gr = terrain_y(cx + cs_ax * cs_reach, cz + cs_az * cs_reach, wld);
+    // Both wheels resting, with the axle rigid, has a closed form:
+    //     y   = mean contact + R
+    //     sinβ = (gl − gr) / 2w
+    cs_d = cs_gl - cs_gr;
+    cs_flat = 4.0 * cs_half * cs_half - cs_d * cs_d;
+    if cs_flat <= 0.0 {
+      // Steeper than the axle is long: the cart cannot rest on both wheels at
+      // any angle. Hold the last admissible bank rather than emit a NaN — the
+      // ground, not the cart, is what has to give here.
+      break;
+    }
+    cs_bank = atan2(cs_d, sqrt(cs_flat) ?? 0.0);
+    cs_y = (cs_gl + cs_gr) * 0.5 + CART_RADIUS;
+  }
+  base = mat4_mul(mat4_mul(mat4_translate(cx, cs_y, cz), mat4_rotate_y(cyaw)),
+                  mat4_rotate_x(cs_bank));
   srv.broadcast("T:{CART_BODY};{mat_wire(base)}");
   srv.broadcast("T:{CART_WHEEL_L};{mat_wire(mat4_mul(mat4_mul(base,
                   mat4_translate(0.0, 0.0, 0.0 - CART_HALF_W)), mat4_rotate_z(roll)))}");
   srv.broadcast("T:{CART_WHEEL_R};{mat_wire(mat4_mul(mat4_mul(base,
                   mat4_translate(0.0, 0.0, CART_HALF_W)), mat4_rotate_z(roll)))}");
+  // WHAT A GATE NEEDS AND A PICTURE CANNOT SHOW. A cart hovering a hand's width
+  // over a slope, or sunk into it, is the failure this whole solve exists to
+  // prevent — and it reads as a perfectly good cart from every camera angle.
+  // So report the two numbers that decide it:
+  //
+  //   gap  — each wheel's lowest point minus the ground under it. Zero, or the
+  //          wheel is not on the ground, whatever the render suggests.
+  //
+  // ⚠ THE AXLE LENGTH IS DELIBERATELY NOT REPORTED HERE. Derived from
+  // `cs_bank` it would be `2·half·√(cos²+sin²)` — the answer 2w for every
+  // input, a clause that cannot fail and therefore measures nothing. Crawler
+  // gates its con-rod because a stretching linkage still MOVES convincingly;
+  // the honest form of that check reads the two wheel transforms actually put
+  // on the wire, so it lives in `cart.mjs`, where those messages arrive.
+  cs_lift = cs_half * sin(cs_bank);
+  cs_span = cs_half * cos(cs_bank);
+  cs_el = cs_y + cs_lift - CART_RADIUS
+          - terrain_y(cx - cs_ax * cs_span, cz - cs_az * cs_span, wld);
+  cs_er = cs_y - cs_lift - CART_RADIUS
+          - terrain_y(cx + cs_ax * cs_span, cz + cs_az * cs_span, wld);
+  srv.broadcast("S:cart pose y {cs_y} bank {cs_bank} gapl {cs_el} gapr {cs_er}");
 }
 
 // ── THE DOORSTEP (`K-FIT`, invariant I) ─────────────────────────────────────
@@ -3026,7 +3106,7 @@ fn main() {
                                   vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
           srv.send_to(ev.cid, "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
           srv.send_to(ev.cid, "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
-          cart_send(srv, cart_x, cart_z, cart_yaw, 0.0);
+          cart_send(srv, cart_x, cart_z, cart_yaw, 0.0, wld);
           println("editor: client {ev.cid} — figure sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
@@ -3294,7 +3374,7 @@ fn main() {
           cval = hex_body::wheel_value(cart_travel, CART_RADIUS, cart_slip);
           cang = hex_body::wheel_angle(cval);
           cskid = hex_body::wheel_skid(CART_RADIUS, cval, cart_travel);
-          cart_send(srv, cart_x, cart_z, cart_yaw, cang);
+          cart_send(srv, cart_x, cart_z, cart_yaw, cang, wld);
           srv.send_to(ev.cid,
             "S:cart travel {cart_travel} value {cval} angle {cang} skid {cskid}");
           println("editor: cart travel {cart_travel} angle {cang} skid {cskid}");

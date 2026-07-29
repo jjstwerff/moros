@@ -105,5 +105,10 @@ not derived here. What remains genuinely open for moros:
 - **`glb` import**, which crawler does not do — its props are generated. Kit-bashing from
   imported assets is our case, and the asset table is where it lands.
 - **The multi-rig connector** (rungs W6/W7's other half), which `hex_body` does not have.
+  Designed in **[CONNECTOR.md](CONNECTOR.md)**: the rigs stay 2D and planar, a *connector*
+  carries the 3D mount, and the assembly's frame is solved from the ground contacts. It
+  also records the two measured cart defects that prompted it — a wheel mesh built flat,
+  and a body pinned to a constant height — and the third that produced both, which is the
+  connection being written down in three places at once.
 - **The door**, open in crawler too: separate state from placement, since the door has not
   moved, only turned.
