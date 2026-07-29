@@ -1,0 +1,280 @@
+// A3 — `MOUNT` composition and `A-RIGID`.
+//
+// **Property, not example.** `A-RIGID` is checked by generating point pairs and
+// joint values and asserting `‖Wu − Wv‖ = ‖u − v‖` across them — not by placing
+// one cart and eyeballing one distance. Float composition drifts, so every
+// clause asserts a BOUND, the way `wheel_skid` records machine-ε instead of
+// claiming an algebraic zero.
+use moros_sim;
+use hex_body as hb;
+
+const HALF = 0.55;
+const SEG = 0.577;
+// 2^-52 ≈ 2.22e-16, written as a division so it cannot be a typo. The bound is a
+// generous multiple: the claim is that the drift is at float noise, not that it
+// is any particular multiple of ε.
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 512.0;
+
+// Deterministic and spread, with no RNG. ⚠ Deliberately NOT axis-aligned: an
+// axis-aligned pair cannot see a rotation that is wrong only off-axis, which is
+// the same blindness that let `emit_cylinder_post` draw flat wheels past four
+// tests.
+fn probe_point(k: integer) -> Vec3 {
+  f = k as float;
+  vec3(sin(f * 1.7) * 0.9, cos(f * 2.3) * 1.4, sin(f * 0.7 + 1.1) * 0.6)
+}
+
+fn probe_values(n: integer, k: integer) -> vector<float> {
+  [for i in 0..n { sin((i as float) * 0.61 + (k as float) * 0.37) * 0.8 }]
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ── the unit, pinned to the library that owns it ────────────────────────────
+
+// `TURN` is a second home for a number `hex_body` already has. This is what
+// makes it a CHECKED alias instead of a copy.
+fn test_a_turn_is_hex_bodys_turn() {
+  assert(TURN == hb::wheel_angle(1.0), "one turn is hex_body's one turn");
+  assert(hb::wheel_angle(0.25) * 4.0 == TURN, "and it is linear in turns");
+}
+
+// A joint value is in TURNS, so a value of 1 must put the frame back exactly
+// where 0 did. That re-states `P1`'s finding from the other side: the pose is
+// periodic, and the winding lives in the state rather than in the frame.
+fn test_a_whole_turn_returns_the_frame() {
+  c = asm_cart(HALF);
+  z = asm_frames(c, [0.0, 0.0, 0.0], frame_id());
+  o = asm_frames(c, [0.0, 1.0, 0.0 - 3.0], frame_id());
+  worst = 0.0;
+  for i in 0..3 {
+    e = v3_dist(frame_origin(z[i] ?? frame_id()), frame_origin(o[i] ?? frame_id()));
+    if e > worst { worst = e; }
+    zi = z[i] ?? frame_id();
+    oi = o[i] ?? frame_id();
+    assert(fabs(zi.fm_r.r11 - oi.fm_r.r11) < BOUND, "and the rotations agree");
+    assert(fabs(zi.fm_r.r12 - oi.fm_r.r12) < BOUND, "off-diagonal too");
+  }
+  assert(worst < BOUND, "whole turns leave every frame where it was");
+}
+
+// `A1` requires a mount's axis to be non-degenerate, not unit — so a caller may
+// write (0, 0, 2) and mean "about z". Normalising at the one place the axis is
+// used keeps a magnitude nobody meant out of the pose.
+fn test_axis_magnitude_is_ignored() {
+  a = asm_new("unitaxis");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  b = asm_new("longaxis");
+  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  b = asm_add(b, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 2.0),
+              body_of(SupportKind.Carried, 1, 0));
+  fa = asm_frames(a, [0.0, 0.31], frame_id());
+  fb = asm_frames(b, [0.0, 0.31], frame_id());
+  u = probe_point(3);
+  assert(v3_dist(frame_apply(fa[1] ?? frame_id(), u),
+                 frame_apply(fb[1] ?? frame_id(), u)) < BOUND,
+         "a doubled axis vector is the same axis");
+}
+
+// ── SE(3) membership, measured rather than asserted ──────────────────────────
+
+fn test_every_frame_is_in_se3() {
+  w = asm_wing(10, SEG);
+  worst_o = 0.0;
+  worst_d = 0.0;
+  for k in 0..12 {
+    fs = asm_frames(w, probe_values(11, k), frame_id());
+    assert(len(fs) == 11, "eleven frames");
+    for i in 0..11 {
+      r = (fs[i] ?? frame_id()).fm_r;
+      o = rot_ortho_err(r);
+      if o > worst_o { worst_o = o; }
+      dd = fabs(rot_det(r) - 1.0);
+      if dd > worst_d { worst_d = dd; }
+    }
+  }
+  assert(worst_o < BOUND, "R^T R is the identity through ten levels");
+  assert(worst_d < BOUND, "and the determinant stays +1 — a rotation, not a flip");
+}
+
+// ── A-RIGID, over pairs and values, with the bound recorded ──────────────────
+
+fn test_a_rigid_chain_never_stretches() {
+  w = asm_wing(10, SEG);
+  worst = 0.0;
+  for k in 0..12 {
+    fs = asm_frames(w, probe_values(11, k), frame_id());
+    for j in 0..8 {
+      e = asm_rigid_err(fs, probe_point(j), probe_point(j + 5));
+      if e > worst { worst = e; }
+    }
+  }
+  // 12 value sets x 8 pairs x 11 frames, ten levels of composition deep
+  assert(worst < BOUND, "A-RIGID holds to the float bound");
+  assert(worst > 0.0, "and the drift is real, not an algebraic zero — recorded");
+}
+
+fn test_a_rigid_cart_never_stretches() {
+  c = asm_cart(HALF);
+  worst = 0.0;
+  for k in 0..12 {
+    fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
+    for j in 0..8 {
+      e = asm_rigid_err(fs, probe_point(j), probe_point(j + 5));
+      if e > worst { worst = e; }
+    }
+  }
+  assert(worst < BOUND, "and on the cart, from a non-identity root");
+}
+
+// ── the deliberate defect: the knob must make the above fail ─────────────────
+
+fn test_the_scale_knob_makes_it_stretch() {
+  c = asm_cart(HALF);
+  vals = probe_values(3, 2);
+  u = probe_point(1);
+  v = probe_point(6);
+  clean = asm_rigid_err(asm_frames(c, vals, frame_id(), 1.0), u, v);
+  bent = asm_rigid_err(asm_frames(c, vals, frame_id(), 1.01), u, v);
+  assert(clean < BOUND, "at scale 1 it is an isometry");
+  assert(bent > 0.001, "at 1.01 it is not");
+  // one level of composition, so the separation grows by about one per cent
+  grew = bent / v3_dist(u, v) ?? 0.0;
+  assert(grew > 0.005 && grew < 0.02, "and it grows by about the scale");
+  // and it shows up in the SE(3) membership directly, not only in a distance
+  bf = asm_frames(c, vals, frame_id(), 1.01);
+  assert(rot_ortho_err((bf[1] ?? frame_id()).fm_r) > 0.001,
+         "a scaled linear part is no longer orthonormal");
+}
+
+// Depth is what makes a similarity obvious: ten scaled levels move the tip far
+// more than one does, so the knob is not merely detectable but attributable.
+fn test_the_knob_compounds_with_depth() {
+  w = asm_wing(10, SEG);
+  flat = [for _ in 0..11 { 0.0 }];
+  clean = asm_frames(w, flat, frame_id(), 1.0);
+  bent = asm_frames(w, flat, frame_id(), 1.01);
+  tip_clean = v3_dist(frame_origin(clean[10] ?? frame_id()),
+                      frame_origin(clean[0] ?? frame_id()));
+  tip_bent = v3_dist(frame_origin(bent[10] ?? frame_id()),
+                     frame_origin(bent[0] ?? frame_id()));
+  // straight and unscaled the tip is exactly ten segments out
+  assert(fabs(tip_clean - 10.0 * SEG) < BOUND, "ten segments, exactly");
+  assert(tip_bent > tip_clean * 1.02, "and a scaled chain reaches further");
+}
+
+// ── the composition ORDER, which is what keeps a hub still ──────────────────
+//
+// The axle length comes out of the composed frames rather than from a number the
+// producer derives — the first version of the editor's own axle clause asked for
+// `2·half·√(cos²+sin²)`, which is `1.1` for every input and could not fail.
+fn test_the_axle_cannot_stretch() {
+  c = asm_cart(HALF);
+  for k in 0..12 {
+    fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
+    d = v3_dist(frame_origin(fs[1] ?? frame_id()), frame_origin(fs[2] ?? frame_id()));
+    assert(fabs(d - 2.0 * HALF) < BOUND,
+           "the axle is 2 x half, whatever the wheels are doing");
+  }
+}
+
+// …and the control for that clause is the composition ORDER: `translate` then
+// `rotate`, which is what `P1` measured against the wire.
+//
+// ⚠ **THE CART CANNOT SEE THE ORDER, AND `P1` THEREFORE DID NOT PIN IT.** The
+// axle offset is `(0, 0, ±half)` and the spin axis is `(0, 0, 1)` — the offset
+// lies ALONG the axis, and a rotation about z cannot move a point on z. So the
+// two orders give bit-identical frames for a wheel, and `P1`'s 5.6e-17 agreement
+// with the broadcast matrices is silent about which order the server used.
+//
+// A wing station is where the order is visible, because its offset is
+// PERPENDICULAR to its axis. Measured: 0.0000 for the cart, 1.095 for a station.
+// The general rule is that the order is unobservable exactly when the offset is
+// parallel to the axis — which is true of every hub, kingpin and wheel, i.e. of
+// every case this design started from.
+fn test_a_parallel_offset_hides_the_composition_order() {
+  c = asm_cart(HALF);
+  body = frame_trans(3.0, 0.4, 0.0);
+  l1 = c.am_link[1] ?? link_none();
+  worst = 0.0;
+  for k in 1..9 {
+    v = sin((k as float) * 0.9) * 0.4;
+    t = frame_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
+    fixed = frame_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
+    reversed = frame_mul(frame_mul(body, t), fixed);
+    right = asm_frames(c, [0.0, v, v], body);
+    d = v3_dist(frame_origin(reversed), frame_origin(right[1] ?? frame_id()));
+    if d > worst { worst = d; }
+  }
+  assert(worst < BOUND,
+         "a wheel's offset lies along its axis, so the order is invisible there");
+}
+
+fn test_a_perpendicular_offset_exposes_it() {
+  w = asm_wing(3, SEG);
+  root = frame_trans(1.0, 2.0, 0.0 - 1.0);
+  l1 = w.am_link[1] ?? link_none();
+  assert(l1.lk_oy != 0.0 && l1.lk_az != 0.0,
+         "a station's offset is across its axis, not along it");
+  worst = 0.0;
+  for k in 1..9 {
+    v = sin((k as float) * 0.9) * 0.4;
+    t = frame_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
+    fixed = frame_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
+    reversed = frame_mul(frame_mul(root, t), fixed);
+    right = asm_frames(w, [0.0, v, v, v], root);
+    d = v3_dist(frame_origin(reversed), frame_origin(right[1] ?? frame_id()));
+    if d > worst { worst = d; }
+  }
+  assert(worst > 0.1, "so here the wrong order lands the joint somewhere else");
+}
+
+// ── moving the root moves everything rigidly ────────────────────────────────
+
+fn test_the_root_carries_the_assembly_rigidly() {
+  w = asm_wing(6, SEG);
+  vals = probe_values(7, 4);
+  here = asm_frames(w, vals, frame_id());
+  there = asm_frames(w, vals,
+                     frame_mul(frame_trans(7.0, 2.0, 0.0 - 3.0),
+                               frame_rot(rot_axis(0.3, 1.0, 0.2, 0.17))));
+  worst = 0.0;
+  for i in 0..7 {
+    for j in 0..7 {
+      a = v3_dist(frame_origin(here[i] ?? frame_id()),
+                  frame_origin(here[j] ?? frame_id()));
+      b = v3_dist(frame_origin(there[i] ?? frame_id()),
+                  frame_origin(there[j] ?? frame_id()));
+      e = fabs(a - b);
+      if e > worst { worst = e; }
+    }
+  }
+  assert(worst < BOUND, "every pairwise distance survives a root move");
+}
+
+// ── what A3 refuses, because composing it would be a quiet lie ──────────────
+
+fn test_non_mount_links_are_refused() {
+  t = asm_towed(HALF, 1.6);
+  assert(asm_admissible(t), "the towed cart is a valid assembly");
+  assert(!asm_mount_chain(t), "but it is not a mount chain");
+  assert(len(asm_frames(t, [0.0, 0.0, 0.0, 0.0], frame_id())) == 0,
+         "a HITCH does not determine its child's frame — refused, not guessed");
+  b = asm_balloon(3.0);
+  assert(len(asm_frames(b, [0.0, 0.0], frame_id())) == 0,
+         "and neither does a tether");
+}
+
+fn test_inadmissible_assemblies_are_refused() {
+  bad = asm_new("bad");
+  bad = asm_add(bad, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  bad = asm_add(bad, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 0.0),
+                body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(bad), "a zero axis is inadmissible");
+  assert(len(asm_frames(bad, [0.0, 0.0], frame_id())) == 0,
+         "and A3 will not pose what A1 refuses");
+  assert(len(asm_frames(asm_new("empty"), [], frame_id())) == 0, "nor an empty one");
+}

@@ -351,7 +351,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A0** ✅ | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run; none falsified** | the design before the code | — | M |
 | **A1** ✅ | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
 | **A2** ✅ | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
-| **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
+| **A3** ✅ | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
 | **A5** | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
 | **A6** | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
@@ -716,6 +716,15 @@ it from the sloped frames would be the same circularity as the axle clause that 
 (0.083) *and* a spin away from a whole turn (3.03 rad), because on flat ground with a still
 wheel all four rows pass for free.
 
+⚠ **AMENDED BY `A3`: this did NOT pin the composition ORDER.** The cart's axle offset is
+`(0, 0, ±half)` and its spin axis is `(0, 0, 1)` — the offset lies **along** the axis, and a
+rotation about z cannot move a point on z. So `T · R` and `R · T` give *bit-identical*
+frames for a wheel, and the `5.6 × 10⁻¹⁷` agreement above is silent about which the server
+used. Measured: **0.0000 for the cart, 1.095 for a wing station**, whose offset is
+perpendicular to its axis. The order is unobservable exactly when the offset is parallel to
+the axis — which is true of every hub, kingpin and wheel, i.e. of **every case this design
+started from**. Both cases are now clauses in `A3`.
+
 ⚠ **And the instrument was wrong in a way the design's own checklist predicts.** The
 convention check `T_body = translate · rotY(yaw) · rotX(bank)` read **exactly 0 on the
 first run while `rotX` was transposed** — because that run was on FLAT ground, where the
@@ -841,6 +850,56 @@ Results worth carrying:
 "over by exactly one" and the saturation test; a support giving one degree too many breaks
 the cart's 5; a hitch that removes 5 breaks the towed cart and the hitch subtraction.
 **538 tests green** across the five packages, all 65 functions in the package entered.
+
+---
+
+### `A3` — BUILT. `lib/moros_sim/src/frames.loft`, 14 tests, seen red three ways
+
+`asm_frames(a, values, root, scale = 1.0)` walks the tree once and composes
+
+```
+    Wᵢ = W_{p(i)} · translate(offsetᵢ) · rot(axisᵢ, τ · valueᵢ)
+```
+
+which is exactly the composition `P1` measured against the wire. **`A-TOPO`'s order is what
+makes one pass enough** — a parent's index is always lower, so it is always already done.
+
+**`A-RIGID` holds by construction, and the test records the drift rather than claiming a
+zero.** Over 12 value sets × 8 off-axis point pairs × 11 frames, ten levels of composition
+deep, the worst departure is at the float bound — and the test asserts it is **non-zero**
+too, because an algebraic zero would mean the measurement was not running. Orthonormality
+and `det = +1` are measured at every frame rather than inferred from the induction.
+
+**The deliberate defect works as specified.** `scale` is a *parameter*, not a stored field,
+so no defect knob rides in the document format. At 1 the frame is an isometry; at 1.01 the
+separation grows by about one per cent per level, the linear part stops being orthonormal,
+and a ten-level chain reaches measurably further. `hex_body`'s `slip` is the model.
+
+⚠ **The finding that amends `P1`: a parallel offset hides the composition order.** A
+wheel's offset lies along its spin axis, so `T · R` and `R · T` are bit-identical there —
+`P1`'s agreement with the wire never distinguished them. A wing station's offset is
+perpendicular, and there the wrong order lands the joint 1.1 wu away. **Both are clauses
+now**: one asserting the cart *cannot* see it, one asserting the wing can. An honest
+negative beside the positive, because the blindness is the more useful half.
+
+Three more decisions:
+
+- **The axis is normalised at the one place it is used.** `A1` requires it non-degenerate,
+  not unit, so a caller may write `(0, 0, 2)` and mean *about z*. Removing the normalisation
+  breaks the axis-magnitude clause **and** the root-move clause — a non-unit axis is not a
+  rotation at all.
+- **Joint values are in TURNS**, and `TURN` is a second home for a number `hex_body` owns —
+  so a test asserts `TURN == hb::wheel_angle(1.0)`. **A checked alias is not a copy.** That
+  also gave `A3` its cleanest clause: a value of 1 must put every frame back exactly where 0
+  did, which is `P1`'s winding result from the other side.
+- **`asm_frames` refuses rather than guesses.** A `HITCH` does not determine its child's
+  frame — the child keeps its own support, which is what the design's first draft got wrong
+  and `P5` measured — so a non-`MOUNT` chain returns an empty vector, the same contract
+  `asm_read` uses. It also refuses anything `A1` calls inadmissible.
+
+**Seen red:** dropping the axis normalisation (2 clauses), treating values as radians
+(1 clause), and reversing the composition order (1 clause — the perpendicular one).
+**552 tests green**, all 83 functions in the package entered.
 
 ---
 

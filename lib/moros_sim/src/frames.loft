@@ -1,0 +1,228 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `MOUNT` composition: where every body in an assembly actually IS.
+// Step `A3` of plans/14-props-dressing/CONNECTOR.md, which proves `A-RIGID`.
+//
+// ── the invariant, and why it holds by construction ─────────────────────────
+//
+//     `A-RIGID`   ‖Wᵢu − Wᵢv‖ = ‖u − v‖   for all u, v
+//
+// **the con-rod, once, for everything rigid.** `SE(3)` is closed under
+// composition, so `Wᵢ ∈ SE(3)` follows by induction over `A-TOPO`'s order — the
+// parent is always computed first because its index is always lower. There is no
+// site left that could stretch anything, which is the point: the invariant is
+// not enforced by a check, it is unreachable by construction.
+//
+// What remains to measure is the float DRIFT, and the test records its bound
+// rather than claiming an algebraic zero — the same honesty `wheel_skid` shows
+// when it reports machine-ε.
+//
+// ── the deliberate defect ───────────────────────────────────────────────────
+//
+// `asm_frames` takes a `scale` that defaults to 1. At 1 it is an isometry; at
+// 1.01 it is a similarity, and every distance grows by `scale` per level of
+// composition. `hex_body`'s `slip` is the model — a knob that exists so the
+// isometry test cannot pass vacuously. ⚠ It is a PARAMETER and not a stored
+// field, so no defect knob rides in the document format.
+//
+// ── what this step does NOT do ──────────────────────────────────────────────
+//
+// It composes `MOUNT` only, and refuses anything else. A `HITCH` does not
+// determine its child's frame — the child keeps its own support, so the drawbar
+// couples two frames rather than parenting one to the other, which is exactly
+// what the design's first draft got wrong and what `P5` measured. That is `A7`.
+use assembly;
+use graphics;
+// Qualifier only, deliberately: a wildcard would pull `Rig`, `Joint` and
+// `pose_of` into bare scope and this file has its own rotation type.
+use hex_body as hb;
+
+// Radians in one turn. ⚠ A SECOND HOME for a number `hex_body` already owns —
+// so `test_a_turn_is_hex_bodys_turn` asserts the two agree instead of trusting
+// it. A checked alias is not a copy.
+pub const TURN = 6.283185307179586;
+
+pub struct Rot {
+  r11: float, r12: float, r13: float,
+  r21: float, r22: float, r23: float,
+  r31: float, r32: float, r33: float
+}
+
+pub struct Frame {
+  fm_r: Rot,
+  fm_x: float, fm_y: float, fm_z: float
+}
+
+pub fn rot_id() -> Rot {
+  Rot { r11: 1.0, r12: 0.0, r13: 0.0,
+        r21: 0.0, r22: 1.0, r23: 0.0,
+        r31: 0.0, r32: 0.0, r33: 1.0 }
+}
+
+pub fn frame_id() -> Frame {
+  Frame { fm_r: rot_id(), fm_x: 0.0, fm_y: 0.0, fm_z: 0.0 }
+}
+
+pub fn frame_trans(x: float, y: float, z: float) -> Frame {
+  Frame { fm_r: rot_id(), fm_x: x, fm_y: y, fm_z: z }
+}
+
+pub fn frame_rot(r: Rot) -> Frame {
+  Frame { fm_r: r, fm_x: 0.0, fm_y: 0.0, fm_z: 0.0 }
+}
+
+pub fn rot_mul(a: Rot, b: Rot) -> Rot {
+  Rot { r11: a.r11*b.r11 + a.r12*b.r21 + a.r13*b.r31,
+        r12: a.r11*b.r12 + a.r12*b.r22 + a.r13*b.r32,
+        r13: a.r11*b.r13 + a.r12*b.r23 + a.r13*b.r33,
+        r21: a.r21*b.r11 + a.r22*b.r21 + a.r23*b.r31,
+        r22: a.r21*b.r12 + a.r22*b.r22 + a.r23*b.r32,
+        r23: a.r21*b.r13 + a.r22*b.r23 + a.r23*b.r33,
+        r31: a.r31*b.r11 + a.r32*b.r21 + a.r33*b.r31,
+        r32: a.r31*b.r12 + a.r32*b.r22 + a.r33*b.r32,
+        r33: a.r31*b.r13 + a.r32*b.r23 + a.r33*b.r33 }
+}
+
+// Scale every entry of the linear part. This is the defect knob's whole
+// implementation: at 1 it changes nothing, and away from 1 the frame stops
+// being an isometry in the one way a rigid assembly must never allow.
+pub fn rot_scale(r: Rot, s: float) -> Rot {
+  Rot { r11: r.r11*s, r12: r.r12*s, r13: r.r13*s,
+        r21: r.r21*s, r22: r.r22*s, r23: r.r23*s,
+        r31: r.r31*s, r32: r.r32*s, r33: r.r33*s }
+}
+
+// Rodrigues, about an axis that is NORMALISED here. `A1` requires a mount's
+// axis to be non-degenerate but not unit, so a caller may write `(0, 0, 2)` and
+// mean "about z" — normalising at the one place the axis is used keeps the
+// direction from carrying a magnitude nobody meant.
+//
+// ⚠ `turns`, not radians. `hex_body`'s joint values are in turns and its
+// `wheel_value` returns turns, so a wheel's state drops in with no conversion.
+pub fn rot_axis(ax: float, ay: float, az: float, turns: float) -> Rot {
+  m2 = ax*ax + ay*ay + az*az;
+  if m2 <= 0.0 { return rot_id(); }
+  m = sqrt(m2) ?? 1.0;
+  ux = ax / m ?? 0.0;
+  uy = ay / m ?? 0.0;
+  uz = az / m ?? 0.0;
+  th = turns * TURN;
+  c = cos(th);
+  s = sin(th);
+  k = 1.0 - c;
+  Rot { r11: c + ux*ux*k,     r12: ux*uy*k - uz*s, r13: ux*uz*k + uy*s,
+        r21: uy*ux*k + uz*s,  r22: c + uy*uy*k,    r23: uy*uz*k - ux*s,
+        r31: uz*ux*k - uy*s,  r32: uz*uy*k + ux*s, r33: c + uz*uz*k }
+}
+
+// `a` then `b`, i.e. `b` expressed in `a`'s frame.
+pub fn frame_mul(a: Frame, b: Frame) -> Frame {
+  Frame { fm_r: rot_mul(a.fm_r, b.fm_r),
+          fm_x: a.fm_x + a.fm_r.r11*b.fm_x + a.fm_r.r12*b.fm_y + a.fm_r.r13*b.fm_z,
+          fm_y: a.fm_y + a.fm_r.r21*b.fm_x + a.fm_r.r22*b.fm_y + a.fm_r.r23*b.fm_z,
+          fm_z: a.fm_z + a.fm_r.r31*b.fm_x + a.fm_r.r32*b.fm_y + a.fm_r.r33*b.fm_z }
+}
+
+pub fn frame_apply(f: Frame, p: Vec3) -> Vec3 {
+  vec3(f.fm_x + f.fm_r.r11*p.x + f.fm_r.r12*p.y + f.fm_r.r13*p.z,
+       f.fm_y + f.fm_r.r21*p.x + f.fm_r.r22*p.y + f.fm_r.r23*p.z,
+       f.fm_z + f.fm_r.r31*p.x + f.fm_r.r32*p.y + f.fm_r.r33*p.z)
+}
+
+pub fn frame_origin(f: Frame) -> Vec3 { vec3(f.fm_x, f.fm_y, f.fm_z) }
+
+pub fn v3_dist(a: Vec3, b: Vec3) -> float {
+  dx = a.x - b.x;
+  dy = a.y - b.y;
+  dz = a.z - b.z;
+  sqrt(dx*dx + dy*dy + dz*dz) ?? 0.0
+}
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ── the measurements `A-RIGID` is checked with ───────────────────────────────
+
+// How far a pair of points changed separation under `f`. This is `A-RIGID`
+// itself, for one pair — the test generates many.
+pub fn frame_pair_err(f: Frame, u: Vec3, v: Vec3) -> float {
+  fabs(v3_dist(frame_apply(f, u), frame_apply(f, v)) - v3_dist(u, v))
+}
+
+// Worst departure of `RᵀR` from the identity: the `SE(3)` membership the
+// induction argument claims, measured rather than asserted.
+pub fn rot_ortho_err(r: Rot) -> float {
+  c11 = r.r11*r.r11 + r.r21*r.r21 + r.r31*r.r31;
+  c22 = r.r12*r.r12 + r.r22*r.r22 + r.r32*r.r32;
+  c33 = r.r13*r.r13 + r.r23*r.r23 + r.r33*r.r33;
+  c12 = r.r11*r.r12 + r.r21*r.r22 + r.r31*r.r32;
+  c13 = r.r11*r.r13 + r.r21*r.r23 + r.r31*r.r33;
+  c23 = r.r12*r.r13 + r.r22*r.r23 + r.r32*r.r33;
+  e = fabs(c11 - 1.0);
+  if fabs(c22 - 1.0) > e { e = fabs(c22 - 1.0); }
+  if fabs(c33 - 1.0) > e { e = fabs(c33 - 1.0); }
+  if fabs(c12) > e { e = fabs(c12); }
+  if fabs(c13) > e { e = fabs(c13); }
+  if fabs(c23) > e { e = fabs(c23); }
+  e
+}
+
+pub fn rot_det(r: Rot) -> float {
+  r.r11*(r.r22*r.r33 - r.r23*r.r32)
+  - r.r12*(r.r21*r.r33 - r.r23*r.r31)
+  + r.r13*(r.r21*r.r32 - r.r22*r.r31)
+}
+
+// ── the composition ─────────────────────────────────────────────────────────
+
+// Every non-root link is a `MOUNT`. Anything else does not determine its child's
+// frame from its parent's, so composing it would be a quiet lie rather than an
+// approximation.
+pub fn asm_mount_chain(a: Assembly) -> boolean {
+  n = len(a.am_parent);
+  if n == 0 { return false; }
+  for i in 1..n {
+    l = a.am_link[i] ?? link_none();
+    if !(l.lk_kind is Mount) { return false; }
+  }
+  true
+}
+
+// Forward kinematics up the tree: the parent's frame, out to the joint, then the
+// joint's own turn. `A-TOPO`'s order is what makes one pass enough — a parent's
+// index is always lower, so it is always already done.
+//
+// Refuses by returning an EMPTY vector, the same contract `asm_read` uses.
+pub fn asm_frames(a: Assembly, values: vector<float>, root: Frame,
+                  scale: float = 1.0) -> vector<Frame> {
+  out: vector<Frame> = [];
+  n = len(a.am_parent);
+  if n == 0 { return out; }
+  if !asm_admissible(a) { return out; }
+  if !asm_mount_chain(a) { return out; }
+  for i in 0..n {
+    p = a.am_parent[i] ?? 0;
+    if p < 0 {
+      out += [root];
+    } else {
+      l = a.am_link[i] ?? link_none();
+      turn = rot_scale(rot_axis(l.lk_ax, l.lk_ay, l.lk_az, values[i] ?? 0.0),
+                       scale);
+      out += [frame_mul(frame_mul(out[p] ?? frame_id(),
+                                  frame_trans(l.lk_ox, l.lk_oy, l.lk_oz)),
+                        frame_rot(turn))];
+    }
+  }
+  out
+}
+
+// The worst `A-RIGID` departure over every frame of an assembly, for one pair of
+// local points. Reported as a number so a test can record the BOUND.
+pub fn asm_rigid_err(fs: vector<Frame>, u: Vec3, v: Vec3) -> float {
+  worst = 0.0;
+  for i in 0..len(fs) {
+    e = frame_pair_err(fs[i] ?? frame_id(), u, v);
+    if e > worst { worst = e; }
+  }
+  worst
+}

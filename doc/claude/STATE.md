@@ -130,8 +130,29 @@ written and not built.** In priority order:
    **Seen red under three mutations**: `GROUND_MAX = 4`, a support giving one degree too
    many, and a hitch that removes 5.
 
-   **Next is `A3`** — `MOUNT` composition (`body_frame`), proving `A-RIGID`, with a `scale`
-   term defaulting to 1 as its deliberate-defect knob. That is where geometry starts.
+4. ✅ **`A3` is BUILT** — `lib/moros_sim/src/frames.loft`, 14 tests, **552 green**, all 83
+   functions in the package entered. `asm_frames` composes
+   `Wᵢ = W_p · translate(offset) · rot(axis, τ·value)` in one pass, which `A-TOPO`'s order
+   makes sufficient. `A-RIGID` measured over 12 value sets × 8 off-axis pairs × 11 frames,
+   ten levels deep: at the float bound, and asserted **non-zero** so an algebraic zero
+   cannot mean the measurement stopped running. The `scale` knob is a **parameter, not a
+   field**, so no defect rides in the format.
+   ⚠ **`A3` AMENDS `P1`: a parallel offset hides the composition order.** A wheel's offset
+   lies *along* its spin axis, so `T·R` and `R·T` are bit-identical for a wheel — `P1`'s
+   `5.6e-17` never distinguished them. Measured **0.0000 for the cart, 1.095 for a wing
+   station**. The order is invisible exactly when the offset is parallel to the axis, which
+   is true of every hub, kingpin and wheel — **every case this design started from**. Both
+   cases are clauses now, the negative one included.
+   - **The axis is normalised where it is used** — `A1` requires non-degenerate, not unit.
+   - **`TURN == hb::wheel_angle(1.0)` is asserted**, so the second home is a checked alias.
+     A value of 1 turn must return every frame exactly, which is `P1`'s winding result from
+     the other side.
+   - **`asm_frames` refuses rather than guesses**: a `HITCH` does not determine its child's
+     frame, so a non-`MOUNT` chain returns empty — `asm_read`'s contract.
+   **Seen red** three ways: no axis normalisation, values as radians, reversed order.
+
+   **Next is `A4`** — embed a `hex_body` rig at a body, proving `A-PLANE`, with the same
+   scale knob applied to `ι`. The dependency is already in place.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
