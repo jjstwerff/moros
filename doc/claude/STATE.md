@@ -146,6 +146,27 @@ for loft the language and its tooling only.
 
 ### Open
 
+- ⚠ **THE TICK COSTS 81% OF A CORE FOR ONE WATCHING CLIENT**, where rung 11a measured
+  12.9%. Taken with a `/proc` utime delta on an empty world with no walls in sight.
+  Skipping the camera's wall sweep when the collision proxy is empty buys 9 points of it
+  (90 → 81) and is kept; the other 68 are unexplained. Suspects in order: the collision
+  proxy rebuild (`edges_around` runs twice over a 19×19 window, and may fire more often
+  than its cell-change/edit-clock test suggests), then the sixth surface in the chunk
+  traversal. **Measure which before optimising** — the 9-point fix was aimed at the obvious
+  candidate and was mostly wrong.
+- ✅ **The idle gate is fixed, and it was a real 76%.** `poll_event` absorbs disconnects
+  internally, so `clients` only ever grew and `len(clients) > 0` stayed true for ever once
+  one tab had connected; the 30Hz tick then ran for nobody. It gates on what `broadcast`
+  reports from the library's own active set now, probed once a second whether or not
+  anything moved — the first attempt read the count off the tick's own broadcast, which
+  lives inside `if moved`, so an idle client's departure was still never seen. Measured
+  0% / 76% / 0%. ⚠ The original "idle 0%" was verified on a server that had never had a
+  client — the one state in which the bug cannot appear.
+- ⚠ **A gate run against a server that still has another client attached is a FLAKE.** A
+  `collide` failure this session was exactly that: a CPU-measurement client was still
+  connected, so two clients drove one character. Free the port, or wait, before believing
+  a red gate.
+
 - ⚠ **THE TICK COSTS 81% OF A CORE FOR ONE WATCHING CLIENT**, where it was 12.9% at the
   end of rung 11a. Measured with a `/proc` utime delta on an empty world with no walls in
   sight. Skipping the camera's wall sweep when the proxy is empty buys 9 points of it
