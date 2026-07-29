@@ -348,7 +348,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 
 | | step | proves | control | size |
 |---|---|---|---|---|
-| **A0** | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) | the design before the code | — | M |
+| **A0** | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run but `P1`** | the design before the code | — | M |
 | **A1** | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
 | **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
@@ -395,7 +395,7 @@ and records it, as `wheel_skid` records machine-ε rather than claiming algebrai
 | **P1** | `rig_world_seg` is enough to place a part for rendering | build the cart's transforms from the rig and diff against the current matrices | the rig cannot express something render needs without a second source |
 | ~~P3~~ | ~~a 3-DOF joint is three `MOUNT`s in series~~ | — | **run below: confirmed for REACH, refuted for RANK** |
 | ~~P5~~ | ~~a towed chain stays stable~~ | — | **run below: not falsified — every divergence is one the geometry predicts** |
-| **P6** | **N bones approximate a continuous bend to a stated bound** | discretise a cantilever under uniform load into `N` segments; measure tip error against the analytic elastica for `N = 2, 4, 8, 16` | the error does not fall predictably with `N`, or the `N` needed for a visually acceptable wing is large enough that the rig is the wrong representation |
+| ~~P6~~ | ~~N bones approximate a continuous bend to a stated bound~~ | — | **run below: not falsified — the error is a closed form, and one half-step decides its order** |
 | **P7** | **a joint can be skinned by overlap alone** | for the character's hip, extend the pelvis by the maximum wedge and sweep the full swing range looking for background through the joint; then repeat for a 10-station wing | overlap cannot close a wing's joints without visible bulging — then the wing needs real skinning and `hex_body`'s *"no skinning"* is true only of the rig |
 | ~~P4~~ | ~~`bone_obb` proxies a wheel~~ | — | **falsified analytically above** |
 
@@ -616,6 +616,63 @@ and **the last cart folds sooner than its own link length predicts**.
 walks it off the drawbar by `8.4 × 10⁻¹²` over a 60 s turn, and that grows. Small, and
 the point is that it is not zero: *"nothing stores a transform"* is buying exactness, not
 tidiness.
+
+---
+
+### `P6` — RUN. Not falsified, and the root hinge is worth an order
+
+`probe/bend_bones.loft`: a cantilever under uniform load cut into `N` rigid bones with a
+torsional hinge at each node, each hinge turning by `φⱼ = M(xⱼ)·ℓⱼ/EI`. The reference is
+the continuum `δ = wL⁴/(8EI)`, independent of everything in the model.
+
+**The whole probe turns on `ℓⱼ`, and the answer is sharper than expected.** An interior
+hinge stands for a half-bone on each side, so `ℓ = h`. **The root hinge has no bone
+inboard of it**, so it stands for a half-bone and `ℓ = h/2` — and giving it a full `h` is
+the obvious thing to do. Measured against closed forms derived by hand and agreeing to
+`2 × 10⁻¹²`:
+
+```
+    root hinge ℓ = h      tip/δ = (1 + 1/N)²     relative error  2/N + 1/N²    FIRST order
+    root hinge ℓ = h/2    tip/δ = 1 + 1/N²       relative error      1/N²      SECOND order
+```
+
+Observed orders 1.011 and 2.000. **One half-step at the clamped end is the whole
+difference**, and nothing else about the scheme changes.
+
+**What that costs at the ten stations `P7`'s wing probe used:**
+
+| | tip error at `N = 10` | `N` needed for 1 % |
+|---|---|---|
+| root hinge `ℓ = h` | **21.0 %** | 201 |
+| root hinge `ℓ = h/2` | **1.0 %** | 10 |
+
+So the falsifier's second clause is answered in the right direction, **but only for one of
+the two schemes**: ten bones is a 1 % wing with the corrected root and a 21 % wing without.
+*"More bones on more joints"* is the right representation; the naive discretisation of it
+is not, and the difference is invisible without a reference to measure against.
+
+Two more results:
+
+- **The order survives the geometric nonlinearity.** With deformed moment arms at a load
+  whose linear tip deflection would be a full span — a **35.9 % shortening**, far outside
+  the linear regime — the observed order stays 1.98 → 2.07. ⚠ That is **self-convergence**,
+  stated as such: there is no closed form for a uniformly loaded elastica, so it can show
+  the order survives and cannot show the answer is right. Case A is where accuracy was
+  established, and it is why case A runs at a tip deflection of `10⁻⁶` of the span.
+- ⚠ **The `SOLVED` fixed point is only LINEARLY convergent here**, and the ground contact's
+  is quadratic (`Φ′(0) = 0`). It took **78–104 passes** to reach `10⁻¹²`, near enough
+  independent of `N` — a contraction of rate ≈ 0.71 set by how strongly the shortening
+  feeds back, not by the mesh. The design's claim that a `SOLVED` state *"reuses the
+  machinery rather than adding any"* holds for the SHAPE of the solve and not for its cost:
+  ~80 rounds a tick is not free, and `A9c` should budget for it or damp it.
+
+⚠ **The first run of this probe was measured wrong, in a way worth keeping.** `wL⁴/8EI` is
+the *small-deflection* solution while the chain walks its nodes with real `sin`, so running
+case A at a tip deflection equal to the span measured the geometric nonlinearity and
+called it discretisation error — it reported a scheme converging to 0.789 and the
+derivation wrong. **A closed form is only a reference inside the regime it was derived
+for.** (The same run also reported 200 passes for a solve that settled in two: assigning
+the loop bound to a `for` variable does not break the loop.)
 
 ---
 

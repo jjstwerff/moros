@@ -54,7 +54,24 @@ written and not built.** In priority order:
    The design gained one ⚠ from this: **`DRIVEN` hides two cases.** A *commanded* angle
    cannot run away; an *integrated* one can, because its equilibrium may be unstable — and
    there no amount of exactness helps, only a declared limit.
-   What is left is **`P1`, `P6`**.
+   **`P6` is RUN too** (`probe/bend_bones.loft`) — **not falsified**, and the answer is
+   sharper than the question. A cantilever cut into `N` bones, each hinge turning by
+   `M(xⱼ)·ℓⱼ/EI`, matches closed forms derived by hand to `2e-12`:
+   - **root hinge `ℓ = h`** → relative error `2/N + 1/N²`, **first** order
+   - **root hinge `ℓ = h/2`** → relative error `1/N²`, **second** order
+
+   **One half-step at the clamped end is the whole difference.** At the ten stations `P7`
+   used, that is **21 % against 1 %** — so *"more bones on more joints"* is the right
+   representation and the naive discretisation of it is not. The order survives a 35.9 %
+   shortening (self-convergence, stated as such).
+   ⚠ **The `SOLVED` fixed point is only LINEARLY convergent** — 78–104 passes to `1e-12`,
+   near enough independent of `N`, where the ground contact's is quadratic. `A9c` should
+   budget ~80 rounds a tick or damp it.
+   ⚠ And the first run measured it wrong in a way worth keeping: **a closed form is only a
+   reference inside the regime it was derived for.** `wL⁴/8EI` is the small-deflection
+   solution, so running the sweep at a tip deflection of a full span measured the geometric
+   nonlinearity and called it discretisation error.
+   **Only `P1` is left.**
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
