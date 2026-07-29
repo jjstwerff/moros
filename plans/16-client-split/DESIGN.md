@@ -123,9 +123,13 @@ This is exactly what S0's reconnaissance could not see: the documentation says W
 works in the browser target, and it does — the *package* does not carry it. Reading told us
 yes; compiling told us no.
 
-*Next:* try `web` 0.3.3 from the source tree (a path dependency, as `moros_map` already does
-for `hex_field`) and see whether the bridge links. If it does, the fix is a republish and
-S1 continues; if it does not, the bridge itself needs building, and that is ours.
+**✅ RESOLVED THE SAME DAY: `web` 0.3.3 from the source tree links it.**
+`loft --html --lib ../loft-libs-net/ src/editor_client.loft` writes a 483 KB page (321 KB
+WASM). So the bridge is not missing from the LIBRARY — it is missing from the published
+0.3.2 tarball, and the fix upstream is a republish rather than any code.
+
+`make client` carries the flag, with the reason on it, and the flag comes out when a fixed
+`web` is published. **S1 is unblocked**; what remains of it is the drawing.
 
 ### S2 — voxels on the wire, meshes still from the server
 

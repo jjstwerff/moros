@@ -1,4 +1,4 @@
-.PHONY: serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
+.PHONY: client serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -103,6 +103,15 @@ play-fast: port-free
 	@until grep -q 'drag or A/D' .editor.log 2>/dev/null; do 	  if ! kill -0 $$(cat $(EDITOR_PID)) 2>/dev/null; then 	    echo "editor exited — last lines:"; grep -vE '^warning|^ *\||^ *-->' .editor.log | tail -5; exit 1; fi; 	  sleep 1; done
 	@echo "editor up (interpreted) on port $(EDITOR_PORT)"
 	@$(MAKE) -s browser
+
+# ── the client (plan #16, S1) ─────────────────────────────────────────────
+# ⚠ `--lib ../loft-libs-net/` is not a convenience: the REGISTRY's `web` 0.3.2 is
+# missing the whole `wasm/` directory its own manifest declares, so `--html`
+# cannot link the WebSocket bridge and the browser has no transport at all. 0.3.3
+# in the source tree carries it. Drop this flag when a fixed `web` is published.
+client:
+	$(LOFT) --html --lib ../loft-libs-net/ src/editor_client.loft
+	@echo "wrote src/.loft/editor_client.html"
 
 editor:
 	$(LOFT) --interpret --lib lib/ src/editor_server.loft
