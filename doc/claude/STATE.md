@@ -10,26 +10,143 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-07-29, end of session)
+## ⏭ PICK UP HERE (2026-07-29, end of session 3)
 
-**S1 draws.** The wasm/loft client renders the world — same wire, same picture as
-`editor.html` — and the two are gated side by side. What is ready to start next:
+**The cart's two visible defects are fixed and gated; the design for doing it properly is
+written and not built.** In priority order:
 
-1. **✋ A CHECKPOINT FIRST: look at the wasm client.** `make play-fast`, then
+1. **`A0` — run the probes in `plans/14-props-dressing/CONNECTOR.md`.** The design says
+   probe before building and they are unrun. **`P7` decides how big the design is** (can a
+   joint be skinned by overlap alone, or does a wing need real skinning?) and **`P3` is no
+   longer optional** (a robot arm is an articulated limb, so "a 3-DOF shoulder is three
+   zero-offset mounts" is load-bearing now).
+2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
-   the window, so an unclicked page is deaf where `editor.html` was not. Everything below
-   assumes the new renderer is the one to build on, and that is your call, not a gate's.
-   **`editor.html` is deliberately NOT deleted** — it is the control the comparison is made
-   against.
-2. **S2 — voxels on the wire** (`plans/16-client-split/DESIGN.md`). The step is designed;
-   S1 supplies the lesson to carry into it, below.
-3. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
-   re-measures the perpendicular stop rather than the slide. It needs a yaw the `7:` placement
-   actually applies. The slide itself IS verified — trail in the 6d notes — this is a gate
-   defect, not a feature one.
-4. **The `hex_edge` README note is uncommitted in the shared tree**, alongside the older
+   the window. Which renderer continues is your call, not a gate's; `editor.html` is
+   deliberately NOT deleted, it is the control.
+3. **The character's hip shows a gap, and it is a live visible defect.** Small and
+   self-contained — extend the pelvis box below the hip plane by the maximum wedge. It is
+   step `A9b` in CONNECTOR.md with the current gap as its own negative control, but it does
+   not need the rest of that design.
+4. **S2 — voxels on the wire** (`plans/16-client-split/DESIGN.md`), unchanged from before.
+5. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
+   re-measures the perpendicular stop rather than the slide. The slide itself IS verified —
+   this is a gate defect, not a feature one.
+6. **The `hex_edge` README note is uncommitted in the shared tree**, alongside the older
    `hex_field` fix. Both need a human call before committing in `../loft-libs-world/`.
+
+## Since 2026-07-29 (session 3) — the cart, and what a body actually is
+
+Commits `54465a0` · `7698d71` · `7ef9406` · `e70b8bd`, all pushed and verified against the
+remote.
+
+### Two defects on screen, both green in the gates for a whole rung
+
+| what | measured |
+|---|---|
+| **the cart's wheels were drawn FLAT** — `emit_cylinder_post` builds its ring in the XZ plane *whatever axis it is handed*; the two endpoint arguments only move the endpoint centres | the wheel mesh bounded `x 0.80 · y 0.00 · z 0.92`, where a wheel is `0.80 · 0.80 · 0.12` |
+| **the cart's body height was a constant** — `translate(cx, CART_RADIUS, cz)`, a lift above `y = 0` and never above the *ground* | on a 4.8° slope the wheels hung **0.204 wu** clear |
+
+The primitive is a **post**, and every other caller (fence posts, trunks) plus all four of
+its tests passed a vertical axis — so **the tests agreed with the bug rather than catching
+it**. Fixed with a basis chosen so `+Y` reproduces the old `(cos, 0, sin)` ring
+vertex-for-vertex (posts measured unchanged), and guarded by the rule that covers every
+axis instead of one shape: *every vertex sits `radius` from the axis LINE, every normal
+perpendicular to it*, run over vertical / z / x / oblique. Seen red on three before the
+fix. **503 tests green** across the five packages (was 499).
+
+The pose is now solved from the ground contacts — mean contact plus a radius for the
+height, the axle's own angle for the bank, as a fixed point because where the wheels touch
+depends on the bank. **Wheels are placed FROM that frame, never each onto its own
+contact**, so the axle cannot stretch.
+
+⚠ **The gate that stayed green measured `travel → value → skid`** — the wheel's
+*arithmetic* — and nothing about where any part of the cart was. Its new clauses measure
+the wheel-to-ground gap and the axle length, both seen red under separate mutations, with
+a **bank clause as the control** because on flat ground the rest passes trivially.
+
+⚠ **And the first axle clause was VACUOUS.** It asked the server, which derived the length
+as `2·half·√(cos²β + sin²β)` — the answer `1.1` for every input, a clause that could not
+fail. It reads the broadcast transforms now. Same mistake as the bug, one level up.
+
+### The design: `plans/14-props-dressing/CONNECTOR.md`
+
+Plan 14 already named *"the multi-rig connector, which `hex_body` does not have"* as open.
+It is designed now, and **not built** — `cart_send` still open-codes the connection.
+
+**The user corrected two things that reshaped it, and both corrections were right:**
+
+1. *"we use the hexbody code to define the connections not a mjs"* — the connection was
+   open-coded as `mat4_mul` chains and its invariant put in a JS gate. `rig_world_seg` is
+   **pure**, so the connection test needs no server, no wire and no browser.
+2. *"this should not be about wheels only"* — towing, dangling loads, robot arms, warping
+   wings. The first draft said *one frame solved from the ground contacts, everything
+   inboard rigid*: true of a wheel, **false of a towed cart** (it has its own contacts, so
+   its own frame — the drawbar couples two frames) and **false of a dangling crate** (no
+   contacts at all). One mechanism stretched over families that do not share it.
+
+**What survives is a counting rule:**
+
+```
+    dof(links) + dof(support) + dof(driven) + dof(solved) = 6      per body
+```
+
+⚠ **It predicts a real fact, which is the best evidence it is right.** Today's cart,
+unhitched: `x, z, yaw` as state is 3, two contacts give height and bank is 2 — **five**.
+The sixth is *pitch*, supplied by nothing and pinned to zero by fiat. A real two-wheeled
+cart with no horse in the shafts **tips forward onto them**; the arithmetic says so before
+any physics does.
+
+Other results worth carrying:
+
+- **Attachment ≠ support.** A wheel is attached to the chassis and supported by the ground;
+  a towed cart is attached to the horse and supported by *its own* wheels; a crate is
+  supported by the attachment itself (`CARRIED`).
+- **A `TETHER` is an INEQUALITY**, not an equation — taut and slack have different DOF
+  counts. Model a rope as a rigid rod and the crate *pushes* the balloon upward: a rope in
+  compression, which is the tether's version of a stretching con-rod.
+- **`P4` is falsified on paper.** `bone_obb` bounds a bone's *capsule* — half-extents
+  `(R/2 + ω, ω)` for a spoke — and a wheel's disc reaches `R` in every in-plane direction,
+  so `disc ⊄ bone_obb` whenever `ω < R`, which is always. The proxy would **miss
+  overlaps**, which `I4` forbids. A wheel needs its own shape: the OBB `(R, R, t/2)`,
+  containing the disc exactly with overshoot `4/π`. **So the connector's payoff is one home
+  for the connection, not free collision** — the smaller argument.
+- **`Φ′(0) = 0`**, so the contact fixed point is *quadratically* convergent near level —
+  which is what the measured `1.5 × 10⁻⁸` after three rounds was. It converges while
+  `tan β < 1/L`, and that degrades exactly where the `|d| ≤ 2w` doorstep bites.
+- **States are `DRIVEN` or `SOLVED`, declared.** A wheel's spin comes from travel, an arm's
+  angle is commanded, a **wing's bend is solved from a load** — a fixed point in the same
+  shape as the ground contact. ⚠ `SOLVED` is quasi-static, so choosing it is choosing to
+  have **no dynamics**: a wing that never flutters, a crate that never swings. Usually
+  wanted, and the error is picking it by accident.
+
+### ⚠ `hex_body`'s "needs no skinning" is true of the RIG and false of the PICTURE
+
+`hex_body` says *"flex is joints, not deformation … this survives a flexing wing unchanged
+and hexbody needs no skinning."* Right about where a part **is**; silent about what it
+**looks like** — and this editor already demonstrates the difference.
+
+**`limb_mesh` builds a leg box from `y = −len` to `y = 0` and `limb_at` pivots about
+`y = 0`, so the box's top face lies IN the pivot plane**, while the torso's pelvis has its
+flat bottom at that same height. Any joint angle dips one corner below the torso by
+`(half-width)·sin θ`, opening a wedge nothing fills. In the frame it reads as the light tan
+`ab8060` of a **lit top face** — the top of the thigh, seen from above *through the gap*.
+One hinge, one seam; a wing in ten stations has ten, along the edge a viewer looks straight
+down. `A-SKIN` is now an invariant, and `P7` decides whether overlap closes it or a
+deforming skin is a second representation.
+
+### Instruments and operational notes
+
+- **`make shot` is the passive screenshot** — *"a picture of what the human is looking
+  at"*. `make shot PAGE=/ CANVAS='#gl'` for the JavaScript renderer. It sends nothing, so
+  it does not disturb someone driving.
+- ⚠ **`tools/plan.mjs` is NOT passive** — it sends `7:` placements and lays a road. Do not
+  run it against a session someone is using.
+- ⚠ **Gates modify the shared world.** The cart gate now raises a hill and rolls the cart
+  ~15 wu; after a gate run the opening view is not what it was. Reload a world to reset.
+- Both renderers were compared this session and **draw the identical picture**, which is
+  what said the flat wheel was in the world/wire and not in the client.
 
 **How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (build the wasm
 page) · `make client-check` / `make editor-check` (the two renderers, one claim) ·
