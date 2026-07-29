@@ -19,6 +19,15 @@ not *is this Linux*: on a desktop session you get a browser, and on an ssh sessi
 get the `ssh -L` line you actually need, because a browser opened on the far machine
 helps nobody.
 
+**Two renderers answer the same server, and that is deliberate.** `/` serves the
+JavaScript one (`html/editor.html`); **`/client`** serves the wasm/loft one
+(`src/editor_client.loft`, built by `make client`). They speak the same wire and draw the
+same picture, so either can be measured against the other — `make editor-check` and
+`make client-check` are the same headless check pointed at each. The JavaScript one is
+the CONTROL and is not deleted while it is still the thing the other is compared to.
+⚠ On `/client`, **click the canvas before pressing a key**: loft's browser shell binds
+keys to the canvas element, not to the window.
+
 Read this file at the start of every session before doing any work. The full topic index lives in the project-root **[CLAUDE.md](../../CLAUDE.md)**.
 
 ## What is this project?

@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-28)
+# STATE.md — where the editor work stands (2026-07-29)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -40,6 +40,27 @@ platforms, by pid file OR port) · `27:1` on the wire turns on the phase trace �
 ⚠ **Stop the server when done.** It is not idle when forgotten — that was 76% of a core.
 
 ## Since 2026-07-29 (later) — S1 draws, and `--html` is a second implementation
+
+### First: the `web` publish that was never needed
+
+**`make client` carries no `--lib` flag, and there is nothing to publish.** The `--html`
+link failure that blocked S1 was `loft install <dir>` dropping a package's `wasm/`
+directory into `~/.loft/lib/web` — which is searched *before* the registry cache, so an
+incomplete local copy shadowed a complete published one. `rm -rf ~/.loft/lib/web` fixed it;
+`web` 0.3.3 resolves from the registry with its bridge intact. Filed as
+[loft#667](https://github.com/loft-lang/loft/issues/667), and it is the second instance of
+a class `install_package`'s own comment says it closed once, for `native/`.
+
+⚠ **Two diagnoses died before that one, and both were reached by READING.** "The published
+0.3.2 tarball omits `wasm/`" — its sha256 matches the registry byte for byte and `tar tzf`
+lists all three files. "0.3.3 was never published, so cut the release" — it was, on
+2026-07-28T16:34Z, *before* the diagnosis; our `../loft-registry` checkout was simply
+stale. Both were claims about **what someone else had shipped**, and neither needed this
+box. One `mv` of the shadowing directory settled it, and that probe was available from the
+first minute. ⚠ If `--html` ever fails with `web_wasm` unresolved again, that stale
+`~/.loft/lib/web` is the cause and not the package — the note is on `make client` too.
+
+### Then: the client itself
 
 **The wasm client renders the world.** `src/editor_client.loft` is ~500 lines of loft that
 dials the server, parses the wire and draws it on WebGL2 through `graphics`' raw `gl_*`

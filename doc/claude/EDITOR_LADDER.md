@@ -74,6 +74,9 @@ eyes**, not a report: something to open, drive, and judge.
 | 11a | ↳ anchors — follow, break, or foreign (invariant II) | #15 | ✅ | `tools/gates/world/trigger.mjs`; the sandbox seam still open |
 | — | ✋ | | | |
 | 16 | **the client split** — voxels cached and meshed in the client, the view solved there | [#16](https://github.com/jjstwerff/moros/issues/16) | XL | a drag costs no round trip; the wire carries no geometry |
+| 16a | ↳ **S1 — a wasm/loft client that draws** the wire the JavaScript drew | [#16](https://github.com/jjstwerff/moros/issues/16) | ✅ | `make client-check` beside `make editor-check`; control seen red (258 colours → 2) |
+| — | ✋ **the wasm client is the one to build on** | | | open `/client` beside `/`. Both renderers are green; which one continues is yours, and `editor.html` stays until you say |
+| 16b | ↳ S2 — voxels on the wire, meshes still from the server | [#16](https://github.com/jjstwerff/moros/issues/16) | M | the client's cached bytes and the server's agree, by the format's own CRC |
 | ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
 
 **Two things deliberately not in the order.** *Extraction* has no row: a group leaves when it
