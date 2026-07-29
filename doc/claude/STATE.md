@@ -10,6 +10,61 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
+## Since 2026-07-29 — row 6 finished, and the design turned toward the client
+
+**Row 6 is complete: 6a-6d.** A wall is now an analytic **run**, not a set of edges. That
+correction came from the user's eye, not from a gate — "fences should not follow the side of
+the hexes, they should be straight" — and it was right twice over: the geometry wobbled
+*and* the normals were wrong.
+
+| rung | what | gate |
+|---|---|---|
+| 6a | the exact perimeter, and the half stored outside | `fence.mjs` |
+| 6b | collision — `hex_edge::sweep_path`, a doorway is not a wall | `collide.mjs` |
+| 6c | the camera's occlusion class, consumer-supplied predicate | `occlude.mjs` |
+| 6d | **a wall is a RUN** — `hex_way` centreline, offset fences, geometry off the line | `straight.mjs` |
+
+- **The road is a `hex_way` centreline** snapped to one of the **24 compass headings**, with
+  the residual angle reported. The fence is its **`track_offset`**, not the band's outline —
+  `way_stamp`/`cut_arb` cut the boundary of the marked CELLS, which zigzags however straight
+  the road is. Measured: 82 wobbling edges became 65 in two bounded parallel runs.
+- **The drawn wall comes from the run**: 1200 vertices, all at perpendicular distance
+  **exactly 2.5**, spread 0. Restoring the per-edge panels gives 1980 vertices spread over
+  0.93 of a hex — the staircase, measured.
+- **The slide works**, after four attempts. The stop had to be a **skin from the LINE**, not
+  from the staircase edge, and the guard a **side test, not a distance test** — a skin is
+  1 cm and a stride is 13, so a walker steps clean over any band a distance test guards.
+- **`tools/plan.mjs`** renders the world in plan view to a PNG it writes itself. It is the
+  instrument that made all of this visible; a screenshot of the editor cannot answer "is
+  this straight", because perspective bends everything.
+
+### Performance: two separate causes, both measured
+
+- **The idle gate never closed** — `poll_event` absorbs disconnects, so `clients` only grew
+  and the tick ran at 30 Hz for nobody: **76% of a core**. Now gated on what `broadcast`
+  reports from the library's own active set, probed once a second **whether or not anything
+  moved** (the first fix read the count inside `if moved` and changed nothing).
+- **The camera was the whole of the rest** — 11 solves a tick × 14 steps × 5 terrain reads =
+  770 samples, ~100% of a core, tick collapsing 31 → 15/s. It is now **not re-solved when
+  its inputs have not moved**: 0%, tick holding 31/s. `27:1` turns on a per-second phase
+  trace that reports where the time went *and the arithmetic that explains it*.
+- ⚠ Three causes were proposed before the measured one. **The trace is left in** for that
+  reason.
+
+### The design turned: [plan #16](https://github.com/jjstwerff/moros/issues/16)
+
+The camera does not belong in the server — it is there because the client is JavaScript, and
+a wasm/loft client dissolves that. **The world model stays; the view goes.** The test for
+which side a routine belongs on is **who is allowed to disagree**: two viewers with different
+cameras is fine, two with different ground is a corrupted world.
+
+The route is `plans/16-client-split/DESIGN.md` — voxels cached and meshed in the client, then
+the camera, in five steps that each ship and each delete something. The order is forced (the
+camera needs a local height field, so the cache comes first), the structure is
+`../loft/tools/audience-demo/`'s, and the cache check is a **small high-priority heartbeat**:
+a digest of `(chunk, τ, crc)` at the head of the tick, never behind a bulk transfer.
+**S1 is a port, not a research project** — `--html` gives WebGL2 + WebSocket.
+
 ## Since earlier on 2026-07-28 — row 6 is built, and it found four things
 
 **Row 6 (fences and walls, #10) is done** — 6a the exact perimeter, 6b collision, 6c the

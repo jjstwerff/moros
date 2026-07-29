@@ -73,6 +73,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 11 | routines — triggers and the sandbox seam | #15 | XL | a trigger that survives the ground beneath it moving |
 | 11a | ↳ anchors — follow, break, or foreign (invariant II) | #15 | ✅ | `tools/gates/world/trigger.mjs`; the sandbox seam still open |
 | — | ✋ | | | |
+| 16 | **the client split** — voxels cached and meshed in the client, the view solved there | [#16](https://github.com/jjstwerff/moros/issues/16) | XL | a drag costs no round trip; the wire carries no geometry |
 | ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
 
 **Two things deliberately not in the order.** *Extraction* has no row: a group leaves when it
