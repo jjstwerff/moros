@@ -33,14 +33,15 @@ written and not built.** In priority order:
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
    the window. Which renderer continues is your call, not a gate's; `editor.html` is
    deliberately NOT deleted, it is the control.
-3. **The character's hip shows a gap, and the fix is now a measured number.** Extend the
-   pelvis box below the hip plane by `(leg half-width)·sin(LEG_SWING)` = **0.0341 wu
-   (2.95 cm)** — `P7` above measured it and its controls. Two things to build with it:
-   **derive it from `LEG_SWING`, never write the literal** (the fix is exactly tangent at
-   the range's edge, so a wider gait reopens the seam silently), and consider instead
-   **moving the pivot inside the pelvis box**, which is what the shoulder already does and
-   which costs nothing. It is step `A9b` in CONNECTOR.md and does not need the rest of that
-   design.
+3. ✅ **The character's hip gap is FIXED** (`A9b`). `hip_overlap()` extends the pelvis by
+   `leg_w()·0.5·sin(LEG_SWING)` = **0.0341 wu (2.95 cm)**, derived and never written down,
+   with `leg_w()` giving the leg's section one home instead of two. Gated by
+   `tools/gates/character/hipskin.mjs`, **seen red on the unfixed server** with exactly the
+   predicted shortfall (`margin −0.034049`).
+   ⚠ **That gate's margin is 8 microns and that is correct, not slack** — the overlap is
+   derived from the gait's own peak, so it sits ON the tangency by construction. It takes
+   its angle from the **broadcast leg transforms while walking**, never from `LEG_SWING`,
+   which is what makes a widened gait fail it instead of silently reopening the seam.
 4. **S2 — voxels on the wire** (`plans/16-client-split/DESIGN.md`), unchanged from before.
 5. **The collide gate's oblique clause is wrong.** It places and walks with yaw 0, so it
    re-measures the perpendicular stop rather than the slide. The slide itself IS verified —
@@ -163,7 +164,7 @@ deforming skin is a second representation.
 **How to run anything:** `make play-fast` (interpreted, ~1s) · `make client` (build the wasm
 page) · `make client-check` / `make editor-check` (the two renderers, one claim) ·
 `make client-console` (what the page SAID, when it drew nothing) ·
-`make gate` (all 22, and it now stops the server after) · `make stop-editor` (three
+`make gate` (all 23, and it now stops the server after) · `make stop-editor` (three
 platforms, by pid file OR port) · `27:1` on the wire turns on the phase trace ·
 `node tools/plan.mjs out.png` draws the world in plan view.
 ⚠ **Stop the server when done.** It is not idle when forgotten — that was 76% of a core.

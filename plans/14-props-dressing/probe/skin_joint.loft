@@ -303,11 +303,14 @@ fn main() {
   // is not to re-type the constants in a second checker — that is a THIRD home
   // — but to emit the ones actually used and have `emitted_boxes.mjs` compare
   // the wire against THESE. One home, and the drift becomes visible.
+  // Case B is what the editor SHIPS, so that is the torso written out — not the
+  // `tb` above, which is case A and exists to be red.
+  shipped = torso(wedge, 0.0);
   bmin = fh;
   bmax = hip;
   bxh = 0.0;
   bzh = 0.0;
-  for eb in tb {
+  for eb in shipped {
     if eb.by0 < bmin { bmin = eb.by0; }
     if eb.by1 > bmax { bmax = eb.by1; }
     if eb.bx1 > bxh { bxh = eb.bx1; }

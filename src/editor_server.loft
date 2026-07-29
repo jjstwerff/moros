@@ -459,6 +459,33 @@ fn head_wu() -> float { figure_wu() / 7.5 ?? 0.0 }
 fn hip_wu() -> float { figure_wu() * 0.53 }
 fn shoulder_wu() -> float { figure_wu() * 0.855 - head_wu() * 0.10 }
 
+// The leg's cross-section, with ONE home. `body_mesh` needs it to size the hip
+// overlap and the setup needs it to build the limb; two copies of the number is
+// how that overlap silently stops matching the leg it is there to bury.
+fn leg_w() -> float { head_wu() * 0.62 }
+
+// `A-SKIN` at the hip. `limb_mesh` builds the leg from y = −len to y = 0 and
+// `limb_at` pivots it about y = 0, so the leg's TOP FACE lies in the pivot
+// plane — which is exactly where the pelvis box's flat bottom sat. At swing θ
+// the face's corner dips (w/2)·sin θ below it and opens a wedge nothing fills;
+// on screen it reads as the lit top of the thigh, seen from above through the
+// gap. Extending the pelvis by the widest such wedge buries the face at every
+// admissible angle, measured over the whole range in
+// plans/14-props-dressing/probe/skin_joint.loft.
+//
+// ⚠ DERIVED FROM LEG_SWING, and it must stay derived. The overlap is exactly
+// TANGENT at the edge of the range — case C of that probe sweeps past
+// LEG_SWING and the seam reopens at once — so a literal here would survive the
+// day someone widens the gait and then fail SILENTLY, because the rig stays
+// exact and only the picture breaks.
+//
+// The shoulder needs no equivalent and gets none: `shoulder_wu()` lands at
+// 0.842·h while the chest box runs 0.72 → 0.855·h, so that pivot plane is
+// already INTERIOR to its parent. A pivot on the parent's boundary face is what
+// opens a wedge, not the angle — which is why one of these two joints has been
+// drawn correctly all along.
+fn hip_overlap() -> float { leg_w() * 0.5 * sin(LEG_SWING) }
+
 // mesh3d ships `mat4_rotate_x` and `mat4_rotate_y` but no Z. A limb swings in
 // the plane of travel, and the figure is modelled facing +x, so that swing is a
 // rotation about the LOCAL z axis. Written here rather than worked around by
@@ -494,7 +521,7 @@ fn body_mesh() -> Mesh {
   b_hip = hip_wu();
   b_chest = bh * 0.72;
   b_neck = bh * 0.855;
-  emit_box(bm, vec3(0.0 - bhd * 0.36, b_hip, 0.0 - bsw * 0.40),
+  emit_box(bm, vec3(0.0 - bhd * 0.36, b_hip - hip_overlap(), 0.0 - bsw * 0.40),
                vec3(bhd * 0.36, b_chest, bsw * 0.40));
   emit_box(bm, vec3(0.0 - bhd * 0.40, b_chest, 0.0 - bsw * 0.50),
                vec3(bhd * 0.40, b_neck, bsw * 0.50));
@@ -2951,7 +2978,7 @@ fn main() {
   // incremental re-derivation obligation, not a rewrite of this shape.
   fh = figure_wu();
   hd = head_wu();
-  leg = limb_mesh("leg", hip_wu(), hd * 0.62, hd * 0.62);
+  leg = limb_mesh("leg", hip_wu(), leg_w(), leg_w());
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();
 
