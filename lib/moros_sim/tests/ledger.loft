@@ -7,6 +7,7 @@
 use moros_sim;
 
 const HALF = 0.55;
+const RADIUS = 0.4;
 
 fn ledger_of(a: Assembly, i: integer) -> Ledger { body_ledger(a, i) }
 
@@ -17,7 +18,7 @@ fn ledger_of(a: Assembly, i: integer) -> Ledger { body_ledger(a, i) }
 // by fiat — and a real two-wheeled cart with no horse in the shafts tips
 // forward onto them. The arithmetic says so before any physics does.
 fn test_todays_cart_reports_five_not_six() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   assert(asm_admissible(c), "the cart is still a well-formed assembly");
   g = ledger_of(c, 0);
   assert(g.dg_links == 0, "the chassis is reached by no link");
@@ -32,7 +33,7 @@ fn test_todays_cart_reports_five_not_six() {
 // The wheels themselves are fine, which is what makes the failure specific
 // rather than a whole-assembly shrug.
 fn test_the_cart_wheels_close() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   for i in 1..3 {
     g = ledger_of(c, i);
     assert(g.dg_links == 5, "a mount removes five");
@@ -58,7 +59,7 @@ fn test_towed_cart_closes_everywhere() {
 // The hitch is what completes a two-wheel cart: the same chassis that reported
 // five, reached by a hitch, closes at six.
 fn test_the_hitch_is_what_completes_the_cart() {
-  loose = ledger_of(asm_cart(HALF), 0);
+  loose = ledger_of(asm_cart(HALF, RADIUS), 0);
   hitched = ledger_of(asm_towed(HALF, 1.6), 1);
   assert(loose.dg_total == 5, "unhitched: five");
   assert(hitched.dg_total == 6, "hitched: six");
@@ -91,7 +92,7 @@ fn test_a_slack_tether_closes_too() {
   assert(slack.dg_total == taut.dg_total, "so the total is unchanged");
   assert(ledger_closed(slack), "and the slack ledger closes");
   // and on a body with no tether the two ledgers are the same thing
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   assert(body_ledger_slack(c, 1).dg_links == 5, "a mount has only one ledger");
 }
 
@@ -166,7 +167,7 @@ fn test_contacts_only_on_ground() {
 // ── the report is a reason plus a residual, not a boolean ────────────────────
 
 fn test_the_report_names_the_failure() {
-  r = asm_ledger_report(asm_cart(HALF));
+  r = asm_ledger_report(asm_cart(HALF, RADIUS));
   assert(r.contains("UNDER-DETERMINED by 1"), "it says how short, and by how much");
   assert(r.contains("total 5"), "and shows the sum it got");
   o = asm_ledger_report(asm_trailer4());

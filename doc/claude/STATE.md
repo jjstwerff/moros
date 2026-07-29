@@ -170,10 +170,31 @@ written and not built.** In priority order:
    ⚠ **A4 does NOT store rigs in the document**, deliberately — a rig is multi-line, so the
    format needs a **section**, the same call the world file already made. That is `A5`'s.
 
-   **Next is `A5` — the cart as data**, with no behaviour change: the assembly must reproduce
-   the transforms the current code produces, byte-identical on flat ground where the two
-   agree by construction. The previous implementation is its own control, which turns *"did
-   I break the cart"* into a diff.
+6. ✅ **`A5` is BUILT** — the cart is data. `tests/cart_as_data.loft`, **217 green**, all 93
+   functions entered. The transcribed `cart_send` composition and the data-driven path agree
+   **to the bit**, flat and banked; four clauses vary one number in the assembly and require
+   the frames to follow, so a composition carrying its own literals could not pass.
+   ⚠ Bit-identity against mesh3d's `Mat4` arithmetic is **not** claimed (different summation
+   order); `P1`'s `5.6e-17` is the cross-implementation half.
+   - **The radius arrived, and as a rig** — a wheel is a spoke of length `radius`, so it is
+     `rg_len[0]` with one home, and `A9`'s shape derives from it. Both wheels share one rig.
+   - ⚠ **mesh3d's `rotate_x`/`_y` turn the OPPOSITE way from the editor's own `rotate_z`.**
+     `rotate_x` is Rodrigues about **−x**. The wheel path is unaffected (spin is about +z in
+     both); **the bank and yaw are `A6`'s** and this is written down so A6 does not
+     rediscover it. A test pins it, and it is the only guard — the bank cancels in the diff.
+   - ⚠ **`hex_body`'s `rig_read` is lenient** where its comment claims strict (a bone line
+     missing its trailing `hi` parses as 0). Rather than change a library two consumers read,
+     `A-EXACT` is enforced **at the seam**: each rig block must write back to itself.
+   - ⚠ **A mutation did NOT go red and found an unchecked clause** — nothing tested a
+     *trailing* line. Added; it catches the mutation now.
+   - ⚠ **Interpreter SIGSEGV filed as [loft#677](https://github.com/loft-lang/loft/issues/677)**
+     — appending to a struct's vectors through two by-value levels with the return discarded.
+     Four closer minimal cases did not reproduce it. `wa:clean`: **the parsers are pure now**.
+     Second time this idiom has bitten Moros; #670 was the silent-write half.
+
+   **Next is `A6`** — `GROUND` support and the contact fixed point, proving `A-GROUND` and
+   `A-FIT`. ⚠ Read A5's handedness note first: the bank is where the two rotation
+   conventions meet, and the gap clause has already been demonstrated red at 0.204 wu.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

@@ -29,6 +29,11 @@
 // link's limits and a rig's are the same unit and `wheel_value`'s output drops
 // straight in. Two units for one quantity is how a conversion goes missing.
 
+// SELECTIVE, so nothing of `hex_body`'s beyond what an assembly stores lands in
+// this package's bare surface. A rig is written and parsed by `hex_body` itself —
+// one home for a rig's text, and `A-EXACT` inherits its byte-exactness.
+use hex_body::(Rig, rig_new, rig_bone, rig_admissible, rig_write, rig_read, rig_eq);
+
 // The families differ in which degrees of freedom they remove; flattening them
 // into "a rigid mount with one revolute axis" is what the design's first draft
 // got wrong, so they are named apart.
@@ -70,11 +75,26 @@ pub struct Assembly {
   am_name: text,
   am_parent: vector<integer>,                 // parent body; −1 for the root
   am_link: vector<Link>,                      // the link from parent to body i
-  am_body: vector<Body>
+  am_body: vector<Body>,
+  // ⚠ ADDED BY `A5`. A rig is MULTI-LINE text (`rig_write`), so it cannot ride on
+  // a body's line and the format needs a SECTION — the same call the world file
+  // already made (*tagged sections, not a flags word*). `A4` predicted this.
+  //
+  // Rigs are a LIBRARY and bodies index into it, so the cart's two wheels share
+  // one spoke description instead of carrying a copy each. `−1` is no rig.
+  am_rig: vector<Rig>,
+  am_bodyrig: vector<integer>
 }
 
 pub fn asm_new(name: text) -> Assembly {
-  Assembly { am_name: name, am_parent: [], am_link: [], am_body: [] }
+  Assembly { am_name: name, am_parent: [], am_link: [], am_body: [],
+             am_rig: [], am_bodyrig: [] }
+}
+
+// Append a rig to the library and return its index, for a body to point at.
+pub fn asm_rig(a: Assembly, r: Rig) -> integer {
+  a.am_rig += [r];
+  len(a.am_rig) - 1
 }
 
 // The root's link. Named rather than left to a default, because "the body with
@@ -124,10 +144,12 @@ pub fn body_of(sup: SupportKind, driven: integer, solved: integer,
 // Append one body with the link that reaches it. Index order IS the canonical
 // labelling, so appending in topological order is the only way to build an
 // admissible assembly — the same rule `rig_bone` follows.
-pub fn asm_add(a: Assembly, parent: integer, l: Link, b: Body) -> Assembly {
+pub fn asm_add(a: Assembly, parent: integer, l: Link, b: Body,
+               rig: integer = 0 - 1) -> Assembly {
   a.am_parent += [parent];
   a.am_link += [l];
   a.am_body += [b];
+  a.am_bodyrig += [rig];
   a
 }
 
@@ -177,12 +199,21 @@ pub fn asm_admissible(a: Assembly) -> boolean {
   // text this reader could not take back — refused rather than quoted.
   if a.am_name == "" { return false; }
   if len(a.am_name.split(' ')) != 1 { return false; }
+  if len(a.am_bodyrig) != n { return false; }
+  // Every rig in the library must be one — an empty rig is how `rig_read`
+  // refuses, so an inadmissible rig here means a text that did not parse.
+  nr = len(a.am_rig);
+  for k in 0..nr {
+    if !rig_admissible(a.am_rig[k] ?? rig_new()) { return false; }
+  }
   for i in 0..n {
     if !body_admissible(i, a.am_parent[i] ?? 0,
                         a.am_link[i] ?? link_none(),
                         a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0)) {
       return false;
     }
+    br = a.am_bodyrig[i] ?? 0;
+    if br < 0 - 1 || br >= nr { return false; }
   }
   true
 }
@@ -243,7 +274,8 @@ fn sp_from(c: integer) -> SupportKind {
 // tolerance: loft's float↔text round trip is exact, so nothing here rounds.
 pub fn asm_write(a: Assembly) -> text {
   n = len(a.am_parent);
-  s = "assembly {a.am_name} bodies {n}";
+  nr = len(a.am_rig);
+  s = "assembly {a.am_name} bodies {n} rigs {nr}";
   for i in 0..n {
     l = a.am_link[i] ?? link_none();
     b = a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
@@ -253,7 +285,13 @@ pub fn asm_write(a: Assembly) -> text {
         + " lim {l.lk_lo} {l.lk_hi} len {l.lk_len}"
         + " support {sp_name(b.bd_support)}"
         + " driven {b.bd_driven} solved {b.bd_solved}"
-        + " contacts {b.bd_contacts}";
+        + " contacts {b.bd_contacts}"
+        + " rig {a.am_bodyrig[i] ?? 0 - 1}";
+  }
+  // Each rig is written by `hex_body` itself — one home for a rig's text — and
+  // named by its INDEX, so the name carries no information a reader must trust.
+  for k in 0..nr {
+    s = s + "\n" + rig_write(a.am_rig[k] ?? rig_new(), "r{k}");
   }
   s
 }
@@ -264,6 +302,86 @@ fn word(line: text, i: integer) -> text {
 }
 fn word_int(line: text, i: integer) -> integer { word(line, i) as integer ?? 0 }
 fn word_float(line: text, i: integer) -> float { word(line, i) as float ?? 0.0 }
+
+// ⚠ THE PARSERS ARE PURE, AND THAT IS NOT A STYLE CHOICE. The first version had
+// them take the `Assembly` and append to it, relying on heap aliasing to carry the
+// mutation back through two by-value parameters into `asm_read`'s local. The
+// interpreter SIGSEGV'd on it. Returning the parsed pieces and appending in ONE
+// place is both the safe shape and the clearer one.
+struct ParsedBody {
+  pb_ok: boolean, pb_parent: integer,
+  pb_link: Link, pb_body: Body, pb_rig: integer
+}
+
+struct ParsedRig { pr_taken: integer, pr_rig: Rig }
+
+fn parse_fail() -> ParsedBody {
+  ParsedBody { pb_ok: false, pb_parent: 0, pb_link: link_none(),
+               pb_body: body_of(SupportKind.Unsupported, 0, 0), pb_rig: 0 - 1 }
+}
+
+// One body line. Every keyword is checked in place and the index must equal its
+// line, so a relabelled text is refused before any field is trusted.
+fn read_body_line(ln: text, ri: integer) -> ParsedBody {
+  if word(ln, 0) != "body" { return parse_fail(); }
+  if word_int(ln, 1) != ri - 1 { return parse_fail(); }
+  if word(ln, 2) != "parent" { return parse_fail(); }
+  if word(ln, 4) != "link" { return parse_fail(); }
+  if word(ln, 6) != "at" { return parse_fail(); }
+  if word(ln, 10) != "axis" { return parse_fail(); }
+  if word(ln, 14) != "lim" { return parse_fail(); }
+  if word(ln, 17) != "len" { return parse_fail(); }
+  if word(ln, 19) != "support" { return parse_fail(); }
+  if word(ln, 21) != "driven" { return parse_fail(); }
+  if word(ln, 23) != "solved" { return parse_fail(); }
+  if word(ln, 25) != "contacts" { return parse_fail(); }
+  if word(ln, 27) != "rig" { return parse_fail(); }
+  lc = lk_code(word(ln, 5));
+  sc = sp_code(word(ln, 20));
+  if lc < 0 || sc < 0 { return parse_fail(); }
+  // A line missing its last field would otherwise read as 0, so the field itself
+  // — not just the keyword before it — has to be there.
+  if word(ln, 28) == "" { return parse_fail(); }
+  ParsedBody { pb_ok: true, pb_parent: word_int(ln, 3),
+    pb_link: Link { lk_kind: lk_from(lc),
+           lk_ox: word_float(ln, 7), lk_oy: word_float(ln, 8),
+           lk_oz: word_float(ln, 9),
+           lk_ax: word_float(ln, 11), lk_ay: word_float(ln, 12),
+           lk_az: word_float(ln, 13),
+           lk_lo: word_float(ln, 15), lk_hi: word_float(ln, 16),
+           lk_len: word_float(ln, 18) },
+    pb_body: Body { bd_support: sp_from(sc),
+           bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24),
+           bd_contacts: word_int(ln, 26) },
+    pb_rig: word_int(ln, 28) }
+}
+
+// One rig block, appended to `out`'s library. Returns how many lines it consumed,
+// or 0 to refuse — which keeps the reader's own control flow flat.
+fn read_rig_block(lines: vector<text>, pos: integer, k: integer) -> ParsedRig {
+  bad = ParsedRig { pr_taken: 0, pr_rig: rig_new() };
+  nl = len(lines);
+  if pos >= nl { return bad; }
+  rh = lines[pos] ?? "";
+  if word(rh, 0) != "rig" { return bad; }
+  if word(rh, 1) != "r{k}" { return bad; }
+  if word(rh, 2) != "bones" { return bad; }
+  nbones = word_int(rh, 3);
+  if nbones < 1 { return bad; }
+  if pos + nbones >= nl { return bad; }
+  blk = rh;
+  for bi in 1..=nbones { blk = blk + "\n" + (lines[pos + bi] ?? ""); }
+  rr = rig_read(blk);
+  if !rig_admissible(rr) { return bad; }
+  // ⚠ AND THE BLOCK MUST WRITE BACK TO ITSELF. `hex_body`'s `rig_read` says it
+  // *"accepts exactly what `rig_write` emits, refuses anything else"* — but a bone
+  // line missing its trailing `hi` parses, reading the absent field as 0, so a
+  // REPAIRED rig can come back looking valid. Rather than change a library two
+  // consumers read, `A-EXACT` is enforced AT THE SEAM: whatever leniency the
+  // sub-parser has, a text that does not round-trip is refused here.
+  if rig_write(rr, "r{k}") != blk { return bad; }
+  ParsedRig { pr_taken: nbones + 1, pr_rig: rr }
+}
 
 // STRICT — accepts exactly what `asm_write` emits and refuses everything else by
 // returning an empty assembly, which `asm_admissible` rejects. Every keyword is
@@ -277,41 +395,30 @@ pub fn asm_read(t: text) -> Assembly {
   head = lines[0] ?? "";
   if word(head, 0) != "assembly" { return asm_new(""); }
   if word(head, 2) != "bodies" { return asm_new(""); }
+  if word(head, 4) != "rigs" { return asm_new(""); }
   nb = word_int(head, 3);
-  if nl != nb + 1 { return asm_new(""); }
+  nr = word_int(head, 5);
+  if nb < 1 || nr < 0 { return asm_new(""); }
+  // A truncated text fails HERE, before any field is read.
+  if nl < nb + 1 { return asm_new(""); }
   out = asm_new(word(head, 1));
-  for ri in 1..nl {
-    ln = lines[ri] ?? "";
-    if word(ln, 0) != "body" { return asm_new(""); }
-    if word_int(ln, 1) != ri - 1 { return asm_new(""); }
-    if word(ln, 2) != "parent" { return asm_new(""); }
-    if word(ln, 4) != "link" { return asm_new(""); }
-    if word(ln, 6) != "at" { return asm_new(""); }
-    if word(ln, 10) != "axis" { return asm_new(""); }
-    if word(ln, 14) != "lim" { return asm_new(""); }
-    if word(ln, 17) != "len" { return asm_new(""); }
-    if word(ln, 19) != "support" { return asm_new(""); }
-    if word(ln, 21) != "driven" { return asm_new(""); }
-    if word(ln, 23) != "solved" { return asm_new(""); }
-    if word(ln, 25) != "contacts" { return asm_new(""); }
-    lc = lk_code(word(ln, 5));
-    sc = sp_code(word(ln, 20));
-    if lc < 0 || sc < 0 { return asm_new(""); }
-    // A line missing its last field would otherwise read as 0, so the field
-    // itself — not just the keyword before it — has to be there.
-    if word(ln, 26) == "" { return asm_new(""); }
-    out = asm_add(out, word_int(ln, 3),
-      Link { lk_kind: lk_from(lc),
-             lk_ox: word_float(ln, 7), lk_oy: word_float(ln, 8),
-             lk_oz: word_float(ln, 9),
-             lk_ax: word_float(ln, 11), lk_ay: word_float(ln, 12),
-             lk_az: word_float(ln, 13),
-             lk_lo: word_float(ln, 15), lk_hi: word_float(ln, 16),
-             lk_len: word_float(ln, 18) },
-      Body { bd_support: sp_from(sc),
-             bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24),
-             bd_contacts: word_int(ln, 26) });
+  for ri in 1..(nb + 1) {
+    pb = read_body_line(lines[ri] ?? "", ri);
+    if !pb.pb_ok { return asm_new(""); }
+    out = asm_add(out, pb.pb_parent, pb.pb_link, pb.pb_body, pb.pb_rig);
   }
+  // ── the rig section ────────────────────────────────────────────────────────
+  // Each block is handed to `hex_body`'s own reader, so a rig's text has one
+  // parser, and the whole text must be consumed EXACTLY — a trailing line is a
+  // text no writer emits.
+  pos = nb + 1;
+  for k in 0..nr {
+    pr = read_rig_block(lines, pos, k);
+    if pr.pr_taken <= 0 { return asm_new(""); }
+    out.am_rig += [pr.pr_rig];
+    pos = pos + pr.pr_taken;
+  }
+  if pos != nl { return asm_new(""); }
   out
 }
 
@@ -320,6 +427,11 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
   n = len(a.am_parent);
   if len(b.am_parent) != n { return false; }
   if a.am_name != b.am_name { return false; }
+  nr = len(a.am_rig);
+  if len(b.am_rig) != nr { return false; }
+  for k in 0..nr {
+    if !rig_eq(a.am_rig[k] ?? rig_new(), b.am_rig[k] ?? rig_new()) { return false; }
+  }
   for i in 0..n {
     if (a.am_parent[i] ?? 0) != (b.am_parent[i] ?? 0) { return false; }
     la = a.am_link[i] ?? link_none();
@@ -334,6 +446,7 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
     if sp_name(ba.bd_support) != sp_name(bb.bd_support) { return false; }
     if ba.bd_driven != bb.bd_driven || ba.bd_solved != bb.bd_solved { return false; }
     if ba.bd_contacts != bb.bd_contacts { return false; }
+    if (a.am_bodyrig[i] ?? 0) != (b.am_bodyrig[i] ?? 0) { return false; }
   }
   true
 }
@@ -348,16 +461,23 @@ pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
 // The ledger it declares, which `A2` will check: the chassis carries `x, z,
 // yaw` DRIVEN and is supported by two ground contacts; each wheel is `Carried`
 // by its mount with its spin DRIVEN from travel.
-// ⚠ No wheel RADIUS here. It is real data about a wheel, but it is a `shape`,
-// and shapes arrive at `A9` — carrying an unread parameter now would be a home
-// for a number with no reader, which is the defect this design exists to remove.
-pub fn asm_cart(half: float) -> Assembly {
+// ⚠ THE RADIUS ARRIVES HERE, AND AS A RIG. `A1` left it out because it had no
+// reader; `A4` gave it one. A wheel is a SPOKE of length `radius` — that is how
+// `hex_body` models one, and it is why `P1` found the spin in the segment. So the
+// radius is `rg_len[0]` and has exactly one home, from which `A9`'s shape and
+// proxy will be DERIVED rather than told.
+//
+// Both wheels share one rig: the library is indexed, so a description used twice
+// is stored once.
+pub fn asm_cart(half: float, radius: float) -> Assembly {
   a = asm_new("cart");
+  spoke = asm_rig(a, rig_bone(rig_new(), 0 - 1, 0.0, 0.0, radius,
+                              FREE_LO, FREE_HI));
   a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   a = asm_add(a, 0, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
-              body_of(SupportKind.Carried, 1, 0));
+              body_of(SupportKind.Carried, 1, 0), spoke);
   a = asm_add(a, 0, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
-              body_of(SupportKind.Carried, 1, 0));
+              body_of(SupportKind.Carried, 1, 0), spoke);
   a
 }
 

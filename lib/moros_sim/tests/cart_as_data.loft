@@ -1,0 +1,223 @@
+// A5 — the cart as DATA, with no behaviour change.
+//
+// The safety step, and the reason the order is safe: before anything changes,
+// the assembly must reproduce the transforms the current code produces. That
+// turns *"did I break the cart"* into a diff, and **the previous implementation
+// is its own control**.
+//
+// ── what is and is not claimed ──────────────────────────────────────────────
+//
+// The old composition is TRANSCRIBED here, using this package's own frame
+// arithmetic, and the data-driven path must reproduce it **exactly** — same
+// expression, same arithmetic, so bit-identity is available and is asserted.
+//
+// ⚠ **Bit-identity against mesh3d's `Mat4` arithmetic is NOT claimed**, and could
+// not honestly be: a generic 4×4 multiply sums `Σ_k A[k][r]·B[c][k]` in a
+// different order from `a.t + (p₁ + p₂ + p₃)`, and float addition is not
+// associative. The cross-IMPLEMENTATION evidence is `P1`'s wire measurement —
+// the same composition against the broadcast matrices at `5.6 × 10⁻¹⁷`. This step
+// supplies the cross-STRUCTURE half: that the DATA produces that composition.
+//
+// ── the handedness that has to be got right ─────────────────────────────────
+//
+// ⚠ **mesh3d's `mat4_rotate_x` and `_y` turn the OPPOSITE way from the editor's
+// own `mat4_rotate_z`.** Read from `graphics/src/math.loft`: `rotate_x` is
+// `[[1,0,0],[0,c,s],[0,−s,c]]`, which is Rodrigues about **−x**, and `rotate_y`
+// is likewise about **−y**. The editor wrote its own `mat4_rotate_z` — mesh3d
+// ships none — and used the standard sense. So within one `Ry·Rx·Rz` chain, two
+// factors turn one way and the third the other.
+//
+// It is self-consistent in mesh3d and inconsistent in the editor, and the wheel
+// path is unaffected because a spin is about **+z** in both. The bank and the yaw
+// are `A6`'s, and this comment is here so `A6` does not rediscover it.
+use moros_sim;
+use hex_body::(rig_new, rig_bone, wheel_value, wheel_angle);
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 512.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// mesh3d's rotations, in this package's terms. The negation IS the finding above:
+// transcribing them as Rodrigues about +x / +y would silently mirror the cart.
+fn mesh_rot_y(radians: float) -> Rot {
+  rot_axis(0.0, 1.0, 0.0, (0.0 - radians) / TURN ?? 0.0)
+}
+fn mesh_rot_x(radians: float) -> Rot {
+  rot_axis(1.0, 0.0, 0.0, (0.0 - radians) / TURN ?? 0.0)
+}
+// …and the editor's own Z, which is the standard sense.
+fn editor_rot_z(radians: float) -> Rot {
+  rot_axis(0.0, 0.0, 1.0, radians / TURN ?? 0.0)
+}
+
+// `cart_send`, transcribed:
+//     base = translate(cx, y, cz) · rotate_y(yaw) · rotate_x(bank)
+fn old_base(cx: float, cy: float, cz: float, yaw: float, bank: float) -> Frame {
+  frame_mul(frame_mul(frame_trans(cx, cy, cz), frame_rot(mesh_rot_y(yaw))),
+            frame_rot(mesh_rot_x(bank)))
+}
+
+//     T_wheel = base · translate(0, 0, ±half) · rotate_z(roll)
+fn old_wheel(base: Frame, oz: float, roll: float) -> Frame {
+  frame_mul(frame_mul(base, frame_trans(0.0, 0.0, oz)),
+            frame_rot(editor_rot_z(roll)))
+}
+
+// Exact, all twelve numbers. No tolerance: the two sides are the same expression
+// over the same arithmetic, so anything but equality is a structural difference.
+fn frame_same(a: Frame, b: Frame) -> boolean {
+  if a.fm_x != b.fm_x || a.fm_y != b.fm_y || a.fm_z != b.fm_z { return false; }
+  if a.fm_r.r11 != b.fm_r.r11 || a.fm_r.r12 != b.fm_r.r12 { return false; }
+  if a.fm_r.r13 != b.fm_r.r13 || a.fm_r.r21 != b.fm_r.r21 { return false; }
+  if a.fm_r.r22 != b.fm_r.r22 || a.fm_r.r23 != b.fm_r.r23 { return false; }
+  if a.fm_r.r31 != b.fm_r.r31 || a.fm_r.r32 != b.fm_r.r32 { return false; }
+  a.fm_r.r33 == b.fm_r.r33
+}
+
+// ── the diff: flat ground, where the two agree by construction ──────────────
+
+fn test_flat_ground_is_bit_identical() {
+  c = asm_cart(HALF, RADIUS);
+  for k in 0..10 {
+    travel = 1.7 * (k as float);
+    v = wheel_value(travel, RADIUS, 0.0);
+    roll = wheel_angle(v);
+    yaw = 0.31 * (k as float);
+    base = old_base(3.0, RADIUS, 0.0 - 2.0, yaw, 0.0);
+    got = asm_frames(c, [0.0, v, v], base);
+    assert(frame_same(got[0] ?? frame_id(), base), "the body IS the root");
+    assert(frame_same(got[1] ?? frame_id(), old_wheel(base, 0.0 - HALF, roll)),
+           "the left wheel, to the bit");
+    assert(frame_same(got[2] ?? frame_id(), old_wheel(base, HALF, roll)),
+           "the right wheel, to the bit");
+  }
+}
+
+// …and on a slope, where the bank is live. Still exact, because the bank enters
+// only through the root — which is what makes `A6` a separate step rather than a
+// change to this one.
+fn test_a_banked_cart_is_bit_identical_too() {
+  c = asm_cart(HALF, RADIUS);
+  for k in 1..9 {
+    v = wheel_value(2.3 * (k as float), RADIUS, 0.0);
+    base = old_base(3.0, 0.6, 0.0 - 2.0, 0.4, 0.083 * (k as float));
+    got = asm_frames(c, [0.0, v, v], base);
+    assert(frame_same(got[1] ?? frame_id(), old_wheel(base, 0.0 - HALF, wheel_angle(v))),
+           "a banked cart's wheels agree too");
+  }
+}
+
+// The wheel's RIM, which is where the radius shows up — and the radius now lives
+// in the rig, so this is the first clause that reads it out of the data.
+fn test_the_rim_comes_from_the_rig() {
+  c = asm_cart(HALF, RADIUS);
+  base = old_base(3.0, RADIUS, 0.0, 0.4, 0.0);
+  v = 0.37;
+  fs = asm_frames(c, [0.0, v, v], base);
+  ri = c.am_bodyrig[1] ?? 0 - 1;
+  assert(ri >= 0, "the wheel points at a rig");
+  seg = rig_seg_at(c.am_rig[ri] ?? rig_new(), [v], 0, fs[1] ?? frame_id());
+  assert(fabs(v3_dist(seg.sg_a, seg.sg_b) - RADIUS) < BOUND,
+         "the spoke is RADIUS long, read from rg_len and nowhere else");
+  // and both wheels share ONE rig, so a description used twice is stored once
+  assert((c.am_bodyrig[2] ?? 0 - 1) == ri, "both wheels point at the same rig");
+  assert(len(c.am_rig) == 1, "which is stored once");
+}
+
+// ── the data must be READ, or the clauses above prove nothing ───────────────
+//
+// Each of these changes one number in the ASSEMBLY and requires the frames to
+// follow. Without them, a composition carrying its own literals would pass every
+// diff above — which is exactly the failure mode the re-assertion-site table
+// exists to remove.
+
+fn test_the_offset_is_read_from_the_mount() {
+  base = old_base(3.0, RADIUS, 0.0, 0.4, 0.0);
+  narrow = asm_frames(asm_cart(0.30, RADIUS), [0.0, 0.2, 0.2], base);
+  wide = asm_frames(asm_cart(0.80, RADIUS), [0.0, 0.2, 0.2], base);
+  dn = v3_dist(frame_origin(narrow[1] ?? frame_id()),
+               frame_origin(narrow[2] ?? frame_id()));
+  dw = v3_dist(frame_origin(wide[1] ?? frame_id()),
+               frame_origin(wide[2] ?? frame_id()));
+  assert(fabs(dn - 0.60) < BOUND, "a narrow cart's axle is 0.60");
+  assert(fabs(dw - 1.60) < BOUND, "a wide one's is 1.60");
+  assert(dw - dn > 0.9, "so the offset is read, not carried");
+}
+
+fn test_the_axis_is_read_from_the_mount() {
+  base = old_base(3.0, RADIUS, 0.0, 0.0, 0.0);
+  a = asm_new("spin_z");
+  sp = asm_rig(a, rig_bone(rig_new(), 0 - 1, 0.0, 0.0, RADIUS, FREE_LO, FREE_HI));
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0), sp);
+  b = asm_new("spin_x");
+  sq = asm_rig(b, rig_bone(rig_new(), 0 - 1, 0.0, 0.0, RADIUS, FREE_LO, FREE_HI));
+  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
+  b = asm_add(b, 0, link_mount(0.0, 0.0, HALF, 1.0, 0.0, 0.0),
+              body_of(SupportKind.Carried, 1, 0), sq);
+  fa = asm_frames(a, [0.0, 0.25], base);
+  fb = asm_frames(b, [0.0, 0.25], base);
+  u = vec3(0.3, 0.7, 0.0);
+  assert(v3_dist(frame_apply(fa[1] ?? frame_id(), u),
+                 frame_apply(fb[1] ?? frame_id(), u)) > 0.3,
+         "a wheel spinning about x is not a wheel spinning about z");
+}
+
+fn test_the_radius_is_read_from_the_rig() {
+  base = old_base(3.0, RADIUS, 0.0, 0.0, 0.0);
+  small = asm_cart(HALF, 0.25);
+  big = asm_cart(HALF, 0.90);
+  fs = asm_frames(small, [0.0, 0.2, 0.2], base);
+  fb = asm_frames(big, [0.0, 0.2, 0.2], base);
+  rs = rig_seg_at(small.am_rig[0] ?? rig_new(), [0.2], 0, fs[1] ?? frame_id());
+  rb = rig_seg_at(big.am_rig[0] ?? rig_new(), [0.2], 0, fb[1] ?? frame_id());
+  assert(fabs(v3_dist(rs.sg_a, rs.sg_b) - 0.25) < BOUND, "a small wheel");
+  assert(fabs(v3_dist(rb.sg_a, rb.sg_b) - 0.90) < BOUND, "and a big one");
+}
+
+// ── the whole cart, through the document ────────────────────────────────────
+//
+// `A-EXACT` with a rig in it: the cart written, read back, and posed — and the
+// frames from the read-back assembly are the same to the bit. A format that
+// round-trips the text but not the POSE would be a round trip about nothing.
+fn test_the_cart_survives_the_document_and_still_poses() {
+  c = asm_cart(HALF, RADIUS);
+  t = asm_write(c);
+  back = asm_read(t);
+  assert(asm_admissible(back), "the written cart reads back");
+  assert(asm_eq(c, back), "and is equal, rig included");
+  assert(asm_write(back) == t, "byte for byte");
+  base = old_base(3.0, RADIUS, 0.0 - 2.0, 0.4, 0.05);
+  v = 0.37;
+  fa = asm_frames(c, [0.0, v, v], base);
+  fb = asm_frames(back, [0.0, v, v], base);
+  for i in 0..3 {
+    assert(frame_same(fa[i] ?? frame_id(), fb[i] ?? frame_id()),
+           "and poses identically after the round trip");
+  }
+  assert(asm_ledger_report(back) == asm_ledger_report(c), "with the same ledger");
+}
+
+// ── the handedness finding, pinned so it cannot drift ───────────────────────
+//
+// If mesh3d's convention is ever changed to match the editor's Z, this clause
+// fails and the transcription above has to be revisited — which is the point of
+// writing it down as a test rather than as a comment.
+fn test_mesh3d_turns_the_other_way() {
+  // Rodrigues about +x by θ has R[1][2] = −sin θ; mesh3d's rotate_x has +sin θ.
+  th = 0.3;
+  rod = rot_axis(1.0, 0.0, 0.0, th / TURN ?? 0.0);
+  msh = mesh_rot_x(th);
+  assert(fabs(rod.r23 + sin(th)) < BOUND, "Rodrigues about +x: R[1][2] = -sin");
+  assert(fabs(msh.r23 - sin(th)) < BOUND, "mesh3d's rotate_x: R[1][2] = +sin");
+  assert(fabs(rod.r23 - msh.r23) > 0.5, "so they are not the same rotation");
+  // …while Z agrees, which is why the wheel path needed no conversion
+  assert(fabs(editor_rot_z(th).r21 - sin(th)) < BOUND,
+         "the editor's Z is the standard sense");
+  assert(fabs(rot_axis(0.0, 0.0, 1.0, th / TURN ?? 0.0).r21 - sin(th)) < BOUND,
+         "and so is Rodrigues about +z — the spin needs no flip");
+}

@@ -353,7 +353,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A2** ✅ | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** ✅ | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** ✅ | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
-| **A5** | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
+| **A5** ✅ | **the cart as data**, no behaviour change | that the structure expresses what exists | *the previous implementation*: transforms equal to the bit on flat ground | M |
 | **A6** | `GROUND` support + the fixed point | `A-GROUND`, `A-FIT` | pin the frame to a constant → gap clause red (**already demonstrated**, 0.204 wu) | M |
 | **A7** | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
@@ -953,6 +953,58 @@ rather than re-defaulting, which is worth knowing.
 word*). That is `A5`'s, where the cart becomes data and a rig has to survive the round trip.
 
 **562 tests green**, all 89 functions in the package entered.
+
+---
+
+### `A5` — BUILT. The cart is data, and three things came out of it
+
+`tests/cart_as_data.loft` (8 clauses) plus the rig section in the format.
+**217 tests green**, all 93 functions in the package entered.
+
+**The diff.** `cart_send`'s composition is transcribed here and the data-driven path
+reproduces it **to the bit** — flat ground and banked, all twelve numbers of every frame,
+with no tolerance. ⚠ **Bit-identity against mesh3d's `Mat4` arithmetic is not claimed** and
+could not honestly be: a generic 4×4 multiply sums in a different order from
+`a.t + (p₁ + p₂ + p₃)` and float addition is not associative. `P1`'s wire measurement
+(`5.6 × 10⁻¹⁷`) is the cross-*implementation* evidence; this is the cross-*structure* half —
+that the **data** produces that composition. Four clauses vary one number in the assembly
+(`half`, the axis, the radius) and require the frames to follow, so a composition carrying
+its own literals could not pass.
+
+**The radius arrived, and as a rig.** `A1` left it out because it had no reader; `A4` gave
+it one. A wheel is a **spoke of length `radius`** — that is how `hex_body` models one and why
+`P1` found the spin in the segment — so the radius is `rg_len[0]`, has exactly one home, and
+`A9`'s shape will be *derived* from it rather than told. Both wheels share one rig: the
+library is indexed, so a description used twice is stored once.
+
+⚠ **mesh3d's `rotate_x`/`_y` turn the opposite way from the editor's own `rotate_z`.** From
+`graphics/src/math.loft`: `rotate_x` is `[[1,0,0],[0,c,s],[0,−s,c]]`, which is Rodrigues
+about **−x**; `rotate_y` likewise about **−y**. The editor wrote its own `rotate_z` — mesh3d
+ships none — in the *standard* sense. So one `Ry·Rx·Rz` chain turns two ways.
+**The wheel path is unaffected** (a spin is about `+z` in both), and the bank and yaw are
+`A6`'s — this is written down so `A6` does not rediscover it. A test pins it, and that test
+is the *only* thing guarding it: the bank enters through the root, so it cancels in the diff.
+
+⚠ **`hex_body`'s `rig_read` is lenient where its own comment claims to be strict** — a bone
+line missing its trailing `hi` parses, with the absent field read as 0, so a **repaired** rig
+comes back looking valid. Rather than change a library two consumers read, `A-EXACT` is
+enforced **at the seam**: each rig block must `rig_write` back to itself byte-for-byte.
+Whatever leniency the sub-parser has cannot smuggle a repaired rig through.
+
+**Two things the work turned up that are worth more than the step:**
+
+- **A mutation did not go red, and that found an unchecked clause.** Relaxing the reader's
+  *"the whole text is consumed"* to *"enough of it is there"* left all 216 tests green —
+  nothing tested a **trailing** line. Added, and it now catches that mutation.
+  *Green said the tests passed; it did not say they would notice.*
+- **The interpreter SIGSEGV'd**, filed as
+  [loft#677](https://github.com/loft-lang/loft/issues/677). Appending to a struct's vectors
+  through **two** by-value levels with the return **discarded** crashes the dispatcher — and
+  the reported line is a plain comparison *after* the loop, so the location misleads. Four
+  progressively closer minimal cases did **not** reproduce it, which is in the issue because
+  it narrows where to look. `wa:clean`, and the workaround is better code: **the parsers are
+  pure now**, returning parsed pieces that one place appends. It is the second time this
+  idiom has bitten Moros — #670 was the silent-write half of the same family.
 
 ---
 

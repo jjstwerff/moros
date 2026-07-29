@@ -6,13 +6,14 @@
 use moros_sim;
 
 const HALF = 0.55;
+const RADIUS = 0.4;
 
 fn wheel_mount(oz: float) -> Link {
   link_mount(0.0, 0.0, oz, 0.0, 0.0, 1.0)
 }
 
 fn test_cart_is_admissible() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   assert(asm_count(c) == 3, "three bodies");
   assert(asm_admissible(c), "the cart is admissible");
 }
@@ -141,7 +142,7 @@ fn test_name_must_be_one_word() {
 // ── A-EXACT: the round trip, byte for byte ──────────────────────────────────
 
 fn test_round_trip_is_byte_exact() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   t = asm_write(c);
   back = asm_read(t);
   assert(asm_admissible(back), "what came back is admissible");
@@ -165,28 +166,68 @@ fn test_round_trip_keeps_awkward_floats() {
 }
 
 fn test_truncated_text_is_refused() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   t = asm_write(c);
   lines = t.split('\n');
   n = len(lines);
-  // a whole line missing — the header's count no longer matches
+  // a whole line missing — the text no longer consumes exactly
   cut = lines[0] ?? "";
   for i in 1..(n - 1) { cut = cut + "\n" + (lines[i] ?? ""); }
-  assert(!asm_admissible(asm_read(cut)), "a missing body line is refused");
-  // the last FIELD missing from the last line, with everything else intact
-  last = lines[n - 1] ?? "";
-  wl = last.split(' ');
+  assert(!asm_admissible(asm_read(cut)), "a missing line is refused");
+  // the last FIELD missing from a BODY line, with everything else intact
+  bl = lines[3] ?? "";
+  wl = bl.split(' ');
   short = wl[0] ?? "";
   for j in 1..(len(wl) - 1) { short = short + " " + (wl[j] ?? ""); }
-  head = "";
-  for k in 0..(n - 1) { if k == 0 { head = lines[0] ?? ""; }
-                        else { head = head + "\n" + (lines[k] ?? ""); } }
-  assert(!asm_admissible(asm_read(head + "\n" + short)),
-         "a line missing its last field is refused");
+  reb = "";
+  for k in 0..n {
+    piece = lines[k] ?? "";
+    if k == 3 { piece = short; }
+    if k == 0 { reb = piece; } else { reb = reb + "\n" + piece; }
+  }
+  assert(!asm_admissible(asm_read(reb)),
+         "a body line missing its last field is refused");
+}
+
+// ⚠ `hex_body`'s `rig_read` is LENIENT where its own comment claims to be strict:
+// a bone line missing its trailing `hi` parses, with the absent field read as 0.
+// So this reader requires each rig block to WRITE BACK TO ITSELF, which enforces
+// `A-EXACT` at the seam instead of trusting a library two consumers share.
+fn test_a_lenient_rig_block_is_refused_at_the_seam() {
+  c = asm_cart(HALF, RADIUS);
+  t = asm_write(c);
+  lines = t.split('\n');
+  n = len(lines);
+  bone = lines[n - 1] ?? "";
+  wl = bone.split(' ');
+  short = wl[0] ?? "";
+  for j in 1..(len(wl) - 1) { short = short + " " + (wl[j] ?? ""); }
+  reb = "";
+  for k in 0..(n - 1) {
+    if k == 0 { reb = lines[0] ?? ""; } else { reb = reb + "\n" + (lines[k] ?? ""); }
+  }
+  reb = reb + "\n" + short;
+  // the sub-parser accepts it; the seam does not
+  assert(!asm_admissible(asm_read(reb)),
+         "a rig block that does not write back to itself is refused");
+}
+
+// ⚠ ADDED BECAUSE A MUTATION DID NOT GO RED. Relaxing the reader's `pos != nl` to
+// `pos > nl` — i.e. accepting a text with something left over — left all 216 tests
+// green. Nothing was checking that the whole text is CONSUMED, only that enough of
+// it was there. Green said the tests passed; it did not say they would notice.
+fn test_a_trailing_line_is_refused() {
+  c = asm_cart(HALF, RADIUS);
+  t = asm_write(c);
+  assert(asm_admissible(asm_read(t)), "the text itself is fine");
+  assert(!asm_admissible(asm_read(t + "\nbody 9 parent 0 link mount")),
+         "a trailing line is refused");
+  assert(!asm_admissible(asm_read(t + "\n")),
+         "and so is a trailing empty line — a writer emits neither");
 }
 
 fn test_unknown_kinds_are_refused() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   t = asm_write(c);
   assert(!asm_admissible(asm_read(t.replace("link mount", "link welded"))),
          "an unknown link kind is refused");
@@ -195,7 +236,7 @@ fn test_unknown_kinds_are_refused() {
 }
 
 fn test_reader_refuses_a_relabelled_text() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   t = asm_write(c);
   // renumber body 1 as body 2: a text no writer would emit
   assert(!asm_admissible(asm_read(t.replace("body 1 parent", "body 2 parent"))),
@@ -206,7 +247,7 @@ fn test_reader_refuses_a_relabelled_text() {
 }
 
 fn test_reader_refuses_a_wrong_keyword() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   t = asm_write(c);
   assert(!asm_admissible(asm_read(t.replace(" axis ", " AXIS "))),
          "a misspelt keyword is refused");

@@ -9,6 +9,7 @@ use moros_sim;
 use hex_body as hb;
 
 const HALF = 0.55;
+const RADIUS = 0.4;
 const SEG = 0.577;
 // 2^-52 ≈ 2.22e-16, written as a division so it cannot be a typo. The bound is a
 // generous multiple: the claim is that the drift is at float noise, not that it
@@ -44,7 +45,7 @@ fn test_a_turn_is_hex_bodys_turn() {
 // where 0 did. That re-states `P1`'s finding from the other side: the pose is
 // periodic, and the winding lives in the state rather than in the frame.
 fn test_a_whole_turn_returns_the_frame() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   z = asm_frames(c, [0.0, 0.0, 0.0], frame_id());
   o = asm_frames(c, [0.0, 1.0, 0.0 - 3.0], frame_id());
   worst = 0.0;
@@ -118,7 +119,7 @@ fn test_a_rigid_chain_never_stretches() {
 }
 
 fn test_a_rigid_cart_never_stretches() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   worst = 0.0;
   for k in 0..12 {
     fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
@@ -133,7 +134,7 @@ fn test_a_rigid_cart_never_stretches() {
 // ── the deliberate defect: the knob must make the above fail ─────────────────
 
 fn test_the_scale_knob_makes_it_stretch() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   vals = probe_values(3, 2);
   u = probe_point(1);
   v = probe_point(6);
@@ -172,7 +173,7 @@ fn test_the_knob_compounds_with_depth() {
 // producer derives — the first version of the editor's own axle clause asked for
 // `2·half·√(cos²+sin²)`, which is `1.1` for every input and could not fail.
 fn test_the_axle_cannot_stretch() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   for k in 0..12 {
     fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
     d = v3_dist(frame_origin(fs[1] ?? frame_id()), frame_origin(fs[2] ?? frame_id()));
@@ -196,7 +197,7 @@ fn test_the_axle_cannot_stretch() {
 // parallel to the axis — which is true of every hub, kingpin and wheel, i.e. of
 // every case this design started from.
 fn test_a_parallel_offset_hides_the_composition_order() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   body = frame_trans(3.0, 0.4, 0.0);
   l1 = c.am_link[1] ?? link_none();
   worst = 0.0;

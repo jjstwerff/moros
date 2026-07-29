@@ -188,7 +188,7 @@ fn test_whole_turns_are_invisible_in_the_segment() {
 // wheel body's own origin, and the spoke reaches RADIUS from it at every joint
 // value and from any root.
 fn test_the_cart_wheel_as_a_rig_at_a_body() {
-  c = asm_cart(HALF);
+  c = asm_cart(HALF, RADIUS);
   s = spoke();
   for k in 0..10 {
     vals = probe_values(3, k);
