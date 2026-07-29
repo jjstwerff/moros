@@ -7,3 +7,5 @@ use tools;
 use player;
 use collide;
 use editor;
+
+use assembly;

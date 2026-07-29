@@ -349,7 +349,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | | step | proves | control | size |
 |---|---|---|---|---|
 | **A0** ✅ | probe `P1`, `P3`, `P5`, `P6`, `P7` (`P4` is answered above) — **all run; none falsified** | the design before the code | — | M |
-| **A1** | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
+| **A1** ✅ | `Body`, `Link`, `Support` + admissibility + `write`/`read` | `A-TOPO`, `A-EXACT` | a forward parent; a relabelled tree; a truncated text — each **refused** | S |
 | **A2** | **the DOF ledger** — `dof_account(assembly) -> (links, support, driven, solved)` | `A-DOF` | an assembly with pitch unaccounted (**today's cart**) must report `5`, not pass | S |
 | **A3** | `MOUNT` composition — `body_frame(tree, i)` | `A-RIGID` | a `scale` term defaulting to 1; set it to 1.01 and the isometry test goes red | M |
 | **A4** | embed a `hex_body` rig at a body | `A-PLANE` | the same scale knob applied to `ι` | S |
@@ -726,6 +726,60 @@ live defect rather than a void clause. Two smaller ones from the same probe: the
 mount-offset control compared an elementwise matrix max against a length (0.5481 against
 0.55 — the offset lies along the node frame's z, so its largest single component is
 `w·|z|`), and the spin guard took a `min` where every measurement it guards is a `max`.
+
+---
+
+### `A1` — BUILT. `lib/moros_sim/src/assembly.loft`, 20 tests, seen red twice
+
+`Assembly` is a tree over **bodies** with the link as the edge: body `i` carries the link
+from `parent(i)` to itself, so there is exactly one link per non-root body and `A-TOPO`'s
+`p(0) = −1, 0 ≤ p(i) < i` is the whole of the topology. It mirrors `hex_body::Rig`
+deliberately — canonical labelling by index order, a strict parser, a byte-exact round
+trip, and the same refusal contract: **a malformed text reads back as an EMPTY assembly**,
+which `asm_admissible` then rejects. A lenient reader would void the byte diff.
+
+**What the type system now catches, which prose could not.** Each of these is a clause with
+a test that must fail:
+
+| refused | because |
+|---|---|
+| a forward parent, and a relabelling that breaks the order | `A-TOPO` — index order *is* the canonical labelling |
+| a header count that disagrees with the lines | a truncated text fails before a field is read |
+| a body index out of line order, a misspelt keyword, an unknown kind | the parser accepts exactly what the writer emits |
+| a `Mount` with a zero axis | `P3` showed the axis decides whether a chain spans SO(3); a zero axis names none |
+| a `Tether` of length 0 | `A-TAUT` — the length is the *bound*, so there must be one |
+| a link on the root, or `Carried` on the root | *the link IS the support*, and the root has none |
+| a name with a space in it | it would produce a text this reader could not take back |
+
+⚠ **`Carried` on the root is the type error the design predicted.** *"Run it on the balloon
+case and `GROUND` support does not apply, which is a **type error** rather than a debugging
+session six steps later."* It is one now, and it cost one line.
+
+**Two fixtures rather than one, and the second is the one that matters.** `asm_cart` is the
+assembly the editor draws. `asm_towed` is a horse with a cart behind it — and the cart's
+support is **`Ground`, not `Carried`**, because it has its own wheels, so the hitch couples
+two frames instead of parenting one to the other. That is the case the design's first draft
+got wrong, and it is now a fixture rather than a paragraph. It is also the first two-level
+tree, so it is the first case where topological order has anything to order.
+
+**Seen red, twice, on the clauses that should catch it:**
+
+- stop refusing a forward parent → `test_forward_parent_is_refused` and
+  `test_relabelled_tree_is_refused` both fail
+- make the reader ignore the header count → `test_truncated_text_is_refused` and
+  `test_reader_refuses_a_relabelled_text` both fail
+
+**523 tests green** across the five packages, all 52 functions in the package entered.
+
+Two decisions worth recording:
+
+- **`FREE_LO`/`FREE_HI` are ±1000 turns, and `link_mount`'s limits default to them.** A
+  mount with no authored range must be *free*, not a joint pinned at zero — and a finite
+  bound is still something a `K-FIT` doorstep can report a residual against, which an
+  unbounded sentinel could not.
+- ⚠ **No wheel radius in `asm_cart`.** It is real data about a wheel, but it is a *shape*,
+  and shapes arrive at `A9`. Carrying it now would be a home for a number with no reader —
+  the exact defect *What this costs, in re-assertion sites* exists to remove.
 
 ---
 

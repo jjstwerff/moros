@@ -1,0 +1,365 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// An ASSEMBLY: bodies, the links between them, and what holds each one up.
+// Step `A1` of plans/14-props-dressing/CONNECTOR.md, which proves `A-TOPO` and
+// `A-EXACT` and nothing else — no frames, no geometry, no solving.
+//
+// ── why this shape ──────────────────────────────────────────────────────────
+//
+// `hex_body::Rig` already solved the same problem one level down: a tree of
+// bones with a canonical labelling, a strict parser and a byte-exact round
+// trip. This mirrors it deliberately, down to the refusal contract — a
+// malformed text reads back as an EMPTY assembly, which `asm_admissible` then
+// rejects. A lenient reader would void the byte diff, so there is none.
+//
+// **The tree is over BODIES and the link is the edge.** Body `i` carries the
+// link from `parent(i)` to itself, so there is exactly one link per non-root
+// body and `A-TOPO`'s `p(0) = −1, 0 ≤ p(i) < i` is the whole of the topology.
+// The root has no link, which is why `NoLink` exists and why `Carried` — *the
+// link IS the support* — is inadmissible on it.
+//
+// ── what is DECLARED here and used later ────────────────────────────────────
+//
+// A body's `DRIVEN` and `SOLVED` state counts live on the body, because `A-DOF`
+// says a state's kind is *declared, never inferred from the link*. `A2`'s
+// ledger is then a pure function of an assembly and needs nothing new.
+//
+// ⚠ **Joint limits are in TURNS**, matching `hex_body`'s `rg_lo`/`rg_hi` — so a
+// link's limits and a rig's are the same unit and `wheel_value`'s output drops
+// straight in. Two units for one quantity is how a conversion goes missing.
+
+// The families differ in which degrees of freedom they remove; flattening them
+// into "a rigid mount with one revolute axis" is what the design's first draft
+// got wrong, so they are named apart.
+pub enum LinkKind { NoLink, Mount, Hitch, Shaft, Spring, Tether }
+
+// Attachment is not support. A wheel is attached to the chassis and supported by
+// the ground; a towed cart is attached to the horse and supported by its own
+// wheels; a crate is supported by the attachment itself.
+pub enum SupportKind { Unsupported, Ground, Carried, Buoyant }
+
+pub struct Link {
+  lk_kind: LinkKind,
+  lk_ox: float, lk_oy: float, lk_oz: float,   // offset in the parent's frame
+  lk_ax: float, lk_ay: float, lk_az: float,   // the revolute axis, or a leg
+  lk_lo: float, lk_hi: float,                 // joint limits, in TURNS
+  lk_len: float                               // a tether's or spring's length
+}
+
+pub struct Body {
+  bd_support: SupportKind,
+  bd_driven: integer,                         // advanced from outside
+  bd_solved: integer                          // determined by equilibrium
+}
+
+// A revolute joint with no authored limits. `hex_body` measures joint limits in
+// TURNS, so this is "a thousand revolutions either way" — free in practice, and
+// still a number a doorstep can report a residual against, which an unbounded
+// sentinel could not.
+pub const FREE_HI = 1000.0;
+pub const FREE_LO = 0.0 - 1000.0;
+
+pub struct Assembly {
+  am_name: text,
+  am_parent: vector<integer>,                 // parent body; −1 for the root
+  am_link: vector<Link>,                      // the link from parent to body i
+  am_body: vector<Body>
+}
+
+pub fn asm_new(name: text) -> Assembly {
+  Assembly { am_name: name, am_parent: [], am_link: [], am_body: [] }
+}
+
+// The root's link. Named rather than left to a default, because "the body with
+// no link" is a real case the topology depends on.
+pub fn link_none() -> Link {
+  Link { lk_kind: LinkKind.NoLink,
+         lk_ox: 0.0, lk_oy: 0.0, lk_oz: 0.0,
+         lk_ax: 0.0, lk_ay: 0.0, lk_az: 0.0,
+         lk_lo: 0.0, lk_hi: 0.0, lk_len: 0.0 }
+}
+
+// A rigid mount with one revolute axis — a hub, a kingpin, a hinge. `P3`
+// measured that three of these with ZERO offset in series is a 3-DOF joint, and
+// that a non-zero offset makes it a linkage instead, so the offset is not a
+// convenience: it is what distinguishes the two.
+pub fn link_mount(ox: float, oy: float, oz: float,
+                  ax: float, ay: float, az: float,
+                  lo: float = FREE_LO, hi: float = FREE_HI) -> Link {
+  Link { lk_kind: LinkKind.Mount,
+         lk_ox: ox, lk_oy: oy, lk_oz: oz,
+         lk_ax: ax, lk_ay: ay, lk_az: az,
+         lk_lo: lo, lk_hi: hi, lk_len: 0.0 }
+}
+
+pub fn link_hitch(ox: float, oy: float, oz: float) -> Link {
+  Link { lk_kind: LinkKind.Hitch,
+         lk_ox: ox, lk_oy: oy, lk_oz: oz,
+         lk_ax: 0.0, lk_ay: 0.0, lk_az: 0.0,
+         lk_lo: 0.0, lk_hi: 0.0, lk_len: 0.0 }
+}
+
+// A rope. ⚠ `A-TAUT` makes this the one link that is an INEQUALITY, so `lk_len`
+// is a bound and not a distance — taut and slack have different DOF counts.
+pub fn link_tether(ox: float, oy: float, oz: float, length: float) -> Link {
+  Link { lk_kind: LinkKind.Tether,
+         lk_ox: ox, lk_oy: oy, lk_oz: oz,
+         lk_ax: 0.0, lk_ay: 0.0, lk_az: 0.0,
+         lk_lo: 0.0, lk_hi: 0.0, lk_len: length }
+}
+
+pub fn body_of(sup: SupportKind, driven: integer, solved: integer) -> Body {
+  Body { bd_support: sup, bd_driven: driven, bd_solved: solved }
+}
+
+// Append one body with the link that reaches it. Index order IS the canonical
+// labelling, so appending in topological order is the only way to build an
+// admissible assembly — the same rule `rig_bone` follows.
+pub fn asm_add(a: Assembly, parent: integer, l: Link, b: Body) -> Assembly {
+  a.am_parent += [parent];
+  a.am_link += [l];
+  a.am_body += [b];
+  a
+}
+
+pub fn asm_count(a: Assembly) -> integer { len(a.am_parent) }
+
+fn has_axis(l: Link) -> boolean {
+  l.lk_ax != 0.0 || l.lk_ay != 0.0 || l.lk_az != 0.0
+}
+
+// ── `A-TOPO`, plus the clauses that make a kind mean something ───────────────
+
+// One body's clauses, lifted out so the topology loop below stays readable and
+// each family's requirement sits on its own line.
+fn body_admissible(i: integer, p: integer, l: Link, b: Body) -> boolean {
+  if i == 0 {
+    if p != 0 - 1 { return false; }
+    // the root is reached by nothing, so it must carry no link…
+    if !(l.lk_kind is NoLink) { return false; }
+    // …and `Carried` means "the link IS the support", which names nothing here
+    if b.bd_support is Carried { return false; }
+  } else {
+    if p < 0 || p >= i { return false; }
+    if l.lk_kind is NoLink { return false; }
+  }
+  if l.lk_lo > l.lk_hi { return false; }
+  if b.bd_driven < 0 || b.bd_solved < 0 { return false; }
+  // A revolute axis of length zero names no axis, and `P3` showed the axis is
+  // what decides whether a chain of mounts spans SO(3) at all.
+  if l.lk_kind is Mount { return has_axis(l); }
+  if l.lk_kind is Spring { return has_axis(l) && l.lk_len > 0.0; }
+  if l.lk_kind is Tether { return l.lk_len > 0.0; }
+  true
+}
+
+// Topological order is the canonical labelling: the root is body 0 and every
+// body's parent is an EARLIER body. That refuses a forward parent and every
+// relabelling that breaks the order, which is what makes the byte round trip
+// below a statement about ONE text per assembly.
+pub fn asm_admissible(a: Assembly) -> boolean {
+  n = len(a.am_parent);
+  if n == 0 { return false; }
+  // The name goes in the header as one word, so a space in it would produce a
+  // text this reader could not take back — refused rather than quoted.
+  if a.am_name == "" { return false; }
+  if len(a.am_name.split(' ')) != 1 { return false; }
+  for i in 0..n {
+    if !body_admissible(i, a.am_parent[i] ?? 0,
+                        a.am_link[i] ?? link_none(),
+                        a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0)) {
+      return false;
+    }
+  }
+  true
+}
+
+fn lk_name(k: LinkKind) -> text {
+  match k {
+    NoLink => "none", Mount => "mount", Hitch => "hitch",
+    Shaft => "shaft", Spring => "spring", Tether => "tether",
+  }
+}
+
+// −1 for a word that is not a link kind, so the parser can refuse it rather
+// than fall back to a variant that happens to be first in the declaration.
+fn lk_code(t: text) -> integer {
+  if t == "none" { return 0; }
+  if t == "mount" { return 1; }
+  if t == "hitch" { return 2; }
+  if t == "shaft" { return 3; }
+  if t == "spring" { return 4; }
+  if t == "tether" { return 5; }
+  0 - 1
+}
+
+fn lk_from(c: integer) -> LinkKind {
+  if c == 1 { return LinkKind.Mount; }
+  if c == 2 { return LinkKind.Hitch; }
+  if c == 3 { return LinkKind.Shaft; }
+  if c == 4 { return LinkKind.Spring; }
+  if c == 5 { return LinkKind.Tether; }
+  LinkKind.NoLink
+}
+
+fn sp_name(k: SupportKind) -> text {
+  match k {
+    Unsupported => "none", Ground => "ground",
+    Carried => "carried", Buoyant => "buoyant",
+  }
+}
+
+fn sp_code(t: text) -> integer {
+  if t == "none" { return 0; }
+  if t == "ground" { return 1; }
+  if t == "carried" { return 2; }
+  if t == "buoyant" { return 3; }
+  0 - 1
+}
+
+fn sp_from(c: integer) -> SupportKind {
+  if c == 1 { return SupportKind.Ground; }
+  if c == 2 { return SupportKind.Carried; }
+  if c == 3 { return SupportKind.Buoyant; }
+  SupportKind.Unsupported
+}
+
+// ── `A-EXACT` ───────────────────────────────────────────────────────────────
+//
+// An assembly is a DESCRIPTION, so `write(read(A)) = A` byte-for-byte with no
+// tolerance: loft's float↔text round trip is exact, so nothing here rounds.
+pub fn asm_write(a: Assembly) -> text {
+  n = len(a.am_parent);
+  s = "assembly {a.am_name} bodies {n}";
+  for i in 0..n {
+    l = a.am_link[i] ?? link_none();
+    b = a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
+    s = s + "\nbody {i} parent {a.am_parent[i] ?? 0} link {lk_name(l.lk_kind)}"
+        + " at {l.lk_ox} {l.lk_oy} {l.lk_oz}"
+        + " axis {l.lk_ax} {l.lk_ay} {l.lk_az}"
+        + " lim {l.lk_lo} {l.lk_hi} len {l.lk_len}"
+        + " support {sp_name(b.bd_support)}"
+        + " driven {b.bd_driven} solved {b.bd_solved}";
+  }
+  s
+}
+
+fn word(line: text, i: integer) -> text {
+  parts = line.split(' ');
+  parts[i] ?? ""
+}
+fn word_int(line: text, i: integer) -> integer { word(line, i) as integer ?? 0 }
+fn word_float(line: text, i: integer) -> float { word(line, i) as float ?? 0.0 }
+
+// STRICT — accepts exactly what `asm_write` emits and refuses everything else by
+// returning an empty assembly, which `asm_admissible` rejects. Every keyword is
+// checked in place, the body index must equal its line, and the header's count
+// must equal the number of lines: a truncated text fails on that count before
+// any field is read.
+pub fn asm_read(t: text) -> Assembly {
+  lines = t.split('\n');
+  nl = len(lines);
+  if nl < 1 { return asm_new(""); }
+  head = lines[0] ?? "";
+  if word(head, 0) != "assembly" { return asm_new(""); }
+  if word(head, 2) != "bodies" { return asm_new(""); }
+  nb = word_int(head, 3);
+  if nl != nb + 1 { return asm_new(""); }
+  out = asm_new(word(head, 1));
+  for ri in 1..nl {
+    ln = lines[ri] ?? "";
+    if word(ln, 0) != "body" { return asm_new(""); }
+    if word_int(ln, 1) != ri - 1 { return asm_new(""); }
+    if word(ln, 2) != "parent" { return asm_new(""); }
+    if word(ln, 4) != "link" { return asm_new(""); }
+    if word(ln, 6) != "at" { return asm_new(""); }
+    if word(ln, 10) != "axis" { return asm_new(""); }
+    if word(ln, 14) != "lim" { return asm_new(""); }
+    if word(ln, 17) != "len" { return asm_new(""); }
+    if word(ln, 19) != "support" { return asm_new(""); }
+    if word(ln, 21) != "driven" { return asm_new(""); }
+    if word(ln, 23) != "solved" { return asm_new(""); }
+    lc = lk_code(word(ln, 5));
+    sc = sp_code(word(ln, 20));
+    if lc < 0 || sc < 0 { return asm_new(""); }
+    // A line missing its last field would otherwise read as 0; the keyword at 23
+    // is present only if 24 exists, so check the field itself is a number.
+    if word(ln, 24) == "" { return asm_new(""); }
+    out = asm_add(out, word_int(ln, 3),
+      Link { lk_kind: lk_from(lc),
+             lk_ox: word_float(ln, 7), lk_oy: word_float(ln, 8),
+             lk_oz: word_float(ln, 9),
+             lk_ax: word_float(ln, 11), lk_ay: word_float(ln, 12),
+             lk_az: word_float(ln, 13),
+             lk_lo: word_float(ln, 15), lk_hi: word_float(ln, 16),
+             lk_len: word_float(ln, 18) },
+      Body { bd_support: sp_from(sc),
+             bd_driven: word_int(ln, 22), bd_solved: word_int(ln, 24) });
+  }
+  out
+}
+
+// Byte-exact equality: floats with `==`, no tolerance.
+pub fn asm_eq(a: Assembly, b: Assembly) -> boolean {
+  n = len(a.am_parent);
+  if len(b.am_parent) != n { return false; }
+  if a.am_name != b.am_name { return false; }
+  for i in 0..n {
+    if (a.am_parent[i] ?? 0) != (b.am_parent[i] ?? 0) { return false; }
+    la = a.am_link[i] ?? link_none();
+    lb = b.am_link[i] ?? link_none();
+    if lk_name(la.lk_kind) != lk_name(lb.lk_kind) { return false; }
+    if la.lk_ox != lb.lk_ox || la.lk_oy != lb.lk_oy || la.lk_oz != lb.lk_oz { return false; }
+    if la.lk_ax != lb.lk_ax || la.lk_ay != lb.lk_ay || la.lk_az != lb.lk_az { return false; }
+    if la.lk_lo != lb.lk_lo || la.lk_hi != lb.lk_hi { return false; }
+    if la.lk_len != lb.lk_len { return false; }
+    ba = a.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
+    bb = b.am_body[i] ?? body_of(SupportKind.Unsupported, 0, 0);
+    if sp_name(ba.bd_support) != sp_name(bb.bd_support) { return false; }
+    if ba.bd_driven != bb.bd_driven || ba.bd_solved != bb.bd_solved { return false; }
+  }
+  true
+}
+
+// ── the cart, as data ───────────────────────────────────────────────────────
+//
+// The assembly the editor already draws: a chassis on the ground, two wheels
+// mounted at ±`half` on the axle, each spinning about it. `A5` is where the
+// editor's transforms are measured against this; here it is the fixture that
+// keeps every clause above about a real assembly rather than a made-up one.
+//
+// The ledger it declares, which `A2` will check: the chassis carries `x, z,
+// yaw` DRIVEN and is supported by two ground contacts; each wheel is `Carried`
+// by its mount with its spin DRIVEN from travel.
+// ⚠ No wheel RADIUS here. It is real data about a wheel, but it is a `shape`,
+// and shapes arrive at `A9` — carrying an unread parameter now would be a home
+// for a number with no reader, which is the defect this design exists to remove.
+pub fn asm_cart(half: float) -> Assembly {
+  a = asm_new("cart");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  a
+}
+
+// ── the towed cart, which is the case the design's first draft got wrong ─────
+//
+// A horse, and a cart on a `HITCH` behind it. ⚠ The cart's support is `Ground`,
+// NOT `Carried`: it has its own wheels, so the hitch couples two frames rather
+// than parenting one to the other. That distinction is why `SupportKind` is a
+// separate axis from `LinkKind` at all, and it is the fixture that keeps
+// `link_hitch` from being a name nothing exercises.
+pub fn asm_towed(half: float, drawbar: float) -> Assembly {
+  a = asm_new("towed");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_hitch(0.0 - drawbar, 0.0, 0.0),
+              body_of(SupportKind.Ground, 1, 0));
+  a = asm_add(a, 1, link_mount(0.0, 0.0, 0.0 - half, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  a = asm_add(a, 1, link_mount(0.0, 0.0, half, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  a
+}

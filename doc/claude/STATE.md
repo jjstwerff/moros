@@ -88,8 +88,24 @@ written and not built.** In priority order:
    the identity. *"On flat ground the rest passes trivially"* is already in the design's own
    checklist; this is its second instance, and this time it hid a live defect.
 
-   **Next is `A1`** — `Body`/`Link`/`Support` + admissibility + `write`/`read`, then `A2`
-   the DOF ledger, which the design says to build before any geometry.
+2. ✅ **`A1` is BUILT** — `lib/moros_sim/src/assembly.loft`, 20 tests, **523 green** across
+   the five packages, all 52 functions in the package entered. An `Assembly` is a tree over
+   **bodies** with the link as the edge, mirroring `hex_body::Rig`: canonical labelling by
+   index order, a strict parser, a byte-exact round trip, and the same refusal contract —
+   **a malformed text reads back EMPTY**, which `asm_admissible` rejects.
+   **Seen red twice**: stop refusing a forward parent → two clauses fail; make the reader
+   ignore the header count → two more fail.
+   - ⚠ **`Carried` on the root is now the type error the design predicted** — *"GROUND
+     support does not apply, which is a type error rather than a debugging session six
+     steps later"*. One line.
+   - **`asm_towed` is the fixture that matters**: a horse with a cart behind it whose
+     support is **`Ground`, not `Carried`**, because it has its own wheels. That is the case
+     the design's first draft got wrong, and it is the first two-level tree.
+   - **No wheel radius in `asm_cart`** — it is a *shape*, and shapes arrive at `A9`.
+     Carrying it now would be a home for a number with no reader.
+
+   **Next is `A2` — the DOF ledger**, which the design says to build before any geometry:
+   run it on today's unhitched cart and it must report **5**, not pass.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

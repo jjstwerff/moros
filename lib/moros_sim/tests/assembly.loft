@@ -1,0 +1,215 @@
+// A1 — an assembly's TOPOLOGY and its byte round trip.
+//
+// Every clause here is paired with a control: a valid assembly that must be
+// accepted, and a single-field mutation of it that must be REFUSED. A parser
+// nobody has seen refuse is not a strict parser.
+use moros_sim;
+
+const HALF = 0.55;
+
+fn wheel_mount(oz: float) -> Link {
+  link_mount(0.0, 0.0, oz, 0.0, 0.0, 1.0)
+}
+
+fn test_cart_is_admissible() {
+  c = asm_cart(HALF);
+  assert(asm_count(c) == 3, "three bodies");
+  assert(asm_admissible(c), "the cart is admissible");
+}
+
+// A horse with a cart behind it: two bodies with GROUND support of their own,
+// coupled by a hitch. The wheels hang off the CART rather than the horse — a
+// two-level tree, which is the first case where topological order has anything
+// to order.
+fn test_towed_cart_is_admissible() {
+  t = asm_towed(HALF, 1.6);
+  assert(asm_count(t) == 4, "four bodies");
+  assert(asm_admissible(t), "the towed cart is admissible");
+  assert((t.am_parent[2] ?? 0) == 1, "the wheels hang off the CART, not the horse");
+  b1 = t.am_body[1] ?? body_of(SupportKind.Unsupported, 0, 0);
+  assert(b1.bd_support is Ground, "a towed cart keeps its OWN support");
+  assert(asm_write(asm_read(asm_write(t))) == asm_write(t), "and it round-trips");
+}
+
+// ── A-TOPO: the tree, and every way to break it ─────────────────────────────
+
+fn test_empty_is_refused() {
+  assert(!asm_admissible(asm_new("x")), "an assembly with no bodies is not one");
+}
+
+fn test_root_must_have_no_parent() {
+  a = asm_add(asm_new("bad"), 0, link_none(), body_of(SupportKind.Ground, 0, 0));
+  assert(!asm_admissible(a), "body 0 with a parent is refused");
+}
+
+fn test_root_must_have_no_link() {
+  a = asm_add(asm_new("bad"), 0 - 1, wheel_mount(0.0),
+              body_of(SupportKind.Ground, 0, 0));
+  assert(!asm_admissible(a), "the root carries no link");
+}
+
+fn test_forward_parent_is_refused() {
+  a = asm_new("fwd");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 1, wheel_mount(0.1), body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(a), "a body cannot be its own parent");
+  b = asm_new("fwd2");
+  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  b = asm_add(b, 2, wheel_mount(0.1), body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(b), "a parent later in the order is refused");
+}
+
+// The relabelled tree: the same three bodies and the same edges, but body 1
+// hangs off body 2. Structurally a tree; not in canonical order, so refused.
+fn test_relabelled_tree_is_refused() {
+  a = asm_new("relabelled");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 2, wheel_mount(0.0 - HALF), body_of(SupportKind.Carried, 1, 0));
+  a = asm_add(a, 0, wheel_mount(HALF), body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(a), "a relabelling that breaks the order is refused");
+}
+
+fn test_child_must_have_a_link() {
+  a = asm_new("nolink");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_none(), body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(a), "a non-root body reached by no link is refused");
+}
+
+// ── the clauses that make a kind mean something ─────────────────────────────
+
+fn test_mount_needs_an_axis() {
+  a = asm_new("noaxis");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 0.0),
+              body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(a), "a revolute axis of length zero names no axis");
+}
+
+fn test_tether_needs_a_length() {
+  a = asm_new("rope");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Buoyant, 5, 0));
+  a = asm_add(a, 0, link_tether(0.0, 0.0 - 0.2, 0.0, 3.0),
+              body_of(SupportKind.Carried, 5, 0));
+  assert(asm_admissible(a), "a crate under a balloon is admissible");
+  b = asm_new("rope0");
+  b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Buoyant, 5, 0));
+  b = asm_add(b, 0, link_tether(0.0, 0.0 - 0.2, 0.0, 0.0),
+              body_of(SupportKind.Carried, 5, 0));
+  assert(!asm_admissible(b), "a tether of length zero is refused");
+}
+
+fn test_limits_must_be_ordered() {
+  a = asm_new("lim");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 1.0, 1.0, 0.0 - 1.0),
+              body_of(SupportKind.Carried, 1, 0));
+  assert(!asm_admissible(a), "lo above hi is refused");
+  // and the default range is FREE rather than pinned, so a mount with no
+  // authored limits is admissible instead of a joint stuck at zero
+  d = asm_new("free");
+  d = asm_add(d, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  d = asm_add(d, 0, wheel_mount(HALF), body_of(SupportKind.Carried, 1, 0));
+  dl = d.am_link[1] ?? link_none();
+  assert(dl.lk_lo < 0.0 && dl.lk_hi > 0.0, "the default range is free");
+  assert(asm_admissible(d), "and admissible");
+}
+
+// `Carried` says the link IS the support. The root has no link, so on the root
+// it names nothing — the type error the design predicted for the balloon case.
+fn test_carried_root_is_refused() {
+  a = asm_add(asm_new("float"), 0 - 1, link_none(),
+              body_of(SupportKind.Carried, 3, 0));
+  assert(!asm_admissible(a), "the root cannot be Carried");
+}
+
+fn test_negative_state_count_is_refused() {
+  a = asm_add(asm_new("neg"), 0 - 1, link_none(),
+              body_of(SupportKind.Ground, 0 - 1, 0));
+  assert(!asm_admissible(a), "a negative state count is refused");
+}
+
+fn test_name_must_be_one_word() {
+  a = asm_add(asm_new("two words"), 0 - 1, link_none(),
+              body_of(SupportKind.Ground, 3, 0));
+  assert(!asm_admissible(a), "a space in the name would not read back");
+  b = asm_add(asm_new(""), 0 - 1, link_none(),
+              body_of(SupportKind.Ground, 3, 0));
+  assert(!asm_admissible(b), "an empty name is refused");
+}
+
+// ── A-EXACT: the round trip, byte for byte ──────────────────────────────────
+
+fn test_round_trip_is_byte_exact() {
+  c = asm_cart(HALF);
+  t = asm_write(c);
+  back = asm_read(t);
+  assert(asm_admissible(back), "what came back is admissible");
+  assert(asm_eq(c, back), "the read assembly equals the written one");
+  assert(asm_write(back) == t, "write(read(t)) is t, byte for byte");
+}
+
+// Floats that are not round decimals: the round trip has no tolerance to hide
+// behind, so an awkward value is the honest fixture.
+fn test_round_trip_keeps_awkward_floats() {
+  a = asm_new("awkward");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0));
+  a = asm_add(a, 0, link_mount(0.1, 0.0 - 0.3333333333333333,
+                               1.0 / 3.0 ?? 0.0,
+                               0.0, 0.7071067811865476, 0.0 - 0.7071067811865476,
+                               0.0 - 0.25, 0.75),
+              body_of(SupportKind.Carried, 1, 0));
+  t = asm_write(a);
+  assert(asm_eq(a, asm_read(t)), "awkward floats survive");
+  assert(asm_write(asm_read(t)) == t, "and so does the text");
+}
+
+fn test_truncated_text_is_refused() {
+  c = asm_cart(HALF);
+  t = asm_write(c);
+  lines = t.split('\n');
+  n = len(lines);
+  // a whole line missing — the header's count no longer matches
+  cut = lines[0] ?? "";
+  for i in 1..(n - 1) { cut = cut + "\n" + (lines[i] ?? ""); }
+  assert(!asm_admissible(asm_read(cut)), "a missing body line is refused");
+  // the last FIELD missing from the last line, with everything else intact
+  last = lines[n - 1] ?? "";
+  wl = last.split(' ');
+  short = wl[0] ?? "";
+  for j in 1..(len(wl) - 1) { short = short + " " + (wl[j] ?? ""); }
+  head = "";
+  for k in 0..(n - 1) { if k == 0 { head = lines[0] ?? ""; }
+                        else { head = head + "\n" + (lines[k] ?? ""); } }
+  assert(!asm_admissible(asm_read(head + "\n" + short)),
+         "a line missing its last field is refused");
+}
+
+fn test_unknown_kinds_are_refused() {
+  c = asm_cart(HALF);
+  t = asm_write(c);
+  assert(!asm_admissible(asm_read(t.replace("link mount", "link welded"))),
+         "an unknown link kind is refused");
+  assert(!asm_admissible(asm_read(t.replace("support ground", "support magic"))),
+         "an unknown support kind is refused");
+}
+
+fn test_reader_refuses_a_relabelled_text() {
+  c = asm_cart(HALF);
+  t = asm_write(c);
+  // renumber body 1 as body 2: a text no writer would emit
+  assert(!asm_admissible(asm_read(t.replace("body 1 parent", "body 2 parent"))),
+         "a body index out of line order is refused");
+  assert(!asm_admissible(asm_read(t.replace("assembly cart bodies 3",
+                                            "assembly cart bodies 2"))),
+         "a header count that disagrees with the lines is refused");
+}
+
+fn test_reader_refuses_a_wrong_keyword() {
+  c = asm_cart(HALF);
+  t = asm_write(c);
+  assert(!asm_admissible(asm_read(t.replace(" axis ", " AXIS "))),
+         "a misspelt keyword is refused");
+  assert(!asm_admissible(asm_read(t.replace("assembly ", "rig "))),
+         "a foreign header is refused");
+}
