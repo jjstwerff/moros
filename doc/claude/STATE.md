@@ -1414,3 +1414,29 @@ edges — neither of which the mechanism's own eight gates had caught.
       `fn(x: float, z: float) -> float { … }`; the `|x, z| { … }` form is fine passed directly
       into a call. The compiler names the fix.
     - `CONNECTOR.md`'s **Open** list is now four items, none of them `A10`.
+23. ✅ **`A9c` RECONCILED, and the loft regression that blocked it is gone.**
+    - **The indexing was an ERROR, not a numbering.** `A9c` had recorded that the library and
+      `P6` *"are not the same numbering"* and that **neither is wrong**. Measured: the library
+      was **29.6 % out at N=10** where `P6` predicts **1.0 %**. Two faults that partly cancelled
+      — the moment loop ran `for k in j..n`, sweeping a station's own bone (the one **inboard**
+      of its hinge) into that hinge's moment; and the load centroid was taken **outboard** when
+      a station sits at the outboard *end* of the bone it stands for. Both fixed. The library
+      now reproduces `P6`'s hand-derived `tip/δ = 1 + 1/N²` to **better than 1e-10**.
+    - **The new test asserts the CONSTANT, not the order** — a second-order scheme converging to
+      the wrong constant would pass a bare closeness test at large N and be wrong everywhere.
+      Tolerance 1e-9 is the physics (nonlinearity ~1e-12, float noise ~1e-13), not a fitted slack.
+    - ⚠ **Two existing tests were encoding the bug**, and both are now sharper: "all ten joints
+      turn" is **nine**, with the outermost hinge's exact zero pinned; and the convergence test
+      was calling `asm_cantilever(n, span/n)` when **`n` is stations and the beam is `(n-1)·seg`**,
+      so every sample was a different beam — 11 % at n=24, which the old outboard shift
+      compensated. Two wrongs let it pass.
+    - ⚠ **[loft#693](https://github.com/loft-lang/loft/issues/693), filed and fixed the same
+      hour.** A closure capturing a store-backed value emitted `db.dbref_borrow()` into every
+      `#native` library's generated cdylib, which could not call it — **the editor would not
+      start at all**, so the gates were briefly unverifiable. The trigger was `A10`'s own
+      capture, the thing #682 had unblocked an hour earlier. Filed with a 12-line reproducer;
+      fixed upstream as *"name the binary↔rlib mismatch, and gate it at install time"*.
+    - **Verified on the fixed loft (binary 16:13): 23 gates green on two consecutive full runs,
+      642 library tests pass**, cart bit-identical through the capture that tripped it.
+    - `CONNECTOR.md`'s **Open** is now three items: a team is not a tree; steep ground — refuse
+      or tip; and where the states are advanced (the sandbox seam, #15).

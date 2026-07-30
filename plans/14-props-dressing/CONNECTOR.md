@@ -1437,10 +1437,13 @@ generous by three orders and still pins the constant.
   wrongs let it pass. The fixture now holds the length fixed, and `asm_cantilever` says in its
   own doc that `N` bones of a length `L` beam is `asm_cantilever(N + 1, L / N)`.
 
-⚠ **Verified by library tests only — the gates could not run.** A loft regression landed
-mid-session ([loft#693](https://github.com/loft-lang/loft/issues/693)) that stops the editor
-starting at all, so the 23 gates are blocked. 642 library tests pass, including the three new
-ones.
+✅ **Gate-verified too, once [loft#693](https://github.com/loft-lang/loft/issues/693) landed.**
+That regression briefly stopped the editor starting at all — filed with a 12-line reproducer,
+fixed upstream the same hour as *"name the binary↔rlib mismatch, and gate it at install time"*,
+which is the diagnosis exactly: the installed binary emitted a call its linked rlib did not
+carry. **23 gates green on two consecutive full runs, 642 library tests pass**, and the cart is
+bit-identical through the very capture that tripped it —
+`worstGap 1.540269400912564e-8`, `maxBank 0.08314124584252244`.
 
 ## Open
 
