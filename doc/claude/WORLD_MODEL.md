@@ -165,6 +165,43 @@ Three mechanisms were considered and all three fail on the same rock:
 > becomes insertion-aware and carries markers with their cells, or the ground is identified by
 > something that travels *with* the cells rather than beside them.
 
+#### The design, settled — and where the first attempt stopped (2026-07-30)
+
+The contract already contains everything the design needs, which is why it is worth writing
+down even though it is not yet built:
+
+- **`F1″` — order IS height order.** So an insert below *must* shift every index. A cellar
+  renumbering the stack is the invariant working, not a bug.
+- **"Index is not identity"** — stated outright in Part II.
+- **`I1` uses labels by EQUALITY only, never order** — so a label is the one marker an insert
+  cannot move.
+- **`ν` (`w_next_id`, "next free label") already exists**, is persisted, and **is never
+  incremented**: every layer's label is `0`. The mechanism is present and stubbed out.
+
+So: `Column` gains a defaulted `co_ids` (no existing literal breaks), a read fills it, and the
+write uses it to **insert** a layer at the position whose incoming label is `0` instead of
+appending at the end — leaving every existing layer's label with its own cells. New layers take
+a fresh label from `ν`.
+
+⚠ **Attempted, and stopped at three obstacles worth knowing before the next try:**
+
+1. **loft [#690](https://github.com/loft-lang/loft/issues/690)** — *a loop variable may not
+   silently change type*. `k` is a `Chunk` elsewhere in the file, so reusing it as an index is
+   now an error. Small, and the compiler names it.
+2. ⚠ **A store-lifetime refusal on the core operation**: rebuilding `ck_layers` and assigning it
+   back through `&World` raised *"Claim on read-only store (size=40), locked by CONST_STORE
+   init"*. Inserting into a nested vector of a borrowed store is exactly the family of
+   [#670](https://github.com/loft-lang/loft/issues/670) /
+   [#677](https://github.com/loft-lang/loft/issues/677) /
+   [#682](https://github.com/loft-lang/loft/issues/682), and it is the operation this change
+   cannot avoid.
+3. **Dressing regressed** — *"a TERRAIN write deleted the dressing"*. `world_set_column` has a
+   careful rule that a terrain write must never write the absent placeholder a read produces for
+   a dressing slot; an insertion pass has to preserve it, and the first attempt did not.
+
+The next attempt should start from (2), because it decides whether the insert can be written in
+loft at all today, and build (3) into the design rather than discovering it from a test.
+
 That is a change to the store — `lib/hex_world`, its persistence, and the contract this document
 states — and it should be made once, deliberately, with its own baselines. It is **not** a
 side-effect of a fall, and `terrain_h` is left honest-but-wrong until then rather than given a

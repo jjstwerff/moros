@@ -1578,3 +1578,28 @@ edges — neither of which the mechanism's own eight gates had caught.
       persistence, and the contract — and it deserves its own pass with its own baselines.
     - `terrain_h` is left **honest-but-wrong and documented**, rather than given a rule that
       trades a tower for a cellar. 25 gates green, 651 library tests.
+30. ⚠ **The column write's marker fix — DESIGNED, ATTEMPTED, REVERTED. Three obstacles named.**
+    The design is settled and grounded entirely in the contract: `F1″` makes order height order
+    (so an insert *must* shift indices — that is the invariant working), Part II already says
+    **"index is not identity"**, `I1` uses labels by **equality only** so a label is the one
+    marker an insert cannot move, and **`ν` (`w_next_id`, "next free label") exists, is
+    persisted, and is never incremented** — every layer's label is `0`, the mechanism stubbed
+    out and waiting.
+    - **The change**: `Column` gains a defaulted `co_ids` (no existing literal breaks), a read
+      fills it, and the write **inserts** a layer where the incoming label is `0` instead of
+      appending at the end, so every existing layer keeps its label with its own cells. New
+      layers take a fresh label from `ν`.
+    - ⚠ **Stopped at three things, all now named rather than rediscovered:**
+      1. **loft #690** — a loop variable may not silently change type; `k` is a `Chunk`
+         elsewhere in the file. Small, and the compiler says so.
+      2. ⚠ **A store-lifetime refusal on the operation the change cannot avoid**: rebuilding
+         `ck_layers` and assigning it through `&World` raised *"Claim on read-only store,
+         locked by CONST_STORE init"* — the #670/#677/#682 family, at the heart of an
+         insert-into-a-nested-vector-of-a-borrowed-store.
+      3. **Dressing regressed** — *"a TERRAIN write deleted the dressing"*. The write has a
+         careful rule that a terrain write must never write back the absent placeholder a read
+         produces for a dressing slot; an insertion pass must preserve it by design.
+    - **Reverted; `hex_world` is 58 tests green again**, 25 gates, 651 library tests.
+    - **Next attempt starts at obstacle 2**, because it decides whether the insert is writable
+      in loft today at all — and builds obstacle 3 into the design rather than finding it in a
+      test.
