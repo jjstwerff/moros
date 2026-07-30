@@ -1401,9 +1401,36 @@ identical, and 639 library tests pass.
 
 ## Open
 
-- **Finish `A10`'s solve switch when [loft#682](https://github.com/loft-lang/loft/issues/682)
-  lands.** The editor still runs its own copy of `A6`'s fixed point because a lambda capturing
-  a `World` panics the interpreter. Everything else on the cart's path is the library's.
+### `A10` — FINISHED 2026-07-30. The solve is the library's, and the diff is empty
+
+The last item: the editor ran its own copy of `A6`'s fixed point because a lambda capturing a
+`World` panicked the interpreter. **[loft#682](https://github.com/loft-lang/loft/issues/682)
+landed** (`d26c3bef`, *"a closure record was freeing captures it never owned"*), so the terrain
+now goes in as a function and the copy is gone:
+
+| was inlined in the editor | now |
+|---|---|
+| a 20-line `for cs_it in 0..3` fixed point | `msim::ground_axle(cs_sample, cx, cz, cyaw, half, radius)` |
+| `base = ground_frame(cx, cs_y, cz, cyaw, cs_bank)` — rebuilt from the solve's numbers | `base = cs_rest.rt_frame` — the solve's own output, *"the pose, not a description of it"* |
+| two hand-written `hub.y − radius − terrain_y(…)` | `msim::ground_gap(frame, half, radius, 0.0, cs_sample)` ×2 |
+| a bare `break` when the ground out-drops the axle | `A-FIT`'s named refusal, now **broadcast** with its offer and residual |
+
+**Bit-identical, and verified as such** — every figure the cart gate reports is unchanged to the
+last digit: `worstGap 1.540269400912564e-8`, `maxBank 0.08314124584252244`,
+`worstHubRel 8.326672684688674e-17`, `v1 3.9788735772973833`, `v2 7.957747154594767`.
+
+⚠ **Seen red the only way that proves anything here.** Identical output is also what a switch
+that *did not take* would produce, so the control was to perturb **the library** —
+`nb = atan2(…) * 1.05` inside `ground_axle` — and watch the editor move: `worstGap` 1.54e-8 →
+**0.00228**, `maxBank` 0.0831 → **0.0873**, `grounded` false, gate red. The editor is calling the
+library, not shadowing it.
+
+**One loft rule learned:** `|sx, sz| { … }` cannot infer its parameters at an *assignment* —
+there is no expected type at that site, only at a call. The typed form
+`fn(sx: float, sz: float) -> float { … }` is required for a lambda held in a variable; the short
+form is fine passed straight into a call. The compiler says so and names the fix.
+
+23 gates green, 639 library tests pass.
 - **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
   the same beam with the hinge and load positions offset by half a segment, so the library's
   bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is

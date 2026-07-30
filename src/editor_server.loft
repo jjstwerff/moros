@@ -1926,33 +1926,33 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // the axle runs ACROSS the travel direction. ⚠ `+sin`, matching `ground_axle`'s
   // own convention — the old `−sin` matched mesh3d's transposed `rotate_y`, and the
   // solve must sample where the FRAME will actually put the wheels.
-  cs_ax = sin(cyaw);
-  cs_az = cos(cyaw);
   ax = msim::body_axle(casm, 0);
   cs_rad = ax.ax_radius;
-  // A FIXED POINT, because where the wheels touch depends on the bank and the
-  // bank depends on where they touch. Level is the seed; on the ground this
-  // editor makes, two rounds move the answer by less than a millimetre.
-  cs_bank = 0.0;
-  cs_y = cs_rad;
   cs_half = ax.ax_half;
-  for cs_it in 0..3 {
-    cs_reach = cs_half * cos(cs_bank);        // the axle's horizontal half-span
-    cs_gl = terrain_y(cx - cs_ax * cs_reach, cz - cs_az * cs_reach, wld);
-    cs_gr = terrain_y(cx + cs_ax * cs_reach, cz + cs_az * cs_reach, wld);
-    // Both wheels resting, with the axle rigid, has a closed form:
-    //     y   = mean contact + R
-    //     sinβ = (gl − gr) / 2w
-    cs_d = cs_gl - cs_gr;
-    cs_flat = 4.0 * cs_half * cs_half - cs_d * cs_d;
-    if cs_flat <= 0.0 {
-      // Steeper than the axle is long: the cart cannot rest on both wheels at
-      // any angle. Hold the last admissible bank rather than emit a NaN — the
-      // ground, not the cart, is what has to give here.
-      break;
-    }
-    cs_bank = atan2(cs_d, sqrt(cs_flat) ?? 0.0);
-    cs_y = (cs_gl + cs_gr) * 0.5 + cs_rad;
+  // ── `A10`, FINISHED: the SOLVE is the library's too ────────────────────────
+  //
+  // The terrain goes in as a function. That is the whole of what was blocked: a
+  // lambda capturing a `World` panicked the interpreter (loft#682, fixed
+  // 2026-07-30 by `d26c3bef` — "a closure record was freeing captures it never
+  // owned"), so until today the fixed point below had to be inlined here beside
+  // the library's identical copy.
+  //
+  // A FIXED POINT, because where the wheels touch depends on the bank and the bank
+  // depends on where they touch — `A6`. `ground_axle` owns it, including the
+  // `A-FIT` refusal when the ground drops further across the axle than the axle is
+  // long, which the inlined version could only answer with a bare `break`.
+  // ⚠ THE TYPED FORM IS REQUIRED HERE. `|sx, sz| { … }` cannot infer its parameters
+  // at an ASSIGNMENT — there is no expected type at that site, only at a call. The
+  // compiler says so and names the fix; a lambda passed straight into a call can
+  // stay in the short form.
+  cs_sample = fn(sx: float, sz: float) -> float { terrain_y(sx, sz, wld) };
+  cs_rest = msim::ground_axle(cs_sample, cx, cz, cyaw, cs_half, cs_rad);
+  cs_bank = cs_rest.rt_bank;
+  cs_y = msim::frame_apply(cs_rest.rt_frame, vec3(0.0, 0.0, 0.0)).y;
+  if !cs_rest.rt_ok {
+    // `K-FIT`: named, with the offer and the residual, instead of a silent hold.
+    srv.broadcast("S:cart approximated — {cs_rest.rt_reason} "
+                + "(offer {cs_rest.rt_offer}, residual {cs_rest.rt_over})");
   }
   // ⚠ THE BANK IS NEGATED HERE, AND THAT IS A CONVENTION CONVERSION, NOT A FUDGE.
   // mesh3d's `mat4_rotate_x` is `[[1,0,0],[0,c,s],[0,-s,c]]` — a rotation about
@@ -1972,7 +1972,11 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // ⚠ The YAW's sense is reversed by the same change. Unobservable today, because
   // `cart_yaw` is never anything but 0 — and the thing to know when something
   // first turns the cart. `cs_ax`/`cs_az` above were set to match.
-  base = msim::ground_frame(cx, cs_y, cz, cyaw, cs_bank);
+  // ⚠ AND THE FRAME IS THE SOLVE'S OWN OUTPUT, not rebuilt from its numbers.
+  // `Rest.rt_frame` is "the pose, not a description of it" — re-deriving it here
+  // from `cs_y`/`cs_bank` would put the convention back in two places, which is
+  // exactly the split that left one wheel floating 0.0914 wu for a whole rung.
+  base = cs_rest.rt_frame;
   // ⚠ **THE WHEEL OFFSET IS READ FROM THE MOUNT.** The re-assertion-site table
   // gave this quantity THREE homes — the render transform, the contact solve, and
   // a literal in the gate. `asm_frames` reads it from the assembly, `body_axle`
@@ -1991,13 +1995,11 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   //
   // ⚠ The hub comes out of the FRAME and the terrain is sampled under IT — not
   // from a re-derived `y ± half·sin(bank)`, which is how both gaps could report
-  // zero while the wheels were 9 cm out. `A6`'s `ground_gap` is the same
-  // expression; it is inlined here only because a closure over a `World` panics
-  // the interpreter (loft#682), so the terrain cannot yet be passed as a function.
-  hl = msim::frame_apply(cf[1] ?? base, vec3(0.0, 0.0, 0.0));
-  hr = msim::frame_apply(cf[2] ?? base, vec3(0.0, 0.0, 0.0));
-  cs_el = hl.y - cs_rad - terrain_y(hl.x, hl.z, wld);
-  cs_er = hr.y - cs_rad - terrain_y(hr.x, hr.z, wld);
+  // zero while the wheels were 9 cm out. `ground_gap` is that expression, and it
+  // is now CALLED rather than copied: `side: 0.0` asks for the gap under a frame's
+  // own origin, which is where `asm_frames` has already put each hub.
+  cs_el = msim::ground_gap(cf[1] ?? base, cs_half, cs_rad, 0.0, cs_sample);
+  cs_er = msim::ground_gap(cf[2] ?? base, cs_half, cs_rad, 0.0, cs_sample);
   srv.broadcast("S:cart pose y {cs_y} bank {cs_bank} gapl {cs_el} gapr {cs_er}");
 }
 

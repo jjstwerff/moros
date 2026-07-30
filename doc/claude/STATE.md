@@ -1396,3 +1396,21 @@ edges — neither of which the mechanism's own eight gates had caught.
       parameter corrupted the frame), **#686** (a capture of a forward-declared type mis-typed),
       **#687** (a mutated text capture's storage decided per binding).
     - ⏭ **So `A10`'s solve switch is ready to finish** — the top item in `CONNECTOR.md`'s Open.
+22. ✅ **`A10` IS FINISHED — the cart's solve is the library's, and the diff is empty.**
+    The last thing the editor was shadowing: `A6`'s fixed point, inlined because a lambda
+    capturing a `World` panicked the interpreter. loft#682 landed this afternoon, so the terrain
+    goes in as a function and the copy is deleted. `ground_axle` now owns the fixed point,
+    `Rest.rt_frame` is used as the pose rather than rebuilt from its own numbers, `ground_gap` is
+    called twice instead of copied, and `A-FIT`'s refusal is **broadcast with its offer and
+    residual** where the inlined version could only `break`.
+    - **Bit-identical**: `worstGap 1.540269400912564e-8`, `maxBank 0.08314124584252244`,
+      `worstHubRel 8.326672684688674e-17` — unchanged to the last digit.
+    - ⚠ **The control that matters**: identical output is also what a switch that *did not take*
+      would give. So the red case perturbs **the library** (`atan2(…) * 1.05` inside
+      `ground_axle`) and the editor moves with it — `worstGap` → 0.00228, `grounded` false, gate
+      red. That is the proof the editor calls the library rather than shadowing it.
+    - **A loft rule worth keeping**: a lambda held in a *variable* cannot infer its parameter
+      types — there is no expected type at an assignment, only at a call. Use
+      `fn(x: float, z: float) -> float { … }`; the `|x, z| { … }` form is fine passed directly
+      into a call. The compiler names the fix.
+    - `CONNECTOR.md`'s **Open** list is now four items, none of them `A10`.
