@@ -1079,15 +1079,38 @@ So the editor **cannot call the library stack at all.** `stencil_stamp_all`, `wa
 because **choosing a second representation forfeited every primitive written against the
 first.** The duplication is a symptom. The representation split is the defect.
 
-⚠ **And there are two `hex_world`s**, with different data models:
+⚠ **`lib/hex_world` is moros-only, and it squats a published name.** Corrected 2026-07-30,
+after checking rather than assuming — an earlier draft of this section called the model choice
+a blocking phase 0, and that was wrong.
 
-| | types | lines |
-|---|---|---|
-| `lib/hex_world` (what the editor uses) | `Hex StoredHex Layer Chunk ChunkAt World Column Snapshot …` | 1,199 |
-| `../loft-libs-world/hex_world` | `Cell Chunk World` | 1,161 |
+| | types | lines / files | consumers, everywhere |
+|---|---|---|---|
+| `lib/hex_world` v0.1.0 (the editor's) | `Hex StoredHex Layer Chunk ChunkAt World Column ColumnWrite Snapshot …` | 1,199 / 1 | **`src/editor_server.loft`. That is all.** |
+| published `hex_world` 0.1.1 / 0.1.2 / **0.2.0** | `Cell Chunk World` | 1,161 / 3 | its own tests, plus one loft multilib fixture |
 
-"Swap the editor to the library versions" has no single meaning while both exist. **Deciding
-which is the world is phase 0**, and nothing else should start before it.
+Three facts settle it:
+
+1. **The moros copy matches no published version** — not 0.1.1, 0.1.2 or 0.2.0. It is not a
+   fork that drifted; it is a *different library wearing the same name*. It was renamed from
+   `moros_world` on 2026-07-26 for a good reason (LAVITION.md forbids brand prefixes) — into a
+   name a published package already owned with an incompatible model. It can never publish
+   under `hex_world`.
+2. **No sibling library imports `hex_world` at all**, and **no published package depends on
+   it.** The `hex_*` stack is built on the tile bundle, not on a store. So the published
+   `hex_world` is not the stack's foundation either — it is an independent store with no users.
+3. **It is not declared as a dependency anywhere.** The editor picks it up purely through
+   `--lib lib/` path shadowing.
+
+So the model question is **not** blocking, because nothing in the stack consumes a `World` of
+either shape: the adapter below has to bridge whichever store the editor keeps, and the
+published `hex_world` is simply irrelevant to that path. What remains is a **name** collision,
+and it is cheap — one consumer, one `use` line. Phase 0 is a rename, not an architecture
+decision.
+
+⚠ The corollary worth weighing separately: since the published `hex_world` has **no
+dependents**, and `WORLD_MODEL.md` is a normative contract for the column model, the column
+model may well be the better one. Superseding or renaming is the author's call, and
+`loft-libs-world` is another agent's tree — so this design does not assume either.
 
 ### What we already have — the primitives, by what they operate on
 
@@ -1172,7 +1195,7 @@ generator framework.
 
 | phase | what | done when |
 |---|---|---|
-| **0** | **Decide the world representation** — `lib/hex_world` vs the sibling. Blocking. | one `World` in the tree |
+| **0** | **Rename the moros column store off the published name** (`hex_world` is taken, by an incompatible model). One consumer, one `use` line — not an architecture decision. | no name collision; the editor still runs |
 | **1** | The `World` ⇄ bundle adapter, in a library, with its own tests | round-trip is exact for occupancy, heights, labels, layers and edges |
 | **2** | One tool end-to-end as the pattern — **stencil** (`stencil_stamp_all` is the closest fit) | `stencil_place` deleted; `stencil.mjs` unchanged and green |
 | **3** | Ways, fences, edges, fields | `road_*`, `fence_*`, `field_fill`, `edges_around` deleted |
