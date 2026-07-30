@@ -42,15 +42,25 @@ fn test_a_load_bends_it_and_the_tip_moves() {
   b = wing_bend(free_wing(10), frame_id(), 0.002, EI);
   assert(b.bn_ok, "it solves");
   assert(b.bn_tip > 0.0, "the tip moves");
-  // every joint bends the same way — a wing does not kink under a uniform load
+  // every LOADED joint bends the same way — a wing does not kink under a uniform
+  // load.
+  //
+  // ⚠ NINE, NOT TEN, and the tenth is the claim. Station `k`'s span is the bone
+  // that ENDS at it, so the outermost station has nothing outboard of it and its
+  // hinge carries no moment at all. This test asserted ten because the old moment
+  // loop started at `j` and swept a station's own bone — the bone INBOARD of its
+  // hinge — into its moment. The tip's exact zero is now pinned, because it is the
+  // sharpest single consequence of getting the indexing right.
   neg = 0;
   pos = 0;
-  for i in 1..11 {
+  for i in 1..10 {
     v = b.bn_values[i] ?? 0.0;
     if v > 0.0 { pos = pos + 1; }
     if v < 0.0 { neg = neg + 1; }
   }
-  assert(pos == 10 || neg == 10, "and all ten joints turn the same way");
+  assert(pos == 9 || neg == 9, "and all nine loaded joints turn the same way");
+  assert(fabs(b.bn_values[10] ?? 1.0) < 0.000000001,
+         "and the outermost hinge, with nothing outboard of it, does not turn");
   // heavier load, more deflection
   h = wing_bend(free_wing(10), frame_id(), 0.004, EI);
   assert(h.bn_tip > b.bn_tip * 1.5, "twice the load bends it further");
@@ -109,12 +119,18 @@ fn test_the_end_rule_changes_the_answer_measurably() {
 fn test_the_answer_settles_as_n_grows() {
   span = 5.77;
   w = 0.00002;
-  ref = wing_bend(asm_cantilever(80, span / 80.0 ?? 0.0), frame_id(), w, EI, 600);
+  // ⚠ `asm_cantilever(n, seg)` is `n` STATIONS and therefore `n - 1` BONES, so the
+  // beam it builds is `(n-1)·seg` long — not `n·seg`. Dividing the span by `n` made
+  // every sample a DIFFERENT beam (0.875·span at n=8, 0.9875·span at n=80), and
+  // since the tip goes as L⁴ that alone is an 11 % gap at n=24. The old indexing
+  // shifted the load a whole bone outboard, which compensated, and the two wrongs
+  // let this pass. Holding the LENGTH fixed is what makes it a convergence test.
+  ref = wing_bend(asm_cantilever(80, span / 79.0 ?? 0.0), frame_id(), w, EI, 600);
   assert(ref.bn_tip > 0.0, "the reference bent");
   prev = 9.0;
   for k in 0..3 {
     n = 8 * (k + 1);
-    b = wing_bend(asm_cantilever(n, span / (n as float) ?? 0.0), frame_id(), w, EI, 600);
+    b = wing_bend(asm_cantilever(n, span / ((n - 1) as float) ?? 0.0), frame_id(), w, EI, 600);
     e = fabs(b.bn_tip - ref.bn_tip) / ref.bn_tip ?? 0.0;
     assert(e < prev, "more stations, closer to the limit");
     prev = e;

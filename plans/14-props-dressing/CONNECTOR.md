@@ -1399,6 +1399,49 @@ not.
 Verified: 23 gates green on **three** consecutive full runs with every number
 identical, and 639 library tests pass.
 
+### `A9c` reconciled — and the indexing was an ERROR, not a numbering
+
+`A9c` recorded that `asm_cantilever` and `bend_bones.loft` *"are not the same numbering"* and
+that **neither is wrong**. Measuring settled it: the library was **29.6 % out at N = 10** where
+`P6` predicts **1.0 %**. Two faults, and they partly cancelled — which is why self-convergence
+passed while the absolute answer did not.
+
+| fault | what it did |
+|---|---|
+| the moment loop ran `for k in j..n` | swept station `j`'s own bone — the bone **inboard** of hinge `j` — into that hinge's moment, with a negative lever arm. The comment above it already said *"every load outboard of it"*; the code did not |
+| the load centroid was taken **outboard** (`-h/2`) | station `k` sits at the outboard END of the bone it stands for, so that bone's centroid is half a span back toward the parent. Taking it outboard shifted every load a whole bone past its geometry |
+
+Both fixed: `for k in j + 1..n`, and `mid = frame_apply(fk, vec3(0.0, hk * 0.5, 0.0))`.
+
+**The library now reproduces `P6`'s hand-derived prediction to better than 1e-10.**
+`tests/cantilever_absolute.loft` asserts the *constant*, not merely the order:
+
+| scheme | prediction | asserted |
+|---|---|---|
+| root hinge `ℓ = h/2` | `tip/δ = 1 + 1/N²` | to **1e-9** at N = 5, 10, 20, 40 |
+| root hinge `ℓ = h` (the deliberate defect) | `tip/δ = (1 + 1/N)²` | to 1e-2 at N = 5, 10, 20 |
+
+The tolerance is the physics, not a fitted slack: at a tip deflection of 1e-6 of the span the
+geometric nonlinearity contributes ~1e-12 and 400 rounds of float noise ~1e-13, so 1e-9 is
+generous by three orders and still pins the constant.
+
+⚠ **Two existing tests were encoding the bug, and each is now a sharper claim.**
+
+- *"all ten joints turn the same way"* — it is **nine**. The outermost station has nothing
+  outboard of it, so its hinge carries no moment; the test now pins that hinge's exact zero,
+  which is the single sharpest consequence of getting the indexing right.
+- *"twenty-four stations is within a few per cent"* — it was calling
+  `asm_cantilever(n, span/n)`, but **`n` is STATIONS and the beam is `(n-1)·seg`**, so every
+  sample was a different beam (0.875·span at n=8 against 0.9875·span at n=80). Since the tip
+  goes as `L⁴` that alone is 11 % at n=24. The old outboard shift compensated, and the two
+  wrongs let it pass. The fixture now holds the length fixed, and `asm_cantilever` says in its
+  own doc that `N` bones of a length `L` beam is `asm_cantilever(N + 1, L / N)`.
+
+⚠ **Verified by library tests only — the gates could not run.** A loft regression landed
+mid-session ([loft#693](https://github.com/loft-lang/loft/issues/693)) that stops the editor
+starting at all, so the 23 gates are blocked. 642 library tests pass, including the three new
+ones.
+
 ## Open
 
 ### `A10` — FINISHED 2026-07-30. The solve is the library's, and the diff is empty
@@ -1431,11 +1474,8 @@ there is no expected type at that site, only at a call. The typed form
 form is fine passed straight into a call. The compiler says so and names the fix.
 
 23 gates green, 639 library tests pass.
-- **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
-  the same beam with the hinge and load positions offset by half a segment, so the library's
-  bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is
-  wrong; they are not the same numbering, and until they are the absolute error belongs to the
-  probe and not to the library.
+- ~~Reconcile `A9c`'s indexing with `P6`'s.~~ **DONE 2026-07-30 — and "neither is wrong" was
+  wrong.** See the section below.
 - **A team is not a tree.** Two horses abreast on one cart is two links into one body,
   which `A-TOPO` forbids. The likely answer is that the yoke is a body and each horse
   links to *it* — restoring the tree — but that is a claim, not a result.

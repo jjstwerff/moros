@@ -81,6 +81,13 @@ fn station_span(a: Assembly, i: integer) -> float {
 // offset, the rest a span apart. `asm_wing` puts its first mount a whole span out
 // — right for a generic chain, wrong for a beam — so the fixture that exercises
 // the end rule has to say so.
+//
+// ⚠ `n` IS STATIONS, WHICH IS BONES + 1, and the beam is therefore `(n-1)·seg`
+// long. Station 1 sits at the clamp with a zero offset and so spans nothing; every
+// later station ends one bone. To discretise a beam of length `L` into `N` bones —
+// `P6`'s numbering — call `asm_cantilever(N + 1, L / N)`. Reading `n` as bones
+// makes every sample a different beam, and since the tip goes as L⁴ that is an
+// 11 % error at N = 24 masquerading as discretisation.
 pub fn asm_cantilever(n: integer, seg: float) -> Assembly {
   a = asm_new("cantilever");
   a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 3));
@@ -123,11 +130,22 @@ pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
         fj = fs[j] ?? frame_id();
         yj = fj.fm_y;
         mm = 0.0;
-        for k in j..n {
+        // ⚠ STRICTLY OUTBOARD, and the comment above already said so while the loop
+        // did not. Station `k`'s span is the bone that ENDS at it — the bone from
+        // station `k-1` — so bone `j` lies INBOARD of hinge `j` and must not be in
+        // its moment. Starting at `j` put a bone on the wrong side of its own hinge,
+        // with a negative lever arm, and the two errors below partly cancelled: the
+        // scheme still converged, so `A9c`'s self-convergence clause passed while the
+        // absolute answer was 29.6 % out at N=10 against `P6`'s predicted 1.0 %.
+        for k in j + 1..n {
           hk = station_span(a, k);
           fk = fs[k] ?? frame_id();
-          // the station's midpoint, half a span outboard along its own axis
-          mid = frame_apply(fk, vec3(0.0, 0.0 - hk * 0.5, 0.0));
+          // ⚠ THE MIDPOINT IS INBOARD. Station `k` sits at the OUTBOARD end of the
+          // bone it stands for, so that bone's centroid is half a span back toward
+          // the parent — `+h/2` in the station's own frame, not `-h/2`. Taking it
+          // outboard shifted every load a full bone past its geometry, which is the
+          // indexing `A9c` recorded as unreconciled.
+          mid = frame_apply(fk, vec3(0.0, hk * 0.5, 0.0));
           mm = mm + w * hk * (yj - mid.y);
         }
         // half the span each side, so the ends get half and the interior a whole
