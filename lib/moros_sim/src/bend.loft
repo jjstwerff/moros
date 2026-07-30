@@ -1,0 +1,192 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A `SOLVED` state: a wing's bend, from a load.
+// Step `A9c` of plans/14-props-dressing/CONNECTOR.md, proving `A-DOF` with a
+// `SOLVED` term.
+//
+// ── the unification, and how narrow it is ───────────────────────────────────
+//
+// *"A `SOLVED` state is a fixed point in exactly the shape the ground contact
+// already is — the pose depends on the load and the load depends on the pose — so
+// it reuses the machinery rather than adding any."* That is literal here: this
+// file's loop calls `asm_frames` for the shape and reads the moments off the
+// frames it gets back. Nothing about bending is added to the poser.
+//
+//     the same solver shape, a different residual
+//
+// ⚠ **`SOLVED` is quasi-static, and choosing it is choosing to have NO DYNAMICS.**
+// A wing solved to equilibrium bends but never *flutters*. Usually what you want;
+// the error is picking it by accident, which is why the kind is declared on the
+// body and appears in the ledger.
+//
+// ── what `P6` measured, and both halves matter ──────────────────────────────
+//
+// Hinge `j` turns by the curvature of the stretch it stands for:
+//
+//     φⱼ = M(xⱼ) · ℓⱼ / EI
+//
+// ⚠ A hinge stands for HALF THE SPAN EACH SIDE OF IT:
+//
+//     ℓⱼ = (inboard span + outboard span) / 2
+//
+// which is `h` in the interior and `h/2` at either end, so it reduces to `P6`'s
+// rule without restating it. **The condition is "has no bone inboard of it", not
+// "is the first joint"** — and getting that wrong is not academic: measured on
+// `asm_wing`, whose first mount is a full segment out from the fuselage, applying
+// the root rule to joint 1 made the answer WORSE (12.4 % under, against 5.6 % over
+// for a full `h`). Joint 1 there is an interior hinge with a rigid span inboard of
+// it; the half-step belongs to a hinge that really is at the clamped end.
+// `root_full` below is the knob that puts the end rule back to a full `h`.
+//
+// ⚠ **And the fixed point is only LINEARLY convergent**, where the ground
+// contact's is quadratic: a rate near 0.71, so about 80 rounds to reach `10⁻¹²`
+// near enough independent of `N`. The default budget says so out loud rather than
+// letting a caller discover it.
+use assembly;
+use frames;
+use graphics;
+
+pub struct Bend {
+  bn_values: vector<float>,   // the solved joint values, in TURNS — `asm_frames`' unit
+  bn_rounds: integer,
+  bn_resid: float,            // the last change in any joint value
+  bn_tip: float,              // how far the tip moved from its unloaded place
+  bn_ok: boolean,
+  bn_reason: text,            // `K-FIT`: named, and empty when applied exactly
+  bn_offer: float,            // the limit it was held to
+  bn_over: float              // the residual: how far past that limit it wanted to go
+}
+
+// About 80 rounds reaches `10⁻¹²` at the measured rate. Named, because `P6` found
+// this solve is not the quadratic one and a caller budgeting three rounds — which
+// is right for the ground contact — would be a hundred times short.
+pub const BEND_ROUNDS = 100;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// The span of one station, derived from its own mount offset. Nothing about a
+// wing's geometry is written twice.
+fn station_span(a: Assembly, i: integer) -> float {
+  l = a.am_link[i] ?? link_none();
+  sqrt(l.lk_ox * l.lk_ox + l.lk_oy * l.lk_oy + l.lk_oz * l.lk_oz) ?? 0.0
+}
+
+// Solve the bend of a chain of stations under a uniform load `w` per unit span,
+// acting along `+x` — perpendicular to the span, in the joints' own bend plane.
+//
+// `root_full` is the deliberate defect: it gives the root hinge a full `h`
+// instead of `h/2`, which is exactly `P6`'s first-order scheme.
+// A cantilever whose FIRST hinge is at the clamped end: station 1 with a zero
+// offset, the rest a span apart. `asm_wing` puts its first mount a whole span out
+// — right for a generic chain, wrong for a beam — so the fixture that exercises
+// the end rule has to say so.
+pub fn asm_cantilever(n: integer, seg: float) -> Assembly {
+  a = asm_new("cantilever");
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 3));
+  a = asm_add(a, 0, link_mount(0.0, 0.0, 0.0, 0.0, 0.0, 1.0),
+              body_of(SupportKind.Carried, 0, 1));
+  for i in 1..n {
+    a = asm_add(a, i, link_mount(0.0, 0.0 - seg, 0.0, 0.0, 0.0, 1.0),
+                body_of(SupportKind.Carried, 0, 1));
+  }
+  a
+}
+
+pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
+                 rounds: integer = BEND_ROUNDS,
+                 root_full: boolean = false) -> Bend {
+  n = asm_count(a);
+  values: vector<float> = [for iz in 0..n { 0.0 }];
+  resid = 0.0;
+  used = 0;
+  worst_over = 0.0;
+  worst_limit = 0.0;
+  while used < rounds {
+    fs = asm_frames(a, values, root);
+    if len(fs) == 0 {
+      return Bend { bn_values: values, bn_rounds: used, bn_resid: resid,
+                    bn_tip: 0.0, bn_ok: false,
+                    bn_reason: "the assembly is not a mount chain, so nothing can be posed",
+                    bn_offer: 0.0, bn_over: 0.0 };
+    }
+    // each station's load acts at its own midpoint, read off the frames — the
+    // shape comes from `asm_frames` and not from a second kinematic model
+    nv: vector<float> = [];
+    for j in 0..n {
+      if j == 0 {
+        nv += [0.0];                       // the root body is clamped, not a joint
+      } else {
+        h = station_span(a, j);
+        // the moment about hinge j of every load outboard of it. A force along
+        // +x about the joint's z axis has lever arm −(y_k − y_j).
+        fj = fs[j] ?? frame_id();
+        yj = fj.fm_y;
+        mm = 0.0;
+        for k in j..n {
+          hk = station_span(a, k);
+          fk = fs[k] ?? frame_id();
+          // the station's midpoint, half a span outboard along its own axis
+          mid = frame_apply(fk, vec3(0.0, 0.0 - hk * 0.5, 0.0));
+          mm = mm + w * hk * (yj - mid.y);
+        }
+        // half the span each side, so the ends get half and the interior a whole
+        out_h = 0.0;
+        if j + 1 < n { out_h = station_span(a, j + 1); }
+        eff = (h + out_h) * 0.5;
+        if root_full && h <= 0.0 { eff = out_h; }
+        // ⚠ TWO discharges, on two lines. `mm * eff / ei ?? 0.0 / TURN ?? 0.0`
+        // parses as `mm*eff/ei ?? (0.0 / TURN ?? 0.0)` — the `/TURN` never
+        // applies, and the value comes out in RADIANS while `asm_frames` reads
+        // TURNS: a factor of 2π, silently. Third time `??`'s precedence has cost
+        // something this session.
+        rad = mm * eff / ei ?? 0.0;
+        nv += [rad / TURN ?? 0.0];
+      }
+    }
+    resid = 0.0;
+    for iu in 0..n {
+      d = fabs((nv[iu] ?? 0.0) - (values[iu] ?? 0.0));
+      if d > resid { resid = d; }
+    }
+    values = nv;
+    used = used + 1;
+    if resid < 0.000000000001 { used = rounds; }
+  }
+  // ⚠ `K-FIT`: a load that asks for more bend than a joint allows is REFUSED with
+  // its residual, and offered the limit. A joint that quietly folded through
+  // itself would still move convincingly, which is the whole reason this is a
+  // doorstep and not a clamp.
+  held: vector<float> = [];
+  for iv in 0..n {
+    l = a.am_link[iv] ?? link_none();
+    v = values[iv] ?? 0.0;
+    if iv == 0 { held += [0.0]; }
+    else {
+      if v > l.lk_hi {
+        if v - l.lk_hi > worst_over { worst_over = v - l.lk_hi; worst_limit = l.lk_hi; }
+        held += [l.lk_hi];
+      } else {
+        if v < l.lk_lo {
+          if l.lk_lo - v > worst_over { worst_over = l.lk_lo - v; worst_limit = l.lk_lo; }
+          held += [l.lk_lo];
+        } else { held += [v]; }
+      }
+    }
+  }
+  fs2 = asm_frames(a, held, root);
+  flat = asm_frames(a, [for iw in 0..n { 0.0 }], root);
+  tip = 0.0;
+  if len(fs2) > 0 && len(flat) > 0 {
+    tip = v3_dist(frame_origin(fs2[n - 1] ?? frame_id()),
+                  frame_origin(flat[n - 1] ?? frame_id()));
+  }
+  if worst_over > 0.0 {
+    return Bend { bn_values: held, bn_rounds: used, bn_resid: resid, bn_tip: tip,
+                  bn_ok: false,
+                  bn_reason: "the load asks {worst_over} turns past a joint limit of {worst_limit}",
+                  bn_offer: worst_limit, bn_over: worst_over };
+  }
+  Bend { bn_values: held, bn_rounds: used, bn_resid: resid, bn_tip: tip,
+         bn_ok: true, bn_reason: "", bn_offer: 0.0, bn_over: 0.0 }
+}

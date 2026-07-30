@@ -306,9 +306,28 @@ written and not built.** In priority order:
     **Seen red**: overlap zeroed (5 clauses), overhang clause dropped (1 — the shoulder, as it
     did in `P7`), every pivot treated as interior (4).
 
-    **Two steps left.** `A9c` — a `SOLVED` state, the wing's bend on `A6`'s solver shape; ⚠ `P6`
-    says budget ~80 rounds, it is only *linearly* convergent where the ground contact is
-    quadratic. Then `A10`, where the editor switches over and `cart.mjs` loses its `1.1`.
+12. ✅ **`A9c` is BUILT** — `lib/moros_sim/src/bend.loft`, 11 tests, **639 green**, all 134
+    functions entered. **The unification is literal**: `wing_bend`'s loop calls `asm_frames` for
+    the shape and reads the moments off the frames it gets back, and its values are in
+    `asm_frames`' own unit, so the bent wing poses through `A3` with nothing in between.
+    `A-RIGID` still holds on it.
+    - **The control holds**: a load past a joint limit is REFUSED with a reason, the limit as
+      its offer and the overshoot as its residual, and every value handed back is admissible —
+      it does not fold through itself.
+    - ⚠ **`BEND_ROUNDS = 100`**, because this fixed point is only *linearly* convergent. Three
+      rounds — right for `A6` — leaves a residual a thousand times the settled one.
+    - ⚠ **`P6`'s end rule needed its condition restated.** It is *"has no bone inboard of it"*,
+      **not "is the first joint"**: applied to `asm_wing`, whose first mount is a whole span out,
+      the end rule made the answer WORSE (12.4 % under vs 5.6 % over). Hence `asm_cantilever`,
+      plus a clause asserting the knob does nothing on `asm_wing` — the honest negative.
+    - ⚠ **No absolute accuracy is claimed.** Four attempts kept measuring this fixture's
+      *indexing* rather than the rule. Self-convergence is what is asserted, as `P6` did for its
+      nonlinear half, and the reconciliation is now in CONNECTOR's **Open**.
+    **Seen red**: silent clamp (1 clause), folding through the limit (1), budget dropped to 3 (1).
+
+    **One step left: `A10`** — the editor switches over, and `cart.mjs` loses its axle clause
+    and its `1.1`. The stretch mutation is already demonstrated, and `5ffdf2c`'s `bankSigned`
+    clause is the one that must survive the switch.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

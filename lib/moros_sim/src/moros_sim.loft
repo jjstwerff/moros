@@ -14,3 +14,4 @@ use ground;
 use tether;
 use shape;
 use skin;
+use bend;

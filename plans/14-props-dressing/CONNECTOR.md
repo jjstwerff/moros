@@ -359,7 +359,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A8** ✅ | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** ✅ | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
 | **A9b** ✅ | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
-| **A9c** | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
+| **A9c** ✅ | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
 | **A10** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
 
 **A2 before any geometry.** The ledger is a few lines, it needs no frames, and it is
@@ -1257,8 +1257,56 @@ every pivot as interior breaks 4.
 
 ---
 
+### `A9c` — BUILT. The unification is literal, and one claim is left open
+
+`lib/moros_sim/src/bend.loft`, 11 tests. **639 green** across the five packages, all 134
+functions in the package entered.
+
+**The unification is literal, not a resemblance.** *"A `SOLVED` state is a fixed point in
+exactly the shape the ground contact already is … so it reuses the machinery rather than
+adding any."* `wing_bend`'s loop calls **`asm_frames`** for the shape and reads the moments off
+the frames it gets back — nothing about bending is added to the poser, and the values it
+returns are in `asm_frames`' own unit, so the bent wing poses through `A3` with nothing in
+between. `A-RIGID` still holds on it: bending is joints, not deformation.
+
+**The design's control holds.** A load past a joint's limit is **refused** with a named
+reason, the limit as its offer and the overshoot as its residual — and every value the caller
+is handed is inside its own limit, so it does not fold through itself. The same wing with free
+joints takes the same load and is applied exactly.
+
+⚠ **The convergence warning from `P6` is now a named constant.** `BEND_ROUNDS = 100`, because
+this fixed point is only **linearly** convergent where the ground contact's is quadratic —
+three rounds, which is right for `A6`, leaves a residual a thousand times the settled one. A
+caller budgeting `A6`'s three would be a hundred times short, so the default says so.
+
+⚠ **`P6`'s end rule needed its condition restated, and measuring is what found it.** A hinge
+stands for half the span each side, so ends get `h/2` and the interior `h` — but the condition
+is *"has no bone inboard of it"*, **not "is the first joint"**. Applied to `asm_wing`, whose
+first mount is a whole span out from the fuselage, the end rule made the answer **worse**:
+12.4 % under against 5.6 % over for a full `h`. Joint 1 there is an interior hinge with a
+rigid span inboard of it. So `asm_cantilever` exists — a fixture whose first hinge really is at
+the clamped end — and a clause asserts the knob does **nothing** on `asm_wing`, which is the
+honest negative.
+
+⚠ **And one claim is deliberately NOT made.** No absolute accuracy against `wL⁴/8EI` is
+asserted here. Four attempts at one kept measuring this fixture's *indexing* rather than the
+rule — the tip and the loaded span differ by half a segment from `P6`'s own numbering. `P6`
+established the accuracy with its own instrument; what this step measures is
+**self-convergence**, stated as such, which is what `P6` itself fell back to for its nonlinear
+half. Reconciling the two indexings is in *Open* below rather than papered over.
+
+**Seen red three ways**, each on exactly one clause: clamping silently instead of refusing,
+letting the joint fold through its limit, and dropping the budget to `A6`'s three rounds.
+
+---
+
 ## Open
 
+- **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
+  the same beam with the hinge and load positions offset by half a segment, so the library's
+  bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is
+  wrong; they are not the same numbering, and until they are the absolute error belongs to the
+  probe and not to the library.
 - **A team is not a tree.** Two horses abreast on one cart is two links into one body,
   which `A-TOPO` forbids. The likely answer is that the yoke is a body and each horse
   links to *it* — restoring the tree — but that is a claim, not a result.
