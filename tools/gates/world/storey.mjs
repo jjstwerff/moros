@@ -61,8 +61,23 @@ ws.onmessage = async (e) => {
 
     // ── the tower: three floors on the low hill
     await placeAck(17.3, 0, 0);
+    // ⚠ A STOREY COSTS ONE LAYER, and for a long time it cost eleven. A layer is
+    // CHUNK-WIDE while this writes a DISC OF 19 COLUMNS, and each column read one
+    // cell more than the last — the layer its neighbour had just made, absent at
+    // this hex — and appended yet another. Measured: 12, 23, 34 layers for three
+    // storeys, against a LAYER_CAP of 64, so a six-storey tower would have hit the
+    // cap. The stack of OCCUPIED cells was `25,37,49,61` either way, which is why
+    // nothing caught it until `29:` LABELS existed to count layers with.
+    const layerCount = async () => {
+      ws.send('29:20,0'); const m = await ack('labels 20,0 =');
+      const v = m.slice(m.indexOf('=') + 1).trim();
+      return v === '' ? 0 : v.split(',').length;
+    };
+    const layersBefore = await layerCount();
     const up = [];
-    for (let k = 0; k < 3; k++) { ws.send('12:1'); up.push(await ackStorey()); }
+    const layersPer = [];
+    for (let k = 0; k < 3; k++) { ws.send('12:1'); up.push(await ackStorey());
+                                  layersPer.push(await layerCount()); }
 
     // ── the dungeon that CANNOT be: peak 6 < STOREY_H 12, so no room below
     ws.send('12:-1');
@@ -76,9 +91,13 @@ ws.onmessage = async (e) => {
     const towerBuilt  = up.length === 3 && up.every(m => /^storey \+1 on \d+ cells$/.test(m));
     const refusedLow  = cellarLow.startsWith('storey refused (-2)');
     const cellarBuilt = /^storey -1 on \d+ cells$/.test(cellarHigh);
-    const ok = towerBuilt && refusedLow && cellarBuilt;
+    // one layer per storey, exactly — not "few", because the defect it guards
+    // against was a CONSTANT FACTOR and any slack admits it back
+    const oneLayerEach = layersPer.every((n, k) => n === layersBefore + k + 1);
+    const ok = towerBuilt && refusedLow && cellarBuilt && oneLayerEach;
     console.log(JSON.stringify({ tower: up, cellarLow, cellarHigh,
-                                 towerBuilt, refusedLow, cellarBuilt, ok }));
+                                 layersBefore, layersPer,
+                                 towerBuilt, refusedLow, cellarBuilt, oneLayerEach, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');

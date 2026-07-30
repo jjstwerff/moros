@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-29)
+# STATE.md — where the editor work stands (2026-07-31)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -10,7 +10,46 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-07-29, end of session 3)
+## ⏭ PICK UP HERE (2026-07-31)
+
+**The surface question is closed on every consumer.** A column can hold cellars, ground and
+decks; three separate rules were needed and all three now exist and are gated:
+
+| question | rule | in code |
+|---|---|---|
+| which layer is the **outdoors** | a reserved label | `hex_world::LABEL_GROUND`, via `world_ground_cell` |
+| which surface am I **standing on** | highest occupied terrain layer at or below the feet | `hex_world::world_surface(w, q, r, feet)` |
+| does a write keep **identity** | labels travel with cells; `0` means "new" | `Column.co_ids` → `world_set_column` |
+
+The whole story, with every measurement, is [WORLD_MODEL.md § "Which layer is the
+surface"](WORLD_MODEL.md). **27 gates green, 732 library tests across 7 packages
+(`hex_world` 75).**
+
+**Where to look first if something surfaces here:** items **32–34** at the bottom of this file,
+in that order — they were built in that order and each depended on the one before.
+
+### What is open, in priority order
+
+1. ⚠ **`terrain_y` still has three callers that were left alone deliberately**, each named
+   where it sits: the wall-run mesh (a wall stands on the ground it was laid on), the cart's
+   ground sampler (`cs_sample`, A10 — a cart has no storey yet), and `ground_under`'s own
+   smooth path. None is wrong today; the first two become wrong the day something can be
+   built on a deck.
+2. ⚠ **Nothing can put a character on an upper deck.** A storey is 3 wu and the cliff rule
+   refuses a climb that steep, so the *deck* half of both the camera and the road rules is
+   correct by construction and **untested**. A ladder, a stair or a ramp gesture is what
+   would make it reachable — and would make three currently-unfalsifiable claims testable at
+   once.
+3. **`A0` and the plan-14 probes** — unchanged, see the section below.
+
+### The habit that found the last three defects
+
+**Add the read-back for the thing you are claiming, not for its consequences.** The drawn
+ground, the occupied stack and the boom length were all *correct* while the store underneath
+was wrong. `29:` LABELS — one message — exposed a 34-layer bug, a 63-layer bug and the
+ground's identity loss within a day of existing. If a claim is about the store, read the store.
+
+## Earlier pick-up (2026-07-29, session 3) — plan-14 probes, still open
 
 **The cart's two visible defects are fixed and gated; the design for doing it properly is
 written and not built.** In priority order:
@@ -1688,3 +1727,40 @@ edges — neither of which the mechanism's own eight gates had caught.
     - Library side is 7 tests in `lib/hex_world/tests/ground.loft`; red control fails **6 of 7**.
     - **26 gates green, 732 library tests.** Every `world/` gate's numbers are unchanged; only
       the frame-window character gates moved, by their usual ±1.
+34. ✅ **THE CAMERA AND THE ROAD ASK THE SURFACE RULE — and making layers observable turned up
+    a defect much older than any of this.**
+    - **The camera.** `cam_wire` already stated the invariant — *"the eye is never below the
+      surface"*, the fall's invariant with the eye for the feet — and asked it of `terrain_y`,
+      which interpolates **the outdoors** and nothing else. It now asks the feet's rule with
+      **the sample's own eye height** as the reference. Measured under a platform of storeys:
+
+      | | boom | pitch |
+      |---|---|---|
+      | open ground | 5.860 | 0.35 |
+      | under five decks, red control | 5.860 | 0.35 |
+      | under five decks, fixed | **1.289** | **0.80** |
+
+      The middle row *is* the defect — identical to open ground, with the eye sitting inside
+      the first deck.
+    - ⚠ **A SINGLE STOREY DISC CANNOT SHOW IT, and a gate built on one would have passed the
+      broken code.** The eye rides ~5.5 wu back from the pivot; a storey disc is radius 2
+      (~3.5 wu), so the eye clears a lone disc and both rules agree. `surface.mjs` builds
+      **seven overlapping discs** for exactly this reason, and says so in the file.
+    - **The road** takes its grade from the feet, so its write must too — `surface_set` writes
+      the layer `world_surface` names, instead of `terrain_set`'s always-the-ground. ⚠ **The
+      deck half is not reachable and is not claimed**; what is gated is a road over a cellar:
+      `7,19,31` → `7,19,37`, ground graded, both cellars untouched.
+    - **`world_surface` moved into `hex_world`.** It read a whole `Column` and then called a
+      second one — fine while only the feet asked once a tick, not when the camera asks ~5
+      times per boom sample × 15 booms a tick. One chunk lookup, no allocation, and the
+      invariant is now reachable by a pure test.
+    - ⚠ **AND THE OLD DEFECT: a `storey +1` cost ELEVEN layers.** A layer is chunk-wide,
+      `storey_add` writes a disc of 19 columns, and the **upward** path still had the confusion
+      the cellar path was fixed for — each column read one cell more than the last and appended
+      another. Three storeys: **12, 23, 34** layers, against a `LAYER_CAP` of 64, so a
+      six-storey tower would have hit the cap. Now **2, 3, 4**.
+      - **The occupied stack was `25,37,49,61` either way.** That is why it survived: nothing
+        could read layer *counts* until `29:` LABELS existed. Guarded in `storey.mjs` at
+        *exactly* one per storey — the defect was a constant factor, and slack readmits it.
+    - **27 gates green, 732 library tests** (`hex_world` 75). Every `world/` gate unchanged;
+      the frame-window character gates moved by their usual ±1. Suite runs in ~8 min.

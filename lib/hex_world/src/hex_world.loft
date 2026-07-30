@@ -309,6 +309,71 @@ pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
                h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
 }
 
+// ── The OTHER surface question — the one that takes a height ─────────────────
+//
+// `world_ground_cell` above answers *which layer is the outdoors*. This answers
+// *which surface is someone at this height standing on*, and the two are genuinely
+// different questions with different answers: a column with three storeys has ONE
+// outdoors and THREE surfaces. `WORLD_MODEL.md` § "Which layer is the surface":
+//
+// > The surface at a hex is the highest occupied `KIND_TERRAIN` layer at or below
+// > the feet.
+//
+// It lived in the editor, over a `Column` read — which allocates a `Hex` per layer
+// on every call. That was affordable while only the feet asked, once a tick. The
+// camera asks it about five times per boom sample, fifteen booms a tick, so it is
+// here instead: one chunk lookup, no allocation, and the invariant sits in the
+// library where a pure test can reach it rather than in a consumer.
+pub struct Surface {
+  sf_units:  integer,     // the surface height, absolute; −1 when nothing is here
+  // ⚠ WHICH layer answered, so a WRITER can reach it. `world_ground_layer` is the
+  // same service for the outdoors; this is it for "the surface I am standing on",
+  // and a road graded from a deck must land on the deck, not three storeys down.
+  sf_layer:  integer,     // index of the layer chosen; −1 when there is none
+  sf_occ:    integer,     // how many occupied terrain layers this column holds
+  // ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. One occupied layer — or
+  // none — is the ordinary case and the caller should interpolate its heightfield
+  // across the cell's corners, which is what makes a slope a slope. A deck is not
+  // a heightfield and is taken flat. Reported rather than decided here, because
+  // the interpolation is the consumer's geometry, not the store's.
+  sf_smooth: boolean,
+}
+
+// `feet` is in the same absolute units as a cell's height.
+//
+// The tolerance is the model's own `ε`: layers are at least that far apart, so
+// half of it cannot select the wrong one, and it absorbs the difference between a
+// terrain layer's smoothed surface and its cell's stored integer height — on any
+// slope the interpolated surface sits BELOW the cell's own value.
+pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> Surface {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return Surface { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
+  ix = cell_index(q, r);
+  base = w.w_chunks[ci].ck_base;
+  tol = (w.w_eps as float) * 0.5;
+  best = 0; found = false; low = 0; havelow = false; occ = 0;
+  bestl = 0 - 1; lowl = 0 - 1; li = 0 - 1;
+  for ly in w.w_chunks[ci].ck_layers {
+    li = li + 1;
+    if ly.ly_kind == KIND_TERRAIN && stored_occupied(ly.ly_cells[ix]) {
+      hh = base + ly.ly_cells[ix].sv_height;
+      occ = occ + 1;
+      // `F1″` makes layer order height order, so the first occupied one is the
+      // lowest — no sort, and no assumption beyond the invariant.
+      if !havelow { low = hh; lowl = li; havelow = true; }
+      if (hh as float) <= feet + tol {
+        if !found || hh > best { best = hh; bestl = li; found = true; }
+      }
+    }
+  }
+  if !havelow { return Surface { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
+  // Below every floor — land on the lowest rather than on nothing. Falling into a
+  // sealed cellar has to end somewhere, and the alternative is falling forever.
+  h = low; hl = lowl;
+  if found { h = best; hl = bestl; }
+  Surface { sf_units: h, sf_layer: hl, sf_occ: occ, sf_smooth: occ <= 1 }
+}
+
 pub fn world_column(w: World, q: integer, r: integer) -> Column {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
   // A missing chunk is an empty column, never a refusal: unauthored ground is a

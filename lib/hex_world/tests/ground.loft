@@ -120,3 +120,78 @@ fn test_the_ground_label_survives_a_save_and_load() {
          "and it is STILL at index 1, not migrated back to 0 — got {world_ground_layer(w2, 0, 0)}");
   assert(world_ground_cell(w2, 0, 0).h_height == 200, "reading the ground, not the cellar");
 }
+
+// ── The other surface question: which one is someone at this height standing on ──
+
+fn test_the_surface_is_the_highest_terrain_layer_at_or_below_the_feet() {
+  // Ground at 200, decks at 240 and 280. Three feet heights, three answers — and
+  // that is the whole reason this rule takes a height and the ground label does not.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1), cell_at(280, 1)] });
+  assert(world_surface(w, 0, 0, 200.0).sf_units == 200, "on the ground");
+  assert(world_surface(w, 0, 0, 245.0).sf_units == 240, "on the first deck");
+  assert(world_surface(w, 0, 0, 900.0).sf_units == 280, "on the top deck, not the ground");
+  assert(world_surface(w, 0, 0, 900.0).sf_occ == 3, "three occupied layers");
+  assert(!world_surface(w, 0, 0, 900.0).sf_smooth, "a storeyed column is not interpolated");
+}
+
+fn test_below_every_floor_lands_on_the_lowest() {
+  // Falling into a sealed cellar has to end somewhere; the alternative is falling
+  // forever, which is what returning "no surface" would mean to the caller.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1)] });
+  assert(world_surface(w, 0, 0, 10.0).sf_units == 200, "the lowest floor catches it");
+}
+
+fn test_the_tolerance_is_half_epsilon_and_cannot_select_the_wrong_layer() {
+  // A terrain layer is interpolated across the cell's corners, so on a slope the
+  // surface sits BELOW the cell's stored height — the feet are legitimately a hair
+  // under the number. ε is 8 here, so half of it is 4, and the layers are 40 apart.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1)] });
+  assert(world_surface(w, 0, 0, 237.0).sf_units == 240, "3 under the deck still selects it");
+  assert(world_surface(w, 0, 0, 235.0).sf_units == 200, "5 under it does not — that is the ground");
+}
+
+fn test_one_layer_is_the_ordinary_case_and_is_smooth() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  s = world_surface(w, 0, 0, 200.0);
+  assert(s.sf_occ == 1 && s.sf_smooth, "one occupied layer interpolates");
+  assert(world_surface(w, 9, 9, 0.0).sf_units == 0 - 1, "and virgin ground has no surface");
+  assert(world_surface(w, 9, 9, 0.0).sf_smooth, "which is still the smooth case");
+}
+
+fn test_the_surface_and_the_ground_disagree_and_that_is_the_point() {
+  // ⚠ The two questions, on one column, giving different answers. Collapsing them
+  // into one rule is the elegant absorption `WORLD_MODEL.md` warns about.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  b = world_column(w, 0, 0);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(150, 4), b.co_cells[0]],
+                               co_ids:   [0, LABEL_GROUND] });
+  assert(world_ground_cell(w, 0, 0).h_height == 200, "the OUTDOORS is the ground, at 200");
+  assert(world_surface(w, 0, 0, 155.0).sf_units == 150,
+         "but someone down in the cellar stands on 150");
+  assert(world_surface(w, 0, 0, 200.0).sf_units == 200, "and someone above stands on 200");
+}
+
+fn test_the_surface_names_the_layer_it_chose_so_a_writer_can_reach_it() {
+  // A reader wants the height; a WRITER wants the index. Without this a road
+  // graded from a deck could only be written to the outdoors.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1), cell_at(280, 1)] });
+  assert(world_surface(w, 0, 0, 200.0).sf_layer == 0, "the ground is layer 0");
+  assert(world_surface(w, 0, 0, 245.0).sf_layer == 1, "the first deck is layer 1");
+  assert(world_surface(w, 0, 0, 900.0).sf_layer == 2, "the top deck is layer 2");
+  assert(world_surface(w, 9, 9, 0.0).sf_layer == 0 - 1, "and virgin ground names none");
+  // the index it names really is the layer whose height it reported
+  s = world_surface(w, 0, 0, 245.0);
+  assert(world_cell(w, 0, 0, s.sf_layer).h_height == s.sf_units,
+         "the named layer holds the reported height");
+}

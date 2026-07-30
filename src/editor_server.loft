@@ -599,6 +599,35 @@ fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
 //
 // A hex with no ground at all is the one case that still sends a single cell:
 // there is no layer to address, and the store names the one it creates.
+// Write one cell of THE LAYER THOSE FEET ARE ON — `ground_write`'s twin for the
+// other surface question. A column with no surface at all falls back to authoring
+// the ground, which is what an unwritten hex has always done.
+//
+// ⚠ Deliberately NOT folded into `terrain_set`. Every other ground writer — the
+// raise, the field, the vegetation, the walls — genuinely means the outdoors, and
+// giving all of them a height they would have to invent would be rewriting every
+// producer to serve one consumer. The road is the consumer that knows its feet.
+fn surface_set(wld: &World, q: integer, r: integer, feet: float,
+               h: integer, mat: integer) -> integer {
+  sf = hex_world::world_surface(wld, q, r, feet / HEIGHT_SCALE ?? 0.0);
+  c = hex_world::world_cell(wld, q, r, sf.sf_layer);
+  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+                        h_material: mat as u8? ?? 0,
+                        h_item: c.h_item,
+                        h_item_rotation: c.h_item_rotation,
+                        h_wall_n: c.h_wall_n,
+                        h_wall_ne: c.h_wall_ne,
+                        h_wall_se: c.h_wall_se };
+  if sf.sf_layer < 0 { return ground_write(wld, q, r, nc); }
+  col = hex_world::world_column(wld, q, r);
+  cells: vector<hex_world::Hex> = [];
+  for i in 0..len(col.co_cells) {
+    if i == sf.sf_layer { cells += [nc]; } else { cells += [col.co_cells[i]]; }
+  }
+  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+                                            co_ids: col.co_ids }).cw_code
+}
+
 fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
   gl = hex_world::world_ground_layer(wld, q, r);
   if gl < 0 {
@@ -633,7 +662,21 @@ fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> inte
 // IS on that floor. The seam to take when it matters is already clear —
 // `hex_way` owns the curve, `hex_world` owns the cells — and nothing here
 // contradicts it: the authoring gesture changes, the stamp does not.
-fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
+// ⚠ A ROAD GRADES THE SURFACE THE AUTHOR IS WALKING ON, which is not the same
+// thing as the outdoors. `road_h` is already frozen from the FEET — that is what
+// makes a road cut into a hill instead of riding up it — so the write has to land
+// on the layer those feet are on, or the grade and the target disagree. Writing
+// through `terrain_set` sent every road cell to the GROUND layer, which is right
+// only while the ground is the only thing anyone can stand on.
+//
+// ⚠ NOT YET REACHABLE, AND SAID SO RATHER THAN CLAIMED: the editor has no way to
+// get a character onto an upper deck — a storey is 3 wu and the cliff rule refuses
+// a climb that steep — so today every call lands on the ground exactly as before,
+// and the gate can only witness the half that IS reachable (a road over a cellar
+// grading the ground, not the cellar). The deck half is correct by construction
+// and untested, which is a weaker claim and belongs written down as one.
+fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer,
+            feet: float) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -642,7 +685,7 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer) {
         hh = h;
         if hh < W_RESERVE { hh = W_RESERVE; }
         if hh > 65535 { hh = 65535; }
-        terrain_set(wld, q, r, hh, ROAD_MAT);
+        surface_set(wld, q, r, feet, hh, ROAD_MAT);
       }
     }
   }
@@ -1701,11 +1744,42 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
             lo_i = ci2 + 1;
           }
           if dir > 0 {
-            cells += c2.co_cells;
-            ids += c2.co_ids;
-            cells += [hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
-                                       h_material: FLOOR_MAT }];
-            ids += [0];
+            // ⚠ THE SAME RULE UPWARD, AND IT IS NOT SYMMETRY FOR ITS OWN SAKE —
+            // this direction had the identical defect and had it FIRST. Every
+            // column of the disc read one cell more than the last (the layer its
+            // neighbour had just made, absent here) and appended yet another, so a
+            // single `storey +1` cost NINETEEN layers. Measured only once `29:`
+            // LABELS existed: seven overlapping discs took one chunk to 63 layers
+            // against a `LAYER_CAP` of 64. It was invisible for as long as it was,
+            // because the stack of OCCUPIED cells — all any gate could read — is
+            // correct either way.
+            top_i = 0 - 1;
+            for ci3 in 0..len(c2.co_cells) {
+              if hex_world::hex_occupied(c2.co_cells[ci3] ?? hex_world::Hex {}) { top_i = ci3; }
+            }
+            // the first TERRAIN slot above the top occupied one is that neighbour's
+            // layer — a dressing slot also reads absent and must never be written
+            fill_i = 0 - 1;
+            for cj3 in (top_i + 1)..len(c2.co_cells) {
+              if fill_i < 0
+                 && !hex_world::hex_occupied(c2.co_cells[cj3] ?? hex_world::Hex {})
+                 && hex_world::world_layer_kind(wld, q2, r2, cj3) == hex_world::KIND_TERRAIN {
+                fill_i = cj3;
+              }
+            }
+            floor_u = hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
+                                       h_material: FLOOR_MAT };
+            if fill_i >= 0 {
+              for cj4 in 0..len(c2.co_cells) {
+                if cj4 == fill_i { cells += [floor_u]; } else { cells += [c2.co_cells[cj4]]; }
+                ids += [c2.co_ids[cj4] ?? 0];
+              }
+            } else {
+              cells += c2.co_cells;
+              ids += c2.co_ids;
+              cells += [floor_u];
+              ids += [0];
+            }
           } else {
             floor_c = hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
                                        h_material: FLOOR_MAT };
@@ -2614,45 +2688,27 @@ fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
 // select the wrong one, and it absorbs the difference between a terrain layer's
 // smoothed surface and its cell's stored integer height.
 fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integer {
-  col = world_column(wld, q, r);
-  best = 0;
-  found = false;
-  low = 0;
-  havelow = false;
-  li = 0;
-  for e in col.co_cells {
-    if hex_world::hex_occupied(e)
-       && hex_world::world_layer_kind(wld, q, r, li) == hex_world::KIND_TERRAIN {
-      hh = e.h_height as integer ?? 0;
-      if !havelow { low = hh; havelow = true; }
-      if (hh as float) <= feet_units + (W_EPS as float) * 0.5 {
-        if !found || hh > best { best = hh; found = true; }
-      }
-    }
-    li = li + 1;
-  }
-  if !havelow { return 0 - 1; }        // virgin: no occupied layer at all
-  if !found { return low; }            // below every floor — land on the lowest
-  best
+  hex_world::world_surface(wld, q, r, feet_units).sf_units
 }
 
 // The ground under the feet.
 //
 // ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. A terrain layer is a
-// heightfield and `terrain_y` interpolates it across a cell's corners, which is what
-// makes a slope a slope rather than a staircase. A deck is not a heightfield. One
-// occupied layer — or none — is the ordinary case and takes the interpolation with
-// no layer arithmetic anywhere near it, which is also what keeps the smoothed
-// surface from being compared against an integer it sits below.
+// heightfield and `terrain_y` interpolates it across a cell's corners, which is
+// what makes a slope a slope rather than a staircase. A deck is not a heightfield.
+// One occupied layer — or none — is the ordinary case, and the store reports it as
+// `sf_smooth` rather than the caller counting layers again.
+//
+// ⚠ It used to read a whole `Column` — a `Hex` allocated per layer — and then call
+// `surface_units`, which read ANOTHER one. Two allocations per query was fine
+// while only the feet asked, once a tick. The camera asks about five times per
+// boom sample and fifteen booms a tick, so the rule moved into the store where it
+// costs one chunk lookup and no allocation at all.
 fn ground_under(wld: World, wx: float, wz: float, feet: float) -> float {
   addr = world_to_hex(wx, wz);
-  col = world_column(wld, addr.ha_q, addr.ha_r);
-  occ = 0;
-  for e0 in col.co_cells { if hex_world::hex_occupied(e0) { occ = occ + 1; } }
-  if occ <= 1 { return terrain_y(wx, wz, wld); }
-  h = surface_units(wld, addr.ha_q, addr.ha_r, feet / HEIGHT_SCALE ?? 0.0);
-  if h < 0 { return terrain_y(wx, wz, wld); }
-  (h as float) * HEIGHT_SCALE
+  sf = hex_world::world_surface(wld, addr.ha_q, addr.ha_r, feet / HEIGHT_SCALE ?? 0.0);
+  if sf.sf_smooth || sf.sf_units < 0 { return terrain_y(wx, wz, wld); }
+  (sf.sf_units as float) * HEIGHT_SCALE
 }
 
 fn terrain_y(wx: float, wz: float, wld: World) -> float {
@@ -2832,10 +2888,14 @@ fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
 // The vertical clearance that yields CAM_CLEAR PERPENDICULAR to the local surface.
 // Flat ground → CAM_CLEAR. A steep face → much more, which is exactly where the
 // old flat 0.28 was letting the eye graze the hillside and fill the screen.
-fn cam_clear_at(x: float, z: float, wld: World) -> float {
+// ⚠ `eye` IS THE HEIGHT THE QUESTION IS ASKED FROM, and it is why this is not
+// `terrain_y`. The gradient must be the gradient of the surface the eye is
+// actually above — on a deck that is the deck, not the outdoors three storeys
+// down, and the two have completely different slopes.
+fn cam_clear_at(x: float, z: float, eye: float, wld: World) -> float {
   e = 0.5;
-  gx = (terrain_y(x + e, z, wld) - terrain_y(x - e, z, wld)) / (2.0 * e) ?? 0.0;
-  gz = (terrain_y(x, z + e, wld) - terrain_y(x, z - e, wld)) / (2.0 * e) ?? 0.0;
+  gx = (ground_under(wld, x + e, z, eye) - ground_under(wld, x - e, z, eye)) / (2.0 * e) ?? 0.0;
+  gz = (ground_under(wld, x, z + e, eye) - ground_under(wld, x, z - e, eye)) / (2.0 * e) ?? 0.0;
   CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
 }
 
@@ -2864,7 +2924,15 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       t = want * (i as float) / (CAM_STEPS as float) ?? 0.0;
       sx = ox - ky * t * kp;
       sz = oz - sy * t * kp;
-      if oy + t * sp < terrain_y(sx, sz, wld) + cam_clear_at(sx, sz, wld) {
+      // ⚠ THE EYE OBEYS THE FEET'S RULE, WITH THE EYE IN PLACE OF THE FEET. This
+      // asked `terrain_y`, which always answers THE OUTDOORS — so a boom swung
+      // past a tower passed straight through its decks, because the only surface
+      // it knew about was the ground far below. The rule that fixes it is the one
+      // `WORLD_MODEL.md` already states for the walk: the highest occupied terrain
+      // layer at or below the height you are at. The reference is this sample's
+      // own eye height, which is exactly what "is the eye below the surface" asks.
+      ey_s = oy + t * sp;
+      if ey_s < ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, ey_s, wld) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -2984,7 +3052,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // another heuristic: **the eye is never below the surface.** Obstruction is
   // outright bad and a raised eye is merely an unusual angle, so when the two
   // conflict the angle loses.
-  floor_at_eye = terrain_y(ex, ez, wld) + cam_clear_at(ex, ez, wld);
+  floor_at_eye = ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, ey, wld);
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
@@ -3421,7 +3489,9 @@ fn main() {
             // and saying so through the same routine keeps one path.
             for ldc in loaded { mark_dirty_id(dirty, ldc); }
             println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
-            py = terrain_y(px, pz, wld);
+            // The FEET, so the feet's rule — a load must not drop someone
+            // standing on a deck through to the ground under it.
+            py = ground_under(wld, px, pz, py);
             moved = true;
             srv.send_to(ev.cid, "S:loaded {len(wld.w_chunks)} chunks from {ev.payload}");
             println("editor: loaded {len(wld.w_chunks)} chunks <- {ev.payload}");
@@ -3448,7 +3518,7 @@ fn main() {
               // followed the path.
               if roading {
                 rhx = world_to_hex(px, pz);
-                road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, ROAD_HALF);
+                road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, ROAD_HALF, py);
                 mark_dirty(dirty, rhx.ha_q, rhx.ha_r, ROAD_HALF);
                 py = (road_h as float) * HEIGHT_SCALE;
               }
@@ -3858,7 +3928,7 @@ fn main() {
             // until you moved. Measured: it also made the levelling gate
             // unfalsifiable, since the released height was the frozen one in
             // both the real run and its control.
-            py = terrain_y(px, pz, wld);
+            py = ground_under(wld, px, pz, py);
             moved = true;
             println("editor: levelling off — feet back on the ground at {py}");
           }

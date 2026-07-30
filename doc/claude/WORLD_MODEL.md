@@ -241,10 +241,18 @@ callers:
 
 | | the feet's rule | the ground label |
 |---|---|---|
-| asked by | the walk, the fall, the camera | meshing, the road, the field, every editing gesture |
+| asked by | the walk, the fall, **the camera**, **the road** | meshing, the field, the walls, the raise |
 | question | *which surface am I standing on* | *which layer is the outdoors* |
 | answer under a tower | the deck you are on — a different one per storey | always the terrain, never a deck |
 | needs | a height to disambiguate | nothing |
+| in code | `hex_world::world_surface(w, q, r, feet)` | `world_ground_cell` / `world_ground_layer` |
+
+⚠ **The road is on the LEFT of that table, and it is the one that reads wrong at first
+glance.** A road is an outdoor thing, so "the outdoors" looks like its answer. But `road_h` is
+frozen from the **feet** — that is what makes a road cut into a hill instead of riding up it —
+so the layer written has to be the layer those feet are on, or the grade and its target are
+answers to different questions. Everything else in the right-hand column authors the world
+without reference to where anyone is standing.
 
 A column with three storeys genuinely has **three** answers to the first question and exactly
 **one** to the second. Collapsing them would be the elegant absorption this document warned
@@ -298,6 +306,61 @@ so the write creates nothing.
 | before cellars | `1,49` | 10.917 |
 | after, layer 0 (the defect) | `4,13` | 5.583 |
 | after, `GROUND` label | `1,49` | **10.917** |
+
+### ✅ And the two remaining consumers — 2026-07-31
+
+`terrain_h` was the read that showed in a picture. Two more asked the wrong question, both by
+routing through `terrain_y`, which interpolates **the outdoors** and nothing else.
+
+**The camera.** `cam_wire` already states the invariant — *"the eye is never below the
+surface"* — which is the fall's invariant with the eye in place of the feet. It asked it of the
+outdoors, so a boom swung over a deck went straight through it. It now asks the feet's rule with
+**the sample's own eye height** as the reference, which is exactly what *"is the eye below the
+surface"* means when written down. Measured, standing under a platform of storeys:
+
+| | boom | pitch |
+|---|---|---|
+| open ground | 5.860 | 0.35 |
+| under five decks — **on `terrain_y`** | 5.860 | 0.35 |
+| under five decks — on the feet's rule | **1.289** | **0.80** |
+
+The middle row is the defect: *identical to open ground*, because the only surface the camera
+knew about was the terrain far below, and the eye was sitting inside the first deck.
+
+⚠ **A single storey disc cannot show this**, and a gate built on one would have passed the
+broken code. The eye rides ~5.5 wu back from the pivot while a storey disc is radius 2 (~3.5 wu),
+so the eye clears a lone disc and both rules agree. The scene has to be *wider than the boom*.
+
+**The road.** `road_lay` wrote through `terrain_set`, which authors the ground. Its grade comes
+from the feet, so the target must too — `surface_set` now writes the layer `world_surface`
+names. ⚠ **The half that matters is not reachable yet and is not claimed as tested**: nothing
+can put a character on an upper deck (a storey is 3 wu and the cliff rule refuses that climb),
+so every call today lands on the ground exactly as before. What *is* gated is a road laid over
+a cellar: `7,19,31` → `7,19,37`, the ground graded and both cellars untouched.
+
+**Where the rule lives.** `world_surface` moved out of the editor and into `hex_world`. It read
+a whole `Column` — a `Hex` allocated per layer — and then called a second one; that was fine
+while only the feet asked, once a tick, and not when the camera asks about five times per boom
+sample and fifteen booms a tick. In the store it is one chunk lookup and no allocation, and the
+invariant is reachable by a pure test rather than only through a running editor.
+
+#### ⚠ What making layers observable turned up: a storey cost ELEVEN of them
+
+Counting layers over the wire found a defect that had been there far longer than any of this.
+`storey_add` writes a **disc of 19 columns**, and a layer is **chunk-wide** — the same confusion
+the cellar path was fixed for, still present in the upward one. Each column read one cell more
+than the last (the layer its neighbour had just made, absent at this hex) and appended yet
+another:
+
+| three `storey +1` | layers in the chunk | occupied stack at `0,10` |
+|---|---|---|
+| before the fix | 12, 23, 34 | `25,37,49,61` |
+| after | **2, 3, 4** | `25,37,49,61` |
+
+**The stack is identical.** That is why it survived: every gate could read the occupied cells and
+none could read the layers, so the only symptom was a `LAYER_CAP` of 64 that a six-storey tower
+would have hit. Guarded now in `storey.mjs`, which requires *exactly* one layer per storey —
+the defect was a constant factor, and any slack in that assertion admits it back.
 
 ## Continuity across a seam
 
