@@ -1465,3 +1465,30 @@ edges — neither of which the mechanism's own eight gates had caught.
     - `CONNECTOR.md`'s **Open** is down to two, and both are deferrals rather than unknowns:
       steep ground (refuse or tip — tipping is dynamics this rung does not have), and where
       the states are advanced (the sandbox seam, [#15](https://github.com/jjstwerff/moros/issues/15)).
+25. ✅ **CLIFFS ARE BUILT — steep ground blocks the walker, as an edge.**
+    `lib/moros_sim/src/cliff.loft` + 7 tests; `tools/gates/character/cliff.mjs` is the 24th
+    gate. Measured before designing, so the design had a number to answer to.
+    - **Before:** the character walked a **66.6°** face and summited a 9.25 wu hill. The
+      editor said why in its own words — *"no jump, no fall, no step limit yet"* — and
+      `walk_to` consults only `sweep_path` over an `EdgeSet`, so steepness was never asked.
+    - **After:** steepest walked **25.7°**, peak **0.664** wu, summit refused. And
+      `climb.mjs` is **bit-identical at 0.619** — the rule discriminates rather than blocks.
+    - **The invariant: impassability is an edge, always.** A cliff is a *derived* edge from
+      the height difference, in the same `EdgeSet` a wall uses, consulted by the same sweep.
+      One blocking mechanism, one re-assertion site — a slope test in the walk would have been
+      a second, needing its own copy in every future mover.
+    - **Seen red twice.** `cliff_step() -> 9999` returns the probe to *exactly* its old
+      numbers (66.6°, 9.085, summit true) and turns the new gate red — so the wiring is live,
+      not the probe flattering itself.
+    - ⚠ **The gate asserts the walker still covers ground** (7.79 wu). "Did not summit" alone
+      passes for a character that cannot move — the second time this plan has had to close
+      that hole, after `collide`'s control leg.
+    - **The threshold is configuration, not a library constant**: `cliff_edges` takes it as a
+      parameter and the editor passes its own hip height. How tall a step a creature can take
+      is a property of the creature.
+    - ⚠ **Symmetric, deliberately, with a named trigger.** `hex_edge` blocks the canonical
+      edge, so a cliff stops you both ways. That is consistent only while no walker can
+      *descend* faster than it climbs — the day a **fall** exists, a cliff needs a direction.
+      A test asserts the symmetry so that day fails loudly. Cost named now: a character
+      *placed* on a plateau is fenced in by its own cliffs.
+    - **24 gates green, 651 library tests pass.**

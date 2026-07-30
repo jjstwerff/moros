@@ -1,0 +1,97 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// CLIFFS — steep ground that blocks the walker, derived as EDGES.
+//
+// Designed in plans/14-props-dressing/CONNECTOR.md § "Cliffs". The invariant:
+//
+// > **Impassability is an edge, always.** A cliff is not a new kind of obstacle —
+// > it is a DERIVED edge, computed from the height difference across it, carried
+// > in the same `EdgeSet` a wall uses and consulted by the same `sweep_path`.
+//
+// So there is exactly ONE blocking mechanism and one re-assertion site. A slope
+// test inside the walk would be a second, and every future mover — an NPC
+// pathfinder, a placed vehicle, a thrown object — would need its own copy of it.
+//
+// ⚠ **WHY THE THRESHOLD IS A PARAMETER AND NOT A CONSTANT HERE.** How tall a step
+// a creature can take is a property of the CREATURE, not of the world, and this
+// library does not know what is walking. That is the substrate's configuration
+// seam: the consumer supplies it. `CLIFF_STEP_DEFAULT` exists only so a caller
+// with no opinion still gets a defensible one.
+//
+// ⚠ **HEIGHT UNITS, NOT A GRADIENT.** Hex centres are √3 apart east–west and 1.5
+// north–south, so the same rise is a different ANGLE depending on which way you
+// face it. A gradient threshold would therefore make the lattice visible as
+// direction-dependent climbability — a leak of exactly the kind `hex_grid` exists
+// to prevent. A step measured in height units is equally unclimbable from every
+// direction, which is also what a player expects of a ledge.
+//
+// ⚠ **SYMMETRIC, AND THAT IS A DEFERRAL WITH A TRIGGER.** `hex_edge` blocks the
+// CANONICAL edge, so `(a,b)` and `(b,a)` are one edge and a block stops you both
+// ways. A cliff physically stops a climb and not a descent. This is survivable
+// only because under a symmetric block a walker can never REACH the high side on
+// foot — the asymmetry becomes observable the day a walker can descend faster
+// than it climbs, which needs a FALL. There is none yet. The day there is, a
+// cliff needs a direction and this function needs to say which side is high.
+//
+// ⚠ The cost of that choice, named rather than discovered: a character PLACED on
+// a plateau is fenced in by its own cliffs.
+//
+// **Target home.** This belongs with `hex_edge` in the shared layer, beside the
+// other edge queries — see `doc/claude/HEX_STACK.md` §12. It is built here under
+// that document's "build beside, do not migrate" rule, because the shared tree is
+// another agent's and moving it is an ask rather than a task.
+use hex_field;
+use hex_edge;
+
+// A step a caller with no opinion gets: 6 height units. On the editor's 0.25 wu
+// unit that is 1.5 wu — about 40° across a hex east–west and 45° north–south, so
+// ordinary rolling ground stays walkable while an authored ledge does not.
+pub const CLIFF_STEP_DEFAULT = 6;
+
+// Block every edge in the window whose two cells differ in height by more than
+// `step_max`. Returns the number of edges this call newly blocked.
+//
+// `sample` reads a cell's surface height in HEIGHT UNITS. It is a function rather
+// than a store so that this stays a pure derivation over a value the caller owns —
+// the same shape `ground_axle` takes its terrain by, and the reason both can be
+// tested without a world.
+//
+// ⚠ The count is edges NEWLY blocked, not steps found. An edge already carrying a
+// wall is left alone and not counted: it is impassable either way, and re-blocking
+// it would overwrite the wall's surface — which is the normal the walker slides
+// along. `edge_block` writes `SURF_NONE`, so a cliff has no recoverable geometry
+// and `collide` reports no usable normal for it. That is honest: a cliff is not a
+// wall you glance off, it is ground you cannot climb.
+pub fn cliff_edges(e: hex_field::EdgeSet, sample: fn(integer, integer) -> integer,
+                   q0: integer, r0: integer, w: integer, h: integer,
+                   step_max: integer = CLIFF_STEP_DEFAULT) -> integer {
+  blocked = 0;
+  for r in r0..r0 + h {
+    for q in q0..q0 + w {
+      here = sample(q, r);
+      // All six, not three. Half the star would miss the edges on the window's
+      // far border, whose other cell is never itself visited.
+      for d in 0..6 {
+        nq = hex_field::nb_q(q, r, d);
+        nr = hex_field::nb_r(q, r, d);
+        rise = sample(nq, nr) - here;
+        if rise < 0 { rise = 0 - rise; }
+        if rise > step_max && !hex_edge::edge_blocked(e, q, r, nq, nr) {
+          hex_edge::edge_block(e, q, r, nq, nr);
+          blocked = blocked + 1;
+        }
+      }
+    }
+  }
+  blocked
+}
+
+// Is this step climbable? The one place the comparison lives, so a caller that
+// wants to ask about a single pair asks the same question the sweep will.
+pub fn cliff_step_ok(a: integer, b: integer,
+                     step_max: integer = CLIFF_STEP_DEFAULT) -> boolean {
+  d = a - b;
+  if d < 0 { d = 0 - d; }
+  d <= step_max
+}

@@ -1,0 +1,73 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Cliffs, tested where they live: no world, no socket, no clock — just a height
+// function and the edges it produces.
+use moros_sim;
+use hex_field;
+use hex_edge;
+
+// A step of `n` height units at q = 0: everything east of it is high.
+fn ledge(n: integer) -> fn(integer, integer) -> integer {
+  fn(q: integer, r: integer) -> integer { if q >= 1 { n } else { 0 } }
+}
+fn flat() -> fn(integer, integer) -> integer {
+  fn(q: integer, r: integer) -> integer { 0 }
+}
+
+fn set() -> hex_field::EdgeSet { hex_field::edgeset_new(0 - 3, 0 - 3, 7, 7) }
+
+fn test_flat_ground_has_no_cliffs() {
+  e = set();
+  n = moros_sim::cliff_edges(e, flat(), 0 - 2, 0 - 2, 5, 5);
+  assert(n == 0, "flat ground blocks nothing, got {n}");
+}
+
+fn test_a_small_step_is_walkable_and_a_big_one_is_not() {
+  // The threshold is the whole rule, so it is asserted from BOTH sides at the
+  // boundary rather than only well away from it.
+  small = set();
+  assert(moros_sim::cliff_edges(small, ledge(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
+         "a step exactly at the limit is still walkable");
+  big = set();
+  assert(moros_sim::cliff_edges(big, ledge(7), 0 - 2, 0 - 2, 5, 5, 6) > 0,
+         "one unit past the limit is a cliff");
+}
+
+fn test_the_cliff_lands_on_the_edges_that_span_the_step() {
+  e = set();
+  moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  // (0,0) is low and (1,0) is high, so that edge must be blocked …
+  assert(!hex_edge::passable(e, 0, 0, 1, 0), "the edge across the step is blocked");
+  // … while two cells on the SAME side of it are not.
+  assert(hex_edge::passable(e, 1, 0, 2, 0), "two high cells stay open");
+  assert(hex_edge::passable(e, 0 - 1, 0, 0, 0), "two low cells stay open");
+}
+
+fn test_a_cliff_blocks_both_ways_and_that_is_the_deferral() {
+  // ⚠ `hex_edge` blocks the CANONICAL edge, so this is symmetric by construction.
+  // It is asserted rather than assumed, because the day a fall exists this test
+  // is what will fail and say so.
+  e = set();
+  moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  assert(!hex_edge::passable(e, 0, 0, 1, 0), "blocked climbing up");
+  assert(!hex_edge::passable(e, 1, 0, 0, 0), "and blocked stepping down — symmetric");
+}
+
+fn test_it_does_not_overwrite_a_wall_already_on_the_edge() {
+  // A wall carries the SURFACE the walker slides along; a cliff has none. So a
+  // cliff must leave an existing block alone rather than replace its geometry.
+  e = set();
+  hex_edge::edge_block_surf(e, 0, 0, 1, 0, 42);
+  before = hex_edge::edge_surf(e, 0, 0, 1, 0);
+  n = moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  after = hex_edge::edge_surf(e, 0, 0, 1, 0);
+  assert(before == 42 && after == 42, "the wall's surface survives, {before} → {after}");
+  assert(n > 0, "and other edges of the step are still blocked");
+}
+
+fn test_the_step_test_is_the_same_question_the_sweep_will_ask() {
+  assert(moros_sim::cliff_step_ok(0, 6, 6), "exactly the limit is ok");
+  assert(!moros_sim::cliff_step_ok(0, 7, 6), "one past is not");
+  assert(!moros_sim::cliff_step_ok(7, 0, 6), "and it does not care which is higher");
+}

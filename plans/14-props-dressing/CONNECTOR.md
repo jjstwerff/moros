@@ -1502,10 +1502,37 @@ the rule.
 horses `Carried` breaks the tree clause, and perturbing the residual breaks the identity
 across three test files.
 
-### Cliffs — steep ground that blocks the walker, and why it is an EDGE
+### Cliffs — BUILT. Steep ground blocks the walker, as an edge
 
-The goal: steep ground should automatically become a cliff that blocks movement. Designed
-here, measured first, **not yet built**.
+The goal: steep ground automatically becomes a cliff that blocks movement. Measured first,
+designed, then built — `lib/moros_sim/src/cliff.loft`, 7 tests, wired into the editor's walk
+collision set only.
+
+**The result, same probe before and after:**
+
+| | before | after |
+|---|---|---|
+| steepest gradient walked | **66.6°** | **25.7°** |
+| peak reached (summit 9.25 wu) | 9.085 | **0.664** |
+| `reachedTheSummit` | true | **false** |
+
+⚠ **And `climb.mjs` is bit-identical at `climbed 0.619`** — the threshold discriminates rather
+than merely blocks. That pair is the whole claim: the 60° face is refused and the gentle rise
+is still walked, by one rule.
+
+**Seen red twice, on the two halves that could each be hollow.** Disabling the threshold
+(`cliff_step() -> 9999`) returns the probe to *exactly* its old numbers — 66.6°, peak 9.085,
+summit true — so the wiring is live rather than the probe flattering it. And the new gate goes
+red on the same defect, `refused false · noCliffWalked false`.
+
+⚠ **The gate asserts that the walker STILL COVERS GROUND** (`stillWalks`, 7.79 wu). "Did not
+summit" alone passes for a character that cannot move at all — the same hole `collide.mjs`'s
+control leg exists to close, and the second time this plan has had to close it.
+
+**The threshold is the consumer's, not the library's.** `cliff_edges` takes it as a parameter
+because how tall a step a creature can take is a property of the *creature*; the editor passes
+its own hip height (`hip_wu() / HEIGHT_SCALE`). That is the substrate's configuration seam,
+and it is why the library needs no constant it could not justify.
 
 **What happens today, measured** (`probe/cliff.mjs`). Raise a hill and walk into it:
 
@@ -1621,7 +1648,7 @@ form is fine passed straight into a call. The compiler says so and names the fix
   physical answer and is dynamics this rung does not have. ⚠ **The cliff design below does
   NOT close this** — see the non-unification note there. A cart is *placed*, not walked, so
   it can still be put on ground the axle cannot span.
-- **Cliffs — designed 2026-07-30, not yet built.** See below.
+- ~~Cliffs — designed, not yet built.~~ **BUILT 2026-07-30.** See below.
 - **Where the states are advanced.** `A-DOF` names them; something must integrate them,
   and that is the sandbox seam ([#15](https://github.com/jjstwerff/moros/issues/15)),
   not this plan.

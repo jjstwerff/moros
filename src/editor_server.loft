@@ -1033,6 +1033,29 @@ const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs fou
 // `E1e`. Half of the edges bounding the window's rim are stored in the cells
 // OUTSIDE it, so a loop over the window alone builds a proxy with holes in it, and
 // the holes are exactly where a character walks out.
+// How tall a step THIS character can take, in height units — its own hip. The
+// library takes the threshold as a parameter precisely because it is a property of
+// the creature and not of the world, so this is the configuration seam and not a
+// constant hidden in the library. A shorter creature supplies a smaller number.
+fn cliff_step() -> integer { (hip_wu() / HEIGHT_SCALE ?? 0.0) as integer }
+
+// The walk's collision set, with the ground's own cliffs blocked into it.
+//
+// ⚠ MOVE ONLY, NEVER VIEW. A cliff stops a walker and does not stop a camera — the
+// editor already keeps those two sets apart (`wall_stops_walk` against
+// `wall_stops_view`), and putting cliffs in the view set would make the camera
+// shove itself away from every ledge.
+fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
+              runs: WallRuns, sf: Surfaces) -> EdgeSet {
+  e = edges_around(wld, cq, cr, reach, false, runs, sf);
+  n = 2 * reach + 1;
+  // The terrain goes in as a FUNCTION, which is what makes the derivation pure and
+  // testable without a world — the same shape `ground_axle` takes its terrain by.
+  msim::cliff_edges(e, fn(sq: integer, sr: integer) -> integer { terrain_h(sq, sr, wld) },
+                    cq - reach, cr - reach, n, n, cliff_step());
+  e
+}
+
 fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
                 view: boolean, runs: WallRuns, sf: Surfaces) -> EdgeSet {
   n = 2 * reach + 1;
@@ -3099,7 +3122,7 @@ fn main() {
   // The collision proxy and its validity, keyed on the cell and the edit clock.
   coll_sf = surfaces_new();
   coll_rt = runs_track(wall_runs);
-  coll_move = edges_around(wld, 0, 0, COLL_R, false, wall_runs, coll_sf);
+  coll_move = edges_walk(wld, 0, 0, COLL_R, wall_runs, coll_sf);
   coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new());
   coll_q = 0;
   coll_r = 0;
@@ -3841,8 +3864,7 @@ fn main() {
         nrebuild = nrebuild + 1;
         coll_sf = surfaces_new();
         coll_rt = runs_track(wall_runs);
-        coll_move = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, false,
-                                 wall_runs, coll_sf);
+        coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, wall_runs, coll_sf);
         coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
                                  wall_runs, surfaces_new());
         coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau; coll_have = true;
