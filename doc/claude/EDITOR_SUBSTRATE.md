@@ -1045,6 +1045,12 @@ particular is a name that is currently occupied.
 
 ## The editor server has its own world model — and that is the design failure (2026-07-30)
 
+> ⚠ **Superseded in part by [`HEX_STACK.md`](HEX_STACK.md)**, which is now the single authority for
+> the stack's *design*. This section's findings stand; its conclusions about the document format,
+> `f64` heights, and the store⇄window "adapter with a commit half" do not. `HEX_STACK.md` §2 lists
+> every superseded claim. This document keeps the seam rules, the five groups, the per-package
+> Definition of Done and the ownership audits.
+
 The ownership audit above adjudicated `lib/moros_*`. It never looked at
 **`src/editor_server.loft`**, which is 4,238 lines, 89 functions, and a `main()` of 1,228
 lines carrying 28 message handlers inline. Auditing it now turns up something sharper than
