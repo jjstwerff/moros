@@ -1608,6 +1608,64 @@ already rebuilds meshes, keyed by `world_chunk_version` — and union it into th
 `walk_to` already consults. No change to `walk_to`, no change to `sweep_path`, one new
 derivation and one constant.
 
+### The fall — the PRIMITIVE is built; wiring it is blocked on "which layer is the surface"
+
+`lib/moros_sim/src/fall.loft`, 8 tests. **The editor is NOT wired to it**, deliberately, and
+the reason is worth more than the feature.
+
+**What is built and proven.** `fall_step(y, vy, ground, dt, g)` — one invariant, *the feet are
+never below the ground and above it only while falling*, which covers climbing too: walking up
+a ramp is the ground rising past the feet, resolved by the same clause. Free fall is checked
+against `½gt²` with the bound stated in terms of `dt` rather than fitted, landing clamps
+exactly and is reported **once**, and terminal velocity is asserted to be the **shared**
+constant.
+
+⚠ **It nearly shipped as the package's SECOND gravity.** `player.loft` already falls —
+`player_step` applies `GRAVITY = 12.0`, clamps at `TERMINAL_VELOCITY = 60.0`, lands through
+`collide::resolve_move`. It cannot simply be called because it moves a body against a **`Map`**
+while the editor holds a **`World`** — [`HEX_STACK.md`](../../doc/claude/HEX_STACK.md) §4's
+representation split, exactly. The first draft of `fall.loft` invented `GRAVITY_DEFAULT = 11.0`
+beside it. It now imports the constants instead: *a package with two gravities is a package
+where a jump and a fall disagree.*
+
+#### ⚠ Why the editor is not wired, and what has to be settled first
+
+Wiring it made the character **fall three storeys into a cellar it had just dug under itself**.
+Measured, not inferred — the same cell before and after three `12:-1`:
+
+```
+before   cell 0,10 = 1,49    column = 49
+after    cell 0,10 = 4,13    column = 13,25,37,49
+```
+
+`terrain_y` → `terrain_h` → `world_cell(wld, q, r, SURFACE)` with **`SURFACE = 0`**, and
+`WORLD_MODEL.md` is explicit: *"**Layer order is local.** A layer's index is a position in its
+own chunk."* Layer 0 is the **lowest** layer, so a cellar inserted beneath silently becomes
+"the surface". While the feet were re-derived only on a move this was invisible; the moment
+they became a state that falls, it dropped the walker through the floor.
+
+**This is a pre-existing defect in the editor's ground query, which the fall exposed** — the
+third time in this plan that making something honest has surfaced a latent one, after the
+raise's once-per-tick origin and the camera's latching tolerance.
+
+⚠ **Three attempts at a ground query were made and all three were wrong**, which is why this
+is recorded rather than patched:
+
+| attempt | why it failed |
+|---|---|
+| highest layer at or below the feet | `terrain_y` interpolates across corners, so on any slope it sits **below** that cell's own integer top; no layer qualified, the walker fell to the lowest, and every tick set `moved` — the wire flooded and the gates hung |
+| the same, but only for multi-layer columns | a fresh column is already multi-layer, so the branch fired everywhere |
+| branch on the column's top versus the terrain layer, no feet involved | a fresh column's top is 1 while layer 0 is 0, so it fired everywhere too — `climb` fell from 0.619 to 0.369 |
+
+Each guess was cheaper than the last to disprove, and none was a substitute for reading the
+model. **The next attempt should start from `world_layer_kind` and the cave rule** (*"a cave is
+a layer with the one above absent"*), not from an index — and it is world-model work, not fall
+work.
+
+`probe/fall.mjs` holds the measurement the wiring must reproduce: walking off the summit is a
+descent of **8.976 wu over 10 accelerating ticks**, against **2** for the old feet-follow-the-
+surface behaviour. It is a probe and not a gate precisely because the editor cannot pass it yet.
+
 ## Open
 
 ### `A10` — FINISHED 2026-07-30. The solve is the library's, and the diff is empty
@@ -1644,6 +1702,8 @@ form is fine passed straight into a call. The compiler says so and names the fix
   wrong.** See the section below.
 - ~~A team is not a tree.~~ **PROBED 2026-07-30 — and both halves of the claim were
   wrong.** See below.
+- **The fall's editor wiring**, blocked on which layer is the surface — see above. The
+  primitive is built and tested; the ground query is world-model work.
 - **Steep ground, the CART half.** `A-FIT` says refuse with a residual; tipping is the
   physical answer and is dynamics this rung does not have. ⚠ **The cliff design below does
   NOT close this** — see the non-unification note there. A cart is *placed*, not walked, so

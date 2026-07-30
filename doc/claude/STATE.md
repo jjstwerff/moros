@@ -1492,3 +1492,26 @@ edges — neither of which the mechanism's own eight gates had caught.
       A test asserts the symmetry so that day fails loudly. Cost named now: a character
       *placed* on a plateau is fenced in by its own cliffs.
     - **24 gates green, 651 library tests pass.**
+26. ⚠ **THE FALL — the primitive is BUILT and the editor is deliberately NOT wired to it.**
+    `lib/moros_sim/src/fall.loft`, 8 tests, 304 in the package. One invariant — *the feet are
+    never below the ground, and above it only while falling* — which covers climbing too, so
+    there is no separate climb branch. Free fall checked against `½gt²`, landing reported once,
+    terminal velocity asserted to be the **shared** constant.
+    - ⚠ **It nearly shipped as the package's second gravity.** `player_step` already falls, with
+      `GRAVITY = 12.0` and `TERMINAL_VELOCITY = 60.0`; it cannot be called because it moves
+      against a `Map` while the editor holds a `World` — `HEX_STACK` §4's split. The first draft
+      invented `GRAVITY_DEFAULT = 11.0` beside it. Fixed to import them.
+    - ⚠ **Wiring it dropped the character three storeys into a cellar it had just dug.**
+      Measured: `cell 0,10` reads `1,49` before three `12:-1` and `4,13` after, column
+      `13,25,37,49`. `terrain_h` reads `SURFACE = 0`, and `WORLD_MODEL.md` says layer order is
+      **local** — layer 0 is the *lowest*, so a cellar promotes itself to "the surface".
+      A pre-existing defect the fall exposed, like the raise's origin and the camera's latch.
+    - ⚠ **Three ground queries were tried and all three were wrong** — at-or-below-the-feet
+      (oscillated and hung the gates), multi-layer-only (a fresh column is already multi-layer),
+      top-versus-terrain-layer (fired everywhere; `climb` fell 0.619 → 0.369). **The next
+      attempt starts from `world_layer_kind` and the cave rule, not from an index**, and it is
+      world-model work rather than fall work.
+    - **The editor is reverted to its committed state**, so the tree is green: 24 gates, 651
+      library tests. `probe/fall.mjs` holds the target measurement — 8.976 wu over 10
+      accelerating ticks, against 2 for the old behaviour — as a probe, not a gate, because the
+      editor cannot pass it yet.
