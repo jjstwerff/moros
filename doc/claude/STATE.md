@@ -393,8 +393,35 @@ written and not built.** In priority order:
       run. Updated to what it actually produces.
     - Verified: **23 gates green on three consecutive full runs, every number identical**,
       and 639 library tests pass. Only the `ack` poll's own `wait(100)` remains anywhere.
-    - ⚠ Pre-existing and unrelated: `make tests` (the npm target) fails with
-      `sh: 1: nyc: not found`. Not touched.
+16. ✅ **`make tests` runs again — `nyc: not found` was TWO faults in one message.**
+    The npm script still named `nyc` after the project moved to `c8` (the move
+    `"type": "module"` forces, since nyc cannot instrument ES modules — `c8` was
+    already sitting in `devDependencies`), **and** a clean checkout has no
+    `node_modules`, so the runner was missing whatever it was called. Fixing only the
+    script leaves the target broken on a fresh clone.
+    - `package.json`: `nyc --reporter=html` → `c8 --reporter=html --reporter=text`.
+      The text reporter is new — an html-only run wrote a file and printed nothing,
+      so the target said nothing about the coverage it had just measured.
+    - `Makefile`: `tests` now has a `node_modules: package.json` prerequisite, so it
+      installs what it needs instead of assuming someone did it by hand.
+    - ⚠ **`test/package.json` is LOAD-BEARING and looked like litter.** It is not a
+      dependency manifest — nested lists are never installed, so its contents
+      (including a `nyc` dev-dep) were decoration. It exists for one field: the root
+      is `"type": "module"`, these tests are CommonJS, and this file scopes
+      `test/*.js` back. **Measured**: remove it and all 39 die at line 1 with
+      `require is not defined in ES module scope`. Rewritten to say so, because the
+      next person to tidy up would have deleted it.
+    - **39 passing, 96.5% statements**, from a genuinely emptied `node_modules`; a
+      second run does not reinstall. **Seen red**: a wrong expected value gives
+      `make` exit **2**, 1 failing — a test target that stays green when tests fail
+      is worse than one that will not start.
+    - ⚠ **6 npm audit vulnerabilities remain, all transitive through `mocha`/`glob`**
+      (brace-expansion, serialize-javascript, diff). `npm audit fix --force` wants a
+      major mocha bump; not taken, and not part of this.
+    - ⚠ **`moros@0.4.2` in `dependencies` is an unrelated third party** — npm's
+      deprecation says *"renamed to domina"* — and **nothing in the tree imports it**.
+      Almost certainly an `npm install moros` typed inside the moros project. Left
+      alone deliberately; deleting someone's dependency is their call.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned

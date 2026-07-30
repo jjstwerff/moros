@@ -22,7 +22,20 @@ creator:
 upload:
 	rm data/pages.zip
 	cd html ; zip -9 ../data/pages.zip *
-tests:
+# The JavaScript suite (html/logic.js, dm-logic.js, data.js) under mocha, with
+# coverage from c8.
+#
+# ⚠ `sh: 1: nyc: not found` was TWO faults wearing one message, and fixing only the
+# obvious one leaves the target broken on a fresh clone. The script still named `nyc`
+# after the project moved to `c8` (which is the move `"type": "module"` forces — nyc
+# cannot instrument ES modules), AND a clean checkout has no `node_modules` at all, so
+# the runner was missing whatever it was called. Hence the prerequisite: the target
+# installs what it needs rather than assuming someone did it by hand.
+node_modules: package.json
+	npm install
+	@touch node_modules
+
+tests: node_modules
 	npm test
 
 # Every loft package's own test suite.  `loft test` exits 1 on failure

@@ -1,10 +1,4 @@
 {
-  "dependencies": {
-    "chai": "^6.2.2",
-    "diff": "^8.0.3",
-    "mocha": "^11.3.0"
-  },
-  "devDependencies": {
-    "nyc": "^18.0.0"
-  }
+  "//": "NOT a dependency manifest. Nested package.json dependency lists are never installed by npm, so the ones that used to be here (including nyc, which the root moved off years before) were decoration. This file exists for ONE field. The root package.json sets \"type\": \"module\", which makes every .js in the tree an ES module; these tests are CommonJS and use require(). This file scopes test/*.js back to CommonJS. Delete it and the whole suite dies at line 1 with 'require is not defined in ES module scope' — measured 2026-07-30, not assumed.",
+  "type": "commonjs"
 }

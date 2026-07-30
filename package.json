@@ -5,7 +5,7 @@
   "main": "html/character.js",
   "type": "module",
   "scripts": {
-    "test": "nyc --reporter=html mocha"
+    "test": "c8 --reporter=html --reporter=text mocha"
   },
   "author": "Jurjen Stellingwerff",
   "license": "MIT",
