@@ -205,6 +205,46 @@ So **the world's on-disk form is a persisted keyed collection whose key is the c
 the same shape routing uses (`hash<PTile[tkey]>`). Partial reads, Range service and URL loading
 are then inherited rather than built.
 
+### One artifact, two access modes — mmap is the local case of Range
+
+loft's Store is **mmap-backed** (*"a durable store is a normal mmap-backed `Store`"*). So the
+same file, with the same `.dschema` and the same chunk keys, is reached two ways:
+
+| | server, authoring | client, reading |
+|---|---|---|
+| access | **mmap** — the OS pages it in | **HTTP Range** — `store_load_keys` pages it in |
+| unit | a page | a page |
+| layout | the same `.dschema` | the same `.dschema` |
+| resident set | the OS page cache | a byte-bounded LRU working set |
+
+**There is no export step and no second format.** The artifact the editor authors *is* the
+artifact clients read; publishing is uploading a file. That is the last piece that makes the
+static distribution path (below) free rather than a pipeline to build.
+
+Four consequences, and one hazard.
+
+1. **The server's RAM stops being the world-size limit.** Today the world is
+   `World { w_chunks: vector<Chunk>, … }`, resident in loft's heap, and the editable world is
+   bounded by what `world_load` can read whole. Mapped, residency is the OS's decision — so a
+   continental world is authorable on one box, which is the thing routing had to reach and the
+   reason its blocks are ≤ 2 GB rather than "whatever fits".
+2. **`world_save_incremental` stops being needed.** It exists *because* a sequential format
+   cannot be partially rewritten — and it degrades to a full save whenever `!same_shape`. Page
+   writes need no special path, so the special path and its fallback both go away.
+3. **The derivation code is one code path, not two.** I2 requires that both endpoints derive
+   byte-identically from equal versions. If the server reads pages by mmap and the client reads
+   the *same* pages by Range, the window derivation above them is literally the same function —
+   so I2's determinism obligation is satisfied by construction rather than by two
+   implementations agreeing. **This is the strongest argument for the whole design.**
+4. **`world_snapshot` is already the right primitive** for the publish step, and
+   `world_chunk_version` / `world_is_stale` are already the right invalidation keys.
+
+⚠ **The hazard: never serve a live mmap.** A client range-reading a file that is being written
+gets torn pages — a half-old, half-new store with no error to report it. So: **author into a
+live store, publish immutable versioned snapshots.** Routing's D5 (*version in the URL, a client
+must never mix versions mid-session*) is exactly this rule seen from the client side, and it is
+the one discipline the symmetry introduces.
+
 ### Serverless distribution — the proven precedent
 
 `../routing` distributes a base map and road network at national scale to browsers **with no
@@ -461,7 +501,7 @@ genuinely new prerequisite first.
 |---|---|---|---|
 | 1 | **Name the store package** and move it out of `lib/`, built beside, depended on by path as `moros_sim` already does for `hex_body` | §4, §14 | `lib/` holds only moros configuration; 23 gates green |
 | 2 | **`hex_grid` 0.2.0 — the axial↔offset bridge** | `CONVERGENCE.md` step 1 | round-trip identity; the third copy of the chunk arithmetic retired |
-| 3 | **Persist the world as a keyed collection**, chunk key as the key | §6 | a `.dschema` exists beside it; `store_load_keys` reads one chunk without touching the rest; a URL load works in wasm |
+| 3 | **Persist the world as a keyed collection**, chunk key as the key | §6 | a `.dschema` exists beside it; the server *maps* it instead of loading it whole; `store_load_keys` reads one chunk without touching the rest; a URL load works in wasm; `world_save_incremental` deleted |
 | 4 | **Store⇄window derivation**, pure and version-keyed | §11 | equal version ⇒ byte-equal window, test-enforced |
 | 5 | **Store-side authoring primitives** — `raise_at`, scatter | W.5 remainder | the editor's `brush`/`scatter` deleted |
 | 6 | **Supersede the editor's duplicates**, one tool at a time; stencil first | §12 | each deletion proved by an unchanged gate and a new library test |
