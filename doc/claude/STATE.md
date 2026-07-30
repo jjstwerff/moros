@@ -365,7 +365,11 @@ written and not built.** In priority order:
     - **`straight.mjs` had the identical defect** — `await wait(2500); // let the rebuild
       land`, naming the very thing the server announces. Same one-line fix, four runs
       stable at 1200 vertices.
-15. ✅ **THE CLOCK IS OUT OF THE GATE SUITE** — the remaining four are done, and taking
+15. ⚠️ **THE CLOCK IS OUT OF FIVE MORE GATES** — the title of this item used to read
+    *"out of the gate suite"*, and **that was wrong**. See item 19: eight gates still
+    pace by the clock, and `terrain.mjs` was failing three runs in four because of it.
+    The audit behind this item grepped `await wait(`, which misses a file that wraps
+    its own `setTimeout` — `terrain.mjs` does exactly that. — the remaining four are done, and taking
     the sleeps out found a **third live defect in shipped code**. `import.mjs` needed
     *nothing*: the `dressing` read-back already orders it. `vegetation.mjs`'s
     floor-plus-settle heuristic collapsed to two lines. `persist.mjs` lost `settle()`
@@ -1314,3 +1318,39 @@ lattice, test **both parities and both signs**.
 **3. Content exercising a mechanism finds what probes miss.** The built-in house was a port,
 and authoring it uncovered both a wrong ring in our content *and* the rotation losing rim
 edges — neither of which the mechanism's own eight gates had caught.
+19. ✅ **`climb`, `collide` and `terrain` fixed — and my item-15 claim was too broad.**
+    - **`climb`**: reported the height *wherever the walk was cut off*, so `climbed`
+      read 0.743 / 0.682 / 0.866 across runs. It now evaluates the recorded path at
+      exactly `TARGET = 8.0` wu by interpolating between the bracketing samples, so
+      the answer is a property of the **terrain** and not of when anyone looked:
+      **0.619 every run**. A `halved` field re-evaluates from every *other* sample —
+      if the number is really a property of the curve, decimation barely moves it.
+      **Seen red**: read the last sample instead and `climbed 0.682` vs
+      `halved 0.619` → `sampleFree false`, caught in ONE run.
+    - **`collide`**: its own header said *"NOTHING HERE IS TIMED"* and the **control
+      leg** was timed — an unobstructed walk never goes still, so it ran to a 6000 ms
+      cap and `free.gone` was distance-in-six-seconds (19.418 / 19.312). A walk now
+      ends for a NAMED reason: STOPPED (position repeats while W is held) or REACHED
+      (ground covered passes `TARGET = 12`). `gone` is **12 / 6.052** exactly.
+    - ⚠ **The reason must be CONCLUDED from the measurement, not asserted by the loop
+      that broke.** My first version set `reached` at the break site, so swapping the
+      distance test for a tick budget produced `gone: 12` from a walk of 6.5 wu and
+      stayed green. `reached = raw >= target` makes that unsayable — the same defect
+      then reports `gone 6.295, reached false` and goes red.
+    - **`terrain`** was failing **3 runs in 4**, and only one of the two causes was
+      the clock. Eight fixed sleeps, yes — but the real defect is that
+      **the phases compared maxima over DIFFERENT DOMAINS.** `yStats` ranged over
+      whatever chunks were loaded, and a place changes the loaded set, so `walked.hi`
+      read 1.583 or 2.917 depending on what had streamed in and `levels` failed
+      against a correct server. Waiting longer would have hidden it. Every phase is
+      now measured over the chunks present in **all** of them (240 chunks, 46080
+      vertices, stable), plus a `domainHeld` clause so a collapsed intersection
+      cannot pass vacuously.
+    - **Artifacts are quarantined, not hidden**: `tickOvershoot` (both gates) is the
+      sampling granularity and is *expected* to vary — kept in a field that is not a
+      claim, which is what lets the claims be exact.
+    - ⚠ **STILL CLOCK-PACED, identified and NOT fixed**: `storey` (7 sleeps),
+      `trigger` (4), `level` (5), `prop` (3), `doorstep` (2), `cart` (2), `stream`
+      (1), and the frame-window trio `hipskin` / `keyonly` / `walk`. All currently
+      green. `wip/camera.mjs` too, but it is not in the suite.
+    - 23 gates green, 639 library tests pass.

@@ -17,13 +17,29 @@
 // measures the box, and on a loaded machine reported a free walk as shorter than a
 // blocked one. The distance is then read off the body's own matrix.
 //
+// ⚠ THAT CLAIM USED TO BE HALF FALSE, and the half that was false is the CONTROL.
+// A blocked walk goes still and is bounded by the fence, so `blocked.gone` was
+// steady at 6.052. An unobstructed walk never goes still, so it ran to the 6000 ms
+// cap and `free.gone` was distance-in-six-seconds by another name — 19.418 one run,
+// 19.312 the next. A gate whose own header says nothing is timed should not have a
+// stopwatch in its control leg.
+//
+// So a walk now ends for one of two NAMED reasons, and both are observations:
+//   · STOPPED — the position repeats while W is still held (blocked)
+//   · REACHED — the ground covered passes a named TARGET (free)
+// The distance is interpolated to exactly TARGET when it was reached, so the free
+// legs report the distance they were ASKED for and the blocked leg reports the one
+// the fence imposed. Neither is a function of the clock.
+//
 // ⚠ And it is a DISTANCE, not an arrival. A character that never moved also fails
 // to arrive; the difference between "stopped at the fence" and "stopped at its own
 // feet" is the entire feature, so the stop is checked against where the fence is.
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
-let st = 0, body = null;
+let st = 0, body = null, tCount = 0;
+const settleFailures = [];
+const TARGET = 12.0;      // wu asked of an unobstructed walk; > fenceAt + 1
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
   for (let t = 0; t < limitMs; t += 100) {
@@ -37,30 +53,90 @@ const SQ3 = Math.sqrt(3);
 const cellXZ = (q, r) => [SQ3 * q + (SQ3 / 2) * (r & 1), 1.5 * r];
 // The body's model matrix is column-major, so the translation is elements 12/13/14.
 const posOf = () => (body ? [body[12], body[14]] : [NaN, NaN]);
+// ⚠ `T:` IS BROADCAST ONLY FROM INSIDE `if moved`, so a standing character produces
+// no next transform and waiting for one times out. `2:<aspect>,` sets `moved`, so
+// the following tick broadcasts — a position can be REQUESTED. Two requests that
+// agree is a fixed point on the observable, and there is no deceleration to wait
+// out: `if fwd != 0.0` means key-up stops the walk in the same tick.
+const freshPos = async (limitMs = 8000) => {
+  const before = tCount;
+  ws.send('2:1.5,');
+  for (let t = 0; t < limitMs; t += 10) {
+    if (tCount !== before) return posOf();
+    await wait(10);
+  }
+  return null;
+};
+const restingPos = async (limit = 200) => {
+  let a = await freshPos();
+  for (let k = 0; k < limit; k++) {
+    const b = await freshPos();
+    if (a && b && a[0] === b[0] && a[1] === b[1]) return { pos: b, ok: true };
+    a = b;
+  }
+  return { pos: a, ok: false };
+};
+const nextT = async (limitMs = 8000) => {
+  const before = tCount;
+  for (let t = 0; t < limitMs; t += 5) {
+    if (tCount !== before) return true;
+    await wait(5);
+  }
+  return false;
+};
 const placeAt = async (q, r) => {
   const [x, z] = cellXZ(q, r);
   ws.send(`7:${x.toFixed(4)},${z.toFixed(4)},0`);
   await ack('placed');
-  await wait(300);
-  return posOf();
+  // The place handler sets px/pz and acks in the same breath, but the TRANSFORM
+  // follows on a later tick — so read the position back rather than sleeping and
+  // hoping, and check it is the one that was asked for.
+  const r2 = await restingPos();
+  const at = r2.pos || [NaN, NaN];
+  if (!r2.ok || Math.hypot(at[0] - x, at[1] - z) > 0.001) {
+    settleFailures.push(`place ${q},${r}: asked ${x.toFixed(3)},${z.toFixed(3)} got ${at}`);
+  }
+  return at;
 };
-// Hold W until the character stops moving, or until the cap. Returns how far it
-// went and whether it stopped of its own accord.
-const walkTillStill = async (capMs = 6000) => {
-  const from = posOf();
+// Hold W until the walk ends for a NAMED reason: the position repeats while the key
+// is held (blocked), or the ground covered reaches `target` (free). Steps one server
+// TRANSFORM at a time — the tick, not a timer of ours.
+const walkUntil = async (target, stillFor = 4) => {
+  const start = await restingPos();
+  const from = start.pos;
+  const path = [from];
   ws.send('4:1');
-  let last = from, still = 0, stopped = false;
-  for (let t = 0; t < capMs; t += 250) {
-    await wait(250);
+  let still = 0, stopped = false, reached = false;   // `reached` is concluded below
+  for (let k = 0; k < 4000; k++) {
+    if (!(await nextT())) break;
     const now = posOf();
-    if (Math.hypot(now[0] - last[0], now[1] - last[1]) < 0.01) still += 1; else still = 0;
-    last = now;
-    if (still >= 3) { stopped = true; break; }      // three quiet samples, not one
+    const prev = path[path.length - 1];
+    if (Math.hypot(now[0] - prev[0], now[1] - prev[1]) < 1e-9) still += 1; else still = 0;
+    path.push(now);
+    if (still >= stillFor) { stopped = true; break; }
+    if (Math.hypot(now[0] - from[0], now[1] - from[1]) >= target) break;
   }
   ws.send('4:0');
-  await wait(400);
-  const end = posOf();
-  return { gone: +Math.hypot(end[0] - from[0], end[1] - from[1]).toFixed(3), stopped };
+  const end = await restingPos();
+  // ⚠ REPORT THE DISTANCE THE REASON IMPLIES. Reached means the walk covered exactly
+  // `target` — the overshoot past the sample that crossed it is an artifact of when
+  // the tick landed, so it is interpolated away. Stopped means the fence chose the
+  // number, and that one is read as it stands.
+  const raw = Math.hypot(end.pos[0] - from[0], end.pos[1] - from[1]);
+  // ⚠ THE REASON IS CONCLUDED FROM THE MEASUREMENT, not asserted by the loop that
+  // broke. The first version set `reached` where it broke out, so a loop that gave up
+  // for ANY other cause still claimed arrival — and `gone` then reported the target
+  // it had not covered. Swapping the distance test for a tick budget produced
+  // `gone: 12` from a walk of 6.5 wu, and the gate stayed green. Deriving it from the
+  // distance actually travelled makes that impossible to say.
+  reached = raw >= target;
+  return { gone: +(reached ? target : raw).toFixed(3),
+           // ⚠ EXPECTED TO VARY, and reported for that reason. This is how far past
+           // TARGET the tick that crossed it landed — the sampling granularity
+           // itself, quarantined into a field that is not a claim so that `gone`
+           // can be exact. Meaningless for a walk that never got there, so null.
+           tickOvershoot: reached ? +(raw - target).toFixed(3) : null,
+           stopped, reached, settled: start.ok && end.ok };
 };
 
 ws.onmessage = async (e) => {
@@ -68,7 +144,7 @@ ws.onmessage = async (e) => {
   if (t === 'S') status.push(b);
   if (t === 'T') {
     const k = b.indexOf(';');
-    if (Number(b.slice(0, k)) === 0) body = b.slice(k + 1).split(',').map(Number);
+    if (Number(b.slice(0, k)) === 0) { body = b.slice(k + 1).split(',').map(Number); tCount++; }
   }
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
@@ -80,7 +156,7 @@ ws.onmessage = async (e) => {
 
     // ── 3: the control first — open ground, nothing in the way.
     await placeAt(0, 0);
-    const free = await walkTillStill();
+    const free = await walkUntil(TARGET);
     out.free = free;
 
     // ── 1: inside a fence ring, well away from the control's tracks.
@@ -88,7 +164,7 @@ ws.onmessage = async (e) => {
     ws.send(`23:3,${R}`);
     out.fenced = await ack('fenced');
     await placeAt(60, 0);
-    const blocked = await walkTillStill();
+    const blocked = await walkUntil(TARGET);
     out.blocked = blocked;
 
     // ── 2: a gateway in the ring, on the cell due east of the centre.
@@ -97,7 +173,7 @@ ws.onmessage = async (e) => {
     ws.send('24:0,2');
     out.gate = await ack('edge 0 of');
     await placeAt(60, 0);
-    const through = await walkTillStill();
+    const through = await walkUntil(TARGET);
     out.through = through;
 
     // ── 4: the SLIDE. Meet the wall at an angle and travel ALONG it.
@@ -108,16 +184,19 @@ ws.onmessage = async (e) => {
     ws.send(`23:3,${R}`); await ack('fenced');
     await placeAt(60, 0);
     ws.send(`3:0,0`);                      // no look change; yaw is set by place
-    const oblique = await walkTillStill();
+    const oblique = await walkUntil(TARGET);
     out.oblique = oblique;
 
-    const controlRuns = !free.stopped && free.gone > fenceAt + 1.0;
-    const stops = blocked.stopped;
+    const controlRuns = free.reached && !free.stopped && TARGET > fenceAt + 1.0;
+    const stops = blocked.stopped && !blocked.reached;
     const stopsAtTheFence = blocked.gone > fenceAt - 1.2 && blocked.gone < fenceAt + 0.2;
-    const gatewayPasses = !through.stopped && through.gone > fenceAt + 1.0;
-    const ok = controlRuns && stops && stopsAtTheFence && gatewayPasses;
-    console.log(JSON.stringify({ ...out, controlRuns, stops, stopsAtTheFence,
-                                 gatewayPasses, ok }));
+    const gatewayPasses = through.reached && !through.stopped;
+    const settled = settleFailures.length === 0
+                    && [free, blocked, through, oblique].every((w) => w.settled);
+    const ok = controlRuns && stops && stopsAtTheFence && gatewayPasses && settled;
+    console.log(JSON.stringify({ ...out, target: TARGET, controlRuns, stops,
+                                 stopsAtTheFence, gatewayPasses, settled,
+                                 settleFailures, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
