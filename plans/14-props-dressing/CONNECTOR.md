@@ -1502,6 +1502,85 @@ the rule.
 horses `Carried` breaks the tree clause, and perturbing the residual breaks the identity
 across three test files.
 
+### Cliffs — steep ground that blocks the walker, and why it is an EDGE
+
+The goal: steep ground should automatically become a cliff that blocks movement. Designed
+here, measured first, **not yet built**.
+
+**What happens today, measured** (`probe/cliff.mjs`). Raise a hill and walk into it:
+
+| | |
+|---|---|
+| ground profile, height units | `0 0 0 0 0 6 13 19 31 31 37 31 31 19 13` |
+| the ground's steepest step | **60°** |
+| the gradient the character actually walked up | **66.6°** |
+| summit | reached — 9.085 wu of 9.25 |
+
+The editor says why in its own words: *"the feet follow the surface every tick, so walking
+into a slope walks UP it. No jump, no fall, no step limit yet."* And `walk_to` consults
+exactly one thing — `hex_edge::sweep_path` over an `EdgeSet`. **Steepness is never consulted,
+so nothing can stop a climb.** The raise brush's 74–83° flanks are documented as *wanted*, so
+this is not a brush to soften; it is ground a walker should not be able to ascend.
+
+#### The invariant
+
+> **Impassability is an edge, always.** A cliff is not a new kind of obstacle — it is a
+> **derived** edge, computed from the height difference across it, carried in the same
+> `EdgeSet` a wall uses and consulted by the same `sweep_path`.
+
+**Re-assertion sites: one.** The alternative — a slope test inside `walk_to` — is a *second*
+blocking mechanism, and every future mover would need its own copy: an NPC pathfinder, a
+placed vehicle, a thrown object. Two mechanisms that can disagree about whether you may pass
+is precisely the shape this plan keeps finding (two representations of a height, two
+numberings of a beam, two implementations of a solve).
+
+And it **falls out of [`HEX_STACK.md`](../../doc/claude/HEX_STACK.md)'s `I2` rather than
+being invented beside it**: the cliff set is derived from the store's heights, deterministic,
+version-keyed, never stored and never transmitted — exactly like a mesh, invalidated by the
+`world_is_stale` mechanism that already exists.
+
+#### The claims, and the one that bites
+
+**C1 — ⚠ a cliff is asymmetric and `hex_edge` is not.** `edge_blocked` reads the *canonical*
+edge, so `(a,b)` and `(b,a)` are one edge: a block stops you both ways. A cliff physically
+stops you climbing *up* and not stepping *down*.
+
+**This is survivable, and the reason is worth stating rather than assuming.** Under a
+symmetric block you can never *reach* the high side on foot, so being up there requires being
+**placed** there — and the asymmetry only becomes observable once a walker can *descend*
+faster than it can climb, which needs a **fall**. This rung has none ("no jump, no fall").
+So symmetric blocking is self-consistent today, and the asymmetry is a deferral **with a
+named trigger**: the day a fall exists, a cliff needs a direction.
+
+⚠ **The cost to name now:** a character *placed* on a plateau is trapped by its own cliffs.
+That is a real consequence of the symmetric choice, not an oversight, and the editor teleports
+freely — so it will be met.
+
+**C2 — cliffs and walls coexist without a conflict.** `edge_block_surf` is first-writer-wins
+on the *surface* while the *material* may be retargeted, so a wall already on an edge keeps
+its geometry and a cliff simply finds it blocked. No ordering rule is needed.
+
+**C3 — the threshold is a named constant in HEIGHT UNITS, not a gradient.** A height unit is
+0.25 wu; hex centres are √3 apart east–west and 1.5 north–south, so the *same* step is a
+different gradient depending on which way you face it. Choosing height units makes a ledge
+equally unclimbable from every direction, which is the behaviour a player expects — a
+gradient threshold would make the hex lattice visible as a direction-dependent climbability,
+which is exactly the kind of leak `hex_grid` exists to prevent.
+
+**C4 — ⚠ AND IT DOES NOT SUBSUME THE CART.** The tempting unification is *"cliffs make steep
+ground unreachable, so `ground_axle`'s refusal becomes unreachable too."* **False.** A cart is
+**placed** (`17:`), not walked, so it can still be put on ground the axle cannot span. The
+`A-FIT` refusal stays live and stays necessary; the open item **narrows to placed vehicles**
+rather than closing. Recorded because the elegant version was the first thing that came to
+mind, and it is wrong.
+
+#### What building it would take
+
+Derive an `EdgeSet` from the store's heights at chunk-rebuild time — the same trigger that
+already rebuilds meshes, keyed by `world_chunk_version` — and union it into the collision set
+`walk_to` already consults. No change to `walk_to`, no change to `sweep_path`, one new
+derivation and one constant.
+
 ## Open
 
 ### `A10` — FINISHED 2026-07-30. The solve is the library's, and the diff is empty
@@ -1538,8 +1617,11 @@ form is fine passed straight into a call. The compiler says so and names the fix
   wrong.** See the section below.
 - ~~A team is not a tree.~~ **PROBED 2026-07-30 — and both halves of the claim were
   wrong.** See below.
-- **Steep ground: refuse or tip?** `A-FIT` says refuse with a residual. Tipping is the
-  physical answer and is dynamics this rung does not have.
+- **Steep ground, the CART half.** `A-FIT` says refuse with a residual; tipping is the
+  physical answer and is dynamics this rung does not have. ⚠ **The cliff design below does
+  NOT close this** — see the non-unification note there. A cart is *placed*, not walked, so
+  it can still be put on ground the axle cannot span.
+- **Cliffs — designed 2026-07-30, not yet built.** See below.
 - **Where the states are advanced.** `A-DOF` names them; something must integrate them,
   and that is the sandbox seam ([#15](https://github.com/jjstwerff/moros/issues/15)),
   not this plan.
