@@ -19,6 +19,19 @@ character *is*, not walk it there and hope.
 The character gates keep walking, because walking is what they measure. They are
 expected to churn as locomotion grows a step limit, a fall, collision.
 
+## The protocol these drive
+
+⚠ **Read [`doc/claude/WIRE_PROTOCOL.md`](../../doc/claude/WIRE_PROTOCOL.md) before writing or
+changing a gate.** It lists all 28 message ids, every acknowledgement string, and the seven
+ordering guarantees that let a gate wait on the server instead of on the clock — plus the traps,
+each of which cost a real defect: a fixed sleep that read 0 vertices on every run, a tolerance
+that latched, a control leg that measured its own timeout, and a comparison across two derived
+domains that failed three runs in four.
+
+**The rule, in one line: wait for what the server SAYS, never for a count of milliseconds.**
+The one exception is the poll interval inside an `ack` helper, and even that has hidden a defect
+once — a 100 ms poll covers a ~16 ms tick.
+
 ## Run
 
 ```sh
