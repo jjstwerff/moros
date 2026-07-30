@@ -1107,10 +1107,40 @@ published `hex_world` is simply irrelevant to that path. What remains is a **nam
 and it is cheap — one consumer, one `use` line. Phase 0 is a rename, not an architecture
 decision.
 
-⚠ The corollary worth weighing separately: since the published `hex_world` has **no
-dependents**, and `WORLD_MODEL.md` is a normative contract for the column model, the column
-model may well be the better one. Superseding or renaming is the author's call, and
-`loft-libs-world` is another agent's tree — so this design does not assume either.
+### The published `hex_world` is a demo grid. The column model is the general one.
+
+Read rather than inferred — the published package's own header:
+
+> *"sparse 32x32-chunk world data model shared by TTT v5 … and the audience-generative-art
+> demo … with a slimmer 4-byte Cell (no separate Hex struct, no per-cell layer, no editor
+> metadata)"*, `Cell { c_color: u8, c_height: u8, c_age: u16 }`, **single-layer**.
+
+That is not the editor's world and was never meant to be. It has no layers, no material
+palette, no dressing, no edit clock, no versioning. The column model has all of them and a
+normative contract in `WORLD_MODEL.md`. **They are two different concerns wearing one name** —
+which is the same failure as the representation split, one level up, at the package.
+
+**So `lib/hex_world` is in the wrong place, and the reason is the principle rather than the
+collision: libraries here are general, and a general library does not live inside one
+consumer.** `lib/` should hold only this game's *configuration*; the ownership audit above
+already says the great majority of `lib/moros_*` public names are general too, so
+`hex_world` is the clearest case of a broader move, not a special one.
+
+Two facts make it cheap: it has **one consumer** and **one `use` line**, and the mechanism
+already exists in this tree — `lib/moros_sim/loft.toml` depends on a sibling by path
+(`hex_body = { path = "../../../loft-libs-world/hex_body" }`).
+
+⚠ **The name is the one open decision, and it is not mine to take.** The column store needs a
+descriptive, brand-free name in `../loft-libs-world/`; `hex_world` is held by the demo grid,
+which is *published* (0.1.1 / 0.1.2 / 0.2.0) and lives in another agent's tree. Options, with
+the trade-off stated rather than resolved:
+
+| option | cost |
+|---|---|
+| column store takes a new name (`hex_store` matches this document's own vocabulary — "the store" against "the bundle") | two libraries still both sound like "the world" |
+| column store supersedes `hex_world`; the demo grid narrows to what it is | touches a published package in another tree — but it has **zero dependents**, so the cost is coordination, not breakage |
+
+Whichever is chosen, phase 0 is a **move plus a rename**, still one call site.
 
 ### What we already have — the primitives, by what they operate on
 
@@ -1195,7 +1225,7 @@ generator framework.
 
 | phase | what | done when |
 |---|---|---|
-| **0** | **Rename the moros column store off the published name** (`hex_world` is taken, by an incompatible model). One consumer, one `use` line — not an architecture decision. | no name collision; the editor still runs |
+| **0** | **Move the column store out of `lib/` into `../loft-libs-world/` under a brand-free name**, and depend on it by path as `moros_sim` already does for `hex_body`. General libraries do not live inside one consumer. One consumer, one `use` line. | `lib/` holds only moros configuration; the editor still runs; 23 gates green |
 | **1** | The `World` ⇄ bundle adapter, in a library, with its own tests | round-trip is exact for occupancy, heights, labels, layers and edges |
 | **2** | One tool end-to-end as the pattern — **stencil** (`stencil_stamp_all` is the closest fit) | `stencil_place` deleted; `stencil.mjs` unchanged and green |
 | **3** | Ways, fences, edges, fields | `road_*`, `fence_*`, `field_fill`, `edges_around` deleted |
