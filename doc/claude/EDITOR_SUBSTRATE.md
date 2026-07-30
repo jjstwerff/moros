@@ -1221,29 +1221,94 @@ A **procedural generator** is the same composition with the first and last lines
 the capability being asked for, and it falls out of the adapter rather than needing a
 generator framework.
 
-### The order of work
+### Five documents disagree about where things go. Reconciling them is the design.
 
-| phase | what | done when |
+⚠ **An earlier draft of this section invented a six-phase order of its own.** That was the
+same error as the code it describes — building a parallel structure beside one that exists.
+The placement authorities, and what each says:
+
+| authority | says |
+|---|---|
+| `LAVITION.md` § Hex-family | `hex_world` = **the addressing primitive** (grid, chunked storage, save/load). Then `hex_walls`, `hex_terrain`, `hex_items` |
+| `LAVITION.md` § Next library work | **W.3** split `hex_walls`; **W.5** implement `hex_terrain`; **W.7** implement `hex_items` — all open |
+| `lib_plans/73-universal-editor` | L1 `hex_grid`, L2 **`hex_map`**, L3 `hex_render`, L4 `hex_stencil`, L5 `hex_editor`, L6 `hex_entity` |
+| `loft-libs-world/CONVERGENCE.md` | layering `hex_grid` → `hex_world` + `gridmesh` → `hex_walls` + `hex_terrain` → consumers; **axial is storage, odd-r is authoring, `hex_grid` owns the bridge** |
+| `loft-libs-world/README.md` | `hex_world` ✅ shipped; `hex_walls` / `hex_terrain` / `hex_items` planned |
+| **the tree itself** | **14 packages**, ten of which appear in none of the above: `hex_field` `hex_form` `hex_shape` `hex_fit` `hex_recover` `hex_draw` `hex_edge` `hex_place` `hex_roof` `hex_way` `hex_body` |
+
+**Where they conflict, shipped code with tests wins over a plan sketch.** Plan 73's L2
+`hex_map` was realised as `hex_field` (windowed `HexSet`/`Heights`/`Labels`/`Layers`/`EdgeSet`),
+its L4 `hex_stencil` as `hex_field`'s `Stencil`, and its L3 `hex_render` as `hex_draw`. `W.3`'s
+`hex_walls` arrived as `hex_edge` + `hex_shape`, `W.7`'s `hex_items` as `hex_place`. Those
+steps are **done under other names**, and the roadmaps have not caught up.
+
+### ⚠ Four representations of the map now exist. That is the blocking decision.
+
+| representation | where | shape |
 |---|---|---|
-| **0** | **Move the column store out of `lib/` into `../loft-libs-world/` under a brand-free name**, and depend on it by path as `moros_sim` already does for `hex_body`. General libraries do not live inside one consumer. One consumer, one `use` line. | `lib/` holds only moros configuration; the editor still runs; 23 gates green |
-| **1** | The `World` ⇄ bundle adapter, in a library, with its own tests | round-trip is exact for occupancy, heights, labels, layers and edges |
-| **2** | One tool end-to-end as the pattern — **stencil** (`stencil_stamp_all` is the closest fit) | `stencil_place` deleted; `stencil.mjs` unchanged and green |
-| **3** | Ways, fences, edges, fields | `road_*`, `fence_*`, `field_fill`, `edges_around` deleted |
-| **4** | Meshing → `hex_draw` | the `emit_*` / `chunk_mesh_*` family deleted |
-| **5** | Collision and sight → `hex_edge` | `walk_to`, `stand_clear`, `cam_free_*` deleted |
-| **6** | The genuinely-missing four, each added to a library with tests | `brush`, `scatter`, camera, adapter all validated in libs |
+| `Cell {color, height, age}` single-layer | published `hex_world` 0.1–0.2 | demo grid (TTT, art) |
+| `HexCell {material, height, item, walls, rotation}` + `cy` layers | plan 73 L2 sketch | never built |
+| `HexSet + Heights + Labels + Layers + EdgeSet`, windowed | **`hex_field`, shipped, tested** | the stack's actual basis |
+| `Column / Layer / StoredHex`, chunked, absolute heights, palette, edit clock | **moros `lib/hex_world`** | the editor's, with `WORLD_MODEL.md` as its contract |
+
+**Nothing can be *translated* before its target shape is chosen**, so this is the one decision
+that gates the rest. The two live candidates are `hex_field`'s bundle and the column store;
+the other two have no consumers. This audit does not choose — but it records that
+`hex_field` is what every library primitive already writes into, and the column store is what
+one consumer uses.
+
+### The translation table — and most rows are ASKS, not tasks
+
+This document's standing rules bind the migration, and the earlier draft broke both:
+
+- **Build beside, do not migrate.** The old package stays green until the new one supersedes
+  it. Existing packages are *predecessors* of their target designs, so reshaping carries their
+  compromises forward.
+- **Cross-tree edits are asks.** `loft-libs-world` is another agent's working tree; a staged
+  file lands in someone else's uncommitted work. *"Asks, not tasks"* is already this
+  document's phrase, and the convergence table already carries the relevant row: **"migrate
+  `hex_world` onto the voxel; `P14` proves it fits — of `loft-libs-world`."**
+
+| what is misplaced | proper place | operation | ours, or an ask? |
+|---|---|---|---|
+| `lib/hex_world` — the column store | the **`world`** group ([#8](https://github.com/jjstwerff/moros/issues/8)), which this document already says *leads* | **build beside**, under a brand-free name that is not `hex_world` (taken, by the demo grid) | **ours** — one consumer, one `use` line |
+| the published `hex_world`'s `Cell` | onto the voxel | translate | **ask** of `loft-libs-world` — already recorded, `P14` is the proof |
+| `wall.loft` inside published `hex_world` | `hex_edge` / `hex_shape` (where `W.3` actually landed) | move | **ask** |
+| `editor_server.loft`'s duplicate primitives | the packages named in *"What is only in the editor"* above | **delete** once reachable — they are not moved, they are superseded | ours |
+| `editor_server.loft`'s `brush`, `scatter` | `hex_terrain` (`W.5`) / `hex_field` | build beside, then ask to adopt | ours to build, ask to land |
+| the camera solve | the **`view`** group | build beside | ours |
+| three copies of `chunk_idx_32` | `hex_grid` | delete two | **ask** — already in the convergence table |
+| `lib/moros_*` general names | `world` / `edit` / `view` / `ui` / `actor` | per the ownership audit above | ours |
+
+### Order — in the numbering that already exists
+
+No new phase numbers. The sequence the existing documents already imply:
+
+1. **Choose the canonical map representation** (the four-way table above). Blocks everything.
+2. **`hex_grid` 0.2.0 — the axial↔offset bridge** (CONVERGENCE step 1). Independent, and the
+   rule *"lattice math is implemented once"* is what retires our third copy of the chunk
+   arithmetic.
+3. **The `world` group, built beside** (#8, which leads). This is where `lib/hex_world` goes,
+   and it is the first thing that is entirely ours.
+4. **The store ⇄ bundle adapter**, in whichever package owns the chosen representation. Until
+   it exists the editor cannot call one library primitive, and after it exists a procedural
+   generator is the same composition minus the socket.
+5. **Supersede the editor's duplicates**, one tool at a time — stencil first, since
+   `stencil_stamp_all` is the closest fit. Each deletion is proved by a gate that does not
+   change and a library test that is new.
+6. **Raise the asks** for the rows above that are not ours.
 
 ### Two rules this design exists to enforce
 
-1. **No new routine without grepping both trees first.** `lib/*/src` and
-   `../loft-libs-world/*/src`. This document's own author broke it: `climb.mjs` grew a
-   hand-written arc-length interpolation while `hex_way` already had `track_distance`,
-   `seg_param`, `way_param` and `way_steps`, and four gates re-derive `√3` cell centres that
-   `hex_grid::hex_to_px` and `cell_to_px` already provide.
+1. **No new routine, package, or phase number without checking what exists.** `lib/*/src`,
+   `../loft-libs-world/*/src`, `LAVITION.md`, `CONVERGENCE.md`, plan 73. This document's own
+   author broke it three times in one session: `climb.mjs` grew a hand-written arc-length
+   interpolation while `hex_way` already had `track_distance` / `seg_param` / `way_param`;
+   four gates re-derive `√3` cell centres that `hex_grid::hex_to_px` provides; and the first
+   draft of this section invented a six-phase order beside `W.3`–`W.8` and `L1`–`L6`.
 2. **A primitive is validated where it lives.** A `.mjs` gate proves the *wire* still exposes
    a feature; it must never be the only place the feature is checked. Structural claims are
-   pure loft tests — which is also the only way to test them without a clock, and this
-   session spent its length paying for the alternative.
+   pure loft tests — the only way to test them without a clock.
 
 ## What stays out of the shared layer
 
