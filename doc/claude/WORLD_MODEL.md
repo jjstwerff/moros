@@ -107,7 +107,7 @@ slope it sits *below* that cell's own stored height.
 interpolated; a storey is a deck and is not. A single occupied layer — or none — is the
 ordinary case and takes the interpolated surface with no layer arithmetic near it.
 
-### ⚠ What this costs, and why it is not yet applied
+### ✅ ENFORCED 2026-07-30, and what it cost
 
 The editor's `terrain_h` still reads layer 0. Correcting it is not a local change, because the
 feet were *derived from the ground only on a move* and are therefore **stale everywhere** — so
@@ -116,9 +116,23 @@ the correct surface shifts established baselines. Measured: with the feet tracki
 standing character and the editor never noticed until they walked. The old zero was not a
 measurement; it was a value nobody had refreshed.
 
-So this rule is **normative and not yet enforced**. Applying it means re-establishing the gate
-baselines that were taken against stale feet, which is its own piece of work and should be done
-deliberately rather than as a side effect of a fall.
+The rule is enforced for **the feet** — `surface_units` / `ground_under` in
+`src/editor_server.loft`, with the fall as its only consumer. Re-establishing the baselines was
+the work, and the outcome is smaller than feared: of 24 gates, **every world gate is
+byte-identical** and only the character half moved.
+
+| gate | before | after | verdict |
+|---|---|---|---|
+| `climb` | `startY 0`, `climbed 0.619` | `startY 0.25`, `climbed 0.369` | ⚠ **the old baseline was stale.** `yAtTarget` is unchanged at 0.619 — only the start moved, because four raises lift the ground under a standing character by 0.25 and nothing noticed until it walked. The threshold was recalibrated from 0.4 to 0.25, keeping the same 1.5× margin |
+| `hipskin`, `keyonly` | `poses 46`, `positions 23` | `poses 43–46`, `positions 22` | the frame-window class — counts move by ±1 by construction; every geometric figure is identical |
+| every `world/` gate | — | — | **byte-identical** |
+
+⚠ **`terrain_h` still reads layer 0**, so meshing and the camera still carry the old assumption.
+That is deliberately out of this change: the feet are where the rule is observable and testable
+today, and a mesh that draws the wrong layer is a separate claim needing its own baseline work.
+
+**Gated both ways.** Reverting to layer 0 makes `stencil.mjs`'s cellar scene refuse
+(`keptCave false`); removing the fall drops `fall.mjs` from 10 accelerating ticks to 2.
 
 ## Continuity across a seam
 

@@ -1164,10 +1164,24 @@ fn stand_clear(rt: Track, x0: float, z0: float, fx: float, fz: float) -> (float,
   (fx + nx2 * push, fz + nz2 * push)
 }
 
-fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, x0: float, z0: float,
-           x1: float, z1: float) -> (float, float) {
+fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
+           x0: float, z0: float, x1: float, z1: float) -> (float, float) {
   (t, hq, hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
   if hd < 0 { return stand_clear(rt, x0, z0, x1, z1); }
+  // ── ⚠ A CLIFF STOPS A CLIMB, NOT A DESCENT ───────────────────────────────
+  //
+  // `hex_edge` blocks the CANONICAL edge, so a cliff cannot say which side is high;
+  // the asymmetry is resolved here, where the walker's side is known. A cliff is
+  // told from a wall by its surface — `cliff_edges` blocks with `SURF_NONE` while a
+  // wall carries its run's real one — so a wall standing ON a cliff edge keeps its
+  // surface and still stops you.
+  cf_nq = nb_q(hq, hr, hd);
+  cf_nr = nb_r(hq, hr, hd);
+  if edge_surf(coll, hq, hr, cf_nq, cf_nr) == hex_edge::SURF_NONE {
+    if terrain_h(cf_nq, cf_nr, wld) < terrain_h(hq, hr, wld) {
+      return stand_clear(rt, x0, z0, x1, z1);
+    }
+  }
   seg = sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)) ?? 0.0;
   back = t;
   if seg > 0.0 { back = t - (SKIN / seg ?? 0.0); }
@@ -2504,6 +2518,64 @@ fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
 // to get a character floating a few centimetres above a slope or sunk into it,
 // because two derivations of one surface disagree wherever they round
 // differently. There is one surface here and both the mesh and the feet read it.
+// ── WHICH LAYER IS THE SURFACE — the rule, enforced ─────────────────────────
+//
+// `doc/claude/WORLD_MODEL.md` § "Which layer is the surface" is the normative
+// statement; this is it in code:
+//
+// > The surface at a hex is the **highest occupied `KIND_TERRAIN` layer at or below
+// > the feet.**
+//
+// Not the lowest — that is the cellar. Not the highest — that is a deck above you.
+// Not an index: `SURFACE = 0` holds only until a cellar inserts beneath it, which
+// was measured (`cell 0,10` reads `1,49` before three cellars and `4,13` after).
+//
+// It takes the FEET because a storeyed column has no single surface. The tolerance
+// is the model's own `ε`: layers are at least that far apart, so half of it cannot
+// select the wrong one, and it absorbs the difference between a terrain layer's
+// smoothed surface and its cell's stored integer height.
+fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integer {
+  col = world_column(wld, q, r);
+  best = 0;
+  found = false;
+  low = 0;
+  havelow = false;
+  li = 0;
+  for e in col.co_cells {
+    if hex_world::hex_occupied(e)
+       && hex_world::world_layer_kind(wld, q, r, li) == hex_world::KIND_TERRAIN {
+      hh = e.h_height as integer ?? 0;
+      if !havelow { low = hh; havelow = true; }
+      if (hh as float) <= feet_units + (W_EPS as float) * 0.5 {
+        if !found || hh > best { best = hh; found = true; }
+      }
+    }
+    li = li + 1;
+  }
+  if !havelow { return 0 - 1; }        // virgin: no occupied layer at all
+  if !found { return low; }            // below every floor — land on the lowest
+  best
+}
+
+// The ground under the feet.
+//
+// ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. A terrain layer is a
+// heightfield and `terrain_y` interpolates it across a cell's corners, which is what
+// makes a slope a slope rather than a staircase. A deck is not a heightfield. One
+// occupied layer — or none — is the ordinary case and takes the interpolation with
+// no layer arithmetic anywhere near it, which is also what keeps the smoothed
+// surface from being compared against an integer it sits below.
+fn ground_under(wld: World, wx: float, wz: float, feet: float) -> float {
+  addr = world_to_hex(wx, wz);
+  col = world_column(wld, addr.ha_q, addr.ha_r);
+  occ = 0;
+  for e0 in col.co_cells { if hex_world::hex_occupied(e0) { occ = occ + 1; } }
+  if occ <= 1 { return terrain_y(wx, wz, wld); }
+  h = surface_units(wld, addr.ha_q, addr.ha_r, feet / HEIGHT_SCALE ?? 0.0);
+  if h < 0 { return terrain_y(wx, wz, wld); }
+  (h as float) * HEIGHT_SCALE
+}
+
 fn terrain_y(wx: float, wz: float, wld: World) -> float {
   addr = world_to_hex(wx, wz);
   ch3 = terrain_h(addr.ha_q, addr.ha_r, wld);
@@ -3072,6 +3144,8 @@ fn main() {
   start = hex_to_world(0, 0, 0);
   px = start.x;
   py = start.y;
+  // `py` is a STATE now. The fall in the tick is its only evolution.
+  vy = 0.0;
   pz = start.z;
   yaw = 0.0;
   pitch = 0.35;
@@ -3302,8 +3376,10 @@ fn main() {
               if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
               } else {
-                py = terrain_y(px, pz, wld);
+                py = ground_under(wld, px, pz, py);
               }
+              // A teleport is authoritative, so it also clears the fall.
+              vy = 0.0;
               moved = true;
             }
             // Acknowledge it. A gate that walks a path — laying a road ring, say — has
@@ -3978,7 +4054,7 @@ fn main() {
         // WALLS STOP THE WALK (rung W2). The intended position goes through
         // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step
         // is not a step size to tune and a slow tick cannot cross a fence.
-        (wpx, wpz) = walk_to(coll_move, coll_sf, coll_rt, px, pz,
+        (wpx, wpz) = walk_to(coll_move, coll_sf, coll_rt, wld, px, pz,
                              px + ky * step * fwd, pz + sy * step * fwd);
         gone = sqrt((wpx - px) * (wpx - px) + (wpz - pz) * (wpz - pz)) ?? 0.0;
         px = wpx;
@@ -3999,12 +4075,26 @@ fn main() {
         // would be circular — the ground is being set from the feet, so reading
         // the feet back off the ground would erase the very difference the level
         // is meant to carry.
+        // ⚠ THE FEET ARE NOT SET HERE. They were `terrain_y` every tick, which is
+        // why stepping off a ledge teleported you down — and why every reading taken
+        // while standing still was STALE. `py` is a state; the fall below is its only
+        // evolution. Levelling still writes, because there the feet are authoritative
+        // and the ground follows them: the one inversion in the model.
         if levelling {
           py = (level_h as float) * HEIGHT_SCALE;
-        } else {
-          py = terrain_y(px, pz, wld);
+          vy = 0.0;
         }
         moved = true;
+      }
+      // ── THE FALL ──────────────────────────────────────────────────────────
+      // Once per tick, and the ONLY thing that evolves `py`. It runs whether or not
+      // the walker moved: ground taken out from under someone standing still has to
+      // drop them, and a fall that ran only inside the walk would leave them hanging.
+      if !levelling {
+        fs_st = msim::fall_step(py, vy, ground_under(wld, px, pz, py), dt);
+        py = fs_st.fl_y;
+        vy = fs_st.fl_vy;
+        if fs_st.fl_airborne || fs_st.fl_landed { moved = true; }
       }
       acc_rest = acc_rest + (ticks() - tph);
       nticks = nticks + 1;

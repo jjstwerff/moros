@@ -1608,10 +1608,12 @@ already rebuilds meshes, keyed by `world_chunk_version` — and union it into th
 `walk_to` already consults. No change to `walk_to`, no change to `sweep_path`, one new
 derivation and one constant.
 
-### The fall — the PRIMITIVE is built; wiring it is blocked on "which layer is the surface"
+### The fall — BUILT AND WIRED, on the settled surface rule
 
-`lib/moros_sim/src/fall.loft`, 8 tests. **The editor is NOT wired to it**, deliberately, and
-the reason is worth more than the feature.
+`lib/moros_sim/src/fall.loft`, 8 tests, and the editor is wired to it —
+`tools/gates/character/fall.mjs` is the **25th gate**. Walking off the summit is a descent of
+**8.976 wu over 10 accelerating ticks**; with the fall removed it is **2**, which is what
+walking down a slope looks like.
 
 **What is built and proven.** `fall_step(y, vy, ground, dt, g)` — one invariant, *the feet are
 never below the ground and above it only while falling*, which covers climbing too: walking up
@@ -1715,8 +1717,6 @@ form is fine passed straight into a call. The compiler says so and names the fix
   wrong.** See the section below.
 - ~~A team is not a tree.~~ **PROBED 2026-07-30 — and both halves of the claim were
   wrong.** See below.
-- **The fall's editor wiring**, blocked on which layer is the surface — see above. The
-  primitive is built and tested; the ground query is world-model work.
 - **Steep ground, the CART half.** `A-FIT` says refuse with a residual; tipping is the
   physical answer and is dynamics this rung does not have. ⚠ **The cliff design below does
   NOT close this** — see the non-unification note there. A cart is *placed*, not walked, so

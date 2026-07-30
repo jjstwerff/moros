@@ -1537,3 +1537,23 @@ edges — neither of which the mechanism's own eight gates had caught.
       own deliberate work, and doing it as a side effect of the fall is how a suite quietly
       stops meaning anything.
     - Editor reverted to committed state; **24 gates green, 651 library tests pass**.
+28. ✅ **THE RULE IS ENFORCED AND THE FALL IS WIRED. 25 gates green on two full passes.**
+    - **`surface_units` / `ground_under`** implement `WORLD_MODEL.md`'s rule — the highest
+      occupied `KIND_TERRAIN` layer at or below the feet, with `ε/2` as the tolerance, smooth
+      for terrain and flat for what is built on it. The fall is its only consumer.
+    - **Re-establishing the baselines was the work, and it was smaller than feared**: of 24
+      gates, **every `world/` gate is byte-identical**; only the character half moved.
+      - ⚠ `climb`: `startY 0 → 0.25`, `climbed 0.619 → 0.369`, `yAtTarget` **unchanged**. The
+        old baseline was **stale** — four raises lift the ground under a standing character and
+        nothing noticed until it walked, so 0.619 was 0.369 of climb plus 0.25 of staleness.
+        Threshold recalibrated 0.4 → 0.25, keeping the same 1.5× margin, with the reason in the
+        gate rather than in a commit message.
+      - `hipskin` / `keyonly`: the frame-window class — counts move by ±1 by construction and
+        every geometric figure is identical.
+    - **Gated both ways.** Reverting to layer 0 makes `stencil.mjs`'s cellar scene refuse
+      (`keptCave false`); removing the fall drops `fall.mjs` from **10** accelerating ticks to
+      **2**. Neither the rule nor the fall can be silently lost.
+    - ⚠ **`terrain_h` still reads layer 0**, so meshing and the camera keep the old assumption.
+      Deliberately out of scope: the feet are where the rule is observable today, and a mesh
+      drawing the wrong layer is a separate claim needing its own baseline work.
+    - **25 gates, 651 library tests.**

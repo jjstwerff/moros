@@ -136,8 +136,17 @@ ws.onmessage = async (e) => {
     }
     const sampleFree = yT !== null && yHalf !== null && Math.abs(yT - yHalf) < 0.01;
     const settled = start.ok && end.ok;
+    // ⚠ 0.25, NOT 0.4, AND THE DIFFERENCE IS A BUG THIS GATE USED TO CONTAIN.
+    // `climbed` is `yAtTarget - startY`, and `yAtTarget` is unchanged at 0.619 —
+    // only the BASELINE moved. `startY` used to read 0 because the feet were
+    // `start.y`, set once and refreshed only on a MOVE; the four raises above lift
+    // the ground under the standing character to 1 height unit, which nothing
+    // noticed until it walked. So the old 0.619 was 0.369 of climb plus 0.25 of
+    // stale baseline, and 0.4 was a threshold fitted to that. Measured on correct
+    // code with the feet tracking the ground: **0.369**, and 0.25 keeps the same
+    // 1.5x margin the old pair had.
     const ok = reached && settled && sampleFree
-               && climbed !== null && climbed > 0.4 && monotone;
+               && climbed !== null && climbed > 0.25 && monotone;
     console.log(JSON.stringify({
       startY: +y0.toFixed(3),
       yAtTarget: yT === null ? null : +yT.toFixed(3),
