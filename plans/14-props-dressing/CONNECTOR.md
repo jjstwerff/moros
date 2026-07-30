@@ -358,7 +358,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A7** ✅ | `HITCH` + `SHAFT`, and a second body behind the first | `A-DOF` closing at 6 for both | unhitch the cart: the ledger must drop to 5 and the pitch become unsupported | L |
 | **A8** ✅ | `TETHER` + `CARRIED`, and a crate under a balloon | `A-TAUT` | drive the crate past `L`; a rigid-rod implementation pushes the anchor **up**, which the sign test catches | L |
 | **A9** ✅ | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
-| **A9b** | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
+| **A9b** ✅ | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
 | **A9c** | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
 | **A10** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
 
@@ -1210,6 +1210,50 @@ nothing mounted is still a body. Mutation 3 collapses it back and that clause al
 ⚠ **And the `??` precedence trap cost a second failure this session** — `thin < 4.0 / PI ?? 0.0
 + 0.01` parses as `thin < (4.0/PI ?? (0.0 + 0.01))`, so the tolerance silently vanished.
 `??` binds loosest; discharge into a local and compare that.
+
+---
+
+### `A9b` — BUILT. And the first version refused a joint that works
+
+`lib/moros_sim/src/skin.loft`, 11 tests. **630 green** across the five packages, all 130
+functions in the package entered. The editor's hip already applies this (`5ffdf2c`'s
+predecessor); this is the rule, so a caller cannot forget it.
+
+`skin_fit` takes a parent box, a child's half-extents, a pivot and **the joint's range**, and
+returns the parent amended so `A-SKIN` holds. Measured against the shipped figure: the
+overlap it produces is `0.03405751452835025` — the editor's `hip_overlap()` to the last bit.
+
+**The design's control holds over the whole range, not at one angle.** The unamended hip
+opens a pocket at every nonzero angle, and the measured depth tracks `(w/2)·sin θ`; the
+amended one opens none at any of nine sampled angles. And ⚠ the fit is **tangent**: sweep past
+`θ_max` and the seam reopens, fit for the wider range and it closes again. The range is the
+input, which is why there is no way to hand it a constant.
+
+⚠ **The finding that outlives the number is still the first question, not the amount.** A
+pivot plane INSIDE its parent opens no wedge — `P7` measured the editor's own shoulder that
+way — so `skin_fit` asks "is any needed" before "how much", and answers *no* for an interior
+pivot. Two clauses make that the pivot's placement and not something about arms: the same arm
+on the chest's bottom **face** does need it, and leaks without it.
+
+⚠ **AND THE FIRST VERSION OF THIS RULE REFUSED THE REAL SHOULDER.** It treated a child
+reaching past its parent out of plane as a refusal — *"no overlap can cover a face with
+nothing above it"* — which sounds right and is wrong: **a face with nothing above it is not a
+pocket**, so there is nothing there to close. The editor's arm genuinely reaches past the
+chest in z, and `P7` measured it as clean. What the margins actually decide is whether the
+added material **hides**: the hip's overlap is invisible because the pelvis is already wider
+than the leg (13 mm in x, 19 mm in z), so a 3 cm skirt disappears into a silhouette that was
+wider anyway. Where a margin is negative the overlap *shows* — reported as an approximation
+with its residual, `K-FIT`'s third state, and the seam still closes. **Visibility is not
+correctness**, and conflating them cost a refusal of working geometry.
+
+⚠ **A second self-inflicted one: the march reached the parent's whole height**, so the
+measured depth was quantised to 2 cm and could not be compared with the closed form at all. A
+pocket can only be as deep as the face's own half-extent, so that is how far the march goes.
+*An instrument whose resolution is set by the wrong quantity cannot check an equality.*
+
+**Seen red three ways:** zeroing the overlap breaks 5 clauses, dropping the overhang clause —
+`P7`'s discarded first measure — breaks 1 (the shoulder, exactly as it did then), and treating
+every pivot as interior breaks 4.
 
 ---
 

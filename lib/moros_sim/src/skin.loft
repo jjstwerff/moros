@@ -1,0 +1,169 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `A-SKIN` as a CONSTRUCTOR RULE.
+// Step `A9b` of plans/14-props-dressing/CONNECTOR.md.
+//
+//     across any joint, the drawn geometry leaves NO GAP at any admissible
+//     joint value
+//
+// ── what `P7` measured, and the part that surprised it ──────────────────────
+//
+// Joints answer where a part IS. They do not answer what it LOOKS like, and the
+// editor's own hip showed the difference: `limb_mesh` builds a leg from `y = −len`
+// to `y = 0` and the pivot is at `y = 0`, so the leg's top face lies IN the pivot
+// plane — exactly where the pelvis box's flat bottom was. At swing `θ` a corner
+// dips `(w/2)·sin θ` below it and opens a wedge nothing fills.
+//
+// ⚠ **The wedge is not what makes a joint leak — a pivot plane ON the parent's
+// boundary face is.** `P7` measured the same arm at the same angles with the pivot
+// INSIDE the chest box and found no pocket at all. So this rule's first question
+// is not "how much overlap" but "is any needed", and the answer is free when the
+// pivot is placed in the interior to begin with.
+//
+// ⚠ **And the overlap is exactly TANGENT at `θ_max`.** A wider gait reopens every
+// seam, silently, because the rig stays exact and only the picture breaks. So
+// `skin_overlap` takes the range and there is no way to pass it a constant.
+//
+// ── the static margins are about VISIBILITY, not correctness ────────────────
+//
+// ⚠ The first version of this rule REFUSED when the child reached past its parent
+// out of plane, and that was wrong — it refused the editor's real shoulder, which
+// `P7` measured as fine. A face with nothing above it is not a pocket, so overlap
+// always closes what there is to close.
+//
+// What the margins actually decide is whether the added material HIDES. The hip's
+// overlap is invisible because the pelvis is already wider than the leg — 13 mm in
+// x, 19 mm in z — so a 3 cm skirt disappears inside a silhouette that was wider
+// anyway. Where a margin is negative the overlap protrudes, which is `P7`'s wing
+// result in miniature. So it is reported as an approximation with its residual,
+// `K-FIT`'s third state, and not as a refusal.
+use frames;
+use graphics;
+
+// An asymmetric box, because a joint's parent is not centred on its pivot.
+pub struct Box3 {
+  b3_x0: float, b3_x1: float,
+  b3_y0: float, b3_y1: float,
+  b3_z0: float, b3_z1: float
+}
+
+pub struct SkinFit {
+  sf_parent: Box3,       // the parent, amended so `A-SKIN` holds
+  sf_overlap: float,     // how far it had to reach past the pivot plane
+  sf_needed: boolean,    // false when the pivot plane was already interior
+  // Whether the overlap disappears inside the parent's existing silhouette.
+  // False is not an error: it means the added material shows, with the margins
+  // below as the residual.
+  sf_hidden: boolean,
+  sf_margin_x: float,    // θ-independent; negative means the child sticks out
+  sf_margin_z: float,
+  sf_reason: text        // `K-FIT`: named, and empty when applied exactly
+}
+
+// A rope's-length worth of slop for deciding whether the pivot plane sits ON the
+// parent's face. ⚠ Named, because a face and a pivot plane that coincide are the
+// third float boundary in this plan and an exclusive test there is a coin flip.
+pub const SKIN_EPS = 0.000000001;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+fn box_has(b: Box3, x: float, y: float, z: float) -> boolean {
+  x >= b.b3_x0 && x <= b.b3_x1 && y >= b.b3_y0 && y <= b.b3_y1
+    && z >= b.b3_z0 && z <= b.b3_z1
+}
+
+// ── the constructor's arithmetic ────────────────────────────────────────────
+//
+// Rotating the child's top face by `θ` about the pivot sends its corner at
+// `±h` to `y = ±h·sin θ`, so the deepest the face ever dips below the pivot plane
+// is `h·sin θ_max`. That, exactly, is what the parent must reach past it.
+pub fn skin_overlap(child_half_in_plane: float, theta_max: float) -> float {
+  child_half_in_plane * fabs(sin(theta_max))
+}
+
+// The step the overlap leaves on the other side, as a fraction of the child's
+// THICKNESS: `cos θ (1 − cos θ) / 2`. Second order in `θ` where the seam it
+// replaces is first order — which is why `P7`'s wing half came back not
+// falsified, and why the bound is on the per-joint angle and nothing else.
+pub fn skin_step_fraction(theta: float) -> float {
+  cos(theta) * (1.0 - cos(theta)) * 0.5
+}
+
+// ── `A-SKIN` itself, measured ───────────────────────────────────────────────
+//
+// The deepest pocket over the child's top face at one joint value: a point of the
+// face that is OUTSIDE the parent and has parent material directly above it.
+//
+// ⚠ The overhang clause is what `P7` had to learn. Without it the measure counts
+// every CONCAVITY — an outer hip, an armpit — and condemns a joint that works: a
+// limb whose cap has nothing above it is a shoulder, not a hole.
+pub fn skin_pocket(parent: Box3, chx: float, chz: float,
+                   pvx: float, pvy: float, pvz: float,
+                   theta: float, n: integer) -> float {
+  c = cos(theta);
+  s = sin(theta);
+  // ⚠ The march only has to reach as far as a pocket can be DEEP, which is
+  // `chx` — the face's own half-extent. The first version reached the parent's
+  // whole height and quantised the answer to 2 cm, so the measured depth could
+  // not be compared with the closed form at all.
+  reach = chx * 1.05 + SKIN_EPS;
+  dh = reach / ((n - 1) as float) ?? 0.0;
+  worst = 0.0;
+  for iu in 0..n {
+    for iv in 0..n {
+      u = 0.0 - chx + 2.0 * chx * (iu as float) / ((n - 1) as float) ?? 0.0;
+      v = 0.0 - chz + 2.0 * chz * (iv as float) / ((n - 1) as float) ?? 0.0;
+      wx = pvx + u * c;
+      wy = pvy + u * s;
+      wz = pvz + v;
+      if !box_has(parent, wx, wy, wz) {
+        ih = 1;
+        while ih < n {
+          t = (ih as float) * dh;
+          if box_has(parent, wx, wy + t, wz) {
+            if t > worst { worst = t; }
+            ih = n;
+          } else { ih = ih + 1; }
+        }
+      }
+    }
+  }
+  worst
+}
+
+// ── the rule ────────────────────────────────────────────────────────────────
+//
+// Hand it a parent, a child's in-plane and out-of-plane half-extents, the pivot
+// and the joint's RANGE. It returns the parent amended so `A-SKIN` holds — or a
+// named refusal when no amendment can make it hold.
+pub fn skin_fit(parent: Box3, chx: float, chz: float,
+                pvx: float, pvy: float, pvz: float,
+                theta_max: float) -> SkinFit {
+  mx = parent.b3_x1 - (pvx + chx);
+  mxlo = (pvx - chx) - parent.b3_x0;
+  if mxlo < mx { mx = mxlo; }
+  mz = parent.b3_z1 - (pvz + chz);
+  mzlo = (pvz - chz) - parent.b3_z0;
+  if mzlo < mz { mz = mzlo; }
+  hid = mx > 0.0 && mz > 0.0;
+  // ⚠ FIRST QUESTION: is any overlap needed at all? A pivot plane INSIDE its
+  // parent opens no wedge, and `P7` measured exactly that on the editor's own
+  // shoulder. Placing the pivot in the interior costs nothing and is the better
+  // answer wherever a designer has the choice.
+  if pvy > parent.b3_y0 + SKIN_EPS {
+    return SkinFit { sf_parent: parent, sf_overlap: 0.0, sf_needed: false,
+                     sf_hidden: hid, sf_margin_x: mx, sf_margin_z: mz,
+                     sf_reason: "" };
+  }
+  ov = skin_overlap(chx, theta_max);
+  why = "pivot plane on the parent's face: extended by {ov} for a range of {theta_max}";
+  if !hid {
+    why = why + "; ⚠ the overlap SHOWS — the child reaches past its parent (x {mx}, z {mz})";
+  }
+  SkinFit { sf_parent: Box3 { b3_x0: parent.b3_x0, b3_x1: parent.b3_x1,
+                              b3_y0: parent.b3_y0 - ov, b3_y1: parent.b3_y1,
+                              b3_z0: parent.b3_z0, b3_z1: parent.b3_z1 },
+            sf_overlap: ov, sf_needed: true, sf_hidden: hid,
+            sf_margin_x: mx, sf_margin_z: mz, sf_reason: why }
+}

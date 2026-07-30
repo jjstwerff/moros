@@ -1,0 +1,188 @@
+// A9b — `A-SKIN` as a constructor rule.
+//
+// The design's control: *"sweep the joint's full range; a rendered gap at any
+// value is red. The hip's current wedge is the standing negative control."* So the
+// unamended hip is the fixture that must leak, and the amended one is what must
+// not — over the whole range, not at one angle.
+use moros_sim;
+
+// The editor's own figure, so this rule and the shipped hip are the same numbers.
+const FIGURE = 2.0207259421636903;
+const HEAD = 0.26943012562182537;
+const HIP = 1.070984749346756;
+const LEG_HALF = 0.08352333894276587;      // head * 0.31
+const LEG_SWING = 0.42;
+const PELVIS_HX = 0.09699484522385713;     // head * 0.36
+const PELVIS_HZ = 0.21554410049746032;     // head * 0.8
+const HIPZ = 0.11316065276116666;          // head * 0.42
+const CHEST = 1.454922678357857;           // figure * 0.72
+
+const EPS = 1.0 / 4503599627370496.0;
+const BOUND = EPS * 4096.0;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// The pelvis box, as `body_mesh` builds it — bottom exactly at the hip plane.
+fn pelvis() -> Box3 {
+  Box3 { b3_x0: 0.0 - PELVIS_HX, b3_x1: PELVIS_HX,
+         b3_y0: HIP, b3_y1: CHEST,
+         b3_z0: 0.0 - PELVIS_HZ, b3_z1: PELVIS_HZ }
+}
+
+// ── the arithmetic, against the shipped number ──────────────────────────────
+
+fn test_the_overlap_is_the_editors_own_number() {
+  ov = skin_overlap(LEG_HALF, LEG_SWING);
+  assert(fabs(ov - 0.03405751452835025) < BOUND,
+         "the rule produces the wedge the editor's hip_overlap() applies");
+  // derived from the RANGE, so a wider gait asks for more of its own accord
+  assert(skin_overlap(LEG_HALF, 0.6) > ov, "a wider gait needs a deeper overlap");
+  assert(skin_overlap(LEG_HALF, 0.0) == 0.0, "and a fixed joint needs none");
+}
+
+// ── the control: the unamended hip leaks over the whole range ───────────────
+
+fn test_the_unamended_hip_leaks_at_every_angle() {
+  p = pelvis();
+  leaked = 0;
+  for k in 1..9 {
+    th = LEG_SWING * (k as float) / 8.0 ?? 0.0;
+    d = skin_pocket(p, LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, th, 25);
+    if d > 0.0 { leaked = leaked + 1; }
+    // and the depth is the closed form, which is what says the measure is right
+    assert(fabs(d - LEG_HALF * sin(th)) < 0.006,
+           "the pocket is (w/2)*sin(theta), to the sample resolution");
+  }
+  assert(leaked == 8, "every nonzero angle opens a pocket");
+}
+
+fn test_the_amended_hip_leaks_at_none() {
+  f = skin_fit(pelvis(), LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, LEG_SWING);
+  assert(f.sf_needed, "the pivot plane is on the pelvis's face, so overlap IS needed");
+  assert(f.sf_hidden, "and the pelvis is wide enough to hide it");
+  assert(fabs(f.sf_overlap - 0.03405751452835025) < BOUND, "by the wedge");
+  assert(f.sf_reason != "", "and it says what it did");
+  for k in 0..9 {
+    th = LEG_SWING * (k as float) / 8.0 ?? 0.0;
+    assert(skin_pocket(f.sf_parent, LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, th, 25) == 0.0,
+           "no pocket at any admissible angle");
+  }
+}
+
+// ⚠ TANGENT at the edge of the range, which is why the overlap must be derived
+// from it. Sweep past `θ_max` and the seam reopens — a run cycle, a kick, a
+// seated pose. The rig stays exact and only the picture breaks.
+fn test_the_fit_is_tangent_and_reopens_past_the_range() {
+  f = skin_fit(pelvis(), LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, LEG_SWING);
+  assert(skin_pocket(f.sf_parent, LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ,
+                     LEG_SWING, 25) == 0.0, "clean at the edge");
+  reopened = skin_pocket(f.sf_parent, LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ,
+                         LEG_SWING * 1.5, 25);
+  assert(reopened > 0.0, "and open past it");
+  // fitted for the wider range, it closes again — the range is the input
+  g = skin_fit(pelvis(), LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, LEG_SWING * 1.5);
+  assert(skin_pocket(g.sf_parent, LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ,
+                     LEG_SWING * 1.5, 25) == 0.0, "fit for the range it is swept to");
+}
+
+// ── ⚠ the finding that outlives the number: an interior pivot needs nothing ──
+//
+// `P7` measured the same arm at the same angles with the pivot INSIDE its parent
+// and found no pocket at all. `shoulder_wu()` lands at 0.842·h while the chest box
+// runs 0.72 → 0.855·h, so the editor has been drawing one correct joint and one
+// broken one all along, for a reason nobody chose.
+fn test_an_interior_pivot_needs_no_overlap() {
+  chest = Box3 { b3_x0: 0.0 - HEAD * 0.40, b3_x1: HEAD * 0.40,
+                 b3_y0: CHEST, b3_y1: FIGURE * 0.855,
+                 b3_z0: 0.0 - HEAD * 1.0, b3_z1: HEAD * 1.0 };
+  shoulder = FIGURE * 0.855 - HEAD * 0.10;
+  arm_half = HEAD * 0.21;
+  // the arm's inboard slab, which is the part under the chest
+  f = skin_fit(chest, arm_half, arm_half, 0.0, shoulder, HEAD * 0.9, 0.30);
+  assert(!f.sf_needed, "it asks for NOTHING — the pivot plane is interior");
+  assert(f.sf_overlap == 0.0, "no overlap");
+  for k in 0..7 {
+    th = 0.30 * (k as float) / 6.0 ?? 0.0;
+    assert(skin_pocket(chest, arm_half, arm_half, 0.0, shoulder, HEAD * 0.9, th, 21)
+           == 0.0, "and no pocket at any angle, unamended");
+  }
+}
+
+// The same arm hung from the chest's bottom FACE does need it — so the difference
+// really is the pivot's placement and not something about arms.
+fn test_the_same_arm_on_a_face_does_need_it() {
+  chest = Box3 { b3_x0: 0.0 - HEAD * 0.40, b3_x1: HEAD * 0.40,
+                 b3_y0: CHEST, b3_y1: FIGURE * 0.855,
+                 b3_z0: 0.0 - HEAD * 1.0, b3_z1: HEAD * 1.0 };
+  arm_half = HEAD * 0.21;
+  f = skin_fit(chest, arm_half, arm_half, 0.0, CHEST, HEAD * 0.9, 0.30);
+  assert(f.sf_needed, "on the face, overlap is needed");
+  assert(f.sf_overlap > 0.0, "and it is a real amount");
+  bare = skin_pocket(chest, arm_half, arm_half, 0.0, CHEST, HEAD * 0.9, 0.30, 21);
+  assert(bare > 0.0, "the unamended joint leaks");
+  assert(skin_pocket(f.sf_parent, arm_half, arm_half, 0.0, CHEST, HEAD * 0.9,
+                     0.30, 21) == 0.0, "and the amended one does not");
+}
+
+// ── the two static conditions, which overlap cannot fix ─────────────────────
+
+// ⚠ REACHING PAST THE PARENT IS NOT AN ERROR, and the first version of this rule
+// said it was — refusing the editor's real shoulder, which `P7` measured as fine.
+// What it changes is whether the overlap HIDES, so it is reported as an
+// approximation with its residual, `K-FIT`'s third state.
+fn test_reaching_past_the_parent_shows_the_overlap_rather_than_refusing() {
+  p = pelvis();
+  f = skin_fit(p, LEG_HALF, LEG_HALF, 0.0, HIP, PELVIS_HZ, LEG_SWING);
+  assert(f.sf_needed, "overlap is still needed");
+  assert(f.sf_overlap > 0.0, "and still applied — it closes what there is to close");
+  assert(!f.sf_hidden, "but it SHOWS");
+  assert(f.sf_margin_z < 0.0, "and the z margin says which axis");
+  assert(f.sf_reason.contains("SHOWS"), "with that stated, not refused");
+  // it still closes the pocket, which is the point: visibility is not correctness
+  assert(skin_pocket(f.sf_parent, LEG_HALF, LEG_HALF, 0.0, HIP, PELVIS_HZ,
+                     LEG_SWING, 25) == 0.0, "the seam is closed regardless");
+}
+
+fn test_the_shipped_hip_hides_its_overlap() {
+  g = skin_fit(pelvis(), LEG_HALF, LEG_HALF, 0.0, HIP, HIPZ, LEG_SWING);
+  assert(g.sf_hidden, "the shipped hip hides it");
+  assert(fabs(g.sf_margin_x - 0.013471506281136) < 0.0001, "13 mm to spare in x");
+  assert(fabs(g.sf_margin_z - 0.018860115) < 0.0001, "19 mm in z");
+  // a leg wider than its pelvis would show it
+  wide = skin_fit(pelvis(), PELVIS_HX + 0.01, LEG_HALF, 0.0, HIP, HIPZ, LEG_SWING);
+  assert(!wide.sf_hidden && wide.sf_margin_x < 0.0, "a wider leg shows the skirt");
+}
+
+// ── the step the overlap leaves, which is P7's wing result ──────────────────
+
+fn test_the_step_is_second_order_in_the_joint_angle() {
+  // the figures P7 measured, as a fraction of the child's thickness
+  assert(fabs(skin_step_fraction(0.10472) - 0.00274) < 0.0002, "6 degrees: 0.27 %");
+  assert(fabs(skin_step_fraction(0.5236) - 0.0580) < 0.0005, "30 degrees: 5.8 %");
+  assert(fabs(skin_step_fraction(0.7854) - 0.1036) < 0.0005, "45 degrees: 10.4 %");
+  assert(skin_step_fraction(0.0) == 0.0, "and a fixed joint leaves none");
+  // second order: halving the angle quarters the step
+  a = skin_step_fraction(0.2);
+  b = skin_step_fraction(0.1);
+  ratio = a / b ?? 0.0;
+  assert(ratio > 3.5 && ratio < 4.5, "halving the angle quarters the step");
+}
+
+// ── the pocket measure must not condemn a joint that works ──────────────────
+//
+// ⚠ `P7`'s first measure counted every CONCAVITY and called the working case red.
+// The overhang clause is what separates a pocket from a shoulder, and this is it
+// as a clause: a limb whose cap has nothing above it leaks nothing.
+fn test_a_cap_with_nothing_above_it_is_not_a_pocket() {
+  // a parent that stops well short of the child in z, so the child's face is
+  // outboard of it entirely — an honest open end, not a hole
+  narrow = Box3 { b3_x0: 0.0 - 0.3, b3_x1: 0.3,
+                  b3_y0: 0.0, b3_y1: 0.5,
+                  b3_z0: 0.0 - 0.05, b3_z1: 0.05 };
+  // the child hangs at z = 0.4, far outside the parent's z range
+  for k in 0..7 {
+    th = 0.4 * (k as float) / 6.0 ?? 0.0;
+    assert(skin_pocket(narrow, 0.08, 0.08, 0.0, 0.0, 0.4, th, 21) == 0.0,
+           "a face with nothing overhanging it is a shoulder, not a pocket");
+  }
+}

@@ -286,10 +286,29 @@ written and not built.** In priority order:
     ⚠ **The `??` precedence trap bit twice this session**: `x < 4.0 / PI ?? 0.0 + 0.01` is
     `x < (4.0/PI ?? (0.0 + 0.01))`. Discharge into a local and compare that.
 
-    **Next is `A9b`** — `A-SKIN` as a constructor rule in the library, which `P7` measured and
-    the editor's hip already applies. Then `A9c` (a `SOLVED` state — the wing's bend on `A6`'s
-    solver shape; ⚠ `P6` says budget ~80 rounds, it is only linearly convergent) and `A10`,
-    where the editor switches over and `cart.mjs` loses its `1.1`.
+11. ✅ **`A9b` is BUILT** — `lib/moros_sim/src/skin.loft`, 11 tests, **630 green**, all 130
+    functions entered. `skin_fit` takes the joint's **range** and returns the parent amended so
+    `A-SKIN` holds; the overlap it produces is `0.03405751452835025` — the editor's
+    `hip_overlap()` to the last bit. The unamended hip opens a pocket at every nonzero angle
+    and the amended one at none; ⚠ the fit is **tangent**, so sweeping past `θ_max` reopens it.
+    - **The first question is still "is any needed"**, not "how much": an interior pivot opens
+      no wedge, and two clauses make that the pivot's placement rather than something about
+      arms.
+    - ⚠ **THE FIRST VERSION REFUSED THE REAL SHOULDER.** It treated a child reaching past its
+      parent out of plane as a refusal — which sounds right and is wrong, because **a face with
+      nothing above it is not a pocket**. The margins decide whether the overlap **hides**, not
+      whether the seam closes: negative margins mean it *shows*, reported as an approximation
+      with its residual (`K-FIT`'s third state). **Visibility is not correctness.**
+    - ⚠ **The march reached the parent's whole height**, quantising the depth to 2 cm so it
+      could not be compared with the closed form. A pocket is only as deep as the face's own
+      half-extent. *An instrument whose resolution is set by the wrong quantity cannot check an
+      equality.*
+    **Seen red**: overlap zeroed (5 clauses), overhang clause dropped (1 — the shoulder, as it
+    did in `P7`), every pivot treated as interior (4).
+
+    **Two steps left.** `A9c` — a `SOLVED` state, the wing's bend on `A6`'s solver shape; ⚠ `P6`
+    says budget ~80 rounds, it is only *linearly* convergent where the ground contact is
+    quadratic. Then `A10`, where the editor switches over and `cart.mjs` loses its `1.1`.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
