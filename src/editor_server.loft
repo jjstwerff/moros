@@ -297,6 +297,11 @@ const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goe
 // walk, and there is no edge to fire on when an edit leaves the camera untouched —
 // which is exactly the case the occlusion gate needs (a fence must cost nothing).
 const MSG_CAMREST = 28;   // read the camera's ease state back
+// Read a column's layer LABELS back. `15:` gives the heights, which say what the
+// stack looks like; this says which layer is which — the identity that has to
+// survive an insert renumbering them. Separate from `15:` deliberately: that
+// message's payload is parsed as a list of numbers by three gates.
+const MSG_LABELS = 29;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -1633,19 +1638,53 @@ fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
         c2 = world_column(wld, q2, r2);
         if col_top(c2) >= 0 {
           cells: vector<hex_world::Hex> = [];
+          // ⚠ THE LABELS TRAVEL BESIDE THE CELLS, in the same order. `F1″` makes
+          // layer order height order, so inserting below renumbers every layer —
+          // and a marker left on an index would land on the wrong one. Passing the
+          // labels a READ gave us is what tells `world_set_column` which cell is
+          // new (`0`) and which layer each of the others still belongs to. Without
+          // this a cellar inherited the ground's label, and nothing downstream
+          // could tell which layer was the ground.
+          ids: vector<integer> = [];
+          // ⚠ A LAYER IS CHUNK-WIDE, AND THIS RUNS OVER A DISC OF 19 CELLS. The
+          // first column to dig needs a new layer; the other eighteen must write
+          // into the one it made. Blindly prepending gave every column its own —
+          // measured, a single cellar took the chunk from 1 layer to 34.
+          //
+          // The tell is already in the column a read hands back: it carries one
+          // cell per layer INCLUDING absent ones, so a leading absent cell IS the
+          // layer a neighbour already inserted. Fill it, and pass its label back so
+          // the store knows this is not new.
+          lo_i = 0;
+          for ci2 in 0..len(c2.co_cells) {
+            if hex_world::hex_occupied(c2.co_cells[ci2] ?? hex_world::Hex {}) { break; }
+            lo_i = ci2 + 1;
+          }
           if dir > 0 {
-            // a floor ABOVE the topmost OCCUPIED cell: append
             cells += c2.co_cells;
+            ids += c2.co_ids;
             cells += [hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
                                        h_material: FLOOR_MAT }];
+            ids += [0];
           } else {
-            // a cellar BELOW the lowest OCCUPIED cell: INSERT at the front, so
-            // stack order still holds
-            cells += [hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
-                                       h_material: FLOOR_MAT }];
-            cells += c2.co_cells;
+            floor_c = hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
+                                       h_material: FLOOR_MAT };
+            if lo_i > 0 {
+              // a layer is already there, empty at this cell: fill it in place
+              for cj in 0..len(c2.co_cells) {
+                if cj == lo_i - 1 { cells += [floor_c]; } else { cells += [c2.co_cells[cj]]; }
+                ids += [c2.co_ids[cj] ?? 0];
+              }
+            } else {
+              // the first column to dig: a genuinely new layer, labelled 0
+              cells += [floor_c];
+              ids += [0];
+              cells += c2.co_cells;
+              ids += c2.co_ids;
+            }
           }
-          w = world_set_column(wld, hex_world::Column { co_q: q2, co_r: r2, co_cells: cells });
+          w = world_set_column(wld, hex_world::Column { co_q: q2, co_r: r2,
+                                                       co_cells: cells, co_ids: ids });
           if w.cw_code != CW_OK {
             why = "layer {w.cw_layer}: {w.cw_detail}";
             return 0 - 10 - w.cw_code;
@@ -3590,6 +3629,21 @@ fn main() {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
           println("editor: trace {tracing}");
+        } else if ev.msg_id == MSG_LABELS {
+          lbi = ev.payload.find(",");
+          lbq = 0;
+          lbr = 0;
+          if lbi != null {
+            lbq = ev.payload[..lbi] as integer ?? 0;
+            lbr = ev.payload[lbi + 1..] as integer ?? 0;
+          }
+          lbcol = world_column(wld, lbq, lbr);
+          lbtxt = "";
+          for lbid in lbcol.co_ids {
+            if lbtxt != "" { lbtxt = lbtxt + ","; }
+            lbtxt = lbtxt + "{lbid}";
+          }
+          srv.send_to(ev.cid, "S:labels {lbq},{lbr} = {lbtxt}");
         } else if ev.msg_id == MSG_CAMREST {
           // The boom and the lift each ease toward a target, so the eye is in
           // transit for some ticks after anything disturbs it and NOTHING on the

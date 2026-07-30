@@ -11,7 +11,14 @@ PY ?= python3
 LOFT ?= loft
 
 # The loft packages under lib/, in dependency order.
-LIB_PACKAGES = moros_map moros_editor moros_render moros_sim moros_ui
+#
+# ⚠ THIS LIST IS THE TEST TARGET, so a package missing from it is a package whose
+# tests never run. `hex_world` and `glb_read` sat outside it for months — 66 tests
+# that only ever passed because someone ran them by hand. They are lavition
+# packages and take no brand prefix (see CLAUDE.md), which is exactly why a
+# `moros_*`-shaped list skipped them.
+LIB_PACKAGES = moros_map moros_editor moros_render moros_sim moros_ui \
+               hex_world glb_read
 
 serve:
 	$(PY) -m http.server $(PORT) --directory html &

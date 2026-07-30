@@ -148,6 +148,17 @@ pub struct Column {
   co_q:     integer,
   co_r:     integer,
   co_cells: vector<Hex>,            // one per layer of the chunk, in its order
+  // ⚠ THE LABEL OF THE LAYER EACH CELL CAME FROM — identity travelling WITH the
+  // cell. `F1″` makes index height order, so inserting below shifts every index;
+  // a marker left on an index therefore lands on the wrong layer, which is how a
+  // cellar took the ground's identity. `I1` uses labels by EQUALITY only, never
+  // order, so a label is the one marker an insert cannot move.
+  //
+  // Defaulted to empty, so a caller building a fresh column supplies nothing and
+  // keeps the positional behaviour it always had. A READ fills it, so any
+  // read-modify-write carries identity through without the caller helping.
+  // An EMPTY list here means "no claim about identity" — never "all new".
+  co_ids:   vector<integer> = [],
 }
 
 // ── World creation ───────────────────────────────────────────────────────────
@@ -222,6 +233,25 @@ fn empty_cells() -> vector<StoredHex> {
 // Every height gets `ck_base` ADDED here. This is the only addition in the
 // design (`S1`); above this line a height is absolute and the window does not
 // exist.
+// `ν` — the next free label. The field existed, was persisted, and was never
+// incremented: every layer's label was 0, so nothing could be identified across a
+// shift. Labels are equality-only (`I1`), so a monotonic counter is the whole of
+// the identity this model asks for.
+fn fresh_label(w: &World) -> integer {
+  id = w.w_next_id;
+  w.w_next_id = w.w_next_id + 1;
+  id
+}
+
+// The label of the layer at index `l`, so a caller can tell one layer from another
+// across an insert that renumbers them.
+pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return 0; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
+  w.w_chunks[ci].ck_layers[l].ly_id
+}
+
 pub fn world_column(w: World, q: integer, r: integer) -> Column {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
   // A missing chunk is an empty column, never a refusal: unauthored ground is a
@@ -230,7 +260,9 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
   ch = w.w_chunks[ci];
   ix = cell_index(q, r);
   out: vector<Hex> = [];
+  ids: vector<integer> = [];
   for ly in ch.ck_layers {
+    ids += [ly.ly_id];
     if ly.ly_kind == KIND_TERRAIN {
       c = ly.ly_cells[ix];
       out += [Hex { h_height: (ch.ck_base + c.sv_height) as u16? ?? 0,
@@ -242,7 +274,7 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
       out += [Hex {}];   // dressing holds no cell here; see #14
     }
   }
-  Column { co_q: q, co_r: r, co_cells: out }
+  Column { co_q: q, co_r: r, co_cells: out, co_ids: ids }
 }
 
 // Convenience over `world_column`. Read-only, and deliberately WITHOUT a writing
@@ -487,7 +519,7 @@ pub fn world_set_dressing(w: &World, col: Column) -> ColumnWrite {
     if w.w_chunks[ci].ck_layers[li].ly_kind == KIND_DRESSING { slots += [li]; }
   }
   while len(slots) < len(col.co_cells) {
-    w.w_chunks[ci].ck_layers += [Layer { ly_id: 0, ly_kind: KIND_DRESSING,
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: fresh_label(w), ly_kind: KIND_DRESSING,
                                          ly_ver: 0, ly_cells: empty_cells() }];
     slots += [len(w.w_chunks[ci].ck_layers) - 1];
   }
@@ -577,8 +609,37 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   // 3 — materialise absent layers. THE ONLY PLACE A LAYER IS EVER CREATED, which
   // is what stops unneeded ones existing: a layer exists because a column put
   // something in it.
+  //
+  // ⚠ WHERE it is created is the whole of `co_ids`. Appending at the end and then
+  // writing positionally moves every cell down one index while the LAYER records —
+  // and their labels and versions — stay put, so a cellar dug under the ground took
+  // the ground's label and nothing downstream could tell them apart. Measured: the
+  // drawn ground sank from 10.917 to 5.583.
+  //
+  // With labels the insert point is known: a position whose INCOMING label is 0 —
+  // a cell that came from no layer — is new, and the layers from there on shift
+  // down carrying their own labels with their own cells.
+  //
+  // ⚠ Only where the layer being displaced is TERRAIN. A dressing layer is not a
+  // heightfield and a terrain write must never disturb it — the same rule step 5
+  // keeps below, and the reason a band merge once deleted one.
+  if len(col.co_ids) == n {
+    for i in 0..n {
+      have = len(w.w_chunks[ci].ck_layers);
+      if i < have && col.co_ids[i] == 0
+         && w.w_chunks[ci].ck_layers[i].ly_id != 0
+         && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN {
+        nl: vector<Layer> = [];
+        for li0 in 0..i { nl += [w.w_chunks[ci].ck_layers[li0]]; }
+        nl += [Layer { ly_id: fresh_label(w), ly_kind: KIND_TERRAIN,
+                       ly_ver: 0, ly_cells: empty_cells() }];
+        for li1 in i..have { nl += [w.w_chunks[ci].ck_layers[li1]]; }
+        w.w_chunks[ci].ck_layers = nl;
+      }
+    }
+  }
   while len(w.w_chunks[ci].ck_layers) < n {
-    w.w_chunks[ci].ck_layers += [Layer { ly_id: 0, ly_kind: KIND_TERRAIN,
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: fresh_label(w), ly_kind: KIND_TERRAIN,
                                          ly_ver: 0, ly_cells: empty_cells() }];
   }
 

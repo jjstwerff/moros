@@ -1,0 +1,82 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// MARKERS TRAVEL WITH THEIR CELLS, across an insert that renumbers every layer.
+//
+// `F1″` makes layer order height order, so digging a cellar UNDER a column must
+// shift every index — that is the invariant working. What must NOT shift is
+// identity: the ground is still the ground after something appears beneath it.
+// Part II already says **"index is not identity"**, and `I1` uses labels by
+// equality only, so a label is the one marker an insert cannot move.
+//
+// Before this, `world_set_column` appended a new layer at the END and then wrote
+// positionally: the cells moved down while the LAYER records — labels, versions —
+// stayed put, so a cellar inherited the ground's label. Nothing downstream could
+// then tell which layer was the ground, and the drawn ground sank into the cellar
+// it had just been given (10.917 → 5.583 wu, measured in moros).
+use hex_world;
+
+fn mk_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn cell_at(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
+
+fn test_a_new_layer_gets_a_label_and_labels_are_distinct() {
+  w = mk_world();
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+                                      co_cells: [cell_at(200, 1), cell_at(240, 1)] }).cw_code == CW_OK,
+         "two layers written");
+  a = world_layer_id(w, 0, 0, 0);
+  b = world_layer_id(w, 0, 0, 1);
+  assert(a != 0 && b != 0, "every layer carries a label: {a}, {b}");
+  assert(a != b, "and the labels are distinct: {a} vs {b}");
+}
+
+fn test_a_read_reports_the_label_of_each_cells_layer() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1)] });
+  c = world_column(w, 0, 0);
+  assert(len(c.co_ids) == len(c.co_cells), "one label per cell");
+  assert(c.co_ids[0] == world_layer_id(w, 0, 0, 0), "and they are the layers' own");
+  assert(c.co_ids[1] == world_layer_id(w, 0, 0, 1), "for every layer");
+}
+
+fn test_a_cellar_inserted_below_leaves_the_ground_its_own_label() {
+  // ⚠ THE CLAIM. Dig underneath and read the labels back: the ground's must have
+  // MOVED DOWN THE STACK WITH ITS CELLS, and the new layer must be the one that is
+  // new. Before the fix the ground's label stayed at index 0 and became the cellar's.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  ground = world_layer_id(w, 0, 0, 0);
+  assert(ground != 0, "the ground has a label");
+
+  before = world_column(w, 0, 0);
+  // a cellar below, and the ground after it — the ground keeps its label, the new
+  // cell claims none
+  ins = world_set_column(w, Column { co_q: 0, co_r: 0,
+                                     co_cells: [cell_at(150, 4), before.co_cells[0]],
+                                     co_ids:   [0, ground] });
+  assert(ins.cw_code == CW_OK, "the cellar was written: {ins.cw_detail}");
+
+  after = world_column(w, 0, 0);
+  assert(len(after.co_cells) == 2, "two layers now, got {len(after.co_cells)}");
+  assert(after.co_ids[1] == ground,
+         "the GROUND kept its label and moved down: index 1 is {after.co_ids[1]}, want {ground}");
+  assert(after.co_ids[0] != ground && after.co_ids[0] != 0,
+         "and the cellar is a NEW layer with its own label: {after.co_ids[0]}");
+  // and the heights still say which is which
+  assert(after.co_cells[0].h_height == 150, "the cellar is below");
+  assert(after.co_cells[1].h_height == 200, "the ground is above");
+}
+
+fn test_a_column_with_no_labels_keeps_the_old_positional_behaviour() {
+  // An empty `co_ids` is "no claim about identity", never "all new" — which is what
+  // lets the twelve existing call sites keep compiling and behaving unchanged.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  first = world_layer_id(w, 0, 0, 0);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(150, 4), cell_at(200, 1)] });
+  assert(world_layer_id(w, 0, 0, 0) == first,
+         "no labels supplied, so nothing was inserted and layer 0 is still layer 0");
+  assert(len(world_column(w, 0, 0).co_cells) == 2, "and the second layer was appended");
+}

@@ -4,7 +4,7 @@
 **Why this exists.** None of this was written down. Every acknowledgement string and every
 ordering guarantee below was reverse-engineered out of `src/editor_server.loft` (4,238 lines) in
 order to de-flake eight gates on 2026-07-30 — and the next person would have paid that cost
-again. 24 gates depend on this protocol today.
+again. 25 gates depend on this protocol today.
 
 **Why it carries dispositions.** [`HEX_STACK.md`](HEX_STACK.md) settles that the client derives
 meshes from the store (I2) and that the static world is pulled from static blocks (§3). Most of
@@ -60,6 +60,16 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `26` | CELL | `<q>,<r>` | `cell q,r = <material>,<height>` | **R** |
 | `27` | TRACE | `<0\|1>` | `trace true/false` | **S** — diagnostics |
 | `28` | CAMREST | — | `camera rested B boom D free F pitch P residual A,B` | **V** — added 2026-07-30; see [`HEX_STACK.md`](HEX_STACK.md) and the note below |
+| `29` | LABELS | `<q>,<r>` | `labels q,r = <one layer label per layer, bottom-up>` | **R** — added 2026-07-30. The companion to `15` COLUMN: same column, identities instead of heights |
+
+⚠ **`29` LABELS exists because heights cannot show identity.** `15` COLUMN answers
+`column 0,10 = 13,25,37,49` both when three cellars were *inserted under* a ground layer that
+kept its label and when they were appended and everything was renumbered — the heights are
+identical and only the labels differ. Adding the read-back is what turned "the ground keeps its
+identity" from an argument into a measurement, and it caught a real defect the same minute: a
+first attempt answered **`59,58,…,2` — 34 labels for 4 layers**, because a layer is chunk-wide
+while `storey_add` writes a *disc of 19 columns*, so every column inserted its own. **A claim
+about the store needs a read-back on the thing claimed, not on its consequences.**
 
 ⚠ **`25` WALL answers in `road` vocabulary.** `do_wall` emits `road started` / `road laid` /
 `road refused`, which belong to `10` by name. This cost real time: `road.mjs` was written to wait

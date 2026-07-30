@@ -655,6 +655,58 @@ over a height band.
 and no requirement that a label be used at all. A chunk remains free to hold a layer set
 shared with nobody.
 
+### A column write CARRIES the labels — settled 2026-07-30
+
+Everything above says what a label *means*. This says what a **write** has to do with one, and
+it was got wrong until it was measured.
+
+`world_column` reads a column as a vector of cells, one per layer. `world_set_column` writes one
+back. The old contract was **positional**: cell *i* goes to layer *i*, and if the vector is
+longer than the chunk has layers, append until it fits. That is correct for a write that only
+changes cells, and silently catastrophic for one that adds a layer **underneath** — the natural
+way to express "dig a cellar" is to put a cell at the front, which shifts every existing cell
+down one index. The heights all come out right. But the ground's cells now sit in the layer that
+used to be below it, so **the label that named the ground now names a cellar** — and `I1`, which
+compares layers across chunks by label equality only, starts identifying a ground with a floor.
+
+> **A column read hands back the labels beside the cells, and a write hands them back in.
+> A label of `0` in the incoming vector means "a layer that does not exist yet"; a non-zero
+> label means "the layer already called this". The store inserts for the first and writes in
+> place for the second.**
+
+Concretely, `Column` gained `co_ids: vector<integer>`, index-parallel to `co_cells`.
+`world_set_column` walks it: where the incoming label is `0` and the chunk already has a
+labelled `KIND_TERRAIN` layer at that index, it **splices a new layer in at that index** with a
+fresh label from `ν`, rather than appending one at the end. Everything below keeps its own
+label, including the ground.
+
+This is the invariant of *"a label is a name"* finally made operative on the write path. Naming
+was already settled; nothing enforced that a write preserved the naming.
+
+**⚠ A layer is chunk-wide; a column write is not.** The two are easy to conflate and the
+conflation is not visible in heights. `storey_add` stamps a **disc of 19 columns**, and the
+first version of this fix had each of them present a leading `0` — so each got its own new
+layer, and one cellar took the chunk from 1 layer to **34**. The caller cannot simply ask for a
+new layer per column; it has to notice that a neighbour already made one. **The read tells it**:
+a column carries one cell per layer *including absent ones*, so a leading **absent** cell is
+exactly the layer some other column of the disc already inserted — fill it, and pass its label
+back so the store writes in place instead of splicing again.
+
+**Measured, on one column under three dug cellars** (`29:` LABELS, against `15:` COLUMN):
+
+| | heights | labels |
+|---|---|---|
+| before digging | `49` | `2` |
+| broken — append | `13,25,37,49` | ground's label lands on a cellar |
+| broken — insert per column | `13,25,37,49` | `59,58,57,…,2` — **34 labels, 4 layers** |
+| correct | `13,25,37,49` | `8,6,4,2` — the ground is still `2`, still on top |
+
+The heights are identical in all four rows. That is the whole reason `29:` LABELS exists.
+
+Covered by `lib/hex_world/tests/markers.loft`, whose load-bearing case is
+`test_a_cellar_inserted_below_leaves_the_ground_its_own_label`; the red control reads
+`index 1 is 2, want 1`.
+
 ### T1 — The edit clock
 
 > Every write that changes a layer's contents performs

@@ -1620,3 +1620,32 @@ edges — neither of which the mechanism's own eight gates had caught.
       compiling. Supplying it at every site is the workaround and defeats the point.
     - Reproducer kept at `plans/14-props-dressing/probe/default_vector_field.loft`.
     - Tree restored and green: **25 gates, 651 library tests**, `hex_world` 58.
+32. ✅ **THE COLUMN WRITE CARRIES THE LABELS. The ground keeps its identity under three
+    cellars, and it is measurable over the wire.**
+    - `Column` gained `co_ids`, index-parallel to `co_cells`. `world_column` fills it;
+      `world_set_column` reads it and **splices** a fresh layer in where the incoming label is
+      `0`, instead of appending at the end and shifting every cell down a layer. Contract and
+      rationale in [`WORLD_MODEL.md` § "A column write CARRIES the labels"](WORLD_MODEL.md).
+    - **The blocker was gone.** #697 is fixed in the installed loft, so the defaulted
+      `co_ids: vector<integer> = []` compiles and the change stays additive — the twelve
+      existing `Column { … }` literals were untouched.
+    - ⚠ **A layer is chunk-wide; a column write is not**, and the first version of the fix
+      conflated them. `storey_add` stamps a **disc of 19 columns**, each presenting a leading
+      `0`, so each got its own layer: one cellar took the chunk from 1 layer to **34**. The
+      caller now reads the tell the column already carries — a leading **absent** cell is the
+      layer a neighbour of the disc already inserted, so fill it and pass its label back.
+    - **⚠ AND THE HEIGHTS WERE RIGHT IN ALL THREE VERSIONS.** `column 0,10 = 13,25,37,49` for
+      the correct write, the appending one, and the 34-layer one alike. Nothing observable
+      distinguished them, so `29:` **LABELS** was added — `labels q,r = <label per layer>` — and
+      it caught the 34-layer defect the minute it existed. Before: `2`. After: **`8,6,4,2`**,
+      the ground still `2` and still on top. *A claim about the store needs a read-back on the
+      thing claimed, not on its consequences.*
+    - Covered by `lib/hex_world/tests/markers.loft` (4 tests); red control reads
+      `index 1 is 2, want 1`.
+    - ⚠ **`make lib-test` was not running `hex_world` or `glb_read` at all.** `LIB_PACKAGES`
+      listed only `moros_*`, and those two are lavition packages that take **no brand prefix** —
+      so 66 tests, including the ones above, passed only when run by hand. Both added.
+    - **25 gates green, 725 library tests across 7 packages** (was 651 across 5).
+    - **Still open, and unchanged by this:** `terrain_h` reads layer 0. The labels now exist to
+      name the ground layer with, which is what item 29 said was missing — that is the next
+      move, not something this did.
