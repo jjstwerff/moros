@@ -418,10 +418,13 @@ written and not built.** In priority order:
     - ⚠ **6 npm audit vulnerabilities remain, all transitive through `mocha`/`glob`**
       (brace-expansion, serialize-javascript, diff). `npm audit fix --force` wants a
       major mocha bump; not taken, and not part of this.
-    - ⚠ **`moros@0.4.2` in `dependencies` is an unrelated third party** — npm's
-      deprecation says *"renamed to domina"* — and **nothing in the tree imports it**.
-      Almost certainly an `npm install moros` typed inside the moros project. Left
-      alone deliberately; deleting someone's dependency is their call.
+    - ✅ **`moros@0.4.2` is REMOVED from `dependencies`** — an unrelated third party
+      (*"Functional DOM processing abstractions"*, deprecated, *"renamed to domina"*),
+      almost certainly an `npm install moros` typed inside the moros project. Nothing
+      in the tree imported it under any form, including subpath imports, and it had no
+      dependencies of its own. Verified by clean install: 172 → 171 packages, its
+      deprecation warning gone, `npm ls moros` empty, 39 passing at the same 96.52%.
+      The 6 audit findings are unchanged by it, which confirms they were never its.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned

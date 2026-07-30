@@ -11,8 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "chai": "^6.2.2",
-    "mocha": "^11.7.5",
-    "moros": "^0.4.2"
+    "mocha": "^11.7.5"
   },
   "directories": {
     "doc": "doc",
