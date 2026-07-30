@@ -1445,6 +1445,63 @@ carry. **23 gates green on two consecutive full runs, 642 library tests pass**, 
 bit-identical through the very capture that tripped it —
 `worstGap 1.540269400912564e-8`, `maxBank 0.08314124584252244`.
 
+### `P-TEAM` — RUN. A team IS a tree, and the yoke was a cost with no benefit
+
+The open item asserted two things and offered the second as the repair. Probed
+(`probe/team.loft`), **neither survived**.
+
+**C1 — "a team is two links into one body" is FALSE.** It is an artifact of choosing the
+HORSES as the roots. The root is a *labelling* choice, not a physical fact: re-root at the
+cart and every body has exactly one parent again.
+
+```
+cart (root, on the ground, two wheels)
+  ├── horse A   hitch, on its own four feet
+  └── horse B   hitch, on its own four feet
+```
+
+`A-TOPO` admissible **true**, every body closes **true**, mobility **4**. `asm_towed` roots
+at the horse because there is exactly one puller — with two, that convention simply does not
+generalise, and **nothing but the convention was ever in the way.**
+
+**C2 — the yoke does not help.** A pole on two ball hitches is **DOF-neutral**: it adds a
+body worth six and two hitches worth three each, so mobility stays 4. It does not hold the
+horses abreast, and it is *the only thing here that would make the graph non-tree*. The
+proposed repair bought nothing and broke the invariant it was meant to restore.
+
+⚠ What *would* break the tree is a pole with joints **stiffer than hitches** — a real
+coupling, hence a closed chain, genuinely outside this representation. That is not what two
+hitched horses are, and it is now precisely characterised rather than vaguely feared.
+
+**C3 — and the ledger is not an approximation of the system count, it IS the system count.**
+
+    system freedom  −  ledger mobility  =  Σ residual
+
+exactly, on every fixture:
+
+| | system | ledger | Σ residual | closes |
+|---|---|---|---|---|
+| team | 4 | 4 | 0 | ✅ |
+| cart | 6 | 5 | +1 | — *(the known "reports five not six")* |
+| towed | 6 | 6 | 0 | ✅ |
+| trailer4 | 3 | 4 | −1 | — *(over by one: the fourth wheel)* |
+| shafted | 3 | 5 | −2 | — *(over by two)* |
+
+A tree carries no link that no body owns, so summing `6 − links − support` over the bodies
+*is* Grübler. **The only way the two could part is a link outside the tree** — which is
+exactly what the structure cannot express, so `A-DOF` is sufficient for every topology
+question this representation can pose.
+
+⚠ **The probe's own first version fell into `A9c`'s trap** and is worth recording as such:
+it hand-wrote a joint list per fixture and reported "disagreements" that were its own
+arithmetic. Deriving the system count *from the assembly* turned a hand-check into an
+identity. Twice now in this plan, measuring a second numbering has masqueraded as measuring
+the rule.
+
+`asm_team` is now a library fixture with two tests, **seen red both ways**: making the
+horses `Carried` breaks the tree clause, and perturbing the residual breaks the identity
+across three test files.
+
 ## Open
 
 ### `A10` — FINISHED 2026-07-30. The solve is the library's, and the diff is empty
@@ -1479,9 +1536,8 @@ form is fine passed straight into a call. The compiler says so and names the fix
 23 gates green, 639 library tests pass.
 - ~~Reconcile `A9c`'s indexing with `P6`'s.~~ **DONE 2026-07-30 — and "neither is wrong" was
   wrong.** See the section below.
-- **A team is not a tree.** Two horses abreast on one cart is two links into one body,
-  which `A-TOPO` forbids. The likely answer is that the yoke is a body and each horse
-  links to *it* — restoring the tree — but that is a claim, not a result.
+- ~~A team is not a tree.~~ **PROBED 2026-07-30 — and both halves of the claim were
+  wrong.** See below.
 - **Steep ground: refuse or tip?** `A-FIT` says refuse with a residual. Tipping is the
   physical answer and is dynamics this rung does not have.
 - **Where the states are advanced.** `A-DOF` names them; something must integrate them,

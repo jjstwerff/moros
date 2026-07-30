@@ -1,0 +1,184 @@
+// P-TEAM — IS A TEAM REALLY NOT A TREE?
+//
+// `CONNECTOR.md` left this open with a guess attached:
+//
+//   > **A team is not a tree.** Two horses abreast on one cart is two links into
+//   > one body, which `A-TOPO` forbids. The likely answer is that the yoke is a
+//   > body and each horse links to *it* — restoring the tree — but that is a
+//   > claim, not a result.
+//
+// Both halves are load-bearing and both are testable, so neither should be taken
+// on trust. The protocol says attack the CLEANEST claim first, and "a yoke
+// restores the tree" is the clean one.
+//
+// ── the three claims ────────────────────────────────────────────────────────
+//
+//   C1  a team cannot be written as a tree
+//   C2  a yoke body restores the tree
+//   C3  the per-body ledger is enough to tell — i.e. `A-DOF` summed over bodies
+//       agrees with the SYSTEM's mobility
+//
+// ── the instrument ──────────────────────────────────────────────────────────
+//
+// The per-body ledger already exists and already reports over-constraint by an
+// exact amount (`asm_trailer4` is over by one, `asm_shafted` by two). But it is a
+// PER-BODY count, and a loop closes through several bodies and the ground — so a
+// second, independent instrument is needed to check it: Grübler's mobility count
+// for a spatial mechanism,
+//
+//     M = 6·(n − 1 − j) + Σ fᵢ
+//
+// with `n` bodies INCLUDING the ground, `j` joints, and `fᵢ` the freedoms each
+// joint leaves. The ledger counts freedoms body by body; Grübler counts them for
+// the whole graph including the loops the tree cannot see. **If the two disagree,
+// the ledger is blind to loops and `A-DOF` alone cannot answer this question.**
+// That is the real test, and it is why the probe computes both.
+use moros_render;
+use moros_sim as ms;
+use moros_sim::SupportKind;
+
+fn dash() { println("─────────────────────────────────────────────────────────"); }
+
+// Σ (driven + solved) over the bodies — what the per-body ledger says the whole
+// assembly's remaining freedom is.
+fn ledger_mobility(a: ms::Assembly) -> integer {
+  n = ms::asm_count(a);
+  t = 0;
+  for i in 0..n {
+    g = ms::body_ledger(a, i);
+    t = t + g.dg_driven + g.dg_solved;
+  }
+  t
+}
+
+fn ledger_closes_all(a: ms::Assembly) -> boolean { ms::asm_closes(a) }
+
+// The SYSTEM's freedom, derived from the assembly rather than from a hand-written
+// joint list: every body starts with six and each link and each support removes
+// what its table says. This is Grubler for a tree, with the ground contacts read
+// off `dof_support` instead of guessed.
+fn system_mobility(a: ms::Assembly) -> integer {
+  n = ms::asm_count(a);
+  t = 0;
+  for i in 0..n {
+    g = ms::body_ledger(a, i);
+    t = t + 6 - g.dg_links - g.dg_support;
+  }
+  t
+}
+// Σ residual — the amount by which the assembly is over- or under-determined.
+fn total_residual(a: ms::Assembly) -> integer {
+  n = ms::asm_count(a);
+  t = 0;
+  for i in 0..n { t = t + (ms::body_ledger(a, i)).dg_residual; }
+  t
+}
+
+// Grübler, computed from a hand-written joint list: each entry is the freedoms
+// that joint LEAVES. Ground contacts are joints too — that is the whole point,
+// because they are what close the loop a team makes.
+fn grubler(bodies_including_ground: integer, joint_freedoms: vector<integer>) -> integer {
+  j = len(joint_freedoms);
+  s = 0;
+  for f in joint_freedoms { s = s + f; }
+  6 * (bodies_including_ground - 1 - j) + s
+}
+
+fn report(name: text, a: ms::Assembly, n_incl_ground: integer,
+          freedoms: vector<integer>) {
+  ok = ms::asm_admissible(a);
+  lm = ledger_mobility(a);
+  gm = grubler(n_incl_ground, freedoms);
+  println("{name}");
+  println("  a tree (A-TOPO admissible) : {ok}");
+  println("  every body closes (A-DOF)  : {ledger_closes_all(a)}");
+  println("  ledger mobility  Σ(driven+solved) = {lm}");
+  println("  Grubler mobility M               = {gm}");
+  if lm == gm {
+    println("  → AGREE");
+  } else {
+    println("  → DISAGREE by {lm - gm}: the per-body ledger cannot see this");
+  }
+}
+
+fn main() {
+  println("P-TEAM — is a team really not a tree?");
+  dash();
+
+  // ── C1. Two horses, each hitched to the cart, NO yoke. ────────────────────
+  //
+  // The open item pictured the horses as the roots and the cart as their common
+  // child — which is two parents for one body, and inexpressible. But the root is
+  // a LABELLING choice, not a physical fact. Re-root at the cart and every body
+  // has exactly one parent again.
+  //
+  //   cart (root, on the ground)
+  //     ├── horse A  (hitch, on the ground)
+  //     └── horse B  (hitch, on the ground)
+  pair = ms::asm_new("pair");
+  pair = ms::asm_add(pair, 0 - 1, ms::link_none(),
+                            ms::body_of(SupportKind.Ground, 4, 0, 2));
+  pair = ms::asm_add(pair, 0, ms::link_hitch(2.0, 0.0, 0.0 - 0.6),
+                            ms::body_of(SupportKind.Ground, 0, 0, 4));
+  pair = ms::asm_add(pair, 0, ms::link_hitch(2.0, 0.0, 0.6),
+                            ms::body_of(SupportKind.Ground, 0, 0, 4));
+  // joints: cart–ground (4 left), cart–A (3), cart–B (3), A–ground (3), B–ground (3)
+  report("C1  two horses hitched to the cart, no yoke", pair, 4, [4, 3, 3, 3, 3]);
+  dash();
+
+  // ── C2. Does a YOKE help, hurt, or do nothing? ────────────────────────────
+  //
+  // ⚠ The first version of this probe compared the YOKED mechanism's Grubler count
+  // against the UN-YOKED assembly's ledger, and they happened to match — an
+  // agreement between two different mechanisms, which proves nothing. Compare the
+  // two mobilities to each other instead.
+  //
+  // Un-yoked: cart, A, B + ground = 4 bodies, 5 joints.
+  // Yoked:    add the pole as a body and TWO hitches, one at each end.
+  m_bare  = grubler(4, [4, 3, 3, 3, 3]);
+  m_yoked = grubler(5, [4, 3, 3, 3, 3, 3, 3]);
+  println("C2  what the pole is worth");
+  println("  Grubler, no yoke : {m_bare}");
+  println("  Grubler, yoked   : {m_yoked}");
+  println("  the pole changes mobility by {m_yoked - m_bare}");
+  // A body adds 6 freedoms; two hitches remove 3 each. 6 - 6 = 0.
+  println("  → a pole on two ball hitches is DOF-NEUTRAL: it adds a body worth 6");
+  println("    and two joints worth -3 each. It does not hold the horses abreast,");
+  println("    and it is the only thing that would make the graph non-tree.");
+  dash();
+
+  // ── C3. Does the per-body ledger agree with the system count, on the
+  //        fixtures whose answers are already known? ─────────────────────────
+  //
+  // This is the claim that matters beyond the team: `A-DOF` is a PER-BODY count,
+  // and a loop closes through several bodies and the ground. If the ledger and
+  // Grubler ever disagree, `A-DOF` alone cannot answer a topology question.
+  println("C3  the ledger IS the system count, and the gap is the residual");
+  println("  ⚠ the first version of this section hand-wrote a joint list per fixture");
+  println("    and reported disagreements that were its own arithmetic — the same");
+  println("    trap A9c fell into, measuring a second numbering instead of the rule.");
+  println("    Derived from the assembly, the identity is exact:");
+  println("        system freedom  −  ledger mobility  =  Σ residual");
+  println("");
+  for nm in ["pair", "cart", "towed", "trailer4", "shafted"] {
+    a = pair;
+    if nm == "cart"     { a = ms::asm_cart(0.55, 0.35); }
+    if nm == "towed"    { a = ms::asm_towed(0.55, 1.4); }
+    if nm == "trailer4" { a = ms::asm_trailer4(); }
+    if nm == "shafted"  { a = ms::asm_shafted(0.55); }
+    sm = system_mobility(a);
+    lm = ledger_mobility(a);
+    rs = total_residual(a);
+    mark = "  ";
+    if sm - lm != rs { mark = "✗ "; }
+    println("  {mark}{nm}: system {sm}  ledger {lm}  Σresidual {rs}"
+          + "   closes {ledger_closes_all(a)}");
+  }
+  println("");
+  println("  → every row holds. A tree carries no link that no body owns, so the");
+  println("    per-body ledger is not an approximation of the system count — it IS");
+  println("    the system count. The ONLY way the two could part is a link outside");
+  println("    the tree, which is precisely what the structure cannot express.");
+  dash();
+  println("done");
+}

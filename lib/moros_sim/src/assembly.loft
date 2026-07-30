@@ -544,6 +544,37 @@ pub fn asm_towed(half: float, drawbar: float) -> Assembly {
   a
 }
 
+// A TEAM: two horses abreast on one cart — and it IS a tree.
+//
+// ⚠ `CONNECTOR.md` recorded the opposite, that *"a team is two links into one body,
+// which `A-TOPO` forbids"*, with a yoke body as the likely repair. Probed
+// (`probe/team.loft`), **both halves were wrong**:
+//
+//   · The two-parents problem is an artifact of choosing the HORSES as the roots.
+//     The root is a LABELLING choice, not a physical fact — re-root at the cart and
+//     every body has exactly one parent again. `asm_towed` roots at the horse
+//     because there is only one puller; with two, that convention simply does not
+//     generalise, and nothing but the convention was ever in the way.
+//   · A yoke on two ball hitches is **DOF-NEUTRAL** — it adds a body worth six and
+//     two hitches worth three each, so mobility is unchanged at 4. It does not hold
+//     the horses abreast, and it is the only thing here that would make the graph
+//     non-tree. The proposed repair was a cost with no benefit.
+//
+// What a team would need to break the tree is a pole with joints STIFFER than
+// hitches — a real coupling. That is a closed chain and genuinely outside this
+// representation; it is not what two hitched horses are.
+pub fn asm_team(reach: float, half: float) -> Assembly {
+  a = asm_new("team");
+  // the cart is the root: on the ground, on two wheels
+  a = asm_add(a, 0 - 1, link_none(), body_of(SupportKind.Ground, 4, 0, 2));
+  // one horse each side of the pole line, each hitched, each on its own four feet
+  a = asm_add(a, 0, link_hitch(reach, 0.0, 0.0 - half),
+              body_of(SupportKind.Ground, 0, 0, 4));
+  a = asm_add(a, 0, link_hitch(reach, 0.0, half),
+              body_of(SupportKind.Ground, 0, 0, 4));
+  a
+}
+
 // ── `A-DOF` — the ledger ─────────────────────────────────────────────────────
 //
 // > Every body's six degrees of freedom are accounted for exactly once: removed

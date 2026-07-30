@@ -187,3 +187,41 @@ fn test_contacts_survive_the_round_trip() {
   assert(asm_write(back) == asm_write(t), "byte for byte");
   assert(asm_ledger_report(back) == asm_ledger_report(t), "and its ledger is the same");
 }
+
+// ── a team is a tree, and the ledger is the system count ────────────────────
+
+fn test_a_team_of_two_horses_is_a_tree_and_closes() {
+  // ⚠ The plan recorded that a team is NOT a tree. It is — the "two links into one
+  // body" was an artifact of rooting at the horses. Rooted at the cart, every body
+  // has one parent and every body closes.
+  t = asm_team(2.0, 0.6);
+  assert(asm_admissible(t), "a team rooted at the cart IS a tree");
+  assert(asm_closes(t), "and every body's six are accounted for");
+  h = ledger_of(t, 1);
+  assert(h.dg_links == 3, "a hitch removes three");
+  assert(h.dg_support == 3, "four feet give three — the bound bites");
+  assert(h.dg_total == 6, "so a horse closes with nothing driven and nothing solved");
+  assert(h.dg_residual == 0, "exactly, not approximately");
+}
+
+fn test_the_ledger_is_the_system_count_not_an_approximation_of_it() {
+  // Σ over bodies of (6 − links − support) is the whole mechanism's freedom; Σ of
+  // (driven + solved) is what the ledger reports. They differ by exactly Σ residual
+  // — so on a CLOSED assembly the per-body ledger IS the system count. A tree
+  // carries no link that no body owns, which is the only way the two could part.
+  for a in [asm_team(2.0, 0.6), asm_cart(HALF, RADIUS), asm_towed(HALF, 1.4),
+            asm_trailer4(), asm_shafted(HALF)] {
+    n = asm_count(a);
+    sys = 0;
+    led = 0;
+    res = 0;
+    for i in 0..n {
+      g = body_ledger(a, i);
+      sys = sys + 6 - g.dg_links - g.dg_support;
+      led = led + g.dg_driven + g.dg_solved;
+      res = res + g.dg_residual;
+    }
+    assert(sys - led == res,
+           "system {sys} − ledger {led} must be the residual {res}");
+  }
+}

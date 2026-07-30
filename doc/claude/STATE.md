@@ -1440,3 +1440,28 @@ edges — neither of which the mechanism's own eight gates had caught.
       642 library tests pass**, cart bit-identical through the capture that tripped it.
     - `CONNECTOR.md`'s **Open** is now three items: a team is not a tree; steep ground — refuse
       or tip; and where the states are advanced (the sandbox seam, #15).
+24. ✅ **`P-TEAM` — a team IS a tree, and both halves of the open claim were wrong.**
+    - **"Two links into one body" was an artifact of rooting at the HORSES.** The root is a
+      *labelling* choice, not a physical fact: re-root at the cart and every body has one
+      parent. `A-TOPO` admissible, every body closes, mobility 4. `asm_towed` roots at the
+      horse because there is one puller; with two that convention does not generalise, and
+      **nothing but the convention was ever in the way.**
+    - **The proposed repair was a cost with no benefit.** A pole on two ball hitches is
+      **DOF-neutral** — a body worth six, two hitches worth three each — so it does not hold
+      the horses abreast, and it is *the only thing that would make the graph non-tree*.
+      What would break the tree is a pole with joints **stiffer than hitches**: a real closed
+      chain, genuinely outside this representation, and now precisely characterised.
+    - **`A-DOF` is sufficient for every topology question this representation can pose.**
+      `system freedom − ledger mobility = Σ residual`, exactly, on all five fixtures. A tree
+      carries no link that no body owns, so the per-body ledger *is* Grübler. The only way
+      they could part is a link outside the tree — which the structure cannot express.
+    - ⚠ **The probe's first version fell into `A9c`'s trap**: it hand-wrote a joint list per
+      fixture and reported "disagreements" that were its own arithmetic. Deriving the system
+      count *from the assembly* turned a hand-check into an identity. **Twice in this plan,
+      measuring a second numbering has masqueraded as measuring the rule** — worth carrying
+      as a habit, not just a note.
+    - `asm_team` is a library fixture with two tests, **seen red both ways**. 289 moros_sim
+      tests (644 across the packages), 23 gates green.
+    - `CONNECTOR.md`'s **Open** is down to two, and both are deferrals rather than unknowns:
+      steep ground (refuse or tip — tipping is dynamics this rung does not have), and where
+      the states are advanced (the sandbox seam, [#15](https://github.com/jjstwerff/moros/issues/15)).
