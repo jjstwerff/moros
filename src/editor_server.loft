@@ -288,6 +288,15 @@ const MSG_EDGE = 24;      // and the atomic half of it — one edge, one materia
 const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
 const MSG_CELL = 26;      // read one cell's surface material and height back
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
+// Read the camera's own convergence back. The boom and the lift EASE toward their
+// targets, so "where is the eye" has no answer until the ease has arrived — and a
+// client that samples on a timer is sampling wherever the ease happened to be.
+// `cam_rested` is already computed here, against a named tolerance and the actual
+// targets; this makes it askable instead of private. A QUERY and not a broadcast:
+// the flag is true on most ticks, so an event would be a per-tick storm during any
+// walk, and there is no edge to fire on when an edit leaves the camera untouched —
+// which is exactly the case the occlusion gate needs (a fence must cost nothing).
+const MSG_CAMREST = 28;   // read the camera's ease state back
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -3115,6 +3124,19 @@ fn main() {
   cam_lx = 0.0 - 1.0; cam_ly = 0.0; cam_lz = 0.0;
   cam_lyaw = 0.0; cam_lpitch = 0.0; cam_ltau = 0 - 1;
   cam_rested = false;
+  // How far the boom and the lift still have to travel, kept where `MSG_CAMREST`
+  // can read them. The ease computes both to decide `cam_rested` and then dropped
+  // them on the floor; a client that has to wait for the eye is owed the residual
+  // it is waiting on, not just a boolean.
+  cam_res_d = 0.0;
+  cam_res_p = 0.0;
+  // The boom's TARGET as the last solve computed it. Reported next to `cam_dist` so
+  // "rest means arrived" is an invariant a gate can check in a single run: once
+  // rested the two must be EQUAL. A latched tolerance leaves them apart and freezes
+  // there, which looks identical to correct from inside one run — only the last
+  // digits wandering between runs gave it away, and that is not something a gate
+  // can see.
+  cam_free_last = 0.0;
   keys = 0;
   last_us = ticks();
 
@@ -3467,6 +3489,20 @@ fn main() {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
           println("editor: trace {tracing}");
+        } else if ev.msg_id == MSG_CAMREST {
+          // The boom and the lift each ease toward a target, so the eye is in
+          // transit for some ticks after anything disturbs it and NOTHING on the
+          // wire said when it arrived. `C:` carries the matrix every tick, rested
+          // or not, and it cannot carry a third field: `set_camera` in
+          // editor_client.loft parses everything past the first `;` as the
+          // projection, so appending one would silently blind the wasm client.
+          //
+          // The residuals are the distances still to travel, and they are what the
+          // rest test is made of — reported rather than just thresholded, because a
+          // client that has to wait deserves to know how far off it was.
+          srv.send_to(ev.cid, "S:camera rested {cam_rested} boom {cam_dist} "
+                            + "free {cam_free_last} "
+                            + "pitch {cam_pitch} residual {cam_res_d},{cam_res_p}");
         } else if ev.msg_id == MSG_CELL {
           cci = ev.payload.find(",");
           cq2 = 0;
@@ -3865,6 +3901,32 @@ fn main() {
       dd1 = cam_dist - cam_free; if dd1 < 0.0 { dd1 = 0.0 - dd1; }
       dd2 = cam_pitch - cam_pt; if dd2 < 0.0 { dd2 = 0.0 - dd2; }
       cam_rested = dd1 < 0.001 && dd2 < 0.001;
+      // The residuals as the EASE left them — the size of the snap below, not what
+      // is left after it. Kept for `MSG_CAMREST`.
+      cam_res_d = dd1;
+      cam_res_p = dd2;
+      cam_free_last = cam_free;
+      // ⚠ REST MEANS ARRIVED, NOT NEARLY ARRIVED — and this is a real defect, not
+      // tidiness. The test above is a tolerance, and the line under it stops the
+      // solve running: `if cam_moved || !cam_rested`. So without this snap the boom
+      // FREEZES up to 0.001 short of its target and stays there forever, and WHERE
+      // in that band it froze is decided by which tick the ease happened to cross
+      // on. The eye's resting place became a function of machine speed.
+      //
+      // Measured beside a wall ring, two runs of the same gate on the same build:
+      //     reach 5.324  y 3.900  residual 0.00098131
+      //     reach 5.299  y 3.888  residual 0.00097224
+      // — a 0.025 wu spread in a resting camera, and it never converged: polled 200
+      // times, the residual did not move, because the solve had already stopped.
+      //
+      // Snapping closes it exactly, in the one tick that declares arrival, so the
+      // eye is a function of the WORLD and the pose and nothing else. The step is
+      // at most 0.001 wu — a bound the author already called invisible by choosing
+      // it as the rest tolerance — so this cannot be seen, only measured.
+      if cam_rested {
+        cam_dist = cam_free;
+        cam_pitch = cam_pt;
+      }
       cam_lx = px; cam_ly = py; cam_lz = pz;
       cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
       }

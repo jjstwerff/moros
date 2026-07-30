@@ -458,6 +458,51 @@ written and not built.** In priority order:
       overrides are tree-wide; 0 vulnerabilities.
     - The reasoning lives in the `Makefile` beside the `tests` target, because a bare
       version pin with no explanation is exactly what a later tidy-up deletes.
+18. ✅ **`occlude.mjs`'s sampling is fixed — and it had been measuring a camera still
+    in flight.** The last drifting gate. `placeAt` read the eye `await wait(1500)`
+    after a placement; the ease past a wall takes about **2.5 s**, so every reading
+    of `beside_wall` was mid-move — **0.42 wu short** of where the eye comes to rest
+    (4.927 measured against a true 5.346). The wandering last digits that started
+    this were the symptom; the wrong number was the disease.
+    - **Three wrong explanations were measured out of the way first**, and each looked
+      right: *it samples mid-ease* (no — `28:` says rested on the first ask, inside
+      50 ms, in the approach the probe used); *`cam_rate` keeps creeping* (no — with
+      yaw fixed the filter is 0 and the boom is bit-stable); *the eye is still moving
+      when read* (no — it is FROZEN; what varies is where it froze). One of my probes
+      also produced an invalid discriminator: `mocha`-style, it "failed" a brace
+      pattern the baseline failed identically. **Always get the control.**
+    - ⚠ **THE REST TOLERANCE LATCHED — a live defect in shipped code.**
+      `cam_rested = dd < 0.001` is a tolerance AND it gates whether the solve runs
+      (`if cam_moved || !cam_rested`). So the boom parked up to 0.001 short of target
+      **forever**, and which tick the ease crossed on decided where. Measured, same
+      build, two runs: `reach 5.324 residual 0.00098131` and `reach 5.299 residual
+      0.00097224` — a 0.025 wu spread in a *resting* camera. Fixed by snapping
+      `cam_dist = cam_free` / `cam_pitch = cam_pt` in the tick that declares rest:
+      rest now means **arrived**, and the step is bounded by the tolerance the author
+      already chose as invisible.
+    - **New `28:` (`MSG_CAMREST`) makes the camera's convergence askable** — rested,
+      boom, free, pitch, residual. A QUERY, not a broadcast: the flag is true on most
+      ticks so an event would storm during any walk, and there is no edge to fire on
+      when an edit leaves the camera untouched, which is precisely the case this gate
+      needs (a fence must cost nothing).
+    - ⚠ **`C:` COULD NOT CARRY IT.** `set_camera` in `editor_client.loft` parses
+      everything past the first `;` as the projection, so a third field would make
+      `len(cproj) != 16` and silently blind the **wasm** client. `editor.html`
+      destructures and would have been fine — a one-client break that no gate covers.
+    - ⚠ **AND THE MATRIX HAS TO BE ASKED FOR.** `C:` is sent from inside `if moved`,
+      so at rest there is no next one and waiting for it times out. `2:<aspect>,` is
+      a request answered from current state, so the read is request/response. Without
+      this the gate read a matrix from a different tick than the query — back-solving
+      the eye proved it, the matrix built from a boom the query no longer reported.
+    - **Result: `beside_wall` reads 5.346 / 3.911 on every run** (four fresh servers,
+      then the full suite twice). **Seen red two ways**: drop the rest poll → 5.022,
+      5.022, 4.993 and `settled false`; restore the original sleep → a stable but
+      **wrong** 4.927 that passes silently, which is the whole indictment.
+    - **The latch itself is now gateable in one run**: at rest, `boom` must equal
+      `free`. ⚠ **But it catches only when the defect manifests** — removing the snap
+      was caught in **1 of 2** runs, because an ease that happens to land exactly on
+      target is indistinguishable from a snapped one. Real invariant, partial
+      detection; recorded rather than overclaimed.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned
