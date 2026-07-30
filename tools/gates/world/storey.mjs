@@ -31,6 +31,19 @@ const ackStorey = async (limitMs = 30000) => {
   return '(none)';
 };
 const lastStorey = () => [...status].reverse().find(x => x.startsWith('storey')) || '(none)';
+// The places were the last thing here still on a timer. A place acknowledges; a raise
+// does not, and needs no ack — it is applied in full before the next message is read,
+// and this gate reads no mesh. See doc/claude/WIRE_PROTOCOL.md.
+const ack = async (p, limitMs = 30000) => {
+  const from = status.length;
+  for (let t = 0; t < limitMs; t += 100) {
+    await wait(100);
+    const m = status.slice(from).find(x => x.startsWith(p));
+    if (m) return m;
+  }
+  return `(no "${p}" in ${limitMs}ms)`;
+};
+const placeAck = async (x, z, yaw) => { place(x, z, yaw); return ack('placed'); };
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
@@ -41,14 +54,13 @@ ws.onmessage = async (e) => {
     // ── two hills, because the two clauses need two ground heights.
     //    A raise builds PEAK_AHEAD(10) hexes along the facing at PEAK_STEP(6)
     //    per press: east is √3 wu/hex → ~17.3 wu, north is 1.5 wu/hex → 15 wu.
-    place(0, 0, 0); await wait(1500);
-    ws.send('5:1'); await wait(1500);                      // low hill east, peak 6
-    place(0, 0, 1.5708); await wait(500);
-    for (let k = 0; k < 4; k++) { ws.send('5:1'); await wait(400); }
-    await wait(2000);                                      // high hill north, peak 24
+    await placeAck(0, 0, 0);
+    ws.send('5:1');                                        // low hill east, peak 6
+    await placeAck(0, 0, 1.5708);
+    for (let k = 0; k < 4; k++) ws.send('5:1');            // high hill north, peak 24
 
     // ── the tower: three floors on the low hill
-    place(17.3, 0, 0); await wait(700);
+    await placeAck(17.3, 0, 0);
     const up = [];
     for (let k = 0; k < 3; k++) { ws.send('12:1'); up.push(await ackStorey()); }
 
@@ -57,7 +69,7 @@ ws.onmessage = async (e) => {
     const cellarLow = await ackStorey();
 
     // ── the dungeon that can: peak 24 leaves room
-    place(0, 15, 0); await wait(700);
+    await placeAck(0, 15, 0);
     ws.send('12:-1');
     const cellarHigh = await ackStorey();
 

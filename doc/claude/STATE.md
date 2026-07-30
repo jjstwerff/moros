@@ -1354,3 +1354,45 @@ edges — neither of which the mechanism's own eight gates had caught.
       (1), and the frame-window trio `hipskin` / `keyonly` / `walk`. All currently
       green. `wip/camera.mjs` too, but it is not in the suite.
     - 23 gates green, 639 library tests pass.
+20. ✅ **EVERY WORLD GATE NOW WAITS ON THE SERVER.** The remaining seven are fixed —
+    `cart`, `doorstep`, `prop`, `trigger`, `storey`, `stream`, `level` — and `tools/gates/world/`
+    now contains **no fixed sleep outside an `ack` poll loop**. 23 gates green on two clean
+    consecutive full runs; 639 library tests pass.
+    - **Four were ack substitutions**, once it was established that none of them read a mesh: a
+      raise applies in full before the next message is read, so on an ordered wire the following
+      ack is the entire barrier. `storey` gained a generic `placed` ack; `cart` and `doorstep`
+      dropped their raise-loop sleeps outright.
+    - **`stream`** replaced a `setInterval` march and a 4200 ms window with acked places and a
+      `2:` request/response barrier — the streamer emits no status of its own and a 6 wu step
+      need not cross a chunk boundary, so there is no per-step signal to wait for. Now exactly
+      reproducible: `added 492 · dropped 216 · live 276 · peak 312 · liveChunks 46`.
+    - ⚠ **`level` proved `S:placed` is not always sufficient.** Levelling drops its counter-peak
+      from the per-tick hex-change block, and `placed` is sent *before* that block runs. The
+      `T:` broadcast sits after it in the same tick, so a **fresh transform** is the only correct
+      barrier — and releasing with `6:0` sends no status at all, only a recomputed `py` and
+      `moved`. Both barriers are now `T:`.
+    - **`trigger`**'s *"let the last rebuild settle"* was waiting for a message it could have
+      awaited: `triggers_resolve` runs inside the dirty flush, so `trigger N BROKEN` is the signal.
+    - ⚠ **I broke `prop` while fixing it, and the lesson is worth more than the fix.** An added
+      `await ack('storey')` sat directly above the existing `const storey = await ack('storey')`.
+      An `ack` consumes the message and only sees what arrives *after* it is called, so the
+      second timed out and `groundMoved` read false on every run. **Adding a barrier can break a
+      gate as surely as removing one.** Recorded in WIRE_PROTOCOL's traps.
+    - **Still clock-paced, and deliberately:** `hipskin` / `keyonly` / `walk` are the
+      *frame-window* class — they count what arrived in a fixed window, so the counts move by ±1
+      by construction while the claims keep real headroom. That is not a wait-before-measuring
+      defect. `wip/camera.mjs` is not in the suite.
+21. ✅ **A NEW LOFT LANDED TODAY (binary 14:35) AND IT UNBLOCKS `A10`.**
+    - **[loft#682](https://github.com/loft-lang/loft/issues/682) is FIXED** —
+      `d26c3bef "a closure record was freeing captures it never owned"`. This is the defect that
+      kept the editor running its own copy of `A6`'s fixed point, because a lambda capturing a
+      `World` panicked the interpreter. **Verified by probe, not by changelog:** the exact shape
+      now runs — `captured-world lambda ok, fixed point 2.03125`.
+    - Also landed: **#670** (capture-into-a-local losing writes), **#677** (a promotion rule
+      deleting a returned parameter's borrow fact), and **#678 both halves** — the working-set
+      store loaders now page *in the browser*, which is the read path
+      [`HEX_STACK.md`](HEX_STACK.md) §6 depends on.
+    - Neighbouring capture fixes worth knowing about: **#685** (a mutated scalar capture from a
+      parameter corrupted the frame), **#686** (a capture of a forward-declared type mis-typed),
+      **#687** (a mutated text capture's storage decided per binding).
+    - ⏭ **So `A10`'s solve switch is ready to finish** — the top item in `CONNECTOR.md`'s Open.

@@ -46,15 +46,15 @@ ws.onmessage = async (e) => {
     // anchored at the origin, raised twice, and watched nothing happen. Build
     // the hill first, then stand on it and anchor there.
     await placeAck(0, 0, 0);
-    ws.send('5:1'); await wait(700);
-    ws.send('5:1'); await wait(1500);
+    ws.send('5:1');
+    ws.send('5:1');   // ordered; the `18:` ack below is the barrier
     await placeAck(17.3, 0, 0);                 // onto the hill: hex (10,0)
     ws.send('18:door_opens');
     const placed = await ack('trigger 0');
 
     // ── raise the SAME hill again from the same spot; the anchor must follow
     await placeAck(0, 0, 0);
-    ws.send('5:1'); await wait(700);
+    ws.send('5:1');
     ws.send('5:1');
     const followed = await ack('trigger 0 followed');
 
@@ -64,7 +64,11 @@ ws.onmessage = async (e) => {
     await placeAck(18.0, 0, 0);
     await placeAck(17.3, 0, 0);
     ws.send('10:0'); await ack('road false');
-    await wait(1500);                            // let the last rebuild settle
+    // ⚠ THE TRIGGER IS RE-RESOLVED BY THE DIRTY FLUSH, not by the road toggle —
+    // `triggers_resolve` runs where geometry has just changed, so the BROKEN
+    // broadcast is the thing to wait for. Sleeping "to let the last rebuild settle"
+    // was waiting for a message it could simply have awaited.
+    await ack('trigger 0 BROKEN');
     const broken = seen('trigger 0 BROKEN');
 
     // ── a foreign binding is neither resolved nor dropped

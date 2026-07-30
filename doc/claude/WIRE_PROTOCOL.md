@@ -131,25 +131,40 @@ measurement, and the cost of not knowing it is named.
 - **`ack` polling granularity can hide a defect.** A 100 ms poll covers a ~16 ms tick, so a
   raise reading a once-per-tick cell looked correct. Only a probe sending two commands with
   nothing between them exposed it.
+- ⚠ **An `ack` CONSUMES the message, and only sees what arrives after it is called.** Two acks
+  for one acknowledgement means the second waits out its limit and returns `(no "…")`. This was
+  introduced and caught the same hour in `prop.mjs`: an added `await ack('storey')` sat directly
+  above the existing `const storey = await ack('storey')`, so `groundMoved` read false on every
+  run. **Adding a barrier can break a gate as surely as removing one.**
 
-## Still clock-paced, and therefore still suspect
+## Still clock-paced
 
-All green today; none fixed. Ordered by number of fixed sleeps.
+**Every world gate now waits on the server.** The `world/` suite contains no fixed sleep outside
+an `ack` poll loop. What remains is one different class and one file outside the suite:
 
-| gate | sleeps | class |
+| gate | why it still counts time | class |
 |---|---|---|
-| `world/storey.mjs` | 7 | mesh reads after sleeps |
-| `world/level.mjs` | 5 | mesh reads after sleeps |
-| `world/trigger.mjs` | 4 | includes *"let the last rebuild settle"* |
-| `world/prop.mjs` | 3 | mesh reads after sleeps |
-| `world/doorstep.mjs` | 2 | raise loop |
-| `world/cart.mjs` | 2 | raise loop |
-| `world/stream.mjs` | 1 | one window |
-| `character/hipskin.mjs`, `keyonly.mjs`, `walk.mjs` | — | **frame-window class**: they count what arrived in a fixed window. Claims have headroom; the counts move by design |
-| `wip/camera.mjs` | many | not in the suite |
+| `character/hipskin.mjs`, `keyonly.mjs`, `walk.mjs` | they measure **how many frames arrived in a fixed window** — the counts move by ±1 by construction | **frame-window.** Claims have real headroom (`legRots >= 3` sitting at 38; `>= 3` sitting at 22). Not a wait-before-measuring defect |
+| `wip/camera.mjs` | work in progress | not in the suite |
 
-Fixed on 2026-07-30, for the pattern to copy: `field`, `straight`, `import`, `vegetation`,
-`persist`, `road`, `stencil`, `occlude`, `climb`, `collide`, `terrain`.
+Fixed 2026-07-30, in the order done — the patterns to copy: `field`, `straight`, `import`,
+`vegetation`, `persist`, `road`, `stencil`, `occlude`, `climb`, `collide`, `terrain`, then
+`cart`, `doorstep`, `prop`, `trigger`, `storey`, `stream`, `level`.
+
+Three of those needed more than an ack substitution, and they are the interesting ones:
+
+- **`stream.mjs`** — a `setInterval` march plus a 4200 ms measurement window. The streamer
+  announces *nothing* (it brackets in `Z:1`…`Z:0` but emits no status) and a 6 wu step need not
+  cross a chunk boundary, so there is no per-step signal. The barrier is a `2:` request: the
+  `C:` it is answered with proves every mesh the streamer emitted beforehand has arrived. Now
+  exactly reproducible — `added 492 · dropped 216 · live 276 · peak 312 · liveChunks 46`.
+- **`level.mjs`** — `S:placed` is *not* sufficient. Levelling drops its counter-peak from the
+  per-tick hex-change block, which `placed` precedes; the `T:` broadcast sits after that block
+  in the same tick, so a **fresh transform** is the only correct barrier. Releasing with `6:0`
+  sends no status either — it recomputes `py` and sets `moved`, so again the barrier is `T:`.
+- **`trigger.mjs`** — *"let the last rebuild settle"* was waiting for a message it could have
+  awaited: `triggers_resolve` runs inside the dirty flush, so the `trigger N BROKEN` broadcast
+  is the signal.
 
 ---
 

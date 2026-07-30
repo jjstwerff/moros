@@ -85,9 +85,11 @@ ws.onmessage = async (e) => {
     // trivially, so a run that never reached a slope proves nothing. Turning
     // the character before raising puts the hill OFF the cart's axis, which is
     // what makes the two wheels see different ground at all.
+    // A look updates `yaw` inside its own handler, and a raise applies in full before
+    // the next message is read — so on an ORDERED wire the `17:` ack below covers both.
+    // This gate reads no mesh, so there is nothing else to wait for.
     ws.send('3:200,0');                       // turn, so the hill lands off-axis
-    await wait(200);
-    for (let k = 0; k < 5; k++) { ws.send('5:1'); await wait(150); }
+    for (let k = 0; k < 5; k++) ws.send('5:1');
 
     const poses = [], axleEnds = [];
     for (let k = 0; k < 10; k++) {

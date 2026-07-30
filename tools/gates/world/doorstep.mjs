@@ -71,8 +71,7 @@ ws.onmessage = async (e) => {
     //    slope, where the feet are genuinely between grades, and require the
     //    residual to be reported rather than quietly discarded.
     await placeAck(0, 0, 0);
-    for (let k = 0; k < 3; k++) { ws.send('5:1'); await wait(400); }
-    await wait(1500);
+    for (let k = 0; k < 3; k++) ws.send('5:1');   // ordered; `placeAck` below is the barrier
     await placeAck(14, 0, 0);                      // partway up the hill's flank
     ws.send('10:1');
     const road = await ack('road true');

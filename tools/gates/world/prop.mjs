@@ -42,8 +42,8 @@ ws.onmessage = async (e) => {
   if (t === 'C' && !st) { st = 1;
     // build a hill and stand on it, so the ground can later MOVE under the prop
     await placeAck(0, 0, 0);
-    ws.send('5:1'); await wait(700);
-    ws.send('5:1'); await wait(1500);
+    ws.send('5:1');
+    ws.send('5:1');   // ordered; the `19:` ack below is the barrier
     await placeAck(17.3, 0, 0);                    // hex (10,0)
 
     ws.send('19:3');
@@ -65,9 +65,11 @@ ws.onmessage = async (e) => {
     // one entry per chunk layer INCLUDING the absent placeholders for dressing,
     // so it addresses layer 1 and the skip is what stops that placeholder being
     // written back over a prop.
+    // the ack on the next line IS the barrier — `12:1` needs no second one, and adding
+    // one consumed the message so the real read timed out. `ack` only sees what arrives
+    // AFTER it is called.
     ws.send('12:1');
     const storey = await ack('storey');
-    await wait(1500);
     const dress3 = await dressing(10, 0);
     const terr3 = await terrain(10, 0);
 
