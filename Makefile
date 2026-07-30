@@ -25,6 +25,26 @@ upload:
 # The JavaScript suite (html/logic.js, dm-logic.js, data.js) under mocha, with
 # coverage from c8.
 #
+# ⚠ THE `overrides` BLOCK IN package.json IS LOAD-BEARING — do not drop it to
+# "simplify" the manifest. All six audit findings were transitive under mocha, and
+# there is no released mocha that fixes them: `latest` IS the installed 11.7.6, and
+# `npm audit fix` proposes 11.3.0, a DOWNGRADE below the declared floor. Upstream's
+# real fix is mocha 12, still at rc. So the four are pinned by hand:
+#     brace-expansion  ^5.0.8   the ONLY patched version — the advisory range is
+#                               <=5.0.7, so the whole 2.x line mocha sits on is in it
+#     minimatch        ^10.2.2  REQUIRED BY THE ABOVE, not optional: brace-expansion 5
+#                               replaced `module.exports = expand` with a named
+#                               export, and minimatch 9 calls the old shape
+#     serialize-javascript ^7.0.7   mocha's parallel-mode worker serialisation
+#     diff             ^8.0.4   mocha's assertion-failure formatter
+#
+# ⚠ AND `npm audit` REPORTED 0 VULNERABILITIES ON A BROKEN TREE. Overriding
+# brace-expansion alone audits clean and passes all 39 tests, while any brace in a
+# glob throws `brace_expansion_1.default is not a function` — mocha's default spec
+# has no braces, so nothing noticed. If you touch these versions, the check is not
+# `npm audit` and not the test count; it is the four probes in STATE.md item 17,
+# against the un-overridden tree as the control.
+#
 # ⚠ `sh: 1: nyc: not found` was TWO faults wearing one message, and fixing only the
 # obvious one leaves the target broken on a fresh clone. The script still named `nyc`
 # after the project moved to `c8` (which is the move `"type": "module"` forces — nyc

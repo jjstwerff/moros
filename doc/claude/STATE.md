@@ -415,9 +415,7 @@ written and not built.** In priority order:
       second run does not reinstall. **Seen red**: a wrong expected value gives
       `make` exit **2**, 1 failing — a test target that stays green when tests fail
       is worse than one that will not start.
-    - ⚠ **6 npm audit vulnerabilities remain, all transitive through `mocha`/`glob`**
-      (brace-expansion, serialize-javascript, diff). `npm audit fix --force` wants a
-      major mocha bump; not taken, and not part of this.
+    - ✅ **The 6 audit findings are FIXED** — see item 17.
     - ✅ **`moros@0.4.2` is REMOVED from `dependencies`** — an unrelated third party
       (*"Functional DOM processing abstractions"*, deprecated, *"renamed to domina"*),
       almost certainly an `npm install moros` typed inside the moros project. Nothing
@@ -425,6 +423,41 @@ written and not built.** In priority order:
       dependencies of its own. Verified by clean install: 172 → 171 packages, its
       deprecation warning gone, `npm ls moros` empty, 39 passing at the same 96.52%.
       The 6 audit findings are unchanged by it, which confirms they were never its.
+17. ✅ **`npm audit` reads 0 — and the lesson is that it read 0 on a BROKEN tree first.**
+    All six findings were transitive under mocha and **no released mocha fixes them**:
+    `latest` *is* the installed 11.7.6, `npm audit fix` proposes **11.3.0 — a downgrade
+    below the declared `^11.7.5` floor**, and upstream's real fix (mocha 12: `diff ^9`,
+    `glob ^13`, `minimatch ^10.2.2`, `serialize-javascript ^7.0.2`) is still at rc.
+    So four `overrides` in `package.json`, and one of them is not what audit asked for:
+
+    | override | why |
+    |---|---|
+    | `brace-expansion ^5.0.8` | the **only** patched version — the advisory range is `<=5.0.7`, so the entire 2.x line mocha sits on is inside it |
+    | `minimatch ^10.2.2` | **forced by the above.** brace-expansion 5 replaced `module.exports = expand` with a named export; minimatch 9 calls the old shape |
+    | `serialize-javascript ^7.0.7` | mocha's parallel-mode worker serialisation |
+    | `diff ^8.0.4` | mocha's assertion-failure formatter |
+
+    - ⚠ **THE FIRST ATTEMPT AUDITED CLEAN AND WAS BROKEN.** Overriding
+      brace-expansion alone gave `found 0 vulnerabilities` **and** 39 passing, while
+      any brace in a glob threw `(0 , brace_expansion_1.default) is not a function`.
+      Mocha's default spec contains no braces, so neither the audit nor the suite
+      noticed. A green audit is not evidence the tree works, and a green test count is
+      not evidence either — the coverage of the *dependency's* API is what mattered.
+    - ⚠ **AND MY FIRST DISCRIMINATOR WAS INVALID.** `mocha 'test/{a,b}.test.js'` fails
+      with *"No test files found"* — but it fails **identically on the un-overridden
+      baseline**, because mocha never expanded braces in that argument. It looked like
+      a regression and was not one. The valid probes call `minimatch` and `globSync`
+      **as mocha resolves them**, with the baseline tree as the control.
+    - **Four probes, baseline vs overridden, and they agree exactly** (`minimatch`
+      brace match `true`/`false`; `globSync` on a brace, a star, and an extglob
+      negation all returning the same two files) — so this is equivalence, not merely
+      absence of a crash. Only the versions differ: minimatch 9.0.9 → 10.2.6.
+    - Also verified: 39 passing serial **and** `--parallel` (which is the only thing
+      that exercises serialize-javascript); the red path renders its diff (`-3` /
+      `+999`, `make` exit 2); `eslint` clean on plain and brace patterns, since the
+      overrides are tree-wide; 0 vulnerabilities.
+    - The reasoning lives in the `Makefile` beside the `tests` target, because a bare
+      version pin with no explanation is exactly what a later tidy-up deletes.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned
