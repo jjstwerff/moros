@@ -1043,6 +1043,155 @@ its destination and its outstanding bar, so the intent is in the file rather tha
 document. The rename is part of the extraction, not a claim made in advance — `hex_world` in
 particular is a name that is currently occupied.
 
+## The editor server has its own world model — and that is the design failure (2026-07-30)
+
+The ownership audit above adjudicated `lib/moros_*`. It never looked at
+**`src/editor_server.loft`**, which is 4,238 lines, 89 functions, and a `main()` of 1,228
+lines carrying 28 message handlers inline. Auditing it now turns up something sharper than
+"the editor reimplemented some routines".
+
+### The libraries are pure primitives over a TILE BUNDLE. The editor is a COLUMN STORE.
+
+Every writer in the `hex_*` stack targets the same five value types — verified by signature,
+not by name:
+
+```
+stencil_stamp_all(dst: HexSet, dst_h: Heights, dst_l: Labels, dst_y: Layers, dst_e: EdgeSet,
+                  st: Stencil, aq, ar)
+way_stamp(t: Track, halfwidth: float, s: HexSet, e: EdgeSet, first_surf, mat)
+draw_floor(p: Plan, cells: HexSet, types: Labels, floor_type) -> integer
+sweep_path(e: EdgeSet, x0, y0, x1, y1) -> (float, integer, integer, integer)
+```
+
+**`HexSet + Heights + Labels + Layers + EdgeSet`** — the bundle. `hex_field` even owns its
+document format (`doc_write_all` / `doc_read`, `HXF_MAGIC` / `HXF_SCHEMA`). And a grep for
+`World` across every sibling package returns **only `hex_world`'s own accessors**: not one
+primitive in `hex_terrain`, `hex_way`, `hex_field`, `hex_draw`, `hex_edge`, `hex_form`,
+`hex_shape`, `hex_place`, `hex_roof`, `hex_fit` or `hex_recover` takes a store.
+
+The editor is built on `lib/hex_world`'s **column store** — `World / Chunk / Column / Layer /
+StoredHex`, reached through `world_column`, `world_set_column`, `world_set_dressing`,
+`world_snapshot`. A different representation of the same subject.
+
+So the editor **cannot call the library stack at all.** `stencil_stamp_all`, `way_stamp`,
+`draw_floor`, `sweep_path` do not speak `World`. That is why `stencil_place`, `road_stamp`,
+`chunk_mesh_mat` and `walk_to` exist inside the server: not because someone was lazy, but
+because **choosing a second representation forfeited every primitive written against the
+first.** The duplication is a symptom. The representation split is the defect.
+
+⚠ **And there are two `hex_world`s**, with different data models:
+
+| | types | lines |
+|---|---|---|
+| `lib/hex_world` (what the editor uses) | `Hex StoredHex Layer Chunk ChunkAt World Column Snapshot …` | 1,199 |
+| `../loft-libs-world/hex_world` | `Cell Chunk World` | 1,161 |
+
+"Swap the editor to the library versions" has no single meaning while both exist. **Deciding
+which is the world is phase 0**, and nothing else should start before it.
+
+### What we already have — the primitives, by what they operate on
+
+Nothing below needs writing. This is the list any new code must be checked against first.
+
+| role | package | primitives |
+|---|---|---|
+| **occupancy / heights / labels / layers / edges** | `hex_field` | `hexset_*`, `heights_*`, `height_set/get`, `labels_*`, `label_set/get`, `layers_*`, `layer_add/set/get/set_at/get_at`, `edgeset_*`, `edge_set_mat/surf/both`, `edge_mat/surf`, `edge_key` |
+| **stencils** (place a shape) | `hex_field` | `stencil_from`, `stencil_stamp`, `stencil_stamp_layers`, `stencil_stamp_all`, `stencil_stamp_edges`, `stencil_rotate`, `stencil_mirror`, `stencil_rotate_deg` |
+| **discs, circles, rings** | `hex_field`, `hex_shape` | `form_hexdisk`, `hexdisk_into`, `form_circle`, `form_octagon`, `box_fill`, `box_ring_in/out`, `arc_fill`, `line_hexes` |
+| **ways** (roads, tracks) | `hex_way` | `track_new/straight/arc`, `track_offset`, `offset_legal`, `way_stamp`, `way_mark`, `way_steps`, `track_distance`, `seg_param`, `way_param`, `cut_arb` |
+| **terrain generation** | `hex_terrain` | `terrain_new`, `terrain_fbm`, `terrain_vnoise`, `terrain_ridge_at`, `terrain_detail_at`, `terrain_hydrology`, `terrain_relief_pass`, `terrain_surface_at`, `terrain_lake_field`, `terrain_water_at`, `terrain_rivers`, `terrain_sample`, `terrain_blend_h` |
+| **buildings** | `hex_draw`, `hex_roof` | `draw_floor`, `draw_walls`, `place_opening`, `grow_ring`, `draw_roof`, `surface_*`, `roof_cone/ridge/hip/dome`, `vault_*`, `clear_height`, `eave_spread` |
+| **shape algebra** | `hex_form` | `form_new/write/canon/read/eq`, `form_closes`, `form_admissible`, `form_fill`, `plan_holds`, `plan_to_world/local`, `side_edges`, `tri_cells`, `hexagon_cells`, `rhombus_cells` |
+| **walls, snapping** | `hex_shape` | `wall_new`, `wall_snap_p`, `snap_run_d24`, `snap_run_p`, `wall_run_ok`, `wall_separates`, `wall_offset_signed`, `wall_chain_ends`, `flood_outside`, `leak_count`, `set_connected` |
+| **collision, sight** | `hex_edge` | `sweep_path`, `collide`, `passable`, `edge_block`, `edge_blocked`, `edges_cut/solid/halfplane`, **`sight_clear`**, `surfaces_*`, `materials_*`, `junctions_*`, `features_*` |
+| **placement / seating** | `hex_place` | `field_union`, `combine_cut`, `combine_cut_level`, `kappa_at_level`, `seat_height/residual/write`, `pose_*`, `disk_hit`, `arb_solid/owner` |
+| **refusal with a reason** | `hex_fit` | `fit_reason`, `mat_fits`, `level_fits`, `seat_fits`, `height_units`, `feature_fits`, `arc_fits`, `draft_*` |
+| **lattice math** | `hex_grid` | `hex_to_px`, `px_to_hex`, `hex_round`, `hex_neighbor`, `hex_distance`, `hex_corner_px`, `hex_edge_corners`, `hex_canon_edge`, `cell_*` |
+| **validation / recovery** | `hex_field`, `hex_recover` | `trace`, `validate`, `shoelace2`, `wall_count`, `edgeset_digest`, `rebuild*`, `field_digest`, `field_exact`, `field_norm` |
+| **rigs** | `hex_body` | `rig_*`, `joint_*`, `bone_obb`, `pose_of`, `wheel_value/angle/skid` |
+| **the bundle's file format** | `hex_field` | `doc_write`, `doc_write_all`, `doc_read` |
+| **the store** (a separate concern) | `hex_world` | `world_new`, `world_column`, `world_set_column`, `world_set_dressing`, `world_cell`, `world_snapshot`, `world_save/load`, `world_chunk_version`, `world_is_stale` |
+
+### What is only in the editor, adjudicated
+
+**Dies — a library primitive over the bundle already does it.** Every one of these is the
+editor's private answer to a question the stack already answers:
+
+| editor | replaced by |
+|---|---|
+| `stencil_place` | `stencil_stamp_all` |
+| `road_lay`, `road_stamp` | `track_straight` + `track_offset` + `way_stamp` |
+| `snap_heading` | `snap_run_d24` / `snap_run_p` |
+| `fence_disc`, `fence_count` | `hexdisk_into` + `edge_set_mat` + `wall_count` / `edgeset_count` |
+| `field_fill` | `flood_outside` + `trace` + `validate` |
+| `walk_to`, `stand_clear` | `sweep_path`, `sight_clear`, `edge_blocked` |
+| `edges_around`, `edge_owner`, `wall_of`, `wall_set` | `edge_key`, `edge_set_mat`, `edge_mat` |
+| `corner_heights`, `cell_normal`, `emit_hex_sloped`, `emit_tri`, `chunk_mesh_mat`, `chunk_mesh_props`, `emit_wall_panel`, `emit_run_wall` | `hex_draw` `surface_*` + `draw_floor/walls/roof` |
+| `roof_height` | `roof_cone` / `roof_hip` / `clear_height` |
+| `fit_ok`, `fit_ordinal`, `fit_nominal`, `fit_text`, `probe_fit` | `hex_fit` — `fit_reason`, `mat_fits`, `level_fits` |
+| `storey_add` | `combine_cut_level` + `seat_write` |
+| `terrain_h`, `terrain_y`, `terrain_set` | `Heights` + `world_column` |
+| `col_top`, `col_low`, `col_top_index` | `hex_world` accessors |
+| `cam_free_dist`, `cam_free_arc`, `cam_clear_at` | `sight_clear` (the solve itself is the homeless *camera* group) |
+
+**Genuinely missing — must be ADDED to a library, and validated there.** Four items, and the
+first is the whole design:
+
+1. **The `World` ⇄ bundle adapter.** One pair: read a window of the store into
+   `(HexSet, Heights, Labels, Layers, EdgeSet)`, and commit a bundle back. Nothing else new
+   is needed to make the entire stack reachable. It is missing because the two `hex_world`s
+   diverged, so no one owns the seam.
+2. **`brush`** — an *authored* relief dome. `hex_terrain` has noise, fbm, ridges, hydrology
+   and lakes, but no authoring brush. This is the primitive whose absence produced the
+   raise-origin defect fixed on 2026-07-30: as `raise_at(bundle, q, r, amp, rad)` the cell is
+   an argument and the bug is unrepresentable.
+3. **`scatter`** — density scatter over a disc.
+4. **The camera solve** — already recorded above as a group with *"no home yet"*.
+
+**Survives in the editor, because it is genuinely the adapter:** `main`'s parse and dispatch,
+the wire encoders (`mesh_wire`, `mat_wire`, `frame_wire`, `fog_wire`, `ramp_wire`),
+`read_index` / `read_client` / `hostname` / `build_id`, the dirty set (`mark_dirty*`,
+`chunk_within`, `chunk_in_range`), and `world_path` / `new_world`.
+
+### How the editor uses the libraries, once the adapter exists
+
+Every tool becomes the same three lines, and the editor owns none of the middle one:
+
+```
+band   = world_window(wld, q0, r0, w, h)     // adapter: store  → bundle
+<library primitive(s) on band>               // hex_field / hex_way / hex_draw / …
+world_commit(wld, band, dirty)               // adapter: bundle → store, marks chunks
+```
+
+A **procedural generator** is the same composition with the first and last lines replaced by
+`hexset_new(...)` and `doc_write_all(...)` — no server, no socket, no tick, no clock. That is
+the capability being asked for, and it falls out of the adapter rather than needing a
+generator framework.
+
+### The order of work
+
+| phase | what | done when |
+|---|---|---|
+| **0** | **Decide the world representation** — `lib/hex_world` vs the sibling. Blocking. | one `World` in the tree |
+| **1** | The `World` ⇄ bundle adapter, in a library, with its own tests | round-trip is exact for occupancy, heights, labels, layers and edges |
+| **2** | One tool end-to-end as the pattern — **stencil** (`stencil_stamp_all` is the closest fit) | `stencil_place` deleted; `stencil.mjs` unchanged and green |
+| **3** | Ways, fences, edges, fields | `road_*`, `fence_*`, `field_fill`, `edges_around` deleted |
+| **4** | Meshing → `hex_draw` | the `emit_*` / `chunk_mesh_*` family deleted |
+| **5** | Collision and sight → `hex_edge` | `walk_to`, `stand_clear`, `cam_free_*` deleted |
+| **6** | The genuinely-missing four, each added to a library with tests | `brush`, `scatter`, camera, adapter all validated in libs |
+
+### Two rules this design exists to enforce
+
+1. **No new routine without grepping both trees first.** `lib/*/src` and
+   `../loft-libs-world/*/src`. This document's own author broke it: `climb.mjs` grew a
+   hand-written arc-length interpolation while `hex_way` already had `track_distance`,
+   `seg_param`, `way_param` and `way_steps`, and four gates re-derive `√3` cell centres that
+   `hex_grid::hex_to_px` and `cell_to_px` already provide.
+2. **A primitive is validated where it lives.** A `.mjs` gate proves the *wire* still exposes
+   a feature; it must never be the only place the feature is checked. Structural claims are
+   pure loft tests — which is also the only way to test them without a clock, and this
+   session spent its length paying for the alternative.
+
 ## What stays out of the shared layer
 
 - **The metre**, per seam rule 2.
