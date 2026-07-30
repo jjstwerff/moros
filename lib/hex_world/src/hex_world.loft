@@ -100,6 +100,24 @@ pub fn stored_present(s: StoredHex) -> boolean {
 pub const KIND_TERRAIN  = 0;
 pub const KIND_DRESSING = 1;
 
+// ⚠ A RESERVED LABEL — the outdoors, and the answer to "which layer is the
+// ground" for a caller that has no feet to ask about.
+//
+// `I1` identifies CORRESPONDING LAYERS OF DIFFERENT CHUNKS by label, and "the
+// ground" is exactly such a correspondence, so this is the model's own mechanism
+// used for what it is for. It is a NAME, matched by equality — never an ordinal,
+// and nothing here reads label order.
+//
+// It is never drawn from `ν`, which starts above it. A chunk holding terrain
+// carries exactly one; a chunk holding none carries none and reads as absent,
+// which is height 0 — the same answer unauthored ground always gave.
+//
+// ⚠ This is NOT the feet's rule (`WORLD_MODEL.md` § "Which layer is the surface")
+// with the feet dropped. A column with three storeys has three surfaces and one
+// outdoors; the two questions have different answers and different callers.
+pub const LABEL_GROUND  = 1;
+pub const LABEL_FIRST   = 2;        // `ν` starts here — 1 is reserved above
+
 pub const CHUNK_W    = 32;          // hexes per axis
 pub const CHUNK_CELLS = 1024;       // CHUNK_W * CHUNK_W
 pub const LAYER_CAP  = 64;          // layers per chunk
@@ -178,7 +196,7 @@ pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) ->
   WorldNew {
     wn_code: WC_OK,
     wn_world: World { w_chunks: [], w_unit: unit, w_reserve: reserve,
-                      w_eps: eps, w_theta: theta, w_next_id: 1, w_tau: 1 },
+                      w_eps: eps, w_theta: theta, w_next_id: LABEL_FIRST, w_tau: 1 },
   }
 }
 
@@ -250,6 +268,45 @@ pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
   w.w_chunks[ci].ck_layers[l].ly_id
+}
+
+// Which layer here is the outdoors — the index of the one labelled `LABEL_GROUND`,
+// or −1 when this chunk holds no terrain at all.
+//
+// ⚠ −1 IS A USABLE ANSWER, not an error to branch on: `world_cell` guards `l < 0`
+// and hands back an absent cell, which is height 0 — the flat plane, and exactly
+// what unauthored ground has always read as. Callers pass it straight through.
+pub fn world_ground_layer(w: World, q: integer, r: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return 0 - 1; }
+  for i in 0..len(w.w_chunks[ci].ck_layers) {
+    if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
+       && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN { return i; }
+  }
+  0 - 1
+}
+
+// The ground cell at a hex — the chokepoint every "the ground here" read goes
+// through, and the reason the editor no longer names a layer INDEX anywhere.
+//
+// One chunk lookup, one scan of at most `LAYER_CAP` labels, one cell. It is a
+// sampling-path call — a mesh rebuild makes thousands — so it deliberately does
+// NOT build a `Column`: doing that per sample once slowed chunk rebuilds enough to
+// reorder the editor's own gates.
+pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return Hex {}; }
+  gl = 0 - 1;
+  for i in 0..len(w.w_chunks[ci].ck_layers) {
+    if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
+       && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN { gl = i; break; }
+  }
+  if gl < 0 { return Hex {}; }
+  e = w.w_chunks[ci].ck_layers[gl].ly_cells[cell_index(q, r)];
+  return Hex { h_height: (w.w_chunks[ci].ck_base + e.sv_height) as u16? ?? 0,
+               h_material: e.sv_material, h_item: e.sv_item,
+               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
+               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
 }
 
 pub fn world_column(w: World, q: integer, r: integer) -> Column {
@@ -638,8 +695,24 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
       }
     }
   }
+  // ⚠ AND THIS IS WHERE THE OUTDOORS IS NAMED. A layer is created in exactly one
+  // place, so a label is assigned in exactly one place and there is nowhere else
+  // to forget it: the first terrain layer a chunk ever gets takes `LABEL_GROUND`;
+  // everything after takes a fresh label from `ν`.
+  //
+  // ⚠ That is an INFERENCE — "the first terrain layer written here is the
+  // outdoors" — and it is true of every gesture the editor has, because you author
+  // ground before you build on it. A disc spilling into a virgin neighbouring
+  // chunk would label that chunk's first floor as its ground. The alternative is
+  // not milder: an unlabelled chunk renders FLAT, which is loud and does not
+  // repair itself. See `WORLD_MODEL.md` § "Where it is assigned".
   while len(w.w_chunks[ci].ck_layers) < n {
-    w.w_chunks[ci].ck_layers += [Layer { ly_id: fresh_label(w), ly_kind: KIND_TERRAIN,
+    lbl = LABEL_GROUND;
+    for gl in w.w_chunks[ci].ck_layers {
+      if gl.ly_id == LABEL_GROUND && gl.ly_kind == KIND_TERRAIN { lbl = 0; }
+    }
+    if lbl == 0 { lbl = fresh_label(w); }
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: lbl, ly_kind: KIND_TERRAIN,
                                          ly_ver: 0, ly_cells: empty_cells() }];
   }
 
@@ -1191,8 +1264,14 @@ pub fn world_load(path: text) -> WorldLoad {
   pn = f#read as i32;
   for _pi in 0..pn { pal += [f#read as u8]; }
 
+  // ⚠ `ν` IS REPAIRED WITH THE LABELS. An old world's counter is 1, so the next
+  // fresh label would BE `LABEL_GROUND` and a new layer would silently become a
+  // second outdoors. Raising it is not a heuristic — 1 is reserved, so a counter
+  // pointing at it is out of range whatever wrote the file.
+  nid2 = nid;
+  if nid2 < LABEL_FIRST { nid2 = LABEL_FIRST; }
   w = World { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
-              w_theta: th, w_next_id: nid, w_tau: tau };
+              w_theta: th, w_next_id: nid2, w_tau: tau };
   nc = f#read as i32;
   // ── the directory, read whole before any payload
   dcx: vector<integer> = []; dcz: vector<integer> = []; dcb: vector<integer> = [];
@@ -1252,6 +1331,25 @@ pub fn world_load(path: text) -> WorldLoad {
                            wl_detail: "chunk ({cx},{cz}) layer id {lid} failed CRC" };
       }
       lays += [ly];
+    }
+    // ⚠ MIGRATION — a world saved before labels existed has `ly_id = 0` on every
+    // layer, so nothing carries `LABEL_GROUND` and the whole world would render
+    // FLAT. Such a chunk labels its LOWEST terrain layer, which is exactly right
+    // for those worlds and for no others: before labels, layer 0 WAS the ground by
+    // construction, because a cellar that kept the ground's identity could not be
+    // expressed. (`worlds/before-restart-2026-07-29.hxw` is one of these.)
+    //
+    // ⚠ AFTER the CRC check, never before — the checksum is over the bytes the
+    // file holds, and a label written before it would fail every layer.
+    gseen = false;
+    for gl in lays { if gl.ly_id == LABEL_GROUND && gl.ly_kind == KIND_TERRAIN { gseen = true; } }
+    if !gseen {
+      for gi in 0..len(lays) {
+        if !gseen && lays[gi].ly_kind == KIND_TERRAIN {
+          lays[gi].ly_id = LABEL_GROUND;
+          gseen = true;
+        }
+      }
     }
     w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };

@@ -1649,3 +1649,42 @@ edges — neither of which the mechanism's own eight gates had caught.
     - **Still open, and unchanged by this:** `terrain_h` reads layer 0. The labels now exist to
       name the ground layer with, which is what item 29 said was missing — that is the next
       move, not something this did.
+33. ✅ **`terrain_h` TAKES THE RULE. Item 29 is closed: the ground is a reserved label, and the
+    drawn ground no longer sinks into a cellar.**
+    - `hex_world::LABEL_GROUND = 1` is **reserved**, never drawn from `ν` (which starts at 2).
+      `world_ground_layer` / `world_ground_cell` answer *"which layer is the outdoors"*.
+      Assigned in **one place** — the first terrain layer a chunk ever gets, in the only place a
+      layer is created — so there is nowhere to forget it.
+    - **Of item 29's three candidate mechanisms this is the second**, *a reserved `ly_id`*, which
+      the notes already called "the model's own idea". All three failed on the positional write;
+      item 32 fixed that, and this is the payoff.
+    - ⚠ **The tempting wrong answer was rejected on the contract, not on a counterexample.**
+      Since `ν` is monotonic, *"the ground is the smallest non-zero label"* is true of every
+      world this editor has built and needs no reserved constant and no migration — and
+      `WORLD_MODEL.md` forbids it outright: **nothing in this model reads label order**, because
+      "below" is a per-column relation the geometry does not honour globally.
+    - ⚠ **HALF THE DEFECT WAS ON THE WRITE SIDE, and fixing only the read would have been
+      worse than the bug.** `terrain_set` and `wall_set` sent a **one-element column** —
+      `co_cells: [nc]`, applied positionally to layer 0 — so after a cellar a raise would have
+      raised the *cellar floor*. The editor would have drawn a correct ground that editing no
+      longer moved. Both now go through **`ground_write`**, one chokepoint that reads the
+      column, replaces the ground cell and writes it back with its labels.
+    - **`const SURFACE = 0` is gone.** All **twelve** sites that named a layer index are now
+      `world_ground_cell` (read) or `ground_write` (write); re-introducing the constant is what
+      would silently undo this, so its absence is commented in its place.
+    - ⚠ **A world saved before labels existed would have rendered ENTIRELY FLAT** — every
+      `ly_id` is 0, so nothing carries `LABEL_GROUND`. `world_load` migrates each chunk (lowest
+      terrain layer takes the label, *after* the CRC check) and repairs `ν`. Verified against
+      the real `worlds/before-restart-2026-07-29.hxw`: loads 4 chunks, draws at **4.25**, layer
+      labelled 1, file byte-identical afterwards.
+    - **Measured, and gated** — new `tools/gates/world/ground.mjs`:
+
+      | | `cell 0,10` | drawn peak | after one more raise |
+      |---|---|---|---|
+      | before cellars | `1,49` | 10.917 | — |
+      | after 3 cellars — **fixed** | `1,49` | **10.917** | **12.25** |
+      | after 3 cellars — red control | `1,49` | **1.583** | **0.917** (worse) |
+
+    - Library side is 7 tests in `lib/hex_world/tests/ground.loft`; red control fails **6 of 7**.
+    - **26 gates green, 732 library tests.** Every `world/` gate's numbers are unchanged; only
+      the frame-window character gates moved, by their usual ±1.

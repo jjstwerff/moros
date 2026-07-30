@@ -322,7 +322,12 @@ const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
 const W_RESERVE    = 0;
 const W_EPS        = 8;
 const W_THETA      = 3;
-const SURFACE      = 0;           // the editor authors one terrain layer
+// ⚠ THERE IS NO `SURFACE` LAYER INDEX ANY MORE, and its absence is the point.
+// It was `0` — "the editor authors one terrain layer" — which stopped being true
+// the day a cellar could be dug, and every one of the twelve sites that named it
+// was reading or writing the cellar afterwards. The ground is a LABEL now
+// (`hex_world::LABEL_GROUND`), reached through `world_ground_cell` for a read and
+// `ground_write` for a write. Re-introducing an index here would silently undo it.
 const SURFACE_MAT  = 1;           // any non-zero index: 0 is absence (`E1`)
 const ROAD_MAT     = 2;           // the road surface
 const ROAD_HALF    = 2;           // road half-width, in hexes
@@ -565,12 +570,48 @@ fn body_mesh() -> Mesh {
 // An unwritten cell reads as absent, which is height 0: the flat plane, and the
 // same answer the peak version gave for ground nobody had touched.
 fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
-  // ⚠ Bound to a local, not `world_cell(…).h_height` in tail position — that is
-  // loft H9's shape (a field projected off an inline call) and it aborted the
-  // interpreter here even though H9 itself is fixed for the case it was filed as.
-  c = world_cell(wld, hq, hr, SURFACE);
+  // ⚠ THE GROUND IS A LABEL, NOT AN INDEX. This read `world_cell(…, SURFACE)` —
+  // layer 0 — which is the outdoors right up until a cellar is dug beneath it, and
+  // then silently becomes the cellar floor. Measured: three cellars under a hill
+  // sank the drawn ground from 10.917 to 5.583 wu.
+  //
+  // ⚠ Bound to a local, not `…().h_height` in tail position — that is loft H9's
+  // shape (a field projected off an inline call) and it aborted the interpreter
+  // here even though H9 itself is fixed for the case it was filed as.
+  c = world_ground_cell(wld, hq, hr);
   h = c.h_height;
   h
+}
+
+// ⚠ WRITE THE GROUND, WHICHEVER LAYER THAT IS — the one place a ground write
+// names a layer, so there is nowhere else to get it wrong.
+//
+// Both ground writers used to send a ONE-ELEMENT column, `co_cells: [nc]`, which
+// `world_set_column` applies POSITIONALLY to layer 0. That was right for exactly
+// as long as layer 0 was the ground, and it is the half of this defect that does
+// not show in a picture: fixing only the READ would have drawn a ground that
+// editing no longer moves, because a raise would still have raised the cellar.
+//
+// The column is read, the ground cell replaced, and the whole thing written back
+// WITH ITS LABELS — so nothing is created (every label is already its layer's
+// own), and because step 5 stamps only layers whose bytes actually changed, no
+// other layer's version is touched (`T2`).
+//
+// A hex with no ground at all is the one case that still sends a single cell:
+// there is no layer to address, and the store names the one it creates.
+fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
+  gl = hex_world::world_ground_layer(wld, q, r);
+  if gl < 0 {
+    return world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
+                                                     co_cells: [nc] }).cw_code;
+  }
+  col = hex_world::world_column(wld, q, r);
+  cells: vector<hex_world::Hex> = [];
+  for i in 0..len(col.co_cells) {
+    if i == gl { cells += [nc]; } else { cells += [col.co_cells[i]]; }
+  }
+  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+                                            co_ids: col.co_ids }).cw_code
 }
 
 // ── ROADS (rung W1, moros#9) ─────────────────────────────────────────────────
@@ -672,7 +713,7 @@ fn edge_owner(q: integer, r: integer, dir: integer) -> (integer, integer, intege
 // (`X70`), and the difference is the reason a door has a material of its own.
 fn wall_of(wld: World, q: integer, r: integer, dir: integer) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
-  c = world_cell(wld, oq, orr, SURFACE);
+  c = world_ground_cell(wld, oq, orr);
   if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
   if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
   c.h_wall_se as integer ?? 0
@@ -682,12 +723,12 @@ fn wall_of(wld: World, q: integer, r: integer, dir: integer) -> integer {
 // that stores it holds nothing — a boundary is content in its own right (`E1e`),
 // and it stands at the height of what it bounds rather than at zero.
 //
-// Read-modify-write of ONE cell of layer 0: a one-element column touches layer 0
-// and leaves every layer above it alone.
+// Read-modify-write of ONE cell of THE GROUND LAYER, through `ground_write` —
+// which is not layer 0 once anything has been dug beneath it.
 fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
             mat: integer, h: integer) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
-  c = world_cell(wld, oq, orr, SURFACE);
+  c = world_ground_cell(wld, oq, orr);
   hh = c.h_height as integer ?? 0;
   if !hex_world::hex_present(c) { hh = h; }
   wn = c.h_wall_n as integer ?? 0;
@@ -703,8 +744,7 @@ fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
                         h_wall_n: wn as u8? ?? 0,
                         h_wall_ne: we as u8? ?? 0,
                         h_wall_se: ws2 as u8? ?? 0 };
-  w = world_set_column(wld, hex_world::Column { co_q: oq, co_r: orr, co_cells: [nc] });
-  w.cw_code
+  ground_write(wld, oq, orr, nc)
 }
 
 // ── A HEIGHT IS NOT A BOUNDARY (rung W2, moros#10) ──────────────────────────
@@ -723,7 +763,7 @@ fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
 // An edge is written by `wall_set` and cleared by writing 0 to it, deliberately.
 // Nothing else touches it.
 fn terrain_set(wld: &World, q: integer, r: integer, h: integer, mat: integer) -> integer {
-  c = world_cell(wld, q, r, SURFACE);
+  c = world_ground_cell(wld, q, r);
   nc = hex_world::Hex { h_height: h as u16? ?? 0,
                         h_material: mat as u8? ?? 0,
                         h_item: c.h_item,
@@ -731,7 +771,7 @@ fn terrain_set(wld: &World, q: integer, r: integer, h: integer, mat: integer) ->
                         h_wall_n: c.h_wall_n,
                         h_wall_ne: c.h_wall_ne,
                         h_wall_se: c.h_wall_se };
-  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: [nc] }).cw_code
+  ground_write(wld, q, r, nc)
 }
 
 // How tall a wall of this material stands. A DOOR draws nothing: the boundary is
@@ -1079,7 +1119,7 @@ fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
   if len(runs.items) > 0 { first = hex_way::way_surfaces(rt, sf); }
   for r in (cr - reach - 1)..(cr + reach + 2) {
     for q in (cq - reach - 1)..(cq + reach + 2) {
-      c = world_cell(wld, q, r, SURFACE);
+      c = world_ground_cell(wld, q, r);
       mats: vector<integer> = [c.h_wall_n as integer ?? 0,
                                c.h_wall_ne as integer ?? 0,
                                c.h_wall_se as integer ?? 0];
@@ -1494,8 +1534,8 @@ fn walls_text(wld: World, q: integer, r: integer) -> text {
 //
 // Returns the number of cells filled, or 0 if it refused.
 fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
-  if world_cell(wld, sq, sr, SURFACE).h_material != SURFACE_MAT
-     && world_cell(wld, sq, sr, SURFACE).h_material != 0 {
+  if world_ground_cell(wld, sq, sr).h_material != SURFACE_MAT
+     && world_ground_cell(wld, sq, sr).h_material != 0 {
     return 0;                       // standing on something that is not open ground
   }
   // ⚠ The visited set is a HASH, not a scanned vector. It was a vector, and the
@@ -1523,7 +1563,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
         // `wall_of` below, which is asked about a direction by NAME. One
         // convention in this file; the loop was on the other one.
         (aq, ar) = hex_grid::hex_neighbor(fq[i], fr[i], d);
-        m = world_cell(wld, aq, ar, SURFACE).h_material;
+        m = world_ground_cell(wld, aq, ar).h_material;
         // A BOUNDARY STOPS A FILL, whatever it is made of. `X70` says an opening is
         // not absence — "there is a boundary you can walk through" is a different
         // claim from "there is no boundary" — so a doorway holds the fill in
@@ -1550,7 +1590,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
   if capped { return 0 - 2; }
   if escaped { return 0; }          // it never closed — refuse, and change nothing
   for k in 0..len(seen_q) {
-    h = world_cell(wld, seen_q[k], seen_r[k], SURFACE).h_height;
+    h = world_ground_cell(wld, seen_q[k], seen_r[k]).h_height;
     terrain_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
   }
   len(seen_q)
@@ -2344,7 +2384,7 @@ fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer,
         f = 1.0 - t * t;
         delta = ((amp as float) * f * f) as integer;
         if delta != 0 {
-          h = world_cell(wld, q, r, SURFACE).h_height + delta;
+          h = world_ground_cell(wld, q, r).h_height + delta;
           if h < W_RESERVE {
             lost = W_RESERVE - h;
             if lost > residual { residual = lost; }
@@ -2536,7 +2576,7 @@ fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Me
 
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
-      mat = world_cell(wld, cq, cr, SURFACE).h_material;
+      mat = world_ground_cell(wld, cq, cr).h_material;
       // An unwritten cell is absence (material 0) and counts as ground, which is
       // what makes an unauthored world a flat plane rather than a hole.
       if mat == 0 { mat = SURFACE_MAT; }
@@ -3666,7 +3706,7 @@ fn main() {
             cq2 = ev.payload[..cci] as integer ?? 0;
             cr2 = ev.payload[cci + 1..] as integer ?? 0;
           }
-          ccell = world_cell(wld, cq2, cr2, SURFACE);
+          ccell = world_ground_cell(wld, cq2, cr2);
           srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
         } else if ev.msg_id == MSG_WALL {
           do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, wall_runs, wall_draft);

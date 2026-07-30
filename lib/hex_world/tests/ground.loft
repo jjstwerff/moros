@@ -1,0 +1,122 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHICH LAYER IS THE OUTDOORS — for a caller with no feet.
+//
+// `WORLD_MODEL.md` § "Which layer is the surface" settles the question for the
+// WALK: the highest occupied terrain layer at or below the feet. Meshing, the
+// road and every editing gesture cannot ask it, because they have no feet — and
+// no rule over heights alone is right, because a cellar floor and the ground are
+// both `KIND_TERRAIN` heightfields and nothing distinguished them.
+//
+// So the ground is NAMED: `LABEL_GROUND`, a reserved label, assigned to the first
+// terrain layer a chunk ever gets and thereafter carried through every insert by
+// [markers.loft]'s rule. `I1` identifies corresponding layers of different chunks
+// by label, and "the outdoors" is exactly such a correspondence.
+//
+// ⚠ The tempting wrong answer is "the smallest non-zero label" — true of every
+// world this editor has built, needing no reserved constant and no migration, and
+// forbidden outright by the model: nothing here reads label ORDER, because "below"
+// is a per-column relation the geometry does not honour globally.
+use hex_world;
+
+fn mk_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn cell_at(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
+
+fn test_the_first_terrain_layer_of_a_chunk_is_the_ground() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  assert(world_layer_id(w, 0, 0, 0) == LABEL_GROUND,
+         "the first layer takes the reserved label, got {world_layer_id(w, 0, 0, 0)}");
+  assert(world_ground_layer(w, 0, 0) == 0, "and the query finds it at index 0");
+}
+
+fn test_the_reserved_label_is_never_handed_out_again() {
+  // `ν` starts above it, so no ordinary allocation can collide — which is what
+  // makes "exactly one outdoors per chunk" a property of the counter rather than
+  // of every caller remembering.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1), cell_at(280, 1)] });
+  assert(world_layer_id(w, 0, 0, 0) == LABEL_GROUND, "the ground is labelled");
+  assert(world_layer_id(w, 0, 0, 1) != LABEL_GROUND, "the second layer is not");
+  assert(world_layer_id(w, 0, 0, 2) != LABEL_GROUND, "nor the third");
+  assert(world_ground_layer(w, 0, 0) == 0, "and there is still exactly one ground");
+}
+
+fn test_a_cellar_below_does_not_become_the_ground() {
+  // ⚠ THE CLAIM, AND THE MEASURED DEFECT. Dig three cellars under a hill and the
+  // drawn ground sank with them — peak 10.917 → 5.583 wu — because meshing read
+  // layer 0 and layer 0 had become the deepest cellar.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  for k in 0..3 {
+    b = world_column(w, 0, 0);
+    cells: vector<Hex> = [cell_at(150 - k * 12, 4)];
+    ids: vector<integer> = [0];
+    for i in 0..len(b.co_cells) { cells += [b.co_cells[i]]; ids += [b.co_ids[i]]; }
+    assert(world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: cells,
+                                        co_ids: ids }).cw_code == CW_OK,
+           "cellar {k} was dug");
+  }
+  assert(len(world_column(w, 0, 0).co_cells) == 4, "four layers now");
+  assert(world_ground_layer(w, 0, 0) == 3,
+         "the ground rode to the TOP of the stack, at index {world_ground_layer(w, 0, 0)}");
+  // and the whole point: the height a mesh would draw
+  assert(world_ground_cell(w, 0, 0).h_height == 200,
+         "the ground cell is still the ground, got {world_ground_cell(w, 0, 0).h_height}");
+  // the red control — what layer 0 says, and what the editor used to draw
+  assert(world_cell(w, 0, 0, 0).h_height == 126,
+         "layer 0 is the deepest cellar, got {world_cell(w, 0, 0, 0).h_height}");
+}
+
+fn test_a_storey_above_does_not_become_the_ground() {
+  // The mirror case, and the one that killed "the highest terrain layer": build
+  // upward and the top deck is NOT the outdoors.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(200, 1), cell_at(240, 1), cell_at(280, 1)],
+                               co_ids:   [LABEL_GROUND, 0, 0] });
+  assert(world_ground_layer(w, 0, 0) == 0, "the ground stayed at the bottom");
+  assert(world_ground_cell(w, 0, 0).h_height == 200,
+         "and reads 200, not the top deck's 280 — got {world_ground_cell(w, 0, 0).h_height}");
+}
+
+fn test_a_chunk_with_no_terrain_reads_as_absent() {
+  // −1 is a usable answer, not an error to branch on: unauthored ground has always
+  // read as absent, which is height 0, and this must not change that.
+  w = mk_world();
+  assert(world_ground_layer(w, 5, 5) == 0 - 1, "no chunk, no ground layer");
+  assert(!hex_present(world_ground_cell(w, 5, 5)), "and the cell is absent");
+  assert(world_ground_cell(w, 5, 5).h_height == 0, "which is height 0, the flat plane");
+}
+
+fn test_each_chunk_names_its_own_ground() {
+  // The label is a NAME shared across chunks (`I1`), not a world-wide singleton —
+  // every chunk that holds terrain carries one.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  world_set_column(w, Column { co_q: 40, co_r: 40, co_cells: [cell_at(300, 1)] });
+  assert(world_ground_layer(w, 0, 0) == 0, "the first chunk has a ground");
+  assert(world_ground_layer(w, 40, 40) == 0, "and so does the second");
+  assert(world_layer_id(w, 40, 40, 0) == LABEL_GROUND, "under the same NAME");
+  assert(world_ground_cell(w, 40, 40).h_height == 300, "each reading its own cell");
+}
+
+fn test_the_ground_label_survives_a_save_and_load() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(200, 1)] });
+  b = world_column(w, 0, 0);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+                               co_cells: [cell_at(150, 4), b.co_cells[0]],
+                               co_ids:   [0, LABEL_GROUND] });
+  assert(world_ground_layer(w, 0, 0) == 1, "the ground is at index 1 before saving");
+  assert(world_save(w, "ground_rt.hxw", []) == WS_OK, "saved");
+  l = world_load("ground_rt.hxw");
+  assert(l.wl_code == WL_OK, "loaded: {l.wl_detail}");
+  w2 = l.wl_world;
+  assert(world_ground_layer(w2, 0, 0) == 1,
+         "and it is STILL at index 1, not migrated back to 0 — got {world_ground_layer(w2, 0, 0)}");
+  assert(world_ground_cell(w2, 0, 0).h_height == 200, "reading the ground, not the cellar");
+}

@@ -217,6 +217,88 @@ rule that trades a tower for a cellar.
 **Gated both ways.** Reverting to layer 0 makes `stencil.mjs`'s cellar scene refuse
 (`keptCave false`); removing the fall drops `fall.mjs` from 10 accelerating ticks to 2.
 
+### ✅ RESOLVED 2026-07-30 — `GROUND` is a reserved label
+
+The write now carries labels, so the missing fact can be recorded. Of the three mechanisms
+above, the one taken is the second — *a reserved `ly_id`* — because it is the only one that
+survives the rock the other two broke on, and because the model already says what it means:
+`I1` identifies **corresponding layers of different chunks** by label, and *"the ground"* is
+precisely such a correspondence.
+
+> ### The rule, for a query with no feet
+>
+> **The ground is the terrain layer labelled `GROUND`. A chunk holding terrain has exactly one;
+> a chunk holding none has none, and reads as absent — which is height 0, the flat plane, the
+> same answer unauthored ground has always given.**
+
+`GROUND = 1` is **reserved**, never drawn from `ν`, which now starts at 2. Reserving a label is
+not a new idea in this model — it is a label used as *a name*, matched by **equality**, which is
+the only thing `I1` ever does with one.
+
+**⚠ And note what this rule is NOT.** It is *not* the feet's rule with the feet removed, and it
+is not a second answer to the same question. The two coexist because they are asked by different
+callers:
+
+| | the feet's rule | the ground label |
+|---|---|---|
+| asked by | the walk, the fall, the camera | meshing, the road, the field, every editing gesture |
+| question | *which surface am I standing on* | *which layer is the outdoors* |
+| answer under a tower | the deck you are on — a different one per storey | always the terrain, never a deck |
+| needs | a height to disambiguate | nothing |
+
+A column with three storeys genuinely has **three** answers to the first question and exactly
+**one** to the second. Collapsing them would be the elegant absorption this document warned
+about two sections ago.
+
+**⚠ Reading a label's ORDER is still forbidden, and the tempting wrong answer is exactly that.**
+Since `ν` is monotonic, *"the ground is the smallest non-zero label"* is true of every world this
+editor has ever built, needs no reserved constant and no migration — and it is **the rule this
+document explicitly rules out**: "nothing in this model reads label order", because "below" is a
+per-column relation the geometry does not honour globally. It was considered and rejected on the
+contract, not on a counterexample.
+
+#### Where it is assigned — one place, and its limit stated
+
+`world_set_column` step 3 is the only place a layer is created, so it is the only place a label
+is assigned: **a terrain layer created in a chunk that has no `GROUND` layer takes `GROUND`;
+every other new layer takes a fresh label from `ν`.** One site, and it cannot be forgotten
+because there is nowhere else to forget it.
+
+⚠ **That is an inference, and its limit is this**: it assumes the first terrain layer written
+into a chunk is the outdoors. It is, for every gesture the editor has — you author ground before
+you build on it. A disc that spills into a virgin neighbouring chunk would label that chunk's
+first floor as its ground. The alternative is worse and not merely different: an unlabelled
+chunk renders **flat**, so the failure is loud rather than silent, and the next terrain write
+there does not repair it. Left as the known edge rather than guarded against speculatively.
+
+#### Migration — a world saved before labels existed
+
+Every layer in such a world has `ly_id = 0`, so nothing carries `GROUND` and the rule would
+render the entire world flat. `world_load` therefore repairs each chunk as it arrives: **a chunk
+with terrain layers and none labelled `GROUND` labels its LOWEST terrain layer.** That rule is
+exactly right for those worlds and for no others — before labels, layer 0 *was* the ground by
+construction, because a cellar that kept the ground's identity could not be expressed.
+
+`ν` is repaired with it: an old world's counter is 1, which would hand `GROUND` out as the next
+fresh label, so a loaded `w_next_id` below `GROUND + 1` is raised to it.
+
+#### The write side, which is half the defect
+
+`terrain_h` reading layer 0 is the visible half. The other half is that `terrain_set` and
+`wall_set` wrote a **one-element column** — `co_cells: [nc]`, index 0, positionally — so after a
+cellar, raising a hill would have raised **the cellar floor**. Fixing only the read would have
+made the editor strictly worse than before: it would draw a ground that editing no longer moves.
+Both now read the ground layer's index and write a column that reaches it, with `co_ids` filled
+so the write creates nothing.
+
+**Measured** — three cellars dug under a hill, then the drawn ground:
+
+| | `cell 0,10` | drawn ground, peak |
+|---|---|---|
+| before cellars | `1,49` | 10.917 |
+| after, layer 0 (the defect) | `4,13` | 5.583 |
+| after, `GROUND` label | `1,49` | **10.917** |
+
 ## Continuity across a seam
 
 Matched by **height**, never by name. Stepping into the next tile, the surface you continue

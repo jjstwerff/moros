@@ -4,7 +4,7 @@
 **Why this exists.** None of this was written down. Every acknowledgement string and every
 ordering guarantee below was reverse-engineered out of `src/editor_server.loft` (4,238 lines) in
 order to de-flake eight gates on 2026-07-30 — and the next person would have paid that cost
-again. 25 gates depend on this protocol today.
+again. 26 gates depend on this protocol today.
 
 **Why it carries dispositions.** [`HEX_STACK.md`](HEX_STACK.md) settles that the client derives
 meshes from the store (I2) and that the static world is pulled from static blocks (§3). Most of
