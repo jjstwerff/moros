@@ -1557,3 +1557,24 @@ edges — neither of which the mechanism's own eight gates had caught.
       Deliberately out of scope: the feet are where the rule is observable today, and a mesh
       drawing the wrong layer is a separate claim needing its own baseline work.
     - **25 gates, 651 library tests.**
+29. ⚠ **`terrain_h` CANNOT take the surface rule — the model is missing a fact, and this is
+    where that became provable.** Recorded in `WORLD_MODEL.md`.
+    - **The defect is real and measured**: dig three cellars under a hill and the *drawn* ground
+      sinks with them — peak **10.917 → 5.583**, `cell 0,10` from `1,49` to `4,13`.
+    - **But no rule over the current data is right.** `terrain_h` has no feet, and: layer 0
+      (today) is correct for a tower and wrong for a cellar; the highest terrain layer is
+      correct for a cellar and renders a tower's top deck as terrain; the feet rule needs feet
+      meshing does not have. A cellar floor and the ground are **both** `KIND_TERRAIN`
+      heightfields and nothing marks which is which.
+    - ⚠ **Three mechanisms were considered and all three fail identically** — a third
+      `ly_kind` (then `world_cell` stops returning built floors at all), a reserved `ly_id`
+      label (the model's own idea and a good fit), a per-chunk ground index. **All break on
+      `world_set_column` being POSITIONAL**: `co_cells[i] → ck_layers[i]`, so a cellar insert
+      shifts the *cells* down while a marker on the *layer* stays put — the label lands on the
+      cellar.
+    - **So the fix is to the column-write contract, not to a query**: either the write becomes
+      insertion-aware and carries markers with their cells, or the ground is identified by
+      something travelling *with* the cells. That is a store change — `lib/hex_world`, its
+      persistence, and the contract — and it deserves its own pass with its own baselines.
+    - `terrain_h` is left **honest-but-wrong and documented**, rather than given a rule that
+      trades a tower for a cellar. 25 gates green, 651 library tests.

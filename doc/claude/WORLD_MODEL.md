@@ -127,9 +127,48 @@ byte-identical** and only the character half moved.
 | `hipskin`, `keyonly` | `poses 46`, `positions 23` | `poses 43–46`, `positions 22` | the frame-window class — counts move by ±1 by construction; every geometric figure is identical |
 | every `world/` gate | — | — | **byte-identical** |
 
-⚠ **`terrain_h` still reads layer 0**, so meshing and the camera still carry the old assumption.
-That is deliberately out of this change: the feet are where the rule is observable and testable
-today, and a mesh that draws the wrong layer is a separate claim needing its own baseline work.
+### ⚠ And `terrain_h` CANNOT be fixed the same way — the model is missing a fact
+
+Meshing, the camera and the road still read layer 0, and the defect is real and visible.
+**Measured** — dig three cellars under a hill and the drawn ground sinks with them:
+
+| | before cellars | after |
+|---|---|---|
+| `cell 0,10` | `1,49` | `4,13` |
+| drawn ground, peak | **10.917** | **5.583** |
+
+But the feet's rule cannot be reused, because `terrain_h` has **no feet** — and *no rule over the
+current data is correct*:
+
+| candidate | fixes | breaks |
+|---|---|---|
+| lowest layer (today's `SURFACE = 0`) | a tower — layer 0 stays the terrain when storeys go up | **a cellar** — layer 0 becomes the cellar floor |
+| highest occupied terrain layer | a cellar — the real ground is on top | **a tower** — its top deck renders as terrain |
+| highest at or below the feet | nothing here — meshing has no feet to ask about | — |
+
+**The information is not in the model.** A cellar floor and the ground are both
+`KIND_TERRAIN` heightfields, and nothing marks which one *is* the ground.
+
+Three mechanisms were considered and all three fail on the same rock:
+
+- **a third `ly_kind`** — `world_cell` returns empty for anything that is not `KIND_TERRAIN`
+  (`hex_world.loft:262`), so a built floor would stop being readable at all;
+- **a reserved `ly_id` label** — the model's own idea, and a good fit in principle since *"the
+  ground"* is exactly a layer corresponding across every chunk;
+- **a per-chunk ground index** — indices are local and shift.
+
+⚠ **All three break on `world_set_column` being POSITIONAL**: it maps `co_cells[i]` to
+`ck_layers[i]`, so inserting a cellar shifts the *cells* down one index while any marker on the
+*layer* stays where it was. The label would end up on the cellar.
+
+> **So the required change is to the column-write contract, not to a query.** Either the write
+> becomes insertion-aware and carries markers with their cells, or the ground is identified by
+> something that travels *with* the cells rather than beside them.
+
+That is a change to the store — `lib/hex_world`, its persistence, and the contract this document
+states — and it should be made once, deliberately, with its own baselines. It is **not** a
+side-effect of a fall, and `terrain_h` is left honest-but-wrong until then rather than given a
+rule that trades a tower for a cellar.
 
 **Gated both ways.** Reverting to layer 0 makes `stencil.mjs`'s cellar scene refuse
 (`keptCave false`); removing the fall drops `fall.mjs` from 10 accelerating ticks to 2.
