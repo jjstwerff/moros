@@ -1348,11 +1348,13 @@ one piece still duplicated, and it is duplicated for a reason that is written do
 - **Finish `A10`'s solve switch when [loft#682](https://github.com/loft-lang/loft/issues/682)
   lands.** The editor still runs its own copy of `A6`'s fixed point because a lambda capturing
   a `World` panics the interpreter. Everything else on the cart's path is the library's.
-- ⚠ **`field.mjs` is timing-sensitive**, and this step is how that surfaced: its `fieldVerts`
-  was seen at 3150, 1458 and once **0** on identical code, and the 0 fails the gate. The mesh
-  arrives some ticks after the world changes, and the gate does not wait for the rebuild
-  acknowledgement the way the others learned to. Not caused by the switch — reproduced on
-  `HEAD` — but it will keep costing a red run until it waits on what the server SAYS.
+- ⚠ **Four mesh-reading gates still wait on the clock**, and the class is the one
+  `field.mjs` and `straight.mjs` were just fixed for. `road.mjs`, `stencil.mjs`,
+  `import.mjs` and (partly) `persist.mjs` and `vegetation.mjs` sleep before reading a
+  mesh instead of waiting for `S:rebuilt N chunks`. They are green today because the
+  guesses are long enough to usually win; `field.mjs` shows what happens when one is
+  not. `road.mjs` and `stencil.mjs` also pace their *placements* by sleep, so each is a
+  rework rather than a one-line change — which is why they are here and not done.
 - **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
   the same beam with the hinge and load positions offset by half a segment, so the library's
   bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is

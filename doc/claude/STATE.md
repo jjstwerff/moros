@@ -347,9 +347,28 @@ written and not built.** In priority order:
     defect this plan hit** — #670, #677, #682, all "a value that outlives the expression that
     made it, reached indirectly". The editor keeps its own copy of the fixed point until it
     lands; everything else on the cart's path is the library's.
-    ⚠ **And `field.mjs` is timing-sensitive** — `fieldVerts` seen at 3150, 1458 and once **0**
-    on identical code, the 0 failing the gate. Reproduced on `HEAD`, so not the switch, but it
-    will keep costing red runs until it waits on the rebuild acknowledgement.
+14. ✅ **The `field.mjs` flake is FIXED, and it was never intermittent** — it read
+    **0 vertices on every run** once the guess stopped winning the race. Line 94 was
+    `await wait(1200)` before counting the field mesh: the exact defect this file's own
+    comment warns against (*"WAIT FOR THE SERVER, NOT THE CLOCK"*), with two sleeps
+    surviving the earlier sweep.
+    - **The fix is `await ack('rebuilt')`.** The server broadcasts `S:rebuilt N chunks`
+      after the whole `Z:1` … `Z:0` transaction, deliberately, so a client can learn the
+      **picture** caught up and not merely the world. Six runs: 3150 every time. Control:
+      skip the ack and it reads 0 on every run.
+    - **The refusal path got a sequencing barrier**, not a sleep — a refusal produces no
+      rebuild, so an ack that arrives *after* it proves anything the fill emitted has
+      arrived too. The wire is ordered; `wait(400)` proved nothing.
+    - **The claim is `> 0`, not a count.** A dirty chunk that is not on screen is dropped
+      by design, so the number counts *loaded* chunks; pinning 3150 would assert the
+      streamer's timing rather than the fill's boundedness.
+    - **`straight.mjs` had the identical defect** — `await wait(2500); // let the rebuild
+      land`, naming the very thing the server announces. Same one-line fix, four runs
+      stable at 1200 vertices.
+    ⚠ **The class is still live in four more gates** — `road.mjs`, `stencil.mjs`,
+    `import.mjs`, and partly `persist.mjs`/`vegetation.mjs`. Green today because their
+    guesses are long enough. `road`/`stencil` also pace *placements* by sleep, so each is
+    a rework; recorded in CONNECTOR's **Open**.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned

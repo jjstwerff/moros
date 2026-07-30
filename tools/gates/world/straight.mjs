@@ -58,7 +58,13 @@ ws.onmessage = async (e) => {
     await placeAt(...B);
     ws.send('25:3');
     const laid = await ack('road laid');
-    await wait(2500);                                  // let the rebuild land
+    // ⚠ WAIT FOR THE SERVER, NOT THE CLOCK. This was `await wait(2500)` with the
+    // comment "let the rebuild land" — which names exactly the thing the server
+    // announces. `S:rebuilt N chunks` is broadcast after the whole `Z:1` … `Z:0`
+    // transaction, so it is the signal that the PICTURE caught up and not just the
+    // world. `field.mjs` had the same sleep and read **0 vertices on every run**
+    // once the guess stopped winning the race.
+    const rebuilt = await ack('rebuilt');
 
     const m = laid.match(/heading (\d+) of 24 \(snapped, residual ([0-9.]+)/);
     const step = m ? Number(m[1]) : -1;
@@ -106,7 +112,7 @@ ws.onmessage = async (e) => {
     const drew = verts > 0;
     const straight = worst <= 0.02;          // float noise, not half a hex
     const ok = drew && straight && step >= 0;
-    console.log(JSON.stringify({ step, verts, offsets: offsets.slice(0, 8),
+    console.log(JSON.stringify({ step, verts, rebuilt, offsets: offsets.slice(0, 8),
                                  nearSpread: +nearSpread.toFixed(4),
                                  farSpread: +farSpread.toFixed(4),
                                  worstSpreadWithinASide: +worst.toFixed(4),

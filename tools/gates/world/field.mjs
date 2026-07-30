@@ -67,7 +67,12 @@ ws.onmessage = async (e) => {
     await placeAck(0, 0, 0);
     ws.send('11:');
     const refused = await ack('field');
-    await wait(400);
+    // ⚠ A SEQUENCING BARRIER, not a sleep. A refusal changes nothing, so there is
+    // no rebuild to wait for — but a mesh the fill wrongly sent would still be in
+    // flight. The wire is ordered, so an ack that arrives AFTER the refusal proves
+    // anything the fill emitted has arrived too. `wait(400)` proved nothing: it
+    // was a guess about this box.
+    await placeAck(0, 0, 0);
     const refusedField = verts(2);
 
     // ── enclose a small patch by walking a road ring around it
@@ -91,14 +96,35 @@ ws.onmessage = async (e) => {
     await placeAck(1, 1, 0);
     ws.send('11:');
     const fillMsg = await ack('field');
-    await wait(1200);
+    // ⚠ WAIT FOR `rebuilt`, NOT THE CLOCK — and this gate's own comment above said
+    // so while two fixed sleeps survived the sweep. `wait(1200)` made `fieldVerts`
+    // come back 3150, 1458 and once **0** on identical code, and the 0 fails.
+    //
+    // The world changes when the fill is acknowledged; the MESHES follow several
+    // ticks later. The server brackets a rebuild `Z:1` … `Z:0` and then says
+    // `S:rebuilt N chunks` — deliberately, so a client can learn that the PICTURE
+    // caught up and not merely that the world did. That is the half this was missing.
+    const rebuilt = await ack('rebuilt');
     const filled = verts(2);
     const okMsg  = fillMsg.includes('field filled');
+    const sawRebuild = rebuilt.includes('rebuilt');
 
+    // ⚠ THE CLAIM IS `> 0`, NOT A COUNT, and that is deliberate. A chunk that is
+    // dirty but not on screen is dropped from the dirty set BY DESIGN — it will be
+    // built from the current world when it next comes into range — so the number
+    // counts loaded chunks, and on a slower box or a different view radius a 16 wu
+    // ring need not all have streamed in. It reads 3150 on six consecutive runs
+    // here; pinning that would be asserting the streamer's timing rather than the
+    // fill's boundedness, which is what this gate is about.
+    //
+    // The control that says the wait is what fixed this: skip the `rebuilt` ack and
+    // it reads **0 on every run**, not intermittently — the old fixed sleep was
+    // simply long enough to usually win the race.
     const ok = refused.includes('field refused') && refusedField === 0
-               && okMsg && filled > 0;
+               && okMsg && sawRebuild && filled > 0;
     console.log(JSON.stringify({ refusedOnOpenGround: refused, fieldAfterRefusal: refusedField,
-                                 filledInsideRing: okMsg, fieldVerts: filled, ok,
+                                 filledInsideRing: okMsg, rebuilt, sawRebuild,
+                                 fieldVertsInLoadedChunks: filled, ok,
                                  status: status.slice(-4) }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
