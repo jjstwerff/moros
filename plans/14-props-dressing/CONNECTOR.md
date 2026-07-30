@@ -1648,6 +1648,19 @@ they became a state that falls, it dropped the walker through the floor.
 third time in this plan that making something honest has surfaced a latent one, after the
 raise's once-per-tick origin and the camera's latching tolerance.
 
+✅ **SETTLED 2026-07-30 — the rule is now normative in
+[`WORLD_MODEL.md`](../../doc/claude/WORLD_MODEL.md) § "Which layer is the surface".** *The
+surface at a hex is the highest occupied `KIND_TERRAIN` layer at or below the feet* — never an
+index, and it takes the feet because a storeyed column has no single surface. Verified against
+the cave scene: with the rule applied, `stencil.mjs`'s cellar case returns to *"kept 56 below"*.
+
+⚠ **And applying it is a bigger job than the fall, which is why it is still not enforced.** The
+feet were derived from the ground only on a MOVE, so they are **stale everywhere** — with them
+tracking the ground, `climb.mjs` starts at **0.25** instead of 0, because four raises lift the
+ground under a standing character and the editor never noticed until they walked. The old zero
+was not a measurement; it was a value nobody had refreshed. Re-establishing the baselines that
+were taken against stale feet is its own deliberate piece of work, not a side effect.
+
 ⚠ **Three attempts at a ground query were made and all three were wrong**, which is why this
 is recorded rather than patched:
 

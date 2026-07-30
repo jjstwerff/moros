@@ -72,6 +72,54 @@ column, and a routine handing out cells could not check any of them.
 structures with many layers — towers, shafts, dungeon levels — cost what they *occupy*, not
 what they span. That is why terrain layers can afford to be dense.
 
+## Which layer is the surface — settled 2026-07-30
+
+**The question.** "The surface at a hex" is used by meshing, the camera, the walk and any
+future fall, and the editor answered it with `SURFACE = 0`. That is wrong, and the rule above
+says why: *layer order is local*, so an index is not a meaning.
+
+**Measured**, the same cell read three ways:
+
+| state | `cell` (layer 0) | `column` (occupied layers) |
+|---|---|---|
+| virgin | `0,0` — material **0, absent** | *empty* — **no occupied layer at all** |
+| after two storeys **up** | `1,25` — unchanged | `25,37,49` |
+| after three cellars **down** | `4,13` — **displaced** | `13,25,37,49` |
+
+So storeys **append above** and leave layer 0 alone; a cellar **inserts beneath** and layer 0
+silently becomes the cellar floor. And virgin ground has no occupied layer, yet still carries an
+authored height in an absent cell — so "occupied" and "has a height" are different questions.
+
+> ### The rule
+>
+> **The surface at a hex is the highest occupied `KIND_TERRAIN` layer at or below the feet.**
+>
+> Not the lowest — that is the cellar. Not the highest — that is the deck of something built
+> above you. Not an index. And it takes the **feet** as an argument, because a column with
+> storeys *has no single surface*: that is what layers are for.
+
+**The tolerance is the model's own.** Layers are separated by at least `ε`, so half of `ε`
+cannot select the wrong one, and it absorbs the difference between a smoothed surface and its
+cell's integer height — a terrain layer is interpolated across a cell's corners, so on any
+slope it sits *below* that cell's own stored height.
+
+**Smooth for terrain, flat for what is built on it.** A terrain layer is a heightfield and is
+interpolated; a storey is a deck and is not. A single occupied layer — or none — is the
+ordinary case and takes the interpolated surface with no layer arithmetic near it.
+
+### ⚠ What this costs, and why it is not yet applied
+
+The editor's `terrain_h` still reads layer 0. Correcting it is not a local change, because the
+feet were *derived from the ground only on a move* and are therefore **stale everywhere** — so
+the correct surface shifts established baselines. Measured: with the feet tracking the ground,
+`climb.mjs` starts at **0.25** rather than 0, because four raises lift the ground under a
+standing character and the editor never noticed until they walked. The old zero was not a
+measurement; it was a value nobody had refreshed.
+
+So this rule is **normative and not yet enforced**. Applying it means re-establishing the gate
+baselines that were taken against stale feet, which is its own piece of work and should be done
+deliberately rather than as a side effect of a fall.
+
 ## Continuity across a seam
 
 Matched by **height**, never by name. Stepping into the next tile, the surface you continue

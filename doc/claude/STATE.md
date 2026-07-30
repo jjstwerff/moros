@@ -1515,3 +1515,25 @@ edges — neither of which the mechanism's own eight gates had caught.
       library tests. `probe/fall.mjs` holds the target measurement — 8.976 wu over 10
       accelerating ticks, against 2 for the old behaviour — as a probe, not a gate, because the
       editor cannot pass it yet.
+27. ✅ **WHICH LAYER IS THE SURFACE — SETTLED, and normative in `WORLD_MODEL.md`.**
+    > The surface at a hex is the **highest occupied `KIND_TERRAIN` layer at or below the
+    > feet.** Not the lowest (the cellar), not the highest (a deck above you), not an index —
+    > and it takes the feet, because a storeyed column *has no single surface*.
+    - **Measured**, the same cell three ways: virgin → `cell 0,0` material **0/absent** with an
+      **empty** column; two storeys up → `1,25` with `25,37,49` (layer 0 untouched); three
+      cellars → `4,13` with `13,25,37,49` (**layer 0 displaced**). So storeys append above and
+      only a cellar displaces layer 0 — and virgin ground has *no* occupied layer yet still
+      carries a height in an absent cell, so "occupied" and "has a height" are different.
+    - **The tolerance is the model's own** — layers are ≥ `ε` apart, so `ε/2` cannot pick the
+      wrong one and absorbs the gap between a smoothed surface and its cell's integer height.
+      **Smooth for terrain, flat for what is built on it.**
+    - **Confirmed by the case that exposed it**: with the rule applied, `stencil.mjs`'s cellar
+      scene returns to *"kept 56 below"*.
+    - ⚠ **Deliberately NOT enforced yet.** The feet were derived from the ground only on a
+      move, so they are **stale everywhere**: with them tracking it, `climb.mjs` starts at
+      **0.25** rather than 0, because four raises lift the ground under a standing character and
+      the editor never noticed until they walked. **The old zero was not a measurement; it was a
+      value nobody had refreshed.** Re-establishing baselines taken against stale feet is its
+      own deliberate work, and doing it as a side effect of the fall is how a suite quietly
+      stops meaning anything.
+    - Editor reverted to committed state; **24 gates green, 651 library tests pass**.
