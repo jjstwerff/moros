@@ -57,6 +57,23 @@ const lastCount = () => {
   const m = [...status].reverse().find(x => x.startsWith('scattered'));
   return m ? Number(m.split(' ')[1]) : null;
 };
+// Wait for any status line containing `needle`. ⚠ Scans from the CURRENT end, so
+// it waits for the NEXT one — right for a reply, and `field.mjs` is the record of
+// what happens when a gate waits on the clock instead.
+const ackS = async (needle, limitMs = 40000) => {
+  const from = status.length;
+  for (let t = 0; t < limitMs; t += 100) {
+    await wait(100);
+    const m = status.slice(from).find(x => x.includes(needle));
+    if (m) return m;
+  }
+  return `(no "${needle}" in ${limitMs}ms)`;
+};
+// The world changes when a scatter is acknowledged; the MESHES follow several
+// ticks later. The server brackets a rebuild `Z:1` … `Z:0` and then says
+// `S:rebuilt N chunks` — that is the signal the PICTURE caught up.
+const rebuilt = () => ackS('rebuilt');
+
 const ack = async (limitMs = 6000) => {
   const from = status.length;
   for (let t = 0; t < limitMs; t += 100) {
@@ -65,25 +82,17 @@ const ack = async (limitMs = 6000) => {
   }
   return false;
 };
-// ⚠ THE SAME TRAP `persist` FELL INTO. The server acknowledges a scatter the
-// moment it has written the cells, but the chunk MESHES are rebuilt on a later
-// tick — measured at up to ~900ms for a handful of chunks under the interpreter.
-// Stability alone therefore settles on the picture from BEFORE the rebuild: this
-// gate saw 84 trees go onto a hill and still read the old meshes, so the trees
-// looked like they had not moved. Wait a floor for the rebuild, THEN for the
-// count to stop moving.
-const settleVerts = async (minMs = 2500, limitMs = 12000) => {
-  let prev = null, stable = 0, t = 0;
-  while (t < limitMs) {
-    await wait(150); t += 150;
-    const v = vegVerts();
-    if (prev !== null && v === prev) stable += 1; else stable = 0;
-    prev = v;
-    if (t >= minMs && stable >= 4) return v;
-  }
-  console.error(`settleVerts: never stopped moving in ${limitMs}ms`);
-  return vegVerts();
-};
+// ⚠ THE SAME TRAP `persist` FELL INTO, AND IT IS FIXED PROPERLY NOW. The server
+// acknowledges a scatter the moment it has written the cells, but the chunk MESHES
+// are rebuilt on a later tick. This used to be a floor-plus-settle heuristic —
+// wait at least 2500ms, then for the count to stop moving four times — which is two
+// guesses stacked: how long a rebuild takes, and how long "stopped moving" needs to
+// be believed. Both are statements about this box.
+//
+// `S:rebuilt N chunks` is the server saying the picture caught up, so one ack
+// replaces both, and the count is read ONCE afterwards rather than sampled until it
+// looks calm. `field.mjs` is the record of what a guess costs when it stops winning.
+const settleVerts = async () => { await rebuilt(); return vegVerts(); };
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
@@ -94,7 +103,7 @@ ws.onmessage = async (e) => {
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
-    place(0, 0, 0); await wait(600);
+    place(0, 0, 0); await ackS('placed');
 
     // ── scatter, then scatter the SAME ground again
     ws.send('13:1,30'); await ack();
@@ -123,9 +132,10 @@ ws.onmessage = async (e) => {
     ws.send('13:1,60'); await ack();
     await settleVerts();
     const yFlat = vegTopY();
-    for (let k = 0; k < 4; k++) { ws.send('5:1'); await wait(200); }
-    await wait(1200);
-    place(17.3, 0, 0); await wait(700);
+    // a raise has no acknowledgement of its own — `rebuilt` is the one that says
+    // the ground it changed has reached the client
+    for (let k = 0; k < 4; k++) { ws.send('5:1'); await rebuilt(); }
+    place(17.3, 0, 0); await ackS('placed');
     ws.send('13:1,60'); await ack();
     const onHill = lastCount();
     const vertsHill = await settleVerts();

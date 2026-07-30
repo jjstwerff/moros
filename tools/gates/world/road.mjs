@@ -22,7 +22,26 @@ const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const chunks = new Map();
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
+const status = [];
 let st = 0;
+
+// ⚠ WAIT FOR THE SERVER, NOT THE CLOCK. This gate had SIX fixed sleeps and did not
+// collect status at all, so it could not have waited for anything. Every one of them
+// was a statement about how fast this box is; `field.mjs` is the record of what that
+// costs when a guess stops winning — it read 0 vertices on every run.
+const ack = async (needle, limitMs = 40000) => {
+  const from = status.length;
+  for (let t = 0; t < limitMs; t += 100) {
+    await wait(100);
+    const m = status.slice(from).find(x => x.includes(needle));
+    if (m) return m;
+  }
+  return `(no "${needle}" in ${limitMs}ms)`;
+};
+// The world changes when a command is acknowledged; the MESHES follow several ticks
+// later. `S:rebuilt N chunks` closes the server's own `Z:1` … `Z:0` transaction and
+// is the signal that the PICTURE caught up.
+const rebuilt = () => ack('rebuilt');
 
 // Chunk meshes live above the reserved low block (ids 0-15 are the FIGURE), and
 // within it the parity says which surface: ground even, road odd. ⚠ Not filtering
@@ -77,18 +96,28 @@ ws.onmessage = async (e) => {
     let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
     chunks.set(id, rest.slice(rest.indexOf(';') + 1).split(',').map(Number)); }
   if (t === 'X') chunks.delete(Number(b));
+  if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
     // build a hill ahead, then measure how rough the ground is
-    for (let k = 0; k < 6; k++) { ws.send('5:1'); await wait(150); }
-    await wait(900);
+    // a raise has no acknowledgement of its own, so `rebuilt` is the one that says
+    // the ground it changed has reached the client
+    for (let k = 0; k < 6; k++) { ws.send('5:1'); await rebuilt(); }
     const ground0 = stats(false);
 
     // lay a road across it: switch on at flat ground, then walk into the hill
-    place(0, 0, 0); await wait(500);
-    ws.send('10:1'); await wait(300);
-    for (let x = 2; x <= 26; x += 2) { place(x, 0, 0); await wait(260); }
-    ws.send('10:0'); await wait(900);
+    place(0, 0, 0); await ack('placed');
+    ws.send('10:1'); await ack('road true');
+    for (let x = 2; x <= 26; x += 2) { place(x, 0, 0); await ack('placed'); }
+    // ⚠ THE REBUILD WAIT GOES HERE, BEFORE the toggle off — and the order is the
+    // whole guarantee. The last placement marks its chunks dirty and acks in the
+    // SAME handler, so at the moment `placed` reaches us the flush is necessarily
+    // still pending and the next `rebuilt` is necessarily the one carrying it.
+    // Put this after `10:0` instead and the flush may already have run, leaving
+    // nothing to wait for.
+    await rebuilt();
+    ws.send('10:0');
+    const off = await ack('road false');
 
     const road = stats(true);
     // ⚠ NOT "the road mesh is exactly flat", which would be asserting something
@@ -101,7 +130,7 @@ ws.onmessage = async (e) => {
     // terrain it crosses. A road that merely draped would match the ground's range
     // rather than cutting it.
     // ⚠ CONNECTED AND EXTENDED, not merely present. Measured on correct code:
-    //     components 1 · span 34 wu · 1602 road verts
+    //     components 1 · span 33 wu · 1602 road verts
     // The walk runs x = 2 … 26, so a span of 34 is that path plus the strip width.
     // A road laid at one stale hex would be a blob: one component, span ≈ 7.
     //
@@ -127,7 +156,7 @@ ws.onmessage = async (e) => {
     const connected = comps === 1;
     const follows   = span > 18;          // the walk ran x = 2 … 26
     const ok = laid && graded && crossed && connected && follows;
-    console.log(JSON.stringify({ groundRange: +groundRange.toFixed(3),
+    console.log(JSON.stringify({ off, groundRange: +groundRange.toFixed(3),
                                  roadRange: +roadRange.toFixed(3),
                                  verts: road.n, components: comps, span,
                                  laid, graded, crossed, connected, follows, ok }));

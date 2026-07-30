@@ -3639,8 +3639,25 @@ fn main() {
             // radius: a hex step is 1.5 wu north–south and √3 east–west, so a
             // fixed world radius would put the peak at a different hex distance
             // depending on which way you happen to face.
-            tq = last_hq;
-            tr = last_hr;
+            //
+            // ⚠ THE RULER IS ANCHORED WHERE THE CHARACTER IS, and `last_hq` /
+            // `last_hr` are NOT that. Those are written only by the streaming
+            // block, once per TICK and only when the hex changes — so between a
+            // `7:` teleport and the next tick they still name the cell that was
+            // left behind, while the ray below walks out from the NEW `px`/`pz`.
+            // Two positions in one measurement: the ray starts here and the ruler
+            // is anchored there.
+            //
+            // Measured, not argued — `probe/raise_origin.mjs`, teleport to hex
+            // (10,0) and raise in the same breath: the hill landed AT (10,0),
+            // underfoot, which is the very failure the bound comment below was
+            // written to prevent. Settle one tick first and it lands at (20,0).
+            // Same defect the road carried (it stamped at `last_hq`, so every
+            // placement laid at one stale hex and a walked path made a blob), and
+            // the same fix: derive the cell from the position.
+            self_hx = world_to_hex(px, pz);
+            tq = self_hx.ha_q;
+            tr = self_hx.ha_r;
             found = false;
             ky2 = cos(yaw); sy2 = sin(yaw);
             // ⚠ The bound must cover the LONGEST hex step. A step is 1.5 wu
@@ -3654,7 +3671,8 @@ fn main() {
             for si in 1..PEAK_AHEAD * 8 {
               probe = world_to_hex(px + ky2 * (si as float) * 0.5,
                                    pz + sy2 * (si as float) * 0.5);
-              if hex_grid::hex_distance(probe.ha_q, probe.ha_r, last_hq, last_hr) >= PEAK_AHEAD {
+              if hex_grid::hex_distance(probe.ha_q, probe.ha_r,
+                                        self_hx.ha_q, self_hx.ha_r) >= PEAK_AHEAD {
                 tq = probe.ha_q;
                 tr = probe.ha_r;
                 found = true;

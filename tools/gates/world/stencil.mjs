@@ -32,6 +32,18 @@ const ack = async (p, limitMs = 8000) => {
   }
   return `(no "${p}" in ${limitMs}ms)`;
 };
+// ⚠ WAIT FOR THE SERVER, NOT THE CLOCK. Every command below is acknowledged, and
+// the wire is ORDERED — so an ack is a sequencing barrier for everything sent
+// before it, and a fixed sleep is only ever a statement about how fast this box
+// is. `field.mjs` is the record of what a guess costs when it stops winning.
+//
+// A RAISE HAS NO ACK OF ITS OWN and needs none: the handler applies it in full
+// before the next message is read, so the NEXT command's ack covers it. That is
+// only true because the raise now takes its origin from the character's actual
+// position; it used to read the once-per-tick `last_hq`, and a raise sent in the
+// same breath as a teleport landed underfoot. Removing these sleeps is what
+// exposed that — see `probe/raise_origin.mjs`.
+const rebuilt = () => ack('rebuilt');
 const nums = (m) => (m.match(/-?\d+/g) || []).map(Number);
 const column = async (q, r) => {
   ws.send(`15:${q},${r}`);
@@ -51,21 +63,19 @@ ws.onmessage = async (e) => {
 
     // ── ground high enough to dig under. The raise lands 10 hexes along the
     //    facing, so build the hill then walk onto it.
-    place(0, 0, 0); await wait(500);
-    for (let k = 0; k < 8; k++) { ws.send('5:1'); await wait(180); }
-    await wait(1200);
-    place(17.3, 0, 0); await wait(900);
+    place(0, 0, 0); await ack('placed');
+    for (let k = 0; k < 8; k++) ws.send('5:1');
+    place(17.3, 0, 0); await ack('placed');
 
     // ── (1) open ground: it builds, and keeps nothing
     const openMsg = (ws.send('14:12'), await ack('stencil'));
     const [openCells, openBelow, openAbove] = nums(openMsg);
 
     // ── (2) over a cave: three cellars put floors well under the foundation
-    place(0, 0, 1.5708); await wait(500);
-    for (let k = 0; k < 8; k++) { ws.send('5:1'); await wait(180); }
-    await wait(1200);
-    place(0, 15, 0); await wait(900);
-    for (let k = 0; k < 3; k++) { ws.send('12:-1'); await wait(800); }
+    place(0, 0, 1.5708); await ack('placed');
+    for (let k = 0; k < 8; k++) ws.send('5:1');
+    place(0, 15, 0); await ack('placed');
+    for (let k = 0; k < 3; k++) { ws.send('12:-1'); await ack('storey'); }
     const caveMsg = (ws.send('14:12'), await ack('stencil'));
     const [caveCells, caveBelow] = nums(caveMsg);
 
@@ -80,12 +90,11 @@ ws.onmessage = async (e) => {
     // So level the ground first, using the thing that levels it: a stencil floor
     // IS flat across its footprint. Place one, raise the decks off THAT, and the
     // deck is uniform by construction.
-    place(0, 0, 3.1416); await wait(500);
-    for (let k = 0; k < 8; k++) { ws.send('5:1'); await wait(180); }
-    await wait(1200);
-    place(-17.3, 0, 0); await wait(900);
+    place(0, 0, 3.1416); await ack('placed');
+    for (let k = 0; k < 8; k++) ws.send('5:1');
+    place(-17.3, 0, 0); await ack('placed');
     ws.send('14:12'); await ack('stencil');            // a flat floor and roof
-    for (let k = 0; k < 2; k++) { ws.send('12:1'); await wait(900); }
+    for (let k = 0; k < 2; k++) { ws.send('12:1'); await ack('storey'); }
     const bridgeMsg = (ws.send('14:12'), await ack('stencil'));
     const bn = nums(bridgeMsg);
     const bridgeCells = bn[0], bridgeAbove = bn[2];
@@ -100,7 +109,7 @@ ws.onmessage = async (e) => {
     // distance 2 is `anchor + 12`, distance 1 is `+16`, and the centre is `+20`.
     // Exact numbers, because a derived pitch has no freedom in it — if the ridge
     // is not 8 above the eave the rule is not the rule.
-    place(17.3, 0, 0); await wait(900);
+    place(17.3, 0, 0); await ack('placed');
     const centreCol = await column(10, 0);
     const midCol    = await column(11, 0);
     const eaveCol   = await column(12, 0);
@@ -125,11 +134,11 @@ ws.onmessage = async (e) => {
     // Without the pre-flight the first four `dq` bands are already written when
     // the fifth refuses, and `15:` can see it: q = -6 holds a floor and a roof
     // instead of just the terrain it started with.
-    place(0, 0, 0); await wait(900);
+    place(0, 0, 0); await ack('placed');
     ws.send('14:12'); await ack('stencil');
-    for (let k = 0; k < 2; k++) { ws.send('12:1'); await wait(900); }
+    for (let k = 0; k < 2; k++) { ws.send('12:1'); await ack('storey'); }
 
-    place(-6.928, 0, 0); await wait(900);          // 4 hexes west: hex (-4,0)
+    place(-6.928, 0, 0); await ack('placed');      // 4 hexes west: hex (-4,0)
     const farBefore = await column(-6, 0);
     const lateMsg = (ws.send('14:18'), await ack('stencil'));
     const farAfter = await column(-6, 0);
@@ -142,7 +151,7 @@ ws.onmessage = async (e) => {
     // as no house. It is observable: a partially written roof at 66 sits ABOVE
     // the next placement's band, so it would be COUNTED as kept, and this number
     // would exceed the 38 that the two real decks contribute.
-    place(-17.3, 0, 0); await wait(900);
+    place(-17.3, 0, 0); await ack('placed');
     const againMsg = (ws.send('14:12'), await ack('stencil'));
     const againAbove = nums(againMsg)[2];
 
@@ -158,6 +167,11 @@ ws.onmessage = async (e) => {
     // the roof is DRAWN — surface kind 4 of 5. A rule nobody can see is a rule
     // that will rot; vegetation taught this gate that the model and the picture
     // are two claims.
+    // the only MESH claim in this gate, so this is the only place the picture has
+    // to have caught up with the world: `rebuilt` closes the server's own
+    // `Z:1` … `Z:0` transaction. The last stencil marked its chunks dirty and
+    // acked in the same handler, so that flush is necessarily still pending here.
+    await rebuilt();
     const roofVerts = [...chunks].filter(([id, d]) => (id - 16) % SURFACES === 4 && d.length >= 6)
                                  .reduce((n, [, d]) => n + Math.floor(d.length / 6), 0);
     const refusedLate = lateMsg.startsWith('stencil refused (-11)')

@@ -42,26 +42,17 @@ const ack = async (match, limitMs = 8000) => {
   console.error(`ack: server never said "${match}" in ${limitMs}ms`);
   return false;
 };
-// ⚠ SETTLE, don't sleep. A load marks every chunk dirty and the meshes come back
-// over the following ticks, so a fixed wait measures whatever the rebuild happens
-// to have reached — this gate read 5.583 instead of 6.25 on roughly one run in
-// two, and only ever on a server it did not share with an earlier gate.
+// ⚠ `settle` IS GONE, AND SO ARE THE SLEEPS. This gate used to `ack` that the
+// server had loaded and then *settle* — sample the height until it stopped moving
+// four times — because a fixed wait measured whatever the rebuild happened to have
+// reached, and stability alone settled on the value from before the command landed.
+// Both notes were right about the symptom and both fixes were heuristics: one guess
+// about how long a rebuild takes, another about how long "stopped" must hold.
 //
-// Stability ALONE is not enough either: it settles on the value the world had
-// before the command landed, and reported a wipe that had done nothing. Hence
-// `ack` first (the server says it loaded), `settle` second (the meshes catch up).
-const settle = async (limitMs = 8000) => {
-  let prev = null, stable = 0;
-  for (let t = 0; t < limitMs; t += 150) {
-    await wait(150);
-    const v = hi();
-    if (prev !== null && Math.abs(v - prev) < 0.0005) { stable += 1; if (stable >= 4) return v; }
-    else stable = 0;
-    prev = v;
-  }
-  console.error(`settle: height never stopped moving in ${limitMs}ms`);
-  return hi();
-};
+// `S:rebuilt N chunks` is the server saying the picture caught up, so the ack
+// replaces both and the height is read ONCE. The saves say `saved N chunks`, and a
+// raise has no acknowledgement of its own — `rebuilt` is the one that means the
+// ground it changed has reached the client.
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'M') { const h = b.indexOf(';'), id = Number(b.slice(0, h));
@@ -71,28 +62,27 @@ ws.onmessage = async (e) => {
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
-    ws.send('8:gateflat'); await wait(700);        // save the world while it is still flat
-    for (let k = 0; k < 4; k++) { ws.send('5:1'); await wait(200); }
-    // ⚠ settle before measuring: a raise marks chunks dirty and the meshes are
-    // rebuilt on the next tick, so reading straight after the last keypress
-    // measures a hill one rebuild short of finished.
-    const built = await settle();
+    ws.send('8:gateflat'); await ack('saved');    // save the world while it is still flat
+    for (let k = 0; k < 4; k++) { ws.send('5:1'); await ack('rebuilt'); }
+    const built = hi();
 
-    ws.send('8:gate'); await wait(700);            // save the raised world
+    ws.send('8:gate'); await ack('saved');         // save the raised world
     ws.send('9:gateflat');                         // wipe by loading the flat one
     const ackFlat = await ack('loaded');
     await ack('rebuilt');
-    const wiped = await settle();
+    const wiped = hi();
     ws.send('9:gate');                             // load the raised one back
     const ackRaised = await ack('loaded');
     await ack('rebuilt');
-    const restored = await settle();
+    const restored = hi();
 
     // CONTROL, and the behaviour the old wipe depended on being broken: loading a
     // world that does not exist must REFUSE and leave the ground exactly as it is.
     ws.send('9:__no_such_world__');
     await ack('load refused');
-    const afterMissing = await settle();
+    // a refusal changes nothing, so there is no rebuild to wait for — and the
+    // restore above already awaited its own, so nothing is in flight
+    const afterMissing = hi();
 
     const raised   = built > 0.4;
     const wentFlat = Math.abs(wiped) < 0.001;

@@ -45,7 +45,11 @@ ws.onmessage = async (e) => {
 
     const exported = (ws.send('22:editor_prop.glb'), await ack('exported'));
     const imported = (ws.send('21:editor_prop.glb'), await ack('imported'));
-    await wait(1200);
+    // ⚠ NO SLEEP. This was `await wait(1200)`, guessing at how long the imported
+    // prop's mesh takes to arrive. The wire is ORDERED, so the `dressing` read-back
+    // below is itself the barrier: its ack cannot arrive before anything the import
+    // emitted, `M:8` included. A guess that usually wins is still a guess — see
+    // `field.mjs`, where the same sleep read 0 on every run once it stopped winning.
     const dress = await dressing(0, 0);
 
     // a file that is not a glb — the reader's own refusal must survive the trip

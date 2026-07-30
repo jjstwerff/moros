@@ -1343,18 +1343,67 @@ one piece still duplicated, and it is duplicated for a reason that is written do
 
 ---
 
+### The clock is out of the gates — and taking it out found a third live defect
+
+The five gates that read a mesh after a fixed sleep are now waiting on what the
+server *says*. The tally, and what each one actually needed:
+
+| gate | was | now |
+|---|---|---|
+| `field.mjs` | `wait(1200)` | `ack('rebuilt')` — **it read 0 verts on every run**, not one in five |
+| `straight.mjs` | `wait(2500)` | `ack('rebuilt')` |
+| `import.mjs` | `wait(1200)` | *nothing* — the `dressing` read-back already orders it |
+| `vegetation.mjs` | floor-plus-settle heuristic | `ack('rebuilt')`, and `settleVerts` collapsed to two lines |
+| `persist.mjs` | `settle()` | `ack('saved')`, `ack('rebuilt')`; the height is read once |
+| `road.mjs` | 6 sleeps, and no status collector **at all** | `placed`, `rebuilt`, `road false` |
+| `stencil.mjs` | 20 sleeps | `placed`, `storey`, `stencil`, one `rebuilt` |
+
+Two things are worth keeping from the rework.
+
+**The order of the two waits is the whole guarantee.** In `road.mjs` the rebuild
+wait goes *before* the `10:0` toggle, not after. A placement marks its chunks dirty
+and acks `S:placed` in the same handler, so at the moment that ack arrives the flush
+is necessarily still pending and the next `S:rebuilt` is necessarily the one carrying
+it. Put the wait after the toggle instead and the flush may already have run, leaving
+nothing to wait for — a 40-second stall dressed as a barrier. `S:rebuilt` is only
+broadcast when `nrebuilt != 0`, which is what makes it a signal rather than a
+heartbeat, and also what makes waiting for a rebuild that will not happen fatal.
+
+**⚠ A raise took its origin from a cell that updates once per TICK — and the fix
+had to go in the server.** `MSG_RAISE` anchored its `hex_distance` ruler at
+`last_hq`/`last_hr`, which only the streaming block writes, and only when the hex
+changes. The ray it measures already walked out from the current `px`/`pz`: two
+positions in one measurement. Between a `7:` teleport and the next tick the ruler
+still named the cell that was left behind.
+
+Measured, not argued — `probe/raise_origin.mjs`, teleport to hex (10,0) and raise in
+the same breath:
+
+| | hill at (10,0) | hill at (20,0) |
+|---|---|---|
+| no pause | **+7** | 0 |
+| after a tick | 0 | +7 |
+
+The hill landed **underfoot** — which is exactly the failure the handler's own ⚠
+about the search bound was written to prevent, arriving by a different door. This is
+the third instance of this defect family in this file: the road once stamped at
+`last_hq` too, so every placement laid at one stale hex and a walked path made a
+blob. Same fix both times — derive the cell from the position.
+
+It was invisible while the gate slept, and invisible even to an ack, because `ack`
+polls at 100 ms and a tick is ~16: the acknowledgement's own granularity covered the
+gap by accident. That accident is what makes "green" worth so little here. The probe
+sends both commands with nothing between them, which a probe may do and a gate may
+not.
+
+Verified: 23 gates green on **three** consecutive full runs with every number
+identical, and 639 library tests pass.
+
 ## Open
 
 - **Finish `A10`'s solve switch when [loft#682](https://github.com/loft-lang/loft/issues/682)
   lands.** The editor still runs its own copy of `A6`'s fixed point because a lambda capturing
   a `World` panics the interpreter. Everything else on the cart's path is the library's.
-- ⚠ **Four mesh-reading gates still wait on the clock**, and the class is the one
-  `field.mjs` and `straight.mjs` were just fixed for. `road.mjs`, `stencil.mjs`,
-  `import.mjs` and (partly) `persist.mjs` and `vegetation.mjs` sleep before reading a
-  mesh instead of waiting for `S:rebuilt N chunks`. They are green today because the
-  guesses are long enough to usually win; `field.mjs` shows what happens when one is
-  not. `road.mjs` and `stencil.mjs` also pace their *placements* by sleep, so each is a
-  rework rather than a one-line change — which is why they are here and not done.
 - **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
   the same beam with the hinge and load positions offset by half a segment, so the library's
   bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is

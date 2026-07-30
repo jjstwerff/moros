@@ -365,15 +365,41 @@ written and not built.** In priority order:
     - **`straight.mjs` had the identical defect** — `await wait(2500); // let the rebuild
       land`, naming the very thing the server announces. Same one-line fix, four runs
       stable at 1200 vertices.
-    ⚠ **The class is still live in four more gates** — `road.mjs`, `stencil.mjs`,
-    `import.mjs`, and partly `persist.mjs`/`vegetation.mjs`. Green today because their
-    guesses are long enough. `road`/`stencil` also pace *placements* by sleep, so each is
-    a rework; recorded in CONNECTOR's **Open**.
+15. ✅ **THE CLOCK IS OUT OF THE GATE SUITE** — the remaining four are done, and taking
+    the sleeps out found a **third live defect in shipped code**. `import.mjs` needed
+    *nothing*: the `dressing` read-back already orders it. `vegetation.mjs`'s
+    floor-plus-settle heuristic collapsed to two lines. `persist.mjs` lost `settle()`
+    entirely for `saved`/`rebuilt` acks. `road.mjs` had six sleeps **and no status
+    collector at all**, so it could not have waited for anything; `stencil.mjs` had twenty.
+    - ⚠ **A RAISE TOOK ITS ORIGIN FROM A CELL THAT UPDATES ONCE PER TICK.** `MSG_RAISE`
+      anchored its `hex_distance` ruler at `last_hq`/`last_hr` — written only by the
+      streaming block, only when the hex changes — while the ray it measures already
+      walked out from the current `px`/`pz`. Two positions in one measurement. Teleport
+      and raise in the same breath and the hill landed **underfoot** (+7 at hex (10,0),
+      0 at (20,0)); after one tick, correctly at (20,0). That is the exact failure the
+      handler's own ⚠ about the search bound exists to prevent, arriving by another door,
+      and the **third** instance of this family in `editor_server.loft` — the road once
+      stamped at `last_hq` too. Same fix: derive the cell from the position.
+      `probe/raise_origin.mjs`, fixed in `src/editor_server.loft`.
+    - **It was invisible even to an ack.** `ack` polls at 100 ms and a tick is ~16, so the
+      acknowledgement's own granularity covered the gap *by accident*. The probe sends
+      both commands with nothing between them — which a probe may do and a gate may not.
+    - **The ORDER of two waits is a guarantee, not a style choice.** In `road.mjs` the
+      rebuild wait goes *before* the `10:0` toggle: a placement marks dirty and acks in
+      the same handler, so when `placed` arrives the flush is necessarily still pending.
+      After the toggle there may be nothing left to wait for, and `S:rebuilt` is broadcast
+      only when `nrebuilt != 0` — so a missing rebuild is a 40-second stall, not a no-op.
+    - **`road.mjs`'s recorded `span 34` was stale**; correct code measures **33** on every
+      run. Updated to what it actually produces.
+    - Verified: **23 gates green on three consecutive full runs, every number identical**,
+      and 639 library tests pass. Only the `ack` poll's own `wait(100)` remains anywhere.
+    - ⚠ Pre-existing and unrelated: `make tests` (the npm target) fails with
+      `sh: 1: nyc: not found`. Not touched.
 
     **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
     Three of the six probes changed the design rather than confirming it, and the build turned
-    up two live defects in shipped code (the flat wheels' successor — a 9 cm bank error — and
-    the hip's wedge) plus three loft defects.
+    up **three** live defects in shipped code (the flat wheels' successor — a 9 cm bank error —
+    the hip's wedge, and the raise's once-per-tick origin) plus three loft defects.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not
