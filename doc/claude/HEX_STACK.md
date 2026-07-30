@@ -169,24 +169,41 @@ in the editor) — that is a known violation with an agreed destination, recorde
 
 ## 6. Persistence and distribution
 
-### The store must BE a loft store
+### The world must be PERSISTED AS A COLLECTION, not written out field by field
 
-⚠ **The single highest-value finding of this design.** `world_save_as` writes a hand-rolled
-little-endian byte stream:
+⚠ **The single highest-value finding of this design** — and stated precisely, because the
+first version of this section got the diagnosis wrong.
 
-```loft
-f = file(path); f#format = LittleEndian;
-f += (WORLD_MAGIC as i32); f += (WORLD_VERSION as i32); …
+**Nothing in this tree hand-rolls binary.** `world_save_as` uses loft's own **Binary File I/O**
+— `file(path)`, `f#format`, and typed `f += (x as i32)`, which is `read_data`/`write_data` in
+loft's storage layer using the store's own field encoders. Moros never touches a byte, and
+calling it "hand-rolled" was a mischaracterisation.
+
+The gap is a different one: **loft has two persistence facilities and the world uses the wrong
+one.**
+
+| facility | what it is | what it gives you |
+|---|---|---|
+| **Binary File I/O** — `file()` + typed `+=` | a chosen sequence of fields, read back by mirroring the sequence | whole-file read, nothing else |
+| **a persisted collection** — a keyed `hash<T[key]>` in a Store, plus a `.dschema` layout sidecar | loft owns the layout | `store_load_key`, `store_load_keys`, `store_load_range`, `store_load_url`, `store_load_url_trusted` — key-addressed page reads and URL loading, working in wasm through the asyncify fetch bridge |
+
+Measured, and it is the whole trick:
+
+```
+routing:  netherlands.roads.store   337,420,216 bytes
+          netherlands.roads.store.dschema     632 bytes     ← makes the 337 MB keyed-readable
+moros:    gate.hxw                         16,502 bytes
+          (no sidecar)                                       ← so no keyed read exists
 ```
 
-loft ships a durable store with `store_load`, `store_load_key`, `store_load_keys`,
-`store_load_range`, `store_load_url` and `store_load_url_trusted` — key-addressed partial
-reads and URL loading, working in wasm through the asyncify fetch bridge. **A bespoke byte
-stream forfeits all of it**: `.hxw` cannot be partially read, cannot be usefully Range-served,
-and cannot be loaded from a URL.
+loft's docs are explicit that the working-set loader **checks the `.dschema` before any
+schema-derived read**. `.hxw` has no sidecar because it was never written as a collection — so
+it can only ever be loaded whole, cannot be usefully Range-served, and cannot be loaded from a
+URL.
 
-So **the world's on-disk form is a loft store, whose keys are chunk keys.** Then partial reads,
-Range service and URL loading are inherited rather than built.
+So **the world's on-disk form is a persisted keyed collection whose key is the chunk key** —
+the same shape routing uses (`hash<PTile[tkey]>`). Partial reads, Range service and URL loading
+are then inherited rather than built.
 
 ### Serverless distribution — the proven precedent
 
@@ -341,7 +358,7 @@ tests.
 |---|---|---|
 | **the store, as a general package** | it exists as moros `lib/hex_world`, inside one consumer | the **world** group (#8), built beside |
 | **store⇄window derivation** | nothing owns the seam, because two `hex_world`s diverged and neither claimed it | with the store |
-| **the store as a loft store** (§6) | a hand-rolled byte stream was written instead | with the store |
+| **the store as a persisted collection** (§6) | the sequential file facility was used instead of the collection one | with the store |
 | **authored relief brush** (`raise_at`) | `hex_terrain` generates; nothing authors | `hex_terrain` (W.5 remainder) |
 | **density scatter** | — | `hex_terrain` or `hex_place` |
 | **the camera solve** | already recorded as a group with no home | the **view** group |
@@ -405,7 +422,7 @@ uncommitted work. Those rows are **asks, not tasks.**
 | misplaced | proper place | operation | ours or an ask |
 |---|---|---|---|
 | moros `lib/hex_world` — the column store | the **world** group (#8) | **build beside** under a brand-free name that is not `hex_world` | **ours** — one consumer, one `use` line |
-| the store's hand-rolled `.hxw` writer | a loft store keyed by chunk | rewrite (§6) | **ours** |
+| the store's `.hxw` sequential writer | a persisted keyed collection (`hash<Chunk[key]>`) with its `.dschema` | rewrite (§6) — the encoding is already loft's; the *facility* is wrong | **ours** |
 | `editor_server.loft` — `stencil_place` | `stencil_stamp_all` | **delete** once reachable; superseded, not moved | ours |
 | — `road_lay`, `road_stamp` | `track_straight` + `track_offset` + `way_stamp` | delete | ours |
 | — `snap_heading` | `snap_run_d24` / `snap_run_p` | delete | ours |
@@ -444,7 +461,7 @@ genuinely new prerequisite first.
 |---|---|---|---|
 | 1 | **Name the store package** and move it out of `lib/`, built beside, depended on by path as `moros_sim` already does for `hex_body` | §4, §14 | `lib/` holds only moros configuration; 23 gates green |
 | 2 | **`hex_grid` 0.2.0 — the axial↔offset bridge** | `CONVERGENCE.md` step 1 | round-trip identity; the third copy of the chunk arithmetic retired |
-| 3 | **Make the store a loft store**, keyed by chunk | §6 | `store_load_keys` reads one chunk without touching the rest; a URL load works in wasm |
+| 3 | **Persist the world as a keyed collection**, chunk key as the key | §6 | a `.dschema` exists beside it; `store_load_keys` reads one chunk without touching the rest; a URL load works in wasm |
 | 4 | **Store⇄window derivation**, pure and version-keyed | §11 | equal version ⇒ byte-equal window, test-enforced |
 | 5 | **Store-side authoring primitives** — `raise_at`, scatter | W.5 remainder | the editor's `brush`/`scatter` deleted |
 | 6 | **Supersede the editor's duplicates**, one tool at a time; stencil first | §12 | each deletion proved by an unchanged gate and a new library test |
@@ -491,7 +508,9 @@ store until #682 lands.
    in one session: a hand-written arc-length interpolation in a gate while `hex_way` had
    `track_distance` / `seg_param` / `way_param`; four gates re-deriving `√3` cell centres that
    `hex_grid::hex_to_px` provides; a six-phase order invented beside `W.3`–`W.8` and `L1`–`L6`;
-   and a "store⇄bundle adapter with a commit half" that I2 makes wrong.
+   a "store⇄bundle adapter with a commit half" that I2 makes wrong; and calling loft's own
+   Binary File I/O "hand-rolled", when the real fault was using the sequential facility instead
+   of the collection one.
 2. **A claim is validated where it lives.** A gate over a socket proves the *wire* still exposes
    a feature; it must never be the only place the feature is checked. Structural claims are pure
    library tests — which is also the only way to test them without a clock. A full day was spent
