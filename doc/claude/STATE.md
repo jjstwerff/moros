@@ -1603,3 +1603,20 @@ edges — neither of which the mechanism's own eight gates had caught.
     - **Next attempt starts at obstacle 2**, because it decides whether the insert is writable
       in loft today at all — and builds obstacle 3 into the design rather than finding it in a
       test.
+31. ✅ **THE BLOCKER IS FILED, AND MY DIAGNOSIS OF IT WAS WRONG.**
+    [loft#697](https://github.com/loft-lang/loft/issues/697) — *a `vector` field with a default,
+    omitted from a literal, panics the interpreter*.
+    - ⚠ **It was never a store-lifetime issue.** A 20-line standalone rebuild of a nested vector
+      through a `&` reference **works**, and keeps every marker with its cells — so the insert,
+      the part that looked hardest, is already proven. Bisecting the change in halves put the
+      breakage on **the `Column` field alone**: declared, never written, never read.
+    - **Minimised to seven lines**, with an exact boundary: a defaulted **vector** field omitted
+      from a literal panics (`index out of bounds … 28402`, `src/keys.rs:901`); supplying it
+      works; a defaulted **scalar** works; field order is irrelevant. In a larger program it
+      silently reads back **wrong** instead of panicking — which is what produced the
+      `Claim on read-only store … CONST_STORE init` message that sent me looking at lifetimes.
+    - **It blocks the column-write fix directly**, because the default is *the whole reason the
+      change is additive* — it is what lets the twelve existing `Column { … }` literals keep
+      compiling. Supplying it at every site is the workaround and defeats the point.
+    - Reproducer kept at `plans/14-props-dressing/probe/default_vector_field.loft`.
+    - Tree restored and green: **25 gates, 651 library tests**, `hex_world` 58.

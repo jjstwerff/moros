@@ -188,19 +188,26 @@ a fresh label from `ν`.
 1. **loft [#690](https://github.com/loft-lang/loft/issues/690)** — *a loop variable may not
    silently change type*. `k` is a `Chunk` elsewhere in the file, so reusing it as an index is
    now an error. Small, and the compiler names it.
-2. ⚠ **A store-lifetime refusal on the core operation**: rebuilding `ck_layers` and assigning it
-   back through `&World` raised *"Claim on read-only store (size=40), locked by CONST_STORE
-   init"*. Inserting into a nested vector of a borrowed store is exactly the family of
-   [#670](https://github.com/loft-lang/loft/issues/670) /
-   [#677](https://github.com/loft-lang/loft/issues/677) /
-   [#682](https://github.com/loft-lang/loft/issues/682), and it is the operation this change
-   cannot avoid.
+2. ⚠ **NOT a store-lifetime issue — that diagnosis was wrong, and bisecting said so.** The
+   insert itself is fine: a 20-line standalone rebuild of a nested vector through a `&`
+   reference works and keeps every marker with its cells. Applying the change in halves showed
+   the breakage came from **the `Column` field alone** — declared, never written, never read.
+   Minimised to seven lines: **a `vector` field carrying a DEFAULT, omitted from a literal,
+   panics the interpreter** (`index out of bounds … index is 28402`, `src/keys.rs:901`), and in
+   a larger program silently reads back wrong instead — which is what produced the
+   `CONST_STORE` message that sent me looking at lifetimes.
+   Filed as [loft#697](https://github.com/loft-lang/loft/issues/697); reproducer kept at
+   `plans/14-props-dressing/probe/default_vector_field.loft`. The boundary is exact: supplying
+   the field works, a defaulted **scalar** works, field order is irrelevant.
+   **This blocks the change directly**, because the default is what makes it additive — it is
+   the reason the twelve existing `Column { … }` literals keep compiling.
 3. **Dressing regressed** — *"a TERRAIN write deleted the dressing"*. `world_set_column` has a
    careful rule that a terrain write must never write the absent placeholder a read produces for
    a dressing slot; an insertion pass has to preserve it, and the first attempt did not.
 
-The next attempt should start from (2), because it decides whether the insert can be written in
-loft at all today, and build (3) into the design rather than discovering it from a test.
+So the next attempt waits on [loft#697](https://github.com/loft-lang/loft/issues/697), and
+builds (3) into the design rather than discovering it from a test. The insert — the part that
+looked hardest — is already proven to work.
 
 That is a change to the store — `lib/hex_world`, its persistence, and the contract this document
 states — and it should be made once, deliberately, with its own baselines. It is **not** a

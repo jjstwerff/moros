@@ -1,0 +1,24 @@
+// A VECTOR field with a DEFAULT, omitted from a literal, panics the interpreter.
+//
+// Filed upstream. Kept here because it blocks the column-write marker fix
+// (`WORLD_MODEL.md` § "Which layer is the surface"): that change adds exactly this
+// — a defaulted `co_ids: vector<integer>` on `Column`, so the twelve existing
+// literals keep working — and cannot proceed while it panics.
+//
+//   loft --interpret default_vector_field.loft
+//   thread 'main' panicked at src/keys.rs:901:6:
+//   index out of bounds: the len is 3 but the index is 28402
+//
+// The boundary, measured:
+//   no defaulted field ................................ ok
+//   defaulted vector, literal SUPPLIES it ............. ok
+//   defaulted vector, literal OMITS it ................ PANIC
+//   defaulted SCALAR, omitted ......................... ok
+//   defaulted vector declared FIRST, omitted .......... PANIC
+struct Item { it_a: integer, it_b: integer }
+struct Bag  { bg_x: integer, bg_items: vector<Item>, bg_ids: vector<integer> = [] }
+
+fn main() {
+  b = Bag { bg_x: 1, bg_items: [Item { it_a: 7, it_b: 40 }] };   // omits bg_ids
+  println("a={b.bg_items[0].it_a} b={b.bg_items[0].it_b}   expect 7,40");
+}
