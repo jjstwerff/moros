@@ -325,9 +325,36 @@ written and not built.** In priority order:
       nonlinear half, and the reconciliation is now in CONNECTOR's **Open**.
     **Seen red**: silent clamp (1 clause), folding through the limit (1), budget dropped to 3 (1).
 
-    **One step left: `A10`** — the editor switches over, and `cart.mjs` loses its axle clause
-    and its `1.1`. The stretch mutation is already demonstrated, and `5ffdf2c`'s `bankSigned`
-    clause is the one that must survive the switch.
+13. ✅ **`A10` — THE EDITOR IS SWITCHED**, and the diff is empty. Over four rolls on a slope,
+    fresh servers before and after, **every transform element and every pose field differ by
+    exactly 0** — `A5`'s discipline applied to the real switch. All 23 gates green.
+    - **The wheel offset went from THREE homes to one**: render transform, contact solve and
+      `cart.mjs`'s `1.1` → `asm_cart`, read by `asm_frames` and `body_axle`. The radius comes
+      from the rig's `rg_len`.
+    - **`cart.mjs` lost its axle clause and its `1.1`.** `A-RIGID` is a property test with a
+      `scale` knob; asserting the axle in a browser would re-check the library's arithmetic.
+      What stays is what needs a running world: the wheel arithmetic, the gap, `bankSigned`.
+    - **The base frame no longer negates the bank** — `ground_frame` is Rodrigues, in the same
+      sense as `sin β = d/2w`, so the compensation for mesh3d's transposed `rotate_x` is gone.
+    - ⚠ **The yaw's sense is now the standard one and was reversed before.** Unobservable
+      today (`cart_yaw` ≡ 0 — exactly why `P1` could not pin it), and the thing to know when
+      something first turns the cart.
+    ⚠ **The solve switch is NOT done**, and [loft#682](https://github.com/loft-lang/loft/issues/682)
+    is why: `ground_axle` takes the terrain as a **function**, and a lambda capturing the
+    `World` **panics the interpreter**. Isolated in three runs (import alone fine, capture
+    crashes, capture removed fine), and ⚠ the panic surfaces in `edges_around`'s `edgeset_new`
+    ~900 lines away, so the reported site is useless for bisecting. **Third store-lifetime
+    defect this plan hit** — #670, #677, #682, all "a value that outlives the expression that
+    made it, reached indirectly". The editor keeps its own copy of the fixed point until it
+    lands; everything else on the cart's path is the library's.
+    ⚠ **And `field.mjs` is timing-sensitive** — `fieldVerts` seen at 3150, 1458 and once **0**
+    on identical code, the 0 failing the gate. Reproduced on `HEAD`, so not the switch, but it
+    will keep costing red runs until it waits on the rebuild acknowledgement.
+
+    **PLAN 14 IS COMPLETE: A0–A10, every probe and every step.** 639 library tests, 23 gates.
+    Three of the six probes changed the design rather than confirming it, and the build turned
+    up two live defects in shipped code (the flat wheels' successor — a 9 cm bank error — and
+    the hip's wedge) plus three loft defects.
 2. **✋ STILL UNWALKED: look at the wasm client.** `make play-fast`, then
    `http://127.0.0.1:18090/client` through the tunnel, beside `/` for the JavaScript one.
    ⚠ **Click the canvas before pressing a key** — loft's shell binds keys to the canvas, not

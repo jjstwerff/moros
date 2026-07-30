@@ -89,15 +89,12 @@ ws.onmessage = async (e) => {
     await wait(200);
     for (let k = 0; k < 5; k++) { ws.send('5:1'); await wait(150); }
 
-    const poses = [], axles = [], axleEnds = [];
+    const poses = [], axleEnds = [];
     for (let k = 0; k < 10; k++) {
       ws.send('17:1.5');
       poses.push(await ack('cart pose'));
-      if (wheelL && wheelR) {
-        axles.push(Math.hypot(
-          wheelL[0] - wheelR[0], wheelL[1] - wheelR[1], wheelL[2] - wheelR[2]));
-        axleEnds.push({ l: wheelL.slice(), r: wheelR.slice() });
-      } else { axleEnds.push(null); }
+      if (wheelL && wheelR) axleEnds.push({ l: wheelL.slice(), r: wheelR.slice() });
+      else axleEnds.push(null);
     }
     const gaps = poses.flatMap(p => [num(p, 'gapl'), num(p, 'gapr')]);
     const banks = poses.map(p => Math.abs(num(p, 'bank')));
@@ -126,18 +123,29 @@ ws.onmessage = async (e) => {
 
     // a wheel is ON the ground: a millimetre, not a hand's width
     const grounded = gaps.every(g => Number.isFinite(g) && Math.abs(g) < 1e-3);
-    // the axle is rigid — 2 x CART_HALF_W, whatever the bank
-    const rigid = axles.every(l => Math.abs(l - 1.1) < 1e-9);
+    // ── ⚠ THE AXLE CLAUSE AND ITS `1.1` ARE GONE — `A10` ────────────────────
+    //
+    // It used to assert `|axle - 1.1| < 1e-9` from the two wheel transforms. That
+    // literal was the THIRD home of a number the design's re-assertion table
+    // counted: the render transform, the contact solve, and here. The editor now
+    // reads it from the mount (`asm_cart` names it once, `asm_frames` and
+    // `body_axle` read it), so a gate restating it would be asserting the
+    // library's own arithmetic in a browser — and `A-RIGID` is already a property
+    // test over generated point pairs and joint values, with a `scale` knob that
+    // makes it fail. A stretch is caught there, not here.
+    //
+    // What stays is what genuinely needs a running world: the wheel's arithmetic,
+    // the GAP (which needs terrain), and `bankSigned` (which needs the emitted
+    // transforms). That is the shrinking the design predicted for this step.
     // ...and the run actually met a slope, or the three clauses above are void
     const banked = banks.some(b => b > 1e-3);
     const worstGap = Math.max(...gaps.map(Math.abs));
     const maxBank = Math.max(...banks);
 
-    const ok = doubles && closes && noSlip && grounded && rigid && banked
-               && bankSigned;
+    const ok = doubles && closes && noSlip && grounded && banked && bankSigned;
     console.log(JSON.stringify({ a, b2, back, v1, v2, v0, t0, skid,
                                  doubles, closes, noSlip,
-                                 worstGap, maxBank, grounded, rigid, banked,
+                                 worstGap, maxBank, grounded, banked,
                                  worstHubRel, bankSigned, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };

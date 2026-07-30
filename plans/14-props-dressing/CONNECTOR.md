@@ -360,7 +360,7 @@ deliberate-defect term precisely so `wheel_skid` cannot pass vacuously.
 | **A9** ✅ | per-body shape and proxy | `A-PROXY` (`I4`) | a shape one size too small; containment must catch it | M |
 | **A9b** ✅ | **joint overlap** — `A-SKIN` as a constructor rule, applied first to the character's hip | `A-SKIN` | sweep the joint's full range; a rendered gap at any value is red. The hip's current wedge is the standing negative control | M |
 | **A9c** ✅ | a `SOLVED` state — the wing's bend from a load, on the `A6` solver shape | `A-DOF` with a `SOLVED` term | drive the load past the joint limits: it must refuse with a residual, not fold through itself | L |
-| **A10** | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
+| **A10** ✅ | the editor switches over; `cart.mjs` loses its axle clause and its `1.1` | the whole thing, in a running world | the stretch mutation (**already demonstrated**) | M |
 
 **A2 before any geometry.** The ledger is a few lines, it needs no frames, and it is
 the step that would have caught the original design: run it on the balloon case and
@@ -1300,8 +1300,59 @@ letting the joint fold through its limit, and dropping the budget to `A6`'s thre
 
 ---
 
+### `A10` — SWITCHED. Bit-identical, and the `1.1` is gone
+
+`cart_send` composes through the library now, and the switch is **behaviour-preserving to
+the bit**: over four rolls on a slope, from fresh servers before and after, every transform
+element and every pose field differ by **exactly 0**. That is `A5`'s discipline applied to
+the real switch — *"that turns 'did I break the cart' into a diff"*, and the diff is empty.
+
+**What moved:**
+
+| | before | after |
+|---|---|---|
+| the wheel offset | render transform · contact solve · `cart.mjs`'s `1.1` — **three homes** | `asm_cart`, read by `asm_frames` and `body_axle` — **one** |
+| the wheel radius | `CART_RADIUS`, twice | the rig's `rg_len`, via `body_axle` |
+| the base frame | `T · Ry_mesh(yaw) · Rx_mesh(−bank)`, with the negation compensating for a transposed rotation | `ground_frame`, Rodrigues, **no negation** |
+| the gap | `y ± half·sin(bank)`, re-derived | the hub through the frame, terrain sampled under it |
+| **`cart.mjs`'s axle clause** | `\|axle − 1.1\| < 1e-9` | **deleted** — `A-RIGID` is a property test with a `scale` knob |
+
+**`cart.mjs` shrank to what genuinely needs a running world**: the wheel's arithmetic, the
+GAP (which needs terrain), and `bankSigned` (which needs the emitted transforms). Asserting
+the axle in a browser would have been re-checking the library's own arithmetic. **All 23
+gates green.**
+
+⚠ **The yaw's sense is now the standard one, and it was reversed before.** mesh3d's
+`rotate_y` turns about `−y`, so the old composition and the solve's sampling direction both
+carried that; the library is Rodrigues throughout. **Unobservable today** — `cart_yaw` is
+never anything but 0, which is exactly why `P1` could not pin it — and the thing to know when
+something first turns the cart.
+
+⚠ **The full switch is NOT done, and a loft defect is why.** `ground_axle` takes the terrain
+as a **function**, which is what lets it be a pure function of its arguments; supplying that
+from the editor means a lambda capturing the `World`, and **that panics the interpreter** —
+filed as [loft#682](https://github.com/loft-lang/loft/issues/682). Isolated in three runs: the
+import alone is fine, the capture crashes, removing the capture fixes it. ⚠ And the panic
+surfaces in `edges_around`'s `edgeset_new`, ~900 lines from the closure, so the reported site
+is useless for bisecting. **Third store-lifetime defect this plan has hit** (#670, #677, #682)
+— all three "a value that outlives the expression that made it, reached indirectly".
+
+So the editor keeps its own copy of the fixed point for now, with the library's numbers and
+the library's frame. The composition, the offsets and the gap are switched; the *solve* is the
+one piece still duplicated, and it is duplicated for a reason that is written down.
+
+---
+
 ## Open
 
+- **Finish `A10`'s solve switch when [loft#682](https://github.com/loft-lang/loft/issues/682)
+  lands.** The editor still runs its own copy of `A6`'s fixed point because a lambda capturing
+  a `World` panics the interpreter. Everything else on the cart's path is the library's.
+- ⚠ **`field.mjs` is timing-sensitive**, and this step is how that surfaced: its `fieldVerts`
+  was seen at 3150, 1458 and once **0** on identical code, and the 0 fails the gate. The mesh
+  arrives some ticks after the world changes, and the gate does not wait for the rebuild
+  acknowledgement the way the others learned to. Not caused by the switch — reproduced on
+  `HEAD` — but it will keep costing a red run until it waits on what the server SAYS.
 - **Reconcile `A9c`'s indexing with `P6`'s.** `asm_cantilever` and `bend_bones.loft` discretise
   the same beam with the hinge and load positions offset by half a segment, so the library's
   bend cannot yet be checked against `wL⁴/8EI` directly — only against itself. Neither is

@@ -28,6 +28,13 @@ use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band i
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
+// ⚠ QUALIFIER ONLY, never a bare or selective `use`: `moros_sim` reaches
+// `hex_field`, which has its own `edgeset_new` beside the `hex_edge` one this file
+// means. A qualifier adds no bare name at all.
+//
+// `A10`: the cart's structure and its transforms come from the assembly library.
+// `CART_HALF_W` and `CART_RADIUS` are named ONCE, in `asm_cart`.
+use moros_sim as msim;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
 // wherever you ask for one, and the ground you can see is derived around the
@@ -1892,16 +1899,34 @@ fn triggers_resolve(trigs: vector<Trigger>, wld: World, srv: Server) {
 // nothing else. A cart that should also nose up a hill needs a second contact
 // along the travel axis — shafts, or a second axle — and inventing a pitch from
 // one axle would be a number with no measurement under it.
-fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: World) {
+// A `Frame` on the wire: the same twelve numbers in the same column-major order as
+// a mesh3d `Mat4`, so it goes straight out rather than through a conversion that
+// could transpose something — which is exactly the class `A5` found.
+fn frame_wire(f: msim::Frame) -> text {
+  "{f.fm_r.r11},{f.fm_r.r21},{f.fm_r.r31},0,"
+    + "{f.fm_r.r12},{f.fm_r.r22},{f.fm_r.r32},0,"
+    + "{f.fm_r.r13},{f.fm_r.r23},{f.fm_r.r33},0,"
+    + "{f.fm_x},{f.fm_y},{f.fm_z},1"
+}
+
+// `cval` is in TURNS — `hex_body`'s unit and the library's, so `wheel_value`'s
+// output drops straight in with no conversion to get wrong.
+fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
+             cyaw: float, cval: float, wld: World) {
   // The axle runs ACROSS the travel direction: yaw, turned a quarter.
-  cs_ax = 0.0 - sin(cyaw);
+  // the axle runs ACROSS the travel direction. ⚠ `+sin`, matching `ground_axle`'s
+  // own convention — the old `−sin` matched mesh3d's transposed `rotate_y`, and the
+  // solve must sample where the FRAME will actually put the wheels.
+  cs_ax = sin(cyaw);
   cs_az = cos(cyaw);
+  ax = msim::body_axle(casm, 0);
+  cs_rad = ax.ax_radius;
   // A FIXED POINT, because where the wheels touch depends on the bank and the
   // bank depends on where they touch. Level is the seed; on the ground this
   // editor makes, two rounds move the answer by less than a millimetre.
   cs_bank = 0.0;
-  cs_y = CART_RADIUS;
-  cs_half = CART_HALF_W;
+  cs_y = cs_rad;
+  cs_half = ax.ax_half;
   for cs_it in 0..3 {
     cs_reach = cs_half * cos(cs_bank);        // the axle's horizontal half-span
     cs_gl = terrain_y(cx - cs_ax * cs_reach, cz - cs_az * cs_reach, wld);
@@ -1918,7 +1943,7 @@ fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: W
       break;
     }
     cs_bank = atan2(cs_d, sqrt(cs_flat) ?? 0.0);
-    cs_y = (cs_gl + cs_gr) * 0.5 + CART_RADIUS;
+    cs_y = (cs_gl + cs_gr) * 0.5 + cs_rad;
   }
   // ⚠ THE BANK IS NEGATED HERE, AND THAT IS A CONVENTION CONVERSION, NOT A FUDGE.
   // mesh3d's `mat4_rotate_x` is `[[1,0,0],[0,c,s],[0,-s,c]]` — a rotation about
@@ -1927,39 +1952,43 @@ fn cart_send(srv: Server, cx: float, cz: float, cyaw: float, roll: float, wld: W
   // directly banked the cart THE WRONG WAY: measured, one wheel floated 0.0914 wu
   // and the other sank the same, on a 4.8° slope, while `gapl`/`gapr` both read
   // zero because they re-derived the lift instead of reading the matrix.
-  base = mat4_mul(mat4_mul(mat4_translate(cx, cs_y, cz), mat4_rotate_y(cyaw)),
-                  mat4_rotate_x(0.0 - cs_bank));
-  srv.broadcast("T:{CART_BODY};{mat_wire(base)}");
-  srv.broadcast("T:{CART_WHEEL_L};{mat_wire(mat4_mul(mat4_mul(base,
-                  mat4_translate(0.0, 0.0, 0.0 - CART_HALF_W)), mat4_rotate_z(roll)))}");
-  srv.broadcast("T:{CART_WHEEL_R};{mat_wire(mat4_mul(mat4_mul(base,
-                  mat4_translate(0.0, 0.0, CART_HALF_W)), mat4_rotate_z(roll)))}");
+  // ── `A10`: the frames come from the assembly ──────────────────────────────
+  //
+  // ⚠ **NO NEGATION, and that is the point.** The old line composed through
+  // mesh3d's `mat4_rotate_x`, which turns about **−x**, so the solved bank had to
+  // be negated to compensate — and getting that wrong is what left one wheel
+  // floating 0.0914 wu for a whole rung. `ground_frame` is Rodrigues throughout,
+  // in the same sense as `sin β = d/2w`, so the bank goes in as solved.
+  //
+  // ⚠ The YAW's sense is reversed by the same change. Unobservable today, because
+  // `cart_yaw` is never anything but 0 — and the thing to know when something
+  // first turns the cart. `cs_ax`/`cs_az` above were set to match.
+  base = msim::ground_frame(cx, cs_y, cz, cyaw, cs_bank);
+  // ⚠ **THE WHEEL OFFSET IS READ FROM THE MOUNT.** The re-assertion-site table
+  // gave this quantity THREE homes — the render transform, the contact solve, and
+  // a literal in the gate. `asm_frames` reads it from the assembly, `body_axle`
+  // derives the solve's half-axle from the same mounts, and `cart.mjs` has lost
+  // its `1.1`. One home, in `asm_cart`.
+  cf = msim::asm_frames(casm, [0.0, cval, cval], base);
+  if len(cf) < 3 {
+    println("editor: the cart assembly is not poseable");
+    return;
+  }
+  srv.broadcast("T:{CART_BODY};{frame_wire(cf[0] ?? base)}");
+  srv.broadcast("T:{CART_WHEEL_L};{frame_wire(cf[1] ?? base)}");
+  srv.broadcast("T:{CART_WHEEL_R};{frame_wire(cf[2] ?? base)}");
   // WHAT A GATE NEEDS AND A PICTURE CANNOT SHOW. A cart hovering a hand's width
-  // over a slope, or sunk into it, is the failure this whole solve exists to
-  // prevent — and it reads as a perfectly good cart from every camera angle.
-  // So report the two numbers that decide it:
+  // over a slope reads as a perfectly good cart from every camera angle.
   //
-  //   gap  — each wheel's lowest point minus the ground under it. Zero, or the
-  //          wheel is not on the ground, whatever the render suggests.
-  //
-  // ⚠ THE AXLE LENGTH IS DELIBERATELY NOT REPORTED HERE. Derived from
-  // `cs_bank` it would be `2·half·√(cos²+sin²)` — the answer 2w for every
-  // input, a clause that cannot fail and therefore measures nothing. Crawler
-  // gates its con-rod because a stretching linkage still MOVES convincingly;
-  // the honest form of that check reads the two wheel transforms actually put
-  // on the wire, so it lives in `cart.mjs`, where those messages arrive.
-  // ⚠ READ FROM `base`, NOT RE-DERIVED. `base`'s third column is the axle's own
-  // direction, so `m[9]` IS the lift per unit of half-axle that the transform
-  // actually applies — and the wheels are placed by that same matrix. The old form
-  // computed `cs_half * sin(cs_bank)` independently, which is how a sign flip in
-  // the rotation could leave both gaps reading zero while the wheels were 9 cm out.
-  // Same lesson as the axle clause: measure what was emitted.
-  cs_lift = 0.0 - cs_half * (base.m[9] ?? 0.0);
-  cs_span = cs_half * cos(cs_bank);
-  cs_el = cs_y + cs_lift - CART_RADIUS
-          - terrain_y(cx - cs_ax * cs_span, cz - cs_az * cs_span, wld);
-  cs_er = cs_y - cs_lift - CART_RADIUS
-          - terrain_y(cx + cs_ax * cs_span, cz + cs_az * cs_span, wld);
+  // ⚠ The hub comes out of the FRAME and the terrain is sampled under IT — not
+  // from a re-derived `y ± half·sin(bank)`, which is how both gaps could report
+  // zero while the wheels were 9 cm out. `A6`'s `ground_gap` is the same
+  // expression; it is inlined here only because a closure over a `World` panics
+  // the interpreter (loft#682), so the terrain cannot yet be passed as a function.
+  hl = msim::frame_apply(cf[1] ?? base, vec3(0.0, 0.0, 0.0));
+  hr = msim::frame_apply(cf[2] ?? base, vec3(0.0, 0.0, 0.0));
+  cs_el = hl.y - cs_rad - terrain_y(hl.x, hl.z, wld);
+  cs_er = hr.y - cs_rad - terrain_y(hr.x, hr.z, wld);
   srv.broadcast("S:cart pose y {cs_y} bank {cs_bank} gapl {cs_el} gapr {cs_er}");
 }
 
@@ -2991,6 +3020,9 @@ fn main() {
   // incremental re-derivation obligation, not a rewrite of this shape.
   fh = figure_wu();
   hd = head_wu();
+  // ⚠ THE CART, AS DATA, BUILT ONCE — the only place its half-axle and radius are
+  // named on the whole path. `A10`.
+  cart_asm = msim::asm_cart(CART_HALF_W, CART_RADIUS);
   leg = limb_mesh("leg", hip_wu(), leg_w(), leg_w());
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();
@@ -3146,7 +3178,7 @@ fn main() {
                                   vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
           srv.send_to(ev.cid, "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
           srv.send_to(ev.cid, "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
-          cart_send(srv, cart_x, cart_z, cart_yaw, 0.0, wld);
+          cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, 0.0, wld);
           println("editor: client {ev.cid} — figure sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
@@ -3414,7 +3446,7 @@ fn main() {
           cval = hex_body::wheel_value(cart_travel, CART_RADIUS, cart_slip);
           cang = hex_body::wheel_angle(cval);
           cskid = hex_body::wheel_skid(CART_RADIUS, cval, cart_travel);
-          cart_send(srv, cart_x, cart_z, cart_yaw, cang, wld);
+          cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, cval, wld);
           srv.send_to(ev.cid,
             "S:cart travel {cart_travel} value {cval} angle {cang} skid {cskid}");
           println("editor: cart travel {cart_travel} angle {cang} skid {cskid}");
