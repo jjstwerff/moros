@@ -47,3 +47,4 @@ src/.loft/
 # DELETE a real file (loft recorded exactly that happening across repos).
 lib/*/tests/*.bin
 lib/*/probe/*.bin
+shots/

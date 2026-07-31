@@ -188,8 +188,21 @@ function draw() {
       gl.drawArrays(gl.TRIANGLES, 0, p.count);
     }
   }
+  // ⚠ THE CAPTURE HAPPENS HERE, NOT IN THE KEY HANDLER. A WebGL canvas without
+  // `preserveDrawingBuffer` is cleared the moment the frame is presented, so
+  // `toDataURL` called from a keydown reads back a blank image — the classic way
+  // to ship a screenshot tool that always photographs nothing. Taking it inside
+  // the draw loop, immediately after rendering, is correct and costs no frame
+  // time on the frames that do not snapshot.
+  if (snapWanted) {
+    snapWanted = false;
+    const url = cv.toDataURL('image/png');
+    ws.send('31:' + url.slice(url.indexOf(',') + 1));
+    hud.textContent = 'snapshot sent — ask Claude to look';
+  }
   requestAnimationFrame(draw);
 }
+let snapWanted = false;
 
 // Non-null only while a rebuild transaction is open — see the `Z:` handler.
 let staging = null;
@@ -235,7 +248,7 @@ ws.onmessage = (ev) => {
     fog = { c: v.slice(0, 3), from: v[3], to: v[4], sky: v.slice(5, 8) };
   }
   else if (tag === 'E') {
-    hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level · F fence · G ring · R wall run · E/Q step · B/C storey';
+    hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level · F fence · G ring · R wall run · E/Q step · B/C storey · $ snapshot';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {
@@ -306,6 +319,10 @@ addEventListener('keydown', (e) => {
   // zigzags along their edges by construction. They are different tools, and the
   // straight one had no key at all.
   if (e.code === 'KeyR') { ws.send('25:1');  e.preventDefault(); return; }
+  // $ — photograph exactly what I am looking at, and dump the state behind it.
+  // The picture and the numbers land together on the server's disk, so a report
+  // of "it looks wrong" arrives with everything needed to explain it.
+  if (e.key === '$') { snapWanted = true; e.preventDefault(); return; }
   const b = KEYS[e.code]; if (!b || (held & b)) return;
   held |= b; e.preventDefault(); sendKeys();
 });

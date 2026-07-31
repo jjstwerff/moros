@@ -308,6 +308,19 @@ const MSG_LABELS = 29;
 // 12 units and a stride is 4, so three steps and a deck is somewhere you can stand
 // rather than somewhere the model merely permits. See `stair_cut`.
 const MSG_STAIR = 30;
+// ── `$` — PHOTOGRAPH WHAT THE AUTHOR IS LOOKING AT, WITH ITS STATE ───────────
+//
+// The payload is the canvas as base64 PNG, captured by the client inside its draw
+// loop (a WebGL canvas without `preserveDrawingBuffer` reads back BLANK from a key
+// handler — the classic way to ship a screenshot tool that photographs nothing).
+// The server writes it beside a text dump of everything behind the picture: where
+// the character is, which layer it is standing on, the columns and edges around
+// it, the runs, the camera.
+//
+// **Why the pair and not just the picture.** "It looks wrong" and "here are the
+// numbers" arrive in different messages otherwise, and the numbers are always for
+// a different moment. One key, one instant, both halves.
+const MSG_SNAP = 31;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -3675,6 +3688,7 @@ fn main() {
   coll_surf = 0 - 1;                  // tick always builds
   coll_have = false;
 
+  sn_n = 0;                    // snapshots taken this session — `$` on the client
   levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
   level_h = 0;                 // the frozen foot height, in height units
@@ -3905,6 +3919,68 @@ fn main() {
                     + "{st_here} -> {st_new}");
             }
           }
+        } else if ev.msg_id == MSG_SNAP {
+          // ⚠ THE PICTURE AND THE NUMBERS ARE ONE INSTANT. The payload arrived from
+          // the frame the author was looking at; everything read here is the state
+          // that produced it. Splitting them across two messages would report a
+          // pose from a later tick, which is the whole failure this replaces.
+          sn_n = sn_n + 1;
+          sn_hx = world_to_hex(px, pz);
+          sn_ref = walk_h(sn_hx.ha_q, sn_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
+          sn_sf = hex_world::world_surface(wld, sn_hx.ha_q, sn_hx.ha_r,
+                                           py / HEIGHT_SCALE ?? 0.0);
+          sn_txt = "snapshot {sn_n}\n"
+            + "character  x {px}  z {pz}  y {py}  yaw {yaw}\n"
+            + "cell       {sn_hx.ha_q},{sn_hx.ha_r}\n"
+            + "surface    height {sn_sf.sf_units} units ({(sn_sf.sf_units as float) * HEIGHT_SCALE} wu)"
+            + "  layer {sn_sf.sf_layer}  occupied {sn_sf.sf_occ}  smooth {sn_sf.sf_smooth}\n"
+            + "reference  {sn_ref} units — what every 'which layer' question is asked with\n"
+            + "outdoors   {terrain_h(sn_hx.ha_q, sn_hx.ha_r, wld)} units (the GROUND label)\n"
+            + "camera     boom {cam_dist}  free {cam_free_last}  pitch {cam_pitch}"
+            + "  rested {cam_rested}  residual {cam_res_d},{cam_res_p}\n"
+            + "modes      levelling {levelling} (grade {level_h})  roading {roading}"
+            + " (grade {road_h})\n"
+            + "wall runs  {len(wall_runs.items)}\n";
+          for sn_run in wall_runs.items {
+            sn_txt += "  run mat {sn_run.wr_mat} heading {sn_run.wr_step}/24"
+                    + "  ({sn_run.wr_x0},{sn_run.wr_z0}) -> ({sn_run.wr_x1},{sn_run.wr_z1})\n";
+          }
+          sn_txt += "draft open {wall_draft.wd_open}"
+                  + " at ({wall_draft.wd_x},{wall_draft.wd_z})\n";
+          sn_txt += "\ncolumns around the character — heights / labels / owned edges\n";
+          for sn_dr in (0 - 2)..3 {
+            for sn_dq in (0 - 2)..3 {
+              sn_q = sn_hx.ha_q + sn_dq;
+              sn_r = sn_hx.ha_r + sn_dr;
+              if hex_grid::hex_distance(sn_q, sn_r, sn_hx.ha_q, sn_hx.ha_r) <= 2 {
+                sn_col = world_column(wld, sn_q, sn_r);
+                sn_hs = "";
+                for sn_e in sn_col.co_cells {
+                  if hex_world::hex_occupied(sn_e) {
+                    if sn_hs != "" { sn_hs += ","; }
+                    sn_hs += "{sn_e.h_height}:{sn_e.h_material}";
+                  }
+                }
+                sn_ids = "";
+                for sn_i in sn_col.co_ids {
+                  if sn_ids != "" { sn_ids += ","; }
+                  sn_ids += "{sn_i}";
+                }
+                sn_txt += "  {sn_q},{sn_r}  h/mat [{sn_hs}]  labels [{sn_ids}]"
+                        + "  edges [{walls_text(wld, sn_q, sn_r)}]\n";
+              }
+            }
+          }
+          sn_info = file("../shots/shot-{sn_n}.txt");
+          sn_info.write(sn_txt);
+          // ⚠ The PNG is left as BASE64 on purpose. Decoding it would need a
+          // decoder in the server for a debugging convenience; `base64 -d` is one
+          // shell command on the side that reads it, and keeping the server free
+          // of it means the snapshot cannot fail on a codec.
+          sn_png = file("../shots/shot-{sn_n}.b64");
+          sn_png.write(ev.payload);
+          srv.send_to(ev.cid, "S:snapshot {sn_n} written ({len(ev.payload)} b64 chars)");
+          println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64");
         } else if ev.msg_id == MSG_COLUMN {
           // A read-back, because a structure is INVISIBLE: floors and roofs carry
           // FLOOR_MAT, and the renderer draws ground, road, field and vegetation.
