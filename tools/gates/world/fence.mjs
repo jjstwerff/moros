@@ -24,8 +24,8 @@ const status = [];
 let st = 0;
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }

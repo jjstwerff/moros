@@ -20,8 +20,8 @@ let st = 0, body = null, tCount = 0;
 const trace = [];
 const ack = async (p, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find((x) => x.startsWith(p));
     if (m) return m;
   }
@@ -29,9 +29,9 @@ const ack = async (p, limitMs = 40000) => {
 };
 const nextT = async (limitMs = 1500) => {
   const before = tCount;
-  for (let t = 0; t < limitMs; t += 5) {
+  for (let t = 0; t < limitMs; t += 1) {
     if (tCount !== before) return true;
-    await wait(5);
+    await wait(1);
   }
   return false;
 };

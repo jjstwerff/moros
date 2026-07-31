@@ -35,8 +35,8 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
 // wiped world as still 6.25 about one run in five.
 const ack = async (match, limitMs = 8000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     if (status.slice(from).some(x => x.includes(match))) return true;
   }
   console.error(`ack: server never said "${match}" in ${limitMs}ms`);

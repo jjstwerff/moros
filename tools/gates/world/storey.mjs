@@ -23,8 +23,8 @@ let st = 0; const status = [];
 // wait for the acknowledgement.
 const ackStorey = async (limitMs = 30000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.startsWith('storey'));
     if (m) return m;
   }
@@ -36,8 +36,8 @@ const lastStorey = () => [...status].reverse().find(x => x.startsWith('storey'))
 // and this gate reads no mesh. See doc/claude/WIRE_PROTOCOL.md.
 const ack = async (p, limitMs = 30000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.startsWith(p));
     if (m) return m;
   }

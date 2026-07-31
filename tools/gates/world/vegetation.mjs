@@ -62,8 +62,8 @@ const lastCount = () => {
 // what happens when a gate waits on the clock instead.
 const ackS = async (needle, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
@@ -76,8 +76,8 @@ const rebuilt = () => ackS('rebuilt');
 
 const ack = async (limitMs = 6000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     if (status.slice(from).some(x => x.startsWith('scattered'))) return true;
   }
   return false;

@@ -35,8 +35,8 @@ let st = 0, view = null, body = null, cViews = 0;
 const settleFailures = [];
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
@@ -109,9 +109,9 @@ const restQuery = async () => {
 const freshView = async (limitMs = 8000) => {
   const before = cViews;
   ws.send('2:1.5,');
-  for (let t = 0; t < limitMs; t += 10) {
+  for (let t = 0; t < limitMs; t += 2) {
     if (cViews !== before) return true;
-    await wait(10);
+    await wait(2);
   }
   return false;
 };

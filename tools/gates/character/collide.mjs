@@ -42,8 +42,8 @@ const settleFailures = [];
 const TARGET = 12.0;      // wu asked of an unobstructed walk; > fenceAt + 1
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
@@ -61,9 +61,9 @@ const posOf = () => (body ? [body[12], body[14]] : [NaN, NaN]);
 const freshPos = async (limitMs = 8000) => {
   const before = tCount;
   ws.send('2:1.5,');
-  for (let t = 0; t < limitMs; t += 10) {
+  for (let t = 0; t < limitMs; t += 2) {
     if (tCount !== before) return posOf();
-    await wait(10);
+    await wait(2);
   }
   return null;
 };
@@ -78,9 +78,9 @@ const restingPos = async (limit = 200) => {
 };
 const nextT = async (limitMs = 8000) => {
   const before = tCount;
-  for (let t = 0; t < limitMs; t += 5) {
+  for (let t = 0; t < limitMs; t += 1) {
     if (tCount !== before) return true;
-    await wait(5);
+    await wait(1);
   }
   return false;
 };

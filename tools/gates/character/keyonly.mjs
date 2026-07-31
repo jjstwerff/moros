@@ -26,9 +26,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Distinct values of `arr` reaching `n`, or the bound elapsing. The expiry is the
 // gate's red path — a strafing A/D never turns, and must not hang.
 const until = async (arr, n, limitMs = 15000) => {
-  for (let t = 0; t < limitMs; t += 20) {
+  for (let t = 0; t < limitMs; t += 2) {
     if (new Set(arr).size >= n) return true;
-    await wait(20);
+    await wait(2);
   }
   return false;
 };

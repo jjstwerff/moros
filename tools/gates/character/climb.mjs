@@ -28,9 +28,9 @@ const posOf = () => (body ? [body[12], body[13], body[14]] : null);
 const freshPos = async (limitMs = 8000) => {
   const before = tCount;
   ws.send('2:1.5,');
-  for (let t = 0; t < limitMs; t += 10) {
+  for (let t = 0; t < limitMs; t += 2) {
     if (tCount !== before) return posOf();
-    await wait(10);
+    await wait(2);
   }
   return null;
 };
@@ -48,9 +48,9 @@ const restingPos = async (limit = 200) => {
 };
 const nextT = async (limitMs = 8000) => {
   const before = tCount;
-  for (let t = 0; t < limitMs; t += 5) {
+  for (let t = 0; t < limitMs; t += 1) {
     if (tCount !== before) return true;
-    await wait(5);
+    await wait(1);
   }
   return false;
 };

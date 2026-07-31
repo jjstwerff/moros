@@ -23,8 +23,8 @@ const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
-  for (let t = 0; t < limitMs; t += 100) {
-    await wait(100);
+  for (let t = 0; t < limitMs; t += 2) {
+    await wait(2);
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
