@@ -82,6 +82,7 @@ const nextT = async (limitMs = 20000) => {
 const place = async (x, z, yaw) => { ws.send(`7:${x},${z},${yaw}`); return ack('placed'); };
 const col = async (q, r) => { ws.send(`15:${q},${r}`); return ack(`column ${q},${r} =`); };
 const labels = async (q, r) => { ws.send(`29:${q},${r}`); return ack(`labels ${q},${r} =`); };
+const walls = async (q, r) => { ws.send(`16:${q},${r}`); return ack(`walls ${q},${r} =`); };
 const nums = (m) => { const v = m.slice(m.indexOf('=') + 1).trim();
   return v === '' ? [] : v.split(',').map(Number); };
 const num = (m, key) => { const p = m.split(' '); return Number(p[p.indexOf(key) + 1]); };
@@ -206,6 +207,36 @@ ws.onmessage = async (e) => {
     // feet were measured at rather than merely somewhere.
     const drawn = floorHeights();
 
+    // ── AN EDGE BELONGS TO THE SURFACE IT BOUNDS. Ring a fence from up here: the
+    // bytes must land on the DECK's cell, the ground below must stay unfenced, and
+    // the walker must be stopped by it while still standing at deck height.
+    // Radius 1 so the whole ring sits inside the platform — a radius that reached
+    // the platform's rim would confound "the fence stopped me" with "the deck ran
+    // out and I fell".
+    await place(6 * HEX, 0, 0);
+    ws.send('23:3,1'); const fenced = await ack('fenced');
+    await ack('rebuilt');
+    const ringWalls = [];
+    for (const q of [5, 6, 7]) ringWalls.push(await walls(q, 0));
+
+    // walk east into it, from the deck
+    await place(6 * HEX, 0, 0);
+    await nextT();
+    const f0 = trace.length - 1;
+    ws.send('4:1');
+    let fstuck = 0, fx = trace[trace.length - 1][0];
+    for (let k = 0; k < 4000; k++) {
+      if (!(await nextT())) break;
+      const x = trace[trace.length - 1][0];
+      if (x >= 16.0) break;
+      if (Math.abs(x - fx) < 0.001) { fstuck += 1; if (fstuck >= 40) break; }
+      else fstuck = 0;
+      fx = x;
+    }
+    ws.send('4:0');
+    await nextT();
+    const fenceWalk = trace.slice(f0);
+
     // ── ON the deck, cut one more step: the DECK must take the write.
     // ⚠ PLACED, NOT WALKED, and for the same reason — a walk cannot be stopped on a
     // cell. A teleport carries `py` as its reference, so going up the stair first is
@@ -278,9 +309,29 @@ ws.onmessage = async (e) => {
     // where the floor stops.
     const deckHasASide = drawn.includes(+((DECK - FLOOR_THICK) * UNIT).toFixed(3));
 
+    // ⚠ `walls q,r =` prints ONE TRIPLE PER PRESENT CELL, in layer order — so the
+    // first is the ground and the second the deck. The claim is both halves at
+    // once: the material is in the deck's triple and the ground's is untouched.
+    const triples = (m) => m.slice(m.indexOf('=') + 1).trim().split(';');
+    const fenceOnTheDeck =
+      fenced.startsWith('fenced') && num(fenced, 'fenced') > 0
+      && ringWalls.every((m) => (triples(m)[0] ?? '').split(',').every((v) => Number(v) === 0))
+      && ringWalls.some((m) => (triples(m)[1] ?? '').split(',').some((v) => Number(v) === 3));
+    // and it stops the walker up there — still at deck height when it stops, which
+    // is what says a fence stopped it rather than the platform running out
+    const fw = fenceWalk[fenceWalk.length - 1] ?? [0, 0, 0];
+    // ⚠ The limit is 16.0 and the ring is at x 12.99, so "it stopped" is a fact
+    // about the fence and not about where this loop gave up. The first version
+    // broke at 13.0 — one hex-boundary from the ring — and could not tell the two
+    // apart. Still at deck height when it stops is what says a FENCE stopped it
+    // rather than the platform running out under it.
+    const fenceStopsOnTheDeck = fw[0] < 14.0
+      && Math.abs(fw[1] - DECK * UNIT) < 0.001;
+
     const ok = platform && stair && madeNoLayer && idempotent
                && crossed && groundKept && stoodOnTheDeck && deckTookTheWrite
-               && deckIsDrawn && deckHasASide;
+               && deckIsDrawn && deckHasASide
+               && fenceOnTheDeck && fenceStopsOnTheDeck;
     console.log(JSON.stringify({
       cuts, again, steps, layerReads, layersWithDeck, roadOn, storey, deckCol,
       endX: +last[0].toFixed(3), endY: +last[1].toFixed(3), endQ, endCol,
@@ -289,7 +340,9 @@ ws.onmessage = async (e) => {
       overDeckSamples: overDeck.length,
       overDeckY: [...new Set(overDeck.map((p) => +p[1].toFixed(3)))],
       platform, stair, madeNoLayer, idempotent, peakIsTheDeck, crossed, groundKept,
-      stoodOnTheDeck, deckTookTheWrite, deckIsDrawn, deckHasASide, ok,
+      fenced, ringWalls, fenceEndX: +fw[0].toFixed(3), fenceEndY: +fw[1].toFixed(3),
+      stoodOnTheDeck, deckTookTheWrite, deckIsDrawn, deckHasASide,
+      fenceOnTheDeck, fenceStopsOnTheDeck, ok,
     }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };

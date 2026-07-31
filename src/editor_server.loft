@@ -648,15 +648,27 @@ fn surface_set(wld: &World, q: integer, r: integer, feet: float,
 }
 
 fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
-  gl = hex_world::world_ground_layer(wld, q, r);
-  if gl < 0 {
+  layer_write(wld, q, r, hex_world::world_ground_layer(wld, q, r), nc)
+}
+
+// Replace ONE cell of ONE named layer, carrying every other cell and every label
+// through untouched. `ground_write` and the surface writers differ only in which
+// index they name, so the read-modify-write itself lives here once.
+//
+// A layer index of −1 means *there is no such layer* — an unwritten hex, or an
+// edge whose owning column has nothing at the level being authored. The store
+// names the layer it creates in that case, which is what an unwritten hex has
+// always done.
+fn layer_write(wld: &World, q: integer, r: integer, li: integer,
+               nc: hex_world::Hex) -> integer {
+  if li < 0 {
     return world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
                                                      co_cells: [nc] }).cw_code;
   }
   col = hex_world::world_column(wld, q, r);
   cells: vector<hex_world::Hex> = [];
   for i in 0..len(col.co_cells) {
-    if i == gl { cells += [nc]; } else { cells += [col.co_cells[i]]; }
+    if i == li { cells += [nc]; } else { cells += [col.co_cells[i]]; }
   }
   world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
                                             co_ids: col.co_ids }).cw_code
@@ -849,9 +861,32 @@ fn edge_owner(q: integer, r: integer, dir: integer) -> (integer, integer, intege
 // The material on the edge between (q, r) and its neighbour in `dir`, at the
 // surface layer. 0 is no boundary at all — which is NOT the same as a doorway
 // (`X70`), and the difference is the reason a door has a material of its own.
-fn wall_of(wld: World, q: integer, r: integer, dir: integer) -> integer {
+// ── WHICH LAYER STORES AN EDGE AT THIS HEIGHT ───────────────────────────────
+//
+// ⚠⚠ `world_surface` IS THE WRONG SELECTOR ON ITS OWN, and the fence count is what
+// said so: 30 edges before, **16** after, with "stored outside" falling 15 → 1.
+// The rule picks among OCCUPIED layers — and `E1e` is the invariant that *an edge
+// is content whatever the cell under it holds*, so half of any boundary is stored
+// in cells that hold no ground at all. For those `world_surface` answers −1, and a
+// −1 means "the store names the layer it creates": a one-element column, applied
+// positionally to layer 0, which is not the ground once anything is dug beneath.
+//
+// So the fallback is the GROUND LAYER, which exists chunk-wide whether or not this
+// particular cell is occupied. `world_ground_layer` answers from the layer list and
+// not from the cell, which is exactly the difference that matters here.
+fn edge_layer(wld: World, q: integer, r: integer, ref: float) -> integer {
+  li = hex_world::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0).sf_layer;
+  if li >= 0 { return li; }
+  hex_world::world_ground_layer(wld, q, r)
+}
+
+// ⚠ IT TAKES THE SAME REFERENCE THE WRITE DID. A read-back that names a different
+// layer from the write reports a number about somewhere else — `23:` FENCE would
+// have answered "fenced 0 edges" for a fence it had just laid correctly on a deck,
+// which reads as the feature being broken.
+fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
-  c = world_ground_cell(wld, oq, orr);
+  c = hex_world::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
   if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
   if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
   c.h_wall_se as integer ?? 0
@@ -861,12 +896,30 @@ fn wall_of(wld: World, q: integer, r: integer, dir: integer) -> integer {
 // that stores it holds nothing — a boundary is content in its own right (`E1e`),
 // and it stands at the height of what it bounds rather than at zero.
 //
-// Read-modify-write of ONE cell of THE GROUND LAYER, through `ground_write` —
-// which is not layer 0 once anything has been dug beneath it.
+// ── ⚠ AN EDGE BELONGS TO THE SURFACE IT BOUNDS ──────────────────────────────
+//
+// This wrote THE GROUND, whichever layer that is — right for as long as the
+// ground was the only thing anyone could stand on, and wrong the day a stair
+// existed. Measured from a deck at 16 with the ground at 4: `24:` reported
+// `edge 0 of (6,0) = 1` and the byte landed on the ground's cell, so the author
+// fenced a room on the first floor and got a fence in the yard below. `23:`
+// FENCE and `25:` WALL go through here too, so one write had all three.
+//
+// `ref` is the height the author is authoring AT — their feet — and it selects
+// the layer the same way the road's write does. Wall bytes live on a `Hex`, and
+// a `Hex` is per-layer, so a deck's own edges are already representable and
+// already drawn: `chunk_mesh_props` reads them from every layer's cell, outside
+// the occupancy guard. Only the write and the collision proxy named the ground.
+//
+// ⚠ THE OWNER MAY BE A DIFFERENT COLUMN FROM THE ONE YOU STAND IN — that is
+// `E1e`, half of any boundary is stored outside the thing it bounds — and it may
+// have nothing at your level. Then there is no layer to address and the store
+// names the one it creates, at height `h`, exactly as for an unwritten hex.
 fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
-            mat: integer, h: integer) -> integer {
+            mat: integer, h: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
-  c = world_ground_cell(wld, oq, orr);
+  eli = edge_layer(wld, oq, orr, ref);
+  c = hex_world::world_cell(wld, oq, orr, eli);
   hh = c.h_height as integer ?? 0;
   if !hex_world::hex_present(c) { hh = h; }
   wn = c.h_wall_n as integer ?? 0;
@@ -882,7 +935,7 @@ fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
                         h_wall_n: wn as u8? ?? 0,
                         h_wall_ne: we as u8? ?? 0,
                         h_wall_se: ws2 as u8? ?? 0 };
-  ground_write(wld, oq, orr, nc)
+  layer_write(wld, oq, orr, eli, nc)
 }
 
 // ── A HEIGHT IS NOT A BOUNDARY (rung W2, moros#10) ──────────────────────────
@@ -1087,7 +1140,8 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
                 over = dseg - dline;
                 if over < 0.0 { over = 0.0 - over; }
                 if over < 0.000001 {
-                  wall_set(wld, q, r, dd, fence_mat, grade);
+                  wall_set(wld, q, r, dd, fence_mat, grade,
+                           (grade as float) * HEIGHT_SCALE);
                   fenced = fenced + 1;
                 }
               }
@@ -1122,7 +1176,12 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
 // would report what this function meant to do; reading the world back through
 // `wall_of` reports what is actually stored, which is the only number worth
 // putting on the wire.
-fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer) {
+// ⚠ `ref` is THE AUTHOR'S OWN HEIGHT, and this gesture is the reason it has to
+// be: "ring the disc you stand in" is a claim about where you are standing. The
+// fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
+// that holds nothing at all — there is no surface there to take a height from.
+fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer,
+              ref: float) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -1131,7 +1190,9 @@ fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer)
         h = terrain_h(q, r, wld);
         for d in 0..6 {
           (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_grid::hex_distance(nq, nr, cq, cr) > rad { wall_set(wld, q, r, d, mat, h); }
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad {
+            wall_set(wld, q, r, d, mat, h, ref);
+          }
         }
       }
     }
@@ -1159,7 +1220,7 @@ fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer)
 // counted rather than asserted — a version that wrote only the region's own three
 // edges reports zero.
 fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
-               outside: &integer) -> integer {
+               ref: float, outside: &integer) -> integer {
   n = 0;
   outside = 0;
   for dq in (0 - rad)..(rad + 1) {
@@ -1169,7 +1230,8 @@ fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
       if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         for d in 0..6 {
           (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_grid::hex_distance(nq, nr, cq, cr) > rad && wall_of(wld, q, r, d) == mat {
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad
+             && wall_of(wld, q, r, d, ref) == mat {
             n = n + 1;
             (oq, orr, _slot) = edge_owner(q, r, d);
             if hex_grid::hex_distance(oq, orr, cq, cr) > rad { outside = outside + 1; }
@@ -1283,7 +1345,7 @@ fn walk_h(q: integer, r: integer, wld: World, ref_units: float) -> integer {
 // the edges of the deck it fell from.
 fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
               runs: WallRuns, sf: Surfaces, ref_units: float) -> EdgeSet {
-  e = edges_around(wld, cq, cr, reach, false, runs, sf);
+  e = edges_around(wld, cq, cr, reach, false, runs, sf, ref_units);
   n = 2 * reach + 1;
   // The terrain goes in as a FUNCTION, which is what makes the derivation pure and
   // testable without a world — the same shape `ground_axle` takes its terrain by.
@@ -1293,8 +1355,13 @@ fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
   e
 }
 
+// ⚠ IT READS THE WALLS OF THE LEVEL THE OBSERVER IS ON. Wall bytes live on a
+// `Hex`, and a `Hex` is per-layer, so a fence rung on a deck is the DECK's fence —
+// it must stop a walker up there and must not stop one crossing the yard below.
+// This read `world_ground_cell`, so it did the opposite of both.
 fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
-                view: boolean, runs: WallRuns, sf: Surfaces) -> EdgeSet {
+                view: boolean, runs: WallRuns, sf: Surfaces,
+                ref_units: float) -> EdgeSet {
   n = 2 * reach + 1;
   e = edgeset_new(cq - reach, cr - reach, n, n);
   slot_dir: vector<integer> = [4, 5, 0];        // SLOT_NW, SLOT_NE, SLOT_E
@@ -1311,7 +1378,8 @@ fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
   if len(runs.items) > 0 { first = hex_way::way_surfaces(rt, sf); }
   for r in (cr - reach - 1)..(cr + reach + 2) {
     for q in (cq - reach - 1)..(cq + reach + 2) {
-      c = world_ground_cell(wld, q, r);
+      c = hex_world::world_cell(wld, q, r,
+            edge_layer(wld, q, r, ref_units * HEIGHT_SCALE));
       mats: vector<integer> = [c.h_wall_n as integer ?? 0,
                                c.h_wall_ne as integer ?? 0,
                                c.h_wall_se as integer ?? 0];
@@ -1561,7 +1629,7 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
 // one to offer (`X68`), while a radius of 40 has a largest admissible value and
 // the distance to it is a correction the author can use.
 fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
-            wld: &World, dirty: DirtySet) {
+            py: float, wld: &World, dirty: DirtySet) {
   fci = payload.find(",");
   fmat = FENCE_MAT;
   frad = FENCE_R;
@@ -1584,9 +1652,9 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
     return;
   }
   fhx = world_to_hex(px, pz);
-  fence_disc(wld, fhx.ha_q, fhx.ha_r, frad, fmat);
+  fence_disc(wld, fhx.ha_q, fhx.ha_r, frad, fmat, py);
   fout = 0;
-  fn2 = fence_count(wld, fhx.ha_q, fhx.ha_r, frad, fmat, fout);
+  fn2 = fence_count(wld, fhx.ha_q, fhx.ha_r, frad, fmat, py, fout);
   mark_dirty(dirty, fhx.ha_q, fhx.ha_r, frad + 2);
   srv.send_to(cid,
     "S:fenced {fn2} edges, {fout} stored outside, radius {frad} material {fmat}");
@@ -1600,7 +1668,7 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // six directions that is not the cell you are standing on, and an author who
 // cannot see that will not believe the read-back.
 fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
-           wld: &World, dirty: DirtySet) {
+           py: float, wld: &World, dirty: DirtySet) {
   eci = payload.find(",");
   edir = 0;
   emat = WALL_MAT;
@@ -1622,7 +1690,7 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
   }
   ehx = world_to_hex(px, pz);
   ecode = wall_set(wld, ehx.ha_q, ehx.ha_r, edir, emat,
-                   terrain_h(ehx.ha_q, ehx.ha_r, wld));
+                   terrain_h(ehx.ha_q, ehx.ha_r, wld), py);
   if ecode != CW_OK {
     srv.send_to(cid, "S:edge refused — the world declined it ({ecode})");
     println("editor: edge refused with code {ecode}");
@@ -1767,7 +1835,16 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
         // not absence — "there is a boundary you can walk through" is a different
         // claim from "there is no boundary" — so a doorway holds the fill in
         // exactly as a wall does, and only a cleared edge lets it out.
-        if (m == SURFACE_MAT || m == 0) && wall_of(wld, fq[i], fr[i], d) == 0 {
+        // ⚠ THE FILL STAYS ON THE OUTDOORS, and passing the ground's own height is
+        // how it says so rather than by omission. `world_surface` at a cell's ground
+        // height selects that ground, so this is today's behaviour written down —
+        // and the day a field is filled on a deck, this is the line that has to
+        // change, with the reference to change it to already named. The fill also
+        // reads `world_ground_cell` for the material two lines above; both would
+        // move together.
+        if (m == SURFACE_MAT || m == 0)
+           && wall_of(wld, fq[i], fr[i], d,
+                      (terrain_h(fq[i], fr[i], wld) as float) * HEIGHT_SCALE) == 0 {
           if seen.s_by[age_like_key(aq, ar)] == null {
             if len(seen_q) >= FIELD_CAP { escaped = true; capped = true; }
             else {
@@ -3591,7 +3668,7 @@ fn main() {
   coll_sf = surfaces_new();
   coll_rt = runs_track(wall_runs);
   coll_move = edges_walk(wld, 0, 0, COLL_R, wall_runs, coll_sf, 0.0);
-  coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new());
+  coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new(), 0.0);
   coll_q = 0;
   coll_r = 0;
   coll_tau = 0 - 1;                   // never a real clock value, so the first
@@ -4007,9 +4084,9 @@ fn main() {
           }
           srv.send_to(ev.cid, "S:walls {wq},{wr} = {walls_text(wld, wq, wr)}");
         } else if ev.msg_id == MSG_FENCE {
-          do_fence(srv, ev.cid, ev.payload, px, pz, wld, dirty);
+          do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
         } else if ev.msg_id == MSG_EDGE {
-          do_edge(srv, ev.cid, ev.payload, px, pz, wld, dirty);
+          do_edge(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
         } else if ev.msg_id == MSG_TRACE {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
@@ -4395,8 +4472,12 @@ fn main() {
         coll_rt = runs_track(wall_runs);
         coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, wall_runs, coll_sf,
                                ref_u);
+        // ⚠ The camera's set takes the WALKER's level, not the eye's. The eye
+        // orbits a character who is on one storey, and the walls that can swallow
+        // it are that storey's; an eye-height reference would pick the deck above
+        // whenever the boom rose. Same reference, two predicates.
         coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
-                                 wall_runs, surfaces_new());
+                                 wall_runs, surfaces_new(), ref_u);
         coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau;
         coll_surf = surf_u; coll_have = true;
       }

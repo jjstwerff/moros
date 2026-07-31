@@ -31,7 +31,7 @@ And a fifth rule turned out to be missing from the PICTURE rather than the model
 occupied terrain layer that is not the ground is now drawn** — flat at its stored height, with a
 slab edge — because a deck was walkable and invisible (item 36).
 
-**Where to look first if something surfaces here:** items **32–36** at the bottom of this file,
+**Where to look first if something surfaces here:** items **32–37** at the bottom of this file,
 in that order — they were built in that order and each depended on the one before.
 
 ### What is open, in priority order
@@ -46,10 +46,11 @@ in that order — they were built in that order and each depended on the one bef
    sagging into the space under the platform it reaches (item 35's last ⚠). ⚠ **And the floor
    mesh does NOT close that** — item 36 draws the layers the ground mesh never had; the sag is
    in the GROUND's own smoothing, at the seam where a stair meets a platform.
-2. **A character on a deck cannot yet be given a wall, a fence or a prop** — every one of those
-   authors through the outdoors. Nothing is wrong today; the day one is placed from a deck it
-   lands a storey down, silently. That is item 1's `terrain_y` list from the other side, and
-   the gesture that would expose it now exists.
+2. ✅ **Walls, fences and props from a deck are DONE** (item 37) — and the sweep that closed
+   them left two named: **`13:` SCATTER** writes the *topmost occupied* layer, a third rule
+   distinct from both the outdoors and the feet (defensible for a tree, so left alone), and
+   **`6:` LEVEL** freezes its floor from the feet correctly but stamps through `terrain_set`,
+   which is the outdoors. The level's stamp is the one still unmeasured.
 3. **Plan 14's one remaining item: steep ground, the CART half.** `A-FIT` refuses with a
    residual; *tipping* is the physical answer and is dynamics this rung does not have. A cart is
    **placed**, not walked, so it can still be put on ground its axle cannot span — and the cliff
@@ -1906,3 +1907,55 @@ edges — neither of which the mechanism's own eight gates had caught.
       three, which is why it presented as flakiness. `port-free` now **waits for the port** —
       the same rule this repo enforces on every gate, turned on the harness that runs them.
       ⚠ It is NOT a consequence of the floor: the floor changed the timing, not the teardown.
+37. ✅ **AN EDGE BELONGS TO THE SURFACE IT BOUNDS — and the class was MEASURED, not argued
+    from the design table.** `WORLD_MODEL.md`'s own table puts "the walls" under *which layer
+    is the outdoors*; standing on a deck and running every gesture says otherwise. The probe
+    (`tools/gates/wip/deckauthor.mjs`) fires each one from a deck at 16 with the ground at 4
+    and reads back which layer took it:
+
+    | gesture | landed on | verdict |
+    |---|---|---|
+    | `23` FENCE · `24` EDGE · `25` WALL — all via `wall_set` | the **ground** | ⚠ wrong: fence a room upstairs, get a fence in the yard |
+    | `19` PROP · `18` TRIGGER | height **16** — the feet | ✓ right; both were built after the feet's rule existed |
+    | `13` SCATTER | `col_top_index` — the **topmost occupied** layer | a THIRD rule, and defensible for a tree. Left alone, named here |
+    | `6` LEVEL | freezes at **16** ✓, stamps through `terrain_set` | half right; the stamp is unmeasured |
+    | `5` RAISE | the outdoors, by design | ✓ |
+
+    - **One reference threads the whole path**: `wall_set` and its read-back `wall_of` take the
+      author's height, `edges_around` takes the observer's. A read-back naming a different layer
+      from the write would have answered *"fenced 0 edges"* for a fence it had just laid
+      correctly — which reads as the feature being broken.
+    - **`layer_write` extracted**, so `ground_write` and the surface writers differ only in which
+      index they name rather than in a duplicated read-modify-write.
+    - ⚠⚠ **`world_surface` IS THE WRONG SELECTOR FOR AN EDGE ON ITS OWN, and the fence count is
+      what said so: 30 edges → 16, "stored outside" 15 → 1.** The rule picks among **occupied**
+      layers, and `E1e` is precisely the invariant that *an edge is content whatever the cell
+      under it holds* — so half of any boundary is stored in cells holding no ground at all. For
+      those the rule answers −1, which means "the store names the layer it creates": a
+      one-element column, applied positionally to layer 0, which is not the ground once anything
+      is dug beneath. The fallback is `world_ground_layer`, which answers **from the layer list
+      and not from the cell**. That difference had never mattered before.
+    - **The camera's set takes the WALKER's level, not the eye's** — the eye orbits a character
+      who is on one storey, and an eye-height reference would pick the deck above whenever the
+      boom rose.
+    - ⚠ **THE GATE CONFOUNDED ITSELF TWICE, and both times the fix looked broken.** Its walk
+      limit was 13.0 with the fence line at 12.99 — one hex boundary apart, so "stopped by the
+      fence" and "reached my limit" were the same reading; and an earlier `30:` cut had raised
+      the very cell being measured, so the deck-height check failed on a walker standing on a
+      *step*. Fenced before the cut, limit at 16.0: the walker stops at **12.98**, exactly one
+      `SKIN` short of the boundary, at deck height.
+    - ⚠ **`keyonly.mjs` WAS FAILING TWO RUNS IN THREE, and it is not this change** —
+      measured on unmodified HEAD, 2 of 3 red. It was the last **clock-paced** gate: a 1.9 s
+      window of `setTimeout`s, and `facings: 0, positions: 0` is that whole window elapsing
+      with no transform in it, because a freshly started server can still be streaming its
+      first chunks when the camera message arrives. Its claim never needed a clock — *the
+      facing changes and the position changes* — so it waits for the TRANSFORMS now, with the
+      bound demoted to a failure timeout (a strafing A/D still goes red, just slower). **4 of 4
+      green**, stable at 3/3 because it now stops when the claim is satisfied instead of
+      counting whatever a window happened to hold. `hipskin` and `walk` count within a fixed
+      window *by design* and are a different class.
+    - ⚠ **AND A ONE-LINE CONTROL COULD NOT FAIL THE PAIRING.** Reverting `edge_layer` to the
+      ground moves the write *and* the proxy read together, so the walker is still stopped in
+      the same place and only the store claim goes red. **A mutation that reverts both sides of
+      a pair consistently cannot falsify the pair** — the proxy needs its own control, which
+      keeps the write on the deck and sends the read back to the ground.

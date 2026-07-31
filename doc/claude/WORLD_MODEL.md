@@ -241,11 +241,27 @@ callers:
 
 | | the feet's rule | the ground label |
 |---|---|---|
-| asked by | the walk, the fall, **the camera**, **the road** | meshing, the field, the walls, the raise |
+| asked by | the walk, the fall, **the camera**, **the road**, **the walls** | meshing, the field, the raise |
 | question | *which surface am I standing on* | *which layer is the outdoors* |
 | answer under a tower | the deck you are on — a different one per storey | always the terrain, never a deck |
 | needs | a height to disambiguate | nothing |
 | in code | `hex_world::world_surface(w, q, r, feet)` | `world_ground_cell` / `world_ground_layer` |
+
+⚠ **AND THE WALLS ARE ON THE LEFT NOW TOO — the table was wrong about them, and standing on
+a deck is what showed it.** *"Ring the disc you stand in"* is a claim about where you are
+standing, so a fence rung on a first floor is the deck's fence. Wall bytes live on a `Hex`,
+and a `Hex` is per-layer, so a deck's own edges were always representable and always drawn —
+only the write (`wall_set`) and the collision proxy named the ground. Both take the author's
+or the observer's height now.
+
+> ### ⚠ But `world_surface` alone is the wrong selector for an EDGE
+>
+> It picks among **occupied** layers. `E1e` says *an edge is content whatever the cell under
+> it holds* — so half of any boundary is stored in cells that hold no ground at all, and for
+> those the rule answers −1. Measured, that cost a fence **14 of its 30 edges**. The fallback
+> is the GROUND layer, and the reason it works is a distinction that had never mattered
+> before: `world_ground_layer` answers **from the chunk's layer list**, not from the cell, so
+> it names a layer even where this cell is empty.
 
 ⚠ **The road is on the LEFT of that table, and it is the one that reads wrong at first
 glance.** A road is an outdoor thing, so "the outdoors" looks like its answer. But `road_h` is
