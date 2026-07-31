@@ -18,3 +18,8 @@ entry = "src/hex_editor.loft"
 hex_draw  = ">=0.1"
 hex_form  = ">=0.1"
 hex_field = ">=0.1"
+# The centreline and its parallel — `track_offset` is the family's exact offset of
+# a straight, which is what a wall's two faces are. The editor already depends on
+# it for collision and for the fence; the geometry has no business deriving it a
+# second time.
+hex_way   = ">=0.1"

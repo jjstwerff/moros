@@ -94,7 +94,7 @@ throughout so there is always something to look at.
 |---|---|---|
 | `S1` | **`lib/hex_editor`** with `hex_draw`/`hex_shape`/`hex_form`/`hex_roof`/`hex_place` as registry deps, and one test: `Plan` → `box_fill` → `draw_walls` → `surface_quad` is one exact flat surface | *(no PNG — a pure test; the seam either compiles and passes or it does not)* |
 | `S2` | **elevation raster** beside `plan.mjs`: geometry in, PNG out, no GPU | the current hut, in plan and elevation — the zigzag made visible |
-| `S3` | **one wall from `surface_quad`** replaces `emit_run_wall` | one straight mitred wall, from the side |
+| `S3` | ✅ **a wall run lays a WALL** — the line's own edges, at `hex_draw`'s band | `shots/s3-wall.png` — it reads as a wall; `tools/scripts/wall.keys` builds it |
 | `S4` | **a footprint** — `box_fill` + `seat_write` from the character's pose | four walls that meet at mitred corners |
 | `S5` | **`place_opening`** — a door and a window where the character stands | a wall with a hole you can see through |
 | `S6` | **`draw_roof`** | it reads as a house |
@@ -104,6 +104,17 @@ throughout so there is always something to look at.
 ⚠ **`S1` before `S3`.** The temptation is to fix the visible wall first. The test comes
 first because it is what proves I am calling the library rather than reimplementing it
 again — which is the mistake this whole design exists to undo.
+
+⚠ **`S3` was written as "one wall from `surface_quad`", and that turned out to be the wrong
+call — for a reason that matters to `S4`.** `surface_quad` recovers a wall from the CELLS
+that store it, mitred against the other sides of a `Plan`; its exactness claim is that the
+averaged direction lands on one of the lattice's 12 headings. A run is not a plan side: it
+is the author's own line at one of the editor's **24** headings, so half of them have no
+lattice family to be exact in, and there is no neighbouring side to mitre against. What the
+family owns for a free run is the **offset** (`hex_way::track_offset`, exact for a straight)
+and the **band** (`hex_draw::BAND_SIDES`, the width a wall is presented at) — and those are
+what `S3` used. `surface_quad` comes into its own at `S4`, where a footprint has four sides
+and corners that must actually meet.
 
 ---
 

@@ -21,6 +21,7 @@
 use hex_draw;
 use hex_form;
 use hex_field;
+use hex_way;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
@@ -60,3 +61,63 @@ pub fn plan_walls_exact(p: Plan, cells: HexSet) -> boolean {
   }
   true
 }
+
+// ── S3: THE WALL A FREE RUN DRAWS ───────────────────────────────────────────
+//
+// A run is the editor's other wall: two presses, an author's line, at any of the
+// 24 headings it snaps to — NOT a plan side. `surface_quad` cannot draw it and
+// should not be asked to: its exactness claim is about recovering a wall from the
+// cells that store it, and a run at 15° has no lattice family to be exact in.
+// What the family DOES own here, and the editor did not ask for, is two things:
+//
+//   the offset      `hex_way::track_offset` — for a straight, the parallel line
+//                   exactly, which is what a wall's two faces are;
+//   the thickness   `hex_draw`'s band. A presented wall is `BAND_SIDES` wide —
+//                   sqrt(3)/2 u, the larger of the two families, which is the
+//                   width the widening rule presents BOTH at.
+//
+// ⚠ **The wall the editor drew had no thickness at all.** `emit_run_wall` emitted
+// one quad and the same quad flipped, so a wall was a plane seen from either side:
+// no top, no jamb, nothing to read a doorway or a corner against. That is not a
+// missing feature, it is what makes a wall read as a wall in a picture, and it is
+// why this step is measured in a band and not in triangles.
+pub struct RunWall {
+  rw_ok:   boolean,
+  rw_len:  float,
+  rw_half: float,
+  rw_cx:   vector<float>,   // the four plan corners, in order around the strip
+  rw_cz:   vector<float>,
+}
+
+// The presented thickness of a wall, from `hex_draw`'s band table rather than from
+// a number chosen here. `BAND_SIDES` is the full extent of the wider family's
+// strip; a wall run is presented at that width whatever direction it took, which
+// is the same rule `WIDEN_TOTAL` states for the recovered case.
+pub fn wall_band() -> float { BAND_SIDES }
+
+// The strip one run draws: the centreline offset both ways by half the band.
+//
+// A zero-length run is REFUSED rather than returned degenerate — an `rw_ok` of
+// false with no corners. The normal of a zero-length line is 0/0, and a renderer
+// that got one back would emit a NaN quad that draws as nothing while measuring
+// as something.
+pub fn run_wall(x0: float, z0: float, x1: float, z1: float) -> RunWall {
+  t = hex_way::track_new();
+  hex_way::track_straight(t, x0, z0, x1, z1);
+  ln = hex_way::seg_len(t, 0);
+  if ln <= 0.0 {
+    return RunWall { rw_ok: false, rw_len: 0.0, rw_half: 0.0, rw_cx: [], rw_cz: [] };
+  }
+  half = wall_band() * 0.5;
+  l = hex_way::track_offset(t, half);
+  r = hex_way::track_offset(t, 0.0 - half);
+  (lx0, lz0) = hex_way::seg_point(l, 0, 0.0);
+  (lx1, lz1) = hex_way::seg_point(l, 0, ln);
+  (rx1, rz1) = hex_way::seg_point(r, 0, ln);
+  (rx0, rz0) = hex_way::seg_point(r, 0, 0.0);
+  RunWall { rw_ok: true, rw_len: ln, rw_half: half,
+            rw_cx: [lx0, lx1, rx1, rx0], rw_cz: [lz0, lz1, rz1, rz0] }
+}
+
+pub fn run_wall_x(w: RunWall, i: integer) -> float { w.rw_cx[i] ?? 0.0 }
+pub fn run_wall_z(w: RunWall, i: integer) -> float { w.rw_cz[i] ?? 0.0 }

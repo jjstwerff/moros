@@ -1,0 +1,26 @@
+# S3 — ONE WALL, ALONE IN THE PICTURE.
+#
+# `hut.keys` builds two walls to look at a corner; this builds one, because the
+# question S3 answers is what a single wall IS. Everything else in frame is noise
+# when the thing being judged is a strip eight units long.
+#
+# ⚠ The run is laid west to east on flat ground, so plan view reads the strip's
+# WIDTH directly: a wall with no thickness is a line, a wall with the family's
+# band is 0.87 units across. That difference is the whole step.
+
+echo --- flat ground to build on
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- one wall, west to east
+at -4 0 0
+key R
+at 4 0 0
+key R
+wait wall
+wait rebuilt
+
+echo --- stand off to the south and look at it side-on
+at 0 6 -90
+snap s3-wall

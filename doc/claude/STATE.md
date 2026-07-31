@@ -47,8 +47,27 @@ is wrong — which is how `25:` passed its gate for months while drawing a road.
 |---|---|---|
 | `S1` | ✅ `lib/hex_editor` on the real library, 5 tests | corner gap seen red at 0.45 wu |
 | `S2` | ✅ `tools/views.mjs` — plan + elevation PNGs, no GPU, passive | showed the road-with-lines exactly |
-| `S3` | **NEXT** — one wall from `surface_quad` replaces `emit_run_wall` | one straight mitred wall |
-| `S4`–`S8` | footprint · `place_opening` · `draw_roof` · headless runner · the swinging door | |
+| `S3` | ✅ **a wall run lays a wall** — 6 tests, three mutations seen red | `shots/s3-wall.png`, and it reads as a wall |
+| `S4` | **NEXT** — a footprint: `box_fill` + `seat_write`, and `surface_quad`'s mitre at last | four walls that meet |
+| `S5`–`S8` | `place_opening` · `draw_roof` · headless runner · the swinging door | |
+
+**What `S3` found, and it was one line rather than three.** `25:` carries the material —
+`1` is `WALL_MAT`, `3` is `FENCE_MAT` — and `do_wall` **paved a road whatever it was told**.
+Pressing `R` once answered `road laid 19 cells and 40 fence edges, cut 118`, and the plan
+view showed it: a paved band with a waist-high fence down each side and nothing in between.
+That is the whole of *"no tower, no walls"*.
+
+So the material decides now. A wall is `wall_stamp` — the edges the author's own line
+crosses, marked with the wall material, one run for the renderer, no paving and no offsets.
+A fence keeps `road_stamp` exactly as it was, which is what `straight.mjs` measures. And the
+wall is drawn at **`hex_draw::BAND_SIDES`** — the family's own presented width — with two
+faces, a cap and two ends, where before it was one quad and the same quad reversed: a wall
+with no thickness at all. `road 114 · wall 136` triangles became `wall 106`, and the picture
+went from a road to a wall.
+
+⚠ **The top still follows the ground**, span by span, so a wall on a slope undulates rather
+than stepping. That is inherited, not introduced — and it is the next thing anyone will
+notice in a picture.
 
 ### The harness — all of it built and verified this session
 

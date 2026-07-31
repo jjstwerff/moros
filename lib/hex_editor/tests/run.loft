@@ -1,0 +1,89 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE WALL A RUN DRAWS — S3, and the claim is about a BAND, not about triangles.
+//
+// The editor's `emit_run_wall` walked the centreline in half-unit steps and emitted
+// each span twice, front and back, at the same place: a wall with no thickness.
+// Straight in plan, and still not a wall — nothing to see a corner against, no top
+// to catch the light, no jamb for a door to sit in.
+//
+// So these tests measure the strip: it is the family's band wide, its faces are the
+// exact parallels of the run, and it runs where the author's line runs. Each one is
+// a number the old wall could not produce.
+use hex_editor;
+use hex_draw;
+
+// A run at 15° — deliberately NOT along a lattice axis. On an axis a staircase and
+// a line agree and a measurement says nothing, which is the same reason
+// `straight.mjs` walks an off-axis road.
+fn diagonal() -> RunWall { hex_editor::run_wall(0.0, 0.0, 9.6592582628906831, 2.5881904510252074) }
+
+fn axis() -> RunWall { hex_editor::run_wall(-4.0, 0.0, 4.0, 0.0) }
+
+fn test_a_run_is_one_strip_of_four_corners() {
+  w = axis();
+  assert(w.rw_ok, "an eight-unit run makes a wall");
+  assert(len(w.rw_cx) == 4 && len(w.rw_cz) == 4,
+         "one quad, four corners — got {len(w.rw_cx)}");
+  // ⚠ THE CONTRAST WITH WHAT WAS THERE. The old wall emitted a span every 0.5 u,
+  // so this run alone was 17 quads and 34 vertices of the same flat plane.
+  assert(w.rw_len == 8.0, "the strip is as long as the run, got {w.rw_len}");
+}
+
+fn test_the_strip_is_the_family_band_thick() {
+  // THE POINT OF THE STEP. The thickness is `hex_draw`'s, not a number chosen
+  // here: BAND_SIDES is the full extent of the wider family's strip, and the
+  // widening rule presents every wall at it.
+  w = axis();
+  d = run_wall_z(w, 0) - run_wall_z(w, 3);
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d == BAND_SIDES, "the strip is one band across: {d} vs {BAND_SIDES}");
+  assert(w.rw_half * 2.0 == BAND_SIDES, "half is half the band, got {w.rw_half}");
+  assert(BAND_SIDES > 0.0, "a band with no width is the wall we are replacing");
+}
+
+fn test_the_faces_are_exact_parallels_of_the_run() {
+  // Each long face is the run offset perpendicular — so the vector across the
+  // strip is perpendicular to the vector along it. Exactly, not nearly: both come
+  // from one tangent, and an approximation here would be a wall that tapers.
+  w = diagonal();
+  ax = run_wall_x(w, 1) - run_wall_x(w, 0);
+  az = run_wall_z(w, 1) - run_wall_z(w, 0);
+  bx = run_wall_x(w, 3) - run_wall_x(w, 0);
+  bz = run_wall_z(w, 3) - run_wall_z(w, 0);
+  assert(ax * bx + az * bz == 0.0,
+         "across is perpendicular to along, dot {ax * bx + az * bz}");
+}
+
+fn test_the_strip_runs_where_the_author_walked() {
+  // The drawn wall's direction is the RUN's direction — no drift, no snap of its
+  // own. A cross product of exactly zero against the run vector.
+  w = diagonal();
+  ax = run_wall_x(w, 1) - run_wall_x(w, 0);
+  az = run_wall_z(w, 1) - run_wall_z(w, 0);
+  cr = ax * 2.5881904510252074 - az * 9.6592582628906831;
+  assert(cr == 0.0, "the face is parallel to the run, cross {cr}");
+}
+
+fn test_both_faces_lie_on_opposite_sides() {
+  // The negative that stops the above passing on a degenerate strip: the two
+  // faces must be on OPPOSITE sides of the centreline, not both on one. Signed
+  // perpendicular offsets, and their sum is zero because they are symmetric.
+  w = diagonal();
+  nx = 0.0 - 2.5881904510252074 / 10.0 ?? 0.0;
+  nz = 9.6592582628906831 / 10.0 ?? 0.0;
+  s0 = run_wall_x(w, 0) * nx + run_wall_z(w, 0) * nz;
+  s3 = run_wall_x(w, 3) * nx + run_wall_z(w, 3) * nz;
+  assert(s0 > 0.0 && s3 < 0.0, "the faces straddle the line: {s0} and {s3}");
+  assert(s0 + s3 == 0.0, "and symmetrically: {s0} + {s3}");
+}
+
+fn test_a_zero_length_run_is_refused() {
+  // A run whose two presses landed in the same place. Refused with no corners,
+  // because the normal of a zero-length line is 0/0 and a NaN quad draws as
+  // nothing while measuring as something.
+  w = hex_editor::run_wall(3.0, 3.0, 3.0, 3.0);
+  assert(!w.rw_ok, "a run of no length is refused");
+  assert(len(w.rw_cx) == 0, "and carries no corners, got {len(w.rw_cx)}");
+}
