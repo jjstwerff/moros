@@ -8,6 +8,66 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 > Moros is one of its consumers. Everything under *Scene tools* below, and plans 7–15,
 > belong to lavition. Its packages take descriptive `hex_*` names with **no brand prefix**.
 
+## Working rules — read these every session
+
+How this tree is worked. None of it is derivable from the code, and each line below was
+learned by getting it wrong once.
+
+**Ask in prose; never open a multiple-choice dialog.** The options are always the
+least-informed part of the exchange, and a menu cannot be discussed — so it gets ignored.
+When a call is needed, make it, state it in one line with the trade-off, and keep going;
+the user redirects in words if they disagree. This holds even for a genuine design fork:
+the merit of the question was never the issue, the medium is.
+
+**Build to learn.** Nothing here is set in stone, and a design argued on paper cannot
+settle what a prototype that runs will. Don't stop for approval on a reversible change —
+prefer the version that makes the difference *testable*.
+
+**Commit and push without being asked.** The remote is a **backup**, not a publication
+step: these trees are worked by more than one agent, so local-only work is fragile. Stage
+your own paths explicitly — `git add -A` is wrong here, because someone else's in-flight
+work is routinely sitting in the tree. Put the *finding* in the commit message, not just
+the change. What still warrants a word first: **a PR, a published package, a registry
+entry.** Don't offer a PR unprompted — a pushed branch is already the deliverable.
+
+**Other people's trees.** `../crawler` is **read-only** — another agent works there, and an
+edit it did not make destroys its ability to tell its own work from yours; raise findings
+instead. `loft-libs-*` is shared and consumed from the **working tree**, so a new public
+name can turn a sibling's build red with no local edit — grep the sibling before adding
+one. Kill only processes you can identify as yours; this box runs other agents' work.
+
+**A missing library capability is ours to build**, never an upstream ask — verification is
+only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests
+that have been seen red. Fixing and republishing a shared library is allowed too; the gate
+is loft's unified `library-ci-reusable.yml`, which is where the requirements are defined.
+[LOFT_HANDOFF.md](doc/claude/LOFT_HANDOFF.md) is for **loft language and tooling defects
+only** — never for library gaps.
+
+**Structural invariants belong in the library**, as pure loft functions with tests in
+`lib/*/tests/` — not in a `.mjs` browser gate. A gate that restates a connection cannot
+test it. Leave in the gate only what needs a running world, and measure what was actually
+*emitted*, never a number the producer re-derives.
+
+**Filing a loft defect** ([loft-lang/loft](https://github.com/loft-lang/loft/issues)): file
+it as an issue straight away — a closed ticket costs nothing here, so never hold a finding
+back to hunt for duplicates. `gh issue create` bypasses the issue form, so **put every
+label in the create call**; a label guard adds `needs:labels` otherwise. Choose the type
+label first, and let it decide whether a severity applies:
+
+| what the ticket says | labels, all in the `create` call |
+|---|---|
+| it misbehaves | `bug` + `sev:high\|medium\|low` + `wa:*` + `area:*` + `hit-by:moros` |
+| it works as designed, and the **design** is wrong | `enhancement` + `needs-design` + `wa:*` + `area:*` + `hit-by:moros` — **no `sev:`**, that scale is for bugs |
+
+⚠ Query the tracker as **`loft-lang/loft`**. The old `jjstwerff/loft` name still resolves,
+but `gh issue list -R jjstwerff/loft --label <x>` returns **0 through the redirect,
+silently** — it reads as "nothing has this label" when ten things do.
+
+**Stop any server you start** — `make stop-editor`. A forgotten one is not idle; one sat at
+76% of a core indefinitely. And when handing over the editor URL, remember the user is
+**not on this box's LAN**: they reach it over an ssh tunnel of their own, so a direct
+address (or the hostname `make browser` prints) cannot connect.
+
 ## Where to look
 
 | Looking for... | Go to |
