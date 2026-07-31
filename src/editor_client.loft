@@ -74,6 +74,14 @@ const KEY_WALL = 103;         // g — wall it
 // upper storey reachable: a storey is three strides, so three presses and a walk.
 const KEY_STEP_UP = 101;      // e
 const KEY_STEP_DOWN = 113;    // q
+// b / c — a storey above you, a cellar below, on the disc you stand in.
+const KEY_STOREY_UP = 98;     // b
+const KEY_STOREY_DOWN = 99;   // c
+// ⚠ r — the STRAIGHT wall, and the reason it needs a key of its own: `23:` (f/g)
+// rings the HEXES you stand in, so it zigzags along their edges by construction.
+// `25:` is a RUN — two presses, start and end — snapped to one of 24 headings and
+// drawn off that exact line.
+const KEY_WALL_RUN = 114;     // r
 
 // `23:<material>,<radius>`. A fence you see over, a wall you do not, and the camera
 // treats them differently for exactly that reason — same tool, different material.
@@ -194,6 +202,9 @@ struct Client {
   was_wall: boolean,
   was_step_up: boolean,
   was_step_down: boolean,
+  was_storey_up: boolean,
+  was_storey_down: boolean,
+  was_wall_run: boolean,
   levelling: boolean,
   dragging: boolean,
   last_x: float,
@@ -565,6 +576,16 @@ fn poll_input(h: web::WsHandler, st: Client) {
   if kstepd && !st.was_step_down { web::send(h, "30:-1"); }
   st.was_step_down = kstepd;
 
+  kstoru = graphics::gl_key_pressed(KEY_STOREY_UP);
+  if kstoru && !st.was_storey_up { web::send(h, "12:1"); }
+  st.was_storey_up = kstoru;
+  kstord = graphics::gl_key_pressed(KEY_STOREY_DOWN);
+  if kstord && !st.was_storey_down { web::send(h, "12:-1"); }
+  st.was_storey_down = kstord;
+  krun = graphics::gl_key_pressed(KEY_WALL_RUN);
+  if krun && !st.was_wall_run { web::send(h, "25:1"); }
+  st.was_wall_run = krun;
+
   // Drag to look. A raw delta is an input event, not a model decision.
   mbtn = graphics::gl_mouse_button();
   mx = graphics::gl_mouse_x();
@@ -606,7 +627,9 @@ fn main() {
     held: 0,
     was_up: false, was_down: false, was_level: false,
     was_fence: false, was_wall: false,
-    was_step_up: false, was_step_down: false, levelling: false,
+    was_step_up: false, was_step_down: false,
+    was_storey_up: false, was_storey_down: false, was_wall_run: false,
+    levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0,

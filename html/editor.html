@@ -235,7 +235,7 @@ ws.onmessage = (ev) => {
     fog = { c: v.slice(0, 3), from: v[3], to: v[4], sky: v.slice(5, 8) };
   }
   else if (tag === 'E') {
-    hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level · F fence · G wall';
+    hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level · F fence · G ring · R wall run · E/Q step · B/C storey';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'C') {
@@ -296,6 +296,16 @@ addEventListener('keydown', (e) => {
   // you cut and cut again: three steps is a storey.
   if (e.code === 'KeyE') { ws.send('30:1');  e.preventDefault(); return; }
   if (e.code === 'KeyQ') { ws.send('30:-1'); e.preventDefault(); return; }
+  // B builds a storey above you, C digs a cellar below — both on the disc you
+  // stand in. A storey needs ground to stand on, so pave or level first.
+  if (e.code === 'KeyB') { ws.send('12:1');  e.preventDefault(); return; }
+  if (e.code === 'KeyC') { ws.send('12:-1'); e.preventDefault(); return; }
+  // ⚠ R is the STRAIGHT wall — a RUN, two presses: once where it starts, once
+  // where it ends, and it snaps to one of 24 headings and draws off that exact
+  // line. G is a fence DISC, which rings the hexes you stand in and therefore
+  // zigzags along their edges by construction. They are different tools, and the
+  // straight one had no key at all.
+  if (e.code === 'KeyR') { ws.send('25:1');  e.preventDefault(); return; }
   const b = KEYS[e.code]; if (!b || (held & b)) return;
   held |= b; e.preventDefault(); sendKeys();
 });

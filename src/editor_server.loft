@@ -3720,6 +3720,8 @@ fn main() {
   println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
   println("  drag or A/D to turn · W/S walk · ↑/↓ raise/lower ground {PEAK_AHEAD} hexes ahead");
   println("  E/Q cut one step up/down into the cell ahead — three steps is a storey");
+  println("  B/C a storey above / a cellar below · L level · F ring a fence");
+  println("  R a STRAIGHT wall run — press once to start it, once to close it");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
