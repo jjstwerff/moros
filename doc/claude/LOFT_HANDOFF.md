@@ -964,13 +964,17 @@ ordinary. Found only by writing the matrix, not by reading the code.
 
 ## Open, filed 2026-07-31
 
-- **[loft#709](https://github.com/loft-lang/loft/issues/709) — one source for native GL and
-  wasm.** `gl_screenshot` is native-only and `--html` refuses the build, so running the same
-  renderer on both targets means forking it into two entry points over a shared library —
-  a split introduced purely to dodge a missing host import, which costs the very property
-  two renderers exist to give (each is the other's control). Asked for parity of the
-  graphics surface; noted that `path` has no obvious browser meaning and that the virtual FS
-  or returning bytes would both do. `wa:partial` — the fork works, it just defeats the point.
+- **[loft#709](https://github.com/loft-lang/loft/issues/709) — a builtin a target cannot
+  serve should fail at RUNTIME, not refuse the build.** `gl_screenshot` is native-only and
+  `--html` refuses the build, so running the same renderer on both targets means forking it
+  into two entry points — a split introduced purely to dodge a missing host import, which
+  costs the very property two renderers exist to give (each is the other's control).
+  ⚠ **The first version of this ticket asked for the wrong thing** — capability parity, i.e.
+  "make screenshots work in a browser". They may well be impossible there, and that is fine.
+  The defect is the *disposition*: unavailability is a fact about this run on this target,
+  not about whether the program is well-formed, so it belongs at runtime. The signature
+  already carries the answer — `gl_screenshot` returns a **boolean**, so a wasm stub
+  returning `false` costs nothing and every correct caller checks it anyway.
 - **[loft#708](https://github.com/loft-lang/loft/issues/708) — `File.size` reads 0 for a file
   the same program wrote**, so the documented append idiom (`f#next = f.size`) seeks to 0 and
   **silently overwrites**. Measured: a 4-byte file reporting size 0, and `write("one")`
