@@ -1,0 +1,91 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE SEAM: does this tree actually reach `hex_draw`, and does a wall come back as
+// one flat surface?
+//
+// ⚠ This test exists before any editor change on purpose. The whole reason this
+// package exists is that the editor reimplemented the family's geometry and got a
+// road with a fence down each side; the way to not do that twice is to prove the
+// call works BEFORE reaching for the visible fix. It is also the cheapest possible
+// check that the dependency resolves at all — a registry dep that silently pulls
+// the wrong version fails here, not three steps later in a picture.
+use hex_editor;
+use hex_draw;
+use hex_form;
+use hex_field;
+
+// The same 5x4 plan `hex_draw`'s own tests use, so a failure here is about THIS
+// tree's wiring and not about a fixture nobody else has run.
+fn plan5x4() -> Plan { plan_new(0, 0, 5, 4, 0, false) }
+
+fn housed() -> HexSet {
+  p = plan5x4();
+  cells = hexset_chunk(0 - 20, 0 - 20, 41, 41);
+  types = labels_new(0 - 20, 0 - 20, 41, 41);
+  draw_floor(p, cells, types, 1);
+  cells
+}
+
+fn test_the_dependency_resolves_and_the_floor_is_the_documented_size() {
+  // `hex_draw`'s own `main` asserts 27 for this plan. Repeating the number here is
+  // the point: if this tree resolved a different version, this is where it shows.
+  p = plan5x4();
+  cells = hexset_chunk(0 - 20, 0 - 20, 41, 41);
+  types = labels_new(0 - 20, 0 - 20, 41, 41);
+  n = draw_floor(p, cells, types, 1);
+  assert(n == 27, "a 5x4 house has 27 floor cells, got {n}");
+}
+
+fn test_every_wall_is_an_exact_surface() {
+  // `G2`: a wall is not a strip of edges, it is one analytic surface, and its
+  // direction is EXACTLY a heading rather than a fit. This is the claim the
+  // editor's own wall cannot make.
+  assert(hex_editor::plan_walls_exact(plan5x4(), housed()),
+         "all four walls recover as exact surfaces");
+}
+
+fn test_a_wall_has_zero_spread_one_flat_quad() {
+  // The measurement that says "straight": the fitted surface's spread. A wall
+  // drawn from hex edges scatters its vertices up to half a hex either side; this
+  // is zero, and the bound is ZERO rather than "small" because a tolerance loose
+  // enough to admit a zigzag would pass the thing this exists to catch.
+  p = plan5x4();
+  cells = housed();
+  for side in 0..hex_editor::PLAN_SIDES {
+    spread = surface_fitted_spread(p, cells, side);
+    assert(spread == 0.0, "side {side} is one flat quad, spread {spread}");
+  }
+}
+
+fn test_the_corners_close_exactly() {
+  // ⚠ THE CLAIM THAT MAKES IT A BUILDING AND NOT FOUR LINES. `surface_quad`
+  // mitres, so consecutive sides must share an endpoint EXACTLY — the un-mitred
+  // `surface_span` leaves visible corner gaps, which is what the current editor's
+  // walls show. Exact equality, no tolerance.
+  p = plan5x4();
+  cells = housed();
+  qs = hex_editor::plan_walls(p, cells);
+  for i in 0..hex_editor::PLAN_SIDES {
+    j = (i + 1) % hex_editor::PLAN_SIDES ?? 0;
+    a = qs[i] ?? hex_editor::WallQuad {};
+    b = qs[j] ?? hex_editor::WallQuad {};
+    assert(a.wq_x1 == b.wq_x0 && a.wq_y1 == b.wq_y0,
+           "side {i} ends where side {j} begins: "
+           + "({a.wq_x1},{a.wq_y1}) vs ({b.wq_x0},{b.wq_y0})");
+  }
+}
+
+fn test_the_four_walls_are_four_distinct_lines() {
+  // The negative that stops the above passing on a degenerate answer: four quads
+  // that were all the same line would close trivially and be flat trivially.
+  qs = hex_editor::plan_walls(plan5x4(), housed());
+  n = 0;
+  for i in 0..hex_editor::PLAN_SIDES {
+    a = qs[i] ?? hex_editor::WallQuad {};
+    len2 = (a.wq_x1 - a.wq_x0) * (a.wq_x1 - a.wq_x0)
+         + (a.wq_y1 - a.wq_y0) * (a.wq_y1 - a.wq_y0);
+    if len2 > 0.01 { n = n + 1; }
+  }
+  assert(n == hex_editor::PLAN_SIDES, "all four sides have length, got {n}");
+}

@@ -1,0 +1,62 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// hex_editor — the editor's gestures, as FUNCTIONS.
+//
+// ⚠ **THE POINT OF THIS PACKAGE IS THAT IT CALLS THE LIBRARY.** The editor grew
+// its own wall, its own fence ring, its own roof and its own openings, and every
+// one of them is worse than the `hex_*` family's: a wall was laid as a ROAD with
+// a fence down each side, a ring as thirty per-hex-edge panels, and both follow
+// the lattice's staircase where `hex_draw` recovers a wall as ONE ANALYTIC
+// SURFACE. Measured before this package existed: `grep` for hex_draw, hex_shape,
+// hex_form, hex_roof or hex_place across the whole tree returned nothing.
+//
+// So the rule for anything added here: **if the family has it, call it.** New hex
+// interpretation does not belong in a consumer — that is what four parity bugs
+// and one road-shaped wall already cost.
+//
+// The other half of the point is that a gesture is a FUNCTION. Every one of them
+// lives inside the server's message loop today, reachable only through a socket,
+// which is why nothing can be scripted, replayed or tested without one.
+use hex_draw;
+use hex_form;
+use hex_field;
+
+// One wall, as the renderer should draw it: the mitred segment from corner to
+// corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
+// staircase the pictures keep showing.
+pub struct WallQuad {
+  wq_side: integer,
+  wq_x0: float, wq_y0: float,
+  wq_x1: float, wq_y1: float,
+}
+
+// A rectangular plan has four sides, and `surface_quad` needs to know how many so
+// it can mitre against the neighbours. Named rather than passed as a literal 4 at
+// each call, because it is the same fact three times.
+pub const PLAN_SIDES = 4;
+
+// The walls of a plan, mitred so consecutive sides share an endpoint EXACTLY and
+// the outline closes with no corner gap.
+//
+// `cells` must already hold the plan's floor — `hex_draw::draw_floor` puts it
+// there. The surface is recovered from those cells, which is what makes this the
+// inverse of drawing rather than a second description of it.
+pub fn plan_walls(p: Plan, cells: HexSet) -> vector<WallQuad> {
+  out: vector<WallQuad> = [];
+  for side in 0..PLAN_SIDES {
+    (x0, y0, x1, y1) = surface_quad(p, cells, side, PLAN_SIDES);
+    out += [WallQuad { wq_side: side, wq_x0: x0, wq_y0: y0, wq_x1: x1, wq_y1: y1 }];
+  }
+  out
+}
+
+// Is every one of a plan's walls an exact analytic surface — a heading, not a
+// fitted approximation? A `false` here means the cells are not a plan's floor,
+// and the wall a renderer draws from them would be an average of a zigzag.
+pub fn plan_walls_exact(p: Plan, cells: HexSet) -> boolean {
+  for side in 0..PLAN_SIDES {
+    if !surface_is_exact(surface_of(p, cells, side)) { return false; }
+  }
+  true
+}

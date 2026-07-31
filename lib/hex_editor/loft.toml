@@ -1,0 +1,20 @@
+[package]
+name    = "hex_editor"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/hex_editor.loft"
+
+# The `hex_*` family, from the REGISTRY. They are published at 0.1.0 and
+# byte-identical to ../../../loft-libs-world (diffed, not assumed), so there is
+# nothing to copy and no path into a tree another agent is editing.
+#
+# ⚠ `hex_world` is deliberately NOT here. Ours is `lib/hex_world` and the registry
+# carries a 0.2.0 on a different lineage; declaring it would let the resolver pick
+# the wrong one out from under the editor. Nothing in this package needs it — a
+# Plan draws into a HexSet, which is `hex_field`'s, not the store's.
+[dependencies]
+hex_draw  = ">=0.1"
+hex_form  = ">=0.1"
+hex_field = ">=0.1"
