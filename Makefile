@@ -295,16 +295,25 @@ gate-hexworld:
 	@printf '%-34s ' "moros_map/probe/slopeline"; \
 	  $(LOFT) --lib lib/ lib/moros_map/probe/slopeline.loft | tail -1
 
+# ⚠ ONE SERVER PER GATE, ALL AT ONCE — see tools/run-gates.sh for the why. The
+# serial version took 40+ MINUTES for 28 gates that need 87 seconds between them,
+# and it held port 18090 throughout so nobody could touch the editor meanwhile.
+# `GATE_JOBS` is how many at a time; each gets its own port from `GATE_PORT_BASE`.
+GATE_JOBS ?= 10
+
 gate-world:
-	@for g in tools/gates/world/*.mjs; do $(GATE_RESTART); \
-	  printf '%-34s ' "$$g"; node $$g || exit 1; done
+	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh tools/gates/world/*.mjs
 
 gate-character:
-	@for g in tools/gates/character/*.mjs; do $(GATE_RESTART); \
-	  printf '%-34s ' "$$g"; node $$g || exit 1; done
+	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh tools/gates/character/*.mjs
 
 # ⚠ THE SUITE STOPS WHAT IT STARTED. Each gate gets a fresh server and the last one
 # used to be left running — for days, at 76% of a core once a client had connected
 # and left. A suite that leaves a process behind on a shared box is not finished.
-gate: gate-world gate-character
+# ⚠ ONE POOL, NOT TWO BATCHES. Split into world-then-character, the suite pays the
+# slowest gate of each half in series; as one pool it pays the slowest gate once.
+# Measured: 2m33 split, 1m30 pooled, for the same 28 gates and the same verdicts.
+gate:
+	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
+	  tools/gates/world/*.mjs tools/gates/character/*.mjs
 	@$(MAKE) -s stop-editor

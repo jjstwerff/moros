@@ -28,7 +28,7 @@
 //
 // ⚠ And the fence clause is the one worth having. A camera that gave way to
 // anything solid would sail through a gate that only checked the wall.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0, view = null, body = null, cViews = 0;

@@ -3397,11 +3397,52 @@ fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
 // `terrain_y`. The gradient must be the gradient of the surface the eye is
 // actually above — on a deck that is the deck, not the outdoors three storeys
 // down, and the two have completely different slopes.
+// ⚠ THE GRADIENT IS THE FIELD'S, NOT FOUR MORE SAMPLES OF IT. This asked
+// `ground_under` FOUR times — at ±0.5 wu in x and z — and every one of those is a
+// full smooth-terrain evaluation: a cell, its six neighbours, six corner positions
+// and two vectors built to hold them. Five heavy reads to answer one question,
+// eleven times a tick, fourteen steps a march.
+//
+// Measured with the editor's own `27:` tracer while walking: the camera was
+// **993 ms of every second** and the tick fell from 65 a second to 21. With the
+// four reads stubbed out it was 180-330 ms — so four fifths of the camera solve
+// was this function, and none of it was the answer.
+//
+// `cell_normal` already computes the same quantity properly — least squares over
+// the six neighbours, a property of the FIELD rather than of where you happened to
+// sample it — so this is that fit, at the eye's own layer. Seven cell reads, no
+// interpolation, no allocation, and `sqrt(1 + gx² + gz²)` falls out exactly as
+// before. ⚠ It must stay layer-aware: `cell_normal` itself reads `terrain_h`, the
+// OUTDOORS, and on a deck that is a different surface three storeys down with a
+// completely different slope.
 fn cam_clear_at(x: float, z: float, eye: float, wld: World) -> float {
-  e = 0.5;
-  gx = (ground_under(wld, x + e, z, eye) - ground_under(wld, x - e, z, eye)) / (2.0 * e) ?? 0.0;
-  gz = (ground_under(wld, x, z + e, eye) - ground_under(wld, x, z - e, eye)) / (2.0 * e) ?? 0.0;
+  a = world_to_hex(x, z);
+  c0 = hex_to_world(a.ha_q, a.ha_r, 0);
+  h0 = surface_h_at(a.ha_q, a.ha_r, eye, wld);
+  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
+  for nd in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(a.ha_q, a.ha_r, nd);
+    nw = hex_to_world(nq, nr, 0);
+    dx = nw.x - c0.x;
+    dz = nw.z - c0.z;
+    dy = surface_h_at(nq, nr, eye, wld) - h0;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxy = sxy + dx * dy;
+    szy = szy + dz * dy;
+  }
+  gx = sxy / sxx ?? 0.0;
+  gz = szy / szz ?? 0.0;
   CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
+}
+
+// The surface height at a CELL for an eye at `ref` — `ground_under`'s rule without
+// its smooth interpolation, because a gradient over the cell ring does not want a
+// within-cell interpolation at each sample.
+fn surface_h_at(q: integer, r: integer, ref: float, wld: World) -> float {
+  sf = hex_world::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0);
+  if sf.sf_smooth || sf.sf_units < 0 { return (terrain_h(q, r, wld) as float) * HEIGHT_SCALE; }
+  (sf.sf_units as float) * HEIGHT_SCALE
 }
 
 // How far the eye may travel along the boom before it is inside the ground — or

@@ -34,7 +34,7 @@
 // ⚠ And it is a DISTANCE, not an arrival. A character that never moved also fails
 // to arrive; the difference between "stopped at the fence" and "stopped at its own
 // feet" is the entire feature, so the stop is checked against where the fence is.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0, body = null, tCount = 0;
@@ -105,6 +105,10 @@ const walkUntil = async (target, stillFor = 4) => {
   const start = await restingPos();
   const from = start.pos;
   const path = [from];
+  // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
+  // faster, so the world is the one this gate has always measured and the
+  // waiting is not. (STATE.md: three rates, byte-identical worlds.)
+  ws.send('34:8');
   ws.send('4:1');
   let still = 0, stopped = false, reached = false;   // `reached` is concluded below
   for (let k = 0; k < 4000; k++) {

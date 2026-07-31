@@ -34,7 +34,7 @@
 // rather than fixed it: the defect is that a maximum over set A was being compared
 // with a maximum over set B. Every phase is now measured over the chunks present in
 // ALL of them, so the comparison has one domain.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 

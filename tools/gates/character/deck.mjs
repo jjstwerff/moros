@@ -51,7 +51,7 @@
 // bumpy platform has a bumpy deck and no single stair height meets it. A road is the
 // authoring gesture that GRADES, and its grade is frozen from the feet, which is what
 // lets this gate choose the platform's height by standing on the first step.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const status = [];
 let st = 0, body = null, tCount = 0;
@@ -160,6 +160,10 @@ ws.onmessage = async (e) => {
     await place(0, 0, 0);
     await nextT();
     const i0 = trace.length - 1;
+    // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
+    // faster, so the world is the one this gate has always measured and the
+    // waiting is not. (STATE.md: three rates, byte-identical worlds.)
+    ws.send('34:8');
     ws.send('4:1');
     // Walk until it is over the platform, or until it has genuinely stopped — forty
     // consecutive transforms with no ground covered. That is a fact about the walker,

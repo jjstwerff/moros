@@ -15,7 +15,7 @@
 // ⚠ Walks DISTANCES, not durations — see climbprobe. Fixed millisecond walks
 // hid the speed constant, so doubling it carried the character past the ridge's
 // far end and "ridge kept" failed against working code.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 // Drives the character by PLACING it (7:<x>,<z>,<yaw>), never by walking.
 // This is a WORLD gate: it measures terrain, streaming or levelling, and must
 // not depend on locomotion — walking speed, stride or step timing. See

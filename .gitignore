@@ -55,3 +55,7 @@ lib/*/probe/*.bin
 shots/
 recordings/
 probe/*.png
+
+# Per-gate server logs from the parallel gate runner — one per gate, overwritten
+# every run, kept only so a failure can be read after the fact.
+.gate-*.log

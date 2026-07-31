@@ -14,7 +14,7 @@
 //
 // The middle one is the whole invariant. Silently relocating is the comfortable
 // bug: everything keeps working and the trigger now means something else.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0;

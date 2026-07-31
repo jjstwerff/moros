@@ -12,7 +12,7 @@
 // meant to test while the tower silently built nothing. A refusal gate that does
 // not name the code is a gate that passes when the feature is absent.
 //   -1 nothing to build on   -2 no room below the world   -10-N a column refusal
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 let st = 0; const status = [];

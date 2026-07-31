@@ -12,7 +12,7 @@
 //
 // ⚠ The bound is not "small", it is ZERO to within float noise. A tolerance loose
 // enough to admit a zigzag would pass the thing this exists to catch.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const status = [];
 const chunks = new Map();

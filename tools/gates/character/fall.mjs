@@ -13,7 +13,7 @@
 //
 // And it asserts the walker got there on its own feet: it must walk OFF the ledge,
 // which is only possible because a cliff stops a climb and not a descent.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0, body = null, tCount = 0;
@@ -62,6 +62,14 @@ ws.onmessage = async (e) => {
     await nextT();
     const i0 = trace.length - 1;
     const yTop = trace[i0][1];
+
+    // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
+
+    // faster, so the world is the one this gate has always measured and the
+
+    // waiting is not. (STATE.md: three rates, byte-identical worlds.)
+
+    ws.send('34:8');
 
     ws.send('4:1');
     for (let k = 0; k < 3000; k++) {

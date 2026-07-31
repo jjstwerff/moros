@@ -12,7 +12,7 @@
 // And the skid — `|r·θ − travel|` — is machine-ε for a true roll, which is the
 // no-slip identity holding by construction. `slip` is the library's own defect
 // knob and is left at 0 here.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0;

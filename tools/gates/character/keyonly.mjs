@@ -32,7 +32,7 @@ const until = async (arr, n, limitMs = 15000) => {
   }
   return false;
 };
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const rot = [], pos = [];
 let stage = 0, sentLook = false;
 const send = (m) => { if (m.startsWith('3:')) sentLook = true; ws.send(m); };

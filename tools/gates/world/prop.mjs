@@ -10,7 +10,7 @@
 //     that raises it is exactly the one that used to blank a dressing slot;
 //   · props ACCUMULATE in a cell rather than replacing each other;
 //   · a prop index outside the palette is refused NOMINALLY — no offer (`X68`).
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0;

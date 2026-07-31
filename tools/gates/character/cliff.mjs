@@ -11,7 +11,7 @@
 // foot, tops out around 0.66 wu against a 9.25 wu summit, and never traverses a
 // gradient past ~26°. With the threshold disabled it summits at 9.085 and walks a
 // 66.6° face — which is what this gate is here to keep out.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0, body = null, tCount = 0;
@@ -62,15 +62,31 @@ ws.onmessage = async (e) => {
     for (let q = 0; q <= 12; q++) prof.push(await col(q, 0));
     const summitUnits = Math.max(...prof);
 
+    // ⚠ EIGHT TIMES THE CLOCK, NOT A SHORTER WALK. The loop below waits for
+    // transforms, and at real time this gate spent 143 SECONDS delivering them
+    // while the server did 0.5 s of work. `34:8` consumes the same fixed ticks
+    // faster — the walk integrates a fixed step precisely so the rate cannot
+    // change the answer (STATE.md: three rates, byte-identical worlds).
+    ws.send('34:8');
+
     const i0 = trace.length - 1;
     const x0 = trace[i0][0], z0 = trace[i0][2];
     ws.send('4:1');
     // Walk until the transforms stop arriving — the character has stopped — or
     // until it is clear past the summit. Neither branch is a timer on the answer.
+    // ⚠ AND IT STOPS WHEN THE WALKER DOES. The distance test only fires for a
+    // walker that gets somewhere; this gate is about one that is REFUSED, so it
+    // used to wait out all 4000 ticks — 143 seconds of real time for a character
+    // that stopped in the first two. Standing still for a second of simulation is
+    // the answer arriving, not the answer being slow.
+    let still = 0;
     for (let k = 0; k < 4000; k++) {
+      const before = trace[trace.length - 1];
       if (!(await nextT())) break;
       const p = trace[trace.length - 1];
       if (Math.hypot(p[0] - x0, p[2] - z0) >= 17.0) break;
+      still = Math.hypot(p[0] - before[0], p[2] - before[2]) < 0.0005 ? still + 1 : 0;
+      if (still >= 30) break;
     }
     ws.send('4:0');
     await nextT();

@@ -14,7 +14,7 @@
 // report. The trace is a sampled curve; the answer is that curve evaluated at
 // `TARGET`, interpolated between the two samples that bracket it, which makes the
 // result a function of the TERRAIN and not of when anyone looked.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 let st = 0, body = null, tCount = 0;
 const trace = [];                       // every body transform, in order
@@ -97,6 +97,10 @@ ws.onmessage = async (e) => {
 
     // Hold W and step forward one TRANSFORM at a time — the server's own tick, not
     // a 50 ms timer of ours — until the ground covered reaches TARGET.
+    // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
+    // faster, so the world is the one this gate has always measured and the
+    // waiting is not. (STATE.md: three rates, byte-identical worlds.)
+    ws.send('34:8');
     ws.send('4:1');
     let cum = [0];
     for (let k = 0; k < 4000; k++) {

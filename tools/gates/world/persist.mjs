@@ -13,7 +13,7 @@
 // mistyped filename silently destroyed your work. A missing world is now REFUSED
 // by name and changes nothing, which this gate also checks, so the wipe is done
 // by saving a flat world first and loading that instead.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const chunks = new Map();
 let st = 0;

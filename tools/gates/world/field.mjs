@@ -18,7 +18,7 @@
 // how many there are — and when the roof made it five, three decoders moved and
 // the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
 const SURFACES = 7;   // ground, road, field, vegetation, roof, wall, floor
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const ack = async (needle, limitMs = 40000) => {

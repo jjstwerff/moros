@@ -18,7 +18,7 @@
 //
 // Run at four centres: both row parities, both signs. Parity is where this
 // codebase breaks — four separate bugs, all "right for non-negative coordinates".
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0;

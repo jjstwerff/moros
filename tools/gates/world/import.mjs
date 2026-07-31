@@ -12,7 +12,7 @@
 //   · a file that is not a glb is refused with the READER's named reason, not
 //     flattened to "could not import";
 //   · the id block is bounded and the bound is checked.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 const meshes = new Map();

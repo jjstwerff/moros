@@ -20,7 +20,7 @@
 // at EVERY angle, not just the widest — is
 // plans/14-props-dressing/probe/skin_joint.loft, which needs no server.
 const BODY = 0, LEG_L = 1;
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 
 let bodyMinY = null, legHalfW = null;
 let bodyT = null, legT = null;
@@ -64,6 +64,10 @@ ws.onmessage = (e) => {
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && phase === 0) {
     phase = 1;
+    // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
+    // faster, so the world is the one this gate has always measured and the
+    // waiting is not. (STATE.md: three rates, byte-identical worlds.)
+    ws.send('34:8');
     ws.send('4:1');                                    // hold W
     setTimeout(() => ws.send('4:0'), 1500);            // release
     setTimeout(finish, 2000);

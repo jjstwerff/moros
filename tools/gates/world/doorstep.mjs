@@ -16,7 +16,7 @@
 //      name, not a magnitude: 255 is not "nearly" 256, and offering it reads as
 //      a small correction while changing what the thing is made of (`X68`). The
 //      gate asks for species 9 and requires a refusal WITHOUT an offer.
-const ws = new WebSocket('ws://127.0.0.1:18090/ws');
+const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 const status = [];
 let st = 0;
