@@ -12,7 +12,26 @@
 // slid from 1 to 0 — so this probe silently began reading the LEFT LEG as "the
 // body" and kept PASSING, because a leg does move. Named constants and this
 // note, because the failure was invisible: green, for the wrong reason.
+// ⚠ AND IT WAS A 1.9-SECOND WINDOW, which failed TWO RUNS IN THREE — measured on
+// unmodified code, so it was never about what it was testing. `facings: 0,
+// positions: 0` is not a marginal count: it is the whole window elapsing with no
+// transform in it, because a freshly started server can still be streaming its
+// first chunks when the camera message arrives. The claim never needed a clock —
+// it is "the facing changes and the position changes" — so it waits for the
+// TRANSFORMS now, with a bound that is a failure timeout rather than a
+// measurement. This is the last clock-paced gate; `hipskin` and `walk` count
+// what arrived in a fixed window by design and are a different class.
 const BODY = '0;', LEG_L = '1;';
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// Distinct values of `arr` reaching `n`, or the bound elapsing. The expiry is the
+// gate's red path — a strafing A/D never turns, and must not hang.
+const until = async (arr, n, limitMs = 15000) => {
+  for (let t = 0; t < limitMs; t += 20) {
+    if (new Set(arr).size >= n) return true;
+    await wait(20);
+  }
+  return false;
+};
 const ws = new WebSocket('ws://127.0.0.1:18090/ws');
 const rot = [], pos = [];
 let stage = 0, sentLook = false;
@@ -32,21 +51,24 @@ ws.onmessage = (e) => {
   if (t === 'E') send('2:1.5,');
   if (t === 'C' && stage === 0) {
     stage = 1;
-    send('4:8');                                   // hold D — turn
-    setTimeout(() => { send('4:0'); rot.turnMark = new Set(rot).size; }, 700);
-    setTimeout(() => send('4:1'), 800);            // hold W — walk
-    setTimeout(() => send('4:0'), 1500);
-    setTimeout(() => {
-      const turned = new Set(rot).size >= 3;
+    (async () => {
+      send('4:8');                                 // hold D — turn
+      await until(rot, 3);
+      send('4:0');
+      const facings = new Set(rot).size;
+      send('4:1');                                 // hold W — walk
+      await until(pos, 3);
+      send('4:0');
+      const turned = facings >= 3;
       const walked = new Set(pos).size >= 3;
       const ok = turned && walked && !sentLook;
-      console.log(JSON.stringify({ facings: new Set(rot).size,
+      console.log(JSON.stringify({ facings,
                                    positions: new Set(pos).size,
                                    turnedWithoutMouse: turned,
                                    walkedWithoutMouse: walked,
                                    everSentLook: sentLook, ok }));
       ws.close(); process.exit(ok ? 0 : 1);
-    }, 1900);
+    })();
   }
 };
 ws.onerror = () => process.exit(2);
