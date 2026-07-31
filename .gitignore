@@ -49,3 +49,4 @@ lib/*/tests/*.bin
 lib/*/probe/*.bin
 shots/
 recordings/
+probe/*.png

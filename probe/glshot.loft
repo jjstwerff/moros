@@ -1,0 +1,21 @@
+// Can a loft program open a GL context on this box with no display, draw, and
+// photograph its own back buffer? Everything server-side rendering needs rests on
+// that one question, so it is asked in twenty lines before anything is built on it.
+use graphics;
+
+fn main() {
+  ok = graphics::gl_create_window(320, 200, "probe");
+  println("window: {ok}");
+  n = 0;
+  while graphics::gl_poll_events() && n < 3 {
+    n = n + 1;
+    graphics::gl_clear(0xff3366aa);
+    // ⚠ BEFORE the swap: gl_screenshot reads GL_BACK, which the swap discards.
+    if n == 2 {
+      shot = graphics::gl_screenshot(320, 200, "../probe/glshot.png");
+      println("screenshot: {shot}");
+    }
+    graphics::gl_swap_buffers();
+  }
+  println("frames: {n}");
+}
