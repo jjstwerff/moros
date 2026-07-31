@@ -321,6 +321,11 @@ const MSG_STAIR = 30;
 // numbers" arrive in different messages otherwise, and the numbers are always for
 // a different moment. One key, one instant, both halves.
 const MSG_SNAP = 31;
+// Tell every attached renderer to photograph the next frame it draws, to this
+// path. `31:` is the AUTHOR asking with a picture already in hand (the browser
+// captures its own canvas); this is a SCRIPT asking, where the picture has to come
+// from whichever renderer is running — and the production one is the loft client.
+const MSG_SHOOT = 33;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -4044,6 +4049,12 @@ fn main() {
           rec_flush(rec_path, rec_buf);
           println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64"
                 + " (recording {rec_path}, {rec_n} events)");
+        } else if ev.msg_id == MSG_SHOOT {
+          sh_path = ev.payload;
+          if sh_path == "" { sh_path = "../shots/frame.png"; }
+          srv.broadcast("P:{sh_path}");
+          srv.send_to(ev.cid, "S:shoot {sh_path}");
+          println("editor: asked every renderer for {sh_path}");
         } else if ev.msg_id == MSG_COLUMN {
           // A read-back, because a structure is INVISIBLE: floors and roofs carry
           // FLOOR_MAT, and the renderer draws ground, road, field and vegetation.

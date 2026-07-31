@@ -205,6 +205,10 @@ struct Client {
   was_storey_up: boolean,
   was_storey_down: boolean,
   was_wall_run: boolean,
+  // A path when a picture is wanted on the next frame, empty otherwise. The
+  // server asks for it (`33:<path>`), so a SCRIPT can take screenshots along the
+  // way without anyone at the keyboard.
+  shoot: text,
   levelling: boolean,
   dragging: boolean,
   last_x: float,
@@ -492,6 +496,11 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
       else if tag == "G" { set_ramp(st, body); }
       else if tag == "F" { set_fog(st, body); }
       else if tag == "S" { st.c_status = st.c_status + 1; println("server: {body}"); }
+      // ⚠ A PICTURE IS A SERVER-DRIVEN EVENT, not a key. A script has to be able to
+      // say "photograph this moment" without anyone at the keyboard, and the server
+      // is the only thing that knows which moment — it is where the edit landed.
+      // The path arrives with it so a run can name its own frames in order.
+      else if tag == "P" { st.shoot = body; }
       else if tag == "E" {
         // End of world: the server has sent everything it means to send for this
         // connection, and wants an aspect back before it will solve a camera.
@@ -628,7 +637,7 @@ fn main() {
     was_up: false, was_down: false, was_level: false,
     was_fence: false, was_wall: false,
     was_step_up: false, was_step_down: false,
-    was_storey_up: false, was_storey_down: false, was_wall_run: false,
+    was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
     levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
@@ -681,6 +690,13 @@ fn main() {
     drain(h, st);
     poll_input(h, st);
     draw_world(st);
+    // ⚠ THE PICTURE IS TAKEN HERE — between the draw and the swap, because
+    // `gl_screenshot` reads GL_BACK and the swap discards it. But NOT IN THIS FILE:
+    // `gl_screenshot` is not in the browser's host-import set, and loft refuses the
+    // `--html` build outright rather than emitting a page that dies with a
+    // LinkError (the guard that came out of loft#668). loft has no conditional
+    // compilation, so the capture lives in a NATIVE entry point that shares this
+    // renderer — see `st.shoot`, which the `P:` message sets and that entry reads.
     graphics::gl_swap_buffers();
     // Report once every ~300 frames rather than per frame: a gate reads this, and
     // a person watching a console should see progress without a flood.
