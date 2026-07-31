@@ -326,6 +326,19 @@ const MSG_SNAP = 31;
 // captures its own canvas); this is a SCRIPT asking, where the picture has to come
 // from whichever renderer is running — and the production one is the loft client.
 const MSG_SHOOT = 33;
+// How fast the simulation runs against the wall clock. `34:1` is real time, `34:8`
+// is eight times, `34:0` is as fast as the pump will go. ⚠ It changes only how
+// LONG a run takes, never what it produces — the step is fixed, so the world a
+// script builds at 0 is the world it builds at 1.
+const MSG_RATE = 34;
+// Advance the simulation EXACTLY n ticks, then say so. This is what makes a golden
+// image possible: a script that says "photograph now" photographs whichever frame
+// happened to be next, which depends on the clock and on the machine. A script that
+// says `35:120` then `33:<path>` photographs **tick 120**, every run, at any rate.
+//
+// ⚠ The acknowledgement comes when the ticks have been CONSUMED, not when the
+// message arrived — otherwise the script races the thing it is stepping.
+const MSG_STEP = 35;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -3725,6 +3738,14 @@ fn main() {
   // On by default, because the run you wish you had recorded is always the one you
   // did not. `32:0` turns it off for a public build; `32:1` back on.
   recording = true;
+  sim_rate = 1.0;              // seconds of simulation per second of wall clock
+  // ⚠ RATE 0 IS STEPPED, NOT "AS FAST AS POSSIBLE". A free-running clock is still
+  // a clock: how many ticks elapse between two commands depends on how fast the
+  // box is, so the state a picture is taken of is not reproducible. At rate 0
+  // nothing advances until `35:` says how far, which is the only mode in which a
+  // PNG is a golden image.
+  sim_pending = 0;             // ticks owed to a `35:` that has not finished
+  sim_step_cid = 0 - 1;        // who to tell when they are all consumed
   rec_tick = 0;                // simulation ticks, not wall clock — replay's unit
   rec_buf = "";
   rec_path = "../recordings/run-{ticks()}.rec";
@@ -4049,6 +4070,20 @@ fn main() {
           rec_flush(rec_path, rec_buf);
           println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64"
                 + " (recording {rec_path}, {rec_n} events)");
+        } else if ev.msg_id == MSG_STEP {
+          sim_pending = sim_pending + (ev.payload as integer ?? 1);
+          sim_step_cid = ev.cid;
+          // ⚠ No acknowledgement here. It is sent when the last of them has been
+          // consumed, because "the message arrived" and "the simulation is there"
+          // are different instants and a script that confuses them photographs the
+          // wrong tick.
+          println("editor: stepping {sim_pending} ticks from {rec_tick}");
+        } else if ev.msg_id == MSG_RATE {
+          sim_rate = ev.payload as float ?? 1.0;
+          if sim_rate < 0.0 { sim_rate = 0.0; }
+          srv.send_to(ev.cid, "S:rate {sim_rate}");
+          println("editor: simulation rate {sim_rate}"
+                + " (0 = as fast as the pump allows)");
         } else if ev.msg_id == MSG_SHOOT {
           sh_path = ev.payload;
           if sh_path == "" { sh_path = "../shots/frame.png"; }
@@ -4538,7 +4573,18 @@ fn main() {
     }
 
     // ── the fixed-rate tick ────────────────────────────────────────────────
+    //
+    // ⚠ THE CLOCK IS A POLICY, NOT THE WALL. `sim_rate` is how many seconds of
+    // simulation to run per second of real time: 1 is a person's pace, 8 tests an
+    // evening of game in a few minutes, and 0 means *as fast as the loop can go* —
+    // which is what a script wants, because a script is not waiting for anything.
+    // The STEP is fixed either way, so the result does not depend on the rate; only
+    // how long it takes to get there does. That is the property that lets a script
+    // be run many times and tuned separately.
     now_us = ticks();
+    tick_wait = TICK_US;
+    if sim_rate > 0.0 { tick_wait = (TICK_US as float / sim_rate ?? 0.0) as integer; }
+    if tick_wait < 1 { tick_wait = 1; }
     // ── ACTIVE WHILE WATCHED, ASLEEP WHEN NOT ────────────────────────────
     //
     // Measured: with no client ever connected the editor held ~85% of a core
@@ -4591,10 +4637,27 @@ fn main() {
       live_clients = srv.broadcast("P:");
     }
     watched = live_clients > 0;
-    if watched && now_us - last_us >= TICK_US {
-      steps = (now_us - last_us) / TICK_US ?? 1;
-      last_us = last_us + steps * TICK_US;
-      dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
+    // Stepped when the rate is zero; paced by the wall clock otherwise. Either way
+    // the STEP is the same size, so the two produce the same world.
+    may_tick = false;
+    if sim_rate <= 0.0 { may_tick = sim_pending > 0; }
+    else { may_tick = now_us - last_us >= tick_wait; }
+    if watched && may_tick {
+      // ── ⚠ ONE TICK IS ONE FIXED STEP, ALWAYS ─────────────────────────────
+      //
+      // This read `steps = elapsed / TICK_US` and integrated `steps * TICK_US` in
+      // a single pass — so a loaded box took ONE tick that moved the walker as far
+      // as five, and the trajectory depended on the machine. That contradicts this
+      // file's own claim that a run is *"reproducible from an input log instead of
+      // from whatever frame rate this tab happened to run at"*: it was reproducible
+      // in its INPUT and not in its integration, which is the half that matters.
+      //
+      // A backlog is now worked off one fixed tick per pass of the pump instead of
+      // one big one. Same wall-clock catch-up, and `dt` is a constant — which is
+      // what makes a recording replay to the same world, and what lets the clock
+      // run at any speed without changing the result.
+      last_us = last_us + tick_wait;
+      dt = TICK_US as float / 1000000.0 ?? 0.0;
 
       // The collision proxy, refreshed when it can no longer be right: when the
       // character has changed cell, when the world's EDIT CLOCK has moved, or when
@@ -4798,6 +4861,13 @@ fn main() {
       acc_rest = acc_rest + (ticks() - tph);
       nticks = nticks + 1;
       rec_tick = rec_tick + 1;
+      if sim_pending > 0 {
+        sim_pending = sim_pending - 1;
+        if sim_pending == 0 && sim_step_cid >= 0 {
+          srv.send_to(sim_step_cid, "S:stepped to {rec_tick}");
+          sim_step_cid = 0 - 1;
+        }
+      }
       if ticks() - acc_since >= 1000000 {
         if tracing {
           // Per second: where the time went, and the arithmetic that explains the

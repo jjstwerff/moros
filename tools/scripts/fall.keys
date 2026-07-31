@@ -1,0 +1,41 @@
+# WATCHING A FALL, FRAME BY FRAME.
+#
+# The point is that the pictures are placed by TICK, not by keyboard input: the
+# character is set walking once, and every snapshot after that is the simulation
+# advanced a known amount. Add a `step`/`snap` pair anywhere and you get another
+# frame of the same fall — remove one and nothing else moves.
+#
+# ⚠ rate 0 is what makes them comparable. At any other rate the wall clock also
+# advances ticks between commands, so "ten ticks later" is only approximately ten.
+
+rate 0
+at 0 0 0
+
+echo --- a hill to fall off
+key ArrowUp
+step 5
+key ArrowUp
+step 5
+key ArrowUp
+step 5
+save fallworld
+
+echo --- stand on it and walk over the edge
+at 15 0 0
+step 30
+snap fall-00
+
+keys 1
+step 20
+snap fall-01
+step 10
+snap fall-02
+step 10
+snap fall-03
+step 10
+snap fall-04
+step 20
+snap fall-05
+keys 0
+step 20
+snap fall-06

@@ -26,6 +26,11 @@
 //   turn <deg>              turn by that much, measured off the body's facing
 //   wait <prefix>           wait for a status line starting with this
 //   snap <name>             picture + state dump, into shots/
+//   keys <bitmask>          hold W=1 S=2 A=4 D=8 — raw, so a walk can be held for
+//                           an EXACT number of ticks rather than a distance
+//   rate <n>                simulation speed: 1 real time, 8 fast, 0 STEPPED
+//   step <n>                advance exactly n ticks and wait until they are done
+//   save <name>             write the world; the file is the determinism fingerprint
 //   echo <text>             print a marker into the transcript
 import http from 'node:http';
 import fs from 'node:fs';
@@ -187,6 +192,20 @@ for (const raw of lines) {
     }
     ws.send('4:0'); await nextT();
     console.log(`  facing ${facing().toFixed(1)}°`);
+  } else if (cmd === 'keys') {
+    ws.send(`4:${rest[0]}`);
+    await sleep(60);
+  } else if (cmd === 'rate') {
+    ws.send(`34:${rest[0]}`);
+    console.log('  ' + await ack('rate', 10000));
+  } else if (cmd === 'step') {
+    // ⚠ The ack arrives when the ticks have been CONSUMED, not when the message
+    // landed — that difference is the whole point of stepping.
+    ws.send(`35:${rest[0]}`);
+    console.log('  ' + await ack('stepped', 60000));
+  } else if (cmd === 'save') {
+    ws.send(`8:${rest[0]}`);
+    console.log('  ' + await ack('saved', 30000));
   } else if (cmd === 'wait') {
     console.log('  ' + await ack(rest.join(' ')));
   } else if (cmd === 'snap') {
