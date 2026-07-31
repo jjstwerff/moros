@@ -50,7 +50,32 @@ in that order — they were built in that order and each depended on the one bef
    authors through the outdoors. Nothing is wrong today; the day one is placed from a deck it
    lands a storey down, silently. That is item 1's `terrain_y` list from the other side, and
    the gesture that would expose it now exists.
-3. **`A0` and the plan-14 probes** — unchanged, see the section below.
+3. **Plan 14's one remaining item: steep ground, the CART half.** `A-FIT` refuses with a
+   residual; *tipping* is the physical answer and is dynamics this rung does not have. A cart is
+   **placed**, not walked, so it can still be put on ground its axle cannot span — and the cliff
+   rule does not close it, because a cliff stops a walker and a placement is not a walk.
+   (`A0`–`A10` and every probe are DONE; the earlier "A0 and the plan-14 probes" entry here was
+   stale — see items 18 and 22.)
+4. **The `collide` gate's oblique clause is wrong** — it places and walks with yaw 0, so it
+   re-measures the perpendicular stop rather than the slide. The slide itself IS verified
+   elsewhere; this is a gate defect, not a feature one.
+5. **Two files are uncommitted in the shared tree** (`../loft-libs-world`): `hex_edge/README.md`
+   and `hex_grid/loft.lock`. Both need a human call before committing, since that tree is shared
+   with another agent.
+6. **The next ladder rung is `16b` — S2, voxels on the wire** (`plans/16-client-split/DESIGN.md`):
+   the client caches and meshes the bytes itself, and the two copies agree by the format's own
+   CRC. Everything below it on the ladder is ✅.
+7. **Smaller things each rung left named**: LOD and instancing for the scatter (9a), `glb`
+   import (10b), the routine sandbox seam (11a), and the ∞ row's convergences — chunk helpers
+   into `hex_grid`, the dirty set into `gridmesh`, adopting the shipped `input`.
+
+### ✋ Waiting on your eyes, not on a gate
+
+- **Build a tower with a dungeon under it and walk up into it** — `E` cuts a step into the cell
+  you face, three steps is a storey. This is the layer stack's checkpoint and it is now
+  reachable for the first time.
+- **Look at the wasm client** — `make play-fast`, then `/client` beside `/`. Both renderers are
+  green; which one continues is your call. ⚠ Click the canvas before pressing a key.
 
 ### The habit that found the last three defects
 
