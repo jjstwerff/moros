@@ -1,0 +1,72 @@
+# arguments 0.2.0 — public API surface
+# generated from /home/jurjens/.loft/registry/arguments-0.2.0
+# use it with: use arguments;
+
+## src/arguments.loft
+
+// --- Arguments ---
+
+pub fn create(name: text, version: text, description: text) -> Args
+
+// --- Declaring options ---
+
+// A boolean flag (`--verbose` / `-v`).
+pub fn flag(self: Args, opt_short: text, opt_long: text, desc: text)
+
+// An optional value option (`--output FILE`).  `arg_name` is the metavar shown in help.
+pub fn option(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
+
+// A required value option: `parse` fails if it is absent.
+pub fn required(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
+
+// An optional-argument option: its value attaches only via `=` / glued form
+// (`--color=auto`, `-cauto`); given bare (`--color`) it is present with value "".
+pub fn optional(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
+
+// Set the positional synopsis for the usage line (e.g. "[FILE...]").
+pub fn set_usage(self: Args, synopsis: text)
+
+// Set the "Report bugs to <addr>." help footer.
+pub fn set_bug_address(self: Args, address: text)
+
+// Set free text printed after the option list in help.
+pub fn set_epilog(self: Args, epilog: text)
+
+// Opt-in: register `--help`/`-h` and `--version`/`-V` (short forms only when free),
+// so `parse` records `--help`/`--version` and `help()` lists them.  Nothing is
+// auto-printed — the caller checks `wants_help()` / `wants_version()`.
+pub fn enable_help(self: Args)
+
+// --- Parsing: cursor/match-PEG driver over the token stream ---
+
+pub fn parse(self: Args, argv: vector<text>) -> boolean
+
+// --- Querying results ---
+
+pub fn has(self: Args, name: text) -> boolean
+
+pub fn get(self: Args, name: text) -> text?
+
+// The option's value, or `fallback` when unset.
+pub fn get_or(self: Args, name: text, fallback: text) -> text
+
+// The option's value parsed as an integer, or null when unset or non-numeric.
+pub fn get_int(self: Args, name: text) -> integer?
+
+pub fn ok(self: Args) -> boolean
+
+pub fn error_msg(self: Args) -> text
+
+pub fn wants_help(self: Args) -> boolean
+
+pub fn wants_version(self: Args) -> boolean
+
+pub fn version_text(self: Args) -> text
+
+// The GNU "Try '<prog> --help' …" hint to print alongside a parse error.
+pub fn try_help(self: Args) -> text
+
+// --- Auto-generated GNU-style help ---
+
+// Render a GNU-format help screen from the declared options.
+pub fn help(self: Args) -> text

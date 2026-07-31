@@ -19,16 +19,16 @@ deps = ["web"]
 
 [[package]]
 name = "web"
-version = "0.3.2"
-url = "https://github.com/loft-lang/loft-libs-net/releases/download/web-v0.3.2/web-0.3.2.tar.gz"
-sha256 = "72a94d54e32d3698462cd54f6c4b837d9e526489914d80c1cfd4159d6740995e"
+version = "0.3.4"
+url = "https://github.com/loft-lang/loft-libs-net/releases/download/web-v0.3.4/web-0.3.4.tar.gz"
+sha256 = "8db45c168a057e1501cb67fba86c4aaf5a5dbace7758e0f1a52569ff2b9b8aa7"
 source = "registry"
 
 [[package]]
 name = "gridmesh"
-version = "0.1.2"
-url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/gridmesh-v0.1.2/gridmesh-0.1.2.tar.gz"
-sha256 = "97ac4a990c4501982e05f8a2bd65d6010527f3ace6b3f7598a262ef03ebe6b26"
+version = "0.2.0"
+url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/gridmesh-v0.2.0/gridmesh-0.2.0.tar.gz"
+sha256 = "26656dccc2ef56be33514d16bc0c5500b6736d3407c6c91c126c77ae9fd25d43"
 source = "registry"
 
 [[package]]
@@ -68,9 +68,9 @@ source = "registry"
 
 [[package]]
 name = "crypto"
-version = "0.3.6"
-url = "https://github.com/loft-lang/loft-libs-core/releases/download/crypto-v0.3.6/crypto-0.3.6.tar.gz"
-sha256 = "7bc58479f1407220fea004121a6b201258bf9194113d93165f283ff633a0be7b"
+version = "0.3.7"
+url = "https://github.com/loft-lang/loft-libs-core/releases/download/crypto-v0.3.7/crypto-0.3.7.tar.gz"
+sha256 = "847cfd7015796bce467dab03c12364f229412b00919de44dcaa16df9189bc6b1"
 source = "registry"
 
 [[package]]

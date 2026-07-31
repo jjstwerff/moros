@@ -24,6 +24,11 @@ lib/**/native-auto/
 lib/**/.loft/
 !lib/**/.loft/api/
 
+# `loft update` writes the same stubs at the ROOT, for the script-level
+# loft.lock that `src/` runs against. Its resolver cache is noise; the api/
+# stubs are committed for the same reason as the ones above.
+/.loft/cache/
+
 # The same artefacts beside the PROGRAMS in src/ — the rule above only covered
 # lib/. `src/.loft/editor_client.html` is `make client`'s output: a ~950 KB page
 # that is rebuilt from source and changed on every single build, so committing it

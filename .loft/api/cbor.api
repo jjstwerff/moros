@@ -1,0 +1,33 @@
+# cbor 0.1.2 — public API surface
+# generated from /home/jurjens/.loft/registry/cbor-0.1.2
+# use it with: use cbor;
+
+## src/cbor.loft
+
+// --- CBOR ---
+
+// A dynamic CBOR value.  Mirrors the stdlib `JsonValue`, with CBOR's extra
+// `CBytes` (native byte string) and the integer split that CBOR makes at the
+// wire level folded into one signed `CInt`.
+pub enum CborValue
+
+// One key/value pair of a `CMap`.
+pub struct CborEntry
+
+// Encode a `CborValue` to canonical CBOR bytes.
+pub fn encode(v: CborValue) -> vector<u8>
+
+// --- decode (A3) ---
+
+// The result of decoding one CBOR value: the `value`, the byte position just
+// past it (`next`), and `ok` — false on any malformed / non-canonical /
+// truncated input.  Decoding never crashes (loft-safe): a bad byte stream
+// yields ok=false rather than a trap.
+pub struct Decoded
+
+// --- dispatch on major type ---
+
+// Decode canonical CBOR bytes into a `CborValue`.  Returns `ok=false` on any
+// malformed, non-canonical, or truncated input — and rejects trailing bytes
+// after the top-level value.  Never crashes.
+pub fn decode(bytes: vector<u8>) -> Decoded

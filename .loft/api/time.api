@@ -1,0 +1,195 @@
+# time 0.3.0 — public API surface
+# generated from /home/jurjens/.loft/registry/time-0.3.0
+# use it with: use time;
+
+## src/time.loft
+
+// Epoch-ms at UTC midnight of the given calendar date.
+pub fn from_ymd(fy: integer, fmo: integer, fd: integer) -> integer
+
+// Identity wrapper — for readability where a raw ms count becomes a time.
+pub fn from_millis(ms: integer) -> integer
+
+// Epoch-SECONDS boundary.  Garmin / Strava REST APIs speak Unix seconds
+// (`.timestamp()`), while loft times are milliseconds — convert at the edge.
+pub fn from_unix_seconds(secs: integer) -> integer
+
+pub fn to_unix_seconds(uts: integer) -> integer
+
+// Parse an ISO date "YYYY-MM-DD", optionally followed by " HH:MM[:SS]"
+// or "THH:MM[:SS]" with an optional trailing "Z".  Returns null on any
+// malformed input (test with `!result`).
+pub fn parse(ps: text) -> integer?
+
+pub fn year(yt: integer) -> integer
+
+pub fn month(mt: integer) -> integer
+
+pub fn day(dt: integer) -> integer
+
+pub fn hour(ht: integer)   -> integer
+
+pub fn minute(mit: integer) -> integer
+
+pub fn second(st: integer)  -> integer
+
+// 0 = Monday .. 6 = Sunday.  1970-01-01 was a Thursday (weekday 3).
+pub fn weekday(wt: integer) -> integer
+
+pub fn add_days(adt: integer, days: integer)     -> integer
+
+pub fn add_weeks(awt: integer, weeks: integer)   -> integer
+
+pub fn add_seconds(ast: integer, secs: integer)  -> integer
+
+// Whole calendar days from `a` to `b` (b later → positive).
+pub fn days_between(da: integer, db: integer) -> integer
+
+pub fn seconds_between(sa: integer, sb: integer) -> integer
+
+pub fn start_of_day(sdt: integer) -> integer
+
+// Monday 00:00 UTC of the week containing `t`.
+pub fn start_of_week(swt: integer) -> integer
+
+// Combine a date with a time-of-day given as components (datetime.combine).
+pub fn at_time(atd: integer, hh: integer, mm: integer, ss: integer) -> integer
+
+// Combine a date with an "HH:MM" or "HH:MM:SS" time string.  Mirrors
+// `datetime.combine(date, time.fromisoformat(s))`.  Null on a malformed time.
+pub fn combine(cmd: integer, time_text: text) -> integer?
+
+pub fn iso_year(iyt: integer) -> integer
+
+pub fn iso_week(iwt: integer) -> integer
+
+// Shift so that the field accessors / formatters yield local values.
+pub fn to_local(lt: integer, offset_min: integer) -> integer
+
+// UTC-midnight key of the local calendar day containing `t`.
+pub fn local_day(ldt: integer, offset_min: integer) -> integer
+
+// The local calendar day for "now" at the given offset.
+pub fn today(offset_min: integer) -> integer
+
+pub fn format_date(fdt: integer) -> text
+
+pub fn format_time(ftt: integer) -> text
+
+pub fn format_seconds(fst: integer) -> text
+
+pub fn format_datetime(fdtt: integer) -> text
+
+pub fn format_iso(fit: integer) -> text
+
+pub fn weekday_name(wnt: integer) -> text
+
+pub fn month_name(mnt: integer) -> text
+
+pub value struct DateTime
+
+pub value struct Duration
+
+// ── DateTime construction ──
+pub fn date(dcy: integer, dcmo: integer, dcd: integer) -> DateTime
+
+pub fn datetime(tcy: integer, tcmo: integer, tcd: integer,
+
+// ── Duration construction ──
+pub fn milliseconds(nms: integer) -> Duration
+
+pub fn seconds(nsec: integer)     -> Duration
+
+pub fn minutes(nmin: integer)     -> Duration
+
+pub fn hours(nhr: integer)        -> Duration
+
+pub fn days(nday: integer)        -> Duration
+
+pub fn weeks(nwk: integer)        -> Duration
+
+// ── DateTime field accessors (methods; delegate to the integer API above) ──
+pub fn year(self: DateTime)         -> integer
+
+pub fn month(self: DateTime)        -> integer
+
+pub fn day(self: DateTime)          -> integer
+
+pub fn hour(self: DateTime)         -> integer
+
+pub fn minute(self: DateTime)       -> integer
+
+pub fn second(self: DateTime)       -> integer
+
+pub fn weekday(self: DateTime)      -> integer
+
+pub fn iso_year(self: DateTime)     -> integer
+
+pub fn iso_week(self: DateTime)     -> integer
+
+pub fn weekday_name(self: DateTime) -> text
+
+pub fn month_name(self: DateTime)   -> text
+
+pub fn to_millis(self: DateTime)    -> integer
+
+// ── Duration accessors ──
+pub fn total_millis(self: Duration)  -> integer
+
+pub fn total_seconds(self: Duration) -> integer
+
+pub fn total_minutes(self: Duration) -> integer
+
+pub fn total_hours(self: Duration)   -> integer
+
+pub fn total_days(self: Duration)    -> integer
+
+// ── DateTime operators (comparison + typed arithmetic) ──
+pub fn OpLt(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpLe(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpGt(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpGe(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpEq(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpNe(self: DateTime, other: DateTime) -> boolean
+
+pub fn OpMin(self: DateTime, other: DateTime) -> Duration
+
+pub fn OpAdd(self: DateTime, span: Duration)  -> DateTime
+
+// `-` on a DateTime is the difference `dt - dt` (above); operators key on the
+// receiver type, so subtracting a Duration is the `minus` method (or `dt + (-span)`).
+pub fn minus(self: DateTime, span: Duration) -> DateTime
+
+pub fn negate(self: Duration) -> Duration
+
+// ── Duration operators ──
+pub fn OpAdd(self: Duration, other: Duration) -> Duration
+
+pub fn OpMin(self: Duration, other: Duration) -> Duration
+
+pub fn OpMul(self: Duration, factor: integer) -> Duration
+
+pub fn OpLt(self: Duration, other: Duration) -> boolean
+
+pub fn OpLe(self: Duration, other: Duration) -> boolean
+
+pub fn OpGt(self: Duration, other: Duration) -> boolean
+
+pub fn OpGe(self: Duration, other: Duration) -> boolean
+
+pub fn OpEq(self: Duration, other: Duration) -> boolean
+
+pub fn OpNe(self: Duration, other: Duration) -> boolean
+
+// ── custom formatting (the per-type to_text hook) ──
+// "" / "datetime" -> YYYY-MM-DD HH:MM · "date" -> YYYY-MM-DD · "time" -> HH:MM
+// "seconds" -> HH:MM:SS · "iso" -> …THH:MM:SSZ · "wday" -> Mon · "month" -> May
+pub fn to_text(self: DateTime, spec: text) -> text
+
+// A Duration renders as [-]H:MM:SS (hours may exceed 24).
+pub fn to_text(self: Duration, _spec: text) -> text
