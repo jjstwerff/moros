@@ -10,7 +10,102 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-07-31, later)
+## ⏭ PICK UP HERE (2026-07-31, session 5) — the structural half is WRONG, and the harness to fix it exists
+
+**The headline, and it reframes the whole editor.** An inventory of `../loft-libs-world`
+turns up eight `hex_*` libraries this editor depends on **none** of — and they are exactly
+the ones it has been reimplementing badly. `grep` for them across `lib/*/loft.toml` and
+`src/*.loft` returned nothing.
+
+| the editor does | the family already does, tested |
+|---|---|
+| `25:` lays a **road with a fence down each side** — measured, a run along x spans 5 wu in z, and the ack says `road laid 13 cells and 24 fence edges` | `hex_draw::surface_of` · `surface_quad` — **one flat mitred quad per wall** |
+| `23:` rings **30 per-hex-edge panels** in a zigzag | `hex_shape::arc_fill` — the actual circle; `box_fill` — a rectangular footprint |
+| a door is an edge material that draws nothing | `hex_draw::place_opening(plan, cells, edges, side, t, nedges, kind)` |
+| a roof is a stencil special case | `hex_draw::draw_roof(eave, pitch, hip_steps)` + `hex_roof`'s ridge/hip/cone/dome/vaults |
+| — | `hex_place::seat_write` — sit a building on the terrain |
+
+All **published at 0.1.0 and byte-identical to the working tree** (diffed, not assumed), so
+they are ordinary registry dependencies: nothing to copy, no path into a sibling another
+agent edits. Their own comment states the fix: *"the renderer draws the wall as one quad and
+each feature as a sub-interval of it, **so the zigzag never reaches the picture**."*
+
+⚠ **This is the same class as moros#3's parity-blind `hex_distance` copy, one level up** — a
+consumer re-deriving what the lattice family owns. The user's standing instruction:
+**do not invent hex interpretation; use what is already tested.**
+
+**What stays ours** (built here, gated, correct): the fall, the walk and its cliff threshold,
+terrain shaping, the surface rule, the camera solve, the stair. **What is wrong**: everything
+structural — walls, fences, openings, roofs, footprints.
+
+### The plan — `doc/claude/SCRIPTED_EDITOR.md`, steps S1…S8
+
+Each step ends in a **PNG**, because every claim about a shape can be green while the picture
+is wrong — which is how `25:` passed its gate for months while drawing a road.
+
+| | | |
+|---|---|---|
+| `S1` | ✅ `lib/hex_editor` on the real library, 5 tests | corner gap seen red at 0.45 wu |
+| `S2` | ✅ `tools/views.mjs` — plan + elevation PNGs, no GPU, passive | showed the road-with-lines exactly |
+| `S3` | **NEXT** — one wall from `surface_quad` replaces `emit_run_wall` | one straight mitred wall |
+| `S4`–`S8` | footprint · `place_opening` · `draw_roof` · headless runner · the swinging door | |
+
+### The harness — all of it built and verified this session
+
+| | |
+|---|---|
+| **`$`** in the browser | writes `shots/shot-N.png` + a state dump **of that same frame** |
+| **`tools/script.mjs`** | replays a `.keys` script of key presses; browser opt-in (`--shots`) |
+| **the recorder** | every run, timed, on by default → `recordings/run-<t>.rec`. ⚠ **The format IS the wire, stamped with the tick** — so a recording, a hand-written scene and a bug report are one file |
+| **`34:<rate>`** | 1 real time · 8 fast · **0 = stepped** |
+| **`35:<n>`** | advance exactly n ticks, acked when **consumed** — this is what makes a golden image possible |
+| **`33:<path>`** | server broadcasts `P:<path>`; every renderer photographs its next frame |
+| **`tools/views.mjs`** · **`raster.mjs`** | orthographic PNGs from the geometry, no GPU |
+| **`tools/press_key.mjs`** | one keystroke into the real page, headless |
+
+⚠⚠ **THE WALK WAS NOT REPRODUCIBLE and now is.** The tick integrated `steps * TICK_US` in one
+pass, so a loaded box took a single tick that moved the walker as far as five. **Measured
+after the fix:** the same script at rate 1, rate 0 and rate 8 saves three world files that
+are **byte-identical, 24,727 bytes**. ⚠ And the first version of that test was **vacuous** —
+only teleports and key presses, which `dt` never touches; it now holds `W` for exactly 90
+ticks.
+
+⚠ **A golden image must be taken at rate 0.** The world matches at every rate, but the tick
+*count* does not (783 / 197 / 781) — idle ticks edit nothing but do move the camera's ease
+and the pose.
+
+### Open, in priority order
+
+1. **`S3` — the wall.** Everything is in place; this is the first visible change.
+2. ⚠ **The renderer must not fork, and today it must.** `gl_screenshot` is native-only and
+   `--html` **refuses the build**, so one source cannot serve both renderers. Filed as
+   **[loft#709](https://github.com/loft-lang/loft/issues/709)** — the ask is *runtime
+   reporting, not capability parity*: a wasm stub returning `false` suffices, since the
+   signature already returns a boolean. **Native GL headless is proven** (`xvfb-run`,
+   `gl_create_window` true, `gl_screenshot` true, correct PNG — `probe/glshot.loft`).
+3. ⚠ **`hex_world` has diverged**: ours is `lib/hex_world` 0.1.0 with all the surface-rule
+   work; the registry carries a **0.2.0 on a different lineage**. `hex_editor` deliberately
+   does **not** depend on it, or the resolver could swap the store out from under the editor.
+   Settle this before `hex_editor` touches the world.
+4. **[loft#708](https://github.com/loft-lang/loft/issues/708)** — `File.size` reads 0 for a
+   file the same program wrote, so the documented append idiom silently **overwrites**. The
+   recorder rewrites its buffer instead; quadratic, and said so.
+5. **`doc/claude/FITTINGS.md`** — doors, windows, shutters. ⚠ Its top is corrected: most of it
+   is superseded by `hex_draw`. **What survives is the part no library supplies** — an
+   openable leaf is an `Assembly` with a hinge, which `A1`–`A10` already pose, limit and
+   refuse. A door closes `A2`'s ledger at exactly 6.
+6. The earlier list (terrain_y's callers, levelling's stamp, scatter's third rule, S2 of the
+   client split) — unchanged, below.
+
+### Keys, now that three gestures were unreachable
+
+`W/S/A/D` walk · `↑↓` raise · `L` level · `F` fence ring · **`G` ring with wall material —
+this is the zigzag** · **`R` a STRAIGHT wall run (two presses)** · **`E/Q` cut a step** ·
+**`B/C` storey / cellar** · **`$` snapshot**. Before this session `B`, `C` and `R` had no
+binding at all, which is why *"no tower, no walls"* — the storey could not be reached from
+either client and the only reachable "wall" was the hex ring.
+
+## Earlier pick-up (2026-07-31)
 
 **The surface question is closed on every consumer, and an upper storey is now somewhere you
 can STAND.** A column can hold cellars, ground and decks; four rules were needed and all four

@@ -123,6 +123,28 @@ Python venv lives at `.venv-cards/`.
 
 See `doc/npcs/goals.md` §"Character sheet" for the per-NPC sheet workflow.
 
+## Driving and watching the editor without a keyboard
+
+Everything below is verified and is how the editor is now tested. The design is
+[SCRIPTED_EDITOR.md](SCRIPTED_EDITOR.md).
+
+```sh
+node tools/script.mjs tools/scripts/hut.keys            # replay a scene, no browser
+node tools/script.mjs tools/scripts/fall.keys --shots   # …and photograph named ticks
+node tools/views.mjs shots/v.png                        # plan + elevation, no GPU, passive
+```
+
+A script speaks in the keys a person presses, plus `rate` / `step` / `snap` / `save`.
+⚠ **`rate 0` is STEPPED** — the only mode in which a PNG is a golden image, because at any
+other rate the wall clock advances idle ticks between commands and the camera's ease and the
+pose depend on how many.
+
+**Every run is recorded** to `recordings/run-<t>.rec`, on by default. The format is the wire
+stamped with its tick, so a recording, a hand-written script and a bug report are one file.
+
+⚠ **The simulation is reproducible and this was measured, not assumed**: the same script at
+rate 1, rate 0 and rate 8 saves byte-identical world files.
+
 ## Tooling (the scene editor)
 
 Instruments, not gates — they exit 0 whatever they find, and say what happened.
