@@ -427,6 +427,36 @@ genuinely falls away there) and the picture is a heightfield doing what heightfi
 principled repair is the same one `terrain_y`'s three remaining callers are waiting for: mesh a
 layer against the **surface at that level** in its neighbours, not against the outdoors.
 
+### ✅ And the DECK had no picture at all — 2026-07-31
+
+Walking onto one is what found it: the character reached the first floor and hung in the air
+three metres up. Every terrain surface is built from `world_ground_cell`, *the outdoors by
+definition*, so a storey's deck and a cellar's floor were in the store, correct and walkable,
+and in no mesh. A roof was the only built thing anyone drew — because it is emitted from the one
+loop that visits **layers** rather than the ground.
+
+> ### The rule, for the picture
+>
+> **Every occupied terrain cell that is not the ground is drawn: flat, at its own stored
+> height, with a slab face on each edge the layer does not continue across.**
+>
+> Flat, because that is the same claim the feet make — `world_surface` reports a deck as
+> `sf_smooth: false` and the feet take its stored height unsmoothed, so one surface serves both.
+> The ground keeps the interpolated fan; mixing the two would put the walker on a different
+> surface from the one drawn.
+
+**"Not the ground" is a LABEL question**, and this is the first *reader* to need the fact
+`co_ids` was added for: not an index, because a cellar inserts beneath and renumbers, and not a
+material, because a road or a stair cut into a deck keeps its own.
+
+⚠ **A fan alone is a hairline.** From ground level a zero-thickness plate is a bright line in
+the sky, with nothing to say it is a floor at three metres rather than a mark on the horizon.
+The ground escapes this because it is continuous and its edges are somebody else's cells; **a
+floor's edge is where the floor stops.** Hence the slab, and hence *exposed* being asked of the
+same layer in the neighbour **by label** — `I1` identifies corresponding layers of different
+chunks by label and by nothing else, so a floor at a chunk seam that compared indices would be
+comparing itself against whatever happens to sit at its own index over there.
+
 ## Continuity across a seam
 
 Matched by **height**, never by name. Stepping into the next tile, the surface you continue

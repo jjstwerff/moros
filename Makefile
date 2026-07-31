@@ -116,17 +116,32 @@ BROWSER_URL := http://127.0.0.1:$(EDITOR_PORT)/
 #
 # A bare `pkill -f editor_server.loft` is the wrong tool: it matches the shell
 # running the command too, and has killed this session once already.
+#
+# ⚠ AND IT WAITS FOR THE PORT, NOT FOR TWO SECONDS. Killing the process is not the
+# same as freeing the address: a gate that closes its socket leaves the server side
+# in CLOSE-WAIT, and once the server is gone that connection sits in TIME_WAIT with
+# `sport = :18090` — so `bind` fails with "Address already in use" and the panic is
+# fatal, because the server does not retry. Measured: the suite died on its THIRD
+# gate twice running, at a bind, with two gates green before it; a three-restart
+# probe around the same gate showed the lingering CLOSE-WAIT on two runs of three.
+# That is the "wait for the server, not the clock" rule this repo enforces on every
+# gate, turned on the harness that runs them.
 port-free:
 	@pid=$$(ss -lptn 'sport = :$(EDITOR_PORT)' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -1); \
 	if [ -n "$$pid" ]; then \
 	  cmd=$$(tr '\0' ' ' < /proc/$$pid/cmdline 2>/dev/null); \
 	  if echo "$$cmd" | grep -qE 'editor_server\.loft|loft_native_bin_'; then \
-	    kill $$pid 2>/dev/null; sleep 2; \
+	    kill $$pid 2>/dev/null; \
 	  else \
 	    echo "port $(EDITOR_PORT) held by pid $$pid, which is NOT the editor — leaving it alone"; \
 	    exit 1; \
 	  fi; \
-	fi
+	fi; \
+	for i in $$(seq 1 90); do \
+	  ss -tan "sport = :$(EDITOR_PORT)" 2>/dev/null | grep -q ":$(EDITOR_PORT)" || exit 0; \
+	  sleep 1; \
+	done; \
+	echo "port $(EDITOR_PORT) still held after 90s:"; ss -tan "sport = :$(EDITOR_PORT)"; exit 1
 
 browser:
 	@if [ -z "$$DISPLAY" ] && [ -z "$$WAYLAND_DISPLAY" ] && [ "$$(uname -s)" = "Linux" ]; then 	  echo ""; 	  echo "  no display here — this looks like an ssh session, so run on YOUR machine:"; 	  echo "      ssh -L $(EDITOR_PORT):localhost:$(EDITOR_PORT) $$(whoami)@$$(hostname)"; 	  echo "  then open  $(BROWSER_URL)"; 	  echo ""; 	else 	  case "$$(uname -s)" in 	    Darwin)            open "$(BROWSER_URL)" ;; 	    Linux)             xdg-open "$(BROWSER_URL)" >/dev/null 2>&1 ;; 	    MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "" "$(BROWSER_URL)" ;; 	    *)                 echo "  open $(BROWSER_URL) in a browser" ;; 	  esac; 	  echo "  opened $(BROWSER_URL)"; 	fi

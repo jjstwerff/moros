@@ -91,10 +91,32 @@ const HEX = 1.7320508075688772;
 const STOREY = 12, STRIDE = 4, UNIT = 0.25;
 const GRADE = STRIDE;                    // the platform's own ground
 const DECK = GRADE + STOREY;             // …and its deck, one stride above the stair
+// ⚠ Keep equal to `SURFACES` in `src/editor_server.loft`. Index 6 is the FLOOR — the
+// seventh surface, added with this gate because a deck was walkable and INVISIBLE.
+const SURFACES = 7;
+const FLOOR_SURFACE = 6;
+const FLOOR_THICK = 2;                   // slab depth under a floor's top face
+const meshes = new Map();
+// Every y in the floor mesh, rounded to the unit the store quantises to anyway.
+const floorHeights = () => {
+  const ys = new Set();
+  for (const [id, d] of meshes) {
+    if (id <= 15 || (id - 16) % SURFACES !== FLOOR_SURFACE) continue;
+    for (let k = 1; k < d.length; k += 6) ys.add(+d[k].toFixed(3));
+  }
+  return [...ys].sort((a, b) => a - b);
+};
 
 ws.onmessage = async (e) => {
   const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
+  if (t === 'M') { const h = b.indexOf(';'), id = Number(b.slice(0, h));
+    let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
+    const payload = rest.slice(rest.indexOf(';') + 1);
+    // ⚠ An EMPTY mesh is the normal case — a chunk with no floor cells sends one —
+    // and `''.split(',')` is `['']`, which maps to `[NaN]`.
+    meshes.set(id, payload === '' ? [] : payload.split(',').map(Number)); }
+  if (t === 'X') meshes.delete(Number(b));
   if (t === 'T' && b.startsWith('0;')) {
     body = b.slice(2).split(',').map(Number);
     trace.push([body[12], body[13], body[14]]); tCount++;
@@ -176,6 +198,14 @@ ws.onmessage = async (e) => {
     // the platform, read at a NAMED cell rather than at wherever the walk ended
     const deckAfter = await col(5, 0);
 
+    // ⚠ AND THE DECK MUST BE DRAWN, which for a whole rung it was not. Every terrain
+    // surface is built from `world_ground_cell` — the outdoors by definition — so a
+    // storey's deck sat in the store, walkable and INVISIBLE, and the character
+    // reached it and appeared to hang in the air three metres up. Read the FLOOR
+    // mesh's own vertex heights: the deck's must be among them, and at the height the
+    // feet were measured at rather than merely somewhere.
+    const drawn = floorHeights();
+
     // ── ON the deck, cut one more step: the DECK must take the write.
     // ⚠ PLACED, NOT WALKED, and for the same reason — a walk cannot be stopped on a
     // cell. A teleport carries `py` as its reference, so going up the stair first is
@@ -235,17 +265,31 @@ ws.onmessage = async (e) => {
       && num(deckCut, 'height') === DECK + STRIDE
       && dc.length === 2 && dc[0] === GRADE && dc[1] === DECK + STRIDE;
 
+    // ⚠ AT THE FEET'S OWN HEIGHT, not "some floor exists". A flat fan at the deck's
+    // stored height is the same surface `ground_under` reports for a deck
+    // (`sf_smooth: false` → the stored height, unsmoothed) — so this asserts the
+    // picture and the feet are one surface, which is the rule the ground sampler
+    // already keeps for terrain.
+    const deckIsDrawn = drawn.includes(+(DECK * UNIT).toFixed(3));
+    // ⚠ AND IT HAS A SIDE. A flat fan alone is a ZERO-THICKNESS PLATE: measured from
+    // ground level, a deck drawn without one is a bright line in the sky with nothing
+    // to say it is a floor three metres up rather than a mark on the horizon. The
+    // ground gets away with no skirts because it is continuous; a floor's edge is
+    // where the floor stops.
+    const deckHasASide = drawn.includes(+((DECK - FLOOR_THICK) * UNIT).toFixed(3));
+
     const ok = platform && stair && madeNoLayer && idempotent
-               && crossed && groundKept && stoodOnTheDeck && deckTookTheWrite;
+               && crossed && groundKept && stoodOnTheDeck && deckTookTheWrite
+               && deckIsDrawn && deckHasASide;
     console.log(JSON.stringify({
       cuts, again, steps, layerReads, layersWithDeck, roadOn, storey, deckCol,
       endX: +last[0].toFixed(3), endY: +last[1].toFixed(3), endQ, endCol,
-      deckAfter, standY, deckCut, deckCutCol,
+      deckAfter, standY, deckCut, deckCutCol, drawnFloorHeights: drawn,
       walkSamples: walkTrace.length, walkPeak: +Math.max(...ys).toFixed(3),
       overDeckSamples: overDeck.length,
       overDeckY: [...new Set(overDeck.map((p) => +p[1].toFixed(3)))],
       platform, stair, madeNoLayer, idempotent, peakIsTheDeck, crossed, groundKept,
-      stoodOnTheDeck, deckTookTheWrite, ok,
+      stoodOnTheDeck, deckTookTheWrite, deckIsDrawn, deckHasASide, ok,
     }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };

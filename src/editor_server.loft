@@ -343,6 +343,13 @@ const FLOOR_MAT    = 4;           // a built floor, above or below ground
 const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
 const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
 const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
+// A DECK IS DRAWN, and until 2026-07-31 no floor was. `chunk_mesh_mat` builds each
+// surface from `world_ground_cell`, which is the outdoors by definition, so every
+// layer a storey or a cellar made was invisible — and that was survivable only
+// while nothing could stand on one. The stair changed that: a character walked onto
+// a first floor and appeared to hang in the air three metres above the ground.
+// Pale, because a floor is lit from above and read as an interior surface.
+const FLOOR_R = 0.62; const FLOOR_G = 0.57; const FLOOR_B = 0.48;
 // ── `X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
 //
 // A door is a WALL MATERIAL, not a missing wall. Moros used to store one as
@@ -399,14 +406,20 @@ fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 // `id > 1000` filter was working around exactly this without naming it.
 const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // A chunk draws its surfaces one mesh each, on consecutive ids above the reserved
-// block: ground, road, field, vegetation, roof, wall.
+// block: ground, road, field, vegetation, roof, wall, floor.
 //
 // ⚠ THE STRIDE IS A CONSTANT because it has drifted once already. Adding the roof
 // took the stride from 4 to 5 and the three decoders moved with it in the same
 // commit — while the stream gate's counts did not, because its bound was expressed
 // in MESHES and every number in it silently re-tuned itself by 5/4. A bound in the
 // wrong unit re-tunes; a named stride at least fails in one place.
-const SURFACES = 6;
+//
+// ⚠ AND IT DRIFTED AGAIN, 6 → 7, for the FLOOR. Five gates carry `SURFACES = 6`
+// beside a "keep this equal to" note; every one moved in the same commit as this
+// line. That is the maintenance the named stride exists to make possible — the
+// alternative is a decoder that reads a road's triangles as a field's and reports a
+// plausible number.
+const SURFACES = 7;
 // ── THE CART (rung W7, moros#14) — a multi-rig, and its wheels ──────────────
 //
 // Three rigs that move as one: a body and two wheels. The connector is the
@@ -2077,8 +2090,79 @@ fn runs_track(runs: WallRuns) -> Track {
   t
 }
 
+// ── WHAT IS BUILT, DRAWN — and the FLOOR, which nothing drew ────────────────
+//
+// ⚠ `chunk_mesh_mat` builds each terrain surface out of `world_ground_cell`, which
+// answers *the outdoors* by definition. So a storey's deck and a cellar's floor
+// were in the store, correct, walkable — and invisible. This is the one loop that
+// already visits every LAYER of every column (the roof has always been drawn from
+// here), so the floor costs no extra read: one clause beside the roof's.
+//
+// **A floor is flat, and that is the same claim the feet make.** `world_surface`
+// reports a deck as `sf_smooth: false` and `ground_under` returns its stored height
+// unsmoothed, so `emit_hex_surface` — a flat fan, the roof's own primitive — draws
+// exactly the surface the walker stands on. The ground is the interpolated one and
+// keeps `emit_hex_sloped`; mixing the two would put the feet on a different surface
+// from the picture, which is the defect this file's ground sampler exists to avoid.
+//
+// ⚠ AND A FAN ALONE IS A HAIRLINE. Measured from ground level, a platform's deck
+// drawn as a flat fan is a **zero-thickness plate** — a bright line in the sky, with
+// nothing to say it is a floor at three metres rather than a mark on the horizon.
+// The ground gets away with having no skirts because it is continuous and its edges
+// are somebody else's cells; a floor's edge is where the floor STOPS. So each
+// exposed edge carries a slab face, and "exposed" is asked of the same LAYER in the
+// neighbour — by label, because a chunk numbers its layers for itself.
+const FLOOR_THICK = 2;            // height units of slab under a floor's top face
+
+// The neighbour's cell in the layer with this LABEL, or an absent one.
+//
+// ⚠ NOT `world_cell(…, same index)`. Indices are per-chunk, so the identical layer
+// is index 3 here and index 5 one chunk east — and a floor whose neighbour lies
+// across a chunk seam would then compare itself against whatever happens to sit at
+// its own index there. `I1` identifies corresponding layers of different chunks by
+// LABEL and by nothing else; this is that rule, used by a reader.
+fn cell_in_layer(wld: World, q: integer, r: integer, label: integer) -> hex_world::Hex {
+  lc = world_column(wld, q, r);
+  for li2 in 0..len(lc.co_ids) {
+    if (lc.co_ids[li2] ?? 0) == label {
+      return lc.co_cells[li2] ?? hex_world::Hex {};
+    }
+  }
+  hex_world::Hex {}
+}
+
+// The slab under a floor cell — one face per edge the floor does not share with
+// more of itself.
+//
+// ⚠ THE NORMAL IS DERIVED FROM THE NEIGHBOUR, not from the corner order, which is
+// `emit_wall_panel`'s rule and it is here for its reason: the two libraries walk the
+// corner ring in opposite senses (`(6 - i) % 6` below), so a normal taken from the
+// winding faces inward for half the directions and the slab is lit as a hole.
+fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
+                   label: integer) {
+  ytop = (h as float) * HEIGHT_SCALE;
+  ybot = ytop - (FLOOR_THICK as float) * HEIGHT_SCALE;
+  cs = hex_to_world(cq, cr, 0);
+  for sd in 0..6 {
+    (snq, snr) = hex_grid::hex_neighbor(cq, cr, sd);
+    if !hex_world::hex_occupied(cell_in_layer(wld, snq, snr, label)) {
+      // The two corners this edge is made of — the same pairing `corner_heights`
+      // uses to attribute a neighbour's height to the corners it touches, through
+      // the same ring-order map `emit_wall_panel` and `emit_hex_sloped` use.
+      (ska, skb) = hex_grid::hex_edge_corners(sd);
+      sw1 = hex_corner_world(cq, cr, 0, (6 - ska) % 6 ?? 0);
+      sw2 = hex_corner_world(cq, cr, 0, (6 - skb) % 6 ?? 0);
+      cn = hex_to_world(snq, snr, 0);
+      snrm = nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+      sa = vec3(sw1.x, ybot, sw1.z); sb = vec3(sw2.x, ybot, sw2.z);
+      sc = vec3(sw2.x, ytop, sw2.z); sdd = vec3(sw1.x, ytop, sw1.z);
+      emit_tri(fm, sa, snrm, sb, snrm, sc, snrm);
+      emit_tri(fm, sa, snrm, sc, snrm, sdd, snrm);
+    }
+  }
+}
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    runs: WallRuns) {
+                    fm: Mesh, runs: WallRuns) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
@@ -2137,6 +2221,15 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
           }
           if e.h_material == ROOF_MAT {
             emit_hex_surface(km, cq, cr, e.h_height as integer ?? 0);
+          } else if (c.co_ids[e#index] ?? 0) != hex_world::LABEL_GROUND {
+            // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
+            // Not by index — a cellar inserts beneath and renumbers — and not by
+            // material, because a road or a stair cut into a deck keeps its own.
+            // `co_ids` was added so a WRITE could keep a layer's identity; this is
+            // the first reader to want the same fact, and it needs no second query.
+            fh = e.h_height as integer ?? 0;
+            emit_hex_surface(fm, cq, cr, fh);
+            emit_floor_slab(fm, wld, cq, cr, fh, c.co_ids[e#index] ?? 0);
           }
         }
       }
@@ -4531,13 +4624,16 @@ fn main() {
           vm2 = mesh("veg");
           km2 = mesh("roof");
           wm2 = mesh("wall");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, wall_runs);
+          lm2 = mesh("floor");
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 6};0;{mesh_wire(wm2, WALL_R, WALL_G, WALL_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lm2, FLOOR_R, FLOOR_G, FLOOR_B)}");
+          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -4630,13 +4726,16 @@ fn main() {
               vmesh = mesh("veg");
               kmesh = mesh("roof");
               wmesh = mesh("wall");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, wall_runs);
+              lmesh = mesh("floor");
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 6};0;{mesh_wire(wmesh, WALL_R, WALL_G, WALL_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lmesh, FLOOR_R, FLOOR_G, FLOOR_B)}");
+              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;
@@ -4651,14 +4750,18 @@ fn main() {
         // EVERY surface retires together: each rides on an offset id and would
         // otherwise linger on the client — a strip of road, or a fence, floating
         // where its ground used to be.
+        //
+        // ⚠ THIS WAS SIX HAND-WRITTEN LINES AND THE SEVENTH SURFACE WAS ADDED
+        // WITHOUT IT. Every floor of every chunk the streamer dropped stayed on the
+        // client for ever, which `stream.mjs` caught as **82 live chunks against a
+        // draw radius that holds about 50** — the stale ids kept counting. A
+        // hand-unrolled list is a place to forget one; the loop is the same claim
+        // the constant already makes, so adding an eighth surface cannot miss it.
         if !still {
           if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 1}");
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 2}");
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 3}");
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 4}");
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 5}");
-          srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + 6}");
+          for xsurf in 1..(SURFACES + 1) {
+            srv.broadcast("X:{lz2 * SURFACES + MESH_FIGURE_MAX + xsurf}");
+          }
           dropped = dropped + 1;
         }
       }

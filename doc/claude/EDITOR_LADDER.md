@@ -64,6 +64,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs` |
 | 8e | ↳ the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | #12 | ✅ | `tools/gates/world/doorstep.mjs`, both leak-site controls seen red |
 | 8f | ↳ **the stair** — `30:`, one stride a press, and the walk on the surface rule | #12 | ✅ | `tools/gates/character/deck.mjs`; three mutations seen red. An upper storey is somewhere you can STAND, which is what made the deck half of the camera's, the road's and the walk's rules testable at all |
+| 8g | ↳ **the floor has a picture** — the seventh surface, flat at its stored height, with a slab edge | #12 | ✅ | same gate. Found by standing on a deck and hanging in the air: every terrain mesh was built from the OUTDOORS, so a storey's deck and a cellar's floor were walkable and undrawn |
 | — | ✋ **the layer stack is right** | | | build a tower with a dungeon under it, then **walk up into it** — E cuts a step into the cell you face, three steps is a storey. If the model is wrong, it is wrong here |
 | 9 | trees and bushes at density | #13 | M | a forest that reads as landscape, not a list |
 | 9a | ↳ scatter at density — the forest as a field | #13 | ✅ | `tools/gates/world/vegetation.mjs`; LOD and instancing still open |

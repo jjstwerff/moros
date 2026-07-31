@@ -27,7 +27,11 @@ The whole story, with every measurement, is [WORLD_MODEL.md § "Which layer is t
 surface"](WORLD_MODEL.md). **28 gates green, 741 library tests across 7 packages
 (`moros_sim` 307, `hex_world` 75).**
 
-**Where to look first if something surfaces here:** items **32–35** at the bottom of this file,
+And a fifth rule turned out to be missing from the PICTURE rather than the model: **every
+occupied terrain layer that is not the ground is now drawn** — flat at its stored height, with a
+slab edge — because a deck was walkable and invisible (item 36).
+
+**Where to look first if something surfaces here:** items **32–36** at the bottom of this file,
 in that order — they were built in that order and each depended on the one before.
 
 ### What is open, in priority order
@@ -39,7 +43,9 @@ in that order — they were built in that order and each depended on the one bef
    item 35 made a deck somewhere a character stands, so a wall or a cart on one is a gesture
    away. And a fourth site joined the list with a visible symptom: `corner_heights` averages a
    step's corners against the *outdoors* of its neighbours, so a stair's top step is drawn
-   sagging into the space under the platform it reaches (item 35's last ⚠).
+   sagging into the space under the platform it reaches (item 35's last ⚠). ⚠ **And the floor
+   mesh does NOT close that** — item 36 draws the layers the ground mesh never had; the sag is
+   in the GROUND's own smoothing, at the seam where a stair meets a platform.
 2. **A character on a deck cannot yet be given a wall, a fence or a prop** — every one of those
    authors through the outdoors. Nothing is wrong today; the day one is placed from a deck it
    lands a storey down, silently. That is item 1's `terrain_y` list from the other side, and
@@ -1824,3 +1830,54 @@ edges — neither of which the mechanism's own eight gates had caught.
     - **Bound to a key in both clients**: `E` cuts a step up, `Q` down. `12:` STOREY still has
       none, which is why the platform in the gate is authored over the wire.
     - **28 gates green, 741 library tests.** `moros_sim` 304 → 307.
+36. ✅ **AND THE DECK WAS INVISIBLE — a whole rung of storeys nothing ever drew.** Found by
+    walking onto one: the character reached the first floor and hung in the air three metres
+    above the ground. `chunk_mesh_mat` builds every terrain surface out of `world_ground_cell`,
+    which answers *the outdoors by definition*, so a storey's deck and a cellar's floor were in
+    the store, correct, walkable — and not in any mesh. **A roof was the only built thing with a
+    picture**, because it is drawn from the one loop that visits layers.
+    - **The FLOOR is the seventh surface**, emitted from that same loop, so it costs no extra
+      read: one clause beside the roof's. `SURFACES` 6 → 7, and **six gates plus `plan.mjs`
+      carry the stride** — every one moved in this commit. That drift is exactly what the
+      constant's own ⚠ predicted, and it is cheaper than a decoder silently reading a road's
+      triangles as a field's.
+    - **The ground is told by its LABEL**, not by index (a cellar renumbers) and not by material
+      (a road or a stair cut into a deck keeps its own). `co_ids` was added so a *write* could
+      keep a layer's identity; this is the first READER to want the same fact, and the column it
+      already has carries it.
+    - **A floor is drawn FLAT, which is the same claim the feet make** — `world_surface` reports
+      a deck as `sf_smooth: false` and `ground_under` returns its stored height unsmoothed, so
+      `emit_hex_surface` draws exactly the surface the walker stands on. The gate asserts that
+      equality rather than "some floor exists".
+    - ⚠ **A FAN ALONE IS A HAIRLINE, and the first screenshot is what said so.** From ground
+      level a zero-thickness plate is a bright line in the sky — nothing distinguishes a floor
+      at three metres from a mark on the horizon. Each exposed edge now carries a slab face
+      (`FLOOR_THICK = 2`), and *exposed* is asked of the same layer in the neighbour **by
+      label**, because a chunk numbers its layers for itself (`I1`). Gated as a second height in
+      the floor mesh: `[3.5, 4]`.
+    - ⚠ **The normal comes from the NEIGHBOUR, not from the winding.** `hex_grid` and
+      `moros_render` walk the corner ring in opposite senses — the `(6 - i) % 6` map
+      `emit_wall_panel` already documents — so a normal taken from the corner order faces
+      inward for half the directions and the slab lights as a hole.
+    - **Looked at, not only measured**: `tools/gates/wip/deckscene.mjs` builds the stair, the
+      paved disc and the storey and leaves the character on the deck, so `make shot` has
+      something to photograph. Before the slab, the deck was one pale line; after it, a platform
+      above the road disc with the stair between them.
+    - ⚠ **THE SEVENTH SURFACE WAS ADDED TO BOTH BUILD PATHS AND NOT TO THE DROP, and
+      `stream.mjs` caught it.** The streamer retired a chunk's surfaces with six hand-written
+      `X:` lines, so every floor of every chunk that went out of range **stayed on the client
+      for ever** — measured as **82 live chunks against a draw radius that holds about 50**,
+      because the stale ids kept counting. That is precisely the failure the drop's own comment
+      warns about (*"a strip of road, or a fence, floating where its ground used to be"*),
+      arriving through the one shape the comment could not prevent: a hand-unrolled list is a
+      place to forget one. It is a loop over `SURFACES` now, so an eighth cannot miss it.
+      `liveChunks` 82 → **46**, `dropped` 216 → 252.
+    - ⚠ **AND THE GATE HARNESS ITSELF SLEPT ON A CLOCK.** The suite died on its THIRD gate twice
+      running, at a **bind** — two gates green, then `Address already in use`. Killing the
+      process is not freeing the address: a gate that closes its socket leaves the server side
+      in CLOSE-WAIT, and once the server is gone that connection sits in TIME_WAIT holding
+      `sport = :18090`, while `port-free` slept a fixed two seconds and `GATE_RESTART` one more.
+      A three-restart probe around the same gate showed the lingering CLOSE-WAIT on two runs of
+      three, which is why it presented as flakiness. `port-free` now **waits for the port** —
+      the same rule this repo enforces on every gate, turned on the harness that runs them.
+      ⚠ It is NOT a consequence of the floor: the floor changed the timing, not the teardown.
