@@ -13,74 +13,18 @@
 // The PNG is written by hand — IHDR, one zlib-deflated IDAT of filter-0 scanlines,
 // IEND — because node ships zlib and a dependency for 40 lines is a dependency to
 // keep current.
-import { deflateSync } from 'node:zlib';
-import { writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+// ⚠ The pixel buffer and the PNG writer were inline here and are now shared with
+// `views.mjs`. A second copy of a rasteriser is cheap to make and expensive to
+// keep honest — the same reason the lattice belongs to `hex_grid` and not to each
+// consumer that needs a neighbour.
+import { Canvas, writePNG } from './raster.mjs';
 
 const OUT = process.argv[2] || 'plan.png';
 const SQ3 = Math.sqrt(3);
 const cellXZ = (q, r) => [SQ3 * q + (SQ3 / 2) * (r & 1), 1.5 * r];
 
-// ── the smallest correct PNG writer ─────────────────────────────────────────
-const crcTable = (() => {
-  const t = new Int32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c;
-  }
-  return t;
-})();
-const crc32 = (buf) => {
-  let c = 0xffffffff;
-  for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
-const chunk = (type, data) => {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-};
-const writePNG = (path, w, h, rgb) => {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;   // 8-bit RGB
-  const raw = Buffer.alloc(h * (w * 3 + 1));
-  for (let y = 0; y < h; y++) {
-    raw[y * (w * 3 + 1)] = 0;                                            // filter: none
-    rgb.copy(raw, y * (w * 3 + 1) + 1, y * w * 3, (y + 1) * w * 3);
-  }
-  writeFileSync(path, Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })),
-    chunk('IEND', Buffer.alloc(0)),
-  ]));
-};
-
-// ── the canvas, in world units ──────────────────────────────────────────────
 const PX = 14;                       // pixels per world unit
-class Canvas {
-  constructor(x0, z0, x1, z1) {
-    this.x0 = x0; this.z0 = z0;
-    this.w = Math.ceil((x1 - x0) * PX); this.h = Math.ceil((z1 - z0) * PX);
-    this.buf = Buffer.alloc(this.w * this.h * 3, 0x14);
-  }
-  px(x, z) { return [Math.round((x - this.x0) * PX), Math.round((z - this.z0) * PX)]; }
-  dot(x, z, [r, g, b], rad = 1) {
-    const [cx, cy] = this.px(x, z);
-    for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
-      const X = cx + dx, Y = cy + dy;
-      if (X < 0 || Y < 0 || X >= this.w || Y >= this.h) continue;
-      const i = (Y * this.w + X) * 3;
-      this.buf[i] = r; this.buf[i + 1] = g; this.buf[i + 2] = b;
-    }
-  }
-  line(x0, z0, x1, z1, col, rad = 0) {
-    const n = Math.max(2, Math.ceil(Math.hypot(x1 - x0, z1 - z0) * PX));
-    for (let i = 0; i <= n; i++) this.dot(x0 + (x1 - x0) * i / n, z0 + (z1 - z0) * i / n, col, rad);
-  }
-}
 const GROUND = [0x14, 0x14, 0x14], ROAD = [0x9a, 0x86, 0x5e];
 const FENCE = [0x4c, 0xd0, 0x6a], WALL = [0xe8, 0xe8, 0xe8], DOOR = [0xff, 0x8c, 0x2a];
 const matColour = (m) => (m === 1 ? WALL : m === 2 ? DOOR : FENCE);
@@ -151,7 +95,7 @@ ws.onmessage = async (e) => {
     const pts = want.map(([q, r]) => cellXZ(q, r));
     const xs = pts.map((p) => p[0]), zs = pts.map((p) => p[1]);
     const cv = new Canvas(Math.min(...xs) - 2, Math.min(...zs) - 2,
-                          Math.max(...xs) + 2, Math.max(...zs) + 2);
+                          Math.max(...xs) + 2, Math.max(...zs) + 2, { px: PX });
 
     // road cells first, then the edges over them
     let road = 0, edges = 0;
