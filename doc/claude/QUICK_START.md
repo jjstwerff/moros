@@ -32,10 +32,28 @@ Read this file at the start of every session before doing any work. The full top
 
 ## What is this project?
 
-Moros is a tabletop RPG system, with two sides:
+**Two products share this tree, and the split matters more than it looks.**
+[CLAUDE.md](../../CLAUDE.md) states it: **Moros** is the tabletop RPG, and **lavition** is
+the universal hex-world editor its scene tools are being built for. lavition is its own
+product with its own consumers (crawler, bumper airplanes, loft's Workbench) — Moros is
+one of them. Its packages take descriptive `hex_*` names with **no brand prefix**; keep
+Moros vocabulary out of them.
 
-- A **browser-based toolkit** — Character Creator (`html/character-creator.html`) and a DM tool (`html/dm.html`); all data in `localStorage`, no backend.
-- A **printed campaign** — lore, NPCs, places, scenarios, and a card deck. Source documents in `doc/`; generated PDFs in `data/`.
+Moros, then, has three sides:
+
+- A **browser-based toolkit** — Character Creator (`html/character-creator.html`), a DM
+  tool (`html/dm.html`) and a world-map editor (`html/hex-map-editor.html`); all data in
+  `localStorage`, no backend.
+- A **printed campaign** — lore, NPCs, places, scenarios, and a card deck. Source documents
+  in `doc/`; generated PDFs in `data/`.
+- The **scene editor** — lavition, above. A loft server (`src/editor_server.loft`) with two
+  renderers, gated by the suite in `tools/gates/`. Start at
+  [STATE.md](STATE.md) after any break.
+
+⚠ **Two different hex worlds live here, and they are not the same code.** The *world map*
+(`html/map.js`, `html/hex-lattice.js`) is the campaign's overland map in the browser —
+tiles, terrain, roads, rivers. The *scene* (`src/`, `lib/`) is lavition's voxel landscape.
+They share a lattice convention and nothing else; fixing one does not touch the other.
 
 ## Where things live
 
@@ -55,14 +73,37 @@ Moros is a tabletop RPG system, with two sides:
 
 | File | Role |
 |---|---|
+| `html/index.html` | The suite's front door — links to every page below |
 | `html/data.js` | All static game data (`DATA` object) — source of truth for rules content |
 | `html/logic.js` | Character state, progression logic, XP calculation |
 | `html/character.js` | Character sheet rendering |
 | `html/character-creator.html` | Character editor UI |
-| `html/dm.js` | DM tool logic |
+| `html/dm-logic.js` | **Pure** DM logic — no DOM, no `localStorage`, importable in Node. This is the pattern to follow when something needs a test |
+| `html/dm.js` | DM tool logic (the DOM half) |
 | `html/dm.html` | DM tool UI |
+| `html/hex-map-editor.html` | World-map editor UI |
+| `html/map.js` | World-map editor — terrain, roads, rivers, landmarks, the 2D and 3D views |
+| `html/hex-lattice.js` | **Pure** hex geometry for the world map: offsets, `MIRROR_DIR`, `dirName`, `hexCenter`. ⚠ **One home for the lattice** — it was in two places and they disagreed, which is what broke roads (see [OPEN_ISSUES](OPEN_ISSUES.md#world-map-editor)) |
+| `html/map.css` | World-map editor styles |
+| `html/scenario-print.html` · `.js` · `.css` | Printable scenario sheets |
+| `html/editor.html` | The **scene** editor's JavaScript renderer — served at `/` by the loft server, and kept as the control for the wasm one |
 | `html/style.css` | Shared styles |
 | `html/categories.js` | Shared category list |
+
+## Source files (the scene editor — lavition)
+
+Design first: [STATE.md](STATE.md), then [HEX_STACK.md](HEX_STACK.md) and
+[WORLD_MODEL.md](WORLD_MODEL.md).
+
+| File | Role |
+|---|---|
+| `src/editor_server.loft` | The server: the world, the wire's 30 messages, the tick, meshing. One file, and [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) is the map of it |
+| `src/editor_client.loft` | The wasm/loft renderer, served at `/client` |
+| `lib/hex_world/` | **lavition** — the voxel landscape: columns, layers, windowed heights, the file format |
+| `lib/moros_sim/` | Simulation: cliffs and stairs, the fall, ground contact, rigs, assemblies |
+| `lib/moros_render/` | Mesh emission — hex fans, wall quads, slope faces |
+| `lib/moros_map/`, `lib/moros_editor/`, `lib/moros_ui/` | The scene model, editor state, UI helpers |
+| `lib/glb_read/` | `.glb` import, ours because upstream cannot verify it |
 
 ## Tooling (Python)
 
@@ -82,15 +123,39 @@ Python venv lives at `.venv-cards/`.
 
 See `doc/npcs/goals.md` §"Character sheet" for the per-NPC sheet workflow.
 
+## Tooling (the scene editor)
+
+Instruments, not gates — they exit 0 whatever they find, and say what happened.
+
+| Script | Role |
+|---|---|
+| `tools/gates/` | The gate suite: `world/` drives by **placing** the character, `character/` by **walking** it. `make gate` runs all 28, each on a fresh server, and stops the server after |
+| `tools/seam.mjs` | Is the ground watertight, and is it smooth? Two questions that look identical on screen. Passive — add `--watch N` to ask while the world is moving |
+| `tools/plan.mjs` | Draws the world in plan view. ⚠ **NOT passive** — it sends placements and lays a road |
+| `tools/page_console.mjs` | What a page **said**, when it drew nothing. `--press` holds a key; `--hook-shaders` logs the GLSL the driver actually got |
+| `tools/map_road_shot.mjs` | Drives the **world-map** editor: pick the road tool, click tiles, screenshot. A pure test cannot say whether the page still wires the geometry |
+| `tools/lookprobe.mjs` | Drag-to-look: the view matrix *and* the figure both have to move |
+
+`make shot` photographs what a person is looking at, and is passive.
+⚠ **Stop the server when done** — `make stop-editor`. A forgotten one is not idle.
+
 ## Tests and commands
 
 ```
-make tests    # run test suite (mocha, in test/)
-make serve    # serve html/ on localhost:8000
-make creator  # open character creator in firefox
+make tests      # the browser toolkit — mocha + c8 coverage, in test/
+make lib-test   # every loft package's own suite
+make gate       # the scene editor's 28 gates, each on a fresh server
+make serve      # serve html/ on localhost:8000
+make creator    # open character creator in firefox
 ```
 
-Test file: `test/progression.test.js` — covers character progression logic.
+| Test file | Covers |
+|---|---|
+| `test/progression.test.js` | Character progression, XP, validation |
+| `test/dm.test.js` | `dm-logic.js` — search, snapshots, scenario filtering |
+| `test/lattice.test.js` | The world map's hex lattice. ⚠ It **re-derives** the mirror direction from the offsets rather than comparing one table with another, and keeps the wrong table that shipped as a control that must fail |
+
+**49 browser tests, 741 loft library tests, 28 gates.**
 
 ## Conventions
 

@@ -6,6 +6,16 @@ render_with_liquid: false
 Solutions for every item in `doc/Todo.txt` and the gaps between design and
 implementation identified in the project assessment.
 
+⚠ **This file covers the Moros RPG TOOLKIT only.** The scene editor is lavition and
+keeps its own documentation — [STATE.md](STATE.md) for where it stands,
+[EDITOR_LADDER.md](EDITOR_LADDER.md) for the order of work. A build order for it
+used to live here and had gone badly stale; see the last section for what happened.
+
+⚠ **And a design here is a PROPOSAL, not a record.** The road-linking entry below
+diagnosed a cause that turned out to be wrong and prescribed a fix that was already
+in the code. When one of these is built, correct the entry with what was actually
+found — an unrevised design reads like a finding.
+
 ---
 
 ## Contents
@@ -14,7 +24,7 @@ implementation identified in the project assessment.
 - [Power and focus system](#power-and-focus-system)
 - [Contact system](#contact-system)
 - [World map editor](#world-map-editor)
-- [Scene editor implementation plan](#scene-editor-implementation-plan)
+- [Scene editor — this file is NOT where its plan lives](#scene-editor--this-file-is-not-where-its-plan-lives)
 
 ---
 
@@ -340,54 +350,40 @@ the page still *wires* the geometry after the extraction.
 
 ---
 
-## Scene editor implementation plan
+## Scene editor — this file is NOT where its plan lives
 
-The scene editor has a 6-phase design in `SCENE_EDITOR_PLAN.md`.  Phases 1-3
-have no external blockers and can start immediately.
+⚠ **A five-sprint build order used to sit here, and every sprint of it had
+already shipped in a different shape.** It called for *creating* `lib/moros_map/`
+and `lib/moros_editor/` (both exist, with test suites), for `html/scene-canvas.js`
+and `html/scene-editor.js` (never built — the editor became a loft **server** with
+two renderers instead), and it listed loft's WebGL bindings as "not started" while
+the wasm client has been drawing through them for weeks. Anyone reading it would
+have concluded the scene editor had not begun.
 
-### Recommended build order
+It is deleted rather than corrected, because a second roadmap is a second thing to
+keep in step and this one lost. **The scene editor is lavition** — its own product,
+with its own documentation:
 
-**Sprint A: Data model + canvas (2-3 days)**
-- Phase 1: Create `lib/moros_map/` with types, palette, serialization
-- Phase 2: Create `html/scene-canvas.js` — hex grid rendering, pan/zoom
-
-**Sprint B: Editor tools (3-4 days)**
-- Phase 3: Create `html/scene-editor.js` — tool modes, undo, palettes
-- Wire up `scene-editor.html` shell page
-
-**Sprint C: Loft backend (when loft WASM ready)**
-- Phase 4: Create `lib/moros_editor/` — loft implementations of edit ops
-- Build WASM modules, connect to editor JS
-
-**Sprint D: Advanced tools (2-3 days)**
-- Phase 5: Slope, stencil, spawn, waypoint UIs
-
-**Sprint E: 3D preview (when loft WebGL ready)**
-- Phase 6a: GLB export (can start earlier)
-- Phase 6b: Live WebGL preview in editor
-
-### What's needed from loft before Phase 4
-
-| Loft feature | Roadmap ID | Status |
-|---|---|---|
-| WASM compile (`--native-wasm`) | existing | ✓ working |
-| Package dependencies in WASM | PKG.5 | ✓ working |
-| WebGL bindings | GL6.1-6.4 | not started |
-| Renderer | R1-R3 | not started |
-
-Phase 4 can use the interpreter (`--native`) for desktop testing before WASM
-is needed.  Phase 6b is the only hard blocker on loft's WebGL support.
+| Looking for | Go to |
+|---|---|
+| Where the work stands, right now | [STATE.md](STATE.md) — read first after a break |
+| The rungs, their order, and the checkpoints | [EDITOR_LADDER.md](EDITOR_LADDER.md) |
+| The design and its invariants | [HEX_STACK.md](HEX_STACK.md), [WORLD_MODEL.md](WORLD_MODEL.md) |
+| The socket, message by message | [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) |
+| The plans themselves | `gh issue list -R jjstwerff/moros --label plan --state all` |
 
 ---
 
 ## Priority order
 
-1. **Scene editor Sprint A** — data model + canvas (medium effort, unlocks
-   everything else, primary project focus)
-2. **Scene editor Sprints B-E** — sequential, depends on Sprint A
-3. **Character editor UX** — progression buttons, power details, rules
-   placement (low effort, high user impact, no blockers)
-4. **Focus rules** — write the rules, add to data.js, add DM UI
+⚠ This is the **Moros RPG toolkit's** order. The scene editor runs on its own
+ladder (above) and is not ranked here.
+
+1. **Character editor UX** — progression buttons, power details, rules placement
+   (low effort, high user impact, no blockers)
+2. **Focus rules** — write the rules, add to data.js, add DM UI
    (medium effort, enables gameplay depth)
-5. **Contact system** — editor UI, sharing, complex contacts (medium effort)
-6. **World map editor** — road bug and other fixes (deferred, not current focus)
+3. **Contact system** — editor UI, sharing, complex contacts (medium effort)
+4. ✅ ~~**World map editor** — the road bug~~ **fixed 2026-07-31**, and it was one
+   defect behind all three of `Todo.txt`'s map-editor lines. Nothing else on the
+   map editor is reported.

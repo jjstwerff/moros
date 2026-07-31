@@ -499,7 +499,7 @@ genuinely new prerequisite first.
 
 | # | step | authority | done when |
 |---|---|---|---|
-| 1 | **Name the store package** and move it out of `lib/`, built beside, depended on by path as `moros_sim` already does for `hex_body` | §4, §14 | `lib/` holds only moros configuration; 23 gates green |
+| 1 | **Name the store package** and move it out of `lib/`, built beside, depended on by path as `moros_sim` already does for `hex_body` | §4, §14 | `lib/` holds only moros configuration; the gate suite still green |
 | 2 | **`hex_grid` 0.2.0 — the axial↔offset bridge** | `CONVERGENCE.md` step 1 | round-trip identity; the third copy of the chunk arithmetic retired |
 | 3 | **Persist the world as a keyed collection**, chunk key as the key | §6 | a `.dschema` exists beside it; the server *maps* it instead of loading it whole; `store_load_keys` reads one chunk without touching the rest; a URL load works in wasm; `world_save_incremental` deleted |
 | 4 | **Store⇄window derivation**, pure and version-keyed | §11 | equal version ⇒ byte-equal window, test-enforced |

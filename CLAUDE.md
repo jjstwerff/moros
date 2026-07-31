@@ -19,6 +19,7 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 | Game mechanics — stats, powers, items, scenarios | [Rules](doc/claude/RULES.md) |
 | The card deck system | [Cards](doc/claude/CARDS.md) |
 | Printable card art and PDFs | [Card Art Prompts](doc/claude/CARD_ART_PROMPTS.md) |
+| The browser toolkit — character creator, DM tool, **world map** | [Quick Start § Source files](doc/claude/QUICK_START.md) |
 | Open work | [Open Issues](doc/claude/OPEN_ISSUES.md) → [doc/Todo.txt](doc/Todo.txt) |
 
 ## Foundation
@@ -96,6 +97,19 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 - [Editor ladder](doc/claude/EDITOR_LADDER.md) — **the rungs, their plans, and [the order of work](doc/claude/EDITOR_LADDER.md#the-order-of-work)** with the checkpoints that need the user's eyes
 - [Scene editor plan](doc/claude/SCENE_EDITOR_PLAN.md) — editor roadmap
 - [Generator](doc/claude/GENERATOR.md) — random scenario/NPC generator
+
+## The browser toolkit
+
+Three pages over `localStorage`, no backend — the character creator, the DM tool, and the
+**world map editor** (`html/hex-map-editor.html`): terrain, roads, rivers, landmarks, in
+2D and 3D. Its hex geometry lives in ONE place, `html/hex-lattice.js`, because it did not
+and the two copies disagreed — see [Open Issues § World map
+editor](doc/claude/OPEN_ISSUES.md). File map and test list: [Quick
+Start](doc/claude/QUICK_START.md).
+
+⚠ **The world map is not the scene.** The map is the campaign's overland hex map in the
+browser; the scene is lavition's voxel landscape under `src/` and `lib/`. They share a
+lattice convention and nothing else.
 
 ## Data
 

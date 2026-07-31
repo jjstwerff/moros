@@ -46,7 +46,7 @@ upload:
 #     diff             ^8.0.4   mocha's assertion-failure formatter
 #
 # ⚠ AND `npm audit` REPORTED 0 VULNERABILITIES ON A BROKEN TREE. Overriding
-# brace-expansion alone audits clean and passes all 39 tests, while any brace in a
+# brace-expansion alone audits clean and passes the whole suite, while any brace in a
 # glob throws `brace_expansion_1.default is not a function` — mocha's default spec
 # has no braces, so nothing noticed. If you touch these versions, the check is not
 # `npm audit` and not the test count; it is the four probes in STATE.md item 17,

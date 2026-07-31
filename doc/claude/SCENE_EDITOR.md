@@ -1,8 +1,19 @@
 # Scene Editor — UI Design
 
-A browser-based map editor for Moros scene maps. Runs as `html/scene-editor.html` alongside
-the existing DM tool and character creator. All edits modify the in-memory `Map` object
-(see SCENE_MAP.md) and are saved to `localStorage` or exported as JSON.
+> ⚠ **THIS IS A DESIGN FOR A PAGE THAT WAS NOT BUILT, and it is kept for its layout
+> thinking, not as a description of anything.** The editor exists — it is a loft
+> **server** (`src/editor_server.loft`) with two renderers answering one wire: the
+> JavaScript `html/editor.html` at `/` and the wasm `src/editor_client.loft` at
+> `/client`. There is no `html/scene-editor.html` and no `localStorage` scene map;
+> the world is a voxel store with a file format ([WORLD_MODEL.md](WORLD_MODEL.md))
+> and the wire is [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md).
+>
+> For what exists and what is next: **[STATE.md](STATE.md)**, then
+> [EDITOR_LADDER.md](EDITOR_LADDER.md). Read those before acting on anything below.
+
+A browser-based map editor for Moros scene maps, as designed. All edits modify the
+in-memory `Map` object (see SCENE_MAP.md) and are saved to `localStorage` or exported as
+JSON.
 
 ---
 

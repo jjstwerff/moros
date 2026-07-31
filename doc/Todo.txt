@@ -38,6 +38,12 @@ Allow adding and editing contacts:
 
 
 Map editor:
-- Roads are broken.
-- Allow click on adjacent tiles to link a road to them.
-- This breaks when a non-adjacent tile is clicked.
+- DONE 2026-07-31. All three lines were one defect: a road is two half-edges and
+  the table that mirrored the second half was the mirror of the COMPASS NAMES,
+  not of the offsets those names label, so every road put its far half on an edge
+  aimed at a third tile. Adjacent clicks were already broken too; a longer path
+  only multiplied it. Pathfinding was never missing. See OPEN_ISSUES.md
+  "World map editor" and test/lattice.test.js.
+  - ~~Roads are broken.~~
+  - ~~Allow click on adjacent tiles to link a road to them.~~
+  - ~~This breaks when a non-adjacent tile is clicked.~~
