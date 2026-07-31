@@ -1,0 +1,27 @@
+# A first hut, drawn the way a person would draw it: walk to a corner, lay a wall,
+# walk to the next. Four walls, then look at it.
+#
+# ⚠ Every step is a PLACEMENT, not a walk, because a script exists to be repeatable
+# and a walk lands wherever the tick did. `hold`/`turn` are for testing the WALK;
+# `at` is for building a scene the same way twice.
+
+echo --- flat ground to build on
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- wall 1: south side, west to east
+at -3 -3 0
+key R
+at 3 -3 0
+key R
+wait road laid
+
+echo --- wall 2: east side, south to north
+at 3 -3 0
+key R
+at 3 3 0
+key R
+wait road laid
+
+snap hut-two-walls

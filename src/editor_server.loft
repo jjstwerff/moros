@@ -3977,8 +3977,16 @@ fn main() {
           // decoder in the server for a debugging convenience; `base64 -d` is one
           // shell command on the side that reads it, and keeping the server free
           // of it means the snapshot cannot fail on a codec.
-          sn_png = file("../shots/shot-{sn_n}.b64");
-          sn_png.write(ev.payload);
+          // ⚠ AN EMPTY PAYLOAD IS A STATE-ONLY SNAPSHOT, and that is a real caller
+          // rather than a degenerate one: `tools/script.mjs` drives the world over
+          // the wire and photographs the canvas through the browser it already has
+          // attached, so it wants the numbers from here and takes the picture
+          // itself. Writing a zero-byte `.b64` beside them would litter the
+          // directory with files that decode to nothing.
+          if ev.payload != "" {
+            sn_png = file("../shots/shot-{sn_n}.b64");
+            sn_png.write(ev.payload);
+          }
           srv.send_to(ev.cid, "S:snapshot {sn_n} written ({len(ev.payload)} b64 chars)");
           println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64");
         } else if ev.msg_id == MSG_COLUMN {
