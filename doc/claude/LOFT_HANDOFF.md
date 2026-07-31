@@ -975,6 +975,9 @@ ordinary. Found only by writing the matrix, not by reading the code.
   not about whether the program is well-formed, so it belongs at runtime. The signature
   already carries the answer — `gl_screenshot` returns a **boolean**, so a wasm stub
   returning `false` costs nothing and every correct caller checks it anyway.
+  (`enhancement` `needs-design` `area:wasm` `wa:partial` `hit-by:moros` — an *ask*, not a
+  defect: the refusal works as designed, and it is the design that should change, so it
+  takes **no `sev:`**, which the scale reserves for bugs.)
 - **[loft#708](https://github.com/loft-lang/loft/issues/708) — `File.size` reads 0 for a file
   the same program wrote**, so the documented append idiom (`f#next = f.size`) seeks to 0 and
   **silently overwrites**. Measured: a 4-byte file reporting size 0, and `write("one")`
@@ -982,3 +985,6 @@ ordinary. Found only by writing the matrix, not by reading the code.
   program panicked instead — `index out of bounds: the len is 300 but the index is 65535`,
   a u16 sentinel reaching an offset — which did not reduce; the silent-overwrite case is the
   reliable half and is what was filed.
+  (`bug` `sev:high` `area:stdlib` `wa:partial` `hit-by:moros` — high because the loss is
+  **silent**: both the write and the size read report success. Interpreter only; `--native`
+  was not tried, so no `both-backends`.)
