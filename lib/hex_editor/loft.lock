@@ -55,3 +55,19 @@ url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_edge-v
 sha256 = "cc88accb3324d90fc37bf0a49d9c0d28ef2f7520a19a90c24d82911f4adb8a4c"
 source = "registry"
 deps = ["hex_field"]
+
+[[package]]
+name = "hex_shape"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_shape-v0.1.0/hex_shape-0.1.0.tar.gz"
+sha256 = "1688fc53b1d195f93b3ef0309754b461562a70cb2bf50bd061441477da1513aa"
+source = "registry"
+deps = ["hex_field", "hex_form", "hex_grid"]
+
+[[package]]
+name = "hex_place"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_place-v0.1.0/hex_place-0.1.0.tar.gz"
+sha256 = "f56ebeed07e81c6f7702ab867c72494c19ee5ddfeaf639343f12f4cf68a5fd67"
+source = "registry"
+deps = ["hex_field", "hex_form"]

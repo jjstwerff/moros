@@ -7,11 +7,17 @@ loft    = ">=0.8"
 entry = "src/moros_sim.loft"
 
 [dependencies]
+# ⚠ THE REGISTRY, NOT THE SIBLING CHECKOUT — see the longer note in moros_map's
+# manifest. A `path` dependency makes the whole directory it points at a search
+# path, so these two made every package in `loft-libs-world` resolvable from a tree
+# another agent edits. Both are byte-identical to registry 0.1.0 (diffed), so only
+# the route changes.
+#
 # A3 composes joint values in hex_body's own unit (TURNS) and A4 embeds one of
 # its rigs at a body, so the conversion is READ from there rather than copied.
-hex_body     = { path = "../../../loft-libs-world/hex_body" }
+hex_body     = ">=0.1"
 # Cliffs are EDGES — the collision query and the block are the library's, not ours.
-hex_edge     = { path = "../../../loft-libs-world/hex_edge" }
+hex_edge     = ">=0.1"
 moros_map    = { path = "../moros_map" }
 moros_editor = { path = "../moros_editor" }
 moros_render = { path = "../moros_render" }

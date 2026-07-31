@@ -1,0 +1,149 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S4 — A FOOTPRINT LANDS WHERE THE AUTHOR IS LOOKING, and the corners meet.
+//
+// Three claims, and the third is the one that decides what the gesture can promise:
+// the building goes in FRONT of the author, its facing snaps to one of the shape
+// family's twelve, and only SIX of those twelve can have walls that mitre. That
+// last is the lattice's own 6-fold symmetry (`X24`) surfacing in the editor's user
+// interface — an author has to be facing the right way to place a house — so it is
+// measured here rather than discovered in a picture.
+use hex_editor;
+use hex_draw;
+use hex_form;
+use hex_shape;
+use hex_field;
+use hex_grid;
+use hex_place;
+
+const HOUSE_W = 5;
+const HOUSE_D = 4;
+
+fn window() -> HexSet { hexset_chunk(0 - 30, 0 - 30, 61, 61) }
+
+// ⚠ AN AUTHOR FACING **30°** IS THE ONE WHO CAN PLACE A HOUSE, and due east is not
+// — which is the opposite of what this file first assumed, and the lattice was
+// right. The rectangle's own u axis must sit on an EDGE heading for a `Plan` to
+// exist, and u is 90° off the author's facing, so the accepted facings are the
+// VERTEX ones: 30, 90, 150, 210, 270, 330. Measured across all twelve, not
+// reasoned: even facings come back `fp_ok: false` with an offer 30° away.
+fn placed() -> Footprint { hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, HOUSE_W, HOUSE_D) }
+
+fn test_the_house_lands_in_front_of_the_author() {
+  f = placed();
+  (wx, wy) = hex_to_px(f.fp_cq, f.fp_cr);
+  // Ahead along the facing by half the depth plus the step of clearance, and square
+  // in front rather than off to one side. Behind is the placement that puts an
+  // author inside their own wall.
+  cs = box_cos(1);
+  sn = box_sin(1);
+  proj = wx * cs + wy * sn;
+  perp = wy * cs - wx * sn;
+  want = (HOUSE_D as float) * HEX_LEN * 0.5 + hex_editor::POSE_GAP;
+  assert(proj > 0.0, "the house is in front of the author, not behind: {proj}");
+  off = proj - want;
+  if off < 0.0 { off = 0.0 - off; }
+  assert(off <= HEX_LEN * 0.5,
+         "and a cell of where it was asked for: {proj} vs {want}");
+  if perp < 0.0 { perp = 0.0 - perp; }
+  assert(perp <= HEX_LEN * 0.5, "square in front, not off to one side: {perp}");
+}
+
+fn test_the_facing_snaps_to_one_of_twelve_and_says_how_far() {
+  // 14 degrees is inside the first step, so nothing turns and the residual is the
+  // whole 14. 16 degrees crosses it: the house turns to 30 and the residual is 14
+  // again — the same number from the other side, which is what makes it a residual
+  // and not an error.
+  a = hex_editor::pose_footprint(0.0, 0.0, 14.0 * PI / 180.0 ?? 0.0, HOUSE_W, HOUSE_D);
+  b = hex_editor::pose_footprint(0.0, 0.0, 16.0 * PI / 180.0 ?? 0.0, HOUSE_W, HOUSE_D);
+  ra = a.fp_residual - 14.0; if ra < 0.0 { ra = 0.0 - ra; }
+  rb = b.fp_residual - 14.0; if rb < 0.0 { rb = 0.0 - rb; }
+  assert(ra < 0.0001, "14 degrees stays put, residual {a.fp_residual}");
+  assert(rb < 0.0001, "16 degrees turns to 30, residual {b.fp_residual}");
+  assert(a.fp_rot != b.fp_rot, "and they are not the same placement");
+}
+
+fn test_only_the_even_orbit_is_accepted_and_the_odd_one_gets_an_offer() {
+  // ⚠ THE CLAIM THAT LIMITS THE GESTURE — and it costs the author a quarter turn,
+  // so it had better be true. An author facing due east places a rectangle whose u
+  // axis is a VERTEX heading: a second family that `Plan` cannot express, so
+  // `surface_quad` has nothing to mitre with. Refused, with the nearest rotation
+  // that CAN be mitred as the offer — never rounded silently, which would swing the
+  // building 30° under the author's hands.
+  east = hex_editor::pose_footprint(0.0, 0.0, 0.0, HOUSE_W, HOUSE_D);
+  assert(box_orbit(east.fp_rot) == 1, "due east lands on the vertex family");
+  assert(!east.fp_ok, "and is refused rather than drawn without mitres");
+  assert(box_orbit(east.fp_offer) == 0, "the offer is on Plan's own orbit");
+  assert(east.fp_offer != east.fp_rot, "and is a different placement, said out loud");
+  assert(placed().fp_ok, "a quarter turn on — 30° — is accepted");
+  // All six of each, so this is the lattice's 6-fold symmetry and not one lucky
+  // angle: every ODD facing is placeable, every EVEN one is not.
+  yes = 0;
+  for i in 0..12 {
+    f = hex_editor::pose_footprint(0.0, 0.0, (i as float) * PI / 6.0 ?? 0.0, HOUSE_W, HOUSE_D);
+    if f.fp_ok { yes = yes + 1; }
+    assert(f.fp_ok == (i % 2 == 1), "facing {i} of 12: ok {f.fp_ok}");
+  }
+  assert(yes == 6, "six of the twelve, which is X24 exactly, got {yes}");
+}
+
+fn test_the_box_and_the_plan_are_the_same_rectangle() {
+  // THE SEAM CHECK on `rot / 2`. `hex_shape` states that an even-rot Box and the
+  // Plan at half that rotation describe the same rectangle; if this tree's
+  // conversion is off by a step the two fills differ, and every wall after it is
+  // drawn against the wrong cells.
+  f = placed();
+  bc = window();
+  n = hex_editor::footprint_fill(f, bc);
+  pc = window();
+  types = labels_new(0 - 30, 0 - 30, 61, 61);
+  m = draw_floor(hex_editor::footprint_plan(f), pc, types, 1);
+  assert(n == m, "box_fill and draw_floor agree on the count: {n} vs {m}");
+  same = true;
+  for r in 0 - 30..31 {
+    for q in 0 - 30..31 {
+      if hexset_get(bc, q, r) != hexset_get(pc, q, r) { same = false; }
+    }
+  }
+  assert(same, "and cell for cell, not merely in total");
+}
+
+fn test_the_four_walls_meet_at_mitred_corners() {
+  // S4's picture, as a number: consecutive sides share an endpoint EXACTLY. This
+  // is `plan_walls`' claim from `S1`, now made about a rectangle nobody typed —
+  // one placed from a pose.
+  f = placed();
+  cells = window();
+  hex_editor::footprint_fill(f, cells);
+  p = hex_editor::footprint_plan(f);
+  assert(hex_editor::plan_walls_exact(p, cells), "every side recovers exactly");
+  qs = hex_editor::footprint_walls(f, cells);
+  for i in 0..hex_editor::PLAN_SIDES {
+    j = (i + 1) % hex_editor::PLAN_SIDES ?? 0;
+    a = qs[i] ?? hex_editor::WallQuad {};
+    b = qs[j] ?? hex_editor::WallQuad {};
+    assert(a.wq_x1 == b.wq_x0 && a.wq_y1 == b.wq_y0,
+           "side {i} ends where side {j} begins: "
+           + "({a.wq_x1},{a.wq_y1}) vs ({b.wq_x0},{b.wq_y0})");
+  }
+}
+
+fn test_seating_reports_what_it_cost() {
+  // On flat ground a seat costs nothing. On a slope it is cut and fill, and the
+  // number comes back rather than being swallowed — the placement owes it.
+  f = placed();
+  cells = window();
+  hex_editor::footprint_fill(f, cells);
+
+  flat = heights_new(0 - 30, 0 - 30, 61, 61);
+  r0 = hex_editor::footprint_seat(cells, flat, SEAT_MEAN);
+  assert(r0 == 0.0, "flat ground seats for nothing, got {r0}");
+
+  slope = heights_new(0 - 30, 0 - 30, 61, 61);
+  for r in 0 - 30..31 {
+    for q in 0 - 30..31 { height_set(slope, q, r, (q as float) * 0.5); }
+  }
+  r1 = hex_editor::footprint_seat(cells, slope, SEAT_MEAN);
+  assert(r1 > 0.0, "a slope costs cut and fill, and it is reported: {r1}");
+}

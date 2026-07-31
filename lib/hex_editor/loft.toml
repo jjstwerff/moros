@@ -23,3 +23,9 @@ hex_field = ">=0.1"
 # it for collision and for the fence; the geometry has no business deriving it a
 # second time.
 hex_way   = ">=0.1"
+# S4 — the footprint. `Box` is the placement (twelve orientations, both orbits),
+# `seat_write` sits it on the terrain, and `hex_grid` says which cell a world
+# point is. All three were being re-derived in the editor.
+hex_shape = ">=0.1"
+hex_place = ">=0.1"
+hex_grid  = ">=0.1"

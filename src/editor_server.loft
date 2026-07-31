@@ -28,6 +28,15 @@ use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band i
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
+// ⚠ `hex_shape` IS NOT USED HERE, AND IT HAS TO BE NAMED ANYWAY. `hex_editor` is
+// found through `--lib lib/`, and a directory package's transitive registry
+// dependency is not resolved before the module that needs it is parsed: without
+// this line, `hex_shape`'s own `hexwall.loft` is parsed with `hex_form` absent, and
+// `return a.0;` — a tuple access on a `head_step` result whose type is now unknown
+// — fails as `Expect token ;`. Nothing in the message mentions a dependency, and it
+// killed a whole gate run before the cause was found. Filed as loft#714; delete
+// this line when it is fixed.
+use hex_shape;
 use hex_editor;   // S3 — the wall a run draws, and the band it is drawn at
 // ⚠ QUALIFIER ONLY, never a bare or selective `use`: `moros_sim` reaches
 // `hex_field`, which has its own `edgeset_new` beside the `hex_edge` one this file

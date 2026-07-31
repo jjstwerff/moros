@@ -22,6 +22,9 @@ use hex_draw;
 use hex_form;
 use hex_field;
 use hex_way;
+use hex_shape;
+use hex_place;
+use hex_grid;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
@@ -121,3 +124,120 @@ pub fn run_wall(x0: float, z0: float, x1: float, z1: float) -> RunWall {
 
 pub fn run_wall_x(w: RunWall, i: integer) -> float { w.rw_cx[i] ?? 0.0 }
 pub fn run_wall_z(w: RunWall, i: integer) -> float { w.rw_cz[i] ?? 0.0 }
+
+// ── S4: A FOOTPRINT, FROM WHERE THE AUTHOR IS STANDING ──────────────────────
+//
+// A house is placed, not drawn edge by edge: the author stands somewhere, faces
+// somewhere, and a rectangle lands in front of them. `hex_shape::Box` is that
+// rectangle and `hex_shape::box_fill` its cells — no rasterisation of ours.
+//
+// ⚠ **TWELVE ORIENTATIONS, AND ONLY SIX OF THEM HAVE MITRED WALLS.** This is the
+// lattice's own `X24` — 6-fold symmetry, not 12 — and it decides what this gesture
+// can promise. `Box` turns in 30° steps and splits into two orbits:
+//
+//   EVEN rot   local u on an EDGE heading. `Plan`'s six, exactly: an even-rot Box
+//              and the `Plan` at `rot / 2` are the SAME rectangle. `surface_of`
+//              recovers each side as an exact heading, so `surface_quad` mitres
+//              the corners and the outline closes with no gap.
+//   ODD  rot   local u on a VERTEX heading. A second family, NOT a rotation of the
+//              first by any exact map — and `Plan` cannot express it, so there is
+//              no `surface_quad` and no mitre.
+//
+// A footprint on the odd orbit is therefore REFUSED here, with the nearest even
+// rotation as the offer and the angle as the residual — this editor's doorstep
+// shape (`K-FIT`: reason, offer, residual, never a blank no). Quietly rounding to
+// the even orbit would turn a building 30° under the author's hands, and drawing
+// it unmitred would put the corner gaps back that `S1` measured at 0.45 wu.
+pub const POSE_ROT = 12;              // hex_shape's BOX_ROT — the placement granularity
+
+pub struct Footprint {
+  fp_ok:       boolean,   // false — the odd orbit; read `fp_offer` and say why
+  fp_cq:       integer,   // the anchor cell: the rectangle's centre
+  fp_cr:       integer,
+  fp_wid:      integer,
+  fp_dep:      integer,
+  fp_rot:      integer,   // 0..11, the Box rotation the facing snapped to
+  fp_offer:    integer,   // the nearest EVEN rotation, always
+  fp_residual: float,     // degrees between where the author looked and what landed
+}
+
+// The rotation whose +v axis a facing snaps to, and how far it moved.
+fn snap_rot(facing: float, residual: &float) -> integer {
+  st = 2.0 * PI / (POSE_ROT as float) ?? 0.0;
+  k = facing / st ?? 0.0;
+  ki = 0;
+  if k >= 0.0 { ki = (k + 0.5) as integer; } else { ki = (k - 0.5) as integer; }
+  d = facing - (ki as float) * st;
+  if d < 0.0 { d = 0.0 - d; }
+  residual = d * 180.0 / PI ?? 0.0;
+  ((ki % POSE_ROT ?? 0) + POSE_ROT) % POSE_ROT ?? 0
+}
+
+// The gap between the author's feet and the near wall — one hex step, so the
+// building lands in FRONT of them and never around them. A footprint that swallows
+// its author is the placement bug every editor writes once.
+pub const POSE_GAP = 1.7320508075688772;   // hex_grid::HEX_LEN
+
+// Where a `wid` x `dep` building goes for an author at (px, py) looking along
+// `facing`, in radians on the lattice plane.
+//
+// The building's +v axis is the author's facing, so the wall they are looking at is
+// the near one, and the centre sits half a depth plus a step further on. The offset
+// uses `box_cos`/`box_sin` of the SNAPPED rotation — the family's exact table in
+// Q(sqrt3) — rather than the raw facing, so the placement lands where the drawn
+// rectangle actually is and not half a cell off it.
+pub fn pose_footprint(px: float, py: float, facing: float,
+                      wid: integer, dep: integer) -> Footprint {
+  resid = 0.0;
+  fdir = snap_rot(facing, resid);
+  rot = ((fdir - 3) % POSE_ROT + POSE_ROT) % POSE_ROT ?? 0;
+  reach = (dep as float) * HEX_LEN * 0.5 + POSE_GAP;
+  cx = px + box_cos(fdir) * reach;
+  cy = py + box_sin(fdir) * reach;
+  (cq, cr) = px_to_hex(cx, cy);
+  even = rot;
+  if box_orbit(rot) != 0 { even = ((rot - 1) % POSE_ROT + POSE_ROT) % POSE_ROT ?? 0; }
+  Footprint { fp_ok: box_orbit(rot) == 0, fp_cq: cq, fp_cr: cr,
+              fp_wid: wid, fp_dep: dep, fp_rot: rot,
+              fp_offer: even, fp_residual: resid }
+}
+
+// The placement, as the shape family holds it — valid on both orbits.
+pub fn footprint_box(f: Footprint) -> Box {
+  box_new(f.fp_cq, f.fp_cr, f.fp_wid, f.fp_dep, f.fp_rot, false)
+}
+
+// The same rectangle as a `Plan`, which exists only on the even orbit. Asking for
+// one on the odd orbit gives the OFFER's plan — the caller has already been told
+// `fp_ok` is false, and handing back a plan of a different rectangle silently is
+// how a refusal becomes a wrong building.
+pub fn footprint_plan(f: Footprint) -> Plan {
+  r = f.fp_rot;
+  if box_orbit(r) != 0 { r = f.fp_offer; }
+  plan_new(f.fp_cq, f.fp_cr, f.fp_wid, f.fp_dep, r / 2 ?? 0, false)
+}
+
+// The cells, from `box_fill` — the shape family's own rasterisation.
+pub fn footprint_fill(f: Footprint, cells: HexSet) -> integer {
+  box_fill(footprint_box(f), cells)
+}
+
+// The four walls, mitred. Only meaningful where `fp_ok` — see the orbit note above.
+pub fn footprint_walls(f: Footprint, cells: HexSet) -> vector<WallQuad> {
+  plan_walls(footprint_plan(f), cells)
+}
+
+// Sit the footprint on the terrain and say what it cost. The height is
+// `hex_place`'s choice under `policy`, the write is `seat_write`, and the residual
+// is the cut-and-fill — RETURNED, because a placement that flattens a slope without
+// saying so is the silent-wrong-data this stack refuses everywhere else.
+// ⚠ MEASURED BEFORE THE WRITE, and the first version measured after — which reads
+// the heights `seat_write` has just flattened and therefore reports 0 on every
+// slope in the world. A cut-and-fill of zero is exactly the silent-wrong-answer
+// this returns a number to prevent.
+pub fn footprint_seat(cells: HexSet, terr: Heights, policy: integer) -> float {
+  z = seat_height(cells, terr, policy);
+  cost = seat_residual(cells, terr, z);
+  seat_write(cells, terr, z);
+  cost
+}
