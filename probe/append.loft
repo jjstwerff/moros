@@ -1,0 +1,7 @@
+// Minimal: append to a file that does not exist yet, via a RELATIVE path.
+fn main() {
+  p = "../probe/out/fresh.txt";
+  println("size before: {file(p).size}");
+  { f = file(p); f#format = LittleEndian; f#next = f.size; f += "hello\n"; }
+  println("wrote; size now {file(p).size}");
+}

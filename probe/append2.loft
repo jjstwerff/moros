@@ -1,0 +1,7 @@
+fn main() {
+  p = "../probe/out/b.txt";
+  { f = file(p); f.write("one\n"); }
+  println("after write: {file(p).size}");
+  { g = file(p); g#format = LittleEndian; g#next = g.size; g += "two\n"; }
+  println("after append: {file(p).size}");
+}

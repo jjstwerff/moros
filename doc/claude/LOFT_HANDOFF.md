@@ -961,3 +961,20 @@ all three of its writes on the losing side at once — so nothing was ever place
 was ever freed, and the world drew entirely at the origin. Nothing is wrong at the point of
 failure: the reads are right, `len` is right, `#index` is right, and the write statement is
 ordinary. Found only by writing the matrix, not by reading the code.
+
+## Open, filed 2026-07-31
+
+- **[loft#709](https://github.com/loft-lang/loft/issues/709) — one source for native GL and
+  wasm.** `gl_screenshot` is native-only and `--html` refuses the build, so running the same
+  renderer on both targets means forking it into two entry points over a shared library —
+  a split introduced purely to dodge a missing host import, which costs the very property
+  two renderers exist to give (each is the other's control). Asked for parity of the
+  graphics surface; noted that `path` has no obvious browser meaning and that the virtual FS
+  or returning bytes would both do. `wa:partial` — the fork works, it just defeats the point.
+- **[loft#708](https://github.com/loft-lang/loft/issues/708) — `File.size` reads 0 for a file
+  the same program wrote**, so the documented append idiom (`f#next = f.size`) seeks to 0 and
+  **silently overwrites**. Measured: a 4-byte file reporting size 0, and `write("one")`
+  followed by an append leaving only `"two"`. Cost a recorder its log. ⚠ A longer-running
+  program panicked instead — `index out of bounds: the len is 300 but the index is 65535`,
+  a u16 sentinel reaching an offset — which did not reduce; the silent-overwrite case is the
+  reliable half and is what was filed.
