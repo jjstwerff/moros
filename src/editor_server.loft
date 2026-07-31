@@ -811,6 +811,24 @@ fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integer) 
   (false, ch.ha_q, ch.ha_r)
 }
 
+// Write everything recorded so far.
+//
+// ⚠ IT REWRITES, and the append it replaces CRASHED THE SERVER. Seeking to
+// `f.size` on a file that does not exist yet panicked loft's file I/O with
+// `index out of bounds: the len is 300 but the index is 65535` — a u16 sentinel
+// read as an offset. Filed as a loft defect; here the whole buffer is simply
+// written, which needs no seek and no pre-existing file.
+//
+// The cost is honest: rewriting is quadratic in the session's length. It is
+// affordable because a flush is every few thousand characters and a session is
+// thousands, not millions — and a recorder that crashes the thing it is recording
+// is worth no amount of asymptotics.
+fn rec_flush(path: text, buf: text) {
+  if buf == "" { return; }
+  rf = file(path);
+  rf.write(buf);
+}
+
 // The flood's visited set, keyed on one integer because a loft hash keys on a
 // single field. The pack is the same shape the chunk index uses.
 struct SeenAt { sa_key: integer }
@@ -3689,6 +3707,23 @@ fn main() {
   coll_have = false;
 
   sn_n = 0;                    // snapshots taken this session — `$` on the client
+  // ── THE RECORDER — every run, timed ────────────────────────────────────────
+  //
+  // ⚠ THE FORMAT IS THE WIRE, STAMPED WITH THE TICK IT WAS APPLIED ON. Nothing is
+  // invented: the protocol is already event-shaped (`4:` is a CHANGE of the held
+  // bitmask, never a position; `7:` is a placement; `30:1` is a keystroke), and
+  // the walk integrates on a fixed tick precisely so a run is reproducible from an
+  // input log rather than from whatever frame rate a tab happened to run at. So a
+  // recording is that log, and **a hand-written script is the same file** — one
+  // format for authoring, for replay, and for a bug report.
+  //
+  // On by default, because the run you wish you had recorded is always the one you
+  // did not. `32:0` turns it off for a public build; `32:1` back on.
+  recording = true;
+  rec_tick = 0;                // simulation ticks, not wall clock — replay's unit
+  rec_buf = "";
+  rec_path = "../recordings/run-{ticks()}.rec";
+  rec_n = 0;
   levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
   level_h = 0;                 // the frozen foot height, in height units
@@ -3749,6 +3784,22 @@ fn main() {
       ev = srv.poll_event();
       if ev == null { break; }
       work = work + 1;
+      // ⚠ RECORDED HERE, BEFORE ANY HANDLER, so the log is what ARRIVED and not
+      // what each handler decided to do about it — a recording that ran through
+      // the handlers would replay their opinions instead of the input.
+      // ⚠ And `31:` is logged WITHOUT its payload: a snapshot carries a whole PNG
+      // as base64, and a session's worth of them would be a recording made mostly
+      // of pictures.
+      // `message` is the positive test rather than three negatives — a connect, a
+      // disconnect and an HTTP request are not input and must not enter the log.
+      if recording && ev.message {
+        if ev.msg_id == MSG_SNAP { rec_buf += "{rec_tick} {ev.msg_id}:\n"; }
+        else { rec_buf += "{rec_tick} {ev.msg_id}:{ev.payload}\n"; }
+        rec_n = rec_n + 1;
+        // Flushed on a size step rather than every event: the buffer is the whole
+        // session, so writing it per keystroke would be the quadratic case.
+        if rec_n % 50 == 0 { rec_flush(rec_path, rec_buf); }
+      }
       if ev.http {
         if ev.path == "/" || ev.path == "/index.html" {
           srv.respond_html(read_index());
@@ -3988,7 +4039,11 @@ fn main() {
             sn_png.write(ev.payload);
           }
           srv.send_to(ev.cid, "S:snapshot {sn_n} written ({len(ev.payload)} b64 chars)");
-          println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64");
+          // A snapshot is a bug report, so the recording that produced it must be
+          // on disk BEFORE anyone reads either — not still in a buffer.
+          rec_flush(rec_path, rec_buf);
+          println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64"
+                + " (recording {rec_path}, {rec_n} events)");
         } else if ev.msg_id == MSG_COLUMN {
           // A read-back, because a structure is INVISIBLE: floors and roofs carry
           // FLOOR_MAT, and the renderer draws ground, road, field and vegetation.
@@ -4731,6 +4786,7 @@ fn main() {
       }
       acc_rest = acc_rest + (ticks() - tph);
       nticks = nticks + 1;
+      rec_tick = rec_tick + 1;
       if ticks() - acc_since >= 1000000 {
         if tracing {
           // Per second: where the time went, and the arithmetic that explains the

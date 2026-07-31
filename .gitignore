@@ -48,3 +48,4 @@ src/.loft/
 lib/*/tests/*.bin
 lib/*/probe/*.bin
 shots/
+recordings/
