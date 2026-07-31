@@ -17,6 +17,19 @@ fn flat() -> fn(integer, integer) -> integer {
 
 fn set() -> hex_field::EdgeSet { hex_field::edgeset_new(0 - 3, 0 - 3, 7, 7) }
 
+// A staircase climbing east, BUILT BY THE RULE rather than by multiplying: each
+// cell is one application of `stair_height` above the one west of it. That is
+// what makes the test measure the rule instead of re-deriving it — a staircase
+// written as `q * step` would pass even if `stair_height` returned something
+// else entirely.
+fn stair(step: integer) -> fn(integer, integer) -> integer {
+  fn(q: integer, r: integer) -> integer {
+    sh = 0;
+    for si in 0..q { sh = moros_sim::stair_height(sh, 1, step); }
+    sh
+  }
+}
+
 fn test_flat_ground_has_no_cliffs() {
   e = set();
   n = moros_sim::cliff_edges(e, flat(), 0 - 2, 0 - 2, 5, 5);
@@ -70,4 +83,48 @@ fn test_the_step_test_is_the_same_question_the_sweep_will_ask() {
   assert(moros_sim::cliff_step_ok(0, 6, 6), "exactly the limit is ok");
   assert(!moros_sim::cliff_step_ok(0, 7, 6), "one past is not");
   assert(!moros_sim::cliff_step_ok(7, 0, 6), "and it does not care which is higher");
+}
+
+// ── THE STAIR ───────────────────────────────────────────────────────────────
+
+fn test_a_step_this_creature_builds_is_a_step_it_can_climb() {
+  // The design's whole claim, asserted over every stride and every standing
+  // height rather than at one convenient pair. It is an equality ON the
+  // threshold, so a single off-by-one anywhere in either function shows here.
+  for sh_step in 3..9 {
+    for sh_here in 0..40 {
+      up = moros_sim::stair_height(sh_here, 1, sh_step);
+      down = moros_sim::stair_height(sh_here, 0 - 1, sh_step);
+      assert(up == sh_here + sh_step, "a step up is one stride: {up} from {sh_here}");
+      assert(down == sh_here - sh_step, "a step down is one stride: {down}");
+      assert(moros_sim::cliff_step_ok(sh_here, up, sh_step),
+             "and the climb onto it is admitted ({sh_here} → {up}, stride {sh_step})");
+      assert(moros_sim::cliff_step_ok(sh_here, down, sh_step),
+             "and so is the descent onto it");
+    }
+  }
+}
+
+fn test_a_staircase_of_its_own_steps_blocks_no_edge() {
+  // One step is arithmetic; a flight of them is the claim that matters, because
+  // it is `cliff_edges` — the function the walker actually meets — that has to
+  // let every one of them through.
+  e = set();
+  n = moros_sim::cliff_edges(e, stair(4), 0 - 2, 0 - 2, 5, 5, 4);
+  assert(n == 0, "a staircase of its own steps is walkable end to end, {n} blocked");
+  assert(hex_edge::passable(e, 0, 0, 1, 0), "including the edge onto the first step");
+  assert(hex_edge::passable(e, 1, 0, 2, 0), "and the edge between two steps");
+}
+
+fn test_a_stair_belongs_to_the_creature_that_built_it() {
+  // ⚠ THE NEGATIVE IS THE POINT. `stair_height` promises a step its BUILDER can
+  // climb and nothing more — six units is a stride to a horse and a cliff to a
+  // child. A version that clamped to some universal "walkable" number would pass
+  // the test above and fail this one.
+  tall = set();
+  assert(moros_sim::cliff_edges(tall, stair(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
+         "the creature that built it walks up it");
+  short = set();
+  n = moros_sim::cliff_edges(short, stair(6), 0 - 2, 0 - 2, 5, 5, 4);
+  assert(n > 0, "a shorter one is refused by the same stair, {n} edges blocked");
 }

@@ -10,22 +10,24 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-07-31)
+## ⏭ PICK UP HERE (2026-07-31, later)
 
-**The surface question is closed on every consumer.** A column can hold cellars, ground and
-decks; three separate rules were needed and all three now exist and are gated:
+**The surface question is closed on every consumer, and an upper storey is now somewhere you
+can STAND.** A column can hold cellars, ground and decks; four rules were needed and all four
+now exist and are gated:
 
 | question | rule | in code |
 |---|---|---|
 | which layer is the **outdoors** | a reserved label | `hex_world::LABEL_GROUND`, via `world_ground_cell` |
 | which surface am I **standing on** | highest occupied terrain layer at or below the feet | `hex_world::world_surface(w, q, r, feet)` |
+| **what do I ask it with** | the surface under me at the start of the tick — **never `py`** | `walk_h` / `ref_u` in `editor_server.loft` |
 | does a write keep **identity** | labels travel with cells; `0` means "new" | `Column.co_ids` → `world_set_column` |
 
 The whole story, with every measurement, is [WORLD_MODEL.md § "Which layer is the
-surface"](WORLD_MODEL.md). **27 gates green, 732 library tests across 7 packages
-(`hex_world` 75).**
+surface"](WORLD_MODEL.md). **28 gates green, 741 library tests across 7 packages
+(`moros_sim` 307, `hex_world` 75).**
 
-**Where to look first if something surfaces here:** items **32–34** at the bottom of this file,
+**Where to look first if something surfaces here:** items **32–35** at the bottom of this file,
 in that order — they were built in that order and each depended on the one before.
 
 ### What is open, in priority order
@@ -33,13 +35,15 @@ in that order — they were built in that order and each depended on the one bef
 1. ⚠ **`terrain_y` still has three callers that were left alone deliberately**, each named
    where it sits: the wall-run mesh (a wall stands on the ground it was laid on), the cart's
    ground sampler (`cs_sample`, A10 — a cart has no storey yet), and `ground_under`'s own
-   smooth path. None is wrong today; the first two become wrong the day something can be
-   built on a deck.
-2. ⚠ **Nothing can put a character on an upper deck.** A storey is 3 wu and the cliff rule
-   refuses a climb that steep, so the *deck* half of both the camera and the road rules is
-   correct by construction and **untested**. A ladder, a stair or a ramp gesture is what
-   would make it reachable — and would make three currently-unfalsifiable claims testable at
-   once.
+   smooth path. **The first two are now reachable-wrong rather than theoretically wrong** —
+   item 35 made a deck somewhere a character stands, so a wall or a cart on one is a gesture
+   away. And a fourth site joined the list with a visible symptom: `corner_heights` averages a
+   step's corners against the *outdoors* of its neighbours, so a stair's top step is drawn
+   sagging into the space under the platform it reaches (item 35's last ⚠).
+2. **A character on a deck cannot yet be given a wall, a fence or a prop** — every one of those
+   authors through the outdoors. Nothing is wrong today; the day one is placed from a deck it
+   lands a storey down, silently. That is item 1's `terrain_y` list from the other side, and
+   the gesture that would expose it now exists.
 3. **`A0` and the plan-14 probes** — unchanged, see the section below.
 
 ### The habit that found the last three defects
@@ -1764,3 +1768,59 @@ edges — neither of which the mechanism's own eight gates had caught.
         *exactly* one per storey — the defect was a constant factor, and slack readmits it.
     - **27 gates green, 732 library tests** (`hex_world` 75). Every `world/` gate unchanged;
       the frame-window character gates moved by their usual ±1. Suite runs in ~8 min.
+35. ✅ **AN UPPER STOREY IS SOMEWHERE YOU CAN STAND — and the rule needed a reference, not
+    just a rule.** `30:` STAIR, the walk on the surface rule, `tools/gates/character/deck.mjs`,
+    8 clauses, three mutations seen red (walk peaks 1.662 · 2.951 · 2.951 against 4.0). The deck halves of items 33 and 34 were *correct by
+    construction*; they are measured now.
+    - **The gesture is three lines of arithmetic and one refusal.** `30:<±1>` cuts the cell you
+      are FACING to your own surface plus exactly one stride — `msim::stair_height`, which lives
+      beside `cliff_step_ok` **in the library that owns the threshold**, so *a stair you build
+      is a stair you can climb* is by construction rather than by two constants agreeing. Three
+      new pure tests assert exactly that pairing, and the negative with it: the same stair is a
+      cliff to a shorter creature.
+    - **It SETS, it does not add.** Idempotent, so a held key cuts one step and not a tower;
+      going up is walking onto what you cut and cutting again. And it writes through
+      `surface_set`, so cutting from a deck raises the DECK — measured, `column 7,0 = 4,16` →
+      `4,20` with the ground below untouched, which is the deck half of the road's write rule
+      finally reachable.
+    - ⚠⚠ **THE REFERENCE IS THE SURFACE YOU STAND ON, NEVER YOUR FEET, and this is the real
+      finding.** `world_surface` takes a height to disambiguate the column, and `py` is the
+      wrong height to hand it: the feet ride the INTERPOLATED heightfield, whose corners are
+      three-cell means, so approaching a 12-unit drop they sag to ~6.7 — **five units below the
+      cell's own stored height**, where the rule's tolerance is `ε/2 = 4`. `WORLD_MODEL.md` says
+      that tolerance "absorbs the difference between a smoothed surface and its cell's integer
+      height"; it does not, because the difference belongs to the NEIGHBOURS and nothing bounds
+      it. So the tick resolves the walker's own cell once and asks about every other cell with
+      that integer. **The level is a state, like the feet** — `fall.loft`'s own lesson one level
+      up.
+      - The two cases are complementary, which is what makes it safe rather than lucky: where
+        the feet are smoothed the column has ONE layer and the reference cannot matter; where
+        the reference matters the column has several and the surface is a flat deck.
+    - ⚠ **AND A FLUSH JUNCTION HID IT — my first gate passed the broken code.** With the
+      platform paved at grade 0 its deck landed at exactly the stair's top, and in that scene
+      asking with `py` **passes** — because gravity is slower than the walk, so the feet sag as
+      the walker leaves the last step and it crosses before the fall has taken them below the
+      deck. Paving one stride higher removes the coincidence and the mutation fails. **Fourth
+      instance of this family** (the flat wheel, the flat-ground convention check, the
+      axis-aligned cross-slope): *a fixture with no offset cannot see an offset error.*
+    - ⚠ **A GAP IN `T:` IS NOT A STOP**, and reading it as one made the gate flaky — two runs of
+      identical code ended at x 5.44 and x 9.60. `moved` is set whenever the walk key is held,
+      blocked or not, so a refused walker keeps broadcasting; what interrupts the stream is the
+      *server* streaming a chunk into an interpreter. The stop is measured from the POSITION now
+      — forty transforms with no ground covered — and `cliff.mjs` carries the same idiom, saved
+      only by having a distance test beside it.
+    - ⚠ **AND A WALKER CANNOT BE HALTED ON A MARK.** The fixed gate then passed alone and failed
+      *inside the suite*, on claims read from where the walk ENDED: the stop travels
+      client→server, so the overshoot is whatever the socket is behind by, and under a full
+      suite that was **7.8 wu — 73 ticks buffered ahead of what the gate had received.** Every
+      claim is stated over the TRACE now (the walk's peak height, and every sample over the
+      platform), which more samples can only help; and the one claim that needs the character on
+      a named cell — that a cut from a deck lands on the DECK — is done by teleport, which is
+      the gesture that can be aimed. **A measurement whose value depends on when a message
+      arrived is not a measurement.**
+    - **The proxy's cache key gained the surface height.** The cliff edges are a function of the
+      world AND the walker's level now, and almost every level change is also a cell change —
+      except a fall, which arrives from underneath without the cell moving.
+    - **Bound to a key in both clients**: `E` cuts a step up, `Q` down. `12:` STOREY still has
+      none, which is why the platform in the gate is authored over the wire.
+    - **28 gates green, 741 library tests.** `moros_sim` 304 → 307.

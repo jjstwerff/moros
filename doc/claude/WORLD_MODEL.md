@@ -362,6 +362,71 @@ none could read the layers, so the only symptom was a `LAYER_CAP` of 64 that a s
 would have hit. Guarded now in `storey.mjs`, which requires *exactly* one layer per storey —
 the defect was a constant factor, and any slack in that assertion admits it back.
 
+### ✅ THE WALK — and the reference the rule is asked with — 2026-07-31
+
+The last consumer, and the one that made the other two testable. Everything above was measured
+from **under** a deck, because nothing could get a character **onto** one: a storey is 12 height
+units, a stride is 4, and every route up was a cliff. So the deck half of each rule was *correct
+by construction*, which is what you say about a claim you cannot fail.
+
+**The gesture is a stair.** `30:` cuts the cell you are facing to your own surface plus exactly
+one stride — `moros_sim::stair_height`, the cliff threshold read from the other side, so *a stair
+you build is a stair you can climb* is by construction and not by two constants agreeing. It
+**sets** rather than adds, so it is idempotent; going up is walking onto what you cut and cutting
+again. And it writes through `surface_set`, so a stair cut from a deck belongs to the deck.
+
+**The walk then had to ask the same question as the camera and the road**: `edges_walk`'s cliff
+sampler and `walk_to`'s climb/descent test both read `terrain_h`, so the cell beside a platform
+reported the ground a storey below it and the last step onto a deck read as a cliff.
+
+> ### ⚠ The reference is the surface you are STANDING ON, never your feet
+>
+> This is the part that is not obvious, and it cost a working stair to find. `world_surface`
+> takes a height to disambiguate the column — and the walker's own `py` is the wrong height to
+> hand it. The feet ride the **interpolated** heightfield, whose every corner is the mean of the
+> three cells touching it, so approaching a 12-unit drop they sag toward `(12+0+8)/3` — **more
+> than five units below the cell's own stored height.** The rule's tolerance is `ε/2`, four
+> units, and this document says above that it "absorbs the difference between a smoothed surface
+> and its cell's integer height". **It does not**: that difference is a property of the
+> *neighbours*, and nothing in the model bounds it.
+>
+> So each tick resolves the walker's own cell once and uses that integer for every other cell it
+> asks about. The two cases are complementary, which is what makes the stored height safe rather
+> than lucky:
+>
+> * where the feet are smoothed the column has ONE occupied layer (`sf_smooth`) — and then every
+>   reference gives the same answer, so it cannot matter;
+> * where the reference matters the column has SEVERAL — and then the surface is a deck, taken
+>   flat, and the feet are exactly its stored height.
+>
+> **The level is a state, like the feet.** `fall.loft` made `py` a state because deriving it from
+> the ground every tick teleported a walker off a ledge; this is the same lesson one level up.
+> A tick has one answer to *which level am I on*, fixed before anything moves.
+
+**Measured**, walking from flat ground up a three-step stair onto a platform whose deck is one
+stride above the stair's top:
+
+| the walk's rule | the fall's reference | crossing the platform edge |
+|---|---|---|
+| `terrain_h` (the outdoors) | — | **refused** — stops at x 6.05, one `SKIN` short of the boundary |
+| the surface rule | `py` | **falls through the deck** — crosses at y 1.0, the paved ground under it |
+| the surface rule | the tick's own surface | **y 4.0 across every sample** — on the deck |
+
+⚠ **AND A FLUSH JUNCTION HIDES THE SECOND ROW.** The first version of the gate paved the platform
+at grade 0, so its deck landed at exactly the stair's top of 12 — and in that scene asking with
+`py` **passes**. Not because the level is a state after all, but because gravity is slower than
+the walk: the feet sag as the walker leaves the last step and it crosses before the fall has
+taken them below the deck. One stride of separation removes the coincidence. Same family as the
+flat wheel and the axis-aligned cross-slope: *a fixture with no offset cannot see an offset
+error*, and here the offset is the deck's height above the step that reaches it.
+
+⚠ **What a stair does NOT fix, and it is visible.** A step is the ground, moved, so the ground
+mesh at the top step still averages its corners with the ground *under* the platform — the last
+step is drawn sagging into the space beneath the deck. The model is right (the outdoor ground
+genuinely falls away there) and the picture is a heightfield doing what heightfields do. The
+principled repair is the same one `terrain_y`'s three remaining callers are waiting for: mesh a
+layer against the **surface at that level** in its neighbours, not against the outdoors.
+
 ## Continuity across a seam
 
 Matched by **height**, never by name. Stepping into the next tile, the surface you continue

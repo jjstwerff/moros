@@ -228,6 +228,7 @@ const TICK_US = 33000;
 //                    25:<mat>      road — press to start a run, again to close it
 //                    26:<q>,<r>    report that cell's surface material and height
 //                    27:<0|1>      trace the tick's phases (off by default)
+//                    30:<+1|-1>    stair — cut one step into the cell ahead
 //                     7:<x>,<z>,<yaw>   place the character outright
 //                     8:<name>      save the world
 //                     9:<name>      load the world (empty name = new/empty)
@@ -302,6 +303,11 @@ const MSG_CAMREST = 28;   // read the camera's ease state back
 // survive an insert renumbering them. Separate from `15:` deliberately: that
 // message's payload is parsed as a list of numbers by three gates.
 const MSG_LABELS = 29;
+// Cut ONE step into the cell you are facing, at exactly one stride of the creature
+// doing the cutting. The gesture that makes an upper storey reachable: a storey is
+// 12 units and a stride is 4, so three steps and a deck is somewhere you can stand
+// rather than somewhere the model merely permits. See `stair_cut`.
+const MSG_STAIR = 30;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -689,6 +695,82 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer,
       }
     }
   }
+}
+
+// ── STAIRS (rung W4b, moros#12) — the gesture that makes a DECK REACHABLE ────
+//
+// A storey is 12 height units and a stride is 4, so an upper floor was somewhere
+// the model permitted and nothing could stand on: every route up was a cliff, and
+// the deck halves of the camera's and the road's surface rules were therefore
+// "correct by construction" — which is a way of saying untested. This is the
+// gesture that closes it. Cut a step into the cell you are facing, walk onto it,
+// cut again; three steps and the first floor is ground you are standing on.
+//
+// **The step is exactly one stride of the creature cutting it.** `stair_height`
+// is the cliff threshold read from the other side, in the library that owns the
+// threshold, so *a stair a walker builds is a stair that walker can climb* holds
+// by construction rather than by agreement between two constants.
+//
+// ⚠ IT SETS, IT DOES NOT ADD. The target is put AT `surface under the feet ± one
+// stride`, so holding the key cuts one step and not a tower, and pressing twice
+// from the same spot changes nothing — the gesture is idempotent, and going up is
+// walking onto what you cut. The raise is the tool that accumulates
+// (`5:`, deliberately steep); this one is the tool that stays walkable.
+//
+// ⚠ IT WRITES THE SURFACE, NOT THE OUTDOORS — `surface_set`, the road's writer,
+// for the road's own reason: the height is frozen from the FEET, so the write has
+// to land on the layer those feet are on. A stair cut while standing on a deck
+// belongs to the deck.
+//
+// ⚠ AND A STAIR IS A SHAPE, NOT A SUBSTANCE. The target keeps its own material.
+// `E1` makes material 0 mean ABSENT, so a stair with a material of its own would
+// erase the road it cut through, and one that wrote a 0 back would leave a hole to
+// fall through. An unwritten cell takes the ground's own material.
+fn stair_cut(wld: &World, q: integer, r: integer, feet: float, here: integer,
+             dir: integer, why: &text) -> integer {
+  h = msim::stair_height(here, dir, cliff_step());
+  // The world has a floor, and cutting through it is refused rather than clamped:
+  // a clamped step is a step the walker cannot climb, which would break the one
+  // promise this gesture makes. Reason, offer and residual — invariant I's third
+  // state stated properly (`K-FIT`).
+  if h < W_RESERVE {
+    why = "the world's floor is {W_RESERVE} (offer {W_RESERVE}, "
+        + "residual {W_RESERVE - h})";
+    return 0 - 1;
+  }
+  sf = hex_world::world_surface(wld, q, r, feet / HEIGHT_SCALE ?? 0.0);
+  m = SURFACE_MAT;
+  if sf.sf_layer >= 0 {
+    mm = hex_world::world_cell(wld, q, r, sf.sf_layer).h_material as integer ?? 0;
+    if mm != 0 { m = mm; }
+  }
+  code = surface_set(wld, q, r, feet, h, m);
+  if code != CW_OK {
+    why = "the world declined the write ({code})";
+    return 0 - 2;
+  }
+  h
+}
+
+// The first cell along the facing that is NOT the one you are standing in.
+//
+// ⚠ IT REFUSES RATHER THAN FALLING BACK ON THE CHARACTER'S OWN CELL. That exact
+// silent fallback is what buried the camera when the raise's search bound was too
+// short — the hill rose underfoot — so this returns whether it found one and the
+// caller says so out loud.
+//
+// The bound covers the longest hex step from the worst starting point: a step is
+// √3 ≈ 1.73 wu east–west, and the walker may stand on the far rim of its own cell,
+// so 4 wu is the distance that cannot miss.
+fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integer) {
+  ch = world_to_hex(cx, cz);
+  kx = cos(cyaw);
+  kz = sin(cyaw);
+  for ai in 1..17 {
+    ap = world_to_hex(cx + kx * (ai as float) * 0.25, cz + kz * (ai as float) * 0.25);
+    if ap.ha_q != ch.ha_q || ap.ha_r != ch.ha_r { return (true, ap.ha_q, ap.ha_r); }
+  }
+  (false, ch.ha_q, ch.ha_r)
 }
 
 // The flood's visited set, keyed on one integer because a loft hash keys on a
@@ -1127,19 +1209,73 @@ const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs fou
 // constant hidden in the library. A shorter creature supplies a smaller number.
 fn cliff_step() -> integer { (hip_wu() / HEIGHT_SCALE ?? 0.0) as integer }
 
+// ── WHAT A WALKER MEASURES ITS STEP AGAINST ─────────────────────────────────
+//
+// The surface rule, from the walker's own height — `world_surface`, not
+// `terrain_h`. The distinction is the whole of `WORLD_MODEL.md` § "Which layer is
+// the surface" and it is invisible until a column has more than one: the outdoors
+// is ONE layer per column, and a walker on a first floor is measuring its next
+// step against a floor three metres under its feet.
+//
+// ⚠ IT MADE THE UPPER STOREY UNREACHABLE, which is the shape the defect took.
+// The cell beside a deck reads as the ground below it, so a stair built level with
+// the deck reported a twelve-unit rise and the walker was refused at the top step.
+// The deck half of the camera's and the road's surface rules could not be tested
+// for exactly this reason — nothing could stand on a deck to test them from.
+//
+// ⚠ AND THE FALLBACK IS NOT A TIDY-UP. `world_surface` answers −1 where no terrain
+// is occupied at all — a missing chunk, an unauthored cell — while `terrain_h`
+// answers the outdoors' own 0 there. Mapping −1 to 0 would put a false cliff
+// around every chunk the streamer has not reached; deferring to `terrain_h` keeps
+// today's answer wherever the new rule has nothing to say.
+//
+// ⚠⚠ **THE REFERENCE IS THE SURFACE THE WALKER STANDS ON, NEVER ITS FEET**, and
+// the difference cost this rung a working stair. `py` rides the INTERPOLATED
+// heightfield — every corner is the mean of the three cells touching it — so
+// approaching a 12-unit drop the feet sink toward `(12 + 0 + 8)/3`, more than five
+// units below the cell's own stored height. `world_surface`'s tolerance is `ε/2`,
+// four units, and it is documented as absorbing exactly this difference: it does
+// not, because the dip is a property of the NEIGHBOURS and nothing bounds it. Fed
+// the sagging feet, the rule stopped seeing a deck 12 above them and the last step
+// onto it read as a cliff — intermittently, depending on where in the cell the
+// proxy happened to be built.
+//
+// The two cases turn out to be complementary, which is what makes the stored
+// height a safe reference rather than a lucky one:
+//
+//   * where the feet are smoothed, the column has ONE occupied layer (`sf_smooth`)
+//     — and then every reference gives the same answer, so it cannot matter;
+//   * where the reference matters, the column has SEVERAL — and then the surface is
+//     a deck, taken flat, so the feet are exactly its stored height.
+//
+// So the caller resolves its own cell once (`py` is a fine reference *there*, by
+// the first bullet) and passes that integer in for every other cell in the window.
+fn walk_h(q: integer, r: integer, wld: World, ref_units: float) -> integer {
+  u = hex_world::world_surface(wld, q, r, ref_units).sf_units;
+  if u < 0 { return terrain_h(q, r, wld); }
+  u
+}
+
 // The walk's collision set, with the ground's own cliffs blocked into it.
 //
 // ⚠ MOVE ONLY, NEVER VIEW. A cliff stops a walker and does not stop a camera — the
 // editor already keeps those two sets apart (`wall_stops_walk` against
 // `wall_stops_view`), and putting cliffs in the view set would make the camera
 // shove itself away from every ledge.
+//
+// ⚠ IT TAKES THE WALKER'S OWN SURFACE, so this set is no longer a function of the
+// world alone — it is a function of the world AND the level the walker is on.
+// Whatever caches it has to say so: see the proxy's key, which gained the surface
+// height for this reason and would otherwise hand a walker who just fell off a deck
+// the edges of the deck it fell from.
 fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
-              runs: WallRuns, sf: Surfaces) -> EdgeSet {
+              runs: WallRuns, sf: Surfaces, ref_units: float) -> EdgeSet {
   e = edges_around(wld, cq, cr, reach, false, runs, sf);
   n = 2 * reach + 1;
   // The terrain goes in as a FUNCTION, which is what makes the derivation pure and
   // testable without a world — the same shape `ground_axle` takes its terrain by.
-  msim::cliff_edges(e, fn(sq: integer, sr: integer) -> integer { terrain_h(sq, sr, wld) },
+  msim::cliff_edges(e, fn(sq: integer, sr: integer) -> integer {
+                         walk_h(sq, sr, wld, ref_units) },
                     cq - reach, cr - reach, n, n, cliff_step());
   e
 }
@@ -1253,7 +1389,8 @@ fn stand_clear(rt: Track, x0: float, z0: float, fx: float, fz: float) -> (float,
 }
 
 fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
-           x0: float, z0: float, x1: float, z1: float) -> (float, float) {
+           x0: float, z0: float, x1: float, z1: float,
+           ref_units: float) -> (float, float) {
   (t, hq, hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
   if hd < 0 { return stand_clear(rt, x0, z0, x1, z1); }
   // ── ⚠ A CLIFF STOPS A CLIMB, NOT A DESCENT ───────────────────────────────
@@ -1263,10 +1400,16 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
   // told from a wall by its surface — `cliff_edges` blocks with `SURF_NONE` while a
   // wall carries its run's real one — so a wall standing ON a cliff edge keeps its
   // surface and still stops you.
+  //
+  // ⚠ AND IT ASKS THE SAME QUESTION THE BLOCK DID. This read `terrain_h` while the
+  // block was derived from `walk_h`, which is one rule stated twice — and off a
+  // deck the two disagree by a whole storey, so a step down from a first floor
+  // would have read as a climb and been refused. Both sides ask the surface at the
+  // walker's own feet.
   cf_nq = nb_q(hq, hr, hd);
   cf_nr = nb_r(hq, hr, hd);
   if edge_surf(coll, hq, hr, cf_nq, cf_nr) == hex_edge::SURF_NONE {
-    if terrain_h(cf_nq, cf_nr, wld) < terrain_h(hq, hr, wld) {
+    if walk_h(cf_nq, cf_nr, wld, ref_units) < walk_h(hq, hr, wld, ref_units) {
       return stand_clear(rt, x0, z0, x1, z1);
     }
   }
@@ -2704,9 +2847,19 @@ fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integ
 // while only the feet asked, once a tick. The camera asks about five times per
 // boom sample and fifteen booms a tick, so the rule moved into the store where it
 // costs one chunk lookup and no allocation at all.
-fn ground_under(wld: World, wx: float, wz: float, feet: float) -> float {
+//
+// ⚠ `ref` IS A REFERENCE HEIGHT, NOT NECESSARILY THE FEET, and the parameter is
+// named for that on purpose. Three callers with three different answers to *which
+// level is being asked about*: the camera passes its own EYE, so a boom does not
+// swing through a deck; a teleport passes `py`, because a teleport is
+// authoritative about where it is putting you; and the tick's fall passes the
+// surface the walker was standing on when the tick began — NEVER `py`, for the
+// reason spelled out on `walk_h`. A walker at the rim of a stair's top step has
+// feet a full storey below that step's own height, and asking with them selects
+// the ground under the deck instead of the deck.
+fn ground_under(wld: World, wx: float, wz: float, ref: float) -> float {
   addr = world_to_hex(wx, wz);
-  sf = hex_world::world_surface(wld, addr.ha_q, addr.ha_r, feet / HEIGHT_SCALE ?? 0.0);
+  sf = hex_world::world_surface(wld, addr.ha_q, addr.ha_r, ref / HEIGHT_SCALE ?? 0.0);
   if sf.sf_smooth || sf.sf_units < 0 { return terrain_y(wx, wz, wld); }
   (sf.sf_units as float) * HEIGHT_SCALE
 }
@@ -3340,15 +3493,17 @@ fn main() {
   wall_runs = WallRuns { items: [] };
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
-  // The collision proxy and its validity, keyed on the cell and the edit clock.
+  // The collision proxy and its validity, keyed on the cell, the edit clock and
+  // the LEVEL the walker is on.
   coll_sf = surfaces_new();
   coll_rt = runs_track(wall_runs);
-  coll_move = edges_walk(wld, 0, 0, COLL_R, wall_runs, coll_sf);
+  coll_move = edges_walk(wld, 0, 0, COLL_R, wall_runs, coll_sf, 0.0);
   coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new());
   coll_q = 0;
   coll_r = 0;
   coll_tau = 0 - 1;                   // never a real clock value, so the first
-  coll_have = false;                  // tick always builds
+  coll_surf = 0 - 1;                  // tick always builds
+  coll_have = false;
 
   levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
@@ -3394,6 +3549,7 @@ fn main() {
   if hn != "" { println("    http://{hn}:{port}/"); }
   println("  over ssh:  ssh -L {port}:localhost:{port} <this box>");
   println("  drag or A/D to turn · W/S walk · ↑/↓ raise/lower ground {PEAK_AHEAD} hexes ahead");
+  println("  E/Q cut one step up/down into the cell ahead — three steps is a storey");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
@@ -3550,6 +3706,32 @@ fn main() {
             mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
             srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
             println("editor: storey {sdir:+} on {nb} cells");
+          }
+        } else if ev.msg_id == MSG_STAIR {
+          st_dir = ev.payload as integer ?? 1;
+          st_hx = world_to_hex(px, pz);
+          (st_found, st_q, st_r) = cell_ahead(px, pz, yaw);
+          if !st_found {
+            srv.send_to(ev.cid, "S:stair refused — no cell along the facing");
+          } else {
+            st_why = "";
+            // The step is measured from the STORED surface under the walker, not
+            // from `py`. The feet ride the interpolated surface, which sits below
+            // the cell's own height everywhere but the centre — so a step built
+            // from `py` would be short by however far off-centre the author was
+            // standing, and the amount would vary with where they stopped.
+            st_here = walk_h(st_hx.ha_q, st_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
+            st_new = stair_cut(wld, st_q, st_r, py, st_here, st_dir, st_why);
+            if st_new < 0 {
+              srv.send_to(ev.cid, "S:stair refused ({st_new}) {st_why}");
+              println("editor: stair refused ({st_new}) at ({st_q},{st_r}) — {st_why}");
+            } else {
+              mark_dirty(dirty, st_q, st_r, 3);
+              srv.send_to(ev.cid,
+                "S:stair {st_dir:+} at {st_q},{st_r} height {st_new} from {st_here}");
+              println("editor: stair {st_dir:+} at ({st_q},{st_r}) "
+                    + "{st_here} -> {st_new}");
+            }
           }
         } else if ev.msg_id == MSG_COLUMN {
           // A read-back, because a structure is INVISIBLE: floors and roofs carry
@@ -4093,21 +4275,37 @@ fn main() {
       dt = (steps * TICK_US) as float / 1000000.0 ?? 0.0;
 
       // The collision proxy, refreshed when it can no longer be right: when the
-      // character has changed cell, or when the world's EDIT CLOCK has moved.
-      // `τ` is what makes the second one exact — a cache is valid while nothing
-      // has been written, which is a fact about what happened rather than a guess
-      // about how long ago (`T1`). Building it every tick would be a 289-cell scan
-      // at 30Hz for a world that mostly does not change.
+      // character has changed cell, when the world's EDIT CLOCK has moved, or when
+      // the walker has changed LEVEL. `τ` is what makes the second one exact — a
+      // cache is valid while nothing has been written, which is a fact about what
+      // happened rather than a guess about how long ago (`T1`). Building it every
+      // tick would be a 289-cell scan at 30Hz for a world that mostly does not
+      // change.
+      //
+      // ⚠ THE THIRD TERM IS NOT BELT AND BRACES. The cliff edges are derived from
+      // the surface under the FEET, so the set is a function of the walker's level
+      // as well as of the world. Almost every level change is also a cell change
+      // and would be caught anyway — but a fall is not: step off a deck and the
+      // ground arrives from underneath without the cell moving, and a proxy keyed
+      // on the cell alone would still be holding the deck's edges. The height is an
+      // integer, so it invalidates on a real change of level and on nothing else.
       tph = ticks();
       chx = world_to_hex(px, pz);
-      if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r || coll_tau != wld.w_tau {
+      // The walker's own surface, resolved once and then used as the reference for
+      // every other cell — `walk_h`'s ⚠ is why it is not `py` itself.
+      surf_u = walk_h(chx.ha_q, chx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
+      ref_u = surf_u as float;
+      if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r
+         || coll_tau != wld.w_tau || coll_surf != surf_u {
         nrebuild = nrebuild + 1;
         coll_sf = surfaces_new();
         coll_rt = runs_track(wall_runs);
-        coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, wall_runs, coll_sf);
+        coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, wall_runs, coll_sf,
+                               ref_u);
         coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
                                  wall_runs, surfaces_new());
-        coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau; coll_have = true;
+        coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau;
+        coll_surf = surf_u; coll_have = true;
       }
       cam_want = cam_boom();
       cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
@@ -4219,7 +4417,7 @@ fn main() {
         // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step
         // is not a step size to tune and a slow tick cannot cross a fence.
         (wpx, wpz) = walk_to(coll_move, coll_sf, coll_rt, wld, px, pz,
-                             px + ky * step * fwd, pz + sy * step * fwd);
+                             px + ky * step * fwd, pz + sy * step * fwd, ref_u);
         gone = sqrt((wpx - px) * (wpx - px) + (wpz - pz) * (wpz - pz)) ?? 0.0;
         px = wpx;
         pz = wpz;
@@ -4254,8 +4452,19 @@ fn main() {
       // Once per tick, and the ONLY thing that evolves `py`. It runs whether or not
       // the walker moved: ground taken out from under someone standing still has to
       // drop them, and a fall that ran only inside the walk would leave them hanging.
+      //
+      // ⚠ THE LEVEL IS A STATE, LIKE THE FEET THEMSELVES. The reference is the
+      // surface the walker stood on when this tick BEGAN — one answer for the whole
+      // tick, the same one the cliff edges were derived from — and never `py`. Ask
+      // with `py` and the level is re-decided at every sub-step from a height that
+      // sags between cells: measured, the walker climbed the stair, crossed onto
+      // the platform, and fell a full storey THROUGH the deck to the ground below,
+      // because at the rim of the last step its feet read 6.7 units against a deck
+      // at 12 and a ground at 0. This is `fall.loft`'s own lesson one level up —
+      // it made the FEET a state, and the level is a state for the same reason.
       if !levelling {
-        fs_st = msim::fall_step(py, vy, ground_under(wld, px, pz, py), dt);
+        fs_st = msim::fall_step(py, vy,
+                                ground_under(wld, px, pz, ref_u * HEIGHT_SCALE), dt);
         py = fs_st.fl_y;
         vy = fs_st.fl_vy;
         if fs_st.fl_airborne || fs_st.fl_landed { moved = true; }

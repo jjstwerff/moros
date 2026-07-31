@@ -51,7 +51,7 @@ use graphics;
 //   S:<text>                                    status, for gates and for people
 // and client -> server, ids as NUMBERS because the pump parses `<int>:<payload>`:
 //   1: ready · 2:<aspect> camera · 3:<dx>,<dy> drag · 4:<keybits> · 5:<±1> raise
-//   6:<0|1> levelling · 23:<mat>,<rad> fence or wall
+//   6:<0|1> levelling · 23:<mat>,<rad> fence or wall · 30:<±1> stair
 //
 // ⚠ THE HOST IS A CONSTANT, where the JavaScript read `location.host`. A `--html`
 // program has no `location` — the browser surface is closed (loft's `WEB_APPS.md`
@@ -70,6 +70,10 @@ const KEY_RIGHT_TURN = 100;   // d
 const KEY_LEVEL = 108;        // l — toggle levelling
 const KEY_FENCE = 102;        // f — fence the ground you stand in
 const KEY_WALL = 103;         // g — wall it
+// e / q — cut ONE step into the cell ahead, up or down. The gesture that makes an
+// upper storey reachable: a storey is three strides, so three presses and a walk.
+const KEY_STEP_UP = 101;      // e
+const KEY_STEP_DOWN = 113;    // q
 
 // `23:<material>,<radius>`. A fence you see over, a wall you do not, and the camera
 // treats them differently for exactly that reason — same tool, different material.
@@ -188,6 +192,8 @@ struct Client {
   was_level: boolean,
   was_fence: boolean,
   was_wall: boolean,
+  was_step_up: boolean,
+  was_step_down: boolean,
   levelling: boolean,
   dragging: boolean,
   last_x: float,
@@ -549,6 +555,16 @@ fn poll_input(h: web::WsHandler, st: Client) {
   if kwall && !st.was_wall { web::send(h, WALL_CMD); }
   st.was_wall = kwall;
 
+  // The stair, also an edge and not a state: the gesture SETS the cell ahead to one
+  // stride above the surface under you, so a held key would send the same write
+  // every frame and change nothing after the first. An edge says that out loud.
+  kstepu = graphics::gl_key_pressed(KEY_STEP_UP);
+  if kstepu && !st.was_step_up { web::send(h, "30:1"); }
+  st.was_step_up = kstepu;
+  kstepd = graphics::gl_key_pressed(KEY_STEP_DOWN);
+  if kstepd && !st.was_step_down { web::send(h, "30:-1"); }
+  st.was_step_down = kstepd;
+
   // Drag to look. A raw delta is an input event, not a model decision.
   mbtn = graphics::gl_mouse_button();
   mx = graphics::gl_mouse_x();
@@ -589,7 +605,8 @@ fn main() {
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,
     held: 0,
     was_up: false, was_down: false, was_level: false,
-    was_fence: false, was_wall: false, levelling: false,
+    was_fence: false, was_wall: false,
+    was_step_up: false, was_step_down: false, levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0,

@@ -95,3 +95,36 @@ pub fn cliff_step_ok(a: integer, b: integer,
   if d < 0 { d = 0 - d; }
   d <= step_max
 }
+
+// ── THE STAIR — a step you BUILD is a step you can CLIMB ────────────────────
+//
+// The other side of the same threshold. `cliff_edges` says which ground refuses
+// a walker; this says where to put ground that will not. Given the surface the
+// builder is standing on, it returns the height one step of THAT CREATURE lands
+// at — so
+//
+//     cliff_step_ok(here, stair_height(here, dir, s), s)
+//
+// holds by construction rather than by coincidence. That is the whole reason it
+// lives here beside the threshold instead of in the editor's message handler:
+// one home for the constant, and a consumer cannot author a stair its own walker
+// will refuse.
+//
+// ⚠ **IT LANDS EXACTLY ON THE THRESHOLD, and that is deliberate.** A margin
+// would be a fudge with nothing to derive it from. The equality is safe here for
+// a reason worth stating, because this codebase has been bitten three times by a
+// boundary: both sides are stored INTEGER heights, `cliff_edges` blocks on
+// `rise > step_max`, and this returns a rise of exactly `step_max` — so there is
+// no rounding for the comparison to fall through. The earlier boundary bugs were
+// all TWO derivations of one quantity meeting at a float; this is one derivation
+// used twice.
+//
+// ⚠ **A stair is a property of its builder.** Six units is a step to a horse and
+// a cliff to a child: `stair_height(h, 1, 6)` is unclimbable at `step_max = 4`,
+// which the tests assert rather than leave implied. Nothing here makes a stair
+// universally walkable, and nothing should.
+pub fn stair_height(here: integer, dir: integer,
+                    step_max: integer = CLIFF_STEP_DEFAULT) -> integer {
+  if dir < 0 { return here - step_max; }
+  here + step_max
+}

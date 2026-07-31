@@ -4,7 +4,7 @@
 **Why this exists.** None of this was written down. Every acknowledgement string and every
 ordering guarantee below was reverse-engineered out of `src/editor_server.loft` (4,238 lines) in
 order to de-flake eight gates on 2026-07-30 — and the next person would have paid that cost
-again. 27 gates depend on this protocol today.
+again. 28 gates depend on this protocol today.
 
 **Why it carries dispositions.** [`HEX_STACK.md`](HEX_STACK.md) settles that the client derives
 meshes from the store (I2) and that the static world is pulled from static blocks (§3). Most of
@@ -61,6 +61,18 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `27` | TRACE | `<0\|1>` | `trace true/false` | **S** — diagnostics |
 | `28` | CAMREST | — | `camera rested B boom D free F pitch P residual A,B` | **V** — added 2026-07-30; see [`HEX_STACK.md`](HEX_STACK.md) and the note below |
 | `29` | LABELS | `<q>,<r>` | `labels q,r = <one layer label per layer, bottom-up>` | **R** — added 2026-07-30. The companion to `15` COLUMN: same column, identities instead of heights |
+| `30` | STAIR | `<+1\|-1>` | `stair ±1 at q,r height H from S` · `stair refused (C) why` · `stair refused — no cell along the facing` | **A** — added 2026-07-31 → `stair_height` + `surface_set` |
+
+⚠ **`30` STAIR is the gesture that made an upper storey REACHABLE**, and until it
+existed three of this editor's rules could not be tested at all. A storey is 12 height
+units and a stride is 4, so every route onto a deck was a cliff — which meant the deck
+half of the camera's surface rule, of the road's surface write, and of the walk's own
+step test were all "correct by construction". It cuts the cell you are FACING to exactly
+one stride above the surface under your feet: it **sets rather than adds**, so it is
+idempotent and a held key builds one step, and going up is walking onto what you cut and
+cutting again. The step's height comes from the same function the cliff threshold does
+(`moros_sim::stair_height`), so *a stair you build is a stair you can climb* needs no
+agreement between two constants.
 
 ⚠ **`29` LABELS exists because heights cannot show identity.** `15` COLUMN answers
 `column 0,10 = 13,25,37,49` both when three cellars were *inserted under* a ground layer that

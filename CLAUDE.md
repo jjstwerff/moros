@@ -85,7 +85,7 @@ A tabletop RPG toolkit and campaign. New here? Read **[Quick Start](doc/claude/Q
 - [Hex stack](doc/claude/HEX_STACK.md) — **the general design, and the single authority**: the three
   invariants (the store is the only authority, everything else is derived, writes go in place), the
   static/dynamic split, serverless distribution, the package register, and the translation table
-- [Wire protocol](doc/claude/WIRE_PROTOCOL.md) — the editor's socket **as it stands**: all 28 message
+- [Wire protocol](doc/claude/WIRE_PROTOCOL.md) — the editor's socket **as it stands**: all 30 message
   ids, every acknowledgement string, the seven ordering guarantees, and each message's fate under the
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**

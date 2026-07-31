@@ -1053,7 +1053,7 @@ particular is a name that is currently occupied.
 
 The ownership audit above adjudicated `lib/moros_*`. It never looked at
 **`src/editor_server.loft`**, which is 4,238 lines, 89 functions, and a `main()` of 1,228
-lines carrying 28 message handlers inline. Auditing it now turns up something sharper than
+lines carrying 30 message handlers inline. Auditing it now turns up something sharper than
 "the editor reimplemented some routines".
 
 ### The libraries are pure primitives over a TILE BUNDLE. The editor is a COLUMN STORE.

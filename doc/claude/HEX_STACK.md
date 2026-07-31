@@ -488,7 +488,7 @@ the wire encoders (`mesh_wire`, `mat_wire`, `frame_wire`, `fog_wire`, `ramp_wire
 `read_index` / `read_client` / `hostname` / `build_id`, the dirty set, and `world_path`.
 
 For scale: `src/editor_server.loft` is **4,238 lines, 89 functions, and a `main()` of 1,228
-lines carrying 28 message handlers inline.** Most of the table above is inside that one file.
+lines carrying 30 message handlers inline.** Most of the table above is inside that one file.
 
 ---
 
