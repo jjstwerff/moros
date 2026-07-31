@@ -89,16 +89,16 @@ fn test_refusal_yields_an_empty_map() {
 // assumption our loft.toml path dependency already makes.  Relative paths
 // resolve from the TEST FILE's directory under `loft test`.
 //
-// ⚠ IT REACHES THERE THROUGH A SYMLINK, and that is not decoration.  loft's
-// file sandbox refuses any relative path containing `..` — and refuses it
-// SILENTLY: `file("../x")#size` is 0, which every reader in this stack, ours
-// included, cannot tell from an empty file.  These two tests spent a while red
-// with `HXF_TRUNCATED` for exactly that reason and nothing else; the fixtures
-// were fine all along.  Descent is allowed, so `tests/shared-fixtures ->
-// ../../../../loft-libs-world/hex_field/tests/fixtures` turns the escape into a
-// descent and the reads work.  Absolute paths are also allowed, which is what
-// makes the refusal a bug rather than containment — filed as loft#712.
-const SHARED_FIXTURE = "shared-fixtures/canonical.hxf";
+// ⚠ IT REACHES THERE THROUGH `source_dir()`, and that is not decoration.  A
+// RELATIVE path containing `..` is refused, and refused SILENTLY:
+// `file("../x")#size` is null, which every reader in this stack — ours included
+// — cannot tell from a missing or empty file.  These two tests spent a while
+// red with `HXF_TRUNCATED` for exactly that reason and nothing else; the
+// fixtures were fine all along.  An ABSOLUTE path normalises properly and is
+// served, `..` segments and all, so `{source_dir()}/..` is the portable way up:
+// same file, same relationship, no checked-in symlink.  That relative and
+// absolute disagree is the bug — filed as loft#712.
+fn fixture_dir() -> text { "{source_dir()}/../../../../loft-libs-world/hex_field/tests/fixtures" }
 
 // ⚠ THIS TEST CHANGED MEANING when the compact voxel landed (2026-07-25), and
 // the change is the point rather than a repair.
@@ -114,7 +114,7 @@ const SHARED_FIXTURE = "shared-fixtures/canonical.hxf";
 // voided (losing the cell) and never clamped to 255 (a different material).
 // The fixture carries the 301 exactly to force this decision to be made.
 fn test_moros_reads_the_shared_fixture() {
-  ld = map_read_field(SHARED_FIXTURE, 0);
+  ld = map_read_field("{fixture_dir()}/canonical.hxf", 0);
   assert(ld.ml_code == ML_LABEL_TOO_WIDE,
          "a label past the voxel's width must be REFUSED with a named reason, "
          + "got code {ld.ml_code}");
@@ -139,11 +139,11 @@ fn test_moros_reads_the_shared_fixture() {
 // The wall fixture, read from OUR side.  Walls do not reach a Moros Map yet —
 // our cell has wall_n/ne/se and the reader has no home for them until the
 // edge-to-cell mapping is settled (#5) — so this asserts what DOES arrive and
-// pins the gap explicitly rather than leaving it unstated.
-const WALL_FIXTURE = "shared-fixtures/walled.hxf";
-
+// pins the gap explicitly rather than leaving it unstated.  Same reach as the
+// fixture above, and `fixture_dir` says why it is spelled through
+// `source_dir()` rather than as a plain `../..` path.
 fn test_moros_reads_the_walled_fixture() {
-  ld = map_read_field(WALL_FIXTURE, 0);
+  ld = map_read_field("{fixture_dir()}/walled.hxf", 0);
   assert(ld.ml_code == 0, "the wall fixture did not load: {ld.ml_code}");
   filled = 0;
   for q in 0..3 {
