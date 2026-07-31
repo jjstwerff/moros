@@ -117,3 +117,34 @@ url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphic
 sha256 = "398d1e1fcb272a1da21a49e3eeaadf93ab49f711876dfc6d9c0fcbaac94fcabe"
 source = "registry"
 deps = ["glb", "mesh3d"]
+
+[[package]]
+name = "hex_shape"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_shape-v0.1.0/hex_shape-0.1.0.tar.gz"
+sha256 = "1688fc53b1d195f93b3ef0309754b461562a70cb2bf50bd061441477da1513aa"
+source = "registry"
+deps = ["hex_field", "hex_form", "hex_grid"]
+
+[[package]]
+name = "hex_form"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_form-v0.1.0/hex_form-0.1.0.tar.gz"
+sha256 = "438967037869c9425840dc6b3127d85039d1f4941bb0178694bcd05b2beb535c"
+source = "registry"
+deps = ["hex_field", "hex_grid"]
+
+[[package]]
+name = "hex_body"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.1.0/hex_body-0.1.0.tar.gz"
+sha256 = "d674a3ef332580daace28043d343931b2df467f2e1563ddb465e615364c91e27"
+source = "registry"
+
+[[package]]
+name = "hex_way"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_way-v0.1.0/hex_way-0.1.0.tar.gz"
+sha256 = "03cc160ba0d34076403a4e862f78ea59a39a4dbb2fad0767acdfdb4268de060f"
+source = "registry"
+deps = ["hex_edge", "hex_field"]
