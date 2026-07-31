@@ -286,48 +286,57 @@ tool shows all contacts regardless of sharing.
 
 ## World map editor
 
-### Road linking bug
+### ✅ Road linking bug — FIXED 2026-07-31
 
-**Issue:** Roads break when clicking non-adjacent tiles.
+**Issue:** Roads break; clicking a non-adjacent tile makes it worse.
 
-**Root cause:** The road tool assumes each click is on a tile adjacent to the
-previous road endpoint.  When the user clicks a distant tile, the road tries
-to connect directly, creating an invalid edge.
+**⚠ The root cause guessed here was wrong, and the fix it proposed was already
+in the code.** This section used to say the tool "assumes each click is on a
+tile adjacent to the previous endpoint" and to propose pathfinding. `map.js`
+has had a Dijkstra with a live preview all along, and its click handler guards
+a null path. Pathfinding was never missing.
 
-**Fix design:**
+**What was actually wrong:** a road is stored as **two half-edges** — each tile
+carries a flag per direction, and the renderer draws *centre → edge-midpoint* —
+so laying one road means setting a flag on both tiles, and the second has to be
+the direction that points **back**. The mirror table was
 
-```javascript
-// In map.js — road tool click handler
-function onRoadClick(hex) {
-  if (!roadStart) {
-    roadStart = hex;
-    return;
-  }
-  // Find shortest path between roadStart and hex
-  const path = findHexPath(roadStart, hex);
-  if (path.length === 0) {
-    // No valid path — reset
-    roadStart = null;
-    return;
-  }
-  // Add road segments along the entire path
-  for (let i = 0; i < path.length - 1; i++) {
-    addRoadSegment(path[i], path[i+1]);
-  }
-  roadStart = hex; // continue from endpoint
-}
-
-// A* or BFS pathfinding on the hex grid
-function findHexPath(from, to) {
-  // Standard hex-grid A* with max distance limit (e.g. 20 hexes)
-  // Returns array of hex coordinates from → to (inclusive)
-  // Returns empty array if no path within limit
-}
+```js
+const ROAD_OPPOSITE = [3, 4, 5, 0, 1, 2];   // …and a second hand-written copy
 ```
 
-The fix adds pathfinding between clicks so the road follows the shortest
-hex path instead of trying to make a direct connection.  A distance limit
-(20 hexes) prevents accidental cross-map roads.
+which is the mirror of the **compass names** the file documented
+(`['NE','E','SE','SW','W','NW']`, NE↔SW, E↔W, SE↔NW) — *not* of the offsets
+those indices actually stand for. So every road put its second half on an edge
+aimed at a **third tile**, and drew a stub going nowhere. A one-hex road already
+showed it; a long path just multiplied it, which is why it read as "breaks when
+a non-adjacent tile is clicked".
+
+**Measured** from the renderer's own `hexCenter`: the true mirror is
+`[1, 0, 3, 2, 5, 4]`, and it is parity-**in**dependent. With the shipped table
+the two halves of a road land 15.6 px apart.
+
+**And the names were the source of the error.** A direction index here is not a
+compass direction — odd rows are shifted, so index 2 is NE on an even row and NW
+on an odd one. No single list of six names can be right, and the one in the file
+matched neither parity; the tile panel reported a water-flow direction wrongly on
+every row of the map.
+
+**The fix:** the lattice moved into one pure module, `html/hex-lattice.js`
+(offsets, `MIRROR_DIR`, `dirName`, `hexCenter`) — the same "one home for the
+lattice" rule the loft side of this project states as *"hex_grid owns the
+lattice; a parity-blind copy is where this codebase breaks"*. `map.js` imports
+it and both hand-written tables are gone.
+
+**Gated** by `test/lattice.test.js` (10 tests): it re-derives the mirror from the
+offsets over every cell on both parities rather than comparing one table with
+another, checks that both halves of a road land on the same edge midpoint, and
+carries the shipped table as an explicit control that must fail. A wrong constant
+cannot survive being computed from the thing it describes.
+
+`tools/map_road_shot.mjs` drives the real page — pick the road tool, click four
+tiles across both parities, screenshot — because a pure test cannot say whether
+the page still *wires* the geometry after the extraction.
 
 ---
 

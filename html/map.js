@@ -1,3 +1,10 @@
+// The lattice lives in ONE place — `hex-lattice.js`, pure and testable. It used
+// to be here, with a hand-written mirror table that was the mirror of the
+// COMPASS NAMES rather than of the offsets those names label, so every road
+// stored its second half on an edge pointing at a third tile.
+import { HEX_SIZE, hexWidth, hexHeight, hexCenter, neighborOffsets, MIRROR_DIR,
+         dirName } from './hex-lattice.js';
+
 // ========== DATA ==========
 const TERRAIN_DATA = [
     {name: "forest", slope: 3, rise: 1, rain: 3, color: '#2d5a1e', darkColor: '#1e3d14'},
@@ -26,9 +33,6 @@ const LANDMARKS = [
     {name: "fort", symbol: "🏯"}
 ];
 
-// Direction indices: 0=NE, 1=E, 2=SE, 3=SW, 4=W, 5=NW
-const DIR_NAMES = ['NE', 'E', 'SE', 'SW', 'W', 'NW'];
-
 // ========== STATE ==========
 let cols = 20, rows = 15;
 let tiles = [];
@@ -47,27 +51,6 @@ let camDist = 800;
 let roadStart = null;
 let roadPreview = null; // array of path nodes {tile, dir} or null
 
-const ROAD_OPPOSITE = [3, 4, 5, 0, 1, 2];
-
-// Hex geometry
-const HEX_SIZE = 36;
-
-function hexWidth() {
-    return Math.sqrt(3) * HEX_SIZE;
-}
-
-function hexHeight() {
-    return 2 * HEX_SIZE;
-}
-
-function hexCenter(col, row) {
-    const w = hexWidth();
-    const h = hexHeight();
-    const x = col * w + (row % 2 === 1 ? w / 2 : 0) + w;
-    const y = row * h * 0.75 + HEX_SIZE;
-    return {x, y};
-}
-
 function hexCorners(cx, cy, size) {
     const pts = [];
     for (let i = 0; i < 6; i++) {
@@ -79,9 +62,7 @@ function hexCorners(cx, cy, size) {
 
 // Flat-top neighbor offsets: [col_offset, row_offset] for even/odd rows
 function getNeighbors(col, row) {
-    const evenOffsets = [[1, 0], [-1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1]];
-    const oddOffsets = [[1, 0], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 1]];
-    const offsets = row % 2 === 0 ? evenOffsets : oddOffsets;
+    const offsets = neighborOffsets(row);
     const result = [];
     for (let d = 0; d < 6; d++) {
         const [dc, dr] = offsets[d];
@@ -239,7 +220,7 @@ function applyRoadPath(path) {
         const dir = path[i + 1].dir;
         const b   = path[i + 1].tile;
         a.roads[dir] = true;
-        b.roads[ROAD_OPPOSITE[dir]] = true;
+        b.roads[MIRROR_DIR[dir]] = true;
     }
 }
 
@@ -769,7 +750,7 @@ function updateTileInfo() {
     let html = `<div class="info-row"><span class="info-key">Rise/Slope</span><span class="info-val">${tInfo.rise}/${tInfo.slope}</span></div>`;
     if (waterFlowCalc) {
         html += `<div class="info-row"><span class="info-key">Water total</span><span class="info-val">${t.waterTotal}</span></div>`;
-        html += `<div class="info-row"><span class="info-key">Flow dir</span><span class="info-val">${t.waterDir >= 0 ? DIR_NAMES[t.waterDir] : 'none'}</span></div>`;
+        html += `<div class="info-row"><span class="info-key">Flow dir</span><span class="info-val">${t.waterDir >= 0 ? dirName(t.row, t.waterDir) : 'none'}</span></div>`;
     }
     if (heightsCalc && t.height !== null) {
         html += `<div class="info-row"><span class="info-key">Height</span><span class="info-val">${t.height}</span></div>`;
@@ -814,8 +795,7 @@ export function toggleRoad(d) {
     // Mirror on neighbor
     const nbrs = getNeighbors(t.col, t.row);
     if (nbrs[d]) {
-        const opposite = [3, 4, 5, 0, 1, 2];
-        nbrs[d].tile.roads[opposite[d]] = t.roads[d];
+        nbrs[d].tile.roads[MIRROR_DIR[d]] = t.roads[d];
     }
     updateTileInfo();
     draw2D();
