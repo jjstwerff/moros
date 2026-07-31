@@ -88,7 +88,17 @@ fn test_refusal_yields_an_empty_map() {
 // The path reaches into the sibling library checkout, which is the same
 // assumption our loft.toml path dependency already makes.  Relative paths
 // resolve from the TEST FILE's directory under `loft test`.
-const SHARED_FIXTURE = "../../../../loft-libs-world/hex_field/tests/fixtures/canonical.hxf";
+//
+// ⚠ IT REACHES THERE THROUGH A SYMLINK, and that is not decoration.  loft's
+// file sandbox refuses any relative path containing `..` — and refuses it
+// SILENTLY: `file("../x")#size` is 0, which every reader in this stack, ours
+// included, cannot tell from an empty file.  These two tests spent a while red
+// with `HXF_TRUNCATED` for exactly that reason and nothing else; the fixtures
+// were fine all along.  Descent is allowed, so `tests/shared-fixtures ->
+// ../../../../loft-libs-world/hex_field/tests/fixtures` turns the escape into a
+// descent and the reads work.  Absolute paths are also allowed, which is what
+// makes the refusal a bug rather than containment — filed as loft#712.
+const SHARED_FIXTURE = "shared-fixtures/canonical.hxf";
 
 // ⚠ THIS TEST CHANGED MEANING when the compact voxel landed (2026-07-25), and
 // the change is the point rather than a repair.
@@ -130,7 +140,7 @@ fn test_moros_reads_the_shared_fixture() {
 // our cell has wall_n/ne/se and the reader has no home for them until the
 // edge-to-cell mapping is settled (#5) — so this asserts what DOES arrive and
 // pins the gap explicitly rather than leaving it unstated.
-const WALL_FIXTURE = "../../../../loft-libs-world/hex_field/tests/fixtures/walled.hxf";
+const WALL_FIXTURE = "shared-fixtures/walled.hxf";
 
 fn test_moros_reads_the_walled_fixture() {
   ld = map_read_field(WALL_FIXTURE, 0);
