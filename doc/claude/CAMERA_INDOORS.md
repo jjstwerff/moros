@@ -1,4 +1,4 @@
-# The camera indoors — three modes, one query
+# The camera indoors — four modes, one query
 
 > Status: **design, not built.** `tools/scripts/indoors.keys` reproduces the two
 > measurements below.
@@ -26,7 +26,7 @@ head. Indoors that is exactly the trade that has to be made.
 ## ⚠ Three modes, because the same facts want opposite answers
 
 The temptation is one automatic behaviour that "handles interiors". It cannot: a
-dollhouse editing view and a claustrophobic interior want **opposite** things from
+de-roofed editing view and a claustrophobic interior want **opposite** things from
 the identical situation. Being inside a small dark room is a *fault* to be corrected
 in one and the *entire point* of the other.
 
@@ -55,11 +55,11 @@ whole design rests on: a constraint belongs to the mode that needs it.
 And lifting it is exactly what exposes the next section, because the first thing
 anyone does in a first-person view indoors is look up.
 
-A fourth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says the
+A fifth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says the
 room cannot hold a boom. That is today's behaviour plus the clamp fix, and it should
 be the default so nobody has to know the modes exist.
 
-## The query all three read
+## The query every mode reads
 
 Computed **once**, in the library, as a pure function — the structural claims belong
 in `lib/`, not in the renderer.
@@ -78,7 +78,7 @@ pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
 ⚠ **`sh_inside` does not mean "hide the roof".** It means the eye is under one. What
 to do about that is the mode's business, and FOLLOW and SNUG answer it in opposite
 directions. A field named `sh_hide_roof` would have baked one mode into the query and
-made the other unbuildable — which is exactly the mistake three modes exist to avoid.
+made the others unbuildable — which is exactly the mistake four modes exist to avoid.
 
 ⚠ `shelter_at` must read `world_surface`, not `terrain_h`. An upper storey's deck is
 a ceiling for the room beneath it, and `terrain_h` answers *the outdoors* by
