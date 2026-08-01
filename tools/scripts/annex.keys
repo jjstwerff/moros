@@ -18,6 +18,9 @@ key R
 at -6 4.2 90
 key J
 
+echo --- and a cupboard hard against it: five walls for two boxes, not six
+key V
+
 echo --- a trunk: a ring of wall, which is a cylinder
 at 6 6 0
 key G
@@ -27,8 +30,8 @@ echo --- and a balcony on its east side
 at 9 6 0
 key K
 
-echo --- the bedstee, from the room it opens into, and off the axis so it reads
-at -9 1 70
+echo --- the joinery, off the axis so the shared wall and the two fronts read
+at -10 0 65
 snap s9-bedstee
 
 echo --- the balcony, from far enough out to see it is UP the trunk

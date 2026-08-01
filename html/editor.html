@@ -337,6 +337,9 @@ addEventListener('keydown', (e) => {
   // with a rail, which bites a little into a round host so its floor has a flat.
   if (e.code === 'KeyJ') { ws.send('37:0'); e.preventDefault(); return; }   // bedstee
   if (e.code === 'KeyK') { ws.send('37:1'); e.preventDefault(); return; }   // balcony
+  // V a cupboard beside the last box — the first gesture whose host is another
+  // annex, and the first place two of them share a wall instead of drawing two.
+  if (e.code === 'KeyV') { ws.send('37:2'); e.preventDefault(); return; }   // cupboard
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

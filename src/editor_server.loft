@@ -1890,11 +1890,12 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes) {
+                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
   for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
+  for arun in awalls.items { emit_run_wall(wm, am, arun, wld, q0, r0, openings); }
   for anx in annexes.items {
     (aq, ar) = px_to_hex(anx.an_x, anx.an_z);
     if aq >= q0 && aq < q0 + CHUNK && ar >= r0 && ar < r0 + CHUNK {
@@ -3382,6 +3383,11 @@ fn main() {
   // passable; these say what shape the hole through it is.
   wall_openings = hex_editor::Openings { items: [] };
   wall_annexes = hex_editor::Annexes { items: [] };
+  // ⚠ DERIVED, NEVER APPENDED TO. The annexes are the truth and their walls follow
+  // from them, because adding a cupboard has to REMOVE the bedstee's side wall —
+  // and a list that was appended to could only grow. Rebuilding the whole row is
+  // the same rule the store keeps: one authority, everything else derived.
+  annex_walls = WallRuns { items: [] };
   // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
   ring_live = false;
   ring_x = 0.0;
@@ -4121,6 +4127,37 @@ fn main() {
           // direction, and the ring's centre is the nearest thing the author can be
           // standing outside of. One code path, because a tree is not a special host.
           akind = ev.payload as integer ?? hex_editor::AN_BOX;
+          // ⚠ KIND 2 IS A CUPBOARD BESIDE THE LAST BOX — the first gesture that
+          // takes an existing annex as its host rather than a wall. It inherits the
+          // depth, the floor and the lid line, which is what makes a bedstee and its
+          // cupboard read as one piece of joinery rather than two boxes that touch.
+          if akind == 2 {
+            alast = 0 - 1;
+            ali = 0;
+            for aprev in wall_annexes.items {
+              if aprev.an_kind == hex_editor::AN_BOX { alast = ali; }
+              ali = ali + 1;
+            }
+            if alast < 0 {
+              srv.send_to(ev.cid, "S:nothing to stand a cupboard beside — press J first");
+              println("editor: cupboard refused — no box");
+            } else {
+              ahost = wall_annexes.items[alast] ?? hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, hex_editor::AN_BOX);
+              acup = hex_editor::annex_beside(ahost, 1.2, 1, hex_editor::AN_BOX);
+              wall_annexes.items += [acup];
+              annex_walls.items = [];
+              hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
+              // A cupboard's doors are flat — an arched cupboard is a shrine.
+              wall_openings.items += [hex_editor::annex_mouth(
+                acup, 0.9, hex_editor::OP_FLAT, HEIGHT_SCALE)];
+              achex = world_to_hex(acup.an_x, acup.an_z);
+              mark_dirty(dirty, achex.ha_q, achex.ha_r, 4);
+              srv.send_to(ev.cid, "S:a cupboard beside it — {len(annex_walls.items)} "
+                                + "walls for {len(wall_annexes.items)} boxes");
+              println("editor: cupboard at ({achex.ha_q},{achex.ha_r}) — "
+                      + "{len(annex_walls.items)} walls for {len(wall_annexes.items)} boxes");
+            }
+          } else {
           anx = cos(yaw);
           anz = sin(yaw);
           abest = 1000000.0;
@@ -4202,7 +4239,8 @@ fn main() {
               println("editor: annex refused — {afit.ak_why}");
             } else {
               wall_annexes.items += [aan];
-              hex_editor::annex_runs(aan, hex_editor::WALL_MAT, wall_runs);
+              annex_walls.items = [];
+              hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
               if akind == hex_editor::AN_BOX {
                 wall_openings.items += [hex_editor::annex_mouth(
                   aan, 1.5, hex_editor::OP_ROUND, HEIGHT_SCALE)];
@@ -4218,6 +4256,7 @@ fn main() {
                                 + "{ahex.ha_q},{ahex.ha_r} — 3 walls, a deck");
               println("editor: annex kind {akind} at ({ahex.ha_q},{ahex.ha_r})");
             }
+          }
           }
         } else if ev.msg_id == MSG_HOUSE {
           // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
@@ -4792,7 +4831,7 @@ fn main() {
           wm2 = mesh("wall");
           lm2 = mesh("floor");
           am2 = mesh("frame");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4909,7 +4948,7 @@ fn main() {
               wmesh = mesh("wall");
               lmesh = mesh("floor");
               amesh = mesh("frame");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

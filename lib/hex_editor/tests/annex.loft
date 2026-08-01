@@ -109,10 +109,19 @@ fn test_its_walls_are_three_ordinary_runs_open_toward_the_host() {
   assert(len(runs.items) == 3, "three runs, not four: {len(runs.items)}");
   first = runs.items[0] ?? hex_editor::WallRun {};
   last = runs.items[2] ?? hex_editor::WallRun {};
-  assert(near(first.wr_x0, hex_editor::annex_corner_x(b, 0)), "the first starts at the seat");
-  assert(near(last.wr_x1, hex_editor::annex_corner_x(b, 3)), "and the last comes back to it");
+  // ⚠ THE U OPENS ONTO THE HOST, so it BEGINS at one seat corner and ENDS at the
+  // other — corner 1 to corner 0 the long way round, through the front. The first
+  // version of this assertion said 0 and 3 and passed on a shape with a wall along
+  // the seat and its left side missing; endpoints alone cannot tell the two apart,
+  // which is why `test_no_wall_stands_between_the_annex_and_its_host` exists.
+  assert(near(first.wr_x0, hex_editor::annex_corner_x(b, 1))
+      && near(first.wr_z0, hex_editor::annex_corner_z(b, 1)),
+         "the U starts at one seat corner");
+  assert(near(last.wr_x1, hex_editor::annex_corner_x(b, 0))
+      && near(last.wr_z1, hex_editor::annex_corner_z(b, 0)),
+         "and ends at the other");
   assert(!near(first.wr_x0, last.wr_x1) || !near(first.wr_z0, last.wr_z1),
-         "the U is open toward the host — its ends do not meet");
+         "which are not the same point — the U is open");
 }
 
 fn test_a_balconys_rail_starts_at_its_deck_and_not_at_the_ground() {
@@ -204,4 +213,117 @@ fn test_the_two_pictures_are_the_same_primitive() {
   hex_editor::annex_runs(b, hex_editor::WALL_MAT, br);
   hex_editor::annex_runs(a, hex_editor::WALL_MAT, ar);
   assert(len(br.items) == len(ar.items), "with the same number of walls");
+}
+
+// ── the cupboard beside it: two annexes that know about each other ──────────
+
+fn cupboard() -> Annex {
+  hex_editor::annex_beside(bedstee(), 1.2, 1, hex_editor::AN_BOX)
+}
+
+fn test_no_wall_stands_between_the_annex_and_its_host() {
+  // ⚠ THE TEST THE FIRST VERSION NEEDED AND DID NOT HAVE. Walking the corners
+  // `0→1, 1→2, 2→3` gives three runs whose endpoints are right — first at 0, last
+  // at 3, ends apart — and puts a wall along the SEAT, inside the wall it hangs on,
+  // while leaving the left side open to the room. Endpoints cannot see that; this
+  // can: no run may have BOTH ends on the seat line.
+  b = bedstee();
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annex_runs(b, hex_editor::WALL_MAT, runs);
+  assert(len(runs.items) == 3, "still three runs: {len(runs.items)}");
+  seat = b.an_x * b.an_nx + b.an_z * b.an_nz - b.an_in;
+  for r in runs.items {
+    d0 = r.wr_x0 * b.an_nx + r.wr_z0 * b.an_nz - seat;
+    d1 = r.wr_x1 * b.an_nx + r.wr_z1 * b.an_nz - seat;
+    if d0 < 0.0 { d0 = 0.0 - d0; }
+    if d1 < 0.0 { d1 = 0.0 - d1; }
+    assert(d0 > 0.001 || d1 > 0.001,
+           "no run lies along the seat — the host is that wall");
+  }
+}
+
+fn test_a_cupboard_sits_hard_against_the_bedstee() {
+  // Not near, not overlapping: the same point. A gap shows daylight between two
+  // pieces of joinery; an overlap has two fronts claiming the same plank.
+  b = bedstee();
+  c = cupboard();
+  assert(hex_editor::annex_abuts(b, c), "the cupboard abuts the bedstee's right");
+  assert(!hex_editor::annex_abuts(c, b), "and the relation has a direction");
+  d = seg2(b, 1, c, 0);
+  assert(d < 0.000001, "their seat corners are one point, {d} apart");
+}
+
+fn seg2(a: Annex, i: integer, b: Annex, j: integer) -> float {
+  dx = hex_editor::annex_corner_x(a, i) - hex_editor::annex_corner_x(b, j);
+  dz = hex_editor::annex_corner_z(a, i) - hex_editor::annex_corner_z(b, j);
+  sqrt(dx * dx + dz * dz) ?? 0.0
+}
+
+fn test_the_party_wall_is_drawn_once() {
+  // ⚠ THE WHOLE POINT OF TWO ANNEXES KNOWING ABOUT EACH OTHER. Three runs each is
+  // six; the junction is one wall, so a row of two is FIVE. Drawing it twice is
+  // coincident geometry that flickers and costs double, and it is the kind of fault
+  // a picture shows only at certain angles.
+  row = hex_editor::Annexes { items: [bedstee(), cupboard()] };
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annexes_runs(row, hex_editor::WALL_MAT, runs);
+  assert(len(runs.items) == 5, "five walls for two boxes, got {len(runs.items)}");
+  alone = hex_editor::Annexes { items: [bedstee()] };
+  aruns = hex_editor::WallRuns { items: [] };
+  hex_editor::annexes_runs(alone, hex_editor::WALL_MAT, aruns);
+  assert(len(aruns.items) == 3, "and three for one, got {len(aruns.items)}");
+}
+
+fn test_two_that_do_not_touch_keep_all_their_walls() {
+  // The control: sharing must be a consequence of abutment, not of being in the
+  // same list. A version that always dropped a wall would pass the test above.
+  far = hex_editor::annex_beside(bedstee(), 1.2, 1, hex_editor::AN_BOX);
+  moved = hex_editor::annex_at(far.an_x, far.an_z + 4.0, far.an_nx, far.an_nz,
+                               far.an_w, far.an_out, far.an_in,
+                               far.an_floor, far.an_head, far.an_kind);
+  row = hex_editor::Annexes { items: [bedstee(), moved] };
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annexes_runs(row, hex_editor::WALL_MAT, runs);
+  assert(len(runs.items) == 6, "six walls for two apart, got {len(runs.items)}");
+}
+
+fn test_the_cupboard_shares_the_joinerys_depth_and_lid() {
+  // What makes them one piece rather than two boxes that happen to touch: the front
+  // planes are flush and the lids are level. A cupboard 20 cm proud of the bedstee
+  // beside it reads as a mistake, and it is one.
+  b = bedstee();
+  c = cupboard();
+  assert(c.an_out == b.an_out, "flush at the front: {c.an_out} vs {b.an_out}");
+  assert(c.an_head == b.an_head, "and level at the lid: {c.an_head} vs {b.an_head}");
+  assert(c.an_floor == b.an_floor, "and at the floor");
+  assert(c.an_w < b.an_w, "but it is its own width: {c.an_w} against {b.an_w}");
+}
+
+fn test_a_row_stays_on_one_flat_and_says_so_on_a_round_host() {
+  // ⚠ ABUTMENT IS A FLAT-HOST CLAIM, and this says so rather than pretending. Two
+  // annexes stepped round a trunk have seats that are chords of a circle: their
+  // corners CANNOT meet, so a row round a tree is a row of separate balconies —
+  // which is also what it looks like.
+  a = balcony();
+  b = hex_editor::annex_on_round(0.0, 0.0, 3.0, 0.8, 2.4, 1.6, 0.3, 16, 24,
+                                 hex_editor::AN_DECK);
+  assert(!hex_editor::annex_abuts(a, b), "two on a trunk do not abut");
+  row = hex_editor::Annexes { items: [a, b] };
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annexes_runs(row, hex_editor::WALL_MAT, runs);
+  assert(len(runs.items) == 6, "so each keeps all its walls: {len(runs.items)}");
+}
+
+fn test_a_cupboard_has_its_own_mouth_and_it_does_not_reach_its_neighbours() {
+  // Each front is its own surface, so each carries its own opening — and a mouth
+  // wider than its own box would open into the bed next door.
+  b = bedstee();
+  c = cupboard();
+  mb = hex_editor::annex_mouth(b, 1.5, hex_editor::OP_ROUND, U);
+  mc = hex_editor::annex_mouth(c, 0.9, hex_editor::OP_FLAT, U);
+  gap = sqrt((mb.op_x - mc.op_x) * (mb.op_x - mc.op_x) +
+             (mb.op_z - mc.op_z) * (mb.op_z - mc.op_z)) ?? 0.0;
+  assert(gap > mb.op_half + mc.op_half,
+         "the two mouths do not reach each other: {gap} apart, "
+         + "{mb.op_half} + {mc.op_half} wide");
 }

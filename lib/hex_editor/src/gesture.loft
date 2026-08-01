@@ -2224,13 +2224,82 @@ pub fn annex_wall_top(a: Annex) -> integer {
 // start at the annex's own FLOOR, which is why `wr_base` had to exist: a balcony's
 // rail that ran to the ground would be a buttress.
 pub fn annex_runs(a: Annex, mat: integer, out: &WallRuns) {
+  annex_runs_sides(a, true, true, mat, out)
+}
+
+// ⚠ WHICH THREE SIDES, and the first version got it wrong in a way its own test
+// could not see. The corners run 0 seat-left, 1 seat-right, 2 front-right, 3
+// front-left, and walking them `0→1, 1→2, 2→3` puts a wall along the SEAT — against
+// the host, inside the wall it hangs on — while leaving the left side open to the
+// room. The endpoints were right, so "three runs, first starts at 0, last ends at 3"
+// passed. The claim that catches it is that NO run lies on the seat line, which is
+// what `test_no_wall_stands_between_the_annex_and_its_host` now says.
+//
+// `left` and `right` are false where a SIBLING abuts: two boxes side by side share
+// one party wall, and drawing it twice is coincident geometry that flickers and
+// costs double. The rule is "skip your left if something is there", which gives
+// exactly one wall per junction however long the row.
+pub fn annex_runs_sides(a: Annex, left: boolean, right: boolean,
+                        mat: integer, out: &WallRuns) {
   top = annex_wall_top(a);
-  for i in 0..3 {
-    j = i + 1;
+  up = top - a.an_floor;
+  if right {
     out.items += [WallRun {
-      wr_x0: annex_corner_x(a, i), wr_z0: annex_corner_z(a, i),
-      wr_x1: annex_corner_x(a, j), wr_z1: annex_corner_z(a, j),
-      wr_mat: mat, wr_step: 0, wr_base: a.an_floor, wr_up: top - a.an_floor }];
+      wr_x0: annex_corner_x(a, 1), wr_z0: annex_corner_z(a, 1),
+      wr_x1: annex_corner_x(a, 2), wr_z1: annex_corner_z(a, 2),
+      wr_mat: mat, wr_step: 0, wr_base: a.an_floor, wr_up: up }];
+  }
+  out.items += [WallRun {
+    wr_x0: annex_corner_x(a, 2), wr_z0: annex_corner_z(a, 2),
+    wr_x1: annex_corner_x(a, 3), wr_z1: annex_corner_z(a, 3),
+    wr_mat: mat, wr_step: 0, wr_base: a.an_floor, wr_up: up }];
+  if left {
+    out.items += [WallRun {
+      wr_x0: annex_corner_x(a, 3), wr_z0: annex_corner_z(a, 3),
+      wr_x1: annex_corner_x(a, 0), wr_z1: annex_corner_z(a, 0),
+      wr_mat: mat, wr_step: 0, wr_base: a.an_floor, wr_up: up }];
+  }
+}
+
+// ⚠ THE CUPBOARD BESIDE THE BEDSTEE — and it is the first place two annexes have to
+// know about each other. `b` sits immediately to `a`'s right when a's right seat
+// corner IS b's left seat corner and they face the same way: not "near", not
+// "overlapping", the same point. A gap would show daylight between two pieces of
+// joinery; an overlap would have two fronts claiming the same plank.
+//
+// ⚠ IT IS A FLAT-HOST TEST. On a trunk two annexes stepped round by angle do NOT
+// abut — their seats are chords of a circle and their corners cannot meet — and
+// this correctly answers false there rather than pretending. A row of balconies
+// round a tree is a row of separate balconies, which is also what it looks like.
+pub fn annex_abuts(a: Annex, b: Annex) -> boolean {
+  dx = annex_corner_x(a, 1) - annex_corner_x(b, 0);
+  dz = annex_corner_z(a, 1) - annex_corner_z(b, 0);
+  nd = a.an_nx * b.an_nx + a.an_nz * b.an_nz;
+  dx * dx + dz * dz < 0.0001 && nd > 0.999
+}
+
+// A sibling placed hard against one side: same host, same face, same depth and the
+// same lid line — which is what makes a bedstee and its cupboard read as one piece
+// of joinery rather than two boxes that happen to touch.
+pub fn annex_beside(a: Annex, width: float, side: integer, kind: integer) -> Annex {
+  tx = 0.0 - a.an_nz;
+  tz = a.an_nx;
+  s = 1.0;
+  if side < 0 { s = 0.0 - 1.0; }
+  off = (a.an_w + width) * 0.5 * s;
+  annex_at(a.an_x + tx * off, a.an_z + tz * off, a.an_nx, a.an_nz,
+           width, a.an_out, a.an_in, a.an_floor, a.an_head, kind)
+}
+
+// Every wall of a row, with each party wall drawn once. The annexes are the truth
+// and these runs are derived from them — so a row is rebuilt, never appended to,
+// and adding a cupboard removes the bedstee's side wall without anything having to
+// remember that it once existed.
+pub fn annexes_runs(row: Annexes, mat: integer, out: &WallRuns) {
+  for a in row.items {
+    lefty = false;
+    for b in row.items { if annex_abuts(b, a) { lefty = true; } }
+    annex_runs_sides(a, !lefty, true, mat, out);
   }
 }
 
