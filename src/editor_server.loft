@@ -1934,6 +1934,41 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
     }
   }
 }
+// ── A DECK'S UNDERSIDE — the roof's soffit, one axis over ───────────────────
+//
+// ⚠ THE SAME DEFECT THE ROOF HAD, AND IT SURVIVED THE ROOF'S FIX. `emit_floor_slab`
+// already draws a RIM from the deck's top down to `FLOOR_THICK` below it, so a deck
+// has looked like it had a thickness from the side since the layers were first
+// drawn — and there was no face across the bottom of it. Standing under an upper
+// storey you looked straight through the floor.
+//
+// It hid behind the roof: a roof's soffit and a floor's soffit are one colour and
+// one surface, so an interior photograph reads `soffit 0.997` either way. What
+// separates them is the COUNT — after building a storey the soffit surface held 18
+// vertices, which is six triangles, which is the roof's tent exactly. The deck had
+// added nothing.
+//
+// It goes in the SOFFIT mesh because that is what the surface MEANS: the underside
+// of whatever is over you. A mode that keeps a ceiling keeps both kinds, and one
+// that hides them hides both — which is the same argument that split the roof.
+fn emit_hex_under(m: Mesh, cq: integer, cr: integer, h: integer) {
+  uy = (h as float) * HEIGHT_SCALE;
+  ucs = hex_to_world(cq, cr, 0);
+  udn = vec3(0.0, 0.0 - 1.0, 0.0);
+  ua = vec3(ucs.x, uy, ucs.z);
+  for uk in 0..6 {
+    uk2 = (uk + 1) % 6 ?? 0;
+    uw1 = hex_corner_world(cq, cr, 0, (6 - uk) % 6 ?? 0);
+    uw2 = hex_corner_world(cq, cr, 0, (6 - uk2) % 6 ?? 0);
+    ub = vec3(uw1.x, uy, uw1.z);
+    uc = vec3(uw2.x, uy, uw2.z);
+    // Reversed against the top fan, and the normal points DOWN — neither matters
+    // to a renderer with no backface culling, and both are what make it right the
+    // day one arrives. The roof's soffit is asserted on exactly these two.
+    emit_tri(m, ua, udn, uc, udn, ub, udn);
+  }
+}
+
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
                     fm: Mesh, am: Mesh, sm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
   q0 = cx * CHUNK;
@@ -2089,6 +2124,10 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             fh = e.h_height as integer ?? 0;
             emit_hex_surface(fm, cq, cr, fh);
             emit_floor_slab(fm, wld, cq, cr, fh, c.co_ids[e#index] ?? 0);
+            // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
+            // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
+            // or the two part company and the deck shows a slot from below.
+            emit_hex_under(sm, cq, cr, fh - FLOOR_THICK);
           }
         }
       }

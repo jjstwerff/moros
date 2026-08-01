@@ -760,9 +760,22 @@ FOLLOW — a value FOLLOW's own handler would never accept — and the boom obey
 matters. **Seen red**: drop the re-fence and the character leaves the frame entirely
 (figure 0.0008 against 0.02 required).
 
-⚠ **What is still owed is one floor up.** A DECK is a sheet, so EYES under an upper
-storey looks through it exactly as it once looked through a roof. This house has no
-upper storey; the `Slab` is what closes it, and the roof is the worked example.
+⚠ **What was still owed was one floor up — and it is done.** A DECK was a sheet, so
+EYES under an upper storey looked through it exactly as it once looked through a
+roof. `emit_hex_under` puts its underside in the same **soffit** surface, because
+that is what the surface means: the underside of whatever is over you.
+
+⚠ **One instrument could not see it.** A roof's soffit and a floor's soffit are one
+colour and one surface, so standing under an upper storey *inside a house*
+photographs `soffit 0.997` either way. The COUNT settles it — 18 vertices before the
+storey, which is six triangles, which is a gable's tent exactly. On open ground with
+nothing above, 0 → **342** = 19 cells × 6 triangles. ⚠ And the pixel row is `floor`,
+not `sky`: with no culling a deck without an underside is not a hole, it is its own
+top fan seen from below.
+
+⚠ **A CELLAR STILL HAS NO CEILING**, which is the third time for this shape. The
+underside is drawn for every non-ground layer, and a cellar's ceiling is the GROUND —
+drawn by `chunk_mesh_mat` on a different path entirely.
 
 ## What NOT to build
 

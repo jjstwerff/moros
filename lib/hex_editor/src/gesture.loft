@@ -689,7 +689,17 @@ pub fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: inte
                 fill_i = cj3;
               }
             }
-            floor_u = hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
+            // ⚠ THE HEIGHT COMES FROM `storey_split` NOW, and that is the point of
+            // this change rather than a tidy-up. The function decomposing a storey
+            // into a slab and a clear height was written, tested, and called by
+            // nothing but `slab_over` — while the gesture that BUILDS a storey did
+            // the arithmetic itself and knew nothing about a thickness. The value is
+            // identical; what is new is that the gesture can now say where the room
+            // below ENDS, which is what a ceiling is and what nothing could report.
+            st_ceil = 0;
+            st_next = 0;
+            storey_split(col_top(c2), STOREY_H, SLAB_THICK, st_ceil, st_next);
+            floor_u = hex_world::Hex { h_height: st_next as u16? ?? 0,
                                        h_material: FLOOR_MAT };
             if fill_i >= 0 {
               for cj4 in 0..len(c2.co_cells) {

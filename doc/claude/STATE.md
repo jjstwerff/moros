@@ -10,7 +10,64 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — all five camera settings are built, and two guards were in the wrong place
+## ⏭ PICK UP HERE (2026-08-01, session 8) — a deck has an underside, and the roof's fix had not reached a floor
+
+`make gate` **30 green** (74 s), `make lib-test` **953 on both backends**, on **loft
+2026.8.0** — installed 19:59 today, mid-session; everything verified before that
+timestamp was on the previous binary and the re-run found no difference.
+
+### The deck was the roof's defect one axis over, and it survived the roof's fix
+
+`emit_floor_slab` has drawn a RIM down the side of every deck since layers were
+first drawn, so a deck has *looked* like it had a thickness — with no face across
+the bottom of it. Standing under an upper storey you looked straight through the
+floor. It is now `emit_hex_under`, into the **soffit** surface, at the rim's own
+bottom edge — because that is what the surface MEANS: the underside of whatever is
+over you, roof or floor alike.
+
+⚠ **ONE INSTRUMENT WAS NOT ENOUGH, AND THAT IS THE FINDING.** A roof's soffit and a
+floor's soffit are the same colour and the same surface, so standing under an upper
+storey *inside a house* photographs `soffit 0.997` **whether the deck has an
+underside or you are seeing the roof through it**. The count on the wire does not
+care:
+
+| | before the storey | after |
+|---|---|---|
+| in a house (roof above) | soffit **18** — six triangles, a gable's tent exactly | 180 |
+| on open ground (nothing above) | soffit **0** | **342** = 19 cells × 6 triangles |
+
+⚠ **And `floor` is the pixel row, not `sky`.** Nothing culls backfaces, so a deck
+with no underside is not a hole — it is its own TOP FAN seen from below, in timber.
+**Seen red**: `mesh soffit 0` and `floor 0.9967` in the frame.
+
+`mesh <surface> [lo hi]` is a new command in `tools/script.mjs` — vertices per
+surface, off the `M:` frames, no browser. It is what the gates already do for the
+ground and the wall, made available to a keys script.
+
+### `storey_split` was written, tested, and called by nothing that builds a storey
+
+`slab.loft` proved the arithmetic and `slab_over` used it for a house's ceiling; the
+GESTURE did the addition itself and knew nothing about a thickness — so a storey was
+a line and there was nowhere to say where the room below ended. `storey_add` derives
+its deck height from it now, and `storey.loft` asserts the two agree. Same shape as
+`op_depth`, `boom_take` and `body_shown` before it.
+
+### ⚠ A fixed devtools port would have made two browser gates fight
+
+`camera_indoors` was the only gate that attached a browser; `deck_soffit` is the
+second. `run-gates.sh` gives every gate its own `EDITOR_PORT` precisely so they can
+run together, and a hard-coded CDP port undid that — worse, the stale-browser guard
+added earlier today would have **killed the other gate's browser**, which looks like
+a flake in the victim. The devtools port is derived from the editor port now. Both
+ran together on the first try: 40 s and 65 s inside a 74 s suite.
+
+### Still owed
+
+⚠ **A CELLAR HAS NO CEILING.** The underside is drawn for every non-ground layer,
+and a cellar's ceiling is the GROUND — which `chunk_mesh_mat` draws by a different
+path. Standing in a cellar and looking up is the same defect again, a third time.
+
+## Earlier in session 8 — all five camera settings are built, and two guards were in the wrong place
 
 `make gate` **29 green**, `make lib-test` **952 on both backends**, on **loft
 2026.8.0** (installed 19:59 today, mid-session — everything verified before that
@@ -417,10 +474,10 @@ parallel so it costs its own wall time rather than a sum.
    walls. The per-client toggle that would do it exists (`V:`); the reason to use it
    does not.
 5. ✅ **EYES** — built. ⚠ **`sh_back` is still measured with no consumer.**
-6. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
-   tested and the storey gesture does not use it. **The roof is now the worked example
-   of what a horizontal surface is owed** — two faces, a thickness, a mitre — and the
-   argument got stronger: a zero-thickness sheet cannot carry two surfaces at all.
+6. ◐ **The slab's consumers.** `storey_add` derives its deck from `storey_split` and
+   a deck has an underside. ⚠ **What is left is the CELLAR** — its ceiling is the
+   ground layer, drawn by `chunk_mesh_mat`, which has no underside. And `Slab`/`Hole`
+   themselves are still only reachable through `39:`, not through `12:` STOREY.
 7. ⚠ **`SOFFIT_R/G/B` is a guess that measured well, not a designed colour.** It is
    cool and dark so the classifier can separate it from the wall's crowded warm greys
    — nearest neighbour 4.2× the tolerance. If the palette is ever reworked, that

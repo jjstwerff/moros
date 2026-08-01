@@ -122,7 +122,12 @@ const MERGE = { wall: 'masonry', frame: 'masonry' };
 
 
 // ── the browser, attached lazily and only for pictures
-const CDP = 9345;
+// ⚠ DERIVED FROM THE EDITOR PORT, or two browser gates fight over one devtools
+// socket. `run-gates.sh` gives every gate its own `EDITOR_PORT` precisely so they can
+// run together; a fixed devtools port undoes that — and the stale-browser guard below
+// would then KILL the other gate's browser, which is the worst possible version of
+// the collision because it looks like a flake in the victim.
+const CDP = 9300 + (PORT % 100);
 let proc = null, cdp = null, cdpId = 0;
 const cdpPending = new Map();
 async function cdpJson(path) {
@@ -252,6 +257,20 @@ async function browser() {
 // ── the wire: how the world is actually driven
 const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
 const status = []; const trace = []; let tCount = 0; let view = null;
+// ── WHAT IS ACTUALLY IN THE MESHES, BY SURFACE ──────────────────────────────
+//
+// ⚠ PIXELS CANNOT ALWAYS TELL TWO THINGS APART, and a deck's underside is the case
+// that proved it: a roof's soffit and a floor's soffit are one colour and one
+// surface, so standing under an upper storey inside a house photographs `soffit
+// 0.997` whether the DECK has an underside or you are seeing the ROOF through it.
+// The count does distinguish them — adding a storey either adds triangles to that
+// surface or it does not.
+//
+// Only the SIZE is kept: the id encodes chunk and surface as
+// `chunk * SURFACES + MESH_FIGURE_MAX + k`, and a vertex is six floats.
+const SURFACES = 9;
+const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame', 'soffit'];
+const meshLen = new Map();
 ws.addEventListener('message', (ev) => {
   const s = ev.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
@@ -263,7 +282,27 @@ ws.addEventListener('message', (ev) => {
   // is read back from `C:`, which is the matrix that drew the picture and cannot
   // disagree with it.
   if (t === 'C') view = b.split(';')[0].split(',').map(Number);
+  if (t === 'M') {
+    const h = b.indexOf(';'), id = Number(b.slice(0, h));
+    let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
+    const d = rest.slice(rest.indexOf(';') + 1);
+    meshLen.set(id, d === '' ? 0 : d.split(',').length);
+  }
+  if (t === 'X') meshLen.delete(Number(b));
 });
+// Vertices in one surface, summed over every loaded chunk. ⚠ A COUNT OF WHAT WAS
+// EMITTED, not of what a producer says it emitted — the same rule the gates already
+// hold to for the ground and the wall.
+const surfaceVerts = (name) => {
+  const k = SURF.indexOf(name);
+  if (k < 0) return -1;
+  let n = 0;
+  for (const [id, len] of meshLen) {
+    if (id <= 15) continue;
+    if ((id - 16) % SURFACES === k) n += len / 6;
+  }
+  return n;
+};
 await new Promise((r) => ws.addEventListener('open', r));
 ws.send('1:');
 // The camera has to be asked for, or the server sends no `C:` and never ticks a view.
@@ -579,6 +618,18 @@ for (const raw of lines) {
     console.log(`  eye ${e.map((v) => v.toFixed(3)).join(' ')}`
               + `  char ${p[12].toFixed(3)} ${p[13].toFixed(3)} ${p[14].toFixed(3)}`
               + `  apart ${d.toFixed(3)}` + verdict);
+  } else if (cmd === 'mesh') {
+    // `mesh <surface>` reports; `mesh <surface> <lo> <hi>` judges. No browser: this
+    // is the wire, so it costs nothing and works in a headless run.
+    const name = rest[0];
+    const n = surfaceVerts(name);
+    let verdict = '';
+    if (rest[1] !== undefined) {
+      const lo = Number(rest[1]), hi = Number(rest[2]);
+      if (n < lo || n > hi) { verdict = ` FAIL ${name} ${n} outside ${lo}..${hi}`; frameFails += 1; }
+      else verdict = ' PASS';
+    }
+    console.log(`  mesh ${name} = ${n} vertices${verdict}`);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.

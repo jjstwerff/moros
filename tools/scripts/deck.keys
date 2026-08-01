@@ -1,0 +1,47 @@
+# A DECK'S UNDERSIDE — the roof's soffit, one axis over.
+#
+# ⚠ THE ROOF'S FIX DID NOT REACH A FLOOR, and the EYES work named it as the one thing
+# still owed: *"a DECK is a sheet, so EYES under an upper storey looks through it
+# exactly as it once looked through a roof."* `emit_floor_slab` has drawn a RIM down
+# the side of every deck since the layers were first drawn, so a deck has LOOKED like
+# it had a thickness — with no face across the bottom of it.
+#
+# ⚠ AND A PICTURE CANNOT SEE IT INSIDE A HOUSE. A roof's soffit and a floor's soffit
+# are one colour and one surface, so standing under an upper storey photographs
+# `soffit 0.997` whether the deck has an underside or you are seeing the ROOF through
+# it. Two instruments are needed and this file uses both: the COUNT on the wire, and
+# a picture taken where a deck is the only thing overhead.
+
+echo --- ground to stand on, made by levelling as we walk
+at 0 0 0
+key ArrowUp
+wait rebuilt
+send 6:1
+keys 1
+step 90
+keys 0
+send 6:0
+step 30
+
+echo --- the soffit BEFORE: no roof anywhere, so there is nothing to have one
+mesh soffit 0 0
+
+echo --- a storey over the level ground, with open sky above it
+key B
+step 60
+# ⚠ 342 IS 19 CELLS x 18 VERTICES — one six-triangle fan per cell of the disc the
+# storey wrote, which the ack reports as "storey +1 on 19 cells". A structural
+# relation, not a magic number: every deck cell that gets a top gets an underside.
+mesh soffit 342 342
+mesh floor
+
+echo --- EYES, under the deck, looking STRAIGHT UP
+send 40:4
+send 3:0,-20000
+step 120
+snap s16-under-deck
+# ⚠ `floor` IS THE ROW, NOT `sky`. Nothing culls backfaces here, so a deck with no
+# underside is not a hole — it is its own TOP FAN seen from below, in the floor's
+# timber. So the question is which of the two surfaces is overhead, and the pair is
+# disjoint: with the underside it is soffit and not floor.
+frame 0 1.0 soffit 0.90 1.0 floor 0 0.05 sky 0 0.001

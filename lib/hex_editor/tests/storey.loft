@@ -130,3 +130,35 @@ fn test_a_storey_costs_exactly_one_layer_however_many_columns_it_touches() {
     assert(got == want, "storey {i + 1}: {want} layers, got {got}");
   }
 }
+
+fn test_a_storey_is_a_slab_and_a_clear_height_rather_than_a_line() {
+  // ⚠ `storey_split` WAS WRITTEN, TESTED, AND CALLED BY NOTHING THAT BUILDS A
+  // STOREY. `slab.loft` proved the arithmetic and `slab_over` used it for a house's
+  // ceiling; the GESTURE did the addition itself and knew nothing about a thickness,
+  // so a storey was a line and there was nowhere to say where the room below ended.
+  // That is the same shape as `op_depth` reaching the library and stopping there,
+  // and as `boom_take` being tested and never called.
+  //
+  // The claim is that the two agree — the deck the gesture writes is exactly the
+  // `next` floor the decomposition names — so the ceiling is derivable from what was
+  // built rather than being a second opinion about it.
+  w = world();
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 1, 2, why);
+  assert(n > 0, "the storey went on: {why}");
+  deck = hex_editor::col_top(world_column(w, 0, 0));
+  ceil = 0;
+  next = 0;
+  hex_editor::storey_split(40, hex_editor::STOREY_H, hex_editor::SLAB_THICK, ceil, next);
+  assert(deck == next, "the deck is the decomposition's own floor: {deck} vs {next}");
+  assert(next - ceil == hex_editor::SLAB_THICK,
+         "and the slab between them is one thickness: {next - ceil}");
+  // …and the room below is a room: a ceiling at or under its own floor would mean a
+  // storey pitch that cannot hold a slab at all, which is the case the decomposition
+  // exists to make visible.
+  assert(ceil > 40, "the room below has clear height {ceil - 40}");
+  assert(hex_editor::slab_clear(40, hex_editor::slab_over(
+           hex_editor::pose_footprint(0.0, 0.0, 0.0, 5, 4), 40,
+           hex_editor::STOREY_H, hex_editor::SLAB_THICK)) == ceil - 40,
+         "and `slab_clear` agrees with it");
+}
