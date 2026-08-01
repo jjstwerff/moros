@@ -326,6 +326,9 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyP') { ws.send('36:2'); e.preventDefault(); return; }   // pointed
   if (e.code === 'KeyI') { ws.send('36:3'); e.preventDefault(); return; }   // segmental
   if (e.code === 'KeyU') { ws.send('36:4'); e.preventDefault(); return; }   // oculus
+  // The tens digit is DEPTH: 11 is the round head stopped short — a niche, for a
+  // statue or a lamp, with the wall still whole behind it.
+  if (e.code === 'KeyN') { ws.send('36:11'); e.preventDefault(); return; }  // niche
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

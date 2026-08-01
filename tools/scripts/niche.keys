@@ -1,0 +1,36 @@
+# A NICHE, AND THE WALL STILL WHOLE BEHIND IT.
+#
+# ⚠ TWO VIEWS, AND THE SECOND IS THE TEST. A hole and a niche look identical from
+# the front — both are a dark shape in a wall — so the front view proves nothing on
+# its own. What separates them is what stands BEHIND: a doorway shows the country
+# past it, a niche shows stone. So the same wall is photographed from both sides,
+# and a niche that reads as a doorway from behind is a niche that was cut through.
+#
+# Left to right: a doorway that DOES go through, then two niches.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- one straight run
+at -9 0 0
+key R
+at 9 0 0
+key R
+
+echo --- a doorway, then two niches beside it
+at -5 -0.9 90
+key O
+at 0 -0.9 90
+key N
+at 5 -0.9 90
+key N
+
+echo --- the front: three openings, alike at a glance
+at 0 -12 90
+snap s5-niche-front
+
+echo --- and from behind, where only the doorway is a hole
+at 0 12 270
+snap s5-niche-back

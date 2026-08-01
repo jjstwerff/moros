@@ -60,6 +60,7 @@ const KEYMAP = {
   P: '36:2',              // …a POINTED one
   I: '36:3',              // …a segmental one
   U: '36:4',              // …and an oculus, a round window
+  N: '36:11',             // a round-headed NICHE — the same curve, stopped short
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

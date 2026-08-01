@@ -1464,6 +1464,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
   }
   fpx = nrm.x * (half + FRAME_PROUD);
   fpz = nrm.z * (half + FRAME_PROUD);
+  // The surround's own outline, carried slice to slice for the same reason the void
+  // is: a moulding that is not closed along its edge is a plate with daylight under
+  // it, which the picture showed as a bright hairline the length of every jamb.
+  fhad = false;
+  pflo = 0;
+  pfhi = 0;
 
   for i in 0..steps {
     sa = ln * (i as float) / (steps as float) ?? 0.0;
@@ -1496,6 +1502,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
         lo_u = 0;
         hi_u = up;
         cut = false;
+        thru = true;
+        reach = 2.0 * half;
         for o in openings.items {
           colo = 0;
           cohi = 0;
@@ -1503,7 +1511,22 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             cut = true;
             lo_u = colo;
             hi_u = cohi;
+            thru = hex_editor::opening_through(o);
+            reach = hex_editor::opening_reach(o, 2.0 * half);
           }
+        }
+        // ⚠ THE VOID'S INNER PLANE, and it is not the wall's far face. `op_depth`
+        // reached the library and its tests and stopped there: the emitter cut every
+        // opening clean THROUGH, so an alcove — the one thing the depth field exists
+        // for — read as a hole in the cottage wall with the garden visible past the
+        // bed. A niche's void stops `reach` in from the front and the wall carries on
+        // behind it, which is one plane and the whole difference.
+        ikx = 0.0 - ox;
+        ikz = 0.0 - oz;
+        if cut && !thru && half > 0.0 {
+          nk = (half - reach) / half ?? 0.0 - 1.0;
+          ikx = ox * nk;
+          ikz = oz * nk;
         }
         bands: vector<integer> = [0, up];
         if cut { bands = [0, lo_u, hi_u, up]; }
@@ -1529,19 +1552,19 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           if cut && !had { jn = vec3(tx, 0.0, tz); }
           if cut && had && hi_u - lo_u > phi - plo { jn = vec3(tx, 0.0, tz); }
           if !had {
-            emit_jamb(m, jx, jz, jgy, ox, oz, jn, lo_u, hi_u);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, lo_u, hi_u);
           } else if !cut {
-            emit_jamb(m, jx, jz, jgy, ox, oz, jn, plo, phi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, plo, phi);
           } else {
             // Both cut: the void moved, so the jamb is the sill's step and the
             // head's step — the two intervals one slice has and its neighbour
             // does not.
             slo = lo_u; shi = plo;
             if plo < lo_u { slo = plo; shi = lo_u; }
-            emit_jamb(m, jx, jz, jgy, ox, oz, jn, slo, shi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, slo, shi);
             hlo = hi_u; hhi = phi;
             if phi < hi_u { hlo = phi; hhi = hi_u; }
-            emit_jamb(m, jx, jz, jgy, ox, oz, jn, hlo, hhi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, hlo, hhi);
           }
         }
         had = cut;
@@ -1560,6 +1583,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           fcut = false;
           flo = 0;
           fhi = 0;
+          // ⚠ THE RING'S DEPTH IS THE OPENING'S, NOT THE SLICE'S. Beside a niche the
+          // wall is not cut at all, so a `thru` read from the slice says "through" —
+          // and the moulding was drawn on BOTH faces, standing proud of solid stone
+          // on the far side. In the picture that was a bright stripe the height of
+          // every jamb, on the wall's blind side, which is where it was found.
+          fthru = true;
           for gf in frames {
             gflo = 0;
             gfhi = 0;
@@ -1567,19 +1596,57 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               fcut = true;
               flo = gflo;
               fhi = gfhi;
+              fthru = hex_editor::opening_through(gf);
             }
           }
           if fcut {
             if flo < 0 { flo = 0; }
             if fhi > up { fhi = up; }
+          }
+          // ⚠ CLOSE THE MOULDING'S EDGE where it changes, exactly as the reveal
+          // closes the void's. The frame is `FRAME_PROUD` off the wall, so its
+          // outline is a 5 cm step — small enough to skip on paper and, measured,
+          // a bright line the full height of every jamb in the picture.
+          if fcut != fhad || flo != pflo || fhi != pfhi {
+            (rx, rz) = hex_way::seg_point(t, 0, ja);
+            rgy = terrain_y(rx, rz, wld);
+            rn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+            if fcut && !fhad { rn = vec3(tx, 0.0, tz); }
+            if !fhad {
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, flo, fhi);
+              if fthru { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                                  0.0 - ox, 0.0 - oz, rn, flo, fhi); }
+            } else if !fcut {
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, pflo, pfhi);
+              if fthru { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                                  0.0 - ox, 0.0 - oz, rn, pflo, pfhi); }
+            } else {
+              rlo = flo; rhi = pflo;
+              if pflo < flo { rlo = pflo; rhi = flo; }
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, rlo, rhi);
+              slo = fhi; shi2 = pfhi;
+              if pfhi < fhi { slo = pfhi; shi2 = fhi; }
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, slo, shi2);
+              if fthru {
+                emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                          0.0 - ox, 0.0 - oz, rn, rlo, rhi);
+                emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                          0.0 - ox, 0.0 - oz, rn, slo, shi2);
+              }
+            }
+          }
+          fhad = fcut;
+          pflo = flo;
+          pfhi = fhi;
+          if fcut {
             if cut {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, flo, lo_u);
+                              nrm, bck, fthru, flo, lo_u);
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, hi_u, fhi);
+                              nrm, bck, fthru, hi_u, fhi);
             } else {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, flo, fhi);
+                              nrm, bck, fthru, flo, fhi);
             }
           }
         }
@@ -1593,12 +1660,16 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             tb = gy1 + (bhi as float) * HEIGHT_SCALE;
             f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
             f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
-            b0 = vec3(ax - ox, ya, az - oz); b1 = vec3(bx - ox, yb, bz - oz);
-            b2 = vec3(bx - ox, tb, bz - oz); b3 = vec3(ax - ox, ta, az - oz);
+            b0 = vec3(ax + ikx, ya, az + ikz); b1 = vec3(bx + ikx, yb, bz + ikz);
+            b2 = vec3(bx + ikx, tb, bz + ikz); b3 = vec3(ax + ikx, ta, az + ikz);
             emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
             emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
-            emit_tri(m, b0, bck, b2, bck, b1, bck);
-            emit_tri(m, b0, bck, b3, bck, b2, bck);
+            // The far face. Cut into the same bands where the opening goes through;
+            // for a niche it is drawn whole below, because there is nothing to cut.
+            if thru {
+              emit_tri(m, b0, bck, b2, bck, b1, bck);
+              emit_tri(m, b0, bck, b3, bck, b2, bck);
+            }
             if half > 0.0 {
               // The cap: a band's top face. For the band below an opening this is
               // the SILL, which is why a window ledge exists without being a
@@ -1625,6 +1696,25 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               }
             }
           }
+        }
+        // The niche: its BACK, which is what you set a statue or a lamp against, and
+        // the far face of the wall standing unbroken behind it.
+        if cut && !thru && half > 0.0 && hi_u > lo_u {
+          na = gy0 + (lo_u as float) * HEIGHT_SCALE;
+          nb = gy1 + (lo_u as float) * HEIGHT_SCALE;
+          nc = gy1 + (hi_u as float) * HEIGHT_SCALE;
+          nd = gy0 + (hi_u as float) * HEIGHT_SCALE;
+          n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
+          n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
+          emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
+          emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
+          ba = gy0; bb = gy1;
+          bt0 = gy1 + (up as float) * HEIGHT_SCALE;
+          bt1 = gy0 + (up as float) * HEIGHT_SCALE;
+          y0 = vec3(ax - ox, ba, az - oz); y1 = vec3(bx - ox, bb, bz - oz);
+          y2 = vec3(bx - ox, bt0, bz - oz); y3 = vec3(ax - ox, bt1, az - oz);
+          emit_tri(m, y0, bck, y2, bck, y1, bck);
+          emit_tri(m, y0, bck, y3, bck, y2, bck);
         }
       }
     }
@@ -2152,7 +2242,7 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 // bottom. Both sides get one — a frame visible only from the street is scenery.
 fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
                    gy0: float, gy1: float, ox: float, oz: float,
-                   px: float, pz: float, nrm: Vec3, bck: Vec3,
+                   px: float, pz: float, nrm: Vec3, bck: Vec3, both: boolean,
                    a: integer, b: integer) {
   if b <= a { return; }
   ya = gy0 + (a as float) * HEIGHT_SCALE;
@@ -2165,6 +2255,15 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   f2 = vec3(bx + px, tb, bz + pz); f3 = vec3(ax + px, ta, az + pz);
   emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
   emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+  // ⚠ ONE SIDE FOR AN ALCOVE. A niche is a hole in the front of a wall that is
+  // still whole behind, so a surround on its back face stands PROUD of solid stone —
+  // a moulding around nothing, on the wrong side, in the neighbour's room.
+  if !both {
+    w3f = vec3(ax + ox, ta, az + oz); w2f = vec3(bx + ox, tb, bz + oz);
+    emit_tri(m, f3, upn, f2, upn, w2f, upn);
+    emit_tri(m, f3, upn, w2f, upn, w3f, upn);
+    return;
+  }
   k0 = vec3(ax - px, ya, az - pz); k1 = vec3(bx - px, yb, bz - pz);
   k2 = vec3(bx - px, tb, bz - pz); k3 = vec3(ax - px, ta, az - pz);
   emit_tri(m, k0, bck, k2, bck, k1, bck);
@@ -2185,17 +2284,19 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
 }
 
-// One face of a reveal: a quad across the wall's own thickness, from `a` to `b` in
-// height units. It is the wall's DEPTH made visible — the only surface in the whole
-// emitter that faces along the run rather than across it.
+// One face of a reveal: a quad from the wall's front face to the VOID's inner plane,
+// from `a` to `b` in height units. It is the wall's depth made visible — the only
+// surface in the emitter that faces along the run rather than across it — and the
+// inner plane is passed rather than assumed, because for an ALCOVE it is not the
+// far face of the wall but the back of the niche.
 fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
-             jn: Vec3, a: integer, b: integer) {
+             ix: float, iz: float, jn: Vec3, a: integer, b: integer) {
   if b <= a { return; }
   ya = jgy + (a as float) * HEIGHT_SCALE;
   yb = jgy + (b as float) * HEIGHT_SCALE;
   p0 = vec3(jx + ox, ya, jz + oz);
-  p1 = vec3(jx - ox, ya, jz - oz);
-  p2 = vec3(jx - ox, yb, jz - oz);
+  p1 = vec3(jx + ix, ya, jz + iz);
+  p2 = vec3(jx + ix, yb, jz + iz);
   p3 = vec3(jx + ox, yb, jz + oz);
   emit_tri(m, p0, jn, p1, jn, p2, jn);
   emit_tri(m, p0, jn, p2, jn, p3, jn);
@@ -3780,7 +3881,14 @@ fn main() {
           // of hex edges. The edge material still changes, because that is the
           // store's index of which boundary is passable and what `X70` protects;
           // the profile is what the picture and the fitting read.
+          // ⚠ SHAPE AND DEPTH ARE INDEPENDENT AXES, so the payload carries both:
+          // the units are the outline and the tens are how far it goes. `11` is a
+          // round-headed NICHE and `1` a round-headed doorway — the same curve,
+          // stopped short — which is the claim the whole family rests on, and it
+          // would be lost if a niche were spelled as a sixth "kind".
           okind = ev.payload as integer ?? hex_editor::OP_ROUND;
+          odepth = 1.0;
+          if okind >= 10 { odepth = 0.55; okind = okind - 10; }
           oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw),
                                         hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
@@ -3813,12 +3921,16 @@ fn main() {
             ow = vec3(owx, 0.0, owz);
             if okind == hex_editor::OP_CIRCLE {
               wall_openings.items += [hex_editor::oculus_opening(
-                ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, 1.0)];
-            } else if okind == hex_editor::OP_FLAT {
+                ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, odepth)];
+            } else if okind == hex_editor::OP_FLAT && odepth >= 1.0 {
               wall_openings.items += [hex_editor::door_opening(ow.x, ow.z, 0.9, WALL_UP)];
             } else {
+              // A niche starts at a seat's height rather than at the floor: a sleeping
+              // alcove is cut into the wall above the bed, not into the skirting.
+              onlo = 0;
+              if odepth < 1.0 { onlo = 2; }
               wall_openings.items += [hex_editor::profile_opening(
-                ow.x, ow.z, 1.1, 0, 7, okind, 0.0, HEIGHT_SCALE, 1.0)];
+                ow.x, ow.z, 1.1, onlo, 7 + onlo, okind, 0.0, HEIGHT_SCALE, odepth)];
             }
             mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
             srv.send_to(ev.cid, "S:opened a profile {okind} hole at "
