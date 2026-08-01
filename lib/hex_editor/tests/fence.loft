@@ -1,0 +1,89 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE FENCE RING, WITHOUT A SERVER — `tools/gates/world/fence.mjs`'s arithmetic.
+//
+// A hex owns three of its six edges, so half of any region's boundary is stored in
+// the cells OUTSIDE it. Stated as a count that is exact rather than approximate: a
+// disc of radius R has `6(2R+1)` boundary edges, and half of them live beyond the
+// disc. The gate drives a socket to say this; here it is arithmetic against the
+// store, and it can be mutated.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 14..15 {
+    for r in 0 - 14..15 { hex_editor::ground_set(w, q, r, 4, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn centre() -> Author { hex_editor::author_at(0.0, 0.0, 0.0) }
+
+fn test_a_ring_has_the_exact_number_of_edges_the_geometry_says() {
+  // `6(2R+1)` — not "about", not "at least". A ring that counts differently is
+  // either double-counting shared edges or missing the ones its neighbours own.
+  w = world();
+  for rad in 1..5 {
+    ww = world();
+    ack = hex_editor::fence_ring(ww, centre(), hex_editor::FENCE_MAT, rad, 1.0);
+    want = 6 * (2 * rad + 1);
+    assert(ack.ak_ok, "radius {rad} was accepted: {ack.ak_why}");
+    assert(ack.ak_n == want, "radius {rad}: {want} edges, got {ack.ak_n}");
+  }
+}
+
+fn test_half_the_ring_is_stored_outside_it() {
+  // ⚠ THE CLAIM THE MODEL EXISTS TO MAKE VISIBLE. A cell owns three of its six
+  // edges, so exactly half a ring's edges are written into cells beyond the disc.
+  // A reader that only looks inside finds half a fence.
+  w = world();
+  rad = 2;
+  ack = hex_editor::fence_ring(w, centre(), hex_editor::FENCE_MAT, rad, 1.0);
+  out = hex_editor::fence_outside(w, centre(), hex_editor::FENCE_MAT, rad, 1.0);
+  assert(out * 2 == ack.ak_n, "half of {ack.ak_n} is stored outside, got {out}");
+}
+
+fn test_a_material_that_is_not_one_is_refused_without_an_offer() {
+  // `K-FIT`, the nominal half: 9 is not "nearly" a fence. Offering the nearest
+  // material would change what the wall is made of and call it a correction.
+  w = world();
+  ack = hex_editor::fence_ring(w, centre(), 9, 2, 1.0);
+  assert(!ack.ak_ok, "material 9 is refused");
+  assert(ack.ak_why != "", "with a reason");
+  assert(!ack.ak_why.contains("offer"), "and NO offer: {ack.ak_why}");
+  assert(ack.ak_n == 0, "and it wrote nothing");
+}
+
+fn test_a_radius_past_the_maximum_is_refused_with_one() {
+  // The ordinal half: a radius HAS a nearest admissible value, so refusing carries
+  // the offer and the distance to it.
+  w = world();
+  ack = hex_editor::fence_ring(w, centre(), hex_editor::FENCE_MAT, 40, 1.0);
+  assert(!ack.ak_ok, "radius 40 is refused");
+  assert(ack.ak_why.contains("offer 12"), "with the nearest one offered: {ack.ak_why}");
+  assert(ack.ak_why.contains("residual 28"), "and how far off it was: {ack.ak_why}");
+}
+
+fn test_a_refused_ring_writes_nothing() {
+  // "Refused" and "half built, then refused" are different worlds, and the edit
+  // clock is what tells them apart from outside.
+  w = world();
+  before = w.w_tau;
+  hex_editor::fence_ring(w, centre(), 9, 2, 1.0);
+  assert(w.w_tau == before, "a refused ring left the world alone: τ {before} -> {w.w_tau}");
+}
+
+fn test_one_edge_is_the_atomic_half_of_the_ring() {
+  w = world();
+  ack = hex_editor::edge_set(w, centre(), 0, hex_editor::WALL_MAT, 1.0, 4);
+  assert(ack.ak_ok, "one edge was set: {ack.ak_why}");
+  got = hex_editor::wall_of(w, ack.ak_q, ack.ak_r, 0, 1.0);
+  assert(got == hex_editor::WALL_MAT, "and reads back as a wall, got {got}");
+  // A direction is nominal too — there are six, and 9 is not nearly one of them.
+  bad = hex_editor::edge_set(w, centre(), 9, hex_editor::WALL_MAT, 1.0, 4);
+  assert(!bad.ak_ok, "direction 9 is refused");
+  assert(!bad.ak_why.contains("offer"), "without an offer: {bad.ak_why}");
+}

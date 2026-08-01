@@ -399,15 +399,13 @@ const FLOOR_R = 0.62; const FLOOR_G = 0.57; const FLOOR_B = 0.48;
 // leak out of a doorway.
 //
 // `L13` makes us the palette's owner, so the opening material is ours to define.
-const WALL_MAT     = 1;           // a plain wall
-const DOOR_MAT     = 2;           // an opening: passable, and still a boundary
-const FENCE_MAT    = 3;           // a fence: blocks a walker, and you see over it
 // How tall each stands, in height units. A door draws NOTHING and is still a
 // boundary — `X70` is about the storage, and a doorway you can see through is
 // what the geometry of an opening looks like.
+// WALL_MAT / DOOR_MAT / FENCE_MAT / FENCE_R are `hex_editor`'s now — the wall
+// vocabulary belongs with the gestures that write it.
 const WALL_UP      = 12;          // a storey of masonry
 const FENCE_UP     = 4;           // waist-high
-const FENCE_R      = 3;           // hexes, the paddock one press rings
 const WALL_R = 0.55; const WALL_G = 0.52; const WALL_B = 0.46;
 const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
@@ -823,17 +821,7 @@ fn age_like_key(q: integer, r: integer) -> integer {
 
 // `edge_layer` is `hex_editor`'s now — the write layer moved with the gestures.
 
-// ⚠ IT TAKES THE SAME REFERENCE THE WRITE DID. A read-back that names a different
-// layer from the write reports a number about somewhere else — `23:` FENCE would
-// have answered "fenced 0 edges" for a fence it had just laid correctly on a deck,
-// which reads as the feature being broken.
-fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> integer {
-  (oq, orr, slot) = edge_owner(q, r, dir);
-  c = hex_world::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
-  if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
-  if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
-  c.h_wall_se as integer ?? 0
-}
+// `wall_of` is `hex_editor`'s now.
 
 // `wall_set` is `hex_editor`'s now — the write layer moved with the gestures.
 
@@ -1112,49 +1100,7 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
   paved
 }
 
-// ── The exact perimeter ─────────────────────────────────────────────────────
-//
-// ⚠ THIS IS A REGION'S BOUNDARY, NOT A WALL. The two were conflated in this rung's
-// first version, and the tell was visible the moment anyone looked: a fence laid
-// this way follows the hexes and wobbles. A field's edge genuinely IS the set of
-// cell boundaries between inside and outside — that is what makes the count exact —
-// while a wall is a straight run that happens to cross some of them.
-//
-// A region's boundary is **every edge between a member and a non-member** — not
-// "the outer ring's own three edges", which is the approximation rung W4 left
-// open and which is wrong in both directions at once: it marks interior edges the
-// region does not bound, and it misses the rim edges stored outside.
-//
-// Stated that way the count is exact and closed: a hex disc of radius `R` has
-// `6(2R+1)` boundary edges, and by the lattice's own six-fold symmetry exactly
-// half of them are stored in cells outside the disc.
-//
-// The write and the COUNT are separate passes on purpose. Counting the writes
-// would report what this function meant to do; reading the world back through
-// `wall_of` reports what is actually stored, which is the only number worth
-// putting on the wire.
-// ⚠ `ref` is THE AUTHOR'S OWN HEIGHT, and this gesture is the reason it has to
-// be: "ring the disc you stand in" is a claim about where you are standing. The
-// fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
-// that holds nothing at all — there is no surface there to take a height from.
-fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer,
-              ref: float) {
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        h = terrain_h(q, r, wld);
-        for d in 0..6 {
-          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_grid::hex_distance(nq, nr, cq, cr) > rad {
-            wall_set(wld, q, r, d, mat, h, ref);
-          }
-        }
-      }
-    }
-  }
-}
+// `fence_disc` is `hex_editor`'s now.
 
 // The handlers below live out here because a dispatch arm that grows past a few
 // lines belongs in a function — which is now a plain style choice again.
@@ -1172,33 +1118,7 @@ fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer,
 // So `main` may grow again. The extraction stays because it reads better, not
 // because anything forces it.
 
-// What is standing there now, read back: how many boundary edges carry `mat`, and
-// how many of those are stored OUTSIDE the disc. The second number is the halo,
-// counted rather than asserted — a version that wrote only the region's own three
-// edges reports zero.
-fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
-               ref: float, outside: &integer) -> integer {
-  n = 0;
-  outside = 0;
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        for d in 0..6 {
-          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          if hex_grid::hex_distance(nq, nr, cq, cr) > rad
-             && wall_of(wld, q, r, d, ref) == mat {
-            n = n + 1;
-            (oq, orr, _slot) = edge_owner(q, r, d);
-            if hex_grid::hex_distance(oq, orr, cq, cr) > rad { outside = outside + 1; }
-          }
-        }
-      }
-    }
-  }
-  n
-}
+// `fence_count` is `hex_editor`'s now.
 
 // ── COLLISION (rung W2, moros#10) — what the walk cannot cross ─────────────
 //
@@ -1581,49 +1501,37 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
   stand_clear(rt, x0, z0, sx + tx * b2, sz + tz * b2)
 }
 
-// Ring the disc you stand in. A MATERIAL IS NOMINAL and a RADIUS IS ORDINAL, and
-// the doorstep tells them apart: 4 is not nearly a fence, so there is no nearest
-// one to offer (`X68`), while a radius of 40 has a largest admissible value and
-// the distance to it is a correction the author can use.
+// The fence ring is `hex_editor::fence_ring` now — what stays here is what a
+// SERVER owes: parsing the payload, telling the author, and marking the chunks the
+// ring touched. The Ack carries the cell so this does not re-derive it.
 fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
             py: float, wld: &World, dirty: DirtySet) {
   fci = payload.find(",");
   fmat = FENCE_MAT;
-  frad = FENCE_R;
+  frad = hex_editor::FENCE_R;
   if fci != null {
     fmat = payload[..fci] as integer ?? FENCE_MAT;
-    frad = payload[fci + 1..] as integer ?? FENCE_R;
+    frad = payload[fci + 1..] as integer ?? hex_editor::FENCE_R;
   } else {
     fmat = payload as integer ?? FENCE_MAT;
   }
-  fmfit = fit_nominal(fmat, FENCE_MAT, "wall material");
-  frfit = fit_ordinal(frad, 1, 12, "radius");
-  if !fmfit.ft_ok {
-    srv.send_to(cid, "S:fence refused — {fit_text(fmfit)}");
-    println("editor: fence refused — {fit_text(fmfit)}");
+  fa = hex_editor::author_at(px, pz, 0.0);
+  fack = hex_editor::fence_ring(wld, fa, fmat, frad, py);
+  if !fack.ak_ok {
+    srv.send_to(cid, "S:fence refused — {fack.ak_why}");
+    println("editor: fence refused — {fack.ak_why}");
     return;
   }
-  if !frfit.ft_ok {
-    srv.send_to(cid, "S:fence refused — {fit_text(frfit)}");
-    println("editor: fence refused — {fit_text(frfit)}");
-    return;
-  }
-  fhx = world_to_hex(px, pz);
-  fence_disc(wld, fhx.ha_q, fhx.ha_r, frad, fmat, py);
-  fout = 0;
-  fn2 = fence_count(wld, fhx.ha_q, fhx.ha_r, frad, fmat, py, fout);
-  mark_dirty(dirty, fhx.ha_q, fhx.ha_r, frad + 2);
-  srv.send_to(cid,
-    "S:fenced {fn2} edges, {fout} stored outside, radius {frad} material {fmat}");
-  println("editor: fenced {fn2} edges ({fout} stored outside) "
-          + "at ({fhx.ha_q},{fhx.ha_r}) radius {frad}");
+  fout = hex_editor::fence_outside(wld, fa, fmat, frad, py);
+  mark_dirty(dirty, fack.ak_q, fack.ak_r, frad + 2);
+  srv.send_to(cid, "S:fenced {fack.ak_n} edges, {fout} stored outside, "
+                 + "radius {frad} material {fmat}");
+  println("editor: fenced {fack.ak_n} edges ({fout} stored outside) "
+        + "at ({fack.ak_q},{fack.ak_r}) radius {frad}");
 }
 
-// One edge of the cell you stand in — the atomic half of the fence. This is what
-// puts a gateway in a run of fence, and what an author draws a single segment
-// with. The reply names the cell the edge was STORED in, because for three of the
-// six directions that is not the cell you are standing on, and an author who
-// cannot see that will not believe the read-back.
+// One edge — `hex_editor::edge_set`. The same division: the library decides and
+// writes, the server parses and reports.
 fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
            py: float, wld: &World, dirty: DirtySet) {
   eci = payload.find(",");
@@ -1633,32 +1541,17 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
     edir = payload[..eci] as integer ?? 0;
     emat = payload[eci + 1..] as integer ?? WALL_MAT;
   }
-  edfit = fit_nominal(edir, 5, "direction");
-  emfit = fit_nominal(emat, FENCE_MAT, "wall material");
-  if !edfit.ft_ok {
-    srv.send_to(cid, "S:edge refused — {fit_text(edfit)}");
-    println("editor: edge refused — {fit_text(edfit)}");
-    return;
-  }
-  if !emfit.ft_ok {
-    srv.send_to(cid, "S:edge refused — {fit_text(emfit)}");
-    println("editor: edge refused — {fit_text(emfit)}");
-    return;
-  }
   ehx = world_to_hex(px, pz);
-  ecode = wall_set(wld, ehx.ha_q, ehx.ha_r, edir, emat,
-                   terrain_h(ehx.ha_q, ehx.ha_r, wld), py);
-  if ecode != CW_OK {
-    srv.send_to(cid, "S:edge refused — the world declined it ({ecode})");
-    println("editor: edge refused with code {ecode}");
+  eack = hex_editor::edge_set(wld, hex_editor::author_at(px, pz, 0.0), edir, emat, py,
+                              terrain_h(ehx.ha_q, ehx.ha_r, wld));
+  if !eack.ak_ok {
+    srv.send_to(cid, "S:edge refused — {eack.ak_why}");
+    println("editor: edge refused — {eack.ak_why}");
     return;
   }
-  (eoq, eor, _eslot) = edge_owner(ehx.ha_q, ehx.ha_r, edir);
-  mark_dirty(dirty, ehx.ha_q, ehx.ha_r, 2);
-  srv.send_to(cid, "S:edge {edir} of ({ehx.ha_q},{ehx.ha_r}) = {emat}, "
-                 + "stored at ({eoq},{eor})");
-  println("editor: edge {edir} of ({ehx.ha_q},{ehx.ha_r}) = {emat} "
-          + "stored at ({eoq},{eor})");
+  mark_dirty(dirty, eack.ak_q, eack.ak_r, 2);
+  srv.send_to(cid, "S:edge {edir} of {eack.ak_q},{eack.ak_r} = {emat}");
+  println("editor: edge {edir} at ({eack.ak_q},{eack.ak_r}) material {emat}");
 }
 
 // Lay a wall by walking it: press once to plant the near end, once to close it.

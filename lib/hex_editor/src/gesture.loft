@@ -350,6 +350,145 @@ pub fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
   layer_write(wld, oq, orr, eli, nc)
 }
 
+// ── walls and fences: the edge readers and the ring ─────────────────────────
+//
+// The wall materials are the editor's vocabulary, so they live with the gestures
+// that write them rather than in the program that happens to route the messages.
+pub const WALL_MAT  = 1;    // a plain wall
+pub const DOOR_MAT  = 2;    // an opening: passable, and still a boundary
+pub const FENCE_MAT = 3;    // a fence: blocks a walker, and you see over it
+pub const FENCE_R   = 3;    // hexes — the paddock one press rings
+
+// ⚠ IT TAKES THE SAME REFERENCE THE WRITE DID. A read-back that names a different
+// layer from the write reports a number about somewhere else — `23:` FENCE would
+// have answered "fenced 0 edges" for a fence it had just laid correctly on a deck,
+// which reads as the feature being broken.
+pub fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> integer {
+  (oq, orr, slot) = edge_owner(q, r, dir);
+  c = hex_world::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
+  if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
+  if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
+  c.h_wall_se as integer ?? 0
+}
+
+// ── The exact perimeter ─────────────────────────────────────────────────────
+//
+// ⚠ THIS IS A REGION'S BOUNDARY, NOT A WALL. The two were conflated in this rung's
+// first version, and the tell was visible the moment anyone looked: a fence laid
+// this way follows the hexes and wobbles. A field's edge genuinely IS the set of
+// cell boundaries between inside and outside — that is what makes the count exact —
+// while a wall is a straight run that happens to cross some of them.
+//
+// A region's boundary is **every edge between a member and a non-member** — not
+// "the outer ring's own three edges", which is the approximation rung W4 left
+// open and which is wrong in both directions at once: it marks interior edges the
+// region does not bound, and it misses the rim edges stored outside.
+//
+// Stated that way the count is exact and closed: a hex disc of radius `R` has
+// `6(2R+1)` boundary edges, and by the lattice's own six-fold symmetry exactly
+// half of them are stored in cells outside the disc.
+//
+// The write and the COUNT are separate passes on purpose. Counting the writes
+// would report what this function meant to do; reading the world back through
+// `wall_of` reports what is actually stored, which is the only number worth
+// putting on the wire.
+// ⚠ `ref` is THE AUTHOR'S OWN HEIGHT, and this gesture is the reason it has to
+// be: "ring the disc you stand in" is a claim about where you are standing. The
+// fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
+// that holds nothing at all — there is no surface there to take a height from.
+pub fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer,
+              ref: float) {
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
+        h = terrain_h(q, r, wld);
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad {
+            wall_set(wld, q, r, d, mat, h, ref);
+          }
+        }
+      }
+    }
+  }
+}
+
+// What is standing there now, read back: how many boundary edges carry `mat`, and
+// how many of those are stored OUTSIDE the disc. The second number is the halo,
+// counted rather than asserted — a version that wrote only the region's own three
+// edges reports zero.
+pub fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
+               ref: float, outside: &integer) -> integer {
+  n = 0;
+  outside = 0;
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if hex_grid::hex_distance(nq, nr, cq, cr) > rad
+             && wall_of(wld, q, r, d, ref) == mat {
+            n = n + 1;
+            (oq, orr, _slot) = edge_owner(q, r, d);
+            if hex_grid::hex_distance(oq, orr, cq, cr) > rad { outside = outside + 1; }
+          }
+        }
+      }
+    }
+  }
+  n
+}
+
+// Ring the disc the author stands in with `mat`, exactly.
+//
+// ⚠ A HEX OWNS THREE OF ITS SIX EDGES, so half of any region's boundary is stored
+// in the cells OUTSIDE it — which is why the count comes back with how many were
+// written beyond the disc, and why `fence_count` asks the owner rather than the
+// cell. The material is NOMINAL: 9 is not "nearly" a fence, it is not a wall
+// material at all, so it is refused without an offer. The radius is ordinal and
+// gets one.
+pub fn fence_ring(w: &World, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
+  mfit = fit_nominal(mat, FENCE_MAT, "wall material");
+  if !mfit.ft_ok { return ack_no(fit_text(mfit)); }
+  rfit = fit_ordinal(rad, 1, 12, "radius");
+  if !rfit.ft_ok { return ack_no(fit_text(rfit)); }
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  fence_disc(w, cq, cr, rad, mat, ref);
+  outside = 0;
+  n = fence_count(w, cq, cr, rad, mat, ref, outside);
+  ack_at(ack_ok(n), cq, cr)
+}
+
+// How many of a ring's edges were stored outside the disc — the other half of what
+// `fence_ring` did, kept separate because a caller that wants to report it should
+// not have to re-walk the ring to find out.
+pub fn fence_outside(w: World, a: Author, mat: integer, rad: integer, ref: float) -> integer {
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  outside = 0;
+  fence_count(w, cq, cr, rad, mat, ref, outside);
+  outside
+}
+
+// Set ONE edge of the cell the author stands in — the atomic half of the ring.
+//
+// Both parameters are nominal: a direction is one of six and a material is one of
+// three, and neither has a "nearest" worth offering.
+pub fn edge_set(w: &World, a: Author, dir: integer, mat: integer, ref: float,
+                h: integer) -> Ack {
+  dfit = fit_nominal(dir, 5, "direction");
+  if !dfit.ft_ok { return ack_no(fit_text(dfit)); }
+  mfit = fit_nominal(mat, FENCE_MAT, "wall material");
+  if !mfit.ft_ok { return ack_no(fit_text(mfit)); }
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  code = wall_set(w, cq, cr, dir, mat, h, ref);
+  if code != 0 { return ack_no("the world declined the write ({code})"); }
+  ack_at(ack_ok(1), cq, cr)
+}
+
 // ── raise / lower ───────────────────────────────────────────────────────────
 
 pub const PEAK_AHEAD = 10;     // hexes ahead of the author the stroke lands
