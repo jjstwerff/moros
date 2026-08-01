@@ -1454,6 +1454,20 @@ pub struct Opening {
   // wall, and an alcove is it stopped short. One profile, three fittings, and the
   // half-round corridor an author draws is the arch they get.
   op_spring: integer,
+  // ⚠ AND THE OUTLINE IS A FAMILY, not two special cases. Every profile answers one
+  // question — at offset `d` from the centre, between which heights is the wall cut
+  // — so a round head, a pointed arch, a segmental arch and a full circle are the
+  // same code with different arithmetic, and none of them is a mesh from outside.
+  //
+  //   OP_FLAT      a rectangle: a plain door, a plain window
+  //   OP_ROUND     a semicircular head — Romanesque
+  //   OP_POINTED   two arcs struck from the opposite springings — Gothic; taller
+  //                than a round arch of the same span, which is its whole point
+  //   OP_SEGMENT   one shallow arc of a larger radius — a cellar head, a bridge
+  //   OP_CIRCLE    an oculus: it closes at the BOTTOM as well as the top, which is
+  //                why `lo` varies with `d` and not only `hi`
+  op_kind:   integer,
+  op_radius: float,     // for POINTED and SEGMENT: the striking radius
 }
 
 pub struct Openings { items: vector<Opening> }
@@ -1462,6 +1476,12 @@ pub struct Openings { items: vector<Opening> }
 // hole its own size binds on both jambs. One tenth of a world unit is about 9 cm,
 // which is a domestic reveal.
 pub const OPENING_CLEAR = 0.10;
+
+pub const OP_FLAT    = 0;
+pub const OP_ROUND   = 1;
+pub const OP_POINTED = 2;
+pub const OP_SEGMENT = 3;
+pub const OP_CIRCLE  = 4;
 
 // Size an opening for a shape `width` wide and `height_u` tall, at (x, z).
 //
@@ -1474,7 +1494,8 @@ pub fn opening_for(x: float, z: float, width: float, lo: integer, hi: integer,
   if d > 1.0 { d = 1.0; }
   if d < 0.0 { d = 0.0; }
   Opening { op_x: x, op_z: z, op_half: width * 0.5 + OPENING_CLEAR,
-            op_lo: lo, op_hi: hi, op_depth: d, op_spring: 0 - 1 }
+            op_lo: lo, op_hi: hi, op_depth: d, op_spring: 0 - 1,
+            op_kind: OP_FLAT, op_radius: 0.0 }
 }
 
 // A door: full height from the ground, as wide as its leaf.
@@ -1504,7 +1525,45 @@ pub fn arch_opening(x: float, z: float, width: float, lo: integer, spring: integ
   o = opening_for(x, z, width, lo, spring, depth);
   crown = spring + ((o.op_half / unit ?? 0.0) as integer);
   Opening { op_x: o.op_x, op_z: o.op_z, op_half: o.op_half, op_lo: o.op_lo,
-            op_hi: crown, op_depth: o.op_depth, op_spring: spring }
+            op_hi: crown, op_depth: o.op_depth, op_spring: spring,
+            op_kind: OP_ROUND, op_radius: o.op_half }
+}
+
+// A profile of any of the family, at (x, z), `width` wide, springing at `spring`.
+//
+// `radius` is the striking radius for POINTED and SEGMENT and is ignored otherwise;
+// pass 0 for the equilateral pointed arch (radius = the full span), which is the one
+// a mason strikes with a cord the width of the opening.
+pub fn profile_opening(x: float, z: float, width: float, lo: integer, spring: integer,
+                       kind: integer, radius: float, unit: float,
+                       depth: float) -> Opening {
+  o = opening_for(x, z, width, lo, spring, depth);
+  a = o.op_half;
+  r = radius;
+  if kind == OP_POINTED && r < a { r = a * 2.0; }
+  // ⚠ MEASURED, NOT PICKED. A segmental arch struck at twice the half-span rises
+  // 17 cm over a 1.3 m opening — geometrically a segment and visually a lintel,
+  // and at the world's 21 cm height unit it rounds to NOTHING. A mason's segmental
+  // head rises about a quarter of the span, which is r ≈ 1.25a; that is the
+  // default, and a caller who wants a flatter one passes it.
+  if kind == OP_SEGMENT && r <= a { r = a * 1.25; }
+  rise = 0.0;
+  if kind == OP_ROUND { rise = a; }
+  if kind == OP_POINTED { rise = sqrt(r * r - a * a) ?? 0.0; }
+  if kind == OP_SEGMENT { rise = r - (sqrt(r * r - a * a) ?? 0.0); }
+  if kind == OP_CIRCLE { rise = a * 2.0; }
+  hi = spring + ((rise / unit ?? 0.0) as integer);
+  sp = spring;
+  if kind == OP_FLAT { sp = 0 - 1; hi = o.op_hi; }
+  Opening { op_x: o.op_x, op_z: o.op_z, op_half: a, op_lo: o.op_lo, op_hi: hi,
+            op_depth: o.op_depth, op_spring: sp, op_kind: kind, op_radius: r }
+}
+
+// An oculus — a round window, which is the family's proof that a profile is not
+// just "a head on a rectangle": it closes at the bottom too.
+pub fn oculus_opening(x: float, z: float, diameter: float, sill: integer,
+                      unit: float, depth: float) -> Opening {
+  profile_opening(x, z, diameter, sill, sill, OP_CIRCLE, 0.0, unit, depth)
 }
 
 pub fn opening_arched(o: Opening) -> boolean { o.op_spring >= 0 }
@@ -1532,8 +1591,35 @@ pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
   // `sqrt(half² - d²)` above the springing — the semicircle itself, not a curve
   // approximating one — so the cut closes at the jambs and is tallest at the crown.
   if o.op_spring >= 0 {
-    rise = sqrt(o.op_half * o.op_half - d2) ?? 0.0;
-    hi = o.op_spring + ((rise / unit ?? 0.0) as integer);
+    a = o.op_half;
+    d = sqrt(d2) ?? 0.0;
+    if o.op_kind == OP_ROUND {
+      hi = o.op_spring + (((sqrt(a * a - d2) ?? 0.0) / unit ?? 0.0) as integer);
+    } else if o.op_kind == OP_POINTED {
+      // ⚠ TWO ARCS, AND THE LOWER ONE GOVERNS. Each is struck from the OPPOSITE
+      // springing, so they cross at the crown and close at the jambs — which is
+      // what makes the head a point rather than a dome.
+      r = o.op_radius;
+      l = sqrt(r * r - (d - a) * (d - a)) ?? 0.0;
+      g = sqrt(r * r - (d + a) * (d + a)) ?? 0.0;
+      m = l;
+      if g < m { m = g; }
+      hi = o.op_spring + ((m / unit ?? 0.0) as integer);
+    } else if o.op_kind == OP_SEGMENT {
+      // One shallow arc, struck from BELOW the springing — so it rises less than a
+      // half-round of the same span, which is the whole reason to use it.
+      r = o.op_radius;
+      c = sqrt(r * r - a * a) ?? 0.0;
+      y = (sqrt(r * r - d2) ?? 0.0) - c;
+      if y < 0.0 { y = 0.0; }
+      hi = o.op_spring + ((y / unit ?? 0.0) as integer);
+    } else if o.op_kind == OP_CIRCLE {
+      // ⚠ IT CLOSES AT THE BOTTOM TOO, which no "head on a rectangle" can express.
+      h = sqrt(a * a - d2) ?? 0.0;
+      mid = (o.op_spring as float) + (a / unit ?? 0.0);
+      lo = (mid - (h / unit ?? 0.0)) as integer;
+      hi = (mid + (h / unit ?? 0.0)) as integer;
+    }
   }
   true
 }
