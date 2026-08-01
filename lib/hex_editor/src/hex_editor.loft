@@ -290,6 +290,72 @@ pub fn place_house(w: &World, a: Author, wid: integer, dep: integer,
                WALL_MAT, grade, runs, m);
     marked = marked + m;
   }
-  ack_at(ack_about(n, "house placed {n} cells and {marked} wall edges", marked),
+  // ⚠ S6 — AND IT GETS A ROOF, because that is what makes it read as a house
+  // rather than a walled box. The eave is the wall's own height, so the roof starts
+  // exactly where the wall stops: lower would cut into it, higher would leave a
+  // band of daylight. A refusal here refuses the HOUSE — half a house is not an
+  // answer — and the footprint's cells are already the ones the roof covers.
+  rf = roof_over(w, f, cells, grade, ROOF_EAVE_UP, ROOF_PITCH_DEFAULT, 0);
+  if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
+  ack_at(ack_about(n, "house placed {n} cells, {marked} wall edges, "
+                    + "ridge at {rf.ak_residual}", marked),
          f.fp_cq, f.fp_cr)
 }
+
+// ── S6: THE ROOF, FROM THE FAMILY'S OWN PROFILE ─────────────────────────────
+//
+// ⚠ THE EDITOR'S ROOF WAS A LINEAR SPECIAL CASE. `roof_height` is
+// `anchor + eave + (rad - dist) * PITCH` — a cone about the stencil's centre,
+// which is the shape a disc gives you and not the shape a building has.
+// `hex_draw::draw_roof` runs `hex_roof`'s ridge profile along the plan's own u
+// axis, so a rectangle gets a GABLE: two slopes meeting on a line, hipping at the
+// ends when the ridge is shortened.
+//
+// It writes a HEIGHT FIELD over the cells rather than a mesh — a height per hex,
+// which is exactly what a column can store. So the roof reaches the world the same
+// way the stencil's did: a band of `[floor, roof]` per column, checked before
+// anything is written so a refusal means no roof rather than half a roof.
+//
+// ⚠ THE RIDGE RUNS PAST BOTH ENDS ON PURPOSE. `draw_roof`'s own comment: stopping
+// it at the wall makes the distance go radial past the tip, so the gable end rolls
+// over like a cone quadrant — 0.43 units, 0.37 m of bulge. A hip is the same call
+// with the ridge shortened, and then the conical ends are the FEATURE.
+pub fn roof_over(w: &World, f: Footprint, cells: HexSet, floor_h: integer,
+                 eave_up: integer, pitch: float, hip_steps: integer) -> Ack {
+  if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
+  pad = f.fp_wid + f.fp_dep + 4;
+  hz = heights_new(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  eave = ((floor_h + eave_up) as float) * w.w_unit;
+  draw_roof(footprint_plan(f), cells, hz, eave, pitch, hip_steps);
+
+  n = 0;
+  ridge = 0;
+  for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, q, r) {
+        hu = (height_get(hz, q, r) / w.w_unit ?? 0.0) as integer;
+        if hu > ridge { ridge = hu; }
+        band: vector<hex_world::Hex> = [
+          hex_world::Hex { h_height: (floor_h as u16? ?? 0),
+                           h_material: (FLOOR_MAT as u8? ?? 0) },
+          hex_world::Hex { h_height: (hu as u16? ?? 0),
+                           h_material: (ROOF_MAT as u8? ?? 0) }
+        ];
+        wr = world_merge_band(w, q, r, floor_h, hu, band);
+        if wr.cw_code != 0 {
+          return ack_no("the roof was refused at ({q},{r}): {wr.cw_detail}");
+        }
+        n = n + 1;
+      }
+    }
+  }
+  ack_at(ack_about(n, "roof over {n} cells, ridge at {ridge}", ridge), f.fp_cq, f.fp_cr)
+}
+
+// The pitch a house gets when nobody says otherwise. ⚠ MEASURED IN A PICTURE, not
+// chosen: 0.45 is 24 degrees, and at that angle the roof reads as a LID — the S6
+// shot showed a flat red plane sitting on the walls. A domestic pitch is 35-45
+// degrees, and 0.7 is 35: steep enough that the gable is visible from the ground,
+// which is the only test this step has.
+pub const ROOF_PITCH_DEFAULT = 0.70;
+pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts where it ends

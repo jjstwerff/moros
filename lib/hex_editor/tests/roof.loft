@@ -1,0 +1,161 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S6 — A ROOF IS A RIDGE, NOT A CONE.
+//
+// ⚠ The editor's roof was `anchor + eave + (rad - dist) * PITCH` — a linear cone
+// about a disc's centre, which is the shape a DISC gives you and not the shape a
+// building has. `hex_draw::draw_roof` runs `hex_roof`'s ridge profile along the
+// plan's own u axis, so a rectangle gets a GABLE: two slopes meeting on a line.
+//
+// The claims below are what makes it a gable rather than a mound, and every one of
+// them is a height read back from the store — the roof is a height field, which is
+// exactly what a column can hold.
+use hex_editor;
+use hex_world;
+use hex_grid;
+use hex_field;
+
+const W = 5;
+const D = 4;
+const FLOOR = 40;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 24..25 {
+    for r in 0 - 24..25 { hex_editor::ground_set(w, q, r, FLOOR, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn placed() -> Footprint {
+  hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D)
+}
+
+fn footprint_cells(f: Footprint) -> HexSet {
+  pad = W + D + 4;
+  cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  hex_editor::footprint_fill(f, cells);
+  cells
+}
+
+// The roof height stored at a cell — the second occupied cell of its column.
+fn roof_at(w: World, q: integer, r: integer) -> integer {
+  h = 0 - 1;
+  for c in world_column(w, q, r).co_cells {
+    if hex_world::hex_occupied(c)
+       && (c.h_material as integer ?? 0) == hex_editor::ROOF_MAT {
+      h = c.h_height as integer ?? 0;
+    }
+  }
+  h
+}
+
+fn roofed() -> World {
+  w = world();
+  f = placed();
+  cells = footprint_cells(f);
+  hex_editor::roof_over(w, f, cells, FLOOR, hex_editor::ROOF_EAVE_UP,
+                        hex_editor::ROOF_PITCH_DEFAULT, 0);
+  w
+}
+
+fn test_a_roof_covers_every_cell_of_the_footprint() {
+  w = world();
+  f = placed();
+  cells = footprint_cells(f);
+  ack = hex_editor::roof_over(w, f, cells, FLOOR, hex_editor::ROOF_EAVE_UP,
+                              hex_editor::ROOF_PITCH_DEFAULT, 0);
+  assert(ack.ak_ok, "the roof went on: {ack.ak_why}");
+  assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
+}
+
+fn test_the_roof_starts_where_the_wall_ends() {
+  // The eave is the wall's own height: a roof that started lower would cut into
+  // the wall, and one that started higher would leave a band of daylight.
+  w = roofed();
+  f = placed();
+  lowest = 100000;
+  cells = footprint_cells(f);
+  for r in f.fp_cr - 12..f.fp_cr + 13 {
+    for q in f.fp_cq - 12..f.fp_cq + 13 {
+      if hexset_get(cells, q, r) {
+        h = roof_at(w, q, r);
+        if h >= 0 && h < lowest { lowest = h; }
+      }
+    }
+  }
+  assert(lowest >= FLOOR + hex_editor::ROOF_EAVE_UP - 2,
+         "the lowest roof cell is at the eave, got {lowest} against {FLOOR + hex_editor::ROOF_EAVE_UP}");
+}
+
+fn test_the_ridge_stands_above_the_eave() {
+  // ⚠ THE CLAIM THAT MAKES IT A ROOF. A flat field of cells at the eave is a lid;
+  // a roof RISES, and the rise is the pitch times half the depth.
+  w = roofed();
+  f = placed();
+  cells = footprint_cells(f);
+  hi = 0;
+  lo = 100000;
+  for r in f.fp_cr - 12..f.fp_cr + 13 {
+    for q in f.fp_cq - 12..f.fp_cq + 13 {
+      if hexset_get(cells, q, r) {
+        h = roof_at(w, q, r);
+        if h >= 0 {
+          if h > hi { hi = h; }
+          if h < lo { lo = h; }
+        }
+      }
+    }
+  }
+  assert(hi > lo, "the roof rises: {lo} at the eave, {hi} at the ridge");
+  assert(hi - lo >= 3, "and by more than a rounding: {hi - lo} units");
+}
+
+fn test_a_steeper_pitch_makes_a_taller_ridge() {
+  // The pitch is DERIVED, not a constant: doubling it must move the ridge. A
+  // version that ignored its argument would pass every test above.
+  a = world();
+  b = world();
+  f = placed();
+  ra = hex_editor::roof_over(a, f, footprint_cells(f), FLOOR,
+                             hex_editor::ROOF_EAVE_UP, 0.30, 0);
+  rb = hex_editor::roof_over(b, f, footprint_cells(f), FLOOR,
+                             hex_editor::ROOF_EAVE_UP, 0.90, 0);
+  assert(rb.ak_residual > ra.ak_residual,
+         "a steeper pitch rides higher: ridge {ra.ak_residual} at 0.30, {rb.ak_residual} at 0.90");
+}
+
+fn test_the_ridge_is_a_line_and_not_a_point() {
+  // ⚠ GABLE, NOT CONE — the difference this step exists to make. A cone has ONE
+  // highest cell; a ridge has several, in a row. The old `roof_height` was radial
+  // about a disc's centre and could only ever produce the first.
+  w = roofed();
+  f = placed();
+  cells = footprint_cells(f);
+  hi = 0;
+  for r in f.fp_cr - 12..f.fp_cr + 13 {
+    for q in f.fp_cq - 12..f.fp_cq + 13 {
+      if hexset_get(cells, q, r) { h = roof_at(w, q, r); if h > hi { hi = h; } }
+    }
+  }
+  top = 0;
+  for r in f.fp_cr - 12..f.fp_cr + 13 {
+    for q in f.fp_cq - 12..f.fp_cq + 13 {
+      if hexset_get(cells, q, r) && roof_at(w, q, r) == hi { top = top + 1; }
+    }
+  }
+  assert(top >= 3, "the ridge is a line of cells, got {top} at the top");
+}
+
+fn test_a_roof_at_an_unplaceable_facing_is_refused() {
+  // The same lattice limit the house has: no `Plan`, no ridge to run along.
+  w = world();
+  east = hex_editor::pose_footprint(0.0, 0.0, 0.0, W, D);
+  before = w.w_tau;
+  ack = hex_editor::roof_over(w, east, footprint_cells(east), FLOOR,
+                              hex_editor::ROOF_EAVE_UP,
+                              hex_editor::ROOF_PITCH_DEFAULT, 0);
+  assert(!ack.ak_ok, "no plan, no roof");
+  assert(w.w_tau == before, "and nothing written: τ {before} -> {w.w_tau}");
+}

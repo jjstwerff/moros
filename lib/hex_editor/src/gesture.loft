@@ -1284,6 +1284,48 @@ pub fn runs_track(runs: WallRuns) -> Track {
   t
 }
 
+// The roof height at a cell, or -1 where there is none — what a renderer needs to
+// draw a roof as a SURFACE rather than a stack of plates.
+//
+// ⚠ A ROOF IS CONTINUOUS AND ITS STORAGE IS NOT. Each column holds one roof cell
+// at one height, so drawing each as a flat fan gives a terrace of plates with
+// daylight between them — measured in the first S6 picture, which showed two thin
+// floating slabs where a roof belonged. The fix is the ground's: a corner is the
+// MEAN of the cells touching it, so both sides of every edge agree by construction.
+pub fn roof_h(w: World, q: integer, r: integer) -> integer {
+  h = 0 - 1;
+  for c in world_column(w, q, r).co_cells {
+    if hex_world::hex_occupied(c) && (c.h_material as integer ?? 0) == ROOF_MAT {
+      h = c.h_height as integer ?? 0;
+    }
+  }
+  h
+}
+
+// The six corner heights of a roof cell, each the mean of the roof cells touching
+// it. A corner with no roof beyond it takes this cell's own height, which is what
+// gives the eave a clean edge instead of a slope into nothing.
+pub fn roof_corners(w: World, q: integer, r: integer) -> vector<float> {
+  own = roof_h(w, q, r);
+  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  cnts: vector<float> = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+  for i in 0..6 { sums[i] = own as float; }
+  for d in 0..6 {
+    (nq, nr) = hex_neighbor(q, r, d);
+    nh = roof_h(w, nq, nr);
+    if nh >= 0 {
+      (ca, cb) = hex_edge_corners(d);
+      sums[ca] = sums[ca] + (nh as float);
+      cnts[ca] = cnts[ca] + 1.0;
+      sums[cb] = sums[cb] + (nh as float);
+      cnts[cb] = cnts[cb] + 1.0;
+    }
+  }
+  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for i in 0..6 { out[i] = (sums[i] ?? 0.0) / (cnts[i] ?? 1.0) ?? 0.0; }
+  out
+}
+
 // ── S5: OPENINGS — a door is a MATERIAL, never a cleared edge ───────────────
 //
 // ⚠ `X70`, and it was measured before it was a rule. Moros stored a door as wall

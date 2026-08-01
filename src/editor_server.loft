@@ -1641,7 +1641,18 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
           }
           if e.h_material == ROOF_MAT {
-            emit_hex_surface(km, cq, cr, e.h_height as integer ?? 0);
+            // ⚠ SLOPED, LIKE THE GROUND — a flat fan per cell is a TERRACE OF
+            // PLATES. Measured in S6's first picture: two thin slabs floating over
+            // the walls with daylight between them, because each column holds one
+            // roof cell at one height and a flat fan draws exactly that.
+            //
+            // A corner is the mean of the roof cells touching it, so both sides of
+            // every edge agree by construction and the surface is continuous — the
+            // same rule that makes the ground a slope you could walk up rather than
+            // a staircase. A corner with no roof beyond it keeps this cell's own
+            // height, which gives the eave a clean edge instead of a slope into
+            // nothing.
+            emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr));
           } else if (c.co_ids[e#index] ?? 0) != hex_world::LABEL_GROUND {
             // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
             // Not by index — a cellar inserts beneath and renumbers — and not by
@@ -1655,6 +1666,30 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
         }
       }
     }
+  }
+}
+
+// One roof cell as a sloped fan, from the six corner heights its neighbours agree
+// on. The centre is the MEAN of its own corners rather than the stored height —
+// the same correction the ground needed, and for the same reason: mixing a
+// smoothed rim with an unsmoothed centre draws every cell as a little pyramid, and
+// a row of them along a ridge is a serrated line against the sky.
+fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>) {
+  csum = 0.0;
+  for i in 0..6 { csum = csum + (hs[i] ?? 0.0); }
+  cy = (csum / 6.0 ?? 0.0) * HEIGHT_SCALE;
+  cw = hex_to_world(cq, cr, 0);
+  base = len(m.vertices);
+  up = vec3(0.0, 1.0, 0.0);
+  m.vertices += [vertex(vec3(cw.x, cy, cw.z), up, vec2(0.5, 0.5))];
+  for ci in 0..6 {
+    wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
+                          up, vec2(1.0, 0.0))];
+  }
+  for fi in 0..6 {
+    fj = (fi + 1) % 6 ?? 0;
+    m.triangles += [Triangle { a: base, b: base + 1 + fi, c: base + 1 + fj }];
   }
 }
 

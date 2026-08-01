@@ -129,7 +129,7 @@ is wrong — which is how `25:` passed its gate for months while drawing a road.
 | `S3` | ✅ **a wall run lays a wall** — 6 tests, three mutations seen red | `shots/s3-wall.png`, and it reads as a wall |
 | `S4` | ✅ **a house, placed from the pose** — `H`, and the corners MEET | `shots/s4-house.png` |
 | `S5` | ✅ **openings** — `O` a door, `P` a window, both MATERIALS on the edge | `shots/s5-opening.png` |
-| `S6` | **NEXT** — `draw_roof`: derived pitch, its own material and mesh | it reads as a house |
+| `S6` | ◐ **the roof is a RIDGE** — gabled, pitch derived, drawn as a surface | ⚠ but the EAVE is a hex staircase, so it reads as a slab |
 | `S7`–`S8` | headless runner · the swinging door | |
 
 **What `S3` found, and it was one line rather than three.** `25:` carries the material —

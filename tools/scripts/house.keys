@@ -1,0 +1,25 @@
+# S6 — DOES IT READ AS A HOUSE?
+#
+# The whole ladder in one script: flat ground, a house placed from the pose (S4,
+# four walls that meet), a door and a window cut into it (S5), and the roof the
+# house now carries (S6). Then stand back and look, which is the only test that
+# answers the question this step asks.
+
+echo --- flat ground to build on
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house, facing one of the six the lattice can mitre
+at -6 -6 30
+key H
+
+echo --- a door and a window in its near wall (stand ON the wall's own cells)
+at -3 -1 30
+key O
+at -1 -3 30
+key P
+
+echo --- stand back at a corner, where a gable shows as a gable
+at -18 -6 15
+snap s6-house
