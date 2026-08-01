@@ -1,7 +1,7 @@
-# The camera indoors — what breaks, and the design that fixes it
+# The camera indoors — three modes, one query
 
-> Status: **design, not built.** Two measurements below; four faults; one query that
-> all four key off. `tools/scripts/indoors.keys` reproduces the pictures.
+> Status: **design, not built.** `tools/scripts/indoors.keys` reproduces the two
+> measurements below.
 
 ## What was measured, before anything was designed
 
@@ -14,42 +14,44 @@ about walls", and guessing would have designed the wrong fix.
 | middle of the room | the roof seen from **outside**, a slab of exterior wall, and **no character at all** |
 | facing a corner | the character in extreme close-up in one corner, the rest flat wall, sky through a gap |
 
-Those are two different failures, and the instrument is the same in both: **how many
-pixels of the frame are the subject.** In the first it is *zero*. That is a number,
-not a matter of taste, and it is what the gate at the bottom asserts.
+The instrument is the same in both: **how many pixels of the frame are the subject.**
+In the first it is *zero*.
 
-## The four faults
+**The fault is that `CAM_MIN_FRAC` is a floor the sweep cannot go below.** 0.22 of a
+4.8 m boom is about 1.05 m, and a 5×4 room offers less than that behind the character
+in most facings — so the sweep shortens to the clamp and the eye is left outside the
+house it was avoiding. The clamp exists so the camera never sits in the character's
+head. Indoors that is exactly the trade that has to be made.
 
-**F1 — the minimum boom is a floor the wall sweep cannot go below.** `CAM_MIN_FRAC`
-is 0.22 of a boom of `figure_wu() * 2.90`, about 1.05 m. A 5×4 room offers less
-clearance than that behind the character in most facings, so the sweep shortens the
-boom to the floor and the eye is left *inside or beyond* the wall — which is the
-first picture exactly. The clamp exists so the camera never ends up in the
-character's head; indoors that is precisely the trade that has to be made.
-→ **below the floor the camera must change MODE, not clamp.**
+## ⚠ Three modes, because the same facts want opposite answers
 
-**F2 — there is no interior mode.** A third-person boom cannot work in a three-metre
-room: a correctly collided boom there is shorter than the character is wide. What is
-needed is first person — eye at the head, own body not drawn — and it must be
-hysteretic, because a doorway is exactly where the condition flips and the character
-stands in one for several ticks.
+The temptation is one automatic behaviour that "handles interiors". It cannot: a
+dollhouse editing view and a claustrophobic interior want **opposite** things from
+the identical situation. Being inside a small dark room is a *fault* to be corrected
+in one and the *entire point* of the other.
 
-**F3 — the roof is drawn over the room you are in.** The top third of the first
-picture is the roof, from above. ⚠ **This is a client-side surface toggle, not a
-re-mesh.** Roofs already ride their own surface id (slot 5), and chunks are
-*broadcast to every client*, so a view-dependent mesh would be wrong for everyone
-else in the world. One boolean on the wire; the client hides one surface.
+So the camera has an explicit mode. The mode is the only thing that decides; the
+query below is the only thing that observes. That separation is what keeps them from
+constraining each other.
 
-**F4 — an interior has no light of its own.** The shading is a single directional
-term, so a room lit through one window is a flat dark grey. The reveal and frame work
-survives — it reads by *normal difference*, which still holds — but with no ambient
-floor and no head-lamp term there is nothing to separate a near wall from a far one.
-Same boolean: indoors raises ambient.
+| | **FOLLOW** | **SNUG** | **CUTAWAY** |
+|---|---|---|---|
+| for | outdoors, the default | intimate, claustrophobic | editing a building |
+| boom | full, wall-swept | collapses **below** `CAM_MIN_FRAC` | fixed, outside and above |
+| roof, inside | hidden — it is in the way | **kept, and needs an underside** | hidden |
+| near walls | swept around | **kept — they press in** | hidden |
+| ambient inside | lifted, so the room reads | **low**, plus a head-lamp | high and flat, editing light |
+| own body | drawn | not drawn | drawn, small |
+| what it fixes | the two shots above | nothing — it *wants* the walls close | seeing a plan while you build it |
 
-## The unification: one query, four consumers
+A fourth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says the
+room cannot hold a boom. That is today's behaviour plus the clamp fix, and it should
+be the default so nobody has to know the modes exist.
 
-All four key off the same predicate, so it is computed **once**, in the library, as a
-pure function — the structural claims belong in `lib/`, not in the renderer.
+## The query all three read
+
+Computed **once**, in the library, as a pure function — the structural claims belong
+in `lib/`, not in the renderer.
 
 ```loft
 pub struct Shelter {
@@ -62,23 +64,71 @@ pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
                   eye_units: integer) -> Shelter
 ```
 
-- `sh_back` is what **F1** needs: a boom permitted to be shorter than `CAM_MIN_FRAC`.
-- `sh_room` decides **F2**'s mode.
-- `sh_inside` drives **F3**'s roof toggle and **F4**'s ambient.
-- `sh_head` separates a cottage from a hall, so the camera does not go first-person
-  in a cathedral merely because it is indoors.
+⚠ **`sh_inside` does not mean "hide the roof".** It means the eye is under one. What
+to do about that is the mode's business, and FOLLOW and SNUG answer it in opposite
+directions. A field named `sh_hide_roof` would have baked one mode into the query and
+made the other unbuildable — which is exactly the mistake three modes exist to avoid.
 
 ⚠ `shelter_at` must read `world_surface`, not `terrain_h`. An upper storey's deck is
 a ceiling for the room beneath it, and `terrain_h` answers *the outdoors* by
 definition — the same fault that once made the upper storey unreachable.
 
 `roof_plan_covers` already exists and is one of the six functions **no test has ever
-entered**. It is the `sh_inside` half. That is not a coincidence worth ignoring: it
-was written for this and never wired up.
+entered**. It is the `sh_inside` half; it was written for this and never wired up.
+
+## ⚠ The roof has no underside
+
+`emit_roof_plan` emits one winding — `emit_quad_n` for the slopes, `emit_tri_n` for
+the gables. From below there is no face at all, so an interior camera sees **sky
+through the roof**.
+
+FOLLOW never noticed, because FOLLOW hides the roof indoors anyway. SNUG cannot work
+until this is fixed: a ceiling is the whole of what makes a room feel enclosed, and
+"claustrophobic" with the sky showing through is just a bug. It is a handful of
+triangles with the winding reversed and a normal that points down — but it must be
+its **own surface id**, not the same one, or CUTAWAY cannot hide the roof while SNUG
+keeps its underside.
+
+That is the first thing this design found that nothing else would have: FOLLOW's fix
+and SNUG's requirement pull the roof apart into two surfaces, and only building both
+modes reveals it.
+
+## What each mode needs from the client, and why it is per-client
+
+Chunks are **broadcast to every client**, so nothing here may be a view-dependent
+mesh. Everything below is a per-client surface toggle over ids that already exist, or
+one that has to be created for the purpose.
+
+- **Roof (slot 5)** — hidden by FOLLOW-inside and CUTAWAY, shown by SNUG.
+- **Roof underside (new)** — shown by SNUG only.
+- **The figure's own meshes** — already their own ids, hidden by SNUG.
+- **Walls** — the hard one; see below.
+- **Ambient and head-lamp** — two floats on the wire, per client, cross-faded.
+
+The camera *solve* is already server-side and already per-viewport (`2:<aspect>`), so
+the boom and the mode live there and only the visibility flags travel.
+
+## CUTAWAY's near walls, in two stages
+
+Front-face culling does **not** work: a wall is a slab with two faces, and culling the
+one that faces the camera leaves the inner one — whose normal points into the room,
+away from the eye — still occluding it. The unit that has to disappear is the whole
+**run**.
+
+1. **Steep and roofless first.** With the roof hidden and the camera well above the
+   eave, you can already look down into a house; near walls only occlude at shallow
+   angles. This is one flag and it is most of the value.
+2. **Then bucket runs by heading.** A run's outward normal is fixed at emit time, so
+   walls can be split into four heading quadrants at no view-dependent cost, and
+   CUTAWAY hides the two facing the camera. `SURFACES` goes 8 → 11; empty buckets
+   broadcast almost nothing, and most chunks have no walls at all.
+
+Doing (2) first would be the expensive half of a feature whose cheap half was never
+tried.
 
 ## Two rules the existing camera design already sets
 
-Both are in `editor_server.loft`'s occlusion section and the new work inherits them:
+Both are in `editor_server.loft`'s occlusion section, and the new work inherits them:
 
 1. **Pitch is rate-limited in both directions and never snaps; the boom is the fast
    valve.** So a *mode* change must ease, and the boom may not — a shorter boom is a
@@ -88,40 +138,47 @@ Both are in `editor_server.loft`'s occlusion section and the new work inherits t
 
 ## The hysteresis, precisely
 
-Enter the interior mode at `sh_room < A`, leave it at `sh_room > B`, with `B > A`;
-cross-fade the ambient and the roof over a fixed number of ticks. Without two
-thresholds, walking through a doorway strobes the entire frame — and a doorway is the
-one place in a house a player is guaranteed to stand still in.
+AUTO enters SNUG at `sh_room < A` and leaves at `sh_room > B`, with `B > A`; ambient
+and the roof toggles cross-fade over a fixed number of ticks. Without two thresholds,
+walking through a doorway strobes the entire frame — and a doorway is the one place
+in a house a player is guaranteed to stand still.
+
+An *explicitly chosen* mode never auto-switches. Someone who picked SNUG walking into
+a broom cupboard picked it on purpose.
 
 ## The measurement that says it worked
 
-`tools/gates/world/indoors.mjs` — build a house, stand inside, and assert:
+`tools/gates/world/camera_modes.mjs` — build a house, stand inside, and assert **per
+mode**, because the modes disagree by design and a single expectation would be wrong
+for two of them:
 
-1. **the subject is visible at all** — its pixels > 0. *Today: zero.*
-2. **no single surface occupies more than N% of the frame.** *Today: the wall is most
-   of it.*
-3. **the roof surface draws no triangles while inside.** *Today: it draws.*
+| | FOLLOW | SNUG | CUTAWAY |
+|---|---|---|---|
+| subject pixels | **> 0** *(today: zero)* | 0 — its own body is hidden | > 0 |
+| roof triangles drawn | 0 *(today: drawn)* | > 0, **from below** | 0 |
+| largest single surface | < N% of frame *(today: the wall is most of it)* | unconstrained — pressing in is the point | < N% |
+| distinct colours | — | > 1 — a black frame is not atmosphere | — |
 
-Three numbers. Two of them already fail, which is what makes this a defect rather
-than a preference.
+That last row is the one worth stating out loud: the failure mode of a horror camera
+is a picture with nothing in it, and "dark" and "empty" are indistinguishable to
+anyone but the person who wrote it.
 
 ## What NOT to build
 
-- **A view-dependent mesh.** Chunks are broadcast; hiding must be per-client, which
-  means per-surface, which the surface ids already give for free.
-- **A cutaway / dollhouse mode.** Wanted eventually, and genuinely useful for
-  editing — but it is the *opposite* problem (looking INTO a house from outside) and
-  needs run-granular backface culling. Building it alongside this one would let two
-  different problems constrain each other's design.
+- **A view-dependent mesh.** Chunks are broadcast; hiding is per-client, which means
+  per-surface.
 - **Camera collision against dressing.** `D1` says dressing never collides. A chair
-  must not shove the camera, and this falls out for free if the query stays on the
+  must not shove the camera, and this falls out for free while the query stays on the
   surface set.
 
 ## Order of work
 
-1. `shelter_at` and its tests — pure, no server, and everything else reads it.
-2. **F1**: the boom may go below `CAM_MIN_FRAC` when `sh_back` says so.
-3. **F2**: first-person mode, with the two thresholds.
-4. **F3 + F4**: one `indoors` field on the wire; the client hides surface 5 and lifts
-   ambient.
-5. The gate, which is the only thing that can say any of it worked.
+1. `shelter_at` and its tests — pure, no server, and all three modes read it.
+2. The roof's underside, as its own surface id. SNUG is unbuildable without it and
+   FOLLOW has been hiding the gap.
+3. **FOLLOW's fix**: the boom may go below `CAM_MIN_FRAC` when `sh_back` says so;
+   AUTO degrades to SNUG with the two thresholds.
+4. **SNUG**: body hidden, ambient down, head-lamp up, near plane in.
+5. **CUTAWAY stage 1**: roof off, camera above the eave.
+6. The gate — the only thing that can say any of it worked.
+7. **CUTAWAY stage 2**: heading buckets, if shallow angles turn out to matter.
