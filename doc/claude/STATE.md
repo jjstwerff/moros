@@ -22,10 +22,35 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **30 green** (74 s) · `make lib-test` **953 on both backends** ·
-`lib/hex_editor` **201 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 today
+`make gate` **31 green** (78 s) · `make lib-test` **955 on both backends** ·
+`lib/hex_editor` **203 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 today
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
+
+### The cellar closed the set, and needed a third instrument to do it
+
+`emit_hex_under` now reaches the **ground**, gated by `hex_editor::col_has_below` —
+so a cellar has a ceiling and the "something overhead with no underside" class is
+closed on all three of its members (roof, deck, ground).
+
+⚠ **Neither existing instrument could see it, and that is the transferable part.**
+Digging a cellar puts 342 vertices into `soffit` whether or not a ceiling is drawn —
+that is the cellar *floor's* own underside, same surface, same colour. A colour
+cannot see a count (which is why `mesh` exists); a **count cannot see a height**,
+which is why `meshy <surf> <y0> <y1>` does now. Seen red: 342, every one of them 3.0
+wu *below* the ground. Green: **684**, splitting 342/342 across a measured gap.
+
+⚠ **And the first fix was wrong in a way only the picture caught.** "Flat, at the
+stored height" matched every other underside in the renderer and read well — but the
+ground is drawn **smoothed**, so a flat ceiling stands proud of the hillside all
+round a plateau: `soffit 0.0187` of a frame that must hold none, a ring of dark
+wedges. The ceiling is the ground's own corner heights minus one constant now, so
+"under the ground" holds by subtraction rather than by tolerance.
+
+⚠ **`turn 180` could never terminate**, and it had been in the harness all along: the
+check normalised the difference into (-180, 180], so `|d| >= 180` was true at one
+discrete facing the walker steps over. Each call burned all 8000 tick-waits — **560 s
+of a 593 s gate**. The turn is accumulated per tick now.
 
 ### What exists now that did not
 
@@ -184,9 +209,13 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **A CELLAR HAS NO CEILING** — the third time for this shape. The underside is
-   drawn for every non-ground layer, and a cellar's ceiling is the **ground**, drawn
-   by `chunk_mesh_mat` on a different path entirely.
+1. ⚠ **A CELLAR IS UNREACHABLE** — nothing can stand in one. `stair_cut` cuts the
+   **ground** layer down, so a stair walked toward a cellar refuses on the world's
+   floor long before it arrives (`stair refused (-1) the world's floor is 0`). Its
+   ceiling is built and gated now, but only the wire can see in there.
+   ⚠ And a cellar has **no walls** either: the model draws a layer's top, its rim
+   and its underside, and nothing between two layers — so the twelve units of earth
+   between a cellar floor and the ground are not a surface anywhere.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.
@@ -209,7 +238,7 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 ### The numbers a gate now holds
 
 `tools/scripts/indoors.keys` is eleven stations through `camera_indoors`;
-`deck.keys` is `deck_soffit`. Both are in `make gate`.
+`deck.keys` is `deck_soffit`; `cellar.keys` is `cellar_ceiling`. All in `make gate`.
 
 | station | subject | largest | `lum` |
 |---|---|---|---|

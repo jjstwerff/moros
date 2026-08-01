@@ -68,15 +68,26 @@ stays.
 
 ---
 
-## 3. Every step ends in a picture — two channels, and they answer different questions
+## 3. Every step ends in a picture — three channels, and they answer different questions
 
 | channel | what it answers | cost |
 |---|---|---|
 | **plan + elevation raster**, drawn from the emitted geometry | *is the shape right* — is the wall straight, is the footprint square, does the roof pitch | headless, deterministic, no GPU. `tools/plan.mjs` already does plan view |
 | **a 3D render** | *does it READ as a house* — the cold-recognition test | needs a renderer |
+| **the wire** — `mesh <surf>`, `meshy <surf> <y0> <y1>` | *was it EMITTED at all, and WHERE* | headless, no browser, off the `M:` frames |
 
 The first is a measurement that happens to be an image, and it is exact: a zigzag wall is
 visibly a zigzag in plan. The second is the acceptance test and cannot be automated away.
+
+⚠ **The third channel was added because the first two are blind to a whole class**, and it
+took two sessions to see the shape of it. A roof's soffit and a floor's soffit are one
+surface in one colour, so standing under an upper storey photographs `soffit 0.997` whether
+the deck has an underside or you are seeing the roof through it — a **colour cannot see a
+count**, and `mesh` was the answer. Then the cellar: digging one puts 342 vertices into
+`soffit` whether or not a ceiling is drawn, because the cellar *floor's* own underside lands
+in the same surface — a **count cannot see a height**, and `meshy` is the answer to that.
+The rule generalises past this file: when one instrument cannot separate two cases, the fix
+is a second instrument, never a looser threshold.
 
 ⚠ **A green board is not a passing step.** Every claim about a shape can hold while the
 picture is wrong — `25:` WALL passed its gate for months while drawing a road with a fence

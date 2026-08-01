@@ -1951,22 +1951,74 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
 // It goes in the SOFFIT mesh because that is what the surface MEANS: the underside
 // of whatever is over you. A mode that keeps a ceiling keeps both kinds, and one
 // that hides them hides both — which is the same argument that split the roof.
-fn emit_hex_under(m: Mesh, cq: integer, cr: integer, h: integer) {
-  uy = (h as float) * HEIGHT_SCALE;
+// ⚠ ONE FUNCTION FOR BOTH KINDS OF UNDERSIDE, and the reason is the winding. The
+// reversal and the downward normal below are the two things `soffit.loft` asserts,
+// and they are six lines — which is exactly the size of thing that gets copied for
+// the second caller and then drifts. `FLOOR_THICK` is a constant in this file for
+// the same reason, three screens up.
+//
+// `cy` is the centre's world y and `hy` the six corners', in `corner_heights`'
+// indexing — so a DECK, which is flat, passes one height seven times, and a CELLAR
+// CEILING passes the ground's own smoothed corners dropped by a thickness.
+fn emit_hex_under(m: Mesh, cq: integer, cr: integer, cy: float, hy: vector<float>) {
   ucs = hex_to_world(cq, cr, 0);
   udn = vec3(0.0, 0.0 - 1.0, 0.0);
-  ua = vec3(ucs.x, uy, ucs.z);
+  ua = vec3(ucs.x, cy, ucs.z);
   for uk in 0..6 {
     uk2 = (uk + 1) % 6 ?? 0;
     uw1 = hex_corner_world(cq, cr, 0, (6 - uk) % 6 ?? 0);
     uw2 = hex_corner_world(cq, cr, 0, (6 - uk2) % 6 ?? 0);
-    ub = vec3(uw1.x, uy, uw1.z);
-    uc = vec3(uw2.x, uy, uw2.z);
+    ub = vec3(uw1.x, hy[uk] ?? cy, uw1.z);
+    uc = vec3(uw2.x, hy[uk2] ?? cy, uw2.z);
     // Reversed against the top fan, and the normal points DOWN — neither matters
     // to a renderer with no backface culling, and both are what make it right the
     // day one arrives. The roof's soffit is asserted on exactly these two.
     emit_tri(m, ua, udn, uc, udn, ub, udn);
   }
+}
+
+// A flat underside at one stored height — a deck's, and every built floor's.
+fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer) {
+  uy = (h as float) * HEIGHT_SCALE;
+  emit_hex_under(m, cq, cr, uy, [uy, uy, uy, uy, uy, uy]);
+}
+
+// ── A CELLAR'S CEILING IS THE GROUND, SO IT IS THE GROUND'S OWN SURFACE ──────
+//
+// ⚠ "FLAT, UNDER A SLOPED GROUND" WAS WRITTEN HERE AND THE CONTROL REFUTED IT ON
+// THE FIRST FRAME. The argument read well — every other underside in this file is a
+// flat fan at its layer's stored height, and a cellar is BUILT, so a flat ceiling is
+// what its floor is square to. What it missed is that the ground is drawn SMOOTHED:
+// a corner is the mean of the three cells touching it and the centre the mean of the
+// six corners, so the drawn surface sits well below the stored height wherever the
+// ground falls away — which is everywhere around a plateau. A flat ceiling two units
+// under the stored height then stands PROUD of the drawn ground, and the picture was
+// a ring of dark wedges lying on the hillside: `soffit 0.0187` of a frame that must
+// hold none.
+//
+// The construction that cannot do that is the ground's own surface, dropped. Not
+// approximately parallel to it — the identical corner heights minus one constant, so
+// "the ceiling is under the ground" holds by subtraction rather than by tolerance.
+// What it costs is that the clear height under a slope varies, and that is honest:
+// the cellar floor is flat and the hill above it is not.
+//
+// ⚠ AND IT READS THE WORLD PER CELL, where the ground pass reads a prepared grid.
+// That is affordable for exactly the reason the emission is conditional at all —
+// this runs on cells with something dug beneath them, not on every cell of every
+// chunk. `chunk_mesh_mat`'s halo exists because ITS loop is the whole world.
+fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
+  ghs = corner_heights(cq, cr, wld);
+  drop = FLOOR_THICK as float;
+  uy: vector<float> = [];
+  csum = 0.0;
+  for gi3 in 0..6 {
+    csum = csum + (ghs[gi3] ?? 0.0);
+    uy += [((ghs[gi3] ?? 0.0) - drop) * HEIGHT_SCALE];
+  }
+  // The centre is the mean of the six corners, which is `emit_hex_sloped`'s own
+  // rule — take the stored height instead and the ceiling is a little pyramid under
+  // a smooth ground, the summit pip that comment was written about.
+  emit_hex_under(m, cq, cr, ((csum / 6.0 ?? 0.0) - drop) * HEIGHT_SCALE, uy);
 }
 
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
@@ -2127,7 +2179,39 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
             // or the two part company and the deck shows a slot from below.
-            emit_hex_under(sm, cq, cr, fh - FLOOR_THICK);
+            emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+          } else if hex_editor::col_has_below(c, e#index) {
+            // ⚠ A CELLAR HAS NO CEILING — the THIRD time for this shape, and the one
+            // the branch above cannot reach by construction. The roof had no
+            // underside; the deck had the same defect one axis over and survived the
+            // roof's fix; and here it is a third time, because a cellar's ceiling is
+            // the GROUND — the one layer this clause excludes, drawn by
+            // `chunk_mesh_mat`, which answers *the outdoors* by definition and never
+            // had a reason to ask what was under it.
+            //
+            // Measured before this line existed: digging a cellar put 342 vertices
+            // into `soffit` — and every one of them was 3.0 wu BELOW the ground.
+            // That is the cellar FLOOR's own underside, emitted by the clause above,
+            // and it is exactly why the count alone could not see this. `mesh soffit`
+            // reads 342 either way; only `meshy` — the same count inside a band of y
+            // — can tell a ceiling at the ground from a floor's underside a storey
+            // down. A count cannot see a colour, a colour cannot see a count, and
+            // NEITHER can see a height.
+            //
+            // ⚠ CONDITIONAL, WHERE THE DECK'S IS NOT, AND THAT ASYMMETRY IS THE
+            // POINT. A deck is something you can walk under wherever it is, so its
+            // underside is owed unconditionally. The ground is walked ON; its
+            // underside is owed only where something is dug beneath it, or every
+            // cell in the world carries a second fan for a face nothing can see.
+            // The question is asked of the column's own stack — `col_has_below` —
+            // and not of "is this a cellar", because the renderer must not know the
+            // gesture that made the hole.
+            //
+            // ⚠ THE GROUND'S OWN SURFACE, DROPPED — not a flat fan at its stored
+            // height, which is what this said first and what the control refuted on
+            // its first frame. See `emit_ground_ceiling`: the ground is drawn
+            // smoothed, so a flat ceiling stands proud of it all round a plateau.
+            emit_ground_ceiling(sm, cq, cr, wld);
           }
         }
       }

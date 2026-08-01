@@ -71,6 +71,59 @@ fn test_a_cellar_inserts_at_the_bottom_and_the_order_still_holds() {
   assert(ascending, "and the column is still height-ascending");
 }
 
+// The index of the layer carrying this label, or -1.
+fn layer_of(w: World, q: integer, r: integer, label: integer) -> integer {
+  col = world_column(w, q, r);
+  for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == label { return i; } }
+  0 - 1
+}
+
+fn test_the_ground_becomes_a_ceiling_the_moment_a_cellar_is_dug_under_it() {
+  // ⚠ THE THIRD RECURRENCE OF ONE SHAPE: something overhead with no underside. The
+  // roof had it, the deck had it one axis over, and the ground has it — a cellar's
+  // ceiling IS the ground, and the ground is drawn by a different pass that answers
+  // *the outdoors* by definition and so never asked whether anything was beneath it.
+  //
+  // What the renderer needs is not "is this a cellar" but the general fact, and this
+  // is it: BEFORE, the ground layer has nothing below it and owes no underside;
+  // AFTER, it does. Measured on the wire before this existed — digging a cellar put
+  // 342 vertices into the `soffit` surface and every one of them was 3.0 wu BELOW
+  // the ground, which is the cellar floor's own underside. Nothing was overhead.
+  w = world();
+  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  assert(gi >= 0, "the ground has a label to be found by");
+  assert(!hex_editor::col_has_below(world_column(w, 0, 0), gi),
+         "open ground owes no underside — nothing is dug under it");
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  assert(n > 0, "the cellar went in on {n} cells: {why}");
+  gi2 = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  assert(hex_editor::col_has_below(world_column(w, 0, 0), gi2),
+         "and now it is a ceiling: something occupied lies below it");
+  // ⚠ AND THE CELLAR FLOOR IS NOT. It is the bottom of the stack, so the predicate
+  // must say no — a version that answered "is this column storeyed" would say yes to
+  // every layer in it and put a second fan under the floor you stand on.
+  ci = 0;
+  for i in 0..len(world_column(w, 0, 0).co_cells) {
+    if hex_world::hex_occupied(world_column(w, 0, 0).co_cells[i] ?? hex_world::Hex {})
+       && i < gi2 { ci = i; }
+  }
+  assert(!hex_editor::col_has_below(world_column(w, 0, 0), ci),
+         "the cellar floor has nothing under IT");
+}
+
+fn test_a_deck_and_the_ground_under_it_are_both_ceilings() {
+  // A storey ABOVE is the mirror case, and it is worth pinning because it is the one
+  // the predicate must NOT change: a deck already gets its underside unconditionally,
+  // and the ground under a deck is still open ground with nothing dug beneath it.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 1, 2, why);
+  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  assert(!hex_editor::col_has_below(world_column(w, 0, 0), gi),
+         "a deck overhead does not put anything UNDER the ground");
+}
+
 fn test_a_cellar_with_no_room_below_is_refused_for_the_right_reason() {
   // The reserve is the floor of the world. Digging through it is refused, not
   // clamped — a clamped cellar is a room the walker cannot stand in.

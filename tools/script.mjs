@@ -32,6 +32,9 @@
 //   step <n>                advance exactly n ticks and wait until they are done
 //   save <name>             write the world; the file is the determinism fingerprint
 //   echo <text>             print a marker into the transcript
+//   mesh <surf> [lo hi]     vertices the server EMITTED into a surface, off the wire
+//   meshy <surf> <y0> <y1> [lo hi]   the same, inside a band of world y — for when
+//                           one surface carries two things of one colour
 import http from 'node:http';
 import fs from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -273,9 +276,19 @@ const status = []; const trace = []; let tCount = 0; let view = null;
 //
 // Only the SIZE is kept: the id encodes chunk and surface as
 // `chunk * SURFACES + MESH_FIGURE_MAX + k`, and a vertex is six floats.
+//
+// ⚠ AND A COUNT CANNOT SEE A HEIGHT, which is the cellar's version of the same trap.
+// Digging a cellar adds 342 vertices to `soffit` whatever happens — that is the
+// cellar FLOOR's own underside, emitted by the same clause every non-ground layer
+// goes through. A ceiling over the cellar would be 342 more, in the same surface, of
+// the same colour, and `mesh soffit` cannot tell one total from the other. What
+// separates them is WHERE THEY ARE: a cellar floor's underside is twelve units down,
+// a ceiling is at the ground. Hence `meshy`, which counts inside a y band.
 const SURFACES = 9;
 const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame', 'soffit'];
 const meshLen = new Map();
+// Every vertex's y, per mesh — one float of the six, so a sixth of the traffic kept.
+const meshY = new Map();
 ws.addEventListener('message', (ev) => {
   const s = ev.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
@@ -291,9 +304,15 @@ ws.addEventListener('message', (ev) => {
     const h = b.indexOf(';'), id = Number(b.slice(0, h));
     let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
     const d = rest.slice(rest.indexOf(';') + 1);
-    meshLen.set(id, d === '' ? 0 : d.split(',').length);
+    const f = d === '' ? [] : d.split(',');
+    meshLen.set(id, f.length);
+    // ⚠ SIX FLOATS PER VERTEX, y SECOND — `mesh_to_floats` writes position then
+    // normal. Taking every sixth from index 1 is the y column and nothing else.
+    const ys = new Array(f.length / 6);
+    for (let v = 0; v < ys.length; v += 1) ys[v] = Number(f[v * 6 + 1]);
+    meshY.set(id, ys);
   }
-  if (t === 'X') meshLen.delete(Number(b));
+  if (t === 'X') { meshLen.delete(Number(b)); meshY.delete(Number(b)); }
 });
 // Vertices in one surface, summed over every loaded chunk. ⚠ A COUNT OF WHAT WAS
 // EMITTED, not of what a producer says it emitted — the same rule the gates already
@@ -305,6 +324,19 @@ const surfaceVerts = (name) => {
   for (const [id, len] of meshLen) {
     if (id <= 15) continue;
     if ((id - 16) % SURFACES === k) n += len / 6;
+  }
+  return n;
+};
+// The same count, restricted to a band of world y. `[ylo, yhi)` — half-open, so two
+// adjacent bands partition the surface and a vertex is never counted twice.
+const surfaceVertsY = (name, ylo, yhi) => {
+  const k = SURF.indexOf(name);
+  if (k < 0) return -1;
+  let n = 0;
+  for (const [id, ys] of meshY) {
+    if (id <= 15) continue;
+    if ((id - 16) % SURFACES !== k) continue;
+    for (const y of ys) if (y >= ylo && y < yhi) n += 1;
   }
   return n;
 };
@@ -532,17 +564,32 @@ for (const raw of lines) {
     const p = pose();
     console.log(`  moved ${Math.hypot(p[12] - p0[12], p[14] - p0[14]).toFixed(3)} wu`);
   } else if (cmd === 'turn') {
+    // ⚠ THE TURN IS ACCUMULATED PER TICK, NOT MEASURED AGAINST THE START, and that
+    // is not a refinement — the difference form could not express a half turn at
+    // all. It read `d = facing() - a0` normalised into (-180, 180], so `|d|` never
+    // EXCEEDS 180 and touches it at one discrete facing the walker steps over: past
+    // the halfway point `d` wraps negative and `|d|` starts falling again. So
+    // `turn 180` never broke early and ran all 8000 iterations, each awaiting a
+    // tick. Measured: 280 seconds, twice, in a gate whose every other line costs
+    // milliseconds — 560 s of a 593 s gate was one command that had already arrived.
+    //
+    // Summing the per-tick step has no such ceiling: a step is small, so normalising
+    // THAT is safe, and the total is unbounded — `turn 540` means what it says.
     const want = Number(rest[0]);
-    const a0 = facing();
+    let acc = 0;
+    let prev = facing();
     ws.send(`4:${want >= 0 ? 8 : 4}`);
     for (let n = 0; n < 8000; n++) {
       if (!(await nextT())) break;
-      let d = facing() - a0;
+      const now = facing();
+      let d = now - prev;
       while (d > 180) d -= 360; while (d < -180) d += 360;
-      if (Math.abs(d) >= Math.abs(want)) break;
+      acc += d;
+      prev = now;
+      if (Math.abs(acc) >= Math.abs(want)) break;
     }
     ws.send('4:0'); await nextT();
-    console.log(`  facing ${facing().toFixed(1)}°`);
+    console.log(`  facing ${facing().toFixed(1)}°  turned ${acc.toFixed(1)}°`);
   } else if (cmd === 'frame') {
     // ⚠ WHAT IS ACTUALLY ON SCREEN, AS NUMBERS. Every wrong turn in the camera work
     // came from reading a picture by eye: "it does not know about walls" (it does),
@@ -635,6 +682,22 @@ for (const raw of lines) {
       else verdict = ' PASS';
     }
     console.log(`  mesh ${name} = ${n} vertices${verdict}`);
+  } else if (cmd === 'meshy') {
+    // `meshy <surface> <ylo> <yhi> [lo hi]` — the same wire count, inside a band of
+    // world y. Two things of one colour in one surface are one number to `mesh`;
+    // this is what tells a ceiling at the ground from a floor's underside twelve
+    // units below it.
+    const name = rest[0], ylo = Number(rest[1]), yhi = Number(rest[2]);
+    const n = surfaceVertsY(name, ylo, yhi);
+    let verdict = '';
+    if (rest[3] !== undefined) {
+      const lo = Number(rest[3]), hi = Number(rest[4]);
+      if (n < lo || n > hi) {
+        verdict = ` FAIL ${name} in y ${ylo}..${yhi} is ${n}, outside ${lo}..${hi}`;
+        frameFails += 1;
+      } else verdict = ' PASS';
+    }
+    console.log(`  meshy ${name} y ${ylo}..${yhi} = ${n} vertices${verdict}`);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.

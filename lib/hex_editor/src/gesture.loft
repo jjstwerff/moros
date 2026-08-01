@@ -515,6 +515,28 @@ pub fn col_low(c: hex_world::Column) -> integer {
   0 - 1
 }
 
+// Does an occupied layer lie BELOW this one — is this layer somebody's ceiling?
+//
+// ⚠ THIS IS WHAT MAKES THE GROUND A CEILING, and it is the one fact the renderer
+// could not ask for. Every non-ground layer gets an underside unconditionally,
+// because a deck is a thing you can walk under wherever it is. The ground cannot
+// have one unconditionally — that is a second fan under every cell in the world,
+// for a face nothing can ever see — so it needs the question "is anything dug under
+// here", and the only honest answer is the column's own stack.
+//
+// ⚠ AND IT IS AN INDEX COMPARISON, WHICH IS ONLY LEGAL BECAUSE `F1″` MAKES LAYER
+// ORDER HEIGHT ORDER. A column read hands back one cell per layer of the CHUNK, so
+// the vector is height-ascending with absent cells sitting in the gaps — the same
+// property `col_top` and `col_low` lean on. Comparing heights instead would be a
+// second derivation of a fact the ordering already carries.
+pub fn col_has_below(c: hex_world::Column, idx: integer) -> boolean {
+  for e in c.co_cells {
+    if e#index >= idx { return false; }
+    if hex_world::hex_occupied(e) { return true; }
+  }
+  false
+}
+
 
 // ── STAIRS (rung W4b, moros#12) — the gesture that makes a DECK REACHABLE ────
 //
