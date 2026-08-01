@@ -1,0 +1,127 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE MODES AND THE ANCHORS — what `road.mjs`, `level.mjs` and `trigger.mjs` drive
+// a walking character for.
+//
+// A mode is not a one-shot gesture: `road` and `level` set a flag the tick acts
+// on. What is testable — and what moved — is the per-step work and the rule the
+// two share, not the switch.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 12..13 {
+    for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 20, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn test_a_grade_is_frozen_from_the_feet_and_says_what_it_lost() {
+  // ⚠ THE RULE BOTH MODES SHARE, and each used to derive for itself four lines
+  // apart. A grade is an integer and the feet are real, so freezing one from the
+  // other loses up to half a unit — and the author is owed the number, which is
+  // invariant I's third state.
+  r = 0.0;
+  g = hex_editor::freeze_grade(12.4, r);
+  assert(g == 12, "12.4 freezes to 12, got {g}");
+  d = r - 0.4; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.0001, "and reports 0.4 lost, got {r}");
+
+  r2 = 0.0;
+  g2 = hex_editor::freeze_grade(12.6, r2);
+  assert(g2 == 13, "12.6 freezes UP to 13, got {g2}");
+
+  r3 = 0.0;
+  g3 = hex_editor::freeze_grade(9.0, r3);
+  assert(g3 == 9 && r3 == 0.0, "a whole number costs nothing: {g3}, {r3}");
+}
+
+fn test_a_negative_height_rounds_away_from_zero_not_toward_it() {
+  // The branch that exists because `(x + 0.5) as integer` truncates toward zero:
+  // -12.6 must freeze to -13, not -12. A mode that rounded the wrong way on one
+  // side of zero would put the walker half a unit into the ground below it.
+  r = 0.0;
+  g = hex_editor::freeze_grade(0.0 - 12.6, r);
+  assert(g == 0 - 13, "-12.6 freezes to -13, got {g}");
+}
+
+fn test_a_road_step_paves_its_band_at_the_frozen_grade() {
+  // What the tick does per step while roading: the cells within the half-width
+  // become road AT THE GRADE, so a road walked uphill CUTS into the hill rather
+  // than riding up it — which is what makes it a road and not a painted stripe.
+  w = world();
+  hex_editor::road_lay(w, 0, 0, 14, hex_editor::ROAD_HALF, 5.0);
+  centre = hex_editor::ground_h(w, 0, 0);
+  assert(centre == 14, "the centre is cut to the grade, got {centre}");
+  edge = hex_editor::ground_h(w, hex_editor::ROAD_HALF, 0);
+  assert(edge == 14, "and so is the band's edge, got {edge}");
+  beyond = hex_editor::ground_h(w, hex_editor::ROAD_HALF + 2, 0);
+  assert(beyond == 20, "beyond it the hill is untouched, got {beyond}");
+}
+
+fn test_a_road_step_cannot_cut_below_the_world_floor() {
+  w = world();
+  hex_editor::road_lay(w, 0, 0, 0 - 50, hex_editor::ROAD_HALF, 5.0);
+  h = hex_editor::ground_h(w, 0, 0);
+  assert(h >= hex_editor::W_RESERVE, "clamped at the reserve, got {h}");
+}
+
+// ── anchors ─────────────────────────────────────────────────────────────────
+
+fn anchored(w: World, q: integer, r: integer) -> vector<Trigger> {
+  [hex_editor::Trigger { tg_id: 0, tg_q: q, tg_r: r,
+                         tg_h: hex_editor::ground_h(w, q, r),
+                         tg_name: "door_opens", tg_broken: false, tg_foreign: false }]
+}
+
+fn test_an_anchor_follows_the_ground_it_named() {
+  // `WORLD_MODEL`'s rule: when geometry changes under an attached thing, its
+  // anchor MOVES WITH IT. Raising the cell must report a follow, with the height.
+  w = world();
+  t = anchored(w, 3, 0);
+  hex_editor::ground_set(w, 3, 0, 26, hex_editor::SURFACE_MAT);
+  news = hex_editor::triggers_resolve(t, w);
+  assert(len(news) == 1, "one thing happened, got {len(news)}");
+  assert((news[0] ?? hex_editor::TriggerNews {}).tn_what == hex_editor::TG_FOLLOWED,
+         "it followed");
+  assert((news[0] ?? hex_editor::TriggerNews {}).tn_h == 26, "to the new height");
+}
+
+fn test_an_anchor_whose_ground_is_gone_is_reported_broken_not_moved() {
+  // ⚠ THE OTHER HALF, and the one that matters: paving over the ground it named
+  // does not RELOCATE the anchor to whatever is there now. Broken is an answer;
+  // silently following the wrong surface is not.
+  w = world();
+  t = anchored(w, 3, 0);
+  hex_editor::ground_set(w, 3, 0, 20, hex_editor::ROAD_MAT);
+  news = hex_editor::triggers_resolve(t, w);
+  n0 = news[0] ?? hex_editor::TriggerNews {};
+  assert(n0.tn_what == hex_editor::TG_BROKEN, "it broke rather than followed");
+  assert(n0.tn_mat == hex_editor::ROAD_MAT, "and says what it found: {n0.tn_mat}");
+  assert((t[0] ?? hex_editor::Trigger {}).tg_broken, "the anchor is marked broken");
+}
+
+fn test_a_foreign_anchor_is_neither_resolved_nor_dropped() {
+  // A name this editor cannot resolve is left exactly alone — not followed, not
+  // broken, not quietly removed.
+  w = world();
+  t: vector<Trigger> = [hex_editor::Trigger { tg_id: 1, tg_q: 3, tg_r: 0, tg_h: 20,
+                                              tg_name: "story::act2_begins",
+                                              tg_broken: false, tg_foreign: true }];
+  hex_editor::ground_set(w, 3, 0, 26, hex_editor::SURFACE_MAT);
+  news = hex_editor::triggers_resolve(t, w);
+  assert(len(news) == 0, "nothing was said about it, got {len(news)}");
+  assert(!(t[0] ?? hex_editor::Trigger {}).tg_broken, "and it was not broken");
+}
+
+fn test_an_unchanged_ground_says_nothing() {
+  // Silence when nothing needs acting on — the resolver runs on every dirty flush,
+  // so a report per pass would drown the one that matters.
+  w = world();
+  t = anchored(w, 3, 0);
+  news = hex_editor::triggers_resolve(t, w);
+  assert(len(news) == 0, "an unchanged anchor is not news, got {len(news)}");
+}

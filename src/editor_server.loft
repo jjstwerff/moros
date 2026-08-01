@@ -619,53 +619,7 @@ fn body_mesh() -> Mesh {
 // `layer_write` is `hex_editor`'s now — one read-modify-write, beside the
 // gestures. The surface writers below still name their own layer index.
 
-// ── ROADS (rung W1, moros#9) ─────────────────────────────────────────────────
-//
-// **A road GRADES the ground; it does not drape over it.** That is #9's open
-// question, answered here: a surface that follows every bump is not a road, and a
-// graded one owns the heights of the cells it covers — which is also what lets it
-// satisfy the ladder's standing obligation that a rung survive edits underneath
-// it. Raise a hill under a road and the road is wrong until it is re-laid, which
-// is a visible, fixable state; a draped road would silently become a ripple.
-//
-// The width is a HALF-WIDTH in hexes rather than a falloff: a road has an edge.
-// The brush's `(1-(d/R)^2)^2` is right for a hill, which has no edge, and wrong
-// here for the same reason.
-//
-// ⚠ What this is NOT yet: `hex_way` models a way as ONE exact centreline with
-// offsets derived from it, which is how it escapes the half-hex quantisation floor
-// a rasterised band bottoms out at. This lays a band along the walked path, so it
-// IS on that floor. The seam to take when it matters is already clear —
-// `hex_way` owns the curve, `hex_world` owns the cells — and nothing here
-// contradicts it: the authoring gesture changes, the stamp does not.
-// ⚠ A ROAD GRADES THE SURFACE THE AUTHOR IS WALKING ON, which is not the same
-// thing as the outdoors. `road_h` is already frozen from the FEET — that is what
-// makes a road cut into a hill instead of riding up it — so the write has to land
-// on the layer those feet are on, or the grade and the target disagree. Writing
-// through `terrain_set` sent every road cell to the GROUND layer, which is right
-// only while the ground is the only thing anyone can stand on.
-//
-// ⚠ NOT YET REACHABLE, AND SAID SO RATHER THAN CLAIMED: the editor has no way to
-// get a character onto an upper deck — a storey is 3 wu and the cliff rule refuses
-// a climb that steep — so today every call lands on the ground exactly as before,
-// and the gate can only witness the half that IS reachable (a road over a cellar
-// grading the ground, not the cellar). The deck half is correct by construction
-// and untested, which is a weaker claim and belongs written down as one.
-fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float) {
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        hh = h;
-        if hh < W_RESERVE { hh = W_RESERVE; }
-        if hh > 65535 { hh = 65535; }
-        surface_set(wld, q, r, feet, hh, ROAD_MAT);
-      }
-    }
-  }
-}
+// `road_lay` is `hex_editor`'s now.
 
 // `stair_cut` is `hex_editor`'s now.
 
@@ -1666,67 +1620,13 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
   }
 }
 
-// ── TRIGGERS AND THEIR ANCHORS (rung W8, moros#15) — invariant II ───────────
-//
-// > No anchor, and no binding to one, ever silently dangles. When geometry
-// > changes under an attached thing, its anchor moves with it or is REPORTED
-// > BROKEN — and so is every routine binding that names it. Never dropped, never
-// > silently relocated. A FOREIGN name the editor cannot resolve is neither: it
-// > is shown as foreign, and left alone.
-//
-// This is the invariant that separates an editor from a paint program, and it is
-// the anchor's whole subject: we own HOW A THING ATTACHES TO GEOMETRY, never the
-// payload. A trigger here carries a name and nothing else — what the name means
-// is the routine engine's business, and we build no part of that.
-//
-// An anchor names GROUND at a hex. Three outcomes, and exactly three:
-//   · the ground moved      → the anchor follows, and says so;
-//   · the ground is no longer ground (paved, built on, roofed)
-//                           → BROKEN, and says so. Not relocated to whatever is
-//                             there now, which would silently re-point a trigger
-//                             at a surface nobody attached it to;
-//   · the name is foreign   → untouched, and shown as foreign. We neither
-//                             resolve it nor drop it, because it is not ours.
-struct Trigger {
-  tg_id:      integer,
-  tg_q:       integer,
-  tg_r:       integer,
-  tg_h:       integer,
-  tg_name:    text,
-  tg_broken:  boolean,
-  tg_foreign: boolean,
-}
+// `Trigger` is `hex_editor`'s now.
 
 // A name we do not own. The editor resolves its OWN bindings; anything qualified
 // into another namespace belongs to someone else and is left exactly as found.
 fn name_is_foreign(n: text) -> boolean { n.find("::") != null }
 
-// Re-resolve every anchor against the world as it is NOW. Called after edits
-// land, which is the only moment geometry can have moved under one.
-fn triggers_resolve(trigs: vector<Trigger>, wld: World, srv: Server) {
-  for tg in trigs {
-    if tg.tg_broken || tg.tg_foreign { continue; }
-    col = world_column(wld, tg.tg_q, tg.tg_r);
-    top = 0 - 1;
-    mat = 0;
-    for e in col.co_cells {
-      if hex_world::hex_occupied(e) {
-        top = e.h_height as integer ?? 0;
-        mat = e.h_material as integer ?? 0;
-      }
-    }
-    if top < 0 || mat != SURFACE_MAT {
-      tg.tg_broken = true;
-      srv.broadcast("S:trigger {tg.tg_id} BROKEN — the ground it named at "
-                    + "({tg.tg_q},{tg.tg_r}) is now material {mat}");
-      println("editor: trigger {tg.tg_id} BROKEN at ({tg.tg_q},{tg.tg_r})");
-    } else if top != tg.tg_h {
-      tg.tg_h = top;
-      srv.broadcast("S:trigger {tg.tg_id} followed to height {top}");
-      println("editor: trigger {tg.tg_id} followed to {top}");
-    }
-  }
-}
+// `triggers_resolve` is `hex_editor`'s now.
 
 // The cart's three rigs, placed from ONE frame. The wheels are children of the
 // body in the only sense that matters here: their transform is the body's, times
@@ -3123,8 +3023,8 @@ fn main() {
               // followed the path.
               if roading {
                 rhx = world_to_hex(px, pz);
-                road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, ROAD_HALF, py);
-                mark_dirty(dirty, rhx.ha_q, rhx.ha_r, ROAD_HALF);
+                hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, hex_editor::ROAD_HALF, py);
+                mark_dirty(dirty, rhx.ha_q, rhx.ha_r, hex_editor::ROAD_HALF);
                 py = (road_h as float) * HEIGHT_SCALE;
               }
               if levelling {
@@ -3607,7 +3507,8 @@ fn main() {
             // should CUT into the hill rather than ride up it, which is what
             // makes it a road and not a painted stripe.
             rvf = py / HEIGHT_SCALE ?? 0.0;
-            road_h = (rvf + 0.5) as integer;
+            rres0 = 0.0;
+            road_h = hex_editor::freeze_grade(rvf, rres0);
           }
           // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
           // height and a grade is an integer, so freezing one from the other
@@ -3639,11 +3540,8 @@ fn main() {
             // the cell froze a level the character was not actually at — the
             // same two-derivations-of-one-surface class as everything else here.
             lvf = py / HEIGHT_SCALE ?? 0.0;
-            if lvf >= 0.0 {
-              level_h = (lvf + 0.5) as integer;
-            } else {
-              level_h = (lvf - 0.5) as integer;
-            }
+            lres0 = 0.0;
+            level_h = hex_editor::freeze_grade(lvf, lres0);
             // The same quantisation as the road's, and owed the same report:
             // the floor you froze is not quite the floor you were standing on.
             lres2 = lvf - (level_h as float);
@@ -4087,7 +3985,19 @@ fn main() {
         srv.broadcast("S:rebuilt {nrebuilt} chunks");
         // Anchors are re-resolved HERE, where geometry has just changed, so a
         // trigger cannot be left pointing at a world that no longer exists.
-        triggers_resolve(trigs, wld, srv);
+        // The rule is `hex_editor`'s; SAYING it is the server's. The resolver
+        // returns what it found rather than broadcasting from inside a loop over
+        // geometry, which is what made the rule need a socket to be tested at all.
+        for tn in hex_editor::triggers_resolve(trigs, wld) {
+          if tn.tn_what == hex_editor::TG_BROKEN {
+            srv.broadcast("S:trigger {tn.tn_id} BROKEN — the ground it named is now "
+                        + "material {tn.tn_mat}");
+            println("editor: trigger {tn.tn_id} BROKEN");
+          } else {
+            srv.broadcast("S:trigger {tn.tn_id} followed to height {tn.tn_h}");
+            println("editor: trigger {tn.tn_id} followed to {tn.tn_h}");
+          }
+        }
       }
     }
 
