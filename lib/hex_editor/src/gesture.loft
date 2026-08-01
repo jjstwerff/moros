@@ -1284,6 +1284,91 @@ pub fn runs_track(runs: WallRuns) -> Track {
   t
 }
 
+// ── S5: OPENINGS — a door is a MATERIAL, never a cleared edge ───────────────
+//
+// ⚠ `X70`, and it was measured before it was a rule. Moros stored a door as wall
+// material 0 once, and hexbody measured what that costs: the wall RUN breaks — 38
+// edges with 0 ends becoming 36 with 2 — because a cleared edge is indistinguishable
+// from no edge, so the recovery that finds a wall loses its middle. The boundary is
+// still there; what changes is what it is made of.
+//
+// `hex_draw`'s own `place_opening` puts the opening in a surf slot and keeps the
+// wall material; our store has one byte per edge, so the material IS the slot and
+// `DOOR_MAT` / `WINDOW_MAT` are it. The consequence a renderer must honour: an
+// opening is a SUB-INTERVAL of the wall, not a shorter wall.
+pub const WINDOW_MAT = 4;    // a hole with a sill and a head — you see through it
+
+// How much of a wall an opening leaves standing, in height units: nothing for a
+// door, a sill below and a head above for a window.
+pub const WINDOW_SILL = 3;   // 0.75 wu — waist height
+pub const WINDOW_HEAD = 9;   // and the wall resumes above it
+
+pub fn is_opening(mat: integer) -> boolean { mat == DOOR_MAT || mat == WINDOW_MAT }
+
+// The edge material where a point falls, for the renderer to ask per span. -1 when
+// the point is not on a marked edge at all.
+//
+// ⚠ IT ASKS THE OWNER. An edge is one stored byte and both cells resolve to it, so
+// a reader that checks "this cell's three" misses every edge its neighbour owns —
+// which is half of them.
+pub fn edge_mat_at(w: World, x: float, z: float, ref: float) -> integer {
+  (cq, cr) = px_to_hex(x, z);
+  best = 0 - 1;
+  bestd = 0.0;
+  (cx, cz) = hex_to_px(cq, cr);
+  for d in 0..6 {
+    (nq, nr) = hex_neighbor(cq, cr, d);
+    m = wall_of(w, cq, cr, d, ref);
+    if m != 0 {
+      (nx, nz) = hex_to_px(nq, nr);
+      mx = (cx + nx) * 0.5;
+      mz = (cz + nz) * 0.5;
+      dd = (mx - x) * (mx - x) + (mz - z) * (mz - z);
+      if best < 0 || dd < bestd { best = m; bestd = dd; }
+    }
+  }
+  best
+}
+
+// Cut an opening into the wall the author is facing.
+//
+// The edges nearest the author along their facing become `kind`, so the hole is
+// where they stand rather than where a parameter says. A refusal when there is no
+// wall there — never a door in mid-air, which is what writing the material blind
+// would give.
+pub fn open_ahead(w: &World, a: Author, kind: integer, nedges: integer) -> Ack {
+  if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
+  nfit = fit_ordinal(nedges, 1, 6, "opening width");
+  if !nfit.ft_ok { return ack_no(fit_text(nfit)); }
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  ref = (ground_h(w, cq, cr) as float) * w.w_unit;
+
+  // The wall edges within reach, nearest the author first — a door goes where the
+  // author is standing, and `nedges` of them make its width.
+  found = 0;
+  for step in 0..3 {
+    for d in 0..6 {
+      if found < nedges {
+        (nq, nr) = hex_neighbor(cq, cr, d);
+        m = wall_of(w, cq, cr, d, ref);
+        if m == WALL_MAT || m == FENCE_MAT {
+          wall_set(w, cq, cr, d, kind, ground_h(w, cq, cr), ref);
+          found = found + 1;
+        }
+      }
+    }
+    if found == 0 && step == 0 {
+      // Nothing under the author's own cell — try the one they face, because a
+      // walker stands BESIDE a wall rather than in it.
+      (aq, ar) = px_to_hex(a.au_x + cos(a.au_yaw) * 1.0, a.au_z + sin(a.au_yaw) * 1.0);
+      cq = aq;
+      cr = ar;
+    }
+  }
+  if found == 0 { return ack_no("no wall here to open — stand against one"); }
+  ack_at(ack_ok(found), cq, cr)
+}
+
 // ── the modes, and what a mode writes per step ──────────────────────────────
 //
 // `road` and `level` are not one-shot gestures: they set a flag the TICK acts on,

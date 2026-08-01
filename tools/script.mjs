@@ -56,6 +56,8 @@ const KEYMAP = {
   B: '12:1', C: '12:-1',  // a storey above, a cellar below
   R: '25:1',              // a wall run — two presses, start and end
   H: '32:',               // a house where you are looking (S4)
+  O: '36:2',              // a door in the wall you are against (S5)
+  P: '36:4',              // …and a window
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
@@ -267,7 +269,14 @@ for (const raw of lines) {
     ws.send(`8:${rest[0]}`);
     console.log('  ' + await ack('saved', 30000));
   } else if (cmd === 'wait') {
-    console.log('  ' + await ack(rest.join(' ')));
+    // ⚠ LOOK AT WHAT ALREADY ARRIVED. `ack` scans only messages that land AFTER it
+    // is called, which is right for "the next one" and wrong for "has this
+    // happened" — and a `key` that prints its own acknowledgement has already
+    // consumed it, so `wait` for the same thing sat out the full 40-second limit
+    // and carried on. Exactly the fault that cost two gates 80 seconds a run.
+    const want = rest.join(' ');
+    const seen = status.find((x) => x.startsWith(want));
+    console.log('  ' + (seen ?? await ack(want)));
   } else if (cmd === 'snap') {
     await snap(rest[0]);
   } else if (cmd === 'echo') {

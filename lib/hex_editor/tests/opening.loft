@@ -1,0 +1,133 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S5 — AN OPENING IS A MATERIAL, AND THE WALL STAYS WHOLE.
+//
+// ⚠ `X70`, measured before it was a rule. Moros stored a door as wall material 0
+// once, and hexbody measured what that costs: the wall RUN breaks — 38 edges with
+// 0 ends becoming 36 with 2 — because a cleared edge cannot be told from no edge,
+// so the recovery that finds a wall loses its middle. The boundary is still there;
+// what changes is what it is made of.
+//
+// The consequence a renderer must honour, and the reason this is S5 rather than a
+// store detail: an opening is a SUB-INTERVAL of the wall, not a shorter wall.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 12..13 {
+    for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// A ring of wall around the origin, and an author standing on it.
+fn walled() -> World {
+  w = world();
+  hex_editor::fence_disc(w, 0, 0, 2, hex_editor::WALL_MAT, 2.0);
+  w
+}
+
+fn owned_of(w: World, mat: integer) -> integer {
+  n = 0;
+  for q in 0 - 6..7 {
+    for r in 0 - 6..7 {
+      for d in 0..6 {
+        (oq, orr, _s) = hex_editor::edge_owner(q, r, d);
+        if oq == q && orr == r && hex_editor::wall_of(w, q, r, d, 2.0) == mat { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn at_the_wall() -> Author {
+  // Standing ON a ring cell, which is where an author is when they open a wall.
+  (x, z) = hex_to_px(2, 0);
+  hex_editor::author_at(x, z, 0.0)
+}
+
+fn test_an_opening_changes_a_material_and_deletes_no_edge() {
+  // THE CLAIM. Count the boundary before and after: the total is untouched, one of
+  // them simply reads differently.
+  w = walled();
+  walls0 = owned_of(w, hex_editor::WALL_MAT);
+  doors0 = owned_of(w, hex_editor::DOOR_MAT);
+  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 1);
+  assert(ack.ak_ok, "the opening was cut: {ack.ak_why}");
+  walls1 = owned_of(w, hex_editor::WALL_MAT);
+  doors1 = owned_of(w, hex_editor::DOOR_MAT);
+  assert(doors1 == doors0 + ack.ak_n, "{ack.ak_n} edges became doors, got {doors1 - doors0}");
+  assert(walls0 - walls1 == ack.ak_n, "and exactly that many stopped being wall");
+  assert(walls1 + doors1 == walls0 + doors0,
+         "the boundary is the same size: {walls0 + doors0} -> {walls1 + doors1}");
+}
+
+fn test_a_wider_opening_takes_more_edges() {
+  w = walled();
+  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 2);
+  assert(ack.ak_ok, "a two-edge opening: {ack.ak_why}");
+  assert(ack.ak_n == 2, "took two edges, got {ack.ak_n}");
+  assert(owned_of(w, hex_editor::DOOR_MAT) == 2, "and both are doors");
+}
+
+fn test_a_window_is_its_own_material_not_a_door() {
+  // They differ in what the RENDERER does — a door leaves nothing, a window leaves
+  // a sill below and a head above — so they cannot share a material.
+  w = walled();
+  hex_editor::open_ahead(w, at_the_wall(), hex_editor::WINDOW_MAT, 1);
+  assert(owned_of(w, hex_editor::WINDOW_MAT) == 1, "one window");
+  assert(owned_of(w, hex_editor::DOOR_MAT) == 0, "and no door");
+  assert(hex_editor::is_opening(hex_editor::WINDOW_MAT), "a window is an opening");
+  assert(hex_editor::WINDOW_SILL < hex_editor::WINDOW_HEAD,
+         "and it leaves a sill below its head");
+}
+
+fn test_opening_thin_air_is_refused() {
+  // ⚠ NEVER A DOOR IN MID-AIR. Writing the material blind would put an opening
+  // wherever the author happened to stand, and an opening with no wall around it
+  // is a boundary the model believes in and the picture cannot show.
+  w = world();
+  before = w.w_tau;
+  ack = hex_editor::open_ahead(w, hex_editor::author_at(0.0, 0.0, 0.0),
+                               hex_editor::DOOR_MAT, 1);
+  assert(!ack.ak_ok, "an opening with no wall is refused");
+  assert(ack.ak_why != "", "with a reason: {ack.ak_why}");
+  assert(w.w_tau == before, "and nothing was written: τ {before} -> {w.w_tau}");
+}
+
+fn test_a_material_that_is_not_an_opening_is_refused_without_an_offer() {
+  // Nominal, like every other material in this editor: a fence is not "nearly" a
+  // door, and offering one would change what the hole IS.
+  w = walled();
+  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::FENCE_MAT, 1);
+  assert(!ack.ak_ok, "a fence is not an opening");
+  assert(!ack.ak_why.contains("offer"), "and gets no offer: {ack.ak_why}");
+}
+
+fn test_an_absurd_width_is_refused_with_one() {
+  // Ordinal, so it does: a width has a nearest admissible value.
+  w = walled();
+  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 40);
+  assert(!ack.ak_ok, "forty edges is refused");
+  assert(ack.ak_why.contains("offer 6"), "with the widest that fits: {ack.ak_why}");
+  assert(ack.ak_why.contains("residual 34"), "and how far off: {ack.ak_why}");
+}
+
+fn test_the_renderer_can_find_the_opening_by_position() {
+  // What `emit_run_wall` needs: given a point on the wall, what is the edge made
+  // of. Without this the band is drawn whole and the hole never reaches a picture.
+  w = walled();
+  hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 1);
+  (x, z) = hex_to_px(2, 0);
+  found = 0;
+  for d in 0..6 {
+    (nq, nr) = hex_neighbor(2, 0, d);
+    (nx, nz) = hex_to_px(nq, nr);
+    m = hex_editor::edge_mat_at(w, (x + nx) * 0.5, (z + nz) * 0.5, 2.0);
+    if m == hex_editor::DOOR_MAT { found = found + 1; }
+  }
+  assert(found > 0, "the door is findable from a point on it");
+}

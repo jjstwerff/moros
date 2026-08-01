@@ -128,8 +128,9 @@ is wrong — which is how `25:` passed its gate for months while drawing a road.
 | `S2` | ✅ `tools/views.mjs` — plan + elevation PNGs, no GPU, passive | showed the road-with-lines exactly |
 | `S3` | ✅ **a wall run lays a wall** — 6 tests, three mutations seen red | `shots/s3-wall.png`, and it reads as a wall |
 | `S4` | ✅ **a house, placed from the pose** — `H`, and the corners MEET | `shots/s4-house.png` |
-| `S5` | **NEXT** — `place_opening`: a door and a window where the author stands | a wall with a hole you can see through |
-| `S6`–`S8` | `draw_roof` · headless runner · the swinging door | |
+| `S5` | ✅ **openings** — `O` a door, `P` a window, both MATERIALS on the edge | `shots/s5-opening.png` |
+| `S6` | **NEXT** — `draw_roof`: derived pitch, its own material and mesh | it reads as a house |
+| `S7`–`S8` | headless runner · the swinging door | |
 
 **What `S3` found, and it was one line rather than three.** `25:` carries the material —
 `1` is `WALL_MAT`, `3` is `FENCE_MAT` — and `do_wall` **paved a road whatever it was told**.

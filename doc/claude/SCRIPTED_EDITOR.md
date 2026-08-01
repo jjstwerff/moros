@@ -96,7 +96,7 @@ throughout so there is always something to look at.
 | `S2` | **elevation raster** beside `plan.mjs`: geometry in, PNG out, no GPU | the current hut, in plan and elevation — the zigzag made visible |
 | `S3` | ✅ **a wall run lays a WALL** — the line's own edges, at `hex_draw`'s band | `shots/s3-wall.png` — it reads as a wall; `tools/scripts/wall.keys` builds it |
 | `S4` | ✅ **a house from the pose** — `box_fill`, `seat_write`, four mitred sides | `shots/s4-house.png`: the plan closes at every corner |
-| `S5` | **`place_opening`** — a door and a window where the character stands | a wall with a hole you can see through |
+| `S5` | ✅ **a door and a window where the author stands** — `O` and `P` | `shots/s5-opening.png`: you see through it |
 | `S6` | **`draw_roof`** | it reads as a house |
 | `S7` | **`src/editor_run`** — the script drives those functions with no server at all | the same house, built headless |
 | `S8` | **the leaf** — a door that swings, on a hinge (`Assembly`, `A1`–`A10`) | the door **ajar**, which is what makes it read as a door |

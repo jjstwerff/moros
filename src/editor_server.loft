@@ -298,6 +298,7 @@ const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
 const MSG_HOUSE = 32;
+const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you face
 const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
 const HOUSE_D = 4;        // not the parameters
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
@@ -1440,10 +1441,41 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
     // one chunk and no seam draws twice.
     mh = world_to_hex((ax + bx) * 0.5, (az + bz) * 0.5);
     if mh.ha_q >= q0 && mh.ha_q < q0 + CHUNK && mh.ha_r >= r0 && mh.ha_r < r0 + CHUNK {
-      ya = terrain_y(ax, az, wld);
-      yb = terrain_y(bx, bz, wld);
-      ta = ya + (up as float) * HEIGHT_SCALE;
-      tb = yb + (up as float) * HEIGHT_SCALE;
+      // ⚠ S5 — AN OPENING IS A SUB-INTERVAL OF THE WALL, not a shorter wall. The
+      // edges under this span carry the material: `WALL_MAT` draws the full band,
+      // `DOOR_MAT` draws NOTHING (the hole you walk through), `WINDOW_MAT` draws a
+      // sill below and a head above so you can see through the middle.
+      //
+      // Asked per span rather than per run, which is the whole difference: a run's
+      // material would make the entire wall a door, and `wall_up` already does
+      // exactly that for a run laid as one. The band is what makes this possible —
+      // before S3 a wall was a zero-thickness sheet and a hole in it was a hole in
+      // nothing.
+      omat = hex_editor::edge_mat_at(wld, (ax + bx) * 0.5, (az + bz) * 0.5,
+                                     terrain_y(ax, az, wld));
+      // ⚠ A WINDOW IS TWO BANDS, not a raised floor. The first version set the
+      // bottom to the sill and kept the top, which draws the wall ABOVE the sill
+      // and leaves the hole at ground level — an opening you step through, not one
+      // you see through. The elevation said so immediately: a notch at the bottom
+      // where a window should be a gap in the middle.
+      //
+      // So a span is a LIST of bands: a wall is one, a door is none, a window is
+      // wall-to-sill and head-to-top with the light between them.
+      bands: vector<integer> = [0, up];
+      if omat == hex_editor::DOOR_MAT { bands = []; }
+      if omat == hex_editor::WINDOW_MAT {
+        bands = [0, hex_editor::WINDOW_SILL, hex_editor::WINDOW_HEAD, up];
+      }
+      gy0 = terrain_y(ax, az, wld);
+      gy1 = terrain_y(bx, bz, wld);
+      for bi in 0..len(bands) / 2 ?? 0 {
+      lo_u = bands[bi * 2] ?? 0;
+      hi_u = bands[bi * 2 + 1] ?? 0;
+      if hi_u <= lo_u { continue; }
+      ya = gy0 + (lo_u as float) * HEIGHT_SCALE;
+      yb = gy1 + (lo_u as float) * HEIGHT_SCALE;
+      ta = gy0 + (hi_u as float) * HEIGHT_SCALE;
+      tb = gy1 + (hi_u as float) * HEIGHT_SCALE;
       // The front face, at +half; the back at -half. With half = 0 these are the
       // same plane and the emission is the sheet a fence has always been.
       f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
@@ -1471,6 +1503,7 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
           emit_tri(m, f1, en, b1, en, b2, en);
           emit_tri(m, f1, en, b2, en, f2, en);
         }
+      }
       }
     }
   }
@@ -2889,6 +2922,7 @@ fn main() {
   println("  B/C a storey above / a cellar below · L level · F ring a fence");
   println("  R a STRAIGHT wall run — press once to start it, once to close it");
   println("  H a HOUSE where you are looking — four walls that MEET (S4)");
+  println("  O a DOOR in the wall you are against · P a WINDOW (S5)");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
@@ -3415,6 +3449,22 @@ fn main() {
           }
           ccell = world_ground_cell(wld, cq2, cr2);
           srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
+        } else if ev.msg_id == MSG_OPEN {
+          // ⚠ THE WHOLE GESTURE IS `hex_editor::open_ahead`, and the payload is the
+          // KIND — `2` a door, `4` a window. Both are materials on the edge, never a
+          // cleared one (`X70`): the boundary stays, and what changes is what it is
+          // made of, which is why the wall run still recovers as one.
+          okind = ev.payload as integer ?? hex_editor::DOOR_MAT;
+          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw), okind, 1);
+          if !oack.ak_ok {
+            srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
+            println("editor: opening refused — {oack.ak_why}");
+          } else {
+            mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
+            srv.send_to(ev.cid, "S:opened {oack.ak_n} edges at {oack.ak_q},{oack.ak_r} "
+                              + "as material {okind}");
+            println("editor: opened {oack.ak_n} edges at ({oack.ak_q},{oack.ak_r})");
+          }
         } else if ev.msg_id == MSG_HOUSE {
           // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
           // what a server owes: the grade under the author's feet, the chunks to
