@@ -284,7 +284,7 @@ pub fn place_house(w: &World, a: Author, wid: integer, dep: integer,
   for i in 0..PLAN_SIDES {
     side = qs[i] ?? WallQuad {};
     m = 0;
-    wall_stamp(w, WallRun { wr_x0: side.wq_x0, wr_z0: side.wq_y0,
+    wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: side.wq_x0, wr_z0: side.wq_y0,
                             wr_x1: side.wq_x1, wr_z1: side.wq_y1,
                             wr_mat: WALL_MAT, wr_step: 0 },
                WALL_MAT, grade, runs, m);

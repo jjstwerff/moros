@@ -332,6 +332,11 @@ addEventListener('keydown', (e) => {
   // The twenties are COMPOSITION: cut into the back of the niche already there,
   // which is a castle embrasure — a window seat with its window at the far end.
   if (e.code === 'KeyM') { ws.send('36:21'); e.preventDefault(); return; }  // embrasure
+  // ⚠ THE OPPOSITE OF AN OPENING: a volume built ONTO the host, not out of it.
+  // J a bedstee — a closed box with an arched mouth. K a balcony — an open deck
+  // with a rail, which bites a little into a round host so its floor has a flat.
+  if (e.code === 'KeyJ') { ws.send('37:0'); e.preventDefault(); return; }   // bedstee
+  if (e.code === 'KeyK') { ws.send('37:1'); e.preventDefault(); return; }   // balcony
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

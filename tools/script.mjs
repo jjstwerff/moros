@@ -62,6 +62,8 @@ const KEYMAP = {
   U: '36:4',              // …and an oculus, a round window
   N: '36:11',             // a round-headed NICHE — the same curve, stopped short
   M: '36:21',             // …and a window in that niche's BACK — the embrasure
+  J: '37:0',              // a BEDSTEE — a closed box built ONTO the wall you face
+  K: '37:1',              // a BALCONY — an open deck with a rail, and a way in
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

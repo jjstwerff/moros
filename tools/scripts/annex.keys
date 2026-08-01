@@ -1,0 +1,36 @@
+# THE ATTACHED VOLUME — a bedstee on a cottage wall, a balcony on a tree.
+#
+# ⚠ ONE PRIMITIVE, TWO PICTURES. A sleeping alcove is NOT cut into a wall: it is a
+# wooden box built ONTO it. A balcony is mostly outside its trunk but bites a little
+# INTO the round of it, so straight wood has something flat to land on and a door
+# can go through what is left. They differ in two numbers and a kind.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a cottage wall, and a bedstee built against it
+at -10 6 0
+key R
+at -2 6 0
+key R
+at -6 4.2 90
+key J
+
+echo --- a trunk: a ring of wall, which is a cylinder
+at 6 6 0
+key G
+wait rebuilt
+
+echo --- and a balcony on its east side
+at 9 6 0
+key K
+
+echo --- the bedstee, from the room it opens into, and off the axis so it reads
+at -9 1 70
+snap s9-bedstee
+
+echo --- the balcony, from far enough out to see it is UP the trunk
+at 16 -3 115
+snap s9-balcony

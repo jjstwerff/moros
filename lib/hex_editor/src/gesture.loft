@@ -1059,6 +1059,14 @@ pub struct WallRun {
   wr_x1: float, wr_z1: float,
   wr_mat: integer,
   wr_step: integer,                    // which of the 24, for the record
+  // ⚠ WHERE THE RUN STARTS AND STOPS, in height units above the terrain under it.
+  // Every run used to begin at the ground and rise by whatever its material says,
+  // which is right for a wall and wrong for everything that stands ON something: a
+  // balcony's rail begins at its deck, a bedstee's side begins at its floor. `0` and
+  // `0` mean "from the ground, by the material" — the behaviour every existing run
+  // had before these existed, so nothing that does not ask for a base changes.
+  wr_base: integer,
+  wr_up: integer,
 }
 
 pub struct WallRuns { items: vector<WallRun> }
@@ -1222,7 +1230,7 @@ pub fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
         // which is exactly what the straightness gate measured first time out.
         (rax, raz) = hex_way::seg_point(o, 0, 0.0);
         (rbx, rbz) = hex_way::seg_point(o, 0, hex_way::seg_len(o, 0));
-        runs.items += [WallRun { wr_x0: rax, wr_z0: raz, wr_x1: rbx, wr_z1: rbz,
+        runs.items += [WallRun { wr_base: 0, wr_up: 0, wr_x0: rax, wr_z0: raz, wr_x1: rbx, wr_z1: rbz,
                                  wr_mat: fence_mat, wr_step: run.wr_step }];
         (tx, ty) = hex_way::seg_tangent(o, 0, 0.0);
         (ox, oy) = hex_way::seg_point(o, 0, 0.0);
@@ -2108,4 +2116,186 @@ pub fn raise_ahead(w: &World, a: Author, dir: integer) -> Ack {
                             residual), tq, tr);
   }
   ack_at(ack_ok(1), tq, tr)
+}
+
+// ── THE ANNEX: A VOLUME ATTACHED TO A HOST SURFACE ──────────────────────────
+//
+// ⚠ AN OPENING IS A VOID; THIS IS THE OPPOSITE, and the two pictures that named it
+// are the same shape. A sleeping alcove is NOT cut into a cottage wall — it is a
+// wooden box built ONTO it, with a cupboard beside it. A balcony on a tree is
+// mostly outside the trunk, but cuts a little INTO the round of it so that straight
+// wood has something flat to land on, and takes a door through what is left.
+//
+// So an annex is an interval through its host's surface too, like an opening, but
+// running the other way: `an_in` behind the face and `an_out` in front of it. A
+// bedstee is `in 0`; a balcony is `in` a little and `out` a lot. Nothing else
+// separates them.
+//
+//   ┌──────────┐  an_out  the volume standing proud of the host
+//   │  annex   │
+//   ├──────────┤  ← the host's face
+//   │   seat   │  an_in   the flat it cuts into a round host
+//   └──────────┘
+//
+// ⚠ ITS WALLS ARE WALL RUNS AND ITS FRONT IS A SURFACE OPENINGS CUT. That is the
+// whole reason it is worth having as a primitive rather than a mesh: a bedstee's
+// mouth is an `Opening` in its front run, a balcony's door is an `Opening` in the
+// HOST at the seat, and the arches, frames, reveals and profiles all apply with no
+// new code. An annex that drew its own hole would be a fifth system.
+
+pub const AN_BOX  = 0;      // a closed box: a bedstee, a cupboard, a porch
+pub const AN_DECK = 1;      // an open platform with a rail: a balcony, a gallery
+
+// A balcony's rail, in height units — about a metre, which is what a person leans
+// on. A box's sides run to its own head instead.
+pub const ANNEX_RAIL = 5;
+
+pub struct Annex {
+  an_x:  float, an_z:  float,   // where on the host, in the world
+  an_nx: float, an_nz: float,   // the host's OUTWARD normal there — a wall's normal,
+                                //   or, on a round host, the radial direction, which
+                                //   is what makes a trunk and a wall the same case
+  an_w:    float,               // its width along the host
+  an_out:  float,               // how far it stands proud of the host's face
+  an_in:   float,               // how far it cuts into the host — the flat seat
+  an_floor: integer,            // its deck, in height units
+  an_head:  integer,            // and its head
+  an_kind:  integer,
+}
+
+pub struct Annexes { items: vector<Annex> }
+
+pub fn annex_at(x: float, z: float, nx: float, nz: float, w: float,
+                out: float, into: float, floor: integer, head: integer,
+                kind: integer) -> Annex {
+  n = sqrt(nx * nx + nz * nz) ?? 0.0;
+  ux = 1.0;
+  uz = 0.0;
+  if n > 0.000001 { ux = nx / n ?? 0.0; uz = nz / n ?? 0.0; }
+  Annex { an_x: x, an_z: z, an_nx: ux, an_nz: uz, an_w: w, an_out: out,
+          an_in: into, an_floor: floor, an_head: head, an_kind: kind }
+}
+
+// ⚠ ON A ROUND HOST THE NORMAL IS RADIAL, which is the whole of "a balcony on a
+// trunk". A tree is not a special host: it is a host whose outward direction turns
+// with where you stand on it, and the seat an annex cuts is flat precisely because
+// the annex is straight while the trunk is not.
+pub fn annex_on_round(cx: float, cz: float, radius: float, angle: float,
+                      w: float, out: float, into: float,
+                      floor: integer, head: integer, kind: integer) -> Annex {
+  nx = cos(angle);
+  nz = sin(angle);
+  annex_at(cx + nx * radius, cz + nz * radius, nx, nz, w, out, into,
+           floor, head, kind)
+}
+
+// The four corners of its footprint, anticlockwise from the seat's left. 0 and 1
+// sit on the seat — behind the host's face by `an_in` — and 2 and 3 at the front.
+pub fn annex_corner_x(a: Annex, i: integer) -> float {
+  tx = 0.0 - a.an_nz;
+  hw = a.an_w * 0.5;
+  if i == 0 { return a.an_x - tx * hw - a.an_nx * a.an_in; }
+  if i == 1 { return a.an_x + tx * hw - a.an_nx * a.an_in; }
+  if i == 2 { return a.an_x + tx * hw + a.an_nx * a.an_out; }
+  a.an_x - tx * hw + a.an_nx * a.an_out
+}
+
+pub fn annex_corner_z(a: Annex, i: integer) -> float {
+  tz = a.an_nx;
+  hw = a.an_w * 0.5;
+  if i == 0 { return a.an_z - tz * hw - a.an_nz * a.an_in; }
+  if i == 1 { return a.an_z + tz * hw - a.an_nz * a.an_in; }
+  if i == 2 { return a.an_z + tz * hw + a.an_nz * a.an_out; }
+  a.an_z - tz * hw + a.an_nz * a.an_out
+}
+
+// How far its front stands from the host's face, and how deep its floor is front to
+// back. A balcony you cannot stand on is a moulding.
+pub fn annex_depth(a: Annex) -> float { a.an_in + a.an_out }
+
+// The head its walls reach: a box closes at its own head, a deck carries a rail.
+pub fn annex_wall_top(a: Annex) -> integer {
+  if a.an_kind == AN_DECK { return a.an_floor + ANNEX_RAIL; }
+  a.an_head
+}
+
+// ⚠ ITS WALLS ARE THREE ORDINARY RUNS, open toward the host — which is what lets
+// every opening, frame, reveal and profile apply to them with no new code. They
+// start at the annex's own FLOOR, which is why `wr_base` had to exist: a balcony's
+// rail that ran to the ground would be a buttress.
+pub fn annex_runs(a: Annex, mat: integer, out: &WallRuns) {
+  top = annex_wall_top(a);
+  for i in 0..3 {
+    j = i + 1;
+    out.items += [WallRun {
+      wr_x0: annex_corner_x(a, i), wr_z0: annex_corner_z(a, i),
+      wr_x1: annex_corner_x(a, j), wr_z1: annex_corner_z(a, j),
+      wr_mat: mat, wr_step: 0, wr_base: a.an_floor, wr_up: top - a.an_floor }];
+  }
+}
+
+// The void it cuts into its host: as wide as the annex, as deep as `an_in`. A
+// bedstee cuts nothing; a balcony cuts the flat its floor lands on.
+pub fn annex_seat(a: Annex, band: float) -> Opening {
+  d = a.an_in / band ?? 0.0;
+  if d > 1.0 { d = 1.0; }
+  o = opening_for(a.an_x, a.an_z, a.an_w - 2.0 * OPENING_CLEAR,
+                  a.an_floor, a.an_head, d);
+  o
+}
+
+// ⚠ AND THE WAY IN IS AN ORDINARY OPENING IN THE HOST, cut from the SEAT rather
+// than from the host's outer face — the datum again, one level out. A balcony's
+// door starts where the seat's back is, so it pierces only what the seat left.
+pub fn annex_door(a: Annex, band: float, width: float, kind: integer,
+                  unit: float) -> Opening {
+  o = profile_opening(a.an_x, a.an_z, width, a.an_floor, a.an_floor + 8,
+                      kind, 0.0, unit, 1.0);
+  near = a.an_in / band ?? 0.0;
+  if near > 1.0 { near = 1.0; }
+  Opening { op_x: o.op_x, op_z: o.op_z, op_half: o.op_half, op_lo: o.op_lo,
+            op_hi: o.op_hi, op_depth: 1.0, op_near: 0.0 - near,
+            op_spring: o.op_spring, op_kind: o.op_kind, op_radius: o.op_radius }
+}
+
+// The mouth of a box — a bedstee's bed opening, in its own FRONT run. It is an
+// `Opening` like any other, which is why it can be arched, framed and shuttered.
+pub fn annex_mouth(a: Annex, width: float, kind: integer, unit: float) -> Opening {
+  fx = a.an_x + a.an_nx * a.an_out;
+  fz = a.an_z + a.an_nz * a.an_out;
+  // ⚠ AN ARCH'S CROWN IS WHAT HAS TO CLEAR, NOT ITS SPRINGING. Springing the mouth
+  // at the lid puts the crown a half-width ABOVE it — measured, head 12 in a box
+  // whose lid is 10, so the bed opened through its own ceiling. The springing is
+  // derived from the crown down, which is the direction a builder works in.
+  rise = 0;
+  if kind != OP_FLAT {
+    rise = ((width * 0.5 + OPENING_CLEAR) / unit ?? 0.0) as integer;
+  }
+  spring = a.an_head - 1 - rise;
+  if spring < a.an_floor + 1 { spring = a.an_floor + 1; }
+  profile_opening(fx, fz, width, a.an_floor + 1, spring, kind, 0.0, unit, 1.0)
+}
+
+// ⚠ IT HAS TO FIT ITS HOST, and the two ways it does not are different. Too wide
+// and it overhangs the wall it hangs on; too deep a seat and it cuts clean through
+// the host, which for a trunk means a tree severed by its own balcony.
+pub fn annex_fits(a: Annex, host_len: float, at: float, band: float) -> Ack {
+  room = opening_room(host_len, at);
+  if a.an_w > room {
+    return ack_no("the annex is wider than the wall it hangs on — "
+                  + "offer {room}, residual {a.an_w - room}");
+  }
+  if a.an_in >= band {
+    return ack_no("its seat would cut clean through the host — "
+                  + "offer {band * 0.5}, residual {a.an_in - band * 0.5}");
+  }
+  if a.an_out <= 0.0 {
+    return ack_no("an annex that does not stand out is a niche — "
+                  + "offer 0.5, residual {0.0 - a.an_out}");
+  }
+  if a.an_head <= a.an_floor {
+    return ack_no("its head is at or below its floor — "
+                  + "offer {a.an_floor + 4}, residual {a.an_floor - a.an_head}");
+  }
+  ack_ok(3)
 }

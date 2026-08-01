@@ -1,0 +1,207 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// AN ANNEX IS A VOLUME ATTACHED TO A HOST SURFACE — the opposite of an opening,
+// and the two pictures that named it are one shape.
+//
+// ⚠ A SLEEPING ALCOVE IS NOT CUT INTO A COTTAGE WALL. It is a wooden box built ONTO
+// it, with a cupboard beside it — which is why the niche work, correct as it is,
+// could not build one. A balcony on a tree is the same thing with two numbers
+// changed: mostly outside the trunk, but cutting a little INTO the round of it so
+// straight wood has something flat to land on, and taking a door through what is
+// left.
+//
+// Every claim below is about that pair of numbers, or about the annex's walls being
+// ORDINARY WALL RUNS — because if they are, every opening, profile, frame and reveal
+// already built applies to them, and if they are not, this is a fifth system.
+use hex_editor;
+use hex_grid;
+
+const BAND = 0.8660254037844386;   // the wall's own thickness
+const U = 0.25;
+
+fn bedstee() -> Annex {
+  // Against a cottage wall facing +x: a box a bed long, standing into the room, its
+  // floor a step up, no cut into the wall at all.
+  hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 2.0, 1.4, 0.0, 2, 10, hex_editor::AN_BOX)
+}
+
+fn balcony() -> Annex {
+  // On a trunk of radius 3, on its east side: mostly outside, biting 0.3 into the
+  // round so the deck has a flat to land on.
+  hex_editor::annex_on_round(0.0, 0.0, 3.0, 0.0, 2.4, 1.6, 0.3, 16, 24,
+                             hex_editor::AN_DECK)
+}
+
+fn test_an_annex_stands_out_and_a_bedstee_cuts_nothing() {
+  // ⚠ THE CORRECTION THAT PRODUCED THIS FILE, as an assertion. A bedstee's depth is
+  // all projection: a version that put it in the wall would be the niche again.
+  b = bedstee();
+  assert(b.an_out > 1.0, "the box stands into the room: {b.an_out}");
+  assert(b.an_in == 0.0, "and takes nothing out of the wall: {b.an_in}");
+  d = hex_editor::annex_depth(b) - b.an_out;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "so its depth is its projection");
+}
+
+fn test_a_balcony_goes_both_ways() {
+  // *mostly outside but also cuts a bit into the mostly rounded tree* — both, and
+  // the proportion matters: a balcony that cut more than it projected would be a
+  // niche with a lip.
+  a = balcony();
+  assert(a.an_out > 0.0 && a.an_in > 0.0, "it reaches both ways");
+  assert(a.an_out > a.an_in * 2.0, "and mostly outward: {a.an_out} out, {a.an_in} in");
+  assert(hex_editor::annex_depth(a) > a.an_out, "its floor is deeper than its overhang");
+}
+
+fn test_the_seat_is_flat_where_the_host_is_round() {
+  // ⚠ THE POINT OF THE CUT, and the one claim a round host makes that a flat one
+  // does not. The two back corners must be the same distance along the normal —
+  // that is what "flat" means — while both sit further from the trunk's axis than
+  // the seat's middle, because the trunk bulges between them.
+  a = balcony();
+  x0 = hex_editor::annex_corner_x(a, 0); z0 = hex_editor::annex_corner_z(a, 0);
+  x1 = hex_editor::annex_corner_x(a, 1); z1 = hex_editor::annex_corner_z(a, 1);
+  // distance of each back corner along the annex's own normal, from the axis
+  d0 = x0 * a.an_nx + z0 * a.an_nz;
+  d1 = x1 * a.an_nx + z1 * a.an_nz;
+  d = d0 - d1;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "the seat's back is one straight line: {d0} against {d1}");
+  r0 = sqrt(x0 * x0 + z0 * z0) ?? 0.0;
+  assert(r0 > 3.0 - a.an_in, "and its corners stand outside the cut's depth: {r0}");
+}
+
+fn test_the_footprint_is_a_rectangle_that_closes() {
+  // Four corners, and opposite sides equal — an annex with a gap in it is a box
+  // with a missing wall, which is what a hand-rolled corner list gives you.
+  b = bedstee();
+  s01 = seg(b, 0, 1);
+  s32 = seg(b, 3, 2);
+  s03 = seg(b, 0, 3);
+  s12 = seg(b, 1, 2);
+  assert(near(s01, s32), "the seat and the front are the same width: {s01} vs {s32}");
+  assert(near(s03, s12), "and the two sides the same depth: {s03} vs {s12}");
+  assert(near(s01, b.an_w), "the width is the width asked for: {s01}");
+  assert(near(s03, hex_editor::annex_depth(b)), "and the depth is in + out: {s03}");
+}
+
+fn seg(a: Annex, i: integer, j: integer) -> float {
+  dx = hex_editor::annex_corner_x(a, j) - hex_editor::annex_corner_x(a, i);
+  dz = hex_editor::annex_corner_z(a, j) - hex_editor::annex_corner_z(a, i);
+  sqrt(dx * dx + dz * dz) ?? 0.0
+}
+
+fn near(a: float, b: float) -> boolean {
+  d = a - b;
+  if d < 0.0 { d = 0.0 - d; }
+  d < 0.000001
+}
+
+fn test_its_walls_are_three_ordinary_runs_open_toward_the_host() {
+  // ⚠ THE CLAIM THE WHOLE PRIMITIVE RESTS ON. If these are `WallRun`s then every
+  // opening, profile, frame and reveal already built applies to a bedstee's front
+  // with no new code — and if they are not, this is a fifth system that combines
+  // with nothing. THREE, not four: the fourth side is the host.
+  b = bedstee();
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annex_runs(b, hex_editor::WALL_MAT, runs);
+  assert(len(runs.items) == 3, "three runs, not four: {len(runs.items)}");
+  first = runs.items[0] ?? hex_editor::WallRun {};
+  last = runs.items[2] ?? hex_editor::WallRun {};
+  assert(near(first.wr_x0, hex_editor::annex_corner_x(b, 0)), "the first starts at the seat");
+  assert(near(last.wr_x1, hex_editor::annex_corner_x(b, 3)), "and the last comes back to it");
+  assert(!near(first.wr_x0, last.wr_x1) || !near(first.wr_z0, last.wr_z1),
+         "the U is open toward the host — its ends do not meet");
+}
+
+fn test_a_balconys_rail_starts_at_its_deck_and_not_at_the_ground() {
+  // ⚠ `wr_base` EXISTS FOR THIS ONE LINE. A rail that ran to the ground would be a
+  // buttress; sixteen height units up a trunk, it would be a wall with a balcony
+  // drawn on it.
+  a = balcony();
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::annex_runs(a, hex_editor::WALL_MAT, runs);
+  r = runs.items[0] ?? hex_editor::WallRun {};
+  assert(r.wr_base == a.an_floor, "the rail starts at the deck: {r.wr_base}");
+  assert(r.wr_up == hex_editor::ANNEX_RAIL,
+         "and rises a rail's height, not a wall's: {r.wr_up}");
+  b = bedstee();
+  bruns = hex_editor::WallRuns { items: [] };
+  hex_editor::annex_runs(b, hex_editor::WALL_MAT, bruns);
+  br = bruns.items[0] ?? hex_editor::WallRun {};
+  assert(br.wr_up == b.an_head - b.an_floor, "a box closes at its own head: {br.wr_up}");
+}
+
+fn test_a_bedstees_mouth_is_an_opening_in_its_own_front() {
+  // Which is what makes it a bedstee rather than a crate: you get in. And because it
+  // is an `Opening`, it can be arched, framed and given doors by everything already
+  // built — the alternative is a mouth that only a bedstee can have.
+  b = bedstee();
+  m = hex_editor::annex_mouth(b, 1.6, hex_editor::OP_ROUND, U);
+  fx = b.an_x + b.an_nx * b.an_out;
+  assert(near(m.op_x, fx), "the mouth is on the FRONT plane, not the host's: {m.op_x} vs {fx}");
+  assert(m.op_lo > b.an_floor - 1, "its sill is at the bed's own floor: {m.op_lo}");
+  assert(m.op_hi < b.an_head, "and its head below the box's lid: {m.op_hi}");
+  assert(hex_editor::opening_arched(m), "and it can be arched like any other");
+}
+
+fn test_a_balconys_door_is_cut_from_the_seat_and_not_from_the_trunks_face() {
+  // ⚠ THE DATUM AGAIN, ONE LEVEL OUT. The way in starts where the seat's back is —
+  // it pierces only what the cut left standing. A door measured from the trunk's
+  // outer face would begin in mid-air, `an_in` short of any wood.
+  a = balcony();
+  d = hex_editor::annex_door(a, BAND, 0.9, hex_editor::OP_ROUND, U);
+  assert(d.op_near < 0.0, "its datum is behind the host's face: {d.op_near}");
+  want = 0.0 - (a.an_in / BAND ?? 0.0);
+  assert(near(d.op_near, want), "by exactly the seat's depth: {d.op_near} against {want}");
+  assert(hex_editor::opening_at_back(d), "and it comes out the far side");
+  assert(d.op_lo == a.an_floor, "with its threshold at the deck: {d.op_lo}");
+}
+
+fn test_an_annex_wider_than_its_wall_is_refused_with_the_width_that_fits() {
+  b = hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 40.0, 1.4, 0.0, 2, 10,
+                           hex_editor::AN_BOX);
+  ack = hex_editor::annex_fits(b, 12.0, 6.0, BAND);
+  assert(!ack.ak_ok, "forty units on a twelve-unit wall is refused");
+  assert(ack.ak_why.contains("offer"), "with what fits: {ack.ak_why}");
+  assert(ack.ak_why.contains("residual"), "and how far off: {ack.ak_why}");
+}
+
+fn test_a_seat_that_would_cut_through_its_host_is_refused() {
+  // ⚠ A TREE SEVERED BY ITS OWN BALCONY. The seat is a bite out of the host, and a
+  // bite as deep as the host is a cut — refused with half the thickness, which is a
+  // seat you can actually build.
+  a = hex_editor::annex_on_round(0.0, 0.0, 3.0, 0.0, 2.0, 1.6, BAND + 0.5, 16, 24,
+                                 hex_editor::AN_DECK);
+  ack = hex_editor::annex_fits(a, 20.0, 10.0, BAND);
+  assert(!ack.ak_ok, "a seat deeper than its host is refused");
+  assert(ack.ak_why.contains("through"), "and says why: {ack.ak_why}");
+  assert(ack.ak_why.contains("offer"), "with a seat that fits: {ack.ak_why}");
+}
+
+fn test_an_annex_that_does_not_stand_out_is_refused_as_a_niche() {
+  // Nominal boundary: at zero projection the thing being asked for already exists
+  // and is called an alcove. Refusing names it rather than building a degenerate box.
+  b = hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.4, 2, 10,
+                           hex_editor::AN_BOX);
+  ack = hex_editor::annex_fits(b, 12.0, 6.0, BAND);
+  assert(!ack.ak_ok, "zero projection is refused");
+  assert(ack.ak_why.contains("niche"), "by name: {ack.ak_why}");
+}
+
+fn test_the_two_pictures_are_the_same_primitive() {
+  // The summary claim, stated once: a bedstee and a tree balcony differ in their
+  // numbers and their kind, and in nothing else. If this ever needs two structs,
+  // the design went wrong here.
+  b = bedstee();
+  a = balcony();
+  assert(b.an_kind != a.an_kind, "they differ in kind");
+  assert(hex_editor::annex_fits(b, 12.0, 6.0, BAND).ak_ok, "and both are buildable");
+  assert(hex_editor::annex_fits(a, 20.0, 10.0, BAND).ak_ok, "on their own hosts");
+  br = hex_editor::WallRuns { items: [] };
+  ar = hex_editor::WallRuns { items: [] };
+  hex_editor::annex_runs(b, hex_editor::WALL_MAT, br);
+  hex_editor::annex_runs(a, hex_editor::WALL_MAT, ar);
+  assert(len(br.items) == len(ar.items), "with the same number of walls");
+}

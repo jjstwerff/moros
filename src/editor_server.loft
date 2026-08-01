@@ -298,6 +298,8 @@ const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
 const MSG_HOUSE = 32;
+const MSG_ANNEX = 37;     // an ATTACHED VOLUME — a bedstee, a balcony, a porch.
+                          // `37:<kind>` — 0 a closed box, 1 an open deck with a rail.
 const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you face
 const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
 const HOUSE_D = 4;        // not the parameters
@@ -1263,7 +1265,7 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
   // the straight-line distance — which would run the way past where they stopped
   // whenever they drifted off the line.
   reach = dx * cos(ang) + dz * sin(ang);
-  run = WallRun { wr_x0: draft.wd_x, wr_z0: draft.wd_z,
+  run = WallRun { wr_base: 0, wr_up: 0, wr_x0: draft.wd_x, wr_z0: draft.wd_z,
                   wr_x1: draft.wd_x + cos(ang) * reach, wr_z1: draft.wd_z + sin(ang) * reach,
                   wr_mat: wmat, wr_step: step };
   grade = py_of(wld, draft.wd_x, draft.wd_z);
@@ -1426,8 +1428,15 @@ const OPEN_SUB = 8;
 
 fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
                  openings: hex_editor::Openings) {
+  // ⚠ A RUN CAN START OFF THE GROUND. `wr_base`/`wr_up` are 0 for every wall ever
+  // laid, which is "from the terrain, by the material" — but a balcony's rail begins
+  // at its deck and a bedstee's side at its floor. The base is folded into the
+  // GROUND height rather than into every band, so the whole run — faces, reveals,
+  // mouldings and all — lifts together and no arithmetic below this line changes.
   up = wall_up(run.wr_mat);
+  if run.wr_up > 0 { up = run.wr_up; }
   if up <= 0 { return; }
+  bsy = (run.wr_base as float) * HEIGHT_SCALE;
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
   ln = hex_way::seg_len(t, 0);
@@ -1570,7 +1579,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
         // wrong.
         if half > 0.0 && (cut || had) && (cut != had || lo_u != plo || hi_u != phi) {
           (jx, jz) = hex_way::seg_point(t, 0, ja);
-          jgy = terrain_y(jx, jz, wld);
+          jgy = terrain_y(jx, jz, wld) + bsy;
           // The face belongs to whichever side still has stone there.
           jn = vec3(0.0 - tx, 0.0, 0.0 - tz);
           if cut && !had { jn = vec3(tx, 0.0, tz); }
@@ -1595,8 +1604,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
         plo = lo_u;
         phi = hi_u;
 
-        gy0 = terrain_y(ax, az, wld);
-        gy1 = terrain_y(bx, bz, wld);
+        gy0 = terrain_y(ax, az, wld) + bsy;
+        gy1 = terrain_y(bx, bz, wld) + bsy;
 
         // ⚠ THE RING IS A DIFFERENCE OF TWO PROFILES — frame minus opening — which
         // is why one piece of code frames a square door, a pointed arch and a round
@@ -1635,7 +1644,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           // a bright line the full height of every jamb in the picture.
           if fcut != fhad || flo != pflo || fhi != pfhi {
             (rx, rz) = hex_way::seg_point(t, 0, ja);
-            rgy = terrain_y(rx, rz, wld);
+            rgy = terrain_y(rx, rz, wld) + bsy;
             rn = vec3(0.0 - tx, 0.0, 0.0 - tz);
             if fcut && !fhad { rn = vec3(tx, 0.0, tz); }
             if !fhad {
@@ -1782,7 +1791,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           // stepped reveal the front gets, at the other end of the wall.
           if bcut != bhad || blo_u != pbl || bhi_u != pbh {
             (sx, sz) = hex_way::seg_point(t, 0, ja);
-            sgy = terrain_y(sx, sz, wld);
+            sgy = terrain_y(sx, sz, wld) + bsy;
             sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
             if bcut && !bhad { sn = vec3(tx, 0.0, tz); }
             if !bhad {
@@ -1881,11 +1890,17 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings) {
+                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
   for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
+  for anx in annexes.items {
+    (aq, ar) = px_to_hex(anx.an_x, anx.an_z);
+    if aq >= q0 && aq < q0 + CHUNK && ar >= r0 && ar < r0 + CHUNK {
+      emit_annex_deck(fm, anx, wld);
+    }
+  }
   for lf in leaves.items {
     if lf.dl_q >= q0 && lf.dl_q < q0 + CHUNK && lf.dl_r >= r0 && lf.dl_r < r0 + CHUNK {
       emit_leaf(wm, lf, wld);
@@ -2323,6 +2338,35 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 
 // One triangle with a normal PER VERTEX, so the shading interpolates across it
 // instead of flooding it with one facet's value.
+// ⚠ THE ANNEX'S OWN FLOOR — the one surface its wall runs cannot give it. Its walls
+// are three ordinary runs, so faces, openings, reveals and mouldings all arrive for
+// free; what a run has never had is a horizontal slab between its ends. A balcony
+// without one is a rail around nothing, and a bedstee without a lid is a stall.
+fn emit_annex_deck(m: Mesh, a: Annex, wld: World) {
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  gy = terrain_y(a.an_x, a.an_z, wld);
+  fy = gy + (a.an_floor as float) * HEIGHT_SCALE;
+  c0 = vec3(hex_editor::annex_corner_x(a, 0), fy, hex_editor::annex_corner_z(a, 0));
+  c1 = vec3(hex_editor::annex_corner_x(a, 1), fy, hex_editor::annex_corner_z(a, 1));
+  c2 = vec3(hex_editor::annex_corner_x(a, 2), fy, hex_editor::annex_corner_z(a, 2));
+  c3 = vec3(hex_editor::annex_corner_x(a, 3), fy, hex_editor::annex_corner_z(a, 3));
+  emit_tri(m, c0, upn, c1, upn, c2, upn);
+  emit_tri(m, c0, upn, c2, upn, c3, upn);
+  // Its underside, which on a balcony is the face everyone standing below looks at.
+  emit_tri(m, c0, dwn, c2, dwn, c1, dwn);
+  emit_tri(m, c0, dwn, c3, dwn, c2, dwn);
+  if a.an_kind == hex_editor::AN_BOX {
+    hy = gy + (a.an_head as float) * HEIGHT_SCALE;
+    d0 = vec3(c0.x, hy, c0.z); d1 = vec3(c1.x, hy, c1.z);
+    d2 = vec3(c2.x, hy, c2.z); d3 = vec3(c3.x, hy, c3.z);
+    emit_tri(m, d0, upn, d1, upn, d2, upn);
+    emit_tri(m, d0, upn, d2, upn, d3, upn);
+    emit_tri(m, d0, dwn, d2, dwn, d1, dwn);
+    emit_tri(m, d0, dwn, d3, dwn, d2, dwn);
+  }
+}
+
 // One slice of the SURROUND: the wall's face pushed out by `FRAME_PROUD` over the
 // height the ring covers, with the ledges that return it to the wall at top and
 // bottom. Both sides get one — a frame visible only from the street is scenery.
@@ -3337,6 +3381,12 @@ fn main() {
   // The holes, as PROFILES. The store's edge materials say which boundary is
   // passable; these say what shape the hole through it is.
   wall_openings = hex_editor::Openings { items: [] };
+  wall_annexes = hex_editor::Annexes { items: [] };
+  // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
+  ring_live = false;
+  ring_x = 0.0;
+  ring_z = 0.0;
+  ring_r = 0.0;
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // The collision proxy and its validity, keyed on the cell, the edit clock and
@@ -3907,6 +3957,19 @@ fn main() {
           srv.send_to(ev.cid, "S:walls {wq},{wr} = {walls_text(wld, wq, wr)}");
         } else if ev.msg_id == MSG_FENCE {
           do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
+          // ⚠ A RING OF WALL IS A CYLINDER, AND A CYLINDER IS A HOST. The ring is
+          // stored as EDGES, not as a run — correctly, it has no ends — so nothing
+          // an annex looks for would find it. Remembering where the author just made
+          // one is what lets `K` mean "on that trunk"; the alternative is a `Trunk`
+          // primitive, which would be a fourth thing that a tree, a tower and a well
+          // all have to be separately.
+          rfi = ev.payload.find(",");
+          if rfi != null {
+            ring_r = (ev.payload[rfi + 1..] as integer ?? 0) as float * hex_grid::HEX_LEN;
+            rhx = world_to_hex(px, pz);
+            (ring_x, ring_z) = hex_to_px(rhx.ha_q, rhx.ha_r);
+            ring_live = true;
+          }
         } else if ev.msg_id == MSG_EDGE {
           do_edge(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
         } else if ev.msg_id == MSG_TRACE {
@@ -4050,6 +4113,111 @@ fn main() {
             srv.send_to(ev.cid, "S:opened a profile {okind} hole at "
                               + "{oack.ak_q},{oack.ak_r}");
             println("editor: opened profile {okind} at ({oack.ak_q},{oack.ak_r})");
+          }
+        } else if ev.msg_id == MSG_ANNEX {
+          // ⚠ AN ANNEX IS BUILT FROM THE HOST OUTWARD, so the first thing needed is
+          // the host's own outward normal where the author stands. On a wall that is
+          // the run's normal; on a trunk — a ring of wall — it is the radial
+          // direction, and the ring's centre is the nearest thing the author can be
+          // standing outside of. One code path, because a tree is not a special host.
+          akind = ev.payload as integer ?? hex_editor::AN_BOX;
+          anx = cos(yaw);
+          anz = sin(yaw);
+          abest = 1000000.0;
+          alen = 0.0;
+          aat = 0.0;
+          ahx = px;
+          ahz = pz;
+          for arun in wall_runs.items {
+            at2 = hex_way::track_new();
+            hex_way::track_straight(at2, arun.wr_x0, arun.wr_z0, arun.wr_x1, arun.wr_z1);
+            ad = hex_way::seg_distance(at2, 0, px, pz);
+            if ad < abest {
+              abest = ad;
+              alen = hex_way::seg_len(at2, 0);
+              (atx, atz) = hex_way::seg_tangent(at2, 0, 0.0);
+              asx = (px - arun.wr_x0) * atx + (pz - arun.wr_z0) * atz;
+              if asx < 0.0 { asx = 0.0; }
+              if asx > alen { asx = alen; }
+              aat = asx;
+              (ahx, ahz) = hex_way::seg_point(at2, 0, asx);
+              // The outward normal is the one pointing AT the author, never the one
+              // the run happens to store: an annex built on the far side of the wall
+              // is inside the room the author is not in.
+              anx = px - ahx;
+              anz = pz - ahz;
+              anl = sqrt(anx * anx + anz * anz) ?? 0.0;
+              if anl > 0.001 { anx = anx / anl ?? 0.0; anz = anz / anl ?? 0.0; }
+            }
+          }
+          // ⚠ NO RUN NEARBY MEANS A ROUND HOST, not "no host". `abest` measures the
+          // distance to the nearest wall LINE, and a trunk has none — so a balcony
+          // asked for beside a ring of wall was refused for being "wider than the
+          // wall it hangs on", quoting the cottage across the field. Measured: offer
+          // -0.2 on a 2.2-wide deck, which is a refusal that names the wrong wall.
+          around = false;
+          if ring_live {
+            adx = px - ring_x;
+            adz = pz - ring_z;
+            adr = sqrt(adx * adx + adz * adz) ?? 0.0;
+            if adr < ring_r + 4.0 && (abest > adr || abest > 900000.0) {
+              around = true;
+              abest = 0.0;
+              // The circumference is the run it hangs on, and it has no ends — so
+              // "how much room is there" is answered by the whole way round.
+              alen = 2.0 * PI * ring_r;
+              aat = alen * 0.5;
+              aang = atan2(adz, adx);
+              anx = cos(aang);
+              anz = sin(aang);
+              ahx = ring_x + anx * ring_r;
+              ahz = ring_z + anz * ring_r;
+            }
+          }
+          if abest > 900000.0 {
+            srv.send_to(ev.cid, "S:nothing to attach to — stand at a wall or a trunk");
+            println("editor: annex refused — no host");
+          } else {
+            afloor = 2;
+            ahead = 11;
+            aout = 1.4;
+            ain = 0.0;
+            if akind == hex_editor::AN_DECK {
+              // A deck is mostly outside and bites a little into a round host, which
+              // is what leaves a flat for straight wood to land on.
+              // ⚠ A BALCONY AT ANKLE HEIGHT IS A DOORSTEP. The first version put the
+              // deck at 2 units and the picture showed a crate beside a tree — the
+              // primitive was right and the number made it unreadable. Six units is
+              // most of the way up what a wall run stands, which is the only height
+              // this world has to be proportional to yet.
+              ain = 0.30;
+              afloor = 6;
+              ahead = afloor + hex_editor::ANNEX_RAIL;
+            }
+            aan = hex_editor::annex_at(ahx, ahz, anx, anz, 2.2, aout, ain,
+                                       afloor, ahead, akind);
+            afit = hex_editor::annex_fits(aan, alen, aat, hex_draw::BAND_SIDES);
+            if !afit.ak_ok {
+              srv.send_to(ev.cid, "S:annex refused — {afit.ak_why}");
+              println("editor: annex refused — {afit.ak_why}");
+            } else {
+              wall_annexes.items += [aan];
+              hex_editor::annex_runs(aan, hex_editor::WALL_MAT, wall_runs);
+              if akind == hex_editor::AN_BOX {
+                wall_openings.items += [hex_editor::annex_mouth(
+                  aan, 1.5, hex_editor::OP_ROUND, HEIGHT_SCALE)];
+              } else {
+                // The way in: an opening in the HOST, cut from the SEAT the annex
+                // bit out of it rather than from the host's outer face.
+                wall_openings.items += [hex_editor::annex_door(
+                  aan, hex_draw::BAND_SIDES, 0.9, hex_editor::OP_ROUND, HEIGHT_SCALE)];
+              }
+              ahex = world_to_hex(ahx, ahz);
+              mark_dirty(dirty, ahex.ha_q, ahex.ha_r, 4);
+              srv.send_to(ev.cid, "S:an annex of kind {akind} at "
+                                + "{ahex.ha_q},{ahex.ha_r} — 3 walls, a deck");
+              println("editor: annex kind {akind} at ({ahex.ha_q},{ahex.ha_r})");
+            }
           }
         } else if ev.msg_id == MSG_HOUSE {
           // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
@@ -4624,7 +4792,7 @@ fn main() {
           wm2 = mesh("wall");
           lm2 = mesh("floor");
           am2 = mesh("frame");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4741,7 +4909,7 @@ fn main() {
               wmesh = mesh("wall");
               lmesh = mesh("floor");
               amesh = mesh("frame");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

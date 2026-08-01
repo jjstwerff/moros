@@ -22,7 +22,7 @@ fn world() -> World {
 }
 
 fn east_run(mat: integer) -> WallRun {
-  hex_editor::WallRun { wr_x0: 0 - 6.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+  hex_editor::WallRun { wr_base: 0, wr_up: 0, wr_x0: 0 - 6.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
                         wr_mat: mat, wr_step: 0 }
 }
 
@@ -119,7 +119,7 @@ fn test_a_run_of_no_length_writes_nothing() {
   runs = no_runs();
   marked = 0;
   before = w.w_tau;
-  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_x0: 1.0, wr_z0: 1.0,
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0, wr_x0: 1.0, wr_z0: 1.0,
                                                   wr_x1: 1.0, wr_z1: 1.0,
                                                   wr_mat: hex_editor::WALL_MAT,
                                                   wr_step: 0 },
