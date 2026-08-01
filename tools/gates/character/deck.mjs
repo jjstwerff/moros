@@ -65,6 +65,17 @@ const ack = async (p, limitMs = 40000) => {
   }
   console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
+// ⚠ `ack` ONLY SEES WHAT ARRIVES AFTER IT IS CALLED, which is right for "the next
+// one" and wrong for "did this happen while I was doing that". A phase that sends
+// two messages and then waits for a broadcast the FIRST one triggered waits for a
+// second that never comes — measured, a full 40-second limit, and the gate carried
+// on green because the claims below did not depend on it. `mark()` before the
+// phase and `after(m, …)` at the end asks the exact question instead.
+const mark = () => status.length;
+const after = async (m, needle, limitMs = 8000) => {
+  if (status.slice(m).some((x) => x.includes(needle))) return needle;
+  return ack(needle, limitMs);
+};
 // ⚠ A GAP IN `T:` IS NOT A STOP, AND READING IT AS ONE MADE THIS GATE FLAKY — two
 // runs of identical code ended at x = 5.44 and x = 9.60. `moved` is set whenever the
 // walk key is held, blocked or not, so a walker refused by a cliff keeps
@@ -138,16 +149,26 @@ ws.onmessage = async (e) => {
     // ⚠ AND ONE PRESS TOO MANY, from the same spot. The gesture SETS the cell ahead;
     // an adding one would build a tower out of a held key.
     ws.send('30:1'); const again = await ack('stair');
-    await ack('rebuilt');
+    // ⚠ NO WAIT FOR A REBUILD HERE, and that is the point of the press. This one
+    // is the press too many: the gesture SETS the cell ahead, so pressing again
+    // from the same spot changes nothing, nothing goes dirty, and the server has
+    // no rebuild to announce. Waiting for one cost the full 40-second limit and
+    // then carried on green — 40 seconds of the suite spent on a message that was
+    // never coming. The reads below are store reads over the socket; they do not
+    // need the picture to have caught up.
     const steps = [await col(1, 0), await col(2, 0), await col(3, 0)];
 
     // ── the platform: paved from the FIRST step, so its ground is one stride up and
     //    its deck one stride above the stair's top
     await place(1 * HEX, 0, 0);
+    const roadMark = mark();
     ws.send('10:1'); const roadOn = await ack('road true');
     await place(6 * HEX, 0, 0);
     ws.send('10:0'); await ack('road false');
-    await ack('rebuilt');
+    // The paving rebuild lands on the PLACEMENT, before `road false` is even sent,
+    // so this asks whether one happened during the phase — not whether another
+    // follows it.
+    await after(roadMark, 'rebuilt');
     ws.send('12:1'); const storey = await ack('storey');
     await ack('rebuilt');
     const deckCol = await col(5, 0);

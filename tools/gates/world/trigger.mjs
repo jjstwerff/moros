@@ -32,6 +32,12 @@ const placeAck = async (x, z, yaw) => { ws.send(`7:${x},${z},${yaw}`); return ac
 // and wrong for a report the world volunteers. The BROKEN notice is broadcast
 // the moment the road lands — several steps before this gate thinks to look —
 // so searching only new messages missed a message that had already arrived.
+// "has this happened, or will it" — as opposed to `ack`'s "does the NEXT one match".
+// A wait that cannot see what already arrived is a timeout waiting to happen.
+const until = async (needle, limitMs = 8000) => {
+  if (status.some((x) => x.includes(needle))) return needle;
+  return ack(needle, limitMs);
+};
 const seen = (needle) => [...status].reverse().find(x => x.includes(needle)) || `(never saw "${needle}")`;
 const num_after = (m, key) => Number((m.split(key)[1] || '').trim().split(/\s+/)[0]);
 
@@ -68,7 +74,14 @@ ws.onmessage = async (e) => {
     // `triggers_resolve` runs where geometry has just changed, so the BROKEN
     // broadcast is the thing to wait for. Sleeping "to let the last rebuild settle"
     // was waiting for a message it could simply have awaited.
-    await ack('trigger 0 BROKEN');
+    //
+    // ⚠ AND IT MUST BE `until`, NOT `ack`. `ack` scans only messages that arrive
+    // AFTER it is called, so when the broadcast had already landed — which is the
+    // normal case, the flush runs on the road toggle — it waited out the full
+    // 40-second limit for a SECOND one, and then `seen` found the first in the
+    // history anyway. The verdict was right and forty seconds of the suite were
+    // spent proving it twice.
+    await until('trigger 0 BROKEN');
     const broken = seen('trigger 0 BROKEN');
 
     // ── a foreign binding is neither resolved nor dropped
