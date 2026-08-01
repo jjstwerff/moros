@@ -158,7 +158,12 @@ async function browser() {
   for (const line of (spawnSync('pgrep', ['-af', `remote-debugging-port=${CDP}`],
                                 { encoding: 'utf8' }).stdout ?? '').split('\n')) {
     const pid = Number(line.split(/\s+/)[0]);
-    if (pid && pid !== process.pid && /--headless|--type=/.test(line)) {
+    // ⚠ IDENTIFIED AS OURS, NOT MERELY AS "A BROWSER ON THAT PORT". This box runs
+    // other agents' work and one of them keeps headless Chrome on 9391 — inside the
+    // same 93xx band this derives from. A port number is not an identity, so the
+    // match is on the window size THIS file spawns with, which nothing else here
+    // uses. `run-gates.sh` says the same thing about the editor port in more words.
+    if (pid && pid !== process.pid && line.includes('--window-size=1200,800')) {
       try { process.kill(pid); } catch { /* already gone */ }
     }
   }
