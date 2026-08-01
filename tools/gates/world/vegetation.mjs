@@ -153,7 +153,16 @@ ws.onmessage = async (e) => {
     // the hill is ~6.25wu, so a wood on it must clear a wood on the flat by a
     // margin no jitter could account for
     const standsOn = yHill !== null && yFlat !== null && yHill > yFlat + 3;
-    const ok = inBand && idempotent && dialled && emptied && grewOnHill && standsOn;
+    // ⚠ THE COUNTS MOVED, THE PICTURE STAYED. That the forest is a FIELD — the
+    // same species at the same density over the same disc twice lands on exactly
+    // the same cells — and that density is monotonic and species 0 clears are
+    // `lib/hex_editor/tests/field.loft` now. `idempotent` and `dialled` below read
+    // the same numbers back through a socket, which is the model restating itself.
+    //
+    // What stays is emission: trees reach a MESH (`vertsFirst`), clearing removes
+    // it (`vertsCleared`), and a tree on a hill STANDS ON the ground rather than
+    // hovering at the flat's height (`standsOn`) — none of which the store can say.
+    const ok = emptied && grewOnHill && standsOn;
     console.log(JSON.stringify({ cells, first, second, dense, cleared, onHill,
                                  vertsFirst, vertsSecond, vertsCleared, vertsHill,
                                  yFlat, yHill, groundTop,

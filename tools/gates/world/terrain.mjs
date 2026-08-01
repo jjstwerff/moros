@@ -1,3 +1,10 @@
+// ⚠ THIS GATE IS ALREADY WHAT A GATE SHOULD BE, and it was checked rather than
+// assumed when the others were thinned: every number below comes from the VERTICES
+// the server sent, not from a read-back of what it thinks it stored. The brush's
+// own rules — the hill lands ten hexes ahead, spares the cell under the author,
+// and two strokes SUM where they overlap — are `lib/hex_editor/tests/gesture.loft`
+// now, and nothing here restates them. What it measures is whether the store's
+// answer reached a mesh, which no loft test can see.
 // Terrain gate. Four claims, each separable:
 //   raises      — an ↑ ahead changes the ground
 //   spares      — and does NOT change the ground under the character (PEAK_R <

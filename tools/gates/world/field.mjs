@@ -120,8 +120,13 @@ ws.onmessage = async (e) => {
     // The control that says the wait is what fixed this: skip the `rebuilt` ack and
     // it reads **0 on every run**, not intermittently — the old fixed sleep was
     // simply long enough to usually win the race.
-    const ok = refused.includes('field refused') && refusedField === 0
-               && okMsg && sawRebuild && filled > 0;
+    // ⚠ WHAT IS LEFT HERE IS WHAT WAS DRAWN. That a fill stops at its ring (19
+    // cells at R=2, 37 at R=3), that an open one is refused, and that a refusal
+    // writes nothing are `lib/hex_editor/tests/field.loft` now — arithmetic against
+    // the store. What no store test can see is whether the field REACHED A MESH:
+    // `filled` counts vertices in the loaded chunks, and a fill that is perfect in
+    // the model and invisible on screen passes every test but this one.
+    const ok = refused.includes('field refused') && okMsg && sawRebuild && filled > 0;
     console.log(JSON.stringify({ refusedOnOpenGround: refused, fieldAfterRefusal: refusedField,
                                  filledInsideRing: okMsg, rebuilt, sawRebuild,
                                  fieldVertsInLoadedChunks: filled, ok,

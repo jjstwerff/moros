@@ -109,3 +109,24 @@ fn test_a_step_through_the_floor_is_refused_with_the_offer() {
   assert(why.contains("offer"), "with an offer: {why}");
   assert(why.contains("residual"), "and a residual: {why}");
 }
+
+fn test_a_storey_costs_exactly_one_layer_however_many_columns_it_touches() {
+  // ⚠ THE DEFECT THIS PINS COST ELEVEN LAYERS A STOREY. A layer is CHUNK-WIDE
+  // while the gesture writes a DISC of 19 columns, and each column read one cell
+  // more than the last — the layer its neighbour had just made, absent at this hex
+  // — and appended yet another. Measured then: 12, 23, 34 layers for three
+  // storeys, against a LAYER_CAP of 64, so a six-storey tower hit the cap.
+  //
+  // The stack of OCCUPIED cells was right either way (25, 37, 49, 61), which is
+  // why nothing caught it until something counted LAYERS. Exactly one per storey,
+  // not "a few" — the defect was a constant factor and any slack admits it back.
+  w = world();
+  before = len(w.w_chunks[0].ck_layers);
+  why = "";
+  for i in 0..3 {
+    hex_editor::storey_add(w, 0, 0, 1, 2, why);
+    want = before + i + 1;
+    got = len(w.w_chunks[0].ck_layers);
+    assert(got == want, "storey {i + 1}: {want} layers, got {got}");
+  }
+}

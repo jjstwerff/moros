@@ -1,3 +1,10 @@
+// ⚠ A WIRE GATE, deliberately, and left whole when the others were thinned. The
+// anchor RULE — follows, breaks, foreign is left alone, unchanged says nothing —
+// is `lib/hex_editor/tests/modes.loft` now, where it is four assertions against
+// the store. What only a running editor can show is that the verdict reaches the
+// author as a SENTENCE: `triggers_resolve` returns findings and the server
+// broadcasts them, so a resolver that decided correctly and a server that never
+// said so would pass every loft test and fail here.
 // Trigger gate (rung W8, moros#15) — invariant II: no anchor ever silently
 // dangles.
 //

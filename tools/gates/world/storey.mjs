@@ -68,16 +68,13 @@ ws.onmessage = async (e) => {
     // storeys, against a LAYER_CAP of 64, so a six-storey tower would have hit the
     // cap. The stack of OCCUPIED cells was `25,37,49,61` either way, which is why
     // nothing caught it until `29:` LABELS existed to count layers with.
-    const layerCount = async () => {
-      ws.send('29:20,0'); const m = await ack('labels 20,0 =');
-      const v = m.slice(m.indexOf('=') + 1).trim();
-      return v === '' ? 0 : v.split(',').length;
-    };
-    const layersBefore = await layerCount();
+    // ⚠ THE LAYER COUNT MOVED. "A storey costs exactly one layer, however many
+    // columns it touches" — the defect that cost eleven a storey — is
+    // `lib/hex_editor/tests/storey.loft` now, counting `ck_layers` directly. It
+    // needed `29:` LABELS and a socket to be visible at all when the only way in
+    // was through one; against the store it is a length.
     const up = [];
-    const layersPer = [];
-    for (let k = 0; k < 3; k++) { ws.send('12:1'); up.push(await ackStorey());
-                                  layersPer.push(await layerCount()); }
+    for (let k = 0; k < 3; k++) { ws.send('12:1'); up.push(await ackStorey()); }
 
     // ── the dungeon that CANNOT be: peak 6 < STOREY_H 12, so no room below
     ws.send('12:-1');
@@ -93,11 +90,9 @@ ws.onmessage = async (e) => {
     const cellarBuilt = /^storey -1 on \d+ cells$/.test(cellarHigh);
     // one layer per storey, exactly — not "few", because the defect it guards
     // against was a CONSTANT FACTOR and any slack admits it back
-    const oneLayerEach = layersPer.every((n, k) => n === layersBefore + k + 1);
-    const ok = towerBuilt && refusedLow && cellarBuilt && oneLayerEach;
+    const ok = towerBuilt && refusedLow && cellarBuilt;
     console.log(JSON.stringify({ tower: up, cellarLow, cellarHigh,
-                                 layersBefore, layersPer,
-                                 towerBuilt, refusedLow, cellarBuilt, oneLayerEach, ok }));
+                                 towerBuilt, refusedLow, cellarBuilt, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
