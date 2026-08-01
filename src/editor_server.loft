@@ -3171,6 +3171,28 @@ const CAM_ARC_N      = 4;      // samples across the anticipated arc
 // without. Measured after wiring: see the `27:` trace's camera line.
 const ROOM_RAYS      = 8;      // directions the inscribed radius is taken over
 
+// ── ⚠ THE NEAR PLANE, AND WHY "SNUG: NEAR PLANE IN" IS NOT A TASK ───────────
+//
+// The design lists it beside the body and the lamp and gives no reason, so it is a
+// claim to test rather than a job to do — and the test says the camera cannot reach
+// it. `hex_editor::CAM_SKIN` is 0.533, half a wall band plus a margin, so the boom
+// stops more than TEN TIMES the near plane away from anything the sweep found. What
+// the sweep does not find cannot be between the eye and 0.05 either: the ground has
+// its own backstop and dressing is `D1`, which says a chair never shoves the camera.
+//
+// Measured rather than argued: `sky` is the clear colour, so anything clipped away
+// shows as sky. Across every interior station — FOLLOW mid-floor, SNUG mid-floor,
+// SNUG against a wall, SNUG under the ridge looking up — sky is **0.0000**, against
+// 29.7% in the outdoor control that proves the instrument can see it. Nothing is
+// being clipped, and moving the plane IN would only cost depth precision that is
+// already carrying a 1:8000 ratio.
+//
+// ⚠ Second row of the mode table that describes a camera which no longer exists —
+// FOLLOW's *"roof, inside: hidden"* is the other. Both were written when the eye was
+// outside the house.
+const CAM_NEAR       = 0.05;
+const CAM_FAR        = 400.0;
+
 // ── THE CAMERA'S MODES ──────────────────────────────────────────────────────
 //
 // AUTO is FOLLOW that degrades into SNUG when `sh_room` says the room cannot hold
@@ -3186,7 +3208,15 @@ const MODE_SNUG   = 2;
 // reproduces every earlier frame exactly and the gates that count colours do not
 // move. That is what makes this a new knob rather than a new look.
 const AMB_FOLLOW  = 0.45;
-const AMB_SNUG    = 0.22;      // a room that presses in is a room that is darker
+const AMB_SNUG    = 0.10;      // a room that presses in is a room that is darker
+// ⚠ THE SECOND FLOAT, AND IT IS THE HALF A LOW AMBIENT CANNOT SUPPLY. Dropping the
+// ambient deepens the shadows a surface already has, and by the SAME amount whatever
+// its distance — measured, SNUG's frame contrast rose (sd 0.098 -> 0.128) while its
+// mean fell, which is a darker picture of the same shape. A lamp at the eye is the
+// only term in the shader that knows how far away something is, and knowing that is
+// what makes a small room read as a small room. FOLLOW carries none.
+const LAMP_FOLLOW = 0.0;
+const LAMP_SNUG   = 0.90;
 const CAM_K_AMB   = 3.0;       // eased per second — a step in the ambient is a flash
 // Bit 0 hides the FIGURE (every id in the reserved block); bit k hides surface k.
 const HIDE_FIGURE = 1;
@@ -3439,7 +3469,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
   "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
-    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, 0.05, 400.0))}"
+    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}"
 }
 
 // The fade is centred on the CHARACTER, not the camera, because the culling is:
@@ -3945,6 +3975,7 @@ fn main() {
   cam_mode = MODE_AUTO;
   cam_snug = false;          // what AUTO has degraded to; ignored when a mode is chosen
   cam_amb = AMB_FOLLOW;      // the ambient, EASED, because a step is a flash
+  cam_lamp = LAMP_FOLLOW;    // …and the head-lamp, eased with it
   cam_body = true;           // is the figure's own mesh drawn
   cam_vsent = 0 - 1;         // the last `V:` payload, so it is sent on change only
   keys = 0;
@@ -5394,8 +5425,10 @@ fn main() {
       // body is drawn or it is not — but a step in the light is a flash across the
       // whole frame, which is the one thing the hysteresis exists to prevent.
       cam_amb_want = AMB_FOLLOW;
-      if snug_now { cam_amb_want = AMB_SNUG; }
+      cam_lamp_want = LAMP_FOLLOW;
+      if snug_now { cam_amb_want = AMB_SNUG; cam_lamp_want = LAMP_SNUG; }
       cam_amb = cam_approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
+      cam_lamp = cam_approach(cam_lamp, cam_lamp_want, CAM_K_AMB, dt);
 
       // Rested once the boom and the lift have both arrived: until then the
       // solve has to keep running, because the ease is what is still moving.
@@ -5405,7 +5438,8 @@ fn main() {
       dd1 = cam_dist - cam_free; if dd1 < 0.0 { dd1 = 0.0 - dd1; }
       dd2 = cam_pitch - cam_pt; if dd2 < 0.0 { dd2 = 0.0 - dd2; }
       dd3 = cam_amb - cam_amb_want; if dd3 < 0.0 { dd3 = 0.0 - dd3; }
-      cam_rested = dd1 < 0.001 && dd2 < 0.001 && dd3 < 0.001;
+      dd4 = cam_lamp - cam_lamp_want; if dd4 < 0.0 { dd4 = 0.0 - dd4; }
+      cam_rested = dd1 < 0.001 && dd2 < 0.001 && dd3 < 0.001 && dd4 < 0.001;
       // The residuals as the EASE left them — the size of the snap below, not what
       // is left after it. Kept for `MSG_CAMREST`.
       cam_res_d = dd1;
@@ -5432,6 +5466,7 @@ fn main() {
         cam_dist = cam_free;
         cam_pitch = cam_pt;
         cam_amb = cam_amb_want;
+        cam_lamp = cam_lamp_want;
       }
       cam_lx = px; cam_ly = py; cam_lz = pz;
       cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
@@ -5554,7 +5589,8 @@ fn main() {
                + "pitch {cam_pitch} target {cam_pt} slide {cam_slide} "
                + "inside {cam_shelter.sh_inside} head {cam_shelter.sh_head} "
                + "room {cam_shelter.sh_room} back {cam_shelter.sh_back} "
-               + "mode {cam_mode} snug {cam_snug} amb {cam_amb} body {cam_body}";
+               + "mode {cam_mode} snug {cam_snug} amb {cam_amb} lamp {cam_lamp} "
+               + "body {cam_body}";
           println(cmsg);
           srv.broadcast("S:{cmsg}");
         }
@@ -5865,10 +5901,11 @@ fn main() {
     // there is nothing to ease past.
     vmask = 0;
     if !cam_body { vmask = vmask | HIDE_FIGURE; }
-    vkey = vmask * 100000 + ((cam_amb * 10000.0) as integer ?? 0);
+    vkey = vmask * 100000000 + ((cam_amb * 10000.0) as integer ?? 0) * 10000
+         + ((cam_lamp * 10000.0) as integer ?? 0);
     if vkey != cam_vsent {
       cam_vsent = vkey;
-      for pc2 in clients { srv.send_to(pc2.cid, "V:{vmask},{cam_amb}"); }
+      for pc2 in clients { srv.send_to(pc2.cid, "V:{vmask},{cam_amb},{cam_lamp}"); }
     }
     if !watched {
       // Nobody is looking: keep the clock from piling up a burst of catch-up

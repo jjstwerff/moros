@@ -65,7 +65,7 @@ cam 1.5 3.0
 # backfaces here, so before the soffit existed the interior looked up at the roof's
 # own triangles, lit by an upward normal — the same shade as the tiles, seen from
 # below. `roof` near zero and `soffit` a fifth of the frame is that, as pixels.
-frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05
+frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05 sky 0 0.001
 
 echo --- facing a corner, where the boom has least room
 at 0 0 225
@@ -74,7 +74,7 @@ snap s10-house-corner
 # Along the diagonal the room is longer, so the boom keeps more of itself — the
 # opposite direction from the row above, which is why both are here.
 cam 3.5 5.2
-frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05
+frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05 sky 0 0.001
 
 # ── AUTO DEGRADING INTO SNUG ─────────────────────────────────────────────────
 #
@@ -91,7 +91,7 @@ snap s10-auto-follow
 # `lum` is the frame's mean luminance — the classifier matches on chromaticity and
 # is blind to a scalar by construction, so the ambient is the one thing it cannot
 # see and this is the number that can.
-frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0
+frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0 sd 0 0.115 sky 0 0.001
 
 echo --- AUTO, close to the wall, where sh_room 0.88 says a boom does not fit
 at 0 -1.5 90
@@ -111,9 +111,33 @@ snap s10-auto-snug
 # frame, not with anything about the character. Measured: 0.0003 here against
 # 0.1364 at the station above, a factor of 450. The bound is set above the seam and
 # far below a body.
-frame 0 0.85 figure 0 0.002 lum 0.05 0.22
+# `sd` is the whole frame's contrast: SNUG is darker than FOLLOW *and* higher
+# contrast than it, which is the design's *"a black frame is not atmosphere"* made
+# numeric — a black frame and a flat grey one both have a spread of zero.
+#
+# ⚠ BUT `sd` CANNOT SEE THE LAMP, and that took three measurements to accept.
+# Dropping the ambient widens the SAME histogram, so lamp-on and lamp-off at the
+# same ambient read 0.1415 and 0.1418. `sd:masonry` is the spread WITHIN one
+# surface, and that is the lamp's signature: with only an ambient and one
+# directional light a wall is ONE plane with ONE normal and ONE colour, so every
+# pixel of it has the identical luminance. A light that falls off with distance is
+# the only term that can make it vary. Measured at this station: **0.0031 without
+# the lamp, 0.0762 with it** — a factor of 25, against a whole-frame `sd` that moved
+# by 0.0003.
+#
+# ⚠ It is a claim about THIS STATION. `masonry` merges wall and frame, whose base
+# colours differ, so a view with a door surround in it spreads the bucket for a
+# reason that is not the lamp — FOLLOW mid-floor reads 0.0507 either way. The 0.0031
+# baseline here is what says no frame is in this view.
+# ⚠ AND `black` IS THE DESIGN'S OWN ROW, LITERALLY. *"A black frame is not
+# atmosphere"* — the classifier already buckets anything under a luminance floor as
+# `black`, and with the lamp switched off at this ambient **2.35% of the frame is
+# exactly that**, with a further third of it fallen so dark that a WALL now matches
+# the ROAD's chromaticity. The lamp is what keeps a low-ambient room a picture
+# rather than a silhouette, and this is the number that says so.
+frame 0 0.85 figure 0 0.002 lum 0.05 0.22 sd 0.125 1.0 sd:masonry 0.03 1.0 black 0 0.002 sky 0 0.001
 
 echo --- and back out: the degradation is not a one-way door
 at 0 0 90
 step 120
-frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0
+frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0 sd 0 0.115 sky 0 0.001

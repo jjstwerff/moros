@@ -366,6 +366,57 @@ so the full unobstructed boom came back one skin short, **always**. Invisible at
 in an open field, and the gate's outdoor control is what noticed. A test now says
 `free >= want` takes the whole boom, at three different skins.
 
+## ⚠ The head-lamp is real; "near plane in" is not
+
+**The lamp had to be paired with a genuinely low ambient before it did anything.**
+At ambient 0.22 it was indistinguishable from turning the ambient up: the frame's
+mean rose 0.202 → 0.232 and its contrast did **not** move (sd 0.1282 → 0.1290).
+The mix is `a + (1−a)·d` and is clamped at 1, so with a high ambient most surfaces
+are already near-lit and the lamp has no headroom. At ambient **0.10** with lamp
+**0.90** the room is darker *and* higher-contrast than FOLLOW — 0.181/0.145 against
+0.268/0.098 — and the floor visibly falls off with distance.
+
+⚠ **A whole-frame `sd` cannot see a lamp, and it took three measurements to accept
+that.** Dropping the ambient widens the *same* histogram, so lamp-on and lamp-off at
+the same ambient read **0.1415 and 0.1418**. The signature is the spread *within one
+surface*: with only an ambient and one directional light, a wall is one plane with
+one normal and one colour, so every pixel of it has the identical luminance. A light
+that falls off with distance is the only term that can make it vary.
+
+| at the SNUG station | lamp off | lamp on |
+|---|---|---|
+| whole-frame `sd` | 0.1418 | 0.1415 |
+| **`sd:masonry`** | **0.0031** | **0.0762** |
+| `black` share | **2.35%** | 0 |
+
+That last row is the design's *"a black frame is not atmosphere"* arriving as a
+number: without the lamp a third of the frame falls so dark that a WALL matches the
+ROAD's chromaticity, and 2.35% of it is literally black.
+
+⚠ **`sd:masonry` is a claim about that STATION.** The bucket merges wall and frame,
+whose base colours differ, so a view with a door surround spreads it for a reason
+that is not the lamp — FOLLOW mid-floor reads 0.0507 either way. The 0.0031 baseline
+is what says no frame is in this view.
+
+### "Near plane in" — measured, and there is nothing for it to do
+
+The design lists it beside the body and the lamp and gives no reason. The camera
+cannot reach it: `CAM_SKIN` is 0.533, so the boom stops more than **ten times** the
+near plane (0.05) away from anything the sweep found, and what the sweep does not
+find cannot be in front of it either — the ground has its own backstop and `D1` says
+dressing never shoves the camera.
+
+Measured rather than argued: anything clipped shows as the clear colour, and `sky`
+reads **0.0000** at every interior station — FOLLOW mid-floor, SNUG mid-floor, SNUG
+against a wall, SNUG under the ridge looking up — against **29.7%** in the outdoor
+control that proves the instrument can see it. Moving the plane in would only cost
+depth precision already carrying a 1:8000 ratio. **`sky 0 0.001` is a gate row now**,
+so if anything ever does get clipped the suite says so.
+
+⚠ Second row of the mode table that describes a camera which no longer exists;
+FOLLOW's *"roof, inside: hidden"* is the other. Both were written when the eye was
+outside the house.
+
 ## The query every mode reads
 
 Computed **once**, in the library, as a pure function — the structural claims belong
@@ -641,12 +692,9 @@ anyone but the person who wrote it.
    in the room now and the frame rows are green without `sh_back` being consulted
    once. **AUTO's degradation into SNUG is still to build**, and it is where the two
    thresholds go.
-4. ◐ **SNUG**: body hidden ✅, ambient down ✅ (eased, and it is the one thing the
-   frame gate's chromaticity classifier cannot see — hence `lum`). **Head-lamp and
-   near plane are not built**: the ambient mixes as `a + (1−a)·d`, so lowering it
-   deepens the shadows rather than dimming the picture, which is why a room still
-   reads at ambient 0.22 with no lamp in it. AUTO reaches SNUG about 1.4 wu from a
-   wall in a 5×4 room.
+4. ✅ **SNUG**: body hidden, ambient down, head-lamp up — all three, eased and gated.
+   ⚠ **"Near plane in" was a claim, not a task, and it is refuted** — see below.
+   AUTO reaches SNUG about 1.4 wu from a wall in a 5×4 room.
 5. **CUTAWAY stage 1**: roof off, camera above the eave.
    ⚠ **FOLLOW's own "roof, inside: hidden" row is now obsolete and should not be
    built.** It was written when the eye was outside the house and the roof was

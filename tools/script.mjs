@@ -141,6 +141,22 @@ async function browser() {
   const chrome = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
     .find((c) => spawnSync('which', [c]).status === 0);
   if (!chrome) { console.log('  !! no chrome — state dump only'); return false; }
+  // ⚠ FREE THE DEVTOOLS PORT FIRST, AND ONLY IF IT IS OURS. A run that died before
+  // its `proc.kill()` leaves Chrome holding 9345; the next run's spawn cannot bind,
+  // `cdpJson` attaches to the CORPSE — still on `about:blank` — and the wait times
+  // out as "the page never drew". That reads as a broken renderer and is a stale
+  // process, which cost a full diagnosis once already.
+  //
+  // This is `run-gates.sh`'s own rule one tool over, including its caution: match on
+  // the flags THIS file spawns with, because a port number is not an identity and
+  // this box runs other people's browsers.
+  for (const line of (spawnSync('pgrep', ['-af', `remote-debugging-port=${CDP}`],
+                                { encoding: 'utf8' }).stdout ?? '').split('\n')) {
+    const pid = Number(line.split(/\s+/)[0]);
+    if (pid && pid !== process.pid && /--headless|--type=/.test(line)) {
+      try { process.kill(pid); } catch { /* already gone */ }
+    }
+  }
   // ⚠ THE THREE FLAGS TOGETHER, and `--use-gl=angle` rather than
   // `--use-gl=swiftshader`. This spawned Chrome with the older spelling and got a
   // WebGL2 context that DREW — `readPixels` returned a full picture — but composited
@@ -174,20 +190,37 @@ async function browser() {
   // was never going to be enough — and a blank picture is worse than no picture,
   // because it reads as a broken renderer.
   //
-  // So it asks the canvas how many distinct colours it holds, the same question
-  // `html_render_check.mjs` asks, and waits until the answer says something is
-  // drawn. It SAYS SO on timeout rather than writing the blank frame silently.
+  // So it waits until something is drawn, and SAYS SO on timeout rather than
+  // writing the blank frame silently.
+  //
+  // ⚠ IT ASKED `readPixels`, WHICH THIS FILE'S OWN NEXT COMMENT SAYS RETURNS BLACK.
+  // A WebGL context without `preserveDrawingBuffer` clears its drawing buffer at
+  // composite, so a read from outside the render loop sees whatever is left — and
+  // the readiness check and the MEASUREMENT were therefore asking two different
+  // questions of two different buffers. It reported "the page never drew" against a
+  // page holding 440 meshes with a live WebGL2 context and no exceptions, measured
+  // directly over CDP.
+  //
+  // Both go through `Page.captureScreenshot` now, which is the one path known to
+  // work here. A readiness check that cannot see what the gate will measure is worse
+  // than no check: it fails runs that would have passed and passes runs that will
+  // photograph nothing.
   const colours = async () => {
-    const r = await call('Runtime.evaluate', { returnByValue: true, expression: `
-      (() => {
-        const c = document.querySelector('#gl');
-        if (!c || !c.width) return 0;
-        const g = c.getContext('webgl2') || c.getContext('webgl');
-        if (!g) return 0;
-        const px = new Uint8Array(c.width * c.height * 4);
-        g.readPixels(0, 0, c.width, c.height, g.RGBA, g.UNSIGNED_BYTE, px);
+    const shot = await call('Page.captureScreenshot', { format: 'png' });
+    if (!shot?.data) return 0;
+    const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
+      expression: `
+      (async () => {
+        const img = new Image();
+        img.src = 'data:image/png;base64,${shot.data}';
+        await img.decode();
+        const cv = document.createElement('canvas');
+        cv.width = img.width; cv.height = img.height;
+        const cx = cv.getContext('2d');
+        cx.drawImage(img, 0, 0);
+        const d = cx.getImageData(0, 0, cv.width, cv.height).data;
         const seen = new Set();
-        for (let i = 0; i < px.length; i += 4 * 997) seen.add(px[i] << 16 | px[i+1] << 8 | px[i+2]);
+        for (let i = 0; i < d.length; i += 4 * 997) seen.add(d[i] << 16 | d[i+1] << 8 | d[i+2]);
         return seen.size;
       })()` });
     return r?.result?.value ?? 0;
@@ -293,7 +326,7 @@ async function frameStats() {
       // ambient change: dimming is a scalar and a ratio divides it out. Mean
       // luminance is the missing half, and it is the one thing SNUG's lower ambient
       // actually changes in the picture.
-      const counts = {}; let total = 0, lum = 0;
+      const counts = {}, bl = {}, bl2 = {}; let total = 0, lum = 0, lum2 = 0;
       for (let y = 0; y < cv.height; y += 4) {
         for (let x = 0; x < cv.width; x += 4) {
           const i = (y * cv.width + x) * 4;
@@ -311,13 +344,47 @@ async function frameStats() {
             key = bd > 0.0009 ? 'other' : (MERGE[best] ?? best);
           }
           counts[key] = (counts[key] ?? 0) + 1; total += 1;
-          lum += 0.2126*R + 0.7152*G + 0.0722*B;
+          // ⚠ AND THE SPREAD *WITHIN* A BUCKET, which is the only thing that can see
+          // a lamp. A whole-frame spread cannot: dropping the ambient widens the same
+          // histogram, and lamp-on and lamp-off measured 0.1415 against 0.1418. But a
+          // FLOOR is ONE PLANE with ONE normal and ONE colour, so with only an ambient
+          // and a directional light every floor pixel has the IDENTICAL luminance and
+          // the bucket's spread is zero. A light that falls off with distance is the
+          // only term that can make it vary. Its signature, not a proxy for it.
+          // ⚠ NAMED lm AND NOT y. The loop variable is y, and a second declaration
+          // of it here puts the row index in a temporal dead zone one line above its
+          // own declaration; the page threw "Cannot access y before initialization"
+          // on every frame. The runner reported that instead of crashing, and the
+          // message WAS the diagnosis — which is the whole argument for reporting.
+          // ⚠ AND NO BACKTICKS ANYWHERE IN THIS BLOCK. It is inside a JS template
+          // literal, so one closes the string and the file stops parsing. That is
+          // the second time today, the first being a GLSL comment in the client.
+          const lm = 0.2126*R + 0.7152*G + 0.0722*B;
+          lum += lm; lum2 += lm*lm;
+          bl[key] = (bl[key] ?? 0) + lm; bl2[key] = (bl2[key] ?? 0) + lm*lm;
         }
       }
-      return { counts, total, lum: lum / total, w: cv.width, h: cv.height };
+      const mean = lum / total;
+      const bsd = {};
+      for (const k of Object.keys(counts)) {
+        const m = bl[k] / counts[k];
+        bsd[k] = Math.sqrt(Math.max(bl2[k] / counts[k] - m*m, 0));
+      }
+      return { counts, total, lum: mean, bsd,
+               sd: Math.sqrt(Math.max(lum2 / total - mean*mean, 0)),
+               w: cv.width, h: cv.height };
     })()` });
   const v = r?.result?.value;
-  if (!v) return { ok: false, why: 'no frame' };
+  // ⚠ REPORT, NEVER THROW. When the decode rejected, `Runtime.evaluate` handed back
+  // the thrown value — truthy, with no `counts` — and `Object.entries(undefined)`
+  // killed the whole run with a TypeError three frames from the end. A gate helper
+  // that crashes is strictly worse than one that says what it could not measure.
+  // ⚠ AND IT PRINTS WHAT THE PAGE SAID. A bare "no frame" sent me looking at the
+  // browser, the flags and the server; the page's own exception named the line.
+  if (!v || !v.counts) {
+    const why = r?.exceptionDetails?.text ?? 'the page returned nothing measurable';
+    return { ok: false, why: `no frame — ${why}` };
+  }
   const share = {};
   for (const [k, n] of Object.entries(v.counts)) share[k] = +(n / v.total).toFixed(4);
   const ranked = Object.entries(share).sort((a, b) => b[1] - a[1]);
@@ -325,6 +392,14 @@ async function frameStats() {
     subject: share.figure ?? 0,          // the gate's first row: must be > 0
     largest: ranked[0]?.[0], largestShare: ranked[0]?.[1] ?? 0,
     lum: +(v.lum ?? 0).toFixed(4),
+    // ⚠ THE SPREAD, WHICH IS WHAT A LAMP CHANGES AND A MEAN CANNOT SHOW. The design's
+    // row for a close camera is *"distinct colours > 1 — a black frame is not
+    // atmosphere"*, and the failure it names has TWO shapes: a black frame and a flat
+    // grey one. Both have a spread of zero. A head-lamp lights what is near and leaves
+    // what is far, so contrast is the thing it actually adds — and the mean can be held
+    // constant while a picture goes from readable to featureless.
+    sd: +(v.sd ?? 0).toFixed(4),
+    bsd: Object.fromEntries(Object.entries(v.bsd ?? {}).map(([k, x]) => [k, +x.toFixed(4)])),
     samples: v.total, share,
   };
 }
@@ -419,6 +494,11 @@ for (const raw of lines) {
     // turns the instrument into a gate. Both print the whole histogram, because a
     // pass/fail with no numbers behind it is the thing this replaced.
     const fs2 = await frameStats();
+    if (fs2.ok === false) {
+      console.log(`  !! ${fs2.why}`);
+      if (rest[0] !== undefined) { frameFails += 1; }
+      continue;
+    }
     const wantSub = rest[0] === undefined ? null : Number(rest[0]);
     const wantMax = rest[1] === undefined ? null : Number(rest[1]);
     let verdict = '';
@@ -441,7 +521,13 @@ for (const raw of lines) {
       const name = rest[i], lo = Number(rest[i + 1]), hi = Number(rest[i + 2]);
       // `lum` is not a surface — it is the frame's mean luminance, and it rides the
       // same syntax because it is the same kind of claim: a number in a band.
-      const got = name === 'lum' ? fs2.lum : (fs2.share[name] ?? 0);
+      // `lum` and `sd` are the whole frame; `sd:<bucket>` is the spread WITHIN one
+      // surface; anything else is a surface's share. All four are the same kind of
+      // claim — a number in a band — so they share one syntax.
+      const got = name === 'lum' ? fs2.lum
+                : name === 'sd'  ? fs2.sd
+                : name.startsWith('sd:') ? (fs2.bsd[name.slice(3)] ?? 0)
+                : (fs2.share[name] ?? 0);
       if (got < lo || got > hi) {
         verdict += ` FAIL ${name} ${got} outside ${lo}..${hi}`; bad += 1;
       }

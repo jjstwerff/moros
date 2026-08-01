@@ -99,7 +99,7 @@ the gates that match them**; record it and let the migration retire both.
 | `C` | `<view 16>;<proj 16>` | camera. ⚠ Everything past the first `;` is parsed as the projection by `editor_client.loft` — **a third field silently blinds the wasm client** | **V** |
 | `S` | `<text>` | status: every acknowledgement above | **A**/**R** — becomes a return value, not a message |
 | `X` | `<id>` | drop a mesh (streamed out of range) | **D** |
-| `V` | `<hideMask>,<ambient>` | ⚠ **per-client** — bit 0 hides the FIGURE, bit *k* hides surface *k*; the ambient the fragment shader mixes against its one light. Sent on CHANGE, and re-sent to an ARRIVING client (`1` READY resets the sent-key), because a send-on-change that forgets the new tab is a bug | **V** |
+| `V` | `<hideMask>,<ambient>,<lamp>` | ⚠ **per-client** — bit 0 hides the FIGURE, bit *k* hides surface *k*; the ambient the fragment shader mixes against its one light, and the head-lamp's intensity. ⚠ The lamp's POSITION is not on the wire — the client derives it from the view matrix it already holds (`-transpose(R)·t`), so it cannot drift from the camera by a frame or a rounding, and the wire carries only the number that is a decision. Sent on CHANGE, and re-sent to an ARRIVING client (`1` READY resets the sent-key), because a send-on-change that forgets the new tab is a bug | **V** |
 | `Z` | `1` / `0` | brackets a batch of mesh traffic. Used by **both** the dirty flush and the streamer | **D** |
 | `E` | — | the opening burst is complete; *"tell me your aspect"*. Clients answer `2:<aspect>,` | **S** |
 | `G` | `<grass rgb>,<rock rgb>,<from>,<to>` | terrain ramp colours | **V** |

@@ -63,7 +63,8 @@ precision highp float;
 in vec3 vNrm;
 in vec3 vWorld;
 uniform vec3 uColor, uFogCentre, uFogColor, uRampLo, uRampHi;
-uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp, uAmb;
+uniform vec3 uEye;
+uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp, uAmb, uLamp;
 out vec4 frag;
 void main(){
   // One directional light, flat-shaded — the reference look: matte, no specular.
@@ -85,7 +86,33 @@ void main(){
   // comment closed the string and the whole page stopped parsing — three frames of
   // 99.96% sky, which reads exactly like a broken renderer and was a punctuation
   // mark. The frame histogram named it in one run; the picture could not have.
-  vec3 lit = base * (uAmb + (1.0 - uAmb)*d);
+  // ── THE HEAD-LAMP — the second of the design's two floats ──────────────────
+  //
+  // A light AT THE EYE, so what is near you is legible and what is far is not.
+  // That is the half of SNUG a low ambient cannot supply: dropping the ambient
+  // deepens the shadows a surface already has, and every one of them by the same
+  // amount whatever its distance. A lamp is the only term here that knows how far
+  // away something is, which is what makes a small room read as a small room.
+  //
+  // ⚠ THE EYE IS DERIVED FROM THE VIEW MATRIX, NOT SENT. For a rigid view matrix
+  // V = R.T(-eye) the position is -transpose(R)*t, which the client already holds
+  // — so the lamp cannot drift from the camera by a frame or by a rounding, and
+  // the wire carries the one number that is a DECISION (how bright) rather than a
+  // consequence (where).
+  vec3 toEye = uEye - vWorld;
+  float r2l = dot(toEye, toEye);
+  float nl = max(dot(normalize(vNrm), toEye * inversesqrt(max(r2l, 1e-6))), 0.0);
+  // Inverse-square, softened at the origin so a surface at the lens does not
+  // divide by nothing. The constant is the radius at which the lamp is HALF.
+  //
+  // ⚠ IT WAS 3.0 AND THAT MADE THE LAMP A SECOND AMBIENT. A 5x4 room is 3-8 units
+  // across, so at a 3-unit half-radius every surface in it got nearly the same
+  // amount and the lamp added brightness without adding a distance cue. Measured:
+  // the frame's mean rose 0.202 -> 0.232 and its CONTRAST did not move at all
+  // (sd 0.1282 -> 0.1290). A lamp that cannot be told from turning the ambient up
+  // is not a lamp. The half-radius has to be small against the room it is in.
+  float fall = 1.0 / (1.0 + r2l / (1.5*1.5));
+  vec3 lit = base * min(uAmb + (1.0 - uAmb)*d + uLamp * nl * fall, 1.0);
   // HORIZONTAL distance only. Using the full 3-D distance would fog the ground
   // at your feet whenever the camera is high, because the fade is centred on
   // the character and the camera looks down at it.
@@ -115,6 +142,8 @@ const uFogColor = gl.getUniformLocation(prog, 'uFogColor');
 const uFogFrom = gl.getUniformLocation(prog, 'uFogFrom');
 const uFogTo = gl.getUniformLocation(prog, 'uFogTo');
 const uAmb = gl.getUniformLocation(prog, 'uAmb');
+const uLamp = gl.getUniformLocation(prog, 'uLamp');
+const uEye = gl.getUniformLocation(prog, 'uEye');
 const uRampLo = gl.getUniformLocation(prog, 'uRampLo');
 const uRampHi = gl.getUniformLocation(prog, 'uRampHi');
 const uRampY0 = gl.getUniformLocation(prog, 'uRampY0');
@@ -204,6 +233,13 @@ function draw() {
     gl.uniform1f(uRampY0, ramp.y0);
     gl.uniform1f(uRampY1, ramp.y1);
     gl.uniform1f(uAmb, ambient);
+    gl.uniform1f(uLamp, lamp);
+    // eye = -transpose(R) * t, out of the view matrix the server just sent. Column
+    // major, so element (row r, col c) is view[c*4+r].
+    gl.uniform3f(uEye,
+      -(view[0]*view[12] + view[1]*view[13] + view[2]*view[14]),
+      -(view[4]*view[12] + view[5]*view[13] + view[6]*view[14]),
+      -(view[8]*view[12] + view[9]*view[13] + view[10]*view[14]));
     for (const p of parts.values()) {
       // The mesh's own bit, decided once when it arrived — see `addMesh`.
       if (hideMask & p.bit) continue;
@@ -234,7 +270,7 @@ let snapWanted = false;
 // ⚠ PER-CLIENT, BECAUSE CHUNKS ARE BROADCAST. One mesh reaches every tab, so a
 // camera mode can never change what is EMITTED — only what a given viewer draws.
 // Bit 0 hides the figure; bit k hides surface k, in the server's own slot order.
-let hideMask = 0, ambient = 0.45;
+let hideMask = 0, ambient = 0.45, lamp = 0.0;
 
 // Non-null only while a rebuild transaction is open — see the `Z:` handler.
 let staging = null;
@@ -284,8 +320,8 @@ ws.onmessage = (ev) => {
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
   }
   else if (tag === 'V') {
-    const [m, a] = body.split(',');
-    hideMask = Number(m); ambient = Number(a);
+    const [m, a, l] = body.split(',');
+    hideMask = Number(m); ambient = Number(a); lamp = Number(l ?? 0);
   }
   else if (tag === 'C') {
     const [v, p] = body.split(';');

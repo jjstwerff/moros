@@ -10,7 +10,69 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — AUTO degrades into SNUG, and the eye had been parked inside the wall
+## ⏭ PICK UP HERE (2026-08-01, session 8) — SNUG is complete, and "near plane in" was a claim to refute
+
+`make gate` **29 green**, `make lib-test` **952 on both backends**. SNUG now has all
+of it: **body hidden, ambient down, head-lamp up** — and the fourth item on the
+design's list, *"near plane in"*, turns out to have nothing to do.
+
+### ⚠ The lamp needed a genuinely LOW ambient before it did anything
+
+At ambient 0.22 the lamp was indistinguishable from turning the ambient up: the
+frame's mean rose 0.202 → 0.232 and its contrast did **not** move (sd 0.1282 →
+0.1290). The shader mixes `a + (1−a)·d` and clamps at 1, so with a high ambient most
+surfaces are already near-lit and a lamp has no headroom. At ambient **0.10** with
+lamp **0.90** the room is darker *and* higher-contrast than FOLLOW.
+
+⚠ **A whole-frame `sd` CANNOT see a lamp**, and it took three measurements to accept
+that — dropping the ambient widens the *same* histogram. The signature is the spread
+**within one surface**: with only an ambient and one directional light a wall is one
+plane with one normal and one colour, so every pixel of it has the identical
+luminance. A light that falls off with distance is the only term that can make it
+vary.
+
+| at the SNUG station | lamp off | lamp on |
+|---|---|---|
+| whole-frame `sd` | 0.1418 | 0.1415 |
+| **`sd:masonry`** | **0.0031** | **0.0762** |
+| `black` share | **2.35%** | 0 |
+
+The last row is the design's *"a black frame is not atmosphere"* as a number: without
+the lamp a third of the frame falls so dark that a WALL matches the ROAD's
+chromaticity. **Seen red**: switch the lamp off and exactly one row fails.
+
+### ⚠ "Near plane in" is refuted — the camera cannot reach it
+
+`CAM_SKIN` is 0.533, so the boom stops more than **ten times** the near plane (0.05)
+from anything the sweep found; what the sweep misses cannot be in front of it either
+(the ground has its own backstop, and `D1` says dressing never shoves the camera).
+Measured: anything clipped shows as the clear colour, and `sky` reads **0.0000** at
+every interior station against **29.7%** in the outdoor control. `sky 0 0.001` is a
+gate row now, so if that ever changes the suite says so.
+
+⚠ **Second row of the mode table describing a camera that no longer exists** —
+FOLLOW's *"roof, inside: hidden"* is the other. Both were written when the eye was
+outside the house.
+
+### Two instruments were wrong before the thing they measured — again
+
+- **The readiness check and the measurement were asking different buffers.**
+  `browser()` waited on `readPixels`, which **this same file documents as returning
+  black** without `preserveDrawingBuffer`. It reported *"the page never drew"* against
+  a page holding 440 meshes with a live WebGL2 context and no exceptions, measured
+  directly over CDP. Both go through `Page.captureScreenshot` now.
+- **`frameStats` crashed instead of reporting.** `Object.entries(undefined)` killed a
+  whole run with a TypeError. It returns `{ok:false, why}` now **and prints the
+  page's own exception** — which named the next bug on the first line.
+- ⚠ **A backtick in a comment inside a JS template literal, twice in one day.** Once
+  in the client's GLSL (three frames of 99.96% sky, which reads as a broken renderer
+  and was punctuation) and once in `script.mjs`. `node --check` after every edit to
+  that file.
+- **A dead run leaves Chrome holding the devtools port**, and the next run silently
+  attaches to the corpse. `browser()` frees it first now, the way `run-gates.sh`
+  frees the editor port, with the same caution about identifying the process.
+
+## Earlier in session 8 — AUTO degrades into SNUG, and the eye had been parked inside the wall
 
 `make gate` **29 green**, `make lib-test` **952 on both backends**. Read
 [CAMERA_INDOORS.md](CAMERA_INDOORS.md) before touching the camera.
@@ -245,10 +307,7 @@ parallel so it costs its own wall time rather than a sum.
 
 1. ✅ **`sh_room` and AUTO's degradation** — done, and NOT the way the design said.
    See the top of this file. ⚠ **`sh_back` is measured and has no consumer.**
-2. **SNUG's other half: the head-lamp and the near plane.** The ambient mixes as
-   `a + (1−a)·d`, so lowering it deepens shadows rather than dimming the picture —
-   which is why a room still reads at 0.22 with no lamp. Both are named in
-   `CAMERA_INDOORS.md` § the mode table and neither is built.
+2. ✅ **SNUG's other half** — head-lamp built; near plane refuted. See the top.
 3. ⚠ **FOLLOW's "roof, inside: hidden" row is OBSOLETE — do not build it.** It was
    written when the eye was outside the house and the roof was between them. The eye
    is in the room now, below the eave, so hiding the roof would show sky over the

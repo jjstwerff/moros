@@ -1,0 +1,55 @@
+# THE HEAD-LAMP AND THE NEAR PLANE — measured before either is built.
+#
+# The design asks for both in one line ("body hidden, ambient down, head-lamp up,
+# near plane in") and gives a reason for only the first three. So the near plane is
+# a claim to test rather than a task to do: `mat4_perspective(55, asp, 0.05, 400)`
+# already puts it 5 cm from the eye, and "in" from there costs depth precision that
+# is already 1:8000.
+#
+# ⚠ TWO NUMBERS THE MEAN CANNOT GIVE. A lamp lights what is NEAR and leaves what is
+# far, so what it adds is CONTRAST — and "a black frame is not atmosphere" has two
+# shapes, black and flat grey, both of which have a spread of zero. `sd` is the
+# frame's luminance standard deviation.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+send 27:1
+
+echo --- FOLLOW outdoors, the control: full light, full boom
+send 40:1
+at 0 -10 90
+step 120
+frame
+
+echo --- FOLLOW inside, mid-floor
+at 0 0 90
+step 120
+frame
+
+echo --- SNUG, chosen, mid-floor: the SAME geometry, only the light differs
+send 40:2
+at 0 0 90
+step 120
+snap s13-snug-mid
+frame
+
+echo --- SNUG close to the wall, where AUTO would have reached it anyway
+at 0 -1.5 90
+step 120
+snap s13-snug-wall
+frame
+
+echo --- SNUG at the ridge, looking up — where the near/far ratio would show
+at 0 2 90
+send 3:0,-4000
+step 120
+snap s13-snug-ridge
+frame
