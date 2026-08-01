@@ -3048,18 +3048,82 @@ fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Me
     }
   }
 
+  // ⚠ ONE CALL DECIDES WHETHER ANY CELL HERE CAN BE AN OPENING, and it is exact
+  // rather than a heuristic: a LAYER IS CHUNK-WIDE, so the ground's index is the
+  // same for every cell of this chunk. A cellar is INSERTED beneath, which is the
+  // only thing that moves the ground off index 0 — so `gl0 > 0` is precisely "this
+  // chunk has been dug under somewhere", and a chunk that has not pays one label
+  // scan for the whole rebuild instead of one per cell.
+  //
+  // That mattered enough to derive rather than measure afterwards: a per-cell scan
+  // added to the stream path once took first-client service from a few seconds to
+  // seventy-one, and this loop runs four times per chunk, once per material.
+  gl0 = hex_world::world_ground_layer(wld, q0, r0);
+  can_open = gl0 > 0;
+
   for cr in r0..r0 + CHUNK {
     for cq in q0..q0 + CHUNK {
       mat = world_ground_cell(wld, cq, cr).h_material;
-      // An unwritten cell is absence (material 0) and counts as ground, which is
-      // what makes an unauthored world a flat plane rather than a hole.
-      if mat == 0 { mat = SURFACE_MAT; }
-      if mat == want_mat {
+      // ⚠ AN UNWRITTEN CELL IS ABSENCE AND COUNTS AS GROUND — that is what makes an
+      // unauthored world a flat plane rather than a hole to fall through, and it is
+      // exactly why a stairwell cannot simply be a cleared cell: the two are the
+      // same record. What separates them is the COLUMN, not the cell, and
+      // `ground_open` is that rule — unoccupied ground with something occupied
+      // BENEATH it was opened on purpose; unoccupied ground with nothing under it is
+      // just outdoors nobody has touched.
+      open = false;
+      if mat == 0 {
+        if can_open { open = hex_editor::ground_open(wld, cq, cr); }
+        mat = SURFACE_MAT;
+      }
+      if !open && mat == want_mat {
         emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gq0, gr0, gw);
+        // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
+        // one surface over. The ground has no skirts because it is continuous and
+        // its edges are somebody else's cells — but a stairwell is where the ground
+        // STOPS, and with nothing across the cut you see straight through the
+        // thickness between the floor and the ceiling under it.
+        if can_open { emit_ground_reveal(cm, wld, cq, cr); }
       }
     }
   }
   cm
+}
+
+// The cut face of the ground where a stairwell has been opened beside it — from the
+// ground's own smoothed corners down to the ceiling one thickness below.
+//
+// ⚠ BOTH ENDS COME FROM `corner_heights`, so the reveal meets the ground it is cut
+// into and the ceiling it hangs from by construction, at every corner, on any slope.
+// Taking the top from the stored height instead would leave a hairline wherever the
+// terrain is not flat — the same defect the cellar's ceiling had before it was drawn
+// from this function.
+fn emit_ground_reveal(m: Mesh, wld: World, cq: integer, cr: integer) {
+  rhs = corner_heights(cq, cr, wld);
+  drop = FLOOR_THICK as float;
+  rcs = hex_to_world(cq, cr, 0);
+  for rd in 0..6 {
+    (rnq, rnr) = hex_grid::hex_neighbor(cq, cr, rd);
+    if hex_editor::ground_open(wld, rnq, rnr) {
+      (rka, rkb) = hex_grid::hex_edge_corners(rd);
+      rw1 = hex_corner_world(cq, cr, 0, (6 - rka) % 6 ?? 0);
+      rw2 = hex_corner_world(cq, cr, 0, (6 - rkb) % 6 ?? 0);
+      y1 = (rhs[rka] ?? 0.0) * HEIGHT_SCALE;
+      y2 = (rhs[rkb] ?? 0.0) * HEIGHT_SCALE;
+      b1 = ((rhs[rka] ?? 0.0) - drop) * HEIGHT_SCALE;
+      b2 = ((rhs[rkb] ?? 0.0) - drop) * HEIGHT_SCALE;
+      // The normal points INTO the stairwell, taken from the neighbour rather than
+      // from the winding — `emit_wall_panel`'s rule, and it is here for its reason:
+      // the two libraries walk the corner ring in opposite senses, so a normal read
+      // off the winding faces the wrong way for half the directions.
+      rcn = hex_to_world(rnq, rnr, 0);
+      rnm = nrm3(rcn.x - rcs.x, 0.0, rcn.z - rcs.z);
+      ra = vec3(rw1.x, b1, rw1.z); rb = vec3(rw2.x, b2, rw2.z);
+      rc = vec3(rw2.x, y2, rw2.z); rdd = vec3(rw1.x, y1, rw1.z);
+      emit_tri(m, ra, rnm, rb, rnm, rc, rnm);
+      emit_tri(m, ra, rnm, rc, rnm, rdd, rnm);
+    }
+  }
 }
 
 fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
@@ -3116,10 +3180,34 @@ fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integ
 // reason spelled out on `walk_h`. A walker at the rim of a stair's top step has
 // feet a full storey below that step's own height, and asking with them selects
 // the ground under the deck instead of the deck.
+// ⚠ SMOOTH MEANS "THE SURFACE FOUND *IS* THE GROUND", NOT "THIS COLUMN HOLDS ONE
+// LAYER" — and the difference was invisible until a stairwell existed.
+//
+// `sf_smooth` is `occ <= 1`: one occupied terrain layer, therefore the outdoors,
+// therefore the interpolated heightfield. That inference holds for every column
+// anyone had built until now, and it is wrong for exactly one: a column whose ground
+// has been OPENED still holds one layer — the stair tread — so it reports smooth,
+// and the caller then interpolates `terrain_h`, which reads the ground cell's stored
+// height WITHOUT testing occupancy and answers as if the floor were still there.
+//
+// Measured: a walker teleported onto the top tread stood at 17.16 units instead of
+// 14 — on the floor it had just been given a hole through. The stair worked in the
+// store and the walker climbed the ceiling.
+//
+// The honest question is the one the file already states three screens up — *smooth
+// for terrain, flat for what is built on it* — so ask it directly: is the layer the
+// surface came from the ground layer? Same answer as before wherever the old test
+// was right, and right in the case that exposed it.
+fn on_the_ground(wld: World, q: integer, r: integer, sf: hex_world::Surface) -> boolean {
+  sf.sf_layer >= 0 && sf.sf_layer == hex_world::world_ground_layer(wld, q, r)
+}
+
 fn ground_under(wld: World, wx: float, wz: float, ref: float) -> float {
   addr = world_to_hex(wx, wz);
   sf = hex_world::world_surface(wld, addr.ha_q, addr.ha_r, ref / HEIGHT_SCALE ?? 0.0);
-  if sf.sf_smooth || sf.sf_units < 0 { return terrain_y(wx, wz, wld); }
+  if sf.sf_units < 0 || on_the_ground(wld, addr.ha_q, addr.ha_r, sf) {
+    return terrain_y(wx, wz, wld);
+  }
   (sf.sf_units as float) * HEIGHT_SCALE
 }
 
@@ -3471,7 +3559,12 @@ fn cam_clear_at(x: float, z: float, eye: float, wld: World) -> float {
 // within-cell interpolation at each sample.
 fn surface_h_at(q: integer, r: integer, ref: float, wld: World) -> float {
   sf = hex_world::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0);
-  if sf.sf_smooth || sf.sf_units < 0 { return (terrain_h(q, r, wld) as float) * HEIGHT_SCALE; }
+  // The same correction as `ground_under`'s, and it must be the same one: the camera
+  // sampling a different surface from the feet is the disagreement this file's
+  // ground sampler exists to avoid.
+  if sf.sf_units < 0 || on_the_ground(wld, q, r, sf) {
+    return (terrain_h(q, r, wld) as float) * HEIGHT_SCALE;
+  }
   (sf.sf_units as float) * HEIGHT_SCALE
 }
 
@@ -4395,9 +4488,34 @@ fn main() {
             srv.send_to(ev.cid, "S:storey refused ({nb}) {swhy}");
             println("editor: storey refused ({nb}) at ({shx.ha_q},{shx.ha_r}) — {swhy}");
           } else {
+            // ⚠ A CELLAR COMES WITH ITS STAIR, because without one it is a room
+            // nothing can enter — and that is `F1`, not the drawing. A tread under
+            // an intact floor is refused the moment it comes within ε, so the
+            // gesture that digs the room is the only one that can also open the way
+            // in. Measured before this: `stair refused (-1) the world's floor is 0`,
+            // because `stair_cut` cuts the GROUND down and walks into the reserve
+            // long before it reaches a cellar.
+            //
+            // The stride is `cliff_step()` for the same reason `12:` STAIR takes it
+            // — what a walker can climb is the walker's rule, read from the consumer
+            // that owns the walker, and `hex_editor` must not depend on `moros_sim`.
+            if sdir < 0 {
+              st_why2 = "";
+              ns = hex_editor::cellar_stair(wld,
+                     hex_editor::author_at(px, pz, yaw), cliff_step(), st_why2);
+              if ns < 0 {
+                srv.send_to(ev.cid, "S:cellar {nb} cells, but no stair ({ns}) {st_why2}");
+                println("editor: cellar dug on {nb} cells, stair refused ({ns}) — {st_why2}");
+              } else {
+                mark_dirty(dirty, shx.ha_q, shx.ha_r, 6);
+                srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells, stair of {ns}");
+                println("editor: cellar on {nb} cells with a stair of {ns} treads");
+              }
+            } else {
+              srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
+              println("editor: storey {sdir:+} on {nb} cells");
+            }
             mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
-            srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
-            println("editor: storey {sdir:+} on {nb} cells");
           }
         } else if ev.msg_id == MSG_STAIR {
           st_dir = ev.payload as integer ?? 1;

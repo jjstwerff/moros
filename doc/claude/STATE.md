@@ -22,12 +22,34 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **31 green** (78 s) · `make lib-test` **955 on both backends** ·
-`lib/hex_editor` **203 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 today
+`make gate` **31 green** · `make lib-test` **961 on both backends** ·
+`lib/hex_editor` **209 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
 
-### The cellar closed the set, and needed a third instrument to do it
+### A cellar is a room now: a ceiling over it, and a stair into it
+
+The author's model was already the built one and that is worth saying first: **a
+house's floor IS the ground layer** (`place_house` writes `ground_set(…, FLOOR_MAT)`),
+and **a cellar IS a layer below it**. Only the third part was missing.
+
+⚠ **Nothing could stand in a cellar, and `F1` was why — not the drawing.** A tread
+written into the cellar layer under an intact floor is refused the moment it comes
+within ε: measured, ground−8 accepted and ground−6 `CW_FOLD`. Eight units is two and
+a half strides, so no stair could ever arrive while the floor stayed whole. So the
+cellar gesture **opens the ground over its own stair**, and the walker needed nothing
+taught — `world_surface` already resolves to the tread over an opened column.
+
+⚠ **A hole is ABSENCE, and absence is indistinguishable from unauthored ground** —
+`hex_present` tests the same field, and the renderer draws an unauthored cell as
+ground *on purpose*, which is what makes an empty world a plane rather than a void.
+What separates them is the **column**: unoccupied ground with something occupied
+beneath it was opened deliberately. `ground_open` is that rule, and it is free on any
+world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once per chunk.
+Probed before building on it: **the hole survives save and load**, because elision
+drops records and the layer is kept alive by every cell that still holds ground.
+
+### The cellar's ceiling — and a third instrument to see it
 
 `emit_hex_under` now reaches the **ground**, gated by `hex_editor::col_has_below` —
 so a cellar has a ceiling and the "something overhead with no underside" class is
@@ -51,6 +73,24 @@ wedges. The ceiling is the ground's own corner heights minus one constant now, s
 check normalised the difference into (-180, 180], so `|d| >= 180` was true at one
 discrete facing the walker steps over. Each call burned all 8000 tick-waits — **560 s
 of a 593 s gate**. The turn is accumulated per tick now.
+
+### ⚠ Four things were built right and read wrong by a consumer
+
+Every one of these passed its own tests. The defect was always in what *read* them.
+
+| | found by |
+|---|---|
+| `sf_smooth` means "this column holds ONE layer", and an **opened** column holds one too — so `ground_under` interpolated `terrain_h` and stood the walker on the floor it had just been given a hole through | the descent: feet at 17.16 units instead of 14 |
+| the stair opened only what `F1` forced — and `world_surface` takes the highest layer within **ε/2, which is exactly one stride**, so on the deepest tread the walker found the floor above and climbed back out | the descent again |
+| the stair derived every tread from the **author's** column; a heightfield falls away faster than a stair rises, so downhill it was a flight of steps floating over a hillside | `ground.mjs`: the drawn peak moved 10.917 → 11.25 wu |
+| a second `C` made a room under a room, and the stair climbed from the deepest floor **straight past the one between** | `surface.mjs`: `stair of 5` |
+
+⚠ **And `turn` is not usable in a gate at all.** `cellar.keys` passed alone and failed
+in the suite *every* time — levelling to 4.469 instead of 4.593, and **finishing
+faster** than it did alone, which is the tell that something bailed early rather than
+ran slowly. `turn` paces off ticks, so under ten parallel servers it stops short and
+every arm after it points elsewhere. `at <x> <z> <yaw>` carries the heading exactly on
+any load.
 
 ### What exists now that did not
 
@@ -209,13 +249,15 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **A CELLAR IS UNREACHABLE** — nothing can stand in one. `stair_cut` cuts the
-   **ground** layer down, so a stair walked toward a cellar refuses on the world's
-   floor long before it arrives (`stair refused (-1) the world's floor is 0`). Its
-   ceiling is built and gated now, but only the wire can see in there.
-   ⚠ And a cellar has **no walls** either: the model draws a layer's top, its rim
-   and its underside, and nothing between two layers — so the twelve units of earth
-   between a cellar floor and the ground are not a surface anywhere.
+1. ⚠ **A CELLAR HAS NO WALLS.** The reachability half is done — you can walk down
+   into one and it is gated — but the room is open at the sides: the model draws a
+   layer's top, its rim and its underside, and **nothing between two layers**, so the
+   twelve units of earth between a cellar floor and the ground are not a surface
+   anywhere. Standing inside and looking level, you see out over the floor's rim.
+   The stairwell already needs a reveal for the same reason and got one
+   (`emit_ground_reveal`); a cellar wants the same face all round its perimeter, and
+   the honest version is probably that `emit_floor_slab`'s rim should run to the
+   layer BELOW rather than a fixed `FLOOR_THICK` when there is a room under it.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

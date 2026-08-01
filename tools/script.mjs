@@ -33,6 +33,8 @@
 //   save <name>             write the world; the file is the determinism fingerprint
 //   echo <text>             print a marker into the transcript
 //   mesh <surf> [lo hi]     vertices the server EMITTED into a surface, off the wire
+//   feet [lo hi]             where the character is STANDING — a stair is a sequence
+//                           of these, and `cam` cannot say it
 //   meshy <surf> <y0> <y1> [lo hi]   the same, inside a band of world y — for when
 //                           one surface carries two things of one colour
 import http from 'node:http';
@@ -670,6 +672,21 @@ for (const raw of lines) {
     console.log(`  eye ${e.map((v) => v.toFixed(3)).join(' ')}`
               + `  char ${p[12].toFixed(3)} ${p[13].toFixed(3)} ${p[14].toFixed(3)}`
               + `  apart ${d.toFixed(3)}` + verdict);
+  } else if (cmd === 'feet') {
+    // ⚠ WHERE THE CHARACTER IS STANDING — the one thing `cam` cannot say. `cam`
+    // judges the eye's distance from the body, which is a camera claim; this is a
+    // WORLD claim, and a stair is nothing but a sequence of them. Read off the
+    // body's own model matrix, the same `pose()` the facing comes from, so it is
+    // what the renderer drew and not a number the server re-derived.
+    const p = pose();
+    const y = p[13];
+    let verdict = '';
+    if (rest[0] !== undefined) {
+      const lo = Number(rest[0]), hi = Number(rest[1]);
+      if (y < lo || y > hi) { verdict = ` FAIL feet ${y.toFixed(3)} outside ${lo}..${hi}`; frameFails += 1; }
+      else verdict = ' PASS';
+    }
+    console.log(`  feet ${y.toFixed(3)} at ${p[12].toFixed(2)},${p[14].toFixed(2)}${verdict}`);
   } else if (cmd === 'mesh') {
     // `mesh <surface>` reports; `mesh <surface> <lo> <hi>` judges. No browser: this
     // is the wire, so it costs nothing and works in a headless run.

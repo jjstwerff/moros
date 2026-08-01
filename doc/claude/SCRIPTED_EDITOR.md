@@ -75,6 +75,7 @@ stays.
 | **plan + elevation raster**, drawn from the emitted geometry | *is the shape right* — is the wall straight, is the footprint square, does the roof pitch | headless, deterministic, no GPU. `tools/plan.mjs` already does plan view |
 | **a 3D render** | *does it READ as a house* — the cold-recognition test | needs a renderer |
 | **the wire** — `mesh <surf>`, `meshy <surf> <y0> <y1>` | *was it EMITTED at all, and WHERE* | headless, no browser, off the `M:` frames |
+| **the walker** — `feet [lo hi]` | *can you GET there* — a stair is a sequence of these | headless, off the body's own matrix |
 
 The first is a measurement that happens to be an image, and it is exact: a zigzag wall is
 visibly a zigzag in plan. The second is the acceptance test and cannot be automated away.
@@ -88,6 +89,18 @@ count**, and `mesh` was the answer. Then the cellar: digging one puts 342 vertic
 in the same surface — a **count cannot see a height**, and `meshy` is the answer to that.
 The rule generalises past this file: when one instrument cannot separate two cases, the fix
 is a second instrument, never a looser threshold.
+
+⚠ **And a count cannot see whether you can GET there.** The cellar stair was correct in the
+store — every tread at the right height, every one of them drawn — while the walker stepped
+down once and climbed straight back out onto the floor. `feet` is the row that catches it,
+and nothing else in this table can: the picture was right, the counts were right, and the
+room was still unreachable.
+
+⚠ **`turn` must not appear in a gate.** It paces itself off ticks, so under a full suite it
+stops short and every heading after it is wrong — `cellar.keys` passed alone and failed in
+the suite every time, *finishing faster* than it did alone, which is the tell that something
+bailed early rather than ran slowly. Use `at <x> <z> <yawdeg>`, which carries the heading
+exactly on any load.
 
 ⚠ **A green board is not a passing step.** Every claim about a shape can hold while the
 picture is wrong — `25:` WALL passed its gate for months while drawing a road with a fence

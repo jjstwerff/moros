@@ -87,7 +87,13 @@ ws.onmessage = async (e) => {
 
     const towerBuilt  = up.length === 3 && up.every(m => /^storey \+1 on \d+ cells$/.test(m));
     const refusedLow  = cellarLow.startsWith('storey refused (-2)');
-    const cellarBuilt = /^storey -1 on \d+ cells$/.test(cellarHigh);
+    // ⚠ A CELLAR NOW COMES WITH ITS STAIR, and the ack says so — `storey -1 on 19
+    // cells, stair of 2`. This used to be anchored with `$` and went red on the
+    // extra clause, which is the anchor doing its job: the gesture's contract
+    // changed and a gate that shrugged at that would be worth less. The stair is
+    // asserted here rather than merely tolerated, because a cellar with no way in
+    // is the defect this whole rung exists to close.
+    const cellarBuilt = /^storey -1 on \d+ cells, stair of [1-9]\d*$/.test(cellarHigh);
     // one layer per storey, exactly — not "few", because the defect it guards
     // against was a CONSTANT FACTOR and any slack admits it back
     const ok = towerBuilt && refusedLow && cellarBuilt;

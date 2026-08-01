@@ -1,25 +1,23 @@
-# A CELLAR HAS A CEILING — the third recurrence of one shape, and the one that
-# needed a third instrument.
+# A CELLAR IS SOMEWHERE YOU CAN BE — a ceiling over it, and a stair into it.
 #
 # ⚠ THE ROOF HAD NO UNDERSIDE. THE DECK HAD THE SAME DEFECT ONE AXIS OVER AND
-# SURVIVED THE ROOF'S FIX. This is the third: a cellar's ceiling is the GROUND, and
-# the ground is the one layer the underside clause excludes — drawn by
+# SURVIVED THE ROOF'S FIX. The ground was the third: a cellar's ceiling IS the
+# ground, and the ground is the one layer the underside clause excludes — drawn by
 # `chunk_mesh_mat`, which answers *the outdoors* by definition and so never had a
 # reason to ask what was dug beneath it.
 #
 # ⚠ AND `mesh soffit` IS BLIND TO IT, which is why `meshy` exists. Digging a cellar
 # puts 342 vertices into the soffit surface whether or not a ceiling is drawn — that
-# is the cellar FLOOR's own underside, emitted by the clause every non-ground layer
-# goes through, in the same surface and the same colour. Seen red before the fix:
-# `mesh soffit 342` and every one of those vertices 3.0 wu BELOW the ground. A count
-# cannot see a colour, a colour cannot see a count, and NEITHER can see a height.
+# is the cellar FLOOR's own underside, in the same surface and the same colour. Seen
+# red before the fix: 342, every one of them 3.0 wu BELOW the ground. A count cannot
+# see a colour, a colour cannot see a count, and NEITHER can see a height.
 #
-# ⚠ NO PICTURE FROM INSIDE, AND THAT IS A FACT ABOUT THE WORLD, NOT A GAP IN THE
-# GATE: nothing can stand in a cellar. `stair_cut` cuts the GROUND layer down, so
-# walking a stair toward a cellar refuses on the world's floor long before it
-# arrives — measured, `stair refused (-1) the world's floor is 0`. Until a gesture
-# connects the two, the wire is the only instrument that can reach in there, and
-# the frame row below is the control from OUTSIDE.
+# ⚠ AND THE ROOM WAS UNREACHABLE, WHICH IS `F1` AND NOT THE DRAWING. A tread written
+# into the cellar layer under an intact floor is refused the moment it comes within
+# ε: measured, ground−8 accepted and ground−6 `CW_FOLD`. Eight units is two and a
+# half strides, so no stair could ever arrive while the floor stayed whole. So the
+# cellar gesture opens the ground over its own stair, and `feet` below is the row
+# that says a walker actually gets down there.
 
 echo --- a hill, because a cellar needs a storey of room beneath the ground
 at 0 0 0
@@ -29,11 +27,11 @@ key ArrowUp
 wait rebuilt
 step 10
 
-# ⚠ THE BASELINE IS A CLAIM, NOT A WARM-UP. The ground's underside is CONDITIONAL
-# where a deck's is not: a deck can be walked under wherever it is, so it owes one
-# always; the ground owes one only where something is dug beneath it. Emitting it
-# unconditionally would be a second fan under every cell in the world for a face
-# nothing can ever see, and this row is what catches that.
+# ⚠ THE BASELINE IS A CLAIM, NOT A WARM-UP, and it guards the expensive half. The
+# ground's underside is CONDITIONAL where a deck's is not: a deck can be walked under
+# wherever it is, so it owes one always; the ground owes one only where something is
+# dug beneath it. Emitting it unconditionally would be a second fan under every cell
+# in the world for a face nothing can ever see, and this row is what catches that.
 echo --- BASELINE: nothing dug anywhere, so the ground owes no underside
 mesh soffit 0 0
 
@@ -41,76 +39,118 @@ echo --- stand on the hill and level a plateau by walking a CROSS through it
 # ⚠ A CROSS, NOT A LINE, AND THE REASON IS THE LEVELLING BRUSH'S ARITHMETIC. `brush`
 # scales the gap by `f²` and truncates to an integer, so only the cell the walker
 # STEPS ON closes exactly; a cell one hex off the path takes 0.92 of a gap of 1,
-# which is 0 — it stalls a unit short and no number of passes moves it. Walking two
-# lines through the dig point is what makes the disc flat enough for the two
-# undersides below to separate cleanly instead of interleaving.
+# which is 0 — it stalls a unit short and no number of passes moves it.
 #
 # ⚠ AND IT RETURNS TO THE CENTRE BY TELEPORT, NOT BY WALKING BACK. Walking out and
-# back does not land where it started — the arms came back 8 hexes adrift and the
-# dig was refused on ground the levelling never reached. While levelling is ON a
-# teleport takes `level_h` directly rather than asking the ground, so going back to
-# the middle costs nothing and cannot drift.
+# back does not land where it started — the arms came back 8 hexes adrift and the dig
+# was refused on ground the levelling never reached. While levelling is ON a teleport
+# takes `level_h` directly rather than asking the ground, so it cannot drift.
+#
+# ⚠ AND EVERY ARM IS AIMED BY `at`'s OWN YAW, NOT BY `turn`. This used `turn 180` /
+# `turn 90`, and it passed alone and failed in the SUITE every single time — the
+# plateau levelling to 4.469 instead of 4.593, and the gate finishing FASTER than it
+# did alone, which is the tell that something bailed early rather than ran slowly.
+# `turn` paces itself off ticks, so under ten parallel servers it stops short and
+# every arm after it points somewhere else. A teleport carries the heading exactly,
+# on any load, which is what "exact, repeatable, the workhorse" is worth.
 at 17 0 0
 step 20
 send 6:1
 keys 1
 step 25
 keys 0
-at 17 0 0
-turn 180
+at 17 0 180
 keys 1
 step 25
 keys 0
-at 17 0 0
-turn 90
+at 17 0 90
 keys 1
 step 25
 keys 0
-at 17 0 0
-turn 180
+at 17 0 270
 keys 1
 step 25
 keys 0
+# ⚠ FACING +x AGAIN BEFORE THE DIG, because the stair runs along the author's facing
+# and the stations below are written for it.
 at 17 0 0
 send 6:0
 step 30
-cam
+feet 4.4 4.7
 
-echo --- dig a cellar under the plateau
+echo --- dig, facing +x, and the stair goes in with it
 key C
 step 60
-# ⚠ 684 IS 342 TWICE — 19 cells x 18 vertices, the cellar FLOOR's underside and the
-# CEILING over it, one fan each. A structural relation: every cell the gesture dug
-# gets both. Before the fix this read 342 and passed nothing.
-mesh soffit 684 684
+# 19 cells dug. Each gets a floor-underside; each keeps a ceiling EXCEPT the two the
+# stair opens — so 36 fans of 18, not 38. A structural relation, and the two numbers
+# move in opposite directions: a gesture that opened the whole disc would still be
+# "684 minus something" to a looser row.
+mesh soffit 648 648
 
-echo --- and the two are a STOREY APART, which is the whole point of the split
-# The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground, and each
-# underside is `FLOOR_THICK` below its own layer — so the ceilings cluster just
-# beneath the plateau and the floor's undersides a storey below them.
+echo --- and the room's own floor is a storey under everything else
+# The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
+# underside is `FLOOR_THICK` below its own layer. 1.75 is the middle of a measured
+# gap — histogrammed here, the lower set runs out at 1.5 and the upper starts at 2.0,
+# so the boundary has a full height unit of margin either side.
 #
-# ⚠ 1.75 IS THE MIDDLE OF A MEASURED GAP, not a guess. Histogrammed at this station:
-# the floor's undersides run out at 1.5 and the ceilings start at 2.0, with nothing
-# in between — so the boundary has a full height unit of margin either side. The gap
-# is what the cross walk above buys; on a single-line level it was 78 vertices wide
-# in the wrong direction, the two sets interleaving over the disc's remaining slope.
-meshy soffit -100 1.75 342 342
+# ⚠ THE UPPER BAND IS TWO POPULATIONS AND SAYS SO: 306 ceilings plus the two TREADS'
+# own undersides, because a tread is a cellar-layer cell and carries one like any
+# other. A first version tried to separate those two at 3.5 and could not — the
+# plateau is not perfectly flat, so the ceilings scatter from 2.0 to 4.0 and swallow
+# the treads. What pins the stair's rise instead is the `feet` rows below, which
+# measure it where it is actually load-bearing: under the walker.
+meshy soffit -100 1.75 306 306
 meshy soffit 1.75 100 342 342
 
-echo --- THE CONTROL, from outside: the ceiling must stay UNDER the ground
-# ⚠ THIS ROW REFUTED THE FIRST FIX, which is the whole reason it is here. A flat fan
-# at the ground's STORED height read well on paper — every other underside in the
-# renderer is exactly that, and a cellar is built. But the ground is DRAWN SMOOTHED:
-# a corner is the mean of the three cells touching it, so the drawn surface falls
-# away from the stored height everywhere the terrain does, and a flat ceiling two
-# units under it stood proud of the hillside as a ring of dark wedges — `soffit
-# 0.0187` of a frame that must hold none.
+echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
+# ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:
+# the store can hold a perfect stair that the walker climbs straight back out of.
+# It did. `world_surface` takes the highest occupied layer at or below `feet + ε/2`,
+# and ε/2 is 4 — the same as a stride — so with the floor left intact over the
+# deepest tread the query answered "the floor" and the descent bounced. The gesture
+# opens every tread now, and these four numbers are what says so.
 #
-# The construction that cannot fail this is the ground's own corner heights minus one
-# constant, so "the ceiling is under the ground" holds by subtraction. This is the
-# row that says the renderer is still using it: the brush leaves a real slope all
-# round the plateau, which is exactly where a flat ceiling would surface.
+# ⚠ AND THEY ARE EXACTLY 1.0 wu APART. A stride is `cliff_step()` = 4 height units,
+# a storey is 12, so a cellar is three steps and there is no room for a fourth. A
+# gate that only asked "did the feet go down" would pass on a two-metre drop.
+echo --- on the plateau, beside the stairwell
+at 22.5 0 180
+step 20
+feet 2.6 2.9
+echo --- the top tread
+at 20.8 0 180
+step 20
+feet 3.4 3.6
+echo --- the lower tread, and this one is UNDER the floor
+at 19.0 0 180
+step 20
+feet 2.4 2.6
+echo --- and the cellar floor itself, three metres under the ground
+at 17 0 180
+step 20
+feet 1.4 1.6
+
+echo --- EYES, standing in the cellar, looking STRAIGHT UP
+# ⚠ THE PICTURE THAT COULD NOT BE TAKEN BEFORE ANY OF THIS. Nothing could stand in a
+# cellar, so the ceiling was gateable only on the wire. `sky 0` is the other half of
+# the claim and it is not redundant: a ceiling that was drawn but in the wrong place
+# would leave daylight over the room, and the count cannot see where a face is.
+send 40:4
+send 3:0,-20000
+step 120
+snap s16-cellar-ceiling
+frame 0 1.0 soffit 0.95 1.0 sky 0 0.001
+
+echo --- THE CONTROL, from outside: the ceiling must stay UNDER the ground
+# ⚠ THIS ROW REFUTED THE FIRST FIX. A flat fan at the ground's STORED height read
+# well — every other underside in the renderer is exactly that, and a cellar is
+# built. But the ground is DRAWN SMOOTHED, so the drawn surface falls away from the
+# stored height wherever the terrain does, and a flat ceiling two units under it
+# stood proud of the hillside as a ring of dark wedges: `soffit 0.0187` of a frame
+# that must hold none. It is the ground's own corner heights minus one constant now,
+# so "under the ground" holds by subtraction rather than by tolerance.
 at 12 0 0
+send 40:1
 send 3:0,9000
 step 60
 snap s16-cellar-hillside

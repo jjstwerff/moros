@@ -124,6 +124,171 @@ fn test_a_deck_and_the_ground_under_it_are_both_ceilings() {
          "a deck overhead does not put anything UNDER the ground");
 }
 
+fn test_open_ground_is_told_from_unauthored_ground_by_the_column() {
+  // ⚠ THE TWO ARE THE SAME CELL. Absence is `h_material == 0` and there is no field
+  // for intent, while the renderer draws an unauthored cell as ground on purpose —
+  // that fallback is what makes an empty world a plane rather than a void. So the
+  // rule cannot read the cell; it reads what is UNDER it.
+  w = world();
+  assert(!hex_editor::ground_open(w, 0, 0), "authored ground is not a hole");
+  assert(!hex_editor::ground_open(w, 40, 40),
+         "and neither is ground nobody ever touched — the plane survives");
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  assert(!hex_editor::ground_open(w, 0, 0),
+         "digging a cellar does not by itself open the floor over it");
+}
+
+fn test_the_cellar_stair_opens_the_ground_only_where_the_fold_rule_demands_it() {
+  // ⚠ THE STAIR EXISTS BECAUSE OF `F1`, NOT BECAUSE OF THE DRAWING. A tread under an
+  // intact ground is refused the moment it comes within ε — measured on this world:
+  // ground−8 accepted, ground−6 `CW_FOLD`. Eight units is two and a half strides, so
+  // no stair could arrive while the floor stayed whole.
+  //
+  // ⚠ AND IT OPENS EVERY TREAD, WHICH THE FIRST VERSION DID NOT. Opening only what
+  // `F1` forces leaves the deepest tread under an intact floor — and `world_surface`
+  // takes the highest layer at or below `feet + ε/2`, where ε/2 is exactly one
+  // stride, so a walker on that tread finds the FLOOR and climbs back out. The
+  // stair went down one step and returned you to the room. A stairwell is open along
+  // its whole length, which is both simpler and what one actually is.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  assert(n == 3, "a storey of 12 takes three strides of 3, got {n}: {why}");
+  for d in 1..4 {
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    assert(hex_editor::ground_open(w, tq, tr),
+           "tread {d} is open to the room above");
+  }
+  // ⚠ AND NOTHING ELSE IS. A gesture that opened the disc would be a cellar with no
+  // floor over it at all, which every count here would still call a success.
+  assert(!hex_editor::ground_open(w, 0, 0), "the room itself keeps its ceiling");
+  (bq, br) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 3.14159), 1);
+  assert(!hex_editor::ground_open(w, bq, br),
+         "and so does the cell behind the author");
+}
+
+fn test_a_cellar_stair_is_walkable_end_to_end() {
+  // The claim the gesture actually makes: every step from the cellar floor to the
+  // ground is one the walker that built it can climb. A stair it cannot climb is
+  // the same defect as no stair, and it would pass every structural check.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  // ⚠ WALKED DOWNWARD, CARRYING THE FEET, and the first version of this test got it
+  // wrong in a way worth keeping: it asked for the surface at each tread with the
+  // feet at 41 — above the ground — and over the DEEPEST tread the floor is still
+  // intact, so the query correctly answered "the floor" and the test read it as a
+  // 12-unit step. `world_surface` takes the feet because a storeyed column has no
+  // single surface; a test that pins the feet is asking about a different walker at
+  // every cell.
+  feet = 40.0;
+  for d in 0..3 {
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3 - d);
+    sf = hex_world::world_surface(w, tq, tr, feet);
+    drop = (feet as integer ?? 0) - sf.sf_units;
+    assert(drop > 0 && drop <= 3,
+           "tread {3 - d} is {drop} down from {feet}, which is not one stride");
+    feet = sf.sf_units as float;
+  }
+  // …and off the bottom tread onto the cellar floor itself.
+  last = hex_world::world_surface(w, 0, 0, feet);
+  assert((feet as integer ?? 0) - last.sf_units <= 3,
+         "the last step onto the cellar floor is "
+       + "{(feet as integer ?? 0) - last.sf_units}");
+  assert(last.sf_units == 40 - hex_editor::STOREY_H,
+         "and it lands on the cellar floor, got {last.sf_units}");
+}
+
+fn test_a_second_cellar_climbs_to_the_room_above_and_not_to_the_ground() {
+  // ⚠ FOUND BY A GATE, WHICH IS WHY IT IS HERE. `surface.mjs` digs twice and read
+  // back `stair of 5` — five treads climbing from the deepest floor, straight past
+  // the cellar in between, which is still there. A stair to "the ground" is only
+  // right while there is nothing between; pressing `C` twice makes a room under a
+  // room and the stair belongs to the pair it joins.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  assert(n == 3, "the sub-basement gets its own three treads, got {n}: {why}");
+  // Every tread lies between the two floors — never above the one it climbs to.
+  deep = 40 - 2 * hex_editor::STOREY_H;
+  mid = 40 - hex_editor::STOREY_H;
+  for d in 1..4 {
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    sf = hex_world::world_surface(w, tq, tr, (mid - 1) as float);
+    assert(sf.sf_units > deep && sf.sf_units < mid,
+           "tread {d} at {sf.sf_units} is between {deep} and {mid}");
+  }
+}
+
+fn test_a_stair_stops_when_it_reaches_the_surface_rather_than_leaving_it() {
+  // ⚠ ALSO FOUND BY A GATE, AND IT WAS A FLIGHT OF STEPS FLOATING OVER A HILLSIDE.
+  // A stair is a straight run at a fixed pitch, so deriving every tread from the
+  // column it starts in reads as the obvious thing — but the surface it climbs
+  // toward is a HEIGHTFIELD, and downhill it falls away faster than the stair rises.
+  // `ground.mjs` measured the drawn peak going 10.917 -> 11.25 wu on a dig it should
+  // not have moved at all.
+  //
+  // Arriving early is not a failure: it is a shorter stair, which is what a slope
+  // should give. What must never happen is a tread standing above the ground it is
+  // supposed to come up through.
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 10..11 {
+    for r in 0 - 10..11 {
+      // A ramp falling away toward +q, which is where the stair will run.
+      h = 40 - 3 * q;
+      if h < 14 { h = 14; }
+      hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT);
+    }
+  }
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  assert(n >= 0, "the stair is not an error on a slope: {why}");
+  for d in 1..(n + 1) {
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    gnd = hex_editor::terrain_h(tq, tr, w);
+    sf = hex_world::world_surface(w, tq, tr, (gnd - 1) as float);
+    assert(sf.sf_units < gnd,
+           "tread {d} at {sf.sf_units} is under its own ground at {gnd}, not over it");
+  }
+}
+
+fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
+  // ⚠ `E1e` — A CELL HOLDING A WALL IS PRESENT WHATEVER ITS MATERIAL. Clearing the
+  // ground for a stairwell must take the ground and nothing else; a version that
+  // wrote a blank cell would delete a wall the opening happened to run beside, and
+  // the loss would be invisible until the house was walked round.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  (wq, wr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3);
+  gl = hex_world::world_ground_layer(w, wq, wr);
+  col = world_column(w, wq, wr);
+  cells: vector<hex_world::Hex> = [];
+  ids: vector<integer> = [];
+  for i in 0..len(col.co_cells) {
+    c = col.co_cells[i] ?? hex_world::Hex {};
+    if i == gl {
+      cells += [hex_world::Hex { h_height: c.h_height, h_material: c.h_material,
+                                 h_wall_n: 7 as u8? ?? 0 }];
+    } else { cells += [c]; }
+    ids += [col.co_ids[i] ?? 0];
+  }
+  world_set_column(w, hex_world::Column { co_q: wq, co_r: wr, co_cells: cells,
+                                          co_ids: ids });
+  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  assert(hex_editor::ground_open(w, wq, wr), "the stairwell did open that cell");
+  after = hex_world::world_cell(w, wq, wr, hex_world::world_ground_layer(w, wq, wr));
+  assert((after.h_wall_n as integer ?? 0) == 7,
+         "and the wall on it is untouched, got {after.h_wall_n}");
+}
+
 fn test_a_cellar_with_no_room_below_is_refused_for_the_right_reason() {
   // The reserve is the floor of the world. Digging through it is refused, not
   // clamped — a clamped cellar is a room the walker cannot stand in.
