@@ -10,7 +10,62 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — CUTAWAY, and a hidden roof was still blocking the camera
+## ⏭ PICK UP HERE (2026-08-01, session 8) — all five camera settings are built, and two guards were in the wrong place
+
+`make gate` **29 green**, `make lib-test` **952 on both backends**, on **loft
+2026.8.0** (installed 19:59 today, mid-session — everything verified before that
+timestamp was measured on the previous binary, and the re-run found no difference).
+
+**FOLLOW, AUTO, SNUG, CUTAWAY and EYES.** `40:<mode>`; AUTO is the default and the
+only one that degrades. `tools/scripts/indoors.keys` is eleven stations.
+
+### EYES, and the row the whole design ordered itself around
+
+*"Looking straight up, sky pixels: 0 (today: all of them)"* was written when the roof
+had no underside — which is exactly why EYES was last on the list.
+
+| EYES, straight up | `sky` | largest |
+|---|---|---|
+| **outdoors — the control** | **0.997** | sky |
+| **indoors** | **0.000** | **soffit 0.997** |
+
+⚠ **The control is the point**: "no sky" is only a result if the instrument can find
+sky when there is some. Otherwise a camera drawing nothing scores the same.
+
+⚠ **`cam_want = 0` IS NOT ENOUGH, and it looks like it should be.** With no boom the
+eye lands on the pivot, but the target is a fixed point ahead at pivot height — so
+the view is horizontal *whatever the pitch is*, and a first-person camera that cannot
+look up is the one thing this mode must not be. The pivot is also the wrong point: it
+carries a shoulder offset and sits at the chest, because it is what a boom ORBITS.
+
+### ⚠ Two guards were in the wrong place, and both looked right
+
+1. **A fence applied only at the INPUT is not applied.** `PITCH_MIN/MAX` were clamped
+   in the LOOK handler, and a mode change is not a look — so leaving EYES while
+   looking straight up carried **−1.5** into FOLLOW, a value FOLLOW's own handler
+   would never accept, and the boom obeyed it. Seen red: the character leaves the
+   frame entirely.
+2. **A client joins `clients` on `2:` CAM, not on `1:` READY** — so my own
+   "re-send `V:` to the arriving client" guard, written with a comment saying
+   *"forgetting the ARRIVING client is how a send-on-change becomes a bug"*, fired
+   before the client existed and was dead code. Measured: EYES with the mode chosen
+   BEFORE the browser connected drew **the inside of the character's own head, 99.7%
+   of the frame**, while the server's trace read `body false`. Choosing it after
+   connecting worked, which is what named the window.
+
+⚠ **What is still owed is one floor up.** A DECK is a sheet, so EYES under an upper
+storey looks through it exactly as it once looked through a roof. This house has one
+storey; the `Slab` closes it, and the roof is the worked example.
+
+### The readiness check failed on a correct picture
+
+`browser()` waited for **twelve distinct colours** — a proxy. EYES looking straight up
+at the sky is 99.7% ONE colour, so it timed out for twenty seconds and reported *"the
+page never drew"* about a perfect frame. A readiness test that fails on a valid scene
+teaches the reader to ignore it. It asks the page for what actually goes wrong now:
+**loaded** (meshes and a camera) and **composited** (the shot is not white).
+
+## Earlier in session 8 — CUTAWAY, and a hidden roof was still blocking the camera
 
 `make gate` **29 green**, `make lib-test` **952 on both backends** — both re-run on
 **loft 2026.8.0**, which was installed at 19:59 today, *mid-session*. ⚠ Everything
@@ -361,8 +416,7 @@ parallel so it costs its own wall time rather than a sum.
    is in the room now, below the eave, so hiding the roof would show sky over the
    walls. The per-client toggle that would do it exists (`V:`); the reason to use it
    does not.
-5. **EYES** — the last mode, and the one the design says cannot honestly exist until
-   horizontal surfaces have a thickness. `sh_back` is still measured with no consumer.
+5. ✅ **EYES** — built. ⚠ **`sh_back` is still measured with no consumer.**
 6. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
    tested and the storey gesture does not use it. **The roof is now the worked example
    of what a horizontal surface is owed** — two faces, a thickness, a mitre — and the

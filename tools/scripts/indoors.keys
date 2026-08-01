@@ -172,3 +172,40 @@ at 0 0 90
 step 150
 frame 0.005 0.60 soffit 0.10 1.0 grass 0 0.001
 
+# ── EYES — being in the room, and the row the whole design ordered itself around ──
+#
+# ⚠ *"Looking straight up, sky pixels: 0 (today: all of them)"* is the design's own
+# measurement row, written when the roof had no underside — which is exactly why EYES
+# was last on the list. Until a ceiling existed, a first-person view indoors was a
+# picture of the sky through it. This row is the soffit's payoff.
+echo --- EYES, OUTDOORS, looking straight up: the control
+send 40:4
+at 0 -10 90
+send 3:0,-20000
+step 120
+# ⚠ THE CONTROL IS THE POINT. "No sky" is only a result if the instrument can find
+# sky when there is some — otherwise a camera drawing nothing scores the same.
+frame 0 1.0 sky 0.99 1.0
+
+echo --- EYES, INDOORS, looking straight up: a ceiling, and no sky at all
+at 0 0 90
+step 120
+snap s10-eyes-up
+frame 0 1.0 sky 0 0.001 soffit 0.5 1.0
+
+echo --- EYES, indoors, level: a room seen from inside a head, and no body in it
+send 3:0,250
+step 120
+snap s10-eyes-level
+frame 0 0.85 figure 0 0.002 sky 0 0.001 sd 0.02 1.0
+
+echo --- back to AUTO with the pitch still where EYES left it
+send 3:0,-20000
+send 40:0
+step 150
+# ⚠ THE ROW THAT CATCHES A FENCE APPLIED ONLY AT THE INPUT. EYES allows ±1.5 and
+# FOLLOW allows −0.20; leaving one for the other used to carry the out-of-fence value
+# across, because the clamp lived in the LOOK handler and a mode change is not a look.
+# A normal FOLLOW frame here — the body back, a wall ahead — is the whole assertion.
+frame 0.005 0.60 figure 0.02 1.0 soffit 0.05 1.0
+

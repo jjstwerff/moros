@@ -3218,6 +3218,44 @@ const MODE_CUTAWAY = 3;
 const CUT_PITCH   = 1.25;      // ~60° down — steep enough to see a floor, not a plan
 fn cut_boom() -> float { figure_wu() * 3.2 }
 const AMB_CUT     = 0.75;      // high and flat: this is a drawing, not a room
+
+// ── EYES — there is no other way to be IN a room ────────────────────────────
+//
+// No boom at all: the eye IS the head. Everything the boom machinery does falls out
+// of `cam_want = 0` — the collapse is total, so `shoulder_reach` is zero and
+// `body_shown` hides the figure without being told to, which is the two rules
+// agreeing rather than a special case.
+//
+// ⚠ AND THE PITCH FENCE LIFTS, which the design calls *"the clearest small case of
+// the rule this whole design rests on"*. `PITCH_MIN`/`PITCH_MAX` are ±0.75/−0.20
+// because *"past vertical, behind the character stops meaning anything"* — a
+// statement about a BOOM. EYES has no boom, so the reason evaporates: a person in a
+// room looks straight up, and that is the first thing anyone does.
+//
+// ⚠ THE DESIGN SAID EYES COULD NOT HONESTLY EXIST YET — *"EYES is a picture of the
+// sky through the ceiling"* — and that was true until the roof got an underside.
+// Measured before building this: looking up from inside, `sky` is 0.0% and `soffit`
+// 24%. The blocker was real and it is gone. ⚠ What is NOT done is the same thing one
+// floor up: a DECK is still a sheet, so EYES under an upper storey would look
+// through it. This house has no upper storey and the gate says so.
+const MODE_EYES   = 4;
+const EYES_PITCH  = 1.50;      // ±86° — straight up and straight down, both allowed
+const AMB_EYES    = 0.30;      // lifted from SNUG's: you are IN the room, not spying on it
+const LAMP_EYES   = 0.70;
+fn eye_wu() -> float { figure_wu() * 0.92 }   // where a person's eyes are, not their chest
+
+// The pitch a mode allows. ⚠ ONE DERIVATION AND TWO CALLERS, and the second caller
+// is the one that matters: the fence used to be applied only where the player's
+// pitch is SET, so leaving EYES while looking straight up carried −1.5 into FOLLOW
+// and the boom obeyed it. A constraint enforced only at the input is not enforced.
+fn pitch_fenced(p: float, mode: integer) -> float {
+  lo = PITCH_MIN;
+  hi = PITCH_MAX;
+  if mode == MODE_EYES { lo = 0.0 - EYES_PITCH; hi = EYES_PITCH; }
+  if p < lo { return lo; }
+  if p > hi { return hi; }
+  p
+}
 // The ambient term the fragment shader mixes against its one directional light.
 // ⚠ `AMB_FOLLOW` IS THE SHADER'S OWN OLD CONSTANT. The client read
 // `base * (0.45 + 0.55*d)`; it reads `base * (a + (1-a)*d)` now, so sending 0.45
@@ -3238,6 +3276,17 @@ const CAM_K_AMB   = 3.0;       // eased per second — a step in the ambient is 
 const HIDE_FIGURE = 1;
 const HIDE_ROOF   = 32;        // 1 << 5 — the roof is the fifth surface
 const HIDE_SOFFIT = 512;       // 1 << 9 — and its underside the ninth
+
+// What a viewer in this mode hides. ⚠ ONE DERIVATION, because there are two senders:
+// the tick, on change, and the CAM handler, for a client that has just arrived. Two
+// copies of this arithmetic is how the arriving client ends up with a mask nobody
+// else has.
+fn vis_mask(body: boolean, mode: integer) -> integer {
+  m = 0;
+  if !body { m = m | HIDE_FIGURE; }
+  if mode == MODE_CUTAWAY { m = m | HIDE_ROOF | HIDE_SOFFIT; }
+  m
+}
 
 // Move `now` a bounded fraction of the way to `want`. `k` is gap-closed per
 // second; the clamp keeps a long frame from overshooting past the target.
@@ -3445,7 +3494,29 @@ fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() *
 fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
 
 fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
-            dist: float, slide: float, wld: World) -> text {
+            dist: float, slide: float, mode: integer, wld: World) -> text {
+  // ── EYES: THE EYE *IS* THE HEAD, AND THE TARGET SWINGS WITH THE PITCH ──────
+  //
+  // ⚠ SETTING `dist` TO ZERO IS NOT ENOUGH, and that is worth stating because it
+  // looks like it should be. With no boom the eye lands on the pivot — correct — but
+  // the TARGET below is a fixed point 1.2 figures ahead at pivot height, so the view
+  // direction is horizontal whatever the pitch is. A first-person camera built that
+  // way can never look up, which is the one thing this mode exists for.
+  //
+  // The pivot is also wrong for it: `cam_pivot_*` carries a lateral shoulder offset
+  // and sits at the chest, because it is the point a boom ORBITS. Eyes are at the
+  // top of a head and on the centre line.
+  if mode == MODE_EYES {
+    ekp = cos(cpitch); esp = sin(cpitch);
+    eex = cx; eey = cyy + eye_wu(); eez = cz;
+    // Positive pitch looks DOWN, the same sense the third-person modes use — there
+    // it raises the eye above the subject, here it lowers the aim below the horizon.
+    // One convention, so a mode change is a swing rather than an inversion.
+    eeye = vec3(eex, eey, eez);
+    etgt = vec3(eex + cos(cyaw) * ekp, eey - esp, eez + sin(cyaw) * ekp);
+    return "C:{mat_wire(mat4_look_at(eeye, etgt, vec3(0.0, 1.0, 0.0)))};"
+      + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
+  }
   fh = figure_wu();
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
@@ -4069,11 +4140,6 @@ fn main() {
           srv.send_to(ev.cid, "E:");
           srv.send_to(ev.cid, fog_wire(px, py, pz));
           srv.send_to(ev.cid, ramp_wire());
-          // ⚠ A NEW TAB HAS NEVER SEEN A `V:`, and the sender only speaks on
-          // change — so without this it would draw at the client's own default
-          // ambient until the mode next moved, which in a finished house is never.
-          // Forgetting the ARRIVING client is how a send-on-change becomes a bug.
-          cam_vsent = 0 - 1;
           // A new client holds no chunks, so the stream has to start over for
           // everyone. Correct rather than clever: W0's job is to be right about
           // what is visible, and a per-client chunk set is the optimisation
@@ -4100,7 +4166,22 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, wld));
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld));
+            // ⚠ AND ITS `V:`, HERE, BECAUSE THIS IS WHERE A CLIENT ARRIVES. The tick
+            // sends on CHANGE, so a viewer that joins while the mode is already set
+            // gets nothing until the mode next moves — which in a finished scene is
+            // never. It then draws at its own defaults: the figure visible, ambient
+            // 0.45, no lamp.
+            //
+            // ⚠ THE FIRST FIX FOR THIS WAS IN `MSG_READY` AND IT WAS DEAD CODE THAT
+            // LOOKED RIGHT. A client joins `clients` on THIS message, not on `1:` —
+            // so resetting the sent-key there fired before the client existed, the
+            // tick re-sent to everyone else, cached the key, and the arriving client
+            // was never in the list. Measured: EYES with the mode chosen BEFORE the
+            // browser connected drew the inside of the character's own head, 99.7%
+            // of the frame, while the server's own trace read `body false`. Choosing
+            // the mode after it connected worked, which is what named the window.
+            srv.send_to(ev.cid, "V:{vis_mask(cam_body, cam_mode)},{cam_amb},{cam_lamp}");
             moved = true;
           }
         } else if ev.msg_id == MSG_LOOK {
@@ -4112,8 +4193,9 @@ fn main() {
           if di != null {
             yaw = yaw + (ev.payload[..di] as float ?? 0.0) * LOOK_PER_PX;
             pitch = pitch + (ev.payload[di + 1..] as float ?? 0.0) * LOOK_PER_PX;
-            if pitch < PITCH_MIN { pitch = PITCH_MIN; }
-            if pitch > PITCH_MAX { pitch = PITCH_MAX; }
+            // ⚠ THE FENCE BELONGS TO THE MODE THAT NEEDS IT. FOLLOW clamps because
+            // past vertical a boom stops meaning anything; EYES has no boom.
+            pitch = pitch_fenced(pitch, cam_mode);
             moved = true;
           }
         } else if ev.msg_id == MSG_KEYS {
@@ -4526,9 +4608,9 @@ fn main() {
           // silently becoming AUTO is the author asking for one thing and getting
           // another with nothing said, which is exactly what `Fit` exists to stop.
           mwant = ev.payload as integer ?? 0 - 1;
-          if mwant < MODE_AUTO || mwant > MODE_CUTAWAY {
+          if mwant < MODE_AUTO || mwant > MODE_EYES {
             srv.send_to(ev.cid, "S:mode refused — {mwant} is not a mode "
-                              + "(offer {MODE_AUTO}, AUTO..{MODE_CUTAWAY}, CUTAWAY)");
+                              + "(offer {MODE_AUTO}, AUTO..{MODE_EYES}, EYES)");
           } else {
             cam_mode = mwant;
             // ⚠ CHOOSING A MODE ENDS THE DEGRADATION, and choosing AUTO back does
@@ -4536,6 +4618,11 @@ fn main() {
             // next solve from the room the author is actually standing in.
             if cam_mode == MODE_SNUG { cam_snug = true; }
             if cam_mode == MODE_FOLLOW { cam_snug = false; }
+            // ⚠ AND THE PITCH IS RE-FENCED, because the new mode's fence may be
+            // TIGHTER than the one the value was set under. Leaving EYES while
+            // looking straight up handed FOLLOW a pitch of −1.5, which its own
+            // handler would never have accepted and its boom obeyed anyway.
+            pitch = pitch_fenced(pitch, cam_mode);
             cam_rested = false;         // the ambient has somewhere to ease to
             srv.send_to(ev.cid, "S:mode {cam_mode}");
             println("editor: camera mode {cam_mode}");
@@ -5286,6 +5373,8 @@ fn main() {
       cam_want = cam_boom();
       cut_now = cam_mode == MODE_CUTAWAY;
       if cut_now { cam_want = cut_boom(); }
+      eyes_now = cam_mode == MODE_EYES;
+      if eyes_now { cam_want = 0.0; }
       cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
       // Angular velocity, lightly smoothed so one jittery drag frame does not
       // throw the prediction. This is the "we are already turning" signal.
@@ -5374,6 +5463,10 @@ fn main() {
         // vantage rather than a view over a shoulder. The ease and the rate cap
         // below still apply, so entering the mode is a swing rather than a cut.
         cam_pt = CUT_PITCH;
+      } else if eyes_now {
+        // The player's own, unassisted and unfenced. There is nothing to climb over
+        // when the eye is already where the eyes are.
+        cam_pt = pitch;
       } else if cam_shelter.sh_inside {
         cam_pt = pitch;
       } else {
@@ -5415,7 +5508,7 @@ fn main() {
       // this is what makes that true. The backstop below still applies, so the eye
       // cannot end up under the ground — and above a hidden roof is exactly where a
       // plan view wants to be.
-      if cut_now {
+      if cut_now || eyes_now {
         cam_free = cam_want;
       } else {
       cam_free = hex_editor::boom_take(
@@ -5478,6 +5571,7 @@ fn main() {
       cam_lamp_want = LAMP_FOLLOW;
       if snug_now { cam_amb_want = AMB_SNUG; cam_lamp_want = LAMP_SNUG; }
       if cut_now { cam_amb_want = AMB_CUT; cam_lamp_want = LAMP_FOLLOW; cam_body = true; }
+      if eyes_now { cam_amb_want = AMB_EYES; cam_lamp_want = LAMP_EYES; cam_body = false; }
       cam_amb = cam_approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
       cam_lamp = cam_approach(cam_lamp, cam_lamp_want, CAM_K_AMB, dt);
 
@@ -5936,7 +6030,7 @@ fn main() {
     // that evolves per tick has to say so itself.
     if moved || cam_pub {
       for pc in clients {
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, wld));
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, cam_mode, wld));
       }
     }
     // ── `V:` — WHAT THIS VIEWER HIDES, AND HOW DARK ITS ROOM IS ────────────────
@@ -5950,13 +6044,11 @@ fn main() {
     // Sent on CHANGE, like `C:` and for the same reason, but the change here is a
     // discrete payload rather than a solve — so the test is the payload itself and
     // there is nothing to ease past.
-    vmask = 0;
-    if !cam_body { vmask = vmask | HIDE_FIGURE; }
     // ⚠ THE ROOF *AND* ITS SOFFIT, which is the whole reason they became two
     // surfaces. Hiding one and keeping the other is exactly the case that made the
     // split necessary — SNUG keeps the underside, CUTAWAY takes both — and it could
     // not have been expressed at all while they shared a mesh.
-    if cam_mode == MODE_CUTAWAY { vmask = vmask | HIDE_ROOF | HIDE_SOFFIT; }
+    vmask = vis_mask(cam_body, cam_mode);
     vkey = vmask * 100000000 + ((cam_amb * 10000.0) as integer ?? 0) * 10000
          + ((cam_lamp * 10000.0) as integer ?? 0);
     if vkey != cam_vsent {

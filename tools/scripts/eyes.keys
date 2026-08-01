@@ -1,0 +1,56 @@
+# EYES — being in the room, and the one row the whole design ordered itself around.
+#
+# ⚠ *"Looking straight up, sky pixels: 0 (today: all of them)"* is the design's own
+# measurement row, and it was written when the roof had no underside. That is why
+# EYES is last on the list: until a ceiling existed, a first-person view indoors was
+# a picture of the sky through it. The row is the soffit's payoff, and the OUTDOOR
+# station is the control that says the instrument can still find sky when there is
+# some — without it, "0" would also be what a broken camera reports.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+send 27:1
+send 40:4
+
+echo --- THE CONTROL: outdoors, looking STRAIGHT UP. This must be sky and nothing else
+at 0 -10 90
+send 3:0,-20000
+step 120
+cam
+snap s15-eyes-up-outside
+frame
+
+echo --- indoors, looking STRAIGHT UP: a ceiling, and no sky at all
+at 0 0 90
+step 120
+cam
+snap s15-eyes-up-inside
+frame
+
+echo --- indoors, straight DOWN: the floor, and no sky through it either
+send 3:0,20000
+step 120
+snap s15-eyes-down
+frame
+
+echo --- indoors, LEVEL: the room from inside a head
+send 3:0,-250
+step 120
+cam
+snap s15-eyes-level
+frame
+
+echo --- and back to FOLLOW, which fences the pitch again
+send 40:1
+at 0 0 90
+step 150
+cam
+frame

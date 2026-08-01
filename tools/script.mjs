@@ -205,9 +205,24 @@ async function browser() {
   // work here. A readiness check that cannot see what the gate will measure is worse
   // than no check: it fails runs that would have passed and passes runs that will
   // photograph nothing.
-  const colours = async () => {
+  // ⚠ AND IT ASKS ABOUT THE TWO FAILURES, NOT ABOUT COLOURFULNESS. This required
+  // twelve distinct colours, which is a proxy — and a legitimately UNIFORM frame has
+  // one. EYES looking straight up at the sky is 99.7% one colour, so the check timed
+  // out for twenty seconds on a page that was drawing perfectly, and said "the page
+  // never drew" about the correct picture. A readiness test that fails on a valid
+  // scene is worse than none: it teaches the reader to ignore it.
+  //
+  // The two things that actually go wrong are LOADED (no meshes, no camera yet) and
+  // COMPOSITED (the WebGL layer missing, so the shot is the DOM over white). So it
+  // asks the page for the first and measures whiteness for the second.
+  const ready = async () => {
+    const st = await call('Runtime.evaluate', { returnByValue: true, expression:
+      `(() => (typeof parts === 'undefined') ? null
+              : { n: parts.size, cam: !!view })()` });
+    const v = st?.result?.value;
+    if (!v || v.n < 1 || !v.cam) return false;
     const shot = await call('Page.captureScreenshot', { format: 'png' });
-    if (!shot?.data) return 0;
+    if (!shot?.data) return false;
     const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
       expression: `
       (async () => {
@@ -219,15 +234,16 @@ async function browser() {
         const cx = cv.getContext('2d');
         cx.drawImage(img, 0, 0);
         const d = cx.getImageData(0, 0, cv.width, cv.height).data;
-        const seen = new Set();
-        for (let i = 0; i < d.length; i += 4 * 997) seen.add(d[i] << 16 | d[i+1] << 8 | d[i+2]);
-        return seen.size;
+        let s = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4 * 401) { s += (d[i] + d[i+1] + d[i+2]) / 765; n++; }
+        return s / n;
       })()` });
-    return r?.result?.value ?? 0;
+    const white = r?.result?.value ?? 1;
+    return white < 0.95;
   };
   for (let t = 0; t < 20000; t += 250) {
     await sleep(250);
-    if (await colours() >= 12) return true;
+    if (await ready()) return true;
   }
   console.log('  !! the page never drew — the picture will be blank, and that is the finding');
   return true;

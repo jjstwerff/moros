@@ -1,9 +1,9 @@
 # The camera indoors — four modes, one query
 
-> Status: **FOLLOW, AUTO, SNUG and CUTAWAY stage 1 are built and gated. EYES and
-> CUTAWAY stage 2 are still design.** `tools/gates/world/camera_indoors.mjs` is in
-> `make gate` and `tools/scripts/indoors.keys` is the script behind it — seven
-> stations, judged on where the eye IS, what the frame HOLDS, and how it is LIT.
+> Status: **ALL FIVE SETTINGS ARE BUILT AND GATED** — FOLLOW, AUTO, SNUG, CUTAWAY
+> stage 1 and EYES. CUTAWAY stage 2 is measured as not yet needed.** `tools/gates/world/camera_indoors.mjs` is in
+> `make gate` and `tools/scripts/indoors.keys` is the script behind it —
+> eleven stations, judged on where the eye IS, what the frame HOLDS, and how it is LIT.
 > `40:<mode>` chooses; AUTO is the default and the only one that degrades.
 
 ## ⚠ The fault was that the eye was never sent — read this first
@@ -718,6 +718,52 @@ That last row is the one worth stating out loud: the failure mode of a horror ca
 is a picture with nothing in it, and "dark" and "empty" are indistinguishable to
 anyone but the person who wrote it.
 
+## ✅ EYES — and the row the whole design ordered itself around
+
+**Built: `40:4`.** No boom at all — `cam_want = 0`, and everything else falls out:
+the collapse is total so `shoulder_reach` is zero and `body_shown` hides the figure
+without being told to, which is two rules agreeing rather than a special case.
+
+⚠ **`cam_want = 0` IS NOT ENOUGH, and it looks like it should be.** With no boom the
+eye lands on the pivot — correct — but the target is a fixed point 1.2 figures ahead
+at pivot height, so the view direction is horizontal *whatever the pitch is*. A
+first-person camera built that way can never look up, which is the one thing this
+mode exists for. And the pivot is the wrong point anyway: it carries a lateral
+shoulder offset and sits at the chest, because it is what a boom ORBITS. Eyes are at
+the top of a head and on the centre line.
+
+### The design's own measurement row, and it is the soffit's payoff
+
+*"Looking straight up, sky pixels: **0** (today: all of them)"* was written when the
+roof had no underside — which is precisely why EYES was last on the list.
+
+| EYES, looking straight up | `sky` | largest |
+|---|---|---|
+| **outdoors — the control** | **0.997** | sky |
+| **indoors** | **0.000** | **soffit 0.997** |
+| indoors, straight down | 0.000 | floor 0.997 |
+| indoors, level | 0.000 | masonry 0.535, soffit 0.336, floor 0.125, figure **0** |
+
+⚠ **The control is the point.** "No sky" is only a result if the instrument can find
+sky when there is some; otherwise a camera drawing nothing scores the same.
+**Seen red**: stop emitting the soffit and the ceiling row fails — though `sky` still
+reads 0, because with no backface culling you see the roof's *topside* from below.
+The design's prediction was right about the ORDER and wrong about the symptom, for
+the reason recorded above.
+
+### ⚠ A fence applied only at the input is not applied
+
+`PITCH_MIN`/`PITCH_MAX` were clamped in the LOOK handler, and a mode change is not a
+look. So leaving EYES while looking straight up carried a pitch of **−1.5** into
+FOLLOW — a value FOLLOW's own handler would never accept — and the boom obeyed it.
+`pitch_fenced` is one derivation with two callers now, and the second is the one that
+matters. **Seen red**: drop the re-fence and the character leaves the frame entirely
+(figure 0.0008 against 0.02 required).
+
+⚠ **What is still owed is one floor up.** A DECK is a sheet, so EYES under an upper
+storey looks through it exactly as it once looked through a roof. This house has no
+upper storey; the `Slab` is what closes it, and the roof is the worked example.
+
 ## What NOT to build
 
 - **A view-dependent mesh.** Chunks are broadcast; hiding is per-client, which means
@@ -760,7 +806,9 @@ anyone but the person who wrote it.
    reveals. This is the big one and it is a world-model change, not a camera change —
    it belongs on the ladder in its own right, and the camera is merely the consumer
    that proves it is needed.
-8. **EYES**, which cannot honestly exist before 7, plus the lifted pitch fence.
+8. ✅ **EYES**, with the lifted pitch fence. ⚠ It did NOT need 7 first, because the
+   roof's underside was enough for a house with one storey — the `Slab` is what a
+   SECOND storey will need, and the gate says which case is covered.
 9. **CUTAWAY stage 2**: heading buckets, if shallow angles turn out to matter.
    ⚠ **Stage 1 says they do not, yet.** At pitch 1.25 the near wall is below the
    frame entirely and `masonry` is 0.43 — walls read as plan, not as occluders. The
