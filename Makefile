@@ -340,6 +340,30 @@ gate-character:
 # ⚠ ONE POOL, NOT TWO BATCHES. Split into world-then-character, the suite pays the
 # slowest gate of each half in series; as one pool it pays the slowest gate once.
 # Measured: 2m33 split, 1m30 pooled, for the same 28 gates and the same verdicts.
+# ⚠ S7'S CLAIM, CHECKED: the same script builds the same scene with and without a
+# server. `editor_run` drives `hex_editor`'s gestures directly and the socket path
+# drives them through the editor, so the two agree only if the gestures really are
+# the one implementation — which is the whole reason they moved out of the message
+# loop. It compares the ACK, because that is the editor's own reckoning of what it
+# built, and a divergence in cells, edges or ridge names which one moved.
+headless-same:
+	@SCRIPT=tools/scripts/house.keys WORLD=headless $(LOFT) --lib lib/ src/editor_run.loft 2>/dev/null \
+	  | grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' > .headless.txt || true
+	@$(MAKE) -s port-free >/dev/null 2>&1; : > .editor.log
+	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \
+	 until grep -q 'listening on port' .editor.log; do sleep 0.3; done; \
+	 node tools/script.mjs tools/scripts/house.keys >/dev/null 2>&1; \
+	 grep -oE 'house [0-9]+ cells' .editor.log | head -1 > /dev/null; \
+	 grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' .editor.log \
+	   | head -1 > .served.txt || true
+	@$(MAKE) -s stop-editor >/dev/null
+	@if [ ! -s .headless.txt ]; then echo "HEADLESS: the runner placed no house"; exit 1; fi
+	@if ! diff -q .headless.txt .served.txt >/dev/null 2>&1; then \
+	  echo "HEADLESS: the same script built different scenes"; \
+	  echo "  headless: $$(cat .headless.txt)"; \
+	  echo "  served:   $$(cat .served.txt)"; exit 1; fi
+	@rm -f .headless.txt .served.txt
+
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
 	  tools/gates/world/*.mjs tools/gates/character/*.mjs

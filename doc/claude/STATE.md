@@ -130,7 +130,8 @@ is wrong — which is how `25:` passed its gate for months while drawing a road.
 | `S4` | ✅ **a house, placed from the pose** — `H`, and the corners MEET | `shots/s4-house.png` |
 | `S5` | ✅ **openings** — `O` a door, `P` a window, both MATERIALS on the edge | `shots/s5-opening.png` |
 | `S6` | ◐ **the roof is a RIDGE** — gabled, pitch derived, drawn as a surface | ⚠ but the EAVE is a hex staircase, so it reads as a slab |
-| `S7`–`S8` | headless runner · the swinging door | |
+| `S7` | ✅ **the headless runner** — `SCRIPT=… loft src/editor_run.loft` | `make headless-same` |
+| `S8` | **NEXT** — the leaf: a door that SWINGS, on a hinge (`Assembly`, `A1`–`A10`) | the door ajar, which is what makes it read as a door |
 
 **What `S3` found, and it was one line rather than three.** `25:` carries the material —
 `1` is `WALL_MAT`, `3` is `FENCE_MAT` — and `do_wall` **paved a road whatever it was told**.

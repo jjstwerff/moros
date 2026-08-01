@@ -1,0 +1,162 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S7 — THE SCRIPT DRIVES THE GESTURES, WITH NO SERVER AT ALL.
+//
+// `SCRIPTED_EDITOR.md` §2's third line, and it is short because the first two
+// happened: every gesture is a FUNCTION in `hex_editor`, so a scene is a loop over
+// a text file rather than a socket, a tick and a browser.
+//
+//     lib/hex_editor/      gesture(world, author, args) -> Ack
+//     src/editor_server    socket  → gesture(...)
+//     src/editor_run       script  → gesture(...)          ← this file
+//
+// ⚠ IT IS THE SAME SCRIPT THE SERVER TAKES. `tools/scripts/*.keys` was written for
+// `tools/script.mjs`, which drives the editor over a socket; the same file drives
+// this. That is the claim worth having — one format for authoring, replay and bug
+// reports — and it is testable: build a scene both ways and the worlds must match.
+//
+// What it deliberately does NOT do is walk. `at` teleports and every gesture reads
+// the author's position, so nothing here needs a tick; the walk is the server's,
+// and a script that wanted one would be asking for a game rather than a scene.
+//
+//   SCRIPT=tools/scripts/house.keys loft --lib lib/ src/editor_run.loft
+//
+// ⚠ THE SCRIPT COMES FROM THE ENVIRONMENT, as the server's port does. loft has no
+// `fn main(argv)` today and `arguments` parses a vector somebody has to supply, so
+// an env var is the honest way in rather than a wrapper pretending to be a CLI.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+const HOUSE_W = 5;
+const HOUSE_D = 4;
+
+// The same world the server makes — a scene built at a different epsilon is a
+// different world however identical the script. `W_RESERVE` is `hex_editor`'s
+// already, which is the point: the reserve is a property of the world the gestures
+// write, not of the program that happens to drive them.
+const W_EPS   = 8;
+const W_THETA = 3;
+
+fn seed_ground(w: &World, half: integer) {
+  for q in 0 - half..half + 1 {
+    for r in 0 - half..half + 1 {
+      hex_editor::ground_set(w, q, r, 0, hex_editor::SURFACE_MAT);
+    }
+  }
+}
+
+// One line of a script. Returns false only when the line asks for something this
+// runner cannot do, which it says out loud rather than skipping.
+fn run_line(w: &World, a: &Author, runs: WallRuns, line: text, said: &text) -> boolean {
+  t = line.trim();
+  if t == "" || t[..1] == "#" { return true; }
+  sp = t.find(" ");
+  cmd = t;
+  rest = "";
+  if sp != null { cmd = t[..sp]; rest = t[sp + 1..].trim(); }
+
+  if cmd == "echo" { said = rest; return true; }
+
+  if cmd == "at" {
+    // `at <x> <z> [yawdeg]` — the workhorse, and the reason no tick is needed.
+    p1 = rest.find(" ");
+    if p1 == null { said = "at needs an x and a z"; return false; }
+    xs = rest[..p1];
+    tail = rest[p1 + 1..].trim();
+    p2 = tail.find(" ");
+    zs = tail;
+    yaw = 0.0;
+    if p2 != null {
+      zs = tail[..p2];
+      yaw = (tail[p2 + 1..].trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
+    }
+    a = hex_editor::author_at(xs as float ?? 0.0, zs as float ?? 0.0, yaw);
+    said = "placed {a.au_x},{a.au_z}";
+    return true;
+  }
+
+  if cmd == "key" {
+    k = rest;
+    if k == "ArrowUp" {
+      ack = hex_editor::raise_ahead(w, a, 1);
+      said = "raise {ack.ak_ok}";
+      return true;
+    }
+    if k == "ArrowDown" {
+      ack = hex_editor::raise_ahead(w, a, 0 - 1);
+      said = "lower {ack.ak_ok}";
+      return true;
+    }
+    if k == "H" {
+      grade = hex_editor::ground_h(w, 0, 0);
+      ack = hex_editor::place_house(w, a, HOUSE_W, HOUSE_D, grade, runs);
+      said = ack.ak_why;
+      return true;
+    }
+    if k == "O" || k == "P" {
+      kind = hex_editor::DOOR_MAT;
+      if k == "P" { kind = hex_editor::WINDOW_MAT; }
+      ack = hex_editor::open_ahead(w, a, kind, 1);
+      said = ack.ak_why;
+      if !ack.ak_ok { said = "refused: {ack.ak_why}"; }
+      return true;
+    }
+    if k == "F" {
+      ack = hex_editor::fence_ring(w, a, hex_editor::FENCE_MAT, hex_editor::FENCE_R, 0.0);
+      said = "fenced {ack.ak_n} edges";
+      return true;
+    }
+    said = "no gesture for key {k} — add it here and to the page";
+    return false;
+  }
+
+  // `wait`, `snap`, `hold`, `rate`, `step` are the SERVER's vocabulary: they wait
+  // for an acknowledgement, photograph a renderer, or drive a tick, and none of
+  // those exists here. Skipped rather than refused, so one script serves both.
+  if cmd == "wait" || cmd == "snap" || cmd == "hold" || cmd == "rate"
+     || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save" {
+    return true;
+  }
+  said = "unknown command '{cmd}'";
+  false
+}
+
+fn main() {
+  // ⚠ RESOLVED THROUGH `source_dir()`, and that is loft#712 rather than taste. A
+  // RELATIVE path with `..` in it is refused and reported as a null size, and a
+  // relative path without one resolves against THIS FILE's directory — so a plain
+  // `tools/scripts/house.keys` is looked for in `src/` and comes back missing. An
+  // absolute path built from `source_dir()` is the one spelling that works.
+  script = env_variable("SCRIPT");
+  if script == "" { script = "tools/scripts/house.keys"; }
+  if script[..1] != "/" { script = "{source_dir()}/../{script}"; }
+  name = env_variable("WORLD");
+  if name == "" { name = "headless"; }
+
+  src = file(script);
+  if src#size < 1 {
+    println("editor_run: cannot read {script}");
+    return;
+  }
+  text = src.content();
+
+  w = world_new(0.25, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
+  seed_ground(w, 30);
+  a = hex_editor::author_at(0.0, 0.0, 0.0);
+  runs = hex_editor::WallRuns { items: [] };
+
+  n = 0;
+  for line in text.split('\n') {
+    said = "";
+    ok = run_line(w, a, runs, line, said);
+    if said != "" { println("  {said}"); }
+    if !ok { println("editor_run: {line}"); }
+    n = n + 1;
+  }
+
+  path = "{source_dir()}/../worlds/{name}.hxw";
+  code = world_save(w, path, []);
+  println("editor_run: {n} lines, {len(w.w_chunks)} chunks, τ {w.w_tau} -> {name}.hxw (code {code})");
+}

@@ -66,3 +66,7 @@ probe/*.png
 
 # Per-gate stderr from the parallel runner, beside its .log twin.
 .gate-*.err
+
+# The two transcripts `make headless-same` compares.
+.headless.txt
+.served.txt
