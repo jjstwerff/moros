@@ -455,3 +455,69 @@ pub fn roof_plan_covers(rp: RoofPlan, q: integer, r: integer) -> boolean {
   av = lv; if av < 0.0 { av = 0.0 - av; }
   au <= plan_hw(p) + HEX_LEN * 0.5 && av <= plan_hd(p) + HEX_LEN * 0.5
 }
+
+// ⚠ THE ROOF'S OWN SURFACE AT A POINT, which nothing could ask before. The six
+// points give a renderer its two slopes; a CAMERA needs the height over one spot,
+// because "am I under this roof" is not answered by the footprint alone — standing
+// beside a cottage you are inside its plan's tolerance and very much outdoors.
+//
+// The gable runs along u, so the height falls off with |v| from the ridge at exactly
+// the pitch — the same `pitch * hd` rise `roof_ridge_y` uses, so the surface a camera
+// tests against and the one an eye sees are one shape.
+pub fn roof_plan_y(rp: RoofPlan, x: float, z: float) -> float {
+  p = rp_plan(rp);
+  (lu, lv) = plan_to_local(p, x, z);
+  av = lv;
+  if av < 0.0 { av = 0.0 - av; }
+  hd = plan_hd(p);
+  drop = rp.rp_pitch * av;
+  if av > hd { drop = rp.rp_pitch * hd; }
+  roof_ridge_y(rp) - drop
+}
+
+// Is this point under the roof's own plan, in WORLD coordinates rather than cells —
+// the camera samples continuously and a cell-quantised answer flickers along a wall.
+pub fn roof_plan_over(rp: RoofPlan, x: float, z: float) -> boolean {
+  p = rp_plan(rp);
+  (lu, lv) = plan_to_local(p, x, z);
+  au = lu; if au < 0.0 { au = 0.0 - au; }
+  av = lv; if av < 0.0 { av = 0.0 - av; }
+  au <= plan_hw(p) && av <= plan_hd(p)
+}
+
+// ── SHELTER: what the camera is standing under ──────────────────────────────
+//
+// ⚠ ONE QUERY, AND WHAT TO DO ABOUT IT IS THE MODE'S BUSINESS. `sh_inside` means the
+// eye is under a roof or a deck — NOT "hide the roof", not "suppress the pitch". A
+// field named for one consumer's decision would bake that consumer's mode into the
+// query and make the others unbuildable.
+pub struct Shelter {
+  sh_inside: boolean,
+  sh_head:   integer,     // clear height above the eye, in units; -1 under open sky
+}
+
+pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
+                  eye_units: integer, unit: float) -> Shelter {
+  best = 0 - 1;
+  for rp in roofs.items {
+    if roof_plan_over(rp, x, z) {
+      h = ((roof_plan_y(rp, x, z) / unit ?? 0.0) as integer);
+      if h > eye_units {
+        if best < 0 || h - eye_units < best { best = h - eye_units; }
+      }
+    }
+  }
+  // ⚠ AND A DECK IS A CEILING TOO. A storey above is as much "indoors" as a roof,
+  // and a camera that only knew about roofs would climb happily through a floor.
+  (q, r) = px_to_hex(x, z);
+  col = world_column(w, q, r);
+  for c in col.co_cells {
+    if hex_world::hex_occupied(c) {
+      ch = c.h_height as integer ?? 0;
+      if ch > eye_units {
+        if best < 0 || ch - eye_units < best { best = ch - eye_units; }
+      }
+    }
+  }
+  Shelter { sh_inside: best >= 0, sh_head: best }
+}

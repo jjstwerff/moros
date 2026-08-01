@@ -39,8 +39,29 @@ target of `-0.687`: the assist is **pinned at its ceiling**, straining to look o
 wall it can never clear, so the camera aims steeply down at the character from just
 above it and the near wall fills the frame.
 
-That is the fault, and it is F2 rather than F1: the pitch assist is a FOLLOW
-behaviour with no meaning indoors. It exists for *"standing below a ridge"*, where
+**Fixed.** `shelter_at` answers whether the eye is under a roof or a deck, and the
+assist is suppressed when it is — restoring the PLAYER's own pitch, since the assist
+was always *"a deviation from their intent, never a replacement for it"* and with
+nothing to climb over, intent is what is left. The ease and the rate cap are
+untouched, so a doorway is a drift rather than a snap. Measured after:
+
+```
+CAM want 5.86  dist 4.18  free 4.60  pitch 0.35  target 0.35  slide 0.21  inside true  head 11
+```
+
+⚠ **AND THE PICTURE STILL SHOWS THE HOUSE FROM OUTSIDE — for a fourth reason the
+richer trace makes visible for the first time.** `free 4.60` while `inside true`: the
+backward sweep reports four and a half units of clear space from a point that is
+under the roof. Two of the three valves are now doing exactly what they should, and
+the boom is not shortening because *nothing is telling it to*. The next question is
+therefore about the sweep's edge set, not about the camera at all — either the
+author's position is outside the walls while inside the roof PLAN (the plan carries
+half a hex of tolerance), or the house's own wall edges are not reaching
+`coll_view`. That is a measurement to make, not a guess to add to the two already
+spent.
+
+The original fault was F2: the pitch assist is a FOLLOW behaviour with no meaning
+indoors. It exists for *"standing below a ridge"*, where
 climbing is the answer; a room is a sustained obstruction that climbing cannot solve,
 so the valve saturates and stays saturated. It has to be suppressed by the same
 `sh_inside` everything else keys off.

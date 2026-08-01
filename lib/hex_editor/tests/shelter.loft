@@ -1,0 +1,157 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// SHELTER — what the eye is standing under, asked once and answered for everyone.
+//
+// ⚠ `sh_inside` MEANS THE EYE IS UNDER SOMETHING. It does not mean "hide the roof"
+// or "suppress the pitch assist" — those are two different modes' answers to the
+// same fact, and a field named for either would make the other unbuildable.
+//
+// The consumer this was built for: the pitch assist is pinned at its ceiling in a
+// room, straining to look over a wall it can never clear. Measured, with the
+// camera's own trace: `pitch 0.8` against a player target of `-0.687`. The assist
+// exists for standing below a RIDGE, where climbing is the answer; a room is a
+// sustained obstruction that climbing cannot solve.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+const U = 0.25;
+const FLOOR = 40;
+const W = 5;
+const D = 4;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, FLOOR, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn roofs() -> RoofPlans {
+  f = hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D);
+  RoofPlans { items: [hex_editor::roof_plan_of(
+    f, ((FLOOR + hex_editor::ROOF_EAVE_UP) as float) * U,
+    hex_editor::ROOF_PITCH_DEFAULT)] }
+}
+
+fn none() -> RoofPlans { RoofPlans { items: [] } }
+
+fn test_under_the_open_sky_there_is_no_shelter() {
+  s = hex_editor::shelter_at(world(), none(), 0.0, 0.0, FLOOR + 4, U);
+  assert(!s.sh_inside, "a field is not indoors");
+  assert(s.sh_head == 0 - 1, "and has no head room to report: {s.sh_head}");
+}
+
+// ⚠ THE PLAN'S CENTRE IS THE RIDGE'S MIDPOINT, not the anchor CELL. The first
+// version of these tests read `hex_to_px(rp_cq, rp_cr)` and two of them failed —
+// the anchor is where the footprint is indexed from, and the plan's own frame is
+// not obliged to be centred on it. Asking the roof for its own points is the only
+// spelling that cannot drift from whatever `plan_new` does.
+fn ridge_x(rp: RoofPlan) -> float {
+  (hex_editor::roof_point_x(rp, 4) + hex_editor::roof_point_x(rp, 5)) * 0.5
+}
+fn ridge_z(rp: RoofPlan) -> float {
+  (hex_editor::roof_point_z(rp, 4) + hex_editor::roof_point_z(rp, 5)) * 0.5
+}
+
+fn test_under_a_roof_the_eye_is_inside() {
+  // The claim the pitch assist needs. The roof's own centre, an eye at head height.
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  cx = ridge_x(rp);
+  cz = ridge_z(rp);
+  s = hex_editor::shelter_at(world(), roofs(), cx, cz, FLOOR + 4, U);
+  assert(s.sh_inside, "under the ridge is indoors");
+  assert(s.sh_head > 0, "with head room above: {s.sh_head}");
+}
+
+fn test_beside_the_house_is_outdoors_however_close() {
+  // ⚠ THE REASON `roof_plan_over` EXISTS. `roof_plan_covers` takes CELLS and adds
+  // half a hex of tolerance — right for deciding which cells a roof writes, wrong
+  // for a camera, which samples continuously and would flicker along the wall.
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  cx = ridge_x(rp);
+  cz = ridge_z(rp);
+  s = hex_editor::shelter_at(world(), roofs(), cx + 20.0, cz, FLOOR + 4, U);
+  assert(!s.sh_inside, "twenty units away is outdoors");
+}
+
+fn test_an_eye_above_the_roof_is_not_under_it() {
+  // A camera that climbed out through the ridge must not still call itself indoors,
+  // or the assist it drives would never be released.
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  cx = ridge_x(rp);
+  cz = ridge_z(rp);
+  high = ((hex_editor::roof_plan_y(rp, cx, cz) / U ?? 0.0) as integer) + 8;
+  s = hex_editor::shelter_at(world(), roofs(), cx, cz, high, U);
+  assert(!s.sh_inside, "over the ridge is outdoors again: head {s.sh_head}");
+}
+
+fn test_a_roof_is_higher_at_its_ridge_than_at_its_eave() {
+  // ⚠ THE SURFACE, NOT THE FOOTPRINT. "Am I under this roof" cannot be answered by
+  // the plan alone — a roof that reported one height everywhere would make the head
+  // room under an eave the same as under the ridge, and a camera would climb into
+  // the slope believing it had room.
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  cx = ridge_x(rp);
+  cz = ridge_z(rp);
+  mid = hex_editor::roof_plan_y(rp, cx, cz);
+  // ⚠ To a tolerance, and not because the arithmetic is shaky: the ridge midpoint is
+  // reached through `plan_to_world` and back through `plan_to_local`, so `v` lands at
+  // 1e-16 rather than 0 and the drop is a rounding rather than nothing. An `==` here
+  // tests the round trip's last bit, which is not the claim.
+  ry = hex_editor::roof_ridge_y(rp);
+  d = mid - ry;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "ridge {mid} vs {ry} — eave {rp.rp_eave} pitch {rp.rp_pitch} wid {rp.rp_wid} dep {rp.rp_dep} rot {rp.rp_rot} pt4 {hex_editor::roof_point_y(rp, 4)}");
+  ex = hex_editor::roof_point_x(rp, 0);
+  ez = hex_editor::roof_point_z(rp, 0);
+  eave = hex_editor::roof_plan_y(rp, ex, ez);
+  assert(eave < mid, "and the eave is below it: {eave} against {mid}");
+}
+
+fn test_head_room_shrinks_toward_the_eave() {
+  // Which is what a camera has to know before it lifts: under a ridge there is room
+  // to climb, under an eave there is not.
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  cx = ridge_x(rp);
+  cz = ridge_z(rp);
+  centre = hex_editor::shelter_at(world(), roofs(), cx, cz, FLOOR + 4, U);
+  ex = hex_editor::roof_point_x(rp, 0);
+  ez = hex_editor::roof_point_z(rp, 0);
+  edge = hex_editor::shelter_at(world(), roofs(), (cx + ex) * 0.5, (cz + ez) * 0.5,
+                                FLOOR + 4, U);
+  assert(edge.sh_inside, "still indoors near the eave");
+  assert(edge.sh_head < centre.sh_head,
+         "with less room over it: {edge.sh_head} against {centre.sh_head}");
+}
+
+fn test_a_deck_shelters_as_a_roof_does() {
+  // ⚠ A STOREY ABOVE IS AS MUCH INDOORS AS A ROOF. A camera that only knew about
+  // roofs would climb happily through a floor — and the storey gesture writes decks,
+  // not roofs, so the common case would have been the missed one.
+  w = world();
+  hex_editor::ground_set(w, 0, 0, FLOOR + 12, hex_editor::FLOOR_MAT);
+  s = hex_editor::shelter_at(w, none(), 0.0, 0.0, FLOOR + 4, U);
+  assert(s.sh_inside, "under a deck is indoors");
+  assert(s.sh_head == 8, "with the deck's own clearance: {s.sh_head}");
+}
+
+fn test_the_nearest_ceiling_is_the_one_that_counts() {
+  // Under both a deck and a roof, the head room is the LOWER of them — a camera that
+  // took the roof would climb into the floor between.
+  w = world();
+  hex_editor::ground_set(w, 0, 0, FLOOR + 6, hex_editor::FLOOR_MAT);
+  rs = roofs();
+  rp = rs.items[0] ?? hex_editor::RoofPlan {};
+  (cx, cz) = hex_to_px(rp.rp_cq, rp.rp_cr);
+  s = hex_editor::shelter_at(w, roofs(), 0.0, 0.0, FLOOR + 4, U);
+  assert(s.sh_inside, "indoors under either");
+  assert(s.sh_head == 2, "and the nearest one decides: {s.sh_head}");
+}

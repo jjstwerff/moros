@@ -3572,6 +3572,7 @@ fn main() {
   // boom itself — camera STATE, so a client asking for a fresh matrix mid-tick
   // gets the same slide the last tick solved rather than a centred camera.
   cam_slide = 0.0;
+  cam_shelter = hex_editor::Shelter { sh_inside: false, sh_head: 0 - 1 };
   // The pitch actually USED, which lags the player's `pitch` by at most
   // CAM_PITCH_RATE and rests exactly on it whenever the view is clear.
   cam_pitch = 0.35;
@@ -4997,7 +4998,28 @@ fn main() {
       cam_moved = px != cam_lx || py != cam_ly || pz != cam_lz
                || yaw != cam_lyaw || pitch != cam_lpitch || wld.w_tau != cam_ltau;
       if cam_moved || !cam_rested {
-      cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
+      // ⚠ THE ASSIST IS SUPPRESSED INDOORS, and this is the fault the camera's own
+      // trace named after two wrong diagnoses. `cam_pitch_target` LIFTS the pitch to
+      // look over an obstruction, which is right for the case it was built for —
+      // *standing below a ridge*, where climbing clears it. A room is a sustained
+      // obstruction that climbing cannot clear, so the valve saturates and stays
+      // there: measured inside a 5x4 house, `pitch 0.8` against a player target of
+      // `-0.687`, aiming steeply down at the character from just above it while the
+      // near wall filled the frame.
+      //
+      // ⚠ AND IT IS THE PLAYER'S PITCH THAT IS RESTORED, not a constant. The assist
+      // was always documented as *a deviation from their intent, never a replacement
+      // for it* — so with nothing to climb over, intent is simply what is left. The
+      // ease and the rate cap below are untouched, which is what makes walking
+      // through a doorway a drift rather than a snap.
+      cam_shelter = hex_editor::shelter_at(wld, roof_plans, cpx, cpz,
+                                           (cpy / HEIGHT_SCALE ?? 0.0) as integer,
+                                           HEIGHT_SCALE);
+      if cam_shelter.sh_inside {
+        cam_pt = pitch;
+      } else {
+        cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
+      }
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
       cam_prev_pitch = cam_pitch;
@@ -5185,7 +5207,8 @@ fn main() {
           // the clamp changed nothing). A picture shows the symptom; these four
           // numbers say which valve moved.
           cmsg = "CAM want {cam_want} dist {cam_dist} free {cam_free} "
-               + "pitch {cam_pitch} target {cam_pt} slide {cam_slide}";
+               + "pitch {cam_pitch} target {cam_pt} slide {cam_slide} "
+               + "inside {cam_shelter.sh_inside} head {cam_shelter.sh_head}";
           println(cmsg);
           srv.broadcast("S:{cmsg}");
         }
