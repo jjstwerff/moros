@@ -1,0 +1,137 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE RAISE GESTURE, WITHOUT A SERVER — and this file is the argument for moving
+// the rest.
+//
+// These are `tools/gates/world/terrain.mjs`'s three claims, exactly: an ↑ ahead
+// raises the ground, it does NOT touch the ground under the author, and two
+// strokes side by side SUM where they overlap. That gate needs a server, a socket,
+// a placement, an acknowledgement and a chunk rebuild to say it, and takes about
+// seven seconds. This file says it against the store — no port, no clock, no
+// browser — and can be mutation-checked, which a gate driving a socket never
+// could.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+// ⚠ SEEDED, AND THAT IS A FINDING RATHER THAN SETUP. A world made by `world_new`
+// has no cells, and an UNWRITTEN cell does not read as height 0 once its chunk
+// exists — heights are stored inside a window, so a neighbouring write can move
+// what "absent" means. The first version of these tests measured 0 -> 1 under an
+// author no brush could reach, and the +1 was the window, not the hill.
+//
+// The running editor never sees this because it writes its ground at startup. A
+// test that skips that step is not testing the editor's world; it is testing an
+// empty store, which answers differently.
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  // Only what the strokes can reach: the target is PEAK_AHEAD east and the brush
+  // is PEAK_R around it, so nothing beyond that window is ever read or written.
+  for q in 0 - 10..21 {
+    for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 0, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// An author at the origin, facing east. East is the interesting way to face: a hex
+// step is sqrt(3) wu across and 1.5 wu up the other axis, so a search that walks
+// out in world units reaches ten hexes northward and only nine eastward — the bug
+// `peak_cell`'s bound comment names.
+fn at_origin() -> Author { hex_editor::author_at(0.0, 0.0, 0.0) }
+
+fn test_the_stroke_lands_ten_hexes_ahead() {
+  a = at_origin();
+  tq = 0;
+  tr = 0;
+  assert(hex_editor::peak_cell(a, tq, tr), "a cell ten hexes east exists");
+  (sq, sr) = px_to_hex(0.0, 0.0);
+  d = hex_distance(tq, tr, sq, sr);
+  assert(d == hex_editor::PEAK_AHEAD,
+         "the target is exactly PEAK_AHEAD away, got {d}");
+  assert(tq != sq || tr != sr, "and it is not the author's own cell");
+}
+
+fn test_raising_raises_the_ground_ahead() {
+  w = world();
+  tq = 0;
+  tr = 0;
+  hex_editor::peak_cell(at_origin(), tq, tr);
+  before = hex_editor::ground_h(w, tq, tr);
+  ack = hex_editor::raise_ahead(w, at_origin(), 1);
+  assert(ack.ak_ok, "the stroke applied: {ack.ak_why}");
+  after = hex_editor::ground_h(w, tq, tr);
+  assert(after == before + hex_editor::PEAK_STEP,
+         "the summit rose one full step: {before} -> {after}");
+}
+
+fn test_the_hill_never_lifts_the_author() {
+  // ⚠ THE CLAIM THAT KEEPS THE CAMERA OUT OF THE GROUND. PEAK_R is 7 and
+  // PEAK_AHEAD is 10, so the brush cannot reach the cell the author stands in —
+  // and when a version of this took its ruler from a stale cached hex, the hill
+  // rose underfoot and buried the view.
+  w = world();
+  (sq, sr) = px_to_hex(0.0, 0.0);
+  before = hex_editor::ground_h(w, sq, sr);
+  hex_editor::raise_ahead(w, at_origin(), 1);
+  after = hex_editor::ground_h(w, sq, sr);
+  assert(after == before, "the ground under the author is untouched: {before} -> {after}");
+  assert(hex_editor::PEAK_R < hex_editor::PEAK_AHEAD,
+         "and it is untouched by construction, not by luck");
+}
+
+fn test_two_strokes_sum_where_they_overlap() {
+  // The stroke is APPLIED, not recorded: a second press adds to what the first
+  // left, so two hills that overlap deepen rather than the later one replacing the
+  // earlier. A version that stored peaks had to special-case this merge.
+  w = world();
+  tq = 0;
+  tr = 0;
+  hex_editor::peak_cell(at_origin(), tq, tr);
+  hex_editor::raise_ahead(w, at_origin(), 1);
+  one = hex_editor::ground_h(w, tq, tr);
+  hex_editor::raise_ahead(w, at_origin(), 1);
+  two = hex_editor::ground_h(w, tq, tr);
+  assert(two == one * 2, "the same stroke twice is twice the height: {one} -> {two}");
+
+  // And an overlapping stroke from a neighbouring stance adds where the two meet
+  // rather than overwriting it.
+  side = hex_editor::author_at(0.0, 3.0, 0.0);
+  hex_editor::raise_ahead(w, side, 1);
+  three = hex_editor::ground_h(w, tq, tr);
+  assert(three > two, "an overlapping stroke adds: {two} -> {three}");
+}
+
+fn test_lowering_is_the_same_stroke_the_other_way() {
+  w = world();
+  tq = 0;
+  tr = 0;
+  hex_editor::peak_cell(at_origin(), tq, tr);
+  hex_editor::raise_ahead(w, at_origin(), 1);
+  hex_editor::raise_ahead(w, at_origin(), 1);
+  up = hex_editor::ground_h(w, tq, tr);
+  hex_editor::raise_ahead(w, at_origin(), 0 - 1);
+  down = hex_editor::ground_h(w, tq, tr);
+  assert(down == up - hex_editor::PEAK_STEP, "one step back down: {up} -> {down}");
+}
+
+fn test_a_stroke_of_nothing_is_refused_with_a_reason() {
+  // Invariant I: refused, and refused with something an author can read. A bare
+  // false here would be the blank no this editor refuses everywhere else.
+  w = world();
+  ack = hex_editor::raise_ahead(w, at_origin(), 0);
+  assert(!ack.ak_ok, "a direction of zero is refused");
+  assert(ack.ak_why != "", "with a named reason, got {ack.ak_why}");
+  assert(ack.ak_n == 0, "and it did nothing");
+}
+
+fn test_lowering_past_the_floor_reports_what_it_lost() {
+  // The third state: applied, but not as asked, WITH the residual. Ground at zero
+  // cannot go lower, so a downward stroke clamps — and says how much it clamped.
+  w = world();
+  ack = hex_editor::raise_ahead(w, at_origin(), 0 - 1);
+  assert(ack.ak_ok, "the stroke applied");
+  assert(ack.ak_n > 0, "and it clamped cells, got {ack.ak_n}");
+  assert(ack.ak_residual > 0, "reporting what it could not do: {ack.ak_residual}");
+  assert(ack.ak_why != "", "in words as well as a number");
+}

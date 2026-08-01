@@ -29,3 +29,10 @@ hex_way   = ">=0.1"
 hex_shape = ">=0.1"
 hex_place = ">=0.1"
 hex_grid  = ">=0.1"
+# ⚠ OURS, BY PATH, AND THAT IS THE POINT. A gesture edits a world, so this package
+# cannot stay world-free once it holds gestures. `lib/hex_world` is 0.1.0 with the
+# surface-rule work; the registry carries a 0.2.0 on a DIFFERENT lineage, and a
+# version range would let the resolver pick it. A path names exactly one, and it is
+# inside this tree — unlike the paths into ../../../loft-libs-world that moros_map
+# and moros_sim used to carry, which made a sibling checkout part of our build.
+hex_world = { path = "../hex_world" }

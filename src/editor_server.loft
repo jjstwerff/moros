@@ -98,9 +98,6 @@ const FADE_FROM = 0.55;        // fade begins at this fraction of the distance
 // The peak lands PEAK_AHEAD hexes in front of the character and its influence
 // reaches PEAK_R — with PEAK_R < PEAK_AHEAD the ground you stand on is
 // untouched, so raising a hill can never push you into the air or bury you.
-const PEAK_AHEAD = 10;
-const PEAK_R = 7;
-const PEAK_STEP = 6;           // height units per key press (1.5 wu, ~1.3 m)
 
 // LEVELLING — the ground is brought to THE LEVEL OF YOUR FEET, not to zero.
 //
@@ -366,7 +363,8 @@ const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so t
 // `ρ = 0` for now — the floor reserve earns its keep when buildings arrive at
 // rung W4, and reserving space this rung cannot use would only shift the world up.
 const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
-const W_RESERVE    = 0;
+// W_RESERVE and SURFACE_MAT are `hex_editor`'s now — the gestures write through
+// them, so they belong beside the gestures rather than in two places.
 const W_EPS        = 8;
 const W_THETA      = 3;
 // ⚠ THERE IS NO `SURFACE` LAYER INDEX ANY MORE, and its absence is the point.
@@ -375,7 +373,7 @@ const W_THETA      = 3;
 // was reading or writing the cellar afterwards. The ground is a LABEL now
 // (`hex_world::LABEL_GROUND`), reached through `world_ground_cell` for a read and
 // `ground_write` for a write. Re-introducing an index here would silently undo it.
-const SURFACE_MAT  = 1;           // any non-zero index: 0 is absence (`E1`)
+
 const ROAD_MAT     = 2;           // the road surface
 const ROAD_HALF    = 2;           // road half-width, in hexes
 const FIELD_MAT    = 3;           // an enclosed field
@@ -688,9 +686,7 @@ fn surface_set(wld: &World, q: integer, r: integer, feet: float,
                                             co_ids: col.co_ids }).cw_code
 }
 
-fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
-  layer_write(wld, q, r, hex_world::world_ground_layer(wld, q, r), nc)
-}
+// `ground_write` is `hex_editor`'s now, beside the gestures that write through it.
 
 // Replace ONE cell of ONE named layer, carrying every other cell and every label
 // through untouched. `ground_write` and the surface writers differ only in which
@@ -700,20 +696,8 @@ fn ground_write(wld: &World, q: integer, r: integer, nc: hex_world::Hex) -> inte
 // edge whose owning column has nothing at the level being authored. The store
 // names the layer it creates in that case, which is what an unwritten hex has
 // always done.
-fn layer_write(wld: &World, q: integer, r: integer, li: integer,
-               nc: hex_world::Hex) -> integer {
-  if li < 0 {
-    return world_set_column(wld, hex_world::Column { co_q: q, co_r: r,
-                                                     co_cells: [nc] }).cw_code;
-  }
-  col = hex_world::world_column(wld, q, r);
-  cells: vector<hex_world::Hex> = [];
-  for i in 0..len(col.co_cells) {
-    if i == li { cells += [nc]; } else { cells += [col.co_cells[i]]; }
-  }
-  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
-                                            co_ids: col.co_ids }).cw_code
-}
+// `layer_write` is `hex_editor`'s now — one read-modify-write, beside the
+// gestures. The surface writers below still name their own layer index.
 
 // ── ROADS (rung W1, moros#9) ─────────────────────────────────────────────────
 //
@@ -1012,17 +996,7 @@ fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
 //
 // An edge is written by `wall_set` and cleared by writing 0 to it, deliberately.
 // Nothing else touches it.
-fn terrain_set(wld: &World, q: integer, r: integer, h: integer, mat: integer) -> integer {
-  c = world_ground_cell(wld, q, r);
-  nc = hex_world::Hex { h_height: h as u16? ?? 0,
-                        h_material: mat as u8? ?? 0,
-                        h_item: c.h_item,
-                        h_item_rotation: c.h_item_rotation,
-                        h_wall_n: c.h_wall_n,
-                        h_wall_ne: c.h_wall_ne,
-                        h_wall_se: c.h_wall_se };
-  ground_write(wld, q, r, nc)
-}
+// `terrain_set` is `hex_editor::ground_set` now.
 
 // How tall a wall of this material stands. A DOOR draws nothing: the boundary is
 // still there in the storage, which is what `X70` is about, and what an opening
@@ -1200,7 +1174,7 @@ fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
   for r in r0..r0 + h {
     for q in q0..q0 + w {
       if hexset_get(cells, q, r) {
-        terrain_set(wld, q, r, grade, ROAD_MAT);
+        hex_editor::ground_set(wld, q, r, grade, ROAD_MAT);
         paved = paved + 1;
       }
     }
@@ -2012,7 +1986,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
   if escaped { return 0; }          // it never closed — refuse, and change nothing
   for k in 0..len(seen_q) {
     h = world_ground_cell(wld, seen_q[k], seen_r[k]).h_height;
-    terrain_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
+    hex_editor::ground_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
   }
   len(seen_q)
 }
@@ -2941,40 +2915,8 @@ fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
 // in invariant I's THIRD state — an explicit approximation — because a stroke
 // covers many cells and the floor is a property of each. What the invariant
 // forbids is doing it SILENTLY, so the caller reports both.
-fn brush(wld: &World, tq: integer, tr: integer, amp: integer, rad: integer,
-         clamped: &integer, residual: &integer) {
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = tq + dq;
-      r = tr + dr;
-      d = hex_grid::hex_distance(q, r, tq, tr);
-      if d < rad {
-        t = (d as float) / (rad as float) ?? 0.0;
-        f = 1.0 - t * t;
-        delta = ((amp as float) * f * f) as integer;
-        if delta != 0 {
-          h = world_ground_cell(wld, q, r).h_height + delta;
-          if h < W_RESERVE {
-            lost = W_RESERVE - h;
-            if lost > residual { residual = lost; }
-            clamped = clamped + 1;
-            h = W_RESERVE;
-          }
-          if h > 65535 {
-            lost2 = h - 65535;
-            if lost2 > residual { residual = lost2; }
-            clamped = clamped + 1;
-            h = 65535;
-          }
-          // ⚠ Qualified: `moros_map` and `hex_world` BOTH define a `Hex`, and they
-          // are different types — moros_map's is the scene cell, hex_world's is the
-          // stored voxel. The bare name resolves to the wrong one here.
-          terrain_set(wld, q, r, h, SURFACE_MAT);
-        }
-      }
-    }
-  }
-}
+// `brush` is `hex_editor`'s now — one stroke of the terrain brush, beside the
+// gesture that applies it.
 
 // CORNER HEIGHTS — the whole reason the ground can slope.
 //
@@ -4646,100 +4588,40 @@ fn main() {
             println("editor: levelling off — feet back on the ground at {py}");
           }
         } else if ev.msg_id == MSG_RAISE {
-          dirn = ev.payload as integer ?? 0;
-          if dirn != 0 {
-            // Find the cell PEAK_AHEAD hexes along the facing. Stepped out and
-            // MEASURED with `hex_distance` rather than converted from a world
-            // radius: a hex step is 1.5 wu north–south and √3 east–west, so a
-            // fixed world radius would put the peak at a different hex distance
-            // depending on which way you happen to face.
-            //
-            // ⚠ THE RULER IS ANCHORED WHERE THE CHARACTER IS, and `last_hq` /
-            // `last_hr` are NOT that. Those are written only by the streaming
-            // block, once per TICK and only when the hex changes — so between a
-            // `7:` teleport and the next tick they still name the cell that was
-            // left behind, while the ray below walks out from the NEW `px`/`pz`.
-            // Two positions in one measurement: the ray starts here and the ruler
-            // is anchored there.
-            //
-            // Measured, not argued — `probe/raise_origin.mjs`, teleport to hex
-            // (10,0) and raise in the same breath: the hill landed AT (10,0),
-            // underfoot, which is the very failure the bound comment below was
-            // written to prevent. Settle one tick first and it lands at (20,0).
-            // Same defect the road carried (it stamped at `last_hq`, so every
-            // placement laid at one stale hex and a walked path made a blob), and
-            // the same fix: derive the cell from the position.
-            self_hx = world_to_hex(px, pz);
-            tq = self_hx.ha_q;
-            tr = self_hx.ha_r;
-            found = false;
-            ky2 = cos(yaw); sy2 = sin(yaw);
-            // ⚠ The bound must cover the LONGEST hex step. A step is 1.5 wu
-            // north–south but √3 ≈ 1.732 east–west, so a search that walks out
-            // `PEAK_AHEAD * 1.5` wu reaches ten hexes northward and only nine
-            // eastward. The first version stepped to 14.5 wu and simply never
-            // hit distance 10 facing east — and its fallback was the initial
-            // value, the CHARACTER'S OWN CELL, so the hill rose underfoot and
-            // buried the camera. Silent fallbacks are the failure; this one
-            // refuses instead.
-            for si in 1..PEAK_AHEAD * 8 {
-              probe = world_to_hex(px + ky2 * (si as float) * 0.5,
-                                   pz + sy2 * (si as float) * 0.5);
-              if hex_grid::hex_distance(probe.ha_q, probe.ha_r,
-                                        self_hx.ha_q, self_hx.ha_r) >= PEAK_AHEAD {
-                tq = probe.ha_q;
-                tr = probe.ha_r;
-                found = true;
-                break;
-              }
+          // ⚠ THE GESTURE IS `hex_editor`'s NOW — `SCRIPTED_EDITOR.md` §2. Ninety
+          // lines of ray-walk, brush and clamp lived here, reachable only through
+          // this socket, so the only way to ask "does raising raise the ground"
+          // was to start a server and drive it: about seven seconds a claim, and
+          // `tools/gates/world/terrain.mjs` is exactly that. The same claims are
+          // `lib/hex_editor/tests/gesture.loft` now — no port, no clock, no
+          // browser — and the comments went with the code they explain: why the
+          // ruler is anchored at the position rather than a cached hex, why the
+          // walk-out bound must cover the longest hex step, and why the flanks
+          // are steep and must stay so.
+          //
+          // What is left here is what a SERVER owes: telling the author, and
+          // knowing which chunks to rebuild. The Ack carries the cell precisely so
+          // this does not re-derive it — the stale-hex bug was exactly that.
+          rack = hex_editor::raise_ahead(wld,
+                   hex_editor::author_at(px, pz, yaw), ev.payload as integer ?? 0);
+          if !rack.ak_ok {
+            println("editor: raise refused — {rack.ak_why}");
+          } else {
+            if rack.ak_residual != 0 {
+              // Applied, but not as asked — said out loud, with the residual.
+              // Invariant I's third state, and the only thing that makes an
+              // approximation legitimate rather than a silent correction.
+              srv.send_to(ev.cid, "S:{rack.ak_why} (residual {rack.ak_residual})");
+              println("editor: {rack.ak_why}, residual {rack.ak_residual}");
             }
-            if !found {
-              println("editor: no cell at {PEAK_AHEAD} hexes ahead — refusing");
-            }
-            // The stroke is APPLIED, not recorded. Holding the key adds to the
-            // cells each time, which is what makes two strokes deepen one hill —
-            // the merge the peak version had to special-case is now just addition.
-            bclamp = 0;
-            bres = 0;
-            // ⚠ THE FLANKS ARE 83° AND THAT IS WHY HILLS READ AS TENTS.
-            // The falloff `(1 - t²)²` is smooth at BOTH ends, so one stroke is a
-            // gentle dome and the shape was never the fault. Strokes ADD while
-            // the radius stays pinned, so twenty presses is that dome scaled
-            // twenty times vertically: 39° at the apex, 74-77° on the flanks.
-            //
-            // ⚠ DO NOT "FIX" THIS. The steep flanks are WANTED — they are the
-            // author's call, confirmed 2026-07-29. Two ways to soften them were
-            // measured and both are rejected: growing the radius with the pile
-            // (83° to 68°, still a cliff, six times the footprint per keypress),
-            // and an angle-of-repose limit (34.5°, but it flattens exactly the
-            // slopes that are wanted).
-            //
-            // What DID read as a tent was never the brush: `emit_hex_sloped` took
-            // its fan centre from the raw cell height while every rim corner was a
-            // three-cell average, so each summit cell was drawn as a pyramid. That
-            // is fixed there, not here.
-            if found { brush(wld, tq, tr, dirn * PEAK_STEP, PEAK_R, bclamp, bres); }
-            if bclamp != 0 {
-              // Applied, but not as asked — say so, with the residual. This is
-              // invariant I's third state, and the only thing that makes it
-              // legitimate rather than a silent correction.
-              srv.send_to(ev.cid,
-                "S:ground approximated — {bclamp} cells hit the floor (residual {bres})");
-              println("editor: ground approximated — {bclamp} clamped, residual {bres}");
-            }
-
-            // THE DIRTY REGION IS WIDER THAN THE BRUSH, and this is the one
-            // writer in the file that used to forget it (`frad + 2`,
-            // `ROAD_HALF + 4`, `STENCIL_R + 2`, `SCATTER_R + 1` all carry a
-            // margin; this carried none). A chunk's mesh is not a function of its
-            // own cells: `corner_heights` averages every corner over the THREE
-            // cells touching it, and `cell_normal` takes a gradient over SIX
-            // neighbours whose normals then feed those corner means — so a cell
-            // two hexes outside the brush still moves. Marking exactly PEAK_R
-            // left the ring just outside it holding a stale mesh, and because the
-            // ground carries no skirts that stale ring is a GAP you see through.
-            if found { mark_dirty(dirty, tq, tr, PEAK_R + 2); }
-            println("editor: brush ({tq},{tr}) {dirn * PEAK_STEP:+} — "
+            // ⚠ PEAK_R + 2, NOT PEAK_R. A corner height is the mean of the three
+            // cells touching it and `cell_normal` takes a gradient over six
+            // neighbours whose normals feed those means — so a cell two hexes
+            // outside the brush still moves. Marking exactly PEAK_R left the ring
+            // just outside holding a stale mesh, and because the ground carries no
+            // skirts that stale ring is a GAP you see through.
+            mark_dirty(dirty, rack.ak_q, rack.ak_r, hex_editor::PEAK_R + 2);
+            println("editor: brush ({rack.ak_q},{rack.ak_r}) — "
                     + "{len(wld.w_chunks)} chunks, {len(dirty.items)} dirty");
           }
         }

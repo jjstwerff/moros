@@ -1,0 +1,225 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// GESTURES, AS FUNCTIONS — `SCRIPTED_EDITOR.md` §2, and the reason the gate suite
+// is slow.
+//
+// Every authoring gesture lives inside the editor server's message loop, so the
+// only way to ask "does raising the ground raise the ground" is to start a
+// server, open a socket, send `5:1` and wait for an acknowledgement. Measured:
+// 28 gates that way take 67 seconds at ten in parallel, and took 40 MINUTES
+// before that. The same claims as loft tests run in milliseconds, on the
+// interpreter, with no port and no clock — and can be mutation-checked, which a
+// gate that drives a socket cannot be.
+//
+// So a gesture is a FUNCTION here:
+//
+//     gesture(world, author, args) -> Ack
+//
+// `Author` is where the character is — the gestures need exactly that and nothing
+// else. `Ack` is the doorstep shape this editor already uses everywhere: applied,
+// refused with a named reason and an offer, or applied as an explicit
+// approximation with its residual shown. ⚠ Those three states are invariant I;
+// a gesture that returns a bare boolean has thrown away the only thing that makes
+// a refusal legitimate.
+//
+// The server keeps the socket, the tick and the streaming. It calls these.
+use hex_field;
+use hex_grid;
+use hex_world;
+
+// Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
+pub struct Author {
+  au_x:   float,
+  au_z:   float,
+  au_yaw: float,
+}
+
+pub fn author_at(x: float, z: float, yaw: float) -> Author {
+  Author { au_x: x, au_z: z, au_yaw: yaw }
+}
+
+// The answer to a gesture. `ak_n` is what it did — cells, edges, whatever the
+// gesture counts — and is 0 on a refusal.
+//
+// ⚠ `ak_residual` IS NOT AN ERROR TERM. It is what the author asked for and did
+// not get: the clamped height, the degrees a facing moved, the cut-and-fill a
+// seat owes. A gesture that applies an approximation and reports 0 has lied.
+pub struct Ack {
+  ak_ok:       boolean,
+  ak_why:      text,
+  ak_n:        integer,
+  ak_residual: integer,
+  ak_q:        integer,   // WHERE it happened — the caller needs this to know
+  ak_r:        integer,   // which chunks to rebuild, and must not re-derive it
+}
+
+pub fn ack_ok(n: integer) -> Ack {
+  Ack { ak_ok: true, ak_why: "", ak_n: n, ak_residual: 0, ak_q: 0, ak_r: 0 }
+}
+
+pub fn ack_no(why: text) -> Ack {
+  Ack { ak_ok: false, ak_why: why, ak_n: 0, ak_residual: 0, ak_q: 0, ak_r: 0 }
+}
+
+pub fn ack_about(n: integer, why: text, residual: integer) -> Ack {
+  Ack { ak_ok: true, ak_why: why, ak_n: n, ak_residual: residual, ak_q: 0, ak_r: 0 }
+}
+
+pub fn ack_at(a: Ack, q: integer, r: integer) -> Ack {
+  Ack { ak_ok: a.ak_ok, ak_why: a.ak_why, ak_n: a.ak_n,
+        ak_residual: a.ak_residual, ak_q: q, ak_r: r }
+}
+
+// ── the ground the gestures write through ───────────────────────────────────
+
+pub const SURFACE_MAT = 1;     // any non-zero index: 0 is absence (`E1`)
+pub const W_RESERVE   = 0;     // the floor a height may not go below
+pub const H_CEILING   = 65535; // and the ceiling, which is the u16 the voxel holds
+
+// The ground height at a cell — the OUTDOORS, by label, never layer 0. Layer 0 is
+// the outdoors right up until a cellar is dug beneath it and then it silently
+// becomes the cellar floor; three cellars under a hill once sank the drawn ground
+// from 10.917 to 5.583 wu.
+pub fn ground_h(w: World, q: integer, r: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  c.h_height
+}
+
+// Replace ONE cell of ONE named layer, carrying every other cell and every label
+// through untouched. The surface writers differ only in which index they name, so
+// the read-modify-write lives here once.
+//
+// A layer index of -1 means *there is no such layer* — an unwritten hex, or an edge
+// whose owning column has nothing at the level being authored. The store names the
+// layer it creates in that case, which is what an unwritten hex has always done.
+pub fn layer_write(w: &World, q: integer, r: integer, li: integer,
+                   nc: hex_world::Hex) -> integer {
+  if li < 0 {
+    return world_set_column(w, hex_world::Column { co_q: q, co_r: r,
+                                                   co_cells: [nc] }).cw_code;
+  }
+  col = world_column(w, q, r);
+  cells: vector<hex_world::Hex> = [];
+  for i in 0..len(col.co_cells) {
+    if i == li { cells += [nc]; } else { cells += [col.co_cells[i]]; }
+  }
+  world_set_column(w, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+                                          co_ids: col.co_ids }).cw_code
+}
+
+pub fn ground_write(w: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
+  layer_write(w, q, r, world_ground_layer(w, q, r), nc)
+}
+
+// Write a height and material at a cell, keeping everything else the cell holds.
+pub fn ground_set(w: &World, q: integer, r: integer, h: integer, mat: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+                        h_material: mat as u8? ?? 0,
+                        h_item: c.h_item,
+                        h_item_rotation: c.h_item_rotation,
+                        h_wall_n: c.h_wall_n,
+                        h_wall_ne: c.h_wall_ne,
+                        h_wall_se: c.h_wall_se };
+  ground_write(w, q, r, nc)
+}
+
+// ── raise / lower ───────────────────────────────────────────────────────────
+
+pub const PEAK_AHEAD = 10;     // hexes ahead of the author the stroke lands
+pub const PEAK_R     = 7;      // brush radius, in hexes
+pub const PEAK_STEP  = 6;      // height units per press (1.5 wu, about 1.3 m)
+
+// One stroke of the terrain brush, centred on a cell.
+//
+// ⚠ THE STROKE IS APPLIED, NOT RECORDED, and that is what makes two strokes
+// deepen one hill: holding the key adds each time, so the merge a stored-peak
+// version had to special-case is just addition. The falloff `(1 - t²)²` is smooth
+// at both ends, so one stroke is a gentle dome; twenty presses is that dome scaled
+// twenty times vertically, which is where the steep flanks come from. They are
+// wanted — the author's call, confirmed 2026-07-29 — so do not soften this.
+pub fn brush(w: &World, tq: integer, tr: integer, amp: integer, rad: integer,
+             clamped: &integer, residual: &integer) {
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = tq + dq;
+      r = tr + dr;
+      d = hex_distance(q, r, tq, tr);
+      if d < rad {
+        t = (d as float) / (rad as float) ?? 0.0;
+        f = 1.0 - t * t;
+        delta = ((amp as float) * f * f) as integer;
+        if delta != 0 {
+          h = ground_h(w, q, r) + delta;
+          if h < W_RESERVE {
+            lost = W_RESERVE - h;
+            if lost > residual { residual = lost; }
+            clamped = clamped + 1;
+            h = W_RESERVE;
+          }
+          if h > H_CEILING {
+            lost2 = h - H_CEILING;
+            if lost2 > residual { residual = lost2; }
+            clamped = clamped + 1;
+            h = H_CEILING;
+          }
+          ground_set(w, q, r, h, SURFACE_MAT);
+        }
+      }
+    }
+  }
+}
+
+// The cell `PEAK_AHEAD` hexes along the author's facing, or a refusal.
+//
+// ⚠ MEASURED IN HEXES WITH `hex_distance`, NOT CONVERTED FROM A WORLD RADIUS. A
+// hex step is 1.5 wu north–south and sqrt(3) east–west, so a fixed world radius
+// puts the target at a different hex distance depending on which way the author
+// happens to face. The walk-out bound must cover the LONGEST step for the same
+// reason: a search that only reaches `PEAK_AHEAD * 1.5` wu never hits distance 10
+// facing east.
+//
+// ⚠ AND THE RULER IS ANCHORED WHERE THE AUTHOR IS. The server's version read a
+// cached hex written once per tick, so between a teleport and the next tick the
+// ray started at the new position while the ruler measured from the old one — and
+// the hill landed underfoot, burying the camera. Derived from the position, both.
+pub fn peak_cell(a: Author, tq: &integer, tr: &integer) -> boolean {
+  (sq, sr) = px_to_hex(a.au_x, a.au_z);
+  tq = sq;
+  tr = sr;
+  ky = cos(a.au_yaw);
+  sy = sin(a.au_yaw);
+  for si in 1..PEAK_AHEAD * 8 {
+    (pq, pr) = px_to_hex(a.au_x + ky * (si as float) * 0.5,
+                         a.au_z + sy * (si as float) * 0.5);
+    if hex_distance(pq, pr, sq, sr) >= PEAK_AHEAD {
+      tq = pq;
+      tr = pr;
+      return true;
+    }
+  }
+  false
+}
+
+// Raise (`dir` = +1) or lower (-1) the ground ahead of the author.
+//
+// A refusal when no cell lies `PEAK_AHEAD` hexes away — never a silent fallback to
+// the author's own cell, which is how the hill ended up underfoot.
+pub fn raise_ahead(w: &World, a: Author, dir: integer) -> Ack {
+  if dir == 0 { return ack_no("a stroke of nothing"); }
+  tq = 0;
+  tr = 0;
+  if !peak_cell(a, tq, tr) {
+    return ack_no("no cell at {PEAK_AHEAD} hexes ahead");
+  }
+  clamped = 0;
+  residual = 0;
+  brush(w, tq, tr, dir * PEAK_STEP, PEAK_R, clamped, residual);
+  if clamped != 0 {
+    return ack_at(ack_about(clamped,
+                            "ground approximated — {clamped} cells hit the floor",
+                            residual), tq, tr);
+  }
+  ack_at(ack_ok(1), tq, tr)
+}

@@ -18,6 +18,10 @@
 // The other half of the point is that a gesture is a FUNCTION. Every one of them
 // lives inside the server's message loop today, reachable only through a socket,
 // which is why nothing can be scripted, replayed or tested without one.
+// The gestures — `SCRIPTED_EDITOR.md` §2 — live in their own module and are
+// re-exported here, the way `hex_draw` carries `housedraw` and `hexsurf`.
+use gesture;
+
 use hex_draw;
 use hex_form;
 use hex_field;
