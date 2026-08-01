@@ -2567,3 +2567,209 @@ pub fn prop_part(p: Prop, i: integer, cx: &float, cz: &float,
   lo = p.pr_y + p.pr_up - 2;
   hi = p.pr_y + p.pr_up;
 }
+
+// ── THE SLAB: A HORIZONTAL SURFACE WITH A THICKNESS ─────────────────────────
+//
+// ⚠ WALLS ARE BANDS AND EVERY HORIZONTAL SURFACE WAS A SHEET. `hex_draw::BAND_SIDES`
+// gives a wall real thickness, and everything the opening family is built on — the
+// reveal, the soffit, the jamb, an alcove's back, an embrasure's datum — exists
+// BECAUSE there is material between its two faces. A deck, a floor and a roof were
+// each one plane of triangles at one height, which is invisible until something can
+// be underneath one. Then:
+//
+//   * there is no face from below at all;
+//   * the CEILING of a room and the FLOOR of the storey above are the same plane at
+//     the same height, with nothing between them — a fold in a sheet of paper;
+//   * a hole in a floor has NO REVEAL, because there is no thickness to cut one in.
+//     That is exactly the fault the wall openings fixed, one axis over;
+//   * there is nowhere for a joist, a beam, a coffer, or a floor thicker than a roof.
+//
+// A `Slab` is the wall band rotated: `sl_lo` is the ceiling of the room below and
+// `sl_hi` the floor of the room above, and the material between them is what a hole
+// gets cut through. `Hole` is `Opening` with its profile taken in PLAN instead of
+// along a run, and it carries the same datum — which face it is cut from — so a
+// stairwell, a coffered ceiling and a sunken panel differ in two numbers.
+
+pub const SLAB_THICK = 2;        // height units — joists and boards, about 0.43 m
+
+pub const HO_RECT  = 0;
+pub const HO_ROUND = 1;
+
+pub struct Slab {
+  sl_x: float, sl_z: float,     // its centre in the world
+  sl_yaw: float,                // and which way its long axis runs
+  sl_w: float, sl_d: float,     // its extent, in world units
+  sl_lo: integer,               // its UNDERSIDE — the ceiling of the room below
+  sl_hi: integer,               // its TOP — the floor of the room above
+}
+
+pub struct Slabs { items: vector<Slab> }
+
+pub struct Hole {
+  ho_x: float, ho_z: float,     // its centre in plan
+  ho_u: float, ho_v: float,     // half extents along the slab's own axes, or a radius in ho_u
+  ho_kind: integer,
+  // ⚠ THE DATUM, AND IT IS THE OPENING'S — a fraction of the slab's thickness,
+  // measured DOWN from the top. `0 → 1` is a stairwell; `0.5 → 1` is a coffer, a
+  // recess you see from below with the floor whole above it; `0 → 0.5` is a sunken
+  // panel you step down into. Two numbers, three fittings, and none of them is a
+  // special case.
+  ho_near: float, ho_far: float,
+}
+
+pub struct Holes { items: vector<Hole> }
+
+pub fn slab_thick(s: Slab) -> integer { s.sl_hi - s.sl_lo }
+
+// ⚠ THE CLAIM THE WHOLE THING EXISTS FOR: a room's clear height is its storey's
+// pitch MINUS the slab over it. A model where the ceiling is the floor above has no
+// place to put this number, which is why it never appeared.
+pub fn slab_clear(floor: integer, s: Slab) -> integer { s.sl_lo - floor }
+
+// A storey decomposed honestly: where the floor above sits, and where this room's
+// ceiling does. `pitch` is floor-to-floor, which is the number a builder works in.
+pub fn storey_split(floor: integer, pitch: integer, thick: integer,
+                    ceil: &integer, next: &integer) {
+  next = floor + pitch;
+  ceil = next - thick;
+}
+
+pub fn slab_new(x: float, z: float, yaw: float, w: float, d: float,
+                lo: integer, hi: integer) -> Slab {
+  Slab { sl_x: x, sl_z: z, sl_yaw: yaw, sl_w: w, sl_d: d, sl_lo: lo, sl_hi: hi }
+}
+
+// ⚠ A SLAB OVER A HOUSE COMES FROM ITS FOOTPRINT, and the footprint is stored in
+// CELLS about an anchor — so its world extent is derived here rather than carried,
+// which keeps the one authority the store already has. `fp_rot` is one of twelve, and
+// the yaw it stands for is what the slab's own axes must agree with, or a ceiling
+// would sit square to the world in a house that does not.
+pub fn slab_over(f: Footprint, floor: integer, pitch: integer, thick: integer) -> Slab {
+  ceil = 0;
+  next = 0;
+  storey_split(floor, pitch, thick, ceil, next);
+  (cx, cz) = hex_grid::hex_to_px(f.fp_cq, f.fp_cr);
+  yaw = (f.fp_rot as float) * 2.0 * PI / 12.0 ?? 0.0;
+  slab_new(cx, cz, yaw,
+           (f.fp_wid as float) * hex_grid::HEX_LEN,
+           (f.fp_dep as float) * hex_grid::HEX_LEN,
+           ceil, next)
+}
+
+// A point in the slab's own frame — `u` along its length, `v` across it.
+pub fn slab_local(s: Slab, x: float, z: float, u: &float, v: &float) {
+  c = cos(0.0 - s.sl_yaw);
+  n = sin(0.0 - s.sl_yaw);
+  dx = x - s.sl_x;
+  dz = z - s.sl_z;
+  u = dx * c - dz * n;
+  v = dx * n + dz * c;
+}
+
+pub fn slab_covers(s: Slab, x: float, z: float) -> boolean {
+  u = 0.0;
+  v = 0.0;
+  slab_local(s, x, z, u, v);
+  if u < 0.0 { u = 0.0 - u; }
+  if v < 0.0 { v = 0.0 - v; }
+  u <= s.sl_w * 0.5 && v <= s.sl_d * 0.5
+}
+
+// ── the datum, exactly as an opening's ──────────────────────────────────────
+
+pub fn hole_at_top(h: Hole) -> boolean { h.ho_near <= 0.0 }
+pub fn hole_at_bottom(h: Hole) -> boolean { h.ho_far >= 1.0 }
+pub fn hole_through(h: Hole) -> boolean { hole_at_top(h) && hole_at_bottom(h) }
+
+pub fn hole_rect(x: float, z: float, u: float, v: float) -> Hole {
+  Hole { ho_x: x, ho_z: z, ho_u: u * 0.5, ho_v: v * 0.5, ho_kind: HO_RECT,
+         ho_near: 0.0, ho_far: 1.0 }
+}
+
+pub fn hole_round(x: float, z: float, diameter: float) -> Hole {
+  Hole { ho_x: x, ho_z: z, ho_u: diameter * 0.5, ho_v: diameter * 0.5,
+         ho_kind: HO_ROUND, ho_near: 0.0, ho_far: 1.0 }
+}
+
+// A recess in the underside — a coffer, a beam bay — with the floor whole above it.
+pub fn hole_coffer(x: float, z: float, u: float, v: float, depth: float) -> Hole {
+  d = depth;
+  if d > 1.0 { d = 1.0; }
+  if d < 0.0 { d = 0.0; }
+  Hole { ho_x: x, ho_z: z, ho_u: u * 0.5, ho_v: v * 0.5, ho_kind: HO_RECT,
+         ho_near: 1.0 - d, ho_far: 1.0 }
+}
+
+// And one in the top — a sunken panel, a hearth, a plunge — with the ceiling whole
+// below it. The mirror of a coffer, which is the point of a datum.
+pub fn hole_sunk(x: float, z: float, u: float, v: float, depth: float) -> Hole {
+  d = depth;
+  if d > 1.0 { d = 1.0; }
+  if d < 0.0 { d = 0.0; }
+  Hole { ho_x: x, ho_z: z, ho_u: u * 0.5, ho_v: v * 0.5, ho_kind: HO_RECT,
+         ho_near: 0.0, ho_far: d }
+}
+
+// ⚠ WHAT THE RENDERER ASKS, PER SAMPLE, AND IT IS `opening_cuts` ONE AXIS OVER: at
+// this point in plan, is the slab cut, and between which heights. The profile is
+// taken in plan rather than along a run and everything else is identical — which is
+// what makes a stairwell's reveal the same code that gave a window its splay.
+pub fn hole_cuts(s: Slab, h: Hole, x: float, z: float,
+                 lo: &integer, hi: &integer) -> boolean {
+  u = 0.0;
+  v = 0.0;
+  slab_local(s, x, z, u, v);
+  hu = 0.0;
+  hv = 0.0;
+  slab_local(s, h.ho_x, h.ho_z, hu, hv);
+  du = u - hu;
+  dv = v - hv;
+  if h.ho_kind == HO_ROUND {
+    if du * du + dv * dv > h.ho_u * h.ho_u { return false; }
+  } else {
+    au = du;
+    av = dv;
+    if au < 0.0 { au = 0.0 - au; }
+    if av < 0.0 { av = 0.0 - av; }
+    if au > h.ho_u || av > h.ho_v { return false; }
+  }
+  t = slab_thick(s);
+  // Measured DOWN from the top, so `near` is the higher surface.
+  hi = s.sl_hi - ((h.ho_near * (t as float)) as integer);
+  lo = s.sl_hi - ((h.ho_far * (t as float)) as integer);
+  if lo < s.sl_lo { lo = s.sl_lo; }
+  if hi > s.sl_hi { hi = s.sl_hi; }
+  hi > lo
+}
+
+// ⚠ REFUSED WITH WHAT FITS. A hole wider than the slab it is cut in is a slab with a
+// corner missing, and the reveal it needs has nothing to be cut into on one side —
+// the same fault as a window overrunning its embrasure, one axis over.
+pub fn hole_fits_in(s: Slab, h: Hole) -> Ack {
+  hu = 0.0;
+  hv = 0.0;
+  slab_local(s, h.ho_x, h.ho_z, hu, hv);
+  au = hu;
+  av = hv;
+  if au < 0.0 { au = 0.0 - au; }
+  if av < 0.0 { av = 0.0 - av; }
+  roomu = s.sl_w * 0.5 - au - OPENING_CLEAR;
+  roomv = s.sl_d * 0.5 - av - OPENING_CLEAR;
+  if h.ho_u > roomu {
+    return ack_no("the hole reaches past the slab's edge — "
+                  + "offer {roomu * 2.0}, residual {(h.ho_u - roomu) * 2.0}");
+  }
+  if h.ho_kind == HO_RECT && h.ho_v > roomv {
+    return ack_no("the hole reaches past the slab's end — "
+                  + "offer {roomv * 2.0}, residual {(h.ho_v - roomv) * 2.0}");
+  }
+  if h.ho_kind == HO_ROUND && h.ho_u > roomv {
+    return ack_no("the hole reaches past the slab's end — "
+                  + "offer {roomv * 2.0}, residual {(h.ho_u - roomv) * 2.0}");
+  }
+  if slab_thick(s) < 1 {
+    return ack_no("a slab with no thickness cannot carry a hole — "
+                  + "offer {SLAB_THICK}, residual {SLAB_THICK - slab_thick(s)}");
+  }
+  ack_ok(1)
+}

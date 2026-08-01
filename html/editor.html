@@ -344,6 +344,10 @@ addEventListener('keydown', (e) => {
   // niche. Refused with the room it would need rather than placed anyway.
   if (e.code === 'KeyY') { ws.send('38:0'); e.preventDefault(); return; }   // bed
   if (e.code === 'KeyT') { ws.send('38:1'); e.preventDefault(); return; }   // statue
+  // A storey's floor with a real thickness, and a hole through it that has a
+  // reveal — the wall band rotated. X the slab, Z a stairwell.
+  if (e.code === 'KeyX') { ws.send('39:0'); e.preventDefault(); return; }   // slab
+  if (e.code === 'KeyZ') { ws.send('39:1'); e.preventDefault(); return; }   // stairwell
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

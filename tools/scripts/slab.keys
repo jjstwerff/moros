@@ -1,0 +1,37 @@
+# A FLOOR WITH A THICKNESS, AND A HOLE THAT HAS A REVEAL.
+#
+# ⚠ THE CLAIM IS A NUMBER: the server prints the ceiling, the floor above it, and the
+# CLEAR height between them. In a model of sheets the first two are the same value
+# and the third does not exist — `slab 11..13, clear 10 of 12`.
+#
+# ⚠ AND IT IS PHOTOGRAPHED IN THE OPEN AIR, deliberately. The first version laid the
+# slab inside a house, which is where a floor belongs and exactly where no camera can
+# see it: there is a roof over it and, per CAMERA_INDOORS.md, the camera cannot work
+# in the room anyway. A slab standing on its own shows all four of its surfaces.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a slab in the open, at storey height
+at 0 0 90
+key X
+wait rebuilt
+
+# ⚠ THE SLAB LANDS AHEAD OF THE AUTHOR — a footprint is placed where you are
+# LOOKING, so the slab is at (0,6) and not underfoot. Cutting at the author's own
+# position was refused for reaching past the slab's end by 4.87, correctly; the
+# gesture now reports where the slab went, which is what made this line writable.
+echo --- and a stairwell through it, where the slab actually is
+at 0 6 90
+key Z
+wait rebuilt
+
+echo --- from below and to one side: the underside, and the rim's own edge
+at 0 -4 80
+snap s11-slab-under
+
+echo --- from further back, where the thickness reads against the sky
+at 10 -2 130
+snap s11-slab-edge

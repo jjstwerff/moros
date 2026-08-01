@@ -298,6 +298,10 @@ const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
 const MSG_HOUSE = 32;
+const MSG_SLAB  = 39;     // A STOREY'S FLOOR, WITH A THICKNESS — `39:0` a slab over
+                          // the house you last built, `39:1` a stairwell through it,
+                          // `39:2` a coffer, `39:3` a sunken panel. The wall band
+                          // rotated: the datum says which face the void is cut from.
 const MSG_SEAT  = 38;     // WHAT STANDS IN A VOID — `38:0` a bed, `38:1` a statue.
                           // Seated in the nearest void that has room; refused with
                           // the room it would need, never placed at a coordinate.
@@ -1843,7 +1847,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
 // are somebody else's cells; a floor's edge is where the floor STOPS. So each
 // exposed edge carries a slab face, and "exposed" is asked of the same LAYER in the
 // neighbour — by label, because a chunk numbers its layers for itself.
-const FLOOR_THICK = 2;            // height units of slab under a floor's top face
+// ⚠ THE SAME NUMBER AS THE SLAB'S, AND NOW LITERALLY IT. This was `2` beside
+// `hex_editor::SLAB_THICK`'s `2`, which is the named-stride lesson again — two
+// spellings of one fact drift, and the drift shows up as a floor whose edge skirt
+// and whose underside disagree about how thick it is. The stored floor's skirt and
+// the drawn slab's thickness are the same claim about the same material.
+const FLOOR_THICK = hex_editor::SLAB_THICK;
 
 // The neighbour's cell in the layer with this LABEL, or an absent one.
 //
@@ -1893,12 +1902,18 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props) {
+                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
   for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
   for arun in awalls.items { emit_run_wall(wm, am, arun, wld, q0, r0, openings); }
+  for slb in slabs.items {
+    (sq, sr) = px_to_hex(slb.sl_x, slb.sl_z);
+    if sq >= q0 && sq < q0 + CHUNK && sr >= r0 && sr < r0 + CHUNK {
+      emit_slab(fm, slb, holes);
+    }
+  }
   for anx in annexes.items {
     (aq, ar) = px_to_hex(anx.an_x, anx.an_z);
     if aq >= q0 && aq < q0 + CHUNK && ar >= r0 && ar < r0 + CHUNK {
@@ -2357,6 +2372,143 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 
 // One triangle with a normal PER VERTEX, so the shading interpolates across it
 // instead of flooding it with one facet's value.
+// ⚠ A SLAB HAS A RIM, WHICH A SHEET NEVER DID. Its top, its underside and the four
+// edges between them are all real surfaces now — the floor line you see on the
+// outside of a house is the slab's own edge, and it exists because there is material
+// between the two faces rather than a plane pretending to be a floor.
+//
+// ⚠ AND THE CHEAP PATH IS THE COMMON ONE. A slab with no hole over it is two quads
+// and a rim; only where a hole actually falls does it march a grid, because building
+// meshes for nothing is prohibited and a uniform grid over every ceiling in a village
+// is exactly that.
+const SLAB_STEP = 0.5;           // world units, where a hole makes a march necessary
+
+fn slab_pt(sl: Slab, u: float, v: float, y: float) -> Vec3 {
+  c = cos(sl.sl_yaw);
+  n = sin(sl.sl_yaw);
+  vec3(sl.sl_x + u * c - v * n, y, sl.sl_z + u * n + v * c)
+}
+
+fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  hw = sl.sl_w * 0.5;
+  hd = sl.sl_d * 0.5;
+  ylo = (sl.sl_lo as float) * HEIGHT_SCALE;
+  yhi = (sl.sl_hi as float) * HEIGHT_SCALE;
+
+  // The rim: four faces around the slab's own edge, which is what gives a building
+  // a floor line instead of a crease.
+  r0 = slab_pt(sl, 0.0 - hw, 0.0 - hd, ylo);
+  r1 = slab_pt(sl, hw, 0.0 - hd, ylo);
+  r2 = slab_pt(sl, hw, hd, ylo);
+  r3 = slab_pt(sl, 0.0 - hw, hd, ylo);
+  t0 = slab_pt(sl, 0.0 - hw, 0.0 - hd, yhi);
+  t1 = slab_pt(sl, hw, 0.0 - hd, yhi);
+  t2 = slab_pt(sl, hw, hd, yhi);
+  t3 = slab_pt(sl, 0.0 - hw, hd, yhi);
+  emit_quad_n(m, r0, r1, t1, t0);
+  emit_quad_n(m, r1, r2, t2, t1);
+  emit_quad_n(m, r2, r3, t3, t2);
+  emit_quad_n(m, r3, r0, t0, t3);
+
+  // Does any hole reach this slab at all?
+  any = false;
+  for h0 in holes.items {
+    if hex_editor::slab_covers(sl, h0.ho_x, h0.ho_z) { any = true; }
+  }
+  if !any {
+    emit_tri(m, t0, upn, t1, upn, t2, upn);
+    emit_tri(m, t0, upn, t2, upn, t3, upn);
+    emit_tri(m, r0, dwn, r2, dwn, r1, dwn);
+    emit_tri(m, r0, dwn, r3, dwn, r2, dwn);
+    return;
+  }
+
+  nu = (sl.sl_w / SLAB_STEP ?? 0.0) as integer + 1;
+  nv = (sl.sl_d / SLAB_STEP ?? 0.0) as integer + 1;
+  for iu in 0..nu {
+    ua = 0.0 - hw + sl.sl_w * (iu as float) / (nu as float) ?? 0.0;
+    ub = 0.0 - hw + sl.sl_w * ((iu + 1) as float) / (nu as float) ?? 0.0;
+    for iv in 0..nv {
+      va = 0.0 - hd + sl.sl_d * (iv as float) / (nv as float) ?? 0.0;
+      vb = 0.0 - hd + sl.sl_d * ((iv + 1) as float) / (nv as float) ?? 0.0;
+      mp = slab_pt(sl, (ua + ub) * 0.5, (va + vb) * 0.5, 0.0);
+      clo = sl.sl_lo;
+      chi = sl.sl_lo;
+      cut = false;
+      for h in holes.items {
+        glo = 0;
+        ghi = 0;
+        if hex_editor::hole_cuts(sl, h, mp.x, mp.z, glo, ghi) {
+          cut = true;
+          clo = glo;
+          chi = ghi;
+        }
+      }
+      // What is left of the slab here: the top face is at the crown of whatever
+      // stone remains, the underside at the foot of it.
+      ftop = sl.sl_hi;
+      fbot = sl.sl_lo;
+      solid = true;
+      if cut {
+        if chi >= sl.sl_hi && clo <= sl.sl_lo { solid = false; }
+        else if chi >= sl.sl_hi { ftop = clo; }
+        else { fbot = chi; }
+      }
+      if solid {
+        yt = (ftop as float) * HEIGHT_SCALE;
+        yb = (fbot as float) * HEIGHT_SCALE;
+        p0 = slab_pt(sl, ua, va, yt); p1 = slab_pt(sl, ub, va, yt);
+        p2 = slab_pt(sl, ub, vb, yt); p3 = slab_pt(sl, ua, vb, yt);
+        emit_tri(m, p0, upn, p1, upn, p2, upn);
+        emit_tri(m, p0, upn, p2, upn, p3, upn);
+        q0 = slab_pt(sl, ua, va, yb); q1 = slab_pt(sl, ub, va, yb);
+        q2 = slab_pt(sl, ub, vb, yb); q3 = slab_pt(sl, ua, vb, yb);
+        emit_tri(m, q0, dwn, q2, dwn, q1, dwn);
+        emit_tri(m, q0, dwn, q3, dwn, q2, dwn);
+      }
+      // ⚠ THE REVEAL, and it is the reason the thickness had to exist. Where a cut
+      // sample meets an uncut one, the uncut side shows a face across the cut's own
+      // interval — the side of a stairwell, the return of a coffer. In a sheet that
+      // interval is zero and there is nothing to draw, which is what made a hole in
+      // a floor read as a hole in nothing.
+      if cut {
+        yc0 = (clo as float) * HEIGHT_SCALE;
+        yc1 = (chi as float) * HEIGHT_SCALE;
+        um = (ua + ub) * 0.5;
+        vm = (va + vb) * 0.5;
+        emit_slab_reveal(m, sl, holes, ua - SLAB_STEP, vm, ua, va, ua, vb, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, ub + SLAB_STEP, vm, ub, va, ub, vb, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, um, va - SLAB_STEP, ua, va, ub, va, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, um, vb + SLAB_STEP, ua, vb, ub, vb, yc0, yc1);
+      }
+    }
+  }
+}
+
+// One side of a reveal, emitted only where the neighbour is NOT cut — so an interior
+// boundary between two cut samples draws nothing and the hole is bounded exactly once.
+fn emit_slab_reveal(m: Mesh, sl: Slab, holes: hex_editor::Holes,
+                    nu2: float, nv2: float,
+                    ea: float, eb: float, ec: float, ed: float,
+                    y0: float, y1: float) {
+  np = slab_pt(sl, nu2, nv2, 0.0);
+  ncut = false;
+  for h in holes.items {
+    nlo = 0;
+    nhi = 0;
+    if hex_editor::hole_cuts(sl, h, np.x, np.z, nlo, nhi) { ncut = true; }
+  }
+  if ncut { return; }
+  a0 = slab_pt(sl, ea, eb, y0);
+  a1 = slab_pt(sl, ec, ed, y0);
+  a2 = slab_pt(sl, ec, ed, y1);
+  a3 = slab_pt(sl, ea, eb, y1);
+  emit_quad_n(m, a0, a1, a2, a3);
+  emit_quad_n(m, a3, a2, a1, a0);
+}
+
 // ⚠ A PROP IS A LIST OF BOXES AND THE RENDERER ASKS NO QUESTIONS. Where a pillow
 // goes, how tall a plinth is, whether a bed lies along the wall — all of that is
 // `hex_editor`'s and tested there. What crosses the seam is six faces at a time,
@@ -3446,6 +3598,10 @@ fn main() {
   // the same rule the store keeps: one authority, everything else derived.
   annex_walls = WallRuns { items: [] };
   wall_props = hex_editor::Props { items: [] };
+  // The storeys' own floors and the holes through them — a slab is the wall band
+  // rotated, so these are `wall_runs` and `wall_openings` one axis over.
+  wall_slabs = hex_editor::Slabs { items: [] };
+  wall_holes = hex_editor::Holes { items: [] };
   // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
   ring_live = false;
   ring_x = 0.0;
@@ -4177,6 +4333,56 @@ fn main() {
             srv.send_to(ev.cid, "S:opened a profile {okind} hole at "
                               + "{oack.ak_q},{oack.ak_r}");
             println("editor: opened profile {okind} at ({oack.ak_q},{oack.ak_r})");
+          }
+        } else if ev.msg_id == MSG_SLAB {
+          skind = ev.payload as integer ?? 0;
+          if skind == 0 {
+            // ⚠ THE CEILING IS NOT THE FLOOR ABOVE. The storey's pitch decomposes
+            // into a clear height plus the slab's own thickness, which is a number
+            // a model of sheets has nowhere to put.
+            // ⚠ FROM THE AUTHOR'S OWN POSE, not from the last house. A slab is a
+            // floor, and a floor is not a property of a building — you lay one over
+            // a cellar, a courtyard, a gap between two walls. Tying it to the last
+            // house also made it impossible to PHOTOGRAPH, because a house has a
+            // roof over it and the slab is underneath.
+            sslab = hex_editor::slab_over(
+              hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
+              py_of(wld, px, pz), STOREY_H, hex_editor::SLAB_THICK);
+            wall_slabs.items += [sslab];
+            shx = world_to_hex(sslab.sl_x, sslab.sl_z);
+            mark_dirty(dirty, shx.ha_q, shx.ha_r, HOUSE_W + HOUSE_D + 4);
+            // ⚠ AND WHERE IT LANDED. A footprint is placed AHEAD of the author —
+            // that is what "a house where you are looking" means — so a slab is not
+            // under your feet, and the first hole cut at the author's own position
+            // was refused for reaching past the slab's end by 4.87. The refusal was
+            // right; what was missing was any way to know where to stand.
+            srv.send_to(ev.cid, "S:a slab {hex_editor::slab_thick(sslab)} units thick "
+                              + "at {sslab.sl_x},{sslab.sl_z} — ceiling {sslab.sl_lo}, "
+                              + "floor above {sslab.sl_hi}, clear "
+                              + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)}");
+            println("editor: slab at ({sslab.sl_x},{sslab.sl_z}) "
+                    + "{sslab.sl_lo}..{sslab.sl_hi}, clear "
+                    + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)} of {STOREY_H}");
+          } else {
+            if len(wall_slabs.items) < 1 {
+              srv.send_to(ev.cid, "S:no slab to cut — press X first");
+            } else {
+              shost = wall_slabs.items[len(wall_slabs.items) - 1] ?? hex_editor::slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
+              shole = hex_editor::hole_rect(px, pz, 2.0, 2.0);
+              if skind == 2 { shole = hex_editor::hole_coffer(px, pz, 2.0, 2.0, 0.5); }
+              if skind == 3 { shole = hex_editor::hole_sunk(px, pz, 2.0, 2.0, 0.5); }
+              shfit = hex_editor::hole_fits_in(shost, shole);
+              if !shfit.ak_ok {
+                srv.send_to(ev.cid, "S:hole refused — {shfit.ak_why}");
+                println("editor: hole refused — {shfit.ak_why}");
+              } else {
+                wall_holes.items += [shole];
+                shx2 = world_to_hex(shole.ho_x, shole.ho_z);
+                mark_dirty(dirty, shx2.ha_q, shx2.ha_r, HOUSE_W + HOUSE_D + 4);
+                srv.send_to(ev.cid, "S:a hole of kind {skind} through the slab");
+                println("editor: slab hole kind {skind} at ({shx2.ha_q},{shx2.ha_r})");
+              }
+            }
           }
         } else if ev.msg_id == MSG_SEAT {
           // ⚠ THE VOID IS ASKED, NOT THE AUTHOR. A prop takes the measure of what it
@@ -4967,7 +5173,7 @@ fn main() {
           wm2 = mesh("wall");
           lm2 = mesh("floor");
           am2 = mesh("frame");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -5084,7 +5290,7 @@ fn main() {
               wmesh = mesh("wall");
               lmesh = mesh("floor");
               amesh = mesh("frame");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

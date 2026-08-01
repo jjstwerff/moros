@@ -38,6 +38,7 @@ constraining each other.
 |---|---|---|---|---|
 | for | outdoors, the default | intimate, claustrophobic | being in the room | editing a building |
 | boom | full, wall-swept | collapses **below** `CAM_MIN_FRAC` | **none** — the eye is the head | fixed, outside and above |
+| shoulder offset | none — centred | **grows as the boom shrinks** | — | none |
 | pitch fence | `PITCH_MAX` 0.75 | as FOLLOW | **lifted — you look UP** | steep, downward |
 | roof, inside | hidden — it is in the way | kept, needs an underside | kept | hidden |
 | ceiling | — | needed | **required** | hidden |
@@ -58,6 +59,24 @@ anyone does in a first-person view indoors is look up.
 A fifth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says the
 room cannot hold a boom. That is today's behaviour plus the clamp fix, and it should
 be the default so nobody has to know the modes exist.
+
+⚠ **The degradation is CONTINUOUS, and that is what makes SNUG an over-the-shoulder
+view rather than a state.** The camera creeps up on the character as the room closes
+in — and creeping straight down the boom ends at the back of a head, so the boom must
+carry a **lateral shoulder offset that grows as it shortens**. At full length the
+offset is nothing and the character is centred; at a metre it is most of a shoulder
+width and the character sits to one side with the room ahead. Over-the-shoulder is
+then not a fourth mode but *what a short boom looks like when it is done properly*,
+and it means AUTO never has to flip anything until the boom truly reaches zero, which
+is EYES.
+
+Two consequences worth writing down:
+
+- the offset must swing to the side with **more** clearance (`shelter_at` already
+  measures the room all round), or the camera creeps into the wall it was avoiding;
+- it is a *lateral* offset, not a yaw. Turning the camera to see past the character
+  moves the world; sliding it does not, which is the same rule the pitch fence
+  already obeys.
 
 ## The query every mode reads
 

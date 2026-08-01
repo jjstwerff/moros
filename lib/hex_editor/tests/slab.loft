@@ -1,0 +1,168 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A SLAB IS THE WALL BAND ROTATED — a horizontal surface with a THICKNESS.
+//
+// ⚠ Walls are bands and every horizontal surface was a sheet. `BAND_SIDES` gives a
+// wall real thickness, and everything the opening family rests on — the reveal, the
+// soffit, the jamb, an alcove's back, an embrasure's datum — exists BECAUSE there is
+// material between its two faces. A deck, a floor and a roof were each ONE PLANE at
+// one height, which stays invisible until something can get underneath one.
+//
+// Then the ceiling of a room and the floor of the storey above are the same plane at
+// the same height with nothing between them, and a hole in a floor has no reveal
+// because there is no thickness to cut one in — which is exactly the fault the wall
+// openings fixed, one axis over.
+use hex_editor;
+use hex_grid;
+
+const PITCH = 12;          // floor to floor, in height units
+const FLOOR = 40;
+
+fn slab() -> Slab {
+  hex_editor::slab_new(0.0, 0.0, 0.0, 8.0, 6.0,
+                       FLOOR + PITCH - hex_editor::SLAB_THICK, FLOOR + PITCH)
+}
+
+fn test_a_slab_has_a_thickness_and_it_is_not_zero() {
+  // THE CLAIM, and the whole of what was missing. A sheet has one height; a slab has
+  // two, and the material between them is what a reveal is cut into.
+  s = slab();
+  assert(hex_editor::slab_thick(s) == hex_editor::SLAB_THICK,
+         "the slab is {hex_editor::slab_thick(s)} units thick");
+  assert(s.sl_hi > s.sl_lo, "its top stands above its underside");
+}
+
+fn test_a_rooms_ceiling_is_not_the_floor_above_it() {
+  // ⚠ THE SENTENCE THIS FILE EXISTS FOR. In a model of sheets there is nowhere to
+  // put this number — the ceiling IS the floor above, so a room's clear height
+  // equals the storey pitch and a building has no material in it anywhere.
+  s = slab();
+  clear = hex_editor::slab_clear(FLOOR, s);
+  assert(clear < PITCH, "the room is lower than the storey: {clear} against {PITCH}");
+  assert(clear + hex_editor::slab_thick(s) == PITCH,
+         "and the difference is exactly the slab: {clear} + "
+         + "{hex_editor::slab_thick(s)} = {PITCH}");
+  assert(s.sl_lo < s.sl_hi, "with the ceiling below the floor above it");
+}
+
+fn test_a_storey_splits_into_a_clear_height_and_a_slab() {
+  ceil = 0;
+  next = 0;
+  hex_editor::storey_split(FLOOR, PITCH, hex_editor::SLAB_THICK, ceil, next);
+  assert(next == FLOOR + PITCH, "the next floor is a pitch up: {next}");
+  assert(ceil == next - hex_editor::SLAB_THICK, "and the ceiling a slab below it: {ceil}");
+  assert(ceil > FLOOR, "which is still above the floor you stand on");
+}
+
+fn test_a_slab_covers_its_own_extent_and_not_the_field_beside_it() {
+  s = slab();
+  assert(hex_editor::slab_covers(s, 0.0, 0.0), "it covers its centre");
+  assert(hex_editor::slab_covers(s, 3.9, 2.9), "and its far corner");
+  assert(!hex_editor::slab_covers(s, 6.0, 0.0), "and not the ground beyond it");
+}
+
+fn test_a_slab_turns_with_the_house_it_covers() {
+  // ⚠ A CEILING SQUARE TO THE WORLD IN A HOUSE THAT IS NOT would be a sheet's
+  // mistake surviving into a slab. The extent is taken in the slab's OWN frame.
+  turned = hex_editor::slab_new(0.0, 0.0, PI / 2.0 ?? 0.0, 8.0, 6.0, 50, 52);
+  assert(hex_editor::slab_covers(turned, 0.0, 3.9), "turned, it reaches along z");
+  assert(!hex_editor::slab_covers(turned, 0.0, 4.5), "and stops where it should");
+  assert(hex_editor::slab_covers(turned, 2.9, 0.0), "and is narrower across x");
+  assert(!hex_editor::slab_covers(turned, 3.5, 0.0), "which the unturned one was not");
+}
+
+// ── the hole, which is `Opening` with its profile taken in plan ─────────────
+
+fn test_a_stairwell_goes_through_and_is_cut_between_two_heights() {
+  // What the renderer asks per sample, and it is `opening_cuts` one axis over.
+  s = slab();
+  h = hex_editor::hole_rect(0.0, 0.0, 2.0, 2.0);
+  lo = 0;
+  hi = 0;
+  assert(hex_editor::hole_cuts(s, h, 0.0, 0.0, lo, hi), "the middle is cut");
+  assert(lo == s.sl_lo && hi == s.sl_hi,
+         "through the whole thickness: {lo}..{hi} against {s.sl_lo}..{s.sl_hi}");
+  assert(!hex_editor::hole_cuts(s, h, 3.0, 0.0, lo, hi), "and a metre away is not");
+  assert(hex_editor::hole_through(h), "it is a way through");
+}
+
+fn test_a_coffer_leaves_the_floor_whole_above_it() {
+  // ⚠ ONE DATUM, THREE FITTINGS. A coffer is a recess you see from BELOW with the
+  // floor intact over it — the exact mirror of an alcove in a wall, and it needs no
+  // new concept because the datum already says which face a void is cut from.
+  s = slab();
+  c = hex_editor::hole_coffer(0.0, 0.0, 2.0, 2.0, 0.5);
+  lo = 0;
+  hi = 0;
+  assert(hex_editor::hole_cuts(s, c, 0.0, 0.0, lo, hi), "the coffer is cut");
+  assert(lo == s.sl_lo, "open at the underside: {lo}");
+  assert(hi < s.sl_hi, "and stopped short of the floor above: {hi} under {s.sl_hi}");
+  assert(hex_editor::hole_at_bottom(c) && !hex_editor::hole_at_top(c),
+         "so it breaks the ceiling and not the floor");
+  assert(!hex_editor::hole_through(c), "and it is not a way through");
+}
+
+fn test_a_sunken_panel_is_the_same_thing_the_other_way_up() {
+  // The mirror, and the reason the datum is a fraction rather than a boolean.
+  s = slab();
+  k = hex_editor::hole_sunk(0.0, 0.0, 2.0, 2.0, 0.5);
+  lo = 0;
+  hi = 0;
+  assert(hex_editor::hole_cuts(s, k, 0.0, 0.0, lo, hi), "the panel is cut");
+  assert(hi == s.sl_hi, "open at the top you walk on: {hi}");
+  assert(lo > s.sl_lo, "and stopped short of the ceiling below: {lo} over {s.sl_lo}");
+  assert(hex_editor::hole_at_top(k) && !hex_editor::hole_at_bottom(k),
+         "so it breaks the floor and not the ceiling");
+}
+
+fn test_a_round_hole_closes_in_plan() {
+  // An oculus in a ceiling: round in PLAN where a wall's was round in elevation, and
+  // the same family answers both.
+  s = slab();
+  o = hex_editor::hole_round(0.0, 0.0, 3.0);
+  lo = 0;
+  hi = 0;
+  assert(hex_editor::hole_cuts(s, o, 0.0, 0.0, lo, hi), "its centre is cut");
+  assert(hex_editor::hole_cuts(s, o, 1.4, 0.0, lo, hi), "and inside its radius");
+  assert(!hex_editor::hole_cuts(s, o, 1.4, 1.4, lo, hi),
+         "but the corner of its bounding box is NOT — it is a disc, not a square");
+}
+
+fn test_the_reveal_has_something_to_be_cut_into() {
+  // ⚠ THE POINT OF THE THICKNESS. A hole in a sheet has a cut interval of zero, so
+  // there is no side face and the hole reads as a hole in nothing. Measured here as
+  // the interval itself, because that is what the renderer turns into a reveal.
+  s = slab();
+  h = hex_editor::hole_rect(0.0, 0.0, 2.0, 2.0);
+  lo = 0;
+  hi = 0;
+  hex_editor::hole_cuts(s, h, 0.0, 0.0, lo, hi);
+  assert(hi - lo >= 1, "the reveal is {hi - lo} units deep, not zero");
+  sheet = hex_editor::slab_new(0.0, 0.0, 0.0, 8.0, 6.0, 50, 50);
+  slo = 0;
+  shi = 0;
+  assert(!hex_editor::hole_cuts(sheet, h, 0.0, 0.0, slo, shi),
+         "and a sheet cannot be cut at all — there is nothing between its faces");
+}
+
+fn test_a_hole_bigger_than_its_slab_is_refused_with_what_fits() {
+  s = slab();
+  big = hex_editor::hole_rect(0.0, 0.0, 20.0, 2.0);
+  ack = hex_editor::hole_fits_in(s, big);
+  assert(!ack.ak_ok, "a hole past the slab's edge is refused");
+  assert(ack.ak_why.contains("offer") && ack.ak_why.contains("residual"),
+         "with what fits: {ack.ak_why}");
+  ok = hex_editor::hole_rect(0.0, 0.0, 2.0, 2.0);
+  assert(hex_editor::hole_fits_in(s, ok).ak_ok, "and one that fits is allowed");
+}
+
+fn test_a_sheet_is_refused_a_hole_by_name() {
+  // The degenerate case named rather than drawn: zero thickness cannot carry a
+  // reveal, and saying so is how the old model gets rejected rather than tolerated.
+  sheet = hex_editor::slab_new(0.0, 0.0, 0.0, 8.0, 6.0, 50, 50);
+  ack = hex_editor::hole_fits_in(sheet, hex_editor::hole_rect(0.0, 0.0, 2.0, 2.0));
+  assert(!ack.ak_ok, "a sheet is refused");
+  assert(ack.ak_why.contains("thickness"), "by name: {ack.ak_why}");
+  assert(ack.ak_why.contains("offer"), "with a thickness that would work: {ack.ak_why}");
+}
