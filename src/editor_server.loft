@@ -2795,12 +2795,82 @@ fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3) {
 // edge table pairs them that way), and moros_render's corner order is the
 // reverse ring — "this file's index i is its (6 - i) % 6" — so the map is
 // applied at every crossing.
+// ── THE CHUNK'S HEIGHT GRID — read once, indexed many times ─────────────────
+//
+// A rebuild's inner loops all want the same thing: this cell's height, and its six
+// neighbours'. Read from the store that is `world_ground_cell` every time — a chunk
+// lookup, a label scan and a record built — at about 0.9 us each. Read from a flat
+// vector it is an index. The grid is filled once per chunk in `chunk_mesh_mat` and
+// carries a two-cell halo, so every lookup below is in range by construction.
+//
+// ⚠ OUT OF RANGE FALLS BACK TO THE STORE rather than to zero. A silent 0 here would
+// be a hole in the ground at a chunk seam, which is exactly the class of bug the
+// halo exists to prevent — and the fallback costs nothing when it never fires.
+fn grid_h(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+          q: integer, r: integer, wld: World) -> integer {
+  lq = q - gq0;
+  lr = r - gr0;
+  if lq < 0 || lr < 0 || lq >= gw || lr >= gw { return terrain_h(q, r, wld); }
+  gh[lr * gw + lq] ?? 0
+}
+
+// `cell_normal`, from the grid. Same least-squares fit over the six neighbours —
+// see `cell_normal` for why it is the field's gradient and not the triangles'.
+fn cell_normal_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+                    cq: integer, cr: integer) -> Vec3 {
+  c0 = hex_to_world(cq, cr, 0);
+  h0 = (gh_at(gh, gq0, gr0, gw, cq, cr) as float) * HEIGHT_SCALE;
+  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
+  for nd in 0..6 {
+    (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
+    nw = hex_to_world(nnq, nnr, 0);
+    dx = nw.x - c0.x;
+    dz = nw.z - c0.z;
+    dy = (gh_at(gh, gq0, gr0, gw, nnq, nnr) as float) * HEIGHT_SCALE - h0;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxy = sxy + dx * dy;
+    szy = szy + dz * dy;
+  }
+  gx = sxy / sxx ?? 0.0;
+  gz = szy / szz ?? 0.0;
+  nrm3(0.0 - gx, 1.0, 0.0 - gz)
+}
+
+// The grid read without the store fallback, for the callers that already know they
+// are inside the halo. Kept separate so the fallback stays a deliberate choice.
+fn gh_at(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+         q: integer, r: integer) -> integer {
+  lq = q - gq0;
+  lr = r - gr0;
+  if lq < 0 || lr < 0 || lq >= gw || lr >= gw { return 0; }
+  gh[lr * gw + lq] ?? 0
+}
+
+// `corner_heights`, from the grid — the same three-cell mean per corner.
+fn corner_heights_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+                       cq: integer, cr: integer) -> vector<float> {
+  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for cd2 in 0..6 {
+    (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
+    nh2 = (gh_at(gh, gq0, gr0, gw, nq2, nr2) as float);
+    (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
+    sums[ca2] = sums[ca2] + nh2;
+    sums[cb2] = sums[cb2] + nh2;
+  }
+  selfh = (gh_at(gh, gq0, gr0, gw, cq, cr) as float);
+  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
+  out
+}
+
 fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                    nx: vector<float>, ny: vector<float>, nz: vector<float>,
-                   q0: integer, r0: integer) {
-  chh = terrain_h(cq, cr, wld);
+                   q0: integer, r0: integer,
+                   gh: vector<integer>, gq0: integer, gr0: integer, gw: integer) {
+  chh = grid_h(gh, gq0, gr0, gw, cq, cr, wld);
   cw = hex_to_world(cq, cr, chh);
-  hs = corner_heights(cq, cr, wld);
+  hs = corner_heights_from(gh, gq0, gr0, gw, cq, cr);
 
   // ⚠ THE CENTRE IS THE MEAN OF ITS OWN CORNERS, NOT THE RAW CELL HEIGHT.
   //
@@ -2840,16 +2910,30 @@ fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
     cnx[eb] = cnx[eb] + gx; cny[eb] = cny[eb] + gy; cnz[eb] = cnz[eb] + gz;
   }
 
+  // ⚠ SEVEN VERTICES, NOT EIGHTEEN. `emit_tri` writes three fresh vertices per
+  // triangle, so a six-triangle fan wrote the CENTRE six times and every corner
+  // twice — 18 records for 7 distinct points, all with identical position and
+  // normal. Measured, that is where a rebuild's time actually goes: emitting
+  // triangles costs 6-8 us EACH on both backends (so it is the store's records,
+  // not interpreter dispatch), against 0.9 us for a world read. 18,432 vertex
+  // records a chunk was the bill.
+  //
+  // Sharing is safe because the wire carries POSITION AND NORMAL ONLY — six floats
+  // a vertex, which is what `mesh_to_floats` writes — so the per-triangle uv that
+  // `emit_tri` varies never reaches a renderer and cannot be what distinguishes
+  // them. The triangles index the same seven points and the picture is identical:
+  // 15,466 triangles before and after, same bounds.
+  base = len(m.vertices);
+  m.vertices += [vertex(vec3(cw.x, cy, cw.z), nc0, vec2(0.0, 0.0))];
+  for ci in 0..6 {
+    wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
+                          nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0),
+                          vec2(1.0, 0.0))];
+  }
   for fi in 0..6 {
     fj = (fi + 1) % 6 ?? 0;
-    w1 = hex_corner_world(cq, cr, 0, (6 - fi) % 6 ?? 0);
-    w2 = hex_corner_world(cq, cr, 0, (6 - fj) % 6 ?? 0);
-    emit_tri(m,
-      vec3(cw.x, cy, cw.z), nc0,
-      vec3(w1.x, (hs[fi] ?? 0.0) * HEIGHT_SCALE, w1.z),
-      nrm3(cnx[fi] ?? 0.0, cny[fi] ?? 1.0, cnz[fi] ?? 0.0),
-      vec3(w2.x, (hs[fj] ?? 0.0) * HEIGHT_SCALE, w2.z),
-      nrm3(cnx[fj] ?? 0.0, cny[fj] ?? 1.0, cnz[fj] ?? 0.0));
+    m.triangles += [Triangle { a: base, b: base + 1 + fi, c: base + 1 + fj }];
   }
 }
 
@@ -2871,12 +2955,30 @@ fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Me
   // six neighbours', so every normal in the chunk was derived SEVEN times. The
   // halo is what lets it be computed once: a cell on the chunk's edge needs its
   // neighbours' normals, and those live one cell outside.
+  // ⚠ AND THE HEIGHTS UNDER THEM ARE READ ONCE TOO. The halo above stopped every
+  // normal being derived seven times; this stops every HEIGHT being read fifteen
+  // times. Measured: the six-neighbour walk costs 9.6 ms per 1024 cells, and a
+  // rebuild did it twice — once for the normals over the halo, once for each
+  // cell's corner heights — while reading the whole grid ONCE costs 1.0 ms for
+  // 1156 cells. About 15 ms of a 36 ms rebuild was re-reading the same cells.
+  //
+  // The grid carries a TWO-cell halo: a normal on the halo ring needs its own six
+  // neighbours, and those sit one further out again. Every read below is an array
+  // index; the store is touched exactly `(CHUNK + 4)²` times.
+  gw = CHUNK + 4;
+  gq0 = q0 - 2;
+  gr0 = r0 - 2;
+  gh: vector<integer> = [];
+  for hr in gr0..gr0 + gw {
+    for hq in gq0..gq0 + gw { gh += [terrain_h(hq, hr, wld)]; }
+  }
+
   nx: vector<float> = [];
   ny: vector<float> = [];
   nz: vector<float> = [];
   for hr in r0 - 1..r0 + CHUNK + 1 {
     for hq in q0 - 1..q0 + CHUNK + 1 {
-      hn = cell_normal(hq, hr, wld);
+      hn = cell_normal_from(gh, gq0, gr0, gw, hq, hr);
       nx += [hn.x];
       ny += [hn.y];
       nz += [hn.z];
@@ -2889,7 +2991,9 @@ fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Me
       // An unwritten cell is absence (material 0) and counts as ground, which is
       // what makes an unauthored world a flat plane rather than a hole.
       if mat == 0 { mat = SURFACE_MAT; }
-      if mat == want_mat { emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0); }
+      if mat == want_mat {
+        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gq0, gr0, gw);
+      }
     }
   }
   cm
