@@ -34,15 +34,26 @@ So the camera has an explicit mode. The mode is the only thing that decides; the
 query below is the only thing that observes. That separation is what keeps them from
 constraining each other.
 
-| | **FOLLOW** | **SNUG** | **CUTAWAY** |
-|---|---|---|---|
-| for | outdoors, the default | intimate, claustrophobic | editing a building |
-| boom | full, wall-swept | collapses **below** `CAM_MIN_FRAC` | fixed, outside and above |
-| roof, inside | hidden — it is in the way | **kept, and needs an underside** | hidden |
-| near walls | swept around | **kept — they press in** | hidden |
-| ambient inside | lifted, so the room reads | **low**, plus a head-lamp | high and flat, editing light |
-| own body | drawn | not drawn | drawn, small |
-| what it fixes | the two shots above | nothing — it *wants* the walls close | seeing a plan while you build it |
+| | **FOLLOW** | **SNUG** | **EYES** | **CUTAWAY** |
+|---|---|---|---|---|
+| for | outdoors, the default | intimate, claustrophobic | being in the room | editing a building |
+| boom | full, wall-swept | collapses **below** `CAM_MIN_FRAC` | **none** — the eye is the head | fixed, outside and above |
+| pitch fence | `PITCH_MAX` 0.75 | as FOLLOW | **lifted — you look UP** | steep, downward |
+| roof, inside | hidden — it is in the way | kept, needs an underside | kept | hidden |
+| ceiling | — | needed | **required** | hidden |
+| near walls | swept around | **kept — they press in** | kept | hidden |
+| ambient inside | lifted, so the room reads | **low**, plus a head-lamp | lifted, plus a head-lamp | high and flat |
+| own body | drawn | not drawn | not drawn (hands, later) | drawn, small |
+| what it fixes | the two shots above | nothing — it *wants* the walls close | there is no other way to be *in* a room | seeing a plan while you build it |
+
+⚠ **The pitch fence is FOLLOW's constraint, not the camera's.** `PITCH_MIN`/`PITCH_MAX`
+are clamped because *"past vertical, behind the character stops meaning anything"* —
+which is a statement about a **boom**. EYES has no boom, so the reason evaporates and
+the fence must lift with the mode. It is the clearest small case of the rule this
+whole design rests on: a constraint belongs to the mode that needs it.
+
+And lifting it is exactly what exposes the next section, because the first thing
+anyone does in a first-person view indoors is look up.
 
 A fourth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says the
 room cannot hold a boom. That is today's behaviour plus the clamp fix, and it should
@@ -76,7 +87,48 @@ definition — the same fault that once made the upper storey unreachable.
 `roof_plan_covers` already exists and is one of the six functions **no test has ever
 entered**. It is the `sh_inside` half; it was written for this and never wired up.
 
-## ⚠ The roof has no underside
+## ⚠ The model has no true interior — only zero-thickness sheets
+
+This is the structural one, and the character view is what makes it unavoidable.
+
+**A wall is a band with real thickness.** `BAND_SIDES` is 0.866 world units, so a wall
+has two faces, and everything the opening work is built on — the reveal, the soffit,
+the jamb, an alcove's back, an embrasure's datum — exists *because there is material
+between the two faces*.
+
+**Every horizontal surface is a plane with no thickness at all.** A deck, a floor slab,
+a roof, an annex's lid: each is one sheet of triangles at one height. The consequences
+only appear once a camera can be underneath one:
+
+- there is **no face from below** — the single-winding bug, which is the symptom;
+- even with a face added, **the ceiling of a room and the floor of the storey above
+  are the same plane at the same height**, with nothing between them. That is not a
+  building, it is a fold in a sheet of paper;
+- a hole in a floor — a hatch, a stairwell — has **no reveal**, because there is no
+  thickness for one to be cut in. It is exactly the fault the wall openings fixed,
+  one axis over;
+- there is nowhere for a joist, a beam, a coffer, or a floor that is thicker than a
+  roof.
+
+So the fix is not "add an underside". It is **give horizontal surfaces the treatment
+walls already have**: a `Slab` with a top and a bottom in height units, two faces, and
+openings cut through it with reveals and frames — the horizontal analogue of the wall
+band and its `Opening`. A storey's height then decomposes honestly into slab
+thickness plus clear height, and `storey_add` writes a band rather than a line.
+
+⚠ The opening family transfers almost whole. An opening in a wall is a profile along a
+run; an opening in a slab is a shape in plan — different parameterisation, identical
+structure: the index is the cells, the truth is the shape, the datum says which face
+it is cut from, and the reveal is what makes it read as a hole in something rather
+than a hole in nothing. A stairwell with a proper reveal is the same code that gave a
+window its splay.
+
+Until this exists, FOLLOW, SNUG and CUTAWAY are all fine — none of them ever looks up
+from inside — and **EYES is a picture of the sky through the ceiling**. That is the
+order this imposes, and it is the reason the character view is last in the list below
+rather than first.
+
+## ⚠ The roof has no underside — the symptom of the above
 
 `emit_roof_plan` emits one winding — `emit_quad_n` for the slopes, `emit_tri_n` for
 the gables. From below there is no face at all, so an interior camera sees **sky
@@ -152,12 +204,13 @@ a broom cupboard picked it on purpose.
 mode**, because the modes disagree by design and a single expectation would be wrong
 for two of them:
 
-| | FOLLOW | SNUG | CUTAWAY |
-|---|---|---|---|
-| subject pixels | **> 0** *(today: zero)* | 0 — its own body is hidden | > 0 |
-| roof triangles drawn | 0 *(today: drawn)* | > 0, **from below** | 0 |
-| largest single surface | < N% of frame *(today: the wall is most of it)* | unconstrained — pressing in is the point | < N% |
-| distinct colours | — | > 1 — a black frame is not atmosphere | — |
+| | FOLLOW | SNUG | EYES | CUTAWAY |
+|---|---|---|---|---|
+| subject pixels | **> 0** *(today: zero)* | 0 — body hidden | 0 | > 0 |
+| roof triangles drawn | 0 *(today: drawn)* | > 0, **from below** | > 0 | 0 |
+| largest single surface | < N% *(today: the wall is most of it)* | unconstrained — pressing in is the point | unconstrained | < N% |
+| distinct colours | — | > 1 — a black frame is not atmosphere | > 1 | — |
+| **looking straight up, sky pixels** | — | — | **0** *(today: all of them)* | — |
 
 That last row is the one worth stating out loud: the failure mode of a horror camera
 is a picture with nothing in it, and "dark" and "empty" are indistinguishable to
@@ -173,12 +226,17 @@ anyone but the person who wrote it.
 
 ## Order of work
 
-1. `shelter_at` and its tests — pure, no server, and all three modes read it.
+1. `shelter_at` and its tests — pure, no server, and every mode reads it.
 2. The roof's underside, as its own surface id. SNUG is unbuildable without it and
    FOLLOW has been hiding the gap.
 3. **FOLLOW's fix**: the boom may go below `CAM_MIN_FRAC` when `sh_back` says so;
    AUTO degrades to SNUG with the two thresholds.
 4. **SNUG**: body hidden, ambient down, head-lamp up, near plane in.
 5. **CUTAWAY stage 1**: roof off, camera above the eave.
-6. The gate — the only thing that can say any of it worked.
-7. **CUTAWAY stage 2**: heading buckets, if shallow angles turn out to matter.
+6. The gate, per mode — the only thing that can say any of it worked.
+7. **The `Slab`**: horizontal surfaces get a thickness, two faces, and openings with
+   reveals. This is the big one and it is a world-model change, not a camera change —
+   it belongs on the ladder in its own right, and the camera is merely the consumer
+   that proves it is needed.
+8. **EYES**, which cannot honestly exist before 7, plus the lifted pitch fence.
+9. **CUTAWAY stage 2**: heading buckets, if shallow angles turn out to matter.
