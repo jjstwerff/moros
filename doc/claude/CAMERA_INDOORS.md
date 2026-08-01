@@ -85,6 +85,30 @@ made it two commits after writing that sentence down: **a function written and t
 and then not called is a claim about nothing.** With it wired the same sweep gives
 `dist 1.87` — the room less its skin.
 
+### ⚠ And the trace itself lied, in exactly the fields it was built to report
+
+`free -0.687` — a value `boom_take` cannot return, and in fact a PITCH in radians
+sitting in a field that holds a distance. `cam_free` and `cam_pt` are assigned only
+inside `if cam_moved || !cam_rested { … }` and read by the trace outside it, so the
+read saw something else entirely. What identified it was that the fields declared
+with the rest of the camera state — `slide`, `sh_inside`, `sh_head` — printed
+sensibly throughout: **every field that lied was one first assigned inside the
+block.** Declared alongside `cam_dist`, the trace reads:
+
+```
+CAM want 5.86  dist 1.87  free 1.87  pitch 0.35  target 0.35  slide 0.48  inside true  head 12
+```
+
+Converged (`dist == free`), the assist off (`pitch == target`), the boom at the room
+less its skin, a shoulder's worth of slide. Every number is what it should be.
+
+⚠ **AND THE PICTURE STILL DISAGREES**, which is now a claim about the *picture*
+rather than the camera: the frame shows the house's exterior while the numbers say
+the eye is 1.87 behind the character and inside. The camera matrix IS sent every
+tick per client, so the next thing to measure is the frame itself — the gate's own
+first row, **subject pixels > 0**, which is the one instrument this whole
+investigation has been reasoning around instead of building.
+
 ⚠ **AND THE PROBE'S FIRST ANSWER WAS 0, WHICH WAS THE PROBE'S FAULT.** Blocking lives
 in the edge's SURFACE channel — `edge_block` writes it and `edge_blocked` reads it —
 so counting through `edge_mat` reports zero however full the set is. That would have

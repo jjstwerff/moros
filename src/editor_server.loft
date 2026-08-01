@@ -3670,6 +3670,19 @@ fn main() {
   // gets the same slide the last tick solved rather than a centred camera.
   cam_slide = 0.0;
   cam_shelter = hex_editor::Shelter { sh_inside: false, sh_head: 0 - 1 };
+  // ⚠ DECLARED HERE BECAUSE THE TRACE READS THEM OUTSIDE THE BLOCK THAT WRITES
+  // THEM. Both are assigned only inside `if cam_moved || !cam_rested { … }`, and a
+  // read further down the tick was seeing something else entirely — the camera trace
+  // reported `free -0.687`, a value `boom_take` cannot return and which is in fact a
+  // PITCH in radians, in a field that holds a distance. The fields declared out here
+  // (`slide`, the shelter) printed sensibly throughout, which is what identified it:
+  // every field that lied was one first assigned inside the block.
+  //
+  // These are camera STATE anyway — the solve skips ticks where nothing moved, so
+  // last tick's answer is meant to survive into this one. Declaring them where the
+  // rest of the state lives is what makes that true rather than accidental.
+  cam_free = figure_wu() * 2.90;
+  cam_pt = 0.35;
   // The pitch actually USED, which lags the player's `pitch` by at most
   // CAM_PITCH_RATE and rests exactly on it whenever the view is clear.
   cam_pitch = 0.35;
