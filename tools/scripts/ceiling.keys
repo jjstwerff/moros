@@ -1,0 +1,40 @@
+# WHAT IS OVERHEAD FROM INSIDE — the roof's underside, measured before it is built.
+#
+# The design (CAMERA_INDOORS.md § "The roof has no underside") predicts SKY through
+# the roof: `emit_roof_plan` emits one winding, so from below there is no face. That
+# prediction assumes backface culling, and the client never enables it — so what is
+# actually overhead is an open question and this is the file that answers it.
+#
+# ⚠ THE CONTROL IS THE OUTDOOR ROW. Looking up from outside must show sky; if it does
+# not, the pitch never moved and every indoor row below is measuring the wrong frame.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+echo --- THE CONTROL: outside, looking as far up as the pitch fence allows
+at 0 -10 90
+send 3:0,-4000
+step 90
+snap s11-up-outside
+frame
+
+echo --- inside, mid-floor, looking up at what should be a ceiling
+at 0 0 90
+send 3:0,-4000
+step 90
+snap s11-up-inside
+frame
+
+echo --- and at the ridge, where the two slopes meet
+at 0 2 90
+send 3:0,-4000
+step 90
+snap s11-up-ridge
+frame

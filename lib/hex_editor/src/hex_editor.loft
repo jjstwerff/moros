@@ -439,6 +439,221 @@ pub fn roof_point_y(rp: RoofPlan, i: integer) -> float {
   rp.rp_eave
 }
 
+// ── S6c: THE ROOF HAS FOUR FACES, AND THEY HAVE AN OUTSIDE ──────────────────
+//
+// ⚠ THE FACES WERE WOUND BY HAND AND ONE OF THEM WAS BACKWARDS. The renderer's
+// `emit_tri_n` takes the cross product and then flips any normal with `n.y < 0`
+// upward, which quietly corrected both SLOPES — their normals have a y component,
+// so the flip could see they were inside out. A GABLE END is vertical, `n.y` is
+// exactly 0, and the flip has nothing to test: the -u gable came out facing -u
+// (correct) and the +u gable came out facing -u as well, because the two are wound
+// the same way and "outward" is opposite for them. Every house since S6 has had one
+// gable end lit from inside.
+//
+// It survived because a lighting sign is not a shape and no gate reads shading. It
+// stops surviving here, because a soffit is derived by pushing a face along its own
+// normal: with the normal backwards the underside is built OUTSIDE the roof.
+//
+// So the winding is a table now, and it is the table both the top and the underside
+// are drawn from — one statement of which way each face looks, tested rather than
+// corrected downstream.
+//
+//   0  the -v slope   p0 p4 p5 p1
+//   1  the +v slope   p2 p3 p5 p4
+//   2  the -u gable   p0 p2 p4
+//   3  the +u gable   p1 p5 p3      ⚠ the reversed one
+pub const ROOF_FACES = 4;
+
+// A slope is a quad, a gable end is a triangle.
+pub fn roof_face_len(f: integer) -> integer {
+  if f >= 2 { return 3; }
+  4
+}
+
+// Which of the six points is corner `k` of face `f`, wound so the cross product of
+// the first three points OUT of the roof.
+pub fn roof_face_pt(f: integer, k: integer) -> integer {
+  if f == 0 {
+    if k == 0 { return 0; }
+    if k == 1 { return 4; }
+    if k == 2 { return 5; }
+    return 1;
+  }
+  if f == 1 {
+    if k == 0 { return 2; }
+    if k == 1 { return 3; }
+    if k == 2 { return 5; }
+    return 4;
+  }
+  if f == 2 {
+    if k == 0 { return 0; }
+    if k == 1 { return 2; }
+    return 4;
+  }
+  if k == 0 { return 1; }
+  if k == 1 { return 5; }
+  3
+}
+
+// The face's OUTWARD unit normal, from its own first three corners. One derivation,
+// so the table above is the only place the winding is stated and a test can check
+// the two agree.
+pub fn roof_face_normal(rp: RoofPlan, f: integer) -> (float, float, float) {
+  i0 = roof_face_pt(f, 0);
+  i1 = roof_face_pt(f, 1);
+  i2 = roof_face_pt(f, 2);
+  ax = roof_point_x(rp, i0); ay = roof_point_y(rp, i0); az = roof_point_z(rp, i0);
+  bx = roof_point_x(rp, i1) - ax;
+  by = roof_point_y(rp, i1) - ay;
+  bz = roof_point_z(rp, i1) - az;
+  cx = roof_point_x(rp, i2) - ax;
+  cy = roof_point_y(rp, i2) - ay;
+  cz = roof_point_z(rp, i2) - az;
+  nx = by * cz - bz * cy;
+  ny = bz * cx - bx * cz;
+  nz = bx * cy - by * cx;
+  ln = sqrt(nx * nx + ny * ny + nz * nz) ?? 0.0;
+  if ln <= 0.0 { return (0.0, 1.0, 0.0); }
+  (nx / ln ?? 0.0, ny / ln ?? 0.0, nz / ln ?? 0.0)
+}
+
+// ── THE SOFFIT — the roof's underside, and it needs a THICKNESS to exist ────
+//
+// ⚠ A REVERSED COPY AT THE SAME COORDINATES IS NOT A SURFACE. The design called
+// this *"a handful of triangles with the winding reversed"*, and that is true only
+// where backface culling is on. This renderer never enables it, so both copies are
+// rasterised — at bit-identical depths, where `gl.LESS` fails the second one
+// everywhere. Whichever is drawn first wins at every pixel, so the pair is either
+// a roof with no underside or an underside with no roof. Coincident geometry
+// cannot be two surfaces.
+//
+// So the underside is the roof pushed `ROOF_SOFFIT` along each face's own inward
+// normal — which is to say **the roof has a thickness now**, the smallest honest
+// version of the `Slab` treatment horizontal surfaces are owed. Per FACE and not
+// as one vertical drop: a vertical drop leaves the gable ends, which are vertical,
+// coplanar with themselves and back at the same defect.
+//
+// ⚠ AND AT A CONVEX CORNER AN INWARD OFFSET OVERLAPS RATHER THAN GAPS, which is
+// `A9b`'s result and the reason this needs no mitre. Seen from inside the tent
+// every corner it has — the ridge, both eaves, the gable rakes — is convex, so the
+// four offset faces cross each other and the seam is hidden. A concave corner would
+// open a wedge and want `skin_fit`; this shape has none.
+//
+// The size: `SLAB_THICK`'s two height units at the editor's 0.25 wu, so a roof is
+// as deep as a floor — joists and boards either way. ⚠ It is bounded from above by
+// `roof_soffit_fits`: past that the ceiling parts company with the wall head.
+pub const ROOF_SOFFIT = 0.5;
+
+// ⚠ AND THE RIDGE HAS TO BE MITRED, WHICH THE FIRST VERSION DID NOT DO — the tests
+// found it at a pitch of 1.1 and it is real geometry rather than an oversight.
+// A ridge vertex lies on BOTH slope planes, so pushing it along one slope's normal
+// moves it by `-t·(n₀·n₁)` relative to the other. The dot of the two outward
+// normals is `(hd² − rise²)/L²`: positive under 45°, ZERO at 45°, and NEGATIVE past
+// it. So on a steep roof the -v slope's underside pushes its ridge end **up through
+// the +v slope** and out of the building — an inward offset that ends up outside.
+//
+// The mitre is the exact fix and it is one number: the two offset planes meet on a
+// line directly under the ridge, `t·sec θ` below it. Both slopes take that height
+// and no horizontal offset at all there, so a ridge corner is at exactly `-t` from
+// **both** planes, which is what "the ceiling meets itself at the ridge" means.
+//
+// A vertical thickness of `t·sec θ` for a perpendicular `t` is the carpenter's own
+// rule, arrived at from the other end.
+pub fn roof_soffit_drop(rp: RoofPlan) -> float {
+  p = rp.rp_pitch;
+  ROOF_SOFFIT * sqrt(1.0 + p * p) ?? 0.0
+}
+
+// Points 4 and 5 are the ridge ends — the two the mitre applies to.
+fn roof_pt_at_ridge(i: integer) -> boolean { i >= 4 }
+
+pub fn roof_soffit_x(rp: RoofPlan, f: integer, k: integer) -> float {
+  i = roof_face_pt(f, k);
+  // A SLOPE takes no horizontal offset at the ridge — its whole normal is spent on
+  // the drop. A GABLE END is vertical, so its offset is horizontal and the mitre
+  // only decides how far down its apex is cut.
+  if roof_pt_at_ridge(i) && f < 2 { return roof_point_x(rp, i); }
+  (nx, _ny, _nz) = roof_face_normal(rp, f);
+  roof_point_x(rp, i) - nx * ROOF_SOFFIT
+}
+
+pub fn roof_soffit_y(rp: RoofPlan, f: integer, k: integer) -> float {
+  i = roof_face_pt(f, k);
+  if roof_pt_at_ridge(i) { return roof_ridge_y(rp) - roof_soffit_drop(rp); }
+  (_nx, ny, _nz) = roof_face_normal(rp, f);
+  roof_point_y(rp, i) - ny * ROOF_SOFFIT
+}
+
+pub fn roof_soffit_z(rp: RoofPlan, f: integer, k: integer) -> float {
+  i = roof_face_pt(f, k);
+  if roof_pt_at_ridge(i) && f < 2 { return roof_point_z(rp, i); }
+  (_nx, _ny, nz) = roof_face_normal(rp, f);
+  roof_point_z(rp, i) - nz * ROOF_SOFFIT
+}
+
+// The signed distance from a point to face `f`'s own plane — negative inside. The
+// soffit's defining claim is that every one of its vertices reads exactly `-t`
+// against the face it belongs to, which is a stronger statement than "displaced by
+// t along the normal" and the one that survives the mitre.
+pub fn roof_face_depth(rp: RoofPlan, f: integer, x: float, y: float, z: float) -> float {
+  (nx, ny, nz) = roof_face_normal(rp, f);
+  i0 = roof_face_pt(f, 0);
+  (x - roof_point_x(rp, i0)) * nx
+    + (y - roof_point_y(rp, i0)) * ny
+    + (z - roof_point_z(rp, i0)) * nz
+}
+
+// Corner `j` of the soffit, in EMISSION order — the face's own order, reversed. A
+// surface that faces the room is the same points wound the other way, and stating
+// it here is what lets a test measure the reversal instead of trusting the emitter.
+pub fn roof_soffit_k(f: integer, j: integer) -> integer {
+  roof_face_len(f) - 1 - j
+}
+
+// Is this world point OUTSIDE the tent — past any one of its four faces? The tent
+// is open at its base, so those four half-spaces are the whole of it. This is the
+// invariant that says "underside", and it is stated as the NEGATIVE on purpose.
+//
+// ⚠ "STRICTLY INSIDE" WAS THE WRONG CLAIM AND THE TESTS SAID SO. A slope's soffit
+// keeps its full width — the offset is perpendicular to the slope, which has no u
+// component — so its edge lands exactly ON the gable end's plane, where a strict
+// test reads false. That is not a defect: the slope's underside running out to the
+// gable is what leaves no slot between them, because the gable's own soffit is
+// pulled `t` further in. On the boundary is fine; past it is not.
+pub const ROOF_EPS = 0.000000001;
+
+pub fn roof_outside(rp: RoofPlan, x: float, y: float, z: float) -> boolean {
+  out = false;
+  for f in 0..ROOF_FACES {
+    if roof_face_depth(rp, f, x, y, z) > ROOF_EPS { out = true; }
+  }
+  out
+}
+
+// How far the soffit's eave edge sits INSIDE the roof's, in plan. A slope's inward
+// normal has a horizontal component, so thickening the roof pulls its underside off
+// the eave line by `t·sin θ` — exactly, and free of the building's size.
+pub fn roof_soffit_inset(rp: RoofPlan) -> float {
+  p = rp.rp_pitch;
+  ROOF_SOFFIT * p / sqrt(1.0 + p * p) ?? 0.0
+}
+
+// ⚠ AND THAT INSET IS WHAT BOUNDS THE THICKNESS. The wall head is under the eave,
+// so a ceiling pulled further in than the wall's own half-band stops meeting it and
+// opens a slot between the two — the roof's version of the gap an opening's reveal
+// exists to close. Refused with the thickness that would have worked.
+pub fn roof_soffit_fits(rp: RoofPlan, band: float) -> Ack {
+  ins = roof_soffit_inset(rp);
+  half = band * 0.5;
+  if ins > half {
+    p = rp.rp_pitch;
+    room = half * sqrt(1.0 + p * p) / p ?? 0.0;
+    return ack_no("the soffit is pulled {ins} inside the eave and the wall head is "
+                  + "only {half} deep — offer {room}, residual {ins - half}");
+  }
+  ack_ok(1)
+}
+
 // Does this roof plan cover the cell at (q, r)? The renderer asks before drawing a
 // roof CELL: a cell under a plan-drawn gable is already in the picture, and drawing
 // it again puts the hex staircase back underneath the straight eave.

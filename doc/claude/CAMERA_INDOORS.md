@@ -360,7 +360,16 @@ from inside — and **EYES is a picture of the sky through the ceiling**. That i
 order this imposes, and it is the reason the character view is last in the list below
 rather than first.
 
-## ⚠ The roof has no underside — the symptom of the above
+⚠ **The roof took its first instalment of this and it changed the argument.** Giving
+the roof a real thickness — see the section below — was not a nicety: a zero-thickness
+sheet **cannot carry two surfaces at all**, because the two copies land at identical
+depths. So the case for the `Slab` is stronger than this section makes it: it is not
+only that a fold in a sheet of paper has no room for a joist, it is that it has no
+room for its own two sides. **Horizontal surfaces are still sheets** — the `Slab`
+exists and `storey_add` still writes a line — and the roof is now the worked example
+of what the rest of them are owed.
+
+## ✅ The roof has an underside — and neither the symptom nor the fix was the predicted one
 
 `emit_roof_plan` emits one winding — `emit_quad_n` for the slopes, `emit_tri_n` for
 the gables. From below there is no face at all, so an interior camera sees **sky
@@ -372,6 +381,89 @@ until this is fixed: a ceiling is the whole of what makes a room feel enclosed, 
 triangles with the winding reversed and a normal that points down — but it must be
 its **own surface id**, not the same one, or CUTAWAY cannot hide the roof while SNUG
 keeps its underside.
+
+### ⚠ Built, and three things above are wrong. Each one was measured
+
+**1. There was never any sky through the roof.** That prediction assumes backface
+culling, and **nothing in this tree enables it** — `gl.enable(gl.DEPTH_TEST)` is the
+whole of the client's state. So the interior was looking at the roof's *own*
+triangles from behind, lit by `emit_tri_n`'s flipped-up normal: the same shade as the
+tiles, from underneath. Measured before anything was built — looking up from inside,
+`sky` is **0.0%** and `roof` **18.6%**. A ceiling that shades like a roof is not a
+ceiling, which is the real complaint, and it is not the one the design wrote down.
+
+**2. "A handful of triangles with the winding reversed" cannot work here**, for the
+same reason. A reversed copy at the *same coordinates* is rasterised at bit-identical
+depths, where `gl.LESS` fails the second one at every pixel — so the pair is a roof
+with no underside or an underside with no roof, decided by draw order. **Coincident
+geometry cannot be two surfaces.** The underside is therefore the roof pushed
+`ROOF_SOFFIT` along each face's own inward normal: **the roof has a thickness now**,
+the smallest honest instalment of the `Slab` treatment in §"no true interior" below.
+
+**3. Deriving the faces properly found a live defect that had shipped since S6.**
+`emit_tri_n` flips any normal with `n.y < 0` upward, which silently corrected both
+*slopes* — and a gable end is **vertical**, so `n.y` is exactly 0 and the flip has
+nothing to test. Both gables were wound the same way and "outward" is opposite for
+them, so **every house has had one gable end lit from inside**. A lighting sign is
+not a shape; no gate reads shading; it survived. `roof_face_pt` states the winding
+once now and `soffit.loft` asserts the two ends face opposite ways.
+
+### ⚠ The ridge has to be mitred, and a pitch of 1.1 is what said so
+
+A ridge vertex lies on **both** slope planes, so pushing it along one slope's normal
+moves it by `−t·(n₀·n₁)` relative to the other. That dot is `(hd² − rise²)/L²` —
+positive under 45°, zero at 45°, **negative past it**. On a steep roof the -v slope's
+underside pushes its ridge end *up through the +v slope and out of the building*: an
+inward offset that ends up outside.
+
+The fix is one number: the two offset planes meet on a line `t·secθ` under the ridge,
+and both slopes take that height with no horizontal offset at all. A ridge corner is
+then exactly `−t` from **both** planes, which is the geometric content of *"the two
+halves of the ceiling meet at the ridge"* — and `t·secθ` for a perpendicular `t` is
+the carpenter's own rule, arrived at from the other end.
+
+⚠ **Two of the tests started out as stronger, wrong claims and the first run said so.**
+"Every soffit vertex is strictly inside the tent" is false of a *correct* soffit — a
+slope's offset has no u component, so its underside keeps the roof's full width and
+lands exactly ON the gable plane, which is what leaves no slot between them. And
+"displaced by `t` along the normal" is false at a mitred ridge. Both rows carry what
+they used to say.
+
+### ⚠ Two invisible defects were hiding each other
+
+With the ceiling in, orange wedges punched up through it in a regular sawtooth. They
+were not the soffit. `chunk_mesh_props` read
+
+```loft
+if e.h_material == ROOF_MAT && !planned { emit_roof_sloped(…) }
+else if <not the ground layer>          { emit_hex_surface(…); emit_floor_slab(…) }
+```
+
+so a roof cell **covered by a plan** failed the first branch and fell into the second
+— drawn as a **floor deck at its own roof height**. The hex staircase that
+`roof_plan_covers` exists to suppress was being emitted the whole time, one surface
+over. It survived because the floor was the wall's own pale grey, and a sawtooth of
+grey inside a grey roof is nothing to look at.
+
+Giving the floor a timber of its own (the camera work, earlier the same day) and the
+roof an underside put it on screen at once. **Separating one surface exposed the
+other** — and it was costing the *exterior* 1.6% of every frame too, a sawtooth lying
+on the roof, which is why the outdoor control's `roof` share went 1.3% → 4.8% when it
+was removed.
+
+### What it reads now — `make gate`, `camera_indoors`
+
+| | outside (control) | mid-floor | corner |
+|---|---|---|---|
+| `soffit` | **0.01%** | 24.0% | 33.6% |
+| `roof` | 4.8% | 1.2% | 0.0% |
+
+⚠ **The outdoor row is the strongest one here, and it is an absence.** A surface that
+faces the room is behind the roof at every pixel from the road; if it shows outdoors
+it has been built on the wrong side of the tent, which is exactly what a backwards
+face normal does. **Seen red**: emit the soffit into the roof's own mesh, as the
+design's "reversed copy" would have, and both interior stations fail both rows
+(`soffit 0`, `roof 25%`/`34%`) while the control does not move.
 
 That is the first thing this design found that nothing else would have: FOLLOW's fix
 and SNUG's requirement pull the roof apart into two surfaces, and only building both
@@ -462,8 +554,10 @@ anyone but the person who wrote it.
    ⚠ It carries `sh_inside` and `sh_head` only; **`sh_room` and `sh_back` are still
    struct fields in this document and nowhere else.** Nothing below them needs them
    yet, and FOLLOW turned out not to.
-2. The roof's underside, as its own surface id. SNUG is unbuildable without it and
-   FOLLOW has been hiding the gap.
+2. ✅ The roof's underside, as its own surface id — `SURFACES` 8 → 9, and nine gate
+   files carry the stride. ⚠ It needed a **thickness**, which this list did not
+   predict; see the section above for why a reversed copy at the same coordinates
+   cannot be a second surface. SNUG's ceiling now exists to be kept.
 3. ✅ **FOLLOW's fix** — and it was **not** what this list predicted. The boom going
    below `CAM_MIN_FRAC` was necessary and nowhere near sufficient: `boom_take`
    already collapsed it correctly and the collapse was never published. The eye is

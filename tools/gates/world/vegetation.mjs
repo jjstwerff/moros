@@ -15,7 +15,7 @@
 // draws one mesh per surface on consecutive ids, so every decoder here depends on
 // how many there are — and when the roof made it five, three decoders moved and
 // the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
-const SURFACES = 8;   // ground, road, field, vegetation, roof, wall, floor, frame
+const SURFACES = 9;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit
 const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const place = (x, z, yaw) => ws.send(`7:${x},${z},${yaw}`);
 const wait = (ms) => new Promise(r => setTimeout(r, ms));

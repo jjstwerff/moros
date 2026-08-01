@@ -69,7 +69,7 @@ ws.onmessage = async (e) => {
       // 156 → 208) while the streaming behaviour was unchanged. A bound
       // expressed in meshes silently re-tunes itself whenever a surface is
       // added; a bound expressed in chunks does not.
-      const SURFACES = 8;   // ground, road, field, vegetation, roof, wall, floor, frame — keep
+      const SURFACES = 9;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit — keep
                             // equal to `SURFACES` in `src/editor_server.loft`
       const liveChunks = new Set([...live].map(id => Math.floor((id - 16) / SURFACES)));
       const ok = added > 0 && dropped > 0 && live.size <= peak

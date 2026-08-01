@@ -435,6 +435,14 @@ const WALL_R = 0.55; const WALL_G = 0.52; const WALL_B = 0.46;
 // alone cannot say this: a surround flush in colour with its wall is invisible
 // however proud it stands, because a plane parallel to the wall shades identically.
 const FRAME_R = 0.78; const FRAME_G = 0.74; const FRAME_B = 0.65;
+// ⚠ THE CEILING IS COOL AND THE ROOM UNDER IT IS WARM, and that is what gives a
+// room a corner. It is also the only way the frame gate can SEE it: the classifier
+// reads chromaticity, so a soffit in the roof's own colour is the roof to it, and
+// "is the overhead surface the ceiling or the outside of the roof" becomes a
+// question no pixel can answer. Measured against every other entry in the palette
+// its nearest neighbour is 4.2× the classifier's tolerance — the pale warm greys
+// are crowded, so a ceiling that reads as shadow is the one that also separates.
+const SOFFIT_R = 0.34; const SOFFIT_G = 0.30; const SOFFIT_B = 0.36;
 const FRAME_W = 0.14;            // how far the surround reaches past the opening
 const FRAME_PROUD = 0.05;        // and how far it stands out of the wall's face
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
@@ -483,9 +491,16 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // line. That is the maintenance the named stride exists to make possible — the
 // alternative is a decoder that reads a road's triangles as a field's and reports a
 // plausible number.
-const SURFACES = 8;              // ⚠ the frame took the eighth: an id-space stride,
-                                 // so a chunk's meshes stay contiguous and nothing
-                                 // renumbers when a surface is added.
+// ⚠ AND AGAIN, 8 → 9, FOR THE ROOF'S SOFFIT. It is a separate surface because the
+// modes disagree about it: CUTAWAY hides the roof to see a plan, SNUG keeps its
+// underside because a ceiling is the whole of what makes a room feel enclosed. One
+// mesh cannot serve both, and that is `CAMERA_INDOORS.md`'s own reason for the
+// split — the geometry followed from the requirement rather than the other way
+// round. Nine gate files carry this number beside a "keep this equal to" note.
+const SURFACES = 9;              // ⚠ the frame took the eighth, the soffit the
+                                 // ninth: an id-space stride, so a chunk's meshes
+                                 // stay contiguous and nothing renumbers when a
+                                 // surface is added.
 // ── THE CART (rung W7, moros#14) — a multi-rig, and its wheels ──────────────
 //
 // Three rigs that move as one: a body and two wheels. The connector is the
@@ -1916,7 +1931,7 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
+                    fm: Mesh, am: Mesh, sm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
@@ -1961,6 +1976,10 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
     if rq >= q0 - CHUNK && rq < q0 + 2 * CHUNK && rr >= r0 - CHUNK && rr < r0 + 2 * CHUNK {
       if rq >= q0 && rq < q0 + CHUNK && rr >= r0 && rr < r0 + CHUNK {
         emit_roof_plan(km, rp);
+        // ⚠ EMITTED BESIDE THE ROOF, NEVER INSTEAD OF IT. Two surfaces over one
+        // shape, so a mode can take either — and a roof that drew only its soffit
+        // would be a house with no roof from the road.
+        emit_roof_soffit(sm, rp);
       }
     }
   }
@@ -2031,7 +2050,19 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
           for rp3 in roofs.items {
             if hex_editor::roof_plan_covers(rp3, cq, cr) { planned = true; }
           }
-          if e.h_material == ROOF_MAT && !planned {
+          // ⚠ AND A PLANNED ROOF CELL DRAWS *NOTHING*, WHICH IS NOT WHAT THIS SAID.
+          // The test used to be `ROOF_MAT && !planned`, so a cell under a gable
+          // failed the first branch and fell into the `else` below — and was drawn
+          // as a FLOOR DECK at its own roof height. The hex staircase this check
+          // exists to suppress was being emitted the whole time, one surface over.
+          //
+          // It survived because the floor was the wall's own pale grey: a sawtooth
+          // of grey inside a grey roof is nothing to look at. Giving the floor a
+          // timber of its own and the roof an underside put it on screen at once —
+          // orange wedges punching up through the new ceiling. **Two invisible
+          // defects hid each other**, and separating one surface exposed the other.
+          if e.h_material == ROOF_MAT {
+            if !planned {
             // ⚠ SLOPED, LIKE THE GROUND — a flat fan per cell is a TERRACE OF
             // PLATES. Measured in S6's first picture: two thin slabs floating over
             // the walls with daylight between them, because each column holds one
@@ -2044,6 +2075,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // height, which gives the eave a clean edge instead of a slope into
             // nothing.
             emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr));
+            }
           } else if (c.co_ids[e#index] ?? 0) != hex_world::LABEL_GROUND {
             // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
             // Not by index — a cellar inserts beneath and renumbers — and not by
@@ -2094,31 +2126,69 @@ fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: World) {
 // A gable, drawn from its PLAN: two slopes meeting on the ridge, and a triangle
 // closing each end. Six points, all from `plan_to_world`, so the eave is a line at
 // any rotation and there is no tolerance anywhere in it.
+// ⚠ NOT A CLOSURE. The first version of the roof built `px`/`py`/`pz` and read
+// them through `pt = fn(i) { vec3(px[i], py[i], pz[i]) }`, which SEGFAULTED the
+// interpreter — `loft crash SIGSEGV caught`, op 165. A closure capturing several
+// locals is the shape loft's own DESIGN_DECISIONS calls out (#314); an ordinary
+// function taking the plan is not that shape.
+fn roof_pt(rp: hex_editor::RoofPlan, i: integer) -> Vec3 {
+  vec3(hex_editor::roof_point_x(rp, i), hex_editor::roof_point_y(rp, i),
+       hex_editor::roof_point_z(rp, i))
+}
+
+fn soffit_pt(rp: hex_editor::RoofPlan, f: integer, k: integer) -> Vec3 {
+  vec3(hex_editor::roof_soffit_x(rp, f, k), hex_editor::roof_soffit_y(rp, f, k),
+       hex_editor::roof_soffit_z(rp, f, k))
+}
+
+// ⚠ THE FACES COME FROM THE LIBRARY'S TABLE NOW, AND THAT FIXES A GABLE END. This
+// used to spell the four faces out here and hand them to `emit_tri_n`, which takes
+// the cross product and flips any normal with `n.y < 0` upward. The flip corrected
+// both SLOPES silently — and a gable end is VERTICAL, so `n.y` is exactly 0 and the
+// flip had nothing to test. Both gables were wound the same way, "outward" is
+// opposite for them, and one of the two has been lit from inside since S6.
+//
+// `roof_face_pt` states the winding once, `roof_face_normal` derives the outward
+// normal from it, and `lib/hex_editor/tests/soffit.loft` asserts the two ends face
+// opposite ways. A lighting sign is not a shape, which is why no gate caught it —
+// so the claim went where claims go.
 fn emit_roof_plan(m: Mesh, rp: hex_editor::RoofPlan) {
-  // ⚠ SIX NAMED POINTS, NOT A CLOSURE OVER THREE VECTORS. The first version built
-  // `px`/`py`/`pz` and read them through `pt = fn(i) { vec3(px[i], py[i], pz[i]) }`,
-  // which SEGFAULTED the interpreter — `loft crash SIGSEGV caught`, op 165, at this
-  // line. A closure capturing several locals is the shape loft's own
-  // DESIGN_DECISIONS calls out (#314), so this does not fight it: the points are
-  // six values with names, which is clearer here anyway.
-  p0 = vec3(hex_editor::roof_point_x(rp, 0), hex_editor::roof_point_y(rp, 0),
-            hex_editor::roof_point_z(rp, 0));
-  p1 = vec3(hex_editor::roof_point_x(rp, 1), hex_editor::roof_point_y(rp, 1),
-            hex_editor::roof_point_z(rp, 1));
-  p2 = vec3(hex_editor::roof_point_x(rp, 2), hex_editor::roof_point_y(rp, 2),
-            hex_editor::roof_point_z(rp, 2));
-  p3 = vec3(hex_editor::roof_point_x(rp, 3), hex_editor::roof_point_y(rp, 3),
-            hex_editor::roof_point_z(rp, 3));
-  p4 = vec3(hex_editor::roof_point_x(rp, 4), hex_editor::roof_point_y(rp, 4),
-            hex_editor::roof_point_z(rp, 4));
-  p5 = vec3(hex_editor::roof_point_x(rp, 5), hex_editor::roof_point_y(rp, 5),
-            hex_editor::roof_point_z(rp, 5));
-  emit_quad_n(m, p0, p1, p5, p4);
-  emit_quad_n(m, p2, p3, p5, p4);
-  // the gable ends, which are the wall's material in a real building and the
-  // roof's here until `hex_roof` grows a gable of its own
-  emit_tri_n(m, p0, p2, p4);
-  emit_tri_n(m, p1, p3, p5);
+  for f in 0..hex_editor::ROOF_FACES {
+    (fx, fy, fz) = hex_editor::roof_face_normal(rp, f);
+    fn3 = vec3(fx, fy, fz);
+    nk = hex_editor::roof_face_len(f);
+    a = roof_pt(rp, hex_editor::roof_face_pt(f, 0));
+    for j in 1..nk - 1 {
+      b = roof_pt(rp, hex_editor::roof_face_pt(f, j));
+      c = roof_pt(rp, hex_editor::roof_face_pt(f, j + 1));
+      emit_tri(m, a, fn3, b, fn3, c, fn3);
+    }
+  }
+}
+
+// ── THE SOFFIT — the same tent, one thickness in, facing the room ───────────
+//
+// ⚠ ITS OWN SURFACE, WHICH IS THE POINT AND NOT AN IMPLEMENTATION DETAIL. CUTAWAY
+// has to hide the roof while SNUG keeps its underside, and two behaviours that
+// disagree about one mesh cannot both be served. The geometry is the library's; all
+// that is decided here is which mesh it lands in and what colour it is.
+//
+// The normal is the face's, NEGATED — not `emit_tri_n`'s derived-and-flipped-up
+// one, which would light a ceiling as though it were the outside of a roof. A
+// ceiling that shades like a roof is not a ceiling, and with no backface culling
+// anywhere that is exactly what the interior has been looking at.
+fn emit_roof_soffit(m: Mesh, rp: hex_editor::RoofPlan) {
+  for f in 0..hex_editor::ROOF_FACES {
+    (fx, fy, fz) = hex_editor::roof_face_normal(rp, f);
+    dn = vec3(0.0 - fx, 0.0 - fy, 0.0 - fz);
+    nk = hex_editor::roof_face_len(f);
+    a = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, 0));
+    for j in 1..nk - 1 {
+      b = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j));
+      c = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j + 1));
+      emit_tri(m, a, dn, b, dn, c, dn);
+    }
+  }
 }
 
 // A quad from four points, with the normal taken from the face rather than
@@ -5409,7 +5479,8 @@ fn main() {
           // is asked for, and nothing asked for `FLOOR_MAT`.
           lm2 = chunk_mesh_mat(dc2.cx, dc2.cz, wld, FLOOR_MAT);
           am2 = mesh("frame");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
+          sm2 = mesh("soffit");
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, sm2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -5420,6 +5491,8 @@ fn main() {
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(am2, FRAME_R, FRAME_G, FRAME_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 9};0;{mesh_wire(sm2, SOFFIT_R, SOFFIT_G, SOFFIT_B)}");
+          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 9};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -5536,7 +5609,8 @@ fn main() {
               // one line that fills it was missing.
               lmesh = chunk_mesh_mat(scx, scz, wld, FLOOR_MAT);
               amesh = mesh("frame");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
+              smesh = mesh("soffit");
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, smesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
@@ -5547,6 +5621,8 @@ fn main() {
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(amesh, FRAME_R, FRAME_G, FRAME_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 9};0;{mesh_wire(smesh, SOFFIT_R, SOFFIT_G, SOFFIT_B)}");
+              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 9};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;

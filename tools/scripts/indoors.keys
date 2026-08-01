@@ -26,7 +26,12 @@ cam 5.5 6.0
 # The control, judged: outdoors the camera works, so these thresholds are what
 # "works" measures as — the subject at least half a percent of the frame, and no
 # single surface over 60% of it.
-frame 0.005 0.60
+#
+# ⚠ AND THE SOFFIT'S CONTROL IS *ABSENCE*, which is the strongest row here. The
+# roof's underside faces the room, so from the road it is behind the roof at every
+# pixel — if it shows outdoors it has been built on the wrong side of the tent,
+# which is precisely what a backwards face normal does. Measured: 0.0001.
+frame 0.005 0.60 soffit 0 0.005
 
 # ⚠ THE BOOM IS EASED, NOT SNAPPED — deliberately, because a boom that stepped in
 # one tick was "correct, and clearly a mechanism rather than a camera". So `at` and
@@ -43,7 +48,11 @@ snap s10-house-inside
 # The boom collapsed to the room less its skin — and, the part that was broken,
 # the collapse REACHED THE WIRE. This read 5.900 while the trace said 1.87.
 cam 1.5 3.0
-frame 0.005 0.60
+# ⚠ WHAT IS OVERHEAD IS THE CEILING, NOT THE OUTSIDE OF THE ROOF. Nothing culls
+# backfaces here, so before the soffit existed the interior looked up at the roof's
+# own triangles, lit by an upward normal — the same shade as the tiles, seen from
+# below. `roof` near zero and `soffit` a fifth of the frame is that, as pixels.
+frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05
 
 echo --- facing a corner, where the boom has least room
 at 0 0 225
@@ -52,4 +61,4 @@ snap s10-house-corner
 # Along the diagonal the room is longer, so the boom keeps more of itself — the
 # opposite direction from the row above, which is why both are here.
 cam 3.5 5.2
-frame 0.005 0.60
+frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05

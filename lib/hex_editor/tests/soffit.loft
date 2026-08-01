@@ -1,0 +1,310 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S6c — THE ROOF HAS AN UNDERSIDE, AND AN UNDERSIDE NEEDS A THICKNESS.
+//
+// ⚠ THE DESIGN SAID "a handful of triangles with the winding reversed". That is
+// true only where backface culling is on, and this renderer never enables it — so
+// a reversed copy at the SAME coordinates is rasterised at bit-identical depths,
+// where `gl.LESS` fails the second one at every pixel. Whichever is drawn first
+// wins everywhere. Coincident geometry cannot be two surfaces.
+//
+// So the underside is the roof pushed along each face's own inward normal, and the
+// claims below are what makes that an underside rather than a second roof:
+//
+//   * each face has an OUTWARD normal, stated once in a table  — and one of the two
+//     gable ends was wound backwards before this table existed;
+//   * no soffit vertex is OUTSIDE the tent, with the same vertices pushed the other
+//     way as the control;
+//   * every soffit vertex is exactly `ROOF_SOFFIT` under its own face's PLANE, and
+//     a ridge corner is that far under BOTH slopes;
+//   * the winding is reversed, measured as a cross product rather than assumed;
+//   * the plan inset is `t·sinθ`, free of the building's size, and bounded by the
+//     wall head it has to meet.
+//
+// ⚠ TWO OF THOSE STARTED OUT AS DIFFERENT, STRONGER, WRONG CLAIMS, and the tests
+// said so on their first run: "strictly inside" is false of a correct soffit, and
+// "displaced by t along the normal" is false at a mitred ridge. Each row carries
+// what it used to say and why the geometry refused it.
+use hex_editor;
+use hex_grid;
+
+const W = 5;
+const D = 4;
+const EAVE = 3.0;
+
+fn rp() -> RoofPlan {
+  hex_editor::roof_plan_of(hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D),
+                           EAVE, hex_editor::ROOF_PITCH_DEFAULT)
+}
+
+// A roof at a different rotation, size and pitch — every claim here is about the
+// SHAPE, so a fixture that only ever stood one way could pass on an accident of it.
+fn rp2() -> RoofPlan {
+  hex_editor::roof_plan_of(hex_editor::pose_footprint(3.0, -2.0, PI * 0.5, 7, 3),
+                           5.5, 1.1)
+}
+
+fn nx_of(r: RoofPlan, f: integer) -> float { (a, _b, _c) = hex_editor::roof_face_normal(r, f); a }
+fn ny_of(r: RoofPlan, f: integer) -> float { (_a, b, _c) = hex_editor::roof_face_normal(r, f); b }
+fn nz_of(r: RoofPlan, f: integer) -> float { (_a, _b, c) = hex_editor::roof_face_normal(r, f); c }
+
+fn test_every_face_normal_is_a_unit_vector() {
+  for f in 0..hex_editor::ROOF_FACES {
+    x = nx_of(rp(), f); y = ny_of(rp(), f); z = nz_of(rp(), f);
+    d = x * x + y * y + z * z - 1.0;
+    if d < 0.0 { d = 0.0 - d; }
+    assert(d < 0.000000001, "face {f}'s normal is unit, off by {d}");
+  }
+}
+
+fn test_the_slopes_look_up_and_the_gables_look_sideways() {
+  // The shape's own signature: a slope carries the rain away, a gable end closes a
+  // wall. If a slope's normal had no vertical component it would not be a slope.
+  r = rp();
+  assert(ny_of(r, 0) > 0.0, "the -v slope looks up, not {ny_of(r, 0)}");
+  assert(ny_of(r, 1) > 0.0, "the +v slope looks up, not {ny_of(r, 1)}");
+  gy0 = ny_of(r, 2); if gy0 < 0.0 { gy0 = 0.0 - gy0; }
+  gy1 = ny_of(r, 3); if gy1 < 0.0 { gy1 = 0.0 - gy1; }
+  assert(gy0 < 0.000000001, "the -u gable is vertical, not {gy0}");
+  assert(gy1 < 0.000000001, "the +u gable is vertical, not {gy1}");
+}
+
+fn test_the_two_gable_ends_look_in_opposite_directions() {
+  // ⚠ THE DEFECT THIS TABLE WAS WRITTEN FOR, AS A NUMBER. Both gables used to be
+  // wound the same way, so both normals pointed the same way and one of them was
+  // inward — invisible to `emit_tri_n`'s upward flip, because a vertical face has
+  // `n.y == 0` and there is nothing for the flip to test. Every house since S6 had
+  // one end lit from inside. The dot product of the two is -1 or the table is
+  // wrong again.
+  for r in [rp(), rp2()] {
+    d = nx_of(r, 2) * nx_of(r, 3) + ny_of(r, 2) * ny_of(r, 3) + nz_of(r, 2) * nz_of(r, 3);
+    assert(d < 0.0 - 0.999999, "the gable ends face opposite ways, dot {d}");
+  }
+  // And the same for the two slopes, which must differ without being opposite —
+  // they meet at the ridge rather than facing each other off.
+  r2 = rp();
+  s = nx_of(r2, 0) * nx_of(r2, 1) + ny_of(r2, 0) * ny_of(r2, 1) + nz_of(r2, 0) * nz_of(r2, 1);
+  assert(s < 0.999999 && s > 0.0 - 0.999999, "the slopes differ without opposing, dot {s}");
+}
+
+fn test_a_face_normal_is_perpendicular_to_every_edge_of_its_face() {
+  // The normal is derived from the first three corners; a QUAD has a fourth, and a
+  // planar face is the claim that the fourth lies in the same plane. A roof whose
+  // slope is not planar would light in two halves.
+  r = rp();
+  for f in 0..hex_editor::ROOF_FACES {
+    n = hex_editor::roof_face_len(f);
+    i0 = hex_editor::roof_face_pt(f, 0);
+    for k in 1..n {
+      ik = hex_editor::roof_face_pt(f, k);
+      d = (hex_editor::roof_point_x(r, ik) - hex_editor::roof_point_x(r, i0)) * nx_of(r, f)
+        + (hex_editor::roof_point_y(r, ik) - hex_editor::roof_point_y(r, i0)) * ny_of(r, f)
+        + (hex_editor::roof_point_z(r, ik) - hex_editor::roof_point_z(r, i0)) * nz_of(r, f);
+      if d < 0.0 { d = 0.0 - d; }
+      assert(d < 0.000000001, "face {f} corner {k} lies in its own plane, off by {d}");
+    }
+  }
+}
+
+fn test_no_soffit_vertex_is_outside_the_tent() {
+  // ⚠ AND THE FIRST VERSION OF THIS CLAIM WAS "STRICTLY INSIDE", WHICH IS FALSE OF
+  // A CORRECT SOFFIT. A slope's offset is perpendicular to the slope and so has no
+  // u component: its underside keeps the roof's full width and lands exactly ON the
+  // gable end's plane. That is what leaves no slot between the two, because the
+  // gable's own soffit is pulled `t` further in. The test said so on the first run
+  // and the claim was wrong, not the geometry.
+  for r in [rp(), rp2()] {
+    for f in 0..hex_editor::ROOF_FACES {
+      for k in 0..hex_editor::roof_face_len(f) {
+        assert(!hex_editor::roof_outside(r, hex_editor::roof_soffit_x(r, f, k),
+                                         hex_editor::roof_soffit_y(r, f, k),
+                                         hex_editor::roof_soffit_z(r, f, k)),
+               "soffit face {f} corner {k} is not outside the tent");
+      }
+    }
+  }
+}
+
+fn test_the_same_offset_the_other_way_is_outside_it() {
+  // ⚠ THE CONTROL, AND IT IS THE WHOLE VALUE OF THE ROW ABOVE. `roof_outside` is
+  // being trusted to report an ABSENCE, so it has to be shown finding something
+  // first — and the something is precisely the mistake a reversed face normal
+  // makes: push each vertex OUT instead of in, which is the soffit a wrongly wound
+  // face would build, and every one of them must be caught.
+  for r in [rp(), rp2()] {
+    for f in 0..hex_editor::ROOF_FACES {
+      (nx, ny, nz) = hex_editor::roof_face_normal(r, f);
+      for k in 0..hex_editor::roof_face_len(f) {
+        i = hex_editor::roof_face_pt(f, k);
+        assert(hex_editor::roof_outside(
+                 r, hex_editor::roof_point_x(r, i) + nx * hex_editor::ROOF_SOFFIT,
+                 hex_editor::roof_point_y(r, i) + ny * hex_editor::ROOF_SOFFIT,
+                 hex_editor::roof_point_z(r, i) + nz * hex_editor::ROOF_SOFFIT),
+               "face {f} corner {k} pushed the WRONG way is caught as outside");
+      }
+    }
+  }
+}
+
+fn test_every_soffit_vertex_is_one_thickness_under_its_own_face() {
+  // ⚠ THE CLAIM IS A DISTANCE TO A PLANE, NOT A DISPLACEMENT ALONG A NORMAL — and
+  // the difference is the mitre. The first version asserted "moved by t along n",
+  // which the ridge corners do NOT do: they drop `t·secθ` straight down instead, so
+  // that they are t under BOTH slopes at once. The plane distance is the statement
+  // that survives, and it is the stronger one — it is what "one thickness of roof"
+  // actually means.
+  for r in [rp(), rp2()] {
+    for f in 0..hex_editor::ROOF_FACES {
+      for k in 0..hex_editor::roof_face_len(f) {
+        d = hex_editor::roof_face_depth(r, f, hex_editor::roof_soffit_x(r, f, k),
+                                        hex_editor::roof_soffit_y(r, f, k),
+                                        hex_editor::roof_soffit_z(r, f, k));
+        e = d + hex_editor::ROOF_SOFFIT;
+        if e < 0.0 { e = 0.0 - e; }
+        assert(e < 0.000000001,
+               "face {f} corner {k} is {d} under its own plane, want -{hex_editor::ROOF_SOFFIT}");
+      }
+    }
+  }
+}
+
+fn test_a_ridge_corner_is_one_thickness_under_both_slopes() {
+  // ⚠ THE MITRE, AND THE FIXTURE THAT FOUND IT. A ridge vertex lies on both slope
+  // planes, so an offset along one moves it by `-t·(n0·n1)` relative to the other —
+  // and that dot is `(hd² − rise²)/L²`, which goes NEGATIVE past a pitch of 1. On
+  // `rp2()`, pitch 1.1, the -v slope's underside pushed its ridge end UP THROUGH the
+  // +v slope and out of the building. An inward offset that ends up outside.
+  //
+  // The mitre makes both distances exactly -t, which is the geometric content of
+  // "the two halves of the ceiling meet at the ridge".
+  for r in [rp(), rp2()] {
+    for f in 0..2 {
+      for k in 0..hex_editor::roof_face_len(f) {
+        if hex_editor::roof_face_pt(f, k) >= 4 {
+          sx = hex_editor::roof_soffit_x(r, f, k);
+          sy = hex_editor::roof_soffit_y(r, f, k);
+          sz = hex_editor::roof_soffit_z(r, f, k);
+          for g in 0..2 {
+            d = hex_editor::roof_face_depth(r, g, sx, sy, sz);
+            e = d + hex_editor::ROOF_SOFFIT;
+            if e < 0.0 { e = 0.0 - e; }
+            assert(e < 0.000000001,
+                   "face {f}'s ridge corner is {d} under slope {g}, want -{hex_editor::ROOF_SOFFIT}");
+          }
+        }
+      }
+    }
+  }
+  // And the drop is `t·secθ`, the carpenter's rule reached from the other end: a
+  // perpendicular thickness t measures `t/cos θ` vertically.
+  r = rp();
+  p = hex_editor::ROOF_PITCH_DEFAULT;
+  want = hex_editor::ROOF_SOFFIT * sqrt(1.0 + p * p) ?? 0.0;
+  d = hex_editor::roof_soffit_drop(r) - want;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000000001, "the ridge drops t*sec(theta) = {want}");
+  assert(hex_editor::roof_soffit_drop(r) > hex_editor::ROOF_SOFFIT,
+         "and a sloping roof drops FURTHER than its own thickness");
+}
+
+fn test_the_soffit_is_wound_the_other_way() {
+  // ⚠ MEASURED AS A CROSS PRODUCT, NOT ASSUMED FROM THE INDEX ARITHMETIC. The
+  // emission order is what a renderer walks, so the claim is about the triangle it
+  // actually builds: the soffit's own geometric normal must be the negation of the
+  // face's. This is what makes the surface face the ROOM, and the only thing that
+  // will still be true the day culling is switched on.
+  r = rp();
+  for f in 0..hex_editor::ROOF_FACES {
+    k0 = hex_editor::roof_soffit_k(f, 0);
+    k1 = hex_editor::roof_soffit_k(f, 1);
+    k2 = hex_editor::roof_soffit_k(f, 2);
+    ax = hex_editor::roof_soffit_x(r, f, k0);
+    ay = hex_editor::roof_soffit_y(r, f, k0);
+    az = hex_editor::roof_soffit_z(r, f, k0);
+    bx = hex_editor::roof_soffit_x(r, f, k1) - ax;
+    by = hex_editor::roof_soffit_y(r, f, k1) - ay;
+    bz = hex_editor::roof_soffit_z(r, f, k1) - az;
+    cx = hex_editor::roof_soffit_x(r, f, k2) - ax;
+    cy = hex_editor::roof_soffit_y(r, f, k2) - ay;
+    cz = hex_editor::roof_soffit_z(r, f, k2) - az;
+    ux = by * cz - bz * cy;
+    uy = bz * cx - bx * cz;
+    uz = bx * cy - by * cx;
+    ln = sqrt(ux * ux + uy * uy + uz * uz) ?? 0.0;
+    assert(ln > 0.0, "soffit face {f} is a real triangle");
+    dot = (ux / ln ?? 0.0) * nx_of(r, f) + (uy / ln ?? 0.0) * ny_of(r, f)
+        + (uz / ln ?? 0.0) * nz_of(r, f);
+    assert(dot < 0.0 - 0.999999, "soffit face {f} faces the room, dot {dot}");
+  }
+}
+
+fn test_the_inset_is_the_pitch_alone_and_not_the_building() {
+  // `t·sinθ`, exactly — free of the width, the depth and the rotation, which is
+  // what says a bigger house does not get a differently-fitting ceiling. Same shape
+  // as `A9b`'s overlap being the joint angle alone.
+  a = hex_editor::roof_soffit_inset(rp());
+  b = hex_editor::roof_soffit_inset(
+        hex_editor::roof_plan_of(hex_editor::pose_footprint(9.0, 4.0, PI, 11, 9),
+                                 2.0, hex_editor::ROOF_PITCH_DEFAULT));
+  d = a - b; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000000001, "the inset is {a} either size, off by {d}");
+  p = hex_editor::ROOF_PITCH_DEFAULT;
+  want = hex_editor::ROOF_SOFFIT * p / sqrt(1.0 + p * p) ?? 0.0;
+  e = a - want; if e < 0.0 { e = 0.0 - e; }
+  assert(e < 0.000000001, "the inset is t*sin(theta) = {want}, read {a}");
+  // And a steeper roof pulls its ceiling further in — the direction, not just the
+  // formula, because a sign error passes an equality against its own arithmetic.
+  s = hex_editor::roof_soffit_inset(
+        hex_editor::roof_plan_of(hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D),
+                                 EAVE, 1.6));
+  assert(s > a, "a steeper pitch insets further: {s} against {a}");
+}
+
+fn test_the_soffit_must_still_reach_the_wall_head() {
+  // ⚠ THE BOUND ON THE THICKNESS, AND IT IS A REFUSAL RATHER THAN A CLAMP. Past
+  // `band/2` the ceiling stops meeting the wall under it and opens a slot — the
+  // roof's version of the gap a reveal exists to close. The offer is the thickness
+  // that would have worked.
+  band = 0.8660254037844386;
+  ok = hex_editor::roof_soffit_fits(rp(), band);
+  assert(ok.ak_ok, "the default roof's ceiling meets its wall: {ok.ak_why}");
+  // Seen red by moving the ONE thing the bound depends on: a near-vertical pitch
+  // pulls the inset out to the full thickness.
+  steep = hex_editor::roof_plan_of(
+            hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D), EAVE, 40.0);
+  no = hex_editor::roof_soffit_fits(steep, band);
+  assert(!no.ak_ok, "a near-vertical pitch is refused, not accepted");
+  assert(no.ak_why.find("offer") != null, "the refusal offers a thickness: {no.ak_why}");
+  // A thinner wall is refused at a pitch the thick one carries — so the bound is
+  // about the pair and not about the roof alone.
+  thin = hex_editor::roof_soffit_fits(rp(), 0.2);
+  assert(!thin.ak_ok, "a 0.2 wall head cannot carry this ceiling");
+}
+
+fn test_a_face_has_the_right_number_of_corners_and_they_are_all_distinct() {
+  // Cheap, and it is the claim the whole table rests on: a slope is a quad and a
+  // gable end is a triangle, and a repeated index would make a degenerate triangle
+  // whose normal is whatever the divide by zero left behind.
+  for f in 0..hex_editor::ROOF_FACES {
+    n = hex_editor::roof_face_len(f);
+    if f < 2 { assert(n == 4, "face {f} is a quad, not {n}"); }
+    else { assert(n == 3, "face {f} is a triangle, not {n}"); }
+    for a in 0..n {
+      for b in a + 1..n {
+        assert(hex_editor::roof_face_pt(f, a) != hex_editor::roof_face_pt(f, b),
+               "face {f} corners {a} and {b} are different points");
+      }
+    }
+  }
+  // Every one of the six points is used, or a corner of the roof is not drawn.
+  for i in 0..6 {
+    seen = false;
+    for f in 0..hex_editor::ROOF_FACES {
+      for k in 0..hex_editor::roof_face_len(f) {
+        if hex_editor::roof_face_pt(f, k) == i { seen = true; }
+      }
+    }
+    assert(seen, "point {i} is a corner of some face");
+  }
+}

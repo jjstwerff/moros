@@ -88,6 +88,8 @@ const PALETTE = {
   road:   [0.28, 0.26, 0.24],
   tree:   [0.16, 0.34, 0.14],
   roof:   [0.45, 0.20, 0.17],
+  soffit: [0.34, 0.30, 0.36],   // the roof's UNDERSIDE — its own surface, its own row
+
   wall:   [0.55, 0.52, 0.46],
   floor:  [0.65, 0.40, 0.25],
   frame:  [0.78, 0.74, 0.65],
@@ -405,13 +407,30 @@ for (const raw of lines) {
     const wantSub = rest[0] === undefined ? null : Number(rest[0]);
     const wantMax = rest[1] === undefined ? null : Number(rest[1]);
     let verdict = '';
+    let bad = 0;
     if (wantSub !== null) {
-      const okSub = fs2.subject >= wantSub;
-      const okMax = wantMax === null || fs2.largestShare <= wantMax;
-      if (!okSub) { verdict += ` FAIL subject ${fs2.subject} < ${wantSub}`; frameFails += 1; }
-      if (!okMax) { verdict += ` FAIL ${fs2.largest} ${fs2.largestShare} > ${wantMax}`; frameFails += 1; }
-      if (okSub && okMax) verdict = ' PASS';
+      if (fs2.subject < wantSub) { verdict += ` FAIL subject ${fs2.subject} < ${wantSub}`; bad += 1; }
+      if (wantMax !== null && fs2.largestShare > wantMax) {
+        verdict += ` FAIL ${fs2.largest} ${fs2.largestShare} > ${wantMax}`; bad += 1;
+      }
     }
+    // ⚠ AND A NAMED SURFACE, IN A BAND — because "the subject" and "the largest" are
+    // questions about the frame as a whole, and some claims are about ONE surface.
+    // The roof's underside is the case that needed it: from inside it must be most
+    // of what is overhead, and from OUTSIDE it must be absent, because a surface
+    // that faces the room is only ever seen from the room. Neither of those is a
+    // statement about the biggest bucket.
+    //
+    //   frame <minSubject> <maxLargest> [<name> <lo> <hi>]...
+    for (let i = 2; i + 2 < rest.length + 1; i += 3) {
+      const name = rest[i], lo = Number(rest[i + 1]), hi = Number(rest[i + 2]);
+      const got = fs2.share[name] ?? 0;
+      if (got < lo || got > hi) {
+        verdict += ` FAIL ${name} ${got} outside ${lo}..${hi}`; bad += 1;
+      }
+    }
+    if (wantSub !== null && bad === 0) verdict = ' PASS';
+    frameFails += bad;
     console.log('  ' + JSON.stringify(fs2) + verdict);
   } else if (cmd === 'cam') {
     // ⚠ WHERE THE EYE IS, not how long the boom is. The two are different claims
