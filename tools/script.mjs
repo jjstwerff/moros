@@ -113,6 +113,13 @@ const CHROMA = Object.entries(PALETTE).map(([k, c]) => {
 // threshold over it could mean what it said. The floor is timber now, in the
 // renderer, which separates them in the picture and not merely in the classifier.
 const MERGE = { wall: 'masonry', frame: 'masonry' };
+// ⚠ AND THE SUBJECT'S BUCKET COLLECTS THE FLOOR/WALL SEAM. Anti-aliased pixels on
+// that edge blend 0.500/0.308/0.192 with 0.359/0.340/0.301, whose midpoint is
+// 0.43/0.32/0.25 — the FIGURE's chromaticity to three decimals. Nothing can be done
+// about it inside a classifier that reads a composited frame, so it is stated here
+// and the gates bound the subject ABOVE the seam rather than at zero. Measured with
+// the body hidden: 0.0003 of the frame, against 0.1364 with it drawn.
+
 
 // ── the browser, attached lazily and only for pictures
 const CDP = 9345;
@@ -280,7 +287,13 @@ async function frameStats() {
       const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
       const PAL = ${JSON.stringify(CHROMA)};
       const MERGE = ${JSON.stringify(MERGE)};
-      const counts = {}; let total = 0;
+      // ⚠ AND THE LIGHT, WHICH THE CLASSIFIER IS DELIBERATELY BLIND TO. Buckets are
+      // matched on CHROMATICITY so a lit surface and a shadowed one land together —
+      // which is what makes the histogram readable, and exactly why it cannot see an
+      // ambient change: dimming is a scalar and a ratio divides it out. Mean
+      // luminance is the missing half, and it is the one thing SNUG's lower ambient
+      // actually changes in the picture.
+      const counts = {}; let total = 0, lum = 0;
       for (let y = 0; y < cv.height; y += 4) {
         for (let x = 0; x < cv.width; x += 4) {
           const i = (y * cv.width + x) * 4;
@@ -298,9 +311,10 @@ async function frameStats() {
             key = bd > 0.0009 ? 'other' : (MERGE[best] ?? best);
           }
           counts[key] = (counts[key] ?? 0) + 1; total += 1;
+          lum += 0.2126*R + 0.7152*G + 0.0722*B;
         }
       }
-      return { counts, total, w: cv.width, h: cv.height };
+      return { counts, total, lum: lum / total, w: cv.width, h: cv.height };
     })()` });
   const v = r?.result?.value;
   if (!v) return { ok: false, why: 'no frame' };
@@ -310,6 +324,7 @@ async function frameStats() {
   return {
     subject: share.figure ?? 0,          // the gate's first row: must be > 0
     largest: ranked[0]?.[0], largestShare: ranked[0]?.[1] ?? 0,
+    lum: +(v.lum ?? 0).toFixed(4),
     samples: v.total, share,
   };
 }
@@ -424,7 +439,9 @@ for (const raw of lines) {
     //   frame <minSubject> <maxLargest> [<name> <lo> <hi>]...
     for (let i = 2; i + 2 < rest.length + 1; i += 3) {
       const name = rest[i], lo = Number(rest[i + 1]), hi = Number(rest[i + 2]);
-      const got = fs2.share[name] ?? 0;
+      // `lum` is not a surface — it is the frame's mean luminance, and it rides the
+      // same syntax because it is the same kind of claim: a number in a band.
+      const got = name === 'lum' ? fs2.lum : (fs2.share[name] ?? 0);
       if (got < lo || got > hi) {
         verdict += ` FAIL ${name} ${got} outside ${lo}..${hi}`; bad += 1;
       }

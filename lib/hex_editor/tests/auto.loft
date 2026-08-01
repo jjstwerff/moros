@@ -1,0 +1,146 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// AUTO — FOLLOW THAT DEGRADES INTO SNUG, AND THE ONE THING THAT MUST NOT HAPPEN.
+//
+// The failure this exists to prevent is a STROBE: a mode that flips back and forth
+// makes the ambient, the body and the roof toggle every frame, and a doorway is the
+// one place in a house a player is guaranteed to stand still. So the claims are
+// about the state MACHINE and not about a threshold's value:
+//
+//   * outdoors is never SNUG, whatever the radius — measured, a wall one unit away
+//     outdoors reads a SMALLER radius than the middle of the room behind it;
+//   * a walk in one direction changes the state at most ONCE;
+//   * a walk out and back changes it at most twice, and it comes home;
+//   * inside the band the state is whatever it was, from BOTH sides;
+//   * an unmeasured radius never switches anything.
+use hex_editor;
+
+const WANT = 5.860105232274702;   // `cam_boom()` on a level world
+const FRAC = 0.22;                // `CAM_MIN_FRAC`
+
+fn enter() -> float { hex_editor::snug_enter(WANT, FRAC) }
+fn leave() -> float { hex_editor::snug_leave(WANT, FRAC) }
+
+fn snug(room: float, was: boolean) -> boolean {
+  hex_editor::auto_snug(true, room, WANT, FRAC, was)
+}
+
+fn test_the_band_is_real_and_the_right_way_round() {
+  assert(leave() > enter(),
+         "leaving needs more room than entering: {leave()} against {enter()}");
+  // Entering is the boom's own comfort floor, which is where the number comes from
+  // — not from taste, and it moves if `CAM_MIN_FRAC` does.
+  d = enter() - WANT * FRAC;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000000001, "entering is want * min_frac = {WANT * FRAC}");
+}
+
+fn test_outdoors_is_never_snug_however_tight() {
+  // ⚠ THE MEASUREMENT THAT MADE `sh_inside` LOAD-BEARING. Standing one world unit
+  // from the outside of a house reads `sh_room` 0.59 — smaller than the 2.39 in the
+  // middle of that same house. A rule on the radius alone would degrade the camera
+  // every time an author walked up to a building they were about to edit.
+  for r in [0.0, 0.35, 0.59, 1.0, 2.39, 5.86] {
+    assert(!hex_editor::auto_snug(false, r, WANT, FRAC, false),
+           "outdoors at radius {r} is FOLLOW");
+    assert(!hex_editor::auto_snug(false, r, WANT, FRAC, true),
+           "outdoors at radius {r} LEAVES snug even if it was in it");
+  }
+}
+
+fn test_walking_in_flips_at_most_once() {
+  // ⚠ THE CLAIM IS A COUNT OVER A WALK, NOT A VALUE AT A POINT. A threshold test
+  // passes for a state machine that oscillates; counting the transitions is what
+  // says it does not. 400 steps from open room to broom cupboard.
+  was = false;
+  flips = 0;
+  for i in 0..400 {
+    room = 3.0 - 3.0 * (i as float) / 399.0 ?? 0.0;
+    cur = snug(room, was);
+    if cur != was { flips = flips + 1; }
+    was = cur;
+  }
+  assert(flips == 1, "walking in flips exactly once, not {flips}");
+  assert(was, "and ends up SNUG");
+}
+
+fn test_walking_out_and_back_flips_twice_and_comes_home() {
+  was = false;
+  flips = 0;
+  for i in 0..800 {
+    // In to 0 and back out to 3 — a straight there-and-back through both thresholds.
+    t = (i as float) / 399.0 ?? 0.0;
+    if t > 1.0 { t = 2.0 - t; }
+    room = 3.0 - 3.0 * t;
+    cur = snug(room, was);
+    if cur != was { flips = flips + 1; }
+    was = cur;
+  }
+  assert(flips == 2, "there and back is two transitions, not {flips}");
+  assert(!was, "and it comes home to FOLLOW");
+}
+
+fn test_dithering_inside_the_band_never_flips() {
+  // ⚠ THIS IS THE WHOLE POINT AND THE ONLY ROW THAT WOULD CATCH A SINGLE THRESHOLD.
+  // Standing in a doorway, a hand on the mouse and a foot's worth of drift moves the
+  // radius by a few centimetres. With one threshold that is a frame-rate strobe of
+  // the ambient and the body. Sit in the middle of the band and jitter across it
+  // from both starting states: neither may move.
+  mid = (enter() + leave()) * 0.5;
+  half = (leave() - enter()) * 0.45;      // just inside both edges
+  for start in [false, true] {
+    was = start;
+    flips = 0;
+    for i in 0..600 {
+      // A saw, not a sine: it visits both edges of the band repeatedly.
+      p = ((i % 20 ?? 0) as float) / 10.0 - 1.0 ?? 0.0;
+      cur = snug(mid + half * p, was);
+      if cur != was { flips = flips + 1; }
+      was = cur;
+    }
+    assert(flips == 0, "dithering in the band from {start} never flips, not {flips}");
+    assert(was == start, "and holds the state it arrived with");
+  }
+}
+
+fn test_the_state_in_the_band_is_the_state_it_arrived_with() {
+  // The same claim as a pair of values rather than a walk — this is what
+  // "hysteresis" means, and a one-threshold implementation fails exactly here while
+  // passing every single-point test above.
+  mid = (enter() + leave()) * 0.5;
+  assert(snug(mid, true), "in the band, having been SNUG, it stays SNUG");
+  assert(!snug(mid, false), "in the band, having been FOLLOW, it stays FOLLOW");
+}
+
+fn test_past_either_edge_the_answer_is_the_same_from_both_states() {
+  // Outside the band there is no history: the two thresholds bracket the memory and
+  // nothing beyond them may remember anything.
+  assert(snug(enter() - 0.01, false) && snug(enter() - 0.01, true),
+         "below entering it is SNUG whatever it was");
+  assert(!snug(leave() + 0.01, false) && !snug(leave() + 0.01, true),
+         "above leaving it is FOLLOW whatever it was");
+}
+
+fn test_an_unmeasured_radius_never_switches() {
+  // ⚠ `shelter_at` LEAVES `sh_room` AT -1, because a clear radius needs the sweep
+  // and it does not have it. -1 is less than every threshold, so a caller that
+  // forgot `shelter_room` would put every camera on the box into SNUG for ever.
+  // Holding is the only answer that cannot be wrong, and it is checked BOTH ways so
+  // it is a hold rather than a constant.
+  assert(!hex_editor::auto_snug(true, 0.0 - 1.0, WANT, FRAC, false),
+         "unmeasured, having been FOLLOW, it stays FOLLOW");
+  assert(hex_editor::auto_snug(true, 0.0 - 1.0, WANT, FRAC, true),
+         "unmeasured, having been SNUG, it stays SNUG");
+}
+
+fn test_the_measured_stations_land_where_the_numbers_say() {
+  // The five readings from `tools/scripts/roomprobe.keys`, as a table. This is the
+  // row that will fail the day a threshold is moved without re-measuring — which is
+  // the point, because the alternative is a constant nobody can defend.
+  assert(!hex_editor::auto_snug(false, 5.860, WANT, FRAC, false), "open ground: FOLLOW");
+  assert(!hex_editor::auto_snug(false, 0.593, WANT, FRAC, false), "beside a wall outdoors: FOLLOW");
+  assert(!snug(2.387, false), "mid-floor: FOLLOW — the room holds a boom");
+  assert(!snug(1.785, false), "a corner: FOLLOW — tighter, and still holds one");
+  assert(snug(0.346, false), "the doorway: SNUG — it does not");
+}

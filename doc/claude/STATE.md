@@ -10,7 +10,97 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — a room has a ceiling, and four things were drawn by nobody
+## ⏭ PICK UP HERE (2026-08-01, session 8) — AUTO degrades into SNUG, and the eye had been parked inside the wall
+
+`make gate` **29 green**, `make lib-test` **952 on both backends**. Read
+[CAMERA_INDOORS.md](CAMERA_INDOORS.md) before touching the camera.
+
+**`40:<mode>` chooses the camera's mode; AUTO is the default and the only one that
+degrades.** The hysteresis is `auto_snug` in `lib/hex_editor` (11 tests); SNUG's
+visible half is a per-client `V:` frame — a hide mask and an ambient — so the modes
+finally reach the picture. The gate stands on one floor either side of the threshold
+and the pair is the claim.
+
+### ⚠ `sh_room` alone cannot switch the mode, and the CONTROL is what said so
+
+The design's rule is *"AUTO degrades when `sh_room` says the room cannot hold a
+boom"*. Measured, standing **outdoors** one world unit from a house, `sh_room` reads
+**0.59 — smaller than the middle of the room behind that wall, 2.39.** A threshold on
+the radius alone degrades the camera every time an author walks up to a building.
+`sh_inside` is load-bearing, and only a station nobody would think to measure shows it.
+
+| station | `sh_inside` | `sh_room` | `sh_back` | boom |
+|---|---|---|---|---|
+| open ground | false | 5.86 | 5.86 | 5.86 |
+| **1 wu from a wall, outdoors** | **false** | **0.59** | 5.86 | 5.86 |
+| mid-floor | true | 2.39 | 2.39 | 1.54 |
+| a corner | true | 1.78 | **5.86** | 4.37 |
+| inside a wall | true | 0.35 | 0.39 | 0 |
+
+⚠ **The corner row is why `sh_back` exists — and nothing reads it.** Tight all round,
+and the one direction the boom wants wide open. Measured, on the trace, no consumer.
+Stated rather than hidden.
+
+⚠ **The mode is keyed on the ROOM, not the boom, which is the opposite of obvious.**
+`body_shown` keys on the boom and that is right for a body. A MODE cannot: the boom
+is a function of YAW, so turning on the spot in a corner sweeps it 4.4 → 1.9 → 4.4
+and everything discrete strobes once per revolution. Hysteresis cannot help — turning
+crosses the whole band repeatedly. `sh_room` is a property of the PLACE.
+
+### ⚠ The eye was parked INSIDE the wall — one constant, and it was never SNUG's fault
+
+Walking from the middle of a 5×4 room to its wall, reading the eye's own z off the
+view matrix:
+
+| character z | eye z | subject | largest |
+|---|---|---|---|
+| −0.6 | −1.823 | **15.9%** | masonry 39% ← the best frame in the house |
+| −1.0 | −1.866 | 0.0% | masonry **75%** |
+| −1.4 | −1.909 | 0.0% | masonry **99.7%** |
+
+A cliff between two adjacent stations, with the eye crossing the wall's inner face
+(≈ −1.84) exactly there. **`sweep_path` hits an EDGE — a line on the lattice — and
+the wall drawn on it is a band `BAND_SIDES` = 0.866 wide, centred on it.** `CAM_SKIN`
+was **0.20**, under half a band, so every wall-limited boom parked the eye in the
+masonry. At half a band plus a margin the same stations read 46% and 45%.
+`boom.loft` pins the RELATION so the two cannot drift apart again.
+
+⚠ **And raising it exposed a second defect in `boom_take`.** A skin is a clearance
+*from something*, and the march returns `want` when it finds nothing — so the
+unobstructed boom came back one skin short **always**. Invisible at 0.20 (5.86 read
+5.66, for as long as this has existed); a ninth of the boom at 0.533, which is what
+the outdoor control row caught.
+
+### ⚠ A backtick killed the whole renderer, and the histogram named it in one run
+
+Three frames at **99.96% sky** — which reads exactly like a broken renderer and was a
+punctuation mark: a GLSL comment inside the client's JS template literal contained
+`` ` ``, which closed the string and stopped the page parsing. The `frame` histogram
+said "one bucket, 99.96%" immediately; a picture could only have said "blank".
+
+### What else moved
+
+- **`body_shown` was written, tested and never called** until this session — the
+  fourth such find in two sessions. It hides the body under a 0.75 boom, and SNUG
+  hides it as well: two rules about different things, both honoured.
+- **`lum`** joined the frame instrument. The classifier matches on CHROMATICITY so a
+  lit surface and a shadowed one share a bucket — which means it is blind to the
+  ambient **by construction**, and the ambient is the one thing SNUG changes in a
+  picture. Mean luminance is the missing half. FOLLOW 0.268, SNUG 0.185.
+- ⚠ **The subject's bucket collects the FLOOR/WALL seam.** Anti-aliased pixels there
+  blend to 0.43/0.32/0.25, which is the figure's chromaticity to three decimals. The
+  gate bounds the subject above the seam (0.002) rather than at zero; measured
+  residue 0.0003 against 0.1364 with the body drawn.
+- **Camera cost 133 → 214 ms/s** for eight extra marches per solve, inside session
+  6's stated 200–400 ms band. Stated at `ROOM_RAYS`.
+
+**Seen red**: make AUTO never degrade and *only* the SNUG station's `lum` row fails —
+both FOLLOW controls untouched. Collapse `auto_snug`'s band to one threshold and
+exactly two of eleven library rows go red; ⚠ **the dither row is the one that catches
+it, not the walk** — a straight there-and-back crosses one threshold twice and passes
+with no hysteresis at all.
+
+## Session 8, earlier — a room has a ceiling, and four things were drawn by nobody
 
 `make gate` is **29 gates green**, `make lib-test` **939 tests on both backends**, and
 `camera-frame` — red on purpose since session 7 — is green and **in the suite** as
@@ -153,22 +243,26 @@ parallel so it costs its own wall time rather than a sum.
 
 ### Where to look next, in the order that makes sense
 
-1. **`sh_room` and `sh_back` are still struct fields in a document and nowhere else.**
-   FOLLOW turned out not to need them; **AUTO's degradation into SNUG does**, with the
-   two hysteresis thresholds. SNUG's ceiling now exists to be kept, so this is the
-   next camera rung and nothing blocks it.
-2. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
+1. ✅ **`sh_room` and AUTO's degradation** — done, and NOT the way the design said.
+   See the top of this file. ⚠ **`sh_back` is measured and has no consumer.**
+2. **SNUG's other half: the head-lamp and the near plane.** The ambient mixes as
+   `a + (1−a)·d`, so lowering it deepens shadows rather than dimming the picture —
+   which is why a room still reads at 0.22 with no lamp. Both are named in
+   `CAMERA_INDOORS.md` § the mode table and neither is built.
+3. ⚠ **FOLLOW's "roof, inside: hidden" row is OBSOLETE — do not build it.** It was
+   written when the eye was outside the house and the roof was between them. The eye
+   is in the room now, below the eave, so hiding the roof would show sky over the
+   walls. The per-client toggle that would do it exists (`V:`); the reason to use it
+   does not.
+4. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
    tested and the storey gesture does not use it. **The roof is now the worked example
    of what a horizontal surface is owed** — two faces, a thickness, a mitre — and the
    argument got stronger: a zero-thickness sheet cannot carry two surfaces at all.
-3. **The per-client surface toggles.** Four modes need to hide a roof and keep its
-   underside; the surfaces exist now and nothing switches them. `CAMERA_INDOORS.md`
-   § "What each mode needs from the client".
-4. ⚠ **`SOFFIT_R/G/B` is a guess that measured well, not a designed colour.** It is
+5. ⚠ **`SOFFIT_R/G/B` is a guess that measured well, not a designed colour.** It is
    cool and dark so the classifier can separate it from the wall's crowded warm greys
    — nearest neighbour 4.2× the tolerance. If the palette is ever reworked, that
    constraint is the reason, not taste.
-5. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and
+6. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and
    props.
 
 ## Session 7 — a house has fittings, furniture and floors; the camera is measured but not fixed

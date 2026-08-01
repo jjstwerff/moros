@@ -2792,18 +2792,43 @@ pub fn hole_fits_in(s: Slab, h: Hole) -> Ack {
 // character moves the world, sliding does not, and that is the same rule the pitch
 // fence already obeys.
 
-pub const CAM_SKIN     = 0.20;   // never put the eye this close to what was swept
+// ⚠ HALF A WALL, NOT A GUESS — AND IT WAS 0.20, WHICH PUT THE EYE IN THE MASONRY.
+// The sweep hits an EDGE, which is a line on the lattice; the wall drawn on that
+// edge is a band `BAND_SIDES` wide, centred on it. So a skin under half a band
+// stops the boom *inside the material*, and with no backface culling the far face
+// is then a millimetre from the lens and fills the entire frame.
+//
+// Measured, walking from the middle of a 5x4 room to its wall — the eye's own z,
+// read off the view matrix, against a wall whose inner face is at -1.84:
+//
+//     char z  0.0   eye -1.758   subject 10.6%   masonry 43%
+//     char z -0.6   eye -1.823   subject 15.9%   masonry 39%    the best in the house
+//     char z -1.0   eye -1.866   subject  0.0%   masonry 75%    past the face
+//     char z -1.4   eye -1.909   subject  0.0%   masonry 99.7%  solid wall
+//
+// A cliff between two adjacent stations, and the eye crosses -1.84 exactly there.
+// Half the band plus a margin is the smallest skin that cannot do this, and it is
+// derived from the drawn width rather than chosen to suit a picture.
+pub const CAM_SKIN     = 0.5330127018922193;   // BAND_SIDES * 0.5 + 0.10
 pub const CAM_SHOULDER = 0.55;   // the full lateral offset, once collapsed
 pub const BODY_HIDE    = 0.75;   // below this boom the body is in the way
 pub const BODY_SHOW    = 1.10;   // and it returns only above this — two thresholds
 
 // What the boom actually takes: what was asked for, or what the room allows, and
 // NEVER a floor underneath either.
+//
+// ⚠ AND THE SKIN IS A CLEARANCE FROM SOMETHING, so with nothing found there is
+// nothing to clear. This used to subtract it unconditionally — `cam_free_dist`
+// returns `want` when the march finds nothing, so the full unobstructed boom came
+// back one skin short, ALWAYS. Invisible at 0.20 (5.86 read 5.66 and nobody
+// looked); at half a wall band it is 5.33, a ninth of the boom lost in the open
+// field, and the outdoor control row is what noticed. A `free` that reached `want`
+// is the march saying *nothing constrained this*, and the answer to that is `want`.
 pub fn boom_take(want: float, free: float, skin: float) -> float {
+  if free >= want { return want; }
   cap = free - skin;
   if cap < 0.0 { cap = 0.0; }
-  if cap < want { return cap; }
-  want
+  cap
 }
 
 // How far the boom has collapsed, 0 at full length and 1 at the old comfort floor.
@@ -2844,4 +2869,62 @@ pub fn shoulder_take(reach: float, left: float, right: float, skin: float) -> fl
 pub fn body_shown(boom: float, was: boolean) -> boolean {
   if was { return boom > BODY_HIDE; }
   boom > BODY_SHOW
+}
+
+// ── AUTO: FOLLOW THAT DEGRADES INTO SNUG ────────────────────────────────────
+//
+// ⚠ AND IT IS KEYED ON THE ROOM, NOT ON THE BOOM, WHICH IS THE OPPOSITE OF WHAT IS
+// OBVIOUS. `body_shown` above switches on the boom's own length, and for the body
+// that is right — a body is in the way exactly when the eye is close to it. A MODE
+// cannot be keyed that way: the boom is a function of the YAW, so a player turning
+// on the spot in a corner sweeps it from 4.4 to 1.9 and back, and every discrete
+// thing the mode owns — the body, the ambient — strobes once per revolution.
+// Hysteresis does not help, because turning crosses the whole band repeatedly.
+//
+// `sh_room` is the inscribed radius, which is a property of the PLACE. Turning
+// cannot change it, so the mode survives a player looking round — and walking is
+// the only thing that can move it, which is what the two thresholds are for.
+//
+// ⚠ AND `sh_inside` IS LOAD-BEARING, WHICH THE MEASUREMENT SETTLED. Standing
+// OUTDOORS one world unit from a house reads `sh_room` 0.59 — *smaller than the
+// middle of the room behind that wall*, which reads 2.39. So the radius alone says
+// nothing about being in a room, and a threshold on it would degrade the camera
+// every time an author walked up to a building. The five stations:
+//
+//     open ground        inside false   room 5.86     back 5.86
+//     1 wu from a wall   inside false   room 0.59     back 5.86
+//     mid-floor          inside true    room 2.39     back 2.39
+//     a corner           inside true    room 1.78     back 5.86
+//     the doorway        inside true    room 0.35     back 0.39
+//
+// ⚠ The corner is the row that says the radius is not the whole story either: tight
+// all round, and the one direction the boom wants is wide open. That is what
+// `sh_back` is for, and no rule here reads it yet — it is measured and reported and
+// has no consumer, which is stated rather than hidden.
+
+// How much wider leaving is than entering. Without a band, a doorway strobes the
+// whole frame — and a doorway is the one place in a house a player is guaranteed
+// to stand still.
+pub const SNUG_BAND = 1.5;
+
+// ⚠ NOT A TASTE — the boom's OWN comfort floor. `min_frac` is the fraction the boom
+// was once clamped at and is still the scale the shoulder creep is measured
+// against, so "the room cannot hold a boom" means "the room is narrower than the
+// shortest boom FOLLOW ever considered acceptable". One number, already named, and
+// the threshold moves with it.
+pub fn snug_enter(want: float, min_frac: float) -> float { want * min_frac }
+pub fn snug_leave(want: float, min_frac: float) -> float {
+  want * min_frac * SNUG_BAND
+}
+
+pub fn auto_snug(inside: boolean, room: float, want: float, min_frac: float,
+                 was: boolean) -> boolean {
+  // ⚠ A SENTINEL NEVER SWITCHES. `shelter_at` leaves `sh_room` at -1 because it
+  // cannot measure it, and -1 is less than every threshold — so a caller that
+  // forgot `shelter_room` would put every camera on the box into SNUG for ever.
+  // Holding the previous state is the only answer that cannot be wrong.
+  if room < 0.0 { return was; }
+  if !inside { return false; }
+  if was { return room < snug_leave(want, min_frac); }
+  room < snug_enter(want, min_frac)
 }

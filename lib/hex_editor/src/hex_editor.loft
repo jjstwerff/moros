@@ -709,6 +709,15 @@ pub fn roof_plan_over(rp: RoofPlan, x: float, z: float) -> boolean {
 pub struct Shelter {
   sh_inside: boolean,
   sh_head:   integer,     // clear height above the eye, in units; -1 under open sky
+  // ⚠ THESE TWO ARE MEASURED, NOT DERIVED, and that is why `shelter_at` leaves them
+  // at -1. A clear RADIUS needs a march against the view-blocking edge set, which is
+  // the same sweep the boom uses — `cam_free_dist` and its proxy live where the
+  // camera solves, and re-deriving them here would be a second answer to a question
+  // that already has one. The design put them in this struct so that *every mode
+  // reads one query*, and that still holds: the server fills them with
+  // `shelter_room` before anything consults the modes.
+  sh_room:   float,       // clear radius before a view-blocking edge, all round; -1 unmeasured
+  sh_back:   float,       // clear distance directly behind the subject; -1 unmeasured
 }
 
 pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
@@ -734,5 +743,13 @@ pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
       }
     }
   }
-  Shelter { sh_inside: best >= 0, sh_head: best }
+  Shelter { sh_inside: best >= 0, sh_head: best, sh_room: 0.0 - 1.0, sh_back: 0.0 - 1.0 }
+}
+
+// The two measured fields, filled where the sweep lives. Separate from the
+// constructor because they come from a different instrument, and a caller that
+// forgets is left holding -1 rather than a plausible zero — an unmeasured radius
+// that read 0 would say "no room at all" and degrade every camera on the box.
+pub fn shelter_room(s: Shelter, room: float, back: float) -> Shelter {
+  Shelter { sh_inside: s.sh_inside, sh_head: s.sh_head, sh_room: room, sh_back: back }
 }

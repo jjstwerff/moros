@@ -62,6 +62,7 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `28` | CAMREST | — | `camera rested B boom D free F pitch P residual A,B` | **V** — added 2026-07-30; see [`HEX_STACK.md`](HEX_STACK.md) and the note below |
 | `29` | LABELS | `<q>,<r>` | `labels q,r = <one layer label per layer, bottom-up>` | **R** — added 2026-07-30. The companion to `15` COLUMN: same column, identities instead of heights |
 | `30` | STAIR | `<+1\|-1>` | `stair ±1 at q,r height H from S` · `stair refused (C) why` · `stair refused — no cell along the facing` | **A** — added 2026-07-31 → `stair_height` + `surface_set` |
+| `40` | MODE | `<0\|1\|2>` — AUTO, FOLLOW, SNUG | `mode N` · `mode refused — N is not a mode (offer 0, AUTO..2, SNUG)` | **V** — added 2026-08-01. AUTO is the default and degrades into SNUG on `sh_room`; ⚠ naming any other mode turns the degradation OFF for good, because a chosen mode never auto-switches |
 
 ⚠ **`30` STAIR is the gesture that made an upper storey REACHABLE**, and until it
 existed three of this editor's rules could not be tested at all. A storey is 12 height
@@ -98,6 +99,7 @@ the gates that match them**; record it and let the migration retire both.
 | `C` | `<view 16>;<proj 16>` | camera. ⚠ Everything past the first `;` is parsed as the projection by `editor_client.loft` — **a third field silently blinds the wasm client** | **V** |
 | `S` | `<text>` | status: every acknowledgement above | **A**/**R** — becomes a return value, not a message |
 | `X` | `<id>` | drop a mesh (streamed out of range) | **D** |
+| `V` | `<hideMask>,<ambient>` | ⚠ **per-client** — bit 0 hides the FIGURE, bit *k* hides surface *k*; the ambient the fragment shader mixes against its one light. Sent on CHANGE, and re-sent to an ARRIVING client (`1` READY resets the sent-key), because a send-on-change that forgets the new tab is a bug | **V** |
 | `Z` | `1` / `0` | brackets a batch of mesh traffic. Used by **both** the dirty flush and the streamer | **D** |
 | `E` | — | the opening burst is complete; *"tell me your aspect"*. Clients answer `2:<aspect>,` | **S** |
 | `G` | `<grass rgb>,<rock rgb>,<from>,<to>` | terrain ramp colours | **V** |

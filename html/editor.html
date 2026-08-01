@@ -63,7 +63,7 @@ precision highp float;
 in vec3 vNrm;
 in vec3 vWorld;
 uniform vec3 uColor, uFogCentre, uFogColor, uRampLo, uRampHi;
-uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp;
+uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp, uAmb;
 out vec4 frag;
 void main(){
   // One directional light, flat-shaded — the reference look: matte, no specular.
@@ -75,7 +75,17 @@ void main(){
   // is not.
   float g = clamp((vWorld.y - uRampY0) / max(uRampY1 - uRampY0, 0.001), 0.0, 1.0);
   vec3 base = mix(uColor, mix(uRampLo, uRampHi, g), uUseRamp);
-  vec3 lit = base * (0.45 + 0.55*d);
+  // ⚠ THE AMBIENT IS A UNIFORM NOW, and 0.45 is what the server sends for FOLLOW —
+  // so every earlier frame is reproduced to the bit and the gates that count
+  // colours do not move. SNUG sends less, eased, because a room that presses in is
+  // a room that is darker, and a STEP in the light is a flash across the whole
+  // frame. The mix keeps the lit end at 1.0 whatever the ambient, so lowering it
+  // deepens the shadows rather than dimming the picture.
+  // ⚠ NO BACKTICKS IN HERE. This is a JS template literal: one inside a GLSL
+  // comment closed the string and the whole page stopped parsing — three frames of
+  // 99.96% sky, which reads exactly like a broken renderer and was a punctuation
+  // mark. The frame histogram named it in one run; the picture could not have.
+  vec3 lit = base * (uAmb + (1.0 - uAmb)*d);
   // HORIZONTAL distance only. Using the full 3-D distance would fog the ground
   // at your feet whenever the camera is high, because the fade is centred on
   // the character and the camera looks down at it.
@@ -104,6 +114,7 @@ const uFogCentre = gl.getUniformLocation(prog, 'uFogCentre');
 const uFogColor = gl.getUniformLocation(prog, 'uFogColor');
 const uFogFrom = gl.getUniformLocation(prog, 'uFogFrom');
 const uFogTo = gl.getUniformLocation(prog, 'uFogTo');
+const uAmb = gl.getUniformLocation(prog, 'uAmb');
 const uRampLo = gl.getUniformLocation(prog, 'uRampLo');
 const uRampHi = gl.getUniformLocation(prog, 'uRampHi');
 const uRampY0 = gl.getUniformLocation(prog, 'uRampY0');
@@ -121,6 +132,12 @@ let view = null, proj = null;
 // the horizon where the fog stopped matching the sky.
 let fog = { c: [0,0,0], from: 1e9, to: 1e9, sky: [0.48, 0.55, 0.64] };
 let ramp = { lo: [0.42,0.50,0.30], hi: [0.46,0.38,0.26], y0: 0, y1: 6 };
+
+// ⚠ KEEP EQUAL TO `editor_server.loft` — `MESH_FIGURE_MAX` and `SURFACES`. The
+// stride has drifted three times (4→5 for the roof, 6→7 for the floor, 8→9 for the
+// soffit) and every consumer of it moved in the same commit each time.
+const FIGURE_MAX = 15;
+const SURFACES = 9;
 
 function addMesh(body) {
   const h = body.indexOf(';');
@@ -143,7 +160,13 @@ function addMesh(body) {
   gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
   gl.bindVertexArray(null);
   dropMesh(idx);           // replacing an id must free the old GPU buffers
-  parts.set(idx, { vao, vbo, count: data.length / 6, color, ramp, model: IDENT });
+  // ⚠ THE HIDE BIT IS DECIDED ONCE, HERE, AND NOT PER FRAME. A mesh id encodes its
+  // chunk and its surface — `chunk * SURFACES + MESH_FIGURE_MAX + k` — so the slot
+  // is `(id - 16) % SURFACES + 1` and the reserved block below 16 is the figure.
+  // Doing that division inside the draw loop would put a modulo on every mesh of
+  // every frame to answer a question that cannot change after the mesh arrives.
+  const bit = idx <= FIGURE_MAX ? 1 : 1 << (((idx - FIGURE_MAX - 1) % SURFACES) + 1);
+  parts.set(idx, { vao, vbo, count: data.length / 6, color, ramp, bit, model: IDENT });
 }
 
 // A chunk leaving the draw distance frees its GPU buffers. Without this the
@@ -180,7 +203,10 @@ function draw() {
     gl.uniform3fv(uRampHi, ramp.hi);
     gl.uniform1f(uRampY0, ramp.y0);
     gl.uniform1f(uRampY1, ramp.y1);
+    gl.uniform1f(uAmb, ambient);
     for (const p of parts.values()) {
+      // The mesh's own bit, decided once when it arrived — see `addMesh`.
+      if (hideMask & p.bit) continue;
       gl.uniformMatrix4fv(uModel, false, p.model);
       gl.uniform3fv(uColor, p.color);
       gl.uniform1f(uUseRamp, p.ramp ? 1.0 : 0.0);
@@ -203,6 +229,12 @@ function draw() {
   requestAnimationFrame(draw);
 }
 let snapWanted = false;
+// ── WHAT THIS VIEWER HIDES, AND HOW DARK ITS ROOM IS — the server's `V:` ──────
+//
+// ⚠ PER-CLIENT, BECAUSE CHUNKS ARE BROADCAST. One mesh reaches every tab, so a
+// camera mode can never change what is EMITTED — only what a given viewer draws.
+// Bit 0 hides the figure; bit k hides surface k, in the server's own slot order.
+let hideMask = 0, ambient = 0.45;
 
 // Non-null only while a rebuild transaction is open — see the `Z:` handler.
 let staging = null;
@@ -250,6 +282,10 @@ ws.onmessage = (ev) => {
   else if (tag === 'E') {
     hud.textContent = 'A/D turn · W/S walk · ↑↓ raise/lower · L level · F fence · G ring · R wall run · E/Q step · B/C storey · $ snapshot';
     ws.send('2:' + (cv.clientWidth / cv.clientHeight) + ',');
+  }
+  else if (tag === 'V') {
+    const [m, a] = body.split(',');
+    hideMask = Number(m); ambient = Number(a);
   }
   else if (tag === 'C') {
     const [v, p] = body.split(';');

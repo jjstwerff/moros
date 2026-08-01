@@ -311,6 +311,10 @@ const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you fac
 const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
 const HOUSE_D = 4;        // not the parameters
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
+// CHOOSE THE CAMERA'S MODE — `40:0` AUTO, `40:1` FOLLOW, `40:2` SNUG. AUTO is the
+// default and degrades on its own; naming any other one turns the degradation OFF
+// for good, because a chosen mode never auto-switches.
+const MSG_MODE  = 40;
 // Read the camera's own convergence back. The boom and the lift EASE toward their
 // targets, so "where is the eye" has no answer until the ease has arrived — and a
 // client that samples on a timer is sampling wherever the ease happened to be.
@@ -3160,6 +3164,32 @@ const CAM_TRIES      = 5;      // candidate lifts tested between 0 and the full 
 const CAM_LOOK_S     = 0.55;   // seconds of rotation to ANTICIPATE
 const CAM_ARC        = 0.28;   // radians sampled either side even when still
 const CAM_ARC_N      = 4;      // samples across the anticipated arc
+// ⚠ EIGHT RAYS, AND THE COST IS REAL. `cam_free_dist` already runs about fifteen
+// times a tick and adding a sweep inside it once took a watching client from 12.9%
+// of a core to 90%. Eight more marches per SOLVE — and a solve only runs when the
+// camera is actually moving — is the price of a number the modes cannot be built
+// without. Measured after wiring: see the `27:` trace's camera line.
+const ROOM_RAYS      = 8;      // directions the inscribed radius is taken over
+
+// ── THE CAMERA'S MODES ──────────────────────────────────────────────────────
+//
+// AUTO is FOLLOW that degrades into SNUG when `sh_room` says the room cannot hold
+// a boom, and it is the DEFAULT so nobody has to know the modes exist. An
+// explicitly chosen mode never auto-switches — someone who picked SNUG walking
+// into a broom cupboard picked it on purpose.
+const MODE_AUTO   = 0;
+const MODE_FOLLOW = 1;
+const MODE_SNUG   = 2;
+// The ambient term the fragment shader mixes against its one directional light.
+// ⚠ `AMB_FOLLOW` IS THE SHADER'S OWN OLD CONSTANT. The client read
+// `base * (0.45 + 0.55*d)`; it reads `base * (a + (1-a)*d)` now, so sending 0.45
+// reproduces every earlier frame exactly and the gates that count colours do not
+// move. That is what makes this a new knob rather than a new look.
+const AMB_FOLLOW  = 0.45;
+const AMB_SNUG    = 0.22;      // a room that presses in is a room that is darker
+const CAM_K_AMB   = 3.0;       // eased per second — a step in the ambient is a flash
+// Bit 0 hides the FIGURE (every id in the reserved block); bit k hides surface k.
+const HIDE_FIGURE = 1;
 
 // Move `now` a bounded fraction of the way to `want`. `k` is gap-closed per
 // second; the clamp keeps a long frame from overshooting past the target.
@@ -3905,6 +3935,18 @@ fn main() {
   // digits wandering between runs gave it away, and that is not something a gate
   // can see.
   cam_free_last = 0.0;
+  // ── THE MODE, AND WHAT IT SENDS ─────────────────────────────────────────────
+  //
+  // ⚠ SERVER-SIDE AND SHARED, AND THE DESIGN SAYS PER-CLIENT. Both are true today:
+  // there is ONE character and ONE camera solve, so a per-client mode would need a
+  // per-client solve first. What is per-client already is the SENDING — `V:` goes
+  // out on the same `for pc in clients` loop the camera does — so the day the solve
+  // splits, only the state moves and no wire changes.
+  cam_mode = MODE_AUTO;
+  cam_snug = false;          // what AUTO has degraded to; ignored when a mode is chosen
+  cam_amb = AMB_FOLLOW;      // the ambient, EASED, because a step is a flash
+  cam_body = true;           // is the figure's own mesh drawn
+  cam_vsent = 0 - 1;         // the last `V:` payload, so it is sent on change only
   keys = 0;
   last_us = ticks();
 
@@ -3978,6 +4020,11 @@ fn main() {
           srv.send_to(ev.cid, "E:");
           srv.send_to(ev.cid, fog_wire(px, py, pz));
           srv.send_to(ev.cid, ramp_wire());
+          // ⚠ A NEW TAB HAS NEVER SEEN A `V:`, and the sender only speaks on
+          // change — so without this it would draw at the client's own default
+          // ambient until the mode next moved, which in a finished house is never.
+          // Forgetting the ARRIVING client is how a send-on-change becomes a bug.
+          cam_vsent = 0 - 1;
           // A new client holds no chunks, so the stream has to start over for
           // everyone. Correct rather than clever: W0's job is to be right about
           // what is visible, and a per-client chunk set is the optimisation
@@ -4425,6 +4472,25 @@ fn main() {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
           println("editor: trace {tracing}");
+        } else if ev.msg_id == MSG_MODE {
+          // ⚠ AN INADMISSIBLE MODE IS REFUSED, NOT CLAMPED — leak site 1. `40:7`
+          // silently becoming AUTO is the author asking for one thing and getting
+          // another with nothing said, which is exactly what `Fit` exists to stop.
+          mwant = ev.payload as integer ?? 0 - 1;
+          if mwant < MODE_AUTO || mwant > MODE_SNUG {
+            srv.send_to(ev.cid, "S:mode refused — {mwant} is not a mode "
+                              + "(offer {MODE_AUTO}, AUTO..{MODE_SNUG}, SNUG)");
+          } else {
+            cam_mode = mwant;
+            // ⚠ CHOOSING A MODE ENDS THE DEGRADATION, and choosing AUTO back does
+            // not resume mid-state: `cam_snug` is re-derived by `auto_snug` on the
+            // next solve from the room the author is actually standing in.
+            if cam_mode == MODE_SNUG { cam_snug = true; }
+            if cam_mode == MODE_FOLLOW { cam_snug = false; }
+            cam_rested = false;         // the ambient has somewhere to ease to
+            srv.send_to(ev.cid, "S:mode {cam_mode}");
+            println("editor: camera mode {cam_mode}");
+          }
         } else if ev.msg_id == MSG_LABELS {
           lbi = ev.payload.find(",");
           lbq = 0;
@@ -5218,6 +5284,40 @@ fn main() {
       cam_shelter = hex_editor::shelter_at(wld, roof_plans, cpx, cpz,
                                            (cpy / HEIGHT_SCALE ?? 0.0) as integer,
                                            HEIGHT_SCALE);
+      // ── ⚠ THE ROOM ALL ROUND, WHICH IS NOT THE RAY THE BOOM IS ON ────────────
+      //
+      // `cam_free` answers *"how far back can the eye go from here"*, and a boom
+      // pointed down a corridor gets a long answer in a space two metres wide. The
+      // question a MODE has to ask is different: *can this room hold a boom at all*
+      // — and that is the worst direction, not the current one. `sh_room` is the
+      // inscribed radius: the minimum over `ROOM_RAYS` evenly-spaced marches, using
+      // the same `cam_free_dist` and the same proxy the boom uses, so the two cannot
+      // disagree about a wall.
+      //
+      // ⚠ AT THE PIVOT AND AT ZERO PITCH. The eye's own clearance would be circular
+      // — the eye is where the boom put it, and the boom is what this decides — and
+      // a pitched march measures a cone rather than a room.
+      cam_room = cam_want;
+      for ri in 0..ROOM_RAYS {
+        rry = (ri as float) * 2.0 * PI / (ROOM_RAYS as float) ?? 0.0;
+        rrf = cam_free_dist(cpx, cpy, cpz, rry, 0.0, cam_want, wld, coll_view);
+        if rrf < cam_room { cam_room = rrf; }
+      }
+      // Straight behind the subject — the boom's own direction, level. This is the
+      // one `sh_room` cannot stand in for: a room can be tight all round and still
+      // have the one direction the camera actually wants.
+      cam_back = cam_free_dist(cpx, cpy, cpz, yaw, 0.0, cam_want, wld, coll_view);
+      cam_shelter = hex_editor::shelter_room(cam_shelter, cam_room, cam_back);
+      // ── AUTO DEGRADES HERE, AND ONLY HERE ────────────────────────────────────
+      //
+      // ⚠ A CHOSEN MODE NEVER AUTO-SWITCHES. The rule is consulted for `MODE_AUTO`
+      // and for nothing else, so the design's *"someone who picked SNUG walking
+      // into a broom cupboard picked it on purpose"* is a branch rather than a
+      // remark. `auto_snug` carries the hysteresis; this carries the mode.
+      if cam_mode == MODE_AUTO {
+        cam_snug = hex_editor::auto_snug(cam_shelter.sh_inside, cam_shelter.sh_room,
+                                         cam_want, CAM_MIN_FRAC, cam_snug);
+      }
       if cam_shelter.sh_inside {
         cam_pt = pitch;
       } else {
@@ -5278,11 +5378,34 @@ fn main() {
       } else {
         cam_dist = cam_approach(cam_dist, cam_free, CAM_K_OUT, dt);
       }
+      // ── WHAT THE MODE ACTUALLY CHANGES ───────────────────────────────────────
+      //
+      // ⚠ THE BODY IS HIDDEN BY *EITHER* RULE, and the two are about different
+      // things. `body_shown` asks whether the figure is IN THE WAY — a boom under
+      // `BODY_HIDE` ends at the back of a head — and it is right to key that on the
+      // boom, which is what "close to it" means. SNUG hides it because being in the
+      // room is the point and your own back is not. Both are already-tested rules,
+      // so the body obeys both. ⚠ `body_shown` was written, tested and never called
+      // until now; that is the fourth such find in two sessions.
+      cam_body = hex_editor::body_shown(cam_dist, cam_body);
+      snug_now = cam_mode == MODE_SNUG || (cam_mode == MODE_AUTO && cam_snug);
+      if snug_now { cam_body = false; }
+      // The ambient EASES. Everything else about a mode change can be instant — a
+      // body is drawn or it is not — but a step in the light is a flash across the
+      // whole frame, which is the one thing the hysteresis exists to prevent.
+      cam_amb_want = AMB_FOLLOW;
+      if snug_now { cam_amb_want = AMB_SNUG; }
+      cam_amb = cam_approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
+
       // Rested once the boom and the lift have both arrived: until then the
       // solve has to keep running, because the ease is what is still moving.
+      // ⚠ AND THE AMBIENT'S EASE COUNTS TOO, or the solve stops while the light is
+      // still moving and the room freezes half-lit — the same fault the boom's own
+      // rest tolerance had, one valve over.
       dd1 = cam_dist - cam_free; if dd1 < 0.0 { dd1 = 0.0 - dd1; }
       dd2 = cam_pitch - cam_pt; if dd2 < 0.0 { dd2 = 0.0 - dd2; }
-      cam_rested = dd1 < 0.001 && dd2 < 0.001;
+      dd3 = cam_amb - cam_amb_want; if dd3 < 0.0 { dd3 = 0.0 - dd3; }
+      cam_rested = dd1 < 0.001 && dd2 < 0.001 && dd3 < 0.001;
       // The residuals as the EASE left them — the size of the snap below, not what
       // is left after it. Kept for `MSG_CAMREST`.
       cam_res_d = dd1;
@@ -5308,6 +5431,7 @@ fn main() {
       if cam_rested {
         cam_dist = cam_free;
         cam_pitch = cam_pt;
+        cam_amb = cam_amb_want;
       }
       cam_lx = px; cam_ly = py; cam_lz = pz;
       cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
@@ -5428,7 +5552,9 @@ fn main() {
           // numbers say which valve moved.
           cmsg = "CAM want {cam_want} dist {cam_dist} free {cam_free} "
                + "pitch {cam_pitch} target {cam_pt} slide {cam_slide} "
-               + "inside {cam_shelter.sh_inside} head {cam_shelter.sh_head}";
+               + "inside {cam_shelter.sh_inside} head {cam_shelter.sh_head} "
+               + "room {cam_shelter.sh_room} back {cam_shelter.sh_back} "
+               + "mode {cam_mode} snug {cam_snug} amb {cam_amb} body {cam_body}";
           println(cmsg);
           srv.broadcast("S:{cmsg}");
         }
@@ -5725,6 +5851,24 @@ fn main() {
       for pc in clients {
         srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, wld));
       }
+    }
+    // ── `V:` — WHAT THIS VIEWER HIDES, AND HOW DARK ITS ROOM IS ────────────────
+    //
+    // ⚠ A PER-CLIENT SURFACE TOGGLE, NOT A VIEW-DEPENDENT MESH. Chunks are
+    // BROADCAST — one mesh reaches every tab — so a mode can never change what is
+    // emitted, only what a given viewer draws. That is the constraint the whole
+    // mode design is built around, and it is why the roof and its soffit had to
+    // become separate surfaces before any of this could exist.
+    //
+    // Sent on CHANGE, like `C:` and for the same reason, but the change here is a
+    // discrete payload rather than a solve — so the test is the payload itself and
+    // there is nothing to ease past.
+    vmask = 0;
+    if !cam_body { vmask = vmask | HIDE_FIGURE; }
+    vkey = vmask * 100000 + ((cam_amb * 10000.0) as integer ?? 0);
+    if vkey != cam_vsent {
+      cam_vsent = vkey;
+      for pc2 in clients { srv.send_to(pc2.cid, "V:{vmask},{cam_amb}"); }
     }
     if !watched {
       // Nobody is looking: keep the clock from piling up a burst of catch-up

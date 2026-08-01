@@ -273,6 +273,51 @@ A fifth setting, **AUTO**, is FOLLOW that degrades into SNUG when `sh_room` says
 room cannot hold a boom. That is today's behaviour plus the clamp fix, and it should
 be the default so nobody has to know the modes exist.
 
+### ✅ Built — and `sh_room` alone could not do it
+
+**`40:<mode>` chooses; AUTO is the default and the only one that degrades.** The
+hysteresis is `auto_snug` in `lib/hex_editor`, eleven tests, and SNUG's visible half
+is a per-client `V:` frame — a hide mask and an ambient.
+
+⚠ **The design's rule is refuted by its own query, and the control is what did it.**
+`sh_room` is the inscribed radius, and standing **outdoors** one world unit from a
+house it reads **0.59 — smaller than the middle of the room behind that wall, 2.39.**
+A threshold on the radius alone degrades the camera every time an author walks up to
+a building they are about to edit. `sh_inside` is load-bearing, and this is only
+visible because the probe measured a station nobody would have thought to measure.
+
+| station | `sh_inside` | `sh_room` | `sh_back` | boom |
+|---|---|---|---|---|
+| open ground | false | 5.86 | 5.86 | 5.86 |
+| **1 wu from a wall, outdoors** | **false** | **0.59** | 5.86 | 5.86 |
+| mid-floor | true | 2.39 | 2.39 | 1.54 |
+| a corner | true | 1.78 | **5.86** | 4.37 |
+| against the inside of a wall | true | 0.35 | 0.39 | 0 |
+
+⚠ **The corner row is why `sh_back` is in the struct** — tight all round, and the one
+direction the boom actually wants is wide open. **No rule reads it yet.** It is
+measured, reported on the `27:` trace, and has no consumer; that is stated rather
+than hidden, because a field nobody reads is the fault this session found four times.
+
+### ⚠ The mode is keyed on the ROOM, which is the opposite of the obvious choice
+
+`body_shown` switches on the **boom**, and for a body that is right — a body is in
+the way exactly when the eye is close to it. A **mode** cannot be keyed that way: the
+boom is a function of the **yaw**, so a player turning on the spot in a corner sweeps
+it from 4.4 to 1.9 and back, and every discrete thing the mode owns strobes once per
+revolution. Hysteresis does not help, because turning crosses the whole band
+repeatedly. `sh_room` is a property of the **place**, so turning cannot move it.
+
+Thresholds: enter at `want × CAM_MIN_FRAC`, leave at 1.5× that. Not a taste — the
+boom's own comfort floor, so *"the room cannot hold a boom"* means *"the room is
+narrower than the shortest boom FOLLOW ever considered acceptable"*.
+
+⚠ **The one test that catches a single threshold is the DITHER**, not the walk. A
+straight there-and-back crosses one threshold twice and passes with no hysteresis at
+all; sitting in the middle of the band and jittering is what fails. Measured by
+collapsing the band: exactly two of the eleven rows go red, and the nine
+single-point ones do not.
+
 ⚠ **The degradation is CONTINUOUS, and that is what makes SNUG an over-the-shoulder
 view rather than a state.** The camera creeps up on the character as the room closes
 in — and creeping straight down the boom ends at the back of a head, so the boom must
@@ -290,6 +335,36 @@ Two consequences worth writing down:
 - it is a *lateral* offset, not a yaw. Turning the camera to see past the character
   moves the world; sliding it does not, which is the same rule the pitch fence
   already obeys.
+
+## ⚠ The eye was parked INSIDE the wall, and one constant did it
+
+The thing that made SNUG unusable was not SNUG. Walking from the middle of a 5×4
+room to its wall, reading the eye's own z off the view matrix:
+
+| character z | eye z | subject | largest |
+|---|---|---|---|
+| 0.0 | −1.758 | 10.6% | masonry 43% |
+| −0.6 | −1.823 | **15.9%** | masonry 39% ← the best frame in the house |
+| −1.0 | −1.866 | 0.0% | masonry **75%** |
+| −1.4 | −1.909 | 0.0% | masonry **99.7%** |
+
+A cliff between two adjacent stations, and the eye crosses the wall's inner face
+(≈ −1.84) exactly there. **`sweep_path` reports a hit on an EDGE, which is a line on
+the lattice; the wall drawn on that edge is a band `BAND_SIDES` = 0.866 wide, centred
+on it.** `CAM_SKIN` was 0.20 — under half a band — so every wall-limited boom parked
+the eye in the masonry, and with nothing culling backfaces the far face was a
+millimetre from the lens.
+
+At half a band plus a margin the same stations read **46%** and **45%**, and the
+mid-floor subject rises 10.6% → 13.6%. `boom.loft` pins the RELATION — the skin
+clears half of `wall_band()` — so the two cannot move apart again.
+
+⚠ **And raising it exposed a second one in `boom_take`.** The skin is a clearance
+*from something*, and `cam_free_dist` returns `want` when the march finds nothing —
+so the full unobstructed boom came back one skin short, **always**. Invisible at 0.20
+(5.86 read 5.66, for as long as this has existed); at 0.533 it is a ninth of the boom
+in an open field, and the gate's outdoor control is what noticed. A test now says
+`free >= want` takes the whole boom, at three different skins.
 
 ## The query every mode reads
 
@@ -551,9 +626,11 @@ anyone but the person who wrote it.
 ## Order of work
 
 1. ✅ `shelter_at` and its tests — pure, no server, and every mode reads it.
-   ⚠ It carries `sh_inside` and `sh_head` only; **`sh_room` and `sh_back` are still
-   struct fields in this document and nowhere else.** Nothing below them needs them
-   yet, and FOLLOW turned out not to.
+   ⚠ `sh_room` and `sh_back` are MEASURED, not derived, so `shelter_at` leaves them
+   at -1 and the server fills them with `shelter_room` where the sweep lives. A clear
+   radius needs a march against the view-blocking edge set, and re-deriving that here
+   would be a second answer to a question `cam_free_dist` already answers. **`sh_back`
+   still has no consumer** — see the corner row above.
 2. ✅ The roof's underside, as its own surface id — `SURFACES` 8 → 9, and nine gate
    files carry the stride. ⚠ It needed a **thickness**, which this list did not
    predict; see the section above for why a reversed copy at the same coordinates
@@ -564,8 +641,18 @@ anyone but the person who wrote it.
    in the room now and the frame rows are green without `sh_back` being consulted
    once. **AUTO's degradation into SNUG is still to build**, and it is where the two
    thresholds go.
-4. **SNUG**: body hidden, ambient down, head-lamp up, near plane in.
+4. ◐ **SNUG**: body hidden ✅, ambient down ✅ (eased, and it is the one thing the
+   frame gate's chromaticity classifier cannot see — hence `lum`). **Head-lamp and
+   near plane are not built**: the ambient mixes as `a + (1−a)·d`, so lowering it
+   deepens the shadows rather than dimming the picture, which is why a room still
+   reads at ambient 0.22 with no lamp in it. AUTO reaches SNUG about 1.4 wu from a
+   wall in a 5×4 room.
 5. **CUTAWAY stage 1**: roof off, camera above the eave.
+   ⚠ **FOLLOW's own "roof, inside: hidden" row is now obsolete and should not be
+   built.** It was written when the eye was outside the house and the roof was
+   between them; the eye is in the room now, below the eave, so hiding the roof
+   would show sky over the walls. The row was right about a camera that no longer
+   exists.
 6. ◐ The gate, per mode — FOLLOW's three stations are in `make gate`; the other
    three modes have no rows because they have no behaviour yet.
 7. **The `Slab`**: horizontal surfaces get a thickness, two faces, and openings with

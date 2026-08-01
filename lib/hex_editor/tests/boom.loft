@@ -108,3 +108,44 @@ fn test_the_body_hides_and_returns_at_different_lengths() {
          "while it stays shown once shown — which is what stops the flicker");
   assert(hex_editor::BODY_SHOW > hex_editor::BODY_HIDE, "the band is a band");
 }
+
+fn test_the_skin_clears_half_a_wall_band() {
+  // ⚠ THE ONE ROW THAT WOULD HAVE CAUGHT THE EYE ENDING UP INSIDE THE MASONRY.
+  // `sweep_path` reports a hit on an EDGE, which is a line on the lattice; the wall
+  // drawn on that edge is a band `wall_band()` wide, centred on it. So a skin under
+  // half a band stops the boom inside the material — and with nothing culling
+  // backfaces the far face is then a millimetre from the lens and takes the whole
+  // frame. Measured before the fix, walking a 5x4 room: 39% masonry at one station
+  // and 99.7% at the next, with the eye crossing the wall's inner face between them.
+  //
+  // The claim is a RELATION, not a value: whatever the family's band becomes, the
+  // skin has to clear half of it, and this fails the day one moves without the other.
+  half = hex_editor::wall_band() * 0.5;
+  assert(hex_editor::CAM_SKIN > half,
+         "the skin {hex_editor::CAM_SKIN} clears half a band {half}");
+  // …and by a real margin rather than a float's worth, or a boom that stops exactly
+  // on the face still shows a plane edge-on across the frame.
+  assert(hex_editor::CAM_SKIN - half > 0.05,
+         "with a margin: {hex_editor::CAM_SKIN - half}");
+}
+
+fn test_an_unobstructed_boom_takes_its_whole_length() {
+  // ⚠ THE ROW THAT WAS MISSING, AND ITS ABSENCE COST A NINTH OF THE BOOM OUTDOORS.
+  // `cam_free_dist` returns `want` when the march finds NOTHING, so "free == want"
+  // is the sweep saying *nothing constrained this* — and subtracting a clearance
+  // from a thing that was never found took the open-field boom to `want - skin`
+  // every time. It read 5.66 against 5.86 for a year and nobody looked; at half a
+  // wall band it read 5.33, and the gate's outdoor control is what noticed.
+  //
+  // The claim is stated at three skins so it cannot be satisfied by one lucky value.
+  for sk in [0.0, 0.20, hex_editor::CAM_SKIN] {
+    assert(hex_editor::boom_take(5.0, 5.0, sk) == 5.0,
+           "free == want takes the whole boom at skin {sk}");
+    assert(hex_editor::boom_take(5.0, 9.0, sk) == 5.0,
+           "and free BEYOND want takes it too, at skin {sk}");
+  }
+  // …while anything the march actually found still costs a skin, or the fix above
+  // would be a licence to put the eye in the wall.
+  got = hex_editor::boom_take(5.0, 4.0, 0.5);
+  assert(got == 3.5, "a found obstruction still keeps its skin: {got}");
+}

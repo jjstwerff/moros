@@ -22,7 +22,12 @@ snap s10-house-outside
 # ANYTHING. Outdoors nothing obstructs the boom, so the eye sits a full `want`
 # behind the character — and this row is INSENSITIVE to the fault the other two
 # catch, which is what a control is for.
-cam 5.5 6.0
+#
+# ⚠ IT READ 5.900 UNTIL `boom_take` STOPPED CHARGING A SKIN IT DID NOT OWE. The
+# march returns `want` when it finds nothing, and the skin was subtracted anyway —
+# so the open-field boom was `want - skin` for as long as this has existed. This
+# band is what an UNOBSTRUCTED boom measures, and the old one was the bug's value.
+cam 5.9 6.3
 # The control, judged: outdoors the camera works, so these thresholds are what
 # "works" measures as — the subject at least half a percent of the frame, and no
 # single surface over 60% of it.
@@ -40,6 +45,14 @@ frame 0.005 0.60 soffit 0 0.005
 # change from a fix that was working.
 echo --- trace the camera's own numbers, not the milliseconds
 send 27:1
+
+# ⚠ THE MODE IS PINNED, BECAUSE THE ROWS BELOW ARE FOLLOW'S. The design's own
+# measurement table is PER MODE — "the modes disagree by design and a single
+# expectation would be wrong for two of them" — and AUTO would leave these two
+# stations in FOLLOW today only because `sh_room` happens to be over the threshold
+# there. A gate that depends on where a threshold sits is a gate that goes red when
+# the threshold is tuned, for no defect.
+send 40:1
 
 echo --- and standing in the middle of its floor
 at 0 0 90
@@ -62,3 +75,45 @@ snap s10-house-corner
 # opposite direction from the row above, which is why both are here.
 cam 3.5 5.2
 frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05
+
+# ── AUTO DEGRADING INTO SNUG ─────────────────────────────────────────────────
+#
+# ⚠ THE PAIR IS THE CLAIM, NOT EITHER ROW. A single SNUG frame proves nothing: the
+# failure mode of a close camera is a picture with nothing in it, and "dark" and
+# "empty" are indistinguishable to anyone but the person who wrote it. Two stations
+# on one floor, either side of the threshold, is what says the mode did something.
+echo --- AUTO, and the middle of the floor is over the threshold
+send 40:0
+at 0 0 90
+step 120
+snap s10-auto-follow
+# The control: AUTO has NOT degraded here, so this must read as FOLLOW does.
+# `lum` is the frame's mean luminance — the classifier matches on chromaticity and
+# is blind to a scalar by construction, so the ambient is the one thing it cannot
+# see and this is the number that can.
+frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0
+
+echo --- AUTO, close to the wall, where sh_room 0.88 says a boom does not fit
+at 0 -1.5 90
+step 120
+snap s10-auto-snug
+# ⚠ THREE CLAIMS, AND THE MIDDLE ONE IS THE ONE THIS FILE EARNED. The figure is
+# gone, which is what SNUG is for. The light is DOWN, which is the only thing the
+# ambient changes in a picture. And no single surface may take 85% — "unconstrained,
+# pressing in is the point" was the design's row, and it let a frame through that was
+# 99.7% ONE WALL FACE with the lens inside the masonry. Pressing in is not the same
+# as being buried, and a bound this loose forbids only the second.
+# ⚠ THE FIGURE BOUND IS 0.002 AND NOT ZERO, AND THAT IS THE INSTRUMENT'S FAULT
+# RATHER THAN THE CAMERA'S. Anti-aliased pixels along the FLOOR/WALL seam blend
+# 0.500/0.308/0.192 with 0.359/0.340/0.301, and the midpoint of those two is
+# 0.43/0.32/0.25 — which is the SUBJECT's chromaticity to three decimals. So the
+# figure bucket collects the seam, and the residue scales with how much seam is in
+# frame, not with anything about the character. Measured: 0.0003 here against
+# 0.1364 at the station above, a factor of 450. The bound is set above the seam and
+# far below a body.
+frame 0 0.85 figure 0 0.002 lum 0.05 0.22
+
+echo --- and back out: the degradation is not a one-way door
+at 0 0 90
+step 120
+frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0
