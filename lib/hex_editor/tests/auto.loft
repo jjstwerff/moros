@@ -135,7 +135,7 @@ fn test_an_unmeasured_radius_never_switches() {
 }
 
 fn test_the_measured_stations_land_where_the_numbers_say() {
-  // The five readings from `tools/scripts/roomprobe.keys`, as a table. This is the
+  // The five readings from CAMERA_INDOORS.md's station table, as a table. This is the
   // row that will fail the day a threshold is moved without re-measuring — which is
   // the point, because the alternative is a constant nobody can defend.
   assert(!hex_editor::auto_snug(false, 5.860, WANT, FRAC, false), "open ground: FOLLOW");

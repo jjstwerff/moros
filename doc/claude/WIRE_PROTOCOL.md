@@ -62,7 +62,7 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `28` | CAMREST | — | `camera rested B boom D free F pitch P residual A,B` | **V** — added 2026-07-30; see [`HEX_STACK.md`](HEX_STACK.md) and the note below |
 | `29` | LABELS | `<q>,<r>` | `labels q,r = <one layer label per layer, bottom-up>` | **R** — added 2026-07-30. The companion to `15` COLUMN: same column, identities instead of heights |
 | `30` | STAIR | `<+1\|-1>` | `stair ±1 at q,r height H from S` · `stair refused (C) why` · `stair refused — no cell along the facing` | **A** — added 2026-07-31 → `stair_height` + `surface_set` |
-| `40` | MODE | `<0\|1\|2>` — AUTO, FOLLOW, SNUG | `mode N` · `mode refused — N is not a mode (offer 0, AUTO..2, SNUG)` | **V** — added 2026-08-01. AUTO is the default and degrades into SNUG on `sh_room`; ⚠ naming any other mode turns the degradation OFF for good, because a chosen mode never auto-switches |
+| `40` | MODE | `<0\|1\|2\|3>` — AUTO, FOLLOW, SNUG, CUTAWAY | `mode N` · `mode refused — N is not a mode (offer 0, AUTO..3, CUTAWAY)` | **V** — added 2026-08-01. AUTO is the default and degrades into SNUG on `sh_room`; ⚠ naming any other mode turns the degradation OFF for good, because a chosen mode never auto-switches |
 
 ⚠ **`30` STAIR is the gesture that made an upper storey REACHABLE**, and until it
 existed three of this editor's rules could not be tested at all. A storey is 12 height

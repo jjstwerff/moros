@@ -141,3 +141,34 @@ echo --- and back out: the degradation is not a one-way door
 at 0 0 90
 step 120
 frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0 sd 0 0.115 sky 0 0.001
+
+# ── CUTAWAY — seeing a plan while you build it ───────────────────────────────
+#
+# ⚠ THE SAME STANDING POSITION AS THE FOLLOW ROW ABOVE. CUTAWAY is not "a nicer
+# picture"; it is *the same author, in the same place, able to see what they are
+# editing*. So the difference has to be in the frame and not in where they walked.
+echo --- CUTAWAY, from the exact spot FOLLOW showed a wall and a ceiling
+send 40:3
+at 0 0 90
+step 150
+snap s10-cutaway
+# ⚠ `soffit` IS THE DECISIVE ROW AND IT IS WHY THE ROOF BECAME TWO SURFACES.
+# FOLLOW at this spot reads soffit 0.240 and roof 0.011; CUTAWAY takes BOTH, which
+# could not have been expressed at all while they shared one mesh — SNUG keeps the
+# underside and CUTAWAY removes it, from the same geometry.
+#
+# `grass` is the claim that says it worked: standing INDOORS, a tenth of the frame
+# is the field outside. That is only possible with the roof off AND the eye above
+# the wall head, which is the whole of stage 1.
+#
+# The subject is small on purpose — "drawn, small" in the mode table — so the bound
+# is 0.002 rather than FOLLOW's 0.005: this row asks whether the figure is THERE,
+# for scale, not whether it is the subject.
+frame 0.002 0.60 soffit 0 0.001 roof 0 0.001 grass 0.10 1.0
+
+echo --- and back to AUTO: the roof returns, which no other row would notice
+send 40:0
+at 0 0 90
+step 150
+frame 0.005 0.60 soffit 0.10 1.0 grass 0 0.001
+

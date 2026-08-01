@@ -3202,6 +3202,22 @@ const CAM_FAR        = 400.0;
 const MODE_AUTO   = 0;
 const MODE_FOLLOW = 1;
 const MODE_SNUG   = 2;
+// ── CUTAWAY — for EDITING a building rather than being in one ───────────────
+//
+// Stage 1 of two, and the design is explicit that it is most of the value: *"with
+// the roof hidden and the camera well above the eave you can already look down into
+// a house; near walls only occlude at shallow angles."* Stage 2 buckets wall runs by
+// heading so the two facing the camera can go too, and it is the expensive half of a
+// feature whose cheap half was never tried.
+//
+// ⚠ THE PITCH FENCE IS FOLLOW'S CONSTRAINT, NOT THE CAMERA'S. `PITCH_MAX` is 0.75
+// because *"past vertical, behind the character stops meaning anything"* — a
+// statement about a BOOM that orbits a subject. CUTAWAY is not orbiting anybody; it
+// is a plan view with a figure in it for scale, so the fence lifts with the mode.
+const MODE_CUTAWAY = 3;
+const CUT_PITCH   = 1.25;      // ~60° down — steep enough to see a floor, not a plan
+fn cut_boom() -> float { figure_wu() * 3.2 }
+const AMB_CUT     = 0.75;      // high and flat: this is a drawing, not a room
 // The ambient term the fragment shader mixes against its one directional light.
 // ⚠ `AMB_FOLLOW` IS THE SHADER'S OWN OLD CONSTANT. The client read
 // `base * (0.45 + 0.55*d)`; it reads `base * (a + (1-a)*d)` now, so sending 0.45
@@ -3220,6 +3236,8 @@ const LAMP_SNUG   = 0.90;
 const CAM_K_AMB   = 3.0;       // eased per second — a step in the ambient is a flash
 // Bit 0 hides the FIGURE (every id in the reserved block); bit k hides surface k.
 const HIDE_FIGURE = 1;
+const HIDE_ROOF   = 32;        // 1 << 5 — the roof is the fifth surface
+const HIDE_SOFFIT = 512;       // 1 << 9 — and its underside the ninth
 
 // Move `now` a bounded fraction of the way to `want`. `k` is gap-closed per
 // second; the clamp keeps a long frame from overshooting past the target.
@@ -4508,9 +4526,9 @@ fn main() {
           // silently becoming AUTO is the author asking for one thing and getting
           // another with nothing said, which is exactly what `Fit` exists to stop.
           mwant = ev.payload as integer ?? 0 - 1;
-          if mwant < MODE_AUTO || mwant > MODE_SNUG {
+          if mwant < MODE_AUTO || mwant > MODE_CUTAWAY {
             srv.send_to(ev.cid, "S:mode refused — {mwant} is not a mode "
-                              + "(offer {MODE_AUTO}, AUTO..{MODE_SNUG}, SNUG)");
+                              + "(offer {MODE_AUTO}, AUTO..{MODE_CUTAWAY}, CUTAWAY)");
           } else {
             cam_mode = mwant;
             // ⚠ CHOOSING A MODE ENDS THE DEGRADATION, and choosing AUTO back does
@@ -5266,6 +5284,8 @@ fn main() {
         coll_surf = surf_u; coll_have = true;
       }
       cam_want = cam_boom();
+      cut_now = cam_mode == MODE_CUTAWAY;
+      if cut_now { cam_want = cut_boom(); }
       cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
       // Angular velocity, lightly smoothed so one jittery drag frame does not
       // throw the prediction. This is the "we are already turning" signal.
@@ -5349,7 +5369,12 @@ fn main() {
         cam_snug = hex_editor::auto_snug(cam_shelter.sh_inside, cam_shelter.sh_room,
                                          cam_want, CAM_MIN_FRAC, cam_snug);
       }
-      if cam_shelter.sh_inside {
+      if cut_now {
+        // Its own pitch, and the player's is simply not consulted — CUTAWAY is a
+        // vantage rather than a view over a shoulder. The ease and the rate cap
+        // below still apply, so entering the mode is a swing rather than a cut.
+        cam_pt = CUT_PITCH;
+      } else if cam_shelter.sh_inside {
         cam_pt = pitch;
       } else {
         cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
@@ -5375,17 +5400,42 @@ fn main() {
       // ⚠ I WROTE AND TESTED THIS FUNCTION AND THEN DID NOT CALL IT, which is the
       // same fault as `op_depth` reaching the library and stopping there. A tested
       // claim no consumer honours is a claim about nothing.
+      // ── ⚠ WHAT YOU CANNOT SEE MUST NOT OCCLUDE ───────────────────────────────
+      //
+      // CUTAWAY does not sweep, and this is a rule rather than a shortcut. Measured
+      // with the sweep left on: standing in the middle of a 5x4 house the boom
+      // collapsed from its fixed 14.14 to **1.57**, with the eye at y 2.08 — barely
+      // above the character's chest and nowhere near the eave. The thing stopping it
+      // was the ROOF, whose cells are occupied terrain layers that `ground_under`
+      // reports like any other surface.
+      //
+      // The roof is the surface this mode HIDES. A camera avoiding something the
+      // viewer cannot see is avoiding nothing, and it lands the eye under the very
+      // object it removed. The boom is "fixed, outside and above" in the design, and
+      // this is what makes that true. The backstop below still applies, so the eye
+      // cannot end up under the ground — and above a hidden roof is exactly where a
+      // plan view wants to be.
+      if cut_now {
+        cam_free = cam_want;
+      } else {
       cam_free = hex_editor::boom_take(
         cam_want,
         cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld, coll_view),
         hex_editor::CAM_SKIN);
+      }
       // ⚠ THE SHOULDER CREEP, SOLVED WHERE THE COLLISION SET LIVES. A boom that
       // collapses straight down its own axis ends at the back of a head; sliding
       // sideways as it shortens is what makes a short boom an over-the-shoulder
       // view rather than a failure. Toward whichever side has MORE room, and never
       // further than that side allows — an offset that ignored the room would make
       // the clamp's own mistake one axis over.
+      // ⚠ AND NO SHOULDER IN CUTAWAY — "shoulder offset: none" in the mode table.
+      // The creep is what a COLLAPSING boom earns so it does not end at the back of
+      // a head; a fixed boom never collapses, so the term would be zero anyway — but
+      // saying so costs nothing and stops it becoming a surprise the day the fixed
+      // boom stops being fixed.
       cam_creep = hex_editor::shoulder_reach(cam_dist, cam_want, CAM_MIN_FRAC);
+      if cut_now { cam_creep = 0.0; }
       cam_slide = 0.0;
       if cam_creep > 0.0 {
         cam_px = cam_pivot_x(px, yaw);
@@ -5427,6 +5477,7 @@ fn main() {
       cam_amb_want = AMB_FOLLOW;
       cam_lamp_want = LAMP_FOLLOW;
       if snug_now { cam_amb_want = AMB_SNUG; cam_lamp_want = LAMP_SNUG; }
+      if cut_now { cam_amb_want = AMB_CUT; cam_lamp_want = LAMP_FOLLOW; cam_body = true; }
       cam_amb = cam_approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
       cam_lamp = cam_approach(cam_lamp, cam_lamp_want, CAM_K_AMB, dt);
 
@@ -5901,6 +5952,11 @@ fn main() {
     // there is nothing to ease past.
     vmask = 0;
     if !cam_body { vmask = vmask | HIDE_FIGURE; }
+    // ⚠ THE ROOF *AND* ITS SOFFIT, which is the whole reason they became two
+    // surfaces. Hiding one and keeping the other is exactly the case that made the
+    // split necessary — SNUG keeps the underside, CUTAWAY takes both — and it could
+    // not have been expressed at all while they shared a mesh.
+    if cam_mode == MODE_CUTAWAY { vmask = vmask | HIDE_ROOF | HIDE_SOFFIT; }
     vkey = vmask * 100000000 + ((cam_amb * 10000.0) as integer ?? 0) * 10000
          + ((cam_lamp * 10000.0) as integer ?? 0);
     if vkey != cam_vsent {

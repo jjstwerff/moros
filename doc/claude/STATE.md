@@ -10,7 +10,54 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — SNUG is complete, and "near plane in" was a claim to refute
+## ⏭ PICK UP HERE (2026-08-01, session 8) — CUTAWAY, and a hidden roof was still blocking the camera
+
+`make gate` **29 green**, `make lib-test` **952 on both backends** — both re-run on
+**loft 2026.8.0**, which was installed at 19:59 today, *mid-session*. ⚠ Everything
+verified before that timestamp was measured on the previous binary; the re-run found
+no difference.
+
+**Four camera modes are built and gated**: FOLLOW, AUTO (the default, degrading into
+SNUG), SNUG, and CUTAWAY stage 1. `40:<mode>`.
+
+### CUTAWAY — and the rule the design did not have
+
+From the exact spot where FOLLOW shows a wall and a ceiling, CUTAWAY shows the room
+in plan with the field visible outside it:
+
+| at the same standing position | FOLLOW | CUTAWAY |
+|---|---|---|
+| `soffit` | 0.240 | **0** |
+| `roof` | 0.011 | **0** |
+| `grass` | 0 | **0.238** |
+| `figure` | 0.136 | 0.006 — drawn, small |
+| `lum` | 0.268 | 0.424 — high and flat |
+
+⚠ **This is the case that made the roof and its soffit two surfaces.** SNUG keeps the
+underside, CUTAWAY takes both, from identical geometry and decided per client.
+
+⚠ **WHAT YOU CANNOT SEE MUST NOT OCCLUDE.** Measured with the wall sweep left on:
+standing in the middle of the house the fixed **14.14** boom collapsed to **1.57**,
+eye at y 2.08 — nowhere near the eave. The thing stopping it was **the roof**, whose
+cells are occupied terrain layers `ground_under` reports like any other surface. The
+roof is the surface this mode *hides*; a camera avoiding something the viewer cannot
+see parks the eye under the very object it removed. CUTAWAY does not sweep.
+
+⚠ **`grass` is the gate row that catches it, and it is the one worth stealing** —
+*standing indoors, a tenth of the frame is the field outside.* Only possible with the
+roof off **and** the eye above the wall head, so one number tests both halves. **Seen
+red twice**: stop hiding the roof and it fills 80% of the frame; let the hidden roof
+block the boom again and `grass` reads 0.
+
+**Settings measured, not chosen**: boom `figure_wu() × 3.2`, pitch 1.25. At ×7.0 /
+1.05 the same station gave **grass 0.707** — the building small in a field — against
+0.238. And the pitch fence lifted with the mode, exactly as the design said it must.
+
+⚠ **Stage 2 (heading buckets for near walls) is NOT needed yet.** At pitch 1.25 the
+near wall is below the frame entirely and `masonry` is 0.43 — walls read as plan, not
+as occluders. The case for it is a shallower CUTAWAY than this one.
+
+## Earlier in session 8 — SNUG is complete, and "near plane in" was a claim to refute
 
 `make gate` **29 green**, `make lib-test` **952 on both backends**. SNUG now has all
 of it: **body hidden, ambient down, head-lamp up** — and the fourth item on the
@@ -308,20 +355,23 @@ parallel so it costs its own wall time rather than a sum.
 1. ✅ **`sh_room` and AUTO's degradation** — done, and NOT the way the design said.
    See the top of this file. ⚠ **`sh_back` is measured and has no consumer.**
 2. ✅ **SNUG's other half** — head-lamp built; near plane refuted. See the top.
-3. ⚠ **FOLLOW's "roof, inside: hidden" row is OBSOLETE — do not build it.** It was
+3. ✅ **CUTAWAY stage 1** — built; stage 2 measured as not yet needed. See the top.
+4. ⚠ **FOLLOW's "roof, inside: hidden" row is OBSOLETE — do not build it.** It was
    written when the eye was outside the house and the roof was between them. The eye
    is in the room now, below the eave, so hiding the roof would show sky over the
    walls. The per-client toggle that would do it exists (`V:`); the reason to use it
    does not.
-4. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
+5. **EYES** — the last mode, and the one the design says cannot honestly exist until
+   horizontal surfaces have a thickness. `sh_back` is still measured with no consumer.
+6. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
    tested and the storey gesture does not use it. **The roof is now the worked example
    of what a horizontal surface is owed** — two faces, a thickness, a mitre — and the
    argument got stronger: a zero-thickness sheet cannot carry two surfaces at all.
-5. ⚠ **`SOFFIT_R/G/B` is a guess that measured well, not a designed colour.** It is
+7. ⚠ **`SOFFIT_R/G/B` is a guess that measured well, not a designed colour.** It is
    cool and dark so the classifier can separate it from the wall's crowded warm greys
    — nearest neighbour 4.2× the tolerance. If the palette is ever reworked, that
    constraint is the reason, not taste.
-6. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and
+8. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and
    props.
 
 ## Session 7 — a house has fittings, furniture and floors; the camera is measured but not fixed

@@ -1,0 +1,48 @@
+# CUTAWAY — seeing a plan while you build it.
+#
+# ⚠ THE PAIR IS THE CLAIM, AND IT IS THE SAME STANDING POSITION IN BOTH. CUTAWAY is
+# not "a nicer picture"; it is *the same author, in the same place, able to see what
+# they are editing*. So every row below is FOLLOW and CUTAWAY from one spot, and the
+# difference has to be in the frame rather than in where the author walked.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+send 27:1
+
+echo --- FOLLOW, standing in the middle of the floor: a wall and a ceiling
+send 40:1
+at 0 0 90
+step 150
+cam
+snap s14-follow-in
+frame
+
+echo --- CUTAWAY, the SAME spot: roof off, steep, and the plan should be visible
+send 40:3
+at 0 0 90
+step 150
+cam
+snap s14-cutaway-in
+frame
+
+echo --- CUTAWAY from outside, where the whole building should be in shot
+at 0 -10 90
+step 150
+cam
+snap s14-cutaway-out
+frame
+
+echo --- and back to FOLLOW, to prove the mode is not a one-way door
+send 40:1
+at 0 0 90
+step 150
+cam
+frame

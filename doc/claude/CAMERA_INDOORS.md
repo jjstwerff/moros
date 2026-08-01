@@ -1,9 +1,10 @@
 # The camera indoors — four modes, one query
 
-> Status: **FOLLOW is fixed and gated; the modes are still design.**
-> `tools/gates/world/camera_indoors.mjs` is in `make gate`, and
-> `tools/scripts/indoors.keys` is the script behind it — three stations, each
-> judged twice: where the eye IS, and what the frame HOLDS.
+> Status: **FOLLOW, AUTO, SNUG and CUTAWAY stage 1 are built and gated. EYES and
+> CUTAWAY stage 2 are still design.** `tools/gates/world/camera_indoors.mjs` is in
+> `make gate` and `tools/scripts/indoors.keys` is the script behind it — seven
+> stations, judged on where the eye IS, what the frame HOLDS, and how it is LIT.
+> `40:<mode>` chooses; AUTO is the default and the only one that degrades.
 
 ## ⚠ The fault was that the eye was never sent — read this first
 
@@ -610,6 +611,57 @@ one that has to be created for the purpose.
 The camera *solve* is already server-side and already per-viewport (`2:<aspect>`), so
 the boom and the mode live there and only the visibility flags travel.
 
+## ✅ CUTAWAY stage 1 — and a rule the design did not have
+
+**Built: `40:3`.** Roof and soffit hidden, a fixed boom, its own steep pitch, ambient
+high and flat, the figure drawn small for scale. From the exact spot where FOLLOW
+shows a wall and a ceiling, CUTAWAY shows the room in plan with the field visible
+outside it.
+
+| at the same standing position | FOLLOW | CUTAWAY |
+|---|---|---|
+| `soffit` | 0.240 | **0** |
+| `roof` | 0.011 | **0** |
+| `grass` | 0 | **0.238** |
+| `floor` | 0.192 | 0.321 |
+| `figure` | 0.136 | 0.006 — drawn, small |
+| `lum` | 0.268 | 0.424 — high and flat |
+
+⚠ **This is the case that made the roof and its soffit two surfaces.** SNUG keeps the
+underside; CUTAWAY takes both — from identical geometry, decided per client. It could
+not have been expressed at all while they shared one mesh.
+
+### ⚠ What you cannot see must not occlude
+
+**CUTAWAY does not sweep**, and that is a rule rather than a shortcut. Measured with
+the sweep left on: standing in the middle of the house, the fixed **14.14** boom
+collapsed to **1.57**, with the eye at y 2.08 — barely above the character's chest
+and nowhere near the eave. The thing stopping it was **the roof**, whose cells are
+occupied terrain layers that `ground_under` reports like any other surface.
+
+The roof is the surface this mode *hides*. A camera avoiding something the viewer
+cannot see is avoiding nothing, and it parks the eye under the very object it
+removed. The ground backstop still applies, so the eye cannot end up underground —
+and above a hidden roof is exactly where a plan view wants to be.
+
+⚠ **`grass` is the gate row that catches this**, and it is the one worth stealing:
+*standing indoors, a tenth of the frame is the field outside.* That is only possible
+with the roof off **and** the eye above the wall head, so one number tests both
+halves. Seen red twice — stop hiding the roof and it fills 80% of the frame; let the
+hidden roof block the boom again and `grass` reads 0.
+
+### The settings, measured rather than chosen
+
+Boom `figure_wu() × 3.2`, pitch 1.25 rad. Longer and steeper reads as a map rather
+than a room: at ×7.0 / 1.05 the same interior station gave **grass 0.707** — the
+building small in a field — against 0.238 at ×3.2. The design's *"largest single
+surface < N%"* row is what settles it, and it wants the thing being edited to be most
+of the picture.
+
+⚠ **The pitch fence lifted with the mode**, exactly as the design predicted it must:
+`PITCH_MAX` is 0.75 because *"past vertical, behind the character stops meaning
+anything"* — a statement about a boom orbiting a subject. CUTAWAY orbits nobody.
+
 ## CUTAWAY's near walls, in two stages
 
 Front-face culling does **not** work: a wall is a slab with two faces, and culling the
@@ -695,7 +747,8 @@ anyone but the person who wrote it.
 4. ✅ **SNUG**: body hidden, ambient down, head-lamp up — all three, eased and gated.
    ⚠ **"Near plane in" was a claim, not a task, and it is refuted** — see below.
    AUTO reaches SNUG about 1.4 wu from a wall in a 5×4 room.
-5. **CUTAWAY stage 1**: roof off, camera above the eave.
+5. ✅ **CUTAWAY stage 1**: roof off, camera above the eave — and the eave is where
+   the sweep had to stop being consulted; see above.
    ⚠ **FOLLOW's own "roof, inside: hidden" row is now obsolete and should not be
    built.** It was written when the eye was outside the house and the roof was
    between them; the eye is in the room now, below the eave, so hiding the roof
@@ -709,3 +762,7 @@ anyone but the person who wrote it.
    that proves it is needed.
 8. **EYES**, which cannot honestly exist before 7, plus the lifted pitch fence.
 9. **CUTAWAY stage 2**: heading buckets, if shallow angles turn out to matter.
+   ⚠ **Stage 1 says they do not, yet.** At pitch 1.25 the near wall is below the
+   frame entirely and `masonry` is 0.43 — walls read as plan, not as occluders. The
+   case for stage 2 is a shallower CUTAWAY than this one, and nothing asks for that
+   until an author does.
