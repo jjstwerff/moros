@@ -20,7 +20,7 @@ const place = async (x, z, yaw) => { ws.send(`7:${x},${z},${yaw}`); return ack('
 const nextT = async (l = 15000) => { const b = tCount;
   for (let t = 0; t < l; t += 5) { if (tCount !== b) return true; await wait(5); } return false; };
 const HEX = 1.7320508075688772;
-const SURFACES = 7;
+const SURFACES = 8;
 const NAME = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor'];
 
 const surf = (k) => {

@@ -406,6 +406,14 @@ const FLOOR_R = 0.62; const FLOOR_G = 0.57; const FLOOR_B = 0.48;
 const WALL_UP      = 12;          // a storey of masonry
 const FENCE_UP     = 4;           // waist-high
 const WALL_R = 0.55; const WALL_G = 0.52; const WALL_B = 0.46;
+// ⚠ DRESSED STONE, AND IT IS THE POINT OF THE MESH. `F-READ`'s second cue is *a
+// frame that is a different VALUE from the wall* — the eye finds an opening by the
+// band of lighter stone around it before it resolves the hole at all. Geometry
+// alone cannot say this: a surround flush in colour with its wall is invisible
+// however proud it stands, because a plane parallel to the wall shades identically.
+const FRAME_R = 0.78; const FRAME_G = 0.74; const FRAME_B = 0.65;
+const FRAME_W = 0.14;            // how far the surround reaches past the opening
+const FRAME_PROUD = 0.05;        // and how far it stands out of the wall's face
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
@@ -452,7 +460,9 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // line. That is the maintenance the named stride exists to make possible — the
 // alternative is a decoder that reads a road's triangles as a field's and reports a
 // plausible number.
-const SURFACES = 7;
+const SURFACES = 8;              // ⚠ the frame took the eighth: an id-space stride,
+                                 // so a chunk's meshes stay contiguous and nothing
+                                 // renumbers when a surface is added.
 // ── THE CART (rung W7, moros#14) — a multi-rig, and its wheels ──────────────
 //
 // Three rigs that move as one: a body and two wheels. The connector is the
@@ -1414,7 +1424,7 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
 // difference between a curve and a staircase.
 const OPEN_SUB = 8;
 
-fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
+fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
                  openings: hex_editor::Openings) {
   up = wall_up(run.wr_mat);
   if up <= 0 { return; }
@@ -1434,6 +1444,26 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
   ox = nrm.x * half;
   oz = nrm.z * half;
   upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  // ⚠ THE REVEAL IS WHAT MAKES A HOLE READ AS A HOLE — `F-READ`'s first cue: *the
+  // hole has depth, so light and shadow differ inside it.* A cut with no reveal is
+  // paper: two faces with a gap between them and nothing joining them, so the wall
+  // looks like a sheet with a rectangle removed rather than masonry with a way
+  // through. These carry the previous slice's cut so the jamb can be closed where
+  // it CHANGES, which for an arch is every slice — the stepped curve of the reveal
+  // is the head's underside seen from below.
+  had = false;
+  plo = 0;
+  phi = 0;
+  // The surrounds, struck once: every profile offset outward by one whole height
+  // unit's worth of margin. The renderer never asks what SHAPE a frame is — it asks
+  // the same `opening_cuts` twice and draws the difference.
+  frames: vector<Opening> = [];
+  for of0 in openings.items {
+    frames += [hex_editor::opening_frame(of0, FRAME_W, HEIGHT_SCALE)];
+  }
+  fpx = nrm.x * (half + FRAME_PROUD);
+  fpz = nrm.z * (half + FRAME_PROUD);
 
   for i in 0..steps {
     sa = ln * (i as float) / (steps as float) ?? 0.0;
@@ -1478,8 +1508,81 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
         bands: vector<integer> = [0, up];
         if cut { bands = [0, lo_u, hi_u, up]; }
 
+        // ⚠ THE JAMB, wherever the VOID changes — and the void is what has to be
+        // compared, not the bands. At the ends of an opening the jamb is its side,
+        // the face you brush passing through; along an arch it is the head's
+        // underside, because each slice's crown sits a little lower than the last.
+        // Without it the curve is a silhouette with nothing behind it and the wall
+        // reads as a stencil rather than as masonry with a way through.
+        //
+        // ⚠ AN EMPTY VOID IS NOT `[0,0]`. Writing it that way makes the step from
+        // "solid" to "opening" come out as `[0, sill]` — the band BELOW the hole,
+        // which is solid on both sides — so the reveal would be painted inside the
+        // masonry where nothing can ever see it, and the actual jamb left open.
+        // The three cases are written out because collapsing them is what got it
+        // wrong.
+        if half > 0.0 && (cut || had) && (cut != had || lo_u != plo || hi_u != phi) {
+          (jx, jz) = hex_way::seg_point(t, 0, ja);
+          jgy = terrain_y(jx, jz, wld);
+          // The face belongs to whichever side still has stone there.
+          jn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+          if cut && !had { jn = vec3(tx, 0.0, tz); }
+          if cut && had && hi_u - lo_u > phi - plo { jn = vec3(tx, 0.0, tz); }
+          if !had {
+            emit_jamb(m, jx, jz, jgy, ox, oz, jn, lo_u, hi_u);
+          } else if !cut {
+            emit_jamb(m, jx, jz, jgy, ox, oz, jn, plo, phi);
+          } else {
+            // Both cut: the void moved, so the jamb is the sill's step and the
+            // head's step — the two intervals one slice has and its neighbour
+            // does not.
+            slo = lo_u; shi = plo;
+            if plo < lo_u { slo = plo; shi = lo_u; }
+            emit_jamb(m, jx, jz, jgy, ox, oz, jn, slo, shi);
+            hlo = hi_u; hhi = phi;
+            if phi < hi_u { hlo = phi; hhi = hi_u; }
+            emit_jamb(m, jx, jz, jgy, ox, oz, jn, hlo, hhi);
+          }
+        }
+        had = cut;
+        plo = lo_u;
+        phi = hi_u;
+
         gy0 = terrain_y(ax, az, wld);
         gy1 = terrain_y(bx, bz, wld);
+
+        // ⚠ THE RING IS A DIFFERENCE OF TWO PROFILES — frame minus opening — which
+        // is why one piece of code frames a square door, a pointed arch and a round
+        // window without knowing which it is looking at. Where the opening is cut
+        // the ring is the two strips beside it; where only the frame reaches, the
+        // whole of it is ring.
+        if half > 0.0 {
+          fcut = false;
+          flo = 0;
+          fhi = 0;
+          for gf in frames {
+            gflo = 0;
+            gfhi = 0;
+            if hex_editor::opening_cuts(gf, mx, mz, HEIGHT_SCALE, gflo, gfhi) {
+              fcut = true;
+              flo = gflo;
+              fhi = gfhi;
+            }
+          }
+          if fcut {
+            if flo < 0 { flo = 0; }
+            if fhi > up { fhi = up; }
+            if cut {
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, flo, lo_u);
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, hi_u, fhi);
+            } else {
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, flo, fhi);
+            }
+          }
+        }
         for bi in 0..len(bands) / 2 ?? 0 {
           blo = bands[bi * 2] ?? 0;
           bhi = bands[bi * 2 + 1] ?? 0;
@@ -1497,11 +1600,19 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
             emit_tri(m, b0, bck, b2, bck, b1, bck);
             emit_tri(m, b0, bck, b3, bck, b2, bck);
             if half > 0.0 {
-              // The cap, and the REVEAL. A band's top face closes the wall; inside
-              // an opening the same face is the head's soffit, which is what gives
-              // a hole depth instead of looking like paper.
+              // The cap: a band's top face. For the band below an opening this is
+              // the SILL, which is why a window ledge exists without being a
+              // separate thing.
               emit_tri(m, f3, upn, f2, upn, b2, upn);
               emit_tri(m, f3, upn, b2, upn, b3, upn);
+              // ⚠ AND THE SOFFIT — the band's UNDERSIDE, which nothing emitted. It
+              // is the head's inner face: the surface you look up at standing in a
+              // doorway, and the one that catches no light, which is exactly the
+              // shading difference that says "through" rather than "painted on".
+              if blo > 0 {
+                emit_tri(m, f0, dwn, b0, dwn, b1, dwn);
+                emit_tri(m, f0, dwn, b1, dwn, f1, dwn);
+              }
               if i == 0 && j == 0 {
                 sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
                 emit_tri(m, f0, sn, f3, sn, b3, sn);
@@ -1594,11 +1705,11 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings) {
+                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
-  for run in runs.items { emit_run_wall(wm, run, wld, q0, r0, openings); }
+  for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
   for lf in leaves.items {
     if lf.dl_q >= q0 && lf.dl_q < q0 + CHUNK && lf.dl_r >= r0 && lf.dl_r < r0 + CHUNK {
       emit_leaf(wm, lf, wld);
@@ -2036,6 +2147,60 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 
 // One triangle with a normal PER VERTEX, so the shading interpolates across it
 // instead of flooding it with one facet's value.
+// One slice of the SURROUND: the wall's face pushed out by `FRAME_PROUD` over the
+// height the ring covers, with the ledges that return it to the wall at top and
+// bottom. Both sides get one — a frame visible only from the street is scenery.
+fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
+                   gy0: float, gy1: float, ox: float, oz: float,
+                   px: float, pz: float, nrm: Vec3, bck: Vec3,
+                   a: integer, b: integer) {
+  if b <= a { return; }
+  ya = gy0 + (a as float) * HEIGHT_SCALE;
+  yb = gy1 + (a as float) * HEIGHT_SCALE;
+  ta = gy0 + (b as float) * HEIGHT_SCALE;
+  tb = gy1 + (b as float) * HEIGHT_SCALE;
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  f0 = vec3(ax + px, ya, az + pz); f1 = vec3(bx + px, yb, bz + pz);
+  f2 = vec3(bx + px, tb, bz + pz); f3 = vec3(ax + px, ta, az + pz);
+  emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+  emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+  k0 = vec3(ax - px, ya, az - pz); k1 = vec3(bx - px, yb, bz - pz);
+  k2 = vec3(bx - px, tb, bz - pz); k3 = vec3(ax - px, ta, az - pz);
+  emit_tri(m, k0, bck, k2, bck, k1, bck);
+  emit_tri(m, k0, bck, k3, bck, k2, bck);
+  // The ledges. Without them the surround is a floating plate with daylight behind
+  // its edge — which reads as a decal, not as a moulding cut from the same stone.
+  w3 = vec3(ax + ox, ta, az + oz); w2 = vec3(bx + ox, tb, bz + oz);
+  emit_tri(m, f3, upn, f2, upn, w2, upn);
+  emit_tri(m, f3, upn, w2, upn, w3, upn);
+  w0 = vec3(ax + ox, ya, az + oz); w1 = vec3(bx + ox, yb, bz + oz);
+  emit_tri(m, f0, dwn, w1, dwn, f1, dwn);
+  emit_tri(m, f0, dwn, w0, dwn, w1, dwn);
+  v3 = vec3(ax - ox, ta, az - oz); v2 = vec3(bx - ox, tb, bz - oz);
+  emit_tri(m, k3, upn, v2, upn, k2, upn);
+  emit_tri(m, k3, upn, v3, upn, v2, upn);
+  v0 = vec3(ax - ox, ya, az - oz); v1 = vec3(bx - ox, yb, bz - oz);
+  emit_tri(m, k0, dwn, k1, dwn, v1, dwn);
+  emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
+}
+
+// One face of a reveal: a quad across the wall's own thickness, from `a` to `b` in
+// height units. It is the wall's DEPTH made visible — the only surface in the whole
+// emitter that faces along the run rather than across it.
+fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
+             jn: Vec3, a: integer, b: integer) {
+  if b <= a { return; }
+  ya = jgy + (a as float) * HEIGHT_SCALE;
+  yb = jgy + (b as float) * HEIGHT_SCALE;
+  p0 = vec3(jx + ox, ya, jz + oz);
+  p1 = vec3(jx - ox, ya, jz - oz);
+  p2 = vec3(jx - ox, yb, jz - oz);
+  p3 = vec3(jx + ox, yb, jz + oz);
+  emit_tri(m, p0, jn, p1, jn, p2, jn);
+  emit_tri(m, p0, jn, p2, jn, p3, jn);
+}
+
 fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3) {
   base = len(m.vertices);
   m.vertices += [vertex(a, na, vec2(0.0, 0.0))];
@@ -4232,7 +4397,8 @@ fn main() {
           km2 = mesh("roof");
           wm2 = mesh("wall");
           lm2 = mesh("floor");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans, door_leaves, wall_openings);
+          am2 = mesh("frame");
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4241,6 +4407,8 @@ fn main() {
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lm2, FLOOR_R, FLOOR_G, FLOOR_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
+          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(am2, FRAME_R, FRAME_G, FRAME_B)}");
+          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -4346,7 +4514,8 @@ fn main() {
               kmesh = mesh("roof");
               wmesh = mesh("wall");
               lmesh = mesh("floor");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans, door_leaves, wall_openings);
+              amesh = mesh("frame");
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4355,6 +4524,8 @@ fn main() {
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lmesh, FLOOR_R, FLOOR_G, FLOOR_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
+              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(amesh, FRAME_R, FRAME_G, FRAME_B)}");
+              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;

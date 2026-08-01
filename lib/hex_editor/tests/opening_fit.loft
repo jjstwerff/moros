@@ -181,3 +181,67 @@ fn test_any_profile_can_be_an_alcove() {
   assert(!hex_editor::opening_through(niche), "a pointed alcove is an alcove");
   assert(niche.op_hi > 8, "and still a pointed arch");
 }
+
+// ── the frame, which is the same profile one step out ───────────────────────
+
+fn frame_of(kind: integer) -> Opening {
+  hex_editor::opening_frame(prof(kind), 0.12, U)
+}
+
+fn test_a_frame_surrounds_its_opening_at_the_crown_and_at_the_jamb() {
+  // ⚠ THE PROPERTY THAT MAKES IT A RING. The renderer draws frame-minus-opening, so
+  // if the frame failed to enclose the hole anywhere the ring would be EMPTY there
+  // and the moulding would break — a frame with a gap in it reads as damage.
+  for k in [hex_editor::OP_FLAT, hex_editor::OP_ROUND,
+            hex_editor::OP_POINTED, hex_editor::OP_SEGMENT] {
+    o = prof(k);
+    f = frame_of(k);
+    assert(f.op_half > o.op_half, "profile {k}: the frame is wider");
+    assert(head_at(f, 0.0) > head_at(o, 0.0),
+           "profile {k}: and stands above the crown, {head_at(f, 0.0)} over {head_at(o, 0.0)}");
+    // ⚠ NOT "TALLER AT THE JAMB" — that was the first version of this line and it
+    // failed on the pointed head, correctly. Near a jamb the arc is almost VERTICAL,
+    // so an offset outward buys nearly no height; the ring there runs sideways. What
+    // must hold everywhere is that the frame still covers ground the opening does
+    // not, which just outside the jamb means it is cut where the opening is solid.
+    jlo = 0;
+    jhi = 0;
+    assert(hex_editor::opening_cuts(f, o.op_half + 0.02, 0.0, U, jlo, jhi),
+           "profile {k}: the frame reaches past the jamb");
+    assert(!hex_editor::opening_cuts(o, o.op_half + 0.02, 0.0, U, jlo, jhi),
+           "profile {k}: where the opening does not, so the ring has a side");
+    assert(f.op_lo < o.op_lo, "profile {k}: and reaches below the sill");
+  }
+}
+
+fn test_an_oculus_frame_is_concentric_and_not_a_crescent() {
+  // ⚠ THE ONE THAT CAUGHT THE BUG. A circle is struck about its own centre, which
+  // `opening_cuts` derives from the springing — so growing only the half-width lifts
+  // the frame's centre and the ring comes out thick below and nothing above. Both
+  // gaps are measured, and they have to match.
+  o = hex_editor::oculus_opening(0.0, 0.0, 1.2, 6, U, 1.0);
+  f = hex_editor::opening_frame(o, 0.12, U);
+  olo = 0; ohi = 0;
+  hex_editor::opening_cuts(o, 0.0, 0.0, U, olo, ohi);
+  flo = 0; fhi = 0;
+  hex_editor::opening_cuts(f, 0.0, 0.0, U, flo, fhi);
+  assert(fhi > ohi, "the frame clears the top: {ohi} -> {fhi}");
+  assert(flo < olo, "and the bottom: {olo} -> {flo}");
+  above = fhi - ohi;
+  below = olo - flo;
+  d = above - below;
+  if d < 0 { d = 0 - d; }
+  assert(d <= 1, "by the same amount top and bottom: {above} above, {below} below");
+}
+
+fn test_a_frame_keeps_the_shape_it_frames() {
+  // A pointed arch framed by a round one would be a different building. The family
+  // survives the offset because the offset is applied to the profile, not to a box.
+  assert(frame_of(hex_editor::OP_POINTED).op_kind == hex_editor::OP_POINTED,
+         "a pointed head keeps its point");
+  rf = frame_of(hex_editor::OP_ROUND);
+  sf = frame_of(hex_editor::OP_SEGMENT);
+  assert(head_at(frame_of(hex_editor::OP_POINTED), 0.0) > head_at(rf, 0.0),
+         "and still stands above a round frame of the same span");
+  assert(head_at(sf, 0.0) < head_at(rf, 0.0), "a segmental frame is still shallow");
+}

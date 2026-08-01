@@ -1624,6 +1624,48 @@ pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
   true
 }
 
+// ⚠ A FRAME IS THE OPENING ITSELF, OFFSET OUTWARD — which is why it needs no shape
+// of its own and works for every profile at once. An architrave that was a separate
+// rectangle would look right around a door and absurd around an oculus, and each new
+// head would need a matching surround drawn by hand; offsetting the curve gives a
+// round frame to a round head and a pointed one to a pointed head for free.
+//
+// The renderer draws the RING — what the frame covers minus what the opening does —
+// so this is only half a shape, and that is deliberate: the ring is a difference of
+// two profiles, and the difference of two things that are already correct cannot be
+// wrong in a way neither of them is.
+//
+// ⚠ THE CIRCLE MOVES ITS SPRINGING DOWN. Every other profile is struck from a fixed
+// springing line, so growing the half-width grows the head about it; a circle is
+// struck about its own CENTRE, which `opening_cuts` derives as `spring + half`. Grow
+// the half-width alone and the frame's centre climbs above the window's — a ring
+// thick at the bottom and thin at the top, which is a mistake, not a moulding.
+pub fn opening_frame(o: Opening, margin: float, unit: float) -> Opening {
+  // ⚠ THE MARGIN SNAPS TO WHOLE HEIGHT UNITS, and it has to. A springing is an
+  // INTEGER — heights are stored in units of `unit` — so a frame asked for 12 cm
+  // against a 25 cm unit grows sideways by 12 cm and upward by nothing, and for the
+  // circle, whose centre is derived FROM the springing, the two disagreements do not
+  // cancel: measured, the ring came out 0 units above and 2 below. Widening by the
+  // same whole number the springing moves by is the one spelling under which the
+  // frame is exactly concentric, so that is the offer the caller gets back.
+  mu = ((margin / unit ?? 0.0) as integer);
+  if mu < 1 { mu = 1; }
+  ef = (mu as float) * unit;
+  g = Opening {
+    op_x: o.op_x, op_z: o.op_z,
+    op_half: o.op_half + ef,
+    op_lo: o.op_lo - mu,
+    op_hi: o.op_hi + mu,
+    op_depth: o.op_depth,
+    op_spring: o.op_spring,
+    op_kind: o.op_kind,
+    op_radius: o.op_radius,
+  };
+  if o.op_radius > 0.0 { g.op_radius = o.op_radius + ef; }
+  if o.op_kind == OP_CIRCLE { g.op_spring = o.op_spring - mu; }
+  g
+}
+
 // The widest opening a wall of `run_len` can take at `at` along it — a hole cannot
 // reach past its own wall, and a shape that would is refused with this as the offer.
 pub fn opening_room(run_len: float, at: float) -> float {

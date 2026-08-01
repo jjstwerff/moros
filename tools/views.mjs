@@ -27,12 +27,12 @@ for (let i = 0; i < args.length; i++) {
 }
 
 // ⚠ Keep in step with `SURFACES` in `src/editor_server.loft`.
-const SURFACES = 7;
-const NAME = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor'];
+const SURFACES = 8;
+const NAME = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame'];
 const COLOUR = {
   ground: [0x3a, 0x4a, 0x28], road: [0x9a, 0x86, 0x5e], field: [0x6a, 0x8a, 0x3a],
   veg: [0x2e, 0x7a, 0x35], roof: [0xb0, 0x50, 0x42], wall: [0xe8, 0xe8, 0xe8],
-  floor: [0xc8, 0xbc, 0x9a],
+  floor: [0xc8, 0xbc, 0x9a], frame: [0xff, 0xd0, 0x60],
 };
 
 const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);

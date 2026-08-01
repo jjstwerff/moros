@@ -111,7 +111,7 @@ const GRADE = STRIDE;                    // the platform's own ground
 const DECK = GRADE + STOREY;             // …and its deck, one stride above the stair
 // ⚠ Keep equal to `SURFACES` in `src/editor_server.loft`. Index 6 is the FLOOR — the
 // seventh surface, added with this gate because a deck was walkable and INVISIBLE.
-const SURFACES = 7;
+const SURFACES = 8;
 const FLOOR_SURFACE = 6;
 const FLOOR_THICK = 2;                   // slab depth under a floor's top face
 const meshes = new Map();

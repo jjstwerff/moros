@@ -21,7 +21,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const status = [];
 const chunks = new Map();
 let st = 0;
-const SURFACES = 7;                  // ground, road, field, vegetation, roof, wall, floor
+const SURFACES = 8;                  // ground, road, field, vegetation, roof, wall, floor, frame
 const isWall = (id) => id > 15 && (id - 16) % SURFACES === 5;
 const ack = async (needle, limitMs = 40000) => {
   const from = status.length;
