@@ -59,6 +59,24 @@ green, and never wired to a consumer — `op_depth` reached the library and the 
 cut every opening through; `boom_take` was tested and the camera still eased straight to the
 raw sweep. A tested claim no consumer honours is a claim about nothing, and it passes CI.
 
+**Give a claim the instrument that can SEE it, and check that instrument against something it
+should find before trusting it to report an absence.** Three times in session 8 the obvious
+instrument was blind to the thing it was aimed at: a picture cannot see the wire (the camera's
+eased solve was published on no tick while its own trace read correctly); a chromaticity
+classifier cannot see LIGHT, by construction, so it cannot tell a head-lamp from a brighter
+ambient — only the spread *within one surface* can; and a colour cannot see a COUNT, so a
+deck's missing underside photographs identically to seeing the roof through it. When one
+instrument cannot answer, the answer is a second instrument, not a looser threshold.
+
+**What you cannot see must not occlude.** A camera that avoids a surface its own mode hides is
+avoiding nothing, and it parks the eye under the object it just removed — measured, a fixed
+14.14 boom collapsed to 1.57 against a roof CUTAWAY had already taken out of the picture.
+
+**A guard belongs where the thing arrives, and a fence where the value is USED.** Both were got
+wrong in one session while looking right: a re-send for "the arriving client" fired in the
+handler *before* a client joins the list, and a pitch fence applied only at the input let a
+mode change carry an out-of-fence value straight past it.
+
 **An instrument gets checked against something it SHOULD find before it is trusted to report
 an absence.** Four separate instruments were wrong before the thing they measured this
 session — a proxy counter reading the wrong channel (0 for a full set), two trace fields
@@ -166,20 +184,24 @@ address (or the hostname `make browser` prints) cannot connect.
 
 ## Scene tools
 
-- [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands, decisions taken, what is open
+- [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,
+  decisions taken, what is open. Short on purpose; the eight-session record is
+  [Journal](doc/claude/JOURNAL.md), which nothing thins
 - [Scripted editor](doc/claude/SCRIPTED_EDITOR.md) — **how the editor is driven and verified**: a script of key presses with ticks, every run recorded, a clock that can be stepped or sped up, and a PNG at every step. ⚠ Its §0 is the finding that reframes the structural work — `hex_draw` and friends already do what the editor hand-rolls
 - [Fittings](doc/claude/FITTINGS.md) — doors, windows, shutters as hinged assemblies. ⚠ Read its banner first: most of it is superseded by `hex_draw`
 - [Hex stack](doc/claude/HEX_STACK.md) — **the general design, and the single authority**: the three
   invariants (the store is the only authority, everything else is derived, writes go in place), the
   static/dynamic split, serverless distribution, the package register, and the translation table
-- [Wire protocol](doc/claude/WIRE_PROTOCOL.md) — the editor's socket **as it stands**: all 30 message
-  ids, every acknowledgement string, the seven ordering guarantees, and each message's fate under the
+- [Wire protocol](doc/claude/WIRE_PROTOCOL.md) — the editor's socket **as it stands**: every message
+  id, every acknowledgement string, the ordering guarantees, and each message's fate under the
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
-- [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **three camera modes over one query**: FOLLOW, SNUG
-  (claustrophobic) and CUTAWAY (de-roofed, for editing) want opposite answers from the same facts, so
-  the mode decides and `shelter_at` only observes. Measured, and design-only so far
+- [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **five camera settings over one query**: AUTO,
+  FOLLOW, SNUG (claustrophobic), CUTAWAY (de-roofed, for editing) and EYES (first person) want
+  opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
+  **All built and gated**; the doc records which of its own design sentences the measurements
+  refuted, which is most of its value
 - [Scene map](doc/claude/SCENE_MAP.md) — scene model
 - [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — renderer rules
 - [Scene editor](doc/claude/SCENE_EDITOR.md) — editor docs
