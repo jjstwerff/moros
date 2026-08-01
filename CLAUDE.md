@@ -54,6 +54,18 @@ wire half, or *checked and left whole* — because without that the next reader 
 honest ones by symmetry. ⚠ **Move before you remove**: three gates held claims no loft test
 made, and dropping one is a coverage cut wearing a tidy-up's clothes.
 
+**Check that what you built is called.** Twice this session a function was written, tested
+green, and never wired to a consumer — `op_depth` reached the library and the emitter still
+cut every opening through; `boom_take` was tested and the camera still eased straight to the
+raw sweep. A tested claim no consumer honours is a claim about nothing, and it passes CI.
+
+**An instrument gets checked against something it SHOULD find before it is trusted to report
+an absence.** Four separate instruments were wrong before the thing they measured this
+session — a proxy counter reading the wrong channel (0 for a full set), two trace fields
+carrying another variable's value, `readPixels` returning black without
+`preserveDrawingBuffer`, and reading a picture by eye. A wrong number is worse than a guess,
+because a number gets believed. When the picture and the numbers disagree, suspect both.
+
 **Cost is measured in `w_tau`, not seconds.** hex_world's edit clock bumps once per write
 that changed something, so a gesture's cost is an exact integer that is the same on any box
 and on a world of any size — `lib/hex_editor/tests/cost.loft`. A wall clock measures the

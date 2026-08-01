@@ -10,7 +10,101 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 6) — the gestures are FUNCTIONS now, and the editor is measured
+## ⏭ PICK UP HERE (2026-08-01, session 7) — a house has fittings, furniture and floors; the camera is measured but not fixed
+
+Session 6's rule still holds and everything below obeys it: **the store's rules are loft
+tests; the drawn result and the sentences are gates.** `lib/hex_editor` is **175 tests, 19
+files**; `make gate` is **28 gates green**. Session 6's own entry is below this one.
+
+### What exists now that did not
+
+An author can build a room you could describe to somebody. In order:
+
+| gesture | key | what it is |
+|---|---|---|
+| profile openings | `O P I U` | round, pointed, segmental heads and an oculus — the hole is cut to the SHAPE, not to whole hex edges |
+| reveal + frame | — | soffit, jambs, sill; a surround that is the opening OFFSET, drawn as frame-minus-opening |
+| alcove | `N` | the same profile stopped short — a niche with a back |
+| embrasure | `M` | a window in the NICHE's back: `op_near` names the surface a void is cut FROM |
+| bedstee / balcony | `J K` | an ANNEX — a volume attached to a host, three ordinary wall runs open toward it |
+| cupboard | `V` | a second annex sharing a party wall — five walls for two boxes, not six |
+| bed / statue | `Y T` | props FITTED to the void they sit in, never placed at a coordinate |
+| slab | `X Z` | a floor with a THICKNESS, and a hole through it with a reveal |
+
+The through-line, and the thing to preserve: **every one of these is the same machinery one
+axis or one field over.** A slab is the wall band rotated; a `Hole` is an `Opening` with its
+profile taken in plan; an alcove is a doorway with one field changed; a bedstee and a tree
+balcony differ in two numbers and a kind. If any of these ever needs a second struct, the
+design went wrong at that point.
+
+### ⚠ The camera indoors — measured, three faults fixed, one open
+
+Read [CAMERA_INDOORS.md](CAMERA_INDOORS.md) before touching this. It is the design (four
+modes over one query) and the log of what was measured.
+
+**Fixed and verified:** the boom's floor is gone (`boom_take` — it may take the room);
+a collapsing boom slides over a shoulder (`shoulder_reach`/`shoulder_take`); the pitch
+assist is suppressed under a shelter (`shelter_at`), restoring the player's own pitch.
+
+**Open, and now stated as a number rather than a picture:**
+
+```
+outside — the control   subject 1.54%   largest grass   53%   PASS
+inside, mid-floor       subject 0.09%   largest masonry 78%   FAIL
+inside, corner          subject 10.6%   largest masonry 78%   FAIL
+```
+
+`make camera-frame`. **The character was never missing** — it is 0.09% of the frame. The
+fault is that **masonry takes three quarters of the picture**. `sh_room`, the clear radius
+`shelter_at` already carries, is what has to drive the boom next; the question is how much
+wall a frame may hold, not where the eye ended up.
+
+⚠ That gate is **red on purpose and NOT in `make gate`**. It joins the suite when the
+interior camera is fixed.
+
+### ⚠ Four instruments were wrong before the thing they measured
+
+This is the session's real finding and it generalises past the camera. Every one of these
+produced a confident, wrong conclusion that a number appeared to support:
+
+1. **`edge_mat` on the collision proxy read 0** for a set holding 23 edges — blocking lives
+   in the SURFACE channel (`edge_block` writes it, `edge_blocked` reads it).
+2. **Two trace fields carried another variable's value.** `cam_free` and `cam_pt` are
+   assigned inside `if cam_moved || !cam_rested { … }` and were read outside it — `free`
+   reported a PITCH in radians. Every field that lied was one first assigned inside the
+   block; the ones declared with the camera's other state were right throughout.
+3. **`readPixels` returns black.** No `preserveDrawingBuffer`, so a read outside the render
+   loop sees a cleared buffer — 49500 samples, all black, beside a PNG of a house.
+4. **Reading a picture by eye** said "no character at all" four times. It was 0.09%.
+
+The rule earned: *an instrument gets checked against something it SHOULD find before it is
+trusted to report an absence.* My score on this camera was 2/5 on first guesses and 5/5 on
+measurements.
+
+### loft defects filed
+
+- **[#722](https://github.com/loft-lang/loft/issues/722)** (new) — a struct bound out of a
+  temporary's vector keeps a reference into freed storage: `rp = roofs().items[0]` read
+  correctly twice, then gave `rot 4294967204`. Fourteen-line reproducer, both backends.
+  **Bind the call's result to a local before indexing** — every fixture here now does.
+- **[#717](https://github.com/loft-lang/loft/issues/717)** (updated) — the SIGSEGV reduced
+  to eight lines with no imports: a closure that CAPTURES and CALLS a function returning a
+  STRUCT. Removing any one of those three makes it survive. `--native` is fine, the
+  interpreter faults, so it is a Goal D break too.
+
+### Where to look next, in the order that makes sense
+
+1. **The interior camera**, using `sh_room` — the one open fault, with a gate ready to go
+   green.
+2. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is tested
+   but the storey gesture does not use it yet. Same shape as `op_depth` reaching the library
+   and stopping there, which happened twice this session — **check that what you built is
+   called.**
+3. **The roof's underside**, as its own surface id. SNUG and EYES are unbuildable without
+   it and FOLLOW has been hiding the gap.
+4. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and props.
+
+## Session 6 — the gestures are FUNCTIONS now, and the editor is measured
 
 **Every world-writing gesture lives in `lib/hex_editor`.** `SCRIPTED_EDITOR.md` §2 said
 what is scriptable is what is a FUNCTION; it is done. `raise`, `fence`, `edge`, `storey`,
