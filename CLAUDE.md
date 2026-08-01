@@ -48,6 +48,18 @@ only** — never for library gaps.
 test it. Leave in the gate only what needs a running world, and measure what was actually
 *emitted*, never a number the producer re-derives.
 
+The division now has a home and a rule: **the store's rules are loft tests; the drawn result
+and the sentences are gates.** Every gate says at its top which it is — thinned, kept as the
+wire half, or *checked and left whole* — because without that the next reader thins the
+honest ones by symmetry. ⚠ **Move before you remove**: three gates held claims no loft test
+made, and dropping one is a coverage cut wearing a tidy-up's clothes.
+
+**Cost is measured in `w_tau`, not seconds.** hex_world's edit clock bumps once per write
+that changed something, so a gesture's cost is an exact integer that is the same on any box
+and on a world of any size — `lib/hex_editor/tests/cost.loft`. A wall clock measures the
+machine. When something is slow, find the instrument first: the editor's own `27:` tracer
+said the camera was 993 ms of every second, which no amount of reading would have.
+
 **Filing a loft defect** ([loft-lang/loft](https://github.com/loft-lang/loft/issues)): file
 it as an issue straight away — a closed ticket costs nothing here, so never hold a finding
 back to hunt for duplicates. `gh issue create` bypasses the issue form, so **put every

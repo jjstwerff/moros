@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-07-31)
+# STATE.md — where the editor work stands (2026-08-01)
 
 A handoff. What exists, what was decided, what is open. The durable *architecture* lives in
 [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md); the *changes* live in the tracker
@@ -10,7 +10,86 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-07-31, session 5) — the structural half is WRONG, and the harness to fix it exists
+## ⏭ PICK UP HERE (2026-08-01, session 6) — the gestures are FUNCTIONS now, and the editor is measured
+
+**Every world-writing gesture lives in `lib/hex_editor`.** `SCRIPTED_EDITOR.md` §2 said
+what is scriptable is what is a FUNCTION; it is done. `raise`, `fence`, `edge`, `storey`,
+`stair`, `field`, `stencil`, `scatter`, the wall run, the road, the modes' per-step work,
+the anchors and `place_house` — with `Author` (where the character is) and `Ack` (applied /
+refused with a named reason and offer / applied with its residual). The server keeps the
+socket, the tick, the dirty set and the SENTENCES. **69 tests, no port and no clock.**
+
+### The division, and it is written in the files rather than here
+
+> **The store's rules are loft tests. The drawn result and the sentences are gates.**
+
+Every gate carries its verdict at the top now — thinned, kept as the wire half, or *checked
+and left whole*. That last one matters: `terrain.mjs` reads only emitted vertices,
+`straight.mjs` is the archetype (`wallrun.loft` proves the edges a line marks, only the gate
+proves the drawn side), and the character suite measures a TRACE the walk owns. Without the
+note the next reader thins them by symmetry and loses coverage.
+
+⚠ **Move before you remove.** Three gates held claims no loft test made — the wheel's own
+rule (`wheel_value` is a function of travel, not a running total), a storey costing EXACTLY
+one layer however many columns it touches, and the ring's four-centre row-parity check. They
+went into loft first. A thinning that drops a claim nobody re-made is a coverage cut wearing
+a tidy-up's clothes.
+
+### What it costs, measured — the numbers to beat
+
+| | before | after |
+|---|---|---|
+| one cell written | 1 ms interp / 0.5 ms native | **12 µs** |
+| filling 10,201 cells | 15.8 s | **124 ms** |
+| a chunk rebuild | 36 ms | **24 ms** |
+| the camera, while walking | 993 ms of every second | **200-400 ms** |
+| the 28-gate suite | 40+ minutes | **24 s** |
+
+⚠ **`w_tau` is the unit.** hex_world's edit clock bumps once per write that CHANGED
+something, so a gesture's cost is an exact integer — a stroke is 91 writes, the same on a
+1,681-cell world and a 14,641-cell one. A wall clock could not say that; it measured the box.
+`tests/cost.loft` pins it, including that a refusal costs ZERO.
+
+### The standing checks, and why each exists
+
+- `make lib-test` runs **both backends** (loft's Goal D: per-backend green is not enough) and
+  **tees raw output** before filtering — a `SIGSEGV` once went out with the warnings.
+- `make gate` is **silent when green** (Goal F) and prints the gate's stderr when not, which
+  is where a timed-out wait announces itself. `GATE_VERBOSE=1` for timings.
+- `tools/layering.sh` fails if a lavition package names a Moros one. Two backwards arrows
+  were found on the way out of the server and neither was visible while the code sat in a
+  program that may call anything.
+
+### Open, in priority order
+
+1. **`S5` — `place_opening`**: a door and a window where the author stands. `hex_draw` has
+   it; the wall is drawn as one band already, so a feature is a sub-interval of it.
+2. **`emit_tri` still writes three fresh vertices per triangle.** The ground fan stopped
+   paying that (18 records → 7, a third off the rebuild); walls, roofs and props have not.
+3. ⚠ **Server startup regressed 1.4 s → 3.6 s** as the library grew — it loads `hex_editor`
+   and nine dependencies at every start, and that is the gate suite's dominant fixed cost.
+   Parallelism absorbs it; `--native` is worse (7.3 s) for a one-shot.
+4. **The prop gesture has not moved**, so `prop.mjs` still owns the accumulation claim.
+5. `hex_world` divergence (ours 0.1.0 by path, registry 0.2.0 a different lineage) —
+   unchanged, still to settle before `hex_editor` touches the store harder.
+
+### ⚠ If a picture comes back blank, it is the camera
+
+Three separate faults, all fixed, all in `tools/script.mjs`: a fixed 4 s sleep where a fresh
+client needs 6.5 s, an unclipped capture, and — the real one — `--use-gl=swiftshader` where
+the flags that switch the backend are `--use-gl=angle --use-angle=swiftshader`. With the old
+spelling the page DRAWS (`readPixels` returns a picture) and composites nothing, so the
+screenshot is the DOM over white. `make editor-check` rendering the same scene at 478 colours
+is the tell.
+
+### Filed upstream this session
+
+`loft#712` (a relative path with `..` is refused as a null size, absolute is served),
+`loft#714` (a `--lib` directory package is parsed without ITS dependencies — valid library
+code fails as `Expect token ;`), `loft#717` (a SIGSEGV in `loft test`, once, not reproduced
+in 14 runs — with the ask that the crash reporter also write to a file).
+
+## Earlier pick-up (2026-07-31, session 5) — the structural half is WRONG, and the harness to fix it exists
 
 **The headline, and it reframes the whole editor.** An inventory of `../loft-libs-world`
 turns up eight `hex_*` libraries this editor depends on **none** of — and they are exactly
