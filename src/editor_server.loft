@@ -1394,25 +1394,28 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
   emit_tri(m, a, bck, d, bck, c, bck);
 }
 
-// ── A WALL IS DRAWN FROM ITS RUN ────────────────────────────────────────────
+// ── A WALL IS DRAWN FROM ITS RUN, AND ITS HOLES FROM THEIR PROFILES ─────────
 //
-// **The edges are the index; the run is the truth.** A wall panel per hex edge is
-// a staircase — the plan view showed 65 of them zigzagging along a road that is
-// dead straight — because an edge is a boundary between two cells and a line
-// crossing the lattice crosses a staircase of them. Nothing about the storage is
-// wrong; it is the wrong thing to *draw*.
+// **The edges are the index; the run is the truth.** A wall panel per hex edge is a
+// staircase — the plan view showed 65 of them zigzagging along a road that is dead
+// straight — so the geometry walks the CENTRELINE and each span takes its base from
+// the ground beneath it: straight in plan, following the ground in section.
 //
-// So the geometry is walked along the CENTRELINE, in even steps, and each span
-// takes its base from the ground beneath it: straight in plan, following the
-// ground in section, which is what a wall does. The normal is the RUN's — the one
-// `hex_edge` measured a hex edge's own as wrong by up to 90° against.
-// ⚠ AND A WALL HAS TWO FACES (S3). The version above this one emitted one quad and
-// the same quad reversed — a wall with no thickness, which in elevation is a comb
-// of ticks and in a doorway is nothing at all. `hex_editor::run_wall` offsets the
-// centreline both ways by half of `hex_draw`'s band, so the strip has the width the
-// family presents a wall at, and the two faces plus a cap are three surfaces rather
-// than one drawn twice. A fence keeps the single sheet: it IS a sheet.
-fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
+// ⚠ AND THE OPENINGS ARE PROFILES, NOT EDGE MATERIALS. This asked each span what
+// material its nearest edge carried, which can only answer "wall, door or window"
+// — a rectangle, because an edge has no shape. An `Opening` carries its own
+// outline, so the span asks `opening_cuts` instead: at THIS point along the wall,
+// between which heights is it cut. A round head, a pointed arch, a segmental head
+// and an oculus all come back through the same call.
+//
+// ⚠ AND IT SUBDIVIDES WHERE ONE SITS. A span is half a world unit and a door is
+// 1.3 m, so an arch drawn at span resolution is two steps and a lie. Inside an
+// opening the span is cut into `OPEN_SUB` pieces, which is local, cheap, and the
+// difference between a curve and a staircase.
+const OPEN_SUB = 8;
+
+fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
+                 openings: hex_editor::Openings) {
   up = wall_up(run.wr_mat);
   if up <= 0 { return; }
   t = hex_way::track_new();
@@ -1423,87 +1426,95 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
   (tx, tz) = hex_way::seg_tangent(t, 0, 0.0);
   nrm = nrm3(0.0 - tz, 0.0, tx);
   bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
-  // Half the band for a wall, nothing for a fence — and the number is the library's.
   half = 0.0;
-  if run.wr_mat == WALL_MAT {
+  if run.wr_mat == hex_editor::WALL_MAT {
     rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
     if rw.rw_ok { half = rw.rw_half; }
   }
   ox = nrm.x * half;
   oz = nrm.z * half;
   upn = vec3(0.0, 1.0, 0.0);
+
   for i in 0..steps {
     sa = ln * (i as float) / (steps as float) ?? 0.0;
     sb = ln * ((i + 1) as float) / (steps as float) ?? 0.0;
-    (ax, az) = hex_way::seg_point(t, 0, sa);
-    (bx, bz) = hex_way::seg_point(t, 0, sb);
+    (max0, maz0) = hex_way::seg_point(t, 0, (sa + sb) * 0.5);
     // This chunk's span only — the midpoint decides, so a span belongs to exactly
     // one chunk and no seam draws twice.
-    mh = world_to_hex((ax + bx) * 0.5, (az + bz) * 0.5);
+    mh = world_to_hex(max0, maz0);
     if mh.ha_q >= q0 && mh.ha_q < q0 + CHUNK && mh.ha_r >= r0 && mh.ha_r < r0 + CHUNK {
-      // ⚠ S5 — AN OPENING IS A SUB-INTERVAL OF THE WALL, not a shorter wall. The
-      // edges under this span carry the material: `WALL_MAT` draws the full band,
-      // `DOOR_MAT` draws NOTHING (the hole you walk through), `WINDOW_MAT` draws a
-      // sill below and a head above so you can see through the middle.
-      //
-      // Asked per span rather than per run, which is the whole difference: a run's
-      // material would make the entire wall a door, and `wall_up` already does
-      // exactly that for a run laid as one. The band is what makes this possible —
-      // before S3 a wall was a zero-thickness sheet and a hole in it was a hole in
-      // nothing.
-      omat = hex_editor::edge_mat_at(wld, (ax + bx) * 0.5, (az + bz) * 0.5,
-                                     terrain_y(ax, az, wld));
-      // ⚠ A WINDOW IS TWO BANDS, not a raised floor. The first version set the
-      // bottom to the sill and kept the top, which draws the wall ABOVE the sill
-      // and leaves the hole at ground level — an opening you step through, not one
-      // you see through. The elevation said so immediately: a notch at the bottom
-      // where a window should be a gap in the middle.
-      //
-      // So a span is a LIST of bands: a wall is one, a door is none, a window is
-      // wall-to-sill and head-to-top with the light between them.
-      bands: vector<integer> = [0, up];
-      if omat == hex_editor::DOOR_MAT { bands = []; }
-      if omat == hex_editor::WINDOW_MAT {
-        bands = [0, hex_editor::WINDOW_SILL, hex_editor::WINDOW_HEAD, up];
+      // Finer steps only where an opening is, so a curve reads as a curve and a
+      // plain wall costs what it always did.
+      sub = 1;
+      for o0 in openings.items {
+        dxo = max0 - o0.op_x;
+        dzo = maz0 - o0.op_z;
+        if dxo * dxo + dzo * dzo < (o0.op_half + 0.6) * (o0.op_half + 0.6) { sub = OPEN_SUB; }
       }
-      gy0 = terrain_y(ax, az, wld);
-      gy1 = terrain_y(bx, bz, wld);
-      for bi in 0..len(bands) / 2 ?? 0 {
-      lo_u = bands[bi * 2] ?? 0;
-      hi_u = bands[bi * 2 + 1] ?? 0;
-      if hi_u <= lo_u { continue; }
-      ya = gy0 + (lo_u as float) * HEIGHT_SCALE;
-      yb = gy1 + (lo_u as float) * HEIGHT_SCALE;
-      ta = gy0 + (hi_u as float) * HEIGHT_SCALE;
-      tb = gy1 + (hi_u as float) * HEIGHT_SCALE;
-      // The front face, at +half; the back at -half. With half = 0 these are the
-      // same plane and the emission is the sheet a fence has always been.
-      f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
-      f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
-      b0 = vec3(ax - ox, ya, az - oz); b1 = vec3(bx - ox, yb, bz - oz);
-      b2 = vec3(bx - ox, tb, bz - oz); b3 = vec3(ax - ox, ta, az - oz);
-      emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
-      emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
-      emit_tri(m, b0, bck, b2, bck, b1, bck);
-      emit_tri(m, b0, bck, b3, bck, b2, bck);
-      if half > 0.0 {
-        // The cap. Without it a wall is two sheets with daylight between them,
-        // which reads worse than the single sheet it replaced.
-        emit_tri(m, f3, upn, f2, upn, b2, upn);
-        emit_tri(m, f3, upn, b2, upn, b3, upn);
-        // The ends, so a wall stops rather than fading out. Only the run's own
-        // ends, never a span seam — an interior cap would draw inside the wall.
-        if i == 0 {
-          sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
-          emit_tri(m, f0, sn, f3, sn, b3, sn);
-          emit_tri(m, f0, sn, b3, sn, b0, sn);
+      for j in 0..sub {
+        ja = sa + (sb - sa) * (j as float) / (sub as float) ?? 0.0;
+        jb = sa + (sb - sa) * ((j + 1) as float) / (sub as float) ?? 0.0;
+        (ax, az) = hex_way::seg_point(t, 0, ja);
+        (bx, bz) = hex_way::seg_point(t, 0, jb);
+        mx = (ax + bx) * 0.5;
+        mz = (az + bz) * 0.5;
+
+        // What this slice of wall is cut to. A wall with no opening over it is one
+        // band from the ground to its head; an opening replaces that with the two
+        // bands its profile leaves — below the sill and above the head — either of
+        // which may be empty.
+        lo_u = 0;
+        hi_u = up;
+        cut = false;
+        for o in openings.items {
+          colo = 0;
+          cohi = 0;
+          if hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+            cut = true;
+            lo_u = colo;
+            hi_u = cohi;
+          }
         }
-        if i == steps - 1 {
-          en = vec3(tx, 0.0, tz);
-          emit_tri(m, f1, en, b1, en, b2, en);
-          emit_tri(m, f1, en, b2, en, f2, en);
+        bands: vector<integer> = [0, up];
+        if cut { bands = [0, lo_u, hi_u, up]; }
+
+        gy0 = terrain_y(ax, az, wld);
+        gy1 = terrain_y(bx, bz, wld);
+        for bi in 0..len(bands) / 2 ?? 0 {
+          blo = bands[bi * 2] ?? 0;
+          bhi = bands[bi * 2 + 1] ?? 0;
+          if bhi > blo {
+            ya = gy0 + (blo as float) * HEIGHT_SCALE;
+            yb = gy1 + (blo as float) * HEIGHT_SCALE;
+            ta = gy0 + (bhi as float) * HEIGHT_SCALE;
+            tb = gy1 + (bhi as float) * HEIGHT_SCALE;
+            f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
+            f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
+            b0 = vec3(ax - ox, ya, az - oz); b1 = vec3(bx - ox, yb, bz - oz);
+            b2 = vec3(bx - ox, tb, bz - oz); b3 = vec3(ax - ox, ta, az - oz);
+            emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+            emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+            emit_tri(m, b0, bck, b2, bck, b1, bck);
+            emit_tri(m, b0, bck, b3, bck, b2, bck);
+            if half > 0.0 {
+              // The cap, and the REVEAL. A band's top face closes the wall; inside
+              // an opening the same face is the head's soffit, which is what gives
+              // a hole depth instead of looking like paper.
+              emit_tri(m, f3, upn, f2, upn, b2, upn);
+              emit_tri(m, f3, upn, b2, upn, b3, upn);
+              if i == 0 && j == 0 {
+                sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+                emit_tri(m, f0, sn, f3, sn, b3, sn);
+                emit_tri(m, f0, sn, b3, sn, b0, sn);
+              }
+              if i == steps - 1 && j == sub - 1 {
+                en = vec3(tx, 0.0, tz);
+                emit_tri(m, f1, en, b1, en, b2, en);
+                emit_tri(m, f1, en, b2, en, f2, en);
+              }
+            }
+          }
         }
-      }
       }
     }
   }
@@ -1583,11 +1594,11 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves) {
+                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
-  for run in runs.items { emit_run_wall(wm, run, wld, q0, r0); }
+  for run in runs.items { emit_run_wall(wm, run, wld, q0, r0, openings); }
   for lf in leaves.items {
     if lf.dl_q >= q0 && lf.dl_q < q0 + CHUNK && lf.dl_r >= r0 && lf.dl_r < r0 + CHUNK {
       emit_leaf(wm, lf, wld);
@@ -2979,6 +2990,9 @@ fn main() {
   // fitting's. Kept beside the roofs for the same reason: the renderer needs the
   // thing, not the cells under it.
   door_leaves = hex_editor::DoorLeaves { items: [] };
+  // The holes, as PROFILES. The store's edge materials say which boundary is
+  // passable; these say what shape the hole through it is.
+  wall_openings = hex_editor::Openings { items: [] };
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // The collision proxy and its validity, keyed on the cell, the edit clock and
@@ -3595,34 +3609,56 @@ fn main() {
           ccell = world_ground_cell(wld, cq2, cr2);
           srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
         } else if ev.msg_id == MSG_OPEN {
-          // ⚠ THE WHOLE GESTURE IS `hex_editor::open_ahead`, and the payload is the
-          // KIND — `2` a door, `4` a window. Both are materials on the edge, never a
-          // cleared one (`X70`): the boundary stays, and what changes is what it is
-          // made of, which is why the wall run still recovers as one.
-          okind = ev.payload as integer ?? hex_editor::DOOR_MAT;
-          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw), okind, 1);
+          // ⚠ THE PAYLOAD IS A PROFILE NOW, not a material. `36:<kind>` picks the
+          // outline — 0 flat, 1 round, 2 pointed, 3 segmental, 4 an oculus — and the
+          // hole is cut to the SHAPE that goes in it rather than to a whole number
+          // of hex edges. The edge material still changes, because that is the
+          // store's index of which boundary is passable and what `X70` protects;
+          // the profile is what the picture and the fitting read.
+          okind = ev.payload as integer ?? hex_editor::OP_ROUND;
+          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw),
+                                        hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
             srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
             println("editor: opening refused — {oack.ak_why}");
           } else {
-            if okind == hex_editor::DOOR_MAT {
-              // ⚠ HUNG AJAR, NOT SHUT — `F-READ`. A door at 0 degrees is a
-              // rectangle on a wall; at 35 it is a door, and that is the whole
-              // reason this step exists.
-              ohx = world_to_hex(px, pz);
-              for od in 0..6 {
-                if hex_editor::wall_of(wld, ohx.ha_q, ohx.ha_r, od, py)
-                   == hex_editor::DOOR_MAT {
-                  door_leaves.items += [hex_editor::DoorLeaf {
-                    dl_q: ohx.ha_q, dl_r: ohx.ha_r, dl_dir: od,
-                    dl_angle: hex_editor::LEAF_AJAR, dl_up: WALL_UP }];
-                }
+            // ⚠ THE HOLE GOES ON THE WALL, not at the cell's centre. A cell
+            // centre can sit half a hex off the run — 0.75 m — and an opening 1.1 m
+            // wide centred there misses the wall entirely: measured, three of four
+            // profiles cut nothing at all while the fourth worked by luck of
+            // rounding. The author stands BESIDE a wall, so the hole is at the
+            // nearest point ON it, which is a projection rather than a lookup.
+            owx = px;
+            owz = pz;
+            obest = 1000000.0;
+            for orun in wall_runs.items {
+              ot = hex_way::track_new();
+              hex_way::track_straight(ot, orun.wr_x0, orun.wr_z0, orun.wr_x1, orun.wr_z1);
+              od = hex_way::seg_distance(ot, 0, px, pz);
+              if od < obest {
+                obest = od;
+                olen = hex_way::seg_len(ot, 0);
+                (odx, odz) = hex_way::seg_tangent(ot, 0, 0.0);
+                os = (px - orun.wr_x0) * odx + (pz - orun.wr_z0) * odz;
+                if os < 0.0 { os = 0.0; }
+                if os > olen { os = olen; }
+                (owx, owz) = hex_way::seg_point(ot, 0, os);
               }
             }
+            ow = vec3(owx, 0.0, owz);
+            if okind == hex_editor::OP_CIRCLE {
+              wall_openings.items += [hex_editor::oculus_opening(
+                ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, 1.0)];
+            } else if okind == hex_editor::OP_FLAT {
+              wall_openings.items += [hex_editor::door_opening(ow.x, ow.z, 0.9, WALL_UP)];
+            } else {
+              wall_openings.items += [hex_editor::profile_opening(
+                ow.x, ow.z, 1.1, 0, 7, okind, 0.0, HEIGHT_SCALE, 1.0)];
+            }
             mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
-            srv.send_to(ev.cid, "S:opened {oack.ak_n} edges at {oack.ak_q},{oack.ak_r} "
-                              + "as material {okind}");
-            println("editor: opened {oack.ak_n} edges at ({oack.ak_q},{oack.ak_r})");
+            srv.send_to(ev.cid, "S:opened a profile {okind} hole at "
+                              + "{oack.ak_q},{oack.ak_r}");
+            println("editor: opened profile {okind} at ({oack.ak_q},{oack.ak_r})");
           }
         } else if ev.msg_id == MSG_HOUSE {
           // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
@@ -4196,7 +4232,7 @@ fn main() {
           km2 = mesh("roof");
           wm2 = mesh("wall");
           lm2 = mesh("floor");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans, door_leaves);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans, door_leaves, wall_openings);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4310,7 +4346,7 @@ fn main() {
               kmesh = mesh("roof");
               wmesh = mesh("wall");
               lmesh = mesh("floor");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans, door_leaves);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans, door_leaves, wall_openings);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

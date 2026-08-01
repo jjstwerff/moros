@@ -56,8 +56,10 @@ const KEYMAP = {
   B: '12:1', C: '12:-1',  // a storey above, a cellar below
   R: '25:1',              // a wall run — two presses, start and end
   H: '32:',               // a house where you are looking (S4)
-  O: '36:2',              // a door in the wall you are against (S5)
-  P: '36:4',              // …and a window
+  O: '36:1',              // a ROUND-headed opening in the wall you face
+  P: '36:2',              // …a POINTED one
+  I: '36:3',              // …a segmental one
+  U: '36:4',              // …and an oculus, a round window
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
