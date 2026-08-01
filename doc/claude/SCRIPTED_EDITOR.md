@@ -95,7 +95,7 @@ throughout so there is always something to look at.
 | `S1` | **`lib/hex_editor`** with `hex_draw`/`hex_shape`/`hex_form`/`hex_roof`/`hex_place` as registry deps, and one test: `Plan` → `box_fill` → `draw_walls` → `surface_quad` is one exact flat surface | *(no PNG — a pure test; the seam either compiles and passes or it does not)* |
 | `S2` | **elevation raster** beside `plan.mjs`: geometry in, PNG out, no GPU | the current hut, in plan and elevation — the zigzag made visible |
 | `S3` | ✅ **a wall run lays a WALL** — the line's own edges, at `hex_draw`'s band | `shots/s3-wall.png` — it reads as a wall; `tools/scripts/wall.keys` builds it |
-| `S4` | **a footprint** — `box_fill` + `seat_write` from the character's pose | four walls that meet at mitred corners |
+| `S4` | ✅ **a house from the pose** — `box_fill`, `seat_write`, four mitred sides | `shots/s4-house.png`: the plan closes at every corner |
 | `S5` | **`place_opening`** — a door and a window where the character stands | a wall with a hole you can see through |
 | `S6` | **`draw_roof`** | it reads as a house |
 | `S7` | **`src/editor_run`** — the script drives those functions with no server at all | the same house, built headless |

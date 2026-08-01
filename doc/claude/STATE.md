@@ -48,8 +48,9 @@ is wrong — which is how `25:` passed its gate for months while drawing a road.
 | `S1` | ✅ `lib/hex_editor` on the real library, 5 tests | corner gap seen red at 0.45 wu |
 | `S2` | ✅ `tools/views.mjs` — plan + elevation PNGs, no GPU, passive | showed the road-with-lines exactly |
 | `S3` | ✅ **a wall run lays a wall** — 6 tests, three mutations seen red | `shots/s3-wall.png`, and it reads as a wall |
-| `S4` | **NEXT** — a footprint: `box_fill` + `seat_write`, and `surface_quad`'s mitre at last | four walls that meet |
-| `S5`–`S8` | `place_opening` · `draw_roof` · headless runner · the swinging door | |
+| `S4` | ✅ **a house, placed from the pose** — `H`, and the corners MEET | `shots/s4-house.png` |
+| `S5` | **NEXT** — `place_opening`: a door and a window where the author stands | a wall with a hole you can see through |
+| `S6`–`S8` | `draw_roof` · headless runner · the swinging door | |
 
 **What `S3` found, and it was one line rather than three.** `25:` carries the material —
 `1` is `WALL_MAT`, `3` is `FENCE_MAT` — and `do_wall` **paved a road whatever it was told**.

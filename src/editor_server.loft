@@ -295,6 +295,11 @@ const MSG_FENCE = 23;     // fences: ring the disc you stand in (moros#10)
 const MSG_EDGE = 24;      // and the atomic half of it — one edge, one material
 const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
 const MSG_CELL = 26;      // read one cell's surface material and height back
+// S4 — a house placed where the author is looking. 32 was the first free id;
+// 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
+const MSG_HOUSE = 32;
+const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
+const HOUSE_D = 4;        // not the parameters
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
 // Read the camera's own convergence back. The boom and the lift EASE toward their
 // targets, so "where is the eye" has no answer until the ease has arrived — and a
@@ -2883,6 +2888,7 @@ fn main() {
   println("  E/Q cut one step up/down into the cell ahead — three steps is a storey");
   println("  B/C a storey above / a cellar below · L level · F ring a fence");
   println("  R a STRAIGHT wall run — press once to start it, once to close it");
+  println("  H a HOUSE where you are looking — four walls that MEET (S4)");
 
   // The manual connection pool. `srv.run(on_event)` is the supported
   // multi-client path but it does not surface HTTP requests, so a server that
@@ -3409,6 +3415,24 @@ fn main() {
           }
           ccell = world_ground_cell(wld, cq2, cr2);
           srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
+        } else if ev.msg_id == MSG_HOUSE {
+          // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
+          // what a server owes: the grade under the author's feet, the chunks to
+          // rebuild, and saying what happened. A refusal carries the rotation that
+          // would have worked — the lattice has six placeable facings of twelve,
+          // and the author is owed the one to turn to rather than a silent 30°
+          // swing of their building.
+          hgrade = py_of(wld, px, pz);
+          hack = hex_editor::place_house(wld, hex_editor::author_at(px, pz, yaw),
+                                         HOUSE_W, HOUSE_D, hgrade, wall_runs);
+          if !hack.ak_ok {
+            srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
+            println("editor: house refused — {hack.ak_why}");
+          } else {
+            mark_dirty(dirty, hack.ak_q, hack.ak_r, HOUSE_W + HOUSE_D + 4);
+            srv.send_to(ev.cid, "S:{hack.ak_why}");
+            println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
+          }
         } else if ev.msg_id == MSG_WALL {
           do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, wall_runs, wall_draft);
         } else if ev.msg_id == MSG_STENCIL {

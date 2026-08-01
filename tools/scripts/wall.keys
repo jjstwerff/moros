@@ -24,3 +24,11 @@ wait rebuilt
 echo --- stand off to the south and look at it side-on
 at 0 6 -90
 snap s3-wall
+
+echo --- and a house, which needs a facing the lattice can mitre
+at -8 -8 30
+key H
+
+echo --- stand well back and look at the house
+at -16 -16 40
+snap s4-house

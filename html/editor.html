@@ -319,6 +319,9 @@ addEventListener('keydown', (e) => {
   // zigzags along their edges by construction. They are different tools, and the
   // straight one had no key at all.
   if (e.code === 'KeyR') { ws.send('25:1');  e.preventDefault(); return; }
+  // ⚠ MUST MATCH tools/script.mjs's KEYMAP — a key that does something different
+  // in the page than in the driver makes every script a lie.
+  if (e.code === 'KeyH') { ws.send('32:');   e.preventDefault(); return; }
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

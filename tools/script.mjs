@@ -55,6 +55,7 @@ const KEYMAP = {
   E: '30:1', Q: '30:-1',  // cut one step into the cell ahead
   B: '12:1', C: '12:-1',  // a storey above, a cellar below
   R: '25:1',              // a wall run — two presses, start and end
+  H: '32:',               // a house where you are looking (S4)
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
@@ -80,9 +81,21 @@ async function browser() {
   const chrome = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
     .find((c) => spawnSync('which', [c]).status === 0);
   if (!chrome) { console.log('  !! no chrome — state dump only'); return false; }
+  // ⚠ THE THREE FLAGS TOGETHER, and `--use-gl=angle` rather than
+  // `--use-gl=swiftshader`. This spawned Chrome with the older spelling and got a
+  // WebGL2 context that DREW — `readPixels` returned a full picture — but composited
+  // nothing, so `Page.captureScreenshot` returned the DOM over white. Two blank
+  // PNGs this session, S3's wall and S4's house, while `html_render_check.mjs`
+  // photographed the same scene at 478 distinct colours with these flags.
+  //
+  // A picture that is blank for a browser-flag reason is the worst possible
+  // failure here: the method is "every step ends in a PNG", so a broken camera
+  // reads as broken work.
   proc = spawn(chrome, ['--headless=new', `--remote-debugging-port=${CDP}`,
-    '--no-sandbox', '--disable-gpu-sandbox', '--use-gl=swiftshader',
-    '--enable-unsafe-swiftshader', '--window-size=1200,800', 'about:blank'],
+    '--no-sandbox', '--enable-unsafe-swiftshader',
+    '--use-gl=angle', '--use-angle=swiftshader',
+    '--mute-audio', '--hide-scrollbars',
+    '--window-size=1200,800', 'about:blank'],
     { stdio: 'ignore' });
   const page = (await cdpJson('/json/list')).find((t) => t.type === 'page');
   cdp = new WebSocket(page.webSocketDebuggerUrl);
@@ -91,7 +104,39 @@ async function browser() {
     if (m.id && cdpPending.has(m.id)) { cdpPending.get(m.id)(m.result); cdpPending.delete(m.id); } });
   await call('Page.enable');
   await call('Page.navigate', { url: `http://127.0.0.1:${PORT}/` });
-  await sleep(4000);          // let it connect, stream and draw a frame
+
+  // ⚠ WAIT FOR THE CANVAS, NOT THE CLOCK. This was `await sleep(4000)` — a guess
+  // that the page had connected, streamed and drawn — and it wrote BLANK PNGs
+  // twice: S3's wall and S4's house both photographed an empty canvas while
+  // `make editor-check` rendered the same scene at 478 distinct colours. Measured
+  // afterwards, a fresh client needs about 6.5s to reach a drawn frame (3.6s for
+  // the server to load and build, then connect, opening burst, camera), so four
+  // was never going to be enough — and a blank picture is worse than no picture,
+  // because it reads as a broken renderer.
+  //
+  // So it asks the canvas how many distinct colours it holds, the same question
+  // `html_render_check.mjs` asks, and waits until the answer says something is
+  // drawn. It SAYS SO on timeout rather than writing the blank frame silently.
+  const colours = async () => {
+    const r = await call('Runtime.evaluate', { returnByValue: true, expression: `
+      (() => {
+        const c = document.querySelector('#gl');
+        if (!c || !c.width) return 0;
+        const g = c.getContext('webgl2') || c.getContext('webgl');
+        if (!g) return 0;
+        const px = new Uint8Array(c.width * c.height * 4);
+        g.readPixels(0, 0, c.width, c.height, g.RGBA, g.UNSIGNED_BYTE, px);
+        const seen = new Set();
+        for (let i = 0; i < px.length; i += 4 * 997) seen.add(px[i] << 16 | px[i+1] << 8 | px[i+2]);
+        return seen.size;
+      })()` });
+    return r?.result?.value ?? 0;
+  };
+  for (let t = 0; t < 20000; t += 250) {
+    await sleep(250);
+    if (await colours() >= 12) return true;
+  }
+  console.log('  !! the page never drew — the picture will be blank, and that is the finding');
   return true;
 }
 
@@ -136,7 +181,22 @@ async function snap(name) {
   await ack('snapshot', 10000);
   if (!shots) { console.log(`  … snap ${tag} — state only (pass --shots for a picture)`); return; }
   if (!(await browser())) return;
-  const shot = await call('Page.captureScreenshot', { format: 'png' });
+  // ⚠ CLIPPED TO THE CANVAS, and that is not framing — it is the difference
+  // between a picture and a blank page. An unclipped `Page.captureScreenshot`
+  // under `--use-gl=swiftshader` does not composite the WebGL layer: it returns
+  // the DOM (the HUD) over white, twice in this session, while
+  // `html_render_check.mjs` rendered the same scene at 478 distinct colours by
+  // capturing WITH a clip. Ask the canvas where it is and photograph that.
+  const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
+    (() => { const el = document.querySelector('#gl');
+             if (!el) return null;
+             const r = el.getBoundingClientRect();
+             if (r.width < 1 || r.height < 1) return null;
+             return { x: r.x, y: r.y, width: r.width, height: r.height }; })()` }))
+    ?.result?.value;
+  const shot = await call('Page.captureScreenshot',
+                          rect ? { format: 'png', clip: { ...rect, scale: 1 } }
+                               : { format: 'png' });
   fs.mkdirSync('shots', { recursive: true });
   fs.writeFileSync(`shots/${tag}.png`, Buffer.from(shot.data, 'base64'));
   console.log(`  … snap ${tag} → shots/${tag}.png`);

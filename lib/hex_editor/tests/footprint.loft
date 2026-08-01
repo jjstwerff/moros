@@ -147,3 +147,57 @@ fn test_seating_reports_what_it_cost() {
   r1 = hex_editor::footprint_seat(cells, slope, SEAT_MEAN);
   assert(r1 > 0.0, "a slope costs cut and fill, and it is reported: {r1}");
 }
+
+// ── the gesture the footprint was built for ─────────────────────────────────
+
+fn housed_world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 24..25 {
+    for r in 0 - 24..25 { hex_editor::ground_set(w, q, r, 12, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn test_a_house_lands_with_a_floor_and_four_walls() {
+  w = housed_world();
+  runs = hex_editor::WallRuns { items: [] };
+  ack = hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, PI / 6.0 ?? 0.0),
+                                HOUSE_W, HOUSE_D, 12, runs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
+  assert(ack.ak_residual > 0, "and it marked wall edges, got {ack.ak_residual}");
+  assert(len(runs.items) == hex_editor::PLAN_SIDES,
+         "four runs for the renderer, got {len(runs.items)}");
+}
+
+fn test_the_four_runs_meet_end_to_end() {
+  // ⚠ S4'S PICTURE, AS A NUMBER. The runs are laid from `surface_quad`'s mitred
+  // corners, so consecutive sides share an endpoint EXACTLY — which is the whole
+  // difference between four walls and a house. Exact equality, no tolerance: the
+  // un-mitred span leaves visible corner gaps, measured at 0.45 wu in S1.
+  w = housed_world();
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, PI / 6.0 ?? 0.0),
+                          HOUSE_W, HOUSE_D, 12, runs);
+  for i in 0..hex_editor::PLAN_SIDES {
+    j = (i + 1) % hex_editor::PLAN_SIDES ?? 0;
+    a = runs.items[i] ?? hex_editor::WallRun {};
+    b = runs.items[j] ?? hex_editor::WallRun {};
+    assert(a.wr_x1 == b.wr_x0 && a.wr_z1 == b.wr_z0,
+           "run {i} ends where run {j} begins: ({a.wr_x1},{a.wr_z1}) vs ({b.wr_x0},{b.wr_z0})");
+  }
+}
+
+fn test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing() {
+  // The lattice's own limit reaching the author: due east has no mitred corners,
+  // and a refusal must leave the world exactly as it was.
+  w = housed_world();
+  runs = hex_editor::WallRuns { items: [] };
+  before = w.w_tau;
+  ack = hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, 0.0),
+                                HOUSE_W, HOUSE_D, 12, runs);
+  assert(!ack.ak_ok, "due east is refused");
+  assert(ack.ak_why.contains("offer"), "with the rotation that would work: {ack.ak_why}");
+  assert(w.w_tau == before, "and nothing was written: τ {before} -> {w.w_tau}");
+  assert(len(runs.items) == 0, "and no runs were handed to the renderer");
+}

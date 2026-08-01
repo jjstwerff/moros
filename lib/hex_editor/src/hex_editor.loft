@@ -245,3 +245,51 @@ pub fn footprint_seat(cells: HexSet, terr: Heights, policy: integer) -> float {
   seat_write(cells, terr, z);
   cost
 }
+
+// ── S4: PLACE A HOUSE ───────────────────────────────────────────────────────
+//
+// The gesture the footprint was built for: an author stands somewhere, looks
+// somewhere, and a rectangle lands in front of them with four walls that MEET.
+// `pose_footprint` decides where, `box_fill` says which cells, `footprint_walls`
+// gives the four sides mitred against each other by `surface_quad` — the editor
+// never computes a corner here.
+//
+// ⚠ A FACING CAN BE REFUSED, and it is the LATTICE refusing rather than this
+// code. A rectangle turns in twelve 30° steps and only the six whose own axis lies
+// on an edge heading have a `Plan`; only a `Plan` can be mitred. The rectangle's
+// axis is 90° off the author's facing, so the placeable facings are the odd ones —
+// 30°, 90°, 150°, 210°, 270°, 330°. An author looking due east cannot place a
+// house with mitred corners, and is told so with the rotation that can.
+//
+// The walls are laid as four RUNS whose ends are the mitred corners, so S3's band
+// draws them and two consecutive sides share an endpoint exactly — the strips meet
+// on the centreline instead of overshooting each other by half a wall.
+pub fn place_house(w: &World, a: Author, wid: integer, dep: integer,
+                   grade: integer, runs: WallRuns) -> Ack {
+  f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
+  if !f.fp_ok {
+    return ack_no("a footprint at this facing has no mitred corners; turn one step "
+                + "(rot {f.fp_rot} of 12, offer {f.fp_offer}, residual {f.fp_residual})");
+  }
+  pad = wid + dep + 4;
+  cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  n = footprint_fill(f, cells);
+  for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, q, r) { ground_set(w, q, r, grade, FLOOR_MAT); }
+    }
+  }
+  qs = footprint_walls(f, cells);
+  marked = 0;
+  for i in 0..PLAN_SIDES {
+    side = qs[i] ?? WallQuad {};
+    m = 0;
+    wall_stamp(w, WallRun { wr_x0: side.wq_x0, wr_z0: side.wq_y0,
+                            wr_x1: side.wq_x1, wr_z1: side.wq_y1,
+                            wr_mat: WALL_MAT, wr_step: 0 },
+               WALL_MAT, grade, runs, m);
+    marked = marked + m;
+  }
+  ack_at(ack_about(n, "house placed {n} cells and {marked} wall edges", marked),
+         f.fp_cq, f.fp_cr)
+}
