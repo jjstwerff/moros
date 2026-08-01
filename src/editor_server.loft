@@ -298,6 +298,9 @@ const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
 const MSG_HOUSE = 32;
+const MSG_SEAT  = 38;     // WHAT STANDS IN A VOID — `38:0` a bed, `38:1` a statue.
+                          // Seated in the nearest void that has room; refused with
+                          // the room it would need, never placed at a coordinate.
 const MSG_ANNEX = 37;     // an ATTACHED VOLUME — a bedstee, a balcony, a porch.
                           // `37:<kind>` — 0 a closed box, 1 an open deck with a rail.
 const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you face
@@ -1890,7 +1893,7 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns) {
+                    fm: Mesh, am: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
@@ -1900,6 +1903,21 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
     (aq, ar) = px_to_hex(anx.an_x, anx.an_z);
     if aq >= q0 && aq < q0 + CHUNK && ar >= r0 && ar < r0 + CHUNK {
       emit_annex_deck(fm, anx, wld);
+    }
+  }
+  // ⚠ EACH PROP LANDS IN THE MESH WHOSE MATERIAL IT IS — a bed in the joinery the
+  // deck is drawn in, a statue in the dressed stone the mouldings are. That is not a
+  // shortcut around a ninth surface: it is what the material means, and a prop
+  // system with a colour of its own would have to answer why a wooden bed is not
+  // the same wood as the floor it stands on.
+  for prp in props.items {
+    (pq, pr2) = px_to_hex(prp.pr_x, prp.pr_z);
+    if pq >= q0 && pq < q0 + CHUNK && pr2 >= r0 && pr2 < r0 + CHUNK {
+      if hex_editor::prop_material(prp.pr_kind) == hex_editor::PROP_STONE {
+        emit_prop(am, prp, wld);
+      } else {
+        emit_prop(fm, prp, wld);
+      }
     }
   }
   for lf in leaves.items {
@@ -2339,6 +2357,45 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 
 // One triangle with a normal PER VERTEX, so the shading interpolates across it
 // instead of flooding it with one facet's value.
+// ⚠ A PROP IS A LIST OF BOXES AND THE RENDERER ASKS NO QUESTIONS. Where a pillow
+// goes, how tall a plinth is, whether a bed lies along the wall — all of that is
+// `hex_editor`'s and tested there. What crosses the seam is six faces at a time,
+// which is the only reason a bed and a statue share one emitter.
+fn emit_prop(m: Mesh, p: Prop, wld: World) {
+  gy = terrain_y(p.pr_x, p.pr_z, wld);
+  tx = 0.0 - p.pr_nz;
+  tz = p.pr_nx;
+  for i in 0..hex_editor::prop_parts(p) {
+    cx = 0.0;
+    cz = 0.0;
+    hu = 0.0;
+    ht = 0.0;
+    lo = 0;
+    hi = 0;
+    hex_editor::prop_part(p, i, cx, cz, hu, ht, lo, hi);
+    ylo = gy + (lo as float) * HEIGHT_SCALE;
+    yhi = gy + (hi as float) * HEIGHT_SCALE;
+    ux = p.pr_nx * hu;
+    uz = p.pr_nz * hu;
+    vx = tx * ht;
+    vz = tz * ht;
+    a0 = vec3(cx - ux - vx, ylo, cz - uz - vz);
+    a1 = vec3(cx + ux - vx, ylo, cz + uz - vz);
+    a2 = vec3(cx + ux + vx, ylo, cz + uz + vz);
+    a3 = vec3(cx - ux + vx, ylo, cz - uz + vz);
+    b0 = vec3(a0.x, yhi, a0.z);
+    b1 = vec3(a1.x, yhi, a1.z);
+    b2 = vec3(a2.x, yhi, a2.z);
+    b3 = vec3(a3.x, yhi, a3.z);
+    emit_quad_n(m, b0, b1, b2, b3);
+    emit_quad_n(m, a3, a2, a1, a0);
+    emit_quad_n(m, a0, a1, b1, b0);
+    emit_quad_n(m, a1, a2, b2, b1);
+    emit_quad_n(m, a2, a3, b3, b2);
+    emit_quad_n(m, a3, a0, b0, b3);
+  }
+}
+
 // ⚠ THE ANNEX'S OWN FLOOR — the one surface its wall runs cannot give it. Its walls
 // are three ordinary runs, so faces, openings, reveals and mouldings all arrive for
 // free; what a run has never had is a horizontal slab between its ends. A balcony
@@ -3388,6 +3445,7 @@ fn main() {
   // and a list that was appended to could only grow. Rebuilding the whole row is
   // the same rule the store keeps: one authority, everything else derived.
   annex_walls = WallRuns { items: [] };
+  wall_props = hex_editor::Props { items: [] };
   // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
   ring_live = false;
   ring_x = 0.0;
@@ -4120,6 +4178,84 @@ fn main() {
                               + "{oack.ak_q},{oack.ak_r}");
             println("editor: opened profile {okind} at ({oack.ak_q},{oack.ak_r})");
           }
+        } else if ev.msg_id == MSG_SEAT {
+          // ⚠ THE VOID IS ASKED, NOT THE AUTHOR. A prop takes the measure of what it
+          // sits in — so this gesture picks a void and seats the thing, and every
+          // dimension comes back from `hex_editor`. Nothing here knows how long a
+          // bed is, which is the point: the box does.
+          pkind = ev.payload as integer ?? hex_editor::PROP_BED;
+          if pkind == hex_editor::PROP_BED {
+            pbest = 0 - 1;
+            pbd = 1000000.0;
+            pbi = 0;
+            for pan in wall_annexes.items {
+              if pan.an_kind == hex_editor::AN_BOX {
+                pdx = pan.an_x - px;
+                pdz = pan.an_z - pz;
+                pdd = pdx * pdx + pdz * pdz;
+                if pdd < pbd { pbd = pdd; pbest = pbi; }
+              }
+              pbi = pbi + 1;
+            }
+            if pbest < 0 {
+              srv.send_to(ev.cid, "S:no box to put a bed in — press J first");
+            } else {
+              pbox = wall_annexes.items[pbest] ?? hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, hex_editor::AN_BOX);
+              pbed = hex_editor::bed_in_annex(pbox);
+              pack = hex_editor::prop_fits(pbed);
+              if !pack.ak_ok {
+                srv.send_to(ev.cid, "S:no bed — {pack.ak_why}");
+                println("editor: bed refused — {pack.ak_why}");
+              } else {
+                wall_props.items += [pbed];
+                phex = world_to_hex(pbed.pr_x, pbed.pr_z);
+                mark_dirty(dirty, phex.ha_q, phex.ha_r, 3);
+                srv.send_to(ev.cid, "S:a bed {pbed.pr_len} long in the box");
+                println("editor: bed {pbed.pr_len} long at ({phex.ha_q},{phex.ha_r})");
+              }
+            }
+          } else {
+            // A statue goes in the nearest void that HAS a back — which is what
+            // `niche_room` answers, so a doorway is passed over without this having
+            // to know what a doorway is.
+            sbest = 0 - 1;
+            sbd = 1000000.0;
+            sbi = 0;
+            for sop in wall_openings.items {
+              sdx = sop.op_x - px;
+              sdz = sop.op_z - pz;
+              sdd = sdx * sdx + sdz * sdz;
+              if sdd < sbd && !hex_editor::opening_at_back(sop) {
+                sbd = sdd;
+                sbest = sbi;
+              }
+              sbi = sbi + 1;
+            }
+            if sbest < 0 {
+              srv.send_to(ev.cid, "S:no niche to stand a figure in — press N first");
+            } else {
+              sniche = wall_openings.items[sbest] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+              sst = hex_editor::statue_in_niche(sniche, hex_draw::BAND_SIDES);
+              // Which way it faces is the RUN's, not the opening's — a void cut in a
+              // wall does not know which side of it anybody is standing on.
+              snx = px - sst.pr_x;
+              snz = pz - sst.pr_z;
+              snl = sqrt(snx * snx + snz * snz) ?? 0.0;
+              if snl > 0.001 { snx = snx / snl ?? 0.0; snz = snz / snl ?? 0.0; }
+              sst = hex_editor::prop_facing(sst, snx, snz);
+              sack = hex_editor::prop_fits(sst);
+              if !sack.ak_ok {
+                srv.send_to(ev.cid, "S:no figure — {sack.ak_why}");
+                println("editor: statue refused — {sack.ak_why}");
+              } else {
+                wall_props.items += [sst];
+                sshex = world_to_hex(sst.pr_x, sst.pr_z);
+                mark_dirty(dirty, sshex.ha_q, sshex.ha_r, 3);
+                srv.send_to(ev.cid, "S:a figure {sst.pr_up} units tall in the niche");
+                println("editor: statue {sst.pr_up} tall at ({sshex.ha_q},{sshex.ha_r})");
+              }
+            }
+          }
         } else if ev.msg_id == MSG_ANNEX {
           // ⚠ AN ANNEX IS BUILT FROM THE HOST OUTWARD, so the first thing needed is
           // the host's own outward normal where the author stands. On a wall that is
@@ -4831,7 +4967,7 @@ fn main() {
           wm2 = mesh("wall");
           lm2 = mesh("floor");
           am2 = mesh("frame");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4948,7 +5084,7 @@ fn main() {
               wmesh = mesh("wall");
               lmesh = mesh("floor");
               amesh = mesh("frame");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

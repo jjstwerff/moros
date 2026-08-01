@@ -2368,3 +2368,202 @@ pub fn annex_fits(a: Annex, host_len: float, at: float, band: float) -> Ack {
   }
   ack_ok(3)
 }
+
+// ── WHAT STANDS IN A VOID: THE PROP ─────────────────────────────────────────
+//
+// ⚠ THE PROP IS FITTED TO THE ROOM, NOT PLACED AT A COORDINATE. Every void built so
+// far already states how much room it offers — a niche has a width, a height and a
+// depth; a bedstee has an interior — so a bed and a statue need no position of their
+// own. They are seated in a void and take its measure, which is why the same two
+// calls furnish a cottage alcove, a castle embrasure and a box bed without knowing
+// which they are in.
+//
+// The alternative is a bed at (x, z) that has to be moved every time the box moves,
+// and is one refactor away from standing in the wall.
+
+pub const PROP_BED    = 0;
+pub const PROP_STATUE = 1;
+
+// What it is made of, which decides nothing but the mesh it is drawn into — a bed
+// is joinery like a deck, a statue is dressed stone like a moulding.
+pub const PROP_WOOD  = 0;
+pub const PROP_STONE = 1;
+
+pub fn prop_material(kind: integer) -> integer {
+  if kind == PROP_STATUE { return PROP_STONE; }
+  PROP_WOOD
+}
+
+// The least room a thing can have and still be that thing. A bed under a metre and
+// a half is a bench; a statue under a metre is an ornament. These are what a refusal
+// offers back, so they are named rather than spelled into the check.
+pub const BED_MIN_LEN    = 1.7;      // world units — about 1.5 m
+pub const STATUE_MIN_UP  = 6;        // height units — about 1.3 m
+pub const PROP_CLEAR     = 0.12;
+
+pub struct Prop {
+  pr_x: float, pr_z: float,     // its centre, in the world
+  pr_nx: float, pr_nz: float,   // which way it FACES — out of the void it sits in
+  pr_len:  float,               // along the void's width
+  pr_deep: float,               // into the void
+  pr_y:    integer,             // the floor it stands on, in height units
+  pr_up:   integer,             // and how tall it is
+  pr_kind: integer,
+}
+
+pub struct Props { items: vector<Prop> }
+
+// ── the rooms a void offers ─────────────────────────────────────────────────
+
+// What a niche has inside it: its clear width, the height under its head, and how
+// far back it goes. All three are read from the opening, never re-derived.
+pub fn niche_room(o: Opening, band: float, w: &float, up: &integer, d: &float) {
+  w = o.op_half * 2.0 - 2.0 * PROP_CLEAR;
+  up = o.op_hi - o.op_lo;
+  d = (o.op_depth - o.op_near) * band - PROP_CLEAR;
+  if d < 0.0 { d = 0.0; }
+  // ⚠ A VOID WITH NO BACK OFFERS NO ROOM, whatever its volume. A doorway is a whole
+  // wall thick — measured, 0.75 against a niche's 0.36 — so a check on VOLUME says a
+  // doorway is the better place for a statue. It is a thoroughfare: nothing behind
+  // it to stand against, and a figure in it is in the way. "Room to put something
+  // in" means enclosed, and what encloses is the back the opening stopped short of.
+  if opening_at_back(o) { d = 0.0; }
+}
+
+// And what a box has: the same three questions of a volume instead of a void.
+pub fn annex_room(a: Annex, w: &float, up: &integer, d: &float) {
+  w = a.an_w - 2.0 * PROP_CLEAR;
+  up = a.an_head - a.an_floor;
+  d = annex_depth(a) - 2.0 * PROP_CLEAR;
+  if d < 0.0 { d = 0.0; }
+}
+
+// ── seating a prop in one ───────────────────────────────────────────────────
+
+// ⚠ A BED IN A BOX BED LIES ALONG THE WALL, not into it — you climb in from the
+// front. So its LENGTH takes the box's width and its width takes the box's depth,
+// which is also why a bedstee is wide and shallow rather than the other way round.
+pub fn bed_in_annex(a: Annex) -> Prop {
+  rw = 0.0;
+  rup = 0;
+  rd = 0.0;
+  annex_room(a, rw, rup, rd);
+  Prop { pr_x: a.an_x + a.an_nx * (a.an_out - annex_depth(a) * 0.5),
+         pr_z: a.an_z + a.an_nz * (a.an_out - annex_depth(a) * 0.5),
+         pr_nx: a.an_nx, pr_nz: a.an_nz,
+         pr_len: rw, pr_deep: rd, pr_y: a.an_floor, pr_up: 3,
+         pr_kind: PROP_BED }
+}
+
+// A statue stands on the niche's own floor, centred, facing out of it — and it is
+// sized to the void rather than given a size, so a shallow niche gets a relief and
+// a deep one a figure without either being a special case.
+pub fn statue_in_niche(o: Opening, band: float) -> Prop {
+  rw = 0.0;
+  rup = 0;
+  rd = 0.0;
+  niche_room(o, band, rw, rup, rd);
+  // It stands back against the niche's own back, which is what a plinth is for.
+  Prop { pr_x: o.op_x, pr_z: o.op_z, pr_nx: 0.0, pr_nz: 0.0,
+         pr_len: rw, pr_deep: rd, pr_y: o.op_lo, pr_up: rup - 1,
+         pr_kind: PROP_STATUE }
+}
+
+// The facing a niche's statue takes: the void faces out of the wall it is cut in,
+// which the opening cannot know on its own — the run carries it.
+pub fn prop_facing(p: Prop, nx: float, nz: float) -> Prop {
+  Prop { pr_x: p.pr_x, pr_z: p.pr_z, pr_nx: nx, pr_nz: nz,
+         pr_len: p.pr_len, pr_deep: p.pr_deep, pr_y: p.pr_y, pr_up: p.pr_up,
+         pr_kind: p.pr_kind }
+}
+
+// ⚠ REFUSED WITH THE ROOM IT WOULD NEED. A void too small for what is asked of it
+// is the ordinary case — a shallow alcove, a short box — and the honest answer names
+// the shortfall rather than drawing a bed through the front of a cupboard.
+pub fn prop_fits(p: Prop) -> Ack {
+  if p.pr_kind == PROP_BED {
+    if p.pr_len < BED_MIN_LEN {
+      return ack_no("no room to lie down — offer {BED_MIN_LEN}, "
+                    + "residual {BED_MIN_LEN - p.pr_len}");
+    }
+    if p.pr_deep < 0.8 {
+      return ack_no("the box is too shallow for a bed — offer 0.8, "
+                    + "residual {0.8 - p.pr_deep}");
+    }
+  }
+  if p.pr_kind == PROP_STATUE {
+    if p.pr_up < STATUE_MIN_UP {
+      return ack_no("the niche is too low for a figure — offer {STATUE_MIN_UP}, "
+                    + "residual {STATUE_MIN_UP - p.pr_up}");
+    }
+    if p.pr_deep < 0.2 {
+      return ack_no("the niche is too shallow to stand in — offer 0.2, "
+                    + "residual {0.2 - p.pr_deep}");
+    }
+  }
+  if p.pr_up <= 0 { return ack_no("it has no height at all — offer 1, residual 1"); }
+  ack_ok(1)
+}
+
+// ── the shape, as boxes, so the renderer stays dumb ─────────────────────────
+//
+// ⚠ THE PARTS ARE THE LIBRARY'S AND THE DRAWING IS THE RENDERER'S. A bed that knew
+// how to emit triangles could not be tested; a renderer that knew where a pillow
+// goes would be the place the next fitting has to be added. What crosses the seam
+// is a list of boxes.
+
+pub fn prop_parts(p: Prop) -> integer {
+  if p.pr_kind == PROP_BED { return 2; }
+  3
+}
+
+// Part `i` as a box: its centre, its half-size along the facing and across it, and
+// the height band it occupies.
+pub fn prop_part(p: Prop, i: integer, cx: &float, cz: &float,
+                 hu: &float, ht: &float, lo: &integer, hi: &integer) {
+  tx = 0.0 - p.pr_nz;
+  tz = p.pr_nx;
+  cx = p.pr_x;
+  cz = p.pr_z;
+  hu = p.pr_deep * 0.5;
+  ht = p.pr_len * 0.5;
+  lo = p.pr_y;
+  hi = p.pr_y + p.pr_up;
+  if p.pr_kind == PROP_BED {
+    if i == 0 {
+      // The mattress: the whole footprint, knee high.
+      hi = p.pr_y + 2;
+      return;
+    }
+    // ⚠ THE PILLOW GOES AT THE FAR END, which is not decoration: a bed with its
+    // pillow at the near end is one you get into feet first. "Far" is along the
+    // void's width, away from the side you climb in past.
+    off = p.pr_len * 0.5 - p.pr_len * 0.15;
+    cx = p.pr_x + tx * off;
+    cz = p.pr_z + tz * off;
+    ht = p.pr_len * 0.15;
+    lo = p.pr_y + 2;
+    hi = p.pr_y + 3;
+    return;
+  }
+  if i == 0 {
+    // The plinth: as wide as it dares, one unit high.
+    ht = p.pr_len * 0.35;
+    hu = p.pr_deep * 0.45;
+    hi = p.pr_y + 1;
+    return;
+  }
+  if i == 1 {
+    // The body, from the plinth to the neck.
+    ht = p.pr_len * 0.22;
+    hu = p.pr_deep * 0.30;
+    lo = p.pr_y + 1;
+    hi = p.pr_y + p.pr_up - 2;
+    return;
+  }
+  // And the head, which is what makes a figure read as one at any distance.
+  ht = p.pr_len * 0.13;
+  hu = p.pr_deep * 0.20;
+  lo = p.pr_y + p.pr_up - 2;
+  hi = p.pr_y + p.pr_up;
+}

@@ -340,6 +340,10 @@ addEventListener('keydown', (e) => {
   // V a cupboard beside the last box — the first gesture whose host is another
   // annex, and the first place two of them share a wall instead of drawing two.
   if (e.code === 'KeyV') { ws.send('37:2'); e.preventDefault(); return; }   // cupboard
+  // What stands in a void, sized BY the void: Y a bed in a box, T a figure in a
+  // niche. Refused with the room it would need rather than placed anyway.
+  if (e.code === 'KeyY') { ws.send('38:0'); e.preventDefault(); return; }   // bed
+  if (e.code === 'KeyT') { ws.send('38:1'); e.preventDefault(); return; }   // statue
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

@@ -1,0 +1,166 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A PROP IS FITTED TO THE ROOM IT SITS IN, NOT PLACED AT A COORDINATE.
+//
+// ⚠ Every void built in this ladder already states how much room it offers — a
+// niche has a width, a height under its head and a depth; a bedstee has an interior.
+// So a bed and a statue need no position of their own: they are SEATED in a void and
+// take its measure. That is what lets the same two calls furnish a cottage alcove, a
+// castle embrasure and a box bed without knowing which they are in.
+//
+// The alternative is a bed at (x, z) that has to be moved every time its box moves,
+// and is one refactor away from standing in the wall.
+use hex_editor;
+use hex_grid;
+
+const BAND = 0.8660254037844386;
+const U = 0.25;
+
+fn box_bed() -> Annex {
+  hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 2.6, 1.4, 0.0, 2, 11, hex_editor::AN_BOX)
+}
+
+fn niche() -> Opening {
+  hex_editor::profile_opening(0.0, 0.0, 1.1, 2, 9, hex_editor::OP_ROUND,
+                              0.0, U, 0.55)
+}
+
+fn test_a_bed_takes_the_measure_of_the_box_it_is_in() {
+  // ⚠ THE CLAIM. Widen the box and the bed grows with it; nothing carries a bed's
+  // size but the void. A version with a constant would pass every other test here.
+  a = box_bed();
+  wide = hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 3.4, 1.4, 0.0, 2, 11,
+                              hex_editor::AN_BOX);
+  b = hex_editor::bed_in_annex(a);
+  w = hex_editor::bed_in_annex(wide);
+  assert(w.pr_len > b.pr_len + 0.7,
+         "a wider box holds a longer bed: {b.pr_len} against {w.pr_len}");
+  assert(b.pr_len < a.an_w, "and it never exceeds the box: {b.pr_len} in {a.an_w}");
+}
+
+fn test_a_bed_lies_along_the_wall_and_not_into_it() {
+  // ⚠ WHICH WAY ROUND, and it is why a bedstee is wide and shallow. You climb in
+  // from the FRONT, so the bed's length takes the box's width. A bed turned the
+  // other way would need a box two metres deep, standing in the middle of the room.
+  a = box_bed();
+  b = hex_editor::bed_in_annex(a);
+  assert(b.pr_len > b.pr_deep, "its length runs along the wall: {b.pr_len} by {b.pr_deep}");
+  assert(b.pr_len > hex_editor::BED_MIN_LEN, "and it is long enough to lie in");
+  assert(hex_editor::prop_fits(b).ak_ok, "so it fits: {hex_editor::prop_fits(b).ak_why}");
+}
+
+fn test_a_bed_rests_on_the_boxs_own_floor() {
+  // Not on the ground: a bedstee's floor is a step up, and a bed at ground level
+  // would be a bed with the box drawn round it.
+  a = box_bed();
+  b = hex_editor::bed_in_annex(a);
+  assert(b.pr_y == a.an_floor, "it stands on the box's floor: {b.pr_y} vs {a.an_floor}");
+  assert(b.pr_y + b.pr_up < a.an_head, "and under its lid: {b.pr_y + b.pr_up} vs {a.an_head}");
+}
+
+fn test_the_pillow_is_at_the_far_end() {
+  // ⚠ NOT DECORATION. A bed with its pillow at the near end is one you get into
+  // feet first, and it is the sort of thing only a picture catches — so it is
+  // measured here instead: the pillow's centre is displaced along the bed's length.
+  b = hex_editor::bed_in_annex(box_bed());
+  cx = 0.0; cz = 0.0; hu = 0.0; ht = 0.0; lo = 0; hi = 0;
+  hex_editor::prop_part(b, 1, cx, cz, hu, ht, lo, hi);
+  d = sqrt((cx - b.pr_x) * (cx - b.pr_x) + (cz - b.pr_z) * (cz - b.pr_z)) ?? 0.0;
+  assert(d > b.pr_len * 0.25, "the pillow sits {d} from the middle of a {b.pr_len} bed");
+  assert(lo >= b.pr_y + 2, "and on top of the mattress, not in it: {lo}");
+}
+
+fn test_a_statue_stands_on_the_niches_floor_and_under_its_head() {
+  // ⚠ A FIGURE THROUGH ITS OWN ARCH is the failure this prevents, and it is the same
+  // shape as the bedstee mouth that opened through its own lid — a thing sized from
+  // the bottom up in a void that closes over it.
+  n = niche();
+  s = hex_editor::statue_in_niche(n, BAND);
+  assert(s.pr_y == n.op_lo, "it stands on the niche's floor: {s.pr_y} vs {n.op_lo}");
+  assert(s.pr_y + s.pr_up <= n.op_hi,
+         "and its head is under the arch: {s.pr_y + s.pr_up} against {n.op_hi}");
+  assert(hex_editor::prop_fits(s).ak_ok, "so it fits: {hex_editor::prop_fits(s).ak_why}");
+}
+
+fn test_a_statue_is_sized_to_the_niche_and_not_given_a_size() {
+  tall = hex_editor::profile_opening(0.0, 0.0, 1.1, 2, 14, hex_editor::OP_ROUND,
+                                     0.0, U, 0.55);
+  a = hex_editor::statue_in_niche(niche(), BAND);
+  b = hex_editor::statue_in_niche(tall, BAND);
+  assert(b.pr_up > a.pr_up, "a taller niche holds a taller figure: {a.pr_up} vs {b.pr_up}");
+}
+
+fn test_a_void_with_no_back_offers_no_room_however_thick_the_wall() {
+  // ⚠ THE CLAIM I FIRST GOT BACKWARDS, and the measurement is why. A doorway is a
+  // WHOLE WALL thick — 0.75 against a niche's 0.36 — so a check on volume concludes
+  // that a doorway is the better place for a statue. It is a thoroughfare: nothing
+  // behind it to stand against, and a figure in it is in the way. What makes a void
+  // habitable is the BACK it stopped short of, not how much air is in it.
+  w = 0.0; up = 0; d = 0.0;
+  hex_editor::niche_room(niche(), BAND, w, up, d);
+  assert(d > 0.2, "a niche offers depth to stand in: {d}");
+  dw = 0.0; dup = 0; dd = 0.0;
+  door = hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+  hex_editor::niche_room(door, BAND, dw, dup, dd);
+  assert(dd == 0.0, "a doorway offers none at all, though it is thicker: {dd}");
+  ack = hex_editor::prop_fits(hex_editor::statue_in_niche(door, BAND));
+  assert(!ack.ak_ok, "so a statue in a doorway is refused: {ack.ak_why}");
+  // And so is one in an embrasure's window, which also comes out the far side.
+  emb = hex_editor::opening_in_back(niche(), 0.7, 4, 8, hex_editor::OP_ROUND, U);
+  assert(!hex_editor::prop_fits(hex_editor::statue_in_niche(emb, BAND)).ak_ok,
+         "and one in a window");
+}
+
+fn test_a_box_too_short_refuses_a_bed_with_the_length_it_would_need() {
+  // The ordinary case, and the honest answer: a cupboard is a box too, and it says
+  // what it is short of rather than drawing a bed through its own front.
+  small = hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 1.2, 1.4, 0.0, 2, 11,
+                               hex_editor::AN_BOX);
+  ack = hex_editor::prop_fits(hex_editor::bed_in_annex(small));
+  assert(!ack.ak_ok, "a cupboard is refused a bed");
+  assert(ack.ak_why.contains("lie down"), "by name: {ack.ak_why}");
+  assert(ack.ak_why.contains("offer") && ack.ak_why.contains("residual"),
+         "with the length it would need: {ack.ak_why}");
+}
+
+fn test_a_niche_too_low_refuses_a_figure() {
+  low = hex_editor::profile_opening(0.0, 0.0, 1.1, 2, 4, hex_editor::OP_FLAT,
+                                    0.0, U, 0.55);
+  ack = hex_editor::prop_fits(hex_editor::statue_in_niche(low, BAND));
+  assert(!ack.ak_ok, "a shelf is refused a figure");
+  assert(ack.ak_why.contains("offer"), "with the height it would need: {ack.ak_why}");
+}
+
+fn test_every_part_stays_inside_the_prop_that_owns_it() {
+  // ⚠ THE SEAM'S OWN INVARIANT. The renderer draws boxes and asks no questions, so
+  // a part that reached outside its prop would leave a pillow through a box's side
+  // with nothing in the pipeline able to notice. Checked for both kinds.
+  for p in [hex_editor::bed_in_annex(box_bed()),
+            hex_editor::statue_in_niche(niche(), BAND)] {
+    n = hex_editor::prop_parts(p);
+    for i in 0..n {
+      cx = 0.0; cz = 0.0; hu = 0.0; ht = 0.0; lo = 0; hi = 0;
+      hex_editor::prop_part(p, i, cx, cz, hu, ht, lo, hi);
+      // distance from the prop's centre along the length, plus the part's own half
+      tx = 0.0 - p.pr_nz;
+      tz = p.pr_nx;
+      along = (cx - p.pr_x) * tx + (cz - p.pr_z) * tz;
+      if along < 0.0 { along = 0.0 - along; }
+      assert(along + ht <= p.pr_len * 0.5 + 0.000001,
+             "part {i} stays within the length: {along} + {ht} in {p.pr_len * 0.5}");
+      assert(hu <= p.pr_deep * 0.5 + 0.000001, "and within the depth: {hu}");
+      assert(lo >= p.pr_y && hi <= p.pr_y + p.pr_up,
+             "and within the height: {lo}..{hi} in {p.pr_y}..{p.pr_y + p.pr_up}");
+    }
+  }
+}
+
+fn test_a_bed_is_wood_and_a_statue_is_stone() {
+  // Which decides nothing but the mesh each is drawn into — and that is the point:
+  // one prop system, and the material is a property rather than a second system.
+  assert(hex_editor::prop_material(hex_editor::PROP_BED) == hex_editor::PROP_WOOD,
+         "a bed is joinery");
+  assert(hex_editor::prop_material(hex_editor::PROP_STATUE) == hex_editor::PROP_STONE,
+         "a statue is dressed stone");
+}
