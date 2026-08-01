@@ -34,7 +34,7 @@ const ack = async (p, limitMs = 40000) => {
     const m = status.slice(from).find(x => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 // ⚠ WAIT FOR THE TRANSFORM, NOT A TIMER — and the transform is the *only* correct
 // barrier here, because `S:placed` is not enough. Levelling drops its counter-peak

@@ -24,7 +24,7 @@ const ack = async (p, limitMs = 40000) => {
     const m = status.slice(from).find(x => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 // ⚠ THE STREAMER ANNOUNCES NOTHING. It brackets its work in `Z:1` … `Z:0` but emits no
 // status, and a step of 6 wu need not cross a chunk boundary — so there is no per-step

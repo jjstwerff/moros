@@ -26,7 +26,7 @@ const ack = async (needle, limitMs = 40000) => {
     const m = status.slice(from).find((x) => x.includes(needle));
     if (m) return m;
   }
-  return `(no "${needle}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
 };
 const SQ3 = Math.sqrt(3);
 const cellXZ = (q, r) => [SQ3 * q + (SQ3 / 2) * (r & 1), 1.5 * r];

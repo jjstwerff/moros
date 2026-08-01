@@ -23,7 +23,7 @@ const ack = async (p, limitMs = 40000) => {
     const m = status.slice(from).find((x) => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 // `T:` is broadcast only from inside `if moved`, so a standing character produces
 // none — which is exactly what happens once the cliff stops the walk. So the wait

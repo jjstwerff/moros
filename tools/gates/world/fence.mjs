@@ -29,7 +29,7 @@ const ack = async (needle, limitMs = 40000) => {
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
-  return `(no "${needle}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
 };
 // hex_grid's lattice: pointy-top, odd-r offset. The gate needs it only to steer
 // the character onto a named cell — every claim below is about counts.

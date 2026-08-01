@@ -41,7 +41,7 @@ const ack = async (p, limitMs = 30000) => {
     const m = status.slice(from).find(x => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 const placeAck = async (x, z, yaw) => { place(x, z, yaw); return ack('placed'); };
 

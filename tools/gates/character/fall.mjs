@@ -25,7 +25,7 @@ const ack = async (p, limitMs = 40000) => {
     const m = status.slice(from).find((x) => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 const nextT = async (limitMs = 1500) => {
   const before = tCount;

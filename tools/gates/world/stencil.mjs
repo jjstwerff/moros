@@ -30,7 +30,7 @@ const ack = async (p, limitMs = 8000) => {
     const m = status.slice(from).find(x => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 // ⚠ WAIT FOR THE SERVER, NOT THE CLOCK. Every command below is acknowledged, and
 // the wire is ORDERED — so an ack is a sequencing barrier for everything sent

@@ -61,7 +61,10 @@ if [ "${1:-}" = "--one" ]; then
     exit 1
   fi
 
-  out=$(EDITOR_PORT="$port" node "$gate" 2>&1)
+  # ⚠ STDERR TO ITS OWN FILE. A gate that times out waiting for an ack it will
+  # never get says so on stderr and then carries on green — folding that into the
+  # captured stdout hid it behind the one line this prints.
+  out=$(EDITOR_PORT="$port" node "$gate" 2>".gate-$name.err")
   rc=$?
   kill "$pid" 2>/dev/null
   wait "$pid" 2>/dev/null
@@ -74,8 +77,18 @@ if [ "${1:-}" = "--one" ]; then
   verdict=PASS
   [ "$rc" -eq 0 ] || verdict=FAIL
   case "$out" in *'"ok":false'*) verdict=FAIL ;; esac
-  printf '%-4s %-20s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
-         "$(printf '%s' "$out" | tail -1 | cut -c1-100)"
+  # ⚠ SILENT WHEN IT PASSES. loft's own Goal F says a tool that reports its good
+  # health teaches the reader to skip the line where it eventually reports the
+  # opposite — so a green gate says nothing, and a red one says everything.
+  # `GATE_VERBOSE=1` brings the timings back for profiling, which is a different
+  # question from "is it green".
+  if [ "$verdict" != PASS ] || [ -n "${GATE_VERBOSE:-}" ]; then
+    printf '%-4s %-20s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
+           "$(printf '%s' "$out" | tail -1 | cut -c1-100)"
+  fi
+  if [ "$verdict" != PASS ] && [ -s ".gate-$name.err" ]; then
+    sed 's/^/     /' ".gate-$name.err" | head -5
+  fi
   [ "$verdict" = PASS ] || exit 1
   exit 0
 fi

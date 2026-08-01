@@ -48,7 +48,7 @@ const ack = async (needle, limitMs = 40000) => {
     const m = status.slice(from).find((x) => x.includes(needle));
     if (m) return m;
   }
-  return `(no "${needle}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
 };
 // `Z:1` … `Z:0` brackets a batch of mesh traffic — both the dirty flush and the
 // streamer use it. The `Z:0` that follows the connect is the signal that the

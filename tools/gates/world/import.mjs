@@ -24,7 +24,7 @@ const ack = async (needle, limitMs = 40000) => {
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
-  return `(no "${needle}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
 };
 const placeAck = async (x, z, yaw) => { ws.send(`7:${x},${z},${yaw}`); return ack('placed'); };
 const dressing = async (q, r) => {

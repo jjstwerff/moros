@@ -68,11 +68,18 @@ tests: node_modules
 # Every loft package's own test suite.  `loft test` exits 1 on failure
 # (verified), so the `||` makes one red package fail the whole target
 # instead of scrolling past.
+# ⚠ BOTH BACKENDS, because loft's Goal D says per-backend green is not enough:
+# the interpreter and `--native` are two implementations of one language, and a
+# library that passes on one and not the other is exactly the silent divergence
+# that goal exists to catch. Every suite here reported "ran on the interpreter
+# only" until this line existed.
 lib-test:
 	@for p in $(LIB_PACKAGES); do \
 		printf '\n=== %s ===\n' "$$p"; \
 		( cd lib/$$p && $(LOFT) test 2>&1 | grep -viE '^  Warning' ) \
-			|| { echo "FAILED: $$p"; exit 1; }; \
+			|| { echo "FAILED: $$p (interpreter)"; exit 1; }; \
+		( cd lib/$$p && $(LOFT) test --native 2>&1 | grep -viE '^  Warning' ) \
+			|| { echo "FAILED: $$p (native)"; exit 1; }; \
 	done
 
 
@@ -316,4 +323,4 @@ gate-character:
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
 	  tools/gates/world/*.mjs tools/gates/character/*.mjs
-	@$(MAKE) -s stop-editor
+	@$(MAKE) -s stop-editor >/dev/null

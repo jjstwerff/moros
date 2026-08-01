@@ -63,7 +63,7 @@ const ack = async (p, limitMs = 40000) => {
     const m = status.slice(from).find((x) => x.startsWith(p));
     if (m) return m;
   }
-  return `(no "${p}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${p} ${limitMs}ms`); return `(no "${p}" in ${limitMs}ms)`;
 };
 // ⚠ A GAP IN `T:` IS NOT A STOP, AND READING IT AS ONE MADE THIS GATE FLAKY — two
 // runs of identical code ended at x = 5.44 and x = 9.60. `moved` is set whenever the

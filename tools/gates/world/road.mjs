@@ -36,7 +36,7 @@ const ack = async (needle, limitMs = 40000) => {
     const m = status.slice(from).find(x => x.includes(needle));
     if (m) return m;
   }
-  return `(no "${needle}" in ${limitMs}ms)`;
+  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
 };
 // The world changes when a command is acknowledged; the MESHES follow several ticks
 // later. `S:rebuilt N chunks` closes the server's own `Z:1` … `Z:0` transaction and
