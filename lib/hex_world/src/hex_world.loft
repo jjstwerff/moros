@@ -687,6 +687,128 @@ pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
   Column { co_q: q, co_r: r, co_cells: out }
 }
 
+// ── ONE CELL, IN PLACE — the fast path (and its honest fallback) ────────────
+//
+// ⚠ THIS FILE USED TO SAY A SINGLE-CELL WRITE WAS IMPOSSIBLE: *"deliberately
+// WITHOUT a writing twin — a single-cell write cannot check any rule in the
+// contract, because every rule is a property of a column."* Measured, that claim
+// costs more than it protects. Every one-cell edit went through `world_column` +
+// `world_set_column`: build a `Column` (a vector, plus a `Hex` per layer), copy
+// every cell into a second vector, write the lot back. One cell cost **1 ms
+// interpreted and 0.5 ms native** — only 2x apart, so it was never the
+// interpreter. A 91-cell brush stroke is 45 ms of store work and filling 10,000
+// cells took 16 seconds, which is the editor getting slower exactly as a map fills.
+//
+// And three of the four rules ARE local:
+//
+//   `P2` kind      a property of the LAYER          — one read
+//   `R1` reserve   a property of the CELL           — one comparison
+//   `F1` epsilon   the occupied layers AT THIS CELL — a walk, no allocation
+//   `W1` window    a property of the CHUNK          — genuinely not local
+//
+// So the window is what decides. A height inside the chunk's current window is
+// written in place; a height outside it needs the chunk rebased, which is a
+// column-wide operation — and that case FALLS BACK to `world_set_column` rather
+// than growing a second implementation of rebasing. Same for a cell whose chunk
+// or layer does not exist yet: the slow path creates those, and creating is rare.
+//
+// The invariant that makes this safe is `HEX_STACK.md`'s own: **writes go in
+// place**. Rebuilding a column to change one cell was the departure.
+pub fn world_set_cell(w: &World, q: integer, r: integer, li: integer,
+                      c: Hex) -> ColumnWrite {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  // No chunk, or no such layer yet — the slow path materialises both.
+  if ci < 0 || li < 0 || li >= len(w.w_chunks[ci].ck_layers) {
+    return set_cell_slow(w, q, r, li, c);
+  }
+  present = hex_present(c);
+  // `P2` — terrain content may not land in a dressing layer.
+  if present && w.w_chunks[ci].ck_layers[li].ly_kind != KIND_TERRAIN {
+    return ColumnWrite { cw_code: CW_MIX, cw_layer: li,
+                         cw_detail: "layer {li} is dressing; terrain cannot be written into it" };
+  }
+  h = c.h_height as integer ?? 0;
+  // `R1` — nothing authored below the reserve.
+  if present && h < w.w_reserve {
+    return ColumnWrite { cw_code: CW_RESERVE, cw_layer: li,
+                         cw_detail: "height {h} is below the reserve {w.w_reserve}" };
+  }
+  base = w.w_chunks[ci].ck_base;
+  // `W1` — outside the chunk's window the chunk must be rebased, which is a
+  // column-wide move. Hand it over rather than reimplement it.
+  if present && (h - base < 0 || h - base >= WINDOW) {
+    return set_cell_slow(w, q, r, li, c);
+  }
+  // `F1` — epsilon against the nearest OCCUPIED terrain cells below and above, in
+  // the index order `check_column` reads. Absent layers are gaps, not constraints.
+  ix = cell_index(q, r);
+  if hex_occupied(c) {
+    for i in 0..li {
+      j = li - 1 - i;
+      ly = w.w_chunks[ci].ck_layers[j];
+      if ly.ly_kind == KIND_TERRAIN && stored_occupied(ly.ly_cells[ix]) {
+        gap = h - (base + ly.ly_cells[ix].sv_height);
+        if gap < w.w_eps {
+          return ColumnWrite { cw_code: CW_FOLD, cw_layer: li,
+                               cw_detail: "layer {li} is {gap} above layer {j}, needs {w.w_eps}" };
+        }
+        break;
+      }
+    }
+    for k in li + 1..len(w.w_chunks[ci].ck_layers) {
+      ly2 = w.w_chunks[ci].ck_layers[k];
+      if ly2.ly_kind == KIND_TERRAIN && stored_occupied(ly2.ly_cells[ix]) {
+        gap2 = (base + ly2.ly_cells[ix].sv_height) - h;
+        if gap2 < w.w_eps {
+          return ColumnWrite { cw_code: CW_FOLD, cw_layer: k,
+                               cw_detail: "layer {k} is {gap2} above layer {li}, needs {w.w_eps}" };
+        }
+        break;
+      }
+    }
+  }
+  // Checked, so write — and bump the clock only if something actually changed,
+  // which is what makes `w_tau` a cost and not a call count.
+  nv = StoredHex { sv_height: (h - base) as u16? ?? 0,
+                   sv_material: c.h_material, sv_item: c.h_item,
+                   sv_item_rotation: c.h_item_rotation,
+                   sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
+                   sv_wall_se: c.h_wall_se };
+  prev = w.w_chunks[ci].ck_layers[li].ly_cells[ix];
+  if prev.sv_height != nv.sv_height || prev.sv_material != nv.sv_material
+     || prev.sv_item != nv.sv_item || prev.sv_item_rotation != nv.sv_item_rotation
+     || prev.sv_wall_n != nv.sv_wall_n || prev.sv_wall_ne != nv.sv_wall_ne
+     || prev.sv_wall_se != nv.sv_wall_se {
+    w.w_tau = w.w_tau + 1;
+    w.w_chunks[ci].ck_layers[li].ly_cells[ix] = nv;
+    w.w_chunks[ci].ck_layers[li].ly_ver = w.w_tau;
+  }
+  ok_write()
+}
+
+// The whole-column write, for the cases the fast path hands over: a chunk or layer
+// that does not exist yet, and a height that needs the window moved. One
+// implementation of rebasing, and it is the one that already had tests.
+fn set_cell_slow(w: &World, q: integer, r: integer, li: integer, c: Hex) -> ColumnWrite {
+  // ⚠ -1 MEANS "THERE IS NO SUCH LAYER", and it is a WRITE, not a no-op. Losing
+  // this branch made every first write to a fresh column compose a column of no
+  // cells: accepted, silent, and nothing stored. The store names the layer it
+  // creates, which is what an unwritten hex has always relied on.
+  if li < 0 {
+    return world_set_column(w, Column { co_q: q, co_r: r, co_cells: [c] });
+  }
+  col = world_column(w, q, r);
+  cells: vector<Hex> = [];
+  n = len(col.co_cells);
+  if li >= n { n = li + 1; }
+  for i in 0..n {
+    if i == li { cells += [c]; }
+    else if i < len(col.co_cells) { cells += [col.co_cells[i]]; }
+    else { cells += [Hex {}]; }
+  }
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: cells, co_ids: col.co_ids })
+}
+
 pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {

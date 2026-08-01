@@ -1,0 +1,143 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `world_set_cell` — THE FAST PATH IS ONLY ALLOWED IF IT IS THE SAME ANSWER.
+//
+// This file used to say a single-cell write could not check the contract's rules
+// because they are column properties. Three of the four are local (`P2` a layer's
+// kind, `R1` a cell's height, `F1` the occupied cells at that one hex); the
+// fourth, `W1`'s window, is not — and that case hands over to the column path
+// rather than reimplementing the rebase.
+//
+// So the tests that matter are not "does it write". They are: does it REFUSE
+// everything the column path refuses, with the same code, and does the world come
+// out identical. A faster write that is subtly more permissive is not an
+// optimisation, it is a corruption with a shorter runtime.
+use hex_world;
+
+fn w0() -> World { world_new(0.25, 100, 8, 3).wn_world }
+
+fn cell(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+
+fn set_via_column(w: &World, q: integer, r: integer, li: integer, c: Hex) -> integer {
+  col = world_column(w, q, r);
+  cells: vector<Hex> = [];
+  n = len(col.co_cells);
+  if li >= n { n = li + 1; }
+  for i in 0..n {
+    if i == li { cells += [c]; }
+    else if i < len(col.co_cells) { cells += [col.co_cells[i]]; }
+    else { cells += [Hex {}]; }
+  }
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: cells, co_ids: col.co_ids }).cw_code
+}
+
+fn test_a_written_cell_reads_back() {
+  w = w0();
+  code = world_set_cell(w, 3, 4, 0, cell(120, 1)).cw_code;
+  assert(code == CW_OK, "the write was accepted, got {code}");
+  got = world_cell(w, 3, 4, 0);
+  assert(got.h_height == 120, "height 120, got {got.h_height}");
+  assert(got.h_material == 1, "material 1, got {got.h_material}");
+}
+
+fn test_it_agrees_with_the_column_path_cell_for_cell() {
+  // ⚠ THE CLAIM THAT LETS THE FAST PATH EXIST. The same edits, one world through
+  // each route, and every cell of every layer must match — not just the ones the
+  // test remembered to look at.
+  a = w0();
+  b = w0();
+  for q in 0..6 {
+    for r in 0..6 {
+      h = 100 + q * 3 + r;
+      world_set_cell(a, q, r, 0, cell(h, 1 + (q % 3 ?? 0)));
+      set_via_column(b, q, r, 0, cell(h, 1 + (q % 3 ?? 0)));
+    }
+  }
+  same = true;
+  for q in 0..6 {
+    for r in 0..6 {
+      ca = world_cell(a, q, r, 0);
+      cb = world_cell(b, q, r, 0);
+      if ca.h_height != cb.h_height || ca.h_material != cb.h_material { same = false; }
+    }
+  }
+  assert(same, "the two routes leave the same world");
+}
+
+fn test_it_refuses_below_the_reserve_exactly_as_the_column_does() {
+  // `R1`, and the codes must MATCH — a caller that switches route must not have to
+  // learn a second vocabulary of refusals.
+  a = w0();
+  b = w0();
+  fast = world_set_cell(a, 1, 1, 0, cell(4, 1)).cw_code;
+  slow = set_via_column(b, 1, 1, 0, cell(4, 1));
+  assert(fast == CW_RESERVE, "the fast path refuses below the reserve, got {fast}");
+  assert(fast == slow, "and with the column path's code: {fast} vs {slow}");
+}
+
+fn test_it_refuses_a_fold_exactly_as_the_column_does() {
+  // `F1` — consecutive occupied layers must stand ε apart. The nearest occupied
+  // layer at THIS cell is what constrains, which is the part that was said to be
+  // impossible without building the column.
+  a = w0();
+  world_set_cell(a, 2, 2, 0, cell(200, 1));
+  fast = world_set_cell(a, 2, 2, 1, cell(203, 1)).cw_code;   // only 3 above, ε is 8
+  assert(fast == CW_FOLD, "a layer 3 above one below is refused, got {fast}");
+
+  b = w0();
+  set_via_column(b, 2, 2, 0, cell(200, 1));
+  slow = set_via_column(b, 2, 2, 1, cell(203, 1));
+  assert(fast == slow, "the same code as the column path: {fast} vs {slow}");
+
+  ok = world_set_cell(a, 2, 2, 1, cell(208, 1)).cw_code;     // exactly ε above
+  assert(ok == CW_OK, "and exactly ε above is accepted, got {ok}");
+}
+
+fn test_a_refused_write_changes_nothing() {
+  // A refusal that had already written is the worst of both: the caller is told no
+  // and the world moved. `w_tau` is how that is visible from outside.
+  w = w0();
+  world_set_cell(w, 5, 5, 0, cell(150, 1));
+  before = w.w_tau;
+  code = world_set_cell(w, 5, 5, 0, cell(4, 1)).cw_code;
+  assert(code == CW_RESERVE, "refused");
+  assert(w.w_tau == before, "and wrote nothing: τ {before} -> {w.w_tau}");
+  assert(world_cell(w, 5, 5, 0).h_height == 150, "the old height stands");
+}
+
+fn test_an_unchanged_write_does_not_move_the_clock() {
+  w = w0();
+  world_set_cell(w, 7, 7, 0, cell(160, 2));
+  before = w.w_tau;
+  world_set_cell(w, 7, 7, 0, cell(160, 2));
+  assert(w.w_tau == before, "an identical write is free: τ {before} -> {w.w_tau}");
+}
+
+fn test_a_height_outside_the_window_still_lands() {
+  // `W1` — the fallback. A height past the chunk's window needs the chunk rebased,
+  // which is column-wide; the point of the test is that the caller cannot tell,
+  // beyond it being slower.
+  w = w0();
+  code = world_set_cell(w, 9, 9, 0, cell(65530, 1)).cw_code;
+  assert(code == CW_OK, "a far height is accepted through the fallback, got {code}");
+  assert(world_cell(w, 9, 9, 0).h_height == 65530,
+         "and reads back: {world_cell(w, 9, 9, 0).h_height}");
+}
+
+fn test_terrain_cannot_be_written_into_a_dressing_layer() {
+  // `P2`, the guard that has to survive the new route: a miscounted index must not
+  // put terrain where nothing downstream would ever see it again.
+  w = w0();
+  world_set_dressing(w, Column { co_q: 4, co_r: 4, co_cells: [cell(120, 3)] });
+  found = 0 - 1;
+  for l in 0..8 {
+    if world_layer_kind(w, 4, 4, l) == KIND_DRESSING && found < 0 { found = l; }
+  }
+  if found >= 0 {
+    code = world_set_cell(w, 4, 4, found, cell(130, 1)).cw_code;
+    assert(code == CW_MIX, "terrain into a dressing layer is refused, got {code}");
+  }
+}
