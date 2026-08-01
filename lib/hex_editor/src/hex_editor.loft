@@ -359,3 +359,99 @@ pub fn roof_over(w: &World, f: Footprint, cells: HexSet, floor_h: integer,
 // which is the only test this step has.
 pub const ROOF_PITCH_DEFAULT = 0.70;
 pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts where it ends
+
+// ── S6b: THE ROOF IS DRAWN FROM ITS PLAN, NOT FROM ITS CELLS ────────────────
+//
+// ⚠ THE SAME FINDING AS `S3`, ONE LEVEL UP. The cells a roof occupies are its
+// INDEX — the store's way of saying which columns are under it — and drawing them
+// gives a hex staircase: the S6 picture showed a red slab with a sawtooth eave,
+// which is the roof's version of the zigzag wall.
+//
+// A gable over a rectangle is TWO QUADS meeting on a line. The plan already knows
+// where they are: the eaves run along local u at v = ±hd, the ridge runs along u at
+// v = 0, and `plan_to_world` puts all six points in the world exactly. Straight by
+// construction, at any rotation, with no tolerance anywhere.
+//
+// The heights stay the cells' business — `roof_over` writes them, the walk and the
+// camera read them. This is the PICTURE, and the two agree because both take the
+// ridge height from the same `eave + pitch * hd`.
+pub struct RoofPlan {
+  rp_cq:    integer,
+  rp_cr:    integer,
+  rp_wid:   integer,
+  rp_dep:   integer,
+  rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
+  rp_eave:  float,       // world units
+  rp_pitch: float,
+}
+
+pub struct RoofPlans { items: vector<RoofPlan> }
+
+pub fn roof_plan_of(f: Footprint, eave: float, pitch: float) -> RoofPlan {
+  r = f.fp_rot;
+  if box_orbit(r) != 0 { r = f.fp_offer; }
+  RoofPlan { rp_cq: f.fp_cq, rp_cr: f.fp_cr, rp_wid: f.fp_wid, rp_dep: f.fp_dep,
+             rp_rot: r / 2 ?? 0, rp_eave: eave, rp_pitch: pitch }
+}
+
+fn rp_plan(rp: RoofPlan) -> Plan {
+  plan_new(rp.rp_cq, rp.rp_cr, rp.rp_wid, rp.rp_dep, rp.rp_rot, false)
+}
+
+// The ridge stands `pitch * hd` above the eave — the same rise `draw_roof` gives
+// the cells, so the drawn surface and the stored heights are one shape.
+pub fn roof_ridge_y(rp: RoofPlan) -> float {
+  rp.rp_eave + rp.rp_pitch * plan_hd(rp_plan(rp))
+}
+
+// The six points a gable needs, in world space and in a fixed order:
+//   0,1  the -v eave, at -u and +u        4  the -u ridge end
+//   2,3  the +v eave, at -u and +u        5  the +u ridge end
+// Everything a renderer draws — two slopes and two gable ends — is a face of these.
+pub fn roof_point_x(rp: RoofPlan, i: integer) -> float {
+  p = rp_plan(rp);
+  hw = plan_hw(p);
+  hd = plan_hd(p);
+  u = 0.0 - hw;
+  if i == 1 || i == 3 || i == 5 { u = hw; }
+  v = 0.0;
+  if i == 0 || i == 1 { v = 0.0 - hd; }
+  if i == 2 || i == 3 { v = hd; }
+  (x, _y) = plan_to_world(p, u, v);
+  x
+}
+
+pub fn roof_point_z(rp: RoofPlan, i: integer) -> float {
+  p = rp_plan(rp);
+  hw = plan_hw(p);
+  hd = plan_hd(p);
+  u = 0.0 - hw;
+  if i == 1 || i == 3 || i == 5 { u = hw; }
+  v = 0.0;
+  if i == 0 || i == 1 { v = 0.0 - hd; }
+  if i == 2 || i == 3 { v = hd; }
+  (_x, z) = plan_to_world(p, u, v);
+  z
+}
+
+pub fn roof_point_y(rp: RoofPlan, i: integer) -> float {
+  if i >= 4 { return roof_ridge_y(rp); }
+  rp.rp_eave
+}
+
+// Does this roof plan cover the cell at (q, r)? The renderer asks before drawing a
+// roof CELL: a cell under a plan-drawn gable is already in the picture, and drawing
+// it again puts the hex staircase back underneath the straight eave.
+//
+// ⚠ NOT EVERY ROOF HAS A PLAN. The stencil places a cone over a DISC and has no
+// rectangle to draw from, so its cells still draw themselves — which is why this is
+// a question about one roof rather than a global switch. Turning the cell path off
+// entirely broke the stencil's roof, and its gate said so on the next run.
+pub fn roof_plan_covers(rp: RoofPlan, q: integer, r: integer) -> boolean {
+  p = plan_new(rp.rp_cq, rp.rp_cr, rp.rp_wid, rp.rp_dep, rp.rp_rot, false);
+  (wx, wy) = hex_to_px(q, r);
+  (lu, lv) = plan_to_local(p, wx, wy);
+  au = lu; if au < 0.0 { au = 0.0 - au; }
+  av = lv; if av < 0.0 { av = 0.0 - av; }
+  au <= plan_hw(p) + HEX_LEN * 0.5 && av <= plan_hd(p) + HEX_LEN * 0.5
+}

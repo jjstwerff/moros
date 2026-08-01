@@ -159,3 +159,69 @@ fn test_a_roof_at_an_unplaceable_facing_is_refused() {
   assert(!ack.ak_ok, "no plan, no roof");
   assert(w.w_tau == before, "and nothing written: τ {before} -> {w.w_tau}");
 }
+
+// ── S6b: the drawn roof, which is the plan's and not the cells' ─────────────
+
+fn rp() -> RoofPlan {
+  hex_editor::roof_plan_of(placed(), (FLOOR + hex_editor::ROOF_EAVE_UP) as float * 0.25,
+                           hex_editor::ROOF_PITCH_DEFAULT)
+}
+
+fn test_the_eave_is_a_straight_line_at_any_rotation() {
+  // ⚠ THE WHOLE OF S6b. The cells give a hex staircase — the S6 picture showed a
+  // sawtooth — and the plan gives a line. Checked as a CROSS PRODUCT against the
+  // ridge direction, which is zero only if the two eave points and the two ridge
+  // ends are all parallel: a sawtooth cannot pass this at any tolerance.
+  r = rp();
+  ex = hex_editor::roof_point_x(r, 1) - hex_editor::roof_point_x(r, 0);
+  ez = hex_editor::roof_point_z(r, 1) - hex_editor::roof_point_z(r, 0);
+  rx = hex_editor::roof_point_x(r, 5) - hex_editor::roof_point_x(r, 4);
+  rz = hex_editor::roof_point_z(r, 5) - hex_editor::roof_point_z(r, 4);
+  cr = ex * rz - ez * rx;
+  if cr < 0.0 { cr = 0.0 - cr; }
+  assert(cr < 0.000000001, "the eave runs parallel to the ridge, cross {cr}");
+  fx = hex_editor::roof_point_x(r, 3) - hex_editor::roof_point_x(r, 2);
+  fz = hex_editor::roof_point_z(r, 3) - hex_editor::roof_point_z(r, 2);
+  cr2 = fx * rz - fz * rx;
+  if cr2 < 0.0 { cr2 = 0.0 - cr2; }
+  assert(cr2 < 0.000000001, "and so does the far eave, cross {cr2}");
+}
+
+fn test_both_eaves_sit_at_the_eave_height_and_the_ridge_above_them() {
+  r = rp();
+  for i in 0..4 {
+    assert(hex_editor::roof_point_y(r, i) == r.rp_eave,
+           "point {i} is on the eave, got {hex_editor::roof_point_y(r, i)}");
+  }
+  assert(hex_editor::roof_point_y(r, 4) > r.rp_eave, "the ridge stands above it");
+  assert(hex_editor::roof_point_y(r, 4) == hex_editor::roof_point_y(r, 5),
+         "and it is level end to end");
+}
+
+fn test_the_ridge_sits_over_the_middle_of_the_span() {
+  // A ridge off-centre is a lean-to, not a gable: each ridge end must be exactly
+  // halfway between the two eaves it spans.
+  r = rp();
+  mx = (hex_editor::roof_point_x(r, 0) + hex_editor::roof_point_x(r, 2)) * 0.5;
+  mz = (hex_editor::roof_point_z(r, 0) + hex_editor::roof_point_z(r, 2)) * 0.5;
+  dx = hex_editor::roof_point_x(r, 4) - mx;
+  dz = hex_editor::roof_point_z(r, 4) - mz;
+  d = dx * dx + dz * dz;
+  assert(d < 0.000000001, "the ridge end is centred between the eaves, off by {d}");
+}
+
+fn test_the_drawn_ridge_and_the_stored_ridge_are_the_same_height() {
+  // ⚠ TWO DERIVATIONS OF ONE SHAPE IS THE FAILURE THIS TREE KEEPS FINDING. The
+  // cells carry the heights the walk and the camera read; the plan carries the
+  // surface the eye sees. If they disagree the character walks through its own
+  // roof, so they take the rise from the same `pitch * hd`.
+  w = world();
+  f = placed();
+  ack = hex_editor::roof_over(w, f, footprint_cells(f), FLOOR,
+                              hex_editor::ROOF_EAVE_UP, hex_editor::ROOF_PITCH_DEFAULT, 0);
+  stored = ack.ak_residual;                       // the ridge, in height units
+  drawn = (hex_editor::roof_ridge_y(rp()) / 0.25 ?? 0.0) as integer;
+  d = stored - drawn;
+  if d < 0 { d = 0 - d; }
+  assert(d <= 1, "stored ridge {stored}, drawn ridge {drawn} — one unit of rounding at most");
+}

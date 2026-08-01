@@ -1583,11 +1583,21 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, runs: WallRuns) {
+                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
   for run in runs.items { emit_run_wall(wm, run, wld, q0, r0); }
+  // The roofs whose ridge passes through this chunk. Drawn from the PLAN, so the
+  // eave is a line rather than the hex staircase the cells would give.
+  for rp in roofs.items {
+    (rq, rr) = px_to_hex(hex_editor::roof_point_x(rp, 4), hex_editor::roof_point_z(rp, 4));
+    if rq >= q0 - CHUNK && rq < q0 + 2 * CHUNK && rr >= r0 - CHUNK && rr < r0 + 2 * CHUNK {
+      if rq >= q0 && rq < q0 + CHUNK && rr >= r0 && rr < r0 + CHUNK {
+        emit_roof_plan(km, rp);
+      }
+    }
+  }
   rt = runs_track(runs);
   have_runs = len(runs.items) > 0;
   for cr in r0..r0 + CHUNK {
@@ -1640,7 +1650,22 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             if e.h_item == SPECIES_BUSH { sc = 0.22; }
             emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
           }
-          if e.h_material == ROOF_MAT {
+          // ⚠ A ROOF CELL DRAWS ITSELF ONLY WHERE NO PLAN COVERS IT (S6b). Under a
+          // gable the cells are the roof's INDEX — which columns are beneath it,
+          // what the walk and the camera read — and drawing them too puts the hex
+          // staircase back under the straight eave. The S6 picture was a red slab
+          // with a sawtooth edge, the roof's version of the zigzag wall.
+          //
+          // ⚠ But NOT every roof has a plan: the stencil lays a cone over a DISC and
+          // has no rectangle to draw from, so its cells must still draw themselves.
+          // Switching the cell path off entirely broke exactly that, and
+          // `stencil.mjs` failed on the next run — which is the gate earning its
+          // place, since no loft test can see a roof that stopped being drawn.
+          planned = false;
+          for rp3 in roofs.items {
+            if hex_editor::roof_plan_covers(rp3, cq, cr) { planned = true; }
+          }
+          if e.h_material == ROOF_MAT && !planned {
             // ⚠ SLOPED, LIKE THE GROUND — a flat fan per cell is a TERRACE OF
             // PLATES. Measured in S6's first picture: two thin slabs floating over
             // the walls with daylight between them, because each column holds one
@@ -1674,6 +1699,52 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
 // the same correction the ground needed, and for the same reason: mixing a
 // smoothed rim with an unsmoothed centre draws every cell as a little pyramid, and
 // a row of them along a ridge is a serrated line against the sky.
+// A gable, drawn from its PLAN: two slopes meeting on the ridge, and a triangle
+// closing each end. Six points, all from `plan_to_world`, so the eave is a line at
+// any rotation and there is no tolerance anywhere in it.
+fn emit_roof_plan(m: Mesh, rp: hex_editor::RoofPlan) {
+  // ⚠ SIX NAMED POINTS, NOT A CLOSURE OVER THREE VECTORS. The first version built
+  // `px`/`py`/`pz` and read them through `pt = fn(i) { vec3(px[i], py[i], pz[i]) }`,
+  // which SEGFAULTED the interpreter — `loft crash SIGSEGV caught`, op 165, at this
+  // line. A closure capturing several locals is the shape loft's own
+  // DESIGN_DECISIONS calls out (#314), so this does not fight it: the points are
+  // six values with names, which is clearer here anyway.
+  p0 = vec3(hex_editor::roof_point_x(rp, 0), hex_editor::roof_point_y(rp, 0),
+            hex_editor::roof_point_z(rp, 0));
+  p1 = vec3(hex_editor::roof_point_x(rp, 1), hex_editor::roof_point_y(rp, 1),
+            hex_editor::roof_point_z(rp, 1));
+  p2 = vec3(hex_editor::roof_point_x(rp, 2), hex_editor::roof_point_y(rp, 2),
+            hex_editor::roof_point_z(rp, 2));
+  p3 = vec3(hex_editor::roof_point_x(rp, 3), hex_editor::roof_point_y(rp, 3),
+            hex_editor::roof_point_z(rp, 3));
+  p4 = vec3(hex_editor::roof_point_x(rp, 4), hex_editor::roof_point_y(rp, 4),
+            hex_editor::roof_point_z(rp, 4));
+  p5 = vec3(hex_editor::roof_point_x(rp, 5), hex_editor::roof_point_y(rp, 5),
+            hex_editor::roof_point_z(rp, 5));
+  emit_quad_n(m, p0, p1, p5, p4);
+  emit_quad_n(m, p2, p3, p5, p4);
+  // the gable ends, which are the wall's material in a real building and the
+  // roof's here until `hex_roof` grows a gable of its own
+  emit_tri_n(m, p0, p2, p4);
+  emit_tri_n(m, p1, p3, p5);
+}
+
+// A quad from four points, with the normal taken from the face rather than
+// assumed upward — a roof slope that claimed a vertical normal would light as if
+// it were flat, which is exactly how a slab reads.
+fn emit_quad_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
+  emit_tri_n(m, a, b, c);
+  emit_tri_n(m, a, c, d);
+}
+
+fn emit_tri_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
+  n = nrm3((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
+           (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z),
+           (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  if n.y < 0.0 { n = vec3(0.0 - n.x, 0.0 - n.y, 0.0 - n.z); }
+  emit_tri(m, a, n, b, n, c, n);
+}
+
 fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>) {
   csum = 0.0;
   for i in 0..6 { csum = csum + (hs[i] ?? 0.0); }
@@ -2868,7 +2939,10 @@ fn main() {
   // The wall runs authored so far, and the run being drawn. A run is the RECORD —
   // the cells' edge bytes are derived from it — so this is what a save has to
   // carry, and what a bounce reads its exact normal from.
-  wall_runs = WallRuns { items: [] };
+  wall_runs = hex_editor::WallRuns { items: [] };
+  // ⚠ ROOFS ARE KEPT LIKE WALL RUNS, and for the same reason: the drawn shape is
+  // the PLAN's, so the renderer needs the plan rather than the cells under it.
+  roof_plans = hex_editor::RoofPlans { items: [] };
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // The collision proxy and its validity, keyed on the cell, the edit clock and
@@ -3514,6 +3588,10 @@ fn main() {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
           } else {
+            roof_plans.items += [hex_editor::roof_plan_of(
+              hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
+              ((hgrade + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
+              hex_editor::ROOF_PITCH_DEFAULT)];
             mark_dirty(dirty, hack.ak_q, hack.ak_r, HOUSE_W + HOUSE_D + 4);
             srv.send_to(ev.cid, "S:{hack.ak_why}");
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
@@ -4068,7 +4146,7 @@ fn main() {
           km2 = mesh("roof");
           wm2 = mesh("wall");
           lm2 = mesh("floor");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4182,7 +4260,7 @@ fn main() {
               kmesh = mesh("roof");
               wmesh = mesh("wall");
               lmesh = mesh("floor");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
