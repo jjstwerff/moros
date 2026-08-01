@@ -87,3 +87,66 @@ fn test_one_edge_is_the_atomic_half_of_the_ring() {
   assert(!bad.ak_ok, "direction 9 is refused");
   assert(!bad.ak_why.contains("offer"), "without an offer: {bad.ak_why}");
 }
+
+fn test_the_count_holds_at_every_kind_of_centre() {
+  // ⚠ FOUR CENTRES, because the lattice is odd-r offset: the six neighbours of a
+  // cell depend on its ROW PARITY, so a ring routine that is right on even rows can
+  // be wrong on odd ones and a single-centre test never sees it. Negative
+  // coordinates matter for the same reason — integer division and `%` do not
+  // behave the way a positive-only test suggests.
+  for c in [[0, 0], [9, 1], [0 - 9, 0 - 3], [0 - 9, 0 - 10]] {
+    w = world();
+    q = c[0] ?? 0;
+    r = c[1] ?? 0;
+    a = hex_editor::author_at(0.0, 0.0, 0.0);
+    hex_editor::fence_disc(w, q, r, 2, hex_editor::FENCE_MAT, 1.0);
+    outside = 0;
+    n = hex_editor::fence_count(w, q, r, 2, hex_editor::FENCE_MAT, 1.0, outside);
+    assert(n == 30, "centre ({q},{r}): 30 edges, got {n}");
+    assert(outside == 15, "centre ({q},{r}): 15 stored outside, got {outside}");
+  }
+}
+
+fn test_a_cell_inside_the_ring_owns_no_wall() {
+  // The control that stops the count passing on a routine that fences everything:
+  // an interior cell bounds nothing, so all three of its owned edges are bare.
+  w = world();
+  hex_editor::fence_disc(w, 0, 0, 2, hex_editor::FENCE_MAT, 1.0);
+  bare = true;
+  for d in 0..6 {
+    if hex_editor::wall_of(w, 0, 0, d, 1.0) != 0 { bare = false; }
+  }
+  assert(bare, "the centre cell of a radius-2 ring owns no wall");
+}
+
+fn test_a_gateway_changes_a_material_and_never_removes_an_edge() {
+  // ⚠ `X70`. Moros stored a door as wall material 0 once, and hexbody measured what
+  // that costs: the wall run BREAKS — 38 edges with 0 ends becoming 36 with 2. A
+  // door is its own material on the edge, so the count cannot move.
+  w = world();
+  hex_editor::fence_disc(w, 0, 0, 2, hex_editor::FENCE_MAT, 1.0);
+  before = 0;
+  n0 = hex_editor::fence_count(w, 0, 0, 2, hex_editor::FENCE_MAT, 1.0, before);
+  hex_editor::edge_set(w, hex_editor::author_at(0.0, 0.0, 0.0), 0,
+                       hex_editor::DOOR_MAT, 1.0, 4);
+  after = 0;
+  n1 = hex_editor::fence_count(w, 0, 0, 2, hex_editor::FENCE_MAT, 1.0, after);
+  // ⚠ COUNT OWNED EDGES ONLY. An edge is one stored byte and BOTH cells resolve to
+  // it, so asking all six directions of every cell counts every edge twice — this
+  // test first reported two doors for one gateway, which is the reader's fault and
+  // not the writer's. A cell owns the edge exactly when `edge_owner` names it.
+  doors = 0;
+  for q in 0 - 4..5 {
+    for r in 0 - 4..5 {
+      for d in 0..6 {
+        (oq, orr, _slot) = hex_editor::edge_owner(q, r, d);
+        if oq == q && orr == r
+           && hex_editor::wall_of(w, q, r, d, 1.0) == hex_editor::DOOR_MAT {
+          doors = doors + 1;
+        }
+      }
+    }
+  }
+  assert(doors == 1, "one edge became a door, got {doors}");
+  assert(n0 - n1 <= 1, "and the boundary did not lose an edge: {n0} -> {n1} fences");
+}

@@ -81,78 +81,43 @@ ws.onmessage = async (e) => {
   if (t === 'S') status.push(b);
   if (t === 'E') ws.send('2:1.5,');
   if (t === 'C' && !st) { st = 1;
+    // ⚠ WHAT THIS GATE STILL OWNS: the WIRE. The ring's arithmetic — 6(2R+1) edges,
+    // half of them stored outside, the four centres that catch a row-parity bug,
+    // the interior cell that owns nothing, `X70`'s gateway keeping the count, the
+    // enclosure a fill respects — is `lib/hex_editor/tests/fence.loft` now, nine
+    // tests against the store in under a second. Re-asserting it through a socket
+    // measured nothing the model did not already say, and cost eleven seconds.
+    //
+    // What a loft test CANNOT say is what the running editor tells its author. The
+    // acknowledgement is a contract: a script, a gate and a person all read it, and
+    // a refusal that loses its offer on the way to the wire is a real regression
+    // that no store test can see. So this checks the SENTENCES.
     const R = 2;
-    const wantEdges = 6 * (2 * R + 1);          // 30
-    const wantOutside = 3 * (2 * R + 1);        // 15
-    const report = {};
-
-    // ── the four centres: even/odd row, positive/negative
-    const centres = [[0, 0], [9, 1], [-9, -3], [-9, -10]];
-    const counted = [];
-    for (const [cq, cr] of centres) {
-      await placeAck(cq, cr);
-      ws.send(`23:3,${R}`);
-      const m = await ack('fenced');
-      const n = m.match(/fenced (\d+) edges, (\d+) stored outside/);
-      counted.push(n ? [Number(n[1]), Number(n[2])] : [-1, -1]);
-    }
-    report.perCentre = counted;
-    const everyCentreExact = counted.every(([n, o]) => n === wantEdges && o === wantOutside);
-
-    // ── the INDEPENDENT count, at the origin disc: sum the bytes themselves
-    const win = await wallWindow(0, 0, R + 2);
-    const sum = tally(win);
-    report.bytesSet = sum.set;
-    report.byMaterial = [...sum.by.entries()];
-    const bytesExact = sum.set === wantEdges;
-
-    // ── the control: an interior cell bounds nothing, so it owns no wall.
-    // ⚠ An empty reply IS the bare answer, not a missing one: a cell with no
-    // ground and no edges is absent, so `16:` reports nothing for it (`E1`).
-    const innerBody = win.get('0,0') ?? '(unanswered)';
-    const inner = innerBody === '' ? [0, 0, 0]
-                                   : innerBody.split(';')[0].split(',').map(Number);
-    report.centreCell = inner;
-    const innerBare = inner.length === 3 && inner.every((v) => v === 0);
-
-    // ── `X70` — A GATEWAY DOES NOT REMOVE AN EDGE.
-    // Stand on the ring cell two east of the centre and turn its outward (E) edge
-    // into a door. The count must not move: one of the thirty is simply a
-    // different material. Storing the opening as 0 instead would leave 29.
-    await placeAck(2, 0);
-    ws.send('24:0,2');
-    const gate = await ack('edge 0 of');
-    const win2 = await wallWindow(0, 0, R + 2);
-    const sum2 = tally(win2);
-    report.afterGateway = { set: sum2.set, byMaterial: [...sum2.by.entries()] };
-    const gatewayKeepsCount = sum2.set === wantEdges
-      && (sum2.by.get(2) || 0) === 1 && (sum2.by.get(3) || 0) === wantEdges - 1;
-
-    // ── the fence is an ENCLOSURE: a fill inside it takes the disc and no more.
-    // 3R²+3R+1 = 19 cells for R=2, and the gateway must not leak it — "a boundary
-    // you can walk through" is still a boundary.
     await placeAck(0, 0);
-    ws.send('11:');
-    const fill = await ack('field');
-    const nfill = Number((fill.match(/field filled (\d+) cells/) || [])[1] ?? -1);
-    report.fill = fill;
-    const encloses = nfill === 3 * R * R + 3 * R + 1;
+    ws.send(`23:3,${R}`);
+    const laid = await ack('fenced');
 
-    // ── the doorstep: a material is nominal, a radius is ordinal (`X68`)
+    // The count reaches the author, and in the shape the scripts parse.
+    const reports = /^fenced (\d+) edges, (\d+) stored outside, radius (\d+) material (\d+)$/
+      .test(laid.trim());
+    const saysCounts = laid.includes(`fenced ${6 * (2 * R + 1)} edges`)
+                    && laid.includes(`${3 * (2 * R + 1)} stored outside`);
+
+    // ⚠ THE DOORSTEP REACHES THE WIRE INTACT — `X68`. A nominal refusal must arrive
+    // WITHOUT an offer and an ordinal one WITH it; the library decides that, and
+    // this is the only place that checks it survives being said.
     await placeAck(20, 20);
     ws.send('23:9,2');
     const badMat = await ack('fence refused');
     ws.send('23:3,40');
     const badRad = await ack('fence refused');
-    report.refusals = [badMat, badRad];
     const nominalHasNoOffer = badMat.includes('no nearest one') && !badMat.includes('offer');
     const ordinalOffers = badRad.includes('offer 12') && badRad.includes('residual 28');
 
-    const ok = everyCentreExact && bytesExact && innerBare && gatewayKeepsCount
-               && encloses && nominalHasNoOffer && ordinalOffers;
-    console.log(JSON.stringify({ wantEdges, wantOutside, everyCentreExact, bytesExact,
-                                 innerBare, gatewayKeepsCount, encloses, nfill,
-                                 nominalHasNoOffer, ordinalOffers, ok, ...report }));
+    const ok = reports && saysCounts && nominalHasNoOffer && ordinalOffers;
+    console.log(JSON.stringify({ laid, reports, saysCounts,
+                                 refusals: [badMat, badRad],
+                                 nominalHasNoOffer, ordinalOffers, ok }));
     ws.close(); process.exit(ok ? 0 : 1); }
 };
 ws.onopen = () => ws.send('1:');
