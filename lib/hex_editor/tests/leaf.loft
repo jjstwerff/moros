@@ -1,0 +1,106 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// S8 — A LEAF SWINGS ON A HINGE, AND CANNOT PASS THROUGH ITS OWN FRAME.
+//
+// ⚠ `F-READ` is the point of the step and cannot be tested here: *a door at 0° is
+// a rectangle on a wall; at 15° it is a door.* That is judged by reading a picture
+// cold. What CAN be tested is everything the picture depends on — that the hinge
+// stays put, that the leaf keeps its width, and that `F-SWING`'s limit refuses with
+// an offer rather than clamping, because a leaf silently held at 90° is a door that
+// lies about its own state.
+use hex_editor;
+use hex_grid;
+
+fn shut() -> DoorLeaf {
+  hex_editor::DoorLeaf { dl_q: 0, dl_r: 0, dl_dir: 0, dl_angle: 0.0, dl_up: 12 }
+}
+
+fn at(angle: float) -> DoorLeaf {
+  out = shut();
+  hex_editor::leaf_swing(shut(), angle, out);
+  out
+}
+
+fn test_the_hinge_does_not_move_however_far_the_leaf_swings() {
+  // THE DEFINITION OF A HINGE. A leaf that slid would keep its width and still be
+  // wrong; this is what says it turns about a fixed point.
+  s = shut();
+  a = at(hex_editor::LEAF_AJAR);
+  o = at(hex_editor::LEAF_MAX);
+  assert(hex_editor::leaf_x(a, 0) == hex_editor::leaf_x(s, 0)
+      && hex_editor::leaf_z(a, 0) == hex_editor::leaf_z(s, 0),
+         "the hinge is where it was at 35 degrees");
+  assert(hex_editor::leaf_x(o, 0) == hex_editor::leaf_x(s, 0)
+      && hex_editor::leaf_z(o, 0) == hex_editor::leaf_z(s, 0),
+         "and at the full quarter turn");
+}
+
+fn test_the_free_end_moves_and_the_width_does_not() {
+  // ⚠ THE PAIR IS THE CLAIM. The free end sweeping proves it opens; the width
+  // holding proves it is a hinge and not a scale — a leaf that stretched would
+  // "open" by growing through its own jamb.
+  s = shut();
+  a = at(hex_editor::LEAF_AJAR);
+  moved = (hex_editor::leaf_x(a, 1) - hex_editor::leaf_x(s, 1)) *
+          (hex_editor::leaf_x(a, 1) - hex_editor::leaf_x(s, 1)) +
+          (hex_editor::leaf_z(a, 1) - hex_editor::leaf_z(s, 1)) *
+          (hex_editor::leaf_z(a, 1) - hex_editor::leaf_z(s, 1));
+  assert(moved > 0.05, "the free end swept, by {moved} squared units");
+  d = hex_editor::leaf_width(a) - hex_editor::leaf_width(s);
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000000001, "and the leaf is the same width: {d} apart");
+}
+
+fn test_a_leaf_fills_the_edge_it_hangs_in() {
+  // One hex edge, which `hex_draw` measures as 1.0 world unit and calls a real
+  // domestic door. A leaf narrower than its opening is a gap; wider is a clash.
+  w = hex_editor::leaf_width(shut());
+  d = w - 1.0;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.001, "the leaf is one hex edge wide, got {w}");
+}
+
+fn test_swinging_past_the_quarter_disc_is_refused_with_the_limit() {
+  // `F-SWING` via `A9c`: refused, with the limit as the offer and the overshoot as
+  // the residual. NEVER clamped — a leaf quietly held at 90° reports a state it is
+  // not in, and the next thing to read it believes the lie.
+  out = shut();
+  ack = hex_editor::leaf_swing(shut(), 2.5, out);
+  assert(!ack.ak_ok, "past the quarter-disc is refused");
+  assert(ack.ak_why.contains("offer"), "with the limit offered: {ack.ak_why}");
+  assert(ack.ak_why.contains("residual"), "and the overshoot: {ack.ak_why}");
+  assert(out.dl_angle == 0.0, "and the leaf did not move: {out.dl_angle}");
+}
+
+fn test_a_leaf_does_not_swing_backwards_through_its_frame() {
+  out = shut();
+  ack = hex_editor::leaf_swing(shut(), 0.0 - 0.4, out);
+  assert(!ack.ak_ok, "backwards is refused");
+  assert(ack.ak_why.contains("offer 0"), "with zero offered: {ack.ak_why}");
+  assert(out.dl_angle == 0.0, "and nothing moved");
+}
+
+fn test_the_limit_itself_is_allowed() {
+  // The boundary belongs to the admissible side: a quarter turn is exactly what a
+  // leaf on a jamb hinge can do, and refusing it would be off by one.
+  out = shut();
+  ack = hex_editor::leaf_swing(shut(), hex_editor::LEAF_MAX, out);
+  assert(ack.ak_ok, "the quarter turn itself is allowed: {ack.ak_why}");
+  assert(out.dl_angle == hex_editor::LEAF_MAX, "and it went there");
+}
+
+fn test_ajar_is_far_enough_to_read_as_a_door() {
+  // ⚠ NOT A MEASUREMENT OF BEAUTY, but the arithmetic behind one. `F-READ` says a
+  // leaf at 15° reads as a door where one at 0° reads as a rectangle painted on a
+  // wall; the default is 35°, so the free end stands well clear of the wall plane —
+  // which is what casts the line a person recognises.
+  a = at(hex_editor::LEAF_AJAR);
+  s = shut();
+  // distance from the free end to the shut leaf's line, as a fraction of the width
+  dx = hex_editor::leaf_x(a, 1) - hex_editor::leaf_x(s, 1);
+  dz = hex_editor::leaf_z(a, 1) - hex_editor::leaf_z(s, 1);
+  off = sqrt(dx * dx + dz * dz) ?? 0.0;
+  assert(off > 0.5, "ajar stands {off} of a width clear of shut");
+  assert(hex_editor::LEAF_AJAR < hex_editor::LEAF_MAX, "and still inside the sweep");
+}

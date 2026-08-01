@@ -1583,11 +1583,16 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
   }
 }
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans) {
+                    fm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
   for run in runs.items { emit_run_wall(wm, run, wld, q0, r0); }
+  for lf in leaves.items {
+    if lf.dl_q >= q0 && lf.dl_q < q0 + CHUNK && lf.dl_r >= r0 && lf.dl_r < r0 + CHUNK {
+      emit_leaf(wm, lf, wld);
+    }
+  }
   // The roofs whose ridge passes through this chunk. Drawn from the PLAN, so the
   // eave is a line rather than the hex staircase the cells would give.
   for rp in roofs.items {
@@ -1699,6 +1704,32 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
 // the same correction the ground needed, and for the same reason: mixing a
 // smoothed rim with an unsmoothed centre draws every cell as a little pyramid, and
 // a row of them along a ridge is a serrated line against the sky.
+// A door leaf: one quad from the hinge to the free end, standing `dl_up` tall.
+//
+// ⚠ IT IS DRAWN AJAR, and that is the point of `S8` rather than a default. A leaf
+// flush in its opening is a panel over a hole — a person reads it as a patch. At 35
+// degrees it casts a line, and a line is what says "door" before anything else does.
+fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: World) {
+  hx = hex_editor::leaf_x(l, 0);
+  hz = hex_editor::leaf_z(l, 0);
+  fx = hex_editor::leaf_x(l, 1);
+  fz = hex_editor::leaf_z(l, 1);
+  gy = terrain_y(hx, hz, wld);
+  ty = gy + (l.dl_up as float) * HEIGHT_SCALE;
+  a = vec3(hx, gy, hz);
+  b = vec3(fx, gy, fz);
+  c = vec3(fx, ty, fz);
+  d = vec3(hx, ty, hz);
+  nx2 = 0.0 - (fz - hz);
+  nz2 = fx - hx;
+  n = nrm3(nx2, 0.0, nz2);
+  bk = vec3(0.0 - n.x, 0.0, 0.0 - n.z);
+  emit_tri(m, a, n, b, n, c, n);
+  emit_tri(m, a, n, c, n, d, n);
+  emit_tri(m, a, bk, c, bk, b, bk);
+  emit_tri(m, a, bk, d, bk, c, bk);
+}
+
 // A gable, drawn from its PLAN: two slopes meeting on the ridge, and a triangle
 // closing each end. Six points, all from `plan_to_world`, so the eave is a line at
 // any rotation and there is no tolerance anywhere in it.
@@ -2943,6 +2974,11 @@ fn main() {
   // ⚠ ROOFS ARE KEPT LIKE WALL RUNS, and for the same reason: the drawn shape is
   // the PLAN's, so the renderer needs the plan rather than the cells under it.
   roof_plans = hex_editor::RoofPlans { items: [] };
+  // ⚠ AND THE LEAVES. A door's ANGLE is not in the world — the store says an edge
+  // is a door, which is the boundary's business, and how far it stands open is the
+  // fitting's. Kept beside the roofs for the same reason: the renderer needs the
+  // thing, not the cells under it.
+  door_leaves = hex_editor::DoorLeaves { items: [] };
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // The collision proxy and its validity, keyed on the cell, the edit clock and
@@ -3569,6 +3605,20 @@ fn main() {
             srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
             println("editor: opening refused — {oack.ak_why}");
           } else {
+            if okind == hex_editor::DOOR_MAT {
+              // ⚠ HUNG AJAR, NOT SHUT — `F-READ`. A door at 0 degrees is a
+              // rectangle on a wall; at 35 it is a door, and that is the whole
+              // reason this step exists.
+              ohx = world_to_hex(px, pz);
+              for od in 0..6 {
+                if hex_editor::wall_of(wld, ohx.ha_q, ohx.ha_r, od, py)
+                   == hex_editor::DOOR_MAT {
+                  door_leaves.items += [hex_editor::DoorLeaf {
+                    dl_q: ohx.ha_q, dl_r: ohx.ha_r, dl_dir: od,
+                    dl_angle: hex_editor::LEAF_AJAR, dl_up: WALL_UP }];
+                }
+              }
+            }
             mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
             srv.send_to(ev.cid, "S:opened {oack.ak_n} edges at {oack.ak_q},{oack.ak_r} "
                               + "as material {okind}");
@@ -4146,7 +4196,7 @@ fn main() {
           km2 = mesh("roof");
           wm2 = mesh("wall");
           lm2 = mesh("floor");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans);
+          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, wall_runs, roof_plans, door_leaves);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
@@ -4260,7 +4310,7 @@ fn main() {
               kmesh = mesh("roof");
               wmesh = mesh("wall");
               lmesh = mesh("floor");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans);
+              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, wall_runs, roof_plans, door_leaves);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");

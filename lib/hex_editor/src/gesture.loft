@@ -1411,6 +1411,252 @@ pub fn open_ahead(w: &World, a: Author, kind: integer, nedges: integer) -> Ack {
   ack_at(ack_ok(found), cq, cr)
 }
 
+// ── AN OPENING IS SIZED TO WHAT GOES IN IT ─────────────────────────────────
+//
+// ⚠ THE EDGES ARE THE INDEX; THE OPENING IS THE TRUTH. `place_opening` takes N
+// whole hex edges, so a door is 0.87 m or 1.74 m and nothing between — the shape
+// forced to the lattice. That is backwards: a leaf is 0.9 m because a person walks
+// through it, and the hole should be cut to fit the leaf.
+//
+// So an opening carries FLOATS — where it starts and ends along the wall's own
+// centreline, and the height band it spans — and the marked edges are what the
+// STORE needs to know (this boundary is passable, and the wall run still recovers
+// as one because the material changed rather than the edge disappearing). The two
+// are not in competition: the index says WHICH boundary, the opening says HOW MUCH
+// of it, and only the second has to fit a door.
+//
+// Same shape as `S3`, one level down. There the edges were the index and the run
+// was the truth; here the edges are the index and the opening is.
+pub struct Opening {
+  op_x:     float,     // where it is, in the world — projected onto whatever run
+  op_z:     float,     //   carries it, so an opening is not owned by an index
+  op_half:  float,     // half its width, in world units
+  op_lo:    integer,   // the height band it cuts, in height units
+  op_hi:    integer,
+  // ⚠ HOW DEEP IT CUTS, as a fraction of the wall's own thickness — and this one
+  // field is what makes a door, a window and an ALCOVE the same thing.
+  //
+  //   1.0   straight through: a door, a window, a gateway
+  //   0.6   a recess with the wall's back left standing — an alcove, a niche
+  //
+  // Which means "put a statue in a niche" needs no new concept at all: the opening
+  // is a sized void with a floor and a back, and a prop placed at its own frame is
+  // in it. The alternative — a special case per fitting — is how a design ends up
+  // with a door system, a window system and an alcove system that cannot combine.
+  op_depth: float,
+  // ⚠ AND THE HEAD IS A PROFILE, not a straight line. `op_spring` is the height the
+  // arch springs from, in height units, or -1 for a flat head. Above it the opening
+  // is a HALF-ROUND of radius `op_half`, so the cut narrows as it rises and closes
+  // at the crown — which is what an arch IS.
+  //
+  // It is the same curve `hex_roof::vault_arc` sweeps along a track to make a
+  // vault: a corridor is that profile swept far, an arch is it swept through a
+  // wall, and an alcove is it stopped short. One profile, three fittings, and the
+  // half-round corridor an author draws is the arch they get.
+  op_spring: integer,
+}
+
+pub struct Openings { items: vector<Opening> }
+
+// The clearance a hole needs beyond the thing that goes through it: a leaf in a
+// hole its own size binds on both jambs. One tenth of a world unit is about 9 cm,
+// which is a domestic reveal.
+pub const OPENING_CLEAR = 0.10;
+
+// Size an opening for a shape `width` wide and `height_u` tall, at (x, z).
+//
+// ⚠ THE SHAPE LEADS. Nothing here rounds to an edge, a cell or a span — the hole
+// is the shape plus its clearance, and the renderer cuts exactly that. A version
+// that quantised would be the old design wearing new parameters.
+pub fn opening_for(x: float, z: float, width: float, lo: integer, hi: integer,
+                   depth: float) -> Opening {
+  d = depth;
+  if d > 1.0 { d = 1.0; }
+  if d < 0.0 { d = 0.0; }
+  Opening { op_x: x, op_z: z, op_half: width * 0.5 + OPENING_CLEAR,
+            op_lo: lo, op_hi: hi, op_depth: d, op_spring: 0 - 1 }
+}
+
+// A door: full height from the ground, as wide as its leaf.
+pub fn door_opening(x: float, z: float, leaf_w: float, up: integer) -> Opening {
+  opening_for(x, z, leaf_w, 0, up, 1.0)
+}
+
+// A window: the same in plan, and a band in height — sill below, head above.
+pub fn window_opening(x: float, z: float, pane_w: float,
+                      sill: integer, head: integer) -> Opening {
+  opening_for(x, z, pane_w, sill, head, 1.0)
+}
+
+// An alcove: the same void, stopped short of the far face. What stands in it —
+// a statue, a shelf, a shrine — is a prop at the opening's own frame, so the niche
+// and its contents are two ordinary things rather than one special one.
+pub fn alcove_opening(x: float, z: float, width: float,
+                      lo: integer, hi: integer, depth: float) -> Opening {
+  opening_for(x, z, width, lo, hi, depth)
+}
+
+// An arched opening: straight jambs to `spring`, then a half-round head. The crown
+// stands `op_half` above the springing, in world units, so the arch is a true
+// semicircle rather than a curve fitted to a rectangle.
+pub fn arch_opening(x: float, z: float, width: float, lo: integer, spring: integer,
+                    unit: float, depth: float) -> Opening {
+  o = opening_for(x, z, width, lo, spring, depth);
+  crown = spring + ((o.op_half / unit ?? 0.0) as integer);
+  Opening { op_x: o.op_x, op_z: o.op_z, op_half: o.op_half, op_lo: o.op_lo,
+            op_hi: crown, op_depth: o.op_depth, op_spring: spring }
+}
+
+pub fn opening_arched(o: Opening) -> boolean { o.op_spring >= 0 }
+
+// Does this opening go all the way through? A door does; an alcove does not, and
+// a walker may not step into one.
+pub fn opening_through(o: Opening) -> boolean { o.op_depth >= 1.0 }
+
+// How far into the wall the void reaches, in world units, given the band's own
+// thickness — where an alcove's back wall stands, and where a statue's feet go.
+pub fn opening_reach(o: Opening, band: float) -> float { o.op_depth * band }
+
+// How much of the height band at distance `d` from the opening's centre is cut.
+// Returns false when this point is outside the opening entirely, so a caller walks
+// its wall and asks per step without knowing anything about openings.
+pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
+                    lo: &integer, hi: &integer) -> boolean {
+  dx = x - o.op_x;
+  dz = z - o.op_z;
+  d2 = dx * dx + dz * dz;
+  if d2 > o.op_half * o.op_half { return false; }
+  lo = o.op_lo;
+  hi = o.op_hi;
+  // ⚠ AN ARCH NARROWS AS IT RISES. At distance `d` from the centre the head stands
+  // `sqrt(half² - d²)` above the springing — the semicircle itself, not a curve
+  // approximating one — so the cut closes at the jambs and is tallest at the crown.
+  if o.op_spring >= 0 {
+    rise = sqrt(o.op_half * o.op_half - d2) ?? 0.0;
+    hi = o.op_spring + ((rise / unit ?? 0.0) as integer);
+  }
+  true
+}
+
+// The widest opening a wall of `run_len` can take at `at` along it — a hole cannot
+// reach past its own wall, and a shape that would is refused with this as the offer.
+pub fn opening_room(run_len: float, at: float) -> float {
+  left = at;
+  right = run_len - at;
+  m = left;
+  if right < m { m = right; }
+  (m - OPENING_CLEAR) * 2.0
+}
+
+// ── S8: THE LEAF — a door that SWINGS, on a hinge ───────────────────────────
+//
+// ⚠ `F-READ`, and it is the whole point of the step: *a door at 0° is a rectangle
+// on a wall; at 15° it is a door.* Every other claim in this ladder can be green
+// while the picture is wrong, and a flush leaf is exactly that — an opening with a
+// panel over it, which reads as a patch rather than a door.
+//
+// `F-SWING` is the arithmetic underneath: a leaf of width `w` on a jamb hinge
+// sweeps a QUARTER-DISC of radius `w`, so the swing is bounded by the geometry
+// rather than by a guess. A value past the limit is REFUSED with the limit as its
+// offer and the overshoot as its residual — `A9c`'s shape, and never a silent
+// clamp, because a leaf quietly held at 90° is a door that lies about its state.
+pub const LEAF_MAX = 1.5707963267948966;   // pi/2 — the quarter-disc it may sweep
+pub const LEAF_AJAR = 0.6108652381980153;  // 35 degrees, which is what READS as open
+
+pub struct DoorLeaf {
+  dl_q:     integer,
+  dl_r:     integer,
+  dl_dir:   integer,     // which of the cell's six edges carries it
+  dl_angle: float,       // 0 is shut, LEAF_MAX is flat against the reveal
+  dl_up:    integer,     // how tall the leaf stands, in height units
+}
+
+// Swing a leaf to `want`, or refuse with what it can have.
+//
+// ⚠ THE REFUSAL CARRIES THE LIMIT AND THE OVERSHOOT. `fit_ordinal` speaks in
+// integers and an angle is a float, so this says the same three things by hand:
+// what was wrong, what is available, how far past it the ask was.
+pub fn leaf_swing(l: DoorLeaf, want: float, out: &DoorLeaf) -> Ack {
+  if want < 0.0 {
+    return ack_no("a leaf does not swing backwards through its own frame "
+                + "(offer 0, residual {0.0 - want})");
+  }
+  if want > LEAF_MAX {
+    return ack_no("a leaf sweeps a quarter-disc at most "
+                + "(offer {LEAF_MAX}, residual {want - LEAF_MAX})");
+  }
+  out = DoorLeaf { dl_q: l.dl_q, dl_r: l.dl_r, dl_dir: l.dl_dir,
+                   dl_angle: want, dl_up: l.dl_up };
+  ack_at(ack_ok(1), l.dl_q, l.dl_r)
+}
+
+// The leaf's four corners in the world: hinge at the foot, free edge at the foot,
+// free edge at the head, hinge at the head.
+//
+// The hinge is the edge's first corner and the leaf is as wide as the edge it
+// fills — one hex edge, which `hex_draw` measures as 1.0 world unit and calls a
+// real domestic door. Swinging rotates the free end about the hinge, which is what
+// a hinge IS; a leaf that slid or scaled would read as a shutter.
+fn leaf_hinge_x(l: DoorLeaf) -> float {
+  (ea, _eb) = hex_edge_corners(l.dl_dir);
+  (x, _z) = hex_corner_px(l.dl_q, l.dl_r, (6 - ea) % 6 ?? 0);
+  x
+}
+
+fn leaf_hinge_z(l: DoorLeaf) -> float {
+  (ea, _eb) = hex_edge_corners(l.dl_dir);
+  (_x, z) = hex_corner_px(l.dl_q, l.dl_r, (6 - ea) % 6 ?? 0);
+  z
+}
+
+fn leaf_shut_x(l: DoorLeaf) -> float {
+  (_ea, eb) = hex_edge_corners(l.dl_dir);
+  (x, _z) = hex_corner_px(l.dl_q, l.dl_r, (6 - eb) % 6 ?? 0);
+  x
+}
+
+fn leaf_shut_z(l: DoorLeaf) -> float {
+  (_ea, eb) = hex_edge_corners(l.dl_dir);
+  (_x, z) = hex_corner_px(l.dl_q, l.dl_r, (6 - eb) % 6 ?? 0);
+  z
+}
+
+// Where the free end of the leaf is, at its current angle.
+pub fn leaf_free_x(l: DoorLeaf) -> float {
+  hx = leaf_hinge_x(l);
+  dx = leaf_shut_x(l) - hx;
+  dz = leaf_shut_z(l) - leaf_hinge_z(l);
+  hx + dx * cos(l.dl_angle) - dz * sin(l.dl_angle)
+}
+
+pub fn leaf_free_z(l: DoorLeaf) -> float {
+  hz = leaf_hinge_z(l);
+  dx = leaf_shut_x(l) - leaf_hinge_x(l);
+  dz = leaf_shut_z(l) - hz;
+  hz + dx * sin(l.dl_angle) + dz * cos(l.dl_angle)
+}
+
+// The four corners, indexed 0..3 around the leaf.
+pub fn leaf_x(l: DoorLeaf, i: integer) -> float {
+  if i == 0 || i == 3 { return leaf_hinge_x(l); }
+  leaf_free_x(l)
+}
+
+pub fn leaf_z(l: DoorLeaf, i: integer) -> float {
+  if i == 0 || i == 3 { return leaf_hinge_z(l); }
+  leaf_free_z(l)
+}
+
+// A leaf's width never changes, whatever it is doing — the check that says a hinge
+// is a hinge and not a slide.
+pub fn leaf_width(l: DoorLeaf) -> float {
+  dx = leaf_free_x(l) - leaf_hinge_x(l);
+  dz = leaf_free_z(l) - leaf_hinge_z(l);
+  sqrt(dx * dx + dz * dz) ?? 0.0
+}
+
+pub struct DoorLeaves { items: vector<DoorLeaf> }
+
 // ── the modes, and what a mode writes per step ──────────────────────────────
 //
 // `road` and `level` are not one-shot gestures: they set a flag the TICK acts on,

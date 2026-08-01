@@ -1,0 +1,111 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// AN OPENING IS SIZED TO WHAT GOES IN IT — and one field turns it into an alcove.
+//
+// ⚠ THE OLD RULE WAS BACKWARDS. `place_opening` takes N whole hex edges, so a door
+// is 0.87 m or 1.74 m and nothing between: the shape forced to the lattice. A leaf
+// is 0.9 m wide because a person walks through it, so the HOLE is cut to fit the
+// leaf and the edges it covers are the store's index of which boundary is passable.
+//
+// Same shape as `S3` one level down — there the edges were the index and the run
+// was the truth, here the edges are the index and the opening is — and it is what
+// lets a door, a window, a gateway and an ALCOVE be one thing with one number
+// different, rather than four systems that cannot combine.
+use hex_editor;
+use hex_grid;
+
+const BAND = 0.8660254037844386;   // hex_draw::BAND_SIDES — the wall's own thickness
+
+fn test_a_hole_is_the_shape_plus_its_clearance() {
+  // Nothing rounds to an edge, a cell or a span: a 0.9 m leaf gets a 0.9 m hole and
+  // the reveal either side. A version that quantised would be the old design
+  // wearing new parameters.
+  o = hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+  want = 0.9 * 0.5 + hex_editor::OPENING_CLEAR;
+  d = o.op_half - want;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "half-width is the leaf and its clearance: {o.op_half} vs {want}");
+}
+
+fn test_two_different_leaves_get_two_different_holes() {
+  // The claim in one line: the shape leads. A cottage door and a barn door cannot
+  // be the same hole, and under the old rule they were both "one edge" or "two".
+  narrow = hex_editor::door_opening(0.0, 0.0, 0.8, 12);
+  wide = hex_editor::door_opening(0.0, 0.0, 1.6, 12);
+  assert(wide.op_half > narrow.op_half + 0.35,
+         "a wider leaf cuts a wider hole: {narrow.op_half} vs {wide.op_half}");
+}
+
+fn test_a_door_goes_through_and_an_alcove_does_not() {
+  // ⚠ ONE FIELD, FOUR FITTINGS. Depth is what separates a doorway from a niche, so
+  // "put a statue in the wall" needs no new concept — the void already has a floor,
+  // a back and a size.
+  door = hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+  niche = hex_editor::alcove_opening(0.0, 0.0, 0.6, 4, 10, 0.6);
+  assert(hex_editor::opening_through(door), "a door goes through");
+  assert(!hex_editor::opening_through(niche), "an alcove does not");
+  assert(hex_editor::opening_reach(niche, BAND) < BAND,
+         "and its back wall stands inside the wall: {hex_editor::opening_reach(niche, BAND)}");
+  assert(hex_editor::opening_reach(door, BAND) == BAND, "where a door's does not exist");
+}
+
+fn test_an_alcove_has_room_for_what_stands_in_it() {
+  // A statue is a prop at the opening's own frame, so the niche has to say how much
+  // room it offers — width, height and depth are all readable from the void itself.
+  niche = hex_editor::alcove_opening(0.0, 0.0, 0.6, 4, 10, 0.6);
+  assert(niche.op_half * 2.0 > 0.6, "wide enough for the shape it was cut for");
+  assert(niche.op_hi > niche.op_lo, "and tall enough to stand in: {niche.op_lo}..{niche.op_hi}");
+  assert(hex_editor::opening_reach(niche, BAND) > 0.3, "with depth to stand back in");
+}
+
+fn test_a_point_inside_the_void_is_reported_with_its_band() {
+  // What the renderer asks, per step along the wall, without knowing anything about
+  // doors: is this cut, and between which heights.
+  o = hex_editor::window_opening(4.0, 0.0, 1.0, 3, 9);
+  lo = 0;
+  hi = 0;
+  assert(hex_editor::opening_cuts(o, 4.0, 0.0, 0.25, lo, hi), "the centre is cut");
+  assert(lo == 3 && hi == 9, "between the sill and the head: {lo}..{hi}");
+  assert(!hex_editor::opening_cuts(o, 6.0, 0.0, 0.25, lo, hi), "and two metres away is not");
+}
+
+fn test_a_shape_too_wide_for_its_wall_is_told_what_fits() {
+  // ⚠ REFUSED WITH AN OFFER, like everything else here. A hole cannot reach past
+  // its own wall, and the widest that fits is a number the wall can state — so the
+  // author is told what they can have instead of getting a hole with one jamb.
+  room = hex_editor::opening_room(12.0, 6.0);
+  assert(room > 11.0, "in the middle of a twelve-unit wall, nearly all of it fits: {room}");
+  edge = hex_editor::opening_room(12.0, 0.5);
+  assert(edge < 1.0, "half a unit from the end, almost nothing does: {edge}");
+  assert(edge > 0.0, "but it is still an offer rather than a refusal with no answer");
+}
+
+fn test_an_arch_narrows_as_it_rises_and_is_tallest_at_the_crown() {
+  // ⚠ THE HALF-ROUND, and it is the same curve `hex_roof::vault_arc` sweeps along a
+  // track. A corridor is that profile swept far, an arch is it swept through a
+  // wall, and an alcove is it stopped short — so the half-round corridor an author
+  // draws IS the arch they get, rather than a fourth system that looks like one.
+  a = hex_editor::arch_opening(0.0, 0.0, 1.2, 0, 8, 0.25, 1.0);
+  assert(hex_editor::opening_arched(a), "it is arched");
+  lo = 0;
+  crown = 0;
+  hex_editor::opening_cuts(a, 0.0, 0.0, 0.25, lo, crown);
+  edge = 0;
+  hex_editor::opening_cuts(a, a.op_half * 0.95, 0.0, 0.25, lo, edge);
+  assert(crown > edge, "tallest at the crown, lowest at the jamb: {crown} vs {edge}");
+  assert(edge >= 8, "and it never dips below the springing: {edge}");
+  d = crown - (8 + ((a.op_half / 0.25 ?? 0.0) as integer));
+  if d < 0 { d = 0 - d; }
+  assert(d <= 1, "the crown stands a half-width above the springing, off by {d}");
+}
+
+fn test_an_arched_alcove_is_the_same_thing_stopped_short() {
+  // Which is the whole argument: an arch and a niche differ in ONE field, so an
+  // author who can draw a half-round corridor can already make an arched alcove.
+  through = hex_editor::arch_opening(0.0, 0.0, 1.2, 0, 8, 0.25, 1.0);
+  niche = hex_editor::arch_opening(0.0, 0.0, 1.2, 0, 8, 0.25, 0.5);
+  assert(hex_editor::opening_through(through), "the arch goes through");
+  assert(!hex_editor::opening_through(niche), "the alcove does not");
+  assert(through.op_hi == niche.op_hi, "and they are the same shape in elevation");
+}
