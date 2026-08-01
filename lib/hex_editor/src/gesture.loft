@@ -71,6 +71,68 @@ pub fn ack_at(a: Ack, q: integer, r: integer) -> Ack {
         ak_residual: a.ak_residual, ak_q: q, ak_r: r }
 }
 
+// ── THE DOORSTEP (`K-FIT`, invariant I) ─────────────────────────────────────
+//
+// > No edit is ever silently corrected. Every author action ends in exactly one
+// > of three states — applied exactly, refused with a NAMED REASON, an OFFER and
+// > a RESIDUAL, or applied as an explicit approximation with its residual shown.
+//
+// A refusal that says only "no" is half the obligation. The author asked for
+// something; they are owed what they can have instead (the offer) and how far
+// off they were (the residual). Otherwise the next move is guesswork.
+//
+// ⚠ AND THE OFFER IS NOT ALWAYS MEANINGFUL. An ORDINAL parameter — a height, a
+// length — has a nearest admissible value, so an offer is a correction. A
+// NOMINAL one — a material, a species, a palette index — does not: 255 is not
+// "nearly" 256, it is a different thing entirely, and offering it reads as a
+// small correction while changing what the wall is made of (`X68`). So nominal
+// parameters are refused WITHOUT an offer, and that is a distinction the type
+// carries rather than each caller remembering.
+pub struct Fit {
+  ft_ok:       boolean,
+  ft_reason:   text,
+  ft_offer:    integer,          // meaningless unless ft_ordinal
+  ft_residual: integer,
+  ft_ordinal:  boolean,
+}
+
+pub fn fit_ok() -> Fit {
+  Fit { ft_ok: true, ft_reason: "", ft_offer: 0, ft_residual: 0, ft_ordinal: true }
+}
+
+// An ordinal parameter: it has a nearest admissible value, so refusing carries
+// an offer and the distance to it.
+pub fn fit_ordinal(v: integer, lo: integer, hi: integer, what: text) -> Fit {
+  if v < lo {
+    return Fit { ft_ok: false, ft_reason: "{what} {v} is below the minimum {lo}",
+                 ft_offer: lo, ft_residual: lo - v, ft_ordinal: true };
+  }
+  if v > hi {
+    return Fit { ft_ok: false, ft_reason: "{what} {v} is above the maximum {hi}",
+                 ft_offer: hi, ft_residual: v - hi, ft_ordinal: true };
+  }
+  fit_ok()
+}
+
+// A nominal parameter: a name, not a magnitude. No offer, ever.
+pub fn fit_nominal(v: integer, hi: integer, what: text) -> Fit {
+  if v < 0 || v > hi {
+    return Fit { ft_ok: false,
+                 ft_reason: "{what} {v} is not a {what}; nominal, so there is no nearest one",
+                 ft_offer: 0, ft_residual: 0, ft_ordinal: false };
+  }
+  fit_ok()
+}
+
+// One rendering of a refusal, so every tool says it the same way and a NOMINAL
+// refusal cannot accidentally grow an offer.
+pub fn fit_text(f: Fit) -> text {
+  if f.ft_ordinal {
+    return "{f.ft_reason} (offer {f.ft_offer}, residual {f.ft_residual})";
+  }
+  f.ft_reason
+}
+
 // ── the ground the gestures write through ───────────────────────────────────
 
 pub const SURFACE_MAT = 1;     // any non-zero index: 0 is absence (`E1`)
@@ -123,6 +185,168 @@ pub fn ground_set(w: &World, q: integer, r: integer, h: integer, mat: integer) -
                         h_wall_ne: c.h_wall_ne,
                         h_wall_se: c.h_wall_se };
   ground_write(w, q, r, nc)
+}
+
+// ── the surface and edge writers the gestures share ─────────────────────────
+
+// The three edge slots a hex owns, and the height unit everything is measured in.
+pub const SLOT_NW = 0;                // h_wall_n
+pub const SLOT_NE = 1;                // h_wall_ne
+pub const SLOT_E  = 2;                // h_wall_se
+
+
+// The height of a cell: every peak's contribution, summed.
+//
+// The falloff is `(1 - (d/R)^2)^2` — a smooth bump that reaches zero WITH ZERO
+// SLOPE at the rim. A linear cone would meet the flat ground at an angle and
+// leave a visible crease ring around every hill; this one lands tangent, so a
+// hill blends into the plain and into its neighbours without a seam to hide.
+//
+// The result is an INTEGER height unit, because `L13` makes moros's cell the
+// storage of record and its height is an integer at 0.25 wu. Quantising here
+// rather than at the mesh keeps the field the thing that is true.
+// The surface height at a hex — ONE voxel read, not a sum over authored peaks.
+// An unwritten cell reads as absent, which is height 0: the flat plane, and the
+// same answer the peak version gave for ground nobody had touched.
+pub fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
+  // ⚠ THE GROUND IS A LABEL, NOT AN INDEX. This read `world_cell(…, SURFACE)` —
+  // layer 0 — which is the outdoors right up until a cellar is dug beneath it, and
+  // then silently becomes the cellar floor. Measured: three cellars under a hill
+  // sank the drawn ground from 10.917 to 5.583 wu.
+  //
+  // ⚠ Bound to a local, not `…().h_height` in tail position — that is loft H9's
+  // shape (a field projected off an inline call) and it aborted the interpreter
+  // here even though H9 itself is fixed for the case it was filed as.
+  c = world_ground_cell(wld, hq, hr);
+  h = c.h_height;
+  h
+}
+
+// ⚠ WRITE THE GROUND, WHICHEVER LAYER THAT IS — the one place a ground write
+// names a layer, so there is nowhere else to get it wrong.
+//
+// Both ground writers used to send a ONE-ELEMENT column, `co_cells: [nc]`, which
+// `world_set_column` applies POSITIONALLY to layer 0. That was right for exactly
+// as long as layer 0 was the ground, and it is the half of this defect that does
+// not show in a picture: fixing only the READ would have drawn a ground that
+// editing no longer moves, because a raise would still have raised the cellar.
+//
+// The column is read, the ground cell replaced, and the whole thing written back
+// WITH ITS LABELS — so nothing is created (every label is already its layer's
+// own), and because step 5 stamps only layers whose bytes actually changed, no
+// other layer's version is touched (`T2`).
+//
+// A hex with no ground at all is the one case that still sends a single cell:
+// there is no layer to address, and the store names the one it creates.
+// Write one cell of THE LAYER THOSE FEET ARE ON — `ground_write`'s twin for the
+// other surface question. A column with no surface at all falls back to authoring
+// the ground, which is what an unwritten hex has always done.
+//
+// ⚠ Deliberately NOT folded into `terrain_set`. Every other ground writer — the
+// raise, the field, the vegetation, the walls — genuinely means the outdoors, and
+// giving all of them a height they would have to invent would be rewriting every
+// producer to serve one consumer. The road is the consumer that knows its feet.
+pub fn surface_set(wld: &World, q: integer, r: integer, feet: float,
+               h: integer, mat: integer) -> integer {
+  // ⚠ THE UNIT IS THE WORLD'S, not a constant this package keeps. `w_unit` is
+  // what `world_new` was given, so a world built at a different scale measures
+  // its own heights — and there is no second copy to drift.
+  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  c = hex_world::world_cell(wld, q, r, sf.sf_layer);
+  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+                        h_material: mat as u8? ?? 0,
+                        h_item: c.h_item,
+                        h_item_rotation: c.h_item_rotation,
+                        h_wall_n: c.h_wall_n,
+                        h_wall_ne: c.h_wall_ne,
+                        h_wall_se: c.h_wall_se };
+  if sf.sf_layer < 0 { return ground_write(wld, q, r, nc); }
+  col = hex_world::world_column(wld, q, r);
+  cells: vector<hex_world::Hex> = [];
+  for i in 0..len(col.co_cells) {
+    if i == sf.sf_layer { cells += [nc]; } else { cells += [col.co_cells[i]]; }
+  }
+  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+                                            co_ids: col.co_ids }).cw_code
+}
+
+// hex_grid's directions: 0=E 1=SE 2=SW 3=W 4=NW 5=NE.
+pub fn edge_owner(q: integer, r: integer, dir: integer) -> (integer, integer, integer) {
+  if dir == 0 { return (q, r, SLOT_E); }
+  if dir == 5 { return (q, r, SLOT_NE); }
+  if dir == 4 { return (q, r, SLOT_NW); }
+  (nq, nr) = hex_grid::hex_neighbor(q, r, dir);
+  if dir == 3 { return (nq, nr, SLOT_E); }      // our W is the west neighbour's E
+  if dir == 1 { return (nq, nr, SLOT_NW); }     // our SE is the SE neighbour's NW
+  (nq, nr, SLOT_NE)                             // our SW is the SW neighbour's NE
+}
+
+// The material on the edge between (q, r) and its neighbour in `dir`, at the
+// surface layer. 0 is no boundary at all — which is NOT the same as a doorway
+// (`X70`), and the difference is the reason a door has a material of its own.
+// ── WHICH LAYER STORES AN EDGE AT THIS HEIGHT ───────────────────────────────
+//
+// ⚠⚠ `world_surface` IS THE WRONG SELECTOR ON ITS OWN, and the fence count is what
+// said so: 30 edges before, **16** after, with "stored outside" falling 15 → 1.
+// The rule picks among OCCUPIED layers — and `E1e` is the invariant that *an edge
+// is content whatever the cell under it holds*, so half of any boundary is stored
+// in cells that hold no ground at all. For those `world_surface` answers −1, and a
+// −1 means "the store names the layer it creates": a one-element column, applied
+// positionally to layer 0, which is not the ground once anything is dug beneath.
+//
+// So the fallback is the GROUND LAYER, which exists chunk-wide whether or not this
+// particular cell is occupied. `world_ground_layer` answers from the layer list and
+// not from the cell, which is exactly the difference that matters here.
+pub fn edge_layer(wld: World, q: integer, r: integer, ref: float) -> integer {
+  li = hex_world::world_surface(wld, q, r, ref / wld.w_unit ?? 0.0).sf_layer;
+  if li >= 0 { return li; }
+  hex_world::world_ground_layer(wld, q, r)
+}
+
+// Put a material on that edge. `h` is the height the edge should take if the cell
+// that stores it holds nothing — a boundary is content in its own right (`E1e`),
+// and it stands at the height of what it bounds rather than at zero.
+//
+// ── ⚠ AN EDGE BELONGS TO THE SURFACE IT BOUNDS ──────────────────────────────
+//
+// This wrote THE GROUND, whichever layer that is — right for as long as the
+// ground was the only thing anyone could stand on, and wrong the day a stair
+// existed. Measured from a deck at 16 with the ground at 4: `24:` reported
+// `edge 0 of (6,0) = 1` and the byte landed on the ground's cell, so the author
+// fenced a room on the first floor and got a fence in the yard below. `23:`
+// FENCE and `25:` WALL go through here too, so one write had all three.
+//
+// `ref` is the height the author is authoring AT — their feet — and it selects
+// the layer the same way the road's write does. Wall bytes live on a `Hex`, and
+// a `Hex` is per-layer, so a deck's own edges are already representable and
+// already drawn: `chunk_mesh_props` reads them from every layer's cell, outside
+// the occupancy guard. Only the write and the collision proxy named the ground.
+//
+// ⚠ THE OWNER MAY BE A DIFFERENT COLUMN FROM THE ONE YOU STAND IN — that is
+// `E1e`, half of any boundary is stored outside the thing it bounds — and it may
+// have nothing at your level. Then there is no layer to address and the store
+// names the one it creates, at height `h`, exactly as for an unwritten hex.
+pub fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
+            mat: integer, h: integer, ref: float) -> integer {
+  (oq, orr, slot) = edge_owner(q, r, dir);
+  eli = edge_layer(wld, oq, orr, ref);
+  c = hex_world::world_cell(wld, oq, orr, eli);
+  hh = c.h_height as integer ?? 0;
+  if !hex_world::hex_present(c) { hh = h; }
+  wn = c.h_wall_n as integer ?? 0;
+  we = c.h_wall_ne as integer ?? 0;
+  ws2 = c.h_wall_se as integer ?? 0;
+  if slot == SLOT_NW { wn = mat; }
+  else if slot == SLOT_NE { we = mat; }
+  else { ws2 = mat; }
+  nc = hex_world::Hex { h_height: hh as u16? ?? 0,
+                        h_material: c.h_material,
+                        h_item: c.h_item,
+                        h_item_rotation: c.h_item_rotation,
+                        h_wall_n: wn as u8? ?? 0,
+                        h_wall_ne: we as u8? ?? 0,
+                        h_wall_se: ws2 as u8? ?? 0 };
+  layer_write(wld, oq, orr, eli, nc)
 }
 
 // ── raise / lower ───────────────────────────────────────────────────────────

@@ -1,0 +1,107 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT A GESTURE COSTS, AS A NUMBER — and whether that number moves when the
+// world gets bigger.
+//
+// ⚠ THE OLD MEASUREMENT COULD NOT ANSWER THIS. A gate drives a socket and times a
+// round trip, so what it measures is a wall clock: the tick rate, the streamer,
+// the box's load, the ten other gates running beside it. Two runs of identical
+// code differed by seconds. That is fine for "did it happen" and useless for "what
+// does it cost", which is the question that decides whether this editor still
+// works on a large, filled world.
+//
+// `w_tau` is the world's own edit clock: hex_world bumps it once per column write
+// that actually CHANGED something, and stamps the layer with it. So the cost of a
+// gesture is exactly `τ` after minus `τ` before — deterministic, the same on any
+// machine, and a number a test can pin rather than a duration it has to tolerate.
+//
+// The claim these files exist to hold: **a local edit costs what it touches, not
+// what the world holds.** A stroke on an empty world and the same stroke on a
+// world of thousands of written cells must cost the same, or the editor gets
+// slower as the map fills — which is exactly when it must not.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+// A filled world: every cell in a `rad`-hex square written, so the strokes below
+// land on ground that already exists rather than creating it.
+fn filled(rad: integer) -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - rad..rad + 1 {
+    for r in 0 - rad..rad + 1 { hex_editor::ground_set(w, q, r, 4, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn east() -> Author { hex_editor::author_at(0.0, 0.0, 0.0) }
+
+fn test_a_stroke_costs_a_fixed_number_of_writes() {
+  // The number itself, pinned. The brush is a disc of PEAK_R with a `(1-t²)²`
+  // falloff, and a cell whose delta rounds to zero is not written at all — so the
+  // cost is smaller than the disc and is a property of the shape, not the radius.
+  // If this number moves, the brush changed; that is the point of writing it down.
+  w = filled(20);
+  before = w.w_tau;
+  hex_editor::raise_ahead(w, east(), 1);
+  cost = w.w_tau - before;
+  assert(cost > 0, "a stroke writes something");
+  assert(cost == 91, "a stroke costs 91 column writes, got {cost}");
+}
+
+fn test_the_cost_does_not_grow_with_the_world() {
+  // ⚠ THE SCALING CLAIM. The same stroke on a world with 1,681 written cells and on
+  // one with 14,641 — nearly nine times the content — must cost the same. A cost
+  // that tracked the world's size would mean the editor slows down as the map
+  // fills, and a large world is exactly where an author spends their time.
+  small = filled(20);
+  big = filled(60);
+  s0 = small.w_tau;
+  hex_editor::raise_ahead(small, east(), 1);
+  cs = small.w_tau - s0;
+  b0 = big.w_tau;
+  hex_editor::raise_ahead(big, east(), 1);
+  cb = big.w_tau - b0;
+  assert(cs == cb, "the same stroke costs the same: {cs} on the small world, {cb} on the big");
+}
+
+fn test_a_second_stroke_costs_the_same_as_the_first() {
+  // Repeated editing must not get dearer. The stroke adds to what is there, and a
+  // read-modify-write that re-read more each time — a column that grew a layer per
+  // press, say — would show here as a rising cost.
+  w = filled(20);
+  t0 = w.w_tau;
+  hex_editor::raise_ahead(w, east(), 1);
+  first = w.w_tau - t0;
+  t1 = w.w_tau;
+  hex_editor::raise_ahead(w, east(), 1);
+  second = w.w_tau - t1;
+  t2 = w.w_tau;
+  hex_editor::raise_ahead(w, east(), 1);
+  third = w.w_tau - t2;
+  assert(first == second && second == third,
+         "each stroke costs the same: {first}, {second}, {third}");
+}
+
+fn test_a_refused_gesture_costs_nothing() {
+  // ⚠ A REFUSAL MUST NOT HAVE WRITTEN. This is invariant I as a cost: "refused"
+  // and "half applied, then refused" are different worlds, and only the clock can
+  // tell them apart from outside.
+  w = filled(20);
+  before = w.w_tau;
+  ack = hex_editor::raise_ahead(w, east(), 0);
+  assert(!ack.ak_ok, "the stroke was refused");
+  assert(w.w_tau == before, "and wrote nothing: τ {before} -> {w.w_tau}");
+}
+
+fn test_writing_the_same_height_twice_is_free() {
+  // hex_world bumps `τ` only when a write CHANGES something, so this measures the
+  // model's own promise. It matters for the editor because a gesture that re-writes
+  // unchanged cells looks identical from outside and costs the renderer a rebuild
+  // it did not need.
+  w = filled(20);
+  hex_editor::ground_set(w, 3, 3, 9, hex_editor::SURFACE_MAT);
+  before = w.w_tau;
+  hex_editor::ground_set(w, 3, 3, 9, hex_editor::SURFACE_MAT);
+  assert(w.w_tau == before, "an unchanged write is free: τ {before} -> {w.w_tau}");
+}
