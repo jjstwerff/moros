@@ -346,20 +346,28 @@ gate-character:
 # the one implementation — which is the whole reason they moved out of the message
 # loop. It compares the ACK, because that is the editor's own reckoning of what it
 # built, and a divergence in cells, edges or ridge names which one moved.
-# ⚠ THE FRAME ITSELF, AS NUMBERS — and it is RED on purpose, which is why it is NOT
-# in `make gate`. Every wrong turn in the camera work came from reading a picture by
-# eye; this counts the pixels instead, classifying by chromaticity so a lit surface
-# and a shadowed one land in the same bucket. Two rows: the SUBJECT must be at least
-# half a percent of the frame, and no single surface may take more than 60% of it.
+# ⚠ THE FRAME ITSELF, AS NUMBERS — and it IS in `make gate` now, as
+# `tools/gates/world/camera_indoors.mjs`. This target is the same script by hand,
+# for when the pictures are what you want rather than the verdict. Every wrong turn
+# in the camera work came from reading a picture by eye; this counts the pixels
+# instead, classifying by chromaticity so a lit surface and a shadowed one land in
+# the same bucket.
 #
-# Measured today, and the outdoor control is what "works" looks like:
+# Three rows now, and the middle one is the direct test of what was actually broken:
 #
-#   outside        subject 1.54%   largest grass    53%     PASS
-#   inside, floor  subject 0.09%   largest masonry  78%     FAIL both rows
-#   inside, corner subject 10.6%   largest masonry  78%     FAIL the second
+#   cam <lo> <hi>       where the EYE is, off the `C:` matrix the renderer used
+#   frame <sub> <max>   the subject at least 0.5% of the frame, no surface over 60%
 #
-# It joins `make gate` when the interior camera is fixed — a red gate in the suite is
-# a suite nobody can read, and a gate that has never been seen red is not a gate.
+# What it read on the way, and every line of it was measured:
+#
+#   before          outside 1.54%/grass 53%   floor 0.09%/masonry 78%   corner 10.6%/78%
+#   camera on wire  outside unchanged         floor 10.6%/masonry 50%   corner 2.7%/61%
+#   floor drawn     outside unchanged         floor 10.6%/masonry 71%   corner 2.7%/77%
+#   floor separable outside unchanged         floor 10.6%/masonry 47%   corner 2.7%/48%
+#
+# ⚠ THE THIRD ROW IS THE ONE TO READ. Drawing the missing floor made the gate REDDER,
+# because `masonry` was wall AND floor in one bucket — the fix was owed to the
+# instrument before the threshold over it could mean anything.
 camera-frame:
 	@$(MAKE) -s port-free >/dev/null 2>&1; : > .editor.log
 	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \

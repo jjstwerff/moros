@@ -40,7 +40,11 @@ import process from 'node:process';
 const args = process.argv.slice(2);
 const scriptPath = args[0];
 if (!scriptPath) { console.error('usage: script.mjs <script.keys> [--port N] [--keep]'); process.exit(64); }
-let PORT = 18090, keep = false, shots = false;
+// ⚠ `EDITOR_PORT` FIRST, because the gate suite gives every gate its own port and
+// its own server. A runner that hardcoded 18090 would pass alone and dial another
+// gate's world inside the suite — which is the worst way round, and the reason
+// `run-gates.sh` says so at the top of itself.
+let PORT = +(process.env.EDITOR_PORT ?? 18090), keep = false, shots = false;
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--port') PORT = +args[++i];
   if (args[i] === '--keep') keep = true;
@@ -85,7 +89,7 @@ const PALETTE = {
   tree:   [0.16, 0.34, 0.14],
   roof:   [0.45, 0.20, 0.17],
   wall:   [0.55, 0.52, 0.46],
-  floor:  [0.62, 0.57, 0.48],
+  floor:  [0.65, 0.40, 0.25],
   frame:  [0.78, 0.74, 0.65],
   sky:    [0.48, 0.55, 0.64],
 };
@@ -94,13 +98,19 @@ const CHROMA = Object.entries(PALETTE).map(([k, c]) => {
   return [k, [c[0] / s, c[1] / s, c[2] / s]];
 });
 
-// ⚠ WALL, FLOOR AND FRAME ARE NEARLY THE SAME CHROMATICITY — 0.359/0.340/0.301
-// against 0.371/0.341/0.287 — because they are all pale warm greys, which is a fact
-// about the palette and not a flaw in the method. They are reported as one bucket
-// rather than pretended apart, and the SUBJECT is what this exists to count: at
-// 0.432/0.324/0.243 it is far warmer than any of them, which is why the one row that
-// matters is the one that survives.
-const MERGE = { wall: 'masonry', floor: 'masonry', frame: 'masonry' };
+// ⚠ THE FRAME IS THE WALL'S CHROMATICITY — 0.371/0.341/0.287 against 0.359/0.340/
+// 0.301 — because both are pale warm greys, which is a fact about the palette and
+// not a flaw in the method. Those two are reported as one bucket rather than
+// pretended apart; a frame is a jamb and a soffit, so the bucket is a wall with its
+// reveals and reads as one surface in the picture as well as in the histogram.
+//
+// ⚠ THE FLOOR USED TO BE IN HERE TOO, AND THAT MADE THE SECOND ROW UNMEASURABLE.
+// The rule is *no SINGLE surface over 60%*, and while the floor was `0.62,0.57,0.48`
+// it landed 0.0003 from the wall against a 0.0009 tolerance — so an interior frame
+// reported one bucket of 77% that was a wall AND the floor it stands on, and no
+// threshold over it could mean what it said. The floor is timber now, in the
+// renderer, which separates them in the picture and not merely in the classifier.
+const MERGE = { wall: 'masonry', frame: 'masonry' };
 
 // ── the browser, attached lazily and only for pictures
 const CDP = 9345;
@@ -183,11 +193,18 @@ async function browser() {
 
 // ── the wire: how the world is actually driven
 const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-const status = []; const trace = []; let tCount = 0;
+const status = []; const trace = []; let tCount = 0; let view = null;
 ws.addEventListener('message', (ev) => {
   const s = ev.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
   if (t === 'T' && b.startsWith('0;')) { trace.push(b.slice(2).split(',').map(Number)); tCount++; }
+  // ⚠ THE VIEW MATRIX THE RENDERER ACTUALLY USED. The `27:` trace reports the
+  // camera's own valves — `want`, `dist`, `free` — and every one of them can be
+  // right while the eye is somewhere the room does not contain: `dist` is a length
+  // along a ray whose origin and direction are decided elsewhere. So the position
+  // is read back from `C:`, which is the matrix that drew the picture and cannot
+  // disagree with it.
+  if (t === 'C') view = b.split(';')[0].split(',').map(Number);
 });
 await new Promise((r) => ws.addEventListener('open', r));
 ws.send('1:');
@@ -212,6 +229,18 @@ const pose = () => trace[trace.length - 1] ?? new Array(16).fill(0);
 // Facing from the body's own model matrix — the same third column `keyonly` reads,
 // so the script and the gate agree about which way the character is looking.
 const facing = () => { const m = pose(); return Math.atan2(m[2], m[0]) * 180 / Math.PI; };
+// Where the eye is, inverted out of the view matrix: for a rigid `V = R·T(-eye)`,
+// `eye = -Rᵀt`. Column-major, so element (row r, col c) is `m[c*4+r]`.
+const eyeAt = () => {
+  if (!view || view.length < 16) return null;
+  const e = [0, 0, 0];
+  for (let c = 0; c < 3; c++) {
+    let s = 0;
+    for (let r = 0; r < 3; r++) s += view[c * 4 + r] * view[12 + r];
+    e[c] = -s;
+  }
+  return e;
+};
 
 let snaps = 0;
 // ⚠ A judged frame that fails must fail the RUN. A gate that prints FAIL and exits
@@ -384,6 +413,34 @@ for (const raw of lines) {
       if (okSub && okMax) verdict = ' PASS';
     }
     console.log('  ' + JSON.stringify(fs2) + verdict);
+  } else if (cmd === 'cam') {
+    // ⚠ WHERE THE EYE IS, not how long the boom is. The two are different claims
+    // and only the first one can be checked against the walls: a boom of 1.87 in a
+    // room 3.4 wu wide is unremarkable, and the same boom pointed through a doorway
+    // puts the eye in the garden. `dist` cannot tell those apart; a coordinate can.
+    //
+    // ⚠ AND IT IS THE DIRECT TEST OF THE FAULT THE PIXELS ONLY IMPLY. The camera's
+    // ease was solved on every tick and published on none, so the eye stood where
+    // the character last MOVED — measured, mid-floor `apart 5.900`, which is the
+    // outdoor control's number to the millimetre inside a house. The frame rows
+    // catch that as a consequence; this catches it as the thing itself.
+    //
+    // `cam` reports; `cam <lo> <hi>` judges. Checked against the old build: the
+    // control's band passes on both, and BOTH indoor bands fail on it — 5.900
+    // against 1.5..3.0 and 2.406 against 3.5..5.2.
+    const e = eyeAt(), p = pose();
+    if (!e) { console.log('  !! no C: yet — the camera was never asked for'); continue; }
+    const d = Math.hypot(e[0] - p[12], e[1] - (p[13] + 0.9), e[2] - p[14]);
+    const lo = rest[0] === undefined ? null : Number(rest[0]);
+    const hi = rest[1] === undefined ? null : Number(rest[1]);
+    let verdict = '';
+    if (lo !== null) {
+      if (d < lo || d > hi) { verdict = ` FAIL apart ${d.toFixed(3)} outside ${lo}..${hi}`; frameFails += 1; }
+      else verdict = ' PASS';
+    }
+    console.log(`  eye ${e.map((v) => v.toFixed(3)).join(' ')}`
+              + `  char ${p[12].toFixed(3)} ${p[13].toFixed(3)} ${p[14].toFixed(3)}`
+              + `  apart ${d.toFixed(3)}` + verdict);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.

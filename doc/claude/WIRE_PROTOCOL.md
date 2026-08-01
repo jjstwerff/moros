@@ -123,9 +123,22 @@ measurement, and the cost of not knowing it is named.
    necessarily still pending, and the next `rebuilt` is necessarily the one carrying it. **Order
    matters:** `road.mjs` waits for the rebuild *before* toggling road mode off, because after
    the toggle there may be nothing left to wait for.
-4. **`T:` and `C:` are sent only from inside `if moved`.** A standing character produces
-   neither, so *waiting* for the next one times out. `2:<aspect>,` sets `moved`, which is how a
-   fresh transform or camera is **requested**. `occlude.mjs` and `climb.mjs` both depend on this.
+4. **`T:` is sent only from inside `if moved`; `C:` is sent when the CAMERA changed.** A
+   standing character produces no `T:`, so *waiting* for the next one times out. `2:<aspect>,`
+   sets `moved`, which is how a fresh transform is **requested**. `occlude.mjs` and `climb.mjs`
+   both depend on this.
+   ⚠ **`C:` used to be in that block too, and it was a defect.** The boom EASES over the ticks
+   *after* the character stops, deliberately — and none of those ticks published anything, so
+   the client drew the matrix from the last tick the character happened to move on. Measured
+   standing in a 5×4 house: the trace read `dist 1.87`, the room less its skin, while the eye
+   the renderer used was **5.317 wu behind the character, outside the walls** — the full boom,
+   exactly where the teleport had left it. `C:` now goes out when `cam_dist`, `cam_pitch` or
+   `cam_slide` differ from what the last solve left, which is precisely *the drawn camera would
+   differ*. It is still silent at rest, so it is a signal and not a heartbeat.
+   ⚠ **Second instance of this exact fault in one loop:** `live_clients` was once counted off a
+   broadcast inside `if moved`, and a client that sat still was never counted again. `if moved`
+   reads like *"if anything changed"* and means *"if the CHARACTER changed"*; anything else that
+   evolves per tick has to say so itself.
 5. **The streamer's `Z:0` can precede the first `C:`.** So a client must ask *whether* the
    opening batch has closed, not wait for it to close — `terrain.mjs` reported `loaded: false`
    for exactly this reason.

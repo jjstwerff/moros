@@ -395,8 +395,22 @@ const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
 // layer a storey or a cellar made was invisible — and that was survivable only
 // while nothing could stand on one. The stair changed that: a character walked onto
 // a first floor and appeared to hang in the air three metres above the ground.
-// Pale, because a floor is lit from above and read as an interior surface.
-const FLOOR_R = 0.62; const FLOOR_G = 0.57; const FLOOR_B = 0.48;
+// ⚠ AND IT MUST NOT BE THE WALL'S COLOUR, which it was: `0.62,0.57,0.48` against a
+// wall's `0.55,0.52,0.46` is the same pale warm grey to within a scalar, so a floor
+// and the wall standing on it were one surface both to the eye and to any classifier
+// that reads the picture. Two consequences, and the second is why this is a defect
+// rather than a preference:
+//
+//   - a room whose floor and walls are the same colour has no corner in it — which
+//     is most of why the interior frames read flat;
+//   - `camera-frame`'s rule is *no SINGLE surface over 60%*, and it could not be
+//     measured: the two chromaticities are 0.0003 apart against a 0.0009 tolerance,
+//     so the gate merged them and judged a bucket. An instrument that cannot tell
+//     the surfaces apart cannot judge a claim about one of them.
+//
+// Timber, and warm enough to be safe from every other entry in the palette — the
+// nearest is the figure at 0.0077 in squared chroma, eight times the tolerance.
+const FLOOR_R = 0.65; const FLOOR_G = 0.40; const FLOOR_B = 0.25;
 // ── `X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
 //
 // A door is a WALL MATERIAL, not a missing wall. Moros used to store one as
@@ -3846,6 +3860,10 @@ fn main() {
   while true {
     work = 0;
     moved = false;
+    // ⚠ THE CAMERA CHANGES ON TICKS THE CHARACTER DOES NOT, and that is the whole
+    // of the ease. Reset here beside `moved` so a pass with no tick in it cannot
+    // republish last tick's answer.
+    cam_pub = false;
     while true {
       ev = srv.poll_event();
       if ev == null { break; }
@@ -5107,6 +5125,11 @@ fn main() {
       // even though nothing else is.
       cam_moved = px != cam_lx || py != cam_ly || pz != cam_lz
                || yaw != cam_lyaw || pitch != cam_lpitch || wld.w_tau != cam_ltau;
+      // ⚠ WHAT THE EYE WAS BEFORE THIS SOLVE, so the publish below can be driven by
+      // the camera's own change rather than the character's. The three fields are
+      // exactly `cam_wire`'s arguments that are not the pose, so "the drawn camera
+      // would differ" and "one of these differs" are the same claim.
+      cam_pd = cam_dist; cam_pp = cam_pitch; cam_ps = cam_slide;
       if cam_moved || !cam_rested {
       // ⚠ THE ASSIST IS SUPPRESSED INDOORS, and this is the fault the camera's own
       // trace named after two wrong diagnoses. `cam_pitch_target` LIFTS the pitch to
@@ -5219,6 +5242,10 @@ fn main() {
       cam_lx = px; cam_ly = py; cam_lz = pz;
       cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
       }
+      // Exact rather than tolerant, and it takes the SNAP with it: the tick that
+      // declares rest is the one that closes the last 0.001, and a `!cam_rested`
+      // test would be the only tick it never published.
+      cam_pub = cam_dist != cam_pd || cam_pitch != cam_pp || cam_slide != cam_ps;
       acc_cam = acc_cam + (ticks() - tph);
       tph = ticks();
 
@@ -5377,7 +5404,10 @@ fn main() {
           vm2 = mesh("veg");
           km2 = mesh("roof");
           wm2 = mesh("wall");
-          lm2 = mesh("floor");
+          // ⚠ THE GROUND'S OWN FLOOR CELLS SEED IT — see the note at the streaming
+          // site below. `chunk_mesh_mat` draws the cells that carry the material it
+          // is asked for, and nothing asked for `FLOOR_MAT`.
+          lm2 = chunk_mesh_mat(dc2.cx, dc2.cz, wld, FLOOR_MAT);
           am2 = mesh("frame");
           chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
@@ -5494,7 +5524,17 @@ fn main() {
               vmesh = mesh("veg");
               kmesh = mesh("roof");
               wmesh = mesh("wall");
-              lmesh = mesh("floor");
+              // ⚠ A HOUSE HAD NO FLOOR, AND THE INTERIOR FRAMES SHOWED SKY THROUGH
+              // IT. `place_house` writes its floor into the ground layer as
+              // `FLOOR_MAT`, and the four ground passes ask for `SURFACE_MAT`,
+              // `ROAD_MAT`, `FIELD_MAT` and vegetation — so those cells were written
+              // to the store, read back correctly by `26:`, and drawn by nobody.
+              // Measured: standing in a 5x4 house, **21% of the frame classified as
+              // SKY**, which is the clear colour showing through the missing fan.
+              // Fourth time this session something reached the store and stopped
+              // there; the floor already HAS a surface id and a colour, and only the
+              // one line that fills it was missing.
+              lmesh = chunk_mesh_mat(scx, scz, wld, FLOOR_MAT);
               amesh = mesh("frame");
               chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
@@ -5583,6 +5623,29 @@ fn main() {
       srv.broadcast(t_leg_r);
       srv.broadcast(t_arm_l);
       srv.broadcast(t_arm_r);
+    }
+    // ── ⚠ AND THE CAMERA PUBLISHES ON ITS OWN CHANGE, NOT THE CHARACTER'S ──────
+    //
+    // This lived inside `if moved` and that was a real defect, not a tidiness one:
+    // the boom EASES, deliberately, over the ticks AFTER the character stops — and
+    // not one of those ticks published anything. The client kept drawing the matrix
+    // from the last tick the character happened to move on, so the eased camera was
+    // solved, traced, and never delivered. Standing still, the picture never
+    // converged on the answer the solve had already reached.
+    //
+    // Measured, standing in the middle of a 5x4 house: the trace read `dist 1.87`
+    // — the room less its skin, correct — while the eye the renderer used was
+    // **5.317 wu behind the character, outside the walls**, which is the full boom
+    // and exactly where the teleport had left it. That is the whole of "the camera
+    // is outside the house": three fixes to the solve were right and invisible,
+    // because the solve's answer was never on the wire.
+    //
+    // ⚠ SECOND INSTANCE OF THIS EXACT FAULT IN THIS LOOP. `live_clients` was taken
+    // off a broadcast inside `if moved` and a client that sat still was never
+    // counted again — the comment about it is 500 lines up. `if moved` reads like
+    // "if anything changed" and means "if the CHARACTER changed"; anything else
+    // that evolves per tick has to say so itself.
+    if moved || cam_pub {
       for pc in clients {
         srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, wld));
       }

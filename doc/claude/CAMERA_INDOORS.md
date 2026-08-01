@@ -1,7 +1,90 @@
 # The camera indoors — four modes, one query
 
-> Status: **design, not built.** `tools/scripts/indoors.keys` reproduces the two
-> measurements below.
+> Status: **FOLLOW is fixed and gated; the modes are still design.**
+> `tools/gates/world/camera_indoors.mjs` is in `make gate`, and
+> `tools/scripts/indoors.keys` is the script behind it — three stations, each
+> judged twice: where the eye IS, and what the frame HOLDS.
+
+## ⚠ The fault was that the eye was never sent — read this first
+
+Everything below this section is the record of getting there, and it is worth
+keeping because four diagnoses were wrong before this one. But the fault was none
+of them:
+
+**The camera's ease was solved on every tick and published on none.** The boom
+eases toward its target over the ticks *after* the character stops — that is
+deliberate, and the reason a doorway is a drift rather than a snap. The per-client
+`C:` send sat inside `if moved`, which is the CHARACTER's flag. So the client kept
+drawing the matrix from the last tick the character happened to move on, and the
+converged camera never left the server.
+
+The instrument that ended it reads the eye **out of the view matrix the renderer
+actually used** — `eye = -Rᵀt`, inverted from `C:` — rather than out of the
+camera's own trace. The trace's `dist` is a length along a ray whose origin and
+direction are decided elsewhere; every valve on it can read correctly while the eye
+is somewhere the room does not contain. And it did:
+
+```
+                        traced dist      the eye the renderer used
+outside, the control       5.86          5.317 behind   ← agree
+inside, mid-floor          1.87          5.317 behind   ← outside the house
+inside, corner             4.40          2.11  behind   ← mid-ease, frozen
+```
+
+The control is the point of that table: outdoors the two agree exactly, because
+outdoors the character is walking and every tick publishes. The fault is invisible
+in precisely the case the camera is designed for.
+
+⚠ **This is the same class as `boom_take`, one layer out**, and the third instance
+in two sessions: something built, tested, and never reaching its consumer. Here the
+consumer is the wire. **A solve nobody is told about is a solve that did not
+happen** — and it made three earlier fixes, all correct, all invisible.
+
+⚠ And it is the **second instance in this one loop**: `live_clients` was once
+counted off a broadcast inside `if moved`, so a client that sat still was never
+counted again. `if moved` reads like *"if anything changed"* and means *"if the
+CHARACTER changed"*.
+
+### The floor was a hole, and fixing it made the gate REDDER
+
+Found on the way, by the same habit — the interior frames classified 16–21% of
+their pixels as **sky**, and the only bluish entry in the palette is the sky. The
+store had the answer: `26:0,0` reads `4,1`, material `FLOOR_MAT`. And
+`chunk_mesh_mat` draws the cells carrying the material it is asked for — ground,
+road, field, vegetation. **Nothing asked for `FLOOR_MAT`.** A house's floor was
+written correctly, read back correctly, and drawn by nobody.
+
+Drawing it took `masonry` from 50% to 71%, because `wall`, `floor` and `frame` were
+one bucket in the classifier — so the gate had been passing partly on a hole. That
+is the finding worth carrying:
+
+⚠ **An instrument that cannot tell two surfaces apart cannot judge a threshold about
+one of them.** The rule is *no SINGLE surface over 60%*, and while the floor was
+`0.62,0.57,0.48` it sat 0.0003 from the wall's chromaticity against a 0.0009
+tolerance. The answer was not to loosen the threshold but to separate the surfaces
+**in the renderer** — the floor is timber now, which also gives a room a corner.
+A floor and a wall the same colour is most of why the interior read flat.
+
+### The four measurements, in the order they were taken
+
+| | outside (control) | mid-floor | corner |
+|---|---|---|---|
+| before | 1.54% / grass 53% | 0.09% / masonry 78% | 10.6% / masonry 78% |
+| camera on the wire | unchanged | **10.6% / 50%** | 2.7% / 61% |
+| floor drawn | unchanged | 10.6% / **71%** | 2.7% / **77%** |
+| floor separable | unchanged | 10.6% / **47%** | 2.7% / **48%** |
+
+The corner's subject falls from 10.6% to 2.7% and that is the fix working: the old
+number came from a camera frozen mid-ease, 2.4 wu from the character. 2.7% is what
+the converged boom gives, and it is five times the threshold.
+
+**Seen red**, which is what makes it a gate: with the publish condition put back to
+`if moved`, the control passes and **both** indoor rows fail — `apart 5.900` against
+`1.5..3.0` and `2.406` against `3.5..5.2` — and the frame rows go with them.
+
+---
+
+## The record: three diagnoses before that one, and what each cost
 
 ## What was measured, before anything was designed
 
@@ -129,7 +212,9 @@ much wall the frame is allowed to hold, not about where the eye ended up.
 ⚠ **AND IT MUST NOT JOIN `make gate` WHILE RED.** It is red on purpose and by
 measurement — a red gate in the suite is a suite nobody can read, and a gate that has
 never been seen red is not a gate. It runs on its own target until the interior
-camera is fixed.
+camera is fixed. — **it has joined**, as `tools/gates/world/camera_indoors.mjs`.
+It is the suite's slowest gate at ~53 s, because it is the only one that attaches a
+browser; the gates run in parallel, so the suite went 24 s → 37 s and not 24 s + 53 s.
 
 Two rows, and the thresholds come from the control rather than from taste: the
 subject at least **0.5%** of the frame, no single surface over **60%**.
@@ -373,14 +458,22 @@ anyone but the person who wrote it.
 
 ## Order of work
 
-1. `shelter_at` and its tests — pure, no server, and every mode reads it.
+1. ✅ `shelter_at` and its tests — pure, no server, and every mode reads it.
+   ⚠ It carries `sh_inside` and `sh_head` only; **`sh_room` and `sh_back` are still
+   struct fields in this document and nowhere else.** Nothing below them needs them
+   yet, and FOLLOW turned out not to.
 2. The roof's underside, as its own surface id. SNUG is unbuildable without it and
    FOLLOW has been hiding the gap.
-3. **FOLLOW's fix**: the boom may go below `CAM_MIN_FRAC` when `sh_back` says so;
-   AUTO degrades to SNUG with the two thresholds.
+3. ✅ **FOLLOW's fix** — and it was **not** what this list predicted. The boom going
+   below `CAM_MIN_FRAC` was necessary and nowhere near sufficient: `boom_take`
+   already collapsed it correctly and the collapse was never published. The eye is
+   in the room now and the frame rows are green without `sh_back` being consulted
+   once. **AUTO's degradation into SNUG is still to build**, and it is where the two
+   thresholds go.
 4. **SNUG**: body hidden, ambient down, head-lamp up, near plane in.
 5. **CUTAWAY stage 1**: roof off, camera above the eave.
-6. The gate, per mode — the only thing that can say any of it worked.
+6. ◐ The gate, per mode — FOLLOW's three stations are in `make gate`; the other
+   three modes have no rows because they have no behaviour yet.
 7. **The `Slab`**: horizontal surfaces get a thickness, two faces, and openings with
    reveals. This is the big one and it is a world-model change, not a camera change —
    it belongs on the ladder in its own right, and the camera is merely the consumer

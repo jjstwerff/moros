@@ -10,7 +10,89 @@ between them: read it first after a break.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
-## ⏭ PICK UP HERE (2026-08-01, session 7) — a house has fittings, furniture and floors; the camera is measured but not fixed
+## ⏭ PICK UP HERE (2026-08-01, session 8) — the interior camera is FIXED, and the fault was that the eye was never sent
+
+`make gate` is **29 gates green**, `make lib-test` **927 tests on both backends**, and
+`camera-frame` — red on purpose since session 7 — is green and **in the suite** as
+`tools/gates/world/camera_indoors.mjs`. Read
+[CAMERA_INDOORS.md](CAMERA_INDOORS.md)'s new top section before touching any of it.
+
+### What was actually wrong, after four wrong diagnoses
+
+**The camera's ease was solved on every tick and published on none.** The per-client
+`C:` send sat inside `if moved`, which is the CHARACTER's flag — and the boom eases
+over the ticks *after* the character stops, deliberately. So the client drew the
+matrix from the last tick the character happened to move on.
+
+Standing in the middle of a 5×4 house the trace read `dist 1.87` — the room less its
+skin, correct, and three earlier fixes all working — while the eye the renderer used
+was **5.317 wu behind the character, outside the walls.**
+
+⚠ **Same class as `boom_take`, one layer out, and the third instance in two sessions:
+something built, tested, and never reaching its consumer.** Here the consumer is the
+wire. It is also the **second** instance in this one loop — `live_clients` was once
+counted off a broadcast inside `if moved` too. *`if moved` reads like "if anything
+changed" and means "if the CHARACTER changed".*
+
+### The instrument, and why the old ones could not have found it
+
+The trace reports the boom's own valves, and **every one of them was right**. `dist`
+is a length along a ray whose origin and direction are decided elsewhere, so it
+cannot say where the eye ended up. The new instrument inverts the eye out of the
+**view matrix the renderer actually used** (`eye = -Rᵀt`, off `C:`) — the one number
+that cannot disagree with the picture. `cam <lo> <hi>` in `tools/script.mjs`.
+
+⚠ **Its control is the row that makes it mean anything**: outdoors the traced boom
+and the published eye agree exactly, because outdoors the character is walking and
+every tick publishes. The fault is invisible in precisely the case the camera exists
+for — which is why *check the instrument against something it SHOULD find* has to be
+a control row in the gate and not a habit.
+
+### And the floor was a hole — fixing it made the gate REDDER
+
+The interior frames classified 16–21% of their pixels as **sky**. `26:0,0` read
+`4,1`: the cell carries `FLOOR_MAT`, and `chunk_mesh_mat` draws the material it is
+asked for — ground, road, field, vegetation. **Nothing asked for `FLOOR_MAT`.** A
+house's floor was written, read back, and drawn by nobody. Fourth instance of the
+same class in two sessions.
+
+Drawing it took masonry from 50% to **71%**, because `wall`, `floor` and `frame` were
+one bucket in the classifier — the gate had been passing partly on a hole.
+
+⚠ **An instrument that cannot tell two surfaces apart cannot judge a threshold about
+one of them.** The rule is *no SINGLE surface over 60%*, and the floor sat 0.0003
+from the wall in chromaticity against a 0.0009 tolerance. The fix is not a looser
+threshold: the floor is **timber in the renderer** now, which separates them in the
+picture as well as in the histogram — and gives a room a corner, which is most of why
+the interior read flat.
+
+| | outside (control) | mid-floor | corner |
+|---|---|---|---|
+| before | 1.54% / grass 53% | 0.09% / masonry 78% | 10.6% / masonry 78% |
+| camera on the wire | unchanged | **10.6% / 50%** | 2.7% / 61% |
+| floor drawn | unchanged | 10.6% / **71%** | 2.7% / **77%** |
+| floor separable | unchanged | 10.6% / **47%** | 2.7% / **48%** |
+
+**Seen red**: put the publish condition back to `if moved` and the control passes
+while **both** indoor rows fail. The suite went 24 s → 37 s; `camera_indoors` is its
+slowest gate at ~53 s and the only one that attaches a browser, and the gates run in
+parallel so it costs its own wall time rather than a sum.
+
+### Where to look next, in the order that makes sense
+
+1. **`sh_room` and `sh_back` are still struct fields in a document and nowhere else.**
+   FOLLOW turned out not to need them; **AUTO's degradation into SNUG does**, with the
+   two hysteresis thresholds. That is the next camera rung.
+2. **The roof's underside**, as its own surface id — unchanged from session 7. SNUG
+   and EYES are unbuildable without it. ⚠ And the corner shot now shows z-fighting
+   litter along the ridge from below, which is the same missing face seen from inside.
+3. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is
+   tested and the storey gesture does not use it. **This is the same class as the two
+   found today** — check that what you built is called.
+4. **`emit_tri` still writes three fresh vertices per triangle** for walls, roofs and
+   props.
+
+## Session 7 — a house has fittings, furniture and floors; the camera is measured but not fixed
 
 Session 6's rule still holds and everything below obeys it: **the store's rules are loft
 tests; the drawn result and the sentences are gates.** `lib/hex_editor` is **175 tests, 19
@@ -60,7 +142,9 @@ fault is that **masonry takes three quarters of the picture**. `sh_room`, the cl
 wall a frame may hold, not where the eye ended up.
 
 ⚠ That gate is **red on purpose and NOT in `make gate`**. It joins the suite when the
-interior camera is fixed.
+interior camera is fixed. — ✅ **fixed in session 8, and it joined.** The fault was
+none of the three above: the eased camera was never published. See the top of this
+file.
 
 ### ⚠ Four instruments were wrong before the thing they measured
 
@@ -94,8 +178,8 @@ measurements.
 
 ### Where to look next, in the order that makes sense
 
-1. **The interior camera**, using `sh_room` — the one open fault, with a gate ready to go
-   green.
+1. ✅ **The interior camera** — done in session 8, and **not** with `sh_room`: the
+   solve was already right and was never published. See the top of this file.
 2. **The slab's consumers.** `storey_add` still writes a sheet; `Slab` exists and is tested
    but the storey gesture does not use it yet. Same shape as `op_depth` reaching the library
    and stopping there, which happened twice this session — **check that what you built is

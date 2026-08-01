@@ -1,0 +1,37 @@
+# IS THERE A FLOOR UNDER THE HOUSE? — a scratch probe, not a gate.
+#
+# The interior frames classify 16–21% of their pixels as SKY, and the only bluish
+# entry in the palette is the sky. So either the ground inside the footprint is not
+# drawn, or it is drawn in something that is not its own colour. `26:` reads the
+# store's answer for one cell, which settles which half of that to look at.
+#
+# The control is the pair: a cell OUTSIDE the footprint read the same way. If the
+# two agree, the store is not the fault and the picture is.
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+echo --- the cell the author stands in, INSIDE the house
+send 26:0,0
+wait cell 0,0
+
+echo --- and its neighbours, still inside
+send 26:1,0
+wait cell 1,0
+send 26:0,1
+wait cell 0,1
+send 26:-1,1
+wait cell -1,1
+
+echo --- the CONTROL: well outside the footprint, where the picture shows grass
+send 26:0,-8
+wait cell 0,-8
+send 26:8,0
+wait cell 8,0
