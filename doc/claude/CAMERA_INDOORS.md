@@ -66,12 +66,24 @@ the sweep answers sensibly in every direction — including one where the full 5
 boom fits, which is correct: the house is 8.7 × 6.9 world units and its long axis is
 longer than the boom.
 
-What the probe *does* establish is a contradiction. At the same position and the same
-yaw, the probe measures **2.09** and the live camera reports **4.60**. Both cannot be
-right, and neither is about walls-in-general any more. The remaining suspects are
-the live proxy's cache key (`coll_q`/`coll_r`/`coll_tau`/`coll_surf`) and its
-`ref_u`, which selects the LAYER `edges_around` reads — a reference that picked the
-wrong layer would build a complete-looking set from cells that hold no walls.
+**The cache key and `ref_u` are also correct**, checked next: the key is cell, edit
+clock and walker LEVEL — exact rather than timed — and `ref_u` is the walker's own
+resolved surface, the same reference the probe used. And the apparent contradiction
+between probe and live was my own misreading across ticks: the live trace prints once
+a second, and its lines were from *two different yaws*. At the same yaw the two agree
+— **live 2.07, probe 2.09**.
+
+### ⚠ The fault was that `boom_take` was never called
+
+`cam_free` is the distance to what the march FOUND. Removing the floor from
+`cam_free_dist` was only half the change; the server then eased `cam_dist` straight
+to `cam_free`, so **nothing was ever subtracted** and the eye was placed exactly on
+the wall it had just avoided — measured, `dist 2.07` against `free 2.07`.
+
+That is the same fault as `op_depth` reaching the library and stopping there, and I
+made it two commits after writing that sentence down: **a function written and tested
+and then not called is a claim about nothing.** With it wired the same sweep gives
+`dist 1.87` — the room less its skin.
 
 ⚠ **AND THE PROBE'S FIRST ANSWER WAS 0, WHICH WAS THE PROBE'S FAULT.** Blocking lives
 in the edge's SURFACE channel — `edge_block` writes it and `edge_blocked` reads it —

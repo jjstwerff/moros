@@ -28,10 +28,10 @@ send 27:1
 
 echo --- and standing in the middle of its floor
 at 0 0 90
-step 40
+step 90
 snap s10-house-inside
 
 echo --- facing a corner, where the boom has least room
 at 0 0 225
-step 40
+step 90
 snap s10-house-corner

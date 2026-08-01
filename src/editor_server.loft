@@ -5127,8 +5127,21 @@ fn main() {
 
       // 2. The boom covers whatever the lift has not reached yet — including the
       //    whole of it during the drift, which is what stops the transient.
-      cam_free = cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld,
-                              coll_view);
+      // ⚠ AND `boom_take` IS WHERE THE SWEEP BECOMES A BOOM. Removing the floor
+      // from `cam_free_dist` was only half the change: `cam_free` is the distance to
+      // what the march FOUND, and easing straight to it puts the eye exactly ON the
+      // wall with nothing subtracted — measured, `dist 2.07` against `free 2.07`,
+      // the eye in the surface it had just avoided. `boom_take` takes the room less
+      // its skin, and applying it HERE means every use downstream — the ease, the
+      // rest snap, the collapse the shoulder is measured against — sees one number.
+      //
+      // ⚠ I WROTE AND TESTED THIS FUNCTION AND THEN DID NOT CALL IT, which is the
+      // same fault as `op_depth` reaching the library and stopping there. A tested
+      // claim no consumer honours is a claim about nothing.
+      cam_free = hex_editor::boom_take(
+        cam_want,
+        cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld, coll_view),
+        hex_editor::CAM_SKIN);
       // ⚠ THE SHOULDER CREEP, SOLVED WHERE THE COLLISION SET LIVES. A boom that
       // collapses straight down its own axis ends at the back of a head; sliding
       // sideways as it shortens is what makes a short boom an over-the-shoulder
