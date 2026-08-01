@@ -1,0 +1,111 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE LAYER STACK, WITHOUT A SERVER — `tools/gates/world/storey.mjs`'s claims and
+// the stair `deck.mjs` needs to reach a deck at all.
+//
+// What is gated is the STACK, not "a floor appeared": a storey appends above, a
+// cellar INSERTS at the bottom so the order still holds, and a cellar with no room
+// below is refused for the right reason. The gate builds a tower through a socket
+// to say this; these run against the store.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 10..11 {
+    for r in 0 - 10..11 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn layers(w: World, q: integer, r: integer) -> integer {
+  n = 0;
+  for c in world_column(w, q, r).co_cells { if hex_world::hex_occupied(c) { n = n + 1; } }
+  n
+}
+
+fn test_a_storey_appends_a_layer_above() {
+  w = world();
+  before = layers(w, 0, 0);
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 1, 2, why);
+  assert(n > 0, "the storey went on {n} cells: {why}");
+  assert(layers(w, 0, 0) == before + 1, "one more layer: {before} -> {layers(w, 0, 0)}");
+  top = hex_editor::col_top(world_column(w, 0, 0));
+  assert(top == 40 + hex_editor::STOREY_H,
+         "and it sits one storey up: {top} vs {40 + hex_editor::STOREY_H}");
+}
+
+fn test_three_storeys_stack_rather_than_replace() {
+  // A tower, and the point is that each press ADDS: a version that wrote the same
+  // slot would read as one floor however many times it was pressed.
+  w = world();
+  why = "";
+  for i in 0..3 { hex_editor::storey_add(w, 0, 0, 1, 2, why); }
+  assert(layers(w, 0, 0) == 4, "ground plus three storeys, got {layers(w, 0, 0)}");
+  assert(hex_editor::col_top(world_column(w, 0, 0)) == 40 + 3 * hex_editor::STOREY_H,
+         "the top is three storeys up");
+}
+
+fn test_a_cellar_inserts_at_the_bottom_and_the_order_still_holds() {
+  // ⚠ INSERTS, not appends. A column is height-ascending because `F1` compares
+  // CONSECUTIVE occupied cells, so a cellar that landed on the end would break the
+  // ordering the whole model reads by.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  col = world_column(w, 0, 0);
+  low = hex_editor::col_low(col);
+  assert(low == 40 - hex_editor::STOREY_H, "the cellar is one storey down, got {low}");
+  ascending = true;
+  prev = 0 - 1;
+  for c in col.co_cells {
+    if hex_world::hex_occupied(c) {
+      h = c.h_height as integer ?? 0;
+      if prev >= 0 && h <= prev { ascending = false; }
+      prev = h;
+    }
+  }
+  assert(ascending, "and the column is still height-ascending");
+}
+
+fn test_a_cellar_with_no_room_below_is_refused_for_the_right_reason() {
+  // The reserve is the floor of the world. Digging through it is refused, not
+  // clamped — a clamped cellar is a room the walker cannot stand in.
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 4..5 {
+    for r in 0 - 4..5 { hex_editor::ground_set(w, q, r, 2, hex_editor::SURFACE_MAT); }
+  }
+  before = w.w_tau;
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  assert(n < 0, "a cellar under a two-unit ground is refused, got {n}");
+  assert(why != "", "with a reason: {why}");
+  assert(w.w_tau == before, "and nothing was written first: τ {before} -> {w.w_tau}");
+}
+
+fn test_the_stair_cuts_one_step_and_the_step_height_is_the_callers() {
+  // ⚠ THE HEIGHT COMES FROM THE CALLER. It used to be read from `moros_sim` — a
+  // MOROS package — inside the gesture, which pointed the dependency backwards:
+  // the rule about what a walker can climb belongs to whoever owns the walker.
+  w = world();
+  why = "";
+  h = hex_editor::stair_cut(w, 1, 0, 40.0 * 0.25, 40, 1, 3, why);
+  assert(h == 43, "one three-unit step up from 40, got {h}: {why}");
+  down = hex_editor::stair_cut(w, 2, 0, 40.0 * 0.25, 40, 0 - 1, 3, why);
+  assert(down == 37, "and one down, got {down}");
+}
+
+fn test_a_step_through_the_floor_is_refused_with_the_offer() {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 4..5 {
+    for r in 0 - 4..5 { hex_editor::ground_set(w, q, r, 1, hex_editor::SURFACE_MAT); }
+  }
+  why = "";
+  h = hex_editor::stair_cut(w, 1, 0, 0.25, 1, 0 - 1, 3, why);
+  assert(h < 0, "cutting below the world's floor is refused, got {h}");
+  assert(why.contains("offer"), "with an offer: {why}");
+  assert(why.contains("residual"), "and a residual: {why}");
+}

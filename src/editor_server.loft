@@ -378,7 +378,6 @@ const ROAD_MAT     = 2;           // the road surface
 const ROAD_HALF    = 2;           // road half-width, in hexes
 const FIELD_MAT    = 3;           // an enclosed field
 const FIELD_CAP    = 4000;        // the most cells one fill may claim
-const FLOOR_MAT    = 4;           // a built floor, above or below ground
 const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
 const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
 const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
@@ -407,7 +406,6 @@ const FLOOR_R = 0.62; const FLOOR_G = 0.57; const FLOOR_B = 0.48;
 const WALL_UP      = 12;          // a storey of masonry
 const FENCE_UP     = 4;           // waist-high
 const WALL_R = 0.55; const WALL_G = 0.52; const WALL_B = 0.46;
-const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
@@ -677,81 +675,9 @@ fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer,
   }
 }
 
-// ── STAIRS (rung W4b, moros#12) — the gesture that makes a DECK REACHABLE ────
-//
-// A storey is 12 height units and a stride is 4, so an upper floor was somewhere
-// the model permitted and nothing could stand on: every route up was a cliff, and
-// the deck halves of the camera's and the road's surface rules were therefore
-// "correct by construction" — which is a way of saying untested. This is the
-// gesture that closes it. Cut a step into the cell you are facing, walk onto it,
-// cut again; three steps and the first floor is ground you are standing on.
-//
-// **The step is exactly one stride of the creature cutting it.** `stair_height`
-// is the cliff threshold read from the other side, in the library that owns the
-// threshold, so *a stair a walker builds is a stair that walker can climb* holds
-// by construction rather than by agreement between two constants.
-//
-// ⚠ IT SETS, IT DOES NOT ADD. The target is put AT `surface under the feet ± one
-// stride`, so holding the key cuts one step and not a tower, and pressing twice
-// from the same spot changes nothing — the gesture is idempotent, and going up is
-// walking onto what you cut. The raise is the tool that accumulates
-// (`5:`, deliberately steep); this one is the tool that stays walkable.
-//
-// ⚠ IT WRITES THE SURFACE, NOT THE OUTDOORS — `surface_set`, the road's writer,
-// for the road's own reason: the height is frozen from the FEET, so the write has
-// to land on the layer those feet are on. A stair cut while standing on a deck
-// belongs to the deck.
-//
-// ⚠ AND A STAIR IS A SHAPE, NOT A SUBSTANCE. The target keeps its own material.
-// `E1` makes material 0 mean ABSENT, so a stair with a material of its own would
-// erase the road it cut through, and one that wrote a 0 back would leave a hole to
-// fall through. An unwritten cell takes the ground's own material.
-fn stair_cut(wld: &World, q: integer, r: integer, feet: float, here: integer,
-             dir: integer, why: &text) -> integer {
-  h = msim::stair_height(here, dir, cliff_step());
-  // The world has a floor, and cutting through it is refused rather than clamped:
-  // a clamped step is a step the walker cannot climb, which would break the one
-  // promise this gesture makes. Reason, offer and residual — invariant I's third
-  // state stated properly (`K-FIT`).
-  if h < W_RESERVE {
-    why = "the world's floor is {W_RESERVE} (offer {W_RESERVE}, "
-        + "residual {W_RESERVE - h})";
-    return 0 - 1;
-  }
-  sf = hex_world::world_surface(wld, q, r, feet / HEIGHT_SCALE ?? 0.0);
-  m = SURFACE_MAT;
-  if sf.sf_layer >= 0 {
-    mm = hex_world::world_cell(wld, q, r, sf.sf_layer).h_material as integer ?? 0;
-    if mm != 0 { m = mm; }
-  }
-  code = surface_set(wld, q, r, feet, h, m);
-  if code != CW_OK {
-    why = "the world declined the write ({code})";
-    return 0 - 2;
-  }
-  h
-}
+// `stair_cut` is `hex_editor`'s now.
 
-// The first cell along the facing that is NOT the one you are standing in.
-//
-// ⚠ IT REFUSES RATHER THAN FALLING BACK ON THE CHARACTER'S OWN CELL. That exact
-// silent fallback is what buried the camera when the raise's search bound was too
-// short — the hill rose underfoot — so this returns whether it found one and the
-// caller says so out loud.
-//
-// The bound covers the longest hex step from the worst starting point: a step is
-// √3 ≈ 1.73 wu east–west, and the walker may stand on the far rim of its own cell,
-// so 4 wu is the distance that cannot miss.
-fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integer) {
-  ch = world_to_hex(cx, cz);
-  kx = cos(cyaw);
-  kz = sin(cyaw);
-  for ai in 1..17 {
-    ap = world_to_hex(cx + kx * (ai as float) * 0.25, cz + kz * (ai as float) * 0.25);
-    if ap.ha_q != ch.ha_q || ap.ha_r != ch.ha_r { return (true, ap.ha_q, ap.ha_r); }
-  }
-  (false, ch.ha_q, ch.ha_r)
-}
+// `cell_ahead` is `hex_editor`'s now.
 
 // Write everything recorded so far.
 //
@@ -1766,151 +1692,10 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
 //
 // This is `E1` seen from the consumer side: absence has one representation, and it
 // is the reader's job never to mistake it for a value.
-fn col_top(c: hex_world::Column) -> integer {
-  h = 0 - 1;
-  for e in c.co_cells { if hex_world::hex_occupied(e) { h = e.h_height as integer ?? 0; } }
-  h
-}
-fn col_low(c: hex_world::Column) -> integer {
-  for e in c.co_cells { if hex_world::hex_occupied(e) { return e.h_height as integer ?? 0; } }
-  0 - 1
-}
+// `col_top` / `col_low` are `hex_editor`'s now — a column's highest and lowest
+// occupied cell, read by the storey and the stair.
 
-fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
-              why: &text) -> integer {
-  // TWO PASSES, and the order is the point. Pass 1 asks whether EVERY cell in the
-  // disc can take the storey; pass 2 writes. A single pass that refused halfway
-  // would leave a building with some cells storeyed and some not — and the caller
-  // would be told "refused" while the world had already changed under it. A
-  // refusal must mean nothing happened.
-  //
-  // ⚠ What this does NOT promise: pass 2 goes through `world_set_column`, which
-  // may still refuse on `F1`. It cannot here — a storey sits `STOREY_H` (12)
-  // above the top and ε is 8 — but if `STOREY_H` ever drops below ε that write
-  // can fail mid-disc, and this pre-check would not have caught it. Named rather
-  // than assumed: the atomicity covers the floor, not the fold.
-  ok = 0;
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        c = world_column(wld, q, r);
-        if col_top(c) >= 0 {
-          if dir < 0 {
-            // A cellar digs DOWN, and the world has a floor. Refusing is the
-            // honest answer — clamping would silently put the dungeon at a depth
-            // the caller did not ask for.
-            if col_low(c) < STOREY_H {
-              why = "floor at {col_low(c)} leaves no room for a storey of {STOREY_H}";
-              return 0 - 2;
-            }
-          }
-          ok = ok + 1;
-        }
-      }
-    }
-  }
-  if ok == 0 { why = "no cells here"; return 0 - 1; }
-
-  built = 0;
-  for dq2 in (0 - rad)..(rad + 1) {
-    for dr2 in (0 - rad)..(rad + 1) {
-      q2 = cq + dq2;
-      r2 = cr + dr2;
-      if hex_grid::hex_distance(q2, r2, cq, cr) <= rad {
-        c2 = world_column(wld, q2, r2);
-        if col_top(c2) >= 0 {
-          cells: vector<hex_world::Hex> = [];
-          // ⚠ THE LABELS TRAVEL BESIDE THE CELLS, in the same order. `F1″` makes
-          // layer order height order, so inserting below renumbers every layer —
-          // and a marker left on an index would land on the wrong one. Passing the
-          // labels a READ gave us is what tells `world_set_column` which cell is
-          // new (`0`) and which layer each of the others still belongs to. Without
-          // this a cellar inherited the ground's label, and nothing downstream
-          // could tell which layer was the ground.
-          ids: vector<integer> = [];
-          // ⚠ A LAYER IS CHUNK-WIDE, AND THIS RUNS OVER A DISC OF 19 CELLS. The
-          // first column to dig needs a new layer; the other eighteen must write
-          // into the one it made. Blindly prepending gave every column its own —
-          // measured, a single cellar took the chunk from 1 layer to 34.
-          //
-          // The tell is already in the column a read hands back: it carries one
-          // cell per layer INCLUDING absent ones, so a leading absent cell IS the
-          // layer a neighbour already inserted. Fill it, and pass its label back so
-          // the store knows this is not new.
-          lo_i = 0;
-          for ci2 in 0..len(c2.co_cells) {
-            if hex_world::hex_occupied(c2.co_cells[ci2] ?? hex_world::Hex {}) { break; }
-            lo_i = ci2 + 1;
-          }
-          if dir > 0 {
-            // ⚠ THE SAME RULE UPWARD, AND IT IS NOT SYMMETRY FOR ITS OWN SAKE —
-            // this direction had the identical defect and had it FIRST. Every
-            // column of the disc read one cell more than the last (the layer its
-            // neighbour had just made, absent here) and appended yet another, so a
-            // single `storey +1` cost NINETEEN layers. Measured only once `29:`
-            // LABELS existed: seven overlapping discs took one chunk to 63 layers
-            // against a `LAYER_CAP` of 64. It was invisible for as long as it was,
-            // because the stack of OCCUPIED cells — all any gate could read — is
-            // correct either way.
-            top_i = 0 - 1;
-            for ci3 in 0..len(c2.co_cells) {
-              if hex_world::hex_occupied(c2.co_cells[ci3] ?? hex_world::Hex {}) { top_i = ci3; }
-            }
-            // the first TERRAIN slot above the top occupied one is that neighbour's
-            // layer — a dressing slot also reads absent and must never be written
-            fill_i = 0 - 1;
-            for cj3 in (top_i + 1)..len(c2.co_cells) {
-              if fill_i < 0
-                 && !hex_world::hex_occupied(c2.co_cells[cj3] ?? hex_world::Hex {})
-                 && hex_world::world_layer_kind(wld, q2, r2, cj3) == hex_world::KIND_TERRAIN {
-                fill_i = cj3;
-              }
-            }
-            floor_u = hex_world::Hex { h_height: (col_top(c2) + STOREY_H) as u16? ?? 0,
-                                       h_material: FLOOR_MAT };
-            if fill_i >= 0 {
-              for cj4 in 0..len(c2.co_cells) {
-                if cj4 == fill_i { cells += [floor_u]; } else { cells += [c2.co_cells[cj4]]; }
-                ids += [c2.co_ids[cj4] ?? 0];
-              }
-            } else {
-              cells += c2.co_cells;
-              ids += c2.co_ids;
-              cells += [floor_u];
-              ids += [0];
-            }
-          } else {
-            floor_c = hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
-                                       h_material: FLOOR_MAT };
-            if lo_i > 0 {
-              // a layer is already there, empty at this cell: fill it in place
-              for cj in 0..len(c2.co_cells) {
-                if cj == lo_i - 1 { cells += [floor_c]; } else { cells += [c2.co_cells[cj]]; }
-                ids += [c2.co_ids[cj] ?? 0];
-              }
-            } else {
-              // the first column to dig: a genuinely new layer, labelled 0
-              cells += [floor_c];
-              ids += [0];
-              cells += c2.co_cells;
-              ids += c2.co_ids;
-            }
-          }
-          w = world_set_column(wld, hex_world::Column { co_q: q2, co_r: r2,
-                                                       co_cells: cells, co_ids: ids });
-          if w.cw_code != CW_OK {
-            why = "layer {w.cw_layer}: {w.cw_detail}";
-            return 0 - 10 - w.cw_code;
-          }
-          built = built + 1;
-        }
-      }
-    }
-  }
-  built
-}
+// `storey_add` is `hex_editor`'s now.
 
 // ── ROOFS (rung W4, moros#12) — their own geometry ──────────────────────────
 //
@@ -3895,7 +3680,13 @@ fn main() {
             // from `py` would be short by however far off-centre the author was
             // standing, and the amount would vary with where they stopped.
             st_here = walk_h(st_hx.ha_q, st_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
-            st_new = stair_cut(wld, st_q, st_r, py, st_here, st_dir, st_why);
+            // ⚠ THE STEP HEIGHT IS SUPPLIED HERE, not looked up inside the
+            // gesture. `cliff_step` is what a WALKER can climb — `moros_sim`'s
+            // rule, read from the consumer that owns the walker — and
+            // `hex_editor` is a lavition package that must not depend on a moros
+            // one. The library writes the step; this decides how tall it is.
+            st_new = stair_cut(wld, st_q, st_r, py, st_here, st_dir,
+                               cliff_step(), st_why);
             if st_new < 0 {
               srv.send_to(ev.cid, "S:stair refused ({st_new}) {st_why}");
               println("editor: stair refused ({st_new}) at ({st_q},{st_r}) — {st_why}");
