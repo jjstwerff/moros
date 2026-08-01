@@ -74,6 +74,34 @@ const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The palette the server sends, from `editor_server.loft`. ⚠ Keep in step with it —
+// a classifier holding last month's colours reports a frame nobody is looking at.
+const PALETTE = {
+  figure: [0.80, 0.60, 0.45],   // the SUBJECT — the row every gate here asks about
+  grass:  [0.42, 0.50, 0.30],
+  rock:   [0.46, 0.38, 0.26],
+  field:  [0.55, 0.62, 0.24],
+  road:   [0.28, 0.26, 0.24],
+  tree:   [0.16, 0.34, 0.14],
+  roof:   [0.45, 0.20, 0.17],
+  wall:   [0.55, 0.52, 0.46],
+  floor:  [0.62, 0.57, 0.48],
+  frame:  [0.78, 0.74, 0.65],
+  sky:    [0.48, 0.55, 0.64],
+};
+const CHROMA = Object.entries(PALETTE).map(([k, c]) => {
+  const s = c[0] + c[1] + c[2];
+  return [k, [c[0] / s, c[1] / s, c[2] / s]];
+});
+
+// ⚠ WALL, FLOOR AND FRAME ARE NEARLY THE SAME CHROMATICITY — 0.359/0.340/0.301
+// against 0.371/0.341/0.287 — because they are all pale warm greys, which is a fact
+// about the palette and not a flaw in the method. They are reported as one bucket
+// rather than pretended apart, and the SUBJECT is what this exists to count: at
+// 0.432/0.324/0.243 it is far warmer than any of them, which is why the one row that
+// matters is the one that survives.
+const MERGE = { wall: 'masonry', floor: 'masonry', frame: 'masonry' };
+
 // ── the browser, attached lazily and only for pictures
 const CDP = 9345;
 let proc = null, cdp = null, cdpId = 0;
@@ -186,6 +214,75 @@ const pose = () => trace[trace.length - 1] ?? new Array(16).fill(0);
 const facing = () => { const m = pose(); return Math.atan2(m[2], m[0]) * 180 / Math.PI; };
 
 let snaps = 0;
+// ⚠ A judged frame that fails must fail the RUN. A gate that prints FAIL and exits
+// 0 is a gate the suite reports as green.
+let frameFails = 0;
+async function frameStats() {
+  if (!(await browser())) return { ok: false, why: 'no browser' };
+  // ⚠ THROUGH THE SCREENSHOT, NOT `readPixels`. A WebGL context without
+  // `preserveDrawingBuffer` clears its drawing buffer at composite, so a
+  // `readPixels` from outside the render loop returns a black frame however good the
+  // picture is — measured, 49500 samples and every one black while the PNG beside it
+  // showed a house. `Page.captureScreenshot` is what the snapshots already use and
+  // what is known to work here, so the pixels come back the same way and are decoded
+  // by the page itself: no node dependency, and one small payload back.
+  const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
+    (() => { const el = document.querySelector('#gl');
+             if (!el) return null;
+             const r = el.getBoundingClientRect();
+             if (r.width < 1 || r.height < 1) return null;
+             return { x: r.x, y: r.y, width: r.width, height: r.height }; })()` }))
+    ?.result?.value;
+  const shot = await call('Page.captureScreenshot',
+                          rect ? { format: 'png', clip: { ...rect, scale: 1 } }
+                               : { format: 'png' });
+  const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
+    expression: `
+    (async () => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,${shot.data}';
+      await img.decode();
+      const cv = document.createElement('canvas');
+      cv.width = img.width; cv.height = img.height;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+      const PAL = ${JSON.stringify(CHROMA)};
+      const MERGE = ${JSON.stringify(MERGE)};
+      const counts = {}; let total = 0;
+      for (let y = 0; y < cv.height; y += 4) {
+        for (let x = 0; x < cv.width; x += 4) {
+          const i = (y * cv.width + x) * 4;
+          const R = d[i] / 255, G = d[i+1] / 255, B = d[i+2] / 255;
+          const s = R + G + B;
+          let key;
+          if (s < 0.06) key = 'black';
+          else {
+            const cr = R/s, cg = G/s, cb = B/s;
+            let best = null, bd = 1e9;
+            for (const [k, c] of PAL) {
+              const dd = (cr-c[0])**2 + (cg-c[1])**2 + (cb-c[2])**2;
+              if (dd < bd) { bd = dd; best = k; }
+            }
+            key = bd > 0.0009 ? 'other' : (MERGE[best] ?? best);
+          }
+          counts[key] = (counts[key] ?? 0) + 1; total += 1;
+        }
+      }
+      return { counts, total, w: cv.width, h: cv.height };
+    })()` });
+  const v = r?.result?.value;
+  if (!v) return { ok: false, why: 'no frame' };
+  const share = {};
+  for (const [k, n] of Object.entries(v.counts)) share[k] = +(n / v.total).toFixed(4);
+  const ranked = Object.entries(share).sort((a, b) => b[1] - a[1]);
+  return {
+    subject: share.figure ?? 0,          // the gate's first row: must be > 0
+    largest: ranked[0]?.[0], largestShare: ranked[0]?.[1] ?? 0,
+    samples: v.total, share,
+  };
+}
+
 async function snap(name) {
   snaps += 1;
   const tag = name ?? `s${snaps}`;
@@ -265,6 +362,28 @@ for (const raw of lines) {
     }
     ws.send('4:0'); await nextT();
     console.log(`  facing ${facing().toFixed(1)}°`);
+  } else if (cmd === 'frame') {
+    // ⚠ WHAT IS ACTUALLY ON SCREEN, AS NUMBERS. Every wrong turn in the camera work
+    // came from reading a picture by eye: "it does not know about walls" (it does),
+    // "the clamp is the fault" (it was, and the frame did not change), "the edge set
+    // is empty" (it was full — the counter used the wrong channel). A frame is a
+    // histogram, and the row that matters is how much of it is the SUBJECT.
+    //
+    // `frame` reports; `frame <minSubject> <maxLargest>` also JUDGES, which is what
+    // turns the instrument into a gate. Both print the whole histogram, because a
+    // pass/fail with no numbers behind it is the thing this replaced.
+    const fs2 = await frameStats();
+    const wantSub = rest[0] === undefined ? null : Number(rest[0]);
+    const wantMax = rest[1] === undefined ? null : Number(rest[1]);
+    let verdict = '';
+    if (wantSub !== null) {
+      const okSub = fs2.subject >= wantSub;
+      const okMax = wantMax === null || fs2.largestShare <= wantMax;
+      if (!okSub) { verdict += ` FAIL subject ${fs2.subject} < ${wantSub}`; frameFails += 1; }
+      if (!okMax) { verdict += ` FAIL ${fs2.largest} ${fs2.largestShare} > ${wantMax}`; frameFails += 1; }
+      if (okSub && okMax) verdict = ' PASS';
+    }
+    console.log('  ' + JSON.stringify(fs2) + verdict);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.
@@ -304,4 +423,11 @@ for (const raw of lines) {
 
 if (!keep) { ws.close(); if (cdp) cdp.close(); if (proc) proc.kill(); }
 console.log('script done');
+// ⚠ A JUDGED FRAME THAT FAILED MUST FAIL THE RUN. A gate that prints FAIL and exits
+// 0 is a gate the suite reports as green — which is worse than no gate, because it
+// is a green light nobody earned.
+if (frameFails > 0) {
+  console.log(`script: ${frameFails} frame check(s) failed`);
+  process.exit(1);
+}
 process.exit(0);

@@ -102,12 +102,37 @@ CAM want 5.86  dist 1.87  free 1.87  pitch 0.35  target 0.35  slide 0.48  inside
 Converged (`dist == free`), the assist off (`pitch == target`), the boom at the room
 less its skin, a shoulder's worth of slide. Every number is what it should be.
 
-⚠ **AND THE PICTURE STILL DISAGREES**, which is now a claim about the *picture*
-rather than the camera: the frame shows the house's exterior while the numbers say
-the eye is 1.87 behind the character and inside. The camera matrix IS sent every
-tick per client, so the next thing to measure is the frame itself — the gate's own
-first row, **subject pixels > 0**, which is the one instrument this whole
-investigation has been reasoning around instead of building.
+### The frame, measured — `make camera-frame`
+
+Built at last, and it settles what four rounds of looking at pictures could not.
+Pixels are classified by **chromaticity**, not RGB: the renderer is flat-shaded, so a
+lit surface and a shadowed one are the same colour times a scalar and their ratios
+survive. An exact-RGB match finds almost nothing and reports an empty room.
+
+| | subject | largest | |
+|---|---|---|---|
+| outside — the control | **1.54%** | grass 53% | sky 29%, masonry 11% |
+| inside, mid-floor | **0.09%** | **masonry 78%** | roof 17% |
+| inside, corner | **10.6%** | **masonry 78%** | roof 5% |
+
+⚠ **The character was never missing — it is 0.09% of the frame.** Every earlier read
+of these pictures said "no character at all", which was an eye's answer to a question
+only a count can settle. What is actually wrong is the second row: **masonry is 78%
+of the frame in both interior views**, against 53% for grass in the working outdoor
+one. The interior camera's fault is not that it is outside the house. It is that a
+wall takes three quarters of the picture.
+
+That reframes the remaining work. `sh_room` — the clear radius `shelter_at` already
+has a field for — is the number that has to drive the boom, and the fix is about how
+much wall the frame is allowed to hold, not about where the eye ended up.
+
+⚠ **AND IT MUST NOT JOIN `make gate` WHILE RED.** It is red on purpose and by
+measurement — a red gate in the suite is a suite nobody can read, and a gate that has
+never been seen red is not a gate. It runs on its own target until the interior
+camera is fixed.
+
+Two rows, and the thresholds come from the control rather than from taste: the
+subject at least **0.5%** of the frame, no single surface over **60%**.
 
 ⚠ **AND THE PROBE'S FIRST ANSWER WAS 0, WHICH WAS THE PROBE'S FAULT.** Blocking lives
 in the edge's SURFACE channel — `edge_block` writes it and `edge_blocked` reads it —

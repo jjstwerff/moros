@@ -14,9 +14,14 @@ at 0 -4 90
 key H
 wait rebuilt
 
-echo --- from outside, for reference
+echo --- from outside, for reference — the control the indoor rows are read against
 at 0 -10 90
+step 90
 snap s10-house-outside
+# The control, judged: outdoors the camera works, so these thresholds are what
+# "works" measures as — the subject at least half a percent of the frame, and no
+# single surface over 60% of it.
+frame 0.005 0.60
 
 # ⚠ THE BOOM IS EASED, NOT SNAPPED — deliberately, because a boom that stepped in
 # one tick was "correct, and clearly a mechanism rather than a camera". So `at` and
@@ -30,8 +35,10 @@ echo --- and standing in the middle of its floor
 at 0 0 90
 step 90
 snap s10-house-inside
+frame 0.005 0.60
 
 echo --- facing a corner, where the boom has least room
 at 0 0 225
 step 90
 snap s10-house-corner
+frame 0.005 0.60

@@ -346,6 +346,27 @@ gate-character:
 # the one implementation — which is the whole reason they moved out of the message
 # loop. It compares the ACK, because that is the editor's own reckoning of what it
 # built, and a divergence in cells, edges or ridge names which one moved.
+# ⚠ THE FRAME ITSELF, AS NUMBERS — and it is RED on purpose, which is why it is NOT
+# in `make gate`. Every wrong turn in the camera work came from reading a picture by
+# eye; this counts the pixels instead, classifying by chromaticity so a lit surface
+# and a shadowed one land in the same bucket. Two rows: the SUBJECT must be at least
+# half a percent of the frame, and no single surface may take more than 60% of it.
+#
+# Measured today, and the outdoor control is what "works" looks like:
+#
+#   outside        subject 1.54%   largest grass    53%     PASS
+#   inside, floor  subject 0.09%   largest masonry  78%     FAIL both rows
+#   inside, corner subject 10.6%   largest masonry  78%     FAIL the second
+#
+# It joins `make gate` when the interior camera is fixed — a red gate in the suite is
+# a suite nobody can read, and a gate that has never been seen red is not a gate.
+camera-frame:
+	@$(MAKE) -s port-free >/dev/null 2>&1; : > .editor.log
+	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \
+	 until grep -q 'listening on port' .editor.log; do sleep 0.3; done; \
+	 node tools/script.mjs tools/scripts/indoors.keys --shots; rc=$$?; \
+	 $(MAKE) -s stop-editor >/dev/null; exit $$rc
+
 headless-same:
 	@SCRIPT=tools/scripts/house.keys WORLD=headless $(LOFT) --lib lib/ src/editor_run.loft 2>/dev/null \
 	  | grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' > .headless.txt || true
