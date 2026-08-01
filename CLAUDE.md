@@ -165,6 +165,9 @@ address (or the hostname `make browser` prints) cannot connect.
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
+- [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **why the camera is unusable in a room, measured**: the
+  minimum boom is a floor the wall sweep cannot pass, and one pure query (`shelter_at`) that all four
+  fixes key off. Design, not built
 - [Scene map](doc/claude/SCENE_MAP.md) — scene model
 - [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — renderer rules
 - [Scene editor](doc/claude/SCENE_EDITOR.md) — editor docs

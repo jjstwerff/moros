@@ -1,0 +1,27 @@
+# WHAT THE CAMERA ACTUALLY DOES INDOORS — measured before anything is designed.
+#
+# A house, a door in it, and the author standing in the middle of the room. The
+# boom already sweeps walls, so the question is not "does it know" but "what does
+# it do when the room is smaller than the boom's own minimum".
+
+echo --- flat ground
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house where the author is looking
+at 0 -4 90
+key H
+wait rebuilt
+
+echo --- from outside, for reference
+at 0 -10 90
+snap s10-house-outside
+
+echo --- and standing in the middle of its floor
+at 0 0 90
+snap s10-house-inside
+
+echo --- facing a corner, where the boom has least room
+at 0 0 225
+snap s10-house-corner
