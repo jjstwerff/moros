@@ -376,10 +376,6 @@ const W_THETA      = 3;
 
 const ROAD_MAT     = 2;           // the road surface
 const ROAD_HALF    = 2;           // road half-width, in hexes
-const FIELD_MAT    = 3;           // an enclosed field
-const FIELD_CAP    = 4000;        // the most cells one fill may claim
-const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
-const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
 const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
 // A DECK IS DRAWN, and until 2026-07-31 no floor was. `chunk_mesh_mat` builds each
 // surface from `world_ground_cell`, which is the outdoors by definition, so every
@@ -410,8 +406,6 @@ const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
 const TREE_R = 0.16; const TREE_G = 0.34; const TREE_B = 0.14;
-const STENCIL_R    = 2;           // hexes, the footprint of the built-in house
-const FOUNDATION   = 12;          // how far a structure may cut into the ground
 const WINDOW_MAX_ROOF = 400;      // a roof taller than this cannot fit the window
 
 fn new_world() -> World {
@@ -697,14 +691,8 @@ fn rec_flush(path: text, buf: text) {
   rf.write(buf);
 }
 
-// The flood's visited set, keyed on one integer because a loft hash keys on a
-// single field. The pack is the same shape the chunk index uses.
-struct SeenAt { sa_key: integer }
-struct Seen   { s_by: hash<SeenAt[sa_key]> }
-
-fn age_like_key(q: integer, r: integer) -> integer {
-  ((q & 4294967295) << 32) | (r & 4294967295)
-}
+// `Seen` / `SeenAt` / `age_like_key` are `hex_editor`'s now — the flood fill's
+// visited set went with the fill.
 
 // ── FENCES AND WALLS (rung W2, moros#10) — the edge, and who stores it ──────
 //
@@ -1577,94 +1565,7 @@ fn walls_text(wld: World, q: integer, r: integer) -> text {
   wtxt
 }
 
-// ── FIELDS (rung W3, moros#11) ───────────────────────────────────────────────
-//
-// **A field is the FILL; its boundary is derived, not stored.** That is #11's open
-// question — is a field a property of the cells, or an object with a boundary —
-// and the model answers it: an edge is exactly a cell whose neighbour differs, so
-// storing the boundary would be storing something already implied, which is the
-// one thing `L3` forbids. What a field means beyond that — whose it is, what is
-// sown, when it was ploughed — is PAYLOAD, and belongs in a side table beside the
-// world, as the crystal's age does.
-//
-// ⚠ AN UNBOUNDED FILL IS REFUSED, NOT TRUNCATED. A flood on open ground would
-// paint the world to the cap and stop somewhere arbitrary, leaving a field with an
-// edge nobody drew. Refusing names what went wrong and changes nothing, which is
-// `K-FIT` — and the cap is how "unbounded" is DETECTED, not a budget the fill is
-// allowed to spend.
-//
-// Returns the number of cells filled, or 0 if it refused.
-fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
-  if world_ground_cell(wld, sq, sr).h_material != SURFACE_MAT
-     && world_ground_cell(wld, sq, sr).h_material != 0 {
-    return 0;                       // standing on something that is not open ground
-  }
-  // ⚠ The visited set is a HASH, not a scanned vector. It was a vector, and the
-  // membership test made the flood O(n^2) — at the 4000 cap that is ~100 million
-  // comparisons, slow enough that a refusal took longer to arrive than the gate
-  // waited for it. The gate looked wrong; the fill was.
-  seen = Seen { s_by: [] };
-  seen_q: vector<integer> = [];
-  seen_r: vector<integer> = [];
-  fq: vector<integer> = [sq];
-  fr: vector<integer> = [sr];
-  seen_q += [sq];
-  seen_r += [sr];
-  seen.s_by += SeenAt { sa_key: age_like_key(sq, sr) };
-  escaped = false;
-  capped = false;
-  while len(fq) > 0 && !escaped {
-    nq: vector<integer> = [];
-    nr: vector<integer> = [];
-    for i in 0..len(fq) {
-      for d in 0..6 {
-        // ⚠ hex_grid's directions, not hex_field's. The two hold the same SET in a
-        // different ORDER (hex_field: 0=E 1=W 2=SE 3=SW 4=NE 5=NW), which does not
-        // matter to a flood that only wants all six — and matters completely to
-        // `wall_of` below, which is asked about a direction by NAME. One
-        // convention in this file; the loop was on the other one.
-        (aq, ar) = hex_grid::hex_neighbor(fq[i], fr[i], d);
-        m = world_ground_cell(wld, aq, ar).h_material;
-        // A BOUNDARY STOPS A FILL, whatever it is made of. `X70` says an opening is
-        // not absence — "there is a boundary you can walk through" is a different
-        // claim from "there is no boundary" — so a doorway holds the fill in
-        // exactly as a wall does, and only a cleared edge lets it out.
-        // ⚠ THE FILL STAYS ON THE OUTDOORS, and passing the ground's own height is
-        // how it says so rather than by omission. `world_surface` at a cell's ground
-        // height selects that ground, so this is today's behaviour written down —
-        // and the day a field is filled on a deck, this is the line that has to
-        // change, with the reference to change it to already named. The fill also
-        // reads `world_ground_cell` for the material two lines above; both would
-        // move together.
-        if (m == SURFACE_MAT || m == 0)
-           && wall_of(wld, fq[i], fr[i], d,
-                      (terrain_h(fq[i], fr[i], wld) as float) * HEIGHT_SCALE) == 0 {
-          if seen.s_by[age_like_key(aq, ar)] == null {
-            if len(seen_q) >= FIELD_CAP { escaped = true; capped = true; }
-            else {
-              seen.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
-              seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
-            }
-          }
-        }
-      }
-    }
-    fq = nq;
-    fr = nr;
-  }
-  // ⚠ TWO different refusals wore one message. "It never closed" and "it grew
-  // past the cap" are not the same fact: the first says the enclosure is open,
-  // the second says it may well be closed and simply larger than this tool will
-  // claim — and only the second has an offer to make (the cap itself). Telling
-  // an author the wrong one sends them looking for a gap that is not there.
-  if capped { return 0 - 2; }
-  if escaped { return 0; }          // it never closed — refuse, and change nothing
-  for k in 0..len(seen_q) {
-    h = world_ground_cell(wld, seen_q[k], seen_r[k]).h_height;
-    hex_editor::ground_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
-  }
-  len(seen_q)
-}
+// `field_fill` is `hex_editor`'s now.
 
 // ── STOREYS (rung W4, moros#12) ──────────────────────────────────────────────
 //
@@ -1697,24 +1598,7 @@ fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
 
 // `storey_add` is `hex_editor`'s now.
 
-// ── ROOFS (rung W4, moros#12) — their own geometry ──────────────────────────
-//
-// A roof is not a floor with a different colour. Its height is DERIVED from the
-// footprint rather than authored: a cell on the outer ring is an eave, and each
-// ring inward gains `ROOF_PITCH`, so the middle is the ridge. Nothing stores the
-// pitch — it is a function of how deep the cell sits in the footprint, which is
-// what makes a roof follow whatever shape the footprint happens to be.
-//
-// The consequence for `P1` is that the band's `hi` is NOT one number for the
-// whole placement: each column claims up to ITS OWN roof, so a deck above an
-// eave is only inside the band if it is actually under that eave. Declaring the
-// ridge everywhere would have been simpler and would have swallowed things the
-// house does not occupy.
-fn roof_height(anchor: integer, eave_up: integer, rad: integer, dist: integer) -> integer {
-  depth = rad - dist;
-  if depth < 0 { depth = 0; }
-  anchor + eave_up + depth * ROOF_PITCH
-}
+// `roof_height` is `hex_editor`'s now — it shapes what the stencil writes.
 
 // Vegetation and roofs in ONE traversal.
 //
@@ -2200,185 +2084,13 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
 // `hex_editor`'s now. It is invariant I's shape, so it belongs beside the gestures
 // that owe it rather than in the program that happens to send the words.
 
-// ── STENCILS (rung W4, moros#12) — `P1`, a band and not a column ────────────
-//
-// The editor's half of `P1`. The model decides whether a band may be written;
-// what belongs HERE is the placement policy — where the band sits and how deep
-// it reaches — because that is a choice about buildings, not about columns.
-//
-// The anchor is THE SURFACE YOU ARE STANDING ON, read from the feet. So the band
-// is `[anchor - FOUNDATION, anchor + roof]`:
-//   · the floor replaces the ground it meets, up to one storey of foundation —
-//     a house cuts into a slope rather than hovering over it;
-//   · a cave deeper than the foundation is BELOW `lo`, and survives;
-//   · a bridge deck above the roof is ABOVE `hi`, and survives;
-//   · a deck too close above the roof is neither — `F1` refuses the placement,
-//     which is the honest answer, because the house does not fit there.
-//
-// ⚠ ATOMIC ACROSS THE FOOTPRINT. A house is many columns and a refusal must mean
-// no house, not half a house on the columns that happened to come first. So
-// every column is asked with `world_band_check` before any is written — the same
-// check the write runs, exposed rather than reimplemented.
-fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
-                 anchor: integer, roof_up: integer,
-                 kept_below: &integer, kept_above: &integer, why: &text) -> integer {
-  lo = anchor - FOUNDATION;
-  if lo < W_RESERVE { lo = W_RESERVE; }
+// `stencil_place` is `hex_editor`'s now.
 
-  // PASS 1 — may every column take it?
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        hi = roof_height(anchor, roof_up, rad, hex_grid::hex_distance(q, r, cq, cr));
-        band: vector<hex_world::Hex> = [
-          hex_world::Hex { h_height: (anchor as u16? ?? 0),
-                           h_material: (FLOOR_MAT as u8? ?? 0) },
-          hex_world::Hex { h_height: (hi as u16? ?? 0),
-                           h_material: (ROOF_MAT as u8? ?? 0) }
-        ];
-        c = world_band_check(wld, q, r, lo, hi, band);
-        if c.cw_code != CW_OK {
-          why = "({q},{r}) layer {c.cw_layer}: {c.cw_detail}";
-          return 0 - 10 - c.cw_code;
-        }
-      }
-    }
-  }
+// `cell_hash` is `hex_editor`'s now.
 
-  // PASS 2 — write, and count what the band left alone
-  placed = 0;
-  kept_below = 0;
-  kept_above = 0;
-  for dq2 in (0 - rad)..(rad + 1) {
-    for dr2 in (0 - rad)..(rad + 1) {
-      q2 = cq + dq2;
-      r2 = cr + dr2;
-      if hex_grid::hex_distance(q2, r2, cq, cr) <= rad {
-        d2 = hex_grid::hex_distance(q2, r2, cq, cr);
-        hi2 = roof_height(anchor, roof_up, rad, d2);
-        // The outer ring is the wall. Every perimeter cell carries a wall on the
-        // three edges it owns, and ONE of them carries a door instead — a
-        // different material on the same edge, never a cleared one (`X70`).
-        //
-        // ⚠ This is "the three owned edges of every outer-ring cell", not a
-        // geometrically exact perimeter: which edges truly bound the footprint is
-        // the `K-FIT` question and is still open. What the rule under test needs
-        // is only that the door edge holds an OPENING rather than a zero.
-        wn2 = 0; wne2 = 0; wse2 = 0;
-        if d2 == rad {
-          wn2 = WALL_MAT; wne2 = WALL_MAT; wse2 = WALL_MAT;
-          if q2 == cq + rad && r2 == cr { wn2 = DOOR_MAT; }
-        }
-        band2: vector<hex_world::Hex> = [
-          hex_world::Hex { h_height: (anchor as u16? ?? 0),
-                           h_material: (FLOOR_MAT as u8? ?? 0),
-                           h_wall_n: (wn2 as u8? ?? 0),
-                           h_wall_ne: (wne2 as u8? ?? 0),
-                           h_wall_se: (wse2 as u8? ?? 0) },
-          hex_world::Hex { h_height: (hi2 as u16? ?? 0),
-                           h_material: (ROOF_MAT as u8? ?? 0) }
-        ];
-        w = world_merge_band(wld, q2, r2, lo, hi2, band2);
-        if w.cw_code != CW_OK {
-          why = "({q2},{r2}) refused on write: {w.cw_detail}";
-          return 0 - 10 - w.cw_code;
-        }
-        placed = placed + 1;
-        col = world_column(wld, q2, r2);
-        for e in col.co_cells {
-          if hex_world::hex_occupied(e) {
-            eh = e.h_height as integer ?? 0;
-            if eh < lo { kept_below = kept_below + 1; }
-            if eh > hi2 { kept_above = kept_above + 1; }
-          }
-        }
-      }
-    }
-  }
-  placed
-}
+// `col_top_index` is `hex_editor`'s now.
 
-// ── VEGETATION (rung W5, moros#13) ───────────────────────────────────────────
-//
-// "A forest that reads as landscape, not a list." The cell holds a SPECIES INDEX
-// and nothing else — the item byte the voxel already carries — and what the
-// author paints is a DENSITY, not instances.
-//
-// The placement is a pure function of the cell coordinate. That is the whole
-// trick, and it buys three things at once:
-//   · scattering the same ground twice is idempotent, so a stroke that overlaps
-//     an earlier one does not thicken the forest where they meet;
-//   · nothing has to store which cells were rolled, so there is no scatter
-//     journal to keep in sync with the cells;
-//   · the same seed gives the same wood on every machine, which is what makes a
-//     forest gateable at all.
-// A stored RNG would fail all three, and would fail the first one INVISIBLY.
-fn cell_hash(q: integer, r: integer) -> integer {
-  h = (q * 374761393 + r * 668265263) % 2147483647 ?? 0;
-  if h < 0 { h = 0 - h; }
-  h = (h * 1274126177 + 2654435761) % 2147483647 ?? 0;
-  if h < 0 { h = 0 - h; }
-  h
-}
-
-// The index of the topmost occupied cell, or -1. Vegetation grows on whatever
-// surface is uppermost — see `E1r`: position is not occupancy.
-fn col_top_index(c: hex_world::Column) -> integer {
-  i = 0 - 1;
-  for k in 0..len(c.co_cells) { if hex_world::hex_occupied(c.co_cells[k]) { i = k; } }
-  i
-}
-
-// `species` 0 CLEARS. Returns the number of cells now carrying the species.
-fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
-           species: integer, density: integer) -> integer {
-  n = 0;
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        c = world_column(wld, q, r);
-        ti = col_top_index(c);
-        want = 0;
-        if species != 0 {
-          if (cell_hash(q, r) % 100 ?? 0) < density { want = species; }
-        }
-        rot = cell_hash(q + 7717, r + 31) % 256 ?? 0;
-        cells: vector<hex_world::Hex> = [];
-        if ti < 0 {
-          // Absence is the floor, so a tree on unauthored ground authors the
-          // ground under it — one cell, at height 0, carrying the species.
-          if want != 0 {
-            cells += [hex_world::Hex { h_height: 0, h_material: (SURFACE_MAT as u8? ?? 0),
-                                       h_item: (want as u8? ?? 0),
-                                       h_item_rotation: (rot as u8? ?? 0) }];
-          }
-        } else {
-          for k in 0..len(c.co_cells) {
-            e = c.co_cells[k];
-            if k == ti {
-              cells += [hex_world::Hex { h_height: e.h_height, h_material: e.h_material,
-                                         h_item: (want as u8? ?? 0),
-                                         h_item_rotation: (rot as u8? ?? 0),
-                                         h_wall_n: e.h_wall_n, h_wall_ne: e.h_wall_ne,
-                                         h_wall_se: e.h_wall_se }];
-            } else {
-              cells += [e];
-            }
-          }
-        }
-        if len(cells) > 0 {
-          w = world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells });
-          if w.cw_code == CW_OK && want != 0 { n = n + 1; }
-        }
-      }
-    }
-  }
-  n
-}
+// `scatter` is `hex_editor`'s now.
 
 // The falloff brush, applied to CELLS rather than recorded as a peak.
 //

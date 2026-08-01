@@ -1,0 +1,105 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE FIELD, THE STENCIL AND THE SCATTER — the three that write a REGION, without
+// a server between the claim and the answer.
+//
+// `field.mjs` needs a closed ring walked in a browser to ask whether a fill stays
+// inside it; `stencil.mjs` places a structure on ground someone walked to;
+// `vegetation.mjs` counts trees over a socket. All three claims are properties of
+// the store, and this is them.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 16..17 {
+    for r in 0 - 16..17 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// A closed ring of fence edges at radius `rad` — the boundary a fill must respect.
+fn ringed(rad: integer) -> World {
+  w = world();
+  hex_editor::fence_ring(w, hex_editor::author_at(0.0, 0.0, 0.0),
+                         hex_editor::FENCE_MAT, rad, 10.0);
+  w
+}
+
+fn test_a_fill_stops_at_the_ring_that_encloses_it() {
+  // The claim `field.mjs` exists for: a fill is BOUNDED by what encloses it, and
+  // the count is the disc's own area rather than "some cells".
+  w = ringed(2);
+  n = hex_editor::field_fill(w, 0, 0);
+  assert(n > 0, "the fill claimed cells, got {n}");
+  assert(n == 19, "a radius-2 disc is 19 cells, got {n}");
+}
+
+fn test_an_unenclosed_fill_is_refused_rather_than_running_away() {
+  // ⚠ THE REFUSAL IS THE FEATURE. Open ground has no boundary, so a fill that
+  // "just kept going" would claim the world; it grows to the cap and then refuses,
+  // and the cap is stated rather than being whatever the machine survives.
+  w = world();
+  n = hex_editor::field_fill(w, 0, 0);
+  assert(n < 0, "an open fill is refused, got {n}");
+}
+
+fn test_a_refused_fill_leaves_the_world_alone() {
+  w = world();
+  before = w.w_tau;
+  hex_editor::field_fill(w, 0, 0);
+  assert(w.w_tau == before, "nothing was written: τ {before} -> {w.w_tau}");
+}
+
+fn test_a_bigger_ring_holds_more_and_still_closes() {
+  // Two radii, so the count is a function of the boundary rather than a constant
+  // that happens to match one case.
+  a = ringed(2);
+  b = ringed(3);
+  na = hex_editor::field_fill(a, 0, 0);
+  nb = hex_editor::field_fill(b, 0, 0);
+  assert(na == 19 && nb == 37, "19 and 37 cells, got {na} and {nb}");
+}
+
+fn test_the_scatter_is_a_field_and_not_a_list() {
+  // ⚠ DERIVED FROM THE COORDINATE, NOT REMEMBERED. Scattering the same species at
+  // the same density over the same disc twice must land on exactly the same cells:
+  // a forest that is a set of remembered instances gives a different answer each
+  // time, and cannot be streamed.
+  a = world();
+  b = world();
+  na = hex_editor::scatter(a, 0, 0, 6, 1, 40);
+  nb = hex_editor::scatter(b, 0, 0, 6, 1, 40);
+  assert(na == nb, "the same scatter twice is the same count: {na} vs {nb}");
+  assert(na > 0, "and it planted something");
+}
+
+fn test_a_denser_scatter_plants_more() {
+  a = world();
+  b = world();
+  sparse = hex_editor::scatter(a, 0, 0, 6, 1, 10);
+  dense = hex_editor::scatter(b, 0, 0, 6, 1, 90);
+  assert(dense > sparse, "density is monotonic: {sparse} at 10, {dense} at 90");
+}
+
+fn test_species_zero_clears() {
+  w = world();
+  planted = hex_editor::scatter(w, 0, 0, 6, 1, 60);
+  assert(planted > 0, "planted {planted}");
+  left = hex_editor::scatter(w, 0, 0, 6, 0, 60);
+  assert(left == 0, "species 0 clears, {left} left");
+}
+
+fn test_a_roof_rises_from_its_eave_to_its_ridge() {
+  // `roof_height` shapes what the stencil writes: flat at the eave, one pitch per
+  // hex inward, so the ridge is the deepest cell. Measured at three depths, not
+  // asserted at one.
+  eave = hex_editor::roof_height(40, 8, 3, 3);
+  mid = hex_editor::roof_height(40, 8, 3, 1);
+  ridge = hex_editor::roof_height(40, 8, 3, 0);
+  assert(eave < mid && mid < ridge, "it rises inward: {eave} < {mid} < {ridge}");
+  assert(ridge - eave == 3 * hex_editor::ROOF_PITCH,
+         "by one pitch a hex: {ridge - eave}");
+}

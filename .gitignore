@@ -63,3 +63,6 @@ probe/*.png
 # Raw `loft test` output, kept before the warning filter so a crash reporter's
 # diagnostic survives the pipeline that would otherwise eat it (loft#717).
 .test-logs/
+
+# Per-gate stderr from the parallel runner, beside its .log twin.
+.gate-*.err
