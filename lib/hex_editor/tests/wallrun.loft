@@ -1,0 +1,129 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE WALL RUN AND THE ROAD — `tools/gates/world/straight.mjs` measures the drawn
+// vertices; this measures the STORE, which is the half a gate cannot reach.
+//
+// The claim S3 turned on: `25:` carries the material, and the material decides.
+// A wall is the line itself — the edges that line crosses, marked, and nothing
+// paved. A road is a centreline with a WIDTH: a band of cells plus a fence down
+// each offset. Until S3 both laid a road whatever they were told, and the ack said
+// so on every press.
+use hex_editor;
+use hex_world;
+use hex_grid;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn east_run(mat: integer) -> WallRun {
+  hex_editor::WallRun { wr_x0: 0 - 6.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+                        wr_mat: mat, wr_step: 0 }
+}
+
+fn no_runs() -> WallRuns { hex_editor::WallRuns { items: [] } }
+
+fn paved(w: World) -> integer {
+  n = 0;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 {
+      if hex_editor::ground_h(w, q, r) > 0
+         && world_ground_cell(w, q, r).h_material == hex_editor::ROAD_MAT { n = n + 1; }
+    }
+  }
+  n
+}
+
+fn test_a_wall_marks_edges_and_paves_nothing() {
+  // ⚠ THE WHOLE OF S3 IN ONE ASSERTION. A wall run used to answer "road laid 19
+  // cells and 40 fence edges" — a paved band with a waist-high fence down each
+  // side and nothing in the middle. It marks the line's own edges now.
+  w = world();
+  runs = no_runs();
+  marked = 0;
+  hex_editor::wall_stamp(w, east_run(hex_editor::WALL_MAT), hex_editor::WALL_MAT,
+                         8, runs, marked);
+  assert(marked > 0, "the wall marked {marked} edges");
+  assert(paved(w) == 0, "and paved nothing, got {paved(w)} road cells");
+  assert(len(runs.items) == 1, "one run for the renderer, got {len(runs.items)}");
+}
+
+fn test_a_road_paves_a_band_and_fences_both_offsets() {
+  // The other half, unchanged and still wanted: a road IS a width, and its fences
+  // are the two offset lines rather than the outline of the paved cells.
+  w = world();
+  runs = no_runs();
+  fenced = 0;
+  cut = 0;
+  n = hex_editor::road_stamp(w, east_run(hex_editor::FENCE_MAT),
+                             hex_editor::ROAD_HALF as float, hex_editor::FENCE_MAT,
+                             8, runs, fenced, cut);
+  assert(n > 0, "the road paved {n} cells");
+  assert(fenced > 0, "and fenced {fenced} edges");
+  assert(len(runs.items) == 2, "one run per offset, got {len(runs.items)}");
+}
+
+fn test_the_wall_run_stays_on_the_authors_line() {
+  // Every edge a wall marks has its midpoint on the line, within the tolerance the
+  // stamp itself uses. A staircase of edges wandering either side is what the
+  // library's surface recovery exists to avoid, and what `straight.mjs` measures
+  // in the drawn mesh — this is the same claim one layer down.
+  w = world();
+  runs = no_runs();
+  marked = 0;
+  hex_editor::wall_stamp(w, east_run(hex_editor::WALL_MAT), hex_editor::WALL_MAT,
+                         8, runs, marked);
+  worst = 0.0;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d, 2.0) == hex_editor::WALL_MAT {
+          (nq, nr) = hex_neighbor(q, r, d);
+          (cx, cz) = hex_to_px(q, r);
+          (nx, nz) = hex_to_px(nq, nr);
+          off = (cz + nz) * 0.5;
+          if off < 0.0 { off = 0.0 - off; }
+          if off > worst { worst = off; }
+        }
+      }
+    }
+  }
+  assert(worst < 0.9, "every marked edge sits on the line, worst {worst} wu off");
+}
+
+fn test_the_heading_snaps_to_one_of_twenty_four_and_reports_the_residual() {
+  // 15 degrees apart, and the residual is what the author gave up by pressing
+  // where they did — reported, never silently kept.
+  step = 0;
+  resid = 0.0;
+  hex_editor::snap_heading(1.0, 0.0, step, resid);
+  assert(step == 0 && resid < 0.0001, "due east is heading 0, residual {resid}");
+  step2 = 0;
+  resid2 = 0.0;
+  a = hex_editor::snap_heading(cos(0.2), sin(0.2), step2, resid2);
+  assert(step2 == 1, "0.2 rad snaps to heading 1, got {step2}");
+  want = (0.2 - hex_editor::WALL_SNAP) * 180.0 / PI ?? 0.0;
+  if want < 0.0 { want = 0.0 - want; }
+  d = resid2 - want;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.0001, "and the residual is the angle it moved: {resid2} vs {want}");
+}
+
+fn test_a_run_of_no_length_writes_nothing() {
+  w = world();
+  runs = no_runs();
+  marked = 0;
+  before = w.w_tau;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_x0: 1.0, wr_z0: 1.0,
+                                                  wr_x1: 1.0, wr_z1: 1.0,
+                                                  wr_mat: hex_editor::WALL_MAT,
+                                                  wr_step: 0 },
+                         hex_editor::WALL_MAT, 8, runs, marked);
+  assert(marked == 0, "a run of no length marks nothing, got {marked}");
+  assert(w.w_tau == before, "and writes nothing: τ {before} -> {w.w_tau}");
+}

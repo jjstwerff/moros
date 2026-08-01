@@ -374,8 +374,6 @@ const W_THETA      = 3;
 // (`hex_world::LABEL_GROUND`), reached through `world_ground_cell` for a read and
 // `ground_write` for a write. Re-introducing an index here would silently undo it.
 
-const ROAD_MAT     = 2;           // the road surface
-const ROAD_HALF    = 2;           // road half-width, in hexes
 const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
 // A DECK IS DRAWN, and until 2026-07-31 no floor was. `chunk_mesh_mat` builds each
 // surface from `world_ground_cell`, which is the outdoors by definition, so every
@@ -783,16 +781,9 @@ fn wall_up(mat: integer) -> integer {
 //
 // A heading is ORDINAL, so snapping it is `K-FIT`'s third state — applied as an
 // explicit approximation, with its residual reported in degrees, never silently.
-const HEADINGS = 24;                   // 15° apart
-const WALL_SNAP = 0.26179938779914946; // 2π / 24
 
-struct WallRun {
-  wr_x0: float, wr_z0: float,
-  wr_x1: float, wr_z1: float,
-  wr_mat: integer,
-  wr_step: integer,                    // which of the 24, for the record
-}
-struct WallRuns { items: vector<WallRun> }
+// `WallRun` is `hex_editor`'s now — the wall run went with the gesture.
+// `WallRuns` is `hex_editor`'s now — the wall run went with the gesture.
 
 // The run being drawn — two presses, so the first has to be remembered.
 //
@@ -805,214 +796,11 @@ struct WallRuns { items: vector<WallRun> }
 // was wider than the report — four sites, where this consumer hit one.
 struct WallDraft { wd_open: boolean, wd_x: float, wd_z: float }
 
-// The nearest of the 24 headings to (dx, dz), and how far off the author was.
-fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float {
-  a = atan2(dz, dx);
-  k = a / WALL_SNAP ?? 0.0;
-  ki = 0;
-  if k >= 0.0 { ki = (k + 0.5) as integer; } else { ki = (k - 0.5) as integer; }
-  snapped = (ki as float) * WALL_SNAP;
-  d = a - snapped;
-  if d < 0.0 { d = 0.0 - d; }
-  residual = d * 180.0 / PI ?? 0.0;
-  step = ((ki % HEADINGS ?? 0) + HEADINGS) % HEADINGS ?? 0;
-  snapped
-}
+// `snap_heading` is `hex_editor`'s now — the wall run went with the gesture.
 
-// ── A WALL IS THE LINE ITSELF (S3) ──────────────────────────────────────────
-//
-// ⚠ **PRESSING `R` LAID A ROAD.** Measured, not inferred — one press of the wall
-// key answered `road laid 19 cells and 40 fence edges, cut 118`, and the plan view
-// showed exactly that: a paved band with a waist-high fence down each side and
-// NOTHING in the middle. `25:` carries the material, `1` is `WALL_MAT`, and the
-// handler paved regardless of what it was told to build.
-//
-// The difference is one line rather than three. A road is a centreline with a
-// WIDTH — its cells are the band and its fences are the two offsets, which is what
-// `road_stamp` does and keeps doing for `FENCE_MAT`. A wall is the centreline: the
-// edges the line itself crosses, marked with the wall material, and one run for the
-// renderer. No paving, no offsets.
-//
-// The edge marking below is `road_stamp`'s, at offset zero — the same halfplane
-// surface, the same segment-versus-line interior test — because a wall's edges are
-// its fence's edges with the offset taken out, and deriving that twice is how the
-// two drifted apart in the first place.
-fn wall_stamp(wld: &World, run: WallRun, mat: integer, grade: integer,
-              runs: WallRuns, marked: &integer) {
-  t = hex_way::track_new();
-  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
-  a0 = world_to_hex(run.wr_x0, run.wr_z0);
-  a1 = world_to_hex(run.wr_x1, run.wr_z1);
-  q0 = a0.ha_q; if a1.ha_q < q0 { q0 = a1.ha_q; }
-  q1 = a0.ha_q; if a1.ha_q > q1 { q1 = a1.ha_q; }
-  r0 = a0.ha_r; if a1.ha_r < r0 { r0 = a1.ha_r; }
-  r1 = a0.ha_r; if a1.ha_r > r1 { r1 = a1.ha_r; }
-  pad = 3;
-  q0 = q0 - pad; r0 = r0 - pad;
-  w = q1 - q0 + pad + 1;
-  h = r1 - r0 + pad + 1;
+// `wall_stamp` is `hex_editor`'s now — the wall run went with the gesture.
 
-  runs.items += [run];
-
-  (tx, ty) = hex_way::seg_tangent(t, 0, 0.0);
-  nx = 0.0 - ty;
-  nz = tx;
-  eg = edgeset_new(q0, r0, w, h);
-  sfo = surfaces_new();
-  sid = surf_straight(sfo, nx, nz, nx * run.wr_x0 + nz * run.wr_z0);
-  edges_halfplane_surf(eg, q0, r0, w, h, nx, nz,
-                       nx * run.wr_x0 + nz * run.wr_z0, sid);
-  n = 0;
-  for r in r0..r0 + h {
-    for q in q0..q0 + w {
-      for dd in 0..6 {
-        (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
-        if edge_blocked(eg, q, r, nq, nr) {
-          cw = hex_to_world(q, r, 0);
-          nw = hex_to_world(nq, nr, 0);
-          mx = (cw.x + nw.x) * 0.5;
-          mz = (cw.z + nw.z) * 0.5;
-          dseg = hex_way::seg_distance(t, 0, mx, mz);
-          dline = surf_distance(sfo, sid, mx, mz);
-          over = dseg - dline;
-          if over < 0.0 { over = 0.0 - over; }
-          if over < 0.000001 {
-            wall_set(wld, q, r, dd, mat, grade, (grade as float) * HEIGHT_SCALE);
-            n = n + 1;
-          }
-        }
-      }
-    }
-  }
-  marked = n;
-}
-
-// ── A ROAD IS A CENTRELINE, AND ITS FENCE IS ITS OWN BOUNDARY ───────────────
-//
-// `hex_way` already models this and the editor's road did not: *"a way is an exact
-// centreline plus offsets, never a rasterised band"*. Laying a strip per walked
-// footfall put the road on the half-hex quantisation floor — it wobbled because it
-// was made of hexes — and there was nothing for a fence to run ALONGSIDE, because
-// there was no line, only cells.
-//
-// So the walk records two ends, the heading snaps to one of the 24, and
-// `way_stamp` does both halves in one pass over the finished footprint:
-//
-//   · the cells within the half-width become the road, and
-//   · the boundary edges of exactly those cells become the roadside — each tagged
-//     with the SURFACE of the nearest segment, so the fence carries the road's true
-//     normal rather than the six a hex edge can offer.
-//
-// ⚠ MARK, THEN CUT — the library's own `P3` lesson, and the reason `way_stamp` is
-// one call rather than two: a part that cuts its boundary as it lands leaves stale
-// edges where a later part covers them, and the result depends on the order.
-fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
-              grade: integer, runs: WallRuns, fenced: &integer,
-              cut_total: &integer) -> integer {
-  t = hex_way::track_new();
-  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
-
-  a0 = world_to_hex(run.wr_x0, run.wr_z0);
-  a1 = world_to_hex(run.wr_x1, run.wr_z1);
-  q0 = a0.ha_q; if a1.ha_q < q0 { q0 = a1.ha_q; }
-  q1 = a0.ha_q; if a1.ha_q > q1 { q1 = a1.ha_q; }
-  r0 = a0.ha_r; if a1.ha_r < r0 { r0 = a1.ha_r; }
-  r1 = a0.ha_r; if a1.ha_r > r1 { r1 = a1.ha_r; }
-  pad = (half as integer ?? 0) + 3;
-  q0 = q0 - pad; r0 = r0 - pad;
-  w = q1 - q0 + pad + 1;
-  h = r1 - r0 + pad + 1;
-
-  // THE ROAD is the band: the cells within `half` of the centreline. A
-  // rasterisation, and the library says so — which is exactly why the fence must
-  // not be derived from it.
-  cells = hexset_chunk(q0, r0, w, h);
-  hex_way::way_mark(t, half, cells);
-  paved = 0;
-  for r in r0..r0 + h {
-    for q in q0..q0 + w {
-      if hexset_get(cells, q, r) {
-        hex_editor::ground_set(wld, q, r, grade, ROAD_MAT);
-        paved = paved + 1;
-      }
-    }
-  }
-
-  // ── THE FENCE IS THE OFFSET LINE, NOT THE BAND'S OUTLINE ─────────────────
-  //
-  // ⚠ This is the whole lesson of the rung, and the plan view is what showed it.
-  // `way_stamp`/`cut_arb` cut the boundary of the MARKED CELLS, which is the
-  // outline of a set of hexes — a zigzag, by construction, however straight the
-  // road under it is. Rendered, an 82-edge fence wobbled around a 44-cell road.
-  //
-  // A wall is a LINE. `track_offset` gives the parallel curve exactly — for a
-  // straight it is another straight, so equidistance is exact rather than
-  // approximated — and `edges_halfplane_surf` marks the edges that LINE crosses,
-  // which is a thin connected chain rather than a fat ring. Same library, same
-  // track; the difference is reading the offset instead of the rasterisation.
-  fenced = 0;
-  cut = 0;
-  if fence_mat != 0 {
-    for side in 0..2 {
-      d = half + 0.5;
-      if side == 1 { d = 0.0 - d; }
-      if hex_way::offset_legal(t, d) {
-        o = hex_way::track_offset(t, d);
-        // ⚠ THE RUN THAT IS DRAWN IS THIS OFFSET, not the road's centreline. The
-        // centreline is where the road is; the fences stand beside it, and a wall
-        // drawn along the centre would be a wall down the middle of the road —
-        // which is exactly what the straightness gate measured first time out.
-        (rax, raz) = hex_way::seg_point(o, 0, 0.0);
-        (rbx, rbz) = hex_way::seg_point(o, 0, hex_way::seg_len(o, 0));
-        runs.items += [WallRun { wr_x0: rax, wr_z0: raz, wr_x1: rbx, wr_z1: rbz,
-                                 wr_mat: fence_mat, wr_step: run.wr_step }];
-        (tx, ty) = hex_way::seg_tangent(o, 0, 0.0);
-        (ox, oy) = hex_way::seg_point(o, 0, 0.0);
-        nx = 0.0 - ty;
-        nz = tx;
-        eg = edgeset_new(q0, r0, w, h);
-        sfo = surfaces_new();
-        sid = surf_straight(sfo, nx, nz, nx * ox + nz * oy);
-        edges_halfplane_surf(eg, q0, r0, w, h, nx, nz, nx * ox + nz * oy, sid);
-        // ⚠ CLIPPED TO THE RUN, and NOT with `seg_param`. That routine returns the
-        // parameter of the NEAREST point on the segment and therefore CLAMPS —
-        // correct for what it is, and useless as an inside test, since every point
-        // in the window comes back inside. Rendered, the fence ran the full width
-        // of the plan and off both ends of its road.
-        //
-        // The exact test is already here in two pieces: distance to the SEGMENT
-        // clamps at the ends, distance to the infinite LINE does not, so they are
-        // equal exactly where the nearest point is interior. No new geometry, and
-        // no parameter arithmetic of our own.
-        for r in r0..r0 + h {
-          for q in q0..q0 + w {
-            for dd in 0..6 {
-              (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
-              if edge_blocked(eg, q, r, nq, nr) {
-                cut = cut + 1;
-                cw = hex_to_world(q, r, 0);
-                nw = hex_to_world(nq, nr, 0);
-                mx = (cw.x + nw.x) * 0.5;
-                mz = (cw.z + nw.z) * 0.5;
-                dseg = hex_way::seg_distance(o, 0, mx, mz);
-                dline = surf_distance(sfo, sid, mx, mz);
-                over = dseg - dline;
-                if over < 0.0 { over = 0.0 - over; }
-                if over < 0.000001 {
-                  wall_set(wld, q, r, dd, fence_mat, grade,
-                           (grade as float) * HEIGHT_SCALE);
-                  fenced = fenced + 1;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  cut_total = cut;
-  paved
-}
+// `road_stamp` is `hex_editor`'s now — the wall run went with the gesture.
 
 // `fence_disc` is `hex_editor`'s now.
 
@@ -1729,17 +1517,7 @@ fn emit_run_wall(m: Mesh, run: WallRun, wld: World, q0: integer, r0: integer) {
   }
 }
 
-// Is this edge already carried by a run? One `Track` holding every run, so the
-// question is `hex_way::track_distance` — the library's own nearest-centreline —
-// rather than a distance test written again here. Half a hex is the threshold: an
-// edge a run crosses has its midpoint within that of the line by construction.
-fn runs_track(runs: WallRuns) -> Track {
-  t = hex_way::track_new();
-  for run in runs.items {
-    hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
-  }
-  t
-}
+// `runs_track` is `hex_editor`'s now — the wall run went with the gesture.
 
 // ── WHAT IS BUILT, DRAWN — and the FLOOR, which nothing drew ────────────────
 //
