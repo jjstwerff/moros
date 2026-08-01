@@ -1444,6 +1444,21 @@ pub struct Opening {
   // in it. The alternative — a special case per fitting — is how a design ends up
   // with a door system, a window system and an alcove system that cannot combine.
   op_depth: float,
+  // ⚠ AND `op_near` IS THE SURFACE IT IS CUT FROM — the datum. Every opening above
+  // is measured from the wall's own front face, which is the assumption that makes
+  // a castle embrasure impossible to state: a window in the BACK of a window seat
+  // is cut from the niche's back plane, and that plane is 0.55 of the way through
+  // the wall, not 0.
+  //
+  //   near 0.0  far 1.0    a doorway — front face to far face
+  //   near 0.0  far 0.55   a niche — front face, stopped short
+  //   near 0.55 far 1.0    the embrasure's window — the NICHE's back to the far face
+  //
+  // So the pair is an interval along the wall's thickness, and "which surface" is
+  // just where that interval starts. The niche's back is a surface like any other
+  // once it is named, which is what lets a bench, a window and a recess be three
+  // ordinary things instead of an "embrasure" primitive that combines with nothing.
+  op_near: float,
   // ⚠ AND THE HEAD IS A PROFILE, not a straight line. `op_spring` is the height the
   // arch springs from, in height units, or -1 for a flat head. Above it the opening
   // is a HALF-ROUND of radius `op_half`, so the cut narrows as it rises and closes
@@ -1494,7 +1509,7 @@ pub fn opening_for(x: float, z: float, width: float, lo: integer, hi: integer,
   if d > 1.0 { d = 1.0; }
   if d < 0.0 { d = 0.0; }
   Opening { op_x: x, op_z: z, op_half: width * 0.5 + OPENING_CLEAR,
-            op_lo: lo, op_hi: hi, op_depth: d, op_spring: 0 - 1,
+            op_lo: lo, op_hi: hi, op_depth: d, op_near: 0.0, op_spring: 0 - 1,
             op_kind: OP_FLAT, op_radius: 0.0 }
 }
 
@@ -1525,7 +1540,7 @@ pub fn arch_opening(x: float, z: float, width: float, lo: integer, spring: integ
   o = opening_for(x, z, width, lo, spring, depth);
   crown = spring + ((o.op_half / unit ?? 0.0) as integer);
   Opening { op_x: o.op_x, op_z: o.op_z, op_half: o.op_half, op_lo: o.op_lo,
-            op_hi: crown, op_depth: o.op_depth, op_spring: spring,
+            op_hi: crown, op_depth: o.op_depth, op_near: o.op_near, op_spring: spring,
             op_kind: OP_ROUND, op_radius: o.op_half }
 }
 
@@ -1556,7 +1571,7 @@ pub fn profile_opening(x: float, z: float, width: float, lo: integer, spring: in
   sp = spring;
   if kind == OP_FLAT { sp = 0 - 1; hi = o.op_hi; }
   Opening { op_x: o.op_x, op_z: o.op_z, op_half: a, op_lo: o.op_lo, op_hi: hi,
-            op_depth: o.op_depth, op_spring: sp, op_kind: kind, op_radius: r }
+            op_depth: o.op_depth, op_near: o.op_near, op_spring: sp, op_kind: kind, op_radius: r }
 }
 
 // An oculus — a round window, which is the family's proof that a profile is not
@@ -1570,7 +1585,66 @@ pub fn opening_arched(o: Opening) -> boolean { o.op_spring >= 0 }
 
 // Does this opening go all the way through? A door does; an alcove does not, and
 // a walker may not step into one.
-pub fn opening_through(o: Opening) -> boolean { o.op_depth >= 1.0 }
+pub fn opening_through(o: Opening) -> boolean { o.op_depth >= 1.0 && o.op_near <= 0.0 }
+
+// ── THE DATUM: which surface an opening is cut FROM ─────────────────────────
+//
+// Three questions the renderer asks, and they are three because an opening no
+// longer has to touch both faces of the wall. `opening_through` above is the
+// conjunction, kept because "can you walk through it" is its own question.
+
+// Does it break the face you are standing in front of?
+pub fn opening_at_front(o: Opening) -> boolean { o.op_near <= 0.0 }
+
+// Does it break the far face?
+pub fn opening_at_back(o: Opening) -> boolean { o.op_depth >= 1.0 }
+
+// Where its void begins and ends along the wall's thickness, in world units from
+// the front face. The pair IS the opening's extent through the wall; `op_near` is
+// only the near end of it given a name.
+pub fn opening_span(o: Opening, band: float, near: &float, far: &float) {
+  near = o.op_near * band;
+  far = o.op_depth * band;
+}
+
+// ⚠ AN OPENING CUT IN THE BACK OF ANOTHER — the embrasure, and the reason the datum
+// exists. A castle window seat is a deep niche with benches in its reveal and a
+// small window at the back of it; without a datum that window has nowhere to be
+// measured from, and the only way to build one is a bespoke "embrasure" primitive
+// that combines with nothing else.
+//
+// With one, it is composition: the child starts where the host stops. The child
+// keeps the host's CENTRE unless it is told otherwise, because a window off-centre
+// in its own embrasure is a mistake far more often than it is a choice.
+pub fn opening_in_back(host: Opening, width: float, lo: integer, hi: integer,
+                       kind: integer, unit: float) -> Opening {
+  o = profile_opening(host.op_x, host.op_z, width, lo, hi, kind, 0.0, unit, 1.0);
+  Opening { op_x: o.op_x, op_z: o.op_z, op_half: o.op_half, op_lo: o.op_lo,
+            op_hi: o.op_hi, op_depth: 1.0, op_near: host.op_depth,
+            op_spring: o.op_spring, op_kind: o.op_kind, op_radius: o.op_radius }
+}
+
+// ⚠ AND IT HAS TO FIT IN ITS HOST, which is the one thing composition can get wrong
+// that a standalone opening cannot. A window wider than the niche it sits in cuts
+// through the niche's own jamb and out into the wall beside it — a hole with no
+// reveal on one side, which reads as damage. Refused with the widest that fits, by
+// `A9c`: a width is ordinal, so it has a nearest admissible value.
+pub fn opening_fits_in(host: Opening, child: Opening) -> Ack {
+  room = host.op_half * 2.0 - 2.0 * OPENING_CLEAR;
+  if child.op_half * 2.0 > room {
+    return ack_no("the window is wider than the niche it sits in — "
+                  + "offer {room}, residual {child.op_half * 2.0 - room}");
+  }
+  if child.op_lo < host.op_lo {
+    return ack_no("the window's sill is below the niche's floor — "
+                  + "offer {host.op_lo}, residual {host.op_lo - child.op_lo}");
+  }
+  if child.op_hi > host.op_hi {
+    return ack_no("the window's head is above the niche's — "
+                  + "offer {host.op_hi}, residual {child.op_hi - host.op_hi}");
+  }
+  ack_ok(1)
+}
 
 // How far into the wall the void reaches, in world units, given the band's own
 // thickness — where an alcove's back wall stands, and where a statue's feet go.
@@ -1656,7 +1730,7 @@ pub fn opening_frame(o: Opening, margin: float, unit: float) -> Opening {
     op_half: o.op_half + ef,
     op_lo: o.op_lo - mu,
     op_hi: o.op_hi + mu,
-    op_depth: o.op_depth,
+    op_depth: o.op_depth, op_near: o.op_near,
     op_spring: o.op_spring,
     op_kind: o.op_kind,
     op_radius: o.op_radius,

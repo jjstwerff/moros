@@ -329,6 +329,9 @@ addEventListener('keydown', (e) => {
   // The tens digit is DEPTH: 11 is the round head stopped short — a niche, for a
   // statue or a lamp, with the wall still whole behind it.
   if (e.code === 'KeyN') { ws.send('36:11'); e.preventDefault(); return; }  // niche
+  // The twenties are COMPOSITION: cut into the back of the niche already there,
+  // which is a castle embrasure — a window seat with its window at the far end.
+  if (e.code === 'KeyM') { ws.send('36:21'); e.preventDefault(); return; }  // embrasure
   // $ — photograph exactly what I am looking at, and dump the state behind it.
   // The picture and the numbers land together on the server's disk, so a report
   // of "it looks wrong" arrives with everything needed to explain it.

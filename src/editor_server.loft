@@ -1470,6 +1470,9 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
   fhad = false;
   pflo = 0;
   pfhi = 0;
+  bhad = false;
+  pbl = 0;
+  pbh = 0;
 
   for i in 0..steps {
     sa = ln * (i as float) / (steps as float) ?? 0.0;
@@ -1499,20 +1502,35 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
         // band from the ground to its head; an opening replaces that with the two
         // bands its profile leaves — below the sill and above the head — either of
         // which may be empty.
+        // ⚠ TWO VOIDS NOW, NOT ONE — because an opening carries a DATUM. Every hole
+        // used to be cut from the wall's front face, which is the assumption that
+        // makes a castle embrasure unstatable: the window at the back of a window
+        // seat is cut from the NICHE's back plane, and that plane is most of the way
+        // through the wall. So the slice asks twice: what breaks the near face, and
+        // what breaks the far one. A doorway answers both with the same band.
         lo_u = 0;
         hi_u = up;
         cut = false;
         thru = true;
         reach = 2.0 * half;
+        blo_u = 0;
+        bhi_u = 0;
+        bcut = false;
         for o in openings.items {
           colo = 0;
           cohi = 0;
           if hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
-            cut = true;
-            lo_u = colo;
-            hi_u = cohi;
-            thru = hex_editor::opening_through(o);
-            reach = hex_editor::opening_reach(o, 2.0 * half);
+            if hex_editor::opening_at_front(o) {
+              cut = true;
+              lo_u = colo;
+              hi_u = cohi;
+              thru = hex_editor::opening_at_back(o);
+              reach = hex_editor::opening_reach(o, 2.0 * half);
+            } else if hex_editor::opening_at_back(o) {
+              bcut = true;
+              blo_u = colo;
+              bhi_u = cohi;
+            }
           }
         }
         // ⚠ THE VOID'S INNER PLANE, and it is not the wall's far face. `op_depth`
@@ -1530,6 +1548,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
         }
         bands: vector<integer> = [0, up];
         if cut { bands = [0, lo_u, hi_u, up]; }
+        // The far face has its own bands. A doorway cuts it with the front void; an
+        // embrasure cuts it with the window in the niche's back; a plain niche does
+        // not cut it at all.
+        fars: vector<integer> = [0, up];
+        if thru && cut { fars = [0, lo_u, hi_u, up]; }
+        else if bcut { fars = [0, blo_u, bhi_u, up]; }
 
         // ⚠ THE JAMB, wherever the VOID changes — and the void is what has to be
         // compared, not the bands. At the ends of an opening the jamb is its side,
@@ -1588,7 +1612,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           // and the moulding was drawn on BOTH faces, standing proud of solid stone
           // on the far side. In the picture that was a bright stripe the height of
           // every jamb, on the wall's blind side, which is where it was found.
-          fthru = true;
+          fr_front = true;
+          fr_back = true;
           for gf in frames {
             gflo = 0;
             gfhi = 0;
@@ -1596,7 +1621,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               fcut = true;
               flo = gflo;
               fhi = gfhi;
-              fthru = hex_editor::opening_through(gf);
+              fr_front = hex_editor::opening_at_front(gf);
+              fr_back = hex_editor::opening_at_back(gf);
             }
           }
           if fcut {
@@ -1614,11 +1640,11 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             if fcut && !fhad { rn = vec3(tx, 0.0, tz); }
             if !fhad {
               emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, flo, fhi);
-              if fthru { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+              if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
                                   0.0 - ox, 0.0 - oz, rn, flo, fhi); }
             } else if !fcut {
               emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, pflo, pfhi);
-              if fthru { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+              if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
                                   0.0 - ox, 0.0 - oz, rn, pflo, pfhi); }
             } else {
               rlo = flo; rhi = pflo;
@@ -1627,7 +1653,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               slo = fhi; shi2 = pfhi;
               if pfhi < fhi { slo = pfhi; shi2 = fhi; }
               emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, slo, shi2);
-              if fthru {
+              if fr_back {
                 emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
                           0.0 - ox, 0.0 - oz, rn, rlo, rhi);
                 emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
@@ -1641,12 +1667,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
           if fcut {
             if cut {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fthru, flo, lo_u);
+                              nrm, bck, fr_front, fr_back, flo, lo_u);
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fthru, hi_u, fhi);
+                              nrm, bck, fr_front, fr_back, hi_u, fhi);
             } else {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fthru, flo, fhi);
+                              nrm, bck, fr_front, fr_back, flo, fhi);
             }
           }
         }
@@ -1664,12 +1690,6 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             b2 = vec3(bx + ikx, tb, bz + ikz); b3 = vec3(ax + ikx, ta, az + ikz);
             emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
             emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
-            // The far face. Cut into the same bands where the opening goes through;
-            // for a niche it is drawn whole below, because there is nothing to cut.
-            if thru {
-              emit_tri(m, b0, bck, b2, bck, b1, bck);
-              emit_tri(m, b0, bck, b3, bck, b2, bck);
-            }
             if half > 0.0 {
               // The cap: a band's top face. For the band below an opening this is
               // the SILL, which is why a window ledge exists without being a
@@ -1697,25 +1717,91 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             }
           }
         }
-        // The niche: its BACK, which is what you set a statue or a lamp against, and
-        // the far face of the wall standing unbroken behind it.
-        if cut && !thru && half > 0.0 && hi_u > lo_u {
-          na = gy0 + (lo_u as float) * HEIGHT_SCALE;
-          nb = gy1 + (lo_u as float) * HEIGHT_SCALE;
-          nc = gy1 + (hi_u as float) * HEIGHT_SCALE;
-          nd = gy0 + (hi_u as float) * HEIGHT_SCALE;
-          n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
-          n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
-          emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
-          emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
-          ba = gy0; bb = gy1;
-          bt0 = gy1 + (up as float) * HEIGHT_SCALE;
-          bt1 = gy0 + (up as float) * HEIGHT_SCALE;
-          y0 = vec3(ax - ox, ba, az - oz); y1 = vec3(bx - ox, bb, bz - oz);
-          y2 = vec3(bx - ox, bt0, bz - oz); y3 = vec3(ax - ox, bt1, az - oz);
-          emit_tri(m, y0, bck, y2, bck, y1, bck);
-          emit_tri(m, y0, bck, y3, bck, y2, bck);
+        // ⚠ THE FAR FACE IS ITS OWN SURFACE, with its own bands. It used to be the
+        // front face's mirror, drawn in the same loop from the same list — which is
+        // exactly why a window could not be cut into it independently. Now a doorway
+        // cuts both faces with one band, an embrasure cuts each with a different one,
+        // and a plain niche leaves this one whole.
+        if half > 0.0 {
+          for fi in 0..len(fars) / 2 ?? 0 {
+            klo = fars[fi * 2] ?? 0;
+            khi = fars[fi * 2 + 1] ?? 0;
+            if khi > klo {
+              ya2 = gy0 + (klo as float) * HEIGHT_SCALE;
+              yb2 = gy1 + (klo as float) * HEIGHT_SCALE;
+              ta2 = gy0 + (khi as float) * HEIGHT_SCALE;
+              tb2 = gy1 + (khi as float) * HEIGHT_SCALE;
+              y0 = vec3(ax - ox, ya2, az - oz); y1 = vec3(bx - ox, yb2, bz - oz);
+              y2 = vec3(bx - ox, tb2, bz - oz); y3 = vec3(ax - ox, ta2, az - oz);
+              emit_tri(m, y0, bck, y2, bck, y1, bck);
+              emit_tri(m, y0, bck, y3, bck, y2, bck);
+            }
+          }
         }
+        // ⚠ THE NICHE'S BACK IS A WALL FACE TOO — which is the whole of the datum in
+        // one line. It carries bands like either of the others, so the embrasure's
+        // window is cut OUT of it by the same arithmetic, and what is left is the
+        // stone either side of the window with the seat below.
+        if cut && !thru && half > 0.0 && hi_u > lo_u {
+          backs: vector<integer> = [lo_u, hi_u];
+          if bcut { backs = [lo_u, blo_u, bhi_u, hi_u]; }
+          for ni in 0..len(backs) / 2 ?? 0 {
+            nlo = backs[ni * 2] ?? 0;
+            nhi = backs[ni * 2 + 1] ?? 0;
+            if nhi > nlo {
+              na = gy0 + (nlo as float) * HEIGHT_SCALE;
+              nb = gy1 + (nlo as float) * HEIGHT_SCALE;
+              nc = gy1 + (nhi as float) * HEIGHT_SCALE;
+              nd = gy0 + (nhi as float) * HEIGHT_SCALE;
+              n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
+              n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
+              emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
+              emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
+              // ⚠ AND THE WINDOW'S OWN SPLAY. An embrasure's window is not a hole in
+              // a thin sheet — it sits at the end of the remaining half a metre of
+              // wall, so it has a sill you can put a candle on and a soffit above it,
+              // both running from the niche's back to the far face. Skipping these
+              // leaves the window reading as a picture pinned to the niche's back.
+              if bcut {
+                wq0 = vec3(ax + ikx, nc, az + ikz); wq1 = vec3(bx + ikx, nc, bz + ikz);
+                wq2 = vec3(bx - ox, nc, bz - oz);   wq3 = vec3(ax - ox, nc, az - oz);
+                if nhi < hi_u {
+                  emit_tri(m, wq0, upn, wq1, upn, wq2, upn);
+                  emit_tri(m, wq0, upn, wq2, upn, wq3, upn);
+                }
+                if nlo > lo_u {
+                  wr0 = vec3(ax + ikx, na, az + ikz); wr1 = vec3(bx + ikx, na, bz + ikz);
+                  wr2 = vec3(bx - ox, na, bz - oz);   wr3 = vec3(ax - ox, na, az - oz);
+                  emit_tri(m, wr0, dwn, wr2, dwn, wr1, dwn);
+                  emit_tri(m, wr0, dwn, wr3, dwn, wr2, dwn);
+                }
+              }
+            }
+          }
+          // The splay's jambs, where the window's own outline changes — the same
+          // stepped reveal the front gets, at the other end of the wall.
+          if bcut != bhad || blo_u != pbl || bhi_u != pbh {
+            (sx, sz) = hex_way::seg_point(t, 0, ja);
+            sgy = terrain_y(sx, sz, wld);
+            sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+            if bcut && !bhad { sn = vec3(tx, 0.0, tz); }
+            if !bhad {
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, blo_u, bhi_u);
+            } else if !bcut {
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, pbl, pbh);
+            } else {
+              ulo = blo_u; uhi = pbl;
+              if pbl < blo_u { ulo = pbl; uhi = blo_u; }
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, ulo, uhi);
+              vlo = bhi_u; vhi = pbh;
+              if pbh < bhi_u { vlo = pbh; vhi = bhi_u; }
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, vlo, vhi);
+            }
+          }
+        }
+        bhad = bcut;
+        pbl = blo_u;
+        pbh = bhi_u;
       }
     }
   }
@@ -2242,8 +2328,8 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
 // bottom. Both sides get one — a frame visible only from the street is scenery.
 fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
                    gy0: float, gy1: float, ox: float, oz: float,
-                   px: float, pz: float, nrm: Vec3, bck: Vec3, both: boolean,
-                   a: integer, b: integer) {
+                   px: float, pz: float, nrm: Vec3, bck: Vec3,
+                   front: boolean, back: boolean, a: integer, b: integer) {
   if b <= a { return; }
   ya = gy0 + (a as float) * HEIGHT_SCALE;
   yb = gy1 + (a as float) * HEIGHT_SCALE;
@@ -2253,29 +2339,26 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   dwn = vec3(0.0, 0.0 - 1.0, 0.0);
   f0 = vec3(ax + px, ya, az + pz); f1 = vec3(bx + px, yb, bz + pz);
   f2 = vec3(bx + px, tb, bz + pz); f3 = vec3(ax + px, ta, az + pz);
-  emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
-  emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
-  // ⚠ ONE SIDE FOR AN ALCOVE. A niche is a hole in the front of a wall that is
-  // still whole behind, so a surround on its back face stands PROUD of solid stone —
-  // a moulding around nothing, on the wrong side, in the neighbour's room.
-  if !both {
+  if front {
+    emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+    emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
     w3f = vec3(ax + ox, ta, az + oz); w2f = vec3(bx + ox, tb, bz + oz);
     emit_tri(m, f3, upn, f2, upn, w2f, upn);
     emit_tri(m, f3, upn, w2f, upn, w3f, upn);
-    return;
+    w0f = vec3(ax + ox, ya, az + oz); w1f = vec3(bx + ox, yb, bz + oz);
+    emit_tri(m, f0, dwn, w1f, dwn, f1, dwn);
+    emit_tri(m, f0, dwn, w0f, dwn, w1f, dwn);
   }
+  // ⚠ THE SIDE IS THE OPENING'S DATUM, not a guess. A niche is a hole in the front
+  // of a wall that is still whole behind, so a surround on its back face stands
+  // PROUD of solid stone — a moulding around nothing, in the neighbour's room. An
+  // embrasure's window is the mirror of that: it never touches the front face, so
+  // its frame belongs on the far one and nowhere else.
+  if !back { return; }
   k0 = vec3(ax - px, ya, az - pz); k1 = vec3(bx - px, yb, bz - pz);
   k2 = vec3(bx - px, tb, bz - pz); k3 = vec3(ax - px, ta, az - pz);
   emit_tri(m, k0, bck, k2, bck, k1, bck);
   emit_tri(m, k0, bck, k3, bck, k2, bck);
-  // The ledges. Without them the surround is a floating plate with daylight behind
-  // its edge — which reads as a decal, not as a moulding cut from the same stone.
-  w3 = vec3(ax + ox, ta, az + oz); w2 = vec3(bx + ox, tb, bz + oz);
-  emit_tri(m, f3, upn, f2, upn, w2, upn);
-  emit_tri(m, f3, upn, w2, upn, w3, upn);
-  w0 = vec3(ax + ox, ya, az + oz); w1 = vec3(bx + ox, yb, bz + oz);
-  emit_tri(m, f0, dwn, w1, dwn, f1, dwn);
-  emit_tri(m, f0, dwn, w0, dwn, w1, dwn);
   v3 = vec3(ax - ox, ta, az - oz); v2 = vec3(bx - ox, tb, bz - oz);
   emit_tri(m, k3, upn, v2, upn, k2, upn);
   emit_tri(m, k3, upn, v3, upn, v2, upn);
@@ -2284,11 +2367,6 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
 }
 
-// One face of a reveal: a quad from the wall's front face to the VOID's inner plane,
-// from `a` to `b` in height units. It is the wall's depth made visible — the only
-// surface in the emitter that faces along the run rather than across it — and the
-// inner plane is passed rather than assumed, because for an ALCOVE it is not the
-// far face of the wall but the back of the niche.
 fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
              ix: float, iz: float, jn: Vec3, a: integer, b: integer) {
   if b <= a { return; }
@@ -3888,7 +3966,14 @@ fn main() {
           // would be lost if a niche were spelled as a sixth "kind".
           okind = ev.payload as integer ?? hex_editor::OP_ROUND;
           odepth = 1.0;
-          if okind >= 10 { odepth = 0.55; okind = okind - 10; }
+          oinback = false;
+          // ⚠ THE TWENTIES ARE COMPOSITION: cut this profile into the BACK of the
+          // niche already there, rather than into the wall. That is the embrasure —
+          // a castle's window seat is a deep recess with benches in its reveal and a
+          // small window at the back — and it needs no "embrasure" primitive, only
+          // an opening that can name the surface it is cut from.
+          if okind >= 20 { oinback = true; okind = okind - 20; }
+          else if okind >= 10 { odepth = 0.55; okind = okind - 10; }
           oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw),
                                         hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
@@ -3919,7 +4004,36 @@ fn main() {
               }
             }
             ow = vec3(owx, 0.0, owz);
-            if okind == hex_editor::OP_CIRCLE {
+            if oinback {
+              // The host is the last niche on this wall: the one whose void stops
+              // short, because that is the only kind with a back to cut into.
+              ohost = 0 - 1;
+              ohi = 0;
+              for ohn in wall_openings.items {
+                if hex_editor::opening_at_front(ohn) && !hex_editor::opening_at_back(ohn) {
+                  ohost = ohi;
+                }
+                ohi = ohi + 1;
+              }
+              if ohost < 0 {
+                srv.send_to(ev.cid, "S:no niche to cut into — make one with N first");
+                println("editor: embrasure refused — no niche");
+              } else {
+                ohostop = wall_openings.items[ohost] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+                owin = hex_editor::opening_in_back(ohostop, 0.7, 4, 9, okind, HEIGHT_SCALE);
+                ofit = hex_editor::opening_fits_in(ohostop, owin);
+                if !ofit.ak_ok {
+                  srv.send_to(ev.cid, "S:window refused — {ofit.ak_why}");
+                  println("editor: embrasure refused — {ofit.ak_why}");
+                } else {
+                  wall_openings.items += [owin];
+                  mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
+                  srv.send_to(ev.cid, "S:a window in the niche's back at "
+                                    + "{oack.ak_q},{oack.ak_r}");
+                  println("editor: embrasure window at ({oack.ak_q},{oack.ak_r})");
+                }
+              }
+            } else if okind == hex_editor::OP_CIRCLE {
               wall_openings.items += [hex_editor::oculus_opening(
                 ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, odepth)];
             } else if okind == hex_editor::OP_FLAT && odepth >= 1.0 {

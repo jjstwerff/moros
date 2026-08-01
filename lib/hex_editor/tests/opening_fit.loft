@@ -245,3 +245,91 @@ fn test_a_frame_keeps_the_shape_it_frames() {
          "and still stands above a round frame of the same span");
   assert(head_at(sf, 0.0) < head_at(rf, 0.0), "a segmental frame is still shallow");
 }
+
+// ── the datum: which surface an opening is cut FROM ─────────────────────────
+
+fn embrasure() -> Opening {
+  // A castle wall's window seat: a deep niche, benches in its reveal, and a small
+  // window at the BACK of it — which is the one shape "depth from the front face"
+  // cannot state, however many profiles it has.
+  hex_editor::profile_opening(0.0, 0.0, 2.0, 2, 10, hex_editor::OP_SEGMENT,
+                              0.0, U, 0.55)
+}
+
+fn test_a_plain_opening_is_cut_from_the_front_face() {
+  // The default, and it has to be: every opening written before the datum existed
+  // means "from the face I am standing at", so the field's zero must be that.
+  d = hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+  assert(hex_editor::opening_at_front(d), "a door breaks the near face");
+  assert(hex_editor::opening_at_back(d), "and the far one");
+  assert(hex_editor::opening_through(d), "so you can walk through it");
+}
+
+fn test_a_niche_breaks_the_near_face_only() {
+  n = embrasure();
+  assert(hex_editor::opening_at_front(n), "a niche breaks the near face");
+  assert(!hex_editor::opening_at_back(n), "and leaves the far one standing");
+  assert(!hex_editor::opening_through(n), "so it is not a way through");
+}
+
+fn test_a_window_in_a_niches_back_breaks_the_far_face_only() {
+  // ⚠ THE CLAIM THE DATUM EXISTS FOR. The child starts where the host stops, so it
+  // never touches the wall's own front face — and `opening_through` is FALSE for
+  // both halves while the pair together is a way for light. A model with one depth
+  // field can express neither.
+  n = embrasure();
+  w = hex_editor::opening_in_back(n, 0.8, 4, 8, hex_editor::OP_ROUND, U);
+  assert(!hex_editor::opening_at_front(w), "the window does not break the near face");
+  assert(hex_editor::opening_at_back(w), "it breaks the far one");
+  assert(w.op_near == n.op_depth, "and it starts exactly where the niche stops: "
+                                  + "{w.op_near} against {n.op_depth}");
+}
+
+fn test_the_two_voids_meet_with_no_stone_between_them_and_no_overlap() {
+  // ⚠ THE ARITHMETIC THAT MAKES IT ONE HOLE. A gap would leave a pane of stone in
+  // the middle of the embrasure; an overlap would have two surfaces claiming the
+  // same slab. They must ABUT — the niche's far end is the window's near end.
+  n = embrasure();
+  w = hex_editor::opening_in_back(n, 0.8, 4, 8, hex_editor::OP_ROUND, U);
+  hn = 0.0; hf = 0.0;
+  hex_editor::opening_span(n, BAND, hn, hf);
+  cn = 0.0; cf = 0.0;
+  hex_editor::opening_span(w, BAND, cn, cf);
+  d = cn - hf;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "the niche ends at {hf} and the window starts at {cn}");
+  assert(hn == 0.0, "the niche starts at the wall's face");
+  assert(cf == BAND, "and the window comes out the far side");
+}
+
+fn test_a_window_too_wide_for_its_niche_is_refused_with_the_width_that_fits() {
+  // ⚠ THE ONE THING COMPOSITION CAN GET WRONG THAT A LONE OPENING CANNOT. A window
+  // wider than its host cuts through the niche's own jamb and out into the wall
+  // beside it — a hole with a reveal on one side only, which reads as damage.
+  n = embrasure();
+  wide = hex_editor::opening_in_back(n, 4.0, 4, 8, hex_editor::OP_ROUND, U);
+  ack = hex_editor::opening_fits_in(n, wide);
+  assert(!ack.ak_ok, "a window wider than its niche is refused");
+  assert(ack.ak_why.contains("offer"), "with the width that fits: {ack.ak_why}");
+  assert(ack.ak_why.contains("residual"), "and how far off: {ack.ak_why}");
+  ok = hex_editor::opening_in_back(n, 0.8, 4, 8, hex_editor::OP_ROUND, U);
+  assert(hex_editor::opening_fits_in(n, ok).ak_ok, "and one that fits is allowed");
+}
+
+fn test_a_window_reaching_past_the_niches_head_is_refused_too() {
+  n = embrasure();
+  tall = hex_editor::opening_in_back(n, 0.8, 4, 30, hex_editor::OP_ROUND, U);
+  ack = hex_editor::opening_fits_in(n, tall);
+  assert(!ack.ak_ok, "a window above the niche's head is refused");
+  assert(ack.ak_why.contains("offer"), "with the head that fits: {ack.ak_why}");
+}
+
+fn test_the_datum_survives_being_framed() {
+  // A frame is the opening offset outward; offsetting must not move it through the
+  // wall, or the moulding would surface on the wrong face.
+  n = embrasure();
+  w = hex_editor::opening_in_back(n, 0.8, 4, 8, hex_editor::OP_ROUND, U);
+  f = hex_editor::opening_frame(w, 0.12, U);
+  assert(f.op_near == w.op_near, "the frame keeps the datum: {f.op_near}");
+  assert(!hex_editor::opening_at_front(f), "so it stays off the near face");
+}
