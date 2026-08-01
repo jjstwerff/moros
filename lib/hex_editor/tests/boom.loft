@@ -1,0 +1,110 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE BOOM MAY COLLAPSE, AND WHEN IT DOES IT SLIDES OVER A SHOULDER.
+//
+// ⚠ The camera already swept walls exactly and then took `max(free, want * 0.22)` —
+// a floor the sweep could not pass. In a room narrower than that fraction the eye
+// went to the clamp regardless of what the sweep had just measured, which is OUTSIDE
+// the wall. Measured in a 5x4 house: the frame was the roof from outside, a slab of
+// exterior wall, and NO CHARACTER AT ALL.
+//
+// Taking the floor off is half of it. The other half is that a boom collapsing
+// straight down its own axis ends at the back of a head, so it slides sideways as it
+// shortens — which is what makes a short boom an over-the-shoulder view rather than
+// a failure.
+use hex_editor;
+
+const WANT = 5.0;
+const FRAC = 0.22;
+const SKIN = 0.20;
+
+fn test_a_boom_with_room_takes_what_it_asked_for() {
+  b = hex_editor::boom_take(WANT, 20.0, SKIN);
+  assert(b == WANT, "in the open it is the full boom: {b}");
+}
+
+fn test_a_boom_takes_the_room_and_not_the_clamp() {
+  // ⚠ THE FIX, IN ONE LINE. A wall 1.0 away used to give a boom of 1.1 — the clamp —
+  // which is 10 cm PAST the wall the sweep had just found. Now it gives 0.8, which
+  // is this side of it.
+  b = hex_editor::boom_take(WANT, 1.0, SKIN);
+  assert(b < WANT * FRAC, "it goes below the old floor: {b} against {WANT * FRAC}");
+  assert(b == 1.0 - SKIN, "taking the room less its skin: {b}");
+}
+
+fn test_the_eye_never_passes_what_the_sweep_found() {
+  // The invariant the clamp broke, checked across the whole range rather than at one
+  // convenient value: whatever the room, the boom stays this side of it.
+  for i in 0..12 {
+    free = (i as float) * 0.25;
+    b = hex_editor::boom_take(WANT, free, SKIN);
+    assert(b <= free, "free {free} gives boom {b} — never past it");
+    assert(b >= 0.0, "and never behind the subject: {b}");
+  }
+}
+
+fn test_collapse_runs_from_nothing_to_everything() {
+  assert(hex_editor::boom_collapse(WANT, WANT, FRAC) == 0.0, "full boom, no collapse");
+  assert(hex_editor::boom_collapse(WANT * FRAC, WANT, FRAC) == 1.0,
+         "at the old floor it is fully collapsed");
+  mid = hex_editor::boom_collapse(WANT * 0.6, WANT, FRAC);
+  assert(mid > 0.0 && mid < 1.0, "and in between it is in between: {mid}");
+  assert(hex_editor::boom_collapse(0.0, WANT, FRAC) == 1.0, "past it, still 1");
+}
+
+fn test_the_shoulder_offset_grows_as_the_boom_shrinks() {
+  // ⚠ MONOTONE, WHICH IS THE WHOLE FEEL OF IT. The camera CREEPS: any step where the
+  // offset went backwards would read as the camera changing its mind.
+  prev = 0.0 - 1.0;
+  for i in 0..11 {
+    boom = WANT * (10 - i) as float / 10.0 ?? 0.0;
+    r = hex_editor::shoulder_reach(boom, WANT, FRAC);
+    assert(r >= prev, "offset {r} at boom {boom} never goes backwards from {prev}");
+    prev = r;
+  }
+  assert(hex_editor::shoulder_reach(WANT, WANT, FRAC) == 0.0,
+         "centred at full length");
+  assert(hex_editor::shoulder_reach(WANT * FRAC, WANT, FRAC) == hex_editor::CAM_SHOULDER,
+         "and a full shoulder once collapsed");
+}
+
+fn test_it_swings_toward_the_side_with_more_room() {
+  // Or it creeps into the wall it was avoiding — which is the failure the offset
+  // would otherwise introduce while fixing the boom.
+  right = hex_editor::shoulder_take(0.5, 0.3, 4.0, SKIN);
+  assert(right > 0.0, "with room on the right it goes right: {right}");
+  left = hex_editor::shoulder_take(0.5, 4.0, 0.3, SKIN);
+  assert(left < 0.0, "and left when the room is there: {left}");
+}
+
+fn test_it_never_slides_further_than_that_side_allows() {
+  // ⚠ THE SAME MISTAKE THE CLAMP MADE, one axis over — an offset that ignored the
+  // room would put the eye through a wall exactly as the floor did.
+  o = hex_editor::shoulder_take(0.55, 0.1, 0.4, SKIN);
+  assert(o <= 0.4 - SKIN + 0.000001, "it stops at the clearance: {o}");
+  none = hex_editor::shoulder_take(0.55, 0.1, 0.1, SKIN);
+  assert(none == 0.0, "and in a corridor it does not slide at all: {none}");
+}
+
+fn test_a_tie_resolves_the_same_way_every_time() {
+  // A tie that flipped would oscillate exactly where a character stands still, which
+  // is the one place a player is looking at it.
+  a = hex_editor::shoulder_take(0.5, 2.0, 2.0, SKIN);
+  b = hex_editor::shoulder_take(0.5, 2.0, 2.0, SKIN);
+  assert(a == b, "the same answer twice: {a} and {b}");
+  assert(a != 0.0, "and it does pick a side: {a}");
+}
+
+fn test_the_body_hides_and_returns_at_different_lengths() {
+  // ⚠ TWO THRESHOLDS, because the crossing happens in a DOORWAY — the one place a
+  // player is guaranteed to stand still. One threshold is a design that fails
+  // precisely where it is looked at.
+  assert(hex_editor::body_shown(3.0, true), "at length the body is drawn");
+  assert(!hex_editor::body_shown(0.5, true), "collapsed, it is not");
+  assert(!hex_editor::body_shown(0.9, false),
+         "and between the two thresholds it stays hidden once hidden");
+  assert(hex_editor::body_shown(0.9, true),
+         "while it stays shown once shown — which is what stops the flicker");
+  assert(hex_editor::BODY_SHOW > hex_editor::BODY_HIDE, "the band is a band");
+}

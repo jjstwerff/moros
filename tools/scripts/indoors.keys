@@ -18,10 +18,20 @@ echo --- from outside, for reference
 at 0 -10 90
 snap s10-house-outside
 
+# ⚠ THE BOOM IS EASED, NOT SNAPPED — deliberately, because a boom that stepped in
+# one tick was "correct, and clearly a mechanism rather than a camera". So `at` and
+# `snap` in the same breath photograph the camera the author LEFT, not the one the
+# room gives them. The first version of this script did exactly that and reported no
+# change from a fix that was working.
+echo --- trace the camera's own numbers, not the milliseconds
+send 27:1
+
 echo --- and standing in the middle of its floor
 at 0 0 90
+step 40
 snap s10-house-inside
 
 echo --- facing a corner, where the boom has least room
 at 0 0 225
+step 40
 snap s10-house-corner

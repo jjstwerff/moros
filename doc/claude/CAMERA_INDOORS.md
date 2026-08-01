@@ -17,11 +17,37 @@ about walls", and guessing would have designed the wrong fix.
 The instrument is the same in both: **how many pixels of the frame are the subject.**
 In the first it is *zero*.
 
-**The fault is that `CAM_MIN_FRAC` is a floor the sweep cannot go below.** 0.22 of a
-4.8 m boom is about 1.05 m, and a 5×4 room offers less than that behind the character
-in most facings — so the sweep shortens to the clamp and the eye is left outside the
-house it was avoiding. The clamp exists so the camera never sits in the character's
-head. Indoors that is exactly the trade that has to be made.
+### ⚠ Three diagnoses, two of them wrong — and an instrument that ended the guessing
+
+1. *"It does not know about walls."* **False.** The boom sweeps them exactly, with
+   `wall_stops_view` and `sweep_path`.
+2. *"`CAM_MIN_FRAC` is a floor the sweep cannot pass."* **True, and fixed — and the
+   picture did not change.** 0.22 of a 5.86 boom is 1.29, and a 5×4 room offers less
+   than that; the clamp is gone and the boom now takes the room.
+3. *"The PITCH ASSIST climbs out of the room."* **This is the one.**
+
+Guessing from pictures was 0 for 2, so the camera now traces its own numbers under
+`27:1` — and standing inside the house they read:
+
+```
+CAM want 5.86  dist 0.84  free 1.66  pitch 0.8  target -0.687  slide 0.55
+```
+
+`dist 0.84` is the boom collapsed well below the old floor, and `slide 0.55` a full
+shoulder — both fixes doing exactly what they claim. And `pitch 0.8` against a player
+target of `-0.687`: the assist is **pinned at its ceiling**, straining to look over a
+wall it can never clear, so the camera aims steeply down at the character from just
+above it and the near wall fills the frame.
+
+That is the fault, and it is F2 rather than F1: the pitch assist is a FOLLOW
+behaviour with no meaning indoors. It exists for *"standing below a ridge"*, where
+climbing is the answer; a room is a sustained obstruction that climbing cannot solve,
+so the valve saturates and stays saturated. It has to be suppressed by the same
+`sh_inside` everything else keys off.
+
+⚠ A millisecond total could never have said this, and neither could three pictures.
+The rule this tree already had — *find the instrument first* — applies to whether a
+thing is USABLE exactly as it does to whether it is fast.
 
 ## ⚠ Three modes, because the same facts want opposite answers
 

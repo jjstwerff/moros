@@ -265,6 +265,11 @@ for (const raw of lines) {
     }
     ws.send('4:0'); await nextT();
     console.log(`  facing ${facing().toFixed(1)}°`);
+  } else if (cmd === 'send') {
+    // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
+    // server's tracer on; binding a key to it would put a diagnostic in the page.
+    ws.send(rest.join(' '));
+    await sleep(120);
   } else if (cmd === 'keys') {
     ws.send(`4:${rest[0]}`);
     await sleep(60);

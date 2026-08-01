@@ -2773,3 +2773,75 @@ pub fn hole_fits_in(s: Slab, h: Hole) -> Ack {
   }
   ack_ok(1)
 }
+
+// ── THE BOOM, AND THE SHOULDER IT CREEPS OVER ───────────────────────────────
+//
+// ⚠ THE CLAMP WAS A FLOOR THE SWEEP COULD NOT PASS. The camera already sweeps walls
+// exactly, and then took `max(free, want * min_frac)` — so in a room narrower than
+// that fraction the eye was placed at the clamp regardless of what the sweep found,
+// which is OUTSIDE the wall it had just measured. Measured: standing in a 5x4 house,
+// the frame was the roof from outside, a slab of exterior wall, and no character at
+// all. The clamp exists so the camera never ends up in the character's head; indoors
+// that is precisely the trade that has to be made, so the floor comes off and the
+// collapse is handled instead of prevented.
+//
+// ⚠ AND A COLLAPSING BOOM MUST SLIDE SIDEWAYS, or it ends at the back of a head.
+// The offset grows as the boom shortens — nothing at full length, most of a shoulder
+// once collapsed — which is what makes a short boom an over-the-shoulder view rather
+// than a failure. It is a LATERAL slide, never a yaw: turning to see past the
+// character moves the world, sliding does not, and that is the same rule the pitch
+// fence already obeys.
+
+pub const CAM_SKIN     = 0.20;   // never put the eye this close to what was swept
+pub const CAM_SHOULDER = 0.55;   // the full lateral offset, once collapsed
+pub const BODY_HIDE    = 0.75;   // below this boom the body is in the way
+pub const BODY_SHOW    = 1.10;   // and it returns only above this — two thresholds
+
+// What the boom actually takes: what was asked for, or what the room allows, and
+// NEVER a floor underneath either.
+pub fn boom_take(want: float, free: float, skin: float) -> float {
+  cap = free - skin;
+  if cap < 0.0 { cap = 0.0; }
+  if cap < want { return cap; }
+  want
+}
+
+// How far the boom has collapsed, 0 at full length and 1 at the old comfort floor.
+// Everything the collapse drives is a function of this one number, so they cannot
+// disagree about when the view has become intimate.
+pub fn boom_collapse(boom: float, want: float, min_frac: float) -> float {
+  soft = want * min_frac;
+  if want <= soft { return 0.0; }
+  t = (want - boom) / (want - soft) ?? 0.0;
+  if t < 0.0 { t = 0.0; }
+  if t > 1.0 { t = 1.0; }
+  t
+}
+
+// The lateral offset a boom of this length wants.
+pub fn shoulder_reach(boom: float, want: float, min_frac: float) -> float {
+  CAM_SHOULDER * boom_collapse(boom, want, min_frac)
+}
+
+// ⚠ WHICH WAY, AND HOW FAR IT MAY ACTUALLY GO. Toward whichever side has MORE room,
+// or the camera creeps into the wall it was avoiding — and never further than that
+// side's own clearance, for the same reason. A tie resolves right, deterministically:
+// a tie that flipped would oscillate exactly where a character stands still, which is
+// the one place a player is looking.
+pub fn shoulder_take(reach: float, left: float, right: float, skin: float) -> float {
+  s = 1.0;
+  room = right;
+  if left > right { s = 0.0 - 1.0; room = left; }
+  cap = room - skin;
+  if cap < 0.0 { cap = 0.0; }
+  m = reach;
+  if cap < m { m = cap; }
+  s * m
+}
+
+// Whether the character's own body is still worth drawing, with hysteresis — the
+// threshold is crossed in a doorway, where a player is guaranteed to stand still.
+pub fn body_shown(boom: float, was: boolean) -> boolean {
+  if was { return boom > BODY_HIDE; }
+  boom > BODY_SHOW
+}
