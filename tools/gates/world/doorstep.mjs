@@ -97,6 +97,11 @@ ws.onmessage = async (e) => {
                            && lowered.includes('residual');
     // the grade must say what it quantised FROM and by how much
     const gradeReported = road.includes('quantised from') && road.includes('residual');
+    // ⚠ `wroteNothing` STAYS, and deliberately, though `w_tau` now proves the same
+    // thing in `hex_editor`'s tests for every gesture. Here it is checked at the
+    // END of the wire: a refusal that reached the author as words while the world
+    // moved anyway is the exact failure invariant I forbids, and only a running
+    // editor can show the sentence and the store disagreeing.
     const ok = named && offered && residual && wroteNothing
                && nominalRefused && noOffer && applied
                && densityRefused && approxReported && gradeReported;

@@ -1,3 +1,5 @@
+// ⚠ CHECKED AND LEFT WHOLE. Chunks arriving and being dropped with the live count
+// bounded is the server's streaming loop — there is no store claim in it at all.
 // Infinite-world gate: walk in a straight line and require chunks to arrive
 // AND to be dropped, with the live count staying bounded.
 //

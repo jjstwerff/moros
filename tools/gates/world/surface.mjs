@@ -1,3 +1,6 @@
+// ⚠ CHECKED AND LEFT WHOLE. Which layer the camera and the road READ is the
+// surface rule applied by the server's own samplers; `hex_world` owns
+// `world_surface` and tests it, and this is the editor's consumers honouring it.
 // THE CAMERA AND THE ROAD ASK THE SURFACE RULE, not "the outdoors".
 //
 // `WORLD_MODEL.md` § "Which layer is the surface" states one rule for the WALK —

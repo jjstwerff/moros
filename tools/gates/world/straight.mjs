@@ -1,3 +1,7 @@
+// ⚠ CHECKED AND LEFT WHOLE — the archetypal emission gate. Every vertex of the
+// wall mesh must lie on the run's line; `tests/wallrun.loft` proves the STORE side
+// (the edges the line marks) and only this can prove the DRAWN side. The two
+// together are the point: the edges are the index, the run is the truth.
 // Straightness gate (rung W2, moros#10) — THE WALL THAT IS DRAWN IS THE RUN.
 //
 // The edges a wall marks are a staircase; they have to be, because an edge is a

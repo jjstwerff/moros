@@ -144,7 +144,17 @@ ws.onmessage = async (e) => {
     const worstGap = Math.max(...gaps.map(Math.abs));
     const maxBank = Math.max(...banks);
 
-    const ok = doubles && closes && noSlip && grounded && banked && bankSigned;
+    // ⚠ THE WHEEL'S OWN RULE MOVED. `doubles`, `closes` and `noSlip` are arithmetic
+    // about `wheel_value` being a FUNCTION of travel rather than a running total,
+    // and they are `lib/moros_sim/tests/cart_as_data.loft` now — three assertions
+    // against the library, including a linearity sweep the single doubling case
+    // could not make. This file USED `wheel_value` for years without asserting it;
+    // the gate was the only thing that did, over a socket.
+    //
+    // What stays is the integration no library test can reach: the wheels sit ON
+    // the drawn ground, the cart BANKS with it, and the bank is signed the way the
+    // slope runs. They are read from the TRANSFORMS the server broadcast.
+    const ok = grounded && banked && bankSigned;
     console.log(JSON.stringify({ a, b2, back, v1, v2, v0, t0, skid,
                                  doubles, closes, noSlip,
                                  worstGap, maxBank, grounded, banked,

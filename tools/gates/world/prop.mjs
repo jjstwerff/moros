@@ -1,3 +1,13 @@
+// ⚠ THE SEPARATION IS `hex_world`'s AND IT IS TESTED THERE. `tests/dressing.loft`
+// holds all three of the claims below against the store: dressing is written and
+// read, it is INVISIBLE to a terrain read, and a terrain write leaves it alone
+// ("not even to blank it"). This gate is the EDITOR's half — that `19:` puts a
+// prop where the author stands, that two props ACCUMULATE in one cell rather than
+// replacing, and that the acknowledgement says so.
+//
+// It is not thinned further because the prop gesture itself has not moved into
+// `hex_editor` yet — when it does, the accumulation claim goes with it and what is
+// left here is the sentence.
 // Prop gate (rung W6, moros#14) — `D1` in a running editor.
 //
 // The model can hold dressing; this is the first time the EDITOR puts anything

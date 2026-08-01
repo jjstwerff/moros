@@ -221,3 +221,44 @@ fn test_mesh3d_turns_the_other_way() {
   assert(fabs(rot_axis(0.0, 0.0, 1.0, th / TURN ?? 0.0).r21 - sin(th)) < BOUND,
          "and so is Rodrigues about +z — the spin needs no flip");
 }
+
+// ── the wheel's own rule, which this file USED but never asserted ───────────
+//
+// ⚠ MOVED FROM `tools/gates/world/cart.mjs`, which drove a running editor to check
+// it. `wheel_value` is a FUNCTION of travel rather than a running total, and three
+// things follow that an accumulation cannot give you — all of them arithmetic, and
+// none of them needing a server, a socket or a cart on screen.
+//
+// The gate kept what only a running editor shows: that the cart's wheels sit ON
+// the drawn ground and bank with it.
+
+fn test_doubling_the_travel_doubles_the_value_to_the_bit() {
+  // Not "about". An accumulation drifts; a function cannot.
+  a = wheel_value(10.0, RADIUS, 0.0);
+  b = wheel_value(20.0, RADIUS, 0.0);
+  d = b - 2.0 * a;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000000000001, "20 travels twice 10: {b} vs {2.0 * a}");
+}
+
+fn test_out_and_back_closes_exactly() {
+  // Roll out and roll back: a running total leaves a remainder, a function returns
+  // to zero.
+  there = wheel_value(20.0, RADIUS, 0.0);
+  back = wheel_value(0.0, RADIUS, 0.0);
+  assert(there > 0.0, "it turned on the way out: {there}");
+  assert(back == 0.0, "and closes exactly on the way back: {back}");
+}
+
+fn test_the_value_is_linear_in_travel_across_the_range() {
+  // The same claim as doubling, made against a whole range rather than one pair —
+  // a table lookup or a quantisation would pass the single case and fail here.
+  unit = wheel_value(1.0, RADIUS, 0.0);
+  for k in 1..12 {
+    t = k as float;
+    v = wheel_value(t, RADIUS, 0.0);
+    d = v - unit * t;
+    if d < 0.0 { d = 0.0 - d; }
+    assert(d < 0.000000000001, "travel {t}: {v} vs {unit * t}");
+  }
+}

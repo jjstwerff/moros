@@ -1,3 +1,7 @@
+// ⚠ CHECKED AND LEFT WHOLE. The occlusion class is the CAMERA's — can the eye be
+// inside this thing — and the camera solve lives in the server. Nothing here
+// restates a store rule; the reach and height are read from the transforms the
+// server broadcast.
 // Occlusion gate (rung W2, moros#10) — THE CAMERA'S CLASS, AND WHY IT IS NOT
 // "DOES IT BLOCK MOVEMENT".
 //

@@ -1,3 +1,7 @@
+// ⚠ CHECKED AND LEFT WHOLE — it reads the VERTICES. The road's per-step write is
+// `hex_editor::road_lay` now and `tests/modes.loft` covers the band and the grade;
+// what this measures is that a road walked as a path reaches the mesh as ONE
+// connected strip that follows the walk, which is a property of the drawing.
 // Road gate (rung W1, moros#9).
 //
 // ⚠ Its control is the point: run the same script with the `10:1`/`10:0` toggles

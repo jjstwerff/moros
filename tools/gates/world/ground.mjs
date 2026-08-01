@@ -1,3 +1,8 @@
+// ⚠ CHECKED AGAINST THE RULE AND LEFT WHOLE. Every number here comes from what
+// was DRAWN or read back through the wire — the ground's height before and after a
+// cellar, the cell the label points at. `hex_world` owns the rule (the ground is a
+// reserved LABEL, not index 0) and tests it; this is the editor honouring it end to
+// end, which is the half a store test cannot see.
 // THE DRAWN GROUND IS THE GROUND, not whatever layer happens to be at index 0.
 //
 // The editor answered "which layer is the ground" with the constant `SURFACE = 0`

@@ -1,3 +1,6 @@
+// ⚠ CHECKED AND LEFT WHOLE. `glb_read` tests that the reader parses; this tests
+// that the running editor can hold what it read and hand it back — a round trip
+// through `21:`/`22:` that no library test spans.
 // Import gate (rung W6, moros#14) — kit-bashing, both directions.
 //
 // The loop an author actually uses: take editor geometry OUT to a .glb, work on

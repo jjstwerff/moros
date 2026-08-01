@@ -1,3 +1,9 @@
+// ⚠ THE CHARACTER SUITE WAS CHECKED AGAINST THE THINNING RULE AND LEFT WHOLE. The
+// world gestures moved into `hex_editor` and their claims became loft tests; the
+// WALK did not, and cannot yet — it lives in the server's tick (`walk_h`,
+// `edges_walk`, the fall) and in `moros_sim`, and what these gates measure is the
+// character's TRACE over many ticks: how far it got, how steep it climbed, where it
+// stopped. There is no store claim here being restated, so nothing to remove.
 // Collision gate (rung W2, moros#10) — WALLS STOP THE WALK, DOORWAYS DO NOT.
 //
 // A CHARACTER gate: it drives by WALKING, because locomotion is what is under

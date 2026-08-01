@@ -1,3 +1,7 @@
+// ⚠ CHECKED AND LEFT WHOLE. Levelling is a MODE — it freezes the walker's height
+// and writes nothing — so there is no store claim here to move. What it measures is
+// the walk over several ticks and the ridge left behind, which lives in the
+// server's tick and nowhere else.
 // Levelling gate: climb a hill, freeze the level, walk out over the plain, and
 // require a RIDGE to be left behind.
 //
