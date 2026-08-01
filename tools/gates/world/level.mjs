@@ -46,9 +46,24 @@ const ack = async (p, limitMs = 40000) => {
 // precedes. The `T:` broadcast sits AFTER that block in the same tick, so a fresh
 // transform proves the levelling for this step has run. A place always produces one:
 // the handler sets `moved`, and `T:` is emitted inside `if moved`.
+// ⚠ A WALL-CLOCK DEADLINE, NOT A COUNT OF SLEEPS. This looped 8000 times over
+// `await wait(1)` and called that "8000 ms" — but a 1 ms `setTimeout` is 1 ms only
+// on an idle box. Inside the full suite, with thirty gates and two browsers running,
+// each pass costs several milliseconds, so the budget is neither the stated time nor
+// a fixed number of ticks: it stretches exactly when the barrier it guards is
+// slowest. Observed once in eight suite runs — the gate took 14.3 s against 6.2 s
+// alone and reported `onHill 2.8` against 3.88, which is a stale height read after a
+// barrier that never completed.
+//
+// ⚠ THE GATE WAS RIGHT TO FAIL: `stalls === 0` is in its verdict, so a missed
+// barrier is reported as a missed barrier and not smuggled out as a measurement.
+// What is fixed here is only that the bound now means what it says. WHY a transform
+// can go missing for eight seconds is NOT settled — if it is a real loss rather than
+// a slow one, this will still fail, which is the outcome to want.
 const nextT = async (limitMs = 8000) => {
   const before = tCount;
-  for (let t = 0; t < limitMs; t += 1) {
+  const until = Date.now() + limitMs;
+  while (Date.now() < until) {
     if (tCount !== before) return true;
     await wait(1);
   }

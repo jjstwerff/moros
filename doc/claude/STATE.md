@@ -61,6 +61,21 @@ added earlier today would have **killed the other gate's browser**, which looks 
 a flake in the victim. The devtools port is derived from the editor port now. Both
 ran together on the first try: 40 s and 65 s inside a 74 s suite.
 
+### ⚠ One flake, surfaced by the suite getting busier — and it is not explained
+
+`level` failed once in eight suite runs, and never in eight runs on its own. It took
+**14.3 s against 6.2 s alone** and reported `onHill 2.8` against 3.88 — a stale
+height read after a barrier that never completed. The gate was **right to fail**:
+`stalls === 0` is in its verdict, so a missed transform is reported as a missed
+transform rather than smuggled out as a measurement.
+
+`nextT` looped 8000 times over `await wait(1)` and called that "8000 ms" — a 1 ms
+`setTimeout` is 1 ms only on an idle box, so the budget stretched exactly when the
+barrier it guards was slowest. It is a wall-clock deadline now. ⚠ **That makes the
+bound mean what it says and settles nothing else**: if a transform can genuinely go
+missing for eight seconds, this will still fail, which is the outcome to want. My new
+browser gate is what added the load that surfaced it.
+
 ### Still owed
 
 ⚠ **A CELLAR HAS NO CEILING.** The underside is drawn for every non-ground layer,
