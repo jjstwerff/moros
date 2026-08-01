@@ -3416,6 +3416,102 @@ fn read_client() -> text {
 // is a set the running editor can never show you, because by the time you look
 // something else has re-streamed them.
 //
+// ⚠ WHAT THE CAMERA'S SWEEP CAN ACTUALLY SEE — the measurement, after guessing
+// wrong twice about why the camera is useless indoors. The trace said `free 4.60`
+// while `inside true`: four and a half units of clear space from a point under the
+// roof. Two explanations were available and both are testable rather than
+// arguable — the author stands outside the WALLS while inside the roof PLAN, or the
+// wall edges are not reaching the collision set.
+//
+// Run:  EDITOR_PROBE=view loft --interpret --lib lib/ src/editor_server.loft
+fn probe_view() {
+  wld = new_world();
+  for q in 0 - 24..25 {
+    for r in 0 - 24..25 { hex_editor::ground_set(wld, q, r, 4, SURFACE_MAT); }
+  }
+  // The same gesture the script makes: standing at (0,-4) facing +z, press H.
+  ax = 0.0;
+  az = 0.0 - 4.0;
+  ayaw = PI * 0.5;
+  runs = WallRuns { items: [] };
+  hack = hex_editor::place_house(wld, hex_editor::author_at(ax, az, ayaw),
+                                 HOUSE_W, HOUSE_D, 4, runs);
+  println("house: {hack.ak_why}  anchor ({hack.ak_q},{hack.ak_r})  runs {len(runs.items)}");
+
+  // 1. WHERE THE WALL EDGES ARE, read back from the store rather than from the
+  //    gesture's own report — the store is the authority and the count the gesture
+  //    returned is what it believes it wrote.
+  nwall = 0;
+  minq = 999; maxq = 0 - 999; minr = 999; maxr = 0 - 999;
+  for q in 0 - 16..17 {
+    for r in 0 - 16..17 {
+      for d in 0..6 {
+        (oq, orr, _s) = hex_editor::edge_owner(q, r, d);
+        if oq == q && orr == r {
+          if hex_editor::wall_of(wld, q, r, d, 2.0) == hex_editor::WALL_MAT {
+            nwall = nwall + 1;
+            if q < minq { minq = q; }
+            if q > maxq { maxq = q; }
+            if r < minr { minr = r; }
+            if r > maxr { maxr = r; }
+          }
+        }
+      }
+    }
+  }
+  println("wall edges in the store: {nwall}, over cells q {minq}..{maxq} r {minr}..{maxr}");
+
+  // 2. WHERE THE AUTHOR STANDS RELATIVE TO THEM. The script walks to (0,0); the
+  //    question is whether that is inside the ring of walls or merely inside the
+  //    roof's plan, which carries half a hex of tolerance of its own.
+  sx = 0.0;
+  sz = 0.0;
+  scell = world_to_hex(sx, sz);
+  println("author at ({sx},{sz}) = cell ({scell.ha_q},{scell.ha_r})");
+  rp = hex_editor::roof_plan_of(
+    hex_editor::pose_footprint(ax, az, ayaw, HOUSE_W, HOUSE_D),
+    ((4 + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
+    hex_editor::ROOF_PITCH_DEFAULT);
+  println("under the roof PLAN: {hex_editor::roof_plan_over(rp, sx, sz)}  "
+          + "ridge at ({hex_editor::roof_point_x(rp, 4)},{hex_editor::roof_point_z(rp, 4)})"
+          + "..({hex_editor::roof_point_x(rp, 5)},{hex_editor::roof_point_z(rp, 5)})");
+
+  // 3. WHAT THE COLLISION SET HOLDS THERE, and what the sweep answers in every
+  //    direction — a wall the set knows about but the sweep misses is a different
+  //    defect from a wall the set never received.
+  // ⚠ THE SAME CALL THE TICK MAKES, with `view` true — a probe that built the set a
+  // different way would measure a set the camera never uses.
+  coll = edges_around(wld, scell.ha_q, scell.ha_r, COLL_R, true, runs,
+                      surfaces_new(), 4.0);
+  // How many of the store's wall edges reached it, counted by asking the SET rather
+  // than by trusting the builder.
+  ncoll = 0;
+  for q in scell.ha_q - COLL_R..scell.ha_q + COLL_R + 1 {
+    for r in scell.ha_r - COLL_R..scell.ha_r + COLL_R + 1 {
+      // ⚠ `edge_blocked`, NOT `edge_mat`. Blocking lives in the SURFACE channel —
+      // `edge_block` writes `SURF_NONE` there and `edge_blocked` reads it back — so
+      // a count through the material channel reads zero however full the set is.
+      // The first version of this probe did exactly that and reported 0 edges, which
+      // would have been a third wrong diagnosis wearing a measurement's clothes.
+      for d in 0..6 {
+        (nq2, nr2) = hex_grid::hex_neighbor(q, r, d);
+        if hex_edge::edge_blocked(coll, q, r, nq2, nr2) { ncoll = ncoll + 1; }
+      }
+    }
+  }
+  println("view-blocking edges in the proxy around the author: {ncoll / 2 ?? 0} (each counted twice)");
+  py2 = terrain_y(sx, sz, wld);
+  ox2 = cam_pivot_x(sx, PI * 0.5);
+  oz2 = cam_pivot_z(sz, PI * 0.5);
+  oy2 = cam_pivot_y(py2);
+  want = cam_boom();
+  for i in 0..8 {
+    yy = (i as float) * PI * 0.25;
+    f = cam_free_dist(ox2, oy2, oz2, yy, 0.35, want, wld, coll);
+    println("  boom free at yaw {i} of 8: {f} of {want}");
+  }
+}
+
 // Run:  EDITOR_PROBE=fit loft --interpret --lib lib/ src/editor_server.loft
 fn probe_fit() {
   wld = new_world();
@@ -3522,6 +3618,7 @@ fn probe_fit() {
 fn main() {
   // The probe runs the mesh code and nothing else — no socket, no client.
   if env_variable("EDITOR_PROBE") == "fit" { probe_fit(); return; }
+  if env_variable("EDITOR_PROBE") == "view" { probe_view(); return; }
 
   // 18090 is the port everything documented points at, and `EDITOR_PORT` moves it.
   // The reason is a gate: a check that DRIVES the world — raising ground, walking,

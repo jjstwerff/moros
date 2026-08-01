@@ -49,16 +49,36 @@ untouched, so a doorway is a drift rather than a snap. Measured after:
 CAM want 5.86  dist 4.18  free 4.60  pitch 0.35  target 0.35  slide 0.21  inside true  head 11
 ```
 
-⚠ **AND THE PICTURE STILL SHOWS THE HOUSE FROM OUTSIDE — for a fourth reason the
-richer trace makes visible for the first time.** `free 4.60` while `inside true`: the
-backward sweep reports four and a half units of clear space from a point that is
-under the roof. Two of the three valves are now doing exactly what they should, and
-the boom is not shortening because *nothing is telling it to*. The next question is
-therefore about the sweep's edge set, not about the camera at all — either the
-author's position is outside the walls while inside the roof PLAN (the plan carries
-half a hex of tolerance), or the house's own wall edges are not reaching
-`coll_view`. That is a measurement to make, not a guess to add to the two already
-spent.
+⚠ **AND THE PICTURE STILL SHOWS THE HOUSE FROM OUTSIDE.** `free 4.60` while
+`inside true`. So the edge set was measured — `EDITOR_PROBE=view`, headless, no
+browser:
+
+```
+house placed 27 cells, 84 wall edges, anchor (0,1)
+wall edges in the store:                    23, over cells q -3..3 r -2..3
+author at (0,0) = cell (0,0); under the roof PLAN: true
+view-blocking edges in the proxy:           23        ← nothing is lost
+boom free by direction: 2.09 2.09 2.09 3.77 3.87 5.02 5.02 5.86
+```
+
+**The edge set is not the fault.** Every wall edge in the store reaches the proxy, and
+the sweep answers sensibly in every direction — including one where the full 5.86
+boom fits, which is correct: the house is 8.7 × 6.9 world units and its long axis is
+longer than the boom.
+
+What the probe *does* establish is a contradiction. At the same position and the same
+yaw, the probe measures **2.09** and the live camera reports **4.60**. Both cannot be
+right, and neither is about walls-in-general any more. The remaining suspects are
+the live proxy's cache key (`coll_q`/`coll_r`/`coll_tau`/`coll_surf`) and its
+`ref_u`, which selects the LAYER `edges_around` reads — a reference that picked the
+wrong layer would build a complete-looking set from cells that hold no walls.
+
+⚠ **AND THE PROBE'S FIRST ANSWER WAS 0, WHICH WAS THE PROBE'S FAULT.** Blocking lives
+in the edge's SURFACE channel — `edge_block` writes it and `edge_blocked` reads it —
+so counting through `edge_mat` reports zero however full the set is. That would have
+been a third wrong diagnosis *wearing a measurement's clothes*, which is worse than
+a guess, because a number is believed. An instrument gets checked against something
+it should find before it is trusted to report an absence.
 
 The original fault was F2: the pitch assist is a FOLLOW behaviour with no meaning
 indoors. It exists for *"standing below a ridge"*, where
