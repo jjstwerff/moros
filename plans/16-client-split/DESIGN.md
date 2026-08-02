@@ -378,6 +378,28 @@ instrument may be lying". The tell was there twice: the narrow probe agreed on t
 tile the wide one called its first failure, and `b`'s heights depended on the world's
 extent in a way no per-cell copy bug produces.
 
+### ✅ THE CLIENT'S `st.cache` SHAPE IS CORRECT — and the real defect is upstream
+
+`probe/s3_field_mutation.loft` copies one source world three ways:
+
+| destination | chunks | base | cells |
+|---|---|---|---|
+| through a `&World` parameter | 9 | 9 ✓ | ✓ |
+| the caller's local, inline | 9 | 9 ✓ | **✗** |
+| a struct field (`h.cache`) — **the client's** | 9 | 9 ✓ | ✓ |
+
+So the client writes its cache correctly, and the wide probe's old failure was
+**loft-lang/loft#735**: nested index assignment through a `&` parameter does not reach
+a caller's LOCAL — *partially*. The container comes out structurally right (chunks
+created, scalar fields set) and only the innermost payload is missing, so nothing
+errors and every structural check passes.
+
+⚠ **That partiality is what made it expensive.** A mutation that failed outright would
+have shown as an empty world in one line. This one produced terrain with correct x and
+z and wrong y — a plausible picture — and cost four rounds of diagnosis, each
+excluding a real hypothesis because the instrument reporting them was the thing at
+fault. Filed `sev:high` for exactly that reason.
+
 **So S3's remaining question is entirely on the wire side** — `ground 41 bad 7`, seven
 tiles all carrying a negative coordinate — and it is now known NOT to be the copy, the
 mesher, the coordinates or the halo. What differs there and not here: the client
