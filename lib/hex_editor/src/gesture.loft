@@ -575,23 +575,40 @@ pub fn col_underground(c: hex_world::Column, idx: integer) -> boolean {
 // can get it wrong. One did, for as long as one gesture across a seam made two
 // labels, and it drew a rim down the middle of a floor that had no edge there.
 //
-// ⚠ THE TOLERANCE IS `ε/2` AND IT IS NOT A FUDGE. `F1` keeps occupied layers at least
-// ε apart, so at most one of them can lie within ε/2 of any height — the match is
-// unique by the invariant rather than by hoping. Anything further off is a different
-// layer, and a floor that meets it STOPS.
+// Is this column SOLID at that height — is there material there, or air?
 //
-// ⚠ AND A STAIR TREAD IS FURTHER OFF, DELIBERATELY. A tread is one stride (4) above
-// the cell beside it and ε/2 is 4, so the two do not match and the tread's edge
-// carries a face — which is the RISER, and it is owed: without it the step is an open
-// slot between the tread's underside and the fan below. The label version drew none,
-// because a tread and its room share a layer and it never looked at the height.
-pub fn floor_continues(w: World, q: integer, r: integer, h: integer) -> boolean {
+// ⚠ NO TOLERANCE, AND TWO WRONG ONES CAME FIRST. The renderer's question was posed as
+// "does my floor continue into the neighbour", which made it a question about which
+// LAYER the neighbour's cell is in — so the answer became which slack identifies a
+// layer, and both available constants were tried. ε/2 is half the fold separation and
+// happened to equal the walker's stride, so a stair got its risers by a hair. θ is
+// *"the largest step read as continuous"*, so once it was set to the stride a
+// one-stride stair read as a ramp and lost them again. The two moves of `mesh floor`
+// are the record: 588, then 564.
+//
+// Neither constant was about it. A slab's edge is exposed where there is nothing
+// beside it, so the question is whether the NEIGHBOUR IS SOLID at that height, which
+// has an exact answer and no slack in it at all.
+//
+// ⚠ A COLUMN'S CELLS ARE SURFACES, NOT VOLUMES, and that is the whole of the
+// derivation. Below the lowest cell everything is solid; above each cell is air, up
+// to the underside of the next one. So the solid spans are
+//
+//     (−∞, H₀]        and        [Hᵢ − SLAB_THICK, Hᵢ]   for every i > 0
+//
+// and "any occupied cell at or above me" — which was the first attempt at dropping
+// the tolerance — is wrong for exactly one case that matters: a deck at 12 beside a
+// column holding ground at 0 and another deck at 40 is standing in AIR, and that
+// version called it buried.
+pub fn solid_at(w: World, q: integer, r: integer, h: integer) -> boolean {
   col = world_column(w, q, r);
+  first = true;
   for e in col.co_cells {
     if hex_world::hex_occupied(e) {
-      d = (e.h_height as integer ?? 0) - h;
-      if d < 0 { d = 0 - d; }
-      if d * 2 < w.w_eps { return true; }
+      eh = e.h_height as integer ?? 0;
+      // Everything under the lowest floor is ground that was never dug.
+      if first { if h <= eh { return true; } first = false; }
+      else { if h <= eh && h >= eh - SLAB_THICK { return true; } }
     }
   }
   false

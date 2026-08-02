@@ -16,9 +16,10 @@
 // nothing here ever wrote one layer into two chunks. Measured from the editor: a
 // cellar dug across a boundary came back carrying label 2 on one side and 3 on the
 // other, with cells at the same height adjacent across the seam — the forbidden case
-// exactly. Every by-label reader then sees the room END at the seam; the renderer
-// drew a wall down the middle of the room, and `emit_floor_slab` still puts a rim
-// down the middle of any deck that straddles one.
+// exactly. Every by-label reader then saw the room END at the seam: the renderer drew
+// a wall down the middle of the room, and `emit_floor_slab` a rim down the middle of
+// its floor. Both ask §5 by HEIGHT now, so the class is unreachable rather than
+// merely fixed — but the store was wrong and that is what this file is about.
 //
 // The cause was that a caller had no way to SAY what it was building: `world_set_column`
 // allocated `fresh_label` per chunk, so the second chunk could not be told it was
@@ -159,4 +160,36 @@ fn test_a_named_layer_never_lands_twice_in_one_chunk() {
   seen = 0;
   for id in world_column(w, 0, 0).co_ids { if id == lbl { seen = seen + 1; } }
   assert(seen == 1, "exactly one layer answers to {lbl}, found {seen}");
+}
+
+fn test_the_feet_never_select_a_layer_they_are_standing_under() {
+  // ⚠ THE TOLERANCE IN `world_surface` IS `θ`, NOT `ε/2`, AND THIS IS WHY. Feet exactly
+  // midway between two layers `ε` apart are `ε/2` from BOTH of them, so a tolerance of
+  // ε/2 lets "the highest occupied at or below the feet" reach the one ABOVE. Measured
+  // on the cellar stair before this: feet 14, a tread at 10 and the floor at 18, and
+  // the query answered 18 — the walker selected its own ceiling and climbed out.
+  //
+  // θ is the model's own *"largest step read as continuous"*, and `B1` needs only
+  // `ε > 2θ` for the match to stay unique — so it costs nothing and cannot reach past
+  // the midpoint.
+  w = mk();
+  // Two layers exactly ε apart in one column: a cellar floor at 10 and the ground at 18.
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell(18, 1)] });
+  col = world_column(w, 0, 0);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [cell(10, 4), col.co_cells[0] ?? Hex {}],
+    co_ids: [0, col.co_ids[0] ?? 0] });
+  assert(w.w_eps == 8, "this world's ε is 8, so the gap of 8 is exactly ε");
+
+  mid = world_surface(w, 0, 0, 14.0);
+  assert(mid.sf_units == 10,
+         "feet midway between 10 and 18 stand on 10, got {mid.sf_units}");
+  // ⚠ THE CONTROL, or the test would pass on a rule that always answers "the lowest".
+  high = world_surface(w, 0, 0, 19.0);
+  assert(high.sf_units == 18, "feet above the floor stand on it, got {high.sf_units}");
+  // …and θ of slack upward is still the same surface, which is what θ is FOR: it
+  // absorbs a smoothed corner sitting under its cell's stored height.
+  just = world_surface(w, 0, 0, (18 - w.w_theta) as float);
+  assert(just.sf_units == 18,
+         "θ under a floor is still that floor, got {just.sf_units}");
 }

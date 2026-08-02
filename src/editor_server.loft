@@ -384,8 +384,35 @@ const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so t
 const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
 // W_RESERVE and SURFACE_MAT are `hex_editor`'s now — the gestures write through
 // them, so they belong beside the gestures rather than in two places.
-const W_EPS        = 8;
-const W_THETA      = 3;
+// ⚠ θ IS THE WALKER'S STEP, AND ε IS MORE THAN TWICE IT. These were 8 and 3, chosen
+// before there was a walker to measure against, and the pair was quietly
+// contradictory — which cost the cellar stair a workaround before anything noticed.
+//
+// The surface query takes "the highest occupied layer at or below the feet + tol",
+// and `tol` has to satisfy two things at once:
+//
+//   tol >= a stride     or a walker can never step UP onto anything. Measured: with
+//                       tol below the stride the walker peaked at 2.951 wu under a
+//                       deck at 4.0 and never got on it — `stoodOnTheDeck false`.
+//   tol <  ε/2          or feet exactly MIDWAY between two layers ε apart are within
+//                       tol of BOTH, and the query answers the one ABOVE. Measured on
+//                       the stair: feet 14, a tread at 10 and the floor at 18, and it
+//                       returned 18 — the walker climbed its own ceiling.
+//
+// With ε = 8 and a stride of 4 those read `tol >= 4` and `tol < 4`. No value works,
+// and the old ε/2 satisfied the first while failing the second silently.
+//
+// `WORLD_MODEL.md` already names the way out and calls it the only inequality
+// relating the two world constants: **ε > 2θ**, with θ *"the largest step read as
+// continuous"* — which is a step, which is the stride. Set θ to the stride and the
+// two requirements become `tol >= θ` and `tol < ε/2`, satisfiable exactly when
+// ε > 2θ. So θ = 4 = `cliff_step()`, and ε = 10 > 8.
+//
+// ⚠ ε IS ALSO MORE HONEST AT 10. It is standing headroom: 8 units is 2.0 wu against a
+// figure of about 1.8, which is a doorway to duck through. 10 is 2.5 wu. And `F1`
+// still has room — a storey is `STOREY_H` 12, so consecutive floors clear ε by 2.
+const W_EPS        = 10;
+const W_THETA      = 4;
 // ⚠ THERE IS NO `SURFACE` LAYER INDEX ANY MORE, and its absence is the point.
 // It was `0` — "the editor authors one terrain layer" — which stopped being true
 // the day a cellar could be dug, and every one of the twelve sites that named it
@@ -456,6 +483,12 @@ const TREE_R = 0.16; const TREE_G = 0.34; const TREE_B = 0.14;
 const WINDOW_MAX_ROOF = 400;      // a roof taller than this cannot fit the window
 
 fn new_world() -> World {
+  // ⚠ SAID OUT LOUD AT STARTUP, not left to a comment. `constants_fit` is the one
+  // check that the world's θ is the walker's stride — a disagreement makes stairs
+  // lose their risers or a walker lose its ability to climb, and neither fails
+  // anything, because the store is correct either way.
+  cw = "";
+  if !constants_fit(cw) { println("editor: ⚠ WORLD CONSTANTS — {cw}"); }
   n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
   n.wn_world
 }
@@ -874,6 +907,30 @@ const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs fou
 // the creature and not of the world, so this is the configuration seam and not a
 // constant hidden in the library. A shorter creature supplies a smaller number.
 fn cliff_step() -> integer { (hip_wu() / HEIGHT_SCALE ?? 0.0) as integer }
+
+// ⚠ AND THE WORLD'S θ IS THAT STEP. The two are derived from different places on
+// purpose — a stride comes off the figure's hip, θ is a world constant — and they
+// have to AGREE, because θ is what the store means by "the largest step read as
+// continuous". A shorter creature is a smaller stride and wants a smaller θ.
+//
+// This is the seam where they meet, so this is where it is checked rather than
+// assumed. Silently disagreeing is what a stair looks like when it stops having
+// risers, or a walker when it stops being able to step up — neither of which fails
+// any structural test, because the STORE is correct in both.
+fn constants_fit(why: &text) -> boolean {
+  if W_THETA != cliff_step() {
+    why = "theta {W_THETA} is not the walker's stride {cliff_step()}";
+    return false;
+  }
+  // `B1`'s own inequality, restated where it can be read beside the other one. The
+  // store refuses a world that breaks it, so this only ever fires while editing
+  // these constants — which is exactly when it is wanted.
+  if W_EPS <= 2 * W_THETA {
+    why = "eps {W_EPS} must exceed 2*theta {2 * W_THETA}";
+    return false;
+  }
+  true
+}
 
 // ── WHAT A WALKER MEASURES ITS STEP AGAINST ─────────────────────────────────
 //
@@ -1912,7 +1969,7 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer) {
   cs = hex_to_world(cq, cr, 0);
   for sd in 0..6 {
     (snq, snr) = hex_grid::hex_neighbor(cq, cr, sd);
-    if !hex_editor::floor_continues(wld, snq, snr, h) {
+    if !hex_editor::solid_at(wld, snq, snr, h) {
       // The two corners this edge is made of — the same pairing `corner_heights`
       // uses to attribute a neighbour's height to the corners it touches, through
       // the same ring-order map `emit_wall_panel` and `emit_hex_sloped` use.

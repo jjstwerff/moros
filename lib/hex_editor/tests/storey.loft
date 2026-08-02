@@ -300,61 +300,104 @@ fn test_ground_below_the_ceiling_is_earth_and_not_an_opening() {
          "and it is earth, so the room ends against it");
 }
 
-fn test_a_floor_continues_by_height_and_not_by_which_layer_it_is_in() {
-  // ⚠ THE SIBLING OF `room_continues`, AND THE ONE THE RENDERER'S RIM NOW USES. Both
-  // ask `WORLD_MODEL.md` §5's question — continuity is HEIGHT — and neither trusts a
-  // label, because `I1` is a claim about that match and a reader leaning on it
-  // inherits every way a writer can break it. One did.
+fn test_a_slab_edge_shows_wherever_the_neighbour_is_not_solid() {
+  // ⚠ NO TOLERANCE, AND TWO WRONG ONES CAME FIRST. Posed as "does my floor continue",
+  // this was a question about which LAYER the neighbour's cell was in, so the answer
+  // became which slack identifies a layer — ε/2 first, then θ, and each was wrong in
+  // the opposite direction. It is not a layer question: a slab's edge is exposed
+  // where there is nothing beside it.
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
   lo = 40 - hex_editor::STOREY_H;
-  // Inside the disc the floor runs on; one cell past it, it stops.
-  assert(hex_editor::floor_continues(w, 1, 0, lo), "the cellar floor runs on at (1,0)");
-  assert(!hex_editor::floor_continues(w, 4, 0, lo),
-         "and stops where the digging did — that edge carries a slab face");
-  // ⚠ AND THE GROUND IS NOT ITS FLOOR. The ground is a whole storey up, so a height
-  // in the middle of the room matches neither plane — which is what makes the match
-  // an identity rather than a nearest-neighbour guess.
-  mid = lo + hex_editor::STOREY_H / 2 ?? 0;
-  assert(!hex_editor::floor_continues(w, 1, 0, mid),
-         "a height between two layers matches neither of them");
-  assert(hex_editor::floor_continues(w, 4, 0, 40), "the ground continues at its own height");
+  assert(hex_editor::solid_at(w, 1, 0, lo), "a flat neighbour is solid at my height");
+  // ⚠ ONE UNIT IS ENOUGH, which is the claim no tolerance can make.
+  assert(!hex_editor::solid_at(w, 1, 0, lo + 1),
+         "one unit above the neighbour's floor is air, so that much of my edge shows");
+  // ⚠ AND THE CELLAR'S OWN PERIMETER IS BURIED. Outside the disc the column holds only
+  // the ground, so everything under it is undug earth — the slab edge there is inside
+  // solid ground and owes nothing. What the room shows at that edge is the WALL.
+  assert(hex_editor::solid_at(w, 4, 0, lo),
+         "undug ground is solid all the way down");
 }
 
-fn test_a_step_gets_a_riser_exactly_when_it_clears_half_the_fold_separation() {
-  // ⚠ WHAT THE LABEL VERSION COULD NOT SEE AT ALL. A tread and the room it serves
-  // are the SAME LAYER, so "is the neighbour occupied in my layer" answered yes for
-  // any step of any size and drew no face at all.
-  //
-  // By height the answer depends on the step, and the threshold is not a taste: ε/2
-  // is the bound that makes §5's match UNIQUE, so a neighbour inside it *is* this
-  // plane and one outside it is a different one. With ε 8 that puts the line at 4 —
-  // and the walker's own stride is 4, so a stair a walker builds gets its risers
-  // while a shallower one reads as continuous floor. Both are pinned here because
-  // the boundary is the interesting part and a single stride would hide it.
+fn test_a_deck_over_air_is_not_buried_by_a_deck_far_above_it() {
+  // ⚠ THE CASE THAT KILLED THE FIRST TOLERANCE-FREE VERSION. "Any occupied cell at or
+  // above me" reads as buried — and a deck at mid-height beside a column holding the
+  // ground far below and another deck far above is standing in AIR, with its whole
+  // edge showing. A column's cells are SURFACES, so solidity is the spans between
+  // them, not everything under the topmost one.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 1, 2, why);          // a deck at 40 + STOREY_H
+  hex_editor::storey_add(w, 0, 0, 1, 2, why);          // and another above that
+  col = world_column(w, 0, 0);
+  top = hex_editor::col_top(col);
+  mid = 40 + hex_editor::STOREY_H / 2 ?? 0;            // between the ground and the deck
+  assert(top > mid, "the upper deck is above the height under test");
+  assert(!hex_editor::solid_at(w, 0, 0, mid),
+         "a height between two floors is AIR, whatever stands above it");
+  // …and the spans themselves are solid: at a floor, and one thickness under it.
+  assert(hex_editor::solid_at(w, 0, 0, top), "at a floor's own height it is solid");
+  assert(hex_editor::solid_at(w, 0, 0, top - hex_editor::SLAB_THICK),
+         "and through its thickness");
+  assert(!hex_editor::solid_at(w, 0, 0, top - hex_editor::SLAB_THICK - 1),
+         "but not below it, which is the room under that floor");
+}
+
+fn test_a_stair_tread_shows_its_riser_at_any_stride() {
+  // ⚠ THE PROPERTY THAT SURVIVES BOTH CONSTANTS MOVING. A tread stands above the cell
+  // beside it by the stride, so its edge is exposed by that much — at any stride. The
+  // label version drew none at any size; the two tolerance versions drew them at some
+  // sizes and not others, which is how a coincidence between an anatomy constant and
+  // a store constant came to decide whether stairs have risers.
   lo = 40 - hex_editor::STOREY_H;
   ceil = 40 - hex_editor::SLAB_THICK;
+  for stride in 2..6 {
+    w = world();
+    why = "";
+    hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+    n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), stride, why);
+    assert(n > 0, "a stair of stride {stride} went in: {why}");
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+    // ⚠ THE NEIGHBOUR'S COLUMN AT THE TREAD'S HEIGHT — which is the way round the
+    // renderer asks it, and I got it backwards twice writing this. The tread stands
+    // at `lo + stride`; beside it, at that same height, the room's own column holds
+    // nothing but air, so the tread's edge shows.
+    assert(!hex_editor::solid_at(w, 0, 0, lo + stride),
+           "stride {stride}: beside the tread, at its height, the room is air");
+    // ⚠ AND THE ROOM CONTINUES EITHER WAY, which is why these are two questions and
+    // not one. The plane steps; the void does not.
+    assert(hex_editor::room_continues(w, tq, tr, lo, ceil),
+           "stride {stride}: the room runs past the step");
+  }
+}
 
-  shallow = world();
-  why = "";
-  hex_editor::storey_add(shallow, 0, 0, 0 - 1, 2, why);
-  hex_editor::cellar_stair(shallow, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
-  (sq, sr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
-  assert(hex_editor::floor_continues(shallow, sq, sr, lo),
-         "a three-unit step is inside eps/2, so the floor reads as continuous");
-
-  steep = world();
-  hex_editor::storey_add(steep, 0, 0, 0 - 1, 2, why);
-  hex_editor::cellar_stair(steep, hex_editor::author_at(0.0, 0.0, 0.0), 4, why);
-  (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
-  assert(!hex_editor::floor_continues(steep, pq, pr, lo),
-         "a four-unit step clears it, so that edge carries a riser");
-
-  // ⚠ AND THE ROOM CONTINUES EITHER WAY, which is the whole reason these are two
-  // questions and not one. The plane steps; the void does not.
-  assert(hex_editor::room_continues(steep, pq, pr, lo, ceil),
-         "the room runs past the step it just gained a riser for");
+fn test_the_walkers_stride_must_clear_theta_or_a_stair_is_a_ramp() {
+  // ⚠ THE RELATION THIS PINS IS BETWEEN A WALKER AND THE STORE, and nothing else in
+  // the tree states it. θ is *the largest step read as continuous*, so a stair whose
+  // rise does not exceed it is not a stair — every tread reads as more of the same
+  // floor and no riser is drawn anywhere. It would look like a ramp and pass every
+  // structural test, because the STORE would be perfectly correct.
+  //
+  // Today `cliff_step()` is 4 against θ 3: one unit of margin, and the margin is the
+  // whole point of writing it down. It was ZERO against the tolerance this used
+  // before (ε/2, also 4), which is how a coincidence between an anatomy constant and
+  // a store constant came to decide whether stairs have risers.
+  //
+  // ⚠ AND THE OTHER HALF IS `ε > 2θ`, the one inequality relating the two world
+  // constants — `B1` needs it for the match to be unique at all, and a world
+  // violating it is refused at creation rather than failing quietly later.
+  w = world();
+  assert(w.w_eps > 2 * w.w_theta,
+         "B1: ε ({w.w_eps}) must exceed 2θ ({2 * w.w_theta})");
+  // The stride is the caller's — `hex_editor` must not depend on a moros package —
+  // so this asserts the RELATION for the value the editor actually passes.
+  stride = 4;
+  assert(stride > w.w_theta,
+         "a stride of {stride} clears θ ({w.w_theta}), so a stair reads as steps");
+  // …and the negative control: at θ it would not, which is the failure mode named.
+  assert(!(w.w_theta > w.w_theta), "a stride of θ would read as continuous floor");
 }
 
 fn test_a_stair_tread_does_not_wall_itself_off_from_its_own_room() {

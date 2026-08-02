@@ -81,9 +81,20 @@ ws.onmessage = async (e) => {
     ws.send('14:12');
     const good = await ack('stencil');
 
-    const named    = short.includes('roof 5') && short.includes('below the minimum 8');
-    const offered  = short.includes('offer 8');
-    const residual = short.includes('residual 3');
+    // ⚠ THE SHAPE, NOT THE NUMBER. This read `minimum 8` / `offer 8` / `residual 3`
+    // spelled out, and the 8 was `W_EPS` — so raising ε to 10 turned a gate about
+    // *whether a refusal explains itself* into a gate about one constant's value, and
+    // it went red on a change that made every one of its claims MORE true.
+    //
+    // What `X68` actually requires is that a refusal names the bound it broke, offers
+    // the nearest legal value, and reports what that offer costs. So the bound is
+    // read out of the message and the other two are checked AGAINST it — still exact,
+    // and now it is the three numbers agreeing that passes rather than three literals.
+    const asked = 5;
+    const min = Number((short.match(/below the minimum (\d+)/) ?? [])[1]);
+    const named    = short.includes(`roof ${asked}`) && Number.isFinite(min) && min > asked;
+    const offered  = short.includes(`offer ${min}`);
+    const residual = short.includes(`residual ${min - asked}`);
     const wroteNothing = after === before;
     // the nominal refusal must NOT carry an offer — that is the whole of X68
     const nominalRefused = species.includes('refused') && species.includes('species 9');

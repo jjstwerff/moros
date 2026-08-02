@@ -22,8 +22,8 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **31 green** · `make lib-test` **974 on both backends** ·
-`lib/hex_editor` **215 tests** · `lib/hex_world` **90**.
+`make gate` **31 green** · `make lib-test` **977 on both backends** ·
+`lib/hex_editor` **217 tests** · `lib/hex_world` **91**.
 ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
@@ -50,6 +50,32 @@ world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once pe
 Probed before building on it: **the hole survives save and load**, because elision
 drops records and the layer is kept alive by every cell that still holds ground.
 
+### θ IS the walker's step now, and ε is more than twice it
+
+⚠ **The two constants were quietly contradictory**, and it cost the cellar stair a
+workaround before anything noticed. `world_surface` takes "the highest occupied layer
+at or below the feet **+ tol**", and `tol` has to satisfy two things at once:
+
+| | | measured |
+|---|---|---|
+| `tol ≥ stride` | or a walker can never step **up** onto anything | below it, the walker peaked at 2.951 wu under a deck at 4.0 — `stoodOnTheDeck false` |
+| `tol < ε/2` | or feet **midway** between two layers ε apart are within `tol` of *both*, and the query answers the one **above** | feet 14, a tread at 10 and the floor at 18 → it returned **18**, the walker climbing its own ceiling |
+
+With ε 8 and a stride of 4 those read `tol ≥ 4` and `tol < 4`. **No value works**, and
+the old `ε/2` satisfied the first while failing the second silently — which is why the
+stairwell has to open *every* tread.
+
+`WORLD_MODEL.md` already names the way out and calls it the only inequality relating
+the two world constants: **ε > 2θ**, with θ *"the largest step read as continuous"* —
+which is a step, which is the stride. So **θ = 4 = `cliff_step()`** and **ε = 10**,
+and `tol = θ` then satisfies both with a unit to spare. ε is more honest at 10 too: it
+is standing headroom, and 8 units is 2.0 wu against a figure of about 1.8.
+
+⚠ **They are checked against each other at the seam.** `constants_fit()` asserts
+θ == the stride and ε > 2θ, and says so at startup — because a disagreement makes
+stairs lose their risers or a walker lose its ability to climb, and **neither fails
+anything**: the store is correct either way.
+
 ### Both readers ask §5 now, and the second one gained a stair its risers
 
 `emit_floor_slab` asked **by label**; `room_continues` asked **by height**. Only one of
@@ -58,22 +84,31 @@ things the renderer actually needs:
 
 | | asks | for |
 |---|---|---|
-| `floor_continues(w, q, r, h)` | is there an occupied cell within **ε/2** of `h` | the floor PLANE — a slab's exposed edge |
+| `solid_at(w, q, r, h)` | is the neighbour **solid** at that height — no tolerance at all | the floor PLANE — a slab's exposed edge |
 | `room_continues(w, q, r, lo, hi)` | do the two **voids** overlap, and is the neighbour underground | the ROOM — where it ends in a wall |
 
 ⚠ **They are not the same question, which is why converging is not merging.** At a
 stair tread the plane steps and the void does not: the tread wants a riser *and* no
 wall. A single predicate would have to be wrong about one of them.
 
-⚠ **The tolerance is `F1`, not taste.** Occupied layers are at least ε apart, so at
-most one can lie within ε/2 of any height — the match is unique *by the invariant*.
+⚠ **AND THE SLAB'S EDGE NEEDS NO TOLERANCE AT ALL — two wrong ones came first.** Posed
+as *"does my floor continue"*, it read as a question about which LAYER the neighbour's
+cell was in, so the answer became which slack identifies a layer. `ε/2` happened to
+equal the walker's stride, so a stair got its risers by a hair; `θ` **is** the stride
+once the constants agree, so a one-stride stair read as a ramp and lost them again.
+Neither constant was ever about it. A slab's edge is exposed where there is nothing
+beside it, and a column's cells are **surfaces**, so the solid spans are `(−∞, H₀]`
+and `[Hᵢ − SLAB_THICK, Hᵢ]`. `mesh floor` recorded every step of that: 618, 522, 588,
+564.
 
-⚠ **And the label version could never have drawn a riser, at any step of any size.**
-A tread and the room it serves share a layer, so "is the neighbour occupied in my
-layer" always answered yes. Measured: `mesh floor` **522 → 588**, eleven quads of
-riser. The number moved twice in two days and both moves are findings — 618 → 522 when
-`I1` was fixed (a rim down the middle of a seam), 522 → 588 when the label went.
-`mesh wall` read **174 through all of it**, which is the whole argument.
+⚠ **And the label version could never have drawn a riser, at any step of any size**,
+because a tread and the room it serves share a layer. The risers are pinned
+structurally now — `storey.loft` sweeps the stride from 2 to 5 and requires one at
+every value — rather than by a total that would pass on a build drawing none.
+
+⚠ **`mesh wall` read 174 through every one of those four numbers.** It asked §5 from
+the start, so nothing above ever touched it. That is the argument for the convergence,
+and it is a measurement rather than a preference.
 
 ### The harness is DETERMINISTIC now, which it had only claimed to be
 
@@ -356,11 +391,13 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **A STEP GETS A RISER ONLY IF IT CLEARS `ε/2`**, which couples how a stair looks
-   to the fold separation. With ε 8 the line is at 4 and the walker's stride is
-   exactly 4, so the built stair sits *on* the boundary — a shallower one reads as
-   continuous floor, correctly, but nothing has chosen that. The bound is right (it
-   is what makes §5's match unique); what is unexamined is a stair authored at 3.
+1. ⚠ **`cellar_ceiling` FAILED ONE SUITE RUN IN SEVEN**, and only under the full
+   ten-way load — three concurrent runs of it come back bit-identical, so the script
+   is not the variable. Same shape as the old `deck_soffit` flake and the same
+   remaining suspect: the browser channel. A **false red**, and the next step is an
+   instrument rather than a threshold — `parts`/`wire` proves the meshes arrived, so
+   what is still unmeasured is whether the page had *composited* them when
+   `frameStats` sampled.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

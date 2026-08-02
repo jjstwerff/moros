@@ -382,7 +382,19 @@ pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> Surface {
   if ci < 0 { return Surface { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
   ix = cell_index(q, r);
   base = w.w_chunks[ci].ck_base;
-  tol = (w.w_eps as float) * 0.5;
+  // ⚠ THE TOLERANCE IS `θ`, WHICH IS WHAT §5 SAYS AND WHAT THIS DID NOT. It read
+  // `ε/2`, reasoning that `F1` keeps layers ε apart so half of it cannot select two.
+  // The uniqueness is right; the CONSTANT is not. θ is the model's own *"largest step
+  // read as continuous"* and §5's match is defined with it — `|H − h| ≤ θ` — while
+  // ε/2 is half the fold separation and answers a different question.
+  //
+  // ⚠ AND ε/2 REACHES A LAYER THE WALKER IS STANDING UNDER. Feet exactly midway
+  // between two layers ε apart are ε/2 from BOTH, so the "at or below" rule picks the
+  // one ABOVE. Measured on the cellar stair: feet 14, a tread at 10 and the floor at
+  // 18, and the query answered 18 — the walker climbed its own ceiling. `B1` needs
+  // only `ε > 2θ` for the match to be unique, so θ costs nothing and cannot reach
+  // past the midpoint.
+  tol = w.w_theta as float;
   best = 0; found = false; low = 0; havelow = false; occ = 0;
   bestl = 0 - 1; lowl = 0 - 1; li = 0 - 1;
   for ly in w.w_chunks[ci].ck_layers {

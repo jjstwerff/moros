@@ -97,16 +97,23 @@ mesh soffit 648 648
 # 618 with the labels split against 522 with them joined — 96 vertices, sixteen quads
 # along a seam that is not an edge of anything.
 #
-# ⚠ THEN 522 -> 588 WHEN IT STOPPED ASKING BY LABEL AT ALL. The extra 66 is eleven
-# quads of RISER at the two treads, and the label version could not have drawn one at
-# any step of any size: a tread and the room it serves share a layer, so "is the
-# neighbour occupied in my layer" always answered yes. By height they are a stride
-# apart and the edge is exposed, which is what a step looks like.
+# ⚠ THEN IT MOVED TWICE MORE WHILE THE RULE STOPPED BEING ABOUT LAYERS AT ALL. Asked
+# by label it could draw no riser at any step of any size — a tread and the room it
+# serves share a layer, so "is the neighbour occupied in my layer" always said yes.
+# Asked with a tolerance it drew them at some strides and not others: 588 under ε/2,
+# 564 under θ, because ε/2 happened to equal the walker's stride and θ, once the
+# constants were made to agree, WAS the stride. Neither constant was about it.
+#
+# The rule is `solid_at` now — is the neighbour solid at this height — which has no
+# slack in it and no opinion about layers. 564 is 342 of top fan (19 cells at 18) and
+# 222 of rim and riser. ⚠ THE RISERS ARE NOT PINNED BY THIS TOTAL: the structural
+# claim is `lib/hex_editor/tests/storey.loft`, which sweeps the stride from 2 to 5 and
+# requires one at every value. This row would pass on a build that drew none.
 #
 # ⚠ AND `mesh wall` READ 174 THROUGH ALL OF IT, which is the same measurement making
 # the opposite point: the room wall asked §5's geometric question from the start, so
 # it was never sensitive to any of this. That is the argument that converged the two.
-mesh floor 588 588
+mesh floor 564 564
 
 echo --- and the room's own floor is a storey under everything else
 # The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
