@@ -196,7 +196,7 @@ play-fast: port-free
 # its wasm bridge (loft-lang/loft#667). `rm -rf ~/.loft/lib/web` is the fix; the
 # published package was never at fault.
 client:
-	$(LOFT) --html src/editor_client.loft
+	$(LOFT) --html --lib lib/ src/editor_client.loft
 	@echo "wrote src/.loft/editor_client.html"
 
 editor:

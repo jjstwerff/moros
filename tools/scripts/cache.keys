@@ -1,0 +1,24 @@
+# S2 (plan 16) — THE CLIENT'S VOXEL CACHE IS THE SERVER'S, BY THE FORMAT'S OWN CRC.
+#
+# The client caches every terrain layer it is streamed and still draws the SERVER's
+# meshes. That is the point of the step rather than a half-measure: with the cache
+# beside a picture it does not affect, a disagreement is a NUMBER long before
+# anything depends on the cache being right — and a step that switched the drawing
+# over at the same time could not tell a bad cache from a bad mesher.
+#
+# ⚠ THE CHECKSUM IS `world_save`'s, NOT ONE INVENTED FOR THE WIRE. Two sides that
+# agree on a hash they made up agree about the wrong thing; this way "the client
+# matches the server" and "the client would survive a round trip" are one claim.
+#
+# ⚠ CONTROL, SEEN RED: perturbing ONE cell of ONE layer in `layer_wire` gives
+# `agree 23 bad 1` — one layer disagreeing, and exactly one. `hex_world`'s own
+# `layer_wire.loft` pins the half that makes that possible: one changed cell moves
+# the checksum. Without it this row would pass on a constant.
+rate 0
+at 0 0 0
+key ArrowUp
+wait rebuilt
+step 20
+snap s2-cache
+step 20
+wait cache

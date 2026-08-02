@@ -365,6 +365,9 @@ const MSG_RATE = 34;
 // ⚠ The acknowledgement comes when the ticks have been CONSUMED, not when the
 // message arrived — otherwise the script races the thing it is stepping.
 const MSG_STEP = 35;
+// S2 — the client's verdict on its own cache: `41:<agreed>,<disagreed>`. It answers
+// only about what it has, and only when the count moves.
+const MSG_CACHE = 41;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -3409,6 +3412,65 @@ fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
   out
 }
 
+// ── S2 (plan 16) — THE VOXELS THEMSELVES, BESIDE THE MESHES ─────────────────
+//
+// `L:<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` — one terrain layer, in the
+// FILE FORMAT'S field order and its relative heights, with the window base beside
+// them because `sv_height` is meaningless without it (`S1`).
+//
+// ⚠ IT RIDES THE SAME PATH AS THE MESHES AND DELETES NOTHING. S2 is the measurement
+// step: the client caches these and still draws the server's geometry, so a
+// disagreement is visible as a number long before anything depends on the cache
+// being right. A step that switched the drawing over at the same time would have no
+// way to tell a bad cache from a bad mesher.
+fn layer_wire(wld: World, cx: integer, cz: integer, li: integer) -> text {
+  q0 = cx * CHUNK;
+  r0 = cz * CHUNK;
+  flat = hex_world::world_layer_bytes(wld, q0, r0, li);
+  out = "L:{cx},{cz},{li},{hex_world::world_layer_id(wld, q0, r0, li)},"
+      + "{hex_world::world_layer_kind(wld, q0, r0, li)},"
+      + "{hex_world::world_layer_version(wld, q0, r0, li)},"
+      + "{hex_world::world_chunk_base(wld, cx, cz)};";
+  for fv in flat {
+    if fv#first { out += "{fv}"; } else { out += ",{fv}"; }
+  }
+  out
+}
+
+// Every terrain layer of one chunk, sent as its own frame.
+fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
+  q0 = cx * CHUNK;
+  r0 = cz * CHUNK;
+  for li in 0..len(world_column(wld, q0, r0).co_ids) {
+    if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
+      srv.broadcast(layer_wire(wld, cx, cz, li));
+    }
+  }
+}
+
+// `D:<cx>,<cz>,<li>,<crc>;…` — the digest of the visible set.
+//
+// ⚠ SMALL, AND AHEAD OF THE BULK. Twelve-ish bytes a layer against 8 KB of cells, so
+// it can go every tick where a resend cannot — which is the whole design: divergence
+// is caught in the tick it happens rather than at the next save. It carries NEVER the
+// cells; the client answers only about what it disagrees on.
+fn digest_wire(wld: World, chunks: vector<DirtyChunk>) -> text {
+  out = "D:";
+  n = 0;
+  for dch in chunks {
+    q0 = dch.cx * CHUNK;
+    r0 = dch.cz * CHUNK;
+    for li in 0..len(world_column(wld, q0, r0).co_ids) {
+      if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
+        if n > 0 { out += ";"; }
+        out += "{dch.cx},{dch.cz},{li},{hex_world::world_layer_crc(wld, q0, r0, li)}";
+        n = n + 1;
+      }
+    }
+  }
+  out
+}
+
 fn mat_wire(mw: Mat4) -> text {
   out = "";
   for mv in mw.m {
@@ -3934,20 +3996,9 @@ fn build_id() -> integer {
   len(bt)
 }
 
-fn read_index() -> text {
-  ixf = file("{source_dir()}/../html/editor.html");
-  if ixf.format == Format.NotExists {
-    return "<!DOCTYPE html><html><body><h1>500 — html/editor.html missing</h1>"
-         + "<p>Expected it beside src/, one level up.</p></body></html>";
-  }
-  ixb = ixf.content()?;
-  ixb
-}
-
-// The wasm client (plan #16, S1), served at `/client` beside the JavaScript one at
-// `/`. Both are the SAME wire — that is the whole point of S1, and serving them
-// side by side is what lets a gate run against each and compare. `editor.html` and
-// this route go together when the comparison is done.
+// The wasm client (plan #16), served at `/` and at `/client`. It was the second of
+// two for as long as the comparison needed a control; `html/editor.html` is deleted
+// and this is the renderer.
 //
 // The page is a build artefact (`make client`), not a source file, so a missing one
 // is an ordinary state and says so rather than 404ing into a puzzle.
@@ -4275,6 +4326,8 @@ fn main() {
   // client that connects later is somewhere else in the stream, and because a
   // reconnect must be able to start from nothing.
   loaded: vector<integer> = [];
+  // The visible set with its coordinates, for the S2 digest — see the heartbeat.
+  digest_coords: vector<DirtyChunk> = [];
   have_hex = false;
   last_hq = 0;
   last_hr = 0;
@@ -4450,9 +4503,15 @@ fn main() {
         if rec_n % 50 == 0 { rec_flush(rec_path, rec_buf); }
       }
       if ev.http {
-        if ev.path == "/" || ev.path == "/index.html" {
-          srv.respond_html(read_index());
-        } else if ev.path == "/client" || ev.path == "/client.html" {
+        // ⚠ `/` IS THE WASM CLIENT NOW (2026-08-02). `html/editor.html` was the
+        // reference the port was measured against and it is deleted: one script
+        // through both pages agreed to within 2.4% of mean luminance at every camera
+        // mode, on the same 49,500 samples. Plan 16's rule is that a dual path exists
+        // to be COMPARED and goes in the commit that proves the new one.
+        //
+        // `/client` still answers, because every doc and every habit points at it.
+        if ev.path == "/" || ev.path == "/index.html"
+           || ev.path == "/client" || ev.path == "/client.html" {
           srv.respond_html(read_client());
         } else {
           srv.respond_404();
@@ -4740,6 +4799,13 @@ fn main() {
           rec_flush(rec_path, rec_buf);
           println("editor: snapshot {sn_n} — shots/shot-{sn_n}.txt + .b64"
                 + " (recording {rec_path}, {rec_n} events)");
+        } else if ev.msg_id == MSG_CACHE {
+          // ⚠ REPORTED AS A STATUS, WHICH IS WHAT MAKES IT GATEABLE. The client is
+          // the only thing that can compare its cache against the digest, so the
+          // answer has to come back over the wire — a page that knew and could not
+          // say would leave the claim to a screenshot.
+          srv.broadcast("S:cache {ev.payload}");
+          println("editor: client cache {ev.payload}");
         } else if ev.msg_id == MSG_STEP {
           sim_pending = sim_pending + (ev.payload as integer ?? 1);
           sim_step_cid = ev.cid;
@@ -5667,6 +5733,15 @@ fn main() {
     if now_us - probe_us >= 1000000 {
       probe_us = now_us;
       live_clients = srv.broadcast("P:");
+      // ⚠ A HEARTBEAT, NOT AN AUDIT. The digest goes out on the visible set whether
+      // or not anything changed — that is what makes divergence show up in the tick
+      // it happens rather than at the next save, and it is affordable because the
+      // common answer is a comparison of integers the server already has. Sending it
+      // only on a dirty chunk was the first version and it is subtly useless: a
+      // client that joins AFTER the last edit is never told anything at all.
+      if live_clients > 0 && len(digest_coords) > 0 {
+        srv.broadcast(digest_wire(wld, digest_coords));
+      }
     }
     watched = live_clients > 0;
     // Stepped when the rate is zero; paced by the wall clock otherwise. Either way
@@ -6122,11 +6197,20 @@ fn main() {
       // whatever order the server writes them in. The swap has to be atomic AT
       // THE CLIENT, so the batch is bracketed and the client stages everything
       // between the brackets and applies it in one go.
+      // ⚠ THE DIGEST GOES OUT AT THE HEAD, BEFORE ANY BULK FRAME, and that is the
+      // whole of its "high priority": one WebSocket is FIFO, so priority is an
+      // ORDERING discipline and not a flag. A digest that waited behind a layer burst
+      // would be a fast check turned slow without a line changing.
       srv.broadcast("Z:1");
       for dc2 in dirty.items {
         live = false;
         for lid2 in loaded { if lid2 == dc2.id { live = true; } }
         if live {
+          // ⚠ THE VOXELS GO FIRST, INSIDE THE SAME `Z:` BRACKET as the meshes. A
+          // rebuild is one transaction to the client — a chunk swapped in beside a
+          // stale neighbour leaves a real gap — and the cache is part of that instant
+          // rather than a thing that catches up afterwards.
+          send_layers(srv, wld, dc2.cx, dc2.cz);
           dm = chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
@@ -6233,6 +6317,10 @@ fn main() {
       }
       home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
+      // ⚠ THE COORDS BESIDE THE IDS, because `enc_coord` packs and nothing unpacks.
+      // The digest needs `(cx, cz)` and this is the one loop that has them for the
+      // VISIBLE set — which is what the digest is of.
+      next_coords: vector<DirtyChunk> = [];
       // STREAMING IS A TRANSACTION TOO. A chunk arriving beside one that is still
       // being retired, or six surfaces of one chunk landing across two frames,
       // is the same tear as a partial rebuild — the ground has no skirts either
@@ -6245,6 +6333,7 @@ fn main() {
           if chunk_in_range(scx, scz, hxa.ha_q, hxa.ha_r) {
             cid = enc_coord(scx, scz);
             next_loaded += [cid];
+            next_coords += [DirtyChunk { id: cid, cx: scx, cz: scz }];
             seen = false;
             for lz in loaded { if lz == cid { seen = true; } }
             if !seen {
@@ -6252,6 +6341,7 @@ fn main() {
               // streaming pass runs each tick and almost always has nothing to
               // say, so an unconditional bracket would be 30 empty pairs a second.
               if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
+              send_layers(srv, wld, scx, scz);
               cmesh = chunk_mesh(scx, scz, wld);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               fmesh = chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
@@ -6318,6 +6408,7 @@ fn main() {
         }
       }
       loaded = next_loaded;
+      digest_coords = next_coords;
       if sbatch { srv.broadcast("Z:0"); }
       if added != 0 || dropped != 0 {
         println("editor: hex ({last_hq},{last_hr}) — +{added} −{dropped} chunks, "

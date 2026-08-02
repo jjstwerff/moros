@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **S2 OPEN** (2026-08-02) · S1 shipped 2026-07-29 · **`editor.html` DELETED 2026-08-02** · `status:active` |
+| **Status** | **✅ S2 SHIPPED (2026-08-02)** — next is S3 · S1 shipped 2026-07-29 · **`editor.html` DELETED 2026-08-02** · `status:active` |
 | **This phase** | voxels on the wire; the client caches them and still draws the SERVER's meshes |
 | **Closes when** | for every loaded chunk the client's cached bytes and the server's agree, **by the format's own per-chunk CRC** — and the control (mutate one cell on one side) has been seen red |
 | **Deletes** | nothing. S2 is the measurement step, and that is the point of doing it before S3 |
@@ -294,7 +294,36 @@ drawing.
 thing that settled it was one `mv` — the cheapest probe that could have proved the claim
 wrong, and it was available from the first minute.
 
-### S2 — voxels on the wire, meshes still from the server
+### ✅ S2 — SHIPPED 2026-08-02
+
+`tools/gates/world/cache.mjs` — **`cache agree 24 bad 0 layers 24`**: every terrain
+layer the client is streamed, checksummed against the server's by the FILE FORMAT'S
+own CRC. ⚠ **Control seen red:** perturbing one cell of one layer in `layer_wire`
+gives `agree 23 bad 1` — one layer disagreeing, and exactly one.
+
+`L:<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` rides the same `Z:` bracket as the
+meshes (a rebuild is one transaction; the cache is part of that instant, not something
+that catches up after). ~14 KB a layer as CSV against ~1 MB of mesh text it will one
+day replace. `hex_world` gained `world_layer_bytes` / `world_put_layer` /
+`world_layer_crc` / `world_chunk_base`, with the round trip and the one-cell control
+in `layer_wire.loft`.
+
+⚠ **THE DIGEST IS A HEARTBEAT, NOT AN AUDIT, and the first version was subtly
+useless.** It went out only when a chunk was dirty — so a client that joined *after*
+the last edit was never told anything at all, which is precisely the case a cache
+check exists for. It rides the once-a-second liveness probe over the VISIBLE set now,
+ahead of any bulk frame, because one WebSocket is FIFO and priority is an ordering
+discipline rather than a flag.
+
+⚠ **AND THE CLIENT ANSWERS BACK** (`41:` → `S:cache …`). The client is the only thing
+that can compare its own cache, and it is a wasm page — a page that knew and could not
+say would leave the claim to a screenshot.
+
+⚠ **`hex_world` LINKS INTO WASM**, which was the open risk and is now measured: the
+client is built `--html --lib lib/` and the page went 715 → 774 KB. The client shares
+the server's *model*, not its authority.
+
+### S2 — the original design</
 
 Add `world → client` chunk-layer frames: `(cx, cz, layer, τ, bytes)`, the same encoding the
 file format already writes (`SZ_LAYER` = 1024 cells × 8 bytes + CRC). The client caches them
