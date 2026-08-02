@@ -870,6 +870,20 @@ a layer bearing a different label.
 `id = 0` is unlabelled and unconstrained, following the same convention as palette slot 0:
 zero is absence, and absence is never a claim.
 
+⚠ **Where it is kept true.** A layer is chunk-wide, so any gesture covering more than one
+chunk makes a layer record in each — and a column write cannot know they are the same
+layer, because it sees one column. So **the caller names it**: `world_fresh_label` once per
+gesture, handed to every column through `world_set_column_as` / `world_merge_band_as`, which
+spend the name on *creation* and ignore it thereafter. Allocating per chunk instead is how
+this was violated for as long as it was: measured, one cellar carried label 2 on one side of
+a seam and 3 on the other, and a stencil roof 5 and 4. `hex_world/tests/seam_labels.loft`
+holds the claims, with the mutation that reproduces the old behaviour named in it.
+
+⚠ **A reader may still prefer §5.** `I1` is a claim *about* the geometric match, not a second
+definition of it, so the strongest readers ask §5's question directly — do the two voids
+overlap in height — and cannot be misled by a label at all. When the labels were wrong, the
+by-label reader drew a wall down the middle of a room and the geometric one did not.
+
 ### A label is a NAME, not an ordinal
 
 This is the part that decides how labels are allocated, so it is stated rather than left

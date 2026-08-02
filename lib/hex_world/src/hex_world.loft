@@ -261,6 +261,38 @@ fn fresh_label(w: &World) -> integer {
   id
 }
 
+// A name for a layer a caller is about to build, taken ONCE and handed to every
+// column of it.
+//
+// ⚠ THIS EXISTS BECAUSE `I1` WAS BEING BROKEN BY THIS FILE. A layer is chunk-wide,
+// so one gesture covering a disc that straddles a boundary makes a layer in each
+// chunk — and `world_set_column` allocated a fresh label for each, because a caller
+// had no way to say the second was a continuation of the first. Measured from the
+// editor: one cellar carrying label 2 on one side of the seam and 3 on the other,
+// cells at the same height adjacent across it, which is the exact case §I1 forbids.
+//
+// The identity belongs to whoever knows the extent, and that is never this function:
+// a column write sees one column. So the caller names the layer and `world_set_column_as`
+// spends the name on whatever it creates.
+pub fn world_fresh_label(w: &World) -> integer { fresh_label(w) }
+
+// The label to stamp on a layer being created in chunk `ci`: the caller's name if it
+// supplied one, otherwise a fresh one.
+//
+// ⚠ AND NEVER THE SAME NAME TWICE IN ONE CHUNK. A label is an identity, so two
+// layers of one chunk answering to it would make every by-label read take whichever
+// came first — silently, and with no way to tell which. It cannot happen through a
+// gesture, because after the first column creates the layer the rest find it and
+// create nothing; this is the guard that says so rather than assuming it, and it
+// degrades to a fresh label instead of corrupting the chunk.
+fn named_label(w: &World, ci: integer, new_id: integer) -> integer {
+  if new_id == 0 { return fresh_label(w); }
+  for ly in w.w_chunks[ci].ck_layers {
+    if ly.ly_id == new_id { return fresh_label(w); }
+  }
+  new_id
+}
+
 // The label of the layer at index `l`, so a caller can tell one layer from another
 // across an insert that renumbers them.
 pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
@@ -589,9 +621,30 @@ pub fn world_band_check(w: World, cq: integer, cr: integer,
 
 pub fn world_merge_band(w: &World, cq: integer, cr: integer,
                         lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
+  world_merge_band_as(w, cq, cr, lo, hi, band, 0)
+}
+
+// The same merge, with a NAME for the layer it creates — `I1` again, and it needed
+// doing here as well as on the plain column write.
+//
+// ⚠ A ROOF STRADDLING A SEAM HAD THE IDENTICAL DEFECT. Measured: a stencil cone
+// centred on a chunk boundary came back with its roof layer labelled 5 on one side
+// and 4 on the other. Fixing only `world_set_column` would have repaired the cellar
+// and left every house and roof breaking the invariant — a half-fix whose gate goes
+// green while saying nothing about the other half.
+//
+// ⚠ THE NAME IS FOR THE LAYER THIS CALL CREATES, singular. A band can in principle
+// create two — a floor and a roof over virgin ground — and then only the first takes
+// the name, because `named_label` will not put one id on two layers of a chunk. That
+// is a real limit and it is stated rather than assumed: every gesture here merges a
+// band onto ground that already exists, so the floor lands in the ground layer and
+// the roof is the only thing made. `test_a_band_onto_authored_ground_makes_exactly_one_layer` is the test that says so.
+pub fn world_merge_band_as(w: &World, cq: integer, cr: integer,
+                           lo: integer, hi: integer, band: vector<Hex>,
+                           new_id: integer) -> ColumnWrite {
   pre = world_band_check(w, cq, cr, lo, hi, band);
   if pre.cw_code != CW_OK { return pre; }
-  world_set_column(w, band_column(w, cq, cr, lo, hi, band))
+  world_set_column_as(w, band_column(w, cq, cr, lo, hi, band), new_id)
 }
 
 // ── `D1` — DRESSING IS INERT, AND IT NEEDS A WAY IN ─────────────────────────
@@ -810,6 +863,21 @@ fn set_cell_slow(w: &World, q: integer, r: integer, li: integer, c: Hex) -> Colu
 }
 
 pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
+  world_set_column_as(w, col, 0)
+}
+
+// The same write, with a NAME for whatever layer it has to create.
+//
+// ⚠ `new_id` IS SPENT ON CREATION ONLY, and that is what makes it safe to hand the
+// same one to every column of a gesture: the first column of each chunk creates the
+// layer and takes the name; every column after that finds it already there and
+// creates nothing. So a disc of nineteen columns across two chunks makes exactly two
+// layer records bearing one label — which is `I1`, and which no per-chunk allocation
+// could ever produce.
+//
+// `new_id = 0` means "allocate one for me" and is what `world_set_column` passes, so
+// every caller that does not care about identity is unchanged.
+pub fn world_set_column_as(w: &World, col: Column, new_id: integer) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {
     return ColumnWrite { cw_code: CW_LAYER_CAP, cw_layer: LAYER_CAP,
@@ -875,7 +943,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
          && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN {
         nl: vector<Layer> = [];
         for li0 in 0..i { nl += [w.w_chunks[ci].ck_layers[li0]]; }
-        nl += [Layer { ly_id: fresh_label(w), ly_kind: KIND_TERRAIN,
+        nl += [Layer { ly_id: named_label(w, ci, new_id), ly_kind: KIND_TERRAIN,
                        ly_ver: 0, ly_cells: empty_cells() }];
         for li1 in i..have { nl += [w.w_chunks[ci].ck_layers[li1]]; }
         w.w_chunks[ci].ck_layers = nl;
@@ -898,7 +966,17 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
     for gl in w.w_chunks[ci].ck_layers {
       if gl.ly_id == LABEL_GROUND && gl.ly_kind == KIND_TERRAIN { lbl = 0; }
     }
-    if lbl == 0 { lbl = fresh_label(w); }
+    // ⚠ THE CALLER'S NAME REACHES THIS PATH TOO, not only the insert. A storey ABOVE
+    // appends rather than inserts, and it spans a seam exactly as a cellar does — so
+    // fixing only the insert would have left `12:+1` breaking `I1` while `12:-1` no
+    // longer did, which is the worst kind of half-fix: the gate for one direction
+    // would go green and say nothing about the other.
+    //
+    // ⚠ AND `LABEL_GROUND` STILL WINS. A chunk's first terrain layer is the outdoors
+    // by the rule above, and a name handed in by a gesture must never displace that
+    // — a disc spilling into a virgin chunk would otherwise label that chunk's
+    // ground with the cellar's id and there would be no outdoors there at all.
+    if lbl == 0 { lbl = named_label(w, ci, new_id); }
     w.w_chunks[ci].ck_layers += [Layer { ly_id: lbl, ly_kind: KIND_TERRAIN,
                                          ly_ver: 0, ly_cells: empty_cells() }];
   }

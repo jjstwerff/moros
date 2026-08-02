@@ -22,8 +22,9 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **31 green** · `make lib-test` **965 on both backends** ·
-`lib/hex_editor` **213 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
+`make gate` **31 green** · `make lib-test` **972 on both backends** ·
+`lib/hex_editor` **213 tests** · `lib/hex_world` **90**.
+⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
 
@@ -48,6 +49,33 @@ beneath it was opened deliberately. `ground_open` is that rule, and it is free o
 world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once per chunk.
 Probed before building on it: **the hole survives save and load**, because elision
 drops records and the layer is kept alive by every cell that still holds ground.
+
+### `I1` is enforced now — one gesture, one layer, one label
+
+⚠ **The writer was breaking a normative invariant and nothing could see it**, because
+nothing in the store's own tests ever wrote one layer into two chunks. A layer is
+chunk-wide, so a disc straddling a boundary makes a layer record per chunk — and
+`world_set_column` allocated `fresh_label` for each, because **a caller had no way to
+say the second was a continuation of the first**. Measured: one cellar carrying label
+**2** on one side of the seam and **3** on the other; one stencil roof labelled **5**
+and **4**. §I1 forbids exactly that — *the geometric match never crosses labels*.
+
+The identity belongs to whoever knows the extent, and a column write never does. So
+the gesture names its layer once (`world_fresh_label`) and hands the same name to
+every column (`world_set_column_as` / `world_merge_band_as`), which spend it on
+**creation only** — so nineteen columns across two chunks make two layer records
+bearing one label.
+
+⚠ **Both writers, not one.** A storey *inserts* and a roof *appends*, through
+different paths; fixing only the insert would have left `12:+1`, houses and stencils
+breaking `I1` while `12:-1` no longer did — a half-fix whose gate goes green and says
+nothing about the other half.
+
+⚠ **And the picture moved.** `emit_floor_slab` asks by label, so a cellar across a
+seam had a skirt down the middle of its own floor: A/B'd, `mesh floor` **618 → 522**,
+sixteen quads of rim along a seam that is not an edge of anything. `mesh wall` read
+**174 either way** — the room wall asks §5's geometric question, so it was already
+immune. Two readers of one fact, and only the by-label one could be lied to.
 
 ### And a room ENDS in a wall, which nothing drew
 
@@ -270,23 +298,15 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **ONE GESTURE ACROSS A CHUNK SEAM MAKES TWO LAYERS WITH TWO LABELS, WHICH `I1`
-   FORBIDS.** Measured: a cellar dug over a chunk boundary comes back carrying label
-   **2** in one chunk and **3** in the other, with cells at the same height adjacent
-   across the seam. `WORLD_MODEL.md` §I1 says it in as many words — *the geometric
-   match never crosses labels* — so this is a live violation of a normative
-   invariant, not a rough edge.
-   *Cause:* `world_set_column` allocates `fresh_label(w)` per chunk and **no caller
-   can tell it otherwise**; `storey_add`'s "the other eighteen must write into the
-   one it made" trick works within a chunk and has nothing to say across one.
-   *Consequence:* every by-label reader sees the room END at the seam.
-   `emit_floor_slab` still does — **a deck straddling a chunk boundary has a rim
-   down its middle**, which is pre-existing and unmeasured. The room wall dodges it
-   by asking §5's geometric question instead (`room_continues`), which is why the
-   walls are right while the store is not.
-   *The fix* is on the writer, and it is at the layer-creation chokepoint whose own
-   comments record two counting disasters (1 cellar → 34 layers; 7 discs → 63 of a
-   cap of 64), so it wants doing carefully and on its own.
+1. ⚠ **`deck_soffit` FAILS ABOUT ONE RUN IN SIX, IN THE SUITE ONLY.** Its wire rows
+   pass and the FRAME row misses; it passes alone every time, and the failing run
+   finishes *faster* than the passing one — the same "bailed early" tell that `turn`
+   had. There are three `--shots` gates now (`camera_indoors`, `deck_soffit`,
+   `cellar_ceiling`) where there were two, so the suspicion is the browser channel
+   under parallel load rather than anything about decks. It is a **false red**, which
+   is the harmless direction, but it makes the suite a coin-flip to read. The next
+   step is an instrument, not a threshold: nothing currently reports whether the page
+   had finished streaming when `frameStats` sampled it.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

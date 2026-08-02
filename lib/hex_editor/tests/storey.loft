@@ -233,16 +233,18 @@ fn test_a_room_is_a_floor_with_something_over_it_and_a_deck_is_not() {
 }
 
 fn test_a_room_does_not_end_at_a_chunk_seam() {
-  // ⚠ A LIVE `I1` VIOLATION, AND THIS IS THE READER THAT SURVIVES IT. One cellar dug
-  // across a chunk boundary comes back carrying a DIFFERENT LABEL in each chunk —
-  // `world_set_column` allocates per chunk and no caller can tell it otherwise —
-  // which `WORLD_MODEL.md` §I1 forbids in as many words: *the geometric match never
-  // crosses labels*. Every by-label reader then sees the room stop at the seam.
-  // Measured before this: a wall drawn straight down the middle of the room.
+  // ⚠ THIS TEST ONCE ASSERTED THE BUG. A cellar dug across a chunk boundary came
+  // back carrying a DIFFERENT LABEL in each chunk, so this said *"the seam really
+  // does split the label"* and went on to prove the drawing survived it. The writer
+  // is fixed now (`hex_world/tests/seam_labels.loft`) and the same line asserts the
+  // opposite — which is the point of having written it as a fact about the store
+  // rather than folding it into the drawing claim.
   //
-  // §5 defines continuity by HEIGHT and proves it unique, so that is what gets
-  // asked. The store is still wrong and that is written up separately; this pins
-  // that the picture is not.
+  // What is still worth pinning is that the PICTURE does not depend on the labels
+  // being right: §5 defines continuity by height and proves it unique, `I1` is a
+  // claim *about* that match rather than a second definition of it, and
+  // `room_continues` asks the geometric question. A reader that cannot be misled is
+  // worth keeping even once the writer stops misleading it.
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 4..5 {
     for r in 0 - 4..5 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
@@ -254,12 +256,14 @@ fn test_a_room_does_not_end_at_a_chunk_seam() {
   assert(n == 19, "the disc went in whole across the seam, got {n}: {why}");
   lo = 40 - hex_editor::STOREY_H;
   hi = 40 - hex_editor::SLAB_THICK;
-  // The two labels really do differ — otherwise this test proves nothing.
   a = world_column(w, 0, 0);
   b = world_column(w, 0, 0 - 1);
-  assert((a.co_ids[0] ?? 0) != (b.co_ids[0] ?? 0),
-         "the seam really does split the label: {a.co_ids[0] ?? 0} vs {b.co_ids[0] ?? 0}");
-  // …and the room continues across it anyway.
+  assert(hex_world::chunk_of(0) != hex_world::chunk_of(0 - 1),
+         "the disc really does straddle a seam, or this proves nothing");
+  assert((a.co_ids[0] ?? 0) == (b.co_ids[0] ?? 0),
+         "ONE cellar, ONE label across the seam: "
+       + "{a.co_ids[0] ?? 0} vs {b.co_ids[0] ?? 0}");
+  // …and the room continues across it.
   assert(hex_editor::room_continues(w, 0, 0 - 1, lo, hi),
          "the room continues from (0,0) into (0,-1) across the seam");
   assert(hex_editor::room_continues(w, 0, 0, lo, hi),

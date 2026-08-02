@@ -1,0 +1,162 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `I1` ACROSS A CHUNK SEAM — one layer, one label, however many chunks it spans.
+//
+// `WORLD_MODEL.md` § I1 states it as a constraint on the geometric match:
+//
+// > For adjacent `x ∈ X_K`, `x' ∈ X_{K'}`, and `i ∈ col_K(x)` with `id(λᵢ) ≠ 0`:
+// >     `j ∈ M_{K'}(x', H_{λᵢ}(x))  ⟹  id(λ'ⱼ) = id(λᵢ)`
+// >
+// > In words: the geometric match never crosses labels. A labelled floor may end —
+// > no match is a legal answer, because a floor that meets a wall stops — but it may
+// > never continue into a layer bearing a different label.
+//
+// ⚠ IT WAS BEING VIOLATED BY THE WRITER, and nothing here could see it because
+// nothing here ever wrote one layer into two chunks. Measured from the editor: a
+// cellar dug across a boundary came back carrying label 2 on one side and 3 on the
+// other, with cells at the same height adjacent across the seam — the forbidden case
+// exactly. Every by-label reader then sees the room END at the seam; the renderer
+// drew a wall down the middle of the room, and `emit_floor_slab` still puts a rim
+// down the middle of any deck that straddles one.
+//
+// The cause was that a caller had no way to SAY what it was building: `world_set_column`
+// allocated `fresh_label` per chunk, so the second chunk could not be told it was
+// continuing the first one's layer. A gesture knows it is making one layer; it can
+// now name it once and hand the same name to every column.
+use hex_world;
+
+fn mk() -> World { world_new(0.25, 0, 8, 3).wn_world }
+fn cell(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
+
+// Ground everywhere over a patch that spans the r = 0 seam: r = -1 is the last row
+// of one chunk and r = 0 the first of the next.
+fn seeded() -> World {
+  w = mk();
+  for q in 0 - 2..3 {
+    for r in 0 - 2..3 {
+      world_set_column(w, Column { co_q: q, co_r: r, co_cells: [cell(40, 1)] });
+    }
+  }
+  w
+}
+
+fn test_the_patch_really_does_straddle_a_seam() {
+  // ⚠ THE CONTROL FOR EVERY TEST BELOW. If these two landed in one chunk the seam
+  // would never be crossed and the whole file would pass on a world that cannot
+  // exhibit the defect.
+  assert(chunk_of(0) != chunk_of(0 - 1),
+         "r = 0 and r = -1 are in different chunks, got {chunk_of(0)} and {chunk_of(0 - 1)}");
+  w = seeded();
+  assert(world_layer_id(w, 0, 0, 0) == LABEL_GROUND, "ground labelled on one side");
+  assert(world_layer_id(w, 0, 0 - 1, 0) == LABEL_GROUND, "and on the other");
+}
+
+fn test_a_layer_inserted_across_a_seam_carries_one_label() {
+  // A cellar under both sides of the seam, written the way a gesture writes it: the
+  // new cell at index 0 with an incoming id of 0, the ground keeping its own.
+  w = seeded();
+  lbl = world_fresh_label(w);
+  for r in 0 - 1..1 {
+    col = world_column(w, 0, r);
+    code = world_set_column_as(w, Column { co_q: 0, co_r: r,
+             co_cells: [cell(28, 4), col.co_cells[0] ?? Hex {}],
+             co_ids: [0, col.co_ids[0] ?? 0] }, lbl).cw_code;
+    assert(code == CW_OK, "the write took at r {r}, got {code}");
+  }
+  a = world_layer_id(w, 0, 0, 0);
+  b = world_layer_id(w, 0, 0 - 1, 0);
+  assert(a == b, "one layer, one label across the seam: {a} vs {b}");
+  assert(a == lbl, "and it is the one the caller named: {a} vs {lbl}");
+  // …and the ground is still the ground on both sides, which the insert must not
+  // have taken. This is the defect that sank the drawn ground from 10.917 to 5.583.
+  assert(world_layer_id(w, 0, 0, 1) == LABEL_GROUND, "ground kept its label above");
+  assert(world_layer_id(w, 0, 0 - 1, 1) == LABEL_GROUND, "on both sides of the seam");
+}
+
+fn test_the_labels_the_gesture_did_not_name_are_still_fresh_and_distinct() {
+  // ⚠ THE NEGATIVE CONTROL. A fix that handed every new layer one label would pass
+  // the test above and destroy identity everywhere else: two SEPARATE cellars are
+  // two layers and must not share a name.
+  w = seeded();
+  one = world_fresh_label(w);
+  two = world_fresh_label(w);
+  assert(one != two, "two asks give two names: {one} and {two}");
+  col = world_column(w, 0, 0);
+  world_set_column_as(w, Column { co_q: 0, co_r: 0,
+    co_cells: [cell(28, 4), col.co_cells[0] ?? Hex {}],
+    co_ids: [0, col.co_ids[0] ?? 0] }, one);
+  col2 = world_column(w, 0, 0);
+  world_set_column_as(w, Column { co_q: 0, co_r: 0,
+    co_cells: [cell(16, 4), col2.co_cells[0] ?? Hex {}, col2.co_cells[1] ?? Hex {}],
+    co_ids: [0, col2.co_ids[0] ?? 0, col2.co_ids[1] ?? 0] }, two);
+  assert(world_layer_id(w, 0, 0, 0) == two, "the deeper cellar carries its own name");
+  assert(world_layer_id(w, 0, 0, 1) == one, "the first one kept its own");
+  assert(world_layer_id(w, 0, 0, 2) == LABEL_GROUND, "and the ground is still on top");
+}
+
+fn test_an_unnamed_write_still_gets_a_fresh_label_of_its_own() {
+  // The old entry point means what it always did — "allocate one for me" — so every
+  // caller that does not care is unaffected.
+  w = seeded();
+  col = world_column(w, 0, 0);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [cell(28, 4), col.co_cells[0] ?? Hex {}],
+    co_ids: [0, col.co_ids[0] ?? 0] });
+  got = world_layer_id(w, 0, 0, 0);
+  assert(got != 0, "it was labelled, got {got}");
+  assert(got != LABEL_GROUND, "and not with the reserved one");
+}
+
+fn test_a_band_merge_across_a_seam_carries_one_label_too() {
+  // ⚠ THE OTHER WRITER, AND FIXING ONLY THE FIRST WOULD HAVE BEEN A HALF-FIX. A
+  // roof, a house and a stencil all reach the store through `world_merge_band`, and
+  // it had the identical defect: measured, a cone centred on a chunk boundary came
+  // back with its roof layer labelled 5 on one side and 4 on the other.
+  w = seeded();
+  lbl = world_fresh_label(w);
+  for r in 0 - 1..1 {
+    band: vector<Hex> = [cell(40, 4), cell(60, 5)];
+    code = world_merge_band_as(w, 0, r, 40, 60, band, lbl).cw_code;
+    assert(code == CW_OK, "the band took at r {r}, got {code}");
+  }
+  a = world_layer_id(w, 0, 0, 1);
+  b = world_layer_id(w, 0, 0 - 1, 1);
+  assert(a == b, "one roof, one label across the seam: {a} vs {b}");
+  assert(a == lbl, "and it is the caller's: {a} vs {lbl}");
+}
+
+fn test_a_band_onto_authored_ground_makes_exactly_one_layer() {
+  // ⚠ THE CLAIM `world_merge_band_as` LEANS ON. One name can only cover one created
+  // layer — `named_label` will not put an id on two layers of a chunk — so the
+  // guarantee holds exactly as long as a band creates one. It does here, and for the
+  // reason that matters: the floor half of the band lands in the GROUND that is
+  // already there, so the roof is the only thing made. If a caller ever merged a
+  // band over virgin ground this would go red rather than quietly naming half of it.
+  w = seeded();
+  before = len(world_column(w, 0, 0).co_ids);
+  band: vector<Hex> = [cell(40, 4), cell(60, 5)];
+  world_merge_band_as(w, 0, 0, 40, 60, band, world_fresh_label(w));
+  after = len(world_column(w, 0, 0).co_ids);
+  assert(after == before + 1,
+         "a band onto authored ground makes ONE layer: {before} -> {after}");
+}
+
+fn test_a_named_layer_never_lands_twice_in_one_chunk() {
+  // ⚠ ONE LABEL PER CHUNK IS WHAT MAKES IT AN IDENTITY. A gesture writes many
+  // columns of the same chunk with the same name, and only the first can create the
+  // layer — the rest find it already there. If a second creation ever slipped
+  // through, the chunk would hold two layers answering to one name and every
+  // by-label read would take whichever came first.
+  w = seeded();
+  lbl = world_fresh_label(w);
+  for q in 0 - 2..3 {
+    col = world_column(w, q, 0);
+    world_set_column_as(w, Column { co_q: q, co_r: 0,
+      co_cells: [cell(28, 4), col.co_cells[0] ?? Hex {}],
+      co_ids: [0, col.co_ids[0] ?? 0] }, lbl);
+  }
+  seen = 0;
+  for id in world_column(w, 0, 0).co_ids { if id == lbl { seen = seen + 1; } }
+  assert(seen == 1, "exactly one layer answers to {lbl}, found {seen}");
+}

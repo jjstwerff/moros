@@ -775,6 +775,19 @@ pub fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: inte
   }
   if ok == 0 { why = "no cells here"; return 0 - 1; }
 
+  // ⚠ ONE LAYER, NAMED ONCE, FOR THE WHOLE DISC — `I1`. A layer is CHUNK-WIDE and
+  // this disc can straddle a boundary, so the store makes a layer record in each
+  // chunk it touches. Letting each of those allocate its own label is what broke the
+  // invariant: measured, one cellar came back carrying 2 on one side of the seam and
+  // 3 on the other, with cells at the same height adjacent across it — the case
+  // `WORLD_MODEL.md` §I1 forbids in as many words. Every by-label reader then saw
+  // the room END at the seam.
+  //
+  // The gesture is the only thing that knows the extent, so the gesture names it.
+  // `world_set_column_as` spends the name on creation and ignores it thereafter, so
+  // handing the same one to all nineteen columns is exactly right.
+  layer_id = hex_world::world_fresh_label(wld);
+
   built = 0;
   for dq2 in (0 - rad)..(rad + 1) {
     for dr2 in (0 - rad)..(rad + 1) {
@@ -870,8 +883,9 @@ pub fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: inte
               ids += c2.co_ids;
             }
           }
-          w = world_set_column(wld, hex_world::Column { co_q: q2, co_r: r2,
-                                                       co_cells: cells, co_ids: ids });
+          w = world_set_column_as(wld, hex_world::Column { co_q: q2, co_r: r2,
+                                                          co_cells: cells, co_ids: ids },
+                                  layer_id);
           if w.cw_code != CW_OK {
             why = "layer {w.cw_layer}: {w.cw_detail}";
             return 0 - 10 - w.cw_code;
@@ -1276,6 +1290,12 @@ pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
   }
 
   // PASS 2 — write, and count what the band left alone
+  //
+  // ⚠ ONE STENCIL, ONE ROOF LAYER, ONE LABEL — `I1`, the same as the storey's. The
+  // disc can straddle a chunk boundary and the roof layer is then made twice, once
+  // per chunk; naming it here is what stops the two halves being different layers to
+  // every by-label reader.
+  roof_id = hex_world::world_fresh_label(wld);
   placed = 0;
   kept_below = 0;
   kept_above = 0;
@@ -1308,7 +1328,7 @@ pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
           hex_world::Hex { h_height: (hi2 as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
-        w = world_merge_band(wld, q2, r2, lo, hi2, band2);
+        w = world_merge_band_as(wld, q2, r2, lo, hi2, band2, roof_id);
         if w.cw_code != CW_OK {
           why = "({q2},{r2}) refused on write: {w.cw_detail}";
           return 0 - 10 - w.cw_code;
