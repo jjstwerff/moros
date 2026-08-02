@@ -400,7 +400,37 @@ z and wrong y — a plausible picture — and cost four rounds of diagnosis, eac
 excluding a real hypothesis because the instrument reporting them was the thing at
 fault. Filed `sev:high` for exactly that reason.
 
-**So S3's remaining question is entirely on the wire side** — `ground 41 bad 7`, seven
+### ✅ IT IS STREAMING ORDER — `probe/s3_stream_order.loft`
+
+Copy a bounded set of chunks, mesh a wider set of tiles, and report per tile BOTH the
+verdict and whether its two-cell halo lies inside the cached set:
+
+```
+halo inside the cache : agree 81  bad 0      <- no exceptions
+halo reaching outside : agree  8  bad 32
+```
+
+**A tile whose halo is fully cached always matches.** So the mesher is a pure function
+of the cells it reads, and the only way the client differs is by reading cells it does
+not have yet — where an absent cell answers `base + 0` instead of a height.
+
+⚠ **AND IT IS ORDER, NOT MEMBERSHIP.** The live failures included tiles whose chunks the
+server had certainly sent — `2,-1` needs only (0,−1) and (0,0), and both ride that
+tile's own `send_layers`. What it does not have is the chunks belonging to *other*
+tiles in the same batch, which arrive later in the stream. So the client is meshing
+against a cache that is correct, will be complete, and is not complete YET.
+
+**The fix has a natural home: the `Z:1`/`Z:0` bracket.** A rebuild is already one
+transaction to the client — the brackets exist so a chunk cannot appear beside a stale
+neighbour — so the ground comparison belongs at `Z:0`, when the batch has landed,
+rather than on each `Q:` as it arrives. That is the same discipline as the mesh
+staging, applied to the check.
+
+⚠ **AND THE HALO PRECONDITION IS STILL OWED** for the case a batch genuinely does not
+cover: mesh a tile only once every store chunk its halo touches is cached, and defer
+the rest. `halo_inside` in the probe is that predicate, written and measured.
+
+**S3's remaining question was on the wire side** — `ground 41 bad 7`, seven
 tiles all carrying a negative coordinate — and it is now known NOT to be the copy, the
 mesher, the coordinates or the halo. What differs there and not here: the client
 mutates `st.cache`, a struct FIELD, through the same call. That is the next thing to
