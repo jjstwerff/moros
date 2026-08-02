@@ -7,6 +7,37 @@
 | **Closes when** | for every loaded chunk the client's cached bytes and the server's agree, **by the format's own per-chunk CRC** — and the control (mutate one cell on one side) has been seen red |
 | **Deletes** | nothing. S2 is the measurement step, and that is the point of doing it before S3 |
 
+## ✅ `V:` IS PORTED (2026-08-02) — and the two renderers do NOT yet agree
+
+The client had **no `V:` handler and no `uAmb`/`uLamp` in its shader**: S1 shipped
+2026-07-29 and the five camera modes landed after it, so the port was of a renderer
+from before the camera work. Now in: the hide mask (bit 0 the figure, bit *k* surface
+*k*, derived from the mesh id — no wire change), the ambient, the lamp with its
+inverse-square falloff, and `uEye` taken out of the view matrix rather than sent.
+
+**Measured, one script through both pages** (`tools/script.mjs --client`):
+
+| mode | `editor.html` lum | wasm lum |
+|---|---|---|
+| FOLLOW | 0.4221 | 0.4181 |
+| SNUG | 0.1827 | **0.1283** |
+| CUTAWAY | 0.4241 | **0.3293** |
+| EYES | 0.2986 | **0.2260** |
+
+⚠ **THE MODES WORK — THE LEVELS DO NOT MATCH.** Four distinct frames in the right
+order (SNUG darkest, CUTAWAY the brightest interior) is the port doing its job; before
+it, the client had one lighting for all four. But the wasm client is **~25 % darker at
+every station**, and that is not the lamp: CUTAWAY sends `lamp 0` and is dark too. Nor
+is it the window — `editor.html` reads the same at 1200x800 and 1280x800 because it
+re-asks for a camera on resize. Something else in the two lighting paths differs, and
+**that is what has to be found before `editor.html` can go.**
+
+⚠ **AND THE COMPARISON IS WEAKER ON THE WASM SIDE, WHICH IS SAID RATHER THAN HIDDEN.**
+`settle` interrogates `editor.html`'s own JS (`parts.size`, its `view`) to know the
+page is showing the current state; a wasm page has no such globals, so `--client`
+degrades to "the canvas is not blank". FOLLOW reading `sky 0.7734` against `grass
+0.5369` is the shape of a frame taken early, and it cannot be ruled out yet.
+
 ⚠ **A CHECKPOINT SITS BETWEEN S1 AND S2 AND HAS NOT BEEN ANSWERED.** The ladder marks it
 ✋ *"the wasm client is the one to build on — both renderers are green; which one continues
 is yours"*. S2 does not delete `editor.html`, so it is not blocked on that answer — but it

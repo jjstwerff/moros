@@ -49,12 +49,37 @@ if (!scriptPath) { console.error('usage: script.mjs <script.keys> [--port N] [--
 // its own server. A runner that hardcoded 18090 would pass alone and dial another
 // gate's world inside the suite — which is the worst way round, and the reason
 // `run-gates.sh` says so at the top of itself.
-let PORT = +(process.env.EDITOR_PORT ?? 18090), keep = false, shots = false;
+let PORT = +(process.env.EDITOR_PORT ?? 18090), keep = false, shots = false, wasm = false;
+// ⚠ THE WINDOW IS A PARAMETER BECAUSE THE TWO RENDERERS DO NOT AGREE ON IT, and until
+// they do their histograms cannot be compared at all. `editor.html` fills whatever
+// window it is given and re-asks the server for a camera on resize; the wasm client's
+// canvas is a fixed `WIN_W`x`WIN_H` = 1280x800. At the harness's own 1200x800 that is
+// aspect 1.50 against 1.60 — a wider field of view, more sky, and every share in the
+// frame shifted for a reason that has nothing to do with what was drawn. Measured:
+// FOLLOW read `grass 0.5336` on one and `sky 0.7734` on the other.
+//
+// The default stays 1200x800 so every existing gate's thresholds are untouched; an
+// A/B passes 1280x800 to BOTH sides.
+let WIN = '1200,800';
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--port') PORT = +args[++i];
   if (args[i] === '--keep') keep = true;
   if (args[i] === '--shots') shots = true;
+  if (args[i] === '--client') wasm = true;
+  if (args[i] === '--window') WIN = args[++i].replace('x', ',');
 }
+// ⚠ `--client` DRIVES THE WASM PAGE INSTEAD OF THE JAVASCRIPT ONE, so one script can
+// be run against both and the two histograms compared. That comparison is the whole
+// reason `editor.html` is still here: plan 16's own rule is that a dual path exists
+// to be COMPARED and is deleted in the commit that proves the new one.
+//
+// ⚠ AND THE READINESS AND SETTLE CHECKS DEGRADE, LOUDLY. Both interrogate
+// `editor.html`'s own JS — `parts.size`, its `view` — and a wasm page has no such
+// globals to ask. Against `/client` they fall back to "the canvas is not blank",
+// which is strictly weaker, so it SAYS so rather than reporting a check it did not
+// make. A silent degrade here would let a stale frame pass as a match.
+const PAGE = wasm ? '/client' : '/';
+const CANVAS = wasm ? '#c' : '#gl';
 
 // ⚠ KEEP IN STEP WITH `html/editor.html`'s keydown handler.
 const KEYMAP = {
@@ -168,7 +193,7 @@ async function browser() {
     // same 93xx band this derives from. A port number is not an identity, so the
     // match is on the window size THIS file spawns with, which nothing else here
     // uses. `run-gates.sh` says the same thing about the editor port in more words.
-    if (pid && pid !== process.pid && line.includes('--window-size=1200,800')) {
+    if (pid && pid !== process.pid && line.includes(`--window-size=${WIN}`)) {
       try { process.kill(pid); } catch { /* already gone */ }
     }
   }
@@ -186,7 +211,7 @@ async function browser() {
     '--no-sandbox', '--enable-unsafe-swiftshader',
     '--use-gl=angle', '--use-angle=swiftshader',
     '--mute-audio', '--hide-scrollbars',
-    '--window-size=1200,800', 'about:blank'],
+    `--window-size=${WIN}`, 'about:blank'],
     { stdio: 'ignore' });
   const page = (await cdpJson('/json/list')).find((t) => t.type === 'page');
   cdp = new WebSocket(page.webSocketDebuggerUrl);
@@ -194,7 +219,7 @@ async function browser() {
   cdp.addEventListener('message', (ev) => { const m = JSON.parse(ev.data);
     if (m.id && cdpPending.has(m.id)) { cdpPending.get(m.id)(m.result); cdpPending.delete(m.id); } });
   await call('Page.enable');
-  await call('Page.navigate', { url: `http://127.0.0.1:${PORT}/` });
+  await call('Page.navigate', { url: `http://127.0.0.1:${PORT}${PAGE}` });
 
   // ⚠ WAIT FOR THE CANVAS, NOT THE CLOCK. This was `await sleep(4000)` — a guess
   // that the page had connected, streamed and drawn — and it wrote BLANK PNGs
@@ -231,11 +256,13 @@ async function browser() {
   // COMPOSITED (the WebGL layer missing, so the shot is the DOM over white). So it
   // asks the page for the first and measures whiteness for the second.
   const ready = async () => {
-    const st = await call('Runtime.evaluate', { returnByValue: true, expression:
-      `(() => (typeof parts === 'undefined') ? null
-              : { n: parts.size, cam: !!view })()` });
-    const v = st?.result?.value;
-    if (!v || v.n < 1 || !v.cam) return false;
+    if (!wasm) {
+      const st = await call('Runtime.evaluate', { returnByValue: true, expression:
+        `(() => (typeof parts === 'undefined') ? null
+                : { n: parts.size, cam: !!view })()` });
+      const v = st?.result?.value;
+      if (!v || v.n < 1 || !v.cam) return false;
+    }
     const shot = await call('Page.captureScreenshot', { format: 'png' });
     if (!shot?.data) return false;
     const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
@@ -395,6 +422,7 @@ let frameFails = 0;
 // picture is of the old camera, with every mesh present and correct. That frame reads
 // as a renderer fault and is a race.
 const browserLag = async () => {
+  if (wasm) return { page: -1, wire: meshLen.size, cam: true, degraded: true };
   const st = await call('Runtime.evaluate', { returnByValue: true, expression:
     `(() => (typeof parts === 'undefined') ? null
             : { n: parts.size, v: view ? Array.from(view) : null })()` });
@@ -421,6 +449,8 @@ const settle = async (limitMs = 8000) => {
   let last = { page: -1, wire: -1, cam: false };
   for (let t = 0; t < limitMs; t += 100) {
     last = await browserLag();
+    // Nothing to compare against on the wasm page — take the frame and say so.
+    if (last.degraded) return { ...last, waited: t };
     // ⚠ `waited` IS REPORTED, or this is an instrument nobody can falsify. A wait
     // that never fires and a wait that is not wired look identical from outside, and
     // the whole point is to know whether the page was ever behind.
@@ -446,7 +476,7 @@ async function frameStats() {
   // what is known to work here, so the pixels come back the same way and are decoded
   // by the page itself: no node dependency, and one small payload back.
   const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
-    (() => { const el = document.querySelector('#gl');
+    (() => { const el = document.querySelector('${CANVAS}');
              if (!el) return null;
              const r = el.getBoundingClientRect();
              if (r.width < 1 || r.height < 1) return null;
@@ -601,7 +631,7 @@ async function snap(name) {
   // `html_render_check.mjs` rendered the same scene at 478 distinct colours by
   // capturing WITH a clip. Ask the canvas where it is and photograph that.
   const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
-    (() => { const el = document.querySelector('#gl');
+    (() => { const el = document.querySelector('${CANVAS}');
              if (!el) return null;
              const r = el.getBoundingClientRect();
              if (r.width < 1 || r.height < 1) return null;
