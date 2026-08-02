@@ -20,10 +20,54 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
+## ⏭ PICK UP HERE (2026-08-02, session 9) — the client meshes the ground itself, and the guard that lets it is exact
 
-`make gate` **31 green** · `make lib-test` **977 on both backends** ·
-`lib/hex_editor` **217 tests** · `lib/hex_world` **91**.
+`make gate` **33 green** · `make lib-test` **18 packages, both backends** ·
+`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **91**.
+
+### S3 is measured and green: `ground 41 bad 7` → `ground 10 bad 0 wait 38`
+
+The client now runs the server's own mesher over its own cache and gets the server's
+triangles, checksum for checksum. What made it look broken was never arithmetic:
+**the mesher reads two cells PAST the tile it builds**, so a tile whose margin has
+not arrived yet is a question asked too early, not a disagreement.
+
+**The oracle is `moros_terrain::tile_ready(world, cx, cz)`** — beside the mesher,
+because it is a fact about what the mesher *reads*. Consumed by the client's `Q:`
+handler, gated by `tools/gates/world/client_mesh.mjs`, and asked *by the probes*
+rather than restated in them.
+
+⚠ **THE MAP IS WHAT PROVED IT, AND A TALLY WOULD NOT HAVE.** The sweep first read
+`0 false positives, 877 false negatives` and I was about to ship a guard called
+conservative-but-safe. Drawing it — one glyph per tile — showed the 877 instantly:
+tiles where **both** meshes were empty, agreeing about nothing. With heights bounded
+so every tile emits, held-but-fine went to **zero** and the result changed category:
+`tile_ready` is not an over-approximation, it is **exact**. READY ⟺ the mesh matches,
+over nine cache shapes and 3249 tiles. A number cannot show that the withheld ring
+around a hole in the cache is *one tile wide*, and one tile wide is the claim.
+
+⚠ **`vacuous` is the row that keeps such a sweep honest** — two empty meshes checksum
+alike, so a sweep over terrain that does not emit everywhere is partly measuring
+nothing. It must read 0. `probe/s3/README.md` is the whole routine; `make guards`
+runs it and shows the maps.
+
+**Open, and the next thing to do:** those 38 held tiles are held *forever* in that
+run — nothing re-asks once their margin lands. The home for it is the `Z:1`/`Z:0`
+staging bracket the stream already has: re-compare at `Z:0`, when the batch is known
+complete. Until that exists, S3 proves the mesher agrees wherever it can be asked,
+**not** that the client could stop being sent `M:` frames — so nothing has been
+deleted from the server's ground broadcast.
+
+**Two instruments were wrong before the thing they measured, again.** `wait` returns
+the *earliest* matching status, so a cumulative tally read `ground 0 bad 0 wait 1` —
+the instant before any evidence exists; `last <prefix>` is the missing instrument and
+now exists. And **the `snap` is what opens the browser, and the browser IS the client
+under test**: dropping it from a gate that judges no picture left nobody to compare
+anything, and every verdict line simply never arrived.
+
+---
+
+### Session 8 — the camera has five settings, and every surface overhead has an underside
 ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
