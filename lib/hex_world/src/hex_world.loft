@@ -1134,6 +1134,110 @@ pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> inte
   w.w_chunks[ci].ck_layers[l].ly_ver
 }
 
+// ── S2 (plan 16) — A LAYER, AS BYTES AND AS A CHECKSUM ──────────────────────
+//
+// The client caches voxels and has to prove its copy is the server's. Three calls
+// carry that, and they are here rather than in the consumer because the ENCODING is
+// the file format's: a checksum both sides invent separately is a checksum that
+// agrees about the wrong thing.
+//
+// ⚠ THE CRC IS THE FILE FORMAT'S OWN, not a hash for the wire. `layer_crc` is what
+// `world_save` writes after each layer's cells and what `world_load` refuses on, so
+// "the client agrees with the server" and "the client would survive a round trip"
+// are one claim rather than two that might drift.
+// A chunk's window base, by CHUNK coordinate — the number every stored height in it
+// is relative to.
+//
+// ⚠ IT HAS TO TRAVEL WITH THE LAYER. `sv_height` is meaningless without it (`S1`), so
+// a cache that took the cells and defaulted the base to zero would hold a layer whose
+// every height is wrong by the base and whose CRC is nonetheless right — the cells
+// are what is checksummed, not their absolute heights. That is the failure this
+// accessor exists to make impossible rather than to detect.
+pub fn world_chunk_base(w: World, cx: integer, cz: integer) -> integer {
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 { return 0; }
+  w.w_chunks[ci].ck_base
+}
+
+pub fn world_layer_crc(w: World, q: integer, r: integer, l: integer) -> integer {
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return 0; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
+  layer_crc(w.w_chunks[ci].ck_layers[l])
+}
+
+// One layer's cells, flat, in the file format's field order: seven integers a cell,
+// `CHUNK_CELLS` of them.
+//
+// ⚠ HEIGHTS COME OUT RELATIVE TO THE CHUNK BASE — `sv_height`, exactly as stored and
+// exactly as saved. Absolute heights would need the base sent beside them and would
+// re-window on the far side, which is a second derivation of a number the format
+// already agreed on. The base travels with the layer instead.
+pub const LAYER_FIELDS = 7;
+
+pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector<integer> {
+  out: vector<integer> = [];
+  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  if ci < 0 { return out; }
+  if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return out; }
+  for c in w.w_chunks[ci].ck_layers[l].ly_cells {
+    out += [c.sv_height as integer ?? 0, c.sv_material as integer ?? 0,
+            c.sv_item as integer ?? 0, c.sv_item_rotation as integer ?? 0,
+            c.sv_wall_n as integer ?? 0, c.sv_wall_ne as integer ?? 0,
+            c.sv_wall_se as integer ?? 0];
+  }
+  out
+}
+
+// The other direction: a whole layer written at once, for a cache filling itself.
+//
+// ⚠ NOT `world_set_column` PER CELL. A layer is 1024 cells and a column write checks
+// `F1`, `W1` and `R1` over the whole column each time — a thousand of those to place
+// one layer, on every chunk the client streams. This is the cache's own path and it
+// writes what it was given: the CALLER is copying a store that already passed those
+// checks, and re-deriving them here would be checking the server's arithmetic with
+// the server's arithmetic.
+//
+// That is exactly why it returns the CRC rather than `void`. A bulk write with no
+// checks needs the caller to be able to say *this is the layer I was sent* — so the
+// answer to "did it land" is the same number the format uses, computed after.
+pub fn world_put_layer(w: &World, cx: integer, cz: integer, base: integer,
+                       id: integer, kind: integer, ver: integer,
+                       flat: vector<integer>) -> integer {
+  if len(flat) != CHUNK_CELLS * LAYER_FIELDS { return 0; }
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 {
+    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
+    ci = len(w.w_chunks) - 1;
+    w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
+  }
+  w.w_chunks[ci].ck_base = base;
+  li = 0 - 1;
+  for i in 0..len(w.w_chunks[ci].ck_layers) {
+    if w.w_chunks[ci].ck_layers[i].ly_id == id { li = i; }
+  }
+  if li < 0 {
+    w.w_chunks[ci].ck_layers += [Layer { ly_id: id, ly_kind: kind, ly_ver: ver,
+                                         ly_cells: empty_cells() }];
+    li = len(w.w_chunks[ci].ck_layers) - 1;
+  }
+  w.w_chunks[ci].ck_layers[li].ly_kind = kind;
+  w.w_chunks[ci].ck_layers[li].ly_ver = ver;
+  for k in 0..CHUNK_CELLS {
+    b = k * LAYER_FIELDS;
+    w.w_chunks[ci].ck_layers[li].ly_cells[k] = StoredHex {
+      sv_height: (flat[b] ?? 0) as u16? ?? 0,
+      sv_material: (flat[b + 1] ?? 0) as u8? ?? 0,
+      sv_item: (flat[b + 2] ?? 0) as u8? ?? 0,
+      sv_item_rotation: (flat[b + 3] ?? 0) as u8? ?? 0,
+      sv_wall_n: (flat[b + 4] ?? 0) as u8? ?? 0,
+      sv_wall_ne: (flat[b + 5] ?? 0) as u8? ?? 0,
+      sv_wall_se: (flat[b + 6] ?? 0) as u8? ?? 0,
+    };
+  }
+  layer_crc(w.w_chunks[ci].ck_layers[li])
+}
+
 pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> boolean {
   world_chunk_version(w, q, r) > built_at
 }

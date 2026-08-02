@@ -1,0 +1,117 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A LAYER, OUT AND BACK — plan 16's S2 foundation.
+//
+// The client caches voxels and has to prove its copy is the server's. Three calls
+// carry that: `world_layer_bytes` reads a layer flat, `world_put_layer` writes one
+// whole, and `world_layer_crc` is the FILE FORMAT'S OWN checksum over it — the same
+// number `world_save` writes and `world_load` refuses on.
+//
+// ⚠ THE CRC IS NOT A HASH INVENTED FOR THE WIRE, and that is the point of using it.
+// Two sides that agree on a checksum they made up agree about the wrong thing; this
+// way "the client matches the server" and "the client would survive a round trip"
+// are one claim rather than two that can drift apart.
+use hex_world;
+
+fn mk() -> World { world_new(0.25, 0, 10, 4).wn_world }
+fn cell(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
+
+// A world with something worth checksumming: varied heights, a material, an item and
+// a wall, so a copy that drops any FIELD shows up rather than one that drops a cell.
+fn seeded() -> World {
+  w = mk();
+  for q in 0..6 {
+    for r in 0..6 {
+      world_set_column(w, Column { co_q: q, co_r: r, co_cells: [cell(40 + q * 3 + r, 1)] });
+    }
+  }
+  col = world_column(w, 2, 2);
+  c0 = col.co_cells[0] ?? Hex {};
+  world_set_column(w, Column { co_q: 2, co_r: 2,
+    co_cells: [Hex { h_height: c0.h_height, h_material: c0.h_material,
+                     h_item: 5 as u8? ?? 0, h_wall_n: 3 as u8? ?? 0 }],
+    co_ids: [col.co_ids[0] ?? 0] });
+  w
+}
+
+fn test_a_layer_reads_out_flat_at_the_size_the_format_says() {
+  w = seeded();
+  b = world_layer_bytes(w, 0, 0, 0);
+  assert(len(b) == CHUNK_CELLS * LAYER_FIELDS,
+         "{CHUNK_CELLS} cells of {LAYER_FIELDS} fields, got {len(b)}");
+}
+
+fn test_a_layer_put_back_reproduces_the_checksum() {
+  // The round trip, and the claim S2 rests on: what came off one store and went into
+  // another is the same layer, by the format's own arithmetic.
+  w = seeded();
+  src = world_layer_bytes(w, 0, 0, 0);
+  want = world_layer_crc(w, 0, 0, 0);
+  assert(want != 0, "the source layer has a checksum to match, got {want}");
+
+  w2 = mk();
+  got = world_put_layer(w2, 0, 0, world_chunk_base(w, 0, 0),
+                        world_layer_id(w, 0, 0, 0), KIND_TERRAIN,
+                        world_layer_version(w, 0, 0, 0), src);
+  assert(got == want, "the copy checksums the same: {got} vs {want}");
+  assert(world_layer_crc(w2, 0, 0, 0) == want, "and reads back the same afterwards");
+}
+
+fn test_the_cells_themselves_survive_and_not_merely_the_checksum() {
+  // ⚠ A CHECKSUM IS NOT A COPY. A put that agreed on the number and lost the cells
+  // would pass the test above; this is the control for it, on the one cell carrying
+  // every field at once.
+  w = seeded();
+  w2 = mk();
+  world_put_layer(w2, 0, 0, world_chunk_base(w, 0, 0), world_layer_id(w, 0, 0, 0),
+                  KIND_TERRAIN, world_layer_version(w, 0, 0, 0),
+                  world_layer_bytes(w, 0, 0, 0));
+  a = world_cell(w, 2, 2, 0);
+  b = world_cell(w2, 2, 2, 0);
+  assert(a.h_height == b.h_height, "height {a.h_height} vs {b.h_height}");
+  assert(a.h_material == b.h_material, "material");
+  assert((b.h_item as integer ?? 0) == 5, "the item came with it, got {b.h_item}");
+  assert((b.h_wall_n as integer ?? 0) == 3, "and the wall byte, got {b.h_wall_n}");
+}
+
+fn test_one_changed_cell_changes_the_checksum() {
+  // ⚠ THE CONTROL THAT MATTERS, because every test above passes on a checksum that
+  // is constant. S2's gate is *mutate one cell on one side and watch the comparison
+  // fail*; if a single cell cannot move the number, that gate proves nothing.
+  w = seeded();
+  before = world_layer_crc(w, 0, 0, 0);
+  col = world_column(w, 3, 3);
+  c = col.co_cells[0] ?? Hex {};
+  world_set_column(w, Column { co_q: 3, co_r: 3,
+    co_cells: [Hex { h_height: ((c.h_height as integer ?? 0) + 1) as u16? ?? 0,
+                     h_material: c.h_material }],
+    co_ids: [col.co_ids[0] ?? 0] });
+  after = world_layer_crc(w, 0, 0, 0);
+  assert(after != before, "one cell moved the checksum: {before} -> {after}");
+}
+
+fn test_a_wrong_sized_payload_is_refused_rather_than_half_written() {
+  // A truncated frame must leave the cache alone. Half a layer that checksums to
+  // something is worse than no layer: it disagrees for a reason nobody can see.
+  w2 = mk();
+  short: vector<integer> = [1, 2, 3];
+  assert(world_put_layer(w2, 0, 0, 0, 1, KIND_TERRAIN, 1, short) == 0,
+         "a short payload is refused");
+  assert(len(world_column(w2, 0, 0).co_cells) == 0, "and nothing was created");
+}
+
+fn test_a_put_layer_makes_the_chunk_and_the_layer_it_needs() {
+  // The client starts empty: the first frame for a chunk has to create it, base and
+  // all, or every height it carries is windowed against zero.
+  w = seeded();
+  w2 = mk();
+  base = world_chunk_base(w, 0, 0);
+  world_put_layer(w2, 0, 0, base, world_layer_id(w, 0, 0, 0), KIND_TERRAIN, 7,
+                  world_layer_bytes(w, 0, 0, 0));
+  assert(world_chunk_base(w2, 0, 0) == base,
+         "the base came with it: {world_chunk_base(w2, 0, 0)} vs {base}");
+  assert(world_layer_version(w2, 0, 0, 0) == 7, "and the version it was sent");
+  assert(world_cell(w2, 1, 1, 0).h_height == world_cell(w, 1, 1, 0).h_height,
+         "and an absolute height reads the same on both sides");
+}
