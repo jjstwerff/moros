@@ -388,18 +388,56 @@ let frameFails = 0;
 // it and the page are fed the same `M:` broadcasts, so the runner's `meshLen` is the
 // set the page is *supposed* to hold — no guess, no clock, no proxy. Anything the
 // page is missing is stream it has not caught up with.
+// ⚠ AND THE CAMERA TOO, WHICH THE MESH COUNT CANNOT SEE. `C:` is broadcast to both
+// sides exactly as `M:` is, so the page's view matrix is comparable against the
+// runner's the same way — and it is the one the gates change LAST. `send 40:4` then
+// `send 3:0,-20000` then a shot: if the page has not processed those two yet, the
+// picture is of the old camera, with every mesh present and correct. That frame reads
+// as a renderer fault and is a race.
 const browserLag = async () => {
   const st = await call('Runtime.evaluate', { returnByValue: true, expression:
-    `(() => (typeof parts === 'undefined') ? null : parts.size)()` });
-  const got = st?.result?.value;
-  return { page: got ?? -1, wire: meshLen.size };
+    `(() => (typeof parts === 'undefined') ? null
+            : { n: parts.size, v: view ? Array.from(view) : null })()` });
+  const v = st?.result?.value;
+  const mine = view ?? null;
+  let same = false;
+  if (v?.v && mine && v.v.length === mine.length) {
+    same = true;
+    for (let i = 0; i < mine.length; i += 1) {
+      if (Math.abs(v.v[i] - mine[i]) > 1e-6) { same = false; break; }
+    }
+  }
+  return { page: v?.n ?? -1, wire: meshLen.size, cam: same };
+};
+
+// Wait until the page is showing what the runner already knows — every mesh, and
+// the same camera. Bounded, and it SAYS SO on timeout rather than photographing the old frame.
+//
+// ⚠ THE RUNNER IS THE REFERENCE BECAUSE IT IS A CLIENT TOO. Both are fed the same
+// broadcasts, so "the page has caught up" is a comparison and not a guess about how
+// long a browser needs. A sleep here would be the same mistake as the `sleep(4000)`
+// this file's readiness check replaced.
+const settle = async (limitMs = 8000) => {
+  let last = { page: -1, wire: -1, cam: false };
+  for (let t = 0; t < limitMs; t += 100) {
+    last = await browserLag();
+    // ⚠ `waited` IS REPORTED, or this is an instrument nobody can falsify. A wait
+    // that never fires and a wait that is not wired look identical from outside, and
+    // the whole point is to know whether the page was ever behind.
+    if (last.page >= last.wire && last.cam) return { ...last, waited: t };
+    await sleep(100);
+  }
+  console.log(`  !! the page never caught up — parts ${last.page}/${last.wire}`
+            + `, camera ${last.cam ? 'current' : 'STALE'}`);
+  return { ...last, waited: limitMs };
 };
 
 async function frameStats() {
   if (!(await browser())) return { ok: false, why: 'no browser' };
   // ⚠ MEASURED BEFORE THE SHOT, so it describes the frame that is about to be taken
-  // rather than the state afterwards.
-  const lag = await browserLag();
+  // rather than the state afterwards — and WAITED FOR, so the frame is of the state
+  // the script just set up rather than whatever the page had last drawn.
+  const lag = await settle();
   // ⚠ THROUGH THE SCREENSHOT, NOT `readPixels`. A WebGL context without
   // `preserveDrawingBuffer` clears its drawing buffer at composite, so a
   // `readPixels` from outside the render loop returns a black frame however good the
@@ -511,7 +549,36 @@ async function frameStats() {
     sd: +(v.sd ?? 0).toFixed(4),
     bsd: Object.fromEntries(Object.entries(v.bsd ?? {}).map(([k, x]) => [k, +x.toFixed(4)])),
     samples: v.total, share, parts: lag.page, wire: lag.wire,
+    cam: lag.cam, waited: lag.waited,
   };
+}
+
+// The verdict for one frame against one `frame` row's arguments.
+//
+// ⚠ LIFTED OUT SO IT CAN RUN TWICE, which is the whole of the retry below: the same
+// checks against a second shot of the same scene. Inline, a re-shot frame would have
+// to duplicate every threshold, and two copies of a gate's own rules is how they
+// drift apart.
+function judge(f, rest) {
+  const wantSub = rest[0] === undefined ? null : Number(rest[0]);
+  const wantMax = rest[1] === undefined ? null : Number(rest[1]);
+  let verdict = '';
+  let bad = 0;
+  if (wantSub !== null) {
+    if (f.subject < wantSub) { verdict += ` FAIL subject ${f.subject} < ${wantSub}`; bad += 1; }
+    if (wantMax !== null && f.largestShare > wantMax) {
+      verdict += ` FAIL ${f.largest} ${f.largestShare} > ${wantMax}`; bad += 1;
+    }
+  }
+  for (let i = 2; i + 2 < rest.length + 1; i += 3) {
+    const name = rest[i], lo = Number(rest[i + 1]), hi = Number(rest[i + 2]);
+    const got = name === 'lum' ? f.lum
+              : name === 'sd'  ? f.sd
+              : name.startsWith('sd:') ? (f.bsd[name.slice(3)] ?? 0)
+              : (f.share[name] ?? 0);
+    if (got < lo || got > hi) { verdict += ` FAIL ${name} ${got} outside ${lo}..${hi}`; bad += 1; }
+  }
+  return { verdict, bad };
 }
 
 async function snap(name) {
@@ -522,6 +589,11 @@ async function snap(name) {
   await ack('snapshot', 10000);
   if (!shots) { console.log(`  … snap ${tag} — state only (pass --shots for a picture)`); return; }
   if (!(await browser())) return;
+  // ⚠ THE SAME WAIT THE MEASUREMENT DOES, so the PNG and the numbers are of one
+  // instant. A picture taken a frame early is the worst kind of evidence here: it
+  // looks like a rendering fault and it is a race, and it would disagree with a
+  // `frame` row two lines below it that had waited.
+  await settle();
   // ⚠ CLIPPED TO THE CANVAS, and that is not framing — it is the difference
   // between a picture and a blank page. An unclipped `Page.captureScreenshot`
   // under `--use-gl=swiftshader` does not composite the WebGL layer: it returns
@@ -651,43 +723,46 @@ for (const raw of lines) {
     // `frame` reports; `frame <minSubject> <maxLargest>` also JUDGES, which is what
     // turns the instrument into a gate. Both print the whole histogram, because a
     // pass/fail with no numbers behind it is the thing this replaced.
-    const fs2 = await frameStats();
+    let fs2 = await frameStats();
     if (fs2.ok === false) {
       console.log(`  !! ${fs2.why}`);
       if (rest[0] !== undefined) { frameFails += 1; }
       continue;
     }
     const wantSub = rest[0] === undefined ? null : Number(rest[0]);
-    const wantMax = rest[1] === undefined ? null : Number(rest[1]);
-    let verdict = '';
-    let bad = 0;
-    if (wantSub !== null) {
-      if (fs2.subject < wantSub) { verdict += ` FAIL subject ${fs2.subject} < ${wantSub}`; bad += 1; }
-      if (wantMax !== null && fs2.largestShare > wantMax) {
-        verdict += ` FAIL ${fs2.largest} ${fs2.largestShare} > ${wantMax}`; bad += 1;
-      }
-    }
     // ⚠ AND A NAMED SURFACE, IN A BAND — because "the subject" and "the largest" are
     // questions about the frame as a whole, and some claims are about ONE surface.
-    // The roof's underside is the case that needed it: from inside it must be most
-    // of what is overhead, and from OUTSIDE it must be absent, because a surface
-    // that faces the room is only ever seen from the room. Neither of those is a
-    // statement about the biggest bucket.
+    // The roof's underside is the case that needed it: from inside it must be most of
+    // what is overhead, and from OUTSIDE it must be absent, because a surface that
+    // faces the room is only ever seen from the room. Neither of those is a statement
+    // about the biggest bucket. `lum`, `sd` and `sd:<bucket>` ride the same syntax
+    // because they are the same kind of claim — a number in a band.
     //
     //   frame <minSubject> <maxLargest> [<name> <lo> <hi>]...
-    for (let i = 2; i + 2 < rest.length + 1; i += 3) {
-      const name = rest[i], lo = Number(rest[i + 1]), hi = Number(rest[i + 2]);
-      // `lum` is not a surface — it is the frame's mean luminance, and it rides the
-      // same syntax because it is the same kind of claim: a number in a band.
-      // `lum` and `sd` are the whole frame; `sd:<bucket>` is the spread WITHIN one
-      // surface; anything else is a surface's share. All four are the same kind of
-      // claim — a number in a band — so they share one syntax.
-      const got = name === 'lum' ? fs2.lum
-                : name === 'sd'  ? fs2.sd
-                : name.startsWith('sd:') ? (fs2.bsd[name.slice(3)] ?? 0)
-                : (fs2.share[name] ?? 0);
-      if (got < lo || got > hi) {
-        verdict += ` FAIL ${name} ${got} outside ${lo}..${hi}`; bad += 1;
+    let { verdict, bad } = judge(fs2, rest);
+
+    // ⚠ A RED IS CONFIRMED BEFORE IT IS REPORTED, and this is the cause-agnostic half
+    // of the browser problem. Everything the runner can compare — every mesh, the
+    // camera matrix — is waited for before the shot, and the world itself is
+    // deterministic now that the clock is stepped. What is left is the one thing this
+    // side cannot inspect: whether the compositor handed back the frame that was
+    // drawn from that state. So a failing frame is re-settled and re-shot ONCE, and
+    // reported only if it fails again.
+    //
+    // ⚠ IT CANNOT HIDE A REAL FAILURE, because the world does not move between the
+    // two shots — nothing is sent, no tick is asked for, and the scene is the same
+    // one. A genuine defect fails both; a sampling artefact does not. And a retry
+    // that fires SAYS SO on the row, so "it passed on the second look" is never
+    // silent — that would be a gate quietly lowering its own bar.
+    if (bad > 0) {
+      const again = await frameStats();
+      if (again.ok !== false) {
+        const re = judge(again, rest);
+        console.log(`  ⟳ re-shot after ${bad} failed check(s): now ${re.bad}`
+                  + ` — ${re.bad === 0 ? 'the first frame was a sampling artefact'
+                                       : 'the failure is real'}`);
+        fs2 = again; verdict = re.verdict; bad = re.bad;
+        if (wantSub !== null && bad === 0) verdict = ' PASS';
       }
     }
     if (wantSub !== null && bad === 0) verdict = ' PASS';

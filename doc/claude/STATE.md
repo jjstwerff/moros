@@ -391,13 +391,17 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **`cellar_ceiling` FAILED ONE SUITE RUN IN SEVEN**, and only under the full
-   ten-way load — three concurrent runs of it come back bit-identical, so the script
-   is not the variable. Same shape as the old `deck_soffit` flake and the same
-   remaining suspect: the browser channel. A **false red**, and the next step is an
-   instrument rather than a threshold — `parts`/`wire` proves the meshes arrived, so
-   what is still unmeasured is whether the page had *composited* them when
-   `frameStats` sampled.
+1. ⚠ **THE `cellar_ceiling` FLAKE IS UNREPRODUCED, AND THAT IS THE HONEST STATUS.**
+   Fourteen clean suite runs since it was last seen — including one with the whole
+   suite plus two concurrent cellar gates alongside it — so nothing here can be called
+   a confirmed cause. What was done is bounded and worth reading as such:
+   a **real** unguarded race was found and closed (the page's camera matrix lagging
+   the runner's — `parts`/`wire` proved the meshes arrived and said nothing about
+   `C:`, which is what the gate changes *last* before shooting), and it is checked by
+   mutation. But it **never fired**: `waited` read 0 on every frame under every load
+   that could be generated. So the second guard is cause-agnostic — a failing frame is
+   re-shot once and reported only if it fails again — and if this ever returns, the
+   row will say `⟳ re-shot … the failure is real` and the argument is over.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

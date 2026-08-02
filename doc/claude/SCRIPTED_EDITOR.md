@@ -110,6 +110,19 @@ the `deck_soffit` flake. The rule keys on what the script already asks for; the 
 that never `step` keep free-running, because stepping them would hang every one, and a
 script that sets its own `rate` still wins.
 
+⚠ **A frame WAITS for the page to be showing the state the script set up**, and says how
+long it waited. `parts`/`wire` covers the meshes; `cam` covers the camera matrix, which is
+the thing a gate changes *last* — `send 40:4`, `send 3:0,-20000`, shoot — and which the mesh
+count cannot see. Both sides are fed the same broadcasts, so this is a comparison rather than
+a guess about how long a browser needs; a sleep here would be the mistake the readiness check
+already replaced once.
+
+⚠ **And a RED is confirmed before it is reported.** A failing frame is re-settled and re-shot
+once, and reported only if it fails again. It cannot hide a real defect — nothing is sent and
+no tick is asked for between the two shots, so a genuine failure fails both — and a retry
+that fires prints `⟳ re-shot …`, because a gate quietly lowering its own bar is worse than
+the flake it was hiding.
+
 ⚠ **And the frame carries `parts` / `wire`** — the page's mesh count against the runner's.
 The runner is a client too, so it holds the set the page is *supposed* to have, and any
 shortfall is stream the browser has not caught up with. It earned its place by **disproving**
