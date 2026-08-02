@@ -1,5 +1,18 @@
 # 16 — The client split: voxels cached and meshed in the client
 
+| | |
+|---|---|
+| **Status** | **S2 OPEN** (2026-08-02) · S1 shipped 2026-07-29 · `status:active` |
+| **This phase** | voxels on the wire; the client caches them and still draws the SERVER's meshes |
+| **Closes when** | for every loaded chunk the client's cached bytes and the server's agree, **by the format's own per-chunk CRC** — and the control (mutate one cell on one side) has been seen red |
+| **Deletes** | nothing. S2 is the measurement step, and that is the point of doing it before S3 |
+
+⚠ **A CHECKPOINT SITS BETWEEN S1 AND S2 AND HAS NOT BEEN ANSWERED.** The ladder marks it
+✋ *"the wasm client is the one to build on — both renderers are green; which one continues
+is yours"*. S2 does not delete `editor.html`, so it is not blocked on that answer — but it
+builds the voxel cache into **one** of the two clients, and if the other is the one that
+continues then this phase lands in the wrong place. Ask before the first frame, not after.
+
 **The world model stays in the server; the view moves to a wasm/loft client.** The client
 caches voxels as they mutate and derives its own meshes; the camera follows. The seam and
 its justification are in [EDITOR_SUBSTRATE.md](../../doc/claude/EDITOR_SUBSTRATE.md) — this
