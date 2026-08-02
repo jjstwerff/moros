@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **S2 OPEN** (2026-08-02) · S1 shipped 2026-07-29 · `status:active` |
+| **Status** | **S2 OPEN** (2026-08-02) · S1 shipped 2026-07-29 · **`editor.html` DELETED 2026-08-02** · `status:active` |
 | **This phase** | voxels on the wire; the client caches them and still draws the SERVER's meshes |
 | **Closes when** | for every loaded chunk the client's cached bytes and the server's agree, **by the format's own per-chunk CRC** — and the control (mutate one cell on one side) has been seen red |
 | **Deletes** | nothing. S2 is the measurement step, and that is the point of doing it before S3 |
@@ -64,11 +64,26 @@ diagnosis: served on any other port the client comes back `meshes 0, cameras 0` 
 empty `[error] Vertex:`, which reads as a shader regression and is a dead socket. It is
 also why the wasm client can never join `make gate`, which hands every gate its own port.
 
-⚠ **A CHECKPOINT SITS BETWEEN S1 AND S2 AND HAS NOT BEEN ANSWERED.** The ladder marks it
-✋ *"the wasm client is the one to build on — both renderers are green; which one continues
-is yours"*. S2 does not delete `editor.html`, so it is not blocked on that answer — but it
-builds the voxel cache into **one** of the two clients, and if the other is the one that
-continues then this phase lands in the wrong place. Ask before the first frame, not after.
+✅ **THE CHECKPOINT IS ANSWERED** (2026-08-02, the user): the wasm client is the one, and
+`html/editor.html` is deleted. `/` and `/client` both serve the loft client; all 31 gates
+drive it with their thresholds untouched.
+
+⚠ **THREE THINGS HAD TO GO FIRST, and each was a real defect the delete surfaced:**
+
+1. **`WS_URL` was a compile-time constant** (`ws://127.0.0.1:18090/ws`), so the client
+   could only ever be driven on the default port — `run-gates.sh` hands every gate its
+   own from `GATE_PORT_BASE`. It is `/ws` now: the `WebSocket` constructor resolves a
+   relative URL against the document, so the browser answers the question the client
+   cannot ask. (Patching it server-side was tried and does not work — the string lives
+   inside the WASM binary, zero occurrences in the served HTML.)
+2. **`WIN_W`x`WIN_H` was 1280x800 against a drawn region of 1200x660** — the browser
+   gives the page the window less its ~140px HUD — so 22.66 % of every frame was dead
+   canvas. Sized to the region, the sample count is 49,500, which is what the JavaScript
+   produced, and the gates keep their thresholds.
+3. **The screenshot clip was not clamped to the viewport.** The canvas sits at (-8,-2)
+   from the body margin in a 1200x657 viewport, and `captureScreenshot` fills the part of
+   a clip lying outside with BLACK — 0.61 % of the frame, which `camera_indoors`' own
+   `black 0 0.002` row caught. That row doing its job on the wrong subject.
 
 **The world model stays in the server; the view moves to a wasm/loft client.** The client
 caches voxels as they mutate and derives its own meshes; the camera follows. The seam and
