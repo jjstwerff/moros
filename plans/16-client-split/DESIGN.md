@@ -7,36 +7,62 @@
 | **Closes when** | for every loaded chunk the client's cached bytes and the server's agree, **by the format's own per-chunk CRC** — and the control (mutate one cell on one side) has been seen red |
 | **Deletes** | nothing. S2 is the measurement step, and that is the point of doing it before S3 |
 
-## ✅ `V:` IS PORTED (2026-08-02) — and the two renderers do NOT yet agree
+## ✅ `V:` IS PORTED AND THE TWO RENDERERS AGREE (2026-08-02)
 
 The client had **no `V:` handler and no `uAmb`/`uLamp` in its shader**: S1 shipped
-2026-07-29 and the five camera modes landed after it, so the port was of a renderer
-from before the camera work. Now in: the hide mask (bit 0 the figure, bit *k* surface
-*k*, derived from the mesh id — no wire change), the ambient, the lamp with its
-inverse-square falloff, and `uEye` taken out of the view matrix rather than sent.
+2026-07-29 and the five camera modes landed after it, so this was a renderer from
+before the camera work rather than a weaker one. Now in: the hide mask (bit 0 the
+figure, bit *k* surface *k*, derived from the mesh id — no wire change), the ambient,
+the lamp with its inverse-square falloff, and `uEye` taken out of the view matrix.
 
-**Measured, one script through both pages** (`tools/script.mjs --client`):
+**One script, both pages** (`tools/script.mjs --client`):
 
-| mode | `editor.html` lum | wasm lum |
-|---|---|---|
-| FOLLOW | 0.4221 | 0.4181 |
-| SNUG | 0.1827 | **0.1283** |
-| CUTAWAY | 0.4241 | **0.3293** |
-| EYES | 0.2986 | **0.2260** |
+| mode | `editor.html` | wasm | Δ lum |
+|---|---|---|---|
+| FOLLOW | grass 0.5369, lum 0.4221, sd 0.1031 | grass 0.5231, lum 0.4161, sd 0.1109 | −1.4 % |
+| SNUG | masonry 0.4784, lum 0.1827, sd 0.1430 | masonry 0.4386, lum 0.1763, sd 0.1442 | −3.5 % |
+| CUTAWAY | masonry 0.4311, lum 0.4241, sd 0.0500 | masonry 0.4348, lum 0.4245, sd 0.0520 | **+0.1 %** |
+| EYES | masonry 0.5285, lum 0.2986, sd 0.1138 | masonry 0.5198, lum 0.2944, sd 0.1145 | −1.4 % |
 
-⚠ **THE MODES WORK — THE LEVELS DO NOT MATCH.** Four distinct frames in the right
-order (SNUG darkest, CUTAWAY the brightest interior) is the port doing its job; before
-it, the client had one lighting for all four. But the wasm client is **~25 % darker at
-every station**, and that is not the lamp: CUTAWAY sends `lamp 0` and is dark too. Nor
-is it the window — `editor.html` reads the same at 1200x800 and 1280x800 because it
-re-asks for a camera on resize. Something else in the two lighting paths differs, and
-**that is what has to be found before `editor.html` can go.**
+### ⚠ The "25 % darker" was never lighting — it was dead canvas
 
-⚠ **AND THE COMPARISON IS WEAKER ON THE WASM SIDE, WHICH IS SAID RATHER THAN HIDDEN.**
-`settle` interrogates `editor.html`'s own JS (`parts.size`, its `view`) to know the
-page is showing the current state; a wasm page has no such globals, so `--client`
-degrades to "the canvas is not blank". FOLLOW reading `sky 0.7734` against `grass
-0.5369` is the shape of a frame taken early, and it cannot be ruled out yet.
+The first measurement had the wasm client dark at every station, and it looked exactly
+like a lighting bug. Two stations settled it, and the point is that they were chosen to
+*separate* the paths rather than to confirm a suspicion:
+
+- **sky** passes through no lighting term at all — it is the clear colour;
+- **a soffit seen from directly beneath** is one surface, one normal, one colour.
+
+Both were low **by the same factor**, which no lighting fault produces. The tell was in
+the shares: `largestShare` read **0.7734 at two completely different stations**, to four
+decimals. That is not a render result, it is a fixed fraction of the image —
+`0.7734 × 64000 = 49 498`, and `editor.html` samples **49 500**.
+
+The wasm canvas is a fixed `WIN_W × WIN_H` = 1280×800, while the region actually drawn
+is the browser VIEWPORT: the window less the ~140 px `<pre>` HUD beneath it. At the
+harness's 1200×800 that is 1200×660 inside a 1280×800 canvas — a black L of dead area
+on the right and bottom, 22.66 % of every frame, averaged into the mean. Predicted from
+the dead fraction alone: 0.4147 and 0.1087. Measured: 0.4181 and 0.1112.
+
+⚠ **The client cannot fix this itself.** `gl_window_width` / `gl_window_height` are not
+in the browser's host-import set — calling one is a LinkError at instantiate
+(loft-lang/loft#668) — which is *why* the canvas is a constant. The harness sizes the
+window so the assumption becomes true (`1280×940`), and says so where the constant is.
+
+### And the wasm side has a real settle now, not a degrade
+
+`settle` interrogates `editor.html`'s own globals; a wasm page has none, so `--client`
+first fell back to "the canvas is not blank". **That is what made FOLLOW read `sky
+0.995`**: the client draws *nothing* before its first `C:` — deliberately, because every
+vertex would otherwise land in one place — so an early shot is the clear colour and
+nothing else, at a station pointed at the ground. The page reports itself in its HUD
+(`meshes … cameras … parts`), so the same two questions are asked of it, and `waited`
+shows it doing real work — 4900 ms on the first frame of the run above.
+
+⚠ **`WS_URL` IS HARDCODED TO PORT 18090**, which is worth knowing before the next
+diagnosis: served on any other port the client comes back `meshes 0, cameras 0` with an
+empty `[error] Vertex:`, which reads as a shader regression and is a dead socket. It is
+also why the wasm client can never join `make gate`, which hands every gate its own port.
 
 ⚠ **A CHECKPOINT SITS BETWEEN S1 AND S2 AND HAS NOT BEEN ANSWERED.** The ladder marks it
 ✋ *"the wasm client is the one to build on — both renderers are green; which one continues

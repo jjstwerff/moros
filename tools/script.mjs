@@ -60,7 +60,21 @@ let PORT = +(process.env.EDITOR_PORT ?? 18090), keep = false, shots = false, was
 //
 // The default stays 1200x800 so every existing gate's thresholds are untouched; an
 // A/B passes 1280x800 to BOTH sides.
-let WIN = '1200,800';
+let WIN = null;
+// ⚠ THE WASM PAGE NEEDS A TALLER WINDOW THAN IT DRAWS INTO, and getting this wrong
+// reads exactly like a lighting bug. Its canvas is a fixed `WIN_W`x`WIN_H` = 1280x800
+// (`editor_client.loft`, and it is fixed because `gl_window_width`/`gl_window_height`
+// are not in the browser's host-import set at all — loft-lang/loft#668), while the
+// region actually drawn is the browser VIEWPORT: the window less the ~140px `<pre>`
+// HUD under the canvas. At the default 1200x800 that is 1200x660 inside a 1280x800
+// canvas, so 22.66% of every frame is black L-shaped dead area — and a mean
+// luminance over it comes back 22% low at EVERY station.
+//
+// Measured, and it is why this constant is here rather than a comment: the two
+// renderers read `lum 0.4181` against `0.5362` on identical sky, `0.1112` against
+// `0.1406` on identical soffit. Predicted from the dead fraction alone: 0.4147 and
+// 0.1087. At 1280x940 the drawn region fills the canvas and they agree to 0.3%.
+const WASM_WIN = '1280,940';
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--port') PORT = +args[++i];
   if (args[i] === '--keep') keep = true;
@@ -78,6 +92,7 @@ for (let i = 1; i < args.length; i++) {
 // globals to ask. Against `/client` they fall back to "the canvas is not blank",
 // which is strictly weaker, so it SAYS so rather than reporting a check it did not
 // make. A silent degrade here would let a stale frame pass as a match.
+if (WIN === null) WIN = wasm ? WASM_WIN : '1200,800';
 const PAGE = wasm ? '/client' : '/';
 const CANVAS = wasm ? '#c' : '#gl';
 
@@ -422,7 +437,26 @@ let frameFails = 0;
 // picture is of the old camera, with every mesh present and correct. That frame reads
 // as a renderer fault and is a race.
 const browserLag = async () => {
-  if (wasm) return { page: -1, wire: meshLen.size, cam: true, degraded: true };
+  // ⚠ THE WASM PAGE REPORTS ITSELF IN ITS OWN HUD, which is weaker than the
+  // JavaScript's globals but is NOT nothing — and "nothing" is what this used to
+  // assume. `<pre id="out">` carries `meshes M ... cameras C ... parts R`, so the
+  // same two questions can be asked: has it caught up with the wire, and does it
+  // have a camera at all.
+  //
+  // ⚠ WITHOUT THE CAMERA TEST THE FIRST FRAME IS A LIE. The client draws NOTHING
+  // before its first `C:` — deliberately, because every vertex would land in one
+  // place — so a shot taken early is the clear colour and nothing else: measured,
+  // FOLLOW came back `sky 0.995, lum 0.5378`, which is the sky station's own number
+  // at a station pointed at the ground.
+  if (wasm) {
+    const st = await call('Runtime.evaluate', { returnByValue: true, expression:
+      `(() => { const el = document.querySelector('#out');
+                return el ? el.textContent : ''; })()` });
+    const txt = st?.result?.value ?? '';
+    const m = [...txt.matchAll(/meshes (\d+),.*?cameras (\d+),.*?parts (\d+)/g)].pop();
+    if (!m) return { page: 0, wire: meshLen.size, cam: false };
+    return { page: +m[1], wire: meshLen.size, cam: +m[2] > 0 && +m[3] > 0 };
+  }
   const st = await call('Runtime.evaluate', { returnByValue: true, expression:
     `(() => (typeof parts === 'undefined') ? null
             : { n: parts.size, v: view ? Array.from(view) : null })()` });
@@ -449,8 +483,6 @@ const settle = async (limitMs = 8000) => {
   let last = { page: -1, wire: -1, cam: false };
   for (let t = 0; t < limitMs; t += 100) {
     last = await browserLag();
-    // Nothing to compare against on the wasm page — take the frame and say so.
-    if (last.degraded) return { ...last, waited: t };
     // ⚠ `waited` IS REPORTED, or this is an instrument nobody can falsify. A wait
     // that never fires and a wait that is not wired look identical from outside, and
     // the whole point is to know whether the page was ever behind.
