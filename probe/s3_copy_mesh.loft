@@ -4,27 +4,32 @@ use hex_world;
 use hex_editor;
 use moros_terrain;
 
+// ⚠ THE COPY GOES THROUGH A `&World` PARAMETER. Done inline on a local in `main`,
+// `world_put_layer(b, …)` left `b` EMPTY — and an empty world meshes happily at
+// `base + 0`, so every vertex came back with the right x and z and the wrong y. That
+// is what "the base does not survive the copy" looked like, and it was the probe.
+fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
+  q0 = scx * hex_world::CHUNK_W;
+  r0 = scz * hex_world::CHUNK_W;
+  for li in 0..len(world_column(a, q0, r0).co_ids) {
+    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
+      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
+        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
+        hex_world::world_layer_version(a, q0, r0, li),
+        hex_world::world_layer_bytes(a, q0, r0, li));
+    }
+  }
+}
+
 fn main() {
   a = world_new(0.25, 0, 10, 4).wn_world;
-  for q in 0 - 40..41 {
-    for r in 0 - 40..41 { hex_editor::ground_set(a, q, r, 40 + q - r, hex_editor::SURFACE_MAT); }
+  for q in 0 - 120..121 {
+    for r in 0 - 120..121 { hex_editor::ground_set(a, q, r, 40 + q - r, hex_editor::SURFACE_MAT); }
   }
   // the copy, chunk by chunk, the way the client fills its cache
   b = world_new(0.25, 0, 10, 4).wn_world;
-  for scx in 0 - 2..3 {
-    for scz in 0 - 2..3 {
-      q0 = scx * hex_world::CHUNK_W;
-      r0 = scz * hex_world::CHUNK_W;
-      for li in 0..len(world_column(a, q0, r0).co_ids) {
-        if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-          hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-            hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-            hex_world::world_layer_version(a, q0, r0, li),
-            hex_world::world_layer_bytes(a, q0, r0, li));
-        }
-      }
-    }
-  }
+  for scx in 0 - 3..4 { for scz in 0 - 3..4 { copy_chunk(a, b, scx, scz); } }
+
   agree = 0;
   bad = 0;
   first = "";

@@ -357,61 +357,32 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 and still `cache agree 24 bad 0` — which now MEANS something, because both sides agree
 what a coordinate is.
 
-### ⚠ CORRECTION (2026-08-02): THE COPY IS NOT AT FAULT
+### ✅ THE COPY IS CORRECT — `agree 81 bad 0` (2026-08-02)
 
-`probe/s3_copy_narrow.loft` refutes the section below. Copying one chunk into a fresh
-world, and all of them into one world the way the client fills up, both give:
+`probe/s3_copy_mesh.loft`: build a world, copy every layer into a second one exactly as
+the client does, mesh 81 tiles from both. **All 81 match.** So
+`world_layer_bytes` / `world_put_layer` / `world_chunk_base` reproduce a world exactly,
+negative chunks included, and the terrain mesher is a pure function of the cells.
 
-```
-chunk (-1,-1): base a=9  b=9   cell(-29,-27) h a=38 b=38
-chunk ( 0, 0): base a=9  b=9   cell(3,5)     h a=38 b=38
-chunk ( 1, 1): base a=32 b=32  cell(35,37)   h a=38 b=38
-```
+⚠ **THE `agree 3 bad 78` THAT PRECEDED IT WAS THE PROBE, NOT THE CODE.** It copied into
+a LOCAL `b` inline in `main`; `world_put_layer(b, …)` left it empty. An empty world
+meshes happily at `base + 0`, which is why every vertex came back with the right x and
+z and the wrong y — and why `b`'s heights moved when the authored extent changed while
+`a`'s did not. Passing `b` through a `&World` parameter is the whole difference:
+`probe/s3_copy_narrow.loft` did that from the start and always said `match true`.
 
-**Bases and cells are exact, negative chunks included.** And meshing tiles whose halo
-lies inside the copied region gives `match true` on every one, 448 vertices each, y
-identical to fifteen digits.
+⚠ **A DIFFERENCE THAT SURVIVES FOUR HYPOTHESES IS SUSPECT IN ITSELF.** The coordinate
+system, the base, the halo and partial chunks were each excluded by a measurement, and
+each exclusion was read as "so it must be the next thing" rather than as "so my
+instrument may be lying". The tell was there twice: the narrow probe agreed on the very
+tile the wide one called its first failure, and `b`'s heights depended on the world's
+extent in a way no per-cell copy bug produces.
 
-So `world_layer_bytes` / `world_put_layer` / `world_chunk_base` are correct, and the
-`agree 3 bad 78` below comes from something the two probes differ in — most likely
-that the wide probe meshes tiles whose halo reaches chunks it did not copy, or copies
-chunks that are only PARTIALLY authored, where an absent cell reads `base + 0` and the
-two worlds' bases for that chunk need not agree. **That is the next thing to isolate**,
-and it is one edit to the wide probe: copy a strictly larger region than it meshes, and
-see whether the count goes to zero.
-
-⚠ **What still stands from below:** `layer_crc` is over the RELATIVE `sv_height`, so it
-cannot see the base. S2's `cache agree 24 bad 0` therefore does not prove the heights
-land right — that remains an untested claim whatever the cause of S3's mismatch, and
-`layer_wire.loft` should gain a base assertion across MANY chunks.
-
-### ~~IT IS THE COPY, NOT THE COORDINATES~~ — superseded by the correction above
-
-`probe/s3_copy_mesh.loft` builds a world, copies every layer into a second one exactly
-as the client does (`world_layer_bytes` → `world_put_layer`), and meshes the same tiles
-from both. **`agree 3 bad 78`.** No socket, no wasm, no halo — the disagreement is in
-the copy.
-
-And the first differing vertex names the failure precisely:
-
-```
-a = (-55.4256, 9.9444, -48)
-b = (-55.4256, 3.5556, -48)
-```
-
-**x and z identical, y wrong.** The HEIGHTS do not survive the copy. `sv_height` is
-stored relative to the chunk's window base (`S1`), so a copy that gets the cells right
-and the base wrong reproduces every cell faithfully at the wrong altitude.
-
-⚠ **AND THAT IS WHY S2 WENT GREEN.** `layer_crc` is computed over `sv_height` — the
-RELATIVE value — so it round-trips perfectly while the absolute heights are wrong. The
-checksum cannot see the base, by construction. `cache agree 24 bad 0` was true and
-measured the wrong thing; S2's own `layer_wire.loft` asserts the base survives for ONE
-chunk, and that test passes — whatever this is, it needs more than one.
-
-*So the next step is not a coordinate change and not a halo precondition.* It is this
-probe, narrowed: it runs in seconds, headless, and the answer is somewhere between
-`world_chunk_base`, the order `world_put_layer` creates chunks in, and the window.
+**So S3's remaining question is entirely on the wire side** — `ground 41 bad 7`, seven
+tiles all carrying a negative coordinate — and it is now known NOT to be the copy, the
+mesher, the coordinates or the halo. What differs there and not here: the client
+mutates `st.cache`, a struct FIELD, through the same call. That is the next thing to
+put a probe on, and this file is the shape of it.
 
 ⚠ **The seven wire-side failures all carry a negative coordinate** — `0,-1` `-1,0` `-1,-1`
 `1,-1` `-1,-4` `2,-1` `3,-1`. Two readings are still open and the per-tile report
