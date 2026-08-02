@@ -370,13 +370,30 @@ Measured while attempting it (2026-08-02), so the next attempt does not rediscov
 - ⚠ **`CHUNK` = 8 IS NOT `CHUNK_W` = 32.** The renderer tiles at 8 because that is
   what a rebuild costs; the store tiles at 32 for windowing and elision. The mesh tile
   belongs to `moros_render` and conflating the two would be silent and severe.
+- ⚠ **THE BLOCKER IS THE DEPENDENCY'S BLAST RADIUS, NOT THE MOVE.** Attempted
+  2026-08-02 and reverted. The extraction itself works — 32 gates green, meshes
+  byte-identical — but `moros_render` needs `hex_editor` (for `terrain_h`,
+  `ground_open`, `SURFACE_MAT`), and that drags its whole cone (`hex_form`, `hex_way`,
+  `hex_draw`, `hex_shape`, `hex_place`, …) into every consumer of `moros_render`.
+  `moros_sim`'s tests went red on `Cannot redefine 'fabs'` (11 files, from
+  `hex_form`), and renaming those surfaced `seg_len` next. It cascades.
+  **The design question to settle first:** the mesher is GEOMETRY, while `terrain_h`
+  / `ground_open` / `SURFACE_MAT` are editor policy. Either the mesher takes them as
+  parameters — awkward, since `ground_open` is called per cell inside the loop — or it
+  belongs in `hex_editor` with the handful of `moros_render` primitives it needs
+  (`hex_to_world`, `hex_corner_world`, `HEIGHT_SCALE`), or in a package of its own.
+  Renaming a sibling's test helpers to accommodate the import is the wrong direction
+  and was the tell.
 - ⚠ **A SECOND SOURCE FILE NEEDS `use <filename>;` IN THE ENTRY FILE**, and its
   `pub fn`s then export under the **package** name, not the module's. `hex_editor.loft`
   line 23 is `use gesture;`, and every caller says `hex_editor::col_has_below` — never
   `gesture::`. Missing that one line is what made the first attempt fail with *Unknown
   function emit_tri* while `moros_render`'s own 167 tests passed: the file compiled and
   nothing imported it. Verified with a probe — a sibling file returning 4242, reached
-  as `moros_render::terrain_mesh_probe()`.
+  as `moros_render::terrain_mesh_probe()`. ⚠ And the visibility is ONE-WAY: the entry
+  sees the sibling, never the reverse — so a sibling cannot use the entry's own
+  functions, which is why the mesher cannot simply become `terrain_mesh.loft` beside
+  `hex_to_world`. `hex_editor` has the same shape: `gesture.loft` is the lower layer.
 
 The move must leave every mesh byte-identical, so the gate for it is the existing 32:
 they read the emitted geometry and would not be quiet about a changed triangle.
