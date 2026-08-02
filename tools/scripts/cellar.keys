@@ -89,18 +89,24 @@ step 60
 # move in opposite directions: a gesture that opened the whole disc would still be
 # "684 minus something" to a looser row.
 mesh soffit 648 648
-# ⚠ AND THIS NUMBER IS `I1` SEEN FROM THE PICTURE. `emit_floor_slab` puts a rim on
-# every edge where the floor does not continue, and it asks BY LABEL — so while one
-# cellar across a chunk seam carried two labels, it drew a skirt down the middle of
-# its own floor. A/B'd on this world by backing the writer fix out and running again:
-# 618 with the labels split, 522 with them joined. The 96 is sixteen quads of rim
+# ⚠ THIS NUMBER IS THE ONE THAT MOVED TWICE, and each move is a finding.
+#
+# `emit_floor_slab` puts a rim on every edge where the floor does not continue. It
+# used to ask BY LABEL, so while one cellar across a chunk seam carried two labels it
+# drew a skirt down the middle of its own floor: A/B'd by backing the writer fix out,
+# 618 with the labels split against 522 with them joined — 96 vertices, sixteen quads
 # along a seam that is not an edge of anything.
 #
-# ⚠ AND `mesh wall` ABOVE READ 174 EITHER WAY, which is the same measurement making
-# the opposite point: the room wall asks §5's geometric question rather than the
-# labels, so it was already immune to the defect this row is sensitive to. Two
-# readers of one fact, and only the by-label one could be lied to.
-mesh floor 522 522
+# ⚠ THEN 522 -> 588 WHEN IT STOPPED ASKING BY LABEL AT ALL. The extra 66 is eleven
+# quads of RISER at the two treads, and the label version could not have drawn one at
+# any step of any size: a tread and the room it serves share a layer, so "is the
+# neighbour occupied in my layer" always answered yes. By height they are a stride
+# apart and the edge is exposed, which is what a step looks like.
+#
+# ⚠ AND `mesh wall` READ 174 THROUGH ALL OF IT, which is the same measurement making
+# the opposite point: the room wall asked §5's geometric question from the start, so
+# it was never sensitive to any of this. That is the argument that converged the two.
+mesh floor 588 588
 
 echo --- and the room's own floor is a storey under everything else
 # The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each

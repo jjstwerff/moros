@@ -300,6 +300,63 @@ fn test_ground_below_the_ceiling_is_earth_and_not_an_opening() {
          "and it is earth, so the room ends against it");
 }
 
+fn test_a_floor_continues_by_height_and_not_by_which_layer_it_is_in() {
+  // ⚠ THE SIBLING OF `room_continues`, AND THE ONE THE RENDERER'S RIM NOW USES. Both
+  // ask `WORLD_MODEL.md` §5's question — continuity is HEIGHT — and neither trusts a
+  // label, because `I1` is a claim about that match and a reader leaning on it
+  // inherits every way a writer can break it. One did.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  lo = 40 - hex_editor::STOREY_H;
+  // Inside the disc the floor runs on; one cell past it, it stops.
+  assert(hex_editor::floor_continues(w, 1, 0, lo), "the cellar floor runs on at (1,0)");
+  assert(!hex_editor::floor_continues(w, 4, 0, lo),
+         "and stops where the digging did — that edge carries a slab face");
+  // ⚠ AND THE GROUND IS NOT ITS FLOOR. The ground is a whole storey up, so a height
+  // in the middle of the room matches neither plane — which is what makes the match
+  // an identity rather than a nearest-neighbour guess.
+  mid = lo + hex_editor::STOREY_H / 2 ?? 0;
+  assert(!hex_editor::floor_continues(w, 1, 0, mid),
+         "a height between two layers matches neither of them");
+  assert(hex_editor::floor_continues(w, 4, 0, 40), "the ground continues at its own height");
+}
+
+fn test_a_step_gets_a_riser_exactly_when_it_clears_half_the_fold_separation() {
+  // ⚠ WHAT THE LABEL VERSION COULD NOT SEE AT ALL. A tread and the room it serves
+  // are the SAME LAYER, so "is the neighbour occupied in my layer" answered yes for
+  // any step of any size and drew no face at all.
+  //
+  // By height the answer depends on the step, and the threshold is not a taste: ε/2
+  // is the bound that makes §5's match UNIQUE, so a neighbour inside it *is* this
+  // plane and one outside it is a different one. With ε 8 that puts the line at 4 —
+  // and the walker's own stride is 4, so a stair a walker builds gets its risers
+  // while a shallower one reads as continuous floor. Both are pinned here because
+  // the boundary is the interesting part and a single stride would hide it.
+  lo = 40 - hex_editor::STOREY_H;
+  ceil = 40 - hex_editor::SLAB_THICK;
+
+  shallow = world();
+  why = "";
+  hex_editor::storey_add(shallow, 0, 0, 0 - 1, 2, why);
+  hex_editor::cellar_stair(shallow, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  (sq, sr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+  assert(hex_editor::floor_continues(shallow, sq, sr, lo),
+         "a three-unit step is inside eps/2, so the floor reads as continuous");
+
+  steep = world();
+  hex_editor::storey_add(steep, 0, 0, 0 - 1, 2, why);
+  hex_editor::cellar_stair(steep, hex_editor::author_at(0.0, 0.0, 0.0), 4, why);
+  (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+  assert(!hex_editor::floor_continues(steep, pq, pr, lo),
+         "a four-unit step clears it, so that edge carries a riser");
+
+  // ⚠ AND THE ROOM CONTINUES EITHER WAY, which is the whole reason these are two
+  // questions and not one. The plane steps; the void does not.
+  assert(hex_editor::room_continues(steep, pq, pr, lo, ceil),
+         "the room runs past the step it just gained a riser for");
+}
+
 fn test_a_stair_tread_does_not_wall_itself_off_from_its_own_room() {
   // A tread is a stride above the floor it belongs to, so "the neighbour is at my
   // height" would put a wall across the bottom of the stair. Two voids join when

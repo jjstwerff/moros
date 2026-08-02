@@ -1887,23 +1887,6 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
 // the drawn slab's thickness are the same claim about the same material.
 const FLOOR_THICK = hex_editor::SLAB_THICK;
 
-// The neighbour's cell in the layer with this LABEL, or an absent one.
-//
-// ⚠ NOT `world_cell(…, same index)`. Indices are per-chunk, so the identical layer
-// is index 3 here and index 5 one chunk east — and a floor whose neighbour lies
-// across a chunk seam would then compare itself against whatever happens to sit at
-// its own index there. `I1` identifies corresponding layers of different chunks by
-// LABEL and by nothing else; this is that rule, used by a reader.
-fn cell_in_layer(wld: World, q: integer, r: integer, label: integer) -> hex_world::Hex {
-  lc = world_column(wld, q, r);
-  for li2 in 0..len(lc.co_ids) {
-    if (lc.co_ids[li2] ?? 0) == label {
-      return lc.co_cells[li2] ?? hex_world::Hex {};
-    }
-  }
-  hex_world::Hex {}
-}
-
 // The slab under a floor cell — one face per edge the floor does not share with
 // more of itself.
 //
@@ -1911,14 +1894,25 @@ fn cell_in_layer(wld: World, q: integer, r: integer, label: integer) -> hex_worl
 // `emit_wall_panel`'s rule and it is here for its reason: the two libraries walk the
 // corner ring in opposite senses (`(6 - i) % 6` below), so a normal taken from the
 // winding faces inward for half the directions and the slab is lit as a hole.
-fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
-                   label: integer) {
+// ⚠ AND "EXPOSED" IS ASKED BY HEIGHT NOW, NOT BY LABEL. This used to fetch the
+// neighbour's cell in the same LABELLED layer, which is `I1` used by a reader — and
+// a reader that leans on `I1` inherits every way a writer can break it. One did:
+// while a gesture across a chunk seam made two labels, this drew a rim down the
+// middle of a floor that had no edge there, 96 vertices of it on the cellar alone.
+// `floor_continues` asks §5's question instead — is there an occupied cell within
+// ε/2 of my height — which `F1` makes unique and no writer can misreport.
+//
+// ⚠ IT ALSO DRAWS THE STAIR'S RISERS NOW, and that is a gain rather than a side
+// effect. A tread is one stride above the cell beside it and shares its layer, so
+// the label version saw "the floor continues" and left the step as an open slot
+// between the tread's underside and the fan below.
+fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer) {
   ytop = (h as float) * HEIGHT_SCALE;
   ybot = ytop - (FLOOR_THICK as float) * HEIGHT_SCALE;
   cs = hex_to_world(cq, cr, 0);
   for sd in 0..6 {
     (snq, snr) = hex_grid::hex_neighbor(cq, cr, sd);
-    if !hex_world::hex_occupied(cell_in_layer(wld, snq, snr, label)) {
+    if !hex_editor::floor_continues(wld, snq, snr, h) {
       // The two corners this edge is made of — the same pairing `corner_heights`
       // uses to attribute a neighbour's height to the corners it touches, through
       // the same ring-order map `emit_wall_panel` and `emit_hex_sloped` use.
@@ -2221,7 +2215,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // the first reader to want the same fact, and it needs no second query.
             fh = e.h_height as integer ?? 0;
             emit_hex_surface(fm, cq, cr, fh);
-            emit_floor_slab(fm, wld, cq, cr, fh, c.co_ids[e#index] ?? 0);
+            emit_floor_slab(fm, wld, cq, cr, fh);
             // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
             // or the two part company and the deck shows a slot from below.

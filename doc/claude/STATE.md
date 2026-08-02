@@ -22,8 +22,8 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **31 green** · `make lib-test` **972 on both backends** ·
-`lib/hex_editor` **213 tests** · `lib/hex_world` **90**.
+`make gate` **31 green** · `make lib-test` **974 on both backends** ·
+`lib/hex_editor` **215 tests** · `lib/hex_world` **90**.
 ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
@@ -49,6 +49,31 @@ beneath it was opened deliberately. `ground_open` is that rule, and it is free o
 world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once per chunk.
 Probed before building on it: **the hole survives save and load**, because elision
 drops records and the layer is kept alive by every cell that still holds ground.
+
+### Both readers ask §5 now, and the second one gained a stair its risers
+
+`emit_floor_slab` asked **by label**; `room_continues` asked **by height**. Only one of
+them could be lied to, and it was — so both ask §5's question now, of the two different
+things the renderer actually needs:
+
+| | asks | for |
+|---|---|---|
+| `floor_continues(w, q, r, h)` | is there an occupied cell within **ε/2** of `h` | the floor PLANE — a slab's exposed edge |
+| `room_continues(w, q, r, lo, hi)` | do the two **voids** overlap, and is the neighbour underground | the ROOM — where it ends in a wall |
+
+⚠ **They are not the same question, which is why converging is not merging.** At a
+stair tread the plane steps and the void does not: the tread wants a riser *and* no
+wall. A single predicate would have to be wrong about one of them.
+
+⚠ **The tolerance is `F1`, not taste.** Occupied layers are at least ε apart, so at
+most one can lie within ε/2 of any height — the match is unique *by the invariant*.
+
+⚠ **And the label version could never have drawn a riser, at any step of any size.**
+A tread and the room it serves share a layer, so "is the neighbour occupied in my
+layer" always answered yes. Measured: `mesh floor` **522 → 588**, eleven quads of
+riser. The number moved twice in two days and both moves are findings — 618 → 522 when
+`I1` was fixed (a rim down the middle of a seam), 522 → 588 when the label went.
+`mesh wall` read **174 through all of it**, which is the whole argument.
 
 ### The harness is DETERMINISTIC now, which it had only claimed to be
 
@@ -102,9 +127,11 @@ different paths; fixing only the insert would have left `12:+1`, houses and sten
 breaking `I1` while `12:-1` no longer did — a half-fix whose gate goes green and says
 nothing about the other half.
 
-⚠ **And the picture moved.** `emit_floor_slab` asks by label, so a cellar across a
-seam had a skirt down the middle of its own floor: A/B'd, `mesh floor` **618 → 522**,
-sixteen quads of rim along a seam that is not an edge of anything. `mesh wall` read
+⚠ **And the picture moved.** `emit_floor_slab` asked by label *then*, so a cellar
+across a seam had a skirt down the middle of its own floor: A/B'd, `mesh floor` **618
+→ 522**, sixteen quads of rim along a seam that is not an edge of anything. It asks by
+height now — see above — which is what makes that class unreachable rather than merely
+fixed. `mesh wall` read
 **174 either way** — the room wall asks §5's geometric question, so it was already
 immune. Two readers of one fact, and only the by-label one could be lied to.
 
@@ -329,11 +356,11 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **`emit_floor_slab` STILL ASKS BY LABEL**, and now that `I1` holds that is
-   correct — but it is correct *because a writer keeps a promise*, not by
-   construction. `room_continues` asks §5's geometric question and cannot be misled
-   at all. Worth converging on one of the two rather than leaving the renderer with
-   both, and the geometric one is the one that survived being lied to.
+1. ⚠ **A STEP GETS A RISER ONLY IF IT CLEARS `ε/2`**, which couples how a stair looks
+   to the fold separation. With ε 8 the line is at 4 and the walker's stride is
+   exactly 4, so the built stair sits *on* the boundary — a shallower one reads as
+   continuous floor, correctly, but nothing has chosen that. The bound is right (it
+   is what makes §5's match unique); what is unexamined is a stair authored at 3.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

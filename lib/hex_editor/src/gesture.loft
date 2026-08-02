@@ -566,6 +566,37 @@ pub fn col_underground(c: hex_world::Column, idx: integer) -> boolean {
   false
 }
 
+// Does the FLOOR at this height continue into the neighbour, or does it stop?
+//
+// ⚠ §5's CONTINUITY, ASKED OF A PLANE — the sibling of `room_continues`, which asks
+// the same rule of a VOID. Both exist because `WORLD_MODEL.md` §5 defines continuity
+// by height and proves the match unique, so neither has to trust a label: `I1` is a
+// claim *about* that match, and a reader that leans on it inherits every way a writer
+// can get it wrong. One did, for as long as one gesture across a seam made two
+// labels, and it drew a rim down the middle of a floor that had no edge there.
+//
+// ⚠ THE TOLERANCE IS `ε/2` AND IT IS NOT A FUDGE. `F1` keeps occupied layers at least
+// ε apart, so at most one of them can lie within ε/2 of any height — the match is
+// unique by the invariant rather than by hoping. Anything further off is a different
+// layer, and a floor that meets it STOPS.
+//
+// ⚠ AND A STAIR TREAD IS FURTHER OFF, DELIBERATELY. A tread is one stride (4) above
+// the cell beside it and ε/2 is 4, so the two do not match and the tread's edge
+// carries a face — which is the RISER, and it is owed: without it the step is an open
+// slot between the tread's underside and the fan below. The label version drew none,
+// because a tread and its room share a layer and it never looked at the height.
+pub fn floor_continues(w: World, q: integer, r: integer, h: integer) -> boolean {
+  col = world_column(w, q, r);
+  for e in col.co_cells {
+    if hex_world::hex_occupied(e) {
+      d = (e.h_height as integer ?? 0) - h;
+      if d < 0 { d = 0 - d; }
+      if d * 2 < w.w_eps { return true; }
+    }
+  }
+  false
+}
+
 // Does the room at this column open into the neighbour, or does it END there?
 //
 // ⚠ ASKED BY HEIGHT, NOT BY LABEL, AND THAT IS `WORLD_MODEL.md` §5 RATHER THAN A
