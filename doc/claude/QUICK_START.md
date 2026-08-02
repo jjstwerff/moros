@@ -19,14 +19,14 @@ not *is this Linux*: on a desktop session you get a browser, and on an ssh sessi
 get the `ssh -L` line you actually need, because a browser opened on the far machine
 helps nobody.
 
-**Two renderers answer the same server, and that is deliberate.** `/` serves the
-JavaScript one (`html/editor.html`); **`/client`** serves the wasm/loft one
-(`src/editor_client.loft`, built by `make client`). They speak the same wire and draw the
-same picture, so either can be measured against the other — `make editor-check` and
-`make client-check` are the same headless check pointed at each. The JavaScript one is
-the CONTROL and is not deleted while it is still the thing the other is compared to.
-⚠ On `/client`, **click the canvas before pressing a key**: loft's browser shell binds
-keys to the canvas element, not to the window.
+**One renderer: the wasm/loft client** (`src/editor_client.loft`, built by `make client`),
+served at `/` and at `/client`. There were two — `html/editor.html` was the JavaScript
+original and the control the port was measured against — and it was deleted (2026-08-02)
+in the commit that proved the match: one script through both pages agreed to within 2.4%
+of mean luminance at every camera mode, on the same 49,500 samples, and all gates went
+green against the survivor with their thresholds untouched.
+⚠ **Click the canvas before pressing a key**: loft's browser shell binds keys to the
+canvas element, not to the window.
 
 Read this file at the start of every session before doing any work. The full topic index lives in the project-root **[CLAUDE.md](../../CLAUDE.md)**.
 
@@ -86,7 +86,6 @@ They share a lattice convention and nothing else; fixing one does not touch the 
 | `html/hex-lattice.js` | **Pure** hex geometry for the world map: offsets, `MIRROR_DIR`, `dirName`, `hexCenter`. ⚠ **One home for the lattice** — it was in two places and they disagreed, which is what broke roads (see [OPEN_ISSUES](OPEN_ISSUES.md#world-map-editor)) |
 | `html/map.css` | World-map editor styles |
 | `html/scenario-print.html` · `.js` · `.css` | Printable scenario sheets |
-| `html/editor.html` | The **scene** editor's JavaScript renderer — served at `/` by the loft server, and kept as the control for the wasm one |
 | `html/style.css` | Shared styles |
 | `html/categories.js` | Shared category list |
 
