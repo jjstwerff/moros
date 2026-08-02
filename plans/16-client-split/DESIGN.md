@@ -353,6 +353,36 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 
 ### S3 — the client derives one surface
 
+⚠ **PREREQUISITE: `chunk_mesh_mat` MUST MOVE INTO A LIBRARY FIRST.** It lives in
+`editor_server.loft`, and S3's claim is that the client runs *the server's own
+function, unmodified* — which is only checkable if there is ONE function. Two copies
+that agree today are two copies, and not drifting is the whole of the S3 gate.
+
+Measured while attempting it (2026-08-02), so the next attempt does not rediscover it:
+
+- **The cone is contiguous** — `emit_tri`, `grid_h`, `cell_normal_from`, `gh_at`,
+  `corner_heights_from`, `emit_hex_sloped`, `chunk_mesh_mat`, `emit_ground_reveal` are
+  one 281-line slab. The cut is clean.
+- **`moros_render` is the home.** It already owns every primitive needed —
+  `hex_to_world`, `hex_corner_world`, `HEIGHT_SCALE`, the mesh types — and adding
+  `hex_editor` / `hex_world` to it runs **moros → lavition**, the allowed direction.
+  Checked: `hex_editor` does not depend on `moros_render`, so there is no cycle.
+- ⚠ **`CHUNK` = 8 IS NOT `CHUNK_W` = 32.** The renderer tiles at 8 because that is
+  what a rebuild costs; the store tiles at 32 for windowing and elision. The mesh tile
+  belongs to `moros_render` and conflating the two would be silent and severe.
+- ⚠ **A SECOND SOURCE FILE NEEDS `use <filename>;` IN THE ENTRY FILE**, and its
+  `pub fn`s then export under the **package** name, not the module's. `hex_editor.loft`
+  line 23 is `use gesture;`, and every caller says `hex_editor::col_has_below` — never
+  `gesture::`. Missing that one line is what made the first attempt fail with *Unknown
+  function emit_tri* while `moros_render`'s own 167 tests passed: the file compiled and
+  nothing imported it. Verified with a probe — a sibling file returning 4242, reached
+  as `moros_render::terrain_mesh_probe()`.
+
+The move must leave every mesh byte-identical, so the gate for it is the existing 32:
+they read the emitted geometry and would not be quiet about a changed triangle.
+
+
+
 The client runs `chunk_mesh_mat(…, SURFACE_MAT)` — the server's own function, unmodified —
 over its cache, and draws that instead of the server's ground mesh. The other five surfaces
 still arrive from the server.
