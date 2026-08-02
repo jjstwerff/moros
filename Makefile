@@ -173,14 +173,20 @@ port-free:
 browser:
 	@if [ -z "$$DISPLAY" ] && [ -z "$$WAYLAND_DISPLAY" ] && [ "$$(uname -s)" = "Linux" ]; then 	  echo ""; 	  echo "  no display here — this looks like an ssh session, so run on YOUR machine:"; 	  echo "      ssh -L $(EDITOR_PORT):localhost:$(EDITOR_PORT) $$(whoami)@$$(hostname)"; 	  echo "  then open  $(BROWSER_URL)"; 	  echo ""; 	else 	  case "$$(uname -s)" in 	    Darwin)            open "$(BROWSER_URL)" ;; 	    Linux)             xdg-open "$(BROWSER_URL)" >/dev/null 2>&1 ;; 	    MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "" "$(BROWSER_URL)" ;; 	    *)                 echo "  open $(BROWSER_URL) in a browser" ;; 	  esac; 	  echo "  opened $(BROWSER_URL)"; 	fi
 
-play: port-free
+# ⚠ `client` FIRST, OR THE BROWSER GETS THE LAST BUILD SOMEBODY REMEMBERED TO MAKE.
+# The server is compiled from source every run; the client is a FILE it serves, so an
+# edit to `editor_client.loft` is invisible here until `make client` runs. It cost a
+# full diagnosis in the gates — a change read as "never runs" through three
+# instrumented runs while the code was simply not in the page — and the same trap sat
+# in every human-facing target: `play`, `play-fast`, `editor`, `editor-bg`.
+play: port-free client
 	@echo "building natively (first run compiles the graphics tree — minutes)…"
 	@nohup $(LOFT) --native --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
 	@until grep -q 'drag or A/D' .editor.log 2>/dev/null; do 	  if ! kill -0 $$(cat $(EDITOR_PID)) 2>/dev/null; then 	    echo "editor exited — last lines:"; grep -vE '^warning|^ *\||^ *-->' .editor.log | tail -5; exit 1; fi; 	  sleep 2; done
 	@echo "editor up (native) on port $(EDITOR_PORT)"
 	@$(MAKE) -s browser
 
-play-fast: port-free
+play-fast: port-free client
 	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
 	@until grep -q 'drag or A/D' .editor.log 2>/dev/null; do 	  if ! kill -0 $$(cat $(EDITOR_PID)) 2>/dev/null; then 	    echo "editor exited — last lines:"; grep -vE '^warning|^ *\||^ *-->' .editor.log | tail -5; exit 1; fi; 	  sleep 1; done
 	@echo "editor up (interpreted) on port $(EDITOR_PORT)"
@@ -199,10 +205,10 @@ client:
 	$(LOFT) --html --lib lib/ src/editor_client.loft
 	@echo "wrote src/.loft/editor_client.html"
 
-editor:
+editor: client
 	$(LOFT) --interpret --lib lib/ src/editor_server.loft
 
-editor-bg:
+editor-bg: client
 	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & echo $$! > $(EDITOR_PID)
 	@until grep -q 'listening on port' .editor.log 2>/dev/null; do sleep 1; done
 	@echo "editor on http://localhost:$(EDITOR_PORT)/  (pid $$(cat $(EDITOR_PID)))"
@@ -217,18 +223,26 @@ stop-editor editor-stop:
 # Layer 2 screenshots the canvas and counts distinct colours, which is what
 # catches "compiles clean, blank canvas".  Control: break the draw and watch
 # distinctColors collapse to 1.
+# ⚠ IT WATCHED `#gl`, WHICH IS THE DELETED PAGE'S CANVAS. `html/editor.html` named its
+# canvas `#gl`; loft's `--html` shell names its own `#c`, and `/` now serves the wasm
+# client — so this check was looking for an element that no longer exists on any route.
+# The two-renderers pair it belonged to is gone with it: `/` and `/client` are the same
+# page. Kept as a route check — that `/` serves the client at all — because that is the
+# one thing `client-check` does not cover.
 editor-check:
 	node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)/ \
-	  --wait-ms 8000 --canvas '#gl' --canvas-min-colors 12 --screenshot /tmp/w0.png
+	  --wait-ms 20000 --canvas '#c' --canvas-min-colors 12 --screenshot /tmp/w0.png
 
 # The SAME check against the wasm client (plan #16, S1) — same server, same wire,
 # same claim: it drew a world and not a flat sky. The canvas is `#c` because that is
 # what loft's `--html` shell names its own, and the wait is longer because the page
 # boots a 670 KB wasm before it dials.
 #
-# ⚠ THIS IS S1'S DONE-WHEN, and the pair is the point: `editor-check` and
-# `client-check` measure one claim about two renderers, so a divergence shows up as
-# one green and one red rather than as a picture somebody has to remember.
+# ⚠ THIS WAS S1'S DONE-WHEN, and the pair it belonged to no longer exists: with
+# `html/editor.html` deleted, `/` and `/client` serve the SAME page. The two checks now
+# measure one renderer over two routes, which is worth keeping — a route that stops
+# serving the client is a real failure — but it is no longer a comparison, and reading
+# it as one would be reading agreement between a thing and itself.
 client-check:
 	node $(LOFT_TOOLS)/html_render_check.mjs http://127.0.0.1:$(EDITOR_PORT)/client \
 	  --wait-ms 20000 --canvas '#c' --canvas-min-colors 12 --screenshot /tmp/w0-client.png
