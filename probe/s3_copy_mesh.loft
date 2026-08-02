@@ -1,0 +1,57 @@
+// Reproduce the client's path with no wire and no browser: copy every layer into a
+// second world exactly as `world_put_layer` does, then mesh the same tiles from both.
+use hex_world;
+use hex_editor;
+use moros_terrain;
+
+fn main() {
+  a = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 40..41 {
+    for r in 0 - 40..41 { hex_editor::ground_set(a, q, r, 40 + q - r, hex_editor::SURFACE_MAT); }
+  }
+  // the copy, chunk by chunk, the way the client fills its cache
+  b = world_new(0.25, 0, 10, 4).wn_world;
+  for scx in 0 - 2..3 {
+    for scz in 0 - 2..3 {
+      q0 = scx * hex_world::CHUNK_W;
+      r0 = scz * hex_world::CHUNK_W;
+      for li in 0..len(world_column(a, q0, r0).co_ids) {
+        if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
+          hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
+            hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
+            hex_world::world_layer_version(a, q0, r0, li),
+            hex_world::world_layer_bytes(a, q0, r0, li));
+        }
+      }
+    }
+  }
+  agree = 0;
+  bad = 0;
+  first = "";
+  for cx in 0 - 4..5 {
+    for cz in 0 - 4..5 {
+      ma = moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
+      mb = moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
+      if moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb) { agree = agree + 1; }
+      else {
+        bad = bad + 1;
+        if first == "" {
+          first = "{cx},{cz}";
+          // name the first differing vertex, which names its cell
+          n = len(ma.vertices);
+          if len(mb.vertices) < n { n = len(mb.vertices); }
+          for i in 0..n {
+            va = ma.vertices[i];
+            vb = mb.vertices[i];
+            if va.pos.x != vb.pos.x || va.pos.y != vb.pos.y || va.pos.z != vb.pos.z {
+              println("  first differing vertex {i} of {len(ma.vertices)}/{len(mb.vertices)}: "
+                    + "a=({va.pos.x},{va.pos.y},{va.pos.z}) b=({vb.pos.x},{vb.pos.y},{vb.pos.z})");
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+  println("copy-then-mesh: agree {agree} bad {bad}, first bad tile {first}");
+}

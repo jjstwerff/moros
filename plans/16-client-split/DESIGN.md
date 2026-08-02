@@ -357,7 +357,35 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 and still `cache agree 24 bad 0` — which now MEANS something, because both sides agree
 what a coordinate is.
 
-⚠ **THE REMAINING SEVEN ALL CARRY A NEGATIVE COORDINATE** — `0,-1` `-1,0` `-1,-1`
+### ⚠ IT IS THE COPY, NOT THE COORDINATES — reproduced with no wire and no browser
+
+`probe/s3_copy_mesh.loft` builds a world, copies every layer into a second one exactly
+as the client does (`world_layer_bytes` → `world_put_layer`), and meshes the same tiles
+from both. **`agree 3 bad 78`.** No socket, no wasm, no halo — the disagreement is in
+the copy.
+
+And the first differing vertex names the failure precisely:
+
+```
+a = (-55.4256, 9.9444, -48)
+b = (-55.4256, 3.5556, -48)
+```
+
+**x and z identical, y wrong.** The HEIGHTS do not survive the copy. `sv_height` is
+stored relative to the chunk's window base (`S1`), so a copy that gets the cells right
+and the base wrong reproduces every cell faithfully at the wrong altitude.
+
+⚠ **AND THAT IS WHY S2 WENT GREEN.** `layer_crc` is computed over `sv_height` — the
+RELATIVE value — so it round-trips perfectly while the absolute heights are wrong. The
+checksum cannot see the base, by construction. `cache agree 24 bad 0` was true and
+measured the wrong thing; S2's own `layer_wire.loft` asserts the base survives for ONE
+chunk, and that test passes — whatever this is, it needs more than one.
+
+*So the next step is not a coordinate change and not a halo precondition.* It is this
+probe, narrowed: it runs in seconds, headless, and the answer is somewhere between
+`world_chunk_base`, the order `world_put_layer` creates chunks in, and the window.
+
+⚠ **The seven wire-side failures all carry a negative coordinate** — `0,-1` `-1,0` `-1,-1`
 `1,-1` `-1,-4` `2,-1` `3,-1`. Two readings are still open and the per-tile report
 cannot separate them yet: either these are the genuine HALO cases (a tile whose
 one-cell normal halo or two-cell height grid reaches a store chunk the client was
