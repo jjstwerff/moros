@@ -50,6 +50,37 @@ world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once pe
 Probed before building on it: **the hole survives save and load**, because elision
 drops records and the layer is kept alive by every cell that still holds ground.
 
+### The harness is DETERMINISTIC now, which it had only claimed to be
+
+⚠ **`step n` did not advance n ticks.** The server's gate is
+
+```
+if sim_rate <= 0.0 { may_tick = sim_pending > 0; }
+else               { may_tick = now_us - last_us >= tick_wait; }
+```
+
+so above rate 0 the pending count is **ignored entirely** and `step` degrades to a
+wall-clock wait while the world free-runs at 30 Hz — through every fixed `sleep`
+between commands, with the walk keys held. Only `fall.keys` had ever set `rate 0`.
+
+⚠ **The obvious hypothesis was wrong, and an instrument is what said so.** The
+suspicion was the browser lagging the mesh stream, so `frame` now reports `parts`
+(the page's mesh count) against `wire` (the runner's own — the runner is a client
+too, so it holds the ground truth). On the failing runs it read **404 of 404**: fully
+caught up. What differed was the TICK COUNTER — `stepped to 659 / 725 / 853` passing
+against **657 / 722 / 850** failing. A couple of extra ticks with W held is a couple
+of extra centimetres of levelling walk, so the deck landed a shade over and the
+camera under it caught the floor at the edge: `soffit 0.8505` against 0.9975,
+**identically on every failing run**, because it is a discrete difference and not
+noise.
+
+The runner puts the clock in stepped mode when the script contains a `step`. Not for
+everyone — nine scripts never step and rely on the world advancing by itself, and
+stepping them would hang every one. Measured after: three concurrent runs of the
+repro that used to fail two in three came back **bit-identical** (`92 / 122 / 182 /
+302`, `0.9975`), six clean suite runs, and the suite went **78 s → 64 s** because
+stepped runs as fast as the loop allows instead of pacing to the wall.
+
 ### `I1` is enforced now — one gesture, one layer, one label
 
 ⚠ **The writer was breaking a normative invariant and nothing could see it**, because
@@ -298,15 +329,11 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **`deck_soffit` FAILS ABOUT ONE RUN IN SIX, IN THE SUITE ONLY.** Its wire rows
-   pass and the FRAME row misses; it passes alone every time, and the failing run
-   finishes *faster* than the passing one — the same "bailed early" tell that `turn`
-   had. There are three `--shots` gates now (`camera_indoors`, `deck_soffit`,
-   `cellar_ceiling`) where there were two, so the suspicion is the browser channel
-   under parallel load rather than anything about decks. It is a **false red**, which
-   is the harmless direction, but it makes the suite a coin-flip to read. The next
-   step is an instrument, not a threshold: nothing currently reports whether the page
-   had finished streaming when `frameStats` sampled it.
+1. ⚠ **`emit_floor_slab` STILL ASKS BY LABEL**, and now that `I1` holds that is
+   correct — but it is correct *because a writer keeps a promise*, not by
+   construction. `room_continues` asks §5's geometric question and cannot be misled
+   at all. Worth converging on one of the two rather than leaving the renderer with
+   both, and the geometric one is the one that survived being lied to.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

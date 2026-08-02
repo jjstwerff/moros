@@ -102,6 +102,20 @@ the suite every time, *finishing faster* than it did alone, which is the tell th
 bailed early rather than ran slowly. Use `at <x> <z> <yawdeg>`, which carries the heading
 exactly on any load.
 
+⚠ **A script that uses `step` runs on a STEPPED CLOCK, and the runner sets that itself.**
+`step n` reads as "advance exactly n ticks" and above rate 0 it does nothing of the sort —
+the server ignores the pending count and paces on the wall instead, so the world free-runs
+at 30 Hz through every sleep between commands with the walk keys held. That was the whole of
+the `deck_soffit` flake. The rule keys on what the script already asks for; the nine scripts
+that never `step` keep free-running, because stepping them would hang every one, and a
+script that sets its own `rate` still wins.
+
+⚠ **And the frame carries `parts` / `wire`** — the page's mesh count against the runner's.
+The runner is a client too, so it holds the set the page is *supposed* to have, and any
+shortfall is stream the browser has not caught up with. It earned its place by **disproving**
+the obvious diagnosis: on the failing runs it read 404 of 404, which is what sent the search
+to the clock instead.
+
 ⚠ **A green board is not a passing step.** Every claim about a shape can hold while the
 picture is wrong — `25:` WALL passed its gate for months while drawing a road with a fence
 down each side. So a step is done when the PICTURE is right, and the checks exist to explain

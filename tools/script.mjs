@@ -382,8 +382,24 @@ let snaps = 0;
 // ⚠ A judged frame that fails must fail the RUN. A gate that prints FAIL and exits
 // 0 is a gate the suite reports as green.
 let frameFails = 0;
+// HOW FAR BEHIND THE BROWSER IS, measured against the runner's own stream.
+//
+// ⚠ THE RUNNER IS A CLIENT TOO, and that is what makes this answerable at all. Both
+// it and the page are fed the same `M:` broadcasts, so the runner's `meshLen` is the
+// set the page is *supposed* to hold — no guess, no clock, no proxy. Anything the
+// page is missing is stream it has not caught up with.
+const browserLag = async () => {
+  const st = await call('Runtime.evaluate', { returnByValue: true, expression:
+    `(() => (typeof parts === 'undefined') ? null : parts.size)()` });
+  const got = st?.result?.value;
+  return { page: got ?? -1, wire: meshLen.size };
+};
+
 async function frameStats() {
   if (!(await browser())) return { ok: false, why: 'no browser' };
+  // ⚠ MEASURED BEFORE THE SHOT, so it describes the frame that is about to be taken
+  // rather than the state afterwards.
+  const lag = await browserLag();
   // ⚠ THROUGH THE SCREENSHOT, NOT `readPixels`. A WebGL context without
   // `preserveDrawingBuffer` clears its drawing buffer at composite, so a
   // `readPixels` from outside the render loop returns a black frame however good the
@@ -494,7 +510,7 @@ async function frameStats() {
     // constant while a picture goes from readable to featureless.
     sd: +(v.sd ?? 0).toFixed(4),
     bsd: Object.fromEntries(Object.entries(v.bsd ?? {}).map(([k, x]) => [k, +x.toFixed(4)])),
-    samples: v.total, share,
+    samples: v.total, share, parts: lag.page, wire: lag.wire,
   };
 }
 
@@ -528,6 +544,39 @@ async function snap(name) {
 }
 
 const lines = fs.readFileSync(scriptPath, 'utf8').split('\n');
+
+// ⚠ A SCRIPT THAT STEPS IS ASKING FOR A STEPPED CLOCK, AND HAD TO REMEMBER TO SAY SO.
+//
+// `step n` is documented as "advance exactly n ticks", and at the DEFAULT rate it
+// does nothing of the sort. The server's own gate is
+//
+//     if sim_rate <= 0.0 { may_tick = sim_pending > 0; }
+//     else               { may_tick = now_us - last_us >= tick_wait; }
+//
+// so above rate 0 the pending count is ignored entirely and `step` degrades to a
+// wall-clock WAIT while the world free-runs at 30Hz — including through every fixed
+// `sleep` between commands, with the walk keys held.
+//
+// That is the whole of the `deck_soffit` flake, and it took an instrument to see
+// because the obvious suspect was wrong: the browser was fully caught up (`parts`
+// 404 of a wire 404) on the failing runs, so it was never a streaming lag. What
+// differed was the TICK COUNTER — `stepped to 659` on a passing run against `657` on
+// a failing one, diverging before the first step and again at each one. A couple of
+// extra ticks with W held is a couple of extra centimetres of levelling walk, so the
+// deck landed a shade over, and the camera under it caught the floor at the edge:
+// `soffit 0.8505` against 0.9975, identically on every failing run because it is a
+// discrete difference and not noise.
+//
+// ⚠ NOT STEPPED FOR EVERYONE. Nine of these scripts never call `step` at all and
+// rely on the world advancing by itself — stepping them by default would hang every
+// one. The rule keys on what the script actually asks for, which is what `step`
+// already means, and a script that sets its own `rate` still wins because its line
+// runs after this.
+if (lines.some((l) => l.trim().startsWith('step '))) {
+  ws.send('34:0');
+  await ack('rate', 10000);
+}
+
 await sleep(1200);            // the opening burst
 await nextT();
 
