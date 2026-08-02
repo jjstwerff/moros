@@ -13,13 +13,28 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
+// ⚠ SAME REASON AS `client_mesh.mjs`: the wasm client is a FILE the server serves, so
+// without this the gate silently reports on the previous build.
+const b = spawnSync('loft', ['--html', '--lib', 'lib/', 'src/editor_client.loft'],
+                    { encoding: 'utf8', env: process.env });
+if (b.status !== 0) {
+  console.log(JSON.stringify({ verdict: 'the wasm client did not build', ok: false }));
+  process.exit(1);
+}
+
 const r = spawnSync('node', ['tools/script.mjs', 'tools/scripts/cache.keys', '--shots'],
                     { encoding: 'utf8', env: process.env });
 const out = r.stdout ?? '';
 const m = out.match(/cache agree (\d+) bad (\d+) layers (\d+)/);
 const agree = m ? +m[1] : -1, bad = m ? +m[2] : -1, layers = m ? +m[3] : -1;
-// Every layer the client was sent is a layer it agrees on, and it was sent some.
-const ok = m !== null && bad === 0 && agree > 0 && agree === layers;
+// ⚠ `agree === layers` WAS RIGHT AND STOPPED BEING RIGHT, which is worth stating
+// rather than quietly relaxing. `D:` digests the VISIBLE set; the client now also
+// caches a margin ring of chunks around it, because the mesher reads two cells past
+// every tile and the server has to satisfy that precondition (S3). So the cache
+// legitimately holds more than the digest names, and demanding equality would fail on
+// a correct client. What still has to hold: nothing the digest names disagrees, and
+// the digest named something.
+const ok = m !== null && bad === 0 && agree > 0 && agree <= layers;
 console.log(JSON.stringify({ verdict: m ? m[0] : '(no cache report)',
                              agree, bad, layers, ok }));
 if (!ok) process.stderr.write(out.split('\n').slice(-20).join('\n'));

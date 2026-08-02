@@ -12,6 +12,21 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
+// ⚠ REBUILD THE PAGE, OR THIS GATE TESTS A CLIENT THAT NO LONGER EXISTS. The server is
+// interpreted from source every run, but the wasm client is a FILE — `src/.loft/
+// editor_client.html`, written by `make client` — and the server just serves whatever
+// is on disk. So a change to `editor_client.loft` is invisible here until someone
+// remembers a separate command, and the gate reports on the previous build with total
+// confidence. It cost a full diagnosis: the `Z:0` drain read as "never runs" through
+// three instrumented runs, and the code under test was simply not in the page.
+const b = spawnSync('loft', ['--html', '--lib', 'lib/', 'src/editor_client.loft'],
+                    { encoding: 'utf8', env: process.env });
+if (b.status !== 0) {
+  console.log(JSON.stringify({ verdict: 'the wasm client did not build', ok: false }));
+  process.stderr.write((b.stderr ?? '').split('\n').slice(-15).join('\n'));
+  process.exit(1);
+}
+
 const r = spawnSync('node', ['tools/script.mjs', 'tools/scripts/clientmesh.keys', '--shots'],
                     { encoding: 'utf8', env: process.env });
 const out = r.stdout ?? '';

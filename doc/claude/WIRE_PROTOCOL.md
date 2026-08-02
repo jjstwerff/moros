@@ -105,6 +105,37 @@ the gates that match them**; record it and let the migration retire both.
 | `G` | `<grass rgb>,<rock rgb>,<from>,<to>` | terrain ramp colours | **V** |
 | `F` | `<x>,<y>,<z>,<from>,<to>,<sky rgb>` | fog, centred on the **character**, not the camera | **V** |
 | `P` | — | liveness probe, broadcast once a second; its return value is the live client count, which is how a closed tab is detected | **S** |
+| `L` | `<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` | **one terrain layer, whole** — the voxels themselves, the store's own flat encoding. This is the message every `M` is meant to become unnecessary by | **K** — the point of the design |
+| `K` | `<cx>,<cz>` | **that chunk is empty, and I am telling you so.** ⚠ Silence is not an answer: inside a cache, "there is nothing there" and "it has not arrived" are the same observation, and only the authority can separate them. Sent for the margin chunks a tile needs but that hold nothing | **K** |
+| `Q` | `<cx>,<cz>,<crc>` | the checksum of the ground mesh the server just built for that tile, so the client can derive its own from its cache and prove it is the same one. Answered by `42:` | **A** — it disappears when the client's mesh is trusted rather than compared |
+| `D` | `<cx>,<cz>,<li>,<crc>;…` | the digest of the **visible** set — twelve-ish bytes a layer against 8 KB of cells, so it can go every tick where a resend cannot. Answered by `41:` | **K** |
+
+---
+
+## ⚠ A RECEIVER'S PRECONDITION IS THE SENDER'S JOB
+
+The S3 finding, and it generalises past this protocol. The client's mesher reads
+**two cells past** every tile it builds (`moros_terrain::MESH_MARGIN`), so a tile is
+derivable only once the store chunks its *margin* touches have arrived. Three separate
+things had to change before that held, and each looked like someone else's problem:
+
+- **`send_layers` sent the chunk under the tile's ORIGIN only.** A tile near a chunk
+  edge needs the chunk before it too. Measured: tiles at `cz = -4` wanted store chunk
+  `r = -2`, and no tile in range had its origin there, so it went to nobody.
+- **An empty chunk was sent as silence**, which a cache cannot distinguish from a
+  chunk in flight — hence `K:`. 36 of 48 verdicts were held forever on chunks the
+  *server* did not have either.
+- **The comparison ran on arrival**, before the batch that could complete it had
+  landed. It belongs at `Z:0`, which is the server's own statement that a batch is
+  whole.
+
+`ground 41 bad 7` → `ground 12 bad 0 wait 36` → **`ground 48 bad 0 wait 0`**. The first
+step was a guard, the second was the sender honouring it. A guard alone converts a
+wrong answer into no answer, which is better and is not the claim.
+
+⚠ **The oracle asks whether the chunk is KNOWN, not whether it holds ground.** A chunk
+known to be empty is an answer: the mesher reads absent cells there and so does the
+server, and the two agree.
 
 ---
 

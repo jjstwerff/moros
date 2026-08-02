@@ -1159,6 +1159,20 @@ pub fn world_chunk_base(w: World, cx: integer, cz: integer) -> integer {
   w.w_chunks[ci].ck_base
 }
 
+// How many layers this CHUNK holds, asked by chunk coordinate.
+//
+// A layer spans a whole chunk, so `len(world_column(…).co_ids)` at any hex of the chunk
+// answers the same question — I assumed otherwise and the test above refuted it, which
+// is why it is written down. What this adds is the ability to ask WITHOUT a hex, and to
+// get **0 for a chunk that does not exist**: the caller distinguishing "empty" from
+// "absent" is the whole of `E1`, and building a column just to count is a wasteful way
+// to reach it.
+pub fn world_chunk_layers(w: World, cx: integer, cz: integer) -> integer {
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 { return 0; }
+  len(w.w_chunks[ci].ck_layers)
+}
+
 pub fn world_layer_crc(w: World, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
   if ci < 0 { return 0; }
@@ -1201,6 +1215,33 @@ pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector
 // That is exactly why it returns the CRC rather than `void`. A bulk write with no
 // checks needs the caller to be able to say *this is the layer I was sent* — so the
 // answer to "did it land" is the same number the format uses, computed after.
+// Record that a chunk is KNOWN and EMPTY — `E1` made storable.
+//
+// ⚠ A RECEIVER CANNOT TELL ABSENCE FROM SILENCE, and that is not a defect it can fix
+// at its end. The editor's client held 36 of 48 ground verdicts forever because the
+// chunks its mesher needed did not exist on the SERVER either — so nothing was ever
+// going to arrive, and "I have not been sent it" and "there is nothing there" are the
+// same observation from inside the cache. Only the authority can separate them, and
+// this is the shape it says it in: the chunk exists, and holds nothing.
+//
+// Idempotent, and it never removes layers — a touch that arrives after the real thing
+// is a no-op rather than a deletion, because the wire does not promise an order.
+pub fn world_touch_chunk(w: &World, cx: integer, cz: integer, base: integer) {
+  ci = find_chunk(w, cx, cz);
+  if ci < 0 {
+    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
+    w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
+  }
+}
+
+// Does this world know about that chunk at all — layers or not.
+//
+// ⚠ NOT "does it hold ground". The difference is the whole point: a chunk known to be
+// empty is an ANSWER, and a consumer that treats it as a gap waits forever.
+pub fn world_chunk_known(w: World, cx: integer, cz: integer) -> boolean {
+  find_chunk(w, cx, cz) >= 0
+}
+
 pub fn world_put_layer(w: &World, cx: integer, cz: integer, base: integer,
                        id: integer, kind: integer, ver: integer,
                        flat: vector<integer>) -> integer {

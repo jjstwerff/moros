@@ -374,10 +374,17 @@ pub fn mesh_crc(m: Mesh) -> integer {
 // the tile's own chunk is present would pass every tile and guard nothing.
 pub const MESH_MARGIN = 2;
 
-// Does this world hold the chunk covering that hex — the store's own question, asked
+// Does this world KNOW the chunk covering that hex — the store's own question, asked
 // without building a column.
+//
+// ⚠ KNOWN, NOT OCCUPIED. It asked `world_ground_layer(…) >= 0` first, which is "does it
+// hold ground", and that answers NO for a chunk the authority has said is empty. The
+// editor measured the difference: 36 of 48 ground verdicts were held forever on chunks
+// that did not exist on the server either, so nothing was ever going to arrive. A
+// chunk known to be empty is an ANSWER — the mesher reads absent cells there and so
+// does the server, and the two agree.
 pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
-  hex_world::world_ground_layer(w, q, r) >= 0
+  hex_world::world_chunk_known(w, hex_world::chunk_of(q), hex_world::chunk_of(r))
 }
 
 // Every store chunk the mesher will read for this tile is present.
@@ -387,6 +394,32 @@ pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
 // chunks per axis — its corners name every chunk it can touch. That stops being true
 // if `MESH_CHUNK` ever exceeds `CHUNK_W`, which is why the two are pinned apart by a
 // test rather than left to be noticed.
+// WHY a tile is not ready — the four corners named, and which of them is missing.
+//
+// ⚠ AN ORACLE THAT ONLY SAYS NO IS HALF AN INSTRUMENT. "36 held" cannot tell a rim the
+// server never sent from a chunk that should have arrived and did not, and those want
+// opposite fixes; the corner it names is the difference.
+pub fn tile_why(w: World, cx: integer, cz: integer) -> text {
+  q0 = cx * MESH_CHUNK - MESH_MARGIN;
+  r0 = cz * MESH_CHUNK - MESH_MARGIN;
+  q1 = cx * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
+  r1 = cz * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
+  out = "";
+  if !chunk_present(w, q0, r0) {
+    out = out + " -{hex_world::chunk_of(q0)},{hex_world::chunk_of(r0)}";
+  }
+  if !chunk_present(w, q1, r0) {
+    out = out + " -{hex_world::chunk_of(q1)},{hex_world::chunk_of(r0)}";
+  }
+  if !chunk_present(w, q0, r1) {
+    out = out + " -{hex_world::chunk_of(q0)},{hex_world::chunk_of(r1)}";
+  }
+  if !chunk_present(w, q1, r1) {
+    out = out + " -{hex_world::chunk_of(q1)},{hex_world::chunk_of(r1)}";
+  }
+  out
+}
+
 pub fn tile_ready(w: World, cx: integer, cz: integer) -> boolean {
   q0 = cx * MESH_CHUNK - MESH_MARGIN;
   r0 = cz * MESH_CHUNK - MESH_MARGIN;

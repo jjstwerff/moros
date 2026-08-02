@@ -286,6 +286,19 @@ struct Client {
   // shown because a guard nobody can see is indistinguishable from a guard that never
   // fires, and those want opposite fixes.
   g_wait: integer,
+  // ⚠ HELD IS NOT ANSWERED, and for one session it was treated as though it were. A
+  // tile whose margin had not landed was dropped, so 38 of 48 verdicts were never
+  // reached at all — the guard turned a wrong answer into no answer, which is better
+  // and is still not the claim S3 has to make. These are the deferred ones, re-asked
+  // at `Z:0` when the batch that may complete them has landed.
+  //
+  // ⚠ ONE ENTRY PER TILE: a newer `Q:` for a tile SUPERSEDES the old one, because the
+  // server rebuilt that ground and the previous checksum is now a claim about a mesh
+  // nobody holds. Without that rule this queue grows with every rebuild and starts
+  // comparing against history.
+  q_cx: vector<integer>,
+  q_cz: vector<integer>,
+  q_crc: vector<integer>,
   fog_x: float,
   fog_y: float,
   fog_z: float,
@@ -590,6 +603,65 @@ fn draw_world(st: Client) {
   }
 }
 
+// Mesh one tile out of the client's own cache and say whether it is the server's.
+//
+// ⚠ ONE PLACE, because there are now two moments it can happen — the instant a `Q:`
+// arrives ready, and `Z:0` for the ones that were not. Two copies of a comparison
+// drift, and the drift would look exactly like a real disagreement.
+fn ground_check(h: web::WsHandler, st: Client, cx: integer, cz: integer, crc: integer) {
+  gm = moros_terrain::chunk_mesh_mat(cx, cz, st.cache, hex_editor::SURFACE_MAT);
+  if moros_terrain::mesh_crc(gm) == crc {
+    st.g_agree = st.g_agree + 1;
+  } else {
+    st.g_bad = st.g_bad + 1;
+    // ⚠ NAME THE TILE, DO NOT COUNT IT. A count cannot tell a BORDER effect from an
+    // arithmetic one, and those want opposite fixes. Now that the border case is
+    // deferred rather than counted, anything reaching here is the arithmetic — which
+    // is precisely why it must arrive with a coordinate attached.
+    web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait} "
+               + "at {cx},{cz} cells {len(gm.vertices)}");
+  }
+}
+
+// Re-ask every deferred tile, and keep the ones still unanswerable.
+//
+// ⚠ AT `Z:0`, NOT ON A TIMER. The staging bracket is the server's own statement that a
+// batch is complete, so it is the first instant at which a held tile's margin either
+// has arrived or is not coming in this batch. A sleep would be a guess about the same
+// question, and a wrong one under load.
+fn ground_drain(h: web::WsHandler, st: Client) {
+  keep_cx: vector<integer> = [];
+  keep_cz: vector<integer> = [];
+  keep_crc: vector<integer> = [];
+  for i in 0..len(st.q_cx) {
+    cx = st.q_cx[i] ?? 0;
+    cz = st.q_cz[i] ?? 0;
+    if moros_terrain::tile_ready(st.cache, cx, cz) {
+      ground_check(h, st, cx, cz, st.q_crc[i] ?? 0);
+    } else {
+      keep_cx += [cx];
+      keep_cz += [cz];
+      keep_crc += [st.q_crc[i] ?? 0];
+    }
+  }
+  st.q_cx = keep_cx;
+  st.q_cz = keep_cz;
+  st.q_crc = keep_crc;
+  st.g_wait = len(keep_cx);
+  // ⚠ NAME THE HELD ONES TOO. "38 held" cannot tell a rim — tiles whose margin the
+  // server never sent, which is correct and permanent — from a drain that is simply
+  // not running. Those want opposite fixes, and the count reads identically for both.
+  held = "";
+  for k in 0..len(keep_cx) {
+    if k < 3 {
+      held = held + " [{keep_cx[k] ?? 0},{keep_cz[k] ?? 0} wants"
+           + "{moros_terrain::tile_why(st.cache, keep_cx[k] ?? 0, keep_cz[k] ?? 0)}]";
+    }
+  }
+  web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait} drained"
+             + " held{held}");
+}
+
 // One frame's worth of socket: drain what is waiting, draw what arrived.
 //
 // ⚠ DRAIN, do not read one. `try_recv` returns "" when nothing is waiting, so a
@@ -619,6 +691,10 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
           }
           st.c_pending = [];
           st.c_staging = false;
+          // ⚠ AFTER the batch is applied, not before. The layers that complete a held
+          // tile's margin are part of this bracket, and asking one line earlier asks
+          // the same question that was already answered "not yet".
+          ground_drain(h, st);
         }
       }
       else if tag == "M" {
@@ -641,6 +717,15 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
               parse_ints(body[lh + 1..body.size()]));
             st.c_layers = st.c_layers + 1;
           }
+        }
+      }
+      else if tag == "K" {
+        // `K:<cx>,<cz>` — the server has nothing there, and says so. Without this the
+        // cache cannot tell an empty chunk from one still in flight, and the ground
+        // oracle holds such a tile for ever waiting on voxels that do not exist.
+        kf = parse_ints(body);
+        if len(kf) >= 2 {
+          hex_world::world_touch_chunk(st.cache, kf[0] ?? 0, kf[1] ?? 0, 0);
         }
       }
       else if tag == "D" {
@@ -679,30 +764,30 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
           // been fine. So a comparison made before READY is not a failure, it is a
           // question asked too early — and counting it as one is what made S3 read
           // `bad 7` while the arithmetic was correct all along.
-          if !moros_terrain::tile_ready(st.cache, gf[0] ?? 0, gf[1] ?? 0) {
-            st.g_wait = st.g_wait + 1;
+          qx = gf[0] ?? 0;
+          qz = gf[1] ?? 0;
+          qc = gf[2] ?? 0;
+          if moros_terrain::tile_ready(st.cache, qx, qz) {
+            ground_check(h, st, qx, qz, qc);
             web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait}");
           } else {
-          gm = moros_terrain::chunk_mesh_mat(gf[0] ?? 0, gf[1] ?? 0, st.cache,
-                                             hex_editor::SURFACE_MAT);
-          if moros_terrain::mesh_crc(gm) == (gf[2] ?? 0) {
-            st.g_agree = st.g_agree + 1;
+            // DEFERRED, not dropped — re-asked at `Z:0`. One entry per tile: a second
+            // `Q:` for a tile the server has just rebuilt replaces the first, because
+            // the old checksum describes a mesh that no longer exists.
+            seen = false;
+            for j in 0..len(st.q_cx) {
+              if (st.q_cx[j] ?? 0) == qx && (st.q_cz[j] ?? 0) == qz {
+                st.q_crc[j] = qc;
+                seen = true;
+              }
+            }
+            if !seen {
+              st.q_cx += [qx];
+              st.q_cz += [qz];
+              st.q_crc += [qc];
+            }
+            st.g_wait = len(st.q_cx);
             web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait}");
-          } else {
-            st.g_bad = st.g_bad + 1;
-            // ⚠ NAME THE TILE, DO NOT COUNT IT. A count cannot tell a BORDER effect
-            // from an arithmetic one, and those want opposite fixes: the mesher reads
-            // a one-cell halo for normals and a two-cell grid for heights, so a tile
-            // at the edge of the cached region reads absent neighbours where the
-            // server reads real ones. If every failure is on the rim, the fix is
-            // ordering; if they are scattered, it is the arithmetic and ordering
-            // would have hidden it.
-            //
-            // Bounded by construction: one line per DISAGREEING tile, and the whole
-            // point is that the number should go to zero.
-            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait} "
-                       + "at {gf[0] ?? 0},{gf[1] ?? 0} cells {len(gm.vertices)}");
-          }
           }
         }
       }
@@ -864,7 +949,7 @@ fn main() {
     // wearing the same name.
     cache: world_new(0.25, 0, 10, 4).wn_world,
     c_layers: 0, c_agree: 0, c_bad: 0,
-    g_agree: 0, g_bad: 0, g_wait: 0,
+    g_agree: 0, g_bad: 0, g_wait: 0, q_cx: [], q_cz: [], q_crc: [],
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,

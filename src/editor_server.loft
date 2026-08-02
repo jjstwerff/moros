@@ -3202,14 +3202,46 @@ fn layer_wire(wld: World, scx: integer, scz: integer, li: integer) -> text {
 // order those matter in: the client writes the same bytes to the same place and its
 // checksum is unmoved. Deduping needs per-batch state and can come after the claim is
 // green.
-fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
-  scx = hex_world::chunk_of(cx * CHUNK);
-  scz = hex_world::chunk_of(cz * CHUNK);
+fn send_one_chunk(srv: server::Server, wld: World, scx: integer, scz: integer) {
   q0 = scx * hex_world::CHUNK_W;
   r0 = scz * hex_world::CHUNK_W;
+  // ⚠ AN EMPTY CHUNK IS STILL AN ANSWER, and saying nothing is not the same answer.
+  // A client cannot tell "there is no ground there" from "it has not arrived", so it
+  // holds — measured, 36 of 48 ground verdicts held forever on chunks the server did
+  // not have either. `K:` is the authority saying so, and it is why the margin ring
+  // this function sends can be mostly empty without costing anything.
+  if hex_world::world_chunk_layers(wld, scx, scz) == 0 {
+    srv.broadcast("K:{scx},{scz}");
+    return;
+  }
   for li in 0..len(world_column(wld, q0, r0).co_ids) {
     if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
       srv.broadcast(layer_wire(wld, scx, scz, li));
+    }
+  }
+}
+
+// The voxels a client needs to DERIVE this tile — which is more than the tile.
+//
+// ⚠ IT SENT THE CHUNK UNDER THE TILE'S ORIGIN AND NOTHING ELSE, and that is a
+// precondition the receiver cannot satisfy. The mesher reads `MESH_MARGIN` = 2 cells
+// past the tile on every side, so a tile whose origin sits near a store-chunk edge
+// needs the chunk BEFORE it as well — measured, tiles at `cz = -4` wanted store chunk
+// `r = -2`, and no tile in range had its origin there, so it was never sent to anyone.
+// The client held 36 of 48 verdicts forever, correctly, on voxels that were not coming.
+//
+// The sender honours the receiver's precondition; `moros_terrain::tile_ready` is the
+// statement of it, and its four corners are exactly the chunks named here.
+fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
+  q0 = cx * CHUNK - moros_terrain::MESH_MARGIN;
+  r0 = cz * CHUNK - moros_terrain::MESH_MARGIN;
+  q1 = cx * CHUNK + CHUNK - 1 + moros_terrain::MESH_MARGIN;
+  r1 = cz * CHUNK + CHUNK - 1 + moros_terrain::MESH_MARGIN;
+  // At most 2x2 store chunks: the footprint is CHUNK + 2*MARGIN wide and a store chunk
+  // is CHUNK_W, which `moros_terrain/tests/mesh.loft` pins apart so this stays true.
+  for sz in hex_world::chunk_of(r0)..hex_world::chunk_of(r1) + 1 {
+    for sx in hex_world::chunk_of(q0)..hex_world::chunk_of(q1) + 1 {
+      send_one_chunk(srv, wld, sx, sz);
     }
   }
 }

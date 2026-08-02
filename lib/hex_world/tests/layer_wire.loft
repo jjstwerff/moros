@@ -115,3 +115,70 @@ fn test_a_put_layer_makes_the_chunk_and_the_layer_it_needs() {
   assert(world_cell(w2, 1, 1, 0).h_height == world_cell(w, 1, 1, 0).h_height,
          "and an absolute height reads the same on both sides");
 }
+
+fn test_a_layer_spans_the_chunk_and_any_hex_of_it_reports_the_same_count() {
+  // ⚠ WRITTEN BECAUSE I ASSUMED THE OPPOSITE AND THE ASSERTION SAID NO. I read the
+  // editor's `sendchunk (-1,-1) layers 0` as "the origin column is empty so the count
+  // lies", and built this test to prove it. A layer covers the WHOLE chunk, so every
+  // hex of it reports the layer whether or not that particular cell is occupied — the
+  // count was honest, and chunk (-1,-1) genuinely did not exist. That turned the
+  // diagnosis from a proxy bug into `E1`: the client cannot tell an absent chunk from
+  // one it has not been sent, and only the server can settle it.
+  w = mk();
+  for q in 0..CHUNK_W {
+    for r in 0..CHUNK_W {
+      if q != 0 || r != 0 {
+        world_set_column(w, Column { co_q: q, co_r: r, co_cells: [cell(40 + q, 1)] });
+      }
+    }
+  }
+  assert(len(world_column(w, 0, 0).co_ids) == 1,
+         "the origin column reports the chunk's layer though its own cell was never "
+       + "written, got {len(world_column(w, 0, 0).co_ids)}");
+  assert(world_chunk_layers(w, 0, 0) == 1, "and so does the chunk, asked directly");
+  assert(len(world_layer_bytes(w, 1, 1, 0)) == CHUNK_CELLS * LAYER_FIELDS,
+         "the layer is whole");
+}
+
+fn test_an_absent_chunk_reports_no_layers_rather_than_inventing_one() {
+  w = mk();
+  assert(world_chunk_layers(w, 7, 7) == 0, "a chunk that was never written has none");
+}
+
+fn test_a_touched_chunk_is_known_and_empty() {
+  // ⚠ THE DISTINCTION S3 TURNED ON. Absent and not-yet-sent are one observation inside
+  // a cache; this is how the authority separates them.
+  w = mk();
+  assert(!world_chunk_known(w, 3, 4), "an unheard-of chunk is not known");
+  world_touch_chunk(w, 3, 4, 40);
+  assert(world_chunk_known(w, 3, 4), "a touched chunk is known");
+  assert(world_chunk_layers(w, 3, 4) == 0, "and holds nothing");
+  assert(world_chunk_base(w, 3, 4) == 40, "and carries the base it was told");
+}
+
+fn test_a_touch_after_the_real_layer_destroys_nothing() {
+  // The wire promises no order, so the late touch must be a no-op. A touch that reset
+  // the chunk would blank ground the client had already been given and the hole would
+  // be blamed on the mesher.
+  w = seeded();
+  w2 = mk();
+  world_put_layer(w2, 0, 0, world_chunk_base(w, 0, 0), world_layer_id(w, 0, 0, 0),
+                  KIND_TERRAIN, 1, world_layer_bytes(w, 0, 0, 0));
+  before = world_layer_crc(w2, 0, 0, 0);
+  world_touch_chunk(w2, 0, 0, 99);
+  assert(world_chunk_layers(w2, 0, 0) == 1, "the layer is still there");
+  assert(world_layer_crc(w2, 0, 0, 0) == before, "and unchanged: {before}");
+}
+
+fn test_a_layer_arriving_after_a_touch_lands_in_the_same_chunk() {
+  // The other order, which is the common one: touched as margin, then filled in when
+  // the author digs there. It must not become a second chunk.
+  w = seeded();
+  w2 = mk();
+  world_touch_chunk(w2, 0, 0, 0);
+  world_put_layer(w2, 0, 0, world_chunk_base(w, 0, 0), world_layer_id(w, 0, 0, 0),
+                  KIND_TERRAIN, 1, world_layer_bytes(w, 0, 0, 0));
+  assert(world_chunk_layers(w2, 0, 0) == 1, "one chunk, one layer");
+  assert(world_layer_crc(w2, 0, 0, 0) == world_layer_crc(w, 0, 0, 0),
+         "and it checksums as the source");
+}
