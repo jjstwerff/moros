@@ -369,6 +369,8 @@ const MSG_STEP = 35;
 // S2 — the client's verdict on its own cache: `41:<agreed>,<disagreed>`. It answers
 // only about what it has, and only when the count moves.
 const MSG_CACHE = 41;
+// S3 — the client's verdict on the ground it derived itself: `42:<agreed>,<bad>`.
+const MSG_GROUND = 42;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -4551,6 +4553,9 @@ fn main() {
           // say would leave the claim to a screenshot.
           srv.broadcast("S:cache {ev.payload}");
           println("editor: client cache {ev.payload}");
+        } else if ev.msg_id == MSG_GROUND {
+          srv.broadcast("S:{ev.payload}");
+          println("editor: client {ev.payload}");
         } else if ev.msg_id == MSG_STEP {
           sim_pending = sim_pending + (ev.payload as integer ?? 1);
           sim_step_cid = ev.cid;
@@ -5957,6 +5962,11 @@ fn main() {
           // rather than a thing that catches up afterwards.
           send_layers(srv, wld, dc2.cx, dc2.cz);
           dm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
+          // ⚠ S3: the checksum of the ground mesh THIS SERVER just built, so the
+          // client can derive its own from its cache and prove it is the same one.
+          // Not a count and not a picture: a mesh with the right number of vertices
+          // in the wrong places is exactly the failure this exists to catch.
+          srv.broadcast("Q:{dc2.cx},{dc2.cz},{moros_terrain::mesh_crc(dm)}");
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
           fm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, FIELD_MAT);
@@ -6088,6 +6098,7 @@ fn main() {
               if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
               send_layers(srv, wld, scx, scz);
               cmesh = chunk_mesh(scx, scz, wld);
+              srv.broadcast("Q:{scx},{scz},{moros_terrain::mesh_crc(cmesh)}");
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               fmesh = moros_terrain::chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");

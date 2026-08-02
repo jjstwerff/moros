@@ -44,6 +44,11 @@ use graphics;
 // second implementation of the model that has to be kept in step. Sharing the code is
 // not sharing the AUTHORITY — the server still owns every write.
 use hex_world;
+// ⚠ S3: the SERVER'S OWN mesher, not a second implementation. The whole claim is
+// that the client derives the same triangles, and that is only checkable while there
+// is one function — two copies that agree today are two copies.
+use moros_terrain;
+use hex_editor;
 
 // The wire, server -> client. Unchanged from `html/editor.html`, deliberately:
 //   M:<i>;<ramp>;r,g,b;x0,y0,z0,nx0,ny0,nz0,…   mesh i, POSITION FIRST, 6 floats/vertex
@@ -274,6 +279,9 @@ struct Client {
   c_layers: integer,
   c_agree: integer,
   c_bad: integer,
+  // S3 — the ground the CLIENT derived, against the ground the server sent.
+  g_agree: integer,
+  g_bad: integer,
   fog_x: float,
   fog_y: float,
   fog_z: float,
@@ -652,6 +660,20 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         st.c_bad = bad;
         web::send(h, "41:agree {agree} bad {bad} layers {st.c_layers}");
       }
+      else if tag == "Q" {
+        // `Q:<cx>,<cz>,<crc>` — the server's ground mesh for one tile. The client
+        // meshes the SAME tile out of its own cache, with the server's own function,
+        // and compares. ⚠ It still DRAWS the server's mesh: S3 measures before it
+        // switches, so a disagreement is a number rather than a hole in the ground.
+        gf = parse_ints(body);
+        if len(gf) >= 3 {
+          gm = moros_terrain::chunk_mesh_mat(gf[0] ?? 0, gf[1] ?? 0, st.cache,
+                                             hex_editor::SURFACE_MAT);
+          if moros_terrain::mesh_crc(gm) == (gf[2] ?? 0) { st.g_agree = st.g_agree + 1; }
+          else { st.g_bad = st.g_bad + 1; }
+          web::send(h, "42:ground {st.g_agree} bad {st.g_bad}");
+        }
+      }
       else if tag == "V" {
         // `V:<mask>,<ambient>,<lamp>` — three numbers, and the client's whole share
         // of the camera modes. Everything that DECIDES them is server-side.
@@ -810,6 +832,7 @@ fn main() {
     // wearing the same name.
     cache: world_new(0.25, 0, 10, 4).wn_world,
     c_layers: 0, c_agree: 0, c_bad: 0,
+    g_agree: 0, g_bad: 0,
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,

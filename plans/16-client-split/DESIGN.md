@@ -351,7 +351,28 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
   save, which matters because a stale cache's only symptom is an old picture.
 *Deletes:* nothing. This is the measurement step.
 
-### S3 — the client derives one surface
+### S3 — the client derives one surface — **IN PROGRESS**
+
+**Built and measured (2026-08-02): `ground 29 bad 18`.** The client runs
+`moros_terrain::chunk_mesh_mat` — the server's own function — over its voxel cache and
+checksums the result against the server's (`Q:` out, `42:` back). 29 tiles of 47
+agree; **18 do not**, and it still DRAWS the server's mesh, which is exactly why the
+disagreement is a number instead of a hole in the ground.
+
+⚠ **THE HALO IS THE SUSPECT, AND THE SERVER'S OWN COMMENT NAMES IT.** *"A chunk's
+ground mesh is NOT a function of its own cells alone: `corner_heights` averages every
+corner over the THREE cells touching it, and `cell_normal` takes a gradient over SIX
+neighbours whose own normals then feed the corner means."* The mesher reads a
+one-cell halo for normals and a **two-cell** grid for heights. A client meshing a tile
+at the edge of what it has cached reads absent neighbours where the server reads real
+ones — same function, different inputs, different vertices.
+
+*So S3 is not done, and the draw-switch and the delete must not happen until it is.*
+What the measurement now makes answerable: whether every disagreement is a border
+tile. The next step is to say which tiles fail, not how many — a per-tile report
+rather than a count, because a count cannot tell a border effect from an arithmetic
+one. `moros_terrain::mesh_crc` is fixed-point (`MESH_CRC_SCALE` = 1e6) so it is
+already tolerant of backend rounding; this is not that.
 
 ✅ **PREREQUISITE DONE (2026-08-02): the mesher is `lib/moros_terrain`.** 300 lines,
 its own package, 4 tests. `make gate` 32 green and `make lib-test` 1974 — the meshes

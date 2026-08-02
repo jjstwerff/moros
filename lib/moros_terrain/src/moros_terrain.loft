@@ -298,3 +298,59 @@ pub fn emit_ground_reveal(m: Mesh, wld: World, cq: integer, cr: integer) {
     }
   }
 }
+
+// ── S3 (plan 16) — TWO MESHES, ONE NUMBER ───────────────────────────────────
+//
+// The client derives its own ground from its voxel cache and has to prove it is the
+// server's, vertex for vertex. That comparison cannot be a picture and cannot be a
+// count: a mesh with the right number of vertices in the wrong places is exactly the
+// failure this exists to catch.
+//
+// ⚠ IT LIVES HERE BESIDE THE MESHER, so both sides checksum with the same function
+// for the same reason the voxel cache uses the file format's own CRC: two sides that
+// agree on a checksum they each invented agree about the wrong thing.
+//
+// ⚠ FIXED POINT, AND THE SCALE IS THE TOLERANCE. Floats go in as `round(v * SCALE)`,
+// so this asks *the same to within 1/SCALE* rather than bit-identical. That is
+// deliberate: the two sides run the same arithmetic on the same inputs, but through
+// different backends — native on the server, wasm in the page — and demanding
+// identical bits would be asserting something about IEEE rounding across compilers
+// rather than about the mesh. A micrometre is far below anything the geometry means:
+// `HEIGHT_SCALE` is 0.25 world-units for a whole height step.
+pub const MESH_CRC_SCALE = 1000000.0;
+
+fn mesh_crc_f(acc: integer, v: float) -> integer {
+  n = (v * MESH_CRC_SCALE) as integer ?? 0;
+  a = acc;
+  for k in 0..8 {
+    a = crc_byte(a, (n >> (k * 8)) & 255);
+  }
+  a
+}
+
+fn crc_byte(acc: integer, v: integer) -> integer {
+  c = acc ^ (v & 255);
+  for _ in 0..8 {
+    if c & 1 == 1 { c = (c >> 1) ^ 3988292384; } else { c = c >> 1; }
+  }
+  c
+}
+
+// The checksum over a mesh's vertices — position and normal, in emission order.
+//
+// ⚠ ORDER IS PART OF THE CLAIM. The same triangles emitted in a different sequence is
+// a different answer here, and that is right: `chunk_mesh_mat` walks its cells in one
+// order and a client that walked them differently would draw the same picture from a
+// different traversal — which would then diverge the moment anything indexed into it.
+pub fn mesh_crc(m: Mesh) -> integer {
+  acc = 4294967295;
+  for v in m.vertices {
+    acc = mesh_crc_f(acc, v.pos.x as float ?? 0.0);
+    acc = mesh_crc_f(acc, v.pos.y as float ?? 0.0);
+    acc = mesh_crc_f(acc, v.pos.z as float ?? 0.0);
+    acc = mesh_crc_f(acc, v.normal.x as float ?? 0.0);
+    acc = mesh_crc_f(acc, v.normal.y as float ?? 0.0);
+    acc = mesh_crc_f(acc, v.normal.z as float ?? 0.0);
+  }
+  (acc ^ 4294967295) & 4294967295
+}
