@@ -1,0 +1,52 @@
+use hex_world;
+use hex_editor;
+use moros_terrain;
+
+fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
+  q0 = scx * hex_world::CHUNK_W;
+  r0 = scz * hex_world::CHUNK_W;
+  for li in 0..len(world_column(a, q0, r0).co_ids) {
+    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
+      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
+        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
+        hex_world::world_layer_version(a, q0, r0, li),
+        hex_world::world_layer_bytes(a, q0, r0, li));
+    }
+  }
+}
+
+fn report(a: World, b: World, scx: integer, scz: integer) {
+  q = scx * hex_world::CHUNK_W + 3;
+  r = scz * hex_world::CHUNK_W + 5;
+  println("chunk ({scx},{scz}): base a={hex_world::world_chunk_base(a, scx, scz)} "
+        + "b={hex_world::world_chunk_base(b, scx, scz)}  "
+        + "cell({q},{r}) h a={hex_world::world_cell(a, q, r, 0).h_height} "
+        + "b={hex_world::world_cell(b, q, r, 0).h_height}");
+}
+
+fn main() {
+  a = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 40..41 {
+    for r in 0 - 40..41 { hex_editor::ground_set(a, q, r, 40 + q - r, hex_editor::SURFACE_MAT); }
+  }
+  println("--- ONE chunk at a time, into a FRESH world each time");
+  for sc in 0 - 1..2 {
+    b = world_new(0.25, 0, 10, 4).wn_world;
+    copy_chunk(a, b, sc, sc);
+    report(a, b, sc, sc);
+  }
+  println("--- and all of them into ONE world, the way the client fills up");
+  c = world_new(0.25, 0, 10, 4).wn_world;
+  for scx in 0 - 1..2 { for scz in 0 - 1..2 { copy_chunk(a, c, scx, scz); } }
+  for sc2 in 0 - 1..2 { report(a, c, sc2, sc2); }
+  println("--- and the MESH, over tiles whose halo is inside the copied chunks");
+  for cx in 0 - 2..3 {
+    ma = moros_terrain::chunk_mesh_mat(cx, 0, a, hex_editor::SURFACE_MAT);
+    mb = moros_terrain::chunk_mesh_mat(cx, 0, c, hex_editor::SURFACE_MAT);
+    same = moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb);
+    y0a = 0.0; y0b = 0.0;
+    if len(ma.vertices) > 0 { y0a = ma.vertices[0].pos.y as float ?? 0.0; }
+    if len(mb.vertices) > 0 { y0b = mb.vertices[0].pos.y as float ?? 0.0; }
+    println("tile ({cx},0): match {same}  verts {len(ma.vertices)}/{len(mb.vertices)}  y0 {y0a}/{y0b}");
+  }
+}

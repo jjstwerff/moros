@@ -357,7 +357,35 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 and still `cache agree 24 bad 0` — which now MEANS something, because both sides agree
 what a coordinate is.
 
-### ⚠ IT IS THE COPY, NOT THE COORDINATES — reproduced with no wire and no browser
+### ⚠ CORRECTION (2026-08-02): THE COPY IS NOT AT FAULT
+
+`probe/s3_copy_narrow.loft` refutes the section below. Copying one chunk into a fresh
+world, and all of them into one world the way the client fills up, both give:
+
+```
+chunk (-1,-1): base a=9  b=9   cell(-29,-27) h a=38 b=38
+chunk ( 0, 0): base a=9  b=9   cell(3,5)     h a=38 b=38
+chunk ( 1, 1): base a=32 b=32  cell(35,37)   h a=38 b=38
+```
+
+**Bases and cells are exact, negative chunks included.** And meshing tiles whose halo
+lies inside the copied region gives `match true` on every one, 448 vertices each, y
+identical to fifteen digits.
+
+So `world_layer_bytes` / `world_put_layer` / `world_chunk_base` are correct, and the
+`agree 3 bad 78` below comes from something the two probes differ in — most likely
+that the wide probe meshes tiles whose halo reaches chunks it did not copy, or copies
+chunks that are only PARTIALLY authored, where an absent cell reads `base + 0` and the
+two worlds' bases for that chunk need not agree. **That is the next thing to isolate**,
+and it is one edit to the wide probe: copy a strictly larger region than it meshes, and
+see whether the count goes to zero.
+
+⚠ **What still stands from below:** `layer_crc` is over the RELATIVE `sv_height`, so it
+cannot see the base. S2's `cache agree 24 bad 0` therefore does not prove the heights
+land right — that remains an untested claim whatever the cause of S3's mismatch, and
+`layer_wire.loft` should gain a base assertion across MANY chunks.
+
+### ~~IT IS THE COPY, NOT THE COORDINATES~~ — superseded by the correction above
 
 `probe/s3_copy_mesh.loft` builds a world, copies every layer into a second one exactly
 as the client does (`world_layer_bytes` → `world_put_layer`), and meshes the same tiles
