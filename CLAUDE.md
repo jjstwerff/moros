@@ -188,6 +188,7 @@ address (or the hostname `make browser` prints) cannot connect.
   decisions taken, what is open. Short on purpose; the eight-session record is
   [Journal](doc/claude/JOURNAL.md), which nothing thins
 - [Scripted editor](doc/claude/SCRIPTED_EDITOR.md) — **how the editor is driven and verified**: a script of key presses with ticks, every run recorded, a clock that can be stepped or sped up, and a PNG at every step. ⚠ Its §0 is the finding that reframes the structural work — `hex_draw` and friends already do what the editor hand-rolls
+- [Parts](doc/claude/PARTS.md) — **a house drawn away from the world, and the things it is made of**: parts as small worlds, composition by SOCKET rather than coordinate, an instance as a reference whose cells are derived, and the order of work. Plan 17
 - [Fittings](doc/claude/FITTINGS.md) — doors, windows, shutters as hinged assemblies. ⚠ Read its banner first: most of it is superseded by `hex_draw`
 - [Hex stack](doc/claude/HEX_STACK.md) — **the general design, and the single authority**: the three
   invariants (the store is the only authority, everything else is derived, writes go in place), the

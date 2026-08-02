@@ -1,0 +1,226 @@
+<!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
+# PARTS — a house drawn away from the world, and the things it is made of
+
+*(user, 2026-08-02: "design that I can draw a house separate from the world to stencil into
+it, and that it allows me to design doors, door-frames, windows, window-frames, statues,
+pillars, that can be placed in the world or used in other houses")*
+
+Plan [#17](https://github.com/jjstwerff/moros/issues/17). Design only — nothing here is built
+yet, and the order of work is at the bottom.
+
+**What this replaces.** `hex_editor::stencil_place` is a *procedural* house: a radius, a
+`roof_height(anchor, roof_up, rad, d)` curve, two materials. The only house that can be
+stencilled is the one written in loft, so "design a house" is not a thing the editor can do —
+it is a thing you do by editing `gesture.loft`. Everything below exists to make the stencil an
+**authored document** instead.
+
+---
+
+## The eight decisions
+
+Stated as calls with their trade-off, because that is cheaper to argue with than a survey.
+
+### P1 — A part IS a world
+
+Not a new document type, not a second editor, not a second renderer: a part is a **small
+`hex_world` store** and you edit it with the gestures that already exist. Opening a part
+*is* loading a world; the terrain is empty and the camera starts at the anchor.
+
+> **The trade-off, taken deliberately.** A dedicated part editor could offer a cleaner
+> abstraction — snapping, symmetry, a parts palette that knows about door widths. It would
+> also be a second implementation of walls, roofs, openings, the walker, the camera and the
+> save format, and this tree already has one session's worth of evidence about what a second
+> copy costs. Everything the part editor would add can be added to *the* editor as a mode.
+
+Consequences that fall out for free: a part renders in the same shader, saves in the same
+format, is verified by the same gates, and **a house can be opened as a part** — which is
+what makes "start from that cottage and change the roof" possible without a feature.
+
+### P2 — A part is a document with an anchor, and the format already accepts it
+
+Home: `hex_field`'s `HXF1` — magic, schema version, explicit extent, then **tagged sections
+each with a byte length**. That last property is the whole reason this is cheap: a reader
+meeting a tag it does not know *skips it by that length*. So parts add sections and every
+existing reader keeps working, with no version bump and no negotiation:
+
+| section | carries |
+|---|---|
+| `PART` | kind (`house` · `frame` · `leaf` · `prop` · `fitting`), name, author-facing description |
+| `ANCH` | the anchor cell, the anchor height, and the **facing** — one of the 24 headings the editor already uses |
+| `SOCK` | the sockets this part OFFERS (§P3) |
+| `FITS` | the sockets this part CAN BE PLACED INTO |
+| `INST` | parts placed inside this part (§P4) — this is what makes a house a composition |
+| `MESH` | for prop parts: the `.glb` payload or a reference to one (§P5) |
+
+⚠ **The extent is the part's own, and it is not the world's.** A part saved with a negative
+origin and a fractional height is exactly the shape `hex_field`'s committed fixture
+(`canonical.hxf`) already covers, which is why that fixture is worth more than the sections
+it tests.
+
+### P3 — Composition is by SOCKET, never by coordinate
+
+This is the decision that answers *"used in other houses"*. A door does not go "at cell
+(3,-2) rotated 60°" — it goes **in a door-frame**. So:
+
+```
+socket  = name · cell · edge-or-heading · kind · size-class
+```
+
+A door-frame **offers** `socket "leaf" @ door/2x3`. A door leaf **fits** `door/2x3`. A porch
+offers `socket "column-1..4" @ pillar/round-3`. A niche offers `statue/plinth-2`.
+
+Placement into a socket is a *check*, and its refusal is the shape this editor already uses
+everywhere — **ok, reason, offer, residual**. A leaf too wide for the frame is refused with
+the frame's actual size and the nearest leaf that fits, not silently scaled.
+
+> **Why not just coordinates.** Coordinates make a door-frame and a door two independent
+> objects that happen to be near each other, so moving the frame leaves the door behind and
+> nothing notices. They also make "does this door fit that frame" unanswerable before
+> placement, which is exactly the question an author asks. A socket is the *joint*, and a
+> joint is a thing you can test.
+
+⚠ **A socket is not a hole.** `hex_draw::place_opening(plan, cells, edges, side, t, nedges,
+kind)` already cuts the opening in the wall; the socket is the *contract at that opening*.
+Conflating them is how `F-HOLE` went wrong in [FITTINGS](FITTINGS.md) — an opening became an
+edge material and then nothing could be hung in it.
+
+### P4 — An instance is a reference, and its cells are a LABELLED LAYER
+
+The world stores, per placement: **part id · cell · heading · socket bindings**. That record
+is the authority. The cells are **derived** from it into a layer that carries the instance's
+own label.
+
+This is the [HEX_STACK](HEX_STACK.md) invariant applied literally — *the store is the only
+authority, everything else is derived, writes go in place* — and it buys the thing the user
+asked for last: **edit the part, and every house containing it changes.**
+
+The mechanism exists already, built this session for cellars: `world_fresh_label` mints an
+identity, `world_set_column_as` / `world_merge_band_as` write a band under it. One instance,
+one label, so `I1` holds by construction rather than by care.
+
+⚠ **`bake` stays, and it is not the truth.** Flattening an instance to plain cells is needed
+for export, for interop, and for the moment an author wants to *stop* tracking a part and
+just carve it. So it is an operation — and the equivalence
+
+```
+expand(instance)  ==  bake(instance)
+```
+
+is the strongest test in this design, because the two paths share nothing but the part.
+
+### P5 — Two kinds of part, one mechanism
+
+|  | cell part | prop part |
+|---|---|---|
+| examples | house, wall, door-frame, window-frame, stair, arch | statue, pillar, finial, sign, bracket |
+| stored as | cells in the part's `hex_world` | a `.glb` in a DRESSING layer |
+| already exists | `stencil_place`, the whole gesture set | `MSG_PROP` (19), `MSG_IMPORT` (21), `MSG_EXPORT` (22) |
+| collides / is walked on | yes — it is terrain | no, unless it carries a cell footprint too |
+
+A part may be **both**: a pillar that is a `.glb` for the eye and a one-cell column for the
+walker. Sockets do not care which it is, which is the point of putting the socket on the part
+rather than on the cells.
+
+> **Why a statue is not just an import.** `21:` already imports a `.glb`. What it cannot do
+> is *be placed in a niche*, *be listed in a library*, *be swapped for another statue that
+> fits the same plinth*, or *carry a name an author chose*. Those are all `PART` and `SOCK`,
+> and they are the difference between an import and a part.
+
+### P6 — A fitting is a part with a moving sub-part
+
+The one thing that distinguishes a door from a pillar, and the only piece of
+[FITTINGS](FITTINGS.md) that survived its own inventory: `F-FIT`, `F-SWING`, `F-STATE` — a
+leaf on a **hinge**, with an axis, a range and a current state.
+
+So a `leaf` part carries a hinge in its `PART` section, and an instance carries the state.
+That is what makes the door read as a door: **ajar**, not shut. A shut door photographs as a
+wall, and the acceptance test for this whole design is recognition.
+
+### P7 — The library is a directory, and the picker is the editor
+
+`data/parts/<kind>/<name>.hxf`. The server lists it; the editor gets a picker; `14:` (stencil)
+takes a part name instead of a roof height. Nothing about this needs a database, and a
+directory is greppable, diffable and reviewable — which a database is not.
+
+### P8 — Nesting is allowed, and it terminates
+
+A house contains door-frames; a door-frame contains a leaf; a porch contains pillars. So
+`INST` is recursive. Two rules keep it finite and are tested rather than assumed:
+
+- **a part may not contain itself, transitively** — checked on save, refused with the cycle;
+- **depth is bounded** (start at 8) — not because deeper is wrong, but because an unbounded
+  recursion in a renderer is a hang, and a hang in the editor reads as a crash.
+
+---
+
+## What this is verified by
+
+Following the rule this tree learned the hard way: **structural invariants are loft tests in
+the library; the drawn result and the sentences are gates.**
+
+**Library (`lib/hex_part/tests/`), pure, no server:**
+
+| claim | why it cannot be a gate |
+|---|---|
+| round-trip identity — a part saved and loaded is the same part | a picture cannot see a dropped section |
+| `expand(instance) == bake(instance)` | the whole authority argument rests on it |
+| a leaf that does not fit its socket is REFUSED, with the reason and the offer | a refusal has no picture |
+| one instance owns one label (`I1`) | measured in the store, not on screen |
+| a part placed at each of the 24 headings is congruent to itself | 24 pictures nobody will look at |
+| a cyclic `INST` is refused, and depth is bounded | a hang is not a picture either |
+| an unknown section survives a load-and-save unchanged | forward compatibility, by the format's own promise |
+
+**Gates (running world, a PNG):**
+
+- the authored house stencils in and **reads as a house** — the cold-recognition test;
+- a door in its frame reads as a door, **ajar** (`F-SWING`);
+- a statue on its plinth is at the plinth's height and facing out;
+- a part edited and re-saved changes every placement in the world — one picture before, one
+  after, and the diff is the claim.
+
+⚠ **The negative control, seen red, before any of it is believed:** perturb one cell of a
+saved part and the round-trip test must fail. Without that, every row above passes on a
+constant — which is how `25:` WALL held its gate for months while drawing a road with a
+fence down each side.
+
+---
+
+## The order of work
+
+Smallest first, and each step ends in something testable — *build to learn*.
+
+| | step | done when |
+|---|---|---|
+| `A1` | **`lib/hex_part`**, and `HXF1` sections `PART` + `ANCH`. Save a region of the world as a part; load it back. | round-trip identity is green, with the perturbation control seen red |
+| `A2` | **`14:` takes a part name.** The procedural house becomes one authored part in `data/parts/house/cottage.hxf`, and stencilling it draws what `stencil_place` drew. | the gate's picture is unchanged — which is the proof the format carries everything the procedure did |
+| `A3` | **Instances** — `INST`, a labelled derived layer, and `expand == bake`. | edit the part, and the placed house changes |
+| `A4` | **Sockets** — `SOCK` / `FITS`, offer and fit, refusal with reason and offer. | a door-frame accepts a leaf and refuses an oversized one, in words |
+| `A5` | **Fittings** — the hinge, and the state. | the door reads as a door because it is ajar |
+| `A6` | **Prop parts** — statues and pillars over `19:`/`21:`, in the same library and the same sockets. | a statue swapped for another on the same plinth |
+| `A7` | **The picker**, and a part-editing mode in the editor. | a house authored end-to-end without touching loft |
+
+⚠ **`A2` before `A3`.** The temptation is to build instances first, because references are
+the interesting part. `A2` is what proves the *format* carries a real house — and if it does
+not, every instance built on it is built on a document that has already lost something.
+
+---
+
+## Open, and decided rather than asked
+
+- **Heading granularity: 24, not 12.** `hex_form` canonicalises a footprint over 12
+  orientations, and the editor's own wall runs use 24. A part placed at a heading with no
+  lattice family is *approximated*, and that is the honest word for it — the alternative is
+  refusing half the headings an author can already point at. `A1` records the requested
+  heading; the approximation is measured at `A4` and written down.
+- **Size classes are names, not numbers.** `door/2x3` rather than a width in cells, because a
+  cell width is a lattice fact and a door size is an authoring intent; two frames that admit
+  the same leaves should say so even if their cells differ.
+- **A part carries no terrain.** It carries what it *is*; seating it on a hillside is
+  `hex_place::seat_height` / `seat_write`, which already exists and already handles the slope.
+
+## See also
+
+- [FITTINGS](FITTINGS.md) — the hinge model, and which of its sections `hex_draw` superseded
+- [EDITOR_SUBSTRATE § The document format](EDITOR_SUBSTRATE.md#the-document-format-is-the-sharpest-clause) — `HXF1`, and why sections beat a flags word
+- [HEX_STACK](HEX_STACK.md) — the three invariants this design is an application of
+- [WIRE_PROTOCOL](WIRE_PROTOCOL.md) — `14:` as it stands today
