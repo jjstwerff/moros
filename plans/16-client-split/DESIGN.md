@@ -353,7 +353,21 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 
 ### S3 — the client derives one surface — **IN PROGRESS**
 
-**Built and measured (2026-08-02): `ground 29 bad 18`.** The client runs
+**Measured after the units were fixed: `ground 41 bad 7`** (was 29/18). S2 re-checked
+and still `cache agree 24 bad 0` — which now MEANS something, because both sides agree
+what a coordinate is.
+
+⚠ **THE REMAINING SEVEN ALL CARRY A NEGATIVE COORDINATE** — `0,-1` `-1,0` `-1,-1`
+`1,-1` `-1,-4` `2,-1` `3,-1`. Two readings are still open and the per-tile report
+cannot separate them yet: either these are the genuine HALO cases (a tile whose
+one-cell normal halo or two-cell height grid reaches a store chunk the client was
+never streamed), or `chunk_of`'s floor division is off by one somewhere on the
+negative side — the fourth-and-fifth instance of the class STATE.md already names.
+**The next instrument is the one that tells those apart:** report, per failing tile,
+whether every store chunk its halo touches is present in the client's cache. If all
+are, the halo is innocent and the arithmetic is not.
+
+**Built and measured before that (`ground 29 bad 18`):** The client runs
 `moros_terrain::chunk_mesh_mat` — the server's own function — over its voxel cache and
 checksums the result against the server's (`Q:` out, `42:` back). 29 tiles of 47
 agree; **18 do not**, and it still DRAWS the server's mesh, which is exactly why the

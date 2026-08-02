@@ -3170,9 +3170,18 @@ fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
 // disagreement is visible as a number long before anything depends on the cache
 // being right. A step that switched the drawing over at the same time would have no
 // way to tell a bad cache from a bad mesher.
-fn layer_wire(wld: World, cx: integer, cz: integer, li: integer) -> text {
-  q0 = cx * CHUNK;
-  r0 = cz * CHUNK;
+// ⚠ `cx,cz` HERE ARE STORE CHUNKS, NOT MESH TILES, and the distinction cost a whole
+// phase. A layer IS a store chunk's layer — 1024 cells — so keying its frame by the
+// renderer's 8-hex tile was describing one thing in another thing's units. The client
+// then fed those numbers to `world_put_layer`, which takes store coordinates, and the
+// cache landed four times too far out. It agreed anyway wherever the two mappings
+// collide, which for small NON-NEGATIVE coordinates they do — so the failures came
+// back clustered on negatives and read as a parity bug.
+fn layer_wire(wld: World, scx: integer, scz: integer, li: integer) -> text {
+  q0 = scx * hex_world::CHUNK_W;
+  r0 = scz * hex_world::CHUNK_W;
+  cx = scx;
+  cz = scz;
   flat = hex_world::world_layer_bytes(wld, q0, r0, li);
   out = "L:{cx},{cz},{li},{hex_world::world_layer_id(wld, q0, r0, li)},"
       + "{hex_world::world_layer_kind(wld, q0, r0, li)},"
@@ -3185,12 +3194,22 @@ fn layer_wire(wld: World, cx: integer, cz: integer, li: integer) -> text {
 }
 
 // Every terrain layer of one chunk, sent as its own frame.
+// Takes a MESH tile and sends the STORE chunk that contains it — the two units meet
+// here, once, deliberately.
+//
+// ⚠ IT RESENDS. Sixteen mesh tiles share one store chunk, so streaming a region sends
+// each layer up to sixteen times. That is redundant and it is not wrong, which is the
+// order those matter in: the client writes the same bytes to the same place and its
+// checksum is unmoved. Deduping needs per-batch state and can come after the claim is
+// green.
 fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
-  q0 = cx * CHUNK;
-  r0 = cz * CHUNK;
+  scx = hex_world::chunk_of(cx * CHUNK);
+  scz = hex_world::chunk_of(cz * CHUNK);
+  q0 = scx * hex_world::CHUNK_W;
+  r0 = scz * hex_world::CHUNK_W;
   for li in 0..len(world_column(wld, q0, r0).co_ids) {
     if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
-      srv.broadcast(layer_wire(wld, cx, cz, li));
+      srv.broadcast(layer_wire(wld, scx, scz, li));
     }
   }
 }
@@ -3205,12 +3224,17 @@ fn digest_wire(wld: World, chunks: vector<DirtyChunk>) -> text {
   out = "D:";
   n = 0;
   for dch in chunks {
-    q0 = dch.cx * CHUNK;
-    r0 = dch.cz * CHUNK;
+    // ⚠ STORE CHUNKS, for the same reason `layer_wire` sends them: the digest is over
+    // LAYERS, and a layer belongs to a store chunk. The client multiplies by
+    // `CHUNK_W`, so anything else here is off by the ratio of the two tiles.
+    q0 = hex_world::chunk_of(dch.cx * CHUNK) * hex_world::CHUNK_W;
+    r0 = hex_world::chunk_of(dch.cz * CHUNK) * hex_world::CHUNK_W;
     for li in 0..len(world_column(wld, q0, r0).co_ids) {
       if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
         if n > 0 { out += ";"; }
-        out += "{dch.cx},{dch.cz},{li},{hex_world::world_layer_crc(wld, q0, r0, li)}";
+        out += "{hex_world::chunk_of(dch.cx * CHUNK)},"
+             + "{hex_world::chunk_of(dch.cz * CHUNK)},{li},"
+             + "{hex_world::world_layer_crc(wld, q0, r0, li)}";
         n = n + 1;
       }
     }
