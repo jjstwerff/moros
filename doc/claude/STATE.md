@@ -23,9 +23,12 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 ## ⏭ PICK UP HERE (2026-08-02, session 9) — the client meshes the ground itself, and the guard that lets it is exact
 
 `make gate` **33 green** · `make lib-test` **18 packages, both backends** ·
-`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **91**.
+`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **102**.
 
-### S3 is measured and green: `ground 41 bad 7` → `ground 10 bad 0 wait 38`
+### S3 is complete: `ground 41 bad 7` → **`ground 48 bad 0 wait 0`**
+
+Every tile the server checksums, the client derives from its own voxels and matches.
+Nothing held, nothing wrong.
 
 The client now runs the server's own mesher over its own cache and gets the server's
 triangles, checksum for checksum. What made it look broken was never arithmetic:
@@ -51,12 +54,31 @@ alike, so a sweep over terrain that does not emit everywhere is partly measuring
 nothing. It must read 0. `probe/s3/README.md` is the whole routine; `make guards`
 runs it and shows the maps.
 
-**Open, and the next thing to do:** those 38 held tiles are held *forever* in that
-run — nothing re-asks once their margin lands. The home for it is the `Z:1`/`Z:0`
-staging bracket the stream already has: re-compare at `Z:0`, when the batch is known
-complete. Until that exists, S3 proves the mesher agrees wherever it can be asked,
-**not** that the client could stop being sent `M:` frames — so nothing has been
-deleted from the server's ground broadcast.
+⚠ **A RECEIVER'S PRECONDITION IS THE SENDER'S JOB** — the finding, and it outlives
+this protocol. Re-asking held tiles at `Z:0` moved two of them; the other 36 were held
+forever and *correctly*, because the guard was right and the sender was not. Three
+things had to change, each looking like someone else's problem:
+
+- `send_layers` sent the store chunk under a tile's **origin** and nothing else, so
+  tiles at `cz = -4` wanted chunk `r = -2` and no tile in range had its origin there;
+- an **empty chunk was sent as silence**, which a cache cannot tell from one in
+  flight. `K:<cx>,<cz>` is the authority saying so, `world_touch_chunk` stores it, and
+  `tile_ready` now asks whether a chunk is **KNOWN**, not whether it holds ground — a
+  chunk known to be empty is an *answer*;
+- the comparison ran on arrival rather than at `Z:0`, the server's own statement that
+  a batch is whole.
+
+A guard alone turns a wrong answer into no answer. Better, and not the claim.
+
+⚠ **THE GATE WAS TESTING A CLIENT THAT NO LONGER EXISTED.** The server is interpreted
+from source every run; the wasm client is a **file** the server serves, written by
+`make client`. Every edit to `editor_client.loft` was invisible to the gates until
+someone remembered that command — the `Z:0` drain read as "never runs" through three
+instrumented runs while the code was simply not in the page. Both client gates now
+build it themselves. **Check this first** if a client change appears to do nothing.
+
+**Next:** S3 has earned the deletion it was measuring for — the server's ground `M:`
+frames can go, and the client draws its own. Nothing has been deleted yet.
 
 **Two instruments were wrong before the thing they measured, again.** `wait` returns
 the *earliest* matching status, so a cumulative tally read `ground 0 bad 0 wait 1` —
