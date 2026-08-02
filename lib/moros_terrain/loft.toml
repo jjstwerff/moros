@@ -1,0 +1,24 @@
+[package]
+name    = "moros_terrain"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/moros_terrain.loft"
+
+# ⚠ A LEAF, AND THAT IS THE WHOLE REASON IT IS ITS OWN PACKAGE. The mesher needs
+# GEOMETRY (`moros_render`: `hex_to_world`, `HEIGHT_SCALE`, the mesh types) and it
+# needs POLICY (`hex_editor`: `terrain_h`, `ground_open`, `SURFACE_MAT`) — two cones
+# that nothing else wants together.
+#
+# Putting it in `moros_render` was tried and reverted: `moros_sim` depends on that,
+# so it inherited `hex_editor`'s whole cone and its tests went red on `Cannot redefine
+# 'fabs'` (from `hex_form`), then on `seg_len`. A package nobody else imports cannot
+# do that to anybody — the server and the client import this, and `moros_sim` does
+# not.
+[dependencies]
+moros_render = { path = "../moros_render" }
+hex_world    = { path = "../hex_world" }
+hex_editor   = { path = "../hex_editor" }
+hex_grid     = ">=0.1"
+graphics     = ">=0.1"

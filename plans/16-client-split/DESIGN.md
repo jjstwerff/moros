@@ -353,6 +353,21 @@ that walks the world; it is a heartbeat that has to stay cheap enough to run all
 
 ### S3 — the client derives one surface
 
+✅ **PREREQUISITE DONE (2026-08-02): the mesher is `lib/moros_terrain`.** 300 lines,
+its own package, 4 tests. `make gate` 32 green and `make lib-test` 1974 — the meshes
+are byte-identical, which those gates would not have been quiet about.
+
+⚠ **IT IS A LEAF, AND THAT IS THE WHOLE DESIGN.** Meshing terrain sits on a seam: it
+needs GEOMETRY (`moros_render`) and POLICY (`hex_editor` — `terrain_h`, which layer is
+the ground, whether a cell was opened), and nothing else in the tree wants both cones.
+Putting it in `moros_render` was tried and reverted: `moros_sim` depends on that, so
+it inherited `hex_editor`'s cone and went red on `Cannot redefine 'fabs'` — the name
+arriving from `hex_form`, five packages away — then on `seg_len`. A package nobody
+else imports cannot do that to anybody, and the numbers say so: `moros_sim` is
+untouched at 208.
+
+*(the original prerequisite note follows, kept for its measurements)*
+
 ⚠ **PREREQUISITE: `chunk_mesh_mat` MUST MOVE INTO A LIBRARY FIRST.** It lives in
 `editor_server.loft`, and S3's claim is that the client runs *the server's own
 function, unmodified* — which is only checkable if there is ONE function. Two copies

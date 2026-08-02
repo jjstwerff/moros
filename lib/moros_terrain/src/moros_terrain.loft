@@ -1,0 +1,300 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE TERRAIN MESH — one chunk of ground, as triangles, in ONE place.
+//
+// ⚠ IT IS ITS OWN PACKAGE BECAUSE IT SITS ON A SEAM. Meshing terrain needs GEOMETRY
+// (`moros_render` — `hex_to_world`, `HEIGHT_SCALE`, the mesh types) and it needs
+// POLICY (`hex_editor` — `terrain_h`, which layer is the ground, whether a cell has
+// been opened). Nothing else in the tree wants both cones, and putting it in either
+// one pushes the other onto every consumer.
+//
+// Measured: with it inside `moros_render`, `moros_sim` inherited `hex_editor`'s cone
+// and its tests went red on `Cannot redefine 'fabs'` — the name arriving from
+// `hex_form`, five packages away — and renaming those surfaced `seg_len` next. A leaf
+// nobody imports cannot do that to anybody.
+//
+// ⚠ AND IT EXISTS AT ALL FOR PLAN 16's S3, where the CLIENT derives its own ground
+// from its voxel cache and proves it matches the server's. *"The server's own
+// function, unmodified"* is only checkable if there is ONE function; two copies that
+// agree today are two copies, and not drifting is the whole of that gate.
+//
+// ⚠ `MESH_CHUNK` IS 8 AND `hex_world::CHUNK_W` IS 32 — different questions. The store
+// tiles at 32 for windowing and elision; the renderer tiles at 8 because that is what
+// a rebuild costs. The mesh tile lives with the mesher so a client cannot tile
+// differently by accident.
+use graphics;
+use moros_render;
+use hex_grid;
+use hex_world;
+use hex_editor;
+
+// The renderer's tile, in hexes. See the banner: NOT the store's `CHUNK_W`.
+pub const MESH_CHUNK = 8;
+
+pub fn corner_heights(cq: integer, cr: integer, wld: World) -> vector<float> {
+  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for cd2 in 0..6 {
+    (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
+    nh2 = (terrain_h(nq2, nr2, wld) as float);
+    (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
+    sums[ca2] = sums[ca2] + nh2;
+    sums[cb2] = sums[cb2] + nh2;
+  }
+  selfh = (terrain_h(cq, cr, wld) as float);
+  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
+  out
+}
+
+pub fn nrm3(nx: float, ny: float, nz: float) -> Vec3 {
+  ln = sqrt(nx * nx + ny * ny + nz * nz) ?? 0.0;
+  if ln == 0.0 { return moros_render::vec3(0.0, 1.0, 0.0); }
+  moros_render::vec3(nx / ln ?? 0.0, ny / ln ?? 0.0, nz / ln ?? 0.0)
+}
+
+pub fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3) {
+  base = len(m.vertices);
+  m.vertices += [moros_render::vertex(a, na, moros_render::vec2(0.0, 0.0))];
+  m.vertices += [moros_render::vertex(b, nb, moros_render::vec2(1.0, 0.0))];
+  m.vertices += [moros_render::vertex(c, nc, moros_render::vec2(0.0, 1.0))];
+  m.triangles += [Triangle { a: base, b: base + 1, c: base + 2 }];
+}
+
+pub fn grid_h(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+          q: integer, r: integer, wld: World) -> integer {
+  lq = q - gq0;
+  lr = r - gr0;
+  if lq < 0 || lr < 0 || lq >= gw || lr >= gw { return terrain_h(q, r, wld); }
+  gh[lr * gw + lq] ?? 0
+}
+
+pub fn cell_normal_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+                    cq: integer, cr: integer) -> Vec3 {
+  c0 = moros_render::hex_to_world(cq, cr, 0);
+  h0 = (gh_at(gh, gq0, gr0, gw, cq, cr) as float) * moros_render::HEIGHT_SCALE;
+  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
+  for nd in 0..6 {
+    (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
+    nw = moros_render::hex_to_world(nnq, nnr, 0);
+    dx = nw.x - c0.x;
+    dz = nw.z - c0.z;
+    dy = (gh_at(gh, gq0, gr0, gw, nnq, nnr) as float) * moros_render::HEIGHT_SCALE - h0;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxy = sxy + dx * dy;
+    szy = szy + dz * dy;
+  }
+  gx = sxy / sxx ?? 0.0;
+  gz = szy / szz ?? 0.0;
+  nrm3(0.0 - gx, 1.0, 0.0 - gz)
+}
+
+pub fn gh_at(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+         q: integer, r: integer) -> integer {
+  lq = q - gq0;
+  lr = r - gr0;
+  if lq < 0 || lr < 0 || lq >= gw || lr >= gw { return 0; }
+  gh[lr * gw + lq] ?? 0
+}
+
+pub fn corner_heights_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+                       cq: integer, cr: integer) -> vector<float> {
+  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for cd2 in 0..6 {
+    (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
+    nh2 = (gh_at(gh, gq0, gr0, gw, nq2, nr2) as float);
+    (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
+    sums[ca2] = sums[ca2] + nh2;
+    sums[cb2] = sums[cb2] + nh2;
+  }
+  selfh = (gh_at(gh, gq0, gr0, gw, cq, cr) as float);
+  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
+  out
+}
+
+pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
+                   nx: vector<float>, ny: vector<float>, nz: vector<float>,
+                   q0: integer, r0: integer,
+                   gh: vector<integer>, gq0: integer, gr0: integer, gw: integer) {
+  chh = grid_h(gh, gq0, gr0, gw, cq, cr, wld);
+  cw = moros_render::hex_to_world(cq, cr, chh);
+  hs = corner_heights_from(gh, gq0, gr0, gw, cq, cr);
+
+  // ⚠ THE CENTRE IS THE MEAN OF ITS OWN CORNERS, NOT THE RAW CELL HEIGHT.
+  //
+  // The rim of this fan is smoothed — every corner is the average of the three
+  // cells touching it — so taking the centre from the unsmoothed height mixes two
+  // different surfaces in one triangle. The residual is the cell's local
+  // CURVATURE, which means it is smallest on a flat plain and largest exactly at a
+  // summit, where the centre sits above all six corners and the cell is drawn as a
+  // little pyramid. Measured before this line existed: mean bias 0.027 wu over
+  // 2816 cells, but 17 summit cells spiking a full 0.5 wu — a ~27° pip on every
+  // top, and a row of them along a crest is the serrated ridge that reads as a
+  // tent against the sky.
+  //
+  // Averaging the six corners makes the drawn surface the smoothed field
+  // everywhere instead of almost everywhere. `terrain_y` samples these same
+  // triangles, so the ground walked on follows the ground drawn, as before.
+  csum = 0.0;
+  for hi2 in 0..6 { csum = csum + (hs[hi2] ?? 0.0); }
+  cy = (csum / 6.0 ?? 0.0) * moros_render::HEIGHT_SCALE;
+
+  ci0 = (cr - r0 + 1) * (MESH_CHUNK + 2) + (cq - q0 + 1);
+  n0x = nx[ci0] ?? 0.0; n0y = ny[ci0] ?? 1.0; n0z = nz[ci0] ?? 0.0;
+  nc0 = moros_render::vec3(n0x, n0y, n0z);
+
+  // A corner's normal is the mean of the THREE cells sharing it — the same
+  // three whose heights gave the corner its height, so the corner is smooth and
+  // both sides of every edge agree.
+  cnx: vector<float> = [n0x, n0x, n0x, n0x, n0x, n0x];
+  cny: vector<float> = [n0y, n0y, n0y, n0y, n0y, n0y];
+  cnz: vector<float> = [n0z, n0z, n0z, n0z, n0z, n0z];
+  for ed in 0..6 {
+    (gq, gr) = hex_grid::hex_neighbor(cq, cr, ed);
+    gi = (gr - r0 + 1) * (MESH_CHUNK + 2) + (gq - q0 + 1);
+    gx = nx[gi] ?? 0.0; gy = ny[gi] ?? 1.0; gz = nz[gi] ?? 0.0;
+    (ea, eb) = hex_grid::hex_edge_corners(ed);
+    cnx[ea] = cnx[ea] + gx; cny[ea] = cny[ea] + gy; cnz[ea] = cnz[ea] + gz;
+    cnx[eb] = cnx[eb] + gx; cny[eb] = cny[eb] + gy; cnz[eb] = cnz[eb] + gz;
+  }
+
+  // ⚠ SEVEN VERTICES, NOT EIGHTEEN. `emit_tri` writes three fresh vertices per
+  // triangle, so a six-triangle fan wrote the CENTRE six times and every corner
+  // twice — 18 records for 7 distinct points, all with identical position and
+  // normal. Measured, that is where a rebuild's time actually goes: emitting
+  // triangles costs 6-8 us EACH on both backends (so it is the store's records,
+  // not interpreter dispatch), against 0.9 us for a world read. 18,432 vertex
+  // records a chunk was the bill.
+  //
+  // Sharing is safe because the wire carries POSITION AND NORMAL ONLY — six floats
+  // a vertex, which is what `mesh_to_floats` writes — so the per-triangle uv that
+  // `emit_tri` varies never reaches a renderer and cannot be what distinguishes
+  // them. The triangles index the same seven points and the picture is identical:
+  // 15,466 triangles before and after, same bounds.
+  base = len(m.vertices);
+  m.vertices += [moros_render::vertex(moros_render::vec3(cw.x, cy, cw.z), nc0, moros_render::vec2(0.0, 0.0))];
+  for ci in 0..6 {
+    wc = moros_render::hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    m.vertices += [moros_render::vertex(moros_render::vec3(wc.x, (hs[ci] ?? 0.0) * moros_render::HEIGHT_SCALE, wc.z),
+                          nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0),
+                          moros_render::vec2(1.0, 0.0))];
+  }
+  for fi in 0..6 {
+    fj = (fi + 1) % 6 ?? 0;
+    m.triangles += [Triangle { a: base, b: base + 1 + fi, c: base + 1 + fj }];
+  }
+}
+
+pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
+  cm = moros_render::mesh("chunk");
+  q0 = cx * MESH_CHUNK;
+  r0 = cz * MESH_CHUNK;
+
+  // Normals for the chunk PLUS A ONE-CELL HALO, computed once.
+  //
+  // ⚠ Measured before this existed: 920 ms to rebuild 36 chunks — a visible
+  // stall on every arrow press. Each cell was computing its own normal and its
+  // six neighbours', so every normal in the chunk was derived SEVEN times. The
+  // halo is what lets it be computed once: a cell on the chunk's edge needs its
+  // neighbours' normals, and those live one cell outside.
+  // ⚠ AND THE HEIGHTS UNDER THEM ARE READ ONCE TOO. The halo above stopped every
+  // normal being derived seven times; this stops every HEIGHT being read fifteen
+  // times. Measured: the six-neighbour walk costs 9.6 ms per 1024 cells, and a
+  // rebuild did it twice — once for the normals over the halo, once for each
+  // cell's corner heights — while reading the whole grid ONCE costs 1.0 ms for
+  // 1156 cells. About 15 ms of a 36 ms rebuild was re-reading the same cells.
+  //
+  // The grid carries a TWO-cell halo: a normal on the halo ring needs its own six
+  // neighbours, and those sit one further out again. Every read below is an array
+  // index; the store is touched exactly `(MESH_CHUNK + 4)²` times.
+  gw = MESH_CHUNK + 4;
+  gq0 = q0 - 2;
+  gr0 = r0 - 2;
+  gh: vector<integer> = [];
+  for hr in gr0..gr0 + gw {
+    for hq in gq0..gq0 + gw { gh += [terrain_h(hq, hr, wld)]; }
+  }
+
+  nx: vector<float> = [];
+  ny: vector<float> = [];
+  nz: vector<float> = [];
+  for hr in r0 - 1..r0 + MESH_CHUNK + 1 {
+    for hq in q0 - 1..q0 + MESH_CHUNK + 1 {
+      hn = cell_normal_from(gh, gq0, gr0, gw, hq, hr);
+      nx += [hn.x];
+      ny += [hn.y];
+      nz += [hn.z];
+    }
+  }
+
+  // ⚠ ONE CALL DECIDES WHETHER ANY CELL HERE CAN BE AN OPENING, and it is exact
+  // rather than a heuristic: a LAYER IS CHUNK-WIDE, so the ground's index is the
+  // same for every cell of this chunk. A cellar is INSERTED beneath, which is the
+  // only thing that moves the ground off index 0 — so `gl0 > 0` is precisely "this
+  // chunk has been dug under somewhere", and a chunk that has not pays one label
+  // scan for the whole rebuild instead of one per cell.
+  //
+  // That mattered enough to derive rather than measure afterwards: a per-cell scan
+  // added to the stream path once took first-client service from a few seconds to
+  // seventy-one, and this loop runs four times per chunk, once per material.
+  gl0 = hex_world::world_ground_layer(wld, q0, r0);
+  can_open = gl0 > 0;
+
+  for cr in r0..r0 + MESH_CHUNK {
+    for cq in q0..q0 + MESH_CHUNK {
+      mat = world_ground_cell(wld, cq, cr).h_material;
+      // ⚠ AN UNWRITTEN CELL IS ABSENCE AND COUNTS AS GROUND — that is what makes an
+      // unauthored world a flat plane rather than a hole to fall through, and it is
+      // exactly why a stairwell cannot simply be a cleared cell: the two are the
+      // same record. What separates them is the COLUMN, not the cell, and
+      // `ground_open` is that rule — unoccupied ground with something occupied
+      // BENEATH it was opened on purpose; unoccupied ground with nothing under it is
+      // just outdoors nobody has touched.
+      open = false;
+      if mat == 0 {
+        if can_open { open = hex_editor::ground_open(wld, cq, cr); }
+        mat = hex_editor::SURFACE_MAT;
+      }
+      if !open && mat == want_mat {
+        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gq0, gr0, gw);
+        // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
+        // one surface over. The ground has no skirts because it is continuous and
+        // its edges are somebody else's cells — but a stairwell is where the ground
+        // STOPS, and with nothing across the cut you see straight through the
+        // thickness between the floor and the ceiling under it.
+        if can_open { emit_ground_reveal(cm, wld, cq, cr); }
+      }
+    }
+  }
+  cm
+}
+
+pub fn emit_ground_reveal(m: Mesh, wld: World, cq: integer, cr: integer) {
+  rhs = corner_heights(cq, cr, wld);
+  drop = hex_editor::SLAB_THICK as float;
+  rcs = moros_render::hex_to_world(cq, cr, 0);
+  for rd in 0..6 {
+    (rnq, rnr) = hex_grid::hex_neighbor(cq, cr, rd);
+    if hex_editor::ground_open(wld, rnq, rnr) {
+      (rka, rkb) = hex_grid::hex_edge_corners(rd);
+      rw1 = moros_render::hex_corner_world(cq, cr, 0, (6 - rka) % 6 ?? 0);
+      rw2 = moros_render::hex_corner_world(cq, cr, 0, (6 - rkb) % 6 ?? 0);
+      y1 = (rhs[rka] ?? 0.0) * moros_render::HEIGHT_SCALE;
+      y2 = (rhs[rkb] ?? 0.0) * moros_render::HEIGHT_SCALE;
+      b1 = ((rhs[rka] ?? 0.0) - drop) * moros_render::HEIGHT_SCALE;
+      b2 = ((rhs[rkb] ?? 0.0) - drop) * moros_render::HEIGHT_SCALE;
+      // The normal points INTO the stairwell, taken from the neighbour rather than
+      // from the winding — `emit_wall_panel`'s rule, and it is here for its reason:
+      // the two libraries walk the corner ring in opposite senses, so a normal read
+      // off the winding faces the wrong way for half the directions.
+      rcn = moros_render::hex_to_world(rnq, rnr, 0);
+      rnm = nrm3(rcn.x - rcs.x, 0.0, rcn.z - rcs.z);
+      ra = moros_render::vec3(rw1.x, b1, rw1.z); rb = moros_render::vec3(rw2.x, b2, rw2.z);
+      rc = moros_render::vec3(rw2.x, y2, rw2.z); rdd = moros_render::vec3(rw1.x, y1, rw1.z);
+      emit_tri(m, ra, rnm, rb, rnm, rc, rnm);
+      emit_tri(m, ra, rnm, rc, rnm, rdd, rnm);
+    }
+  }
+}

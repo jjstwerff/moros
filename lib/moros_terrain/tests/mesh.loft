@@ -1,0 +1,66 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE TERRAIN MESH, WITHOUT A SERVER.
+//
+// It moved out of `editor_server.loft` so that plan 16's S3 can have the CLIENT run
+// it over its own voxel cache — and the whole S3 claim is *the server's own function,
+// unmodified*, which is only checkable while there is one function. These are the
+// claims that hold whoever calls it.
+use moros_terrain;
+use hex_world;
+use hex_editor;
+
+fn world() -> World {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 4..13 {
+    for r in 0 - 4..13 { hex_editor::ground_set(w, q, r, 40 + q, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn test_the_mesh_tile_is_not_the_store_tile() {
+  // ⚠ THE ONE THAT WOULD BE SILENT AND SEVERE. The store tiles at `CHUNK_W` for
+  // windowing and elision; the renderer tiles at `MESH_CHUNK` because that is what a
+  // rebuild costs. A reader who assumed they were the same would ask for chunk (2,3)
+  // and be handed the cells of another — with no error anywhere.
+  assert(moros_terrain::MESH_CHUNK != hex_world::CHUNK_W,
+         "the two tiles are different questions: {moros_terrain::MESH_CHUNK} vs {hex_world::CHUNK_W}");
+  assert(hex_world::CHUNK_W % moros_terrain::MESH_CHUNK == 0,
+         "and the store's tile is a whole number of the renderer's");
+}
+
+fn test_a_chunk_of_ground_becomes_triangles() {
+  w = world();
+  m = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  // Seven vertices a cell — a shared centre and six corners — over the tile.
+  want = moros_terrain::MESH_CHUNK * moros_terrain::MESH_CHUNK * 7;
+  assert(len(m.vertices) == want,
+         "{moros_terrain::MESH_CHUNK}^2 cells at 7 vertices = {want}, got {len(m.vertices)}");
+  assert(len(m.triangles) == moros_terrain::MESH_CHUNK * moros_terrain::MESH_CHUNK * 6,
+         "and six triangles a cell, got {len(m.triangles)}");
+}
+
+fn test_it_meshes_only_the_material_it_was_asked_for() {
+  // ⚠ THE CONTROL, and without it every count above passes on a mesher that ignores
+  // its argument. One mesh per material per chunk is why the argument exists.
+  w = world();
+  ground = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  road = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::ROAD_MAT);
+  assert(len(ground.vertices) > 0, "the ground is there");
+  assert(len(road.vertices) == 0, "and no cell carries road, so that mesh is empty");
+}
+
+fn test_the_ground_follows_its_own_heights() {
+  // The fan is the SMOOTHED field, so a slope drawn over rising ground has to rise —
+  // a mesher that dropped `wld` and drew a plane would pass every count above.
+  w = world();
+  m = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  for v in m.vertices {
+    if v.pos.y < lo { lo = v.pos.y; }
+    if v.pos.y > hi { hi = v.pos.y; }
+  }
+  assert(hi > lo, "the drawn ground rises across the tile: {lo} .. {hi}");
+}
