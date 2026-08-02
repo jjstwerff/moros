@@ -282,6 +282,10 @@ struct Client {
   // S3 — the ground the CLIENT derived, against the ground the server sent.
   g_agree: integer,
   g_bad: integer,
+  // Tiles the oracle held back: asked before the cache could answer. Not a failure —
+  // shown because a guard nobody can see is indistinguishable from a guard that never
+  // fires, and those want opposite fixes.
+  g_wait: integer,
   fog_x: float,
   fog_y: float,
   fog_z: float,
@@ -667,11 +671,23 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // switches, so a disagreement is a number rather than a hole in the ground.
         gf = parse_ints(body);
         if len(gf) >= 3 {
+          // ⚠ ASK THE ORACLE FIRST. `moros_terrain::tile_ready` answers whether this
+          // cache holds every chunk the mesher will READ for this tile — its own two
+          // cells of margin included. `probe/s3/s3_oracle_boundary.loft` sweeps nine
+          // cache shapes and the answer is a biconditional, not a safe guess: READY
+          // tiles matched 580 times and disagreed NEVER, and no held tile would have
+          // been fine. So a comparison made before READY is not a failure, it is a
+          // question asked too early — and counting it as one is what made S3 read
+          // `bad 7` while the arithmetic was correct all along.
+          if !moros_terrain::tile_ready(st.cache, gf[0] ?? 0, gf[1] ?? 0) {
+            st.g_wait = st.g_wait + 1;
+            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait}");
+          } else {
           gm = moros_terrain::chunk_mesh_mat(gf[0] ?? 0, gf[1] ?? 0, st.cache,
                                              hex_editor::SURFACE_MAT);
           if moros_terrain::mesh_crc(gm) == (gf[2] ?? 0) {
             st.g_agree = st.g_agree + 1;
-            web::send(h, "42:ground {st.g_agree} bad {st.g_bad}");
+            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait}");
           } else {
             st.g_bad = st.g_bad + 1;
             // ⚠ NAME THE TILE, DO NOT COUNT IT. A count cannot tell a BORDER effect
@@ -684,8 +700,9 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
             //
             // Bounded by construction: one line per DISAGREEING tile, and the whole
             // point is that the number should go to zero.
-            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} at {gf[0] ?? 0},{gf[1] ?? 0} "
-                       + "cells {len(gm.vertices)}");
+            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait} "
+                       + "at {gf[0] ?? 0},{gf[1] ?? 0} cells {len(gm.vertices)}");
+          }
           }
         }
       }
@@ -847,7 +864,7 @@ fn main() {
     // wearing the same name.
     cache: world_new(0.25, 0, 10, 4).wn_world,
     c_layers: 0, c_agree: 0, c_bad: 0,
-    g_agree: 0, g_bad: 0,
+    g_agree: 0, g_bad: 0, g_wait: 0,
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,

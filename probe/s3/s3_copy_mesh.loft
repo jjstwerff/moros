@@ -59,4 +59,13 @@ fn main() {
     }
   }
   println("copy-then-mesh: agree {agree} bad {bad}, first bad tile {first}");
+  // ⚠ THE VERDICT IS THE PROBE'S TO STATE, not its reader's. This one read
+  // `agree 3 bad 78` for a whole session while the mesher was correct — the probe
+  // copied into a LOCAL instead of through a `&World` (loft-lang/loft#735) — so a
+  // reader deciding by eye what "good" looks like is exactly the failure mode.
+  if bad == 0 && agree > 0 {
+    println("PROBE PASS s3_copy_mesh — a copied world meshes identically, {agree} tiles");
+  } else {
+    println("PROBE FAIL s3_copy_mesh — {bad} tiles differ, first at {first}");
+  }
 }

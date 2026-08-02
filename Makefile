@@ -393,6 +393,12 @@ headless-same:
 	  echo "  served:   $$(cat .served.txt)"; exit 1; fi
 	@rm -f .headless.txt .served.txt
 
+# SHOW THE GUARDS, AND CHECK THEM. Every S3 probe, each printing its own verdict, and
+# the ones that draw a map draw it here — the guard's decisions as a picture rather than
+# a count. `probe/s3/README.md` says why that distinction earned its own target.
+guards:
+	@sh probe/s3/run.sh
+
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
 	  tools/gates/world/*.mjs tools/gates/character/*.mjs

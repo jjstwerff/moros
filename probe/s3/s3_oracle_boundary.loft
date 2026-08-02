@@ -1,0 +1,127 @@
+// WHERE IS THE ORACLE EXACTLY RIGHT, AND WHERE DOES IT START BEING WRONG?
+//
+// One configuration agreeing proves one point, not a boundary. This sweeps many cache
+// SHAPES against every tile in a wide field and sorts each pair into four boxes:
+//
+//   READY   + matches   fine, and the useful case
+//   READY   + differs   ⚠ A FALSE POSITIVE — the client would draw a wrong ground and
+//                         believe it. This must be ZERO in every shape or the guard is
+//                         not a guard.
+//   NOT YET + differs   fine: correctly withheld
+//   NOT YET + matches   a false negative — merely wasteful, the tile is deferred a
+//                         frame it did not need. Counted, not feared.
+//
+// ⚠ THE SHAPES ARE CHOSEN TO BREAK IT, not to pass. A single chunk, an L, a ring with
+// a HOLE, a diagonal, one straddling the origin so every coordinate goes negative —
+// because the failure mode a rectangle cannot show is a footprint that spans chunks
+// the four-corner test does not name.
+use hex_world;
+use hex_editor;
+use moros_terrain;
+
+fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
+  q0 = scx * hex_world::CHUNK_W;
+  r0 = scz * hex_world::CHUNK_W;
+  for li in 0..len(world_column(a, q0, r0).co_ids) {
+    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
+      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
+        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
+        hex_world::world_layer_version(a, q0, r0, li),
+        hex_world::world_layer_bytes(a, q0, r0, li));
+    }
+  }
+}
+
+// `want` is a bitmask over a 5x5 grid of chunks centred on (0,0): bit (dz+2)*5+(dx+2).
+fn build(a: World, want: vector<integer>) -> World {
+  b = world_new(0.25, 0, 10, 4).wn_world;
+  for i in 0..len(want) {
+    if (want[i] ?? 0) != 0 {
+      dx = (i % 5 ?? 0) - 2;
+      dz = (i / 5 ?? 0) - 2;
+      copy_chunk(a, b, dx, dz);
+    }
+  }
+  b
+}
+
+// ⚠ IT DRAWS THE BOUNDARY RATHER THAN COUNTING IT. A tally says "0 false positives"
+// and hides its own shape; a map shows WHERE the guard turns over, and a single `X`
+// anywhere is visible at a glance without reading a number. The waste ring `o` is the
+// same finding stated positively: it is exactly two cells wide, everywhere, which is
+// the margin — a guard that had the wrong idea of its own reach would draw a ring of
+// the wrong thickness and the picture would say so.
+fn sweep(a: World, name: text, want: vector<integer>, fp: &integer, fn_: &integer,
+         okr: &integer, vac: &integer) {
+  b = build(a, want);
+  ready_ok = 0; ready_bad = 0; hold_ok = 0; hold_bad = 0; empty_both = 0;
+  println("");
+  println("  {name}   # ready+correct   X READY BUT WRONG   o held (would have been "
+        + "fine)   . held+differs   ~ both empty");
+  for cz in 0 - 9..10 {
+    row = "   ";
+    for cx in 0 - 9..10 {
+      ma = moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
+      mb = moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
+      same = moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb);
+      hollow = len(ma.vertices) == 0 && len(mb.vertices) == 0;
+      rdy = moros_terrain::tile_ready(b, cx, cz);
+      if hollow {
+        empty_both = empty_both + 1;
+        row = row + "~ ";
+      } else if rdy && same { ready_ok = ready_ok + 1; row = row + "# "; }
+      else if rdy && !same { ready_bad = ready_bad + 1; row = row + "X "; }
+      else if !rdy && !same { hold_ok = hold_ok + 1; row = row + ". "; }
+      else { hold_bad = hold_bad + 1; row = row + "o "; }
+    }
+    println(row);
+  }
+  fp = fp + ready_bad;
+  fn_ = fn_ + hold_bad;
+  okr = okr + ready_ok;
+  vac = vac + empty_both;
+  println("   -> ready+correct {ready_ok}   READY-BUT-WRONG {ready_bad}   "
+        + "held-but-fine {hold_bad}   held+differs {hold_ok}   vacuous {empty_both}");
+}
+
+fn main() {
+  a = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 100..101 {
+    for r in 0 - 100..101 {
+      hex_editor::ground_set(a, q, r, 40 + (q / 8 ?? 0) - (r / 8 ?? 0), hex_editor::SURFACE_MAT);
+    }
+  }
+  fp = 0; fneg = 0; okr = 0; vac = 0;
+
+  full:   vector<integer> = [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1];
+  one:    vector<integer> = [0,0,0,0,0, 0,0,0,0,0, 0,0,1,0,0, 0,0,0,0,0, 0,0,0,0,0];
+  plus:   vector<integer> = [0,0,0,0,0, 0,0,1,0,0, 0,1,1,1,0, 0,0,1,0,0, 0,0,0,0,0];
+  ell:    vector<integer> = [0,0,0,0,0, 0,1,0,0,0, 0,1,0,0,0, 0,1,1,1,0, 0,0,0,0,0];
+  ring:   vector<integer> = [0,0,0,0,0, 0,1,1,1,0, 0,1,0,1,0, 0,1,1,1,0, 0,0,0,0,0];
+  diag:   vector<integer> = [1,0,0,0,0, 0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0, 0,0,0,0,1];
+  negs:   vector<integer> = [1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 0,0,0,0,0, 0,0,0,0,0];
+  strip:  vector<integer> = [0,0,0,0,0, 0,0,0,0,0, 1,1,1,1,1, 0,0,0,0,0, 0,0,0,0,0];
+  none:   vector<integer> = [0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0];
+
+  sweep(a, "full 5x5     ", full,  fp, fneg, okr, vac);
+  sweep(a, "single chunk ", one,   fp, fneg, okr, vac);
+  sweep(a, "plus         ", plus,  fp, fneg, okr, vac);
+  sweep(a, "L shape      ", ell,   fp, fneg, okr, vac);
+  sweep(a, "ring w/ HOLE ", ring,  fp, fneg, okr, vac);
+  sweep(a, "diagonal     ", diag,  fp, fneg, okr, vac);
+  sweep(a, "all-negative ", negs,  fp, fneg, okr, vac);
+  sweep(a, "strip        ", strip, fp, fneg, okr, vac);
+  sweep(a, "empty cache  ", none,  fp, fneg, okr, vac);
+
+  println("");
+  println("TOTAL  READY-BUT-WRONG {fp}   held-but-fine {fneg}   ready+correct {okr}"
+        + "   vacuous {vac}");
+  // ⚠ VACUOUS AGREEMENT IS NOT AGREEMENT, and it must be zero or the sweep is partly
+  // measuring nothing: two empty meshes checksum alike no matter what the guard says.
+  if fp == 0 && okr > 0 && vac == 0 {
+    println("PROBE PASS s3_oracle_boundary — READY never lies across 9 cache shapes");
+  } else {
+    println("PROBE FAIL s3_oracle_boundary — {fp} read READY and were wrong, "
+          + "{vac} tiles agreed only because both sides were empty");
+  }
+}

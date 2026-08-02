@@ -1,0 +1,35 @@
+# S3 (plan 16) — THE CLIENT MESHES THE GROUND ITSELF, AND GETS THE SERVER'S ANSWER.
+#
+# S2 proved the client's VOXELS are the server's. This proves the step that matters:
+# run the server's own mesher over the client's own cache and the triangles come out
+# identical, checksum for checksum. That is what lets the 1 MB-per-chunk `M:` text
+# frames go away — the receiver can derive what it was being sent.
+#
+# ⚠ THE COMPARISON IS GUARDED, AND THE GUARD IS THE FINDING. The mesher reads two
+# cells PAST the tile it builds, so a tile whose margin has not arrived yet is not a
+# disagreement — it is a question asked too early. `moros_terrain::tile_ready` answers
+# it from the cache's own chunks, and `probe/s3/s3_oracle_boundary.loft` sweeps nine
+# cache shapes to show the answer is exact rather than cautious: 580 READY tiles, 0
+# wrong, and not one held tile that would have been fine.
+#
+# ⚠ CONTROL, SEEN RED: before the guard, this same run read `ground 41 bad 7` — and
+# every one of the 7 was a tile the server had sent but the client had not yet
+# received. The arithmetic was never wrong; the timing was.
+rate 0
+# ⚠ THE SNAPSHOT IS WHAT OPENS THE BROWSER, and the browser IS the client under
+# test. Dropping it because this gate judges no picture left the run with nobody to
+# compare anything — every verdict line simply never arrived.
+at 0 0 0
+key ArrowUp
+wait rebuilt
+step 20
+snap s3-mesh
+step 20
+wait cache
+wait ground
+step 20
+# ⚠ THE LAST WORD, NOT THE FIRST. `wait` returns the earliest matching status, and
+# these tallies are cumulative — the first `ground` report is always the instant
+# before any evidence exists.
+last cache
+last ground

@@ -28,15 +28,9 @@ fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
 
 // The mesher reads a TWO-cell margin for heights (`MESH_CHUNK + 4`, offset -2), so a
 // tile's true footprint is its cells plus two on every side.
-fn halo_inside(cx: integer, cz: integer, lo: integer, hi: integer) -> boolean {
-  q0 = cx * moros_terrain::MESH_CHUNK - 2;
-  r0 = cz * moros_terrain::MESH_CHUNK - 2;
-  q1 = cx * moros_terrain::MESH_CHUNK + moros_terrain::MESH_CHUNK + 1;
-  r1 = cz * moros_terrain::MESH_CHUNK + moros_terrain::MESH_CHUNK + 1;
-  if hex_world::chunk_of(q0) < lo || hex_world::chunk_of(q1) > hi { return false; }
-  if hex_world::chunk_of(r0) < lo || hex_world::chunk_of(r1) > hi { return false; }
-  true
-}
+// ⚠ THIS PREDICATE IS NOW `moros_terrain::tile_ready`, and the probe asks the ORACLE
+// rather than re-deriving the rule. A probe carrying its own copy of the thing under
+// test agrees with itself and proves nothing.
 
 fn main() {
   a = world_new(0.25, 0, 10, 4).wn_world;
@@ -54,7 +48,7 @@ fn main() {
     for cz in 0 - 5..6 {
       same = moros_terrain::mesh_crc(moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT))
           == moros_terrain::mesh_crc(moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT));
-      inside = halo_inside(cx, cz, lo, hi);
+      inside = moros_terrain::tile_ready(b, cx, cz);
       if same && inside { agree_in = agree_in + 1; }
       if same && !inside { agree_out = agree_out + 1; }
       if !same && inside { bad_in = bad_in + 1; }
@@ -62,6 +56,11 @@ fn main() {
       if !same && inside { println("  ⚠ MISMATCH with its halo fully cached: tile ({cx},{cz})"); }
     }
   }
-  println("halo inside the cache : agree {agree_in}  bad {bad_in}   <- must be bad 0");
-  println("halo reaching outside : agree {agree_out}  bad {bad_out}");
+  println("oracle says READY  : agree {agree_in}  bad {bad_in}   <- must be bad 0");
+  println("oracle says NOT YET: agree {agree_out}  bad {bad_out}");
+  // ⚠ THE PROBE STATES ITS OWN VERDICT so a runner needs no knowledge of it.
+  ok = bad_in == 0 && agree_in > 0 && bad_out > 0;
+  if ok { println("PROBE PASS s3_stream_order — the oracle predicts the mesh exactly"); }
+  else { println("PROBE FAIL s3_stream_order — ready-but-wrong {bad_in}, "
+               + "and the negative control found {bad_out} (must be > 0)"); }
 }

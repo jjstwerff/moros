@@ -40,6 +40,7 @@ fn main() {
   for scx in 0 - 3..4 { for scz in 0 - 3..4 { copy_chunk(a, c, scx, scz); } }
   for sc2 in 0 - 1..2 { report(a, c, sc2, sc2); }
   println("--- and the MESH, over tiles whose halo is inside the copied chunks");
+  nsame = 0; ndiff = 0; nempty = 0;
   for cx in 0 - 4..5 {
     ma = moros_terrain::chunk_mesh_mat(cx, cx, a, hex_editor::SURFACE_MAT);
     mb = moros_terrain::chunk_mesh_mat(cx, cx, c, hex_editor::SURFACE_MAT);
@@ -48,5 +49,15 @@ fn main() {
     if len(ma.vertices) > 0 { y0a = ma.vertices[0].pos.y as float ?? 0.0; }
     if len(mb.vertices) > 0 { y0b = mb.vertices[0].pos.y as float ?? 0.0; }
     println("tile ({cx},{cx}): match {same}  verts {len(ma.vertices)}/{len(mb.vertices)}  y0 {y0a}/{y0b}");
+    if same { nsame = nsame + 1; } else { ndiff = ndiff + 1; }
+    if len(ma.vertices) == 0 { nempty = nempty + 1; }
+  }
+  // ⚠ `nempty` IS NOT DECORATION. This probe's tiles are meant to sit INSIDE the copied
+  // region; a tile that emits nothing agrees with anything, and a run of those would
+  // read as a clean pass while measuring an empty set.
+  if ndiff == 0 && nsame > 0 && nempty == 0 {
+    println("PROBE PASS s3_copy_narrow — {nsame} tiles inside the copy all match");
+  } else {
+    println("PROBE FAIL s3_copy_narrow — {ndiff} differ, {nempty} emitted nothing");
   }
 }

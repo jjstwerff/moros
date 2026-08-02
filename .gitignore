@@ -70,3 +70,6 @@ probe/*.png
 # The two transcripts `make headless-same` compares.
 .headless.txt
 .served.txt
+
+# loft build artefacts beside a probe
+**/.loft/

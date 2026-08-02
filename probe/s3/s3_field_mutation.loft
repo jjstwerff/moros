@@ -80,4 +80,12 @@ fn main() {
   for x3 in 0 - 1..2 { for z3 in 0 - 1..2 { via_field(a, h, x3, z3); } }
   probe_cell(h.cache, "struct field    ");
   println("struct field: layers written = {h.n}");
+  // ⚠ THE ONE THING THIS PROBE EXISTS TO SAY: a World reached through a struct field —
+  // the CLIENT's shape — takes the writes. When it did not, S3 looked like bad
+  // arithmetic for a session.
+  if h.n > 0 {
+    println("PROBE PASS s3_field_mutation — a World in a struct field takes writes ({h.n})");
+  } else {
+    println("PROBE FAIL s3_field_mutation — writes through a struct field vanished");
+  }
 }

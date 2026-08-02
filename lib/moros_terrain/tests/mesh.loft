@@ -64,3 +64,39 @@ fn test_the_ground_follows_its_own_heights() {
   }
   assert(hi > lo, "the drawn ground rises across the tile: {lo} .. {hi}");
 }
+
+fn test_the_oracle_says_no_before_the_neighbourhood_arrives() {
+  // ⚠ THE GUARD IS THE WHOLE OF S3's CORRECTNESS. `probe/s3/s3_stream_order.loft`
+  // measured 81 of 81 tiles matching the server when their margin was cached, and 32
+  // of 40 failing when it was not — so "may I mesh this yet" is the only question
+  // between a client that agrees and one that does not.
+  full = world();
+  assert(moros_terrain::tile_ready(full, 0, 0), "a complete world can answer for a tile");
+
+  // A world holding ONE chunk cannot answer for a tile on that chunk's edge, because
+  // the mesher reads two cells past it.
+  one = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0..hex_world::CHUNK_W {
+    for r in 0..hex_world::CHUNK_W {
+      hex_editor::ground_set(one, q, r, 40, hex_editor::SURFACE_MAT);
+    }
+  }
+  assert(moros_terrain::tile_ready(one, 1, 1),
+         "a tile well inside the one chunk it holds is answerable");
+  assert(!moros_terrain::tile_ready(one, 0, 0),
+         "but the tile at its corner is not — the margin reaches the chunk before it");
+  edge = hex_world::CHUNK_W / moros_terrain::MESH_CHUNK - 1 ?? 0;
+  assert(!moros_terrain::tile_ready(one, edge, edge),
+         "nor the tile at the far corner, for the same reason one axis over");
+}
+
+fn test_the_margin_is_the_grid_the_mesher_actually_builds() {
+  // A guard that asked about the TILE rather than its margin would pass everything and
+  // protect nothing — this pins it to the grid `chunk_mesh_mat` really constructs.
+  assert(moros_terrain::MESH_MARGIN == 2,
+         "the height grid is MESH_CHUNK + 4, offset -2");
+  assert(moros_terrain::MESH_CHUNK + 2 * moros_terrain::MESH_MARGIN
+         <= hex_world::CHUNK_W,
+         "and a tile's footprint spans at most two store chunks per axis, "
+       + "which is what makes the four-corner test complete");
+}

@@ -929,6 +929,17 @@ for (const raw of lines) {
     const want = rest.join(' ');
     const seen = status.find((x) => x.startsWith(want));
     console.log('  ' + (seen ?? await ack(want)));
+  } else if (cmd === 'last') {
+    // ⚠ `wait` ANSWERS "HAS THIS HAPPENED", `last` ANSWERS "WHERE DID IT END UP", and
+    // a running tally needs the second. The client's cache and ground verdicts are
+    // cumulative and arrive once per chunk, so `wait ground` reports the FIRST of them
+    // — which for a guard that holds early tiles is always `0 bad 0 wait 1`, i.e. the
+    // moment before the evidence exists. That read as "the guard blocks everything"
+    // when it blocked one tile out of forty.
+    const want = rest.join(' ');
+    const hits = status.filter((x) => x.startsWith(want));
+    if (hits.length === 0) console.log(`  !! no status ever started with '${want}'`);
+    else console.log(`  ${hits[hits.length - 1]}   (${hits.length} reports)`);
   } else if (cmd === 'snap') {
     await snap(rest[0]);
   } else if (cmd === 'echo') {

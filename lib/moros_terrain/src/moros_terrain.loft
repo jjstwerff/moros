@@ -354,3 +354,47 @@ pub fn mesh_crc(m: Mesh) -> integer {
   }
   (acc ^ 4294967295) & 4294967295
 }
+
+// ── THE ORACLE — can this world answer for this tile at all? ─────────────────
+//
+// ⚠ THE MESHER IS A PURE FUNCTION OF THE CELLS IT READS, AND IT READS BEYOND ITS
+// TILE. `probe/s3/s3_stream_order.loft` measured it exactly: of 81 tiles whose
+// two-cell margin lay inside the cached set, **81 matched the server** — no
+// exceptions — while tiles whose margin reached outside failed 32 times in 40. So a
+// client's mesh is wrong for exactly one reason: it meshed before it could.
+//
+// That is not a thing to remember at each call site. It is a QUESTION THE WORLD CAN
+// ANSWER ABOUT ITSELF, so it lives here beside the mesher and every caller asks it:
+//
+//     if !moros_terrain::tile_ready(cache, cx, cz) { … not yet … }
+//
+// ⚠ AND IT ASKS ABOUT THE MARGIN, NOT THE TILE. `chunk_mesh_mat` builds a height grid
+// of `MESH_CHUNK + 4` offset by -2, because a corner is the mean of the three cells
+// touching it and a corner on the halo ring needs ITS six neighbours. Asking whether
+// the tile's own chunk is present would pass every tile and guard nothing.
+pub const MESH_MARGIN = 2;
+
+// Does this world hold the chunk covering that hex — the store's own question, asked
+// without building a column.
+pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
+  hex_world::world_ground_layer(w, q, r) >= 0
+}
+
+// Every store chunk the mesher will read for this tile is present.
+//
+// ⚠ THE FOUR CORNERS ARE ENOUGH AND THE WHOLE RECTANGLE IS NOT NEEDED. The margin is
+// 2 and a store chunk is `CHUNK_W` = 32 across, so the footprint spans at most two
+// chunks per axis — its corners name every chunk it can touch. That stops being true
+// if `MESH_CHUNK` ever exceeds `CHUNK_W`, which is why the two are pinned apart by a
+// test rather than left to be noticed.
+pub fn tile_ready(w: World, cx: integer, cz: integer) -> boolean {
+  q0 = cx * MESH_CHUNK - MESH_MARGIN;
+  r0 = cz * MESH_CHUNK - MESH_MARGIN;
+  q1 = cx * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
+  r1 = cz * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
+  if !chunk_present(w, q0, r0) { return false; }
+  if !chunk_present(w, q1, r0) { return false; }
+  if !chunk_present(w, q0, r1) { return false; }
+  if !chunk_present(w, q1, r1) { return false; }
+  true
+}
