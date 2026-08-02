@@ -22,8 +22,8 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-01, session 8) — the camera has five settings, and every surface overhead now has an underside
 
-`make gate` **31 green** · `make lib-test` **961 on both backends** ·
-`lib/hex_editor` **209 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
+`make gate` **31 green** · `make lib-test` **965 on both backends** ·
+`lib/hex_editor` **213 tests**. ⚠ On **loft 2026.8.0**, installed 19:59 on 08-01
 *mid-session* — anything verified before that timestamp was measured on the previous
 binary, and the re-run found no difference.
 
@@ -48,6 +48,27 @@ beneath it was opened deliberately. `ground_open` is that rule, and it is free o
 world without a cellar — a layer is chunk-wide, so `gl > 0` decides it once per chunk.
 Probed before building on it: **the hole survives save and load**, because elision
 drops records and the layer is kept alive by every cell that still holds ground.
+
+### And a room ENDS in a wall, which nothing drew
+
+⚠ **The loudest number in any of this**: standing on the cellar floor and looking
+level read **`sky 0.2360`** and `grass 0.1033` — a quarter of the frame was daylight,
+from inside a room twelve units underground — with `mesh wall` at **0**. The model
+draws a layer's top, its rim and its underside, and *nothing at all between two
+layers*. Now `masonry 0.53`, `sky` and `grass` both gone.
+
+⚠ **The rule is about ROOMS, not cellars, and that distinction is the whole of it.**
+Two stacked decks in the open have the identical shape — a floor, a ceiling, missing
+neighbours at the edge — and must draw the opposite thing there: a deck's edge is a
+rim you can see the garden past, a cellar's is a cut face through earth. No count and
+no edge test separates them; which side of the ground they lie on does
+(`col_underground`).
+
+⚠ **And "is there something below my ceiling" is not the question** — that emptied
+the walls from 174 vertices to 12. One hex outside the disc the hillside falls away,
+so the *ground* sits below the room's ceiling too, and it was read as an open void
+when it is the earth the wall exists to hold back. Only an **underground** floor
+continues an underground room.
 
 ### The cellar's ceiling — and a third instrument to see it
 
@@ -249,15 +270,23 @@ indoors, a tenth of the frame is the field outside* — only possible with the r
 
 ### Open, in the order that makes sense
 
-1. ⚠ **A CELLAR HAS NO WALLS.** The reachability half is done — you can walk down
-   into one and it is gated — but the room is open at the sides: the model draws a
-   layer's top, its rim and its underside, and **nothing between two layers**, so the
-   twelve units of earth between a cellar floor and the ground are not a surface
-   anywhere. Standing inside and looking level, you see out over the floor's rim.
-   The stairwell already needs a reveal for the same reason and got one
-   (`emit_ground_reveal`); a cellar wants the same face all round its perimeter, and
-   the honest version is probably that `emit_floor_slab`'s rim should run to the
-   layer BELOW rather than a fixed `FLOOR_THICK` when there is a room under it.
+1. ⚠ **ONE GESTURE ACROSS A CHUNK SEAM MAKES TWO LAYERS WITH TWO LABELS, WHICH `I1`
+   FORBIDS.** Measured: a cellar dug over a chunk boundary comes back carrying label
+   **2** in one chunk and **3** in the other, with cells at the same height adjacent
+   across the seam. `WORLD_MODEL.md` §I1 says it in as many words — *the geometric
+   match never crosses labels* — so this is a live violation of a normative
+   invariant, not a rough edge.
+   *Cause:* `world_set_column` allocates `fresh_label(w)` per chunk and **no caller
+   can tell it otherwise**; `storey_add`'s "the other eighteen must write into the
+   one it made" trick works within a chunk and has nothing to say across one.
+   *Consequence:* every by-label reader sees the room END at the seam.
+   `emit_floor_slab` still does — **a deck straddling a chunk boundary has a rim
+   down its middle**, which is pre-existing and unmeasured. The room wall dodges it
+   by asking §5's geometric question instead (`room_continues`), which is why the
+   walls are right while the store is not.
+   *The fix* is on the writer, and it is at the layer-creation chokepoint whose own
+   comments record two counting disasters (1 cellar → 34 layers; 7 discs → 63 of a
+   cap of 64), so it wants doing carefully and on its own.
 2. ⚠ **`sh_back` is measured, reported on the `27:` trace, and read by nothing.** It
    exists because a corner is tight all round (1.78) while the one direction the boom
    wants is wide open (5.86) — a real case no rule uses yet.

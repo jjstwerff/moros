@@ -34,6 +34,9 @@ step 10
 # in the world for a face nothing can ever see, and this row is what catches that.
 echo --- BASELINE: nothing dug anywhere, so the ground owes no underside
 mesh soffit 0 0
+# ⚠ AND NO WALLS EITHER, which is the control for the room wall below: it is owed
+# only where a void has earth beside it, and open country is neither.
+mesh wall 0 0
 
 echo --- stand on the hill and level a plateau by walking a CROSS through it
 # ⚠ A CROSS, NOT A LINE, AND THE REASON IS THE LEVELLING BRUSH'S ARITHMETIC. `brush`
@@ -130,12 +133,40 @@ at 17 0 180
 step 20
 feet 1.4 1.6
 
-echo --- EYES, standing in the cellar, looking STRAIGHT UP
+echo --- EYES, standing in the cellar, looking LEVEL at the room's side
+# ⚠ SEEN RED, AND IT WAS THE LOUDEST NUMBER IN ANY OF THIS: standing on the cellar
+# floor and looking level read `sky 0.2360` and `grass 0.1033` — a QUARTER of the
+# frame was daylight, from inside a room twelve units underground — with `mesh wall`
+# at 0. The model drew a layer's top, its rim and its underside, and nothing whatever
+# between two layers, so a cellar was a floor and a ceiling with the country visible
+# out of both sides.
+#
+# ⚠ `sky` AND `grass` ARE BOTH ROWS, because they fail differently. `sky` catches the
+# wall missing above the horizon and `grass` catches it missing below — and it was
+# the ground outside that a first version let through, by reading a hillside lying
+# under the room's ceiling as an open void rather than as the earth the wall holds
+# back. That mistake took the wall from 174 vertices to 12 and only `grass` moved.
+#
+# ⚠ AND THIS ROW COMES FIRST, BEFORE THE PITCH IS TOUCHED. `3:` is a look DELTA, not
+# a heading: the ceiling row below drives the pitch to vertical, where EYES lets it
+# saturate, so the same delta back does NOT return to level — it carried on to
+# straight down and photographed the floor. Taking the level picture while the pitch
+# is still level needs no arithmetic at all.
+send 40:4
+step 90
+snap s16-cellar-wall
+frame 0 1.0 masonry 0.40 1.0 sky 0 0.001 grass 0 0.001
+
+# 29 exposed edges of the dug disc's perimeter, at 6 vertices a quad. A hexagonal
+# disc of radius 2 has 30, and the stairwell accounts for the difference: a tread
+# with its ceiling opened is not walled, because the room there runs up to daylight.
+mesh wall 174 174
+
+echo --- and STRAIGHT UP, at the ceiling
 # ⚠ THE PICTURE THAT COULD NOT BE TAKEN BEFORE ANY OF THIS. Nothing could stand in a
 # cellar, so the ceiling was gateable only on the wire. `sky 0` is the other half of
 # the claim and it is not redundant: a ceiling that was drawn but in the wrong place
 # would leave daylight over the room, and the count cannot see where a face is.
-send 40:4
 send 3:0,-20000
 step 120
 snap s16-cellar-ceiling

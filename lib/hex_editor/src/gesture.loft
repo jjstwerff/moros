@@ -537,6 +537,83 @@ pub fn col_has_below(c: hex_world::Column, idx: integer) -> boolean {
   false
 }
 
+// The next occupied layer ABOVE this one, or -1 when nothing is over it.
+//
+// ⚠ THE CEILING OF THE ROOM THIS FLOOR IS THE BOTTOM OF, and the pair with
+// `col_has_below` is deliberate: between them they say what a void is bounded by.
+// A floor with nothing above it is a deck under the sky and its edge is a rim; a
+// floor with something above it is a ROOM, and a room ends in a wall.
+pub fn col_next_above(c: hex_world::Column, idx: integer) -> integer {
+  for e in c.co_cells {
+    if e#index > idx && hex_world::hex_occupied(e) { return e#index; }
+  }
+  0 - 1
+}
+
+// Is this layer UNDERGROUND — is the void above it cut out of solid earth?
+//
+// ⚠ THIS IS WHAT DECIDES WHETHER A ROOM HAS WALLS, and it cannot be answered by
+// geometry alone. Two stacked decks in the open have a void between them and no
+// walls: the surrounding volume is AIR, and the deck's edge is a rim you can see the
+// garden past. A cellar has the same void and the same missing neighbours, and the
+// surrounding volume is EARTH — so its perimeter is a cut face and there has to be
+// something there. The two are identical to every count and every edge test; what
+// separates them is which side of the ground they are on.
+pub fn col_underground(c: hex_world::Column, idx: integer) -> boolean {
+  for i in 0..len(c.co_ids) {
+    if (c.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { return idx < i; }
+  }
+  false
+}
+
+// Does the room at this column open into the neighbour, or does it END there?
+//
+// ⚠ ASKED BY HEIGHT, NOT BY LABEL, AND THAT IS `WORLD_MODEL.md` §5 RATHER THAN A
+// WORKAROUND. Continuity is *defined* by height there and proved unique; a label is
+// a claim ABOUT that match (`I1`), not a second definition of it. So the geometric
+// question gets the geometric answer, and it stays right whatever the labels say.
+//
+// ⚠ AND THE LABELS DO NOT SAY THE RIGHT THING TODAY. Measured: one cellar dug across
+// a chunk boundary comes back carrying label 2 in one chunk and label 3 in the other
+// — `world_set_column` allocates per chunk and no caller can tell it otherwise — so
+// any reader matching by label sees the room END at the seam and draws a partition
+// down the middle of it. That is a live `I1` violation and it is written up as such;
+// this predicate is not what fixes it, it is what does not depend on it.
+//
+// Two voids join when they overlap: the neighbour has a floor below my ceiling whose
+// own ceiling is above my floor. Not "the same height" — a stair TREAD is four units
+// up from the floor it belongs to, and the room plainly continues past it.
+// ⚠ ONLY AN UNDERGROUND FLOOR CONTINUES AN UNDERGROUND ROOM, and leaving that out
+// emptied the walls almost entirely — 240 vertices down to 12. The first version
+// asked only whether the neighbour held an occupied cell below my ceiling, and one
+// hex outside the dug disc the hillside falls away, so the GROUND there sits below
+// my ceiling too. It was read as an open void when it is the solid earth the wall
+// exists to hold back.
+//
+// The stairwell is why this cannot simply be "the neighbour has a ceiling": a tread
+// under an opened ground has nothing above it and is emphatically part of the room.
+// What it does have is the same thing every other part of the room has — it lies
+// BELOW the ground layer. That is the line, and `col_underground` already draws it.
+pub fn room_continues(w: World, q: integer, r: integer, floor_h: integer,
+                      ceil_h: integer) -> boolean {
+  col = world_column(w, q, r);
+  for e in col.co_cells {
+    if hex_world::hex_occupied(e) && col_underground(col, e#index) {
+      nf = e.h_height as integer ?? 0;
+      if nf < ceil_h {
+        na = col_next_above(col, e#index);
+        // Nothing over it — the ground above was opened for a stairwell, so the void
+        // runs up to daylight and overlaps mine whatever my ceiling is.
+        if na < 0 { return true; }
+        nc = ((col.co_cells[na] ?? hex_world::Hex {}).h_height as integer ?? 0)
+           - SLAB_THICK;
+        if nc > floor_h { return true; }
+      }
+    }
+  }
+  false
+}
+
 // ── A HOLE IN THE GROUND — how "opened" is told from "never authored" ────────
 //
 // ⚠ THE TWO LOOK IDENTICAL AT THE CELL, and that is the whole difficulty. Absence

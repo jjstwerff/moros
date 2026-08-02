@@ -202,6 +202,115 @@ fn test_a_cellar_stair_is_walkable_end_to_end() {
          "and it lands on the cellar floor, got {last.sf_units}");
 }
 
+fn test_a_room_is_a_floor_with_something_over_it_and_a_deck_is_not() {
+  // ⚠ A VOID IS NOT A ROOM, and no count can tell them apart. Two stacked decks in
+  // the open have exactly the shape a cellar has — a floor, a ceiling over it, and
+  // missing neighbours at the edge — and they must draw opposite things there: the
+  // deck's edge is a rim you see the garden past, the cellar's is a cut face through
+  // earth. Every edge test agrees on both. What separates them is which side of the
+  // ground they lie on.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 1, 2, why);          // a deck ABOVE
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);      // and a cellar BELOW
+  col = world_column(w, 0, 0);
+  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  ci = 0;
+  for i in 0..gi {
+    if hex_world::hex_occupied(col.co_cells[i] ?? hex_world::Hex {}) { ci = i; }
+  }
+  assert(hex_editor::col_underground(col, ci), "the cellar is under the ground");
+  assert(!hex_editor::col_underground(col, gi), "the ground itself is not");
+  di = hex_editor::col_next_above(col, gi);
+  assert(di > gi, "the deck is above the ground, got {di}");
+  assert(!hex_editor::col_underground(col, di),
+         "and the deck is NOT underground — its edge is a rim, not a wall");
+  // …and the ceilings each room looks up at.
+  assert(hex_editor::col_next_above(col, ci) == gi,
+         "the cellar's ceiling is the ground");
+  assert(hex_editor::col_next_above(col, di) < 0,
+         "and the deck has nothing over it, so it is no room at all");
+}
+
+fn test_a_room_does_not_end_at_a_chunk_seam() {
+  // ⚠ A LIVE `I1` VIOLATION, AND THIS IS THE READER THAT SURVIVES IT. One cellar dug
+  // across a chunk boundary comes back carrying a DIFFERENT LABEL in each chunk —
+  // `world_set_column` allocates per chunk and no caller can tell it otherwise —
+  // which `WORLD_MODEL.md` §I1 forbids in as many words: *the geometric match never
+  // crosses labels*. Every by-label reader then sees the room stop at the seam.
+  // Measured before this: a wall drawn straight down the middle of the room.
+  //
+  // §5 defines continuity by HEIGHT and proves it unique, so that is what gets
+  // asked. The store is still wrong and that is written up separately; this pins
+  // that the picture is not.
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 4..5 {
+    for r in 0 - 4..5 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
+  }
+  why = "";
+  // Centred ON the seam: r = 0 is the first row of one chunk, r = -1 the last of the
+  // one below it, and the disc spans both.
+  n = hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  assert(n == 19, "the disc went in whole across the seam, got {n}: {why}");
+  lo = 40 - hex_editor::STOREY_H;
+  hi = 40 - hex_editor::SLAB_THICK;
+  // The two labels really do differ — otherwise this test proves nothing.
+  a = world_column(w, 0, 0);
+  b = world_column(w, 0, 0 - 1);
+  assert((a.co_ids[0] ?? 0) != (b.co_ids[0] ?? 0),
+         "the seam really does split the label: {a.co_ids[0] ?? 0} vs {b.co_ids[0] ?? 0}");
+  // …and the room continues across it anyway.
+  assert(hex_editor::room_continues(w, 0, 0 - 1, lo, hi),
+         "the room continues from (0,0) into (0,-1) across the seam");
+  assert(hex_editor::room_continues(w, 0, 0, lo, hi),
+         "and back the other way");
+  // ⚠ THE CONTROL: outside the disc it must still END, or the predicate is vacuous
+  // and the cellar has no walls at all.
+  assert(!hex_editor::room_continues(w, 0, 4, lo, hi),
+         "and it does end where the digging stopped");
+}
+
+fn test_ground_below_the_ceiling_is_earth_and_not_an_opening() {
+  // ⚠ THE CASE THAT EMPTIED THE WALLS — 240 vertices down to 12. One hex outside the
+  // disc a hillside falls away, so the GROUND there sits below the room's ceiling; a
+  // predicate that asked only "is there an occupied cell below my ceiling" read that
+  // as an open void and drew no wall against it. It is solid earth, which is the
+  // whole reason a wall is owed there.
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 6..7 {
+    for r in 0 - 6..7 {
+      // Falling away toward +q: by q = 3 the ground is well under the room's ceiling.
+      h = 40 - 6 * q;
+      if h < 16 { h = 16; }
+      hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT);
+    }
+  }
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  lo = 40 - hex_editor::STOREY_H;
+  hi = 40 - hex_editor::SLAB_THICK;
+  // Ground at (4,0) is 16 — below the room's ceiling of 38 — and still not a room.
+  assert(hex_editor::terrain_h(4, 0, w) < hi,
+         "the hillside really is under the ceiling: {hex_editor::terrain_h(4, 0, w)} < {hi}");
+  assert(!hex_editor::room_continues(w, 4, 0, lo, hi),
+         "and it is earth, so the room ends against it");
+}
+
+fn test_a_stair_tread_does_not_wall_itself_off_from_its_own_room() {
+  // A tread is a stride above the floor it belongs to, so "the neighbour is at my
+  // height" would put a wall across the bottom of the stair. Two voids join when
+  // they OVERLAP, which is the rule, and this is the case that needs it.
+  w = world();
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  lo = 40 - hex_editor::STOREY_H;
+  hi = 40 - hex_editor::SLAB_THICK;
+  (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+  assert(hex_editor::room_continues(w, tq, tr, lo, hi),
+         "the first tread is part of the room, three units up though it is");
+}
+
 fn test_a_second_cellar_climbs_to_the_room_above_and_not_to_the_ground() {
   // ⚠ FOUND BY A GATE, WHICH IS WHY IT IS HERE. `surface.mjs` digs twice and read
   // back `stair of 5` — five treads climbing from the deepest floor, straight past

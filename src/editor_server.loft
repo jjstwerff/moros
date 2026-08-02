@@ -1934,6 +1934,52 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer,
     }
   }
 }
+// ── WHERE AN UNDERGROUND ROOM ENDS — the cut face through the earth ─────────
+//
+// The same edge test `emit_floor_slab` uses and the opposite claim about it. A deck's
+// exposed edge is the SLAB seen from outside, so its face hangs `FLOOR_THICK` below
+// the floor and its normal points away. A cellar's exposed edge is where the ROOM
+// stops: the face runs from the floor up to the ceiling, and it is only ever seen
+// from inside, so the normal points back into the room.
+//
+// ⚠ INWARD, AND IT IS NOT A DETAIL. `emit_floor_slab` derives its normal from the
+// neighbour precisely because the winding cannot be trusted across the two libraries'
+// opposite corner orders — and then points it OUTWARD, which is right for a slab and
+// exactly backwards here. A wall lit from the earth side is a wall that reads as a
+// hole from the only place anyone can stand.
+//
+// ⚠ IT GOES IN THE WALL SURFACE rather than earning a tenth. `SURFACES` is a stride
+// carried by eleven files, and what this face IS — a vertical plane you cannot pass —
+// is what that surface already means. A cellar in a built world is masonry anyway.
+// If the colour ever reads wrong that is one constant, not a protocol change.
+fn emit_room_wall(m: Mesh, wld: World, cq: integer, cr: integer, floor_h: integer,
+                  ceil_h: integer) {
+  if ceil_h <= floor_h { return; }
+  ybot = (floor_h as float) * HEIGHT_SCALE;
+  ytop = (ceil_h as float) * HEIGHT_SCALE;
+  cs = hex_to_world(cq, cr, 0);
+  for wd in 0..6 {
+    (wnq, wnr) = hex_grid::hex_neighbor(cq, cr, wd);
+    // ⚠ NOT `cell_in_layer` — NOT BY LABEL. That is what `emit_floor_slab` does and
+    // it is wrong across a chunk seam TODAY: one cellar dug over a boundary carries
+    // two different labels (measured: 2 and 3), so a by-label reader sees the room
+    // end in the middle and walls it off. `room_continues` asks the question
+    // `WORLD_MODEL.md` §5 actually defines — do the two voids overlap in height —
+    // and cannot be misled by a label the writer got wrong.
+    if !hex_editor::room_continues(wld, wnq, wnr, floor_h, ceil_h) {
+      (wka, wkb) = hex_grid::hex_edge_corners(wd);
+      ww1 = hex_corner_world(cq, cr, 0, (6 - wka) % 6 ?? 0);
+      ww2 = hex_corner_world(cq, cr, 0, (6 - wkb) % 6 ?? 0);
+      wcn = hex_to_world(wnq, wnr, 0);
+      wnm = nrm3(cs.x - wcn.x, 0.0, cs.z - wcn.z);
+      wa = vec3(ww1.x, ybot, ww1.z); wb = vec3(ww2.x, ybot, ww2.z);
+      wc = vec3(ww2.x, ytop, ww2.z); wdd = vec3(ww1.x, ytop, ww1.z);
+      emit_tri(m, wa, wnm, wb, wnm, wc, wnm);
+      emit_tri(m, wa, wnm, wc, wnm, wdd, wnm);
+    }
+  }
+}
+
 // ── A DECK'S UNDERSIDE — the roof's soffit, one axis over ───────────────────
 //
 // ⚠ THE SAME DEFECT THE ROOF HAD, AND IT SURVIVED THE ROOF'S FIX. `emit_floor_slab`
@@ -2180,6 +2226,26 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
             // or the two part company and the deck shows a slot from below.
             emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+            // ⚠ AND A ROOM ENDS IN A WALL, WHICH NOTHING DREW. Measured from the
+            // cellar floor, looking level: `sky 0.2360` and `grass 0.1033` — a
+            // QUARTER of the frame was daylight, from inside a room twelve units
+            // underground, and `mesh wall` read 0. The model draws a layer's top, its
+            // rim and its underside, and nothing at all between two layers.
+            //
+            // ⚠ THE RULE IS ABOUT ROOMS, NOT CELLARS, and the distinction is the
+            // whole of it: a void with a floor and a ceiling is a room, and its edge
+            // is a cut face — but two stacked DECKS in the open have the identical
+            // shape and their edge is a rim you can see the garden past. No count and
+            // no edge test can separate them. `col_underground` can, and that is why
+            // the predicate is worth its name.
+            if hex_editor::col_underground(c, e#index) {
+              ra = hex_editor::col_next_above(c, e#index);
+              if ra >= 0 {
+                emit_room_wall(wm, wld, cq, cr, fh,
+                  ((c.co_cells[ra] ?? hex_world::Hex {}).h_height as integer ?? 0)
+                    - FLOOR_THICK);
+              }
+            }
           } else if hex_editor::col_has_below(c, e#index) {
             // ⚠ A CELLAR HAS NO CEILING — the THIRD time for this shape, and the one
             // the branch above cannot reach by construction. The roof had no
