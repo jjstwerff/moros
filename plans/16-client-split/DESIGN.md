@@ -359,7 +359,31 @@ checksums the result against the server's (`Q:` out, `42:` back). 29 tiles of 47
 agree; **18 do not**, and it still DRAWS the server's mesh, which is exactly why the
 disagreement is a number instead of a hole in the ground.
 
-⚠ **THE HALO IS THE SUSPECT, AND THE SERVER'S OWN COMMENT NAMES IT.** *"A chunk's
+### ⚠ THE PER-TILE REPORT FOUND IT, AND IT IS NOT THE HALO
+
+Naming the failing tiles instead of counting them answered it in one run. They are
+almost all at **negative** chunk coordinates — `0,-1` `0,-2` `0,-3` `0,-4` `-1,0`
+`-1,-1` … — with two exceptions at `0,3` and `1,3`, and every one carries a FULL mesh
+(`cells 448` = 64 cells × 7 vertices). Not a partial tile, not a rim.
+
+**The two sides disagree about what `cx,cz` means.** The server keys `L:`, `D:` and
+`Q:` by **MESH tile** (`CHUNK` = 8): `q0 = cx * CHUNK`. The client consumes them as
+**STORE chunks** — `world_put_layer(cache, cx, cz, …)` takes chunk coordinates, and
+the digest does `dq = cx * hex_world::CHUNK_W` with `CHUNK_W` = 32. One wire, two
+coordinate systems, four times apart.
+
+⚠ **AND IT MEANS S2's GREEN RESULT IS WEAKER THAN IT LOOKED.** `cache agree 24 bad 0`
+compared like with like *under the same wrong mapping*, so it proved the transport
+round-trips — which is real — but not that the cache lands where it belongs. The tiles
+that agree are the ones where the two mappings happen to collide, which for small
+non-negative coordinates they do. This is the parity/negative-coordinate class STATE.md
+already lists as *"where this codebase breaks"*, arriving a fifth time.
+
+*The fix is to name the unit on the wire and use it on both sides* — and to re-check
+S2's claim afterwards, because it has not really been tested yet.
+
+⚠ **THE HALO WAS THE FIRST SUSPECT, and the server's own comment names it — it is
+still a real constraint for whoever fixes the coordinates:** *"A chunk's
 ground mesh is NOT a function of its own cells alone: `corner_heights` averages every
 corner over the THREE cells touching it, and `cell_normal` takes a gradient over SIX
 neighbours whose own normals then feed the corner means."* The mesher reads a

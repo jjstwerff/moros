@@ -669,9 +669,24 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         if len(gf) >= 3 {
           gm = moros_terrain::chunk_mesh_mat(gf[0] ?? 0, gf[1] ?? 0, st.cache,
                                              hex_editor::SURFACE_MAT);
-          if moros_terrain::mesh_crc(gm) == (gf[2] ?? 0) { st.g_agree = st.g_agree + 1; }
-          else { st.g_bad = st.g_bad + 1; }
-          web::send(h, "42:ground {st.g_agree} bad {st.g_bad}");
+          if moros_terrain::mesh_crc(gm) == (gf[2] ?? 0) {
+            st.g_agree = st.g_agree + 1;
+            web::send(h, "42:ground {st.g_agree} bad {st.g_bad}");
+          } else {
+            st.g_bad = st.g_bad + 1;
+            // ⚠ NAME THE TILE, DO NOT COUNT IT. A count cannot tell a BORDER effect
+            // from an arithmetic one, and those want opposite fixes: the mesher reads
+            // a one-cell halo for normals and a two-cell grid for heights, so a tile
+            // at the edge of the cached region reads absent neighbours where the
+            // server reads real ones. If every failure is on the rim, the fix is
+            // ordering; if they are scattered, it is the arithmetic and ordering
+            // would have hidden it.
+            //
+            // Bounded by construction: one line per DISAGREEING tile, and the whole
+            // point is that the number should go to zero.
+            web::send(h, "42:ground {st.g_agree} bad {st.g_bad} at {gf[0] ?? 0},{gf[1] ?? 0} "
+                       + "cells {len(gm.vertices)}");
+          }
         }
       }
       else if tag == "V" {
