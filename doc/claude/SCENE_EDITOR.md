@@ -2,9 +2,11 @@
 
 > ⚠ **THIS IS A DESIGN FOR A PAGE THAT WAS NOT BUILT, and it is kept for its layout
 > thinking, not as a description of anything.** The editor exists — it is a loft
-> **server** (`src/editor_server.loft`) with two renderers answering one wire: the
-> JavaScript `html/editor.html` at `/` and the wasm `src/editor_client.loft` at
-> `/client`. There is no `html/scene-editor.html` and no `localStorage` scene map;
+> **server** (`src/editor_server.loft`) and ONE renderer: the wasm
+> `src/editor_client.loft`, built by `make client` and served at both `/` and
+> `/client`. (`html/editor.html` was the JavaScript original and the control the port
+> was measured against; it was deleted 2026-08-02 in the commit that proved the match.)
+> There is no `html/scene-editor.html` and no `localStorage` scene map;
 > the world is a voxel store with a file format ([WORLD_MODEL.md](WORLD_MODEL.md))
 > and the wire is [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md).
 >

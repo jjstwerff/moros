@@ -77,8 +77,13 @@ eyes**, not a report: something to open, drive, and judge.
 | — | ✋ | | | |
 | 16 | **the client split** — voxels cached and meshed in the client, the view solved there | [#16](https://github.com/jjstwerff/moros/issues/16) | XL | a drag costs no round trip; the wire carries no geometry |
 | 16a | ↳ **S1 — a wasm/loft client that draws** the wire the JavaScript drew | [#16](https://github.com/jjstwerff/moros/issues/16) | ✅ | `make client-check` beside `make editor-check`; control seen red (258 colours → 2) |
-| — | ✋ **the wasm client is the one to build on** | | | open `/client` beside `/`. Both renderers are green; which one continues is yours, and `editor.html` stays until you say |
-| 16b | ↳ S2 — voxels on the wire, meshes still from the server | [#16](https://github.com/jjstwerff/moros/issues/16) | M | the client's cached bytes and the server's agree, by the format's own CRC |
+| — | ✅ **settled 2026-08-02: the wasm client is the only renderer.** `html/editor.html` is deleted — one script through both pages agreed to within 2.4% of mean luminance at every camera mode over 49,500 samples, and every gate stayed green against the survivor with its thresholds untouched | | | |
+| 16b | ↳ S2 — voxels on the wire, meshes still from the server | [#16](https://github.com/jjstwerff/moros/issues/16) | ✅ | `cache agree 24 bad 0` — the client's cached bytes and the server's agree, by the format's own CRC |
+| 16c | ↳ **S3 — the client MESHES its own voxels**, and the server's checksum agrees | [#16](https://github.com/jjstwerff/moros/issues/16) | ✅ | **`ground 48 bad 0 wait 0`** — `tools/gates/world/client_mesh.mjs`; the guard is `moros_terrain::tile_ready`, mapped by `probe/s3/` |
+| 16d | ↳ S4 — **delete the ground `M:` frames**; the client draws what it derives | [#16](https://github.com/jjstwerff/moros/issues/16) | M | ~1 MB of ASCII floats per chunk rebuild stops crossing the socket, and the picture is unchanged |
+| — | ✋ | | | |
+| 17 | **parts** — a house drawn away from the world, composed by socket | [#17](https://github.com/jjstwerff/moros/issues/17) | XL | a house authored end-to-end without touching loft — [PARTS.md](PARTS.md) |
+| 18 | **catalogue** — what you are working on, names, and a list with images | [#18](https://github.com/jjstwerff/moros/issues/18) | L | the subject line reads correctly in a PNG — [CATALOGUE.md](CATALOGUE.md) |
 | ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
 
 **Two things deliberately not in the order.** *Extraction* has no row: a group leaves when it

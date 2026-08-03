@@ -22,13 +22,27 @@
 > the consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
 > battle-tested.
 
-> ## Status at 2026-07-29
+> ## Status at 2026-08-03
 >
 > | | |
 > |---|---|
-> | ✅ fixed and verified | `H5`(=`H8`), `H6`, `H7`, `H8`, `H9`, `H10`, `H11`, `H12`, `H13`, `H14`, `H15` |
-> | **open** | `H16` [#667](https://github.com/loft-lang/loft/issues/667) · `H17` [#668](https://github.com/loft-lang/loft/issues/668) · `H18` [#669](https://github.com/loft-lang/loft/issues/669) · `H19` [#670](https://github.com/loft-lang/loft/issues/670) — all filed 2026-07-29 |
+> | ✅ fixed and verified | `H5`(=`H8`), `H6`–`H15`, and **`H16`–`H19`** — [#667](https://github.com/loft-lang/loft/issues/667), [#668](https://github.com/loft-lang/loft/issues/668), [#669](https://github.com/loft-lang/loft/issues/669), [#670](https://github.com/loft-lang/loft/issues/670) all closed |
+> | **open, and filed directly** | [#735](https://github.com/loft-lang/loft/issues/735) a nested index assignment through a `&` parameter does not reach a caller's LOCAL · [#737](https://github.com/loft-lang/loft/issues/737) `--html` stubs the whole text bridge while `loft targets` claims every builtin is available · [#738](https://github.com/loft-lang/loft/issues/738) `--html` has no way to get authored pixels into a texture |
 > | unverified | `H4` — the silent-null class; was plausibly `H12`'s family, so likely closed with it |
+>
+> ⚠ **THE "WRITE IT UP HERE, FILE IT LATER" WORKFLOW IS RETIRED, and this file is now a
+> record rather than a queue.** A closed ticket costs nothing, so a finding is filed the
+> moment it is found — holding one back to write it up well, or to check for duplicates, is
+> how `H16`–`H19` sat here for a week. The long-form entries below are still worth keeping:
+> each carries a reproducer and the controls already run, which an issue body cannot hold
+> comfortably and which is exactly what a maintainer asks for second.
+>
+> ⚠ **#737 and #738 are the same shape as `H16`–`H19` and it has now cost two sessions:
+> `--html` is a SECOND IMPLEMENTATION, not a build flag.** Both are stubs that return a
+> plausible value rather than failing — `text_height` returns `ceil(size * 1.2)` for a font
+> that does not exist — so the absence reads as a layout bug in the consumer. And `loft
+> targets` states the opposite of the truth for that target, which is worse than silence
+> because it is the thing people check *instead of* reading the shell.
 >
 > Everything filed before 2026-07-29 is fixed, every row re-run against the installed
 > binary rather than taken from a commit message. `H11` and `H12` closed by loft

@@ -76,6 +76,7 @@ stays.
 | **a 3D render** | *does it READ as a house* — the cold-recognition test | needs a renderer |
 | **the wire** — `mesh <surf>`, `meshy <surf> <y0> <y1>` | *was it EMITTED at all, and WHERE* | headless, no browser, off the `M:` frames |
 | **the walker** — `feet [lo hi]` | *can you GET there* — a stair is a sequence of these | headless, off the body's own matrix |
+| **a running tally** — `last <prefix>` | *where did it END UP* — the client's cache and ground verdicts arrive once per chunk and accumulate | free; it reads the status already collected |
 
 The first is a measurement that happens to be an image, and it is exact: a zigzag wall is
 visibly a zigzag in plan. The second is the acceptance test and cannot be automated away.
@@ -128,6 +129,25 @@ The runner is a client too, so it holds the set the page is *supposed* to have, 
 shortfall is stream the browser has not caught up with. It earned its place by **disproving**
 the obvious diagnosis: on the failing runs it read 404 of 404, which is what sent the search
 to the clock instead.
+
+⚠ **`wait` ANSWERS "HAS THIS HAPPENED", `last` ANSWERS "WHERE DID IT END UP"**, and a
+cumulative count needs the second. `wait` returns the EARLIEST matching status, which for the
+client's ground verdict is always `ground 0 bad 0 wait 1` — the instant before any evidence
+exists. Read as a result it says the guard blocks everything, when it had blocked one tile out
+of forty-eight. Any instrument that counts upward wants `last`.
+
+⚠ **THE `snap` IS WHAT OPENS THE BROWSER, and the browser IS the client under test.** It reads
+as a screenshot command, so a gate that judges no picture looks like it can drop it — and then
+nobody is connected, every verdict line simply never arrives, and the failure reads as "the
+feature does not work". A gate that needs a client needs a `snap`, whether or not it looks at
+the PNG.
+
+⚠ **THE SERVER IS COMPILED FROM SOURCE EVERY RUN; THE CLIENT IS A FILE.**
+`src/.loft/editor_client.html` is written by `make client` and merely *served*, so an edit to
+`editor_client.loft` is invisible until that command runs. It cost a full diagnosis: a `Z:0`
+re-check read as "never runs" through three instrumented runs while the code was simply not in
+the page. Both client gates now build it themselves, and so does every editor make-target —
+**check this first when a client change appears to do nothing.**
 
 ⚠ **A green board is not a passing step.** Every claim about a shape can hold while the
 picture is wrong — `25:` WALL passed its gate for months while drawing a road with a fence

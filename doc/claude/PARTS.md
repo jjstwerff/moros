@@ -36,12 +36,21 @@ Consequences that fall out for free: a part renders in the same shader, saves in
 format, is verified by the same gates, and **a house can be opened as a part** — which is
 what makes "start from that cottage and change the roof" possible without a feature.
 
-### P2 — A part is a document with an anchor, and the format already accepts it
+### P2 — A part is saved the way a world is saved, because it IS one
 
-Home: `hex_field`'s `HXF1` — magic, schema version, explicit extent, then **tagged sections
-each with a byte length**. That last property is the whole reason this is cheap: a reader
-meeting a tag it does not know *skips it by that length*. So parts add sections and every
-existing reader keeps working, with no version bump and no negotiation:
+⚠ **Corrected against [HEX_STACK](HEX_STACK.md), which is the single authority — the first
+draft of this section had it wrong.** It said parts extend `hex_field`'s `HXF1`. But **there is
+no `.hxf` file anywhere in this tree**: everything on disk is `.hxw`, and the only caller of
+`doc_write`/`doc_read` is `lib/moros_map`, the package already labelled a predecessor of its
+target design. `HXF1` is crawler's interchange, not ours, and designing on it would have had
+`A1` build a reader for a format nothing here writes.
+
+The right answer is the simpler one, and it falls straight out of §P1: **a part is a world, so
+it is saved by `world_save` into the store format.** No second writer, no second reader, no
+conversion — and the round-trip test a part needs is the one the world already has.
+
+What a part adds is *sections*, and the discipline for those is what `EDITOR_SUBSTRATE` argued
+for and `HEX_STACK` §6 re-anchored — kept in full, moved to the store:
 
 | section | carries |
 |---|---|
@@ -50,12 +59,20 @@ existing reader keeps working, with no version bump and no negotiation:
 | `SOCK` | the sockets this part OFFERS (§P3) |
 | `FITS` | the sockets this part CAN BE PLACED INTO |
 | `INST` | parts placed inside this part (§P4) — this is what makes a house a composition |
-| `MESH` | for prop parts: the `.glb` payload or a reference to one (§P5) |
+| `MESH` | for prop parts: the `.glb` payload, or a reference to one (§P5) |
 
-⚠ **The extent is the part's own, and it is not the world's.** A part saved with a negative
-origin and a fractional height is exactly the shape `hex_field`'s committed fixture
-(`canonical.hxf`) already covers, which is why that fixture is worth more than the sections
-it tests.
+⚠ **Tagged, each with a byte length, so an unknown tag is SKIPPED rather than fatal.** That is
+the property worth carrying across from the `HXF1` argument, and worth restating: a flags word
+cannot do it, because an unknown bit means an array of unknown length, which is unskippable —
+so the only correct response would be refusing the file. Sections let a part written by a newer
+editor still load in an older one, and that difference is testable.
+
+⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
+as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
+hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it
+was never written as a collection, so `A1` either lands after that changes or accepts
+whole-file reads and says so. It is the same finding arriving from a second direction, which is
+usually the sign it is the real one.
 
 ### P3 — Composition is by SOCKET, never by coordinate
 
@@ -191,7 +208,7 @@ Smallest first, and each step ends in something testable — *build to learn*.
 
 | | step | done when |
 |---|---|---|
-| `A1` | **`lib/hex_part`**, and `HXF1` sections `PART` + `ANCH`. Save a region of the world as a part; load it back. | round-trip identity is green, with the perturbation control seen red |
+| `A1` | **`lib/hex_part`**, and store sections `PART` + `ANCH`. Save a region of the world as a part with `world_save`; load it back. | round-trip identity is green, with the perturbation control **seen red** |
 | `A2` | **`14:` takes a part name.** The procedural house becomes one authored part in `data/parts/house/cottage.hxf`, and stencilling it draws what `stencil_place` drew. | the gate's picture is unchanged — which is the proof the format carries everything the procedure did |
 | `A3` | **Instances** — `INST`, a labelled derived layer, and `expand == bake`. | edit the part, and the placed house changes |
 | `A4` | **Sockets** — `SOCK` / `FITS`, offer and fit, refusal with reason and offer. | a door-frame accepts a leaf and refuses an oversized one, in words |
@@ -221,6 +238,7 @@ not, every instance built on it is built on a document that has already lost som
 ## See also
 
 - [FITTINGS](FITTINGS.md) — the hinge model, and which of its sections `hex_draw` superseded
-- [EDITOR_SUBSTRATE § The document format](EDITOR_SUBSTRATE.md#the-document-format-is-the-sharpest-clause) — `HXF1`, and why sections beat a flags word
+- [HEX_STACK § 6](HEX_STACK.md#6-persistence-and-distribution) — **the authority on persistence**: why the interchange discipline moved to the store, and why a world wants to be a keyed collection
+- [EDITOR_SUBSTRATE § The document format](EDITOR_SUBSTRATE.md#the-document-format-is-the-sharpest-clause) — where the sections-beat-a-flags-word argument was made. ⚠ Its `HXF1` anchor is superseded; the argument is not
 - [HEX_STACK](HEX_STACK.md) — the three invariants this design is an application of
 - [WIRE_PROTOCOL](WIRE_PROTOCOL.md) — `14:` as it stands today

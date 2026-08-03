@@ -206,7 +206,9 @@ split (designed against gated code) rather than the earlier guesses.
 | `hex_grow` | canopy partition, crown profiles, skeleton, pipe model | crawler | designed, not started |
 | `hex_props` | primitives with axes, part-lists, seats, state | crawler | designed, not started |
 | `hex_scene` | field → triangles → GLB, **and** the realtime view | crawler + us | designed, not started |
-| `hex_editor` | tools, undo, selection, the configuration surface — **the universal editor itself** | **us** | not started |
+| `hex_editor` | tools, undo, selection, the configuration surface — **the universal editor itself** | **us** | **built here**, `lib/hex_editor`, 217 tests — every gesture: walk, fall, shape, wall, opening, storey, cellar, stair, stencil |
+| `hex_world` (ours) | `lib/hex_world`, 102 tests — the voxel store this editor actually runs on: chunks, layers, windowed heights, the wire encoding, known-absence | **us** | **built here** — see [WORLD_MODEL.md](WORLD_MODEL.md) |
+| `moros_terrain` | `lib/moros_terrain` — the chunk mesher and its oracle (`tile_ready`), extracted as a LEAF so adding `hex_editor` to `moros_render` could not redden `moros_sim` | **us** | **built here** |
 
 Dependencies flow strictly downward: `hex_grid` is leaf; `hex_editor` sits on
 `hex_field` + `hex_scene` + `shapes`; only `hex_scene` knows a renderer.
@@ -585,6 +587,15 @@ Two facts fell out of the reverse direction, and both belong to the document for
 ---
 
 ## The document format is the sharpest clause
+
+> ⚠ **THE ARGUMENT STANDS; ITS ANCHOR IS SUPERSEDED.** `HEX_STACK.md` §6 is the authority on
+> persistence and it moved this contract from `HXF1` to the **store** — because a window is
+> derived (`I2`), and because **the editor never used `HXF1`**: there is no `.hxf` file
+> anywhere in the tree, everything on disk is `.hxw`, and `doc_write`/`doc_read` has one
+> caller, `lib/moros_map`, already labelled a predecessor. Read the mechanism below — magic
+> marker, schema version, tagged sections skippable by length, one canonical fixture, a gate
+> on both sides — as what was kept in full. Read `HXF1` and the `f64` heights as what was not.
+> [PARTS.md](PARTS.md) §P2 is what consumes it now.
 
 A world or stencil written by the editor must load in crawler **bit-for-bit identically**.
 So *round-trip = identity* is not the editor's private test — **it is the interface**. It
@@ -1350,8 +1361,10 @@ No new phase numbers. The sequence the existing documents already imply:
 ## Why the camera solve is in the server, and why that stops being true
 
 **It is there because the client is JavaScript, not because the server is the right home.**
-`html/editor.html` states the rule at the top: *"The client DRAWS. It does not model … If a
-computation about the world ever appears below this line, the seam has been broken."* That
+`html/editor.html` stated the rule at the top — the file is gone (2026-08-02, superseded by
+the wasm client) and **the sentence outlived it**, which is why it is quoted here rather than
+left in a deleted file: *"The client DRAWS. It does not model … If a computation about the
+world ever appears below this line, the seam has been broken."* That
 rule is sound and was never about the camera — it is about **not writing a second
 implementation of the model in a second language**. The server is simply the only place
 loft ran.
