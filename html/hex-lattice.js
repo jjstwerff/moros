@@ -25,12 +25,40 @@ export const HEX_SIZE = 36;
 export function hexWidth() { return Math.sqrt(3) * HEX_SIZE; }
 export function hexHeight() { return 2 * HEX_SIZE; }
 
+/**
+ * ⚠ THE PARITY TEST IS `row & 1`, NEVER `row % 2 === 1`.
+ *
+ * JavaScript's `%` keeps the sign of the dividend, so `-1 % 2` is `-1` and the
+ * half-hex shift silently stopped happening on every ODD NEGATIVE row — the map
+ * drew rows -1, -3, -5 half a hex to the left of where `hex_grid` puts them.
+ * `-1 & 1` is `1`, which is what the loft side computes and what odd-r means.
+ *
+ * This is the fourth time this codebase has been bitten by `%` where `&` was
+ * meant (see moros#3); `test/lattice.test.js` now pins it against the shared
+ * fixture, on both signs and both parities.
+ */
 export function hexCenter(col, row) {
     const w = hexWidth();
     const h = hexHeight();
-    const x = col * w + (row % 2 === 1 ? w / 2 : 0) + w;
+    const x = col * w + ((row & 1) ? w / 2 : 0) + w;
     const y = row * h * 0.75 + HEX_SIZE;
     return { x, y };
+}
+
+/**
+ * The exact integer lattice point of a cell — the form `hex_grid` and
+ * `hex_field` both state the convention in, and the ONE thing the two languages
+ * compare. Doubled coordinates, so the half-hex shift is the integer 1 rather
+ * than a float that cannot be compared without an epsilon:
+ *
+ *   k = 2*col + (row & 1)      m = 3*row       centre = (k*sqrt(3)/2, m/2)
+ *
+ * Cell centres satisfy `k ≡ m (mod 2)`. A drift of half a hex is a drift of 1
+ * in `k`, which is visible without a tolerance — which is why the cross-language
+ * fixture is stated here and not over `hexCenter`'s floats.
+ */
+export function hexLattice(col, row) {
+    return { k: 2 * col + (row & 1), m: 3 * row };
 }
 
 /**
@@ -44,7 +72,7 @@ export function hexCenter(col, row) {
  * were wrong. Use `MIRROR_DIR` and `dirName` instead.
  */
 export function neighborOffsets(row) {
-    return row % 2 === 0
+    return (row & 1) === 0
         ? [[1, 0], [-1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1]]
         : [[1, 0], [-1, 0], [0, -1], [0, 1], [1, -1], [1, 1]];
 }
@@ -67,7 +95,7 @@ export const MIRROR_DIR = [1, 0, 3, 2, 5, 4];
  * row of the map.
  */
 export function dirName(row, d) {
-    const names = row % 2 === 0
+    const names = (row & 1) === 0
         ? ['E', 'W', 'NE', 'SE', 'NW', 'SW']
         : ['E', 'W', 'NW', 'SW', 'NE', 'SE'];
     return names[d] ?? '?';

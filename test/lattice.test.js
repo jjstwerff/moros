@@ -1,6 +1,8 @@
 const { assert } = require('chai');
-const { hexCenter, neighborOffsets, MIRROR_DIR, dirName,
-        hexWidth } = require('../html/hex-lattice.js');
+const fs = require('node:fs');
+const path = require('node:path');
+const { hexCenter, hexLattice, neighborOffsets, MIRROR_DIR, dirName,
+        hexWidth, HEX_SIZE } = require('../html/hex-lattice.js');
 
 // THE MAP EDITOR'S ROADS, AND WHY THEY WERE BROKEN.
 //
@@ -170,6 +172,95 @@ describe('hex lattice — the layout it all rests on', () => {
                 assert.closeTo(Math.hypot(b.x - a.x, b.y - a.y), w, 1e-9,
                     `direction ${d} on row ${row}`);
             }
+        }
+    });
+});
+
+// ── THE CROSS-LANGUAGE PARITY GATE (moros#3) ────────────────────────────────
+//
+// The convention is implemented twice: here for the browser map editor, and in
+// `hex_grid` for the loft side. Two implementations of one convention is the
+// silent-failure shape — everything "works" until they disagree about where a
+// row sits, and nothing says so.
+//
+// So both sides read ONE committed file, and neither generates it at test time.
+// `hex_grid/tests/02-parity.loft` asserts these same bytes; the comment at the
+// top of the fixture explains why it holds INTEGERS and not sampled floats.
+//
+// ⚠ IT FOUND A LIVE BUG THE DAY IT WAS WRITTEN. `hexCenter` tested row parity
+// with `row % 2 === 1`, and JavaScript's `%` keeps the sign of the dividend, so
+// `-1 % 2` is `-1`: the half-hex shift silently stopped on every odd NEGATIVE
+// row, putting the loft and browser lattices half a hex apart below y=0. That is
+// the fourth instance of `%`-where-`&`-was-meant in this codebase.
+//
+// ⚠ AND IT MUST FAIL IF THE SIBLING TREE IS MISSING, never skip. A gate that
+// quietly passes when it cannot find what it measures reports an absence it is
+// blind to.
+
+const FIXTURE = path.join(__dirname, '..', '..',
+    'loft-libs-world', 'hex_grid', 'tests', 'fixtures', 'lattice.tsv');
+
+function loadFixture() {
+    const raw = fs.readFileSync(FIXTURE, 'utf8');     // throws if absent, on purpose
+    return raw.split('\n')
+        .filter((l) => l.length > 0 && !l.startsWith('#'))
+        .map((l) => l.split('\t').map(Number))
+        .map(([col, row, k, m]) => ({ col, row, k, m }));
+}
+
+describe('hex lattice — parity with the loft implementation', () => {
+    it('reads the shared fixture, and it covers both signs of row', () => {
+        const rows = loadFixture();
+        assert.strictEqual(rows.length, 63,
+            'the shared fixture changed size — has it been regenerated to pass?');
+        assert.isAbove(rows.filter((r) => r.row < 0 && (r.row & 1) === 1).length, 0,
+            'no odd NEGATIVE rows in the fixture — the one case that keeps breaking');
+        assert.isAbove(rows.filter((r) => r.row > 0 && (r.row & 1) === 1).length, 0,
+            'no odd positive rows in the fixture');
+    });
+
+    it('puts every fixture cell on its integer lattice point', () => {
+        for (const { col, row, k, m } of loadFixture()) {
+            const got = hexLattice(col, row);
+            assert.strictEqual(got.k, k, `cell [${col},${row}] k`);
+            assert.strictEqual(got.m, m, `cell [${col},${row}] m`);
+            assert.strictEqual((got.k - got.m) % 2, 0,
+                `cell [${col},${row}] breaks k = m (mod 2)`);
+        }
+    });
+
+    // hexCenter is what the renderer actually calls, so the fixture has to reach
+    // it. It carries a scale (HEX_SIZE) and a one-hex pad so the map is not drawn
+    // against the canvas edge; both are removed here, and what is left must be
+    // the lattice point. The tolerance is honest: this claim is about SCALE, and
+    // the two languages multiply in a different order.
+    it('agrees with hexCenter once the scale and the pad are removed', () => {
+        const w = hexWidth();
+        for (const { col, row, k, m } of loadFixture()) {
+            const c = hexCenter(col, row);
+            assert.closeTo((c.x - w) / HEX_SIZE, k * Math.sqrt(3) / 2, 1e-9,
+                `cell [${col},${row}] x`);
+            assert.closeTo((c.y - HEX_SIZE) / HEX_SIZE, m / 2, 1e-9,
+                `cell [${col},${row}] y`);
+        }
+    });
+
+    // The specific bug, by name, so a reader can find it.
+    it('shifts odd NEGATIVE rows exactly like odd positive ones', () => {
+        const w = hexWidth();
+        for (let i = 0; i < 4; i++) {
+            const neg = -(2 * i + 1);
+            const pos = 2 * i + 1;
+            assert.closeTo(hexCenter(0, neg).x, hexCenter(0, pos).x, 1e-9,
+                `row ${neg} and row ${pos} disagree — the shift stopped below zero`);
+            assert.closeTo(hexCenter(0, neg).x - hexCenter(0, 0).x, w / 2, 1e-9,
+                `row ${neg} is not shifted half a hex`);
+        }
+        // and even rows must NOT move, or the above passes on a lattice that
+        // shifts everything
+        for (let i = 0; i < 4; i++) {
+            assert.closeTo(hexCenter(0, -(2 * i + 2)).x, hexCenter(0, 0).x, 1e-9,
+                `even row ${-(2 * i + 2)} was shifted`);
         }
     });
 });
