@@ -18,7 +18,11 @@
 import { decodePng } from './shot.mjs';
 
 const path = process.argv[2];
-if (!path) { console.error('usage: panel.mjs <png>'); process.exit(2); }
+// ⚠ THE SWATCHES ARE ASKED FOR, NOT ASSUMED. A client with no server has an
+// empty catalogue and therefore no swatches — correctly — so demanding them of
+// every picture would fail the one stage that deliberately runs without one.
+const wantSwatches = process.argv.includes('--swatches');
+if (!path) { console.error('usage: panel.mjs <png> [--swatches]'); process.exit(2); }
 
 const img = decodePng(path);
 const px = (x, y) => {
@@ -130,6 +134,53 @@ for (let y = 0; y < SUBJ_H; y++) {
     for (let x = STRIP + 10; x < img.w; x++) if (lum(x, y) > 150) past++;
 }
 check(past > 0, `the subject line extends past the 240px strip (${past} glyph pixels)`);
+
+// ── the material swatches (B3.3) ─────────────────────────────────
+// §C4: each swatch is one hex tile rendered with the WORLD'S OWN shader and
+// light, so it IS the material rather than a claim about it. What a picture can
+// check is that they are THERE and that they are DIFFERENT — a renderer that
+// failed would leave the list background, and one that ignored the material
+// would leave nine identical blobs.
+//
+// ⚠ AND BOTH HALVES ARE NEEDED. Nine swatches were "rendered" and the picture
+// had none: the hexagon was built in the world's XZ plane while clip space is
+// XY, so it collapsed to a line. The client's own count said 9. A count of
+// draw calls is not a count of pixels.
+const LIST_X1 = 232, SW_W = 22, SW_H = 16;
+const ROW_H = 20;
+let listTop = 0;
+for (let y = 0; y < img.h; y++) {
+    // the list well is the darkest band inside the strip, below the buttons
+    if (y > img.h * 0.35 && lum(20, y) < 28) { listTop = y; break; }
+}
+const swatches = [];
+for (let i = 0; i < 9; i++) {
+    const y0 = listTop + i * ROW_H + 6;
+    const x0 = LIST_X1 - SW_W;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let y = y0; y < y0 + SW_H - 6 && y < img.h; y++) {
+        for (let x = x0 + 4; x < x0 + SW_W - 4; x++) {
+            const [pr, pg, pb] = px(x, y);
+            r += pr; g += pg; b += pb; n++;
+        }
+    }
+    if (n > 0) swatches.push([r / n, g / n, b / n]);
+}
+const litSwatches = swatches.filter(([r, g, b]) => (r + g + b) / 3 > 28);
+if (wantSwatches) {
+check(litSwatches.length >= 8,
+      `the material swatches are drawn (${litSwatches.length} of ${swatches.length} above the list background)`);
+
+// ⚠ AND THEY DIFFER. Nine identical blobs would pass the row above perfectly and
+// would mean the shader drew one colour for every material.
+const key = ([r, g, b]) => `${Math.round(r / 12)},${Math.round(g / 12)},${Math.round(b / 12)}`;
+const distinct = new Set(litSwatches.map(key)).size;
+check(distinct >= 6, `the swatches are different colours (${distinct} distinct of ${litSwatches.length})`);
+} else if (litSwatches.length > 0) {
+  // Not an error, but worth saying: a picture that was not asked about swatches
+  // and has them means the two stages have drifted apart.
+  console.log(`  note  ${litSwatches.length} swatches present but not checked (no --swatches)`);
+}
 
 // ── the control: the panel did not eat the canvas ────────────────
 let sky = 0, total = 0;

@@ -227,9 +227,7 @@ exactly like a broken client and is a page served by the wrong host.
 |---|---|---|---|
 | ✅ `B3.1` | `moros_terrain::surfaces()` — one list, with the names, the colours and the count all derived from it. | **DONE.** 5 loft tests. ⚠ **It found `road` and `wall` 0.00009 apart in chromaticity** — inside the classifier's own tolerance. See below. | S |
 | ✅ `B3.2` | `N:` on the wire, derived from the same list; the client puts it in `ps_items`. (⚠ `palette_items_for_tool` is gone — `B1.2b` deleted it as client-authoritative state.) | **DONE.** Nine names in the client's list well, in its own PNG; the wire gate pins the count against the mesher. | S |
-| `B3.3` | Swatch rendering — one hex tile, **the world's own shader and current light**, into an offscreen texture, cached per material. | a PNG shows N non-blank swatches, ⚠ with the control: a swatch that fails to render must read **blank**, or "it drew something" proves nothing | M |
-
-⚠ **`B3.3` is the one piece of `B3` still open.** `B3.1`–`B3.2` give the list its entries and its names; the images are the remaining half of a catalogue entry.
+| ✅ `B3.3` | Swatch rendering — one hex tile through the **world's own shader**, with the world's current `uAmb`/`uLamp`, into an offscreen texture, cached per material. | **DONE.** Nine swatches in the client's PNG, **9 of 9 lit and 9 distinct colours**. ⚠ The count said nine before any of them drew — see below. | M |
 
 ⚠ **`B3.1` FOUND `road` AND `wall` 0.00009 APART IN CHROMATICITY** — an order of magnitude
 *inside* the 0.0009 the picture gates classify with. Both were neutral greys differing only
@@ -258,6 +256,33 @@ colours stay literals in `editor_server.loft`, held equal to the list by a loft 
 than by the compiler. ⚠ And `tools/script.mjs`'s palette is a **third** copy, cross-language:
 the same shape moros#3 closed for the hex lattice with a shared fixture, and the same fix is
 available when it next bites.
+
+⚠ **`B3.3`: THE CLIENT REPORTED NINE SWATCHES AND THE PICTURE HAD NONE.** Nine textures
+created, nine draws issued, nothing on screen — the same *"it drew something"* split read the
+other way round, and a count of **draw calls is not a count of pixels**.
+
+Two causes, both mine, and both invisible to the count:
+
+1. **The hexagon was built in the world's XZ plane, and clip space is XY.** With identity
+   matrices the tile collapsed to the line `y = 0`. Reaching for the ground plane is the
+   natural mistake when the thing being drawn *is* a ground tile.
+2. **The framebuffer has a colour attachment and no depth one**, while the world draw leaves
+   the depth test enabled — so every fragment was tested against a buffer that is not there.
+
+⚠ **No matrix library, and none needed.** The tile is built directly in clip space, so
+`uModel`/`uView`/`uProj` are all identity. Writing an ortho and a look-at to aim a camera at a
+flat hexagon would be a second projection path to keep honest, for a picture 22 px tall. The
+normal still points up the Y axis so the shader lights it exactly as it lights ground — the
+swatch is meant to look like the material underfoot.
+
+⚠ **The gate asks for two things, and one alone proves little.** *Drawn* (above the list
+background) and *different* — nine identical blobs would pass the first perfectly and mean the
+shader drew one colour for every material. Controls seen red on both the pre-swatch picture
+and, more usefully, on the one where the client claimed nine and drew zero.
+
+⚠ **And the swatch check is asked for, not assumed** (`--swatches`). A client with no server
+has an empty catalogue and therefore no swatches, correctly — demanding them of every picture
+would fail the one stage that deliberately runs without a server.
 
 ### B4 — names
 

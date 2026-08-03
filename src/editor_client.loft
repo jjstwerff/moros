@@ -1078,6 +1078,126 @@ fn draw_ui_text(texts: vector<UiText>, painter: Painter2D) {
   }
 }
 
+// ── Material swatches (plan 18 B3.3) ─────────────────────────────────────────
+//
+// §C4: a swatch is rendered with the WORLD'S OWN SHADER and the world's current
+// light, so it IS the material rather than a claim about it. A hand-picked RGB in
+// a table is a claim, and it drifts silently the day the shader changes — the
+// same argument as `mesh_crc` comparing what was emitted rather than what the
+// producer thinks it emitted.
+//
+// ⚠ NO MATRIX LIBRARY, AND NONE NEEDED. The tile is built directly in CLIP
+// SPACE, so `uModel`, `uView` and `uProj` are all identity. Writing an ortho and
+// a look-at to point a camera at a flat hexagon would be a second projection
+// path to keep honest, for a picture 22 pixels tall.
+const SWATCH_W = 22;
+const SWATCH_H = 16;
+
+// A flat hexagon, six triangles from the centre.
+//
+// ⚠ THE POSITIONS ARE IN THE X-Y PLANE AND THE NORMAL POINTS UP THE Y AXIS, and
+// those are deliberately not the same plane. Clip space is XY, so a hexagon built
+// in XZ — the world's own ground plane, which is what I reached for — collapses
+// to the line y=0 and draws nothing. The count said nine swatches and the picture
+// had none, which is the same "it drew something" split read the other way round.
+//
+// The normal stays (0,1,0) so the shader lights the tile exactly as it lights
+// ground: the swatch is meant to look like the material underfoot, not like a
+// wall facing the viewer.
+fn swatch_hex_verts() -> vector<single> {
+  // ⚠ `single`, not `float` — `gl_upload_vertices` takes the GPU's 32-bit type
+  // and loft will not narrow it for you.
+  v: vector<single> = [];
+  rx = 0.86;
+  ry = 0.86;
+  for i in 0..6 {
+    a0 = (i as float) * 1.0471975511965976;              // 60°
+    a1 = ((i + 1) as float) * 1.0471975511965976;
+    // centre, then the two rim points; y is 0 so the height ramp is irrelevant
+    // and `uUseRamp = 0` makes the colour flat in any case.
+    v += [0.0 as single, 0.0 as single, 0.0 as single,
+          0.0 as single, 1.0 as single, 0.0 as single];
+    v += [(rx * cos(a0)) as single, (ry * sin(a0)) as single, 0.0 as single,
+          0.0 as single, 1.0 as single, 0.0 as single];
+    v += [(rx * cos(a1)) as single, (ry * sin(a1)) as single, 0.0 as single,
+          0.0 as single, 1.0 as single, 0.0 as single];
+  }
+  v
+}
+
+// One swatch, rendered off-screen and kept.
+struct Swatch { sw_tex: integer }
+
+fn render_swatches(st: Client, names: vector<text>) -> vector<Swatch> {
+  out: vector<Swatch> = [];
+  if st.prog == 0 { return out; }              // no shader yet: nothing honest to draw
+  // ⚠ DEPTH OFF. The framebuffer below has a COLOUR attachment and no depth one,
+  // and the world draw leaves the depth test enabled — so every swatch fragment
+  // was tested against a buffer that is not there and discarded. Nine textures
+  // were created, nine draws issued, and nothing came out.
+  graphics::gl_disable(graphics::GL_DEPTH_TEST);
+  vao = graphics::gl_upload_vertices(swatch_hex_verts(), 6);
+  fbo = graphics::gl_create_framebuffer();
+  idm = ident4();
+  for i in 0..len(names) {
+    sf = moros_terrain::surface_at(i);
+    tex = graphics::gl_create_color_texture(SWATCH_W, SWATCH_H);
+    graphics::gl_framebuffer_texture(fbo, 0, tex);
+    graphics::gl_bind_framebuffer(fbo);
+    graphics::gl_viewport(0, 0, SWATCH_W, SWATCH_H);
+    graphics::gl_clear(rgb_packed(st.sky_r, st.sky_g, st.sky_b));
+    graphics::gl_use_shader(st.prog);
+    graphics::gl_set_uniform_mat4(st.prog, "uModel", idm);
+    graphics::gl_set_uniform_mat4(st.prog, "uView", idm);
+    graphics::gl_set_uniform_mat4(st.prog, "uProj", idm);
+    // Flat: the material's own colour, not the terrain height ramp.
+    graphics::gl_set_uniform_vec3(st.prog, "uColor", sf.sf_r, sf.sf_g, sf.sf_b);
+    graphics::gl_set_uniform_float(st.prog, "uUseRamp", 0.0);
+    // ⚠ THE WORLD'S CURRENT LIGHT, which is §C4's clause and the reason a swatch
+    // can be trusted: these are the values the server last sent for the scene the
+    // author is standing in, so the swatch dims when the world does.
+    graphics::gl_set_uniform_float(st.prog, "uAmb", st.amb);
+    graphics::gl_set_uniform_float(st.prog, "uLamp", st.lamp);
+    graphics::gl_set_uniform_vec3(st.prog, "uEye", 0.0, 0.0, 2.0);
+    // Fog off: a swatch has no distance to fade over, and leaving the world's
+    // fog on would tint every swatch toward the sky by however far the author
+    // happens to be standing from the centre.
+    graphics::gl_set_uniform_vec3(st.prog, "uFogCentre", 0.0, 0.0, 0.0);
+    graphics::gl_set_uniform_vec3(st.prog, "uFogColor", st.sky_r, st.sky_g, st.sky_b);
+    graphics::gl_set_uniform_float(st.prog, "uFogFrom", 1000.0);
+    graphics::gl_set_uniform_float(st.prog, "uFogTo", 2000.0);
+    graphics::gl_set_uniform_float(st.prog, "uRampY0", 0.0);
+    graphics::gl_set_uniform_float(st.prog, "uRampY1", 1.0);
+    graphics::gl_set_uniform_vec3(st.prog, "uRampLo", sf.sf_r, sf.sf_g, sf.sf_b);
+    graphics::gl_set_uniform_vec3(st.prog, "uRampHi", sf.sf_r, sf.sf_g, sf.sf_b);
+    graphics::gl_draw(vao, 18);
+    out += [Swatch { sw_tex: tex }];
+  }
+  // ⚠ BACK TO THE SCREEN AND THE FULL VIEWPORT. Leaving the framebuffer bound
+  // draws the entire next frame into a 22x16 texture, which reads as a client
+  // that stopped rendering.
+  graphics::gl_bind_framebuffer(0);
+  graphics::gl_viewport(0, 0, WIN_W, WIN_H);
+  out
+}
+
+fn rgb_packed(r: float, g: float, b: float) -> integer {
+  ((r * 255.0) as integer) * 0x10000 + ((g * 255.0) as integer) * 0x100 + ((b * 255.0) as integer)
+}
+
+fn draw_swatches(p: Panel, sw: vector<Swatch>, painter: Painter2D) {
+  lr = p.p_list.lb_rect;
+  for i in 0..len(sw) {
+    y = lr.r_y + i * p.p_list.lb_item_height;
+    if y + p.p_list.lb_item_height > lr.r_y + lr.r_h { break; }
+    e = sw[i] ?? Swatch { sw_tex: 0 };
+    if e.sw_tex == 0 { continue; }
+    graphics::draw_texture_at(painter, e.sw_tex,
+      (lr.r_x + lr.r_w - SWATCH_W - 4) as float, (y + 2) as float,
+      SWATCH_W as float, SWATCH_H as float);
+  }
+}
+
 fn draw_panel(p: Panel, painter: Painter2D) {
   graphics::gl_disable(graphics::GL_DEPTH_TEST);
   for d in panel_draw_list(p, theme_default()) {
@@ -1306,6 +1426,7 @@ fn main() {
   ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
   ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
   ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+  ui_swatches: vector<Swatch> = [];
   drift_s = "";
   drift = metrics_drift(ui_font, ui_m, drift_s);
   // ⚠ AND THE SAME MEASUREMENT AGAINST A DELIBERATELY WRONG ADVANCE, reported
@@ -1348,14 +1469,21 @@ fn main() {
     // unbounded over a session.
     if st.hud_dirty {
       for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
+      for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
       ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
       ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+      // ⚠ CACHED PER MATERIAL, and rendered only when the list changes — §C4
+      // asks for the swatch to be the material, not for it to be re-rendered
+      // every frame. The list arrives once, so in practice this runs once.
+      ui_swatches = render_swatches(st, ui_panel.p_list.lb_items);
       st.hud_dirty = false;
       println("client: subject line ← {st.hud}");
+      println("client: {len(ui_swatches)} swatches rendered with the world shader");
     }
     poll_input(h, st);
     draw_world(st);
     draw_panel(ui_panel, ui_painter);
+    draw_swatches(ui_panel, ui_swatches, ui_painter);
     draw_ui_text(ui_texts, ui_painter);
     // ⚠ THE PICTURE IS TAKEN HERE — between the draw and the swap, because
     // `gl_screenshot` reads GL_BACK and the swap discards it. But NOT IN THIS FILE:

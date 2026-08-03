@@ -119,9 +119,10 @@ printf '%s\n' "$b2_out" | grep -q 'subject line ← world ' \
   || { echo "  !! the client never took a subject line from the server"; exit 1; }
 printf '%s\n' "$b2_out" | grep -q 'awaiting the server' \
   && { echo "  !! the client is still showing its placeholder"; exit 1; }
-node probe/b1/panel.mjs probe/b1/client_live.png >/dev/null \
+node probe/b1/panel.mjs probe/b1/client_live.png --swatches >/dev/null \
   || { echo "  !! the live client's panel does not measure up"; exit 1; }
-echo "  ok    the client shows the server's line, and its panel still measures up"
+node probe/b1/panel.mjs probe/b1/client_live.png --swatches | sed -n 's/^  \(ok\|FAIL\)  \(the material\|the swatches\).*/  \0/p'
+echo "  ok    the client shows the server's line, its swatches, and its panel measures up"
 
 echo
 echo "── B1.3c  and the panel reader, against pictures with no panel ─────"
