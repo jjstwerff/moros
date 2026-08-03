@@ -43,10 +43,39 @@ because **none of them needs a new file format**:
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A1.1` | `lib/hex_part` exists, depends on `hex_world`, one function: `part_from_region(w, cq, cr, rad, anchor) -> World`. Cells only, no sections. | a loft test: the copied world has the same column heights and materials as the source region | S |
+| ✅ `A1.1` | `lib/hex_part` — one dependency (`hex_world`), one function: `part_from_region(w, cq, cr, rad)`. Cells only, no sections. | **DONE.** 11 tests, both backends. ⚠ **Two findings, and the naive version of each looked right** — see below. | S |
 | `A1.2` | Save and load it with the **existing** `world_save`/`world_load`. Still no sections. | ⚠ **round-trip identity, with the perturbation control seen red** — change one cell of the saved part and the test must fail. Everything after this rests on it. | S |
 | `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | a loft test writes a section with a made-up tag, loads, saves, and the unknown section **survives byte-identical** — the forward-compatibility promise, tested rather than asserted | M |
 | `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | round-trip carries kind/name/facing; ⚠ an *older* reader (one that does not know `PART`) still loads the cells — simulated by reading with the tag unregistered | S |
+
+### What `A1.1` turned up
+
+⚠ **A COLUMN READ IS CHUNK-SHAPED, NOT CELL-SHAPED.** `world_column` returns one `Hex` per
+**layer of the chunk**, so a cell with one storey in a chunk whose neighbours use forty
+distinct heights comes back with forty entries, thirty-nine of them absent. Copied verbatim
+into a fresh world that creates forty layers in the *source* chunk's order — and the next
+column, from a different source chunk with a different forty, lands against them. Measured: a
+part cell read back the height of a cell three places away, and **every count still agreed**.
+`E1` says absent and all-zero are the same, so "present" is a non-zero material.
+
+⚠ **AND A TRANSLATION IN OFFSET COORDINATES IS NOT A TRANSLATION.** `(q - cq, r - cr)` shears
+the lattice whenever the row delta is **odd**, because odd-r shifts alternate rows by half a
+hex. Measured: a radius-2 copy wrote all nineteen columns and two of them — both on odd rows —
+read back empty. The count was right and the shape was wrong. It is done in the doubled
+integer lattice now (`k = 2q + (r & 1)`, `m = 3r`), the same construction
+`hex_field::stencil_stamp` uses and moros#3 closed the hex convention on. **Fifth instance of
+this class.**
+
+⚠ **THE TEST CANNOT BE WRITTEN AGAINST THE MAPPING.** The obvious form — *"is source
+`(cq+dq, cr+dr)` at part `(dq, dr)`"* — **is** the naive translation, so it agrees with a
+wrong copy and disagrees with a right one. It asks for properties instead: the centre lands on
+the origin, every distance from the centre is preserved, and the same multiset of cells comes
+out as went in. The naive version fails the distance property by name.
+
+⚠ **And two fixture bugs wore the code's clothes**, both caught only because the writes are
+now asserted: heights that went negative at the far corners (silently refused, three of
+nineteen columns never written) and heights packed closer than **ε**, which the store merges
+by design. A fixture that fails to build reports the code's failure instead of its own.
 
 ⚠ **`A1.3` is the one genuinely risky step**, because it changes a format that already has
 worlds saved in it. It is additive by construction — sections go *after* everything an

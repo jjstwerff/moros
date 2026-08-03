@@ -1,0 +1,130 @@
+// Copying a region of a world OUT, as a part.
+//
+// ⚠ NO NEW PRIMITIVE. `world_column` reads a column and `world_set_column`
+// writes one; a region copy is a loop over the two. That is worth saying because
+// the obvious first move is a `world_copy_region` in the store — and a store
+// that grows an operation for every consumer's idea of a selection stops being a
+// store.
+use hex_world;
+
+pub const PR_OK      = 0;
+pub const PR_WORLD   = 1;        // the new world's constants were refused
+pub const PR_WRITE   = 2;        // a column would not go in
+
+pub struct PartCopy {
+  pc_code:  integer,
+  pc_world: World,
+  pc_cells: integer,             // columns actually written
+  pc_why:   text,
+}
+
+// Move a cell so the region's centre lands on the part's origin.
+//
+// ⚠ NOT `(q - cq, r - cr)`. In odd-r offset coordinates the odd rows are shifted
+// half a hex, so subtracting an ODD row delta does not translate the lattice —
+// it shears it, and every odd row lands half a cell out. Measured before this
+// existed: a radius-2 copy wrote all nineteen columns and two of them, both on
+// odd rows, read back empty. The count was right and the shape was wrong.
+//
+// The translation is done in the DOUBLED integer lattice, where a translation is
+// a translation: `k = 2q + (r & 1)`, `m = 3r`, subtract, convert back. That is
+// the same construction `hex_field::stencil_stamp` uses and the same one moros#3
+// closed the hex convention on — the fifth instance of `%`-or-offset arithmetic
+// where the doubled form was meant.
+pub fn re_origin(cq: integer, cr: integer, q: integer, r: integer) -> (integer, integer) {
+  k = (2 * q + (r & 1)) - (2 * cq + (cr & 1));
+  m = 3 * r - 3 * cr;
+  tr = (m / 3) ?? 0;
+  tq = ((k - (tr & 1)) / 2) ?? 0;
+  (tq, tr)
+}
+
+// Copy the hex disc of radius `rad` around `(cq, cr)` into a fresh world,
+// translated so the source centre lands on the part's origin `(0, 0)`.
+//
+// ⚠ THE PART IS ORIGIN-CENTRED, and that is what makes it placeable. A part
+// carrying the coordinates it was cut from would have to be un-translated at
+// every placement, and the un-translation is exactly the arithmetic that goes
+// wrong on an odd row. Cut once, at the source, where the centre is known.
+//
+// ⚠ AND IT COPIES THE WORLD'S CONSTANTS. `u`, `ρ`, `ε` and `θ` are the rules the
+// cells were authored under; a part built with different ones is a different
+// shape wearing the same numbers. `C1` (ε > 2θ) is re-checked by `world_new`, so
+// a source world that somehow violated it cannot produce a part that does.
+pub fn part_from_region(w: World, cq: integer, cr: integer, rad: integer) -> PartCopy {
+  nw = world_new(w.w_unit, w.w_reserve, w.w_eps, w.w_theta);
+  if nw.wn_code != WC_OK {
+    return PartCopy { pc_code: PR_WORLD, pc_world: nw.wn_world, pc_cells: 0,
+                      pc_why: "the source world's constants were refused (code {nw.wn_code})" };
+  }
+  part = nw.wn_world;
+  n = 0;
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if !in_disc(cq, cr, q, r, rad) { continue; }
+      col = world_column(w, q, r);
+      // ⚠ A COLUMN READ IS CHUNK-SHAPED, NOT CELL-SHAPED, and copying it whole is
+      // the mistake this line exists to avoid. `world_column` returns one `Hex`
+      // per LAYER OF THE CHUNK — so a cell with one storey in an 8x8 chunk whose
+      // neighbours use forty distinct heights comes back with forty entries,
+      // thirty-nine of them absent.
+      //
+      // Written verbatim into a fresh world that produces forty layers in the
+      // SOURCE chunk's order, and the next column — from a different source chunk
+      // with a different forty — lands against them. Measured: a part cell read
+      // back the height of a cell three places away, and every count still agreed.
+      //
+      // `E1` says absent and all-zero are indistinguishable, so "present" is a
+      // non-zero material. Filtering keeps height order, which is what
+      // `check_column` needs.
+      kept: vector<Hex> = [];
+      for c in col.co_cells {
+        if c.h_material != 0 { kept += [c]; }
+      }
+      if len(kept) == 0 { continue; }                // nothing there to carry
+      // ⚠ THE LABELS ARE DELIBERATELY NOT CARRIED. `co_ids` is identity in the
+      // SOURCE world, and a part is a different world with its own `ν`. Copying
+      // them across would hand two worlds the same identities and make `I1`
+      // meaningless the moment the part is stamped back into the one it came
+      // from. A part's cells get fresh identity where they are placed.
+      (tq, tr) = re_origin(cq, cr, q, r);
+      moved = Column { co_q: tq, co_r: tr, co_cells: kept };
+      cw = world_set_column(part, moved);
+      if cw.cw_code != CW_OK {
+        return PartCopy { pc_code: PR_WRITE, pc_world: part, pc_cells: n,
+                          pc_why: "column {dq},{dr} refused: {cw.cw_detail}" };
+      }
+      n = n + 1;
+    }
+  }
+  PartCopy { pc_code: PR_OK, pc_world: part, pc_cells: n, pc_why: "" }
+}
+
+// The hex disc, in offset coordinates.
+//
+// ⚠ VIA THE CUBE FORM, because an offset rectangle is not a disc and a naive
+// `|dq| + |dr|` is not a hex distance. Parity is where this codebase breaks —
+// four separate bugs, all right for non-negative coordinates and wrong below
+// zero or on odd rows — so the conversion is written once, here, and tested on
+// both signs and both parities.
+fn in_disc(cq: integer, cr: integer, q: integer, r: integer, rad: integer) -> boolean {
+  hex_dist(cq, cr, q, r) <= rad
+}
+
+pub fn hex_dist(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
+  x1 = q1 - ((r1 - (r1 & 1)) / 2 ?? 0);
+  z1 = r1;
+  y1 = 0 - x1 - z1;
+  x2 = q2 - ((r2 - (r2 & 1)) / 2 ?? 0);
+  z2 = r2;
+  y2 = 0 - x2 - z2;
+  dx = if x1 > x2 { x1 - x2 } else { x2 - x1 };
+  dy = if y1 > y2 { y1 - y2 } else { y2 - y1 };
+  dz = if z1 > z2 { z1 - z2 } else { z2 - z1 };
+  m = dx;
+  if dy > m { m = dy; }
+  if dz > m { m = dz; }
+  m
+}

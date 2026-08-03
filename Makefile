@@ -18,7 +18,7 @@ LOFT ?= loft
 # packages and take no brand prefix (see CLAUDE.md), which is exactly why a
 # `moros_*`-shaped list skipped them.
 LIB_PACKAGES = moros_map moros_editor moros_render moros_sim lavition_ui \
-               hex_world hex_editor moros_terrain glb_read
+               hex_world hex_editor hex_part moros_terrain glb_read
 
 serve:
 	$(PY) -m http.server $(PORT) --directory html &

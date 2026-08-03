@@ -1,0 +1,19 @@
+[package]
+name    = "hex_part"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/hex_part.loft"
+
+# ⚠ ONE DEPENDENCY, AND IT IS THE STORE. A part IS a world (PARTS.md §P1) — a
+# small `hex_world` you edit with the gestures that already exist — so this
+# package needs the store and nothing else. No renderer, no lattice math, no
+# editor: those belong to whoever places the part, not to the thing being placed.
+#
+# ⚠ `lib/hex_world` BY PATH, not the registry. Ours is 0.1.0 with the surface-rule
+# work; the registry carries a 0.2.0 on a DIFFERENT lineage, and a version range
+# would let the resolver pick it out from under us. `hex_editor` says the same in
+# more words. Which tree owns the store is moros#8.
+[dependencies]
+hex_world = { path = "../hex_world" }

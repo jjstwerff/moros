@@ -1,0 +1,227 @@
+// A part is a world — plan 17 `A1.1`.
+//
+// ⚠ THE CLAIM IS THAT NOTHING IS LOST AND NOTHING IS INVENTED. A region copy
+// that dropped a layer would still produce a plausible part: the right shape,
+// the right materials, one storey missing. So the tests compare COLUMNS, cell
+// for cell, rather than counting them.
+use hex_part;
+use hex_world;
+
+const U = 0.25;
+const RESERVE = 8;
+const EPS = 5;
+const THETA = 2;
+
+fn fresh() -> World {
+  n = world_new(U, RESERVE, EPS, THETA);
+  n.wn_world
+}
+
+// A small landscape with a distinguishable column at every cell, so a copy that
+// shifted by one lands somewhere provably wrong.
+fn landscape(cq: integer, cr: integer, rad: integer) -> World {
+  w = fresh();
+  for dq in (0 - rad - 1)..(rad + 2) {
+    for dr in (0 - rad - 1)..(rad + 2) {
+      q = cq + dq;
+      r = cr + dr;
+      // ⚠ BOUNDED, AND THE WRITE IS CHECKED. The first version used
+      // `20 + 3q + 7r`, which goes NEGATIVE at the far corners — `as u16?` then
+      // yields null, the height becomes 0, and the store refuses it as below the
+      // reserve. Three of nineteen columns were never written and the copy was
+      // blamed for losing them. A fixture that fails to build must say so, or it
+      // reports the code's failure instead of its own.
+      // ⚠ AND SPACED BY ε. A chunk's layers are its distinct heights, and the
+      // store MERGES any two closer than ε (5 here) — that is `B1`, not a bug.
+      // The second fixture packed sixteen heights into a range of sixteen, so
+      // neighbouring columns merged into one layer and a cell read back at its
+      // neighbour's height. The copy was blamed again. Four heights, 5 apart.
+      h = 40 + 5 * ((q * 3 + r * 7) & 3);
+      m = 1 + ((q + r) & 3);
+      band: vector<Hex> = [ Hex { h_height: (h as u16? ?? 0), h_material: (m as u8? ?? 0) } ];
+      cw = world_set_column(w, Column { co_q: q, co_r: r, co_cells: band });
+      assert(cw.cw_code == CW_OK,
+             "the fixture could not write {q},{r} at height {h}: {cw.cw_detail}");
+    }
+  }
+  w
+}
+
+// The cells a column actually holds. ⚠ `world_column` returns one entry per
+// LAYER OF THE CHUNK, most of them absent, so a raw length is a fact about the
+// chunk's neighbours rather than about this cell.
+fn present(c: Column) -> vector<Hex> {
+  out: vector<Hex> = [];
+  for h in c.co_cells { if h.h_material != 0 { out += [h]; } }
+  out
+}
+
+fn test_a_copied_region_is_a_world_of_its_own() {
+  src = landscape(0, 0, 2);
+  p = part_from_region(src, 0, 0, 2);
+  assert(p.pc_code == PR_OK, "the copy was refused: {p.pc_why}");
+  assert(p.pc_cells > 0, "nothing was copied");
+  // A hex disc of radius 2 is 1 + 3*2*3 = 19 cells.
+  assert(p.pc_cells == 19, "a radius-2 disc is 19 cells, copied {p.pc_cells}");
+}
+
+// ⚠ STATED AS PROPERTIES, NOT AGAINST THE MAPPING. The obvious test asks
+// "is source (cq+dq, cr+dr) at part (dq, dr)" — and that IS the naive
+// translation, which is the bug: in odd-r offset coordinates an odd row delta
+// shears the lattice instead of moving it. A test written that way agrees with a
+// wrong copy and disagrees with a right one.
+//
+// So it asks for things a translation must preserve whatever form it takes:
+// the centre lands on the origin, every distance from the centre is kept, and
+// the cells that came out are exactly the cells that went in.
+
+fn test_the_centre_lands_on_the_origin() {
+  src = landscape(5, 3, 2);
+  p = part_from_region(src, 5, 3, 2);
+  s0 = present(world_column(src, 5, 3));
+  t0 = present(world_column(p.pc_world, 0, 0));
+  assert(len(t0) == len(s0), "the centre cell is not at the part's origin");
+  assert((t0[0] ?? Hex {}).h_height == (s0[0] ?? Hex {}).h_height,
+         "the origin holds a different cell than the region's centre");
+}
+
+// ⚠ A TRANSLATION PRESERVES DISTANCE, and the sheared one does not. This is the
+// property that caught it: two cells on odd rows came out at the wrong remove
+// from the origin while every count still agreed.
+fn test_every_cell_keeps_its_distance_from_the_centre() {
+  src = landscape(5, 3, 2);
+  p = part_from_region(src, 5, 3, 2);
+  seen = 0;
+  for tq in 0 - 4..5 {
+    for tr in 0 - 4..5 {
+      if len(present(world_column(p.pc_world, tq, tr))) == 0 { continue; }
+      d = hex_dist(0, 0, tq, tr);
+      assert(d <= 2, "a part cell sits {d} from the origin, outside the radius-2 disc");
+      seen += 1;
+    }
+  }
+  assert(seen == 19, "{seen} cells in the part, want the disc's 19");
+}
+
+// And the cells themselves: the same multiset of (height, material) went in as
+// came out. Order is not a claim — position is checked by the distance test —
+// but nothing may be lost, duplicated or invented.
+fn test_the_same_cells_come_out_as_went_in() {
+  src = landscape(5, 3, 2);
+  p = part_from_region(src, 5, 3, 2);
+  want: vector<integer> = [];
+  for dq in 0 - 2..3 {
+    for dr in 0 - 2..3 {
+      if hex_dist(5, 3, 5 + dq, 3 + dr) > 2 { continue; }
+      for h in present(world_column(src, 5 + dq, 3 + dr)) {
+        want += [(h.h_height as integer ?? 0) * 256 + (h.h_material as integer ?? 0)];
+      }
+    }
+  }
+  got: vector<integer> = [];
+  for tq in 0 - 4..5 {
+    for tr in 0 - 4..5 {
+      for h in present(world_column(p.pc_world, tq, tr)) {
+        got += [(h.h_height as integer ?? 0) * 256 + (h.h_material as integer ?? 0)];
+      }
+    }
+  }
+  assert(len(got) == len(want), "{len(got)} cells came out, {len(want)} went in");
+  for v in want {
+    n_want = 0;
+    n_got = 0;
+    for x in want { if x == v { n_want += 1; } }
+    for x in got  { if x == v { n_got += 1; } }
+    assert(n_got == n_want,
+           "cell {v}: {n_got} in the part, {n_want} in the source");
+  }
+}
+
+// ⚠ THE CONTROL FOR THE SWEEP ABOVE. Every column is distinguishable, so a copy
+// off by ONE CELL must disagree — without this the comparison would pass on a
+// landscape where all columns are alike, which is the vacuous case.
+fn test_the_landscape_can_tell_a_one_cell_shift() {
+  src = landscape(5, 3, 2);
+  a = world_column(src, 5, 3);
+  b = world_column(src, 6, 3);
+  ap = present(a);
+  bp = present(b);
+  ac = ap[0] ?? Hex {};
+  bc = bp[0] ?? Hex {};
+  assert(ac.h_height != bc.h_height || ac.h_material != bc.h_material,
+         "neighbouring columns are identical — the sweep proves nothing");
+}
+
+// Nothing outside the disc comes along. A rectangle is not a disc, and a copy
+// that took the bounding box would look right in a picture.
+fn test_the_corners_of_the_bounding_box_are_not_copied() {
+  src = landscape(0, 0, 2);
+  p = part_from_region(src, 0, 0, 2);
+  far = world_column(p.pc_world, 2, 2);      // in the box, outside the disc
+  assert(hex_dist(0, 0, 2, 2) > 2, "the fixture cell is inside the disc after all");
+  // ⚠ NOT `len(co_cells) == 0`. The chunk exists because its neighbours were
+  // written, so an unauthored cell in it comes back with one absent entry per
+  // layer — `E1` again: absent and all-zero are the same thing.
+  assert(len(present(far)) == 0, "a cell outside the disc was copied");
+}
+
+// ⚠ THE CONSTANTS TRAVEL. `u`, `ρ`, `ε` and `θ` are the rules the cells were
+// authored under; a part built with different ones is a different shape wearing
+// the same numbers.
+fn test_the_part_keeps_the_worlds_constants() {
+  src = landscape(0, 0, 1);
+  p = part_from_region(src, 0, 0, 1);
+  assert(p.pc_world.w_unit == U, "unit is {p.pc_world.w_unit}, want {U}");
+  assert(p.pc_world.w_reserve == RESERVE, "reserve moved");
+  assert(p.pc_world.w_eps == EPS, "eps moved");
+  assert(p.pc_world.w_theta == THETA, "theta moved");
+}
+
+// ⚠ LABELS ARE NOT CARRIED, ON PURPOSE. `co_ids` is identity in the SOURCE
+// world; a part is a different world with its own `ν`. Copying them would hand
+// two worlds the same identities and make `I1` meaningless the moment the part
+// is stamped back into the world it came from.
+fn test_source_labels_do_not_travel() {
+  src = landscape(0, 0, 1);
+  p = part_from_region(src, 0, 0, 1);
+  assert(p.pc_world.w_next_id == fresh().w_next_id,
+         "the part inherited the source's label counter");
+}
+
+fn test_an_empty_region_copies_nothing_and_says_so() {
+  p = part_from_region(fresh(), 0, 0, 3);
+  assert(p.pc_code == PR_OK, "an empty region is not an error");
+  assert(p.pc_cells == 0, "copied {p.pc_cells} columns out of an empty world");
+}
+
+// ── the lattice, on both signs and both parities ─────────────────
+//
+// ⚠ PARITY IS WHERE THIS CODEBASE BREAKS — four separate bugs, every one right
+// for non-negative coordinates and wrong below zero or on an odd row. The disc
+// is an offset-coordinate hex distance, so it gets the full matrix.
+fn test_the_disc_is_a_disc_on_both_signs_and_parities() {
+  for cq in 0 - 3..4 {
+    for cr in 0 - 3..4 {
+      assert(hex_dist(cq, cr, cq, cr) == 0, "a cell is not zero from itself at {cq},{cr}");
+      // the six neighbours are all exactly 1 away, whatever the parity
+      n = 0;
+      for dq in 0 - 1..2 {
+        for dr in 0 - 1..2 {
+          if hex_dist(cq, cr, cq + dq, cr + dr) == 1 { n += 1; }
+        }
+      }
+      assert(n == 6, "cell {cq},{cr} has {n} neighbours at distance 1, want 6");
+    }
+  }
+}
+
+fn test_the_disc_count_is_the_hex_number_at_every_origin() {
+  for cq in 0 - 2..3 {
+    for cr in 0 - 2..3 {
+      src = landscape(cq, cr, 2);
+      p = part_from_region(src, cq, cr, 2);
+      assert(p.pc_cells == 19,
+             "a radius-2 disc at {cq},{cr} copied {p.pc_cells} cells, want 19");
+    }
+  }
+}
