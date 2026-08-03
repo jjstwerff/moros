@@ -135,51 +135,117 @@ for (let y = 0; y < SUBJ_H; y++) {
 }
 check(past > 0, `the subject line extends past the 240px strip (${past} glyph pixels)`);
 
-// ── the material swatches (B3.3) ─────────────────────────────────
-// §C4: each swatch is one hex tile rendered with the WORLD'S OWN shader and
-// light, so it IS the material rather than a claim about it. What a picture can
-// check is that they are THERE and that they are DIFFERENT — a renderer that
-// failed would leave the list background, and one that ignored the material
-// would leave nine identical blobs.
+// ── the catalogue's images: swatches and thumbnails (B3.3, B5.2) ─
+// §C4: each image is RENDERED — a material swatch is one hex tile through the
+// world's own shader, a part thumbnail is the part itself from a canonical
+// three-quarter view. Neither is a picture on disk. What a screenshot can check
+// is that every row HAS one, that they are DIFFERENT, and that a part's is not
+// the flat blob a material's is.
 //
 // ⚠ AND BOTH HALVES ARE NEEDED. Nine swatches were "rendered" and the picture
 // had none: the hexagon was built in the world's XZ plane while clip space is
 // XY, so it collapsed to a line. The client's own count said 9. A count of
-// draw calls is not a count of pixels.
-const LIST_X1 = 232, SW_W = 22, SW_H = 16;
+// draw calls is not a count of pixels — and it said 9 again the day a shared
+// framebuffer got a mismatched depth attachment and every swatch was dropped.
+//
+// ⚠ THE ROW COUNT IS READ FROM THE PICTURE, NOT ASSUMED. This loop used to be
+// `for (i = 0; i < 9; i++)` — the mesher's nine surfaces — and `B5.1` added a
+// TENTH row, a part. Nothing looked at it, so nobody saw that the client was
+// drawing `house/cottage` a BLACK HEXAGON: `render_swatches` indexed
+// `surface_at(i)` by the row, and `surface_at(9)` is the `?` sentinel with
+// colour (0,0,0). Measured at the time: row 9 read `5,5,6` against a list
+// background of `20,20,24` — not blank, DARKER than blank. A gate that counts
+// what it expects cannot see what was added.
+const SW_W = 22, SW_H = 16;
 const ROW_H = 20;
+// The list is `rect(8, top, 224, h)` and the image sits `SW_W + 4` in from its
+// right edge — derived rather than typed, because the previous constant was 4px
+// out and sampled a slice of the row beside the picture.
+const LIST_X = 8, LIST_W = 224;
+const IMG_X = LIST_X + LIST_W - SW_W - 4;
 let listTop = 0;
 for (let y = 0; y < img.h; y++) {
     // the list well is the darkest band inside the strip, below the buttons
     if (y > img.h * 0.35 && lum(20, y) < 28) { listTop = y; break; }
 }
-const swatches = [];
-for (let i = 0; i < 9; i++) {
-    const y0 = listTop + i * ROW_H + 6;
-    const x0 = LIST_X1 - SW_W;
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let y = y0; y < y0 + SW_H - 6 && y < img.h; y++) {
-        for (let x = x0 + 4; x < x0 + SW_W - 4; x++) {
-            const [pr, pg, pb] = px(x, y);
-            r += pr; g += pg; b += pb; n++;
+
+// The list background, read from the picture rather than named: a row with no
+// image shows exactly this, which is what "blank" means here.
+const bg = px(LIST_X + 4, listTop + 4);
+const isBg = ([r, g, b]) =>
+    Math.abs(r - bg[0]) < 4 && Math.abs(g - bg[1]) < 4 && Math.abs(b - bg[2]) < 4;
+
+// One row: does it carry text, and what is in its image slot?
+const readRow = (i) => {
+    const y0 = listTop + i * ROW_H;
+    let textPeak = 0;
+    for (let y = y0; y < y0 + ROW_H && y < img.h; y++)
+        for (let x = LIST_X; x < IMG_X - 2; x++) textPeak = Math.max(textPeak, lum(x, y));
+    let ink = 0, peak = 0, sum = 0, n = 0;
+    const buckets = new Set();
+    for (let y = y0 + 2; y < y0 + 2 + SW_H && y < img.h; y++) {
+        for (let x = IMG_X; x < IMG_X + SW_W; x++) {
+            const p = px(x, y);
+            n++; sum += (p[0] + p[1] + p[2]) / 3;
+            peak = Math.max(peak, (p[0] + p[1] + p[2]) / 3);
+            if (!isBg(p)) { ink++; buckets.add(p.map((v) => v >> 4).join(",")); }
         }
     }
-    if (n > 0) swatches.push([r / n, g / n, b / n]);
-}
-const litSwatches = swatches.filter(([r, g, b]) => (r + g + b) / 3 > 28);
-if (wantSwatches) {
-check(litSwatches.length >= 8,
-      `the material swatches are drawn (${litSwatches.length} of ${swatches.length} above the list background)`);
+    return { textPeak: Math.round(textPeak), ink, colours: buckets.size,
+             peak: Math.round(peak), mean: Math.round(sum / n) };
+};
 
-// ⚠ AND THEY DIFFER. Nine identical blobs would pass the row above perfectly and
-// would mean the shader drew one colour for every material.
-const key = ([r, g, b]) => `${Math.round(r / 12)},${Math.round(g / 12)},${Math.round(b / 12)}`;
-const distinct = new Set(litSwatches.map(key)).size;
-check(distinct >= 6, `the swatches are different colours (${distinct} distinct of ${litSwatches.length})`);
-} else if (litSwatches.length > 0) {
-  // Not an error, but worth saying: a picture that was not asked about swatches
+// How many rows the catalogue actually drew — a row with a label is a row.
+const rows = [];
+for (let i = 0; i * ROW_H + listTop + ROW_H < img.h; i++) {
+    const r = readRow(i);
+    if (r.textPeak < 100) break;
+    rows.push(r);
+}
+
+if (wantSwatches) {
+check(rows.length >= 10,
+      `the catalogue drew ${rows.length} labelled rows (nine surfaces and at least one part)`);
+
+// EVERY row has an image, not the first nine.
+const blank = rows.map((r, i) => [i, r]).filter(([, r]) => r.ink < 20);
+check(blank.length === 0,
+      `every catalogue row carries an image (${rows.length - blank.length}/${rows.length}; `
+    + `blank rows: ${blank.length ? blank.map(([i]) => i).join(",") : "none"})`);
+
+// ⚠ AND NONE OF THEM IS DARKER THAN THE BACKGROUND, which is the shape of the
+// bug this row was added for. A black hexagon has plenty of ink and is not
+// blank; it is an image of nothing, and only a comparison against the row it sits
+// on can say so.
+const bgLum = (bg[0] + bg[1] + bg[2]) / 3;
+const murky = rows.map((r, i) => [i, r]).filter(([, r]) => r.peak <= bgLum + 6);
+check(murky.length === 0,
+      `no row's image is darker than the list well it sits in (background lum `
+    + `${bgLum.toFixed(0)}; offenders: ${murky.length ? murky.map(([i, r]) => `${i}@${r.peak}`).join(",") : "none"})`);
+
+// ⚠ AND THEY DIFFER FROM EACH OTHER. Ten identical blobs would pass every row
+// above perfectly and would mean the shader drew one colour for everything.
+const key = (r) => `${Math.round(r.mean / 8)}`;
+const distinct = new Set(rows.map(key)).size;
+check(distinct >= 6, `the images are different (${distinct} distinct of ${rows.length})`);
+
+// ── a part's image is a PICTURE, a material's is a SWATCH (B5.2) ──
+// The discriminator comes from the SHAPE, not from a threshold: a material swatch
+// is ONE flat colour over a transparent surround, so it has two buckets; a part
+// is a roof over walls over ground and cannot have fewer than three. Measured on
+// the cottage: swatches 2, thumbnail 5.
+const thumbs = rows.filter((r) => r.colours >= 3).length;
+check(thumbs >= 1,
+      `at least one row is a rendered PART, not a flat swatch `
+    + `(${thumbs} of ${rows.length} rows have >=3 colours; per row: ${rows.map((r) => r.colours).join(",")})`);
+// ⚠ AND THE OTHER SIDE OF IT. If every row came back multi-coloured the
+// discriminator is measuring noise rather than the difference it names.
+check(thumbs < rows.length,
+      `and the material rows are still flat swatches (${rows.length - thumbs} of ${rows.length})`);
+} else if (rows.some((r) => r.ink > 20)) {
+  // Not an error, but worth saying: a picture that was not asked about images
   // and has them means the two stages have drifted apart.
-  console.log(`  note  ${litSwatches.length} swatches present but not checked (no --swatches)`);
+  console.log(`  note  ${rows.filter((r) => r.ink > 20).length} row images present but not checked (no --swatches)`);
 }
 
 // ── availability: greyed, not hidden (B6) ────────────────────────
@@ -196,14 +262,7 @@ check(distinct >= 6, `the swatches are different colours (${distinct} distinct o
 // so the peak is exactly the discriminator that survives it — the same shape
 // argument as counting button bars by height rather than by lighter pixels.
 if (wantSwatches) {
-    const peaks = [];
-    for (let i = 0; i < 9; i++) {
-        let peak = 0;
-        for (let y = listTop + i * ROW_H; y < listTop + (i + 1) * ROW_H && y < img.h; y++) {
-            for (let x = 0; x < LIST_X1 - SW_W; x++) peak = Math.max(peak, lum(x, y));
-        }
-        peaks.push(Math.round(peak));
-    }
+    const peaks = rows.map((r) => r.textPeak);
     const bright = peaks.filter((p) => p > 190).length;
     const dimmed = peaks.filter((p) => p > 100 && p <= 190).length;
     check(bright >= 5, `available entries are drawn bright (${bright} rows, peaks ${peaks})`);

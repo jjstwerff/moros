@@ -147,7 +147,7 @@ sends a toggle; the server may clamp it, refuse it, or have had it changed by an
 A HUD that echoes the keystroke is a picture of the client's intention — this tree has already
 paid for the general version of that mistake twice, and the rule it wrote down is *measure
 what was emitted, never a number the producer re-derives*. So the state arrives on the wire
-(`H:` — tag free; `C D E F G K L M P Q S T V X Z` are taken) and is sent **on change** plus
+(`H:` — tag free; `C D E F G K L M P Q S T V X Z` are taken, and `W Y` since `B5.2`) and is sent **on change** plus
 **to an arriving client**, with the re-send placed where the client joins the list rather than
 in the handler that precedes it.
 
@@ -214,6 +214,33 @@ to change. This is the refusal rule from §C2 applied to a list.
 - **A part thumbnail** — render the part into an offscreen colour texture from a canonical
   three-quarter view under canonical light. Cached by `(part, version)`; the version already
   exists in the layer.
+
+✅ **BUILT, `B5.2`, 2026-08-03**, and three of its sentences needed correcting by measurement:
+
+- ⚠ **A PART IS A WORLD TO THE STORE AND IS NOT ONE TO THE MESHER.** `chunk_mesh_mat` treats an
+  unwritten cell as GROUND — what makes an unauthored world a plane rather than a hole — and a
+  part is bounded, so its unwritten cells are *outside it*. Meshed as a world, a 38-cell cottage
+  came out **28.6 × 24.5 world units**: four chunks of grass with a house in the middle, while
+  every count agreed with itself. `chunk_mesh_mat_bounded` is the one-flag fix, and only the
+  ground pass can differ — an unwritten cell is substituted to `SURFACE_MAT`, so it can never
+  join another.
+- ⚠ **THE SERVER MESHES AND THE CLIENT DRAWS.** A part is a world and the client already meshes
+  worlds from its own cache, so "send the layers" looks right and is not: four of a chunk's nine
+  surfaces come from `chunk_mesh_props`, which reads wall EDGES and the server's registries. A
+  client meshing a part draws its ground and its floor and no walls.
+- ⚠ **CANONICAL LIGHT IS NOT THE SWATCH'S RULE, AND THE CACHE IS WHY.** A swatch re-renders with
+  the world's `uAmb`/`uLamp` so it dims when the world does. A thumbnail is cached by
+  `(part, version)`, and a cache keyed on the part cannot hold an image that depends on the
+  light — it would be stale the moment the author walked indoors, with nothing to say so.
+
+⚠ **AND THE FRAMING TOOK FOUR ATTEMPTS, THREE OF WHICH LOOKED RIGHT ON PAPER.** As a fraction of
+the thumbnail the cottage fills: bounding **sphere** ~35% (most of a sphere over a squat roof is
+air); bounding **box** ~35% — *further away than the sphere*, no visible change; the box **in
+camera axes** 63%, arithmetic checked and picture unchanged; every **vertex solved** — the frame.
+The third is the one to learn from. Its rule is *put the object far enough that its topmost corner
+fits when that corner is also the nearest one* — exactly right for a box with all eight corners
+populated, and a house is not one: its tall points are its roof and its near points are its front
+wall. 63% is what that formula asks for; the error was believing the box stood for the house.
 - **A material swatch** — render one hex tile of that material **with the world's own shader
   and the world's current light**. Not a hand-picked RGB in a table.
 

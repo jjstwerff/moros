@@ -100,3 +100,72 @@ fn test_the_margin_is_the_grid_the_mesher_actually_builds() {
          "and a tile's footprint spans at most two store chunks per axis, "
        + "which is what makes the four-corner test complete");
 }
+
+// ── A WORLD THAT ENDS (plan 18 `B5.2`) ───────────────────────────────────────
+//
+// `chunk_mesh_mat` treats an unwritten cell as GROUND, which is what makes an
+// unauthored world a plane rather than a hole. A PART is a world to the store and
+// is not one to the mesher: it is bounded, so its unwritten cells are outside it.
+
+// A part-shaped world: one small clump of written cells, and nothing else.
+fn clump() -> World {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 3..6 {
+    for r in 3..6 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn ground_verts(w: World, bounded: boolean) -> integer {
+  m = if bounded {
+        moros_terrain::chunk_mesh_mat_bounded(0, 0, w, hex_editor::SURFACE_MAT)
+      } else {
+        moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT)
+      };
+  len(m.vertices)
+}
+
+fn test_a_bounded_world_draws_only_what_was_written() {
+  w = clump();
+  loose = ground_verts(w, false);
+  tight = ground_verts(w, true);
+  // ⚠ THE NUMBER, NOT JUST THE INEQUALITY. Nine cells at seven vertices a fan is
+  // 63; a whole 8x8 mesh tile is 448. "Fewer" would pass on a mesher that dropped
+  // one cell, and this is a claim about dropping sixty-three of seventy-two.
+  assert(tight == 63, "nine written cells is nine fans of seven: got {tight}");
+  assert(loose == 448, "and the unbounded pass fills the tile: got {loose}");
+}
+
+// ⚠ THE CONTROL, AND IT IS THE HALF THAT SAYS THE FLAG IS NARROW. A `bounded`
+// that simply emitted less would pass the test above perfectly. On a world with
+// every cell written the two must be IDENTICAL — there is no absence to differ
+// over — so this is what stops the flag quietly becoming a second mesher.
+fn test_a_full_world_meshes_the_same_either_way() {
+  w = world();
+  assert(ground_verts(w, true) == ground_verts(w, false),
+         "a fully written tile meshes to {ground_verts(w, true)} bounded "
+       + "and {ground_verts(w, false)} unbounded");
+  assert(ground_verts(w, true) > 0, "and it is not vacuously zero on both sides");
+}
+
+// ⚠ AND ONLY THE GROUND CAN DIFFER, which falls out of the substitution rather
+// than being a case in the loop: an unwritten cell is turned into `SURFACE_MAT`,
+// so it can only ever join the surface pass. A road, a field or a floor asked for
+// over the same clump must be the same triangles either way — stated here so that
+// a future `bounded` reaching further has something to break.
+fn test_bounding_touches_no_surface_but_the_ground() {
+  w = clump();
+  // ⚠ THE OTHER MATERIALS ARE WRITTEN FIRST, and the first draft of this test did
+  // not: over a clump of plain ground every one of them meshes to nothing, so it
+  // compared 0 with 0 three times and would have passed against ANY `bounded`,
+  // including one that emptied every pass. A control has to have something to lose.
+  hex_editor::ground_set(w, 3, 3, 40, hex_editor::ROAD_MAT);
+  hex_editor::ground_set(w, 4, 3, 40, hex_editor::FIELD_MAT);
+  hex_editor::ground_set(w, 5, 3, 40, hex_editor::FLOOR_MAT);
+  for mat in [hex_editor::ROAD_MAT, hex_editor::FIELD_MAT, hex_editor::FLOOR_MAT] {
+    a = len(moros_terrain::chunk_mesh_mat(0, 0, w, mat).vertices);
+    b = len(moros_terrain::chunk_mesh_mat_bounded(0, 0, w, mat).vertices);
+    assert(a > 0, "material {mat} meshed nothing — the claim is vacuous");
+    assert(a == b, "material {mat} meshed {a} unbounded and {b} bounded");
+  }
+}

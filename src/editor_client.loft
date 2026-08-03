@@ -250,6 +250,18 @@ void main() {{
 const FIGURE_MAX = 15;
 const SURFACES   = 9;
 
+// The catalogue's family names, as they arrive in `N:`.
+//
+// ⚠ KEEP EQUAL TO `editor_server.loft` — it composes the rows and this reads
+// them. `lavition_ui` deliberately does NOT own this vocabulary: a layout library
+// that enumerated `material | part` would have to be edited before a consumer
+// could invent a third family, so the kind crosses as text and the two ends of
+// the wire are what must agree. It is named on both sides rather than spelled
+// inline, so a typo is a compile error at one end instead of a row that silently
+// renders as the other family.
+const KIND_MATERIAL = "material";
+const KIND_PART     = "part";
+
 struct Part {
   pid: integer,
   // Which bit of the server's hide mask this drawable answers to — bit 0 the
@@ -274,6 +286,11 @@ struct Client {
   mats: text,
   hud_dirty: boolean,
   parts: vector<Part>,
+  // The catalogue's part thumbnails as the server sent them — geometry and the
+  // canonical camera it was fitted with (plan 18 B5.2). ⚠ NOT the rendered
+  // textures: those are the caller's, rebuilt when the list changes.
+  thumbs: vector<ThumbMesh>,
+  tcams: vector<ThumbCam>,
   prog: integer,
   view: vector<float>,
   proj: vector<float>,
@@ -359,6 +376,7 @@ struct Client {
   last_x: float,
   last_y: float,
   // What arrived, for the gate and for a person watching the console.
+  c_thumb: integer,
   c_mesh: integer,
   c_place: integer,
   c_drop: integer,
@@ -794,6 +812,22 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // what it believes the renderer can draw.
         if body != st.mats { st.mats = body; st.hud_dirty = true; }
       }
+      else if tag == "Y" {
+        // `Y:` — one surface of one part's thumbnail (plan 18 B5.2). It arrives
+        // AFTER the `N:` that names the row it belongs to, because one socket is
+        // FIFO and that is the whole of the ordering guarantee.
+        st.c_thumb = st.c_thumb + 1;
+        add_thumb_mesh(st, body);
+        st.hud_dirty = true;
+      }
+      else if tag == "W" {
+        // `W:` — that part's canonical three-quarter camera, fitted to its own
+        // extent by the server. ⚠ The CLIENT never composes one: a second
+        // projection path is a second thing to keep honest, and the look-at that
+        // aims the world's camera already exists on the other side.
+        add_thumb_cam(st, body);
+        st.hud_dirty = true;
+      }
       else if tag == "H" {
         // `H:<line>` — the subject line, plan 18 B2. Stored verbatim and marked
         // for a rebuild; the panel is NOT rebuilt here, because `drain` runs
@@ -1125,59 +1159,252 @@ fn swatch_hex_verts() -> vector<single> {
   v
 }
 
-// One swatch, rendered off-screen and kept.
+// One row's image, rendered off-screen and kept. A material's hex tile and a
+// part's thumbnail are the same slot on the same widget (§C3), so they are the
+// same struct: what differs is what was drawn into it.
 struct Swatch { sw_tex: integer }
 
-fn render_swatches(st: Client, names: vector<Entry>) -> vector<Swatch> {
+// ── Part thumbnails (plan 18 B5.2) ───────────────────────────────────────────
+//
+// §C4's other image: the part rendered from a canonical three-quarter view. The
+// geometry and the camera BOTH come from the server — see `part_thumb_wire` in
+// `editor_server.loft` for why neither can be the client's. What is the client's
+// is the drawing, with the same shader the world is drawn with.
+//
+// ⚠ RENDERED AT 3x AND DRAWN AT THE ROW'S 22x16, so the colour texture's LINEAR
+// filter does the downsampling. A house rasterised straight into 22 pixels loses
+// its eave to the sampling grid; the same house at 66 filtered down keeps it.
+// The aspect must match the row's exactly or the projection stretches it, and
+// 66/48 is 22/16.
+const THUMB_W = 66;
+const THUMB_H = 48;
+// ⚠ CANONICAL LIGHT, NOT THE WORLD'S — and this is the one place the thumbnail
+// deliberately parts company with the swatch beside it. A swatch is re-rendered
+// with `st.amb`/`st.lamp` so it dims when the world does; a thumbnail is CACHED
+// by `(part, version)`, and a cache keyed on the part cannot hold an image that
+// depends on the light. The alternative is a picture that is stale the moment
+// the author walks indoors, with nothing to say so.
+const THUMB_AMB = 0.55;
+
+// One surface of one part, as the client holds it. `tb_row` is the CATALOGUE ROW,
+// not an index among the parts — see `part_thumbs_all` on the server: one list,
+// two families, one index space.
+struct ThumbMesh {
+  tb_row: integer, tb_vao: integer, tb_n: integer,
+  tb_r: float, tb_g: float, tb_b: float, tb_ramp: float,
+}
+
+// The canonical camera for one part, fitted to it by the server.
+struct ThumbCam { tc_row: integer, tc_view: vector<float>, tc_proj: vector<float> }
+
+// `W:<row>;<view 16>;<proj 16>`
+fn add_thumb_cam(st: Client, body: text) {
+  w1 = semi_from(body, 0);
+  if w1 < 0 { return; }
+  w2 = semi_from(body, w1 + 1);
+  if w2 < 0 { return; }
+  wrow = body[0..w1] as integer ?? -1;
+  if wrow < 0 { return; }
+  wv = parse_floats(body[w1 + 1..w2]);
+  wp = parse_floats(body[w2 + 1..body.size()]);
+  if len(wv) != 16 || len(wp) != 16 { return; }
+  // ⚠ REPLACED IN PLACE, not appended. `B5.3` re-sends a part's camera when the
+  // part changes, and a second entry for the same row would leave the render
+  // picking whichever it found first — the old one, for ever.
+  for wc in st.tcams {
+    if wc.tc_row == wrow { wc.tc_view = wv; wc.tc_proj = wp; return; }
+  }
+  st.tcams += [ThumbCam { tc_row: wrow, tc_view: wv, tc_proj: wp }];
+}
+
+// `Y:<row>;<ramp>;<r>,<g>,<b>;<6 floats per vertex>` — `M:`'s own shape with the
+// mesh id replaced by a catalogue row, so a thumbnail mesh parses the way a world
+// mesh does and there is one encoding to keep honest rather than two.
+fn add_thumb_mesh(st: Client, body: text) {
+  y1 = semi_from(body, 0);
+  if y1 < 0 { return; }
+  y2 = semi_from(body, y1 + 1);
+  if y2 < 0 { return; }
+  y3 = semi_from(body, y2 + 1);
+  if y3 < 0 { return; }
+  yrow = body[0..y1] as integer ?? -1;
+  if yrow < 0 { return; }
+  yramp = body[y1 + 1..y2] as float ?? 0.0;
+  ycol = parse_floats(body[y2 + 1..y3]);
+  if len(ycol) < 3 { return; }
+  yverts = parse_singles(body[y3 + 1..body.size()]);
+  if len(yverts) < 6 { return; }
+  st.thumbs += [ThumbMesh {
+    tb_row: yrow,
+    tb_vao: graphics::gl_upload_vertices(yverts, 6),
+    tb_n: len(yverts) / 6 ?? 0,
+    tb_r: ycol[0] ?? 1.0, tb_g: ycol[1] ?? 1.0, tb_b: ycol[2] ?? 1.0,
+    tb_ramp: yramp,
+  }];
+}
+
+// The eye a view matrix implies — `-transpose(R)·t`, column-major.
+//
+// ⚠ DERIVED FROM THE MATRIX IN HAND, never stated alongside it. `draw_world`
+// takes the world's eye out of the world's view matrix for exactly this reason,
+// and a thumbnail lit from an eye that is not its camera shades every surface
+// against a light the picture does not contain.
+fn eye_of(vw: vector<float>, k: integer) -> float {
+  0.0 - ((vw[k * 4] ?? 0.0) * (vw[12] ?? 0.0)
+       + (vw[k * 4 + 1] ?? 0.0) * (vw[13] ?? 0.0)
+       + (vw[k * 4 + 2] ?? 0.0) * (vw[14] ?? 0.0))
+}
+
+// One part's thumbnail, into its own texture. `0` when there is nothing to draw,
+// which is what makes the blank control mean something: `draw_swatches` skips a
+// zero and the row shows the list background, so "it failed" and "it drew" are
+// different pictures rather than two shades of the same one.
+fn render_thumb(st: Client, row: integer, fbo: integer) -> integer {
+  rt_view: vector<float> = [];
+  rt_proj: vector<float> = [];
+  for rc in st.tcams {
+    if rc.tc_row == row { rt_view = rc.tc_view; rt_proj = rc.tc_proj; }
+  }
+  if len(rt_view) != 16 { return 0; }
+  rt_n = 0;
+  for rm0 in st.thumbs { if rm0.tb_row == row { rt_n = rt_n + 1; } }
+  // ⚠ A CAMERA WITH NO GEOMETRY IS NOT A THUMBNAIL. It would clear to sky and
+  // return a texture — an image that is uniformly "something", which passes any
+  // "is it blank" test perfectly and shows the author nothing.
+  if rt_n == 0 { return 0; }
+  rt_tex = graphics::gl_create_color_texture(THUMB_W, THUMB_H);
+  graphics::gl_framebuffer_texture(fbo, 0, rt_tex);
+  graphics::gl_bind_framebuffer(fbo);
+  graphics::gl_viewport(0, 0, THUMB_W, THUMB_H);
+  // ⚠ DEPTH ON, AND THE FRAMEBUFFER HAS A BUFFER FOR IT. This is the opposite of
+  // the swatch below and for the same reason the swatch turned it off: a flat
+  // hexagon needs no depth and had no attachment, while a house is solid and
+  // without depth its far wall draws over its near one in whatever order the
+  // surfaces happen to arrive.
+  graphics::gl_enable(graphics::GL_DEPTH_TEST);
+  graphics::gl_clear(rgb_packed(st.sky_r, st.sky_g, st.sky_b));
+  graphics::gl_use_shader(st.prog);
+  graphics::gl_set_uniform_mat4(st.prog, "uModel", ident4());
+  graphics::gl_set_uniform_mat4(st.prog, "uView", rt_view);
+  graphics::gl_set_uniform_mat4(st.prog, "uProj", rt_proj);
+  graphics::gl_set_uniform_float(st.prog, "uAmb", THUMB_AMB);
+  graphics::gl_set_uniform_float(st.prog, "uLamp", 0.0);
+  graphics::gl_set_uniform_vec3(st.prog, "uEye",
+    eye_of(rt_view, 0), eye_of(rt_view, 1), eye_of(rt_view, 2));
+  // Fog off, as for a swatch: a thumbnail has no distance to fade over.
+  graphics::gl_set_uniform_vec3(st.prog, "uFogCentre", 0.0, 0.0, 0.0);
+  graphics::gl_set_uniform_vec3(st.prog, "uFogColor", st.sky_r, st.sky_g, st.sky_b);
+  graphics::gl_set_uniform_float(st.prog, "uFogFrom", 1000.0);
+  graphics::gl_set_uniform_float(st.prog, "uFogTo", 2000.0);
+  // The world's own ground ramp, so a part's lawn is the green the world's is.
+  graphics::gl_set_uniform_float(st.prog, "uRampY0", st.ramp_y0);
+  graphics::gl_set_uniform_float(st.prog, "uRampY1", st.ramp_y1);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampLo", st.ramp_lo_r, st.ramp_lo_g, st.ramp_lo_b);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampHi", st.ramp_hi_r, st.ramp_hi_g, st.ramp_hi_b);
+  for rm in st.thumbs {
+    if rm.tb_row == row && rm.tb_vao >= 0 {
+      graphics::gl_set_uniform_vec3(st.prog, "uColor", rm.tb_r, rm.tb_g, rm.tb_b);
+      graphics::gl_set_uniform_float(st.prog, "uUseRamp", rm.tb_ramp);
+      graphics::gl_draw(rm.tb_vao, rm.tb_n);
+    }
+  }
+  rt_tex
+}
+
+// One material's hex tile, into its own texture.
+fn render_swatch(st: Client, mat: integer, vao: integer, fbo: integer) -> integer {
+  sf = moros_terrain::surface_at(mat);
+  // ⚠ DEPTH OFF. The swatch is one flat fan and needs no ordering; leaving the
+  // world's depth test on is what made nine draws produce nothing when this
+  // framebuffer had no depth attachment at all.
+  graphics::gl_disable(graphics::GL_DEPTH_TEST);
+  rs_tex = graphics::gl_create_color_texture(SWATCH_W, SWATCH_H);
+  graphics::gl_framebuffer_texture(fbo, 0, rs_tex);
+  graphics::gl_bind_framebuffer(fbo);
+  graphics::gl_viewport(0, 0, SWATCH_W, SWATCH_H);
+  graphics::gl_clear(rgb_packed(st.sky_r, st.sky_g, st.sky_b));
+  graphics::gl_use_shader(st.prog);
+  graphics::gl_set_uniform_mat4(st.prog, "uModel", ident4());
+  graphics::gl_set_uniform_mat4(st.prog, "uView", ident4());
+  graphics::gl_set_uniform_mat4(st.prog, "uProj", ident4());
+  // Flat: the material's own colour, not the terrain height ramp.
+  graphics::gl_set_uniform_vec3(st.prog, "uColor", sf.sf_r, sf.sf_g, sf.sf_b);
+  graphics::gl_set_uniform_float(st.prog, "uUseRamp", 0.0);
+  // ⚠ THE WORLD'S CURRENT LIGHT, which is §C4's clause and the reason a swatch
+  // can be trusted: these are the values the server last sent for the scene the
+  // author is standing in, so the swatch dims when the world does.
+  graphics::gl_set_uniform_float(st.prog, "uAmb", st.amb);
+  graphics::gl_set_uniform_float(st.prog, "uLamp", st.lamp);
+  graphics::gl_set_uniform_vec3(st.prog, "uEye", 0.0, 0.0, 2.0);
+  // Fog off: a swatch has no distance to fade over, and leaving the world's
+  // fog on would tint every swatch toward the sky by however far the author
+  // happens to be standing from the centre.
+  graphics::gl_set_uniform_vec3(st.prog, "uFogCentre", 0.0, 0.0, 0.0);
+  graphics::gl_set_uniform_vec3(st.prog, "uFogColor", st.sky_r, st.sky_g, st.sky_b);
+  graphics::gl_set_uniform_float(st.prog, "uFogFrom", 1000.0);
+  graphics::gl_set_uniform_float(st.prog, "uFogTo", 2000.0);
+  graphics::gl_set_uniform_float(st.prog, "uRampY0", 0.0);
+  graphics::gl_set_uniform_float(st.prog, "uRampY1", 1.0);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampLo", sf.sf_r, sf.sf_g, sf.sf_b);
+  graphics::gl_set_uniform_vec3(st.prog, "uRampHi", sf.sf_r, sf.sf_g, sf.sf_b);
+  graphics::gl_draw(vao, 18);
+  rs_tex
+}
+
+// EVERY ROW'S IMAGE, IN ONE PASS OVER THE LIST.
+//
+// ⚠ IT USED TO INDEX `surface_at(i)` BY THE ROW, and `B5.1` made that wrong the
+// day it landed: the tenth row is a PART, `surface_at(9)` is the `?` sentinel
+// with colour (0,0,0), and the catalogue drew `house/cottage` a black hexagon.
+// Measured in the client's own PNG — row 9 read `5,5,6` against a list background
+// of `20,20,24`, so it was not even blank, it was darker than blank. No gate saw
+// it: `panel.mjs` loops `for (i = 0; i < 9; i++)`, and a gate that counts what it
+// expects cannot see the row that was added.
+//
+// ⚠ THE DISPATCH IS THE ENTRY'S OWN KIND, which is what `en_kind` was put on
+// `Entry` for and what nothing had read until now. The material COUNTER is
+// separate from the row index for the same reason: it counts materials, so a part
+// in the middle of the list cannot shift every swatch after it by one.
+fn render_row_images(st: Client, items: vector<Entry>) -> vector<Swatch> {
   out: vector<Swatch> = [];
   if st.prog == 0 { return out; }              // no shader yet: nothing honest to draw
-  // ⚠ DEPTH OFF. The framebuffer below has a COLOUR attachment and no depth one,
-  // and the world draw leaves the depth test enabled — so every swatch fragment
-  // was tested against a buffer that is not there and discarded. Nine textures
-  // were created, nine draws issued, and nothing came out.
-  graphics::gl_disable(graphics::GL_DEPTH_TEST);
   vao = graphics::gl_upload_vertices(swatch_hex_verts(), 6);
-  fbo = graphics::gl_create_framebuffer();
-  idm = ident4();
-  for i in 0..len(names) {
-    sf = moros_terrain::surface_at(i);
-    tex = graphics::gl_create_color_texture(SWATCH_W, SWATCH_H);
-    graphics::gl_framebuffer_texture(fbo, 0, tex);
-    graphics::gl_bind_framebuffer(fbo);
-    graphics::gl_viewport(0, 0, SWATCH_W, SWATCH_H);
-    graphics::gl_clear(rgb_packed(st.sky_r, st.sky_g, st.sky_b));
-    graphics::gl_use_shader(st.prog);
-    graphics::gl_set_uniform_mat4(st.prog, "uModel", idm);
-    graphics::gl_set_uniform_mat4(st.prog, "uView", idm);
-    graphics::gl_set_uniform_mat4(st.prog, "uProj", idm);
-    // Flat: the material's own colour, not the terrain height ramp.
-    graphics::gl_set_uniform_vec3(st.prog, "uColor", sf.sf_r, sf.sf_g, sf.sf_b);
-    graphics::gl_set_uniform_float(st.prog, "uUseRamp", 0.0);
-    // ⚠ THE WORLD'S CURRENT LIGHT, which is §C4's clause and the reason a swatch
-    // can be trusted: these are the values the server last sent for the scene the
-    // author is standing in, so the swatch dims when the world does.
-    graphics::gl_set_uniform_float(st.prog, "uAmb", st.amb);
-    graphics::gl_set_uniform_float(st.prog, "uLamp", st.lamp);
-    graphics::gl_set_uniform_vec3(st.prog, "uEye", 0.0, 0.0, 2.0);
-    // Fog off: a swatch has no distance to fade over, and leaving the world's
-    // fog on would tint every swatch toward the sky by however far the author
-    // happens to be standing from the centre.
-    graphics::gl_set_uniform_vec3(st.prog, "uFogCentre", 0.0, 0.0, 0.0);
-    graphics::gl_set_uniform_vec3(st.prog, "uFogColor", st.sky_r, st.sky_g, st.sky_b);
-    graphics::gl_set_uniform_float(st.prog, "uFogFrom", 1000.0);
-    graphics::gl_set_uniform_float(st.prog, "uFogTo", 2000.0);
-    graphics::gl_set_uniform_float(st.prog, "uRampY0", 0.0);
-    graphics::gl_set_uniform_float(st.prog, "uRampY1", 1.0);
-    graphics::gl_set_uniform_vec3(st.prog, "uRampLo", sf.sf_r, sf.sf_g, sf.sf_b);
-    graphics::gl_set_uniform_vec3(st.prog, "uRampHi", sf.sf_r, sf.sf_g, sf.sf_b);
-    graphics::gl_draw(vao, 18);
-    out += [Swatch { sw_tex: tex }];
+  // ⚠ TWO FRAMEBUFFERS, AND ONE WAS NOT ENOUGH BY A LONG WAY. The first version
+  // shared one and hung a 66x48 depth texture on it for the thumbnails' sake. A
+  // framebuffer whose attachments differ in SIZE is incomplete, so every 22x16
+  // swatch drawn through it was dropped — and the client went on reporting
+  // "9 swatches and 1 thumbnails rendered" while the picture had nine bare rows
+  // and one house. A count of draws is not a count of pixels, for the second time
+  // in this one function's history: `B3.3` learned it when the swatches collapsed
+  // to a line, and the instrument that caught it both times was the PNG.
+  //
+  // So each image size gets its own framebuffer, and the depth attachment lives
+  // only where something tests against it.
+  fbo_sw = graphics::gl_create_framebuffer();
+  fbo_tb = graphics::gl_create_framebuffer();
+  depth = graphics::gl_create_depth_texture(THUMB_W, THUMB_H);
+  graphics::gl_framebuffer_texture(fbo_tb, 1, depth);
+  mat_n = 0;
+  for it in items {
+    if it.en_kind == KIND_PART {
+      out += [Swatch { sw_tex: render_thumb(st, it#index, fbo_tb) }];
+    } else {
+      out += [Swatch { sw_tex: render_swatch(st, mat_n, vao, fbo_sw) }];
+      mat_n = mat_n + 1;
+    }
   }
   // ⚠ BACK TO THE SCREEN AND THE FULL VIEWPORT. Leaving the framebuffer bound
-  // draws the entire next frame into a 22x16 texture, which reads as a client
+  // draws the entire next frame into a 66x48 texture, which reads as a client
   // that stopped rendering.
   graphics::gl_bind_framebuffer(0);
   graphics::gl_viewport(0, 0, WIN_W, WIN_H);
+  graphics::gl_enable(graphics::GL_DEPTH_TEST);
+  // The scratch buffers are this pass's, not the row images' — those are returned
+  // and belong to the caller, which deletes them when the list changes.
+  graphics::gl_delete_vao(vao);
+  graphics::gl_delete_texture(depth);
+  graphics::gl_delete_framebuffer(fbo_sw);
+  graphics::gl_delete_framebuffer(fbo_tb);
   out
 }
 
@@ -1355,6 +1582,8 @@ fn main() {
     mats: "",
     hud_dirty: false,
     parts: [],
+    thumbs: [],
+    tcams: [],
     prog: 0,
     view: ident4(),
     proj: ident4(),
@@ -1384,7 +1613,7 @@ fn main() {
     levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
-    c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0,
+    c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
 
@@ -1499,10 +1728,24 @@ fn main() {
       // ⚠ CACHED PER MATERIAL, and rendered only when the list changes — §C4
       // asks for the swatch to be the material, not for it to be re-rendered
       // every frame. The list arrives once, so in practice this runs once.
-      ui_swatches = render_swatches(st, ui_panel.p_list.lb_items);
+      ui_swatches = render_row_images(st, ui_panel.p_list.lb_items);
       st.hud_dirty = false;
       println("client: subject line ← {st.hud}");
-      println("client: {len(ui_swatches)} swatches rendered with the world shader");
+      // ⚠ THE TWO FAMILIES ARE COUNTED APART, because one number cannot say which
+      // of them failed. Nine swatches and no thumbnail reads identically to ten
+      // images in a total, and a part with no picture is exactly the failure
+      // this step exists to make visible.
+      n_thumb = 0;
+      n_swatch = 0;
+      for ci in 0..len(ui_swatches) {
+        cit = ui_panel.p_list.lb_items[ci] ?? entry("");
+        if (ui_swatches[ci] ?? Swatch { sw_tex: 0 }).sw_tex == 0 { continue; }
+        if cit.en_kind == KIND_PART { n_thumb = n_thumb + 1; }
+        else { n_swatch = n_swatch + 1; }
+      }
+      println("client: {n_swatch} swatches and {n_thumb} thumbnails rendered "
+            + "with the world shader ({st.c_thumb} thumbnail meshes, "
+            + "{len(st.tcams)} cameras)");
     }
     poll_input(h, st);
     draw_world(st);

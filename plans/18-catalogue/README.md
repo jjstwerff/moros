@@ -342,8 +342,40 @@ the mesher's own surfaces. One list, two families means that count is now *nine 
 `material`*, and the availability claims scope the same way. Left alone, the first part ever
 authored would have turned a gate about the MESHER red — a gate going red for something it is
 not about, which teaches the next reader to loosen it.
-| `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | a PNG shows non-blank thumbnails, same blank-control as `B3.3` | M |
+| ✅ `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | **DONE.** `W:`/`Y:` on the wire, `chunk_mesh_mat_bounded`, an offscreen pass with a depth attachment. In the client's PNG: 10 of 10 rows carry an image, the part row has 4 colour buckets against every material's 1. ⚠ **The row this replaced was already wrong, and the gate could not see it** — see below. | M |
 | `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
+
+⚠ **`B5.2` FOUND A DEFECT `B5.1` SHIPPED, AND THE GATE HAD NO WAY TO SEE IT.** `render_swatches`
+indexed `moros_terrain::surface_at(i)` by the LIST row, and `B5.1` made row 9 a part —
+`surface_at(9)` is the `?` sentinel with colour `(0,0,0)`, so the catalogue drew `house/cottage`
+a **black hexagon**. Measured in the client's own PNG: row 9 read `5,5,6` against a list
+background of `20,20,24` — not blank, *darker* than blank. `panel.mjs` looped
+`for (i = 0; i < 9; i++)`, the mesher's nine surfaces, so the tenth row was outside every claim
+it made. **A gate that counts what it expects cannot see what was added**, and the fix is that it
+now reads the row count out of the picture.
+
+⚠ **AND THE CONTROL IS THE BLACK ROW, NOT THE BLANK ONE.** A blank row is the failure a thumbnail
+*has*; a black row is the failure that actually shipped, and it is not blank — it has as much ink
+as any swatch. `probe/b1/deface.mjs` paints both over the live picture and the reader must refuse
+each: the blank one trips three claims, the black one trips only the two written for it
+(*no row's image is darker than the well it sits in*, *at least one row is a rendered part*).
+
+⚠ **`panel.mjs`'s OWN OUTPUT FILTER HAD NEVER MATCHED A LINE.** `run.sh` piped the panel reader
+through a `sed` written with the two spaces the source appears to have, while `check()` pads its
+verdict to four — so the per-check detail was silently absent for as long as it existed, and the
+`ok` printed beside it made that read as a quiet pass.
+
+⚠ **THE DISCRIMINATOR COMES FROM THE SHAPE.** A material swatch is one flat colour over a
+transparent surround — one colour bucket; a part is a roof over walls over ground and cannot have
+fewer than three. Measured: 1 for every material, 4 for the cottage. Both sides are asserted, so a
+run where *everything* came back multi-coloured says the discriminator is measuring noise rather
+than the difference it names.
+
+⚠ **AND THE COUNT LIED AGAIN, IN THE SAME FUNCTION.** Sharing one framebuffer between the 22×16
+swatches and the 66×48 thumbnails — a depth attachment the thumbnails need — makes it *incomplete*,
+because attachments must agree in size. Every swatch draw was dropped while the client went on
+reporting `9 swatches and 1 thumbnails rendered`. Third time in this one function's history that a
+count of draw calls stood in for a count of pixels, and the PNG caught it all three times.
 
 ### B6 — availability
 

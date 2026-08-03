@@ -121,8 +121,46 @@ printf '%s\n' "$b2_out" | grep -q 'awaiting the server' \
   && { echo "  !! the client is still showing its placeholder"; exit 1; }
 node probe/b1/panel.mjs probe/b1/client_live.png --swatches >/dev/null \
   || { echo "  !! the live client's panel does not measure up"; exit 1; }
-node probe/b1/panel.mjs probe/b1/client_live.png --swatches | sed -n 's/^  \(ok\|FAIL\)  \(the material\|the swatches\).*/  \0/p'
-echo "  ok    the client shows the server's line, its swatches, and its panel measures up"
+echo "  ok    the client shows the server's line and its panel measures up"
+
+echo
+echo "── B5.2  the part thumbnail, and the two pictures it must not be ───"
+# §C4: a catalogue image is RENDERED, so a part's row carries the PART -- meshed
+# by the server (its walls come from `chunk_mesh_props`, which the client has no
+# access to) and drawn by the client with the world's own shader, through a
+# canonical three-quarter camera the server fitted to the part's own vertices.
+#
+# ⚠ THE CLIENT'S COUNT IS NOT THE PICTURE, and this exact function has taught that
+# twice: nine swatches "rendered" that collapsed to a line in clip space, and nine
+# more dropped whole when a shared framebuffer got a mismatched depth attachment.
+# The count is checked because it is cheap and it names WHICH family failed; the
+# picture is checked because it is the claim.
+printf '%s\n' "$b2_out" | grep -qE 'client: [0-9]+ swatches and [1-9][0-9]* thumbnails' \
+  || { echo "  !! the client rendered no thumbnail at all"; exit 1; }
+printf '%s\n' "$b2_out" | grep 'swatches and' | sed 's/^  |/   |/'
+# ⚠ THE PER-ROW NUMBERS ARE PRINTED, not just a verdict. `1,1,1,1,1,1,1,1,1,4`
+# says at a glance which row is a part and which are flat swatches; a bare "ok"
+# says only that today's threshold was met.
+#
+# ⚠ AND THE GAP IS `  *`, NOT TWO SPACES. `check()` pads its verdict to four
+# characters, so a pattern written with the two spaces the source appears to have
+# matched nothing — this filter silently printed no lines at all for as long as it
+# has existed, and the surrounding `ok` made that look like a quiet pass.
+node probe/b1/panel.mjs probe/b1/client_live.png --swatches \
+  | sed -n 's/^  \(ok\|FAIL\)  *\(every catalogue\|no row.s image\|the images are\|at least one row\|and the material\).*/  &/p'
+
+# ⚠ THE CONTROLS, AND THE SECOND ONE IS WHY THE FIRST IS NOT ENOUGH. A blank row
+# is the failure a thumbnail HAS; a BLACK row is the failure `B5.1` actually
+# shipped, and it is not blank -- it has as much ink as any swatch. A reader that
+# only asked "is there something there" passed it for a day.
+node probe/b1/deface.mjs probe/b1/client_live.png probe/b1/ctrl_blank_row.png blank >/dev/null
+node probe/b1/panel.mjs probe/b1/ctrl_blank_row.png --swatches >/dev/null 2>&1 \
+  && { echo "  !! a catalogue with a BLANK part row PASSED -- the reader is blind"; exit 1; }
+node probe/b1/deface.mjs probe/b1/client_live.png probe/b1/ctrl_black_row.png black >/dev/null
+node probe/b1/panel.mjs probe/b1/ctrl_black_row.png --swatches >/dev/null 2>&1 \
+  && { echo "  !! a catalogue with a BLACK part row PASSED -- the reader cannot see"; \
+       echo "     the defect B5.1 shipped, which is the one it exists for"; exit 1; }
+echo "  reader verified: rejects a blank part row, and rejects a black one"
 
 echo
 echo "── B1.3c  and the panel reader, against pictures with no panel ─────"

@@ -188,7 +188,44 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
   }
 }
 
+// THE OUTDOORS IS EVERYWHERE — one chunk's cells of one material, as triangles.
+//
+// ⚠ AN UNWRITTEN CELL COUNTS AS GROUND HERE, which is what makes an unauthored
+// world a flat plane rather than a hole to fall through. See `bounded` below for
+// the one caller that must not get that, and why.
 pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
+  chunk_mesh_mat_in(cx, cz, wld, want_mat, false)
+}
+
+// THE SAME MESH FOR A WORLD THAT ENDS — a PART, and nothing else so far.
+//
+// ⚠ A PART IS A WORLD TO THE STORE AND IS NOT ONE TO THE MESHER, and that is the
+// whole of this function. `PARTS.md` §P2 says a part is saved the way a world is
+// saved *because it is one*, and it is: same chunks, same cells, same file. But
+// the rule above — absence is ground — is a statement about an UNBOUNDED
+// landscape, and a part is bounded by definition. Its unwritten cells are
+// OUTSIDE it, not outdoors.
+//
+// ⚠ MEASURED, and it is why this exists rather than being argued for. A cottage
+// of 38 cells meshed as a world came out **28.6 × 24.5 world units** — four
+// 16×16 chunks of grass with a house somewhere in the middle — and every count
+// agreed with itself the whole time: 16 meshes, a well-formed bounding box, a
+// camera that framed it perfectly. The picture would have been a lawn.
+//
+// ⚠ ONLY THE GROUND PASS CAN DIFFER, and that falls out rather than being a case
+// here: the substitution below turns an unwritten cell into `SURFACE_MAT`, so it
+// can only ever join the surface pass. Asking for road, field or floor gives the
+// same triangles either way — which is what the equality test asserts.
+pub fn chunk_mesh_mat_bounded(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
+  chunk_mesh_mat_in(cx, cz, wld, want_mat, true)
+}
+
+// ⚠ ONE LOOP, A FLAG. Two copies of a mesher is how the ground under a part comes
+// to disagree with the ground under the world it is stamped into — and the point
+// of a rendered thumbnail (CATALOGUE §C4) is that it IS the thing rather than a
+// second drawing of it.
+fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
+                     bounded: boolean) -> Mesh {
   cm = moros_render::mesh("chunk");
   q0 = cx * MESH_CHUNK;
   r0 = cz * MESH_CHUNK;
@@ -254,11 +291,18 @@ pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -
       // BENEATH it was opened on purpose; unoccupied ground with nothing under it is
       // just outdoors nobody has touched.
       open = false;
+      // ⚠ KEPT APART FROM `open` ON PURPOSE, though both suppress the same emit.
+      // `open` is *the ground was cut through here* — a stairwell, a hole with a
+      // room under it. This is *there is no here* — the cell lies outside a
+      // bounded world. Folding them would read as a part being full of stairwells,
+      // and the next reader would fix the wrong thing.
+      absent = false;
       if mat == 0 {
+        if bounded { absent = true; }
         if can_open { open = hex_editor::ground_open(wld, cq, cr); }
         mat = hex_editor::SURFACE_MAT;
       }
-      if !open && mat == want_mat {
+      if !open && !absent && mat == want_mat {
         emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gq0, gr0, gw);
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
         // one surface over. The ground has no skirts because it is continuous and
