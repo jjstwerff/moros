@@ -27,10 +27,40 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **48** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **73** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
-### The next thing to do is #17 `A3.1` — instances. **Plan 18 is COMPLETE.**
+### The next thing to do is #17 `A3.2` — expand. **Plan 18 is COMPLETE; #17 `A3.1` is done.**
+
+⚠ **`A3.2` IS THE ONE WITH THE HANG IN IT.** `expand(instance)` derives a part's cells into a
+layer under `world_fresh_label`, recursively — and §P8's *depth is bounded at 8* is `A3.4`,
+which comes AFTER it. `A3.1` deliberately did not put a bound in (its cycle check does not need
+one; see below), so `A3.2` is walking a tree whose only guard today is that the library has no
+cycle in it. Either take the bound early or know that is the state.
+
+**`A3.1` is done.** `INST` is one line per instance — `inst=<q>,<r>,<h>,<facing>,<part>` —
+carried on the same section mechanism as `PART`/`ANCH`, with `part_cycle` / `library_cycle` for
+§P8. The server sweeps the library at startup and lists a faulty part **greyed with its chain**
+(`part|house/loop_a|0|contains itself: house/loop_a → house/loop_b → house/loop_a`), which is
+what stops the check being a function with no caller — §P8's *"checked on save"* has no save
+gesture to hang on until `A7.3`.
+
+⚠ **THE TWO §P8 RULES ARE NOT ONE RULE.** *A part may not contain itself* and *depth is bounded
+at 8* read as one sentence and are two programs. The cycle check needs **no bound**: each step
+either finds a name already on the chain being walked, or descends to one that is not, and the
+chain only grows — so it is bounded by the number of parts on disk. The depth bound is about a
+**renderer**, where unbounded recursion is a hang and a hang reads as a crash.
+
+⚠ **A DIAMOND IS NOT A CYCLE**, so the walk carries the PATH and not a visited set — a house
+with two door-frames using one leaf visits it twice and is legal. ⚠ That test **has never been
+red and says so in its own comment**: it is a pin against the obvious *make it cheaper on a wide
+library* refactor, not evidence the walk works. What supplies that is the pair beside it — a
+fault two links down, and a fault under the second sibling — and both were seen red.
+
+⚠ **THE NAME COMES LAST IN THE RECORD.** A part is addressed by its catalogue handle, which is a
+FILE PATH, and a file name may contain a comma; with the name anywhere but last, `a,b/door`
+parses as two fields and the part is silently renamed. Last means four splits and then *the rest
+of the line*, so no escaping exists to get wrong in one direction only.
 
 **`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
 tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
@@ -167,14 +197,24 @@ lineage. Which tree owns it for good is
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` and `A2` complete.**
-`A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2` and `A3.1`
+complete.** `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
 `PART`/`ANCH`, `A2.1` the cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement
-path. `A3` (instances) next, and it is the bigger arc.
+path, `A3.1` the `INST` record and §P8's cycle check. **`A3.2` — expand — is next**, and it is
+the bigger arc: `A3.3` then asserts `expand == bake` cell for cell, which is the strongest test
+in the design because the two paths share nothing but the part.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
 why. `probe/b1/client_live.png` is what it looks like; `make probe-text` regenerates it.
+
+### The environment overrides, added for gates and useful on their own
+
+`EDITOR_PORT` (a driving gate and a human session on one box), `EDITOR_PARTS` (a part library
+somewhere other than `data/parts/` — `B5.3`'s gate has to CHANGE a part while the editor
+watches, and doing that to a committed file corrupts a tree two agents share), and
+`PART_ROOF` / `PART_RADIUS` / `PART_OUT` on `src/part_build.loft` for building a variant
+cottage. Defaulted, `make parts` writes the committed file byte-identically.
 
 ### Two things built and not yet called
 
