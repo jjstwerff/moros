@@ -1,0 +1,106 @@
+// B1.1 — DOES TEXT REACH THE CANVAS?  The probe #18's B1 rests on.
+//
+// Three days ago the whole `--html` text bridge was a no-op stub, so a HUD
+// built on it would have compiled, run, and drawn nothing.  loft fixed it; the
+// emitted page now carries real `measureText`/`fillText`.  That is a claim
+// about the PAGE, and this asks the question one level up: does the route
+// #18 actually uses -- `create_text_texture` + `draw_texture_at` -- put legible
+// pixels on the canvas, on BOTH targets?
+//
+// ⚠ SUBJECT AND CONTROL IN ONE RUN.  It draws "MOROS" into the left half and
+// NOTHING into the right, then reports the ink in each.  A backend that filled
+// the buffer, or one that cleared to a non-black colour, passes the subject and
+// fails the control -- which is the whole reason the control is here.  "It drew
+// something" is not the claim; "it drew something WHERE ASKED" is.
+use graphics;
+
+// ⚠ THE FONT ARGUMENT IS TARGET-DEPENDENT, and this is a B1.1 finding.
+// The DESKTOP backend loads a FILE (fontdue), and `gl_load_font("monospace")`
+// returns NULL there -- measured, not guessed.  The BROWSER cannot load font
+// bytes synchronously, so it resolves a path to a CSS family by its BASE NAME.
+// A path is therefore the portable form, and the two targets end up with
+// DIFFERENT metrics for the same argument.  That is exactly why #18's C0a fills
+// `Metrics` at runtime from `gl_measure_text` instead of baking a number.
+const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
+
+const W = 480;
+const H = 120;
+const SIZE = 32.0;
+
+// ⚠ ABSOLUTE, because a relative path silently returns FALSE: loft resolves it
+// from the SCRIPT's directory, not the working directory, so `probe/b1/x.png`
+// became `probe/b1/probe/b1/x.png` and the write failed with no reason given.
+// The first version of this probe reported PASS while writing no file at all,
+// because it counted pixels and threw the boolean away.
+const SHOT = "/home/jurjens/workspace/moros/probe/b1/gl_text.png";
+
+fn main() {
+  if !gl_create_window(W, H, "b1.1 text probe") {
+    println("B1.1-gl FAIL — no window");
+    return;
+  }
+  painter = create_painter_2d(W as float, H as float);
+
+  f = gl_load_font(FONT);
+  println("font handle: {f}");
+  adv = gl_measure_text(f, "MMMMMMMMMM", SIZE) / 10.0;
+  println("metrics: advance={adv} line_h={gl_text_height(f, SIZE)} ascent={gl_font_ascent(f, SIZE)}");
+
+  // ⚠ IS IT ACTUALLY MONOSPACE?  C0a wants `len * advance` to be EXACT, and that
+  // holds only for a fixed-pitch font.  Asking for one by .ttf PATH does not
+  // guarantee getting one: the browser cannot load font bytes, so it resolves the
+  // path's BASE NAME to a CSS family, and a base name it does not recognise falls
+  // back to a GENERIC family -- which is proportional.
+  //
+  // A width cannot answer this on its own; ten M's are ten M's in any font. The
+  // instrument is two strings of the SAME LENGTH and OPPOSITE WIDTH: in a
+  // fixed-pitch font `MMMMMMMMMM` and `iiiiiiiiii` measure identically, and in a
+  // proportional one they cannot.
+  wide   = gl_measure_text(f, "MMMMMMMMMM", SIZE);
+  narrow = gl_measure_text(f, "iiiiiiiiii", SIZE);
+  mono = wide == narrow;
+  println("MONO check: M-run={wide} i-run={narrow} monospace={mono}");
+
+  tex = create_text_texture(f, "MOROS", SIZE, rgb(255, 255, 255));
+  println("text texture: {tex}");
+  if tex == 0 {
+    println("B1.1-gl FAIL — create_text_texture returned 0");
+    return;
+  }
+
+  tw = gl_measure_text(f, "MOROS", SIZE) + 5.0;
+  th = (gl_text_height(f, SIZE) + 4) as float;
+
+  // ⚠ THE FRAME LOOP IS WHAT MAKES ONE SOURCE SERVE BOTH TARGETS. On the
+  // desktop it runs a few frames and exits; in the BROWSER `gl_swap_buffers`
+  // is what yields to the page, so a program that drew one frame and returned
+  // would have nothing on the canvas by the time anything looked at it.
+  frames = 0;
+  shot = false;
+  while gl_poll_events() {
+    // Clear to BLACK and blit the text into the LEFT half only. The right half
+    // is the control, in the same frame as the subject.
+    gl_clear(rgb(0, 0, 0));
+    draw_texture_at(painter, tex, 20.0, 40.0, tw, th);
+
+    // ⚠ BEFORE `gl_swap_buffers` — `gl_screenshot` reads GL_BACK, and the swap
+    // is exactly what stops the back buffer being the thing that was drawn.
+    // The desktop twin of the browser's `preserveDrawingBuffer` trap this tree
+    // has already paid for once.
+    if frames == 1 { shot = gl_screenshot(W, H, SHOT); }
+
+    gl_swap_buffers();
+    frames = frames + 1;
+    // The browser drives its own loop; on the desktop nothing closes this
+    // window, so it stops itself once the shot is taken.
+    if frames > 3 && shot { break; }
+  }
+
+  println("RESULT shot={shot} frames={frames} path={SHOT}");
+  if shot {
+    println("B1.1-gl drew — read the ink with shot.mjs, the instrument that can SEE it");
+  } else {
+    println("B1.1-gl no desktop shot (expected under --html: capture is the browser's job)");
+  }
+  gl_delete_texture(tex);
+}

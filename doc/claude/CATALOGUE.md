@@ -87,6 +87,33 @@ struct Metrics { m_advance: integer, m_line_h: integer, m_mono: boolean }
   context into the library. Monospace is the smaller, safer commitment; a proportional HUD
   can come later behind the same `Metrics` seam.
 
+⚠ **AND ASKING FOR MONOSPACE DOES NOT MEAN GETTING IT — measured in `B1.1`, before a line of
+`panel_render` existed.** [probe/b1](../../probe/b1/README.md) loaded the *same* font argument
+on both targets and got two different fonts:
+
+| `gl_load_font("…/DejaVuSansMono.ttf")` | advance @32px | `MMMMMMMMMM` vs `iiiiiiiiii` |
+|---|---|---|
+| desktop (fontdue, loads the file) | 19.27 | 192.66 = 192.66 — **fixed pitch** |
+| browser (base name → CSS family) | 26.66 | 266.56 ≠ 71.09 — **proportional fallback** |
+
+The browser cannot load font bytes synchronously, so it resolves the path's **base name** to
+a family; `DejaVuSansMono` is not one Chrome knows, so it falls back to a generic
+proportional face. The text still draws — it is simply laid out on an advance that is not the
+advance. Three consequences, all now `B1.2`'s:
+
+1. **The font argument is per-target**, not one string: a path for the desktop, a CSS generic
+   or an `@font-face` family the page declares for the browser.
+2. **Startup VERIFIES fixed pitch** rather than assuming it —
+   `measure("MMMMMMMMMM") == measure("iiiiiiiiii")`. Two same-length, opposite-width strings
+   is the entire instrument, and a width on its own cannot answer it: ten M's are ten M's in
+   any font.
+3. `font.loft`'s `len(s) * 8` is wrong on **both** targets, not just approximately.
+
+⚠ Asking the browser for the generic `monospace` gives **192.66 — exactly the desktop's
+DejaVu**. So the two *can* agree to the last digit, but only because Chrome's default
+monospace happens to be the same face on this box. **That is a coincidence, not a contract**,
+and it is the reason `Metrics` is measured at runtime instead of shared as a constant.
+
 ---
 
 ## C1 — The subject line: always visible, and it comes from the authority

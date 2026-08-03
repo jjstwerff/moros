@@ -1,0 +1,74 @@
+// B1.1 (desktop half) — does the loft text bridge RASTERISE?
+//
+// #18's B1 rests on text reaching the screen, and three days ago the whole
+// bridge was a no-op stub.  This half asks the CPU question -- does
+// `draw_text` put coverage in a buffer -- with an exact COUNT rather than a
+// picture, because a count is the instrument that can see "it drew nothing"
+// and a thumbnail is not.
+//
+// The browser half is `text_gl.loft` + `shot.mjs`: that one asks whether the
+// same coverage reaches the CANVAS, which is the part that was actually broken.
+use graphics;
+
+const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
+const W = 320;
+const H = 64;
+
+// Count pixels that are not the fill colour.  `canvas(..., 0)` fills with 0,
+// and `draw_text` blends white-on-transparent coverage in, so anything
+// non-zero is a pixel the rasteriser wrote.
+fn inked(cv: Canvas) -> integer {
+  n = 0;
+  for y in 0..H {
+    for x in 0..W {
+      if get_pixel(cv, x, y) != 0 { n = n + 1; }
+    }
+  }
+  n
+}
+
+// ⚠ `graphics::save_png` writes the Canvas directly. The FIRST version of this
+// probe used `imaging::save_png`, which returned FALSE and wrote nothing -- and
+// the probe reported PASS anyway, because it checked the pixel count and threw
+// the boolean away. An instrument whose output nobody checks is not an
+// instrument. The return value is asserted now.
+fn to_png(cv: Canvas, path: text) -> boolean {
+  save_png(cv, path)
+}
+
+fn main() {
+  // ⚠ THE FONT ARGUMENT IS TARGET-DEPENDENT, and this is a B1.1 finding.
+  // The DESKTOP backend loads a FILE (fontdue); "monospace" returns null there.
+  // The BROWSER resolves a path to a CSS family by its BASE NAME. So a path is
+  // the portable form -- and the two targets then have DIFFERENT metrics, which
+  // is exactly why C0a fills `Metrics` at runtime instead of baking a number.
+  f = gl_load_font(FONT);
+  println("font handle: {f}");
+
+  size = 24.0;
+  w = gl_measure_text(f, "MOROS", size);
+  h = gl_text_height(f, size);
+  a = gl_font_ascent(f, size);
+  println("measure: width={w} height={h} ascent={a}");
+
+  // THE SUBJECT
+  cv = canvas(W, H, 0);
+  cv.draw_text(f, "MOROS", size, 8, 8, rgb(255, 255, 255));
+  ink = inked(cv);
+  wrote = to_png(cv, "/home/jurjens/workspace/moros/probe/b1/cpu_text.png");
+
+  // THE CONTROL — the same call with an EMPTY string must ink NOTHING.
+  // Without this, "it drew something" is unproven: a rasteriser that filled
+  // the buffer with garbage would pass the subject and fail here.
+  blank = canvas(W, H, 0);
+  blank.draw_text(f, "", size, 8, 8, rgb(255, 255, 255));
+  blank_ink = inked(blank);
+  wrote_blank = to_png(blank, "/home/jurjens/workspace/moros/probe/b1/cpu_blank.png");
+
+  println("RESULT inked={ink} blank={blank_ink} png={wrote},{wrote_blank}");
+  if ink > 0 && blank_ink == 0 && wrote && wrote_blank {
+    println("B1.1-cpu PASS — the rasteriser writes coverage, and only when asked");
+  } else {
+    println("B1.1-cpu FAIL — inked={ink} (want >0), blank={blank_ink} (want 0), png={wrote},{wrote_blank} (want true)");
+  }
+}

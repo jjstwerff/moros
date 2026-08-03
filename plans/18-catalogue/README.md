@@ -44,16 +44,27 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B1.1` | **A probe, before anything else.** A standalone loft program: window, `gl_load_font("monospace")`, `create_text_texture("MOROS", 24)`, `draw_texture_at`, screenshot. Run it on `--html` **and** desktop. | a PNG with **non-black pixels where the word is**, ⚠ and the control: the same probe with an empty string must produce a blank frame — otherwise "it drew something" is unproven | XS |
-| `B1.2` | `Metrics` struct in `moros_ui`, threaded through `panel_build` (§C0a). No rendering yet. | existing layout tests pass, **plus a second run at a different advance** — the perturbation that stops `8` being baked in | S |
+| ✅ `B1.1` | **A probe, before anything else** — `make probe-text`, [probe/b1](../../probe/b1/README.md). | **DONE.** Ink left/right: desktop **1127/0**, browser **1246/0**. The reader is itself checked against a blank frame, an all-white one, and real text. ⚠ **It found a live trap** — see below. | XS |
+| `B1.2` | `Metrics` struct in `moros_ui`, threaded through `panel_build` (§C0a). No rendering yet. ⚠ **Plus the three things `B1.1` turned up**: a per-target font argument, a startup fixed-pitch check, and `Metrics` measured rather than assumed. | existing layout tests pass, **plus a second run at a different advance** — the perturbation that stops `8` being baked in; and the fixed-pitch check refuses a proportional font | S |
 | `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. | a PNG shows the 240 px strip and six buttons | S |
 | `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
 | `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, and `moros_sim` still builds (§C6) | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
 
-⚠ **`B1.1` is not ceremony.** Everything after it assumes the bridge works in the *browser*,
-and that was false three days ago. One probe, thirty lines, before four steps are built on
-the assumption.
+⚠ **`B1.1` was not ceremony, and it earned its place immediately.** Text does reach the
+canvas on both targets — that half of the question came back clean. But the *same* font
+argument gives **two different fonts**: `gl_load_font(".../DejaVuSansMono.ttf")` is fixed
+pitch on the desktop and a **proportional fallback** in the browser, because the browser
+cannot load font bytes and resolves the path's base name to a CSS family it does not know.
+
+A panel laid out on `len × advance` against a proportional face mis-lays every row **and
+nothing reports it** — the text still draws, it is just in the wrong place. That is `C0a`'s
+hazard, found before `panel_render` existed rather than after four steps were built on it,
+which is the entire argument for putting a probe first.
+
+⚠ Asking the browser for the generic `monospace` gives **192.66, exactly the desktop's
+DejaVu** — so they *can* agree to the last digit, but only because Chrome's default monospace
+is the same face on this box. A coincidence, not a contract; measure at runtime.
 
 ### B2 — the line tells the truth
 

@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld probe-text play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -412,6 +412,11 @@ headless-same:
 # a count. `probe/s3/README.md` says why that distinction earned its own target.
 guards:
 	@sh probe/s3/run.sh
+
+# B1.1 (plan 18) — does the text bridge reach the canvas, on BOTH targets?
+# ⚠ Spawns headless Chrome and an xvfb display; both are cleaned up by the script.
+probe-text:
+	@sh probe/b1/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
