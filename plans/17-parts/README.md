@@ -44,9 +44,29 @@ because **none of them needs a new file format**:
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A1.1` | `lib/hex_part` — one dependency (`hex_world`), one function: `part_from_region(w, cq, cr, rad)`. Cells only, no sections. | **DONE.** 11 tests, both backends. ⚠ **Two findings, and the naive version of each looked right** — see below. | S |
-| `A1.2` | Save and load it with the **existing** `world_save`/`world_load`. Still no sections. | ⚠ **round-trip identity, with the perturbation control seen red** — change one cell of the saved part and the test must fail. Everything after this rests on it. | S |
+| ✅ `A1.2` | Save and load with the **existing** `world_save`/`world_load` — no new format (§P2). | **DONE.** 19 tests, both backends. Four controls, and a **blind comparison** fails all of them while the round-trip tests stay green. ⚠ It also turned up a native divergence — see below. | S |
 | `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | a loft test writes a section with a made-up tag, loads, saves, and the unknown section **survives byte-identical** — the forward-compatibility promise, tested rather than asserted | M |
 | `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | round-trip carries kind/name/facing; ⚠ an *older* reader (one that does not know `PART`) still loads the cells — simulated by reading with the tag unregistered | S |
+
+### What `A1.2` turned up
+
+⚠ **A ROUND-TRIP TEST ALONE PROVES NOTHING**, and the controls are what say so. With
+`part_diff` stubbed to always answer *"same"*, the three round-trip tests still **pass** and
+only the controls fail. So there are four: a one-cell change after loading, a cell **gained
+outside** the disc (a sweep bounded at the radius cannot see that kind at all), a changed
+world **constant** (no per-cell walk can see it), and — the strongest — two parts differing by
+one cell **saved, loaded, and compared through the files**, so the format itself has to carry
+the difference.
+
+⚠ **AND PASSING A STRUCT FIELD TO A `&`-PARAMETER DIVERGES BETWEEN BACKENDS.**
+`world_set_column(lr.wl_world, …)` compiles interpreted and fails `--native` with a bare
+`error[E0308]: mismatched types` and no span. Filed as
+[loft#745](https://github.com/loft-lang/loft/issues/745); binding the field to a local first
+passes on both.
+
+⚠ The runner reports only the error code, so **eight tests failed and the cause was one
+expression in one of them** — a test-by-test bisection was the only way in. That is worth
+remembering: a native-only failure with no span is a bisection, not a read.
 
 ### What `A1.1` turned up
 

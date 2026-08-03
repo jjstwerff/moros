@@ -1,0 +1,192 @@
+// A part saved is a part loaded — plan 17 `A1.2`.
+//
+// ⚠ NO NEW FORMAT. §P2: a part IS a world, so it is saved by `world_save` and
+// read by `world_load`, and the round-trip test a part needs is the one the
+// world already has. Everything in `A1.3` onwards rests on this being true
+// BEFORE sections exist, so it is established here on its own.
+//
+// ⚠ AND THE PERTURBATION CONTROL IS THE POINT. A comparison that always says
+// "same" passes a round-trip test perfectly. Every claim below is paired with a
+// one-cell change that must break it.
+use hex_part;
+use hex_world;
+
+const U = 0.25;
+const RESERVE = 8;
+const EPS = 5;
+const THETA = 2;
+
+fn fresh() -> World { world_new(U, RESERVE, EPS, THETA).wn_world }
+
+// ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
+// the interpreter and fails the NATIVE backend with a bare `mismatched types` —
+// an empty literal has nothing to infer an element type from, and the two
+// backends disagree about whether that matters. A palette this editor does not
+// use is still a `vector<integer>`.
+fn no_palette() -> vector<integer> {
+  p: vector<integer> = [];
+  p
+}
+
+fn landscape(cq: integer, cr: integer, rad: integer) -> World {
+  w = fresh();
+  for dq in (0 - rad - 1)..(rad + 2) {
+    for dr in (0 - rad - 1)..(rad + 2) {
+      q = cq + dq;
+      r = cr + dr;
+      h = 40 + 5 * ((q * 3 + r * 7) & 3);
+      m = 1 + ((q + r) & 3);
+      cw = world_set_column(w, Column { co_q: q, co_r: r,
+        co_cells: [ Hex { h_height: (h as u16? ?? 0), h_material: (m as u8? ?? 0) } ] });
+      assert(cw.cw_code == CW_OK, "the fixture could not write {q},{r}: {cw.cw_detail}");
+    }
+  }
+  w
+}
+
+fn a_part() -> World {
+  p = part_from_region(landscape(5, 3, 2), 5, 3, 2);
+  assert(p.pc_code == PR_OK, "the copy was refused: {p.pc_why}");
+  p.pc_world
+}
+
+// ── the round trip ───────────────────────────────────────────────
+
+fn test_a_part_saved_is_the_part_loaded() {
+  path = "part_rt.hxw";
+  part = a_part();
+  assert(world_save(part, path, no_palette()) == WS_OK, "the save was refused");
+  lr = world_load(path);
+  assert(lr.wl_code == WL_OK, "the load was refused: code {lr.wl_code}");
+  d = part_diff(part, lr.wl_world, 2);
+  assert(d.pd_same, "the part changed across a save and a load: {d.pd_why}");
+  delete(path);
+}
+
+// ⚠ THE CONSTANTS ARE PART OF THE PART. `u`, `ρ`, `ε` and `θ` are the rules its
+// cells were authored under — a part reloaded under different ones is a
+// different shape wearing the same numbers, and every cell would still compare
+// equal.
+fn test_the_constants_survive_the_round_trip() {
+  path = "part_const.hxw";
+  part = a_part();
+  world_save(part, path, no_palette());
+  lr = world_load(path);
+  assert(lr.wl_world.w_unit == U, "unit is {lr.wl_world.w_unit}");
+  assert(lr.wl_world.w_reserve == RESERVE, "reserve is {lr.wl_world.w_reserve}");
+  assert(lr.wl_world.w_eps == EPS, "eps is {lr.wl_world.w_eps}");
+  assert(lr.wl_world.w_theta == THETA, "theta is {lr.wl_world.w_theta}");
+  delete(path);
+}
+
+// Saving twice over one path REPLACES. A save that appended would leave the
+// first part readable and the rest unreachable, which reads as success.
+fn test_saving_twice_over_one_path_replaces() {
+  path = "part_twice.hxw";
+  part = a_part();
+  world_save(part, path, no_palette());
+  world_save(part, path, no_palette());
+  lr = world_load(path);
+  assert(lr.wl_code == WL_OK, "the second save made the file unreadable");
+  d = part_diff(part, lr.wl_world, 2);
+  assert(d.pd_same, "the second save changed the part: {d.pd_why}");
+  delete(path);
+}
+
+// ── the perturbation control ─────────────────────────────────────
+//
+// ⚠ SEEN RED BEFORE ANY OF THE ABOVE IS BELIEVED. Change ONE cell and the
+// comparison must notice — otherwise every row above passes on a constant, which
+// is how a gate holds for months while drawing the wrong thing.
+
+fn test_one_changed_cell_is_caught() {
+  path = "part_perturb.hxw";
+  part = a_part();
+  assert(world_save(part, path, no_palette()) == WS_OK, "save");
+  lr = world_load(path);
+  assert(lr.wl_code == WL_OK, "load");
+
+  // ⚠ THE LOADED WORLD IS BOUND TO A LOCAL FIRST, and that is a loft workaround
+  // rather than a style choice: passing `lr.wl_world` — a struct FIELD — straight
+  // to a `&`-parameter compiles on the interpreter and fails `--native` with a
+  // bare `mismatched types` and no span (loft#745). A local passes on both.
+  //
+  // It cost a test-by-test bisection to find, because the runner reports only
+  // the error code: eight tests failed and the divergence was one expression in
+  // one of them.
+  lw = lr.wl_world;
+  // One cell of the LOADED part moves by one height step.
+  moved = column_cells(world_column(lw, 0, 0));
+  assert(len(moved) == 1, "the fixture cell is not a single-layer column");
+  h0 = moved[0] ?? Hex {};
+  bumped: vector<Hex> = [ Hex { h_height: ((h0.h_height as integer ?? 0) + EPS) as u16? ?? 0,
+                                h_material: h0.h_material } ];
+  cw = world_set_column(lw, Column { co_q: 0, co_r: 0, co_cells: bumped });
+  assert(cw.cw_code == CW_OK, "the perturbation itself was refused: {cw.cw_detail}");
+
+  d = part_diff(part, lw, 2);
+  assert(!d.pd_same, "a one-cell change was not noticed — the comparison is blind");
+  delete(path);
+}
+
+// ⚠ AND A CELL GAINED OUTSIDE THE DISC IS AS WRONG AS ONE LOST INSIDE IT. A
+// sweep bounded at the radius cannot see the first kind, so the diff walks a
+// margin and this is what proves it does.
+fn test_a_cell_gained_outside_the_disc_is_caught() {
+  part = a_part();
+  other = a_part();
+  cw = world_set_column(other, Column { co_q: 0, co_r: 4,
+    co_cells: [ Hex { h_height: (45 as u16? ?? 0), h_material: (1 as u8? ?? 0) } ] });
+  assert(cw.cw_code == CW_OK, "the extra cell would not go in: {cw.cw_detail}");
+  assert(hex_dist(0, 0, 0, 4) > 2, "the extra cell is inside the disc after all");
+  d = part_diff(part, other, 2);
+  assert(!d.pd_same, "a cell outside the disc was not noticed");
+}
+
+// And a changed CONSTANT, which no per-cell walk can see.
+fn test_a_changed_constant_is_caught() {
+  part = a_part();
+  other = world_new(U * 2.0, RESERVE, EPS, THETA).wn_world;
+  d = part_diff(part, other, 2);
+  assert(!d.pd_same, "two worlds with different units compared equal");
+}
+
+// The control for the controls: two identical parts must compare SAME, or the
+// three tests above pass on a comparison that rejects everything.
+fn test_two_identical_parts_compare_the_same() {
+  d = part_diff(a_part(), a_part(), 2);
+  assert(d.pd_same, "two identical parts differ: {d.pd_why}");
+}
+
+// ⚠ AND THE DIFFERENCE HAS TO SURVIVE THE FILE, which is a stronger claim than
+// the comparison noticing it in memory. Two parts differing by ONE CELL are
+// saved, loaded back, and compared: if the format dropped the cell — or rounded
+// it, or wrote the layer and not its height — both files would read back
+// identical and every test above would still be green.
+fn test_the_file_carries_a_one_cell_difference() {
+  pa = "part_a.hxw";
+  pb = "part_b.hxw";
+  a = a_part();
+  b = a_part();
+  base = column_cells(world_column(b, 0, 0));
+  h0 = base[0] ?? Hex {};
+  cw = world_set_column(b, Column { co_q: 0, co_r: 0,
+    co_cells: [ Hex { h_height: ((h0.h_height as integer ?? 0) + EPS) as u16? ?? 0,
+                      h_material: h0.h_material } ] });
+  assert(cw.cw_code == CW_OK, "the perturbation was refused: {cw.cw_detail}");
+  assert(!part_diff(a, b, 2).pd_same, "the two parts are the same before saving");
+
+  assert(world_save(a, pa, no_palette()) == WS_OK, "save a");
+  assert(world_save(b, pb, no_palette()) == WS_OK, "save b");
+  la = world_load(pa);
+  lb = world_load(pb);
+  assert(la.wl_code == WL_OK && lb.wl_code == WL_OK, "a file would not load");
+
+  d = part_diff(la.wl_world, lb.wl_world, 2);
+  assert(!d.pd_same, "the file lost a one-cell difference — two parts read back alike");
+  // and each still matches what it was
+  assert(part_diff(a, la.wl_world, 2).pd_same, "part a changed on the way through the file");
+  assert(part_diff(b, lb.wl_world, 2).pd_same, "part b changed on the way through the file");
+  delete(pa);
+  delete(pb);
+}

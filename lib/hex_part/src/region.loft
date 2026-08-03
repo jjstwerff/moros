@@ -128,3 +128,58 @@ pub fn hex_dist(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
   if dz > m { m = dz; }
   m
 }
+
+// ── comparing two parts ──────────────────────────────────────────────────────
+
+// The cells a column actually holds.
+//
+// ⚠ NOT `co_cells` ITSELF. A column read carries one entry per LAYER OF THE
+// CHUNK, most of them absent, so its length is a fact about the cell's
+// neighbours rather than about the cell. `E1`: a zero material is an absent cell.
+pub fn column_cells(c: Column) -> vector<Hex> {
+  out: vector<Hex> = [];
+  for h in c.co_cells { if h.h_material != 0 { out += [h]; } }
+  out
+}
+
+pub struct PartDiff { pd_same: boolean, pd_why: text }
+
+fn same() -> PartDiff { PartDiff { pd_same: true, pd_why: "" } }
+fn differ(why: text) -> PartDiff { PartDiff { pd_same: false, pd_why: why } }
+
+// Are two parts the same part?
+//
+// ⚠ IT NAMES THE FIRST DIFFERENCE rather than returning a boolean. A round-trip
+// test that says only "not equal" sends the reader to diff two binary files;
+// one that says "cell -1,2 layer 0: height 45, was 50" has already done it.
+//
+// ⚠ AND IT WALKS A MARGIN BEYOND THE RADIUS. A copy that gained a cell just
+// outside the disc is exactly as wrong as one that lost a cell inside it, and a
+// sweep bounded at `rad` cannot see the first kind at all.
+pub fn part_diff(a: World, b: World, rad: integer) -> PartDiff {
+  if a.w_unit != b.w_unit    { return differ("unit {a.w_unit} vs {b.w_unit}"); }
+  if a.w_reserve != b.w_reserve { return differ("reserve {a.w_reserve} vs {b.w_reserve}"); }
+  if a.w_eps != b.w_eps      { return differ("eps {a.w_eps} vs {b.w_eps}"); }
+  if a.w_theta != b.w_theta  { return differ("theta {a.w_theta} vs {b.w_theta}"); }
+  m = rad + 2;
+  for q in (0 - m)..(m + 1) {
+    for r in (0 - m)..(m + 1) {
+      ca = column_cells(world_column(a, q, r));
+      cb = column_cells(world_column(b, q, r));
+      if len(ca) != len(cb) {
+        return differ("cell {q},{r}: {len(ca)} cells vs {len(cb)}");
+      }
+      for i in 0..len(ca) {
+        ha = ca[i] ?? Hex {};
+        hb = cb[i] ?? Hex {};
+        if ha.h_height != hb.h_height {
+          return differ("cell {q},{r} layer {i}: height {ha.h_height} vs {hb.h_height}");
+        }
+        if ha.h_material != hb.h_material {
+          return differ("cell {q},{r} layer {i}: material {ha.h_material} vs {hb.h_material}");
+        }
+      }
+    }
+  }
+  same()
+}
