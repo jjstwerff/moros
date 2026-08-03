@@ -39,6 +39,18 @@ const PAGE = PAGE_ARG ?? '/text_gl.html';
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm',
                '.png': 'image/png', '.json': 'application/json' };
 
+// ⚠ A URL INSTEAD OF A DIRECTORY, when the page has to TALK to something.
+//
+// The editor client opens `ws://127.0.0.1:18090/ws` — a compile-time constant,
+// since a `--html` program cannot read `location`. Served from this script's own
+// static port the page loads and draws its panel perfectly and never connects:
+// 300 frames, 0 meshes, 0 status, and a subject line still saying "awaiting the
+// server". It reads as a broken client and is a page served by the wrong host.
+//
+// So the B2 gate points this at the editor server itself, which serves the same
+// file at `/` and is the origin the socket expects.
+const EXTERNAL = DIR.startsWith('http://') || DIR.startsWith('https://');
+
 const server = createServer(async (req, res) => {
     try {
         const p = join(DIR, decodeURIComponent(req.url.split('?')[0]));
@@ -47,7 +59,7 @@ const server = createServer(async (req, res) => {
         res.end(body);
     } catch { res.writeHead(404); res.end('no'); }
 });
-await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
+if (!EXTERNAL) await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
 
 const chrome = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
     .find((c) => spawnSync('which', [c]).status === 0);
@@ -91,12 +103,13 @@ const call = (method, params = {}) => new Promise((res) => {
 const fail = async (msg) => {
     console.error(`B1.1-html FAIL — ${msg}`);
     try { proc.kill(); } catch {}
-    server.close(); process.exit(1);
+    if (!EXTERNAL) server.close();
+    process.exit(1);
 };
 
 await call('Page.enable');
 await call('Runtime.enable');
-await call('Page.navigate', { url: `http://127.0.0.1:${PORT}${PAGE}` });
+await call('Page.navigate', { url: EXTERNAL ? DIR : `http://127.0.0.1:${PORT}${PAGE}` });
 
 // ⚠ WAIT FOR THE CANVAS TO EXIST AND BE NON-EMPTY, NOT FOR A CLOCK. A fixed
 // sleep is how this tree wrote two blank PNGs and read them as a broken
@@ -116,7 +129,12 @@ for (let i = 0; i < 150; i++) {
 if (!rect) await fail('no canvas on the page after 15s');
 
 // Give the program a few frames to draw into it.
-await sleep(1500);
+//
+// ⚠ LONGER WHEN IT HAS TO TALK TO A SERVER. A client that only has to draw its
+// own panel is ready in a frame; one that must open a socket, ask for the world
+// and be told the subject line is not. `SHOT_SETTLE_MS` is how the B2 gate asks
+// for the second case without every other shot paying for it.
+await sleep(+(process.env.SHOT_SETTLE_MS ?? 1500));
 
 const shot = await call('Page.captureScreenshot', {
     format: 'png',
@@ -149,5 +167,5 @@ const m = await call('Runtime.evaluate', { returnByValue: true, expression:
 console.log(`  browser families at 32px: ${JSON.stringify(m?.result?.value)}`);
 
 try { proc.kill(); } catch {}
-server.close();
+if (!EXTERNAL) server.close();
 process.exit(0);

@@ -194,9 +194,32 @@ propagate through `make probe-text` rather than being printed and ignored.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B2.1` | `H:` on the wire — server → client, the toggle set as one string. Sent **on change**. | `WIRE_PROTOCOL.md` row added; a plain socket sees `H:` after a toggle |  S |
-| `B2.2` | Re-send to an arriving client — ⚠ placed **where the client joins the list**, not in the handler before it. | a second client connects mid-session and its line is correct | S |
-| `B2.3` | The client renders `H:` rather than its own key state. | ⚠ **the control that makes this real**: a key the server *refuses* must leave the line unchanged. A HUD that echoes the keystroke passes every other test. | S |
+| ✅ `B2.1` | `H:` on the wire — the **whole line**, composed by the server, sent on every accepted change. | **DONE.** `tools/gates/world/subject.mjs`, a plain socket: `H:world (unsaved) · AUTO · level off · road off · trace off`. ⚠ Nothing kept the world's NAME before this — see below. | S |
+| ✅ `B2.2` | Re-send placed **where the client joins the list**, not in the `1:` handler after it. | **DONE.** A second socket joining after two accepted toggles is told the CURRENT line, not the opening one. | S |
+| ✅ `B2.3` | The client keeps `H:` **verbatim** and has no code path that composes a line of its own. | **DONE.** ⚠ The control passes: `40:7` is refused by name and **0 `H:` are sent**. And the picture is checked against a live server — a page served from anywhere else never connects. | S |
+
+⚠ **`B2`: NOTHING KEPT THE WORLD'S NAME.** `8:` and `9:` took one, used it as a path, and
+forgot it — so the editor could not answer *"what am I working on"*, the first question §C1
+asks, about the one thing it is definitely working on. `world_name` exists now, set **only on
+a successful** save or load: a subject line renamed by a load that did not happen is the same
+lie the mode control is aimed at, one message over.
+
+⚠ **THE SERVER SENDS THE WHOLE LINE, not fields for the client to phrase.** That is the
+strongest form of §C1 — the client cannot re-word it, re-order it, or fill a gap with a
+default. It displays what it was told or it displays nothing. **FPS is deliberately absent**:
+it is a client fact the server does not know, and one mixed field would make "the server
+authored this line" untrue of the whole. It belongs in the client's own status bar.
+
+⚠ **The gate is a SOCKET, not a picture, and that is not a shortcut.** A screenshot cannot
+tell a line the server sent from one the client wrote for itself — they are the same pixels.
+Only the wire can see whether anything was sent at all, which is exactly what the refusal
+control asks.
+
+⚠ **And the client half needs the page served BY the editor server.** The client opens
+`ws://127.0.0.1:18090/ws` as a compile-time constant, since a `--html` program cannot read
+`location`. Served from anywhere else it loads, draws its panel perfectly, and never connects
+— 300 frames, 0 meshes, and a subject line still reading *"awaiting the server"*. It looks
+exactly like a broken client and is a page served by the wrong host.
 
 ### B3 — the material catalogue
 

@@ -267,6 +267,11 @@ struct Part {
 }
 
 struct Client {
+  // ⚠ THE SUBJECT LINE, AS THE SERVER SENT IT — never composed here. §C1's whole
+  // point is that this is what the server SAYS, so the client keeps the string
+  // verbatim and has no way to phrase one of its own.
+  hud: text,
+  hud_dirty: boolean,
   parts: vector<Part>,
   prog: integer,
   view: vector<float>,
@@ -781,6 +786,13 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         else { st.c_place = st.c_place + 1; place_mesh(st, body); }
       }
       else if tag == "X" { st.c_drop = st.c_drop + 1; drop_part(st, body as integer ?? -1); }
+      else if tag == "H" {
+        // `H:<line>` — the subject line, plan 18 B2. Stored verbatim and marked
+        // for a rebuild; the panel is NOT rebuilt here, because `drain` runs
+        // inside the message loop and a burst of `H:` would rasterise a set of
+        // textures per message for a line only the last one decides.
+        if body != st.hud { st.hud = body; st.hud_dirty = true; }
+      }
       else if tag == "L" {
         // `L:<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` — one terrain layer.
         lh = semi_from(body, 0);
@@ -1074,7 +1086,7 @@ fn draw_panel(p: Panel, painter: Painter2D) {
   }
 }
 
-fn client_panel_spec() -> PanelSpec {
+fn client_panel_spec(st: Client) -> PanelSpec {
   PanelSpec {
     ps_buttons: [
       // ⚠ NO HOTKEY, because there is no key. Looking is a mouse drag, and the
@@ -1092,7 +1104,7 @@ fn client_panel_spec() -> PanelSpec {
     ps_items: [],                    // B3 fills it from the material catalogue
     ps_selected_item: -1,
     ps_status: "moros editor — connected",
-    ps_subject: subject_line(),
+    ps_subject: subject_line(st.hud),
   }
 }
 
@@ -1133,7 +1145,12 @@ fn metrics_drift(font: integer, m: Metrics, worst_s: &text) -> integer {
   worst
 }
 
-fn subject_line() -> text {
+// ⚠ ONLY UNTIL THE SERVER SPEAKS. `H:` arrives on connect, so this shows for a
+// frame or two at most — and it says the fields are unknown rather than guessing
+// them, because a plausible `AUTO · level ON` read off a client default looks
+// exactly like the same words read off the server.
+fn subject_line(hud: text) -> text {
+  if hud != "" { return hud; }
   "world — · mode — · toggles — (awaiting the server)"
 }
 
@@ -1166,6 +1183,8 @@ fn main() {
   }
 
   st = Client {
+    hud: "",
+    hud_dirty: false,
     parts: [],
     prog: 0,
     view: ident4(),
@@ -1259,7 +1278,7 @@ fn main() {
       println("client: the UI font fell back to the generic monospace family");
     }
   }
-  ui_panel = panel_build(client_panel_spec(), WIN_W, WIN_H, ui_m);
+  ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
   ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
   ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
   drift_s = "";
@@ -1292,6 +1311,23 @@ fn main() {
       if st.hello { println("client: connected — asked for the world"); }
     }
     drain(h, st);
+    // ⚠ REBUILT ON CHANGE, WHICH IS WHERE C5's CACHE BECOMES REAL. B1.4 could
+    // build the textures once because the text never moved; now the server can
+    // move it, so the rule is the one C5 states — one texture per block, rebuilt
+    // only when that block's text changes. `hud_dirty` is set by `drain` and
+    // cleared here, so a burst of `H:` costs ONE rebuild rather than one each.
+    //
+    // ⚠ AND THE OLD TEXTURES ARE DELETED. `create_text_texture` says the caller
+    // owns what it returns; dropping the vector and re-filling it would leak a
+    // GL texture per label per toggle, which is invisible in the picture and
+    // unbounded over a session.
+    if st.hud_dirty {
+      for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
+      ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
+      ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+      st.hud_dirty = false;
+      println("client: subject line ← {st.hud}");
+    }
     poll_input(h, st);
     draw_world(st);
     draw_panel(ui_panel, ui_painter);

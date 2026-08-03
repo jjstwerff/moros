@@ -3430,6 +3430,33 @@ const CAM_FAR        = 400.0;
 // a boom, and it is the DEFAULT so nobody has to know the modes exist. An
 // explicitly chosen mode never auto-switches — someone who picked SNUG walking
 // into a broom cupboard picked it on purpose.
+// ── `H:` — the subject line, composed HERE and shown verbatim ────────────────
+//
+// ⚠ THE SERVER SENDS THE WHOLE LINE, not a set of fields for the client to
+// phrase. CATALOGUE §C1 asks that every field be what the server SAYS rather
+// than what the client believes it sent, and a formatted line is the strongest
+// form of that: the client cannot re-word it, re-order it, or fill a gap with a
+// default. It displays what it was told or it displays nothing.
+//
+// ⚠ AND FPS IS DELIBERATELY ABSENT. It is a client fact — the server does not
+// know it — so it belongs in the client's own status bar, not in a line whose
+// whole claim is that the server authored it. One mixed field would make the
+// claim untrue of the line as a whole.
+fn on_off(b: boolean) -> text { if b { "ON" } else { "off" } }
+
+fn mode_name(m: integer) -> text {
+  if m == MODE_AUTO    { return "AUTO"; }
+  if m == MODE_FOLLOW  { return "FOLLOW"; }
+  if m == MODE_SNUG    { return "SNUG"; }
+  if m == MODE_CUTAWAY { return "CUTAWAY"; }
+  if m == MODE_EYES    { return "EYES"; }
+  "mode {m}"
+}
+
+fn hud_wire(name: text, mode: integer, lev: boolean, rd: boolean, tr: boolean) -> text {
+  "H:world {name} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
+}
+
 const MODE_AUTO   = 0;
 const MODE_FOLLOW = 1;
 const MODE_SNUG   = 2;
@@ -4263,6 +4290,11 @@ fn main() {
   acc_proxy = 0; acc_cam = 0; acc_rest = 0;
   nticks = 0; nrebuild = 0; acc_since = ticks(); tph = ticks();
   tracing = false;             // `27:1` turns it on; it costs three `ticks()` a tick
+  // ⚠ NOTHING KEPT THE WORLD'S NAME. `8:` and `9:` took one and forgot it, so the
+  // editor could not answer "what am I working on" — the first question §C1 asks
+  // — about the one thing it is definitely working on. It is the name of the last
+  // save or load; before either, the world is honestly unnamed.
+  world_name = "(unsaved)";
   // What the camera was last solved for. A pose unequal to this, or a moved
   // edit clock, is what makes it solve again.
   cam_lx = 0.0 - 1.0; cam_ly = 0.0; cam_lz = 0.0;
@@ -4385,6 +4417,13 @@ fn main() {
         cknown = false;
         for cl0 in clients { if cl0.cid == ev.cid { cknown = true; } }
         if !cknown { clients += [Client { cid: ev.cid, aspect: 1.6, derives: false }]; }
+        // ⚠ THE SUBJECT LINE GOES OUT WHERE THE CLIENT JOINS THE LIST, not in the
+        // `1:` handler that follows it. That is the same placement S4 had to learn
+        // for the ground: a re-send aimed at "the arriving client" fired before the
+        // client was in the list and reached nobody. A client that connects and is
+        // told nothing shows an empty subject line for as long as no toggle moves —
+        // which on a quiet session is forever.
+        srv.send_to(ev.cid, hud_wire(world_name, cam_mode, levelling, roading, tracing));
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
@@ -4460,12 +4499,20 @@ fn main() {
         } else if ev.msg_id == MSG_SAVE {
           scode = world_save(wld, world_path(ev.payload), []);
           nch = len(wld.w_chunks);
+          if scode == 0 { world_name = ev.payload; }
           srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
+          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
           println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
         } else if ev.msg_id == MSG_LOAD {
           lres = world_load(world_path(ev.payload));
           if lres.wl_code == WL_OK {
             wld = lres.wl_world;
+            // ⚠ ONLY ON SUCCESS. A refused load leaves the world you had, so it
+            // must leave its NAME too — a subject line renamed by a load that did
+            // not happen is the exact lie B2.3's control is aimed at, one message
+            // over from the mode it was written for.
+            world_name = ev.payload;
+            srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
             // Everything visible is derived from the world, so a load invalidates
             // all of it — the one case where the whole loaded set really is dirty,
             // and saying so through the same routine keeps one path.
@@ -4911,6 +4958,7 @@ fn main() {
         } else if ev.msg_id == MSG_TRACE {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
+          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
           println("editor: trace {tracing}");
         } else if ev.msg_id == MSG_MODE {
           // ⚠ AN INADMISSIBLE MODE IS REFUSED, NOT CLAMPED — leak site 1. `40:7`
@@ -4934,6 +4982,11 @@ fn main() {
             pitch = pitch_fenced(pitch, cam_mode);
             cam_rested = false;         // the ambient has somewhere to ease to
             srv.send_to(ev.cid, "S:mode {cam_mode}");
+            // ⚠ INSIDE THE ACCEPTED BRANCH, and that is the whole of B2.3's
+            // control. The refusal above sends no `H:`, so a mode the server
+            // declines leaves every client's subject line exactly as it was — the
+            // one behaviour that separates a HUD from an echo of the keystroke.
+            srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
             println("editor: camera mode {cam_mode}");
           }
         } else if ev.msg_id == MSG_LABELS {
@@ -5479,6 +5532,7 @@ fn main() {
             srv.send_to(ev.cid, "S:road false at grade {road_h}");
             println("editor: road off at grade {road_h}");
           }
+          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling { level_warned = false; }
@@ -5514,6 +5568,7 @@ fn main() {
             moved = true;
             println("editor: levelling off — feet back on the ground at {py}");
           }
+          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
         } else if ev.msg_id == MSG_RAISE {
           // ⚠ THE GESTURE IS `hex_editor`'s NOW — `SCRIPTED_EDITOR.md` §2. Ninety
           // lines of ray-walk, brush and clamp lived here, reachable only through

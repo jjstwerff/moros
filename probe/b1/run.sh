@@ -96,6 +96,34 @@ ctrl=$(printf '%s\n' "$shot_out" | sed -n 's/.*control \([0-9][0-9]*\)px.*/\1/p'
 echo "  ok    drift ${drift}px, and a 10% wrong advance reads ${ctrl}px"
 
 echo
+echo "── B2  the subject line comes from the SERVER, in the client ────────"
+# ⚠ AGAINST A LIVE SERVER, and served BY it. The client opens
+# ws://127.0.0.1:18090/ws as a compile-time constant (a --html program cannot
+# read `location`), so a page served from anywhere else loads, draws its panel
+# perfectly, and never connects -- 300 frames, 0 meshes, and a subject line still
+# saying "awaiting the server". It reads as a broken client and is a page served
+# by the wrong host.
+make -s stop-editor >/dev/null 2>&1 || true
+: > .editor.log
+nohup $LOFT --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 &
+until grep -q 'listening on port' .editor.log 2>/dev/null; do sleep 0.5; done
+b2_out=$(SHOT_SETTLE_MS=9000 node probe/b1/browser_shot.mjs http://127.0.0.1:18090/ probe/b1/client_live.png)
+make -s stop-editor >/dev/null 2>&1 || true
+printf '%s\n' "$b2_out" | sed -n 's/^  | client: \(subject line\|connected\).*/  \0/p'
+printf '%s\n' "$b2_out" | grep -q 'client: connected' \
+  || { echo "  !! the client never connected - nothing here measures the server"; exit 1; }
+# The client keeps `H:` VERBATIM and has no code path that composes a line of its
+# own, so seeing the server's exact words in its log is what says the picture is
+# the server's line rather than the client's guess.
+printf '%s\n' "$b2_out" | grep -q 'subject line ← world ' \
+  || { echo "  !! the client never took a subject line from the server"; exit 1; }
+printf '%s\n' "$b2_out" | grep -q 'awaiting the server' \
+  && { echo "  !! the client is still showing its placeholder"; exit 1; }
+node probe/b1/panel.mjs probe/b1/client_live.png >/dev/null \
+  || { echo "  !! the live client's panel does not measure up"; exit 1; }
+echo "  ok    the client shows the server's line, and its panel still measures up"
+
+echo
 echo "── B1.3c  and the panel reader, against pictures with no panel ─────"
 node probe/b1/panel.mjs probe/b1/gl_text.png >/dev/null 2>&1 \
   && { echo "  !! a panel-less picture PASSED — the reader is blind"; exit 1; }
