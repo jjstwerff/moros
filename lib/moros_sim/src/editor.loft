@@ -1,8 +1,14 @@
 // EditorState — aggregate for the walkable editor's logical state
 // (Step 9).  Bundles map, avatar, tool selection, undo stack, and
 // user-toggleable render flags so the host loop has one value to
-// pass into `editor_tick`.  No UI or panel dependency lives here —
-// that part stays in moros_ui's `editor_click` (Step 9b).
+// pass into `editor_tick`.  No UI or panel dependency lives here.
+//
+// ⚠ It used to say "that part stays in moros_ui's `editor_click`".
+// `moros_ui` is gone: the panel is `lavition_ui`, it is lavition's
+// rather than Moros's, and it takes a `PanelSpec` of plain labels
+// instead of an `EditorState`.  A consumer that wants click dispatch
+// writes it against `panel_hit_test`'s `UiHit`, where it can see
+// what a click is supposed to mean.  See doc/claude/EDITOR_UI.md.
 //
 // Step 10 adds `input_from_keys`: pure decoder from a keyboard /
 // mouse snapshot to an `InputState`.  Pressed-vs-held edge detection
@@ -62,8 +68,9 @@ pub fn editor_default() -> EditorState {
 
 // ── Per-frame update ─────────────────────────────────────────────
 // Advances physics, applies edge-triggered input mutations, and
-// returns control to the host.  Click dispatch lives in Step 9b
-// (moros_ui) because it needs panel hit-testing.
+// returns control to the host.  Click dispatch is the HOST's: it
+// needs panel hit-testing, and `lavition_ui::panel_hit_test` reports
+// the hit without deciding what it means.
 //
 // Input fields consumed here (edge-triggered unless noted):
 //   in_tool_number:      0 = no change, 1..6 = select tool

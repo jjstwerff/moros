@@ -4,15 +4,15 @@
 *(user, 2026-08-03: "I want a universal editor, not a Moros specific one, so if we get all
 the value out of the Moros parts that is fine for me")*
 
-Plan [#18](https://github.com/jjstwerff/moros/issues/18), step `B1.2b` — a prerequisite for
-`B1.3`, which cannot produce a caller until this lands. **Design only.**
+Plan [#18](https://github.com/jjstwerff/moros/issues/18), step `B1.2b`. **Built 2026-08-03.**
 
-The panel exists, is tested, and is unusable by the one program that needs it. This is the
-design for making it lavition's rather than Moros's.
+The panel existed, was tested, and was unusable by the one program that needed it. This is
+what it took to make it lavition's rather than Moros's — the decisions first, and what
+building them measured under §U0.
 
 ---
 
-## U0 — What is true today, measured
+## U0 — What was true, measured
 
 | | |
 |---|---|
@@ -34,21 +34,44 @@ universal UI package wearing a consumer's name, so the check that exists to catc
 it through every run for months. It is not that nobody looked; it is that the instrument was
 told not to.
 
+### What building it measured
+
+| | |
+|---|---|
+| `lavition_ui` dependencies | **none** — an empty `[dependencies]`, which is the cheapest proof of the claim and cannot drift like a comment |
+| tests | **33**, both backends, with no world and no window linked |
+| `tools/layering.sh` on it | ⚠ seen **red** first: a planted `moros_map::` reference is caught by file and line. Under the old name it was skipped in silence |
+| `make client` | **succeeds** — `editor_client.loft` builds a `Panel`, the caller this arc never had |
+| the client, desktop | `panel 6 buttons, advance 9, mono true, list 224x398` |
+| the client, browser | `the UI font fell back to the generic monospace family` → then **the same four numbers** |
+
+⚠ **The two targets agree exactly and get there by different routes**, which is the whole
+argument for measuring instead of naming: the desktop loads the `.ttf`, the browser cannot
+and falls back to the generic family, and *the client never asks which one it is on*.
+loft has no conditional compilation and this needs none — ask, measure, and keep the answer
+only if it is better.
+
 ---
 
-## U1 — The package is `editor_ui`, and the rename IS the mechanism
+## U1 — The package is `lavition_ui`, and the rename IS the mechanism
 
 Not a tidy-up. Renaming out of the `moros_*` namespace **puts the package under
 `tools/layering.sh`**, which then fails the build on every `moros_sim`, `moros_map` and
 `moros_editor` reference in it. The decoupling stops depending on care and starts being
 something a script refuses to let regress.
 
-> **Why not `hex_ui`.** `hex_*` in this family means *one data axis of the hex world* —
-> `hex_grid` is the lattice, `hex_world` the store, `hex_way` the centreline. A rect is a
-> rect and a text advance is a text advance; there is no hex in this package, and claiming
-> the prefix would make the family's own naming rule mean less. lavition's own naming table
-> (`loft/doc/claude/LAVITION.md`, outside this repo) gives `terrain` as an unprefixed
-> example, so a plain descriptive name is already the convention for a non-axis package.
+> **Why `lavition_` and not `hex_`.** `hex_*` in this family means *one data axis of the hex
+> world* — `hex_grid` is the lattice, `hex_world` the store, `hex_way` the centreline. A rect
+> is a rect and a text advance is a text advance; there is no hex in this package, and
+> claiming the prefix would make the family's own naming rule mean less.
+>
+> ⚠ **This was `editor_ui` for one commit, and `lavition_ui` is the user's call
+> (2026-08-03): "if you need a specific name for something lavition is the better one (the
+> whole game suite)".** It is the right one, and it fixes a real worry — `editor_ui` is
+> generic enough to collide in a shared registry, while `lavition_ui` says exactly whose it
+> is. ⚠ It does sit against `LAVITION.md`'s own table, which says `use X;` names are
+> *"descriptive only — NO brand prefix"*; that line is about the `hex_*` data-axis family,
+> and a suite-wide UI package is not one of those. Noted rather than silently contradicted.
 
 > **Why not inside `hex_editor`.** It would cost the client nothing — it already depends on
 > it — and that is the trap. `hex_editor` is also consumed **headless** by
@@ -60,7 +83,7 @@ something a script refuses to let regress.
 
 ## U2 — What crosses the seam is DATA, not state
 
-`panel_build` takes `ToolState` today, which is what drags `moros_sim` in. It takes a
+`panel_build` took a `ToolState`, which is what dragged `moros_sim` in. It takes a
 **spec** instead — plain labels and indices the consumer already has:
 
 ```
@@ -87,18 +110,19 @@ test. With a spec they assert layout against layout.
 
 ## U3 — A click returns a HIT; it does not mutate
 
-`route_click` mutates `ToolState` in place today. It returns the `UiHit` and stops there.
-The consumer decides what a click on item 3 *means*, because only the consumer knows —
-and for the browser client the answer is usually **send a message and wait for the server
-to say so**, not "set a local field".
+`route_click` mutated `ToolState` in place. The consumer decides what a click on item 3
+*means*, because only the consumer knows — and for the browser client the answer is usually
+**send a message and wait for the server to say so**, not "set a local field".
 
-`panel_hit_test` is already pure and unchanged.
+⚠ **So `route_click` is gone rather than ported.** With the mutation removed it was
+`panel_hit_test` under a second name, and two names for one function is how a reader learns
+to distrust both. `panel_hit_test` is unchanged.
 
 ---
 
 ## U4 — The metrics seam stays exactly as `B1.2` built it
 
-`Metrics` + `metrics_measured` + `text_width` + `fit_text` move across untouched. They have
+`Metrics` + `metrics_measured` + `text_width` + `fit_text` moved across untouched. They have
 no Moros reference already (`font.loft`: **0** coupled references), and they carry the
 finding that motivated them: `probe/b1` measured `len × 8` wrong on both targets, and the
 browser resolving a `.ttf` path to a **proportional** fallback is the control in
@@ -128,7 +152,7 @@ every arm, and the fit-to-box logic. ~190 lines and 40-odd tests survive intact.
 
 ## What this is verified by
 
-**Library (`lib/editor_ui/tests/`), pure, no world and no window:**
+**Library (`lib/lavition_ui/tests/`), pure, no world and no window — 33 tests, both backends:**
 
 | claim | why it cannot be a gate |
 |---|---|
@@ -138,21 +162,22 @@ every arm, and the fit-to-box logic. ~190 lines and 40-odd tests survive intact.
 | the fixed-pitch check, with the browser's real proportional numbers as the control | measured in `probe/b1`, not invented |
 | a `PanelSpec` with more items than the list can show still hit-tests correctly | the scroll case, which has no picture |
 
-**The layering script**, which now applies to this package for the first time — and ⚠ with
-the control seen red: put a `moros_map::` reference back and `make lib-test` must fail
-before the suites even run.
+**The layering script**, which applies to this package for the first time — ⚠ and was
+**seen red** before it was trusted: a planted `moros_map::PALETTE_MAX` is reported by file
+and line, and `make lib-test` stops before the suites run.
 
-**The real gate, and the one that has been missing all along:** `editor_client.loft`
-compiles against it. Not *"`moros_sim` still builds"* — `moros_sim` cannot break, because it
-does not know this package exists. That check was in the plan and was worth nothing.
+**The real gate, and the one that had been missing all along:** `editor_client.loft`
+compiles against it and builds a `Panel`. Not *"`moros_sim` still builds"* — `moros_sim`
+cannot break, because it does not know this package exists. That check was in the plan and
+was worth nothing.
 
 ---
 
 ## The order of work
 
 **In the plan** — [plans/18-catalogue/README.md](../../plans/18-catalogue/README.md) `B1.2b`,
-broken into one-sitting steps. It is four steps and none of them is risky, because nothing
-consumes the package being changed.
+four steps, all landed. None was risky, because nothing consumed the package being changed —
+which is the one advantage of having found it this late.
 
 ---
 

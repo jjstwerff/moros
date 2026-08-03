@@ -1,0 +1,140 @@
+// Panel layout — rects, and the spec that fills them.
+//
+// ⚠ THESE TESTS LINK NOTHING. They were `moros_ui`'s and each one built a
+// `ToolState` to assert a rectangle, which linked a player-physics and collision
+// package into a layout test. A panel is rectangles and strings; if a layout
+// test needs a world to run, the layout knows about the world.
+use lavition_ui;
+
+// A fixed-pitch Metrics — built through `metrics_measured`, the same door a
+// consumer uses, because there is deliberately no "just tell me the advance"
+// constructor to skip the measuring with.
+fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, line_h)
+}
+
+// Six buttons and a few items — Moros's shape, as an EXAMPLE rather than as the
+// library's own idea of what a panel contains.
+fn demo_spec() -> PanelSpec {
+  PanelSpec {
+    ps_buttons: [
+      spec_button("None", "1"), spec_button("Raise", "2"), spec_button("Lower", "3"),
+      spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
+    ],
+    ps_selected_button: 3,
+    ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+    ps_selected_item: 1,
+    ps_status: "q=0 r=0 cy=0  y= 0.0  FPS 60",
+  }
+}
+
+// ── Rect helpers ─────────────────────────────────────────────────
+
+fn test_rect_contains_inside() {
+  r = rect(10, 10, 100, 50);
+  assert(rect_contains(r, 50, 30), "centre inside");
+}
+
+fn test_rect_contains_boundaries() {
+  r = rect(10, 10, 100, 50);
+  assert(rect_contains(r, 10, 10), "top-left corner inside");
+  assert(!rect_contains(r, 110, 10), "right edge exclusive");
+  assert(!rect_contains(r, 10, 60), "bottom edge exclusive");
+  assert(!rect_contains(r, 9, 10), "just-left outside");
+  assert(!rect_contains(r, 10, 9), "just-above outside");
+}
+
+// ── Layout at standard resolution ────────────────────────────────
+
+fn test_panel_rect_standard() {
+  r = panel_rect(1280, 720);
+  assert(r.r_x == 0 && r.r_y == 0, "panel origin");
+  assert(r.r_w == 240, "panel w = 240");
+  assert(r.r_h == 720, "panel h spans the window");
+}
+
+fn test_toolbar_buttons_stack_without_overlapping() {
+  b0 = toolbar_button_rect(0);
+  b1 = toolbar_button_rect(1);
+  b5 = toolbar_button_rect(5);
+  assert(b0.r_y == 8, "first button at the top margin");
+  assert(b1.r_y >= b0.r_y + b0.r_h, "button 1 starts below button 0");
+  assert(b5.r_y + b5.r_h < 240, "six buttons stay in the top quarter");
+}
+
+fn test_toolbar_button_width() {
+  b = toolbar_button_rect(0);
+  assert(b.r_w == 240 - 16, "button spans the strip minus its margins");
+}
+
+// ⚠ THE BUTTON COUNT IS A PARAMETER NOW, and this is what says so. It was the
+// constant `TOOLBAR_BUTTONS = 6` — Moros's tool count baked into every
+// consumer's geometry.
+fn test_the_list_starts_below_however_many_buttons_there_are() {
+  three = list_rect(720, 3);
+  six   = list_rect(720, 6);
+  assert(six.r_y > three.r_y, "six buttons push the list further down than three");
+  assert(six.r_h < three.r_h, "and leave it less room");
+  assert(three.r_h > 0 && six.r_h > 0, "both leave a usable list");
+}
+
+fn test_list_rect_non_empty_at_common_sizes() {
+  for h in [480, 720, 800, 1080] {
+    r = list_rect(h, 6);
+    assert(r.r_h > 0, "list has no room at window height {h}");
+  }
+}
+
+fn test_status_bar_spans_the_window_not_the_panel() {
+  s = status_rect(1280, 720);
+  assert(s.r_y == 720 - 24, "status anchored to the bottom");
+  assert(s.r_h == 24, "status height fixed");
+  assert(s.r_x == 0, "status starts at the left edge");
+  assert(s.r_w == 1280, "status spans the WINDOW — see status_rect");
+}
+
+// ── panel_build ──────────────────────────────────────────────────
+
+fn test_panel_build_makes_one_button_per_spec_entry() {
+  p = panel_build(demo_spec(), 1280, 720, ui_metrics(8, 8));
+  assert(len(p.p_toolbar) == 6, "six spec buttons, {len(p.p_toolbar)} built");
+}
+
+fn test_panel_build_marks_the_selected_button() {
+  p = panel_build(demo_spec(), 1280, 720, ui_metrics(8, 8));
+  b3 = p.p_toolbar[3] ?? Button {};
+  b0 = p.p_toolbar[0] ?? Button {};
+  assert(b3.btn_selected, "index 3 was named selected");
+  assert(!b0.btn_selected, "index 0 was not");
+}
+
+fn test_panel_build_carries_the_items_and_the_selection() {
+  p = panel_build(demo_spec(), 1280, 720, ui_metrics(8, 8));
+  assert(len(p.p_list.lb_items) == 5, "five items, got {len(p.p_list.lb_items)}");
+  assert(p.p_list.lb_selected == 1, "selection index passes through");
+}
+
+// An empty panel is a legal panel: a consumer with no tools yet still gets a
+// strip and a status bar rather than a null.
+fn test_an_empty_spec_still_builds() {
+  empty = PanelSpec {
+    ps_buttons: [], ps_selected_button: -1,
+    ps_items: [], ps_selected_item: -1,
+    ps_status: "",
+  };
+  p = panel_build(empty, 1280, 720, ui_metrics(8, 8));
+  assert(len(p.p_toolbar) == 0, "no buttons");
+  assert(len(p.p_list.lb_items) == 0, "no items");
+  assert(p.p_list.lb_rect.r_h > 0, "the list still has a rectangle");
+  assert(p.p_rect.r_w == 240, "the strip is still there");
+}
+
+fn test_a_selection_outside_the_buttons_marks_nothing() {
+  s = demo_spec();
+  s.ps_selected_button = 99;
+  p = panel_build(s, 1280, 720, ui_metrics(8, 8));
+  for b in p.p_toolbar {
+    assert(!b.btn_selected, "button {b.btn_id} marked by an out-of-range selection");
+  }
+}

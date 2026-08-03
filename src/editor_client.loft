@@ -50,6 +50,13 @@ use gridmesh;   // enc_coord — the SAME chunk key the server packs mesh ids wi
 // is one function — two copies that agree today are two copies.
 use moros_terrain;
 use hex_editor;
+// ⚠ THE PANEL, AND THIS DEPENDENCY IS THE POINT OF PLAN 18's B1.2b.
+// It was `moros_ui` and could not be named here at all: it depended on
+// `moros_sim` + `moros_editor` + `moros_map`, a player-physics and collision
+// stack this client has no use for, so the one program that needs a panel was
+// the one program that could not have it. `lavition_ui` has NO dependencies —
+// it takes a `PanelSpec` of plain labels and gives back rectangles and hits.
+use lavition_ui;
 
 // The wire, server -> client. Unchanged from `html/editor.html`, deliberately:
 //   M:<i>;<ramp>;r,g,b;x0,y0,z0,nx0,ny0,nz0,…   mesh i, POSITION FIRST, 6 floats/vertex
@@ -123,6 +130,19 @@ const WALL_CMD = "23:1,3";
 // Sized to the region, the canvas is full, the aspect this reports is true, and the
 // frame is the same one the JavaScript drew — which is what lets the gates keep their
 // thresholds across the swap instead of being re-tuned to whatever came out.
+// ⚠ TARGET-DEPENDENT, and `probe/b1` is why. The DESKTOP backend loads a FILE —
+// `gl_load_font("monospace")` returns null there. The BROWSER cannot load font
+// bytes synchronously, so it resolves a path to a CSS family by its BASE NAME,
+// and a base name it does not know falls back to a PROPORTIONAL face. Asking the
+// browser for the generic `monospace` gave 192.66 — exactly the desktop DejaVu —
+// but that is Chrome's default happening to be the same face, a coincidence and
+// not a contract. Hence `client_metrics` measures rather than assumes.
+const UI_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
+// The browser's dialect for the same request. `gl_load_font("monospace")` returns
+// NULL on the desktop, so neither string serves both targets and neither is
+// "wrong" — which is why the choice is made by MEASURING rather than by naming
+// the target. loft has no conditional compilation, and this needs none.
+const UI_FONT_GENERIC = "monospace";
 const WIN_W = 1200;
 const WIN_H = 660;
 
@@ -977,6 +997,49 @@ fn poll_input(h: web::WsHandler, st: Client) {
   }
 }
 
+// ── The panel (plan 18, B1.2b) ───────────────────────────────────────────────
+//
+// ⚠ BUILT, NOT YET DRAWN. `B1.3` writes `panel_render`; this is the step that
+// makes the client a CALLER, which the whole B1 arc had never had — `lavition_ui`
+// was tested green for months with nothing in the tree invoking it, and a tested
+// claim no consumer honours is a claim about nothing.
+//
+// ⚠ THE LABELS ARE A PLACEHOLDER AND THE COMMENT SAYS SO. The panel's contents
+// must come from the SERVER (`H:`, plan 18 `B2`) — a client that shows what it
+// believes it selected is a picture of its own intention, which is the mistake
+// this tree has paid for twice. These six are the keys the client already binds,
+// stated once so the panel has a shape to render before `H:` exists.
+fn client_panel_spec() -> PanelSpec {
+  PanelSpec {
+    ps_buttons: [
+      spec_button("Look",    "drag"),
+      spec_button("Level",   "l"),
+      spec_button("Field",   "f"),
+      spec_button("Stencil", "e"),
+      spec_button("Wall",    "r"),
+      spec_button("Cart",    "c"),
+    ],
+    ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
+    ps_items: [],                    // B3 fills it from the material catalogue
+    ps_selected_item: -1,
+    ps_status: "moros editor — connected",
+  }
+}
+
+// The metrics the panel lays out against.
+//
+// ⚠ MEASURED THROUGH THE BRIDGE, never stated. `probe/b1` measured `len * 8`
+// wrong on BOTH targets (19.27 desktop, 26.66 browser) and found the browser
+// resolving a .ttf path to a PROPORTIONAL fallback, which `len * advance` is not
+// exact for. Two same-length opposite-width runs is the whole instrument; one
+// width cannot answer it, because ten M's are ten M's in any font.
+fn client_metrics(font: integer) -> Metrics {
+  size = 16.0;
+  wide   = graphics::gl_measure_text(font, "MMMMMMMMMM", size);
+  narrow = graphics::gl_measure_text(font, "iiiiiiiiii", size);
+  metrics_measured(wide, narrow, 10, graphics::gl_text_height(font, size))
+}
+
 fn main() {
   println("moros editor client — S1 (plan #16): the wire, in loft");
 
@@ -1054,6 +1117,42 @@ fn main() {
   // between frames — so the swap is what lets `onmessage` fill the queue that the
   // next `try_recv` drains. On native it blocks for the frame instead, which is
   // what lets the same source run under `--interpret` while it is being written.
+  // ⚠ THE PANEL IS BUILT ONCE HERE, AND THAT IS DELIBERATE FOR NOW. Its contents
+  // do not change until `H:` exists (plan 18 `B2`), and rebuilding an unchanged
+  // panel every frame is the churn `C5` warns about. When the contents start
+  // moving, rebuild on CHANGE — not on tick.
+  // ⚠ THE FONT IS CHOSEN BY MEASUREMENT, NOT BY TARGET. Ask for the file; if what
+  // came back is not fixed-pitch, ask for the generic and keep it only if it is
+  // better. On the desktop the file loads and the fallback never runs; in the
+  // browser the path resolves through its BASE NAME to a family Chrome does not
+  // know and falls back to a proportional face, which the second ask fixes.
+  // `probe/b1` measured both — 192.66/192.66 desktop, 266.56/71.09 browser — and
+  // the retry is the smallest thing that makes one source correct on both.
+  ui_font = graphics::gl_load_font(UI_FONT);
+  ui_m = client_metrics(ui_font);
+  if !ui_m.m_mono {
+    alt_font = graphics::gl_load_font(UI_FONT_GENERIC);
+    alt_m = client_metrics(alt_font);
+    // Only if it is actually better: on the desktop this load returns null and
+    // measures 0, and swapping a working font for an unmeasurable one would be
+    // the fallback making things worse.
+    if alt_m.m_mono && alt_m.m_advance > 0 {
+      ui_font = alt_font;
+      ui_m = alt_m;
+      println("client: the UI font fell back to the generic monospace family");
+    }
+  }
+  ui_panel = panel_build(client_panel_spec(), WIN_W, WIN_H, ui_m);
+  ui_lr = ui_panel.p_list.lb_rect;
+  println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {ui_m.m_advance}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
+  if !ui_m.m_mono {
+    // ⚠ SAID OUT LOUD RATHER THAN ABSORBED. `len * advance` is only exact for a
+    // fixed-pitch font, and the browser silently resolving a path to a
+    // proportional face is exactly what `probe/b1` caught. A mis-laid panel
+    // still draws, so nothing else would report this.
+    println("client: ⚠ the UI font is NOT fixed-pitch — panel widths are approximate");
+  }
+
   frames = 0;
   reported = 0;
   while graphics::gl_poll_events() {

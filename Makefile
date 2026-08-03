@@ -17,7 +17,7 @@ LOFT ?= loft
 # that only ever passed because someone ran them by hand. They are lavition
 # packages and take no brand prefix (see CLAUDE.md), which is exactly why a
 # `moros_*`-shaped list skipped them.
-LIB_PACKAGES = moros_map moros_editor moros_render moros_sim moros_ui \
+LIB_PACKAGES = moros_map moros_editor moros_render moros_sim lavition_ui \
                hex_world hex_editor moros_terrain glb_read
 
 serve:

@@ -46,7 +46,7 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 |---|---|---|---|
 | ✅ `B1.1` | **A probe, before anything else** — `make probe-text`, [probe/b1](../../probe/b1/README.md). | **DONE.** Ink left/right: desktop **1127/0**, browser **1246/0**. The reader is itself checked against a blank frame, an all-white one, and real text. ⚠ **It found a live trap** — see below. | XS |
 | ✅ `B1.2` | `Metrics` in `moros_ui`, threaded through `panel_build` and **load-bearing**: labels, list items and the status line are fitted to their boxes at build time. `metrics_measured` is the only constructor, so there is no fabricate-an-advance door. | **DONE.** 59 tests, both backends. Controls seen red: re-baking the advance at 8, a fixed-pitch check that always says yes, and a `fit_text` that stops truncating. ⚠ **It found the status strip 2.7× too small** — see below. | S |
-| ⛔ **`B1.2b`** | **the panel becomes lavition's** — its own section below. `B1.3` cannot start until this lands. | `editor_client.loft` compiles against `editor_ui` | M |
+| ✅ **`B1.2b`** | **the panel became lavition's** — `lavition_ui`, its own section below. | **DONE.** `editor_client.loft` compiles against it and builds a `Panel`. | M |
 | `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. ⚠ Needs `B1.2b`, and is the first **caller** of `metrics_measured`: pick the font per target, measure both runs, refuse/warn when `m_mono` is false. | a PNG from the CLIENT shows the 240 px strip and six buttons | S |
 | `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
 | `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, **in the client** | S |
@@ -94,15 +94,22 @@ regress.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B1.2b.1` | `lib/editor_ui` with `widgets.loft` + `font.loft` verbatim, and the layout rects. **No `moros_*` dependency in the manifest.** | `make lib-test` green; ⚠ **`layering.sh` seen red first** — add a `moros_map::` reference and confirm the build stops before the suites run | S |
-| `B1.2b.2` | `PanelSpec` replaces `ToolState` in `panel_build`; `route_click` returns its `UiHit` instead of mutating. | the layout, hit-test and metrics tests move across and pass **with no world and no `moros_sim` linked** | M |
-| `B1.2b.3` | Delete `moros_ui`. | nothing references it; `make lib-test` and `make gate` green | XS |
-| `B1.2b.4` | `editor_client.loft` declares the dependency and builds a `Panel` from a `PanelSpec` — no drawing yet. | ⚠ **`make client` succeeds** — the caller this arc has never had | S |
+| ✅ `B1.2b.1` | `lib/lavition_ui` — `widgets.loft` + `font.loft` verbatim, the layout rects, **an empty `[dependencies]`**. | **DONE.** ⚠ `layering.sh` **seen red first**: a planted `moros_map::` is reported by file and line, and stops the build before the suites. Under the old name it was skipped in silence. | S |
+| ✅ `B1.2b.2` | `PanelSpec` replaces `ToolState`; `route_click` **deleted** — without its mutation it was `panel_hit_test` under a second name. The button count stops being the constant `6`. | **DONE.** 33 tests, both backends, **nothing linked** — no world, no window, no `moros_sim`. | M |
+| ✅ `B1.2b.3` | Delete `moros_ui`; fix the two stale comments in `moros_sim` that pointed at it. | **DONE.** `make lib-test` and `make gate` (33) green. | XS |
+| ✅ `B1.2b.4` | `editor_client.loft` declares the dependency, measures its font and builds a `Panel` — no drawing yet. | **DONE.** `make client` succeeds. Desktop and browser both report `6 buttons, advance 9, mono true, list 224x398` — ⚠ by **different routes**, see below. | S |
 
-⚠ **`B1.2b.4` is the point of the whole step.** Everything before it is refactoring a
-library nobody calls; that step is what stops that being true, and it is why the old gate
+⚠ **`B1.2b.4` was the point of the whole step.** Everything before it refactors a library
+nobody calls; that step is what stopped that being true, and it is why the old gate
 (*"`moros_sim` still builds"*) was worth nothing — `moros_sim` cannot break, it does not know
 this package exists.
+
+⚠ **THE TWO TARGETS AGREE EXACTLY AND GET THERE BY DIFFERENT ROUTES.** The desktop loads the
+`.ttf`; the browser cannot load font bytes, resolves the path's base name to a family Chrome
+does not know, lands on a **proportional** face, and the client's retry takes the generic
+`monospace` instead — reported as `the UI font fell back to the generic monospace family`.
+The client never asks which target it is on. loft has no conditional compilation and this
+needed none: **ask, measure, and keep the answer only if it is better.**
 
 ### B2 — the line tells the truth
 

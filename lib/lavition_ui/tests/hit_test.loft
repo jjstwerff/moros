@@ -1,0 +1,126 @@
+// Hit-test — every arm, and the gaps between them.
+//
+// ⚠ NO WORLD AND NO TOOL STATE. These were `moros_ui`'s and each built a
+// `ToolState` to click on a rectangle. A hit is a number; if testing one needs a
+// physics package linked, the hit-test knows about physics.
+//
+// ⚠ AND `route_click` IS GONE, not ported. It was `panel_hit_test` plus a
+// mutation of the caller's tool state — and only the consumer knows what a click
+// on item 3 MEANS. With the mutation removed it was this function under a second
+// name, so the tests that exercised it now exercise this one.
+use lavition_ui;
+
+fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, line_h)
+}
+
+fn is_button(h: UiHit) -> boolean {
+  if h is UhToolButton { tb_id } { _ = tb_id; return true; }
+  false
+}
+
+fn is_item(h: UiHit) -> boolean {
+  if h is UhListItem { li_idx } { _ = li_idx; return true; }
+  false
+}
+
+fn six_button_panel() -> Panel {
+  spec = PanelSpec {
+    ps_buttons: [
+      spec_button("None", "1"), spec_button("Raise", "2"), spec_button("Lower", "3"),
+      spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
+    ],
+    ps_selected_button: 0,
+    ps_items: ["1", "2", "4", "8"],
+    ps_selected_item: 0,
+    ps_status: "ready",
+  };
+  panel_build(spec, 1280, 720, ui_metrics(8, 8))
+}
+
+// ── Outside the panel ────────────────────────────────────────────
+
+fn test_click_right_of_panel_is_world() {
+  hit = panel_hit_test(six_button_panel(), 500, 300);
+  assert(hit is UhWorld, "a click right of the strip is the world");
+}
+
+// ── The toolbar ──────────────────────────────────────────────────
+
+fn test_click_on_each_button_reports_its_own_id() {
+  p = six_button_panel();
+  for i in 0..6 {
+    r = toolbar_button_rect(i);
+    hit = panel_hit_test(p, r.r_x + 4, r.r_y + 4);
+    assert(hit is UhToolButton { tb_id }, "button {i} was not hit");
+    if hit is UhToolButton { tb_id } {
+      assert(tb_id == i, "clicked button {i}, got id {tb_id}");
+    }
+  }
+}
+
+// ⚠ THE GAP BETWEEN TWO BUTTONS IS NOT EITHER OF THEM. Without this the test
+// above passes on a hit-test that returns the nearest button for any y at all.
+fn test_the_gap_between_buttons_is_not_a_button() {
+  p = six_button_panel();
+  b0 = toolbar_button_rect(0);
+  hit = panel_hit_test(p, b0.r_x + 4, b0.r_y + b0.r_h + 1);
+  assert(!is_button(hit), "the gap under button 0 reported a button");
+}
+
+// ── The list ─────────────────────────────────────────────────────
+
+fn test_click_on_a_list_item_reports_its_index() {
+  p = six_button_panel();
+  lr = p.p_list.lb_rect;
+  for i in 0..4 {
+    hit = panel_hit_test(p, lr.r_x + 4, lr.r_y + i * LIST_ITEM_HEIGHT + 2);
+    assert(hit is UhListItem { li_idx }, "list row {i} was not hit");
+    if hit is UhListItem { li_idx } {
+      assert(li_idx == i, "clicked row {i}, got index {li_idx}");
+    }
+  }
+}
+
+// ⚠ PAST THE LAST ITEM IS NOT AN ITEM. The list rectangle is taller than its
+// contents, so a hit-test that divided by the row height and stopped would name
+// a row that is not there.
+fn test_click_below_the_last_item_is_not_an_item() {
+  p = six_button_panel();
+  lr = p.p_list.lb_rect;
+  hit = panel_hit_test(p, lr.r_x + 4, lr.r_y + 8 * LIST_ITEM_HEIGHT + 2);
+  assert(!is_item(hit), "a row past the end reported an item");
+}
+
+// The scroll offset shifts which row a pixel names — the case with no picture.
+fn test_scrolling_moves_which_row_a_click_names() {
+  p = six_button_panel();
+  lr = p.p_list.lb_rect;
+  y = lr.r_y + 2;
+  before = panel_hit_test(p, lr.r_x + 4, y);
+  p.p_list.lb_scroll = LIST_ITEM_HEIGHT;
+  after = panel_hit_test(p, lr.r_x + 4, y);
+  assert(is_item(before) && is_item(after), "both should be items");
+  if before is UhListItem { li_idx } {
+    b = li_idx;
+    if after is UhListItem { li_idx } {
+      assert(after_differs(b, li_idx), "scrolling one row did not change the index: {b} then {li_idx}");
+    }
+  }
+}
+
+fn after_differs(a: integer, b: integer) -> boolean { a != b }
+
+// ── Empty panel ──────────────────────────────────────────────────
+
+fn test_an_empty_panel_hits_nothing_inside_the_strip() {
+  empty = PanelSpec {
+    ps_buttons: [], ps_selected_button: -1,
+    ps_items: [], ps_selected_item: -1, ps_status: "",
+  };
+  p = panel_build(empty, 1280, 720, ui_metrics(8, 8));
+  hit = panel_hit_test(p, 20, 20);
+  assert(hit is UhNone, "an empty panel reported a hit");
+  assert(panel_hit_test(p, 900, 300) is UhWorld, "outside is still the world");
+}

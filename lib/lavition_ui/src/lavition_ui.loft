@@ -1,0 +1,10 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// lavition_ui — the editor's side panel: layout, hit-test and text metrics.
+//
+// lavition's, not Moros's. It holds no world, no lattice and no tool: a
+// consumer hands it a `PanelSpec` of labels and indices, and gets back
+// rectangles and hits. See doc/claude/EDITOR_UI.md.
+use widgets;
+use font;
+use panel;

@@ -22,12 +22,13 @@ import { join, extname } from 'node:path';
 
 const DIR = process.argv[2];
 const OUT = process.argv[3];
-if (!DIR || !OUT) { console.error('usage: browser_shot.mjs <dir-with-html> <out.png>'); process.exit(2); }
+const PAGE_ARG = process.argv[4];
+if (!DIR || !OUT) { console.error('usage: browser_shot.mjs <dir-with-html> <out.png> [/page.html]'); process.exit(2); }
 
 // A port band of our own, and identity by window size — this box runs other
 // agents' browsers and a port number is not an identity (run-gates.sh's rule).
 const CDP = 9366, PORT = 18571, WIN = '900,400';
-const PAGE = '/text_gl.html';
+const PAGE = PAGE_ARG ?? '/text_gl.html';
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm',
                '.png': 'image/png', '.json': 'application/json' };

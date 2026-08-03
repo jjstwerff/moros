@@ -1,0 +1,183 @@
+// The editor's side panel: layout, the spec that fills it, and hit-testing.
+//
+// A fixed-width strip on the left of the window. Toolbar at the top, scrollable
+// list below, a status bar across the bottom of the window.
+//
+// ⚠ THIS FILE KNOWS NOTHING ABOUT WHAT IT IS SHOWING. It was `moros_ui`'s and
+// took a `ToolState`, which is why it dragged `moros_sim`'s player physics and
+// collision into a layout library and made the panel unusable by the browser
+// client — the one program that needs one. What crosses the seam now is DATA:
+// labels, indices and a status string the consumer already has.
+//
+// See doc/claude/EDITOR_UI.md §U2.
+use widgets;
+use font;
+
+// ── Layout constants ─────────────────────────────────────────────
+pub PANEL_WIDTH        = 240;
+pub TOOLBAR_ROW_HEIGHT = 32;
+pub TOOLBAR_GAP        = 4;
+pub TOOLBAR_TOP        = 8;
+pub SEPARATOR_HEIGHT   = 2;
+pub LIST_ITEM_HEIGHT   = 20;
+pub STATUS_HEIGHT      = 24;
+
+// Room a label does not get: the padding inside its box, and the column the
+// hotkey glyph sits in.
+pub LABEL_PAD  = 12;
+pub HOTKEY_COL = 20;
+
+// ── What a consumer hands over ───────────────────────────────────
+//
+// One entry per toolbar button. `sb_hotkey` is shown, not bound — binding keys
+// is the consumer's, because only it knows what a key should do.
+pub struct SpecButton {
+  sb_label:  text,
+  sb_hotkey: text,
+}
+
+// The whole contents of a panel, as plain data.
+//
+// ⚠ INDICES, NOT OBJECTS. `ps_selected_button` is an index into `ps_buttons`,
+// not a `ToolKind`; `ps_selected_item` an index into `ps_items`. That is what
+// lets Moros, crawler and a browser client each map their own state to the same
+// panel — and it is also what keeps a click from meaning anything here (§U3).
+pub struct PanelSpec {
+  ps_buttons:         vector<SpecButton>,
+  ps_selected_button: integer,
+  ps_items:           vector<text>,
+  ps_selected_item:   integer,
+  ps_status:          text,
+}
+
+pub fn spec_button(label: text, hotkey: text) -> SpecButton {
+  SpecButton { sb_label: label, sb_hotkey: hotkey }
+}
+
+// ── Panel struct ─────────────────────────────────────────────────
+pub struct Panel {
+  p_rect:    Rect,
+  p_toolbar: vector<Button>,
+  p_list:    ListBox,
+  p_status:  StatusStrip,
+}
+
+// ── Layout helpers ───────────────────────────────────────────────
+
+pub fn panel_rect(window_w: integer, window_h: integer) -> Rect {
+  // window_w is present so callers do not have to special-case the single fixed
+  // strip; if the panel grows a right-aligned variant, the dimension is here.
+  _ = window_w;
+  rect(0, 0, PANEL_WIDTH, window_h)
+}
+
+pub fn toolbar_button_rect(idx: integer) -> Rect {
+  tbr_y = TOOLBAR_TOP + idx * (TOOLBAR_ROW_HEIGHT + TOOLBAR_GAP);
+  rect(8, tbr_y, PANEL_WIDTH - 16, TOOLBAR_ROW_HEIGHT)
+}
+
+// ⚠ THE BUTTON COUNT IS A PARAMETER, not a constant. It was `TOOLBAR_BUTTONS =
+// 6`, which is Moros's tool count — a piece of one consumer's content baked into
+// the geometry of every consumer's panel. The list starts below however many
+// buttons it was given.
+pub fn list_rect(window_h: integer, n_buttons: integer) -> Rect {
+  lr_top = TOOLBAR_TOP
+    + n_buttons * (TOOLBAR_ROW_HEIGHT + TOOLBAR_GAP)
+    + SEPARATOR_HEIGHT + 8;
+  lr_bottom = window_h - STATUS_HEIGHT - 4;
+  rect(8, lr_top, PANEL_WIDTH - 16, lr_bottom - lr_top)
+}
+
+// ⚠ THE STATUS BAR SPANS THE WINDOW, and it did not until the metrics were made
+// load-bearing. It was `PANEL_WIDTH` — 240 px — while the text it is handed runs
+// to 80-odd characters, about 648 px. It overflowed its own box by 2.7x from the
+// day it was written, and nothing reported it because nothing measured: the
+// renderer was never built, so the text never met its rectangle.
+pub fn status_rect(window_w: integer, window_h: integer) -> Rect {
+  rect(0, window_h - STATUS_HEIGHT, window_w, STATUS_HEIGHT)
+}
+
+// ── Panel build ──────────────────────────────────────────────────
+
+// ⚠ EVERY LABEL IS FITTED TO ITS BOX HERE, not left for the renderer to overflow.
+// How many characters fit is a question about the FONT, which this library
+// cannot know — so the consumer measures once and hands over `Metrics`, and the
+// fit becomes a pure testable fact about the panel rather than something a
+// renderer discovers by drawing past the edge.
+pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
+                   metrics: Metrics) -> Panel {
+  pb_buttons: vector<Button> = [];
+  pb_i = 0;
+  for pb_sb in spec.ps_buttons {
+    pb_br = toolbar_button_rect(pb_i);
+    pb_buttons += [Button {
+      btn_id:           pb_i,
+      btn_rect:         pb_br,
+      btn_label:        fit_text(pb_sb.sb_label, pb_br.r_w - LABEL_PAD - HOTKEY_COL, metrics),
+      btn_hotkey_label: pb_sb.sb_hotkey,
+      btn_selected:     pb_i == spec.ps_selected_button,
+    }];
+    pb_i = pb_i + 1;
+  }
+
+  pb_lr = list_rect(window_h, len(spec.ps_buttons));
+  pb_items: vector<text> = [];
+  for pb_it in spec.ps_items {
+    pb_items += [fit_text(pb_it, pb_lr.r_w - LABEL_PAD, metrics)];
+  }
+
+  pb_sr = status_rect(window_w, window_h);
+
+  Panel {
+    p_rect:    panel_rect(window_w, window_h),
+    p_toolbar: pb_buttons,
+    p_list: ListBox {
+      lb_rect:        pb_lr,
+      lb_items:       pb_items,
+      lb_selected:    spec.ps_selected_item,
+      lb_scroll:      0,
+      lb_item_height: LIST_ITEM_HEIGHT,
+    },
+    p_status: StatusStrip {
+      ss_rect: pb_sr,
+      ss_text: fit_text(spec.ps_status, pb_sr.r_w - LABEL_PAD, metrics),
+    },
+  }
+}
+
+// ── Hit-test ─────────────────────────────────────────────────────
+//
+// ⚠ A CLICK RETURNS A HIT; IT DOES NOT MEAN ANYTHING.  There used to be a
+// `route_click` beside this that also mutated the caller's tool state. Only the
+// consumer knows what a click on item 3 means — and for a client talking to a
+// server the answer is usually "send a message and wait to be told", not "set a
+// local field" (CATALOGUE.md §C1). With the mutation gone, `route_click` was
+// this function under another name, so it is not here.
+pub enum UiHit {
+  UhWorld,
+  UhToolButton { tb_id: integer },
+  UhListItem   { li_idx: integer },
+  UhNone,
+}
+
+pub fn panel_hit_test(p: Panel, mx: integer, my: integer) -> UiHit {
+  // Outside the panel's x-range → the world behind it.
+  if mx >= p.p_rect.r_x + p.p_rect.r_w {
+    return UhWorld;
+  }
+  for pht_b in p.p_toolbar {
+    if rect_contains(pht_b.btn_rect, mx, my) {
+      return UhToolButton { tb_id: pht_b.btn_id };
+    }
+  }
+  if rect_contains(p.p_list.lb_rect, mx, my) {
+    pht_local_y = my - p.p_list.lb_rect.r_y + p.p_list.lb_scroll;
+    // A zero item height is a mis-built panel, not a hit: -1 falls outside the
+    // range check below, so it reports "no item" rather than a null index.
+    pht_idx = (pht_local_y / p.p_list.lb_item_height) ?? -1;
+    if pht_idx >= 0 && pht_idx < len(p.p_list.lb_items) {
+      return UhListItem { li_idx: pht_idx };
+    }
+  }
+  UhNone
+}

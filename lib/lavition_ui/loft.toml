@@ -1,0 +1,20 @@
+[package]
+name    = "lavition_ui"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/lavition_ui.loft"
+
+# ⚠ NO DEPENDENCIES, AND THAT IS THE CLAIM.
+#
+# This package was `moros_ui` and depended on `moros_sim` + `moros_editor` +
+# `moros_map` — a player-physics and collision stack — because `panel_build` took
+# a `ToolState`. The one program that needs a panel, `src/editor_client.loft`,
+# uses none of those, so the panel was unusable by the only thing that wanted it.
+#
+# A rect is a rect and a text advance is a text advance. Nothing here needs a
+# world, a lattice, a window or a GL context, and an empty dependency list is the
+# cheapest possible proof of that — it cannot drift the way a comment can.
+#
+# See doc/claude/EDITOR_UI.md; the seam is `PanelSpec` (§U2).
