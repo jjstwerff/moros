@@ -68,6 +68,38 @@ cannot do it, because an unknown bit means an array of unknown length, which is 
 so the only correct response would be refusing the file. Sections let a part written by a newer
 editor still load in an older one, and that difference is testable.
 
+#### The mechanism, as built (`A1.3`, 2026-08-03)
+
+`tag(i32) + length(i32) + bytes`, repeated **to end of file**, after the last layer's CRC.
+`hex_world` owns the framing and never the content — the same deal the palette already has.
+A section rides on the world (`w_sections`), so `world_save`/`world_load` carry it with no
+consumer doing anything, which is what makes an *unknown* section survive at all.
+
+⚠ **THE TERMINATOR IS END-OF-FILE, AND THAT IS THE WHOLE BACKWARD-COMPATIBILITY ARGUMENT.**
+A section *count* has to live somewhere, and every place it can live is a byte a pre-section
+file does not have. End-of-file is the one terminator such a file already satisfies — so no
+version bump, and a reader that predates sections stops at the final CRC and never learns the
+trailing bytes are there. `lib/hex_world/tests/sections.loft` pins it with **committed
+pre-section bytes** (`presection.hxw`), the one fixture in the suite that cannot be
+regenerated into agreement with the code.
+
+⚠ **A tag packs LEAST-significant byte first**, so `PART` appears as `PART` in a hex dump —
+the only reason a tag is four characters rather than a number. `section_tag("WTTH") ==
+WORLD_MAGIC` is the cross-check, and it is what caught the packing being the wrong way round.
+It also caught something older: **every `.hxw` in the tree opens `57 54 54 48` — `WTTH`** —
+while the constant's comment claimed `'HXW7'`, a string no file has ever contained. The value
+is not corrected; every saved world carries it. `hex_field`'s `HXF1`/`OCCU`/`HGHT` had the
+convention right all along.
+
+⚠ **`world_save_incremental` rewrites the section block whole and cuts the file to length.**
+A section's size is not fixed by the shape `same_shape` compares, so an in-place update that
+skipped it would leave a shorter world's tail in place — bytes that load cleanly and say
+something untrue. Gated in **both** directions, because only the *shrink* leaves a readable
+remnant.
+
+A malformed tail is refused by name (`WL_SECTION`) rather than read as a plausible section:
+fewer than eight bytes left for a header, or a length running past the end of the file.
+
 ⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
 as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
 hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it

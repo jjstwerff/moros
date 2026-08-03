@@ -149,6 +149,24 @@ pub struct Chunk {
 // loft hash keys on a single field.
 pub struct ChunkAt { ca_key: integer, ca_at: integer }
 
+// A TAGGED SECTION — a four-character tag and bytes this library never reads.
+//
+// The store is the landscape and nothing else, and everything a consumer wants to
+// keep BESIDE the landscape — what a part is called, where it anchors, what is
+// placed in it (plan 17 `PART`, `ANCH`, `INST`) — travels here. `hex_world` owns
+// the framing and never the content, exactly as it owns the palette's length and
+// position without knowing what a material means.
+//
+// ⚠ THE POINT IS THE ONES IT DOES NOT KNOW. A section this build has never heard
+// of is loaded, carried on the world, and written back byte for byte — so a newer
+// writer does not cost an older reader the data it cannot use. That is the whole
+// argument for tag+length over a flags word: this property can be TESTED, and a
+// flags word offers nothing to test.
+pub struct Section {
+  sc_tag:   integer,                // four ASCII characters, `section_tag("PART")`
+  sc_bytes: vector<integer>,        // each 0..255 — opaque
+}
+
 pub struct World {
   w_chunks: vector<Chunk>,
   w_index:  hash<ChunkAt[ca_key]>,
@@ -158,6 +176,10 @@ pub struct World {
   w_theta:   integer,               // `θ` — match tolerance
   w_next_id: integer,               // `ν` — next free label
   w_tau:     integer,               // `τ` — the edit clock, monotonic
+  // Defaulted, so every existing `World { … }` literal in this tree and in its
+  // consumers keeps compiling and a world simply has no sections until something
+  // puts one there.
+  w_sections: vector<Section> = [],
 }
 
 // A column: ABSOLUTE heights, indexed by the chunk's layer order. It carries NO
@@ -1332,12 +1354,14 @@ pub fn snap_world(s: Snapshot) -> World {
 //             is the consumer's, and a substrate that knows is not one).
 //   [chunks ] count, then per chunk: cx, cz, base, layer count,
 //             then per layer: id, kind, cells, CRC32
+//   [sections] tag i32, length i32, that many bytes — repeated to END OF FILE
 // The format's EXACT sizes. Gates assert against these rather than against
 // whatever the writer happens to produce, so a padding regression is a failure
 // rather than a new baseline.
 pub const SZ_HEADER = 52;                     // 9 i32 + tau (8) + owner + chunk count
 pub const SZ_CHUNK  = 16;                     // cx, cz, base, layer count
 pub const SZ_CELL   = 8;                      // u16 + 6 * u8 — the voxel, exactly
+pub const SZ_SECTION_HEAD = 8;                // tag i32 + length i32
 // The DIRECTORY and the PAYLOAD are separate regions, which the contract calls
 // structural rather than an optimisation: validating a cache must cost a
 // directory read and never an 8 KB one. Every layer's id, kind and version live
@@ -1346,14 +1370,81 @@ pub const SZ_VER       = 8;                   // `τ` and `ver`, as two i32 halv
 pub const SZ_LAYER_DIR = 13;                  // id i32 + kind u8 + ver 8
 pub const SZ_LAYER     = 8196;                // 1024 * 8 cells + crc i32
 
-pub const WORLD_MAGIC   = 1213486167;   // 'HXW7'
+// ⚠ THE FILES SAY `WTTH`, AND THIS COMMENT SAID `HXW7` UNTIL 2026-08-03 — every
+// `.hxw` in the tree opens `57 54 54 48`. 1213486167 is 0x48545457, and the header
+// is written LittleEndian, so the low byte lands first and the four characters
+// come out reversed. Nothing is wrong with the file; what was wrong is the one
+// line a person reads before dumping the first four bytes to identify a format.
+// The value is NOT corrected — every saved world carries it — and it is `WTTH`
+// that names the format from here on.
+pub const WORLD_MAGIC   = 1213486167;   // 'WTTH', low byte first — see above
 pub const WORLD_VERSION = 1;
+
+// ── Sections: the tag, and reaching one ──────────────────────────────────────
+//
+// A tag is four characters packed LEAST-significant first, so that written
+// LittleEndian they land in reading order and `PART` appears as `PART` in a hex
+// dump. That is the only reason a four-character tag exists rather than a number,
+// and it is also the convention `WORLD_MAGIC` turns out to use — so
+// `section_tag("WTTH") == WORLD_MAGIC` is a real cross-check against a value this
+// function did not produce, and the test asserts it.
+//
+// ⚠ THAT CROSS-CHECK IS WHAT FOUND THE COMMENT ABOVE. The first version of this
+// packed most-significant first, which is what `'HXW7'` implied, and the check
+// disagreed by 262880. Held against itself it would have passed either way.
+//
+// ⚠ NOT a constant. `const X = some_fn()` aborts with a non-unwinding panic and no
+// source location (loft#744), so tags are literals and a test holds them equal to
+// this. See `w_sections` for why the mechanism is here.
+pub fn section_tag(name: text) -> integer {
+  t = 0;
+  sh = 0;
+  for ch in name {
+    t = t | ((ch as i32? ?? 0) << sh);
+    sh = sh + 8;
+  }
+  t
+}
+
+// The index of the first section with this tag, or −1. An index rather than the
+// bytes, because a section that is PRESENT AND EMPTY is a real thing — a flag —
+// and returning `[]` for both would make it indistinguishable from absence.
+pub fn world_section_at(w: World, tag: integer) -> integer {
+  for i in 0..len(w.w_sections) {
+    if w.w_sections[i].sc_tag == tag { return i; }
+  }
+  0 - 1
+}
+
+// Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
+// not refused — the format carries whatever it was handed, and refusing here
+// would mean this library had an opinion about content it cannot read.
+pub fn world_set_section(w: &World, tag: integer, bytes: vector<integer>) {
+  at = world_section_at(w, tag);
+  if at < 0 {
+    w.w_sections += [Section { sc_tag: tag, sc_bytes: bytes }];
+  } else {
+    w.w_sections[at].sc_bytes = bytes;
+  }
+}
+
+pub fn world_drop_section(w: &World, tag: integer) -> boolean {
+  at = world_section_at(w, tag);
+  if at < 0 { return false; }
+  keep: vector<Section> = [];
+  for i in 0..len(w.w_sections) {
+    if i != at { keep += [w.w_sections[i]]; }
+  }
+  w.w_sections = keep;
+  true
+}
 
 pub const WL_OK        = 0;
 pub const WL_MISSING   = 1;   // no such file
 pub const WL_MAGIC     = 2;   // not one of ours, or a version we do not know
 pub const WL_CONSTANTS = 3;   // `C1` — the file's own constants fail eps > 2*theta
 pub const WL_CRC       = 4;   // a chunk's bytes are damaged
+pub const WL_SECTION   = 5;   // the trailing block is not a run of whole sections
 
 pub struct WorldLoad {
   wl_code:    integer,
@@ -1400,6 +1491,7 @@ fn layer_crc(ly: Layer) -> integer {
 pub const WS_OK         = 0;
 pub const WS_PALETTE    = 1;   // a palette entry is not a byte
 pub const WS_CONCURRENT = 2;   // `X2` — someone else is writing this world
+pub const WS_SECTION    = 3;   // a section byte is not a byte
 
 // `X2` — MANY AUTHORS ARE NORMAL; A SECOND WRITER TO ONE STORE IS A BUG.
 //
@@ -1433,11 +1525,41 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
   return world_save_as(w, path, palette, OWNER_ANY);
 }
 
+// The bytes a section block occupies on disk. The incremental writer needs it to
+// know where the file ends after it has rewritten the block; the full writer does
+// not, because it deletes the file first and whatever it writes IS the length.
+fn sections_size(secs: vector<Section>) -> integer {
+  n = 0;
+  for s in secs { n = n + SZ_SECTION_HEAD + len(s.sc_bytes); }
+  n
+}
+
+// Refused rather than masked, for the `WS_PALETTE` reason at a second seam: a
+// section handed back different from the one given is a silent wrong answer, and
+// this library cannot even tell the consumer which field it damaged.
+fn sections_are_bytes(secs: vector<Section>) -> boolean {
+  for s in secs {
+    for b in s.sc_bytes {
+      if b < 0 || b > 255 { return false; }
+    }
+  }
+  true
+}
+
+fn write_sections(f: File, secs: vector<Section>) {
+  for s in secs {
+    f += (s.sc_tag as i32);
+    f += (len(s.sc_bytes) as i32);
+    for b in s.sc_bytes { f += (b as u8? ?? 0); }
+  }
+}
+
 pub fn world_save_as(w: World, path: text, palette: vector<integer>,
                      owner: integer) -> integer {
   for b in palette {
     if b < 0 || b > 255 { return WS_PALETTE; }
   }
+  if !sections_are_bytes(w.w_sections) { return WS_SECTION; }
   if owner != OWNER_ANY {
     held = file_owner(path);
     if held != OWNER_ANY && held != owner { return WS_CONCURRENT; }
@@ -1498,6 +1620,10 @@ pub fn world_save_as(w: World, path: text, palette: vector<integer>,
       f += (layer_crc(ly) as i32);
     }
   }
+  // ── the sections, LAST and after everything a pre-section reader reads. That
+  // ordering is the whole forward-compatibility argument: such a reader stops at
+  // the final CRC and never learns these bytes are there.
+  write_sections(f, w.w_sections);
   WS_OK
 }
 
@@ -1602,6 +1728,9 @@ pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
   for b in palette {
     if b < 0 || b > 255 { return SaveStat { ss_code: WS_PALETTE, ss_layers: 0 }; }
   }
+  if !sections_are_bytes(w.w_sections) {
+    return SaveStat { ss_code: WS_SECTION, ss_layers: 0 };
+  }
 
   was = world_scan_versions(path).vs_tau;
   f = file(path);
@@ -1648,6 +1777,16 @@ pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
       at = at + SZ_LAYER;
     }
   }
+  // ⚠ THE SECTION BLOCK IS REWRITTEN WHOLE, EVERY TIME, and the file is then cut
+  // to exactly where it ends. A section's length is not fixed by the SHAPE that
+  // `same_shape` compares, so an in-place update that skipped this leaves a
+  // trailing block belonging to an older world — bytes that load cleanly and say
+  // something untrue, which is this model's worst class. It is cheap to be right
+  // here: the block is metadata, not the 8 KB payload the incremental path exists
+  // to skip.
+  seek(f, at);
+  write_sections(f, w.w_sections);
+  f#size = at + sections_size(w.w_sections);
   SaveStat { ss_code: WS_OK, ss_layers: wrote }
 }
 
@@ -1775,6 +1914,33 @@ pub fn world_load(path: text) -> WorldLoad {
     }
     w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
+  }
+  // ── the sections, read to END OF FILE ────────────────────────────────────────
+  //
+  // ⚠ THE TERMINATOR IS THE FILE'S END, not a count — and that is what lets a file
+  // written before sections existed load unchanged. A count would have to live
+  // somewhere, and anywhere it can live is a byte a pre-section file does not
+  // have; end-of-file is the one terminator such a file already satisfies.
+  // `tests/sections.loft` pins that with committed pre-section bytes.
+  //
+  // ⚠ `f#next` is `null` until the first read, so this may only be asked AFTER the
+  // header — which is always, here, because the payload was just read.
+  while f#next < f#size {
+    left = f#size - f#next;
+    if left < SZ_SECTION_HEAD {
+      return WorldLoad { wl_code: WL_SECTION, wl_world: empty, wl_palette: [],
+                         wl_detail: "{left} trailing bytes: too few for a section header" };
+    }
+    stag = f#read as i32;
+    slen = f#read as i32;
+    if slen < 0 || slen > f#size - f#next {
+      return WorldLoad { wl_code: WL_SECTION, wl_world: empty, wl_palette: [],
+                         wl_detail: "section {stag} claims {slen} bytes, "
+                                  + "{f#size - f#next} remain" };
+    }
+    sb: vector<integer> = [];
+    for _sbi in 0..slen { sb += [f#read as u8]; }
+    w.w_sections += [Section { sc_tag: stag, sc_bytes: sb }];
   }
   WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
 }

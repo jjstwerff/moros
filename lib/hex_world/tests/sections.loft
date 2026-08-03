@@ -1,0 +1,259 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A1.3` — the store's tagged sections, and the promise they make.
+//
+// ⚠ THE FIRST TEST IS THE ONE THAT MATTERS, and it was written before the
+// mechanism existed. `presection.hxw` is COMMITTED BYTES written by the writer as
+// it stood on 2026-08-03, before any section could be written — so it is the one
+// thing in this file that cannot be regenerated into agreement with the code. A
+// format change that reads the trailing block as mandatory breaks it, and that is
+// exactly the failure `A1.3` is risky for.
+use hex_world;
+
+fn built() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 1, co_r: 2,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3, h_wall_ne: 7 },
+               Hex { h_height: 40080 as u16? ?? 0, h_material: 4 }] }).cw_code == CW_OK, "c1");
+  assert(world_set_column(w, Column { co_q: 5, co_r: 5,
+    co_cells: [Hex { h_height: 40010 as u16? ?? 0, h_material: 2 }] }).cw_code == CW_OK, "c2");
+  assert(world_set_column(w, Column { co_q: 90, co_r: 90,
+    co_cells: [Hex { h_height: 500 as u16? ?? 0, h_material: 9 }] }).cw_code == CW_OK, "c3");
+  w
+}
+
+// ── A file written before sections existed still loads ───────────────────────
+//
+// It is `built()` with palette [11, 22, 33, 250], saved by the pre-section
+// writer. Two chunks, three layers, 24715 bytes — 52 header + 4 palette + 32
+// directory + 3 * (13 + 8196), with NOTHING after the last CRC.
+fn test_a_pre_section_file_still_loads() {
+  ld = world_load("presection.hxw");
+  assert(ld.wl_code == WL_OK, "a pre-section world was refused {ld.wl_code}: {ld.wl_detail}");
+  assert(ld.wl_world.w_reserve == 100 && ld.wl_world.w_eps == 8 && ld.wl_world.w_theta == 3,
+         "constants lost");
+  assert(len(ld.wl_palette) == 4 && ld.wl_palette[3] == 250, "palette did not travel");
+  a = world_column(ld.wl_world, 1, 2);
+  assert(len(a.co_cells) == 2, "expected 2 layers, got {len(a.co_cells)}");
+  assert(a.co_cells[0].h_height == 40000 && a.co_cells[1].h_height == 40080, "heights");
+  assert(a.co_cells[0].h_material == 3 && a.co_cells[0].h_wall_ne == 7, "every field");
+  assert(world_column(ld.wl_world, 90, 90).co_cells[0].h_height == 500, "second chunk");
+  // A file with no trailing block has no sections — not one empty one.
+  assert(len(ld.wl_world.w_sections) == 0,
+         "a pre-section file grew {len(ld.wl_world.w_sections)} sections out of nothing");
+}
+
+// ⚠ THE PRE-SECTION FILE IS EXACTLY AS LONG AS ITS PAYLOAD, and this is what says
+// the test above is measuring the absence of a trailing block rather than the
+// loader's tolerance of one. Without it, a fixture that happened to carry a
+// section would pass the load and only fail the count.
+fn test_the_fixture_really_ends_at_the_last_crc() {
+  bs = read_bytes("presection.hxw");
+  assert(len(bs) == SZ_HEADER + 4 + 2 * SZ_CHUNK + 3 * (SZ_LAYER_DIR + SZ_LAYER),
+         "the pre-section fixture is {len(bs)} bytes, not the payload's exact length");
+}
+
+// ── The tag ──────────────────────────────────────────────────────────────────
+//
+// The magic already in every file is a four-character tag, so the packing is
+// cross-checked against a value this function did not produce rather than against
+// itself. ⚠ That is what caught the packing being the wrong way round AND the
+// source comment naming a string no file has ever contained: every `.hxw` opens
+// `57 54 54 48`, which is `WTTH`, not the `HXW7` the constant claimed.
+// ⚠ It is a function and not a constant because loft#744 aborts on
+// `const X = some_fn()`.
+fn test_a_tag_packs_the_way_the_magic_does() {
+  assert(section_tag("WTTH") == WORLD_MAGIC,
+         "section_tag('WTTH') is {section_tag(\"WTTH\")}, the magic is {WORLD_MAGIC}");
+  assert(section_tag("PART") != section_tag("ANCH"), "two tags collided");
+  // CONTROL: the packing is ORDERED — an anagram is a different tag. A sum or an
+  // xor would pass everything above and lose this.
+  assert(section_tag("PART") != section_tag("TRAP"), "the tag is order-free");
+}
+
+// ⚠ AND THE TAG IS READABLE IN A HEX DUMP, which is the only reason it is four
+// characters and not a number. A packing that agreed with the magic but wrote its
+// bytes backwards would pass the test above; this reads them out of the file.
+fn test_a_tag_reads_left_to_right_in_the_file() {
+  w = built();
+  p = "sections_tagbytes.hxw";
+  world_set_section(w, section_tag("PART"), []);
+  world_save(w, p, [7]);
+  bs = read_bytes(p);
+  at = len(bs) - SZ_SECTION_HEAD;
+  assert(bs[at] == 80 && bs[at + 1] == 65 && bs[at + 2] == 82 && bs[at + 3] == 84,
+         "the tag reads {bs[at]} {bs[at + 1]} {bs[at + 2]} {bs[at + 3]}, not P A R T");
+  delete(p);
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+
+fn test_sections_round_trip_with_the_world() {
+  w = built();
+  p = "sections_rt.hxw";
+  world_set_section(w, section_tag("PART"), [1, 2, 3, 255, 0]);
+  world_set_section(w, section_tag("ANCH"), []);
+  assert(world_save(w, p, [7]) == WS_OK, "save refused");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(len(ld.wl_world.w_sections) == 2, "got {len(ld.wl_world.w_sections)} sections");
+  pi = world_section_at(ld.wl_world, section_tag("PART"));
+  assert(pi == 0, "PART landed at {pi}");
+  assert(len(ld.wl_world.w_sections[pi].sc_bytes) == 5, "PART lost bytes");
+  assert(ld.wl_world.w_sections[pi].sc_bytes[3] == 255, "PART byte 3");
+  assert(ld.wl_world.w_sections[pi].sc_bytes[4] == 0, "a trailing zero byte was dropped");
+  // A section PRESENT AND EMPTY is not the same as an absent one, which is why
+  // `world_section_at` answers with an index and not with bytes.
+  ai = world_section_at(ld.wl_world, section_tag("ANCH"));
+  assert(ai == 1 && len(ld.wl_world.w_sections[ai].sc_bytes) == 0, "an empty section vanished");
+  assert(world_section_at(ld.wl_world, section_tag("NOPE")) == 0 - 1,
+         "a tag nobody wrote was found");
+  // The landscape is untouched by any of this.
+  assert(world_column(ld.wl_world, 1, 2).co_cells[0].h_height == 40000, "cells lost");
+  delete(p);
+}
+
+// ⚠ THE FORWARD-COMPATIBILITY PROMISE, TESTED RATHER THAN ASSERTED. `ZZZZ` is a
+// tag this build has never heard of and never will. It is loaded by a reader that
+// cannot interpret it, carried on the world, and written back — and the proof is
+// the BYTES, compared across the two files, because a reader that quietly
+// re-encoded what it did not understand would pass every accessor above.
+fn test_an_unknown_section_survives_a_load_and_a_save() {
+  w = built();
+  a = "sections_fwd_a.hxw";
+  b = "sections_fwd_b.hxw";
+  world_set_section(w, section_tag("ZZZZ"), [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
+  assert(world_save(w, a, [7]) == WS_OK, "save a");
+
+  ld = world_load(a);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(world_save(ld.wl_world, b, ld.wl_palette) == WS_OK, "save b");
+
+  ba = read_bytes(a);
+  bb = read_bytes(b);
+  assert(len(ba) == len(bb), "a is {len(ba)} bytes, b is {len(bb)}");
+  same = true;
+  for i in 0..len(ba) { if ba[i] != bb[i] { same = false; } }
+  assert(same, "an unknown section did not survive byte-identical");
+  // CONTROL: the comparison can FAIL. One byte changed in the section and the
+  // files must differ — otherwise the loop above proves only that both files
+  // exist. (It is the section's own bytes that are perturbed, not the payload's,
+  // so this control is about THIS mechanism and not about the CRC.)
+  w2 = world_load(a).wl_world;
+  ci = world_section_at(w2, section_tag("ZZZZ"));
+  w2.w_sections[ci].sc_bytes[0] = 99;
+  c = "sections_fwd_c.hxw";
+  assert(world_save(w2, c, [7]) == WS_OK, "save c");
+  bc = read_bytes(c);
+  diff = false;
+  for i in 0..len(ba) { if ba[i] != bc[i] { diff = true; } }
+  assert(diff, "a changed section byte made no difference to the file");
+  delete(a); delete(b); delete(c);
+}
+
+// ── What the trailing block refuses ──────────────────────────────────────────
+//
+// A tail that is not a whole run of sections is refused BY NAME rather than read
+// as a plausible world with a plausible section — the `WL_CRC` rule at a new seam.
+fn test_a_truncated_section_header_is_refused_by_name() {
+  w = built();
+  p = "sections_short.hxw";
+  world_set_section(w, section_tag("PART"), [1, 2, 3]);
+  world_save(w, p, [7]);
+  was = len(read_bytes(p));
+  // ⚠ TRUNCATED WITH `f#size`, not by rebuilding the byte vector. A `vector<integer>`
+  // handed to `write_bytes` goes out EIGHT BYTES PER ELEMENT, so the first attempt
+  // at this produced a 200 KB file whose magic was `WTTH` followed by five zeroes —
+  // and the loader refused it as `WL_MAGIC`, which is a real refusal of a fixture
+  // that was never the file this test meant to build.
+  { f = file(p); f#size = was - 9; }              // leaves 2 bytes where 8 are needed
+  ld = world_load(p);
+  assert(ld.wl_code == WL_SECTION, "a torn tail loaded as if fine: {ld.wl_code}");
+  assert(ld.wl_detail != "", "the refusal must name what it refused");
+  delete(p);
+}
+
+fn test_a_section_longer_than_the_file_is_refused_by_name() {
+  w = built();
+  p = "sections_long.hxw";
+  world_set_section(w, section_tag("PART"), [1, 2, 3]);
+  world_save(w, p, [7]);
+  bs = read_bytes(p);
+  // the length field is the 4 bytes after the tag, 11 back from the end
+  at = len(bs) - 7;
+  bs[at] = 200;
+  write_bytes(p, bs);
+  ld = world_load(p);
+  assert(ld.wl_code == WL_SECTION, "an over-long section loaded as if fine: {ld.wl_code}");
+  // CONTROL: the same file, unmodified, must load — or this proves only that the
+  // loader dislikes something about the fixture.
+  world_save(w, p, [7]);
+  assert(world_load(p).wl_code == WL_OK, "the untouched file must load");
+  delete(p);
+}
+
+fn test_a_section_byte_that_is_not_a_byte_is_refused() {
+  w = built();
+  p = "sections_bad.hxw";
+  world_set_section(w, section_tag("PART"), [1, 300]);
+  assert(world_save(w, p, [7]) == WS_SECTION, "a 300 was accepted as a section byte");
+  world_set_section(w, section_tag("PART"), [1, 255]);
+  assert(world_save(w, p, [7]) == WS_OK, "an in-range section must be accepted");
+  delete(p);
+}
+
+// ── The incremental writer ───────────────────────────────────────────────────
+//
+// ⚠ THE ONE PLACE THIS MECHANISM CAN CORRUPT SILENTLY. `world_save_incremental`
+// leaves the payload where it lies and writes only what moved; a section block is
+// not fixed by the shape it compares, so a shortened one would leave the old tail
+// in place and load cleanly as something untrue. Both directions are here —
+// growing and SHRINKING — because only the shrink can leave a readable remnant.
+fn test_an_incremental_save_replaces_the_whole_section_block() {
+  w = built();
+  p = "sections_incr.hxw";
+  world_set_section(w, section_tag("PART"), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert(world_save_as(w, p, [7], 1) == WS_OK, "first save");
+
+  // shrink it, and touch nothing else
+  world_set_section(w, section_tag("PART"), [42]);
+  st = world_save_incremental(w, p, [7], 1);
+  assert(st.ss_code == WS_OK, "incremental refused {st.ss_code}");
+  assert(st.ss_layers == 0, "nothing moved, yet {st.ss_layers} layers were rewritten");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(len(ld.wl_world.w_sections) == 1,
+         "{len(ld.wl_world.w_sections)} sections after a shrink — a remnant survived");
+  bytes = ld.wl_world.w_sections[0].sc_bytes;
+  assert(len(bytes) == 1 && bytes[0] == 42, "the section did not shrink");
+
+  // and grow it again over the shorter file
+  world_set_section(w, section_tag("ANCH"), [11, 22, 33]);
+  assert(world_save_incremental(w, p, [7], 1).ss_code == WS_OK, "second incremental");
+  ld2 = world_load(p);
+  assert(ld2.wl_code == WL_OK, "load refused {ld2.wl_code}: {ld2.wl_detail}");
+  assert(len(ld2.wl_world.w_sections) == 2, "the added section did not arrive");
+  assert(world_column(ld2.wl_world, 1, 2).co_cells[0].h_height == 40000,
+         "the payload was damaged by a section write");
+  delete(p);
+}
+
+// A dropped section leaves no remnant either — the same shrink through a full
+// save, so the two writers are held to one answer.
+fn test_a_dropped_section_is_gone_from_the_file() {
+  w = built();
+  p = "sections_drop.hxw";
+  world_set_section(w, section_tag("PART"), [1, 2, 3]);
+  world_set_section(w, section_tag("ANCH"), [4, 5, 6]);
+  world_save(w, p, [7]);
+  assert(world_drop_section(w, section_tag("PART")), "PART was there to drop");
+  assert(!world_drop_section(w, section_tag("PART")), "PART was dropped twice");
+  world_save(w, p, [7]);
+  ld = world_load(p);
+  assert(len(ld.wl_world.w_sections) == 1, "{len(ld.wl_world.w_sections)} sections after a drop");
+  assert(ld.wl_world.w_sections[0].sc_tag == section_tag("ANCH"), "the wrong one survived");
+  delete(p);
+}

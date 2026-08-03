@@ -1,2 +1,11 @@
-# `test_the_ground_label_survives_a_save_and_load` writes here.
-*.hxw
+# Files the tests WRITE. `test_the_ground_label_survives_a_save_and_load` makes
+# `ground_rt.hxw`; `tests/sections.loft` makes several `sections_*.hxw`.
+#
+# ⚠ NOT a blanket `*.hxw`, which it was until 2026-08-03. `presection.hxw` is a
+# COMMITTED FIXTURE — bytes written by the writer as it stood before sections
+# existed — and it is the one file here that must not be regenerable, because its
+# whole job is to be a world the current code did not produce. A blanket rule
+# would have left it untracked and the gate would have passed on every machine
+# that happened to have run the generator.
+ground_rt.hxw
+sections_*.hxw

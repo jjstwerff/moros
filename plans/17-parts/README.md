@@ -37,7 +37,7 @@ because **none of them needs a new file format**:
 |---|---|
 | **copy a region out of a world** | a loop over `world_column(w,q,r)` → translate → `world_set_column(part, col)`. Both exist. No new library primitive. |
 | **save it** | `world_save(part, path, palette)` — §P2, a part *is* a world |
-| **carry `PART`/`ANCH`** | ⚠ **the store has no section mechanism today.** `world_save` writes a fixed header (`HXW7`, version, chunk width, unit) then chunks. `A1.3` is where that is added, and it is the only format work in the whole plan. |
+| **carry `PART`/`ANCH`** | `world_set_section(w, section_tag("PART"), bytes)` — added by `A1.3`, the only format work in the whole plan. A section rides on the world and `world_save` carries it. |
 
 ### A1 — a part is a world you can save and load
 
@@ -45,8 +45,63 @@ because **none of them needs a new file format**:
 |---|---|---|---|
 | ✅ `A1.1` | `lib/hex_part` — one dependency (`hex_world`), one function: `part_from_region(w, cq, cr, rad)`. Cells only, no sections. | **DONE.** 11 tests, both backends. ⚠ **Two findings, and the naive version of each looked right** — see below. | S |
 | ✅ `A1.2` | Save and load with the **existing** `world_save`/`world_load` — no new format (§P2). | **DONE.** 19 tests, both backends. Four controls, and a **blind comparison** fails all of them while the round-trip tests stay green. ⚠ It also turned up a native divergence — see below. | S |
-| `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | a loft test writes a section with a made-up tag, loads, saves, and the unknown section **survives byte-identical** — the forward-compatibility promise, tested rather than asserted | M |
+| ✅ `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | **DONE.** `hex_world` 113 tests, both backends. `presection.hxw` is committed pre-section bytes; `ZZZZ` survives a load-and-save byte-identical. ⚠ **Two findings and three mutants** — see below. | M |
 | `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | round-trip carries kind/name/facing; ⚠ an *older* reader (one that does not know `PART`) still loads the cells — simulated by reading with the tag unregistered | S |
+
+⚠ **`A1.4`'s open piece is not the format — it is that loft cannot build a text from bytes.**
+`PART` carries a name and a description, and a section is a byte vector. Probed on
+2026-08-03, so this is measured rather than assumed:
+
+| | |
+|---|---|
+| `for ch in s`, `ch as i32` | walks **characters** and gives the **code point** — `é` is 233, `中` is 20013. ⚠ So a byte-per-character encoding silently truncates anything past `U+00FF`: the `ML_LABEL_TOO_WIDE` class again. |
+| `integer as text`, `vector<u8> as text`, `"{u8}"` | **all refused.** There is no `chr`. Text → bytes is three lines; there is no way back. |
+| `f += text` | writes **UTF-8** — 9 bytes for the 6 characters of `"Café中!"`. |
+| `f#read(n) as text` | reads it back **exactly**, and does not fall over on 3 bytes of non-UTF-8 (`FF FE 00` came back length 3). |
+
+So the file API is the only decoder in the language, and the honest options are: have
+`world_load` offer each section as **bytes and text both** (a seek back and one re-read — the
+library still never interprets, it just offers two views of the same bytes); make a name a
+**label into a table** that has the same problem one level up; or **file the gap upstream**,
+which is where a missing `chr` belongs. ⚠ `hex_editor::names` (`B4`) is in memory only, so
+nothing in this tree has solved it yet.
+
+### What `A1.3` turned up
+
+⚠ **THE MAGIC IS `WTTH`, AND THE COMMENT SAID `HXW7` — for as long as the format has
+existed.** `WORLD_MAGIC = 1213486167` is `0x48545457`, written LittleEndian, so every `.hxw`
+in the tree opens `57 54 54 48`. The value is **not** corrected — every saved world carries
+it — but the one line a person reads before dumping four bytes to identify a file was wrong.
+⚠ **It was found by a cross-check, not by reading:** `section_tag("HXW7") == WORLD_MAGIC`
+disagreed by 262880, which said both that the packing was the wrong way round *and* that the
+string was wrong. A tag convention held against itself would have passed either way. This is
+the doc's own §G at a new seam — a name is not a measurement.
+
+⚠ **THE TERMINATOR HAS TO BE END-OF-FILE, AND THAT IS WHY THERE IS NO VERSION BUMP.** The
+obvious design writes a section *count* — but a count has to live somewhere, and every place
+it can live is a byte a pre-section file does not have, so the reader is back to needing the
+version to tell it whether to look. End-of-file is the one terminator a pre-section file
+already satisfies. `f#size` and `f#next` are what make it expressible; `f#next` is `null`
+until the first read, so the question may only be asked after the header.
+
+⚠ **The one silent-corruption path was `world_save_incremental`, and it is not obvious.** It
+compares a SHAPE — chunk and layer counts — and a section's length is not part of that, so a
+world whose section *shrank* would have been written in place over a longer tail, and the
+remnant loads cleanly as something untrue. It rewrites the block whole and cuts the file to
+length now. Gated in both directions; only the shrink can leave a readable remnant.
+
+⚠ **Three mutants, because a test that passes before AND after the change proves nothing.**
+The pre-section fixture is the load-bearing gate here and it was green before any code was
+written — so each instrument was fed something it should reject: a loader that demands a
+trailing block (the exact `A1.3` risk) fails the fixture; an incremental writer that forgets
+to cut the file fails the shrink; a full writer that drops sections fails six tests
+*including* the forward-compatibility control, which is what says that control is not vacuous.
+
+⚠ **`write_bytes` takes a `vector<integer>` EIGHT BYTES TO THE ELEMENT.** Rebuilding a
+truncated byte vector to make a torn-tail fixture produced a 200 KB file and a `WL_MAGIC`
+refusal — a real refusal of a file the test never meant to build. `f#size = n` truncates in
+place and is what the test uses. A fixture that fails to build reports the code's failure
+instead of its own, which is `A1.1`'s finding arriving a second time.
 
 ### What `A1.2` turned up
 
@@ -97,10 +152,11 @@ now asserted: heights that went negative at the far corners (silently refused, t
 nineteen columns never written) and heights packed closer than **ε**, which the store merges
 by design. A fixture that fails to build reports the code's failure instead of its own.
 
-⚠ **`A1.3` is the one genuinely risky step**, because it changes a format that already has
+⚠ **`A1.3` was the one genuinely risky step**, because it changed a format that already has
 worlds saved in it. It is additive by construction — sections go *after* everything an
-existing reader reads — and the test that matters is that a **pre-section file still loads**.
-Write that test first.
+existing reader reads — and the test that mattered was that a **pre-section file still loads**.
+Writing it first is what made the fixture honest: it was captured from the writer as it stood,
+before a line of the mechanism existed, so it is bytes the new code cannot have influenced.
 
 ⚠ **The keyed-read question (§P2) is deferred, deliberately.** `A1` accepts whole-file reads.
 A catalogue of two hundred parts wanting to load *one* is real, and it is `A7`'s problem when

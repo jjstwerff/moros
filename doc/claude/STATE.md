@@ -20,31 +20,38 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-03, after session 9) — plan 18 is done bar one step, plan 17 has begun
+## ⏭ PICK UP HERE (2026-08-03, session 10) — plan 18 is done bar one step, plan 17 has a format
 
 `make gate` **34 green** · `make lib-test` **green, both backends** · `make probe-text` green ·
 `make guards` **5 probes green** · `npm test` **53** · layering silent.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **228** | `hex_world` **102** | `lavition_ui` **61** | `hex_part` **19** |
+| `hex_editor` **228** | `hex_world` **113** | `lavition_ui` **61** | `hex_part` **19** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A1.3`, and the plan calls it the risky one
+### The next thing to do is #17 `A1.4` — `PART` and `ANCH` over the mechanism `A1.3` built
 
-**The store has no section mechanism.** `world_save` writes a fixed header (`HXW7`, version,
-chunk width, unit) then chunks — there is nowhere for `PART` or `ANCH` to go. `A1.3` adds a
-trailing tagged block (`tag + length + bytes`, an unknown tag skipped by its length), and it
-changes a format that **already has worlds saved in it**.
+**The store has sections now.** `tag(i32) + length(i32) + bytes`, repeated to **end of file**,
+after the last layer's CRC; they ride on the world as `w_sections`, so `world_save` and
+`world_load` carry them and an *unknown* tag survives without anyone knowing what it is.
+`world_set_section(w, section_tag("PART"), bytes)` is the whole API. The design, the
+findings and the incremental-writer hazard are
+[PARTS.md § P2 — the mechanism, as built](PARTS.md#p2--a-part-is-saved-the-way-a-world-is-saved-because-it-is-one).
 
-⚠ **Write the pre-section test first**: an existing `.hxw` must still load. Sections are
-additive by construction — they go after everything an existing reader reads — and that is the
-property to pin before anything is written.
+`A1.4` puts kind/name/description in `PART` and cell/height/facing in `ANCH` over it, and its
+gate is the one the plan names: **an older reader — one that does not know the tag — still
+loads the cells**, simulated by reading with the tag unregistered.
+
+⚠ **The magic is `WTTH`, not `HXW7`.** Every `.hxw` in the tree opens `57 54 54 48`; the
+constant's comment claimed otherwise for as long as the format has existed. The value is not
+corrected — every saved world carries it — and the comment is. It was found by a cross-check
+(`section_tag("WTTH") == WORLD_MAGIC`), never by reading, which is the point.
 
 ⚠ **`lib/hex_world` is the tree that owns the store**, by path, as `hex_editor` and `hex_part`
-both declare. The registry carries a 0.2.0 on a different lineage. Which tree owns it for good
-is [#8](https://github.com/jjstwerff/moros/issues/8) — and `A1.3` should land wherever that
-settles, or it lands twice.
+both declare, and that is where `A1.3` landed. The registry carries a 0.2.0 on a different
+lineage. Which tree owns it for good is
+[#8](https://github.com/jjstwerff/moros/issues/8), **deferred pending sibling coordination**.
 
 ### Where the two plans stand
 
@@ -52,8 +59,9 @@ settles, or it lands twice.
 `B4`, `B6` all **done**. Only **`B5`** remains and it is blocked: it lists parts, and #17 has
 not produced one yet.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — `A1.1` and `A1.2` **done**
-(`lib/hex_part`: region copy, round-trip, `part_diff`). `A1.3` next, then `A1.4`.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — `A1.1`, `A1.2` and `A1.3`
+**done** (`lib/hex_part`: region copy, round-trip, `part_diff`; `lib/hex_world`: sections).
+`A1.4` next, then `A2`.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
