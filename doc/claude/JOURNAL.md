@@ -17,6 +17,267 @@ were true when written. STATE.md carries the current ones.
 
 ---
 
+## Session 9 — the two active plans close, the panel becomes lavition's, and a part is a world
+
+⚠ Counts in this entry were true when written; STATE.md carries the current ones.
+
+**#3 and #5 are finished and closed** — they were the two `status:active` plans, and both
+had real gaps behind a doc that read as if they were done. What each turned up is below.
+
+Both #17 and #18 were then **started in the same session** — #18 is complete except `B5`,
+and #17 has `A1.1`–`A1.2`. What that cost and what it found is in the second half of this
+entry.
+
+### ⚠ THE BROWSER CAN DRAW TEXT AND LOAD AN IMAGE — this reversed on 2026-08-03
+
+The previous entry said the opposite in capitals, and it is now false: **loft fixed both**
+([`b7aebffb`](https://github.com/loft-lang/loft), then `2945711a` for the blank canvas), and
+the installed `loft 2026.8.0` carries them. Measured in the emitted page, the same way the
+original claim was:
+
+| | was | now, in the emitted `--html` page |
+|---|---|---|
+| text bridge | every builtin stubbed to a no-op | real — `measureText` for metrics, `fillText` for coverage |
+| `gl_upload_alpha_texture` | stub | uploads a program-computed coverage buffer from wasm memory |
+| `gl_load_texture` | TODO returning 0 | serves a bundled asset (`--html` embeds `.png` siblings) |
+| `TODO` markers in the page | present | **0** |
+
+⚠ **This changes plan #18's premise.** Glyphs no longer have to become geometry, and a
+catalogue image no longer has to be rendered rather than loaded — so `B1` is now "draw text
+with the bridge", not "build a geometry font". [loft#737](https://github.com/loft-lang/loft/issues/737)
+and [#738](https://github.com/loft-lang/loft/issues/738) are still **open on the tracker**
+though the code is fixed; trust the measurement over the label, and re-measure before
+believing either.
+
+⚠ **Nothing in the editor tells you what you are working on.** Fourteen keys are bound —
+`w s a d`, `↑ ↓`, `l f g e q b c r` — and none is documented anywhere in the browser; no
+mode, no name, no toggle state. The page that came before carried a static HUD string and
+that went with it. This is plan #18's `B1`.
+
+### #5 closed — the stencil invariant the design got wrong, and the one it could not state
+
+Three of the five invariants were gated. The other two were not, and **measuring the fourth
+refuted it**.
+
+⚠ **Overlap is order-free ONLY IN OCCUPANCY.** The design promised "two stencils overlapping
+at the same level arbitrate deterministically **and order-freely** — stamping A then B
+equals B then A". Stamped both ways with different payloads on the shared cells: occupancy
+agreed everywhere, **six labels and six heights did not**. A stamp is last-writer-wins, so
+the payload carries the order — and that is also the *right* rule, because order-freedom
+would make "place this on top of that" impossible, which is the one thing a stamp is for.
+
+⚠ **THE TEST THAT LOOKED LIKE IT COVERED THIS DID NOT.**
+`test_two_stamps_at_different_places_are_order_free` reads like the strong claim; its last
+line asserts the two stamps did **not** overlap. A name can describe the claim while the
+body tests the weaker case standing beside it — and no count notices, because the weak case
+genuinely passes.
+
+**Un-stamp did not exist**, so invariant 3 could not be stated at all. `stencil_unstamp` /
+`_layers` / `_all` are the exact inverses. ⚠ **On free ground only, and that is not a
+limitation to fix**: a stamp destroys what it covers and the previous value is never kept,
+so true undo over occupied ground needs a snapshot, not an un-stamp.
+
+Three controls seen red, each catching its own class: un-stamp without the halo left **8 rim
+walls** standing (the cell count never moved); un-stamp skipping labels left label 1 at
+`2,3`; the stamp flipped to first-writer-wins read `11` on the shared cell.
+
+### #3 closed — and the fixture found a live half-hex drift on its first run
+
+The convention was already stated once and `hex_grid` already owned the math. What was
+missing was the thing that keeps it that way, and it worked immediately.
+
+⚠ **THE BROWSER LATTICE WAS HALF A HEX OUT BELOW ZERO.** `html/hex-lattice.js` tested row
+parity with `row % 2 === 1`. JavaScript's `%` keeps the sign of the dividend, so `-1 % 2` is
+`-1` and the odd-row shift **silently stopped on every negative odd row** — rows −1, −3, −5
+drawn half a hex left of where `hex_grid` puts them, while every non-negative row agreed
+perfectly. **Fourth instance of `%`-where-`&`-was-meant** (lesson E below), so
+`neighborOffsets` and `dirName` moved to `& 1` too: they were right for negatives, but by
+luck, and luck is the class.
+
+⚠ **THE FIXTURE HOLDS INTEGERS, AND THAT IS THE LOAD-BEARING CHOICE.** The issue asked for
+**bit-identical** sampled `(col,row) → (x,y)` pairs. That cannot be had: the two sides reach
+the same centre by different expression trees and may differ in the last ulp while both are
+right. Such a fixture must carry a tolerance — **and a tolerance is exactly where a real
+half-hex error hides**. The doubled lattice `k = 2·col + (row & 1)`, `m = 3·row` is exact in
+both languages, and a parity drift is a drift of **1** in `k`. The float step is asserted
+separately, where a tolerance is honest because that claim is about *scale*.
+
+One file — `hex_grid/tests/fixtures/lattice.tsv` — read by `hex_grid`'s loft tests and by
+`test/lattice.test.js`, generated by neither at test time. Controls seen red on both sides:
+a perturbed pair fails by name in both languages, and restoring `% 2 === 1` fails with
+"row −1 and row 1 disagree", 62.35 vs 93.53, exactly `w/2` apart.
+
+⚠ **A relabelling would have looked almost right.** SCENE_MAP.md's wall geometry, its
+pairing table and the G12 resolution were all flat-top. Re-derived on pointy-top: the
+axis-aligned edge is **E**, not N, and the zigzag is in **y**, not x — but the constant
+`3R/4` is *unchanged*, because a ratio measured along the rotating edge cannot change. Every
+axis moved and the number did not, which is why the banners said re-derive rather than
+rename.
+
+**Left out on purpose, and recorded rather than quietly done:** renaming `h_wall_n/ne/se` to
+NW/NE/E. They are public fields of the **published** `hex_world` 0.2.0, mid-migration under
+[#8](https://github.com/jjstwerff/moros/issues/8), across ~80 sites in ten files — a
+breaking change to a shared contract, not part of reconciling a document. It is a row in
+[doc/Todo.txt](../Todo.txt).
+
+### S3 is complete: `ground 41 bad 7` → **`ground 48 bad 0 wait 0`**
+
+Every tile the server checksums, the client derives from its own voxels and matches.
+Nothing held, nothing wrong.
+
+The client now runs the server's own mesher over its own cache and gets the server's
+triangles, checksum for checksum. What made it look broken was never arithmetic:
+**the mesher reads two cells PAST the tile it builds**, so a tile whose margin has
+not arrived yet is a question asked too early, not a disagreement.
+
+**The oracle is `moros_terrain::tile_ready(world, cx, cz)`** — beside the mesher,
+because it is a fact about what the mesher *reads*. Consumed by the client's `Q:`
+handler, gated by `tools/gates/world/client_mesh.mjs`, and asked *by the probes*
+rather than restated in them.
+
+⚠ **THE MAP IS WHAT PROVED IT, AND A TALLY WOULD NOT HAVE.** The sweep first read
+`0 false positives, 877 false negatives` and I was about to ship a guard called
+conservative-but-safe. Drawing it — one glyph per tile — showed the 877 instantly:
+tiles where **both** meshes were empty, agreeing about nothing. With heights bounded
+so every tile emits, held-but-fine went to **zero** and the result changed category:
+`tile_ready` is not an over-approximation, it is **exact**. READY ⟺ the mesh matches,
+over nine cache shapes and 3249 tiles. A number cannot show that the withheld ring
+around a hole in the cache is *one tile wide*, and one tile wide is the claim.
+
+⚠ **`vacuous` is the row that keeps such a sweep honest** — two empty meshes checksum
+alike, so a sweep over terrain that does not emit everywhere is partly measuring
+nothing. It must read 0. `probe/s3/README.md` is the whole routine; `make guards`
+runs it and shows the maps.
+
+⚠ **A RECEIVER'S PRECONDITION IS THE SENDER'S JOB** — the finding, and it outlives
+this protocol. Re-asking held tiles at `Z:0` moved two of them; the other 36 were held
+forever and *correctly*, because the guard was right and the sender was not. Three
+things had to change, each looking like someone else's problem:
+
+- `send_layers` sent the store chunk under a tile's **origin** and nothing else, so
+  tiles at `cz = -4` wanted chunk `r = -2` and no tile in range had its origin there;
+- an **empty chunk was sent as silence**, which a cache cannot tell from one in
+  flight. `K:<cx>,<cz>` is the authority saying so, `world_touch_chunk` stores it, and
+  `tile_ready` now asks whether a chunk is **KNOWN**, not whether it holds ground — a
+  chunk known to be empty is an *answer*;
+- the comparison ran on arrival rather than at `Z:0`, the server's own statement that
+  a batch is whole.
+
+A guard alone turns a wrong answer into no answer. Better, and not the claim.
+
+⚠ **THE GATE WAS TESTING A CLIENT THAT NO LONGER EXISTED.** The server is interpreted
+from source every run; the wasm client is a **file** the server serves, written by
+`make client`. Every edit to `editor_client.loft` was invisible to the gates until
+someone remembered that command — the `Z:0` drain read as "never runs" through three
+instrumented runs while the code was simply not in the page. Both client gates now
+build it themselves. **Check this first** if a client change appears to do nothing.
+
+**S4 is done too, and #16 is finished.** `43:1` is the client saying it draws the
+ground itself; the server sends it none. Measured: **`ground sent 174 held 20`** —
+twenty ground meshes built and never put on the wire, while a plain socket in the same
+session still received every one.
+
+⚠ **Earned, not declared** — four `Q:` agreements with no disagreement, and `43:0` the
+moment one fails, so the worst case is a byte cost and never a hole in the world.
+⚠ **Per client.** "Suppress when every client derives" reads as the safe choice and makes
+the deletion *unreachable*: the gate runner is a client and cannot derive.
+⚠ **And a client is tracked where it ARRIVES** — `clients` was filled by `2:<aspect>`,
+400 ms late, and the instant the ground became a per-client send the whole opening
+stream went to nobody (`terrain` read `n: 0`).
+
+**Two instruments were wrong before the thing they measured, again.** `wait` returns
+the *earliest* matching status, so a cumulative tally read `ground 0 bad 0 wait 1` —
+the instant before any evidence exists; `last <prefix>` is the missing instrument and
+now exists. And **the `snap` is what opens the browser, and the browser IS the client
+under test**: dropping it from a gate that judges no picture left nobody to compare
+anything, and every verdict line simply never arrived.
+
+---
+
+### The panel: `moros_ui` → `lavition_ui`, and the NAME is what hid the problem
+
+`moros_ui` had no consumer and could not have one: it depended on `moros_sim` +
+`moros_editor` + `moros_map` while `editor_client.loft` — the one program that needs a panel
+— uses none of them. Its dependencies pointed at the **headless** half and its purpose
+belonged to the **drawing** half.
+
+⚠ **`tools/layering.sh` enforces exactly that arrow and skipped it**, because its second line
+is `case "$pkg" in moros_*) continue` — *a consumer may depend on anything*. A universal UI
+package wearing a consumer's name was exempt from the check that exists to catch it, every
+run, for months. Renaming is therefore the **mechanism**, not a tidy-up. Seen red first: a
+planted `moros_map::` is now reported by file and line.
+
+Design: [EDITOR_UI.md](EDITOR_UI.md). `PanelSpec` carries **data, not state**; `route_click`
+was deleted rather than ported (without its mutation it was `panel_hit_test` under a second
+name); `TOOLBAR_BUTTONS = 6` — one consumer's tool count in every consumer's geometry — became
+a parameter.
+
+### What the pictures kept finding that the counts did not
+
+Five times, in the same shape: a number said yes and the picture said no, or the reverse.
+
+- **`len(s) * 8`** was wrong on both targets (19.27 desktop, 26.66 browser) — and the browser
+  resolved a `.ttf` path to a **proportional** fallback, so `len × advance` was not even the
+  right *form*. Two same-length opposite-width runs is the whole instrument.
+- **The status strip was 240 px holding 648 px of text**, and had been since it was written.
+  Nothing reported it because nothing measured: the renderer was never built, so the text
+  never met its rectangle.
+- **A whole-pixel advance lost 31 px** on the subject line — 9.6 truncates to 9, per
+  character. Under-estimating is the dangerous direction: `fit_text` then believes more fits
+  than does. The advance is 1/64 px now and rounds **up**.
+- **Nine swatches "rendered" and none drew.** The hexagon was built in the world's XZ plane
+  and clip space is XY; the framebuffer had no depth attachment while depth testing was on.
+  A count of draw calls is not a count of pixels.
+- **`d` and `Look` overlapped** in the first button: every string fitted its own box and two
+  landed on each other. No per-string check can see that, so the test is stated over **pairs**.
+
+⚠ **And three gate instruments were blind before they were trusted.** A band-threshold counted
+824 "dim" pixels where nothing was greyed (bright text is anti-aliased, so its edges land in
+any band you pick — the per-row **peak** is the discriminator that survives it); a single
+sample column read six buttons as thirteen fragments once labels were drawn (a button row is
+*mostly* button); and `[].every(…)` is `true`, so a row reported `ok` on a picture with no
+panel in it.
+
+### `road` and `wall` were 0.00009 apart in chromaticity
+
+An order of magnitude *inside* the classifier's own tolerance. Both neutral greys differing
+only in brightness, which chromaticity divides out — so **nothing could tell a road from a
+wall**, and no gate had both in frame with a threshold that mattered. Same failure the floor
+had (0.0003 from the wall, which made an interior gate's second row unmeasurable) and fixed
+the same way: **in the renderer, not the classifier**.
+
+The new colour is a measurement — a neutral can never separate from another neutral, cool
+collides with the **sky**, and plain brown lands 0.00014 from the **figure**'s skin. What is
+left is a red earth, which is what these roads are anyway.
+
+### A part is a world, and both naive versions looked right
+
+- **A column read is chunk-shaped, not cell-shaped.** `world_column` returns one `Hex` per
+  *layer of the chunk*; copied verbatim into a fresh world that writes the source chunk's
+  whole layer set. A part cell read back the height of a cell three places away and **every
+  count agreed**.
+- **A translation in offset coordinates is not a translation.** `(q - cq, r - cr)` shears the
+  lattice on an **odd** row delta. Nineteen columns written, two — both odd rows — read back
+  empty. Done in the doubled lattice now; **fifth instance** of this class.
+- ⚠ **The test cannot be written against the mapping**: the obvious form *is* the naive
+  translation, so it agrees with a wrong copy. It asks for properties instead — the centre
+  lands on the origin, distances are preserved, the same multiset comes out as went in.
+- ⚠ **And a round-trip test alone proves nothing.** With `part_diff` stubbed to answer
+  *"same"*, all three round-trip tests pass and only the controls fail.
+
+### Three loft tickets
+
+- [#737](https://github.com/loft-lang/loft/issues/737) / [#738](https://github.com/loft-lang/loft/issues/738)
+  — **fixed upstream**, verified in the emitted page. Still open on the tracker.
+- [#744](https://github.com/loft-lang/loft/issues/744) — `const X = some_fn()` aborts with a
+  non-unwinding panic and no source location. Cost: `SURFACES` cannot be derived from the list
+  it counts, so a test holds the parity instead of the compiler.
+- [#745](https://github.com/loft-lang/loft/issues/745) — passing a struct **field** to a
+  `&`-parameter compiles interpreted and fails `--native` with a bare `E0308` and no span.
+  Eight tests failed on one expression; a test-by-test bisection was the only way in.
+
+---
+
 ## Session 8 — the camera has five settings, and every surface overhead has an underside
 
 *(moved here from STATE.md on 2026-08-03, unedited. STATE.md is the handoff and says so at

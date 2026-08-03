@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-01)
+# STATE.md — where the editor work stands (2026-08-03)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -8,7 +8,7 @@ read it first after a break.
 | the durable *architecture* | [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) |
 | the *changes* | the tracker — `gh issue list -R jjstwerff/moros --label plan --state all` |
 | the *order of work* | [EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work) |
-| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — eight sessions, newest first |
+| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — nine sessions, newest first |
 
 ⚠ **This file was 2,446 lines**, which made the one document a reader is told to open the
 longest in the tree, with the current state buried in session logs. The record moved to
@@ -20,188 +20,77 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-03, session 9) — the two active plans are closed, and the browser can draw text after all
+## ⏭ PICK UP HERE (2026-08-03, after session 9) — plan 18 is done bar one step, plan 17 has begun
 
-`make gate` **33 green** · `make lib-test` **green, both backends** ·
-`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **102** ·
-`hex_field` **51** · `hex_grid` **14** · `npm test` **53**.
+`make gate` **34 green** · `make lib-test` **green, both backends** · `make probe-text` green ·
+`make guards` **5 probes green** · `npm test` **53** · layering silent.
 
-**#3 and #5 are finished and closed** — they were the two `status:active` plans, and both
-had real gaps behind a doc that read as if they were done. What each turned up is below.
+| | | | |
+|---|---|---|---|
+| `hex_editor` **228** | `hex_world` **102** | `lavition_ui` **61** | `hex_part` **19** |
+| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-**Two plans are designed and not started**, and they are the next work:
-[#17 parts](https://github.com/jjstwerff/moros/issues/17) — [PARTS.md](PARTS.md), a house
-drawn away from the world and composed by socket — and
-[#18 catalogue](https://github.com/jjstwerff/moros/issues/18) —
-[CATALOGUE.md](CATALOGUE.md), the subject line, names, and one list with images.
-⚠ #18 is largely *finish `moros_ui`*: its panel layout, hit-test and click routing are
-built and tested; `panel_render` was never written.
+### The next thing to do is #17 `A1.3`, and the plan calls it the risky one
 
-### ⚠ THE BROWSER CAN DRAW TEXT AND LOAD AN IMAGE — this reversed on 2026-08-03
+**The store has no section mechanism.** `world_save` writes a fixed header (`HXW7`, version,
+chunk width, unit) then chunks — there is nowhere for `PART` or `ANCH` to go. `A1.3` adds a
+trailing tagged block (`tag + length + bytes`, an unknown tag skipped by its length), and it
+changes a format that **already has worlds saved in it**.
 
-The previous entry said the opposite in capitals, and it is now false: **loft fixed both**
-([`b7aebffb`](https://github.com/loft-lang/loft), then `2945711a` for the blank canvas), and
-the installed `loft 2026.8.0` carries them. Measured in the emitted page, the same way the
-original claim was:
+⚠ **Write the pre-section test first**: an existing `.hxw` must still load. Sections are
+additive by construction — they go after everything an existing reader reads — and that is the
+property to pin before anything is written.
 
-| | was | now, in the emitted `--html` page |
-|---|---|---|
-| text bridge | every builtin stubbed to a no-op | real — `measureText` for metrics, `fillText` for coverage |
-| `gl_upload_alpha_texture` | stub | uploads a program-computed coverage buffer from wasm memory |
-| `gl_load_texture` | TODO returning 0 | serves a bundled asset (`--html` embeds `.png` siblings) |
-| `TODO` markers in the page | present | **0** |
+⚠ **`lib/hex_world` is the tree that owns the store**, by path, as `hex_editor` and `hex_part`
+both declare. The registry carries a 0.2.0 on a different lineage. Which tree owns it for good
+is [#8](https://github.com/jjstwerff/moros/issues/8) — and `A1.3` should land wherever that
+settles, or it lands twice.
 
-⚠ **This changes plan #18's premise.** Glyphs no longer have to become geometry, and a
-catalogue image no longer has to be rendered rather than loaded — so `B1` is now "draw text
-with the bridge", not "build a geometry font". [loft#737](https://github.com/loft-lang/loft/issues/737)
-and [#738](https://github.com/loft-lang/loft/issues/738) are still **open on the tracker**
-though the code is fixed; trust the measurement over the label, and re-measure before
-believing either.
+### Where the two plans stand
 
-⚠ **Nothing in the editor tells you what you are working on.** Fourteen keys are bound —
-`w s a d`, `↑ ↓`, `l f g e q b c r` — and none is documented anywhere in the browser; no
-mode, no name, no toggle state. The page that came before carried a static HUD string and
-that went with it. This is plan #18's `B1`.
+**[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
+`B4`, `B6` all **done**. Only **`B5`** remains and it is blocked: it lists parts, and #17 has
+not produced one yet.
 
-### #5 closed — the stencil invariant the design got wrong, and the one it could not state
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — `A1.1` and `A1.2` **done**
+(`lib/hex_part`: region copy, round-trip, `part_diff`). `A1.3` next, then `A1.4`.
 
-Three of the five invariants were gated. The other two were not, and **measuring the fourth
-refuted it**.
+The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
+material catalogue with swatches drawn by the world's own shader, and greyed entries that say
+why. `probe/b1/client_live.png` is what it looks like; `make probe-text` regenerates it.
 
-⚠ **Overlap is order-free ONLY IN OCCUPANCY.** The design promised "two stencils overlapping
-at the same level arbitrate deterministically **and order-freely** — stamping A then B
-equals B then A". Stamped both ways with different payloads on the shared cells: occupancy
-agreed everywhere, **six labels and six heights did not**. A stamp is last-writer-wins, so
-the payload carries the order — and that is also the *right* rule, because order-freedom
-would make "place this on top of that" impossible, which is the one thing a stamp is for.
+### Two things built and not yet called
 
-⚠ **THE TEST THAT LOOKED LIKE IT COVERED THIS DID NOT.**
-`test_two_stamps_at_different_places_are_order_free` reads like the strong claim; its last
-line asserts the two stamps did **not** overlap. A name can describe the claim while the
-body tests the weaker case standing beside it — and no count notices, because the weak case
-genuinely passes.
+⚠ **`hex_editor::names` has no consumer** — the name table, tested at `B4`, is invoked by
+nothing. That is the trap `moros_ui` fell into and it is live again. It gets one when
+catalogue entries carry author-given names.
 
-**Un-stamp did not exist**, so invariant 3 could not be stated at all. `stencil_unstamp` /
-`_layers` / `_all` are the exact inverses. ⚠ **On free ground only, and that is not a
-limitation to fix**: a stamp destroys what it covers and the previous value is never kept,
-so true undo over occupied ground needs a snapshot, not an un-stamp.
+⚠ **A reason has nowhere roomy to live.** A list row is **212 px** — twenty-one characters —
+so `B6`'s reasons are one word (`derived`, `scattered`) and the full sentence stays on the
+entry unread. A status line or a tooltip is where it belongs; neither exists.
 
-Three controls seen red, each catching its own class: un-stamp without the halo left **8 rim
-walls** standing (the cell count never moved); un-stamp skipping labels left label 1 at
-`2,3`; the stamp flipped to first-writer-wins read `11` on the shared cell.
+### ⚠ The browser CAN draw text and load an image — this reversed on 2026-08-03
 
-### #3 closed — and the fixture found a live half-hex drift on its first run
+The entry here used to say the opposite in capitals. loft fixed both
+([#737](https://github.com/loft-lang/loft/issues/737),
+[#738](https://github.com/loft-lang/loft/issues/738)) and `loft 2026.8.0` carries it —
+measured in the emitted page: `measureText`/`fillText` real, a real coverage upload, a real
+bundled-asset loader, **zero** `TODO` markers.
 
-The convention was already stated once and `hex_grid` already owned the math. What was
-missing was the thing that keeps it that way, and it worked immediately.
+⚠ **Both issues are still OPEN on the tracker while the code is fixed.** Trust the
+measurement, not the label — including this paragraph.
 
-⚠ **THE BROWSER LATTICE WAS HALF A HEX OUT BELOW ZERO.** `html/hex-lattice.js` tested row
-parity with `row % 2 === 1`. JavaScript's `%` keeps the sign of the dividend, so `-1 % 2` is
-`-1` and the odd-row shift **silently stopped on every negative odd row** — rows −1, −3, −5
-drawn half a hex left of where `hex_grid` puts them, while every non-negative row agreed
-perfectly. **Fourth instance of `%`-where-`&`-was-meant** (lesson E below), so
-`neighborOffsets` and `dirName` moved to `& 1` too: they were right for negatives, but by
-luck, and luck is the class.
+### Two loft defects that shape how code here is written
 
-⚠ **THE FIXTURE HOLDS INTEGERS, AND THAT IS THE LOAD-BEARING CHOICE.** The issue asked for
-**bit-identical** sampled `(col,row) → (x,y)` pairs. That cannot be had: the two sides reach
-the same centre by different expression trees and may differ in the last ulp while both are
-right. Such a fixture must carry a tolerance — **and a tolerance is exactly where a real
-half-hex error hides**. The doubled lattice `k = 2·col + (row & 1)`, `m = 3·row` is exact in
-both languages, and a parity drift is a drift of **1** in `k`. The float step is asserted
-separately, where a tolerance is honest because that claim is about *scale*.
-
-One file — `hex_grid/tests/fixtures/lattice.tsv` — read by `hex_grid`'s loft tests and by
-`test/lattice.test.js`, generated by neither at test time. Controls seen red on both sides:
-a perturbed pair fails by name in both languages, and restoring `% 2 === 1` fails with
-"row −1 and row 1 disagree", 62.35 vs 93.53, exactly `w/2` apart.
-
-⚠ **A relabelling would have looked almost right.** SCENE_MAP.md's wall geometry, its
-pairing table and the G12 resolution were all flat-top. Re-derived on pointy-top: the
-axis-aligned edge is **E**, not N, and the zigzag is in **y**, not x — but the constant
-`3R/4` is *unchanged*, because a ratio measured along the rotating edge cannot change. Every
-axis moved and the number did not, which is why the banners said re-derive rather than
-rename.
-
-**Left out on purpose, and recorded rather than quietly done:** renaming `h_wall_n/ne/se` to
-NW/NE/E. They are public fields of the **published** `hex_world` 0.2.0, mid-migration under
-[#8](https://github.com/jjstwerff/moros/issues/8), across ~80 sites in ten files — a
-breaking change to a shared contract, not part of reconciling a document. It is a row in
-[doc/Todo.txt](../Todo.txt).
-
-### S3 is complete: `ground 41 bad 7` → **`ground 48 bad 0 wait 0`**
-
-Every tile the server checksums, the client derives from its own voxels and matches.
-Nothing held, nothing wrong.
-
-The client now runs the server's own mesher over its own cache and gets the server's
-triangles, checksum for checksum. What made it look broken was never arithmetic:
-**the mesher reads two cells PAST the tile it builds**, so a tile whose margin has
-not arrived yet is a question asked too early, not a disagreement.
-
-**The oracle is `moros_terrain::tile_ready(world, cx, cz)`** — beside the mesher,
-because it is a fact about what the mesher *reads*. Consumed by the client's `Q:`
-handler, gated by `tools/gates/world/client_mesh.mjs`, and asked *by the probes*
-rather than restated in them.
-
-⚠ **THE MAP IS WHAT PROVED IT, AND A TALLY WOULD NOT HAVE.** The sweep first read
-`0 false positives, 877 false negatives` and I was about to ship a guard called
-conservative-but-safe. Drawing it — one glyph per tile — showed the 877 instantly:
-tiles where **both** meshes were empty, agreeing about nothing. With heights bounded
-so every tile emits, held-but-fine went to **zero** and the result changed category:
-`tile_ready` is not an over-approximation, it is **exact**. READY ⟺ the mesh matches,
-over nine cache shapes and 3249 tiles. A number cannot show that the withheld ring
-around a hole in the cache is *one tile wide*, and one tile wide is the claim.
-
-⚠ **`vacuous` is the row that keeps such a sweep honest** — two empty meshes checksum
-alike, so a sweep over terrain that does not emit everywhere is partly measuring
-nothing. It must read 0. `probe/s3/README.md` is the whole routine; `make guards`
-runs it and shows the maps.
-
-⚠ **A RECEIVER'S PRECONDITION IS THE SENDER'S JOB** — the finding, and it outlives
-this protocol. Re-asking held tiles at `Z:0` moved two of them; the other 36 were held
-forever and *correctly*, because the guard was right and the sender was not. Three
-things had to change, each looking like someone else's problem:
-
-- `send_layers` sent the store chunk under a tile's **origin** and nothing else, so
-  tiles at `cz = -4` wanted chunk `r = -2` and no tile in range had its origin there;
-- an **empty chunk was sent as silence**, which a cache cannot tell from one in
-  flight. `K:<cx>,<cz>` is the authority saying so, `world_touch_chunk` stores it, and
-  `tile_ready` now asks whether a chunk is **KNOWN**, not whether it holds ground — a
-  chunk known to be empty is an *answer*;
-- the comparison ran on arrival rather than at `Z:0`, the server's own statement that
-  a batch is whole.
-
-A guard alone turns a wrong answer into no answer. Better, and not the claim.
-
-⚠ **THE GATE WAS TESTING A CLIENT THAT NO LONGER EXISTED.** The server is interpreted
-from source every run; the wasm client is a **file** the server serves, written by
-`make client`. Every edit to `editor_client.loft` was invisible to the gates until
-someone remembered that command — the `Z:0` drain read as "never runs" through three
-instrumented runs while the code was simply not in the page. Both client gates now
-build it themselves. **Check this first** if a client change appears to do nothing.
-
-**S4 is done too, and #16 is finished.** `43:1` is the client saying it draws the
-ground itself; the server sends it none. Measured: **`ground sent 174 held 20`** —
-twenty ground meshes built and never put on the wire, while a plain socket in the same
-session still received every one.
-
-⚠ **Earned, not declared** — four `Q:` agreements with no disagreement, and `43:0` the
-moment one fails, so the worst case is a byte cost and never a hole in the world.
-⚠ **Per client.** "Suppress when every client derives" reads as the safe choice and makes
-the deletion *unreachable*: the gate runner is a client and cannot derive.
-⚠ **And a client is tracked where it ARRIVES** — `clients` was filled by `2:<aspect>`,
-400 ms late, and the instant the ground became a per-client send the whole opening
-stream went to nobody (`terrain` read `n: 0`).
-
-**Two instruments were wrong before the thing they measured, again.** `wait` returns
-the *earliest* matching status, so a cumulative tally read `ground 0 bad 0 wait 1` —
-the instant before any evidence exists; `last <prefix>` is the missing instrument and
-now exists. And **the `snap` is what opens the browser, and the browser IS the client
-under test**: dropping it from a gate that judges no picture left nobody to compare
-anything, and every verdict line simply never arrived.
-
----
+- ⚠ **[#744](https://github.com/loft-lang/loft/issues/744)** — `const X = some_fn()` aborts
+  with a **non-unwinding panic and no source location**. So a constant cannot be derived from
+  the list it belongs to; `SURFACES` is held equal to `moros_terrain::surface_count()` by a
+  test instead. An abort a minute into a run reads as "the frame loop crashed", not "a
+  constant was rejected".
+- ⚠ **[#745](https://github.com/loft-lang/loft/issues/745)** — passing a **struct field** to a
+  `&`-parameter compiles interpreted and fails `--native` with a bare `E0308` and no span.
+  Bind the field to a local first. A native-only failure with no span is a **bisection**, not
+  a read.
 
 ## Decisions taken — do not re-litigate
 
@@ -245,6 +134,17 @@ anything, and every verdict line simply never arrived.
    six heights differed. The design promised full order-freedom and was wrong to: painter's
    order is what makes "place this on top of that" possible. Both halves are gated,
    including the refuted one, so a future arbitration rule cannot land silently.
+11. **A universal package must not be named for one consumer.** `tools/layering.sh` skips
+   `moros_*` by design — a consumer may depend on anything — so `moros_ui` was exempt from the
+   check that existed to catch it, for months. The name is what decides whether the arrow is
+   enforced, which makes renaming a mechanism rather than a tidy-up. lavition's packages are
+   `hex_*` for a hex data axis and `lavition_*` for the suite; a Moros prefix is a claim that
+   the thing belongs to the game.
+12. **A surface's colour is a measurement, not a taste.** The picture gates classify on
+   CHROMATICITY, so two surfaces that differ only in brightness are one surface to every gate
+   — `road` and `wall` sat 0.00009 apart inside a 0.0009 tolerance. Separate them in the
+   RENDERER, never in the classifier: a classifier fix leaves the picture just as ambiguous to
+   a person. And a neutral can never separate from another neutral.
 9. **A symmetric test subject cannot detect a symmetric bug.** Earned twice on 2026-07-22:
    a signature that read walls only from occupied cells reported the wrong orientation count,
    and the *same* blindness in `map_to_stencil` / `stencil_into_map` silently dropped 9 of a
@@ -331,6 +231,26 @@ its direction tables from the geometry — and it still shipped, because every t
 non-negative rows. What found it was the **cross-language fixture** (#3): one file both
 implementations read, covering both signs. Care does not scale; a fixture that spans the
 seam does.
+
+**G. A COUNT IS NOT A PICTURE, AND A PICTURE IS NOT A COUNT** — five times in one session,
+in both directions. Nine swatches "rendered" and none drew (a count of draw calls is not a
+count of pixels). Nineteen columns copied and two read back empty. A part cell holding a
+neighbour's height while every total agreed. And the other way: a status strip 2.7× too small,
+and two labels overlapping, neither visible to any count and both obvious in the frame.
+
+⚠ **The instrument follows from which one the claim is about.** *"It drew"* is a picture;
+*"it drew the RIGHT thing"* is usually a number; *"nothing was lost"* is a number the picture
+cannot supply. When the two disagree, suspect both — and when only one exists, that is the
+finding.
+
+**H. A gate instrument is blind until something it should reject is fed to it.** Three were,
+this session, and each looked reasonable: a luminance BAND counted 824 "dim" pixels where
+nothing was greyed, because anti-aliased edges land in any band you pick; a single sample
+COLUMN read six buttons as thirteen fragments once labels were drawn on it; and
+`[].every(…)` is `true`, so a row reported `ok` on a picture with no panel at all. ⚠ **The
+fix is a discriminator taken from the SHAPE** — a per-row peak, a bar's height, a count
+alongside the predicate — because a threshold tuned to today's colours dies at the next
+restyle.
 
 **F. Content exercising a mechanism finds what probes miss.** The built-in house was a port,
 and authoring it uncovered both a wrong ring in our content *and* the rotation losing rim
