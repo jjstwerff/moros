@@ -130,24 +130,18 @@ const LEVEL_R = 5;
 // is a guess about how far a world extends. Parity makes no range assumption at
 // all. `0` in the ramp slot keeps the road a flat colour rather than
 // height-ramped: a road is a surface, not a reading of the terrain.
-const FIELD_R = 0.55;
-const FIELD_G = 0.62;
-const FIELD_B = 0.24;
 
-// ⚠ `moros_terrain::surfaces()` IS THE AUTHORITY (plan 18 B3.1) and these are a
-// copy of index 1. They cannot be read from it directly: `const X =
-// some_fn()` makes loft abort with a non-unwinding panic rather than a
-// diagnostic — filed upstream — so the parity is held by
-// `moros_terrain/tests/surfaces.loft` instead of by the compiler.
+// ⚠ EVERY SURFACE COLOUR BUT THIS ONE IS `moros_terrain::surfaces()`'s NOW, and
+// the copy that used to sit here is gone. `chunk_meshes_all` returns the nine
+// meshes in that list's order and its callers take the colour from the list by
+// the same index, so there is nothing left to hold equal — the drift `B3.1`
+// wrote a test against is no longer representable. The arguments for each colour
+// went with them, to the entries they are about.
 //
-// ⚠ THE ROAD IS A RED EARTH, and that is a measurement. It was `0.28,0.26,0.24`,
-// a neutral dark grey sitting **0.00009** from the wall in chromaticity — an
-// order of magnitude inside the 0.0009 the picture gates classify with. Nothing
-// could tell a road from a wall, and no gate had both in frame to notice.
-const ROAD_R = 0.30;
-const ROAD_G = 0.18;
-const ROAD_B = 0.15;
-
+// ⚠ GRASS STAYS, because it is not a mesh colour here: `G:` sends it as the LOW
+// end of the terrain height ramp, and the ground mesh is drawn ramped rather than
+// flat. It is the one surface whose colour this file uses for something the list
+// does not describe.
 const GRASS_R = 0.42;
 const GRASS_G = 0.50;
 const GRASS_B = 0.30;
@@ -440,28 +434,14 @@ const W_THETA      = 4;
 // (`hex_world::LABEL_GROUND`), reached through `world_ground_cell` for a read and
 // `ground_write` for a write. Re-introducing an index here would silently undo it.
 
-const ROOF_R = 0.45; const ROOF_G = 0.20; const ROOF_B = 0.17;
 // A DECK IS DRAWN, and until 2026-07-31 no floor was. `chunk_mesh_mat` builds each
 // surface from `world_ground_cell`, which is the outdoors by definition, so every
 // layer a storey or a cellar made was invisible — and that was survivable only
 // while nothing could stand on one. The stair changed that: a character walked onto
 // a first floor and appeared to hang in the air three metres above the ground.
-// ⚠ AND IT MUST NOT BE THE WALL'S COLOUR, which it was: `0.62,0.57,0.48` against a
-// wall's `0.55,0.52,0.46` is the same pale warm grey to within a scalar, so a floor
-// and the wall standing on it were one surface both to the eye and to any classifier
-// that reads the picture. Two consequences, and the second is why this is a defect
-// rather than a preference:
-//
-//   - a room whose floor and walls are the same colour has no corner in it — which
-//     is most of why the interior frames read flat;
-//   - `camera-frame`'s rule is *no SINGLE surface over 60%*, and it could not be
-//     measured: the two chromaticities are 0.0003 apart against a 0.0009 tolerance,
-//     so the gate merged them and judged a bucket. An instrument that cannot tell
-//     the surfaces apart cannot judge a claim about one of them.
-//
-// Timber, and warm enough to be safe from every other entry in the palette — the
-// nearest is the figure at 0.0077 in squared chroma, eight times the tolerance.
-const FLOOR_R = 0.65; const FLOOR_G = 0.40; const FLOOR_B = 0.25;
+// ⚠ AND ITS COLOUR IS `surfaces()`'s, with the argument that chose it: a floor in
+// the wall's own pale grey left a room with no corner in it and made
+// `camera-frame`'s *no single surface over 60%* unmeasurable.
 // ── `X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
 //
 // A door is a WALL MATERIAL, not a missing wall. Moros used to store one as
@@ -479,27 +459,11 @@ const FLOOR_R = 0.65; const FLOOR_G = 0.40; const FLOOR_B = 0.25;
 // vocabulary belongs with the gestures that write it.
 const WALL_UP      = 12;          // a storey of masonry
 const FENCE_UP     = 4;           // waist-high
-const WALL_R = 0.55; const WALL_G = 0.52; const WALL_B = 0.46;
-// ⚠ DRESSED STONE, AND IT IS THE POINT OF THE MESH. `F-READ`'s second cue is *a
-// frame that is a different VALUE from the wall* — the eye finds an opening by the
-// band of lighter stone around it before it resolves the hole at all. Geometry
-// alone cannot say this: a surround flush in colour with its wall is invisible
-// however proud it stands, because a plane parallel to the wall shades identically.
-const FRAME_R = 0.78; const FRAME_G = 0.74; const FRAME_B = 0.65;
-// ⚠ THE CEILING IS COOL AND THE ROOM UNDER IT IS WARM, and that is what gives a
-// room a corner. It is also the only way the frame gate can SEE it: the classifier
-// reads chromaticity, so a soffit in the roof's own colour is the roof to it, and
-// "is the overhead surface the ceiling or the outside of the roof" becomes a
-// question no pixel can answer. Measured against every other entry in the palette
-// its nearest neighbour is 4.2× the classifier's tolerance — the pale warm greys
-// are crowded, so a ceiling that reads as shadow is the one that also separates.
-const SOFFIT_R = 0.34; const SOFFIT_G = 0.30; const SOFFIT_B = 0.36;
 const FRAME_W = 0.14;            // how far the surround reaches past the opening
 const FRAME_PROUD = 0.05;        // and how far it stands out of the wall's face
 const SPECIES_TREE = 1;           // the item palette: 0 is absence, always
 const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
-const TREE_R = 0.16; const TREE_G = 0.34; const TREE_B = 0.14;
 const WINDOW_MAX_ROOF = 400;      // a roof taller than this cannot fit the window
 
 fn new_world() -> World {
@@ -3078,6 +3042,59 @@ fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
 
 fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
   moros_terrain::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
+}
+
+// EVERY MESH ONE CHUNK DRAWS, IN `moros_terrain::surfaces()` ORDER.
+//
+// ⚠ ONE PLACE, because it was spelled out TWICE and is about to be wanted a
+// third time. The dirty flush and the streamer each named the nine surfaces, in
+// two different orders, with the same nine colour constants beside them — and a
+// part thumbnail needs the identical recipe over a part's own world. A third
+// copy is how a surface comes to be drawn in the world and missing from the
+// catalogue, which is the same drift `B3.1` took the stride out of.
+//
+// ⚠ THE ORDER IS THE ID-SPACE ORDER, and the two agree by construction rather
+// than by luck: a chunk's mesh ids are `cid * SURFACES + MESH_FIGURE_MAX + 1 + i`
+// and `surfaces()[i]` is the surface that id draws, so a caller can loop over
+// both with one index. `surfaces.loft` already says re-ordering that list
+// renumbers every mesh on the wire; this is the reader that makes it true.
+//
+// ⚠ FIVE OF THE NINE ARE NOT CELL MESHES. Ground, road, field and floor come out
+// of `chunk_mesh_mat` — the cells carrying that material — while vegetation,
+// roof, wall, frame and soffit are built by `chunk_mesh_props`, which reads wall
+// EDGES, roof cells, dressing and the server's own registries. Handing it empty
+// registries is legitimate and is what a part gets: a part has no wall runs and
+// no roof plans, so its walls draw as per-edge panels and its roof from its own
+// cells — the fallback paths `chunk_mesh_props` already keeps for the stencil.
+fn chunk_meshes_all(cx: integer, cz: integer, wld: World,
+                    runs: WallRuns, roofs: hex_editor::RoofPlans,
+                    leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings,
+                    annexes: hex_editor::Annexes, awalls: WallRuns,
+                    props: hex_editor::Props, slabs: hex_editor::Slabs,
+                    holes: hex_editor::Holes) -> vector<Mesh> {
+  cma_g = moros_terrain::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT);
+  cma_r = moros_terrain::chunk_mesh_mat(cx, cz, wld, ROAD_MAT);
+  cma_f = moros_terrain::chunk_mesh_mat(cx, cz, wld, FIELD_MAT);
+  cma_v = mesh("veg");
+  cma_k = mesh("roof");
+  cma_w = mesh("wall");
+  // ⚠ THE GROUND'S OWN FLOOR CELLS SEED IT. `place_house` writes its floor into
+  // the ground layer as `FLOOR_MAT`, and nothing asked for that material until
+  // this line existed: 21% of the frame classified as SKY from inside a house.
+  cma_l = moros_terrain::chunk_mesh_mat(cx, cz, wld, FLOOR_MAT);
+  cma_a = mesh("frame");
+  cma_s = mesh("soffit");
+  chunk_mesh_props(cx, cz, wld, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s,
+                   runs, roofs, leaves, openings, annexes, awalls, props, slabs, holes);
+  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s]
+}
+
+// One surface's mesh out of that set, by index. ⚠ The fallback is an EMPTY mesh
+// rather than a silent skip: an index past the end is a stride that has drifted,
+// and an empty mesh draws nothing while a skipped id leaves the client holding
+// the PREVIOUS chunk's triangles under that id.
+fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
+  ms[i] ?? mesh("empty")
 }
 
 // THE GROUND UNDER THE CHARACTER, sampled from THE SAME TRIANGLES THAT ARE DRAWN.
@@ -6335,7 +6352,10 @@ fn main() {
           // stale neighbour leaves a real gap — and the cache is part of that instant
           // rather than a thing that catches up afterwards.
           send_layers(srv, wld, dc2.cx, dc2.cz);
-          dm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, SURFACE_MAT);
+          dms = chunk_meshes_all(dc2.cx, dc2.cz, wld, wall_runs, roof_plans,
+                  door_leaves, wall_openings, wall_annexes, annex_walls,
+                  wall_props, wall_slabs, wall_holes);
+          dm = chunk_mesh_slot(dms, 0);
           // ⚠ S3: the checksum of the ground mesh THIS SERVER just built, so the
           // client can derive its own from its cache and prove it is the same one.
           // Not a count and not a picture: a mesh with the right number of vertices
@@ -6350,34 +6370,22 @@ fn main() {
           }
           g_sent = g_sent + gn2;
           g_held = g_held + (len(clients) - gn2);
-          fm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, FIELD_MAT);
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
-          rm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, ROAD_MAT);
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 2};0;{mesh_wire(rm, ROAD_R, ROAD_G, ROAD_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
-          vm2 = mesh("veg");
-          km2 = mesh("roof");
-          wm2 = mesh("wall");
-          // ⚠ THE GROUND'S OWN FLOOR CELLS SEED IT — see the note at the streaming
-          // site below. `chunk_mesh_mat` draws the cells that carry the material it
-          // is asked for, and nothing asked for `FLOOR_MAT`.
-          lm2 = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, FLOOR_MAT);
-          am2 = mesh("frame");
-          sm2 = mesh("soffit");
-          chunk_mesh_props(dc2.cx, dc2.cz, wld, vm2, km2, wm2, lm2, am2, sm2, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vm2, TREE_R, TREE_G, TREE_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(km2, ROOF_R, ROOF_G, ROOF_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 6};0;{mesh_wire(wm2, WALL_R, WALL_G, WALL_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lm2, FLOOR_R, FLOOR_G, FLOOR_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(am2, FRAME_R, FRAME_G, FRAME_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 9};0;{mesh_wire(sm2, SOFFIT_R, SOFFIT_G, SOFFIT_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 9};{mat_wire(mat4_identity())}");
+          // ⚠ THE COLOUR COMES FROM `surfaces()`, NOT FROM A CONSTANT BESIDE THIS
+          // LINE. It was nine `M:`/`T:` pairs naming nine pairs of constants — a
+          // second copy of the list `B3.1` made the authority, in the one place
+          // that decides what the author actually SEES. The ground keeps its own
+          // line above because it is not like the others: it carries the height
+          // ramp and it is the only surface a deriving client is not sent.
+          for si in 1..SURFACES {
+            sfc = moros_terrain::surface_at(si);
+            smid = dc2.id * SURFACES + MESH_FIGURE_MAX + 1 + si;
+            srv.broadcast("M:{smid};0;"
+              + "{mesh_wire(chunk_mesh_slot(dms, si), sfc.sf_r, sfc.sf_g, sfc.sf_b)}");
+            // ⚠ AFTER ITS OWN `M:`, ALWAYS. A placement for a mesh the client does
+            // not hold is dropped without a word, so a `T:` that overtook its mesh
+            // would leave that surface stuck at the origin for ever.
+            srv.broadcast("T:{smid};{mat_wire(mat4_identity())}");
+          }
           nrebuilt = nrebuilt + 1;
         }
       }
@@ -6478,48 +6486,29 @@ fn main() {
               // say, so an unconditional bracket would be 30 empty pairs a second.
               if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
               send_layers(srv, wld, scx, scz);
-              cmesh = chunk_mesh(scx, scz, wld);
+              cms = chunk_meshes_all(scx, scz, wld, wall_runs, roof_plans,
+                      door_leaves, wall_openings, wall_annexes, annex_walls,
+                      wall_props, wall_slabs, wall_holes);
+              cmesh = chunk_mesh_slot(cms, 0);
               srv.broadcast("Q:{scx},{scz},{moros_terrain::mesh_crc(cmesh)}");
               gn1 = send_ground(srv, clients,
                       "M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               g_sent = g_sent + gn1;
               g_held = g_held + (len(clients) - gn1);
-              fmesh = moros_terrain::chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
-              rmesh = moros_terrain::chunk_mesh_mat(scx, scz, wld, ROAD_MAT);
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 2};0;{mesh_wire(rmesh, ROAD_R, ROAD_G, ROAD_B)}");
-              vmesh = mesh("veg");
-              kmesh = mesh("roof");
-              wmesh = mesh("wall");
-              // ⚠ A HOUSE HAD NO FLOOR, AND THE INTERIOR FRAMES SHOWED SKY THROUGH
-              // IT. `place_house` writes its floor into the ground layer as
-              // `FLOOR_MAT`, and the four ground passes ask for `SURFACE_MAT`,
-              // `ROAD_MAT`, `FIELD_MAT` and vegetation — so those cells were written
-              // to the store, read back correctly by `26:`, and drawn by nobody.
-              // Measured: standing in a 5x4 house, **21% of the frame classified as
-              // SKY**, which is the clear colour showing through the missing fan.
-              // Fourth time this session something reached the store and stopped
-              // there; the floor already HAS a surface id and a colour, and only the
-              // one line that fills it was missing.
-              lmesh = moros_terrain::chunk_mesh_mat(scx, scz, wld, FLOOR_MAT);
-              amesh = mesh("frame");
-              smesh = mesh("soffit");
-              chunk_mesh_props(scx, scz, wld, vmesh, kmesh, wmesh, lmesh, amesh, smesh, wall_runs, roof_plans, door_leaves, wall_openings, wall_annexes, annex_walls, wall_props, wall_slabs, wall_holes);
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 4};0;{mesh_wire(vmesh, TREE_R, TREE_G, TREE_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 4};{mat_wire(mat4_identity())}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 5};0;{mesh_wire(kmesh, ROOF_R, ROOF_G, ROOF_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 5};{mat_wire(mat4_identity())}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 6};0;{mesh_wire(wmesh, WALL_R, WALL_G, WALL_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 6};{mat_wire(mat4_identity())}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 7};0;{mesh_wire(lmesh, FLOOR_R, FLOOR_G, FLOOR_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 7};{mat_wire(mat4_identity())}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 8};0;{mesh_wire(amesh, FRAME_R, FRAME_G, FRAME_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 8};{mat_wire(mat4_identity())}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 9};0;{mesh_wire(smesh, SOFFIT_R, SOFFIT_G, SOFFIT_B)}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 9};{mat_wire(mat4_identity())}");
+              // The same loop as the flush, over the same list, in the same order —
+              // see `chunk_meshes_all`. This site is why that helper exists: the two
+              // paths had drifted into two orderings of nine near-identical pairs.
+              for ssi in 1..SURFACES {
+                ssf = moros_terrain::surface_at(ssi);
+                ssmid = cid * SURFACES + MESH_FIGURE_MAX + 1 + ssi;
+                srv.broadcast("M:{ssmid};0;"
+                  + "{mesh_wire(chunk_mesh_slot(cms, ssi), ssf.sf_r, ssf.sf_g, ssf.sf_b)}");
+                srv.broadcast("T:{ssmid};{mat_wire(mat4_identity())}");
+              }
+              // ⚠ THE GROUND'S PLACEMENT IS BROADCAST, not sent with its mesh. A
+              // deriving client installs its OWN ground under this id and still
+              // needs the transform; the mesh above is the one thing it is spared.
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 2};{mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }

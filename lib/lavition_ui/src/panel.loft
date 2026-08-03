@@ -170,7 +170,16 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
     // and not say why, which is the blank no again.
     pb_txt = pb_it.en_label;
     if !pb_it.en_available { pb_txt = "{pb_it.en_label} — {pb_it.en_reason}"; }
-    pb_items += [Entry { en_label:     fit_text(pb_txt, pb_lr.r_w - LABEL_PAD, metrics),
+    // ⚠ THE KIND IS CARRIED, AND IT WAS NOT. `B5.1` put `en_kind` on `Entry` so
+    // ONE list could hold two families, and this rebuild left it out — so every
+    // row in `lb_items` came out `KIND_UNSET` and a renderer reading the built
+    // panel could not tell a part from a material. Nothing noticed, because no
+    // consumer read the kind until `B5.2` drew an image per row: the field
+    // reached the struct, the wire and the parser, and stopped one line short of
+    // its only reader. The LABEL is fitted here and the kind is not — a kind is
+    // a handle, not something shown, so there is no box to fit it to.
+    pb_items += [Entry { en_kind:      pb_it.en_kind,
+                         en_label:     fit_text(pb_txt, pb_lr.r_w - LABEL_PAD, metrics),
                          en_available: pb_it.en_available,
                          en_reason:    pb_it.en_reason }];
   }

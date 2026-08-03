@@ -135,6 +135,40 @@ fn test_panel_build_carries_the_items_and_the_selection() {
   assert(p.p_list.lb_selected == 1, "selection index passes through");
 }
 
+// ⚠ THE KIND SURVIVES THE BUILD, AND IT DID NOT. `panel_build` rebuilds every
+// `Entry` to fit its label, and the rebuild simply left `en_kind` out — so a
+// spec carrying two families came out of the panel as one, every row
+// `KIND_UNSET`. Nothing failed: `widgets.loft` tests the kind on the
+// CONSTRUCTORS and the wire carried it correctly, so the field was right
+// everywhere except in the only structure a renderer reads.
+//
+// The claim is stated over a MIXED list, because a list of one kind cannot
+// tell "carried" from "defaulted to whatever the first row was".
+fn test_panel_build_carries_the_kind_of_every_family() {
+  s = demo_spec();
+  s.ps_items = [entry_of("material", "grass"),
+                entry_of("part", "house/cottage"),
+                entry_blocked_of("material", "tree", "scattered")];
+  p = panel_build(s, 1280, 720, ui_metrics(8, 8));
+  got: vector<text> = [];
+  for it in p.p_list.lb_items { got += [it.en_kind]; }
+  assert(len(got) == 3, "three items, got {len(got)}");
+  assert(got[0] == "material", "row 0 kind is '{got[0]}'");
+  assert(got[1] == "part", "row 1 kind is '{got[1]}' — the family did not survive the build");
+  assert(got[2] == "material", "row 2 kind is '{got[2]}' — a blocked row lost its family");
+}
+
+// ⚠ AND AN UNSET KIND STAYS UNSET. The fix must carry the field, not invent one:
+// a `panel_build` that defaulted every row to "material" would pass the test
+// above for the rows that ARE materials and quietly relabel everything else.
+fn test_panel_build_does_not_invent_a_kind() {
+  s = demo_spec();
+  s.ps_items = [entry("solid")];
+  p = panel_build(s, 1280, 720, ui_metrics(8, 8));
+  assert((p.p_list.lb_items[0] ?? entry("x")).en_kind == KIND_UNSET,
+         "panel_build gave an unkinded row a family of its own");
+}
+
 // An empty panel is a legal panel: a consumer with no tools yet still gets a
 // strip and a status bar rather than a null.
 fn test_an_empty_spec_still_builds() {

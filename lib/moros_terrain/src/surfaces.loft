@@ -53,7 +53,21 @@ pub fn surfaces() -> vector<Surface> {
     // said. It was separated in the RENDERER rather than in the classifier, which
     // is why the fix survives.
     Surface { sf_name: "floor",  sf_r: 0.65, sf_g: 0.40, sf_b: 0.25, sf_bucket: "floor" },
+    // ⚠ DRESSED STONE, AND IT IS THE POINT OF THE MESH. `F-READ`'s second cue is
+    // *a frame that is a different VALUE from the wall* — the eye finds an opening
+    // by the band of lighter stone around it before it resolves the hole at all.
+    // Geometry alone cannot say this: a surround flush in colour with its wall is
+    // invisible however proud it stands, because a plane parallel to the wall
+    // shades identically.
     Surface { sf_name: "frame",  sf_r: 0.78, sf_g: 0.74, sf_b: 0.65, sf_bucket: "masonry" },
+    // ⚠ THE CEILING IS COOL AND THE ROOM UNDER IT IS WARM, and that is what gives a
+    // room a corner. It is also the only way the frame gate can SEE it: the
+    // classifier reads chromaticity, so a soffit in the roof's own colour IS the
+    // roof to it, and "is the overhead surface the ceiling or the outside of the
+    // roof" becomes a question no pixel can answer. Measured against every other
+    // entry in the palette its nearest neighbour is 4.2× the classifier's tolerance
+    // — the pale warm greys are crowded, so a ceiling that reads as shadow is the
+    // one that also separates.
     Surface { sf_name: "soffit", sf_r: 0.34, sf_g: 0.30, sf_b: 0.36, sf_bucket: "soffit" },
   ]
 }
