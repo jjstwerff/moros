@@ -30,14 +30,16 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 | `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **48** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
-### The next thing to do is #18 `B5.3` — invalidation, or #17 `A3.1` — instances
+### The next thing to do is #17 `A3.1` — instances. **Plan 18 is COMPLETE.**
 
 **`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
 tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
 (`make parts` builds and verifies it), `14:<roof>,<part>` places it — and **`14:<roof>` now
 places it too**, by generating a part and stamping it. ⚠ **#18 `B5.1` and `B5.2` are done**:
 `house/cottage` is in the same list as the nine materials — one widget, the kind on the row —
-and its row now shows **the part itself**, rendered.
+its row shows **the part itself**, rendered, and the picture **follows the file**: the server
+keys each part by `(mtime, size)`, re-stats once a second, and broadcasts a rebuilt set to
+everyone rather than to the next client to connect.
 
 ⚠ **A PART IS A WORLD TO THE STORE AND IS NOT ONE TO THE MESHER**, which `B5.2` found by
 looking. `chunk_mesh_mat` treats an unwritten cell as GROUND — that is what makes an
@@ -61,6 +63,25 @@ with the arithmetic checking out, every **vertex solved** — the frame. The thi
 carry: *far enough that the topmost corner fits when it is also the nearest one* is exactly
 right for a box with all eight corners populated, and a house is not one. Its tall points are
 its roof and its near points are its front wall.
+
+⚠ **A PICTURE COULD NOT SEE HALF OF `B5.3`, AND THAT WAS MEASURED.** Invalidation is two
+claims — the row is redrawn, and the old geometry is retired — and only the first has a picture.
+With the drop deliberately disabled the row-diff reported **`ok — 18% of pixels moved`**: two
+houses drawn on top of each other is certainly a changed picture, and the client was leaking a
+vertex buffer per surface per rebuild behind it. `24 thumbnail meshes arrived, 12 held` is the
+second instrument. ⚠ **When a claim has two halves, count the halves before trusting the
+picture** — and `§C4`'s own cache key had to be replaced for a related reason: *the version
+already exists in the layer* is true of a world in memory and useless for a file, because reading
+a layer version means LOADING the file, which is the whole cost the cache avoids. **A key you
+must pay full price to compute is not a key.**
+
+⚠ **AND A 22×16 THUMBNAIL FOUND A GEOMETRY DEFECT NOBODY HAD LOOKED FOR.** `B5.3` needed a
+second part, reached for `roof_up`, and the picture came back a red band floating over a grey
+box. Measured in the part files: `roof_up` lifts the roof's EAVE while the walls stay at
+`WALL_UP = 12`, so `14:28` puts roof cells at 28..36 over a wall head of 12 — **a roof floating
+16 units above its own house** — and the fence admits up to 400. Nothing had ever drawn a house
+with a non-default roof. [OPEN_ISSUES](OPEN_ISSUES.md) has it; the gate's fixture varies the
+RADIUS instead, so no gate encodes the broken shape.
 
 ⚠ **AND THE CATALOGUE HAD BEEN DRAWING THE PART A BLACK HEXAGON SINCE `B5.1`.**
 `render_swatches` indexed `surface_at(i)` by the LIST row and `surface_at(9)` is the `?`
@@ -141,11 +162,10 @@ lineage. Which tree owns it for good is
 
 ### Where the two plans stand
 
-**[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
-`B4`, `B5.1`, `B5.2`, `B6` **done**. What is left is `B5.3`: invalidate the thumbnail on the
-part's version. ⚠ `B5.3`'s control is that the thumbnail **changes**, not merely that it is
-non-blank — and the cache to invalidate is in **two** places now, the server's `wire_thumbs`
-(built once at startup) and the client's textures (rebuilt when the list changes).
+**[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — **every step done.** `B1`,
+`B1.2b`, `B2`, `B3`, `B4`, `B5`, `B6`. The editor says what you are working on, things can be
+named, and one list holds parts and materials alike, each row with a name, an image and its
+availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` and `A2` complete.**
 `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
