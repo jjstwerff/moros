@@ -20,10 +20,14 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-03, session 9) — the client meshes the ground itself, and two designs are open
+## ⏭ PICK UP HERE (2026-08-03, session 9) — the two active plans are closed, and the browser can draw text after all
 
-`make gate` **33 green** · `make lib-test` **18 packages, both backends** ·
-`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **102**.
+`make gate` **33 green** · `make lib-test` **green, both backends** ·
+`make guards` **5 probes green** · `lib/hex_editor` **217 tests** · `lib/hex_world` **102** ·
+`hex_field` **51** · `hex_grid` **14** · `npm test` **53**.
+
+**#3 and #5 are finished and closed** — they were the two `status:active` plans, and both
+had real gaps behind a doc that read as if they were done. What each turned up is below.
 
 **Two plans are designed and not started**, and they are the next work:
 [#17 parts](https://github.com/jjstwerff/moros/issues/17) — [PARTS.md](PARTS.md), a house
@@ -33,18 +37,97 @@ drawn away from the world and composed by socket — and
 ⚠ #18 is largely *finish `moros_ui`*: its panel layout, hit-test and click routing are
 built and tested; `panel_render` was never written.
 
-⚠ **THE BROWSER CANNOT DRAW TEXT OR LOAD AN IMAGE.** Measured in the emitted page, not read
-from the API: `loft --html` stubs the whole text bridge, `gl_load_texture` is a TODO
-returning 0, `gl_upload_alpha_texture` is stubbed, and `println` is invisible because
-`gl_create_window` hides the `<pre>`. **Render-to-texture is real**, so the only way to put
-pixels on the canvas is to render them with GL — glyphs become geometry, every catalogue
-image is rendered rather than loaded. [loft#737](https://github.com/loft-lang/loft/issues/737)
-and [#738](https://github.com/loft-lang/loft/issues/738).
+### ⚠ THE BROWSER CAN DRAW TEXT AND LOAD AN IMAGE — this reversed on 2026-08-03
+
+The previous entry said the opposite in capitals, and it is now false: **loft fixed both**
+([`b7aebffb`](https://github.com/loft-lang/loft), then `2945711a` for the blank canvas), and
+the installed `loft 2026.8.0` carries them. Measured in the emitted page, the same way the
+original claim was:
+
+| | was | now, in the emitted `--html` page |
+|---|---|---|
+| text bridge | every builtin stubbed to a no-op | real — `measureText` for metrics, `fillText` for coverage |
+| `gl_upload_alpha_texture` | stub | uploads a program-computed coverage buffer from wasm memory |
+| `gl_load_texture` | TODO returning 0 | serves a bundled asset (`--html` embeds `.png` siblings) |
+| `TODO` markers in the page | present | **0** |
+
+⚠ **This changes plan #18's premise.** Glyphs no longer have to become geometry, and a
+catalogue image no longer has to be rendered rather than loaded — so `B1` is now "draw text
+with the bridge", not "build a geometry font". [loft#737](https://github.com/loft-lang/loft/issues/737)
+and [#738](https://github.com/loft-lang/loft/issues/738) are still **open on the tracker**
+though the code is fixed; trust the measurement over the label, and re-measure before
+believing either.
 
 ⚠ **Nothing in the editor tells you what you are working on.** Fourteen keys are bound —
 `w s a d`, `↑ ↓`, `l f g e q b c r` — and none is documented anywhere in the browser; no
 mode, no name, no toggle state. The page that came before carried a static HUD string and
 that went with it. This is plan #18's `B1`.
+
+### #5 closed — the stencil invariant the design got wrong, and the one it could not state
+
+Three of the five invariants were gated. The other two were not, and **measuring the fourth
+refuted it**.
+
+⚠ **Overlap is order-free ONLY IN OCCUPANCY.** The design promised "two stencils overlapping
+at the same level arbitrate deterministically **and order-freely** — stamping A then B
+equals B then A". Stamped both ways with different payloads on the shared cells: occupancy
+agreed everywhere, **six labels and six heights did not**. A stamp is last-writer-wins, so
+the payload carries the order — and that is also the *right* rule, because order-freedom
+would make "place this on top of that" impossible, which is the one thing a stamp is for.
+
+⚠ **THE TEST THAT LOOKED LIKE IT COVERED THIS DID NOT.**
+`test_two_stamps_at_different_places_are_order_free` reads like the strong claim; its last
+line asserts the two stamps did **not** overlap. A name can describe the claim while the
+body tests the weaker case standing beside it — and no count notices, because the weak case
+genuinely passes.
+
+**Un-stamp did not exist**, so invariant 3 could not be stated at all. `stencil_unstamp` /
+`_layers` / `_all` are the exact inverses. ⚠ **On free ground only, and that is not a
+limitation to fix**: a stamp destroys what it covers and the previous value is never kept,
+so true undo over occupied ground needs a snapshot, not an un-stamp.
+
+Three controls seen red, each catching its own class: un-stamp without the halo left **8 rim
+walls** standing (the cell count never moved); un-stamp skipping labels left label 1 at
+`2,3`; the stamp flipped to first-writer-wins read `11` on the shared cell.
+
+### #3 closed — and the fixture found a live half-hex drift on its first run
+
+The convention was already stated once and `hex_grid` already owned the math. What was
+missing was the thing that keeps it that way, and it worked immediately.
+
+⚠ **THE BROWSER LATTICE WAS HALF A HEX OUT BELOW ZERO.** `html/hex-lattice.js` tested row
+parity with `row % 2 === 1`. JavaScript's `%` keeps the sign of the dividend, so `-1 % 2` is
+`-1` and the odd-row shift **silently stopped on every negative odd row** — rows −1, −3, −5
+drawn half a hex left of where `hex_grid` puts them, while every non-negative row agreed
+perfectly. **Fourth instance of `%`-where-`&`-was-meant** (lesson E below), so
+`neighborOffsets` and `dirName` moved to `& 1` too: they were right for negatives, but by
+luck, and luck is the class.
+
+⚠ **THE FIXTURE HOLDS INTEGERS, AND THAT IS THE LOAD-BEARING CHOICE.** The issue asked for
+**bit-identical** sampled `(col,row) → (x,y)` pairs. That cannot be had: the two sides reach
+the same centre by different expression trees and may differ in the last ulp while both are
+right. Such a fixture must carry a tolerance — **and a tolerance is exactly where a real
+half-hex error hides**. The doubled lattice `k = 2·col + (row & 1)`, `m = 3·row` is exact in
+both languages, and a parity drift is a drift of **1** in `k`. The float step is asserted
+separately, where a tolerance is honest because that claim is about *scale*.
+
+One file — `hex_grid/tests/fixtures/lattice.tsv` — read by `hex_grid`'s loft tests and by
+`test/lattice.test.js`, generated by neither at test time. Controls seen red on both sides:
+a perturbed pair fails by name in both languages, and restoring `% 2 === 1` fails with
+"row −1 and row 1 disagree", 62.35 vs 93.53, exactly `w/2` apart.
+
+⚠ **A relabelling would have looked almost right.** SCENE_MAP.md's wall geometry, its
+pairing table and the G12 resolution were all flat-top. Re-derived on pointy-top: the
+axis-aligned edge is **E**, not N, and the zigzag is in **y**, not x — but the constant
+`3R/4` is *unchanged*, because a ratio measured along the rotating edge cannot change. Every
+axis moved and the number did not, which is why the banners said re-derive rather than
+rename.
+
+**Left out on purpose, and recorded rather than quietly done:** renaming `h_wall_n/ne/se` to
+NW/NE/E. They are public fields of the **published** `hex_world` 0.2.0, mid-migration under
+[#8](https://github.com/jjstwerff/moros/issues/8), across ~80 sites in ten files — a
+breaking change to a shared contract, not part of reconciling a document. It is a row in
+[doc/Todo.txt](../Todo.txt).
 
 ### S3 is complete: `ground 41 bad 7` → **`ground 48 bad 0 wait 0`**
 
@@ -156,6 +239,12 @@ anything, and every verdict line simply never arrived.
    reads exactly like proof that only six exist. Measured off-axis: twelve distinct cells on
    one ring, zero collisions. Both the claim and the collapse are pinned in
    `moros_map/tests/clock.loft`, the collapse as the negative control.
+10. **A stamp is LAST-WRITER-WINS, and overlap is order-free only in its occupancy.** Two
+   stencils overlapping at the same level union their cells whichever way round they go on;
+   the payload belongs to whoever went second. Measured, not argued (#5) — six labels and
+   six heights differed. The design promised full order-freedom and was wrong to: painter's
+   order is what makes "place this on top of that" possible. Both halves are gated,
+   including the refuted one, so a future arbitration rule cannot land silently.
 9. **A symmetric test subject cannot detect a symmetric bug.** Earned twice on 2026-07-22:
    a signature that read walls only from occupied cells reported the wrong orientation count,
    and the *same* blindness in `map_to_stencil` / `stencil_into_map` silently dropped 9 of a
@@ -229,11 +318,19 @@ bug: a vacuous rotation-identity test (`n % 6` made "rotate by 6" a no-op), a mi
 length gate, an unverified halo (74 of 75 slots), and a control whose own perturbation parsed
 as a no-op. Green says the tests pass; it does not say they would notice.
 
-**E. Parity is where this codebase breaks.** Four separate bugs, all the same shape: right for
-non-negative coordinates, wrong below zero or on odd rows — `(r % 2)` where `(r & 1)` was
+**E. Parity is where this codebase breaks.** Five separate bugs now, all the same shape: right
+for non-negative coordinates, wrong below zero or on odd rows — `(r % 2)` where `(r & 1)` was
 meant, a direction table that could not be parity-aware, an axial neighbour list applied to
-offset coordinates, and negative indices that wrap rather than fail. When touching the
-lattice, test **both parities and both signs**.
+offset coordinates, negative indices that wrap rather than fail, and (2026-08-03)
+`html/hex-lattice.js` shifting no odd row below zero because `-1 % 2` is `-1` in JavaScript.
+When touching the lattice, test **both parities and both signs**.
+
+⚠ **The fifth one is the argument for the instrument, not for more care.** It sat in a file
+whose header already says "one home for the lattice" and whose test suite already re-derived
+its direction tables from the geometry — and it still shipped, because every test used
+non-negative rows. What found it was the **cross-language fixture** (#3): one file both
+implementations read, covering both signs. Care does not scale; a fixture that spans the
+seam does.
 
 **F. Content exercising a mechanism finds what probes miss.** The built-in house was a port,
 and authoring it uncovered both a wrong ring in our content *and* the rotation losing rim

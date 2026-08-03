@@ -170,10 +170,19 @@ indices, the three stored edges are **NW, NE and E**, so of the three field name
 `{NW, NE, E}` is a valid partition — but two fields have been named for edges they do not
 hold.
 
-What is **not** yet reconciled: the wall midpoint-rendering rule and the 90°-corner
-argument, both derived for flat-top. The shape of each argument survives a 90° rotation,
-but the axes and constants do not, and re-deriving them against the exact lattice is
-[issue #3](https://github.com/jjstwerff/moros/issues/3) rather than a doc edit.
+The wall midpoint-rendering rule and the 90°-corner argument were the last two written for
+flat-top; both are now **re-derived on the implemented lattice**
+([issue #3](https://github.com/jjstwerff/moros/issues/3), closed). The shape of each
+argument survived the 90° rotation and so, it turned out, did the one constant — `3R/4` is
+`3R/4` in both readings, because a ratio measured along the rotating edge cannot change.
+What changed is which axis every sentence is about: the axis-aligned edge is **E**, not N,
+and the zigzag is in **y**. That is exactly why the rule was to re-derive rather than
+relabel — a relabelling would have looked almost right.
+
+Still open, and deliberately not part of #3: the three field *names*. `h_wall_n/ne/se` are
+public fields of the **published** `hex_world`, mid-migration under
+[#8](https://github.com/jjstwerff/moros/issues/8), so renaming them is a breaking change to
+a shared contract rather than a documentation fix. `doc/Todo.txt` carries it.
 
 **3. `hex_grid` already shipped, from crawler.** It is homed in
 `loft-lang/loft-libs-world` beside `hex_world` (chunked storage) and `hex_terrain`. Its
@@ -491,16 +500,26 @@ Hit-testing is already solved: `hex_at(px, py)` is the exact inverse of the cent
 gated both to round-trip every cell of a chunk and to agree cell-for-cell with
 `hex_grid::px_to_hex`.
 
-Reconciling [SCENE_MAP.md](SCENE_MAP.md) with all of this is
-[issue #3](https://github.com/jjstwerff/moros/issues/3).
+[SCENE_MAP.md](SCENE_MAP.md) is reconciled with all of this
+([issue #3](https://github.com/jjstwerff/moros/issues/3), closed) — section by section,
+including the walls, the corners and the 12 orientations.
+
+⚠ **The cross-language fixture is what keeps it reconciled**, and it is not a formality:
+`hex_grid/tests/fixtures/lattice.tsv` is read by `hex_grid`'s loft tests *and* by moros's
+`test/lattice.test.js`, and it caught a live half-hex drift the day it was written — the
+browser lattice used `row % 2 === 1`, which is false for `-1` in JavaScript, so the odd-row
+shift silently stopped below zero while every non-negative row agreed. The fixture holds
+**integers**, not sampled `(x, y)` floats: two implementations reach the same centre by
+different expression trees and can differ in the last ulp while both being right, so a
+float fixture needs a tolerance — and a tolerance is where a real half-hex error hides.
 
 ---
 
 ## What the editor may rely on
 
 The exact-integer lattice is what makes exact undo, exact diff and exact rotation possible
-at all. The first four are **live in `hex_field` 0.1.0** and gated there; the fifth is
-designed and lands with [issue #5](https://github.com/jjstwerff/moros/issues/5):
+at all. All five are **live in `hex_field`** and gated there
+([issue #5](https://github.com/jjstwerff/moros/issues/5), closed):
 
 - cell centres **and** corners are integer lattice coordinates;
 - the integer shoelace sum is a fixed multiple of the cell count — an outline and its cell
@@ -510,8 +529,27 @@ designed and lands with [issue #5](https://github.com/jjstwerff/moros/issues/5):
 - the field validator's full list: loops closed · every segment a real hex edge · no
   zero-length segment · no repeated vertex · integral vertices · one outer loop, holes
   wound opposite;
-- **stamping is merging two fields** — same level, nearest-wins arbitration; different
-  levels, no contest at all. A stencil needs no new conflict rule.
+- **stamping is merging two fields**, and a stencil needs no new conflict rule — but ⚠ the
+  merge is **order-free only in occupancy**. Two stencils overlapping at the same level
+  union their cells whichever way round they are stamped, and their *payload* is
+  last-writer-wins: stamped both ways with different labels and heights on the shared
+  cells, six labels and six heights came out different. The design sentence here said
+  "nearest-wins arbitration … deterministically and order-freely"; the measurement refuted
+  the order-freedom half, and full order-freedom was never the rule anyone wants — it would
+  make "place this on top of that" impossible, which is the one thing a stamp is for.
+  Both halves are gated in `hex_field/tests/04-stencil.loft`, the refuted half included, so
+  a future arbitration rule cannot land silently.
+
+⚠ **And the test that looked like it covered this did not.**
+`test_two_stamps_at_different_places_are_order_free` reads like the strong claim; its last
+line asserts the two stamps did **not** overlap. A name can describe the claim while the
+body tests the weaker case beside it.
+
+**Un-stamp is the inverse, on free ground only.** `stencil_unstamp_all` clears exactly what
+`stencil_stamp_all` wrote, back to the values a fresh field holds — cells, heights, labels,
+named layers and the walls including the rim. It cannot restore what the stamp *covered*,
+because a stamp destroys that and the previous value is never kept: true undo over occupied
+ground needs a snapshot, not an un-stamp.
 
 A house stamped at 300° is the same house as at 0°, cell for cell — not a filtered
 approximation of it.

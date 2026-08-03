@@ -13,13 +13,25 @@ each entry carrying a name and an image.
 
 ⚠ **This is largely *finish `moros_ui`*, not *design a UI*.** The panel layout, hit-test and
 click routing are built and tested; `panel_render` was never written and `font.loft` is a
-placeholder waiting on a loft text bridge that turns out to be stubbed.
+placeholder.
+
+⚠ **The premise changed on 2026-08-03: the text bridge is REAL now.** This plan was written
+against a `--html` backend that stubbed the whole text bridge, so `B1` said "glyphs become
+geometry" and every catalogue image had to be rendered rather than loaded. loft fixed both
+([#737](https://github.com/loft-lang/loft/issues/737),
+[#738](https://github.com/loft-lang/loft/issues/738)) and the installed `loft 2026.8.0`
+carries the fix — measured in the emitted page: `measureText`/`fillText` present,
+`gl_upload_alpha_texture` uploading a real coverage buffer, `gl_load_texture` serving a
+bundled asset, zero `TODO` markers. So **`B1` is now "draw text through the bridge", not
+"build a geometry font"**, and the geometry path should not be built at all.
+⚠ Both issues are still **open on the tracker** while the code is fixed — re-measure the
+emitted page rather than trusting either label.
 
 ## Phase ordering
 
 | | step | gate |
 |---|---|---|
-| `B1` | glyphs as geometry, `panel_render`, the subject line | a PNG shows the words, and `moros_sim` still builds |
+| `B1` | text through the loft bridge, `panel_render`, the subject line | a PNG shows the words, and `moros_sim` still builds |
 | `B2` | toggle state on the subject line, from the server (`H:`) | it changes when the SERVER changes, not when a key is pressed |
 | `B3` | material catalogue, swatches rendered by the world's own shader | pick a wall material and build with it |
 | `B4` | naming + rename, with the clash refusal | rename, and placements keep their labels |
@@ -28,13 +40,14 @@ placeholder waiting on a loft text bridge that turns out to be stubbed.
 
 ⚠ `B3` before `B5`: materials exist now, parts do not.
 
-## Blocked-by (shape, not schedule)
+## Blocked-by — RESOLVED 2026-08-03
 
-- [loft#737](https://github.com/loft-lang/loft/issues/737) — `--html` stubs the text bridge
-- [loft#738](https://github.com/loft-lang/loft/issues/738) — and image load / CPU pixel upload
+- ~~[loft#737](https://github.com/loft-lang/loft/issues/737) — `--html` stubs the text bridge~~
+- ~~[loft#738](https://github.com/loft-lang/loft/issues/738) — and image load / CPU pixel upload~~
 
-Neither blocks the plan: glyphs become geometry and images are rendered rather than loaded.
-If #738 lands, the font becomes a small texture and the geometry path is deleted.
+Both are fixed in the installed `loft 2026.8.0`, verified against the emitted page rather
+than the API. Neither ever blocked the plan — the fallback was glyphs-as-geometry — but the
+fallback is now the wrong build, so **do not write it**.
 
 ## Cross-arc dependencies
 
