@@ -17,6 +17,7 @@ pub fn editor_panel(
   st: EditorState,
   window_w: integer, window_h: integer,
   fps: integer,
+  metrics: Metrics,
 ) -> Panel {
   ep_addr = world_to_hex(st.es_player.pl_pos.x, st.es_player.pl_pos.z);
   panel_build(
@@ -25,5 +26,6 @@ pub fn editor_panel(
     ep_addr.ha_q, ep_addr.ha_r, st.es_overlay_cy,
     st.es_player.pl_pos.y,
     fps,
+    metrics,
   )
 }

@@ -3,8 +3,16 @@
 use moros_ui;
 use moros_sim;
 
+// A fixed-pitch Metrics for layout tests — built through `metrics_measured`,
+// the same door a consumer uses, because the library deliberately has no
+// "just tell me the advance" constructor.
+fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, line_h)
+}
+
 fn build_test_panel(tools: ToolState) -> Panel {
-  panel_build(tools, 1280, 720, 0, 0, 0, 0.0, 60)
+  panel_build(tools, 1280, 720, 0, 0, 0, 0.0, 60, ui_metrics(8, 8))
 }
 
 // ── Outside the panel ────────────────────────────────────────────

@@ -1,18 +1,87 @@
-// Placeholder for the walkable editor's 8x8 bitmap font.
+// Text metrics for the panel — MEASURED, never assumed.
 //
-// The full font (ASCII 32..127, 96 glyphs × 8 rows) will land
-// alongside the loft_gl text bridge in Step 9.  Until then this
-// file only exposes the glyph size — enough for `panel_render`'s
-// layout math (advance-width, baseline) to be written and tested
-// without the glyph data.
+// This file used to say `text_width(s) = len(s) * 8` and expose a GLYPH_W of 8,
+// waiting for "the loft_gl text bridge in Step 9".  The bridge landed on
+// 2026-08-03, and `probe/b1` measured what it actually gives:
+//
+//     desktop  advance 19.27   MMMMMMMMMM 192.66 = iiiiiiiiii 192.66
+//     browser  advance 26.66   MMMMMMMMMM 266.56 / iiiiiiiiii  71.09
+//
+// So `8` was wrong on both targets, and the two targets do not even agree with
+// each other.  A panel laid out on a made-up advance mis-lays every row, and
+// nothing reports it: the text still draws, it is just in the wrong place.
+//
+// ⚠ THE LIBRARY STAYS PURE.  These tests run under `loft test` with no window
+// and no GL context, so nothing here may call `gl_measure_text`.  The consumer
+// measures once at startup and hands the numbers over; this file does the
+// arithmetic.  That is the whole seam.
 
-pub GLYPH_W = 8;
-pub GLYPH_H = 8;
-
-// Pixel width of a rendered text string at default scale.
-pub fn text_width(s: text) -> integer {
-  len(s) * GLYPH_W
+// What the consumer measured.  `m_mono` is a FACT about the font that was
+// resolved, not a request that was made — see `metrics_measured`.
+pub struct Metrics {
+  m_advance: integer,       // pixel advance of one character
+  m_line_h:  integer,       // line height in pixels
+  m_mono:    boolean,       // is it actually fixed-pitch?
 }
 
-// Pixel height of a single line of text.
-pub fn text_height() -> integer { GLYPH_H }
+// Build metrics from two runs the consumer measured through the bridge: `n`
+// copies of a WIDE character and `n` copies of a NARROW one.
+//
+// ⚠ THE TWO RUNS ARE THE WHOLE INSTRUMENT, and one width cannot replace them.
+// Ten M's are ten M's in any font, so a single measurement tells you the
+// advance of an M and nothing about whether the font is fixed-pitch.  Two
+// same-length, opposite-width strings answer it in one comparison — and getting
+// this wrong is not hypothetical: asking for `DejaVuSansMono.ttf` gives a
+// fixed-pitch font on the desktop and a PROPORTIONAL fallback in the browser,
+// because the browser resolves the path's base name to a CSS family it does not
+// know (`probe/b1`).
+//
+// `m_advance` is taken from the wide run: under fixed pitch the two agree, and
+// when they do not, the wider one is the safer basis for a fits-in-the-box
+// question — it over-estimates rather than overflowing.
+pub fn metrics_measured(wide_run: float, narrow_run: float, n: integer,
+                        line_h: integer) -> Metrics {
+  if n <= 0 {
+    return Metrics { m_advance: 0, m_line_h: line_h, m_mono: false };
+  }
+  adv = ((wide_run / (n as float)) ?? 0.0) as integer;
+  Metrics {
+    m_advance: adv,
+    m_line_h:  line_h,
+    m_mono:    wide_run == narrow_run,
+  }
+}
+
+// Pixel width of a string at these metrics.
+//
+// Exact under fixed pitch, an OVER-estimate otherwise (see `metrics_measured`),
+// which is the direction that keeps a label inside its box rather than spilling
+// out of it.
+pub fn text_width(s: text, m: Metrics) -> integer { len(s) * m.m_advance }
+
+pub fn text_height(m: Metrics) -> integer { m.m_line_h }
+
+pub fn fits(s: text, px: integer, m: Metrics) -> boolean { text_width(s, m) <= px }
+
+// The longest prefix of `s` that fits in `px`, with ".." marking the cut.
+//
+// Returns `s` untouched when it already fits, so a caller cannot tell "fitted"
+// from "not measured" by looking for the marker — which is why the marker is
+// only ever added when something was actually removed.
+//
+// ".." rather than a single "…": the ellipsis is one code point but several
+// bytes, and `text_width` counts characters.  A marker whose own width is
+// ambiguous is the wrong thing to measure a truncation with.
+pub fn fit_text(s: text, px: integer, m: Metrics) -> text {
+  if m.m_advance <= 0 { return s; }
+  if text_width(s, m) <= px { return s; }
+  // Room for the marker itself.  Below that there is no honest answer, so it
+  // gives back as much as fits and no marker.
+  keep = ((px / m.m_advance) ?? 0) - 2;
+  if keep <= 0 {
+    room = (px / m.m_advance) ?? 0;
+    if room <= 0 { return ""; }
+    return s[0..room];
+  }
+  s[0..keep] + ".."
+}

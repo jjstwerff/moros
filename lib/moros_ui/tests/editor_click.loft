@@ -17,6 +17,17 @@ fn make_flat(cols: integer, rows: integer) -> Map {
   fm
 }
 
+// A fixed-pitch Metrics for layout tests.
+//
+// ⚠ Built through `metrics_measured`, the SAME door a consumer uses, rather
+// than by stating an advance directly. The library deliberately has no
+// "just tell me the advance" constructor: that is the escape hatch that would
+// let a consumer skip measuring and put the `len * 8` lie back.
+fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, line_h)
+}
+
 fn build() -> EditorState {
   bs = editor_default();
   bs.es_map = make_flat(10, 10);
@@ -26,7 +37,7 @@ fn build() -> EditorState {
 }
 
 fn build_panel(tools: ToolState) -> Panel {
-  panel_build(tools, 1280, 720, 0, 0, 0, 0.0, 60)
+  panel_build(tools, 1280, 720, 0, 0, 0, 0.0, 60, ui_metrics(8, 8))
 }
 
 // ── Panel-side delegation ────────────────────────────────────────

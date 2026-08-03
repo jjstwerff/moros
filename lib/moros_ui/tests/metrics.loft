@@ -1,0 +1,155 @@
+// The metrics seam — plan 18, `B1.2`.
+//
+// `font.loft` used to claim `text_width(s) = len(s) * 8`. `probe/b1` measured
+// what the bridge actually gives and the 8 was wrong on BOTH targets: 19.27 on
+// the desktop, 26.66 in the browser, and the browser's font was not even fixed
+// pitch. A panel laid out on a made-up advance mis-lays every row and nothing
+// reports it, because the text still draws.
+//
+// So the library does arithmetic on numbers the CONSUMER measured, and these
+// tests pin the arithmetic. They run with no window and no GL context, which is
+// the constraint that forced the seam in the first place.
+use moros_ui;
+use moros_sim;
+
+fn mono(advance: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, advance)
+}
+
+// ── the fixed-pitch instrument ───────────────────────────────────
+
+// ⚠ THE CLAIM `len * advance` IS EXACT RESTS ENTIRELY ON THIS. Two runs of the
+// SAME LENGTH and OPPOSITE WIDTH is the whole instrument; one width cannot
+// answer it, because ten M's are ten M's in any font.
+fn test_two_equal_runs_are_fixed_pitch() {
+  m = metrics_measured(192.65625, 192.65625, 10, 38);
+  assert(m.m_mono, "equal M-run and i-run must read as fixed pitch");
+  assert(m.m_advance == 19, "advance from the wide run: {m.m_advance}, want 19");
+}
+
+// ⚠ THE CONTROL, AND IT IS A REAL MEASUREMENT — these are the numbers
+// `probe/b1` read out of headless Chrome when the browser resolved
+// `DejaVuSansMono.ttf` to a proportional fallback. If this test ever passes as
+// mono, the check that protects every layout below has stopped working.
+fn test_the_browser_fallback_is_caught_as_proportional() {
+  m = metrics_measured(266.5625, 71.09375, 10, 36);
+  assert(!m.m_mono,
+         "266.56 vs 71.09 is proportional and must not read as fixed pitch");
+}
+
+fn test_a_zero_length_run_is_not_fixed_pitch() {
+  // A consumer that measured nothing must not get a confident answer.
+  m = metrics_measured(0.0, 0.0, 0, 12);
+  assert(!m.m_mono, "n=0 cannot establish fixed pitch");
+  assert(m.m_advance == 0, "advance from no measurement is 0");
+}
+
+// ── width and fit ────────────────────────────────────────────────
+
+fn test_width_is_length_times_advance() {
+  m = mono(8);
+  assert(text_width("", m) == 0, "empty is 0");
+  assert(text_width("Stencil", m) == 56, "7 chars at 8 = 56, got {text_width(\"Stencil\", m)}");
+}
+
+fn test_fit_leaves_a_string_that_already_fits() {
+  m = mono(8);
+  s = fit_text("Stencil", 100, m);
+  assert(s == "Stencil", "a fitting label must come back untouched, got '{s}'");
+}
+
+fn test_fit_truncates_with_a_marker() {
+  m = mono(8);
+  s = fit_text("thick_curved", 48, m);          // 6 chars of room
+  assert(s == "thic..", "want 'thic..', got '{s}'");
+  assert(text_width(s, m) <= 48, "the truncation must itself fit");
+}
+
+// ⚠ THE MARKER ONLY APPEARS WHEN SOMETHING WAS REMOVED. Otherwise a caller
+// cannot tell "this fitted" from "this was never measured", and a panel full of
+// ".." would read as a rendering bug rather than as narrow boxes.
+fn test_the_marker_means_something_was_cut() {
+  m = mono(8);
+  assert(fit_text("Item", 200, m) == "Item", "no marker on a label that fits");
+  cut = fit_text("thick_curved", 48, m);
+  assert(cut != "thick_curved", "the long one must actually be cut");
+}
+
+fn test_a_box_too_small_for_the_marker_still_fits() {
+  m = mono(8);
+  s = fit_text("Stencil", 16, m);               // 2 chars of room, marker needs 2
+  assert(text_width(s, m) <= 16, "'{s}' overflows a 16px box");
+  s0 = fit_text("Stencil", 0, m);
+  assert(s0 == "", "no room means no text, got '{s0}'");
+}
+
+fn test_unmeasured_metrics_do_not_mangle_text() {
+  // advance 0 means nobody measured; truncating everything to nothing would be
+  // worse than passing it through, and the fixed-pitch check is what catches it.
+  m = metrics_measured(0.0, 0.0, 0, 12);
+  assert(fit_text("Stencil", 10, m) == "Stencil", "advance 0 must pass text through");
+}
+
+// ── the perturbation: the advance is not baked in ────────────────
+//
+// ⚠ THE GATE FOR B1.2. Every layout assertion in this package would pass with
+// `8` hard-coded, because `8` is what the tests happen to use. Running the SAME
+// panel at a different advance is what proves the number travels: at 8 px
+// "Stencil" fits a button and at 24 px it cannot.
+
+fn panel_at(advance: integer) -> Panel {
+  t = tool_state_default();
+  t.ts_current = ToolKind.PlaceStencil;
+  panel_build(t, 1280, 720, 0, 0, 0, 0.0, 60, mono(advance))
+}
+
+fn test_a_wider_font_truncates_what_a_narrow_one_fits() {
+  narrow = panel_at(8);
+  wide   = panel_at(32);
+  n3 = narrow.p_toolbar[3] ?? Button {};
+  w3 = wide.p_toolbar[3] ?? Button {};
+  assert(n3.btn_label == "Stencil", "at advance 8 the label fits whole, got '{n3.btn_label}'");
+  // 192px of label room: 7 chars fit at advance 8 (56px) and cannot at 32 (224px).
+  assert(w3.btn_label != "Stencil",
+         "at advance 32 'Stencil' needs 224px of 192px, got '{w3.btn_label}'");
+  assert(text_width(w3.btn_label, mono(32)) <= w3.btn_rect.r_w - LABEL_PAD - HOTKEY_COL,
+         "the wide label still overflows its button: '{w3.btn_label}'");
+}
+
+fn test_the_status_line_is_fitted_to_its_bar() {
+  // The bar spans the WINDOW — it was 240px against 648px of text until B1.2
+  // measured it, which is what moved the rectangle.
+  for adv in [8, 16, 24] {
+    t = tool_state_default();
+    t.ts_current = ToolKind.PlaceStencil;
+    p = panel_build(t, 1280, 720, 1, 2, 4, 0.0, 60, mono(adv));
+    got  = text_width(p.p_status.ss_text, mono(adv));
+    room = p.p_status.ss_rect.r_w - LABEL_PAD;
+    assert(got <= room, "status overflows its bar at advance {adv}: {got} > {room}");
+  }
+}
+
+fn test_every_list_item_is_fitted_to_the_list() {
+  for adv in [8, 16, 24] {
+    t = tool_state_default();
+    t.ts_current = ToolKind.PlaceWall;              // the longest names live here
+    p = panel_build(t, 1280, 720, 0, 0, 0, 0.0, 60, mono(adv));
+    for it in p.p_list.lb_items {
+      assert(text_width(it, mono(adv)) <= p.p_list.lb_rect.r_w - LABEL_PAD,
+             "list item '{it}' overflows at advance {adv}");
+    }
+  }
+}
+
+// And the negative control for the sweep above: at a big enough advance the
+// long names MUST actually be cut, or the loop is passing on labels that were
+// never in danger.
+fn test_the_list_sweep_is_not_vacuous() {
+  t = tool_state_default();
+  t.ts_current = ToolKind.PlaceWall;
+  wide = panel_build(t, 1280, 720, 0, 0, 0, 0.0, 60, mono(24));
+  cut = 0;
+  for it in wide.p_list.lb_items { if it != "" && it[len(it) - 2..len(it)] == ".." { cut += 1; } }
+  assert(cut > 0, "no wall name was truncated at advance 24 — the sweep proves nothing");
+}

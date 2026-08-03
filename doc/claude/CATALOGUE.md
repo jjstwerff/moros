@@ -224,13 +224,21 @@ rebuilds every line every frame is the failure mode, and it is invisible in a pi
 
 `lib/moros_ui` already has, tested: a 240 px left strip, a six-button toolbar, a scrollable
 list, a status line, `panel_hit_test`, `route_click`, `editor_click`. What is missing is
-`panel_render` and the glyphs.
+`panel_render`.
 
-⚠ **Its consumer today is `moros_sim`'s walkable editor, not the wasm client.** Adding a
-dependency to a shared package in this tree turned a sibling's build red twice this session
-(`moros_render` → `fabs`, then `seg_len`). So the wiring is checked against `moros_sim`
-before it is called done, and if the dependency direction fights, the render half becomes a
-leaf package the way `moros_terrain` did.
+⚠ **THE DEPENDENCY ARROW HERE POINTED THE WRONG WAY, and `B1.2` measured it.** This said
+*"its consumer today is `moros_sim`'s walkable editor"*. It is the reverse:
+`moros_ui/loft.toml` **depends on** `moros_sim`, and nothing in the tree depends on
+`moros_ui`. `moros_sim/src/editor.loft` only mentions it in a comment.
+
+So `moros_ui` has **no consumer at all**, and two things follow. The good one: its API can
+still be shaped freely, because there is no downstream to break — which is why `B1.2` could
+change `panel_build`'s signature without coordinating anything. The dangerous one:
+⚠ **this whole arc is building a library nobody calls**, which is the exact shape of the
+"tested green and never wired" failure this tree has already paid for twice. `B1.3` is where
+that has to stop being true, and *"`moros_sim` still builds"* is the wrong check for it —
+`moros_sim` cannot break, because it does not know `moros_ui` exists. The real check is that
+something **renders** a `Panel`.
 
 ---
 

@@ -45,8 +45,8 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `B1.1` | **A probe, before anything else** — `make probe-text`, [probe/b1](../../probe/b1/README.md). | **DONE.** Ink left/right: desktop **1127/0**, browser **1246/0**. The reader is itself checked against a blank frame, an all-white one, and real text. ⚠ **It found a live trap** — see below. | XS |
-| `B1.2` | `Metrics` struct in `moros_ui`, threaded through `panel_build` (§C0a). No rendering yet. ⚠ **Plus the three things `B1.1` turned up**: a per-target font argument, a startup fixed-pitch check, and `Metrics` measured rather than assumed. | existing layout tests pass, **plus a second run at a different advance** — the perturbation that stops `8` being baked in; and the fixed-pitch check refuses a proportional font | S |
-| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. | a PNG shows the 240 px strip and six buttons | S |
+| ✅ `B1.2` | `Metrics` in `moros_ui`, threaded through `panel_build` and **load-bearing**: labels, list items and the status line are fitted to their boxes at build time. `metrics_measured` is the only constructor, so there is no fabricate-an-advance door. | **DONE.** 59 tests, both backends. Controls seen red: re-baking the advance at 8, a fixed-pitch check that always says yes, and a `fit_text` that stops truncating. ⚠ **It found the status strip 2.7× too small** — see below. | S |
+| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. ⚠ Also the first **caller** of `metrics_measured`: pick the font per target, measure both runs, and refuse/warn when `m_mono` is false. | a PNG shows the 240 px strip and six buttons — ⚠ and *"`moros_sim` still builds"* is NOT the check (it does not depend on `moros_ui`); the check is that something renders a `Panel` at all | S |
 | `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
 | `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, and `moros_sim` still builds (§C6) | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
@@ -65,6 +65,18 @@ which is the entire argument for putting a probe first.
 ⚠ Asking the browser for the generic `monospace` gives **192.66, exactly the desktop's
 DejaVu** — so they *can* agree to the last digit, but only because Chrome's default monospace
 is the same face on this box. A coincidence, not a contract; measure at runtime.
+
+⚠ **`B1.2` then found a second thing, by making the metrics load-bearing.** The status strip
+was `PANEL_WIDTH` — 240 px — while the text it has always been handed is 81 characters, about
+**648 px**. It overflowed its own box by 2.7× from the day it was written, and nothing
+reported it because nothing measured: `panel_render` was never built, so the text never met
+its rectangle. The content settles which was wrong — `q/r/cy/altitude/FPS` plus a facing hint
+is full-width status-bar text — so `status_rect` now spans the window.
+
+⚠ **And `moros_ui` has no consumer.** Its manifest depends on `moros_sim`, not the reverse,
+and nothing in the tree depends on it. That is why `B1.2` could change `panel_build`'s
+signature freely — and why `B1.3` must produce an actual caller, because until then this arc
+is building a library nobody invokes.
 
 ### B2 — the line tells the truth
 
