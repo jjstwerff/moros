@@ -1,0 +1,205 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A1.4` — `PART` and `ANCH`, and the reader that does not know them.
+use hex_part;
+
+// ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
+// the interpreter and fails `--native`; `roundtrip.loft` carries the same note.
+fn no_palette() -> vector<integer> { [] }
+
+fn part() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  assert(world_set_column(w, Column { co_q: 1, co_r: 1,
+    co_cells: [Hex { h_height: 40040 as u16? ?? 0, h_material: 5, h_wall_n: 2 }] }).cw_code == CW_OK, "c1");
+  w
+}
+
+// ⚠ The tags are literals because loft#744 aborts on `const X = some_fn()`, so
+// the equality that would have been the definition is a test instead.
+fn test_the_tag_constants_are_the_tags_they_name() {
+  assert(TAG_PART == section_tag("PART"), "TAG_PART is {TAG_PART}, not {section_tag(\"PART\")}");
+  assert(TAG_ANCH == section_tag("ANCH"), "TAG_ANCH is {TAG_ANCH}, not {section_tag(\"ANCH\")}");
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+//
+// ⚠ The name is deliberately not ASCII and deliberately contains an `=`. A part
+// called `door` would agree with a byte-per-character encoding and with a parser
+// that splits on every equals, and both are wrong.
+fn test_a_part_carries_its_kind_name_and_description() {
+  w = part();
+  p = "meta_rt.hxw";
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_LEAF, pm_name: "porte café",
+                                     pm_desc: "a door, 2 = boards wide 中" }) == PM_OK, "set");
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  m = part_meta(ld.wl_world);
+  assert(m.mr_code == MR_OK, "meta refused: {m.mr_why}");
+  assert(m.mr_meta.pm_kind == PK_LEAF, "kind came back {m.mr_meta.pm_kind}");
+  assert(m.mr_meta.pm_name == "porte café", "name came back '{m.mr_meta.pm_name}'");
+  assert(m.mr_meta.pm_desc == "a door, 2 = boards wide 中",
+         "desc came back '{m.mr_meta.pm_desc}'");
+  delete(p);
+}
+
+fn test_a_part_carries_its_anchor() {
+  w = part();
+  p = "meta_anchor.hxw";
+  // ⚠ NEGATIVE q AND AN ODD r. Parity and sign are where this codebase breaks —
+  // five bugs, all right for non-negative coordinates — and `0,0` agrees with
+  // every wrong answer there is.
+  assert(part_set_anchor(w, PartAnchor { pa_q: 0 - 3, pa_r: 7, pa_h: 0 - 41000,
+                                         pa_facing: 17 }) == PM_OK, "set");
+  world_save(w, p, no_palette());
+  a = part_anchor(world_load(p).wl_world);
+  assert(a.ar_code == MR_OK, "anchor refused: {a.ar_why}");
+  assert(a.ar_anchor.pa_q == 0 - 3 && a.ar_anchor.pa_r == 7, "cell {a.ar_anchor.pa_q},{a.ar_anchor.pa_r}");
+  assert(a.ar_anchor.pa_h == 0 - 41000, "height {a.ar_anchor.pa_h}");
+  assert(a.ar_anchor.pa_facing == 17, "facing {a.ar_anchor.pa_facing}");
+  delete(p);
+}
+
+fn test_both_sections_live_on_one_part_at_once() {
+  w = part();
+  p = "meta_both.hxw";
+  part_set_meta(w, PartMeta { pm_kind: PK_HOUSE, pm_name: "cottage" });
+  part_set_anchor(w, PartAnchor { pa_q: 2, pa_r: 0 - 5, pa_h: 100, pa_facing: 0 });
+  world_save(w, p, no_palette());
+  ld = world_load(p);
+  assert(len(ld.wl_world.w_sections) == 2, "{len(ld.wl_world.w_sections)} sections, not 2");
+  assert(part_meta(ld.wl_world).mr_meta.pm_name == "cottage", "the name was lost");
+  assert(part_anchor(ld.wl_world).ar_anchor.pa_r == 0 - 5, "the anchor was lost");
+  delete(p);
+}
+
+// ── The reader that does not know the tag ────────────────────────────────────
+//
+// ⚠ THE GATE THE PLAN ASKS FOR, and it is about the LANDSCAPE, not the sections.
+// A part written by a newer editor must still be a world to a reader that has
+// never heard of `PART` — so this loads with `world_load` alone, never calls
+// `part_meta`, and compares the cells against a part saved without any sections
+// at all. `part_diff` walks a margin beyond the radius, so a section leaking into
+// the cells would show up as a gained cell rather than as nothing.
+fn test_an_older_reader_still_loads_the_cells() {
+  bare = part();
+  dressed = part();
+  part_set_meta(dressed, PartMeta { pm_kind: PK_HOUSE, pm_name: "cottage",
+                                    pm_desc: "two rooms and a hearth" });
+  part_set_anchor(dressed, PartAnchor { pa_q: 0, pa_r: 0, pa_h: 40000, pa_facing: 6 });
+
+  pb = "meta_bare.hxw";
+  pd = "meta_dressed.hxw";
+  assert(world_save(bare, pb, no_palette()) == WS_OK, "save bare");
+  assert(world_save(dressed, pd, no_palette()) == WS_OK, "save dressed");
+
+  lb = world_load(pb);
+  lder = world_load(pd);
+  assert(lb.wl_code == WL_OK && lder.wl_code == WL_OK, "a load was refused");
+  d = part_diff(lb.wl_world, lder.wl_world, 3);
+  assert(d.pd_same, "the sections changed the landscape: {d.pd_why}");
+
+  // CONTROL: the comparison can fail — otherwise this says only that both files
+  // loaded. One cell changed in the dressed part and `part_diff` must object.
+  //
+  // ⚠ THE WORLD IS BOUND TO A LOCAL FIRST. `world_set_column(lder.wl_world, …)`
+  // — a struct FIELD into a `&`-parameter — fails `--native` at compile time with
+  // a bare `E0308` (loft#745) and, here, aborts the interpreter at run time with
+  // `Delete on locked store`. Two different failures, one expression.
+  dw = lder.wl_world;
+  world_set_column(dw, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 9 }] });
+  assert(!part_diff(lb.wl_world, dw, 3).pd_same,
+         "part_diff passed two parts that differ, so it proves nothing above");
+  delete(pb); delete(pd);
+}
+
+// ⚠ AND THE UNKNOWN SECTION IS STILL THERE AFTERWARDS. The test above says an
+// older reader is not BROKEN by a tag it does not know; this says it does not
+// silently DROP it, which is the other half and the one a load-and-save loses.
+fn test_an_unknown_tag_survives_a_reader_that_ignores_it() {
+  w = part();
+  a = "meta_fwd_a.hxw";
+  b = "meta_fwd_b.hxw";
+  part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: "statue" });
+  // a tag from a plan that has not been built yet
+  world_set_section_text(w, section_tag("SOCK"), "name=hinge\nedge=2");
+  world_save(w, a, no_palette());
+
+  ld = world_load(a);                       // this reader knows PART and not SOCK
+  assert(part_meta(ld.wl_world).mr_code == MR_OK, "PART was lost");
+  world_save(ld.wl_world, b, no_palette());
+
+  ba = read_bytes(a);
+  bb = read_bytes(b);
+  assert(len(ba) == len(bb), "a is {len(ba)} bytes, b is {len(bb)}");
+  same = true;
+  for i in 0..len(ba) { if ba[i] != bb[i] { same = false; } }
+  assert(same, "a section this build does not know did not survive");
+  delete(a); delete(b);
+}
+
+// ── What it refuses ──────────────────────────────────────────────────────────
+
+// ⚠ A NEWLINE WOULD FORGE A LINE — `name=x\nkind=1` rewrites the kind — so it is
+// refused rather than stripped. Stripping hands back a different name than the
+// one given, which is the rule the palette already follows.
+fn test_a_newline_in_a_name_is_refused_not_stripped() {
+  w = part();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_HOUSE,
+                                     pm_name: "hut\nkind=3" }) == PM_NEWLINE,
+         "a forged line was accepted");
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_HOUSE, pm_name: "hut",
+                                     pm_desc: "one\ntwo" }) == PM_NEWLINE,
+         "a newline in the description was accepted");
+  // CONTROL: the same name without the newline is accepted, or this proves only
+  // that the writer dislikes something about the fixture.
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_HOUSE, pm_name: "hut" }) == PM_OK,
+         "an ordinary name must be accepted");
+  // and nothing was written by the refused calls
+  m = part_meta(w);
+  assert(m.mr_meta.pm_name == "hut", "a refused write left '{m.mr_meta.pm_name}'");
+  assert(m.mr_meta.pm_kind == PK_HOUSE, "a forged kind took: {m.mr_meta.pm_kind}");
+}
+
+fn test_a_kind_outside_the_five_is_refused() {
+  w = part();
+  assert(part_set_meta(w, PartMeta { pm_kind: 0, pm_name: "x" }) == PM_KIND, "0 accepted");
+  assert(part_set_meta(w, PartMeta { pm_kind: 6, pm_name: "x" }) == PM_KIND, "6 accepted");
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_FITTING, pm_name: "x" }) == PM_OK,
+         "the last valid kind was refused");
+}
+
+fn test_a_facing_outside_the_headings_is_refused() {
+  w = part();
+  assert(part_set_anchor(w, PartAnchor { pa_facing: FACINGS }) == PM_FACING,
+         "{FACINGS} accepted as a heading index");
+  assert(part_set_anchor(w, PartAnchor { pa_facing: 0 - 1 }) == PM_FACING, "-1 accepted");
+  assert(part_set_anchor(w, PartAnchor { pa_facing: FACINGS - 1 }) == PM_OK,
+         "the last valid heading was refused");
+}
+
+// ⚠ ABSENT AND MALFORMED ARE DIFFERENT ANSWERS. A part from an older editor has
+// no `ANCH` and is fine; one whose `ANCH` says `facing=north` is damaged, and
+// collapsing the two makes a part that stands the wrong way round look normal.
+fn test_absent_and_malformed_are_told_apart() {
+  w = part();
+  assert(part_meta(w).mr_code == MR_ABSENT, "a part with no PART was not ABSENT");
+  assert(part_anchor(w).ar_code == MR_ABSENT, "a part with no ANCH was not ABSENT");
+
+  world_set_section_text(w, TAG_PART, "kind=house\nname=hut");
+  m = part_meta(w);
+  assert(m.mr_code == MR_MALFORMED, "'kind=house' parsed as {m.mr_code}");
+  assert(m.mr_why != "", "the refusal must name what it refused");
+
+  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=north");
+  assert(part_anchor(w).ar_code == MR_MALFORMED, "'facing=north' parsed");
+  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nfacing=3");
+  assert(part_anchor(w).ar_code == MR_MALFORMED, "an anchor with no height parsed");
+  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=99");
+  assert(part_anchor(w).ar_code == MR_MALFORMED, "facing 99 parsed");
+}

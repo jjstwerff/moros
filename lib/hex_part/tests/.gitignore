@@ -1,0 +1,5 @@
+# Files the tests WRITE. Each deletes its own on the way out, so these only ever
+# appear after a run that failed part-way — which is exactly when they should not
+# be committed by a `git add` that swept the directory.
+part_*.hxw
+meta_*.hxw

@@ -27,26 +27,43 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **228** | `hex_world` **113** | `lavition_ui` **61** | `hex_part` **19** |
+| `hex_editor` **228** | `hex_world` **117** | `lavition_ui` **61** | `hex_part` **29** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A1.4` — `PART` and `ANCH` over the mechanism `A1.3` built
+### The next thing to do is #17 `A2.1` — a part with cells in it, saved to `data/parts/`
 
-**The store has sections now.** `tag(i32) + length(i32) + bytes`, repeated to **end of file**,
-after the last layer's CRC; they ride on the world as `w_sections`, so `world_save` and
-`world_load` carry them and an *unknown* tag survives without anyone knowing what it is.
-`world_set_section(w, section_tag("PART"), bytes)` is the whole API. The design, the
-findings and the incremental-writer hazard are
-[PARTS.md § P2 — the mechanism, as built](PARTS.md#p2--a-part-is-saved-the-way-a-world-is-saved-because-it-is-one).
+**`A1` is finished.** A part is a world, it round-trips, the store carries tagged sections, and
+`PART`/`ANCH` ride on them. `A2` is where the procedural house becomes an authored file:
+`A2.1` runs `stencil_place` into an empty world, `part_from_region`s it and saves
+`data/parts/house/cottage.hxw`. ⚠ **That is also what unblocks #18 `B5`**, which lists parts
+and has had none to list.
 
-`A1.4` puts kind/name/description in `PART` and cell/height/facing in `ANCH` over it, and its
-gate is the one the plan names: **an older reader — one that does not know the tag — still
-loads the cells**, simulated by reading with the tag unregistered.
+`A2.2` is the one with the real gate: `14:` takes a part name, and **the stencil gate's picture
+must be unchanged pixel-for-pixel** against the procedural path.
+
+**What `A1` left in the store and the part package:**
+
+- sections — `tag(i32) + length(i32) + payload`, repeated to **end of file**, riding on the
+  world as `w_sections`, so `world_save`/`world_load` carry a tag nobody knows.
+  `world_set_section` (bytes) and `world_set_section_text` (text).
+- ⚠ **a section has BOTH a byte and a text view**, filled from one span at load, because loft
+  can turn a text into bytes and nothing can turn them back
+  ([#748](https://github.com/loft-lang/loft/issues/748)). Bytes stay authoritative on a
+  re-save; the text view is how a name comes back.
+- `PART` / `ANCH` as `key=value` text in `lib/hex_part/src/meta.loft`.
+
+The design, the findings and the incremental-writer hazard are
+[PARTS.md § P2](PARTS.md#p2--a-part-is-saved-the-way-a-world-is-saved-because-it-is-one).
 
 ⚠ **The magic is `WTTH`, not `HXW7`.** Every `.hxw` in the tree opens `57 54 54 48`; the
 constant's comment claimed otherwise for as long as the format has existed. The value is not
 corrected — every saved world carries it — and the comment is. It was found by a cross-check
 (`section_tag("WTTH") == WORLD_MAGIC`), never by reading, which is the point.
+
+⚠ **AN ASCII TEST SUBJECT CANNOT SEE A TEXT BUG.** The part in `A1.4`'s round-trip is called
+`"porte café"` and described as `"a door, 2 = boards wide 中"`, and that one choice found three
+defects that `"door"` agrees with perfectly: two loft panics, a parse that truncates at the
+first `=`, and a byte-per-character encoding. Pick the subject that can disagree.
 
 ⚠ **`lib/hex_world` is the tree that owns the store**, by path, as `hex_editor` and `hex_part`
 both declare, and that is where `A1.3` landed. The registry carries a 0.2.0 on a different
@@ -57,21 +74,26 @@ lineage. Which tree owns it for good is
 
 **[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
 `B4`, `B6` all **done**. Only **`B5`** remains and it is blocked: it lists parts, and #17 has
-not produced one yet.
+not produced a saved one yet. `A2.1` is what unblocks it.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — `A1.1`, `A1.2` and `A1.3`
-**done** (`lib/hex_part`: region copy, round-trip, `part_diff`; `lib/hex_world`: sections).
-`A1.4` next, then `A2`.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` is complete.** `A1.1`
+region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`.
+`A2` next.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
 why. `probe/b1/client_live.png` is what it looks like; `make probe-text` regenerates it.
 
-### Two things built and not yet called
+### Three things built and not yet called
 
 ⚠ **`hex_editor::names` has no consumer** — the name table, tested at `B4`, is invoked by
 nothing. That is the trap `moros_ui` fell into and it is live again. It gets one when
-catalogue entries carry author-given names.
+catalogue entries carry author-given names. ⚠ **`hex_part::meta` now persists a name**, so the
+two want reconciling rather than both existing: `PART.name` is the saved one.
+
+⚠ **`hex_part`'s `part_set_meta` / `part_anchor` are called by tests only.** The editor never
+reads a part's kind or facing, because nothing places a part yet — that is `A2` and `A3`. Named
+here so it is a known gap rather than a discovered one; `A2.1` is the step that closes it.
 
 ⚠ **A reason has nowhere roomy to live.** A list row is **212 px** — twenty-one characters —
 so `B6`'s reasons are one word (`derived`, `scattered`) and the full sentence stays on the
@@ -88,7 +110,7 @@ bundled-asset loader, **zero** `TODO` markers.
 ⚠ **Both issues are still OPEN on the tracker while the code is fixed.** Trust the
 measurement, not the label — including this paragraph.
 
-### Two loft defects that shape how code here is written
+### Four loft defects that shape how code here is written
 
 - ⚠ **[#744](https://github.com/loft-lang/loft/issues/744)** — `const X = some_fn()` aborts
   with a **non-unwinding panic and no source location**. So a constant cannot be derived from
@@ -98,7 +120,17 @@ measurement, not the label — including this paragraph.
 - ⚠ **[#745](https://github.com/loft-lang/loft/issues/745)** — passing a **struct field** to a
   `&`-parameter compiles interpreted and fails `--native` with a bare `E0308` and no span.
   Bind the field to a local first. A native-only failure with no span is a **bisection**, not
-  a read.
+  a read. ⚠ **And it is not native-only**: the same expression aborted the *interpreter* with
+  `Delete on locked store` on 2026-08-03. One expression, two unrelated-looking failures.
+- ⚠ **[#749](https://github.com/loft-lang/loft/issues/749)** — text **byte offsets and
+  character counts are mixed**, and both meetings are Rust panics with no loft location. A
+  slice END is a byte offset while `len()` counts characters, so `s[i..s.len()]` — *the rest of
+  the text* — aborts on anything non-ASCII; use `s.size()`. And `split_text("\n")` misindexes
+  its **trailing** segment, so `"ab\ncé"` panics where `"é\ncd"` is fine; use `split('\n')`.
+- ⚠ **[#748](https://github.com/loft-lang/loft/issues/748)** — there is **no way to build a
+  text from bytes** in memory: no `chr`, and `integer as text` / `vector<u8> as text` are
+  refused. `f#read(n) as text` is the only decoder in the language, which is why a
+  `hex_world` section carries a text view read straight off the file.
 
 ## Decisions taken — do not re-litigate
 

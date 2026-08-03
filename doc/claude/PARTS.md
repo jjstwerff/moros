@@ -100,6 +100,38 @@ remnant.
 A malformed tail is refused by name (`WL_SECTION`) rather than read as a plausible section:
 fewer than eight bytes left for a header, or a length running past the end of the file.
 
+#### `PART` and `ANCH`, as built (`A1.4`, 2026-08-03)
+
+`lib/hex_part/src/meta.loft`. ⚠ **The split is the point**: `hex_world` owns the framing and
+knows nothing about kinds or anchors; `hex_part` owns the content and knows nothing about
+where the bytes end up. A store that knew what `PART` meant would be a store with an opinion
+about its consumers.
+
+Both payloads are **`key=value` text**, not packed integers, and the reason is the language.
+A section is bytes, and loft cannot rebuild a text from bytes
+([#748](https://github.com/loft-lang/loft/issues/748)) — so a payload carrying a NAME has to
+be text. `hex_world` therefore reads each section's span **twice**, as bytes and as text, and
+offers both: the bytes stay authoritative on a re-save (which is what keeps an unknown section
+byte-identical), and the text view is what a name comes back through. Text also reads in a hex
+dump, the same argument the four-character tag is made of, and `"12x" as i32?` is null rather
+than `12`, so a malformed number refuses instead of guessing.
+
+| | |
+|---|---|
+| `PART` | `kind=` one of the five · `name=` · `desc=` |
+| `ANCH` | `q=` · `r=` · `h=` · `facing=` one of the 24 headings |
+
+⚠ **A newline is refused, not stripped** — `name=x\nkind=1` would forge a line and rewrite the
+kind. ⚠ **Absent and malformed are different answers** (`MR_ABSENT` / `MR_MALFORMED`): a part
+from an older editor has no `ANCH` and is fine, while one whose `ANCH` says `facing=north` is
+damaged, and one code for both makes a part that stands the wrong way round look normal.
+
+⚠ **The test subject is `"porte café"`, described as `"a door, 2 = boards wide 中"`, and that
+one choice found three defects an ASCII name agrees with**: two loft panics where byte offsets
+meet character counts ([#749](https://github.com/loft-lang/loft/issues/749)), a parse that
+splits on every `=` and truncates the description, and a byte-per-character encoding that
+returns `中` as a different character.
+
 ⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
 as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
 hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it

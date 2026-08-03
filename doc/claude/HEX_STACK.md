@@ -316,6 +316,14 @@ It moves from `HXF1` to the store, because a window is derived (I2) and **the ed
 the only caller of `doc_write`/`doc_read` is `lib/moros_map` — the package already labelled a
 predecessor of its target design.
 
+✅ **Built, 2026-08-03 (plan 17 `A1.3`).** The store carries tagged sections:
+`tag(i32) + length(i32) + payload`, repeated to **end of file**, after the last layer's CRC.
+⚠ **End-of-file is the terminator, and that is why there is no schema-version bump** — a
+section count has to live somewhere, and every place it can live is a byte a pre-section file
+does not have. A committed pre-section fixture pins it. ⚠ **And the magic reads `WTTH`**, not
+the `HXW7` its comment claimed; the value is not corrected, because every saved world carries
+it. See [PARTS.md § P2](PARTS.md#p2--a-part-is-saved-the-way-a-world-is-saved-because-it-is-one).
+
 ⚠ **One open ask.** crawler is 2D, odd-r, with bounded levels — for which a window may
 genuinely *be* authoritative rather than derived. If so `HXF1` is correct there, and the
 moros↔crawler interchange becomes a **conversion at the boundary** rather than a shared format.

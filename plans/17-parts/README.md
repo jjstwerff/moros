@@ -46,11 +46,49 @@ because **none of them needs a new file format**:
 | ✅ `A1.1` | `lib/hex_part` — one dependency (`hex_world`), one function: `part_from_region(w, cq, cr, rad)`. Cells only, no sections. | **DONE.** 11 tests, both backends. ⚠ **Two findings, and the naive version of each looked right** — see below. | S |
 | ✅ `A1.2` | Save and load with the **existing** `world_save`/`world_load` — no new format (§P2). | **DONE.** 19 tests, both backends. Four controls, and a **blind comparison** fails all of them while the round-trip tests stay green. ⚠ It also turned up a native divergence — see below. | S |
 | ✅ `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | **DONE.** `hex_world` 113 tests, both backends. `presection.hxw` is committed pre-section bytes; `ZZZZ` survives a load-and-save byte-identical. ⚠ **Two findings and three mutants** — see below. | M |
-| `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | round-trip carries kind/name/facing; ⚠ an *older* reader (one that does not know `PART`) still loads the cells — simulated by reading with the tag unregistered | S |
+| ✅ `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | **DONE.** `lib/hex_part/src/meta.loft`, 29 tests, both backends. The older-reader gate compares the LANDSCAPE of a dressed part against a bare one through `part_diff`, never calling `part_meta`. ⚠ **Two loft panics and a store lock** — see below. | S |
 
-⚠ **`A1.4`'s open piece is not the format — it is that loft cannot build a text from bytes.**
-`PART` carries a name and a description, and a section is a byte vector. Probed on
-2026-08-03, so this is measured rather than assumed:
+### What `A1.4` turned up
+
+⚠ **AN ASCII TEST SUBJECT CANNOT SEE ANY OF IT.** The part in the round-trip test is called
+`"porte café"` and described as `"a door, 2 = boards wide 中"`, and that one choice found
+**three** separate defects that `"door"` agrees with perfectly:
+
+- **loft#749, two panics.** Text byte offsets and character counts are mixed in the language.
+  A slice END is a byte offset while `len()` counts characters, so `line[(i+1)..line.len()]` —
+  *the rest of the line* — aborts the process on any non-ASCII text. And `split_text("\n")`
+  misindexes its **trailing** segment, so `"ab\ncé"` panics where `"é\ncd"` is fine. Both are
+  Rust panics with no loft source location. `line.size()` and `split('\n')` are the same
+  operations without the fault, and `meta.loft` uses those by construction.
+- **A parse that splits on every `=` truncates a description at the first one.** Splitting at
+  the FIRST is a one-line difference and no ASCII-without-equals subject can tell them apart.
+- **A byte-per-character encoding** would round-trip `中` as a different character. The store's
+  text sections write UTF-8 through the file layer, and the gate counts **9 bytes for 6
+  characters** rather than trusting the comparison.
+
+⚠ **AND `world_set_column(ld.wl_world, …)` — a struct FIELD into a `&`-parameter — aborts the
+INTERPRETER with `Delete on locked store`**, where loft#745 records it failing `--native` at
+compile time with a bare `E0308`. Same expression, two unrelated-looking failures, one fix:
+bind the field to a local first. Worth knowing that the native-only symptom is not the only
+one.
+
+⚠ **`PART` and `ANCH` are `key=value` TEXT, not packed integers**, and the reason is the
+language: a section is bytes, loft cannot rebuild a text from bytes (loft#748), so the payload
+has to be text to carry a name at all. It also reads in a hex dump — the same argument the
+four-character tag is made of — and `"12x" as i32?` is null rather than 12, so a malformed
+number refuses instead of guessing. The cost is that a NEWLINE would forge a line
+(`name=x\nkind=1` rewrites the kind), so it is refused rather than stripped.
+
+⚠ **ABSENT AND MALFORMED ARE DIFFERENT ANSWERS**, and collapsing them is the trap. A part from
+an older editor has no `ANCH` and is fine; one whose `ANCH` says `facing=north` is damaged, and
+one code for both makes a part that stands the wrong way round look normal.
+
+⚠ **The remaining piece is still loft#748 and it is not blocking.** Text → bytes is three lines
+and there is no way back in memory, so `hex_world` offers each section as **bytes and text
+both**, filled from one span at load. The bytes stay authoritative on a re-save, which is what
+keeps an unknown section byte-identical; the text view is what `hex_part` reads a name from.
+⚠ If a section ever carries a megabyte (`MESH`, `A6.1`), the always-decode is the line to
+revisit. What was measured:
 
 | | |
 |---|---|
@@ -59,12 +97,14 @@ because **none of them needs a new file format**:
 | `f += text` | writes **UTF-8** — 9 bytes for the 6 characters of `"Café中!"`. |
 | `f#read(n) as text` | reads it back **exactly**, and does not fall over on 3 bytes of non-UTF-8 (`FF FE 00` came back length 3). |
 
-So the file API is the only decoder in the language, and the honest options are: have
-`world_load` offer each section as **bytes and text both** (a seek back and one re-read — the
-library still never interprets, it just offers two views of the same bytes); make a name a
-**label into a table** that has the same problem one level up; or **file the gap upstream**,
-which is where a missing `chr` belongs. ⚠ `hex_editor::names` (`B4`) is in memory only, so
-nothing in this tree has solved it yet.
+The file API is the only decoder in the language, which is what settled it: `world_load` reads
+each section's span **twice**, as bytes and as text, and the library still interprets nothing —
+it offers two readings and lets the consumer pick. `world_set_section_text` is the write half,
+and a section loaded from a file is **byte-valued whatever it holds**, so a re-save emits the
+bytes it was given. Filed upstream as [loft#748](https://github.com/loft-lang/loft/issues/748)
+anyway, because a missing `chr` is a language absence and every consumer persisting an
+author-given name will hit it. ⚠ `hex_editor::names` (`B4`) is in memory only, so this is the
+first place in the tree that had to solve it.
 
 ### What `A1.3` turned up
 

@@ -153,6 +153,100 @@ fn test_an_unknown_section_survives_a_load_and_a_save() {
   delete(a); delete(b); delete(c);
 }
 
+// ── The text view ────────────────────────────────────────────────────────────
+//
+// ⚠ IT EXISTS BECAUSE THE LANGUAGE HAS NO OTHER DECODER (loft#748): text becomes
+// bytes in three lines and nothing brings them back, so a section carrying an
+// author-given name would be write-only. The subject is deliberately `"Café中!"`
+// — 6 characters in 9 bytes — because ASCII cannot tell any of the wrong answers
+// apart from the right one.
+fn test_a_text_section_round_trips_past_ascii() {
+  w = built();
+  p = "sections_text.hxw";
+  world_set_section_text(w, section_tag("PART"), "Café中!");
+  assert(world_save(w, p, [7]) == WS_OK, "save refused");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  got = world_section_text(ld.wl_world, section_tag("PART"));
+  assert(got == "Café中!", "the name came back '{got}'");
+  assert(len(got) == 6, "{len(got)} characters, not 6");
+  // ⚠ AND THE BYTE VIEW IS THE UTF-8, not one byte per character. A byte-per-
+  // character encoding round-trips '中' as a different character and is invisible
+  // to the comparison above on any ASCII subject.
+  i = world_section_at(ld.wl_world, section_tag("PART"));
+  assert(len(ld.wl_world.w_sections[i].sc_bytes) == 9,
+         "{len(ld.wl_world.w_sections[i].sc_bytes)} bytes for 6 characters, not 9");
+  delete(p);
+}
+
+// ⚠ `size` AND `len` DIFFER FOR TEXT, and the length field must be the byte
+// count. A field taken from `len` under-declares the payload, and everything
+// after it is then read as a section header — so the failure is not a wrong name,
+// it is a file that will not load. The following section is what proves the
+// length was right.
+fn test_a_text_section_does_not_swallow_the_one_after_it() {
+  w = built();
+  p = "sections_text2.hxw";
+  world_set_section_text(w, section_tag("PART"), "Café中!");
+  world_set_section(w, section_tag("ANCH"), [1, 2, 3]);
+  world_save(w, p, [7]);
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(len(ld.wl_world.w_sections) == 2, "{len(ld.wl_world.w_sections)} sections, not 2");
+  ai = world_section_at(ld.wl_world, section_tag("ANCH"));
+  assert(ai == 1 && len(ld.wl_world.w_sections[ai].sc_bytes) == 3, "the section after was lost");
+  delete(p);
+}
+
+// A loaded section is BYTE-valued whatever it holds, so a save writes back what
+// it was given. Without that, a text-valued unknown section would be re-encoded
+// on every load-and-save and the forward-compatibility promise would hold only
+// for payloads that happen not to be text.
+fn test_a_loaded_text_section_is_rewritten_from_its_bytes() {
+  w = built();
+  a = "sections_txt_a.hxw";
+  b = "sections_txt_b.hxw";
+  world_set_section_text(w, section_tag("PART"), "Café中!");
+  world_save(w, a, [7]);
+  ld = world_load(a);
+  i = world_section_at(ld.wl_world, section_tag("PART"));
+  assert(!ld.wl_world.w_sections[i].sc_is_text, "a loaded section claimed to be text-authored");
+  world_save(ld.wl_world, b, ld.wl_palette);
+  ba = read_bytes(a);
+  bb = read_bytes(b);
+  assert(len(ba) == len(bb), "a is {len(ba)} bytes, b is {len(bb)}");
+  same = true;
+  for i2 in 0..len(ba) { if ba[i2] != bb[i2] { same = false; } }
+  assert(same, "a text section did not survive byte-identical");
+  // and the text view survives the second trip too
+  assert(world_section_text(world_load(b).wl_world, section_tag("PART")) == "Café中!",
+         "the text view was lost on the second load");
+  delete(a); delete(b);
+}
+
+// ⚠ SETTING BYTES OVER A TEXT SECTION MUST CLEAR THE FLAG. Left set, the writer
+// emits the stale text and ignores the bytes it was just handed — a write that
+// silently keeps the old value, which no round-trip of either kind would catch.
+fn test_bytes_written_over_a_text_section_win() {
+  w = built();
+  p = "sections_over.hxw";
+  world_set_section_text(w, section_tag("PART"), "Café中!");
+  world_set_section(w, section_tag("PART"), [1, 2, 3]);
+  world_save(w, p, [7]);
+  ld = world_load(p);
+  i = world_section_at(ld.wl_world, section_tag("PART"));
+  assert(len(ld.wl_world.w_sections[i].sc_bytes) == 3,
+         "{len(ld.wl_world.w_sections[i].sc_bytes)} bytes — the stale text was written");
+  assert(ld.wl_world.w_sections[i].sc_bytes[0] == 1, "the bytes are not the ones given");
+  // CONTROL: the other way round also takes, or this proves only that bytes win.
+  world_set_section_text(w, section_tag("PART"), "ok");
+  world_save(w, p, [7]);
+  assert(world_section_text(world_load(p).wl_world, section_tag("PART")) == "ok",
+         "text written over bytes did not take");
+  delete(p);
+}
+
 // ── What the trailing block refuses ──────────────────────────────────────────
 //
 // A tail that is not a whole run of sections is refused BY NAME rather than read

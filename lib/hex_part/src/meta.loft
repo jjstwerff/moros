@@ -1,0 +1,162 @@
+// `PART` and `ANCH` — what a part is called, and where it stands.
+//
+// Plan 17 `A1.4`, over the section mechanism `A1.3` put in the store. ⚠ The split
+// is the point: `hex_world` owns the FRAMING — tag, length, and carrying a tag it
+// has never heard of — and knows nothing about kinds or anchors. This file owns
+// the CONTENT and knows nothing about where the bytes end up. A store that knew
+// what `PART` meant would be a store with an opinion about its consumers.
+use hex_world;
+
+// ⚠ LITERALS, held equal to `section_tag(…)` by a test rather than derived from
+// it. `const X = some_fn()` aborts with a non-unwinding panic and no source
+// location (loft#744), and an abort a minute into a run reads as a crashed frame
+// loop rather than as a rejected constant.
+pub const TAG_PART = 1414676816;    // 'PART', low byte first
+pub const TAG_ANCH = 1212370497;    // 'ANCH'
+
+pub const PK_HOUSE   = 1;
+pub const PK_FRAME   = 2;
+pub const PK_LEAF    = 3;
+pub const PK_PROP    = 4;
+pub const PK_FITTING = 5;
+
+// The 24 headings the editor already uses (§P3). A facing is an index into them,
+// never an angle: the approximation each heading costs is `A4.4`'s to measure,
+// and storing the index keeps that measurement possible after the fact.
+pub const FACINGS = 24;
+
+pub struct PartMeta {
+  pm_kind: integer,
+  pm_name: text,
+  pm_desc: text = "",
+}
+
+pub struct PartAnchor {
+  pa_q:      integer,
+  pa_r:      integer,
+  pa_h:      integer,
+  pa_facing: integer,
+}
+
+pub const PM_OK      = 0;
+pub const PM_KIND    = 1;   // not one of the five kinds
+pub const PM_NEWLINE = 2;   // a newline in a name or a description
+pub const PM_FACING  = 3;   // not one of the 24 headings
+
+// ── The payload is `key=value` lines, and that is a decision ─────────────────
+//
+// Not packed integers. Three reasons, in the order they mattered:
+//
+//   1. A name has to survive, and loft cannot rebuild a text from bytes
+//      (loft#748) — so `hex_world` offers a TEXT view of a section and the
+//      payload has to be text to use it. Packing the numbers as bytes and the
+//      name as text would need both views of one span and a byte offset to
+//      divide them, which is the one thing this format has no reader for.
+//   2. It reads in a hex dump, which is the same argument the four-character tag
+//      is made of. `kind=3` next to `PART` says what the file holds.
+//   3. An integer written as text round-trips exactly and refuses cleanly:
+//      `"12x" as i32?` is null, not 12.
+//
+// ⚠ It costs a refusal the packed form would not need: a NEWLINE in a name would
+// forge a line, so it is refused rather than stripped. Stripping would hand back
+// a different name than the one given, which is the `WS_PALETTE` rule.
+fn has_newline(t: text) -> boolean {
+  t.find("\n") != null
+}
+
+// The value of `key`, or null when no line has it. ⚠ Split at the FIRST `=`, so a
+// description may contain one; splitting on every `=` would silently truncate
+// "a door, 2 = wide" at the equals.
+//
+// ⚠ TWO LOFT PANICS ARE AVOIDED HERE BY CONSTRUCTION, and both were reached by a
+// name with `é` in it — loft#749. Text byte offsets and character counts are
+// mixed in the language: a slice END is a byte offset while `len()` counts
+// characters, so `line[(i+1)..line.len()]` — "the rest of the line" — aborts the
+// process on any text that is not pure ASCII. `size()` is the byte length and is
+// what a slice end wants. And `split_text("\n")` misindexes its TRAILING segment,
+// so `"ab\ncé"` panics where `"é\ncd"` is fine; `split('\n')`, with a character
+// separator, is the same operation and does not.
+//
+// Neither is a style choice. Both are aborts with a Rust backtrace and no loft
+// source location, and an ASCII test subject cannot see either.
+fn field(t: text, key: text) -> text? {
+  for line in t.split('\n') {
+    i = line.find("=");
+    if i == null { continue; }
+    if line[0..i] == key { return line[(i + 1)..line.size()]; }
+  }
+  null
+}
+
+pub fn part_set_meta(w: &World, m: PartMeta) -> integer {
+  if m.pm_kind < PK_HOUSE || m.pm_kind > PK_FITTING { return PM_KIND; }
+  if has_newline(m.pm_name) || has_newline(m.pm_desc) { return PM_NEWLINE; }
+  world_set_section_text(w, TAG_PART,
+    "kind={m.pm_kind}\nname={m.pm_name}\ndesc={m.pm_desc}");
+  PM_OK
+}
+
+pub fn part_set_anchor(w: &World, a: PartAnchor) -> integer {
+  if a.pa_facing < 0 || a.pa_facing >= FACINGS { return PM_FACING; }
+  world_set_section_text(w, TAG_ANCH,
+    "q={a.pa_q}\nr={a.pa_r}\nh={a.pa_h}\nfacing={a.pa_facing}");
+  PM_OK
+}
+
+pub const MR_OK        = 0;
+pub const MR_ABSENT    = 1;   // the part carries no such section
+pub const MR_MALFORMED = 2;   // it carries one and it does not parse
+
+// ⚠ ABSENT AND MALFORMED ARE DIFFERENT ANSWERS. A part written by an older editor
+// has no `ANCH` and is fine; a part whose `ANCH` says `facing=north` is damaged.
+// Collapsing them makes the second look like the first, and the symptom is a part
+// that quietly stands the wrong way round.
+pub struct MetaRead { mr_code: integer, mr_meta: PartMeta, mr_why: text }
+pub struct AnchorRead { ar_code: integer, ar_anchor: PartAnchor, ar_why: text }
+
+pub fn part_meta(w: World) -> MetaRead {
+  if world_section_at(w, TAG_PART) < 0 {
+    return MetaRead { mr_code: MR_ABSENT, mr_meta: PartMeta {}, mr_why: "no PART section" };
+  }
+  t = world_section_text(w, TAG_PART);
+  k = field(t, "kind");
+  if k == null {
+    return MetaRead { mr_code: MR_MALFORMED, mr_meta: PartMeta {}, mr_why: "no kind" };
+  }
+  kind = k as i32?;
+  if kind == null {
+    return MetaRead { mr_code: MR_MALFORMED, mr_meta: PartMeta {},
+                      mr_why: "kind '{k}' is not a number" };
+  }
+  if kind < PK_HOUSE || kind > PK_FITTING {
+    return MetaRead { mr_code: MR_MALFORMED, mr_meta: PartMeta {},
+                      mr_why: "kind {kind} is not one of the five" };
+  }
+  MetaRead { mr_code: MR_OK,
+             mr_meta: PartMeta { pm_kind: kind, pm_name: field(t, "name") ?? "",
+                                 pm_desc: field(t, "desc") ?? "" },
+             mr_why: "" }
+}
+
+pub fn part_anchor(w: World) -> AnchorRead {
+  if world_section_at(w, TAG_ANCH) < 0 {
+    return AnchorRead { ar_code: MR_ABSENT, ar_anchor: PartAnchor {},
+                        ar_why: "no ANCH section" };
+  }
+  t = world_section_text(w, TAG_ANCH);
+  q = (field(t, "q") ?? "") as i32?;
+  r = (field(t, "r") ?? "") as i32?;
+  h = (field(t, "h") ?? "") as i32?;
+  fc = (field(t, "facing") ?? "") as i32?;
+  if q == null || r == null || h == null || fc == null {
+    return AnchorRead { ar_code: MR_MALFORMED, ar_anchor: PartAnchor {},
+                        ar_why: "an anchor field is missing or is not a number" };
+  }
+  if fc < 0 || fc >= FACINGS {
+    return AnchorRead { ar_code: MR_MALFORMED, ar_anchor: PartAnchor {},
+                        ar_why: "facing {fc} is not one of the {FACINGS} headings" };
+  }
+  AnchorRead { ar_code: MR_OK,
+               ar_anchor: PartAnchor { pa_q: q, pa_r: r, pa_h: h, pa_facing: fc },
+               ar_why: "" }
+}

@@ -8,3 +8,4 @@
 // the same shader, saves in the same format and is verified by the same gates.
 use hex_world;
 use region;
+use meta;
