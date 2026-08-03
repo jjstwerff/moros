@@ -8,3 +8,4 @@
 use widgets;
 use font;
 use panel;
+use render;

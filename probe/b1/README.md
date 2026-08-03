@@ -1,5 +1,5 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
-# B1.1 — does text reach the canvas?
+# B1.1 / B1.3 — does text reach the canvas, and is the panel in the picture?
 
 Plan [#18](https://github.com/jjstwerff/moros/issues/18), step `B1.1`. `make probe-text`.
 
@@ -88,12 +88,45 @@ everything and one that rejects everything look identical from a single green ru
   file at all**, because it counted pixels and threw the boolean away. Paths here are
   absolute, and the return value is asserted.
 
+## B1.3 — and the panel, in the client's own picture
+
+`run.sh` gained a fifth stage: build the real client, photograph it in headless Chrome, and
+**measure** the panel rather than look at it.
+
+```
+  ok    a column inside the strip is dark (lum 21 < 80)
+  ok    just right of 240px is NOT panel (lum 142 >= 80)
+  ok    the strip measures 240px, want 240
+  ok    six toolbar bars of >=8px, counted 6 (runs: 32,32,32,32,32,32,2)
+  ok    each bar is button-height (32px): 32,32,32,32,32,32
+  ok    most of the frame is still world, not panel (76% light)
+```
+
+⚠ **The last row is the control the others cannot provide.** A renderer that filled the
+whole canvas with panel colour passes *"the strip is dark"* perfectly.
+
+⚠ **Counting lighter pixels reported SEVEN buttons.** The seventh was the 2px separator
+hairline, which is also lighter than the background. The fix is not a threshold tuned
+between 44 and 52 — it is that a button is a **32px bar** and a hairline is not, so the run
+LENGTH is what tells them apart. A discriminator taken from the shape survives a restyle;
+one taken from a luminance gap does not.
+
+⚠ **And `[].every(…)` is `true`**, so *"each bar is button-height"* reported `ok` on a
+picture with no panel in it at all — a vacuous pass sitting in a failing run, which is the
+shape that teaches a reader to skim. The count is part of that claim now.
+
+⚠ **The window must be bigger than the canvas.** At 900x400 against the editor's 1200x660
+the shot came back with the right third and the bottom third black and everything at the
+wrong scale: a canvas larger than the viewport is only partly composited, and
+`captureBeyondViewport` does not undo it. It reads exactly like a broken renderer.
+
 ## Files
 
 | | |
 |---|---|
-| `run.sh` | all four stages — `make probe-text` |
+| `run.sh` | all five stages — `make probe-text` |
 | `text_cpu.loft` | rasteriser coverage, exact count |
 | `text_gl.loft` | the GL route + the fixed-pitch check, one source for both targets |
 | `shot.mjs` | the ink reader — a minimal PNG decoder, split left/right |
-| `browser_shot.mjs` | headless Chrome + CDP, clipped to the canvas |
+| `browser_shot.mjs` | headless Chrome + CDP, clipped to the canvas; takes the page as an argument |
+| `panel.mjs` | B1.3's reader — is the panel in the client's picture, and did it stay in its strip |

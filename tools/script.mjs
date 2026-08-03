@@ -94,6 +94,17 @@ for (let i = 1; i < args.length; i++) {
 // make. A silent degrade here would let a stale frame pass as a match.
 if (WIN === null) WIN = wasm ? WASM_WIN : '1200,800';
 const PAGE = wasm ? '/client' : '/';
+// The client's UI chrome — `lavition_ui::PANEL_WIDTH` and `STATUS_HEIGHT`.
+// Named here rather than buried in the measurement, so changing the panel is one
+// edit and a reader can see why a picture gate skips some pixels.
+//
+// The status BAR spans the whole window, not just the strip: the line it carries
+// runs to 80-odd characters and never fitted a 240px column. That makes it 24 of
+// 660 rows = 3.6% of the frame, which is exactly the `sky 0.0364` that took
+// `deck_soffit` red — a gate that wants to be fully under a deck, reading the
+// bottom bar as sky.
+const UI_STRIP  = 240;
+const UI_STATUS = 24;
 const CANVAS = wasm ? '#c' : '#gl';
 
 // ⚠ KEEP IN STEP WITH `html/editor.html`'s keydown handler.
@@ -537,8 +548,24 @@ async function frameStats() {
       // luminance is the missing half, and it is the one thing SNUG's lower ambient
       // actually changes in the picture.
       const counts = {}, bl = {}, bl2 = {}; let total = 0, lum = 0, lum2 = 0;
-      for (let y = 0; y < cv.height; y += 4) {
-        for (let x = 0; x < cv.width; x += 4) {
+      // WARNING - THE WORLD, NOT THE WHOLE CANVAS. The client draws a 240px UI
+      // strip down the left (plan 18 B1.3), and these gates classify every pixel
+      // into named SURFACES and take shares of the total. An opaque overlay is
+      // 20% of the frame that is no surface at all, so counting it moved every
+      // share in every gate at once - subject went to 0 and three gates went red
+      // on a change that touched no world code.
+      //
+      // Excluding it is not a threshold nudged to fit: a gate asking what
+      // fraction of the view is roof is asking about the VIEW, and the panel is
+      // furniture in front of it. The saved snapshot still shows the whole
+      // frame, because a human looking at a shot wants the UI in it.
+      //
+      // WARNING - AND NO BACKTICKS IN THIS COMMENT. The block is inside a JS
+      // template literal; the first version of this very note quoted a variable
+      // in backticks and stopped the file parsing, which is the trap the older
+      // comment forty lines down already warned about.
+      for (let y = 0; y < cv.height - ${UI_STATUS}; y += 4) {
+        for (let x = ${UI_STRIP}; x < cv.width; x += 4) {
           const i = (y * cv.width + x) * 4;
           const R = d[i] / 255, G = d[i+1] / 255, B = d[i+2] / 255;
           const s = R + G + B;

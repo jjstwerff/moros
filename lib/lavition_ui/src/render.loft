@@ -1,0 +1,94 @@
+// What the panel looks like — as a LIST OF RECTANGLES, not as GL calls.
+//
+// ⚠ WHY A LIST AND NOT A `panel_render(painter, …)`. Taking a `Painter2D` would
+// pull `graphics` into this package, and then its tests would need a window: the
+// layout suite runs under `loft test` with no GL context at all, which is the
+// property that made the whole re-homing worth doing.
+//
+// It also moves a real claim out of the picture and into a test. "The selected
+// button is drawn differently from the others" is a fact about the DECISION, not
+// about the pixels — countable here, and only arguable from a screenshot. The
+// tree's own rule is to measure what was **emitted** rather than what the
+// producer believes it emitted, and a draw list is exactly the emission.
+//
+// What is left for the gate is the part that genuinely needs GL: that these
+// rectangles reach the canvas at all.
+use widgets;
+use panel;
+
+// A packed 0xRRGGBB colour, the same packing `graphics::rgb` produces. Kept as a
+// plain integer so this package needs no graphics dependency to name one.
+pub struct DrawRect {
+  dr_rect:   Rect,
+  dr_colour: integer,
+}
+
+// The panel's colours. A struct rather than constants because a consumer that
+// cannot restyle the editor is a consumer being told what its editor looks like.
+pub struct Theme {
+  th_panel_bg:   integer,
+  th_button:     integer,
+  th_button_sel: integer,
+  th_list_bg:    integer,
+  th_item_sel:   integer,
+  th_status_bg:  integer,
+  th_separator:  integer,
+}
+
+// A dark theme that reads against a lit 3D world behind it.
+pub fn theme_default() -> Theme {
+  Theme {
+    th_panel_bg:   0x1E1E22,
+    th_button:     0x33333A,
+    th_button_sel: 0x4E6E9E,
+    th_list_bg:    0x141418,
+    th_item_sel:   0x3A4E6E,
+    th_status_bg:  0x101014,
+    th_separator:  0x2A2A30,
+  }
+}
+
+// The panel as rectangles, back to front.
+//
+// ⚠ THE ORDER IS THE Z-ORDER, and the consumer draws it as given. Emitting the
+// backgrounds after the things standing on them would paint over them, and that
+// is a bug a picture shows and a count does not — so `test_the_backgrounds_come
+// _first` pins it here instead.
+pub fn panel_draw_list(p: Panel, th: Theme) -> vector<DrawRect> {
+  dl: vector<DrawRect> = [];
+
+  // the strip itself, then the two wells that sit on it
+  dl += [DrawRect { dr_rect: p.p_rect,           dr_colour: th.th_panel_bg }];
+  dl += [DrawRect { dr_rect: p.p_list.lb_rect,   dr_colour: th.th_list_bg }];
+  dl += [DrawRect { dr_rect: p.p_status.ss_rect, dr_colour: th.th_status_bg }];
+
+  // a hairline above the list, so the toolbar reads as its own group
+  lr = p.p_list.lb_rect;
+  dl += [DrawRect {
+    dr_rect: rect(lr.r_x, lr.r_y - SEPARATOR_HEIGHT - 4, lr.r_w, SEPARATOR_HEIGHT),
+    dr_colour: th.th_separator,
+  }];
+
+  for b in p.p_toolbar {
+    dl += [DrawRect {
+      dr_rect:   b.btn_rect,
+      dr_colour: if b.btn_selected { th.th_button_sel } else { th.th_button },
+    }];
+  }
+
+  // the selected row, if there is one and it is in view
+  if p.p_list.lb_selected >= 0 && p.p_list.lb_selected < len(p.p_list.lb_items) {
+    row_y = lr.r_y + p.p_list.lb_selected * p.p_list.lb_item_height - p.p_list.lb_scroll;
+    // ⚠ Clipped to the well. A selection scrolled out of view would otherwise be
+    // drawn ABOVE the list, over the toolbar — the failure mode of every
+    // hand-rolled list, and invisible until someone scrolls.
+    if row_y >= lr.r_y && row_y + p.p_list.lb_item_height <= lr.r_y + lr.r_h {
+      dl += [DrawRect {
+        dr_rect:   rect(lr.r_x, row_y, lr.r_w, p.p_list.lb_item_height),
+        dr_colour: th.th_item_sel,
+      }];
+    }
+  }
+
+  dl
+}

@@ -1,0 +1,139 @@
+// The draw list — plan 18, `B1.3`.
+//
+// ⚠ WHAT A PICTURE CANNOT SAY. A screenshot shows that something was drawn; it
+// argues badly about WHICH rectangle got which colour, and not at all about the
+// order they were emitted in. Those are decisions, and a decision is countable.
+// The gate's job is the part that needs GL — that these reach the canvas.
+use lavition_ui;
+
+fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
+  run = (advance * 10) as float;
+  metrics_measured(run, run, 10, line_h)
+}
+
+fn demo(selected_button: integer, selected_item: integer) -> Panel {
+  spec = PanelSpec {
+    ps_buttons: [
+      spec_button("None", "1"), spec_button("Raise", "2"), spec_button("Lower", "3"),
+      spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
+    ],
+    ps_selected_button: selected_button,
+    ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+    ps_selected_item: selected_item,
+    ps_status: "ready",
+  };
+  panel_build(spec, 1280, 720, ui_metrics(8, 8))
+}
+
+fn test_every_button_gets_a_rectangle() {
+  dl = panel_draw_list(demo(-1, -1), theme_default());
+  th = theme_default();
+  n = 0;
+  for d in dl { if d.dr_colour == th.th_button { n += 1; } }
+  assert(n == 6, "six buttons, {n} button rectangles emitted");
+}
+
+// ⚠ THE CLAIM A SCREENSHOT ARGUES BADLY ABOUT.
+fn test_the_selected_button_is_drawn_differently() {
+  th = theme_default();
+  dl = panel_draw_list(demo(3, -1), th);
+  sel = 0;
+  plain = 0;
+  for d in dl {
+    if d.dr_colour == th.th_button_sel { sel += 1; }
+    if d.dr_colour == th.th_button { plain += 1; }
+  }
+  assert(sel == 1, "exactly one button should be selected, got {sel}");
+  assert(plain == 5, "the other five stay plain, got {plain}");
+}
+
+// And the control: with nothing selected, NOTHING gets the selected colour.
+// Without this the test above passes on a list that always highlights one.
+fn test_nothing_selected_highlights_nothing() {
+  th = theme_default();
+  dl = panel_draw_list(demo(-1, -1), th);
+  for d in dl {
+    assert(d.dr_colour != th.th_button_sel, "a button was highlighted with nothing selected");
+    assert(d.dr_colour != th.th_item_sel, "a row was highlighted with nothing selected");
+  }
+}
+
+// ⚠ THE ORDER IS THE Z-ORDER. Emitting a background after the things standing on
+// it paints them out — a bug a picture shows and a count does not, so it is
+// pinned here.
+fn test_the_backgrounds_come_first() {
+  th = theme_default();
+  dl = panel_draw_list(demo(3, 1), th);
+  first_button = -1;
+  last_bg = -1;
+  i = 0;
+  for d in dl {
+    if d.dr_colour == th.th_button || d.dr_colour == th.th_button_sel {
+      if first_button < 0 { first_button = i; }
+    }
+    if d.dr_colour == th.th_panel_bg || d.dr_colour == th.th_list_bg
+       || d.dr_colour == th.th_status_bg { last_bg = i; }
+    i += 1;
+  }
+  assert(first_button > last_bg,
+         "a background at {last_bg} is emitted after the first button at {first_button}");
+}
+
+fn test_every_rectangle_has_area() {
+  for d in panel_draw_list(demo(3, 1), theme_default()) {
+    assert(d.dr_rect.r_w > 0 && d.dr_rect.r_h > 0,
+           "a zero-area rectangle at {d.dr_rect.r_x},{d.dr_rect.r_y} draws nothing");
+  }
+}
+
+// Everything except the status bar belongs inside the strip. The status bar
+// spans the window on purpose (see `status_rect`).
+fn test_nothing_but_the_status_escapes_the_strip() {
+  th = theme_default();
+  p = demo(3, 1);
+  for d in panel_draw_list(p, th) {
+    if d.dr_colour == th.th_status_bg { continue; }
+    assert(d.dr_rect.r_x >= 0 && d.dr_rect.r_x + d.dr_rect.r_w <= p.p_rect.r_w,
+           "a rectangle spills out of the 240px strip: x={d.dr_rect.r_x} w={d.dr_rect.r_w}");
+  }
+}
+
+// ── the selected row, and the case that has no picture ───────────
+
+fn test_the_selected_row_is_highlighted_where_it_sits() {
+  th = theme_default();
+  p = demo(-1, 2);
+  lr = p.p_list.lb_rect;
+  found = false;
+  for d in panel_draw_list(p, th) {
+    if d.dr_colour == th.th_item_sel {
+      found = true;
+      assert(d.dr_rect.r_y == lr.r_y + 2 * p.p_list.lb_item_height,
+             "row 2 highlighted at y={d.dr_rect.r_y}, want {lr.r_y + 2 * p.p_list.lb_item_height}");
+    }
+  }
+  assert(found, "row 2 was selected and nothing was highlighted");
+}
+
+// ⚠ A SELECTION SCROLLED OUT OF VIEW MUST NOT BE DRAWN. Unclipped it lands ABOVE
+// the list — over the toolbar — which is the failure mode of every hand-rolled
+// list and is invisible until someone scrolls.
+fn test_a_selection_scrolled_out_of_view_is_not_drawn() {
+  th = theme_default();
+  p = demo(-1, 0);
+  p.p_list.lb_scroll = 10 * p.p_list.lb_item_height;   // row 0 is far above the well
+  for d in panel_draw_list(p, th) {
+    assert(d.dr_colour != th.th_item_sel,
+           "a scrolled-away selection was drawn at y={d.dr_rect.r_y}");
+  }
+}
+
+fn test_an_empty_panel_still_draws_its_chrome() {
+  th = theme_default();
+  empty = PanelSpec {
+    ps_buttons: [], ps_selected_button: -1,
+    ps_items: [], ps_selected_item: -1, ps_status: "",
+  };
+  dl = panel_draw_list(panel_build(empty, 1280, 720, ui_metrics(8, 8)), th);
+  assert(len(dl) >= 3, "a panel with no content still has a strip, a well and a bar");
+}

@@ -47,7 +47,7 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 | ✅ `B1.1` | **A probe, before anything else** — `make probe-text`, [probe/b1](../../probe/b1/README.md). | **DONE.** Ink left/right: desktop **1127/0**, browser **1246/0**. The reader is itself checked against a blank frame, an all-white one, and real text. ⚠ **It found a live trap** — see below. | XS |
 | ✅ `B1.2` | `Metrics` in `moros_ui`, threaded through `panel_build` and **load-bearing**: labels, list items and the status line are fitted to their boxes at build time. `metrics_measured` is the only constructor, so there is no fabricate-an-advance door. | **DONE.** 59 tests, both backends. Controls seen red: re-baking the advance at 8, a fixed-pitch check that always says yes, and a `fit_text` that stops truncating. ⚠ **It found the status strip 2.7× too small** — see below. | S |
 | ✅ **`B1.2b`** | **the panel became lavition's** — `lavition_ui`, its own section below. | **DONE.** `editor_client.loft` compiles against it and builds a `Panel`. | M |
-| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. ⚠ Needs `B1.2b`, and is the first **caller** of `metrics_measured`: pick the font per target, measure both runs, refuse/warn when `m_mono` is false. | a PNG from the CLIENT shows the 240 px strip and six buttons | S |
+| ✅ `B1.3` | **`panel_draw_list`, not `panel_render(painter, …)`** — the panel emits RECTANGLES and the client draws them, so `lavition_ui` keeps needing no GL and "the selected button looks different" is a loft test rather than a pixel argument. | **DONE.** A PNG **from the client**, measured not eyeballed: strip **240px exactly**, bars `32,32,32,32,32,32`, 76% of the frame still world. ⚠ **It took three world gates red** — see below. | S |
 | `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
 | `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, **in the client** | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
@@ -110,6 +110,27 @@ does not know, lands on a **proportional** face, and the client's retry takes th
 `monospace` instead — reported as `the UI font fell back to the generic monospace family`.
 The client never asks which target it is on. loft has no conditional compilation and this
 needed none: **ask, measure, and keep the answer only if it is better.**
+
+⚠ **`B1.3` TOOK THREE GATES RED, AND THE CAUSE WAS NOT THE PANEL.** `deck_soffit`,
+`cellar_ceiling` and `camera_indoors` classify **every pixel** of the client's frame into
+named surfaces and take shares of the total. `/` has been the wasm client since 2026-08-02,
+so an opaque overlay is suddenly part of every world measurement.
+
+The instructive part is which piece did it. Excluding the 240px strip did **not** fix
+`deck_soffit`; the failing row was `sky 0.0364` in a gate that expects to be fully under a
+deck. **24 of 660 rows is 3.6%** — the STATUS BAR, which `B1.2` had correctly widened to
+span the window because its 80-character line never fitted a 240px column. A gate reading
+the bottom bar as sky.
+
+So the fix is one place, `tools/script.mjs`: a world gate measures the canvas **minus the UI
+chrome** — the strip and the bar. That is not a threshold nudged to fit. A gate asking what
+fraction of the view is roof is asking about the VIEW, and the panel is furniture in front
+of it. The saved snapshot still shows the whole frame, because a human looking at a shot
+wants the UI in it.
+
+⚠ And the note that comment now carries: **no backticks inside it.** The block sits in a JS
+template literal, and the first draft of that very warning quoted a variable in backticks
+and stopped the file parsing — the trap the older comment forty lines below already named.
 
 ### B2 — the line tells the truth
 

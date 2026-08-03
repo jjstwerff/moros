@@ -27,7 +27,13 @@ if (!DIR || !OUT) { console.error('usage: browser_shot.mjs <dir-with-html> <out.
 
 // A port band of our own, and identity by window size — this box runs other
 // agents' browsers and a port number is not an identity (run-gates.sh's rule).
-const CDP = 9366, PORT = 18571, WIN = '900,400';
+// ⚠ THE WINDOW MUST BE BIGGER THAN THE CANVAS. At 900x400 against the editor's
+// 1200x660 canvas the shot came back with the right-hand third and the bottom
+// third BLACK and everything else at the wrong scale — a canvas larger than the
+// viewport is only partly composited, and `captureBeyondViewport` does not undo
+// that. It reads exactly like a broken renderer, which is the worst way for a
+// gate to fail.
+const CDP = 9366, PORT = 18571, WIN = '1400,900';
 const PAGE = PAGE_ARG ?? '/text_gl.html';
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm',

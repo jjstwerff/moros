@@ -1009,6 +1009,27 @@ fn poll_input(h: web::WsHandler, st: Client) {
 // believes it selected is a picture of its own intention, which is the mistake
 // this tree has paid for twice. These six are the keys the client already binds,
 // stated once so the panel has a shape to render before `H:` exists.
+// ⚠ THE OVERLAY TURNS THE DEPTH TEST OFF, and back on is `draw_world`'s job at
+// the top of the next frame. The world is drawn depth-tested; a 2D panel has no
+// depth to speak of, and leaving the test on makes whether it appears depend on
+// what the ortho projection puts in z — which is a coin toss dressed as a
+// renderer.
+fn draw_panel(p: Panel, painter: Painter2D) {
+  graphics::gl_disable(graphics::GL_DEPTH_TEST);
+  for d in panel_draw_list(p, theme_default()) {
+    r = d.dr_rect;
+    // `lavition_ui` names a colour as packed 0xRRGGBB so it needs no graphics
+    // dependency to have a theme; `draw_rect_at` wants four floats. The unpack
+    // lives here, at the seam, which is the only place that knows both.
+    cr = ((d.dr_colour / 0x10000) % 256) as float / 255.0;
+    cg = ((d.dr_colour / 0x100) % 256) as float / 255.0;
+    cb = (d.dr_colour % 256) as float / 255.0;
+    graphics::draw_rect_at(painter,
+      r.r_x as float, r.r_y as float, r.r_w as float, r.r_h as float,
+      cr, cg, cb, 1.0);
+  }
+}
+
 fn client_panel_spec() -> PanelSpec {
   PanelSpec {
     ps_buttons: [
@@ -1143,6 +1164,7 @@ fn main() {
     }
   }
   ui_panel = panel_build(client_panel_spec(), WIN_W, WIN_H, ui_m);
+  ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
   ui_lr = ui_panel.p_list.lb_rect;
   println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {ui_m.m_advance}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
   if !ui_m.m_mono {
@@ -1164,6 +1186,7 @@ fn main() {
     drain(h, st);
     poll_input(h, st);
     draw_world(st);
+    draw_panel(ui_panel, ui_painter);
     // ⚠ THE PICTURE IS TAKEN HERE — between the draw and the swap, because
     // `gl_screenshot` reads GL_BACK and the swap discards it. But NOT IN THIS FILE:
     // `gl_screenshot` is not in the browser's host-import set, and loft refuses the

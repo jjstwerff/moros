@@ -63,5 +63,25 @@ node probe/b1/browser_shot.mjs probe/b1/.loft probe/b1/html_text.png
 node probe/b1/shot.mjs probe/b1/html_text.png
 
 echo
+echo "── B1.3  the PANEL, in the client's own picture ────────────────────"
+# ⚠ THE CLIENT, NOT A PROBE. Everything above tests the bridge; this tests the
+# thing #18 is actually building, in the program that will ship it. It needs no
+# server: the panel draws whether or not a world has arrived, which is itself
+# worth knowing — a HUD that only appears once the world does is a HUD that
+# cannot report the world failing to arrive.
+$LOFT --html --lib lib/ src/editor_client.loft >/dev/null 2>&1
+node probe/b1/browser_shot.mjs src/.loft probe/b1/client_panel.png /editor_client.html
+node probe/b1/panel.mjs probe/b1/client_panel.png
+
+echo
+echo "── B1.3c  and the panel reader, against pictures with no panel ─────"
+node probe/b1/panel.mjs probe/b1/gl_text.png >/dev/null 2>&1 \
+  && { echo "  !! a panel-less picture PASSED — the reader is blind"; exit 1; }
+node probe/b1/panel.mjs probe/b1/ctrl_white.png >/dev/null 2>&1 \
+  && { echo "  !! an all-white frame PASSED — the reader is blind"; exit 1; }
+echo "  reader verified: rejects a picture with no panel in it"
+
+echo
 echo "B1.1 PASS — text reaches the canvas on both targets."
+echo "B1.3 PASS — the panel is in the client's picture, measured not eyeballed."
 echo "⚠ See probe/b1/README.md: it drew, and the FONT is not what was asked for."
