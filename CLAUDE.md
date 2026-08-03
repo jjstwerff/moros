@@ -84,6 +84,23 @@ carrying another variable's value, `readPixels` returning black without
 `preserveDrawingBuffer`, and reading a picture by eye. A wrong number is worse than a guess,
 because a number gets believed. When the picture and the numbers disagree, suspect both.
 
+**The compiler's advice is a hypothesis, not an instruction.** loft 2026.8.0 tells you to drop
+the `&` on any parameter whose binding is never reassigned — *"field mutation already
+propagates to the caller without it"*. Acting on all 50 sites it flagged took `hex_world` from
+114 green to **96 failed** with `Delete on locked store`, and turned a scripted run that exits
+0 into a SIGABRT. ⚠ `--native` passed all 114 on the same source, so a per-backend green says
+nothing here. Worse, it is *right* at some sites and wrong at others **in identical words**: of
+seven dropped one at a time, four stayed green and three aborted, and nothing in the signature
+or at the call site separates them. Keep the `&` — [loft#760](https://github.com/loft-lang/loft/issues/760).
+
+**A grep over a log is an instrument, and its default answer is "absent".** Three were blind in
+one session, each reading as a clean result rather than a miss: `^advice:` found nothing
+because `loft test` indents diagnostics as `  Advice:`; `test result: .*total` scored four
+*passing* runs as "no result", because only the FAILED line carries a total; and `sort -u` on
+the message text collapsed two distinct sites into one, because the text is identical at every
+site and only the location line differs. Match a line you know is there before believing a
+count of zero.
+
 **Cost is measured in `w_tau`, not seconds.** hex_world's edit clock bumps once per write
 that changed something, so a gesture's cost is an exact integer that is the same on any box
 and on a world of any size — `lib/hex_editor/tests/cost.loft`. A wall clock measures the
