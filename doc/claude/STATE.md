@@ -27,16 +27,49 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **63** | `hex_part` **48** |
-| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **48** |
+| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
-### The next thing to do is #18 `B5.2` — thumbnails, or #17 `A3.1` — instances
+### The next thing to do is #18 `B5.3` — invalidation, or #17 `A3.1` — instances
 
 **`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
 tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
 (`make parts` builds and verifies it), `14:<roof>,<part>` places it — and **`14:<roof>` now
-places it too**, by generating a part and stamping it. ⚠ **#18 `B5.1` is done**:
-`house/cottage` is in the same list as the nine materials — one widget, the kind on the row.
+places it too**, by generating a part and stamping it. ⚠ **#18 `B5.1` and `B5.2` are done**:
+`house/cottage` is in the same list as the nine materials — one widget, the kind on the row —
+and its row now shows **the part itself**, rendered.
+
+⚠ **A PART IS A WORLD TO THE STORE AND IS NOT ONE TO THE MESHER**, which `B5.2` found by
+looking. `chunk_mesh_mat` treats an unwritten cell as GROUND — that is what makes an
+unauthored world a plane rather than a hole to fall through — and a part is bounded, so its
+unwritten cells are *outside it*. Meshed as a world, the 38-cell cottage came out **28.6 ×
+24.5 world units**: four chunks of grass with a house somewhere in it, while every count
+agreed with itself. `moros_terrain::chunk_mesh_mat_bounded` is one flag through the one loop,
+and only the ground pass can differ — an unwritten cell is substituted to `SURFACE_MAT`, so it
+can never join another. The control is that a **fully written** tile meshes identically both ways.
+
+⚠ **THE SERVER MESHES A PART AND THE CLIENT DRAWS IT** — `W:` the canonical camera, `Y:` the
+geometry, which is `M:`'s own shape with the mesh id replaced by a catalogue row. That is not
+the obvious split: the client already meshes worlds out of its own cache, but four of a
+chunk's nine surfaces come from `chunk_mesh_props`, which reads wall EDGES and the server's
+registries. A client meshing a part draws its ground and its floor and **no walls**.
+
+⚠ **A CAMERA THAT FRAMES A BOX DOES NOT FRAME THE THING IN IT.** Four fits were built; as a
+fraction of the thumbnail the cottage fills: bounding **sphere** ~35%, bounding **box** ~35%
+(*further away* than the sphere — no visible change at all), the box **in camera axes** 63%
+with the arithmetic checking out, every **vertex solved** — the frame. The third is the one to
+carry: *far enough that the topmost corner fits when it is also the nearest one* is exactly
+right for a box with all eight corners populated, and a house is not one. Its tall points are
+its roof and its near points are its front wall.
+
+⚠ **AND THE CATALOGUE HAD BEEN DRAWING THE PART A BLACK HEXAGON SINCE `B5.1`.**
+`render_swatches` indexed `surface_at(i)` by the LIST row and `surface_at(9)` is the `?`
+sentinel with colour `(0,0,0)` — measured at `5,5,6` against a list background of `20,20,24`,
+so **not blank, darker than blank**. `panel.mjs` looped `i < 9`, the mesher's nine surfaces, so
+the row that had just been added sat outside every claim it made. It reads the row count out of
+the picture now, and the control that matters is the BLACK row rather than the blank one: a
+blank row is the failure a thumbnail *has*, a black one is the failure that shipped, and it has
+as much ink as any swatch (`probe/b1/deface.mjs`).
 
 ⚠ **NEVER PASS `--path ../loft/`. THE INSTALLED `loft` IS THE TOOLCHAIN**, and it bundles its
 own stdlib — `make` and every gate run plain `loft`. `--path` points the compiler at
@@ -109,9 +142,10 @@ lineage. Which tree owns it for good is
 ### Where the two plans stand
 
 **[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
-`B4`, `B5.1`, `B6` **done**. What is left of `B5` is the **thumbnails**: `B5.2` renders a part
-from a canonical three-quarter view and `B5.3` invalidates on its version. ⚠ `B5.3`'s control
-is that the thumbnail **changes**, not merely that it is non-blank.
+`B4`, `B5.1`, `B5.2`, `B6` **done**. What is left is `B5.3`: invalidate the thumbnail on the
+part's version. ⚠ `B5.3`'s control is that the thumbnail **changes**, not merely that it is
+non-blank — and the cache to invalidate is in **two** places now, the server's `wire_thumbs`
+(built once at startup) and the client's textures (rebuilt when the list changes).
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` and `A2` complete.**
 `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`

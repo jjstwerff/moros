@@ -345,6 +345,15 @@ not about, which teaches the next reader to loosen it.
 | ✅ `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | **DONE.** `W:`/`Y:` on the wire, `chunk_mesh_mat_bounded`, an offscreen pass with a depth attachment. In the client's PNG: 10 of 10 rows carry an image, the part row has 4 colour buckets against every material's 1. ⚠ **The row this replaced was already wrong, and the gate could not see it** — see below. | M |
 | `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
 
+⚠ **`B5.3` HAS TWO CACHES TO INVALIDATE, AND `B5.2` LEFT BOTH DELIBERATELY SIMPLE.** The server
+builds `wire_thumbs` **once at startup** — a world load and four chunks of geometry per part,
+paid once rather than per connecting tab — and the client uploads a VAO per `Y:` and never drops
+one. Neither is wrong while parts do not change during a session, which is exactly the assumption
+`B5.3` removes: a re-sent thumbnail must replace the client's meshes for that row rather than
+adding to them, or the old geometry is drawn under the new for ever. `add_thumb_cam` already
+replaces in place for this reason; `add_thumb_mesh` does not, because there is no signal yet to
+say a set is complete.
+
 ⚠ **`B5.2` FOUND A DEFECT `B5.1` SHIPPED, AND THE GATE HAD NO WAY TO SEE IT.** `render_swatches`
 indexed `moros_terrain::surface_at(i)` by the LIST row, and `B5.1` made row 9 a part —
 `surface_at(9)` is the `?` sentinel with colour `(0,0,0)`, so the catalogue drew `house/cottage`
