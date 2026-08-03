@@ -46,9 +46,10 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 |---|---|---|---|
 | ✅ `B1.1` | **A probe, before anything else** — `make probe-text`, [probe/b1](../../probe/b1/README.md). | **DONE.** Ink left/right: desktop **1127/0**, browser **1246/0**. The reader is itself checked against a blank frame, an all-white one, and real text. ⚠ **It found a live trap** — see below. | XS |
 | ✅ `B1.2` | `Metrics` in `moros_ui`, threaded through `panel_build` and **load-bearing**: labels, list items and the status line are fitted to their boxes at build time. `metrics_measured` is the only constructor, so there is no fabricate-an-advance door. | **DONE.** 59 tests, both backends. Controls seen red: re-baking the advance at 8, a fixed-pitch check that always says yes, and a `fit_text` that stops truncating. ⚠ **It found the status strip 2.7× too small** — see below. | S |
-| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. ⚠ Also the first **caller** of `metrics_measured`: pick the font per target, measure both runs, and refuse/warn when `m_mono` is false. | a PNG shows the 240 px strip and six buttons — ⚠ and *"`moros_sim` still builds"* is NOT the check (it does not depend on `moros_ui`); the check is that something renders a `Panel` at all | S |
+| ⛔ **`B1.2b`** | **the panel becomes lavition's** — its own section below. `B1.3` cannot start until this lands. | `editor_client.loft` compiles against `editor_ui` | M |
+| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. ⚠ Needs `B1.2b`, and is the first **caller** of `metrics_measured`: pick the font per target, measure both runs, refuse/warn when `m_mono` is false. | a PNG from the CLIENT shows the 240 px strip and six buttons | S |
 | `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
-| `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, and `moros_sim` still builds (§C6) | S |
+| `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, **in the client** | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
 
 ⚠ **`B1.1` was not ceremony, and it earned its place immediately.** Text does reach the
@@ -77,6 +78,31 @@ is full-width status-bar text — so `status_rect` now spans the window.
 and nothing in the tree depends on it. That is why `B1.2` could change `panel_build`'s
 signature freely — and why `B1.3` must produce an actual caller, because until then this arc
 is building a library nobody invokes.
+
+### B1.2b — the panel becomes lavition's, not Moros's
+
+⚠ **A prerequisite for `B1.3`, discovered by `B1.2`.** `moros_ui` has no consumer, and the
+one program that needs a panel — `editor_client.loft` — cannot take it, because it depends
+on `moros_sim` + `moros_editor` + `moros_map` and the client uses none of them. The design is
+[EDITOR_UI.md](../../doc/claude/EDITOR_UI.md).
+
+⚠ **The rename is the mechanism, not a tidy-up.** `tools/layering.sh` skips any package named
+`moros_*` — *a consumer may depend on anything* — so the check that exists to catch exactly
+this arrow waved `moros_ui` through for months. Renaming out of that namespace puts the
+package under the check, and the decoupling becomes something a script refuses to let
+regress.
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B1.2b.1` | `lib/editor_ui` with `widgets.loft` + `font.loft` verbatim, and the layout rects. **No `moros_*` dependency in the manifest.** | `make lib-test` green; ⚠ **`layering.sh` seen red first** — add a `moros_map::` reference and confirm the build stops before the suites run | S |
+| `B1.2b.2` | `PanelSpec` replaces `ToolState` in `panel_build`; `route_click` returns its `UiHit` instead of mutating. | the layout, hit-test and metrics tests move across and pass **with no world and no `moros_sim` linked** | M |
+| `B1.2b.3` | Delete `moros_ui`. | nothing references it; `make lib-test` and `make gate` green | XS |
+| `B1.2b.4` | `editor_client.loft` declares the dependency and builds a `Panel` from a `PanelSpec` — no drawing yet. | ⚠ **`make client` succeeds** — the caller this arc has never had | S |
+
+⚠ **`B1.2b.4` is the point of the whole step.** Everything before it is refactoring a
+library nobody calls; that step is what stops that being true, and it is why the old gate
+(*"`moros_sim` still builds"*) was worth nothing — `moros_sim` cannot break, it does not know
+this package exists.
 
 ### B2 — the line tells the truth
 

@@ -231,14 +231,22 @@ list, a status line, `panel_hit_test`, `route_click`, `editor_click`. What is mi
 `moros_ui/loft.toml` **depends on** `moros_sim`, and nothing in the tree depends on
 `moros_ui`. `moros_sim/src/editor.loft` only mentions it in a comment.
 
-So `moros_ui` has **no consumer at all**, and two things follow. The good one: its API can
-still be shaped freely, because there is no downstream to break — which is why `B1.2` could
-change `panel_build`'s signature without coordinating anything. The dangerous one:
-⚠ **this whole arc is building a library nobody calls**, which is the exact shape of the
-"tested green and never wired" failure this tree has already paid for twice. `B1.3` is where
-that has to stop being true, and *"`moros_sim` still builds"* is the wrong check for it —
-`moros_sim` cannot break, because it does not know `moros_ui` exists. The real check is that
-something **renders** a `Panel`.
+So `moros_ui` has **no consumer at all** — and the program it was written for, a desktop
+walkable editor, is not in `src/` either. *"`moros_sim` still builds"* was this section's
+gate for `B1`, and it is worth nothing: `moros_sim` cannot break, because it does not know
+`moros_ui` exists.
+
+⚠ **The whole package is therefore being re-homed**, and the panel becomes lavition's:
+[EDITOR_UI.md](EDITOR_UI.md), plan step `B1.2b`. The short version — its dependencies point
+at the **headless** half (`editor_server`) while its purpose belongs to the **drawing** half
+(`editor_client`), and `tools/layering.sh` never said so because it skips any package named
+`moros_*`. A universal UI package wearing a consumer's name is exempt from the check that
+exists to catch exactly this. **The rename is what puts it back under the check**, which is
+why it is the mechanism rather than a tidy-up.
+
+What survives is the layout arithmetic and the metrics seam; what goes is the `ToolState`
+coupling — and §C1 above already ruled that out independently, since a client-authoritative
+palette is precisely what *"what the SERVER says, never what the client believes"* forbids.
 
 ---
 
