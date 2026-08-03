@@ -47,3 +47,15 @@ Map editor:
   - ~~Roads are broken.~~
   - ~~Allow click on adjacent tiles to link a road to them.~~
   - ~~This breaks when a non-adjacent tile is clicked.~~
+
+Wall field names (left out of moros#3 on purpose):
+- `h_wall_n` / `h_wall_ne` / `h_wall_se` in `hex_world` are misnamed. Read from
+  the renderer's corner indices they are NW, NE and E — leftovers from the
+  flat-top reading the rest of SCENE_MAP.md has now been re-derived away from.
+  The scheme is right; only the three identifiers are wrong.
+- NOT a plan and NOT part of #3: it is one mechanical rename, but of PUBLIC
+  fields of a published library (hex_world 0.2.0) across ~80 sites in ten files.
+  Do it after moros#8 settles which tree owns the struct, so the rename happens
+  once rather than in two copies that can disagree.
+- Until then SCENE_MAP.md § edge ownership carries the mapping table, and
+  hex_editor reads the fields only through SLOT_NW / SLOT_NE / SLOT_E.

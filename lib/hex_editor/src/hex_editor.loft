@@ -180,7 +180,12 @@ fn snap_rot(facing: float, residual: &float) -> integer {
 // The gap between the author's feet and the near wall — one hex step, so the
 // building lands in FRONT of them and never around them. A footprint that swallows
 // its author is the placement bug every editor writes once.
-pub const POSE_GAP = 1.7320508075688772;   // hex_grid::HEX_LEN
+// ⚠ TAKEN FROM THE LATTICE OWNER, not re-typed. This was a literal 1.7320508…
+// with `// hex_grid::HEX_LEN` beside it, which is a second copy of the family's
+// √3 that a comment cannot keep in step — moros#3's "no lattice math lives in
+// this repo" covers a copied CONSTANT, not only a copied formula.
+// `moros_render` already does this; the two now name one number.
+pub POSE_GAP = HEX_LEN;
 
 // Where a `wid` x `dep` building goes for an author at (px, py) looking along
 // `facing`, in radians on the lattice plane.

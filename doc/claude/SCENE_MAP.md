@@ -258,8 +258,17 @@ flat-top reading. The remaining three edges are read as:
 | SW | SW neighbour's stored NE edge (`wall_ne`) |
 | W | W neighbour's stored E edge (`wall_se`) |
 
-Renaming the fields is [moros#3](https://github.com/jjstwerff/moros/issues/3); until then,
-trust this table over the identifiers.
+⚠ **Trust this table over the identifiers.** The rename was scoped to
+[moros#3](https://github.com/jjstwerff/moros/issues/3) and deliberately left out of it:
+`h_wall_n/ne/se` are **public fields of `hex_world`**, which is published (0.2.0) and is
+itself mid-migration to one durable home ([moros#8](https://github.com/jjstwerff/moros/issues/8)),
+so renaming them is a breaking change to a shared contract across ~80 sites in ten files —
+not part of reconciling a document with a convention. It is a row in
+[doc/Todo.txt](../Todo.txt), to be done as one mechanical change once #8 settles where the
+struct lives.
+
+The names are already fenced where it matters: `hex_editor`'s `gesture.loft` reads them
+only through `SLOT_NW` / `SLOT_NE` / `SLOT_E`, so the honest names are what callers see.
 
 ---
 
@@ -966,38 +975,58 @@ This means interior room dividers at equal floor height render correctly: the wa
 
 The wall is **centered on the shared edge** — it occupies 8 cm on each side of the hex boundary. This defines a consistent inside/outside boundary for collision and rendering.
 
-> **The two subsections below are the flat-top derivation and have not been re-derived for
-> the implemented pointy-top grid** —
-> [moros#3](https://github.com/jjstwerff/moros/issues/3). The *shapes* of the arguments
-> survive a 90° rotation (one edge is axis-aligned; the staggered pair zigzags and is drawn
-> at a midpoint), but every axis, letter and constant below is stated for the wrong
-> orientation. Re-derive against the exact lattice rather than relabelling — the invariant
-> to hold is that a wall's drawn line stays perpendicular to the edge it stands on.
+**The two subsections below are derived on the implemented pointy-top lattice**
+([moros#3](https://github.com/jjstwerff/moros/issues/3)). They were written for flat-top
+hexes and every axis and letter in them was stated for the wrong orientation. The *shape*
+of the argument survives the 90° rotation intact — one edge is axis-aligned, the staggered
+pair zigzags and is drawn at a midpoint — and so, it turns out, does the one constant:
+`3R/4` is `3R/4` in both readings, because a rotation cannot change a ratio along the
+edge it rotates. What changed is which axis every statement is about.
 
-### N wall — flat edge (E–W)
+Throughout, **`R` is the circumradius** — the centre-to-vertex distance, ≈ **57.7 cm** at
+the standard scale where a hex is ≈ 1 m flat-to-flat E–W. The apothem (centre to edge) is
+then **50 cm**, and vertex-to-vertex N–S is **115.5 cm**.
 
-The N wall is one sub-triangle row thick (≈ 16 cm measured N–S), centered on the N edge of the hex.
+### E wall — flat edge (N–S)
 
-### NE / SE walls — midpoint rendering
+On a pointy-top hex the vertices are at N and S, so the **E and W edges are the vertical
+ones**: the E edge runs due N–S at `x = cx + 50 cm`, one apothem out. (On flat-top this
+role belonged to the N edge; the axis-aligned edge is **E**, not N.)
 
-NE and SE walls are **not** rendered by following the actual hex edge. In a flat-top hex column the right-side edge boundary zigzags between two x-positions:
+The E wall is one sub-triangle row thick (≈ 16 cm measured E–W), centered on that edge.
 
-- **Inner x** = cx + a/2 — the shared vertex where adjacent NE and SE edges meet (the NE/SE vertices of the hex), recurring every hex.
-- **Outer x** = cx + a — the E vertex of each hex, interleaved between them.
+### NE / NW walls — midpoint rendering
 
-Rather than following this zigzag, the wall is drawn as a **straight line at the midpoint** between the two extremes:
+NE and NW walls are **not** rendered by following the actual hex edge. The top boundary of
+a row of pointy-top hexes zigzags between two y-positions:
+
+- **Inner y** = cy + R/2 (≈ cy + 28.9 cm) — the shared vertex where one hex's NE edge meets
+  its eastern neighbour's NW edge. It is genuinely one point: hex `(0,0)` puts its NE vertex
+  at `(50, 28.9)` and the hex one step E puts its NW vertex at exactly the same place.
+- **Outer y** = cy + R (≈ cy + 57.7 cm) — the N vertex of each hex, interleaved between them.
+
+Rather than following this zigzag, the wall is drawn as a **straight line at the midpoint**
+between the two extremes:
 
 ```
-wall x = cx + 3a/4   (≈ cx + 43 cm)
+wall y = cy + 3R/4   (≈ cy + 43.3 cm)
 ```
 
-The wall is 16 cm thick, centered on this line (8 cm each side). This is narrower than a full sub-triangle side (≈ 19 cm) but considerably wider than the single-vertex touching points where adjacent sub-triangle chains share only a corner.
+The wall is 16 cm thick, centered on this line (8 cm each side). This is narrower than a
+full sub-triangle side (≈ 19 cm) but considerably wider than the single-vertex touching
+points where adjacent sub-triangle chains share only a corner.
 
-By positioning the wall at the midpoint and rendering it straight, the NE/SE wall face is exactly **perpendicular to the flat N edge**, making it truly parallel to the N–S axis. This means a NE/SE wall and a N wall meet at a geometrically exact **90° corner** — not an approximation.
+By positioning the wall at the midpoint and rendering it straight, the NE/NW wall face is a
+line of constant `y` — exactly **perpendicular to the flat E edge**, which is a line of
+constant `x`. So an NE/NW wall and an E wall meet at a geometrically exact **90° corner**,
+not an approximation.
 
-The same principle applies to the NW/SW walls on the west side of a hex (owned as wall_ne and wall_se of the western neighbor), mirrored to x = cx − 3a/4.
+The same principle applies to the SE/SW walls on the south side of a hex (owned as wall_ne
+and wall_nw of the southern neighbours), mirrored to `y = cy − 3R/4`.
 
-For other orientations (60°, 120° rotations) the equivalent midpoint positions rotate with the building axis, giving straight walls at 60° and 120° from N–S and enabling true 90° corners in all 12 orientations.
+For other orientations (60°, 120° rotations) the equivalent midpoint positions rotate with
+the building axis, giving straight walls at 60° and 120° from E–W and enabling true 90°
+corners in all 12 orientations.
 
 ### Wall height cap and ceiling
 
@@ -1215,12 +1244,27 @@ perpendicular to the axis-aligned edge — which is what makes **true 90° corne
 achievable** on a 60° lattice. That result is the reason the format is built this way, and
 it does not depend on the orientation.
 
-> **The pairing table was removed rather than relabelled.** It named specific axes
-> (`wall_n` as the E–W edge, and so on) that belong to the flat-top reading; on the
-> implemented pointy-top grid the axis-aligned edge is **E**, not N. Restoring it means
-> re-deriving the perpendicularity argument on the exact lattice —
-> [moros#3](https://github.com/jjstwerff/moros/issues/3) — not renaming three rows. A table
-> that looks authoritative and is wrong costs more than a missing one.
+**The pairing table, re-derived on the implemented lattice**
+([moros#3](https://github.com/jjstwerff/moros/issues/3)). It was removed rather than
+relabelled, because it named axes (`wall_n` as the E–W edge, and so on) belonging to the
+flat-top reading, and a table that looks authoritative and is wrong costs more than a
+missing one. Below it is derived again, from the pointy-top corner set rather than by
+renaming rows.
+
+A pointy-top hex has vertices at N and S. Its six edges therefore fall into three axes, and
+in each the **flat (axis-aligned) edge pairs with the staggered pair perpendicular to it**:
+
+| rotation | flat edge, followed directly | staggered pair, drawn at the midpoint | the corner they make |
+|---|---|---|---|
+| 0° | **E / W** — vertical, at `x = cx ± 50 cm` | **NE+NW / SE+SW** — horizontal, at `y = cy ± 3R/4` | 90°, exact |
+| 60° | **NE / SW** | **E+NW / W+SE** | 90°, exact |
+| 120° | **NW / SE** | **W+NE / E+SW** | 90°, exact |
+
+The perpendicularity is not per-row luck: the flat edge is a straight line, the staggered
+wall is drawn straight at the midpoint of its zigzag, and the midpoint line is parallel to
+the chord joining the zigzag's two extremes — which is perpendicular to the flat edge in
+every one of the three axes, because the lattice is symmetric under 60° rotation. That is
+also why re-deriving the 0° row is enough to have all three.
 
 ### 12 building orientations
 
@@ -1555,7 +1599,7 @@ This section documents known design problems and the decisions made to resolve t
 
 **Resolution**: True 90° corners are achievable through the **midpoint rendering rule for staggered walls**. The staggered edge boundary zigzags between an inner and an outer position; drawing the wall as a straight line at the midpoint between those extremes makes it exactly perpendicular to the axis-aligned edge, so the two meet at a true 90° corner. The same principle applies in every 60° rotation, giving full 90° rectangular buildings in 12 orientations (6 rotations × 2 mirrors).
 
-*The original resolution stated this for flat-top hexes, with the zigzag in x and the axis-aligned edge as N. On the implemented pointy-top grid the same argument holds rotated 90° — the axis-aligned edge is E — but the constants have not been re-derived; that is [moros#3](https://github.com/jjstwerff/moros/issues/3).*
+*The original resolution stated this for flat-top hexes, with the zigzag in x and the axis-aligned edge as N. It is now re-derived on the implemented pointy-top grid ([moros#3](https://github.com/jjstwerff/moros/issues/3)): the axis-aligned edge is **E**, the zigzag is in **y**, and the wall is drawn at `y = cy + 3R/4` ≈ 43.3 cm. The one constant survived the rotation — a ratio measured along the rotating edge cannot change — so what the re-derivation altered is which axis every sentence is about, not the number. See Wall Geometry.*
 
 ---
 
