@@ -6,7 +6,9 @@ things a name and there is a list of things that are known with name and image. 
 for possible walls, floors, etc")*
 
 Plan [#18](https://github.com/jjstwerff/moros/issues/18), a sub-arc of
-[#7](https://github.com/jjstwerff/moros/issues/7). Design only.
+[#7](https://github.com/jjstwerff/moros/issues/7). **Design only.** This doc holds the
+decisions; **the order of work is in [the plan](../../plans/18-catalogue/README.md)**, step by
+step with its gates.
 
 **Start from what is true today: the editor tells you nothing.** The browser client binds
 fourteen keys — `w s a d`, `↑ ↓`, `l f g e q b c r` — and documents none of them, shows no
@@ -228,69 +230,17 @@ leaf package the way `moros_terrain` did.
 - a renamed part keeps its placements.
 
 ---
-
 ## The order of work
 
-Each step below is **one sitting and one commit**, ends green, and leaves the editor
-working. The six letters are the arcs; the numbered rows are the steps.
+**It lives in the plan** — [plans/18-catalogue/README.md](../../plans/18-catalogue/README.md),
+broken into one-sitting steps, each with its own gate and size.
 
-⚠ **`B3` before `B5`.** Materials exist *now*; parts do not. Building the catalogue against
-the family that already has entries makes it something you can look at and argue with in one
-sitting — and if the widget is wrong, it is wrong before plan #17 has been built on it.
+⚠ **On purpose.** A reference doc says how the thing *works*; a plan says what we intend to
+*change*, and is temporary. Ordering and per-step verification belong to the plan, and a copy
+here would drift the first time a step moved. What stays is what outlives the plan: `C0`–`C6`
+and the library-versus-gate split above.
 
-### B1 — text on the screen
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B1.1` | **A probe, before anything else.** A standalone loft program: window, `gl_load_font("monospace")`, `create_text_texture("MOROS", 24)`, `draw_texture_at`, screenshot. Run it on `--html` **and** desktop. | a PNG with **non-black pixels where the word is**, ⚠ and the control: the same probe with an empty string must produce a blank frame — otherwise "it drew something" is unproven | XS |
-| `B1.2` | `Metrics` struct in `moros_ui`, threaded through `panel_build` (§C0a). No rendering yet. | existing layout tests pass, **plus a second run at a different advance** — the perturbation that stops `8` being baked in | S |
-| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. | a PNG shows the 240 px strip and six buttons | S |
-| `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
-| `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, and `moros_sim` still builds (§C6) | S |
-| `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
-
-⚠ **`B1.1` is not ceremony.** Everything after it assumes the bridge works in the *browser*,
-and that was false three days ago. One probe, thirty lines, before four steps are built on
-the assumption.
-
-### B2 — the line tells the truth
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B2.1` | `H:` on the wire — server → client, the toggle set as one string. Sent **on change**. | `WIRE_PROTOCOL.md` row added; a plain socket sees `H:` after a toggle |  S |
-| `B2.2` | Re-send to an arriving client — ⚠ placed **where the client joins the list**, not in the handler before it. | a second client connects mid-session and its line is correct | S |
-| `B2.3` | The client renders `H:` rather than its own key state. | ⚠ **the control that makes this real**: a key the server *refuses* must leave the line unchanged. A HUD that echoes the keystroke passes every other test. | S |
-
-### B3 — the material catalogue
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B3.1` | `catalogue_materials()` **derived from the mesher's own surface set**, not a second list. | the count matches what the mesher can emit — an `I1`-style claim, in a loft test | S |
-| `B3.2` | Entries in the existing `ListBox` via `palette_items_for_tool`, names only, no images. | picking one and building uses it | S |
-| `B3.3` | Swatch rendering — one hex tile, **the world's own shader and current light**, into an offscreen texture, cached per material. | a PNG shows N non-blank swatches, ⚠ with the control: a swatch that fails to render must read **blank**, or "it drew something" proves nothing | M |
-
-### B4 — names
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B4.1` | The name table: `kind + name -> label`, unique per kind, generated names (`house-3`) for the unnamed. | loft test: uniqueness per kind, and a generated name is never blank | S |
-| `B4.2` | Rename, with the clash refusal — **ok, reason, offer, residual**. | `"oak-2x3" is taken · offer "oak-2x3-2"`, in words | S |
-| `B4.3` | Renaming does not touch labels. | ⚠ measured **in the store**: placements keep their labels across a rename | S |
-
-### B5 — the part catalogue *(needs #17 `A1`–`A2`)*
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B5.1` | Entries from `data/parts/`, names only. | the list shows what is on disk | S |
-| `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | a PNG shows non-blank thumbnails, same blank-control as `B3.3` | M |
-| `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
-
-### B6 — availability
-
-| | step | proves it | size |
-|---|---|---|---|
-| `B6.1` | An entry carries `available: boolean + reason: text`. | loft test: an unavailable entry has a non-empty reason | XS |
-| `B6.2` | Greyed rendering, reason shown — **not hidden** (§C3). | a leaf too wide for the frame you stand in reads `too wide for frame/2x3` | S |
+---
 
 ## See also
 
