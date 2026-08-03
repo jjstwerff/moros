@@ -22,13 +22,20 @@
 > the consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
 > battle-tested.
 
-> ## Status at 2026-08-03
+> ## Status at 2026-08-03 (evening — re-measured against the newly installed binary)
 >
 > | | |
 > |---|---|
 > | ✅ fixed and verified | `H5`(=`H8`), `H6`–`H15`, and **`H16`–`H19`** — [#667](https://github.com/loft-lang/loft/issues/667), [#668](https://github.com/loft-lang/loft/issues/668), [#669](https://github.com/loft-lang/loft/issues/669), [#670](https://github.com/loft-lang/loft/issues/670) all closed |
-> | **open, and filed directly** | [#735](https://github.com/loft-lang/loft/issues/735) a nested index assignment through a `&` parameter does not reach a caller's LOCAL · [#737](https://github.com/loft-lang/loft/issues/737) `--html` stubs the whole text bridge while `loft targets` claims every builtin is available · [#738](https://github.com/loft-lang/loft/issues/738) `--html` has no way to get authored pixels into a texture |
+> | ✅ **fixed, and STILL LABELLED OPEN** | [#744](https://github.com/loft-lang/loft/issues/744) `const X = some_fn()` · [#745](https://github.com/loft-lang/loft/issues/745) a struct field into a `&`-parameter · [#749](https://github.com/loft-lang/loft/issues/749) the two text-slice panics. All three re-run against `/usr/local/bin/loft`, which is byte-identical to a release build of loft `5aa59023` |
+> | ⚠ **filed and WRONG** | [#748](https://github.com/loft-lang/loft/issues/748) — `text_from_bytes` and `byte_at` had shipped **two releases** before the report. They were missing from the *generated* stdlib reference, which is the page that was swept. A `grep` over `default/*.loft` finds both. Corrected on the ticket |
 > | unverified | `H4` — the silent-null class; was plausibly `H12`'s family, so likely closed with it |
+>
+> ⚠ **A GENERATED REFERENCE IS AN INSTRUMENT, AND IT WAS TRUSTED TO REPORT AN ABSENCE.**
+> That is #748 in one line, and it is this file's own rule broken on a language question
+> rather than on a picture. **Grep `default/*.loft` before filing "there is no way to …".**
+> Two of the four entries above also say something about the labels: the code was fixed
+> hours before the tracker moved, exactly as #737/#738 did. Measure, do not read.
 >
 > ⚠ **THE "WRITE IT UP HERE, FILE IT LATER" WORKFLOW IS RETIRED, and this file is now a
 > record rather than a queue.** A closed ticket costs nothing, so a finding is filed the

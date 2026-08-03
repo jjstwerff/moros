@@ -163,14 +163,20 @@ pub struct ChunkAt { ca_key: integer, ca_at: integer }
 // argument for tag+length over a flags word: this property can be TESTED, and a
 // flags word offers nothing to test.
 //
-// ⚠ AND IT CARRIES A TEXT VIEW, BECAUSE THE LANGUAGE HAS NO OTHER DECODER.
-// `for ch in s` walks characters and `ch as i32` gives the code point, so text
-// becomes bytes in three lines — but `integer as text` and `vector<u8> as text`
-// are both refused and there is no `chr`, so nothing brings them back (loft#748).
-// The file layer is the only thing in loft that decodes UTF-8, and this reader is
-// already holding the file. So a load fills BOTH views of the same span, and the
-// library still interprets nothing — it offers two readings and lets the consumer
-// pick. A part's name reaches `hex_part` through `sc_text`.
+// ⚠ AND IT CARRIES A TEXT VIEW — FOR A REASON THAT TURNED OUT TO BE FALSE, which
+// is worth saying rather than quietly keeping. This was built on 2026-08-03
+// believing loft could turn a text into bytes and nothing could turn them back,
+// so the file layer was the only decoder and this reader was already holding the
+// file. **`text_from_bytes(vector<u8>)` and `byte_at(i)` had shipped two releases
+// earlier** and were simply missing from the generated reference — loft#748, which
+// was a documentation defect and not a language one. A keyword sweep of the
+// generated page came back empty and was trusted to report an absence.
+//
+// What survives is convenience, not necessity: a load fills BOTH views of the same
+// span, so a consumer reading a name does not walk bytes, and the library still
+// interprets nothing. ⚠ It can be removed — `hex_part` could decode its own
+// sections now — and that would take the second read and the `MESH` caveat below
+// with it. Recorded so the choice is made rather than inherited.
 //
 // ⚠ `sc_is_text` is about the WRITE, not the read. A section loaded from a file
 // is byte-valued whatever its content, so re-saving emits the bytes it was given
@@ -1410,9 +1416,12 @@ pub const WORLD_VERSION = 1;
 // packed most-significant first, which is what `'HXW7'` implied, and the check
 // disagreed by 262880. Held against itself it would have passed either way.
 //
-// ⚠ NOT a constant. `const X = some_fn()` aborts with a non-unwinding panic and no
-// source location (loft#744), so tags are literals and a test holds them equal to
-// this. See `w_sections` for why the mechanism is here.
+// ⚠ NOT a constant, and the reason changed on 2026-08-03. It used to be that
+// `const X = some_fn()` aborted with a non-unwinding panic and no source location;
+// loft#744 fixed that, and the advice it now carries is the better argument: **a
+// file-scope constant is an inlined expression, re-evaluated at every reference**,
+// so a derived tag would re-run this loop at each use. Tags are literals and a
+// test holds them equal to this.
 pub fn section_tag(name: text) -> integer {
   t = 0;
   sh = 0;
@@ -1450,10 +1459,10 @@ pub fn world_set_section(w: &World, tag: integer, bytes: vector<integer>) {
   }
 }
 
-// The same, for a payload that is text. See `Section` for why this exists at all:
-// loft can turn text into bytes and nothing can turn bytes back, so a section
-// carrying an author-given name has to keep the text and let the file layer do
-// the encoding.
+// The same, for a payload that is text: the file layer does the UTF-8 encoding
+// and `sc_text.size()` is the byte length, so a name is exact past `U+00FF`
+// without this library counting a single code point. ⚠ See `Section` — it was
+// built believing nothing could decode bytes in memory, which was never true.
 pub fn world_set_section_text(w: &World, tag: integer, t: text) {
   at = world_section_at(w, tag);
   if at < 0 {

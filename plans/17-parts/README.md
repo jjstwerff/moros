@@ -169,18 +169,28 @@ revisit. What was measured:
 | | |
 |---|---|
 | `for ch in s`, `ch as i32` | walks **characters** and gives the **code point** — `é` is 233, `中` is 20013. ⚠ So a byte-per-character encoding silently truncates anything past `U+00FF`: the `ML_LABEL_TOO_WIDE` class again. |
-| `integer as text`, `vector<u8> as text`, `"{u8}"` | **all refused.** There is no `chr`. Text → bytes is three lines; there is no way back. |
+| ~~`integer as text`, `vector<u8> as text`, `"{u8}"`~~ | ~~**all refused.** There is no `chr`.~~ ⚠ **THIS ROW WAS WRONG.** The casts are indeed refused, but **`text_from_bytes(vector<u8>)` and `byte_at(i)` existed all along** — two releases before the report — and round-trip `"Café中!"` exactly, returning `""` on invalid UTF-8. They were absent from the *generated* reference (they sit after `--- Environment ---` in `default/03_text.loft`), and that page was the instrument. See [#748](https://github.com/loft-lang/loft/issues/748). |
 | `f += text` | writes **UTF-8** — 9 bytes for the 6 characters of `"Café中!"`. |
 | `f#read(n) as text` | reads it back **exactly**, and does not fall over on 3 bytes of non-UTF-8 (`FF FE 00` came back length 3). |
 
-The file API is the only decoder in the language, which is what settled it: `world_load` reads
+*"The file API is the only decoder in the language"* is what settled it: `world_load` reads
 each section's span **twice**, as bytes and as text, and the library still interprets nothing —
 it offers two readings and lets the consumer pick. `world_set_section_text` is the write half,
 and a section loaded from a file is **byte-valued whatever it holds**, so a re-save emits the
-bytes it was given. Filed upstream as [loft#748](https://github.com/loft-lang/loft/issues/748)
-anyway, because a missing `chr` is a language absence and every consumer persisting an
-author-given name will hit it. ⚠ `hex_editor::names` (`B4`) is in memory only, so this is the
-first place in the tree that had to solve it.
+bytes it was given.
+
+⚠ **AND THE PREMISE WAS FALSE, MEASURED 2026-08-03.** `text_from_bytes` and `byte_at` had
+shipped two releases before the report; they were missing from the *generated* stdlib
+reference, which is the page that was swept for them
+([#748](https://github.com/loft-lang/loft/issues/748) — a documentation defect, not a language
+one). One `grep` over `default/*.loft` would have found them. **Grep the source, never the
+generated reference, before calling a capability missing** — this tree's own instrument rule,
+broken on a language question instead of on a picture.
+
+The mechanism works and is gated, so it stays for now; what changes is that keeping it is a
+CHOICE. Removing it — `hex_part` decoding its own sections with `byte_at`/`text_from_bytes` —
+would take the second read, the `sc_is_text` flag and its stale-write trap, and the `MESH`
+size caveat with it, and would put `hex_world` back to framing only.
 
 ### What `A1.3` turned up
 

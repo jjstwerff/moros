@@ -8,9 +8,10 @@
 use hex_world;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test rather than derived from
-// it. `const X = some_fn()` aborts with a non-unwinding panic and no source
-// location (loft#744), and an abort a minute into a run reads as a crashed frame
-// loop rather than as a rejected constant.
+// it. That began as a workaround for loft#744 — `const X = some_fn()` aborted —
+// and it survives the fix for a better reason the fix itself pointed out: **a
+// file-scope constant is an inlined expression, re-evaluated at every reference**,
+// so a derived tag would re-run the packing loop at each of these tags' uses.
 pub const TAG_PART = 1414676816;    // 'PART', low byte first
 pub const TAG_ANCH = 1212370497;    // 'ANCH'
 
@@ -45,15 +46,18 @@ pub const PM_FACING  = 3;   // not one of the 24 headings
 
 // ── The payload is `key=value` lines, and that is a decision ─────────────────
 //
-// Not packed integers. Three reasons, in the order they mattered:
+// Not packed integers. Three reasons — and ⚠ **the first one was wrong**, which
+// is left standing rather than quietly replaced because it decided the shape:
 //
-//   1. A name has to survive, and loft cannot rebuild a text from bytes
-//      (loft#748) — so `hex_world` offers a TEXT view of a section and the
-//      payload has to be text to use it. Packing the numbers as bytes and the
-//      name as text would need both views of one span and a byte offset to
-//      divide them, which is the one thing this format has no reader for.
+//   1. *"A name has to survive, and loft cannot rebuild a text from bytes"* —
+//      loft#748, and it was never true: `text_from_bytes` and `byte_at` had
+//      shipped two releases before the report and were merely absent from the
+//      generated reference. A packed-integer payload with a length-prefixed UTF-8
+//      name was always expressible. This design does not depend on the mistake,
+//      but it was chosen under it.
 //   2. It reads in a hex dump, which is the same argument the four-character tag
-//      is made of. `kind=3` next to `PART` says what the file holds.
+//      is made of. `kind=3` next to `PART` says what the file holds. ⚠ This is
+//      the reason that actually carries the choice now.
 //   3. An integer written as text round-trips exactly and refuses cleanly:
 //      `"12x" as i32?` is null, not 12.
 //
@@ -68,22 +72,23 @@ fn has_newline(t: text) -> boolean {
 // description may contain one; splitting on every `=` would silently truncate
 // "a door, 2 = wide" at the equals.
 //
-// ⚠ TWO LOFT PANICS ARE AVOIDED HERE BY CONSTRUCTION, and both were reached by a
-// name with `é` in it — loft#749. Text byte offsets and character counts are
-// mixed in the language: a slice END is a byte offset while `len()` counts
-// characters, so `line[(i+1)..line.len()]` — "the rest of the line" — aborts the
-// process on any text that is not pure ASCII. `size()` is the byte length and is
-// what a slice end wants. And `split_text("\n")` misindexes its TRAILING segment,
-// so `"ab\ncé"` panics where `"é\ncd"` is fine; `split('\n')`, with a character
-// separator, is the same operation and does not.
+// ⚠ THE SPELLINGS ARE THE ONES WITH NO UNIT IN THEM, and that outlived the bug
+// they were written for. `len()` counts CHARACTERS while a slice bound and `find`
+// are BYTE offsets — by design, and loft#749 declined to change it because
+// flipping either breaks every program that reads them correctly. So
+// `line[(i+1)..line.len()]` is a unit error whatever it does; `size()` is the byte
+// length a slice end wants, and `line[(i+1)..]` names no unit at all.
 //
-// Neither is a style choice. Both are aborts with a Rust backtrace and no loft
-// source location, and an ASCII test subject cannot see either.
+// ⚠ Until loft 2026.8.0 (`092f4109`) both of the obvious spellings ABORTED on a
+// name with `é` in it — `split_text("\n")` misindexed its trailing segment and
+// `s[i..s.len()]` read past the buffer, each a Rust backtrace with no loft
+// location. That is fixed and the naive form is correct again; these stay because
+// they were never only a workaround. An ASCII test subject could see none of it.
 fn field(t: text, key: text) -> text? {
   for line in t.split('\n') {
     i = line.find("=");
     if i == null { continue; }
-    if line[0..i] == key { return line[(i + 1)..line.size()]; }
+    if line[0..i] == key { return line[(i + 1)..]; }
   }
   null
 }

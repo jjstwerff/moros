@@ -126,27 +126,32 @@ bundled-asset loader, **zero** `TODO` markers.
 ⚠ **Both issues are still OPEN on the tracker while the code is fixed.** Trust the
 measurement, not the label — including this paragraph.
 
-### Four loft defects that shape how code here is written
+### ⚠ All four loft defects are FIXED — measured 2026-08-03, and all four still read OPEN
 
-- ⚠ **[#744](https://github.com/loft-lang/loft/issues/744)** — `const X = some_fn()` aborts
-  with a **non-unwinding panic and no source location**. So a constant cannot be derived from
-  the list it belongs to; `SURFACES` is held equal to `moros_terrain::surface_count()` by a
-  test instead. An abort a minute into a run reads as "the frame loop crashed", not "a
-  constant was rejected".
-- ⚠ **[#745](https://github.com/loft-lang/loft/issues/745)** — passing a **struct field** to a
-  `&`-parameter compiles interpreted and fails `--native` with a bare `E0308` and no span.
-  Bind the field to a local first. A native-only failure with no span is a **bisection**, not
-  a read. ⚠ **And it is not native-only**: the same expression aborted the *interpreter* with
-  `Delete on locked store` on 2026-08-03. One expression, two unrelated-looking failures.
-- ⚠ **[#749](https://github.com/loft-lang/loft/issues/749)** — text **byte offsets and
-  character counts are mixed**, and both meetings are Rust panics with no loft location. A
-  slice END is a byte offset while `len()` counts characters, so `s[i..s.len()]` — *the rest of
-  the text* — aborts on anything non-ASCII; use `s.size()`. And `split_text("\n")` misindexes
-  its **trailing** segment, so `"ab\ncé"` panics where `"é\ncd"` is fine; use `split('\n')`.
-- ⚠ **[#748](https://github.com/loft-lang/loft/issues/748)** — there is **no way to build a
-  text from bytes** in memory: no `chr`, and `integer as text` / `vector<u8> as text` are
-  refused. `f#read(n) as text` is the only decoder in the language, which is why a
-  `hex_world` section carries a text view read straight off the file.
+`/usr/local/bin/loft` is byte-identical to a release build of loft `5aa59023`, which carries
+`Fix #744`, `Fix #745` and `Fix #749`. **The tracker labels lag the code**; this happened
+before with #737/#738. `make lib-test` is green on both backends under it, so nothing here was
+pinned to a value the bugs produced.
+
+| | what it was | what it is now |
+|---|---|---|
+| [#744](https://github.com/loft-lang/loft/issues/744) | `const X = some_fn()` aborted | **works.** ⚠ And it now carries the better argument: **a file-scope constant is an inlined expression, re-evaluated at EVERY reference** — so a derived tag re-runs its function at each use. Literals + an equality test stay, for the new reason |
+| [#745](https://github.com/loft-lang/loft/issues/745) | a struct field into a `&`-parameter | **works on both backends.** ⚠ Read the fix: the interpreter was **never** passing — it produced a *silent wrong value* where a later argument's temporary took the reference's slot. Our `Delete on locked store` was the third face of one bug |
+| [#749](https://github.com/loft-lang/loft/issues/749) | `split_text` and `s[i..s.len()]` panicked on multibyte | **no panics.** ⚠ The **units stay mixed by design** — `len()` counts characters, a slice bound and `find` are bytes — and a lint now fires at the confusing spelling. `s.size()` or `s[i..]`, always |
+| [#748](https://github.com/loft-lang/loft/issues/748) | *"no way to build a text from bytes"* | ⚠ **THE REPORT WAS WRONG.** `text_from_bytes` and `byte_at` had shipped **two releases earlier**; they were missing from the generated reference because they sit after the `--- Environment ---` marker in `default/03_text.loft` |
+
+⚠ **#748 IS THE ONE TO LEARN FROM, AND IT IS OURS.** The instrument was the *generated*
+stdlib page; a keyword sweep of it came back empty and was trusted to report an absence. One
+`grep` over `default/*.loft` would have found both functions. That is this tree's own rule —
+*check an instrument against something it SHOULD find before trusting it to report an
+absence* — broken on a language question rather than on a picture. **Grep the source, never
+the generated reference, before calling a capability missing.**
+
+⚠ **And it cost a mechanism.** `hex_world::Section` carries a text view read a *second time*
+off the file, and `world_set_section_text` exists, purely because nothing was thought to
+decode bytes in memory. It works and is gated — but it routes around an absence that was
+never there, so removing it (letting `hex_part` decode its own sections) is available and
+would take the double read and the `MESH` size caveat with it. Decide it, do not inherit it.
 
 ## Decisions taken — do not re-litigate
 

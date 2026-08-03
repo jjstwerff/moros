@@ -107,14 +107,18 @@ knows nothing about kinds or anchors; `hex_part` owns the content and knows noth
 where the bytes end up. A store that knew what `PART` meant would be a store with an opinion
 about its consumers.
 
-Both payloads are **`key=value` text**, not packed integers, and the reason is the language.
-A section is bytes, and loft cannot rebuild a text from bytes
-([#748](https://github.com/loft-lang/loft/issues/748)) — so a payload carrying a NAME has to
-be text. `hex_world` therefore reads each section's span **twice**, as bytes and as text, and
-offers both: the bytes stay authoritative on a re-save (which is what keeps an unknown section
-byte-identical), and the text view is what a name comes back through. Text also reads in a hex
-dump, the same argument the four-character tag is made of, and `"12x" as i32?` is null rather
-than `12`, so a malformed number refuses instead of guessing.
+Both payloads are **`key=value` text**, not packed integers. Text reads in a hex dump — the
+same argument the four-character tag is made of — and `"12x" as i32?` is null rather than `12`,
+so a malformed number refuses instead of guessing.
+
+⚠ **A THIRD REASON WAS GIVEN AND IT WAS FALSE**, which is left standing because it decided the
+shape: *"a section is bytes and loft cannot rebuild a text from bytes"*. Measured 2026-08-03,
+`text_from_bytes` and `byte_at` had shipped **two releases before** the report
+([#748](https://github.com/loft-lang/loft/issues/748)) — they were absent from the *generated*
+stdlib reference, which is what was swept. So `hex_world` reading each section's span **twice**
+— as bytes and as text, bytes authoritative on a re-save so an unknown section stays
+byte-identical — is a convenience rather than a necessity, and it is available to remove.
+**Grep the source, never the generated reference, before calling a capability missing.**
 
 | | |
 |---|---|
@@ -128,7 +132,8 @@ damaged, and one code for both makes a part that stands the wrong way round look
 
 ⚠ **The test subject is `"porte café"`, described as `"a door, 2 = boards wide 中"`, and that
 one choice found three defects an ASCII name agrees with**: two loft panics where byte offsets
-meet character counts ([#749](https://github.com/loft-lang/loft/issues/749)), a parse that
+meet character counts ([#749](https://github.com/loft-lang/loft/issues/749) — **fixed
+2026-08-03**, though the units stay mixed by design and a lint now says so), a parse that
 splits on every `=` and truncates the description, and a byte-per-character encoding that
 returns `中` as a different character.
 

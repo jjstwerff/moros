@@ -17,8 +17,11 @@ fn part() -> World {
   w
 }
 
-// ⚠ The tags are literals because loft#744 aborts on `const X = some_fn()`, so
-// the equality that would have been the definition is a test instead.
+// ⚠ The tags are literals and this equality is what would otherwise have been
+// their definition. loft#744 (`const X = some_fn()` aborting) is fixed, so the
+// derived form now compiles — and the advice that came with the fix is why it is
+// still not used: **a file-scope constant is an inlined expression, re-evaluated
+// at every reference.** A test costs one run; a derived tag costs one per use.
 fn test_the_tag_constants_are_the_tags_they_name() {
   assert(TAG_PART == section_tag("PART"), "TAG_PART is {TAG_PART}, not {section_tag(\"PART\")}");
   assert(TAG_ANCH == section_tag("ANCH"), "TAG_ANCH is {TAG_ANCH}, not {section_tag(\"ANCH\")}");
@@ -106,10 +109,13 @@ fn test_an_older_reader_still_loads_the_cells() {
   // CONTROL: the comparison can fail — otherwise this says only that both files
   // loaded. One cell changed in the dressed part and `part_diff` must object.
   //
-  // ⚠ THE WORLD IS BOUND TO A LOCAL FIRST. `world_set_column(lder.wl_world, …)`
-  // — a struct FIELD into a `&`-parameter — fails `--native` at compile time with
-  // a bare `E0308` (loft#745) and, here, aborts the interpreter at run time with
-  // `Delete on locked store`. Two different failures, one expression.
+  // ⚠ THE WORLD IS BOUND TO A LOCAL FIRST — a habit now, not a necessity.
+  // `world_set_column(lder.wl_world, …)`, a struct FIELD into a `&`-parameter,
+  // was loft#745: a bare `E0308` on `--native`, `Delete on locked store` in the
+  // interpreter here, and — per the fix — a SILENT WRONG VALUE elsewhere, because
+  // a later argument's temporary took the reference's slot. One bug, three faces.
+  // Fixed in loft 2026.8.0 (`40b9aea2`) and measured fixed on both backends; the
+  // local stays because it costs nothing and the three faces are worth the line.
   dw = lder.wl_world;
   world_set_column(dw, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 9 }] });

@@ -106,10 +106,16 @@ fn test_one_changed_cell_is_caught() {
   lr = world_load(path);
   assert(lr.wl_code == WL_OK, "load");
 
-  // ⚠ THE LOADED WORLD IS BOUND TO A LOCAL FIRST, and that is a loft workaround
-  // rather than a style choice: passing `lr.wl_world` — a struct FIELD — straight
-  // to a `&`-parameter compiles on the interpreter and fails `--native` with a
-  // bare `mismatched types` and no span (loft#745). A local passes on both.
+  // ⚠ THE LOADED WORLD IS BOUND TO A LOCAL FIRST — written as a loft workaround,
+  // kept as a habit. Passing `lr.wl_world` — a struct FIELD — straight to a
+  // `&`-parameter was loft#745, **fixed in loft 2026.8.0 (`40b9aea2`)** and
+  // measured fixed on both backends on 2026-08-03.
+  //
+  // ⚠ Read the fix before deciding the local is noise: the interpreter was never
+  // passing either. A later argument's temporary took the reference's slot, so
+  // the caller's struct was silently not updated — the bug had three faces (a
+  // bare `E0308` on native here, a SILENT WRONG VALUE, and `Delete on locked
+  // store` elsewhere in this package) and only one of them announced itself.
   //
   // It cost a test-by-test bisection to find, because the runner reports only
   // the error code: eight tests failed and the divergence was one expression in

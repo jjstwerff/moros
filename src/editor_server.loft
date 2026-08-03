@@ -610,8 +610,11 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // split — the geometry followed from the requirement rather than the other way
 // round. Nine gate files carry this number beside a "keep this equal to" note.
 // ⚠ AND `moros_terrain::surface_count()` IS THE AUTHORITY (plan 18 B3.1); this
-// is a copy, held equal by a loft test rather than by the compiler for the same
-// `const X = some_fn()` reason as the colours above.
+// is a copy, held equal by a loft test rather than by the compiler. That began as
+// a workaround for `const X = some_fn()` aborting (loft#744) and it OUTLIVED the
+// fix, which landed 2026-08-03: a file-scope constant is an inlined expression
+// **re-evaluated at every reference**, so `const SURFACES = surface_count()` would
+// walk the surface list once per mesh id computed. A test costs one run.
 const SURFACES = 9;              // ⚠ the frame took the eighth, the soffit the
                                  // ninth: an id-space stride, so a chunk's meshes
                                  // stay contiguous and nothing renumbers when a
