@@ -59,7 +59,27 @@ pub const PS_OK    = 0;
 pub const PS_EMPTY = 1;        // the part holds nothing to stamp
 pub const PS_FIT   = 2;        // a column would not take the band
 
-pub struct PartStamp { ps_code: integer, ps_cells: integer, ps_label: integer, ps_why: text }
+// ⚠ `ps_below` / `ps_above` ARE WHAT THE BAND LEFT ALONE, and they are the point
+// of a band rather than a column write: a cave under the house and a bridge deck
+// over it both survive, and a caller that cannot SEE that has no way to tell a
+// band from a replace. The procedural stencil has reported them since `P1`; a
+// stamp that did not would be a quieter gesture doing the same work, and the
+// gates that check a cave survived would have nothing to read.
+pub struct PartStamp {
+  ps_code:  integer,
+  ps_cells: integer,
+  ps_label: integer,
+  ps_below: integer,               // occupied cells left BELOW the band
+  ps_above: integer,               // and above it
+  // ⚠ THE STORE'S OWN `CW_*` CODE, CARRIED OUT. `PS_FIT` says only *it did not
+  // fit*; `CW_FOLD`, `CW_RESERVE` and `CW_WINDOW` say which rule said so, and a
+  // caller that can only report "did not fit" has thrown that away. The
+  // procedural stencil encoded it as `-10 - cw_code` and its gate reads the
+  // number, so losing it here would have quietly made every band refusal the
+  // same refusal.
+  ps_fit:   integer,               // the `CW_*` that refused, 0 if none did
+  ps_why:   text,
+}
 
 // Stamp `p` into `w`, centred on `(cq, cr)`, with the part's own origin height
 // sitting at `anchor` and the band reaching down to `lo`.
@@ -78,8 +98,7 @@ pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
                   anchor: integer, lo: integer) -> PartStamp {
   cols = part_columns(p);
   if len(cols) == 0 {
-    return PartStamp { ps_code: PS_EMPTY, ps_cells: 0, ps_label: 0,
-                       ps_why: "the part holds no cells" };
+    return PartStamp { ps_code: PS_EMPTY, ps_why: "the part holds no cells" };
   }
 
   // PASS 1 — may every column take it?
@@ -89,7 +108,7 @@ pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
     hi = top_of(band);
     chk = world_band_check(w, wq, wr, lo, hi, band);
     if chk.cw_code != CW_OK {
-      return PartStamp { ps_code: PS_FIT, ps_cells: 0, ps_label: 0,
+      return PartStamp { ps_code: PS_FIT, ps_fit: chk.cw_code,
                          ps_why: "({wq},{wr}) layer {chk.cw_layer}: {chk.cw_detail}" };
     }
   }
@@ -97,6 +116,8 @@ pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
   // PASS 2 — write
   id = world_fresh_label(w);
   n = 0;
+  below = 0;
+  above = 0;
   for c2 in cols {
     (wq2, wr2) = un_origin(cq, cr, c2.pk_q, c2.pk_r);
     band2 = lifted(p, c2.pk_q, c2.pk_r, anchor);
@@ -107,13 +128,25 @@ pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
       // question, so reaching here means the two checks disagree — which is a
       // defect in this file or in the model, not an author's mistake, and it
       // must not read as "the house did not fit".
-      return PartStamp { ps_code: PS_FIT, ps_cells: n, ps_label: id,
+      return PartStamp { ps_code: PS_FIT, ps_cells: n, ps_label: id, ps_fit: mw.cw_code,
                          ps_why: "({wq2},{wr2}) passed the check and refused the write: "
                                + "{mw.cw_detail}" };
     }
     n = n + 1;
+    // ⚠ COUNTED FROM THE COLUMN AS IT NOW STANDS, not from what was written. The
+    // band's whole claim is about what it did NOT touch, so the number has to come
+    // from a read of the result — a count kept by the writer would only ever agree
+    // with the writer.
+    for e in world_column(w, wq2, wr2).co_cells {
+      if hex_occupied(e) {
+        eh = e.h_height as integer ?? 0;
+        if eh < lo { below = below + 1; }
+        if eh > hi2 { above = above + 1; }
+      }
+    }
   }
-  PartStamp { ps_code: PS_OK, ps_cells: n, ps_label: id, ps_why: "" }
+  PartStamp { ps_code: PS_OK, ps_cells: n, ps_label: id,
+              ps_below: below, ps_above: above, ps_why: "" }
 }
 
 // A part column's cells with `anchor` added to every height.

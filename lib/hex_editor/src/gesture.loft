@@ -1431,6 +1431,52 @@ pub fn part_place(wld: &World, part: hex_world::World, cq: integer, cr: integer,
   return hex_part::part_stamp(wld, part, cq, cr, anchor, stencil_floor(anchor));
 }
 
+// ── `A2.3` — THE PROCEDURE IS A PART SOURCE, NOT A PLACEMENT ────────────────
+//
+// `stencil_place` still knows what a house IS — footprint, pitch, walls, the one
+// door. What it no longer does is put one in the world the author is editing: it
+// builds into a SCRATCH world, `part_from_region` cuts it, and `part_place`
+// stamps it. Every house that reaches a real world now arrives through the same
+// code as an authored one.
+//
+// ⚠ THIS IS WHAT `A2.3` COULD ACTUALLY BE, and the plan's version could not.
+// "Retire the procedural path, the gate still passes with `stencil_place` no
+// longer reachable from `14:`" assumed the wire's house had no PARAMETER. It has
+// one — `roof_up` — and three gates depend on it: `doorstep.mjs`'s whole
+// ordinal-refusal control IS the roof fence, and `stencil.mjs` needs a roof that
+// does not fit. Retiring the parameter would have deleted those claims to make a
+// sentence true. Retiring the PLACEMENT costs nothing and buys the thing that
+// mattered: one way for a house to land.
+//
+// ⚠ THE PART IS CUT AT THE ORIGIN AT ANCHOR ZERO, always, and the anchor is
+// applied by the stamp. A part's heights are its own — that is what makes the
+// same part placeable on a hill and in a cellar — so generating at the target
+// height would bake the terrain into a thing that is supposed to be portable.
+// ⚠ THE SCRATCH TAKES THE TARGET'S CONSTANTS, never its own. `u`, `ρ`, `ε` and
+// `θ` are the rules a house is built under, so generating at fixed numbers would
+// let a world with a wider ε accept a house that could not have been built in it —
+// `F1` would pass in the scratch and refuse at the stamp, which reads as the
+// placement being broken rather than as the house being wrong for this world.
+pub fn stencil_part(target: hex_world::World, rad: integer, roof_up: integer,
+                    why: &text) -> hex_world::World {
+  nw = hex_world::world_new(target.w_unit, target.w_reserve, target.w_eps, target.w_theta);
+  if nw.wn_code != hex_world::WC_OK {
+    why = "the world's own constants were refused (code {nw.wn_code})";
+    return nw.wn_world;
+  }
+  scratch = nw.wn_world;
+  kb = 0;
+  ka = 0;
+  n = stencil_place(scratch, 0, 0, rad, 0, roof_up, kb, ka, why);
+  if n < 0 { return hex_world::world_new(1.0, 0, 8, 3).wn_world; }
+  cut = hex_part::part_from_region(scratch, 0, 0, rad);
+  if cut.pc_code != hex_part::PR_OK {
+    why = cut.pc_why;
+    return hex_world::world_new(1.0, 0, 8, 3).wn_world;
+  }
+  return cut.pc_world;
+}
+
 // `species` 0 CLEARS. Returns the number of cells now carrying the species.
 pub fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
            species: integer, density: integer) -> integer {

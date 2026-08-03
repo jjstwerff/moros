@@ -294,7 +294,43 @@ there are two hundred parts — not `A1`'s when there is one. Say so in the code
 |---|---|---|---|
 | ✅ `A2.1` | A one-off tool: run `stencil_place` into an empty world, `part_from_region`, save to `data/parts/house/cottage.hxw`. | **DONE.** `src/part_build.loft`, `make parts`. The file is **committed** — a part is content, and a catalogue that is empty until somebody runs a make target is an empty catalogue. ⚠ **Three findings** — see below. | XS |
 | ✅ `A2.2` | `14:` accepts a **part name** alongside its `roof_up`, loading and stamping the part. | **DONE.** `hex_part::part_stamp` + `hex_editor::part_place`; `14:<roof>,<part>`. ⚠ **The equivalence turned out to be stateable EXACTLY**, which is stronger than any picture — see below. `hex_editor` 233 tests, `hex_part` 37, `tools/gates/world/part_place.mjs` for the wire half. | M |
-| `A2.3` | Retire the procedural path behind the authored one. | the gate still passes with `stencil_place` no longer reachable from `14:` | S |
+| ✅ `A2.3` | Retire the procedural path behind the authored one. | **DONE, and not as written** — the step assumed the wire's house had no PARAMETER. `stencil_place` no longer PLACES: it builds into a scratch world, `part_from_region` cuts it, `part_place` stamps it. All four `14:` gates pass **unchanged**. ⚠ See below. | S |
+
+⚠ **`A2.3` AS WRITTEN COULD NOT BE DONE, AND THE GATES ARE WHY.** *"`stencil_place` no longer
+reachable from `14:`"* reads as a small cleanup until you look at what `14:` carries: a
+**`roof_up` parameter**, and three gates depend on it.
+[`doorstep.mjs`](../../tools/gates/world/doorstep.mjs)'s entire ordinal-refusal control **IS**
+the roof fence — *asked for 5, refused below the minimum 8, offered 8, residual 3, and nothing
+written* — and `stencil.mjs` needs a roof that does **not** fit to test `F1`'s atomic refusal.
+A saved part has one fixed roof, so making `14:` place a part would have deleted those claims
+to make a sentence true. **A coverage cut wearing a tidy-up's clothes**, which is the trap
+[CLAUDE.md](../../CLAUDE.md) names by that phrase.
+
+⚠ **SO THE THING RETIRED IS THE PLACEMENT, NOT THE PROCEDURE.** `stencil_place` still says what
+a house IS — footprint, pitch, walls, the one door — and no longer says where one goes. It
+builds into a **scratch world** at anchor 0, `part_from_region` cuts it, and `part_place`
+stamps it. Every house that reaches a real world, generated or loaded from `data/parts/`, now
+arrives through the same code. That is the win `A2.3` was for; *one definition of a house* is
+`A7.3`'s fight, and it wants an editable part in hand.
+
+⚠ **THE SCRATCH TAKES THE TARGET WORLD'S CONSTANTS.** `u`, `ρ`, `ε`, `θ` are the rules a house
+is built under, so fixed numbers would let a world with a wider ε accept a house that could not
+have been built in it — `F1` passing in the scratch and refusing at the stamp, which reads as a
+broken placement rather than a house wrong for this world.
+
+⚠ **AND THE REFUSAL NUMBER HAD TO BE CARRIED OUT.** The first version reported `PS_FIT`, and
+`stencil.mjs` went red on two lines. That looked like a gate to update — it was the message
+getting **quieter**: `-10 - cw_code` encodes *which* rule refused (`-11` a fold, `-14` the
+reserve) and `PS_FIT` says only *it did not fit*. `part_stamp` carries the store's own `CW_*`
+out as `ps_fit`, so the same fact reaches the wire and the gate needs no edit. ⚠ A gate going
+red is a question, not a chore.
+
+⚠ **`ps_below` / `ps_above` had to come too.** What a band left ALONE is the whole difference
+between a band and a replace — `stencil.mjs` reads them to prove a cave under the house and a
+deck over it survived — and a stamp that placed the right cells and reported nothing kept would
+pass every world comparison and still break that gate. Counted from the column **as it stands
+after the write**, never kept by the writer: a writer's own tally only ever agrees with the
+writer.
 
 ### A3 — instances
 

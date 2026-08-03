@@ -185,6 +185,11 @@ fn test_a_refused_stamp_writes_nothing() {
   st = part_stamp(dst, cut.pc_world, 0, 0, 0, 0);
   assert(st.ps_code == PS_FIT, "the stamp was accepted over a blocker: {st.ps_code}");
   assert(st.ps_why != "", "the refusal must name what it refused");
+  // ⚠ AND IT SAYS WHICH RULE REFUSED, not merely that something did. `PS_FIT` is
+  // one code for every band refusal; `ps_fit` is the store's own, so a fold and a
+  // breached reserve stay distinguishable all the way to the wire — where
+  // `stencil.mjs` reads `-10 - cw_code` and would take any of them for a fold.
+  assert(st.ps_fit == CW_FOLD, "the refusal reports code {st.ps_fit}, not CW_FOLD");
 
   // and nothing was written anywhere — the columns BEFORE the blocker are the
   // ones a missing pre-flight would have filled in.

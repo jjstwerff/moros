@@ -550,8 +550,10 @@ fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
   pw = ld.wl_world;
   st = part_place(wld, pw, q, r, anchor);
   if st.ps_code != PS_OK {
-    srv.send_to(cid, "S:stencil refused ({st.ps_code}) part '{name}': {st.ps_why}");
-    println("editor: stencil refused ({st.ps_code}) part '{name}' — {st.ps_why}");
+    // ⚠ The SAME encoding the procedural branch uses, so the number on the wire
+    // has one meaning whichever path refused: `-10 - CW_*`, naming the rule.
+    srv.send_to(cid, "S:stencil refused ({0 - 10 - st.ps_fit}) part '{name}': {st.ps_why}");
+    println("editor: stencil refused ({0 - 10 - st.ps_fit}) part '{name}' — {st.ps_why}");
     return;
   }
   // ⚠ THE HALO IS THE PART'S OWN EXTENT PLUS A MARGIN, not `STENCIL_R`. A part
@@ -5576,17 +5578,36 @@ fn main() {
           if part_name != "" {
             place_part(srv, ev.cid, wld, dirty, part_name, shx2.ha_q, shx2.ha_r, anch);
           } else {
-          kb = 0; ka = 0; swhy2 = "";
-          np = stencil_place(wld, shx2.ha_q, shx2.ha_r, STENCIL_R, anch, roof_up,
-                             kb, ka, swhy2);
-          if np < 0 {
-            srv.send_to(ev.cid, "S:stencil refused ({np}) {swhy2}");
-            println("editor: stencil refused ({np}) — {swhy2}");
+          // ⚠ `A2.3` — THE PROCEDURE NO LONGER PLACES. It BUILDS a part in a
+          // scratch world, and `part_place` stamps it, so every house that lands
+          // in this world — generated or loaded from `data/parts/` — arrives
+          // through the same code. `stencil_place` still says what a house IS;
+          // it no longer says where one goes.
+          //
+          // ⚠ THE REFUSAL NUMBER IS UNCHANGED, and that is not compatibility
+          // theatre. `-10 - cw_code` encodes WHICH rule refused — a fold reads
+          // `-11`, the reserve `-14` — and the stamp carries the store's own
+          // `CW_*` out as `ps_fit` so the same fact reaches the wire. Reporting
+          // `PS_FIT` instead would have made every band refusal the same
+          // refusal, which is a message getting quieter for no reason.
+          swhy2 = "";
+          spart = stencil_part(wld, STENCIL_R, roof_up, swhy2);
+          if swhy2 != "" {
+            srv.send_to(ev.cid, "S:stencil refused — {swhy2}");
+            println("editor: stencil refused — {swhy2}");
+          } else {
+          stst = part_place(wld, spart, shx2.ha_q, shx2.ha_r, anch);
+          if stst.ps_code != PS_OK {
+            srv.send_to(ev.cid, "S:stencil refused ({0 - 10 - stst.ps_fit}) {stst.ps_why}");
+            println("editor: stencil refused ({0 - 10 - stst.ps_fit}) — {stst.ps_why}");
           } else {
             mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
             srv.send_to(ev.cid,
-              "S:stencil placed {np} cells, kept {kb} below and {ka} above");
-            println("editor: stencil placed {np} cells, kept {kb} below, {ka} above");
+              "S:stencil placed {stst.ps_cells} cells, kept {stst.ps_below} below and "
+              + "{stst.ps_above} above");
+            println("editor: stencil placed {stst.ps_cells} cells, kept {stst.ps_below} "
+                  + "below, {stst.ps_above} above");
+          }
           }
           }
           }

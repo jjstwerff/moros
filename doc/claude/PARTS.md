@@ -189,6 +189,27 @@ photographed identically.
 and the server's dirty halo comes from that same extent, or anything larger than the built-in
 house would have its rim left undrawn.
 
+#### One placement path (`A2.3`, 2026-08-03)
+
+`stencil_place` still says what a house IS and no longer says where one goes. `14:<roof_up>`
+calls `stencil_part`, which builds into a **scratch world at anchor 0**, cuts with
+`part_from_region`, and hands the result to `part_place`. Every house that reaches a real
+world — generated from the procedure or loaded from `data/parts/` — arrives through the same
+code.
+
+⚠ **The procedure keeps its PARAMETER, and that is why it keeps existing.** A part has one
+fixed roof; `14:<roof_up>` has a continuous one, and three gates depend on it —
+`doorstep.mjs`'s ordinal-refusal control is literally the roof fence. Retiring the parameter
+would have deleted claims to make a plan sentence true. A procedure that *generates* parts and
+a library that *stores* them are different capabilities, not two implementations of one; what
+they must not have is two ways to put a house in the world.
+
+⚠ **A stamp reports what the band LEFT ALONE** (`ps_below` / `ps_above`) and **which rule
+refused** (`ps_fit`, the store's own `CW_*`). Both exist because the wire already said them:
+`kept B below and A above` is the difference between a band and a replace, and `-10 - cw_code`
+distinguishes a fold from a breached reserve. A gesture that moved and got quieter would have
+passed every world comparison there is.
+
 ⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
 as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
 hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it

@@ -27,20 +27,25 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **233** | `hex_world` **114** | `lavition_ui` **61** | `hex_part` **43** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **61** | `hex_part` **43** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A2.3` — retire the procedural path behind the authored one
+### The next thing to do is #17 `A3.1` — instances, or #18 `B5` — the picker
 
-**`A1` and `A2.1`–`A2.2` are finished.** A part is a world, it round-trips, the store carries
+**`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
 tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
-(`make parts` builds and verifies it), and **`14:<roof>,<part>` places it**.
-⚠ **#18 `B5` is unblocked**: there is a part to list.
+(`make parts` builds and verifies it), `14:<roof>,<part>` places it — and **`14:<roof>` now
+places it too**, by generating a part and stamping it. ⚠ **#18 `B5` is unblocked**: there is a
+part to list, and it is the smaller of the two.
 
-`A2.3` makes the authored path the only one — the gate still passes with `stencil_place` no
-longer reachable from `14:`. ⚠ **Think before deleting**: `stencil_place` is what `make parts`
-runs to BUILD the cottage, so it cannot simply go; what `A2.3` retires is the wire's route to
-it, not the gesture.
+⚠ **`A2.3` COULD NOT BE DONE AS WRITTEN, AND THE GATES ARE WHY.** *"`stencil_place` no longer
+reachable from `14:`"* assumed the wire's house had no PARAMETER. It has `roof_up`, and
+`doorstep.mjs`'s entire ordinal-refusal control **IS** the roof fence while `stencil.mjs` needs
+a roof that does not fit — so making `14:` place a fixed part would have deleted those claims
+to make a sentence true. What was retired instead is the **placement**: `stencil_place` builds
+into a scratch world, `part_from_region` cuts it, `part_place` stamps it, and every house that
+reaches a real world arrives through one code path. All four `14:` gates pass **unchanged**.
+*One definition of a house* is `A7.3`'s fight and it wants an editable part in hand.
 
 ⚠ **THE AUTHORED HOUSE IS THE PROCEDURAL HOUSE, EXACTLY** — not pixel-for-pixel, which was the
 weaker claim the plan expected. Measured: same cells, same three owned edges, same layer
@@ -90,9 +95,10 @@ lineage. Which tree owns it for good is
 `B4`, `B6` all **done**. Only **`B5`** remains and it is **no longer blocked**:
 `data/parts/house/cottage.hxw` is there to list.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` complete, `A2.1`–`A2.2`
-done.** `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
-`PART`/`ANCH`, `A2.1` the cottage on disk, `A2.2` the stamp and the wire. `A2.3` next.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` and `A2` complete.**
+`A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
+`PART`/`ANCH`, `A2.1` the cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement
+path. `A3` (instances) next, and it is the bigger arc.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say

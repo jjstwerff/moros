@@ -68,8 +68,13 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `40` | MODE | `<0\|1\|2\|3\|4>` — AUTO, FOLLOW, SNUG, CUTAWAY, EYES | `mode N` · `mode refused — N is not a mode (offer 0, AUTO..4, EYES)` | **V** — added 2026-08-01. AUTO is the default and degrades into SNUG on `sh_room`; ⚠ naming any other mode turns the degradation OFF for good, because a chosen mode never auto-switches. ⚠ It also RE-FENCES the pitch: EYES allows ±1.5 and FOLLOW −0.20, and a mode change is not a look |
 
 ⚠ **`14` STENCIL GREW A SECOND FORM RATHER THAN A SECOND MESSAGE**, and the old payload
-is untouched: `14:12` still runs the procedure, so `tools/gates/world/stencil.mjs` did not
-change — which is itself the claim that the procedural path was not disturbed. A part is
+is untouched: `14:12` still builds a house of that roof height, so
+`tools/gates/world/stencil.mjs` did not change — which is itself the claim that the procedural
+path was not disturbed. ⚠ **Since `A2.3` it no longer PLACES one, though**: `14:<roof_up>`
+generates a part in a scratch world and stamps it, so both forms land through `part_place` and
+there is one way for a house to reach the world. The acknowledgement is identical, including
+the refusal number — `-10 - CW_*`, which names *which* rule refused rather than merely that
+something did. A part is
 **named, never pathed**: `21:` IMPORT takes a filesystem path because a kit-bashed `.glb`
 genuinely lives anywhere, while a part lives in `data/parts/` by definition and a name is what
 `A7.1`'s catalogue will offer. `house/cottage` is a name with a family in it, and a name

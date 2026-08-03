@@ -161,6 +161,73 @@ fn test_they_agree_on_ground_the_band_has_to_cut_into() {
   delete(p);
 }
 
+// ── `A2.3` — the wire's house goes through the stamp too ────────────────────
+//
+// ⚠ THE CLAIM THAT LETS `14:` STOP PLACING PROCEDURALLY. `stencil_part` builds
+// into a scratch world and cuts; `part_place` stamps the result. If that round
+// trip is the same world as `stencil_place` writing directly, then the wire can
+// go through the stamp and there is ONE way for a house to land — which is what
+// `A2.3` is for. Same instrument as the tests above: cells, edges, labels, `τ`.
+//
+// ⚠ AND IT COVERS THE ROOF HEIGHTS THE GATES ACTUALLY SEND. `12` is the house;
+// `5` is `doorstep.mjs`'s inadmissible one, which the server's fence refuses
+// before this is reached, and `18` is `stencil.mjs`'s tight one. A generator that
+// only agreed at `STOREY_H` would pass a test written with `STOREY_H` in it.
+fn test_generate_then_stamp_is_the_same_world_as_placing_directly() {
+  for roof in [8, 12, 18, 40] {
+    a = fresh();
+    b = fresh();
+    kb = 0; ka = 0; why = "";
+    n = hex_editor::stencil_place(a, 0 - 5, 7, hex_editor::STENCIL_R, 0, roof, kb, ka, why);
+    assert(n > 0, "roof {roof}: the stencil refused ({n}): {why}");
+
+    gwhy = "";
+    part = hex_editor::stencil_part(b, hex_editor::STENCIL_R, roof, gwhy);
+    assert(gwhy == "", "roof {roof}: the generator refused: {gwhy}");
+    st = hex_editor::part_place(b, part, 0 - 5, 7, 0);
+    assert(st.ps_code == PS_OK, "roof {roof}: the stamp was refused: {st.ps_why}");
+    assert(st.ps_cells == n, "roof {roof}: {n} placed directly, {st.ps_cells} stamped");
+
+    d = same_world(a, b, 0 - 5, 7);
+    assert(d == "", "roof {roof}: generate-then-stamp is not the procedure: {d}");
+    assert(a.w_tau == b.w_tau, "roof {roof}: tau {a.w_tau} vs {b.w_tau}");
+  }
+}
+
+// ⚠ AND THE COUNTS THE WIRE REPORTS SURVIVE THE DETOUR. `stencil placed N cells,
+// kept B below and A above` is the ack three gates read, and `kept` is the whole
+// difference between a band and a replace — so a stamp that placed the right
+// cells and reported nothing kept would pass every comparison above and still
+// break `stencil.mjs`'s cave and bridge.
+fn test_the_kept_counts_survive_the_detour() {
+  a = fresh();
+  b = fresh();
+  // a cave well below the foundation, and a deck well above the roof
+  for q in (0 - 4)..5 {
+    for r in (0 - 4)..5 {
+      col: vector<Hex> = [
+        Hex { h_height: 0 as u16? ?? 0, h_material: hex_editor::FLOOR_MAT },
+        Hex { h_height: 200 as u16? ?? 0, h_material: hex_editor::FLOOR_MAT }];
+      assert(world_set_column(a, Column { co_q: q, co_r: r, co_cells: col }).cw_code == CW_OK, "a");
+      assert(world_set_column(b, Column { co_q: q, co_r: r, co_cells: col }).cw_code == CW_OK, "b");
+    }
+  }
+  anchor = 100;
+  kb = 0; ka = 0; why = "";
+  n = hex_editor::stencil_place(a, 0, 0, hex_editor::STENCIL_R, anchor,
+                                hex_editor::STOREY_H, kb, ka, why);
+  assert(n > 0, "the stencil refused ({n}): {why}");
+  assert(kb > 0 && ka > 0, "the fixture kept nothing — {kb} below, {ka} above");
+
+  gwhy = "";
+  part = hex_editor::stencil_part(b, hex_editor::STENCIL_R, hex_editor::STOREY_H, gwhy);
+  st = hex_editor::part_place(b, part, 0, 0, anchor);
+  assert(st.ps_code == PS_OK, "the stamp was refused: {st.ps_why}");
+  assert(st.ps_below == kb, "kept below: {st.ps_below} stamped vs {kb} placed");
+  assert(st.ps_above == ka, "kept above: {st.ps_above} stamped vs {ka} placed");
+  assert(same_world(a, b, 0, 0) == "", "the worlds differ as well as the counts");
+}
+
 // ⚠ CONTROL: `same_world` CAN FAIL. Every test above asserts an absence, and an
 // absence is worth exactly what the instrument that reports it is worth — a
 // comparison that returned `""` unconditionally would pass all three.
