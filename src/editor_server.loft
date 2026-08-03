@@ -3472,12 +3472,44 @@ fn mode_name(m: integer) -> text {
 // what `moros_terrain::surfaces()` says it is, so it cannot list a material the
 // renderer cannot draw or miss one it can. A hand-kept list beside the mesher is
 // the tenth copy of a number that has already drifted 4 → 5 → 7 → 9.
+// ⚠ AND SOME OF THEM YOU CANNOT PAINT, which is §C3's availability. Three of the
+// nine surfaces the mesher emits are DERIVED — they appear because something
+// else was built, not because an author chose them — and an author who picks one
+// expecting a brush is owed the reason rather than a silent nothing.
+//
+// It is a real rule, not a demonstration: a soffit is a roof's underside, a
+// frame is an opening's reveal, and trees are scattered by `13:`. Hiding them
+// would be worse — the catalogue is supposed to say what the renderer can draw,
+// and it can draw all nine.
+// ⚠ THE REASON IS A LABEL, NOT A SENTENCE, AND THE ROW IS WHY. A list row has
+// **212px** — twenty-one characters at the editor's advance — and the name has
+// to fit in it too. The first draft wrote "scattered, not painted (13:)" and the
+// author read `tree — scattered,..`: the cut is honest, marked, and useless.
+//
+// So the reason is one word that carries the distinction, and the FULL sentence
+// belongs wherever there is room for one — a status line or a tooltip, neither
+// of which exists yet. Measured, not guessed: a sentence in a 212px row is not a
+// design that needs shortening, it is a design that does not fit.
+fn surface_block(name: text) -> text {
+  if name == "soffit" { return "derived"; }
+  if name == "frame"  { return "derived"; }
+  if name == "tree"   { return "scattered"; }
+  ""
+}
+
+// `N:<name>|<0|1>|<reason>;…` — ⚠ `;` between entries and `|` within, because a
+// reason is a SENTENCE and a sentence has commas in it. The first draft split on
+// commas and would have cut every reason in half at the first clause.
 fn catalogue_wire() -> text {
   out = "N:";
   n = moros_terrain::surface_count();
   for i in 0..n {
-    if i > 0 { out = out + ","; }
-    out = out + moros_terrain::surface_at(i).sf_name;
+    if i > 0 { out = out + ";"; }
+    nm = moros_terrain::surface_at(i).sf_name;
+    why = surface_block(nm);
+    av = "1";
+    if why != "" { av = "0"; }
+    out = out + nm + "|" + av + "|" + why;
   }
   out
 }

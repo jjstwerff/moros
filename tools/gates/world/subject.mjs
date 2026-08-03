@@ -62,11 +62,25 @@ check(/level (ON|off)/.test(first), 'the line carries the level toggle');
 // it can. `SURFACES` — the mesh-id stride — is that same length, and its own
 // comment records it drifting 4 → 5 → 7 → 9 with nine files holding a copy.
 check(a.mats.length === 1, `the catalogue is sent once on connect (${a.mats.length})`);
-const names = (a.mats[0] ?? 'N:').slice(2).split(',').filter(Boolean);
-check(names.length === 9, `nine materials, the mesher's own surfaces (${names.length}: ${names})`);
+// ⚠ `;` BETWEEN ENTRIES AND `|` WITHIN, not commas — a reason is a sentence and
+// a sentence has commas in it. This gate split on commas until B6 gave entries a
+// reason, and then read one nine-field row as a single material.
+const cat = (a.mats[0] ?? 'N:').slice(2).split(';').filter(Boolean)
+    .map((r) => { const [name, avail, why] = r.split('|'); return { name, avail, why }; });
+check(cat.length === 9, `nine materials, the mesher's own surfaces (${rows.length})`);
 for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit']) {
-  check(names.includes(want), `the catalogue lists '${want}'`);
+  check(cat.some((r) => r.name === want), `the catalogue lists '${want}'`);
 }
+
+// ── B6 — availability travels with the entry ─────────────────────────────────
+// ⚠ AND AN UNAVAILABLE ENTRY IS STILL IN THE LIST. §C3: shown greyed with its
+// reason, never hidden — hiding it makes the author think the thing is missing.
+const blocked = cat.filter((r) => r.avail === '0');
+check(blocked.length === 3, `three derived surfaces are unavailable (${blocked.length})`);
+check(blocked.every((r) => (r.why ?? '') !== ''),
+      `every unavailable entry carries a reason (${blocked.map((r) => r.name + '=' + r.why)})`);
+check(cat.filter((r) => r.avail === '1').length === 6,
+      'the other six are paintable');
 
 // ── B2.1 — an accepted toggle moves it ───────────────────────────────────────
 const before = a.huds.length;

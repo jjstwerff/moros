@@ -23,7 +23,7 @@ fn demo_spec() -> PanelSpec {
       spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
     ],
     ps_selected_button: 3,
-    ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+    ps_items: [entry("none"), entry("solid"), entry("half"), entry("thick_flat"), entry("thick_curved")],
     ps_selected_item: 1,
     ps_status: "q=0 r=0 cy=0  y= 0.0  FPS 60",
     ps_subject: "world hollow-hill · AUTO · level ON · 30 Hz",

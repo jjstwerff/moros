@@ -27,11 +27,36 @@ pub struct Button {
   btn_selected:     boolean,
 }
 
-// Scrollable list of text entries.  `lb_selected` is the currently
+// One row of a catalogue: what it is called, and whether you can have it.
+//
+// ⚠ AVAILABILITY IS PART OF THE ENTRY, NOT A SEPARATE DIALOG (CATALOGUE §C3).
+// A thing you cannot use is shown GREYED WITH ITS REASON rather than hidden:
+// hiding it makes the author think it is missing, while showing it with
+// `too wide for frame/2x3` tells them what to change. It is §C2's refusal rule —
+// reason, and never a blank no — applied to a list instead of to a gesture.
+pub struct Entry {
+  en_label:     text,
+  en_available: boolean,
+  en_reason:    text,        // "" when available; required when not
+}
+
+pub fn entry(label: text) -> Entry {
+  Entry { en_label: label, en_available: true, en_reason: "" }
+}
+
+// ⚠ THE REASON IS NOT OPTIONAL HERE. An entry that is unavailable "because" is
+// the blank no §C2 exists to forbid, so a missing reason becomes a visible
+// placeholder rather than an empty string nobody notices.
+pub fn entry_blocked(label: text, why: text) -> Entry {
+  Entry { en_label: label, en_available: false,
+          en_reason: if why == "" { "no reason given" } else { why } }
+}
+
+// Scrollable list of catalogue entries.  `lb_selected` is the currently
 // highlighted index, or -1 for no selection.
 pub struct ListBox {
   lb_rect:        Rect,
-  lb_items:       vector<text>,
+  lb_items:       vector<Entry>,
   lb_selected:    integer,
   lb_scroll:      integer,   // pixel scroll offset
   lb_item_height: integer,

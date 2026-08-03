@@ -18,7 +18,7 @@ fn demo(selected_button: integer, selected_item: integer) -> Panel {
       spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
     ],
     ps_selected_button: selected_button,
-    ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+    ps_items: [entry("none"), entry("solid"), entry("half"), entry("thick_flat"), entry("thick_curved")],
     ps_selected_item: selected_item,
     ps_status: "ready",
   };
@@ -178,7 +178,7 @@ fn test_no_placed_text_overflows_the_strip() {
         spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
       ],
       ps_selected_button: 0,
-      ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+      ps_items: [entry("none"), entry("solid"), entry("half"), entry("thick_flat"), entry("thick_curved")],
       ps_selected_item: 0,
       ps_status: "q=1 r=2 cy=4  facing 3 oclock ([/] turns the dial)  y= 0.0  FPS 60",
     };
@@ -197,7 +197,7 @@ fn test_the_text_sweep_is_not_vacuous() {
   spec = PanelSpec {
     ps_buttons: [spec_button("Stencil", "4")],
     ps_selected_button: 0,
-    ps_items: ["thick_curved"], ps_selected_item: 0, ps_status: "x",
+    ps_items: [entry("thick_curved")], ps_selected_item: 0, ps_status: "x",
   };
   p = panel_build(spec, 1280, 720, ui_metrics(32, 32));
   cut = 0;
@@ -224,7 +224,7 @@ fn test_rows_scrolled_out_of_view_emit_no_text() {
   p.p_list.lb_scroll = 10 * p.p_list.lb_item_height;
   for t in panel_text_list(p, theme_default()) {
     for item in p.p_list.lb_items {
-      assert(!(t.dt_text == item && t.dt_y < p.p_list.lb_rect.r_y),
+      assert(!(t.dt_text == item.en_label && t.dt_y < p.p_list.lb_rect.r_y),
              "a scrolled-away row drew '{t.dt_text}' at y={t.dt_y}");
     }
   }
@@ -243,7 +243,7 @@ fn test_no_two_texts_on_a_line_overlap() {
         spec_button("Wall", "6"),
       ],
       ps_selected_button: 0,
-      ps_items: ["none", "thick_curved"], ps_selected_item: 0,
+      ps_items: [entry("none"), entry("thick_curved")], ps_selected_item: 0,
       ps_status: "ready",
     };
     p = panel_build(spec, 1280, 720, ui_metrics(adv, adv));
@@ -266,7 +266,7 @@ fn subject_panel(subject: text, adv: integer) -> Panel {
   spec = PanelSpec {
     ps_buttons: [spec_button("Stencil", "4"), spec_button("Wall", "6")],
     ps_selected_button: 0,
-    ps_items: ["none"], ps_selected_item: 0,
+    ps_items: [entry("none")], ps_selected_item: 0,
     ps_status: "q=0 r=0 cy=0",
     ps_subject: subject,
   };
@@ -325,4 +325,100 @@ fn test_a_subject_too_long_for_the_window_is_still_cut() {
   assert(p.p_subject.ss_text != long, "an over-long subject was not fitted");
   assert(text_width(p.p_subject.ss_text, p.p_metrics) <= p.p_subject.ss_rect.r_w - LABEL_PAD,
          "the fitted subject still overflows its bar");
+}
+
+// ── availability (B6) ────────────────────────────────────────────
+//
+// ⚠ §C3: AN UNAVAILABLE ENTRY IS SHOWN GREYED WITH ITS REASON, NOT HIDDEN.
+// Hiding it makes the author think the thing is missing; showing it with
+// `too wide for frame/2x3` tells them what to change. It is §C2's refusal rule —
+// reason, never a blank no — applied to a list instead of to a gesture.
+
+fn mixed_panel(adv: integer) -> Panel {
+  spec = PanelSpec {
+    ps_buttons: [spec_button("Stencil", "4")],
+    ps_selected_button: 0,
+    ps_items: [
+      entry("oak-2x3"),
+      entry_blocked("elm-3x3", "too wide for frame/2x3"),
+      entry("ash-2x3"),
+    ],
+    ps_selected_item: -1,
+    ps_status: "ready",
+    ps_subject: "world x · AUTO",
+  };
+  panel_build(spec, 1280, 720, ui_metrics(adv, adv))
+}
+
+fn test_an_unavailable_entry_carries_a_reason() {
+  p = mixed_panel(8);
+  blocked = 0;
+  for it in p.p_list.lb_items {
+    if !it.en_available {
+      blocked += 1;
+      assert(it.en_reason != "", "an unavailable entry with no reason is a blank no");
+    }
+  }
+  assert(blocked == 1, "one entry was blocked, found {blocked}");
+}
+
+// ⚠ A MISSING REASON BECOMES A VISIBLE PLACEHOLDER rather than an empty string
+// nobody notices. "Unavailable because" is the blank no §C2 forbids.
+fn test_a_blocked_entry_without_a_reason_says_so() {
+  e = entry_blocked("x", "");
+  assert(!e.en_available, "still unavailable");
+  assert(e.en_reason == "no reason given", "silently empty: '{e.en_reason}'");
+}
+
+// NOT HIDDEN — the row is still in the list, and still hit-testable, so an
+// author can click it and be told why rather than wonder where it went.
+fn test_an_unavailable_entry_is_still_in_the_list() {
+  p = mixed_panel(8);
+  assert(len(p.p_list.lb_items) == 3, "three entries, got {len(p.p_list.lb_items)}");
+  lr = p.p_list.lb_rect;
+  hit = panel_hit_test(p, lr.r_x + 4, lr.r_y + 1 * p.p_list.lb_item_height + 2);
+  ok = false;
+  if hit is UhListItem { li_idx } { ok = li_idx == 1; }
+  assert(ok, "the blocked row is not clickable — it has been hidden in effect");
+}
+
+fn test_the_reason_reaches_the_row_the_author_reads() {
+  // Wide enough that nothing truncates: the whole sentence is on the row.
+  p = mixed_panel(4);
+  found = false;
+  for t in panel_text_list(p, theme_default()) {
+    if t.dt_text == "elm-3x3 — too wide for frame/2x3" { found = true; }
+  }
+  assert(found, "the reason never reached the text list");
+}
+
+// ⚠ GREYED IS THE OTHER HALF, and a grey row with no words says only that
+// something is wrong. Both are asserted, because either alone is a worse UI than
+// the pair.
+fn test_an_unavailable_row_is_drawn_dimmer_than_an_available_one() {
+  th = theme_default();
+  p = mixed_panel(8);
+  lr = p.p_list.lb_rect;
+  bright = 0;
+  dim = 0;
+  for t in panel_text_list(p, th) {
+    if t.dt_y < lr.r_y || t.dt_y >= lr.r_y + lr.r_h { continue; }   // list rows only
+    if t.dt_colour == th.th_text { bright += 1; }
+    if t.dt_colour == th.th_text_dim { dim += 1; }
+  }
+  assert(dim == 1, "one row should be dimmed, {dim} were");
+  assert(bright == 2, "the other two should be bright, {bright} were");
+}
+
+// And the control: with everything available, NOTHING is dimmed. Without this
+// the test above passes on a renderer that greys every row.
+fn test_nothing_is_dimmed_when_everything_is_available() {
+  th = theme_default();
+  p = demo(-1, -1);                       // all entries available
+  lr = p.p_list.lb_rect;
+  for t in panel_text_list(p, th) {
+    if t.dt_y < lr.r_y || t.dt_y >= lr.r_y + lr.r_h { continue; }
+    assert(t.dt_colour != th.th_text_dim,
+           "'{t.dt_text}' was dimmed with nothing unavailable");
+  }
 }

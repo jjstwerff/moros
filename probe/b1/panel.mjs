@@ -182,6 +182,37 @@ check(distinct >= 6, `the swatches are different colours (${distinct} distinct o
   console.log(`  note  ${litSwatches.length} swatches present but not checked (no --swatches)`);
 }
 
+// ── availability: greyed, not hidden (B6) ────────────────────────
+// §C3 shows an unusable entry GREYED WITH ITS REASON rather than hiding it.
+//
+// ⚠ THE PEAK PER ROW, NOT A LUMINANCE BAND. The first version counted pixels
+// between two thresholds and reported 824 "dim" ones in a picture where nothing
+// was unavailable — bright text is ANTI-ALIASED, so its edges sweep the whole
+// range down to the background and land in any band you pick. The control failed
+// to fail, which is the only reason it was caught.
+//
+// A row's BRIGHTEST pixel is the colour it was drawn in: ~224 for available
+// (0xE0E0E6), ~142 for greyed (0x8A8A96). AA can only ever pull a pixel darker,
+// so the peak is exactly the discriminator that survives it — the same shape
+// argument as counting button bars by height rather than by lighter pixels.
+if (wantSwatches) {
+    const peaks = [];
+    for (let i = 0; i < 9; i++) {
+        let peak = 0;
+        for (let y = listTop + i * ROW_H; y < listTop + (i + 1) * ROW_H && y < img.h; y++) {
+            for (let x = 0; x < LIST_X1 - SW_W; x++) peak = Math.max(peak, lum(x, y));
+        }
+        peaks.push(Math.round(peak));
+    }
+    const bright = peaks.filter((p) => p > 190).length;
+    const dimmed = peaks.filter((p) => p > 100 && p <= 190).length;
+    check(bright >= 5, `available entries are drawn bright (${bright} rows, peaks ${peaks})`);
+    // ⚠ AND SOME ARE DIM. A list where nothing is dim has HIDDEN the unavailable
+    // entries instead of showing them — the exact failure §C3 names, because the
+    // author then thinks the thing is missing.
+    check(dimmed >= 3, `unavailable entries are drawn DIM, not hidden (${dimmed} rows)`);
+}
+
 // ── the control: the panel did not eat the canvas ────────────────
 let sky = 0, total = 0;
 for (let y = 0; y < img.h; y += 7) {

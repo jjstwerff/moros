@@ -323,8 +323,8 @@ in an editor reads as a crash.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B6.1` | An entry carries `available: boolean + reason: text`. | loft test: an unavailable entry has a non-empty reason | XS |
-| `B6.2` | Greyed rendering, reason shown — **not hidden** (§C3). | a leaf too wide for the frame you stand in reads `too wide for frame/2x3` | S |
+| ✅ `B6.1` | `lavition_ui::Entry` — label, available, reason. `ps_items` is a list of entries, not of strings. | **DONE.** A blocked entry with no reason gets a **visible placeholder** rather than an empty string nobody notices. | XS |
+| ✅ `B6.2` | Greyed rendering with the reason on the row — **not hidden**. Three of the nine surfaces really are unpaintable, so this is a live rule and not a demonstration. | **DONE.** In the client's PNG: `tree — scattered`, `frame — derived`, `soffit — derived`, greyed, still listed and still clickable. | S |
 
 ---
 

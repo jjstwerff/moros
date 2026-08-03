@@ -61,7 +61,7 @@ pub struct SpecButton {
 pub struct PanelSpec {
   ps_buttons:         vector<SpecButton>,
   ps_selected_button: integer,
-  ps_items:           vector<text>,
+  ps_items:           vector<Entry>,
   ps_selected_item:   integer,
   ps_status:          text,
   // What you are working on and what is switched on — §C1's one line.
@@ -161,9 +161,18 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
   }
 
   pb_lr = list_rect(window_h, len(spec.ps_buttons));
-  pb_items: vector<text> = [];
+  pb_items: vector<Entry> = [];
   for pb_it in spec.ps_items {
-    pb_items += [fit_text(pb_it, pb_lr.r_w - LABEL_PAD, metrics)];
+    // ⚠ THE REASON IS FITTED WITH THE NAME, as one row, because that is what the
+    // author reads. At 224px a long reason truncates — `fit_text` marks the cut —
+    // and the FULL reason stays on the entry for a consumer with somewhere
+    // roomier to put it. A row that showed only the name would grey a thing out
+    // and not say why, which is the blank no again.
+    pb_txt = pb_it.en_label;
+    if !pb_it.en_available { pb_txt = "{pb_it.en_label} — {pb_it.en_reason}"; }
+    pb_items += [Entry { en_label:     fit_text(pb_txt, pb_lr.r_w - LABEL_PAD, metrics),
+                         en_available: pb_it.en_available,
+                         en_reason:    pb_it.en_reason }];
   }
 
   pb_sr = status_rect(window_w, window_h);

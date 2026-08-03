@@ -106,7 +106,7 @@ fn wall_spec(status: text) -> PanelSpec {
       spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
     ],
     ps_selected_button: 3,
-    ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+    ps_items: [entry("none"), entry("solid"), entry("half"), entry("thick_flat"), entry("thick_curved")],
     ps_selected_item: 0,
     ps_status: status,
   }
@@ -147,8 +147,8 @@ fn test_every_list_item_is_fitted_to_the_list() {
   for adv in [8, 16, 24] {
     p = panel_build(wall_spec("ready"), 1280, 720, mono(adv));
     for it in p.p_list.lb_items {
-      assert(text_width(it, mono(adv)) <= p.p_list.lb_rect.r_w - LABEL_PAD,
-             "list item '{it}' overflows at advance {adv}");
+      assert(text_width(it.en_label, mono(adv)) <= p.p_list.lb_rect.r_w - LABEL_PAD,
+             "list item '{it.en_label}' overflows at advance {adv}");
     }
   }
 }
@@ -159,6 +159,9 @@ fn test_every_list_item_is_fitted_to_the_list() {
 fn test_the_list_sweep_is_not_vacuous() {
   wide = panel_build(wall_spec("ready"), 1280, 720, mono(24));
   cut = 0;
-  for it in wide.p_list.lb_items { if it != "" && it[len(it) - 2..len(it)] == ".." { cut += 1; } }
+  for it in wide.p_list.lb_items {
+    lb = it.en_label;
+    if lb != "" && len(lb) >= 2 && lb[len(lb) - 2..len(lb)] == ".." { cut += 1; }
+  }
   assert(cut > 0, "no wall name was truncated at advance 24 — the sweep proves nothing");
 }

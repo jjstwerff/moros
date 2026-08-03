@@ -149,10 +149,14 @@ pub fn panel_text_list(p: Panel, th: Theme) -> vector<DrawText> {
     // scrolled out of view would otherwise be drawn over the toolbar, and text
     // floating above a list is the tell that nobody scrolled it while looking.
     if row_y >= lr.r_y && row_y + p.p_list.lb_item_height <= lr.r_y + lr.r_h {
-      tl += [DrawText { dt_text: it,
+      // ⚠ GREYED, NOT HIDDEN. The dim colour is the at-a-glance signal and the
+      // reason (already folded into the row's text by `panel_build`) is the
+      // sentence — §C3 wants both, because a grey row with no words says only
+      // that something is wrong.
+      tl += [DrawText { dt_text: it.en_label,
                         dt_x: lr.r_x + 6,
                         dt_y: baseline_in(row_y, p.p_list.lb_item_height, lh),
-                        dt_colour: th.th_text }];
+                        dt_colour: if it.en_available { th.th_text } else { th.th_text_dim } }];
     }
     i += 1;
   }

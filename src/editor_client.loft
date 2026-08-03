@@ -1128,7 +1128,7 @@ fn swatch_hex_verts() -> vector<single> {
 // One swatch, rendered off-screen and kept.
 struct Swatch { sw_tex: integer }
 
-fn render_swatches(st: Client, names: vector<text>) -> vector<Swatch> {
+fn render_swatches(st: Client, names: vector<Entry>) -> vector<Swatch> {
   out: vector<Swatch> = [];
   if st.prog == 0 { return out; }              // no shader yet: nothing honest to draw
   // ⚠ DEPTH OFF. The framebuffer below has a COLOUR attachment and no depth one,
@@ -1229,7 +1229,7 @@ fn client_panel_spec(st: Client) -> PanelSpec {
       spec_button("Cart",    "c"),
     ],
     ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
-    ps_items: split_csv(st.mats),
+    ps_items: parse_entries(st.mats),
     ps_selected_item: -1,          // the SERVER owns this too
     ps_status: "moros editor — connected",
     ps_subject: subject_line(st.hud),
@@ -1279,17 +1279,36 @@ fn metrics_drift(font: integer, m: Metrics, worst_s: &text) -> integer {
 // exactly like the same words read off the server.
 // `N:`'s payload, as a list. Empty until the server speaks — the same rule the
 // subject line follows, and for the same reason.
-fn split_csv(s: text) -> vector<text> {
+fn split_on(s: text, sep: text) -> vector<text> {
   out: vector<text> = [];
   if s == "" { return out; }
   start = 0;
   for i in 0..s.size() {
-    if s[i..i + 1] == "," {
+    if s[i..i + 1] == sep {
       out += [s[start..i]];
       start = i + 1;
     }
   }
   out += [s[start..s.size()]];
+  out
+}
+
+// `N:`'s payload as catalogue entries — `<name>|<0|1>|<reason>;…`.
+//
+// ⚠ THE AVAILABILITY AND THE REASON COME FROM THE SERVER, like everything else
+// on this panel. A client deciding for itself which materials are paintable
+// would be a picture of what it believes the editor allows.
+fn parse_entries(s: text) -> vector<Entry> {
+  out: vector<Entry> = [];
+  for row in split_on(s, ";") {
+    f = split_on(row, "|");
+    if len(f) < 3 { continue; }
+    nm = f[0] ?? "";
+    av = f[1] ?? "1";
+    wy = f[2] ?? "";
+    if av == "0" { out += [entry_blocked(nm, wy)]; }
+    else { out += [entry(nm)]; }
+  }
   out
 }
 
