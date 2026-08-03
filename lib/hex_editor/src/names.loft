@@ -1,0 +1,117 @@
+// NAMES — author-facing handles that are NOT identities.
+//
+// Plan 18 `B4`, CATALOGUE §C2. Anything placeable can be given a name: a part, a
+// material, a placed instance, a saved world.
+//
+// ⚠ THE STORE'S IDENTITY STAYS THE LABEL. `I1` says one object owns one label,
+// and a name is a SECOND handle over it. If renaming renumbered anything, every
+// reference in every document would have to be rewritten to fix a typo — so this
+// is a side table from `(kind, name)` to a label, and a rename touches nothing
+// but this table. `test_a_rename_does_not_move_the_label` is that claim.
+//
+// ⚠ AND IT IS PER KIND. Two different kinds of thing may share a name — a
+// material called `oak` and a part called `oak` are not in competition, and
+// forcing one global namespace would make the catalogue's kinds cosmetic.
+
+// The answer to a rename.
+//
+// ⚠ IT IS NOT `Fit`, AND THE REASON IS THE OFFER. `Fit.ft_offer` is an INTEGER,
+// because it was built for ordinal parameters where the offer is the nearest
+// admissible VALUE. Its own comment says nominal parameters — a material, a
+// species — are refused WITHOUT an offer, since 255 is not "nearly" 256.
+//
+// A name is a third case that neither arm covers: nominal, so there is no
+// nearest value, and yet it HAS a constructible alternative — append a suffix
+// until one is free. §C2 asks for exactly that: `"oak-2x3" is taken · offer
+// "oak-2x3-2"`. So the offer here is text, and `Fit` is left alone rather than
+// grown a second offer field that is meaningless in most of its uses.
+pub struct NameFit {
+  nf_ok:     boolean,
+  nf_reason: text,
+  nf_offer:  text,          // "" when there is nothing to offer
+}
+
+pub struct NameEntry {
+  ne_kind:  text,
+  ne_name:  text,
+  ne_label: integer,
+}
+
+pub struct NameTable { nt_rows: vector<NameEntry> }
+
+pub fn names_new() -> NameTable { NameTable { nt_rows: [] } }
+
+// ⚠ A GENERATED NAME IS HONEST ABOUT BEING GENERATED — `house-3`, not a blank
+// and not `Untitled`. A blank invites the author to believe the field is broken,
+// and `Untitled` is a claim that someone declined to name it rather than that
+// nobody has yet.
+pub fn name_generated(kind: text, label: integer) -> text { "{kind}-{label}" }
+
+pub fn label_named(t: NameTable, kind: text, name: text) -> integer {
+  for r in t.nt_rows {
+    if r.ne_kind == kind && r.ne_name == name { return r.ne_label; }
+  }
+  0 - 1
+}
+
+pub fn name_taken(t: NameTable, kind: text, name: text) -> boolean {
+  label_named(t, kind, name) >= 0
+}
+
+// The name of a thing, generated if it has none. Never empty.
+pub fn name_of(t: NameTable, kind: text, label: integer) -> text {
+  for r in t.nt_rows {
+    if r.ne_kind == kind && r.ne_label == label { return r.ne_name; }
+  }
+  name_generated(kind, label)
+}
+
+// The nearest free name of the shape the author asked for: `oak` → `oak-2`,
+// `oak-3`, … ⚠ Bounded, because an unbounded search on a full namespace is a
+// hang, and a hang in an editor reads as a crash.
+pub fn name_free(t: NameTable, kind: text, want: text) -> text {
+  if !name_taken(t, kind, want) { return want; }
+  for i in 2..1000 {
+    cand = "{want}-{i}";
+    if !name_taken(t, kind, cand) { return cand; }
+  }
+  ""
+}
+
+// Give `label` the name `want`, within `kind`.
+//
+// The doorstep shape: applied exactly, or refused with a named reason AND an
+// offer. A refusal that says only "no" leaves the author guessing.
+pub fn name_set(t: NameTable, kind: text, label: integer, want: text) -> NameFit {
+  if want == "" {
+    return NameFit { nf_ok: false,
+                     nf_reason: "a name cannot be empty",
+                     nf_offer: name_generated(kind, label) };
+  }
+  held = label_named(t, kind, want);
+  if held == label {
+    return NameFit { nf_ok: true, nf_reason: "", nf_offer: "" };   // already so
+  }
+  if held >= 0 {
+    return NameFit { nf_ok: false,
+                     nf_reason: "\"{want}\" is taken",
+                     nf_offer: name_free(t, kind, want) };
+  }
+  // Rename in place if this label already has a name in this kind; otherwise add.
+  for i in 0..len(t.nt_rows) {
+    row = t.nt_rows[i] ?? NameEntry { ne_kind: "", ne_name: "", ne_label: 0 - 1 };
+    if row.ne_kind == kind && row.ne_label == label {
+      t.nt_rows[i] = NameEntry { ne_kind: kind, ne_name: want, ne_label: label };
+      return NameFit { nf_ok: true, nf_reason: "", nf_offer: "" };
+    }
+  }
+  t.nt_rows += [NameEntry { ne_kind: kind, ne_name: want, ne_label: label }];
+  NameFit { nf_ok: true, nf_reason: "", nf_offer: "" }
+}
+
+// The sentence an author reads on a refusal — §C2's own example.
+pub fn name_refusal(f: NameFit) -> text {
+  if f.nf_ok { return ""; }
+  if f.nf_offer == "" { return f.nf_reason; }
+  "{f.nf_reason} · offer \"{f.nf_offer}\""
+}

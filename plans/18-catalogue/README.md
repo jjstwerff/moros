@@ -288,9 +288,28 @@ would fail the one stage that deliberately runs without a server.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B4.1` | The name table: `kind + name -> label`, unique per kind, generated names (`house-3`) for the unnamed. | loft test: uniqueness per kind, and a generated name is never blank | S |
-| `B4.2` | Rename, with the clash refusal — **ok, reason, offer, residual**. | `"oak-2x3" is taken · offer "oak-2x3-2"`, in words | S |
-| `B4.3` | Renaming does not touch labels. | ⚠ measured **in the store**: placements keep their labels across a rename | S |
+| ✅ `B4.1` | `hex_editor::names` — a **side table** from `(kind, name)` to a label, unique per kind, with generated names for the unnamed. | **DONE.** 11 loft tests, both backends. Two kinds may share a name; a generated one says its kind (`house-3`). | S |
+| ✅ `B4.2` | Rename with the clash refusal. ⚠ **`Fit` could not carry it** — see below. | **DONE.** The sentence is asserted literally: `"oak-2x3" is taken · offer "oak-2x3-2"`. And the offer is checked to be **actually free**. | S |
+| ✅ `B4.3` | Renaming does not touch labels. | **DONE.** Measured *through the table*: the label is asked for again under the NEW name and must be the same number. Control seen red — a rename that renumbers fails it by name. | S |
+
+⚠ **`B4`: `Fit` COULD NOT CARRY A NAME CLASH, and the reason is worth keeping.** `Fit.ft_offer`
+is an **integer** — it was built for *ordinal* parameters, where the offer is the nearest
+admissible value. Its own comment says *nominal* ones (a material, a species) are refused
+**without** an offer, because 255 is not "nearly" 256.
+
+A name is a third case neither arm covers: nominal, so there is no nearest value — and yet it
+**has** a constructible alternative, by appending a suffix until one is free. §C2 asks for
+exactly that. So `NameFit` carries a **text** offer and `Fit` is left alone, rather than
+growing a second offer field that would be meaningless in most of its uses.
+
+⚠ **An offer that is itself taken is not an offer.** `name_free` walks until it finds a name
+nobody holds, and the test takes the offer up to prove it. Handing back a name that fails the
+moment the author accepts it is worse than no offer: it looks like the editor agreed. The
+control is red without the walk — with `oak`, `oak-2` and `oak-3` all held, a naive
+`want + "-2"` offers `oak-2` again.
+
+⚠ **And the search is bounded.** An unbounded scan of a full namespace is a hang, and a hang
+in an editor reads as a crash.
 
 ### B5 — the part catalogue *(needs #17 `A1`–`A2`)*
 

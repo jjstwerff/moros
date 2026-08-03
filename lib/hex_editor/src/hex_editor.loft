@@ -29,6 +29,7 @@ use hex_way;
 use hex_shape;
 use hex_place;
 use hex_grid;
+use names;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the

@@ -1,0 +1,130 @@
+// Names — plan 18 `B4`, CATALOGUE §C2.
+//
+// ⚠ THE WHOLE POINT IS THAT A NAME IS NOT AN IDENTITY. The store's identity is
+// the label; a name is a second, mutable handle over it. If renaming moved a
+// label, every reference in every document would have to be rewritten to fix a
+// typo — so the load-bearing test here is the one that renames and then asks the
+// table for the label again.
+use hex_editor;
+
+// ── B4.1 — the table ─────────────────────────────────────────────
+
+fn test_an_unnamed_thing_still_has_a_name() {
+  t = names_new();
+  n = name_of(t, "house", 3);
+  assert(n != "", "an unnamed thing must not read as blank");
+  assert(n == "house-3", "generated name is '{n}', want 'house-3'");
+}
+
+// ⚠ `house-3`, NOT `Untitled`. A blank invites the author to believe the field
+// is broken, and `Untitled` claims someone declined to name it rather than that
+// nobody has yet.
+fn test_a_generated_name_says_what_it_is() {
+  t = names_new();
+  assert(name_of(t, "material", 7) == "material-7", "a generated name names its kind");
+  assert(name_of(t, "part", 0) == "part-0", "label 0 is a label like any other");
+}
+
+fn test_a_name_is_unique_within_its_kind() {
+  t = names_new();
+  assert(name_set(t, "part", 1, "oak-2x3").nf_ok, "the first claim is free");
+  f = name_set(t, "part", 2, "oak-2x3");
+  assert(!f.nf_ok, "a second part must not take a name already held");
+}
+
+// ⚠ AND ONLY WITHIN ITS KIND. A material called `oak` and a part called `oak`
+// are not in competition; one global namespace would make the catalogue's kinds
+// cosmetic.
+fn test_two_kinds_may_share_a_name() {
+  t = names_new();
+  assert(name_set(t, "part", 1, "oak").nf_ok, "the part takes 'oak'");
+  assert(name_set(t, "material", 1, "oak").nf_ok, "the material may also be 'oak'");
+  assert(label_named(t, "part", "oak") == 1, "the part still resolves");
+  assert(label_named(t, "material", "oak") == 1, "and so does the material");
+}
+
+fn test_naming_a_thing_what_it_is_already_called_is_fine() {
+  t = names_new();
+  name_set(t, "part", 1, "oak");
+  f = name_set(t, "part", 1, "oak");
+  assert(f.nf_ok, "re-asserting a name a label already holds is not a clash");
+}
+
+// ── B4.2 — the refusal, in words ─────────────────────────────────
+
+fn test_a_clash_is_refused_with_a_reason_and_an_offer() {
+  t = names_new();
+  name_set(t, "part", 1, "oak-2x3");
+  f = name_set(t, "part", 2, "oak-2x3");
+  assert(!f.nf_ok, "the clash must be refused");
+  assert(f.nf_reason != "", "a refusal that says only 'no' is half the obligation");
+  assert(f.nf_offer != "", "and the author is owed what they CAN have");
+  // §C2's own sentence.
+  assert(name_refusal(f) == "\"oak-2x3\" is taken · offer \"oak-2x3-2\"",
+         "the sentence reads: {name_refusal(f)}");
+}
+
+// ⚠ AN OFFER THAT IS ITSELF TAKEN IS NOT AN OFFER. Without this the refusal can
+// hand back a name that fails the moment the author accepts it, which is worse
+// than no offer at all — it looks like the editor agreed.
+fn test_the_offer_is_actually_free() {
+  t = names_new();
+  name_set(t, "part", 1, "oak");
+  name_set(t, "part", 2, "oak-2");
+  name_set(t, "part", 3, "oak-3");
+  f = name_set(t, "part", 4, "oak");
+  assert(!f.nf_ok, "still a clash");
+  assert(f.nf_offer == "oak-4", "offered '{f.nf_offer}', want the first free one");
+  assert(!name_taken(t, "part", f.nf_offer), "the offer is taken already");
+  // And it is accepted without a fight.
+  assert(name_set(t, "part", 4, f.nf_offer).nf_ok, "the offer was refused when taken up");
+}
+
+fn test_an_empty_name_is_refused_with_the_generated_one() {
+  t = names_new();
+  f = name_set(t, "part", 5, "");
+  assert(!f.nf_ok, "an empty name is not a name");
+  assert(f.nf_offer == "part-5", "offered '{f.nf_offer}', want the generated name");
+}
+
+// ── B4.3 — a rename does not move a label ────────────────────────
+
+// ⚠ THE LOAD-BEARING ONE. Measured through the table rather than asserted about
+// it: the label is asked for again under the NEW name, and it must be the same
+// number. A rename that renumbered would make every stored reference wrong, and
+// nothing else here would notice.
+fn test_a_rename_does_not_move_the_label() {
+  t = names_new();
+  name_set(t, "part", 42, "oak-2x3");
+  before = label_named(t, "part", "oak-2x3");
+  assert(before == 42, "the label went in as {before}");
+
+  f = name_set(t, "part", 42, "elm-2x3");
+  assert(f.nf_ok, "the rename was refused: {name_refusal(f)}");
+
+  after = label_named(t, "part", "elm-2x3");
+  assert(after == 42, "the label is {after} after a rename, want 42");
+  assert(label_named(t, "part", "oak-2x3") == 0 - 1,
+         "the old name still resolves — a rename left two handles on one label");
+  assert(name_of(t, "part", 42) == "elm-2x3", "the thing did not take its new name");
+}
+
+// And the control: the table really was consulted, not answering from the label.
+fn test_an_unknown_name_resolves_to_nothing() {
+  t = names_new();
+  name_set(t, "part", 42, "oak");
+  assert(label_named(t, "part", "beech") == 0 - 1, "an unclaimed name resolved to a label");
+  assert(label_named(t, "material", "oak") == 0 - 1, "a name leaked across kinds");
+}
+
+fn test_renaming_twice_leaves_one_handle() {
+  t = names_new();
+  name_set(t, "part", 7, "a");
+  name_set(t, "part", 7, "b");
+  name_set(t, "part", 7, "c");
+  assert(label_named(t, "part", "c") == 7, "the last name resolves");
+  assert(label_named(t, "part", "a") == 0 - 1, "'a' survived");
+  assert(label_named(t, "part", "b") == 0 - 1, "'b' survived");
+  // A second label may now take the freed names, which is what "freed" means.
+  assert(name_set(t, "part", 8, "a").nf_ok, "a freed name was not reusable");
+}
