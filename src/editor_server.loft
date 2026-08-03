@@ -3616,7 +3616,36 @@ fn surface_block(name: text) -> text {
 const KIND_MATERIAL = "material";
 const KIND_PART     = "part";
 
-fn catalogue_wire() -> text {
+// A part and why it cannot be used, if it cannot. ⚠ COMPUTED ONCE AT STARTUP,
+// beside the thumbnails and for the same reason: `part_cycle` opens every part a
+// part names, and doing that per connecting tab would pay a library walk for each.
+struct PartAvail { av_name: text, av_why: text }
+
+// ⚠ §P8's CHECK, WHERE THE AUTHOR CAN SEE IT. A part that contains itself is
+// checked *on save* by the design, and there is no save gesture yet (plan 17
+// `A7.3`) — so a library with a cycle in it would sit there being wrong until
+// something tried to expand it, which is `A3.2` and is a HANG. Listing the part
+// **greyed with its reason** is `B6`'s mechanism applied to a fault the author
+// can fix, and it is a consumer for the check rather than a log line nobody reads.
+//
+// ⚠ AND THE REASON IS THE CHAIN, NOT THE VERDICT. A row 212px wide truncates it
+// and the full sentence stays on the entry (plan 18 `B6`); *"h/a → h/b → h/a"* is
+// what tells the author which reference to cut, and *"cycle"* is not.
+fn part_availability() -> vector<PartAvail> {
+  pav_out: vector<PartAvail> = [];
+  for pav_n in hex_part::part_list(parts_root()) {
+    pav_c = hex_part::part_cycle(parts_root(), pav_n);
+    pav_why = "";
+    if pav_c.cc_code == hex_part::CY_CYCLE { pav_why = "contains itself: {pav_c.cc_why}"; }
+    if pav_c.cc_code == hex_part::CY_MISSING { pav_why = "missing part: {pav_c.cc_why}"; }
+    if pav_c.cc_code == hex_part::CY_BROKEN { pav_why = "damaged: {pav_c.cc_why}"; }
+    if pav_why != "" { println("editor: part '{pav_n}' is unusable — {pav_why}"); }
+    pav_out += [PartAvail { av_name: pav_n, av_why: pav_why }];
+  }
+  pav_out
+}
+
+fn catalogue_wire(avail: vector<PartAvail>) -> text {
   out = "N:";
   n = moros_terrain::surface_count();
   for i in 0..n {
@@ -3631,8 +3660,10 @@ fn catalogue_wire() -> text {
   // `data/parts/`, and `part_list` answers with nothing — so the catalogue is
   // simply the materials. An "(no parts yet)" row would be an entry the author
   // could select that is not a thing.
-  for p in hex_part::part_list(parts_root()) {
-    out = out + ";" + KIND_PART + "|" + p + "|1|";
+  for p in avail {
+    pav = "1";
+    if p.av_why != "" { pav = "0"; }
+    out = out + ";" + KIND_PART + "|" + p.av_name + "|" + pav + "|" + p.av_why;
   }
   out
 }
@@ -4682,6 +4713,9 @@ fn main() {
   // The catalogue's thumbnails, meshed once for the same reason the figure is
   // (plan 18 `B5.2`). ⚠ AT STARTUP AND NOT ON CONNECT: a world load and four
   // chunks of geometry per part, paid once, not once per tab.
+  // ⚠ §P8 SWEPT ONCE, AT STARTUP. A cycle is a property of the LIBRARY, so it is
+  // checked over the library rather than per part per connection.
+  part_avail = part_availability();
   part_thumbs = part_thumbs_all();
   println("editor: {len(part_thumbs)} part thumbnails, "
         + "{len(thumbs_wire(part_thumbs))} messages, from {parts_root()}");
@@ -4976,7 +5010,7 @@ fn main() {
         srv.send_to(ev.cid, hud_wire(world_name, cam_mode, levelling, roading, tracing));
         // The catalogue does not change during a session, so it goes out once,
         // in the same place and for the same reason as the subject line.
-        srv.send_to(ev.cid, catalogue_wire());
+        srv.send_to(ev.cid, catalogue_wire(part_avail));
         // ⚠ AND ITS IMAGES AFTER IT, NEVER BEFORE. A `Y:` addresses a catalogue
         // ROW by index, so a thumbnail that overtook `N:` would name a row the
         // client does not have yet — and the client, correctly, drops a picture

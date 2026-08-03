@@ -313,6 +313,31 @@ A house contains door-frames; a door-frame contains a leaf; a porch contains pil
 - **depth is bounded** (start at 8) — not because deeper is wrong, but because an unbounded
   recursion in a renderer is a hang, and a hang in the editor reads as a crash.
 
+✅ **The first is BUILT, `A3.1`** — `part_cycle(root, name)` and `library_cycle(root)` in
+`lib/hex_part/src/inst.loft`. Three things it settled:
+
+- ⚠ **THE TWO RULES ARE NOT ONE RULE, AND THE CYCLE CHECK NEEDS NO BOUND.** Each step either
+  finds a name already on the chain being walked — refused — or descends to one that is not,
+  and the chain only grows, so the walk is bounded by the number of distinct parts on disk.
+  The depth bound is about a **renderer**, which is a different program with a different
+  failure. Writing them as one rule would make this function look like it already had a bound.
+- ⚠ **THE PATH, NOT A VISITED SET, AND A DIAMOND IS WHAT TELLS THEM APART.** A house with two
+  door-frames that both use the same leaf visits that leaf twice and is perfectly legal; a
+  global `seen` set calls the second visit a cycle and refuses exactly the sharing that makes
+  parts worth having. Pinned by a test, so the obvious "make it cheaper" refactor is refused.
+- ⚠ **THREE ANSWERS, NOT TWO.** A dangling reference is not a cycle and a damaged nested part
+  is neither; a mistyped name and a part that contains itself want completely different fixes,
+  and one code for both makes a typo read as a recursion the author cannot find. Same rule as
+  `MR_ABSENT` versus `MR_MALFORMED` in `A1.4`.
+
+⚠ **AND THE CHECK HAS A CONSUMER, WHICH THE DESIGN DID NOT NAME.** *"Checked on save"* assumes
+a save gesture, and there is none yet (`A7.3`) — so a library with a cycle in it would sit there
+being wrong until `A3.2` tried to expand it, which is the hang §P8 exists to prevent. The server
+sweeps the library at startup and lists a faulty part **greyed with its chain** (plan 18 §C3):
+`contains itself: house/loop_a → house/loop_b → house/loop_a`. The refusal names the cycle
+because *"this part contains itself"* is unactionable in a library of two hundred — the author
+needs to know which reference to cut.
+
 ---
 
 ## What this is verified by

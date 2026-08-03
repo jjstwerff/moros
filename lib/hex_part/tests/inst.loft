@@ -1,0 +1,352 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A3.1` — `INST`, and §P8's promise that nesting terminates.
+use hex_part;
+use hex_world;
+
+// ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
+// the interpreter and fails `--native`; `roundtrip.loft` carries the same note.
+fn no_palette() -> vector<integer> { [] }
+
+fn part() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  w
+}
+
+fn two() -> vector<PartInst> {
+  [ PartInst { pi_q: 1, pi_r: 0 - 2, pi_h: 0, pi_facing: 6, pi_part: "door/oak" },
+    PartInst { pi_q: 0, pi_r: 3, pi_h: 12, pi_facing: 18, pi_part: "window/shutter" } ]
+}
+
+fn same(a: PartInst, b: PartInst) -> boolean {
+  a.pi_q == b.pi_q && a.pi_r == b.pi_r && a.pi_h == b.pi_h
+    && a.pi_facing == b.pi_facing && a.pi_part == b.pi_part
+}
+
+fn test_the_tag_constant_is_the_tag_it_names() {
+  assert(TAG_INST == section_tag("INST"),
+         "TAG_INST is {TAG_INST}, not {section_tag(\"INST\")}");
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+
+fn test_instances_survive_a_save_and_a_load() {
+  w = part();
+  assert(part_set_instances(w, two()) == PI_OK, "the write was refused");
+  p = "{temp_dir()}/hexpart_inst_rt.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "the save was refused");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "the load was refused: {back.wl_detail}");
+  got = part_instances(back.wl_world);
+  assert(got.ir_code == MR_OK, "read back {got.ir_code}: {got.ir_why}");
+  assert(len(got.ir_items) == 2, "{len(got.ir_items)} instances came back, not 2");
+  for i in 0..2 {
+    assert(same(got.ir_items[i] ?? PartInst {}, two()[i] ?? PartInst {}),
+           "instance {i} came back different");
+  }
+  delete(p);
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT THE TEST ABOVE PASSES ON A COMPARISON THAT ALWAYS
+// SAYS YES. `same` has five fields and a version that compared four would agree
+// with itself for ever, so every field is perturbed on its own — a comparison that
+// misses one is caught by exactly one of these.
+fn test_a_comparison_that_missed_a_field_would_be_caught() {
+  base = PartInst { pi_q: 1, pi_r: 2, pi_h: 3, pi_facing: 4, pi_part: "a/b" };
+  assert(!same(base, PartInst { pi_q: 9, pi_r: 2, pi_h: 3, pi_facing: 4, pi_part: "a/b" }), "q");
+  assert(!same(base, PartInst { pi_q: 1, pi_r: 9, pi_h: 3, pi_facing: 4, pi_part: "a/b" }), "r");
+  assert(!same(base, PartInst { pi_q: 1, pi_r: 2, pi_h: 9, pi_facing: 4, pi_part: "a/b" }), "h");
+  assert(!same(base, PartInst { pi_q: 1, pi_r: 2, pi_h: 3, pi_facing: 9, pi_part: "a/b" }), "facing");
+  assert(!same(base, PartInst { pi_q: 1, pi_r: 2, pi_h: 3, pi_facing: 4, pi_part: "a/c" }), "part");
+  assert(same(base, PartInst { pi_q: 1, pi_r: 2, pi_h: 3, pi_facing: 4, pi_part: "a/b" }),
+         "and it still says yes to a copy — otherwise it rejects everything");
+}
+
+// ⚠ THE SUBJECT THAT CAN DISAGREE. `A1.4` earned this the hard way: a part called
+// `"door"` agrees with three separate encoding defects. A name with a COMMA in it
+// is the one thing this encoding could plausibly get wrong, since a comma is its
+// field separator — and putting the name LAST is the whole reason it cannot.
+fn test_a_comma_in_a_part_name_survives() {
+  w = part();
+  odd = "house/porte café, 2 boards 中";
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: 0, pi_part: odd }]) == PI_OK, "write");
+  p = "{temp_dir()}/hexpart_inst_comma.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  got = part_instances(back.wl_world);
+  assert(got.ir_code == MR_OK, "read {got.ir_code}: {got.ir_why}");
+  assert((got.ir_items[0] ?? PartInst {}).pi_part == odd,
+         "the name came back '{(got.ir_items[0] ?? PartInst {}).pi_part}'");
+  delete(p);
+}
+
+// A part with no instances is an ordinary part, and a part written before
+// instances existed is one too — so ABSENT is not an error and its list is usable.
+fn test_a_part_with_no_inst_section_reads_as_absent_with_an_empty_list() {
+  got = part_instances(part());
+  assert(got.ir_code == MR_ABSENT, "a bare part read {got.ir_code}");
+  assert(len(got.ir_items) == 0, "and it came with {len(got.ir_items)} instances");
+}
+
+// ⚠ AN EMPTY LIST DROPS THE SECTION. Otherwise *no INST* and *an INST holding
+// nothing* are two spellings of one fact, which is the pair `MR_ABSENT` exists to
+// keep apart — and the section would survive in the file for ever.
+fn test_writing_an_empty_list_removes_the_section() {
+  w = part();
+  assert(part_set_instances(w, two()) == PI_OK, "write two");
+  assert(world_section_at(w, TAG_INST) >= 0, "the section was not written");
+  none: vector<PartInst> = [];
+  assert(part_set_instances(w, none) == PI_OK, "write none");
+  assert(world_section_at(w, TAG_INST) < 0, "the section outlived its last instance");
+  assert(part_instances(w).ir_code == MR_ABSENT, "and it does not read as absent");
+}
+
+// ── Refusals ─────────────────────────────────────────────────────────────────
+
+fn test_a_newline_in_a_name_is_refused_rather_than_stripped() {
+  w = part();
+  bad = [PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: "a\nfacing=9" }];
+  assert(part_set_instances(w, bad) == PI_NEWLINE, "a forged line was accepted");
+  // ⚠ AND NOTHING WAS WRITTEN. Stripping would hand back a different name than the
+  // one given; writing the good records and refusing the bad one would leave the
+  // section half replaced, which is worse than either.
+  assert(world_section_at(w, TAG_INST) < 0, "a refused write left a section behind");
+}
+
+fn test_a_facing_outside_the_headings_is_refused() {
+  w = part();
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: FACINGS, pi_part: "a/b" }]) == PI_FACING,
+         "facing {FACINGS} was accepted");
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: 0 - 1, pi_part: "a/b" }]) == PI_FACING,
+         "facing -1 was accepted");
+  // The control: the two ends of the range that ARE headings.
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: 0, pi_part: "a/b" }]) == PI_OK, "facing 0");
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: FACINGS - 1, pi_part: "a/b" }]) == PI_OK,
+         "facing {FACINGS - 1}");
+}
+
+fn test_an_instance_of_nothing_is_refused() {
+  w = part();
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0,
+                                           pi_facing: 0, pi_part: "" }]) == PI_NONAME,
+         "an instance naming no part was accepted");
+}
+
+// ⚠ THE WHOLE LIST IS CHECKED BEFORE ANY OF IT IS WRITTEN. A good record followed
+// by a bad one must leave the section untouched, not half replaced.
+fn test_one_bad_record_writes_none_of_them() {
+  w = part();
+  assert(part_set_instances(w, two()) == PI_OK, "write two");
+  first = len(part_instances(w).ir_items);
+  mixed = [ PartInst { pi_q: 5, pi_r: 5, pi_h: 5, pi_facing: 5, pi_part: "fine/one" },
+            PartInst { pi_q: 6, pi_r: 6, pi_h: 6, pi_facing: 99, pi_part: "bad/two" } ];
+  assert(part_set_instances(w, mixed) == PI_FACING, "the bad record was accepted");
+  after = part_instances(w);
+  assert(len(after.ir_items) == first, "the section was replaced by a refused write");
+  assert((after.ir_items[0] ?? PartInst {}).pi_part == "door/oak", "and it is the old list");
+}
+
+// ⚠ MALFORMED IS NOT ABSENT. A part damaged in the field must not read like a part
+// that simply has no instances — the symptom of collapsing them is a house that
+// renders without its door and says nothing.
+fn test_a_damaged_section_reads_as_malformed_and_says_which_line() {
+  w = part();
+  set_section_text(w, TAG_INST, "inst=1,2,3,4,ok/one\ninst=1,2,three,4,bad/two");
+  got = part_instances(w);
+  assert(got.ir_code == MR_MALFORMED, "a damaged section read {got.ir_code}");
+  assert(got.ir_why.find("three") != null,
+         "the reason does not name the field that failed: '{got.ir_why}'");
+}
+
+fn test_a_line_that_is_not_an_instance_is_malformed() {
+  w = part();
+  set_section_text(w, TAG_INST, "kind=1\nname=oops");
+  assert(part_instances(w).ir_code == MR_MALFORMED, "a PART payload parsed as instances");
+}
+
+fn test_a_record_short_of_its_numbers_is_malformed() {
+  w = part();
+  set_section_text(w, TAG_INST, "inst=1,2,door/oak");
+  got = part_instances(w);
+  assert(got.ir_code == MR_MALFORMED, "a short record parsed");
+  assert(got.ir_why.find("2 of the 4") != null, "the reason does not count them: '{got.ir_why}'");
+}
+
+fn test_a_record_naming_no_part_is_malformed() {
+  w = part();
+  set_section_text(w, TAG_INST, "inst=1,2,3,4,");
+  assert(part_instances(w).ir_code == MR_MALFORMED, "an instance of nothing parsed");
+}
+
+// ── §P8 — nesting terminates ─────────────────────────────────────────────────
+//
+// ⚠ THE FIXTURE IS BUILT ON DISK, because a cycle is a property of a LIBRARY and
+// not of a world in memory: `part_cycle` has to open the parts a part names.
+
+fn root() -> text { "{temp_dir()}/hexpart_inst_lib" }
+
+fn put(name: text, refs: vector<text>) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  w = part();
+  v: vector<PartInst> = [];
+  for r in refs { v += [PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: r }]; }
+  assert(part_set_instances(w, v) == PI_OK, "write {name}");
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn wipe() {
+  for d in list_dir(root()) ?? [] {
+    for e in list_dir("{root()}/{d}") ?? [] { delete("{root()}/{d}/{e}"); }
+    delete("{root()}/{d}");
+  }
+  delete(root());
+}
+
+fn test_a_part_that_contains_itself_is_refused_with_the_cycle_named() {
+  wipe();
+  none: vector<text> = [];
+  put("h/a", ["h/b"]);
+  put("h/b", ["h/a"]);
+  got = part_cycle(root(), "h/a");
+  assert(got.cc_code == CY_CYCLE, "a → b → a read {got.cc_code}: {got.cc_why}");
+  // ⚠ THE CHAIN, NOT THE VERDICT. *"This part contains itself"* is unactionable in
+  // a library of two hundred: the author needs to know which reference to cut.
+  assert(got.cc_why == "h/a → h/b → h/a", "the cycle is named '{got.cc_why}'");
+  wipe();
+}
+
+fn test_a_part_that_names_itself_is_refused() {
+  wipe();
+  put("h/self", ["h/self"]);
+  got = part_cycle(root(), "h/self");
+  assert(got.cc_code == CY_CYCLE, "a self-reference read {got.cc_code}");
+  assert(got.cc_why == "h/self → h/self", "the cycle is named '{got.cc_why}'");
+  wipe();
+}
+
+// ⚠ THE CONTROL, AND IT IS WHAT MAKES THE REFUSAL MEAN ANYTHING. A checker that
+// refused every nest would pass both tests above perfectly.
+fn test_a_chain_with_no_cycle_is_accepted() {
+  wipe();
+  none: vector<text> = [];
+  put("h/a", ["h/b"]);
+  put("h/b", ["h/c"]);
+  put("h/c", none);
+  got = part_cycle(root(), "h/a");
+  assert(got.cc_code == CY_OK, "a → b → c read {got.cc_code}: {got.cc_why}");
+  wipe();
+}
+
+// ⚠ THE DIAMOND IS WHAT SEPARATES A PATH FROM A VISITED SET, and the naive
+// implementation is the one with a `seen` set: a house with two door-frames that
+// both use the same leaf visits that leaf twice, and a global set calls the second
+// visit a cycle. It is not one — nothing contains itself — and refusing it would
+// reject exactly the sharing that makes parts worth having.
+fn test_two_paths_to_the_same_part_are_not_a_cycle() {
+  wipe();
+  none: vector<text> = [];
+  put("h/top", ["h/left", "h/right"]);
+  put("h/left", ["h/leaf"]);
+  put("h/right", ["h/leaf"]);
+  put("h/leaf", none);
+  got = part_cycle(root(), "h/top");
+  assert(got.cc_code == CY_OK,
+         "a diamond read {got.cc_code}: {got.cc_why} — a visited SET would say this");
+  // ⚠ THIS ONE IS A PIN, NOT A CAUGHT BUG, AND THAT IS WORTH SAYING. The
+  // implementation carries a path and never had a `seen` set, so this test has
+  // never been red. It is here because swapping the path for a set is the obvious
+  // way to make the walk cheaper on a wide library, and the day someone does it
+  // this is what refuses. `test_the_walk_visits_every_sibling` is what stops the
+  // pass above meaning *neither branch was opened*.
+  wipe();
+}
+
+// ⚠ A DANGLING REFERENCE IS NOT A CYCLE. A mistyped name and a part that contains
+// itself want completely different fixes, and one code for both makes a typo read
+// as a recursion the author cannot find.
+fn test_a_reference_to_a_part_that_is_not_there_is_missing_not_a_cycle() {
+  wipe();
+  put("h/a", ["h/ghost"]);
+  got = part_cycle(root(), "h/a");
+  assert(got.cc_code == CY_MISSING, "a dangling reference read {got.cc_code}: {got.cc_why}");
+  assert(got.cc_why.find("h/ghost") != null, "and it does not name it: '{got.cc_why}'");
+  wipe();
+}
+
+// ⚠ AND THIS IS WHAT STOPS *ACCEPTED* MEANING *NOT LOOKED AT*. Every OK above is
+// consistent with a walk that returns at the first part and never opens anything —
+// the shape a checker degrades into the day someone makes it cheap. A missing part
+// TWO links down can only be found by descending, so it is the depth the passes
+// are worth.
+fn test_the_walk_really_descends() {
+  wipe();
+  put("h/a", ["h/b"]);
+  put("h/b", ["h/ghost"]);
+  got = part_cycle(root(), "h/a");
+  assert(got.cc_code == CY_MISSING,
+         "a fault two links down read {got.cc_code} — the walk stopped at the first part");
+  assert(got.cc_why.find("h/ghost") != null, "and it does not name it: '{got.cc_why}'");
+  wipe();
+}
+
+// ⚠ AND EVERY SIBLING, NOT JUST THE FIRST. A loop that returned on its first
+// child's verdict would pass the diamond below perfectly — the second door-frame
+// of a house would simply never be checked.
+fn test_the_walk_visits_every_sibling() {
+  wipe();
+  none: vector<text> = [];
+  put("h/top", ["h/left", "h/right"]);
+  put("h/left", none);
+  put("h/right", ["h/ghost"]);
+  got = part_cycle(root(), "h/top");
+  assert(got.cc_code == CY_MISSING,
+         "a fault under the SECOND child read {got.cc_code} — the loop stopped at the first");
+  wipe();
+}
+
+// A part on the way whose own `INST` is damaged is BROKEN — a third answer again,
+// because the fix is to repair that file rather than to cut a reference.
+fn test_a_part_with_a_damaged_inst_on_the_way_is_broken() {
+  wipe();
+  put("h/a", ["h/bad"]);
+  assert(mkdir_all("{root()}/h").ok(), "mkdir");
+  w = part();
+  set_section_text(w, TAG_INST, "inst=1,2,three,4,x/y");
+  assert(world_save(w, "{root()}/h/bad.hxw", no_palette()) == WS_OK, "save bad");
+  got = part_cycle(root(), "h/a");
+  assert(got.cc_code == CY_BROKEN, "a damaged nest read {got.cc_code}: {got.cc_why}");
+  assert(got.cc_why.find("h/bad") != null, "and it does not name it: '{got.cc_why}'");
+  wipe();
+}
+
+// The library sweep the server runs at startup: the first fault, with the part it
+// started from in front of it.
+fn test_a_library_sweep_finds_a_cycle_anywhere_in_it() {
+  wipe();
+  none: vector<text> = [];
+  put("h/clean", none);
+  put("h/x", ["h/y"]);
+  put("h/y", ["h/x"]);
+  got = library_cycle(root());
+  assert(got.cc_code == CY_CYCLE, "the sweep read {got.cc_code}: {got.cc_why}");
+  assert(got.cc_why.find("→") != null, "the sweep does not carry the chain: '{got.cc_why}'");
+  wipe();
+}
+
+fn test_a_clean_library_sweeps_clean() {
+  wipe();
+  none: vector<text> = [];
+  put("h/a", ["h/b"]);
+  put("h/b", none);
+  got = library_cycle(root());
+  assert(got.cc_code == CY_OK, "a clean library read {got.cc_code}: {got.cc_why}");
+  wipe();
+}

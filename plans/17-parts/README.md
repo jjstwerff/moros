@@ -336,11 +336,54 @@ writer.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | round-trip, and a cycle refused with the cycle named (§P8) | S |
+| ✅ `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | **DONE.** `lib/hex_part/src/inst.loft`, 73 tests in the package, both backends. The reference is by catalogue handle and the NAME COMES LAST, so a comma in it needs no escaping. ⚠ **The cycle check needs no depth bound, and a diamond is not a cycle** — see below. | S |
 | `A3.2` | `expand(instance)` — derive cells into a layer under `world_fresh_label`. | ⚠ **one instance owns one label (`I1`)**, measured in the store | M |
 | `A3.3` | `bake(instance)` — flatten to plain cells. | **`expand == bake`**, cell for cell. The strongest test here: the two paths share nothing but the part. | S |
 | `A3.4` | Depth bound (8) and the cycle check on save. | a 9-deep nest is refused, ⚠ and the control: an 8-deep one is accepted — otherwise the bound is untested | S |
 | `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |
+
+### What `A3.1` turned up
+
+⚠ **THE NAME COMES LAST, AND THAT IS THE WHOLE ENCODING DECISION.** An instance is one line —
+`inst=<q>,<r>,<h>,<facing>,<part>` — and a part is addressed by its catalogue handle, which is a
+FILE PATH, and a file name may contain a comma. With the name in front or in the middle,
+`a,b/door` parses as two fields and the part is silently renamed; every escaping scheme that
+fixes that is a second thing to get right in both directions. Putting it last means four splits
+and then *the rest of the line*. It is `meta.loft`'s *split at the FIRST `=`* discipline applied
+four times, and the test subject is `"house/porte café, 2 boards 中"` — because `A1.4` earned
+the rule that an ASCII subject with no separator in it agrees with every encoding bug there is.
+
+⚠ **THE TWO §P8 RULES ARE NOT ONE RULE.** *A part may not contain itself* and *depth is bounded
+at 8* read as one sentence and are two programs. The cycle check needs **no bound at all**: each
+step either finds a name already on the chain being walked, or descends to one that is not, and
+the chain only grows — so it is bounded by the number of parts on disk. The depth bound is about
+a RENDERER, where unbounded recursion is a hang. `A3.4` still has its work; what it does not have
+is a bound this step already put in. Writing them together would have made this function look
+like it had one.
+
+⚠ **THE PATH, NOT A VISITED SET, AND THE DIAMOND IS THE DISCRIMINATOR.** A house with two
+door-frames that both use the same leaf visits that leaf twice and is legal; a global `seen` set
+calls the second visit a cycle and rejects exactly the sharing parts exist for. ⚠ **That test has
+never been red and says so in its own comment** — the implementation never had a `seen` set. It is
+a pin against the obvious "make it cheaper on a wide library" refactor, and it is not evidence
+the walk works. What supplies that is the pair beside it: a fault **two links down**, and a fault
+under the **second** sibling. Both were seen red — walking one level deep takes four tests with
+it, and stopping after the first child takes one.
+
+⚠ **THREE ANSWERS, NOT TWO.** `CY_CYCLE`, `CY_MISSING`, `CY_BROKEN`. A mistyped name and a part
+that contains itself want completely different fixes, and one code for both makes a typo read as
+a recursion the author cannot find — `A1.4`'s `MR_ABSENT` versus `MR_MALFORMED`, one arc over.
+
+⚠ **AND §P8's *"checked on save"* HAS NOTHING TO HANG ON YET.** There is no save gesture (`A7.3`),
+so the check would have been a function with no caller — this tree's own trap, and it has been
+live twice this month. The server sweeps the library at startup instead and lists a faulty part
+**greyed with its chain**, which is plan 18 `B6`'s mechanism doing exactly what it was built for:
+`part|house/loop_a|0|contains itself: house/loop_a → house/loop_b → house/loop_a` on the wire.
+
+⚠ **AND `INST` CARRIES NO IDENTITY FIELD, WHICH WAS TEMPTING.** §P4 says an instance's cells
+become a layer under the instance's own label, so minting that label here would make the record
+look complete. `A3.2` is what derives the layer; a label written by nobody is a field a reader
+would trust and a writer would forget — permanent, because this is a file format.
 
 ### A4 — sockets
 

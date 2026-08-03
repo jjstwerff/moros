@@ -1,0 +1,247 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `INST` — the parts a part is made of.
+//
+// Plan 17 `A3.1`, over the section mechanism `A1.3` put in the store and beside
+// the `PART`/`ANCH` content `A1.4` put here. §P4: **the world stores part id ·
+// cell · heading · socket bindings, and that record is the authority**; the cells
+// are derived from it. This file owns the record. Deriving is `A3.2`.
+//
+// ⚠ `PART` AND `ANCH` ARE ONE THING EACH, AND `INST` IS A LIST. A house contains
+// several door-frames; a porch contains four pillars. That is the whole reason the
+// payload needs a record separator where the other two did not, and it is what
+// decided the encoding below.
+use hex_world;
+use codec;
+use meta;
+use catalogue;
+
+// ⚠ A LITERAL, held equal to `section_tag(…)` by a test — the same call `meta.loft`
+// makes and for the reason its comment gives: a file-scope constant is an inlined
+// expression re-evaluated at every reference, so a derived tag would re-run the
+// packing loop at each use.
+pub const TAG_INST = 1414745673;    // 'INST', low byte first
+
+// One placement: where it stands, which way it faces, and what it is.
+//
+// ⚠ NO IDENTITY FIELD, ON PURPOSE. §P4 says an instance's cells become a layer
+// carrying **the instance's own label**, and it is tempting to mint that here so
+// the record is "complete". `A3.2` is what derives the layer, and a label written
+// by nobody is a field a reader will trust and a writer will forget to keep —
+// this tree's own *built and not called* trap, in a file format where it would be
+// permanent. Until something derives, the instance's identity is its position in
+// the list.
+pub struct PartInst {
+  pi_q:      integer,
+  pi_r:      integer,
+  pi_h:      integer,
+  pi_facing: integer,      // an index into the 24 headings, never an angle
+  pi_part:   text,         // the part this refers to, by catalogue handle
+}
+
+pub const PI_OK      = 0;
+pub const PI_NEWLINE = 1;   // a newline in a part name
+pub const PI_FACING  = 2;   // not one of the 24 headings
+pub const PI_NONAME  = 3;   // an instance of nothing
+
+// ── The encoding, and why the NAME COMES LAST ────────────────────────────────
+//
+// One `key=value` line per instance, keeping `A1.4`'s argument — it reads in a hex
+// dump, which is the same argument the four-character tag is made of:
+//
+//     inst=1,-2,0,6,house/door
+//
+// ⚠ THE NAME IS THE TAIL, AND THAT IS WHAT MAKES IT NEED NO ESCAPING. A part is
+// addressed by its catalogue handle (`house/cottage`, plan 18 §C2), which is a
+// FILE PATH — and a file name may contain a comma. With the name in front, or in
+// the middle, `a,b/door` would parse as two fields and the part would be silently
+// renamed; every escaping scheme that fixes that is a second thing to get right in
+// both directions. Putting it last means four splits and then *the rest of the
+// line*, so a comma in a name is not a special case at all. It is the same "split
+// at the FIRST" discipline `meta.loft`'s `field()` already uses, applied four
+// times.
+//
+// A NEWLINE would still forge a record, so it is refused rather than stripped —
+// `PART` refuses it in a name for the identical reason, and stripping hands back a
+// different name than the one given.
+//
+// ⚠ AND THE REFERENCE IS BY NAME, WHICH IS A HANDLE AND NOT AN IDENTITY (§C2).
+// There is no part id space in this tree: a part is a file, and `14:` and the
+// catalogue both address one by `family/name`. So a renamed part breaks the
+// documents that refer to it, exactly as a renamed file breaks a link — worth
+// knowing, and cheaper than inventing an id space nothing else speaks.
+fn inst_line(i: PartInst) -> text {
+  "inst={i.pi_q},{i.pi_r},{i.pi_h},{i.pi_facing},{i.pi_part}"
+}
+
+// Write the list. ⚠ EVERY INSTANCE IS CHECKED BEFORE ANY IS WRITTEN, so a list
+// with one bad record leaves the section as it was rather than half replaced —
+// the pre-flight rule `part_place` follows for the same reason.
+pub fn part_set_instances(w: &World, v: vector<PartInst>) -> integer {
+  for c in v {
+    if c.pi_part == "" { return PI_NONAME; }
+    if c.pi_part.find("\n") != null { return PI_NEWLINE; }
+    if c.pi_facing < 0 || c.pi_facing >= FACINGS { return PI_FACING; }
+  }
+  // ⚠ AN EMPTY LIST DROPS THE SECTION rather than writing an empty one. A part
+  // that had instances and lost them would otherwise keep a section saying
+  // nothing, and *the part has no INST* and *the part has an INST holding
+  // nothing* would be two spellings of one fact — which is exactly the pair
+  // `MR_ABSENT` versus `MR_OK` exists to keep apart.
+  if len(v) == 0 { world_drop_section(w, TAG_INST); return PI_OK; }
+  body = "";
+  for c2 in v {
+    if body != "" { body = body + "\n"; }
+    body = body + inst_line(c2);
+  }
+  set_section_text(w, TAG_INST, body);
+  PI_OK
+}
+
+// ⚠ `ir_items` IS USABLE ON `MR_ABSENT` AS WELL AS `MR_OK` — it is empty — and
+// only `MR_MALFORMED` means *do not trust this*. A part written before instances
+// existed has no section and is fine; a part whose `INST` says `facing=north` is
+// damaged, and one code for both makes the damaged one look ordinary. That is
+// `A1.4`'s rule, and the reason the codes are shared with `meta.loft` rather than
+// invented again here.
+pub struct InstRead { ir_code: integer, ir_items: vector<PartInst>, ir_why: text }
+
+// The n-th comma-separated field, and the REST after the fourth. Written out
+// rather than reached for a splitter, because *the rest of the line* is the whole
+// point of the encoding and a general split would hand back a name cut at its
+// first comma.
+fn parse_inst(line: text) -> InstRead {
+  none: vector<PartInst> = [];
+  eq = line.find("=");
+  if eq == null || line[0..eq] != "inst" {
+    return InstRead { ir_code: MR_MALFORMED, ir_items: none,
+                      ir_why: "a line that is not an inst=: '{line}'" };
+  }
+  rest = line[(eq + 1)..];
+  nums: vector<integer> = [];
+  for f in 0..4 {
+    c = rest.find(",");
+    if c == null {
+      return InstRead { ir_code: MR_MALFORMED, ir_items: none,
+                        ir_why: "'{line}' has {f} of the 4 numbers an instance needs" };
+    }
+    n = rest[0..c] as i32?;
+    if n == null {
+      return InstRead { ir_code: MR_MALFORMED, ir_items: none,
+                        ir_why: "'{rest[0..c]}' in '{line}' is not a number" };
+    }
+    nums += [n ?? 0];
+    rest = rest[(c + 1)..];
+  }
+  if rest == "" {
+    return InstRead { ir_code: MR_MALFORMED, ir_items: none,
+                      ir_why: "'{line}' names no part" };
+  }
+  fc = nums[3] ?? 0;
+  if fc < 0 || fc >= FACINGS {
+    return InstRead { ir_code: MR_MALFORMED, ir_items: none,
+                      ir_why: "facing {fc} in '{line}' is not one of the {FACINGS} headings" };
+  }
+  InstRead { ir_code: MR_OK, ir_why: "",
+             ir_items: [PartInst { pi_q: nums[0] ?? 0, pi_r: nums[1] ?? 0,
+                                   pi_h: nums[2] ?? 0, pi_facing: fc, pi_part: rest }] }
+}
+
+pub fn part_instances(w: World) -> InstRead {
+  none: vector<PartInst> = [];
+  if world_section_at(w, TAG_INST) < 0 {
+    return InstRead { ir_code: MR_ABSENT, ir_items: none, ir_why: "no INST section" };
+  }
+  out: vector<PartInst> = [];
+  for line in section_text(w, TAG_INST).split('\n') {
+    if line == "" { continue; }
+    one = parse_inst(line);
+    // ⚠ ONE BAD LINE MAKES THE WHOLE SECTION MALFORMED, and the alternative is
+    // worse than it looks: skipping it would hand back a list that is missing a
+    // door with nothing to say so, and a house that renders without its door is
+    // not obviously a house that failed to load.
+    if one.ir_code != MR_OK { return one; }
+    for o in one.ir_items { out += [o]; }
+  }
+  InstRead { ir_code: MR_OK, ir_items: out, ir_why: "" }
+}
+
+// ── §P8 — a part may not contain itself, transitively ────────────────────────
+
+pub const CY_OK      = 0;
+pub const CY_CYCLE   = 1;   // the part contains itself, by the path reported
+pub const CY_MISSING = 2;   // it refers to a part that is not on disk
+pub const CY_BROKEN  = 3;   // a part on the way does not load, or its INST is damaged
+
+// ⚠ THREE ANSWERS, NOT TWO, and the same rule as `MR_ABSENT` versus
+// `MR_MALFORMED`. A dangling reference is a real fault and is **not** a cycle: a
+// mistyped name and a part that contains itself want completely different fixes,
+// and one code for both makes a typo read as a recursion the author cannot find.
+pub struct CycleCheck { cc_code: integer, cc_why: text }
+
+fn part_file(root: text, name: text) -> text { "{root}/{name}.hxw" }
+
+// ⚠ THE PATH, NOT A VISITED SET, and a diamond is what tells them apart. A house
+// with two door-frames that both use the same leaf visits that leaf twice and is
+// perfectly legal; a global "seen" set calls the second visit a cycle and refuses
+// a document that is fine. What makes a cycle is a part appearing on the chain
+// **currently being walked**, so that is what is carried.
+//
+// ⚠ AND IT TERMINATES WITHOUT A DEPTH BOUND. Each step either finds a name
+// already on the path — refused — or descends to one that is not, and the path
+// only grows, so the walk is bounded by the number of distinct parts on disk.
+// **The depth bound is a different rule** (§P8's second, `A3.4`): that one is
+// about a RENDERER, where unbounded recursion is a hang and a hang reads as a
+// crash. Conflating them would make this function look like it already had one.
+fn walk(root: text, name: text, path: vector<text>) -> CycleCheck {
+  for p in path {
+    if p == name {
+      trail = "";
+      for t in path { trail = trail + t + " → "; }
+      return CycleCheck { cc_code: CY_CYCLE, cc_why: "{trail}{name}" };
+    }
+  }
+  // ⚠ `path` and `file` are both taken — `file(…)` is the stdlib's handle
+  // constructor and loft refuses to shadow it with a variable.
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return CycleCheck { cc_code: CY_MISSING, cc_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return CycleCheck { cc_code: CY_BROKEN,
+                        cc_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  got = part_instances(ld.wl_world);
+  if got.ir_code == MR_MALFORMED {
+    return CycleCheck { cc_code: CY_BROKEN, cc_why: "'{name}': {got.ir_why}" };
+  }
+  here = path;
+  here += [name];
+  for c in got.ir_items {
+    down = walk(root, c.pi_part, here);
+    if down.cc_code != CY_OK { return down; }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}
+
+// Does this part contain itself? ⚠ THE REFUSAL NAMES THE CYCLE (§P8), because
+// *"this part contains itself"* is unactionable in a library of two hundred: the
+// author needs the chain to know which reference to cut.
+pub fn part_cycle(root: text, name: text) -> CycleCheck {
+  empty: vector<text> = [];
+  walk(root, name, empty)
+}
+
+// Every part in a library, checked. ⚠ THE FIRST FAULT IS RETURNED rather than a
+// count, and the name of the part it started from is in it — a caller told *three
+// parts are broken* has to go and find them.
+pub fn library_cycle(root: text) -> CycleCheck {
+  for n in part_list(root) {
+    got = part_cycle(root, n);
+    if got.cc_code != CY_OK {
+      return CycleCheck { cc_code: got.cc_code, cc_why: "{n}: {got.cc_why}" };
+    }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}
