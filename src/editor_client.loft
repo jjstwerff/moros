@@ -271,6 +271,7 @@ struct Client {
   // point is that this is what the server SAYS, so the client keeps the string
   // verbatim and has no way to phrase one of its own.
   hud: text,
+  mats: text,
   hud_dirty: boolean,
   parts: vector<Part>,
   prog: integer,
@@ -786,6 +787,13 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         else { st.c_place = st.c_place + 1; place_mesh(st, body); }
       }
       else if tag == "X" { st.c_drop = st.c_drop + 1; drop_part(st, body as integer ?? -1); }
+      else if tag == "N" {
+        // `N:<name>,<name>,…` — the material catalogue (plan 18 B3.2), derived by
+        // the server from the mesher's own surface list. Kept as the server sent
+        // it, for §C1's reason: a list the client composed would be a list of
+        // what it believes the renderer can draw.
+        if body != st.mats { st.mats = body; st.hud_dirty = true; }
+      }
       else if tag == "H" {
         // `H:<line>` — the subject line, plan 18 B2. Stored verbatim and marked
         // for a rebuild; the panel is NOT rebuilt here, because `drain` runs
@@ -1101,8 +1109,8 @@ fn client_panel_spec(st: Client) -> PanelSpec {
       spec_button("Cart",    "c"),
     ],
     ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
-    ps_items: [],                    // B3 fills it from the material catalogue
-    ps_selected_item: -1,
+    ps_items: split_csv(st.mats),
+    ps_selected_item: -1,          // the SERVER owns this too
     ps_status: "moros editor — connected",
     ps_subject: subject_line(st.hud),
   }
@@ -1149,6 +1157,22 @@ fn metrics_drift(font: integer, m: Metrics, worst_s: &text) -> integer {
 // frame or two at most — and it says the fields are unknown rather than guessing
 // them, because a plausible `AUTO · level ON` read off a client default looks
 // exactly like the same words read off the server.
+// `N:`'s payload, as a list. Empty until the server speaks — the same rule the
+// subject line follows, and for the same reason.
+fn split_csv(s: text) -> vector<text> {
+  out: vector<text> = [];
+  if s == "" { return out; }
+  start = 0;
+  for i in 0..s.size() {
+    if s[i..i + 1] == "," {
+      out += [s[start..i]];
+      start = i + 1;
+    }
+  }
+  out += [s[start..s.size()]];
+  out
+}
+
 fn subject_line(hud: text) -> text {
   if hud != "" { return hud; }
   "world — · mode — · toggles — (awaiting the server)"
@@ -1184,6 +1208,7 @@ fn main() {
 
   st = Client {
     hud: "",
+    mats: "",
     hud_dirty: false,
     parts: [],
     prog: 0,

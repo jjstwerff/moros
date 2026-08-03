@@ -1,0 +1,86 @@
+// The surface set — plan 18 `B3.1`.
+//
+// ⚠ THE COUNT IS THE LIST, and that is the claim. `editor_server.loft` carried
+// `const SURFACES = 9` by hand, and its own comment records the number going
+// 4 → 5 → 7 → 9 with nine gate files holding a copy beside a "keep this equal
+// to" note. A catalogue derived from the list cannot disagree with it; a
+// catalogue written beside it is the tenth copy waiting to drift.
+use moros_terrain;
+
+fn test_the_stride_is_the_list_length() {
+  assert(surface_count() == len(surfaces()),
+         "the stride is {surface_count()} and the list holds {len(surfaces())}");
+  // The number the wire is currently built on. ⚠ If a surface is added this
+  // fails, and it SHOULD: the id space renumbers and every decoder moves.
+  assert(surface_count() == 9, "surfaces: {surface_count()}, want 9");
+}
+
+fn test_every_surface_is_named_once() {
+  ss = surfaces();
+  for i in 0..len(ss) {
+    a = surface_at(i);
+    assert(a.sf_name != "", "surface {i} has no name");
+    for j in 0..len(ss) {
+      if i == j { continue; }
+      assert(a.sf_name != surface_at(j).sf_name,
+             "surfaces {i} and {j} are both called '{a.sf_name}'");
+    }
+  }
+}
+
+fn test_no_surface_is_black() {
+  // A surface with no colour is one the eye cannot find and the classifier
+  // buckets as `black` — which every gate reads as "nothing drew".
+  for i in 0..len(surfaces()) {
+    s = surface_at(i);
+    assert(s.sf_r + s.sf_g + s.sf_b > 0.06,
+           "'{s.sf_name}' is too dark to classify: {s.sf_r},{s.sf_g},{s.sf_b}");
+  }
+}
+
+// ⚠ THE ONE THAT WOULD HAVE CAUGHT THE FLOOR. Two surfaces must be separable in
+// CHROMATICITY — which is what the picture gates classify on — or must say they
+// are alike by sharing a bucket. The floor used to sit 0.0003 from the wall
+// against a 0.0009 tolerance, so an interior frame reported ONE bucket of 77%
+// that was a wall AND the floor it stands on, and no threshold over it could
+// mean what it said.
+//
+// It is stated over the RENDERER's colours, not over the classifier's table,
+// because that is where the fix has to live: separating them in a classifier
+// leaves the picture just as ambiguous to a person looking at it.
+fn test_surfaces_are_separable_or_declared_alike() {
+  ss = classified();
+  for i in 0..len(ss) {
+    for j in 0..len(ss) {
+      if j <= i { continue; }
+      a = ss[i] ?? surface_at(0);
+      b = ss[j] ?? surface_at(0);
+      gap = chroma_gap(a, b);
+      if a.sf_bucket == b.sf_bucket { continue; }        // declared alike, on purpose
+      assert(gap > 0.0009,
+             "'{a.sf_name}' and '{b.sf_name}' are {gap} apart in chromaticity — "
+             + "under 0.0009 they classify as one surface. Separate them in the "
+             + "RENDERER, or give them one bucket and mean it.");
+    }
+  }
+}
+
+// And the control: the pair that IS declared alike must genuinely be too close
+// to tell apart, or the exemption is hiding a real distinction.
+fn test_the_declared_pair_really_is_indistinguishable() {
+  ss = classified();
+  pairs = 0;
+  for i in 0..len(ss) {
+    for j in 0..len(ss) {
+      if j <= i { continue; }
+      a = ss[i] ?? surface_at(0);
+      b = ss[j] ?? surface_at(0);
+      if a.sf_bucket != b.sf_bucket { continue; }
+      pairs += 1;
+      assert(chroma_gap(a, b) <= 0.0009,
+             "'{a.sf_name}' and '{b.sf_name}' share a bucket but are {chroma_gap(a, b)} "
+             + "apart — they are distinguishable, so the bucket is throwing that away");
+    }
+  }
+  assert(pairs > 0, "no bucket is shared — this control measured nothing");
+}

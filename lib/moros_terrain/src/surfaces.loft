@@ -1,0 +1,102 @@
+// THE SURFACES THE MESHER CAN EMIT — one list, and everything else derived.
+//
+// Plan 18 `B3.1`. CATALOGUE §C3 asks that the material catalogue be *derived
+// from the mesher, not a second list*, and this is where that starts: the names,
+// the colours and the count all come from `surfaces()`.
+//
+// ⚠ IT IS NOT A HYPOTHETICAL DRIFT. `editor_server.loft`'s own comment records
+// the stride going 4 → 5 → 7 → 9 as surfaces were added, and says nine gate
+// files carry the number beside a "keep this equal to" note. A catalogue kept
+// beside that would be the tenth copy.
+//
+// ⚠ THE ORDER IS THE ID-SPACE ORDER. A chunk's meshes sit on consecutive ids at
+// `chunk * SURFACES + MESH_FIGURE_MAX + (index + 1)`, so re-ordering this list
+// renumbers every mesh on the wire. Add at the END.
+
+pub struct Surface {
+  sf_name:  text,        // author-facing, and what the catalogue lists
+  sf_r:     float,
+  sf_g:     float,
+  sf_b:     float,
+  // Surfaces that read as ONE thing in a picture share a bucket name. Two pale
+  // warm greys are not a classifier failure, they are a fact about the palette —
+  // see `test_surfaces_are_separable_or_declared_alike`.
+  sf_bucket: text,
+}
+
+pub fn surfaces() -> vector<Surface> {
+  [
+    Surface { sf_name: "grass",  sf_r: 0.42, sf_g: 0.50, sf_b: 0.30, sf_bucket: "grass" },
+    // ⚠ A DIRT ROAD, AND THE COLOUR IS A MEASUREMENT NOT A TASTE. It was
+    // `0.28,0.26,0.24` — a neutral dark grey — which sits **0.00009** from the
+    // wall in chromaticity, an order of magnitude INSIDE the 0.0009 the picture
+    // gates classify with. Both were neutral, and chromaticity divides brightness
+    // out, so nothing could tell a road from a wall.
+    //
+    // A neutral can never separate from another neutral, so it had to gain a
+    // tint. Cool collides with the SKY and plain brown collides with the FIGURE's
+    // skin (0.00014 away), which is what pushed it to a red earth — and an earth
+    // track is what these roads are: `freeze_grade` CUTS one into a hill rather
+    // than painting a stripe on it. Nearest neighbour is now the floor at 0.0032.
+    Surface { sf_name: "road",   sf_r: 0.30, sf_g: 0.18, sf_b: 0.15, sf_bucket: "road" },
+    Surface { sf_name: "field",  sf_r: 0.55, sf_g: 0.62, sf_b: 0.24, sf_bucket: "field" },
+    Surface { sf_name: "tree",   sf_r: 0.16, sf_g: 0.34, sf_b: 0.14, sf_bucket: "tree" },
+    Surface { sf_name: "roof",   sf_r: 0.45, sf_g: 0.20, sf_b: 0.17, sf_bucket: "roof" },
+    // ⚠ wall and frame are ONE bucket on purpose: a frame is a jamb and a soffit,
+    // and it reads as a wall with its reveals in the picture as well as in the
+    // histogram. Pretending them apart is what a classifier cannot do honestly.
+    Surface { sf_name: "wall",   sf_r: 0.55, sf_g: 0.52, sf_b: 0.46, sf_bucket: "masonry" },
+    // ⚠ THE FLOOR IS TIMBER, AND THAT IS LOAD-BEARING. It used to be
+    // `0.62,0.57,0.48` — 0.0003 from the wall in chromaticity against a 0.0009
+    // tolerance — so an interior frame reported ONE bucket of 77% that was a wall
+    // AND the floor it stands on, and no threshold over it could mean what it
+    // said. It was separated in the RENDERER rather than in the classifier, which
+    // is why the fix survives.
+    Surface { sf_name: "floor",  sf_r: 0.65, sf_g: 0.40, sf_b: 0.25, sf_bucket: "floor" },
+    Surface { sf_name: "frame",  sf_r: 0.78, sf_g: 0.74, sf_b: 0.65, sf_bucket: "masonry" },
+    Surface { sf_name: "soffit", sf_r: 0.34, sf_g: 0.30, sf_b: 0.36, sf_bucket: "soffit" },
+  ]
+}
+
+// The id-space stride. ⚠ DERIVED, so it cannot drift from the list it counts —
+// which is the whole of `B3.1`. It was a hand-kept `const SURFACES = 9`.
+pub fn surface_count() -> integer { len(surfaces()) }
+
+// ⚠ WHAT THE PICTURE GATES CLASSIFY, WHICH IS MORE THAN THE MESHER EMITS. The
+// character and the clear colour are in every frame and in every histogram, so a
+// new surface has to be separable from THEM too — and "brown" is exactly where a
+// road wanted to go and the figure already was. Kept apart from `surfaces()`
+// because the stride counts MESHES, and these are not meshes.
+pub fn classified() -> vector<Surface> {
+  out = surfaces();
+  out += [Surface { sf_name: "figure", sf_r: 0.80, sf_g: 0.60, sf_b: 0.45, sf_bucket: "figure" }];
+  out += [Surface { sf_name: "sky",    sf_r: 0.48, sf_g: 0.55, sf_b: 0.64, sf_bucket: "sky" }];
+  out
+}
+
+pub fn surface_at(i: integer) -> Surface {
+  surfaces()[i] ?? Surface { sf_name: "?", sf_r: 0.0, sf_g: 0.0, sf_b: 0.0, sf_bucket: "?" }
+}
+
+// Chromaticity — the colour with the brightness divided out, which is what the
+// picture gates classify on so a lit surface and a shadowed one land together.
+pub struct Chroma { ch_r: float, ch_g: float, ch_b: float }
+
+pub fn surface_chroma(s: Surface) -> Chroma {
+  t = s.sf_r + s.sf_g + s.sf_b;
+  if t <= 0.0 { return Chroma { ch_r: 0.0, ch_g: 0.0, ch_b: 0.0 }; }
+  cr = (s.sf_r / t) ?? 0.0;
+  cg = (s.sf_g / t) ?? 0.0;
+  cb = (s.sf_b / t) ?? 0.0;
+  Chroma { ch_r: cr, ch_g: cg, ch_b: cb }
+}
+
+// The squared distance the picture gates compare against their 0.0009 tolerance.
+pub fn chroma_gap(a: Surface, b: Surface) -> float {
+  ca = surface_chroma(a);
+  cb = surface_chroma(b);
+  dr = ca.ch_r - cb.ch_r;
+  dg = ca.ch_g - cb.ch_g;
+  db = ca.ch_b - cb.ch_b;
+  dr * dr + dg * dg + db * db
+}

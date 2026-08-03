@@ -140,12 +140,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The palette the server sends, from `editor_server.loft`. ⚠ Keep in step with it —
 // a classifier holding last month's colours reports a frame nobody is looking at.
+// ⚠ A COPY OF `moros_terrain::surfaces()`, AND THE THIRD ONE. The renderer's
+// colours live there; this table is what the gates classify with, and it has to
+// agree or a gate reads one surface as another. Cross-language, so nothing
+// checks it — the same shape moros#3 closed for the hex lattice with a shared
+// fixture, and the same fix is available here when it next bites.
 const PALETTE = {
   figure: [0.80, 0.60, 0.45],   // the SUBJECT — the row every gate here asks about
   grass:  [0.42, 0.50, 0.30],
   rock:   [0.46, 0.38, 0.26],
   field:  [0.55, 0.62, 0.24],
-  road:   [0.28, 0.26, 0.24],
+  road:   [0.30, 0.18, 0.15],   // ⚠ see moros_terrain::surfaces() — a RED EARTH now
   tree:   [0.16, 0.34, 0.14],
   roof:   [0.45, 0.20, 0.17],
   soffit: [0.34, 0.30, 0.36],   // the roof's UNDERSIDE — its own surface, its own row

@@ -33,12 +33,14 @@ function open() {
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
   const huds = [];
   const all = [];
+  const mats = [];
   ws.addEventListener('message', (ev) => {
     const s = String(ev.data);
     all.push(s);
     if (s.startsWith('H:')) huds.push(s);
+    if (s.startsWith('N:')) mats.push(s);
   });
-  return { ws, huds, all, ready: new Promise((r) => ws.addEventListener('open', r)) };
+  return { ws, huds, mats, all, ready: new Promise((r) => ws.addEventListener('open', r)) };
 }
 
 const a = open();
@@ -53,6 +55,18 @@ check(a.huds.length >= 1, `an arriving client is told the line (${a.huds.length}
 const first = a.huds[0] ?? '';
 check(first.includes('world '), `the line names the world: ${JSON.stringify(first)}`);
 check(/level (ON|off)/.test(first), 'the line carries the level toggle');
+
+// ── B3.2 — the catalogue, derived from the mesher ────────────────────────────
+// ⚠ THE COUNT IS THE CLAIM (§C3). The list is what `moros_terrain::surfaces()`
+// says it is, so it cannot name a material the renderer cannot draw or miss one
+// it can. `SURFACES` — the mesh-id stride — is that same length, and its own
+// comment records it drifting 4 → 5 → 7 → 9 with nine files holding a copy.
+check(a.mats.length === 1, `the catalogue is sent once on connect (${a.mats.length})`);
+const names = (a.mats[0] ?? 'N:').slice(2).split(',').filter(Boolean);
+check(names.length === 9, `nine materials, the mesher's own surfaces (${names.length}: ${names})`);
+for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit']) {
+  check(names.includes(want), `the catalogue lists '${want}'`);
+}
 
 // ── B2.1 — an accepted toggle moves it ───────────────────────────────────────
 const before = a.huds.length;

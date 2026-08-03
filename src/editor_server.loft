@@ -134,9 +134,19 @@ const FIELD_R = 0.55;
 const FIELD_G = 0.62;
 const FIELD_B = 0.24;
 
-const ROAD_R = 0.28;
-const ROAD_G = 0.26;
-const ROAD_B = 0.24;
+// ⚠ `moros_terrain::surfaces()` IS THE AUTHORITY (plan 18 B3.1) and these are a
+// copy of index 1. They cannot be read from it directly: `const X =
+// some_fn()` makes loft abort with a non-unwinding panic rather than a
+// diagnostic — filed upstream — so the parity is held by
+// `moros_terrain/tests/surfaces.loft` instead of by the compiler.
+//
+// ⚠ THE ROAD IS A RED EARTH, and that is a measurement. It was `0.28,0.26,0.24`,
+// a neutral dark grey sitting **0.00009** from the wall in chromaticity — an
+// order of magnitude inside the 0.0009 the picture gates classify with. Nothing
+// could tell a road from a wall, and no gate had both in frame to notice.
+const ROAD_R = 0.30;
+const ROAD_G = 0.18;
+const ROAD_B = 0.15;
 
 const GRASS_R = 0.42;
 const GRASS_G = 0.50;
@@ -544,6 +554,9 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // mesh cannot serve both, and that is `CAMERA_INDOORS.md`'s own reason for the
 // split — the geometry followed from the requirement rather than the other way
 // round. Nine gate files carry this number beside a "keep this equal to" note.
+// ⚠ AND `moros_terrain::surface_count()` IS THE AUTHORITY (plan 18 B3.1); this
+// is a copy, held equal by a loft test rather than by the compiler for the same
+// `const X = some_fn()` reason as the colours above.
 const SURFACES = 9;              // ⚠ the frame took the eighth, the soffit the
                                  // ninth: an id-space stride, so a chunk's meshes
                                  // stay contiguous and nothing renumbers when a
@@ -3453,6 +3466,22 @@ fn mode_name(m: integer) -> text {
   "mode {m}"
 }
 
+// `N:` — the material catalogue, plan 18 B3.2.
+//
+// ⚠ DERIVED FROM THE MESHER'S OWN LIST, which is §C3's clause: the catalogue is
+// what `moros_terrain::surfaces()` says it is, so it cannot list a material the
+// renderer cannot draw or miss one it can. A hand-kept list beside the mesher is
+// the tenth copy of a number that has already drifted 4 → 5 → 7 → 9.
+fn catalogue_wire() -> text {
+  out = "N:";
+  n = moros_terrain::surface_count();
+  for i in 0..n {
+    if i > 0 { out = out + ","; }
+    out = out + moros_terrain::surface_at(i).sf_name;
+  }
+  out
+}
+
 fn hud_wire(name: text, mode: integer, lev: boolean, rd: boolean, tr: boolean) -> text {
   "H:world {name} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
 }
@@ -4424,6 +4453,9 @@ fn main() {
         // told nothing shows an empty subject line for as long as no toggle moves —
         // which on a quiet session is forever.
         srv.send_to(ev.cid, hud_wire(world_name, cam_mode, levelling, roading, tracing));
+        // The catalogue does not change during a session, so it goes out once,
+        // in the same place and for the same reason as the subject line.
+        srv.send_to(ev.cid, catalogue_wire());
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {

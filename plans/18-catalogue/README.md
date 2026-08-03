@@ -225,9 +225,39 @@ exactly like a broken client and is a page served by the wrong host.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B3.1` | `catalogue_materials()` **derived from the mesher's own surface set**, not a second list. | the count matches what the mesher can emit — an `I1`-style claim, in a loft test | S |
-| `B3.2` | Entries in the existing `ListBox` via `palette_items_for_tool`, names only, no images. | picking one and building uses it | S |
+| ✅ `B3.1` | `moros_terrain::surfaces()` — one list, with the names, the colours and the count all derived from it. | **DONE.** 5 loft tests. ⚠ **It found `road` and `wall` 0.00009 apart in chromaticity** — inside the classifier's own tolerance. See below. | S |
+| ✅ `B3.2` | `N:` on the wire, derived from the same list; the client puts it in `ps_items`. (⚠ `palette_items_for_tool` is gone — `B1.2b` deleted it as client-authoritative state.) | **DONE.** Nine names in the client's list well, in its own PNG; the wire gate pins the count against the mesher. | S |
 | `B3.3` | Swatch rendering — one hex tile, **the world's own shader and current light**, into an offscreen texture, cached per material. | a PNG shows N non-blank swatches, ⚠ with the control: a swatch that fails to render must read **blank**, or "it drew something" proves nothing | M |
+
+⚠ **`B3.3` is the one piece of `B3` still open.** `B3.1`–`B3.2` give the list its entries and its names; the images are the remaining half of a catalogue entry.
+
+⚠ **`B3.1` FOUND `road` AND `wall` 0.00009 APART IN CHROMATICITY** — an order of magnitude
+*inside* the 0.0009 the picture gates classify with. Both were neutral greys differing only
+in brightness, and chromaticity divides brightness out, so **nothing could tell a road from a
+wall**. No gate had both in frame with a threshold that mattered, so nothing said so.
+
+This is the same failure the floor had (0.0003 from the wall, which made an interior gate's
+second row unmeasurable) and it was fixed the same way: **in the renderer, not the
+classifier** — separating them in a classifier leaves the picture just as ambiguous to a
+person looking at it.
+
+⚠ **The new colour is a measurement, not a taste.** A neutral can never separate from another
+neutral; cool collides with the **sky**; plain brown lands 0.00014 from the **figure**'s skin.
+What is left is a red earth — which is what these roads are anyway, since `freeze_grade` cuts
+one *into* a hill rather than painting a stripe on it. Nearest neighbour is now the floor at
+0.0032, 3.5× the tolerance.
+
+⚠ **The test sweeps what the CLASSIFIER sees, not what the mesher emits.** The figure and the
+sky are in every histogram and are not meshes, so `classified()` is `surfaces()` plus those
+two — and "brown" is exactly where the road wanted to go and the figure already was.
+
+⚠ **`SURFACES` could not actually be derived, and that is a loft defect.**
+`const X = some_fn()` aborts the interpreter with a **non-unwinding panic and no source
+location** — [loft#744](https://github.com/loft-lang/loft/issues/744). So the stride and the
+colours stay literals in `editor_server.loft`, held equal to the list by a loft test rather
+than by the compiler. ⚠ And `tools/script.mjs`'s palette is a **third** copy, cross-language:
+the same shape moros#3 closed for the hex lattice with a shared fixture, and the same fix is
+available when it next bites.
 
 ### B4 — names
 
