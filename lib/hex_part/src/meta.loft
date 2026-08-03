@@ -156,7 +156,13 @@ pub fn part_anchor(w: World) -> AnchorRead {
     return AnchorRead { ar_code: MR_MALFORMED, ar_anchor: PartAnchor {},
                         ar_why: "facing {fc} is not one of the {FACINGS} headings" };
   }
+  // ⚠ The `?? 0` is unreachable — the four are checked against null two lines up
+  // — and it is written anyway because loft does not narrow a nullable through a
+  // check, and the warning it raises otherwise says *it becomes null there*.
+  // A reader who trusts that warning and a reader who trusts the check disagree,
+  // and the cheapest way to stop that is to leave nothing to disagree about.
   AnchorRead { ar_code: MR_OK,
-               ar_anchor: PartAnchor { pa_q: q, pa_r: r, pa_h: h, pa_facing: fc },
+               ar_anchor: PartAnchor { pa_q: q ?? 0, pa_r: r ?? 0, pa_h: h ?? 0,
+                                       pa_facing: fc ?? 0 },
                ar_why: "" }
 }

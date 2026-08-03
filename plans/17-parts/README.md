@@ -48,6 +48,38 @@ because **none of them needs a new file format**:
 | ✅ `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | **DONE.** `hex_world` 113 tests, both backends. `presection.hxw` is committed pre-section bytes; `ZZZZ` survives a load-and-save byte-identical. ⚠ **Two findings and three mutants** — see below. | M |
 | ✅ `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | **DONE.** `lib/hex_part/src/meta.loft`, 29 tests, both backends. The older-reader gate compares the LANDSCAPE of a dressed part against a bare one through `part_diff`, never calling `part_meta`. ⚠ **Two loft panics and a store lock** — see below. | S |
 
+### What `A2.1` turned up
+
+⚠ **A PART ALWAYS CROSSES FOUR CHUNKS, WHATEVER ITS SIZE — AND THAT IS `A7.4`'s NUMBER.**
+`part_from_region` re-origins the cut so the centre lands on `(0,0)`, so a part's cells run
+from `−rad` to `+rad`, and `chunk_of(-1)` is `−1`. Four chunks, each holding dense 1024-cell
+layers. Measured: **the 19-column cottage is 65,928 bytes and uses 38 of 8,192 cell slots**
+— 0.46%. Cutting it from `(16,16)` instead of `(0,0)` changes nothing, because it is the
+*part's* origin that decides, not the source's.
+
+Nothing is done about it: it is the store's density (`P6` — a layer is exactly 8 KB) meeting a
+consumer it was not shaped for, and the fix is a design change — a chunk-aligned storage bias,
+or sparse layers. `A7.4` owns it. ⚠ **The tool PRINTS the number every run**, so the deferral
+cannot go stale while the parts grow.
+
+⚠ **A MUTANT THAT GETS LEGITIMATELY REFUSED PROVES NOTHING, AND IT READS EXACTLY LIKE A BLIND
+GATE.** The first perturbation of the built part was `ground_set(part, 0, 0, 900, …)` — and the
+gate stayed green. That looked like `part_diff` failing to see a change for as long as it took
+to check the return value: `1` is `CW_FOLD`, the write was refused because 900 would breach the
+roof, and **nothing had been perturbed**. The instrument was fine; the control was the no-op.
+This is STATE's lesson `D` from the other side — *check that the control actually changed
+something* before concluding the gate is blind.
+
+⚠ **`2>/dev/null` ATE THE ONLY THING THE GATE HAD TO SAY.** The first `make parts` discarded
+stderr to hide loft's advice, and a mutant then failed the build with no message at all. It
+greps for `^error:` now, so the assertion and its cell coordinate are what a failure prints.
+
+⚠ **`part_diff` says nothing about EDGES**, so the tool counts them in the reloaded file: 35
+walls and 1 door, read out of what was written rather than re-derived from the rule that wrote
+it. A cut that dropped every wall would have passed the round-trip otherwise — which is not
+hypothetical, because the same blindness in `map_to_stencil` lost 9 of a house's 17 walls and
+hid because every count agreed with every other count.
+
 ### What `A1.4` turned up
 
 ⚠ **AN ASCII TEST SUBJECT CANNOT SEE ANY OF IT.** The part in the round-trip test is called
@@ -206,7 +238,7 @@ there are two hundred parts — not `A1`'s when there is one. Say so in the code
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A2.1` | A one-off tool: run `stencil_place` into an empty world, `part_from_region`, save to `data/parts/house/cottage.hxw`. | the file exists and loads | XS |
+| ✅ `A2.1` | A one-off tool: run `stencil_place` into an empty world, `part_from_region`, save to `data/parts/house/cottage.hxw`. | **DONE.** `src/part_build.loft`, `make parts`. The file is **committed** — a part is content, and a catalogue that is empty until somebody runs a make target is an empty catalogue. ⚠ **Three findings** — see below. | XS |
 | `A2.2` | `14:` accepts a **part name** alongside its `roof_up`, loading and stamping the part. | ⚠ **the stencil gate's picture is unchanged** — pixel-for-pixel against the procedural path. That is the proof the format carries everything the procedure did. | M |
 | `A2.3` | Retire the procedural path behind the authored one. | the gate still passes with `stencil_place` no longer reachable from `14:` | S |
 

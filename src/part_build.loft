@@ -1,0 +1,142 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 17 `A2.1` — THE PROCEDURAL HOUSE BECOMES A FILE.
+//
+// `stencil_place` builds the built-in house every time the editor is asked for
+// one. This runs it once, cuts the result out with `part_from_region`, and writes
+// `data/parts/house/cottage.hxw` — after which the house is a document an author
+// can open and change, rather than a function nobody can edit.
+//
+//     make parts
+//
+// ⚠ IT VERIFIES WHAT IT WROTE, and that is the step's whole gate. Saving is not
+// the claim; *the file loads and is the same part* is. So it reloads what it just
+// saved and compares through `part_diff` — which walks a MARGIN beyond the radius,
+// so a cell gained outside the disc fails as loudly as a cell lost inside it —
+// and it reads `PART` and `ANCH` back rather than trusting that they went out.
+//
+// ⚠ AND IT ASSERTS RATHER THAN PRINTING. A tool that reports a failure on stdout
+// and exits 0 is a tool `make` cannot gate on; `assert` is what makes a broken
+// part stop the build.
+use hex_editor;
+use hex_world;
+use hex_part;
+
+// The editor's own world constants. ⚠ A part cut from a world built at a
+// different epsilon is a different shape wearing the same numbers, and
+// `part_from_region` copies them into the part — so these have to be the ones
+// `src/editor_run.loft` and `src/editor_server.loft` use, not a fresh guess.
+const W_EPS   = 8;
+const W_THETA = 3;
+const W_UNIT  = 0.25;
+
+// Where the house stands while it is being cut. ⚠ The FLOOR is the anchor, and
+// with `W_RESERVE` at 0 the foundation clamps to it — so the cottage's own floor
+// is height 0 and every height in the file is relative to the part's origin,
+// not to whatever ground it was cut from.
+const ANCHOR  = 0;
+
+fn main() {
+  w = world_new(W_UNIT, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
+
+  // ⚠ NO GROUND IS SEEDED. The editor stencils onto the surface under the
+  // author's feet, and the band replaces what it meets — but a PART is the house
+  // and not the hillside it was standing on, so there is nothing to replace here.
+  // A seeded world would put a disc of turf in the file and every placement of
+  // the cottage would carry it.
+  kept_below = 0;
+  kept_above = 0;
+  why = "";
+  n = hex_editor::stencil_place(w, 0, 0, hex_editor::STENCIL_R, ANCHOR,
+                                hex_editor::STOREY_H, kept_below, kept_above, why);
+  assert(n > 0, "the stencil refused ({n}): {why}");
+  println("  stencil placed {n} cells, kept {kept_below} below and {kept_above} above");
+
+  cut = part_from_region(w, 0, 0, hex_editor::STENCIL_R);
+  assert(cut.pc_code == PR_OK, "the cut was refused: {cut.pc_why}");
+  assert(cut.pc_cells == n, "the stencil built {n} columns and the cut carried {cut.pc_cells}");
+  part = cut.pc_world;
+
+  assert(part_set_meta(part, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "cottage",
+    pm_desc: "the built-in stencil house — one storey, a ridged roof, a door on the +q ring"
+  }) == PM_OK, "the meta was refused");
+  // ⚠ The anchor is the part's ORIGIN, because `part_from_region` translated the
+  // cut so the source centre landed there. An anchor carrying the coordinates the
+  // house was cut FROM would have to be un-translated at every placement, and
+  // that un-translation is exactly the arithmetic that goes wrong on an odd row.
+  assert(part_set_anchor(part, PartAnchor {
+    pa_q: 0, pa_r: 0, pa_h: ANCHOR, pa_facing: 0
+  }) == PM_OK, "the anchor was refused");
+
+  dir = "{source_dir()}/../data/parts/house";
+  assert(mkdir_all(dir).ok(), "could not make {dir}");
+  path = "{dir}/cottage.hxw";
+  assert(world_save(part, path, []) == WS_OK, "the save was refused");
+
+  // ── and now the part of this that is the gate ──────────────────────────────
+  back = world_load(path);
+  assert(back.wl_code == WL_OK, "the part did not load back: {back.wl_code} {back.wl_detail}");
+  d = part_diff(part, back.wl_world, hex_editor::STENCIL_R);
+  assert(d.pd_same, "the file is not the part that was saved: {d.pd_why}");
+
+  m = part_meta(back.wl_world);
+  assert(m.mr_code == MR_OK, "PART did not come back: {m.mr_why}");
+  assert(m.mr_meta.pm_name == "cottage", "the name came back '{m.mr_meta.pm_name}'");
+  assert(m.mr_meta.pm_kind == PK_HOUSE, "the kind came back {m.mr_meta.pm_kind}");
+  a = part_anchor(back.wl_world);
+  assert(a.ar_code == MR_OK, "ANCH did not come back: {a.ar_why}");
+  assert(a.ar_anchor.pa_q == 0 && a.ar_anchor.pa_r == 0, "the anchor moved");
+
+  // ⚠ AND THE EDGES, COUNTED IN THE RELOADED FILE. `part_diff` compares heights
+  // and materials and says nothing about walls — so a cut that dropped every wall
+  // edge would pass everything above. That is not hypothetical: the same blindness
+  // in `map_to_stencil` silently lost 9 of a house's 17 walls, and it hid because
+  // every count agreed with every other count. This counts what the FILE holds.
+  walls = 0;
+  doors = 0;
+  for wq in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+    for wr in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+      for c in column_cells(world_column(back.wl_world, wq, wr)) {
+        for e in [c.h_wall_n, c.h_wall_ne, c.h_wall_se] {
+          if e == hex_editor::WALL_MAT { walls = walls + 1; }
+          if e == hex_editor::DOOR_MAT { doors = doors + 1; }
+        }
+      }
+    }
+  }
+  // 35 and 1 were READ OUT OF THE FILE first and pinned afterwards, and they
+  // agree with the ring: 12 outer cells owning 3 edges each is 36, one of them a
+  // door. ⚠ The agreement is a cross-check, not the source — a number the writer
+  // re-derives from its own rule agrees with itself however wrong the rule is.
+  assert(doors == 1, "{doors} doors in the file, not 1");
+  assert(walls == 35, "{walls} wall edges in the file, not 35");
+
+  // ⚠ AND IT PRINTS WHAT THE PART COST, because `A7.4` defers the keyed-read
+  // question until there is a number and this is where the number comes from.
+  //
+  // A part is ORIGIN-CENTRED by construction (`part_from_region`), so its cells
+  // run from −rad to +rad and `chunk_of(-1)` is −1 — which puts every part, of
+  // any size, across FOUR chunks. A chunk's layer is a dense 1024-cell page, so
+  // the smallest possible part still pays 4 x layers x 8 KB. Measured rather than
+  // reasoned, and printed every run so it cannot drift: 19 columns of cottage
+  // occupy 38 of 8192 cell slots.
+  //
+  // Nothing is done about it here. It is the store's density meeting a consumer
+  // it was not shaped for, the fix is a design change (a chunk-aligned storage
+  // bias, or sparse layers), and `A7.4` owns it — with this number in hand.
+  slots = 0;
+  for ch in part.w_chunks { slots = slots + len(ch.ck_layers) * hex_world::CHUNK_CELLS; }
+  used = 0;
+  for q in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+    for r in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+      used = used + len(column_cells(world_column(part, q, r)));
+    }
+  }
+  onf = file(path);
+  println("  cottage: {cut.pc_cells} columns, {len(part.w_chunks)} chunk(s), "
+        + "{len(part.w_sections)} sections -> data/parts/house/cottage.hxw");
+  println("  cost: {onf#size} bytes, {used} of {slots} cell slots used "
+        + "— a part is origin-centred, so it always crosses four chunks (A7.4)");
+}

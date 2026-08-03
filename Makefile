@@ -389,6 +389,32 @@ camera-frame:
 	 node tools/script.mjs tools/scripts/indoors.keys --shots; rc=$$?; \
 	 $(MAKE) -s stop-editor >/dev/null; exit $$rc
 
+# Plan 17 `A2.1` — BUILD THE AUTHORED PARTS FROM THE PROCEDURAL GESTURES.
+#
+# `src/part_build.loft` runs `stencil_place` once, cuts the result with
+# `part_from_region` and writes `data/parts/house/cottage.hxw`. ⚠ It VERIFIES what
+# it wrote — reloads the file, compares through `part_diff`, reads `PART` and
+# `ANCH` back — and asserts rather than printing, so a broken part stops here
+# instead of reaching whatever opens it next.
+#
+# The output is COMMITTED. A part is content, not a build artifact: #18 `B5` lists
+# what is in `data/parts/`, and a catalogue that is empty until somebody runs a
+# make target is a catalogue that is empty. ⚠ Committing it is only sane because
+# the build is DETERMINISTIC — same bytes, same md5, every run, since `τ` counts
+# the gestures rather than the seconds. A file that changed each run would put a
+# 64 KB diff in every commit that happened to touch it.
+#
+# ⚠ STDERR IS FILTERED, NOT DISCARDED. `2>/dev/null` hid the loft advice AND the
+# assertion message, so a mutant that broke the part failed the build with nothing
+# said — which is a gate you cannot act on. The refusal is printed and only the
+# advice is dropped.
+parts:
+	@$(LOFT) --interpret --lib lib/ src/part_build.loft 2>.parts.err \
+	  || { echo "PARTS: the part it built is not the part it wrote"; \
+	       grep -A6 '^error:' .parts.err | head -20; \
+	       rm -f .parts.err; exit 1; }
+	@rm -f .parts.err
+
 headless-same:
 	@SCRIPT=tools/scripts/house.keys WORLD=headless $(LOFT) --lib lib/ src/editor_run.loft 2>/dev/null \
 	  | grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' > .headless.txt || true

@@ -30,16 +30,22 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 | `hex_editor` **228** | `hex_world` **117** | `lavition_ui` **61** | `hex_part` **29** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A2.1` — a part with cells in it, saved to `data/parts/`
+### The next thing to do is #17 `A2.2` — `14:` loads the part instead of running the procedure
 
-**`A1` is finished.** A part is a world, it round-trips, the store carries tagged sections, and
-`PART`/`ANCH` ride on them. `A2` is where the procedural house becomes an authored file:
-`A2.1` runs `stencil_place` into an empty world, `part_from_region`s it and saves
-`data/parts/house/cottage.hxw`. ⚠ **That is also what unblocks #18 `B5`**, which lists parts
-and has had none to list.
+**`A1` and `A2.1` are finished.** A part is a world, it round-trips, the store carries tagged
+sections, `PART`/`ANCH` ride on them, and **`data/parts/house/cottage.hxw` exists and is
+committed** — `make parts` builds it from `stencil_place` and verifies what it wrote.
+⚠ **#18 `B5` is unblocked**: there is a part to list.
 
-`A2.2` is the one with the real gate: `14:` takes a part name, and **the stencil gate's picture
-must be unchanged pixel-for-pixel** against the procedural path.
+`A2.2` is the one with the real gate: `14:` takes a part name alongside its `roof_up`, loads
+and stamps the part, and **the stencil gate's picture must be unchanged pixel-for-pixel**
+against the procedural path. That is the proof the format carries everything the procedure did.
+
+⚠ **A part always crosses four chunks and is 65,928 bytes for 38 used cell slots** — 0.46%.
+Origin-centring puts cells at negative coordinates and `chunk_of(-1)` is `-1`, so this is true
+of a part of any size. Not a bug and not `A2`'s: it is the store's dense 8 KB layer meeting a
+consumer it was not shaped for, `A7.4` owns it, and `make parts` prints the number every run so
+the deferral cannot go stale.
 
 **What `A1` left in the store and the part package:**
 
@@ -73,12 +79,12 @@ lineage. Which tree owns it for good is
 ### Where the two plans stand
 
 **[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
-`B4`, `B6` all **done**. Only **`B5`** remains and it is blocked: it lists parts, and #17 has
-not produced a saved one yet. `A2.1` is what unblocks it.
+`B4`, `B6` all **done**. Only **`B5`** remains and it is **no longer blocked**:
+`data/parts/house/cottage.hxw` is there to list.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` is complete.** `A1.1`
-region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`.
-`A2` next.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` complete, `A2.1` done.**
+`A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
+`PART`/`ANCH`, `A2.1` the cottage on disk. `A2.2` next.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
@@ -198,6 +204,7 @@ measurement, not the label — including this paragraph.
 ```sh
 make gate              # 33 gates, SILENT when green; GATE_VERBOSE=1 for timings
 make lib-test          # all 18 packages, BOTH backends; goes red properly
+make parts             # build data/parts/*.hxw from the gestures, and VERIFY them
 make guards            # the S3 probe suite, and it DRAWS the guard's decisions
 make camera-frame      # the camera's stations by hand, with the pictures
 make client            # ⚠ the wasm client is a FILE the server serves — every editor

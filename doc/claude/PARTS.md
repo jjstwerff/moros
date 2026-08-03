@@ -132,6 +132,24 @@ meet character counts ([#749](https://github.com/loft-lang/loft/issues/749)), a 
 splits on every `=` and truncates the description, and a byte-per-character encoding that
 returns `中` as a different character.
 
+#### The first part on disk (`A2.1`, 2026-08-03)
+
+`data/parts/house/cottage.hxw`, built by `make parts` — `src/part_build.loft` runs
+`stencil_place` once into an **empty** world (no ground: a part is the house, not the hillside
+it stood on), cuts it with `part_from_region`, dresses it with `PART`/`ANCH` and saves. The
+file is **committed**, because a part is content rather than a build artifact.
+
+⚠ **The tool VERIFIES what it wrote and asserts rather than printing**, so a broken part stops
+the build: it reloads the file, compares through `part_diff`, reads `PART` and `ANCH` back, and
+**counts the edges** — 35 walls and 1 door, read out of the file, because `part_diff` compares
+heights and materials and would pass a cut that dropped every wall.
+
+⚠ **A PART CROSSES FOUR CHUNKS WHATEVER ITS SIZE**, because it is origin-centred and
+`chunk_of(-1)` is `−1`. The cottage is **65,928 bytes and uses 38 of 8,192 cell slots**. That
+is `P6`'s dense 8 KB layer meeting a consumer it was not shaped for; §P2's keyed-read deferral
+(`A7.4`) is where it is decided, and the tool prints the number every run so it cannot go
+stale.
+
 ⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
 as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
 hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it
