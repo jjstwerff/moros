@@ -54,20 +54,34 @@ check(Math.abs(edge - STRIP) <= 2, `the strip measures ${edge}px, want ${STRIP}`
 // ── six buttons ──────────────────────────────────────────────────
 // Buttons (0x33333A, lum ~52) sit on the panel background (0x1E1E22, lum ~32).
 //
-// ⚠ COUNT BARS, NOT LIGHTER PIXELS. The first version counted runs of
-// "lighter than the background" and reported SEVEN — the seventh being the 2px
-// separator hairline above the list, which is also lighter than the background.
-// The fix is not a tuned threshold between 44 and 52; it is that a button is a
-// 32px BAR and a hairline is not, so the run length is what tells them apart.
-// A discriminator that comes from the shape survives a restyle; one that comes
-// from a luminance gap does not.
+// ⚠ A ROW, NOT A COLUMN. The first version sampled one column and counted runs;
+// once B1.4 put LABELS in the buttons, that column ran through the glyphs and
+// six buttons read as thirteen fragments. A single sample line is hostage to
+// whatever is drawn on it.
+//
+// A button row is MOSTLY button — text is a small fraction of it — so the test
+// is a majority across the button's width. That survives labels, a highlight, or
+// anything else drawn inside the box.
+//
+// ⚠ AND COUNT BARS, NOT LIGHTER PIXELS. Before that it counted runs of "lighter
+// than the background" and reported SEVEN, the seventh being the 2px separator
+// hairline. The fix is not a threshold tuned between 44 and 52; it is that a
+// button is a 32px BAR and a hairline is not. Both discriminators come from the
+// shape, which is what makes them survive a restyle.
 const BTN = 42;
 const MIN_BAR = 8;
+const BTN_X0 = 8, BTN_X1 = 232;
 const runs = [];
 let run = 0;
 for (let y = 0; y < Math.floor(img.h * 0.4); y++) {
-    const isBtn = lum(60, y) > BTN && lum(60, y) < DARK;
-    if (isBtn) { run++; } else { if (run > 0) runs.push(run); run = 0; }
+    let hit = 0, seen = 0;
+    for (let x = BTN_X0; x < BTN_X1; x += 2) {
+        seen++;
+        const l = lum(x, y);
+        if (l > BTN && l < DARK) hit++;
+    }
+    const isBtnRow = seen > 0 && hit / seen > 0.6;
+    if (isBtnRow) { run++; } else { if (run > 0) runs.push(run); run = 0; }
 }
 if (run > 0) runs.push(run);
 const bars = runs.filter((r) => r >= MIN_BAR);
@@ -78,6 +92,25 @@ check(bars.length === 6,
 // shape that teaches a reader to skim the output. The count is part of the claim.
 check(bars.length > 0 && bars.every((r) => r >= 24 && r <= 40),
       `each bar is button-height (32px): ${bars.length ? bars.join(",") : "none found"}`);
+
+// ── the labels are legible (B1.4) ────────────────────────────────
+// Text is 0xE0E0E6 (lum ~224) against buttons at ~52 and the list well at ~20,
+// so a bright pixel inside the strip is a glyph. This does not read the WORDS —
+// a pixel count cannot — but it separates "labels drawn" from "labels missing",
+// which is the failure B1.4 can actually have. What the words say is checked by
+// the loft tests that built the list.
+let glyph = 0;
+for (let y = 0; y < img.h; y++) {
+    for (let x = 0; x < STRIP; x++) if (lum(x, y) > 150) glyph++;
+}
+check(glyph > 500, `the panel has text in it (${glyph} glyph pixels, want > 500)`);
+
+// And in the toolbar specifically, so a status line alone cannot carry the row.
+let btnGlyph = 0;
+for (let y = 0; y < Math.floor(img.h * 0.35); y++) {
+    for (let x = 0; x < STRIP; x++) if (lum(x, y) > 150) btnGlyph++;
+}
+check(btnGlyph > 300, `the BUTTONS have labels (${btnGlyph} glyph pixels, want > 300)`);
 
 // ── the control: the panel did not eat the canvas ────────────────
 let sky = 0, total = 0;

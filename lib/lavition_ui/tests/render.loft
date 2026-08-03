@@ -137,3 +137,124 @@ fn test_an_empty_panel_still_draws_its_chrome() {
   dl = panel_draw_list(panel_build(empty, 1280, 720, ui_metrics(8, 8)), th);
   assert(len(dl) >= 3, "a panel with no content still has a strip, a well and a bar");
 }
+
+// ── the words ────────────────────────────────────────────────────
+
+fn test_every_button_gets_its_label_and_its_hotkey() {
+  tl = panel_text_list(demo(3, -1), theme_default());
+  labels: vector<text> = [];
+  for t in tl { labels += [t.dt_text]; }
+  for want in ["None", "Raise", "Lower", "Stencil", "Item", "Wall"] {
+    found = false;
+    for l in labels { if l == want { found = true; } }
+    assert(found, "button label '{want}' is not in the text list");
+  }
+  for want in ["1", "2", "3", "4", "5", "6"] {
+    found = false;
+    for l in labels { if l == want { found = true; } }
+    assert(found, "hotkey '{want}' is not in the text list");
+  }
+}
+
+fn test_the_status_line_is_in_the_text_list() {
+  found = false;
+  for t in panel_text_list(demo(-1, -1), theme_default()) {
+    if t.dt_text == "ready" { found = true; }
+  }
+  assert(found, "the status text was not emitted");
+}
+
+// ⚠ THE CLAIM THAT MAKES `p_metrics` WORTH CARRYING. Every string was fitted to
+// its box by `panel_build`; this asserts the PLACED text still fits, measured
+// with the panel's own metrics. Fitting at one advance and drawing at another
+// would put text outside a box it was just proved to fit -- and the picture
+// would show a label spilling over a button with nothing red anywhere.
+fn test_no_placed_text_overflows_the_strip() {
+  for adv in [8, 16, 24] {
+    spec = PanelSpec {
+      ps_buttons: [
+        spec_button("None", "1"), spec_button("Raise", "2"), spec_button("Lower", "3"),
+        spec_button("Stencil", "4"), spec_button("Item", "5"), spec_button("Wall", "6"),
+      ],
+      ps_selected_button: 0,
+      ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
+      ps_selected_item: 0,
+      ps_status: "q=1 r=2 cy=4  facing 3 oclock ([/] turns the dial)  y= 0.0  FPS 60",
+    };
+    p = panel_build(spec, 1280, 720, ui_metrics(adv, adv));
+    for t in panel_text_list(p, theme_default()) {
+      right = t.dt_x + text_width(t.dt_text, p.p_metrics);
+      limit = if t.dt_y >= p.p_status.ss_rect.r_y { p.p_status.ss_rect.r_w }
+              else { p.p_rect.r_w };
+      assert(right <= limit,
+             "at advance {adv} '{t.dt_text}' ends at {right}, past {limit}");
+    }
+  }
+}
+
+fn test_the_text_sweep_is_not_vacuous() {
+  spec = PanelSpec {
+    ps_buttons: [spec_button("Stencil", "4")],
+    ps_selected_button: 0,
+    ps_items: ["thick_curved"], ps_selected_item: 0, ps_status: "x",
+  };
+  p = panel_build(spec, 1280, 720, ui_metrics(32, 32));
+  cut = 0;
+  for t in panel_text_list(p, theme_default()) {
+    if len(t.dt_text) >= 2 && t.dt_text[len(t.dt_text) - 2..len(t.dt_text)] == ".." { cut += 1; }
+  }
+  assert(cut > 0, "nothing was truncated at advance 32 — the sweep proves nothing");
+}
+
+fn test_text_is_vertically_inside_its_row() {
+  p = demo(-1, -1);
+  lh = p.p_metrics.m_line_h;
+  for t in panel_text_list(p, theme_default()) {
+    assert(t.dt_y >= 0, "text placed above the window at y={t.dt_y}");
+    assert(t.dt_y + lh <= p.p_status.ss_rect.r_y + p.p_status.ss_rect.r_h,
+           "text at y={t.dt_y} runs past the bottom of the panel");
+  }
+}
+
+// ⚠ Same clipping rule as the highlight. Text floating above the list, over the
+// toolbar, is the tell that nobody scrolled one while looking at it.
+fn test_rows_scrolled_out_of_view_emit_no_text() {
+  p = demo(-1, -1);
+  p.p_list.lb_scroll = 10 * p.p_list.lb_item_height;
+  for t in panel_text_list(p, theme_default()) {
+    for item in p.p_list.lb_items {
+      assert(!(t.dt_text == item && t.dt_y < p.p_list.lb_rect.r_y),
+             "a scrolled-away row drew '{t.dt_text}' at y={t.dt_y}");
+    }
+  }
+}
+
+// ⚠ THE INSTRUMENT THAT WOULD HAVE CAUGHT THE HOTKEY BUG, and the reason it is
+// stated over PAIRS rather than over boxes. Every individual string fitted its
+// own box; the hotkey and the label simply landed on top of each other, which no
+// per-string check can see. Two texts sharing a line must not share pixels.
+fn test_no_two_texts_on_a_line_overlap() {
+  for adv in [8, 12, 16] {
+    spec = PanelSpec {
+      ps_buttons: [
+        spec_button("Look", "drag"),        // the exact pair that collided
+        spec_button("Stencil", "4"),
+        spec_button("Wall", "6"),
+      ],
+      ps_selected_button: 0,
+      ps_items: ["none", "thick_curved"], ps_selected_item: 0,
+      ps_status: "ready",
+    };
+    p = panel_build(spec, 1280, 720, ui_metrics(adv, adv));
+    tl = panel_text_list(p, theme_default());
+    for a in tl {
+      for b in tl {
+        if a.dt_x == b.dt_x && a.dt_y == b.dt_y { continue; }    // same entry
+        if a.dt_y != b.dt_y { continue; }                        // different lines
+        a_end = a.dt_x + text_width(a.dt_text, p.p_metrics);
+        assert(a.dt_x >= b.dt_x || a_end <= b.dt_x,
+               "at advance {adv} '{a.dt_text}' [{a.dt_x}..{a_end}] overlaps '{b.dt_text}' at {b.dt_x}");
+      }
+    }
+  }
+}

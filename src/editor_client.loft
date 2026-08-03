@@ -1014,6 +1014,50 @@ fn poll_input(h: web::WsHandler, st: Client) {
 // depth to speak of, and leaving the test on makes whether it appears depend on
 // what the ortho projection puts in z — which is a coin toss dressed as a
 // renderer.
+// A rasterised label, kept so it is rasterised ONCE.
+struct UiText {
+  ut_tex: integer,
+  ut_x:   integer,
+  ut_y:   integer,
+  ut_w:   float,
+  ut_h:   float,
+}
+
+// ⚠ BUILT OUTSIDE THE FRAME LOOP, WHICH IS THE CACHE. `create_text_texture`
+// rasterises AND uploads on every call, so drawing a HUD line per frame is an
+// upload per frame for text that changed once — CATALOGUE §C5's churn, and it is
+// invisible in a picture because the result looks identical.
+//
+// Rather than a cache with an invalidation rule nobody exercises, the textures
+// are built where the panel is: once. That makes the churn unrepresentable
+// instead of merely unlikely.
+//
+// ⚠ WHEN `H:` MAKES THE TEXT MOVE (plan 18 B2), this becomes a real cache keyed
+// by the string, and THEN the instrument C5 asks for — a count of
+// `create_text_texture` calls per second — starts being worth taking. Today the
+// structure answers it.
+fn build_ui_text(p: Panel, font: integer, size: float) -> vector<UiText> {
+  out: vector<UiText> = [];
+  for t in panel_text_list(p, theme_default()) {
+    if t.dt_text == "" { continue; }
+    tex = graphics::create_text_texture(font, t.dt_text, size, t.dt_colour);
+    if tex == 0 { continue; }
+    // The texture is the measured string plus `create_text_texture`'s own 2px
+    // padding on each side; drawn at its natural size so nothing is stretched.
+    w = graphics::gl_measure_text(font, t.dt_text, size) + 5.0;
+    h = (graphics::gl_text_height(font, size) + 4) as float;
+    out += [UiText { ut_tex: tex, ut_x: t.dt_x - 2, ut_y: t.dt_y - 2, ut_w: w, ut_h: h }];
+  }
+  out
+}
+
+fn draw_ui_text(texts: vector<UiText>, painter: Painter2D) {
+  for u in texts {
+    graphics::draw_texture_at(painter, u.ut_tex,
+      u.ut_x as float, u.ut_y as float, u.ut_w, u.ut_h);
+  }
+}
+
 fn draw_panel(p: Panel, painter: Painter2D) {
   graphics::gl_disable(graphics::GL_DEPTH_TEST);
   for d in panel_draw_list(p, theme_default()) {
@@ -1033,7 +1077,11 @@ fn draw_panel(p: Panel, painter: Painter2D) {
 fn client_panel_spec() -> PanelSpec {
   PanelSpec {
     ps_buttons: [
-      spec_button("Look",    "drag"),
+      // ⚠ NO HOTKEY, because there is no key. Looking is a mouse drag, and the
+      // hotkey column fits ONE glyph at this advance — so "drag" truncated to
+      // "d" and read as "press d", a binding that does not exist. A blank is
+      // honest where a truncation invents an instruction.
+      spec_button("Look",    ""),
       spec_button("Level",   "l"),
       spec_button("Field",   "f"),
       spec_button("Stencil", "e"),
@@ -1054,8 +1102,14 @@ fn client_panel_spec() -> PanelSpec {
 // resolving a .ttf path to a PROPORTIONAL fallback, which `len * advance` is not
 // exact for. Two same-length opposite-width runs is the whole instrument; one
 // width cannot answer it, because ten M's are ten M's in any font.
+// ⚠ ONE SIZE, NAMED ONCE. The metrics are measured at this size and the textures
+// are rasterised at it; two constants that drift apart would fit every label to
+// one font and draw it in another, which is precisely what `Panel.p_metrics`
+// exists to make impossible one level up.
+const UI_SIZE = 16.0;
+
 fn client_metrics(font: integer) -> Metrics {
-  size = 16.0;
+  size = UI_SIZE;
   wide   = graphics::gl_measure_text(font, "MMMMMMMMMM", size);
   narrow = graphics::gl_measure_text(font, "iiiiiiiiii", size);
   metrics_measured(wide, narrow, 10, graphics::gl_text_height(font, size))
@@ -1165,6 +1219,7 @@ fn main() {
   }
   ui_panel = panel_build(client_panel_spec(), WIN_W, WIN_H, ui_m);
   ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
+  ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
   ui_lr = ui_panel.p_list.lb_rect;
   println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {ui_m.m_advance}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
   if !ui_m.m_mono {
@@ -1187,6 +1242,7 @@ fn main() {
     poll_input(h, st);
     draw_world(st);
     draw_panel(ui_panel, ui_painter);
+    draw_ui_text(ui_texts, ui_painter);
     // ⚠ THE PICTURE IS TAKEN HERE — between the draw and the swap, because
     // `gl_screenshot` reads GL_BACK and the swap discards it. But NOT IN THIS FILE:
     // `gl_screenshot` is not in the browser's host-import set, and loft refuses the

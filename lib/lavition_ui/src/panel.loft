@@ -26,6 +26,15 @@ pub STATUS_HEIGHT      = 24;
 // hotkey glyph sits in.
 pub LABEL_PAD  = 12;
 pub HOTKEY_COL = 20;
+// Where the hotkey starts inside its button, and therefore how much room it has:
+// from HOTKEY_X to the label's start at HOTKEY_COL, less a gap so the two never
+// touch. ⚠ DERIVED, not a second magic number — the first attempt fitted the
+// hotkey to `HOTKEY_COL - 4` while drawing it at `+6`, which left it 2px longer
+// than the gap and put it straight back under the label it was being moved out
+// of. Two numbers describing one distance is how that happens.
+pub HOTKEY_X   = 6;
+pub HOTKEY_GAP = 2;
+pub fn hotkey_room() -> integer { HOTKEY_COL - HOTKEY_X - HOTKEY_GAP }
 
 // ── What a consumer hands over ───────────────────────────────────
 //
@@ -60,6 +69,13 @@ pub struct Panel {
   p_toolbar: vector<Button>,
   p_list:    ListBox,
   p_status:  StatusStrip,
+  // ⚠ THE METRICS IT WAS BUILT WITH, carried rather than passed again.
+  // `panel_build` FITS every label to its box with these; `panel_text_list`
+  // PLACES the same labels. If the two could be handed different metrics, a
+  // panel could be fitted at one advance and drawn at another — text that
+  // overflows the box it was just proved to fit in, and nothing to catch it.
+  // Carrying them makes that unrepresentable rather than merely unlikely.
+  p_metrics: Metrics,
 }
 
 // ── Layout helpers ───────────────────────────────────────────────
@@ -114,7 +130,13 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
       btn_id:           pb_i,
       btn_rect:         pb_br,
       btn_label:        fit_text(pb_sb.sb_label, pb_br.r_w - LABEL_PAD - HOTKEY_COL, metrics),
-      btn_hotkey_label: pb_sb.sb_hotkey,
+      // ⚠ THE HOTKEY IS FITTED TOO, and it was not until a picture showed why.
+      // The label was measured against its box and the hotkey placed beside it
+      // UNMEASURED, so a one-character hint fitted and `drag` ran straight under
+      // the label: `d` and `Look` overlapping in the first button, legible as
+      // neither. A string placed in a box nobody measured is the same class
+      // `B1.2` was about, one column over.
+      btn_hotkey_label: fit_text(pb_sb.sb_hotkey, hotkey_room(), metrics),
       btn_selected:     pb_i == spec.ps_selected_button,
     }];
     pb_i = pb_i + 1;
@@ -129,6 +151,7 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
   pb_sr = status_rect(window_w, window_h);
 
   Panel {
+    p_metrics: metrics,
     p_rect:    panel_rect(window_w, window_h),
     p_toolbar: pb_buttons,
     p_list: ListBox {

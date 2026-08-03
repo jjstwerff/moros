@@ -33,6 +33,8 @@ pub struct Theme {
   th_item_sel:   integer,
   th_status_bg:  integer,
   th_separator:  integer,
+  th_text:       integer,
+  th_text_dim:   integer,      // the hotkey column — present, not shouting
 }
 
 // A dark theme that reads against a lit 3D world behind it.
@@ -45,6 +47,8 @@ pub fn theme_default() -> Theme {
     th_item_sel:   0x3A4E6E,
     th_status_bg:  0x101014,
     th_separator:  0x2A2A30,
+    th_text:       0xE0E0E6,
+    th_text_dim:   0x8A8A96,
   }
 }
 
@@ -91,4 +95,65 @@ pub fn panel_draw_list(p: Panel, th: Theme) -> vector<DrawRect> {
   }
 
   dl
+}
+
+
+// ── the words ────────────────────────────────────────────────────
+//
+// A second list, for the same reason the first one is a list: turning a string
+// into pixels needs a font and a GL texture, and neither belongs in a package
+// whose tests run without a window.
+//
+// ⚠ EVERY STRING HERE IS ALREADY FITTED. `panel_build` truncated each label to
+// its box, and this places what came out of that — so a caller cannot draw a
+// label the panel never agreed would fit. That is why `Panel` carries its own
+// `p_metrics` rather than taking them again here.
+pub struct DrawText {
+  dt_text:   text,
+  dt_x:      integer,
+  dt_y:      integer,          // TOP of the line, which is what draw-a-texture wants
+  dt_colour: integer,
+}
+
+// Centre a line of text vertically in a box of height `h`.
+fn baseline_in(box_y: integer, box_h: integer, line_h: integer) -> integer {
+  box_y + (box_h - line_h) / 2 ?? box_y
+}
+
+pub fn panel_text_list(p: Panel, th: Theme) -> vector<DrawText> {
+  tl: vector<DrawText> = [];
+  lh = p.p_metrics.m_line_h;
+
+  for b in p.p_toolbar {
+    r = b.btn_rect;
+    y = baseline_in(r.r_y, r.r_h, lh);
+    // the hotkey sits in its own column at the left, dimmer than the label
+    tl += [DrawText { dt_text: b.btn_hotkey_label,
+                      dt_x: r.r_x + HOTKEY_X, dt_y: y, dt_colour: th.th_text_dim }];
+    tl += [DrawText { dt_text: b.btn_label,
+                      dt_x: r.r_x + HOTKEY_COL, dt_y: y, dt_colour: th.th_text }];
+  }
+
+  lr = p.p_list.lb_rect;
+  i = 0;
+  for it in p.p_list.lb_items {
+    row_y = lr.r_y + i * p.p_list.lb_item_height - p.p_list.lb_scroll;
+    // ⚠ Clipped to the well, exactly as the selection highlight is. A row
+    // scrolled out of view would otherwise be drawn over the toolbar, and text
+    // floating above a list is the tell that nobody scrolled it while looking.
+    if row_y >= lr.r_y && row_y + p.p_list.lb_item_height <= lr.r_y + lr.r_h {
+      tl += [DrawText { dt_text: it,
+                        dt_x: lr.r_x + 6,
+                        dt_y: baseline_in(row_y, p.p_list.lb_item_height, lh),
+                        dt_colour: th.th_text }];
+    }
+    i += 1;
+  }
+
+  sr = p.p_status.ss_rect;
+  tl += [DrawText { dt_text: p.p_status.ss_text,
+                    dt_x: sr.r_x + 6,
+                    dt_y: baseline_in(sr.r_y, sr.r_h, lh),
+                    dt_colour: th.th_text }];
+  tl
 }

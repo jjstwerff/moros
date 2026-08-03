@@ -48,7 +48,7 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 | ✅ `B1.2` | `Metrics` in `moros_ui`, threaded through `panel_build` and **load-bearing**: labels, list items and the status line are fitted to their boxes at build time. `metrics_measured` is the only constructor, so there is no fabricate-an-advance door. | **DONE.** 59 tests, both backends. Controls seen red: re-baking the advance at 8, a fixed-pitch check that always says yes, and a `fit_text` that stops truncating. ⚠ **It found the status strip 2.7× too small** — see below. | S |
 | ✅ **`B1.2b`** | **the panel became lavition's** — `lavition_ui`, its own section below. | **DONE.** `editor_client.loft` compiles against it and builds a `Panel`. | M |
 | ✅ `B1.3` | **`panel_draw_list`, not `panel_render(painter, …)`** — the panel emits RECTANGLES and the client draws them, so `lavition_ui` keeps needing no GL and "the selected button looks different" is a loft test rather than a pixel argument. | **DONE.** A PNG **from the client**, measured not eyeballed: strip **240px exactly**, bars `32,32,32,32,32,32`, 76% of the frame still world. ⚠ **It took three world gates red** — see below. | S |
-| `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
+| ✅ `B1.4` | `panel_text_list` beside the draw list; the client rasterises each string **once, outside the frame loop** (§C5). `Panel` now carries `p_metrics`, so the metrics that FIT a label are the metrics that PLACE it. | **DONE.** Labels legible in the client's PNG — 1180 glyph pixels, 678 of them in the buttons. ⚠ **The picture found a collision the per-string checks could not** — see below. | S |
 | `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, **in the client** | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
 
@@ -131,6 +131,27 @@ wants the UI in it.
 ⚠ And the note that comment now carries: **no backticks inside it.** The block sits in a JS
 template literal, and the first draft of that very warning quoted a variable in backticks
 and stopped the file parsing — the trap the older comment forty lines below already named.
+
+⚠ **`B1.4`: EVERY STRING FITTED ITS OWN BOX AND TWO OF THEM LANDED ON TOP OF EACH OTHER.**
+The first picture showed `d` and `Look` overlapping in the first button, legible as neither.
+`panel_build` measured the *label* against its box and placed the *hotkey* beside it
+unmeasured — the same class `B1.2` was about, one column over.
+
+No per-string check can see it, which is why the test is stated over **pairs**: two texts
+sharing a line must not share pixels. And the first fix reintroduced it — fitting to
+`HOTKEY_COL - 4` while drawing at `+6` left the hotkey 2px longer than the gap — so the room
+is now *derived* from where it starts. ⚠ **Two numbers describing one distance is how that
+happens.**
+
+⚠ **And a truncation can invent an instruction.** With the column fitting one glyph, the
+Look button's `"drag"` became `"d"` — which reads as *press d*, a binding that does not
+exist. It is blank now: honest beats plausible.
+
+⚠ **The panel's own gate broke when text arrived**, and the reason is worth keeping. It
+counted button bars down **one column**, and that column then ran through the glyphs: six
+buttons read as thirteen fragments. A single sample line is hostage to whatever is drawn on
+it. A button row is *mostly* button, so it is a majority across the row now — which survives
+labels, a highlight, or anything else drawn inside the box.
 
 ### B2 — the line tells the truth
 
