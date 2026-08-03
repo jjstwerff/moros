@@ -40,3 +40,10 @@ hex_grid  = ">=0.1"
 # inside this tree — unlike the paths into ../../../loft-libs-world that moros_map
 # and moros_sim used to carry, which made a sibling checkout part of our build.
 hex_world = { path = "../hex_world" }
+# ⚠ OURS TOO, AND FOR THE SAME REASON THE STORE IS. A gesture that places a house
+# from a FILE needs to know what a part is — plan 17 `A2.2`, where the procedural
+# stencil gains an authored twin. The arrow is `hex_editor` → `hex_part` →
+# `hex_world` and there is no cycle: `hex_part` knows what a part is and nothing
+# about gestures, which is why the band FLOOR is passed in rather than derived
+# there.
+hex_part = { path = "../hex_part" }

@@ -150,6 +150,27 @@ is `P6`'s dense 8 KB layer meeting a consumer it was not shaped for; §P2's keye
 (`A7.4`) is where it is decided, and the tool prints the number every run so it cannot go
 stale.
 
+#### Putting it back (`A2.2`, 2026-08-03)
+
+`hex_part::part_stamp` is the inverse of the cut — `un_origin` translates each part column onto
+the world in the doubled lattice, `lifted` adds the anchor to every height, and each column
+goes down as a band through the same `world_merge_band_as` the procedural stencil uses.
+`hex_editor::part_place` is the thin gesture over it, adding only `stencil_floor(anchor)` —
+the placement policy, which is a choice about buildings and now has **two** callers, so it is
+a function rather than two copies of `anchor − FOUNDATION` clamped to the reserve.
+
+⚠ **THE AUTHORED HOUSE IS THE PROCEDURAL HOUSE, AND THAT IS STATEABLE EXACTLY.** The step
+expected a picture comparison; the two paths turn out to produce **the same world** — same
+cells, same three owned edges, same layer labels, same `w_next_id`, same `w_tau` — on flat
+ground, on a slope the band cuts into, and under a ceiling that refuses both. So the claim
+lives in `lib/hex_editor/tests/part_place.loft` rather than in a browser gate: a label is
+invisible to every renderer, and `τ` catches a path that wrote every column twice and
+photographed identically.
+
+⚠ **The extent is the part's own**, walked from its chunks, never a radius the caller passes —
+and the server's dirty halo comes from that same extent, or anything larger than the built-in
+house would have its rim left undrawn.
+
 ⚠ **And a part library wants KEYED reads — the other half of `HEX_STACK` §6.** A world written
 as a persisted collection with a `.dschema` sidecar can be read by key, and a catalogue of two
 hundred parts must load *one* part, not the catalogue. Today `.hxw` has no sidecar because it

@@ -22,30 +22,38 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 ## ⏭ PICK UP HERE (2026-08-03, session 10) — plan 18 is done bar one step, plan 17 has a format
 
-`make gate` **34 green** · `make lib-test` **green, both backends** · `make probe-text` green ·
+`make gate` **35 green** · `make lib-test` **green, both backends** · `make probe-text` green ·
 `make guards` **5 probes green** · `npm test` **53** · layering silent.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **228** | `hex_world` **117** | `lavition_ui` **61** | `hex_part` **29** |
+| `hex_editor` **233** | `hex_world` **117** | `lavition_ui` **61** | `hex_part` **37** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A2.2` — `14:` loads the part instead of running the procedure
+### The next thing to do is #17 `A2.3` — retire the procedural path behind the authored one
 
-**`A1` and `A2.1` are finished.** A part is a world, it round-trips, the store carries tagged
-sections, `PART`/`ANCH` ride on them, and **`data/parts/house/cottage.hxw` exists and is
-committed** — `make parts` builds it from `stencil_place` and verifies what it wrote.
+**`A1` and `A2.1`–`A2.2` are finished.** A part is a world, it round-trips, the store carries
+tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
+(`make parts` builds and verifies it), and **`14:<roof>,<part>` places it**.
 ⚠ **#18 `B5` is unblocked**: there is a part to list.
 
-`A2.2` is the one with the real gate: `14:` takes a part name alongside its `roof_up`, loads
-and stamps the part, and **the stencil gate's picture must be unchanged pixel-for-pixel**
-against the procedural path. That is the proof the format carries everything the procedure did.
+`A2.3` makes the authored path the only one — the gate still passes with `stencil_place` no
+longer reachable from `14:`. ⚠ **Think before deleting**: `stencil_place` is what `make parts`
+runs to BUILD the cottage, so it cannot simply go; what `A2.3` retires is the wire's route to
+it, not the gesture.
+
+⚠ **THE AUTHORED HOUSE IS THE PROCEDURAL HOUSE, EXACTLY** — not pixel-for-pixel, which was the
+weaker claim the plan expected. Measured: same cells, same three owned edges, same layer
+LABELS, same `w_next_id`, same `w_tau`, on flat ground, on a slope and under a ceiling that
+refuses both paths. It lives in `lib/hex_editor/tests/part_place.loft` because a label is
+invisible to every renderer and `τ` catches a path that wrote twice and photographed the same.
+`tools/gates/world/part_place.mjs` is the wire half and is deliberately thin.
 
 ⚠ **A part always crosses four chunks and is 65,928 bytes for 38 used cell slots** — 0.46%.
 Origin-centring puts cells at negative coordinates and `chunk_of(-1)` is `-1`, so this is true
-of a part of any size. Not a bug and not `A2`'s: it is the store's dense 8 KB layer meeting a
-consumer it was not shaped for, `A7.4` owns it, and `make parts` prints the number every run so
-the deferral cannot go stale.
+of a part of any size. Not a bug: it is the store's dense 8 KB layer meeting a consumer it was
+not shaped for, `A7.4` owns it, and `make parts` prints the number every run so the deferral
+cannot go stale.
 
 **What `A1` left in the store and the part package:**
 
@@ -82,24 +90,26 @@ lineage. Which tree owns it for good is
 `B4`, `B6` all **done**. Only **`B5`** remains and it is **no longer blocked**:
 `data/parts/house/cottage.hxw` is there to list.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` complete, `A2.1` done.**
-`A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
-`PART`/`ANCH`, `A2.1` the cottage on disk. `A2.2` next.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` complete, `A2.1`–`A2.2`
+done.** `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
+`PART`/`ANCH`, `A2.1` the cottage on disk, `A2.2` the stamp and the wire. `A2.3` next.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
 why. `probe/b1/client_live.png` is what it looks like; `make probe-text` regenerates it.
 
-### Three things built and not yet called
+### Two things built and not yet called
 
 ⚠ **`hex_editor::names` has no consumer** — the name table, tested at `B4`, is invoked by
 nothing. That is the trap `moros_ui` fell into and it is live again. It gets one when
-catalogue entries carry author-given names. ⚠ **`hex_part::meta` now persists a name**, so the
-two want reconciling rather than both existing: `PART.name` is the saved one.
+catalogue entries carry author-given names. ⚠ **`hex_part::meta` now persists a name and the
+server READS it** — `14:<roof>,<part>` acknowledges with `PART.name` — so the two want
+reconciling rather than both existing: `PART.name` is the saved one.
 
-⚠ **`hex_part`'s `part_set_meta` / `part_anchor` are called by tests only.** The editor never
-reads a part's kind or facing, because nothing places a part yet — that is `A2` and `A3`. Named
-here so it is a known gap rather than a discovered one; `A2.1` is the step that closes it.
+⚠ **`part_anchor` is still called by tests only.** `A2.2` gave `part_meta` a consumer and left
+`ANCH` without one: nothing yet places a part BY its anchor, because the stamp takes the
+author's cell. That is `A3`/`A4` — an instance bound to a socket is the first thing that needs
+a facing.
 
 ⚠ **A reason has nowhere roomy to live.** A list row is **212 px** — twenty-one characters —
 so `B6`'s reasons are one word (`derived`, `scattered`) and the full sentence stays on the
@@ -202,7 +212,7 @@ measurement, not the label — including this paragraph.
 ## How to run things
 
 ```sh
-make gate              # 33 gates, SILENT when green; GATE_VERBOSE=1 for timings
+make gate              # 35 gates, SILENT when green; GATE_VERBOSE=1 for timings
 make lib-test          # all 18 packages, BOTH backends; goes red properly
 make parts             # build data/parts/*.hxw from the gestures, and VERIFY them
 make guards            # the S3 probe suite, and it DRAWS the guard's decisions

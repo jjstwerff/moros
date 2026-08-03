@@ -9,3 +9,4 @@
 use hex_world;
 use region;
 use meta;
+use stamp;

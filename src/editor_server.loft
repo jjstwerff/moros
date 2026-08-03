@@ -515,6 +515,61 @@ fn new_world() -> World {
 
 fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 
+// ── PARTS (plan 17 `A2.2`) ─────────────────────────────────────────────────
+//
+// A part is named, never pathed. `21:` IMPORT takes a filesystem path because a
+// kit-bashed `.glb` genuinely lives anywhere; a part lives in `data/parts/` by
+// definition, and `A7.1` will list that directory to the client — so a name is
+// what the catalogue will offer and a path would be a second vocabulary for the
+// same thing. `house/cottage` is a name with a family in it.
+//
+// ⚠ `..` IS REFUSED RATHER THAN NORMALISED. This is a local authoring tool and
+// the payload is not hostile, but a name that escapes `data/parts/` is not a
+// part — so it is turned away by name instead of quietly reading whatever it
+// pointed at.
+fn part_path(name: text) -> text { "{source_dir()}/../data/parts/{name}.hxw" }
+
+fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
+              name: text, q: integer, r: integer, anchor: integer) {
+  if name.find("..") != null {
+    srv.send_to(cid, "S:stencil refused — part name '{name}' leaves data/parts/");
+    println("editor: stencil refused — part name '{name}' leaves data/parts/");
+    return;
+  }
+  path = part_path(name);
+  ld = world_load(path);
+  if ld.wl_code != WL_OK {
+    srv.send_to(cid, "S:stencil refused — part '{name}' ({ld.wl_code}) {ld.wl_detail}");
+    println("editor: stencil refused — part '{name}' ({ld.wl_code}) {ld.wl_detail}");
+    return;
+  }
+  // ⚠ `part_place` and NOT `part_stamp`. The band's floor is a placement policy
+  // about buildings and it lives with the other gesture that makes one, so the
+  // procedural house and the authored house cut into a slope by the same amount.
+  // Deriving it here would be the second copy that reads correct forever.
+  pw = ld.wl_world;
+  st = part_place(wld, pw, q, r, anchor);
+  if st.ps_code != PS_OK {
+    srv.send_to(cid, "S:stencil refused ({st.ps_code}) part '{name}': {st.ps_why}");
+    println("editor: stencil refused ({st.ps_code}) part '{name}' — {st.ps_why}");
+    return;
+  }
+  // ⚠ THE HALO IS THE PART'S OWN EXTENT PLUS A MARGIN, not `STENCIL_R`. A part
+  // is whatever size it is, and a dirty radius taken from the built-in house's
+  // footprint would leave the rim of anything larger undrawn.
+  rad = 0;
+  for c in part_columns(pw) {
+    d = hex_grid::hex_distance(c.pk_q, c.pk_r, 0, 0);
+    if d > rad { rad = d; }
+  }
+  mark_dirty(dirty, q, r, rad + 2);
+  m = part_meta(pw);
+  shown = name;
+  if m.mr_code == MR_OK && m.mr_meta.pm_name != "" { shown = m.mr_meta.pm_name; }
+  srv.send_to(cid, "S:stencil placed {st.ps_cells} cells from part '{shown}'");
+  println("editor: stencil placed {st.ps_cells} cells from part '{shown}'");
+}
+
 
 // ── PERSISTENCE ────────────────────────────────────────────────────────────
 //
@@ -5482,8 +5537,27 @@ fn main() {
         } else if ev.msg_id == MSG_WALL {
           do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, wall_runs, wall_draft);
         } else if ev.msg_id == MSG_STENCIL {
-          // payload: the roof height above the floor, in height units
-          roof_up = ev.payload as integer ?? STOREY_H;
+          // payload: `<roof_up>` — the roof height above the floor, in height
+          // units — or `<roof_up>,<part>`, which places a SAVED part instead of
+          // running the procedure (plan 17 `A2.2`).
+          //
+          // ⚠ ADDITIVE, and the old payload is untouched. `14:12` still runs the
+          // stencil, so `tools/gates/world/stencil.mjs` does not change — which is
+          // itself the claim that the procedural path was not disturbed.
+          //
+          // ⚠ `roof_up` IS STILL PARSED AND FENCED for the part form, and it is
+          // ignored by it: a part's roof is whatever was authored into it. Refusing
+          // an inadmissible roof on a message that will not use one is the honest
+          // order — the author asked for something the editor cannot do, and being
+          // told so is better than the number silently doing nothing.
+          spc = ev.payload.find(",");
+          part_name = "";
+          roof_txt = ev.payload;
+          if spc != null {
+            roof_txt = ev.payload[..spc];
+            part_name = ev.payload[spc + 1..].trim();
+          }
+          roof_up = roof_txt as integer ?? STOREY_H;
           // ⚠ THIS USED TO READ `if roof_up <= 0 { roof_up = STOREY_H; }` — a
           // silent correction, and leak site 1 exactly: the author asked for one
           // thing and got another with nothing said. A roof shorter than ε would
@@ -5496,6 +5570,9 @@ fn main() {
           } else {
           shx2 = world_to_hex(px, pz);
           anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
+          if part_name != "" {
+            place_part(srv, ev.cid, wld, dirty, part_name, shx2.ha_q, shx2.ha_r, anch);
+          } else {
           kb = 0; ka = 0; swhy2 = "";
           np = stencil_place(wld, shx2.ha_q, shx2.ha_r, STENCIL_R, anch, roof_up,
                              kb, ka, swhy2);
@@ -5507,6 +5584,7 @@ fn main() {
             srv.send_to(ev.cid,
               "S:stencil placed {np} cells, kept {kb} below and {ka} above");
             println("editor: stencil placed {np} cells, kept {kb} below, {ka} above");
+          }
           }
           }
         } else if ev.msg_id == MSG_SCATTER {

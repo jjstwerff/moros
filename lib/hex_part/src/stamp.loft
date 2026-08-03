@@ -1,0 +1,144 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Putting a part back into a world — the inverse of `region.loft`'s cut.
+//
+// Plan 17 `A2.2`. ⚠ MECHANICS ONLY, AND THAT IS THE SPLIT: this translates the
+// part's cells onto the world and merges them as bands, and it takes the band
+// FLOOR as a parameter rather than deriving one. Where the floor goes is a
+// placement policy about buildings — a house cuts one storey into a slope — and
+// policy belongs at the call site where a reader can see which rule is in force
+// (`STATE.md` decision 6). `hex_part` knows what a part is and nothing about
+// what a house should do.
+use hex_world;
+use region;
+
+// The inverse of `re_origin`: a part cell back to the world cell it lands on
+// when the part is centred at `(cq, cr)`.
+//
+// ⚠ IT IS THE DOUBLED LATTICE AGAIN, for the reason `re_origin` states at length:
+// `(cq + dq, cr + dr)` is not a translation in odd-r offset coordinates, it is a
+// shear on every odd row. `k = 2q + (r & 1)`, `m = 3r`, add, convert back — and
+// `& 1` rather than `% 2`, because `-3 % 2` is `-1` in this language and parity
+// below zero is where this codebase has broken five times.
+//
+// Both divisions are exact by construction, so truncation cannot bite: `m` is a
+// multiple of 3, and `k - (r & 1)` is even whatever the parities are (two odd
+// rows sum to an even one, and the `& 1` on the sum takes the 2 back out).
+pub fn un_origin(cq: integer, cr: integer, dq: integer, dr: integer) -> (integer, integer) {
+  k = (2 * dq + (dr & 1)) + (2 * cq + (cr & 1));
+  m = 3 * dr + 3 * cr;
+  r = (m / 3) ?? 0;
+  q = ((k - (r & 1)) / 2) ?? 0;
+  (q, r)
+}
+
+pub struct PartCell { pk_q: integer, pk_r: integer }
+
+// Every column the part actually holds something in.
+//
+// ⚠ THE PART'S OWN EXTENT, NOT A RADIUS THE CALLER SUPPLIES. A radius is a knob
+// that can be wrong, and wrong quietly: too small stamps half a house and every
+// count still agrees with itself. A part is whatever it is, so this walks the
+// chunks it has and asks each cell. `E1` — a zero material is an absent cell.
+pub fn part_columns(p: World) -> vector<PartCell> {
+  out: vector<PartCell> = [];
+  for ch in p.w_chunks {
+    for i in 0..CHUNK_CELLS {
+      lq = (i / CHUNK_W) ?? 0;
+      q = ch.ck_cx * CHUNK_W + lq;
+      r = ch.ck_cz * CHUNK_W + (i - lq * CHUNK_W);
+      if len(column_cells(world_column(p, q, r))) > 0 {
+        out += [PartCell { pk_q: q, pk_r: r }];
+      }
+    }
+  }
+  out
+}
+
+pub const PS_OK    = 0;
+pub const PS_EMPTY = 1;        // the part holds nothing to stamp
+pub const PS_FIT   = 2;        // a column would not take the band
+
+pub struct PartStamp { ps_code: integer, ps_cells: integer, ps_label: integer, ps_why: text }
+
+// Stamp `p` into `w`, centred on `(cq, cr)`, with the part's own origin height
+// sitting at `anchor` and the band reaching down to `lo`.
+//
+// ⚠ ATOMIC ACROSS THE FOOTPRINT, for `stencil_place`'s reason and by the same
+// construction: every column is asked with `world_band_check` before any is
+// written, so a refusal means no part rather than most of a part. ⚠ And the
+// conflict that proves it has to be able to land LATE in the walk — the
+// pre-flight is invisible when the offending column is the first one examined.
+//
+// ⚠ ONE STAMP, ONE LABEL — `I1`, exactly as `stencil_place` does it. The
+// footprint can straddle a chunk boundary and the layer it creates is then made
+// twice, once per chunk; naming it here is what stops the two halves being
+// different layers to every by-label reader.
+pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
+                  anchor: integer, lo: integer) -> PartStamp {
+  cols = part_columns(p);
+  if len(cols) == 0 {
+    return PartStamp { ps_code: PS_EMPTY, ps_cells: 0, ps_label: 0,
+                       ps_why: "the part holds no cells" };
+  }
+
+  // PASS 1 — may every column take it?
+  for c1 in cols {
+    (wq, wr) = un_origin(cq, cr, c1.pk_q, c1.pk_r);
+    band = lifted(p, c1.pk_q, c1.pk_r, anchor);
+    hi = top_of(band);
+    chk = world_band_check(w, wq, wr, lo, hi, band);
+    if chk.cw_code != CW_OK {
+      return PartStamp { ps_code: PS_FIT, ps_cells: 0, ps_label: 0,
+                         ps_why: "({wq},{wr}) layer {chk.cw_layer}: {chk.cw_detail}" };
+    }
+  }
+
+  // PASS 2 — write
+  id = world_fresh_label(w);
+  n = 0;
+  for c2 in cols {
+    (wq2, wr2) = un_origin(cq, cr, c2.pk_q, c2.pk_r);
+    band2 = lifted(p, c2.pk_q, c2.pk_r, anchor);
+    hi2 = top_of(band2);
+    mw = world_merge_band_as(w, wq2, wr2, lo, hi2, band2, id);
+    if mw.cw_code != CW_OK {
+      // ⚠ Reported rather than swallowed. Pass 1 asked every column the same
+      // question, so reaching here means the two checks disagree — which is a
+      // defect in this file or in the model, not an author's mistake, and it
+      // must not read as "the house did not fit".
+      return PartStamp { ps_code: PS_FIT, ps_cells: n, ps_label: id,
+                         ps_why: "({wq2},{wr2}) passed the check and refused the write: "
+                               + "{mw.cw_detail}" };
+    }
+    n = n + 1;
+  }
+  PartStamp { ps_code: PS_OK, ps_cells: n, ps_label: id, ps_why: "" }
+}
+
+// A part column's cells with `anchor` added to every height.
+//
+// ⚠ A PART'S HEIGHTS ARE ITS OWN, measured from the part's origin, which is what
+// makes the same part placeable on a hill and in a cellar. The lift is where they
+// become the world's — and it is the ONLY place, so a part that came back wrong
+// is wrong here or in the file, never in two places at once.
+fn lifted(p: World, q: integer, r: integer, anchor: integer) -> vector<Hex> {
+  out: vector<Hex> = [];
+  for c in column_cells(world_column(p, q, r)) {
+    out += [Hex { h_height: ((c.h_height as integer ?? 0) + anchor) as u16? ?? 0,
+                  h_material: c.h_material,
+                  h_item: c.h_item,
+                  h_item_rotation: c.h_item_rotation,
+                  h_wall_n: c.h_wall_n,
+                  h_wall_ne: c.h_wall_ne,
+                  h_wall_se: c.h_wall_se }];
+  }
+  out
+}
+
+// The band's ceiling — the top cell of the column. `column_cells` keeps height
+// order, so it is the last one.
+fn top_of(band: vector<Hex>) -> integer {
+  if len(band) == 0 { return 0; }
+  band[len(band) - 1].h_height as integer ?? 0
+}

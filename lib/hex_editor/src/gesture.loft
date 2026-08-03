@@ -27,6 +27,7 @@
 use hex_field;
 use hex_grid;
 use hex_world;
+use hex_part;
 // The wall run's centreline and its offsets, and the edges a line crosses — both
 // the family's, and both already depended on by the package's other half.
 use hex_way;
@@ -1309,11 +1310,24 @@ pub fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
 // no house, not half a house on the columns that happened to come first. So
 // every column is asked with `world_band_check` before any is written — the same
 // check the write runs, exposed rather than reimplemented.
+// Where a structure's band reaches down to — one storey of foundation, never
+// below the world's floor.
+//
+// ⚠ IT IS A FUNCTION BECAUSE IT HAS TWO CALLERS NOW. `stencil_place` builds the
+// house from the procedure and `part_place` stamps one from a file, and the two
+// must agree to the unit or the same house placed two ways cuts into the slope by
+// different amounts. Two copies of `anchor - FOUNDATION` clamped to `W_RESERVE`
+// is the shape a divergence hides in — it reads correct at both sites forever.
+pub fn stencil_floor(anchor: integer) -> integer {
+  lo = anchor - FOUNDATION;
+  if lo < W_RESERVE { lo = W_RESERVE; }
+  lo
+}
+
 pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
                  anchor: integer, roof_up: integer,
                  kept_below: &integer, kept_above: &integer, why: &text) -> integer {
-  lo = anchor - FOUNDATION;
-  if lo < W_RESERVE { lo = W_RESERVE; }
+  lo = stencil_floor(anchor);
 
   // PASS 1 — may every column take it?
   for dq in (0 - rad)..(rad + 1) {
@@ -1394,6 +1408,27 @@ pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
     }
   }
   placed
+}
+
+// ── THE AUTHORED TWIN (plan 17 `A2.2`) ──────────────────────────────────────
+//
+// `stencil_place` builds the house from a procedure. This places one that was
+// SAVED — the same house, cut out of a world and written to `.hxw`, put back.
+//
+// ⚠ THE CLAIM IS THAT THE TWO ARE THE SAME WORLD, not that they look alike, and
+// `tests/part_place.loft` is where it is checked: the same footprint placed both
+// ways agrees cell for cell, edge for edge, label for label, and on `τ` — which
+// is the strongest form of it, because a divergence in the edit clock says the
+// two paths did different amounts of work even when the result photographs the
+// same. That equivalence is the whole point of `A2`: if the file does not carry
+// everything the procedure did, every part built on it has already lost something.
+//
+// ⚠ IT IS A THIN WRAPPER, DELIBERATELY. The mechanics are `hex_part::part_stamp`
+// and the only thing added here is `stencil_floor` — the placement policy, which
+// is a choice about buildings and belongs with the other one that makes it.
+pub fn part_place(wld: &World, part: hex_world::World, cq: integer, cr: integer,
+                  anchor: integer) -> hex_part::PartStamp {
+  return hex_part::part_stamp(wld, part, cq, cr, anchor, stencil_floor(anchor));
 }
 
 // `species` 0 CLEARS. Returns the number of cells now carrying the species.

@@ -48,6 +48,50 @@ because **none of them needs a new file format**:
 | ✅ `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | **DONE.** `hex_world` 113 tests, both backends. `presection.hxw` is committed pre-section bytes; `ZZZZ` survives a load-and-save byte-identical. ⚠ **Two findings and three mutants** — see below. | M |
 | ✅ `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | **DONE.** `lib/hex_part/src/meta.loft`, 29 tests, both backends. The older-reader gate compares the LANDSCAPE of a dressed part against a bare one through `part_diff`, never calling `part_meta`. ⚠ **Two loft panics and a store lock** — see below. | S |
 
+### What `A2.2` turned up
+
+⚠ **"PIXEL-FOR-PIXEL" WAS THE WEAKER CLAIM, AND THE STRONGER ONE WAS AVAILABLE.** The step was
+written expecting a picture comparison. Measured, the two paths produce **the same world**:
+same cells, same three owned edges, same layer LABELS, the same `w_next_id`, and the same
+`w_tau` — on flat ground, on a slope the band has to cut into, and under a ceiling that
+refuses both. That is checkable in a loft test with no browser at all, and it says things no
+picture can: a label is invisible to every renderer, and `τ` catches a path that wrote every
+column twice and photographed identically. ⚠ **The instrument follows from the claim** —
+`STATE.md` §G — and here the claim was never really about pixels.
+
+⚠ **`τ` AGREEING IS THE PART THAT COULD HAVE GONE EITHER WAY.** Both paths tick the clock to
+exactly 20 for a 19-column house. Nothing was tuned to make that true; it falls out of both
+merging the same bands onto the same ground. It is now asserted, because a stamped house
+costing four times a procedural one is a real regression that no comparison of the RESULT can
+see.
+
+⚠ **THE EXTENT IS THE PART'S, NOT A RADIUS THE CALLER PASSES.** The obvious signature is
+`part_stamp(w, p, cq, cr, rad)` mirroring `part_from_region`. A radius is a knob that can be
+wrong quietly: too small stamps half a house and every count still agrees with itself.
+`part_columns` walks the part's own chunks instead, so a part is whatever it is — and the
+server's dirty halo is taken from that same extent rather than from `STENCIL_R`, or anything
+larger than the built-in house would have its rim left undrawn.
+
+⚠ **A ONE-CELL COLUMN NEVER TAKES THE STAMP'S LABEL, and the first seam test called that a
+bug.** `world_merge_band_as` names *the layer this call creates, singular* — so over virgin
+ground a one-cell column creates one layer, which takes `LABEL_GROUND`. A test part of
+one-cell columns therefore reported one labelled layer across three chunks and read exactly
+like a broken stamp. Measured against the procedure: **both paths put label 2 on every chunk**
+of a real house, because every column of a house has two cells. The subject was wrong, not the
+code. ⚠ The same shape as `A2.1`'s refused mutant: *check what the control actually
+constructed* before believing what it reports.
+
+⚠ **AND THE BLOCKER THAT PROVES ATOMICITY HAS TO BE DERIVED FROM THE COLUMN IT BLOCKS.** A
+flat `143` sat ABOVE the last column's roof and was legitimately KEPT — no fold, no refusal,
+and the test read as *the stamp ignores blockers* when nothing had blocked anything. It is
+`top + 4` now, inside `eps`. Third instance of a control that did not perturb.
+
+Four mutants against the equivalence, each caught by a different assertion: the naive offset
+translation (cell counts), dropped wall edges (the edge comparison), no pre-flight (the
+refusal test's *neither wrote anything*), and a fresh label per column (the label comparison
+and the counter). A fifth, over the wire: a stamp that never marks its chunks dirty times out
+waiting for the rebuild.
+
 ### What `A2.1` turned up
 
 ⚠ **A PART ALWAYS CROSSES FOUR CHUNKS, WHATEVER ITS SIZE — AND THAT IS `A7.4`'s NUMBER.**
@@ -239,7 +283,7 @@ there are two hundred parts — not `A1`'s when there is one. Say so in the code
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A2.1` | A one-off tool: run `stencil_place` into an empty world, `part_from_region`, save to `data/parts/house/cottage.hxw`. | **DONE.** `src/part_build.loft`, `make parts`. The file is **committed** — a part is content, and a catalogue that is empty until somebody runs a make target is an empty catalogue. ⚠ **Three findings** — see below. | XS |
-| `A2.2` | `14:` accepts a **part name** alongside its `roof_up`, loading and stamping the part. | ⚠ **the stencil gate's picture is unchanged** — pixel-for-pixel against the procedural path. That is the proof the format carries everything the procedure did. | M |
+| ✅ `A2.2` | `14:` accepts a **part name** alongside its `roof_up`, loading and stamping the part. | **DONE.** `hex_part::part_stamp` + `hex_editor::part_place`; `14:<roof>,<part>`. ⚠ **The equivalence turned out to be stateable EXACTLY**, which is stronger than any picture — see below. `hex_editor` 233 tests, `hex_part` 37, `tools/gates/world/part_place.mjs` for the wire half. | M |
 | `A2.3` | Retire the procedural path behind the authored one. | the gate still passes with `stencil_place` no longer reachable from `14:` | S |
 
 ### A3 — instances

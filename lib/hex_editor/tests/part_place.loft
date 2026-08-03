@@ -1,0 +1,219 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A2.2` — THE AUTHORED HOUSE IS THE PROCEDURAL HOUSE.
+//
+// The claim `A2` exists to establish: a house cut out of a world, written to a
+// file and put back is the same house. Not *looks the same* — IS the same, in
+// the store, which is a stronger thing than any picture can say and is what makes
+// every later part trustworthy. If the format loses something here, everything
+// `A3`–`A7` builds sits on a document that has already dropped it.
+//
+// ⚠ THE SAVE IS IN THE LOOP. Comparing an in-memory cut against the procedure
+// would test `part_stamp` and say nothing about the FORMAT — and the format is
+// what `A2` is about. So the part goes to disk and comes back before it is
+// stamped, every time.
+use hex_editor;
+use hex_world;
+use hex_part;
+
+const EPS   = 8;
+const THETA = 3;
+
+fn fresh() -> World {
+  world_new(0.25, hex_editor::W_RESERVE, EPS, THETA).wn_world
+}
+
+// The procedural house at `(cq, cr)`, floor at `anchor`.
+fn procedural(cq: integer, cr: integer, anchor: integer) -> World {
+  w = fresh();
+  kb = 0; ka = 0; why = "";
+  n = hex_editor::stencil_place(w, cq, cr, hex_editor::STENCIL_R, anchor,
+                                hex_editor::STOREY_H, kb, ka, why);
+  assert(n > 0, "the stencil refused ({n}): {why}");
+  w
+}
+
+// The same house, cut from a placement at the ORIGIN, saved, loaded, stamped.
+//
+// ⚠ CUT AT THE ORIGIN AND PLACED ELSEWHERE, so the translation is exercised
+// rather than cancelled. A part cut at `(cq, cr)` and stamped back at `(cq, cr)`
+// agrees with a broken `un_origin` whenever the source centre happens to be the
+// one it was cut from.
+fn authored(cq: integer, cr: integer, anchor: integer, path: text) -> World {
+  src = procedural(0, 0, 0);
+  cut = part_from_region(src, 0, 0, hex_editor::STENCIL_R);
+  assert(cut.pc_code == PR_OK, "the cut was refused: {cut.pc_why}");
+  assert(world_save(cut.pc_world, path, no_palette()) == WS_OK, "the save was refused");
+  back = world_load(path);
+  assert(back.wl_code == WL_OK, "the part did not load: {back.wl_code} {back.wl_detail}");
+
+  w = fresh();
+  st = hex_editor::part_place(w, back.wl_world, cq, cr, anchor);
+  assert(st.ps_code == PS_OK, "the stamp was refused: {st.ps_why}");
+  w
+}
+
+// ⚠ NAMED AND TYPED, not an inline `[]` — that compiles interpreted and fails
+// `--native`; `hex_part/tests/roundtrip.loft` carries the same note.
+fn no_palette() -> vector<integer> { [] }
+
+// Everything two worlds can differ by over one footprint and its margin.
+//
+// ⚠ IT WALKS A MARGIN BEYOND THE FOOTPRINT, because a stamp that wrote a cell
+// OUTSIDE the house is exactly as wrong as one that lost a cell inside it, and a
+// sweep bounded at the radius cannot see the first kind at all.
+fn same_world(a: World, b: World, cq: integer, cr: integer) -> text {
+  m = hex_editor::STENCIL_R + 3;
+  for q in (cq - m)..(cq + m + 1) {
+    for r in (cr - m)..(cr + m + 1) {
+      ca = column_cells(world_column(a, q, r));
+      cb = column_cells(world_column(b, q, r));
+      if len(ca) != len(cb) { return "({q},{r}): {len(ca)} cells vs {len(cb)}"; }
+      for i in 0..len(ca) {
+        ha = ca[i] ?? Hex {};
+        hb = cb[i] ?? Hex {};
+        if ha.h_height != hb.h_height {
+          return "({q},{r}) layer {i}: height {ha.h_height} vs {hb.h_height}";
+        }
+        if ha.h_material != hb.h_material {
+          return "({q},{r}) layer {i}: material {ha.h_material} vs {hb.h_material}";
+        }
+        // ⚠ THE THREE OWNED EDGES. A path that dropped every wall passes every
+        // height and material comparison there is — the blindness that lost 9 of
+        // a house's 17 walls, and it hid because every count agreed.
+        if ha.h_wall_n != hb.h_wall_n || ha.h_wall_ne != hb.h_wall_ne
+           || ha.h_wall_se != hb.h_wall_se {
+          return "({q},{r}) layer {i}: edges {ha.h_wall_n},{ha.h_wall_ne},{ha.h_wall_se}"
+               + " vs {hb.h_wall_n},{hb.h_wall_ne},{hb.h_wall_se}";
+        }
+      }
+      // ⚠ AND THE LABELS. `I1` identity is invisible to every cell comparison
+      // above, and it is what a by-label reader — a roof cutaway, a re-derive —
+      // navigates by. Two houses that draw alike and label differently are two
+      // different houses to everything except a picture.
+      la = world_column(a, q, r).co_ids;
+      lb = world_column(b, q, r).co_ids;
+      if len(la) != len(lb) { return "({q},{r}): {len(la)} labels vs {len(lb)}"; }
+      for j in 0..len(la) {
+        if la[j] != lb[j] { return "({q},{r}) layer {j}: label {la[j]} vs {lb[j]}"; }
+      }
+    }
+  }
+  ""
+}
+
+// ── The claim ───────────────────────────────────────────────────────────────
+
+fn test_the_authored_house_is_the_procedural_house() {
+  p = "part_place_a.hxw";
+  // ⚠ AN ODD ROW AND A NEGATIVE COLUMN. `(0,0)` and any even row agree with the
+  // naive offset translation, so they cannot tell a sheared placement from a
+  // correct one — the fifth instance of the parity class this tree keeps hitting.
+  a = procedural(0 - 5, 7, 0);
+  b = authored(0 - 5, 7, 0, p);
+  why = same_world(a, b, 0 - 5, 7);
+  assert(why == "", "the file is not the procedure: {why}");
+  delete(p);
+}
+
+// ⚠ `τ` IS THE STRONGEST FORM OF THE CLAIM, and it is not a restatement of the
+// one above. The edit clock counts writes that CHANGED something, so two paths
+// can produce identical cells while one of them wrote every column twice — a
+// difference no comparison of the result can see, and one that would make a
+// stamped house four times the cost of a procedural one on a big world.
+fn test_both_paths_cost_the_same_number_of_writes() {
+  p = "part_place_tau.hxw";
+  a = procedural(0 - 5, 7, 0);
+  b = authored(0 - 5, 7, 0, p);
+  assert(a.w_tau == b.w_tau, "the procedure ticked to {a.w_tau}, the file to {b.w_tau}");
+  assert(a.w_next_id == b.w_next_id,
+         "the procedure left the label counter at {a.w_next_id}, the file at {b.w_next_id}");
+  delete(p);
+}
+
+// The house sits on a hill rather than on nothing, which is the case the editor
+// actually places: the band REPLACES the ground it meets and keeps what lies
+// outside it, and both paths must do that identically.
+fn test_they_agree_on_ground_the_band_has_to_cut_into() {
+  p = "part_place_hill.hxw";
+  anchor = 40;
+  a = fresh();
+  b = fresh();
+  for q in (0 - 6)..7 {
+    for r in (0 - 6)..7 {
+      hex_editor::ground_set(a, q, r, 30 + q, hex_editor::SURFACE_MAT);
+      hex_editor::ground_set(b, q, r, 30 + q, hex_editor::SURFACE_MAT);
+    }
+  }
+  kb = 0; ka = 0; why = "";
+  assert(hex_editor::stencil_place(a, 0 - 1, 3, hex_editor::STENCIL_R, anchor,
+                                   hex_editor::STOREY_H, kb, ka, why) > 0, "procedural: {why}");
+
+  src = procedural(0, 0, 0);
+  cut = part_from_region(src, 0, 0, hex_editor::STENCIL_R);
+  world_save(cut.pc_world, p, no_palette());
+  st = hex_editor::part_place(b, world_load(p).wl_world, 0 - 1, 3, anchor);
+  assert(st.ps_code == PS_OK, "the stamp was refused on the hill: {st.ps_why}");
+
+  d = same_world(a, b, 0 - 1, 3);
+  assert(d == "", "on a slope the file is not the procedure: {d}");
+  assert(a.w_tau == b.w_tau, "tau {a.w_tau} vs {b.w_tau} on a slope");
+  delete(p);
+}
+
+// ⚠ CONTROL: `same_world` CAN FAIL. Every test above asserts an absence, and an
+// absence is worth exactly what the instrument that reports it is worth — a
+// comparison that returned `""` unconditionally would pass all three.
+fn test_the_comparison_notices_a_house_placed_one_hex_over() {
+  a = procedural(0 - 5, 7, 0);
+  b = procedural(0 - 4, 7, 0);
+  assert(same_world(a, b, 0 - 5, 7) != "",
+         "two houses one hex apart compared equal, so the tests above prove nothing");
+  // and a difference in HEIGHT alone, which a footprint comparison could miss
+  c = procedural(0 - 5, 7, 20);
+  assert(same_world(a, c, 0 - 5, 7) != "", "the same house 20 higher compared equal");
+}
+
+// ⚠ AND THE REFUSAL IS THE PROCEDURE'S REFUSAL. `F1` says a house does not fit
+// under a deck too close above it; a stamped house must not squeeze in where the
+// procedural one is turned away, or the authored path is a way round the rule.
+fn test_both_paths_are_refused_by_the_same_ceiling() {
+  p = "part_place_tight.hxw";
+  a = fresh();
+  b = fresh();
+  for q in (0 - 6)..7 {
+    for r in (0 - 6)..7 {
+      hex_editor::ground_set(a, q, r, 0, hex_editor::SURFACE_MAT);
+      hex_editor::ground_set(b, q, r, 0, hex_editor::SURFACE_MAT);
+    }
+  }
+  // a deck at 24 leaves 4 under a roof that wants to reach 20 — inside eps
+  for q in (0 - 3)..4 {
+    for r in (0 - 3)..4 {
+      col = world_column(a, q, r);
+      cells = column_cells(col);
+      cells += [Hex { h_height: 24 as u16? ?? 0, h_material: hex_editor::FLOOR_MAT }];
+      assert(world_set_column(a, Column { co_q: q, co_r: r, co_cells: cells }).cw_code == CW_OK,
+             "deck a at ({q},{r})");
+      assert(world_set_column(b, Column { co_q: q, co_r: r, co_cells: cells }).cw_code == CW_OK,
+             "deck b at ({q},{r})");
+    }
+  }
+
+  kb = 0; ka = 0; why = "";
+  n = hex_editor::stencil_place(a, 0, 0, hex_editor::STENCIL_R, 0,
+                                hex_editor::STOREY_H, kb, ka, why);
+  src = procedural(0, 0, 0);
+  cut = part_from_region(src, 0, 0, hex_editor::STENCIL_R);
+  world_save(cut.pc_world, p, no_palette());
+  st = hex_editor::part_place(b, world_load(p).wl_world, 0, 0, 0);
+
+  assert(n < 0, "the procedure built a house under a deck 4 above its roof");
+  assert(st.ps_code == PS_FIT, "the file squeezed a house in where the procedure was refused");
+  // ⚠ AND NEITHER WROTE ANYTHING. A refusal that left half a house behind would
+  // satisfy both assertions above.
+  d = same_world(a, b, 0, 0);
+  assert(d == "", "after two refusals the worlds differ: {d}");
+  assert(a.w_tau == b.w_tau, "a refusal ticked the clock differently: {a.w_tau} vs {b.w_tau}");
+  delete(p);
+}

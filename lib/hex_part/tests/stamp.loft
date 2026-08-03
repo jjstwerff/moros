@@ -1,0 +1,203 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A2.2` — putting a part back, and the translation that does it.
+use hex_part;
+
+// ── The inverse, checked against the thing it inverts ────────────────────────
+//
+// ⚠ NOT AGAINST A FORMULA. `un_origin` written from the same reasoning as
+// `re_origin` would agree with it while both were wrong — which is exactly what
+// happened to `A1.1`'s first version, where the obvious test *was* the naive
+// translation and so agreed with a wrong copy. A round trip cannot: it says the
+// two are inverse whatever either one is.
+//
+// ⚠ BOTH SIGNS AND BOTH PARITIES, because parity is where this codebase breaks —
+// five bugs now, every one right for non-negative coordinates and wrong below
+// zero or on odd rows.
+fn test_un_origin_undoes_re_origin_on_every_parity_and_sign() {
+  n = 0;
+  for cq in (0 - 3)..4 {
+    for cr in (0 - 3)..4 {
+      for q in (0 - 4)..5 {
+        for r in (0 - 4)..5 {
+          (dq, dr) = re_origin(cq, cr, q, r);
+          (bq, br) = un_origin(cq, cr, dq, dr);
+          assert(bq == q && br == r,
+                 "centre ({cq},{cr}): ({q},{r}) -> part ({dq},{dr}) -> ({bq},{br})");
+          n = n + 1;
+        }
+      }
+    }
+  }
+  assert(n == 7 * 7 * 9 * 9, "{n} pairs walked, not 3969");
+}
+
+// CONTROL: the naive translation FAILS this, so the test above is not vacuous.
+// `(cq + dq, cr + dr)` is what a reader writes first and it is wrong on every
+// odd row delta — if it passed, the round trip would be proving nothing.
+fn test_the_naive_inverse_disagrees_with_re_origin() {
+  bad = 0;
+  for cq in (0 - 3)..4 {
+    for cr in (0 - 3)..4 {
+      for q in (0 - 4)..5 {
+        for r in (0 - 4)..5 {
+          (dq, dr) = re_origin(cq, cr, q, r);
+          if cq + dq != q || cr + dr != r { bad = bad + 1; }
+        }
+      }
+    }
+  }
+  assert(bad > 0, "the naive inverse agreed everywhere, so the round trip proves nothing");
+}
+
+// ── The extent ──────────────────────────────────────────────────────────────
+
+fn built_part() -> World {
+  n = world_new(0.25, 0, 8, 3);
+  w = n.wn_world;
+  // an ASYMMETRIC subject: a symmetric one cannot detect a symmetric bug, which
+  // is `STATE.md` decision 9 and was earned twice.
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 4, h_wall_n: 2 },
+               Hex { h_height: 140 as u16? ?? 0, h_material: 5 }] }).cw_code == CW_OK, "c0");
+  // ⚠ EVERY COLUMN HAS TWO CELLS, and that is not decoration. `world_merge_band_as`
+  // names *the layer this call creates, singular* — so over virgin ground a
+  // one-cell column creates one layer, which takes `LABEL_GROUND` and never the
+  // stamp's name. A part of one-cell columns would make the seam test below
+  // report one labelled layer and look like a bug in the stamp.
+  assert(world_set_column(w, Column { co_q: 1, co_r: 0,
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 4, h_wall_ne: 1 },
+               Hex { h_height: 130 as u16? ?? 0, h_material: 5 }] }).cw_code == CW_OK, "c1");
+  assert(world_set_column(w, Column { co_q: 0 - 1, co_r: 1,
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 6 },
+               Hex { h_height: 120 as u16? ?? 0, h_material: 5 }] }).cw_code == CW_OK, "c2");
+  w
+}
+
+fn test_the_extent_is_the_part_and_not_a_radius() {
+  cols = part_columns(built_part());
+  assert(len(cols) == 3, "{len(cols)} columns, not 3");
+  seen = 0;
+  for c in cols {
+    if c.pk_q == 0 && c.pk_r == 0 { seen = seen + 1; }
+    if c.pk_q == 1 && c.pk_r == 0 { seen = seen + 2; }
+    if c.pk_q == 0 - 1 && c.pk_r == 1 { seen = seen + 4; }
+  }
+  assert(seen == 7, "the extent named the wrong cells (bitmask {seen})");
+}
+
+fn test_an_empty_part_is_refused_rather_than_silently_placing_nothing() {
+  empty = world_new(0.25, 0, 8, 3).wn_world;
+  target = world_new(0.25, 0, 8, 3).wn_world;
+  st = part_stamp(target, empty, 5, 5, 0, 0);
+  assert(st.ps_code == PS_EMPTY, "an empty part stamped as {st.ps_code}");
+}
+
+// ── The stamp ───────────────────────────────────────────────────────────────
+//
+// ⚠ THE CENTRE IS ODD AND NEGATIVE. `(0,0)` agrees with the naive translation and
+// with the doubled one, so it can tell them apart on nothing at all.
+fn test_a_part_lands_where_it_was_cut_from() {
+  src = built_part();
+  cut = part_from_region(src, 0, 0, 2);
+  assert(cut.pc_code == PR_OK, cut.pc_why);
+
+  dst = world_new(0.25, 0, 8, 3).wn_world;
+  st = part_stamp(dst, cut.pc_world, 0 - 3, 7, 0, 0);
+  assert(st.ps_code == PS_OK, "the stamp was refused: {st.ps_why}");
+  assert(st.ps_cells == 3, "{st.ps_cells} columns stamped, not 3");
+
+  // every source cell, at its translated place, with its heights and its edges
+  for q in (0 - 2)..3 {
+    for r in (0 - 2)..3 {
+      a = column_cells(world_column(src, q, r));
+      (dq, dr) = re_origin(0, 0, q, r);
+      (wq, wr) = un_origin(0 - 3, 7, dq, dr);
+      b = column_cells(world_column(dst, wq, wr));
+      assert(len(a) == len(b), "({q},{r}) -> ({wq},{wr}): {len(a)} cells vs {len(b)}");
+      for i in 0..len(a) {
+        ha = a[i] ?? Hex {};
+        hb = b[i] ?? Hex {};
+        assert(ha.h_height == hb.h_height, "({wq},{wr}) layer {i}: height");
+        assert(ha.h_material == hb.h_material, "({wq},{wr}) layer {i}: material");
+        // ⚠ THE EDGES. A stamp that dropped every wall passes every height and
+        // material comparison there is — the `map_to_stencil` blindness that lost
+        // 9 of a house's 17 walls, and it hid because every count agreed.
+        assert(ha.h_wall_n == hb.h_wall_n && ha.h_wall_ne == hb.h_wall_ne
+               && ha.h_wall_se == hb.h_wall_se, "({wq},{wr}) layer {i}: an edge was lost");
+      }
+    }
+  }
+}
+
+// ⚠ THE LIFT IS THE ONLY PLACE A PART'S HEIGHTS BECOME THE WORLD'S, and this is
+// what says it happened: the same part at a different anchor is the same shape
+// higher up, not the same numbers.
+fn test_the_anchor_lifts_the_whole_part() {
+  cut = part_from_region(built_part(), 0, 0, 2);
+  dst = world_new(0.25, 0, 8, 3).wn_world;
+  assert(part_stamp(dst, cut.pc_world, 4, 4, 500, 400).ps_code == PS_OK, "stamp");
+  c = column_cells(world_column(dst, 4, 4));
+  assert(len(c) == 2, "{len(c)} cells at the centre");
+  assert(c[0].h_height == 600 && c[1].h_height == 640,
+         "the lift put the column at {c[0].h_height},{c[1].h_height}, not 600,640");
+}
+
+// ⚠ ONE STAMP, ONE LABEL — `I1`. A footprint straddling a chunk boundary makes
+// the layer twice, once per chunk, and unnamed halves are different layers to
+// every by-label reader. The subject deliberately sits ON a seam.
+fn test_a_stamp_across_a_seam_carries_one_label() {
+  cut = part_from_region(built_part(), 0, 0, 2);
+  dst = world_new(0.25, 0, 8, 3).wn_world;
+  st = part_stamp(dst, cut.pc_world, 31, 31, 0, 0);   // chunk 0 ends at 31
+  assert(st.ps_code == PS_OK, "the stamp was refused: {st.ps_why}");
+  chunks = 0;
+  for ch in dst.w_chunks { chunks = chunks + 1; }
+  assert(chunks > 1, "the subject did not straddle a seam — {chunks} chunk");
+  named = 0;
+  for ch in dst.w_chunks {
+    for ly in ch.ck_layers { if ly.ly_id == st.ps_label { named = named + 1; } }
+  }
+  assert(named == chunks, "{named} layers carry the stamp's label across {chunks} chunks");
+}
+
+// ⚠ ATOMIC, AND THE CONFLICT LANDS LATE. A pre-flight is invisible when the
+// offending column is the first one examined — `tools/gates/world/stencil.mjs`
+// stayed green with the check deleted until its conflict was moved to the end of
+// the walk. `part_columns` walks the part's chunks in order, so a blocker under
+// the LAST column is what tests this.
+fn test_a_refused_stamp_writes_nothing() {
+  cut = part_from_region(built_part(), 0, 0, 2);
+  dst = world_new(0.25, 0, 8, 3).wn_world;
+  cols = part_columns(cut.pc_world);
+  last = cols[len(cols) - 1] ?? PartCell {};
+  (bq, br) = un_origin(0, 0, last.pk_q, last.pk_r);
+  // ⚠ THE BLOCKER IS DERIVED FROM THAT COLUMN'S OWN ROOF, not a number chosen by
+  // hand. The first version used a flat 143, which sat ABOVE the last column's
+  // top and was therefore legitimately KEPT — no fold, no refusal, and the test
+  // read as "the stamp ignores blockers" when nothing had blocked anything. A
+  // ceiling 4 above the band's top is inside `eps` (8), so `F1` refuses.
+  lastcol = column_cells(world_column(cut.pc_world, last.pk_q, last.pk_r));
+  ceil = (lastcol[len(lastcol) - 1].h_height as integer ?? 0) + 4;
+  assert(world_set_column(dst, Column { co_q: bq, co_r: br,
+    co_cells: [Hex { h_height: ceil as u16? ?? 0, h_material: 7 }] }).cw_code == CW_OK, "blocker");
+
+  st = part_stamp(dst, cut.pc_world, 0, 0, 0, 0);
+  assert(st.ps_code == PS_FIT, "the stamp was accepted over a blocker: {st.ps_code}");
+  assert(st.ps_why != "", "the refusal must name what it refused");
+
+  // and nothing was written anywhere — the columns BEFORE the blocker are the
+  // ones a missing pre-flight would have filled in.
+  for c in cols {
+    (wq, wr) = un_origin(0, 0, c.pk_q, c.pk_r);
+    n = len(column_cells(world_column(dst, wq, wr)));
+    want = 0;
+    if wq == bq && wr == br { want = 1; }              // the blocker itself
+    assert(n == want, "({wq},{wr}) holds {n} cells after a refusal, not {want}");
+  }
+  // CONTROL: without the blocker the same stamp goes down, so the refusal above
+  // is `F1` and not the stamp being broken.
+  clean = world_new(0.25, 0, 8, 3).wn_world;
+  assert(part_stamp(clean, cut.pc_world, 0, 0, 0, 0).ps_code == PS_OK,
+         "the same stamp was refused with nothing in the way");
+}

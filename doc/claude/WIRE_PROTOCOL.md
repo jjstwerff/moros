@@ -46,7 +46,7 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `11` | FIELD | — | `field filled N cells` · `field refused — grew past the cap C without closing` · `field refused — nothing to fill here` | **A** → `flood_outside` + `trace` + `validate` |
 | `12` | STOREY | `<±1>` | `storey ±N on N cells` · `storey refused (C) why` | **A** → `combine_cut_level` + `seat_write` |
 | `13` | SCATTER | `<species>,<density>` | `scattered N of species S at density D` · `scatter refused — …` | **A** |
-| `14` | STENCIL | `<roof_up>` | `stencil placed N cells, kept B below and A above` · `stencil refused — …` · `stencil refused (C) why` | **A** → `stencil_stamp_all` |
+| `14` | STENCIL | `<roof_up>` — or `<roof_up>,<part>` for a SAVED part (plan 17 `A2.2`) | `stencil placed N cells, kept B below and A above` · `stencil placed N cells from part 'NAME'` · `stencil refused — …` · `stencil refused — part 'NAME' (C) detail` · `stencil refused — part name 'NAME' leaves data/parts/` · `stencil refused (C) why` | **A** → `stencil_stamp_all` |
 | `15` | COLUMN | `<q>,<r>` | `column q,r = <heights>` | **R** |
 | `16` | WALLS | `<q>,<r>` | `walls q,r = <three owned edges>` | **R** |
 | `17` | CART | `<…>` | `cart travel T value V angle A skid S`, plus a broadcast `cart pose y Y bank B gapl L gapr R` | **X** |
@@ -66,6 +66,17 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `H:` | **SUBJECT** — server→client only, no request id. The whole subject line, composed by the server and shown verbatim: `H:world <name> · <MODE> · level ON/off · road ON/off · trace ON/off`. Sent to a client **where it joins the list** on connect, and broadcast **on every accepted change**. ⚠ **Never on a refusal** — that is the one behaviour separating a HUD from an echo of the keystroke, and `tools/gates/world/subject.mjs` is the control. ⚠ FPS is deliberately absent: it is a client fact, and one mixed field would make "the server authored this line" untrue of the whole. Plan 18 `B2` |
 | `N:` | **CATALOGUE** — server→client only, sent once where the client joins the list. `N:<name>,<name>,…`, **derived from `moros_terrain::surfaces()`** so it cannot name a material the renderer cannot draw or miss one it can (§C3). Plan 18 `B3.2` |
 | `40` | MODE | `<0\|1\|2\|3\|4>` — AUTO, FOLLOW, SNUG, CUTAWAY, EYES | `mode N` · `mode refused — N is not a mode (offer 0, AUTO..4, EYES)` | **V** — added 2026-08-01. AUTO is the default and degrades into SNUG on `sh_room`; ⚠ naming any other mode turns the degradation OFF for good, because a chosen mode never auto-switches. ⚠ It also RE-FENCES the pitch: EYES allows ±1.5 and FOLLOW −0.20, and a mode change is not a look |
+
+⚠ **`14` STENCIL GREW A SECOND FORM RATHER THAN A SECOND MESSAGE**, and the old payload
+is untouched: `14:12` still runs the procedure, so `tools/gates/world/stencil.mjs` did not
+change — which is itself the claim that the procedural path was not disturbed. A part is
+**named, never pathed**: `21:` IMPORT takes a filesystem path because a kit-bashed `.glb`
+genuinely lives anywhere, while a part lives in `data/parts/` by definition and a name is what
+`A7.1`'s catalogue will offer. `house/cottage` is a name with a family in it, and a name
+containing `..` is refused rather than normalised. ⚠ `roof_up` is still parsed and **fenced**
+for the part form and then **ignored** by it — a part's roof is whatever was authored into it,
+and an author who asks for an inadmissible roof is owed the refusal even on a message that
+would not have used the number.
 
 ⚠ **`30` STAIR is the gesture that made an upper storey REACHABLE**, and until it
 existed three of this editor's rules could not be tested at all. A storey is 12 height
