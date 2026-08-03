@@ -112,6 +112,25 @@ for (let y = 0; y < Math.floor(img.h * 0.35); y++) {
 }
 check(btnGlyph > 300, `the BUTTONS have labels (${btnGlyph} glyph pixels, want > 300)`);
 
+// ── the subject line (B1.5) ──────────────────────────────────────
+// §C1 wants one line, top-left, NEVER HIDDEN. Two claims, and the second is the
+// one with teeth: the bar is there, and nothing is drawn over it.
+const SUBJ_H = 24;
+let subjGlyph = 0;
+for (let y = 0; y < SUBJ_H; y++) {
+    for (let x = 0; x < img.w; x++) if (lum(x, y) > 150) subjGlyph++;
+}
+check(subjGlyph > 200, `the subject line has words in it (${subjGlyph} glyph pixels)`);
+
+// ⚠ AND IT RUNS PAST THE STRIP. A subject bar that stopped at 240px would look
+// fine in a thumbnail and truncate the answer to "what am I working on" down to
+// its first two words — the failure this bar exists to avoid.
+let past = 0;
+for (let y = 0; y < SUBJ_H; y++) {
+    for (let x = STRIP + 10; x < img.w; x++) if (lum(x, y) > 150) past++;
+}
+check(past > 0, `the subject line extends past the 240px strip (${past} glyph pixels)`);
+
 // ── the control: the panel did not eat the canvas ────────────────
 let sky = 0, total = 0;
 for (let y = 0; y < img.h; y += 7) {

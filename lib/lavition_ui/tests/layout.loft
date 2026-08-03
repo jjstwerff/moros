@@ -26,6 +26,7 @@ fn demo_spec() -> PanelSpec {
     ps_items: ["none", "solid", "half", "thick_flat", "thick_curved"],
     ps_selected_item: 1,
     ps_status: "q=0 r=0 cy=0  y= 0.0  FPS 60",
+    ps_subject: "world hollow-hill · AUTO · level ON · 30 Hz",
   }
 }
 
@@ -47,20 +48,39 @@ fn test_rect_contains_boundaries() {
 
 // ── Layout at standard resolution ────────────────────────────────
 
-fn test_panel_rect_standard() {
+fn test_panel_rect_starts_below_the_subject_bar() {
   r = panel_rect(1280, 720);
-  assert(r.r_x == 0 && r.r_y == 0, "panel origin");
+  assert(r.r_x == 0, "panel starts at the left edge");
+  // ⚠ NOT y=0. §C1's subject line is "never hidden", and a strip drawn from the
+  // top would cover its left end — which is exactly where it starts reading.
+  assert(r.r_y == SUBJECT_HEIGHT, "panel starts below the subject bar, got y={r.r_y}");
   assert(r.r_w == 240, "panel w = 240");
-  assert(r.r_h == 720, "panel h spans the window");
+  assert(r.r_h == 720 - SUBJECT_HEIGHT, "panel h is the window less the subject bar");
+}
+
+fn test_the_subject_bar_spans_the_window_at_the_top() {
+  q = subject_rect(1280);
+  assert(q.r_x == 0 && q.r_y == 0, "the subject bar is at the very top-left");
+  assert(q.r_w == 1280, "it spans the WINDOW — its line runs to 70 characters");
+  assert(q.r_h == SUBJECT_HEIGHT, "fixed height");
+}
+
+// The two bars must not meet in the middle of a short window.
+fn test_the_two_bars_never_overlap() {
+  for h in [200, 480, 720, 1080] {
+    q = subject_rect(1280);
+    st = status_rect(1280, h);
+    assert(q.r_y + q.r_h <= st.r_y, "subject and status bars collide at height {h}");
+  }
 }
 
 fn test_toolbar_buttons_stack_without_overlapping() {
   b0 = toolbar_button_rect(0);
   b1 = toolbar_button_rect(1);
   b5 = toolbar_button_rect(5);
-  assert(b0.r_y == 8, "first button at the top margin");
+  assert(b0.r_y == SUBJECT_HEIGHT + 8, "first button below the subject bar, got {b0.r_y}");
   assert(b1.r_y >= b0.r_y + b0.r_h, "button 1 starts below button 0");
-  assert(b5.r_y + b5.r_h < 240, "six buttons stay in the top quarter");
+  assert(b5.r_y + b5.r_h < 280, "six buttons stay in the top quarter");
 }
 
 fn test_toolbar_button_width() {
@@ -122,6 +142,7 @@ fn test_an_empty_spec_still_builds() {
     ps_buttons: [], ps_selected_button: -1,
     ps_items: [], ps_selected_item: -1,
     ps_status: "",
+    ps_subject: "",
   };
   p = panel_build(empty, 1280, 720, ui_metrics(8, 8));
   assert(len(p.p_toolbar) == 0, "no buttons");

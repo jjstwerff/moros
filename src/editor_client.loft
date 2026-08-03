@@ -1092,7 +1092,24 @@ fn client_panel_spec() -> PanelSpec {
     ps_items: [],                    // B3 fills it from the material catalogue
     ps_selected_item: -1,
     ps_status: "moros editor — connected",
+    ps_subject: subject_line(),
   }
+}
+
+// §C1's one line: what you are working on, and what is switched on.
+//
+// ⚠ IT SAYS WHAT IT KNOWS AND NAMES WHAT IT DOES NOT, which is the only honest
+// thing it can do today. Every field of this line is supposed to be what the
+// SERVER says -- a HUD that echoes the client's own belief is a picture of its
+// intention, and this tree has paid for that twice. `H:` is plan 18 B2 and does
+// not exist yet.
+//
+// ⚠ A PLAUSIBLE PLACEHOLDER WOULD BE WORSE THAN AN EMPTY ONE. `level ON` read
+// off a client-side default looks exactly like `level ON` read off the server,
+// so the day B2 lands there would be nothing to notice -- and until then it is a
+// confident statement about a toggle nobody asked.
+fn subject_line() -> text {
+  "world — · mode — · toggles — (awaiting the server)"
 }
 
 // The metrics the panel lays out against.

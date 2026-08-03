@@ -32,6 +32,7 @@ pub struct Theme {
   th_list_bg:    integer,
   th_item_sel:   integer,
   th_status_bg:  integer,
+  th_subject_bg: integer,
   th_separator:  integer,
   th_text:       integer,
   th_text_dim:   integer,      // the hotkey column — present, not shouting
@@ -46,6 +47,7 @@ pub fn theme_default() -> Theme {
     th_list_bg:    0x141418,
     th_item_sel:   0x3A4E6E,
     th_status_bg:  0x101014,
+    th_subject_bg: 0x22262E,
     th_separator:  0x2A2A30,
     th_text:       0xE0E0E6,
     th_text_dim:   0x8A8A96,
@@ -65,6 +67,11 @@ pub fn panel_draw_list(p: Panel, th: Theme) -> vector<DrawRect> {
   dl += [DrawRect { dr_rect: p.p_rect,           dr_colour: th.th_panel_bg }];
   dl += [DrawRect { dr_rect: p.p_list.lb_rect,   dr_colour: th.th_list_bg }];
   dl += [DrawRect { dr_rect: p.p_status.ss_rect, dr_colour: th.th_status_bg }];
+  // ⚠ THE SUBJECT BAR IS EMITTED WITH THE BACKGROUNDS, not after them, and that
+  // is only safe because nothing overlaps it: the strip starts below it. If it
+  // ever floated over the panel this order would paint the panel on top of the
+  // one line §C1 calls "never hidden".
+  dl += [DrawRect { dr_rect: p.p_subject.ss_rect, dr_colour: th.th_subject_bg }];
 
   // a hairline above the list, so the toolbar reads as its own group
   lr = p.p_list.lb_rect;
@@ -154,6 +161,12 @@ pub fn panel_text_list(p: Panel, th: Theme) -> vector<DrawText> {
   tl += [DrawText { dt_text: p.p_status.ss_text,
                     dt_x: sr.r_x + 6,
                     dt_y: baseline_in(sr.r_y, sr.r_h, lh),
+                    dt_colour: th.th_text }];
+
+  qr = p.p_subject.ss_rect;
+  tl += [DrawText { dt_text: p.p_subject.ss_text,
+                    dt_x: qr.r_x + 6,
+                    dt_y: baseline_in(qr.r_y, qr.r_h, lh),
                     dt_colour: th.th_text }];
   tl
 }

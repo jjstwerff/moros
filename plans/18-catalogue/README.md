@@ -49,7 +49,7 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 | ✅ **`B1.2b`** | **the panel became lavition's** — `lavition_ui`, its own section below. | **DONE.** `editor_client.loft` compiles against it and builds a `Panel`. | M |
 | ✅ `B1.3` | **`panel_draw_list`, not `panel_render(painter, …)`** — the panel emits RECTANGLES and the client draws them, so `lavition_ui` keeps needing no GL and "the selected button looks different" is a loft test rather than a pixel argument. | **DONE.** A PNG **from the client**, measured not eyeballed: strip **240px exactly**, bars `32,32,32,32,32,32`, 76% of the frame still world. ⚠ **It took three world gates red** — see below. | S |
 | ✅ `B1.4` | `panel_text_list` beside the draw list; the client rasterises each string **once, outside the frame loop** (§C5). `Panel` now carries `p_metrics`, so the metrics that FIT a label are the metrics that PLACE it. | **DONE.** Labels legible in the client's PNG — 1180 glyph pixels, 678 of them in the buttons. ⚠ **The picture found a collision the per-string checks could not** — see below. | S |
-| `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, **in the client** | S |
+| ✅ `B1.5` | The subject line — its **own bar across the top**, because §C1's own example is 69 characters and was never going to fit the 240px strip. The panel starts *below* it, so "never hidden" is geometry rather than hope. | **DONE.** In the client's PNG: 844 glyph pixels in the bar, 408 of them past the strip. ⚠ It says what it does **not** know — see below. | S |
 | `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
 
 ⚠ **`B1.1` was not ceremony, and it earned its place immediately.** Text does reach the
@@ -152,6 +152,22 @@ counted button bars down **one column**, and that column then ran through the gl
 buttons read as thirteen fragments. A single sample line is hostage to whatever is drawn on
 it. A button row is *mostly* button, so it is a majority across the row now — which survives
 labels, a highlight, or anything else drawn inside the box.
+
+⚠ **`B1.5`: THE LINE SAYS WHAT IT DOES NOT KNOW.** Every field of the subject line is meant
+to be what the **server** says (§C1), and `H:` is `B2` — it does not exist yet. So the client
+prints `world — · mode — · toggles — (awaiting the server)` rather than a plausible
+`AUTO · level ON` read off its own defaults.
+
+**A plausible placeholder would be worse than an empty one.** `level ON` from a client-side
+default looks exactly like `level ON` from the server, so the day `B2` lands there would be
+nothing to notice — and until then it is a confident statement about a toggle nobody asked.
+`B2`'s control (*"a key the server refuses must leave the line unchanged"*) only means
+something if the line was never guessing in the first place.
+
+⚠ **And "never hidden" is a geometric claim, so it gets a geometric test:** nothing else the
+panel emits — rect or text — may occupy a pixel of the subject bar. Before `B1.5` the strip
+started at `y=0` and would have covered the left end of the line, which is exactly where it
+starts reading.
 
 ### B2 — the line tells the truth
 

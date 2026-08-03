@@ -92,7 +92,8 @@ fn test_nothing_but_the_status_escapes_the_strip() {
   th = theme_default();
   p = demo(3, 1);
   for d in panel_draw_list(p, th) {
-    if d.dr_colour == th.th_status_bg { continue; }
+    // the two BARS span the window on purpose (see status_rect / subject_rect)
+    if d.dr_colour == th.th_status_bg || d.dr_colour == th.th_subject_bg { continue; }
     assert(d.dr_rect.r_x >= 0 && d.dr_rect.r_x + d.dr_rect.r_w <= p.p_rect.r_w,
            "a rectangle spills out of the 240px strip: x={d.dr_rect.r_x} w={d.dr_rect.r_w}");
   }
@@ -257,4 +258,71 @@ fn test_no_two_texts_on_a_line_overlap() {
       }
     }
   }
+}
+
+// ── the subject line (B1.5) ──────────────────────────────────────
+
+fn subject_panel(subject: text, adv: integer) -> Panel {
+  spec = PanelSpec {
+    ps_buttons: [spec_button("Stencil", "4"), spec_button("Wall", "6")],
+    ps_selected_button: 0,
+    ps_items: ["none"], ps_selected_item: 0,
+    ps_status: "q=0 r=0 cy=0",
+    ps_subject: subject,
+  };
+  panel_build(spec, 1280, 720, ui_metrics(adv, adv))
+}
+
+fn test_the_subject_line_is_drawn_and_its_bar_with_it() {
+  th = theme_default();
+  p = subject_panel("world hollow-hill · AUTO · level ON", 8);
+  bar = false;
+  for d in panel_draw_list(p, th) { if d.dr_colour == th.th_subject_bg { bar = true; } }
+  assert(bar, "the subject bar was not emitted");
+  words = false;
+  for t in panel_text_list(p, th) {
+    if t.dt_text == "world hollow-hill · AUTO · level ON" { words = true; }
+  }
+  assert(words, "the subject text was not emitted");
+}
+
+// ⚠ "NEVER HIDDEN" IS A GEOMETRIC CLAIM, so it gets a geometric test. Nothing
+// else the panel draws may occupy a pixel of the subject bar — and a strip drawn
+// from y=0, which is what it was before B1.5, covers the left end of the line
+// exactly where it starts reading.
+fn test_nothing_is_drawn_over_the_subject_bar() {
+  th = theme_default();
+  p = subject_panel("world hollow-hill · AUTO", 8);
+  qr = p.p_subject.ss_rect;
+  for d in panel_draw_list(p, th) {
+    if d.dr_colour == th.th_subject_bg { continue; }
+    assert(d.dr_rect.r_y >= qr.r_y + qr.r_h,
+           "something is drawn at y={d.dr_rect.r_y}, inside the subject bar");
+  }
+  for t in panel_text_list(p, th) {
+    if t.dt_text == p.p_subject.ss_text { continue; }
+    assert(t.dt_y >= qr.r_y + qr.r_h,
+           "'{t.dt_text}' is drawn at y={t.dt_y}, inside the subject bar");
+  }
+}
+
+// §C1's own example, which is 69 characters and about 620px — the length that
+// settled the bar spanning the window rather than sitting in the 240px strip.
+fn test_c1s_own_example_survives_the_bar() {
+  line = "world hollow-hill · AUTO · level ON · run armed · roof hidden · 30 Hz";
+  for adv in [8, 9, 12] {
+    p = subject_panel(line, adv);
+    assert(p.p_subject.ss_text == line,
+           "at advance {adv} the subject was truncated to '{p.p_subject.ss_text}'");
+  }
+}
+
+// And the control: it IS fitted, not merely passed through — a line long enough
+// to overflow the window still has to be cut.
+fn test_a_subject_too_long_for_the_window_is_still_cut() {
+  long = "world hollow-hill · AUTO · level ON · run armed · roof hidden · 30 Hz · and a great deal more besides, far past the right-hand edge of any window";
+  p = subject_panel(long, 24);
+  assert(p.p_subject.ss_text != long, "an over-long subject was not fitted");
+  assert(text_width(p.p_subject.ss_text, p.p_metrics) <= p.p_subject.ss_rect.r_w - LABEL_PAD,
+         "the fitted subject still overflows its bar");
 }

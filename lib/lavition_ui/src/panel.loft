@@ -21,6 +21,13 @@ pub TOOLBAR_TOP        = 8;
 pub SEPARATOR_HEIGHT   = 2;
 pub LIST_ITEM_HEIGHT   = 20;
 pub STATUS_HEIGHT      = 24;
+// ⚠ THE SUBJECT LINE GETS ITS OWN BAR, ACROSS THE TOP, and the width is what
+// decides that. CATALOGUE §C1 wants it top-left and always visible, and its own
+// example — `world hollow-hill · AUTO · level ON · run armed · roof hidden ·
+// 30 Hz` — is 69 characters, about 620px. It was never going to live in a 240px
+// column; putting it there would truncate the answer to "what am I working on"
+// down to the first two words.
+pub SUBJECT_HEIGHT     = 24;
 
 // Room a label does not get: the padding inside its box, and the column the
 // hotkey glyph sits in.
@@ -57,6 +64,8 @@ pub struct PanelSpec {
   ps_items:           vector<text>,
   ps_selected_item:   integer,
   ps_status:          text,
+  // What you are working on and what is switched on — §C1's one line.
+  ps_subject:         text,
 }
 
 pub fn spec_button(label: text, hotkey: text) -> SpecButton {
@@ -69,6 +78,7 @@ pub struct Panel {
   p_toolbar: vector<Button>,
   p_list:    ListBox,
   p_status:  StatusStrip,
+  p_subject: StatusStrip,
   // ⚠ THE METRICS IT WAS BUILT WITH, carried rather than passed again.
   // `panel_build` FITS every label to its box with these; `panel_text_list`
   // PLACES the same labels. If the two could be handed different metrics, a
@@ -80,15 +90,23 @@ pub struct Panel {
 
 // ── Layout helpers ───────────────────────────────────────────────
 
+// The subject bar: full width, at the very top, never covered by anything.
+pub fn subject_rect(window_w: integer) -> Rect {
+  rect(0, 0, window_w, SUBJECT_HEIGHT)
+}
+
+// ⚠ THE STRIP STARTS BELOW THE SUBJECT BAR rather than under it. An always-visible
+// line that something else is drawn over is not always visible, and "never
+// hidden" is the one property §C1 asks of it by name.
 pub fn panel_rect(window_w: integer, window_h: integer) -> Rect {
   // window_w is present so callers do not have to special-case the single fixed
   // strip; if the panel grows a right-aligned variant, the dimension is here.
   _ = window_w;
-  rect(0, 0, PANEL_WIDTH, window_h)
+  rect(0, SUBJECT_HEIGHT, PANEL_WIDTH, window_h - SUBJECT_HEIGHT)
 }
 
 pub fn toolbar_button_rect(idx: integer) -> Rect {
-  tbr_y = TOOLBAR_TOP + idx * (TOOLBAR_ROW_HEIGHT + TOOLBAR_GAP);
+  tbr_y = SUBJECT_HEIGHT + TOOLBAR_TOP + idx * (TOOLBAR_ROW_HEIGHT + TOOLBAR_GAP);
   rect(8, tbr_y, PANEL_WIDTH - 16, TOOLBAR_ROW_HEIGHT)
 }
 
@@ -97,7 +115,7 @@ pub fn toolbar_button_rect(idx: integer) -> Rect {
 // the geometry of every consumer's panel. The list starts below however many
 // buttons it was given.
 pub fn list_rect(window_h: integer, n_buttons: integer) -> Rect {
-  lr_top = TOOLBAR_TOP
+  lr_top = SUBJECT_HEIGHT + TOOLBAR_TOP
     + n_buttons * (TOOLBAR_ROW_HEIGHT + TOOLBAR_GAP)
     + SEPARATOR_HEIGHT + 8;
   lr_bottom = window_h - STATUS_HEIGHT - 4;
@@ -149,6 +167,7 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
   }
 
   pb_sr = status_rect(window_w, window_h);
+  pb_qr = subject_rect(window_w);
 
   Panel {
     p_metrics: metrics,
@@ -164,6 +183,10 @@ pub fn panel_build(spec: PanelSpec, window_w: integer, window_h: integer,
     p_status: StatusStrip {
       ss_rect: pb_sr,
       ss_text: fit_text(spec.ps_status, pb_sr.r_w - LABEL_PAD, metrics),
+    },
+    p_subject: StatusStrip {
+      ss_rect: pb_qr,
+      ss_text: fit_text(spec.ps_subject, pb_qr.r_w - LABEL_PAD, metrics),
     },
   }
 }

@@ -103,8 +103,12 @@ const PAGE = wasm ? '/client' : '/';
 // 660 rows = 3.6% of the frame, which is exactly the `sky 0.0364` that took
 // `deck_soffit` red — a gate that wants to be fully under a deck, reading the
 // bottom bar as sky.
-const UI_STRIP  = 240;
-const UI_STATUS = 24;
+const UI_STRIP   = 240;
+const UI_STATUS  = 24;
+// And the SUBJECT bar across the top (plan 18 B1.5) — the always-visible line
+// saying what you are working on. Same reason as the status bar: it spans the
+// window because its content does.
+const UI_SUBJECT = 24;
 const CANVAS = wasm ? '#c' : '#gl';
 
 // ⚠ KEEP IN STEP WITH `html/editor.html`'s keydown handler.
@@ -564,7 +568,7 @@ async function frameStats() {
       // template literal; the first version of this very note quoted a variable
       // in backticks and stopped the file parsing, which is the trap the older
       // comment forty lines down already warned about.
-      for (let y = 0; y < cv.height - ${UI_STATUS}; y += 4) {
+      for (let y = ${UI_SUBJECT}; y < cv.height - ${UI_STATUS}; y += 4) {
         for (let x = ${UI_STRIP}; x < cv.width; x += 4) {
           const i = (y * cv.width + x) * 4;
           const R = d[i] / 255, G = d[i+1] / 255, B = d[i+2] / 255;
