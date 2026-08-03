@@ -98,8 +98,18 @@ someone remembered that command — the `Z:0` drain read as "never runs" through
 instrumented runs while the code was simply not in the page. Both client gates now
 build it themselves. **Check this first** if a client change appears to do nothing.
 
-**Next:** S3 has earned the deletion it was measuring for — the server's ground `M:`
-frames can go, and the client draws its own. Nothing has been deleted yet.
+**S4 is done too, and #16 is finished.** `43:1` is the client saying it draws the
+ground itself; the server sends it none. Measured: **`ground sent 174 held 20`** —
+twenty ground meshes built and never put on the wire, while a plain socket in the same
+session still received every one.
+
+⚠ **Earned, not declared** — four `Q:` agreements with no disagreement, and `43:0` the
+moment one fails, so the worst case is a byte cost and never a hole in the world.
+⚠ **Per client.** "Suppress when every client derives" reads as the safe choice and makes
+the deletion *unreachable*: the gate runner is a client and cannot derive.
+⚠ **And a client is tracked where it ARRIVES** — `clients` was filled by `2:<aspect>`,
+400 ms late, and the instant the ground became a per-client send the whole opening
+stream went to nobody (`terrain` read `n: 0`).
 
 **Two instruments were wrong before the thing they measured, again.** `wait` returns
 the *earliest* matching status, so a cumulative tally read `ground 0 bad 0 wait 1` —
