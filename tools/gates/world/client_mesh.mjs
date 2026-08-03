@@ -36,8 +36,16 @@ const agree = last ? +last[1] : -1, bad = last ? +last[2] : -1, wait = last ? +l
 // ⚠ `agree > 0` IS THE HALF THAT CANNOT BE DROPPED. A guard that held every tile
 // would report `bad 0` and prove nothing whatever — the same shape as a gate passing
 // on an empty set, which this suite has been fooled by before.
-const ok = last !== null && bad === 0 && agree > 0;
+// S4 — and the deletion itself. `held > 0` is the claim: ground meshes the server
+// BUILT and did not send because the client said it draws its own. ⚠ `sent > 0` too,
+// because the opt-in is earned — a run where nothing was ever sent means the client
+// never needed convincing, which would mean the streaming path never ran.
+const d = out.match(/derive (\d+) of (\d+) ground sent (\d+) held (\d+)/g);
+const dl = d ? d[d.length - 1].match(/derive (\d+) of (\d+) ground sent (\d+) held (\d+)/) : null;
+const sent = dl ? +dl[3] : -1, held = dl ? +dl[4] : -1, deriving = dl ? +dl[1] : -1;
+const ok = last !== null && bad === 0 && agree > 0 && held > 0 && sent > 0 && deriving > 0;
 console.log(JSON.stringify({ verdict: last ? last[0] : '(no ground report)',
-                             agree, bad, held: wait, ok }));
+                             agree, bad, waiting: wait, deriving, groundSent: sent, groundHeld: held,
+                             ok }));
 if (!ok) process.stderr.write(out.split('\n').slice(-25).join('\n'));
 process.exit(ok ? 0 : 1);

@@ -33,6 +33,7 @@ fields are comma-separated; sub-records are semicolon-separated.
 | id | name | payload | acknowledgement | fate |
 |---|---|---|---|---|
 | `1` | READY | — | the opening burst, then `E:` | **S** |
+| `43` | DERIVES | `<0\|1>` — **"I draw the ground myself"** | `S:… derive N of M ground sent S held H` | **K** — the deletion S4 was measuring for |
 | `2` | CAM | `<aspect>,` | `C:` immediately, from current state | **V** — and see the ⚠ below: today it doubles as *"resend `T:`/`C:`"* |
 | `3` | LOOK | `<dx>,<dy>` | none | **V** |
 | `4` | KEYS | `<bitmask>` — `1` forward, `2` back, `4` turn left, `8` turn right | none | **V** — the shipped `input` library owns this |
@@ -132,6 +133,29 @@ things had to change before that held, and each looked like someone else's probl
 `ground 41 bad 7` → `ground 12 bad 0 wait 36` → **`ground 48 bad 0 wait 0`**. The first
 step was a guard, the second was the sender honouring it. A guard alone converts a
 wrong answer into no answer, which is better and is not the claim.
+
+### And then the ground stops being sent (S4)
+
+`43:1` is the client saying it draws the ground itself, and the server sends it none.
+Measured in the gate: **`ground sent 174 held 20`** — twenty ground meshes built and never
+put on the wire, while a plain socket in the same session still received all of them.
+
+⚠ **EARNED, NOT DECLARED.** The client sends `43:1` only after four `Q:` agreements with no
+disagreement, and `43:0` the moment one fails — so a client that starts meshing wrongly gets
+the server's ground back. The worst case is a byte cost, never a hole in the world.
+
+⚠ **PER CLIENT, AND "EVERY CLIENT DERIVES" WAS THE WRONG TEST.** Suppressing only when no
+client still needs the ground reads as the safe choice and makes the deletion *unreachable*:
+the gate runner is a client and cannot derive anything, so the condition never fires under
+the only circumstances anyone measures — `ground sent 154 held 0` is what that looked like.
+
+⚠ **AND A CLIENT MUST BE TRACKED WHERE IT ARRIVES.** `clients` was populated by `2:<aspect>`,
+which arrives some time after the connect — 400 ms for the gate runner. Harmless while the
+ground was broadcast; the instant it became a per-client send, the whole opening stream went
+to nobody and the `terrain` gate read **`n: 0`**. A default aspect is a guess that `2:`
+corrects immediately; being absent from the list is not correctable, because the frames
+missed are already gone. This is the third time this session that *a guard belongs where the
+thing arrives* has been the answer.
 
 ⚠ **The oracle asks whether the chunk is KNOWN, not whether it holds ground.** A chunk
 known to be empty is an answer: the mesher reads absent cells there and so does the

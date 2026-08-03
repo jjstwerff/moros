@@ -32,4 +32,19 @@ step 20
 # these tallies are cumulative — the first `ground` report is always the instant
 # before any evidence exists.
 last cache
+# ⚠ S4 NEEDS A REBUILD AFTER THE OPT-IN, or it measures nothing. The client only earns
+# the right to draw its own ground after four agreements, and by then the opening stream
+# is long finished — so with no further edit the counters never move again and the last
+# report is the one from BEFORE the opt-in, reading `held 0`. That is not the deletion
+# failing, it is the gate looking at the wrong instant.
+#
+# So: raise the ground again, now, with the client deriving. Every ground mesh rebuilt
+# from here is one the server builds and does NOT put on the wire for that client.
+key ArrowUp
+wait rebuilt
+step 20
+key ArrowUp
+step 20
+# `derive N of M ground sent S held H` — what the server PUT ON THE WIRE against what it
+# withheld. Reported when the counters change, never at the opt-in.
 last ground

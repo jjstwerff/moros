@@ -371,6 +371,10 @@ const MSG_STEP = 35;
 const MSG_CACHE = 41;
 // S3 — the client's verdict on the ground it derived itself: `42:<agreed>,<bad>`.
 const MSG_GROUND = 42;
+// `43:<0|1>` — "I draw the ground myself" / "I do not any more". THE DELETION #16 was
+// measuring for: the ground mesh is ~1 MB of ASCII floats per chunk rebuild, and a
+// client that can derive it from the voxels it already caches does not need it sent.
+const MSG_DERIVES = 43;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -620,7 +624,12 @@ struct DirtySet {
 // chunks together: the multi-client property visible rather than claimed.
 struct Client {
   cid: integer,
-  aspect: float
+  aspect: float,
+  // S4 — this client has PROVEN it derives the ground from its own voxels and asked
+  // to stop being sent it (`43:1`). Earned, never assumed: the client sends this only
+  // after four `Q:` agreements with no disagreement, and sends `43:0` the moment one
+  // fails. So the worst case is a byte cost, not a hole in the world.
+  derives: boolean
 }
 
 fn figure_wu() -> float { FIGURE_M / WU_PER_M ?? 0.0 }
@@ -3159,6 +3168,35 @@ fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
   out
 }
 
+// S4 — SEND THE GROUND ONLY TO THE CLIENTS THAT CANNOT DERIVE IT.
+//
+// ⚠ PER CLIENT, AND "EVERY CLIENT DERIVES" WAS THE WRONG TEST — measured, not argued.
+// The first version suppressed only when no tracked client still needed the ground,
+// which reads as the safe choice and makes the deletion UNREACHABLE: the gate runner
+// is itself a client and it cannot derive anything, so a suppression conditioned on
+// unanimity never fires under the only conditions anyone measures. `ground sent 154
+// held 0` is what that looked like.
+//
+// So it is a per-client send, the way `V:` already is. A deriving tab gets no ground
+// and a plain socket still gets all of it.
+//
+// ⚠ A CLIENT NOT YET TRACKED GETS NOTHING HERE, which is correct rather than a hole:
+// `clients` is populated when a client states its aspect, the same gate every other
+// per-client message passes, and a chunk it misses in that window arrives with the
+// next stream or rebuild. Broadcasting to be safe would put the ground back on the
+// wire for the deriving client, which is the thing being deleted.
+//
+// Returns how many it actually put on the wire, because "suppressed" and "never
+// built" read identically from outside and only one of them is the deletion.
+fn send_ground(srv: server::Server, clients: vector<Client>, frame: text) -> integer {
+  n = 0;
+
+  for gc in clients {
+    if !gc.derives { srv.send_to(gc.cid, frame); n = n + 1; }
+  }
+  n
+}
+
 // ── S2 (plan 16) — THE VOXELS THEMSELVES, BESIDE THE MESHES ─────────────────
 //
 // `L:<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` — one terrain layer, in the
@@ -4256,6 +4294,19 @@ fn main() {
   cam_lamp = LAMP_FOLLOW;    // …and the head-lamp, eased with it
   cam_body = true;           // is the figure's own mesh drawn
   cam_vsent = 0 - 1;         // the last `V:` payload, so it is sent on change only
+  // S4 — ground meshes actually put on the wire, and ground meshes NOT sent because
+  // every client said it derives its own. ⚠ Counted rather than assumed: "suppressed"
+  // and "never built" read identically from outside, and only one of them is the
+  // deletion this plan was measuring for.
+  g_sent = 0;
+  g_held = 0;
+  // ⚠ REPORTED ON THE CLIENT'S OWN VERDICT LINE, and it took two wrong homes to get
+  // there. Said in the `43:` handler they fire BEFORE the streaming they measure, so
+  // they always read `held 0`. Said at the end of the streaming pass they stop the
+  // moment nothing new streams — which is most of a session. The client's ground
+  // verdict arrives whenever there is ground to have an opinion about, which is
+  // exactly when this accounting is worth reading.
+
   keys = 0;
   last_us = ticks();
 
@@ -4323,6 +4374,17 @@ fn main() {
         // The gate OPENS here and closes on the broadcast count: a connect is the
         // one liveness signal that does reach this loop.
         live_clients = len(clients) + 1;
+        // ⚠ TRACKED WHERE IT ARRIVES, not where it states an aspect — and S4 is what
+        // made the difference matter. `clients` used to be populated by `2:<aspect>`,
+        // which a client sends some time AFTER connecting (the gate runner waits
+        // 400 ms). While the ground was broadcast that was harmless; the moment it
+        // became a per-client send, every mesh in the opening stream went to nobody,
+        // and the `terrain` gate read `n: 0` — no ground at all. A default aspect is
+        // a guess that `2:` immediately corrects; being absent from the list is not
+        // correctable, because the frames it missed are already gone.
+        cknown = false;
+        for cl0 in clients { if cl0.cid == ev.cid { cknown = true; } }
+        if !cknown { clients += [Client { cid: ev.cid, aspect: 1.6, derives: false }]; }
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
@@ -4360,7 +4422,7 @@ fn main() {
             for cl in clients {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
-            if !known { clients += [Client { cid: ev.cid, aspect: asp }]; }
+            if !known { clients += [Client { cid: ev.cid, aspect: asp, derives: false }]; }
             srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld));
             // ⚠ AND ITS `V:`, HERE, BECAUSE THIS IS WHERE A CLIENT ARRIVES. The tick
             // sends on CHANGE, so a viewer that joins while the mode is already set
@@ -4610,8 +4672,25 @@ fn main() {
           srv.broadcast("S:cache {ev.payload}");
           println("editor: client cache {ev.payload}");
         } else if ev.msg_id == MSG_GROUND {
-          srv.broadcast("S:{ev.payload}");
-          println("editor: client {ev.payload}");
+          nd2 = 0;
+          for dc4 in clients { if dc4.derives { nd2 = nd2 + 1; } }
+          srv.broadcast("S:{ev.payload} derive {nd2} of {len(clients)} "
+                      + "ground sent {g_sent} held {g_held}");
+          println("editor: client {ev.payload} derive {nd2} of {len(clients)} "
+                + "ground sent {g_sent} held {g_held}");
+        } else if ev.msg_id == MSG_DERIVES {
+          // ⚠ PER CLIENT, and the ground keeps being sent while ANY client still needs
+          // it. Two tabs where one derives and one does not is a real case — a plain
+          // socket script is exactly that — and suppressing on the first opt-in would
+          // blank the world for the other one.
+          dv = (ev.payload as integer ?? 0) != 0;
+          for dvi in 0..len(clients) {
+            if clients[dvi].cid == ev.cid { clients[dvi].derives = dv; }
+          }
+          nder = 0;
+          for dc3 in clients { if dc3.derives { nder = nder + 1; } }
+          srv.broadcast("S:derive {nder} of {len(clients)} ground sent {g_sent} held {g_held}");
+          println("editor: client {ev.cid} derives={dv} ({nder} of {len(clients)})");
         } else if ev.msg_id == MSG_STEP {
           sim_pending = sim_pending + (ev.payload as integer ?? 1);
           sim_step_cid = ev.cid;
@@ -6023,8 +6102,15 @@ fn main() {
           // Not a count and not a picture: a mesh with the right number of vertices
           // in the wrong places is exactly the failure this exists to catch.
           srv.broadcast("Q:{dc2.cx},{dc2.cz},{moros_terrain::mesh_crc(dm)}");
-          srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
-          srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+          // S4 — the ~1 MB of ASCII floats this line used to broadcast unconditionally.
+          gn2 = send_ground(srv, clients,
+                  "M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+          if gn2 > 0 {
+            send_ground(srv, clients,
+              "T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+          }
+          g_sent = g_sent + gn2;
+          g_held = g_held + (len(clients) - gn2);
           fm = moros_terrain::chunk_mesh_mat(dc2.cx, dc2.cz, wld, FIELD_MAT);
           srv.broadcast("M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 3};0;{mesh_wire(fm, FIELD_R, FIELD_G, FIELD_B)}");
           srv.broadcast("T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");
@@ -6155,7 +6241,10 @@ fn main() {
               send_layers(srv, wld, scx, scz);
               cmesh = chunk_mesh(scx, scz, wld);
               srv.broadcast("Q:{scx},{scz},{moros_terrain::mesh_crc(cmesh)}");
-              srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              gn1 = send_ground(srv, clients,
+                      "M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+              g_sent = g_sent + gn1;
+              g_held = g_held + (len(clients) - gn1);
               fmesh = moros_terrain::chunk_mesh_mat(scx, scz, wld, FIELD_MAT);
               srv.broadcast("M:{cid * SURFACES + MESH_FIGURE_MAX + 3};0;{mesh_wire(fmesh, FIELD_R, FIELD_G, FIELD_B)}");
               srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 3};{mat_wire(mat4_identity())}");

@@ -44,6 +44,7 @@ use graphics;
 // second implementation of the model that has to be kept in step. Sharing the code is
 // not sharing the AUTHORITY — the server still owns every write.
 use hex_world;
+use gridmesh;   // enc_coord — the SAME chunk key the server packs mesh ids with
 // ⚠ S3: the SERVER'S OWN mesher, not a second implementation. The whole claim is
 // that the client derives the same triangles, and that is only checkable while there
 // is one function — two copies that agree today are two copies.
@@ -296,6 +297,8 @@ struct Client {
   // server rebuilt that ground and the previous checksum is now a claim about a mesh
   // nobody holds. Without that rule this queue grows with every rebuild and starts
   // comparing against history.
+  // S4 — is this client drawing the ground it derived, and has it said so
+  g_derive: boolean,
   q_cx: vector<integer>,
   q_cz: vector<integer>,
   q_crc: vector<integer>,
@@ -434,6 +437,41 @@ fn drop_part(st: Client, want: integer) {
 fn mesh_bit(mid: integer) -> integer {
   if mid <= FIGURE_MAX { return 1; }
   return 1 << (((mid - FIGURE_MAX - 1) % SURFACES ?? 0) + 1);
+}
+
+// S4 — INSTALL THE GROUND THIS CLIENT DERIVED, under the id the server would have
+// used for it.
+//
+// ⚠ THE SAME ID ON PURPOSE. `X:` still drops a chunk that streams out of range, and a
+// rebuild still replaces one — both address the mesh by id, and a client that filed its
+// own ground under a private id would accumulate ground nobody can remove. So the id
+// arithmetic is the server's, from the same `gridmesh::enc_coord`.
+//
+// ⚠ AND IT GOES THROUGH `graphics::mesh_to_floats`, which is what `mesh_wire` calls on
+// the other side. Two orderings of the same vertices is a difference no checksum here
+// would catch — S3 compares `mesh_crc`, which is computed BEFORE either flattening.
+fn install_ground(st: Client, cx: integer, cz: integer, gm: Mesh) {
+  gmid = gridmesh::enc_coord(cx, cz) * SURFACES + FIGURE_MAX + 1;
+  gverts = graphics::mesh_to_floats(gm);
+  if len(gverts) < 6 { return; }
+  drop_part(st, gmid);
+  gvao = graphics::gl_upload_vertices(gverts, 6);
+  gpart = Part {
+    pid: gmid,
+    bit: mesh_bit(gmid),
+    vao: gvao,
+    vcount: len(gverts) / 6,
+    // The grass end of the ramp, which is what the server colours ground with — the
+    // client already holds it from `G:` rather than carrying a second copy.
+    cr: st.ramp_lo_r, cg: st.ramp_lo_g, cb: st.ramp_lo_b,
+    ramped: 1.0,
+    model: ident4(),
+  };
+  gfree = -1;
+  for gp in st.parts {
+    if gp.vao < 0 { gfree = gp#index; break; }
+  }
+  if gfree >= 0 { st.parts[gfree] = gpart; } else { st.parts += [gpart]; }
 }
 
 fn add_mesh(st: Client, body: text) {
@@ -612,8 +650,25 @@ fn ground_check(h: web::WsHandler, st: Client, cx: integer, cz: integer, crc: in
   gm = moros_terrain::chunk_mesh_mat(cx, cz, st.cache, hex_editor::SURFACE_MAT);
   if moros_terrain::mesh_crc(gm) == crc {
     st.g_agree = st.g_agree + 1;
+    // Draw what we derived. Until the server is told to stop sending ground, both
+    // land under the same id and the later one wins — they are identical, which is
+    // the whole of what S3 proved, so the overlap is free rather than risky.
+    install_ground(st, cx, cz, gm);
+    // ⚠ THE OPT-IN IS EARNED, NOT DECLARED AT HELLO. A client that announced up front
+    // that it derives its own ground would be believed before it had derived any, and
+    // one bad mesher would take the ground out of the picture with nothing to say why.
+    // Four agreements and no disagreement is the evidence; `43:0` below is the way
+    // back, so a client that starts failing gets the server's ground again.
+    if !st.g_derive && st.g_agree >= 4 && st.g_bad == 0 {
+      st.g_derive = true;
+      web::send(h, "43:1");
+    }
   } else {
     st.g_bad = st.g_bad + 1;
+    // ⚠ AND HAND THE GROUND BACK. A client that has been wrong once has no business
+    // drawing the terrain from its own cache, and the server can always do it — so the
+    // failure mode is a byte cost, not a hole in the world.
+    if st.g_derive { st.g_derive = false; web::send(h, "43:0"); }
     // ⚠ NAME THE TILE, DO NOT COUNT IT. A count cannot tell a BORDER effect from an
     // arithmetic one, and those want opposite fixes. Now that the border case is
     // deferred rather than counted, anything reaching here is the arithmetic — which
@@ -949,7 +1004,7 @@ fn main() {
     // wearing the same name.
     cache: world_new(0.25, 0, 10, 4).wn_world,
     c_layers: 0, c_agree: 0, c_bad: 0,
-    g_agree: 0, g_bad: 0, g_wait: 0, q_cx: [], q_cz: [], q_crc: [],
+    g_agree: 0, g_bad: 0, g_wait: 0, g_derive: false, q_cx: [], q_cz: [], q_crc: [],
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,
