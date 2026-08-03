@@ -315,7 +315,33 @@ in an editor reads as a crash.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `B5.1` | Entries from `data/parts/`, names only. | the list shows what is on disk | S |
+| ✅ `B5.1` | Entries from `data/parts/`, names only. | **DONE.** `hex_part::part_list`, `Entry.en_kind`, `N:<kind>\|<name>\|<avail>\|<reason>`. `subject.mjs` reads the cottage out of the same list the materials are in. ⚠ **A control that could not fail, and a build that went red with no local edit** — see below. | S |
+
+⚠ **THE LIST SHOWS FILE NAMES, NOT `PART.name`, AND THAT IS THE DEFERRAL SHOWING.** A part's
+author-given name lives in its `PART` section, so a catalogue that displayed it would open
+**every file** to build a list — 65 KB an entry, for a string. That is exactly the whole-file
+read `A7.4` holds open, and spending it here without measuring would have been building on the
+thing the plan deferred. A file name is a handle, which is what §C2 says a name is:
+`house/cottage` is what the author types at `14:` and what the row shows. A part whose
+`PART.name` differs shows the file name in the list and its own name in the acknowledgement —
+information, not a bug, and the first thing a keyed read changes.
+
+⚠ **THE ORDER TEST COULD NOT FAIL, AND THE COMMENT ABOVE IT SAID SO.** `part_list` sorts,
+because `list_dir` returns the filesystem's order and a catalogue that reorders itself between
+machines moves rows under the author's cursor. The test built `z/one` and `a/two` and asserted
+the sorted order — and **deleting the sort left it green**, because this box's `list_dir`
+already returns `a` before `z`. A fixture cannot choose what order the filesystem hands back.
+The discriminating claim moved to `sorted_text`, fed an input that IS out of order; `part_list`
+keeps a property test (*the output is sorted*) that can only go red on a machine where the
+filesystem disagrees. ⚠ **That the sorter is CALLED remains untestable here, and the source
+says so** rather than implying coverage it does not have. Third control this session that did
+not perturb, and the only one written directly beneath a comment predicting it.
+
+⚠ **AND A GATE HAD TO STOP COUNTING THE WHOLE LIST.** `subject.mjs` asserted *nine entries* —
+the mesher's own surfaces. One list, two families means that count is now *nine entries of kind
+`material`*, and the availability claims scope the same way. Left alone, the first part ever
+authored would have turned a gate about the MESHER red — a gate going red for something it is
+not about, which teaches the next reader to loosen it.
 | `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | a PNG shows non-blank thumbnails, same blank-control as `B3.3` | M |
 | `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
 

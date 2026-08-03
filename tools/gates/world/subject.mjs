@@ -65,21 +65,47 @@ check(a.mats.length === 1, `the catalogue is sent once on connect (${a.mats.leng
 // ⚠ `;` BETWEEN ENTRIES AND `|` WITHIN, not commas — a reason is a sentence and
 // a sentence has commas in it. This gate split on commas until B6 gave entries a
 // reason, and then read one nine-field row as a single material.
+//
+// ⚠ AND THE FIRST FIELD IS THE KIND (B5.1, §C3). One list carries both families,
+// so the count below had to stop being "how many entries" and become "how many
+// entries of kind material" — otherwise every part authored from now on would
+// have broken a gate about the MESHER's surfaces, which is a gate going red for
+// something it is not about.
 const cat = (a.mats[0] ?? 'N:').slice(2).split(';').filter(Boolean)
-    .map((r) => { const [name, avail, why] = r.split('|'); return { name, avail, why }; });
-check(cat.length === 9, `nine materials, the mesher's own surfaces (${rows.length})`);
+    .map((r) => { const [kind, name, avail, why] = r.split('|'); return { kind, name, avail, why }; });
+const mats = cat.filter((r) => r.kind === 'material');
+check(mats.length === 9, `nine materials, the mesher's own surfaces (${mats.length})`);
 for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit']) {
-  check(cat.some((r) => r.name === want), `the catalogue lists '${want}'`);
+  check(mats.some((r) => r.name === want), `the catalogue lists '${want}'`);
 }
+
+// ── B5.1 — the parts on disk are in the SAME list ────────────────────────────
+//
+// ⚠ ONE CATALOGUE, NOT A SECOND WIDGET (§C3, and plan 17 `A7.2` says the same).
+// A part and a material are each *a named thing you pick and then place*; what
+// tells them apart is a field on the row, so adding a family is adding rows.
+const parts = cat.filter((r) => r.kind === 'part');
+check(parts.length >= 1, `the catalogue lists what is in data/parts/ (${parts.length})`);
+check(parts.some((r) => r.name === 'house/cottage'),
+      `and names it family-first: ${JSON.stringify(parts.map((r) => r.name))}`);
+// ⚠ EVERY ROW HAS A KIND. A blank one means a field was lost in the split and the
+// two filters above would then be measuring a truncated list rather than the
+// catalogue — both could pass while the list on screen was wrong.
+check(cat.every((r) => r.kind === 'material' || r.kind === 'part'),
+      `every entry names its family (${cat.filter((r) => !r.kind).length} blank)`);
+check(cat.length === mats.length + parts.length, 'and no entry is in neither family');
 
 // ── B6 — availability travels with the entry ─────────────────────────────────
 // ⚠ AND AN UNAVAILABLE ENTRY IS STILL IN THE LIST. §C3: shown greyed with its
 // reason, never hidden — hiding it makes the author think the thing is missing.
-const blocked = cat.filter((r) => r.avail === '0');
+// ⚠ SCOPED TO THE MATERIALS, like the count above. `B6` is a claim about the
+// three DERIVED surfaces; counted over the whole catalogue it would move the day
+// a part is unavailable, and go red for something it is not about.
+const blocked = mats.filter((r) => r.avail === '0');
 check(blocked.length === 3, `three derived surfaces are unavailable (${blocked.length})`);
 check(blocked.every((r) => (r.why ?? '') !== ''),
       `every unavailable entry carries a reason (${blocked.map((r) => r.name + '=' + r.why)})`);
-check(cat.filter((r) => r.avail === '1').length === 6,
+check(mats.filter((r) => r.avail === '1').length === 6,
       'the other six are paintable');
 
 // ── B2.1 — an accepted toggle moves it ───────────────────────────────────────

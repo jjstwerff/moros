@@ -27,16 +27,33 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **61** | `hex_part` **43** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **63** | `hex_part` **48** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
-### The next thing to do is #17 `A3.1` — instances, or #18 `B5` — the picker
+### The next thing to do is #18 `B5.2` — thumbnails, or #17 `A3.1` — instances
 
 **`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
 tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
 (`make parts` builds and verifies it), `14:<roof>,<part>` places it — and **`14:<roof>` now
-places it too**, by generating a part and stamping it. ⚠ **#18 `B5` is unblocked**: there is a
-part to list, and it is the smaller of the two.
+places it too**, by generating a part and stamping it. ⚠ **#18 `B5.1` is done**:
+`house/cottage` is in the same list as the nine materials — one widget, the kind on the row.
+
+⚠ **NEVER PASS `--path ../loft/`. THE INSTALLED `loft` IS THE TOOLCHAIN**, and it bundles its
+own stdlib — `make` and every gate run plain `loft`. `--path` points the compiler at
+`../loft/default/`, a tree another agent edits continuously, so a scratch run built that way
+sees work in progress. Doing it mid-session turned this tree red on `chr(cp) -> text` landing
+there; the same files pass against the installed binary. **Self-inflicted, and the recipe in
+*How to run things* below is what taught it** — that flag is gone from it now. The sibling
+updates at stable points and this tree does not need to see it in between.
+
+⚠ **AND THE BUG THAT FOUND IS NOT THE ONE IT LOOKED LIKE.** Chasing it produced a report with a
+wrong premise *twice* — first blaming a sibling for a break I caused, then asserting *a local
+may not shadow a stdlib name*, which is false: `len = 5` and `trim = 7` both compile. What
+actually refuses is **tuple destructuring** —`(a, trim) = pair()` — onto a name plain
+assignment accepts, and it says *requires plain variable names* about a plain variable name
+([#756](https://github.com/loft-lang/loft/issues/756), reproducible on the installed compiler
+with no `chr` at all). ⚠ **State the rule you think you found, then try to break it, before
+filing.**
 
 ⚠ **`A2.3` COULD NOT BE DONE AS WRITTEN, AND THE GATES ARE WHY.** *"`stencil_place` no longer
 reachable from `14:`"* assumed the wire's house had no PARAMETER. It has `roof_up`, and
@@ -92,8 +109,9 @@ lineage. Which tree owns it for good is
 ### Where the two plans stand
 
 **[#18 catalogue](https://github.com/jjstwerff/moros/issues/18)** — `B1`, `B1.2b`, `B2`, `B3`,
-`B4`, `B6` all **done**. Only **`B5`** remains and it is **no longer blocked**:
-`data/parts/house/cottage.hxw` is there to list.
+`B4`, `B5.1`, `B6` **done**. What is left of `B5` is the **thumbnails**: `B5.2` renders a part
+from a canonical three-quarter view and `B5.3` invalidates on its version. ⚠ `B5.3`'s control
+is that the thumbnail **changes**, not merely that it is non-blank.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` and `A2` complete.**
 `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
@@ -243,8 +261,10 @@ make client            # ⚠ the wasm client is a FILE the server serves — eve
 make stop-editor       # ⚠ after anything that started a server
 cd lib/<pkg> && loft test
 
-# a scratch program against both trees
-loft --interpret --path ../loft/ --lib lib/ --lib ../loft-libs-world/ prog.loft
+# a scratch program. ⚠ NO `--path ../loft/` — the installed loft bundles its own
+# stdlib, and pointing at the sibling's `default/` builds against a tree that is
+# being edited live. That is how `chr` turned this tree red for an hour.
+loft --interpret --lib lib/ --lib ../loft-libs-world/ prog.loft
 ```
 
 `loft test` resolves relative paths from the **test file's** directory, not the package root

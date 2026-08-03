@@ -527,7 +527,8 @@ fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 // the payload is not hostile, but a name that escapes `data/parts/` is not a
 // part — so it is turned away by name instead of quietly reading whatever it
 // pointed at.
-fn part_path(name: text) -> text { "{source_dir()}/../data/parts/{name}.hxw" }
+fn parts_root() -> text { "{source_dir()}/../data/parts" }
+fn part_path(name: text) -> text { "{parts_root()}/{name}.hxw" }
 
 fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
               name: text, q: integer, r: integer, anchor: integer) {
@@ -3557,9 +3558,19 @@ fn surface_block(name: text) -> text {
   ""
 }
 
-// `N:<name>|<0|1>|<reason>;…` — ⚠ `;` between entries and `|` within, because a
-// reason is a SENTENCE and a sentence has commas in it. The first draft split on
-// commas and would have cut every reason in half at the first clause.
+// `N:<kind>|<name>|<0|1>|<reason>;…` — ⚠ `;` between entries and `|` within,
+// because a reason is a SENTENCE and a sentence has commas in it. The first draft
+// split on commas and would have cut every reason in half at the first clause.
+//
+// ⚠ ONE LIST, TWO FAMILIES (§C3, plan 18 `B5.1`), and the KIND is what makes that
+// possible without a second widget: a material and a part are each *a named thing
+// you pick and then place*, so they share the list and the row says which it is.
+// Adding a family here is adding rows, never a message.
+//
+// ⚠ THE MATERIALS ARE THE MESHER'S OWN SURFACES and the parts are what is ON
+// DISK — neither is a list this file keeps. A catalogue the server composed from
+// its own beliefs is the thing §C1 forbids, and it is how a list comes to name a
+// material the renderer cannot draw.
 fn catalogue_wire() -> text {
   out = "N:";
   n = moros_terrain::surface_count();
@@ -3569,7 +3580,14 @@ fn catalogue_wire() -> text {
     why = surface_block(nm);
     av = "1";
     if why != "" { av = "0"; }
-    out = out + nm + "|" + av + "|" + why;
+    out = out + "material|" + nm + "|" + av + "|" + why;
+  }
+  // ⚠ NO REFUSAL AND NO PLACEHOLDER WHEN THERE ARE NONE. A first run has no
+  // `data/parts/`, and `part_list` answers with nothing — so the catalogue is
+  // simply the materials. An "(no parts yet)" row would be an entry the author
+  // could select that is not a thing.
+  for p in hex_part::part_list(parts_root()) {
+    out = out + ";part|" + p + "|1|";
   }
   out
 }

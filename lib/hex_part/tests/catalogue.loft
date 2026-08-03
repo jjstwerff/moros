@@ -1,0 +1,121 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 18 `B5.1` / plan 17 `A7.1` — what is on disk, and in what order.
+use hex_part;
+
+// ⚠ THE FIXTURE IS BUILT, NOT ASSUMED. A test that read the real `data/parts/`
+// would pass today because one cottage happens to be there, and would change its
+// mind the day somebody adds a second part. It also could not contain the cases
+// that matter — a stray file, a nested directory, a name that sorts wrongly.
+//
+// ⚠ AND THE NAMES ARE CHOSEN TO SORT DIFFERENTLY FROM THE ORDER THEY ARE MADE IN.
+// `list_dir` returns whatever the filesystem holds; creating `a`, `b`, `c` in
+// order and asserting `a`, `b`, `c` agrees with an unsorted implementation on
+// most machines and fails on someone else's.
+fn build(root: text) {
+  assert(mkdir_all("{root}/house").ok(), "mkdir house");
+  assert(mkdir_all("{root}/door").ok(), "mkdir door");
+  assert(mkdir_all("{root}/empty").ok(), "mkdir empty");
+  touch("{root}/house/villa.hxw");
+  touch("{root}/house/cottage.hxw");
+  touch("{root}/door/oak.hxw");
+  // ⚠ THE THREE THINGS THAT MUST NOT BE LISTED, each a different way of not
+  // being a part: a file with no extension, one whose name merely CONTAINS the
+  // extension, and a directory holding nothing.
+  touch("{root}/house/README");
+  touch("{root}/house/cottage.hxw.bak");
+}
+
+fn touch(p: text) {
+  if exists(p) { delete(p); }
+  f = file(p);
+  f#format = LittleEndian;
+  f += (0 as u8);
+}
+
+fn wipe(root: text) {
+  for d in ["house", "door", "empty"] {
+    for e in list_dir("{root}/{d}") ?? [] { delete("{root}/{d}/{e}"); }
+    delete("{root}/{d}");
+  }
+  delete(root);
+}
+
+fn test_it_lists_every_part_and_nothing_else() {
+  root = "cat_fixture";
+  build(root);
+  got = part_list(root);
+  assert(len(got) == 3, "{len(got)} entries, not 3: {joined(got)}");
+  assert(got[0] == "door/oak", "first is '{got[0]}'");
+  assert(got[1] == "house/cottage", "second is '{got[1]}'");
+  assert(got[2] == "house/villa", "third is '{got[2]}'");
+  wipe(root);
+}
+
+// ⚠ THE SORT IS TESTED HERE AND NOT THROUGH `part_list`, AND THAT WAS EARNED.
+// The first version built `z/one` and `a/two` and asserted the sorted order — and
+// deleting the sort left it GREEN, because this box's `list_dir` already returns
+// `a` before `z`. A fixture cannot choose what order the filesystem hands back,
+// so a test built on one agrees with an unsorted implementation wherever the
+// filesystem happens to agree. Third control this session that did not perturb,
+// and the only one written directly under a comment predicting it.
+//
+// So the discriminating claim is on the sorter, fed an input that IS out of order.
+fn test_the_sorter_sorts() {
+  got = sorted_text(["zulu", "alpha", "mike", "alpha/2", "Alpha"]);
+  assert(len(got) == 5, "{len(got)} entries");
+  assert(got[0] == "Alpha", "capitals sort before lower case here: {joined(got)}");
+  assert(got[1] == "alpha" && got[2] == "alpha/2", "{joined(got)}");
+  assert(got[3] == "mike" && got[4] == "zulu", "{joined(got)}");
+  // and it keeps every element — a sort that drops one is still "sorted"
+  assert(len(sorted_text(["b", "a", "b"])) == 3, "a duplicate was eaten");
+}
+
+// ⚠ AND THE CATALOGUE'S OWN ORDER IS A PROPERTY, not a fixed expectation: it is
+// sorted, whatever the filesystem said. This one CANNOT go red on an unsorted
+// implementation unless the filesystem obliges, and that is exactly why the test
+// above exists.
+fn test_the_catalogue_comes_out_in_order() {
+  root = "cat_order";
+  assert(mkdir_all("{root}/z").ok(), "mkdir z");
+  assert(mkdir_all("{root}/a").ok(), "mkdir a");
+  touch("{root}/z/one.hxw");
+  touch("{root}/a/two.hxw");
+  got = part_list(root);
+  assert(len(got) == 2, "{len(got)} entries");
+  for i in 1..len(got) {
+    assert(got[i - 1] < got[i], "out of order at {i}: {joined(got)}");
+  }
+  wipe2(root, "z", "a");
+}
+
+fn wipe2(root: text, d1: text, d2: text) {
+  for d in [d1, d2] {
+    for e in list_dir("{root}/{d}") ?? [] { delete("{root}/{d}/{e}"); }
+    delete("{root}/{d}");
+  }
+  delete(root);
+}
+
+// ⚠ A ROOT THAT IS NOT THERE IS AN EMPTY CATALOGUE, not a crash and not a hang.
+// The editor starts before anything has been authored, and a first run with no
+// `data/parts/` must show a list with nothing in it.
+fn test_a_missing_root_is_an_empty_catalogue() {
+  assert(len(part_list("cat_no_such_directory")) == 0, "a missing root listed something");
+}
+
+fn test_a_bare_part_beside_the_families_is_listed_too() {
+  root = "cat_bare";
+  assert(mkdir_all(root).ok(), "mkdir");
+  touch("{root}/loose.hxw");
+  got = part_list(root);
+  assert(len(got) == 1 && got[0] == "loose", "{joined(got)}");
+  delete("{root}/loose.hxw");
+  delete(root);
+}
+
+fn joined(v: vector<text>) -> text {
+  out = "";
+  for s in v { if out != "" { out = out + ", "; } out = out + s; }
+  "[" + out + "]"
+}

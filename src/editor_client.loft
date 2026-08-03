@@ -1298,16 +1298,21 @@ fn split_on(s: text, sep: text) -> vector<text> {
 // ⚠ THE AVAILABILITY AND THE REASON COME FROM THE SERVER, like everything else
 // on this panel. A client deciding for itself which materials are paintable
 // would be a picture of what it believes the editor allows.
+// `N:<kind>|<name>|<0|1>|<reason>;…` — plan 18 `B3.2`, and `B5.1` added the kind
+// so ONE list can carry both families (§C3). A row with too few fields is
+// SKIPPED rather than guessed at: a catalogue that invents a name from a
+// truncated row offers the author something that is not there.
 fn parse_entries(s: text) -> vector<Entry> {
   out: vector<Entry> = [];
   for row in split_on(s, ";") {
     f = split_on(row, "|");
-    if len(f) < 3 { continue; }
-    nm = f[0] ?? "";
-    av = f[1] ?? "1";
-    wy = f[2] ?? "";
-    if av == "0" { out += [entry_blocked(nm, wy)]; }
-    else { out += [entry(nm)]; }
+    if len(f) < 4 { continue; }
+    kd = f[0] ?? "";
+    nm = f[1] ?? "";
+    av = f[2] ?? "1";
+    wy = f[3] ?? "";
+    if av == "0" { out += [entry_blocked_of(kd, nm, wy)]; }
+    else { out += [entry_of(kd, nm)]; }
   }
   out
 }

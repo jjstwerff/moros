@@ -191,6 +191,17 @@ The seam is now `PanelSpec.ps_items` — the consumer hands over the list it wan
 wherever it legitimately knows it (for the browser client, from the server). It grows an image
 and a kind; it does not grow a second widget.
 
+✅ **BUILT, `B5.1`, 2026-08-03.** `Entry` carries `en_kind` — text, not an enum, because a
+layout library that enumerated `material | part` would have to be edited before a consumer
+could invent a third family. The wire is `N:<kind>|<name>|<0|1>|<reason>;…`, the materials come
+from `moros_terrain::surfaces()` and the parts from `hex_part::part_list(data/parts/)`, and
+neither is a list the server keeps. One `ps_items`, both families, no second widget.
+
+⚠ **The list shows FILE names.** A part's author-given name is in its `PART` section, so
+displaying it means opening every file to build a list — 65 KB an entry, for a string, which is
+the whole-file read §P2 defers to `A7.4`. `house/cottage` is a handle and §C2 says that is what
+a name is.
+
 ⚠ **Availability is part of the entry, not a separate dialog.** A door leaf that does not fit
 the frame you are standing in is *shown greyed with its reason*, not hidden. Hiding it makes
 the author think the part is missing; showing it with `too wide for frame/2x3` tells them what

@@ -1,0 +1,29 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+use lavition_ui;
+
+// ── §C3 — one widget, two families (plan 18 `B5.1`) ─────────────────────────
+//
+// ⚠ THE KIND IS ON THE ENTRY, and that is what stops a second list existing. A
+// material and a part are each *a named thing you pick and then place*, so they
+// share the widget; what tells them apart travels WITH the row rather than in a
+// parallel structure the consumer has to keep in step.
+fn test_an_entry_carries_the_family_it_belongs_to() {
+  m = entry_of("material", "grass");
+  p = entry_of("part", "house/cottage");
+  assert(m.en_kind == "material" && p.en_kind == "part", "the kind did not travel");
+  assert(m.en_available && p.en_available, "a kind must not change availability");
+  b = entry_blocked_of("part", "door/oak", "too wide");
+  assert(b.en_kind == "part" && !b.en_available && b.en_reason == "too wide",
+         "a blocked entry lost its kind or its reason");
+}
+
+// ⚠ AND THE OLD CONSTRUCTORS STILL MEAN WHAT THEY MEANT. `entry`/`entry_blocked`
+// are what every existing consumer calls; a kind that defaulted to "material"
+// would quietly label whatever a caller had not thought about.
+fn test_an_unlabelled_entry_claims_no_family() {
+  assert(entry("grass").en_kind == KIND_UNSET, "entry() invented a kind");
+  assert(entry_blocked("tree", "scattered").en_kind == KIND_UNSET,
+         "entry_blocked() invented a kind");
+  assert(entry_blocked("x", "").en_reason != "", "the blank-no placeholder was lost");
+}

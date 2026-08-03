@@ -776,15 +776,22 @@ pub fn stair_cut(wld: &World, q: integer, r: integer, feet: float, here: integer
 // The bound covers the longest hex step from the worst starting point: a step is
 // √3 ≈ 1.73 wu east–west, and the walker may stand on the far rim of its own cell,
 // so 4 wu is the distance that cannot miss.
+// ⚠ `chr0`, not `chr`, and it is insurance rather than a fix. loft's stdlib is
+// gaining `chr(cp) -> text` — the code-point constructor #748 asked for — and
+// **tuple destructuring** refuses a binding named after a stdlib function, where
+// a plain `chr = …` would be fine (loft#756). So this line, and only this line,
+// would stop compiling once that reaches the installed compiler. Renamed ahead of
+// it because the diagnostic is *requires plain variable names*, which sends the
+// reader to look at the tuple rather than at the name.
 pub fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integer) {
-  (chq, chr) = px_to_hex(cx, cz);
+  (chq, chr0) = px_to_hex(cx, cz);
   kx = cos(cyaw);
   kz = sin(cyaw);
   for ai in 1..17 {
     (apq, apr) = px_to_hex(cx + kx * (ai as float) * 0.25, cz + kz * (ai as float) * 0.25);
-    if apq != chq || apr != chr { return (true, apq, apr); }
+    if apq != chq || apr != chr0 { return (true, apq, apr); }
   }
-  (false, chq, chr)
+  (false, chq, chr0)
 }
 
 pub fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,

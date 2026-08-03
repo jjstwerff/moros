@@ -34,21 +34,41 @@ pub struct Button {
 // hiding it makes the author think it is missing, while showing it with
 // `too wide for frame/2x3` tells them what to change. It is §C2's refusal rule —
 // reason, and never a blank no — applied to a list instead of to a gesture.
+// ⚠ AND IT CARRIES ITS KIND (§C3). A catalogue entry is *kind · name · image ·
+// availability*, and ONE widget serves both families — a material and a part are
+// each *a named thing you pick and then place*. The kind is what lets a consumer
+// group them, filter them, or send the right message when one is chosen, without
+// a second list existing to be kept in step with the first.
+//
+// It is TEXT rather than an enum because `lavition_ui` must not know what families
+// exist: a layout library that enumerated `material | part` would have to be
+// edited before a consumer could invent a third.
+pub const KIND_UNSET = "";
+
 pub struct Entry {
+  en_kind:      text,        // "material", "part", … — the consumer's vocabulary
   en_label:     text,
   en_available: boolean,
   en_reason:    text,        // "" when available; required when not
 }
 
 pub fn entry(label: text) -> Entry {
-  Entry { en_label: label, en_available: true, en_reason: "" }
+  Entry { en_kind: KIND_UNSET, en_label: label, en_available: true, en_reason: "" }
+}
+
+pub fn entry_of(kind: text, label: text) -> Entry {
+  Entry { en_kind: kind, en_label: label, en_available: true, en_reason: "" }
 }
 
 // ⚠ THE REASON IS NOT OPTIONAL HERE. An entry that is unavailable "because" is
 // the blank no §C2 exists to forbid, so a missing reason becomes a visible
 // placeholder rather than an empty string nobody notices.
 pub fn entry_blocked(label: text, why: text) -> Entry {
-  Entry { en_label: label, en_available: false,
+  return entry_blocked_of(KIND_UNSET, label, why);
+}
+
+pub fn entry_blocked_of(kind: text, label: text, why: text) -> Entry {
+  Entry { en_kind: kind, en_label: label, en_available: false,
           en_reason: if why == "" { "no reason given" } else { why } }
 }
 

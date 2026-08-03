@@ -1,0 +1,90 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// What parts are on disk — plan 18 `B5.1`, plan 17 `A7.1`.
+//
+// ⚠ IT LISTS NAMES AND OPENS NOTHING. A part's author-given name lives in its
+// `PART` section, so a catalogue that showed it would load every file to build a
+// list — 65 KB per entry, for a string. That is exactly the whole-file-read cost
+// §P2 deferred to `A7.4`, and building the catalogue on it would spend the
+// deferral without measuring it. The FILE name is a handle and a handle is what
+// §C2 says a name is: `house/cottage` is what the author types at `14:` and what
+// the list shows.
+//
+// ⚠ So a part whose `PART.name` differs from its file name shows the file name
+// here and its own name in the acknowledgement when it is placed. That is
+// information rather than a bug — and it is the first thing `A7.4` will change
+// once a keyed read makes the name cheap.
+use hex_world;
+
+const PART_EXT = ".hxw";
+
+// Every part under `root`, as `family/name` or bare `name`, in a STABLE order.
+//
+// ⚠ SORTED, AND THAT IS NOT TIDINESS. `list_dir` hands back whatever order the
+// filesystem holds, which differs between machines and after a rewrite — so an
+// unsorted catalogue reorders itself under the author's cursor, and any gate that
+// reads a row by position is flaky on someone else's box.
+//
+// ⚠ ONE LEVEL DEEP, deliberately. A family is a directory (`house/`, `door/`) and
+// that is the whole hierarchy; a part named `a/b/c` would have to be quoted,
+// escaped and split somewhere, and nothing has asked for it. A directory deeper
+// than one level is simply not walked, so it cannot half-appear.
+pub fn part_list(root: text) -> vector<text> {
+  out: vector<text> = [];
+  for e in list_dir(root) ?? [] {
+    sub = "{root}/{e}";
+    if is_dir(sub) {
+      for f in list_dir(sub) ?? [] {
+        if is_part_file(f) { out += ["{e}/{stem(f)}"]; }
+      }
+    } else {
+      if is_part_file(e) { out += [stem(e)]; }
+    }
+  }
+  return sorted_text(out);
+}
+
+// ⚠ THE SUFFIX IS CHECKED AT THE END, not with `contains`. A file called
+// `cottage.hxw.bak` contains `.hxw` and is not a part; listing it would offer the
+// author something `world_load` refuses.
+fn is_part_file(name: text) -> boolean {
+  n = name.size();
+  k = PART_EXT.size();
+  if n <= k { return false; }
+  return name[(n - k)..] == PART_EXT;
+}
+
+fn stem(name: text) -> text {
+  return name[0..(name.size() - PART_EXT.size())];
+}
+
+// Insertion sort. ⚠ Written out because the standard library has no sort over a
+// `vector<text>` — checked in `default/*.loft` rather than in the generated
+// reference, which is the mistake loft#748 was.
+//
+// ⚠ PUBLIC SO IT CAN BE FED AN INPUT THAT IS ACTUALLY OUT OF ORDER, and that is
+// not a convenience. `part_list`'s own order test cannot discriminate: it can only
+// hand the sorter whatever `list_dir` returns, and on this box that was ALREADY
+// sorted — so the first version of that test stayed green with the sort deleted.
+//
+// ⚠ AND THE CALL SITE ABOVE REMAINS UNTESTABLE HERE, which is worth saying rather
+// than papering over: deleting `sorted_text(…)` from `part_list` goes unnoticed on
+// a filesystem that hands names back in order, and is caught on one that does not.
+// The sorter is tested; that it is CALLED is only tested where it matters.
+pub fn sorted_text(v: vector<text>) -> vector<text> {
+  out: vector<text> = [];
+  for s in v {
+    at = out.len();
+    for i in 0..out.len() {
+      if at == out.len() && s < out[i] { at = i; }
+    }
+    tail: vector<text> = [];
+    for j in at..out.len() { tail += [out[j] ?? ""]; }
+    keep: vector<text> = [];
+    for j in 0..at { keep += [out[j] ?? ""]; }
+    keep += [s];
+    for t in tail { keep += [t]; }
+    out = keep;
+  }
+  return out;
+}

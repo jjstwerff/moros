@@ -7,6 +7,7 @@
 // not a new document type — opening a part IS loading a world, so it renders in
 // the same shader, saves in the same format and is verified by the same gates.
 use hex_world;
+use catalogue;
 use codec;
 use region;
 use meta;
