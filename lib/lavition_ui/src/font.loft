@@ -19,10 +19,28 @@
 // What the consumer measured.  `m_mono` is a FACT about the font that was
 // resolved, not a request that was made — see `metrics_measured`.
 pub struct Metrics {
-  m_advance: integer,       // pixel advance of one character
+  // ⚠ THE ADVANCE IS IN 1/64 PIXEL, and a whole-pixel one is what B1.6 caught.
+  //
+  // It was `m_advance: integer`. DejaVu Sans Mono at 16px advances 9.6px, which
+  // truncates to 9 — and the error is per CHARACTER, so it accumulates: the
+  // editor's own subject line measured **31px narrower** than the bridge
+  // rasterises it. Under-estimating is the dangerous direction, because
+  // `fit_text` then believes more fits than does and the text overflows the box
+  // it was just proved to fit, silently.
+  //
+  // 1/64 is the unit fonts are hinted in, and it makes the residual under a
+  // pixel over any line a panel can hold.
+  m_adv64:   integer,       // advance in 1/64 px
   m_line_h:  integer,       // line height in pixels
   m_mono:    boolean,       // is it actually fixed-pitch?
 }
+
+// The advance in whole pixels, for a caller that wants to show it.
+//
+// ⚠ NOT A SECOND FIELD. One quantity stored twice is how the hotkey column got
+// its collision — two numbers describing one distance drift apart the moment one
+// is edited. This is derived.
+pub fn metrics_advance(m: Metrics) -> integer { (m.m_adv64 + 32) / 64 ?? 0 }
 
 // Build metrics from two runs the consumer measured through the bridge: `n`
 // copies of a WIDE character and `n` copies of a NARROW one.
@@ -42,13 +60,12 @@ pub struct Metrics {
 pub fn metrics_measured(wide_run: float, narrow_run: float, n: integer,
                         line_h: integer) -> Metrics {
   if n <= 0 {
-    return Metrics { m_advance: 0, m_line_h: line_h, m_mono: false };
+    return Metrics { m_adv64: 0, m_line_h: line_h, m_mono: false };
   }
-  adv = ((wide_run / (n as float)) ?? 0.0) as integer;
   Metrics {
-    m_advance: adv,
-    m_line_h:  line_h,
-    m_mono:    wide_run == narrow_run,
+    m_adv64:  ((wide_run * 64.0 / (n as float)) ?? 0.0) as integer,
+    m_line_h: line_h,
+    m_mono:   wide_run == narrow_run,
   }
 }
 
@@ -57,7 +74,13 @@ pub fn metrics_measured(wide_run: float, narrow_run: float, n: integer,
 // Exact under fixed pitch, an OVER-estimate otherwise (see `metrics_measured`),
 // which is the direction that keeps a label inside its box rather than spilling
 // out of it.
-pub fn text_width(s: text, m: Metrics) -> integer { len(s) * m.m_advance }
+// ⚠ ROUNDED UP. The residual is a fraction of a pixel per character, and the
+// safe direction to spend it is outwards: an over-estimate reserves a pixel too
+// many and the text fits, an under-estimate overflows a box that was measured as
+// fitting. Same reason `metrics_measured` takes the WIDE run.
+pub fn text_width(s: text, m: Metrics) -> integer {
+  ((len(s) * m.m_adv64 + 63) / 64) ?? 0
+}
 
 pub fn text_height(m: Metrics) -> integer { m.m_line_h }
 
@@ -73,13 +96,15 @@ pub fn fits(s: text, px: integer, m: Metrics) -> boolean { text_width(s, m) <= p
 // bytes, and `text_width` counts characters.  A marker whose own width is
 // ambiguous is the wrong thing to measure a truncation with.
 pub fn fit_text(s: text, px: integer, m: Metrics) -> text {
-  if m.m_advance <= 0 { return s; }
+  if m.m_adv64 <= 0 { return s; }
   if text_width(s, m) <= px { return s; }
   // Room for the marker itself.  Below that there is no honest answer, so it
   // gives back as much as fits and no marker.
-  keep = ((px / m.m_advance) ?? 0) - 2;
+  adv = metrics_advance(m);
+  if adv <= 0 { return s; }
+  keep = ((px / adv) ?? 0) - 2;
   if keep <= 0 {
-    room = (px / m.m_advance) ?? 0;
+    room = (px / adv) ?? 0;
     if room <= 0 { return ""; }
     return s[0..room];
   }

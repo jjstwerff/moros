@@ -1108,6 +1108,31 @@ fn client_panel_spec() -> PanelSpec {
 // off a client-side default looks exactly like `level ON` read off the server,
 // so the day B2 lands there would be nothing to notice -- and until then it is a
 // confident statement about a toggle nobody asked.
+// ⚠ THE GATE FOR THE WHOLE METRICS SEAM (plan 18 B1.6). `lavition_ui` lays every
+// box out with `text_width(s, metrics)`; the bridge is what actually rasterises
+// the string. If those two disagree, every label is fitted against a number that
+// is not the font — and the picture still draws, just in the wrong place, which
+// is why this needs a NUMBER rather than a look.
+//
+// It compares the strings the panel actually shows, not a synthetic sample: a
+// drift that only appears on long lines is exactly the one a three-letter probe
+// would miss.
+fn metrics_drift(font: integer, m: Metrics, worst_s: &text) -> integer {
+  probe: vector<text> = [
+    "Look", "Level", "Field", "Stencil", "Wall", "Cart",
+    "moros editor — connected",
+    "world — · mode — · toggles — (awaiting the server)",
+  ];
+  worst = 0;
+  for s in probe {
+    bridge = graphics::gl_measure_text(font, s, UI_SIZE) as integer;
+    ours = text_width(s, m);
+    d = if ours > bridge { ours - bridge } else { bridge - ours };
+    if d > worst { worst = d; worst_s = s; }
+  }
+  worst
+}
+
 fn subject_line() -> text {
   "world — · mode — · toggles — (awaiting the server)"
 }
@@ -1228,7 +1253,7 @@ fn main() {
     // Only if it is actually better: on the desktop this load returns null and
     // measures 0, and swapping a working font for an unmeasurable one would be
     // the fallback making things worse.
-    if alt_m.m_mono && alt_m.m_advance > 0 {
+    if alt_m.m_mono && metrics_advance(alt_m) > 0 {
       ui_font = alt_font;
       ui_m = alt_m;
       println("client: the UI font fell back to the generic monospace family");
@@ -1237,8 +1262,19 @@ fn main() {
   ui_panel = panel_build(client_panel_spec(), WIN_W, WIN_H, ui_m);
   ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
   ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+  drift_s = "";
+  drift = metrics_drift(ui_font, ui_m, drift_s);
+  // ⚠ AND THE SAME MEASUREMENT AGAINST A DELIBERATELY WRONG ADVANCE, reported
+  // beside it. A drift of 0 proves nothing on its own: it reads the same whether
+  // the two agree or the comparison is broken. Bending the advance by a tenth
+  // must move the number, and the gate asserts both halves.
+  bad_s = "";
+  bad_m = Metrics { m_adv64: (ui_m.m_adv64 * 9) / 10 ?? 0,
+                    m_line_h: ui_m.m_line_h, m_mono: ui_m.m_mono };
+  bad = metrics_drift(ui_font, bad_m, bad_s);
+  println("client: metrics drift {drift}px (worst '{drift_s}'), control {bad}px");
   ui_lr = ui_panel.p_list.lb_rect;
-  println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {ui_m.m_advance}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
+  println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {metrics_advance(ui_m)}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
   if !ui_m.m_mono {
     // ⚠ SAID OUT LOUD RATHER THAN ABSORBED. `len * advance` is only exact for a
     // fixed-pitch font, and the browser silently resolving a path to a

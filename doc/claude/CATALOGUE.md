@@ -55,11 +55,11 @@ graphics::gl_delete_texture(tex)                                  // caller owns
   is a claim about it. `gl_load_texture` working changes nothing about that argument — it
   only removes the excuse that made it unavoidable.
 
-⚠ `moros_ui` has had the panel layout, hit-test and click routing **with tests** for some
-time. What it lacks is `panel_render` — never written — and `font.loft`, a placeholder whose
-own comment says the glyphs "will land alongside the loft_gl text bridge in Step 9". **That
-bridge has now landed**, which is exactly what `font.loft` was waiting for. **This plan is
-largely *finish `moros_ui`*, not *design a UI*.**
+⚠ The panel layout, hit-test and click routing had tests for some time; what was missing was
+the rendering and a real `font.loft`, whose own comment said the glyphs "will land alongside
+the loft_gl text bridge in Step 9". **That bridge has now landed.** The package has since
+been re-homed as `lavition_ui` ([EDITOR_UI.md](EDITOR_UI.md), `B1.2b`) — **this arc was
+largely *finish the panel*, not *design a UI*.**
 
 ### C0a — The metrics seam, which is where this goes wrong if it goes wrong
 
@@ -67,12 +67,15 @@ largely *finish `moros_ui`*, not *design a UI*.**
 lie**, and this doc's own verification table already names the consequence: *"a font whose
 metrics lie mis-lays every panel"*.
 
-But `moros_ui` is a **pure library with no GL context**, and it must stay that way — its
-layout tests run under `loft test` with no window. So the seam:
+But the panel package is **pure, with no GL context**, and it must stay that way — its layout
+tests run under `loft test` with no window. So the seam:
 
 ```
-struct Metrics { m_advance: integer, m_line_h: integer, m_mono: boolean }
+struct Metrics { m_adv64: integer, m_line_h: integer, m_mono: boolean }
 ```
+
+⚠ `m_adv64` is the advance in **1/64 px**, not whole pixels — see the last note in this
+section for the 31px that bought it.
 
 - **The library takes `Metrics` as a parameter** and does pure layout arithmetic with it.
   Every existing layout test keeps working, and gains a second run at a different advance —
@@ -83,7 +86,7 @@ struct Metrics { m_advance: integer, m_line_h: integer, m_mono: boolean }
   red — hand it a deliberately wrong advance and the gate must fail, or it is comparing a
   number with itself.
 - **The HUD asks for a monospace family**, so `len × advance` is *exact* rather than
-  approximately right. A proportional font needs per-string measurement, which drags the GL
+  approximately right (to within the rounding below). A proportional font needs per-string measurement, which drags the GL
   context into the library. Monospace is the smaller, safer commitment; a proportional HUD
   can come later behind the same `Metrics` seam.
 
@@ -113,6 +116,17 @@ advance. Three consequences, all now `B1.2`'s:
 DejaVu**. So the two *can* agree to the last digit, but only because Chrome's default
 monospace happens to be the same face on this box. **That is a coincidence, not a contract**,
 and it is the reason `Metrics` is measured at runtime instead of shared as a constant.
+
+⚠ **AND THE ADVANCE IS KEPT IN 1/64 PIXEL, which `B1.6` earned.** A whole-pixel advance
+truncates 9.6 to 9, and the error is per *character*: the editor's own subject line measured
+**31px narrower** than the bridge rasterises it. Under-estimating is the dangerous direction
+— `fit_text` then believes more fits than does, and text overflows a box it was just proved
+to fit. So the advance is fine-grained and `text_width` rounds **up**: an over-estimate
+reserves a pixel too many and the text fits.
+
+That is the second independent cause of the same symptom, after the proportional fallback
+above. One symptom with two unrelated causes is the whole argument for gating this seam with
+a number rather than reasoning about it.
 
 ---
 
@@ -168,8 +182,14 @@ serves both families, because both are *a named thing you pick and then place*:
 | **parts** | houses, door-frames, leaves, window-frames, pillars, statues | plan [#17](https://github.com/jjstwerff/moros/issues/17) — nothing yet |
 | **materials** | wall, floor, roof, ground surface, fence, road, field | **yes** — the surfaces the mesher already separates |
 
-`moros_ui::palette_items_for_tool(tools) -> vector<text>` is already the seam: it returns the
-list for the current tool. It grows an image and a kind; it does not grow a second widget.
+⚠ **The seam moved, and it moved the right way.** This said
+`moros_ui::palette_items_for_tool(tools)` was already it — a function that read the consumer's
+tool state and returned the list for it. `B1.2b` deleted it: a client-authoritative palette is
+precisely what §C1 forbids, and it was what dragged `moros_sim` into a layout library.
+
+The seam is now `PanelSpec.ps_items` — the consumer hands over the list it wants shown, from
+wherever it legitimately knows it (for the browser client, from the server). It grows an image
+and a kind; it does not grow a second widget.
 
 ⚠ **Availability is part of the entry, not a separate dialog.** A door leaf that does not fit
 the frame you are standing in is *shown greyed with its reason*, not hidden. Hiding it makes
@@ -252,7 +272,7 @@ palette is precisely what *"what the SERVER says, never what the client believes
 
 ## What this is verified by
 
-**Library (`lib/moros_ui/tests/`), pure:**
+**Library (`lib/lavition_ui/tests/`), pure:**
 
 | claim | why not a gate |
 |---|---|

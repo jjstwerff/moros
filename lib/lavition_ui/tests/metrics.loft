@@ -24,7 +24,9 @@ fn mono(advance: integer) -> Metrics {
 fn test_two_equal_runs_are_fixed_pitch() {
   m = metrics_measured(192.65625, 192.65625, 10, 38);
   assert(m.m_mono, "equal M-run and i-run must read as fixed pitch");
-  assert(m.m_advance == 19, "advance from the wide run: {m.m_advance}, want 19");
+  assert(metrics_advance(m) == 19, "advance from the wide run: {metrics_advance(m)}, want 19");
+  // and the fine unit it is actually kept in: 19.265625 * 64 = 1233
+  assert(m.m_adv64 == 1233, "adv64 is {m.m_adv64}, want 1233 (19.265625 px)");
 }
 
 // ⚠ THE CONTROL, AND IT IS A REAL MEASUREMENT — these are the numbers
@@ -41,7 +43,7 @@ fn test_a_zero_length_run_is_not_fixed_pitch() {
   // A consumer that measured nothing must not get a confident answer.
   m = metrics_measured(0.0, 0.0, 0, 12);
   assert(!m.m_mono, "n=0 cannot establish fixed pitch");
-  assert(m.m_advance == 0, "advance from no measurement is 0");
+  assert(metrics_advance(m) == 0, "advance from no measurement is 0");
 }
 
 // ── width and fit ────────────────────────────────────────────────

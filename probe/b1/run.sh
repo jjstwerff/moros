@@ -70,8 +70,30 @@ echo "── B1.3  the PANEL, in the client's own picture ───────�
 # worth knowing — a HUD that only appears once the world does is a HUD that
 # cannot report the world failing to arrive.
 $LOFT --html --lib lib/ src/editor_client.loft >/dev/null 2>&1
-node probe/b1/browser_shot.mjs src/.loft probe/b1/client_panel.png /editor_client.html
+shot_out=$(node probe/b1/browser_shot.mjs src/.loft probe/b1/client_panel.png /editor_client.html)
+echo "$shot_out"
 node probe/b1/panel.mjs probe/b1/client_panel.png
+
+echo
+echo "── B1.6  the library's widths against the bridge's ─────────────────"
+# The whole metrics seam in one number. lavition_ui lays out every box with
+# text_width(s, metrics); the bridge is what rasterises the string. If they
+# disagree, every label is fitted against a number that is not the font -- and
+# the picture still draws, just in the wrong place.
+#
+# ⚠ SEEN RED FOR REAL: a whole-pixel advance read 31px narrow on the subject
+# line, because 9.6px truncates to 9 and the error is per character. The advance
+# is kept in 1/64px now and rounded UP, since an over-estimate reserves a pixel
+# too many while an under-estimate overflows a box measured as fitting.
+drift=$(printf '%s\n' "$shot_out" | sed -n 's/.*metrics drift \([0-9][0-9]*\)px.*/\1/p' | head -1)
+ctrl=$(printf '%s\n' "$shot_out" | sed -n 's/.*control \([0-9][0-9]*\)px.*/\1/p' | head -1)
+[ -n "$drift" ] || { echo "  !! the client reported no drift line at all"; exit 1; }
+[ "$drift" -le 1 ] || { echo "  !! drift ${drift}px - the library and the bridge disagree"; exit 1; }
+# ⚠ The control, and it is why a 0 here means anything: bend the advance by a
+# tenth and the same measurement must move. Without it, a broken comparison and
+# a perfect agreement are the same number.
+[ "$ctrl" -ge 5 ] || { echo "  !! control ${ctrl}px - a 10% wrong advance was NOT caught"; exit 1; }
+echo "  ok    drift ${drift}px, and a 10% wrong advance reads ${ctrl}px"
 
 echo
 echo "── B1.3c  and the panel reader, against pictures with no panel ─────"

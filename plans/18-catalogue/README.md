@@ -50,7 +50,7 @@ sitting — and if the widget is wrong, it is wrong before plan #17 has been bui
 | ✅ `B1.3` | **`panel_draw_list`, not `panel_render(painter, …)`** — the panel emits RECTANGLES and the client draws them, so `lavition_ui` keeps needing no GL and "the selected button looks different" is a loft test rather than a pixel argument. | **DONE.** A PNG **from the client**, measured not eyeballed: strip **240px exactly**, bars `32,32,32,32,32,32`, 76% of the frame still world. ⚠ **It took three world gates red** — see below. | S |
 | ✅ `B1.4` | `panel_text_list` beside the draw list; the client rasterises each string **once, outside the frame loop** (§C5). `Panel` now carries `p_metrics`, so the metrics that FIT a label are the metrics that PLACE it. | **DONE.** Labels legible in the client's PNG — 1180 glyph pixels, 678 of them in the buttons. ⚠ **The picture found a collision the per-string checks could not** — see below. | S |
 | ✅ `B1.5` | The subject line — its **own bar across the top**, because §C1's own example is 69 characters and was never going to fit the 240px strip. The panel starts *below* it, so "never hidden" is geometry rather than hope. | **DONE.** In the client's PNG: 844 glyph pixels in the bar, 408 of them past the strip. ⚠ It says what it does **not** know — see below. | S |
-| `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
+| ✅ `B1.6` | The metrics gate: bridge-measured width vs `text_width`, over the strings the panel actually shows. | **DONE.** ⚠ **It found a 31px error before asserting anything** — see below. Now `drift 1px`, with a 10% wrong advance reading `48px` as the built-in control. | XS |
 
 ⚠ **`B1.1` was not ceremony, and it earned its place immediately.** Text does reach the
 canvas on both targets — that half of the question came back clean. But the *same* font
@@ -168,6 +168,27 @@ something if the line was never guessing in the first place.
 panel emits — rect or text — may occupy a pixel of the subject bar. Before `B1.5` the strip
 started at `y=0` and would have covered the left end of the line, which is exactly where it
 starts reading.
+
+⚠ **`B1.6` FOUND A 31px ERROR BEFORE IT ASSERTED ANYTHING.** `Metrics` kept the advance as
+a whole integer. DejaVu Sans Mono at 16px advances **9.6px**, which truncates to 9 — and the
+error is per CHARACTER, so it accumulates: the editor's own subject line measured **31px
+narrower** than the bridge rasterises it.
+
+**And under-estimating is the dangerous direction.** `fit_text` then believes more fits than
+does, so text overflows a box it was *just proved to fit* — the exact `C0a` failure, reached
+by a different route than the proportional-font one `B1.1` found. Two independent causes for
+one symptom is the argument for measuring the seam rather than reasoning about it.
+
+The advance is kept in **1/64 px** now (the unit fonts are hinted in) and `text_width` rounds
+**up**: an over-estimate reserves a pixel too many and the text fits; an under-estimate
+overflows. Drift went 31px → 1px, and the 1px is that deliberate rounding.
+
+⚠ **The gate carries its own control, and that is what makes a 0 mean anything.** A drift of
+zero reads identically whether the two agree or the comparison is broken, so the client
+measures the same strings a second time against an advance bent by a tenth and reports both:
+`drift 1px, control 48px`. Seen red for real — reverting to the whole-pixel advance gives
+`!! drift 31px - the library and the bridge disagree` — and the failure was confirmed to
+propagate through `make probe-text` rather than being printed and ignored.
 
 ### B2 — the line tells the truth
 

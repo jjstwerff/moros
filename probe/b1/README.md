@@ -120,11 +120,29 @@ the shot came back with the right third and the bottom third black and everythin
 wrong scale: a canvas larger than the viewport is only partly composited, and
 `captureBeyondViewport` does not undo it. It reads exactly like a broken renderer.
 
+## B1.6 — the library's widths against the bridge's
+
+The whole metrics seam in one number. `lavition_ui` lays out every box with
+`text_width(s, metrics)`; the bridge is what rasterises the string. If they disagree, every
+label is fitted against a number that is not the font — and the picture still draws, just in
+the wrong place.
+
+⚠ **It read 31px before anything was asserted.** `Metrics` kept a whole-pixel advance, and
+DejaVu Sans Mono at 16px advances 9.6 — truncated to 9, per character, so the subject line
+came out 31px narrow. Under-estimating is the direction that hurts: `fit_text` believes more
+fits than does. The advance is 1/64 px now and `text_width` rounds up.
+
+⚠ **The gate carries its own control**, because a drift of 0 reads the same whether the two
+agree or the comparison is broken. The client measures the same strings a second time against
+an advance bent by a tenth: `drift 1px, control 48px`. Reverting the fix gives
+`!! drift 31px`, and the failure was checked to propagate through `make probe-text` rather
+than being printed and ignored.
+
 ## Files
 
 | | |
 |---|---|
-| `run.sh` | all five stages — `make probe-text` |
+| `run.sh` | all six stages — `make probe-text` |
 | `text_cpu.loft` | rasteriser coverage, exact count |
 | `text_gl.loft` | the GL route + the fixed-pitch check, one source for both targets |
 | `shot.mjs` | the ink reader — a minimal PNG decoder, split left/right |
