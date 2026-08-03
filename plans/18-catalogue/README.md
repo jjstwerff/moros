@@ -343,16 +343,44 @@ the mesher's own surfaces. One list, two families means that count is now *nine 
 authored would have turned a gate about the MESHER red — a gate going red for something it is
 not about, which teaches the next reader to loosen it.
 | ✅ `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | **DONE.** `W:`/`Y:` on the wire, `chunk_mesh_mat_bounded`, an offscreen pass with a depth attachment. In the client's PNG: 10 of 10 rows carry an image, the part row has 4 colour buckets against every material's 1. ⚠ **The row this replaced was already wrong, and the gate could not see it** — see below. | M |
-| `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
+| ✅ `B5.3` | Cache invalidation on the part's version. | **DONE.** `(mtime, size)` re-stated once a second, `W:` as the invalidation, the old set dropped when the new one lands. Measured through one page load spanning the change: **18% of the row's pixels moved**, and the control — two shots with nothing changed — moved **0**. ⚠ **The picture passed while the drop was broken**; see below. | S |
 
-⚠ **`B5.3` HAS TWO CACHES TO INVALIDATE, AND `B5.2` LEFT BOTH DELIBERATELY SIMPLE.** The server
-builds `wire_thumbs` **once at startup** — a world load and four chunks of geometry per part,
-paid once rather than per connecting tab — and the client uploads a VAO per `Y:` and never drops
-one. Neither is wrong while parts do not change during a session, which is exactly the assumption
-`B5.3` removes: a re-sent thumbnail must replace the client's meshes for that row rather than
-adding to them, or the old geometry is drawn under the new for ever. `add_thumb_cam` already
-replaces in place for this reason; `add_thumb_mesh` does not, because there is no signal yet to
-say a set is complete.
+⚠ **`B5.3`: THE PICTURE PASSED WHILE THE INVALIDATION WAS HALF BROKEN.** Two things had to be
+true — the row is redrawn, and the old geometry is retired — and only the first has a picture.
+With the drop deliberately disabled the row-diff reported **`ok — 18% of pixels moved`**, because
+two houses drawn on top of each other is certainly a changed picture, while the client silently
+leaked a vertex buffer per surface per rebuild. `24 thumbnail meshes arrived, 12 held` is the
+second instrument, and it is the one that goes red. ⚠ Both halves were seen red for real: the poll
+disabled gives `0/352 pixels moved`, and the drop disabled gives `24 arrived and 24 held`.
+
+⚠ **§C4'S OWN CACHE KEY DOES NOT SURVIVE A PART ON DISK.** *"The version already exists in the
+layer"* — true of a world in memory, useless here, because a layer version can only be read by
+LOADING the file, which is the whole cost the cache exists to avoid. **A key you must pay full
+price to compute is not a key.** `(mtime, size)` costs two stats, and its hole is written down
+rather than hidden: one-second granularity misses a same-second, same-length rewrite. The honest
+fix is the editor saving a part and saying so on the wire, and plan 17 does not have that gesture
+yet.
+
+⚠ **`W:` IS THE INVALIDATION, AND NO NEW MESSAGE MEANS *FORGET THIS ROW*.** The camera is fitted
+to the emitted vertices, so it can only be composed once every mesh is built, so the server
+already sends it first — which makes "a `W:` for a row I hold" exactly the signal. A rule read off
+the ordering cannot drift from a rule written beside it. And the old meshes are dropped when the
+replacement ARRIVES rather than when `W:` does, because dropping on `W:` blinks the row to black
+on every rebuild.
+
+⚠ **THE FIXTURE VARIES THE RADIUS, AND THE FIRST CHOICE FOUND A DEFECT INSTEAD.** A taller roof was
+the obvious way to make a second part, and the picture that came back had a red band floating over
+a grey box. Measured in the part files: `roof_up` lifts the roof's EAVE while the walls stay at
+`WALL_UP = 12`, so `14:28` gives roof cells at 28..36 over a wall head of 12 — **a roof floating 16
+units above its own house**, and the fence admits up to 400. That is a stencil defect
+([OPEN_ISSUES](../../doc/claude/OPEN_ISSUES.md)), found by a 22×16 thumbnail, and a fixture must
+not encode one — so the variant is the same house at a wider radius.
+
+⚠ **AND THE GATE RUNS AGAINST A SCRATCH PARTS ROOT.** `EDITOR_PARTS` overrides `data/parts/` the
+way `EDITOR_PORT` already overrides the port. Editing a committed file under a running gate would
+corrupt whatever else is in the tree — two agents work here — and a gate that leaves the repository
+dirty when it FAILS is worse than no gate. `run.sh` also grew a `trap` that stops the editor
+however it exits, since `set -e` between a start and a stop leaves a server holding a core.
 
 ⚠ **`B5.2` FOUND A DEFECT `B5.1` SHIPPED, AND THE GATE HAD NO WAY TO SEE IT.** `render_swatches`
 indexed `moros_terrain::surface_at(i)` by the LIST row, and `B5.1` made row 9 a part —

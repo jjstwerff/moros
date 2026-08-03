@@ -233,6 +233,33 @@ to change. This is the refusal rule from §C2 applied to a list.
   `(part, version)`, and a cache keyed on the part cannot hold an image that depends on the
   light — it would be stale the moment the author walked indoors, with nothing to say so.
 
+✅ **AND IT INVALIDATES, `B5.3`.** The thumbnail follows the file: the server keys
+each part's cached messages by `(mtime, size)`, re-stats once a second, and
+broadcasts a rebuilt set to everyone rather than to the next client to connect —
+the author who changed the part is the one person guaranteed to be watching.
+
+- ⚠ **§C4'S OWN SENTENCE DOES NOT SURVIVE A PART ON DISK.** *"The version already
+  exists in the layer"* is true of a world in memory and useless here: a layer
+  version can only be read by LOADING the file, which is the entire cost the cache
+  exists to avoid. **A key you must pay full price to compute is not a key.**
+  `(mtime, size)` costs two stats. Its hole is stated rather than papered over —
+  `mtime` has one-second granularity, so a same-second, same-length rewrite is
+  missed until the next change; the honest fix is the editor SAVING a part and
+  saying so, and there is no such gesture yet.
+- ⚠ **`W:` IS THE INVALIDATION, and no message means *forget this row*.** The camera
+  can only be composed once every mesh is built, so the server already sends it
+  first; the client reads that ordering as "a fresh set is coming". A rule taken
+  from the ordering cannot fall out of step with a rule written beside it.
+- ⚠ **AND THE OLD MESHES ARE DROPPED WHEN THE NEW ONES ARRIVE, not when `W:` does.**
+  Dropping on `W:` blinks the row to black on every rebuild.
+
+⚠ **THE PICTURE CANNOT SEE THE LEAK, AND THAT WAS MEASURED, NOT ASSUMED.** With the
+drop deliberately disabled, the row-diff reported **`ok — 18% of pixels moved`**:
+two houses drawn on top of each other is certainly a changed picture. Only
+`24 arrived, 12 held` says the old set went away. Two claims, two instruments —
+and the one that would have shipped a vertex-buffer leak per surface per rebuild
+is the one no screenshot can answer.
+
 ⚠ **AND THE FRAMING TOOK FOUR ATTEMPTS, THREE OF WHICH LOOKED RIGHT ON PAPER.** As a fraction of
 the thumbnail the cottage fills: bounding **sphere** ~35% (most of a sphere over a squat roof is
 air); bounding **box** ~35% — *further away than the sphere*, no visible change; the box **in

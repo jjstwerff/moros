@@ -37,6 +37,31 @@ const W_UNIT  = 0.25;
 // not to whatever ground it was cut from.
 const ANCHOR  = 0;
 
+// ⚠ TWO OPTIONAL OVERRIDES, AND `make parts` USES NEITHER. `PART_ROOF` and
+// `PART_OUT` let a caller build a VARIANT of the cottage somewhere else, which is
+// what `B5.3`'s gate needs: it has to hand the editor a genuinely different part
+// while it is watching, and the alternative is either committing a second file
+// that exists only to be a control or editing `data/parts/` — a committed file —
+// out from under whoever else is working in this tree. Defaulted, this program is
+// byte-for-byte the one `A2.1` wrote.
+fn roof_up() -> integer {
+  pr = env_variable("PART_ROOF") as integer ?? 0;
+  if pr > 0 { return pr; }
+  hex_editor::STOREY_H
+}
+
+fn radius() -> integer {
+  pd = env_variable("PART_RADIUS") as integer ?? 0;
+  if pd > 0 { return pd; }
+  hex_editor::STENCIL_R
+}
+
+fn out_path() -> text {
+  po = env_variable("PART_OUT");
+  if po != "" { return po; }
+  "{source_dir()}/../data/parts/house/cottage.hxw"
+}
+
 fn main() {
   w = world_new(W_UNIT, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
 
@@ -48,12 +73,12 @@ fn main() {
   kept_below = 0;
   kept_above = 0;
   why = "";
-  n = hex_editor::stencil_place(w, 0, 0, hex_editor::STENCIL_R, ANCHOR,
-                                hex_editor::STOREY_H, kept_below, kept_above, why);
+  n = hex_editor::stencil_place(w, 0, 0, radius(), ANCHOR,
+                                roof_up(), kept_below, kept_above, why);
   assert(n > 0, "the stencil refused ({n}): {why}");
   println("  stencil placed {n} cells, kept {kept_below} below and {kept_above} above");
 
-  cut = part_from_region(w, 0, 0, hex_editor::STENCIL_R);
+  cut = part_from_region(w, 0, 0, radius());
   assert(cut.pc_code == PR_OK, "the cut was refused: {cut.pc_why}");
   assert(cut.pc_cells == n, "the stencil built {n} columns and the cut carried {cut.pc_cells}");
   part = cut.pc_world;
@@ -70,15 +95,15 @@ fn main() {
     pa_q: 0, pa_r: 0, pa_h: ANCHOR, pa_facing: 0
   }) == PM_OK, "the anchor was refused");
 
-  dir = "{source_dir()}/../data/parts/house";
+  path = out_path();
+  dir = path.dir();
   assert(mkdir_all(dir).ok(), "could not make {dir}");
-  path = "{dir}/cottage.hxw";
   assert(world_save(part, path, []) == WS_OK, "the save was refused");
 
   // ── and now the part of this that is the gate ──────────────────────────────
   back = world_load(path);
   assert(back.wl_code == WL_OK, "the part did not load back: {back.wl_code} {back.wl_detail}");
-  d = part_diff(part, back.wl_world, hex_editor::STENCIL_R);
+  d = part_diff(part, back.wl_world, radius());
   assert(d.pd_same, "the file is not the part that was saved: {d.pd_why}");
 
   m = part_meta(back.wl_world);
@@ -96,8 +121,8 @@ fn main() {
   // every count agreed with every other count. This counts what the FILE holds.
   walls = 0;
   doors = 0;
-  for wq in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
-    for wr in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+  for wq in (0 - radius())..(radius() + 1) {
+    for wr in (0 - radius())..(radius() + 1) {
       for c in column_cells(world_column(back.wl_world, wq, wr)) {
         for e in [c.h_wall_n, c.h_wall_ne, c.h_wall_se] {
           if e == hex_editor::WALL_MAT { walls = walls + 1; }
@@ -110,8 +135,22 @@ fn main() {
   // agree with the ring: 12 outer cells owning 3 edges each is 36, one of them a
   // door. ⚠ The agreement is a cross-check, not the source — a number the writer
   // re-derives from its own rule agrees with itself however wrong the rule is.
+  //
+  // ⚠ AND A PINNED NUMBER BELONGS TO THE RADIUS IT WAS READ AT. At `PART_RADIUS=4`
+  // the same house has 71 wall edges, so asserting 35 against a variant would fail
+  // for being a variant rather than for being wrong. What survives any radius is
+  // asserted for every build: exactly ONE door, and a wall count that divides by
+  // three, because a boundary cell owns three edges and a ring made of anything
+  // else has lost some.
+  println("  boundary: {walls} wall edges and {doors} door at radius {radius()}");
   assert(doors == 1, "{doors} doors in the file, not 1");
-  assert(walls == 35, "{walls} wall edges in the file, not 35");
+  assert(walls > 0, "the file holds no wall edges at all");
+  assert((walls + doors) % 3 == 0,
+         "{walls} walls and {doors} door is {walls + doors} edges, which no whole "
+       + "number of three-edge boundary cells can make");
+  if radius() == hex_editor::STENCIL_R {
+    assert(walls == 35, "{walls} wall edges in the file, not 35");
+  }
 
   // ⚠ AND IT PRINTS WHAT THE PART COST, because `A7.4` defers the keyed-read
   // question until there is a number and this is where the number comes from.
@@ -129,14 +168,14 @@ fn main() {
   slots = 0;
   for ch in part.w_chunks { slots = slots + len(ch.ck_layers) * hex_world::CHUNK_CELLS; }
   used = 0;
-  for q in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
-    for r in (0 - hex_editor::STENCIL_R)..(hex_editor::STENCIL_R + 1) {
+  for q in (0 - radius())..(radius() + 1) {
+    for r in (0 - radius())..(radius() + 1) {
       used = used + len(column_cells(world_column(part, q, r)));
     }
   }
   onf = file(path);
   println("  cottage: {cut.pc_cells} columns, {len(part.w_chunks)} chunk(s), "
-        + "{len(part.w_sections)} sections -> data/parts/house/cottage.hxw");
+        + "{len(part.w_sections)} sections, roof {roof_up()} -> {path}");
   println("  cost: {onf#size} bytes, {used} of {slots} cell slots used "
         + "— a part is origin-centred, so it always crosses four chunks (A7.4)");
 }

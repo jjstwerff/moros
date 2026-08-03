@@ -372,6 +372,36 @@ with its own documentation:
 | The socket, message by message | [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) |
 | The plans themselves | `gh issue list -R jjstwerff/moros --label plan --state all` |
 
+### Open: `stencil_place`'s roof fence admits roofs the walls cannot reach
+
+⚠ **Found 2026-08-03 by `B5.3`, and by looking at a picture nobody had drawn
+before.** `14:<roof_up>` fences the roof at `WINDOW_MAX_ROOF = 400`, and the
+stencil's walls are `WALL_UP = 12` whatever it is asked for. Measured in the part
+files, by reading the cells rather than the code:
+
+| `roof_up` | roof cells | wall head | eave gap |
+|---|---|---|---|
+| `12` (the built-in cottage) | 12..20 | 12 | **0** — the roof sits on the walls |
+| `28` | 28..36 | 12 | **16** — the roof floats clear of the house |
+
+So every admissible value above 12 builds a house whose roof is not on it, and the
+author is told nothing: `14:28` is accepted and acknowledged like any other. It has
+been that way for as long as the gesture has existed, because **nothing ever looked
+at a house built with a non-default roof** — `stencil.mjs` drives `14:12`, and the
+built-in cottage is 12 by construction.
+
+⚠ **What surfaced it was the catalogue thumbnail.** `B5.3` needed a part that
+differed from the cottage, reached for the obvious knob, and the picture that came
+back had a red band floating over a grey box. The instrument that found it is a
+22×16 image — which is worth saying, because the argument against small thumbnails
+is that nothing can be seen in them.
+
+Not fixed here: whether the walls should follow the roof, whether the fence should
+be `WALL_UP`, or whether a taller roof means a taller *storey* is a design question
+for the stencil (plan 17's `A7.3` is where one definition of a house is argued out).
+What is recorded is that the gesture accepts a number it cannot honour. `B5.3`'s own
+fixture varies the RADIUS instead, so no gate encodes the broken shape.
+
 ---
 
 ## Priority order

@@ -491,7 +491,17 @@ fn world_path(name: text) -> text { "{source_dir()}/../worlds/{name}.hxw" }
 // the payload is not hostile, but a name that escapes `data/parts/` is not a
 // part — so it is turned away by name instead of quietly reading whatever it
 // pointed at.
-fn parts_root() -> text { "{source_dir()}/../data/parts" }
+// ⚠ OVERRIDABLE, THE SAME WAY THE PORT IS. `EDITOR_PORT` already exists because
+// a driving gate and a human session have to coexist on one box; a parts root has
+// the same shape of need — `B5.3`'s gate has to CHANGE a part while the editor
+// watches, and doing that to `data/parts/` would edit a committed file out from
+// under whoever else is working in this tree. It is not a test hook: pointing the
+// editor at another part library is a thing an author wants.
+fn parts_root() -> text {
+  pr = env_variable("EDITOR_PARTS");
+  if pr != "" { return pr; }
+  "{source_dir()}/../data/parts"
+}
 fn part_path(name: text) -> text { "{parts_root()}/{name}.hxw" }
 
 fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
@@ -3886,26 +3896,105 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   ptw_out
 }
 
-// Every part's thumbnail, built ONCE.
+// ── THE CACHE, AND WHAT INVALIDATES IT (§C4, plan 18 `B5.3`) ─────────────────
 //
-// ⚠ THE CACHE §C4 ASKS FOR, at the server end of it: meshing a part is a world
-// load and four chunks of geometry, and doing it per connecting client would pay
-// that for every tab. The parts on disk do not change while the editor runs —
-// which is the assumption `B5.3` replaces with the part's own version.
-fn part_thumbs_all() -> vector<text> {
-  pta_out: vector<text> = [];
+// One entry per part: the messages that draw it, and the version they were built
+// from. Meshing a part is a world load and four chunks of geometry, so doing it
+// per connecting client would pay that for every tab.
+//
+// ⚠ THE VERSION IS THE FILE'S, NOT THE LAYER'S, and §C4's own sentence — *the
+// version already exists in the layer* — does not survive contact with a part on
+// disk. A layer version can only be read by LOADING the file, which is the whole
+// cost the cache exists to avoid: a key you have to pay full price to compute is
+// not a key. `(mtime, size)` costs two stats and answers the same question.
+//
+// ⚠ AND `mtime` HAS ONE-SECOND GRANULARITY, which is a real hole and is stated
+// rather than papered over: a part rewritten within the same second as the poll
+// that last read it, to the same byte length, is missed until it changes again.
+// The size is compared beside it because it catches most same-second edits for
+// nothing; what it cannot catch is a same-second, same-length rewrite. The honest
+// fix is the editor SAVING a part and saying so on the wire — there is no such
+// gesture yet (plan 17), and inventing a content hash here would mean reading
+// every part every second to avoid reading one part once.
+struct PartThumb {
+  pt_name:  text,
+  pt_row:   integer,
+  pt_mtime: integer,
+  pt_size:  integer,
+  pt_wire:  vector<text>,
+}
+
+fn part_version_mtime(name: text) -> integer { mtime(part_path(name)) }
+fn part_version_size(name: text) -> integer {
+  // ⚠ `#size` needs a plain handle, not a call chained into it — the parser stops
+  // at the `#` otherwise. `part_build.loft` binds it the same way.
+  pvs_f = file(part_path(name));
+  pvs_f#size
+}
+
+fn part_thumbs_all() -> vector<PartThumb> {
+  pta_out: vector<PartThumb> = [];
   pta_i = 0;
   for pta_p in hex_part::part_list(parts_root()) {
     // ⚠ THE INDEX IS THE CATALOGUE ROW, not the part's position in `part_list`.
     // `N:` sends the materials first and the parts after them, so a thumbnail
     // addressed by its place among the PARTS would land on `grass`. One list,
     // two families means one index space (§C3).
-    for pta_m in part_thumb_wire(moros_terrain::surface_count() + pta_i, pta_p) {
-      pta_out += [pta_m];
-    }
+    pta_row = moros_terrain::surface_count() + pta_i;
+    pta_out += [PartThumb {
+      pt_name:  pta_p,
+      pt_row:   pta_row,
+      pt_mtime: part_version_mtime(pta_p),
+      pt_size:  part_version_size(pta_p),
+      pt_wire:  part_thumb_wire(pta_row, pta_p),
+    }];
     pta_i = pta_i + 1;
   }
   pta_out
+}
+
+// Every cached message, in row order — what an arriving client is sent.
+fn thumbs_wire(ts: vector<PartThumb>) -> vector<text> {
+  tw_out: vector<text> = [];
+  for tw_t in ts { for tw_m in tw_t.pt_wire { tw_out += [tw_m]; } }
+  tw_out
+}
+
+// RE-STAT EVERY PART, RE-MESH THE ONES THAT MOVED, AND TELL EVERYONE.
+//
+// ⚠ BROADCAST, NOT SENT TO THE NEXT CLIENT TO CONNECT. A thumbnail that only
+// refreshed on connect would be right for a new tab and stale for the author who
+// is actually editing — the one person who changed the part. That is the same
+// shape as `V:` and `H:` and it is the same fix: send it where it changes.
+//
+// ⚠ `W:` LEADS THE SET, AND THAT IS WHAT THE CLIENT TAKES AS THE INVALIDATION.
+// `part_thumb_wire` puts the camera first because it can only be composed once
+// every mesh is built; the client uses that ordering to know a fresh set is
+// coming, so the two halves agree without a message that means "forget this row".
+fn thumbs_refresh(srv: Server, ts: &vector<PartThumb>) -> integer {
+  tr_n = 0;
+  for tr_t in ts {
+    tr_m = part_version_mtime(tr_t.pt_name);
+    tr_s = part_version_size(tr_t.pt_name);
+    if tr_m == tr_t.pt_mtime && tr_s == tr_t.pt_size { continue; }
+    // ⚠ THE VERSION IS RECORDED WHATEVER THE RE-MESH DOES. A part saved half-way
+    // through loads as a refusal, and a cache that only updated its key on success
+    // would try again every second for as long as the file stayed broken — a
+    // console full of one complaint, and a world load per second behind it.
+    tr_t.pt_mtime = tr_m;
+    tr_t.pt_size = tr_s;
+    tr_w = part_thumb_wire(tr_t.pt_row, tr_t.pt_name);
+    if len(tr_w) == 0 {
+      srv.broadcast("S:thumbnail '{tr_t.pt_name}' changed and could not be drawn");
+      continue;
+    }
+    tr_t.pt_wire = tr_w;
+    for tr_msg in tr_w { srv.broadcast(tr_msg); }
+    srv.broadcast("S:thumbnail '{tr_t.pt_name}' rebuilt (version {tr_m},{tr_s})");
+    println("editor: thumbnail '{tr_t.pt_name}' rebuilt (version {tr_m},{tr_s})");
+    tr_n = tr_n + 1;
+  }
+  tr_n
 }
 
 fn hud_wire(name: text, mode: integer, lev: boolean, rd: boolean, tr: boolean) -> text {
@@ -4593,8 +4682,9 @@ fn main() {
   // The catalogue's thumbnails, meshed once for the same reason the figure is
   // (plan 18 `B5.2`). ⚠ AT STARTUP AND NOT ON CONNECT: a world load and four
   // chunks of geometry per part, paid once, not once per tab.
-  wire_thumbs = part_thumbs_all();
-  println("editor: {len(wire_thumbs)} thumbnail messages for the catalogue");
+  part_thumbs = part_thumbs_all();
+  println("editor: {len(part_thumbs)} part thumbnails, "
+        + "{len(thumbs_wire(part_thumbs))} messages, from {parts_root()}");
 
   // The character's state — the whole of it. It starts at the origin because an
   // infinite world has no middle.
@@ -4892,7 +4982,7 @@ fn main() {
         // client does not have yet — and the client, correctly, drops a picture
         // for a list it has never been sent. One socket is FIFO, so the ordering
         // is the guarantee; there is nothing else to synchronise.
-        for wt in wire_thumbs { srv.send_to(ev.cid, wt); }
+        for wt in thumbs_wire(part_thumbs) { srv.send_to(ev.cid, wt); }
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
         if ev.msg_id == MSG_READY {
@@ -6623,6 +6713,12 @@ fn main() {
           println(cmsg);
           srv.broadcast("S:{cmsg}");
         }
+        // ⚠ ONCE A SECOND, IN THE BLOCK THAT ALREADY RUNS ONCE A SECOND. A part
+        // changes when a person or a build rewrites a file, which is not a
+        // per-tick event; two stats a second per part is the whole cost, and
+        // hanging it off the existing timer means there is one clock to reason
+        // about rather than a second one drifting beside it.
+        thumbs_refresh(srv, part_thumbs);
         acc_since = ticks(); acc_proxy = 0; acc_cam = 0; acc_rest = 0;
         nticks = 0; nrebuild = 0;
       }

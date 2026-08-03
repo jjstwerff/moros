@@ -291,6 +291,9 @@ struct Client {
   // textures: those are the caller's, rebuilt when the list changes.
   thumbs: vector<ThumbMesh>,
   tcams: vector<ThumbCam>,
+  // Rows whose geometry is about to be replaced — see `add_thumb_cam`. A row is
+  // listed by `W:` and cleared by the first `Y:` that follows it.
+  tstale: vector<integer>,
   prog: integer,
   view: vector<float>,
   proj: vector<float>,
@@ -1211,10 +1214,42 @@ fn add_thumb_cam(st: Client, body: text) {
   // ⚠ REPLACED IN PLACE, not appended. `B5.3` re-sends a part's camera when the
   // part changes, and a second entry for the same row would leave the render
   // picking whichever it found first — the old one, for ever.
+  //
+  // ⚠ AND THIS IS THE INVALIDATION (plan 18 `B5.3`). `W:` leads a part's set —
+  // the camera can only be composed once every mesh is built, so the server puts
+  // it first — which makes "a `W:` for a row I already have" exactly the signal
+  // that fresh geometry is coming. No message has to mean *forget this row*: the
+  // ordering already says it, and a rule read off the ordering cannot fall out of
+  // step with a rule written beside it.
+  //
+  // ⚠ THE OLD MESHES ARE NOT DROPPED HERE, and the difference is a frame of the
+  // author's time. Dropping on `W:` leaves the row EMPTY until the first `Y:`
+  // lands, which is a blink to black on every rebuild — and if the two ever split
+  // across a drain, a blink for as long as the split. Marking the row stale and
+  // dropping when the replacement is in hand shows the old picture right up until
+  // there is a new one.
+  st.tstale += [wrow];
   for wc in st.tcams {
     if wc.tc_row == wrow { wc.tc_view = wv; wc.tc_proj = wp; return; }
   }
   st.tcams += [ThumbCam { tc_row: wrow, tc_view: wv, tc_proj: wp }];
+}
+
+// Drop a row's geometry, GPU buffers and all.
+//
+// ⚠ THE VAOs ARE DELETED, and until `B5.3` nothing deleted them at all. That was
+// survivable only while thumbnails arrived once per connection: a part rebuilt
+// every few seconds by a build watching the tree would leak a vertex buffer per
+// surface per rebuild, invisibly and without bound. The world's own meshes have
+// had `drop_part` since the client could stream; this is that rule, one family
+// over.
+fn drop_thumb_row(st: Client, row: integer) {
+  keep: vector<ThumbMesh> = [];
+  for dt in st.thumbs {
+    if dt.tb_row == row { graphics::gl_delete_vao(dt.tb_vao); }
+    else { keep += [dt]; }
+  }
+  st.thumbs = keep;
 }
 
 // `Y:<row>;<ramp>;<r>,<g>,<b>;<6 floats per vertex>` — `M:`'s own shape with the
@@ -1234,6 +1269,14 @@ fn add_thumb_mesh(st: Client, body: text) {
   if len(ycol) < 3 { return; }
   yverts = parse_singles(body[y3 + 1..body.size()]);
   if len(yverts) < 6 { return; }
+  // The first mesh of a replacement set is what retires the old one — see
+  // `add_thumb_cam`. Everything after it in the same set adds to the new one.
+  ykeep: vector<integer> = [];
+  ystale = false;
+  for ys in st.tstale {
+    if ys == yrow { ystale = true; } else { ykeep += [ys]; }
+  }
+  if ystale { drop_thumb_row(st, yrow); st.tstale = ykeep; }
   st.thumbs += [ThumbMesh {
     tb_row: yrow,
     tb_vao: graphics::gl_upload_vertices(yverts, 6),
@@ -1584,6 +1627,7 @@ fn main() {
     parts: [],
     thumbs: [],
     tcams: [],
+    tstale: [],
     prog: 0,
     view: ident4(),
     proj: ident4(),
@@ -1743,9 +1787,15 @@ fn main() {
         if cit.en_kind == KIND_PART { n_thumb = n_thumb + 1; }
         else { n_swatch = n_swatch + 1; }
       }
+      // ⚠ ARRIVED AND HELD ARE DIFFERENT NUMBERS, and printing only the first
+      // makes the invalidation untestable. `B5.3` REPLACES a row's geometry when
+      // its part changes; a replacement that failed to drop the old meshes would
+      // draw both houses on top of each other — a picture that has certainly
+      // CHANGED, so the row-diff passes it, and a count of arrivals that has
+      // certainly gone up. Only the held count can say the old set went away.
       println("client: {n_swatch} swatches and {n_thumb} thumbnails rendered "
-            + "with the world shader ({st.c_thumb} thumbnail meshes, "
-            + "{len(st.tcams)} cameras)");
+            + "with the world shader ({st.c_thumb} thumbnail meshes arrived, "
+            + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
     }
     poll_input(h, st);
     draw_world(st);

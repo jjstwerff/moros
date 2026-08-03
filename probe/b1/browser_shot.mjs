@@ -145,6 +145,37 @@ if (!shot?.data) await fail('captureScreenshot returned nothing');
 writeFileSync(OUT, Buffer.from(shot.data, 'base64'));
 console.log(`B1.1-html wrote ${OUT} (canvas ${rect.w}x${rect.h})`);
 
+// ── A SECOND SHOT FROM THE SAME PAGE LOAD (plan 18 `B5.3`) ──────────────────
+//
+// ⚠ THE SAME LOAD IS THE WHOLE POINT, and two runs of this script would not do.
+// `B5.3`'s claim is that a part changing on disk changes the picture for the
+// author who is ALREADY LOOKING at it — the one person who could have changed it.
+// A second run reconnects, and a fresh connection is served the cache like any
+// new tab: it would prove the server re-meshed and say nothing about whether a
+// live client ever hears. Those are different code paths and only one of them is
+// the feature.
+//
+// `SHOT_BETWEEN` runs while the page stays up; `SHOT_AGAIN` is where the second
+// picture goes.
+const AGAIN = process.env.SHOT_AGAIN;
+if (AGAIN) {
+    const between = process.env.SHOT_BETWEEN;
+    if (between) {
+        const r = spawnSync('sh', ['-c', between], { encoding: 'utf8' });
+        for (const l of String(r.stdout ?? '').split('\n')) if (l.trim()) console.log(`  > ${l}`);
+        if (r.status !== 0) await fail(`SHOT_BETWEEN exited ${r.status}: ${r.stderr}`);
+    }
+    await sleep(+(process.env.SHOT_AGAIN_MS ?? 3000));
+    const shot2 = await call('Page.captureScreenshot', {
+        format: 'png',
+        clip: { x: rect.x, y: rect.y, width: rect.w, height: rect.h, scale: 1 },
+        captureBeyondViewport: true,
+    });
+    if (!shot2?.data) await fail('the second captureScreenshot returned nothing');
+    writeFileSync(AGAIN, Buffer.from(shot2.data, 'base64'));
+    console.log(`B1.1-html wrote ${AGAIN} (the same page, after SHOT_BETWEEN)`);
+}
+
 // ⚠ THE PROGRAM'S OWN OUTPUT, WHICH IS INVISIBLE BY DEFAULT. `gl_create_window`
 // sets the `<pre>` that `println` writes to `display:none`, so a probe that
 // reports its findings in text says them to nobody. Read it back out.

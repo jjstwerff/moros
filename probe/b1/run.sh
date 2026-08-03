@@ -19,6 +19,13 @@ set -e
 cd "$(dirname "$0")/../.."
 LOFT="${LOFT:-loft}"
 
+# ⚠ STOP THE SERVER WHATEVER HAPPENS. Two stages below start one, and with
+# `set -e` a failing check exits between the start and the stop — leaving an
+# editor holding port 18090 and a core busy until somebody notices. A forgotten
+# one sat at 76% of a core indefinitely once, which is why CLAUDE.md says to stop
+# what you start; a trap is that rule where it cannot be skipped.
+trap 'make -s stop-editor >/dev/null 2>&1 || true' EXIT
+
 echo "── B1.1a  the rasteriser (desktop, CPU, no window) ─────────────────"
 $LOFT --interpret --path ../loft/ --lib lib/ probe/b1/text_cpu.loft 2>/dev/null \
   | grep -E 'font handle|measure:|RESULT|B1.1-cpu'
@@ -161,6 +168,71 @@ node probe/b1/panel.mjs probe/b1/ctrl_black_row.png --swatches >/dev/null 2>&1 \
   && { echo "  !! a catalogue with a BLACK part row PASSED -- the reader cannot see"; \
        echo "     the defect B5.1 shipped, which is the one it exists for"; exit 1; }
 echo "  reader verified: rejects a blank part row, and rejects a black one"
+
+echo
+echo "── B5.3  the thumbnail follows the part on disk ─────────────────────"
+# The claim: change a part while the author is looking at it, and the picture in
+# the catalogue changes. ⚠ **That it CHANGES, not that it is non-blank** — a
+# thumbnail that never invalidates is non-blank on every frame of its life, so
+# "there is a picture there" is exactly the check a broken cache passes.
+#
+# ⚠ ONE PAGE LOAD SPANS THE CHANGE, and two runs of the shot script would not do.
+# A second run reconnects, and a fresh connection is served the server's cache
+# like any new tab: it would prove the server re-meshed and say nothing about
+# whether a live client ever hears. Those are different code paths and only one of
+# them is the feature. `SHOT_BETWEEN` runs while the page stays up.
+#
+# ⚠ AND IT RUNS AGAINST A SCRATCH PARTS ROOT (`EDITOR_PARTS`), never
+# `data/parts/`. Editing a committed file under a running gate would corrupt
+# whatever else is in this tree -- two agents work here -- and a gate that leaves
+# the repository dirty when it fails is worse than no gate.
+b53=$(mktemp -d)
+mkdir -p "$b53/parts/house"
+cp data/parts/house/cottage.hxw "$b53/parts/house/cottage.hxw"
+# The other part: the same house at a wider radius. ⚠ NOT a taller roof, which was
+# the first choice and is a shape the editor should not make: measured in the part
+# files, `roof_up` lifts the roof's EAVE while the walls stay at WALL_UP=12, so
+# `14:28` gives roof cells at 28..36 over a wall head of 12 -- a roof floating 16
+# units above its own house. The roof fence admits up to 400. That is a stencil
+# defect (see OPEN_ISSUES) and a fixture must not encode one; radius changes the
+# house without changing whether it is a house.
+PART_RADIUS=4 PART_OUT="$b53/wide.hxw" $LOFT --interpret --lib lib/ src/part_build.loft >/dev/null 2>&1
+make -s stop-editor >/dev/null 2>&1 || true
+: > .editor.log
+EDITOR_PARTS="$b53/parts" nohup $LOFT --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 &
+until grep -q 'listening on port' .editor.log 2>/dev/null; do sleep 0.5; done
+b53_out=$(SHOT_SETTLE_MS=9000 SHOT_AGAIN=probe/b1/thumb_after.png SHOT_AGAIN_MS=4000 \
+  SHOT_BETWEEN="cp $b53/wide.hxw $b53/parts/house/cottage.hxw" \
+  node probe/b1/browser_shot.mjs http://127.0.0.1:18090/ probe/b1/thumb_before.png)
+printf '%s\n' "$b53_out" | grep 'thumbnails rendered' | sed 's/^  |/   |/'
+node probe/b1/rowdiff.mjs probe/b1/thumb_before.png probe/b1/thumb_after.png differ \
+  || { echo "  !! the part changed on disk and the picture did not"; exit 1; }
+
+# ⚠ AND THE OLD GEOMETRY WENT AWAY, which the picture cannot say. A replacement
+# that failed to DROP the previous meshes would draw both houses on top of each
+# other -- a picture that has certainly changed, so the row-diff above passes it
+# happily, and a leak of a vertex buffer per surface per rebuild besides. Only
+# `arrived` against `held` can see it.
+b53_last=$(printf '%s\n' "$b53_out" | grep -o '[0-9]* thumbnail meshes arrived, [0-9]* held' | tail -1)
+b53_arr=$(printf '%s' "$b53_last" | sed 's/ thumbnail meshes arrived,.*//')
+b53_held=$(printf '%s' "$b53_last" | sed 's/.*arrived, //; s/ held//')
+[ -n "$b53_arr" ] && [ -n "$b53_held" ] \
+  || { echo "  !! the client never reported what it holds"; exit 1; }
+[ "$b53_arr" -gt "$b53_held" ] \
+  || { echo "  !! $b53_arr meshes arrived and $b53_held are held - the old set was never dropped"; exit 1; }
+echo "  ok    $b53_arr thumbnail meshes arrived and $b53_held are held - the old set was retired"
+
+# ⚠ THE CONTROL, and without it "it changed" is measuring the renderer's noise
+# rather than the cache. Two shots of an UNCHANGED part must be identical in that
+# row -- not close, identical -- or anti-aliasing landing differently would read
+# as an invalidation.
+b53_out2=$(SHOT_SETTLE_MS=9000 SHOT_AGAIN=probe/b1/thumb_still2.png SHOT_AGAIN_MS=4000 \
+  SHOT_BETWEEN="true" \
+  node probe/b1/browser_shot.mjs http://127.0.0.1:18090/ probe/b1/thumb_still1.png)
+node probe/b1/rowdiff.mjs probe/b1/thumb_still1.png probe/b1/thumb_still2.png same \
+  || { echo "  !! the thumbnail moved with nothing to move it - the diff is noise"; exit 1; }
+make -s stop-editor >/dev/null 2>&1 || true
+rm -rf "$b53"
 
 echo
 echo "── B1.3c  and the panel reader, against pictures with no panel ─────"
