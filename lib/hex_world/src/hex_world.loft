@@ -1723,8 +1723,10 @@ pub fn world_scan_versions(path: text) -> VersionScan {
   hi = 0;
   cnt = 0;
   // The directory comes FIRST and is contiguous, so the scan simply stops when it
-  // ends — it never reaches a voxel. No seek is needed, which is just as well
-  // (`seek` is documented but not present in this build; see LOFT_HANDOFF H11).
+  // ends — it never reaches a voxel. No seek is needed. ⚠ The rest of this line
+  // used to say `seek` was documented but absent (LOFT_HANDOFF H11); it was fixed
+  // on 2026-07-27 and both writers below use it, so the layout is what makes the
+  // scan cheap here — not a missing primitive.
   for _sc in 0..nc {
     skipx = f#read as i32; skipz = f#read as i32; skipb2 = f#read as i32;
     nl = f#read as i32;
