@@ -15,36 +15,75 @@ static HUD string, and that was deleted with it.
 
 ---
 
-## C0 — The constraint that shapes every answer below
+## C0 — The constraint that shaped this design is GONE (2026-08-03)
 
-Measured in the emitted page, not read from the API docs:
+⚠ **This section said the opposite, in a table, and it was right when written.** loft fixed
+both issues ([#737](https://github.com/loft-lang/loft/issues/737),
+[#738](https://github.com/loft-lang/loft/issues/738)) and the installed `loft 2026.8.0`
+carries the fix. Re-measured in the emitted page, the same way the original claim was made:
 
-| capability | in `loft --html` |
-|---|---|
-| draw text (`gl_load_font` / `measure_text` / `rasterize_text_into` / `gl_text_texture`) | **stubbed** — returns the null sentinel, `0.0`, `0`, `0` |
-| load an image (`gl_load_texture`) | **`return 0; /* TODO: async asset loading */`** |
-| upload a CPU pixel buffer (`gl_upload_alpha_texture`) | **stubbed** |
-| `println` as a fallback | **not visible** — `gl_create_window` sets `output.style.display = "none"` |
-| render to an offscreen texture (`create_color_texture` + `framebuffer_texture`) | **real** |
-| draw geometry, bind textures, `draw_rect_at` | **real** |
+| capability | was | in `loft --html` today |
+|---|---|---|
+| `gl_load_font` / `gl_measure_text` / `gl_text_height` / `gl_font_ascent` | stubbed | **real** — `measureText` on a 2D canvas, real metrics |
+| `rasterize_text_into` / `gl_text_texture` | stubbed | **real** — `fillText`, white-on-transparent, alpha *is* the coverage |
+| `gl_upload_canvas` | stubbed | **real** |
+| `gl_upload_alpha_texture` | stubbed | **real** — uploads a buffer the program computed |
+| `gl_load_texture` | `return 0; /* TODO */` | **real** — serves a bundled asset |
+| `TODO` markers in the emitted page | present | **0** |
+| render to an offscreen texture, draw geometry, `draw_rect_at` | real | real |
 
-Filed as [loft#737](https://github.com/loft-lang/loft/issues/737) (text) and
-[loft#738](https://github.com/loft-lang/loft/issues/738) (pixels). Both doors being shut is
-what makes this a design constraint rather than a missing call:
+⚠ **Both issues are still OPEN on the tracker while the code is fixed.** Trust the
+measurement, not the label, and re-measure before believing either — including this table.
 
-> **The only way to put pixels on the browser canvas is to render them with GL.**
+**The route is two calls, and neither is ours to write:**
 
-Two consequences, and the second is a gift:
+```
+tex = graphics::create_text_texture(font, content, size, colour)   // rasterise + upload
+graphics::draw_texture_at(painter, tex, x, y, w, h)               // blit
+graphics::gl_delete_texture(tex)                                  // caller owns it
+```
 
-- **Glyphs are geometry**, not a font texture (§C5).
-- **Every image in the catalogue is RENDERED, never loaded** (§C4) — so it cannot go stale,
-  and a material swatch is the material rather than a claim about it.
+### What this changes, and what it does not
+
+- **§C5 is withdrawn. Glyphs are NOT geometry.** That was a workaround for a shut door, and
+  the door is open. A geometry font is now strictly worse: more code, worse shapes, and a
+  second set of metrics to keep honest. **Do not build it.**
+- **§C4 survives, and for its own reason.** Catalogue images stay *rendered* not because
+  loading is impossible but because a rendered swatch **is** the material while a stored one
+  is a claim about it. `gl_load_texture` working changes nothing about that argument — it
+  only removes the excuse that made it unavoidable.
 
 ⚠ `moros_ui` has had the panel layout, hit-test and click routing **with tests** for some
 time. What it lacks is `panel_render` — never written — and `font.loft`, a placeholder whose
-own comment says the glyphs "will land alongside the loft_gl text bridge in Step 9". That
-bridge is stubbed, so the thing it was waiting for was never coming. **This plan is largely
-*finish `moros_ui`*, not *design a UI*.**
+own comment says the glyphs "will land alongside the loft_gl text bridge in Step 9". **That
+bridge has now landed**, which is exactly what `font.loft` was waiting for. **This plan is
+largely *finish `moros_ui`*, not *design a UI*.**
+
+### C0a — The metrics seam, which is where this goes wrong if it goes wrong
+
+`font.loft` says `text_width(s) = len(s) * 8`. With a real proportional font **that is a
+lie**, and this doc's own verification table already names the consequence: *"a font whose
+metrics lie mis-lays every panel"*.
+
+But `moros_ui` is a **pure library with no GL context**, and it must stay that way — its
+layout tests run under `loft test` with no window. So the seam:
+
+```
+struct Metrics { m_advance: integer, m_line_h: integer, m_mono: boolean }
+```
+
+- **The library takes `Metrics` as a parameter** and does pure layout arithmetic with it.
+  Every existing layout test keeps working, and gains a second run at a different advance —
+  which is what stops `8` being baked in by accident.
+- **The consumer fills it once at startup** from `gl_measure_text` / `gl_text_height`.
+- **A gate asserts the two agree**: measure a known string through the bridge and compare
+  with `text_width` under the `Metrics` the consumer handed over. ⚠ With the control seen
+  red — hand it a deliberately wrong advance and the gate must fail, or it is comparing a
+  number with itself.
+- **The HUD asks for a monospace family**, so `len × advance` is *exact* rather than
+  approximately right. A proportional font needs per-string measurement, which drags the GL
+  context into the library. Monospace is the smaller, safer commitment; a proportional HUD
+  can come later behind the same `Metrics` seam.
 
 ---
 
@@ -128,20 +167,27 @@ cache with no invalidation, and the browser cannot load it anyway (§C0).
 
 ---
 
-## C5 — Glyphs are geometry, and the cost is measured before it is believed
+## C5 — WITHDRAWN. Text is a texture, and the cost is a cache
 
-`moros_ui::font` gets real data: ASCII 32..126 on a 5×7 cell, each glyph a small set of
-filled rectangles emitted through `draw_rect_at` / the 2D painter, batched into **one mesh
-per text block** and rebuilt only when that text changes.
+⚠ **This section used to specify a geometry font** — ASCII 32..126 on a 5×7 cell, glyphs as
+filled rectangles through `draw_rect_at`. It existed only because the text bridge was
+stubbed (§C0), and it is now the wrong build. **Do not write it.**
 
-A 40-character line is a few hundred triangles. That is nothing next to a chunk, *and I do not
-get to assert that*: the number to take is **vertices per HUD frame** and the `27:` tracer's
-milliseconds, because this editor has already had one instrument say the camera was 993 ms of
-every second and no amount of reading would have found it.
+What replaces it is smaller: `create_text_texture` + `draw_texture_at`, both in `graphics`.
 
-If [loft#738](https://github.com/loft-lang/loft/issues/738) lands, `upload_alpha_texture` makes
-the same font a 200-byte texture and the geometry path is deleted. The design does not depend
-on that; it just gets cheaper.
+**The cost moves from triangles to texture churn**, and that is the thing to watch.
+`create_text_texture` rasterises *and uploads* on every call — a per-frame call for a HUD
+line that changes once a second is an upload per frame for nothing, and `gl_delete_texture`
+churn besides. So:
+
+> **One texture per text block, rebuilt only when that text changes**, keyed by the string.
+> The subject line changes on a toggle, not on a tick.
+
+⚠ **And the number gets measured, not asserted.** The instrument is the `27:` tracer's
+milliseconds plus a **count of `create_text_texture` calls per second** — the second one
+because a cache that silently misses looks exactly like a cache that works, and this editor
+has already had one instrument report the camera as 993 ms of every second. A HUD that
+rebuilds every line every frame is the failure mode, and it is invisible in a picture.
 
 ---
 
@@ -185,20 +231,66 @@ leaf package the way `moros_terrain` did.
 
 ## The order of work
 
-| | step | done when |
-|---|---|---|
-| `B1` | glyphs as geometry + `panel_render` + the subject line | a PNG shows the words, and `moros_sim` still builds |
-| `B2` | toggle state on the subject line, sourced from the server (`H:`) | the line changes when the server changes, not when the key is pressed |
-| `B3` | **material catalogue**, swatches rendered by the world's own shader | pick a wall material from the list and build with it |
-| `B4` | naming + rename, with the clash refusal | rename a material set, placements keep their labels |
-| `B5` | **part catalogue** with rendered thumbnails | needs plan #17 `A1`/`A2` |
-| `B6` | availability and its reasons — greyed entries that say why | a leaf too wide for the frame you stand in says so |
+Each step below is **one sitting and one commit**, ends green, and leaves the editor
+working. The six letters are the arcs; the numbered rows are the steps.
 
 ⚠ **`B3` before `B5`.** Materials exist *now*; parts do not. Building the catalogue against
 the family that already has entries makes it something you can look at and argue with in one
-sitting — and if the widget is wrong, it is wrong before plan #17 has been built on top of it.
-That is this tree's *build to learn* rule, and the reason `B1` is a HUD rather than a
-framework.
+sitting — and if the widget is wrong, it is wrong before plan #17 has been built on it.
+
+### B1 — text on the screen
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B1.1` | **A probe, before anything else.** A standalone loft program: window, `gl_load_font("monospace")`, `create_text_texture("MOROS", 24)`, `draw_texture_at`, screenshot. Run it on `--html` **and** desktop. | a PNG with **non-black pixels where the word is**, ⚠ and the control: the same probe with an empty string must produce a blank frame — otherwise "it drew something" is unproven | XS |
+| `B1.2` | `Metrics` struct in `moros_ui`, threaded through `panel_build` (§C0a). No rendering yet. | existing layout tests pass, **plus a second run at a different advance** — the perturbation that stops `8` being baked in | S |
+| `B1.3` | `panel_render(p: Panel, painter, font, metrics)` — the rects and the toolbar, **no text**. | a PNG shows the 240 px strip and six buttons | S |
+| `B1.4` | Text in `panel_render`, one cached texture per block (§C5). | the button labels are legible in the PNG | S |
+| `B1.5` | The subject line itself — `world <name> · <mode> · …`, top-left, from `panel_build`. | the words are in the picture, and `moros_sim` still builds (§C6) | S |
+| `B1.6` | The metrics gate: bridge-measured width vs `text_width`. | ⚠ control seen red — a deliberately wrong advance must fail it | XS |
+
+⚠ **`B1.1` is not ceremony.** Everything after it assumes the bridge works in the *browser*,
+and that was false three days ago. One probe, thirty lines, before four steps are built on
+the assumption.
+
+### B2 — the line tells the truth
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B2.1` | `H:` on the wire — server → client, the toggle set as one string. Sent **on change**. | `WIRE_PROTOCOL.md` row added; a plain socket sees `H:` after a toggle |  S |
+| `B2.2` | Re-send to an arriving client — ⚠ placed **where the client joins the list**, not in the handler before it. | a second client connects mid-session and its line is correct | S |
+| `B2.3` | The client renders `H:` rather than its own key state. | ⚠ **the control that makes this real**: a key the server *refuses* must leave the line unchanged. A HUD that echoes the keystroke passes every other test. | S |
+
+### B3 — the material catalogue
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B3.1` | `catalogue_materials()` **derived from the mesher's own surface set**, not a second list. | the count matches what the mesher can emit — an `I1`-style claim, in a loft test | S |
+| `B3.2` | Entries in the existing `ListBox` via `palette_items_for_tool`, names only, no images. | picking one and building uses it | S |
+| `B3.3` | Swatch rendering — one hex tile, **the world's own shader and current light**, into an offscreen texture, cached per material. | a PNG shows N non-blank swatches, ⚠ with the control: a swatch that fails to render must read **blank**, or "it drew something" proves nothing | M |
+
+### B4 — names
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B4.1` | The name table: `kind + name -> label`, unique per kind, generated names (`house-3`) for the unnamed. | loft test: uniqueness per kind, and a generated name is never blank | S |
+| `B4.2` | Rename, with the clash refusal — **ok, reason, offer, residual**. | `"oak-2x3" is taken · offer "oak-2x3-2"`, in words | S |
+| `B4.3` | Renaming does not touch labels. | ⚠ measured **in the store**: placements keep their labels across a rename | S |
+
+### B5 — the part catalogue *(needs #17 `A1`–`A2`)*
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B5.1` | Entries from `data/parts/`, names only. | the list shows what is on disk | S |
+| `B5.2` | Thumbnails — the part rendered from a canonical three-quarter view, cached by `(part, version)`. | a PNG shows non-blank thumbnails, same blank-control as `B3.3` | M |
+| `B5.3` | Cache invalidation on the part's version. | edit a part, and its thumbnail changes — ⚠ the control is that it changes, not merely that it is non-blank | S |
+
+### B6 — availability
+
+| | step | proves it | size |
+|---|---|---|---|
+| `B6.1` | An entry carries `available: boolean + reason: text`. | loft test: an unavailable entry has a non-empty reason | XS |
+| `B6.2` | Greyed rendering, reason shown — **not hidden** (§C3). | a leaf too wide for the frame you stand in reads `too wide for frame/2x3` | S |
 
 ## See also
 

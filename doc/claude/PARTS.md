@@ -155,7 +155,9 @@ wall, and the acceptance test for this whole design is recognition.
 
 ### P7 — The library is a directory, and the picker is the editor
 
-`data/parts/<kind>/<name>.hxf`. The server lists it; the editor gets a picker; `14:` (stencil)
+`data/parts/<kind>/<name>.hxw` — ⚠ **`.hxw`, not `.hxf`**; this line said `.hxf` and §P2 is
+what corrected it, since a part is a world and there is no `.hxf` in this tree at all. The
+server lists the directory; the editor gets a picker; `14:` (stencil)
 takes a part name instead of a roof height. Nothing about this needs a database, and a
 directory is greppable, diffable and reviewable — which a database is not.
 
@@ -204,21 +206,92 @@ fence down each side.
 
 ## The order of work
 
-Smallest first, and each step ends in something testable — *build to learn*.
-
-| | step | done when |
-|---|---|---|
-| `A1` | **`lib/hex_part`**, and store sections `PART` + `ANCH`. Save a region of the world as a part with `world_save`; load it back. | round-trip identity is green, with the perturbation control **seen red** |
-| `A2` | **`14:` takes a part name.** The procedural house becomes one authored part in `data/parts/house/cottage.hxf`, and stencilling it draws what `stencil_place` drew. | the gate's picture is unchanged — which is the proof the format carries everything the procedure did |
-| `A3` | **Instances** — `INST`, a labelled derived layer, and `expand == bake`. | edit the part, and the placed house changes |
-| `A4` | **Sockets** — `SOCK` / `FITS`, offer and fit, refusal with reason and offer. | a door-frame accepts a leaf and refuses an oversized one, in words |
-| `A5` | **Fittings** — the hinge, and the state. | the door reads as a door because it is ajar |
-| `A6` | **Prop parts** — statues and pillars over `19:`/`21:`, in the same library and the same sockets. | a statue swapped for another on the same plinth |
-| `A7` | **The picker**, and a part-editing mode in the editor. | a house authored end-to-end without touching loft |
+Each step below is **one sitting and one commit**, ends green, and leaves the editor
+working. The seven letters are the arcs; the numbered rows are the steps.
 
 ⚠ **`A2` before `A3`.** The temptation is to build instances first, because references are
 the interesting part. `A2` is what proves the *format* carries a real house — and if it does
 not, every instance built on it is built on a document that has already lost something.
+
+### The three primitives A1 needs, and what already exists
+
+Worth stating before the table, because `A1` reads like one step and is really three, and
+because **none of them needs a new file format**:
+
+| | how |
+|---|---|
+| **copy a region out of a world** | a loop over `world_column(w,q,r)` → translate → `world_set_column(part, col)`. Both exist. No new library primitive. |
+| **save it** | `world_save(part, path, palette)` — §P2, a part *is* a world |
+| **carry `PART`/`ANCH`** | ⚠ **the store has no section mechanism today.** `world_save` writes a fixed header (`HXW7`, version, chunk width, unit) then chunks. `A1.3` is where that is added, and it is the only format work in the whole plan. |
+
+### A1 — a part is a world you can save and load
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A1.1` | `lib/hex_part` exists, depends on `hex_world`, one function: `part_from_region(w, cq, cr, rad, anchor) -> World`. Cells only, no sections. | a loft test: the copied world has the same column heights and materials as the source region | S |
+| `A1.2` | Save and load it with the **existing** `world_save`/`world_load`. Still no sections. | ⚠ **round-trip identity, with the perturbation control seen red** — change one cell of the saved part and the test must fail. Everything after this rests on it. | S |
+| `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | a loft test writes a section with a made-up tag, loads, saves, and the unknown section **survives byte-identical** — the forward-compatibility promise, tested rather than asserted | M |
+| `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | round-trip carries kind/name/facing; ⚠ an *older* reader (one that does not know `PART`) still loads the cells — simulated by reading with the tag unregistered | S |
+
+⚠ **`A1.3` is the one genuinely risky step**, because it changes a format that already has
+worlds saved in it. It is additive by construction — sections go *after* everything an
+existing reader reads — and the test that matters is that a **pre-section file still loads**.
+Write that test first.
+
+⚠ **The keyed-read question (§P2) is deferred, deliberately.** `A1` accepts whole-file reads.
+A catalogue of two hundred parts wanting to load *one* is real, and it is `A7`'s problem when
+there are two hundred parts — not `A1`'s when there is one. Say so in the code.
+
+### A2 — the procedural house becomes an authored one
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A2.1` | A one-off tool: run `stencil_place` into an empty world, `part_from_region`, save to `data/parts/house/cottage.hxw`. | the file exists and loads | XS |
+| `A2.2` | `14:` accepts a **part name** alongside its `roof_up`, loading and stamping the part. | ⚠ **the stencil gate's picture is unchanged** — pixel-for-pixel against the procedural path. That is the proof the format carries everything the procedure did. | M |
+| `A2.3` | Retire the procedural path behind the authored one. | the gate still passes with `stencil_place` no longer reachable from `14:` | S |
+
+### A3 — instances
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | round-trip, and a cycle refused with the cycle named (§P8) | S |
+| `A3.2` | `expand(instance)` — derive cells into a layer under `world_fresh_label`. | ⚠ **one instance owns one label (`I1`)**, measured in the store | M |
+| `A3.3` | `bake(instance)` — flatten to plain cells. | **`expand == bake`**, cell for cell. The strongest test here: the two paths share nothing but the part. | S |
+| `A3.4` | Depth bound (8) and the cycle check on save. | a 9-deep nest is refused, ⚠ and the control: an 8-deep one is accepted — otherwise the bound is untested | S |
+| `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |
+
+### A4 — sockets
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A4.1` | `SOCK` / `FITS` sections: name · cell · edge-or-heading · kind · size-class. Round-trip. | round-trip identity | S |
+| `A4.2` | `socket_fit(frame, leaf) -> Fit{ok, reason, offer}` — pure, no world. | a leaf too wide is refused **with the frame's actual size and the nearest leaf that fits** | S |
+| `A4.3` | Binding an instance to a socket instead of a coordinate. | moving the frame moves the leaf — the whole point of §P3 | M |
+| `A4.4` | The 24-heading approximation, **measured and written down** (§ Open). | the residual per heading is in the test output, not asserted to be zero | S |
+
+### A5 — fittings
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A5.1` | Hinge in `PART`: axis, range. Round-trip. | round-trip | S |
+| `A5.2` | State on the instance, and the renderer honours it. | **the door reads as a door because it is ajar** — ⚠ the cold-recognition test, and a shut door photographs as a wall | M |
+
+### A6 — prop parts
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A6.1` | `MESH` section: a `.glb` reference, over the existing `21:`/`22:`. | round-trip; the mesh loads | S |
+| `A6.2` | A prop part in the same library, in the same sockets. | a statue on a plinth at the plinth's height, facing out | M |
+| `A6.3` | Swap. | a different statue on the same plinth, no other change | S |
+
+### A7 — the picker
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A7.1` | The server lists `data/parts/` and sends it. | the list arrives | S |
+| `A7.2` | The picker in the editor — ⚠ **this is #18 `B5`**, not a second widget. | one catalogue, both families | S |
+| `A7.3` | A part-editing mode: open a part as a world, edit, save back. | **a house authored end-to-end without touching loft** — the acceptance test for the whole plan | M |
+| `A7.4` | Keyed reads, if two hundred parts make whole-file loading hurt (§P2). | measured in `w_tau` and milliseconds **before** it is built — the deferral from `A1` closed with a number, or closed as unnecessary | M |
 
 ---
 
