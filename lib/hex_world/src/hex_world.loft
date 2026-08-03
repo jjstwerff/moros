@@ -163,31 +163,27 @@ pub struct ChunkAt { ca_key: integer, ca_at: integer }
 // argument for tag+length over a flags word: this property can be TESTED, and a
 // flags word offers nothing to test.
 //
-// ⚠ AND IT CARRIES A TEXT VIEW — FOR A REASON THAT TURNED OUT TO BE FALSE, which
-// is worth saying rather than quietly keeping. This was built on 2026-08-03
-// believing loft could turn a text into bytes and nothing could turn them back,
-// so the file layer was the only decoder and this reader was already holding the
-// file. **`text_from_bytes(vector<u8>)` and `byte_at(i)` had shipped two releases
-// earlier** and were simply missing from the generated reference — loft#748, which
-// was a documentation defect and not a language one. A keyword sweep of the
-// generated page came back empty and was trusted to report an absence.
+// ⚠ IT CARRIED A TEXT VIEW FOR A DAY, AND THE REASON WAS FALSE. Sections were
+// built on 2026-08-03 believing loft could turn a text into bytes and nothing
+// could turn them back, so the file layer looked like the only decoder and this
+// reader was already holding the file. `text_from_bytes(vector<u8>)` and
+// `byte_at(i)` had shipped **two releases earlier** and were merely missing from
+// the generated reference (loft#748 — a documentation defect, not a language
+// one). The view, its `sc_is_text` write flag and `world_set_section_text` are
+// gone; a consumer that wants text decodes its own bytes, which is what a library
+// that interprets nothing should have required all along.
 //
-// What survives is convenience, not necessity: a load fills BOTH views of the same
-// span, so a consumer reading a name does not walk bytes, and the library still
-// interprets nothing. ⚠ It can be removed — `hex_part` could decode its own
-// sections now — and that would take the second read and the `MESH` caveat below
-// with it. Recorded so the choice is made rather than inherited.
-//
-// ⚠ `sc_is_text` is about the WRITE, not the read. A section loaded from a file
-// is byte-valued whatever its content, so re-saving emits the bytes it was given
-// and an unknown section stays byte-identical. Only a consumer that called
-// `world_set_section_text` gets its text written back as text — which is what
-// makes the byte length `sc_text.size()` and keeps a name exact past `U+00FF`.
+// ⚠ `vector<u8>` AND NOT `vector<integer>`, and the type is doing real work.
+// "each byte is a byte" used to be a `WS_SECTION` check at save time; the element
+// type enforces it at every construction instead — `[1, 300]` is now
+// *cannot implicitly narrow integer to u8*, at the literal, rather than a code
+// returned by a save that already happened. It is also what makes a consumer's
+// `text_from_bytes(s.sc_bytes)` correct: handing that builtin a
+// `vector<integer>` is accepted SILENTLY and reads the 8-byte elements as bytes
+// (loft#751), so `[72, 105]` decodes to `H` and a space.
 pub struct Section {
-  sc_tag:     integer,              // four ASCII characters, `section_tag("PART")`
-  sc_bytes:   vector<integer>,      // each 0..255 — opaque
-  sc_text:    text = "",            // the SAME span decoded; a load always fills it
-  sc_is_text: boolean = false,      // authored as text, so a save writes the text
+  sc_tag:   integer,                // four ASCII characters, `section_tag("PART")`
+  sc_bytes: vector<u8>,             // the consumer's bytes — opaque, and a BYTE type
 }
 
 pub struct World {
@@ -1445,42 +1441,27 @@ pub fn world_section_at(w: World, tag: integer) -> integer {
 // Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
 // not refused — the format carries whatever it was handed, and refusing here
 // would mean this library had an opinion about content it cannot read.
-pub fn world_set_section(w: &World, tag: integer, bytes: vector<integer>) {
+pub fn world_set_section(w: &World, tag: integer, bytes: vector<u8>) {
   at = world_section_at(w, tag);
   if at < 0 {
     w.w_sections += [Section { sc_tag: tag, sc_bytes: bytes }];
   } else {
-    // ⚠ The flag is cleared too. Setting bytes over a section that was authored
-    // as text and leaving `sc_is_text` set would write the STALE text and ignore
-    // the bytes just handed in — a write that silently keeps the old value.
     w.w_sections[at].sc_bytes = bytes;
-    w.w_sections[at].sc_text = "";
-    w.w_sections[at].sc_is_text = false;
   }
 }
 
-// The same, for a payload that is text: the file layer does the UTF-8 encoding
-// and `sc_text.size()` is the byte length, so a name is exact past `U+00FF`
-// without this library counting a single code point. ⚠ See `Section` — it was
-// built believing nothing could decode bytes in memory, which was never true.
-pub fn world_set_section_text(w: &World, tag: integer, t: text) {
+// The bytes of a section, or an empty vector when there is none. ⚠ Empty is also
+// what a PRESENT AND EMPTY section reads as — a flag is a real payload — which is
+// why presence is asked with `world_section_at` and never with this.
+pub fn world_section_bytes(w: World, tag: integer) -> vector<u8> {
   at = world_section_at(w, tag);
-  if at < 0 {
-    w.w_sections += [Section { sc_tag: tag, sc_bytes: [], sc_text: t, sc_is_text: true }];
-  } else {
-    w.w_sections[at].sc_bytes = [];
-    w.w_sections[at].sc_text = t;
-    w.w_sections[at].sc_is_text = true;
-  }
-}
-
-// The text view of a section, or `""` when there is none. ⚠ `""` is also what a
-// present-and-empty text section reads as, which is why presence is asked with
-// `world_section_at` and never with this.
-pub fn world_section_text(w: World, tag: integer) -> text {
-  at = world_section_at(w, tag);
-  if at < 0 { return ""; }
-  w.w_sections[at].sc_text
+  if at < 0 { return []; }
+  // ⚠ AN EXPLICIT `return`, AND IT IS NOT A STYLE CHOICE. Written as an implicit
+  // tail, `w.w_sections[at].sc_bytes` — a vector FIELD of a vector ELEMENT —
+  // comes back EMPTY on `--native` and correct on the interpreter, with no
+  // diagnostic on either. Measured side by side in one program: tail 0 / return 4
+  // / a local 4 / an element copy 4. loft#754.
+  return w.w_sections[at].sc_bytes;
 }
 
 pub fn world_drop_section(w: &World, tag: integer) -> boolean {
@@ -1546,7 +1527,6 @@ fn layer_crc(ly: Layer) -> integer {
 pub const WS_OK         = 0;
 pub const WS_PALETTE    = 1;   // a palette entry is not a byte
 pub const WS_CONCURRENT = 2;   // `X2` — someone else is writing this world
-pub const WS_SECTION    = 3;   // a section byte is not a byte
 
 // `X2` — MANY AUTHORS ARE NORMAL; A SECOND WRITER TO ONE STORE IS A BUG.
 //
@@ -1583,43 +1563,22 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
 // The bytes a section block occupies on disk. The incremental writer needs it to
 // know where the file ends after it has rewritten the block; the full writer does
 // not, because it deletes the file first and whatever it writes IS the length.
-// ⚠ `t.size()`, NOT `t.len()`. For text those differ — `len` counts characters and
-// `size` counts bytes, and `"Café中!"` is 6 and 9 — so a length field taken from
-// `len` would under-declare the payload and every byte after it would be read as
-// a section header. Measured before this was written.
-fn section_bytes_len(s: Section) -> integer {
-  if s.sc_is_text { return s.sc_text.size(); }
-  len(s.sc_bytes)
-}
-
 fn sections_size(secs: vector<Section>) -> integer {
   n = 0;
-  for s in secs { n = n + SZ_SECTION_HEAD + section_bytes_len(s); }
+  for s in secs { n = n + SZ_SECTION_HEAD + len(s.sc_bytes); }
   n
-}
-
-// Refused rather than masked, for the `WS_PALETTE` reason at a second seam: a
-// section handed back different from the one given is a silent wrong answer, and
-// this library cannot even tell the consumer which field it damaged.
-fn sections_are_bytes(secs: vector<Section>) -> boolean {
-  for s in secs {
-    if s.sc_is_text { continue; }              // the file layer encodes it
-    for b in s.sc_bytes {
-      if b < 0 || b > 255 { return false; }
-    }
-  }
-  true
 }
 
 fn write_sections(f: File, secs: vector<Section>) {
   for s in secs {
     f += (s.sc_tag as i32);
-    f += (section_bytes_len(s) as i32);
-    if s.sc_is_text {
-      f += s.sc_text;                          // UTF-8, by the file layer
-    } else {
-      for b in s.sc_bytes { f += (b as u8? ?? 0); }
-    }
+    f += (len(s.sc_bytes) as i32);
+    // ⚠ `as u8` EVEN THOUGH THE ELEMENT ALREADY IS ONE. A `for` binding over a
+    // `vector<u8>` widens to `integer`, and `f += <integer>` writes EIGHT BYTES —
+    // so the payload went out 8x its declared length and the reader took the next
+    // section's tag from inside it. loft warns about exactly this now; it is the
+    // third seam this tree has met the same trap at (`write_bytes` was the first).
+    for b in s.sc_bytes { f += (b as u8); }
   }
 }
 
@@ -1628,7 +1587,6 @@ pub fn world_save_as(w: World, path: text, palette: vector<integer>,
   for b in palette {
     if b < 0 || b > 255 { return WS_PALETTE; }
   }
-  if !sections_are_bytes(w.w_sections) { return WS_SECTION; }
   if owner != OWNER_ANY {
     held = file_owner(path);
     if held != OWNER_ANY && held != owner { return WS_CONCURRENT; }
@@ -1798,9 +1756,6 @@ pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
   }
   for b in palette {
     if b < 0 || b > 255 { return SaveStat { ss_code: WS_PALETTE, ss_layers: 0 }; }
-  }
-  if !sections_are_bytes(w.w_sections) {
-    return SaveStat { ss_code: WS_SECTION, ss_layers: 0 };
   }
 
   was = world_scan_versions(path).vs_tau;
@@ -2009,23 +1964,14 @@ pub fn world_load(path: text) -> WorldLoad {
                          wl_detail: "section {stag} claims {slen} bytes, "
                                   + "{f#size - f#next} remain" };
     }
-    // ⚠ THE SAME SPAN IS READ TWICE, as bytes and as text, and the bytes are the
-    // authoritative pair. A binary payload's text view is meaningless — that is
-    // fine and it costs one decode; a text payload's byte view is what keeps an
-    // unknown section byte-identical through a load and a save. ⚠ If a section
-    // ever carries a megabyte (`MESH`, §A6) this is the line to revisit: today
-    // sections hold names and anchors and the second view costs nothing.
-    span = f#next;
-    sb: vector<integer> = [];
+    // ⚠ THE SPAN IS READ ONCE. It was read TWICE for a day — as bytes and again
+    // as text through `f#read(n) as text` — because nothing was thought to decode
+    // bytes in memory. `text_from_bytes` always could (loft#748), so the second
+    // read and the seek back are gone, and with them the question of what a
+    // megabyte `MESH` payload would have cost to decode into a text nobody reads.
+    sb: vector<u8> = [];
     for _sbi in 0..slen { sb += [f#read as u8]; }
-    after = f#next;
-    st = "";
-    if slen > 0 {
-      seek(f, span);
-      st = f#read(slen) as text;
-      seek(f, after);
-    }
-    w.w_sections += [Section { sc_tag: stag, sc_bytes: sb, sc_text: st }];
+    w.w_sections += [Section { sc_tag: stag, sc_bytes: sb }];
   }
   WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
 }

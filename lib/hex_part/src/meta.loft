@@ -6,6 +6,7 @@
 // the CONTENT and knows nothing about where the bytes end up. A store that knew
 // what `PART` meant would be a store with an opinion about its consumers.
 use hex_world;
+use codec;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test rather than derived from
 // it. That began as a workaround for loft#744 — `const X = some_fn()` aborted —
@@ -96,14 +97,14 @@ fn field(t: text, key: text) -> text? {
 pub fn part_set_meta(w: &World, m: PartMeta) -> integer {
   if m.pm_kind < PK_HOUSE || m.pm_kind > PK_FITTING { return PM_KIND; }
   if has_newline(m.pm_name) || has_newline(m.pm_desc) { return PM_NEWLINE; }
-  world_set_section_text(w, TAG_PART,
+  set_section_text(w, TAG_PART,
     "kind={m.pm_kind}\nname={m.pm_name}\ndesc={m.pm_desc}");
   PM_OK
 }
 
 pub fn part_set_anchor(w: &World, a: PartAnchor) -> integer {
   if a.pa_facing < 0 || a.pa_facing >= FACINGS { return PM_FACING; }
-  world_set_section_text(w, TAG_ANCH,
+  set_section_text(w, TAG_ANCH,
     "q={a.pa_q}\nr={a.pa_r}\nh={a.pa_h}\nfacing={a.pa_facing}");
   PM_OK
 }
@@ -123,7 +124,7 @@ pub fn part_meta(w: World) -> MetaRead {
   if world_section_at(w, TAG_PART) < 0 {
     return MetaRead { mr_code: MR_ABSENT, mr_meta: PartMeta {}, mr_why: "no PART section" };
   }
-  t = world_section_text(w, TAG_PART);
+  t = section_text(w, TAG_PART);
   k = field(t, "kind");
   if k == null {
     return MetaRead { mr_code: MR_MALFORMED, mr_meta: PartMeta {}, mr_why: "no kind" };
@@ -148,7 +149,7 @@ pub fn part_anchor(w: World) -> AnchorRead {
     return AnchorRead { ar_code: MR_ABSENT, ar_anchor: PartAnchor {},
                         ar_why: "no ANCH section" };
   }
-  t = world_section_text(w, TAG_ANCH);
+  t = section_text(w, TAG_ANCH);
   q = (field(t, "q") ?? "") as i32?;
   r = (field(t, "r") ?? "") as i32?;
   h = (field(t, "h") ?? "") as i32?;

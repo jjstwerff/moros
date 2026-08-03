@@ -115,10 +115,23 @@ so a malformed number refuses instead of guessing.
 shape: *"a section is bytes and loft cannot rebuild a text from bytes"*. Measured 2026-08-03,
 `text_from_bytes` and `byte_at` had shipped **two releases before** the report
 ([#748](https://github.com/loft-lang/loft/issues/748)) — they were absent from the *generated*
-stdlib reference, which is what was swept. So `hex_world` reading each section's span **twice**
-— as bytes and as text, bytes authoritative on a re-save so an unknown section stays
-byte-identical — is a convenience rather than a necessity, and it is available to remove.
-**Grep the source, never the generated reference, before calling a capability missing.**
+stdlib reference, which is what was swept. **Grep the source, never the generated reference,
+before calling a capability missing.**
+
+✅ **AND THE MECHANISM IT BOUGHT IS GONE (2026-08-03, evening).** `hex_world::Section` briefly
+carried a text view read a *second time* off the file, plus an `sc_is_text` write flag and
+`world_set_section_text`. All three are removed: a section is `sc_tag` + `sc_bytes` and nothing
+else, the store decodes nothing, and `lib/hex_part/src/codec.loft` — **two lines each way** —
+is what a consumer uses. That two lines is the measure of how much the store was carrying for
+its consumers.
+
+⚠ **`sc_bytes` is `vector<u8>`, and the type is doing real work.** *Each byte is a byte* used
+to be a `WS_SECTION` code returned by a save that had already run; the element type now refuses
+it at the literal — `world_set_section(w, tag, [1, 300])` is
+`error: cannot implicitly narrow integer to u8`. It is also what makes a consumer's
+`text_from_bytes(s.sc_bytes)` correct: that builtin accepts a `vector<integer>` **silently**
+and reads its 8-byte elements as bytes ([#751](https://github.com/loft-lang/loft/issues/751)),
+so `[72, 105]` decodes to `H` and a space.
 
 | | |
 |---|---|

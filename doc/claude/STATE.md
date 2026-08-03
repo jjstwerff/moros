@@ -27,7 +27,7 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **233** | `hex_world` **117** | `lavition_ui` **61** | `hex_part` **37** |
+| `hex_editor` **233** | `hex_world` **114** | `lavition_ui` **61** | `hex_part` **43** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **11** | |
 
 ### The next thing to do is #17 `A2.3` — retire the procedural path behind the authored one
@@ -59,11 +59,11 @@ cannot go stale.
 
 - sections — `tag(i32) + length(i32) + payload`, repeated to **end of file**, riding on the
   world as `w_sections`, so `world_save`/`world_load` carry a tag nobody knows.
-  `world_set_section` (bytes) and `world_set_section_text` (text).
-- ⚠ **a section has BOTH a byte and a text view**, filled from one span at load, because loft
-  can turn a text into bytes and nothing can turn them back
-  ([#748](https://github.com/loft-lang/loft/issues/748)). Bytes stay authoritative on a
-  re-save; the text view is how a name comes back.
+  `world_set_section` / `world_section_bytes` / `world_section_at` / `world_drop_section`.
+- ⚠ **the payload is `vector<u8>` and the store decodes NOTHING.** A text view lived on
+  `Section` for a day and is gone; `lib/hex_part/src/codec.loft` is the decoder, two lines
+  each way over `byte_at` / `text_from_bytes`. The byte TYPE is what refuses a non-byte now,
+  at the literal, where `WS_SECTION` used to refuse it after a save had run.
 - `PART` / `ANCH` as `key=value` text in `lib/hex_part/src/meta.loft`.
 
 The design, the findings and the incremental-writer hazard are
@@ -147,11 +147,21 @@ stdlib page; a keyword sweep of it came back empty and was trusted to report an 
 absence* — broken on a language question rather than on a picture. **Grep the source, never
 the generated reference, before calling a capability missing.**
 
-⚠ **And it cost a mechanism.** `hex_world::Section` carries a text view read a *second time*
-off the file, and `world_set_section_text` exists, purely because nothing was thought to
-decode bytes in memory. It works and is gated — but it routes around an absence that was
-never there, so removing it (letting `hex_part` decode its own sections) is available and
-would take the double read and the `MESH` size caveat with it. Decide it, do not inherit it.
+✅ **AND THE MECHANISM IT BOUGHT IS GONE.** The text view, its `sc_is_text` write flag and
+`world_set_section_text` are removed; `hex_part` decodes its own sections in two lines each
+way, the store reads each span ONCE, and the `MESH` always-decode caveat went with it.
+⚠ **The proof it was a refactor and not a format change: `make parts` rewrote
+`data/parts/house/cottage.hxw` BYTE-IDENTICALLY.** The committed file the old text-writer
+produced is exactly what the new byte-writer produces — and the wire gate loads that file and
+reads `cottage` back out of it.
+
+⚠ **Taking it out found two more loft defects, both silent.**
+[#751](https://github.com/loft-lang/loft/issues/751) — a `vector<integer>` is accepted where
+`vector<u8>` is declared and its 8-byte elements are read AS bytes, so `[72, 105]` decodes to
+`H` and a space; the same mismatch in a literal is a hard error.
+[#754](https://github.com/loft-lang/loft/issues/754) — a function ending in `vec[i].field`
+returns an **empty** vector on `--native` and the right one interpreted; an explicit `return`
+of the identical expression is correct. Both were invisible until something read the bytes.
 
 ## Decisions taken — do not re-litigate
 

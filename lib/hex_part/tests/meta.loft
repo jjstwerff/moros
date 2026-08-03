@@ -133,7 +133,7 @@ fn test_an_unknown_tag_survives_a_reader_that_ignores_it() {
   b = "meta_fwd_b.hxw";
   part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: "statue" });
   // a tag from a plan that has not been built yet
-  world_set_section_text(w, section_tag("SOCK"), "name=hinge\nedge=2");
+  set_section_text(w, section_tag("SOCK"), "name=hinge\nedge=2");
   world_save(w, a, no_palette());
 
   ld = world_load(a);                       // this reader knows PART and not SOCK
@@ -197,15 +197,15 @@ fn test_absent_and_malformed_are_told_apart() {
   assert(part_meta(w).mr_code == MR_ABSENT, "a part with no PART was not ABSENT");
   assert(part_anchor(w).ar_code == MR_ABSENT, "a part with no ANCH was not ABSENT");
 
-  world_set_section_text(w, TAG_PART, "kind=house\nname=hut");
+  set_section_text(w, TAG_PART, "kind=house\nname=hut");
   m = part_meta(w);
   assert(m.mr_code == MR_MALFORMED, "'kind=house' parsed as {m.mr_code}");
   assert(m.mr_why != "", "the refusal must name what it refused");
 
-  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=north");
+  set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=north");
   assert(part_anchor(w).ar_code == MR_MALFORMED, "'facing=north' parsed");
-  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nfacing=3");
+  set_section_text(w, TAG_ANCH, "q=1\nr=2\nfacing=3");
   assert(part_anchor(w).ar_code == MR_MALFORMED, "an anchor with no height parsed");
-  world_set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=99");
+  set_section_text(w, TAG_ANCH, "q=1\nr=2\nh=3\nfacing=99");
   assert(part_anchor(w).ar_code == MR_MALFORMED, "facing 99 parsed");
 }

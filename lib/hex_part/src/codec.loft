@@ -1,0 +1,43 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Text into a section's bytes, and back out.
+//
+// Plan 17. ⚠ THIS FILE IS WHY `hex_world` HAS NO TEXT VIEW. The store carries a
+// section as opaque bytes and interprets nothing — that is the whole of its half
+// of the deal — so a consumer that wants a name out of one decodes it. For a day
+// the store did the decoding, reading every section's span a second time off the
+// file, because loft was thought to have no way back from bytes to text. It
+// always had (`text_from_bytes`, `byte_at`, loft#748); the reference just did not
+// list them.
+//
+// Both directions are two lines. That is the measure of how much the store was
+// carrying for its consumers.
+use hex_world;
+
+// ⚠ `size()` AND `byte_at()`, NEVER `len()` AND `for ch in t`. `len()` counts
+// CHARACTERS and `byte_at` indexes BYTES, and `"Café中!"` is 6 and 9 — so a loop
+// bounded by `len()` truncates every name with an accent in it, silently and only
+// for the users who have one. The code points a `for ch` loop yields are not
+// UTF-8 either: `中` is 20013, which does not fit a byte at all.
+pub fn text_bytes(t: text) -> vector<u8> {
+  out: vector<u8> = [];
+  for i in 0..t.size() { out += [t.byte_at(i) as u8? ?? 0]; }
+  return out;
+}
+
+// ⚠ The inverse, and it REFUSES rather than guesses: `text_from_bytes` answers
+// `""` on bytes that are not UTF-8, which is what a `MESH` payload read as a name
+// would be. Empty is also a legitimate name, so a caller that needs to tell those
+// apart asks `world_section_at` whether the section is there at all.
+pub fn bytes_text(b: vector<u8>) -> text {
+  return text_from_bytes(b);
+}
+
+// The two together, over a world's section — the only two calls `meta.loft` makes.
+pub fn section_text(w: World, tag: integer) -> text {
+  return bytes_text(world_section_bytes(w, tag));
+}
+
+pub fn set_section_text(w: &World, tag: integer, t: text) {
+  world_set_section(w, tag, text_bytes(t));
+}

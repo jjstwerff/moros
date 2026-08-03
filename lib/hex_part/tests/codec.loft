@@ -1,0 +1,97 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 — text into a section's bytes and back, now that the store does not.
+//
+// ⚠ THESE CLAIMS MOVED HERE, they were not invented here. `hex_world::Section`
+// carried a text view for a day and four tests with it; the view is gone —
+// `text_from_bytes` always existed (loft#748) — and the two claims that were
+// really about ENCODING rather than about framing belong where the encoding is:
+// *a name survives past ASCII*, and *the byte length is a byte count*.
+use hex_part;
+
+// ⚠ THE SUBJECT IS NOT ASCII, and that is the whole test. `"door"` agrees with a
+// byte-per-character encoding, with a code-point-per-byte encoding, and with the
+// right one. `é` is two bytes and code point 233; `中` is three bytes and code
+// point 20013, which does not fit in a byte at all.
+fn test_a_name_survives_past_ascii() {
+  s = "Café中!";
+  b = text_bytes(s);
+  assert(len(b) == 9, "{len(b)} bytes for 6 characters, not 9");
+  assert(s.len() == 6, "the subject is {s.len()} characters, not 6");
+  assert(bytes_text(b) == s, "'{bytes_text(b)}' came back, not '{s}'");
+}
+
+// CONTROL: the encoding is UTF-8 and not one byte per character. A code-point
+// loop is what a reader writes first — `for ch in s { out += [ch as u8] }` — and
+// it truncates `中` to 45 and every count still agrees with itself.
+fn test_a_byte_per_character_would_be_a_different_answer() {
+  s = "Café中!";
+  naive: vector<u8> = [];
+  for ch in s { naive += [(ch as i32? ?? 0) as u8? ?? 0]; }
+  assert(len(naive) == 6, "the naive encoding is {len(naive)} long, not 6 — rewrite the control");
+  assert(len(naive) != len(text_bytes(s)), "the two encodings agreed on length");
+  assert(bytes_text(naive) != s, "a byte-per-character encoding round-tripped, so this proves nothing");
+}
+
+// ⚠ EVERY BYTE, INCLUDING THE ONES A TEXT CANNOT HOLD. `text_from_bytes` answers
+// `""` on bytes that are not UTF-8 rather than panicking — which is what reading
+// a `MESH` payload as a name would do — so a consumer that needs to tell an empty
+// name from a binary one asks `world_section_at` whether the section is there.
+fn test_bytes_that_are_not_text_decode_to_nothing_rather_than_crashing() {
+  assert(bytes_text([255, 254, 0]) == "", "invalid UTF-8 came back as something");
+  assert(bytes_text([]) == "", "empty bytes");
+  assert(len(text_bytes("")) == 0, "an empty text is no bytes");
+}
+
+fn test_the_empty_name_round_trips_as_itself() {
+  assert(bytes_text(text_bytes("")) == "", "empty");
+  assert(bytes_text(text_bytes("x")) == "x", "one character");
+}
+
+// ── Through a world's section ───────────────────────────────────────────────
+
+fn no_palette() -> vector<integer> { [] }
+
+fn test_a_section_carries_text_through_a_save_and_a_load() {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  p = "codec_rt.hxw";
+  set_section_text(w, section_tag("PART"), "Café中!");
+  assert(world_save(w, p, no_palette()) == WS_OK, "save refused");
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(section_text(ld.wl_world, section_tag("PART")) == "Café中!",
+         "the name came back '{section_text(ld.wl_world, section_tag(\"PART\"))}'");
+  // ⚠ AND THE STORE HELD BYTES, not a text. Nine of them, for six characters —
+  // which is what says the length field written to the file was a BYTE count. A
+  // length taken from the character count under-declares the payload and the next
+  // section's tag is then read from inside this one.
+  assert(len(world_section_bytes(ld.wl_world, section_tag("PART"))) == 9,
+         "the store kept {len(world_section_bytes(ld.wl_world, section_tag(\"PART\")))} bytes");
+  delete(p);
+}
+
+// ⚠ THE SECTION AFTER A MULTIBYTE ONE READS CORRECTLY. That is the failure a
+// character-count length produces, and it is invisible to any test that writes
+// one section: the payload is short by three bytes, so the reader takes the next
+// tag from the middle of the name.
+fn test_a_multibyte_section_does_not_swallow_the_one_after_it() {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  p = "codec_two.hxw";
+  set_section_text(w, section_tag("PART"), "Café中!");
+  world_set_section(w, section_tag("ANCH"), [7, 8, 9]);
+  world_save(w, p, no_palette());
+
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "load refused {ld.wl_code}: {ld.wl_detail}");
+  assert(len(ld.wl_world.w_sections) == 2, "{len(ld.wl_world.w_sections)} sections, not 2");
+  ai = world_section_at(ld.wl_world, section_tag("ANCH"));
+  assert(ai == 1, "ANCH landed at {ai}");
+  b = world_section_bytes(ld.wl_world, section_tag("ANCH"));
+  assert(len(b) == 3 && b[0] == 7 && b[2] == 9, "the section after the name was misread");
+  delete(p);
+}

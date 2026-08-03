@@ -46,7 +46,7 @@ because **none of them needs a new file format**:
 | ✅ `A1.1` | `lib/hex_part` — one dependency (`hex_world`), one function: `part_from_region(w, cq, cr, rad)`. Cells only, no sections. | **DONE.** 11 tests, both backends. ⚠ **Two findings, and the naive version of each looked right** — see below. | S |
 | ✅ `A1.2` | Save and load with the **existing** `world_save`/`world_load` — no new format (§P2). | **DONE.** 19 tests, both backends. Four controls, and a **blind comparison** fails all of them while the round-trip tests stay green. ⚠ It also turned up a native divergence — see below. | S |
 | ✅ `A1.3` | **Store sections.** A trailing tagged block: `tag(u32) + length(u32) + bytes`, repeated, after the chunk payload. An unknown tag is **skipped by its length**. | **DONE.** `hex_world` 113 tests, both backends. `presection.hxw` is committed pre-section bytes; `ZZZZ` survives a load-and-save byte-identical. ⚠ **Two findings and three mutants** — see below. | M |
-| ✅ `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | **DONE.** `lib/hex_part/src/meta.loft`, 29 tests, both backends. The older-reader gate compares the LANDSCAPE of a dressed part against a bare one through `part_diff`, never calling `part_meta`. ⚠ **Two loft panics and a store lock** — see below. | S |
+| ✅ `A1.4` | `PART` (kind, name, description) and `ANCH` (cell, height, facing) over that mechanism. | **DONE.** `lib/hex_part/src/meta.loft` + `codec.loft`, 43 tests, both backends. The older-reader gate compares the LANDSCAPE of a dressed part against a bare one through `part_diff`, never calling `part_meta`. ⚠ **Two loft panics, a store lock, and a text view that should never have existed** — see below. | S |
 
 ### What `A2.2` turned up
 
@@ -159,12 +159,12 @@ number refuses instead of guessing. The cost is that a NEWLINE would forge a lin
 an older editor has no `ANCH` and is fine; one whose `ANCH` says `facing=north` is damaged, and
 one code for both makes a part that stands the wrong way round look normal.
 
-⚠ **The remaining piece is still loft#748 and it is not blocking.** Text → bytes is three lines
-and there is no way back in memory, so `hex_world` offers each section as **bytes and text
-both**, filled from one span at load. The bytes stay authoritative on a re-save, which is what
-keeps an unknown section byte-identical; the text view is what `hex_part` reads a name from.
-⚠ If a section ever carries a megabyte (`MESH`, `A6.1`), the always-decode is the line to
-revisit. What was measured:
+⚠ **THE PIECE THAT LOOKED MISSING WAS NEVER MISSING, AND THE MECHANISM IT BOUGHT IS GONE.**
+`A1.4` was built believing text → bytes was three lines with no way back, so `hex_world`
+offered every section as **bytes and text both**, filled from one span at load. On the evening
+of 2026-08-03 that premise was measured false (loft#748) and the view was removed: a section is
+`sc_tag` + `sc_bytes: vector<u8>`, the store decodes nothing, and `lib/hex_part/src/codec.loft`
+is **two lines each way**. What was measured on the way in:
 
 | | |
 |---|---|
