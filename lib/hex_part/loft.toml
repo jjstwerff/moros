@@ -17,3 +17,17 @@ entry = "src/hex_part.loft"
 # more words. Which tree owns the store is moros#8.
 [dependencies]
 hex_world = { path = "../hex_world" }
+
+# ⚠ THE PREMISE ABOVE MOVED AT `A6.1`, AND THAT IS WORTH SAYING RATHER THAN
+# QUIETLY EDITING. *"A part IS a world … so this package needs the store and
+# nothing else"* is true of a CELL part and is only half of §P5, which gives a
+# part two possible bodies: cells in a `hex_world`, or a `.glb`. A package that
+# owns the part document and can say a nested PART is missing-or-broken
+# (`part_cycle`), but can only ever say a MESH is missing, would be collapsing
+# `MR_ABSENT` into `MR_MALFORMED` for the one reference type it declined to open.
+#
+# So the reader — and only the reader. `glb_read` is `lib/glb_read`, one small
+# package over `mesh3d`, and nothing here writes a `.glb`: a fixture our own
+# writer produced would only prove the pair agree with each other, which is
+# `A3.3`'s complaint about `bake` calling `expand`. The test fixture is foreign.
+glb_read = { path = "../glb_read" }

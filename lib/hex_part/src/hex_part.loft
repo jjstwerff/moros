@@ -16,6 +16,7 @@ use fit;
 use inst;
 use bind;
 use hinge;
+use prop;
 use stamp;
 use expand;
 use bake;

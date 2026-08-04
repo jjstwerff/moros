@@ -1,0 +1,154 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `MESH` — the other thing a part can be made of.
+//
+// Plan 17 `A6.1`, §P5: **two kinds of part, one mechanism**. A cell part is
+// stored as cells in its own `hex_world`; a prop part is stored as a `.glb`. The
+// mechanism that makes them one is that **sockets do not care which it is**,
+// which is the argument for putting the socket on the part rather than on the
+// cells — a statue goes in a niche by exactly the machinery a door goes in a
+// frame.
+//
+// ⚠ A PART MAY BE BOTH, which is why this is a section and not a part KIND. §P5's
+// example is a pillar that is a `.glb` for the eye and a one-cell column for the
+// walker; the two bodies answer different questions (*what does it look like*,
+// *can you walk through it*) and a part that answers only one is the common case
+// rather than the rule.
+//
+// > **Why a statue is not just an import.** `21:` already imports a `.glb`. What
+// > it cannot do is *be placed in a niche*, *be listed in a library*, *be swapped
+// > for another statue that fits the same plinth*, or *carry a name an author
+// > chose*. Those are all `PART` and `SOCK` — §P5's own words, and the reason
+// > this record holds a reference rather than the geometry.
+use hex_world;
+use codec;
+use meta;
+use catalogue;
+use glb_read;
+
+// ⚠ A LITERAL, held equal to `section_tag(…)` by a test — `meta.loft`'s reason: a
+// file-scope constant is an inlined expression re-evaluated at every reference.
+pub const TAG_MESH = 1213416781;    // 'MESH', low byte first
+
+pub const PR_OK      = 0;
+pub const PR_EMPTY   = 1;   // a mesh reference naming nothing
+pub const PR_NEWLINE = 2;   // a newline — it would forge a line
+pub const PR_ESCAPE  = 3;   // a name that climbs out of the library
+
+pub struct PropWrite { pw_code: integer, pw_why: text }
+
+// ── The reference is a NAME, and it may not leave the library ────────────────
+//
+// ⚠ `..` IS REFUSED RATHER THAN NORMALISED, which is the wire's existing rule for
+// a part name and is the same rule here for the same reason: a document that can
+// name `../../../etc/passwd` is a document that reads a file its author never
+// chose, and normalising it hands back a different reference than the one given
+// (`meta.loft`'s rule about a name). An absolute name is refused for the same
+// reason — it is not a name at all, it is a path, and §P5's whole point is that a
+// prop is addressed like a part.
+//
+// ⚠ A COMMA IS **NOT** REFUSED, and that is a decision rather than an oversight.
+// A mesh name is a FILE PATH fragment, the same kind of thing as `pi_part`, so
+// the filesystem decides what may be in one and we do not. `A4.3` learned that a
+// field's freedom depends on whether anything ever REFERS to it — the answer to
+// that is not to restrict every field pre-emptively, it is to know the rule: if
+// some later record names a mesh among other fields, the name takes the TAIL, as
+// `inst=` and `bind=` already do for their handles.
+fn check_mesh(name: text) -> PropWrite {
+  if name == "" {
+    return PropWrite { pw_code: PR_EMPTY, pw_why: "the part names no mesh" };
+  }
+  if name.find("\n") != null {
+    return PropWrite { pw_code: PR_NEWLINE,
+                       pw_why: "the mesh name '{name}' has a newline in it" };
+  }
+  if name.find("..") != null {
+    return PropWrite { pw_code: PR_ESCAPE,
+      pw_why: "the mesh name '{name}' contains '..'; a part names a mesh inside "
+            + "the library and never a path out of it" };
+  }
+  if name[0..1] == "/" {
+    return PropWrite { pw_code: PR_ESCAPE,
+      pw_why: "the mesh name '{name}' is absolute; a part names a mesh, not a path" };
+  }
+  PropWrite { pw_code: PR_OK, pw_why: "" }
+}
+
+pub fn part_set_mesh(w: World, name: text) -> PropWrite {
+  got = check_mesh(name);
+  if got.pw_code != PR_OK { return got; }
+  set_section_text(w, TAG_MESH, "mesh={name}");
+  PropWrite { pw_code: PR_OK, pw_why: "" }
+}
+
+pub struct MeshRead { pr_code: integer, pr_name: text, pr_why: text }
+
+// ⚠ ONE VALIDATOR, BOTH DIRECTIONS — `sock.loft`'s rule, and here it is what
+// stops a hand-edited `mesh=../../secrets` being opened by the loader below.
+pub fn part_mesh(w: World) -> MeshRead {
+  if world_section_at(w, TAG_MESH) < 0 {
+    return MeshRead { pr_code: MR_ABSENT, pr_name: "", pr_why: "no MESH section" };
+  }
+  v = meta_field(section_text(w, TAG_MESH), "mesh");
+  if v == null {
+    return MeshRead { pr_code: MR_MALFORMED, pr_name: "",
+                      pr_why: "a MESH section with no mesh" };
+  }
+  name = v ?? "";
+  bad = check_mesh(name);
+  if bad.pw_code != PR_OK {
+    return MeshRead { pr_code: MR_MALFORMED, pr_name: "", pr_why: bad.pw_why };
+  }
+  MeshRead { pr_code: MR_OK, pr_name: name, pr_why: "" }
+}
+
+// ── Does the mesh it names actually load? ────────────────────────────────────
+
+pub const MC_OK      = 0;
+pub const MC_NONE    = 1;   // the part names no mesh, which is not a fault
+pub const MC_BAD     = 2;   // the `MESH` section is damaged
+pub const MC_MISSING = 3;   // it names a mesh that is not in the library
+pub const MC_BROKEN  = 4;   // it names one that is not a readable `.glb`
+
+// ⚠ FIVE ANSWERS, AND `MC_NONE` IS NOT A FAULT. Most parts are cell parts and name
+// no mesh at all; collapsing *there is no mesh* into *the mesh is missing* would
+// make every house in the library report a broken reference.
+//
+// ⚠ AND `MC_MISSING` IS NOT `MC_BROKEN`, which is the whole reason this package
+// took a dependency on a `.glb` reader. `part_cycle` already tells a dangling PART
+// reference from a damaged one — *"a mistyped name and a part that contains itself
+// want completely different fixes"* — and a mesh deserves the same pair. Saying
+// only *missing* for a `.glb` that is present and corrupt sends the author looking
+// for a file that is right there.
+pub struct MeshCheck {
+  mc_code:  integer,
+  mc_why:   text,
+  mc_verts: integer = 0,    // what actually came out of the file
+}
+
+// ⚠ `mc_verts` IS A READ-BACK AND NOT A TALLY. *The mesh loads* is a claim about a
+// file, and the cheapest way to write a check that cannot see an empty one is to
+// report `GR_OK` and stop. `glb_read` answers `GR_SHAPE` for JSON that is not a
+// mesh it can read, but a well-formed glb holding zero vertices is a legal file
+// and a prop that draws nothing — so the count is carried out to where a caller
+// can judge it, rather than being folded into a boolean here.
+pub fn part_mesh_loads(root: text, w: World) -> MeshCheck {
+  got = part_mesh(w);
+  if got.pr_code == MR_ABSENT {
+    return MeshCheck { mc_code: MC_NONE, mc_why: "the part names no mesh" };
+  }
+  if got.pr_code != MR_OK {
+    return MeshCheck { mc_code: MC_BAD, mc_why: got.pr_why };
+  }
+  onto = mesh_file(root, got.pr_name);
+  if !exists(onto) {
+    return MeshCheck { mc_code: MC_MISSING,
+                       mc_why: "'{got.pr_name}' is not in {root}" };
+  }
+  gr = load_glb(onto);
+  if gr.gr_code != GR_OK {
+    return MeshCheck { mc_code: MC_BROKEN,
+      mc_why: "'{got.pr_name}' is not a readable glb ({gr.gr_code}) {gr.gr_detail}" };
+  }
+  MeshCheck { mc_code: MC_OK, mc_why: "", mc_verts: len(gr.gr_mesh.vertices) }
+}

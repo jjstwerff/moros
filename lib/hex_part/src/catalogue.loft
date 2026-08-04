@@ -101,3 +101,16 @@ pub fn sorted_text(v: vector<text>) -> vector<text> {
   }
   return out;
 }
+
+// ── Where a prop part's mesh lives (`A6.1`, §P5) ─────────────────────────────
+
+const MESH_EXT = ".glb";
+
+// ⚠ THE SAME TIE `part_file` HAS, AND FOR THE SAME REASON IT WAS MOVED HERE: one
+// extension, one spelling. A mesh is addressed the way a part is — by a NAME
+// under the library root, never by a path — which is the wire's own rule
+// (`WIRE_PROTOCOL`: *"a part is named, never pathed"*, and `21:` IMPORT takes a
+// path only because a kit-bashed `.glb` genuinely lives anywhere). A `.hxw` that
+// referenced `/home/someone/kit.glb` would be a document that is broken on every
+// other machine.
+pub fn mesh_file(root: text, name: text) -> text { "{root}/{name}{MESH_EXT}" }

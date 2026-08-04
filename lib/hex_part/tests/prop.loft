@@ -1,0 +1,279 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A6.1` — a part made of a `.glb`, and whether the file behind it is real.
+//
+// ⚠ THE FIXTURE MESH IS FOREIGN AND IS BUILT FROM BYTES, both deliberately.
+//
+// **Foreign**, because a `.glb` written by `glb::save_glb` and read by `glb_read`
+// proves only that our writer and our reader agree with each other — exactly
+// `A3.3`'s complaint about a `bake` that called `expand`. `write_foreign` below is
+// lifted from `glb_read`'s own control and emits a JSON shape our writer NEVER
+// does: members in a different order, indentation where ours is compact, members
+// this reader ignores, and **u16 indices** where ours writes u32.
+//
+// **From bytes**, because this tree commits no `.glb` at all — `.gitignore` line
+// 47 ignores `*.glb`, since the `moros_render` CLI examples write them
+// cwd-relative. A committed fixture would have been invisible to `git status`,
+// passed here, and been missing on every other clone. ⚠ That is worth knowing
+// before adding any binary fixture to this repo.
+use hex_part;
+use hex_world;
+
+fn no_palette() -> vector<integer> { [] }
+
+fn root() -> text { "{temp_dir()}/hexpart_prop_lib" }
+
+fn pad4(n: integer) -> integer { (4 - (n % 4 ?? 0)) % 4 ?? 0 }
+
+fn write_foreign(p: text) {
+  j = "{{\n"
+    + "  \"meshes\": [ {{\n"
+    + "      \"name\": \"from_somewhere_else\",\n"
+    + "      \"primitives\": [ {{\n"
+    + "          \"indices\": 1,\n"
+    + "          \"mode\": 4,\n"
+    + "          \"attributes\": {{ \"NORMAL\": 2, \"POSITION\": 0 }}\n"
+    + "      }} ]\n"
+    + "  }} ],\n"
+    + "  \"accessors\": [\n"
+    + "    {{ \"type\": \"VEC3\", \"componentType\": 5126, \"bufferView\": 0, \"count\": 3 }},\n"
+    + "    {{ \"type\": \"SCALAR\", \"componentType\": 5123, \"bufferView\": 1, \"count\": 3 }},\n"
+    + "    {{ \"type\": \"VEC3\", \"componentType\": 5126, \"bufferView\": 2, \"count\": 3 }}\n"
+    + "  ],\n"
+    + "  \"bufferViews\": [\n"
+    + "    {{ \"byteLength\": 36, \"buffer\": 0, \"byteOffset\": 0 }},\n"
+    + "    {{ \"byteLength\": 6,  \"buffer\": 0, \"byteOffset\": 36 }},\n"
+    + "    {{ \"byteLength\": 36, \"buffer\": 0, \"byteOffset\": 44 }}\n"
+    + "  ],\n"
+    + "  \"extras\": {{ \"unused\": [ 1, 2, 3 ], \"deeper\": {{ \"still\": null }} }},\n"
+    + "  \"buffers\": [ {{ \"byteLength\": 80 }} ],\n"
+    + "  \"asset\": {{ \"version\": \"2.0\", \"generator\": \"a hand\" }}\n"
+    + "}}\n";
+  jpad = pad4(len(j));
+  jchunk = len(j) + jpad;
+  bin = 80;                                  // 36 pos + 6 idx + 2 pad + 36 nrm
+  total = 12 + 8 + jchunk + 8 + bin;
+
+  delete(p);
+  f = file(p);
+  f#format = LittleEndian;
+  f += 0x46546C67 as i32;
+  f += 2 as i32;
+  f += total as i32;
+  f += jchunk as i32;
+  f += 0x4E4F534A as i32;
+  f += j;
+  for _p in 0..jpad { f += 32 as u8; }
+  f += bin as i32;
+  f += 0x004E4942 as i32;
+  // positions
+  f += 0.0 as single; f += 0.0 as single; f += 0.0 as single;
+  f += 4.0 as single; f += 0.0 as single; f += 0.0 as single;
+  f += 4.0 as single; f += 6.5 as single; f += 0.0 as single;
+  // indices, u16 — our writer never emits these
+  f += 0 as u16; f += 1 as u16; f += 2 as u16;
+  f += 0 as u16;                              // pad to 4
+  // normals
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+  f += 0.0 as single; f += 0.0 as single; f += 1.0 as single;
+}
+
+// ⚠ THESE TAKE A ROOT THEY DO NOT NEED, and that is not style. `loft test` runs
+// any zero-argument function that returns nothing as a TEST — so a bare
+// `build_lib()` / `wipe()` were reported among the test functions and executed in
+// whatever order the runner picked, with `wipe` deleting the library between other
+// tests. Harmless here only because every test rebuilds first. A parameter is what
+// keeps a helper a helper, which is why `catalogue.loft`'s `wipe` takes one too.
+fn build_lib(r: text) {
+  assert(mkdir_all(r).ok(), "mkdir {r}");
+  write_foreign("{r}/marble.glb");
+}
+
+fn wipe(r: text) {
+  for e in list_dir(r) ?? [] { delete("{r}/{e}"); }
+  delete(r);
+}
+
+fn part() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  w
+}
+
+fn save_part(name: text, w: World) {
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn test_the_tag_constant_is_the_tag_it_names() {
+  assert(TAG_MESH == section_tag("MESH"),
+         "TAG_MESH is {TAG_MESH}, not {section_tag(\"MESH\")}");
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+
+// ⚠ A NAME WITH A FAMILY IN IT AND A MULTIBYTE CHARACTER, for `A1.4`'s reason: an
+// ASCII subject agrees with a byte-per-character encoder perfectly.
+fn test_a_mesh_reference_survives_a_save_and_a_load() {
+  w = part();
+  odd = "statue/marbre café 中";
+  assert(part_set_mesh(w, odd).pw_code == PR_OK, "the write was refused");
+  p = "{temp_dir()}/hexpart_mesh_rt.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "the save was refused");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "the load was refused: {back.wl_detail}");
+  got = part_mesh(back.wl_world);
+  assert(got.pr_code == MR_OK, "read back {got.pr_code}: {got.pr_why}");
+  assert(got.pr_name == odd, "the name came back '{got.pr_name}'");
+  delete(p);
+}
+
+// ⚠ A COMMA IS ALLOWED, and it is a decision. A mesh name is a FILE PATH fragment
+// like `pi_part`, so the filesystem decides what may be in one. `A4.3` learned
+// that a field's freedom depends on whether anything ever REFERS to it — the
+// response to that is not to restrict every field pre-emptively but to know the
+// rule: a later record naming a mesh among other fields gives the name the TAIL.
+fn test_a_comma_in_a_mesh_name_is_allowed_because_nothing_refers_to_one() {
+  w = part();
+  odd = "statue/a,b";
+  assert(part_set_mesh(w, odd).pw_code == PR_OK, "a comma was refused");
+  got = part_mesh(w);
+  assert(got.pr_code == MR_OK && got.pr_name == odd,
+         "the name came back '{got.pr_name}'");
+}
+
+fn test_a_part_with_no_mesh_reads_as_absent() {
+  got = part_mesh(part());
+  assert(got.pr_code == MR_ABSENT, "a bare part read {got.pr_code}");
+}
+
+// ── The reference may not leave the library ──────────────────────────────────
+
+// ⚠ `..` IS REFUSED RATHER THAN NORMALISED — the wire's existing rule for a part
+// name, here for the same reason. A document that can name `../../../etc/passwd`
+// reads a file its author never chose, and this record is opened by a loader two
+// functions down. ⚠ Normalising would hand back a different reference than the one
+// given, which is `meta.loft`'s rule about a name.
+fn test_a_name_that_climbs_out_of_the_library_is_refused() {
+  w = part();
+  for bad in ["../secrets", "a/../../b", "..", "statue/../../../etc/passwd"] {
+    got = part_set_mesh(w, bad);
+    assert(got.pw_code == PR_ESCAPE, "'{bad}' was accepted ({got.pw_code})");
+  }
+  assert(part_set_mesh(w, "/etc/passwd").pw_code == PR_ESCAPE, "an absolute name was accepted");
+  assert(world_section_at(w, TAG_MESH) < 0, "a refused write left a section behind");
+  // ⚠ THE CONTROL, and without it the check could be refusing every name with a
+  // dot in it — which would forbid `statue/v1.2` and read as security.
+  for ok in ["statue/marble", "a.b/c.d", "marble", "s/t/u"] {
+    assert(part_set_mesh(w, ok).pw_code == PR_OK, "'{ok}' was refused");
+  }
+}
+
+fn test_an_empty_or_forged_reference_is_refused() {
+  w = part();
+  assert(part_set_mesh(w, "").pw_code == PR_EMPTY, "an empty name was accepted");
+  assert(part_set_mesh(w, "a\nmesh=b").pw_code == PR_NEWLINE, "a forged line was accepted");
+  assert(world_section_at(w, TAG_MESH) < 0, "a refused write left a section behind");
+}
+
+// ⚠ AND THE READER RUNS THE WRITER'S CHECK, so a hand-edited section cannot get an
+// escaping name past `part_mesh_loads` — which opens the file it names.
+fn test_a_hand_edited_escape_reads_as_malformed_and_is_never_opened() {
+  build_lib(root());
+  w = part();
+  set_section_text(w, TAG_MESH, "mesh=../../../etc/passwd");
+  got = part_mesh(w);
+  assert(got.pr_code == MR_MALFORMED, "an escaping name read back fine ({got.pr_code})");
+  ck = part_mesh_loads(root(), w);
+  assert(ck.mc_code == MC_BAD, "the loader looked at it anyway ({ck.mc_code})");
+  set_section_text(w, TAG_MESH, "glb=statue/marble");
+  assert(part_mesh(w).pr_code == MR_MALFORMED, "a section with no mesh= read fine");
+  wipe(root());
+}
+
+// ── The mesh loads ───────────────────────────────────────────────────────────
+
+// ⚠ THE SECOND HALF OF `A6.1`'s GATE, AND IT IS A READ-BACK RATHER THAN A CODE.
+// *The mesh loads* is a claim about a file, and a check that reported `GR_OK` and
+// stopped could not tell a statue from an empty glb. The vertex count is what
+// actually came out.
+fn test_a_named_mesh_loads_out_of_the_library() {
+  build_lib(root());
+  w = part();
+  assert(part_set_mesh(w, "marble").pw_code == PR_OK, "write");
+  save_part("statue", w);
+  ld = world_load("{root()}/statue.hxw");
+  assert(ld.wl_code == WL_OK, "load: {ld.wl_detail}");
+  got = part_mesh_loads(root(), ld.wl_world);
+  assert(got.mc_code == MC_OK, "the mesh did not load ({got.mc_code}): {got.mc_why}");
+  assert(got.mc_verts > 0,
+         "the mesh loaded with {got.mc_verts} vertices — a prop that draws nothing");
+  wipe(root());
+}
+
+// ⚠ MISSING AND BROKEN ARE DIFFERENT ANSWERS, which is the whole reason this
+// package took a `.glb` reader as a dependency at all. `part_cycle` already tells
+// a dangling PART reference from a damaged one — *a mistyped name and a part that
+// contains itself want completely different fixes* — and saying only *missing* for
+// a `.glb` that is present and corrupt sends the author hunting for a file that is
+// right there.
+fn test_a_missing_mesh_and_a_corrupt_one_are_told_apart() {
+  build_lib(root());
+  w = part();
+  assert(part_set_mesh(w, "no_such_marble").pw_code == PR_OK, "write");
+  got = part_mesh_loads(root(), w);
+  assert(got.mc_code == MC_MISSING, "a mesh that is not there read {got.mc_code}");
+  assert(got.mc_why.find("no_such_marble") != null, "the reason is '{got.mc_why}'");
+
+  // A file that IS there and is not a glb. ⚠ Built here rather than committed,
+  // because the point of it is the first four bytes and a reader can see that.
+  f = file("{root()}/rubble.glb");
+  f#format = LittleEndian;
+  f += (0 as u8);
+  f += (1 as u8);
+  b = part();
+  assert(part_set_mesh(b, "rubble").pw_code == PR_OK, "write");
+  bad = part_mesh_loads(root(), b);
+  assert(bad.mc_code == MC_BROKEN, "a corrupt glb read {bad.mc_code}: {bad.mc_why}");
+  assert(bad.mc_why.find("rubble") != null, "the reason does not name it: '{bad.mc_why}'");
+  wipe(root());
+}
+
+// A cell part names no mesh, and that is not a fault — most of the library.
+fn test_a_part_with_no_mesh_is_not_a_broken_reference() {
+  build_lib(root());
+  got = part_mesh_loads(root(), part());
+  assert(got.mc_code == MC_NONE, "a cell part reported {got.mc_code}: {got.mc_why}");
+  assert(got.mc_verts == 0, "and it reported {got.mc_verts} vertices");
+  wipe(root());
+}
+
+// ── A part may be BOTH (§P5) ─────────────────────────────────────────────────
+
+// ⚠ §P5's PILLAR: a `.glb` for the eye and a one-cell column for the walker. The
+// two bodies answer different questions and a part carrying both must not lose
+// either — which is what a section-per-fact buys, and what this asserts.
+fn test_a_part_can_carry_cells_a_mesh_a_name_and_a_fit_at_once() {
+  build_lib(root());
+  w = part();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: "marble statue" }) == PM_OK,
+         "meta");
+  assert(part_set_mesh(w, "marble").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  save_part("both", w);
+  ld = world_load("{root()}/both.hxw");
+  assert(ld.wl_code == WL_OK, "load: {ld.wl_detail}");
+  b = ld.wl_world;
+  m = part_meta(b);
+  assert(m.mr_code == MR_OK && m.mr_meta.pm_kind == PK_PROP, "PART: {m.mr_why}");
+  f = part_fits(b);
+  assert(f.fr_code == MR_OK && f.fr_fits.pf_size == "plinth-2", "FITS: {f.fr_why}");
+  assert(part_mesh_loads(root(), b).mc_code == MC_OK, "the mesh stopped loading");
+  // …and the CELLS are still there, which is the half a mesh could have replaced.
+  assert(len(column_cells(world_column(b, 0, 0))) == 1,
+         "the walker's column was lost when the eye's mesh arrived");
+  wipe(root());
+}
