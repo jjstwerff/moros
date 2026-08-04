@@ -701,9 +701,53 @@ binding would forbid them, and ignoring a non-zero swing on one would draw a sta
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A6.1` | `MESH` section: a `.glb` reference, over the existing `21:`/`22:`. | round-trip; the mesh loads | S |
+| ✅ `A6.1` | `MESH` section: a `.glb` reference, over the existing `21:`/`22:`. | **DONE.** `src/prop.loft`, `hex_part` 180 → 191, both backends. Round-trip, and `part_mesh_loads` reads a FOREIGN glb out of the library. ⚠ The package took `glb_read`, and the fixture nearly went missing — see below. | S |
 | `A6.2` | A prop part in the same library, in the same sockets. | a statue on a plinth at the plinth's height, facing out | M |
 | `A6.3` | Swap. | a different statue on the same plinth, no other change | S |
+
+### What `A6.1` turned up
+
+⚠ **THE PACKAGE TOOK A SECOND DEPENDENCY, AND ITS `loft.toml` RECORDS WHY THE PREMISE MOVED.**
+*"A part IS a world … so this package needs the store and nothing else"* is true of a CELL part
+and is half of §P5, which gives a part two possible bodies. `part_cycle` already tells a dangling
+PART reference from a damaged one — *a mistyped name and a part that contains itself want
+completely different fixes* — so saying only *missing* for a `.glb` that is present and corrupt
+would be the `MR_ABSENT`/`MR_MALFORMED` collapse this package fights everywhere else, applied to
+the one reference type it declined to open. The READER only; nothing here writes a `.glb`.
+
+⚠ **NO `.glb` IS TRACKED IN THIS REPO, AND THAT NEARLY COST THE FIXTURE.** It began as a
+committed `.glb` copied from `glb_read`'s foreign control, and **`git status` never showed it** —
+`.gitignore:47` ignores `*.glb`, for the `moros_render` CLI examples that write them cwd-relative.
+It would have passed here, been invisible to review, and been missing on every other clone.
+`glb_read`'s own foreign test writes its bytes instead, and so does this one. ⚠ **Run
+`git check-ignore` before adding any binary fixture to this tree.**
+
+⚠ **AND IT IS FOREIGN ON PURPOSE.** A `.glb` written by `glb::save_glb` and read by `glb_read`
+proves only that our writer and our reader agree with each other — `A3.3`'s complaint about a
+`bake` that called `expand`. The bytes emit a JSON shape our writer never does: members
+reordered, indented where ours is compact, members this reader ignores, u16 indices where ours
+writes u32.
+
+⚠ **`..` IS REFUSED RATHER THAN NORMALISED** — the wire's existing rule for a part name, and here
+it guards a file OPEN two functions down: a document that can name `../../../etc/passwd` reads a
+file its author never chose. The reader runs the writer's check, so a hand-edited escape never
+reaches the loader. ⚠ With the control that keeps it from being theatre: `a.b/c.d` and
+`statue/v1.2` still pass, so it refuses `..` and not every dot.
+
+⚠ **A COMMA IS ALLOWED, AND THAT IS A DECISION.** A mesh name is a FILE PATH fragment like
+`pi_part`, so the filesystem decides what may be in one. `A4.3` learned that a field's freedom
+depends on whether anything REFERS to it — the response is not to restrict every field
+pre-emptively, it is to know the rule: a later record naming a mesh among other fields gives the
+name the TAIL.
+
+⚠ **`mc_verts` IS A READ-BACK AND NOT A TALLY.** A check that reported `GR_OK` and stopped could
+not tell a statue from an empty glb.
+
+⚠ **AND `loft test` RUNS ANY ZERO-ARGUMENT FUNCTION THAT RETURNS NOTHING AS A TEST.**
+`build_lib()` and `wipe()` were listed among the test functions and executed in the runner's
+order, with `wipe` deleting the library between other tests — harmless only because every test
+rebuilt first. **A parameter is what keeps a helper a helper**, which is why `catalogue.loft`'s
+`wipe` takes one.
 
 ### A7 — the picker
 

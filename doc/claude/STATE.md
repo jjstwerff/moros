@@ -20,24 +20,26 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A5.2` ◐
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A6.1`
 
-`make gate` **35 green** · `make lib-test` **2474, both backends** · `make parts` green
+`make gate` **35 green** · `make lib-test` **2496, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
 the installed loft.
 
-⚠ **`make gate` FLAKES, AND THE LOAD AVERAGE IS A BAD PREDICTOR OF IT.** The recorded symptom
-was three gates reporting `SERVER NEVER LISTENED` at load **19.75** — a 60-second wait for
-`listening on port` while `GATE_JOBS` servers interpret a 5,900-line `editor_server.loft` at
-once. ⚠ **There is a SECOND face**: `FAIL cache … {"agree":0,"bad":24,"layers":0}` — no layers
-ever arrived, so nothing was compared, which reads as a measured disagreement and is a startup
-miss. ⚠ **And it failed at load ~4 and passed at load 33 in the same session**, so *check the
-load first* is not the rule it looked like. Re-run before believing a gate failure; the gate
-alone at `GATE_JOBS=1` is the cheap discriminator.
+⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
+`SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
+interpret a 5,900-line `editor_server.loft`. Measured this session: **10 of 35 failed at
+`GATE_JOBS=10`**, and the *same suite* went green at **`GATE_JOBS=4` on a HIGHER load** (26 →
+40). One gate alone takes **2 m 33 s**, nearly all of it startup. ⚠ **There is a SECOND face**:
+`FAIL cache … {"agree":0,"bad":24,"layers":0}` — no layers ever arrived, so nothing was compared,
+which reads as a measured disagreement and is a startup miss. ⚠ It also failed at load ~4 and
+passed at load 33 earlier the same day, so *check the load first* was never the rule.
+**`GATE_JOBS=4 make gate` is the reliable form**; a single gate at `GATE_JOBS=1` is the cheap
+discriminator when one fails.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **180** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **191** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -57,7 +59,38 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A6.1` — the `MESH` section. **`A5.2` and `A3.4` are ◐.**
+### The next thing to do is #17 `A6.2` — a prop part in a socket. **`A5.2` and `A3.4` are ◐.**
+
+**`A6.1` is done.** `lib/hex_part/src/prop.loft` holds `MESH` — a `.glb` named under the library
+root — and `part_mesh_loads` says whether the file behind it is there and readable.
+
+⚠ **THE PACKAGE TOOK A SECOND DEPENDENCY, AND ITS `loft.toml` RECORDS WHY THE PREMISE MOVED.**
+*"A part IS a world … so this package needs the store and nothing else"* is true of a CELL part
+and is half of §P5, which gives a part two possible bodies. `part_cycle` already tells a dangling
+PART reference from a damaged one, so reporting only *missing* for a `.glb` that is present and
+corrupt would be the `MR_ABSENT`/`MR_MALFORMED` collapse this package fights everywhere else.
+`glb_read` is the READER only — nothing here writes a `.glb`.
+
+⚠ **NO `.glb` IS TRACKED IN THIS REPO, AND THAT NEARLY COST A FIXTURE.** `A6.1` began with a
+committed `.glb` copied from `glb_read`'s foreign control, and **`git status` never showed it** —
+`.gitignore:47` ignores `*.glb` for the `moros_render` CLI examples. It would have passed here,
+been invisible to review, and been missing on every other clone. `glb_read`'s own foreign test
+writes its bytes instead, and so does this one. ⚠ **Check `git check-ignore` before adding any
+binary fixture to this tree.**
+
+⚠ **AND THE FIXTURE IS FOREIGN ON PURPOSE** — a `.glb` written by `glb::save_glb` and read by
+`glb_read` proves only that our writer and our reader agree with each other, which is `A3.3`'s
+complaint about a `bake` that called `expand`.
+
+⚠ **`..` IS REFUSED RATHER THAN NORMALISED**, and here it guards a file OPEN two functions down:
+a document that can name `../../../etc/passwd` reads a file its author never chose. The control
+that keeps it from being theatre: `a.b/c.d` still passes, so it refuses `..` and not every dot.
+
+⚠ **`loft test` RUNS ANY ZERO-ARGUMENT FUNCTION THAT RETURNS NOTHING AS A TEST.** `build_lib()`
+and `wipe()` were listed among the test functions and run in the runner's order, with `wipe`
+deleting the library between other tests — harmless only because every test rebuilt first. **A
+parameter is what keeps a helper a helper.**
+
 
 **`A5.2`'s STATE half is done and its RENDERER half is blocked, with a number rather than a
 shrug.** `bd_open` rides on the binding, `swing_fit` fences it against the leaf's own hinge, and
@@ -481,16 +514,16 @@ named, and one list holds parts and materials alike, each row with a name, an im
 availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of `A4`,
-`A5.1` and `A5.2`'s state half complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+`A5.1`, `A5.2`'s state half and `A6.1` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
 copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
 cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
 cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
 `SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position, `A4.4` the heading
-measurement, `A5.1` the hinge, `A5.2`'s state half. **`A6.1` is next** — a `MESH` section over the
-existing `21:`/`22:`, and it is also what unblocks `A5.2`'s picture. ⚠ Still true: no part in this
-tree has ever been placed TURNED, and no leaf has ever been DRAWN ajar — `expand`/`bake` apply
-facing 0 only, six of the 24 headings ever can be, and a cell leaf has two positions in a door's
-whole swing.
+measurement, `A5.1` the hinge, `A5.2`'s state half, `A6.1` the `MESH` section. **`A6.2` is next**
+— a prop part in the same library and the same sockets, *a statue on a plinth at the plinth's
+height, facing out*. ⚠ Still true: no part in this tree has ever been placed TURNED, no leaf has
+ever been DRAWN ajar, and **nothing yet places a prop's mesh at all** — `A6.1` carries the
+reference and verifies it, and `expand` has no mesh half.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
