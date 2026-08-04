@@ -32,6 +32,7 @@ pub const BK_MISSING = 1;   // the part is not in the library
 pub const BK_BROKEN  = 2;   // it does not load, or its `INST` will not parse
 pub const BK_DEPTH   = 3;   // nested deeper than `EX_MAX_DEPTH`
 pub const BK_FACING  = 4;   // a heading this step cannot yet apply
+pub const BK_CYCLE   = 5;   // a part contains itself (P8's FIRST rule)
 
 // One column of the flattened result, keyed so the walk can find it again.
 //
@@ -164,6 +165,16 @@ pub fn part_bake(root: text, name: text) -> Bake {
   tab: hash<BakeCol[bc_key]> = [];
   seed = Bake { bk_code: BK_OK };
   done = bake_at(root, name, 0, 0, 0, 1, tab, seed);
+  // ⚠ THE SAME UPGRADE `expand` MAKES, for the same reason: a loop exhausts the
+  // depth bound, so the raw answer blames nesting in a library that has none.
+  // Error path only.
+  if done.bk_code == BK_DEPTH {
+    cy = part_cycle(root, name);
+    if cy.cc_code == CY_CYCLE {
+      return Bake { bk_code: BK_CYCLE, bk_depth: done.bk_depth,
+                    bk_why: "'{name}' contains itself: {cy.cc_why}" };
+    }
+  }
   if done.bk_code != BK_OK { return done; }
 
   cols = 0;

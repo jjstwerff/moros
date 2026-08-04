@@ -40,6 +40,7 @@ pub const EX_BROKEN  = 2;   // it does not load, or its `INST` will not parse
 pub const EX_FIT     = 3;   // a column refused the write
 pub const EX_DEPTH   = 4;   // nested deeper than the bound
 pub const EX_FACING  = 5;   // a heading this step cannot yet apply
+pub const EX_CYCLE   = 6;   // a part contains itself (P8's FIRST rule)
 
 // §P8's second rule. Eight is the design's number, not a guess.
 pub const EX_MAX_DEPTH = 8;
@@ -136,8 +137,23 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
 // written. Making the whole tree atomic needs a pre-flight over the whole tree,
 // which is `A3.3`'s neighbourhood, since `bake` has to walk it anyway. Until
 // then a caller that cares must expand into a scratch world and adopt it.
+// ⚠ A CYCLE IS REPORTED AS A CYCLE, NOT AS A DEPTH OVERFLOW, and telling them
+// apart is `A3.4`'s real work. §P8's two rules both end at this function: a loop
+// recurses until the bound stops it, so the raw answer is *"nested 9 deep"* —
+// which is true and sends the author looking for deep nesting in a library whose
+// deepest nest is TWO. Measured before it was fixed: `h/a → h/b → h/a` reported
+// `EX_DEPTH`. The walk runs only on the error path, so a healthy expansion pays
+// nothing for it, and `part_cycle` already names the chain.
 pub fn part_expand(w: World, root: text, i: PartInst, lo: integer) -> Expand {
   face = facing_ok(i.pi_part, i.pi_facing);
   if face.ex_code != EX_OK { return face; }
-  expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, 1)
+  got = expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, 1);
+  if got.ex_code == EX_DEPTH {
+    cy = part_cycle(root, i.pi_part);
+    if cy.cc_code == CY_CYCLE {
+      return Expand { ex_code: EX_CYCLE, ex_depth: got.ex_depth,
+                      ex_why: "'{i.pi_part}' contains itself: {cy.cc_why}" };
+    }
+  }
+  got
 }

@@ -178,3 +178,73 @@ fn test_a_facing_is_refused() {
   bk = part_bake(root(), "h/turned");
   assert(bk.bk_code == BK_FACING, "a turned child baked with code {bk.bk_code}");
 }
+
+// ── §P8, both rules, at the flattening ───────────────────────────────────────
+//
+// ⚠ `A3.2` BOUNDED `expand` AND LEFT `bake` UNTESTED, which is the gap `A3.4`
+// found: the constant was shared, the coverage was not.
+
+fn chain(n: integer) {
+  wipe();
+  put("h/c{n}", 3, no_kids());
+  i = n - 1;
+  while i >= 1 {
+    put("h/c{i}", 3, [at("h/c{i + 1}", 1, 0, 0)]);
+    i = i - 1;
+  }
+}
+
+fn test_a_nest_nine_deep_is_refused_by_the_bake_too() {
+  chain(9);
+  bk = part_bake(root(), "h/c1");
+  assert(bk.bk_code == BK_DEPTH, "nine deep baked with code {bk.bk_code}: {bk.bk_why}");
+}
+
+// ⚠ THE CONTROL. A bound that refuses everything passes the test above.
+fn test_the_control_a_nest_eight_deep_bakes() {
+  chain(8);
+  bk = part_bake(root(), "h/c1");
+  assert(bk.bk_code == BK_OK, "eight deep was refused: {bk.bk_why}");
+  assert(bk.bk_parts == 8, "{bk.bk_parts} parts flattened for an eight-deep nest");
+}
+
+// ── A cycle is a cycle, not a depth overflow ─────────────────────────────────
+//
+// ⚠ MEASURED WRONG FIRST. `h/a → h/b → h/a` reported *"nested 9 deep; the bound
+// is 8"* from both paths, which is true and useless: the library's deepest nest
+// is two, so the author is sent looking for something that is not there. §P8's
+// two rules meet here and the diagnosis has to tell them apart.
+
+fn loop_lib() {
+  wipe();
+  put("h/a", 3, [at("h/b", 1, 0, 0)]);
+  put("h/b", 5, [at("h/a", 1, 0, 0)]);
+}
+
+fn test_a_cycle_bakes_as_a_cycle_and_names_its_chain() {
+  loop_lib();
+  bk = part_bake(root(), "h/a");
+  assert(bk.bk_code == BK_CYCLE, "a loop baked with code {bk.bk_code}: {bk.bk_why}");
+  assert(bk.bk_why.find("h/a → h/b → h/a") != null,
+         "the refusal does not carry the chain: '{bk.bk_why}'");
+}
+
+fn test_a_cycle_expands_as_a_cycle_too() {
+  loop_lib();
+  w = target();
+  ex = part_expand(w, root(), at("h/a", 2, 2, 0), 10);
+  assert(ex.ex_code == EX_CYCLE, "a loop expanded with code {ex.ex_code}: {ex.ex_why}");
+  assert(ex.ex_why.find("h/a → h/b → h/a") != null,
+         "the refusal does not carry the chain: '{ex.ex_why}'");
+}
+
+// ⚠ THE CONTROL THAT KEEPS THE TWO RULES APART. A nest that is genuinely too
+// deep and has NO cycle must still report depth — otherwise the upgrade above
+// would have turned every overflow into a cycle and lost the other answer.
+fn test_the_control_a_deep_nest_with_no_cycle_still_reports_depth() {
+  chain(9);
+  bk = part_bake(root(), "h/c1");
+  assert(bk.bk_code == BK_DEPTH,
+         "a cycle-free nine-deep nest reported {bk.bk_code} — the two rules "
+         + "have been collapsed into one");
+}

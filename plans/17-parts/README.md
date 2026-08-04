@@ -339,7 +339,7 @@ writer.
 | ✅ `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | **DONE.** `lib/hex_part/src/inst.loft`, 73 tests in the package, both backends. The reference is by catalogue handle and the NAME COMES LAST, so a comma in it needs no escaping. ⚠ **The cycle check needs no depth bound, and a diamond is not a cycle** — see below. | S |
 | ✅ `A3.2` | `expand(instance)` — derive an instance's cells, and everything nested under it. | **DONE.** `lib/hex_part/src/expand.loft`, 84 tests in the package. ⚠ **`I1` IS RETIRED, and measurement is what retired it** — derived cells carry no label, because the records are the authority and re-deriving REGENERATES. ⚠ The depth bound was taken here rather than in `A3.4`. | M |
 | ✅ `A3.3` | `bake(instance)` — flatten to plain cells. | **DONE.** `lib/hex_part/src/bake.loft`, 95 tests in the package. `expand == bake` cell for cell, over paths that share only the part files and `un_origin`. ⚠ **THE FIRST FIXTURE COULD NOT FAIL** — see below. | S |
-| `A3.4` | Depth bound (8) and the cycle check on save. | a 9-deep nest is refused, ⚠ and the control: an 8-deep one is accepted — otherwise the bound is untested | S |
+| ◐ `A3.4` | Depth bound (8) and the cycle check on save. | **BOUND DONE** (taken early, in `A3.2`), and now **a cycle reports as a CYCLE rather than a depth overflow** — measured wrong first. 9 refused / 8 accepted on both paths, plus the control that keeps the two rules apart. ⚠ **The *on save* half is blocked on `A7.3`**: there is still no save gesture, so the server's startup sweep remains the caller. | S |
 | `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |
 
 ### What `A3.1` turned up
@@ -406,6 +406,26 @@ would have been two calls to one function agreeing with themselves.
 ⚠ **A TABLE, BECAUSE `world_set_column` REPLACES.** Two parts may land in one column — a door in
 a wall is exactly that — so the flattening accumulates and inserts in height order, then writes
 each column once. Last-writer-wins would lose a cell and every count would still agree.
+
+### What `A3.4` turned up
+
+⚠ **A CYCLE REPORTED AS A DEPTH OVERFLOW, FROM BOTH PATHS.** §P8's two rules meet at `expand`
+and `bake`: a loop simply recurses until the bound stops it, so `h/a → h/b → h/a` came back as
+*"'h/a' is nested 9 deep; the bound is 8"*. True, and useless — that library's deepest nest is
+**two**, so the author is sent hunting for depth that does not exist while `part_cycle` already
+knew the chain. Both paths now run the cycle walk **on the error path only** and return
+`EX_CYCLE` / `BK_CYCLE` with the chain, so a healthy expansion pays nothing. ⚠ And the control
+that keeps the rules apart: a genuinely nine-deep nest with **no** cycle must still report
+depth, or the upgrade would have swallowed the other answer.
+
+⚠ **THE CONSTANT WAS SHARED AND THE COVERAGE WAS NOT.** `A3.2` bounded `expand` and tested it
+9-refused / 8-accepted; `bake` used the same `EX_MAX_DEPTH` and had **no depth test at all**
+until here. A constant reaching two callers is not two gates.
+
+⚠ **AND *"CHECKED ON SAVE"* STILL HAS NOTHING TO HANG ON**, exactly as in `A3.1`. There is no
+save gesture until `A7.3`, so the server's startup sweep is still the only caller of
+`library_cycle`. Writing the save hook now would be a function with no caller — this tree's own
+trap — so `A3.4` is deliberately left at ◐ rather than claimed complete.
 
 ### A4 — sockets
 

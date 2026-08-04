@@ -27,7 +27,7 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **95** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **101** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -47,7 +47,23 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A3.4` — the depth bound on save. **`A3.2` and `A3.3` are done.**
+### The next thing to do is #17 `A4.1` — sockets. **`A3.2`/`A3.3` done, `A3.4` is ◐.**
+
+**`A3.4` is half done, and the half that is left is BLOCKED rather than skipped.** The depth
+bound landed early in `A3.2`; what `A3.4` added is telling §P8's two rules apart. ⚠ **A CYCLE
+REPORTED AS A DEPTH OVERFLOW** — `h/a → h/b → h/a` came back from both `expand` and `bake` as
+*"nested 9 deep; the bound is 8"*, which is true and sends the author hunting for depth in a
+library whose deepest nest is **two**, while `part_cycle` already knew the chain. Both now run
+the cycle walk **on the error path only** and return `EX_CYCLE`/`BK_CYCLE` with the chain. ⚠ The
+control that keeps the rules apart: a nine-deep nest with NO cycle must still report depth.
+
+⚠ **THE CONSTANT WAS SHARED AND THE COVERAGE WAS NOT** — `A3.2` bounded and tested `expand`;
+`bake` used the same `EX_MAX_DEPTH` with **no depth test at all** until here. A constant
+reaching two callers is not two gates.
+
+⚠ **AND §P8's *"checked on save"* STILL HAS NO CALLER**, exactly as in `A3.1`: no save gesture
+exists until `A7.3`, so the server's startup sweep remains the only thing invoking
+`library_cycle`. Writing the hook now would be a function with no caller, so `A3.4` stays ◐.
 
 **`A3.3` is done, and its finding is about FIXTURES.** `lib/hex_part/src/bake.loft` flattens a
 part and its nest into one `INST`-free part; `expand == bake` holds cell for cell over paths
