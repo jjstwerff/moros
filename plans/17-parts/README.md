@@ -959,7 +959,7 @@ both stores in a vector and take `[i]`.
 |---|---|---|---|
 | ✅ `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | **DONE.** `tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red — and the first of them exposed a check that could not fail. ⚠ **Four findings**, see below | S |
 | ✅ `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | **DONE.** `tools/gates/world/part_fence.mjs`, 17 checks, four sabotages seen red including the **over-fence**. `14:<roof>,<part>`, `18:` and `21:` refused; everything else still edits. ⚠ **Two live defects found**, one of them silent data loss — see below | XS |
-| `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | edit one cell, save, reload — every section byte-identical and only the cells differ | S |
+| ✅ `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | **DONE.** `lib/hex_part/tests/save_edit.loft` (6 tests, 3 of them controls) for the format half; `tools/gates/world/part_save.mjs`, 19 checks, four sabotages seen red, for the routing half. ⚠ **The owner guard was tried and MEASURED OUT** — see below | S |
 | `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | a refused save leaves the FILE unchanged, not merely the acknowledgement saying no | XS |
 | `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | `N:` re-broadcasts, every `W:`/`Y:` re-addresses, and `14:<roof>,<new>` places it in the same session | S |
 | `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
@@ -1119,6 +1119,54 @@ it was fixed too.
 
 ⚠ The import guard needed no sabotage: it was **seen red in the wild**, answering
 `import refused (1) /nonexistent.glb` — the loader's refusal — while the fence was unreachable.
+
+### What `A7.3c` turned up
+
+⚠ **THE OWNER GUARD WAS BUILT, MEASURED AND TAKEN OUT AGAIN — and the measurement is the
+finding.** `X2` looked like exactly this case: a box running a human session, a gate suite and
+more than one agent, where two processes writing one part file corrupts rather than errors. So
+the save went out as `world_save_as(…, port)`, the port being the identity this server actually
+has. **The null-edit check caught it on its first run**: the owner is a field IN the file, so
+stamping it rewrites the bytes of a part nobody edited — open `house/cottage`, save, and the
+committed file now differs from what `make parts` produces, which reads as a build break rather
+than as a lock. Attributed by putting `world_save` back and watching the null edit become
+byte-identical again. **A guard that dirties a committed file to protect it is the wrong trade at
+this size**; what it wants is a save that knows whether anything was authored.
+
+⚠ **AND THE NULL-EDIT CHECK IS WHY THE STEP HAD ONE.** It was written as *the sharp control* for
+a writer that reorders sections — and what it actually caught was a deliberate feature of the
+save. A control aimed at one failure found a different one, which is the argument for writing it
+before there is anything to catch.
+
+⚠ **THE FORMAT HALF IS A LOFT TEST AND THE ROUTING HALF IS A GATE, and the split is CLAUDE.md's.**
+*A cell edit leaves every section untouched* is a claim about the store: `save_edit.loft` dresses a
+part with all five sections, writes a cell, saves, reloads and compares the sections as text — with
+a **dropped section** and a **changed byte** as controls, plus a third control that the byte digest
+notices an edit at all. Only *the server routes `8:` by mode* needs a running world.
+
+⚠ **THE WIRE CAN SEE THE SECTIONS SURVIVED WITHOUT READING THEM.** `44:` acknowledges
+`opened as '<PART.name>'` and falls back to the handle when there is no `PART` section — so
+*reopen and it still says `cottage`* is a one-line check on the whole record. Sabotaged by dropping
+`PART` before the save: three checks fail.
+
+⚠ **AN AIMED READ-BACK NEEDS AN AIMED GESTURE.** The first version raised three times and read
+`26:0,0` on both sides — `cell 0,0 = 4,0` each time, because `5:` raises AHEAD of the walker and
+not under them. `24:` writes an edge of the cell the walker is standing IN, which `16:` reads back
+at exactly that cell: one gesture, one coordinate, one instrument. This is `A7.3a`'s `15:`-versus-
+`26:` lesson in its third form, and it keeps arriving as *the check passed and measured nothing*.
+
+⚠ **THE EDIT CLOCK IS RE-ANCHORED BY THE SAVE**, so a close straight after one reports **0 edits
+discarded** — anything else and the message announces throwing away work that is on disk. Sabotaged
+by leaving the anchor at the open: one check fails.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the clock is not re-anchored by the save | 1 |
+| the `PART` section is dropped on the way out | 3 |
+| a part save is written to the worlds root | 2 |
+| the name fence is gone | 1 |
 
 ⚠ **`A7.3e`'s ACCEPTANCE HOUSE MUST NOT BE `house/cottage`.** The cottage is *generated* by
 `src/part_build.loft` and `make parts` verifies it byte-identically — so a cottage authored in the

@@ -226,11 +226,15 @@ check(stale.length === 0,
     + `(${stale.length} stale of ${meshesBeforeOpen.size})`);
 
 // ── the two guards that come with the mode ──────────────────────────────────
+// ⚠ `8:` USED TO BE CHECKED HERE AND THE CLAIM MOVED, IT WAS NOT DROPPED.
+// `A7.3a` refused a save in part mode because `wld` IS the part and `8:<world
+// name>` would have written four chunks of cottage over that world file. `A7.3c`
+// gives it the right destination instead of no destination, so *a save in part
+// mode leaves the world's file alone* is now `part_fence`'s neighbour,
+// `tools/gates/world/part_save.mjs`, where the rest of the save lives. Nothing
+// here sends `8:` while a part is open, because saving would change the library
+// this gate photographs.
 const saysBeforeGuards = a.says.length;
-a.ws.send('8:probe_world');
-await wait(600);
-check(a.says.slice(saysBeforeGuards).some((s) => s.startsWith('save refused')),
-      'a save in part mode is refused — it would write the part over a world file');
 a.ws.send('9:probe_world');
 await wait(600);
 check(a.says.slice(saysBeforeGuards).some((s) => s.startsWith('load refused')),

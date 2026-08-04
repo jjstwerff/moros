@@ -5308,9 +5308,67 @@ fn main() {
           // A part's own save is `A7.3c`; until it exists the honest answer is that
           // there is no save here, said out loud rather than done quietly.
           if in_part {
-            srv.send_to(ev.cid, "S:save refused — editing part '{part_name}'; "
-                              + "close it with 44: to save the world");
-            println("editor: save refused — in part mode ('{part_name}')");
+            // ── THE PART'S OWN SAVE — plan 17 `A7.3c` ──────────────────────
+            //
+            // ⚠ §P2: A PART IS SAVED THE WAY A WORLD IS SAVED, BECAUSE IT IS ONE.
+            // So this is not a second message — the MODE decides the root, which
+            // is the same rule that already decides where a raise lands. One rule
+            // for *which store am I touching* beats two, and the cost is stated:
+            // a client that saves without checking the mode writes a part.
+            //
+            // ⚠ AND THE SECTIONS COME ALONG BECAUSE THEY ARE IN THE STORE, not
+            // because anything here carries them. `PART`, `ANCH`, `SOCK`, `FITS`,
+            // `INST` and `MESH` live in `w_sections` and `world_save` writes them;
+            // every gesture this editor has writes CELLS. That is the claim
+            // `lib/hex_part/tests/save_edit.loft` pins, with a dropped section and
+            // a changed byte as its controls — a part that saved its cells
+            // perfectly and lost its name would still round-trip every cell.
+            //
+            // An empty payload saves over the part that is open; a name saves
+            // under that name and keeps editing it, which is what makes a part
+            // that did not exist before possible (`A7.3e`).
+            sv_name = part_name;
+            if ev.payload != "" { sv_name = ev.payload; }
+            if sv_name.find("..") != null {
+              srv.send_to(ev.cid, "S:part save refused — name '{sv_name}' leaves data/parts/");
+              println("editor: part save refused — name '{sv_name}' leaves data/parts/");
+            } else {
+              // ⚠ `OWNER_ANY`, AND THE OWNER GUARD IS DEFERRED WITH A NUMBER.
+              // `X2` looked like exactly this case — a box running a human
+              // session, a gate suite and more than one agent, where two
+              // processes writing one part file corrupts rather than errors — so
+              // this was `world_save_as(…, port)` first. Measured, it costs the
+              // property `make parts` rests on: the owner is a field IN the file,
+              // so stamping it rewrites the bytes of a part nobody edited, and
+              // opening `house/cottage` and saving it would leave a diff that
+              // `make parts` then reverts. The null-edit gate caught it on its
+              // first run. A guard that dirties a committed file to protect it is
+              // the wrong trade at this size; it wants the save to know whether
+              // anything was authored, which is `A7.3d`'s neighbourhood.
+              sv_code = world_save(wld, part_path(sv_name), []);
+              if sv_code == WS_CONCURRENT {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' was last written "
+                                  + "by another editor (code {sv_code})");
+                println("editor: part save refused — '{sv_name}' held by another writer");
+              } else if sv_code != WS_OK {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' (code {sv_code})");
+                println("editor: part save refused — '{sv_name}' (code {sv_code})");
+              } else {
+                // ⚠ THE CLOCK IS RE-ANCHORED HERE, so a close after a save reports
+                // what was discarded SINCE the save rather than since the open. The
+                // number is the whole honesty of the close message; measured from
+                // the wrong point it would announce throwing away work that is on
+                // disk.
+                part_name = sv_name;
+                part_tau0 = wld.w_tau;
+                srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
+                                       levelling, roading, tracing));
+                srv.send_to(ev.cid, "S:part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
+                                  + "{len(wld.w_sections)} sections");
+                println("editor: part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
+                      + "{len(wld.w_sections)} sections");
+              }
+            }
           } else {
             scode = world_save(wld, world_path(ev.payload), []);
             nch = len(wld.w_chunks);

@@ -1,0 +1,210 @@
+// EDIT A PART'S CELLS AND SAVE IT: EVERYTHING THAT IS NOT A CELL MUST SURVIVE.
+//
+// Plan 17 `A7.3c`. The editor now opens a part as its store, edits it with the
+// ordinary gestures and saves it back — and every gesture it has writes CELLS,
+// while a part's identity is in its sections: `PART` (its name), `ANCH`, `SOCK`,
+// `FITS`, `INST`, `MESH`. Nothing in the save path mentions them, which is
+// exactly why the claim needs a test: a writer that dropped them would still
+// round-trip every cell perfectly and the part would simply stop being that part
+// — unnamed in the catalogue, unbindable, its nested instances gone.
+//
+// ⚠ THIS IS A LOFT TEST AND NOT A BROWSER GATE, per CLAUDE.md: it is a claim
+// about the store and the format, and nothing here needs a running world. What
+// the gate keeps is the half that does — that the SERVER routes `8:` by mode.
+//
+// ⚠ AND EVERY CLAIM IS PAIRED WITH ITS PERTURBATION, the discipline
+// `roundtrip.loft` set for `A1.2`: a comparison that always says "same" passes a
+// preservation test perfectly.
+use hex_part;
+use hex_world;
+
+const U = 0.25;
+const RESERVE = 8;
+const EPS = 5;
+const THETA = 2;
+
+fn fresh() -> World { world_new(U, RESERVE, EPS, THETA).wn_world }
+
+fn no_palette() -> vector<integer> {
+  p: vector<integer> = [];
+  p
+}
+
+fn path_for(name: text) -> text { "{temp_dir()}/hexpart_save_{name}.hxw" }
+
+// ⚠ THE BYTES, NOT THE SIZE. A writer that reordered two sections of equal length
+// leaves the size untouched, so `f#size` alone would call the file unchanged.
+// Adler-32 is order-sensitive and cannot overflow a loft integer.
+fn file_digest(p: text) -> text {
+  f = file(p);
+  if f.format == Format.NotExists { return "<missing>"; }
+  f#format = LittleEndian;
+  n = f#size ?? 0;
+  s1 = 1;
+  s2 = 0;
+  for _i in 0..n {
+    b = f#read as u8 as integer ?? 0;
+    s1 = (s1 + b) % 65521;
+    s2 = (s2 + s1) % 65521;
+  }
+  "{n}:{s1}:{s2}"
+}
+
+// A part with every section this format has an author for, so the claim is about
+// the whole record rather than about whichever one was convenient.
+fn dressed_part() -> World {
+  w = fresh();
+  for dq in 0..4 {
+    for dr in 0..4 {
+      cw = world_set_column(w, Column { co_q: dq, co_r: dr,
+        co_cells: [ Hex { h_height: ((40 + dq * 3 + dr) as u16? ?? 0),
+                          h_material: (((dq + dr) % 4 + 1) as u8? ?? 0) } ] });
+      assert(cw.cw_code == CW_OK, "fixture {dq},{dr}: {cw.cw_detail}");
+    }
+  }
+  part_set_meta(w, PartMeta { pm_name: "porte café, 2 boards 中", pm_kind: PK_HOUSE });
+  part_set_anchor(w, PartAnchor { pa_q: 1, pa_r: 2, pa_h: 3, pa_facing: 6 });
+  part_set_sockets(w, [ Socket { sk_name: "front", sk_kind: "door", sk_size: "single",
+                                 sk_q: 1, sk_r: 0, sk_h: 40,
+                                 sk_mount: SM_EDGE, sk_at: 2 } ]);
+  part_set_fits(w, PartFits { pf_kind: "door", pf_size: "single" });
+  part_set_instances(w, [ PartInst { pi_q: 2, pi_r: 1, pi_h: 41, pi_facing: 0,
+                                     pi_part: "prop/plinth" } ]);
+  w
+}
+
+// The sections as one comparable text — tag and bytes, in order. A count would
+// pass a writer that kept five sections and emptied them.
+fn sections_of(w: World) -> text {
+  out = "";
+  for s in w.w_sections {
+    out = out + "{s.sc_tag}:{bytes_text(s.sc_bytes)}\n";
+  }
+  out
+}
+
+fn top_at(w: World, q: integer, r: integer) -> integer {
+  c = world_column(w, q, r);
+  h = 0;
+  for x in c.co_cells { if hex_world::hex_occupied(x) { h = x.h_height as integer ?? 0; } }
+  h
+}
+
+// ── the claim ────────────────────────────────────────────────────
+
+fn test_a_cell_edit_leaves_every_section_untouched() {
+  p = path_for("edit");
+  w = dressed_part();
+  before = sections_of(w);
+  assert(world_save(w, p, no_palette()) == WS_OK, "the first save was refused");
+
+  // What the editor does to an open part: it writes cells, and nothing else.
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "the load was refused: {ld.wl_code}");
+  own = ld.wl_world;
+  cw = world_set_column(own, Column { co_q: 1, co_r: 1,
+    co_cells: [ Hex { h_height: (77 as u16? ?? 0), h_material: (3 as u8? ?? 0) } ] });
+  assert(cw.cw_code == CW_OK, "the edit was refused: {cw.cw_detail}");
+  assert(world_save(own, p, no_palette()) == WS_OK, "the second save was refused");
+
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "the reload was refused: {back.wl_code}");
+  assert(sections_of(back.wl_world) == before,
+         "a cell edit changed the sections:\n{sections_of(back.wl_world)}vs\n{before}");
+  assert(top_at(back.wl_world, 1, 1) == 77, "the edit did not survive its own save");
+}
+
+// ⚠ THE NAME IS WHAT THE CATALOGUE SHOWS AND THE HANDLE IS WHAT ADDRESSES IT, so
+// they are asked separately: a part that keeps its `PART` section but loses its
+// name reads as a blank row rather than as a missing part.
+fn test_the_name_and_the_anchor_survive_an_edit() {
+  p = path_for("meta");
+  w = dressed_part();
+  world_save(w, p, no_palette());
+  ld = world_load(p);
+  own = ld.wl_world;
+  world_set_column(own, Column { co_q: 0, co_r: 3,
+    co_cells: [ Hex { h_height: (99 as u16? ?? 0), h_material: (2 as u8? ?? 0) } ] });
+  world_save(own, p, no_palette());
+
+  back = world_load(p).wl_world;
+  m = part_meta(back);
+  assert(m.mr_code == MR_OK, "the meta did not read back: {m.mr_code}");
+  assert(m.mr_meta.pm_name == "porte café, 2 boards 中",
+         "the name did not survive: '{m.mr_meta.pm_name}'");
+  a = part_anchor(back);
+  assert(a.ar_code == MR_OK, "the anchor did not read back: {a.ar_code}");
+  assert(a.ar_anchor.pa_facing == 6, "the anchor's facing did not survive");
+  i = part_instances(back);
+  assert(i.ir_code == MR_OK, "the instances did not read back");
+  assert(len(i.ir_items) == 1, "the nested instance was lost");
+  assert(i.ir_items[0].pi_part == "prop/plinth", "the instance's part changed");
+}
+
+// ⚠ THE NULL EDIT — open, save, change NOTHING, and the bytes must be the same
+// bytes. A writer that re-derives a count or reorders its sections passes every
+// *it round-trips* test above and still churns a committed file on every open,
+// which is a repository full of diffs nobody made. `make parts` rests on the
+// same property one level up.
+fn test_a_save_with_no_edit_rewrites_the_same_bytes() {
+  p = path_for("null");
+  w = dressed_part();
+  world_save(w, p, no_palette());
+  first = file_digest(p);
+
+  ld = world_load(p);
+  own = ld.wl_world;
+  assert(world_save(own, p, no_palette()) == WS_OK, "the null save was refused");
+  second = file_digest(p);
+  assert(second == first,
+         "a save with no edit changed the file: {first} -> {second}");
+}
+
+// ── the perturbation controls ────────────────────────────────────
+
+// ⚠ SEEN RED BEFORE ANY OF THE ABOVE IS BELIEVED. If dropping a section does not
+// break the comparison, then the comparison is not looking at the sections.
+fn test_the_section_comparison_notices_a_dropped_section() {
+  p = path_for("ctl_drop");
+  w = dressed_part();
+  before = sections_of(w);
+  world_save(w, p, no_palette());
+  ld = world_load(p);
+  own = ld.wl_world;
+  world_drop_section(own, section_tag("SOCK"));
+  world_save(own, p, no_palette());
+  back = world_load(p).wl_world;
+  assert(sections_of(back) != before,
+         "a part that LOST a section compared equal — the comparison is blind");
+}
+
+// And the other direction: a changed byte inside a kept section.
+fn test_the_section_comparison_notices_a_changed_byte() {
+  p = path_for("ctl_byte");
+  w = dressed_part();
+  before = sections_of(w);
+  world_save(w, p, no_palette());
+  ld = world_load(p);
+  own = ld.wl_world;
+  part_set_meta(own, PartMeta { pm_name: "something else", pm_kind: PK_HOUSE });
+  world_save(own, p, no_palette());
+  back = world_load(p).wl_world;
+  assert(sections_of(back) != before,
+         "a renamed part compared equal — the comparison is blind");
+}
+
+// ⚠ AND THE NULL-EDIT CONTROL NEEDS ONE TOO, because *the file did not change* is
+// exactly what a save that never happened produces.
+fn test_the_byte_comparison_notices_an_edit() {
+  p = path_for("ctl_bytes");
+  w = dressed_part();
+  world_save(w, p, no_palette());
+  first = file_digest(p);
+  ld = world_load(p);
+  own = ld.wl_world;
+  world_set_column(own, Column { co_q: 2, co_r: 2,
+    co_cells: [ Hex { h_height: (123 as u16? ?? 0), h_material: (1 as u8? ?? 0) } ] });
+  world_save(own, p, no_palette());
+  assert(file_digest(p) != first,
+         "an edited part wrote identical bytes — the byte comparison is blind");
+}

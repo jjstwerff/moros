@@ -22,9 +22,9 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3b`
+## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3c`
 
-`make gate` **38 green** · `make lib-test` **2517, both backends** · `make parts` green
+`make gate` **39 green** · `make lib-test` **2560, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
 2026-08-04 on the installed loft.
 
@@ -49,7 +49,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **217** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **223** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -69,24 +69,30 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3c` — the save
+### The next thing to do is #17 `A7.3d` — the save check, which closes `A3.4`
 
-**`A7.3a` and `A7.3b` are built.** `44:<name>` opens a part as the store the gestures reach, `44:`
-closes back, and the subject line says which; the world, the renderer's nine registries and the
-feet are held aside by assignment — a deep copy, which is the snapshot the mode wants. The fence
-refuses `14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:`
-(state the mode does not hold aside), and `8:`/`9:` (the two that could lose something on disk) —
-while everything else still edits the part. `part_mode.mjs` 31 checks, `part_fence.mjs` 17, nine
-sabotages seen red between them.
+**`A7.3a`, `A7.3b` and `A7.3c` are built — a part can be opened, edited and saved back.**
+`44:<name>` opens a part as the store the gestures reach and `44:` closes back, with the world,
+the renderer's nine registries and the feet held aside by assignment. The fence refuses
+`14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:` (state the
+mode does not hold aside) and `9:`; everything else still edits. `8:` now routes by mode and writes
+`parts_root()/<name>.hxw`, sections and all, with an empty payload meaning *the part that is open*.
+`part_mode.mjs` 31 · `part_fence.mjs` 17 · `part_save.mjs` 19 · `save_edit.loft` 6, thirteen
+sabotages seen red across them.
 
-⚠ **Nothing in part mode reaches the disk**, which is what makes both steps safe by construction:
-a close discards and says how many edits it discarded, counted from the store's own `w_tau`.
-`A7.3c` is where that stops being true, so it is where the null-edit control earns its keep.
+⚠ **`A7.3d` is the check ON that save** — `part_cycle` + `part_mesh_loads`, refusing with the chain
+— and its control is that a **refused save leaves the FILE unchanged**, not merely that the
+acknowledgement said no. It is also what finally closes `A3.4`.
 
 **`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
-✅ the store swap and the subject (`a`), ✅ the fence (`b`), the save (`c`), the save check
+✅ the store swap and the subject (`a`), ✅ the fence (`b`), ✅ the save (`c`), the save check
 (`d`), a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
 until a number says it hurts; `src/part_build.loft` prints the cost every run.
+
+⚠ **THE OWNER GUARD IS NOT IN, AND THAT WAS MEASURED RATHER THAN ASSUMED.** `world_save_as(…, port)`
+stamps an owner field INTO the file, so saving a part nobody edited rewrites its bytes and leaves a
+diff `make parts` then reverts. `X2` is the right idea for a shared library and the wrong trade at
+this size; what it wants is a save that knows whether anything was authored.
 
 ⚠ **`A7.3` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
 `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
@@ -419,7 +425,7 @@ of the identical expression is correct. Both were invisible until something read
 ## How to run things
 
 ```sh
-GATE_JOBS=4 make gate  # ⚠ 38 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
+GATE_JOBS=4 make gate  # ⚠ 39 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
                        #   each gate starts a server that interprets a 5,900-line file, the
                        #   wait for `listening on port` is 60 s, and one gate alone takes
                        #   2 m 33 s. Measured: 10 of 35 failed at 10 jobs and the SAME suite
