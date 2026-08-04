@@ -1,0 +1,344 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A4.1` — `SOCK` and `FITS`, and the round trip that would notice.
+use hex_part;
+use hex_world;
+
+// ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on the
+// interpreter and fails `--native`; `roundtrip.loft` and `inst.loft` carry the note.
+fn no_palette() -> vector<integer> { [] }
+
+fn part() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  w
+}
+
+// ⚠ THE SUBJECT THAT CAN DISAGREE (`A1.4`). One socket is in an EDGE and one is at
+// a HEADING, so a reader that dropped the mount cannot pass; one name carries a
+// COMMA and a multibyte character, so an encoding that splits on every comma or
+// counts characters where it means bytes cannot pass either. `"leaf"` agrees with
+// all of it.
+fn two() -> vector<Socket> {
+  [ Socket { sk_q: 1, sk_r: 0 - 2, sk_h: 0, sk_mount: SM_EDGE, sk_at: 3,
+             sk_kind: "door", sk_size: "2x3", sk_name: "leaf" },
+    Socket { sk_q: 0, sk_r: 3, sk_h: 12, sk_mount: SM_HEAD, sk_at: 18,
+             sk_kind: "statue", sk_size: "plinth-2",
+             sk_name: "niche, the deep one 中" } ]
+}
+
+fn same(a: Socket, b: Socket) -> boolean {
+  a.sk_q == b.sk_q && a.sk_r == b.sk_r && a.sk_h == b.sk_h
+    && a.sk_mount == b.sk_mount && a.sk_at == b.sk_at
+    && a.sk_kind == b.sk_kind && a.sk_size == b.sk_size && a.sk_name == b.sk_name
+}
+
+fn one(s: Socket) -> vector<Socket> { [s] }
+
+fn test_the_tag_constants_are_the_tags_they_name() {
+  assert(TAG_SOCK == section_tag("SOCK"),
+         "TAG_SOCK is {TAG_SOCK}, not {section_tag(\"SOCK\")}");
+  assert(TAG_FITS == section_tag("FITS"),
+         "TAG_FITS is {TAG_FITS}, not {section_tag(\"FITS\")}");
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+
+fn test_sockets_survive_a_save_and_a_load() {
+  w = part();
+  assert(part_set_sockets(w, two()).sw_code == SK_OK, "the write was refused");
+  p = "{temp_dir()}/hexpart_sock_rt.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "the save was refused");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "the load was refused: {back.wl_detail}");
+  got = part_sockets(back.wl_world);
+  assert(got.sr_code == MR_OK, "read back {got.sr_code}: {got.sr_why}");
+  assert(len(got.sr_items) == 2, "{len(got.sr_items)} sockets came back, not 2");
+  for i in 0..2 {
+    assert(same(got.sr_items[i] ?? Socket {}, two()[i] ?? Socket {}),
+           "socket {i} came back as '{sock_text(got.sr_items[i] ?? Socket {})}'");
+  }
+  delete(p);
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT THE TEST ABOVE PASSES ON A COMPARISON THAT ALWAYS
+// SAYS YES. `same` has eight fields, and a version comparing seven would agree with
+// itself for ever — so every field is perturbed on its own, and a comparison that
+// misses one is caught by exactly one of these.
+fn test_a_comparison_that_missed_a_field_would_be_caught() {
+  b = Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+               sk_kind: "door", sk_size: "2x3", sk_name: "leaf" };
+  assert(!same(b, Socket { sk_q: 9, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }), "q");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 9, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }), "r");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 9, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }), "h");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_HEAD, sk_at: 4,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }), "mount");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 5,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }), "at");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "window", sk_size: "2x3", sk_name: "leaf" }), "kind");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "door", sk_size: "3x3", sk_name: "leaf" }), "size");
+  assert(!same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                           sk_kind: "door", sk_size: "2x3", sk_name: "pane" }), "name");
+  assert(same(b, Socket { sk_q: 1, sk_r: 2, sk_h: 3, sk_mount: SM_EDGE, sk_at: 4,
+                          sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }),
+         "and it still says yes to a copy — otherwise it rejects everything");
+}
+
+// ⚠ THE ONE THIS STEP IS REALLY ABOUT. `edge 3` and `heading 3` are different
+// joints, and one number cannot carry both — a reader that guessed would point half
+// the sockets the wrong way with nothing in the file to say so. Collapse the mount
+// into `sk_at` and these two records become the same bytes; this is what says so.
+fn test_an_edge_and_a_heading_with_the_same_index_are_different_sockets() {
+  e = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 3,
+               sk_kind: "door", sk_size: "2x3", sk_name: "a" };
+  h = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 3,
+               sk_kind: "door", sk_size: "2x3", sk_name: "a" };
+  assert(!same(e, h), "an edge and a heading at 3 compare equal before anything is written");
+  assert(sock_text(e) != sock_text(h),
+         "and they encode identically: '{sock_text(e)}'");
+  w = part();
+  assert(part_set_sockets(w, [e, h]).sw_code == SK_OK, "write");
+  p = "{temp_dir()}/hexpart_sock_mount.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  got = part_sockets(back.wl_world);
+  assert(got.sr_code == MR_OK, "read {got.sr_code}: {got.sr_why}");
+  a0 = got.sr_items[0] ?? Socket {};
+  a1 = got.sr_items[1] ?? Socket {};
+  assert(a0.sk_mount == SM_EDGE && a0.sk_at == 3, "the edge came back {a0.sk_mount}/{a0.sk_at}");
+  assert(a1.sk_mount == SM_HEAD && a1.sk_at == 3, "the heading came back {a1.sk_mount}/{a1.sk_at}");
+  assert(!same(a0, a1), "the file could not tell them apart");
+  delete(p);
+}
+
+// ⚠ AND THE RANGE FOLLOWS THE MOUNT. A flat `0 <= at < 24` accepts `edge 6`, which
+// is not a side of a hexagon — so the pair is the control: the same index is refused
+// under one mount and accepted under the other.
+fn test_edge_six_is_refused_where_heading_six_is_accepted() {
+  w = part();
+  bad = part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
+    sk_mount: SM_EDGE, sk_at: 6, sk_kind: "door", sk_size: "2x3", sk_name: "a" }));
+  assert(bad.sw_code == SK_AT, "edge 6 was accepted ({bad.sw_code})");
+  assert(bad.sw_why.find("6 edges") != null,
+         "the refusal does not say which range: '{bad.sw_why}'");
+  ok = part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
+    sk_mount: SM_HEAD, sk_at: 6, sk_kind: "door", sk_size: "2x3", sk_name: "a" }));
+  assert(ok.sw_code == SK_OK, "heading 6 was refused: {ok.sw_why}");
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
+    sk_mount: SM_HEAD, sk_at: FACINGS, sk_kind: "door", sk_size: "2x3",
+    sk_name: "a" })).sw_code == SK_AT, "heading {FACINGS} was accepted");
+}
+
+// ⚠ THE NAME IS THE TAIL, so a comma in it is not a special case at all — `A3.1`'s
+// rule, applied to the one of three text fields that is author-facing. Put the name
+// anywhere but last and this fails; refuse the comma instead and the author loses a
+// name they are entitled to.
+fn test_a_comma_and_a_multibyte_character_in_a_socket_name_survive() {
+  w = part();
+  odd = "porte café, 2 = boards wide 中";
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
+    sk_mount: SM_EDGE, sk_at: 0, sk_kind: "door", sk_size: "2x3",
+    sk_name: odd })).sw_code == SK_OK, "write");
+  p = "{temp_dir()}/hexpart_sock_comma.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  got = part_sockets(back.wl_world);
+  assert(got.sr_code == MR_OK, "read {got.sr_code}: {got.sr_why}");
+  assert((got.sr_items[0] ?? Socket {}).sk_name == odd,
+         "the name came back '{(got.sr_items[0] ?? Socket {}).sk_name}'");
+  delete(p);
+}
+
+// ⚠ WRITE, READ, WRITE — a check on the PARSER, which the field comparison alone is
+// not. A parser that trimmed a token, or lost a `-0`, would rebuild a different line
+// while every field still compared equal to a value that had been trimmed on the way
+// in as well.
+fn test_the_encoding_is_canonical_through_a_parse() {
+  w = part();
+  assert(part_set_sockets(w, two()).sw_code == SK_OK, "write");
+  got = part_sockets(w);
+  assert(got.sr_code == MR_OK, "read {got.sr_why}");
+  for i in 0..2 {
+    a = sock_text(two()[i] ?? Socket {});
+    b = sock_text(got.sr_items[i] ?? Socket {});
+    assert(a == b, "socket {i} re-encodes as\n  '{b}'\nand was written as\n  '{a}'");
+  }
+}
+
+// ── FITS ─────────────────────────────────────────────────────────────────────
+
+fn test_a_fit_survives_a_save_and_a_load() {
+  w = part();
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2x3" }).sw_code == SK_OK,
+         "the write was refused");
+  p = "{temp_dir()}/hexpart_fits_rt.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  got = part_fits(back.wl_world);
+  assert(got.fr_code == MR_OK, "read {got.fr_code}: {got.fr_why}");
+  assert(got.fr_fits.pf_kind == "door", "kind came back '{got.fr_fits.pf_kind}'");
+  assert(got.fr_fits.pf_size == "2x3", "size came back '{got.fr_fits.pf_size}'");
+  delete(p);
+}
+
+// ⚠ A SIZE CLASS MAY CONTAIN AN `=`, because `FITS` splits at the FIRST one —
+// `meta.loft`'s rule, and the reason `sock.loft` calls `meta_field` rather than
+// writing a second reader that would get to decide this again.
+fn test_a_size_class_with_an_equals_in_it_is_not_truncated() {
+  w = part();
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2x3=tall" }).sw_code == SK_OK,
+         "write");
+  got = part_fits(w);
+  assert(got.fr_code == MR_OK, "read {got.fr_why}");
+  assert(got.fr_fits.pf_size == "2x3=tall", "size came back '{got.fr_fits.pf_size}'");
+}
+
+// ⚠ THE HOLE THIS CLOSES IS SILENT. `FITS` has no comma separator, so a comma would
+// survive it perfectly — and the token has to be spelled identically by a `SOCK`,
+// which refuses one. Accepting it here mints a class that can be CLAIMED and never
+// OFFERED: the leaf saves, the frame will not, and nothing connects the two answers.
+fn test_fits_refuses_exactly_what_a_socket_token_refuses() {
+  w = part();
+  assert(part_set_fits(w, PartFits { pf_kind: "a,b", pf_size: "2x3" }).sw_code == SK_COMMA,
+         "a comma in a claimed kind was accepted");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2,3" }).sw_code == SK_COMMA,
+         "a comma in a claimed size was accepted");
+  assert(part_set_fits(w, PartFits { pf_kind: "a\nb", pf_size: "2x3" }).sw_code == SK_NEWLINE,
+         "a newline in a claimed kind was accepted");
+  assert(part_set_fits(w, PartFits { pf_kind: "", pf_size: "2x3" }).sw_code == SK_EMPTY,
+         "a claim of no kind at all was accepted");
+  // …and the same four against a socket, so the pair is asserted rather than assumed.
+  base = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 0,
+                  sk_kind: "door", sk_size: "2x3", sk_name: "a" };
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "a,b", sk_size: "2x3", sk_name: "a" })).sw_code == SK_COMMA, "sock kind");
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "door", sk_size: "2,3", sk_name: "a" })).sw_code == SK_COMMA, "sock size");
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "a\nb", sk_size: "2x3", sk_name: "a" })).sw_code == SK_NEWLINE, "sock nl");
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "", sk_size: "2x3", sk_name: "a" })).sw_code == SK_EMPTY, "sock empty");
+  assert(part_set_sockets(w, one(base)).sw_code == SK_OK,
+         "and the unperturbed socket is refused too, so these prove nothing");
+}
+
+// ── Absent, malformed, and refusals ──────────────────────────────────────────
+
+fn test_a_part_with_neither_section_reads_as_absent_with_an_empty_list() {
+  w = part();
+  s = part_sockets(w);
+  assert(s.sr_code == MR_ABSENT, "a bare part read {s.sr_code}");
+  assert(len(s.sr_items) == 0, "and it came with {len(s.sr_items)} sockets");
+  assert(part_fits(w).fr_code == MR_ABSENT, "a bare part claims a fit");
+}
+
+fn test_writing_an_empty_list_removes_the_section() {
+  w = part();
+  assert(part_set_sockets(w, two()).sw_code == SK_OK, "write two");
+  assert(world_section_at(w, TAG_SOCK) >= 0, "the section was not written");
+  none: vector<Socket> = [];
+  assert(part_set_sockets(w, none).sw_code == SK_OK, "write none");
+  assert(world_section_at(w, TAG_SOCK) < 0, "the section outlived its last socket");
+  assert(part_sockets(w).sr_code == MR_ABSENT, "and it does not read as absent");
+}
+
+fn test_a_newline_anywhere_is_refused_and_nothing_is_written() {
+  w = part();
+  bad = part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "door", sk_size: "2x3", sk_name: "a\nsock=0,0,0,0,0,x,y,z" }));
+  assert(bad.sw_code == SK_NEWLINE, "a forged record was accepted ({bad.sw_code})");
+  assert(world_section_at(w, TAG_SOCK) < 0, "a refused write left a section behind");
+}
+
+// ⚠ THE PRE-FLIGHT. One bad record in a list leaves the section as it was rather
+// than half replaced — and the *as it was* half is what needs asserting, because a
+// writer that truncated to the good records would pass a check on the return code.
+fn test_one_bad_socket_leaves_an_existing_section_untouched() {
+  w = part();
+  assert(part_set_sockets(w, two()).sw_code == SK_OK, "write two");
+  mixed = [two()[0] ?? Socket {},
+           Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: 7, sk_at: 0,
+                    sk_kind: "door", sk_size: "2x3", sk_name: "bad" }];
+  bad = part_set_sockets(w, mixed);
+  assert(bad.sw_code == SK_MOUNT, "mount 7 was accepted ({bad.sw_code})");
+  assert(bad.sw_why.find("socket 1") != null,
+         "the refusal does not say which record: '{bad.sw_why}'");
+  got = part_sockets(w);
+  assert(got.sr_code == MR_OK && len(got.sr_items) == 2,
+         "the refused write replaced the section: {got.sr_code}, {len(got.sr_items)} sockets");
+}
+
+fn test_a_socket_with_no_name_is_refused() {
+  w = part();
+  assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "door", sk_size: "2x3", sk_name: "" })).sw_code == SK_EMPTY,
+    "a nameless socket was accepted");
+}
+
+// ⚠ A DAMAGED SECTION IS NOT AN ABSENT ONE. The writer refuses `mount=7`, so the
+// only way a file carries one is a future writer or a corrupted byte — and the
+// reader has to say so rather than hand back a socket pointing nowhere.
+fn test_a_section_a_future_writer_could_produce_reads_as_malformed() {
+  w = part();
+  set_section_text(w, TAG_SOCK, "sock=0,0,0,7,0,door,2x3,leaf");
+  got = part_sockets(w);
+  assert(got.sr_code == MR_MALFORMED, "mount 7 read back as {got.sr_code}");
+  assert(got.sr_why.find("neither an edge") != null, "the reason is '{got.sr_why}'");
+  set_section_text(w, TAG_SOCK, "sock=0,0,0,0,9,door,2x3,leaf");
+  assert(part_sockets(w).sr_code == MR_MALFORMED, "edge 9 read back as a socket");
+  set_section_text(w, TAG_SOCK, "sock=0,0,0,0,0,door,2x3");
+  assert(part_sockets(w).sr_code == MR_MALFORMED, "a line with no name read as a socket");
+  set_section_text(w, TAG_SOCK, "sock=0,0,0,0,x,door,2x3,leaf");
+  assert(part_sockets(w).sr_code == MR_MALFORMED, "'x' read back as a number");
+  set_section_text(w, TAG_SOCK, "hole=0,0,0,0,0,door,2x3,leaf");
+  assert(part_sockets(w).sr_code == MR_MALFORMED, "a line that is not a sock= read as one");
+  set_section_text(w, TAG_FITS, "kind=door");
+  assert(part_fits(w).fr_code == MR_MALFORMED, "a FITS with no size read as a fit");
+  set_section_text(w, TAG_FITS, "kind=a,b\nsize=2x3");
+  assert(part_fits(w).fr_code == MR_MALFORMED, "a comma read back off a FITS as a kind");
+}
+
+// One bad line makes the whole read malformed — a frame that quietly lost its leaf
+// socket is not obviously a frame that failed to load.
+fn test_one_bad_line_condemns_the_whole_section() {
+  w = part();
+  set_section_text(w, TAG_SOCK,
+    "sock=0,0,0,0,0,door,2x3,good\nsock=0,0,0,9,0,door,2x3,bad");
+  got = part_sockets(w);
+  assert(got.sr_code == MR_MALFORMED, "the good line was handed back alone ({got.sr_code})");
+}
+
+// ── The two sections are independent ─────────────────────────────────────────
+
+// A frame OFFERS and a leaf FITS, and a part may do both — a door-frame fits a
+// house's wall socket and offers a socket for the leaf. So neither section may
+// disturb the other, and neither may disturb `PART`/`ANCH`/`INST`.
+fn test_a_part_can_offer_and_fit_at_once_without_the_sections_colliding() {
+  w = part();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_FRAME, pm_name: "oak frame" }) == PM_OK, "meta");
+  assert(part_set_anchor(w, PartAnchor { pa_q: 1, pa_r: 1, pa_h: 2, pa_facing: 6 }) == PM_OK,
+         "anchor");
+  assert(part_set_sockets(w, two()).sw_code == SK_OK, "sockets");
+  assert(part_set_fits(w, PartFits { pf_kind: "wall", pf_size: "1x3" }).sw_code == SK_OK, "fits");
+  p = "{temp_dir()}/hexpart_sock_both.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "load: {back.wl_detail}");
+  b = back.wl_world;
+  m = part_meta(b);
+  assert(m.mr_code == MR_OK && m.mr_meta.pm_name == "oak frame", "PART: {m.mr_why}");
+  a = part_anchor(b);
+  assert(a.ar_code == MR_OK && a.ar_anchor.pa_facing == 6, "ANCH: {a.ar_why}");
+  s = part_sockets(b);
+  assert(s.sr_code == MR_OK && len(s.sr_items) == 2, "SOCK: {s.sr_why}");
+  f = part_fits(b);
+  assert(f.fr_code == MR_OK && f.fr_fits.pf_kind == "wall", "FITS: {f.fr_why}");
+  delete(p);
+}

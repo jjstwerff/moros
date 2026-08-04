@@ -1,0 +1,301 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `SOCK` and `FITS` — the joints a part OFFERS, and the joint a part GOES INTO.
+//
+// Plan 17 `A4.1`, over the section mechanism `A1.3` put in the store and beside
+// the `PART`/`ANCH`/`INST` content `A1.4` and `A3.1` put here. §P3: **composition
+// is by socket, never by coordinate** — a door-frame offers `socket "leaf" @
+// door/2x3`, a door leaf fits `door/2x3`. This file owns the two records and
+// nothing else: whether a given leaf fits a given frame is `A4.2`, and binding an
+// instance to a socket instead of a cell is `A4.3`.
+//
+// ⚠ A SOCKET IS NOT A HOLE (§P3). `hex_draw::place_opening` already cuts the
+// opening in the wall; a socket is the *contract at* that opening. Conflating them
+// is how `F-HOLE` went wrong in FITTINGS — an opening became an edge material and
+// then nothing could be hung in it.
+use hex_world;
+use codec;
+use meta;
+
+// ⚠ LITERALS, held equal to `section_tag(…)` by a test — the same call `meta.loft`
+// and `inst.loft` make, and for the reason their comments give: a file-scope
+// constant is an inlined expression re-evaluated at every reference, so a derived
+// tag would re-run the packing loop at each use.
+pub const TAG_SOCK = 1262702419;    // 'SOCK', low byte first
+pub const TAG_FITS = 1398032710;    // 'FITS'
+
+// ── The mount is TWO fields, and collapsing them is the defect this step is about ─
+//
+// §P3 spells the third element *"edge-or-heading"*, one slot with two meanings:
+//
+//   `SM_EDGE` — the socket is in one of the cell's SIX edges. A door hangs in a
+//               wall, and a wall is an edge; there are six of them.
+//   `SM_HEAD` — the socket is at the cell, facing one of the TWENTY-FOUR headings.
+//               A statue stands on a plinth and looks somewhere.
+//
+// ⚠ THE RANGES OVERLAP, SO ONE NUMBER CANNOT CARRY BOTH. `edge 3` and `heading 3`
+// are different joints and would be the same bytes, and a reader that guessed
+// would point half the sockets the wrong way with nothing in the file to say so.
+// That is `MR_ABSENT` versus `MR_MALFORMED` again: two answers that want different
+// fixes must not share a spelling. The mount is written out, and the test that
+// keeps it honest is the one asserting the two round-trip DIFFERENT.
+//
+// ⚠ AND THE RANGE CHECK DEPENDS ON THE MOUNT. A flat `0 <= at < 24` accepts
+// `edge 6`, which does not exist — so the bound is chosen per mount, and the
+// control is that `edge 6` is refused while `heading 6` is accepted.
+pub const SM_EDGE = 0;
+pub const SM_HEAD = 1;
+
+pub const EDGES = 6;
+
+// One joint a part offers.
+//
+// ⚠ NO SIZE IN CELLS, ONLY A CLASS. §P3's three examples are `door/2x3`,
+// `pillar/round-3` and `statue/plinth-2`, and only the first is a width by a
+// height — so a structured size would force the other two into a shape that means
+// nothing about them. The class is the CONTRACT, matched by spelling; whether a
+// leaf physically fits is a fact of the two parts' cells and is `A4.2`'s to
+// measure. Storing a size here as well would be a second authority on one fact.
+pub struct Socket {
+  sk_q:     integer,
+  sk_r:     integer,
+  sk_h:     integer,
+  sk_mount: integer,      // SM_EDGE or SM_HEAD
+  sk_at:    integer,      // an edge 0..5 under SM_EDGE, a heading 0..23 under SM_HEAD
+  sk_kind:  text,         // the contract token — `door`, `pillar`, `statue`
+  sk_size:  text,         // the size class — `2x3`, `round-3`, `plinth-2`
+  sk_name:  text,         // the author's handle for THIS socket — `leaf`, `column-1`
+}
+
+// What a part goes into. ⚠ ONE, NOT A LIST, AND THE ARGUMENT IS `ANCH`'s. A part
+// has one anchor because it is one thing standing in one place; it has one class
+// for the same reason — a door leaf is one size. A part that offered several ways
+// in would be offering sockets, which is the other record. If a part ever genuinely
+// fits two classes this is a format change, and that is cheaper than a list that
+// always holds one element and invites a reader to wonder what the second means.
+pub struct PartFits {
+  pf_kind: text,
+  pf_size: text,
+}
+
+pub const SK_OK      = 0;
+pub const SK_NEWLINE = 1;   // a newline — it would forge a record
+pub const SK_COMMA   = 2;   // a comma in a contract token — it would forge a field
+pub const SK_EMPTY   = 3;   // a socket with no name, or a token with no text
+pub const SK_MOUNT   = 4;   // a mount that is neither an edge nor a heading
+pub const SK_AT      = 5;   // an edge or a heading outside its own mount's range
+
+// ⚠ THE WRITE PATH CARRIES A REASON AND `part_set_instances` DOES NOT, which is a
+// deliberate difference rather than drift. An instance has one text field, so
+// `PI_NEWLINE` says everything there is to say. A socket has three, in a list, so
+// the bare code leaves the author to find out which of *kind*, *size class* and
+// *name* on which of eleven records is the one with the comma in it. `A4.2` returns
+// `Fit{ok, reason, offer}` for the same reason — a refusal an author cannot act on
+// is a refusal that gets worked around.
+pub struct SockWrite { sw_code: integer, sw_why: text }
+
+fn sw_ok() -> SockWrite { SockWrite { sw_code: SK_OK, sw_why: "" } }
+
+// ── A contract token may bear an alphabet; a part handle may not ────────────────
+//
+// `kind` and `size` are tokens WE mint: both sides of a joint must spell one
+// identically for a fit to happen at all, so they are ours to restrict, and the
+// restriction is checkable at write time with a refusal that names the character.
+//
+// ⚠ THAT IS THE DIFFERENCE FROM `inst.loft`, WHICH COULD NOT DO THIS. `pi_part` is
+// a catalogue handle, which is a FILE PATH — the filesystem decides what may be in
+// one, not us — so `A3.1` put the name LAST and made a comma harmless instead of
+// refusing it. Here the field is not last and cannot be, because there are three
+// text fields and only one tail. The author-facing NAME gets the tail, which is
+// where the freedom is wanted; the two machine-matched tokens get the alphabet.
+fn check_token(what: text, v: text, subject: text) -> SockWrite {
+  if v == "" {
+    return SockWrite { sw_code: SK_EMPTY, sw_why: "{subject} has no {what}" };
+  }
+  if v.find("\n") != null {
+    return SockWrite { sw_code: SK_NEWLINE,
+                       sw_why: "{subject}: the {what} '{v}' has a newline in it" };
+  }
+  if v.find(",") != null {
+    return SockWrite { sw_code: SK_COMMA,
+                       sw_why: "{subject}: the {what} '{v}' has a comma in it" };
+  }
+  sw_ok()
+}
+
+// ⚠ ONE VALIDATOR, BOTH DIRECTIONS. The reader runs this on what it parsed off the
+// file, so a record a writer would refuse is a record a reader calls malformed —
+// and the two cannot drift into a file this library writes and will not read back.
+fn check_socket(s: Socket, i: integer) -> SockWrite {
+  subject = "socket {i}";
+  // ⚠ The NAME is checked for a newline and NOT for a comma. It is the tail of the
+  // line, so a comma in it is not a special case at all — `A3.1`'s rule, and the
+  // test that pins it uses a name with a comma AND a multibyte character in it.
+  if s.sk_name == "" {
+    return SockWrite { sw_code: SK_EMPTY, sw_why: "{subject} has no name" };
+  }
+  if s.sk_name.find("\n") != null {
+    return SockWrite { sw_code: SK_NEWLINE,
+                       sw_why: "{subject}: the name '{s.sk_name}' has a newline in it" };
+  }
+  k = check_token("kind", s.sk_kind, subject);
+  if k.sw_code != SK_OK { return k; }
+  z = check_token("size class", s.sk_size, subject);
+  if z.sw_code != SK_OK { return z; }
+  if s.sk_mount != SM_EDGE && s.sk_mount != SM_HEAD {
+    return SockWrite { sw_code: SK_MOUNT,
+      sw_why: "{subject}: mount {s.sk_mount} is neither an edge ({SM_EDGE}) nor a heading ({SM_HEAD})" };
+  }
+  lim = FACINGS;
+  what = "headings";
+  if s.sk_mount == SM_EDGE { lim = EDGES; what = "edges"; }
+  if s.sk_at < 0 || s.sk_at >= lim {
+    return SockWrite { sw_code: SK_AT,
+                       sw_why: "{subject}: {s.sk_at} is not one of the {lim} {what}" };
+  }
+  sw_ok()
+}
+
+// One `sock=` line per socket, keeping `A1.4`'s argument — it reads in a hex dump,
+// which is the same argument the four-character tag is made of:
+//
+//     sock=1,-2,0,0,3,door,2x3,leaf
+//     sock=0,0,12,1,18,statue,plinth-2,niche, the deep one 中
+//
+fn sock_line(s: Socket) -> text {
+  "sock={s.sk_q},{s.sk_r},{s.sk_h},{s.sk_mount},{s.sk_at},{s.sk_kind},{s.sk_size},{s.sk_name}"
+}
+
+// ⚠ EVERY SOCKET IS CHECKED BEFORE ANY IS WRITTEN, so a list with one bad record
+// leaves the section as it was rather than half replaced — `part_set_instances`
+// and `part_place` follow the same pre-flight rule.
+pub fn part_set_sockets(w: World, v: vector<Socket>) -> SockWrite {
+  for i in 0..len(v) {
+    got = check_socket(v[i] ?? Socket {}, i);
+    if got.sw_code != SK_OK { return got; }
+  }
+  // ⚠ AN EMPTY LIST DROPS THE SECTION rather than writing an empty one, so *the
+  // part offers no socket* and *the part has a SOCK holding nothing* stay one fact
+  // with one spelling. `inst.loft` says the same and for the same reason.
+  if len(v) == 0 { world_drop_section(w, TAG_SOCK); return sw_ok(); }
+  body = "";
+  for s in v {
+    if body != "" { body = body + "\n"; }
+    body = body + sock_line(s);
+  }
+  set_section_text(w, TAG_SOCK, body);
+  sw_ok()
+}
+
+// ⚠ `FITS` REFUSES A COMMA IT HAS NO SEPARATOR FOR, and that is the point. Its own
+// payload is `key=value` lines, so a comma would survive it perfectly well — but
+// the token it holds has to be spelled identically by a `SOCK` somewhere, and a
+// `SOCK` refuses one. Accepting it here would mint a class that can be CLAIMED and
+// never OFFERED: the leaf saves, the frame will not, and nothing connects the two
+// refusals. The check is shared rather than restated so the pair cannot drift.
+pub fn part_set_fits(w: World, f: PartFits) -> SockWrite {
+  k = check_token("kind", f.pf_kind, "the fit");
+  if k.sw_code != SK_OK { return k; }
+  z = check_token("size class", f.pf_size, "the fit");
+  if z.sw_code != SK_OK { return z; }
+  set_section_text(w, TAG_FITS, "kind={f.pf_kind}\nsize={f.pf_size}");
+  sw_ok()
+}
+
+// ⚠ `sr_items` IS USABLE ON `MR_ABSENT` AS WELL AS `MR_OK` — it is empty — and only
+// `MR_MALFORMED` means *do not trust this*. A part written before sockets existed
+// offers none and is fine; a part whose `SOCK` says `mount=north` is damaged, and
+// one code for both makes the damaged one look ordinary. The codes are `meta.loft`'s
+// rather than a third set invented here.
+pub struct SockRead { sr_code: integer, sr_items: vector<Socket>, sr_why: text }
+pub struct FitsRead { fr_code: integer, fr_fits: PartFits, fr_why: text }
+
+fn sock_bad(why: text) -> SockRead {
+  none: vector<Socket> = [];
+  SockRead { sr_code: MR_MALFORMED, sr_items: none, sr_why: why }
+}
+
+// Five numbers, two tokens, and then THE REST OF THE LINE. Written out rather than
+// reached for a splitter, because *the rest* is the whole point of the encoding and
+// a general split would hand back a socket name cut at its first comma.
+fn parse_sock(line: text) -> SockRead {
+  eq = line.find("=");
+  if eq == null || line[0..eq] != "sock" {
+    return sock_bad("a line that is not a sock=: '{line}'");
+  }
+  rest = line[(eq + 1)..];
+  nums: vector<integer> = [];
+  for f in 0..5 {
+    c = rest.find(",");
+    if c == null {
+      return sock_bad("'{line}' has {f} of the 5 numbers a socket needs");
+    }
+    n = rest[0..c] as i32?;
+    if n == null {
+      return sock_bad("'{rest[0..c]}' in '{line}' is not a number");
+    }
+    nums += [n ?? 0];
+    rest = rest[(c + 1)..];
+  }
+  ck = rest.find(",");
+  if ck == null { return sock_bad("'{line}' names no size class"); }
+  kind = rest[0..ck];
+  rest = rest[(ck + 1)..];
+  cz = rest.find(",");
+  if cz == null { return sock_bad("'{line}' names no socket"); }
+  got = Socket { sk_q: nums[0] ?? 0, sk_r: nums[1] ?? 0, sk_h: nums[2] ?? 0,
+                 sk_mount: nums[3] ?? 0, sk_at: nums[4] ?? 0,
+                 sk_kind: kind, sk_size: rest[0..cz], sk_name: rest[(cz + 1)..] };
+  // The writer's own check, on what came off the file. A future writer's `mount=2`
+  // lands here as malformed rather than as a socket pointing nowhere.
+  bad = check_socket(got, 0);
+  if bad.sw_code != SK_OK { return sock_bad("in '{line}': {bad.sw_why}"); }
+  SockRead { sr_code: MR_OK, sr_items: [got], sr_why: "" }
+}
+
+pub fn part_sockets(w: World) -> SockRead {
+  none: vector<Socket> = [];
+  if world_section_at(w, TAG_SOCK) < 0 {
+    return SockRead { sr_code: MR_ABSENT, sr_items: none, sr_why: "no SOCK section" };
+  }
+  out: vector<Socket> = [];
+  for line in section_text(w, TAG_SOCK).split('\n') {
+    if line == "" { continue; }
+    one = parse_sock(line);
+    // ⚠ ONE BAD LINE MAKES THE WHOLE SECTION MALFORMED. Skipping it would hand back
+    // a frame that has quietly lost its leaf socket, and a door-frame with nowhere
+    // to hang a door is not obviously a door-frame that failed to load.
+    if one.sr_code != MR_OK { return one; }
+    for o in one.sr_items { out += [o]; }
+  }
+  SockRead { sr_code: MR_OK, sr_items: out, sr_why: "" }
+}
+
+pub fn part_fits(w: World) -> FitsRead {
+  if world_section_at(w, TAG_FITS) < 0 {
+    return FitsRead { fr_code: MR_ABSENT, fr_fits: PartFits {}, fr_why: "no FITS section" };
+  }
+  t = section_text(w, TAG_FITS);
+  k = meta_field(t, "kind");
+  z = meta_field(t, "size");
+  if k == null || z == null {
+    return FitsRead { fr_code: MR_MALFORMED, fr_fits: PartFits {},
+                      fr_why: "a FITS section without both a kind and a size" };
+  }
+  got = PartFits { pf_kind: k ?? "", pf_size: z ?? "" };
+  ck = check_token("kind", got.pf_kind, "the fit");
+  if ck.sw_code != SK_OK {
+    return FitsRead { fr_code: MR_MALFORMED, fr_fits: PartFits {}, fr_why: ck.sw_why };
+  }
+  cz = check_token("size class", got.pf_size, "the fit");
+  if cz.sw_code != SK_OK {
+    return FitsRead { fr_code: MR_MALFORMED, fr_fits: PartFits {}, fr_why: cz.sw_why };
+  }
+  FitsRead { fr_code: MR_OK, fr_fits: got, fr_why: "" }
+}
+
+// The line a socket writes, for a caller that wants to compare two sockets without
+// comparing eight fields by hand. ⚠ It is the ENCODING, so `sock_text` of a socket
+// that came off a file is byte-identical to the line it came from — which is what
+// makes *write, read, write* a check on the parser rather than on the writer alone.
+pub fn sock_text(s: Socket) -> text { sock_line(s) }

@@ -85,7 +85,10 @@ fn has_newline(t: text) -> boolean {
 // `s[i..s.len()]` read past the buffer, each a Rust backtrace with no loft
 // location. That is fixed and the naive form is correct again; these stay because
 // they were never only a workaround. An ASCII test subject could see none of it.
-fn field(t: text, key: text) -> text? {
+// ⚠ PUBLIC BECAUSE `FITS` IS A ONE-THING SECTION TOO. `sock.loft` reads its two
+// keys with this rather than a second copy, and a second copy is exactly how the
+// *split at the FIRST `=`* rule gets re-decided by whoever writes it next.
+pub fn meta_field(t: text, key: text) -> text? {
   for line in t.split('\n') {
     i = line.find("=");
     if i == null { continue; }
@@ -125,7 +128,7 @@ pub fn part_meta(w: World) -> MetaRead {
     return MetaRead { mr_code: MR_ABSENT, mr_meta: PartMeta {}, mr_why: "no PART section" };
   }
   t = section_text(w, TAG_PART);
-  k = field(t, "kind");
+  k = meta_field(t, "kind");
   if k == null {
     return MetaRead { mr_code: MR_MALFORMED, mr_meta: PartMeta {}, mr_why: "no kind" };
   }
@@ -139,8 +142,8 @@ pub fn part_meta(w: World) -> MetaRead {
                       mr_why: "kind {kind} is not one of the five" };
   }
   MetaRead { mr_code: MR_OK,
-             mr_meta: PartMeta { pm_kind: kind, pm_name: field(t, "name") ?? "",
-                                 pm_desc: field(t, "desc") ?? "" },
+             mr_meta: PartMeta { pm_kind: kind, pm_name: meta_field(t, "name") ?? "",
+                                 pm_desc: meta_field(t, "desc") ?? "" },
              mr_why: "" }
 }
 
@@ -150,10 +153,10 @@ pub fn part_anchor(w: World) -> AnchorRead {
                         ar_why: "no ANCH section" };
   }
   t = section_text(w, TAG_ANCH);
-  q = (field(t, "q") ?? "") as i32?;
-  r = (field(t, "r") ?? "") as i32?;
-  h = (field(t, "h") ?? "") as i32?;
-  fc = (field(t, "facing") ?? "") as i32?;
+  q = (meta_field(t, "q") ?? "") as i32?;
+  r = (meta_field(t, "r") ?? "") as i32?;
+  h = (meta_field(t, "h") ?? "") as i32?;
+  fc = (meta_field(t, "facing") ?? "") as i32?;
   if q == null || r == null || h == null || fc == null {
     return AnchorRead { ar_code: MR_MALFORMED, ar_anchor: PartAnchor {},
                         ar_why: "an anchor field is missing or is not a number" };

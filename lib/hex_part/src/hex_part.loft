@@ -11,6 +11,7 @@ use catalogue;
 use codec;
 use region;
 use meta;
+use sock;
 use inst;
 use stamp;
 use expand;
