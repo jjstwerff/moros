@@ -4114,6 +4114,51 @@ fn thumbs_refresh(srv: Server, ts: &vector<PartThumb>) -> integer {
   tr_n
 }
 
+// ── THE LIST ITSELF CHANGES — plan 17 `A7.1` ─────────────────────────────────
+//
+// `thumbs_refresh` above watches each part's BYTES. This watches whether the set
+// of parts is still the same set, which nothing did: `catalogue_wire` went out
+// once per connection under the comment *"the catalogue does not change during a
+// session"*, while the loop beside it was already polling the library twice a
+// second for content. A part **added** while the editor ran got no row and no
+// picture, ever; a part **deleted** stayed listed with a frozen thumbnail.
+//
+// ⚠ THAT IS A WALL IN FRONT OF `A7.3`, which is the acceptance test for this whole
+// plan: *open a part as a world, edit, save back*. Saving a new part into a
+// catalogue that cannot grow is a gesture with no visible effect.
+//
+// ⚠ AND EVERY THUMBNAIL GOES OUT AGAIN, NOT JUST THE NEW ONE. A catalogue row
+// index is POSITIONAL — `pt_row = surface_count() + i` over a sorted list — so
+// inserting `prop/anvil` renames every row after it, and `W:`/`Y:` address a row.
+// Re-sending only the new part would leave every later thumbnail addressed to its
+// neighbour: five parts drawn, all but one wrong, and every count still agreeing.
+// The gate inserts a part that sorts FIRST for exactly this reason.
+//
+// ⚠ THE COST IS A LIBRARY RE-MESH AND IT IS PAID ONLY WHEN THE SET MOVES. It is
+// printed rather than assumed — `A7.4` owns the question of what two hundred parts
+// do to it, and this is one of the numbers that closes it. A cheaper version keeps
+// the surviving parts' geometry and re-addresses it, which needs `pt_wire` to stop
+// carrying the row in its text; not worth doing before the number says so.
+// ⚠ IT DETECTS AND DOES NOT REBUILD, and that split is loft's shape rather than a
+// preference. The rebuild REASSIGNS two vectors the main loop owns, and a `&`
+// parameter may not be reassigned here: the lint refuses *"has & but is never
+// modified"* — it does not count a whole-binding assignment as a modification —
+// and dropping the `&` on its advice would make the assignment LOCAL, leaving the
+// caller's list stale so every tick would find the same change and re-broadcast for
+// ever. So the detection is a function and the rebuild sits where the variables do.
+//
+// ⚠ THE WHOLE LIST AS ONE KEY, IN ORDER. `part_list` sorts, so comparing the joined
+// names is a set comparison AND an order comparison in one — and the order is what
+// the row indices are made of, so a rename that reorders the list has to count as a
+// change even when the set has not moved.
+fn library_moved(avail: vector<PartAvail>) -> boolean {
+  lm_was = "";
+  for lm_a in avail { lm_was = lm_was + lm_a.av_name + "\n"; }
+  lm_now = "";
+  for lm_n in hex_part::part_list(parts_root()) { lm_now = lm_now + lm_n + "\n"; }
+  lm_now != lm_was
+}
+
 fn hud_wire(name: text, mode: integer, lev: boolean, rd: boolean, tr: boolean) -> text {
   "H:world {name} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
 }
@@ -5094,8 +5139,12 @@ fn main() {
         // told nothing shows an empty subject line for as long as no toggle moves —
         // which on a quiet session is forever.
         srv.send_to(ev.cid, hud_wire(world_name, cam_mode, levelling, roading, tracing));
-        // The catalogue does not change during a session, so it goes out once,
-        // in the same place and for the same reason as the subject line.
+        // ⚠ IT GOES OUT HERE **AND AGAIN WHENEVER THE LIBRARY MOVES** — plan 17
+        // `A7.1`. This comment used to read *"the catalogue does not change during
+        // a session, so it goes out once"*, which was false the whole time: the
+        // loop below already polled the same library twice a second for CONTENT,
+        // and only the LIST was assumed frozen. A part saved while the editor ran
+        // got no row and no picture, which is a wall in front of `A7.3`.
         srv.send_to(ev.cid, catalogue_wire(part_avail));
         // ⚠ AND ITS IMAGES AFTER IT, NEVER BEFORE. A `Y:` addresses a catalogue
         // ROW by index, so a thumbnail that overtook `N:` would name a row the
@@ -6838,7 +6887,27 @@ fn main() {
         // per-tick event; two stats a second per part is the whole cost, and
         // hanging it off the existing timer means there is one clock to reason
         // about rather than a second one drifting beside it.
-        thumbs_refresh(srv, part_thumbs);
+        // ⚠ THE LIST FIRST, AND THE CONTENTS ONLY IF THE LIST HELD STILL. A set
+        // change rebuilds every `PartThumb` from scratch with current versions, so
+        // running the content check after it would stat every part again to find
+        // nothing — and running it FIRST would broadcast a rebuild for a row that
+        // is about to be renumbered.
+        if library_moved(part_avail) {
+          lib_t0 = ticks();
+          part_avail = part_availability();
+          part_thumbs = part_thumbs_all();
+          lib_w = thumbs_wire(part_thumbs);
+          srv.broadcast(catalogue_wire(part_avail));
+          for lib_msg in lib_w { srv.broadcast(lib_msg); }
+          lib_ms = ticks() - lib_t0;
+          srv.broadcast("S:the library changed — {part_avail.len()} parts, catalogue "
+                      + "and every thumbnail re-sent");
+          println("editor: library changed — {part_avail.len()} parts, {lib_w.len()} "
+                + "thumbnail messages re-sent in {lib_ms} ms (A7.1; a row index is "
+                + "positional, so an insert renames every row after it)");
+        } else {
+          thumbs_refresh(srv, part_thumbs);
+        }
         acc_since = ticks(); acc_proxy = 0; acc_cam = 0; acc_rest = 0;
         nticks = 0; nrebuild = 0;
       }

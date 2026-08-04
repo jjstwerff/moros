@@ -84,6 +84,12 @@ for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', '
 // ⚠ ONE CATALOGUE, NOT A SECOND WIDGET (§C3, and plan 17 `A7.2` says the same).
 // A part and a material are each *a named thing you pick and then place*; what
 // tells them apart is a field on the row, so adding a family is adding rows.
+// ⚠ THE COMPLETENESS CLAIM LIVES IN `library.mjs`, NOT HERE (plan 17 `A7.1`).
+// `>= 1` is deliberately weak — this gate is about `H:` and the catalogue's SHAPE,
+// and a hard part count here would go red every time somebody authors a part, which
+// is a gate failing for something it is not about. That `data/parts/` and the list
+// hold exactly the same names — and that the list follows the library when it
+// changes — is `library.mjs`'s, where it can add and remove parts to prove it.
 const parts = cat.filter((r) => r.kind === 'part');
 check(parts.length >= 1, `the catalogue lists what is in data/parts/ (${parts.length})`);
 check(parts.some((r) => r.name === 'house/cottage'),

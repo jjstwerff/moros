@@ -931,10 +931,58 @@ leave the library holding the variant. Measured: `shrine.hxw`'s md5 is unchanged
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A7.1` | The server lists `data/parts/` and sends it. | the list arrives | S |
+| ✅ `A7.1` | The server lists `data/parts/` and sends it. | **DONE**, and the step was not where it looked. The list already arrived (#18 `B5.1`) — what was missing is that **nothing checked it was the whole library**, and that the list could not CHANGE. `tools/gates/world/library.mjs`, 13 checks; `library_moved` in the server; every gate now gets its own copy of `data/parts/`. | S |
 | `A7.2` | The picker in the editor — ⚠ **this is #18 `B5`**, not a second widget. | one catalogue, both families | S |
 | `A7.3` | A part-editing mode: open a part as a world, edit, save back. | **a house authored end-to-end without touching loft** — the acceptance test for the whole plan | M |
 | `A7.4` | Keyed reads, if two hundred parts make whole-file loading hurt (§P2). | measured in `w_tau` and milliseconds **before** it is built — the deferral from `A1` closed with a number, or closed as unnecessary | M |
+
+### What `A7.1` turned up
+
+⚠ **THE LIST ALREADY ARRIVED, AND NOTHING CHECKED IT WAS THE WHOLE LIBRARY.** `subject.mjs` asked
+for `parts.length >= 1` and that `house/cottage` was among them — which a server listing **one part
+of five** passes happily. `A6.2` and `A6.3` had just added four parts that no gate could see. The
+completeness check reads `data/parts/` itself and compares both ways: none missing, none invented.
+⚠ With the instrument checked against something it should find, because a disk reader that returned
+nothing makes *every part on disk is listed* vacuously true.
+
+⚠ **AND THE LIST COULD NOT CHANGE, UNDER A COMMENT SAYING IT DOES NOT NEED TO.** `catalogue_wire`
+went out once per connection beside *"the catalogue does not change during a session"* — while the
+loop three hundred lines below already polled the same library twice a second for CONTENT
+(`thumbs_refresh`, plan 18 `B5.3`). So the LIST was assumed frozen and the BYTES were not, in one
+file, for months. A part appearing while the editor ran got no row and no picture ever; a part
+removed stayed listed with a frozen thumbnail. ⚠ **That is a wall in front of `A7.3`** — *open a
+part, edit, save back* is the acceptance test for this whole plan, and saving into a list that
+cannot grow is a gesture with no visible effect.
+
+⚠ **A CATALOGUE ROW INDEX IS POSITIONAL, SO AN INSERT RENAMES EVERY ROW AFTER IT.**
+`pt_row = surface_count() + i` over a sorted list, and `W:`/`Y:` address a row — so the whole
+thumbnail set has to go out again, not just the new part's. Re-sending one would leave every later
+picture addressed to its neighbour: five parts drawn, four wrong, every count agreeing. **The gate
+inserts a part that sorts FIRST for exactly this reason**; inserting at the end would pass the
+broken server. Sabotaged: re-sending only the new row fails exactly that one check of thirteen.
+
+⚠ **AND NOTHING IS SENT WHEN THE LIBRARY HOLDS STILL**, which is the control the rest of the gate
+needs: a server that broadcast the catalogue every tick passes all twelve other checks. Sabotaging
+the whole feature back to its pre-`A7.1` state fails six of thirteen.
+
+⚠ **EVERY GATE NOW GETS ITS OWN COPY OF `data/parts/`.** A gate cannot test *a part appears* without
+adding one, and adding one to a committed directory corrupts a tree two agents share and leaves the
+repository dirty when it fails. `probe/b1`'s `B5.3` had already hand-rolled a scratch root for that
+reason; `run-gates.sh` now makes it the rule, which costs a 90 KB copy per gate.
+
+⚠ **AND THE HELPER COULD NOT BE WRITTEN THE OBVIOUS WAY** —
+**[loft#772](https://github.com/loft-lang/loft/issues/772)**, filed. A `&` parameter reassigned
+from a local or a call is a hard error reading *"has & but is never modified; remove the &"*; from
+a LITERAL it compiles and propagates. And the fix it names is the silently wrong one: measured,
+`with &: caller sees 3` and `without &: caller sees 0`. Same shape as #760 — a redundancy lint that
+is right at some sites and wrong at others in identical words. The workaround here is to split
+detection from mutation and let the caller assign, which is why `library_moved` returns a boolean
+and the rebuild sits in the main loop.
+
+⚠ **WHAT `A7.1` DELIBERATELY DID NOT ADD: the joints.** A picker needs *what fits this socket*, and
+`parts_for_socket` has been built and tested since `A4.2` with no consumer. Putting `FITS` and
+`SOCK` on the wire now would be a message no client reads — this tree's own *built and not called*
+trap — so it belongs with `A7.3`, which is the first gesture that binds anything.
 
 ---
 

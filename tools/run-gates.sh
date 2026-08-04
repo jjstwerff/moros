@@ -43,7 +43,23 @@ if [ "${1:-}" = "--one" ]; then
     esac
   done
 
-  EDITOR_PORT="$port" loft ${GATE_LOFT:---interpret} --lib lib/ src/editor_server.loft > "$log" 2>&1 &
+  # ⚠ EVERY GATE GETS ITS OWN COPY OF THE PART LIBRARY — plan 17 `A7.1`.
+  #
+  # `data/parts/` is COMMITTED and this tree is worked by more than one agent, so a
+  # gate that writes there corrupts somebody's working copy and leaves the
+  # repository dirty when it fails. `probe/b1`'s `B5.3` already hand-rolled a
+  # scratch root for exactly that reason; this makes it the rule instead of the
+  # exception, and it is what lets a gate ADD or REMOVE a part while the editor
+  # watches — which is the only way to test that the catalogue can change at all.
+  #
+  # ⚠ ABSOLUTE, because the server resolves `EDITOR_PARTS` as given and a gate's
+  # own cwd is not the server's guarantee. And cleaned up on every exit path below,
+  # including the one where the server never listened.
+  parts=$(mktemp -d)
+  cp -r data/parts/. "$parts/" 2>/dev/null || true
+
+  EDITOR_PORT="$port" EDITOR_PARTS="$parts" \
+    loft ${GATE_LOFT:---interpret} --lib lib/ src/editor_server.loft > "$log" 2>&1 &
   pid=$!
   listening=0
   i=0
@@ -58,16 +74,18 @@ if [ "${1:-}" = "--one" ]; then
     printf '%-34s %s\n' "$name" "SERVER NEVER LISTENED — see $log"
     grep -vE '^warning|^ *\||^ *-->|^ *=|^advice' "$log" | tail -6
     kill "$pid" 2>/dev/null
+    rm -rf "$parts"
     exit 1
   fi
 
   # ⚠ STDERR TO ITS OWN FILE. A gate that times out waiting for an ack it will
   # never get says so on stderr and then carries on green — folding that into the
   # captured stdout hid it behind the one line this prints.
-  out=$(EDITOR_PORT="$port" node "$gate" 2>".gate-$name.err")
+  out=$(EDITOR_PORT="$port" EDITOR_PARTS="$parts" node "$gate" 2>".gate-$name.err")
   rc=$?
   kill "$pid" 2>/dev/null
   wait "$pid" 2>/dev/null
+  rm -rf "$parts"
   end=$(date +%s%N)
   secs=$(( (end - start) / 100000000 ))
 

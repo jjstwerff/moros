@@ -22,10 +22,10 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A6.2`
+## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.2`
 
-`make gate` **35 green** · `make lib-test` **2517, both backends** · `make parts` green
-(`data/parts/` byte-identical, all five files) · `npm test` **53** · layering silent. All measured
+`make gate` **36 green** · `make lib-test` **2517, both backends** · `make parts` green
+(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
 2026-08-04 on the installed loft.
 
 ⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
@@ -45,7 +45,7 @@ job count.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **212** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **217** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -65,17 +65,18 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.1` — the server lists `data/parts/` and sends it
+### The next thing to do is #17 `A7.3` — a part-editing mode
 
-**All of `A6` is done.** `A7` is the picker: `A7.1` the list on the wire, `A7.2` *which is #18's
-`B5`, not a second widget*, `A7.3` a part-editing mode — **the acceptance test for the whole
-plan** — and `A7.4` the keyed-read question, to be closed with a number or closed as unnecessary.
+**All of `A6` and `A7.1` are done, and `A7.2` is #18's `B5`, already built.** `A7.3` is *open a
+part as a world, edit, save back* — **a house authored end-to-end without touching loft**, which
+is the acceptance test for the whole plan. `A7.4` (keyed reads) stays deferred until a number says
+it hurts; `src/part_build.loft` prints the cost every run.
 
-⚠ **`A7.1` MAY ALREADY BE HALF-BUILT.** The catalogue on the wire (`N:`) lists what is in
-`data/parts/` today — five parts, each with a thumbnail — so read #18's `B5` before adding a
-second listing. What `A7.1` may actually want is the *sockets and fits* alongside the names, which
-is what a picker needs to offer *what goes in this joint* (`parts_for_socket`, built at `A4.2` and
-still called by tests only).
+⚠ **`A7.3` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
+`A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
+client reads is this tree's own trap. The first gesture that BINDS something is what earns them.
+⚠ And `A3.4`'s save check finally gets its hook here too: §P8 says *checked on save*, and `A7.3` is
+the first save.
 
 **Two steps are ◐ rather than done, each for a reason that is still true:**
 
@@ -143,6 +144,18 @@ one**, and check the negation's control too (a `.glb` anywhere else must still b
 helper is listed among the test functions and executed in the runner's order. A parameter is what
 keeps a helper a helper.
 
+**[loft#772](https://github.com/loft-lang/loft/issues/772) is filed and open** — a `&` parameter
+**reassigned** from a local or a call is a hard error, *"has & but is never modified; remove the
+&"*; from a LITERAL it compiles and propagates fine. ⚠ **The fix it names is the silently wrong
+one**: measured, `with &: caller sees 3` and `without &: caller sees 0`. Same shape as #760 — a
+redundancy lint right at some sites and wrong at others in identical words. Workaround: split
+detection from mutation and let the caller do the assignment.
+
+**Every gate now gets its own copy of `data/parts/`** (`tools/run-gates.sh` sets `EDITOR_PARTS` to
+a temp copy), so a gate may add and remove parts to prove the catalogue follows the library. ⚠ **A
+gate must never write to the committed library** — this tree is worked by more than one agent, and
+a gate that fails leaving the repository dirty is worse than no gate.
+
 **[loft#767](https://github.com/loft-lang/loft/issues/767) is filed and open** — a string literal
 nested inside an interpolation keeps its own `{…}` as **literal text**, so
 `"{("{x}" as float?) ?? 0.0}"` reads `{x}` back as unparseable and reports the default. A silent
@@ -157,14 +170,15 @@ named, and one list holds parts and materials alike, each row with a name, an im
 availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of
-`A4`, `A5.1`, `A5.2`'s state half and all of `A6` complete.** `A3.4` and `A5.2` are ◐; the
+`A4`, `A5.1`, `A5.2`'s state half, all of `A6`, and `A7.1`/`A7.2` complete.** `A3.4` and `A5.2` are ◐; the
 reasons are under *the next thing to do* above. In order: `A1.1` region copy · `A1.2` round-trip
 and `part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk ·
 `A2.2` the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check ·
 `A3.2` expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1`
 `SOCK`/`FITS` · `A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading
 measurement · `A5.1` the hinge · `A5.2`'s state half · `A6.1` the `MESH` section · `A6.2` the
-statue on the plinth · `A6.3` the swap.
+statue on the plinth · `A6.3` the swap · `A7.1` the catalogue IS the library, and can change ·
+`A7.2` the picker, which is #18's `B5`.
 
 ⚠ **`data/parts/` NOW HOLDS TWO FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`)
 and `prop/{statue,seated,plinth,shrine}.hxw` + two `.glb` (by `src/prop_build.loft`). `make parts`
