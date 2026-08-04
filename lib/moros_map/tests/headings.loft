@@ -1,0 +1,280 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A4.4` — what a heading costs a BODY, measured rather than argued.
+//
+// ⚠ THIS IS THE PLACEMENT QUESTION, AND IT IS NOT THE DIRECTION QUESTION.
+// `hex_shape::hexwall` already settled the other one and says so in capitals:
+// *"THE 24 DIRECTIONS, AND WHY ONLY 12 ARE FOR HOUSES"* — even `d24` are the
+// twelve exact lattice steps, odd ones wobble between two headings and land
+// ~1.1° off nominal, and *"HOUSES ARE NEVER DRAWN WITH AN IN-BETWEEN ANGLE"*.
+// But a wall RUN is a one-dimensional path, and a path may staircase: it has no
+// interior to distort. A PART is a body, and rotating a body is a map from the
+// lattice onto itself. Those are different questions with different answers, and
+// PARTS §Open justified 24 part-headings by citing the run's 24 — which is the
+// shape of mistake `STATE` §B names: *a sentence that mentions a seam is not a
+// seam argument*.
+//
+// ⚠ SO THE NUMBERS BELOW ARE PRINTED AND NOT ASSERTED TO BE ZERO, which is what
+// plan 17 `A4.4` asks for. What IS asserted is the count: how many of the 24 move
+// a body with no loss at all. `clock.loft` next door measures the twelve
+// PLACEMENTS (six turns and six flips); this measures the twenty-four HEADINGS.
+use moros_map;
+use hex_field;
+use hex_grid;
+
+const D24 = 24;
+
+// ⚠ A DISK, AND ITS SYMMETRY DOES NOT HIDE ANYTHING HERE. Decision #9 warns that
+// a symmetric subject cannot see a symmetric bug — true of a SHAPE comparison,
+// and this compares nothing of the sort: it counts cells that collide and
+// neighbour pairs that stop being neighbours, per cell, which a rotationally
+// symmetric body reports exactly as faithfully as a lopsided one. What a disk
+// buys is DENSITY — 37 cells with 90 interior adjacencies — so a snap that
+// folds two cells together has somewhere to do it.
+struct Cell { ce_q: integer, ce_r: integer }
+
+fn disk(rad: integer) -> vector<Cell> {
+  out: vector<Cell> = [];
+  for r in (0 - 2 * rad)..(2 * rad + 1) {
+    for q in (0 - 2 * rad)..(2 * rad + 1) {
+      if hex_distance(0, 0, q, r) <= rad { out += [Cell { ce_q: q, ce_r: r }]; }
+    }
+  }
+  out
+}
+
+fn body() -> vector<Cell> { disk(3) }
+
+fn rot_x(x: float, y: float, th: float) -> float { x * cos(th) - y * sin(th) }
+fn rot_y(x: float, y: float, th: float) -> float { x * sin(th) + y * cos(th) }
+
+fn radians(f: integer) -> float { (f as float) * 15.0 * PI / 180.0 }
+
+// What heading `f` costs the body.
+//
+// ⚠ THE RESIDUAL IS IN HEX STEPS, not in whatever `hex_to_px` happens to scale
+// to. `HEX_LEN` is one step, so dividing by it makes the number mean something
+// on any world unit — *how far off, as a fraction of a cell* — which is the form
+// a reader can judge without knowing the convention.
+struct Cost {
+  co_lost:  integer,   // source cells that landed on a cell another one took
+  co_break: integer,   // neighbour pairs that stopped being neighbours
+  co_res:   float,     // the worst distance from the true point to the cell it snapped to
+  co_ties:  integer,   // rotated points sitting exactly between two cells
+}
+
+// Is this rotated point equidistant from the cell it snapped to and one of that
+// cell's neighbours?
+//
+// ⚠ THIS EXISTS BECAUSE ONE ROW OF THE TABLE WOULD OTHERWISE BE UNEXPLAINED, and
+// an unexplained number in a measurement gets read as whatever the next reader
+// expects. 90° loses two cells and 270° loses none, which looks like a defect in
+// one of them; it is neither. At those headings some rotated points land exactly
+// ON a cell boundary, so *the nearest cell* is not a well-defined thing and any
+// deterministic round has to pick a side — the same side both times, which is how
+// two cells end up on one.
+fn on_a_boundary(x: float, y: float, nq: integer, nr: integer) -> boolean {
+  (bx, by) = hex_to_px(nq, nr);
+  d0 = sqrt((x - bx) * (x - bx) + (y - by) * (y - by)) ?? 0.0;
+  tie = false;
+  for k in 0..6 {
+    (mq, mr) = hex_neighbor(nq, nr, k);
+    (mx, my) = hex_to_px(mq, mr);
+    d1 = sqrt((x - mx) * (x - mx) + (y - my) * (y - my)) ?? 0.0;
+    gap = d1 - d0;
+    if gap < 0.0 { gap = 0.0 - gap; }
+    if gap < 0.000000001 { tie = true; }
+  }
+  tie
+}
+
+fn cost_of(f: integer) -> Cost {
+  th = radians(f);
+  b = body();
+  tq: vector<integer> = [];
+  tr: vector<integer> = [];
+  worst = 0.0;
+  ties = 0;
+  for c in b {
+    (x, y) = hex_to_px(c.ce_q, c.ce_r);
+    rx = rot_x(x, y, th);
+    ry = rot_y(x, y, th);
+    (nq, nr) = px_to_hex(rx, ry);
+    tq += [nq];
+    tr += [nr];
+    (bx, by) = hex_to_px(nq, nr);
+    d = (sqrt((rx - bx) * (rx - bx) + (ry - by) * (ry - by)) ?? 0.0) / HEX_LEN;
+    if d > worst { worst = d ?? 0.0; }
+    if on_a_boundary(rx, ry, nq, nr) { ties = ties + 1; }
+  }
+  distinct = 0;
+  for i in 0..len(tq) {
+    seen = false;
+    for j in 0..i {
+      if (tq[i] ?? 0) == (tq[j] ?? 0) && (tr[i] ?? 0) == (tr[j] ?? 0) { seen = true; }
+    }
+    if !seen { distinct = distinct + 1; }
+  }
+  broke = 0;
+  for i in 0..len(b) {
+    for j in (i + 1)..len(b) {
+      a = b[i] ?? Cell {};
+      z = b[j] ?? Cell {};
+      if hex_distance(a.ce_q, a.ce_r, z.ce_q, z.ce_r) == 1 {
+        if hex_distance(tq[i] ?? 0, tr[i] ?? 0, tq[j] ?? 0, tr[j] ?? 0) != 1 {
+          broke = broke + 1;
+        }
+      }
+    }
+  }
+  Cost { co_lost: len(b) - distinct, co_break: broke, co_res: worst, co_ties: ties }
+}
+
+// ── The measurement ──────────────────────────────────────────────────────────
+
+// ⚠ PRINTED, NOT ASSERTED — plan 17 `A4.4`'s own words. A threshold on these
+// numbers would be a threshold on a design decision nobody has taken yet; the
+// table is what the decision gets taken FROM.
+fn test_the_cost_of_every_heading_is_printed() {
+  b = body();
+  pairs = 0;
+  for i in 0..len(b) {
+    for j in (i + 1)..len(b) {
+      a = b[i] ?? Cell {};
+      z = b[j] ?? Cell {};
+      if hex_distance(a.ce_q, a.ce_r, z.ce_q, z.ce_r) == 1 { pairs = pairs + 1; }
+    }
+  }
+  println("");
+  println("  A4.4 — rotating a body of {len(b)} cells ({pairs} adjacent pairs) by each of "
+        + "the {D24} headings");
+  println("    d24  angle  lost  torn  on a boundary  worst residual (hex steps)");
+  for f in 0..D24 {
+    c = cost_of(f);
+    println("    {f}\t{f * 15}\t{c.co_lost}\t{c.co_break}\t{c.co_ties}\t\t{c.co_res}");
+  }
+  println("");
+  assert(pairs > 0, "the body has no adjacent pairs, so nothing above measures anything");
+}
+
+// ⚠ THE CLAIM THE TABLE SUPPORTS, AND IT IS FALSIFIABLE. Six of the twenty-four
+// move a body with no loss and no torn adjacency; the other eighteen do not.
+// ⚠ AND THE SIX ARE THE MULTIPLES OF 60°, NOT THE EVEN `d24`. `hex_shape`'s even
+// twelve are exact as DIRECTIONS — the twelve headings of H12, 30° apart — and
+// half of those are NOT exact as rotations of a body, because a hex lattice
+// turned 30° is a different lattice. That is the whole distinction this file
+// exists to make, and it is why 24 could not simply be inherited from the runs.
+fn test_exactly_six_headings_move_a_body_without_losing_anything() {
+  exact = "";
+  n = 0;
+  for f in 0..D24 {
+    c = cost_of(f);
+    if c.co_lost == 0 && c.co_break == 0 { exact = exact + "{f} "; n = n + 1; }
+    }
+  assert(n == 6, "{n} of the {D24} headings are exact, not 6: {exact}");
+  assert(exact == "0 4 8 12 16 20 ", "the exact set is '{exact}'");
+}
+
+// ⚠ AND THE THIRTY-DEGREE HEADINGS ARE NOT A NEAR MISS. `hex_shape`'s twelve are
+// even `d24`, so 2, 6, 10, 14, 18 and 22 are exact LINE directions — and this is
+// what they cost a BODY. Called out separately because *"the editor already uses
+// 24"* is only half wrong, and the half that is right is about lines.
+fn test_the_thirty_degree_headings_are_exact_for_a_line_and_not_for_a_body() {
+  for k in 0..6 {
+    // ⚠ `f` IS EVEN, which is `hex_shape::wall_is_exact`'s definition of an exact
+    // line direction. It is not re-asserted here: that claim belongs to
+    // `hex_shape`'s own suite, and restating it would be a second copy of a rule
+    // that can then drift. What is asserted is what THIS file owns — the cost.
+    f = 2 + k * 4;
+    c = cost_of(f);
+    assert(c.co_lost > 0 || c.co_break > 0,
+           "d24 {f} ({f * 15}°) costs a body nothing, so a 30° turn IS a lattice "
+         + "rotation and the six-exact claim is wrong");
+  }
+}
+
+// ── The instrument, checked against something it should find ─────────────────
+
+// Does the float-and-snap path at heading `f` land every cell exactly where the
+// exact integer rotation `cell_rot(..., n)` puts it?
+fn agrees(f: integer, n: integer) -> boolean {
+  th = radians(f);
+  ok = true;
+  for c in body() {
+    (x, y) = hex_to_px(c.ce_q, c.ce_r);
+    (nq, nr) = px_to_hex(rot_x(x, y, th), rot_y(x, y, th));
+    (eq, er) = cell_rot(c.ce_q, c.ce_r, n);
+    if nq != eq || nr != er { ok = false; }
+  }
+  ok
+}
+
+// ⚠ A FLOAT PATH REPORTING AN ABSENCE IS EXACTLY THE INSTRUMENT THIS TREE
+// DISTRUSTS, so it is held against `cell_rot` — pure integer arithmetic, no
+// rounding anywhere — at the six headings where the two must agree cell for
+// cell. Two independent constructions landing on the same 37 cells is what makes
+// the eighteen non-zero rows above evidence rather than rounding noise.
+//
+// ⚠ THE TURN DIRECTION IS MEASURED, NOT ASSUMED. `lattice_rot60`'s comment says
+// counter-clockwise and `moros_map`'s says `cell_rot` turns clockwise; rather
+// than pick one, heading 4 is compared against BOTH and exactly one must match.
+fn test_the_float_path_and_the_exact_integer_rotation_are_one_map() {
+  fwd = agrees(4, 1);
+  bwd = agrees(4, 0 - 1);
+  assert(fwd != bwd,
+         "heading 4 matches cell_rot +1 = {fwd} and −1 = {bwd}; one and only one "
+       + "should hold, so the instrument is not measuring a rotation at all");
+  step = if fwd { 1 } else { 0 - 1 };
+  for k in 0..6 {
+    assert(agrees(k * 4, k * step),
+           "heading {k * 4} ({k * 60}°) is not cell_rot by {k * step} steps — the "
+         + "float path and the integer path disagree where they cannot");
+  }
+  // ⚠ AND THE CONTROLS, because `agrees` returning true for everything would pass
+  // every line above. It must say NO where the answer is no.
+  assert(!agrees(4, 0), "the comparison calls a 60° turn the identity");
+  assert(!agrees(2, 0), "the comparison calls a 30° turn the identity");
+  assert(!agrees(2, 1), "the comparison calls a 30° turn a 60° one");
+}
+
+// ⚠ AT A 30° HEADING *THE NEAREST CELL* IS NOT A WELL-DEFINED THING, and that is
+// a stronger statement than any residual. Six of the thirty-seven rotated points
+// land EXACTLY on a cell boundary — equidistant from two centres — so which cell
+// they belong to is decided by whichever way a rounding rule breaks a tie, not by
+// the geometry. That is what the one odd row of the table is: 90° is the heading
+// where the tie-break happens to send two points the same way, and 270° has the
+// same six ties and happens to split them. ⚠ **The two rows differ by a rounding
+// convention, not by an angle**, which is exactly the kind of number that gets
+// read as a defect in one of them.
+//
+// ⚠ AND THE 15° FAMILY HAS NO TIES AT ALL — it is well-defined and simply wrong,
+// while the 30° family is arbitrary. Two different failures, and only counting
+// them apart shows it.
+fn test_a_thirty_degree_heading_lands_six_cells_on_a_boundary() {
+  for k in 0..6 {
+    ties = cost_of(2 + k * 4).co_ties;
+    assert(ties == 6, "d24 {2 + k * 4} has {ties} points on a boundary, not 6");
+  }
+  for k in 0..6 {
+    assert(cost_of(k * 4).co_ties == 0, "an exact heading put a point on a boundary");
+    assert(cost_of(1 + k * 4).co_ties == 0, "a 15° heading put a point on a boundary");
+    assert(cost_of(3 + k * 4).co_ties == 0, "a 45° heading put a point on a boundary");
+  }
+  // ⚠ The loss is a tie-break and nothing else: the only heading that loses cells
+  // is one of the six with ties, and it is the only one anywhere in the table.
+  losing = "";
+  for f in 0..D24 { if cost_of(f).co_lost > 0 { losing = losing + "{f} "; } }
+  assert(losing == "6 ", "the headings that lose cells are '{losing}', not just 90°");
+}
+
+// ⚠ AND THE EXACT SIX COST NOTHING AT ALL, which is the other half of the table:
+// their residual is not *small*, it is zero to the last bit, because the snap is
+// landing on a lattice point rather than near one.
+fn test_the_six_exact_headings_have_no_residual_at_all() {
+  for k in 0..6 {
+    c = cost_of(k * 4);
+    assert(c.co_res < 0.000001,
+           "heading {k * 4} has residual {c.co_res}, so a 60° turn is being "
+         + "approximated rather than applied");
+  }
+}

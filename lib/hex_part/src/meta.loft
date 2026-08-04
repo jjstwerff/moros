@@ -23,8 +23,21 @@ pub const PK_PROP    = 4;
 pub const PK_FITTING = 5;
 
 // The 24 headings the editor already uses (§P3). A facing is an index into them,
-// never an angle: the approximation each heading costs is `A4.4`'s to measure,
-// and storing the index keeps that measurement possible after the fact.
+// never an angle.
+//
+// ⚠ THE FORMAT HOLDS 24 AND A PART CAN TAKE SIX, and `A4.4` is why the two
+// numbers differ rather than one of them being wrong. The 24 is `hex_shape`'s
+// `d24` — the space wall RUNS are drawn in, and worth sharing so the tree has one
+// heading space. But a run is a one-dimensional path and may staircase; a part is
+// a BODY, and rotating a body is a map from the lattice onto itself, which only
+// the six multiples of 60° are. Measured on a 37-cell disk: the other eighteen
+// tear 12 to 22 of its 90 adjacencies, and the 30° family puts six cells exactly
+// on a boundary where *the nearest cell* is a tie-break rather than a fact
+// (`moros_map/tests/headings.loft` prints the table every run).
+//
+// So this stays 24 — the record is the heading an author ASKED for — and
+// `expand`/`bake` refuse the eighteen, naming the measurement. ⚠ A facing outside
+// 0..23 is still refused here, because that is not a heading at all.
 pub const FACINGS = 24;
 
 pub struct PartMeta {

@@ -154,8 +154,8 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
     c = got2.ir_items[i] ?? PartInst {};
     if c.pi_facing != 0 {
       return Bake { bk_code: BK_FACING,
-                    bk_why: "'{c.pi_part}' faces {c.pi_facing}; only 0 can be "
-                          + "baked until A4.4 rotates a part's cells" };
+                    bk_why: "'{c.pi_part}' faces {c.pi_facing}; only 0 is applied today, "
+                          + "and only 0, 4, 8, 12, 16 and 20 can ever be (A4.4)" };
     }
     (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
     down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, depth + 1, tab, here);
@@ -173,8 +173,8 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
       sk = sa.sa_socket;
       if socket_heading(sk) != 0 {
         return Bake { bk_code: BK_FACING,
-                      bk_why: "socket '{b.bd_socket}' faces {socket_heading(sk)}; only "
-                            + "0 can be baked until A4.4 rotates a part's cells" };
+                      bk_why: "socket '{b.bd_socket}' faces {socket_heading(sk)}; only 0 is "
+                            + "applied today, and only the six 60° multiples ever (A4.4)" };
       }
       (bq, br2) = un_origin(nq, nr, sk.sk_q, sk.sk_r);
       into = bake_at(root, b.bd_part, bq, br2, anchor + c.pi_h + sk.sk_h,

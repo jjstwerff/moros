@@ -321,10 +321,13 @@ pub fn part_sockets(w: World) -> SockRead {
 // exactly four apart — `FACINGS / EDGES` divides without remainder, and a test
 // asserts that rather than letting `4` sit here as a magic number.
 //
-// ⚠ WHICH heading edge `e` actually points at is `A4.4`'s to measure against the
-// lattice, and nothing depends on it yet: `expand` and `bake` refuse any non-zero
-// facing until `A4.4` can rotate a part's cells, so only `edge 0 → heading 0` is
-// ever exercised. Stated so the untested half is not mistaken for a verified one.
+// ⚠ WHICH heading edge `e` actually points at is still untested, and nothing
+// depends on it: `expand` and `bake` apply only facing 0, so only `edge 0 →
+// heading 0` is ever exercised. Stated so the untested half is not mistaken for a
+// verified one. ⚠ And `A4.4` narrowed what can ever be exercised — of the 24
+// headings only the six multiples of 60° are rotations of the lattice onto
+// itself, so `edge 1 → heading 4` is reachable and `edge 1` under a HEADING mount
+// at 1, 2, 3, 5… is not (`moros_map/tests/headings.loft`).
 pub fn socket_heading(s: Socket) -> integer {
   if s.sk_mount == SM_HEAD { return s.sk_at; }
   s.sk_at * (FACINGS / EDGES)

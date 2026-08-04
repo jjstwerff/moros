@@ -412,11 +412,42 @@ tests and gates — both above.
 
 ## Open, and decided rather than asked
 
-- **Heading granularity: 24, not 12.** `hex_form` canonicalises a footprint over 12
-  orientations, and the editor's own wall runs use 24. A part placed at a heading with no
-  lattice family is *approximated*, and that is the honest word for it — the alternative is
-  refusing half the headings an author can already point at. `A1` records the requested
-  heading; the approximation is measured at `A4` and written down.
+- **Heading granularity: the format records 24 and a part can take SIX.** ⚠ **This entry
+  said something else until `A4.4` measured it**, and the old wording is worth keeping in
+  view because the mistake in it is a common one: *"the editor's own wall runs use 24 … a
+  part placed at a heading with no lattice family is approximated, and that is the honest
+  word for it — the alternative is refusing half the headings an author can already point
+  at."* Two things are wrong with that.
+
+  **First, it borrows a fact about LINES to settle a question about BODIES.** The 24 comes
+  from `hex_shape::hexwall`'s `d24`, whose own header reads *"THE 24 DIRECTIONS, AND WHY
+  ONLY 12 ARE FOR HOUSES"* — even `d24` are exact lattice steps, odd ones wobble between two
+  headings, and *"HOUSES ARE NEVER DRAWN WITH AN IN-BETWEEN ANGLE"*. A wall run is a
+  one-dimensional path and a path may staircase; a part is a body, and rotating a body is a
+  map from the lattice onto itself. `STATE` §B names this shape: *a sentence that mentions a
+  seam is not a seam argument.*
+
+  **Second, *approximated* was the wrong word for two thirds of them.** Measured on a
+  37-cell disk with 90 interior adjacencies (`moros_map/tests/headings.loft`, which prints
+  the whole table every run):
+
+  | headings | what happens |
+  |---|---|
+  | `0 4 8 12 16 20` — the 60° multiples | **exact.** No cell lost, no adjacency torn, residual zero to the last bit — cross-checked cell-for-cell against `hex_field::cell_rot`, which is integer-only |
+  | the 15° and 45° families (12 of them) | **well-defined and wrong.** 12 of 90 adjacencies tear; worst residual **0.522 hex steps** against a covering radius of 0.577, so near the worst a snap can be |
+  | the 30° family (6 of them) | **arbitrary.** Six of the 37 rotated points land *exactly* on a cell boundary, so *the nearest cell* is decided by a tie-break rather than by geometry. 18 of 90 adjacencies tear, and at **90°** the tie-break sends two cells to one — the only cell loss anywhere in the table |
+
+  A torn adjacency is the number that matters and it is the one nobody would have looked
+  for: **no cells are lost, every count agrees with itself, and the house has holes in its
+  walls.**
+
+  So: the format keeps `FACINGS = 24` — one heading space shared with the runs is worth
+  having, and the record is the author's *requested* heading — and `expand`/`bake` apply the
+  six and refuse the rest, naming the measurement. ⚠ **Still open, and it is an authoring
+  call rather than a lattice one:** `moros_map` has twelve exact *placements*, the six turns
+  plus six **flips** that land between them (`clock.loft`, decision #8). A flip is a mirror,
+  not a rotation — a house placed at a 30° hour has its door on the other side. Whether a
+  part may be mirrored to reach those six is not something the lattice can answer.
 - **Size classes are names, not numbers.** `door/2x3` rather than a width in cells, because a
   cell width is a lattice fact and a door size is an authoring intent; two frames that admit
   the same leaves should say so even if their cells differ.

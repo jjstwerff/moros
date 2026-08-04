@@ -58,17 +58,30 @@ pub struct Expand {
   ex_why:   text = "",
 }
 
-// ⚠ A FACING IS REFUSED, NOT IGNORED. `pi_facing` is an index into the 24
-// headings and nothing in this tree can yet rotate a part's CELLS — `snap_rot`
-// is about wall surfaces, a different question. Applying it is `A4.4`, where the
-// approximation gets measured. Silently expanding a facing-6 instance as facing
-// 0 would place a house at the wrong orientation and every count would still
-// agree with itself, which is this tree's most expensive failure shape.
+// ⚠ A FACING IS REFUSED, NOT IGNORED. Silently expanding a facing-6 instance as
+// facing 0 would place a house at the wrong orientation and every count would
+// still agree with itself, which is this tree's most expensive failure shape.
+//
+// ⚠ AND `A4.4` HAS MEASURED WHAT THE REFUSAL IS REALLY ABOUT — it is not *"until
+// somebody writes the rotation"*. Of the 24 headings a part can be given, only
+// the six multiples of 60° are rotations of the lattice onto itself. The 15° and
+// 45° families tear 12 of a test body's 90 adjacencies with a residual of 0.522
+// hex steps against a covering radius of 0.577; the 30° family lands six of 37
+// cells exactly ON a cell boundary, so which cell they belong to is a tie-break
+// rather than a fact, and at 90° that tie-break puts two cells on one.
+// `moros_map/tests/headings.loft` prints the whole table every run.
+//
+// ⚠ SO EIGHTEEN OF THE TWENTY-FOUR ARE NOT AWAITING AN IMPLEMENTATION, and the
+// number that says so is the torn adjacencies: no cells are lost, every count
+// agrees with itself, and the house has holes in its walls. What remains to build
+// is applying the SIX, which needs a lattice rotation this package deliberately
+// has no dependency for — see `loft.toml`.
 fn facing_ok(name: text, facing: integer) -> Expand {
   if facing != 0 {
     return Expand { ex_code: EX_FACING,
-                    ex_why: "'{name}' faces {facing}; only 0 can be expanded "
-                          + "until A4.4 rotates a part's cells" };
+                    ex_why: "'{name}' faces {facing}; only 0 is applied today, and only "
+                          + "0, 4, 8, 12, 16 and 20 can ever be — the other 18 headings "
+                          + "tear a body's adjacencies (A4.4, moros_map/tests/headings)" };
   }
   Expand { ex_code: EX_OK }
 }
