@@ -27,7 +27,7 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **84** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **95** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -47,7 +47,25 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A3.3` — `expand == bake`. **#17 `A3.2` is done.**
+### The next thing to do is #17 `A3.4` — the depth bound on save. **`A3.2` and `A3.3` are done.**
+
+**`A3.3` is done, and its finding is about FIXTURES.** `lib/hex_part/src/bake.loft` flattens a
+part and its nest into one `INST`-free part; `expand == bake` holds cell for cell over paths
+that share only the part files and `un_origin`. ⚠ **THE FIRST FIXTURE COULD NOT FAIL.** `bake`
+passed on its first run, so `un_origin` was replaced with the naive `cq + dq` **deliberately** —
+and all 95 tests stayed green. A part placed at `(0,0)` makes the frame composition an IDENTITY,
+so a one-level nest never exercises it. Three levels is the smallest fixture that bites: the
+grandchild composes from `(2,1)`, where `un_origin` gives `(6,2)` and the naive sum `(5,2)`, and
+the sabotage then fails at `cell 5,2: 1 cells vs 2`. The test was **seen red before it was
+trusted**. ⚠ `A4.3` composes frames the same way and needs the same depth in its fixture.
+
+⚠ **AND THE TWO PATHS ARE KEPT APART DELIBERATELY** — `expand` stamps per part at composed WORLD
+coordinates merging into terrain, `bake` accumulates columns in a keyed table at PART-LOCAL
+coordinates and writes each once into an empty part. A `bake` that called `expand` into a
+scratch world would have made the equivalence two calls to one function agreeing with itself.
+The table is there because `world_set_column` REPLACES and two parts may share a column — a door
+in a wall — so cells accumulate in height order instead of last-writer-wins.
+
 
 **`A3.2` is done, and it retired `I1`.** `lib/hex_part/src/expand.loft` derives an instance's
 cells and everything nested under it; `hex_part` is 84 tests. ⚠ **A DERIVED CELL CARRIES NO

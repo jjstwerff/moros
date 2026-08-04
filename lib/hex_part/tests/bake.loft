@@ -1,0 +1,180 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A3.3` — `expand == bake`, and the two paths that share only the part.
+use hex_part;
+use hex_world;
+
+fn no_palette() -> vector<integer> { [] }
+fn no_kids() -> vector<PartInst> { [] }
+fn root() -> text { "{temp_dir()}/hexpart_bake_lib" }
+
+fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
+  PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
+}
+
+fn one_cell(mat: integer) -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40 as u16? ?? 0,
+                     h_material: mat as u8? ?? 0 }] }).cw_code == CW_OK, "fixture");
+  w
+}
+
+fn put(name: text, mat: integer, kids: vector<PartInst>) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  w = one_cell(mat);
+  if len(kids) > 0 {
+    assert(part_set_instances(w, kids) == PI_OK, "instances of {name} refused");
+  }
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn wipe() {
+  for d in list_dir(root()) ?? [] {
+    for e in list_dir("{root()}/{d}") ?? [] { delete("{root()}/{d}/{e}"); }
+    delete("{root()}/{d}");
+  }
+  delete(root());
+}
+
+fn target() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in (0 - 4)..14 {
+    for r in (0 - 4)..14 {
+      assert(world_set_column(w, Column { co_q: q, co_r: r,
+        co_cells: [Hex { h_height: 5 as u16? ?? 0,
+                         h_material: 1 as u8? ?? 0 }] }).cw_code == CW_OK, "ground");
+    }
+  }
+  w
+}
+
+// ── The equivalence ──────────────────────────────────────────────────────────
+//
+// ⚠ THE TWO PATHS SHARE THE PART FILES AND `un_origin`, AND NOTHING ELSE.
+// `expand` stamps each part of the nest into a target that already has terrain,
+// merging bands at composed WORLD coordinates. `bake` composes the same nest
+// into PART-LOCAL coordinates in a table, writes each column once into an empty
+// part, and is then placed by a single stamp. If they agree cell for cell, the
+// composition is right; if one function did both, the test would prove nothing.
+
+// ⚠ THREE LEVELS, AND TWO IS NOT ENOUGH — measured, not assumed. The root is
+// placed at `(0,0)`, and `un_origin(0, 0, dq, dr)` IS the naive sum there, so a
+// one-level nest exercises the frame composition only at the identity. Breaking
+// `bake` to use `cq + dq` deliberately left all 95 tests GREEN. The grandchild
+// composes from `(2,1)`, where `un_origin` gives `(6,2)` and the naive sum gives
+// `(5,2)` — that is the first place the two disagree, so that is where the
+// fixture has to reach. ⚠ An odd row and a non-zero lift at every level too: an
+// even row hides every parity bug and a zero lift hides the height accumulation.
+fn nest() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/mid",  5, [at("h/leaf", 3, 1, 4)]);
+  put("h/nest", 3, [at("h/mid",  2, 1, 6)]);
+}
+
+fn expanded() -> World {
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "expand refused: {ex.ex_why}");
+  w
+}
+
+fn baked() -> World {
+  bk = part_bake(root(), "h/nest");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  w = target();
+  st = part_stamp(w, bk.bk_world, 0, 0, 0, 10);
+  assert(st.ps_code == PS_OK, "the baked stamp was refused: {st.ps_why}");
+  w
+}
+
+fn test_expand_and_bake_agree_cell_for_cell() {
+  nest();
+  d = part_diff(expanded(), baked(), 10);
+  assert(d.pd_same, "expand and bake disagree: {d.pd_why}");
+}
+
+// ⚠ THE CONTROL, AND THE EQUIVALENCE IS VACUOUS WITHOUT IT. `part_diff` walking
+// two worlds that are mostly seeded ground will report `same` for a great many
+// wrong answers, so it has to be shown reporting a difference on this subject
+// before its agreement means anything.
+fn test_the_control_the_comparison_reports_a_difference_when_there_is_one() {
+  nest();
+  bk = part_bake(root(), "h/leaf");        // the LEAF, not the nest
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  w = target();
+  assert(part_stamp(w, bk.bk_world, 0, 0, 0, 10).ps_code == PS_OK, "stamp");
+  d = part_diff(expanded(), w, 10);
+  assert(!d.pd_same,
+         "the comparison called a one-part bake equal to a two-part expansion");
+}
+
+// ── The table, and the case it exists for ────────────────────────────────────
+
+fn test_two_parts_in_one_column_both_survive_the_flattening() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/stack", 3, [at("h/leaf", 0, 0, 60)]);   // the SAME column, lifted clear
+  bk = part_bake(root(), "h/stack");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  n = len(column_cells(world_column(bk.bk_world, 0, 0)));
+  assert(n == 2, "the shared column holds {n} cells, not 2 — one part overwrote "
+               + "the other, which is what the table exists to stop");
+}
+
+fn test_a_flattened_column_keeps_height_order() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/stack", 3, [at("h/leaf", 0, 0, 60)]);
+  bk = part_bake(root(), "h/stack");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  cs = column_cells(world_column(bk.bk_world, 0, 0));
+  a = (cs[0] ?? Hex {}).h_height as integer ?? 0;
+  b = (cs[1] ?? Hex {}).h_height as integer ?? 0;
+  assert(a < b, "the column came out {a} then {b} — out of height order");
+}
+
+// ── A bake is INST-free, which is the whole point of it ──────────────────────
+
+fn test_a_baked_part_carries_no_instances() {
+  nest();
+  bk = part_bake(root(), "h/nest");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  got = part_instances(bk.bk_world);
+  assert(len(got.ir_items) == 0,
+         "the flattened part still names {len(got.ir_items)} instances");
+}
+
+fn test_a_bake_keeps_the_roots_constants() {
+  nest();
+  bk = part_bake(root(), "h/nest");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  assert(bk.bk_world.w_eps == 8 && bk.bk_world.w_theta == 3,
+         "the flattening invented its own constants");
+}
+
+fn test_a_bake_counts_every_part_it_flattened() {
+  nest();
+  bk = part_bake(root(), "h/nest");
+  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
+  assert(bk.bk_parts == 3, "{bk.bk_parts} parts flattened, not 3");
+}
+
+// ── The same three answers `expand` gives ────────────────────────────────────
+
+fn test_a_missing_part_is_missing() {
+  wipe();
+  put("h/nest", 3, [at("h/absent", 2, 0, 0)]);
+  bk = part_bake(root(), "h/nest");
+  assert(bk.bk_code == BK_MISSING, "a typo baked with code {bk.bk_code}");
+}
+
+fn test_a_facing_is_refused() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/turned", 3, [PartInst { pi_q: 2, pi_r: 0, pi_h: 0, pi_facing: 6,
+                                 pi_part: "h/leaf" }]);
+  bk = part_bake(root(), "h/turned");
+  assert(bk.bk_code == BK_FACING, "a turned child baked with code {bk.bk_code}");
+}

@@ -338,7 +338,7 @@ writer.
 |---|---|---|---|
 | ✅ `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | **DONE.** `lib/hex_part/src/inst.loft`, 73 tests in the package, both backends. The reference is by catalogue handle and the NAME COMES LAST, so a comma in it needs no escaping. ⚠ **The cycle check needs no depth bound, and a diamond is not a cycle** — see below. | S |
 | ✅ `A3.2` | `expand(instance)` — derive an instance's cells, and everything nested under it. | **DONE.** `lib/hex_part/src/expand.loft`, 84 tests in the package. ⚠ **`I1` IS RETIRED, and measurement is what retired it** — derived cells carry no label, because the records are the authority and re-deriving REGENERATES. ⚠ The depth bound was taken here rather than in `A3.4`. | M |
-| `A3.3` | `bake(instance)` — flatten to plain cells. | **`expand == bake`**, cell for cell. The strongest test here: the two paths share nothing but the part. | S |
+| ✅ `A3.3` | `bake(instance)` — flatten to plain cells. | **DONE.** `lib/hex_part/src/bake.loft`, 95 tests in the package. `expand == bake` cell for cell, over paths that share only the part files and `un_origin`. ⚠ **THE FIRST FIXTURE COULD NOT FAIL** — see below. | S |
 | `A3.4` | Depth bound (8) and the cycle check on save. | a 9-deep nest is refused, ⚠ and the control: an 8-deep one is accepted — otherwise the bound is untested | S |
 | `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |
 
@@ -384,6 +384,28 @@ live twice this month. The server sweeps the library at startup instead and list
 become a layer under the instance's own label, so minting that label here would make the record
 look complete. `A3.2` is what derives the layer; a label written by nobody is a field a reader
 would trust and a writer would forget — permanent, because this is a file format.
+
+### What `A3.3` turned up
+
+⚠ **A `(0,0)` PLACEMENT MAKES THE FRAME COMPOSITION AN IDENTITY, so a one-level nest cannot
+test it.** `bake` passed on its first run, all 95 green — and then `un_origin(cq, cr, dq, dr)`
+was replaced with the naive `cq + dq` **deliberately**, and all 95 stayed green. At the origin
+the two agree exactly, so the equivalence was comparing two paths that could not disagree.
+Three levels is the smallest fixture that bites: the grandchild composes from `(2,1)`, where
+`un_origin` gives `(6,2)` and the naive sum gives `(5,2)`, and the same sabotage then fails at
+`cell 5,2: 1 cells vs 2`. **The test was seen red before it was trusted**, which is the only
+reason it is evidence. ⚠ `A4.3` composes frames the same way when it binds an instance to a
+socket, so its fixture needs the same depth.
+
+⚠ **THE TWO PATHS ARE KEPT APART ON PURPOSE, and that is where the value is.** `expand` stamps
+each part of the nest at composed WORLD coordinates, merging bands into terrain that is already
+there. `bake` accumulates columns in a keyed table at PART-LOCAL coordinates and writes each one
+once into an empty part. If `bake` had simply called `expand` into a scratch world the test
+would have been two calls to one function agreeing with themselves.
+
+⚠ **A TABLE, BECAUSE `world_set_column` REPLACES.** Two parts may land in one column — a door in
+a wall is exactly that — so the flattening accumulates and inserts in height order, then writes
+each column once. Last-writer-wins would lose a cell and every count would still agree.
 
 ### A4 — sockets
 

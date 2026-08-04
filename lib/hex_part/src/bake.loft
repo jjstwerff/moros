@@ -1,0 +1,183 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Flattening an instance to plain cells — §P4's other operation.
+//
+// Plan 17 `A3.3`. `bake` is NOT the truth and does not pretend to be: it takes a
+// part and everything nested under it and produces ONE part with no `INST` at
+// all. That is what export wants, what interop wants, and what an author wants
+// the moment they stop tracking a composition and just want to carve it.
+//
+// ⚠ THIS PATH IS DELIBERATELY NOT `expand`'s, and the whole value of `A3.3` is
+// in that. `expand` walks the nest calling `part_stamp` per part at composed
+// WORLD coordinates, merging bands into a target that already has terrain.
+// `bake` walks the same nest composing into PART-LOCAL coordinates, accumulating
+// columns in a table and writing each one once, into an empty part. They share
+// the part files and `un_origin`; every other line is different. So
+// `expand == bake`, cell for cell, is a real claim about the composition rather
+// than two calls to one function agreeing with themselves.
+//
+// ⚠ AND `bake` KEEPS A LABEL WHERE `expand` DROPPED ONE. Placing a baked part is
+// a single `part_stamp`, which mints one — correctly, because baking DESTROYS
+// the records and afterwards there is no authority left to re-derive from. That
+// asymmetry is the point of §P4 and not an inconsistency: `expand` keeps the
+// record, which outranks the cells, so its cells need no name.
+use hex_world;
+use inst;
+use stamp;
+use meta;
+use expand;
+
+pub const BK_OK      = 0;
+pub const BK_MISSING = 1;   // the part is not in the library
+pub const BK_BROKEN  = 2;   // it does not load, or its `INST` will not parse
+pub const BK_DEPTH   = 3;   // nested deeper than `EX_MAX_DEPTH`
+pub const BK_FACING  = 4;   // a heading this step cannot yet apply
+
+// One column of the flattened result, keyed so the walk can find it again.
+//
+// ⚠ A TABLE AND NOT A WORLD, because two parts may land in one column — a door
+// in a wall is exactly that — and a part world's `world_set_column` REPLACES.
+// Accumulating first and writing each column once is what makes the overlap
+// case correct instead of last-writer-wins.
+struct BakeCol {
+  bc_key:   integer,
+  bc_q:     integer,
+  bc_r:     integer,
+  bc_cells: vector<Hex> = [],
+}
+
+pub struct Bake {
+  bk_code:  integer,
+  bk_world: World,
+  bk_parts: integer = 0,   // parts flattened, the root and everything under it
+  bk_cols:  integer = 0,   // columns in the result
+  bk_depth: integer = 0,
+  bk_why:   text = "",
+}
+
+// ⚠ THE SAME KEY SHAPE THE WORLD'S OWN INDEX USES, and it must stay injective
+// over the coordinates a part can hold. A part is origin-centred and small, so
+// the multiplier only has to beat its radius; `1000003` is prime and far past it.
+fn col_key(q: integer, r: integer) -> integer { q * 1000003 + r }
+
+// Insert `h` into a column's cells, keeping height order.
+//
+// ⚠ ORDER IS PART OF THE RESULT, not a tidiness. `column_cells` returns a column
+// in height order and `part_diff` compares index by index, so a flattened column
+// whose cells arrived out of order compares unequal to the same cells expanded —
+// which would read as a composition bug rather than a sorting one.
+fn insert_ordered(cells: vector<Hex>, h: Hex) -> vector<Hex> {
+  out: vector<Hex> = [];
+  put = false;
+  for c in cells {
+    if !put && (h.h_height as integer ?? 0) < (c.h_height as integer ?? 0) {
+      out += [h];
+      put = true;
+    }
+    out += [c];
+  }
+  if !put { out += [h]; }
+  out
+}
+
+// Walk one level, composing this part's cells into `tab` at `(cq, cr)` lifted by
+// `anchor`, then descend. The frame is the part's own origin, so the top call
+// passes `(0, 0, 0)` and a child's centre is `un_origin` of the parent's.
+fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
+           depth: integer, tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
+  if depth > EX_MAX_DEPTH {
+    return Bake { bk_code: BK_DEPTH, bk_depth: depth,
+                  bk_why: "'{name}' is nested {depth} deep; the bound is "
+                        + "{EX_MAX_DEPTH} (P8)" };
+  }
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return Bake { bk_code: BK_MISSING, bk_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return Bake { bk_code: BK_BROKEN,
+                  bk_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  p = ld.wl_world;
+
+  for pc in part_columns(p) {
+    (tq, tr) = un_origin(cq, cr, pc.pk_q, pc.pk_r);
+    k = col_key(tq, tr);
+    e = tab[k];
+    if e == null { tab += BakeCol { bc_key: k, bc_q: tq, bc_r: tr }; }
+    got = tab[k];
+    if got != null {
+      for h in column_cells(world_column(p, pc.pk_q, pc.pk_r)) {
+        lifted = Hex { h_height: ((h.h_height as integer ?? 0) + anchor) as u16? ?? 0,
+                       h_material: h.h_material, h_item: h.h_item,
+                       h_item_rotation: h.h_item_rotation,
+                       h_wall_n: h.h_wall_n, h_wall_ne: h.h_wall_ne,
+                       h_wall_se: h.h_wall_se };
+        got.bc_cells = insert_ordered(got.bc_cells, lifted);
+      }
+    }
+  }
+
+  parts = acc.bk_parts + 1;
+  deepest = depth;
+  if acc.bk_depth > deepest { deepest = acc.bk_depth; }
+
+  got2 = part_instances(p);
+  if got2.ir_code == MR_MALFORMED {
+    return Bake { bk_code: BK_BROKEN, bk_why: "'{name}': {got2.ir_why}" };
+  }
+  here = Bake { bk_code: BK_OK, bk_parts: parts, bk_depth: deepest };
+  for c in got2.ir_items {
+    if c.pi_facing != 0 {
+      return Bake { bk_code: BK_FACING,
+                    bk_why: "'{c.pi_part}' faces {c.pi_facing}; only 0 can be "
+                          + "baked until A4.4 rotates a part's cells" };
+    }
+    (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
+    down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, depth + 1, tab, here);
+    if down.bk_code != BK_OK { return down; }
+    here = down;
+  }
+  here
+}
+
+// Flatten `name` and everything under it into one part, `INST`-free.
+//
+// ⚠ THE RESULT TAKES THE ROOT'S CONSTANTS. A part carries `unit`, `reserve`,
+// `eps` and `theta`, and a flattening that invented its own would compare
+// unequal to the original for a reason that has nothing to do with its cells —
+// `part_diff` checks all four first, which is how that would surface.
+pub fn part_bake(root: text, name: text) -> Bake {
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return Bake { bk_code: BK_MISSING, bk_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return Bake { bk_code: BK_BROKEN,
+                  bk_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  src = ld.wl_world;
+  out = world_new(src.w_unit, src.w_reserve, src.w_eps, src.w_theta).wn_world;
+
+  tab: hash<BakeCol[bc_key]> = [];
+  seed = Bake { bk_code: BK_OK };
+  done = bake_at(root, name, 0, 0, 0, 1, tab, seed);
+  if done.bk_code != BK_OK { return done; }
+
+  cols = 0;
+  for e in tab {
+    if len(e.bc_cells) > 0 {
+      cw = world_set_column(out, Column { co_q: e.bc_q, co_r: e.bc_r,
+                                          co_cells: e.bc_cells });
+      if cw.cw_code != CW_OK {
+        return Bake { bk_code: BK_BROKEN,
+                      bk_why: "({e.bc_q},{e.bc_r}) refused: {cw.cw_detail}" };
+      }
+      cols = cols + 1;
+    }
+  }
+  Bake { bk_code: BK_OK, bk_world: out, bk_parts: done.bk_parts,
+         bk_cols: cols, bk_depth: done.bk_depth }
+}
