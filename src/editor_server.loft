@@ -5414,7 +5414,17 @@ fn main() {
               held_py = py;
               held_pz = pz;
 
-              wld = pt_ld.wl_world;
+              // ⚠ THROUGH A LOCAL, AND THAT IS NOT A STYLE CHOICE — loft#774.
+              // `wld = pt_ld.wl_world` reads a struct FIELD, which ALIASES: `wld`
+              // would then be a second name for a field of a handler-local that
+              // dies at the end of this event, and the next `world_new` anywhere
+              // reuses the slot. Measured, with a probe in this very handler: the
+              // scratch world built by `14:`'s `stencil_part` landed on top of it
+              // and `wld` read `tau 20 chunks 4` → `tau 0 chunks 0` across a call
+              // that never touches its argument. Assigning from a LOCAL copies,
+              // so this line is what gives the editor a store of its own.
+              pt_own = pt_ld.wl_world;
+              wld = pt_own;
               // Empty, per `part_thumb_wire`'s argument — a part has no runs, roofs,
               // leaves or dressing of its own, and the world's would be drawn
               // standing in it.
@@ -5461,7 +5471,16 @@ fn main() {
         } else if ev.msg_id == MSG_LOAD {
           lres = world_load(world_path(ev.payload));
           if lres.wl_code == WL_OK {
-            wld = lres.wl_world;
+            // ⚠ THROUGH A LOCAL — the same ownership rule the part open needs, and
+            // for the same measured reason (loft#774): a struct field read ALIASES,
+            // so this would leave `wld` a second name for a field of `lres`, which
+            // dies at the end of this event while `wld` lives for the session. It
+            // has not bitten here — it bit the part path, where the very next
+            // `world_new` landed on top of the store and a four-chunk part read as
+            // an empty world with no diagnostic. One allocation apart is not a
+            // distinction worth keeping.
+            ld_own = lres.wl_world;
+            wld = ld_own;
             // ⚠ ONLY ON SUCCESS. A refused load leaves the world you had, so it
             // must leave its NAME too — a subject line renamed by a load that did
             // not happen is the exact lie B2.3's control is aimed at, one message
@@ -5745,7 +5764,22 @@ fn main() {
             "S:exported {len(xbm.vertices)} vertices to {ev.payload}");
           println("editor: exported {len(xbm.vertices)} vertices to {ev.payload}");
         } else if ev.msg_id == MSG_IMPORT {
-          if n_imported >= IMPORT_MAX {
+          // ⚠ THE GUARD GOES WHERE THE MESSAGE ARRIVES, not in a branch of its own
+          // further down the chain. Written as a second `else if ev.msg_id ==
+          // MSG_IMPORT && in_part` it was UNREACHABLE — the first arm of an
+          // else-if chain wins — and the fence read as present while `21:` went
+          // on importing into a part. It is this file's own rule (*a guard belongs
+          // where the thing arrives*) and the gate is what caught it.
+          //
+          // Same rule as the trigger: `n_imported` and the imported meshes are the
+          // WORLD's, and a part's own second body is its `MESH` section (§P5) —
+          // written by `part_set_mesh` at build time, not by kit-bashing into a
+          // live store.
+          if in_part {
+            srv.send_to(ev.cid, "S:import refused — editing part '{part_name}'; a part's "
+                              + "mesh is its MESH section, not an imported prop");
+            println("editor: import refused — in part mode ('{part_name}')");
+          } else if n_imported >= IMPORT_MAX {
             srv.send_to(ev.cid,
               "S:import refused — {IMPORT_MAX} imported props is the limit "
               + "(offer {IMPORT_MAX}, residual {n_imported + 1 - IMPORT_MAX})");
@@ -5845,6 +5879,23 @@ fn main() {
           }
           srv.send_to(ev.cid, "S:dressing {dq2},{dr2} = {dtxt}");
         } else if ev.msg_id == MSG_TRIGGER {
+          // ⚠ THE FENCE'S OTHER RULE — plan 17 `A7.3b`: a gesture whose state is
+          // NOT held aside leaks out of the mode. `trigs` is the world's list and
+          // part mode does not hold it, so a trigger anchored while a part is open
+          // would still be there, at the part's coordinates, after the world came
+          // back. ⚠ Held aside would be the wrong fix rather than a smaller one:
+          // the part format has no section for a trigger, so one authored here
+          // could never be saved — and a gesture that quietly cannot persist is
+          // the silent loss this whole step exists to prevent.
+          //
+          // ⚠ INSIDE THE HANDLER, like the import guard beside it. As its own
+          // `else if … && in_part` arm it depends on which arm the chain reaches
+          // first, and the import one written that way was unreachable.
+          if in_part {
+          srv.send_to(ev.cid, "S:trigger refused — editing part '{part_name}'; "
+                            + "a trigger belongs to a world, and a part cannot hold one");
+          println("editor: trigger refused — in part mode ('{part_name}')");
+          } else {
           tname = ev.payload;
           thx = world_to_hex(px, pz);
           tcol = world_column(wld, thx.ha_q, thx.ha_r);
@@ -5866,6 +5917,7 @@ fn main() {
             println("editor: trigger {next_trig} at ({thx.ha_q},{thx.ha_r}) height {ttop}");
           }
           next_trig = next_trig + 1;
+          }
         } else if ev.msg_id == MSG_CART {
           // ⚠ TRAVEL IS SIGNED, AND THE VALUE IS DERIVED FROM IT — never
           // accumulated per move. `hex_body::wheel_value` is `travel / (2πr)`, so
@@ -6387,11 +6439,11 @@ fn main() {
           // order — the author asked for something the editor cannot do, and being
           // told so is better than the number silently doing nothing.
           spc = ev.payload.find(",");
-          part_name = "";
+          stamp_part = "";                 // ⚠ NOT `part_name` — that is the part being EDITED
           roof_txt = ev.payload;
           if spc != null {
             roof_txt = ev.payload[..spc];
-            part_name = ev.payload[spc + 1..].trim();
+            stamp_part = ev.payload[spc + 1..].trim();
           }
           roof_up = roof_txt as integer ?? STOREY_H;
           // ⚠ THIS USED TO READ `if roof_up <= 0 { roof_up = STOREY_H; }` — a
@@ -6406,8 +6458,28 @@ fn main() {
           } else {
           shx2 = world_to_hex(px, pz);
           anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
-          if part_name != "" {
-            place_part(srv, ev.cid, wld, dirty, part_name, shx2.ha_q, shx2.ha_r, anch);
+          if stamp_part != "" && in_part {
+            // ── THE FENCE — plan 17 `A7.3b` ────────────────────────────────
+            //
+            // ⚠ §P4: A PART INSIDE A PART IS A REFERENCE, AND ITS CELLS ARE
+            // DERIVED. `place_part` stamps CELLS, so letting this through would
+            // bake the leaf's geometry into the frame — and then editing the leaf
+            // changes nothing, which is the whole property parts exist for. It is
+            // the one damage in this mode that cannot be undone by an author: the
+            // cells are indistinguishable from cells they authored themselves.
+            //
+            // ⚠ AND IT IS THE `<part>` FORM ONLY. `14:<roof_up>` builds a
+            // procedural house and stamps its cells, which is ordinary authoring —
+            // there is no reference to preserve, because there is no library part
+            // involved. Refusing both would fence the wrong thing and would say
+            // this mode is about stamping, when it is about references.
+            srv.send_to(ev.cid, "S:stencil refused — editing part '{part_name}'; a part "
+                              + "inside a part is a reference, and the gesture that "
+                              + "makes one does not exist yet");
+            println("editor: stencil refused — a part inside part '{part_name}' "
+                  + "would be baked, not referenced");
+          } else if stamp_part != "" {
+            place_part(srv, ev.cid, wld, dirty, stamp_part, shx2.ha_q, shx2.ha_r, anch);
           } else {
           // ⚠ `A2.3` — THE PROCEDURE NO LONGER PLACES. It BUILDS a part in a
           // scratch world, and `part_place` stamps it, so every house that lands

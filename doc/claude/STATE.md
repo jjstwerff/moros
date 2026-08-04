@@ -22,9 +22,9 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.2`
+## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3b`
 
-`make gate` **36 green** · `make lib-test` **2517, both backends** · `make parts` green
+`make gate` **38 green** · `make lib-test` **2517, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
 2026-08-04 on the installed loft.
 
@@ -69,19 +69,22 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3b` — the fence
+### The next thing to do is #17 `A7.3c` — the save
 
-**`A7.3a` is built**: `44:<name>` opens a part as the store the gestures reach, `44:` closes back,
-and the subject line says which. The world and the renderer's nine registries are held aside by
-assignment — a deep copy, which is exactly the snapshot the mode wants — and the feet with them.
-`tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red. ⚠ **Nothing in part mode
-reaches the disk**, which is what makes the step safe by construction: there is no save until
-`A7.3c`, a close discards and says how many edits it discarded, and the two gestures that COULD
-have persisted something — `8:` over a world file, `9:` making the subject lie — are refused with
-the mode rather than with `b`'s fence.
+**`A7.3a` and `A7.3b` are built.** `44:<name>` opens a part as the store the gestures reach, `44:`
+closes back, and the subject line says which; the world, the renderer's nine registries and the
+feet are held aside by assignment — a deep copy, which is the snapshot the mode wants. The fence
+refuses `14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:`
+(state the mode does not hold aside), and `8:`/`9:` (the two that could lose something on disk) —
+while everything else still edits the part. `part_mode.mjs` 31 checks, `part_fence.mjs` 17, nine
+sabotages seen red between them.
+
+⚠ **Nothing in part mode reaches the disk**, which is what makes both steps safe by construction:
+a close discards and says how many edits it discarded, counted from the store's own `w_tau`.
+`A7.3c` is where that stops being true, so it is where the null-edit control earns its keep.
 
 **`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
-✅ the store swap and the subject (`a`), the fence of refusals (`b`), the save (`c`), the save check
+✅ the store swap and the subject (`a`), ✅ the fence (`b`), the save (`c`), the save check
 (`d`), a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
 until a number says it hurts; `src/part_build.loft` prints the cost every run.
 
@@ -178,6 +181,22 @@ detection from mutation and let the caller do the assignment.
 a temp copy), so a gate may add and remove parts to prove the catalogue follows the library. ⚠ **A
 gate must never write to the committed library** — this tree is worked by more than one agent, and
 a gate that fails leaving the repository dirty is worse than no gate.
+
+⚠ **[loft#775](https://github.com/loft-lang/loft/issues/775) is filed and open, and it is the
+one that cost real time** — a struct-field alias that OUTLIVES its owner is silently overwritten
+by the next allocation. `wld = pt_ld.wl_world` made the editor's session-long world a second name
+for a field of a handler-local; measured with a `println` either side of one call, `tau 20 chunks
+4` → **`tau 0 chunks 0`** across `stencil_part`, which never assigns to its argument. **The edit
+clock going DOWN is the tell** — it is monotonic, so it cannot be a write. ⚠ **The cure is to
+assign through a local**, which #774 measured to be a copy. ⚠ **And the shape is everywhere**,
+because it is what reading a result looks like: `x = <call>().field`. Ours survived by luck at
+every site but one, and one allocation is the whole margin.
+
+⚠ **LOFT HAS NO BLOCK-LOCAL DECLARATION — an assignment in a nested block writes the OUTER
+variable.** Measured. `14:`'s handler parsed its payload into `part_name`, which is also what
+`A7.3a` called the part being edited, so every stencil in part mode blanked the subject line and
+the close acknowledgement. There is no warning and nothing at either site looks wrong; **grep the
+enclosing function before naming a handler local**, the same way a public name is grepped.
 
 **[loft#774](https://github.com/loft-lang/loft/issues/774) is filed and open** — a plain struct
 **copies** on `b = a` and **aliases** on `c = v[0]`: the same assignment, opposite semantics, both
@@ -400,7 +419,7 @@ of the identical expression is correct. Both were invisible until something read
 ## How to run things
 
 ```sh
-GATE_JOBS=4 make gate  # ⚠ 37 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
+GATE_JOBS=4 make gate  # ⚠ 38 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
                        #   each gate starts a server that interprets a 5,900-line file, the
                        #   wait for `listening on port` is 60 s, and one gate alone takes
                        #   2 m 33 s. Measured: 10 of 35 failed at 10 jobs and the SAME suite

@@ -958,7 +958,7 @@ both stores in a vector and take `[i]`.
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | **DONE.** `tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red — and the first of them exposed a check that could not fail. ⚠ **Four findings**, see below | S |
-| `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | a stamp inside a part is not an `INST` (§P4) — a silent bake is the unrecoverable one | XS |
+| ✅ `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | **DONE.** `tools/gates/world/part_fence.mjs`, 17 checks, four sabotages seen red including the **over-fence**. `14:<roof>,<part>`, `18:` and `21:` refused; everything else still edits. ⚠ **Two live defects found**, one of them silent data loss — see below | XS |
 | `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | edit one cell, save, reload — every section byte-identical and only the cells differ | S |
 | `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | a refused save leaves the FILE unchanged, not merely the acknowledgement saying no | XS |
 | `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | `N:` re-broadcasts, every `W:`/`Y:` re-addresses, and `14:<roof>,<new>` places it in the same session | S |
@@ -1060,6 +1060,65 @@ snapshot, and the next open would then have held the part aside as the world.
 | the subject never names the part | 2 |
 | the save guard is gone | 1 |
 | a refused open renames the subject | 2 |
+
+### What `A7.3b` turned up
+
+⚠ **THE FENCE IS ON THE REFERENCE, NOT ON THE MESSAGE — AND THAT IS THE WHOLE STEP.**
+`14:<roof_up>` and `14:<roof_up>,<part>` are the same message, and only the form carrying a
+library part is refused: §P4 says a part inside a part is an instance whose cells are
+DERIVED, so stamping one bakes it in and editing the leaf afterwards changes nothing. The
+procedural form has no reference to preserve, so it is ordinary authoring and goes through.
+⚠ **The gate's sharpest check is the OVER-fence**: refusing both forms fails
+*"the procedural form is answered on its own merits"*, because a mode that cannot edit is
+not a fence but a wall. A server refusing every message in part mode passes every refusal
+check there is.
+
+⚠ **THE OTHER RULE IS OWNERSHIP: a gesture whose state part mode does not hold aside leaks
+out of the mode.** `18:` TRIGGER appends to `trigs` and `21:` IMPORT bumps `n_imported` and
+mints world mesh ids — neither is held, so both would still be there, at the part's
+coordinates, after the world came back. ⚠ **Holding them aside would be the wrong fix rather
+than a smaller one**: the part format has no section for either, so one authored here could
+never be saved, and a gesture that quietly cannot persist is the silent loss this step exists
+to prevent.
+
+⚠ **THE FIRST IMPORT GUARD WAS UNREACHABLE, AND IT READ AS PRESENT.** Written as its own
+`else if ev.msg_id == MSG_IMPORT && in_part` arm placed *after* the real handler, the chain
+never reached it — `21:` went on importing into parts while the code said otherwise. The
+probe caught it because it asserted the **reason**: `21:` on a missing file is refused by the
+glb loader anyway, so a fence that did nothing still showed *a* refusal. **A guard belongs
+where the thing arrives**, which is this tree's own rule, broken in the same session it is
+quoted in — and the check that survives is *refused by the FENCE and not by the loader*.
+
+⚠ **`14:` BLANKED THE PART BEING EDITED, THROUGH A NAME COLLISION LOFT CANNOT WARN ABOUT.**
+The stencil handler parses its payload into `part_name` — the same name `A7.3a` gave the part
+being edited, in the same function scope, and **loft has no block-local declaration**:
+measured, an assignment inside a nested block writes the outer variable. So every stencil in
+part mode emptied the subject line and the close acknowledgement. Renamed to `stamp_part`;
+the gate keeps a check on both, because the collision is invisible at each site on its own.
+
+⚠ **AND THE ONE THAT WAS SILENT DATA LOSS: `wld` WAS ALIASING A DEAD RECORD.**
+`wld = pt_ld.wl_world` reads a struct FIELD, which **aliases** (loft#774) — so the editor's
+session-long world was a second name for a field of a handler-local that dies at the end of
+the event. Measured with a `println` on either side of one call: `tau 20 chunks 4` →
+**`tau 0 chunks 0`** across `stencil_part`, a function that never assigns to its argument. The
+edit clock going **down** is the tell, since it is monotonic. The next `world_new` anywhere
+landed on top of the store and a four-chunk part read as an empty world with no diagnostic.
+Filed as [loft#775](https://github.com/loft-lang/loft/issues/775); the fix is to assign
+through a local, which #774 measured to be a copy. ⚠ **The same shape sits in `9:` LOAD and
+has not bitten** — it survives by one allocation, which is not a distinction worth keeping, so
+it was fixed too.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the part form is let through | 3 |
+| **the procedural form is fenced too** (over-fence) | 1 |
+| the stencil's local goes back to `part_name` | 5 |
+| the trigger guard removed | 3 |
+
+⚠ The import guard needed no sabotage: it was **seen red in the wild**, answering
+`import refused (1) /nonexistent.glb` — the loader's refusal — while the fence was unreachable.
 
 ⚠ **`A7.3e`'s ACCEPTANCE HOUSE MUST NOT BE `house/cottage`.** The cottage is *generated* by
 `src/part_build.loft` and `make parts` verifies it byte-identically — so a cottage authored in the
