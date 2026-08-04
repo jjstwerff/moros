@@ -38,6 +38,6 @@ pub fn section_text(w: World, tag: integer) -> text {
   return bytes_text(world_section_bytes(w, tag));
 }
 
-pub fn set_section_text(w: &World, tag: integer, t: text) {
+pub fn set_section_text(w: World, tag: integer, t: text) {
   world_set_section(w, tag, text_bytes(t));
 }

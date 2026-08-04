@@ -30,7 +30,7 @@ fn age_of(ages: Ages, q: integer, r: integer) -> integer {
   e.ag_age
 }
 
-fn age_set(ages: &Ages, q: integer, r: integer, v: integer) {
+fn age_set(ages: Ages, q: integer, r: integer, v: integer) {
   e = ages.a_by[age_key(q, r)];
   if e == null { ages.a_by += AgeAt { ag_key: age_key(q, r), ag_age: v }; }
   else { e.ag_age = v; }

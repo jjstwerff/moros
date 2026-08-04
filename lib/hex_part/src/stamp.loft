@@ -94,7 +94,7 @@ pub struct PartStamp {
 // footprint can straddle a chunk boundary and the layer it creates is then made
 // twice, once per chunk; naming it here is what stops the two halves being
 // different layers to every by-label reader.
-pub fn part_stamp(w: &World, p: World, cq: integer, cr: integer,
+pub fn part_stamp(w: World, p: World, cq: integer, cr: integer,
                   anchor: integer, lo: integer) -> PartStamp {
   cols = part_columns(p);
   if len(cols) == 0 {

@@ -171,17 +171,17 @@ pub fn ground_h(w: World, q: integer, r: integer) -> integer {
 // checking the three rules that are local and handing the window case back to the
 // column path. A layer index of -1 still means "there is no such layer", and it
 // still goes the slow way, because creating one is what the slow way is for.
-pub fn layer_write(w: &World, q: integer, r: integer, li: integer,
+pub fn layer_write(w: World, q: integer, r: integer, li: integer,
                    nc: hex_world::Hex) -> integer {
   world_set_cell(w, q, r, li, nc).cw_code
 }
 
-pub fn ground_write(w: &World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
+pub fn ground_write(w: World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
   layer_write(w, q, r, world_ground_layer(w, q, r), nc)
 }
 
 // Write a height and material at a cell, keeping everything else the cell holds.
-pub fn ground_set(w: &World, q: integer, r: integer, h: integer, mat: integer) -> integer {
+pub fn ground_set(w: World, q: integer, r: integer, h: integer, mat: integer) -> integer {
   c = world_ground_cell(w, q, r);
   nc = hex_world::Hex { h_height: h as u16? ?? 0,
                         h_material: mat as u8? ?? 0,
@@ -252,7 +252,7 @@ pub fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
 // raise, the field, the vegetation, the walls — genuinely means the outdoors, and
 // giving all of them a height they would have to invent would be rewriting every
 // producer to serve one consumer. The road is the consumer that knows its feet.
-pub fn surface_set(wld: &World, q: integer, r: integer, feet: float,
+pub fn surface_set(wld: World, q: integer, r: integer, feet: float,
                h: integer, mat: integer) -> integer {
   // ⚠ THE UNIT IS THE WORLD'S, not a constant this package keeps. `w_unit` is
   // what `world_new` was given, so a world built at a different scale measures
@@ -332,7 +332,7 @@ pub fn edge_layer(wld: World, q: integer, r: integer, ref: float) -> integer {
 // `E1e`, half of any boundary is stored outside the thing it bounds — and it may
 // have nothing at your level. Then there is no layer to address and the store
 // names the one it creates, at height `h`, exactly as for an unwritten hex.
-pub fn wall_set(wld: &World, q: integer, r: integer, dir: integer,
+pub fn wall_set(wld: World, q: integer, r: integer, dir: integer,
             mat: integer, h: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
   eli = edge_layer(wld, oq, orr, ref);
@@ -401,7 +401,7 @@ pub fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> 
 // be: "ring the disc you stand in" is a claim about where you are standing. The
 // fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
 // that holds nothing at all — there is no surface there to take a height from.
-pub fn fence_disc(wld: &World, cq: integer, cr: integer, rad: integer, mat: integer,
+pub fn fence_disc(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
               ref: float) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
@@ -456,7 +456,7 @@ pub fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: inte
 // cell. The material is NOMINAL: 9 is not "nearly" a fence, it is not a wall
 // material at all, so it is refused without an offer. The radius is ordinal and
 // gets one.
-pub fn fence_ring(w: &World, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
+pub fn fence_ring(w: World, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
   mfit = fit_nominal(mat, FENCE_MAT, "wall material");
   if !mfit.ft_ok { return ack_no(fit_text(mfit)); }
   rfit = fit_ordinal(rad, 1, 12, "radius");
@@ -482,7 +482,7 @@ pub fn fence_outside(w: World, a: Author, mat: integer, rad: integer, ref: float
 //
 // Both parameters are nominal: a direction is one of six and a material is one of
 // three, and neither has a "nearest" worth offering.
-pub fn edge_set(w: &World, a: Author, dir: integer, mat: integer, ref: float,
+pub fn edge_set(w: World, a: Author, dir: integer, mat: integer, ref: float,
                 h: integer) -> Ack {
   dfit = fit_nominal(dir, 5, "direction");
   if !dfit.ft_ok { return ack_no(fit_text(dfit)); }
@@ -735,7 +735,7 @@ pub fn ground_open(w: World, q: integer, r: integer) -> boolean {
 // `E1` makes material 0 mean ABSENT, so a stair with a material of its own would
 // erase the road it cut through, and one that wrote a 0 back would leave a hole to
 // fall through. An unwritten cell takes the ground's own material.
-pub fn stair_cut(wld: &World, q: integer, r: integer, feet: float, here: integer,
+pub fn stair_cut(wld: World, q: integer, r: integer, feet: float, here: integer,
                  dir: integer, step: integer, why: &text) -> integer {
   // ⚠ THE STEP HEIGHT IS THE CALLER'S, and that is a layering fact rather than a
   // preference. It came from `moros_sim::stair_height` — a MOROS package — and this
@@ -794,7 +794,7 @@ pub fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integ
   (false, chq, chr0)
 }
 
-pub fn storey_add(wld: &World, cq: integer, cr: integer, dir: integer, rad: integer,
+pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integer,
               why: &text) -> integer {
   // TWO PASSES, and the order is the point. Pass 1 asks whether EVERY cell in the
   // disc can take the storey; pass 2 writes. A single pass that refused halfway
@@ -1001,7 +1001,7 @@ pub fn ray_cell_at(a: Author, d: integer) -> (integer, integer) {
 // `step` is what a WALKER can climb, supplied by the caller for the same reason
 // `stair_cut` takes it: the rule belongs to whoever owns the walker, the write
 // belongs here.
-pub fn cellar_stair(wld: &World, a: Author, step: integer, why: &text) -> integer {
+pub fn cellar_stair(wld: World, a: Author, step: integer, why: &text) -> integer {
   if step <= 0 { why = "a stride of {step} climbs nothing"; return 0 - 1; }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   col0 = world_column(wld, cq, cr);
@@ -1079,7 +1079,7 @@ fn layer_height(wld: World, q: integer, r: integer, label: integer) -> integer {
 
 // Write one cell into the layer carrying this LABEL, leaving every other layer of
 // the column exactly as it was.
-fn set_in_layer(wld: &World, q: integer, r: integer, label: integer, h: integer,
+fn set_in_layer(wld: World, q: integer, r: integer, label: integer, h: integer,
                 mat: integer, why: &text) -> boolean {
   col = world_column(wld, q, r);
   cells: vector<hex_world::Hex> = [];
@@ -1108,7 +1108,7 @@ fn set_in_layer(wld: &World, q: integer, r: integer, label: integer, h: integer,
 // height dropped to zero would pull its neighbours' corners down into a funnel
 // around the opening. The cell stops being ground; it does not stop being *where*
 // the ground was.
-fn clear_in_layer(wld: &World, q: integer, r: integer, label: integer,
+fn clear_in_layer(wld: World, q: integer, r: integer, label: integer,
                   why: &text) -> boolean {
   col = world_column(wld, q, r);
   gl = 0 - 1;
@@ -1226,7 +1226,7 @@ pub fn age_like_key(q: integer, r: integer) -> integer {
 // allowed to spend.
 //
 // Returns the number of cells filled, or 0 if it refused.
-pub fn field_fill(wld: &World, sq: integer, sr: integer) -> integer {
+pub fn field_fill(wld: World, sq: integer, sr: integer) -> integer {
   if world_ground_cell(wld, sq, sr).h_material != SURFACE_MAT
      && world_ground_cell(wld, sq, sr).h_material != 0 {
     return 0;                       // standing on something that is not open ground
@@ -1331,7 +1331,7 @@ pub fn stencil_floor(anchor: integer) -> integer {
   lo
 }
 
-pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
+pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
                  anchor: integer, roof_up: integer,
                  kept_below: &integer, kept_above: &integer, why: &text) -> integer {
   lo = stencil_floor(anchor);
@@ -1433,7 +1433,7 @@ pub fn stencil_place(wld: &World, cq: integer, cr: integer, rad: integer,
 // ⚠ IT IS A THIN WRAPPER, DELIBERATELY. The mechanics are `hex_part::part_stamp`
 // and the only thing added here is `stencil_floor` — the placement policy, which
 // is a choice about buildings and belongs with the other one that makes it.
-pub fn part_place(wld: &World, part: hex_world::World, cq: integer, cr: integer,
+pub fn part_place(wld: World, part: hex_world::World, cq: integer, cr: integer,
                   anchor: integer) -> hex_part::PartStamp {
   return hex_part::part_stamp(wld, part, cq, cr, anchor, stencil_floor(anchor));
 }
@@ -1485,7 +1485,7 @@ pub fn stencil_part(target: hex_world::World, rad: integer, roof_up: integer,
 }
 
 // `species` 0 CLEARS. Returns the number of cells now carrying the species.
-pub fn scatter(wld: &World, cq: integer, cr: integer, rad: integer,
+pub fn scatter(wld: World, cq: integer, cr: integer, rad: integer,
            species: integer, density: integer) -> integer {
   n = 0;
   for dq in (0 - rad)..(rad + 1) {
@@ -1593,7 +1593,7 @@ pub fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> f
 // surface, the same segment-versus-line interior test — because a wall's edges are
 // its fence's edges with the offset taken out, and deriving that twice is how the
 // two drifted apart in the first place.
-pub fn wall_stamp(wld: &World, run: WallRun, mat: integer, grade: integer,
+pub fn wall_stamp(wld: World, run: WallRun, mat: integer, grade: integer,
               runs: WallRuns, marked: &integer) {
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
@@ -1662,7 +1662,7 @@ pub fn wall_stamp(wld: &World, run: WallRun, mat: integer, grade: integer,
 // ⚠ MARK, THEN CUT — the library's own `P3` lesson, and the reason `way_stamp` is
 // one call rather than two: a part that cuts its boundary as it lands leaves stale
 // edges where a later part covers them, and the result depends on the order.
-pub fn road_stamp(wld: &World, run: WallRun, half: float, fence_mat: integer,
+pub fn road_stamp(wld: World, run: WallRun, half: float, fence_mat: integer,
               grade: integer, runs: WallRuns, fenced: &integer,
               cut_total: &integer) -> integer {
   t = hex_way::track_new();
@@ -1876,7 +1876,7 @@ pub fn edge_mat_at(w: World, x: float, z: float, ref: float) -> integer {
 // where they stand rather than where a parameter says. A refusal when there is no
 // wall there — never a door in mid-air, which is what writing the material blind
 // would give.
-pub fn open_ahead(w: &World, a: Author, kind: integer, nedges: integer) -> Ack {
+pub fn open_ahead(w: World, a: Author, kind: integer, nedges: integer) -> Ack {
   if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");
   if !nfit.ft_ok { return ack_no(fit_text(nfit)); }
@@ -2416,7 +2416,7 @@ pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
 // and the gate can only witness the half that IS reachable (a road over a cellar
 // grading the ground, not the cellar). The deck half is correct by construction
 // and untested, which is a weaker claim and belongs written down as one.
-pub fn road_lay(wld: &World, cq: integer, cr: integer, h: integer, rad: integer,
+pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
             feet: float) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
@@ -2523,7 +2523,7 @@ pub const PEAK_STEP  = 6;      // height units per press (1.5 wu, about 1.3 m)
 // at both ends, so one stroke is a gentle dome; twenty presses is that dome scaled
 // twenty times vertically, which is where the steep flanks come from. They are
 // wanted — the author's call, confirmed 2026-07-29 — so do not soften this.
-pub fn brush(w: &World, tq: integer, tr: integer, amp: integer, rad: integer,
+pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
              clamped: &integer, residual: &integer) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
@@ -2590,7 +2590,7 @@ pub fn peak_cell(a: Author, tq: &integer, tr: &integer) -> boolean {
 //
 // A refusal when no cell lies `PEAK_AHEAD` hexes away — never a silent fallback to
 // the author's own cell, which is how the hill ended up underfoot.
-pub fn raise_ahead(w: &World, a: Author, dir: integer) -> Ack {
+pub fn raise_ahead(w: World, a: Author, dir: integer) -> Ack {
   if dir == 0 { return ack_no("a stroke of nothing"); }
   tq = 0;
   tr = 0;
@@ -2713,7 +2713,7 @@ pub fn annex_wall_top(a: Annex) -> integer {
 // every opening, frame, reveal and profile apply to them with no new code. They
 // start at the annex's own FLOOR, which is why `wr_base` had to exist: a balcony's
 // rail that ran to the ground would be a buttress.
-pub fn annex_runs(a: Annex, mat: integer, out: &WallRuns) {
+pub fn annex_runs(a: Annex, mat: integer, out: WallRuns) {
   annex_runs_sides(a, true, true, mat, out)
 }
 
@@ -2730,7 +2730,7 @@ pub fn annex_runs(a: Annex, mat: integer, out: &WallRuns) {
 // costs double. The rule is "skip your left if something is there", which gives
 // exactly one wall per junction however long the row.
 pub fn annex_runs_sides(a: Annex, left: boolean, right: boolean,
-                        mat: integer, out: &WallRuns) {
+                        mat: integer, out: WallRuns) {
   top = annex_wall_top(a);
   up = top - a.an_floor;
   if right {
@@ -2785,7 +2785,7 @@ pub fn annex_beside(a: Annex, width: float, side: integer, kind: integer) -> Ann
 // and these runs are derived from them — so a row is rebuilt, never appended to,
 // and adding a cupboard removes the bedstee's side wall without anything having to
 // remember that it once existed.
-pub fn annexes_runs(row: Annexes, mat: integer, out: &WallRuns) {
+pub fn annexes_runs(row: Annexes, mat: integer, out: WallRuns) {
   for a in row.items {
     lefty = false;
     for b in row.items { if annex_abuts(b, a) { lefty = true; } }

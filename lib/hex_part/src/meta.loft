@@ -94,7 +94,7 @@ fn field(t: text, key: text) -> text? {
   null
 }
 
-pub fn part_set_meta(w: &World, m: PartMeta) -> integer {
+pub fn part_set_meta(w: World, m: PartMeta) -> integer {
   if m.pm_kind < PK_HOUSE || m.pm_kind > PK_FITTING { return PM_KIND; }
   if has_newline(m.pm_name) || has_newline(m.pm_desc) { return PM_NEWLINE; }
   set_section_text(w, TAG_PART,
@@ -102,7 +102,7 @@ pub fn part_set_meta(w: &World, m: PartMeta) -> integer {
   PM_OK
 }
 
-pub fn part_set_anchor(w: &World, a: PartAnchor) -> integer {
+pub fn part_set_anchor(w: World, a: PartAnchor) -> integer {
   if a.pa_facing < 0 || a.pa_facing >= FACINGS { return PM_FACING; }
   set_section_text(w, TAG_ANCH,
     "q={a.pa_q}\nr={a.pa_r}\nh={a.pa_h}\nfacing={a.pa_facing}");

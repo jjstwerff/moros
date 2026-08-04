@@ -84,14 +84,18 @@ carrying another variable's value, `readPixels` returning black without
 `preserveDrawingBuffer`, and reading a picture by eye. A wrong number is worse than a guess,
 because a number gets believed. When the picture and the numbers disagree, suspect both.
 
-**The compiler's advice is a hypothesis, not an instruction.** loft 2026.8.0 tells you to drop
-the `&` on any parameter whose binding is never reassigned — *"field mutation already
-propagates to the caller without it"*. Acting on all 50 sites it flagged took `hex_world` from
-114 green to **96 failed** with `Delete on locked store`, and turned a scripted run that exits
-0 into a SIGABRT. ⚠ `--native` passed all 114 on the same source, so a per-backend green says
-nothing here. Worse, it is *right* at some sites and wrong at others **in identical words**: of
-seven dropped one at a time, four stayed green and three aborted, and nothing in the signature
-or at the call site separates them. Keep the `&` — [loft#760](https://github.com/loft-lang/loft/issues/760).
+**The compiler's advice is a hypothesis, not an instruction — run the suite against it.** loft's
+lint says to drop the `&` on any parameter whose binding is never reassigned, because *"field
+mutation already propagates to the caller without it"*. For one day that was false for a
+store-backed struct: acting on all 50 sites it flagged took `hex_world` from 114 green to **96
+failed** with `Delete on locked store`, and turned a scripted run that exits 0 into a SIGABRT.
+⚠ `--native` passed all 114 on the same source, so a per-backend green said nothing. It was
+*right* at some sites and wrong at others **in identical words** — of seven dropped one at a
+time, four stayed green and three aborted, with nothing in the signature or at the call site to
+separate them. Measured, filed as
+[loft#760](https://github.com/loft-lang/loft/issues/760), fixed within hours, and the 50 `&`s
+are now dropped. What outlives it: the check cost one suite run, and the report is what turned
+a blocked cleanup into a landed one.
 
 **A grep over a log is an instrument, and its default answer is "absent".** Three were blind in
 one session, each reading as a clean result rather than a miss: `^advice:` found nothing

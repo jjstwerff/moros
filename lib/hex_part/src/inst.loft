@@ -77,7 +77,7 @@ fn inst_line(i: PartInst) -> text {
 // Write the list. ⚠ EVERY INSTANCE IS CHECKED BEFORE ANY IS WRITTEN, so a list
 // with one bad record leaves the section as it was rather than half replaced —
 // the pre-flight rule `part_place` follows for the same reason.
-pub fn part_set_instances(w: &World, v: vector<PartInst>) -> integer {
+pub fn part_set_instances(w: World, v: vector<PartInst>) -> integer {
   for c in v {
     if c.pi_part == "" { return PI_NONAME; }
     if c.pi_part.find("\n") != null { return PI_NEWLINE; }

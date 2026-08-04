@@ -271,7 +271,7 @@ fn find_chunk(w: World, cx: integer, cz: integer) -> integer {
 // Rebuilt whenever the chunk vector is reordered — which only happens when an
 // emptied chunk is dropped. Every other path appends, and an append keeps every
 // existing index valid.
-fn reindex(w: &World) {
+fn reindex(w: World) {
   w.w_index = [];
   for i in 0..len(w.w_chunks) {
     w.w_index += ChunkAt { ca_key: chunk_key(w.w_chunks[i].ck_cx, w.w_chunks[i].ck_cz),
@@ -296,7 +296,7 @@ fn empty_cells() -> vector<StoredHex> {
 // incremented: every layer's label was 0, so nothing could be identified across a
 // shift. Labels are equality-only (`I1`), so a monotonic counter is the whole of
 // the identity this model asks for.
-fn fresh_label(w: &World) -> integer {
+fn fresh_label(w: World) -> integer {
   id = w.w_next_id;
   w.w_next_id = w.w_next_id + 1;
   id
@@ -315,7 +315,7 @@ fn fresh_label(w: &World) -> integer {
 // The identity belongs to whoever knows the extent, and that is never this function:
 // a column write sees one column. So the caller names the layer and `world_set_column_as`
 // spends the name on whatever it creates.
-pub fn world_fresh_label(w: &World) -> integer { fresh_label(w) }
+pub fn world_fresh_label(w: World) -> integer { fresh_label(w) }
 
 // The label to stamp on a layer being created in chunk `ci`: the caller's name if it
 // supplied one, otherwise a fresh one.
@@ -326,7 +326,7 @@ pub fn world_fresh_label(w: &World) -> integer { fresh_label(w) }
 // gesture, because after the first column creates the layer the rest find it and
 // create nothing; this is the guard that says so rather than assuming it, and it
 // degrades to a fresh label instead of corrupting the chunk.
-fn named_label(w: &World, ci: integer, new_id: integer) -> integer {
+fn named_label(w: World, ci: integer, new_id: integer) -> integer {
   if new_id == 0 { return fresh_label(w); }
   for ly in w.w_chunks[ci].ck_layers {
     if ly.ly_id == new_id { return fresh_label(w); }
@@ -672,7 +672,7 @@ pub fn world_band_check(w: World, cq: integer, cr: integer,
   check_column(w, band_column(w, cq, cr, lo, hi, band))
 }
 
-pub fn world_merge_band(w: &World, cq: integer, cr: integer,
+pub fn world_merge_band(w: World, cq: integer, cr: integer,
                         lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
   world_merge_band_as(w, cq, cr, lo, hi, band, 0)
 }
@@ -692,7 +692,7 @@ pub fn world_merge_band(w: &World, cq: integer, cr: integer,
 // is a real limit and it is stated rather than assumed: every gesture here merges a
 // band onto ground that already exists, so the floor lands in the ground layer and
 // the roof is the only thing made. `test_a_band_onto_authored_ground_makes_exactly_one_layer` is the test that says so.
-pub fn world_merge_band_as(w: &World, cq: integer, cr: integer,
+pub fn world_merge_band_as(w: World, cq: integer, cr: integer,
                            lo: integer, hi: integer, band: vector<Hex>,
                            new_id: integer) -> ColumnWrite {
   pre = world_band_check(w, cq, cr, lo, hi, band);
@@ -714,7 +714,7 @@ pub fn world_merge_band_as(w: &World, cq: integer, cr: integer,
 // layers because `F1` reads consecutive occupied cells in order; dressing has no
 // `F1`, so its view is simply "the dressing layers, in order" — and that
 // independence is the point. A prop moving must not renumber a terrain slot.
-pub fn world_set_dressing(w: &World, col: Column) -> ColumnWrite {
+pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
   // `R1` still applies — dressing shares the window, so it cannot sit below the
   // floor any more than terrain can. `F1` does NOT: two props may overlap, and a
   // lantern may hang inside the arch it lights.
@@ -820,7 +820,7 @@ pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
 //
 // The invariant that makes this safe is `HEX_STACK.md`'s own: **writes go in
 // place**. Rebuilding a column to change one cell was the departure.
-pub fn world_set_cell(w: &World, q: integer, r: integer, li: integer,
+pub fn world_set_cell(w: World, q: integer, r: integer, li: integer,
                       c: Hex) -> ColumnWrite {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
   // No chunk, or no such layer yet — the slow path materialises both.
@@ -895,7 +895,7 @@ pub fn world_set_cell(w: &World, q: integer, r: integer, li: integer,
 // The whole-column write, for the cases the fast path hands over: a chunk or layer
 // that does not exist yet, and a height that needs the window moved. One
 // implementation of rebasing, and it is the one that already had tests.
-fn set_cell_slow(w: &World, q: integer, r: integer, li: integer, c: Hex) -> ColumnWrite {
+fn set_cell_slow(w: World, q: integer, r: integer, li: integer, c: Hex) -> ColumnWrite {
   // ⚠ -1 MEANS "THERE IS NO SUCH LAYER", and it is a WRITE, not a no-op. Losing
   // this branch made every first write to a fresh column compose a column of no
   // cells: accepted, silent, and nothing stored. The store names the layer it
@@ -915,7 +915,7 @@ fn set_cell_slow(w: &World, q: integer, r: integer, li: integer, c: Hex) -> Colu
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: cells, co_ids: col.co_ids })
 }
 
-pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
+pub fn world_set_column(w: World, col: Column) -> ColumnWrite {
   world_set_column_as(w, col, 0)
 }
 
@@ -930,7 +930,7 @@ pub fn world_set_column(w: &World, col: Column) -> ColumnWrite {
 //
 // `new_id = 0` means "allocate one for me" and is what `world_set_column` passes, so
 // every caller that does not care about identity is unchanged.
-pub fn world_set_column_as(w: &World, col: Column, new_id: integer) -> ColumnWrite {
+pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {
     return ColumnWrite { cw_code: CW_LAYER_CAP, cw_layer: LAYER_CAP,
@@ -1267,7 +1267,7 @@ pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector
 //
 // Idempotent, and it never removes layers — a touch that arrives after the real thing
 // is a no-op rather than a deletion, because the wire does not promise an order.
-pub fn world_touch_chunk(w: &World, cx: integer, cz: integer, base: integer) {
+pub fn world_touch_chunk(w: World, cx: integer, cz: integer, base: integer) {
   ci = find_chunk(w, cx, cz);
   if ci < 0 {
     w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
@@ -1283,7 +1283,7 @@ pub fn world_chunk_known(w: World, cx: integer, cz: integer) -> boolean {
   find_chunk(w, cx, cz) >= 0
 }
 
-pub fn world_put_layer(w: &World, cx: integer, cz: integer, base: integer,
+pub fn world_put_layer(w: World, cx: integer, cz: integer, base: integer,
                        id: integer, kind: integer, ver: integer,
                        flat: vector<integer>) -> integer {
   if len(flat) != CHUNK_CELLS * LAYER_FIELDS { return 0; }
@@ -1441,7 +1441,7 @@ pub fn world_section_at(w: World, tag: integer) -> integer {
 // Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
 // not refused — the format carries whatever it was handed, and refusing here
 // would mean this library had an opinion about content it cannot read.
-pub fn world_set_section(w: &World, tag: integer, bytes: vector<u8>) {
+pub fn world_set_section(w: World, tag: integer, bytes: vector<u8>) {
   at = world_section_at(w, tag);
   if at < 0 {
     w.w_sections += [Section { sc_tag: tag, sc_bytes: bytes }];
@@ -1464,7 +1464,7 @@ pub fn world_section_bytes(w: World, tag: integer) -> vector<u8> {
   return w.w_sections[at].sc_bytes;
 }
 
-pub fn world_drop_section(w: &World, tag: integer) -> boolean {
+pub fn world_drop_section(w: World, tag: integer) -> boolean {
   at = world_section_at(w, tag);
   if at < 0 { return false; }
   keep: vector<Section> = [];

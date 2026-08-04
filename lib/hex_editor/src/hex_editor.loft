@@ -271,7 +271,7 @@ pub fn footprint_seat(cells: HexSet, terr: Heights, policy: integer) -> float {
 // The walls are laid as four RUNS whose ends are the mitred corners, so S3's band
 // draws them and two consecutive sides share an endpoint exactly — the strips meet
 // on the centreline instead of overshooting each other by half a wall.
-pub fn place_house(w: &World, a: Author, wid: integer, dep: integer,
+pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
                    grade: integer, runs: WallRuns) -> Ack {
   f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
   if !f.fp_ok {
@@ -327,7 +327,7 @@ pub fn place_house(w: &World, a: Author, wid: integer, dep: integer,
 // it at the wall makes the distance go radial past the tip, so the gable end rolls
 // over like a cone quadrant — 0.43 units, 0.37 m of bulge. A hip is the same call
 // with the ridge shortened, and then the conical ends are the FEATURE.
-pub fn roof_over(w: &World, f: Footprint, cells: HexSet, floor_h: integer,
+pub fn roof_over(w: World, f: Footprint, cells: HexSet, floor_h: integer,
                  eave_up: integer, pitch: float, hip_steps: integer) -> Ack {
   if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
   pad = f.fp_wid + f.fp_dep + 4;
