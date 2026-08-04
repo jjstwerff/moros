@@ -609,8 +609,55 @@ those six is an authoring call.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A5.1` | Hinge in `PART`: axis, range. Round-trip. | round-trip | S |
+| ✅ `A5.1` | Hinge in `PART`: axis, range. Round-trip. | **DONE.** `src/hinge.loft`, `hex_part` 157 → 170, both backends. ⚠ The first section in this format to carry a **float**, so `A1.4`'s *"an integer written as text round-trips exactly"* had to be re-earned — see below. | S |
 | `A5.2` | State on the instance, and the renderer honours it. | **the door reads as a door because it is ajar** — ⚠ the cold-recognition test, and a shut door photographs as a wall | M |
+
+### What `A5.1` turned up
+
+⚠ **THE FIELDS ARE `moros_sim::Link`'s, IN ITS ORDER AND ITS UNIT.** FITTINGS §1 says a leaf is a
+`Body` on a `Mount` link whose axis is the hinge and whose limits are in TURNS, and
+`assembly.loft`'s own warning is the reason to match rather than invent: *"Two units for one
+quantity is how a conversion goes missing."* A degrees-here / turns-there hinge reads perfectly in
+both files. ⚠ Matching a vocabulary is not importing it — `hex_part` still depends only on the
+store.
+
+⚠ **`A1.4` ARGUED THIS FORMAT FROM *"an integer written as text round-trips exactly"*, and every
+section since held integers.** A swing limit is a fraction of a turn, so the argument had to be
+re-earned rather than inherited. It holds — `0.1`, `1/3`, `π`, `√2`, `1e-300` and `1e300` all come
+back bit-equal through a save and a load — with the control that makes that mean anything:
+`0.1 + 0.2 != 0.3`, so the comparison can see one bit. A writer rounding to six decimals hands
+back `0.3` and two tests go red.
+
+⚠ **INFINITY ROUND-TRIPS PERFECTLY AND IS REFUSED ANYWAY**, and the gap between those two facts is
+the finding. The format has no trouble with `inf`; geometry does — a hinge POINT at infinity is
+not a position, a swing LIMIT at infinity is not an angle, and `hi - lo` on infinite limits is
+NaN. `moros_sim` spells *free* as a finite ±1000 turns. `x * 0.0 == 0.0` catches NaN and ±inf in
+one expression; `x == x` alone lets an infinity through.
+
+⚠ **AND THE FIRST VERSION OF THIS CLAIMED THE OPPOSITE, ON A PROBE THAT LIED.** It reported that
+`inf` wrote fine and read back malformed. The probe was wrong, and the way it was wrong is
+**[loft#767](https://github.com/loft-lang/loft/issues/767)**, filed: *a string literal nested
+inside an interpolation keeps its own `{…}` as LITERAL text*, so `"{("{x}" as float?) ?? 0.0}"`
+reads `{x}` back as unparseable and reports the default — **a silent wrong value with no
+diagnostic**. A confident absence from an instrument nobody had checked against something it
+should find, which is this tree's own rule broken on a language question rather than on a picture.
+
+⚠ **THE AXIS IS STORED AS GIVEN, NOT NORMALISED.** Normalising hands the author back a different
+number than they wrote — `meta.loft`'s rule about a name and the store's `WS_PALETTE` rule before
+it. `moros_sim::has_axis` asks only that one component be non-zero and this asks the same, so a
+leaf writable here is not inadmissible there; a check that only looked at `z` passes every door
+and fails every trapdoor, and the control catches it.
+
+⚠ **BACKWARDS IS REFUSED AND EQUAL IS NOT** — `assembly.loft` draws the line in the same place. A
+leaf pinned shut is a thing an author may want; a range no swing can satisfy is not, and swapping
+the two would invent a range nobody wrote (`F-SWING`: *never clamped silently*).
+
+⚠ **NO COUPLING TO `PART.kind`**, on purpose: refusing a hinge on a `PK_HOUSE` would make the two
+sections' WRITE ORDER load-bearing — set the hinge first and a legitimate leaf is refused.
+
+⚠ **And one fixture could not have failed as first written**: the float round-trip used
+`lo: 0.0, hi: x`, which makes `-0.375` a legitimately backwards range, so the range check refused
+it and the round-trip never ran for that value. `lo == hi == x` is admissible for every `x`.
 
 ### A6 — prop parts
 

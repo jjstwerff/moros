@@ -20,9 +20,9 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4`
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A5.1`
 
-`make gate` **35 green** · `make lib-test` **2428, both backends** · `make parts` green
+`make gate` **35 green** · `make lib-test` **2454, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
 the installed loft.
 
@@ -37,7 +37,7 @@ alone at `GATE_JOBS=1` is the cheap discriminator.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **157** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **170** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -57,7 +57,38 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A5.1` — the hinge. **`A3.4` is still ◐, and `A4` is closed.**
+### The next thing to do is #17 `A5.2` — state on the instance. **`A3.4` is still ◐.**
+
+**`A5.1` is done, and it is the first section in this format to carry a FLOAT.**
+`lib/hex_part/src/hinge.loft` holds `HING` — a leaf's hinge point, its axis and its swing
+limits. ⚠ **The fields are `moros_sim::Link`'s, in its order and its unit (TURNS)**, because
+FITTINGS §1 says a leaf is a `Body` on a `Mount` link and `assembly.loft` warns *"Two units for
+one quantity is how a conversion goes missing"*. Matching a vocabulary is not importing it —
+`hex_part` still depends only on the store.
+
+⚠ **`A1.4` ARGUED THIS FORMAT FROM *"an integer written as text round-trips exactly"*, and every
+section since held integers.** A swing limit is a fraction of a turn, so the argument had to be
+re-earned. It holds — `0.1`, `1/3`, `π`, `√2`, `1e-300`, `1e300` all come back bit-equal — with
+the control that makes it mean something: `0.1 + 0.2 != 0.3`, so the comparison can see one bit.
+
+⚠ **INFINITY ROUND-TRIPS PERFECTLY AND IS REFUSED ANYWAY**, and the gap between those two facts
+is the finding. The format is fine with `inf`; geometry is not — a hinge point at infinity is not
+a position, and `hi - lo` on infinite limits is NaN. `moros_sim` spells *free* as a finite ±1000
+turns. `x * 0.0 == 0.0` catches NaN and ±inf in one expression.
+
+⚠ **AND THE FIRST VERSION CLAIMED THE OPPOSITE, ON A PROBE THAT LIED.** It reported that `inf`
+wrote fine and read back malformed. The probe was wrong, and the way it was wrong is
+**[loft#767](https://github.com/loft-lang/loft/issues/767)**, filed: *a string literal nested
+inside an interpolation keeps its own `{…}` as LITERAL text*, so `"{("{x}" as float?) ?? 0.0}"`
+reads `{x}` back as unparseable and reports the default — **a silent wrong value with no
+diagnostic**. A confident absence from an instrument nobody had checked against something it
+should find, which is this tree's own rule broken on a language question. ⚠ The workaround is
+clean and is what the real code does: put the inner string in a variable first.
+
+⚠ **THE AXIS IS STORED AS GIVEN, NOT NORMALISED** — normalising hands the author back a different
+number than they wrote (`meta.loft`'s rule about a name). `moros_sim::has_axis` asks only that one
+component be non-zero and this asks the same, so a leaf writable here is not inadmissible there.
+
 
 **`A4.4` is done, and it refuted the design sentence it was sent to measure.**
 `moros_map/tests/headings.loft` rotates a 37-cell disk (90 interior adjacencies) by each of the
@@ -412,16 +443,16 @@ lineage. Which tree owns it for good is
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3` and all of
-`A4` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of `A4`
+and `A5.1` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
 copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
 cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
 cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
 `SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position, `A4.4` the heading
-measurement. **`A5.1` is next** — a hinge in `PART`, axis and range, round-tripped. ⚠ `A5.2` is
-the one with the cold-recognition test in it: *a door reads as a door because it is ajar*, and a
-shut door photographs as a wall. ⚠ Still true after `A4.4`: no part in this tree has ever been
-placed TURNED — `expand`/`bake` apply facing 0 only, and only six of the 24 ever can be.
+measurement, `A5.1` the hinge. **`A5.2` is next**, and it is the one with the cold-recognition
+test in it: *a door reads as a door because it is ajar*, and a shut door photographs as a wall.
+⚠ Still true: no part in this tree has ever been placed TURNED — `expand`/`bake` apply facing 0
+only, and only six of the 24 ever can be.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
