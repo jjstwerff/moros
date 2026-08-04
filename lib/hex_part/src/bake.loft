@@ -23,6 +23,7 @@
 // record, which outranks the cells, so its cells need no name.
 use hex_world;
 use inst;
+use catalogue;
 use stamp;
 use meta;
 use expand;

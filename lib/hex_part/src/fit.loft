@@ -1,0 +1,141 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Does this leaf go in that frame? — §P3's question, answered before placement.
+//
+// Plan 17 `A4.2`. `sock.loft` owns the two RECORDS; this file owns the QUESTION,
+// and it is the reason §P3 gives for sockets existing at all: *"coordinates make
+// 'does this door fit that frame' unanswerable before placement, which is exactly
+// the question an author asks"*.
+//
+// ⚠ THE MATCH IS EXACT TOKEN EQUALITY, AND THE OPACITY IS WHAT ENFORCES §P3'S OWN
+// RULE. A leaf that does not fit is *"refused … not silently scaled"* — and a
+// structured size class is precisely what would make scaling expressible: given
+// `2x3` and `2x4` as numbers, some later caller finds *close enough* irresistible
+// and the refusal becomes a coercion. Opaque tokens make that unsayable rather
+// than forbidden, which is the difference between a design and a rule.
+//
+// ⚠ AND §P3's *"a leaf TOO WIDE is refused with … the NEAREST leaf that fits"*
+// PRESUMES AN ORDERING THE CLASS DESIGN DOES NOT HAVE, which is worth writing down
+// rather than half-building. Its own three examples are `door/2x3`,
+// `pillar/round-3` and `statue/plinth-2`: one of the three reads as a width by a
+// height and the other two do not, so *wider* is undefined for two thirds of the
+// design's own vocabulary. What is buildable, and what an author can actually act
+// on, is the pair below — the refusal carries **the frame's actual class**, and
+// `parts_for_socket` names **every part in the library that fits it**. Exact and
+// complete beats near and ranked, and an edit distance over `2x3` and `3x3` would
+// be a guess wearing a number's clothes.
+use hex_world;
+use meta;
+use sock;
+use catalogue;
+
+pub const SF_OK      = 0;
+pub const SF_KIND    = 1;   // a door offered to a pillar socket
+pub const SF_SIZE    = 2;   // the right kind, a different size class
+pub const SF_NOTHING = 3;   // the part does not say what it fits at all
+
+// ⚠ IT IS NOT CALLED `Fit`, AND FINDING THAT OUT IS THE BEST THING IN THIS STEP.
+// The plan sketches `Fit{ok, reason, offer}`; `hex_editor::gesture` **already has**
+// a `Fit`, and a loft struct name is global across a consumer's whole dependency
+// graph, so the two merged and `make parts` stopped with *cannot assign text to
+// field Fit.sf_code of type integer*. `hex_editor::names` hit the same wall and
+// took the same way out — `NameFit`. A package suite going green says nothing
+// about this: `hex_part` alone was 131 green while the editor would not build.
+//
+// ⚠ AND THE COLLISION IS NOT A COINCIDENCE — THE EDITOR HAD ALREADY SETTLED THE
+// HARD PART. Its `Fit` splits parameters into ORDINAL and NOMINAL: *"255 is not
+// 'nearly' 256, it is a different thing entirely, and offering it reads as a small
+// correction while changing what the wall is made of"* (`X68`). A size class is
+// **nominal** by exactly that argument, which is the same conclusion the header
+// above reaches from §P3's own three examples — reached twice, independently, and
+// the collision is what showed it. So `sf_offer` is not a NEAREST value; it is
+// what the frame REQUIRES, which a nominal refusal may always report.
+//
+// ⚠ NO `ok` FIELD BESIDE THE CODE, and here this file parts company with `NameFit`
+// on purpose. `nf_reason` is a sentence, so `nf_ok` carries something the sentence
+// does not. `sf_code` is a code, so an `ok` beside it is the same fact twice — and
+// a writer that set one and forgot the other would make two callers disagree about
+// a joint, permanently. Every other answer in this package is a code plus a
+// sentence (`MetaRead`, `SockRead`, `CycleCheck`), and that is the shape kept.
+pub struct SocketFit {
+  sf_code:  integer,
+  sf_why:   text,
+  sf_offer: text,         // what the frame wants, spelled `kind/size` as §P3 spells it
+}
+
+// §P3's own spelling — `door/2x3` — and the thing an author greps the catalogue
+// for, which is why the refusal hands it back rather than describing it.
+pub fn socket_class(s: Socket) -> text { "{s.sk_kind}/{s.sk_size}" }
+pub fn fits_class(f: PartFits) -> text { "{f.pf_kind}/{f.pf_size}" }
+
+// ⚠ THE MOUNT IS THE SOCKET'S BUSINESS AND NOT THE JOINT'S, which is why no mount
+// appears here and why `FITS` carries none. A leaf's `ANCH` gives it a facing —
+// one of the 24 headings, always — so a socket in an EDGE derives that heading
+// from the edge and a socket at a HEADING supplies it directly. Either way the
+// leaf attaches, so requiring it to declare which kind of socket it expects would
+// be a field that can only ever agree with whatever the author already wrote.
+pub fn socket_fit(frame: Socket, leaf: PartFits) -> SocketFit {
+  offer = socket_class(frame);
+  // ⚠ *IT FITS NOTHING* IS NOT *IT FITS SOMETHING ELSE*. A part with no `FITS`
+  // section reads back as an empty claim, and the two want opposite fixes: author
+  // the section, or pick a different part. `MR_ABSENT` versus `MR_MALFORMED`
+  // again, at the next level up.
+  if leaf.pf_kind == "" || leaf.pf_size == "" {
+    return SocketFit { sf_code: SF_NOTHING, sf_offer: offer,
+      sf_why: "this part does not say what it fits; '{frame.sk_name}' takes {offer}" };
+  }
+  if leaf.pf_kind != frame.sk_kind {
+    return SocketFit { sf_code: SF_KIND, sf_offer: offer,
+      sf_why: "'{frame.sk_name}' takes a {frame.sk_kind} and this is a {leaf.pf_kind}" };
+  }
+  if leaf.pf_size != frame.sk_size {
+    return SocketFit { sf_code: SF_SIZE, sf_offer: offer,
+      sf_why: "'{frame.sk_name}' takes {offer} and this is {fits_class(leaf)}" };
+  }
+  SocketFit { sf_code: SF_OK, sf_offer: offer, sf_why: "" }
+}
+
+// Every part in the library that fits this socket, by catalogue handle.
+//
+// ⚠ THIS IS THE OTHER HALF OF THE REFUSAL, and it is where §P3's *"the nearest
+// leaf that fits"* actually lands. A refusal that only says what the frame wants
+// leaves the author to search a library of two hundred by hand; these are the
+// names they can click. Empty is a real answer and a useful one — nothing in the
+// library fits, and `sf_offer` says what to author.
+//
+// ⚠ IT OPENS EVERY PART, which `part_list` deliberately does not (`catalogue.loft`
+// — 65 KB per entry for a string). That is the same whole-file cost `library_cycle`
+// already pays at startup and the same one §P2 deferred to `A7.4`; a picker calling
+// this on every keystroke is what would make the deferral urgent, and a picker
+// calling it once when a socket is selected is not.
+//
+// ⚠ A PART THAT DOES NOT LOAD, OR WHOSE `FITS` IS DAMAGED, IS SIMPLY NOT OFFERED —
+// it is not silently *fitted*, and it is not reported here either. Reporting is
+// `library_cycle`'s at startup, where a fault gets greyed with its reason (plan 18
+// `B6`); an author picking a door does not want a fault list.
+//
+// ⚠ AND THE TWO GUARDS BELOW ARE NOT SEPARATELY OBSERVABLE, WHICH WAS MEASURED
+// RATHER THAN ASSUMED. Deleting either one — or BOTH — leaves all 131 tests green,
+// because a failed load and a malformed section both hand back `PartFits {}` and
+// `socket_fit` answers `SF_NOTHING` on an empty claim. Three rejections, one
+// behaviour, and only the last of them does any work today.
+//
+// They stay, and the reason is the case that cannot be constructed here: a store
+// that ever recovered PART of a damaged file would hand back a world carrying a
+// stale but well-formed `FITS`, and without `wl_code` that stale claim is offered.
+// Today's store abandons the whole load, so no fixture can pose the question — an
+// untestable guard is worth saying out loud, and is not worth deleting on the
+// strength of a green suite that never asked it anything.
+pub fn parts_for_socket(root: text, frame: Socket) -> vector<text> {
+  out: vector<text> = [];
+  for n in part_list(root) {
+    ld = world_load(part_file(root, n));
+    if ld.wl_code != WL_OK { continue; }
+    got = part_fits(ld.wl_world);
+    if got.fr_code != MR_OK { continue; }
+    if socket_fit(frame, got.fr_fits).sf_code == SF_OK { out += [n]; }
+  }
+  // ⚠ `part_list` is already sorted and this preserves that order, so a picker
+  // showing these does not reorder itself under the author's cursor.
+  out
+}

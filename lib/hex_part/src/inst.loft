@@ -179,12 +179,6 @@ pub const CY_BROKEN  = 3;   // a part on the way does not load, or its INST is d
 // and one code for both makes a typo read as a recursion the author cannot find.
 pub struct CycleCheck { cc_code: integer, cc_why: text }
 
-// ⚠ PUBLIC BECAUSE THE WALK AND THE EXPANSION MUST AGREE ON WHERE A PART LIVES.
-// `A3.2` resolves the same handle this does, and two copies of "{root}/{name}.hxw"
-// is exactly the shape that lets a cycle check pass on a file the renderer then
-// cannot find.
-pub fn part_file(root: text, name: text) -> text { "{root}/{name}.hxw" }
-
 // ⚠ THE PATH, NOT A VISITED SET, and a diamond is what tells them apart. A house
 // with two door-frames that both use the same leaf visits that leaf twice and is
 // perfectly legal; a global "seen" set calls the second visit a cycle and refuses

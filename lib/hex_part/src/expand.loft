@@ -31,6 +31,7 @@
 // nine refused AND eight accepted, because a bound nothing accepts is a wall.
 use hex_world;
 use inst;
+use catalogue;
 use stamp;
 use meta;
 

@@ -12,6 +12,7 @@ use codec;
 use region;
 use meta;
 use sock;
+use fit;
 use inst;
 use stamp;
 use expand;

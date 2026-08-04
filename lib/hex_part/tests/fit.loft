@@ -1,0 +1,224 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A4.2` — does this leaf go in that frame, and what does fit.
+use hex_part;
+use hex_world;
+
+fn no_palette() -> vector<integer> { [] }
+
+fn frame() -> Socket {
+  Socket { sk_q: 1, sk_r: 0 - 2, sk_h: 0, sk_mount: SM_EDGE, sk_at: 3,
+           sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }
+}
+
+fn claim(k: text, z: text) -> PartFits { PartFits { pf_kind: k, pf_size: z } }
+
+// ── The pure question ────────────────────────────────────────────────────────
+
+fn test_a_leaf_of_the_frames_class_fits() {
+  got = socket_fit(frame(), claim("door", "2x3"));
+  assert(got.sf_code == SF_OK, "refused {got.sf_code}: {got.sf_why}");
+}
+
+// ⚠ BOTH HALVES OF THE CLASS ARE MATCHED, and each of these catches a version that
+// checked only the other. A `door/3x3` in a `door/2x3` frame is the *too wide*
+// case; a `pillar/2x3` is the right size and the wrong thing entirely.
+fn test_the_right_kind_at_the_wrong_size_is_refused() {
+  got = socket_fit(frame(), claim("door", "3x3"));
+  assert(got.sf_code == SF_SIZE, "a 3x3 leaf was let into a 2x3 frame ({got.sf_code})");
+}
+
+fn test_the_right_size_of_the_wrong_kind_is_refused() {
+  got = socket_fit(frame(), claim("pillar", "2x3"));
+  assert(got.sf_code == SF_KIND, "a pillar was let into a door frame ({got.sf_code})");
+}
+
+// ⚠ *IT FITS NOTHING* IS NOT *IT FITS SOMETHING ELSE*, and one code for both makes
+// an unauthored part read as a wrong choice. A part with no `FITS` section reads
+// back as an empty claim, which is exactly what this is.
+fn test_a_part_that_says_nothing_about_fitting_is_a_third_answer() {
+  assert(socket_fit(frame(), claim("", "")).sf_code == SF_NOTHING, "empty claim");
+  assert(socket_fit(frame(), claim("door", "")).sf_code == SF_NOTHING, "half a claim");
+  assert(socket_fit(frame(), claim("", "2x3")).sf_code == SF_NOTHING, "the other half");
+  w = world_new(0.25, 100, 8, 3).wn_world;
+  bare = part_fits(w);
+  assert(bare.fr_code == MR_ABSENT, "a bare part claims a fit");
+  assert(socket_fit(frame(), bare.fr_fits).sf_code == SF_NOTHING,
+         "a part with no FITS section reads as a wrong choice rather than an unmade one");
+}
+
+// ⚠ THE REFUSAL CARRIES THE FRAME'S ACTUAL CLASS — the gate's own words, and the
+// only thing that makes it actionable. `false` is not an answer an author can use.
+fn test_a_refusal_says_what_the_frame_actually_takes() {
+  got = socket_fit(frame(), claim("door", "3x3"));
+  assert(got.sf_offer == "door/2x3", "the offer is '{got.sf_offer}'");
+  assert(got.sf_why.find("door/2x3") != null, "the sentence does not name it: '{got.sf_why}'");
+  assert(got.sf_why.find("door/3x3") != null,
+         "nor what was offered to it: '{got.sf_why}'");
+  assert(got.sf_why.find("leaf") != null,
+         "nor which socket refused: '{got.sf_why}'");
+  wrong = socket_fit(frame(), claim("pillar", "2x3"));
+  assert(wrong.sf_why.find("door") != null && wrong.sf_why.find("pillar") != null,
+         "the kind refusal names neither side: '{wrong.sf_why}'");
+}
+
+// ⚠ THE MATCH IS BY TOKEN, NEVER BY ANY READING OF ONE — and this is the control
+// that would catch a later *helpful* coercion. `02x3` and `2x3` are the same size
+// under any numeric parse and are different classes, so a version that started
+// reading `WxH` to be accommodating fails here. §P3 says a leaf that does not fit
+// is refused, **not silently scaled**; opacity is what makes scaling unsayable.
+fn test_two_classes_that_would_parse_alike_still_do_not_fit() {
+  assert(socket_fit(frame(), claim("door", "02x3")).sf_code == SF_SIZE, "02x3");
+  assert(socket_fit(frame(), claim("door", "2 x 3")).sf_code == SF_SIZE, "2 x 3");
+  assert(socket_fit(frame(), claim("door", "3x2")).sf_code == SF_SIZE, "3x2");
+  assert(socket_fit(frame(), claim("Door", "2x3")).sf_code == SF_KIND, "Door");
+}
+
+// The socket's own class is what the offer is made of, so the two must not drift.
+fn test_the_offer_is_the_frames_class() {
+  f = frame();
+  assert(socket_class(f) == "door/2x3", "socket_class is '{socket_class(f)}'");
+  assert(fits_class(claim("door", "2x3")) == "door/2x3",
+         "fits_class is '{fits_class(claim(\"door\", \"2x3\"))}'");
+  assert(socket_fit(f, claim("door", "2x3")).sf_offer == socket_class(f),
+         "an accepted fit reports a different offer than the socket's own class");
+}
+
+// ── What in the library fits ─────────────────────────────────────────────────
+
+// ⚠ THE FIXTURE IS BUILT, NOT ASSUMED — `catalogue.loft`'s rule. A test over the
+// real `data/parts/` would pass today because one cottage is there and change its
+// mind the day somebody adds a part, and it could not hold the cases that matter:
+// the near miss, the wrong kind, the part that claims nothing, and the file that
+// is not a part at all.
+fn leaf(root: text, name: text, k: text, z: text) {
+  w = world_new(0.25, 100, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  if k != "" {
+    assert(part_set_fits(w, PartFits { pf_kind: k, pf_size: z }).sw_code == SK_OK, "fits {name}");
+  }
+  assert(world_save(w, "{root}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn build(root: text) {
+  assert(mkdir_all("{root}/door").ok(), "mkdir door");
+  assert(mkdir_all("{root}/pillar").ok(), "mkdir pillar");
+  leaf(root, "door/oak", "door", "2x3");        // fits
+  leaf(root, "door/ash", "door", "2x3");        // fits, and sorts BEFORE oak
+  leaf(root, "door/wide", "door", "3x3");       // the near miss — right kind, wrong class
+  leaf(root, "door/plain", "", "");             // claims nothing at all
+  leaf(root, "pillar/round", "pillar", "round-3");
+  // ⚠ AND ONE THAT IS NOT A PART. `world_load` refuses it, and the question is
+  // whether that makes it *not offered* or makes the whole answer collapse.
+  f = file("{root}/door/broken.hxw");
+  f#format = LittleEndian;
+  f += (0 as u8);
+}
+
+fn wipe(root: text) {
+  for d in ["door", "pillar"] {
+    for e in list_dir("{root}/{d}") ?? [] { delete("{root}/{d}/{e}"); }
+    delete("{root}/{d}");
+  }
+  delete(root);
+}
+
+fn joined(v: vector<text>) -> text {
+  out = "";
+  for s in v { if out != "" { out = out + ", "; } out = out + s; }
+  out
+}
+
+fn test_the_library_answers_which_parts_fit_a_socket() {
+  root = "fit_fixture";
+  build(root);
+  got = parts_for_socket(root, frame());
+  assert(len(got) == 2, "{len(got)} parts fit, not 2: {joined(got)}");
+  // ⚠ SORTED, inherited from `part_list` — a picker that reorders itself under the
+  // author's cursor is the failure `catalogue.loft` sorts to prevent.
+  assert(got[0] == "door/ash", "first is '{got[0]}'");
+  assert(got[1] == "door/oak", "second is '{got[1]}'");
+  wipe(root);
+}
+
+// ⚠ EACH EXCLUSION IS ASSERTED SEPARATELY, so a version that dropped one class of
+// them is caught by exactly one assertion. Without this the count above passes on
+// an implementation that offers nothing at all.
+//
+// ⚠ AND THE FOUR ARE NOT FOUR MECHANISMS, WHICH WAS MEASURED. Deleting BOTH of
+// `parts_for_socket`'s guards leaves every one of these green: a file that does not
+// load and a part with no `FITS` both arrive as `PartFits {}`, and `socket_fit`
+// answers `SF_NOTHING` on an empty claim. So the last two lines below are one
+// mechanism wearing two hats — which is worth knowing before someone reads them as
+// coverage of the guards. The fixture facts are asserted directly instead, so at
+// least the subjects are what they are believed to be.
+fn test_every_kind_of_non_fit_is_left_out_for_its_own_reason() {
+  root = "fit_fixture";
+  build(root);
+  assert(world_load(part_file(root, "door/broken")).wl_code != WL_OK,
+         "the broken fixture loads perfectly well, so it tests nothing");
+  ok = world_load(part_file(root, "door/plain"));
+  assert(ok.wl_code == WL_OK, "the plain fixture does not load");
+  assert(part_fits(ok.wl_world).fr_code == MR_ABSENT,
+         "the plain fixture claims a fit after all");
+  got = joined(parts_for_socket(root, frame()));
+  assert(got.find("wide") == null, "the near miss was offered: {got}");
+  assert(got.find("plain") == null, "a part claiming nothing was offered: {got}");
+  assert(got.find("round") == null, "a pillar was offered to a door frame: {got}");
+  assert(got.find("broken") == null, "a file that is not a part was offered: {got}");
+  // …and the socket the pillar DOES fit finds it, so the exclusions above are not
+  // simply an empty answer wearing four hats.
+  post = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 0,
+                  sk_kind: "pillar", sk_size: "round-3", sk_name: "column-1" };
+  p = parts_for_socket(root, post);
+  assert(len(p) == 1 && p[0] == "pillar/round", "the pillar socket found {joined(p)}");
+  wipe(root);
+}
+
+// Nothing fits, and that is an answer rather than a failure — the author is told
+// what to author by `sf_offer`, and the empty list is what says nobody has.
+fn test_a_socket_nothing_fits_comes_back_empty() {
+  root = "fit_fixture";
+  build(root);
+  odd = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 0,
+                 sk_kind: "hatch", sk_size: "1x1", sk_name: "trap" };
+  assert(len(parts_for_socket(root, odd)) == 0, "something fit a socket nothing should");
+  assert(socket_fit(odd, PartFits { pf_kind: "door", pf_size: "2x3" }).sf_offer == "hatch/1x1",
+         "and the offer does not say what to author");
+  wipe(root);
+}
+
+// ── The two records and the question agree ───────────────────────────────────
+
+// ⚠ END TO END THROUGH THE FILES, because everything above compares structs that
+// never went near a disk. A frame is saved with its socket, a leaf with its claim,
+// both are loaded back, and the question is asked of what came off the files.
+fn test_a_saved_frame_and_a_saved_leaf_answer_through_the_format() {
+  root = "fit_pair";
+  assert(mkdir_all(root).ok(), "mkdir");
+  fw = world_new(0.25, 100, 8, 3).wn_world;
+  assert(world_set_column(fw, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  assert(part_set_sockets(fw, [frame()]).sw_code == SK_OK, "sockets");
+  assert(world_save(fw, "{root}/frame.hxw", no_palette()) == WS_OK, "save frame");
+  leaf(root, "oak", "door", "2x3");
+  leaf(root, "wide", "door", "3x3");
+
+  fb = world_load("{root}/frame.hxw");
+  assert(fb.wl_code == WL_OK, "load frame: {fb.wl_detail}");
+  s = part_sockets(fb.wl_world);
+  assert(s.sr_code == MR_OK && len(s.sr_items) == 1, "SOCK: {s.sr_why}");
+  got = s.sr_items[0] ?? Socket {};
+
+  ok = world_load("{root}/oak.hxw");
+  assert(socket_fit(got, part_fits(ok.wl_world).fr_fits).sf_code == SF_OK,
+         "the oak leaf did not fit through the format");
+  no = world_load("{root}/wide.hxw");
+  bad = socket_fit(got, part_fits(no.wl_world).fr_fits);
+  assert(bad.sf_code == SF_SIZE, "the wide leaf fit ({bad.sf_code})");
+  assert(bad.sf_offer == "door/2x3", "the offer came off the file as '{bad.sf_offer}'");
+
+  for e in list_dir(root) ?? [] { delete("{root}/{e}"); }
+  delete(root);
+}

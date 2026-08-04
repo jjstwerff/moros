@@ -18,6 +18,19 @@ use hex_world;
 
 const PART_EXT = ".hxw";
 
+// Where a part lives, from its catalogue handle. ⚠ PUBLIC BECAUSE FOUR CALLERS
+// MUST AGREE ON IT — the cycle walk, `expand`, `bake` and `parts_for_socket` — and
+// two copies of `"{root}/{name}.hxw"` is exactly the shape that lets a cycle check
+// pass on a file the renderer then cannot find.
+//
+// ⚠ AND IT LIVES HERE BECAUSE OF `PART_EXT`, WHICH IT USED TO SPELL OUT AGAIN. It
+// sat in `inst.loft` with a literal `.hxw` in it while the lister three files away
+// matched on a constant — one fact, two spellings, and a change to either alone
+// gives a catalogue that lists parts nothing can open, or a loader hunting for
+// files nothing lists. `test_every_listed_part_is_a_file_part_file_finds` is what
+// holds the two ends together now.
+pub fn part_file(root: text, name: text) -> text { "{root}/{name}{PART_EXT}" }
+
 // Every part under `root`, as `family/name` or bare `name`, in a STABLE order.
 //
 // ⚠ SORTED, AND THAT IS NOT TIDINESS. `list_dir` hands back whatever order the

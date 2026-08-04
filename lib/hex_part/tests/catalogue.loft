@@ -114,6 +114,29 @@ fn test_a_bare_part_beside_the_families_is_listed_too() {
   delete(root);
 }
 
+// ⚠ THE LISTER AND THE OPENER ARE ONE FACT AND WERE TWO SPELLINGS. `part_file`
+// lived in `inst.loft` with a literal `.hxw` in it while `is_part_file` matched on
+// `PART_EXT` three files away — so a change to either alone gives a catalogue
+// listing parts that nothing can open, or a loader hunting for files that nothing
+// lists, and neither end can see the other. They share the constant now, and this
+// is what holds them together: every handle the catalogue offers must name a file
+// that is actually there.
+fn test_every_listed_part_is_a_file_part_file_finds() {
+  root = "cat_fixture";
+  build(root);
+  got = part_list(root);
+  assert(len(got) == 3, "the fixture changed: {joined(got)}");
+  for n in got {
+    assert(exists(part_file(root, n)),
+           "the catalogue offers '{n}' and there is no {part_file(root, n)}");
+  }
+  // ⚠ And the control: the two names the lister REFUSED must not resolve either,
+  // or the check above passes on a `part_file` that appends nothing at all.
+  assert(!exists(part_file(root, "house/README")), "README resolved");
+  assert(!exists(part_file(root, "house/cottage.hxw.bak")), "the backup resolved");
+  wipe(root);
+}
+
 fn joined(v: vector<text>) -> text {
   out = "";
   for s in v { if out != "" { out = out + ", "; } out = out + s; }
