@@ -1527,6 +1527,30 @@ fn layer_crc(ly: Layer) -> integer {
 pub const WS_OK         = 0;
 pub const WS_PALETTE    = 1;   // a palette entry is not a byte
 pub const WS_CONCURRENT = 2;   // `X2` — someone else is writing this world
+pub const WS_IO         = 3;   // the bytes did not reach the disk — see below
+
+// ⚠ `WS_IO` EXISTS BECAUSE A SAVE USED TO REPORT SUCCESS OVER A FILE IT NEVER
+// CREATED. Measured 2026-08-04 while building plan 17 `A7.3e`: `f = file(path)`
+// on a path whose DIRECTORY is missing hands back a usable handle, every `f += …`
+// prints `file open error … (os error 2)` on stderr, and this function returned
+// `WS_OK`. The editor then told an author *"part 'newfam/thing' saved — 1 chunks,
+// 2 sections"*, renamed its subject line to the new part and re-anchored the edit
+// clock — over nothing. Silent loss, from the one gesture that exists to prevent
+// it.
+//
+// ⚠ AND THE CHECK IS THE EXACT LENGTH, NOT `exists`. A missing directory is only
+// the cheapest way to lose the bytes; a full disk or a permission that changes
+// mid-write truncates instead, and an existence test reads that as a good save.
+// The format's length is a closed form — `SZ_*` are already public *"so gates
+// assert against these rather than against whatever the writer happens to
+// produce"* — so the writer can be held to the same numbers a reader is.
+pub fn world_file_size(w: World, palette: vector<integer>) -> integer {
+  n = SZ_HEADER + len(palette);
+  for ch in w.w_chunks {
+    n = n + SZ_CHUNK + len(ch.ck_layers) * (SZ_LAYER_DIR + SZ_LAYER);
+  }
+  n + sections_size(w.w_sections)
+}
 
 // `X2` — MANY AUTHORS ARE NORMAL; A SECOND WRITER TO ONE STORE IS A BUG.
 //
@@ -1651,6 +1675,10 @@ pub fn world_save_as(w: World, path: text, palette: vector<integer>,
   // ordering is the whole forward-compatibility argument: such a reader stops at
   // the final CRC and never learns these bytes are there.
   write_sections(f, w.w_sections);
+  // ⚠ AND THEN ASK THE DISK, because nothing above can fail out loud. See
+  // `WS_IO`: a write into a directory that is not there costs a line on stderr
+  // and returns here as though it had worked.
+  if file(path).size != world_file_size(w, palette) { return WS_IO; }
   WS_OK
 }
 
@@ -1813,6 +1841,12 @@ pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
   seek(f, at);
   write_sections(f, w.w_sections);
   f#size = at + sections_size(w.w_sections);
+  // The same question the full writer asks, for the same reason. This path can
+  // only be reached over a file that already existed and kept its shape, so a
+  // missing directory cannot land here — a permission or a full disk can.
+  if file(path).size != world_file_size(w, palette) {
+    return SaveStat { ss_code: WS_IO, ss_layers: wrote };
+  }
   SaveStat { ss_code: WS_OK, ss_layers: wrote }
 }
 

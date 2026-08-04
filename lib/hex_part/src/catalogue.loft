@@ -57,6 +57,65 @@ pub fn part_list(root: text) -> vector<text> {
   return sorted_text(out);
 }
 
+// ── The INVERSE of `part_list` — plan 17 `A7.3e` ─────────────────────────────
+//
+// `part_list` says which names come back; this says which names may go in. They
+// are one rule and they were one rule only by luck: a save is the first gesture
+// that puts a name INTO the library, and until it existed nothing could write a
+// name the lister would not return.
+//
+// ⚠ WHAT IT IS FOR IS THE NAME THAT IS ACCEPTED AND THEN INVISIBLE. Measured on
+// the editor: `8:a/b/c` writes `<root>/a/b/c.hxw` — the save reports success, the
+// file is on disk, and `part_list` walks ONE level, so the catalogue never shows
+// it and no `14:` can place it. The author's part is gone in the only sense that
+// matters. `8:house/` is the same failure a shorter way: `.hxw` is not a part
+// file, so the bytes land under a name nothing lists.
+//
+// ⚠ AND IT SUBSUMES THE `..` FENCE THREE HANDLERS EACH SPELLED OUT. One rule
+// about what a part name is, in the package that owns what a part name means.
+pub const PN_OK     = 0;
+pub const PN_EMPTY  = 1;   // the name, or one of its two segments, is empty
+pub const PN_DEEP   = 2;   // more than one `/` — the catalogue walks one level
+pub const PN_ESCAPE = 3;   // `..` — a name that climbs out of the library
+
+// The reason travels with the code because the author is owed it: *"not a name"*
+// is unactionable and *"more than one level deep"* says what to type instead.
+pub struct NameCheck { nk_code: integer, nk_why: text }
+
+pub fn part_name_ok(name: text) -> NameCheck {
+  if name.find("..") != null {
+    return NameCheck { nk_code: PN_ESCAPE,
+                       nk_why: "'{name}' leaves the part library" };
+  }
+  segs = name.split('/');
+  if len(segs) == 0 {
+    return NameCheck { nk_code: PN_EMPTY, nk_why: "a part needs a name" };
+  }
+  if len(segs) > 2 {
+    return NameCheck { nk_code: PN_DEEP,
+                       nk_why: "'{name}' is more than one level deep; a part is "
+                             + "'family/part' or 'part'" };
+  }
+  for s in segs {
+    if s == "" {
+      return NameCheck { nk_code: PN_EMPTY,
+                         nk_why: "'{name}' has an empty family or part name" };
+    }
+  }
+  NameCheck { nk_code: PN_OK, nk_why: "" }
+}
+
+// The directory a part of this name lives in — what a save has to make exist
+// before it writes. Empty for a part with no family, which is the library root
+// and always there.
+//
+// ⚠ IT IS DERIVED FROM `part_file` RATHER THAN RE-SPLIT, for the reason that
+// function is public at all: two spellings of where a part lives is how a save
+// lands somewhere the lister does not walk.
+pub fn part_dir(root: text, name: text) -> text {
+  part_file(root, name).dir()
+}
+
 // ⚠ THE SUFFIX IS CHECKED AT THE END, not with `contains`. A file called
 // `cottage.hxw.bak` contains `.hxw` and is not a part; listing it would offer the
 // author something `world_load` refuses.

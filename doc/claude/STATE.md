@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-03)
+# STATE.md — where the editor work stands (2026-08-05)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -22,11 +22,24 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3d`
+## ⏭ PICK UP HERE (2026-08-05, session 13) — plan 18 COMPLETE, plan 17 through `A7.3e`
 
-`make gate` **40 green** · `make lib-test` **2572, both backends** · `make parts` green
+`make gate` **41 green** · `make lib-test` **2588, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-2026-08-04 on the installed loft.
+2026-08-05 on the installed loft.
+
+⚠ **A LIBRARY EDIT MAY NOT REACH THE EDITOR, AND A GREEN SUITE CAN BE MEASURING THE PREVIOUS
+LIBRARY.** [loft#777](https://github.com/loft-lang/loft/issues/777), filed 2026-08-05. A
+**body-only** edit under `lib/` is invisible to `src/editor_server.loft` — `lib/*/native-auto/*.so`
+serves the stale build and does **not** self-clear on the next run — while the *same source* is
+picked up correctly by an 8-line consumer, and by the package's own `loft test` on both backends.
+⚠ **It inverted the suite in both directions inside one hour**: a deliberate sabotage of a
+library rule looked like a **blind gate**, and restoring the rule then looked like a **broken
+feature**, three checks red against correct source. ⚠ The compile is FRESH while the execution is
+STALE — appending garbage to the library file fails startup with a parse error naming that exact
+file, so it is read, parsed and then not used. **`rm -rf lib/*/native-auto` before any run that
+must reflect a `lib/` edit**, and re-run before believing either colour. The rebuild is minutes
+and ~5 GB, which is why `make gate` does not do it for you.
 
 ⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
 `SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
@@ -55,7 +68,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **229** |
+| `hex_editor` **235** | `hex_world` **117** | `lavition_ui` **65** | `hex_part` **234** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -75,9 +88,32 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3e` — a part that did not exist before
+### The next thing to do is #17 `A7.3f` — the joints on the wire
 
-**`A7.3a`–`A7.3d` are built: a part can be opened, edited, saved back, and the save is checked.**
+**`A7.3a`–`A7.3e` are built: a part can be opened, edited, saved under a name that did not exist,
+the save is checked, and the library follows while the editor watches.** `A7.3e` is the acceptance
+test for the whole plan — *a house authored end-to-end without touching loft* — and it found
+**three live defects, two of them silent data loss**, none of which any existing gate could see:
+
+- ⚠ **a save into a family that does not exist reported success over a file that was never
+  created.** `8:newfam/thing` answered *"saved — 1 chunks, 2 sections"*, renamed the subject line
+  and re-anchored the edit clock; `file()` on a path whose directory is missing hands back a
+  usable handle, the writes go to **stderr**, and `world_save` returned `WS_OK`. Now
+  `hex_world::WS_IO` — the file's length compared against the format's own `SZ_*`, which also
+  catches a truncated write that `exists` reads as a good save — and the editor makes the family
+  directory, because *did the bytes land* is the library's question and *which directories exist*
+  is the consumer's.
+- ⚠ **a name the catalogue can never show was accepted.** `8:a/b/c` landed on disk and
+  `part_list` walks **one level** — in the library, in no catalogue, placeable by nothing.
+  `hex_part::part_name_ok` is the inverse of the lister, and it subsumes the `..` fence three
+  handlers each spelled out.
+- ⚠ **a save-as carried the ancestor's `PART.name`**, so `house/annexe` announced itself as
+  *'cottage'* at every placement and two catalogue rows claimed one name.
+
+`part_new.mjs` 33 checks, four sabotages seen red · `world_file_size` 3 tests · `part_name_ok`
+5 tests. The per-step record is [plan 17 § *What `A7.3e` turned up*](../../plans/17-parts/README.md).
+
+**How the mode works, in one paragraph.**
 `44:<name>` opens a part as the store the gestures reach and `44:` closes back, with the world, the
 renderer's nine registries and the feet held aside by assignment. The fence refuses
 `14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:` (state the
@@ -85,7 +121,9 @@ mode does not hold aside) and `9:`; everything else still edits. `8:` routes by 
 `parts_root()/<name>.hxw`, sections and all, with an empty payload meaning *the part that is open* —
 after §P8's check, **before** the write. `part_mode.mjs` 31 · `part_fence.mjs` 17 ·
 `part_save.mjs` 19 · `part_check.mjs` 18 · `save_edit.loft` 6 · `part_cycle_of` 6, seventeen
-sabotages seen red across them.
+sabotages seen red across them. `8:<newname>` writes a part that did not exist, makes its family
+directory if it has to, and gives it the leaf of that name as its own — and a name the catalogue
+could not list is refused before anything is written (`A7.3e`).
 
 ✅ **`A3.4` IS CLOSED.** §P8's *"checked on save"* has its save, and it needed a function `A3.4`
 could not have written: `part_cycle` walks a part that is on DISK, which is the version a save
@@ -93,13 +131,9 @@ replaces, so the check a save needs is about the content in memory **under the n
 take**. `part_cycle_of` seeds the path with that name. ⚠ And the cycle is reachable with no
 instance gesture at all — `prop/shrine` saved AS `prop/plinth` is a part that contains itself.
 
-⚠ **`A7.3e` is the acceptance test**: a part that did not exist before, appearing in the catalogue
-while the editor runs, and placeable in the same session. `8:<newname>` already writes one — what
-`A7.3e` owes is that the LIBRARY follows.
-
 **`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
 ✅ the store swap and the subject (`a`), ✅ the fence (`b`), ✅ the save (`c`), ✅ the save check
-(`d`), a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
+(`d`), ✅ a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
 until a number says it hurts; `src/part_build.loft` prints the cost every run.
 
 ⚠ **THE OWNER GUARD IS NOT IN, AND THAT WAS MEASURED RATHER THAN ASSUMED.** `world_save_as(…, port)`

@@ -156,7 +156,11 @@ check(!existsSync(`${ROOT}/${WORLDNAME}.hxw`),
 // ── the name fence, which the world's save does not need ───────────────────
 lines = await step(`44:${PART}`, 2500);
 const escape = await ask('8:../../escaped', 'part save refused');
-check(escape.includes('leaves data/parts/'),
+// ⚠ THE WORDING MOVED WITH THE RULE, plan 17 `A7.3e`. The three handlers each
+// spelled out their own `..` check; the fence is `hex_part::part_name_ok` now —
+// one rule, in the package that owns what a part name is — and it says *the part
+// library* rather than naming a directory `EDITOR_PARTS` can point away from.
+check(escape.includes('leaves the part library'),
       `a save under a name that climbs out is refused (${JSON.stringify(escape)})`);
 check(!existsSync('escaped.hxw') && !existsSync('../escaped.hxw'),
       'and nothing was written outside the library');

@@ -181,7 +181,8 @@ check(a.huds.length === hudsBefore,
 // ⚠ THE OTHER REFUSAL WITH TEETH: a name that climbs out of the library.
 a.ws.send('44:../../etc/passwd');
 await wait(800);
-check(a.says.some((s) => s.includes('leaves data/parts/')),
+// ⚠ `A7.3e` moved the wording with the rule — `hex_part::part_name_ok` owns it now.
+check(a.says.some((s) => s.includes('leaves the part library')),
       'a name containing .. is refused rather than normalised');
 check(a.huds.length === hudsBefore, 'and that one does not move the line either');
 

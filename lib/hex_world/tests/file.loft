@@ -100,3 +100,46 @@ fn test_a_missing_or_foreign_file_is_refused_not_guessed() {
   assert(world_load(p).wl_code == WL_MAGIC, "a foreign file was accepted");
   delete(p);
 }
+
+// ── A SAVE THAT WROTE NOTHING MUST NOT REPORT SUCCESS ────────────────────────
+//
+// Plan 17 `A7.3e` found this the expensive way. `file(path)` on a path whose
+// DIRECTORY does not exist hands back a usable handle; every write prints
+// `file open error … (os error 2)` on stderr and the function returned `WS_OK`.
+// The editor's part save then told an author their work was on disk, renamed the
+// subject line to the new part and re-anchored the edit clock, over a file that
+// was never created.
+fn test_a_save_into_a_missing_directory_is_refused() {
+  w = built();
+  p = "hexworld_nodir/deeper/x.bin";
+  assert(world_save(w, p, [1]) == WS_IO,
+         "a save into a directory that does not exist reported success — the caller "
+         + "then believes bytes are on disk that were never written");
+  assert(!exists(p), "and nothing is there, which is the half that makes it silent");
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT THE CHECK ABOVE IS SATISFIED BY A WRITER THAT
+// REFUSES EVERY SAVE. A world with chunks AND sections has to still go through,
+// because the length the check compares is computed from both.
+fn test_the_length_check_lets_a_real_save_through() {
+  w = built();
+  world_set_section(w, 1414743380, [72, 105]);           // 'PART', two bytes
+  p = "hexworld_len.bin";
+  assert(world_save(w, p, [1, 2, 3]) == WS_OK, "a sound save was refused");
+  // ⚠ AND THE PREDICTION IS EXACT, not a lower bound. The writer is held to the
+  // published `SZ_*` numbers, so padding a field — the regression those constants
+  // exist to catch — fails here rather than becoming the new baseline.
+  assert(file(p).size == world_file_size(w, [1, 2, 3]),
+         "the file is {file(p).size} bytes and the format says "
+         + "{world_file_size(w, [1, 2, 3])}");
+  assert(world_load(p).wl_code == WL_OK, "and it still loads");
+  delete(p);
+}
+
+// The incremental writer answers the same way — it falls back to the full writer
+// when the shape does not match, and a missing directory has no shape at all.
+fn test_the_incremental_writer_refuses_a_missing_directory_too() {
+  w = built();
+  st = world_save_incremental(w, "hexworld_nodir2/x.bin", [], OWNER_ANY);
+  assert(st.ss_code == WS_IO, "incremental save reported {st.ss_code}");
+}

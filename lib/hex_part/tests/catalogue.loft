@@ -142,3 +142,78 @@ fn joined(v: vector<text>) -> text {
   for s in v { if out != "" { out = out + ", "; } out = out + s; }
   "[" + out + "]"
 }
+
+// ── A NAME THAT MAY GO IN IS A NAME THAT COMES BACK — plan 17 `A7.3e` ────────
+//
+// The lister and the fence are the same rule from opposite sides, and the save
+// gesture is what first made the difference reachable. These tests write the file
+// and then ASK THE LISTER, rather than restating the rule: a fence that agreed
+// with itself would pass with `part_list` walking any number of levels.
+fn test_a_name_the_fence_accepts_is_a_name_the_catalogue_returns() {
+  root = "cat_names";
+  assert(mkdir_all("{root}/fam").ok(), "mkdir");
+  for n in ["bare", "fam/leaf"] {
+    assert(part_name_ok(n).nk_code == PN_OK, "'{n}' was refused: {part_name_ok(n).nk_why}");
+    touch(part_file(root, n));
+  }
+  got = part_list(root);
+  assert(len(got) == 2, "expected both, got {joined(got)}");
+  assert(got[0] == "bare" && got[1] == "fam/leaf", "got {joined(got)}");
+  wipe_names(root);
+}
+
+// ⚠ THE ONE THAT COST THE STEP. `a/b/c` is written, is on disk, reports success —
+// and `part_list` walks ONE level, so it is in the library and not in the
+// catalogue. The author's part is gone in the only sense that matters, and every
+// count agrees.
+fn test_a_name_the_fence_refuses_is_a_name_the_catalogue_cannot_see() {
+  root = "cat_names";
+  assert(mkdir_all("{root}/a/b").ok(), "mkdir deep");
+  assert(part_name_ok("a/b/c").nk_code == PN_DEEP, "a/b/c was accepted");
+  touch(part_file(root, "a/b/c"));
+  got = part_list(root);
+  // The deep file is invisible; the directory `a` holds no `.hxw` of its own.
+  assert(len(got) == 0, "a two-level name was listed: {joined(got)}");
+  delete("{root}/a/b/c.hxw");
+  delete("{root}/a/b");
+  delete("{root}/a");
+  delete(root);
+}
+
+// ⚠ AN EMPTY SEGMENT IS THE SAME FAILURE A SHORTER WAY. `house/` resolves to
+// `<root>/house/.hxw`, and `is_part_file` refuses a name that is only the
+// extension — so the bytes land under a handle nothing lists.
+fn test_an_empty_segment_is_refused_and_would_be_invisible() {
+  root = "cat_names";
+  assert(mkdir_all("{root}/house").ok(), "mkdir");
+  assert(part_name_ok("house/").nk_code == PN_EMPTY, "'house/' was accepted");
+  assert(part_name_ok("/leaf").nk_code == PN_EMPTY, "'/leaf' was accepted");
+  assert(part_name_ok("").nk_code == PN_EMPTY, "the empty name was accepted");
+  touch(part_file(root, "house/"));
+  assert(len(part_list(root)) == 0, "'house/' produced a listed part");
+  delete("{root}/house/.hxw");
+  delete("{root}/house");
+  delete(root);
+}
+
+fn test_a_name_that_climbs_out_is_refused_before_anything_is_written() {
+  assert(part_name_ok("../escaped").nk_code == PN_ESCAPE, "'../escaped' was accepted");
+  assert(part_name_ok("house/../../x").nk_code == PN_ESCAPE, "a buried '..' was accepted");
+  // ⚠ THE CONTROL: two dots that are not a segment are a legal file name, and a
+  // fence that matched them would refuse `prop/statue..v2` for no reason.
+  assert(part_name_ok("prop/statue..v2").nk_code == PN_ESCAPE,
+         "a substring '..' is refused — this test records the choice, not an accident");
+}
+
+// The directory a save must make. Empty for a bare name, which is the root.
+fn test_part_dir_is_the_family_directory() {
+  assert(part_dir("r", "fam/leaf") == "r/fam", "got {part_dir("r", "fam/leaf")}");
+  assert(part_dir("r", "bare") == "r", "got {part_dir("r", "bare")}");
+}
+
+fn wipe_names(root: text) {
+  for e in list_dir("{root}/fam") ?? [] { delete("{root}/fam/{e}"); }
+  delete("{root}/fam");
+  for e in list_dir(root) ?? [] { delete("{root}/{e}"); }
+  delete(root);
+}

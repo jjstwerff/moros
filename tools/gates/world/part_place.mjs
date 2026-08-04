@@ -99,7 +99,9 @@ ws.onmessage = async (e) => {
     const drawn = roofAfterPart > roofAfterProc;
     const refusedMissing = missingMsg.startsWith('stencil refused — part ')
                            && missingMsg.includes('nosuchthing');
-    const refusedEscape  = escapeMsg.includes('leaves data/parts/');
+    // ⚠ The fence is `hex_part::part_name_ok` since `A7.3e` — one rule for what a
+    // part name is, so the wording is the library's and names no directory.
+    const refusedEscape  = escapeMsg.includes('leaves the part library');
     const untouched = afterRefusals === partCentre;
 
     const ok = placedFromPart && sameCentre && sameEave && sameWalls && hasDoor

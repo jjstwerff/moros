@@ -522,9 +522,14 @@ fn part_path(name: text) -> text { "{parts_root()}/{name}.hxw" }
 
 fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
               name: text, q: integer, r: integer, anchor: integer) {
-  if name.find("..") != null {
-    srv.send_to(cid, "S:stencil refused — part name '{name}' leaves data/parts/");
-    println("editor: stencil refused — part name '{name}' leaves data/parts/");
+  // ⚠ ONE RULE, IN THE PACKAGE THAT OWNS WHAT A PART NAME IS. This site, `44:`
+  // and `8:` each spelled out their own `..` check; `A7.3e` needed a second
+  // clause (a name the catalogue cannot see) and three copies is how one of them
+  // comes to disagree. `hex_part::part_name_ok` is the inverse of `part_list`.
+  pnc = hex_part::part_name_ok(name);
+  if pnc.nk_code != hex_part::PN_OK {
+    srv.send_to(cid, "S:stencil refused — {pnc.nk_why}");
+    println("editor: stencil refused — {pnc.nk_why}");
     return;
   }
   path = part_path(name);
@@ -5329,9 +5334,16 @@ fn main() {
             // that did not exist before possible (`A7.3e`).
             sv_name = part_name;
             if ev.payload != "" { sv_name = ev.payload; }
-            if sv_name.find("..") != null {
-              srv.send_to(ev.cid, "S:part save refused — name '{sv_name}' leaves data/parts/");
-              println("editor: part save refused — name '{sv_name}' leaves data/parts/");
+            // ⚠ AND THE FENCE IS NOW ABOUT MORE THAN `..` — plan 17 `A7.3e`.
+            // `8:a/b/c` used to be accepted: the file landed on disk, the save
+            // reported success, and `part_list` walks ONE level — so the part was
+            // in the library and never in the catalogue, placeable by nothing.
+            // `hex_part::part_name_ok` is the inverse of the lister, with the
+            // tests that write a file and then ask it.
+            sv_nmc = hex_part::part_name_ok(sv_name);
+            if sv_nmc.nk_code != hex_part::PN_OK {
+              srv.send_to(ev.cid, "S:part save refused — {sv_nmc.nk_why}");
+              println("editor: part save refused — {sv_nmc.nk_why}");
             } else {
               // ⚠ `OWNER_ANY`, AND THE OWNER GUARD IS DEFERRED WITH A NUMBER.
               // `X2` looked like exactly this case — a box running a human
@@ -5390,11 +5402,76 @@ fn main() {
                 println("editor: part save refused — '{sv_name}' mesh ({sv_mesh.mc_code}) "
                       + "{sv_mesh.mc_why}");
               } else {
+              // ── A NEW FAMILY IS A THING AN AUTHOR MAKES — plan 17 `A7.3e` ──
+              //
+              // ⚠ AND WITHOUT THIS THE SAVE LIED. `file(path)` on a path whose
+              // directory is missing hands back a usable handle, every write goes
+              // to stderr as `file open error … (os error 2)`, and `world_save`
+              // returned `WS_OK` — so `8:newfam/thing` answered *"saved — 1
+              // chunks, 2 sections"*, renamed the subject line and re-anchored the
+              // edit clock over a file that was never created. `hex_world` now
+              // answers `WS_IO` (it compares the file's length against the
+              // format's own `SZ_*`), and the directory is made here, because
+              // *which directories exist* is the consumer's business and *did the
+              // bytes land* is the library's.
+              //
+              // ⚠ IT IS `mkdir_all` AND NOT A REFUSAL. The acceptance test for
+              // this whole plan is *a house authored end-to-end without touching
+              // loft*; sending the author to a shell to make `house/` is exactly
+              // the seam that fails. The name fence above is what keeps this from
+              // scattering directories: at most one level, and never `..`.
+              sv_dir = hex_part::part_dir(parts_root(), sv_name);
+              sv_mk = mkdir_all(sv_dir);
+              if !sv_mk.ok() {
+                srv.send_to(ev.cid, "S:part save refused — cannot make the family "
+                                  + "directory for '{sv_name}'");
+                println("editor: part save refused — mkdir failed for '{sv_name}'");
+              } else {
+              // ── THE NEW PART TAKES THE NEW HANDLE'S LEAF AS ITS NAME ────────
+              //
+              // ⚠ A SAVE-AS USED TO CARRY THE ANCESTOR'S `PART.name`, so
+              // `house/cottage` saved as `house/annexe` announced itself as
+              // *'cottage'* at every placement and both rows of the catalogue
+              // claimed one name. §C2 says a name is unique per kind and that an
+              // unnamed thing gets one that is honest about being generated; the
+              // leaf of the handle the author just typed is exactly that.
+              //
+              // ⚠ ONLY WHEN THE HANDLE MOVED, which is what keeps `A7.3c`'s null
+              // edit byte-identical: `8:` over the part that is open changes
+              // nothing, so it writes nothing.
+              // ⚠ AND ONLY WHEN THERE IS A `PART` SECTION TO EDIT. A part without
+              // one has no kind either, and inventing a kind to carry a name would
+              // be the server composing content — `place_part` already falls back
+              // to the handle for exactly this case.
+              sv_renamed = false;
+              sv_was = "";
+              sv_pm = part_meta(wld);
+              if sv_name != part_name && sv_pm.mr_code == MR_OK {
+                sv_was = sv_pm.mr_meta.pm_name;
+                sv_renamed = true;
+                part_set_meta(wld, hex_part::PartMeta { pm_kind: sv_pm.mr_meta.pm_kind,
+                                                        pm_name: sv_name.basename(),
+                                                        pm_desc: sv_pm.mr_meta.pm_desc });
+              }
               sv_code = world_save(wld, part_path(sv_name), []);
+              // ⚠ A SAVE THAT DID NOT HAPPEN LEAVES THE PART AS IT WAS FOUND,
+              // which is `A7.3d`'s rule extended past the checks to the write. The
+              // edit CLOCK does not come back — it is monotonic on purpose — so a
+              // failed save-as reports the rename as work discarded, which is the
+              // honest direction to be wrong in.
+              if sv_code != WS_OK && sv_renamed {
+                part_set_meta(wld, hex_part::PartMeta { pm_kind: sv_pm.mr_meta.pm_kind,
+                                                        pm_name: sv_was,
+                                                        pm_desc: sv_pm.mr_meta.pm_desc });
+              }
               if sv_code == WS_CONCURRENT {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' was last written "
                                   + "by another editor (code {sv_code})");
                 println("editor: part save refused — '{sv_name}' held by another writer");
+              } else if sv_code == WS_IO {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' did not reach the "
+                                  + "disk; nothing was written (code {sv_code})");
+                println("editor: part save refused — '{sv_name}' never reached the disk");
               } else if sv_code != WS_OK {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' (code {sv_code})");
                 println("editor: part save refused — '{sv_name}' (code {sv_code})");
@@ -5412,6 +5489,7 @@ fn main() {
                                   + "{len(wld.w_sections)} sections");
                 println("editor: part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
                       + "{len(wld.w_sections)} sections");
+              }
               }
               }
             }
@@ -5488,12 +5566,13 @@ fn main() {
             srv.send_to(ev.cid, "S:part refused — already editing '{part_name}'; "
                               + "close it with 44: first");
             println("editor: part refused — already editing '{part_name}'");
-          } else if ev.payload.find("..") != null {
-            // The same fence `14:` uses, in the same words: a part is NAMED, never
-            // pathed, and a name that climbs out of the library is refused rather
-            // than normalised.
-            srv.send_to(ev.cid, "S:part refused — name '{ev.payload}' leaves data/parts/");
-            println("editor: part refused — name '{ev.payload}' leaves data/parts/");
+          } else if hex_part::part_name_ok(ev.payload).nk_code != hex_part::PN_OK {
+            // The same fence `14:` uses, from the same function: a part is NAMED,
+            // never pathed, and a name that climbs out of the library — or one the
+            // catalogue could never list — is refused rather than normalised.
+            po_why = hex_part::part_name_ok(ev.payload).nk_why;
+            srv.send_to(ev.cid, "S:part refused — {po_why}");
+            println("editor: part refused — {po_why}");
           } else {
             pt_ld = world_load(part_path(ev.payload));
             if pt_ld.wl_code != WL_OK {

@@ -961,7 +961,7 @@ both stores in a vector and take `[i]`.
 | ✅ `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | **DONE.** `tools/gates/world/part_fence.mjs`, 17 checks, four sabotages seen red including the **over-fence**. `14:<roof>,<part>`, `18:` and `21:` refused; everything else still edits. ⚠ **Two live defects found**, one of them silent data loss — see below | XS |
 | ✅ `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | **DONE.** `lib/hex_part/tests/save_edit.loft` (6 tests, 3 of them controls) for the format half; `tools/gates/world/part_save.mjs`, 19 checks, four sabotages seen red, for the routing half. ⚠ **The owner guard was tried and MEASURED OUT** — see below | S |
 | ✅ `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | **DONE.** New library function `part_cycle_of` (6 tests) because `part_cycle` answers about the version on DISK; `tools/gates/world/part_check.mjs`, 18 checks, four sabotages seen red. ⚠ **`A3.4` IS NOW CLOSED** | XS |
-| `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | `N:` re-broadcasts, every `W:`/`Y:` re-addresses, and `14:<roof>,<new>` places it in the same session | S |
+| ✅ `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | **DONE.** `tools/gates/world/part_new.mjs`, 33 checks, four sabotages seen red. ⚠ **Three live defects found, two of them silent data loss** — a save into a family that does not exist reported success over a file that was never created; a name the catalogue can never list was accepted; and a save-as carried the ancestor's `PART.name`. New: `hex_world::WS_IO` + `world_file_size` (3 tests), `hex_part::part_name_ok` + `part_dir` (5 tests) | S |
 | `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
 
 ⚠ **`44` IS THE NEXT FREE ID — 1 through 43 are all taken**, and it is one message with two forms
@@ -1231,6 +1231,78 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### What `A7.3e` turned up
+
+⚠ **A SAVE INTO A FAMILY THAT DOES NOT EXIST REPORTED SUCCESS OVER A FILE THAT WAS NEVER
+CREATED.** `8:newfam/thing` answered *"part 'newfam/thing' saved — 1 chunks, 2 sections"*,
+renamed the subject line to the new part and re-anchored the edit clock — and nothing was on
+disk. `file(path)` on a path whose directory is missing hands back a usable handle; every
+write prints `file open error … (os error 2)` on **stderr**, which a server writing a log
+nobody reads swallows entirely; and `world_save` returned `WS_OK`. Silent loss, from the one
+gesture that exists to prevent it, and reachable by the most ordinary authoring act there is
+— starting a new family.
+
+⚠ **AND THE CURE IS TWO HALVES AT TWO SEAMS, WHICH IS THE INTERESTING PART.** *Did the bytes
+land* is the **library's** question and it is now answered exactly: `world_file_size` computes
+the file's length in closed form from the published `SZ_*` constants, `world_save_as` compares
+it and returns the new `WS_IO`. *Which directories exist* is the **consumer's** question, so
+the editor calls `mkdir_all` — because the acceptance test for this whole plan is *a house
+authored end-to-end without touching loft*, and sending the author to a shell to make `house/`
+is exactly the seam that fails. ⚠ **The length and not `exists`**: a missing directory is only
+the cheapest way to lose the bytes, and a full disk truncates instead — which an existence
+test reads as a good save.
+
+⚠ **AND A SECOND, QUIETER LOSS: A NAME THE CATALOGUE CAN NEVER SHOW.** `8:a/b/c` wrote
+`<root>/a/b/c.hxw`, reported success, and `part_list` walks **one level** — so the part was in
+the library and in no catalogue, placeable by nothing. `8:house/` is the same failure a
+shorter way: `.hxw` is not a part file. `hex_part::part_name_ok` is the **inverse of
+`part_list`**, in the package that owns what a part name is, and its tests write the file and
+then ask the lister rather than restating the rule — a fence that agreed with itself would
+pass with `part_list` walking any number of levels. ⚠ It also **subsumes the `..` check three
+handlers each spelled out**; one rule, and the wording moved with it (three gates updated,
+because *"leaves data/parts/"* was already a lie whenever `EDITOR_PARTS` is set).
+
+⚠ **A SAVE-AS CARRIED THE ANCESTOR'S NAME, AND THE ACKNOWLEDGEMENT IS THE ONLY INSTRUMENT AN
+AUTHOR HAS.** `house/cottage` saved as `house/annexe` announced itself as *'cottage'* at every
+placement, and two rows of the catalogue claimed one name — against §C2's *unique per kind*.
+The new part takes the leaf of the handle the author just typed, which is §C2's own *a name
+honest about being generated*. ⚠ **Only when the handle moved**, which is what keeps `A7.3c`'s
+null edit byte-identical; ⚠ **and only when there is a `PART` section**, because a part without
+one has no kind either and inventing one to carry a name is the server composing content.
+
+⚠ **THE ACCEPTANCE HOUSE IS NOT `house/cottage`, AND THE REASON IS `make parts`.** The cottage
+is generated and verified byte-identically, so a cottage authored in the editor is reverted by
+the next build and the gate reads as flaky rather than as the collision it is. The cottage is
+what is *opened*; `house/annexe` is what is authored, and it sorts FIRST — which is `A7.1`'s
+row argument reused, because a catalogue row index is positional and an insert at the end
+would pass a server that re-addressed only the new row.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the `mkdir` and `WS_IO` both removed — the original silent-loss behaviour | 4 — ⚠ **and the acknowledgement still said `saved`**, which is the whole point |
+| the `mkdir` removed, `WS_IO` kept | 5 — the same failure wearing a refusal |
+| a save-as keeps the ancestor's `PART.name` | 1 |
+| the depth fence lets `a/b/c` through | 3 |
+
+⚠ **AND THE SESSION'S REAL LESSON IS AN INSTRUMENT ONE, FILED AS
+[loft#777](https://github.com/loft-lang/loft/issues/777).** A **body-only** edit to
+`lib/hex_part` was invisible to `src/editor_server.loft` while the *same source* was picked up
+correctly by an 8-line consumer — `lib/*/native-auto/*.so` serves the stale build and does
+**not** self-clear. It inverted the suite in both directions within one hour: the fence
+sabotage looked like a **blind gate** (green because the server still ran the un-sabotaged
+library), and then the restored fence looked like a **broken feature** (three checks red
+against correct source). ⚠ The compile is fresh while the execution is stale — appending
+garbage to the library file fails startup with a parse error naming that exact file, so it is
+read, parsed, and then not used. **`rm -rf lib/*/native-auto` before any run that must reflect
+a library edit**, and never trust a gate result taken across one without it.
+
+⚠ **AND THE GREP THAT HID IT FOR HALF AN HOUR WAS THIS TREE'S OWN NAMED MISTAKE.**
+`grep -l "editor_server" ~/.cache/loft/*.manifest 2>/dev/null` returned nothing and was read as
+*"the build is not cached"*; the glob had blown the argument limit and the `2>/dev/null` ate
+the error. A grep's default answer is **absent** — match a line you know is there first.
 
 ### What `A7.1` turned up
 
