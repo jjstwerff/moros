@@ -20,10 +20,16 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-03, session 10) — plan 18 is done bar one step, plan 17 has a format
+## ⏭ PICK UP HERE (2026-08-04, session 11) — plan 18 COMPLETE, plan 17 through `A3`
 
-`make gate` **35 green** · `make lib-test` **green, both backends** · `make probe-text` green ·
-`make guards` **5 probes green** · `npm test` **53** · layering silent.
+`make gate` **35 green** · `make lib-test` **2304, both backends** · `make probe-text` green ·
+`make guards` green (`READY-BUT-WRONG 0`) · `make parts` green · `npm test` **53** · layering
+silent. All measured 2026-08-04 on the installed loft.
+
+⚠ **`make gate` FLAKES UNDER LOAD, AND IT IS NOT A REGRESSION.** Three gates reported
+`SERVER NEVER LISTENED` on a box at load average **19.75** — that check is a 60-second wait for
+`listening on port`, and `GATE_JOBS` defaults to 8, so eight servers interpret a 5,900-line
+`editor_server.loft` at once. All three pass on an idle box. Check the load before believing it.
 
 | | | | |
 |---|---|---|---|

@@ -32,7 +32,12 @@ entry.** Don't offer a PR unprompted — a pushed branch is already the delivera
 
 **Other people's trees.** `../crawler` is **read-only** — another agent works there, and an
 edit it did not make destroys its ability to tell its own work from yours; raise findings
-instead. `loft-libs-*` is shared and consumed from the **working tree**, so a new public
+instead. ⚠ **`../loft` is READ plus FILE TICKETS, and nothing else** — no PRs, no closing or
+merging, no cloning-and-building, no *running* its binaries, and never mutating its working
+tree. Verify against the **installed** `/usr/local/bin/loft`, which is moros's own toolchain;
+reaching for `../loft/target/release/loft` is already over the line. When a loft fix is needed
+here, note the dependency and wait for their branch — a cherry-pick PR was opened once, closed
+unmerged, and the maintainer landed it their own way, which is how it should go. `loft-libs-*` is shared and consumed from the **working tree**, so a new public
 name can turn a sibling's build red with no local edit — grep the sibling before adding
 one. Kill only processes you can identify as yours; this box runs other agents' work.
 
