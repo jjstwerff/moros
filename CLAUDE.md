@@ -41,6 +41,14 @@ unmerged, and the maintainer landed it their own way, which is how it should go.
 `loft-libs-*` is shared and consumed from the **working tree**, so a new public name can turn
 a sibling's build red with no local edit — grep the sibling before adding one. Kill only processes you can identify as yours; this box runs other agents' work.
 
+⚠ **And that rule is not only about siblings.** A loft struct name is global across a
+*consumer's* whole dependency graph, so two packages in `lib/` may each define `Fit` and the
+pair silently merges into one struct with whichever field types were declared last. **A package
+suite cannot see this** — `hex_part` was 131 green while `hex_editor` would not build at all.
+Grep `lib/`, `src/`, `../loft-libs-world/` and the registry **before** adding a public name, and
+when a name is taken, take the collision seriously rather than routing around it: `hex_editor`'s
+`Fit` had already settled the hard half of the question `hex_part` was re-deriving.
+
 **A missing library capability is ours to build**, never an upstream ask — verification is
 only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests
 that have been seen red. Fixing and republishing a shared library is allowed too; the gate

@@ -431,10 +431,87 @@ trap — so `A3.4` is deliberately left at ◐ rather than claimed complete.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A4.1` | `SOCK` / `FITS` sections: name · cell · edge-or-heading · kind · size-class. Round-trip. | round-trip identity | S |
-| `A4.2` | `socket_fit(frame, leaf) -> Fit{ok, reason, offer}` — pure, no world. | a leaf too wide is refused **with the frame's actual size and the nearest leaf that fits** | S |
-| `A4.3` | Binding an instance to a socket instead of a coordinate. | moving the frame moves the leaf — the whole point of §P3 | M |
+| ✅ `A4.1` | `SOCK` / `FITS` sections: name · cell · edge-or-heading · kind · size-class. Round-trip. | **DONE.** `src/sock.loft`, `hex_part` 101 → 119, both backends. ⚠ **The "edge-or-heading" slot is TWO fields**, and three text fields leave only one tail — see below. | S |
+| ✅ `A4.2` | `socket_fit(frame, leaf) -> Fit{ok, reason, offer}` — pure, no world. | **DONE**, and **not as written**. `src/fit.loft`, 131 tests. ⚠ The struct could not be called `Fit`, a size class is **nominal**, and *"the nearest leaf that fits"* presumes an ordering the class design does not have — see below. | S |
+| `A4.3` | Binding an instance to a socket instead of a coordinate. | moving the frame moves the leaf — the whole point of §P3. ⚠ Its fixture needs `A3.3`'s three levels, or the frame composition is an identity | M |
 | `A4.4` | The 24-heading approximation, **measured and written down** (§ Open). | the residual per heading is in the test output, not asserted to be zero | S |
+
+### What `A4.1` turned up
+
+⚠ **§P3 SPELLS THE THIRD ELEMENT AS ONE SLOT AND IT IS TWO FIELDS.** A door hangs in one of a
+cell's **six** edges; a statue faces one of the **twenty-four** headings. The ranges overlap, so
+`edge 3` and `heading 3` are different joints that a single number stores as the same bytes, and
+a reader that guessed would point half the sockets the wrong way with nothing in the file to say
+so. Measured: with the mount dropped from the line the two records encode identically and **five
+tests go red**, one at exactly that assertion. ⚠ **And the range check follows the mount** — a
+flat `0 <= at < 24` accepts `edge 6`, which is not a side of a hexagon. The control is the pair:
+the same index refused under one mount and accepted under the other.
+
+⚠ **THREE TEXT FIELDS AND ONLY ONE TAIL, so `A3.1`'s *name comes last* does not reach.** What
+separates them is who mints the name. `pi_part` is a catalogue handle, which is a FILE PATH — the
+filesystem decides what may be in one, not us — so a comma had to be made *harmless*. A `kind`
+and a `size` are tokens **we** mint, spelled identically on both sides of a joint or there is no
+joint, so they can bear an alphabet and refuse outside it with a message naming the character.
+The author-facing NAME keeps the tail, which is where the freedom is wanted; the test subject
+carries a comma, an `=` and a `中`.
+
+⚠ **`FITS` REFUSES A COMMA IT HAS NO SEPARATOR FOR, and that hole is silent.** Its payload is
+`key=value` lines, so a comma survives it perfectly — but the token has to be spelled identically
+by a `SOCK`, which refuses one. Accepting it mints a class that can be **claimed** and never
+**offered**: the leaf saves, the frame will not, and nothing connects the two refusals. The check
+is shared rather than restated, and a `FITS` given its own drifted copy goes red.
+
+⚠ **ONE VALIDATOR, BOTH DIRECTIONS** — the reader runs the writer's check on what it parsed, so a
+future writer's `mount=7` is malformed rather than a socket pointing nowhere. Skipping it costs
+two tests.
+
+⚠ **`FITS` IS ONE, NOT A LIST, ON `ANCH`'s ARGUMENT.** A part has one anchor because it is one
+thing standing in one place, and one class for the same reason.
+
+### What `A4.2` turned up
+
+⚠ **THE STRUCT COULD NOT BE CALLED `Fit`, AND THAT IS THE BEST THING IN THE STEP.** The sketch
+above says `Fit{ok, reason, offer}`; `hex_editor::gesture` **already has** a `Fit`, and a loft
+struct name is global across a consumer's whole dependency graph — so the two merged and `make
+parts` stopped with *cannot assign text to field `Fit.sf_code` of type integer*. ⚠ **`hex_part`
+alone was 131 green while the editor would not build**, so a package suite says nothing about
+this class of mistake; only a consumer does. `hex_editor::names` hit the identical wall and
+answered `NameFit`; this answers `SocketFit`.
+
+⚠ **AND THE COLLISION WAS NOT A COINCIDENCE — THE EDITOR HAD ALREADY SETTLED THE HARD PART.** Its
+`Fit` splits parameters into ORDINAL and NOMINAL: *"255 is not 'nearly' 256, it is a different
+thing entirely, and offering it reads as a small correction while changing what the wall is made
+of"* (`X68`). **A size class is nominal by exactly that argument** — which this step had already
+concluded from §P3's own examples, independently, before the build broke.
+
+⚠ **SO *"a leaf too wide is refused with … the NEAREST leaf that fits"* PRESUMES AN ORDERING THE
+CLASS DESIGN DOES NOT HAVE.** §P3's three examples are `door/2x3`, `pillar/round-3` and
+`statue/plinth-2`: one reads as a width by a height and two do not, so *wider* is undefined over
+two thirds of the design's own vocabulary, and an edit distance over `2x3` and `3x3` would be a
+guess wearing a number's clothes. Built instead, and it is what an author can act on: the refusal
+carries **the frame's actual class** (`sf_offer`, spelled `door/2x3`), and `parts_for_socket`
+names **every** part in the library that fits. Exact and complete beats near and ranked.
+
+⚠ **AND THE OPACITY IS WHAT ENFORCES §P3's OWN *"not silently scaled"***. Given `2x3` and `2x4` as
+numbers, some later caller finds *close enough* irresistible and the refusal becomes a coercion.
+`02x3` does not fit `2x3`, pinned as a test, so that cannot land quietly.
+
+⚠ **NO `ok` BESIDE THE CODE**, parting from `NameFit` on purpose: `nf_reason` is a sentence so
+`nf_ok` carries something it does not, while `sf_code` is a code and an `ok` beside it is the same
+fact twice.
+
+⚠ **THREE REJECTIONS, ONE BEHAVIOUR — measured, not assumed.** Deleting **both** of
+`parts_for_socket`'s guards leaves all 131 tests green, because a failed load and a malformed
+section both arrive as `PartFits {}` and `socket_fit` answers `SF_NOTHING` on an empty claim. The
+guards stay for the case no fixture can pose — a store that recovered PART of a damaged file would
+hand back a stale but well-formed `FITS` — and both the code and the test now say the coverage is
+not what it looks like.
+
+⚠ **`part_file` MOVED TO `catalogue.loft`, AND IT WAS ONE FACT IN TWO SPELLINGS.** It sat in
+`inst.loft` with a literal `.hxw` while `is_part_file` matched on `PART_EXT` three files away, so
+a change to either alone gives a catalogue listing parts nothing can open, or a loader hunting for
+files nothing lists. They share the constant now; breaking the tie again costs **34 tests across
+five files**.
 
 ### A5 — fittings
 

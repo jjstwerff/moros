@@ -20,20 +20,24 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 11) — plan 18 COMPLETE, plan 17 through `A3`
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4.2`
 
-`make gate` **35 green** · `make lib-test` **2304, both backends** · `make probe-text` green ·
-`make guards` green (`READY-BUT-WRONG 0`) · `make parts` green · `npm test` **53** · layering
-silent. All measured 2026-08-04 on the installed loft.
+`make gate` **35 green** · `make lib-test` **2364, both backends** · `make parts` green
+(`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
+the installed loft.
 
-⚠ **`make gate` FLAKES UNDER LOAD, AND IT IS NOT A REGRESSION.** Three gates reported
-`SERVER NEVER LISTENED` on a box at load average **19.75** — that check is a 60-second wait for
-`listening on port`, and `GATE_JOBS` defaults to 8, so eight servers interpret a 5,900-line
-`editor_server.loft` at once. All three pass on an idle box. Check the load before believing it.
+⚠ **`make gate` FLAKES, AND THE LOAD AVERAGE IS A BAD PREDICTOR OF IT.** The recorded symptom
+was three gates reporting `SERVER NEVER LISTENED` at load **19.75** — a 60-second wait for
+`listening on port` while `GATE_JOBS` servers interpret a 5,900-line `editor_server.loft` at
+once. ⚠ **There is a SECOND face**: `FAIL cache … {"agree":0,"bad":24,"layers":0}` — no layers
+ever arrived, so nothing was compared, which reads as a measured disagreement and is a startup
+miss. ⚠ **And it failed at load ~4 and passed at load 33 in the same session**, so *check the
+load first* is not the rule it looked like. Re-run before believing a gate failure; the gate
+alone at `GATE_JOBS=1` is the cheap discriminator.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **101** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **131** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -53,7 +57,62 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A4.1` — sockets. **`A3.2`/`A3.3` done, `A3.4` is ◐.**
+### The next thing to do is #17 `A4.3` — an instance bound to a socket. **`A3.4` is still ◐.**
+
+**`A4.1` and `A4.2` are done.** `lib/hex_part/src/sock.loft` carries `SOCK` (a list of joints a
+part offers) and `FITS` (the one joint it goes into); `src/fit.loft` answers `socket_fit(frame,
+leaf)` and `parts_for_socket(root, frame)`. `hex_part` 101 → **131**.
+
+⚠ **A STRUCT NAME IS GLOBAL ACROSS A CONSUMER'S WHOLE DEPENDENCY GRAPH, AND A PACKAGE SUITE
+CANNOT SEE IT.** `A4.2`'s answer was called `Fit`, which is what the plan sketches — and
+`hex_editor::gesture` already has a `Fit`. The two merged and `make parts` stopped with *cannot
+assign text to field `Fit.sf_code` of type integer*, while **`hex_part` alone was 131 green**.
+Only a consumer build finds this. `hex_editor::names` hit the identical wall and answered with
+`NameFit`; the answer here is `SocketFit`. ⚠ CLAUDE.md's *grep the sibling before adding a public
+name* is the same rule and it is **not only about siblings** — it holds inside this tree.
+
+⚠ **AND THE COLLISION WAS THE FINDING, NOT AN OBSTACLE.** `hex_editor`'s `Fit` splits parameters
+into ORDINAL and NOMINAL — *"255 is not 'nearly' 256 … offering it reads as a small correction
+while changing what the wall is made of"* (`X68`). **A size class is nominal by exactly that
+argument**, which `A4.2` had already concluded from §P3's own examples before the build broke.
+Two independent routes to one answer, and the name clash is what joined them up.
+
+⚠ **SO §P3's *"a leaf too wide is refused with … the NEAREST leaf that fits"* COULD NOT BE BUILT
+AS WRITTEN.** Its three examples are `door/2x3`, `pillar/round-3`, `statue/plinth-2` — one reads
+as a width by a height and two do not, so *wider* is undefined over two thirds of the design's
+own vocabulary. Built instead: the refusal carries **the frame's actual class**
+(`sf_offer`, spelled `door/2x3`), and `parts_for_socket` names **every** part in the library that
+fits. ⚠ **The opacity is what enforces §P3's own *"not silently scaled"*** — given `2x3` and
+`2x4` as numbers, some later caller finds *close enough* irresistible. `02x3` does not fit `2x3`,
+pinned, so the coercion cannot land quietly.
+
+⚠ **THE "EDGE-OR-HEADING" SLOT IS TWO FIELDS AND §P3 SPELLS IT AS ONE.** Six edges and 24
+headings overlap, so `edge 3` and `heading 3` are different joints that would be the same bytes.
+Measured: with the mount dropped they encode identically and five tests go red. ⚠ **And the range
+check follows the mount** — a flat `0..24` accepts `edge 6`, which is not a side of a hexagon; the
+control is the pair, refused under one mount and accepted under the other.
+
+⚠ **THREE TEXT FIELDS AND ONLY ONE TAIL, so `A3.1`'s name-comes-last rule does not reach.** What
+separates them is who mints the name: `pi_part` is a FILE PATH and the filesystem decides what may
+be in one, so a comma had to be made harmless. A `kind` and a `size` are tokens **we** mint,
+spelled identically on both sides of a joint or there is no joint, so they bear an alphabet and
+refuse outside it. The author-facing name keeps the tail. ⚠ **`FITS` refuses a comma it has no
+separator for**, because a token it accepts and a `SOCK` refuses is a class that can be CLAIMED
+and never OFFERED — the leaf saves, the frame will not, and nothing connects the two refusals.
+
+⚠ **THREE REJECTIONS, ONE BEHAVIOUR — measured.** Deleting **both** of `parts_for_socket`'s
+guards leaves all 131 tests green: a failed load and a malformed section both arrive as
+`PartFits {}`, and `socket_fit` answers `SF_NOTHING` on an empty claim. They stay for a case no
+fixture can pose (a store that recovered PART of a damaged file), and the code and the test both
+say the coverage is not what it looks like.
+
+⚠ **`part_file` MOVED TO `catalogue.loft`, AND IT WAS ONE FACT IN TWO SPELLINGS** — a literal
+`.hxw` in `inst.loft` against `PART_EXT` three files away, so a change to either alone gives a
+catalogue listing parts nothing can open. Breaking the tie again now costs **34 tests across five
+files**.
+
+⚠ **`SOCK`/`FITS` HAVE NO CONSUMER OUTSIDE THE TESTS**, exactly as `INST` at `A3.1`. `A4.3` is
+what reads them.
 
 **`A3.4` is half done, and the half that is left is BLOCKED rather than skipped.** The depth
 bound landed early in `A3.2`; what `A3.4` added is telling §P8's two rules apart. ⚠ **A CYCLE
@@ -276,12 +335,15 @@ lineage. Which tree owns it for good is
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2` and `A3.1`
-complete.** `A1.1` region copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4`
-`PART`/`ANCH`, `A2.1` the cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement
-path, `A3.1` the `INST` record and §P8's cycle check. **`A3.2` — expand — is next**, and it is
-the bigger arc: `A3.3` then asserts `expand == bake` cell for cell, which is the strongest test
-in the design because the two paths share nothing but the part.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3` and `A4.1`–
+`A4.2` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
+cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
+cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
+`SOCK`/`FITS`, `A4.2` `socket_fit`. **`A4.3` is next** — binding an instance to a socket rather
+than a coordinate, which is the whole point of §P3 and the first thing that needs `part_anchor`.
+⚠ Its fixture needs `A3.3`'s depth: a `(0,0)` placement makes the frame composition an IDENTITY,
+so a one-level nest cannot test it.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
