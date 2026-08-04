@@ -339,7 +339,7 @@ writer.
 | ✅ `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | **DONE.** `lib/hex_part/src/inst.loft`, 73 tests in the package, both backends. The reference is by catalogue handle and the NAME COMES LAST, so a comma in it needs no escaping. ⚠ **The cycle check needs no depth bound, and a diamond is not a cycle** — see below. | S |
 | ✅ `A3.2` | `expand(instance)` — derive an instance's cells, and everything nested under it. | **DONE.** `lib/hex_part/src/expand.loft`, 84 tests in the package. ⚠ **`I1` IS RETIRED, and measurement is what retired it** — derived cells carry no label, because the records are the authority and re-deriving REGENERATES. ⚠ The depth bound was taken here rather than in `A3.4`. | M |
 | ✅ `A3.3` | `bake(instance)` — flatten to plain cells. | **DONE.** `lib/hex_part/src/bake.loft`, 95 tests in the package. `expand == bake` cell for cell, over paths that share only the part files and `un_origin`. ⚠ **THE FIRST FIXTURE COULD NOT FAIL** — see below. | S |
-| ◐ `A3.4` | Depth bound (8) and the cycle check on save. | **BOUND DONE** (taken early, in `A3.2`), and now **a cycle reports as a CYCLE rather than a depth overflow** — measured wrong first. 9 refused / 8 accepted on both paths, plus the control that keeps the two rules apart. ⚠ **The *on save* half is blocked on `A7.3`**: there is still no save gesture, so the server's startup sweep remains the caller. | S |
+| ✅ `A3.4` | Depth bound (8) and the cycle check on save. | **BOUND DONE** (taken early, in `A3.2`), and now **a cycle reports as a CYCLE rather than a depth overflow** — measured wrong first. 9 refused / 8 accepted on both paths, plus the control that keeps the two rules apart. ✅ **The *on save* half landed in `A7.3d`** — and it needed a function `A3.4` could not have written: `part_cycle` walks a part that is on DISK, which is the version a save is about to replace, so the check a save needs is about the content in memory under the name it is about to take. `part_cycle_of` seeds the path with that name; without the seed the same content reads clean. | S |
 | `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |
 
 ### What `A3.1` turned up
@@ -960,7 +960,7 @@ both stores in a vector and take `[i]`.
 | ✅ `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | **DONE.** `tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red — and the first of them exposed a check that could not fail. ⚠ **Four findings**, see below | S |
 | ✅ `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | **DONE.** `tools/gates/world/part_fence.mjs`, 17 checks, four sabotages seen red including the **over-fence**. `14:<roof>,<part>`, `18:` and `21:` refused; everything else still edits. ⚠ **Two live defects found**, one of them silent data loss — see below | XS |
 | ✅ `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | **DONE.** `lib/hex_part/tests/save_edit.loft` (6 tests, 3 of them controls) for the format half; `tools/gates/world/part_save.mjs`, 19 checks, four sabotages seen red, for the routing half. ⚠ **The owner guard was tried and MEASURED OUT** — see below | S |
-| `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | a refused save leaves the FILE unchanged, not merely the acknowledgement saying no | XS |
+| ✅ `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | **DONE.** New library function `part_cycle_of` (6 tests) because `part_cycle` answers about the version on DISK; `tools/gates/world/part_check.mjs`, 18 checks, four sabotages seen red. ⚠ **`A3.4` IS NOW CLOSED** | XS |
 | `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | `N:` re-broadcasts, every `W:`/`Y:` re-addresses, and `14:<roof>,<new>` places it in the same session | S |
 | `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
 
@@ -1167,6 +1167,63 @@ by leaving the anchor at the open: one check fails.
 | the `PART` section is dropped on the way out | 3 |
 | a part save is written to the worlds root | 2 |
 | the name fence is gone | 1 |
+
+### What `A7.3d` turned up
+
+⚠ **`part_cycle` COULD NOT ANSWER THE QUESTION A SAVE ASKS, AND THAT IS THE STEP.** It walks a
+part that is **on disk** — which is precisely the version the save is about to replace — so it can
+only ever report on the old content. What must be refused is the content in memory, under the name
+it is about to take. `part_cycle_of(root, name, insts)` walks the candidate's instances with the
+path **seeded by that name**, and the seed is the whole function: without it the question becomes
+*are the parts it refers to sound*, which is much weaker and which the live case passes. There is a
+test spelling exactly that out, so the difference is measured rather than commented.
+
+⚠ **AND THE CYCLE IS REACHABLE WITH THE GESTURES THAT EXIST.** There is no instance gesture until
+`A7.3f`, so it looked as though nothing could author one — but **save-as is enough**:
+`prop/shrine` holds an instance of `prop/plinth`, and saved AS `prop/plinth` it is a part that
+contains itself. The refusal carries the chain, `prop/plinth → prop/plinth`, which is §P8's own
+rule: in a library of two hundred, *this part contains itself* is unactionable and the author needs
+to know which reference to cut.
+
+⚠ **THE FIRST PROBE OF THAT CASE WAS WRONG, AND THE LIBRARY CORRECTED IT.** Saving `prop/shrine`
+as `prop/statue` was the obvious cycle and it is not one — the shrine's `INST` names only
+`prop/plinth`; the statue arrives through a **binding**, not a direct reference. The check was
+right and the premise was not. ⚠ **The gate now asserts its own fixture** — that `prop/shrine`
+still holds an instance of `prop/plinth` — because if the library changed, every refusal below it
+would quietly become a sound save.
+
+⚠ **THE ORDERING IS THE PROPERTY, AND IT HAS ITS OWN SABOTAGE.** *The acknowledgement said no* and
+*nothing was written* are different claims. Moving the checks to after the write leaves every
+refusal string intact and fails exactly the two `md5` checks — which is the whole of what
+`A7.3d` is for. A refusal that rolled back would already have replaced a good file, and any
+failure in the middle would leave the library holding what the check refused.
+
+⚠ **A REFUSED SAVE MUST NOT RE-ANCHOR THE EDIT CLOCK.** `A7.3c` re-anchors on success so a close
+straight after a save reports `0 edits discarded`; if a refusal did the same, the author would be
+told their work was safe and then watch it be dropped. Edit, refuse, close — the close still
+reports the work as discarded, because it was.
+
+⚠ **`MC_NONE` IS NOT A FAULT, and that control is load-bearing.** Most parts are cells and name no
+mesh at all, so a check that treated the absence as a failure would refuse the whole family — and
+would still pass every refusal check in the gate. Same shape as the over-fence control in `A7.3b`:
+the interesting half of a check is what it lets through.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the check runs AFTER the write | 2 — *and every refusal string still appeared* |
+| `part_cycle` on disk instead of `part_cycle_of` on the candidate | 7 |
+| `MC_NONE` treated as a fault | 3 |
+| the clock is re-anchored even when the save is refused | 1 |
+
+⚠ **AND A FOURTH INSTRUMENT LESSON, FROM THE SUITE RATHER THAN FROM A SABOTAGE: A GATE THAT
+SLEEPS REPORTS THE MACHINE.** `part_fence` and `part_check` passed alone and failed at
+`GATE_JOBS=4`, because their `step()` waited a fixed 1.8–2.5 s for an acknowledgement that four
+interpreted servers on one box take longer to produce. Polling for the answer instead is both
+correct under load and **faster when idle** — `part_fence` went 58 s → 21 s and `part_check`
+34 s → 11 s. ⚠ This is the third face of the `GATE_JOBS` flake and the only one that was OURS:
+the other two are startup misses, this one is a gate measuring a clock instead of a claim.
 
 ⚠ **`A7.3e`'s ACCEPTANCE HOUSE MUST NOT BE `house/cottage`.** The cottage is *generated* by
 `src/part_build.loft` and `make parts` verifies it byte-identically — so a cottage authored in the

@@ -5345,6 +5345,51 @@ fn main() {
               // first run. A guard that dirties a committed file to protect it is
               // the wrong trade at this size; it wants the save to know whether
               // anything was authored, which is `A7.3d`'s neighbourhood.
+              // ── §P8's *"checked on save"*, at last — plan 17 `A7.3d`, and it
+              // is what closes `A3.4`.
+              //
+              // ⚠ BEFORE THE WRITE, WHICH IS THE WHOLE POINT. A refusal that
+              // rolled a bad file back would already have replaced a good one,
+              // and any failure in the middle leaves the library holding the
+              // thing the check refused. So the candidate is judged in memory
+              // and the file is never opened.
+              //
+              // ⚠ AND ABOUT THE NAME IT IS ABOUT TO TAKE, not the name it came
+              // from. `part_cycle` walks what is ON DISK — the version this save
+              // is replacing — so it cannot see the cycle a SAVE-AS creates.
+              // `part_cycle_of` seeds the path with `sv_name`, which is the one
+              // element of context that separates *are its references sound*
+              // from *would this be a part that contains itself*.
+              //
+              // ⚠ REACHABLE TODAY, WITH NO INSTANCE GESTURE: open a frame and
+              // save it under the name of one of its own leaves.
+              sv_inst = part_instances(wld);
+              sv_cyc = hex_part::part_cycle_of(parts_root(), sv_name, sv_inst.ir_items);
+              sv_mesh = hex_part::part_mesh_loads(parts_root(), wld);
+              if sv_inst.ir_code == MR_MALFORMED {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
+                                  + "INST section: {sv_inst.ir_why}");
+                println("editor: part save refused — '{sv_name}' INST: {sv_inst.ir_why}");
+              } else if sv_cyc.cc_code != hex_part::CY_OK {
+                // The chain, never *"this part contains itself"* — §P8's own rule,
+                // because in a library of two hundred the author needs to know
+                // which reference to cut.
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' ({sv_cyc.cc_code}) "
+                                  + "{sv_cyc.cc_why}");
+                println("editor: part save refused — '{sv_name}' ({sv_cyc.cc_code}) {sv_cyc.cc_why}");
+              // ⚠ `MC_NONE` IS NOT A FAULT. Most parts name no mesh at all, and a
+              // check that refused them would refuse the whole cell family.
+              } else if sv_mesh.mc_code != hex_part::MC_OK
+                     && sv_mesh.mc_code != hex_part::MC_NONE {
+                // ⚠ THE OTHER HALF OF `A3.4`, and until now `part_mesh_loads` was
+                // called by `make parts` and by nothing at load time. A library
+                // shipping a part whose `.glb` went away is caught here, which is
+                // the only place an author is still holding it.
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' names a mesh that "
+                                  + "will not load ({sv_mesh.mc_code}) {sv_mesh.mc_why}");
+                println("editor: part save refused — '{sv_name}' mesh ({sv_mesh.mc_code}) "
+                      + "{sv_mesh.mc_why}");
+              } else {
               sv_code = world_save(wld, part_path(sv_name), []);
               if sv_code == WS_CONCURRENT {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' was last written "
@@ -5367,6 +5412,7 @@ fn main() {
                                   + "{len(wld.w_sections)} sections");
                 println("editor: part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
                       + "{len(wld.w_sections)} sections");
+              }
               }
             }
           } else {

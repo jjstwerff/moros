@@ -60,26 +60,41 @@ await wait(2000);
 
 // Everything the gate asks is answered on `S:`, so a step is "send, then read what
 // arrived because of it".
-async function step(msg, ms = 1800) {
+// ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK. Written with fixed sleeps this gate
+// passed alone and failed at `GATE_JOBS=4`: four interpreted servers on one box
+// answer slower than the sleep, so a green that depended on the load was a gate
+// reporting the machine. Polling for the acknowledgement is faster on an idle box
+// and correct on a busy one. ⚠ The few gestures that answer nothing of their own
+// still take a fixed wait, which is what `null` selects.
+async function step(msg, prefix = null, maxMs = 12000) {
   const before = a.says.length;
   a.ws.send(msg);
-  await wait(ms);
+  if (prefix === null) { await wait(1200); return a.says.slice(before); }
+  for (let waited = 0; waited < maxMs; waited += 50) {
+    if (a.says.slice(before).some((s) => s.startsWith(prefix))) break;
+    await wait(50);
+  }
   return a.says.slice(before);
 }
 const said = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
 
 // One open→close cycle, returning what the close counted. `K` is the whole
 // instrument: 0 means the store was never written.
+// Each entry is `[message, the prefix its answer starts with]` — or a bare
+// message for a gesture that answers nothing.
 async function cycle(inside) {
-  const opened = said(await step(`44:${PART}`, 2500), `part '${PART}'`);
+  const opened = said(await step(`44:${PART}`, `part '${PART}'`), `part '${PART}'`);
   if (!opened.includes('opened')) return { opened, edits: NaN, lines: [] };
   const lines = [];
-  for (const m of inside) lines.push(...await step(m));
+  for (const m of inside) {
+    if (Array.isArray(m)) lines.push(...await step(m[0], m[1]));
+    else lines.push(...await step(m));
+  }
   // ⚠ TAKEN WHILE THE PART IS STILL OPEN. Read after the close it is the world's
   // line, which passes any subject check by accident — the first version of the
   // blanking check below did exactly that.
   const hudInside = a.huds[a.huds.length - 1] ?? '';
-  const closed = said(await step('44:', 2500), `part '${PART}'`);
+  const closed = said(await step('44:', `part '${PART}'`), `part '${PART}'`);
   return { opened, closed, lines, hudInside,
            edits: +(closed.match(/(-?\d+) edits discarded/)?.[1] ?? NaN) };
 }
@@ -92,16 +107,16 @@ await wait(500);
 // ⚠ FIRST, AND IT IS A CONTROL FOR EVERY REFUSAL BELOW. Each of these three is
 // refused inside a part; if it were refused out here too, the gate would be
 // measuring a broken message rather than a fence.
-check(said(await step(`14:12,${PART}`, 2500), 'stencil placed').includes('from part'),
+check(said(await step(`14:12,${PART}`, 'stencil '), 'stencil placed').includes('from part'),
       'in the WORLD, a part still stamps');
-check(said(await step('18:fence_probe'), 'trigger ').startsWith('trigger '),
+check(said(await step('18:fence_probe', 'trigger '), 'trigger ').startsWith('trigger '),
       'in the WORLD, a trigger still anchors');
-const worldImport = said(await step('21:/nonexistent.glb'), 'import refused');
+const worldImport = said(await step('21:/nonexistent.glb', 'import '), 'import refused');
 check(worldImport !== '' && !worldImport.includes('editing part'),
       `in the WORLD, an import is refused by the LOADER, not by the fence (${worldImport})`);
 
 // ── A7.3b-i — a part inside a part ──────────────────────────────────────────
-const stamped = await cycle([`14:12,${LEAF}`]);
+const stamped = await cycle([[`14:12,${LEAF}`, 'stencil ']]);
 check(stamped.opened.includes('opened'), `the part opens (${stamped.opened})`);
 const stampSay = said(stamped.lines, 'stencil refused');
 check(stampSay.includes('editing part'),
@@ -124,12 +139,12 @@ check(stamped.hudInside === `H:part ${PART} · AUTO · level off · road off · 
       `and the subject still named it throughout (${JSON.stringify(stamped.hudInside)})`);
 
 // ── A7.3b-ii — the state part mode does not hold aside ──────────────────────
-const trig = await cycle(['18:in_a_part']);
+const trig = await cycle([['18:in_a_part', 'trigger ']]);
 const trigSay = said(trig.lines, 'trigger refused');
 check(trigSay.includes('editing part'), `a trigger is refused in a part: ${JSON.stringify(trigSay)}`);
 check(trig.edits === 0, `and nothing was written (${trig.edits} edits)`);
 
-const imp = await cycle(['21:/nonexistent.glb']);
+const imp = await cycle([['21:/nonexistent.glb', 'import ']]);
 const impSay = said(imp.lines, 'import refused');
 check(impSay.includes('editing part'), `an import is refused in a part: ${JSON.stringify(impSay)}`);
 // ⚠ THE REASON IS THE CHECK, NOT THE REFUSAL. `21:` on a missing file is refused
@@ -145,14 +160,14 @@ check(!impSay.includes('(1)'), `by the FENCE and not by the loader (${impSay})`)
 const live = await cycle(['5:1', '5:1', '5:1']);
 check(live.edits > 0, `a raise still edits the part (${live.edits} edits)`);
 
-const edged = await cycle(['24:0,wall']);
+const edged = await cycle([['24:0,wall', 'edge ']]);
 check(edged.edits > 0, `an edge still writes into the part (${edged.edits} edits)`);
 
 // ⚠ AND THE PROCEDURAL STENCIL IS NOT FENCED, which is the sharpest line here:
 // `14:<roof>` and `14:<roof>,<part>` are the SAME message, and only the form that
 // carries a library part is refused. A fence on the message rather than on the
 // reference would say this mode is about stamping, when it is about references.
-const proc = await cycle(['14:12']);
+const proc = await cycle([['14:12', 'stencil ']]);
 const procSay = said(proc.lines, 'stencil ');
 check(procSay !== '' && !procSay.includes('editing part'),
       `the procedural form is answered on its own merits, not fenced (${procSay})`);

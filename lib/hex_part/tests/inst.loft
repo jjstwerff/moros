@@ -350,3 +350,94 @@ fn test_a_clean_library_sweeps_clean() {
   assert(got.cc_code == CY_OK, "a clean library read {got.cc_code}: {got.cc_why}");
   wipe();
 }
+
+// ── `part_cycle_of` — the check a SAVE needs, plan 17 `A7.3d` ────────────────
+//
+// ⚠ `part_cycle` ANSWERS ABOUT THE VERSION ON DISK, which is exactly the version
+// a save is about to replace. What has to be refused is the content in memory,
+// under the name it is about to take — so the candidate's instances are walked
+// with the path seeded by that name.
+
+fn insts_for(refs: vector<text>) -> vector<PartInst> {
+  v: vector<PartInst> = [];
+  for r in refs { v += [PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: r }]; }
+  v
+}
+
+// The live case, and it needs no new gesture: open a frame, save it under the
+// name of one of its own leaves.
+fn test_saving_a_frame_under_its_own_leafs_name_is_a_cycle() {
+  wipe();
+  none: vector<text> = [];
+  put("h/leaf", none);
+  put("h/frame", ["h/leaf"]);
+  // `h/frame`'s content, about to be written as `h/leaf`: it refers to `h/leaf`,
+  // which would then be itself.
+  got = part_cycle_of(root(), "h/leaf", insts_for(["h/leaf"]));
+  assert(got.cc_code == CY_CYCLE, "saving over its own leaf read {got.cc_code}: {got.cc_why}");
+  assert(got.cc_why.find("h/leaf") != null, "the chain does not name the part: '{got.cc_why}'");
+  wipe();
+}
+
+// ⚠ AND ONE LEVEL DOWN, because a check that only compares the immediate
+// references passes every indirect cycle there is.
+fn test_a_cycle_two_links_below_the_saved_name_is_found() {
+  wipe();
+  none: vector<text> = [];
+  put("h/deep", none);
+  put("h/mid", ["h/deep"]);
+  got = part_cycle_of(root(), "h/deep", insts_for(["h/mid"]));
+  assert(got.cc_code == CY_CYCLE, "an indirect cycle read {got.cc_code}: {got.cc_why}");
+  wipe();
+}
+
+// ⚠ THE CONTROL THAT KEEPS THE SEED HONEST. Walking the same instances with no
+// seed answers *are the parts it refers to sound*, and `h/mid` is perfectly
+// sound — so a version of this function that forgot the seed would call the
+// case above legal. This is that version, spelled out, so the difference is a
+// test rather than a comment.
+fn test_without_the_name_the_same_content_looks_clean() {
+  wipe();
+  none: vector<text> = [];
+  put("h/deep", none);
+  put("h/mid", ["h/deep"]);
+  got = part_cycle(root(), "h/mid");
+  assert(got.cc_code == CY_OK,
+         "the content itself is not a cycle — it only becomes one under the name "
+       + "it is saved as ({got.cc_code}: {got.cc_why})");
+  wipe();
+}
+
+// A save that is fine must stay fine: same library, a name that is not on any
+// chain below it.
+fn test_a_sound_save_is_not_refused() {
+  wipe();
+  none: vector<text> = [];
+  put("h/leaf", none);
+  got = part_cycle_of(root(), "h/newframe", insts_for(["h/leaf"]));
+  assert(got.cc_code == CY_OK, "a sound save read {got.cc_code}: {got.cc_why}");
+  wipe();
+}
+
+// A part with no instances at all can never be a cycle, whatever it is called —
+// which is every part the editor can author until `A7.3f`.
+fn test_a_part_with_no_instances_is_always_sound() {
+  wipe();
+  none: vector<text> = [];
+  put("h/leaf", none);
+  empty: vector<PartInst> = [];
+  got = part_cycle_of(root(), "h/leaf", empty);
+  assert(got.cc_code == CY_OK, "an instance-free part read {got.cc_code}: {got.cc_why}");
+  wipe();
+}
+
+// And a dangling reference is still MISSING rather than a cycle — `A3.1`'s three
+// answers survive the new entry point.
+fn test_a_dangling_reference_reads_as_missing_not_as_a_cycle() {
+  wipe();
+  none: vector<text> = [];
+  put("h/leaf", none);
+  got = part_cycle_of(root(), "h/new", insts_for(["h/typo"]));
+  assert(got.cc_code == CY_MISSING, "a typo read {got.cc_code}: {got.cc_why}");
+  wipe();
+}

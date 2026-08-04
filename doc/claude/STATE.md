@@ -22,9 +22,9 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3c`
+## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A7.3d`
 
-`make gate` **39 green** · `make lib-test` **2560, both backends** · `make parts` green
+`make gate` **40 green** · `make lib-test` **2572, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
 2026-08-04 on the installed loft.
 
@@ -41,7 +41,13 @@ discriminator when one fails. ⚠ **AND 4 IS NOT IMMUNE** — 2026-08-04, `cache
 exact second face (`agree 0 bad 24 layers 0`) at `GATE_JOBS=4` and passed **alone** on the same
 build minutes later. So *"reliable"* means *fails rarely*, and the discriminator is not optional:
 a `cache` failure whose `layers` is **0** compared nothing and is a startup miss, whatever the
-job count. ⚠ **AND THERE IS A THIRD FACE, in the CHARACTER gates**: `walk` and `hipskin` failed
+job count. ⚠ **AND ONE FACE OF IT WAS OURS, NOT THE RUNNER'S.** `part_fence` and `part_check` passed alone
+and failed at `GATE_JOBS=4` because they waited a fixed 1.8–2.5 s for an acknowledgement rather
+than polling for it — a gate that sleeps reports the machine. Ack-driven, they are also **faster
+when the box is idle**: 58 s → 21 s and 34 s → 11 s. ⚠ **Write a new gate that way**; a fixed
+sleep is a flake waiting for a busy afternoon.
+
+⚠ **AND THERE IS A THIRD FACE, in the CHARACTER gates**: `walk` and `hipskin` failed
 together at `GATE_JOBS=4` with `{"frames":1,"bodyMoved":false}` — one frame in the whole run, so
 the simulation never ticked while four interpreted servers shared the box. Both passed **alone**
 on the same build, in 12 s and 8 s. The tell is the same as the other two: a number that says
@@ -49,7 +55,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **223** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **229** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -69,23 +75,30 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3d` — the save check, which closes `A3.4`
+### The next thing to do is #17 `A7.3e` — a part that did not exist before
 
-**`A7.3a`, `A7.3b` and `A7.3c` are built — a part can be opened, edited and saved back.**
-`44:<name>` opens a part as the store the gestures reach and `44:` closes back, with the world,
-the renderer's nine registries and the feet held aside by assignment. The fence refuses
+**`A7.3a`–`A7.3d` are built: a part can be opened, edited, saved back, and the save is checked.**
+`44:<name>` opens a part as the store the gestures reach and `44:` closes back, with the world, the
+renderer's nine registries and the feet held aside by assignment. The fence refuses
 `14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:` (state the
-mode does not hold aside) and `9:`; everything else still edits. `8:` now routes by mode and writes
-`parts_root()/<name>.hxw`, sections and all, with an empty payload meaning *the part that is open*.
-`part_mode.mjs` 31 · `part_fence.mjs` 17 · `part_save.mjs` 19 · `save_edit.loft` 6, thirteen
+mode does not hold aside) and `9:`; everything else still edits. `8:` routes by mode and writes
+`parts_root()/<name>.hxw`, sections and all, with an empty payload meaning *the part that is open* —
+after §P8's check, **before** the write. `part_mode.mjs` 31 · `part_fence.mjs` 17 ·
+`part_save.mjs` 19 · `part_check.mjs` 18 · `save_edit.loft` 6 · `part_cycle_of` 6, seventeen
 sabotages seen red across them.
 
-⚠ **`A7.3d` is the check ON that save** — `part_cycle` + `part_mesh_loads`, refusing with the chain
-— and its control is that a **refused save leaves the FILE unchanged**, not merely that the
-acknowledgement said no. It is also what finally closes `A3.4`.
+✅ **`A3.4` IS CLOSED.** §P8's *"checked on save"* has its save, and it needed a function `A3.4`
+could not have written: `part_cycle` walks a part that is on DISK, which is the version a save
+replaces, so the check a save needs is about the content in memory **under the name it is about to
+take**. `part_cycle_of` seeds the path with that name. ⚠ And the cycle is reachable with no
+instance gesture at all — `prop/shrine` saved AS `prop/plinth` is a part that contains itself.
+
+⚠ **`A7.3e` is the acceptance test**: a part that did not exist before, appearing in the catalogue
+while the editor runs, and placeable in the same session. `8:<newname>` already writes one — what
+`A7.3e` owes is that the LIBRARY follows.
 
 **`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
-✅ the store swap and the subject (`a`), ✅ the fence (`b`), ✅ the save (`c`), the save check
+✅ the store swap and the subject (`a`), ✅ the fence (`b`), ✅ the save (`c`), ✅ the save check
 (`d`), a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
 until a number says it hurts; `src/part_build.loft` prints the cost every run.
 
@@ -94,17 +107,14 @@ stamps an owner field INTO the file, so saving a part nobody edited rewrites its
 diff `make parts` then reverts. `X2` is the right idea for a shared library and the wrong trade at
 this size; what it wants is a save that knows whether anything was authored.
 
-⚠ **`A7.3` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
+⚠ **`A7.3f` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
 `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
 client reads is this tree's own trap. The first gesture that BINDS something is what earns them.
-⚠ And `A3.4`'s save check finally gets its hook here too: §P8 says *checked on save*, and `A7.3` is
-the first save.
+⚠ It is also what makes `A7.3b`'s fence temporary: `14:<roof>,<part>` is refused in part mode
+because a part inside a part is a REFERENCE, and `f` is the gesture that writes one.
 
-**Two steps are ◐ rather than done, each for a reason that is still true:**
+**One step is ◐ rather than done, for a reason that is still true:**
 
-- **`A3.4`** — §P8's *"checked on save"* has **no save gesture to hang on** until `A7.3`, so the
-  server's startup sweep is still `library_cycle`'s only caller. Writing the hook now would be a
-  function with no caller, which is this tree's own trap.
 - **`A5.2`** — its state half is done and its **renderer half is blocked on a FIELD, no longer on
   a number.** `A6.2` supplied the mesh leaf `A5.2` was waiting for, and it can be turned to any of
   the 24 including heading 1 (the 15° `F-READ` asks for). But `MeshAt.ma_facing` is a turn about
@@ -425,7 +435,7 @@ of the identical expression is correct. Both were invisible until something read
 ## How to run things
 
 ```sh
-GATE_JOBS=4 make gate  # ⚠ 39 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
+GATE_JOBS=4 make gate  # ⚠ 40 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
                        #   each gate starts a server that interprets a 5,900-line file, the
                        #   wait for `listening on port` is 60 s, and one gate alone takes
                        #   2 m 33 s. Measured: 10 of 35 failed at 10 jobs and the SAME suite

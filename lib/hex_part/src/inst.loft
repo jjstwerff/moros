@@ -231,6 +231,32 @@ pub fn part_cycle(root: text, name: text) -> CycleCheck {
   walk(root, name, empty)
 }
 
+// ⚠ WOULD THIS PART BE SOUND *IF IT WERE SAVED UNDER THIS NAME*? — plan 17
+// `A7.3d`, and it is the shape §P8's *"checked on save"* actually needs.
+// `part_cycle` walks a part that is ON DISK, so it can only ever answer about the
+// version already written; a save has to be refused BEFORE it writes, and the
+// content it would write is in memory. So the candidate's own instances are
+// walked with the path seeded by the name it is about to take.
+//
+// ⚠ THE SEED IS THE WHOLE FUNCTION. Walking the instances with an empty path
+// answers *are the parts it refers to sound*, which is a different and much
+// weaker question — `prop/shrine` saved as `prop/statue` refers only to sound
+// parts, and is a part that contains itself. One element of context is the
+// difference between the two.
+//
+// ⚠ AND IT IS REACHABLE WITH THE GESTURES THAT EXIST. There is no gesture that
+// adds an instance yet (`A7.3f`), but SAVE-AS is enough: open a frame and save it
+// under the name of one of its own leaves.
+pub fn part_cycle_of(root: text, name: text, insts: vector<PartInst>) -> CycleCheck {
+  seed: vector<text> = [];
+  seed += [name];
+  for c in insts {
+    down = walk(root, c.pi_part, seed);
+    if down.cc_code != CY_OK { return down; }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}
+
 // Every part in a library, checked. ⚠ THE FIRST FAULT IS RETURNED rather than a
 // count, and the name of the part it started from is in it — a caller told *three
 // parts are broken* has to go and find them.
