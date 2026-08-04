@@ -45,6 +45,15 @@ src/.loft/
 
 # The moros_render CLI examples write their .glb cwd-relative by design.
 *.glb
+# ⚠ EXCEPT THE PART LIBRARY'S OWN MESHES, and the exception is plan 17 `A6.2`.
+# `data/parts/` is content rather than a scratch directory: a committed `.hxw` may
+# NAME a mesh (§P5's second body), and a part naming a file no clone has is a part
+# that cannot draw. ⚠ The rule above nearly took `A6.1`'s test fixture silently —
+# `git status` showed nothing, it passed locally and would have been missing on
+# every other checkout — so run `git check-ignore -v <path>` before adding any
+# binary here. `src/prop_build.loft` regenerates these byte-identically, which is
+# what makes committing them sane; `make parts` asserts it.
+!data/parts/**/*.glb
 
 # runtime log from `make editor`
 .editor.log

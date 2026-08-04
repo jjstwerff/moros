@@ -28,6 +28,7 @@ use sock;
 use catalogue;
 use stamp;
 use meta;
+use prop;
 use expand;
 
 pub const BK_OK      = 0;
@@ -39,6 +40,7 @@ pub const BK_CYCLE   = 5;   // a part contains itself (P8's FIRST rule)
 pub const BK_SOCKET  = 6;   // a binding names a socket the framing part does not offer
 pub const BK_NOFIT   = 7;   // the bound part does not fit that socket (A4.2)
 pub const BK_SWING   = 8;   // the leaf is swung past its own hinge (A5.2)
+pub const BK_MESH    = 9;   // a mesh body, which no flattening can carry (A6.2)
 
 // The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
@@ -119,6 +121,27 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
                   bk_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
   }
   p = ld.wl_world;
+
+  // ⚠ A MESH BODY IS REFUSED, AND FINDING THAT OUT IS `A6.2`'s SECOND HALF.
+  // Flattening produces ONE part with ONE `MESH` section and no position for it,
+  // so a nest holding two statues at two places is not expressible in the result —
+  // and this walk reads only columns, which means before this check the meshes were
+  // simply **dropped**: `bake` returned `BK_OK`, every cell matched `expand`, and
+  // the statues were gone. A silent loss that every count agrees with is the exact
+  // failure shape `A3.3` built two independent paths to catch.
+  //
+  // ⚠ SO `expand == bake` IS NOW A CLAIM ABOUT CELL NESTS ONLY, stated rather than
+  // quietly narrowed. `expand` places a mesh (`ex_meshes`); this says it cannot.
+  ms = part_mesh(p);
+  if ms.pr_code == MR_MALFORMED {
+    return Bake { bk_code: BK_BROKEN, bk_why: "'{name}': {ms.pr_why}" };
+  }
+  if ms.pr_code == MR_OK {
+    return Bake { bk_code: BK_MESH,
+      bk_why: "'{name}' has a mesh body ('{ms.pr_name}'); a baked part holds one MESH "
+            + "section and no position for it, so flattening a nest that contains one "
+            + "would lose it. `part_expand` places it instead (A6.2)" };
+  }
 
   for pc in part_columns(p) {
     (tq, tr) = un_origin(cq, cr, pc.pk_q, pc.pk_r);

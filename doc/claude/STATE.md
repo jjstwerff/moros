@@ -22,7 +22,7 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A6.1`
+## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A6.2`
 
 `make gate` **35 green** · `make lib-test` **2496, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
@@ -37,11 +37,15 @@ interpret a 5,900-line `editor_server.loft`. Measured this session: **10 of 35 f
 which reads as a measured disagreement and is a startup miss. ⚠ It also failed at load ~4 and
 passed at load 33 earlier the same day, so *check the load first* was never the rule.
 **`GATE_JOBS=4 make gate` is the reliable form**; a single gate at `GATE_JOBS=1` is the cheap
-discriminator when one fails.
+discriminator when one fails. ⚠ **AND 4 IS NOT IMMUNE** — 2026-08-04, `cache` failed with that
+exact second face (`agree 0 bad 24 layers 0`) at `GATE_JOBS=4` and passed **alone** on the same
+build minutes later. So *"reliable"* means *fails rarely*, and the discriminator is not optional:
+a `cache` failure whose `layers` is **0** compared nothing and is a startup miss, whatever the
+job count.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **191** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **212** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -61,23 +65,26 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A6.2` — a prop part in a socket
+### The next thing to do is #17 `A6.3` — swap the statue
 
-`A6.2` is *"a statue on a plinth at the plinth's height, facing out"*. ⚠ **Nothing yet places a
-prop's mesh at all** — `A6.1` carries the reference and verifies it loads, and `expand` has no
-mesh half.
+`A6.3` is *"a different statue on the same plinth, no other change"*, and the library it needs is
+now on disk: `data/parts/prop/{statue,plinth,shrine}.hxw` plus `statue.glb`, built and gated by
+`src/prop_build.loft` under `make parts`. A placement is a `MeshAt` and carries **no identity and
+no part handle**, so `ma_mesh` is the whole difference between one statue and another — which is
+precisely what `A6.3` has to demonstrate.
 
 **Two steps are ◐ rather than done, each for a reason that is still true:**
 
 - **`A3.4`** — §P8's *"checked on save"* has **no save gesture to hang on** until `A7.3`, so the
   server's startup sweep is still `library_cycle`'s only caller. Writing the hook now would be a
   function with no caller, which is this tree's own trap.
-- **`A5.2`** — its state half is done and its **renderer half is blocked with a number**. Only
-  the six multiples of 60° move a body without tearing it (`A4.4`), and 60° is a **sixth of a
-  turn** — so a leaf made of CELLS has exactly **two** drawable positions in a door's `0 .. 0.25`
-  swing: shut, and 60°. `F-READ` wants a door ajar at 15°, a twenty-fourth of a turn. **The
-  picture needs a MESH leaf (`A6.1`/`A6.2`) or the cell rotation `A4.4` left unbuilt** — and
-  FITTINGS §1 already calls a leaf *"asset + world state"*, not cells.
+- **`A5.2`** — its state half is done and its **renderer half is blocked on a FIELD, no longer on
+  a number.** `A6.2` supplied the mesh leaf `A5.2` was waiting for, and it can be turned to any of
+  the 24 including heading 1 (the 15° `F-READ` asks for). But `MeshAt.ma_facing` is a turn about
+  the part's **origin** about the **vertical**, and a `Hinge` carries its own point and its own
+  axis — a trapdoor hinges about a horizontal one. Composing `bd_open` into `ma_facing` would
+  swing every door about its centre. The swing needs to be **in the placement record**, or in a
+  second record beside it.
 
 ⚠ **`A5.2`'s gate is a COLD-RECOGNITION test and needs the user's eyes**, not a gate: *does a
 person call it a door.* It cannot be reached until a leaf can be drawn ajar. Render it and hand
@@ -98,20 +105,35 @@ Grep `lib/`, `src/`, `../loft-libs-world/` and the registry before adding a publ
 one is taken, **read the collision**: `hex_editor`'s `Fit` had already settled the ordinal/nominal
 question `hex_part` was re-deriving. Now a working rule in [CLAUDE.md](../../CLAUDE.md).
 
-**Only 6 of the 24 headings can turn a BODY**, and the other 18 tear 12–22 of a test body's 90
-adjacencies — no cells lost, every count agreeing, holes in the walls.
+**Only 6 of the 24 headings can turn a BODY ON THE LATTICE**, and the other 18 tear 12–22 of a
+test body's 90 adjacencies — no cells lost, every count agreeing, holes in the walls.
 `moros_map/tests/headings.loft` prints the table every run. ⚠ The 24 came from `hex_shape`'s
 `d24`, which is a space of LINE directions; a run may staircase and a body may not.
-`expand`/`bake` apply **facing 0 only**, so no part in this tree has ever been placed turned.
+
+⚠ **`A6.2` NARROWED THE REFUSAL AND THE NARROWING IS THE INTERESTING PART.** The measurement is
+about something *on* the lattice, so `expand` now asks `part_lattice_free` — *is anything
+displaced by a rotation*: its own cells, a nested part at an offset, a socket at an offset. A
+body with none of the three takes all 24 exactly. ⚠ **The question is never *does it have a
+mesh***: §P5 lets a part be both, and a pillar that is a `.glb` for the eye and a column for the
+walker still has a cell to tear. `bake` keeps the blanket rule — it produces cells, and a
+lattice-free body produces none.
+
+⚠ **AN AIM AND A TURN ARE DIFFERENT QUANTITIES.** An `INST` facing and a `SOCK` heading say which
+way a thing should LOOK; `ANCH`'s facing says which way the part looks in its OWN frame; the turn
+applied is the difference, wrapped. Without it, re-modelling a statue turned by 6 stands it
+turned by 6 in every socket in the library with every number unchanged.
 
 **A field's freedom depends on whether anything ever REFERS to it**, and that is not knowable
 when the field is designed. `A4.1` gave a socket name the tail and a comma; `A4.3` had to take
 the comma away, because a `BIND` names a socket between two commas and the part handle must be
 the tail.
 
-**No `.glb` is tracked in this repo** — `.gitignore:47` ignores them all for the `moros_render`
-CLI examples. A committed binary fixture is invisible to `git status`, passes locally, and is
-missing on every other clone. ⚠ **Run `git check-ignore` before adding one.**
+**`.gitignore:47` ignores every `.glb` EXCEPT the part library's own.** The rule exists for the
+`moros_render` CLI examples, which write theirs cwd-relative; `A6.2` added
+`!data/parts/**/*.glb`, because `data/parts/` is content and a committed part that names a mesh
+no clone has is a part that cannot draw. ⚠ **A committed binary is invisible to `git status`,
+passes locally and is missing on every other clone — run `git check-ignore -v` before adding
+one**, and check the negation's control too (a `.glb` anywhere else must still be ignored).
 
 **`loft test` runs any zero-argument function that returns nothing as a TEST.** A bare `wipe()`
 helper is listed among the test functions and executed in the runner's order. A parameter is what
@@ -131,13 +153,21 @@ named, and one list holds parts and materials alike, each row with a name, an im
 availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of
-`A4`, `A5.1`, `A5.2`'s state half and `A6.1` complete.** `A3.4` and `A5.2` are ◐; the reasons are
-under *the next thing to do* above. In order: `A1.1` region copy · `A1.2` round-trip and
-`part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk · `A2.2`
-the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check · `A3.2`
-expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1` `SOCK`/`FITS` ·
-`A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading measurement ·
-`A5.1` the hinge · `A5.2`'s state half · `A6.1` the `MESH` section.
+`A4`, `A5.1`, `A5.2`'s state half, `A6.1` and `A6.2` complete.** `A3.4` and `A5.2` are ◐; the
+reasons are under *the next thing to do* above. In order: `A1.1` region copy · `A1.2` round-trip
+and `part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk ·
+`A2.2` the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check ·
+`A3.2` expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1`
+`SOCK`/`FITS` · `A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading
+measurement · `A5.1` the hinge · `A5.2`'s state half · `A6.1` the `MESH` section · `A6.2` the
+statue on the plinth.
+
+⚠ **`data/parts/` NOW HOLDS TWO FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`)
+and `prop/{statue,plinth,shrine}.hxw` + `prop/statue.glb` (by `src/prop_build.loft`). `make parts`
+runs both, and both rebuild byte-identically — which is what makes committing a generated `.glb`
+sane. ⚠ **`expand == bake` is now a claim about CELL nests only**: `bake` refuses a nest holding a
+mesh (`BK_MESH`) rather than dropping it, because a baked part holds one `MESH` section and no
+position for it.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
@@ -159,15 +189,31 @@ catalogue entries carry author-given names. ⚠ **`hex_part::meta` now persists 
 server READS it** — `14:<roof>,<part>` acknowledges with `PART.name` — so the two want
 reconciling rather than both existing: `PART.name` is the saved one.
 
-⚠ **`part_anchor` is STILL called by tests only**, and `A4.3` did not change that as expected.
-A bound leaf takes its position and its heading from the SOCKET, not from its own anchor — see
-`socket_heading` — so `ANCH` is still waiting for a consumer. `A6.2` is the next candidate: a
-statue *"on a plinth at the plinth's height, facing out"* is the first thing that might need the
-prop's own anchor rather than the socket's.
+✅ **`part_anchor` HAS A CONSUMER, as of `A6.2`** — and it is the FACING half only. `expand`
+subtracts the part's own facing from the aim it is given, so which way a statue looks in the
+world depends on the socket rather than on how the author modelled the `.glb`. ⚠ **Its position
+half (`pa_q/pa_r/pa_h`) is still uncalled, on purpose**: a part's origin is what lands where it
+is placed (`part_stamp`'s rule), and reading the position for a mesh but not for cells would make
+`ANCH` mean two things depending on what the part is made of.
 
-⚠ **AND NOTHING PLACES A PROP'S MESH.** `A6.1` carries the `MESH` reference and verifies it
-loads; `expand` and `bake` have no mesh half at all, so a prop part currently contributes
-whatever CELLS it has and nothing else.
+⚠ **`part_expand` ITSELF STILL HAS NO CONSUMER outside tests and `src/prop_build.loft`** — the
+editor does not call it. That is `A7`'s, and it is the reason `A6.2`'s work is gated by a build
+program rather than by a picture.
+
+⚠ **`part_mesh_loads` IS CALLED AT BUILD TIME AND NOWHERE ELSE.** `part_expand` deliberately does
+not open the `.glb` it names — it runs per edit, and a glb parse per placement per edit is a cost
+the record cannot pay — so a library shipping a dangling mesh reference is caught by `make parts`
+and by nothing at load time yet. `A3.4`'s save check is where it belongs.
+
+✅ **`glb_read` HAS A CONSUMER THAT IS NOT A TEST, as of `A6.2`** — the catalogue thumbnail draws a
+part's `.glb` body. It cost almost nothing because `chunk_mesh_slot` and `glb_read` both hand back
+`mesh3d::Mesh`, so `mesh_wire` takes the glb unchanged and both are `+Y` up. ⚠ **A thumbnail still
+draws a part's OWN body and not what it holds**, so `prop/shrine` pictures as its paving with
+neither the plinth nor the statue on it; `part_expand` in the thumbnail path is `A7`'s.
+
+⚠ **A CELL'S MATERIAL IS A SMALL NAMED SET, AND A LITERAL IS HOW YOU GET A GREEN PLINTH.** `3` is
+`FIELD_MAT`. A cell has no *stone* at all — `wall` is an EDGE material — so the five a cell may
+take are `SURFACE_MAT`, `ROAD_MAT`, `FIELD_MAT`, `FLOOR_MAT` and `ROOF_MAT`, all `hex_editor`'s.
 
 ⚠ **A reason has nowhere roomy to live.** A list row is **212 px** — twenty-one characters —
 so `B6`'s reasons are one word (`derived`, `scattered`) and the full sentence stays on the

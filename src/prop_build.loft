@@ -1,0 +1,329 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Plan 17 `A6.2` — A PROP PART IN THE SAME LIBRARY, IN THE SAME SOCKETS.
+//
+// `part_build.loft` puts a house in `data/parts/`. This puts a **statue on a
+// plinth** in the same place, by the same machinery, and the whole point of the
+// step is that there is no second machinery: the statue is a `PART` with a `FITS`,
+// the plinth is a `PART` with a `SOCK`, and `part_expand` composes them exactly as
+// it composes a door-frame into a house.
+//
+//     make parts
+//
+// ⚠ IT WRITES A `.glb` RATHER THAN COMMITTING ONE, which is this tree's rule about
+// images applied to geometry (`CATALOGUE.md`: every image is *rendered*, never
+// loaded). A committed binary is a thing nobody can diff, nobody can regenerate,
+// and — here specifically — a thing `.gitignore:47` was silently swallowing.
+// ⚠ The `.glb` IS committed, under an explicit `!data/parts/**/*.glb` negation: a
+// part that names a mesh no clone has is a part that cannot draw. What makes that
+// safe is that this program rebuilds it byte-identically, which is asserted below.
+//
+// ⚠ AND IT VERIFIES BY EXPANDING, not by re-reading. Saving three files proves
+// nothing about whether a statue ends up on the plinth — so the gate at the bottom
+// runs the same `part_expand` a renderer will, into a seeded world, and reads the
+// placement's height and heading back out of it.
+use hex_world;
+use hex_part;
+use hex_editor;   // the MATERIAL names — see below, a literal 3 is a GREEN plinth
+use glb;
+use mesh3d;
+
+// The editor's own world constants — `part_build.loft`'s note applies here too: a
+// part cut or built at a different epsilon is a different shape wearing the same
+// numbers.
+const W_EPS   = 8;
+const W_THETA = 3;
+const W_UNIT  = 0.25;
+
+// How tall the plinth stands, in the height units a `Hex` carries.
+const PLINTH_H = 6;
+
+// ⚠ THE SOCKET LOOKS AT 18, AND 18 IS NOT ONE OF THE SIX. A cell part could never
+// be put in a socket aimed here — `A4.4` measured that only the six multiples of
+// 60° map the lattice onto itself, and 18 is 270° — so this number is what makes
+// the file a demonstration rather than a decoration. A prop can take it because a
+// mesh is not on the lattice; the statue's own `ANCH` facing is subtracted from
+// it, which is what `part_expand` asserts below.
+const LOOK = 18;
+
+fn out_root() -> text {
+  po = env_variable("PROP_OUT");
+  if po != "" { return po; }
+  "{source_dir()}/../data/parts"
+}
+
+// ── The statue, modelled rather than imported ────────────────────────────────
+//
+// ⚠ IT IS ASYMMETRIC ON PURPOSE, and that is STATE.md lesson 9 rather than art
+// direction: *a symmetric test subject cannot detect a symmetric bug*. A figure
+// that is the same from every side photographs identically at every one of the 24
+// headings, so a renderer that ignored `ma_facing` entirely would look correct.
+// The raised arm along +X is what makes *which way is it facing* a thing a person
+// can see in a picture.
+//
+// ⚠ AND THE CONVENTION IS WRITTEN INTO THE PART, NOT ASSUMED OF THE FILE. `+Y` is
+// up (glTF's own) and the figure faces `+X`, which is heading 0 — so `ANCH`'s
+// facing is 0, and it is *recorded* rather than left to whoever opens the file to
+// infer. That is the whole argument for `part_anchor` having a consumer at all:
+// re-model this statue facing sideways, say so in `ANCH`, and every socket in the
+// library still points its nose the right way.
+
+fn quad(m: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3) {
+  i = len(m.vertices);
+  m.vertices += [vertex(a, n, vec2(0.0, 0.0))];
+  m.vertices += [vertex(b, n, vec2(1.0, 0.0))];
+  m.vertices += [vertex(c, n, vec2(1.0, 1.0))];
+  m.vertices += [vertex(d, n, vec2(0.0, 1.0))];
+  m.triangles += [Triangle { a: i, b: i + 1, c: i + 2 }];
+  m.triangles += [Triangle { a: i, b: i + 2, c: i + 3 }];
+}
+
+// A box with six flat faces. ⚠ FOUR VERTICES PER FACE RATHER THAN EIGHT SHARED,
+// because a shared corner can carry only one normal and a cube lit from one normal
+// per corner is a rounded blob — `glb_read` follows the NORMAL accessor, so a wrong
+// normal here would survive every round trip and only show up in a picture.
+fn box(m: Mesh, x0: float, y0: float, z0: float, x1: float, y1: float, z1: float) {
+  quad(m, vec3(x0, y0, z1), vec3(x1, y0, z1), vec3(x1, y1, z1), vec3(x0, y1, z1),
+       vec3(0.0, 0.0, 1.0));
+  quad(m, vec3(x1, y0, z0), vec3(x0, y0, z0), vec3(x0, y1, z0), vec3(x1, y1, z0),
+       vec3(0.0, 0.0, 0.0 - 1.0));
+  quad(m, vec3(x1, y0, z1), vec3(x1, y0, z0), vec3(x1, y1, z0), vec3(x1, y1, z1),
+       vec3(1.0, 0.0, 0.0));
+  quad(m, vec3(x0, y0, z0), vec3(x0, y0, z1), vec3(x0, y1, z1), vec3(x0, y1, z0),
+       vec3(0.0 - 1.0, 0.0, 0.0));
+  quad(m, vec3(x0, y1, z1), vec3(x1, y1, z1), vec3(x1, y1, z0), vec3(x0, y1, z0),
+       vec3(0.0, 1.0, 0.0));
+  quad(m, vec3(x0, y0, z0), vec3(x1, y0, z0), vec3(x1, y0, z1), vec3(x0, y0, z1),
+       vec3(0.0, 0.0 - 1.0, 0.0));
+}
+
+fn statue_mesh() -> Mesh {
+  m = mesh("statue");
+  box(m, 0.0 - 0.22, 0.00, 0.0 - 0.18, 0.22, 1.05, 0.18);   // body
+  box(m, 0.0 - 0.13, 1.05, 0.0 - 0.13, 0.13, 1.36, 0.13);   // head
+  box(m, 0.18, 0.72, 0.0 - 0.07, 0.62, 0.86, 0.07);          // the arm, along +X
+  m
+}
+
+// ── The three parts ──────────────────────────────────────────────────────────
+
+fn write_statue(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  // ⚠ NO CELLS AT ALL, which is exactly the shape `part_expand` could not carry
+  // before `A6.2`: `part_stamp` answers `PS_EMPTY` for a world with no columns and
+  // every stamp failure used to be `EX_FIT`. A statue you cannot walk into is the
+  // ordinary case for a prop, and §P5's *both bodies* pillar is the other one.
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_PROP, pm_name: "statue",
+    pm_desc: "a standing figure, arm raised along +X — modelled facing heading 0"
+  }) == PM_OK, "the statue's meta was refused");
+  assert(part_set_mesh(w, "prop/statue").pw_code == PR_OK, "the statue's mesh was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "the statue's fit was refused");
+  assert(part_set_anchor(w, PartAnchor {
+    pa_q: 0, pa_r: 0, pa_h: 0, pa_facing: 0
+  }) == PM_OK, "the statue's anchor was refused");
+  assert(world_save(w, "{root}/prop/statue.hxw", []) == WS_OK, "the statue was not saved");
+}
+
+fn write_plinth(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  // A single built column. ⚠ ITS TOP AND THE SOCKET'S HEIGHT ARE ONE NUMBER — a
+  // socket that said 5 while the stone reached 6 would stand the statue inside the
+  // plinth and nothing in the format would object.
+  //
+  // ⚠ THE MATERIAL IS A NAME BECAUSE A LITERAL WAS WRONG AND LOOKED FINE. This was
+  // `3`, chosen as *"some stone-ish index"*; `3` is `FIELD_MAT`, so the catalogue
+  // listed a bright green plinth and every number in every gate agreed with it.
+  // ⚠ And a cell has no *stone*: `wall` is an EDGE material, so the five a cell can
+  // take are grass, road, field, floor and roof. `FLOOR_MAT` — a built surface — is
+  // the honest one for masonry, and it is what the house's own floor uses.
+  for h in 1..(PLINTH_H + 1) {
+    assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+      co_cells: [Hex { h_height: h as u16? ?? 0,
+                       h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }] }).cw_code == CW_OK,
+      "the plinth's column was refused");
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_PROP, pm_name: "plinth",
+    pm_desc: "a stone column with a statue socket on top, looking at heading {LOOK}"
+  }) == PM_OK, "the plinth's meta was refused");
+  assert(part_set_sockets(w, [Socket {
+    sk_q: 0, sk_r: 0, sk_h: PLINTH_H, sk_mount: SM_HEAD, sk_at: LOOK,
+    sk_kind: "statue", sk_size: "plinth-2", sk_name: "top"
+  }]).sw_code == SK_OK, "the plinth's socket was refused");
+  assert(world_save(w, "{root}/prop/plinth.hxw", []) == WS_OK, "the plinth was not saved");
+}
+
+// The composition: a plinth standing at an offset, with the statue bound into it.
+//
+// ⚠ THE SHRINE STORES NO COORDINATE FOR THE STATUE, and that absence is §P3's
+// whole mechanism (`bind.loft`). Move the plinth and the statue follows, because
+// there is no second position that could be forgotten.
+fn write_shrine(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  // A paved base. ⚠ NOT DECORATION — a part with no cells of its own has no
+  // thumbnail, because the editor meshes a part's own chunks and does not expand
+  // what it holds. A shrine that is *a plinth and nothing else* lists in the
+  // catalogue as a blank row, which is a picture of nothing. It also reads better:
+  // three levels — paving, plinth, figure — is what makes it a shrine rather than a
+  // column standing in a field. ⚠ The composition-ONLY shape is not lost; it is
+  // `hex_part`'s `test_a_part_whose_only_body_is_what_it_holds_expands`, which is
+  // where a shape with no picture belongs.
+  for pq in 0..3 {
+    for pr in 0..3 {
+      if pq == 2 && pr == 1 { continue; }        // the plinth's own column
+      // Paving, and a DIFFERENT material from the plinth on purpose: two bodies in
+      // one flat colour photograph as one body, which is `A3.2`'s fixture rule
+      // (*the material is the marker*) applied to a picture rather than to a count.
+      assert(world_set_column(w, Column { co_q: pq, co_r: pr,
+        co_cells: [Hex { h_height: 0 as u16? ?? 0,
+                         h_material: hex_editor::ROAD_MAT as u8? ?? 0 }] }).cw_code == CW_OK,
+        "the shrine's paving at ({pq},{pr}) was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "shrine",
+    pm_desc: "a plinth with a statue on it — plan 17 A6.2's demonstration"
+  }) == PM_OK, "the shrine's meta was refused");
+  // ⚠ (2,1) IS AN ODD ROW ON PURPOSE. On an even row the doubled-lattice
+  // composition agrees with a naive `(cq+dq, cr+dr)`, so a shrine at (0,0) would
+  // verify against arithmetic that is wrong everywhere else — five bugs in this
+  // codebase have been exactly that (STATE.md lesson E).
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 2, pi_r: 1, pi_h: 0, pi_facing: 0, pi_part: "prop/plinth"
+  }]) == PI_OK, "the shrine's instance was refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: "prop/statue"
+  }]).bw_code == BD_OK, "the shrine's binding was refused");
+  assert(world_save(w, "{root}/prop/shrine.hxw", []) == WS_OK, "the shrine was not saved");
+}
+
+// ── The gate ─────────────────────────────────────────────────────────────────
+
+// A patch of ground to stand the shrine on. ⚠ A part stamped into a chunk with no
+// terrain becomes that chunk's GROUND layer and takes `LABEL_GROUND` instead of the
+// label it minted, so this is a placement rule rather than fixture decoration.
+// ⚠ AND THE SHRINE STANDS **ON** IT, at `GROUND`, rather than at height 0. Placed
+// at 0 its paving band is `0 .. 0` in a column whose terrain is at 2, which makes
+// two layers 2 apart where the world's `eps` requires 8 — *"layer 1 is 2 above
+// layer 0, needs 8"*, a real refusal from the store and not a fixture detail. A
+// building is put on a landscape; the anchor is how.
+const GROUND = 2;
+
+fn ground() -> World {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for q in (0 - 2)..12 {
+    for r in (0 - 2)..12 {
+      assert(world_set_column(w, Column { co_q: q, co_r: r,
+        co_cells: [Hex { h_height: GROUND as u16? ?? 0,
+                         h_material: 1 as u8? ?? 0 }] }).cw_code == CW_OK,
+        "the ground at ({q},{r}) was refused");
+    }
+  }
+  w
+}
+
+fn main() {
+  root = out_root();
+  assert(mkdir_all("{root}/prop").ok(), "could not make {root}/prop");
+
+  // ── the mesh, and the proof that writing it is repeatable ──────────────────
+  //
+  // ⚠ THE BYTE-IDENTITY CHECK IS WHAT MAKES COMMITTING IT SANE, and it is the same
+  // argument `data/parts/house/cottage.hxw` already carries: a generated file that
+  // changed each run would put its whole size into every commit that touched it.
+  // Measured here rather than assumed of `save_glb`.
+  path = "{root}/prop/statue.glb";
+  // ⚠ `#size` READS OFF A VARIABLE, NOT OFF A CALL — `file(path)#size` is a parse
+  // error, which `part_build.loft` had already worked out.
+  before = 0;
+  if exists(path) {
+    was = file(path);
+    before = was#size;
+  }
+  save_glb(statue_mesh(), path);
+  onf = file(path);
+  after = onf#size;
+  assert(after > 0, "save_glb wrote nothing to {path}");
+  if before > 0 {
+    assert(before == after,
+           "the statue's glb was {before} bytes and is now {after} — a build that "
+         + "does not repeat cannot be committed");
+  }
+
+  write_statue(root);
+  write_plinth(root);
+  write_shrine(root);
+
+  // ── and now the part of this that is the gate ──────────────────────────────
+  //
+  // ⚠ IT EXPANDS RATHER THAN RE-READING. Three files that load are not a statue on
+  // a plinth; the claim is about the COMPOSITION, so the check is the same call a
+  // renderer makes.
+  w = ground();
+  ex = part_expand(w, root, PartInst {
+    pi_q: 5, pi_r: 5, pi_h: GROUND, pi_facing: 0, pi_part: "prop/shrine"
+  }, 0);
+  assert(ex.ex_code == EX_OK, "the shrine did not expand ({ex.ex_code}): {ex.ex_why}");
+  assert(ex.ex_parts == 3, "{ex.ex_parts} parts derived, not 3 (shrine, plinth, statue)");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} mesh placements, not 1");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_mesh == "prop/statue", "the placement names '{m.ma_mesh}'");
+
+  // ON THE PLINTH — the socket's cell, composed through the doubled lattice.
+  (pq, pr) = un_origin(5, 5, 2, 1);
+  assert(m.ma_q == pq && m.ma_r == pr,
+         "the statue is at ({m.ma_q},{m.ma_r}); the plinth's socket is at ({pq},{pr})");
+  assert(pq != 5 + 2 || pr != 5 + 1,
+         "the naive sum agrees at this offset, so the check proves nothing");
+
+  // AT THE PLINTH'S HEIGHT — and the number is READ OUT OF THE FILE rather than
+  // taken from `PLINTH_H`, so a plinth whose stone and socket disagreed would fail
+  // here instead of agreeing with the constant that built both.
+  ld = world_load("{root}/prop/plinth.hxw");
+  assert(ld.wl_code == WL_OK, "the plinth did not load: {ld.wl_detail}");
+  stone = 0;
+  for c in column_cells(world_column(ld.wl_world, 0, 0)) {
+    ch = c.h_height as integer ?? 0;
+    if ch > stone { stone = ch; }
+  }
+  sk = part_sockets(ld.wl_world);
+  assert(sk.sr_code == MR_OK, "the plinth's socket did not come back: {sk.sr_why}");
+  top = (sk.sr_items[0] ?? Socket {}).sk_h;
+  assert(top == stone,
+         "the socket sits at {top} and the stone reaches {stone} — the statue would "
+       + "stand inside the plinth or float above it");
+  // ⚠ THE GROUND IS IN THE SUM, and leaving it out would have been the easier
+  // assertion and the wrong claim: the statue is at *the plinth's top*, and the
+  // plinth's top is where the shrine stands plus how tall the stone is. A part's
+  // heights are its own until something lifts them (`stamp.loft`).
+  assert(m.ma_h == GROUND + top,
+         "the statue stands at {m.ma_h}; the shrine is on ground {GROUND} and the "
+       + "plinth's top is {top}, so {GROUND + top} was expected");
+
+  // FACING OUT — the socket's aim, less the statue's own modelled facing.
+  a = part_anchor((world_load("{root}/prop/statue.hxw")).wl_world);
+  assert(a.ar_code == MR_OK, "the statue's anchor did not come back: {a.ar_why}");
+  assert(m.ma_facing == LOOK - a.ar_anchor.pa_facing,
+         "the statue is turned {m.ma_facing}; the socket looks at {LOOK} and the "
+       + "figure is modelled facing {a.ar_anchor.pa_facing}");
+  assert(m.ma_facing % 4 != 0,
+         "the socket's aim is one of the six headings a CELL part could take, so "
+       + "this library does not demonstrate what a prop can do that a house cannot");
+
+  // ⚠ AND THE MESH IT NAMES ACTUALLY LOADS, WITH VERTICES IN IT. `part_expand`
+  // deliberately never opens the file (it runs per edit), so without this the
+  // library could ship a part pointing at a mesh that is absent or empty and every
+  // number above would still agree. `mc_verts` is a read-back and not a tally.
+  st = world_load("{root}/prop/statue.hxw");
+  assert(st.wl_code == WL_OK, "the statue did not load: {st.wl_detail}");
+  ck = part_mesh_loads(root, st.wl_world);
+  assert(ck.mc_code == MC_OK, "the statue's mesh did not load ({ck.mc_code}): {ck.mc_why}");
+  assert(ck.mc_verts > 0, "the mesh loaded with {ck.mc_verts} vertices — it draws nothing");
+
+  println("  statue: {ck.mc_verts} vertices, {after} bytes -> {path}");
+  println("  shrine: statue on prop/plinth at ({m.ma_q},{m.ma_r}), height {m.ma_h}, "
+        + "turned {m.ma_facing} of 24 — a heading no cell part can take");
+}

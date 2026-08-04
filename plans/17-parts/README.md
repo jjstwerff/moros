@@ -702,7 +702,7 @@ binding would forbid them, and ignoring a non-zero swing on one would draw a sta
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A6.1` | `MESH` section: a `.glb` reference, over the existing `21:`/`22:`. | **DONE.** `src/prop.loft`, `hex_part` 180 → 191, both backends. Round-trip, and `part_mesh_loads` reads a FOREIGN glb out of the library. ⚠ The package took `glb_read`, and the fixture nearly went missing — see below. | S |
-| `A6.2` | A prop part in the same library, in the same sockets. | a statue on a plinth at the plinth's height, facing out | M |
+| ✅ `A6.2` | A prop part in the same library, in the same sockets. | **DONE.** `expand` grew a second output; `data/parts/prop/` grew a statue, a plinth and a shrine, built and gated by `src/prop_build.loft`. `hex_part` 191 → 212, both backends. ⚠ The heading refusal narrowed, `ANCH` got its first consumer, `bake` grew a refusal it needed, and the content found a hole no probe had — see below. | M |
 | `A6.3` | Swap. | a different statue on the same plinth, no other change | S |
 
 ### What `A6.1` turned up
@@ -748,6 +748,131 @@ not tell a statue from an empty glb.
 order, with `wipe` deleting the library between other tests — harmless only because every test
 rebuilt first. **A parameter is what keeps a helper a helper**, which is why `catalogue.loft`'s
 `wipe` takes one.
+
+### What `A6.2` turned up
+
+⚠ **`A4.4`'s REFUSAL IS ABOUT THE LATTICE, NOT ABOUT THE PART — and that is the step.**
+Eighteen of the twenty-four headings tear a body's adjacencies, which is a fact about
+something *on* the lattice. A part with nothing off its own origin has nothing a rotation
+could displace, so all 24 are exact for it. `part_lattice_free` asks *what is displaced* and
+names three answers: its own cells, a nested part at an offset, a socket it offers at an
+offset. That is why a statue can face out and a house cannot.
+
+⚠ **AND THE QUESTION IS NEVER *DOES IT HAVE A MESH*, WHICH IS THE WHOLE CONTROL.** §P5 lets a
+part be BOTH — the pillar that is a `.glb` for the eye and a column for the walker — so the
+rule *"a mesh part may face anywhere"* would turn that pillar to 18, tear the walker's column,
+and agree with every count in the document. Sabotaged: writing that rule instead turns three
+tests red, and only that spelling of the rule keeps them green.
+
+⚠ **AN AIM AND A TURN ARE TWO QUANTITIES, AND SEPARATING THEM IS WHAT FINALLY GAVE
+`part_anchor` A CONSUMER** — the thing `A4.3` predicted and did not deliver. An `INST`'s facing
+and a `SOCK`'s heading say which way a thing should LOOK in the world; `ANCH`'s facing says
+which way the part looks in **its own frame**; the turn applied is the difference. The
+invariant is *which way a statue looks in the world depends on the socket, not on how the
+author happened to model it* — without it, re-modelling the same statue turned by 6 stands it
+turned by 6 in every socket in the library, with every number in every document unchanged and
+nothing anywhere able to check the convention. Pinned as a sweep over seven authorings rather
+than one value, because `own` is 0 in every part in this library today and a single case
+passes on a formula that ignores the field.
+
+⚠ **AND THE WRAP IS THE TRAP.** `(6 - 18) % 24` is `-12` here, and `-12` is not a heading —
+STATE.md's lesson E is five bugs of exactly this shape, all below zero. The control aims a
+statue *below* its own facing.
+
+⚠ **A STATUE COULD NOT BE EXPANDED AT ALL BEFORE THIS STEP.** `part_stamp` answers `PS_EMPTY`
+for a world with no columns and `expand_at` mapped every stamp failure to `EX_FIT` — so §P5's
+second kind of part was unreachable through the one function that derives anything. Two lines,
+and they were invisible because no fixture had ever been a part without cells.
+
+⚠ **AND THE CONTENT FOUND A SECOND ONE THAT HAS NOTHING TO DO WITH MESHES.** A part whose only
+body is the parts it HOLDS — §P4's ordinary composition — hit the same `PS_EMPTY`. Every
+fixture in the suite had given its containers a cell of their own, so the shape was never
+posed; authoring the shrine (*a plinth with a statue on it and nothing else*) posed it in one
+run. ⚠ `bake` never had the hole — it walks columns directly and appends none — so
+`expand == bake` had an asymmetry its whole suite could not see, for the same reason. Lesson F
+again: **content exercising a mechanism finds what probes miss.**
+
+⚠ **`bake` WAS SILENTLY DROPPING PROPS, AND NOW REFUSES.** `bake_at` reads columns and nothing
+else, so a nest holding a statue flattened to `BK_OK` with every cell matching `expand`
+exactly and the statue simply gone. It cannot be fixed rather than refused: a baked part holds
+ONE `MESH` section and no position for it, so two statues at two places are not expressible in
+the result. `BK_MESH` says so and names what would have been lost. **`expand == bake` is now a
+claim about cell nests, stated rather than quietly narrowed.**
+
+⚠ **`expand` DOES NOT OPEN THE `.glb`, AND THAT IS MEASURED RATHER THAN OMITTED.** Not one test
+in `tests/place.loft` writes a mesh file and every placement still comes back;
+`test_the_placement_is_derived_without_ever_opening_the_glb` expands a statue whose mesh is
+absent from the library and then shows `part_mesh_loads` reporting `MC_MISSING` on the same
+part. `part_expand` runs per edit and a glb parse per placement per edit is a cost the record
+cannot pay; the answer would not change until the library does. ⚠ The seam is real and is
+stated, not hidden: **nothing calls `part_mesh_loads` outside tests and `prop_build`**, so a
+library shipping a dangling mesh reference is caught at build time and nowhere else yet.
+
+⚠ **`MeshAt` CARRIES NO IDENTITY AND NO PART HANDLE**, which is `A3.2`'s rule for cells applied
+to the other body: the records are the authority and everything downstream re-derives, so
+there is nothing to keep in step. `ma_mesh` is the whole difference between one statue and
+another, which is exactly what `A6.3` swaps.
+
+⚠ **`ANCH`'s POSITION HALF IS STILL UNCALLED, ON PURPOSE.** Only its facing is read. A part's
+origin is what lands where it is placed — `part_stamp`'s rule — and using the position half
+for a mesh but not for cells would make `ANCH` mean two things depending on what the part is
+made of, which is the one thing §P5 exists to avoid.
+
+⚠ **`.gitignore:47` WOULD HAVE SWALLOWED THE LIBRARY'S MESH**, which is `A6.1`'s warning
+arriving for real. `data/parts/` is content, not a scratch directory, so the rule now carries
+`!data/parts/**/*.glb` — with the control that a `.glb` anywhere else is *still* ignored, and
+the byte-identity that makes committing a generated file sane: two runs of `src/prop_build.loft`
+produce the same md5 for all four files.
+
+⚠ **THE SOCKET AIMS AT 18 BECAUSE 18 IS NOT ONE OF THE SIX.** A library whose demonstration
+socket pointed at a multiple of 60° would work identically under the old blanket refusal, so
+the gate asserts `ma_facing % 4 != 0` — the content has to be a thing a cell part could not do,
+or it demonstrates nothing.
+
+⚠ **PUTTING A STATUE IN THE LIBRARY BROKE THE CATALOGUE, WHICH IS THE PART A LIBRARY-ONLY STEP
+WOULD HAVE MISSED ENTIRELY.** `part_thumb_wire` meshes a part's own chunks, and a part with no
+cells has none — so the editor listed `prop/statue` as a **blank row** with *"meshed to
+nothing"* in the log, and `probe/b1`'s *every catalogue row carries an image* went red. Measured,
+not predicted: the gate named row 11 and row 12. **Fixed by drawing the mesh**, which is
+`glb_read`'s first consumer that is not a test — `A6.1` built the reader and only the suite and
+`make parts` had ever called it, this tree's *built and not called* trap, live. ⚠ It cost almost
+nothing because **the two mesh types are one type**: `chunk_mesh_slot` and `glb_read` both hand
+back `mesh3d::Mesh`, so `mesh_wire` takes the `.glb` unchanged, and both are `+Y` up.
+
+⚠ **AND `Surface` HAD ALREADY SILENTLY MERGED IN THAT PROGRAM.** `hex_world::Surface` and
+`moros_terrain::Surface` both exist; the literal `Surface { sf_r: … }` fails with five *"Unknown
+field"* errors and no mention of a collision, and ⚠ **`moros_terrain::Surface` does not fix it** —
+the return type is accepted and the constructor still resolves to the other struct. It had been
+invisible for months because every caller reads `surface_at(i).sf_r` and never names the type.
+Now a clause in [CLAUDE.md](../../CLAUDE.md): there is no routing around a taken name.
+
+⚠ **A PART'S THUMBNAIL DRAWS ITS OWN BODY, NOT WHAT IT HOLDS**, so `prop/shrine` pictures as its
+paving and neither the plinth nor the statue on it appears. Stated rather than left to be
+discovered: the fix is `part_expand` in the thumbnail path, which is `A7`'s. ⚠ It is also why
+the shrine has paving at all — a part whose only body is its children lists as a blank row, and
+`hex_part`'s `test_a_part_whose_only_body_is_what_it_holds_expands` is where that shape belongs.
+
+⚠ **TWO LITERALS IN THE CONTENT WERE WRONG AND BOTH LOOKED FINE.** `h_material: 3` for a stone
+plinth is `FIELD_MAT`, so the catalogue listed a **bright green** plinth with every number in
+every gate agreeing; and a cell has no *stone* at all, because `wall` is an EDGE material — the
+five a cell may take are grass, road, field, floor and roof. The names are `hex_editor`'s and
+the file now uses them. Separately, placing the shrine at height 0 on ground at 2 is refused by
+the store — *"layer 1 is 2 above layer 0, needs 8"* — which is the world's `eps` doing its job:
+a building is put ON a landscape, and the anchor is how.
+
+⚠ **A HINGE SWING STILL CANNOT RIDE IN THIS RECORD, AND NOW THERE IS A PRECISE REASON.**
+`A5.2` was left ◐ waiting for *"a MESH leaf"*, and one now exists and can be turned to any of
+the 24 — including heading 1, which is the 15° `F-READ` asks for. But `ma_facing` is a turn
+about the part's **origin** about the **vertical**, and a `Hinge` carries its own point
+(`hg_ox/oy/oz`) and its own axis (`hg_ax/ay/az`) — a trapdoor hinges about a horizontal one.
+Composing `bd_open` into `ma_facing` would swing every door about its centre and every trapdoor
+the wrong way round. So `A5.2`'s renderer half needs the hinge and the swing **in the placement
+record**, or a second record beside it; it is no longer blocked on *a number* but on *a field*.
+
+⚠ **AND TWO FIXTURES PROVED NOTHING UNTIL THEY WERE MOVED.** `un_origin(0,0,2,1)` **is**
+`(2,1)` — the shear vanishes on an even row — so the composition check passed on arithmetic
+that is wrong everywhere else until the yard was put at (5,5). The same trap is why
+`prop_build`'s shrine expands at (5,5) and asserts the naive sum disagrees.
 
 ### A7 — the picker
 

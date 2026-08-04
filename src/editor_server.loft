@@ -3742,6 +3742,64 @@ fn thumb_axes() -> ThumbAxes {
   }
 }
 
+// What a `.glb` body is drawn in. ⚠ FOUND BY NAME, NOT BY INDEX: the surface list
+// is ordered for the mesher's own slots and a literal 7 here would silently repaint
+// every statue the day a surface is inserted above it.
+//
+// ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THAT IS NOT A PREFERENCE.
+// `Surface` is declared TWICE in this program's graph — `hex_world::Surface` and
+// `moros_terrain::Surface` — and a loft struct name is global to a consumer, so the
+// two have merged and `hex_world`'s won. Writing the literal fails with five
+// *"Unknown field Surface.sf_r"* errors and no mention of a collision, and ⚠
+// **qualifying it as `moros_terrain::Surface` does not help**: the return TYPE is
+// accepted and the constructor still resolves to the other struct. That is worth
+// knowing — CLAUDE.md says grep before adding a public name, and this adds that
+// there is no way out afterwards short of a rename.
+//
+// So nothing here constructs one: the loop iterates by value (no `?? Surface {}`
+// default to write) and the caller reads the colour through `surface_at`, which is
+// how every other line in this file already does it.
+//
+// ⚠ AND `-1` IS LOUD IN BOTH DIRECTIONS. `surface_at` answers a black `?` for it,
+// so a palette that lost `frame` prints a line AND draws a statue the panel gate's
+// *no row darker than the well it sits in* check rejects. A silent grass-green
+// fallback would have been quieter and worse.
+fn prop_surface() -> integer {
+  ps_i = 0;
+  for ps_s in moros_terrain::surfaces() {
+    if ps_s.sf_name == "frame" { return ps_i; }
+    ps_i = ps_i + 1;
+  }
+  println("editor: no 'frame' surface in the palette — a prop body has no colour");
+  0 - 1
+}
+
+// Every vertex of a body, measured in the camera's axes.
+//
+// ⚠ A STRUCT RATHER THAN THREE `&` VECTORS, and that is loft's shape rather than a
+// preference: field mutation propagates to the caller, a bare vector parameter is
+// a fight. It was one inline loop until plan 17 `A6.2` gave a part a SECOND kind
+// of body — and two copies of *fit the camera to these vertices* is exactly how the
+// glb body ends up framed by a rule the cell body no longer uses.
+struct ThumbFit { tf_r: vector<float> = [], tf_u: vector<float> = [], tf_f: vector<float> = [] }
+
+// ⚠ SIX FLOATS A VERTEX — position then normal, the stride `gl_upload_vertices` is
+// given on the other side. ⚠ `as float`: `mesh_to_floats` returns the GPU's 32-bit
+// `single` and loft will not widen it silently; the bounds are compared and
+// averaged, so they are kept in the wider type rather than the buffer's.
+fn thumb_take(fit: ThumbFit, fs: vector<single>, ax: ThumbAxes) {
+  tk_k = 0;
+  while tk_k + 5 < len(fs) {
+    tk_x = (fs[tk_k] ?? 0.0 as single) as float;
+    tk_y = (fs[tk_k + 1] ?? 0.0 as single) as float;
+    tk_z = (fs[tk_k + 2] ?? 0.0 as single) as float;
+    fit.tf_r += [tk_x * ax.ax_rx + tk_y * ax.ax_ry + tk_z * ax.ax_rz];
+    fit.tf_u += [tk_x * ax.ax_ux + tk_y * ax.ax_uy + tk_z * ax.ax_uz];
+    fit.tf_f += [tk_x * ax.ax_fx + tk_y * ax.ax_fy + tk_z * ax.ax_fz];
+    tk_k = tk_k + 6;
+  }
+}
+
 // The camera, SOLVED FROM THE VERTICES — the smallest distance at which every
 // one of them is inside the frame.
 //
@@ -3875,9 +3933,7 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   // of them produced. Kept rather than re-derived because the fit needs two
   // passes: one to find the middle of what is on screen, one to find how close
   // the eye may come to it.
-  ptw_vr: vector<float> = [];
-  ptw_vu: vector<float> = [];
-  ptw_vf: vector<float> = [];
+  ptw_fit = ThumbFit {};
   ptw_bodies: vector<text> = [];
   for ptw_ch in ptw_pw.w_chunks {
     ptw_ms = chunk_meshes_all(ptw_ch.ck_cx, ptw_ch.ck_cz, ptw_pw, true,
@@ -3887,21 +3943,7 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
       ptw_m = chunk_mesh_slot(ptw_ms, ptw_si);
       ptw_fs = mesh_to_floats(ptw_m);
       if len(ptw_fs) < 6 { continue; }
-      // Six floats a vertex — position then normal, the stride
-      // `gl_upload_vertices` is given on the other side.
-      ptw_k = 0;
-      while ptw_k + 5 < len(ptw_fs) {
-        // ⚠ `as float` — `mesh_to_floats` returns the GPU's 32-bit `single`, and
-        // loft will not widen it silently. The bounds are compared and averaged,
-        // so they are kept in the wider type rather than the buffer's.
-        ptw_vx = (ptw_fs[ptw_k] ?? 0.0 as single) as float;
-        ptw_vy = (ptw_fs[ptw_k + 1] ?? 0.0 as single) as float;
-        ptw_vz = (ptw_fs[ptw_k + 2] ?? 0.0 as single) as float;
-        ptw_vr += [ptw_vx * ptw_ax.ax_rx + ptw_vy * ptw_ax.ax_ry + ptw_vz * ptw_ax.ax_rz];
-        ptw_vu += [ptw_vx * ptw_ax.ax_ux + ptw_vy * ptw_ax.ax_uy + ptw_vz * ptw_ax.ax_uz];
-        ptw_vf += [ptw_vx * ptw_ax.ax_fx + ptw_vy * ptw_ax.ax_fy + ptw_vz * ptw_ax.ax_fz];
-        ptw_k = ptw_k + 6;
-      }
+      thumb_take(ptw_fit, ptw_fs, ptw_ax);
       ptw_sf = moros_terrain::surface_at(ptw_si);
       // The ground keeps the height ramp it is drawn with in the world, so a
       // part's lawn is the same green as the lawn it will stand on.
@@ -3911,11 +3953,55 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
                      + "{mesh_wire(ptw_m, ptw_sf.sf_r, ptw_sf.sf_g, ptw_sf.sf_b)}"];
     }
   }
-  if len(ptw_vf) == 0 {
+  // ── §P5's OTHER BODY — plan 17 `A6.2` ──────────────────────────────────────
+  //
+  // ⚠ A PART MAY HAVE NO CELLS AT ALL, and until `A6.2` put one in the library
+  // that was a shape nothing here had met: `chunk_meshes_all` over a world with no
+  // chunks produces nothing, so a statue listed as a blank row with a *"meshed to
+  // nothing"* line in the log. A blank row is a picture of nothing, and the
+  // catalogue's own claim is that every row carries an image.
+  //
+  // ⚠ AND THIS IS `glb_read`'s FIRST CONSUMER THAT IS NOT A TEST. `A6.1` built the
+  // reader and `part_mesh_loads` was called by the suite and by `make parts` — this
+  // tree's *built and not called* trap, live. A thumbnail is the natural one.
+  //
+  // ⚠ THE TWO MESH TYPES ARE ONE TYPE. `chunk_mesh_slot` hands back `mesh3d::Mesh`
+  // and so does `glb_read`, so `mesh_wire` takes the `.glb` unchanged — no
+  // conversion, and no second encoder to drift. Both are `+Y` up (`thumb_axes`
+  // spells world-up as `(0,1,0)`, which is glTF's own), so nothing is turned.
+  ptw_ref = hex_part::part_mesh(ptw_pw);
+  if ptw_ref.pr_code == hex_part::MR_OK {
+    ptw_gl = load_glb(hex_part::mesh_file(parts_root(), ptw_ref.pr_name));
+    if ptw_gl.gr_code != GR_OK {
+      // ⚠ SAID, NOT SWALLOWED. A part naming a mesh that is absent or corrupt draws
+      // nothing, and *the row is blank* is not a diagnosis an author can act on.
+      println("editor: thumbnail — part '{name}' names mesh '{ptw_ref.pr_name}', which "
+            + "will not load ({ptw_gl.gr_code}) {ptw_gl.gr_detail}");
+    } else {
+      ptw_gf = mesh_to_floats(ptw_gl.gr_mesh);
+      thumb_take(ptw_fit, ptw_gf, ptw_ax);
+      // Stone, and the flat ramp — a prop is not ground, so it takes no height
+      // ramp the way surface 0 does.
+      //
+      // ⚠ IT REUSES `frame` RATHER THAN MINTING A SURFACE, and that is two
+      // decisions. A stone statue IS dressed stone, so it is honest; and
+      // `surface_count()` is the catalogue's material stride, so a tenth surface
+      // would add a tenth material row to a list whose count is gated (`nine
+      // materials, the mesher's own surfaces`). ⚠ Consequence, stated: a statue and
+      // a window surround are ONE bucket to every chromaticity gate. Nothing draws a
+      // statue in the world yet; when something does, separate them in the RENDERER
+      // and not in the classifier (STATE.md decision 12).
+      ptw_gs = moros_terrain::surface_at(prop_surface());
+      ptw_bodies += ["Y:{idx};0;"
+                     + "{mesh_wire(ptw_gl.gr_mesh, ptw_gs.sf_r, ptw_gs.sf_g, ptw_gs.sf_b)}"];
+    }
+  }
+
+  if len(ptw_fit.tf_f) == 0 {
     println("editor: thumbnail refused — part '{name}' meshed to nothing");
     return ptw_out;
   }
-  ptw_v = part_thumb_view(ptw_vr, ptw_vu, ptw_vf);
+  ptw_v = part_thumb_view(ptw_fit.tf_r, ptw_fit.tf_u, ptw_fit.tf_f);
   if !ptw_v.tv_ok {
     println("editor: thumbnail refused — part '{name}' has no camera");
     return ptw_out;
@@ -3923,7 +4009,7 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   ptw_out += ["W:{idx};{mat_wire(ptw_v.tv_view)};{mat_wire(ptw_v.tv_proj)}"];
   for ptw_b in ptw_bodies { ptw_out += [ptw_b]; }
   println("editor: thumbnail '{name}' — {len(ptw_bodies)} meshes, "
-        + "{len(ptw_vf)} vertices");
+        + "{len(ptw_fit.tf_f)} vertices");
   ptw_out
 }
 

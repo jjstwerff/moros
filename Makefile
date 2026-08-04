@@ -408,9 +408,19 @@ camera-frame:
 # assertion message, so a mutant that broke the part failed the build with nothing
 # said — which is a gate you cannot act on. The refusal is printed and only the
 # advice is dropped.
+# ⚠ AND `src/prop_build.loft` IS THE SECOND HALF, plan 17 `A6.2`: a statue, a
+# plinth and the shrine that puts one on the other — §P5's OTHER kind of part, in
+# the same library and in the same sockets. It writes a `.glb` as well as three
+# `.hxw`, all four committed and all four rebuilt byte-identically, and its gate is
+# a `part_expand` rather than a re-read: three files that load are not a statue on
+# a plinth. ⚠ `PROP_OUT` redirects it, the way `PART_OUT` redirects the cottage.
 parts:
 	@$(LOFT) --interpret --lib lib/ src/part_build.loft 2>.parts.err \
 	  || { echo "PARTS: the part it built is not the part it wrote"; \
+	       grep -A6 '^error:' .parts.err | head -20; \
+	       rm -f .parts.err; exit 1; }
+	@$(LOFT) --interpret --lib lib/ src/prop_build.loft 2>.parts.err \
+	  || { echo "PARTS: the statue is not on the plinth"; \
 	       grep -A6 '^error:' .parts.err | head -20; \
 	       rm -f .parts.err; exit 1; }
 	@rm -f .parts.err

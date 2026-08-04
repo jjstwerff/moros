@@ -1,0 +1,615 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A6.2` — a statue on a plinth, at the plinth's height, facing out.
+//
+// ⚠ THE STEP IS NOT *"ADD MESHES TO EXPAND"*, it is one claim with three edges:
+//
+//   1. A prop's placement is derived by the **same** walk as a cell part's — same
+//      frame, same composed offset, same added heights — and only what the body
+//      produces differs. Cells go into the world; a mesh comes back in `ex_meshes`.
+//   2. A part with no cells could not be expanded AT ALL before this step:
+//      `part_stamp` answers `PS_EMPTY` and every stamp failure mapped to `EX_FIT`.
+//      §P5's second kind of part was unreachable through the only function that
+//      derives anything.
+//   3. `A4.4`'s heading refusal is about the **lattice**, not about the part. A
+//      body with nothing off its own origin has nothing a rotation could displace,
+//      so all 24 headings are exact for it — which is what lets a statue face out.
+//      ⚠ And what makes that a rule rather than a hole is the control: a part with
+//      cells is still refused *whether or not it also carries a mesh*.
+//
+// ⚠ NO `.glb` IS WRITTEN BY THIS FILE, and that is a measurement rather than a
+// saving. `part_expand` deliberately does not OPEN the mesh it names — it is the
+// per-edit path and a glb parse per placement per edit is a cost the record cannot
+// pay, and the answer would be the same every time until the library changes.
+// `part_mesh_loads` is the check that opens it (`A6.1`), and
+// `test_the_placement_is_derived_without_ever_opening_the_glb` pins the seam by
+// expanding a statue whose mesh is not in the library at all.
+use hex_part;
+use hex_world;
+
+// ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
+// interpreter and fails `--native`. `expand.loft` and `roundtrip.loft` say the same.
+fn no_palette() -> vector<integer> { [] }
+
+fn root() -> text { "{temp_dir()}/hexpart_place_lib" }
+
+fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
+  PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
+}
+
+fn aimed(part: text, facing: integer) -> PartInst {
+  PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: facing, pi_part: part }
+}
+
+fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
+
+fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
+  assert(world_set_column(w, Column { co_q: q, co_r: r,
+    co_cells: [Hex { h_height: h as u16? ?? 0,
+                     h_material: mat as u8? ?? 0 }] }).cw_code == CW_OK,
+    "the fixture cell at ({q},{r}) was refused");
+}
+
+fn save_part(name: text, w: World) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+// ── The library ──────────────────────────────────────────────────────────────
+
+// A prop: a `.glb` for a body, no cells at all, and a class it fits.
+//
+// ⚠ `own` IS THE STATUE'S OWN FACING, and it is the field this step finally gave a
+// consumer. `part_anchor` had been read by tests only since `A1.4`.
+fn put_statue(name: text, mesh: text, own: integer) {
+  w = blank();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: name }) == PM_OK, "meta");
+  assert(part_set_mesh(w, mesh).pw_code == PR_OK, "mesh");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  assert(part_set_anchor(w, PartAnchor { pa_q: 0, pa_r: 0, pa_h: 0,
+                                         pa_facing: own }) == PM_OK, "anchor");
+  save_part(name, w);
+}
+
+// A plinth: one column of stone with a socket on TOP of it, aimed at `look`.
+fn put_plinth(name: text, top: integer, look: integer) {
+  w = blank();
+  with_cell(w, 0, 0, top, 9);
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: name }) == PM_OK, "meta");
+  assert(part_set_sockets(w, [Socket {
+    sk_q: 0, sk_r: 0, sk_h: top, sk_mount: SM_HEAD, sk_at: look,
+    sk_kind: "statue", sk_size: "plinth-2", sk_name: "top" }]).sw_code == SK_OK, "sock");
+  save_part(name, w);
+}
+
+// A yard: a cell of its own, a plinth standing at an offset, and a binding.
+fn put_yard(name: text, plinth: text, pq: integer, pr: integer, holds: text) {
+  w = blank();
+  with_cell(w, 0, 0, 5, 1);
+  assert(part_set_instances(w, [at(plinth, pq, pr, 0)]) == PI_OK, "inst");
+  if holds != "" {
+    assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0,
+                                           bd_socket: "top", bd_part: holds }]).bw_code == BD_OK,
+           "bind");
+  }
+  save_part(name, w);
+}
+
+fn wipe(r: text) {
+  for d in list_dir(r) ?? [] {
+    for e in list_dir("{r}/{d}") ?? [] { delete("{r}/{d}/{e}"); }
+    delete("{r}/{d}");
+  }
+  delete(r);
+}
+
+// ⚠ THE TARGET HAS TERRAIN, for `A3.2`'s reason: a part stamped into a chunk with
+// no terrain becomes that chunk's GROUND layer and takes `LABEL_GROUND` instead of
+// the label it minted.
+fn target() -> World {
+  w = blank();
+  for q in (0 - 2)..14 {
+    for r in (0 - 2)..14 {
+      with_cell(w, q, r, 5, 1);
+    }
+  }
+  w
+}
+
+fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+  for c in world_column(w, q, r).co_cells {
+    if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
+  }
+  0
+}
+
+// The standard scene: a yard holding a plinth at (2,1) whose socket looks at 18,
+// with `own`-facing statue `mesh` standing in it.
+fn stage(mesh: text, own: integer, look: integer) {
+  wipe(root());
+  put_statue("p/statue", mesh, own);
+  put_plinth("p/plinth", 20, look);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/statue");
+}
+
+// ── The statue stands where the socket is, at the height the socket is ───────
+
+fn test_a_prop_is_placed_at_the_socket_and_at_the_plinths_height() {
+  stage("marble", 0, 18);
+  w = target();
+  // ⚠ THE YARD STANDS ON AN ODD ROW, and that is the control below working. At
+  // (0,0) the shear vanishes and `un_origin` agrees with the naive sum, so the
+  // whole composition claim would pass on arithmetic that is wrong everywhere
+  // else — measured: `un_origin(0,0,2,1)` IS `(2,1)`, and this test asserted
+  // nothing until the yard was moved.
+  ex = part_expand(w, root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(ex.ex_parts == 3, "{ex.ex_parts} parts derived, not 3 (yard, plinth, statue)");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements came back, not 1");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_mesh == "marble", "the placement names '{m.ma_mesh}'");
+
+  // WHERE — the socket's cell in the yard's frame, composed the same way a nested
+  // part's cells are.
+  (pq, pr) = un_origin(5, 5, 2, 1);
+  assert(m.ma_q == pq && m.ma_r == pr,
+         "the statue is at ({m.ma_q},{m.ma_r}) and the plinth's socket is at ({pq},{pr})");
+  // ⚠ THE CONTROL: (5,5) is an ODD row, so the naive sum is a DIFFERENT column and
+  // the assertion above is not passing by coincidence. Five bugs in this codebase
+  // have been exactly this (STATE.md lesson E).
+  assert(pq != 5 + 2 || pr != 5 + 1,
+         "the naive sum agrees here, so this fixture proves nothing — move the plinth");
+
+  // AT WHAT HEIGHT — the plinth's own top, which is what `sk_h` carries.
+  assert(m.ma_h == 20, "the statue stands at {m.ma_h}, and the plinth's top is 20");
+
+  // FACING OUT — the socket looks at 18 and the statue faces 0 in its own frame.
+  assert(m.ma_facing == 18, "the statue is turned {m.ma_facing}, not 18");
+
+  // …and the plinth itself is still a cell part that landed.
+  assert(material_at(w, pq, pr, 20) == 9, "the plinth's own column is not there");
+  wipe(root());
+}
+
+// ⚠ THE HEIGHTS ADD THE SAME WAY CELLS' DO, which is the *same walk* claim in the
+// one dimension a mesh shares with a column. Nothing about `ma_h` is special-cased.
+fn test_a_props_height_composes_like_a_cells() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  put_plinth("p/plinth", 20, 18);
+  w = blank();
+  with_cell(w, 0, 0, 5, 1);
+  assert(part_set_instances(w, [at("p/plinth", 2, 1, 7)]) == PI_OK, "inst");
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "top",
+                                         bd_part: "p/statue" }]).bw_code == BD_OK, "bind");
+  save_part("p/yard", w);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 3), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  // 3 (the instance's own anchor) + 7 (the plinth's lift) + 20 (the socket)
+  assert(m.ma_h == 30, "the statue stands at {m.ma_h}; 3 + 7 + 20 = 30 was expected");
+  wipe(root());
+}
+
+// ── The turn is an AIM less the part's OWN facing ────────────────────────────
+
+// ⚠ THIS IS WHAT FINALLY GAVE `part_anchor` A CONSUMER, and the reason is not
+// tidiness. Without it, *which way a statue looks in the world* would depend on how
+// its author happened to model the `.glb` — a convention no file states and nothing
+// can check. Re-model the same statue turned by 6 and it stands turned by 6 in
+// every socket in the library, with every number in every document unchanged.
+fn test_the_statues_own_facing_is_taken_off_the_sockets_aim() {
+  stage("marble", 6, 18);
+  w = target();
+  ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_facing == 12,
+         "a statue modelled facing 6 in a socket aimed at 18 is turned {m.ma_facing}, "
+       + "not 18 - 6 = 12");
+  wipe(root());
+}
+
+// ⚠ THE INVARIANT THE FIELD EXISTS FOR, stated as a comparison rather than as a
+// formula: **re-authoring a statue must not move it.** Advance the model's own
+// facing by k and the world turn falls by k, so the nose still points at the
+// socket's heading. A test on one value alone would pass on a formula that ignored
+// the anchor entirely, because `own` is 0 in every part in the library today.
+fn test_re_authoring_a_statue_does_not_turn_it_in_the_world() {
+  seen: vector<integer> = [];
+  for k in 0..7 {
+    stage("marble", k, 18);
+    w = target();
+    ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+    assert(ex.ex_code == EX_OK, "refused at own={k}: {ex.ex_why}");
+    m = ex.ex_meshes[0] ?? MeshAt {};
+    // The heading the statue's nose ends up pointing at: its own facing, turned.
+    nose = (k + m.ma_facing) % FACINGS ?? 0;
+    seen += [nose];
+  }
+  for i in 0..len(seen) {
+    assert((seen[i] ?? 0) == 18,
+           "a statue modelled facing {i} ends up looking at {seen[i]}, not at the "
+         + "socket's 18 — the placement depends on how the asset was built");
+  }
+  wipe(root());
+}
+
+// ⚠ THE WRAP, AND IT IS A TRAP RATHER THAN A DETAIL. `(6 - 18) % 24` is `-12` in
+// this language, and `-12` is not one of the 24 headings — a renderer handed it
+// would turn the statue the wrong way or index out of a table. Lesson E in
+// STATE.md is five bugs of exactly this shape, all of them below zero.
+fn test_a_statue_aimed_below_its_own_facing_wraps_into_the_headings() {
+  stage("marble", 18, 6);
+  w = target();
+  ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_facing == 12,
+         "6 - 18 came back as {m.ma_facing}; it must wrap to 12, not stay negative");
+  assert(m.ma_facing >= 0 && m.ma_facing < FACINGS,
+         "{m.ma_facing} is not one of the {FACINGS} headings");
+  wipe(root());
+}
+
+// A socket aimed straight ahead at a statue modelled straight ahead turns nothing
+// — and STILL emits a placement. ⚠ A placement is not conditional on a turn; a
+// version that only emitted when something was rotated would draw every statue in
+// the library except the ones facing forward.
+fn test_a_statue_that_needs_no_turn_is_still_placed() {
+  stage("marble", 0, 0);
+  w = target();
+  ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "a statue at rest was not placed");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_facing == 0, "it was turned anyway");
+  wipe(root());
+}
+
+// ── The narrowing, and the controls that keep it from being a hole ───────────
+
+// ⚠ THE DISCRIMINATOR FOR THE WHOLE STEP. §P5 lets a part be BOTH — a pillar that
+// is a `.glb` for the eye and a column for the walker — so a rule spelled *"a mesh
+// part may face anywhere"* would turn that pillar to 18, tear the walker's column,
+// and agree with every count in the document. The question asked is *what is
+// displaced*, and a cell is displaced whatever else the part carries.
+fn test_a_part_with_both_bodies_is_still_refused_a_heading() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/pillar");
+  // a mesh AND a cell, fitting the same socket
+  w = blank();
+  with_cell(w, 0, 0, 4, 7);
+  assert(part_set_mesh(w, "marble").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  save_part("p/pillar", w);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_FACING,
+         "a part with cells AND a mesh was turned 18 (code {ex.ex_code}): {ex.ex_why}");
+  assert(ex.ex_why.find("column") != null,
+         "the refusal does not say the cells are what stop it: '{ex.ex_why}'");
+  assert(len(ex.ex_meshes) == 0, "a refused expansion still handed back a placement");
+  wipe(root());
+}
+
+// The same socket, a plain cell part in it — refused exactly as before `A6.2`.
+fn test_a_cell_part_in_a_turned_socket_is_refused_as_it_always_was() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/block");
+  w = blank();
+  with_cell(w, 0, 0, 4, 7);
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  save_part("p/block", w);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_FACING, "a cell part was turned 18 (code {ex.ex_code})");
+  assert(ex.ex_why.find("A4.4") != null,
+         "the refusal no longer cites the measurement: '{ex.ex_why}'");
+  wipe(root());
+}
+
+// ⚠ A LATTICE-FREE BODY IS NOT *"A BODY WITH NO CELLS"*. A part that holds another
+// part at an offset has that offset on the lattice, and turning it would have to
+// rotate the offset — which is the thing `A4.4` left unbuilt. Same for a socket it
+// offers at an offset. Both are refused, and each names which one it was.
+fn test_a_mesh_part_holding_something_at_an_offset_may_not_be_turned() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/group");
+  g = blank();
+  assert(part_set_mesh(g, "marble").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(g, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  assert(part_set_instances(g, [at("p/statue", 1, 0, 0)]) == PI_OK, "inst");
+  save_part("p/group", g);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_FACING, "a group with an offset child was turned ({ex.ex_code})");
+  assert(ex.ex_why.find("(1,0)") != null,
+         "the refusal does not name the offset: '{ex.ex_why}'");
+  wipe(root());
+}
+
+fn test_a_mesh_part_offering_a_socket_at_an_offset_may_not_be_turned() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/holder");
+  h = blank();
+  assert(part_set_mesh(h, "marble").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(h, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  assert(part_set_sockets(h, [Socket { sk_q: 3, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD,
+    sk_at: 0, sk_kind: "lamp", sk_size: "small", sk_name: "hand" }]).sw_code == SK_OK, "sock");
+  save_part("p/holder", h);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_FACING, "a holder with an offset socket was turned ({ex.ex_code})");
+  assert(ex.ex_why.find("hand") != null,
+         "the refusal does not name the socket: '{ex.ex_why}'");
+  wipe(root());
+}
+
+// ⚠ THE CONTROL FOR THE CONTROL: the same offsets moved ONTO the origin are on the
+// axis of the turn, so nothing is displaced and the part turns freely. Without this
+// the three refusals above could be a rule that refuses everything, which is a wall.
+fn test_a_mesh_part_whose_child_and_socket_sit_at_the_origin_turns_freely() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/group");
+  g = blank();
+  assert(part_set_mesh(g, "pedestal").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(g, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  assert(part_set_instances(g, [at("p/statue", 0, 0, 2)]) == PI_OK, "inst");
+  assert(part_set_sockets(g, [Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD,
+    sk_at: 0, sk_kind: "lamp", sk_size: "small", sk_name: "hand" }]).sw_code == SK_OK, "sock");
+  save_part("p/group", g);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "a body with nothing off its origin was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 2,
+         "{len(ex.ex_meshes)} placements, not 2 (the pedestal and the statue on it)");
+  // ⚠ AND THE TURN COMPOSES. The group is aimed at 18 by the socket; the statue
+  // inside it faces 0 in the GROUP's frame, so it is turned 18 in the world too.
+  // A version that reset the turn at each level would place the pedestal facing out
+  // and the statue on it facing forward, and every count would still be 2.
+  for m in ex.ex_meshes {
+    assert(m.ma_facing == 18,
+           "'{m.ma_mesh}' is turned {m.ma_facing}; the turn did not carry down to it");
+  }
+  wipe(root());
+}
+
+// A turn asked for by an `INST` rather than by a socket takes the same path. ⚠ The
+// two are one quantity — an AIM — and the composed value is what the walk carries.
+fn test_a_prop_may_be_turned_by_the_instance_that_places_it() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  w = target();
+  ex = part_expand(w, root(), aimed("p/statue", 7), 0);
+  assert(ex.ex_code == EX_OK, "a lone statue aimed at 7 was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "no placement came back");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_facing == 7,
+         "it came back turned {(ex.ex_meshes[0] ?? MeshAt {}).ma_facing}, not 7");
+  // ⚠ 7 IS NOT ONE OF THE SIX. A cell part could never take it — that is
+  // `A4.4`'s measurement — and this is the whole reason the refusal had to become
+  // a question about the body rather than about the number.
+  assert(7 % 4 != 0, "pick a heading that is not a multiple of 60° for this test");
+  wipe(root());
+}
+
+// ── The stamp is skipped, not forgiven ───────────────────────────────────────
+
+// ⚠ BEFORE THIS STEP A STATUE COULD NOT BE EXPANDED AT ALL. `part_stamp` answers
+// `PS_EMPTY` for a world with no cells and every stamp failure mapped to `EX_FIT`,
+// so the one function that derives anything refused §P5's second kind of part
+// outright. The fix is one code and one condition wide.
+fn test_a_body_that_is_only_a_mesh_is_not_an_empty_part() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  w = target();
+  ex = part_expand(w, root(), at("p/statue", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "a mesh-only part was refused ({ex.ex_code}): {ex.ex_why}");
+  assert(ex.ex_cols == 0, "it wrote {ex.ex_cols} columns");
+  assert(len(ex.ex_meshes) == 1, "and it placed nothing");
+  wipe(root());
+}
+
+// ⚠ AND THE NARROWING IS EXACTLY ONE CONDITION WIDE. A part with NEITHER body is
+// still a mistake worth naming — a widening that accepted every empty part would
+// have made *the author saved an empty part* indistinguishable from *the author
+// saved a statue*.
+fn test_a_part_with_neither_body_is_still_refused() {
+  wipe(root());
+  w = blank();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: "nothing" }) == PM_OK, "meta");
+  save_part("p/void", w);
+  t = target();
+  ex = part_expand(t, root(), at("p/void", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_FIT, "an empty part expanded with code {ex.ex_code}");
+  assert(ex.ex_why.find("no cells") != null, "the reason is '{ex.ex_why}'");
+  wipe(root());
+}
+
+// ⚠ FOUND BY THE CONTENT, NOT BY A PROBE — STATE.md lesson F, earned again. A
+// part whose only body is the parts it HOLDS could not be expanded either, and
+// that has nothing to do with meshes: §P4's ordinary composition met the same
+// `PS_EMPTY`. No fixture in this package had ever posed one, because every test
+// nest gave its container a cell of its own — and `A6.2`'s own shrine, *a plinth
+// with a statue on it and nothing else*, is exactly that shape.
+//
+// ⚠ AND `bake` NEVER HAD THE HOLE. It walks columns directly and appends none, so
+// a composition-only part was always fine there — an asymmetry `A3.3`'s
+// `expand == bake` suite could not see, for the same reason: no fixture had one.
+fn test_a_part_whose_only_body_is_what_it_holds_expands() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 0);
+  w = blank();                                   // no cell of its own
+  assert(part_set_instances(w, [at("p/plinth", 2, 1, 0)]) == PI_OK, "inst");
+  save_part("p/bare", w);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/bare", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK,
+         "a part that is only a composition was refused ({ex.ex_code}): {ex.ex_why}");
+  assert(ex.ex_parts == 2, "{ex.ex_parts} parts derived, not 2");
+  assert(ex.ex_cols == 1, "{ex.ex_cols} columns written, not the plinth's 1");
+  (pq, pr) = un_origin(5, 5, 2, 1);
+  assert(material_at(t, pq, pr, 20) == 9, "the plinth it holds did not land");
+  // ⚠ AND `bake` AGREES, which is what makes this a fixed asymmetry rather than a
+  // second one: the same part flattens to the same single column.
+  bk = part_bake(root(), "p/bare");
+  assert(bk.bk_code == BK_OK, "baking it was refused ({bk.bk_code}): {bk.bk_why}");
+  assert(bk.bk_cols == 1, "{bk.bk_cols} columns baked, not 1");
+  wipe(root());
+}
+
+// ⚠ THE NEGATIVE CONTROL ON THE FIELD ITSELF. A cell nest must come back with an
+// EMPTY placement list — a version that appended on every part would fill it with
+// blanks and every test above would still pass, because they read `[0]`.
+fn test_a_cell_nest_hands_back_no_placements() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 0);
+  put_yard("p/yard", "p/plinth", 2, 1, "");
+  w = target();
+  ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 0,
+         "a nest with no mesh in it handed back {len(ex.ex_meshes)} placements");
+  wipe(root());
+}
+
+// ── Two statues, and the list that tells them apart ──────────────────────────
+
+// ⚠ THIS IS WHAT `A6.3` WILL SWAP. Two plinths, two different statues, and the
+// placements differ in the one field that names the asset — which is why `MeshAt`
+// carries no part handle and no identity: `ma_mesh` is the whole difference.
+fn test_two_props_in_one_nest_come_back_as_two_placements() {
+  wipe(root());
+  put_statue("p/hero", "hero_marble", 0);
+  put_statue("p/beast", "beast_marble", 0);
+  put_plinth("p/plinth", 20, 18);
+  w = blank();
+  with_cell(w, 0, 0, 5, 1);
+  assert(part_set_instances(w, [at("p/plinth", 2, 1, 0),
+                                at("p/plinth", 4, 3, 0)]) == PI_OK, "inst");
+  assert(part_set_bindings(w, [
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: "p/hero" },
+    Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "top", bd_part: "p/beast" }
+  ]).bw_code == BD_OK, "bind");
+  save_part("p/yard", w);
+
+  t = target();
+  ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 2, "{len(ex.ex_meshes)} placements, not 2");
+  a = ex.ex_meshes[0] ?? MeshAt {};
+  b = ex.ex_meshes[1] ?? MeshAt {};
+  assert(a.ma_mesh == "hero_marble" && b.ma_mesh == "beast_marble",
+         "the placements came back '{a.ma_mesh}' and '{b.ma_mesh}'");
+  // ⚠ AND THEY ARE IN DIFFERENT PLACES, which the names alone do not say. Two
+  // statues stacked on one plinth would pass every assertion above.
+  assert(a.ma_q != b.ma_q || a.ma_r != b.ma_r,
+         "both statues came back at ({a.ma_q},{a.ma_r})");
+  wipe(root());
+}
+
+// ── The seam with `A6.1`: expand DERIVES, it does not LOAD ───────────────────
+
+// ⚠ THE PLACEMENT IS DERIVED WITHOUT OPENING THE FILE, and this test is how that
+// is a measurement rather than an omission. There is no `.glb` in this library at
+// all — not one test in this file writes one — and every placement above still
+// came back. `part_expand` runs per edit; a glb parse per placement per edit is a
+// cost the record cannot pay, and the answer would not change until the library
+// does. `part_mesh_loads` is the check that opens it (`A6.1`), and it is the
+// catalogue's to call, not the renderer's.
+//
+// ⚠ THE OTHER HALF OF THE SEAM, ASSERTED HERE SO IT CANNOT DRIFT: the name handed
+// back is the name `part_mesh_loads` would resolve, and a name that could escape
+// the library never reaches either — `part_mesh`'s reader-side check is what both
+// go through.
+fn test_the_placement_is_derived_without_ever_opening_the_glb() {
+  stage("not_in_this_library", 0, 18);
+  w = target();
+  ex = part_expand(w, root(), at("p/yard", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_OK,
+         "expanding opened the mesh and refused ({ex.ex_code}): {ex.ex_why}");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_mesh == "not_in_this_library",
+         "the name was resolved rather than carried");
+  // And the reference-checker DOES look, which is the seam this leans on.
+  ld = world_load("{root()}/p/statue.hxw");
+  assert(ld.wl_code == WL_OK, "load: {ld.wl_detail}");
+  assert(part_mesh_loads(root(), ld.wl_world).mc_code == MC_MISSING,
+         "part_mesh_loads did not notice the mesh is absent either");
+  wipe(root());
+}
+
+// A hand-edited escaping reference is refused by the WALK, because the reader runs
+// the writer's check — so a document naming `../../../etc/passwd` produces no
+// placement rather than one a renderer would open.
+fn test_a_hand_edited_escape_stops_the_expansion() {
+  wipe(root());
+  w = blank();
+  set_section_text(w, TAG_MESH, "mesh=../../../etc/passwd");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  save_part("p/statue", w);
+  t = target();
+  ex = part_expand(t, root(), at("p/statue", 0, 0, 0), 0);
+  assert(ex.ex_code == EX_BROKEN, "an escaping reference expanded ({ex.ex_code})");
+  assert(len(ex.ex_meshes) == 0, "and it handed back a placement");
+  wipe(root());
+}
+
+// ── `bake` cannot carry a mesh, and says so ──────────────────────────────────
+
+// ⚠ THE SILENT LOSS THIS REPLACES. `bake_at` reads columns and nothing else, so
+// before `A6.2` it flattened a nest holding a statue into a part with the statue
+// simply GONE — `BK_OK`, every cell matching `expand` exactly, and the prop
+// vanished. A baked part holds ONE `MESH` section and no position for it, so two
+// statues at two places are not expressible in the result at all.
+//
+// ⚠ SO `expand == bake` IS NOW A CLAIM ABOUT CELL NESTS, stated rather than
+// quietly narrowed.
+fn test_baking_a_nest_that_holds_a_prop_is_refused_rather_than_dropping_it() {
+  // ⚠ THE SOCKET LOOKS STRAIGHT AHEAD HERE, so the mesh is the ONLY reason there
+  // is to refuse. `bake` keeps `A4.4`'s blanket facing rule — it produces cells,
+  // and a lattice-free body produces none, so the narrowing buys it nothing — and
+  // with the socket at 18 it answers `BK_FACING` first. Measured, and the test read
+  // green-for-the-wrong-reason until it was pinned to one variable.
+  stage("marble", 0, 0);
+  bk = part_bake(root(), "p/yard");
+  assert(bk.bk_code == BK_MESH,
+         "a nest with a statue in it baked with code {bk.bk_code}: {bk.bk_why}");
+  assert(bk.bk_why.find("marble") != null,
+         "the refusal does not name what would have been lost: '{bk.bk_why}'");
+  wipe(root());
+}
+
+// ⚠ THE CONTROL: a nest with no mesh in it bakes exactly as it did. A refusal that
+// caught every nest would be a wall, and `A3.3`'s whole suite would go red for the
+// wrong reason.
+fn test_the_control_a_nest_with_no_prop_still_bakes() {
+  wipe(root());
+  put_plinth("p/plinth", 20, 0);
+  put_yard("p/yard", "p/plinth", 2, 1, "");
+  bk = part_bake(root(), "p/yard");
+  assert(bk.bk_code == BK_OK, "a cell nest was refused ({bk.bk_code}): {bk.bk_why}");
+  assert(bk.bk_parts == 2, "{bk.bk_parts} parts flattened, not 2");
+  assert(bk.bk_cols == 2, "{bk.bk_cols} columns in the result, not 2");
+  wipe(root());
+}

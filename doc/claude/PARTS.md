@@ -310,6 +310,19 @@ rather than on the cells.
 > fits the same plinth*, or *carry a name an author chose*. Those are all `PART` and `SOCK`,
 > and they are the difference between an import and a part.
 
+⚠ **BUILT AT `A6.1`/`A6.2`, AND THE TABLE'S SECOND COLUMN IS NOW MEASURED RATHER THAN PLANNED.**
+*"a `.glb` in a DRESSING layer"* is not how it landed: a prop's placement is **not stored at
+all**. `part_expand` hands back a `MeshAt` — mesh name, cell, height, turn — for the same reason
+a cell part's cells are derived (§P4), so nothing downstream holds a copy to go stale.
+
+⚠ **AND *"sockets do not care which it is"* TURNED OUT TO BE HALF TRUE, WHICH IS THE BETTER
+HALF.** The socket contract genuinely does not care — one `FITS`, one `socket_fit`, one binding.
+But a socket that *aims* somewhere does care, because turning a body made of CELLS is only exact
+at six of the 24 headings (`A4.4`) and turning a mesh is exact at all of them. So the question
+`expand` asks is **what is displaced by a rotation** — cells, a nested part at an offset, a
+socket at an offset — never *is this a prop*. ⚠ The pillar above is exactly why: it is both, and
+it still may not be turned to 18.
+
 ### P6 — A fitting is a part with a moving sub-part
 
 The one thing that distinguishes a door from a pillar, and the only piece of

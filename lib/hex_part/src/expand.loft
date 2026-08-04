@@ -29,6 +29,11 @@
 // symptom that tells an author nothing. Four lines here beats a plan boundary.
 // `A3.4` keeps the on-save check and the pair that proves the bound is a bound:
 // nine refused AND eight accepted, because a bound nothing accepts is a wall.
+//
+// ⚠ AND `A6.2` GAVE IT A SECOND OUTPUT, because §P5 gives a part a second body.
+// Cells go into `w`; a `.glb` cannot, so a prop's derivation is a `MeshAt` handed
+// back in `ex_meshes`. The composition is the same walk — same frame, same heights,
+// same sockets — and only what the body produces differs.
 use hex_world;
 use inst;
 use bind;
@@ -36,6 +41,7 @@ use sock;
 use catalogue;
 use stamp;
 use meta;
+use prop;
 
 pub const EX_OK      = 0;
 pub const EX_MISSING = 1;   // the part is not in the library
@@ -56,9 +62,15 @@ pub struct Expand {
   ex_parts: integer = 0,   // parts derived, the placed one and everything under it
   ex_cols:  integer = 0,   // columns written across the whole nest
   ex_depth: integer = 0,   // deepest level reached, 1 for a flat part
+  // ⚠ THE OTHER BODY'S CELLS, AND THEY DO NOT GO IN THE WORLD. The store holds
+  // columns; a mesh is a transform and a file name, so the only place it can be
+  // delivered is back to the caller. `A6.2`.
+  ex_meshes: vector<MeshAt> = [],
   ex_why:   text = "",
 }
 
+// ── A turn is refused because of the LATTICE, not because of the part ────────
+//
 // ⚠ A FACING IS REFUSED, NOT IGNORED. Silently expanding a facing-6 instance as
 // facing 0 would place a house at the wrong orientation and every count would
 // still agree with itself, which is this tree's most expensive failure shape.
@@ -72,19 +84,96 @@ pub struct Expand {
 // rather than a fact, and at 90° that tie-break puts two cells on one.
 // `moros_map/tests/headings.loft` prints the whole table every run.
 //
-// ⚠ SO EIGHTEEN OF THE TWENTY-FOUR ARE NOT AWAITING AN IMPLEMENTATION, and the
-// number that says so is the torn adjacencies: no cells are lost, every count
-// agrees with itself, and the house has holes in its walls. What remains to build
-// is applying the SIX, which needs a lattice rotation this package deliberately
-// has no dependency for — see `loft.toml`.
-fn facing_ok(name: text, facing: integer) -> Expand {
-  if facing != 0 {
-    return Expand { ex_code: EX_FACING,
-                    ex_why: "'{name}' faces {facing}; only 0 is applied today, and only "
-                          + "0, 4, 8, 12, 16 and 20 can ever be — the other 18 headings "
-                          + "tear a body's adjacencies (A4.4, moros_map/tests/headings)" };
+// ⚠ SO `A6.2` NARROWED THE REFUSAL RATHER THAN LIFTING IT, and the narrowing is
+// the step's finding: **the measurement is about a body ON the lattice.** A part
+// with nothing off its own origin has nothing a rotation could displace — no cell
+// to tear, no offset to land between cells — so all 24 headings are exact for it.
+// That is why a statue can face out and a house cannot, and it is why the question
+// asked below is *what is displaced*, never *does it have a mesh*.
+//
+// ⚠ THE DIFFERENCE MATTERS BECAUSE §P5 LETS A PART BE BOTH. A pillar that is a
+// `.glb` for the eye and a one-cell column for the walker still has a cell, so it
+// still may not be turned to 18 — and a rule spelled *"a mesh part may face
+// anywhere"* would turn it, tear the walker's column, and agree with every count.
+// The control that pins this is `test_a_part_with_both_bodies_is_still_refused_a_heading`.
+//
+// ⚠ NONE OF THIS IS `pub`, AND THAT IS DELIBERATE RATHER THAN AN OVERSIGHT. A loft
+// struct name is global across a **consumer's** whole dependency graph — two
+// packages in `lib/` each declaring `Fit` silently merged into one struct, and
+// `hex_part` was 131 green while `hex_editor` would not build at all. `Lattice` is
+// exactly the kind of name a sibling would reach for, and nothing outside this file
+// asks the question yet. It goes public the day `A3.4`'s save check wants it.
+const LF_FREE   = 0;
+const LF_CELLS  = 1;   // it has cells, and cells are on the lattice
+const LF_INST   = 2;   // it holds a part at an offset, and an offset rotates
+const LF_SOCKET = 3;   // it offers a socket at an offset, likewise
+const LF_BROKEN = 4;   // its own records will not parse, so nothing can be said
+
+struct Lattice { lf_code: integer, lf_why: text }
+
+// ⚠ HEIGHT IS NOT ASKED ABOUT, and that is geometry rather than an omission: the
+// turn is about the vertical axis, so `pi_h` and `sk_h` are on the axis and do not
+// move. Only `(q, r)` is displaced by a rotation.
+//
+// ⚠ AND A MALFORMED RECORD CANNOT BE CERTIFIED FREE. `part_instances` hands back
+// an EMPTY list on `MR_MALFORMED`, so reading `ir_items` without checking the code
+// would report *nothing is off the origin* about a part nobody can read — the
+// `MR_ABSENT`/`MR_MALFORMED` collapse, here in the shape of a silent yes.
+fn part_lattice_free(p: World) -> Lattice {
+  n = len(part_columns(p));
+  if n > 0 {
+    return Lattice { lf_code: LF_CELLS,
+      lf_why: "it has {n} column(s) of cells, and only the six 60° multiples map the "
+            + "lattice onto itself — the other 18 tear a body's adjacencies (A4.4, "
+            + "moros_map/tests/headings), and applying even the six needs a lattice "
+            + "rotation this package has no dependency for" };
   }
-  Expand { ex_code: EX_OK }
+  held = part_instances(p);
+  if held.ir_code == MR_MALFORMED {
+    return Lattice { lf_code: LF_BROKEN, lf_why: held.ir_why };
+  }
+  for c in held.ir_items {
+    if c.pi_q != 0 || c.pi_r != 0 {
+      return Lattice { lf_code: LF_INST,
+        lf_why: "it holds '{c.pi_part}' at ({c.pi_q},{c.pi_r}), and turning it would have "
+              + "to rotate that offset onto the lattice (A4.4)" };
+    }
+  }
+  offered = part_sockets(p);
+  if offered.sr_code == MR_MALFORMED {
+    return Lattice { lf_code: LF_BROKEN, lf_why: offered.sr_why };
+  }
+  for s in offered.sr_items {
+    if s.sk_q != 0 || s.sk_r != 0 {
+      return Lattice { lf_code: LF_SOCKET,
+        lf_why: "it offers socket '{s.sk_name}' at ({s.sk_q},{s.sk_r}), and turning it "
+              + "would have to rotate that offset onto the lattice (A4.4)" };
+    }
+  }
+  Lattice { lf_code: LF_FREE, lf_why: "" }
+}
+
+// ── An AIM comes in and a TURN comes out ─────────────────────────────────────
+//
+// ⚠ TWO QUANTITIES THAT LOOK LIKE ONE, and separating them is what finally gave
+// `ANCH` a consumer. An `INST`'s facing and a `SOCK`'s heading both say **which way
+// the thing should look in the world** — an aim. `ANCH`'s facing says which way the
+// part looks **in its own frame**. What has to be applied is the difference.
+//
+// ⚠ WITHOUT IT, RE-AUTHORING A STATUE SILENTLY TURNS IT. Model the same statue
+// facing sideways instead of forwards and it stands sideways in every socket in the
+// library, with the socket's heading unchanged and every number in the document
+// agreeing. That is a convention no file states and nothing can check — which is
+// this tree's rule about a normalised name, one level up: the document should say
+// what it means rather than assume how the asset was built.
+//
+// ⚠ AND THE WRAP IS THE TRAP. `(6 - 18) % 24` is `-12` in this language, and `-12`
+// is not one of the headings; lesson E in STATE.md is five bugs of exactly this
+// shape. `+ FACINGS` before the second `%` is what makes it a heading again, and
+// the control aims a statue below its own facing to prove it.
+fn turned_by(aim: integer, own: integer) -> integer {
+  d = (aim - own) % FACINGS ?? 0;
+  (d + FACINGS) % FACINGS ?? 0
 }
 
 // ⚠ FIVE ANSWERS AND NOT ONE, because they want five different fixes: the part is
@@ -107,7 +196,7 @@ fn bind_fault(sa: SocketAt) -> Expand {
 // composed with the child's offset, which is exactly `un_origin`. Heights add
 // for the same reason: a part's heights are its own until something lifts them.
 fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
-             anchor: integer, lo: integer, depth: integer) -> Expand {
+             anchor: integer, lo: integer, aim: integer, depth: integer) -> Expand {
   if depth > EX_MAX_DEPTH {
     return Expand { ex_code: EX_DEPTH, ex_depth: depth,
                     ex_why: "'{name}' is nested {depth} deep; the bound is "
@@ -125,23 +214,47 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
   }
   p = ld.wl_world;
 
-  st = part_stamp(w, p, cq, cr, anchor, lo);
-  if st.ps_code != PS_OK {
-    return Expand { ex_code: EX_FIT, ex_why: "'{name}' at ({cq},{cr}): {st.ps_why}" };
+  // ⚠ THE PART'S OWN FACING IS READ BEFORE ANYTHING IS WRITTEN, so a refused turn
+  // leaves the world untouched — which `A3.2`'s facing test already asserts by
+  // reading the target back, and which moving this check INTO the walk could have
+  // quietly broken. A part with no `ANCH` faces 0, so nothing in the library
+  // changes meaning: `PartAnchor {}` is what `MR_ABSENT` hands back.
+  an = part_anchor(p);
+  if an.ar_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {an.ar_why}" };
   }
-  // ⚠ `st.ps_ground` IS DELIBERATELY IGNORED. It says the stamp's minted label
-  // went nowhere, which matters to `bake` and not here: this path keeps no label
-  // to be wrong about.
+  turn = turned_by(aim, an.ar_anchor.pa_facing);
+  if turn != 0 {
+    free = part_lattice_free(p);
+    if free.lf_code == LF_BROKEN {
+      return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {free.lf_why}" };
+    }
+    if free.lf_code != LF_FREE {
+      // ⚠ THE AIM IS WRAPPED FOR THE MESSAGE. `aim` arrives composed — a parent's
+      // turn plus a child's facing — so it can be 30, and *"aimed at heading 30"* is
+      // a number no reader can look up in a table of 24. `turned_by(aim, 0)` is the
+      // same wrap the turn itself goes through.
+      return Expand { ex_code: EX_FACING,
+        ex_why: "'{name}' is aimed at heading {turned_by(aim, 0)} and faces "
+              + "{an.ar_anchor.pa_facing} in its own frame, so it would be turned "
+              + "{turn} of {FACINGS} — and {free.lf_why}" };
+    }
+  }
 
-  parts = 1;
-  cols = st.ps_cells;
-  deepest = depth;
-
+  // ── What this part is MADE of, read before anything is written ─────────────
+  //
+  // ⚠ BOTH ARE READ BEFORE THE STAMP, because between them they decide whether an
+  // EMPTY stamp is a fault. A part has three possible bodies — cells of its own, a
+  // mesh (§P5), and the parts it is composed of (§P4) — and `part_stamp` can only
+  // see the first.
+  body = part_mesh(p);
+  if body.pr_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {body.pr_why}" };
+  }
   got = part_instances(p);
   if got.ir_code == MR_MALFORMED {
     return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {got.ir_why}" };
   }
-
   // ⚠ THE BINDINGS ARE READ HERE AND NOT INSIDE THE LOOP, because `part_bindings`
   // validates every index against this part's own `INST` list — so reading it once
   // is also the check that no binding points past the end.
@@ -150,15 +263,64 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
     return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {bound.br_why}" };
   }
 
+  st = part_stamp(w, p, cq, cr, anchor, lo);
+  if st.ps_code != PS_OK {
+    // ⚠ A PART WITH NO COLUMNS IS NOT NECESSARILY AN EMPTY PART, and before `A6.2`
+    // this line said it was. `part_stamp` answers `PS_EMPTY` for a world with no
+    // cells and every stamp failure mapped to `EX_FIT`, so **two** legitimate parts
+    // were unreachable through the one function that derives anything: a statue,
+    // which is §P5's second body — and a part whose only body is the parts it holds,
+    // which is §P4's ordinary composition and has nothing to do with meshes.
+    //
+    // ⚠ THE SECOND ONE WAS FOUND BY THE CONTENT, NOT BY A PROBE. Every fixture in
+    // this package's suite gave its containers a cell of their own, so no test ever
+    // posed a shrine that is *a plinth with a statue on it* and nothing else —
+    // which is exactly what `A6.2` had to author. `bake` never had the hole,
+    // because it walks columns directly and appends none; the asymmetry survived
+    // `A3.3`'s `expand == bake` for the same reason, no fixture had one.
+    //
+    // ⚠ AND IT IS STILL EXACTLY AS WIDE AS THE THREE BODIES. A part with none of
+    // them is `EX_FIT`, because *nothing to place* stays a mistake worth naming.
+    if st.ps_code != PS_EMPTY || (body.pr_code != MR_OK && len(got.ir_items) == 0) {
+      return Expand { ex_code: EX_FIT, ex_why: "'{name}' at ({cq},{cr}): {st.ps_why}" };
+    }
+  }
+  // ⚠ `st.ps_ground` IS DELIBERATELY IGNORED. It says the stamp's minted label
+  // went nowhere, which matters to `bake` and not here: this path keeps no label
+  // to be wrong about.
+
+  parts = 1;
+  cols = st.ps_cells;          // 0 when the stamp was skipped
+  deepest = depth;
+
+  // ⚠ THE PLACEMENT IS AT THE PART'S OWN ORIGIN, and `ANCH`'s q/r/h are NOT
+  // subtracted — only its facing is used. That is `part_stamp`'s rule, kept: a
+  // part's origin is what lands where it is placed, for cells and for a mesh
+  // alike. Using half the record is worth saying out loud; using the position
+  // half here and not there would make `ANCH` mean two things depending on what
+  // the part is made of, which is the one thing §P5 exists to avoid.
+  meshes: vector<MeshAt> = [];
+  if body.pr_code == MR_OK {
+    meshes += [MeshAt { ma_mesh: body.pr_name, ma_q: cq, ma_r: cr, ma_h: anchor,
+                        ma_facing: turn }];
+  }
+
   for i in 0..len(got.ir_items) {
     c = got.ir_items[i] ?? PartInst {};
-    face = facing_ok(c.pi_part, c.pi_facing);
-    if face.ex_code != EX_OK { return face; }
     (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
-    sub = expand_at(w, root, c.pi_part, nq, nr, anchor + c.pi_h, lo, depth + 1);
+    // ⚠ THE AIMS COMPOSE AND THE OFFSETS DO NOT HAVE TO. A child's facing is
+    // measured in the parent's frame, so a parent turned by `turn` carries it —
+    // and the child's `(q, r)` would have to be rotated by the same amount, which
+    // is the thing `A4.4` left unbuilt. It never has to be: a parent that holds a
+    // child at a non-zero offset is not lattice-free and so is never turned at all
+    // (`part_lattice_free`), and a child AT the origin is on the axis and does not
+    // move. The two rules are one rule seen twice.
+    sub = expand_at(w, root, c.pi_part, nq, nr, anchor + c.pi_h, lo,
+                    turn + c.pi_facing, depth + 1);
     if sub.ex_code != EX_OK { return sub; }
     parts = parts + sub.ex_parts;
     cols = cols + sub.ex_cols;
+    for m in sub.ex_meshes { meshes += [m]; }
     if sub.ex_depth > deepest { deepest = sub.ex_depth; }
 
     // ⚠ AND HERE IS §P3's WHOLE POINT, IN FOUR LINES. The bound part's centre is
@@ -170,19 +332,26 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
       sa = socket_for_binding(root, c.pi_part, b);
       if sa.sa_code != SA_OK { return bind_fault(sa); }
       sk = sa.sa_socket;
-      turned = facing_ok(b.bd_part, socket_heading(sk));
-      if turned.ex_code != EX_OK { return turned; }
       (bq, br) = un_origin(nq, nr, sk.sk_q, sk.sk_r);
+      // ⚠ THE SOCKET'S HEADING IS AN AIM AND IS PASSED AS ONE — this is where
+      // `A6.2`'s *facing out* actually happens. It used to be refused outright
+      // unless it was 0, which meant a socket could point somewhere and nothing
+      // could ever be put in it pointing that way. The refusal now lives one level
+      // down, where the bound part is open and it can be asked whether it has
+      // anything a turn would displace.
       into = expand_at(w, root, b.bd_part, bq, br,
-                       anchor + c.pi_h + sk.sk_h, lo, depth + 1);
+                       anchor + c.pi_h + sk.sk_h, lo,
+                       turn + socket_heading(sk), depth + 1);
       if into.ex_code != EX_OK { return into; }
       parts = parts + into.ex_parts;
       cols = cols + into.ex_cols;
+      for m2 in into.ex_meshes { meshes += [m2]; }
       if into.ex_depth > deepest { deepest = into.ex_depth; }
     }
   }
 
-  Expand { ex_code: EX_OK, ex_parts: parts, ex_cols: cols, ex_depth: deepest }
+  Expand { ex_code: EX_OK, ex_parts: parts, ex_cols: cols, ex_depth: deepest,
+           ex_meshes: meshes }
 }
 
 // Derive one placed instance into `w`, and every part it contains.
@@ -205,9 +374,7 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
 // `EX_DEPTH`. The walk runs only on the error path, so a healthy expansion pays
 // nothing for it, and `part_cycle` already names the chain.
 pub fn part_expand(w: World, root: text, i: PartInst, lo: integer) -> Expand {
-  face = facing_ok(i.pi_part, i.pi_facing);
-  if face.ex_code != EX_OK { return face; }
-  got = expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, 1);
+  got = expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, i.pi_facing, 1);
   if got.ex_code == EX_DEPTH {
     cy = part_cycle(root, i.pi_part);
     if cy.cc_code == CY_CYCLE {

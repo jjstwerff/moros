@@ -48,6 +48,13 @@ suite cannot see this** — `hex_part` was 131 green while `hex_editor` would no
 Grep `lib/`, `src/`, `../loft-libs-world/` and the registry **before** adding a public name, and
 when a name is taken, take the collision seriously rather than routing around it: `hex_editor`'s
 `Fit` had already settled the hard half of the question `hex_part` was re-deriving.
+⚠ **And there IS no routing around it — a qualified name does not disambiguate.** `Surface` is
+declared by both `hex_world` and `moros_terrain`, and in `editor_server.loft` they have already
+merged: writing the literal fails with five *"Unknown field Surface.sf_r"* errors that never
+mention a collision, and spelling it `moros_terrain::Surface` **still** resolves to the other
+struct — the return type is accepted and the constructor is not. It had gone unnoticed for
+months because every caller reads `surface_at(i).sf_r` and never names the type. Grep first; the
+only cure afterwards is a rename.
 
 **A missing library capability is ours to build**, never an upstream ask — verification is
 only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests

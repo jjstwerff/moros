@@ -102,6 +102,33 @@ pub fn part_mesh(w: World) -> MeshRead {
   MeshRead { pr_code: MR_OK, pr_name: name, pr_why: "" }
 }
 
+// ── Where a mesh body LANDS ──────────────────────────────────────────────────
+//
+// Plan 17 `A6.2`. A cell part is derived into a world by writing columns; a mesh
+// part cannot be, because a mesh is not on the lattice. So the derivation of a
+// prop is a **record handed back**, and this is the record.
+//
+// ⚠ IT IS DERIVED AND HOLDS NO IDENTITY, which is `A3.2`'s rule for cells applied
+// to the other body. §P4 makes the `INST`/`BIND` records the authority and
+// everything downstream re-derivable, so a placement carries no label and no part
+// handle: re-deriving regenerates the whole list, and there is nothing to keep in
+// step. `ma_mesh` is what a consumer needs and is what tells one statue from
+// another — which is `A6.3`'s entire proof.
+//
+// ⚠ `ma_facing` IS A TURN AND NOT AN AIM, and the two are different quantities
+// this step had to separate. A socket says which way a thing in it should LOOK;
+// `ANCH` says which way the part looks in its own frame; what a renderer needs is
+// the difference — how far to turn the `.glb` about the vertical. Handing back the
+// aim would be right only for a statue modelled facing heading 0, and nothing
+// enforces that or could.
+pub struct MeshAt {
+  ma_mesh:   text,        // the name the part's `MESH` gave, unresolved
+  ma_q:      integer,
+  ma_r:      integer,
+  ma_h:      integer,
+  ma_facing: integer,     // 0..23, the turn to apply
+}
+
 // ── Does the mesh it names actually load? ────────────────────────────────────
 
 pub const MC_OK      = 0;
