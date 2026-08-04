@@ -72,6 +72,11 @@ part as a world, edit, save back* — **a house authored end-to-end without touc
 is the acceptance test for the whole plan. `A7.4` (keyed reads) stays deferred until a number says
 it hurts; `src/part_build.loft` prints the cost every run.
 
+**`A7.3` is broken into six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
+the store swap and the subject (`a`), the fence of refusals (`b`), the save (`c`), the save check
+(`d`), a part that did not exist before (`e`), the joints (`f`). ⚠ The probe that shaped it says
+**holding the world aside is a deep COPY, not a second name**, and `w_tau` cannot see that cost.
+
 ⚠ **`A7.3` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
 `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
 client reads is this tree's own trap. The first gesture that BINDS something is what earns them.
@@ -155,6 +160,14 @@ detection from mutation and let the caller do the assignment.
 a temp copy), so a gate may add and remove parts to prove the catalogue follows the library. ⚠ **A
 gate must never write to the committed library** — this tree is worked by more than one agent, and
 a gate that fails leaving the repository dirty is worse than no gate.
+
+**[loft#774](https://github.com/loft-lang/loft/issues/774) is filed and open** — a plain struct
+**copies** on `b = a` and **aliases** on `c = v[0]`: the same assignment, opposite semantics, both
+backends agreeing, and nothing in the source separating them. Measured while designing `A7.3`'s
+store swap. ⚠ It means a second name for a `World` is a full deep copy of every chunk, and the edit
+clock is blind to it — `w_tau` counts writes that changed something, and a copy changes nothing.
+Workaround: mutate through a function parameter (those alias), or park the record in a one-element
+vector and take `[0]`.
 
 **[loft#767](https://github.com/loft-lang/loft/issues/767) is filed and open** — a string literal
 nested inside an interpolation keeps its own `{…}` as **literal text**, so

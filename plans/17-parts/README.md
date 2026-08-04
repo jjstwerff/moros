@@ -936,6 +936,70 @@ leave the library holding the variant. Measured: `shrine.hxw`'s md5 is unchanged
 | `A7.3` | A part-editing mode: open a part as a world, edit, save back. | **a house authored end-to-end without touching loft** — the acceptance test for the whole plan | M |
 | `A7.4` | Keyed reads, if two hundred parts make whole-file loading hurt (§P2). | measured in `w_tau` and milliseconds **before** it is built — the deferral from `A1` closed with a number, or closed as unnecessary | M |
 
+### `A7.3` broken down, and the probe that shaped it
+
+⚠ **THE MEASUREMENT FIRST: `held = wld` IS A DEEP COPY, NOT A SECOND NAME.** The whole shape of a
+part-editing mode is *hold the world aside, point the gestures at the part, swap back* — so what
+got measured before anything was designed is whether two `World` stores can be alive at once.
+**They can**: two parts loaded together, a cell written into one, and the other's `w_tau`, its
+columns and its sections all unchanged; the edited one saves and reloads with its sections and its
+`PART.name` intact. ⚠ **But the swap is a COPY** — write through the second name and the first
+never sees it, in either direction — while `c = v[0]` on the same struct type **aliases**. The same
+assignment, opposite semantics, and nothing in the source separates the two:
+[loft#774](https://github.com/loft-lang/loft/issues/774), filed, both backends agreeing.
+
+⚠ **So the copy is the design rather than an accident to route around.** Holding the world aside by
+assignment yields an independent snapshot, which is exactly what the mode wants. It costs a deep
+copy of every chunk per switch — and **`w_tau` cannot see that cost**: the edit clock counts writes
+that changed something, and a copy changes nothing. `A7.3a` measures it in bytes and milliseconds
+or it goes unmeasured. The escape hatch, if it ever hurts, is the alias the same probe found: park
+both stores in a vector and take `[i]`.
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | open and close with no edit leaves the world's `w_tau` and its columns exactly as they were, and the part file byte-identical | S |
+| `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | a stamp inside a part is not an `INST` (§P4) — a silent bake is the unrecoverable one | XS |
+| `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | edit one cell, save, reload — every section byte-identical and only the cells differ | S |
+| `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | a refused save leaves the FILE unchanged, not merely the acknowledgement saying no | XS |
+| `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | `N:` re-broadcasts, every `W:`/`Y:` re-addresses, and `14:<roof>,<new>` places it in the same session | S |
+| `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
+
+⚠ **`44` IS THE NEXT FREE ID — 1 through 43 are all taken**, and it is one message with two forms
+rather than an open and a close, which is `14:`'s own precedent. ⚠ **The subject line is part of
+`A7.3a` and not a later polish**: a gesture landing in the store you did not mean is this mode's
+one unrecoverable failure, so *which store am I in* has to be on screen before any gesture can
+reach the part at all. The control is `B2.3`'s, one message over — **a refused open must not rename
+the subject**, exactly as a refused load does not.
+
+⚠ **AND THE CLIENT'S OLD GEOMETRY IS `A7.3a`'s REAL RISK.** Opening a four-chunk part after
+walking a forty-chunk world must not leave thirty-six chunks of world drawn around it. `9:` LOAD
+already has the precedent — `for ldc in loaded { mark_dirty_id(dirty, ldc) }` — but a *count* of
+meshes the client holds cannot see a chunk drawn in the wrong place, and a *picture* cannot count
+what is still cached. Both instruments, per `G`.
+
+⚠ **`A7.3b` LANDS BEFORE THE SAVE, DELIBERATELY.** A mode you can enter whose dangerous doors are
+still open is worse than no mode. `9:` LOAD would replace the part store with a world and leave the
+mode lying about what you are editing; `14:<roof>,<part>` **stamps cells**, and a part inside a part
+is an `INST` reference whose cells are derived (§P4) — so baking one in silently is the corruption
+that cannot be undone from the editor. A refusal naming the gesture that does not exist yet is
+safe; a world-shaped action in a part is not. Sabotage: let `14:` through and the part's cell count
+grows by the leaf's, which is precisely the damage.
+
+⚠ **`A7.3c`'s SHARP CONTROL IS THE NULL EDIT.** Open, save, change nothing — the file must be
+byte-identical (`md5`) to what it was. A writer that reorders sections or re-derives a count passes
+every *it round-trips* test and still churns a committed file on every open. ⚠ And the
+**round-trip invariant is a loft test in `lib/hex_part/tests/`**, not a browser gate — only the
+mode, the refusals and the stale geometry need a running world. ⚠ **The owner guard finally has its
+case too**: the world's save passes `OWNER_ANY`, and a part library shared by two agents, the gates
+and a human editor is exactly what `WS_CONCURRENT` was built for.
+
+⚠ **`A7.3e`'s ACCEPTANCE HOUSE MUST NOT BE `house/cottage`.** The cottage is *generated* by
+`src/part_build.loft` and `make parts` verifies it byte-identically — so a cottage authored in the
+editor is reverted by the next `make parts`, and the gate that checks the edit survived reads as
+flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
+`data/parts/` holding both authored and generated content is fine, and which is which has to stay
+legible.
+
 ### What `A7.1` turned up
 
 ⚠ **THE LIST ALREADY ARRIVED, AND NOTHING CHECKED IT WAS THE WHOLE LIBRARY.** `subject.mjs` asked
