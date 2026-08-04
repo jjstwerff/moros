@@ -37,15 +37,15 @@ for months, the move is to measure it, file it, and wait for a toolchain — **n
 editing `lib/*` around it. Mutating the libraries to dodge a compiler bug is the failure this
 setup exists to prevent, and it looks exactly like ordinary work while you are doing it.
 
-The live instance: the redundancy lint asks for the `&` to come off any parameter whose binding
-is never reassigned, and `503723a` does that at all 50 sites it flags. Every one needs loft's
-`de86aab0` (*"`free_protected` means do not FREE it, not do not TOUCH it"*), which as of
-2026-08-04 is on `tuxedo-pln23-db` and not yet on `main`. On a `main`-built loft this tree reads
-as broken — `hex_world` **114 green → 96 failed** with `Delete on locked store`, and
-`src/editor_run.loft` exit 0 → SIGABRT. That is the toolchain, not moros; do not go hunting in
-`lib/`. Measured on the installed binary, which was replaced **three times in one day** —
-**re-measure rather than trust an earlier run in the same session**.
-[loft#760](https://github.com/loft-lang/loft/issues/760), closed.
+✅ **The instance that earned this note is CLOSED (2026-08-04).** The redundancy lint asked for
+the `&` off any parameter whose binding is never reassigned; `503723a` did that at all 50 sites
+it flags, and every one needed a store fix that was then on a branch only — on a `main`-built
+loft this tree read as broken, `hex_world` **114 green → 96 failed** with `Delete on locked
+store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
+(`store.rs`: `let frozen = self.read_only;`), so any loft builds this tree.
+[loft#760](https://github.com/loft-lang/loft/issues/760), closed — and the measurement that
+found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
+in one day**, so re-measure rather than trust an earlier run in the same session.
 
 ### The next thing to do is #17 `A3.3` — `expand == bake`. **#17 `A3.2` is done.**
 
