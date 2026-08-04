@@ -433,7 +433,7 @@ trap — so `A3.4` is deliberately left at ◐ rather than claimed complete.
 |---|---|---|---|
 | ✅ `A4.1` | `SOCK` / `FITS` sections: name · cell · edge-or-heading · kind · size-class. Round-trip. | **DONE.** `src/sock.loft`, `hex_part` 101 → 119, both backends. ⚠ **The "edge-or-heading" slot is TWO fields**, and three text fields leave only one tail — see below. | S |
 | ✅ `A4.2` | `socket_fit(frame, leaf) -> Fit{ok, reason, offer}` — pure, no world. | **DONE**, and **not as written**. `src/fit.loft`, 131 tests. ⚠ The struct could not be called `Fit`, a size class is **nominal**, and *"the nearest leaf that fits"* presumes an ordering the class design does not have — see below. | S |
-| `A4.3` | Binding an instance to a socket instead of a coordinate. | moving the frame moves the leaf — the whole point of §P3. ⚠ Its fixture needs `A3.3`'s three levels, or the frame composition is an identity | M |
+| ✅ `A4.3` | Binding an instance to a socket instead of a coordinate. | **DONE.** `src/bind.loft`, 157 tests. Moving the frame from `(3,0)` to `(4,2)` with the binding UNTOUCHED moves the leaf — and the mechanism is an **absence**, see below. | M |
 | `A4.4` | The 24-heading approximation, **measured and written down** (§ Open). | the residual per heading is in the test output, not asserted to be zero | S |
 
 ### What `A4.1` turned up
@@ -512,6 +512,51 @@ not what it looks like.
 a change to either alone gives a catalogue listing parts nothing can open, or a loader hunting for
 files nothing lists. They share the constant now; breaking the tie again costs **34 tests across
 five files**.
+
+### What `A4.3` turned up
+
+⚠ **THE INVARIANT IS AN ABSENCE, SO IT IS ASSERTED AS ONE.** A binding stores no coordinate, and
+that *is* the mechanism — there is no second position to forget to update.
+`test_a_binding_stores_no_position` reads the `BIND` bytes before and after the frame moves and
+requires them **identical**, with the `INST` bytes differing as the control. A `bd_q` added later
+"for convenience" would end the design without failing any test that only looks at where cells
+landed; this is the one that would go red.
+
+⚠ **`A4.1` HAD TO BE AMENDED, AND THE GENERAL FORM OUTLIVES THE FIX.** It gave the socket name the
+tail of the line and a test asserting **a comma in it survives**, on the argument that of three
+text fields the author-facing one should keep the freedom. A `BIND` record is `<instance>,<socket
+name>,<part handle>`; the handle is a FILE PATH so it must take the tail, which puts the socket
+name between two commas. So: **a field's freedom depends on whether anything ever REFERS to it,
+and that is not knowable when the field is designed.** `A4.1`'s own rule already covered it — *a
+token spelled identically on both sides of a joint is one we mint and may restrict* — the field
+just had no referrer yet. The multibyte half of that test stays; only the comma went.
+
+⚠ **AND THE NAME BECOMING A KEY HAS A SECOND HALF: no two sockets on one part may share a name.**
+`socket_index` would answer with the first, silently, for ever. §P3 writes a porch's columns as
+`column-1..4` for exactly this reason; the refusal makes that a rule rather than a habit. It is a
+per-LIST check, so unlike every other rule here it cannot ride on the per-line parse.
+
+⚠ **A BINDING NAMES AN INSTANCE, NOT A PART.** A house with two door-frames binds `0,leaf,oak` and
+`1,leaf,ash` — the same socket name on two instances of one part. Binding by part would make the
+two frames indistinguishable, which is the coordinate problem wearing a different hat.
+
+⚠ **`socket_index` ANSWERS `-1` AND NOT NULL**, because a nullable index invites `?? 0` — a
+**valid** index, which binds to the first socket whenever the named one is missing. Sabotaged to
+`0`: a misspelled socket resolves, and a part with no sockets at all reports the wrong refusal.
+
+⚠ **`bake` HONOURS BINDINGS TOO, AND SKIPPING THAT WOULD HAVE BEEN SILENT.** `A3.3`'s
+`expand == bake` is the strongest test in this design and **its fixtures have no bindings**, so
+teaching only `expand` would have left every test green while the two paths disagreed about every
+bound leaf. Measured: `bake` with its binding loop disabled costs four tests. What is shared is
+the socket LOOKUP — `socket_for_binding`, which is also where `A4.2` finally gets a consumer — and
+what stays separate is the COMPOSITION, world coordinates against part-local. That is the line
+`A3.3` actually draws, and sharing the contract check does not cross it.
+
+⚠ **FOUR REFUSALS, NOT ONE**: the part is absent, it is damaged, the socket is misspelled, or the
+thing does not go in that hole. The misspelling **lists what is offered**, because *no socket
+called 'leef'* is unactionable on a part with four of them. And a socket handing out a non-zero
+heading is refused rather than expanded flat — `pi_facing`'s rule, with `A4.4` the place it gets
+applied.
 
 ### A5 — fittings
 

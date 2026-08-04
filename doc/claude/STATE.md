@@ -20,9 +20,9 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4.2`
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4.3`
 
-`make gate` **35 green** · `make lib-test` **2364, both backends** · `make parts` green
+`make gate` **35 green** · `make lib-test` **2416, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
 the installed loft.
 
@@ -37,7 +37,7 @@ alone at `GATE_JOBS=1` is the cheap discriminator.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **131** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **157** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -57,11 +57,45 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A4.3` — an instance bound to a socket. **`A3.4` is still ◐.**
+### The next thing to do is #17 `A4.4` — the 24-heading approximation. **`A3.4` is still ◐.**
 
-**`A4.1` and `A4.2` are done.** `lib/hex_part/src/sock.loft` carries `SOCK` (a list of joints a
-part offers) and `FITS` (the one joint it goes into); `src/fit.loft` answers `socket_fit(frame,
-leaf)` and `parts_for_socket(root, frame)`. `hex_part` 101 → **131**.
+**`A4.1`, `A4.2` and `A4.3` are done.** `lib/hex_part/src/sock.loft` carries `SOCK` (the joints a
+part offers) and `FITS` (the one it goes into); `src/fit.loft` answers `socket_fit(frame, leaf)`
+and `parts_for_socket(root, frame)`; `src/bind.loft` carries `BIND` and resolves a joint. Both
+`expand` and `bake` derive a bound part's position. `hex_part` 101 → **157**.
+
+⚠ **§P3 IS MEASURED NOW, AND ITS MECHANISM IS AN ABSENCE.** Move a door-frame instance from
+`(3,0)` to `(4,2)` with the binding **untouched**, and the door goes with it — because a binding
+stores no coordinate, so there is no second position to forget. That is asserted *as* an absence:
+the `BIND` bytes are byte-identical across the move, with the `INST` bytes differing as the
+control. ⚠ **A `bd_q` added later "for convenience" would end the design without failing any
+test that only looks at where cells landed**, which is why that test exists.
+
+⚠ **`A4.1` HAD TO BE AMENDED, AND THE GENERAL FORM IS WORTH MORE THAN THE FIX.** It gave the
+socket name the tail of the line and a test asserting a **comma in it survives**. A `BIND` record
+is `<instance>,<socket name>,<part handle>`; the handle is a FILE PATH so it must take the tail,
+which puts the socket name between two commas. **A field's freedom depends on whether anything
+ever REFERS to it, and that is not knowable when the field is designed.** `A4.1`'s own rule
+already covered the case — *a token spelled identically on both sides of a joint is one we mint
+and may restrict* — the field simply had no referrer yet. The multibyte half of that test stays;
+only the comma went. ⚠ **Second half: no two sockets on one part may share a name**, or
+`socket_index` answers with the first, silently, for ever.
+
+⚠ **`bake` HONOURS BINDINGS TOO, AND SKIPPING IT WOULD HAVE BEEN SILENT.** `A3.3`'s
+`expand == bake` is the strongest test in the design and **its fixtures have no bindings**, so
+teaching only `expand` would have left every test green while the two paths disagreed about every
+bound leaf. Measured: `bake` with its binding loop disabled costs four tests. The socket LOOKUP
+is shared (`socket_for_binding` — where `A4.2` finally gets its consumer); the COMPOSITION stays
+separate, world coordinates against part-local, which is the line `A3.3` actually draws.
+
+⚠ **`socket_index` ANSWERS `-1`, NOT NULL** — a nullable index invites `?? 0`, which is a *valid*
+index and would bind to the first socket whenever the named one is missing. Sabotaged to `0`: a
+misspelled socket resolves and a socketless part reports the wrong refusal.
+
+⚠ **A SOCKET HANDING OUT A NON-ZERO HEADING IS REFUSED, NOT EXPANDED FLAT** — `pi_facing`'s rule,
+and `A4.4` is where the heading gets applied. `socket_heading` maps an edge to `sk_at * (FACINGS
+/ EDGES)`; the division is exact and tested, but **which** heading an edge points at is untested
+because only `edge 0 → 0` is ever exercised.
 
 ⚠ **A STRUCT NAME IS GLOBAL ACROSS A CONSUMER'S WHOLE DEPENDENCY GRAPH, AND A PACKAGE SUITE
 CANNOT SEE IT.** `A4.2`'s answer was called `Fit`, which is what the plan sketches — and
@@ -96,9 +130,10 @@ control is the pair, refused under one mount and accepted under the other.
 separates them is who mints the name: `pi_part` is a FILE PATH and the filesystem decides what may
 be in one, so a comma had to be made harmless. A `kind` and a `size` are tokens **we** mint,
 spelled identically on both sides of a joint or there is no joint, so they bear an alphabet and
-refuse outside it. The author-facing name keeps the tail. ⚠ **`FITS` refuses a comma it has no
-separator for**, because a token it accepts and a `SOCK` refuses is a class that can be CLAIMED
-and never OFFERED — the leaf saves, the frame will not, and nothing connects the two refusals.
+refuse outside it. ⚠ **`FITS` refuses a comma it has no separator for**, because a token it
+accepts and a `SOCK` refuses is a class that can be CLAIMED and never OFFERED — the leaf saves,
+the frame will not, and nothing connects the two refusals. (⚠ The socket NAME kept the tail here
+and lost its comma at `A4.3` — see above.)
 
 ⚠ **THREE REJECTIONS, ONE BEHAVIOUR — measured.** Deleting **both** of `parts_for_socket`'s
 guards leaves all 131 tests green: a failed load and a malformed section both arrive as
@@ -111,8 +146,10 @@ say the coverage is not what it looks like.
 catalogue listing parts nothing can open. Breaking the tie again now costs **34 tests across five
 files**.
 
-⚠ **`SOCK`/`FITS` HAVE NO CONSUMER OUTSIDE THE TESTS**, exactly as `INST` at `A3.1`. `A4.3` is
-what reads them.
+✅ **`SOCK`/`FITS`/`socket_fit` ALL HAVE CONSUMERS NOW** — `A4.3`'s `socket_for_binding` reads
+every one of them, and `expand`/`bake` call it. The *built and not called* trap is closed for
+this arc. ⚠ **`part_anchor` is still tests-only**, and `A4.4` or `A5` is where a leaf's own anchor
+starts deciding how it sits in a joint.
 
 **`A3.4` is half done, and the half that is left is BLOCKED rather than skipped.** The depth
 bound landed early in `A3.2`; what `A3.4` added is telling §P8's two rules apart. ⚠ **A CYCLE
@@ -336,14 +373,15 @@ named, and one list holds parts and materials alike, each row with a name, an im
 availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3` and `A4.1`–
-`A4.2` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+`A4.3` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
 copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
 cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
 cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
-`SOCK`/`FITS`, `A4.2` `socket_fit`. **`A4.3` is next** — binding an instance to a socket rather
-than a coordinate, which is the whole point of §P3 and the first thing that needs `part_anchor`.
-⚠ Its fixture needs `A3.3`'s depth: a `(0,0)` placement makes the frame composition an IDENTITY,
-so a one-level nest cannot test it.
+`SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position. **`A4.4` is next** —
+the 24-heading approximation, *measured and written down*, with the residual per heading in the
+test output rather than asserted to be zero. ⚠ It is also what unblocks a great deal: `expand`
+and `bake` refuse **every** non-zero facing today, on an instance or on a socket, so no part in
+this tree has ever been placed turned.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
