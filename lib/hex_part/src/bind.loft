@@ -1,0 +1,289 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `BIND` — what is in which socket, and NOT where it is.
+//
+// Plan 17 `A4.3`, §P3's whole point. `INST` places a part at a coordinate; a
+// binding puts a part **in a joint** and stores no coordinate at all. That absence
+// is the mechanism: move the door-frame and the door follows, because there is no
+// second coordinate that could be forgotten.
+//
+// ⚠ SO THE ONE INVARIANT IS AN ABSENCE, and it is the only thing this record has
+// to get right: **a bound part's position is derived from the socket and is stored
+// nowhere.** Every field below exists to name the joint; none of them says where.
+// A `bd_q` added later "for convenience" would end the design without failing a
+// test, so its absence is asserted directly (`test_a_binding_stores_no_position`).
+//
+// ⚠ AND A BINDING NAMES AN INSTANCE, NOT A PART. A house with two door-frames
+// binds `0,leaf,door/oak` and `1,leaf,door/ash` — the same socket name on two
+// instances of one part. Binding *by part* would make the two frames
+// indistinguishable, which is the coordinate problem wearing a different hat.
+use hex_world;
+use codec;
+use meta;
+use sock;
+use fit;
+use inst;
+use catalogue;
+
+// ⚠ A LITERAL, held equal to `section_tag(…)` by a test, for the reason
+// `meta.loft` gives: a file-scope constant is an inlined expression re-evaluated
+// at every reference, so a derived tag would re-run the packing loop at each use.
+pub const TAG_BIND = 1145981250;    // 'BIND', low byte first
+
+pub struct Binding {
+  bd_inst:   integer,     // which entry of THIS part's `INST` list
+  bd_socket: text,        // the socket's name, in that instance's part
+  bd_part:   text,        // what goes in it, by catalogue handle
+}
+
+pub const BD_OK      = 0;
+pub const BD_NEWLINE = 1;   // a newline — it would forge a record
+pub const BD_COMMA   = 2;   // a comma in a socket name — it would forge a field
+pub const BD_EMPTY   = 3;   // a binding naming no socket, or nothing to put in it
+pub const BD_INDEX   = 4;   // an instance index with no instance behind it
+pub const BD_DUP     = 5;   // one socket of one instance filled twice
+
+pub struct BindWrite { bw_code: integer, bw_why: text }
+
+fn bw_ok() -> BindWrite { BindWrite { bw_code: BD_OK, bw_why: "" } }
+
+// ── The encoding, and why the SOCKET NAME sits between two commas ──────────────
+//
+//     bind=0,leaf,door/oak
+//
+// ⚠ TWO TEXT FIELDS AND ONE TAIL, and which gets the tail is forced rather than
+// chosen. `bd_part` is a catalogue handle, which is a FILE PATH — the filesystem
+// decides what may be in one, so a comma in it can only be made *harmless*, never
+// refused (`A3.1`). `bd_socket` is a name **we** mint and both sides of a joint
+// must spell identically, so it can bear an alphabet. So the handle takes the tail
+// and the socket name takes the restriction — and `A4.1` was amended to refuse a
+// comma in `sk_name` at the source, because a name this record cannot carry is a
+// name no part should be able to offer.
+fn bind_line(b: Binding) -> text {
+  "bind={b.bd_inst},{b.bd_socket},{b.bd_part}"
+}
+
+// ⚠ THE INDEX IS CHECKED AGAINST THE PART'S ACTUAL `INST` LIST, not merely against
+// zero. A binding onto instance 7 of a part with two instances is a document that
+// says nothing, and catching it at the write is the only place the author is still
+// holding the mistake.
+//
+// ⚠ IT ALSO MEANS SHORTENING THE `INST` LIST CAN ORPHAN A BINDING, and this
+// library refuses to READ that rather than dropping it. Loud beats tidy: a door
+// that vanished because its frame's index moved is not obviously a load failure,
+// and an editor that maintains the two together (`A7.3`) never poses the question.
+pub fn part_set_bindings(w: World, v: vector<Binding>) -> BindWrite {
+  held = part_instances(w);
+  if held.ir_code == MR_MALFORMED {
+    return BindWrite { bw_code: BD_INDEX,
+                       bw_why: "the part's own INST will not parse: {held.ir_why}" };
+  }
+  n = len(held.ir_items);
+  for i in 0..len(v) {
+    got = check_bind(v[i] ?? Binding {}, i, n);
+    if got.bw_code != BD_OK { return got; }
+  }
+  // ⚠ ONE SOCKET OF ONE INSTANCE HOLDS ONE THING. Two bindings on the same joint
+  // is not an overlap to arbitrate, it is a contradiction — and last-writer-wins
+  // would make the file's line ORDER load-bearing, which nothing else about this
+  // format is.
+  for a in 0..len(v) {
+    for b in (a + 1)..len(v) {
+      x = v[a] ?? Binding {};
+      y = v[b] ?? Binding {};
+      if x.bd_inst == y.bd_inst && x.bd_socket == y.bd_socket {
+        return BindWrite { bw_code: BD_DUP,
+          bw_why: "bindings {a} and {b} both fill socket '{x.bd_socket}' of instance {x.bd_inst}" };
+      }
+    }
+  }
+  // ⚠ An empty list DROPS the section, so *nothing is bound* and *a BIND holding
+  // nothing* stay one fact with one spelling — `inst.loft` and `sock.loft` say the
+  // same, and it is `MR_ABSENT` versus `MR_OK` that makes it matter.
+  if len(v) == 0 { world_drop_section(w, TAG_BIND); return bw_ok(); }
+  body = "";
+  for c in v {
+    if body != "" { body = body + "\n"; }
+    body = body + bind_line(c);
+  }
+  set_section_text(w, TAG_BIND, body);
+  bw_ok()
+}
+
+// ⚠ ONE VALIDATOR, BOTH DIRECTIONS — `sock.loft`'s rule. The reader runs this on
+// what it parsed, so a record this library would refuse to write is one it refuses
+// to read. `n` is how many instances the part has, or `-1` where the caller cannot
+// know (the reader checks it separately, against the same file's list).
+fn check_bind(b: Binding, i: integer, n: integer) -> BindWrite {
+  subject = "binding {i}";
+  if b.bd_socket == "" {
+    return BindWrite { bw_code: BD_EMPTY, bw_why: "{subject} names no socket" };
+  }
+  if b.bd_part == "" {
+    return BindWrite { bw_code: BD_EMPTY, bw_why: "{subject} puts nothing in a socket" };
+  }
+  if b.bd_socket.find("\n") != null || b.bd_part.find("\n") != null {
+    return BindWrite { bw_code: BD_NEWLINE, bw_why: "{subject} has a newline in it" };
+  }
+  if b.bd_socket.find(",") != null {
+    return BindWrite { bw_code: BD_COMMA,
+      bw_why: "{subject}: the socket name '{b.bd_socket}' has a comma in it" };
+  }
+  if b.bd_inst < 0 || (n >= 0 && b.bd_inst >= n) {
+    return BindWrite { bw_code: BD_INDEX,
+      bw_why: "{subject} binds instance {b.bd_inst} and the part has {n}" };
+  }
+  bw_ok()
+}
+
+pub struct BindRead { br_code: integer, br_items: vector<Binding>, br_why: text }
+
+fn bind_bad(why: text) -> BindRead {
+  none: vector<Binding> = [];
+  BindRead { br_code: MR_MALFORMED, br_items: none, br_why: why }
+}
+
+fn parse_bind(line: text) -> BindRead {
+  eq = line.find("=");
+  if eq == null || line[0..eq] != "bind" {
+    return bind_bad("a line that is not a bind=: '{line}'");
+  }
+  rest = line[(eq + 1)..];
+  c1 = rest.find(",");
+  if c1 == null { return bind_bad("'{line}' names no socket"); }
+  n = rest[0..c1] as i32?;
+  if n == null { return bind_bad("'{rest[0..c1]}' in '{line}' is not a number"); }
+  rest = rest[(c1 + 1)..];
+  c2 = rest.find(",");
+  if c2 == null { return bind_bad("'{line}' puts nothing in a socket"); }
+  got = Binding { bd_inst: n ?? 0, bd_socket: rest[0..c2], bd_part: rest[(c2 + 1)..] };
+  // ⚠ `-1` for the count: the line cannot know how many instances the part has,
+  // and `part_bindings` checks that against the file's own list a moment later.
+  // Passing `0` here would refuse every binding ever written.
+  bad = check_bind(got, 0, 0 - 1);
+  if bad.bw_code != BD_OK { return bind_bad("in '{line}': {bad.bw_why}"); }
+  BindRead { br_code: MR_OK, br_items: [got], br_why: "" }
+}
+
+pub fn part_bindings(w: World) -> BindRead {
+  none: vector<Binding> = [];
+  if world_section_at(w, TAG_BIND) < 0 {
+    return BindRead { br_code: MR_ABSENT, br_items: none, br_why: "no BIND section" };
+  }
+  out: vector<Binding> = [];
+  for line in section_text(w, TAG_BIND).split('\n') {
+    if line == "" { continue; }
+    one = parse_bind(line);
+    // One bad line condemns the section — a house handed back without its door is
+    // not obviously a house that failed to load.
+    if one.br_code != MR_OK { return one; }
+    for o in one.br_items { out += [o]; }
+  }
+  held = part_instances(w);
+  if held.ir_code == MR_MALFORMED {
+    return bind_bad("the part's own INST will not parse: {held.ir_why}");
+  }
+  n = len(held.ir_items);
+  for i in 0..len(out) {
+    b = out[i] ?? Binding {};
+    if b.bd_inst >= n {
+      return bind_bad("binding {i} fills a socket of instance {b.bd_inst} and the "
+                    + "part has {n}");
+    }
+  }
+  BindRead { br_code: MR_OK, br_items: out, br_why: "" }
+}
+
+// The bindings on one instance, in the order they were written.
+//
+// ⚠ A LINEAR SCAN, AND DELIBERATELY. A part holds a handful of instances and a
+// handful of bindings; an index over them would be a second structure to keep in
+// step with the list that is already the authority (§P4).
+pub fn bindings_of(v: vector<Binding>, inst: integer) -> vector<Binding> {
+  out: vector<Binding> = [];
+  for b in v { if b.bd_inst == inst { out += [b]; } }
+  out
+}
+
+// The line a binding writes — the encoding, so `write, read, write` is a check on
+// the parser rather than on the writer alone.
+pub fn bind_text(b: Binding) -> text { bind_line(b) }
+
+// ── Resolving a binding to the joint it names ────────────────────────────────
+
+pub const SA_OK       = 0;
+pub const SA_MISSING  = 1;   // the framing part, or the bound part, is not on disk
+pub const SA_BROKEN   = 2;   // one of them does not load, or its sections are damaged
+pub const SA_NOSOCKET = 3;   // that part offers no socket of that name
+pub const SA_NOFIT    = 4;   // the bound part does not fit the socket
+
+pub struct SocketAt { sa_code: integer, sa_socket: Socket, sa_why: text }
+
+// Which socket a binding names, and whether what it names may go in it.
+//
+// ⚠ SHARED BY `expand` AND `bake`, WHICH `A3.3` OTHERWISE KEEPS APART ON PURPOSE.
+// The line it draws is the one that matters: what is shared is the CONTRACT — this
+// socket exists, that part fits it — and what stays separate is the COMPOSITION,
+// where `expand` works in world coordinates and `bake` in part-local ones. The
+// equivalence `expand == bake` is a claim about the composition, so sharing the
+// lookup does not weaken it; duplicating the fit check would only let the two
+// paths disagree about which documents are legal.
+//
+// ⚠ AND THIS IS WHERE `A4.2` GETS ITS CONSUMER. `socket_fit` was built, tested and
+// called by nothing; a binding is the moment a part is actually offered to a joint,
+// so it is the moment the question has to be asked. A contract nothing consults is
+// a contract about nothing.
+pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
+  onto = part_file(root, framing);
+  if !exists(onto) {
+    return SocketAt { sa_code: SA_MISSING, sa_socket: Socket {},
+                      sa_why: "'{framing}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return SocketAt { sa_code: SA_BROKEN, sa_socket: Socket {},
+                      sa_why: "'{framing}' does not load: {ld.wl_detail}" };
+  }
+  offered = part_sockets(ld.wl_world);
+  if offered.sr_code == MR_MALFORMED {
+    return SocketAt { sa_code: SA_BROKEN, sa_socket: Socket {},
+                      sa_why: "'{framing}': {offered.sr_why}" };
+  }
+  at = socket_index(offered.sr_items, b.bd_socket);
+  if at < 0 {
+    // ⚠ THE REFUSAL LISTS WHAT IS ON OFFER, because *no socket called 'leef'* in a
+    // part with four of them is a typo the author cannot see without the list.
+    have = "";
+    for s in offered.sr_items {
+      if have != "" { have = have + ", "; }
+      have = have + "'{s.sk_name}'";
+    }
+    if have == "" { have = "none"; }
+    return SocketAt { sa_code: SA_NOSOCKET, sa_socket: Socket {},
+      sa_why: "'{framing}' offers no socket called '{b.bd_socket}'; it offers {have}" };
+  }
+  sk = offered.sr_items[at] ?? Socket {};
+
+  leaf = part_file(root, b.bd_part);
+  if !exists(leaf) {
+    return SocketAt { sa_code: SA_MISSING, sa_socket: sk,
+                      sa_why: "'{b.bd_part}' is not in {root}" };
+  }
+  lld = world_load(leaf);
+  if lld.wl_code != WL_OK {
+    return SocketAt { sa_code: SA_BROKEN, sa_socket: sk,
+                      sa_why: "'{b.bd_part}' does not load: {lld.wl_detail}" };
+  }
+  claim = part_fits(lld.wl_world);
+  if claim.fr_code == MR_MALFORMED {
+    return SocketAt { sa_code: SA_BROKEN, sa_socket: sk,
+                      sa_why: "'{b.bd_part}': {claim.fr_why}" };
+  }
+  got = socket_fit(sk, claim.fr_fits);
+  if got.sf_code != SF_OK {
+    return SocketAt { sa_code: SA_NOFIT, sa_socket: sk,
+                      sa_why: "'{b.bd_part}' does not fit '{framing}' socket "
+                            + "'{b.bd_socket}': {got.sf_why}" };
+  }
+  SocketAt { sa_code: SA_OK, sa_socket: sk, sa_why: "" }
+}

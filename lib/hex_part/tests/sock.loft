@@ -17,16 +17,22 @@ fn part() -> World {
 }
 
 // ⚠ THE SUBJECT THAT CAN DISAGREE (`A1.4`). One socket is in an EDGE and one is at
-// a HEADING, so a reader that dropped the mount cannot pass; one name carries a
-// COMMA and a multibyte character, so an encoding that splits on every comma or
-// counts characters where it means bytes cannot pass either. `"leaf"` agrees with
-// all of it.
+// a HEADING, so a reader that dropped the mount cannot pass; one name carries an
+// `=` and a multibyte character, so an encoding that counts characters where it
+// means bytes, or splits on every `=`, cannot pass either. `"leaf"` agrees with all
+// of it.
+//
+// ⚠ IT USED TO CARRY A COMMA, AND `A4.3` TOOK THAT AWAY. The name was the tail of
+// the line, so a comma in it was harmless — until a `BIND` record had to name a
+// socket BETWEEN two commas, with the part handle taking the tail because a file
+// path is the one field nobody may restrict. See `check_socket`: **a field's
+// freedom depends on whether anything ever refers to it.**
 fn two() -> vector<Socket> {
   [ Socket { sk_q: 1, sk_r: 0 - 2, sk_h: 0, sk_mount: SM_EDGE, sk_at: 3,
              sk_kind: "door", sk_size: "2x3", sk_name: "leaf" },
     Socket { sk_q: 0, sk_r: 3, sk_h: 12, sk_mount: SM_HEAD, sk_at: 18,
              sk_kind: "statue", sk_size: "plinth-2",
-             sk_name: "niche, the deep one 中" } ]
+             sk_name: "niche 中 = the deep one" } ]
 }
 
 fn same(a: Socket, b: Socket) -> boolean {
@@ -103,8 +109,14 @@ fn test_an_edge_and_a_heading_with_the_same_index_are_different_sockets() {
   assert(!same(e, h), "an edge and a heading at 3 compare equal before anything is written");
   assert(sock_text(e) != sock_text(h),
          "and they encode identically: '{sock_text(e)}'");
+  // ⚠ THE PAIR ABOVE SHARES A NAME AND THE WRITTEN PAIR BELOW CANNOT, since `A4.3`
+  // made the name a key. That is why the encoding is compared on the structs first:
+  // once the names differ, `!same(a0, a1)` is true for a reason that has nothing to
+  // do with the mount, and only the two `sk_mount`/`sk_at` assertions still bite.
   w = part();
-  assert(part_set_sockets(w, [e, h]).sw_code == SK_OK, "write");
+  h2 = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 3,
+                sk_kind: "door", sk_size: "2x3", sk_name: "b" };
+  assert(part_set_sockets(w, [e, h2]).sw_code == SK_OK, "write");
   p = "{temp_dir()}/hexpart_sock_mount.hxw";
   assert(world_save(w, p, no_palette()) == WS_OK, "save");
   back = world_load(p);
@@ -136,17 +148,33 @@ fn test_edge_six_is_refused_where_heading_six_is_accepted() {
     sk_name: "a" })).sw_code == SK_AT, "heading {FACINGS} was accepted");
 }
 
-// ⚠ THE NAME IS THE TAIL, so a comma in it is not a special case at all — `A3.1`'s
-// rule, applied to the one of three text fields that is author-facing. Put the name
-// anywhere but last and this fails; refuse the comma instead and the author loses a
-// name they are entitled to.
-fn test_a_comma_and_a_multibyte_character_in_a_socket_name_survive() {
+// ⚠ THE NAME IS STILL THE TAIL AND A COMMA IN IT IS NOW REFUSED, which reads like
+// a contradiction and is the point. The tail placement means a comma could not
+// break THIS record; `A4.3`'s `BIND` names a socket between two commas, so a name a
+// binding cannot carry is a name no part should be able to offer. Refusing at the
+// source beats a `SOCK` that writes fine and a `BIND` that cannot refer to it.
+fn test_a_comma_in_a_socket_name_is_refused_because_a_binding_names_it() {
   w = part();
-  odd = "porte café, 2 = boards wide 中";
+  bad = part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
+    sk_mount: SM_EDGE, sk_at: 0, sk_kind: "door", sk_size: "2x3",
+    sk_name: "porte, café" }));
+  assert(bad.sw_code == SK_COMMA, "a comma in a socket name was accepted ({bad.sw_code})");
+  assert(bad.sw_why.find("binding") != null,
+         "the refusal does not say why it matters: '{bad.sw_why}'");
+  assert(world_section_at(w, TAG_SOCK) < 0, "a refused write left a section behind");
+}
+
+// ⚠ AND THE MULTIBYTE HALF SURVIVES, WHICH IS THE HALF THE COMMA RULE MUST NOT
+// TAKE WITH IT. `len()` counts characters while a slice bound counts bytes, so a
+// name with `é` and `中` in it is what tells a byte loop from a character loop —
+// `A1.4` earned that, and refusing commas is no reason to stop asking.
+fn test_a_multibyte_socket_name_survives_a_save_and_a_load() {
+  w = part();
+  odd = "porte café 2 = boards wide 中";
   assert(part_set_sockets(w, one(Socket { sk_q: 0, sk_r: 0, sk_h: 0,
     sk_mount: SM_EDGE, sk_at: 0, sk_kind: "door", sk_size: "2x3",
     sk_name: odd })).sw_code == SK_OK, "write");
-  p = "{temp_dir()}/hexpart_sock_comma.hxw";
+  p = "{temp_dir()}/hexpart_sock_utf8.hxw";
   assert(world_save(w, p, no_palette()) == WS_OK, "save");
   back = world_load(p);
   got = part_sockets(back.wl_world);
@@ -154,6 +182,65 @@ fn test_a_comma_and_a_multibyte_character_in_a_socket_name_survive() {
   assert((got.sr_items[0] ?? Socket {}).sk_name == odd,
          "the name came back '{(got.sr_items[0] ?? Socket {}).sk_name}'");
   delete(p);
+}
+
+// ⚠ THE OTHER HALF OF THE NAME BECOMING A KEY. Two sockets called `leaf` make
+// `bind=0,leaf,door/oak` ambiguous, and `socket_index` would answer with the first
+// one silently and for ever. §P3 writes a porch's columns as `column-1..4` for
+// exactly this reason; this is what makes that a rule rather than a habit.
+fn test_two_sockets_on_one_part_may_not_share_a_name() {
+  w = part();
+  dup = [ Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 0,
+                   sk_kind: "door", sk_size: "2x3", sk_name: "leaf" },
+          Socket { sk_q: 1, sk_r: 1, sk_h: 0, sk_mount: SM_EDGE, sk_at: 1,
+                   sk_kind: "door", sk_size: "2x3", sk_name: "leaf" } ];
+  bad = part_set_sockets(w, dup);
+  assert(bad.sw_code == SK_DUP, "two sockets called 'leaf' were accepted ({bad.sw_code})");
+  assert(bad.sw_why.find("'leaf'") != null, "the refusal does not name it: '{bad.sw_why}'");
+  assert(world_section_at(w, TAG_SOCK) < 0, "a refused write left a section behind");
+  // ⚠ The control: the SAME two sockets with different names are fine, so the
+  // refusal is about the name and not about having two sockets at all.
+  ok = [ dup[0] ?? Socket {},
+         Socket { sk_q: 1, sk_r: 1, sk_h: 0, sk_mount: SM_EDGE, sk_at: 1,
+                  sk_kind: "door", sk_size: "2x3", sk_name: "leaf-2" } ];
+  assert(part_set_sockets(w, ok).sw_code == SK_OK, "two named sockets were refused");
+  // …and a file carrying the duplicate reads as malformed, since the pair rule is
+  // per LIST and cannot ride on the per-line check every other rule uses.
+  set_section_text(w, TAG_SOCK,
+    "sock=0,0,0,0,0,door,2x3,leaf\nsock=1,1,0,0,1,door,2x3,leaf");
+  assert(part_sockets(w).sr_code == MR_MALFORMED, "a duplicated name read back fine");
+}
+
+// Which socket a name refers to, and `-1` for a name nothing offers.
+//
+// ⚠ `-1` AND NOT NULL, because a nullable index invites `?? 0` — a valid index,
+// which would bind to the FIRST socket whenever the named one is missing. That is
+// the silent wrong answer the whole binding design exists to avoid.
+fn test_a_socket_is_found_by_name_and_a_missing_one_is_minus_one() {
+  v = two();
+  assert(socket_index(v, "leaf") == 0, "leaf is {socket_index(v, \"leaf\")}");
+  assert(socket_index(v, "niche 中 = the deep one") == 1, "the second is not found");
+  assert(socket_index(v, "leef") == 0 - 1, "a misspelling found something");
+  none: vector<Socket> = [];
+  assert(socket_index(none, "leaf") == 0 - 1, "an empty part offered a socket");
+}
+
+// ⚠ SIX EDGE CENTRES DIVIDE 24 HEADINGS EXACTLY, and `4` is not written down as a
+// magic number anywhere. ⚠ WHICH heading an edge points at is `A4.4`'s to measure;
+// only `edge 0 → 0` is ever exercised, because `expand` and `bake` refuse every
+// non-zero facing until a part's cells can be rotated.
+fn test_a_socket_hands_out_a_heading() {
+  assert(FACINGS / EDGES * EDGES == FACINGS,
+         "{FACINGS} headings do not divide into {EDGES} edges");
+  head = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 18,
+                  sk_kind: "statue", sk_size: "plinth-2", sk_name: "n" };
+  assert(socket_heading(head) == 18, "a heading socket changed its heading");
+  e0 = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 0,
+                sk_kind: "door", sk_size: "2x3", sk_name: "n" };
+  assert(socket_heading(e0) == 0, "edge 0 is not heading 0");
+  e1 = Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE, sk_at: 1,
+                sk_kind: "door", sk_size: "2x3", sk_name: "n" };
+  assert(socket_heading(e1) == 4, "edge 1 is heading {socket_heading(e1)}, not 4");
 }
 
 // ⚠ WRITE, READ, WRITE — a check on the PARSER, which the field comparison alone is

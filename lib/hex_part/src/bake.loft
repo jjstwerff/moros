@@ -23,6 +23,8 @@
 // record, which outranks the cells, so its cells need no name.
 use hex_world;
 use inst;
+use bind;
+use sock;
 use catalogue;
 use stamp;
 use meta;
@@ -34,6 +36,19 @@ pub const BK_BROKEN  = 2;   // it does not load, or its `INST` will not parse
 pub const BK_DEPTH   = 3;   // nested deeper than `EX_MAX_DEPTH`
 pub const BK_FACING  = 4;   // a heading this step cannot yet apply
 pub const BK_CYCLE   = 5;   // a part contains itself (P8's FIRST rule)
+pub const BK_SOCKET  = 6;   // a binding names a socket the framing part does not offer
+pub const BK_NOFIT   = 7;   // the bound part does not fit that socket (A4.2)
+
+// The same four answers `expand` keeps apart, in this path's code space. ⚠ Two
+// tables rather than one shared mapping, because the two paths' code spaces are
+// deliberately separate — `BK_MISSING` is 1 and `EX_MISSING` is 1 by coincidence,
+// and a shared translator would quietly make that a requirement.
+fn bind_fault_bake(sa: SocketAt) -> Bake {
+  if sa.sa_code == SA_MISSING { return Bake { bk_code: BK_MISSING, bk_why: sa.sa_why }; }
+  if sa.sa_code == SA_NOSOCKET { return Bake { bk_code: BK_SOCKET, bk_why: sa.sa_why }; }
+  if sa.sa_code == SA_NOFIT { return Bake { bk_code: BK_NOFIT, bk_why: sa.sa_why }; }
+  Bake { bk_code: BK_BROKEN, bk_why: sa.sa_why }
+}
 
 // One column of the flattened result, keyed so the walk can find it again.
 //
@@ -129,8 +144,14 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
   if got2.ir_code == MR_MALFORMED {
     return Bake { bk_code: BK_BROKEN, bk_why: "'{name}': {got2.ir_why}" };
   }
+  bound = part_bindings(p);
+  if bound.br_code == MR_MALFORMED {
+    return Bake { bk_code: BK_BROKEN, bk_why: "'{name}': {bound.br_why}" };
+  }
+
   here = Bake { bk_code: BK_OK, bk_parts: parts, bk_depth: deepest };
-  for c in got2.ir_items {
+  for i in 0..len(got2.ir_items) {
+    c = got2.ir_items[i] ?? PartInst {};
     if c.pi_facing != 0 {
       return Bake { bk_code: BK_FACING,
                     bk_why: "'{c.pi_part}' faces {c.pi_facing}; only 0 can be "
@@ -140,6 +161,27 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
     down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, depth + 1, tab, here);
     if down.bk_code != BK_OK { return down; }
     here = down;
+
+    // ⚠ THE SAME JOINT, RESOLVED THE SAME WAY AND COMPOSED DIFFERENTLY — which is
+    // exactly the line `A3.3` draws. `socket_for_binding` is shared, because *which
+    // socket, and does this fit it* is a fact about the documents; the composition
+    // below is part-LOCAL where `expand`'s is world, so `expand == bake` over a
+    // bound part is still a claim about two independent compositions.
+    for b in bindings_of(bound.br_items, i) {
+      sa = socket_for_binding(root, c.pi_part, b);
+      if sa.sa_code != SA_OK { return bind_fault_bake(sa); }
+      sk = sa.sa_socket;
+      if socket_heading(sk) != 0 {
+        return Bake { bk_code: BK_FACING,
+                      bk_why: "socket '{b.bd_socket}' faces {socket_heading(sk)}; only "
+                            + "0 can be baked until A4.4 rotates a part's cells" };
+      }
+      (bq, br2) = un_origin(nq, nr, sk.sk_q, sk.sk_r);
+      into = bake_at(root, b.bd_part, bq, br2, anchor + c.pi_h + sk.sk_h,
+                     depth + 1, tab, here);
+      if into.bk_code != BK_OK { return into; }
+      here = into;
+    }
   }
   here
 }

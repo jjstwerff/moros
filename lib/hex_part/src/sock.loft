@@ -84,6 +84,7 @@ pub const SK_COMMA   = 2;   // a comma in a contract token — it would forge a 
 pub const SK_EMPTY   = 3;   // a socket with no name, or a token with no text
 pub const SK_MOUNT   = 4;   // a mount that is neither an edge nor a heading
 pub const SK_AT      = 5;   // an edge or a heading outside its own mount's range
+pub const SK_DUP     = 6;   // two sockets on one part with one name
 
 // ⚠ THE WRITE PATH CARRIES A REASON AND `part_set_instances` DOES NOT, which is a
 // deliberate difference rather than drift. An instance has one text field, so
@@ -128,15 +129,30 @@ fn check_token(what: text, v: text, subject: text) -> SockWrite {
 // and the two cannot drift into a file this library writes and will not read back.
 fn check_socket(s: Socket, i: integer) -> SockWrite {
   subject = "socket {i}";
-  // ⚠ The NAME is checked for a newline and NOT for a comma. It is the tail of the
-  // line, so a comma in it is not a special case at all — `A3.1`'s rule, and the
-  // test that pins it uses a name with a comma AND a multibyte character in it.
+  // ⚠ THE NAME IS A KEY, AND `A4.1` SHIPPED IT AS PROSE. It was given the tail of
+  // the line and a test asserting a comma in it survives, on the argument that of
+  // three text fields the author-facing one should keep the freedom. `A4.3` is
+  // what refuted that: a `BIND` record is `<instance>,<socket name>,<part handle>`,
+  // the handle is a FILE PATH and has to be the tail, so the socket name sits in
+  // the middle of a comma-separated line and a comma in it forges a field.
+  //
+  // ⚠ The general form is worth more than the fix: **a field's freedom depends on
+  // whether anything ever REFERS to it, and that is not knowable when the field is
+  // designed.** `A4.1`'s own rule — *a token spelled identically on both sides of a
+  // joint is one WE mint and may restrict* — turned out to cover this field too;
+  // it just had no referrer yet. The name keeps the tail anyway, which costs
+  // nothing and means a comma is refused rather than mis-parsed.
   if s.sk_name == "" {
     return SockWrite { sw_code: SK_EMPTY, sw_why: "{subject} has no name" };
   }
   if s.sk_name.find("\n") != null {
     return SockWrite { sw_code: SK_NEWLINE,
                        sw_why: "{subject}: the name '{s.sk_name}' has a newline in it" };
+  }
+  if s.sk_name.find(",") != null {
+    return SockWrite { sw_code: SK_COMMA,
+                       sw_why: "{subject}: the name '{s.sk_name}' has a comma in it, and "
+                             + "a binding names a socket between two commas" };
   }
   k = check_token("kind", s.sk_kind, subject);
   if k.sw_code != SK_OK { return k; }
@@ -173,6 +189,21 @@ pub fn part_set_sockets(w: World, v: vector<Socket>) -> SockWrite {
   for i in 0..len(v) {
     got = check_socket(v[i] ?? Socket {}, i);
     if got.sw_code != SK_OK { return got; }
+  }
+  // ⚠ AND NO TWO SOCKETS MAY SHARE A NAME, which is the other half of the name
+  // becoming a key. `A4.3` binds by name, so a part offering two `leaf` sockets
+  // makes `bind=0,leaf,door/oak` ambiguous — and `socket_index` would answer with
+  // the first, silently, for ever. A porch's four columns are `column-1..4` in §P3
+  // for exactly this reason; the refusal is what makes that a rule instead of a
+  // convention.
+  for a in 0..len(v) {
+    for b in (a + 1)..len(v) {
+      an = (v[a] ?? Socket {}).sk_name;
+      if an == (v[b] ?? Socket {}).sk_name {
+        return SockWrite { sw_code: SK_DUP,
+          sw_why: "sockets {a} and {b} are both called '{an}'; a binding names one socket" };
+      }
+    }
   }
   // ⚠ AN EMPTY LIST DROPS THE SECTION rather than writing an empty one, so *the
   // part offers no socket* and *the part has a SOCK holding nothing* stay one fact
@@ -268,7 +299,46 @@ pub fn part_sockets(w: World) -> SockRead {
     if one.sr_code != MR_OK { return one; }
     for o in one.sr_items { out += [o]; }
   }
+  // ⚠ THE DUPLICATE CHECK IS PER LIST, so it cannot ride on `parse_sock` the way
+  // every other rule does — a line is fine on its own and wrong beside another.
+  // It runs here as well as at the write for the reason the whole validator is
+  // shared: a file this library will not write must not be one it reads.
+  for a in 0..len(out) {
+    for b in (a + 1)..len(out) {
+      an = (out[a] ?? Socket {}).sk_name;
+      if an == (out[b] ?? Socket {}).sk_name {
+        return sock_bad("sockets {a} and {b} are both called '{an}'");
+      }
+    }
+  }
   SockRead { sr_code: MR_OK, sr_items: out, sr_why: "" }
+}
+
+// The heading a socket hands to whatever is bound into it.
+//
+// ⚠ A HEADING SOCKET SUPPLIES ONE AND AN EDGE SOCKET DERIVES ONE, which is the
+// mount doing the work it was split out for. Six edge centres over 24 headings is
+// exactly four apart — `FACINGS / EDGES` divides without remainder, and a test
+// asserts that rather than letting `4` sit here as a magic number.
+//
+// ⚠ WHICH heading edge `e` actually points at is `A4.4`'s to measure against the
+// lattice, and nothing depends on it yet: `expand` and `bake` refuse any non-zero
+// facing until `A4.4` can rotate a part's cells, so only `edge 0 → heading 0` is
+// ever exercised. Stated so the untested half is not mistaken for a verified one.
+pub fn socket_heading(s: Socket) -> integer {
+  if s.sk_mount == SM_HEAD { return s.sk_at; }
+  s.sk_at * (FACINGS / EDGES)
+}
+
+// Which socket is called `name`, or `-1`. ⚠ `-1` AND NOT A NULL, because every
+// caller has to branch anyway and a nullable index invites `?? 0` — which is a
+// valid index, and would bind to the first socket whenever the named one is
+// missing. That is the silent wrong answer this whole step exists to prevent.
+pub fn socket_index(v: vector<Socket>, name: text) -> integer {
+  for i in 0..len(v) {
+    if (v[i] ?? Socket {}).sk_name == name { return i; }
+  }
+  0 - 1
 }
 
 pub fn part_fits(w: World) -> FitsRead {
