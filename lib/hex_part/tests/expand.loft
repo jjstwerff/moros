@@ -1,0 +1,236 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A3.2` — an instance's cells, derived, and the labels they land under.
+//
+// ⚠ THE FIXTURE IS A LIBRARY ON DISK, for `A3.1`'s reason: an instance names a
+// part by handle, so expanding one has to OPEN the parts it names. A world in
+// memory cannot pose the question.
+use hex_part;
+use hex_world;
+
+// ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
+// interpreter and fails `--native`. `roundtrip.loft` carries the same note.
+fn no_palette() -> vector<integer> { [] }
+fn no_kids() -> vector<PartInst> { [] }
+
+fn root() -> text { "{temp_dir()}/hexpart_expand_lib" }
+
+fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
+  PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
+}
+
+// A part holding ONE cell at its own origin, in a material the caller picks.
+//
+// ⚠ THE MATERIAL IS THE MARKER. Every part in a nest is otherwise identical, so
+// a child stamped at the parent's position would land on top of a cell that
+// looks just like it and every count would still agree. A distinct material per
+// level is what makes a misplacement visible rather than plausible.
+fn one_cell(mat: integer) -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40 as u16? ?? 0,
+                     h_material: mat as u8? ?? 0 }] }).cw_code == CW_OK,
+    "the fixture cell was refused");
+  w
+}
+
+fn put(name: text, mat: integer, kids: vector<PartInst>) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  w = one_cell(mat);
+  if len(kids) > 0 {
+    assert(part_set_instances(w, kids) == PI_OK, "the instances of {name} were refused");
+  }
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn wipe() {
+  for d in list_dir(root()) ?? [] {
+    for e in list_dir("{root()}/{d}") ?? [] { delete("{root()}/{d}/{e}"); }
+    delete("{root()}/{d}");
+  }
+  delete(root());
+}
+
+// ⚠ THE TARGET HAS TERRAIN, and that is not fixture decoration. A part stamped
+// into a chunk with no terrain becomes that chunk's GROUND layer and takes
+// `LABEL_GROUND` rather than the name it was given, so §I1 is false and nothing
+// can re-derive it. That is a real placement rule — a house is put ON a
+// landscape — and `test_..._no_terrain_...` below pins the refusal, so this
+// seeding is not hiding the case, it is separating it.
+fn target() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in (0 - 2)..14 {
+    for r in (0 - 2)..14 {
+      assert(world_set_column(w, Column { co_q: q, co_r: r,
+        co_cells: [Hex { h_height: 5 as u16? ?? 0,
+                         h_material: 1 as u8? ?? 0 }] }).cw_code == CW_OK,
+        "the ground at ({q},{r}) was refused");
+    }
+  }
+  w
+}
+
+// How many layers in the whole store carry this label. ⚠ READ FROM THE STORE,
+// never from what `part_expand` returned: a writer's own tally only ever agrees
+// with the writer, which is `part_stamp`'s rule one arc over.
+fn layer_count(w: World) -> integer {
+  n = 0;
+  for ch in w.w_chunks {
+    for ly in ch.ck_layers { n = n + 1; }
+  }
+  n
+}
+
+fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+  for c in world_column(w, q, r).co_cells {
+    if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
+  }
+  0
+}
+
+// ── An expansion derives cells, and mints no identity ────────────────────────
+//
+// ⚠ THERE IS NO LABEL TO TEST, AND THAT IS THE STEP'S FINDING. `INST` is the
+// authority (§P4) and an instance's identity is its position in that list, so
+// the derived cells need no name: re-deriving regenerates them from the records.
+// An earlier draft minted a label per nested part and these tests asserted one
+// layer each — which measurement refuted, because a layer is a per-chunk sheet
+// and thirty placements share one.
+
+fn test_a_flat_instance_derives_its_cells() {
+  wipe();
+  put("h/leaf", 3, no_kids());
+  w = target();
+  ex = part_expand(w, root(), at("h/leaf", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(ex.ex_parts == 1, "{ex.ex_parts} parts derived, not 1");
+  assert(material_at(w, 0, 0, 40) == 3, "the cell is not where it was placed");
+}
+
+fn test_a_nest_derives_both_parts() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/nest", 3, [at("h/leaf", 2, 0, 0)]);
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(ex.ex_parts == 2, "{ex.ex_parts} parts derived, not 2");
+  (kq, kr) = un_origin(0, 0, 2, 0);
+  assert(material_at(w, 0, 0, 40) == 3, "the parent's cell is not at the centre");
+  assert(material_at(w, kq, kr, 40) == 7, "the child's cell is not at its offset");
+}
+
+// ⚠ THE MEASUREMENT THAT SETTLED IT, kept as a test so the next reader does not
+// re-derive the worry: two parts side by side in one chunk share ONE layer, and
+// that is correct rather than a lost identity.
+fn test_two_parts_in_one_chunk_share_a_layer_and_that_is_fine() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/nest", 3, [at("h/leaf", 2, 0, 0)]);
+  w = target();
+  before = layer_count(w);
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(layer_count(w) - before == 1,
+         "two parts cost {layer_count(w) - before} layers, not 1 — the sheet no "
+         + "longer holds them both, which changes the cost model");
+}
+
+// ── The child's frame is the parent's ────────────────────────────────────────
+
+fn test_a_nested_part_lands_at_the_composed_offset() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/nest", 3, [at("h/leaf", 2, 1, 0)]);
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 5, 5, 0), 10);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  (kq, kr) = un_origin(5, 5, 2, 1);
+  assert(material_at(w, kq, kr, 40) == 7,
+         "the child is not at ({kq},{kr}) — composed offset lost");
+  // CONTROL: the naive sum is a DIFFERENT column on this odd row, so the
+  // assertion above is not passing by coincidence.
+  assert(kq != 5 + 2 || kr != 5 + 1,
+         "the naive sum agrees here, so this fixture proves nothing — move the child");
+}
+
+fn test_a_nested_parts_heights_add() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/nest", 3, [at("h/leaf", 2, 0, 5)]);
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 9), 10);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  (kq, kr) = un_origin(0, 0, 2, 0);
+  assert(material_at(w, 0, 0, 49) == 3, "the parent did not lift to its anchor");
+  assert(material_at(w, kq, kr, 54) == 7,
+         "the child sits at the wrong height — 40 + 9 + 5 = 54 was expected");
+}
+
+// ── §P8's second rule — the bound, and the control that makes it one ─────────
+//
+// ⚠ TAKEN IN `A3.2` RATHER THAN `A3.4`, because this function is the renderer
+// the rule is about and the failure it prevents is a hang. `A3.4` keeps the
+// on-save check.
+
+fn chain(n: integer) {
+  wipe();
+  put("h/c{n}", 3, no_kids());
+  i = n - 1;
+  while i >= 1 {
+    put("h/c{i}", 3, [at("h/c{i + 1}", 1, 0, 0)]);
+    i = i - 1;
+  }
+}
+
+fn test_a_nest_nine_deep_is_refused() {
+  chain(9);
+  w = target();
+  ex = part_expand(w, root(), at("h/c1", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_DEPTH, "nine deep expanded with code {ex.ex_code}: {ex.ex_why}");
+  assert(ex.ex_why.find("8") != null, "the refusal does not name the bound: '{ex.ex_why}'");
+}
+
+// ⚠ THE CONTROL, AND THE STEP IS UNTESTED WITHOUT IT. A bound that refuses
+// everything passes the test above and is a wall, not a bound.
+fn test_the_control_a_nest_eight_deep_is_accepted() {
+  chain(8);
+  w = target();
+  ex = part_expand(w, root(), at("h/c1", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "eight deep was refused: {ex.ex_why}");
+  assert(ex.ex_parts == 8, "{ex.ex_parts} parts derived for an eight-deep nest");
+  assert(ex.ex_depth == 8, "the depth reported is {ex.ex_depth}, not 8");
+}
+
+// ── Three answers, not two ───────────────────────────────────────────────────
+
+fn test_a_reference_to_a_part_that_is_not_there_is_missing_not_broken() {
+  wipe();
+  put("h/nest", 3, [at("h/absent", 2, 0, 0)]);
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_MISSING, "a typo read as code {ex.ex_code}, not missing");
+  assert(ex.ex_why.find("h/absent") != null, "the refusal does not name it: '{ex.ex_why}'");
+}
+
+// ⚠ REFUSED, NOT IGNORED. Expanding a facing-6 instance as facing 0 puts a house
+// at the wrong orientation with every count still agreeing with itself.
+fn test_a_facing_is_refused_rather_than_quietly_expanded_at_zero() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  w = target();
+  turned = PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 6, pi_part: "h/leaf" };
+  ex = part_expand(w, root(), turned, 10);
+  assert(ex.ex_code == EX_FACING, "a turned instance expanded with code {ex.ex_code}");
+  assert(material_at(w, 0, 0, 40) == 0, "a refused expansion still wrote cells");
+}
+
+fn test_a_nested_facing_is_refused_too() {
+  wipe();
+  put("h/leaf", 7, no_kids());
+  put("h/nest", 3, [PartInst { pi_q: 2, pi_r: 0, pi_h: 0, pi_facing: 12,
+                               pi_part: "h/leaf" }]);
+  w = target();
+  ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_FACING, "a turned CHILD expanded with code {ex.ex_code}");
+}

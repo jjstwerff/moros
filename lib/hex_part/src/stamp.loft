@@ -78,6 +78,11 @@ pub struct PartStamp {
   // number, so losing it here would have quietly made every band refusal the
   // same refusal.
   ps_fit:   integer,               // the `CW_*` that refused, 0 if none did
+  // The part landed in a chunk that had no terrain yet, so its layer became that
+  // chunk's GROUND and took `LABEL_GROUND` instead of the minted name. `ps_label`
+  // is then 0, because there is no identity to hand back. §I1 does not hold for
+  // such a placement and nothing can re-derive it — `A3.2` refuses it outright.
+  ps_ground: boolean = false,
   ps_why:   text,
 }
 
@@ -144,6 +149,34 @@ pub fn part_stamp(w: World, p: World, cq: integer, cr: integer,
         if eh > hi2 { above = above + 1; }
       }
     }
+  }
+  // ⚠ THE LABEL IS READ BACK, NOT REPORTED FROM THE MINT. `world_fresh_label`
+  // hands out an id; whether the store KEEPS it is the store's business, and it
+  // does not when the layer created is a chunk's first terrain layer — that one
+  // is the outdoors and takes `LABEL_GROUND`, which is a rule this file must
+  // observe rather than out-guess. Measured: a one-column part into an empty
+  // world reported label 2 while the only layer in the store carried 1, so every
+  // by-label reader was handed an identity that named nothing. `A3.1`'s seam
+  // test did not see it because its fixture builds TWO layers per chunk and the
+  // second one survives to carry the name.
+  kept = 0;
+  for ch in w.w_chunks {
+    for ly in ch.ck_layers { if ly.ly_id == id { kept = kept + 1; } }
+  }
+  if kept == 0 {
+    // ⚠ THE REASON IS "NO NEW LAYER", AND NOT ONE CAUSE. Measured, there are two:
+    // an empty chunk, where the layer created is the outdoors and takes
+    // `LABEL_GROUND`; and a chunk that ALREADY holds a compatible layer, where
+    // the band merges into it and nothing is created at all — a second part
+    // beside the first lands in the first's layer. This says only what was
+    // observed, because the first draft of this message named the empty-chunk
+    // cause for both and sent the reader looking for missing terrain that was
+    // there.
+    return PartStamp { ps_code: PS_OK, ps_cells: n, ps_label: 0, ps_ground: true,
+                       ps_below: below, ps_above: above,
+                       ps_why: "no layer carries the minted label: the band "
+                             + "merged into a layer this chunk already had, or "
+                             + "created the chunk's ground" };
   }
   PartStamp { ps_code: PS_OK, ps_cells: n, ps_label: id,
               ps_below: below, ps_above: above, ps_why: "" }

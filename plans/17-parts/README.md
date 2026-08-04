@@ -337,7 +337,7 @@ writer.
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A3.1` | `INST` section: part id · cell · heading · (bindings later). Written and round-tripped. | **DONE.** `lib/hex_part/src/inst.loft`, 73 tests in the package, both backends. The reference is by catalogue handle and the NAME COMES LAST, so a comma in it needs no escaping. ⚠ **The cycle check needs no depth bound, and a diamond is not a cycle** — see below. | S |
-| `A3.2` | `expand(instance)` — derive cells into a layer under `world_fresh_label`. | ⚠ **one instance owns one label (`I1`)**, measured in the store | M |
+| ✅ `A3.2` | `expand(instance)` — derive an instance's cells, and everything nested under it. | **DONE.** `lib/hex_part/src/expand.loft`, 84 tests in the package. ⚠ **`I1` IS RETIRED, and measurement is what retired it** — derived cells carry no label, because the records are the authority and re-deriving REGENERATES. ⚠ The depth bound was taken here rather than in `A3.4`. | M |
 | `A3.3` | `bake(instance)` — flatten to plain cells. | **`expand == bake`**, cell for cell. The strongest test here: the two paths share nothing but the part. | S |
 | `A3.4` | Depth bound (8) and the cycle check on save. | a 9-deep nest is refused, ⚠ and the control: an 8-deep one is accepted — otherwise the bound is untested | S |
 | `A3.5` | Re-derive on part change. | **edit the part, the placed house changes** — one PNG before, one after, the diff is the claim | S |

@@ -244,19 +244,43 @@ kind)` already cuts the opening in the wall; the socket is the *contract at that
 Conflating them is how `F-HOLE` went wrong in [FITTINGS](FITTINGS.md) — an opening became an
 edge material and then nothing could be hung in it.
 
-### P4 — An instance is a reference, and its cells are a LABELLED LAYER
+### P4 — An instance is a reference, and its cells are DERIVED AND ANONYMOUS
 
 The world stores, per placement: **part id · cell · heading · socket bindings**. That record
-is the authority. The cells are **derived** from it into a layer that carries the instance's
-own label.
+is the authority. The cells are **derived** from it, and they carry **no identity of their
+own**.
 
 This is the [HEX_STACK](HEX_STACK.md) invariant applied literally — *the store is the only
 authority, everything else is derived, writes go in place* — and it buys the thing the user
 asked for last: **edit the part, and every house containing it changes.**
 
-The mechanism exists already, built this session for cellars: `world_fresh_label` mints an
-identity, `world_set_column_as` / `world_merge_band_as` write a band under it. One instance,
-one label, so `I1` holds by construction rather than by care.
+⚠ **THIS SECTION SAID "A LAYER THAT CARRIES THE INSTANCE'S OWN LABEL" UNTIL `A3.2` MEASURED
+IT.** The correction is worth more than the sentence was. If the record is the authority, then
+re-deriving is **regeneration** — discard the derived cells for a region and rebuild them from
+the `INST` list — and never lookup. Nothing asks *which cells belong to instance 7*, so
+nothing needs a name for them. An instance's identity is **its position in the list**, which
+is exactly what `A3.1` said when it refused an identity field in the record.
+
+⚠ **AND THE LABEL COULD NOT HAVE CARRIED IT ANYWAY.** A layer is a per-chunk **sheet with one
+cell per column**, so placements at distinct columns share one layer whatever their heights.
+Measured on one chunk of ground: **30 placements → +1 layer, 2 distinct labels, `w_tau` 30**,
+staggering the heights by 10 changed nothing. Twenty-nine of the thirty had no label of their
+own, and a label-per-instance design would have called that a defect and gone hunting for a
+`hex_world` change to force new layers — at 8 KB each, to name something that needs no name.
+What DOES cost a layer is vertical overlap in one column: **8 stacked placements → +8 layers,
+64 KB.** So storage tracks stacking and `w_tau` tracks placements, and the two are independent.
+
+**`bake` is the operation that needs a label**, and it still mints one. It flattens an
+instance to plain cells and *destroys the record*, so afterwards there is no authority left
+and the label is the only handle on what was carved. `expand` keeps the record, which outranks
+the cells. ⚠ `part_stamp` reported a label the store had not kept — `ps_label: 2` while the
+only layer carried `1`, because a chunk's first terrain layer is the outdoors and takes
+`LABEL_GROUND`. It now reads the label back and reports `0` with `ps_ground` set. `A3.1`'s
+seam test missed it because its fixture builds two layers per chunk.
+
+**No incremental re-derivation** is intended: a part edit rebuilds the region from its records
+rather than patching the cells of one instance. That is the decision this section rests on, and
+if a scene ever grows large enough to need the patching kind, the identity question reopens.
 
 ⚠ **`bake` stays, and it is not the truth.** Flattening an instance to plain cells is needed
 for export, for interop, and for the moment an author wants to *stop* tracking a part and
@@ -352,7 +376,7 @@ the library; the drawn result and the sentences are gates.**
 | round-trip identity — a part saved and loaded is the same part | a picture cannot see a dropped section |
 | `expand(instance) == bake(instance)` | the whole authority argument rests on it |
 | a leaf that does not fit its socket is REFUSED, with the reason and the offer | a refusal has no picture |
-| one instance owns one label (`I1`) | measured in the store, not on screen |
+| a re-derive reproduces the cells from the records alone | ⚠ `I1` WAS "one instance owns one label" and is retired — §P4 |
 | a part placed at each of the 24 headings is congruent to itself | 24 pictures nobody will look at |
 | a cyclic `INST` is refused, and depth is bounded | a hang is not a picture either |
 | an unknown section survives a load-and-save unchanged | forward compatibility, by the format's own promise |

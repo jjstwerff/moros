@@ -1,0 +1,143 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// An instance's cells, DERIVED — §P4's half of the authority argument.
+//
+// Plan 17 `A3.2`. The store holds `part id · cell · heading`; the cells are not
+// stored at all. This is what turns that record into geometry, and it is the
+// reason editing a part changes every house containing it: nothing downstream
+// holds a copy to go stale.
+//
+// ⚠ AN EXPANSION MINTS NO LABEL, AND THAT IS THE POINT OF §P4. The `INST`
+// records ARE the authority and the cells are derived from them, so nothing ever
+// needs to ask which cells belong to which instance: re-deriving is REGENERATION
+// — discard the derived cells for a region and rebuild them from the list — not
+// lookup. An instance's identity is its position in that list, which is what
+// `A3.1` already said when it refused an identity field.
+//
+// ⚠ THE FIRST DRAFT OF THIS FILE MINTED ONE LABEL PER NESTED PART, and measuring
+// it is what found the mistake: thirty placements spread over a chunk share ONE
+// layer, because a layer is a per-chunk sheet with one cell per column, so
+// twenty-nine of them could not be addressed at all. That reads as a defect only
+// if you believe the cells need addressing. They do not. `bake` is the operation
+// that needs a label, because it destroys the record and leaves nothing else to
+// hold on to; `expand` keeps the record, which outranks the cells.
+//
+// ⚠ THE DEPTH BOUND IS TAKEN HERE, NOT IN `A3.4` AS PLANNED. §P8's two rules are
+// separate programs and `A3.1` was right to leave this one alone — a cycle check
+// needs no bound. But this function is the RENDERER the bound exists for, and
+// the failure it prevents is a hang, which reads as a crash and is the one
+// symptom that tells an author nothing. Four lines here beats a plan boundary.
+// `A3.4` keeps the on-save check and the pair that proves the bound is a bound:
+// nine refused AND eight accepted, because a bound nothing accepts is a wall.
+use hex_world;
+use inst;
+use stamp;
+use meta;
+
+pub const EX_OK      = 0;
+pub const EX_MISSING = 1;   // the part is not in the library
+pub const EX_BROKEN  = 2;   // it does not load, or its `INST` will not parse
+pub const EX_FIT     = 3;   // a column refused the write
+pub const EX_DEPTH   = 4;   // nested deeper than the bound
+pub const EX_FACING  = 5;   // a heading this step cannot yet apply
+
+// §P8's second rule. Eight is the design's number, not a guess.
+pub const EX_MAX_DEPTH = 8;
+
+pub struct Expand {
+  ex_code:  integer,
+  ex_parts: integer = 0,   // parts derived, the placed one and everything under it
+  ex_cols:  integer = 0,   // columns written across the whole nest
+  ex_depth: integer = 0,   // deepest level reached, 1 for a flat part
+  ex_why:   text = "",
+}
+
+// ⚠ A FACING IS REFUSED, NOT IGNORED. `pi_facing` is an index into the 24
+// headings and nothing in this tree can yet rotate a part's CELLS — `snap_rot`
+// is about wall surfaces, a different question. Applying it is `A4.4`, where the
+// approximation gets measured. Silently expanding a facing-6 instance as facing
+// 0 would place a house at the wrong orientation and every count would still
+// agree with itself, which is this tree's most expensive failure shape.
+fn facing_ok(name: text, facing: integer) -> Expand {
+  if facing != 0 {
+    return Expand { ex_code: EX_FACING,
+                    ex_why: "'{name}' faces {facing}; only 0 can be expanded "
+                          + "until A4.4 rotates a part's cells" };
+  }
+  Expand { ex_code: EX_OK }
+}
+
+// One level: stamp this part's own cells, then descend into the parts it holds.
+//
+// ⚠ THE PARENT IS STAMPED FIRST AND THE CHILD'S FRAME IS THE PARENT'S. A nested
+// instance's `(q, r)` is measured from the part it sits in — that is what makes
+// a door-frame reusable — so the child's world centre is the parent's centre
+// composed with the child's offset, which is exactly `un_origin`. Heights add
+// for the same reason: a part's heights are its own until something lifts them.
+fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
+             anchor: integer, lo: integer, depth: integer) -> Expand {
+  if depth > EX_MAX_DEPTH {
+    return Expand { ex_code: EX_DEPTH, ex_depth: depth,
+                    ex_why: "'{name}' is nested {depth} deep; the bound is "
+                          + "{EX_MAX_DEPTH} (P8)" };
+  }
+
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return Expand { ex_code: EX_MISSING, ex_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return Expand { ex_code: EX_BROKEN,
+                    ex_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  p = ld.wl_world;
+
+  st = part_stamp(w, p, cq, cr, anchor, lo);
+  if st.ps_code != PS_OK {
+    return Expand { ex_code: EX_FIT, ex_why: "'{name}' at ({cq},{cr}): {st.ps_why}" };
+  }
+  // ⚠ `st.ps_ground` IS DELIBERATELY IGNORED. It says the stamp's minted label
+  // went nowhere, which matters to `bake` and not here: this path keeps no label
+  // to be wrong about.
+
+  parts = 1;
+  cols = st.ps_cells;
+  deepest = depth;
+
+  got = part_instances(p);
+  if got.ir_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {got.ir_why}" };
+  }
+
+  for c in got.ir_items {
+    face = facing_ok(c.pi_part, c.pi_facing);
+    if face.ex_code != EX_OK { return face; }
+    (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
+    sub = expand_at(w, root, c.pi_part, nq, nr, anchor + c.pi_h, lo, depth + 1);
+    if sub.ex_code != EX_OK { return sub; }
+    parts = parts + sub.ex_parts;
+    cols = cols + sub.ex_cols;
+    if sub.ex_depth > deepest { deepest = sub.ex_depth; }
+  }
+
+  Expand { ex_code: EX_OK, ex_parts: parts, ex_cols: cols, ex_depth: deepest }
+}
+
+// Derive one placed instance into `w`, and every part it contains.
+//
+// `lo` is the band floor, taken from the caller for `part_stamp`'s reason: where
+// a building's foundation sits is a POLICY about buildings, and it lives with the
+// other one that makes it (`hex_editor::stencil_floor`), not in the library.
+//
+// ⚠ ATOMIC PER STAMP, NOT ACROSS THE NEST — and that is a real gap, written down
+// rather than hidden. `part_stamp` pre-flights its own footprint, so one part
+// lands whole or not at all; but a CHILD that refuses leaves its parent already
+// written. Making the whole tree atomic needs a pre-flight over the whole tree,
+// which is `A3.3`'s neighbourhood, since `bake` has to walk it anyway. Until
+// then a caller that cares must expand into a scratch world and adopt it.
+pub fn part_expand(w: World, root: text, i: PartInst, lo: integer) -> Expand {
+  face = facing_ok(i.pi_part, i.pi_facing);
+  if face.ex_code != EX_OK { return face; }
+  expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, 1)
+}

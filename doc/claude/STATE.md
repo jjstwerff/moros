@@ -27,7 +27,7 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **73** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **84** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -47,13 +47,35 @@ as broken — `hex_world` **114 green → 96 failed** with `Delete on locked sto
 **re-measure rather than trust an earlier run in the same session**.
 [loft#760](https://github.com/loft-lang/loft/issues/760), closed.
 
-### The next thing to do is #17 `A3.2` — expand. **Plan 18 is COMPLETE; #17 `A3.1` is done.**
+### The next thing to do is #17 `A3.3` — `expand == bake`. **#17 `A3.2` is done.**
 
-⚠ **`A3.2` IS THE ONE WITH THE HANG IN IT.** `expand(instance)` derives a part's cells into a
-layer under `world_fresh_label`, recursively — and §P8's *depth is bounded at 8* is `A3.4`,
-which comes AFTER it. `A3.1` deliberately did not put a bound in (its cycle check does not need
-one; see below), so `A3.2` is walking a tree whose only guard today is that the library has no
-cycle in it. Either take the bound early or know that is the state.
+**`A3.2` is done, and it retired `I1`.** `lib/hex_part/src/expand.loft` derives an instance's
+cells and everything nested under it; `hex_part` is 84 tests. ⚠ **A DERIVED CELL CARRIES NO
+LABEL.** The `INST` records are the authority (§P4), so re-deriving is REGENERATION — discard
+a region's derived cells and rebuild from the list — and never lookup. Nothing asks which
+cells belong to which instance, so nothing needs to name them. An instance's identity is its
+position in the list, which is what `A3.1` said when it refused an identity field.
+
+⚠ **MEASUREMENT IS WHAT RETIRED IT, and the first draft had it backwards.** That draft minted
+one label per nested part, on §P4's old sentence *"a layer that carries the instance's own
+label"*. Measured on one chunk of ground: **30 placements → +1 layer, 2 distinct labels,
+`w_tau` 30**, and staggering the heights by 10 changed nothing — a layer is a per-chunk
+**sheet with one cell per column**. So twenty-nine placements had no label, which reads as a
+defect only if the cells need addressing. What DOES cost a layer is vertical overlap in one
+column: **8 stacked → +8 layers, 64 KB**. Storage tracks stacking, `w_tau` tracks placements,
+independently. **No incremental re-derivation is intended** — that decision is what §P4 now
+rests on, and if a scene ever needs the patching kind, the identity question reopens.
+
+⚠ **AND `part_stamp` WAS REPORTING A LABEL THE STORE HAD NOT KEPT** — `ps_label: 2` while the
+only layer carried `1`, because a chunk's first terrain layer is the outdoors and takes
+`LABEL_GROUND`. It now reads the label back and reports `0` with `ps_ground` set. That still
+matters to `bake`, which destroys the record and has nothing else to hold on to. `A3.1`'s seam
+test missed it because its fixture builds two layers per chunk — a fixture that cannot pose
+the question is not evidence.
+
+⚠ **THE DEPTH BOUND WAS TAKEN IN `A3.2`, NOT `A3.4`.** Nine refused, eight accepted, both
+green. `expand` IS the renderer §P8's second rule is about, and the failure it prevents is a
+hang. `A3.4` keeps the on-save check and the cycle sweep.
 
 **`A3.1` is done.** `INST` is one line per instance — `inst=<q>,<r>,<h>,<facing>,<part>` —
 carried on the same section mechanism as `PART`/`ANCH`, with `part_cycle` / `library_cycle` for
