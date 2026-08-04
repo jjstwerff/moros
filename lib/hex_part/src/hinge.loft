@@ -1,0 +1,190 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `HING` — the axis a leaf turns about, and how far.
+//
+// Plan 17 `A5.1`, §P6: *a fitting is a part with a moving sub-part*, and the one
+// piece of [FITTINGS](../../../doc/claude/FITTINGS.md) that survived its own
+// inventory — `F-FIT`, `F-SWING`, `F-STATE`. A leaf part carries the hinge; the
+// STATE of a particular door (how far open it is) belongs to the instance and is
+// `A5.2`. That split is `F-STATE`'s and it is the `WORLD_MODEL` rate-of-change
+// rule: the design is near-static and shared, the angle is mutated by play.
+//
+// ⚠ THE FIELDS ARE `moros_sim::Link`'s, DELIBERATELY AND IN ITS ORDER. FITTINGS
+// §1 says a leaf *"is a `moros_sim::Body` on a `Mount` link whose axis is the
+// hinge and whose `lk_lo`/`lk_hi` are the swing limits in TURNS — `assembly.loft`
+// already has every field"*. So this record is `link_mount`'s arguments and
+// nothing else, and a consumer builds one with no arithmetic in between.
+// `assembly.loft`'s own warning is the reason: **"Two units for one quantity is
+// how a conversion goes missing."** A degrees-here / turns-there hinge would look
+// perfectly reasonable in both files.
+//
+// ⚠ AND `hex_part` STILL DEPENDS ONLY ON THE STORE. Matching a vocabulary is not
+// importing it: nothing here calls `moros_sim`, and the eight numbers are just
+// numbers until something assembles them.
+use hex_world;
+use codec;
+use meta;
+
+// ⚠ A LITERAL, held equal to `section_tag(…)` by a test — the reason `meta.loft`
+// gives: a file-scope constant is an inlined expression re-evaluated at every
+// reference, so a derived tag would re-run the packing loop at each use.
+pub const TAG_HING = 1196312904;    // 'HING', low byte first
+
+pub struct Hinge {
+  hg_ox: float, hg_oy: float, hg_oz: float,   // the hinge point, in the part's own frame
+  hg_ax: float, hg_ay: float, hg_az: float,   // the revolute axis — a DIRECTION
+  hg_lo: float, hg_hi: float,                 // the swing limits, in TURNS
+}
+
+pub const HG_OK    = 0;
+pub const HG_AXIS  = 1;   // an axis of zero length — a revolute joint with nothing to turn about
+pub const HG_RANGE = 2;   // a range that runs backwards
+pub const HG_VALUE = 3;   // a number that is not a number
+
+pub struct HingeWrite { hw_code: integer, hw_why: text }
+
+fn hw_ok() -> HingeWrite { HingeWrite { hw_code: HG_OK, hw_why: "" } }
+
+// ── The axis is stored as GIVEN, and is not normalised ───────────────────────
+//
+// `moros_sim::has_axis` asks only that one component be non-zero, and this asks
+// the same thing rather than a stricter one. Normalising on the way in would hand
+// the author back a different number than they wrote, which is `meta.loft`'s rule
+// about stripping a newline from a name and the store's `WS_PALETTE` rule before
+// it. The length of the axis carries no meaning; a consumer that needs a unit
+// vector normalises where it needs one.
+fn axis_ok(h: Hinge) -> boolean {
+  h.hg_ax != 0.0 || h.hg_ay != 0.0 || h.hg_az != 0.0
+}
+
+// ⚠ NOT-FINITE IS REFUSED, AND THE REASON IS GEOMETRY RATHER THAN THE FORMAT.
+// `inf` round-trips through the text payload perfectly — `"{inf}"` is `inf` and
+// `"inf" as float?` is `inf` — so nothing here is working around a serialisation
+// gap. It is refused because a hinge POINT at infinity is not a position and a
+// swing LIMIT at infinity is not an angle: `hi - lo` on infinite limits is NaN,
+// and `moros_sim` spells *free* as a finite ±1000 turns for exactly that reason.
+//
+// ⚠ AND NaN PASSES EVERY FENCE, which is why the check is finiteness and not a
+// range. `lo > hi` is FALSE when either side is NaN, so the range check waves one
+// through and `F-SWING`'s *"refused with the limit as its offer"* then has no
+// limit to offer. ⚠ loft's `/` is nullable and `0.0 / 0.0` is **null**, not NaN,
+// so this language hands one out from no arithmetic tried here — the guard is
+// against a value a future one could make, and a test says so rather than leaving
+// it unexplained.
+//
+// `x * 0.0 == 0.0` is false for NaN and for ±inf and true for every finite value,
+// denormals included — one expression instead of the two separate tests.
+//
+// ⚠ THE FIRST VERSION OF THIS COMMENT CLAIMED `inf` READ BACK AS MALFORMED, on a
+// scratch probe that reported it. The probe was wrong, and the way it was wrong is
+// [loft#767](https://github.com/loft-lang/loft/issues/767): a string literal
+// nested inside an interpolation keeps its own `{…}` as LITERAL TEXT, so
+// `"{("{x}" as float?) ?? 0.0}"` reads `{x}` back as unparseable and reports the
+// default. A confident absence, from an instrument nobody had checked against
+// something it should find.
+fn a_number(x: float) -> boolean { x * 0.0 == 0.0 }
+
+fn check_hinge(h: Hinge) -> HingeWrite {
+  if !a_number(h.hg_ox) || !a_number(h.hg_oy) || !a_number(h.hg_oz)
+     || !a_number(h.hg_ax) || !a_number(h.hg_ay) || !a_number(h.hg_az)
+     || !a_number(h.hg_lo) || !a_number(h.hg_hi) {
+    return HingeWrite { hw_code: HG_VALUE,
+                        hw_why: "a hinge field is not a number" };
+  }
+  if !axis_ok(h) {
+    return HingeWrite { hw_code: HG_AXIS,
+      hw_why: "the axis is (0,0,0); a hinge with no axis has nothing to turn about" };
+  }
+  // ⚠ EQUAL IS ALLOWED AND BACKWARDS IS NOT — `assembly.loft` draws the line in
+  // the same place (`lk_lo > lk_hi` is inadmissible). A leaf pinned shut is a
+  // legitimate thing to author; a leaf whose range runs backwards is a document
+  // no swing can satisfy, and clamping it would invent a range nobody wrote.
+  if h.hg_lo > h.hg_hi {
+    return HingeWrite { hw_code: HG_RANGE,
+      hw_why: "the swing runs from {h.hg_lo} to {h.hg_hi} turns, which is backwards" };
+  }
+  hw_ok()
+}
+
+// ── The payload, and the first section in this format to hold a FLOAT ─────────
+//
+// ⚠ `A1.4` ARGUED THE TEXT PAYLOAD FROM *"an integer written as text round-trips
+// exactly and refuses cleanly"*, and every section since has held integers. This
+// one cannot: a swing limit is a fraction of a turn and an axis is a direction.
+// So the argument had to be re-earned, and it holds — measured in
+// `tests/hinge.loft` on `0.1`, `1/3`, `π`, `√2`, `1e-300` and `1e300`, all
+// exactly equal after a save and a load.
+//
+// ⚠ TWO THINGS THE MEASUREMENT ALSO SAID, both worth knowing before writing a
+// float into a file here:
+//
+//   * **loft prints no exponent.** `1e300` is written as 301 digits and `1e-300`
+//     as 301 more. It round-trips, and it costs the section 600 bytes for two
+//     numbers nobody will author. Not worth encoding around; worth not being
+//     surprised by.
+//   * **the sign of zero is UNTESTED, not proven.** `0.0 - 0.0` is `+0.0` in
+//     loft, so a negative zero could not be constructed to try — and the obvious
+//     round-trip check could not have seen one anyway, since `-0.0 == 0.0`.
+fn hinge_body(h: Hinge) -> text {
+  "ox={h.hg_ox}\noy={h.hg_oy}\noz={h.hg_oz}\n"
+    + "ax={h.hg_ax}\nay={h.hg_ay}\naz={h.hg_az}\n"
+    + "lo={h.hg_lo}\nhi={h.hg_hi}"
+}
+
+pub fn part_set_hinge(w: World, h: Hinge) -> HingeWrite {
+  got = check_hinge(h);
+  if got.hw_code != HG_OK { return got; }
+  set_section_text(w, TAG_HING, hinge_body(h));
+  hw_ok()
+}
+
+// ⚠ NO COUPLING TO `PART.kind`, AND THAT IS A CHOICE. A hinge on a `PK_HOUSE`
+// reads as odd, and refusing it here would make the two sections' WRITE ORDER
+// load-bearing — set the hinge before the meta and a legitimate leaf is refused.
+// Every section in this package is its own fact; a consumer that wants the pair
+// checked reads both, which it can.
+pub struct HingeRead { hr_code: integer, hr_hinge: Hinge, hr_why: text }
+
+fn hinge_bad(why: text) -> HingeRead {
+  HingeRead { hr_code: MR_MALFORMED, hr_hinge: Hinge {}, hr_why: why }
+}
+
+fn hinge_field(t: text, key: text) -> float? {
+  v = meta_field(t, key);
+  if v == null { return null; }
+  (v ?? "") as float?
+}
+
+pub fn part_hinge(w: World) -> HingeRead {
+  if world_section_at(w, TAG_HING) < 0 {
+    return HingeRead { hr_code: MR_ABSENT, hr_hinge: Hinge {},
+                       hr_why: "no HING section" };
+  }
+  t = section_text(w, TAG_HING);
+  ox = hinge_field(t, "ox");
+  oy = hinge_field(t, "oy");
+  oz = hinge_field(t, "oz");
+  ax = hinge_field(t, "ax");
+  ay = hinge_field(t, "ay");
+  az = hinge_field(t, "az");
+  lo = hinge_field(t, "lo");
+  hi = hinge_field(t, "hi");
+  if ox == null || oy == null || oz == null || ax == null || ay == null
+     || az == null || lo == null || hi == null {
+    return hinge_bad("a hinge field is missing or is not a number");
+  }
+  // ⚠ The `?? 0.0`s are unreachable — all eight are checked against null two lines
+  // up — and are written anyway for `meta.loft`'s reason: loft does not narrow a
+  // nullable through a check, and its warning says *it becomes null there*. A
+  // reader who trusts the warning and one who trusts the check would disagree.
+  got = Hinge { hg_ox: ox ?? 0.0, hg_oy: oy ?? 0.0, hg_oz: oz ?? 0.0,
+                hg_ax: ax ?? 0.0, hg_ay: ay ?? 0.0, hg_az: az ?? 0.0,
+                hg_lo: lo ?? 0.0, hg_hi: hi ?? 0.0 };
+  // ⚠ ONE VALIDATOR, BOTH DIRECTIONS — `sock.loft`'s and `bind.loft`'s rule. A
+  // record this library refuses to write is one it refuses to read, so a hand-
+  // edited or future-writer `HING` with a backwards range is malformed rather
+  // than a door that can never open.
+  bad = check_hinge(got);
+  if bad.hw_code != HG_OK { return hinge_bad(bad.hw_why); }
+  HingeRead { hr_code: MR_OK, hr_hinge: got, hr_why: "" }
+}

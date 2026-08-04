@@ -1,0 +1,299 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A5.1` — the hinge, and the first float this format has had to carry.
+use hex_part;
+use hex_world;
+
+fn no_palette() -> vector<integer> { [] }
+
+fn part() -> World {
+  n = world_new(0.25, 100, 8, 3);
+  w = n.wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
+  w
+}
+
+// A door: hinged on the jamb, turning about the vertical, a quarter turn open.
+//
+// ⚠ THE OFFSET IS NOT `(0,0,0)`. A hinge at the part's own origin makes the
+// composition an identity, which is the trap `A3.3` fell into with `un_origin` —
+// a fixture that cannot disagree is not evidence. The axis is deliberately NOT a
+// unit vector either, because the length is not meant to carry anything and a
+// normalising writer would hand back a different number than this.
+fn door() -> Hinge {
+  Hinge { hg_ox: 0.5, hg_oy: 0.0 - 1.25, hg_oz: 0.0,
+          hg_ax: 0.0, hg_ay: 0.0, hg_az: 3.0,
+          hg_lo: 0.0, hg_hi: 0.25 }
+}
+
+fn same(a: Hinge, b: Hinge) -> boolean {
+  a.hg_ox == b.hg_ox && a.hg_oy == b.hg_oy && a.hg_oz == b.hg_oz
+    && a.hg_ax == b.hg_ax && a.hg_ay == b.hg_ay && a.hg_az == b.hg_az
+    && a.hg_lo == b.hg_lo && a.hg_hi == b.hg_hi
+}
+
+fn test_the_tag_constant_is_the_tag_it_names() {
+  assert(TAG_HING == section_tag("HING"),
+         "TAG_HING is {TAG_HING}, not {section_tag(\"HING\")}");
+}
+
+// ── Round trip ───────────────────────────────────────────────────────────────
+
+fn test_a_hinge_survives_a_save_and_a_load() {
+  w = part();
+  assert(part_set_hinge(w, door()).hw_code == HG_OK, "the write was refused");
+  p = "{temp_dir()}/hexpart_hinge_rt.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "the save was refused");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "the load was refused: {back.wl_detail}");
+  got = part_hinge(back.wl_world);
+  assert(got.hr_code == MR_OK, "read back {got.hr_code}: {got.hr_why}");
+  assert(same(got.hr_hinge, door()), "the hinge came back different");
+  delete(p);
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT THE TEST ABOVE PASSES ON A COMPARISON THAT ALWAYS
+// SAYS YES. Eight fields, and a version comparing seven would agree with itself
+// for ever — so every one is perturbed on its own.
+fn test_a_comparison_that_missed_a_field_would_be_caught() {
+  b = door();
+  assert(!same(b, Hinge { hg_ox: 9.0, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "ox");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: 9.0, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "oy");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: 9.0, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "oz");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: 9.0,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "ax");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: 9.0, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "ay");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: 9.0, hg_lo: b.hg_lo, hg_hi: b.hg_hi }), "az");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: 0.0 - 9.0, hg_hi: b.hg_hi }), "lo");
+  assert(!same(b, Hinge { hg_ox: b.hg_ox, hg_oy: b.hg_oy, hg_oz: b.hg_oz, hg_ax: b.hg_ax,
+                          hg_ay: b.hg_ay, hg_az: b.hg_az, hg_lo: b.hg_lo, hg_hi: 9.0 }), "hi");
+  assert(same(b, door()), "and it still says yes to a copy — otherwise it rejects everything");
+}
+
+// ⚠ THE CLAIM `A1.4` MADE FOR INTEGERS, RE-EARNED FOR FLOATS. *"An integer
+// written as text round-trips exactly"* is why this format is text at all, and
+// every section until now held integers only. A swing limit is a fraction of a
+// turn, so the argument had to be measured rather than inherited — on values
+// chosen because a lossy formatter would drop exactly them: `0.1` has no finite
+// binary form, `1/3` and `π` and `√2` need every one of the 17 digits, and the
+// two extremes are where a printer reaches for an exponent.
+// ⚠ THE VALUE GOES IN BOTH LIMITS, and `lo: 0.0, hi: x` is what this tried first:
+// a negative `hi` under a zero `lo` is a legitimately BACKWARDS range, so the
+// range check refused `-0.375` and the round-trip never ran. `lo == hi == x` is
+// admissible for every `x` — a leaf pinned at that angle — so the fixture tests
+// the format rather than the fence.
+fn trip(x: float, what: text) {
+  w = part();
+  h = Hinge { hg_ox: x, hg_oy: 0.0, hg_oz: 0.0,
+              hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0, hg_lo: x, hg_hi: x };
+  assert(part_set_hinge(w, h).hw_code == HG_OK, "{what} was refused");
+  p = "{temp_dir()}/hexpart_hinge_f.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "{what} did not save");
+  back = world_load(p);
+  got = part_hinge(back.wl_world);
+  assert(got.hr_code == MR_OK, "{what} read back {got.hr_code}: {got.hr_why}");
+  assert(got.hr_hinge.hg_ox == x, "{what} came back {got.hr_hinge.hg_ox}, not {x}");
+  assert(got.hr_hinge.hg_hi == x, "{what} in a limit came back {got.hr_hinge.hg_hi}");
+  assert(got.hr_hinge.hg_lo == x, "{what} in the low limit came back {got.hr_hinge.hg_lo}");
+  delete(p);
+}
+
+fn test_a_float_survives_the_text_payload_exactly() {
+  trip(0.1, "0.1 — no finite binary form");
+  trip((1.0 / 3.0) ?? 0.0, "one third");
+  trip(PI, "pi");
+  trip(sqrt(2.0) ?? 0.0, "root two");
+  trip(0.25, "a quarter turn");
+  trip(0.0 - 0.375, "a negative limit");
+  trip(1.0e-300, "1e-300 — where a printer reaches for an exponent");
+  trip(1.0e300, "1e300 — and the other end");
+  trip(0.0, "zero");
+}
+
+// ⚠ AND THE CONTROL FOR THAT WHOLE CLAIM: the comparison must be able to SEE a
+// difference of one bit, or `==` on floats proves nothing about the format.
+// `0.1 + 0.2` is the canonical value that is not `0.3`, and if these compared
+// equal the round-trips above would pass on a writer that rounded to 6 digits.
+fn test_the_float_comparison_can_see_one_bit() {
+  a = 0.1 + 0.2;
+  assert(a != 0.3, "0.1 + 0.2 == 0.3, so this comparison cannot see a rounding");
+  w = part();
+  h = Hinge { hg_ox: a, hg_oy: 0.0, hg_oz: 0.0,
+              hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0, hg_lo: 0.0, hg_hi: 1.0 };
+  assert(part_set_hinge(w, h).hw_code == HG_OK, "write");
+  got = part_hinge(w);
+  assert(got.hr_code == MR_OK, "read {got.hr_why}");
+  assert(got.hr_hinge.hg_ox == a, "0.1+0.2 came back {got.hr_hinge.hg_ox}");
+  assert(got.hr_hinge.hg_ox != 0.3, "it came back as 0.3 — the format rounded");
+}
+
+// ⚠ THE AXIS IS STORED AS GIVEN. Normalising would hand the author back a
+// different number than they wrote, which is `meta.loft`'s rule about a name and
+// the store's `WS_PALETTE` rule before it. The length carries nothing; a consumer
+// that needs a unit vector makes one where it needs one.
+fn test_a_non_unit_axis_comes_back_unchanged() {
+  w = part();
+  h = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+              hg_ax: 0.0, hg_ay: 0.0, hg_az: 7.5, hg_lo: 0.0, hg_hi: 0.25 };
+  assert(part_set_hinge(w, h).hw_code == HG_OK, "write");
+  got = part_hinge(w);
+  assert(got.hr_code == MR_OK, "read {got.hr_why}");
+  assert(got.hr_hinge.hg_az == 7.5, "the axis came back {got.hr_hinge.hg_az}, normalised");
+}
+
+// ── Absent, malformed, refusals ──────────────────────────────────────────────
+
+fn test_a_part_with_no_hinge_reads_as_absent() {
+  got = part_hinge(part());
+  assert(got.hr_code == MR_ABSENT, "a bare part read {got.hr_code}");
+}
+
+// ⚠ A HINGE WITH NO AXIS IS NOT A HINGE. `moros_sim::has_axis` asks exactly this
+// and no more, so the two agree on what a `Mount` needs rather than one being
+// stricter — which is what would make a leaf writable here and inadmissible there.
+fn test_an_axis_of_zero_length_is_refused() {
+  w = part();
+  bad = part_set_hinge(w, Hinge { hg_ox: 1.0, hg_oy: 2.0, hg_oz: 3.0,
+                                  hg_ax: 0.0, hg_ay: 0.0, hg_az: 0.0,
+                                  hg_lo: 0.0, hg_hi: 0.25 });
+  assert(bad.hw_code == HG_AXIS, "an axis of (0,0,0) was accepted ({bad.hw_code})");
+  assert(world_section_at(w, TAG_HING) < 0, "a refused write left a section behind");
+  // The control: any one component is enough, and all three are tried, because a
+  // check that only looked at `z` would pass every door and fail every trapdoor.
+  for k in 0..3 {
+    ok = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0, hg_ax: 0.0, hg_ay: 0.0,
+                 hg_az: 0.0, hg_lo: 0.0, hg_hi: 0.25 };
+    if k == 0 { ok.hg_ax = 1.0; }
+    if k == 1 { ok.hg_ay = 1.0; }
+    if k == 2 { ok.hg_az = 1.0; }
+    assert(part_set_hinge(w, ok).hw_code == HG_OK, "axis component {k} was refused");
+  }
+}
+
+// ⚠ BACKWARDS IS REFUSED AND EQUAL IS NOT. `assembly.loft` draws the line in the
+// same place (`lk_lo > lk_hi` is inadmissible) — a leaf pinned shut is a thing an
+// author may want, and a range no swing can satisfy is not. ⚠ And it is refused
+// rather than swapped: swapping would invent a range nobody wrote, which is
+// `F-SWING`'s *"refused with the limit as its offer, never clamped silently"*.
+fn test_a_range_that_runs_backwards_is_refused_and_an_equal_one_is_not() {
+  w = part();
+  bad = part_set_hinge(w, Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+                                  hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0,
+                                  hg_lo: 0.25, hg_hi: 0.0 });
+  assert(bad.hw_code == HG_RANGE, "a backwards swing was accepted ({bad.hw_code})");
+  assert(bad.hw_why.find("0.25") != null, "the refusal does not say what it saw: '{bad.hw_why}'");
+  assert(world_section_at(w, TAG_HING) < 0, "a refused write left a section behind");
+  assert(part_set_hinge(w, Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+                                   hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0,
+                                   hg_lo: 0.25, hg_hi: 0.25 }).hw_code == HG_OK,
+         "a leaf pinned shut was refused");
+}
+
+// ⚠ A DAMAGED SECTION IS NOT AN ABSENT ONE, and the writer's own check runs on
+// what came off the file — so a hand-edited or future-writer `HING` with a
+// backwards range is malformed rather than a door that can never open.
+fn test_a_section_a_future_writer_could_produce_reads_as_malformed() {
+  w = part();
+  set_section_text(w, TAG_HING,
+    "ox=0\noy=0\noz=0\nax=0\nay=0\naz=1\nlo=0.5\nhi=0.25");
+  got = part_hinge(w);
+  assert(got.hr_code == MR_MALFORMED, "a backwards range read back as a hinge");
+  assert(got.hr_why.find("backwards") != null, "the reason is '{got.hr_why}'");
+  set_section_text(w, TAG_HING,
+    "ox=0\noy=0\noz=0\nax=0\nay=0\naz=0\nlo=0\nhi=0.25");
+  assert(part_hinge(w).hr_code == MR_MALFORMED, "an axis-less hinge read back fine");
+  set_section_text(w, TAG_HING, "ox=0\noy=0\noz=0\nax=0\nay=0\naz=1\nlo=0");
+  assert(part_hinge(w).hr_code == MR_MALFORMED, "a hinge with no 'hi' read back fine");
+  set_section_text(w, TAG_HING,
+    "ox=0\noy=0\noz=0\nax=0\nay=0\naz=1\nlo=shut\nhi=0.25");
+  assert(part_hinge(w).hr_code == MR_MALFORMED, "'shut' read back as a number");
+}
+
+// ⚠ INFINITY ROUND-TRIPS PERFECTLY AND IS REFUSED ANYWAY, and the difference
+// between those two facts is the point. `1e300 * 1e300` is `inf`, `"{inf}"` is the
+// text `inf`, and `"inf" as float?` gives `inf` back — the format has no trouble
+// with it at all. What has trouble with it is geometry: a hinge POINT at infinity
+// is not a position, a swing LIMIT at infinity is not an angle, and `hi - lo` on
+// infinite limits is NaN. `moros_sim` spells *free* as a finite ±1000 turns.
+//
+// ⚠ AND THIS TEST FIRST CLAIMED THE OPPOSITE — that `inf` wrote fine and read back
+// malformed — on a scratch probe that said so. The probe was wrong, and the way it
+// was wrong is [loft#767](https://github.com/loft-lang/loft/issues/767): a string
+// literal nested inside an interpolation keeps its own `{…}` as LITERAL text, so
+// `"{("{x}" as float?) ?? 0.0}"` reads `{x}` back as unparseable and reports the
+// default. The round-trip assertion below is the instrument that got it right,
+// because it puts the text in a variable before parsing it.
+fn test_infinity_round_trips_and_is_refused_for_being_geometry() {
+  huge = 1.0e300 * 1.0e300;
+  // The control: if this box's `*` does not overflow, the rest measures an
+  // ordinary number and must say so rather than pass quietly.
+  assert(huge > 1.0e308, "1e300*1e300 gave {huge}, which is not an overflow");
+  txt = "{huge}";
+  back = txt as float?;
+  assert(back != null && (back ?? 0.0) > 1.0e308,
+         "'{txt}' does not parse back as an infinity — it gave {back}");
+
+  w = part();
+  // Every field, because a check that only looked at the limits would let an
+  // infinite hinge POINT through, and a door hung at infinity is not a door.
+  for k in 0..8 {
+    h = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0, hg_ax: 0.0, hg_ay: 0.0,
+                hg_az: 1.0, hg_lo: 0.0, hg_hi: 0.25 };
+    if k == 0 { h.hg_ox = huge; }
+    if k == 1 { h.hg_oy = huge; }
+    if k == 2 { h.hg_oz = huge; }
+    if k == 3 { h.hg_ax = huge; }
+    if k == 4 { h.hg_ay = huge; }
+    if k == 5 { h.hg_az = huge; }
+    if k == 6 { h.hg_lo = 0.0 - huge; }
+    if k == 7 { h.hg_hi = huge; }
+    assert(part_set_hinge(w, h).hw_code == HG_VALUE, "field {k} took an infinity");
+  }
+  assert(world_section_at(w, TAG_HING) < 0, "a refused write left a section behind");
+  // ⚠ AND THE CONTROL THAT KEEPS THE GUARD FROM BEING A WALL: the largest finite
+  // values must still be accepted, or `a_number` is refusing on MAGNITUDE instead
+  // of on finiteness and a legitimate hinge somewhere is unwritable.
+  assert(part_set_hinge(w, Hinge { hg_ox: 1.0e300, hg_oy: 1.0e-300, hg_oz: 0.0,
+                                   hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0,
+                                   hg_lo: 0.0, hg_hi: 0.25 }).hw_code == HG_OK,
+         "a finite extreme was refused, so the guard is a magnitude fence");
+}
+
+// ⚠ AND loft'S `/` HANDS OUT NO NaN AT ALL — `0.0 / 0.0` is **null**, because
+// division is nullable in this language. So the NaN half of `a_number` guards a
+// value nothing here can currently produce. It stays, and this test is what would
+// notice if that ever changed rather than leaving the guard unexplained.
+fn test_this_language_does_not_produce_a_nan_from_a_division() {
+  assert(0.0 / 0.0 == null, "0.0/0.0 is no longer null — check the NaN guard is live");
+}
+
+// A hinge sits beside the other sections without disturbing them.
+fn test_a_leaf_can_carry_a_hinge_a_name_and_a_fit_at_once() {
+  w = part();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_LEAF, pm_name: "oak leaf" }) == PM_OK, "meta");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2x3" }).sw_code == SK_OK, "fits");
+  assert(part_set_anchor(w, PartAnchor { pa_q: 0, pa_r: 0, pa_h: 0, pa_facing: 0 }) == PM_OK,
+         "anchor");
+  assert(part_set_hinge(w, door()).hw_code == HG_OK, "hinge");
+  p = "{temp_dir()}/hexpart_hinge_all.hxw";
+  assert(world_save(w, p, no_palette()) == WS_OK, "save");
+  back = world_load(p);
+  assert(back.wl_code == WL_OK, "load: {back.wl_detail}");
+  b = back.wl_world;
+  m = part_meta(b);
+  assert(m.mr_code == MR_OK && m.mr_meta.pm_kind == PK_LEAF, "PART: {m.mr_why}");
+  f = part_fits(b);
+  assert(f.fr_code == MR_OK && f.fr_fits.pf_size == "2x3", "FITS: {f.fr_why}");
+  a = part_anchor(b);
+  assert(a.ar_code == MR_OK, "ANCH: {a.ar_why}");
+  h = part_hinge(b);
+  assert(h.hr_code == MR_OK && same(h.hr_hinge, door()), "HING: {h.hr_why}");
+  delete(p);
+}
