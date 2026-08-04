@@ -20,9 +20,9 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A5.1`
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A5.2` ◐
 
-`make gate` **35 green** · `make lib-test` **2454, both backends** · `make parts` green
+`make gate` **35 green** · `make lib-test` **2474, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
 the installed loft.
 
@@ -37,7 +37,7 @@ alone at `GATE_JOBS=1` is the cheap discriminator.
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **170** |
+| `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **180** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -57,7 +57,44 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A5.2` — state on the instance. **`A3.4` is still ◐.**
+### The next thing to do is #17 `A6.1` — the `MESH` section. **`A5.2` and `A3.4` are ◐.**
+
+**`A5.2`'s STATE half is done and its RENDERER half is blocked, with a number rather than a
+shrug.** `bd_open` rides on the binding, `swing_fit` fences it against the leaf's own hinge, and
+`F-STATE`'s falsifiable claim is measured: **save with a door 0.125 turns open, reload, it is
+still 0.125** — with a door saved shut as the control, so the value travelled rather than being
+a default.
+
+⚠ **A CELL LEAF HAS EXACTLY TWO DRAWABLE POSITIONS IN A DOOR'S SWING, AND THAT IS WHY THE PICTURE
+IS NOT BUILT.** `A4.4` measured that only the six multiples of 60° move a body without tearing it,
+and 60° is a **sixth of a turn** — so a leaf made of CELLS can be drawn only at multiples of 1/6,
+and a door's `0 .. 0.25` range holds **0 (shut) and 1/6 (60°)** and nothing between. `swing_steps`
+computes it; the test pins **2**, with controls at 1, 7 and 0. `F-READ` wants *"a leaf ajar, not
+flush — at 15° it is a door"*, and 15° is a twenty-fourth of a turn. **So the picture needs either
+the cell rotation `A4.4` left unbuilt, or a leaf that is a MESH** — which is `A6.1`, and is what
+FITTINGS §1 already calls a leaf: *"asset + world state"*, not cells.
+
+⚠ **AN ANGLE IS ORDINAL, WHICH IS THE OTHER ARM OF `A4.2`'s FINDING.** A size class turned out
+NOMINAL (`hex_editor`'s *"255 is not 'nearly' 256"*), so its refusal reports only what the frame
+REQUIRES. 0.3 turns really is *nearly* 0.25, so `F-SWING`'s offer-and-residual is meaningful and
+is carried. Both arms of one distinction now sit in one package.
+
+⚠ **AN INFINITE SWING IS NOT *TOO FAR OPEN***, which is what the test first asserted. It IS past
+the limit — until you write down what it offers: the residual is `inf - hi`, which is `inf`, and
+an infinite overshoot is not a correction. A large FINITE swing is the control: 1000 turns is
+`WF_HIGH` with a usable overshoot.
+
+⚠ **THE GUARD AND THE FENCE ARE IN DIFFERENT PLACES ON PURPOSE.** Finiteness is checked where the
+value ARRIVES (the record); the RANGE where it is USED, because the leaf's hinge lives in another
+FILE and `part_set_bindings` has a world and no library root.
+
+⚠ **A LEAF WITH NO HINGE MAY BE BOUND AND MAY NOT BE OPENED** — a pane, a fixed light, a
+bricked-up panel are all legitimate in a frame and all shut for ever.
+
+⚠ **`BIND` CHANGED SHAPE**, which is a thing to do while a format is in flight and not after: no
+`.hxw` on disk carries one, so it cost nothing — and an older reader of a KNOWN tag *misparses*
+rather than skipping, since `A1.3`'s skip-by-length only saves an unknown tag.
+
 
 **`A5.1` is done, and it is the first section in this format to carry a FLOAT.**
 `lib/hex_part/src/hinge.loft` holds `HING` — a leaf's hinge point, its axis and its swing
@@ -443,16 +480,17 @@ lineage. Which tree owns it for good is
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of `A4`
-and `A5.1` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of `A4`,
+`A5.1` and `A5.2`'s state half complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
 copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
 cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
 cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
 `SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position, `A4.4` the heading
-measurement, `A5.1` the hinge. **`A5.2` is next**, and it is the one with the cold-recognition
-test in it: *a door reads as a door because it is ajar*, and a shut door photographs as a wall.
-⚠ Still true: no part in this tree has ever been placed TURNED — `expand`/`bake` apply facing 0
-only, and only six of the 24 ever can be.
+measurement, `A5.1` the hinge, `A5.2`'s state half. **`A6.1` is next** — a `MESH` section over the
+existing `21:`/`22:`, and it is also what unblocks `A5.2`'s picture. ⚠ Still true: no part in this
+tree has ever been placed TURNED, and no leaf has ever been DRAWN ajar — `expand`/`bake` apply
+facing 0 only, six of the 24 headings ever can be, and a cell leaf has two positions in a door's
+whole swing.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say

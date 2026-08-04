@@ -610,7 +610,7 @@ those six is an authoring call.
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A5.1` | Hinge in `PART`: axis, range. Round-trip. | **DONE.** `src/hinge.loft`, `hex_part` 157 → 170, both backends. ⚠ The first section in this format to carry a **float**, so `A1.4`'s *"an integer written as text round-trips exactly"* had to be re-earned — see below. | S |
-| `A5.2` | State on the instance, and the renderer honours it. | **the door reads as a door because it is ajar** — ⚠ the cold-recognition test, and a shut door photographs as a wall | M |
+| ◐ `A5.2` | State on the instance, and the renderer honours it. | **STATE HALF DONE**, renderer half BLOCKED with a number. `bd_open` on the binding, `swing_fit` fencing it, and `F-STATE` measured: a door saved 0.125 open reloads 0.125. ⚠ A cell leaf has **two** drawable positions in a door's whole swing — see below. `hex_part` 170 → 180. | M |
 
 ### What `A5.1` turned up
 
@@ -658,6 +658,44 @@ sections' WRITE ORDER load-bearing — set the hinge first and a legitimate leaf
 ⚠ **And one fixture could not have failed as first written**: the float round-trip used
 `lo: 0.0, hi: x`, which makes `-0.375` a legitimately backwards range, so the range check refused
 it and the round-trip never ran for that value. `lo == hi == x` is admissible for every `x`.
+
+### What `A5.2` turned up
+
+⚠ **THE SECOND CLAUSE IS NOT BUILT, AND THE REASON IS A NUMBER RATHER THAN A SHRUG.** `A4.4`
+measured that only the six multiples of 60° move a body without tearing it, and 60° is a **sixth
+of a turn**. So of the continuum a door swings through, a leaf made of CELLS could be drawn at
+exactly the multiples of 1/6 — and a door's `0 .. 0.25` range contains **two** of them: `0` (shut)
+and `1/6` (60°). Nothing between, so a cell leaf cannot be *ajar by a little* and cannot be
+animated through the gap at all. `swing_steps` computes it and the test pins **2**, with controls
+at 1 (pinned shut), 7 (a full turn) and 0 (a range clearing no exact rotation).
+
+`F-READ` wants *"a leaf ajar, not flush — a door at 0° is a rectangle on a wall; at 15° it is a
+door"*, and 15° is a twenty-fourth of a turn. So the picture needs either the cell rotation `A4.4`
+left unbuilt, **or a leaf that is a MESH** — which is `A6.1`, and is what FITTINGS §1 already
+calls a leaf: *"asset + world state"*, not cells. Left at ◐ rather than claimed, as `A3.4` is.
+
+⚠ **AN ANGLE IS ORDINAL, WHICH IS THE OTHER ARM OF `A4.2`'s FINDING.** There a size class turned
+out NOMINAL — `hex_editor::gesture`'s *"255 is not 'nearly' 256"* — so a refusal could only report
+what the frame REQUIRES. Here 0.3 turns really is *nearly* 0.25, so `F-SWING`'s offer-and-residual
+is meaningful and is carried. Both arms of one distinction now sit in one package.
+
+⚠ **AN INFINITE SWING IS NOT *TOO FAR OPEN***, which is what the test first asserted. An infinity
+IS past the limit, so `WF_HIGH` looks right — until you write down what it offers: the residual is
+`inf - hi`, which is `inf`, and **an infinite overshoot is not a correction an author can act
+on**. A large FINITE swing is the control: 1000 turns is `WF_HIGH` with a usable overshoot.
+
+⚠ **THE GUARD AND THE FENCE ARE IN DIFFERENT PLACES ON PURPOSE** — CLAUDE.md's *a guard belongs
+where the thing arrives, and a fence where the value is USED*. Finiteness is checked in the
+record; the RANGE is checked at the resolve, because the leaf's hinge lives in another FILE and
+`part_set_bindings` has a world and no library root to find it with.
+
+⚠ **A LEAF WITH NO HINGE MAY BE BOUND AND MAY NOT BE OPENED.** A pane, a fixed light, a
+bricked-up panel are all legitimate things to put in a frame and all shut for ever; refusing the
+binding would forbid them, and ignoring a non-zero swing on one would draw a state nothing holds.
+
+⚠ **`BIND` CHANGED SHAPE**, which is a thing to do while a format is in flight and not after. No
+`.hxw` on disk carries a `BIND`, so it cost nothing — and an older reader of a KNOWN tag
+*misparses* rather than skipping, since `A1.3`'s skip-by-length only saves an UNKNOWN tag.
 
 ### A6 — prop parts
 
