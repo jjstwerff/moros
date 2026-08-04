@@ -30,15 +30,22 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 | `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **73** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
 
-⚠ **THIS TREE NEEDS A LOFT NEWER THAN `main`.** The redundancy lint asks for the `&` to come
-off any parameter whose binding is never reassigned, and `503723a` does that at all 50 sites it
-flags. Every one of them needs loft's `de86aab0` (*"`free_protected` means do not FREE it, not
-do not TOUCH it"*), which as of 2026-08-04 sits on `tuxedo-pln23-db` and **not on `main`** — so
-a loft built from `main` takes `hex_world` from **114 green to 96 failed** with `Delete on
-locked store`, and `src/editor_run.loft` from exit 0 to a SIGABRT. That is a missing merge, not
-a moros regression: keep the `&`s off and wait for the branch. Measured on the installed
-`/usr/local/bin/loft`, which was replaced three times in one day — **re-measure rather than
-trust an earlier run**. [loft#760](https://github.com/loft-lang/loft/issues/760), closed.
+⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
+here ahead of `main` on purpose, so that a language defect is fixed in the language rather than
+worked around in **our** libraries. When a library suddenly fails on a shape that has been fine
+for months, the move is to measure it, file it, and wait for a toolchain — **not** to start
+editing `lib/*` around it. Mutating the libraries to dodge a compiler bug is the failure this
+setup exists to prevent, and it looks exactly like ordinary work while you are doing it.
+
+The live instance: the redundancy lint asks for the `&` to come off any parameter whose binding
+is never reassigned, and `503723a` does that at all 50 sites it flags. Every one needs loft's
+`de86aab0` (*"`free_protected` means do not FREE it, not do not TOUCH it"*), which as of
+2026-08-04 is on `tuxedo-pln23-db` and not yet on `main`. On a `main`-built loft this tree reads
+as broken — `hex_world` **114 green → 96 failed** with `Delete on locked store`, and
+`src/editor_run.loft` exit 0 → SIGABRT. That is the toolchain, not moros; do not go hunting in
+`lib/`. Measured on the installed binary, which was replaced **three times in one day** —
+**re-measure rather than trust an earlier run in the same session**.
+[loft#760](https://github.com/loft-lang/loft/issues/760), closed.
 
 ### The next thing to do is #17 `A3.2` — expand. **Plan 18 is COMPLETE; #17 `A3.1` is done.**
 
