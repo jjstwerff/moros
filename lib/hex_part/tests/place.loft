@@ -613,3 +613,215 @@ fn test_the_control_a_nest_with_no_prop_still_bakes() {
   assert(bk.bk_cols == 2, "{bk.bk_cols} columns in the result, not 2");
   wipe(root());
 }
+
+// ══ A6.3 — SWAP: a different statue on the same plinth, no other change ═══════
+//
+// ⚠ THE STEP NEEDED NO NEW CODE, AND THAT IS THE RESULT RATHER THAN A SHORTCUT.
+// §P3's claim is that composition by SOCKET makes *swap this for that* a one-field
+// edit; if it were true only in prose, these tests would be the ones to fail. They
+// are written to fail — each one names a field that a design storing a coordinate,
+// or resolving a fit at write time, or caching a placement, would have moved.
+//
+// ⚠ AND *NO OTHER CHANGE* IS MEASURED IN TWO PLACES, because one of them cannot
+// see the other. `part_diff` over the two expanded worlds says no CELL moved; the
+// placement's four other fields say the STATUE did not move. A design that dropped
+// the plinth on a swap passes the second; one that shifted the statue passes the
+// first.
+
+// Rewrite which part a shrine's socket holds, and nothing else.
+fn rebind(name: text, holds: text) {
+  rb = world_load("{root()}/{name}.hxw");
+  assert(rb.wl_code == WL_OK, "load {name}: {rb.wl_detail}");
+  rw = rb.wl_world;
+  assert(part_set_bindings(rw, [Binding { bd_inst: 0, bd_open: 0.0,
+                                          bd_socket: "top", bd_part: holds }]).bw_code == BD_OK,
+         "the rebind to '{holds}' was refused");
+  assert(world_save(rw, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn placed(w: World) -> MeshAt {
+  ex = part_expand(w, root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  ex.ex_meshes[0] ?? MeshAt {}
+}
+
+fn test_swapping_the_statue_changes_the_mesh_and_nothing_else() {
+  stage("hero_marble", 0, 18);
+  // ⚠ THE SWAPPED-IN STATUE'S OWN ANCHOR IS SOMEWHERE ELSE ENTIRELY, and that is
+  // what makes the position checks below mean anything. Two statues both anchored
+  // at (0,0,0) cannot tell *the position is the socket's* from *the position is the
+  // leaf's* — the two answers agree — so this one is anchored at (3,-2,7) and the
+  // statue still has to land exactly where the first one did. `expand.loft` says
+  // `ANCH`'s q/r/h are not read; this is the test that would notice if they were.
+  other = blank();
+  assert(part_set_meta(other, PartMeta { pm_kind: PK_PROP,
+                                         pm_name: "p/other" }) == PM_OK, "meta");
+  assert(part_set_mesh(other, "beast_marble").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(other, PartFits { pf_kind: "statue",
+                                         pf_size: "plinth-2" }).sw_code == SK_OK, "fits");
+  assert(part_set_anchor(other, PartAnchor { pa_q: 3, pa_r: 0 - 2, pa_h: 7,
+                                             pa_facing: 0 }) == PM_OK, "anchor");
+  save_part("p/other", other);
+  a = target();
+  was = placed(a);
+
+  rebind("p/yard", "p/other");
+  b = target();
+  after = placed(b);
+
+  // ⚠ THE ONE FIELD THAT MUST CHANGE, ASSERTED FIRST. Without it every check below
+  // is satisfied by a swap that did not happen, and the test reads green for the
+  // strongest possible wrong reason.
+  assert(was.ma_mesh == "hero_marble" && after.ma_mesh == "beast_marble",
+         "the swap did not take: '{was.ma_mesh}' then '{after.ma_mesh}'");
+
+  // …and the four that must not. Position and height are the SOCKET's and were
+  // never stored on the leaf, which is the absence `bind.loft` is built around.
+  assert(after.ma_q == was.ma_q && after.ma_r == was.ma_r,
+         "the statue moved from ({was.ma_q},{was.ma_r}) to ({after.ma_q},{after.ma_r})");
+  assert(after.ma_h == was.ma_h, "it changed height from {was.ma_h} to {after.ma_h}");
+  assert(after.ma_facing == was.ma_facing,
+         "it turned from {was.ma_facing} to {after.ma_facing}");
+
+  // ⚠ AND NO CELL ANYWHERE MOVED. The placement's fields cannot see the plinth;
+  // this can. A swap that rebuilt the frame — or lost it — is invisible to every
+  // assertion above and loud here.
+  d = part_diff(a, b, 12);
+  assert(d.pd_same, "swapping the statue changed the world's cells: {d.pd_why}");
+  wipe(root());
+}
+
+// ⚠ THE PLINTH IS THE SAME FILE, AND THAT IS THE HALF *"on the same plinth"* MEANS.
+// Nothing about the frame is touched by a swap: it is not rewritten, not reloaded
+// into a different shape, not even opened for writing. Measured by its bytes.
+fn test_the_plinth_is_not_touched_by_a_swap() {
+  stage("hero_marble", 0, 18);
+  put_statue("p/other", "beast_marble", 0);
+  // ⚠ THE MTIME IS THE INSTRUMENT AND THE SIZE IS NOT ENOUGH ON ITS OWN. A file
+  // rewritten with the same content keeps its size and moves its mtime; the pair
+  // is what says *not written* rather than *written back identically*.
+  pf = file("{root()}/p/plinth.hxw");
+  before = pf#size;
+  stamp = mtime("{root()}/p/plinth.hxw");
+  assert(before > 0 && stamp > 0, "the plinth's file did not stat");
+
+  rebind("p/yard", "p/other");
+  w = target();
+  assert(placed(w).ma_mesh == "beast_marble", "the swap did not take");
+
+  af = file("{root()}/p/plinth.hxw");
+  assert(af#size == before, "the plinth is now {af#size} bytes, was {before}");
+  assert(mtime("{root()}/p/plinth.hxw") == stamp,
+         "the plinth was rewritten when the statue was swapped");
+  // ⚠ AND THE CONTROL, because a `mtime` that always came back 0 — or a clock with
+  // one-second granularity over a test that runs in milliseconds — would pass the
+  // line above for a file this test rewrote itself. The shrine WAS rewritten.
+  assert(mtime("{root()}/p/yard.hxw") >= stamp,
+         "mtime cannot tell the rewritten shrine from the untouched plinth, so the "
+       + "assertion above measures nothing");
+  wipe(root());
+}
+
+// ⚠ A SWAP CAN FAIL, AND IT FAILS WITH THE CLASS THE FRAME REQUIRES. A catalogue
+// that offered every part for every socket would need the author to know which fit;
+// `A4.2` built the refusal and `A6.3` is the gesture that finally makes an author
+// meet it. The refusal carries `kind/size` because a nominal class has no *nearest*.
+fn test_swapping_in_something_that_does_not_fit_is_refused_with_the_class() {
+  stage("hero_marble", 0, 18);
+  // A WRONG KIND — a lamp offered to a statue socket.
+  lamp = blank();
+  assert(part_set_mesh(lamp, "lamp_brass").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(lamp, PartFits { pf_kind: "lamp", pf_size: "small" }).sw_code == SK_OK,
+         "fits");
+  save_part("p/lamp", lamp);
+  // …and a RIGHT kind at the wrong SIZE, which is `A4.2`'s other answer and the
+  // harder one: it is the statue the author expected, on the wrong plinth.
+  big = blank();
+  assert(part_set_mesh(big, "colossus").pw_code == PR_OK, "mesh");
+  assert(part_set_fits(big, PartFits { pf_kind: "statue",
+                                       pf_size: "plinth-4" }).sw_code == SK_OK, "fits");
+  save_part("p/colossus", big);
+
+  rebind("p/yard", "p/lamp");
+  ka = target();
+  kx = part_expand(ka, root(), at("p/yard", 5, 5, 0), 0);
+  assert(kx.ex_code == EX_NOFIT, "a lamp went in a statue socket ({kx.ex_code}): {kx.ex_why}");
+  // ⚠ A KIND MISMATCH NAMES BOTH KINDS AND NOT THE CLASS, and that is the message
+  // being right rather than the test being lenient: *takes statue/plinth-2 and this
+  // is lamp/small* buries the one word that matters in two that do not.
+  assert(kx.ex_why.find("statue") != null && kx.ex_why.find("lamp") != null,
+         "the refusal does not name both kinds: '{kx.ex_why}'");
+  assert(len(kx.ex_meshes) == 0, "a refused expansion still handed back a placement");
+
+  rebind("p/yard", "p/colossus");
+  sa = target();
+  sx = part_expand(sa, root(), at("p/yard", 5, 5, 0), 0);
+  assert(sx.ex_code == EX_NOFIT, "a plinth-4 statue went on a plinth-2 ({sx.ex_code})");
+  // ⚠ HERE the whole class is what the author needs, because the kinds agree and
+  // only the size class tells the two statues apart.
+  assert(sx.ex_why.find("statue/plinth-2") != null
+      && sx.ex_why.find("statue/plinth-4") != null,
+         "the refusal does not name both classes: '{sx.ex_why}'");
+  wipe(root());
+}
+
+// ⚠ SWAPPING IN A STATUE MODELLED THE OTHER WAY MOVES EXACTLY ONE FIELD, AND IT IS
+// THE TURN. This is the anchor earning its keep a second time: the two statues are
+// interchangeable to the socket and are NOT interchangeable to the renderer, and
+// the document says which is which rather than the asset's author remembering.
+fn test_swapping_in_a_statue_modelled_sideways_moves_only_the_turn() {
+  stage("hero_marble", 0, 18);
+  put_statue("p/sideways", "beast_marble", 6);
+  a = target();
+  was = placed(a);
+  rebind("p/yard", "p/sideways");
+  b = target();
+  after = placed(b);
+  assert(after.ma_q == was.ma_q && after.ma_r == was.ma_r && after.ma_h == was.ma_h,
+         "the sideways statue landed somewhere else");
+  assert(was.ma_facing == 18 && after.ma_facing == 12,
+         "turned {was.ma_facing} then {after.ma_facing}; 18 and 18 - 6 = 12 were expected");
+  // The nose still points at the socket, which is the whole reason the turn moved.
+  assert((0 + was.ma_facing) % FACINGS == 18 && (6 + after.ma_facing) % FACINGS == 18,
+         "one of the two statues is not looking where the socket points");
+  wipe(root());
+}
+
+// ⚠ §P5's *ONE MECHANISM* IN ITS STRONGEST FORM: the swapped-in part need not even
+// have the same KIND OF BODY. A cell part goes into the socket a statue came out
+// of, and the socket does not care — the placement list empties and cells appear.
+//
+// ⚠ THE SOCKET AIMS AT 0 HERE AND THAT IS FORCED, not a simplification: a cell body
+// cannot take heading 18 (`A4.4`), so a socket that aims off-lattice is a socket
+// only a mesh may fill. Which is the honest limit of *one mechanism* and is written
+// down rather than glossed — `test_a_cell_part_in_a_turned_socket_is_refused` is
+// the same fact from the other side.
+fn test_a_cell_part_swaps_into_the_socket_a_statue_came_out_of() {
+  stage("hero_marble", 0, 0);
+  block = blank();
+  with_cell(block, 0, 0, 4, 7);
+  assert(part_set_fits(block, PartFits { pf_kind: "statue",
+                                         pf_size: "plinth-2" }).sw_code == SK_OK, "fits");
+  save_part("p/block", block);
+
+  a = target();
+  was = placed(a);
+  assert(was.ma_mesh == "hero_marble", "the statue was not there to begin with");
+
+  rebind("p/yard", "p/block");
+  b = target();
+  ex = part_expand(b, root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "a cell part in a statue socket was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 0,
+         "{len(ex.ex_meshes)} placements after swapping a mesh body for a cell one");
+  // The block's cell lands at the socket — the SAME cell the statue was placed at.
+  assert(material_at(b, was.ma_q, was.ma_r, was.ma_h + 4) == 7,
+         "the block is not in the socket the statue vacated");
+  // ⚠ AND THE CELLS DID CHANGE, which is the control on `part_diff` above: that
+  // test asserts *same* for a mesh-for-mesh swap, and an always-same comparison
+  // would satisfy it forever.
+  d = part_diff(a, b, 12);
+  assert(!d.pd_same, "swapping a mesh body for a CELL one changed no cell at all");
+  wipe(root());
+}

@@ -310,6 +310,11 @@ rather than on the cells.
 > fits the same plinth*, or *carry a name an author chose*. Those are all `PART` and `SOCK`,
 > and they are the difference between an import and a part.
 
+⚠ **ALL FOUR ARE BUILT AND THE THIRD ONE COST NOTHING** — `A6.3`'s swap needed **no new code**,
+because a binding names a part and stores no position, so *swap this for that* is one field.
+`data/parts/prop/` carries a standing figure and a seated one that declare the same `FITS`; the
+shrine expands bound to each, and the placement differs in `ma_mesh` and in nothing else.
+
 ⚠ **BUILT AT `A6.1`/`A6.2`, AND THE TABLE'S SECOND COLUMN IS NOW MEASURED RATHER THAN PLANNED.**
 *"a `.glb` in a DRESSING layer"* is not how it landed: a prop's placement is **not stored at
 all**. `part_expand` hands back a `MeshAt` — mesh name, cell, height, turn — for the same reason

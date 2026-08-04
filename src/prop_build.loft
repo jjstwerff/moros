@@ -23,10 +23,23 @@
 // nothing about whether a statue ends up on the plinth — so the gate at the bottom
 // runs the same `part_expand` a renderer will, into a seeded world, and reads the
 // placement's height and heading back out of it.
+//
+// ── `A6.3` — AND THE SECOND STATUE, WHICH IS THE SWAP ────────────────────────
+//
+// *A different statue on the same plinth, no other change.* The library gains a
+// seated figure that declares the same `FITS`, and the gate expands the shrine
+// twice — once bound to each — asserting that the placement differs in `ma_mesh`
+// and in nothing else, and that `part_diff` finds no cell moved anywhere.
+//
+// ⚠ THE VARIANT IS EXPANDED FIRST AND THE COMMITTED STATE IS WRITTEN LAST, before
+// a single comparison is asserted. `data/parts/` is committed and this tree is
+// worked by more than one agent, so an assertion that fires must not leave the
+// shrine holding the variant.
 use hex_world;
 use hex_part;
 use hex_editor;   // the MATERIAL names — see below, a literal 3 is a GREEN plinth
 use glb;
+use glb_read;   // load_glb — to read back what was WRITTEN, not what was in memory
 use mesh3d;
 
 // The editor's own world constants — `part_build.loft`'s note applies here too: a
@@ -106,25 +119,78 @@ fn statue_mesh() -> Mesh {
   m
 }
 
-// ── The three parts ──────────────────────────────────────────────────────────
+// The OTHER statue — plan 17 `A6.3`, and it is a different figure rather than a
+// recolour. ⚠ A SWAP HAS TO BE VISIBLE IN THE SILHOUETTE, because both statues are
+// drawn in one surface (`prop_surface`): two figures that differ only in colour are
+// the same thumbnail to a picture and the same bucket to every chromaticity gate,
+// so *the swap took* would be a claim only a string comparison could make.
+//
+// ⚠ AND IT MUST DIFFER IN **PROPORTION**, NOT IN SIZE. The first seated figure was
+// simply a shorter standing one — 1.14 tall against 1.36 — and its catalogue
+// thumbnail was near enough the standing one's to be the same picture. The reason is
+// in `part_thumb_view`: it solves the camera to fill the frame **per part**, so a
+// cottage and a doorknob are both legible and *how big is it* is exactly the thing a
+// thumbnail cannot say. Only shape survives that fit. So this one is squat — knees
+// well forward, low back — and the two aspects differ by 1.7×, which `main` asserts.
+//
+// ⚠ AND THE INSTRUMENT THAT SETTLED IT WAS THE PICTURE, NOT THE COUNT. Ink pixels
+// per row read 218 against 221 before the reshape and 196 against 213 after — a
+// count over a fixed row window saturates on the window, so it barely moved while
+// the two silhouettes went from indistinguishable to obviously different. STATE.md
+// lesson G, and the durable gate is the one below on the MESH: a proportion is a
+// fact about the content and survives whatever the renderer does to frame it.
+fn seated_mesh() -> Mesh {
+  m = mesh("seated");
+  box(m, 0.0 - 0.28, 0.00, 0.0 - 0.26, 0.70, 0.30, 0.26);   // lap and knees, along +X
+  box(m, 0.0 - 0.28, 0.30, 0.0 - 0.20, 0.10, 0.66, 0.20);   // torso, sat back
+  box(m, 0.0 - 0.24, 0.66, 0.0 - 0.13, 0.0 - 0.02, 0.90, 0.13);   // head
+  m
+}
 
-fn write_statue(root: text) {
+// How tall a mesh stands, read off its vertices. ⚠ The one number that separates
+// two figures a file size cannot — see the control in `main`.
+fn top_y(m: Mesh) -> float {
+  ty = 0.0;
+  for v in m.vertices { if v.pos.y > ty { ty = v.pos.y; } }
+  ty
+}
+
+// How wide it is against how tall — the ONE measure of a figure that a thumbnail
+// camera cannot normalise away, because it fits each part to the frame.
+fn aspect(m: Mesh) -> float {
+  lo = 0.0;
+  hi = 0.0;
+  for v in m.vertices {
+    if v.pos.x < lo { lo = v.pos.x; }
+    if v.pos.x > hi { hi = v.pos.x; }
+  }
+  t = top_y(m);
+  if t <= 0.0 { return 0.0; }
+  (hi - lo) / t ?? 0.0
+}
+
+// ── The parts ────────────────────────────────────────────────────────────────
+
+// ⚠ ONE WRITER FOR BOTH STATUES, and that is `A6.3` in one line: the two differ in
+// a name, a mesh and a description, and in nothing a socket can see. A second
+// writer would be a second place for them to drift apart — and *they fit the same
+// plinth* would then be a coincidence of two functions rather than a fact.
+fn write_statue(root: text, name: text, desc: text) {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   // ⚠ NO CELLS AT ALL, which is exactly the shape `part_expand` could not carry
   // before `A6.2`: `part_stamp` answers `PS_EMPTY` for a world with no columns and
   // every stamp failure used to be `EX_FIT`. A statue you cannot walk into is the
   // ordinary case for a prop, and §P5's *both bodies* pillar is the other one.
   assert(part_set_meta(w, PartMeta {
-    pm_kind: PK_PROP, pm_name: "statue",
-    pm_desc: "a standing figure, arm raised along +X — modelled facing heading 0"
-  }) == PM_OK, "the statue's meta was refused");
-  assert(part_set_mesh(w, "prop/statue").pw_code == PR_OK, "the statue's mesh was refused");
+    pm_kind: PK_PROP, pm_name: name, pm_desc: desc
+  }) == PM_OK, "{name}'s meta was refused");
+  assert(part_set_mesh(w, "prop/{name}").pw_code == PR_OK, "{name}'s mesh was refused");
   assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
-         "the statue's fit was refused");
+         "{name}'s fit was refused");
   assert(part_set_anchor(w, PartAnchor {
     pa_q: 0, pa_r: 0, pa_h: 0, pa_facing: 0
-  }) == PM_OK, "the statue's anchor was refused");
-  assert(world_save(w, "{root}/prop/statue.hxw", []) == WS_OK, "the statue was not saved");
+  }) == PM_OK, "{name}'s anchor was refused");
+  assert(world_save(w, "{root}/prop/{name}.hxw", []) == WS_OK, "{name} was not saved");
 }
 
 fn write_plinth(root: text) {
@@ -161,7 +227,7 @@ fn write_plinth(root: text) {
 // ⚠ THE SHRINE STORES NO COORDINATE FOR THE STATUE, and that absence is §P3's
 // whole mechanism (`bind.loft`). Move the plinth and the statue follows, because
 // there is no second position that could be forgotten.
-fn write_shrine(root: text) {
+fn write_shrine(root: text, holds: text) {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   // A paved base. ⚠ NOT DECORATION — a part with no cells of its own has no
   // thumbnail, because the editor meshes a part's own chunks and does not expand
@@ -194,8 +260,12 @@ fn write_shrine(root: text) {
   assert(part_set_instances(w, [PartInst {
     pi_q: 2, pi_r: 1, pi_h: 0, pi_facing: 0, pi_part: "prop/plinth"
   }]) == PI_OK, "the shrine's instance was refused");
+  // ⚠ THE ONLY FIELD `A6.3` TOUCHES. Everything else about this document — the
+  // paving, the instance, the socket name — is written identically whichever statue
+  // it holds, which is what makes *no other change* a thing this file can assert
+  // rather than a thing it hopes.
   assert(part_set_bindings(w, [Binding {
-    bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: "prop/statue"
+    bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: holds
   }]).bw_code == BD_OK, "the shrine's binding was refused");
   assert(world_save(w, "{root}/prop/shrine.hxw", []) == WS_OK, "the shrine was not saved");
 }
@@ -252,10 +322,65 @@ fn main() {
            "the statue's glb was {before} bytes and is now {after} — a build that "
          + "does not repeat cannot be committed");
   }
+  seat = "{root}/prop/seated.glb";
+  save_glb(seated_mesh(), seat);
+  seatf = file(seat);
+  assert(seatf#size > 0, "save_glb wrote nothing to {seat}");
+  // ⚠ AND THE TWO MESHES ARE DIFFERENT SHAPES, which is the control on a swap that
+  // has two names and one asset: a placement carries the NAME and never the
+  // geometry, so two `save_glb` calls that both wrote the standing figure would
+  // satisfy every assertion below.
+  //
+  // ⚠ THE SIZE CANNOT SAY IT, AND THIS CHECK ASSERTED THE SIZE FIRST AND FAILED.
+  // Both figures are three boxes — 72 vertices, 36 triangles — so both files are
+  // **3616 bytes** and differ only in the float values. STATE.md's lesson G, met on
+  // a file rather than on a picture: a count is not a shape. The height is, and it
+  // is the same fact a person reads off the two thumbnails.
+  ga = load_glb(path);
+  gb = load_glb(seat);
+  assert(ga.gr_code == GR_OK && gb.gr_code == GR_OK,
+         "a statue mesh did not read back ({ga.gr_code}, {gb.gr_code})");
+  assert(len(ga.gr_mesh.vertices) > 0 && len(gb.gr_mesh.vertices) > 0,
+         "a statue mesh read back with no vertices");
+  assert(top_y(ga.gr_mesh) != top_y(gb.gr_mesh),
+         "both statues stand {top_y(ga.gr_mesh)} tall — the second mesh is probably "
+       + "the first");
+  // ⚠ AND HEIGHT ALONE IS STILL NOT ENOUGH, which the CATALOGUE PICTURE said and no
+  // number here did. `part_thumb_view` fits the camera to each part, so a shorter
+  // figure of the same proportions fills the frame identically and the two rows read
+  // as one statue drawn twice. Only the PROPORTION survives a per-part fit, so that
+  // is what is fenced — and it is fenced on the mesh, where it is a fact about the
+  // content rather than about how something chose to frame it.
+  aa = aspect(ga.gr_mesh);
+  ab = aspect(gb.gr_mesh);
+  wide = aa;
+  narrow = ab;
+  if ab > aa { wide = ab; narrow = aa; }
+  assert(narrow > 0.0 && (wide / narrow ?? 0.0) >= 1.5,
+         "the two statues are {aa} and {ab} wide for their height — under 1.5x apart "
+       + "they are one silhouette after the thumbnail camera fits each to the frame, "
+       + "and *a different statue* is then a claim only a string can make");
 
-  write_statue(root);
+  write_statue(root, "statue",
+               "a standing figure, arm raised along +X — modelled facing heading 0");
+  write_statue(root, "seated",
+               "a seated figure, knees forward along +X — modelled facing heading 0");
   write_plinth(root);
-  write_shrine(root);
+
+  // ── A6.3 — THE SWAP, MEASURED BEFORE THE COMMITTED STATE IS WRITTEN ────────
+  //
+  // ⚠ THE VARIANT GOES FIRST AND THE COMMITTED ONE LAST, and the order is the whole
+  // safety of doing this on a real committed file in a tree two agents share: the
+  // shrine is left holding `prop/statue` by the LAST write, before a single
+  // comparison is asserted. An assertion that fires cannot leave `data/parts/`
+  // holding the variant.
+  write_shrine(root, "prop/seated");
+  alt_world = ground();
+  alt = part_expand(alt_world, root, PartInst {
+    pi_q: 5, pi_r: 5, pi_h: GROUND, pi_facing: 0, pi_part: "prop/shrine"
+  }, 0);
+
+  write_shrine(root, "prop/statue");
 
   // ── and now the part of this that is the gate ──────────────────────────────
   //
@@ -323,7 +448,42 @@ fn main() {
   assert(ck.mc_code == MC_OK, "the statue's mesh did not load ({ck.mc_code}): {ck.mc_why}");
   assert(ck.mc_verts > 0, "the mesh loaded with {ck.mc_verts} vertices — it draws nothing");
 
+  sd = world_load("{root}/prop/seated.hxw");
+  assert(sd.wl_code == WL_OK, "the seated figure did not load: {sd.wl_detail}");
+  sck = part_mesh_loads(root, sd.wl_world);
+  assert(sck.mc_code == MC_OK, "the seated mesh did not load ({sck.mc_code}): {sck.mc_why}");
+  assert(sck.mc_verts > 0, "the seated mesh has {sck.mc_verts} vertices");
+
+  // ── A6.3 — a different statue on the same plinth, no other change ──────────
+  //
+  // The variant was expanded above, before the committed shrine was written back.
+  assert(alt.ex_code == EX_OK, "the swapped shrine did not expand: {alt.ex_why}");
+  assert(len(alt.ex_meshes) == 1, "{len(alt.ex_meshes)} placements after the swap, not 1");
+  am = alt.ex_meshes[0] ?? MeshAt {};
+
+  // ⚠ THE FIELD THAT MUST CHANGE, FIRST. Without it every check below is satisfied
+  // by a swap that never happened, which is the strongest possible wrong reason for
+  // a green build.
+  assert(am.ma_mesh == "prop/seated" && m.ma_mesh == "prop/statue",
+         "the swap did not take: '{m.ma_mesh}' and '{am.ma_mesh}'");
+  // …and the four that must not. Position and height are the SOCKET's and were
+  // never stored on the leaf — the absence `bind.loft` is built around.
+  assert(am.ma_q == m.ma_q && am.ma_r == m.ma_r,
+         "the seated figure landed at ({am.ma_q},{am.ma_r}), the standing one at "
+       + "({m.ma_q},{m.ma_r}) — the same socket gave two positions");
+  assert(am.ma_h == m.ma_h, "heights {am.ma_h} and {m.ma_h}");
+  assert(am.ma_facing == m.ma_facing, "turns {am.ma_facing} and {m.ma_facing}");
+
+  // ⚠ AND NO CELL ANYWHERE MOVED. The placement's own fields cannot see the plinth
+  // or the paving; this can. A swap that rebuilt the frame — or lost it — passes
+  // every assertion above and fails here.
+  df = part_diff(w, alt_world, 12);
+  assert(df.pd_same, "swapping the statue changed the world's cells: {df.pd_why}");
+
   println("  statue: {ck.mc_verts} vertices, {after} bytes -> {path}");
+  println("  seated: {sck.mc_verts} vertices, {seatf#size} bytes -> {seat}");
   println("  shrine: statue on prop/plinth at ({m.ma_q},{m.ma_r}), height {m.ma_h}, "
         + "turned {m.ma_facing} of 24 — a heading no cell part can take");
+  println("  swap:   prop/seated lands at ({am.ma_q},{am.ma_r}) height {am.ma_h} "
+        + "turned {am.ma_facing} — one field of the document, one field of the result");
 }

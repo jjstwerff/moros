@@ -65,13 +65,17 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A6.3` — swap the statue
+### The next thing to do is #17 `A7.1` — the server lists `data/parts/` and sends it
 
-`A6.3` is *"a different statue on the same plinth, no other change"*, and the library it needs is
-now on disk: `data/parts/prop/{statue,plinth,shrine}.hxw` plus `statue.glb`, built and gated by
-`src/prop_build.loft` under `make parts`. A placement is a `MeshAt` and carries **no identity and
-no part handle**, so `ma_mesh` is the whole difference between one statue and another — which is
-precisely what `A6.3` has to demonstrate.
+**All of `A6` is done.** `A7` is the picker: `A7.1` the list on the wire, `A7.2` *which is #18's
+`B5`, not a second widget*, `A7.3` a part-editing mode — **the acceptance test for the whole
+plan** — and `A7.4` the keyed-read question, to be closed with a number or closed as unnecessary.
+
+⚠ **`A7.1` MAY ALREADY BE HALF-BUILT.** The catalogue on the wire (`N:`) lists what is in
+`data/parts/` today — five parts, each with a thumbnail — so read #18's `B5` before adding a
+second listing. What `A7.1` may actually want is the *sockets and fits* alongside the names, which
+is what a picker needs to offer *what goes in this joint* (`parts_for_socket`, built at `A4.2` and
+still called by tests only).
 
 **Two steps are ◐ rather than done, each for a reason that is still true:**
 
@@ -153,21 +157,27 @@ named, and one list holds parts and materials alike, each row with a name, an im
 availability.
 
 **[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of
-`A4`, `A5.1`, `A5.2`'s state half, `A6.1` and `A6.2` complete.** `A3.4` and `A5.2` are ◐; the
+`A4`, `A5.1`, `A5.2`'s state half and all of `A6` complete.** `A3.4` and `A5.2` are ◐; the
 reasons are under *the next thing to do* above. In order: `A1.1` region copy · `A1.2` round-trip
 and `part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk ·
 `A2.2` the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check ·
 `A3.2` expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1`
 `SOCK`/`FITS` · `A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading
 measurement · `A5.1` the hinge · `A5.2`'s state half · `A6.1` the `MESH` section · `A6.2` the
-statue on the plinth.
+statue on the plinth · `A6.3` the swap.
 
 ⚠ **`data/parts/` NOW HOLDS TWO FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`)
-and `prop/{statue,plinth,shrine}.hxw` + `prop/statue.glb` (by `src/prop_build.loft`). `make parts`
-runs both, and both rebuild byte-identically — which is what makes committing a generated `.glb`
-sane. ⚠ **`expand == bake` is now a claim about CELL nests only**: `bake` refuses a nest holding a
-mesh (`BK_MESH`) rather than dropping it, because a baked part holds one `MESH` section and no
-position for it.
+and `prop/{statue,seated,plinth,shrine}.hxw` + two `.glb` (by `src/prop_build.loft`). `make parts`
+runs both, and all six files rebuild byte-identically — which is what makes committing a generated
+`.glb` sane. ⚠ **`expand == bake` is now a claim about CELL nests only**: `bake` refuses a nest
+holding a mesh (`BK_MESH`) rather than dropping it, because a baked part holds one `MESH` section
+and no position for it.
+
+⚠ **`A6.3` NEEDED NO NEW CODE, AND ITS FIXTURES ARE THE DELIVERABLE.** Swapping a bound part is a
+one-field edit, which is what §P3 promised — so the step is controls, and two of them proved
+nothing until sharpened: both statues anchored at `(0,0,0)` cannot tell *the position is the
+socket's* from *the position is the leaf's*. ⚠ **A test about an ABSENCE starts out unable to
+fail**, and `bind.loft`'s one invariant is exactly such an absence.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say
@@ -214,6 +224,13 @@ neither the plinth nor the statue on it; `part_expand` in the thumbnail path is 
 ⚠ **A CELL'S MATERIAL IS A SMALL NAMED SET, AND A LITERAL IS HOW YOU GET A GREEN PLINTH.** `3` is
 `FIELD_MAT`. A cell has no *stone* at all — `wall` is an EDGE material — so the five a cell may
 take are `SURFACE_MAT`, `ROAD_MAT`, `FIELD_MAT`, `FLOOR_MAT` and `ROOF_MAT`, all `hex_editor`'s.
+
+⚠ **A THUMBNAIL CANNOT SAY HOW BIG A PART IS.** `part_thumb_view` solves the camera to fill the
+frame **per part**, which is right — a cottage and a doorknob are both legible — and it means two
+props that differ only in SIZE are one picture. Only proportion survives the fit, and `A6.3`'s two
+statues are gated on it (their aspects must differ by 1.5×). ⚠ An ink-pixel count over a row does
+NOT see this: it saturates on the row window and barely moved across a reshape that took the two
+silhouettes from indistinguishable to obviously different.
 
 ⚠ **A reason has nowhere roomy to live.** A list row is **212 px** — twenty-one characters —
 so `B6`'s reasons are one word (`derived`, `scattered`) and the full sentence stays on the

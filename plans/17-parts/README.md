@@ -703,7 +703,7 @@ binding would forbid them, and ignoring a non-zero swing on one would draw a sta
 |---|---|---|---|
 | ✅ `A6.1` | `MESH` section: a `.glb` reference, over the existing `21:`/`22:`. | **DONE.** `src/prop.loft`, `hex_part` 180 → 191, both backends. Round-trip, and `part_mesh_loads` reads a FOREIGN glb out of the library. ⚠ The package took `glb_read`, and the fixture nearly went missing — see below. | S |
 | ✅ `A6.2` | A prop part in the same library, in the same sockets. | **DONE.** `expand` grew a second output; `data/parts/prop/` grew a statue, a plinth and a shrine, built and gated by `src/prop_build.loft`. `hex_part` 191 → 212, both backends. ⚠ The heading refusal narrowed, `ANCH` got its first consumer, `bake` grew a refusal it needed, and the content found a hole no probe had — see below. | M |
-| `A6.3` | Swap. | a different statue on the same plinth, no other change | S |
+| ✅ `A6.3` | Swap. | **DONE.** `data/parts/prop/seated` beside `statue`, and the shrine expanded bound to each. `hex_part` 212 → 217, both backends. ⚠ **It needed no new code**, which is the result rather than a shortcut — and two of its five tests would have passed on a design that stores a coordinate, until the fixtures were sharpened. See below. | S |
 
 ### What `A6.1` turned up
 
@@ -873,6 +873,59 @@ record**, or a second record beside it; it is no longer blocked on *a number* bu
 `(2,1)` — the shear vanishes on an even row — so the composition check passed on arithmetic
 that is wrong everywhere else until the yard was put at (5,5). The same trap is why
 `prop_build`'s shrine expands at (5,5) and asserts the naive sum disagrees.
+
+### What `A6.3` turned up
+
+⚠ **THE STEP NEEDED NO NEW CODE IN `hex_part`, AND THAT IS THE RESULT.** §P3's claim is that
+composition by SOCKET makes *swap this for that* a one-field edit; if it were true only in prose,
+these tests are what would have failed. So the whole step is fixtures and controls — five in
+`tests/place.loft` and one in `src/prop_build.loft` — each written to name a field that a design
+storing a coordinate, resolving a fit at write time, or caching a placement would have moved.
+
+⚠ **AND TWO OF THEM PROVED NOTHING UNTIL A FIXTURE WAS SHARPENED.** Both statues were anchored at
+`(0,0,0)`, so *the position is the SOCKET's* and *the position is the LEAF's* give the same answer
+and the test cannot tell them apart. Sabotaged — `ma_q: cq + pa_q` — and it stayed green. The
+swapped-in statue is now anchored at `(3,-2,7)` and the same sabotage moves it from `(8,6)` to
+`(11,4)`. ⚠ **A control that cannot fail is the default state of a test about an ABSENCE**, which
+is what `bind.loft`'s one invariant is.
+
+⚠ **NO OTHER CHANGE IS MEASURED IN TWO PLACES, BECAUSE NEITHER CAN SEE THE OTHER.** `part_diff`
+over the two expanded worlds says no CELL moved; the placement's four other fields say the STATUE
+did not move. A design that dropped the plinth on a swap passes the second and fails the first; one
+that shifted the statue does the reverse. ⚠ With the control that keeps `part_diff` honest —
+swapping a mesh body for a CELL one asserts `!pd_same`, because an always-equal comparison
+satisfies the first test forever.
+
+⚠ **AND THE PLINTH IS NOT TOUCHED, MEASURED BY ITS mtime AND NOT ONLY ITS SIZE.** A file rewritten
+with identical content keeps its size and moves its mtime; the pair is what separates *not written*
+from *written back the same*. ⚠ With the control that the SHRINE's mtime did move — otherwise a
+clock too coarse for a millisecond test would pass the assertion for a file the test rewrote itself.
+
+⚠ **A SWAP CAN FAIL, AND `A4.2`'s TWO ANSWERS FINALLY MEET AN AUTHOR.** A wrong KIND names both
+kinds (*takes a statue and this is a lamp*); a wrong SIZE names both full classes
+(*takes statue/plinth-2 and this is statue/plinth-4*), because when the kinds agree the class is
+the only thing that tells two statues apart. The first draft of the test demanded the full class
+from the kind refusal — which would have buried the one word that matters in two that do not.
+
+⚠ **A FILE SIZE CANNOT TELL TWO MESHES APART.** The control *the two statues are different assets*
+was written as `size != size` and **failed immediately**: both figures are three boxes — 72
+vertices, 36 triangles — so both `.glb` files are **3616 bytes** and differ only in float values.
+Lesson G on a file rather than on a picture. The check reads the geometry back instead.
+
+⚠ **AND THE THUMBNAIL MAKES *SIZE* INVISIBLE, WHICH TOOK THE PICTURE TO SEE.** The first seated
+figure was simply a shorter standing one, and the two catalogue rows read as one statue drawn
+twice — because `part_thumb_view` solves the camera to fill the frame **per part**, so *how big is
+it* is exactly what a thumbnail cannot say. Only PROPORTION survives that fit. ⚠ The ink-pixel
+count barely moved across the reshape (218/221 → 196/213) because a count over a fixed row window
+saturates on the window; the silhouettes went from indistinguishable to obviously different. The
+durable gate is on the MESH — the two aspects must differ by 1.5× — because a proportion is a fact
+about the content rather than about how something framed it. Sabotaged with a shrunk statue: 0.618
+against 0.622, refused, both numbers named.
+
+⚠ **THE COMMITTED STATE IS WRITTEN LAST, BEFORE ANY COMPARISON IS ASSERTED.** `data/parts/` is
+committed and this tree is worked by more than one agent, so the gate expands the variant first and
+writes the shrine back to `prop/statue` before it checks anything — an assertion that fires cannot
+leave the library holding the variant. Measured: `shrine.hxw`'s md5 is unchanged from `A6.2`.
 
 ### A7 — the picker
 
