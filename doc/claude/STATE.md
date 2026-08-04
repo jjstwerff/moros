@@ -41,7 +41,11 @@ discriminator when one fails. ⚠ **AND 4 IS NOT IMMUNE** — 2026-08-04, `cache
 exact second face (`agree 0 bad 24 layers 0`) at `GATE_JOBS=4` and passed **alone** on the same
 build minutes later. So *"reliable"* means *fails rarely*, and the discriminator is not optional:
 a `cache` failure whose `layers` is **0** compared nothing and is a startup miss, whatever the
-job count.
+job count. ⚠ **AND THERE IS A THIRD FACE, in the CHARACTER gates**: `walk` and `hipskin` failed
+together at `GATE_JOBS=4` with `{"frames":1,"bodyMoved":false}` — one frame in the whole run, so
+the simulation never ticked while four interpreted servers shared the box. Both passed **alone**
+on the same build, in 12 s and 8 s. The tell is the same as the other two: a number that says
+*nothing happened*, not a number that says *the wrong thing happened*.
 
 | | | | |
 |---|---|---|---|
@@ -65,17 +69,21 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3` — a part-editing mode
+### The next thing to do is #17 `A7.3b` — the fence
 
-**All of `A6` and `A7.1` are done, and `A7.2` is #18's `B5`, already built.** `A7.3` is *open a
-part as a world, edit, save back* — **a house authored end-to-end without touching loft**, which
-is the acceptance test for the whole plan. `A7.4` (keyed reads) stays deferred until a number says
-it hurts; `src/part_build.loft` prints the cost every run.
+**`A7.3a` is built**: `44:<name>` opens a part as the store the gestures reach, `44:` closes back,
+and the subject line says which. The world and the renderer's nine registries are held aside by
+assignment — a deep copy, which is exactly the snapshot the mode wants — and the feet with them.
+`tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red. ⚠ **Nothing in part mode
+reaches the disk**, which is what makes the step safe by construction: there is no save until
+`A7.3c`, a close discards and says how many edits it discarded, and the two gestures that COULD
+have persisted something — `8:` over a world file, `9:` making the subject lie — are refused with
+the mode rather than with `b`'s fence.
 
-**`A7.3` is broken into six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
-the store swap and the subject (`a`), the fence of refusals (`b`), the save (`c`), the save check
-(`d`), a part that did not exist before (`e`), the joints (`f`). ⚠ The probe that shaped it says
-**holding the world aside is a deep COPY, not a second name**, and `w_tau` cannot see that cost.
+**`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
+✅ the store swap and the subject (`a`), the fence of refusals (`b`), the save (`c`), the save check
+(`d`), a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
+until a number says it hurts; `src/part_build.loft` prints the cost every run.
 
 ⚠ **`A7.3` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
 `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
@@ -108,6 +116,16 @@ carries only what is true *now* and what bites regardless of which step you pick
 narrative is [JOURNAL.md](JOURNAL.md) § *Sessions 10–12*.
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **A RAISE LEAVES 22 OF 48 CHUNK GROUNDS STALE ON THE CLIENT, AND NOTHING EVER CORRECTS THEM.**
+Found 2026-08-04 by `A7.3a`, whose picture comparison was the first instrument to re-mesh a whole
+world at once. Attributed away from part mode by forcing the same rebuild with `8:`/`9:` — the same
+22. `raise_ahead` writes along a **ray**; `mark_dirty` marks a **disc** around where the ray lands.
+Invisible to every existing gate, because they all check the store and the store is right — `G`,
+with the count correct and the picture wrong.
+[OPEN_ISSUES § *A raise marks fewer chunks than it writes*](OPEN_ISSUES.md). ⚠ Any gate that
+photographs the world must **settle the picture first**, or it reports 22 differences its own
+feature did not cause.
 
 **A struct name is GLOBAL across a consumer's dependency graph, and a package suite cannot see
 it.** `hex_part` was 131 green while `hex_editor` would not build, because both declared `Fit`.
@@ -219,6 +237,13 @@ watches, and doing that to a committed file corrupts a tree two agents share), a
 cottage. Defaulted, `make parts` writes the committed file byte-identically.
 
 ### Built and not yet called
+
+⚠ **`44:` PART HAS NO CLIENT BINDING — only the gate drives it.** `A7.3a` says *no new gesture*
+on purpose, so nothing in either renderer can open a part yet; a person needs `wscat` or a script.
+That is named here rather than left to be discovered, because it is this tree's own trap wearing a
+plan step's clothes. It gets its consumer when the catalogue row a picker already draws can be
+opened — and the honest test of the whole mode is `A7.3e`, where a part authored in the editor
+appears in that list.
 
 ⚠ **`hex_editor::names` has no consumer** — the name table, tested at `B4`, is invoked by
 nothing. That is the trap `moros_ui` fell into and it is live again. It gets one when
@@ -375,7 +400,7 @@ of the identical expression is correct. Both were invisible until something read
 ## How to run things
 
 ```sh
-GATE_JOBS=4 make gate  # ⚠ 35 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
+GATE_JOBS=4 make gate  # ⚠ 37 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:
                        #   each gate starts a server that interprets a 5,900-line file, the
                        #   wait for `listening on port` is 60 s, and one gate alone takes
                        #   2 m 33 s. Measured: 10 of 35 failed at 10 jobs and the SAME suite

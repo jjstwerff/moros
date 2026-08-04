@@ -379,6 +379,22 @@ const MSG_GROUND = 42;
 // measuring for: the ground mesh is ~1 MB of ASCII floats per chunk rebuild, and a
 // client that can derive it from the voxels it already caches does not need it sent.
 const MSG_DERIVES = 43;
+// ── PART MODE — plan 17 `A7.3a` ─────────────────────────────────────────────
+//
+// `44:<name>` opens a part from the library as the store the gestures reach;
+// `44:` alone closes it and puts the world back. ONE message with two forms
+// rather than an open and a close, which is `14:`'s own precedent — and 44 is
+// the next free id, 1 through 43 all being taken.
+//
+// ⚠ A PART IS A WORLD (§P1), so this is a SWAP and not a second editor: the
+// same gestures, the same renderer, the same camera. What makes it safe is that
+// the world is held aside rather than closed, and what makes it legible is the
+// subject line — see `hud_wire`.
+//
+// ⚠ NOTHING IN PART MODE REACHES THE DISK YET. `A7.3a` deliberately has no save,
+// so an edit made to a part is discarded when the mode closes and says how many
+// it discarded. The save is `A7.3c`, and its check is `A7.3d`.
+const MSG_PART = 44;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -4159,8 +4175,22 @@ fn library_moved(avail: vector<PartAvail>) -> boolean {
   lm_now != lm_was
 }
 
-fn hud_wire(name: text, mode: integer, lev: boolean, rd: boolean, tr: boolean) -> text {
-  "H:world {name} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
+// ⚠ THE SUBJECT SAYS WHICH STORE THE GESTURES REACH — plan 17 `A7.3a`. Part mode
+// is a swap, so every gesture, every read-back and every picture is about the part
+// while it is open; a line still reading `world <name>` would make the one
+// unrecoverable mistake this mode can produce — editing the thing you did not mean
+// — invisible until a save. It is the SUBJECT and not a second field for the same
+// reason `B2` gave: what you are working on is one thing, and the line names it.
+//
+// ⚠ AND BOTH NAMES ARE CARRIED, never a third variable holding "the current one".
+// A copy of the world's name kept in sync across a mode switch is a second
+// authority, and this file has met that trap under `B2.3` already: a refused load
+// must not rename the subject, which is only checkable while one place decides.
+fn hud_wire(in_part: boolean, wname: text, pname: text, mode: integer,
+            lev: boolean, rd: boolean, tr: boolean) -> text {
+  subject = "world {wname}";
+  if in_part { subject = "part {pname}"; }
+  "H:{subject} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
 }
 
 const MODE_AUTO   = 0;
@@ -4952,6 +4982,49 @@ fn main() {
   ring_r = 0.0;
   wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
+  // ── PART MODE — plan 17 `A7.3a` ────────────────────────────────────────────
+  //
+  // The world, held aside while a part is edited. ⚠ AN ASSIGNMENT FROM A LOCAL IS
+  // A DEEP COPY AND NOT A SECOND NAME — measured on both backends before this was
+  // designed, and filed as loft#774 because the same spelling from a container
+  // (`v[0]`, `s.field`) ALIASES instead. That copy is exactly what holding aside
+  // wants: an independent snapshot nothing in part mode can reach.
+  //
+  // ⚠ AND IT IS WHY THESE ARE TEN PLAIN LOCALS RATHER THAN ONE `Held` STRUCT.
+  // Measured: `Holder { h: a }` copies on the way in and `out = hold.h` ALIASES on
+  // the way out — so a struct would have made the restore a second name for the
+  // held field under a word that says snapshot, and the next open would then hold
+  // the part aside as the world. Ten lines of measured behaviour beat one line of
+  // assumed behaviour.
+  //
+  // ⚠ THE REGISTRIES GO TOO, and that is not tidiness. Wall runs, roof plans,
+  // leaves, openings, annexes, props, slabs and holes are the SERVER's records for
+  // the world being edited, not the store's — so a part drawn while they are still
+  // live is drawn with the world's walls standing in it. `part_thumb_wire` already
+  // settled the honest answer for exactly this reason: a part has none of its own,
+  // empty is the argument, and `chunk_mesh_props` falls back to per-edge panels
+  // and a roof from cells — which is how the stencil's house has always drawn.
+  in_part = false;
+  part_name = "";
+  part_tau0 = 0;                 // the part's edit clock as it was opened, so the
+                                 // close can say how many edits it is discarding
+  held_world = new_world();
+  held_runs = WallRuns { items: [] };
+  held_roofs = hex_editor::RoofPlans { items: [] };
+  held_leaves = hex_editor::DoorLeaves { items: [] };
+  held_openings = hex_editor::Openings { items: [] };
+  held_annexes = hex_editor::Annexes { items: [] };
+  held_awalls = WallRuns { items: [] };
+  held_props = hex_editor::Props { items: [] };
+  held_slabs = hex_editor::Slabs { items: [] };
+  held_holes = hex_editor::Holes { items: [] };
+  // The feet too: a part sits at its own origin, so opening one teleports the
+  // walker there and closing puts them back where they were standing. Without it
+  // you open a cottage from across the valley and look at empty ground.
+  held_px = 0.0;
+  held_py = 0.0;
+  held_pz = 0.0;
+
   // The collision proxy and its validity, keyed on the cell, the edit clock and
   // the LEVEL the walker is on.
   coll_sf = surfaces_new();
@@ -5138,7 +5211,7 @@ fn main() {
         // client was in the list and reached nobody. A client that connects and is
         // told nothing shows an empty subject line for as long as no toggle moves —
         // which on a quiet session is forever.
-        srv.send_to(ev.cid, hud_wire(world_name, cam_mode, levelling, roading, tracing));
+        srv.send_to(ev.cid, hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
         // ⚠ IT GOES OUT HERE **AND AGAIN WHENEVER THE LIBRARY MOVES** — plan 17
         // `A7.1`. This comment used to read *"the catalogue does not change during
         // a session, so it goes out once"*, which was false the whole time: the
@@ -5225,12 +5298,166 @@ fn main() {
         } else if ev.msg_id == MSG_KEYS {
           keys = ev.payload as integer ?? 0;
         } else if ev.msg_id == MSG_SAVE {
-          scode = world_save(wld, world_path(ev.payload), []);
-          nch = len(wld.w_chunks);
-          if scode == 0 { world_name = ev.payload; }
-          srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
-          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
-          println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
+          // ⚠ THE ONE GESTURE THAT CAN LOSE SOMETHING WHILE A PART IS OPEN, so its
+          // guard comes with the mode rather than with the fence (`A7.3b`). In part
+          // mode `wld` IS the part, and `8:<world name>` would write four chunks of
+          // cottage over the world file of that name — data loss on disk, from a
+          // message that looks like the save you meant. Everything else part mode
+          // can reach is in memory and goes when the mode closes.
+          //
+          // A part's own save is `A7.3c`; until it exists the honest answer is that
+          // there is no save here, said out loud rather than done quietly.
+          if in_part {
+            srv.send_to(ev.cid, "S:save refused — editing part '{part_name}'; "
+                              + "close it with 44: to save the world");
+            println("editor: save refused — in part mode ('{part_name}')");
+          } else {
+            scode = world_save(wld, world_path(ev.payload), []);
+            nch = len(wld.w_chunks);
+            if scode == 0 { world_name = ev.payload; }
+            srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
+            println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
+          }
+        } else if ev.msg_id == MSG_LOAD && in_part {
+          // ⚠ THE SECOND GUARD THAT COMES WITH THE MODE. A load in part mode would
+          // put a WORLD into the store the subject line calls a part, and the mode
+          // would go on saying `part <name>` over it — the mode lying about what
+          // you are editing is the failure the subject exists to prevent, so it
+          // cannot be allowed to happen through another message.
+          srv.send_to(ev.cid, "S:load refused — editing part '{part_name}'; "
+                            + "close it with 44: first");
+          println("editor: load refused — in part mode ('{part_name}')");
+        } else if ev.msg_id == MSG_PART {
+          // ── PART MODE — plan 17 `A7.3a` ──────────────────────────────────────
+          //
+          // ⚠ THE SWAP IS THE WHOLE MECHANISM, and every line of it is an
+          // assignment from a local, which loft#774 measured to be a deep copy.
+          // Both directions are therefore snapshots: what is held aside cannot be
+          // reached from part mode, and what is restored cannot be reached from
+          // whatever the part store becomes next.
+          t_swap = ticks();
+          if ev.payload == "" {
+            if !in_part {
+              srv.send_to(ev.cid, "S:part close refused — not editing a part");
+              println("editor: part close refused — not in part mode");
+            } else {
+              // ⚠ IT SAYS WHAT IT IS THROWING AWAY, in the store's own unit. `A7.3a`
+              // has no save, so a close discards; a close that discarded silently
+              // would be the editor quietly eating an author's work, and the edit
+              // clock is the exact count — `w_tau` bumps once per write that
+              // changed something, so it is neither a guess nor a tally the writer
+              // kept about itself.
+              pt_edits = wld.w_tau - part_tau0;
+              pt_shown = part_name;
+              wld = held_world;
+              wall_runs = held_runs;
+              roof_plans = held_roofs;
+              door_leaves = held_leaves;
+              wall_openings = held_openings;
+              wall_annexes = held_annexes;
+              annex_walls = held_awalls;
+              wall_props = held_props;
+              wall_slabs = held_slabs;
+              wall_holes = held_holes;
+              px = held_px;
+              pz = held_pz;
+              py = ground_under(wld, px, pz, held_py);
+              in_part = false;
+              part_name = "";
+              // The same invalidation a load does, for the same reason and through
+              // the same routine: everything visible is derived from the store, and
+              // the store just became a different one.
+              for pcd in loaded { mark_dirty_id(dirty, pcd); }
+              vy = 0.0;
+              moved = true;
+              srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
+                                     levelling, roading, tracing));
+              srv.send_to(ev.cid, "S:part '{pt_shown}' closed — {pt_edits} edits "
+                                + "discarded, world restored ({len(wld.w_chunks)} chunks)");
+              println("editor: part '{pt_shown}' closed — {pt_edits} edits discarded, "
+                    + "world back in {(ticks() - t_swap) / 1000 ?? 0} ms");
+            }
+          } else if in_part {
+            // One part at a time. Opening a second would have to decide what
+            // happens to the first one's edits, and `A7.3a` has no save to offer.
+            srv.send_to(ev.cid, "S:part refused — already editing '{part_name}'; "
+                              + "close it with 44: first");
+            println("editor: part refused — already editing '{part_name}'");
+          } else if ev.payload.find("..") != null {
+            // The same fence `14:` uses, in the same words: a part is NAMED, never
+            // pathed, and a name that climbs out of the library is refused rather
+            // than normalised.
+            srv.send_to(ev.cid, "S:part refused — name '{ev.payload}' leaves data/parts/");
+            println("editor: part refused — name '{ev.payload}' leaves data/parts/");
+          } else {
+            pt_ld = world_load(part_path(ev.payload));
+            if pt_ld.wl_code != WL_OK {
+              // ⚠ AND THE SUBJECT LINE DOES NOT MOVE. `B2.3`'s control, one message
+              // over: a refused open must leave the line naming the world, or the
+              // HUD is an echo of the keystroke rather than a report of the state.
+              srv.send_to(ev.cid, "S:part refused — '{ev.payload}' "
+                                + "({pt_ld.wl_code}) {pt_ld.wl_detail}");
+              println("editor: part refused — '{ev.payload}' ({pt_ld.wl_code}) {pt_ld.wl_detail}");
+            } else {
+              held_world = wld;
+              held_runs = wall_runs;
+              held_roofs = roof_plans;
+              held_leaves = door_leaves;
+              held_openings = wall_openings;
+              held_annexes = wall_annexes;
+              held_awalls = annex_walls;
+              held_props = wall_props;
+              held_slabs = wall_slabs;
+              held_holes = wall_holes;
+              held_px = px;
+              held_py = py;
+              held_pz = pz;
+
+              wld = pt_ld.wl_world;
+              // Empty, per `part_thumb_wire`'s argument — a part has no runs, roofs,
+              // leaves or dressing of its own, and the world's would be drawn
+              // standing in it.
+              wall_runs = WallRuns { items: [] };
+              roof_plans = hex_editor::RoofPlans { items: [] };
+              door_leaves = hex_editor::DoorLeaves { items: [] };
+              wall_openings = hex_editor::Openings { items: [] };
+              wall_annexes = hex_editor::Annexes { items: [] };
+              annex_walls = WallRuns { items: [] };
+              wall_props = hex_editor::Props { items: [] };
+              wall_slabs = hex_editor::Slabs { items: [] };
+              wall_holes = hex_editor::Holes { items: [] };
+              in_part = true;
+              part_name = ev.payload;
+              part_tau0 = wld.w_tau;
+              // A part is authored around its own origin, so that is where the feet
+              // go. Staying put would open a cottage from across the valley and show
+              // the author empty ground with the subject line insisting otherwise.
+              px = 0.0;
+              pz = 0.0;
+              py = ground_under(wld, px, pz, 0.0);
+              vy = 0.0;
+              for pod in loaded { mark_dirty_id(dirty, pod); }
+              moved = true;
+              srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
+                                     levelling, roading, tracing));
+              pt_meta = part_meta(wld);
+              pt_named = part_name;
+              if pt_meta.mr_code == MR_OK && pt_meta.mr_meta.pm_name != "" {
+                pt_named = pt_meta.mr_meta.pm_name;
+              }
+              srv.send_to(ev.cid, "S:part '{part_name}' opened as '{pt_named}' — "
+                                + "{len(wld.w_chunks)} chunks, world held aside");
+              // ⚠ THE COST OF THE HOLD, SAID OUT LOUD. A swap is a deep copy of
+              // every chunk and `w_tau` cannot see it: the edit clock counts writes
+              // that CHANGED something, and a copy changes nothing. So the one
+              // instrument this tree measures cost with is blind here by
+              // construction, and the wall clock is what is left.
+              println("editor: part '{part_name}' opened — {len(wld.w_chunks)} chunks, "
+                    + "{len(held_world.w_chunks)} held aside in "
+                    + "{(ticks() - t_swap) / 1000 ?? 0} ms");
+            }
+          }
         } else if ev.msg_id == MSG_LOAD {
           lres = world_load(world_path(ev.payload));
           if lres.wl_code == WL_OK {
@@ -5240,7 +5467,7 @@ fn main() {
             // not happen is the exact lie B2.3's control is aimed at, one message
             // over from the mode it was written for.
             world_name = ev.payload;
-            srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
             // Everything visible is derived from the world, so a load invalidates
             // all of it — the one case where the whole loaded set really is dirty,
             // and saying so through the same routine keeps one path.
@@ -5686,7 +5913,7 @@ fn main() {
         } else if ev.msg_id == MSG_TRACE {
           tracing = (ev.payload as integer ?? 0) != 0;
           srv.send_to(ev.cid, "S:trace {tracing}");
-          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
           println("editor: trace {tracing}");
         } else if ev.msg_id == MSG_MODE {
           // ⚠ AN INADMISSIBLE MODE IS REFUSED, NOT CLAMPED — leak site 1. `40:7`
@@ -5714,7 +5941,7 @@ fn main() {
             // control. The refusal above sends no `H:`, so a mode the server
             // declines leaves every client's subject line exactly as it was — the
             // one behaviour that separates a HUD from an echo of the keystroke.
-            srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
             println("editor: camera mode {cam_mode}");
           }
         } else if ev.msg_id == MSG_LABELS {
@@ -6302,7 +6529,7 @@ fn main() {
             srv.send_to(ev.cid, "S:road false at grade {road_h}");
             println("editor: road off at grade {road_h}");
           }
-          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling { level_warned = false; }
@@ -6338,7 +6565,7 @@ fn main() {
             moved = true;
             println("editor: levelling off — feet back on the ground at {py}");
           }
-          srv.broadcast(hud_wire(world_name, cam_mode, levelling, roading, tracing));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
         } else if ev.msg_id == MSG_RAISE {
           // ⚠ THE GESTURE IS `hex_editor`'s NOW — `SCRIPTED_EDITOR.md` §2. Ninety
           // lines of ray-walk, brush and clamp lived here, reachable only through

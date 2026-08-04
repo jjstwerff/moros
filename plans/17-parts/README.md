@@ -957,7 +957,7 @@ both stores in a vector and take `[i]`.
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | open and close with no edit leaves the world's `w_tau` and its columns exactly as they were, and the part file byte-identical | S |
+| ✅ `A7.3a` | `44:<name>` opens a part as the edited store, `44:` alone closes back. The world is held aside, the subject line says `part <name>`. **No save and no new gesture.** | **DONE.** `tools/gates/world/part_mode.mjs`, 31 checks, five sabotages seen red — and the first of them exposed a check that could not fail. ⚠ **Four findings**, see below | S |
 | `A7.3b` | The fence: which messages part mode REFUSES, before anything can write. | a stamp inside a part is not an `INST` (§P4) — a silent bake is the unrecoverable one | XS |
 | `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | edit one cell, save, reload — every section byte-identical and only the cells differ | S |
 | `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | a refused save leaves the FILE unchanged, not merely the acknowledgement saying no | XS |
@@ -992,6 +992,74 @@ every *it round-trips* test and still churns a committed file on every open. ⚠
 mode, the refusals and the stale geometry need a running world. ⚠ **The owner guard finally has its
 case too**: the world's save passes `OWNER_ANY`, and a part library shared by two agents, the gates
 and a human editor is exactly what `WS_CONCURRENT` was built for.
+
+### What `A7.3a` turned up
+
+⚠ **THE STORE IS NOT ALL OF THE WORLD, AND THE REGISTRIES HAD TO BE HELD ASIDE TOO.**
+Wall runs, roof plans, door leaves, openings, annexes, annex walls, props, slabs and
+holes are the **server's** records for the world being edited, not the store's — so a
+part drawn while they are live has the world's walls standing inside it, and a close
+that did not put them back leaves the author's house drawn as bare edge panels with no
+roof. `part_thumb_wire` had already settled the same question in the same words
+(*"a part has no wall runs, no roof plans, no leaves and no dressing of its own"*), so
+the argument was not re-derived — it was read. ⚠ **And no message on this wire reads any
+of them back**: `26:` and `15:` see the store, which the snapshot restores on its own.
+The only instrument that reaches the registries is the PICTURE, which is why the gate
+compares the client's whole mesh set before the open with the one after the close.
+
+⚠ **TWO GUARDS SHIPPED WITH THE MODE RATHER THAN WITH `A7.3b`'s FENCE, AND ONE OF THEM
+IS DATA LOSS ON DISK.** In part mode `wld` IS the part, so `8:<world name>` writes four
+chunks of cottage over the world file of that name — from a message that looks exactly
+like the save you meant. `9:` is the other: it would put a world into the store the
+subject line calls a part and the mode would go on saying `part <name>` over it. ⚠ The
+step's own claim is that **nothing in part mode can persist** (there is no save until
+`A7.3c`), and `8:` was the one hole in it. Everything else the mode can reach is in
+memory and goes when the mode closes — which is what makes `A7.3a` safe by construction
+rather than by care.
+
+⚠ **THE FIRST STALE-GEOMETRY CHECK COULD NOT FAIL, AND THE SABOTAGE IS WHAT SAID SO.**
+*Every mesh id held before the swap was re-addressed after it* was built from `a.meshes`
+— the **cumulative** arrival list — so the "after" set always contained the "before" set
+and the check was vacuous. Removing the invalidation from the open left the gate green.
+Slicing the list at the open is the whole difference between *these ids were
+re-addressed* and *these ids exist*. `D` again, and it was the first thing tried.
+
+⚠ **AND TWO MORE INSTRUMENTS WERE BLIND BEFORE THEY WERE AIMED.** `15:` COLUMN answers a
+column's LAYER tops and a raise on the base plane creates no layer — so `column 0,0 = `
+came back from the world both before and after, and *the world came back exactly* passed
+comparing nothing with nothing; `26:` CELL is what sees a raise. And the check that the
+world had a house in it matched `/house|placed/`, which the **refusal** *"house refused —
+a footprint at this facing has no mitred corners"* satisfies perfectly — an instrument
+reporting success on the sentence that says it failed. (Only six of the twelve placements
+have mitred corners; the gate now faces 30° and requires `house placed`.)
+
+⚠ **A RAISE LEAVES 22 OF 48 CHUNK GROUNDS STALE ON THE CLIENT — AND IT IS NOT THIS
+FEATURE'S DOING.** The picture comparison reported 22 differences on its first honest
+run, all of surface 0. Attributed by forcing the same full rebuild with `8:`/`9:`
+instead of with the swap: the **same 22**. The swap is merely the first thing that ever
+re-meshed everything at once, and what it exposed is that `raise_ahead` writes along a
+ray while `mark_dirty` marks a disc around where that ray lands. Filed in
+[OPEN_ISSUES](../../doc/claude/OPEN_ISSUES.md); the gate settles the picture with a
+save/load before photographing it, and says why. ⚠ **A true measurement of the wrong
+thing is worse than no check** — reporting those 22 as part mode's would have been a
+gate that lies in the direction of looking rigorous.
+
+⚠ **TEN PLAIN LOCALS RATHER THAN ONE `Held` STRUCT, AND THAT IS MEASURED, NOT TASTE.**
+[loft#774](https://github.com/loft-lang/loft/issues/774): `b = a` from a local **copies**
+and `out = hold.h` from a struct field **aliases**, both spellings identical. A struct
+would have made the restore a second name for the held field under a word that says
+snapshot, and the next open would then have held the part aside as the world.
+
+**The five sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the open does not invalidate | 1 — *and 0 before the vacuous check was fixed* |
+| the roof plans are not restored | 1 |
+| the world store is not restored | 3 |
+| the subject never names the part | 2 |
+| the save guard is gone | 1 |
+| a refused open renames the subject | 2 |
 
 ⚠ **`A7.3e`'s ACCEPTANCE HOUSE MUST NOT BE `house/cottage`.** The cottage is *generated* by
 `src/part_build.loft` and `make parts` verifies it byte-identically — so a cottage authored in the

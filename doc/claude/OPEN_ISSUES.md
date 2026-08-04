@@ -372,6 +372,34 @@ with its own documentation:
 | The socket, message by message | [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) |
 | The plans themselves | `gh issue list -R jjstwerff/moros --label plan --state all` |
 
+### Open: a raise marks fewer chunks than it writes, and the client keeps the stale ground
+
+⚠ **Found 2026-08-04 by plan 17 `A7.3a`, and only because a new instrument compared
+two pictures of the same world.** On a **fresh** server: `7:0,0,0` · three `5:1`
+raises · wait. **22 of the 48 loaded chunks then hold a ground mesh that does not
+match the store**, and no amount of waiting corrects them — they stay stale until
+*something* forces a full rebuild, at which point their ground jumps from flat to
+the raise's falloff (`0,0,-48,0,1,0` → `0,0.1388889,-48,-0.0719,…`).
+
+**Attributed away from part mode**, which is how it was found: forcing the rebuild
+with `8:`/`9:` instead of with the part swap produces the **same 22**. So it is the
+raise, not the swap — the swap is merely the first thing that ever re-meshed
+everything at once and made the disagreement visible.
+
+⚠ **The shape is the one the handler's own comment already warned about, one size
+up.** `MSG_RAISE` marks `PEAK_R + 2` — a comment there records the ring just outside
+`PEAK_R` holding a stale mesh and the gap you see through it. The measurement says
+the write still reaches further than the mark: the stale chunks are ~48 world units
+out, far past any plausible brush radius, and `raise_ahead` walks a **ray** while
+`mark_dirty` marks a **disc** around where that ray lands. Everything the ray
+crossed on the way is written and not marked.
+
+⚠ **It is invisible to every existing gate**, because each one checks the store and
+the store is right. `G` again: *a count is not a picture* — and here the count is
+correct and the picture is not. `tools/gates/world/part_mode.mjs` works around it
+by settling the picture with a save/load before it photographs anything, and says
+so; the fix belongs with whoever owns `raise_ahead`'s extent.
+
 ### Open: `stencil_place`'s roof fence admits roofs the walls cannot reach
 
 ⚠ **Found 2026-08-03 by `B5.3`, and by looking at a picture nobody had drawn
