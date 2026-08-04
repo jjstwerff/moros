@@ -20,9 +20,9 @@ JOURNAL.md unthinned; what stays here is what is true **now**.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4.3`
+## ⏭ PICK UP HERE (2026-08-04, session 12) — plan 18 COMPLETE, plan 17 through `A4`
 
-`make gate` **35 green** · `make lib-test` **2416, both backends** · `make parts` green
+`make gate` **35 green** · `make lib-test` **2428, both backends** · `make parts` green
 (`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
 the installed loft.
 
@@ -38,7 +38,7 @@ alone at `GATE_JOBS=1` is the cheap discriminator.
 | | | | |
 |---|---|---|---|
 | `hex_editor` **235** | `hex_world` **114** | `lavition_ui` **65** | `hex_part` **157** |
-| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | |
+| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
 here ahead of `main` on purpose, so that a language defect is fixed in the language rather than
@@ -57,7 +57,47 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A4.4` — the 24-heading approximation. **`A3.4` is still ◐.**
+### The next thing to do is #17 `A5.1` — the hinge. **`A3.4` is still ◐, and `A4` is closed.**
+
+**`A4.4` is done, and it refuted the design sentence it was sent to measure.**
+`moros_map/tests/headings.loft` rotates a 37-cell disk (90 interior adjacencies) by each of the
+24 headings and **prints the table every run**: lost cells, torn adjacencies, boundary ties,
+worst residual.
+
+| headings | what happens |
+|---|---|
+| `0 4 8 12 16 20` (60° multiples) | **exact** — nothing lost, nothing torn, residual zero to the last bit |
+| the 15° and 45° families (12) | **well-defined and wrong** — 12 of 90 adjacencies tear, worst residual **0.522** hex steps against a covering radius of 0.577 |
+| the 30° family (6) | **arbitrary** — six of 37 points land *exactly* on a cell boundary; 18 of 90 tear; at **90°** the tie-break puts two cells on one |
+
+⚠ **PARTS §Open JUSTIFIED 24 WITH A CATEGORY ERROR, and it is corrected in place.** It cited
+*"the editor's own wall runs use 24"* — that 24 is `hex_shape::hexwall`'s `d24`, whose own header
+reads **"THE 24 DIRECTIONS, AND WHY ONLY 12 ARE FOR HOUSES"** and **"HOUSES ARE NEVER DRAWN WITH
+AN IN-BETWEEN ANGLE"**. A wall run is a one-dimensional path and may STAIRCASE; a part is a body,
+and rotating a body is a map from the lattice onto itself. Lesson §B's shape exactly.
+
+⚠ **THE NUMBER THAT MATTERS IS THE ONE NOBODY WOULD HAVE LOOKED FOR — torn adjacencies.** No
+cells are lost, every count agrees with itself, and the house has holes in its walls. A residual
+alone reads as *half a cell, close enough*; 12-of-90 broken neighbours is not close to anything.
+
+⚠ **AND THE ONE ODD ROW IS EXPLAINED RATHER THAN LEFT TO BE MISREAD.** 90° loses two cells and
+270° loses none, which reads as a defect in one of them. Both have the same **six boundary ties**;
+at 90° the deterministic round sends two of them the same way. **The two rows differ by a rounding
+convention, not by an angle** — measured with a second instrument added for exactly that question.
+
+⚠ **THE FLOAT INSTRUMENT IS HELD AGAINST AN INTEGER ONE BEFORE IT IS BELIEVED** — at the six exact
+headings the rotate-and-snap must land every cell exactly where `hex_field::cell_rot` puts it, and
+the turn DIRECTION is measured rather than assumed (`lattice_rot60`'s comment says
+counter-clockwise, `moros_map`'s says `cell_rot` turns clockwise).
+
+**What changed and what did not.** `FACINGS` stays **24** — the record is the heading an author
+*asked* for, and one heading space shared with the runs is worth having. `expand`/`bake` now name
+the measurement in their refusal instead of promising `A4.4` will implement it. ⚠ **Applying the
+SIX is not done**, and it needs a lattice rotation `hex_part` has no dependency for (its
+`loft.toml` forbids one, on a premise that has since moved — the package now contains the placer).
+⚠ **Open, and NOT a lattice question:** `moros_map` has twelve exact *placements*, six turns plus
+six **flips**; a flip is a mirror, so a house at a 30° hour has its door on the other side.
+Whether a part may be mirrored to reach those six is an authoring call.
 
 **`A4.1`, `A4.2` and `A4.3` are done.** `lib/hex_part/src/sock.loft` carries `SOCK` (the joints a
 part offers) and `FITS` (the one it goes into); `src/fit.loft` answers `socket_fit(frame, leaf)`
@@ -372,16 +412,16 @@ lineage. Which tree owns it for good is
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3` and `A4.1`–
-`A4.3` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3` and all of
+`A4` complete** (`A3.4` ◐, blocked on there being no save gesture until `A7.3`). `A1.1` region
 copy, `A1.2` round-trip and `part_diff`, `A1.3` store sections, `A1.4` `PART`/`ANCH`, `A2.1` the
 cottage on disk, `A2.2` the stamp and the wire, `A2.3` one placement path, `A3.1` `INST` and the
 cycle check, `A3.2` expand, `A3.3` `expand == bake`, `A3.4` telling §P8's two rules apart, `A4.1`
-`SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position. **`A4.4` is next** —
-the 24-heading approximation, *measured and written down*, with the residual per heading in the
-test output rather than asserted to be zero. ⚠ It is also what unblocks a great deal: `expand`
-and `bake` refuse **every** non-zero facing today, on an instance or on a socket, so no part in
-this tree has ever been placed turned.
+`SOCK`/`FITS`, `A4.2` `socket_fit`, `A4.3` `BIND` and the derived position, `A4.4` the heading
+measurement. **`A5.1` is next** — a hinge in `PART`, axis and range, round-tripped. ⚠ `A5.2` is
+the one with the cold-recognition test in it: *a door reads as a door because it is ajar*, and a
+shut door photographs as a wall. ⚠ Still true after `A4.4`: no part in this tree has ever been
+placed TURNED — `expand`/`bake` apply facing 0 only, and only six of the 24 ever can be.
 
 The editor now has a panel: a subject line the **server** authors, six labelled buttons, a
 material catalogue with swatches drawn by the world's own shader, and greyed entries that say

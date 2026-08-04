@@ -434,7 +434,7 @@ trap — so `A3.4` is deliberately left at ◐ rather than claimed complete.
 | ✅ `A4.1` | `SOCK` / `FITS` sections: name · cell · edge-or-heading · kind · size-class. Round-trip. | **DONE.** `src/sock.loft`, `hex_part` 101 → 119, both backends. ⚠ **The "edge-or-heading" slot is TWO fields**, and three text fields leave only one tail — see below. | S |
 | ✅ `A4.2` | `socket_fit(frame, leaf) -> Fit{ok, reason, offer}` — pure, no world. | **DONE**, and **not as written**. `src/fit.loft`, 131 tests. ⚠ The struct could not be called `Fit`, a size class is **nominal**, and *"the nearest leaf that fits"* presumes an ordering the class design does not have — see below. | S |
 | ✅ `A4.3` | Binding an instance to a socket instead of a coordinate. | **DONE.** `src/bind.loft`, 157 tests. Moving the frame from `(3,0)` to `(4,2)` with the binding UNTOUCHED moves the leaf — and the mechanism is an **absence**, see below. | M |
-| `A4.4` | The 24-heading approximation, **measured and written down** (§ Open). | the residual per heading is in the test output, not asserted to be zero | S |
+| ✅ `A4.4` | The 24-heading approximation, **measured and written down** (§ Open). | **DONE**, and it refuted the sentence it was sent to measure. `moros_map/tests/headings.loft` prints the whole table every run; `moros_map` 86 → 92. ⚠ *"Approximated"* was the wrong word for two thirds of them — see below. | S |
 
 ### What `A4.1` turned up
 
@@ -557,6 +557,53 @@ thing does not go in that hole. The misspelling **lists what is offered**, becau
 called 'leef'* is unactionable on a part with four of them. And a socket handing out a non-zero
 heading is refused rather than expanded flat — `pi_facing`'s rule, with `A4.4` the place it gets
 applied.
+
+### What `A4.4` turned up
+
+Measured on a 37-cell disk with 90 interior adjacencies, printed every run:
+
+| headings | what happens |
+|---|---|
+| `0 4 8 12 16 20` (the 60° multiples) | **exact** — nothing lost, nothing torn, residual zero to the last bit |
+| the 15° and 45° families (12 of them) | **well-defined and wrong** — 12 of 90 adjacencies tear, worst residual **0.522** hex steps against a covering radius of 0.577 |
+| the 30° family (6 of them) | **arbitrary** — six of the 37 points land *exactly* on a cell boundary; 18 of 90 tear; at **90°** the tie-break puts two cells on one |
+
+⚠ **§Open's JUSTIFICATION FOR 24 WAS A CATEGORY ERROR.** It read *"the editor's own wall runs use
+24"* — that 24 is `hex_shape::hexwall`'s `d24`, whose own header says **"THE 24 DIRECTIONS, AND
+WHY ONLY 12 ARE FOR HOUSES"** and **"HOUSES ARE NEVER DRAWN WITH AN IN-BETWEEN ANGLE"**. A wall
+run is a one-dimensional path and may STAIRCASE; a part is a body, and rotating a body is a map
+from the lattice onto itself. `STATE` §B's shape: *a sentence that mentions a seam is not a seam
+argument.* PARTS §Open is corrected in place, with the old wording kept in view.
+
+⚠ **THE NUMBER THAT MATTERS IS THE ONE NOBODY WOULD HAVE LOOKED FOR — torn adjacencies.** No
+cells are lost, every count agrees with itself, and the house has holes in its walls. A residual
+on its own reads as *half a cell, close enough*; 12-of-90 broken neighbours is not close to
+anything, and it is the reason *approximated* was the wrong word.
+
+⚠ **THE ONE ODD ROW IS EXPLAINED RATHER THAN LEFT TO BE MISREAD.** 90° loses two cells and 270°
+loses none, which reads as a defect in one of them. Both have the same **six boundary ties**; at
+90° the deterministic round sends two of them the same way. **The two rows differ by a rounding
+convention, not by an angle** — measured with a second instrument added for exactly that question,
+because an unexplained number in a table gets read as whatever the next reader expects.
+
+⚠ **THE FLOAT INSTRUMENT IS HELD AGAINST AN INTEGER ONE BEFORE IT IS BELIEVED.** A rotate-and-snap
+over floats reporting an absence is the instrument this tree distrusts most, so at the six exact
+headings it must land every cell exactly where `hex_field::cell_rot` puts it — and the turn
+DIRECTION is measured rather than assumed (`lattice_rot60`'s comment says counter-clockwise,
+`moros_map`'s says `cell_rot` turns clockwise). Three controls stop `agrees` saying yes to
+everything.
+
+**What changed:** `FACINGS` stays 24 — the record is the heading an author *asked* for, and one
+heading space shared with the runs is worth having — and `expand`/`bake` now name the measurement
+in their refusal instead of promising `A4.4` will implement it.
+
+**What is left, and it is not part of `A4.4`:** applying the six needs a lattice rotation
+`hex_part` has no dependency for. Its `loft.toml` forbids one — *"no lattice math: those belong to
+whoever places the part"* — on a premise that has since moved, because the package now **contains**
+the placer (`stamp`, `expand`, `bake`). ⚠ And one open question that is **not** a lattice question:
+`moros_map` has twelve exact *placements*, six turns plus six **flips**, and a flip is a mirror —
+a house at a 30° hour has its door on the other side. Whether a part may be mirrored to reach
+those six is an authoring call.
 
 ### A5 — fittings
 
