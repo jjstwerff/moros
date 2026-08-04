@@ -24,9 +24,9 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE (2026-08-04, session 13) — plan 18 COMPLETE, plan 17 through `A6.2`
 
-`make gate` **35 green** · `make lib-test` **2496, both backends** · `make parts` green
-(`data/parts/` byte-identical) · `npm test` **53** · layering silent. All measured 2026-08-04 on
-the installed loft.
+`make gate` **35 green** · `make lib-test` **2517, both backends** · `make parts` green
+(`data/parts/` byte-identical, all five files) · `npm test` **53** · layering silent. All measured
+2026-08-04 on the installed loft.
 
 ⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
 `SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
