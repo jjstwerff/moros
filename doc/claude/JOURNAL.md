@@ -17,6 +17,482 @@ were true when written. STATE.md carries the current ones.
 
 ---
 
+## Sessions 10–12 — plan 18 closes, and plan 17 goes from a part on disk to a part with joints
+
+⚠ Counts in this entry were true when written; STATE.md carries the current ones.
+
+**What these three sessions did.** #18 (catalogue) closed. #17 (parts) went from `A1.1` to
+`A6.1`: a part is a world that round-trips, carries tagged sections, holds instances that
+derive their cells, offers SOCKETS and goes into them, carries a HINGE and a swing STATE, and
+names a `.glb` for its other body. `A3.4` and `A5.2` are ◐, each for a stated reason.
+
+⚠ **THE PER-STEP RECORD LIVES IN THE PLAN, NOT HERE.**
+[plans/17-parts/README.md](../../plans/17-parts/README.md) carries a *What `Ax.y` turned up*
+section for every step, written when the step landed, and
+[plans/18-catalogue/README.md](../../plans/18-catalogue/README.md) does the same for `B*`. What
+follows is the same material as it stood in STATE.md's handoff — moved rather than thinned,
+because STATE had reached 785 lines and the one document a reader is told to open should not be
+the longest in the tree. **Read the plan for a step; read this for the shape of the arc.**
+
+### The findings that outlived their step, in one list
+
+| | |
+|---|---|
+| **A struct name is global across a CONSUMER's dependency graph** | `hex_part` was 131 green while `hex_editor` would not build, because both defined `Fit`. A package suite cannot see this. Now a working rule in CLAUDE.md |
+| **Only 6 of 24 headings can turn a body** | the other 18 tear 12–22 of a test body's 90 adjacencies. `moros_map/tests/headings.loft` prints the table every run |
+| **A cell leaf has TWO drawable positions in a door's swing** | 0 and 60°, because 60° is a sixth of a turn. Which is why `A5.2`'s picture waits on a MESH leaf |
+| **A field's freedom depends on whether anything REFERS to it** | `A4.1` gave a socket name the tail and a comma; `A4.3` had to take the comma away |
+| **No `.glb` is tracked in this repo** | `.gitignore:47`. A committed binary fixture is invisible to `git status` and missing on every other clone |
+| **`loft test` runs any zero-argument function returning nothing as a TEST** | a bare `wipe()` helper executes in the runner's order |
+| **[loft#767](https://github.com/loft-lang/loft/issues/767)** | a string literal nested inside an interpolation keeps its own `{…}` as literal text — a silent wrong value, filed |
+
+---
+
+**`A6.1` is done.** `lib/hex_part/src/prop.loft` holds `MESH` — a `.glb` named under the library
+root — and `part_mesh_loads` says whether the file behind it is there and readable.
+
+⚠ **THE PACKAGE TOOK A SECOND DEPENDENCY, AND ITS `loft.toml` RECORDS WHY THE PREMISE MOVED.**
+*"A part IS a world … so this package needs the store and nothing else"* is true of a CELL part
+and is half of §P5, which gives a part two possible bodies. `part_cycle` already tells a dangling
+PART reference from a damaged one, so reporting only *missing* for a `.glb` that is present and
+corrupt would be the `MR_ABSENT`/`MR_MALFORMED` collapse this package fights everywhere else.
+`glb_read` is the READER only — nothing here writes a `.glb`.
+
+⚠ **NO `.glb` IS TRACKED IN THIS REPO, AND THAT NEARLY COST A FIXTURE.** `A6.1` began with a
+committed `.glb` copied from `glb_read`'s foreign control, and **`git status` never showed it** —
+`.gitignore:47` ignores `*.glb` for the `moros_render` CLI examples. It would have passed here,
+been invisible to review, and been missing on every other clone. `glb_read`'s own foreign test
+writes its bytes instead, and so does this one. ⚠ **Check `git check-ignore` before adding any
+binary fixture to this tree.**
+
+⚠ **AND THE FIXTURE IS FOREIGN ON PURPOSE** — a `.glb` written by `glb::save_glb` and read by
+`glb_read` proves only that our writer and our reader agree with each other, which is `A3.3`'s
+complaint about a `bake` that called `expand`.
+
+⚠ **`..` IS REFUSED RATHER THAN NORMALISED**, and here it guards a file OPEN two functions down:
+a document that can name `../../../etc/passwd` reads a file its author never chose. The control
+that keeps it from being theatre: `a.b/c.d` still passes, so it refuses `..` and not every dot.
+
+⚠ **`loft test` RUNS ANY ZERO-ARGUMENT FUNCTION THAT RETURNS NOTHING AS A TEST.** `build_lib()`
+and `wipe()` were listed among the test functions and run in the runner's order, with `wipe`
+deleting the library between other tests — harmless only because every test rebuilt first. **A
+parameter is what keeps a helper a helper.**
+
+
+**`A5.2`'s STATE half is done and its RENDERER half is blocked, with a number rather than a
+shrug.** `bd_open` rides on the binding, `swing_fit` fences it against the leaf's own hinge, and
+`F-STATE`'s falsifiable claim is measured: **save with a door 0.125 turns open, reload, it is
+still 0.125** — with a door saved shut as the control, so the value travelled rather than being
+a default.
+
+⚠ **A CELL LEAF HAS EXACTLY TWO DRAWABLE POSITIONS IN A DOOR'S SWING, AND THAT IS WHY THE PICTURE
+IS NOT BUILT.** `A4.4` measured that only the six multiples of 60° move a body without tearing it,
+and 60° is a **sixth of a turn** — so a leaf made of CELLS can be drawn only at multiples of 1/6,
+and a door's `0 .. 0.25` range holds **0 (shut) and 1/6 (60°)** and nothing between. `swing_steps`
+computes it; the test pins **2**, with controls at 1, 7 and 0. `F-READ` wants *"a leaf ajar, not
+flush — at 15° it is a door"*, and 15° is a twenty-fourth of a turn. **So the picture needs either
+the cell rotation `A4.4` left unbuilt, or a leaf that is a MESH** — which is `A6.1`, and is what
+FITTINGS §1 already calls a leaf: *"asset + world state"*, not cells.
+
+⚠ **AN ANGLE IS ORDINAL, WHICH IS THE OTHER ARM OF `A4.2`'s FINDING.** A size class turned out
+NOMINAL (`hex_editor`'s *"255 is not 'nearly' 256"*), so its refusal reports only what the frame
+REQUIRES. 0.3 turns really is *nearly* 0.25, so `F-SWING`'s offer-and-residual is meaningful and
+is carried. Both arms of one distinction now sit in one package.
+
+⚠ **AN INFINITE SWING IS NOT *TOO FAR OPEN***, which is what the test first asserted. It IS past
+the limit — until you write down what it offers: the residual is `inf - hi`, which is `inf`, and
+an infinite overshoot is not a correction. A large FINITE swing is the control: 1000 turns is
+`WF_HIGH` with a usable overshoot.
+
+⚠ **THE GUARD AND THE FENCE ARE IN DIFFERENT PLACES ON PURPOSE.** Finiteness is checked where the
+value ARRIVES (the record); the RANGE where it is USED, because the leaf's hinge lives in another
+FILE and `part_set_bindings` has a world and no library root.
+
+⚠ **A LEAF WITH NO HINGE MAY BE BOUND AND MAY NOT BE OPENED** — a pane, a fixed light, a
+bricked-up panel are all legitimate in a frame and all shut for ever.
+
+⚠ **`BIND` CHANGED SHAPE**, which is a thing to do while a format is in flight and not after: no
+`.hxw` on disk carries one, so it cost nothing — and an older reader of a KNOWN tag *misparses*
+rather than skipping, since `A1.3`'s skip-by-length only saves an unknown tag.
+
+
+**`A5.1` is done, and it is the first section in this format to carry a FLOAT.**
+`lib/hex_part/src/hinge.loft` holds `HING` — a leaf's hinge point, its axis and its swing
+limits. ⚠ **The fields are `moros_sim::Link`'s, in its order and its unit (TURNS)**, because
+FITTINGS §1 says a leaf is a `Body` on a `Mount` link and `assembly.loft` warns *"Two units for
+one quantity is how a conversion goes missing"*. Matching a vocabulary is not importing it —
+`hex_part` still depends only on the store.
+
+⚠ **`A1.4` ARGUED THIS FORMAT FROM *"an integer written as text round-trips exactly"*, and every
+section since held integers.** A swing limit is a fraction of a turn, so the argument had to be
+re-earned. It holds — `0.1`, `1/3`, `π`, `√2`, `1e-300`, `1e300` all come back bit-equal — with
+the control that makes it mean something: `0.1 + 0.2 != 0.3`, so the comparison can see one bit.
+
+⚠ **INFINITY ROUND-TRIPS PERFECTLY AND IS REFUSED ANYWAY**, and the gap between those two facts
+is the finding. The format is fine with `inf`; geometry is not — a hinge point at infinity is not
+a position, and `hi - lo` on infinite limits is NaN. `moros_sim` spells *free* as a finite ±1000
+turns. `x * 0.0 == 0.0` catches NaN and ±inf in one expression.
+
+⚠ **AND THE FIRST VERSION CLAIMED THE OPPOSITE, ON A PROBE THAT LIED.** It reported that `inf`
+wrote fine and read back malformed. The probe was wrong, and the way it was wrong is
+**[loft#767](https://github.com/loft-lang/loft/issues/767)**, filed: *a string literal nested
+inside an interpolation keeps its own `{…}` as LITERAL text*, so `"{("{x}" as float?) ?? 0.0}"`
+reads `{x}` back as unparseable and reports the default — **a silent wrong value with no
+diagnostic**. A confident absence from an instrument nobody had checked against something it
+should find, which is this tree's own rule broken on a language question. ⚠ The workaround is
+clean and is what the real code does: put the inner string in a variable first.
+
+⚠ **THE AXIS IS STORED AS GIVEN, NOT NORMALISED** — normalising hands the author back a different
+number than they wrote (`meta.loft`'s rule about a name). `moros_sim::has_axis` asks only that one
+component be non-zero and this asks the same, so a leaf writable here is not inadmissible there.
+
+
+**`A4.4` is done, and it refuted the design sentence it was sent to measure.**
+`moros_map/tests/headings.loft` rotates a 37-cell disk (90 interior adjacencies) by each of the
+24 headings and **prints the table every run**: lost cells, torn adjacencies, boundary ties,
+worst residual.
+
+| headings | what happens |
+|---|---|
+| `0 4 8 12 16 20` (60° multiples) | **exact** — nothing lost, nothing torn, residual zero to the last bit |
+| the 15° and 45° families (12) | **well-defined and wrong** — 12 of 90 adjacencies tear, worst residual **0.522** hex steps against a covering radius of 0.577 |
+| the 30° family (6) | **arbitrary** — six of 37 points land *exactly* on a cell boundary; 18 of 90 tear; at **90°** the tie-break puts two cells on one |
+
+⚠ **PARTS §Open JUSTIFIED 24 WITH A CATEGORY ERROR, and it is corrected in place.** It cited
+*"the editor's own wall runs use 24"* — that 24 is `hex_shape::hexwall`'s `d24`, whose own header
+reads **"THE 24 DIRECTIONS, AND WHY ONLY 12 ARE FOR HOUSES"** and **"HOUSES ARE NEVER DRAWN WITH
+AN IN-BETWEEN ANGLE"**. A wall run is a one-dimensional path and may STAIRCASE; a part is a body,
+and rotating a body is a map from the lattice onto itself. Lesson §B's shape exactly.
+
+⚠ **THE NUMBER THAT MATTERS IS THE ONE NOBODY WOULD HAVE LOOKED FOR — torn adjacencies.** No
+cells are lost, every count agrees with itself, and the house has holes in its walls. A residual
+alone reads as *half a cell, close enough*; 12-of-90 broken neighbours is not close to anything.
+
+⚠ **AND THE ONE ODD ROW IS EXPLAINED RATHER THAN LEFT TO BE MISREAD.** 90° loses two cells and
+270° loses none, which reads as a defect in one of them. Both have the same **six boundary ties**;
+at 90° the deterministic round sends two of them the same way. **The two rows differ by a rounding
+convention, not by an angle** — measured with a second instrument added for exactly that question.
+
+⚠ **THE FLOAT INSTRUMENT IS HELD AGAINST AN INTEGER ONE BEFORE IT IS BELIEVED** — at the six exact
+headings the rotate-and-snap must land every cell exactly where `hex_field::cell_rot` puts it, and
+the turn DIRECTION is measured rather than assumed (`lattice_rot60`'s comment says
+counter-clockwise, `moros_map`'s says `cell_rot` turns clockwise).
+
+**What changed and what did not.** `FACINGS` stays **24** — the record is the heading an author
+*asked* for, and one heading space shared with the runs is worth having. `expand`/`bake` now name
+the measurement in their refusal instead of promising `A4.4` will implement it. ⚠ **Applying the
+SIX is not done**, and it needs a lattice rotation `hex_part` has no dependency for (its
+`loft.toml` forbids one, on a premise that has since moved — the package now contains the placer).
+⚠ **Open, and NOT a lattice question:** `moros_map` has twelve exact *placements*, six turns plus
+six **flips**; a flip is a mirror, so a house at a 30° hour has its door on the other side.
+Whether a part may be mirrored to reach those six is an authoring call.
+
+**`A4.1`, `A4.2` and `A4.3` are done.** `lib/hex_part/src/sock.loft` carries `SOCK` (the joints a
+part offers) and `FITS` (the one it goes into); `src/fit.loft` answers `socket_fit(frame, leaf)`
+and `parts_for_socket(root, frame)`; `src/bind.loft` carries `BIND` and resolves a joint. Both
+`expand` and `bake` derive a bound part's position. `hex_part` 101 → **157**.
+
+⚠ **§P3 IS MEASURED NOW, AND ITS MECHANISM IS AN ABSENCE.** Move a door-frame instance from
+`(3,0)` to `(4,2)` with the binding **untouched**, and the door goes with it — because a binding
+stores no coordinate, so there is no second position to forget. That is asserted *as* an absence:
+the `BIND` bytes are byte-identical across the move, with the `INST` bytes differing as the
+control. ⚠ **A `bd_q` added later "for convenience" would end the design without failing any
+test that only looks at where cells landed**, which is why that test exists.
+
+⚠ **`A4.1` HAD TO BE AMENDED, AND THE GENERAL FORM IS WORTH MORE THAN THE FIX.** It gave the
+socket name the tail of the line and a test asserting a **comma in it survives**. A `BIND` record
+is `<instance>,<socket name>,<part handle>`; the handle is a FILE PATH so it must take the tail,
+which puts the socket name between two commas. **A field's freedom depends on whether anything
+ever REFERS to it, and that is not knowable when the field is designed.** `A4.1`'s own rule
+already covered the case — *a token spelled identically on both sides of a joint is one we mint
+and may restrict* — the field simply had no referrer yet. The multibyte half of that test stays;
+only the comma went. ⚠ **Second half: no two sockets on one part may share a name**, or
+`socket_index` answers with the first, silently, for ever.
+
+⚠ **`bake` HONOURS BINDINGS TOO, AND SKIPPING IT WOULD HAVE BEEN SILENT.** `A3.3`'s
+`expand == bake` is the strongest test in the design and **its fixtures have no bindings**, so
+teaching only `expand` would have left every test green while the two paths disagreed about every
+bound leaf. Measured: `bake` with its binding loop disabled costs four tests. The socket LOOKUP
+is shared (`socket_for_binding` — where `A4.2` finally gets its consumer); the COMPOSITION stays
+separate, world coordinates against part-local, which is the line `A3.3` actually draws.
+
+⚠ **`socket_index` ANSWERS `-1`, NOT NULL** — a nullable index invites `?? 0`, which is a *valid*
+index and would bind to the first socket whenever the named one is missing. Sabotaged to `0`: a
+misspelled socket resolves and a socketless part reports the wrong refusal.
+
+⚠ **A SOCKET HANDING OUT A NON-ZERO HEADING IS REFUSED, NOT EXPANDED FLAT** — `pi_facing`'s rule,
+and `A4.4` is where the heading gets applied. `socket_heading` maps an edge to `sk_at * (FACINGS
+/ EDGES)`; the division is exact and tested, but **which** heading an edge points at is untested
+because only `edge 0 → 0` is ever exercised.
+
+⚠ **A STRUCT NAME IS GLOBAL ACROSS A CONSUMER'S WHOLE DEPENDENCY GRAPH, AND A PACKAGE SUITE
+CANNOT SEE IT.** `A4.2`'s answer was called `Fit`, which is what the plan sketches — and
+`hex_editor::gesture` already has a `Fit`. The two merged and `make parts` stopped with *cannot
+assign text to field `Fit.sf_code` of type integer*, while **`hex_part` alone was 131 green**.
+Only a consumer build finds this. `hex_editor::names` hit the identical wall and answered with
+`NameFit`; the answer here is `SocketFit`. ⚠ CLAUDE.md's *grep the sibling before adding a public
+name* is the same rule and it is **not only about siblings** — it holds inside this tree.
+
+⚠ **AND THE COLLISION WAS THE FINDING, NOT AN OBSTACLE.** `hex_editor`'s `Fit` splits parameters
+into ORDINAL and NOMINAL — *"255 is not 'nearly' 256 … offering it reads as a small correction
+while changing what the wall is made of"* (`X68`). **A size class is nominal by exactly that
+argument**, which `A4.2` had already concluded from §P3's own examples before the build broke.
+Two independent routes to one answer, and the name clash is what joined them up.
+
+⚠ **SO §P3's *"a leaf too wide is refused with … the NEAREST leaf that fits"* COULD NOT BE BUILT
+AS WRITTEN.** Its three examples are `door/2x3`, `pillar/round-3`, `statue/plinth-2` — one reads
+as a width by a height and two do not, so *wider* is undefined over two thirds of the design's
+own vocabulary. Built instead: the refusal carries **the frame's actual class**
+(`sf_offer`, spelled `door/2x3`), and `parts_for_socket` names **every** part in the library that
+fits. ⚠ **The opacity is what enforces §P3's own *"not silently scaled"*** — given `2x3` and
+`2x4` as numbers, some later caller finds *close enough* irresistible. `02x3` does not fit `2x3`,
+pinned, so the coercion cannot land quietly.
+
+⚠ **THE "EDGE-OR-HEADING" SLOT IS TWO FIELDS AND §P3 SPELLS IT AS ONE.** Six edges and 24
+headings overlap, so `edge 3` and `heading 3` are different joints that would be the same bytes.
+Measured: with the mount dropped they encode identically and five tests go red. ⚠ **And the range
+check follows the mount** — a flat `0..24` accepts `edge 6`, which is not a side of a hexagon; the
+control is the pair, refused under one mount and accepted under the other.
+
+⚠ **THREE TEXT FIELDS AND ONLY ONE TAIL, so `A3.1`'s name-comes-last rule does not reach.** What
+separates them is who mints the name: `pi_part` is a FILE PATH and the filesystem decides what may
+be in one, so a comma had to be made harmless. A `kind` and a `size` are tokens **we** mint,
+spelled identically on both sides of a joint or there is no joint, so they bear an alphabet and
+refuse outside it. ⚠ **`FITS` refuses a comma it has no separator for**, because a token it
+accepts and a `SOCK` refuses is a class that can be CLAIMED and never OFFERED — the leaf saves,
+the frame will not, and nothing connects the two refusals. (⚠ The socket NAME kept the tail here
+and lost its comma at `A4.3` — see above.)
+
+⚠ **THREE REJECTIONS, ONE BEHAVIOUR — measured.** Deleting **both** of `parts_for_socket`'s
+guards leaves all 131 tests green: a failed load and a malformed section both arrive as
+`PartFits {}`, and `socket_fit` answers `SF_NOTHING` on an empty claim. They stay for a case no
+fixture can pose (a store that recovered PART of a damaged file), and the code and the test both
+say the coverage is not what it looks like.
+
+⚠ **`part_file` MOVED TO `catalogue.loft`, AND IT WAS ONE FACT IN TWO SPELLINGS** — a literal
+`.hxw` in `inst.loft` against `PART_EXT` three files away, so a change to either alone gives a
+catalogue listing parts nothing can open. Breaking the tie again now costs **34 tests across five
+files**.
+
+✅ **`SOCK`/`FITS`/`socket_fit` ALL HAVE CONSUMERS NOW** — `A4.3`'s `socket_for_binding` reads
+every one of them, and `expand`/`bake` call it. The *built and not called* trap is closed for
+this arc. ⚠ **`part_anchor` is still tests-only**, and `A4.4` or `A5` is where a leaf's own anchor
+starts deciding how it sits in a joint.
+
+**`A3.4` is half done, and the half that is left is BLOCKED rather than skipped.** The depth
+bound landed early in `A3.2`; what `A3.4` added is telling §P8's two rules apart. ⚠ **A CYCLE
+REPORTED AS A DEPTH OVERFLOW** — `h/a → h/b → h/a` came back from both `expand` and `bake` as
+*"nested 9 deep; the bound is 8"*, which is true and sends the author hunting for depth in a
+library whose deepest nest is **two**, while `part_cycle` already knew the chain. Both now run
+the cycle walk **on the error path only** and return `EX_CYCLE`/`BK_CYCLE` with the chain. ⚠ The
+control that keeps the rules apart: a nine-deep nest with NO cycle must still report depth.
+
+⚠ **THE CONSTANT WAS SHARED AND THE COVERAGE WAS NOT** — `A3.2` bounded and tested `expand`;
+`bake` used the same `EX_MAX_DEPTH` with **no depth test at all** until here. A constant
+reaching two callers is not two gates.
+
+⚠ **AND §P8's *"checked on save"* STILL HAS NO CALLER**, exactly as in `A3.1`: no save gesture
+exists until `A7.3`, so the server's startup sweep remains the only thing invoking
+`library_cycle`. Writing the hook now would be a function with no caller, so `A3.4` stays ◐.
+
+**`A3.3` is done, and its finding is about FIXTURES.** `lib/hex_part/src/bake.loft` flattens a
+part and its nest into one `INST`-free part; `expand == bake` holds cell for cell over paths
+that share only the part files and `un_origin`. ⚠ **THE FIRST FIXTURE COULD NOT FAIL.** `bake`
+passed on its first run, so `un_origin` was replaced with the naive `cq + dq` **deliberately** —
+and all 95 tests stayed green. A part placed at `(0,0)` makes the frame composition an IDENTITY,
+so a one-level nest never exercises it. Three levels is the smallest fixture that bites: the
+grandchild composes from `(2,1)`, where `un_origin` gives `(6,2)` and the naive sum `(5,2)`, and
+the sabotage then fails at `cell 5,2: 1 cells vs 2`. The test was **seen red before it was
+trusted**. ⚠ `A4.3` composes frames the same way and needs the same depth in its fixture.
+
+⚠ **AND THE TWO PATHS ARE KEPT APART DELIBERATELY** — `expand` stamps per part at composed WORLD
+coordinates merging into terrain, `bake` accumulates columns in a keyed table at PART-LOCAL
+coordinates and writes each once into an empty part. A `bake` that called `expand` into a
+scratch world would have made the equivalence two calls to one function agreeing with itself.
+The table is there because `world_set_column` REPLACES and two parts may share a column — a door
+in a wall — so cells accumulate in height order instead of last-writer-wins.
+
+
+**`A3.2` is done, and it retired `I1`.** `lib/hex_part/src/expand.loft` derives an instance's
+cells and everything nested under it; `hex_part` is 84 tests. ⚠ **A DERIVED CELL CARRIES NO
+LABEL.** The `INST` records are the authority (§P4), so re-deriving is REGENERATION — discard
+a region's derived cells and rebuild from the list — and never lookup. Nothing asks which
+cells belong to which instance, so nothing needs to name them. An instance's identity is its
+position in the list, which is what `A3.1` said when it refused an identity field.
+
+⚠ **MEASUREMENT IS WHAT RETIRED IT, and the first draft had it backwards.** That draft minted
+one label per nested part, on §P4's old sentence *"a layer that carries the instance's own
+label"*. Measured on one chunk of ground: **30 placements → +1 layer, 2 distinct labels,
+`w_tau` 30**, and staggering the heights by 10 changed nothing — a layer is a per-chunk
+**sheet with one cell per column**. So twenty-nine placements had no label, which reads as a
+defect only if the cells need addressing. What DOES cost a layer is vertical overlap in one
+column: **8 stacked → +8 layers, 64 KB**. Storage tracks stacking, `w_tau` tracks placements,
+independently. **No incremental re-derivation is intended** — that decision is what §P4 now
+rests on, and if a scene ever needs the patching kind, the identity question reopens.
+
+⚠ **AND `part_stamp` WAS REPORTING A LABEL THE STORE HAD NOT KEPT** — `ps_label: 2` while the
+only layer carried `1`, because a chunk's first terrain layer is the outdoors and takes
+`LABEL_GROUND`. It now reads the label back and reports `0` with `ps_ground` set. That still
+matters to `bake`, which destroys the record and has nothing else to hold on to. `A3.1`'s seam
+test missed it because its fixture builds two layers per chunk — a fixture that cannot pose
+the question is not evidence.
+
+⚠ **THE DEPTH BOUND WAS TAKEN IN `A3.2`, NOT `A3.4`.** Nine refused, eight accepted, both
+green. `expand` IS the renderer §P8's second rule is about, and the failure it prevents is a
+hang. `A3.4` keeps the on-save check and the cycle sweep.
+
+**`A3.1` is done.** `INST` is one line per instance — `inst=<q>,<r>,<h>,<facing>,<part>` —
+carried on the same section mechanism as `PART`/`ANCH`, with `part_cycle` / `library_cycle` for
+§P8. The server sweeps the library at startup and lists a faulty part **greyed with its chain**
+(`part|house/loop_a|0|contains itself: house/loop_a → house/loop_b → house/loop_a`), which is
+what stops the check being a function with no caller — §P8's *"checked on save"* has no save
+gesture to hang on until `A7.3`.
+
+⚠ **THE TWO §P8 RULES ARE NOT ONE RULE.** *A part may not contain itself* and *depth is bounded
+at 8* read as one sentence and are two programs. The cycle check needs **no bound**: each step
+either finds a name already on the chain being walked, or descends to one that is not, and the
+chain only grows — so it is bounded by the number of parts on disk. The depth bound is about a
+**renderer**, where unbounded recursion is a hang and a hang reads as a crash.
+
+⚠ **A DIAMOND IS NOT A CYCLE**, so the walk carries the PATH and not a visited set — a house
+with two door-frames using one leaf visits it twice and is legal. ⚠ That test **has never been
+red and says so in its own comment**: it is a pin against the obvious *make it cheaper on a wide
+library* refactor, not evidence the walk works. What supplies that is the pair beside it — a
+fault two links down, and a fault under the second sibling — and both were seen red.
+
+⚠ **THE NAME COMES LAST IN THE RECORD.** A part is addressed by its catalogue handle, which is a
+FILE PATH, and a file name may contain a comma; with the name anywhere but last, `a,b/door`
+parses as two fields and the part is silently renamed. Last means four splits and then *the rest
+of the line*, so no escaping exists to get wrong in one direction only.
+
+**`A1` and all of `A2` are finished.** A part is a world, it round-trips, the store carries
+tagged sections, `PART`/`ANCH` ride on them, `data/parts/house/cottage.hxw` is committed
+(`make parts` builds and verifies it), `14:<roof>,<part>` places it — and **`14:<roof>` now
+places it too**, by generating a part and stamping it. ⚠ **#18 `B5.1` and `B5.2` are done**:
+`house/cottage` is in the same list as the nine materials — one widget, the kind on the row —
+its row shows **the part itself**, rendered, and the picture **follows the file**: the server
+keys each part by `(mtime, size)`, re-stats once a second, and broadcasts a rebuilt set to
+everyone rather than to the next client to connect.
+
+⚠ **A PART IS A WORLD TO THE STORE AND IS NOT ONE TO THE MESHER**, which `B5.2` found by
+looking. `chunk_mesh_mat` treats an unwritten cell as GROUND — that is what makes an
+unauthored world a plane rather than a hole to fall through — and a part is bounded, so its
+unwritten cells are *outside it*. Meshed as a world, the 38-cell cottage came out **28.6 ×
+24.5 world units**: four chunks of grass with a house somewhere in it, while every count
+agreed with itself. `moros_terrain::chunk_mesh_mat_bounded` is one flag through the one loop,
+and only the ground pass can differ — an unwritten cell is substituted to `SURFACE_MAT`, so it
+can never join another. The control is that a **fully written** tile meshes identically both ways.
+
+⚠ **THE SERVER MESHES A PART AND THE CLIENT DRAWS IT** — `W:` the canonical camera, `Y:` the
+geometry, which is `M:`'s own shape with the mesh id replaced by a catalogue row. That is not
+the obvious split: the client already meshes worlds out of its own cache, but four of a
+chunk's nine surfaces come from `chunk_mesh_props`, which reads wall EDGES and the server's
+registries. A client meshing a part draws its ground and its floor and **no walls**.
+
+⚠ **A CAMERA THAT FRAMES A BOX DOES NOT FRAME THE THING IN IT.** Four fits were built; as a
+fraction of the thumbnail the cottage fills: bounding **sphere** ~35%, bounding **box** ~35%
+(*further away* than the sphere — no visible change at all), the box **in camera axes** 63%
+with the arithmetic checking out, every **vertex solved** — the frame. The third is the one to
+carry: *far enough that the topmost corner fits when it is also the nearest one* is exactly
+right for a box with all eight corners populated, and a house is not one. Its tall points are
+its roof and its near points are its front wall.
+
+⚠ **A PICTURE COULD NOT SEE HALF OF `B5.3`, AND THAT WAS MEASURED.** Invalidation is two
+claims — the row is redrawn, and the old geometry is retired — and only the first has a picture.
+With the drop deliberately disabled the row-diff reported **`ok — 18% of pixels moved`**: two
+houses drawn on top of each other is certainly a changed picture, and the client was leaking a
+vertex buffer per surface per rebuild behind it. `24 thumbnail meshes arrived, 12 held` is the
+second instrument. ⚠ **When a claim has two halves, count the halves before trusting the
+picture** — and `§C4`'s own cache key had to be replaced for a related reason: *the version
+already exists in the layer* is true of a world in memory and useless for a file, because reading
+a layer version means LOADING the file, which is the whole cost the cache avoids. **A key you
+must pay full price to compute is not a key.**
+
+⚠ **AND A 22×16 THUMBNAIL FOUND A GEOMETRY DEFECT NOBODY HAD LOOKED FOR.** `B5.3` needed a
+second part, reached for `roof_up`, and the picture came back a red band floating over a grey
+box. Measured in the part files: `roof_up` lifts the roof's EAVE while the walls stay at
+`WALL_UP = 12`, so `14:28` puts roof cells at 28..36 over a wall head of 12 — **a roof floating
+16 units above its own house** — and the fence admits up to 400. Nothing had ever drawn a house
+with a non-default roof. [OPEN_ISSUES](OPEN_ISSUES.md) has it; the gate's fixture varies the
+RADIUS instead, so no gate encodes the broken shape.
+
+⚠ **AND THE CATALOGUE HAD BEEN DRAWING THE PART A BLACK HEXAGON SINCE `B5.1`.**
+`render_swatches` indexed `surface_at(i)` by the LIST row and `surface_at(9)` is the `?`
+sentinel with colour `(0,0,0)` — measured at `5,5,6` against a list background of `20,20,24`,
+so **not blank, darker than blank**. `panel.mjs` looped `i < 9`, the mesher's nine surfaces, so
+the row that had just been added sat outside every claim it made. It reads the row count out of
+the picture now, and the control that matters is the BLACK row rather than the blank one: a
+blank row is the failure a thumbnail *has*, a black one is the failure that shipped, and it has
+as much ink as any swatch (`probe/b1/deface.mjs`).
+
+⚠ **NEVER PASS `--path ../loft/`. THE INSTALLED `loft` IS THE TOOLCHAIN**, and it bundles its
+own stdlib — `make` and every gate run plain `loft`. `--path` points the compiler at
+`../loft/default/`, a tree another agent edits continuously, so a scratch run built that way
+sees work in progress. Doing it mid-session turned this tree red on `chr(cp) -> text` landing
+there; the same files pass against the installed binary. **Self-inflicted, and the recipe in
+*How to run things* below is what taught it** — that flag is gone from it now. The sibling
+updates at stable points and this tree does not need to see it in between.
+
+⚠ **AND THE BUG THAT FOUND IS NOT THE ONE IT LOOKED LIKE.** Chasing it produced a report with a
+wrong premise *twice* — first blaming a sibling for a break I caused, then asserting *a local
+may not shadow a stdlib name*, which is false: `len = 5` and `trim = 7` both compile. What
+actually refuses is **tuple destructuring** —`(a, trim) = pair()` — onto a name plain
+assignment accepts, and it says *requires plain variable names* about a plain variable name
+([#756](https://github.com/loft-lang/loft/issues/756), reproducible on the installed compiler
+with no `chr` at all). ⚠ **State the rule you think you found, then try to break it, before
+filing.**
+
+⚠ **`A2.3` COULD NOT BE DONE AS WRITTEN, AND THE GATES ARE WHY.** *"`stencil_place` no longer
+reachable from `14:`"* assumed the wire's house had no PARAMETER. It has `roof_up`, and
+`doorstep.mjs`'s entire ordinal-refusal control **IS** the roof fence while `stencil.mjs` needs
+a roof that does not fit — so making `14:` place a fixed part would have deleted those claims
+to make a sentence true. What was retired instead is the **placement**: `stencil_place` builds
+into a scratch world, `part_from_region` cuts it, `part_place` stamps it, and every house that
+reaches a real world arrives through one code path. All four `14:` gates pass **unchanged**.
+*One definition of a house* is `A7.3`'s fight and it wants an editable part in hand.
+
+⚠ **THE AUTHORED HOUSE IS THE PROCEDURAL HOUSE, EXACTLY** — not pixel-for-pixel, which was the
+weaker claim the plan expected. Measured: same cells, same three owned edges, same layer
+LABELS, same `w_next_id`, same `w_tau`, on flat ground, on a slope and under a ceiling that
+refuses both paths. It lives in `lib/hex_editor/tests/part_place.loft` because a label is
+invisible to every renderer and `τ` catches a path that wrote twice and photographed the same.
+`tools/gates/world/part_place.mjs` is the wire half and is deliberately thin.
+
+⚠ **A part always crosses four chunks and is 65,928 bytes for 38 used cell slots** — 0.46%.
+Origin-centring puts cells at negative coordinates and `chunk_of(-1)` is `-1`, so this is true
+of a part of any size. Not a bug: it is the store's dense 8 KB layer meeting a consumer it was
+not shaped for, `A7.4` owns it, and `make parts` prints the number every run so the deferral
+cannot go stale.
+
+**What `A1` left in the store and the part package:**
+
+- sections — `tag(i32) + length(i32) + payload`, repeated to **end of file**, riding on the
+  world as `w_sections`, so `world_save`/`world_load` carry a tag nobody knows.
+  `world_set_section` / `world_section_bytes` / `world_section_at` / `world_drop_section`.
+- ⚠ **the payload is `vector<u8>` and the store decodes NOTHING.** A text view lived on
+  `Section` for a day and is gone; `lib/hex_part/src/codec.loft` is the decoder, two lines
+  each way over `byte_at` / `text_from_bytes`. The byte TYPE is what refuses a non-byte now,
+  at the literal, where `WS_SECTION` used to refuse it after a save had run.
+- `PART` / `ANCH` as `key=value` text in `lib/hex_part/src/meta.loft`.
+
+The design, the findings and the incremental-writer hazard are
+[PARTS.md § P2](PARTS.md#p2--a-part-is-saved-the-way-a-world-is-saved-because-it-is-one).
+
+⚠ **The magic is `WTTH`, not `HXW7`.** Every `.hxw` in the tree opens `57 54 54 48`; the
+constant's comment claimed otherwise for as long as the format has existed. The value is not
+corrected — every saved world carries it — and the comment is. It was found by a cross-check
+(`section_tag("WTTH") == WORLD_MAGIC`), never by reading, which is the point.
+
+⚠ **AN ASCII TEST SUBJECT CANNOT SEE A TEXT BUG.** The part in `A1.4`'s round-trip is called
+`"porte café"` and described as `"a door, 2 = boards wide 中"`, and that one choice found three
+defects that `"door"` agrees with perfectly: two loft panics, a parse that truncates at the
+first `=`, and a byte-per-character encoding. Pick the subject that can disagree.
+
+⚠ **`lib/hex_world` is the tree that owns the store**, by path, as `hex_editor` and `hex_part`
+both declare, and that is where `A1.3` landed. The registry carries a 0.2.0 on a different
+lineage. Which tree owns it for good is
+[#8](https://github.com/jjstwerff/moros/issues/8), **deferred pending sibling coordination**.
+
 ## Session 9 — the two active plans close, the panel becomes lavition's, and a part is a world
 
 ⚠ Counts in this entry were true when written; STATE.md carries the current ones.
