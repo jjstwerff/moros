@@ -46,6 +46,7 @@ pub const EX_FACING  = 5;   // a heading this step cannot yet apply
 pub const EX_CYCLE   = 6;   // a part contains itself (P8's FIRST rule)
 pub const EX_SOCKET  = 7;   // a binding names a socket the framing part does not offer
 pub const EX_NOFIT   = 8;   // the bound part does not fit that socket (A4.2)
+pub const EX_SWING   = 9;   // the leaf is swung past its own hinge (A5.2)
 
 // §P8's second rule. Eight is the design's number, not a guess.
 pub const EX_MAX_DEPTH = 8;
@@ -86,14 +87,15 @@ fn facing_ok(name: text, facing: integer) -> Expand {
   Expand { ex_code: EX_OK }
 }
 
-// ⚠ FOUR ANSWERS AND NOT ONE, because they want four different fixes: the part is
-// not there, it is damaged, the socket is misspelled, or the thing does not go in
-// that hole. Collapsing them is the `MR_ABSENT`/`MR_MALFORMED` mistake at the next
-// level up, and `SA_NOFIT` in particular is the one an author will hit most.
+// ⚠ FIVE ANSWERS AND NOT ONE, because they want five different fixes: the part is
+// not there, it is damaged, the socket is misspelled, the thing does not go in that
+// hole, or it goes in and is swung past what its own hinge allows. Collapsing them
+// is the `MR_ABSENT`/`MR_MALFORMED` mistake at the next level up.
 fn bind_fault(sa: SocketAt) -> Expand {
   if sa.sa_code == SA_MISSING { return Expand { ex_code: EX_MISSING, ex_why: sa.sa_why }; }
   if sa.sa_code == SA_NOSOCKET { return Expand { ex_code: EX_SOCKET, ex_why: sa.sa_why }; }
   if sa.sa_code == SA_NOFIT { return Expand { ex_code: EX_NOFIT, ex_why: sa.sa_why }; }
+  if sa.sa_code == SA_SWING { return Expand { ex_code: EX_SWING, ex_why: sa.sa_why }; }
   Expand { ex_code: EX_BROKEN, ex_why: sa.sa_why }
 }
 

@@ -105,7 +105,7 @@ fn library(fq: integer, fr: integer) {
   put_leaf("d/oak", 7, "door", "2x3");
   put_leaf("d/ash", 9, "door", "3x3");          // the near miss — right kind, wrong class
   put_house("h/house", 3, [at("d/frame", fq, fr, 0)],
-            [Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" }]);
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }]);
 }
 
 // Where the oak leaf must land: the house's centre, composed with the frame's
@@ -179,7 +179,7 @@ fn test_a_binding_stores_no_position() {
   assert(section_text(b.wl_world, TAG_BIND) == before,
          "the BIND section changed when only the frame moved: '{before}' became "
          + "'{section_text(b.wl_world, TAG_BIND)}'");
-  assert(before == "bind=0,leaf,d/oak", "the binding reads '{before}'");
+  assert(before == "bind=0,0,leaf,d/oak", "the binding reads '{before}'");
   // …and the control: the INST section DID change, so the fixture really moved
   // something and the sameness above is not two identical builds.
   assert(section_text(b.wl_world, TAG_INST) != section_text(a.wl_world, TAG_INST),
@@ -232,7 +232,7 @@ fn test_a_leaf_that_does_not_fit_the_socket_is_refused_by_name() {
   put_frame("d/frame", 5, 2, 1, 6);
   put_leaf("d/ash", 9, "door", "3x3");
   put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
-            [Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/ash" }]);
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/ash" }]);
   w = target();
   ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
   assert(ex.ex_code == EX_NOFIT, "a 3x3 leaf went into a 2x3 socket ({ex.ex_code})");
@@ -251,7 +251,7 @@ fn test_a_socket_that_is_not_offered_is_refused_with_the_ones_that_are() {
   put_frame("d/frame", 5, 2, 1, 6);
   put_leaf("d/oak", 7, "door", "2x3");
   put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
-            [Binding { bd_inst: 0, bd_socket: "leef", bd_part: "d/oak" }]);
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leef", bd_part: "d/oak" }]);
   w = target();
   ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
   assert(ex.ex_code == EX_SOCKET, "a misspelled socket resolved ({ex.ex_code})");
@@ -273,7 +273,7 @@ fn test_a_socket_with_a_heading_is_refused_until_a4_4() {
   save("d/frame", w);
   put_leaf("d/oak", 7, "door", "2x3");
   put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
-            [Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" }]);
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }]);
   t = target();
   ex = part_expand(t, root(), at("h/house", 0, 0, 0), 10);
   assert(ex.ex_code == EX_FACING, "a turned socket expanded flat ({ex.ex_code})");
@@ -285,7 +285,7 @@ fn test_a_binding_onto_a_part_that_offers_nothing_is_refused() {
   put_leaf("d/plain", 5, "door", "2x3");        // no sockets at all
   put_leaf("d/oak", 7, "door", "2x3");
   put_house("h/house", 3, [at("d/plain", 3, 0, 0)],
-            [Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" }]);
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }]);
   w = target();
   ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
   assert(ex.ex_code == EX_SOCKET, "a part with no sockets held a binding ({ex.ex_code})");
@@ -305,12 +305,13 @@ fn house_with(binds: vector<Binding>) -> World {
 }
 
 fn two_binds() -> vector<Binding> {
-  [ Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" },
-    Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "door/porte café, 中" } ]
+  [ Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" },
+    Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "door/porte café, 中" } ]
 }
 
 fn same(a: Binding, b: Binding) -> boolean {
-  a.bd_inst == b.bd_inst && a.bd_socket == b.bd_socket && a.bd_part == b.bd_part
+  a.bd_inst == b.bd_inst && a.bd_open == b.bd_open
+    && a.bd_socket == b.bd_socket && a.bd_part == b.bd_part
 }
 
 // ⚠ TWO INSTANCES OF ONE PART, EACH WITH ITS OWN `leaf`. Binding by PART rather
@@ -335,11 +336,11 @@ fn test_bindings_survive_a_save_and_a_load() {
 }
 
 fn test_a_comparison_that_missed_a_field_would_be_caught() {
-  b = Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "d/oak" };
-  assert(!same(b, Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" }), "inst");
+  b = Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" };
+  assert(!same(b, Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }), "inst");
   assert(!same(b, Binding { bd_inst: 1, bd_socket: "pane", bd_part: "d/oak" }), "socket");
-  assert(!same(b, Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "d/ash" }), "part");
-  assert(same(b, Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "d/oak" }),
+  assert(!same(b, Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/ash" }), "part");
+  assert(same(b, Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }),
          "and it still says yes to a copy — otherwise it rejects everything");
 }
 
@@ -371,16 +372,16 @@ fn test_writing_an_empty_list_removes_the_section() {
 // the last moment the author is still holding the mistake.
 fn test_a_binding_onto_an_instance_that_is_not_there_is_refused() {
   w = house_with(no_binds());
-  bad = part_set_bindings(w, [Binding { bd_inst: 7, bd_socket: "leaf",
+  bad = part_set_bindings(w, [Binding { bd_inst: 7, bd_open: 0.0, bd_socket: "leaf",
                                         bd_part: "d/oak" }]);
   assert(bad.bw_code == BD_INDEX, "instance 7 of a two-instance part was accepted");
   assert(bad.bw_why.find("has 2") != null, "the refusal does not say how many: '{bad.bw_why}'");
   assert(world_section_at(w, TAG_BIND) < 0, "a refused write left a section behind");
-  assert(part_set_bindings(w, [Binding { bd_inst: 0 - 1, bd_socket: "leaf",
+  assert(part_set_bindings(w, [Binding { bd_inst: 0 - 1, bd_open: 0.0, bd_socket: "leaf",
                                          bd_part: "d/oak" }]).bw_code == BD_INDEX, "-1");
   // ⚠ The control: index 1 IS there, so the refusal is about the index and not
   // about bindings in general.
-  assert(part_set_bindings(w, [Binding { bd_inst: 1, bd_socket: "leaf",
+  assert(part_set_bindings(w, [Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf",
                                          bd_part: "d/oak" }]).bw_code == BD_OK, "1");
 }
 
@@ -388,7 +389,7 @@ fn test_a_binding_onto_an_instance_that_is_not_there_is_refused() {
 // THAT rather than dropping it. Loud beats tidy — a door that vanished because its
 // frame's index moved is not obviously a load failure.
 fn test_an_orphaned_binding_makes_the_section_malformed() {
-  w = house_with([Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "d/oak" }]);
+  w = house_with([Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }]);
   assert(part_bindings(w).br_code == MR_OK, "the fixture is already broken");
   assert(part_set_instances(w, [at("d/frame", 3, 0, 0)]) == PI_OK, "shorten");
   got = part_bindings(w);
@@ -402,26 +403,26 @@ fn test_an_orphaned_binding_makes_the_section_malformed() {
 fn test_one_socket_of_one_instance_may_not_be_filled_twice() {
   w = house_with(no_binds());
   bad = part_set_bindings(w, [
-    Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" },
-    Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/ash" } ]);
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" },
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/ash" } ]);
   assert(bad.bw_code == BD_DUP, "one socket was filled twice ({bad.bw_code})");
   // The control: the same socket NAME on a different instance is fine, which is
   // the case binding-by-part would have lost.
   assert(part_set_bindings(w, [
-    Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "d/oak" },
-    Binding { bd_inst: 1, bd_socket: "leaf", bd_part: "d/ash" } ]).bw_code == BD_OK,
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" },
+    Binding { bd_inst: 1, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/ash" } ]).bw_code == BD_OK,
     "two frames may not each hold a door");
 }
 
 fn test_a_comma_in_a_socket_name_is_refused_and_a_newline_anywhere_too() {
   w = house_with(no_binds());
-  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_socket: "a,b",
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "a,b",
                                          bd_part: "d/oak" }]).bw_code == BD_COMMA, "comma");
-  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_socket: "a\nbind=1,x,y",
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "a\nbind=1,x,y",
                                          bd_part: "d/oak" }]).bw_code == BD_NEWLINE, "nl");
-  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_socket: "",
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "",
                                          bd_part: "d/oak" }]).bw_code == BD_EMPTY, "no socket");
-  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_socket: "leaf",
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf",
                                          bd_part: "" }]).bw_code == BD_EMPTY, "no part");
   assert(world_section_at(w, TAG_BIND) < 0, "a refused write left a section behind");
 }
@@ -446,4 +447,119 @@ fn test_the_bindings_of_one_instance_are_found() {
   assert(len(bindings_of(v, 2)) == 0, "instance 2 has bindings");
   assert((bindings_of(v, 1)[0] ?? Binding {}).bd_part == "door/porte café, 中",
          "the wrong binding came back for instance 1");
+}
+
+// ── `A5.2` — the state, and `F-STATE`'s falsifiable claim ────────────────────
+
+fn put_hinged_leaf(name: text, mat: integer, lo: float, hi: float) {
+  w = one_cell(mat);
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2x3" }).sw_code == SK_OK,
+         "fits {name}");
+  assert(part_set_hinge(w, Hinge { hg_ox: 0.5, hg_oy: 0.0, hg_oz: 0.0,
+                                   hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0,
+                                   hg_lo: lo, hg_hi: hi }).hw_code == HG_OK, "hinge {name}");
+  save(name, w);
+}
+
+// The library the state claims are made over: a frame, a leaf that can swing a
+// quarter turn, and a house holding the leaf in the frame at `open` turns.
+fn swing_library(open: float) {
+  wipe();
+  put_frame("d/frame", 5, 2, 1, 6);
+  put_hinged_leaf("d/oak", 7, 0.0, 0.25);
+  put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
+            [Binding { bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "d/oak" }]);
+}
+
+// ⚠ `F-STATE`'s ENTIRE FALSIFIABLE CLAIM: *save with a door open, reload, it is
+// still open.* Nothing about it needs a renderer, which is why it is testable now
+// and the picture is not.
+fn test_a_door_saved_open_reloads_open() {
+  swing_library(0.125);
+  ld = world_load(part_file(root(), "h/house"));
+  assert(ld.wl_code == WL_OK, "load: {ld.wl_detail}");
+  got = part_bindings(ld.wl_world);
+  assert(got.br_code == MR_OK, "read {got.br_code}: {got.br_why}");
+  assert((got.br_items[0] ?? Binding {}).bd_open == 0.125,
+         "the door reloaded at {(got.br_items[0] ?? Binding {}).bd_open} turns, not 0.125");
+  // ⚠ And the control that keeps it from passing on a default: a door saved SHUT
+  // reloads shut, so `0.125` above is a value that travelled rather than one the
+  // struct happened to start at.
+  swing_library(0.0);
+  shut = world_load(part_file(root(), "h/house"));
+  assert((part_bindings(shut.wl_world).br_items[0] ?? Binding {}).bd_open == 0.0,
+         "a door saved shut did not reload shut");
+}
+
+// ⚠ THE SWING IS AN AWKWARD FRACTION ON PURPOSE. `A5.1` measured that a float
+// survives this text payload bit-for-bit, and a state of `0.1` is where a writer
+// that rounded would show — a door 40 % open is exactly the value `F-STATE` uses
+// as its example.
+fn test_a_swing_that_no_printer_rounds_nicely_survives() {
+  swing_library(0.1);
+  ld = world_load(part_file(root(), "h/house"));
+  assert((part_bindings(ld.wl_world).br_items[0] ?? Binding {}).bd_open == 0.1,
+         "0.1 turns did not survive the file");
+  swing_library((1.0 / 3.0) ?? 0.0);
+  t = world_load(part_file(root(), "h/house"));
+  assert((part_bindings(t.wl_world).br_items[0] ?? Binding {}).bd_open == ((1.0 / 3.0) ?? 0.0),
+         "a third of a turn did not survive the file");
+}
+
+// ⚠ THE FENCE IS AT THE RESOLVE, NOT AT THE WRITE, and CLAUDE.md's rule is why:
+// *a guard belongs where the thing arrives, and a fence where the value is USED.*
+// The leaf's hinge lives in another FILE, so `part_set_bindings` — which has a
+// world and no library root — cannot know a quarter turn is the limit. The first
+// point that does is where the leaf is loaded.
+fn test_a_leaf_swung_past_its_hinge_is_refused_at_the_expansion() {
+  swing_library(0.4);                     // the hinge stops at 0.25
+  w = target();
+  ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_SWING, "a door swung to 0.4 expanded ({ex.ex_code})");
+  assert(ex.ex_why.find("0.25") != null,
+         "the refusal does not offer the limit: '{ex.ex_why}'");
+  assert(ex.ex_why.find("residual") != null,
+         "nor the overshoot: '{ex.ex_why}'");
+  assert(part_bake(root(), "h/house").bk_code == BK_SWING, "bake let it through");
+  // ⚠ The control: the same door at an admissible angle expands, so the refusal is
+  // about the swing and not about hinged leaves in general.
+  swing_library(0.2);
+  ok = target();
+  assert(part_expand(ok, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK,
+         "an admissible swing was refused too");
+}
+
+// ⚠ A LEAF WITH NO HINGE MAY BE BOUND AND MAY NOT BE OPENED. A pane, a fixed
+// light, a bricked-up panel — all legitimate things to put in a frame and all shut
+// for ever. Refusing the binding would forbid them; ignoring a non-zero swing on
+// one would draw a state nothing can hold.
+fn test_a_leaf_with_no_hinge_may_be_bound_shut_and_not_swung() {
+  wipe();
+  put_frame("d/frame", 5, 2, 1, 6);
+  put_leaf("d/pane", 7, "door", "2x3");        // fits, and has no hinge
+  put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
+            [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/pane" }]);
+  w = target();
+  assert(part_expand(w, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK,
+         "a hingeless pane could not be fitted at all");
+  put_house("h/house", 3, [at("d/frame", 3, 0, 0)],
+            [Binding { bd_inst: 0, bd_open: 0.1, bd_socket: "leaf", bd_part: "d/pane" }]);
+  t = target();
+  ex = part_expand(t, root(), at("h/house", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_SWING, "a hingeless pane was swung open ({ex.ex_code})");
+  assert(ex.ex_why.find("no hinge") != null, "the refusal is '{ex.ex_why}'");
+}
+
+// A swing that is not a finite number is caught where it ARRIVES — in the record.
+fn test_a_swing_that_is_not_a_number_is_refused_at_the_write() {
+  w = house_with(no_binds());
+  huge = 1.0e300 * 1.0e300;
+  bad = part_set_bindings(w, [Binding { bd_inst: 0, bd_open: huge,
+                                        bd_socket: "leaf", bd_part: "d/oak" }]);
+  assert(bad.bw_code == BD_SWING, "an infinite swing was written ({bad.bw_code})");
+  assert(world_section_at(w, TAG_BIND) < 0, "a refused write left a section behind");
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 1000.0,
+                                         bd_socket: "leaf",
+                                         bd_part: "d/oak" }]).bw_code == BD_OK,
+         "a large FINITE swing was refused, so the guard is a magnitude fence");
 }

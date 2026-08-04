@@ -188,3 +188,87 @@ pub fn part_hinge(w: World) -> HingeRead {
   if bad.hw_code != HG_OK { return hinge_bad(bad.hw_why); }
   HingeRead { hr_code: MR_OK, hr_hinge: got, hr_why: "" }
 }
+
+// ── The fence, and this time the offer MEANS something ────────────────────────
+//
+// `F-SWING`: a leaf past its limit is *"refused with the limit as its offer and
+// the overshoot as its residual, never clamped silently"*.
+//
+// ⚠ AN ANGLE IS ORDINAL, WHICH IS THE OTHER ARM OF `A4.2`'s FINDING. There the
+// answer was that a size class is NOMINAL — `hex_editor::gesture`'s rule that
+// *"255 is not 'nearly' 256"* — so a refusal could report what the frame REQUIRES
+// and never a nearest value. A swing angle is the opposite kind of quantity: 0.3
+// turns really is *nearly* 0.25, the nearest admissible value is a correction the
+// author can act on, and the overshoot is how far they asked past it. So this
+// carries an offer and a residual where `SocketFit` deliberately does not.
+pub const WF_OK      = 0;
+pub const WF_LOW     = 1;   // shut further than the hinge allows
+pub const WF_HIGH    = 2;   // open further than the hinge allows
+pub const WF_NOHINGE = 3;   // a part with no hinge cannot be opened at all
+pub const WF_VALUE   = 4;   // an angle that is not a finite number
+
+pub struct SwingFit {
+  wf_code:     integer,
+  wf_why:      text,
+  wf_offer:    float,   // the nearest admissible angle, in TURNS
+  wf_residual: float,   // how far past it the request was — always >= 0
+}
+
+// Is `turns` a state this hinge can hold?
+//
+// ⚠ PURE, AND OVER THE HINGE RATHER THAN OVER A FILE, so it is the same shape as
+// `socket_fit`: the contract is answerable before anything is placed, which is
+// the whole argument §P3 makes for sockets and it holds for swings too.
+//
+// ⚠ THE RESIDUAL IS THE OVERSHOOT AND IS NEVER NEGATIVE. A signed one reads as a
+// direction and gets compared with `<`, and then *"how far past the limit"*
+// silently becomes *"which side of it"* — `hex_editor::fit_ordinal` keeps the
+// same convention for the same reason.
+pub fn swing_fit(h: Hinge, turns: float) -> SwingFit {
+  if !a_number(turns) {
+    return SwingFit { wf_code: WF_VALUE, wf_offer: 0.0, wf_residual: 0.0,
+                      wf_why: "the swing is not a finite number" };
+  }
+  if turns < h.hg_lo {
+    return SwingFit { wf_code: WF_LOW, wf_offer: h.hg_lo, wf_residual: h.hg_lo - turns,
+      wf_why: "{turns} turns is below the hinge's {h.hg_lo}" };
+  }
+  if turns > h.hg_hi {
+    return SwingFit { wf_code: WF_HIGH, wf_offer: h.hg_hi, wf_residual: turns - h.hg_hi,
+      wf_why: "{turns} turns is past the hinge's {h.hg_hi}" };
+  }
+  SwingFit { wf_code: WF_OK, wf_offer: turns, wf_residual: 0.0, wf_why: "" }
+}
+
+// ── What a CELL leaf could actually be drawn at ──────────────────────────────
+
+// The exact rotations, as a fraction of a turn: `A4.4` measured that only the six
+// multiples of 60° move a body without tearing it, and 60° is a sixth of a turn.
+pub const SWING_STEP = 0.16666666666666666;   // 1/6 turn, and the nearest float to it
+
+// How many of the exact rotations lie inside this hinge's range — that is, how
+// many distinct positions a leaf made of CELLS could be drawn at.
+//
+// ⚠ THIS IS WHY `A5.2`'s SECOND CLAUSE IS NOT BUILT HERE, and it is a number
+// rather than an opinion. A door swings `0 .. 0.25` turns, and exactly **two** of
+// the exact rotations fall in that range: `0` (shut) and `1/6` (60°). There is no
+// third, so a cell leaf cannot be *ajar by a little* — it is shut or it is at 60°,
+// with nothing in between and no way to animate the gap. `F-READ` wants *"a leaf
+// ajar, not flush — a door at 0° is a rectangle on a wall; at 15° it is a door"*,
+// and 15° is a twenty-fourth of a turn, which is not one of the six.
+//
+// So the renderer half needs either a cell rotation nobody has built (`A4.4`'s
+// follow-on) or a leaf that is a MESH rather than cells — which is `A6.1`'s
+// `MESH` section, and is what FITTINGS §1 already says a leaf is: *"asset + world
+// state"*, not cells. The state below is authored, fenced and persisted; what
+// draws it comes later.
+pub fn swing_steps(h: Hinge) -> integer {
+  n = 0;
+  // 12 covers a full turn either way at 1/6 each, which is every distinct
+  // rotation there is — six of them, twice round.
+  for k in (0 - 12)..13 {
+    a = (k as float) * SWING_STEP;
+    if a >= h.hg_lo && a <= h.hg_hi { n = n + 1; }
+  }
+  n
+}

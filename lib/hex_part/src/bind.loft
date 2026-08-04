@@ -21,6 +21,7 @@ use hex_world;
 use codec;
 use meta;
 use sock;
+use hinge;
 use fit;
 use inst;
 use catalogue;
@@ -32,6 +33,7 @@ pub const TAG_BIND = 1145981250;    // 'BIND', low byte first
 
 pub struct Binding {
   bd_inst:   integer,     // which entry of THIS part's `INST` list
+  bd_open:   float,       // how far the leaf is swung, in TURNS (`A5.2`, `F-STATE`)
   bd_socket: text,        // the socket's name, in that instance's part
   bd_part:   text,        // what goes in it, by catalogue handle
 }
@@ -42,6 +44,7 @@ pub const BD_COMMA   = 2;   // a comma in a socket name — it would forge a fie
 pub const BD_EMPTY   = 3;   // a binding naming no socket, or nothing to put in it
 pub const BD_INDEX   = 4;   // an instance index with no instance behind it
 pub const BD_DUP     = 5;   // one socket of one instance filled twice
+pub const BD_SWING   = 6;   // a swing that is not a finite number
 
 pub struct BindWrite { bw_code: integer, bw_why: text }
 
@@ -49,7 +52,16 @@ fn bw_ok() -> BindWrite { BindWrite { bw_code: BD_OK, bw_why: "" } }
 
 // ── The encoding, and why the SOCKET NAME sits between two commas ──────────────
 //
-//     bind=0,leaf,door/oak
+//     bind=0,0.125,leaf,door/oak
+//
+// ⚠ `bd_open` WAS ADDED BY `A5.2` AND THE RECORD CHANGED SHAPE, which is a thing
+// to do while a format is in flight and not after. No `.hxw` on disk carries a
+// `BIND` yet — `data/parts/` has one cottage and no bindings — so the change cost
+// nothing; the same edit next month would have needed a migration, because an
+// older reader of a KNOWN tag misparses rather than skipping (`A1.3`'s
+// skip-by-length only saves an UNKNOWN tag). The angle goes second because the
+// part handle has to stay the tail, and a socket name may not carry a comma
+// anyway (`A4.3`).
 //
 // ⚠ TWO TEXT FIELDS AND ONE TAIL, and which gets the tail is forced rather than
 // chosen. `bd_part` is a catalogue handle, which is a FILE PATH — the filesystem
@@ -60,7 +72,7 @@ fn bw_ok() -> BindWrite { BindWrite { bw_code: BD_OK, bw_why: "" } }
 // comma in `sk_name` at the source, because a name this record cannot carry is a
 // name no part should be able to offer.
 fn bind_line(b: Binding) -> text {
-  "bind={b.bd_inst},{b.bd_socket},{b.bd_part}"
+  "bind={b.bd_inst},{b.bd_open},{b.bd_socket},{b.bd_part}"
 }
 
 // ⚠ THE INDEX IS CHECKED AGAINST THE PART'S ACTUAL `INST` LIST, not merely against
@@ -133,6 +145,18 @@ fn check_bind(b: Binding, i: integer, n: integer) -> BindWrite {
     return BindWrite { bw_code: BD_INDEX,
       bw_why: "{subject} binds instance {b.bd_inst} and the part has {n}" };
   }
+  // ⚠ FINITENESS IS CHECKED HERE AND THE RANGE IS NOT, and the split is
+  // CLAUDE.md's: *a guard belongs where the thing ARRIVES, and a fence where the
+  // value is USED.* A non-finite swing arrives here — it is a number in this
+  // record and nothing else has to be open to see it is broken. Whether `0.4`
+  // turns is admissible is a fact about the LEAF'S HINGE, which lives in another
+  // file this function has not opened and has no root to find; fencing it here
+  // would need a library path threaded through the writer for a check the resolve
+  // path has to make anyway. `socket_for_binding` is where the leaf arrives.
+  if b.bd_open * 0.0 != 0.0 {
+    return BindWrite { bw_code: BD_SWING,
+      bw_why: "{subject} is swung to {b.bd_open}, which is not a finite number" };
+  }
   bw_ok()
 }
 
@@ -150,13 +174,21 @@ fn parse_bind(line: text) -> BindRead {
   }
   rest = line[(eq + 1)..];
   c1 = rest.find(",");
-  if c1 == null { return bind_bad("'{line}' names no socket"); }
+  if c1 == null { return bind_bad("'{line}' says how far open nothing is"); }
   n = rest[0..c1] as i32?;
   if n == null { return bind_bad("'{rest[0..c1]}' in '{line}' is not a number"); }
   rest = rest[(c1 + 1)..];
+  ca = rest.find(",");
+  if ca == null { return bind_bad("'{line}' names no socket"); }
+  // ⚠ A FLOAT, AND `A5.1` IS WHY THAT IS SAFE: measured on `0.1`, `1/3`, `π` and
+  // both extremes, a loft float survives this text payload bit-for-bit.
+  a = rest[0..ca] as float?;
+  if a == null { return bind_bad("'{rest[0..ca]}' in '{line}' is not a swing") ; }
+  rest = rest[(ca + 1)..];
   c2 = rest.find(",");
   if c2 == null { return bind_bad("'{line}' puts nothing in a socket"); }
-  got = Binding { bd_inst: n ?? 0, bd_socket: rest[0..c2], bd_part: rest[(c2 + 1)..] };
+  got = Binding { bd_inst: n ?? 0, bd_open: a ?? 0.0,
+                  bd_socket: rest[0..c2], bd_part: rest[(c2 + 1)..] };
   // ⚠ `-1` for the count: the line cannot know how many instances the part has,
   // and `part_bindings` checks that against the file's own list a moment later.
   // Passing `0` here would refuse every binding ever written.
@@ -216,8 +248,20 @@ pub const SA_MISSING  = 1;   // the framing part, or the bound part, is not on d
 pub const SA_BROKEN   = 2;   // one of them does not load, or its sections are damaged
 pub const SA_NOSOCKET = 3;   // that part offers no socket of that name
 pub const SA_NOFIT    = 4;   // the bound part does not fit the socket
+pub const SA_SWING    = 5;   // the leaf is swung past what its own hinge allows
 
-pub struct SocketAt { sa_code: integer, sa_socket: Socket, sa_why: text }
+// ⚠ IT CARRIES AN OFFER AND A RESIDUAL AND NOT JUST A CODE, because `F-SWING` asks
+// for the limit as an OFFER and the overshoot as a RESIDUAL — an angle is ORDINAL,
+// so a nearest admissible value is a correction the author can act on. The
+// contrast with `SocketFit`, which deliberately offers no nearest because a size
+// class is NOMINAL, is `A4.2`'s split showing both arms in one file.
+//
+// ⚠ TWO FLOATS RATHER THAN THE `SwingFit` ITSELF, and that is loft's shape rather
+// than a design choice: a struct-valued field DEFAULT is a parse error here
+// (`unexpected '{'`), and without a default every one of this struct's dozen
+// construction sites would have to name a swing it knows nothing about.
+pub struct SocketAt { sa_code: integer, sa_socket: Socket, sa_why: text,
+                      sa_offer: float = 0.0, sa_residual: float = 0.0 }
 
 // Which socket a binding names, and whether what it names may go in it.
 //
@@ -285,5 +329,31 @@ pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
                       sa_why: "'{b.bd_part}' does not fit '{framing}' socket "
                             + "'{b.bd_socket}': {got.sf_why}" };
   }
-  SocketAt { sa_code: SA_OK, sa_socket: sk, sa_why: "" }
+  // ⚠ AND HERE IS WHERE THE SWING IS FENCED — the leaf has just been loaded, so
+  // this is the first point at which its hinge is known at all. CLAUDE.md's rule:
+  // *a fence belongs where the value is USED.*
+  hinged = part_hinge(lld.wl_world);
+  if hinged.hr_code == MR_MALFORMED {
+    return SocketAt { sa_code: SA_BROKEN, sa_socket: sk,
+                      sa_why: "'{b.bd_part}': {hinged.hr_why}" };
+  }
+  // ⚠ A LEAF WITH NO HINGE MAY BE BOUND, AND MAY NOT BE OPENED. A pane, a fixed
+  // light, a bricked-up panel — all legitimate things to put in a frame, and all
+  // shut for ever. Refusing the binding would forbid them; ignoring a non-zero
+  // swing on one would draw a state nothing can hold.
+  if hinged.hr_code == MR_ABSENT {
+    if b.bd_open != 0.0 {
+      return SocketAt { sa_code: SA_SWING, sa_socket: sk,
+        sa_why: "'{b.bd_part}' is swung to {b.bd_open} and has no hinge to swing on" };
+    }
+    return SocketAt { sa_code: SA_OK, sa_socket: sk, sa_why: "" };
+  }
+  swung = swing_fit(hinged.hr_hinge, b.bd_open);
+  if swung.wf_code != WF_OK {
+    return SocketAt { sa_code: SA_SWING, sa_socket: sk,
+      sa_offer: swung.wf_offer, sa_residual: swung.wf_residual,
+      sa_why: "'{b.bd_part}' in '{b.bd_socket}': {swung.wf_why} "
+            + "(offer {swung.wf_offer}, residual {swung.wf_residual})" };
+  }
+  SocketAt { sa_code: SA_OK, sa_socket: sk, sa_offer: b.bd_open, sa_why: "" }
 }

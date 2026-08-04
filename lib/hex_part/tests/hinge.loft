@@ -297,3 +297,106 @@ fn test_a_leaf_can_carry_a_hinge_a_name_and_a_fit_at_once() {
   assert(h.hr_code == MR_OK && same(h.hr_hinge, door()), "HING: {h.hr_why}");
   delete(p);
 }
+
+// ── `A5.2` — the fence, and the offer that means something ───────────────────
+
+// ⚠ AN ANGLE IS ORDINAL, WHICH IS THE OTHER ARM OF `A4.2`'s FINDING. There a size
+// class turned out NOMINAL — `hex_editor::gesture`'s *"255 is not 'nearly' 256"* —
+// so a refusal could only report what the frame REQUIRES. Here 0.3 turns really is
+// nearly 0.25, so the nearest admissible value is a correction, and `F-SWING` asks
+// for exactly that: refused with the limit as its offer and the overshoot as its
+// residual, never clamped silently.
+fn test_a_swing_past_the_limit_is_refused_with_the_limit_and_the_overshoot() {
+  h = door();                       // lo 0, hi 0.25
+  over = swing_fit(h, 0.3);
+  assert(over.wf_code == WF_HIGH, "0.3 turns was accepted ({over.wf_code})");
+  assert(over.wf_offer == 0.25, "the offer is {over.wf_offer}, not the limit");
+  assert(over.wf_residual > 0.049 && over.wf_residual < 0.051,
+         "the overshoot is {over.wf_residual}, not 0.05");
+  under = swing_fit(h, 0.0 - 0.1);
+  assert(under.wf_code == WF_LOW, "-0.1 turns was accepted ({under.wf_code})");
+  assert(under.wf_offer == 0.0, "the offer is {under.wf_offer}, not the low limit");
+  assert(under.wf_residual > 0.099 && under.wf_residual < 0.101,
+         "the undershoot is {under.wf_residual}, not 0.1");
+}
+
+// ⚠ THE RESIDUAL IS NEVER NEGATIVE, and that is not tidiness. A signed residual
+// reads as a DIRECTION and gets compared with `<`, at which point *"how far past
+// the limit"* silently becomes *"which side of it"*. `hex_editor::fit_ordinal`
+// keeps the same convention.
+fn test_the_residual_is_an_overshoot_and_not_a_direction() {
+  h = door();
+  assert(swing_fit(h, 0.0 - 5.0).wf_residual > 0.0, "an undershoot came back negative");
+  assert(swing_fit(h, 5.0).wf_residual > 0.0, "an overshoot came back negative");
+  assert(swing_fit(h, 0.1).wf_residual == 0.0, "an admissible swing has a residual");
+}
+
+// The ends are IN, and a hinge pinned shut admits exactly one angle.
+fn test_the_limits_themselves_are_admissible() {
+  h = door();
+  assert(swing_fit(h, 0.0).wf_code == WF_OK, "shut was refused");
+  assert(swing_fit(h, 0.25).wf_code == WF_OK, "fully open was refused");
+  assert(swing_fit(h, 0.125).wf_code == WF_OK, "half open was refused");
+  pinned = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+                   hg_ax: 0.0, hg_ay: 0.0, hg_az: 1.0, hg_lo: 0.25, hg_hi: 0.25 };
+  assert(swing_fit(pinned, 0.25).wf_code == WF_OK, "a pinned leaf refused its own angle");
+  assert(swing_fit(pinned, 0.0).wf_code == WF_LOW, "a pinned leaf accepted being shut");
+}
+
+// ⚠ AND A NON-FINITE SWING IS ITS OWN ANSWER RATHER THAN *TOO FAR OPEN*, which is
+// what this test first asserted and got wrong. An infinity IS past the limit, so
+// `WF_HIGH` looks right — until you write down what it would offer: the residual
+// is `inf - hi`, which is `inf`, and **an infinite overshoot is not a correction
+// an author can act on**. `F-SWING`'s whole point is that the refusal carries
+// something usable, so a value with no usable overshoot is a different answer.
+//
+// ⚠ AND THE FINITENESS TEST HAS TO COME FIRST FOR A NaN, because every comparison
+// after it is FALSE for one — `turns < lo` and `turns > hi` both fail and a NaN
+// sails through as admissible.
+fn test_a_swing_that_is_not_a_number_is_its_own_answer() {
+  h = door();
+  huge = 1.0e300 * 1.0e300;
+  hi = swing_fit(h, huge);
+  assert(hi.wf_code == WF_VALUE, "an infinite swing read as {hi.wf_code}");
+  assert(hi.wf_residual == 0.0, "and it offered an overshoot of {hi.wf_residual}");
+  assert(swing_fit(h, 0.0 - huge).wf_code == WF_VALUE, "a negative infinity read as a swing");
+  // The control: a merely LARGE finite swing is `WF_HIGH` with a usable overshoot,
+  // so the answer above is about finiteness and not about magnitude.
+  big = swing_fit(h, 1000.0);
+  assert(big.wf_code == WF_HIGH, "1000 turns read as {big.wf_code}");
+  assert(big.wf_residual > 999.0, "and its overshoot is {big.wf_residual}");
+}
+
+// ── What a CELL leaf could be drawn at, and why `A5.2` stops here ────────────
+
+// ⚠ THE NUMBER THAT DECIDES THE SECOND HALF OF `A5.2`, AND IT IS TWO. `A4.4`
+// measured that only the six multiples of 60° move a body without tearing it, and
+// 60° is a sixth of a turn — so of the whole continuum a door can swing through,
+// a leaf made of CELLS could be drawn at exactly the multiples of 1/6. A door's
+// range is `0 .. 0.25` turns and it contains **two** of them: `0` (shut) and `1/6`
+// (60°). There is nothing between, so a cell leaf cannot be *ajar by a little* and
+// cannot be animated through the gap at all.
+//
+// `F-READ` wants *"a leaf ajar, not flush — a door at 0° is a rectangle on a wall;
+// at 15° it is a door"*, and 15° is a twenty-fourth of a turn. So the renderer half
+// needs either the cell rotation `A4.4` left unbuilt, or a leaf that is a MESH —
+// which is `A6.1`, and is what FITTINGS §1 already calls a leaf: *"asset + world
+// state"*, not cells.
+fn test_a_cell_leaf_has_exactly_two_drawable_positions_in_a_quarter_turn() {
+  assert(swing_steps(door()) == 2,
+         "a door's quarter turn holds {swing_steps(door())} exact rotations, not 2 — "
+       + "if this is now more, a cell leaf may be drawable ajar after all");
+  // The controls, so the count above is not an artefact of one range.
+  shut = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0, hg_ax: 0.0, hg_ay: 0.0,
+                 hg_az: 1.0, hg_lo: 0.0, hg_hi: 0.0 };
+  assert(swing_steps(shut) == 1, "a pinned-shut leaf has {swing_steps(shut)} positions, not 1");
+  full = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0, hg_ax: 0.0, hg_ay: 0.0,
+                 hg_az: 1.0, hg_lo: 0.0, hg_hi: 1.0 };
+  assert(swing_steps(full) == 7,
+         "a full turn holds {swing_steps(full)} exact rotations, not 7 (0 through 6/6)");
+  narrow = Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0, hg_ax: 0.0, hg_ay: 0.0,
+                   hg_az: 1.0, hg_lo: 0.01, hg_hi: 0.15 };
+  assert(swing_steps(narrow) == 0,
+         "a swing that clears no exact rotation reports {swing_steps(narrow)}, not 0 — "
+       + "a leaf with nowhere to be drawn at all");
+}

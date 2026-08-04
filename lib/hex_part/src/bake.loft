@@ -38,8 +38,9 @@ pub const BK_FACING  = 4;   // a heading this step cannot yet apply
 pub const BK_CYCLE   = 5;   // a part contains itself (P8's FIRST rule)
 pub const BK_SOCKET  = 6;   // a binding names a socket the framing part does not offer
 pub const BK_NOFIT   = 7;   // the bound part does not fit that socket (A4.2)
+pub const BK_SWING   = 8;   // the leaf is swung past its own hinge (A5.2)
 
-// The same four answers `expand` keeps apart, in this path's code space. ⚠ Two
+// The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
 // deliberately separate — `BK_MISSING` is 1 and `EX_MISSING` is 1 by coincidence,
 // and a shared translator would quietly make that a requirement.
@@ -47,6 +48,7 @@ fn bind_fault_bake(sa: SocketAt) -> Bake {
   if sa.sa_code == SA_MISSING { return Bake { bk_code: BK_MISSING, bk_why: sa.sa_why }; }
   if sa.sa_code == SA_NOSOCKET { return Bake { bk_code: BK_SOCKET, bk_why: sa.sa_why }; }
   if sa.sa_code == SA_NOFIT { return Bake { bk_code: BK_NOFIT, bk_why: sa.sa_why }; }
+  if sa.sa_code == SA_SWING { return Bake { bk_code: BK_SWING, bk_why: sa.sa_why }; }
   Bake { bk_code: BK_BROKEN, bk_why: sa.sa_why }
 }
 
