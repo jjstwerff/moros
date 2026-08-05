@@ -25,8 +25,34 @@ when the step landed, and this file duplicating it is how it grows back.
 ## ⏭ PICK UP HERE (2026-08-05, session 13) — plan 18 COMPLETE, plan 17 through `A7.3e`
 
 `make gate` **41 green** · `make lib-test` **2588, both backends** · `make parts` green
-(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-2026-08-05 on the installed loft.
+(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All re-measured
+**2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`), which is a
+different binary from the one installed at 00:26 the same night — `loft --version` says `2026.8.0`
+for both, so **the version string cannot tell two installs apart; `sha256sum /usr/local/bin/loft`
+can.**
+
+⚠ **AND THERE IS A FOURTH FACE OF THE GATE FLAKE, WHICH ONLY APPEARS AFTER A LOFT INSTALL.**
+The first suite run on a new toolchain was **25 pass, 2 fail, 14 `SERVER NEVER LISTENED`**; the
+second, with nothing changed, was **40 of 41**. The cause is in each gate's own log and is not a
+timeout in disguise: `cdylib loft_web rebuilt: cached artifact rejected (stamped loft-ffi
+fp=none != current fp=…)`. Every gate server rebuilds a **Rust** cdylib inside its 60-second wait
+for `listening on port`, four at a time, on a box already at load 13. **Warm it once after any
+loft install** — start one server, let it build, stop it — then run the suite. A first run on a
+fresh toolchain measures the compiler's cache, not the tree.
+
+⚠ **`walk` failed the warm run with `{"frames":0}` and passed ALONE with 38 frames**, which is
+STATE's own third face and is why running the failure alone is not optional: `0` says *nothing
+happened*, not *the wrong thing happened*.
+
+**What the new loft changed for us, measured rather than read**: `b = a` still COPIES and
+`c = v[0]` still ALIASES (loft#774's asymmetry stands, now as a decided rule — `@PLN130` F7,
+*"`&` is the aliasing spelling"*); **loft#772 is FIXED** (a `&` parameter reassigned from a local
+compiles and the caller sees the value) while the tracker still reads OPEN; the new
+`B-Ref-Reshape` refusal cannot reach us — there are **zero** `.remove(` calls in `lib/`; and the
+copy notice is **default-on**, 67 rows over `src/editor_server.loft`, of which **29 point at a
+comment, a blank line or a `const` in the wrong file**
+([loft#781](https://github.com/loft-lang/loft/issues/781), filed). ⚠ **The "drop the `&`" lint is
+back at 4 sites, all `wld: &World`** — the exact class loft#760 burned; not touched.
 
 ⚠ **A LIBRARY EDIT MAY NOT REACH THE EDITOR, AND A GREEN SUITE CAN BE MEASURING THE PREVIOUS
 LIBRARY.** [loft#777](https://github.com/loft-lang/loft/issues/777), filed 2026-08-05. A
