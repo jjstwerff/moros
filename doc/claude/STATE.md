@@ -141,10 +141,49 @@ evidence, because a gate that sleeps reports the machine — but *an unchanged l
 sends nothing in 4 s* and *a refused toggle sends no `H:` at all* have no event to wait
 for. There the window **is** the instrument.
 
-⚠ **WHAT REMAINS IS NOT A THINNING PROBLEM, IT IS THE SERVER COUNT.** 44 gates start 44
-servers, ~5 s each, and that floor is now a third of the suite. `keyonly` and `walk` are
-5.0 s and 5.7 s — essentially startup alone. The next real reduction is fewer server
-starts, not fewer claims.
+✅ **AND THE SERVER COUNT WAS THE LAST THIRD — TAKEN, BUT NOT THE WAY IT LOOKED.** The
+idea was to *share* a server across gates. Probed first, and the probe killed it by
+removing its reason: startup was 5–6 s because the server was **interpreted**, not
+because starting one costs that. Exec'ing the already-compiled binary reaches *listening*
+in **217–273 ms**, and **nothing is shared** — each gate keeps its own process, port and
+`EDITOR_PARTS`, which is exactly what sharing would have cost. (Sharing cannot work as
+posed anyway: `EDITOR_PARTS` is read at server start, so one server is one part library,
+and `part_save`, `part_new` and `library` all mutate it.)
+
+| 44 gates | work | wall at `GATE_JOBS=4` |
+|---|---|---|
+| start of the thread | **1838 s** | ~6 min |
+| after the dead waits, photographs and sleeps | 655 s | 168 s |
+| **now** | **483 s** | **126 s** |
+
+⚠ **THE FIRST FULL SUITE THIS WAY WAS 7 GATES RED, AND EVERY VERDICT LIED ABOUT WHY.**
+`cache` and `client_mesh` reported nothing; `camera_indoors` and `deck_soffit` came back
+`subject 0.0001` — a near-empty frame; `persist` failed both its acks. They read as
+rendering and streaming defects and were **one thing**: a compiled loft program roots its
+relative file I/O at **its own directory's parent**, baked in at compile time. From
+`src/.loft/cache/` that root is `src/.loft/`, so shots, recordings and saved worlds went
+nowhere — the server log said `cannot create …/src/.loft/cache/../shots/shot-1.txt —
+write skipped` while the gate reported a blank picture. ⚠ **Neither `--project` nor an
+environment variable overrides it**; both measured, both ignored. The cure is a copy at
+`.gatebin/server`, one level under the repository — ⚠ **and the client page has to travel
+with it**, because `read_client()` reads `{source_dir()}/.loft/editor_client.html` and
+`source_dir()` follows the binary: the server served its own 404, 178 bytes instead of
+2.3 MB, and the browser drew nothing. **A missing FILE wearing a renderer's clothes,
+twice.**
+
+⚠ **THE STALE BINARY IS THE FATAL CASE, AND IT IS CONTROLLED RATHER THAN ASSUMED.**
+Measured first: with the source edited to answer `placed 0,0 STALEPROBE`, exec'ing the
+cached path still answered `placed 0,0` — a green suite against yesterday's server.
+loft's cache is content-addressed **and self-cleaning**, so the build runs once in
+`run-gates.sh` before anything fans out and is **never skipped on a timestamp guess** — a
+heuristic standing in for a content hash admits exactly that silent failure. Re-checked
+end to end after the copy step existed: source changed → `fence` FAILS carrying the new
+string and `.gatebin/server`'s md5 moves; reverted → PASS again.
+
+⚠ **The gates now exercise the NATIVE server** where they used to exercise the
+interpreted one. That is closer to what ships — `make play` is native — and
+`camera_indoors` measures identical rows on both. `GATE_LOFT=--interpret` puts the old
+path back in one variable.
 
 ⚠ **AND `G1`(b) REFUTED A SENTENCE OF ITS OWN DESIGN.** *"If synthesising a column is not far
 cheaper than reading a stored one, there is nothing here"* — measured over 102,400 reads each

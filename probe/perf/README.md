@@ -110,7 +110,7 @@ ceiling for that, because a miss does strictly less work than a hit.
 because the clock is milliseconds and 25,600 reads is under one. `0` is what a floor and a
 free operation look like alike.
 
-## The shared-server probe — ⚠ it killed the design by removing its reason
+## The shared-server probe — ⚠ it killed the design by removing its reason (BUILT 2026-08-07)
 
 Asked 2026-08-07, after the gate suite came down to 655 s of work with ~220 s of that
 being 44 servers reaching *listening*. The proposal was to **share a server across
@@ -150,6 +150,18 @@ play` — the shipped way to run the editor — is already native, and `camera_i
 measures identical rows on both (240 s interpreted, 248 s native). ⚠ **A loft install
 invalidates the cache**, so the build step has to be part of the target rather than
 assumed.
+
+✅ **BUILT, AND IT COST TWO MORE FINDINGS THE PROBE HAD NOT REACHED.** `run-gates.sh`
+builds once and execs; 44 PASS, work **655 s → 483 s**, wall **168 s → 126 s**. But the
+first full suite was **7 gates red with every verdict lying about why** — `subject
+0.0001`, *(no cache report)*, failed acks — and all of it was ONE cause: a compiled loft
+program roots its relative file I/O at **its own directory's parent**, baked in, and
+neither `--project` nor an env var overrides it (both measured). The binary is copied to
+`.gatebin/server`, one level under the repo, to put that root back — ⚠ **and the client
+page has to travel with it**, since `read_client()` reads
+`{source_dir()}/.loft/editor_client.html`: the server served its own 404, 178 bytes
+against 2.3 MB, and the browser drew nothing. **A missing FILE wearing a renderer's
+clothes, twice.**
 
 ⚠ **AND THE PROBE ITSELF DROVE ANOTHER AGENT'S EDITOR.** Its first run took ports from
 18490, which a sibling's server had held for five hours; the probe's own server died on
