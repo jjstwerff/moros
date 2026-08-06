@@ -1,0 +1,27 @@
+use hex_world;
+fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
+fn main() {
+  // Is the cost the WRITE, or is it building the Column value?
+  a = now();
+  for n in 0..20 { for q in 0..16 { for r in 0..16 {
+    c = Column { co_q: q, co_r: r,
+      co_cells: [Hex { h_height: 5 as u16? ?? 0, h_material: 1 as u8? ?? 0 }] };
+  } } }
+  b = now();
+  println("20x 256 Column values, no write  {b - a} ms  ({(b - a) / 20 ?? 0} each)");
+
+  w = blank();
+  c0 = now();
+  for n in 0..20 { for q in 0..16 { for r in 0..16 {
+    world_set_column(w, Column { co_q: q, co_r: r,
+      co_cells: [Hex { h_height: 5 as u16? ?? 0, h_material: 1 as u8? ?? 0 }] });
+  } } }
+  d0 = now();
+  println("20x 256 writes into ONE world    {d0 - c0} ms  ({(d0 - c0) / 20 ?? 0} each)");
+
+  // and a read, for scale
+  e = now();
+  for n in 0..20 { for q in 0..16 { for r in 0..16 { x = world_column(w, q, r); } } }
+  f = now();
+  println("20x 256 world_column reads       {f - e} ms  ({(f - e) / 20 ?? 0} each)");
+}

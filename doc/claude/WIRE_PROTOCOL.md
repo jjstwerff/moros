@@ -59,7 +59,7 @@ fields are comma-separated; sub-records are semicolon-separated.
 | `24` | EDGE | `<dir>,<material>` | `edge D of (q,r) = M, stored at (q,r)` · `edge refused — …` · `edge refused — the world declined it (C)` | **A** → `edge_set_mat` |
 | `25` | WALL | `<material>` | ⚠ **emits `road …` strings** — `road started at x,z`, then `road laid N cells and M fence edges, cut C, heading H of 24 (snapped, residual R°), length L` | **A** → `snap_run_d24` + `way_stamp` |
 | `26` | CELL | `<q>,<r>` | `cell q,r = <material>,<height>` | **R** |
-| `27` | TRACE | `<0\|1>` | `trace true/false` | **S** — diagnostics |
+| `27` | TRACE | `<0\|1\|2\|3>` | `trace true/false` · `profile armed` · `PROFILE …` | **S** — diagnostics |
 | `28` | CAMREST | — | `camera rested B boom D free F pitch P residual A,B` | **V** — added 2026-07-30; see [`HEX_STACK.md`](HEX_STACK.md) and the note below |
 | `29` | LABELS | `<q>,<r>` | `labels q,r = <one layer label per layer, bottom-up>` | **R** — added 2026-07-30. The companion to `15` COLUMN: same column, identities instead of heights |
 | `30` | STAIR | `<+1\|-1>` | `stair ±1 at q,r height H from S` · `stair refused (C) why` · `stair refused — no cell along the facing` | **A** — added 2026-07-31 → `stair_height` + `surface_set` |
@@ -255,6 +255,38 @@ measurement, and the cost of not knowing it is named.
   introduced and caught the same hour in `prop.mjs`: an added `await ack('storey')` sat directly
   above the existing `const storey = await ack('storey')`, so `groundMoved` read false on every
   run. **Adding a barrier can break a gate as surely as removing one.**
+
+## `27:` — where a message's time goes, on demand
+
+`27:` carries four verbs, and two of them were added because the three the tick already had
+could not see a gesture at all.
+
+| | |
+|---|---|
+| `27:0` / `27:1` | the **tick's phases** — proxy, camera, rest — printed once a second while ticking |
+| `27:2` | **arm** the per-message profile, and reset it. Replies `S:profile armed` |
+| `27:3` | **report** it: `S:PROFILE <total>ms over <k> message kinds — id count us tau`, then one `S:PROFILE <id> <count> <us> <tau>` per id that was seen |
+
+⚠ **The two are different instruments, not two settings of one.** The tick buckets answer *the
+camera is eating the frame*, and they are blind to everything a gate or a script does: those send
+messages and wait for acknowledgements, and most never tick at all.
+
+⚠ **`tau` SITS BESIDE THE MICROSECONDS ON PURPOSE.** This tree's cost model is the edit clock — an
+exact integer, the same on any box and on a world of any size — and a millisecond figure measures
+the machine it ran on. Together they separate the two questions a slow gesture raises: *is it
+doing too much work* (`tau`) or *is the work too expensive* (`us`). And the **count** is there
+because a total cannot be read without it: `15:` at 900 ms is a catastrophe if it arrived twice
+and unremarkable if it arrived four thousand times.
+
+⚠ **REPORTING DOES NOT RESET.** Two consecutive reads would otherwise mean two different windows,
+and a gate that asks twice wants the same answer twice. `27:2` is the only reset.
+
+⚠ **AND IT WAS CHECKED IN BOTH DIRECTIONS BEFORE BEING BELIEVED**, which is what the rest of this
+file is about. Armed, then sent exactly five `7:` and three `15:`, the report read `7 5 …` and
+`15 3 …` — the counts it should find. Every `tau` read **0**, which is the right answer for a
+place and a column read and is indistinguishable from a broken column, so a second check sent
+three `5:` raises: `5 3 17326 273`. A profiler that has only ever printed zero in a column has
+not demonstrated that column.
 
 ## Still clock-paced
 

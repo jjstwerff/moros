@@ -322,6 +322,16 @@ const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you fac
 const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
 const HOUSE_D = 4;        // not the parameters
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
+                          // `27:2` arms the per-message profile, `27:3` reports it
+
+// How many message kinds the profile actually saw. Its own line needs it, and a
+// header that said "64 kinds" of a table with four rows would be the instrument
+// lying about its own reach.
+fn prof_seen(ns: vector<integer>) -> integer {
+  k = 0;
+  for n in ns { if n > 0 { k = k + 1; } }
+  k
+}
 // CHOOSE THE CAMERA'S MODE — `40:0` AUTO, `40:1` FOLLOW, `40:2` SNUG. AUTO is the
 // default and degrades on its own; naming any other one turns the degradation OFF
 // for good, because a chosen mode never auto-switches.
@@ -5222,6 +5232,29 @@ fn main() {
   acc_proxy = 0; acc_cam = 0; acc_rest = 0;
   nticks = 0; nrebuild = 0; acc_since = ticks(); tph = ticks();
   tracing = false;             // `27:1` turns it on; it costs three `ticks()` a tick
+  // ── WHERE A MESSAGE'S TIME GOES — `27:2`, and it is a different question ──────
+  //
+  // The three buckets above attribute the TICK, which is the right instrument for
+  // "the camera is eating the frame" and blind to everything a gate or a script
+  // actually does: they send messages and wait for acks, and most of them never
+  // tick at all. So a second accumulator, keyed by message id.
+  //
+  // ⚠ IT CARRIES `w_tau` BESIDE THE MICROSECONDS, and that is the point rather than
+  // a nicety. This tree's cost model is the edit clock — an exact integer, the same
+  // on any box and on a world of any size — and a millisecond figure measures the
+  // machine it ran on. Two numbers separate the two questions a slow gesture raises:
+  // *is it doing too much work* (`tau`) or *is the work too expensive* (`us`). A
+  // gesture whose `tau` is 1 and whose `us` is 40,000 is not doing too much.
+  //
+  // ⚠ AND THE COUNT IS THERE BECAUSE A TOTAL CANNOT BE READ WITHOUT IT. `15:` at
+  // 900 ms is a catastrophe if it arrived twice and unremarkable if it arrived four
+  // thousand times, and the total is identical either way.
+  PROF_SLOTS = 64;             // every id in WIRE_PROTOCOL.md, with room above
+  prof_n: vector<integer> = [];
+  prof_us: vector<integer> = [];
+  prof_tau: vector<integer> = [];
+  for prof_init in 0..PROF_SLOTS { prof_n += [0]; prof_us += [0]; prof_tau += [0]; }
+  prof_on = false;             // `27:2` arms it; off, the hook is one comparison
   // ⚠ NOTHING KEPT THE WORLD'S NAME. `8:` and `9:` took one and forgot it, so the
   // editor could not answer "what am I working on" — the first question §C1 asks
   // — about the one thing it is definitely working on. It is the name of the last
@@ -5371,6 +5404,12 @@ fn main() {
         for wt in thumbs_wire(part_thumbs) { srv.send_to(ev.cid, wt); }
         println("editor: client {ev.cid} connected ({len(clients)} tracked)");
       } else if ev.message {
+        // ⚠ THE TIMER OPENS AND CLOSES AROUND THE WHOLE CHAIN, IN ONE PLACE. Timing
+        // each handler where it sits would be forty edits and forty chances to add
+        // the next one without its stopwatch — and the message this file spends most
+        // on has, twice, turned out to be one nobody suspected.
+        prof_t0 = ticks();
+        prof_tau0 = wld.w_tau;
         if ev.msg_id == MSG_READY {
           srv.send_to(ev.cid, wire_body);
           srv.send_to(ev.cid, wire_leg_l);
@@ -6543,10 +6582,43 @@ fn main() {
         } else if ev.msg_id == MSG_EDGE {
           do_edge(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
         } else if ev.msg_id == MSG_TRACE {
-          tracing = (ev.payload as integer ?? 0) != 0;
-          srv.send_to(ev.cid, "S:trace {tracing}");
-          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
-          println("editor: trace {tracing}");
+          // ⚠ THREE VERBS ON ONE ID, because they answer three different questions.
+          //   `27:0`  off          `27:1`  the tick's phases, once a second
+          //   `27:2`  arm the per-message profile, and reset it
+          //   `27:3`  REPORT the profile — every id that was seen, with its count,
+          //           its microseconds and its `w_tau`
+          // A report that also reset would make two consecutive reads mean
+          // different windows, and a gate that asks twice is a gate that wants the
+          // same answer twice.
+          twant = ev.payload as integer ?? 0;
+          if twant == 2 {
+            prof_on = true;
+            for prof_z in 0..PROF_SLOTS { prof_n[prof_z] = 0; prof_us[prof_z] = 0; prof_tau[prof_z] = 0; }
+            srv.send_to(ev.cid, "S:profile armed");
+            println("editor: profile armed");
+          } else if twant == 3 {
+            // ⚠ EVERY LINE CARRIES ALL THREE NUMBERS, and the id rather than a name:
+            // a name is this file's private spelling, and `WIRE_PROTOCOL.md` is what
+            // a reader has. Silent ids are omitted — a table of sixty zeroes buries
+            // the four rows that matter.
+            ptot = 0;
+            for prof_t in 0..PROF_SLOTS { ptot = ptot + (prof_us[prof_t] ?? 0); }
+            phead = "PROFILE {ptot / 1000 ?? 0}ms over {prof_seen(prof_n)} message kinds"
+                  + " — id count us tau";
+            println(phead);
+            srv.send_to(ev.cid, "S:{phead}");
+            for prof_row in 0..PROF_SLOTS {
+              if (prof_n[prof_row] ?? 0) == 0 { continue; }
+              prow = "PROFILE {prof_row} {prof_n[prof_row]} {prof_us[prof_row]} {prof_tau[prof_row]}";
+              println(prow);
+              srv.send_to(ev.cid, "S:{prow}");
+            }
+          } else {
+            tracing = twant != 0;
+            srv.send_to(ev.cid, "S:trace {tracing}");
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
+            println("editor: trace {tracing}");
+          }
         } else if ev.msg_id == MSG_MODE {
           // ⚠ AN INADMISSIBLE MODE IS REFUSED, NOT CLAMPED — leak site 1. `40:7`
           // silently becoming AUTO is the author asking for one thing and getting
@@ -7302,6 +7374,17 @@ fn main() {
             mark_dirty(dirty, rack.ak_q, rack.ak_r, hex_editor::PEAK_R + 2);
             println("editor: brush ({rack.ak_q},{rack.ak_r}) — "
                     + "{len(wld.w_chunks)} chunks, {len(dirty.items)} dirty");
+          }
+        }
+        // ⚠ CLOSED HERE, WHERE EVERY BRANCH ARRIVES, and armed by a flag rather than
+        // compiled out: an instrument that has to be switched on in the source is one
+        // nobody switches on. Off, this costs one boolean test per message.
+        if prof_on {
+          prof_i = ev.msg_id;
+          if prof_i >= 0 && prof_i < PROF_SLOTS {
+            prof_n[prof_i]   = (prof_n[prof_i] ?? 0) + 1;
+            prof_us[prof_i]  = (prof_us[prof_i] ?? 0) + (ticks() - prof_t0);
+            prof_tau[prof_i] = (prof_tau[prof_i] ?? 0) + (wld.w_tau - prof_tau0);
           }
         }
       }
