@@ -110,6 +110,53 @@ ceiling for that, because a miss does strictly less work than a hit.
 because the clock is milliseconds and 25,600 reads is under one. `0` is what a floor and a
 free operation look like alike.
 
+## The shared-server probe — ⚠ it killed the design by removing its reason
+
+Asked 2026-08-07, after the gate suite came down to 655 s of work with ~220 s of that
+being 44 servers reaching *listening*. The proposal was to **share a server across
+gates**. Probed before building, and it should not be built.
+
+**Startup is 5–6 s because the server is INTERPRETED, not because starting one is
+expensive.** The same server, already compiled, exec'd straight from loft's cache:
+
+| how the gate's server is started | to *listening* |
+|---|---|
+| `loft --interpret` (what `run-gates.sh` does today) | **~6000 ms** |
+| `loft --native` | ~3500 ms |
+| **exec `src/.loft/cache/editor_server-<hash>` directly** | **217–273 ms** |
+
+Five gates run that way, all PASS with their usual verdicts: `fence` 8.1 → 2.7 s,
+`storey` 9.2 → 3.6 s, `doorstep` 7.7 → 2.9 s, `part_sock` 17.2 → 13.5 s, `part_new`
+13.4 → 9.4 s. **And no isolation is given up** — every gate keeps its own process, port
+and `EDITOR_PARTS` copy, which is exactly what sharing would have cost. (Sharing also
+cannot work as posed: `EDITOR_PARTS` is read at server start, so one server means one
+part library, and `part_save`, `part_new` and `library` all mutate it.)
+
+⚠ **THE ONE WAY THIS IS FATALLY WRONG, MEASURED RATHER THAN ASSUMED: a stale binary
+runs old code SILENTLY.** With `editor_server.loft` edited to answer `placed 0,0
+STALEPROBE`, exec'ing the cached path still answered `placed 0,0`. A runner that execs a
+fixed path tests whatever was last compiled, and passes.
+
+✅ **But the cache is content-addressed and self-cleaning, which is what makes it safe.**
+Editing the source and rebuilding produced `editor_server-879386d85355772e` **and removed
+`editor_server-25acec083708faca`**; reverting the source and rebuilding restored
+`25acec083708faca` exactly. So the rule is **`loft --native` once (~29 s, cached across
+runs) before the fan-out, then glob-and-exec** — a stale binary cannot survive the build,
+and the glob cannot find one that does not exist.
+
+⚠ **What it would change about coverage, and it is arguably an improvement**: the gates
+would exercise the NATIVE server, while today they exercise the interpreted one. `make
+play` — the shipped way to run the editor — is already native, and `camera_indoors`
+measures identical rows on both (240 s interpreted, 248 s native). ⚠ **A loft install
+invalidates the cache**, so the build step has to be part of the target rather than
+assumed.
+
+⚠ **AND THE PROBE ITSELF DROVE ANOTHER AGENT'S EDITOR.** Its first run took ports from
+18490, which a sibling's server had held for five hours; the probe's own server died on
+`cannot bind`, and the gate connected to theirs and laid a fence ring in their live
+world. Nothing reached disk — `fence.mjs` sends no `8:` or `9:` — but **pick a port after
+checking it is free, not before**, and keep the pid of what you start.
+
 ## `profile_counts.mjs` / `profile_tau.mjs` — the instrument, and its two checks
 
 `27:2` arms a per-message profile; `27:3` reports `id count us tau` per message id. See
