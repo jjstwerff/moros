@@ -64,7 +64,7 @@ says what `A8` deliberately does **not** cover.
 leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
 own plan. **The first two are the ones that change the FORMAT**, so they set the order.
 
-### Plan 19 — the lavition split: `L1`/`L2` BUILT, the rest waits for `A8`
+### Plan 19 — the lavition split: `L1`–`L5` DONE or RAISED, the move waits for `A8`
 
 [#19](https://github.com/jjstwerff/moros/issues/19) · design
 [LAVITION_SPLIT.md](LAVITION_SPLIT.md) · steps
@@ -98,8 +98,20 @@ stack has no Moros dependency at all**, for the first time.
 `hex_proj` gave 3 `SERVER NEVER LISTENED` plus the `walk`/`hipskin` pair; **one warm server took it
 to zero.** The warm-up rule above is written for an install; it applies to a new package too.
 
-**What is left**: `L4` (the two `hex_world` lineages — **not ours alone**, raise it with
-`loft-libs-world`), `L5` (the gate flake), then `L6`–`L8`, all of which wait for `A8`.
+✅ **AND `L4` IS RAISED — [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13),
+with an 8-control probe behind it** (`probe/l4/run.sh`). **Theirs keeps `hex_world`; ours becomes
+`hex_voxel`** — not on merit (ours is 2,041 lines to their 400) but on possibility: they have
+published three versions since 2026-06-14 and loft's **own test suite** consumes them, so theirs
+is the rename that cannot be done. ⚠ **And the package rename says nothing about the types.**
+Four public names are declared by both. The two `World` structs do **not** merge — but a **bare**
+`Chunk { … }` binds to whichever package was `use`d **first**, and `G`'s error is
+`Unknown field Chunk.ck_cells`: the `Surface` diagnostic of `L1`, verbatim, one rename later. So
+`L6` renames `World` and `Chunk` too, before publishing, because after is never.
+Two loft defects fell out — [#788](https://github.com/loft-lang/loft/issues/788) (the order-
+dependent name) and [#789](https://github.com/loft-lang/loft/issues/789) (the suggester reading
+the registry index, advising `use hex_world;` on a file that has it).
+
+**What is left**: `L6`–`L8`, all of which wait for `A8`.
 
 ✅ **AND `L5` — THE GATE FLAKE — IS FIXED, so a required PR check is now possible.** Three gates,
 two bugs, neither a timeout that wanted raising:

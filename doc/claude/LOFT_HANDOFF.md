@@ -990,3 +990,31 @@ ordinary. Found only by writing the matrix, not by reading the code.
   (`bug` `sev:high` `area:stdlib` `wa:partial` `hit-by:moros` — high because the loss is
   **silent**: both the write and the size read report success. Interpreter only; `--native`
   was not tried, so no `both-backends`.)
+
+## Open, filed 2026-08-06 — both from plan 19 `L4`, one reproducer
+
+Two packages named `hex_world` exist: ours and `loft-libs-world`'s, on unrelated lineages.
+Settling which keeps the name (`L4`) needed a probe, and the probe found these.
+**[`probe/l4/run.sh`](../../probe/l4/run.sh)** reproduces both — it stages the rename in a
+`mktemp -d` and touches no tree. `loft 2026.8.0`, interpreter.
+
+- **[loft#788](https://github.com/loft-lang/loft/issues/788) — a bare struct name declared by
+  two packages binds to the FIRST `use`, silently.** Controls `G` and `H` are the same file
+  with its two `use` lines swapped and nothing else changed: one fails with `Unknown field
+  Chunk.ck_cells`, the other compiles and runs. No ambiguity error at either order. ⚠ The
+  literal's field set named exactly one of the two `Chunk`s, so the compiler had what it
+  needed and reported a missing field on the struct nobody meant — **which is the `Surface`
+  diagnostic that hid a real collision here for months**. What is *right* today, and worth
+  recording so a fix does not break it: the two types do **not** merge (`expected World, got
+  World`, control `F`), and a qualified `hex_world::Chunk` resolves correctly.
+  (`bug` `sev:medium` `area:packages` `wa:partial` `hit-by:moros` — partial because
+  qualifying works, and relies on the author knowing there is anything to qualify.)
+- **[loft#789](https://github.com/loft-lang/loft/issues/789) — "the `P` package provides it;
+  … add `use P;`" fires on a file whose second line is `use P;`.** The suggester looks the
+  missing name up in the **registry index** rather than in the packages the build resolved,
+  so when a `--lib` package shares a name with a registry one the advice sends you to check
+  an import that was already correct. Control `D`. ⚠ Third time this tree has had to treat a
+  compiler suggestion as a hypothesis rather than an instruction — after the `&` lint that
+  took `hex_world` from 114 green to 96 failed ([#760](https://github.com/loft-lang/loft/issues/760)).
+  (`bug` `sev:low` `area:packages` `wa:clean` `hit-by:moros` — the build fails loudly either
+  way; what it costs is the time spent on the wrong hypothesis.)

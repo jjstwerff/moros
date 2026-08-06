@@ -130,21 +130,41 @@ its content can all travel together.
 
 ### L4 — `hex_world` is an ambiguous global name today
 
+✅ **Raised 2026-08-06 at [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13)
+with an 8-control probe, [`probe/l4/run.sh`](../../probe/l4/run.sh).** Recommendation: theirs
+keeps the name, **ours becomes `hex_voxel`**, and its `World` and `Chunk` are renamed with it.
+
 | | |
 |---|---|
-| `moros/lib/hex_world` | **0.1.0** — the column store: columns, layers, windowed heights, palette, edit clock |
-| registry / `loft-libs-world/hex_world` | **0.2.0** — a different lineage entirely (the audience-crystal demo grid) |
+| `moros/lib/hex_world` | 0.1.0, **unpublished**, path-dependency in one tree — the column store: columns, layers, windowed heights, palette, edit clock. 2,041 lines, 102 public names |
+| registry / `loft-libs-world/hex_world` | **0.1.1, 0.1.2 and 0.2.0, all published** since 2026-06-14 — a different lineage entirely: one `Cell` per hex in sparse 32×32 chunks. 400 lines, 17 public names |
 
 `hex_editor/loft.toml` already carries the workaround and says why: *"`hex_world` is deliberately
 NOT here. Ours is `lib/hex_world` and the registry carries a 0.2.0 on a different lineage;
 declaring it would let the resolver pick the wrong one out from under the editor."*
+⚠ **Measured, and it was not folklore** — controls `A`–`D`: the one line `use hex_world;` means
+either package depending on whether `--lib lib/` is passed. Both directions compile and run, and
+neither error mentions that two packages share a name.
 
 A path dependency names exactly one package and is fine **inside one tree**. A standalone lavition
-that *publishes* cannot use a path, so the lineage question has to be settled first.
+that *publishes* cannot use a path, so the lineage question had to be settled first.
 
-⚠ **This one is not ours alone to decide** — the 0.2.0 lineage is `loft-libs-world`'s, which is
-`loft-lang`'s repo and shared with crawler. **Raise it, do not resolve it unilaterally**, and
-expect the answer to be a rename on one side.
+⚠ **This one was not ours alone to decide, and the question is not which lineage deserves the
+name.** Ours is five times the size and is what `WORLD_MODEL` Part II specifies; none of that is a
+claim on a name. What decides it is **which rename is still possible**: they have published three
+times and are consumed by loft's own test suite (`tests/multilib/p379_lib_namespace.loft`, a
+multiplayer integration test, `tests/issues.rs`, a vendored fixture), so theirs is the rename that
+cannot be done.
+
+⚠ **AND THE PACKAGE RENAME SAYS NOTHING ABOUT THE TYPES.** Four public names are declared by both
+— `Chunk`, `World`, `world_save`, `world_load` — over incompatible formats (`'WTTH'` against
+`'WRLD'`). Control `F`: the two `World` structs do **not** merge (`expected World, got World`), so
+the rename is enough for correctness. Controls `G`/`H`: a **bare** `Chunk { … }` literal binds to
+whichever package was `use`d **first**, and the same file with its two imports swapped compiles
+something different with no ambiguity error — [loft#788](https://github.com/loft-lang/loft/issues/788).
+`G`'s message is `error: Unknown field Chunk.ck_cells`, which is the `Surface` diagnostic of `L1`
+verbatim, one rename later. **So the structs are renamed too** — *not required* and *safe to
+leave* are different claims, and only the first was measured.
 
 ---
 
@@ -152,7 +172,8 @@ expect the answer to be a rename on one side.
 
 ```
 lavition/
-  lib/          hex_world · hex_editor · hex_part · hex_mesh · lavition_ui · glb_read
+  lib/          hex_voxel · hex_editor · hex_part · hex_mesh · hex_proj · lavition_ui · glb_read
+                ^^^^^^^^^ today's `hex_world` — see L4; the name belongs to another lineage
   src/          lavition_server.loft · lavition_client.loft · lavition_run.loft
   tools/gates/  the 49, all of them
   tools/scripts/ the 23 .keys scripts
@@ -204,6 +225,11 @@ it.*
    `Fit`, `Surface`, `hex_world` — is a *global* namespace problem, so the guard is a grep of
    `lib/`, the siblings and the registry **before** a public name is added. ⚠ A package suite
    cannot see it: `hex_part` was 131 green while `hex_editor` would not build at all.
+   ⚠ **AND THE GREP HAS TO COVER TYPES, NOT JUST PACKAGES.** `L4` measured what a package rename
+   buys and what it does not: two packages may co-exist, but a bare `Chunk { … }` still binds to
+   whichever was `use`d first ([loft#788](https://github.com/loft-lang/loft/issues/788)). A
+   published `World` cannot be renamed afterwards, so the check runs on **every** exported name
+   at the moment of publishing, not on the package line.
 4. **Plans keep their identity as tracker issues**, and every step keeps its *What `Ax.y` turned
    up* section. The rule this tree learned the expensive way: **the per-step record belongs to the
    plan, the handoff describes only the present, and the journal keeps the past.** STATE.md grew

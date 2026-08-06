@@ -1,0 +1,14 @@
+// L4 `E` — both lineages in ONE program, after the package rename.
+//
+// `hex_voxel` is our store under a new package name; `hex_world` is the registry's.
+// Both declare `struct World` and `struct Chunk`. This compiles and runs, exit 0,
+// with no diagnostic that two packages declare the same type names — which is the
+// point: the rename makes them CO-INSTALLABLE, and says nothing about the types.
+use hex_voxel;
+use hex_world;
+
+fn main() {
+  mine  = world_new(0.25, 100, 8, 3).wn_world;
+  yours = world_empty();
+  println("PROBE both loaded — ours has_chunk {world_has_chunk(mine, 0, 0)}, theirs cells {cell_count(yours)}");
+}

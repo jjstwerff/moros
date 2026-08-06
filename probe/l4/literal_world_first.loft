@@ -1,0 +1,13 @@
+// L4 `H` — `G` with the two `use` lines swapped, and nothing else changed.
+//
+// The same literal now compiles and runs. So a bare type name shared by two packages
+// is resolved by IMPORT ORDER — first `use` wins — with no ambiguity error at either
+// order. One source line, two meanings, and the file that chose is not the file that
+// breaks.
+use hex_world;
+use hex_voxel;
+
+fn main() {
+  c = Chunk { ck_cx: 1, ck_cz: 2, ck_cells: [] };
+  println("PROBE bare literal took THEIRS: {c.ck_cx}");
+}

@@ -1,0 +1,17 @@
+// L4 `G` — the `L1` shape, with the package rename ALREADY in place.
+//
+// `Chunk` is declared by both. This literal's fields are unambiguously THEIRS
+// (`ck_cells` exists on no other `Chunk` in the graph) — and it binds to `hex_voxel`'s
+// anyway, because that is the first `use`. The error names a field, never a collision:
+//
+//     error: Unknown field Chunk.ck_cells
+//
+// ⚠ That is the `Surface` diagnostic verbatim, one rename later. Compare `H`, which is
+// this file with the two imports swapped and nothing else.
+use hex_voxel;
+use hex_world;
+
+fn main() {
+  c = Chunk { ck_cx: 1, ck_cz: 2, ck_cells: [] };
+  println("PROBE bare literal took THEIRS: {c.ck_cx}");
+}

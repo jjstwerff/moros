@@ -1,0 +1,13 @@
+// L4 `F` — do the two `World` structs MERGE into one type, as `Surface` did at `L1`?
+//
+// If they merged, handing OUR world to THEIR function would typecheck. It does not:
+// the two are distinct types, and the compiler says so — in the least useful words
+// available, `expected World, got World`.
+use hex_voxel;
+use hex_world;
+
+fn main() {
+  mine = world_new(0.25, 100, 8, 3).wn_world;   // hex_voxel::World
+  n = cell_count(mine);                          // hex_world's fn, hex_voxel's value
+  println("PROBE their cell_count accepted our World: {n}");
+}

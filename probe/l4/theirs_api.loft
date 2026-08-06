@@ -1,0 +1,11 @@
+// L4 `C`/`D` — the mirror of `ours_api`.
+//
+// `world_empty` exists only in the registry's `hex_world`. Same import line, and the
+// flag decides which data model it means: a sparse one-cell-per-hex grid, or our
+// voxel column store.
+use hex_world;
+
+fn main() {
+  w = world_empty();
+  println("PROBE built THEIR world, cells {cell_count(w)}");
+}
