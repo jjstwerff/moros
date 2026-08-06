@@ -74,6 +74,22 @@ absent). **The sentence is wrong, not the design**: GROUND_DEFAULT removes the *
 read, and the read only has to be **not dearer**. ⚠ Which moves the design's real cost to `G6`,
 where it was not priced — an infinite ground plane means the mesher builds chunks it skips today.
 
+⚠ **THE SUBSTITUTION IS EXHAUSTED — SWEPT, SO DO NOT SWEEP IT AGAIN.** A scanner over every
+`.loft` for a `world_set_column` inside a loop: the four that mattered are done, and what is
+left is worth **under half a second**. ⚠ **`hex_editor`'s fixtures were already on the fast
+path** — `ground_set` → `layer_write` is `world_set_cell` — so there is no second `G3` there.
+⚠ **And `gesture.loft`'s remaining column writes must not be touched**: they pass `co_ids` to
+insert a *named* layer, which is the one thing `world_set_cell` cannot do.
+
+| where the suite time is now, per package, interpreted | |
+|---|---|
+| **`hex_editor` 56 s** | 235 tests, **flat** — 23 files from 1.4 to 5.4 s, no fixture dominating. It is real work, not another `place.loft` |
+| **`hex_part` 35 s** · `moros_sim` 24 s · `hex_world` 7.6 s · `moros_render` 7.3 s | the other six packages are under 3 s each |
+
+⚠ **A per-file loop is a fair instrument** — `loft test` over `hex_part` and the sum of its 16
+files run one at a time agree at 35–39 s. A first reading suggested a 5× package-mode penalty;
+it was drift.
+
 | still true, measured 2026-08-06 | |
 |---|---|
 | nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms** |

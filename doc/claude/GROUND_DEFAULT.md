@@ -52,6 +52,33 @@ CANNOT.** The two paths build the same world — all 256 cells equal, all four c
 equal — **and the same `w_tau`, 257 either way**. A fixture that swapped write paths and moved
 the edit clock would break every `hex_editor` cost test with every cell agreeing.
 
+### ⚠ The substitution is EXHAUSTED — swept, so nobody sweeps it again
+
+A scanner over every `.loft` in `lib/`, `src/` and `probe/` for a `world_set_column` inside a
+loop, by loop depth. It has a positive control by construction: it still finds the sites left
+behind, and it stopped finding the four this step changed.
+
+- **The four that mattered are done.** Nothing else in any test suite fills a region big enough
+  to pay for. What is left — `hex_part`'s `region`/`roundtrip`/`save_edit` — is ~100 cells across
+  ~10 calls, worth **under half a second** between them, against churn in three files.
+- ⚠ **The shipped editor was already right, and it is worth knowing why.** `hex_editor`'s
+  `ground_set` → `ground_write` → `layer_write` is `world_set_cell` already; its own comment
+  records the measurement that put it there (*a 91-cell brush stroke was 45 ms, a 10,000-cell
+  fill 16 s*). So `field.loft`'s 1089-cell fixture and `storey.loft`'s 441 are on the fast path
+  and there is no second `G3` hiding in `hex_editor`.
+- **The remaining `world_set_column` calls in `gesture.loft` are not substitutable and must not
+  be touched**: they pass `co_ids` to insert a *named layer* at a position, which is the one
+  thing `world_set_cell` cannot do — it writes an existing layer index. `world_set_cell`'s own
+  fallback exists for exactly that case.
+
+**Where the suite time is now** (interpreted, this box, per package): `hex_editor` **56 s** ·
+`hex_part` **35 s** · `moros_sim` 24 s · `hex_world` 7.6 s · `moros_render` 7.3 s · the other
+six under 3 s each. ⚠ **`hex_editor` is flat** — 23 files between 1.4 s and 5.4 s, no fixture
+dominating, so it is 235 tests of real work and not another `place.loft`. ⚠ **And package mode
+costs nothing extra**: `loft test` over `hex_part` and the sum of its 16 files run separately
+agree at 35–39 s, so a per-file loop is a fair instrument. The first reading suggested a 5×
+package-mode penalty and that was drift.
+
 ⚠ **AND THE BOX DRIFTS, SO A SINGLE READING IS NOT A MEASUREMENT.** Two runs of unchanged code
 reported **107 ms and 271 ms** for the same loop while `PHASE target` in the same process said
 108 ms both times, and `place.loft` came back at 18.9 s once and 6.8 s four times running.
