@@ -1,3 +1,16 @@
+// ⚠ THINNED, AND ITS OWN HEADER HAD NOT NOTICED. The four claims listed below were
+// this gate's when it was written; two of them are now
+// `lib/hex_editor/tests/field.loft` — `test_the_scatter_is_a_field_and_not_a_list`
+// (scattering the same ground twice yields the same wood) and
+// `test_a_denser_scatter_plants_more` — and `test_species_zero_clears` holds the
+// third against the store. The verdict here is `emptied && grewOnHill && standsOn`,
+// so those two are no longer checked here at all.
+//
+// ⚠ THE HEADER CLAIMING MORE THAN THE VERDICT CHECKS IS ITS OWN HAZARD: it reads as
+// coverage that is not there, and the next person to thin this file would be thinning
+// something already gone. What is left, and what needs a server, is what the mesher
+// EMITTED — a tree stands on the ground it grows on, so a wood on a hill sits higher
+// than one on the flat, and clearing empties the mesh with it.
 // Vegetation gate (rung W5, moros#13) — "a forest that reads as landscape,
 // not a list".
 //

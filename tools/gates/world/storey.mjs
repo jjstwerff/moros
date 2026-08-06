@@ -1,3 +1,14 @@
+// ⚠ THINNED, AND THIS IS THE WIRE HALF. The structure is
+// `lib/hex_editor/tests/storey.loft` — a storey appends a layer above, three stack
+// rather than replace, a cellar inserts at the bottom and the order still holds, the
+// ground becomes a ceiling the moment something is dug under it, the stair opens only
+// where the fold rule demands and is walkable end to end. Fourteen tests, negative
+// controls included, none of which needs a server.
+//
+// What is left is the `12:` gesture's own acknowledgement — `storey -1 on N cells,
+// stair of M` — matched as a shape, because the defect this rung closed was a CONSTANT
+// FACTOR and any slack admits it back. This gate asserts on that string and nothing
+// else.
 // Storey gate (rung W4, moros#12) — the checkpoint the whole model rests on:
 // a tower with a dungeon under it.
 //

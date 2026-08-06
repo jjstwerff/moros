@@ -1,3 +1,14 @@
+// ⚠ THINNED, AND THIS IS THE WIRE HALF. The counting law below — a hex disc of
+// radius R has 6(2R+1) boundary edges of which exactly 3(2R+1) are stored outside
+// it — is `lib/hex_editor/tests/fence.loft`, in
+// `test_a_ring_has_the_exact_number_of_edges_the_geometry_says` and
+// `test_half_the_ring_is_stored_outside_it`, with the refusals and the gateway
+// beside them. Against the store that is arithmetic and needs no world.
+//
+// What is left here is the half a store test cannot see: that the counts are REPORTED
+// on the wire, and that a nominal refusal arrives WITHOUT an offer while an ordinal
+// one arrives with it. This gate asserts on acknowledgement strings and nothing else,
+// which is what makes it a wire gate rather than a second opinion.
 // Fence gate (rung W2, moros#10) — THE EXACT PERIMETER, AND WHO STORES IT.
 //
 // A hex owns three of its six edges, so half of any region's boundary is stored

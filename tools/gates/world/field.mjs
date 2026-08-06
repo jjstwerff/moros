@@ -1,3 +1,12 @@
+// ⚠ THINNED, AND THIS IS THE WIRE HALF. Every structural claim is
+// `lib/hex_editor/tests/field.loft`: a fill stops at the ring that encloses it, an
+// unenclosed one is refused rather than running away, a refused one leaves the world
+// alone, the scatter is a FIELD and not a list, a denser scatter plants more, and
+// species zero clears. All pure functions over a world in memory.
+//
+// What is left is that the `24:`/`25:` gestures carry it end to end — the refusal
+// reaches the wire by name, the acknowledgement carries the count, and a rebuild
+// follows. The verdict here reads acknowledgement strings only.
 // Field gate (rung W3, moros#11).
 //
 // ⚠ Getting this to pass found a bug in ROADS, not in fields: road was laid at
