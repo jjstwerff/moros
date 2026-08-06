@@ -28,7 +28,7 @@ use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band i
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
-use moros_terrain;
+use hex_mesh;
 // ⚠ `hex_shape` IS NOT USED HERE, AND IT HAS TO BE NAMED ANYWAY. `hex_editor` is
 // found through `--lib lib/`, and a directory package's transitive registry
 // dependency is not resolved before the module that needs it is parsed: without
@@ -131,7 +131,7 @@ const LEVEL_R = 5;
 // all. `0` in the ramp slot keeps the road a flat colour rather than
 // height-ramped: a road is a surface, not a reading of the terrain.
 
-// ⚠ EVERY SURFACE COLOUR BUT THIS ONE IS `moros_terrain::surfaces()`'s NOW, and
+// ⚠ EVERY SURFACE COLOUR BUT THIS ONE IS `hex_mesh::surfaces()`'s NOW, and
 // the copy that used to sit here is gone. `chunk_meshes_all` returns the nine
 // meshes in that list's order and its callers take the colour from the list by
 // the same index, so there is nothing left to hold equal — the drift `B3.1`
@@ -649,7 +649,7 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // mesh cannot serve both, and that is `CAMERA_INDOORS.md`'s own reason for the
 // split — the geometry followed from the requirement rather than the other way
 // round. Nine gate files carry this number beside a "keep this equal to" note.
-// ⚠ AND `moros_terrain::surface_count()` IS THE AUTHORITY (plan 18 B3.1); this
+// ⚠ AND `hex_mesh::surface_count()` IS THE AUTHORITY (plan 18 B3.1); this
 // is a copy, held equal by a loft test rather than by the compiler. That began as
 // a workaround for `const X = some_fn()` aborting (loft#744) and it OUTLIVED the
 // fix, which landed 2026-08-03: a file-scope constant is an inlined expression
@@ -1633,14 +1633,14 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
   w2 = hex_corner_world(cq, cr, 0, (6 - eb) % 6 ?? 0);
   cs = hex_to_world(cq, cr, 0);
   cn = hex_to_world(nq, nr, 0);
-  nrm = moros_terrain::nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+  nrm = hex_mesh::nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
   bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
   a = vec3(w1.x, ylo, w1.z); b = vec3(w2.x, ylo, w2.z);
   c = vec3(w2.x, yhi, w2.z); d = vec3(w1.x, yhi, w1.z);
-  moros_terrain::emit_tri(m, a, nrm, b, nrm, c, nrm);
-  moros_terrain::emit_tri(m, a, nrm, c, nrm, d, nrm);
-  moros_terrain::emit_tri(m, a, bck, c, bck, b, bck);
-  moros_terrain::emit_tri(m, a, bck, d, bck, c, bck);
+  hex_mesh::emit_tri(m, a, nrm, b, nrm, c, nrm);
+  hex_mesh::emit_tri(m, a, nrm, c, nrm, d, nrm);
+  hex_mesh::emit_tri(m, a, bck, c, bck, b, bck);
+  hex_mesh::emit_tri(m, a, bck, d, bck, c, bck);
 }
 
 // ── A WALL IS DRAWN FROM ITS RUN, AND ITS HOLES FROM THEIR PROFILES ─────────
@@ -1680,7 +1680,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
   if ln <= 0.0 { return; }
   steps = (ln / 0.5 ?? 0.0) as integer + 1;
   (tx, tz) = hex_way::seg_tangent(t, 0, 0.0);
-  nrm = moros_terrain::nrm3(0.0 - tz, 0.0, tx);
+  nrm = hex_mesh::nrm3(0.0 - tz, 0.0, tx);
   bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
   half = 0.0;
   if run.wr_mat == hex_editor::WALL_MAT {
@@ -1934,31 +1934,31 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
             f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
             b0 = vec3(ax + ikx, ya, az + ikz); b1 = vec3(bx + ikx, yb, bz + ikz);
             b2 = vec3(bx + ikx, tb, bz + ikz); b3 = vec3(ax + ikx, ta, az + ikz);
-            moros_terrain::emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
-            moros_terrain::emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+            hex_mesh::emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+            hex_mesh::emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
             if half > 0.0 {
               // The cap: a band's top face. For the band below an opening this is
               // the SILL, which is why a window ledge exists without being a
               // separate thing.
-              moros_terrain::emit_tri(m, f3, upn, f2, upn, b2, upn);
-              moros_terrain::emit_tri(m, f3, upn, b2, upn, b3, upn);
+              hex_mesh::emit_tri(m, f3, upn, f2, upn, b2, upn);
+              hex_mesh::emit_tri(m, f3, upn, b2, upn, b3, upn);
               // ⚠ AND THE SOFFIT — the band's UNDERSIDE, which nothing emitted. It
               // is the head's inner face: the surface you look up at standing in a
               // doorway, and the one that catches no light, which is exactly the
               // shading difference that says "through" rather than "painted on".
               if blo > 0 {
-                moros_terrain::emit_tri(m, f0, dwn, b0, dwn, b1, dwn);
-                moros_terrain::emit_tri(m, f0, dwn, b1, dwn, f1, dwn);
+                hex_mesh::emit_tri(m, f0, dwn, b0, dwn, b1, dwn);
+                hex_mesh::emit_tri(m, f0, dwn, b1, dwn, f1, dwn);
               }
               if i == 0 && j == 0 {
                 sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
-                moros_terrain::emit_tri(m, f0, sn, f3, sn, b3, sn);
-                moros_terrain::emit_tri(m, f0, sn, b3, sn, b0, sn);
+                hex_mesh::emit_tri(m, f0, sn, f3, sn, b3, sn);
+                hex_mesh::emit_tri(m, f0, sn, b3, sn, b0, sn);
               }
               if i == steps - 1 && j == sub - 1 {
                 en = vec3(tx, 0.0, tz);
-                moros_terrain::emit_tri(m, f1, en, b1, en, b2, en);
-                moros_terrain::emit_tri(m, f1, en, b2, en, f2, en);
+                hex_mesh::emit_tri(m, f1, en, b1, en, b2, en);
+                hex_mesh::emit_tri(m, f1, en, b2, en, f2, en);
               }
             }
           }
@@ -1979,8 +1979,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               tb2 = gy1 + (khi as float) * HEIGHT_SCALE;
               y0 = vec3(ax - ox, ya2, az - oz); y1 = vec3(bx - ox, yb2, bz - oz);
               y2 = vec3(bx - ox, tb2, bz - oz); y3 = vec3(ax - ox, ta2, az - oz);
-              moros_terrain::emit_tri(m, y0, bck, y2, bck, y1, bck);
-              moros_terrain::emit_tri(m, y0, bck, y3, bck, y2, bck);
+              hex_mesh::emit_tri(m, y0, bck, y2, bck, y1, bck);
+              hex_mesh::emit_tri(m, y0, bck, y3, bck, y2, bck);
             }
           }
         }
@@ -2001,8 +2001,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
               nd = gy0 + (nhi as float) * HEIGHT_SCALE;
               n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
               n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
-              moros_terrain::emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
-              moros_terrain::emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
+              hex_mesh::emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
+              hex_mesh::emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
               // ⚠ AND THE WINDOW'S OWN SPLAY. An embrasure's window is not a hole in
               // a thin sheet — it sits at the end of the remaining half a metre of
               // wall, so it has a sill you can put a candle on and a soffit above it,
@@ -2012,14 +2012,14 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: i
                 wq0 = vec3(ax + ikx, nc, az + ikz); wq1 = vec3(bx + ikx, nc, bz + ikz);
                 wq2 = vec3(bx - ox, nc, bz - oz);   wq3 = vec3(ax - ox, nc, az - oz);
                 if nhi < hi_u {
-                  moros_terrain::emit_tri(m, wq0, upn, wq1, upn, wq2, upn);
-                  moros_terrain::emit_tri(m, wq0, upn, wq2, upn, wq3, upn);
+                  hex_mesh::emit_tri(m, wq0, upn, wq1, upn, wq2, upn);
+                  hex_mesh::emit_tri(m, wq0, upn, wq2, upn, wq3, upn);
                 }
                 if nlo > lo_u {
                   wr0 = vec3(ax + ikx, na, az + ikz); wr1 = vec3(bx + ikx, na, bz + ikz);
                   wr2 = vec3(bx - ox, na, bz - oz);   wr3 = vec3(ax - ox, na, az - oz);
-                  moros_terrain::emit_tri(m, wr0, dwn, wr2, dwn, wr1, dwn);
-                  moros_terrain::emit_tri(m, wr0, dwn, wr3, dwn, wr2, dwn);
+                  hex_mesh::emit_tri(m, wr0, dwn, wr2, dwn, wr1, dwn);
+                  hex_mesh::emit_tri(m, wr0, dwn, wr3, dwn, wr2, dwn);
                 }
               }
             }
@@ -2117,11 +2117,11 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer) {
       sw1 = hex_corner_world(cq, cr, 0, (6 - ska) % 6 ?? 0);
       sw2 = hex_corner_world(cq, cr, 0, (6 - skb) % 6 ?? 0);
       cn = hex_to_world(snq, snr, 0);
-      snrm = moros_terrain::nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+      snrm = hex_mesh::nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
       sa = vec3(sw1.x, ybot, sw1.z); sb = vec3(sw2.x, ybot, sw2.z);
       sc = vec3(sw2.x, ytop, sw2.z); sdd = vec3(sw1.x, ytop, sw1.z);
-      moros_terrain::emit_tri(fm, sa, snrm, sb, snrm, sc, snrm);
-      moros_terrain::emit_tri(fm, sa, snrm, sc, snrm, sdd, snrm);
+      hex_mesh::emit_tri(fm, sa, snrm, sb, snrm, sc, snrm);
+      hex_mesh::emit_tri(fm, sa, snrm, sc, snrm, sdd, snrm);
     }
   }
 }
@@ -2162,11 +2162,11 @@ fn emit_room_wall(m: Mesh, wld: World, cq: integer, cr: integer, floor_h: intege
       ww1 = hex_corner_world(cq, cr, 0, (6 - wka) % 6 ?? 0);
       ww2 = hex_corner_world(cq, cr, 0, (6 - wkb) % 6 ?? 0);
       wcn = hex_to_world(wnq, wnr, 0);
-      wnm = moros_terrain::nrm3(cs.x - wcn.x, 0.0, cs.z - wcn.z);
+      wnm = hex_mesh::nrm3(cs.x - wcn.x, 0.0, cs.z - wcn.z);
       wa = vec3(ww1.x, ybot, ww1.z); wb = vec3(ww2.x, ybot, ww2.z);
       wc = vec3(ww2.x, ytop, ww2.z); wdd = vec3(ww1.x, ytop, ww1.z);
-      moros_terrain::emit_tri(m, wa, wnm, wb, wnm, wc, wnm);
-      moros_terrain::emit_tri(m, wa, wnm, wc, wnm, wdd, wnm);
+      hex_mesh::emit_tri(m, wa, wnm, wb, wnm, wc, wnm);
+      hex_mesh::emit_tri(m, wa, wnm, wc, wnm, wdd, wnm);
     }
   }
 }
@@ -2210,7 +2210,7 @@ fn emit_hex_under(m: Mesh, cq: integer, cr: integer, cy: float, hy: vector<float
     // Reversed against the top fan, and the normal points DOWN — neither matters
     // to a renderer with no backface culling, and both are what make it right the
     // day one arrives. The roof's soffit is asserted on exactly these two.
-    moros_terrain::emit_tri(m, ua, udn, uc, udn, ub, udn);
+    hex_mesh::emit_tri(m, ua, udn, uc, udn, ub, udn);
   }
 }
 
@@ -2244,7 +2244,7 @@ fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer) {
 // this runs on cells with something dug beneath them, not on every cell of every
 // chunk. `chunk_mesh_mat`'s halo exists because ITS loop is the whole world.
 fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
-  ghs = moros_terrain::corner_heights(cq, cr, wld);
+  ghs = hex_mesh::corner_heights(cq, cr, wld);
   drop = FLOOR_THICK as float;
   uy: vector<float> = [];
   csum = 0.0;
@@ -2499,12 +2499,12 @@ fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: World) {
   d = vec3(hx, ty, hz);
   nx2 = 0.0 - (fz - hz);
   nz2 = fx - hx;
-  n = moros_terrain::nrm3(nx2, 0.0, nz2);
+  n = hex_mesh::nrm3(nx2, 0.0, nz2);
   bk = vec3(0.0 - n.x, 0.0, 0.0 - n.z);
-  moros_terrain::emit_tri(m, a, n, b, n, c, n);
-  moros_terrain::emit_tri(m, a, n, c, n, d, n);
-  moros_terrain::emit_tri(m, a, bk, c, bk, b, bk);
-  moros_terrain::emit_tri(m, a, bk, d, bk, c, bk);
+  hex_mesh::emit_tri(m, a, n, b, n, c, n);
+  hex_mesh::emit_tri(m, a, n, c, n, d, n);
+  hex_mesh::emit_tri(m, a, bk, c, bk, b, bk);
+  hex_mesh::emit_tri(m, a, bk, d, bk, c, bk);
 }
 
 // A gable, drawn from its PLAN: two slopes meeting on the ridge, and a triangle
@@ -2545,7 +2545,7 @@ fn emit_roof_plan(m: Mesh, rp: hex_editor::RoofPlan) {
     for j in 1..nk - 1 {
       b = roof_pt(rp, hex_editor::roof_face_pt(f, j));
       c = roof_pt(rp, hex_editor::roof_face_pt(f, j + 1));
-      moros_terrain::emit_tri(m, a, fn3, b, fn3, c, fn3);
+      hex_mesh::emit_tri(m, a, fn3, b, fn3, c, fn3);
     }
   }
 }
@@ -2570,7 +2570,7 @@ fn emit_roof_soffit(m: Mesh, rp: hex_editor::RoofPlan) {
     for j in 1..nk - 1 {
       b = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j));
       c = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j + 1));
-      moros_terrain::emit_tri(m, a, dn, b, dn, c, dn);
+      hex_mesh::emit_tri(m, a, dn, b, dn, c, dn);
     }
   }
 }
@@ -2584,11 +2584,11 @@ fn emit_quad_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
 }
 
 fn emit_tri_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
-  n = moros_terrain::nrm3((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
+  n = hex_mesh::nrm3((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
            (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z),
            (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
   if n.y < 0.0 { n = vec3(0.0 - n.x, 0.0 - n.y, 0.0 - n.z); }
-  moros_terrain::emit_tri(m, a, n, b, n, c, n);
+  hex_mesh::emit_tri(m, a, n, b, n, c, n);
 }
 
 fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>) {
@@ -2786,7 +2786,7 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
 // The cell heights stay integers (`L13`); the corner means are a RENDER
 // derivation, layer 2, never stored. Quantisation therefore shows as a gentle
 // facet rather than a terrace.
-// ⚠ MOVED TO `moros_terrain` (plan 16, S3) — see the package banner.
+// ⚠ MOVED TO `hex_mesh` (plan 16, S3) — see the package banner.
 
 
 // THE SURFACE NORMAL AT A CELL, from the height field's own GRADIENT.
@@ -2817,7 +2817,7 @@ fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
   }
   gx = sxy / sxx ?? 0.0;
   gz = szy / szz ?? 0.0;
-  moros_terrain::nrm3(0.0 - gx, 1.0, 0.0 - gz)
+  hex_mesh::nrm3(0.0 - gx, 1.0, 0.0 - gz)
 }
 
 // One triangle with a normal PER VERTEX, so the shading interpolates across it
@@ -2868,10 +2868,10 @@ fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
     if hex_editor::slab_covers(sl, h0.ho_x, h0.ho_z) { any = true; }
   }
   if !any {
-    moros_terrain::emit_tri(m, t0, upn, t1, upn, t2, upn);
-    moros_terrain::emit_tri(m, t0, upn, t2, upn, t3, upn);
-    moros_terrain::emit_tri(m, r0, dwn, r2, dwn, r1, dwn);
-    moros_terrain::emit_tri(m, r0, dwn, r3, dwn, r2, dwn);
+    hex_mesh::emit_tri(m, t0, upn, t1, upn, t2, upn);
+    hex_mesh::emit_tri(m, t0, upn, t2, upn, t3, upn);
+    hex_mesh::emit_tri(m, r0, dwn, r2, dwn, r1, dwn);
+    hex_mesh::emit_tri(m, r0, dwn, r3, dwn, r2, dwn);
     return;
   }
 
@@ -2911,12 +2911,12 @@ fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
         yb = (fbot as float) * HEIGHT_SCALE;
         p0 = slab_pt(sl, ua, va, yt); p1 = slab_pt(sl, ub, va, yt);
         p2 = slab_pt(sl, ub, vb, yt); p3 = slab_pt(sl, ua, vb, yt);
-        moros_terrain::emit_tri(m, p0, upn, p1, upn, p2, upn);
-        moros_terrain::emit_tri(m, p0, upn, p2, upn, p3, upn);
+        hex_mesh::emit_tri(m, p0, upn, p1, upn, p2, upn);
+        hex_mesh::emit_tri(m, p0, upn, p2, upn, p3, upn);
         q0 = slab_pt(sl, ua, va, yb); q1 = slab_pt(sl, ub, va, yb);
         q2 = slab_pt(sl, ub, vb, yb); q3 = slab_pt(sl, ua, vb, yb);
-        moros_terrain::emit_tri(m, q0, dwn, q2, dwn, q1, dwn);
-        moros_terrain::emit_tri(m, q0, dwn, q3, dwn, q2, dwn);
+        hex_mesh::emit_tri(m, q0, dwn, q2, dwn, q1, dwn);
+        hex_mesh::emit_tri(m, q0, dwn, q3, dwn, q2, dwn);
       }
       // ⚠ THE REVEAL, and it is the reason the thickness had to exist. Where a cut
       // sample meets an uncut one, the uncut side shows a face across the cut's own
@@ -3011,19 +3011,19 @@ fn emit_annex_deck(m: Mesh, a: Annex, wld: World) {
   c1 = vec3(hex_editor::annex_corner_x(a, 1), fy, hex_editor::annex_corner_z(a, 1));
   c2 = vec3(hex_editor::annex_corner_x(a, 2), fy, hex_editor::annex_corner_z(a, 2));
   c3 = vec3(hex_editor::annex_corner_x(a, 3), fy, hex_editor::annex_corner_z(a, 3));
-  moros_terrain::emit_tri(m, c0, upn, c1, upn, c2, upn);
-  moros_terrain::emit_tri(m, c0, upn, c2, upn, c3, upn);
+  hex_mesh::emit_tri(m, c0, upn, c1, upn, c2, upn);
+  hex_mesh::emit_tri(m, c0, upn, c2, upn, c3, upn);
   // Its underside, which on a balcony is the face everyone standing below looks at.
-  moros_terrain::emit_tri(m, c0, dwn, c2, dwn, c1, dwn);
-  moros_terrain::emit_tri(m, c0, dwn, c3, dwn, c2, dwn);
+  hex_mesh::emit_tri(m, c0, dwn, c2, dwn, c1, dwn);
+  hex_mesh::emit_tri(m, c0, dwn, c3, dwn, c2, dwn);
   if a.an_kind == hex_editor::AN_BOX {
     hy = gy + (a.an_head as float) * HEIGHT_SCALE;
     d0 = vec3(c0.x, hy, c0.z); d1 = vec3(c1.x, hy, c1.z);
     d2 = vec3(c2.x, hy, c2.z); d3 = vec3(c3.x, hy, c3.z);
-    moros_terrain::emit_tri(m, d0, upn, d1, upn, d2, upn);
-    moros_terrain::emit_tri(m, d0, upn, d2, upn, d3, upn);
-    moros_terrain::emit_tri(m, d0, dwn, d2, dwn, d1, dwn);
-    moros_terrain::emit_tri(m, d0, dwn, d3, dwn, d2, dwn);
+    hex_mesh::emit_tri(m, d0, upn, d1, upn, d2, upn);
+    hex_mesh::emit_tri(m, d0, upn, d2, upn, d3, upn);
+    hex_mesh::emit_tri(m, d0, dwn, d2, dwn, d1, dwn);
+    hex_mesh::emit_tri(m, d0, dwn, d3, dwn, d2, dwn);
   }
 }
 
@@ -3044,14 +3044,14 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   f0 = vec3(ax + px, ya, az + pz); f1 = vec3(bx + px, yb, bz + pz);
   f2 = vec3(bx + px, tb, bz + pz); f3 = vec3(ax + px, ta, az + pz);
   if front {
-    moros_terrain::emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
-    moros_terrain::emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+    hex_mesh::emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+    hex_mesh::emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
     w3f = vec3(ax + ox, ta, az + oz); w2f = vec3(bx + ox, tb, bz + oz);
-    moros_terrain::emit_tri(m, f3, upn, f2, upn, w2f, upn);
-    moros_terrain::emit_tri(m, f3, upn, w2f, upn, w3f, upn);
+    hex_mesh::emit_tri(m, f3, upn, f2, upn, w2f, upn);
+    hex_mesh::emit_tri(m, f3, upn, w2f, upn, w3f, upn);
     w0f = vec3(ax + ox, ya, az + oz); w1f = vec3(bx + ox, yb, bz + oz);
-    moros_terrain::emit_tri(m, f0, dwn, w1f, dwn, f1, dwn);
-    moros_terrain::emit_tri(m, f0, dwn, w0f, dwn, w1f, dwn);
+    hex_mesh::emit_tri(m, f0, dwn, w1f, dwn, f1, dwn);
+    hex_mesh::emit_tri(m, f0, dwn, w0f, dwn, w1f, dwn);
   }
   // ⚠ THE SIDE IS THE OPENING'S DATUM, not a guess. A niche is a hole in the front
   // of a wall that is still whole behind, so a surround on its back face stands
@@ -3061,14 +3061,14 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
   if !back { return; }
   k0 = vec3(ax - px, ya, az - pz); k1 = vec3(bx - px, yb, bz - pz);
   k2 = vec3(bx - px, tb, bz - pz); k3 = vec3(ax - px, ta, az - pz);
-  moros_terrain::emit_tri(m, k0, bck, k2, bck, k1, bck);
-  moros_terrain::emit_tri(m, k0, bck, k3, bck, k2, bck);
+  hex_mesh::emit_tri(m, k0, bck, k2, bck, k1, bck);
+  hex_mesh::emit_tri(m, k0, bck, k3, bck, k2, bck);
   v3 = vec3(ax - ox, ta, az - oz); v2 = vec3(bx - ox, tb, bz - oz);
-  moros_terrain::emit_tri(m, k3, upn, v2, upn, k2, upn);
-  moros_terrain::emit_tri(m, k3, upn, v3, upn, v2, upn);
+  hex_mesh::emit_tri(m, k3, upn, v2, upn, k2, upn);
+  hex_mesh::emit_tri(m, k3, upn, v3, upn, v2, upn);
   v0 = vec3(ax - ox, ya, az - oz); v1 = vec3(bx - ox, yb, bz - oz);
-  moros_terrain::emit_tri(m, k0, dwn, k1, dwn, v1, dwn);
-  moros_terrain::emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
+  hex_mesh::emit_tri(m, k0, dwn, k1, dwn, v1, dwn);
+  hex_mesh::emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
 }
 
 fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
@@ -3080,8 +3080,8 @@ fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
   p1 = vec3(jx + ix, ya, jz + iz);
   p2 = vec3(jx + ix, yb, jz + iz);
   p3 = vec3(jx + ox, yb, jz + oz);
-  moros_terrain::emit_tri(m, p0, jn, p1, jn, p2, jn);
-  moros_terrain::emit_tri(m, p0, jn, p2, jn, p3, jn);
+  hex_mesh::emit_tri(m, p0, jn, p1, jn, p2, jn);
+  hex_mesh::emit_tri(m, p0, jn, p2, jn, p3, jn);
 }
 
 
@@ -3128,10 +3128,10 @@ fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
 // from this function.
 
 fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
-  moros_terrain::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
+  hex_mesh::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
 }
 
-// EVERY MESH ONE CHUNK DRAWS, IN `moros_terrain::surfaces()` ORDER.
+// EVERY MESH ONE CHUNK DRAWS, IN `hex_mesh::surfaces()` ORDER.
 //
 // ⚠ ONE PLACE, because it was spelled out TWICE and is about to be wanted a
 // third time. The dirty flush and the streamer each named the nine surfaces, in
@@ -3159,7 +3159,7 @@ fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
 // cells are outside it. Measured before it existed: a 38-cell cottage meshed to
 // **28.6 x 24.5 world units**, four chunks of grass with a house in the middle,
 // with every count agreeing with itself the whole way. See
-// `moros_terrain::chunk_mesh_mat_bounded`.
+// `hex_mesh::chunk_mesh_mat_bounded`.
 fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
                     runs: WallRuns, roofs: hex_editor::RoofPlans,
                     leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings,
@@ -3167,19 +3167,19 @@ fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
                     props: hex_editor::Props, slabs: hex_editor::Slabs,
                     holes: hex_editor::Holes) -> vector<Mesh> {
   cma_g = if bounded {
-            moros_terrain::chunk_mesh_mat_bounded(cx, cz, wld, SURFACE_MAT)
+            hex_mesh::chunk_mesh_mat_bounded(cx, cz, wld, SURFACE_MAT)
           } else {
-            moros_terrain::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
+            hex_mesh::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
           };
-  cma_r = moros_terrain::chunk_mesh_mat(cx, cz, wld, ROAD_MAT);
-  cma_f = moros_terrain::chunk_mesh_mat(cx, cz, wld, FIELD_MAT);
+  cma_r = hex_mesh::chunk_mesh_mat(cx, cz, wld, ROAD_MAT);
+  cma_f = hex_mesh::chunk_mesh_mat(cx, cz, wld, FIELD_MAT);
   cma_v = mesh("veg");
   cma_k = mesh("roof");
   cma_w = mesh("wall");
   // ⚠ THE GROUND'S OWN FLOOR CELLS SEED IT. `place_house` writes its floor into
   // the ground layer as `FLOOR_MAT`, and nothing asked for that material until
   // this line existed: 21% of the frame classified as SKY from inside a house.
-  cma_l = moros_terrain::chunk_mesh_mat(cx, cz, wld, FLOOR_MAT);
+  cma_l = hex_mesh::chunk_mesh_mat(cx, cz, wld, FLOOR_MAT);
   cma_a = mesh("frame");
   cma_s = mesh("soffit");
   chunk_mesh_props(cx, cz, wld, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s,
@@ -3263,7 +3263,7 @@ fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integ
 // for terrain, flat for what is built on it* — so ask it directly: is the layer the
 // surface came from the ground layer? Same answer as before wherever the old test
 // was right, and right in the case that exposed it.
-fn on_the_ground(wld: World, q: integer, r: integer, sf: hex_world::Surface) -> boolean {
+fn on_the_ground(wld: World, q: integer, r: integer, sf: hex_world::SurfaceAt) -> boolean {
   sf.sf_layer >= 0 && sf.sf_layer == hex_world::world_ground_layer(wld, q, r)
 }
 
@@ -3280,7 +3280,7 @@ fn terrain_y(wx: float, wz: float, wld: World) -> float {
   addr = world_to_hex(wx, wz);
   ch3 = terrain_h(addr.ha_q, addr.ha_r, wld);
   cw3 = hex_to_world(addr.ha_q, addr.ha_r, ch3);
-  hs3 = moros_terrain::corner_heights(addr.ha_q, addr.ha_r, wld);
+  hs3 = hex_mesh::corner_heights(addr.ha_q, addr.ha_r, wld);
   for ti in 0..6 {
     tj = (ti + 1) % 6 ?? 0;
     v1 = hex_corner_world(addr.ha_q, addr.ha_r, 0, (6 - ti) % 6 ?? 0);
@@ -3489,15 +3489,15 @@ fn send_one_chunk(srv: server::Server, wld: World, scx: integer, scz: integer) {
 // `r = -2`, and no tile in range had its origin there, so it was never sent to anyone.
 // The client held 36 of 48 verdicts forever, correctly, on voxels that were not coming.
 //
-// The sender honours the receiver's precondition; `moros_terrain::tile_ready` is the
+// The sender honours the receiver's precondition; `hex_mesh::tile_ready` is the
 // statement of it, and its four corners are exactly the chunks named here.
 fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
-  q0 = cx * CHUNK - moros_terrain::MESH_MARGIN;
-  r0 = cz * CHUNK - moros_terrain::MESH_MARGIN;
-  q1 = cx * CHUNK + CHUNK - 1 + moros_terrain::MESH_MARGIN;
-  r1 = cz * CHUNK + CHUNK - 1 + moros_terrain::MESH_MARGIN;
+  q0 = cx * CHUNK - hex_mesh::MESH_MARGIN;
+  r0 = cz * CHUNK - hex_mesh::MESH_MARGIN;
+  q1 = cx * CHUNK + CHUNK - 1 + hex_mesh::MESH_MARGIN;
+  r1 = cz * CHUNK + CHUNK - 1 + hex_mesh::MESH_MARGIN;
   // At most 2x2 store chunks: the footprint is CHUNK + 2*MARGIN wide and a store chunk
-  // is CHUNK_W, which `moros_terrain/tests/mesh.loft` pins apart so this stays true.
+  // is CHUNK_W, which `hex_mesh/tests/mesh.loft` pins apart so this stays true.
   for sz in hex_world::chunk_of(r0)..hex_world::chunk_of(r1) + 1 {
     for sx in hex_world::chunk_of(q0)..hex_world::chunk_of(q1) + 1 {
       send_one_chunk(srv, wld, sx, sz);
@@ -3677,7 +3677,7 @@ fn mode_name(m: integer) -> text {
 // `N:` — the material catalogue, plan 18 B3.2.
 //
 // ⚠ DERIVED FROM THE MESHER'S OWN LIST, which is §C3's clause: the catalogue is
-// what `moros_terrain::surfaces()` says it is, so it cannot list a material the
+// what `hex_mesh::surfaces()` says it is, so it cannot list a material the
 // renderer cannot draw or miss one it can. A hand-kept list beside the mesher is
 // the tenth copy of a number that has already drifted 4 → 5 → 7 → 9.
 // ⚠ AND SOME OF THEM YOU CANNOT PAINT, which is §C3's availability. Three of the
@@ -3756,10 +3756,10 @@ fn part_availability() -> vector<PartAvail> {
 
 fn catalogue_wire(avail: vector<PartAvail>) -> text {
   out = "N:";
-  n = moros_terrain::surface_count();
+  n = hex_mesh::surface_count();
   for i in 0..n {
     if i > 0 { out = out + ";"; }
-    nm = moros_terrain::surface_at(i).sf_name;
+    nm = hex_mesh::surface_at(i).sf_name;
     why = surface_block(nm);
     av = "1";
     if why != "" { av = "0"; }
@@ -3855,19 +3855,26 @@ fn thumb_axes() -> ThumbAxes {
 // is ordered for the mesher's own slots and a literal 7 here would silently repaint
 // every statue the day a surface is inserted above it.
 //
-// ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THAT IS NOT A PREFERENCE.
-// `Surface` is declared TWICE in this program's graph — `hex_world::Surface` and
-// `moros_terrain::Surface` — and a loft struct name is global to a consumer, so the
-// two have merged and `hex_world`'s won. Writing the literal fails with five
-// *"Unknown field Surface.sf_r"* errors and no mention of a collision, and ⚠
-// **qualifying it as `moros_terrain::Surface` does not help**: the return TYPE is
-// accepted and the constructor still resolves to the other struct. That is worth
-// knowing — CLAUDE.md says grep before adding a public name, and this adds that
-// there is no way out afterwards short of a rename.
+// ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THE REASON HAS CHANGED —
+// plan 19 `L1`. `Surface` used to be declared TWICE in this program's graph, by
+// `hex_world` and by `hex_mesh`, and a loft struct name is global to a
+// consumer, so the two had merged and `hex_world`'s won: writing the literal gave
+// five *"Unknown field `Surface.sf_r`"* errors with no mention of a collision, and
+// ⚠ **qualifying it as `hex_mesh::Surface` did not help** — the return TYPE
+// was accepted and the constructor still resolved to the other struct.
 //
-// So nothing here constructs one: the loop iterates by value (no `?? Surface {}`
-// default to write) and the caller reads the colour through `surface_at`, which is
-// how every other line in this file already does it.
+// ✅ **FIXED 2026-08-06: `hex_world`'s is `SurfaceAt` now**, which follows this
+// tree's own convention for a derived positional record (`MeshAt`, `SocketAt`) and
+// reads as what it is — *the surface at this hex, under these feet*. `Surface` is
+// left to the palette entry, whose own header already says *"the surfaces the
+// mesher can emit"*. The literal compiles. ⚠ **The finding stands even though the
+// instance is gone**: grep `lib/`, the siblings and the registry before adding a
+// public name, because after the fact there is no way out short of a rename — and
+// a package suite cannot see it, since each package is green on its own.
+//
+// The index is kept anyway, because it was never only about the collision: the
+// caller reads the colour through `surface_at`, which is how every other line in
+// this file already does it.
 //
 // ⚠ AND `-1` IS LOUD IN BOTH DIRECTIONS. `surface_at` answers a black `?` for it,
 // so a palette that lost `frame` prints a line AND draws a statue the panel gate's
@@ -3875,7 +3882,7 @@ fn thumb_axes() -> ThumbAxes {
 // fallback would have been quieter and worse.
 fn prop_surface() -> integer {
   ps_i = 0;
-  for ps_s in moros_terrain::surfaces() {
+  for ps_s in hex_mesh::surfaces() {
     if ps_s.sf_name == "frame" { return ps_i; }
     ps_i = ps_i + 1;
   }
@@ -4053,7 +4060,7 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
       ptw_fs = mesh_to_floats(ptw_m);
       if len(ptw_fs) < 6 { continue; }
       thumb_take(ptw_fit, ptw_fs, ptw_ax);
-      ptw_sf = moros_terrain::surface_at(ptw_si);
+      ptw_sf = hex_mesh::surface_at(ptw_si);
       // The ground keeps the height ramp it is drawn with in the world, so a
       // part's lawn is the same green as the lawn it will stand on.
       ptw_ramp = "0";
@@ -4100,7 +4107,7 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
       // a window surround are ONE bucket to every chromaticity gate. Nothing draws a
       // statue in the world yet; when something does, separate them in the RENDERER
       // and not in the classifier (STATE.md decision 12).
-      ptw_gs = moros_terrain::surface_at(prop_surface());
+      ptw_gs = hex_mesh::surface_at(prop_surface());
       ptw_bodies += ["Y:{idx};0;"
                      + "{mesh_wire(ptw_gl.gr_mesh, ptw_gs.sf_r, ptw_gs.sf_g, ptw_gs.sf_b)}"];
     }
@@ -4166,7 +4173,7 @@ fn part_thumbs_all() -> vector<PartThumb> {
     // `N:` sends the materials first and the parts after them, so a thumbnail
     // addressed by its place among the PARTS would land on `grass`. One list,
     // two families means one index space (§C3).
-    pta_row = moros_terrain::surface_count() + pta_i;
+    pta_row = hex_mesh::surface_count() + pta_i;
     pta_out += [PartThumb {
       pt_name:  pta_p,
       pt_row:   pta_row,
@@ -4840,7 +4847,7 @@ fn probe_fit() {
   lens: vector<integer> = [];
   for bz in 0 - span..span + 1 {
     for bx in 0 - span..span + 1 {
-      bm = moros_terrain::chunk_mesh_mat(bx, bz, wld, SURFACE_MAT);
+      bm = hex_mesh::chunk_mesh_mat(bx, bz, wld, SURFACE_MAT);
       bf = mesh_to_floats(bm);
       offs += [len(before)];
       lens += [len(bf)];
@@ -4857,7 +4864,7 @@ fn probe_fit() {
   cidx = 0;
   for cz2 in 0 - span..span + 1 {
     for cx2 in 0 - span..span + 1 {
-      cm2 = moros_terrain::chunk_mesh_mat(cx2, cz2, wld, SURFACE_MAT);
+      cm2 = hex_mesh::chunk_mesh_mat(cx2, cz2, wld, SURFACE_MAT);
       ctrl = mesh_to_floats(cm2);
       coff = offs[cidx] ?? 0;
       cworst = 0.0f;
@@ -4888,7 +4895,7 @@ fn probe_fit() {
   idx = 0;
   for az in 0 - span..span + 1 {
     for ax in 0 - span..span + 1 {
-      am = moros_terrain::chunk_mesh_mat(ax, az, wld, SURFACE_MAT);
+      am = hex_mesh::chunk_mesh_mat(ax, az, wld, SURFACE_MAT);
       after = mesh_to_floats(am);
       aoff = offs[idx] ?? 0;
       worst = 0.0f;
@@ -7900,7 +7907,7 @@ fn main() {
             println("editor: part display — '{disp_m.ma_mesh}' will not load "
                   + "({disp_gl.gr_code}) {disp_gl.gr_detail}");
           } else {
-            disp_ps = moros_terrain::surface_at(prop_surface());
+            disp_ps = hex_mesh::surface_at(prop_surface());
             srv.broadcast("M:{PART_MESH_BASE + disp_drawn};0;"
               + "{mesh_wire(posed_mesh(disp_gl.gr_mesh, disp_m), disp_ps.sf_r, disp_ps.sf_g, disp_ps.sf_b)}");
             disp_drawn = disp_drawn + 1;
@@ -7987,7 +7994,7 @@ fn main() {
           // client can derive its own from its cache and prove it is the same one.
           // Not a count and not a picture: a mesh with the right number of vertices
           // in the wrong places is exactly the failure this exists to catch.
-          srv.broadcast("Q:{dc2.cx},{dc2.cz},{moros_terrain::mesh_crc(dm)}");
+          srv.broadcast("Q:{dc2.cx},{dc2.cz},{hex_mesh::mesh_crc(dm)}");
           // S4 — the ~1 MB of ASCII floats this line used to broadcast unconditionally.
           gn2 = send_ground(srv, clients,
                   "M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
@@ -8004,7 +8011,7 @@ fn main() {
           // line above because it is not like the others: it carries the height
           // ramp and it is the only surface a deriving client is not sent.
           for si in 1..SURFACES {
-            sfc = moros_terrain::surface_at(si);
+            sfc = hex_mesh::surface_at(si);
             smid = dc2.id * SURFACES + MESH_FIGURE_MAX + 1 + si;
             srv.broadcast("M:{smid};0;"
               + "{mesh_wire(chunk_mesh_slot(dms, si), sfc.sf_r, sfc.sf_g, sfc.sf_b)}");
@@ -8128,7 +8135,7 @@ fn main() {
                         wall_props, wall_slabs, wall_holes)
                     };
               cmesh = chunk_mesh_slot(cms, 0);
-              srv.broadcast("Q:{scx},{scz},{moros_terrain::mesh_crc(cmesh)}");
+              srv.broadcast("Q:{scx},{scz},{hex_mesh::mesh_crc(cmesh)}");
               gn1 = send_ground(srv, clients,
                       "M:{cid * SURFACES + MESH_FIGURE_MAX + 1};1;{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               g_sent = g_sent + gn1;
@@ -8137,7 +8144,7 @@ fn main() {
               // see `chunk_meshes_all`. This site is why that helper exists: the two
               // paths had drifted into two orderings of nine near-identical pairs.
               for ssi in 1..SURFACES {
-                ssf = moros_terrain::surface_at(ssi);
+                ssf = hex_mesh::surface_at(ssi);
                 ssmid = cid * SURFACES + MESH_FIGURE_MAX + 1 + ssi;
                 srv.broadcast("M:{ssmid};0;"
                   + "{mesh_wire(chunk_mesh_slot(cms, ssi), ssf.sf_r, ssf.sf_g, ssf.sf_b)}");

@@ -18,7 +18,7 @@ building them measured under §U0.
 |---|---|
 | `moros_ui` | 502 lines of source, 59 tests, **no consumer anywhere in the tree** |
 | its dependencies | `moros_sim` + `moros_editor` + `moros_map` |
-| the program that draws pixels | `editor_client.loft` — `graphics, web, hex_world, gridmesh, moros_terrain, hex_editor`. **None of those three.** |
+| the program that draws pixels | `editor_client.loft` — `graphics, web, hex_world, gridmesh, hex_mesh, hex_editor`. **None of those three.** |
 | the program that has those three | `editor_server.loft` — and it is **headless**; it streams the wire |
 | the program it was written for | a desktop walkable editor. **Not in `src/`.** Nor is `WALKABLE_EDITOR_STEPS.md`, which `panel.loft` cites for its own layout diagram |
 

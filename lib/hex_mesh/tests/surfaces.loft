@@ -5,7 +5,7 @@
 // 4 → 5 → 7 → 9 with nine gate files holding a copy beside a "keep this equal
 // to" note. A catalogue derived from the list cannot disagree with it; a
 // catalogue written beside it is the tenth copy waiting to drift.
-use moros_terrain;
+use hex_mesh;
 
 fn test_the_stride_is_the_list_length() {
   assert(surface_count() == len(surfaces()),

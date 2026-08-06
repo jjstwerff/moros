@@ -105,12 +105,15 @@ Design first: [STATE.md](STATE.md), then [HEX_STACK.md](HEX_STACK.md) and
 | `lib/moros_sim/` | Simulation: cliffs and stairs, the fall, ground contact, rigs, assemblies |
 | `lib/moros_render/` | Mesh emission — hex fans, wall quads, slope faces |
 | `lib/moros_map/`, `lib/moros_editor/` | The scene model and editor state, as recovered |
-| `lib/moros_terrain/` | Procedural generation — noise, fbm, hydrology, rivers; and `surface_at` |
+| `lib/hex_mesh/` | **lavition** — the chunk mesher and the surface palette: `emit_tri`, `chunk_mesh_mat`, `surface_at`. ⚠ Was `moros_terrain`; the prefix exempted it from `tools/layering.sh` (plan 19 `L2`) |
 | `lib/glb_read/` | `.glb` import, ours because upstream cannot verify it |
 
 ⚠ **A `hex_*` name is lavition's and a `moros_*` name is the game's**, and that is enforced rather
-than conventional: `tools/layering.sh` skips `moros_*` by design, so a universal package carrying
-a Moros prefix is exempt from the check that exists to catch it.
+than conventional — `tools/layering.sh` fails when a lavition package names a Moros one. ⚠ **It
+used to skip `moros_*` by pattern, which made the NAME decide whether the check applied**, and two
+universal packages sat exempt for months because of it (`moros_ui`, then `moros_terrain`). The
+skip is an explicit `CONSUMERS` list now: **a new package is checked unless someone names it on
+purpose** (plan 19 `L2`).
 
 ## Tooling (Python)
 

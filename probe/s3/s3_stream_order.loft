@@ -11,7 +11,7 @@
 // precondition rather than an arithmetic change.
 use hex_world;
 use hex_editor;
-use moros_terrain;
+use hex_mesh;
 
 fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
   q0 = scx * hex_world::CHUNK_W;
@@ -28,7 +28,7 @@ fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
 
 // The mesher reads a TWO-cell margin for heights (`MESH_CHUNK + 4`, offset -2), so a
 // tile's true footprint is its cells plus two on every side.
-// ⚠ THIS PREDICATE IS NOW `moros_terrain::tile_ready`, and the probe asks the ORACLE
+// ⚠ THIS PREDICATE IS NOW `hex_mesh::tile_ready`, and the probe asks the ORACLE
 // rather than re-deriving the rule. A probe carrying its own copy of the thing under
 // test agrees with itself and proves nothing.
 
@@ -46,9 +46,9 @@ fn main() {
   agree_in = 0; agree_out = 0; bad_in = 0; bad_out = 0;
   for cx in 0 - 5..6 {
     for cz in 0 - 5..6 {
-      same = moros_terrain::mesh_crc(moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT))
-          == moros_terrain::mesh_crc(moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT));
-      inside = moros_terrain::tile_ready(b, cx, cz);
+      same = hex_mesh::mesh_crc(hex_mesh::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT))
+          == hex_mesh::mesh_crc(hex_mesh::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT));
+      inside = hex_mesh::tile_ready(b, cx, cz);
       if same && inside { agree_in = agree_in + 1; }
       if same && !inside { agree_out = agree_out + 1; }
       if !same && inside { bad_in = bad_in + 1; }

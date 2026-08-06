@@ -220,7 +220,7 @@ split (designed against gated code) rather than the earlier guesses.
 | `hex_scene` | field → triangles → GLB, **and** the realtime view | crawler + us | designed, not started |
 | `hex_editor` | tools, undo, selection, the configuration surface — **the universal editor itself** | **us** | **built here**, `lib/hex_editor`, 217 tests — every gesture: walk, fall, shape, wall, opening, storey, cellar, stair, stencil |
 | `hex_world` (ours) | `lib/hex_world`, 102 tests — the voxel store this editor actually runs on: chunks, layers, windowed heights, the wire encoding, known-absence | **us** | **built here** — see [WORLD_MODEL.md](WORLD_MODEL.md) |
-| `moros_terrain` | `lib/moros_terrain` — the chunk mesher and its oracle (`tile_ready`), extracted as a LEAF so adding `hex_editor` to `moros_render` could not redden `moros_sim` | **us** | **built here** |
+| `hex_mesh` | `lib/hex_mesh` — the chunk mesher and its oracle (`tile_ready`), extracted as a LEAF so adding `hex_editor` to `moros_render` could not redden `moros_sim`. ⚠ **Was `moros_terrain` until 2026-08-06** — its whole public surface is universal hex meshing, and `tools/layering.sh` skipped `moros_*` by design, so the prefix exempted it from the one check written to catch exactly that. Plan 19 `L2`; the same mechanism that hid `moros_ui` | **lavition** | **built here** |
 
 Dependencies flow strictly downward: `hex_grid` is leaf; `hex_editor` sits on
 `hex_field` + `hex_scene` + `shapes`; only `hex_scene` knows a renderer.

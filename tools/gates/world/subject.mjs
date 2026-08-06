@@ -57,7 +57,7 @@ check(first.includes('world '), `the line names the world: ${JSON.stringify(firs
 check(/level (ON|off)/.test(first), 'the line carries the level toggle');
 
 // ── B3.2 — the catalogue, derived from the mesher ────────────────────────────
-// ⚠ THE COUNT IS THE CLAIM (§C3). The list is what `moros_terrain::surfaces()`
+// ⚠ THE COUNT IS THE CLAIM (§C3). The list is what `hex_mesh::surfaces()`
 // says it is, so it cannot name a material the renderer cannot draw or miss one
 // it can. `SURFACES` — the mesh-id stride — is that same length, and its own
 // comment records it drifting 4 → 5 → 7 → 9 with nine files holding a copy.

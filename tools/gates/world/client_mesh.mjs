@@ -2,7 +2,7 @@
 //
 // ⚠ CHECKED AND LEFT WHOLE, for the same reason as `cache.mjs`: only the wasm client
 // can mesh the wasm client's cache. What CAN be settled against the store is settled
-// in `moros_terrain/tests/mesh.loft` (the oracle's own boundary) and in
+// in `hex_mesh/tests/mesh.loft` (the oracle's own boundary) and in
 // `probe/s3/s3_oracle_boundary.loft` (nine cache shapes, drawn as a map). What is left
 // needs a server, a browser and the stream between them, which is what this drives.
 //

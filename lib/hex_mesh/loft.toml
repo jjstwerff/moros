@@ -1,10 +1,10 @@
 [package]
-name    = "moros_terrain"
+name    = "hex_mesh"
 version = "0.1.0"
 loft    = ">=0.8"
 
 [library]
-entry = "src/moros_terrain.loft"
+entry = "src/hex_mesh.loft"
 
 # ⚠ A LEAF, AND THAT IS THE WHOLE REASON IT IS ITS OWN PACKAGE. The mesher needs
 # GEOMETRY (`moros_render`: `hex_to_world`, `HEIGHT_SCALE`, the mesh types) and it

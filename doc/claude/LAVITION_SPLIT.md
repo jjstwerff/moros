@@ -1,8 +1,9 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
 # LAVITION_SPLIT — extracting the editor into its own project, and keeping the name out
 
-**Status: designed 2026-08-06, not built.** Plan
-[#19](https://github.com/jjstwerff/moros/issues/19) holds the steps.
+**Status: designed 2026-08-06. `L1` and `L2` are BUILT; `L3` was refuted by its own probe and
+replaced by `L3′`.** Plan [#19](https://github.com/jjstwerff/moros/issues/19) holds the steps and
+the per-step record.
 
 > **This file is written to be MOVED.** It carries its own definitions and depends on no Moros
 > context, the same way [HEX_STACK.md](HEX_STACK.md) was written to travel. On the day the split
@@ -35,7 +36,7 @@ Every row below was checked against the tree on that date, not recalled.
 | the `moros` name inside them | **41 mentions in 22 files, none of them code.** Prose, plus `boundary.loft`'s own guard text |
 | where the `hex_*` family comes from | the **registry** at 0.1.0, diffed byte-identical to `../loft-libs-world`. The sibling working tree is **not** in the build |
 | the editor program | `src/editor_server.loft` **8,283 lines**, `editor_client.loft` 1,823, `editor_run.loft` 162 |
-| its Moros coupling | **`moros_terrain`, and nothing else** — 10 distinct symbols, 99 call sites — plus 3 unqualified lattice calls from `moros_render` |
+| its Moros coupling | **`moros_terrain`, and nothing else** — 10 distinct symbols, 99 call sites — plus 3 unqualified calls from `moros_render`. ✅ `moros_terrain` is **`hex_mesh`** now (`L2`); the other three are the projection, not the lattice (`L3`) |
 | the gates | **49 files, 39 of which dial `EDITOR_PORT`** and therefore need that program |
 | the content | `data/parts/` 11 files, `tools/scripts/*.keys` 23 |
 
@@ -97,19 +98,35 @@ registry** (checked, not assumed). ⚠ Not `hex_terrain`: that name is taken by
 `loft-libs-world/hex_terrain`, which is *procedural generation* (noise, fbm, hydrology) and a
 different job.
 
-### L3 — three lattice calls that `hex_grid` already owns
+### L3 — ⚠ REFUTED BY ITS OWN PROBE: they are not lattice calls, they are the PROJECTION
 
-`editor_server.loft` calls `world_to_hex` (30×), `hex_to_world` (23×) and `hex_corner_world`
-(11×) from `moros_render`. `hex_grid` publishes `px_to_hex`, `hex_to_px` and `hex_corner_px`.
+> ⚠ **This section said *"swap the three lattice calls to `hex_grid`"*. The probe below was run on
+> 2026-08-06 and it fired.** The paragraph is kept because the mistake is the instructive part:
+> `tools/layering.sh`'s header records making that exact substitution twice before, which is
+> precisely what made it look safe.
 
-⚠ **This exact substitution has already been made twice**, and `tools/layering.sh`'s own header
-records both: *"the wall run and the road read `moros_render`'s `world_to_hex` / `hex_to_world`.
-They read `hex_grid::px_to_hex` / `hex_to_px` now, which is where the lattice actually lives."*
-Neither was visible while the code sat in a Moros program — *a server may call anything* — and
-they only became wrong on the way out. These 64 sites are the same finding, not yet acted on.
+**Measured, they are not lattice calls:**
 
-**With L2 and L3 done, `src/editor_server.loft` has zero Moros dependencies** and the program,
-its client, its gates and its content can all travel together.
+- `moros_render::hex_to_world` **already calls `hex_grid::hex_to_px`** (line 44). What it adds is
+  `HEIGHT_SCALE` and a Y-up `Vec3`.
+- `mr_corner_offset`'s own comment says *"hex_grid holds the same six corners but walks the ring
+  the other way… **the values now COME FROM hex_grid** with that map applied"* — and every call
+  site compensates *again* with `(6 - i) % 6`.
+
+⚠ **A naive swap would rotate every corner and drop the height, and every count would agree.**
+What these are is the **3-D projection**, and `HEIGHT_SCALE` carries the weight: **83 uses in
+`editor_server` alone**, not the handful assumed here.
+
+⚠ **And the obvious fix is already a reverted experiment.** The projection cannot move into
+`hex_mesh`: `lib/hex_mesh`'s manifest records that putting this code under `moros_render` was
+tried and reverted, because `moros_sim` depends on `moros_render` and inherited `hex_editor`'s
+whole cone (`Cannot redefine 'fabs'`). The reverse arrow has the same shape.
+
+**`L3′`: a small `hex_proj`** — `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world` and the corner
+map — depending on `hex_grid` and `graphics` and nothing else, so both `moros_render` and
+`hex_mesh` can take it without inheriting a cone. **With `L2` and `L3′` done,
+`src/editor_server.loft` has zero Moros dependencies** and the program, its client, its gates and
+its content can all travel together.
 
 ### L4 — `hex_world` is an ambiguous global name today
 
@@ -233,16 +250,18 @@ contradictions were closed on 2026-08-06. **The blocker is no longer design inco
 
 ---
 
-## The probe that could falsify this design
+## ✅ The probe was run on 2026-08-06, and it falsified `L3`
 
 The claim is *the editor program has no irreducible Moros content*. It rests on one measurement —
 that `moros_terrain` and three lattice calls are the whole coupling — and the cheapest way to
 prove it wrong is also the first step of the work:
 
-> Rename `moros_terrain` to `hex_mesh` in place, swap the three lattice calls to `hex_grid`, and
-> run `tools/layering.sh` **with the `moros_*` skip removed**.
+> Rename `moros_terrain` to `hex_mesh` in place, and run `tools/layering.sh` **with the `moros_*`
+> skip removed**.
 
-If it is silent, the program is lavition's and the split is a move. If it is not, whatever it
-names is the real boundary and this design is wrong about where it lies. **That is one afternoon,
-in this tree, with every existing gate still watching** — and it is `L1`–`L3` of the plan, so
-nothing is spent twice.
+**It was not silent.** It named `hex_mesh → moros_render` at 26 call sites, and reading them is
+what showed the three functions are the *projection* rather than the lattice — see `L3` above.
+`L1` and `L2` landed on the strength of it; `L3` was withdrawn and replaced by `L3′`.
+
+⚠ **The design was one afternoon from a change that would have rotated every corner and dropped
+every height with every count agreeing.** That is what the probe cost, and what it was for.

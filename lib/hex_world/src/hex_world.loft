@@ -397,7 +397,7 @@ pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
 // camera asks it about five times per boom sample, fifteen booms a tick, so it is
 // here instead: one chunk lookup, no allocation, and the invariant sits in the
 // library where a pure test can reach it rather than in a consumer.
-pub struct Surface {
+pub struct SurfaceAt {
   sf_units:  integer,     // the surface height, absolute; −1 when nothing is here
   // ⚠ WHICH layer answered, so a WRITER can reach it. `world_ground_layer` is the
   // same service for the outdoors; this is it for "the surface I am standing on",
@@ -418,9 +418,9 @@ pub struct Surface {
 // half of it cannot select the wrong one, and it absorbs the difference between a
 // terrain layer's smoothed surface and its cell's stored integer height — on any
 // slope the interpolated surface sits BELOW the cell's own value.
-pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> Surface {
+pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> SurfaceAt {
   ci = find_chunk(w, chunk_of(q), chunk_of(r));
-  if ci < 0 { return Surface { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
+  if ci < 0 { return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
   ix = cell_index(q, r);
   base = w.w_chunks[ci].ck_base;
   // ⚠ THE TOLERANCE IS `θ`, WHICH IS WHAT §5 SAYS AND WHAT THIS DID NOT. It read
@@ -451,12 +451,12 @@ pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> Surface {
       }
     }
   }
-  if !havelow { return Surface { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
+  if !havelow { return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
   // Below every floor — land on the lowest rather than on nothing. Falling into a
   // sealed cellar has to end somewhere, and the alternative is falling forever.
   h = low; hl = lowl;
   if found { h = best; hl = bestl; }
-  Surface { sf_units: h, sf_layer: hl, sf_occ: occ, sf_smooth: occ <= 1 }
+  SurfaceAt { sf_units: h, sf_layer: hl, sf_occ: occ, sf_smooth: occ <= 1 }
 }
 
 pub fn world_column(w: World, q: integer, r: integer) -> Column {

@@ -201,7 +201,7 @@ and a kind; it does not grow a second widget.
 ✅ **BUILT, `B5.1`, 2026-08-03.** `Entry` carries `en_kind` — text, not an enum, because a
 layout library that enumerated `material | part` would have to be edited before a consumer
 could invent a third family. The wire is `N:<kind>|<name>|<0|1>|<reason>;…`, the materials come
-from `moros_terrain::surfaces()` and the parts from `hex_part::part_list(data/parts/)`, and
+from `hex_mesh::surfaces()` and the parts from `hex_part::part_list(data/parts/)`, and
 neither is a list the server keeps. One `ps_items`, both families, no second widget.
 
 ⚠ **The list shows FILE names.** A part's author-given name is in its `PART` section, so

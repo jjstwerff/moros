@@ -17,7 +17,7 @@
 // the four-corner test does not name.
 use hex_world;
 use hex_editor;
-use moros_terrain;
+use hex_mesh;
 
 fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
   q0 = scx * hex_world::CHUNK_W;
@@ -61,11 +61,11 @@ fn sweep(a: World, name: text, want: vector<integer>, fp: &integer, fn_: &intege
   for cz in 0 - 9..10 {
     row = "   ";
     for cx in 0 - 9..10 {
-      ma = moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
-      mb = moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
-      same = moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb);
+      ma = hex_mesh::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
+      mb = hex_mesh::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
+      same = hex_mesh::mesh_crc(ma) == hex_mesh::mesh_crc(mb);
       hollow = len(ma.vertices) == 0 && len(mb.vertices) == 0;
-      rdy = moros_terrain::tile_ready(b, cx, cz);
+      rdy = hex_mesh::tile_ready(b, cx, cz);
       if hollow {
         empty_both = empty_both + 1;
         row = row + "~ ";

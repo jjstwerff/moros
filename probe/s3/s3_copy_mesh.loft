@@ -2,7 +2,7 @@
 // second world exactly as `world_put_layer` does, then mesh the same tiles from both.
 use hex_world;
 use hex_editor;
-use moros_terrain;
+use hex_mesh;
 
 // ⚠ THE COPY GOES THROUGH A `&World` PARAMETER. Done inline on a local in `main`,
 // `world_put_layer(b, …)` left `b` EMPTY — and an empty world meshes happily at
@@ -35,9 +35,9 @@ fn main() {
   first = "";
   for cx in 0 - 4..5 {
     for cz in 0 - 4..5 {
-      ma = moros_terrain::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
-      mb = moros_terrain::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
-      if moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb) { agree = agree + 1; }
+      ma = hex_mesh::chunk_mesh_mat(cx, cz, a, hex_editor::SURFACE_MAT);
+      mb = hex_mesh::chunk_mesh_mat(cx, cz, b, hex_editor::SURFACE_MAT);
+      if hex_mesh::mesh_crc(ma) == hex_mesh::mesh_crc(mb) { agree = agree + 1; }
       else {
         bad = bad + 1;
         if first == "" {

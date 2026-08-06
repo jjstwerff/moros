@@ -24,7 +24,7 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE — plan 18 CLOSED · plan 17 through `A8.1` · **next is `A8.2`**
 
-**Green as of 2026-08-06** on loft `7f6968e8`, hash stamped at both ends of every stage:
+**Green as of 2026-08-06** on loft `de2dd9e9`, hash stamped at both ends of every stage:
 `make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
 `make parts` green, `data/parts/` byte-identical across all six files · layering silent.
 
@@ -32,10 +32,12 @@ when the step landed, and this file duplicating it is how it grows back.
 |---|---|---|---|
 | `moros_sim` **310** | `moros_render` **167** | `moros_map` **92** | `moros_editor` **56** |
 
-⚠ **THE TOOLCHAIN WAS REPLACED MID-SUITE AGAIN and only the stamp said so** — a run that started
-on `bd911fa1` finished on `7f6968e8`, reporting 8 `SERVER NEVER LISTENED` and a `collect2: ld
-returned 1`, which reads as eight broken gates and a build break. It was neither. **Warm the new
-binary** (`make client`, then one server up and down) and re-run; that run was 44 green.
+⚠ **THE TOOLCHAIN WAS REPLACED MID-SUITE TWICE IN ONE SESSION and only the stamp said so.** One
+run started on `bd911fa1` and finished on `7f6968e8`, reporting 8 `SERVER NEVER LISTENED` and a
+`collect2: ld returned 1`; another started on `7f6968e8` and finished on `de2dd9e9` with 9 more.
+Neither was a real failure. **Three installs landed while this session was running**, so:
+**stamp `sha256sum /usr/local/bin/loft` at both ends of every suite, and warm the new binary**
+(`make client`, then one server up and down) before believing anything.
 
 ### What to do next
 
@@ -62,20 +64,33 @@ says what `A8` deliberately does **not** cover.
 leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
 own plan. **The first two are the ones that change the FORMAT**, so they set the order.
 
-### ⚠ Plan 19 exists now — the lavition split, designed and NOT started
+### Plan 19 — the lavition split: `L1`/`L2` BUILT, the rest waits for `A8`
 
 [#19](https://github.com/jjstwerff/moros/issues/19) · design
 [LAVITION_SPLIT.md](LAVITION_SPLIT.md) · steps
-[plans/19-lavition-split](../../plans/19-lavition-split/README.md). **Blocked on `A8` landing**,
-for hexbody's reason: `MeshAt` is changing shape right now.
+[plans/19-lavition-split](../../plans/19-lavition-split/README.md). The MOVE is **blocked on `A8`
+landing**, for hexbody's reason: `MeshAt` is changing shape right now. The corrections are not.
 
-⚠ **THREE OF ITS STEPS CAN START NOW AND ARE RIGHT EITHER WAY** — they are corrections, not
-preparation: `L1` the `Surface` collision that already merges silently, `L2` `moros_terrain` →
-`hex_mesh` (its whole public surface is universal hex meshing, and `layering.sh` **skips
-`moros_*` by design**, which is exactly how `moros_ui` stayed exempt for months), `L3` the 64
-lattice call sites that reach past `hex_grid`. ⚠ **Doing them also runs the probe that could
-falsify the design**: `layering.sh` with the `moros_*` skip removed. Silent → the editor program
-is lavition's and the split is a move; not silent → whatever it names is the real boundary.
+✅ **`L1` AND `L2` ARE DONE (2026-08-06).** `hex_world::Surface` → **`SurfaceAt`** (the tree's own
+`MeshAt`/`SocketAt` convention for a derived positional record), so the silent merge with
+`moros_terrain::Surface` is gone — the negative control produced its five *"Unknown field
+`Surface.sf_r`"* errors first. And `moros_terrain` → **`hex_mesh`**, with `layering.sh`'s default
+flipped from *exempt by pattern* to **checked, with a named `CONSUMERS` list** — because the skip
+was the other half of the mechanism, not the name alone.
+
+⚠ **`L3` WAS WRONG AND ITS OWN PROBE SAID SO.** *"Swap the three lattice calls to `hex_grid`"* —
+except `hex_to_world` **already calls `hex_grid::hex_to_px`**, and `mr_corner_offset`'s six corners
+already come from `hex_grid` with a `(6-i)%6` map every call site compensates for again. They are
+the **3-D projection**, not the lattice, and `HEIGHT_SCALE` alone has **83 uses in
+`editor_server`**. A naive swap would have rotated every corner and dropped every height **with
+every count agreeing**. Replaced by `L3′` — a small `hex_proj`, because the obvious fix is already
+a reverted experiment (`moros_sim` inherits `hex_editor`'s cone and dies on `Cannot redefine
+'fabs'`). Until then the debt is `KNOWN="hex_mesh:moros_render"` in `layering.sh`, **printed every
+run** with its reason.
+
+**What is left**: `L3′` (the `hex_proj` package), `L4` (the two `hex_world` lineages — **not ours
+alone**, raise it with `loft-libs-world`), `L5` (the gate flake), then `L6`–`L8`, all of which wait
+for `A8`.
 
 ⚠ **AND `L5` — THE GATE FLAKE — COMES BEFORE ANY REQUIRED PR CHECK.** Measured this session:
 `cache` failed **2 of 3** suite runs and passed alone both times, and the *server's own log* read

@@ -61,8 +61,9 @@ repo, a file move, and documentation. Said in a line so the silence does not rea
 |---|---|---|---|
 | **`L1`** — rename one of the two `Surface` structs | S | `make lib-test` + `make gate` unchanged; the negative control above seen red first | Open — **can start now** |
 | **`L2`** — `moros_terrain` → `hex_mesh`, and delete the `moros_*` skip from `layering.sh` | M | `layering.sh` silent with the skip gone; `make parts` byte-identical | Open — **can start now** |
-| **`L3`** — the 64 lattice call sites → `hex_grid` | S | suites unchanged; the both-parities/both-signs fixture | Open — **can start now** |
-| **`L3p`** — ⚠ **the probe**: run `layering.sh` with no skip and see whether anything else is named | XS | silent → the program is lavition's. Not silent → whatever it names is the real boundary and the design is wrong | Open — falls out of `L1`–`L3` |
+| ~~**`L3`** — the 64 lattice call sites → `hex_grid`~~ | ~~S~~ | ⚠ **REFUTED BY THE PROBE — see below.** Replaced by `L3′` | Withdrawn 2026-08-06 |
+| **`L3′`** — a small `hex_proj` package: `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`, the corner map | M | `layering.sh` with `KNOWN` **empty** is silent; suites and gates unchanged | Open |
+| **`L3p`** — ⚠ **the probe** | XS | ✅ **RUN 2026-08-06, and it fired.** `L3` as designed was wrong | ✅ Done |
 | **`L4`** — settle the `hex_world` lineage with `loft-libs-world` | S | a decision on the ticket; ours is 0.1.0, theirs 0.2.0 | Blocked on nobody, but **not ours alone** |
 | **`L5`** — fix the gate flake: poll for the acknowledgement, never sleep | M | `cache` green in 5 consecutive suite runs; `part_fence`'s 58 s → 21 s is the precedent | Open — **do before any PR gate** |
 | **`L6`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on `L1`–`L5` and #17 `A8` |
@@ -79,6 +80,57 @@ and passed alone both times, and the *server's own log* read `agree 24 bad 0 lay
 gate reported `agree 0 bad 24 layers 0` — so the world was right and the gate never read it. A
 required check that goes red two runs in three teaches everyone to hit re-run, which is worse than
 no check at all.
+
+## What `L1`–`L2` turned up, and the probe that refuted `L3` (2026-08-06)
+
+**`L1` is done.** `hex_world::Surface` → **`SurfaceAt`**, which follows this tree's own convention
+for a derived positional record (`MeshAt`, `SocketAt`) and reads as what it is — *the surface at
+this hex, under these feet*. `Surface` is left to the palette entry, whose own header already says
+*"the surfaces the mesher can emit"*.
+
+⚠ **The negative control ran first and reproduced the bug exactly**: a five-line scratch program
+importing both packages and constructing `Surface { sf_name:…, sf_r:… }` failed with **five
+`Unknown field Surface.sf_*` errors and no mention of a collision**. After the rename the same
+program compiles and prints. Without that control the rename would have been a claim about a bug
+nobody had seen.
+
+**`L2` is done.** `moros_terrain` → **`hex_mesh`** across 14 files, `data/parts/` byte-identical.
+⚠ **And the rename is only half the mechanism — `layering.sh`'s DEFAULT was the other half.** It
+skipped every `moros_*` package, so **the name decided whether the check applied**, which is
+exactly how `moros_ui` stayed exempt for months from the one check written to catch it. The skip
+is now an explicit `CONSUMERS` list: a new package is **checked unless somebody names it on
+purpose**. Both controls run — a fresh fake dependency on `hex_part` still fails the build, and
+emptying `KNOWN` makes the tracked debt reappear, so the entry clears something real.
+
+### ⚠ `L3` WAS WRONG, AND THE PROBE IS WHAT SAID SO
+
+The design read: *"swap the three lattice calls to `hex_grid`'s `px_to_hex` / `hex_to_px` /
+`hex_corner_px`"*, on the strength of `layering.sh`'s header recording that exact substitution
+twice before. **Measured, they are not lattice calls at all:**
+
+- `moros_render::hex_to_world` **already calls `hex_grid::hex_to_px`** (line 44). What it adds is
+  `HEIGHT_SCALE` and a Y-up `Vec3`.
+- `mr_corner_offset`'s own comment: *"hex_grid holds the same six corners but walks the ring the
+  other way… **the values now COME FROM hex_grid** with that map applied"* — and every call site
+  then compensates *again* with `(6 - i) % 6`.
+
+⚠ **So a naive swap would rotate every corner and drop the height, with every count still
+agreeing** — this tree's most expensive failure shape, and the design was one afternoon from
+walking into it. What these three really are is the **3-D PROJECTION**, and it is `HEIGHT_SCALE`
+that carries the weight: **83 uses in `editor_server` alone**, not the handful the design assumed.
+
+⚠ **AND THE OBVIOUS FIX IS ALREADY A REVERTED EXPERIMENT.** Moving the projection into `hex_mesh`
+cannot work, because `lib/hex_mesh`'s own manifest records that putting this code under
+`moros_render` was tried and reverted: `moros_sim` depends on `moros_render`, so it inherited
+`hex_editor`'s whole cone and went red on `Cannot redefine 'fabs'`. The reverse arrow has the same
+shape. **It wants a package of its own** — `hex_proj`, depending on `hex_grid` and `graphics` and
+nothing else, which both `moros_render` and `hex_mesh` can take without inheriting a cone. That is
+`L3′`.
+
+**Until `L3′` lands the debt is TRACKED, not hidden**: `KNOWN="hex_mesh:moros_render"` in
+`layering.sh`, printed on every run with its reason and its plan step, so the list cannot quietly
+become permanent. ⚠ That is the whole difference from the pattern skip it replaced — **a debt with
+a name on it beats a debt nobody can see.**
 
 ## Cross-repo coordination
 

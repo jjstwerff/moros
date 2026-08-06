@@ -48,13 +48,21 @@ suite cannot see this** — `hex_part` was 131 green while `hex_editor` would no
 Grep `lib/`, `src/`, `../loft-libs-world/` and the registry **before** adding a public name, and
 when a name is taken, take the collision seriously rather than routing around it: `hex_editor`'s
 `Fit` had already settled the hard half of the question `hex_part` was re-deriving.
-⚠ **And there IS no routing around it — a qualified name does not disambiguate.** `Surface` is
-declared by both `hex_world` and `moros_terrain`, and in `editor_server.loft` they have already
-merged: writing the literal fails with five *"Unknown field Surface.sf_r"* errors that never
-mention a collision, and spelling it `moros_terrain::Surface` **still** resolves to the other
-struct — the return type is accepted and the constructor is not. It had gone unnoticed for
-months because every caller reads `surface_at(i).sf_r` and never names the type. Grep first; the
-only cure afterwards is a rename.
+⚠ **And there IS no routing around it — a qualified name does not disambiguate.** `Surface` was
+declared by both `hex_world` and `moros_terrain`, and in `editor_server.loft` the two had merged:
+writing the literal failed with five *"Unknown field Surface.sf_r"* errors that never mention a
+collision, and spelling it `moros_terrain::Surface` **still** resolved to the other struct — the
+return type accepted, the constructor not. It went unnoticed for months because every caller reads
+`surface_at(i).sf_r` and never names the type. ✅ **Fixed 2026-08-06** (plan 19 `L1`):
+`hex_world`'s is `SurfaceAt`. **Grep first; the only cure afterwards is a rename**, and a rename
+is the one thing you cannot do once a package is published.
+
+⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
+every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one
+check written to catch exactly that — `moros_ui` for months, then `moros_terrain`. Both are
+renamed (`lavition_ui`, `hex_mesh`) and the skip is now an explicit `CONSUMERS` list: **a new
+package is checked unless somebody names it on purpose.** When a guard has an exemption rule,
+ask what the rule exempts *by accident*.
 
 **A missing library capability is ours to build**, never an upstream ask — verification is
 only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests

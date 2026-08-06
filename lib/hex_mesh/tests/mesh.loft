@@ -7,7 +7,7 @@
 // it over its own voxel cache — and the whole S3 claim is *the server's own function,
 // unmodified*, which is only checkable while there is one function. These are the
 // claims that hold whoever calls it.
-use moros_terrain;
+use hex_mesh;
 use hex_world;
 use hex_editor;
 
@@ -24,20 +24,20 @@ fn test_the_mesh_tile_is_not_the_store_tile() {
   // windowing and elision; the renderer tiles at `MESH_CHUNK` because that is what a
   // rebuild costs. A reader who assumed they were the same would ask for chunk (2,3)
   // and be handed the cells of another — with no error anywhere.
-  assert(moros_terrain::MESH_CHUNK != hex_world::CHUNK_W,
-         "the two tiles are different questions: {moros_terrain::MESH_CHUNK} vs {hex_world::CHUNK_W}");
-  assert(hex_world::CHUNK_W % moros_terrain::MESH_CHUNK == 0,
+  assert(hex_mesh::MESH_CHUNK != hex_world::CHUNK_W,
+         "the two tiles are different questions: {hex_mesh::MESH_CHUNK} vs {hex_world::CHUNK_W}");
+  assert(hex_world::CHUNK_W % hex_mesh::MESH_CHUNK == 0,
          "and the store's tile is a whole number of the renderer's");
 }
 
 fn test_a_chunk_of_ground_becomes_triangles() {
   w = world();
-  m = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  m = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
   // Seven vertices a cell — a shared centre and six corners — over the tile.
-  want = moros_terrain::MESH_CHUNK * moros_terrain::MESH_CHUNK * 7;
+  want = hex_mesh::MESH_CHUNK * hex_mesh::MESH_CHUNK * 7;
   assert(len(m.vertices) == want,
-         "{moros_terrain::MESH_CHUNK}^2 cells at 7 vertices = {want}, got {len(m.vertices)}");
-  assert(len(m.triangles) == moros_terrain::MESH_CHUNK * moros_terrain::MESH_CHUNK * 6,
+         "{hex_mesh::MESH_CHUNK}^2 cells at 7 vertices = {want}, got {len(m.vertices)}");
+  assert(len(m.triangles) == hex_mesh::MESH_CHUNK * hex_mesh::MESH_CHUNK * 6,
          "and six triangles a cell, got {len(m.triangles)}");
 }
 
@@ -45,8 +45,8 @@ fn test_it_meshes_only_the_material_it_was_asked_for() {
   // ⚠ THE CONTROL, and without it every count above passes on a mesher that ignores
   // its argument. One mesh per material per chunk is why the argument exists.
   w = world();
-  ground = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
-  road = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::ROAD_MAT);
+  ground = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  road = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::ROAD_MAT);
   assert(len(ground.vertices) > 0, "the ground is there");
   assert(len(road.vertices) == 0, "and no cell carries road, so that mesh is empty");
 }
@@ -55,7 +55,7 @@ fn test_the_ground_follows_its_own_heights() {
   // The fan is the SMOOTHED field, so a slope drawn over rising ground has to rise —
   // a mesher that dropped `wld` and drew a plane would pass every count above.
   w = world();
-  m = moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  m = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
   lo = 1000000.0;
   hi = 0.0 - 1000000.0;
   for v in m.vertices {
@@ -71,7 +71,7 @@ fn test_the_oracle_says_no_before_the_neighbourhood_arrives() {
   // of 40 failing when it was not — so "may I mesh this yet" is the only question
   // between a client that agrees and one that does not.
   full = world();
-  assert(moros_terrain::tile_ready(full, 0, 0), "a complete world can answer for a tile");
+  assert(hex_mesh::tile_ready(full, 0, 0), "a complete world can answer for a tile");
 
   // A world holding ONE chunk cannot answer for a tile on that chunk's edge, because
   // the mesher reads two cells past it.
@@ -81,21 +81,21 @@ fn test_the_oracle_says_no_before_the_neighbourhood_arrives() {
       hex_editor::ground_set(one, q, r, 40, hex_editor::SURFACE_MAT);
     }
   }
-  assert(moros_terrain::tile_ready(one, 1, 1),
+  assert(hex_mesh::tile_ready(one, 1, 1),
          "a tile well inside the one chunk it holds is answerable");
-  assert(!moros_terrain::tile_ready(one, 0, 0),
+  assert(!hex_mesh::tile_ready(one, 0, 0),
          "but the tile at its corner is not — the margin reaches the chunk before it");
-  edge = hex_world::CHUNK_W / moros_terrain::MESH_CHUNK - 1 ?? 0;
-  assert(!moros_terrain::tile_ready(one, edge, edge),
+  edge = hex_world::CHUNK_W / hex_mesh::MESH_CHUNK - 1 ?? 0;
+  assert(!hex_mesh::tile_ready(one, edge, edge),
          "nor the tile at the far corner, for the same reason one axis over");
 }
 
 fn test_the_margin_is_the_grid_the_mesher_actually_builds() {
   // A guard that asked about the TILE rather than its margin would pass everything and
   // protect nothing — this pins it to the grid `chunk_mesh_mat` really constructs.
-  assert(moros_terrain::MESH_MARGIN == 2,
+  assert(hex_mesh::MESH_MARGIN == 2,
          "the height grid is MESH_CHUNK + 4, offset -2");
-  assert(moros_terrain::MESH_CHUNK + 2 * moros_terrain::MESH_MARGIN
+  assert(hex_mesh::MESH_CHUNK + 2 * hex_mesh::MESH_MARGIN
          <= hex_world::CHUNK_W,
          "and a tile's footprint spans at most two store chunks per axis, "
        + "which is what makes the four-corner test complete");
@@ -118,9 +118,9 @@ fn clump() -> World {
 
 fn ground_verts(w: World, bounded: boolean) -> integer {
   m = if bounded {
-        moros_terrain::chunk_mesh_mat_bounded(0, 0, w, hex_editor::SURFACE_MAT)
+        hex_mesh::chunk_mesh_mat_bounded(0, 0, w, hex_editor::SURFACE_MAT)
       } else {
-        moros_terrain::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT)
+        hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT)
       };
   len(m.vertices)
 }
@@ -163,8 +163,8 @@ fn test_bounding_touches_no_surface_but_the_ground() {
   hex_editor::ground_set(w, 4, 3, 40, hex_editor::FIELD_MAT);
   hex_editor::ground_set(w, 5, 3, 40, hex_editor::FLOOR_MAT);
   for mat in [hex_editor::ROAD_MAT, hex_editor::FIELD_MAT, hex_editor::FLOOR_MAT] {
-    a = len(moros_terrain::chunk_mesh_mat(0, 0, w, mat).vertices);
-    b = len(moros_terrain::chunk_mesh_mat_bounded(0, 0, w, mat).vertices);
+    a = len(hex_mesh::chunk_mesh_mat(0, 0, w, mat).vertices);
+    b = len(hex_mesh::chunk_mesh_mat_bounded(0, 0, w, mat).vertices);
     assert(a > 0, "material {mat} meshed nothing — the claim is vacuous");
     assert(a == b, "material {mat} meshed {a} unbounded and {b} bounded");
   }

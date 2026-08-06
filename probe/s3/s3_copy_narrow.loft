@@ -1,6 +1,6 @@
 use hex_world;
 use hex_editor;
-use moros_terrain;
+use hex_mesh;
 
 fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
   q0 = scx * hex_world::CHUNK_W;
@@ -42,9 +42,9 @@ fn main() {
   println("--- and the MESH, over tiles whose halo is inside the copied chunks");
   nsame = 0; ndiff = 0; nempty = 0;
   for cx in 0 - 4..5 {
-    ma = moros_terrain::chunk_mesh_mat(cx, cx, a, hex_editor::SURFACE_MAT);
-    mb = moros_terrain::chunk_mesh_mat(cx, cx, c, hex_editor::SURFACE_MAT);
-    same = moros_terrain::mesh_crc(ma) == moros_terrain::mesh_crc(mb);
+    ma = hex_mesh::chunk_mesh_mat(cx, cx, a, hex_editor::SURFACE_MAT);
+    mb = hex_mesh::chunk_mesh_mat(cx, cx, c, hex_editor::SURFACE_MAT);
+    same = hex_mesh::mesh_crc(ma) == hex_mesh::mesh_crc(mb);
     y0a = 0.0; y0b = 0.0;
     if len(ma.vertices) > 0 { y0a = ma.vertices[0].pos.y as float ?? 0.0; }
     if len(mb.vertices) > 0 { y0b = mb.vertices[0].pos.y as float ?? 0.0; }

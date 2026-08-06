@@ -48,7 +48,7 @@ use gridmesh;   // enc_coord — the SAME chunk key the server packs mesh ids wi
 // ⚠ S3: the SERVER'S OWN mesher, not a second implementation. The whole claim is
 // that the client derives the same triangles, and that is only checkable while there
 // is one function — two copies that agree today are two copies.
-use moros_terrain;
+use hex_mesh;
 use hex_editor;
 // ⚠ THE PANEL, AND THIS DEPENDENCY IS THE POINT OF PLAN 18's B1.2b.
 // It was `moros_ui` and could not be named here at all: it depended on
@@ -694,8 +694,8 @@ fn draw_world(st: Client) {
 // arrives ready, and `Z:0` for the ones that were not. Two copies of a comparison
 // drift, and the drift would look exactly like a real disagreement.
 fn ground_check(h: web::WsHandler, st: Client, cx: integer, cz: integer, crc: integer) {
-  gm = moros_terrain::chunk_mesh_mat(cx, cz, st.cache, hex_editor::SURFACE_MAT);
-  if moros_terrain::mesh_crc(gm) == crc {
+  gm = hex_mesh::chunk_mesh_mat(cx, cz, st.cache, hex_editor::SURFACE_MAT);
+  if hex_mesh::mesh_crc(gm) == crc {
     st.g_agree = st.g_agree + 1;
     // Draw what we derived. Until the server is told to stop sending ground, both
     // land under the same id and the later one wins — they are identical, which is
@@ -738,7 +738,7 @@ fn ground_drain(h: web::WsHandler, st: Client) {
   for i in 0..len(st.q_cx) {
     cx = st.q_cx[i] ?? 0;
     cz = st.q_cz[i] ?? 0;
-    if moros_terrain::tile_ready(st.cache, cx, cz) {
+    if hex_mesh::tile_ready(st.cache, cx, cz) {
       ground_check(h, st, cx, cz, st.q_crc[i] ?? 0);
     } else {
       keep_cx += [cx];
@@ -757,7 +757,7 @@ fn ground_drain(h: web::WsHandler, st: Client) {
   for k in 0..len(keep_cx) {
     if k < 3 {
       held = held + " [{keep_cx[k] ?? 0},{keep_cz[k] ?? 0} wants"
-           + "{moros_terrain::tile_why(st.cache, keep_cx[k] ?? 0, keep_cz[k] ?? 0)}]";
+           + "{hex_mesh::tile_why(st.cache, keep_cx[k] ?? 0, keep_cz[k] ?? 0)}]";
     }
   }
   web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait} drained"
@@ -888,7 +888,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // switches, so a disagreement is a number rather than a hole in the ground.
         gf = parse_ints(body);
         if len(gf) >= 3 {
-          // ⚠ ASK THE ORACLE FIRST. `moros_terrain::tile_ready` answers whether this
+          // ⚠ ASK THE ORACLE FIRST. `hex_mesh::tile_ready` answers whether this
           // cache holds every chunk the mesher will READ for this tile — its own two
           // cells of margin included. `probe/s3/s3_oracle_boundary.loft` sweeps nine
           // cache shapes and the answer is a biconditional, not a safe guess: READY
@@ -899,7 +899,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
           qx = gf[0] ?? 0;
           qz = gf[1] ?? 0;
           qc = gf[2] ?? 0;
-          if moros_terrain::tile_ready(st.cache, qx, qz) {
+          if hex_mesh::tile_ready(st.cache, qx, qz) {
             ground_check(h, st, qx, qz, qc);
             web::send(h, "42:ground {st.g_agree} bad {st.g_bad} wait {st.g_wait}");
           } else {
@@ -1356,7 +1356,7 @@ fn render_thumb(st: Client, row: integer, fbo: integer) -> integer {
 
 // One material's hex tile, into its own texture.
 fn render_swatch(st: Client, mat: integer, vao: integer, fbo: integer) -> integer {
-  sf = moros_terrain::surface_at(mat);
+  sf = hex_mesh::surface_at(mat);
   // ⚠ DEPTH OFF. The swatch is one flat fan and needs no ordering; leaving the
   // world's depth test on is what made nine draws produce nothing when this
   // framebuffer had no depth attachment at all.

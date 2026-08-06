@@ -411,7 +411,7 @@ pub fn mesh_crc(m: Mesh) -> integer {
 // That is not a thing to remember at each call site. It is a QUESTION THE WORLD CAN
 // ANSWER ABOUT ITSELF, so it lives here beside the mesher and every caller asks it:
 //
-//     if !moros_terrain::tile_ready(cache, cx, cz) { … not yet … }
+//     if !hex_mesh::tile_ready(cache, cx, cz) { … not yet … }
 //
 // ⚠ AND IT ASKS ABOUT THE MARGIN, NOT THE TILE. `chunk_mesh_mat` builds a height grid
 // of `MESH_CHUNK + 4` offset by -2, because a corner is the mean of the three cells
