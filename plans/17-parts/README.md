@@ -610,7 +610,7 @@ those six is an authoring call.
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A5.1` | Hinge in `PART`: axis, range. Round-trip. | **DONE.** `src/hinge.loft`, `hex_part` 157 → 170, both backends. ⚠ The first section in this format to carry a **float**, so `A1.4`'s *"an integer written as text round-trips exactly"* had to be re-earned — see below. | S |
-| ◐ `A5.2` | State on the instance, and the renderer honours it. | **STATE HALF DONE**, renderer half BLOCKED with a number. `bd_open` on the binding, `swing_fit` fencing it, and `F-STATE` measured: a door saved 0.125 open reloads 0.125. ⚠ A cell leaf has **two** drawable positions in a door's whole swing — see below. `hex_part` 170 → 180. | M |
+| ◐ `A5.2` | State on the instance, and the renderer honours it. | **STATE HALF DONE**; the RECORD half done 2026-08-06 — the swing and the hinge now reach `MeshAt` (4 tests, three sabotages red, one of which was a control that could not fail). What is left is the DRAWING: the editor still discards `ex_meshes`. `bd_open` on the binding, `swing_fit` fencing it, and `F-STATE` measured: a door saved 0.125 open reloads 0.125. ⚠ A cell leaf has **two** drawable positions in a door's whole swing — see below. `hex_part` 170 → 180 → 246. | M |
 
 ### What `A5.1` turned up
 
@@ -1234,6 +1234,44 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### What `A5.2`'s record half turned up
+
+⚠ **IT WAS BLOCKED ON A FIELD, AND THE FIELD COST ALMOST NOTHING ONCE THE OWNERSHIP WAS RIGHT.**
+`ma_facing` is a turn about the part's origin about the vertical; a hinge carries its own POINT
+and its own AXIS, and a trapdoor turns about a horizontal one — so folding `bd_open` into
+`ma_facing` would swing every door about its centre. `MeshAt` now carries the hinge (point, axis)
+and `ma_swing` in TURNS, and the assertion that says why is the one on `ma_facing`: **the aim must
+still be the socket's 18 after the swing lands**.
+
+⚠ **THE HINGE IS THE PART'S AND THE ANGLE IS THE BINDING'S, WHICH IS WHAT MADE IT FREE.** A
+hinge belongs to the leaf, so the expansion that just opened that leaf stamps it — the world is
+already in hand. Reading it at the binding instead would open the same file a second time, per
+placement, per edit, which is exactly the cost `part_expand` refuses to pay for the `.glb`. The
+angle is written where the binding is resolved, from `sa_offer` — **the value `socket_for_binding`
+has already fenced**, so the number checked and the number drawn are the same number.
+
+⚠ **A ZERO AXIS IS *NOT HINGED*, AND THAT IS THE LIBRARY'S OWN RULE RATHER THAN A NEW SENTINEL.**
+`hinge.loft` refuses an axis of zero length as `HG_AXIS` — *a revolute joint with nothing to turn
+about* — so it can never be a real hinge, and the float default says *no hinge* for free.
+
+⚠ **AND A CONTROL THAT COULD NOT FAIL, CAUGHT BY ITS OWN SABOTAGE.** *The swing lands on that leaf
+and on nothing else* was written with the bound plinth as instance 0 and a loose statue as
+instance 1 — and the sabotage that stamps the whole accumulated list went **green**, because at
+the moment the binding resolves the statue has not been appended yet. There was nothing beside it
+to damage. Swapping the two instances makes the same sabotage fail with *2 of the two placements
+are swung*. **The order of a fixture is part of the test**, which is `D`'s lesson at a new site.
+
+⚠ **`use hinge;` IS DECLARED RATHER THAN LEFT TRANSITIVE.** It compiled without, through `bind`,
+and a reorder of the package's file list would have broken it silently — which is the same
+declaration-order rule that forced the cycle check into its own file one step earlier.
+
+**What is left of `A5.2` is the DRAWING**, and it is now the only thing left: the editor discards
+`ex_meshes` entirely, so no expanded mesh is drawn at all — bound, swung or otherwise. The
+precedent exists and is small: the catalogue thumbnail already draws a part's `.glb` through
+`glb_read` + `mesh_wire`, and `chunk_mesh_slot` and `glb_read` hand back the same `mesh3d::Mesh`.
+⚠ **Its acceptance is a COLD-RECOGNITION test and needs the user's eyes** — *does a person call it
+a door* — so it ends in a picture handed over, not in a green suite.
 
 ### What `A7.3f3` turned up
 

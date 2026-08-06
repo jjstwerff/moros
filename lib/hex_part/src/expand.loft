@@ -43,6 +43,7 @@ use catalogue;
 use stamp;
 use meta;
 use prop;
+use hinge;   // `A5.2` — the swing rides in `MeshAt`, so the hinge is read here
 
 pub const EX_OK      = 0;
 pub const EX_MISSING = 1;   // the part is not in the library
@@ -302,8 +303,21 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
   // the part is made of, which is the one thing §P5 exists to avoid.
   meshes: vector<MeshAt> = [];
   if body.pr_code == MR_OK {
+    // ⚠ THE HINGE IS STAMPED HERE BECAUSE THE WORLD IS ALREADY OPEN — plan 17
+    // `A5.2`. A hinge belongs to the PART, not to the socket it hangs in, so the
+    // expansion that just loaded the leaf is the one place it costs nothing to
+    // read. Reading it at the binding instead would open the same file a second
+    // time, per placement, per edit — the cost `part_expand` refuses to pay for
+    // the `.glb` and would have no better reason to pay here.
+    // ⚠ AND ABSENT IS 0.0 EVERYWHERE, which is *not hinged* by `hinge.loft`'s own
+    // rule: a zero axis is `HG_AXIS`, a joint with nothing to turn about.
+    hg = part_hinge(ld.wl_world);
+    hgh = hg.hr_hinge;
+    if hg.hr_code != MR_OK { hgh = Hinge {}; }
     meshes += [MeshAt { ma_mesh: body.pr_name, ma_q: cq, ma_r: cr, ma_h: anchor,
-                        ma_facing: turn }];
+                        ma_facing: turn,
+                        ma_ox: hgh.hg_ox, ma_oy: hgh.hg_oy, ma_oz: hgh.hg_oz,
+                        ma_ax: hgh.hg_ax, ma_ay: hgh.hg_ay, ma_az: hgh.hg_az }];
   }
 
   for i in 0..len(got.ir_items) {
@@ -346,7 +360,17 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
       if into.ex_code != EX_OK { return into; }
       parts = parts + into.ex_parts;
       cols = cols + into.ex_cols;
-      for m2 in into.ex_meshes { meshes += [m2]; }
+      // ⚠ THE ANGLE IS THE BINDING'S, AND IT LANDS ON WHAT CAME BACK. The leaf's
+      // own expansion knows nothing about the socket it is hanging in, so the
+      // swing is written here — onto every mesh that came out of THAT leaf, and
+      // onto none that came from elsewhere. `sa_offer` is the fenced value
+      // `socket_for_binding` already returned, so the range check and the number
+      // drawn are the same number.
+      for m2 in into.ex_meshes {
+        swung_m = m2;
+        swung_m.ma_swing = sa.sa_offer;
+        meshes += [swung_m];
+      }
       if into.ex_depth > deepest { deepest = into.ex_depth; }
     }
   }

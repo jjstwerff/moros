@@ -24,9 +24,9 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f` — **A7.3 COMPLETE**
 
-`make gate` **44 green** · `make lib-test` **2610, both backends** · `make parts` green
+`make gate` **44 green** · `make lib-test` **2618, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-**2026-08-06 10:55 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
+**2026-08-06 11:25 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
 every stage and unchanged throughout. `cache` was a startup miss in the suite and passed **alone**
 with `agree 24 bad 0 layers 42` — `bd41374b`, branch `tuxedo-catalogue`,
 `c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
@@ -136,7 +136,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **242** |
+| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **246** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -270,15 +270,25 @@ message no client reads is this tree's own trap. The first gesture that BINDS so
 earns them. ✅ **`A7.3b`'s fence is already gone**: `14:<roof>,<part>` in part mode writes an
 `INST` (`f1`), so the reference exists and what is missing is the joint it hangs on.
 
-**One step is ◐ rather than done, for a reason that is still true:**
+**One step is ◐ rather than done, and what is left of it is now ONE thing:**
 
-- **`A5.2`** — its state half is done and its **renderer half is blocked on a FIELD, no longer on
-  a number.** `A6.2` supplied the mesh leaf `A5.2` was waiting for, and it can be turned to any of
-  the 24 including heading 1 (the 15° `F-READ` asks for). But `MeshAt.ma_facing` is a turn about
-  the part's **origin** about the **vertical**, and a `Hinge` carries its own point and its own
-  axis — a trapdoor hinges about a horizontal one. Composing `bd_open` into `ma_facing` would
-  swing every door about its centre. The swing needs to be **in the placement record**, or in a
-  second record beside it.
+- **`A5.2`** — its state half was done, and **the record half landed 2026-08-06**. It was never
+  blocked on a number but on a FIELD: `ma_facing` is a turn about the part's origin about the
+  vertical, while a hinge carries its own POINT and its own AXIS — a trapdoor turns about a
+  horizontal one — so folding `bd_open` into `ma_facing` would swing every door about its centre.
+  `MeshAt` carries the hinge and `ma_swing` now. ⚠ **The hinge is the PART's and the angle is the
+  BINDING's**, which is what made it free: the expansion that opened the leaf stamps the hinge
+  while the world is in hand, and the angle comes from `sa_offer` — the value
+  `socket_for_binding` has already fenced, so the number checked and the number drawn are one
+  number. ⚠ **A zero axis is *not hinged***, which is `hinge.loft`'s own `HG_AXIS` rule rather
+  than a new sentinel.
+
+⚠ **WHAT IS LEFT IS THE DRAWING, AND IT IS THE SAME GAP `A7.3f3` MEASURED.** The editor discards
+`ex_meshes` entirely, so **no** expanded mesh is drawn — bound, swung or otherwise — and every
+part in the library that fits a socket is mesh-only (`prop/statue` and `prop/seated` have 0
+columns). The precedent is small and exists: the catalogue thumbnail already draws a part's
+`.glb` through `glb_read` + `mesh_wire`, and `chunk_mesh_slot` and `glb_read` hand back the same
+`mesh3d::Mesh`, both `+Y` up.
 
 ⚠ **`A5.2`'s gate is a COLD-RECOGNITION test and needs the user's eyes**, not a gate: *does a
 person call it a door.* It cannot be reached until a leaf can be drawn ajar. Render it and hand

@@ -127,6 +127,35 @@ pub struct MeshAt {
   ma_r:      integer,
   ma_h:      integer,
   ma_facing: integer,     // 0..23, the turn to apply
+  // ── THE SWING, AND WHY IT COULD NOT RIDE IN `ma_facing` — plan 17 `A5.2` ──
+  //
+  // ⚠ `ma_facing` IS A TURN ABOUT THE PART'S ORIGIN, ABOUT THE VERTICAL. A hinge
+  // is neither: it carries its own POINT and its own AXIS, and a trapdoor turns
+  // about a horizontal one. Composing a swing into `ma_facing` would swing every
+  // door about its centre and every trapdoor the wrong way round — which is the
+  // precise reason `A5.2` sat ◐ after `A6.2` supplied the mesh leaf it was
+  // waiting for. It was never blocked on a number; it was blocked on a field.
+  //
+  // ⚠ THE HINGE IS THE PART'S AND THE ANGLE IS THE BINDING'S, and keeping them
+  // apart is what makes both derivable. A part's hinge is stamped here by the
+  // expansion that opened it — free, because the world is already in hand — and
+  // the angle is written by whatever put it in a socket. A free-standing leaf
+  // therefore carries its hinge with a swing of 0: shut, and able to say so.
+  //
+  // ⚠ IN THE LEAF'S OWN FRAME, NOT COMPOSED. The consumer places the mesh at
+  // `(ma_q, ma_r, ma_h)`, turns it by `ma_facing`, and turns it again by
+  // `ma_swing` about this point and axis — in that order, the hinge being fixed
+  // to the leaf. Composing the point into world coordinates here would bake a
+  // lattice convention into a record that is otherwise pure part-local, and
+  // `A3.2`'s rule is that the record is the authority and the consumer re-derives.
+  //
+  // ⚠ AND A ZERO AXIS IS *NOT HINGED*, which is the library's own rule rather
+  // than a new sentinel: `hinge.loft` refuses an axis of zero length as
+  // `HG_AXIS` — *a revolute joint with nothing to turn about* — so it can never
+  // be a real hinge, and the default costs no extra field to say so.
+  ma_ox: float = 0.0, ma_oy: float = 0.0, ma_oz: float = 0.0,
+  ma_ax: float = 0.0, ma_ay: float = 0.0, ma_az: float = 0.0,
+  ma_swing: float = 0.0,   // in TURNS, the unit `A5.1` chose for the limits
 }
 
 // ── Does the mesh it names actually load? ────────────────────────────────────

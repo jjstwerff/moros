@@ -825,3 +825,118 @@ fn test_a_cell_part_swaps_into_the_socket_a_statue_came_out_of() {
   assert(!d.pd_same, "swapping a mesh body for a CELL one changed no cell at all");
   wipe(root());
 }
+
+// ── THE SWING REACHES THE DRAWN LEAF — plan 17 `A5.2`, the renderer's half ───
+//
+// `A5.2`'s state half put `bd_open` on the binding and fenced it; the drawing end
+// had nowhere to read it, because `ma_facing` is a turn about the part's ORIGIN
+// about the VERTICAL and a hinge carries its own point and its own axis. So it was
+// never blocked on a number, it was blocked on a FIELD — and this is that field.
+
+// A hinged leaf: the statue above, with a door's hinge down one edge.
+fn put_hinged(name: text, mesh: text, lo: float, hi: float) {
+  w = blank();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_FITTING, pm_name: name }) == PM_OK, "meta");
+  assert(part_set_mesh(w, mesh).pw_code == PR_OK, "mesh");
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "fits");
+  assert(part_set_hinge(w, Hinge { hg_ox: 0.5, hg_oy: 0.0, hg_oz: 0.25,
+                                   hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+                                   hg_lo: lo, hg_hi: hi }).hw_code == HG_OK, "hinge");
+  save_part(name, w);
+}
+
+fn yard_swung(name: text, plinth: text, holds: text, open: float) {
+  w = blank();
+  with_cell(w, 0, 0, 5, 1);
+  assert(part_set_instances(w, [at(plinth, 2, 1, 0)]) == PI_OK, "inst");
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_open: open,
+                                         bd_socket: "top", bd_part: holds }]).bw_code == BD_OK,
+         "bind");
+  save_part(name, w);
+}
+
+fn test_a_bound_leafs_hinge_and_swing_reach_its_placement() {
+  wipe(root());
+  put_hinged("p/leaf", "oak", 0.0, 0.25);
+  put_plinth("p/plinth", 20, 18);
+  yard_swung("p/yard", "p/plinth", "p/leaf", 0.125);
+  ex = part_expand(target(), root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  // THE ANGLE, from the binding.
+  assert(m.ma_swing == 0.125, "the leaf is drawn at {m.ma_swing}, not the 0.125 it is bound at");
+  // THE HINGE, from the part — point and axis, in its own frame.
+  assert(m.ma_ox == 0.5 && m.ma_oz == 0.25,
+         "the hinge POINT did not travel: ({m.ma_ox},{m.ma_oy},{m.ma_oz})");
+  assert(m.ma_ay == 1.0 && m.ma_ax == 0.0,
+         "the hinge AXIS did not travel: ({m.ma_ax},{m.ma_ay},{m.ma_az})");
+  // ⚠ AND THE FACING IS UNTOUCHED BY IT. If a swing were folded into `ma_facing`
+  // — the composition this field exists to avoid — the aim would no longer be the
+  // socket's 18, and every door would swing about its own centre.
+  assert(m.ma_facing == 18, "the swing moved the AIM to {m.ma_facing}");
+  wipe(root());
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT EVERY ASSERTION ABOVE PASSES ON A RECORD THAT
+// CARRIES THE SAME HINGE FOR EVERYTHING. A leaf with no hinge must come back with
+// a ZERO AXIS, which `hinge.loft` refuses to author precisely so it can mean this.
+fn test_a_leaf_with_no_hinge_carries_a_zero_axis() {
+  wipe(root());
+  stage("marble", 0, 18);           // the statue: a mesh, and no hinge at all
+  ex = part_expand(target(), root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_ax == 0.0 && m.ma_ay == 0.0 && m.ma_az == 0.0,
+         "an unhinged leaf came back with an axis: ({m.ma_ax},{m.ma_ay},{m.ma_az})");
+  assert(m.ma_swing == 0.0, "and a swing of {m.ma_swing}");
+  wipe(root());
+}
+
+// ⚠ A HINGE IS THE PART'S, SO IT TRAVELS WITHOUT A SOCKET TOO. A leaf standing on
+// its own is shut — and able to SAY it is shut, rather than being indistinguishable
+// from a leaf that cannot open.
+fn test_an_unbound_hinged_part_carries_its_hinge_and_no_swing() {
+  wipe(root());
+  put_hinged("p/leaf", "oak", 0.0, 0.25);
+  ex = part_expand(target(), root(), at("p/leaf", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_ay == 1.0, "the hinge did not travel without a socket");
+  assert(m.ma_swing == 0.0, "an unbound leaf is swung to {m.ma_swing}");
+  wipe(root());
+}
+
+// ⚠ THE SWING LANDS ON *THAT* LEAF AND ON NOTHING ELSE. A stamp applied to the
+// whole accumulated list would swing the building, and every test above passes on
+// it.
+//
+// ⚠ THE UNBOUND MESH COMES FIRST, AND THAT ORDER IS THE TEST. Written the other
+// way round — plinth at instance 0, the loose statue at 1 — a spreading stamp
+// passes: at the moment the binding is resolved the statue has not been appended
+// yet, so there is nothing beside it to damage. Measured, not reasoned: the
+// sabotage that walks the whole list went GREEN on the first version of this
+// fixture and red the moment the two instances swapped places.
+fn test_the_swing_lands_only_on_the_leaf_it_was_bound_to() {
+  wipe(root());
+  put_hinged("p/leaf", "oak", 0.0, 0.25);
+  put_plinth("p/plinth", 20, 18);
+  put_statue("p/other", "marble", 0);
+  w2 = blank();
+  with_cell(w2, 0, 0, 5, 1);
+  assert(part_set_instances(w2, [at("p/other", 4, 3, 0),
+                                 at("p/plinth", 2, 1, 0)]) == PI_OK, "inst");
+  assert(part_set_bindings(w2, [Binding { bd_inst: 1, bd_open: 0.125,
+                                          bd_socket: "top", bd_part: "p/leaf" }]).bw_code == BD_OK,
+         "bind");
+  save_part("p/yard", w2);
+  ex = part_expand(target(), root(), at("p/yard", 5, 5, 0), 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 2, "{len(ex.ex_meshes)} placements, not 2");
+  swung = 0;
+  for m in ex.ex_meshes { if m.ma_swing != 0.0 { swung = swung + 1; } }
+  assert(swung == 1, "{swung} of the two placements are swung, not 1 — the stamp "
+                   + "reached something it was not bound to");
+  wipe(root());
+}
