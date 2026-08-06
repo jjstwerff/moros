@@ -62,6 +62,28 @@ says what `A8` deliberately does **not** cover.
 leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
 own plan. **The first two are the ones that change the FORMAT**, so they set the order.
 
+### ⚠ Plan 19 exists now — the lavition split, designed and NOT started
+
+[#19](https://github.com/jjstwerff/moros/issues/19) · design
+[LAVITION_SPLIT.md](LAVITION_SPLIT.md) · steps
+[plans/19-lavition-split](../../plans/19-lavition-split/README.md). **Blocked on `A8` landing**,
+for hexbody's reason: `MeshAt` is changing shape right now.
+
+⚠ **THREE OF ITS STEPS CAN START NOW AND ARE RIGHT EITHER WAY** — they are corrections, not
+preparation: `L1` the `Surface` collision that already merges silently, `L2` `moros_terrain` →
+`hex_mesh` (its whole public surface is universal hex meshing, and `layering.sh` **skips
+`moros_*` by design**, which is exactly how `moros_ui` stayed exempt for months), `L3` the 64
+lattice call sites that reach past `hex_grid`. ⚠ **Doing them also runs the probe that could
+falsify the design**: `layering.sh` with the `moros_*` skip removed. Silent → the editor program
+is lavition's and the split is a move; not silent → whatever it names is the real boundary.
+
+⚠ **AND `L5` — THE GATE FLAKE — COMES BEFORE ANY REQUIRED PR CHECK.** Measured this session:
+`cache` failed **2 of 3** suite runs and passed alone both times, and the *server's own log* read
+`agree 24 bad 0 layers 42` while the gate reported `agree 0 bad 24 layers 0`. **The world was
+right and the gate never read it** — so it is gate-side and fixable by the change `part_fence`
+and `part_check` already got (poll for the acknowledgement, never sleep a fixed time; it also
+took them 58 s → 21 s and 34 s → 11 s).
+
 ### What plan 17 is still short of, and it is one thing
 
 ⚠ **A BOUND LEAF IS STILL NOT DRAWN IF ITS BODY IS CELLS, and `A8.1` moved the gap rather than
