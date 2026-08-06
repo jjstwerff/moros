@@ -371,6 +371,17 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **AND VEGETATION IS THE SAME SHAPE, WITH A THIRD KIND OF LIMB — §P9.12.** A tree has a solid
+core that blocks and **branches that can be moved aside with some effort**, so a limb is one of
+**three** things: **solid** (a trunk, a boss's arm), **visual only** (a cape — `bd_girth` 0), or
+⚠ **YIELDING** — gives way at a cost and returns. That third one is a SPRING, and
+`moros_sim::assembly` already enumerates `LinkKind { NoLink, Mount, Hitch, Shaft, Spring, Tether }`
+with a note that flattening the families was *"what the design's first draft got wrong"*. A door is
+a `Mount`, a branch a `Spring`, a vine a `Tether` — **the vocabulary for vegetation was written
+before there was a door to use it on.** ⚠ **The one new constraint is a number, not a rule**: there
+is one boss and there are thousands of trees, so a species is authored once and instanced free
+(§P4 stores no geometry per instance) while only near-field branches are simulated.
+
 ⚠ **LIMBS ARE HITBOXES, WHICH IS THE SHARPEST ARGUMENT FOR ANY OF THIS — §P9.10.** A spectacle
 fighter needs to know *which limb hit which limb*, so it needs per-limb volumes that follow the
 pose. **A finished `.glb` is one skinned mesh and cannot give you that** — the hitboxes have to be

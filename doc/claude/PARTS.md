@@ -966,3 +966,45 @@ reason the hitboxes are ours (§P9.10).
 
 > **The one sentence, replacing §P9.10's.** The art may reach as far past the hitbox as it likes;
 > what may never move is the pivot, the scale, and which limb is hittable at all.
+
+### P9.12 — Vegetation is the same shape, and it needs a THIRD kind of limb: YIELDING
+
+**Added 2026-08-06 with the user.** A tree, a bush and a shrub have exactly the boss's structure: a
+**solid core** that cannot be walked through, and **a lot of extra branches that can be moved
+aside — possibly with some effort.** So §P9.10 and §P9.11 are not about monsters; they are about
+anything with parts, and vegetation is the case that makes the middle category unavoidable.
+
+| a limb may be | example | proxy | interaction |
+|---|---|---|---|
+| **solid** | a trunk, a boss's arm | a real one | blocks, or can be struck |
+| **visual only** | a cape, hair, fire | none — `bd_girth` of 0 (§P9.11) | nothing |
+| **yielding** ⚠ **new** | a branch, foliage, tall grass, a hanging vine | a real one | gives way, **at a cost**, and returns |
+
+⚠ **AND *"with some effort"* IS THE WHOLE OF THE THIRD CATEGORY.** A branch is not passable and
+not impassable: pushing through costs something and the branch comes back. That is a **spring**,
+and it is not a mechanism this design has to invent — `moros_sim::assembly` already enumerates
+`LinkKind { NoLink, Mount, Hitch, Shaft, Spring, Tether }`, with the note that *"the families
+differ in which degrees of freedom they remove; flattening them into 'a rigid mount with one
+revolute axis' is what the design's first draft got wrong, so they are named apart."*
+
+A door is a **`Mount`**. A branch is a **`Spring`**, with its limits as the range it yields
+through and its stiffness as the effort. A hanging vine is a **`Tether`**. **The joint vocabulary
+for vegetation was written before there was a door to use it on**, and none of it was aimed here.
+
+⚠ **SO THE SAME AUTHORING SERVES ALL OF IT.** A tree is a part: a trunk limb that blocks, branch
+limbs on springs, and foliage that is visual only. Authored with the house gestures, sized in the
+editor, hittable per limb, exportable at final size — every rule from §P9 through §P9.11 applies
+unchanged, and a chainsaw or a fireball has per-limb volumes to work against for the same reason a
+sword does.
+
+### The one new constraint: a forest is not a boss
+
+⚠ **THERE IS ONE OF A BOSS AND THERE ARE THOUSANDS OF TREES**, so the joints cannot all be live.
+The format already makes the cheap half free — an INSTANCE stores no geometry (§P4), so a species
+is authored **once** and instanced everywhere at no per-copy cost — and what is left is a
+near-field question: simulate the branches of the trees a player can actually push through, and
+draw the rest posed at rest. That is a rendering and simulation budget, not a format one, and it
+is the first place §P9 meets a number rather than a rule.
+
+> **The one sentence.** Solid, yielding and visual are the three things a limb can be, and the
+> difference between a boss and a bush is which of them it is mostly made of.
