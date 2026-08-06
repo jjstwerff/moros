@@ -25,12 +25,13 @@ when the step landed, and this file duplicating it is how it grows back.
 ## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f2`
 
 `make gate` **43 green** · `make lib-test` **2602, both backends** · `make parts` green
-(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All re-measured
-**2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`). ⚠ **THREE
-BUILDS LANDED IN NINE HOURS** — `b619b909` at 00:26, `9dfd0280` at 00:33, `bd41374b` at 08:57
-(`c73eb1c3`) — and `loft --version` says `2026.8.0` for every one of them, so **the version string
-cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** The counts above predate the
-08:57 build; what that build changed is measured below and nothing in it touches a suite.
+(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
+**2026-08-06 09:07 on the loft installed at 08:57** — `bd41374b`, branch `tuxedo-catalogue`,
+`c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
+and the single warm start before the suite was the only preparation. ⚠ **THREE BUILDS LANDED IN NINE HOURS** — `b619b909` at 00:26, `9dfd0280` at
+00:33, `bd41374b` at 08:57 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
+cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** What that build changed for us is
+measured below.
 
 ⚠ **AND THERE IS A FOURTH FACE OF THE GATE FLAKE, WHICH ONLY APPEARS AFTER A LOFT INSTALL.**
 The first suite run on a new toolchain was **25 pass, 2 fail, 14 `SERVER NEVER LISTENED`**; the
