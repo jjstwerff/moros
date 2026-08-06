@@ -30,36 +30,67 @@ calls into one**, not in making each call cheaper.
 
 ## The invariant
 
-> **A layer is created with every cell set to its kind's default — the world's ground cell for a
-> chunk's first terrain layer, absent for every other — and nothing downstream can tell a
-> defaulted cell from a written one, because there is no difference.**
+> **A world is an infinite plane of its ground default, and storage holds only what differs
+> from it. A chunk that was never written returns the default; a layer that comes to equal the
+> default everywhere stops existing. A defaulted cell and a written one of the same value are
+> indistinguishable, because they are the same cell.**
 
-That last clause is the whole safety argument, and it is what the second draft of this design
-did not have.
+⚠ **THAT IS A STRONGER CLAIM THAN THIS DOCUMENT'S FIRST TWO DRAFTS, AND IT IS THE RIGHT ONE.**
+Draft 2 materialised the default when a *layer* was created, which makes flat ground cheap to
+*author* and still charges for every chunk the author never touched. The requirement is
+*"a chunk that has no written values should return the defaults even without internal data"* —
+so the default is a property of the **world**, consulted where a chunk is **absent**, and the
+sparsity that follows is the point rather than a side effect: **you pay for what you differ
+from the ground, and nothing else.**
 
-## What that buys, and what it deliberately does not do
+The last clause is the safety argument. It is what lets the 108 presence sites below stay
+untouched: they ask *is there a cell here*, and under this invariant the honest answer over
+untouched ground is **yes** — which is the behaviour change intended, not a rule they each
+have to re-state.
 
-**Not** a sparse encoding. A default that is *materialised at layer creation* and a default
-that is *stored once and applied at read* sound like the same feature and are not:
+## The format does not move — checked, not assumed
 
-| | materialise on create (this design) | store-and-apply-on-read (rejected for now) |
-|---|---|---|
-| what a reader sees | today's bytes, exactly | a value that is not in the array |
-| presence semantics | unchanged | redefined |
-| file format | **unchanged** — `SZ_LAYER` is a fixed 8196, all 1024 cells always written | changed; version bump, no going back |
-| "the author dug this cell out" | an ordinary all-zero write | **ambiguous** with never-written — needs a per-cell bit |
-| sites that must re-state it | **0 outside the store** | see below |
+The reason this can be built safely is that **the default needs no new bytes anywhere the
+format already fixes.**
 
-⚠ **THE COUNT IS THE ARGUMENT.** *Is a cell there* is decided at **108 sites**, **78 of them
-outside `hex_world`**, and getting one wrong is silent — a wrong picture, not a compile error.
-A design that redefines presence has to be right at all 108. Materialising at creation
-redefines nothing, so it is right at all 108 for free.
+- **An absent chunk is already absent from the file.** The format is sparse over chunks
+  (`SZ_HEADER + Σ chunks`), so an infinite default plane writes exactly the chunks that differ
+  from it — which is what a sparse format is for. Nothing about `SZ_CHUNK`, `SZ_LAYER` or
+  `SZ_LAYER_DIR` changes.
+- **The default itself rides in a SECTION**, and sections are forward- and backward-compatible
+  by construction: they are tagged, the library "carries whatever it was handed" rather than
+  having an opinion about content it cannot read, and *present-and-empty* is already a
+  distinguishable state. So **a new file loads in an old build** (which ignores the tag and sees
+  today's world) and **an old file loads in a new build** (no section → default absent → today).
+  ⚠ **No `WORLD_VERSION` bump, in either direction** — checked against
+  `world_set_section` / `world_section_at`, not assumed.
+- **`probe/sparsity.loft`'s exact figures** are about chunks that exist. They move only for a
+  world that *sets* a ground, and that world is a new test.
 
-⚠ **AND THE THIRD ROW IS THE ONE THAT CANNOT BE UNDONE.** `SZ_LAYER = 8196` is fixed: a layer
-with 256 present cells and a layer with 1024 both write 8196 bytes. So filling a layer costs
-**nothing on disk**, `world_file_size` is unchanged, and `probe/sparsity.loft`'s exact figures
-— which are exact on purpose — do not move. The sparse encoding is the step that changes the
-format, and it is the one step here that can never be shipped back.
+⚠ **AND THAT IS WHY THE STEPS BELOW CAN STOP ANYWHERE.** Every one of them is a build that
+reads and writes the same files as the one before it.
+
+## What it does change, and where the risk actually is
+
+Not presence — the 108 sites are fine. **Extent.**
+
+⚠ **TODAY, *WHAT EXISTS* AND *WHICH CHUNKS EXIST* ARE THE SAME QUESTION, AND THIS SEPARATES
+THEM.** Everything that answers *what is there* by walking `w_chunks` — the mesher, the
+streamer, `world_file_size`, the save — sees **nothing** over defaulted ground and would draw
+nothing where the reader is standing on grass. That is the real work of this design, and it is
+one class rather than 108 scattered sites:
+
+| walker | what it must learn |
+|---|---|
+| the mesher (`hex_mesh`) | mesh a defaulted chunk from the default, when asked for one |
+| the streamer (`editor_server`) | its bound is already **distance from the character**, not chunk existence — so it asks for chunks that do not exist, which is exactly the new path. ⚠ **Check this rather than believe it**: a streamer that enumerates existing chunks instead would stream nothing and the world would look empty |
+| save / `world_file_size` | unchanged — they should write only what differs, which is what they already do |
+| `world_column` / `world_cell` / `world_surface` | synthesise the ground column when the chunk is absent. **One place each**, and they are the accessors every one of the 108 sites already goes through |
+
+⚠ **AND A WRITE EQUAL TO THE DEFAULT MUST NOT ALLOCATE**, or authoring flat ground over a
+default region reintroduces exactly the cost this removes — and the world file grows with
+chunks that say nothing. Its counterpart is elision: **a layer that comes to equal the default
+everywhere is dropped**, the same rule `E1` already applies to an emptied one.
 
 ## Failure paths — enumerated before the code
 
@@ -101,24 +132,32 @@ of a call is body at all.
 
 ## The steps — each one green, each one revertible
 
+Ordered so that **the thing that could refute the design runs first** and **the thing that
+changes what the editor draws runs last**. Every step ships a tree whose files the previous
+step can still read.
+
 | | | why it is safe alone |
 |---|---|---|
-| **`G1`** | **The probe.** Add a bulk-fill column to `place_phases`: lay the same 256 cells in one call and time it. **No library change.** | measures the premise before anything rests on it |
-| **`G2`** | `world_fill(w, q0, r0, q1, r1, cell) -> ColumnWrite` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**; no existing caller changes, no existing behaviour moves. If `G1` refuted the premise, `G2` is where it stops |
-| **`G3`** | The fixtures use it. `target()` becomes one call. | tests only; the win becomes visible in the suite time and nothing shipped changed |
-| **`G4`** | `World` gains `w_ground: Hex`, **absent by default**, checked against `ρ` at `world_new`. A chunk's first terrain layer is minted filled with it. | absent = today, byte for byte. The negative control is a world with no ground set: every count in every suite unchanged |
-| **`G5`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature the user asked for; by now the store half is already green |
-| **`G6`** | ⚠ **Only if measured to matter:** the sparse encoding — store the default once, apply on read. **Format change, version bump, a per-cell "explicitly cleared" bit.** | deliberately last and deliberately separate. `G1`–`G5` do not need it, and it is the only step that cannot be shipped back |
+| **`G1`** | **The probe, and it can kill the design.** Two columns added to `place_phases`: *(a)* lay the same 256 cells in one call, *(b)* read 256 columns from a world where the chunk does **not exist**. **No library change.** | (a) says whether the 109 ms is per-call overhead — if one call still costs ~100 ms the cost is per-*cell* and `G2` is pointless. (b) is the floor the whole design is reaching for: if synthesising a column is not far cheaper than reading a stored one, there is nothing here |
+| **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is also the mechanism `G5` needs, which is why it is not skipped even though `G5` supersedes its use in fixtures |
+| **`G3`** | The fixtures use it — `target()` becomes one call. | tests only. The suite time moves and nothing shipped changed |
+| **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | absent = today, byte for byte. Negative control: every suite at the same count, and a file written here loads in the previous build |
+| **`G5`** | **The accessors consult it**: `world_column`, `world_cell`, `world_surface` synthesise the ground where the chunk is absent. A write equal to the default does not allocate; a layer equal to it everywhere is dropped. | the model change, but still invisible to any world that has not set a ground. ⚠ **This is where `E1` is restated** — and the restatement belongs in `WORLD_MODEL` Part II, not only here |
+| **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | the step that changes what you SEE, and the one the gates are for. ⚠ It is last because everything before it is inert until a scenario sets a ground — so a regression here cannot be blamed on the four steps below it |
+| **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature, on a store that is already green |
 
-⚠ **`G2` BEFORE `G4`, AND THAT ORDER IS NOT COSMETIC.** `world_fill` is the mechanism a layer's
-birth-fill uses; building the default first would mean writing that loop twice, and the second
-copy is the one that drifts.
+⚠ **`G1` IS NOT A FORMALITY.** Three hypotheses about this write path were each refuted by their
+own probe today, and the floor measurement says only ~78 % of a `world_set_column` call is body
+at all. **Expect `G1` to move at least one number in this document.**
 
-⚠ **`G6` IS THE ELEGANT ONE AND IT IS LAST ON PURPOSE.** *"A default stored once, so an infinite
-flat world costs nothing"* is the version of this design that reads best, and it is the one that
-redefines presence at 108 sites, needs a bit that does not exist, and bumps a format that four
-of this tree's exact-size proofs are written against. `G1`–`G5` deliver the whole measured win —
-85 % of the slowest test file — and change no format at all.
+⚠ **`G5` BEFORE `G6`, AND NOT TOGETHER.** `G5` makes the *store* answer for absent chunks; `G6`
+makes the *picture* show it. Landing them in one step means a wrong picture has two candidate
+causes and the gates cannot tell them apart — which is this tree's most expensive failure shape
+and the reason `L3` was withdrawn.
+
+⚠ **AND THE ORDER OF `G4`/`G5` IS THE WHOLE SAFETY PROPERTY.** Until a scenario sets a ground,
+the default is absent and every path behaves exactly as it does today. That is what makes six of
+these seven steps revertible by a one-line change and what lets the work stop after any of them.
 
 ## What this does not touch
 
