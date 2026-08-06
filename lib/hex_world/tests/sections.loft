@@ -308,3 +308,59 @@ fn test_a_dropped_section_is_gone_from_the_file() {
   assert(ld.wl_world.w_sections[0].sc_tag == section_tag("ANCH"), "the wrong one survived");
   delete(p);
 }
+
+// ── THE EDIT CLOCK IS BLIND TO A SECTION, SO THERE IS A SECOND INSTRUMENT ────
+//
+// Plan 17 `A7.3f`. `w_tau` counts writes to the store's CELLS — that is what makes
+// it an exact cost measure — and it does not move for a section write at all.
+// Measured here rather than asserted in prose, because a consumer reporting *"N
+// edits discarded"* from the clock alone tells an author who has only changed
+// sections that nothing is being thrown away, and then throws it away.
+fn test_the_edit_clock_does_not_move_for_a_section() {
+  n = world_new(1.0, 100, 8, 3);
+  w = n.wn_world;
+  was = w.w_tau;
+  world_set_section(w, 1414743380, [1, 2, 3]);
+  assert(w.w_tau == was,
+         "the clock moved for a section write ({was} -> {w.w_tau}) — if this ever "
+         + "becomes true, `world_sections_key` has one consumer fewer");
+  // ⚠ THE CONTROL, AND IT FAILED FIRST — which is the control working. A height of
+  // 10 sits under this world's reserve, so `world_set_column` REFUSED it and the
+  // clock was right not to move; the test would then have passed on a clock that
+  // never moves at all. The code is asserted for exactly that reason.
+  cw = world_set_column(w, Column { co_q: 1, co_r: 1,
+    co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] });
+  assert(cw.cw_code == CW_OK, "the control\'s own write was refused: {cw.cw_code}");
+  assert(w.w_tau > was, "the clock did not move for a CELL write either");
+}
+
+fn test_the_sections_key_follows_the_bytes() {
+  n = world_new(1.0, 100, 8, 3);
+  w = n.wn_world;
+  empty = world_sections_key(w);
+  world_set_section(w, 1414743380, [1, 2, 3]);
+  one = world_sections_key(w);
+  assert(one != empty, "adding a section did not move the key");
+
+  // ⚠ THE SAME LENGTH, DIFFERENT BYTES — the case a length-only key would miss,
+  // and the one an author hits by editing an instance's facing in place.
+  world_set_section(w, 1414743380, [1, 2, 4]);
+  changed = world_sections_key(w);
+  assert(changed != one, "a same-length edit did not move the key: {one} vs {changed}");
+
+  // And it is stable: the same content answers the same key.
+  world_set_section(w, 1414743380, [1, 2, 3]);
+  assert(world_sections_key(w) == one, "the key is not a function of the content");
+}
+
+fn test_the_sections_key_sees_a_second_section() {
+  n = world_new(1.0, 100, 8, 3);
+  w = n.wn_world;
+  world_set_section(w, 1414743380, [1, 2, 3]);
+  one = world_sections_key(w);
+  world_set_section(w, 1229866575, [1, 2, 3]);
+  assert(world_sections_key(w) != one,
+         "a second section with identical bytes did not move the key — the tag is "
+         + "part of it, or two parts differing only in which section they carry "
+         + "would read as unchanged");
+}

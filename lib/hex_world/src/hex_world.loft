@@ -1584,6 +1584,36 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
   return world_save_as(w, path, palette, OWNER_ANY);
 }
 
+// ── WHAT THE EDIT CLOCK CANNOT SEE — plan 17 `A7.3f` ─────────────────────────
+//
+// ⚠ `w_tau` DOES NOT MOVE FOR A SECTION WRITE, and that was measured rather than
+// assumed: loading a part reads `tau 20`, writing an `INST` section leaves it at
+// **20**, writing a `PART` section leaves it at **20**, and one cell write takes it
+// to 21. The clock counts writes to the STORE's cells, which is what it was built
+// for and is why it is an exact cost instrument — but it means *has anything
+// changed* is only half answered by it.
+//
+// ⚠ AND THE HALF IT MISSES IS THE HALF AN AUTHOR LOSES. A consumer that reports
+// *"N edits discarded"* from the clock alone tells an author who added an instance
+// that **nothing** is being thrown away, and then throws it away. That is the exact
+// failure the message exists to prevent, so the other half needs an instrument too.
+//
+// A key over the section block: every tag, its length, and a checksum of its
+// bytes. Equal keys mean the sections are the same; a differing key means they are
+// not. ⚠ It is a CHECKSUM and not the bytes, so it is a key and not an identity —
+// two different blocks could collide. That is the right trade for *did this
+// change*, and the wrong one for *are these the same document*; use the bytes for
+// the second question.
+pub fn world_sections_key(w: World) -> text {
+  key = "";
+  for s in w.w_sections {
+    sum = 0;
+    for b in s.sc_bytes { sum = (sum * 31 + (b as integer? ?? 0)) & U32_MASK; }
+    key = key + "{s.sc_tag}:{len(s.sc_bytes)}:{sum};";
+  }
+  key
+}
+
 // The bytes a section block occupies on disk. The incremental writer needs it to
 // know where the file ends after it has rewritten the block; the full writer does
 // not, because it deletes the file first and whatever it writes IS the length.

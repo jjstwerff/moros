@@ -962,7 +962,10 @@ both stores in a vector and take `[i]`.
 | ✅ `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | **DONE.** `lib/hex_part/tests/save_edit.loft` (6 tests, 3 of them controls) for the format half; `tools/gates/world/part_save.mjs`, 19 checks, four sabotages seen red, for the routing half. ⚠ **The owner guard was tried and MEASURED OUT** — see below | S |
 | ✅ `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | **DONE.** New library function `part_cycle_of` (6 tests) because `part_cycle` answers about the version on DISK; `tools/gates/world/part_check.mjs`, 18 checks, four sabotages seen red. ⚠ **`A3.4` IS NOW CLOSED** | XS |
 | ✅ `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | **DONE.** `tools/gates/world/part_new.mjs`, 33 checks, four sabotages seen red. ⚠ **Three live defects found, two of them silent data loss** — a save into a family that does not exist reported success over a file that was never created; a name the catalogue can never list was accepted; and a save-as carried the ancestor's `PART.name`. New: `hex_world::WS_IO` + `world_file_size` (3 tests), `hex_part::part_name_ok` + `part_dir` (5 tests) | S |
-| `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
+| ◐ `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
+| ✅ `A7.3f1` | The gesture that makes a REFERENCE: in part mode `14:<roof>,<part>` writes an `INST`, and the picture comes from a DISPLAY world. **Lifts `A7.3b`'s fence.** | **DONE.** `tools/gates/world/part_inst.mjs`, 21 checks, four sabotages seen red. New: `hex_world::world_sections_key` (3 tests). ⚠ **Two live defects found, and the edit clock is blind to both** — see below | M |
+| `A7.3f2` | `SOCK`/`FITS` on the wire for the open part, and `parts_for_socket` answering for a named socket. | a client can see a joint, and what may go in it | S |
+| `A7.3f3` | The `BIND` gesture — instance, socket, part — with `socket_for_binding`'s four refusals. | `A4.2`'s `socket_fit` reaches an author | S |
 
 ⚠ **`44` IS THE NEXT FREE ID — 1 through 43 are all taken**, and it is one message with two forms
 rather than an open and a close, which is `14:`'s own precedent. ⚠ **The subject line is part of
@@ -1231,6 +1234,92 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### What `A7.3f1` turned up
+
+⚠ **THE FENCE BECAME THE GESTURE, WHICH IS THE WHOLE STEP.** `A7.3b` refused
+`14:<roof>,<part>` in part mode with the words *"the gesture that makes one does not exist
+yet"*. It does now, and the SAME message carries it — which is `A7.3c`'s rule for `8:` SAVE
+rather than a new one: *put that part here* is one intent, and the MODE decides whether it
+stamps cells or writes an `INST`. Two ids for one intent would make the author's hand learn
+the store's internals. ⚠ **`part_fence.mjs` MOVED its claim rather than dropping it** — *a
+part inside a part does not become cells* is now asserted against the STORE in
+`part_inst.mjs`, which is a sharper instrument than a refusal string; what the fence gate
+keeps is that the gesture is answered at all.
+
+⚠ **WHAT SAVES AND WHAT DRAWS HAD TO BECOME TWO STORES.** §P4 says an instance's cells are
+derived, so the authored part holds an `INST` line and no cells for it — and then nothing is
+on screen. Expanding into `wld` itself is the one option that looks easy and is the corruption
+the fence existed for: the leaf's cells become indistinguishable from authored ones, and
+editing the leaf stops changing the frame. So the client is shown a DISPLAY world, the
+authored one copied with every instance expanded into it. ⚠ **Probed before it was designed**:
+the copy is 0 ms and the expansion 4 ms over the cottage's four chunks, and the control that
+matters is that the authored store is untouched — 19 columns before and after, 20 in the
+display. That control holds only because a whole-value bind COPIES
+([loft#774](https://github.com/loft-lang/loft/issues/774), now `@PLN130` F7's decided rule);
+if it ever aliases, this design silently becomes the baking it prevents.
+
+⚠ **AND THE CACHE MUST COME FROM THE SAME STORE AS THE MESH.** `send_layers` and
+`chunk_meshes_all` are one pair: layers from the authored part and a mesh from the expansion
+would put the client's own derived ground an instance away from the server's, which `S3`'s
+checksum reports as a *cache* disagreement naming nothing about instances.
+
+⚠ **THE EDIT CLOCK CANNOT SEE A SECTION WRITE, AND THAT COST AN HOUR AND FOUND A SECOND
+BUG.** Measured: a part loads at `tau 20`, an `INST` write leaves it at **20**, a `PART` write
+leaves it at **20**, one cell write takes it to 21. `w_tau` counts writes to the store's CELLS
+— which is exactly what makes it an exact cost instrument — so *has anything changed* is only
+half answered by it.
+
+- The half it broke here: the display trigger watched the clock, so the instance landed, the
+  condition stayed false, and **the picture never moved while every acknowledgement said it
+  had**. ⚠ The trace line is what found it, and only because it prints a count that can be
+  zero — *0 derived columns* beside a successful gesture. A picture alone reads as *the
+  expansion has no effect*.
+- The half it had already broken, unnoticed: `44:`'s close reports `wld.w_tau - part_tau0`, so
+  an author who placed an instance and nothing else was told **`0 edits discarded`** and then
+  had it discarded. That is the exact failure the message was written for (`A7.3a`) and that
+  `A7.3d` extended to a refused save; it became reachable the moment a gesture could write a
+  section, which is this step.
+
+`hex_world::world_sections_key` is the other half — every tag, its length, and a checksum of
+its bytes — and it has both consumers. ⚠ **Its same-length control is the one that matters**:
+a length-only key passes every test above and misses an instance whose facing was edited in
+place. ⚠ **And its own control failed first, which is the control working**: the cell write
+that proves the clock is not simply frozen was refused for a height under the world's reserve,
+so the test would have passed on a clock that never moves at all. The code is asserted now.
+
+⚠ **`for x in <call>().field` IS loft#775's SHAPE IN A `for` HEADER.** The first rebuild wrote
+`for i in part_instances(part_disp).ir_items` and iterated a vector field of a call's temporary
+while `part_expand` allocated into the very world it came from. It was not the cause of the
+zero above — the clock was — but it is the same trap the editor has already been bitten by
+once, and the list is read into a local now.
+
+⚠ **§P8 IS CHECKED ON THE GESTURE, NOT ONLY AT THE SAVE.** An instance is precisely how a
+cycle is authored, and `part_cycle_of` — built at `A7.3d` for the save — answers about
+candidate content under the name it will take, which is the question here too. The author is
+told while their hand is still on the gesture rather than at a save an hour later, and the
+refusal carries the chain.
+
+⚠ **FACING 0, AND THAT IS A MEASUREMENT RATHER THAN A DEFAULT.** Only the six multiples of 60°
+turn a body on the lattice (`A4.4`) and `part_expand` refuses the other eighteen, so deriving a
+facing from the walker's yaw would refuse most placements for a reason about the lattice the
+gesture never mentions. A turn is its own gesture and does not exist yet.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the gesture stamps cells instead of referencing | 2 |
+| §P8 not checked on the gesture | 3 — including *the refused instance left no section behind* |
+| the display trigger watches only the clock | 1 — the picture, and nothing else |
+| the close counts the clock only | 1 |
+
+⚠ **AND TWO INSTRUMENTS WERE BLIND BEFORE THE THING THEY WERE AIMED AT.** `Q:` is the checksum
+of the GROUND mesh and the plinth is a FLOOR cell, so the picture check read *nothing changed*
+about a surface it does not cover. Then the layer comparison keyed on the whole `L:` header —
+which carries the layer's VERSION, and the version moves with the content, so a CHANGED layer
+looked like a brand-new one and the diff was empty. Both read exactly like *the feature does
+not work*.
 
 ### What `A7.3e` turned up
 

@@ -6,11 +6,16 @@
 // leaks out of the mode, and a gesture that writes cells where the format wants a
 // REFERENCE corrupts the part silently.**
 //
-//   A7.3b-i    `14:<roof>,<part>` is refused — §P4 says a part inside a part is an
-//              instance whose cells are DERIVED, so stamping one bakes it in, and
-//              then editing the leaf changes nothing. The cells are afterwards
-//              indistinguishable from cells the author wrote themselves, which is
-//              what makes this the one damage the editor cannot undo.
+//   A7.3b-i    ⚠ **SUPERSEDED BY `A7.3f`, AND MOVED RATHER THAN DROPPED.** This
+//              used to require `14:<roof>,<part>` to be REFUSED in part mode, on
+//              the grounds that stamping a leaf bakes it in and editing the leaf
+//              then changes nothing. The refusal's own words were *"the gesture
+//              that makes one does not exist yet"* — and now it does, so the same
+//              message writes an `INST` instead. The CLAIM did not go anywhere:
+//              *a part inside a part does not become cells* is asserted in
+//              `part_inst.mjs`, against the store, which is a sharper instrument
+//              than a refusal string ever was. What is kept here is the half that
+//              is still this gate's: the gesture must not be silently ignored.
 //   A7.3b-ii   `18:` TRIGGER and `21:` IMPORT are refused — `trigs`, `n_imported`
 //              and the imported meshes are the WORLD's state and are not held
 //              aside, so either would still be there after the world came back.
@@ -115,14 +120,18 @@ const worldImport = said(await step('21:/nonexistent.glb', 'import '), 'import r
 check(worldImport !== '' && !worldImport.includes('editing part'),
       `in the WORLD, an import is refused by the LOADER, not by the fence (${worldImport})`);
 
-// ── A7.3b-i — a part inside a part ──────────────────────────────────────────
+// ── A7.3b-i, as `A7.3f` left it — a part inside a part is a REFERENCE ───────
+// ⚠ The fence became a gesture. It is still checked HERE that the message is
+// answered at all — a mode that quietly ignored it would fail no refusal test —
+// and what it answers WITH is `part_inst.mjs`'s, because *the store did not grow*
+// is the claim and a sentence on the wire is only its echo.
 const stamped = await cycle([[`14:12,${LEAF}`, 'stencil ']]);
 check(stamped.opened.includes('opened'), `the part opens (${stamped.opened})`);
-const stampSay = said(stamped.lines, 'stencil refused');
-check(stampSay.includes('editing part'),
-      `a part stamped into a part is refused: ${JSON.stringify(stampSay)}`);
+const stampSay = said(stamped.lines, 'instance ');
+check(stampSay !== '',
+      `a part placed into a part is answered, not ignored: ${JSON.stringify(stampSay)}`);
 check(stampSay.includes('reference'),
-      'and the refusal says WHY — a reference, not a stamp');
+      'and the answer says WHAT it made — a reference, not a stamp');
 // ⚠ THE REFUSAL WROTE NOTHING, which is the claim the sentence cannot make on its
 // own: a server that answered "refused" and stamped anyway passes the two above.
 check(stamped.edits === 0,

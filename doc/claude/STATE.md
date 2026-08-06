@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-05)
+# STATE.md — where the editor work stands (2026-08-06)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -22,9 +22,9 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-05, session 13) — plan 18 COMPLETE, plan 17 through `A7.3e`
+## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f1`
 
-`make gate` **41 green** · `make lib-test` **2588, both backends** · `make parts` green
+`make gate` **42 green** · `make lib-test` **2594, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All re-measured
 **2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`), which is a
 different binary from the one installed at 00:26 the same night — `loft --version` says `2026.8.0`
@@ -94,7 +94,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **117** | `lavition_ui` **65** | `hex_part` **234** |
+| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **234** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -114,7 +114,37 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3f` — the joints on the wire
+### The next thing to do is #17 `A7.3f2` — the sockets on the wire
+
+**`A7.3f1` is built: a part inside a part is a REFERENCE, and you can see it.** In part mode
+`14:<roof>,<part>` writes an `INST` instead of being refused — the same message, with the MODE
+deciding what it means, which is `A7.3c`'s rule and not a new one. §P8 is checked on the
+gesture, so a part given an instance of itself is refused with the chain while the author's
+hand is still on it. `part_inst.mjs` 21 checks, four sabotages seen red.
+
+⚠ **WHAT SAVES AND WHAT DRAWS ARE NOW TWO STORES**, and that is forced by §P4 rather than
+chosen: the authored part holds an `INST` and no cells for it, so the client is shown a DISPLAY
+world — the authored one copied, with every instance expanded into it. Expanding into `wld`
+itself is the corruption `A7.3b`'s fence existed for. ⚠ **The cache and the mesh come from the
+same store**, or `S3`'s checksum reports it as a *cache* disagreement naming nothing about
+instances.
+
+⚠ **THE EDIT CLOCK IS BLIND TO A SECTION WRITE — MEASURED, AND IT HAD ALREADY BROKEN
+SOMETHING.** A part loads at `tau 20`; an `INST` write leaves it at **20**, a `PART` write at
+**20**, one cell write takes it to 21. `w_tau` counts writes to the store's CELLS, which is
+what makes it exact as a cost measure and useless as *did anything change*. It cost this step
+an hour (the display trigger watched the clock, so the picture never moved while every
+acknowledgement said it had) and it had ALREADY been wrong in the close: an author who placed
+an instance and nothing else was told **`0 edits discarded`** and then had it discarded.
+`hex_world::world_sections_key` is the other half and has both consumers. ⚠ **Anything that
+asks *has this changed* about a part must ask BOTH.**
+
+### `A7.3f` is three steps, and `f1` is done
+
+`f1` the gesture that makes a reference ✅ · `f2` `SOCK`/`FITS` on the wire and
+`parts_for_socket` answering · `f3` the `BIND` gesture, where `A4.2`'s `socket_fit` finally
+reaches an author. The per-step record is
+[plan 17 § *What `A7.3f1` turned up*](../../plans/17-parts/README.md).
 
 **`A7.3a`–`A7.3e` are built: a part can be opened, edited, saved under a name that did not exist,
 the save is checked, and the library follows while the editor watches.** `A7.3e` is the acceptance
@@ -167,11 +197,11 @@ stamps an owner field INTO the file, so saving a part nobody edited rewrites its
 diff `make parts` then reverts. `X2` is the right idea for a shared library and the wrong trade at
 this size; what it wants is a save that knows whether anything was authored.
 
-⚠ **`A7.3f` IS WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and tested since
-`A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a message no
-client reads is this tree's own trap. The first gesture that BINDS something is what earns them.
-⚠ It is also what makes `A7.3b`'s fence temporary: `14:<roof>,<part>` is refused in part mode
-because a part inside a part is a REFERENCE, and `f` is the gesture that writes one.
+⚠ **`A7.3f2`/`f3` ARE WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and
+tested since `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a
+message no client reads is this tree's own trap. The first gesture that BINDS something is what
+earns them. ✅ **`A7.3b`'s fence is already gone**: `14:<roof>,<part>` in part mode writes an
+`INST` (`f1`), so the reference exists and what is missing is the joint it hangs on.
 
 **One step is ◐ rather than done, for a reason that is still true:**
 

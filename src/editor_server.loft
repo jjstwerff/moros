@@ -5013,6 +5013,36 @@ fn main() {
   part_name = "";
   part_tau0 = 0;                 // the part's edit clock as it was opened, so the
                                  // close can say how many edits it is discarding
+  part_sig0 = "";                // and its SECTIONS as they were opened, because the
+                                 // clock cannot see those — see `disp_key` below
+  // ── WHAT SAVES AND WHAT DRAWS ARE TWO STORES — plan 17 `A7.3f` ────────────
+  //
+  // §P4: an instance's cells are DERIVED, never stored. So the part that saves
+  // holds an `INST` line and no cells for it, and the part the CLIENT sees has to
+  // be a second world — the authored one, copied, with every instance expanded
+  // into it. There is no third option: expanding into `wld` itself would bake the
+  // leaf's cells into the frame, which is the one damage in this mode an author
+  // cannot undo (`A7.3b`'s fence exists for it) and would make editing the leaf
+  // change nothing.
+  //
+  // ⚠ MEASURED BEFORE IT WAS BUILT, because the whole gesture rests on it: a copy
+  // of the cottage is 0 ms and the expansion 4 ms, over 4 chunks — and the control
+  // that matters is that the authored store is UNTOUCHED by the expansion (19
+  // columns before and after, 20 in the display). That control is only true
+  // because a whole-value bind COPIES (loft#774, now `@PLN130` F7's decided rule);
+  // if it ever aliases, this design silently becomes the baking it exists to
+  // prevent.
+  part_disp = new_world();
+  disp_tau = -1;                 // the authored clock the display was built from,
+                                 // so a rebuild happens once per edit and not per tick
+  // ⚠ AND THE CLOCK IS NOT ENOUGH, WHICH COST THIS STEP AN HOUR. `w_tau` counts
+  // writes to the store's CELLS and does not move for a SECTION at all — measured,
+  // `tau 20` before an `INST` write and `tau 20` after, against `tau 21` for one
+  // cell. So the very gesture this display exists to show is invisible to the
+  // trigger that was watching for it: the instance landed, the rebuild condition
+  // stayed false, and the picture never moved while every acknowledgement said it
+  // had. `world_sections_key` is the other half.
+  disp_key = "";
   held_world = new_world();
   held_runs = WallRuns { items: [] };
   held_roofs = hex_editor::RoofPlans { items: [] };
@@ -5483,6 +5513,7 @@ fn main() {
                 // disk.
                 part_name = sv_name;
                 part_tau0 = wld.w_tau;
+                part_sig0 = hex_world::world_sections_key(wld);
                 srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
                                        levelling, roading, tracing));
                 srv.send_to(ev.cid, "S:part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
@@ -5531,6 +5562,17 @@ fn main() {
               // changed something, so it is neither a guess nor a tally the writer
               // kept about itself.
               pt_edits = wld.w_tau - part_tau0;
+              // ⚠ THE CLOCK IS ONLY HALF THE ANSWER — plan 17 `A7.3f`. `w_tau`
+              // does not move for a SECTION write, so an author who placed an
+              // instance and nothing else was told `0 edits discarded` while the
+              // instance was thrown away. That is the exact failure this message
+              // was written to prevent (`A7.3a`) and that `A7.3d` extended to a
+              // refused save; it became reachable the moment a gesture could write
+              // a section, which is this step.
+              pt_secs = "";
+              if hex_world::world_sections_key(wld) != part_sig0 {
+                pt_secs = " plus its sections";
+              }
               pt_shown = part_name;
               wld = held_world;
               wall_runs = held_runs;
@@ -5547,6 +5589,11 @@ fn main() {
               py = ground_under(wld, px, pz, held_py);
               in_part = false;
               part_name = "";
+              // ⚠ FORCE A REBUILD RATHER THAN TRUST A CLOCK COMPARISON. `w_tau` is
+              // per-store, so the world's clock and the part's are unrelated
+              // numbers — they can be equal, and then the display would keep the
+              // part's derived cells over a world that never had them. `A7.3f`.
+              disp_tau = -1;
               // The same invalidation a load does, for the same reason and through
               // the same routine: everything visible is derived from the store, and
               // the store just became a different one.
@@ -5556,7 +5603,8 @@ fn main() {
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
                                      levelling, roading, tracing));
               srv.send_to(ev.cid, "S:part '{pt_shown}' closed — {pt_edits} edits "
-                                + "discarded, world restored ({len(wld.w_chunks)} chunks)");
+                                + "discarded{pt_secs}, world restored "
+                                + "({len(wld.w_chunks)} chunks)");
               println("editor: part '{pt_shown}' closed — {pt_edits} edits discarded, "
                     + "world back in {(ticks() - t_swap) / 1000 ?? 0} ms");
             }
@@ -5622,6 +5670,8 @@ fn main() {
               wall_holes = hex_editor::Holes { items: [] };
               in_part = true;
               part_name = ev.payload;
+              disp_tau = -1;              // the same reason, the other way round
+              part_sig0 = hex_world::world_sections_key(wld);
               part_tau0 = wld.w_tau;
               // A part is authored around its own origin, so that is where the feet
               // go. Staying put would open a cottage from across the valley and show
@@ -6642,25 +6692,71 @@ fn main() {
           shx2 = world_to_hex(px, pz);
           anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
           if stamp_part != "" && in_part {
-            // ── THE FENCE — plan 17 `A7.3b` ────────────────────────────────
+            // ── THE GESTURE THAT MAKES A REFERENCE — plan 17 `A7.3f` ────────
             //
             // ⚠ §P4: A PART INSIDE A PART IS A REFERENCE, AND ITS CELLS ARE
-            // DERIVED. `place_part` stamps CELLS, so letting this through would
-            // bake the leaf's geometry into the frame — and then editing the leaf
-            // changes nothing, which is the whole property parts exist for. It is
-            // the one damage in this mode that cannot be undone by an author: the
-            // cells are indistinguishable from cells they authored themselves.
+            // DERIVED. `A7.3b` fenced this off because `place_part` stamps CELLS,
+            // and baking the leaf's geometry into the frame is the one damage in
+            // this mode an author cannot undo — editing the leaf would then change
+            // nothing, which is the whole property parts exist for. The fence said
+            // *the gesture that makes one does not exist yet*; this is it, and the
+            // fence is gone rather than routed around.
             //
-            // ⚠ AND IT IS THE `<part>` FORM ONLY. `14:<roof_up>` builds a
-            // procedural house and stamps its cells, which is ordinary authoring —
-            // there is no reference to preserve, because there is no library part
-            // involved. Refusing both would fence the wrong thing and would say
-            // this mode is about stamping, when it is about references.
-            srv.send_to(ev.cid, "S:stencil refused — editing part '{part_name}'; a part "
-                              + "inside a part is a reference, and the gesture that "
-                              + "makes one does not exist yet");
-            println("editor: stencil refused — a part inside part '{part_name}' "
-                  + "would be baked, not referenced");
+            // ⚠ THE SAME MESSAGE, AND THE MODE DECIDES WHAT IT MEANS — which is
+            // `A7.3c`'s rule for `8:` SAVE, not a new one. *Put that part here* is
+            // one gesture; in a WORLD it stamps cells and in a PART it writes an
+            // `INST`. Two message ids for one intent would make the author's hand
+            // learn the store's internals.
+            //
+            // ⚠ §P8 IS CHECKED ON THE GESTURE, not only on the save. An instance
+            // is exactly how a cycle is authored — `house/cottage` given an
+            // instance of `house/cottage` — and `part_cycle_of` is the function
+            // `A7.3d` built for precisely this question: it asks about the
+            // candidate content under the name it will be saved as, which is what
+            // a save on disk cannot answer. Refusing here means the author is told
+            // while their hand is still on the gesture, rather than at a save that
+            // could be an hour later.
+            ist = hex_part::part_instances(wld);
+            if ist.ir_code == MR_MALFORMED {
+              srv.send_to(ev.cid, "S:instance refused — '{part_name}' has a damaged "
+                                + "INST section: {ist.ir_why}");
+              println("editor: instance refused — INST: {ist.ir_why}");
+            } else {
+              ist_new = ist.ir_items;
+              // ⚠ FACING 0, AND THAT IS A MEASUREMENT RATHER THAN A DEFAULT. Only
+              // the six multiples of 60° turn a body on the lattice (`A4.4`), the
+              // walker's yaw is continuous, and `part_expand` REFUSES the other
+              // eighteen — so deriving a facing from where the author happens to be
+              // looking would refuse most placements for a reason about the lattice
+              // that the gesture never mentioned. A turn is its own gesture, and it
+              // does not exist yet.
+              ist_new += [hex_part::PartInst { pi_q: shx2.ha_q, pi_r: shx2.ha_r,
+                                               pi_h: anch, pi_facing: 0,
+                                               pi_part: stamp_part }];
+              ist_cyc = hex_part::part_cycle_of(parts_root(), part_name, ist_new);
+              if ist_cyc.cc_code != hex_part::CY_OK {
+                srv.send_to(ev.cid, "S:instance refused — ({ist_cyc.cc_code}) "
+                                  + "{ist_cyc.cc_why}");
+                println("editor: instance refused — ({ist_cyc.cc_code}) {ist_cyc.cc_why}");
+              } else {
+                ist_code = hex_part::part_set_instances(wld, ist_new);
+                if ist_code != hex_part::PI_OK {
+                  srv.send_to(ev.cid, "S:instance refused — '{stamp_part}' (code {ist_code})");
+                  println("editor: instance refused — '{stamp_part}' (code {ist_code})");
+                } else {
+                  // The halo is the leaf's extent plus a margin, the same rule
+                  // `place_part` uses — and it is measured from the display world
+                  // on the next rebuild, so a generous radius here is what makes
+                  // the derived cells appear.
+                  mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
+                  srv.send_to(ev.cid, "S:instance {len(ist_new) - 1} of '{stamp_part}' "
+                                    + "at ({shx2.ha_q},{shx2.ha_r},{anch}) — a reference, "
+                                    + "not a stamp");
+                  println("editor: instance {len(ist_new) - 1} '{stamp_part}' in part "
+                        + "'{part_name}' at ({shx2.ha_q},{shx2.ha_r},{anch})");
+                }
+              }
+            }
           } else if stamp_part != "" {
             place_part(srv, ev.cid, wld, dirty, stamp_part, shx2.ha_q, shx2.ha_r, anch);
           } else {
@@ -7395,6 +7491,58 @@ fn main() {
       }
     }
 
+    // ── THE DISPLAY WORLD — plan 17 `A7.3f` ──────────────────────────────────
+    //
+    // Rebuilt here, before anything is meshed or streamed, and keyed on the
+    // AUTHORED clock: `w_tau` bumps once per write that changed something, so this
+    // costs a copy-and-expand once per edit rather than once per tick. Out of part
+    // mode nothing happens at all — `part_disp` is not read there.
+    //
+    // ⚠ IT REASSIGNS, SO IT CANNOT BE A FUNCTION. `part_disp = wld` is a
+    // whole-binding assignment, and `library_moved` records the same shape three
+    // hundred lines up: a `&` parameter may not be reassigned here, and dropping
+    // the `&` on the lint's advice makes the assignment local, leaving the caller's
+    // copy stale for ever. So the detection is cheap and the rebuild sits where the
+    // variable does.
+    //
+    // ⚠ A REFUSED EXPANSION IS SAID OUT LOUD AND THE ROW IS SKIPPED. `part_expand`
+    // refuses a facing that is not one of the six lattice rotations (`A4.4`) and a
+    // nest deeper than eight (§P8) — an author who placed one is owed the reason,
+    // and a display that silently dropped it would show an empty floor where they
+    // put something.
+    // ⚠ THE LIST IS READ INTO A LOCAL FIRST, AND THE FIRST VERSION DID NOT — it
+    // wrote `for i in part_instances(part_disp).ir_items`, which is loft#775's
+    // shape in a `for` header: a vector field of a CALL's temporary, iterated
+    // while `part_expand` allocates into the very world it came from. It cost
+    // nothing visible and derived nothing at all — `part display rebuilt — 0
+    // derived columns` beside a gesture that had just reported success, with no
+    // refusal anywhere, because the loop simply had no elements to walk. ⚠ **The
+    // trace line is what found it**, and only because it prints a count that could
+    // be zero; the picture alone said *nothing changed* and would have been read
+    // as the expansion having no effect.
+    if in_part && (wld.w_tau != disp_tau || hex_world::world_sections_key(wld) != disp_key) {
+      disp_t0 = ticks();
+      disp_ir = hex_part::part_instances(wld);
+      disp_items = disp_ir.ir_items;
+      part_disp = wld;
+      disp_n = 0;
+      for disp_i in disp_items {
+        disp_ex = hex_part::part_expand(part_disp, parts_root(), disp_i, 0);
+        if disp_ex.ex_code == hex_part::EX_OK {
+          disp_n = disp_n + disp_ex.ex_cols;
+        } else {
+          srv.broadcast("S:instance '{disp_i.pi_part}' is not drawn — "
+                      + "({disp_ex.ex_code}) {disp_ex.ex_why}");
+        }
+      }
+      disp_tau = wld.w_tau;
+      disp_key = hex_world::world_sections_key(wld);
+      if tracing {
+        println("editor: part display rebuilt — {disp_n} derived columns over "
+              + "{len(part_disp.w_chunks)} chunks in {(ticks() - disp_t0) / 1000 ?? 0} ms");
+      }
+    }
+
     // ── flush the dirty set ────────────────────────────────────────────────
     // One place rebuilds. A chunk that is dirty but not on screen is simply
     // dropped from the set: it will be built from the current world when it next
@@ -7428,10 +7576,26 @@ fn main() {
           // rebuild is one transaction to the client — a chunk swapped in beside a
           // stale neighbour leaves a real gap — and the cache is part of that instant
           // rather than a thing that catches up afterwards.
-          send_layers(srv, wld, dc2.cx, dc2.cz);
-          dms = chunk_meshes_all(dc2.cx, dc2.cz, wld, false, wall_runs, roof_plans,
-                  door_leaves, wall_openings, wall_annexes, annex_walls,
-                  wall_props, wall_slabs, wall_holes);
+          // ⚠ THE CACHE AND THE MESH COME FROM ONE STORE, and in part mode that is
+          // the DISPLAY world (`A7.3f`). Sending the layers from the authored part
+          // and the mesh from the expansion would put the client's own derived
+          // ground a whole instance away from the server's — which is precisely
+          // what `S3`'s checksum exists to catch, so it would go red as a *cache*
+          // disagreement and name nothing about instances.
+          if in_part {
+            send_layers(srv, part_disp, dc2.cx, dc2.cz);
+          } else {
+            send_layers(srv, wld, dc2.cx, dc2.cz);
+          }
+          dms = if in_part {
+                  chunk_meshes_all(dc2.cx, dc2.cz, part_disp, false, wall_runs, roof_plans,
+                    door_leaves, wall_openings, wall_annexes, annex_walls,
+                    wall_props, wall_slabs, wall_holes)
+                } else {
+                  chunk_meshes_all(dc2.cx, dc2.cz, wld, false, wall_runs, roof_plans,
+                    door_leaves, wall_openings, wall_annexes, annex_walls,
+                    wall_props, wall_slabs, wall_holes)
+                };
           dm = chunk_mesh_slot(dms, 0);
           // ⚠ S3: the checksum of the ground mesh THIS SERVER just built, so the
           // client can derive its own from its cache and prove it is the same one.
@@ -7562,10 +7726,21 @@ fn main() {
               // streaming pass runs each tick and almost always has nothing to
               // say, so an unconditional bracket would be 30 empty pairs a second.
               if !sbatch { srv.broadcast("Z:1"); sbatch = true; }
-              send_layers(srv, wld, scx, scz);
-              cms = chunk_meshes_all(scx, scz, wld, false, wall_runs, roof_plans,
-                      door_leaves, wall_openings, wall_annexes, annex_walls,
-                      wall_props, wall_slabs, wall_holes);
+              // The same store the flush uses, for the same reason — `A7.3f`.
+              if in_part {
+                send_layers(srv, part_disp, scx, scz);
+              } else {
+                send_layers(srv, wld, scx, scz);
+              }
+              cms = if in_part {
+                      chunk_meshes_all(scx, scz, part_disp, false, wall_runs, roof_plans,
+                        door_leaves, wall_openings, wall_annexes, annex_walls,
+                        wall_props, wall_slabs, wall_holes)
+                    } else {
+                      chunk_meshes_all(scx, scz, wld, false, wall_runs, roof_plans,
+                        door_leaves, wall_openings, wall_annexes, annex_walls,
+                        wall_props, wall_slabs, wall_holes)
+                    };
               cmesh = chunk_mesh_slot(cms, 0);
               srv.broadcast("Q:{scx},{scz},{moros_terrain::mesh_crc(cmesh)}");
               gn1 = send_ground(srv, clients,
