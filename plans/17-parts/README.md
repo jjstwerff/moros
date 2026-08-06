@@ -962,10 +962,10 @@ both stores in a vector and take `[i]`.
 | ✅ `A7.3c` | `8:` SAVE routes by mode: in part mode it writes `parts_root()/<name>.hxw`. | **DONE.** `lib/hex_part/tests/save_edit.loft` (6 tests, 3 of them controls) for the format half; `tools/gates/world/part_save.mjs`, 19 checks, four sabotages seen red, for the routing half. ⚠ **The owner guard was tried and MEASURED OUT** — see below | S |
 | ✅ `A7.3d` | The save check — `part_cycle` + `part_mesh_loads` where the save happens. **Closes `A3.4`.** | **DONE.** New library function `part_cycle_of` (6 tests) because `part_cycle` answers about the version on DISK; `tools/gates/world/part_check.mjs`, 18 checks, four sabotages seen red. ⚠ **`A3.4` IS NOW CLOSED** | XS |
 | ✅ `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | **DONE.** `tools/gates/world/part_new.mjs`, 33 checks, four sabotages seen red. ⚠ **Three live defects found, two of them silent data loss** — a save into a family that does not exist reported success over a file that was never created; a name the catalogue can never list was accepted; and a save-as carried the ancestor's `PART.name`. New: `hex_world::WS_IO` + `world_file_size` (3 tests), `hex_part::part_name_ok` + `part_dir` (5 tests) | S |
-| ◐ `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
+| ✅ `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
 | ✅ `A7.3f1` | The gesture that makes a REFERENCE: in part mode `14:<roof>,<part>` writes an `INST`, and the picture comes from a DISPLAY world. **Lifts `A7.3b`'s fence.** | **DONE.** `tools/gates/world/part_inst.mjs`, 21 checks, four sabotages seen red. New: `hex_world::world_sections_key` (3 tests). ⚠ **Two live defects found, and the edit clock is blind to both** — see below | M |
 | ✅ `A7.3f2` | `SOCK`/`FITS` on the wire for the open part, and `parts_for_socket` answering for a named socket. | **DONE.** `45:` with three forms; `tools/gates/world/part_sock.mjs`, 19 checks, four sabotages seen red. New library function `hex_part::socket_named` (4 tests) because the binding check asks two questions at once. ⚠ **`A4.2`'s `parts_for_socket` has its first consumer** | S |
-| `A7.3f3` | The `BIND` gesture — instance, socket, part — with `socket_for_binding`'s four refusals. | `A4.2`'s `socket_fit` reaches an author | S |
+| ✅ `A7.3f3` | The `BIND` gesture — instance, socket, part — with `socket_for_binding`'s four refusals. | **DONE.** `46:` binds, swaps and unbinds; `tools/gates/world/part_bind.mjs`, 18 checks, three sabotages seen red. ⚠ **§P8 WAS BLIND TO BINDINGS** — a whole class of cycle the check could not see; `cycle.loft` is its own file now (4 tests) | S |
 
 ⚠ **`44` IS THE NEXT FREE ID — 1 through 43 are all taken**, and it is one message with two forms
 rather than an open and a close, which is `14:`'s own precedent. ⚠ **The subject line is part of
@@ -1234,6 +1234,61 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### What `A7.3f3` turned up
+
+⚠ **§P8's CYCLE CHECK WAS BLIND TO BINDINGS, AND THE RENDERER MET THE RESULT AS A DEPTH
+OVERFLOW.** `walk` read `part_instances` and descended `pi_part`; nothing in it read
+`part_bindings`. But `expand` and `bake` both derive a bound leaf's cells (`A4.3`), so a part
+reachable only through a socket is as much *contained* as one reachable through an instance.
+Measured before it was fixed, on a built fixture: a part bound into its own socket answered
+**`CY_OK`**, and `part_expand` came back with *"'f/frame' is nested 9 deep; the bound is 8
+(P8)"*. ⚠ **That is exactly the confusion `A3.4` spent a step removing** — *a cycle reports as a
+CYCLE rather than a depth overflow* — and the separation held for one edge kind and not the
+other, because until this gesture nothing could author a binding. ⚠ **`part_expand` converts a
+depth overflow into a cycle report by asking `part_cycle`**, so one blindness made two answers
+wrong.
+
+⚠ **AND IT COULD NOT BE FIXED IN PLACE.** `bind.loft` already calls `part_instances`, so
+teaching `inst.loft` to read `part_bindings` makes the two files mutually dependent, and loft
+resolves a package's files in declaration order — `Unknown function part_bindings`. So the
+check moved to `cycle.loft`, declared after both, which is the honest home for it anyway: the
+question is about the whole graph, and it now lives where the whole graph is visible. A
+package's files are one namespace, so nothing about its surface changed.
+
+⚠ **`part_cycle_of` GAINED A REQUIRED FOURTH ARGUMENT RATHER THAN A DEFAULTED ONE.** A
+candidate is its instances *and* its bindings; a signature letting a caller pass one and forget
+the other is precisely the hole `walk` had. Required means the compiler makes every call site
+face it — seven of them, and that is the only structural guard available here.
+
+⚠ **A SECOND BIND SWAPS RATHER THAN REFUSING, AND THAT IS §P3 RATHER THAN A CONVENIENCE.**
+*Composition by socket makes "swap this for that" a one-field edit* is the design's own claim,
+and `A6.3` proved it needs no new code while having no gesture to reach it. `part_set_bindings`
+refuses a duplicate (`BD_DUP`), so a gesture that could only ADD would leave an author stuck
+with their first choice for ever — the unbind and the swap are what make the joint editable at
+all, not extras.
+
+⚠ **`socket_for_binding` IS THE RIGHT FUNCTION *HERE*, WHICH IS `A7.3f2`'s FINDING FROM THE
+OTHER SIDE.** The query had no candidate and needed `socket_named`; the gesture has one, so the
+question really is *may this go in that* — and `A4.2`'s `socket_fit` answers it. Its refusal
+reaches an author for the first time, naming what the socket **takes** (`'top' takes
+statue/plinth-2`) rather than what was wrong with the offer.
+
+⚠ **WHAT THIS STEP DOES NOT CLAIM: THAT A BOUND LEAF IS DRAWN.** Both parts in the library that
+fit the plinth's socket are mesh-only — `prop/statue` and `prop/seated` have **0 columns** — so
+an expansion delivers them as `ex_meshes`, and `f1`'s display world is a `World`, which has
+nowhere to put a mesh. Measured rather than assumed. The gap predates this step (`A5.2`'s
+renderer half, `A6.2`'s *a mesh is not on the lattice*) and no gesture can author a `FITS`, so a
+cell-bodied leaf that fits cannot be made from the editor either. Said in the gate's own header
+rather than papered over with a check that would pass on a server drawing nothing.
+
+**The three sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the walk stops following bindings | 3 — the cycle, its chain, and the name |
+| no fit check on the bind | 3 |
+| a second bind appends instead of replacing | 4 |
 
 ### What `A7.3f2` turned up
 

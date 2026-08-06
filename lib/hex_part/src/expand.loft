@@ -36,6 +36,7 @@
 // same sockets — and only what the body produces differs.
 use hex_world;
 use inst;
+use cycle;
 use bind;
 use sock;
 use catalogue;

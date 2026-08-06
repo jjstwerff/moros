@@ -1,0 +1,154 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// §P8 — a part may not contain itself, transitively. Plan 17 `A3.1`/`A3.4`/`A7.3f3`.
+//
+// ⚠ IT LIVES IN ITS OWN FILE BECAUSE THE GRAPH HAS TWO KINDS OF EDGE. This sat in
+// `inst.loft` while it followed instances only. `A7.3f3` made bindings authorable
+// and measured what that costs: a part bound into its own socket answered `CY_OK`
+// and came back from the renderer as *"nested 9 deep; the bound is 8"* — a DEPTH
+// overflow standing in for a cycle, which names no reference to cut.
+//
+// Following both edges from `inst.loft` is impossible: `bind.loft` already calls
+// `part_instances`, so the two files would depend on each other and loft resolves
+// a package's files in declaration order. So the check moved to where the whole
+// graph is visible, which is after both — and that is the honest place for it
+// anyway. Nothing about its surface changed; a package's files are one namespace.
+use hex_world;
+use catalogue;
+use meta;
+use inst;
+use bind;
+
+// ── §P8 — a part may not contain itself, transitively ────────────────────────
+
+pub const CY_OK      = 0;
+pub const CY_CYCLE   = 1;   // the part contains itself, by the path reported
+pub const CY_MISSING = 2;   // it refers to a part that is not on disk
+pub const CY_BROKEN  = 3;   // a part on the way does not load, or its INST is damaged
+
+// ⚠ THREE ANSWERS, NOT TWO, and the same rule as `MR_ABSENT` versus
+// `MR_MALFORMED`. A dangling reference is a real fault and is **not** a cycle: a
+// mistyped name and a part that contains itself want completely different fixes,
+// and one code for both makes a typo read as a recursion the author cannot find.
+pub struct CycleCheck { cc_code: integer, cc_why: text }
+
+// ⚠ THE PATH, NOT A VISITED SET, and a diamond is what tells them apart. A house
+// with two door-frames that both use the same leaf visits that leaf twice and is
+// perfectly legal; a global "seen" set calls the second visit a cycle and refuses
+// a document that is fine. What makes a cycle is a part appearing on the chain
+// **currently being walked**, so that is what is carried.
+//
+// ⚠ AND IT TERMINATES WITHOUT A DEPTH BOUND. Each step either finds a name
+// already on the path — refused — or descends to one that is not, and the path
+// only grows, so the walk is bounded by the number of distinct parts on disk.
+// **The depth bound is a different rule** (§P8's second, `A3.4`): that one is
+// about a RENDERER, where unbounded recursion is a hang and a hang reads as a
+// crash. Conflating them would make this function look like it already had one.
+fn walk(root: text, name: text, path: vector<text>) -> CycleCheck {
+  for p in path {
+    if p == name {
+      trail = "";
+      for t in path { trail = trail + t + " → "; }
+      return CycleCheck { cc_code: CY_CYCLE, cc_why: "{trail}{name}" };
+    }
+  }
+  // ⚠ `path` and `file` are both taken — `file(…)` is the stdlib's handle
+  // constructor and loft refuses to shadow it with a variable.
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return CycleCheck { cc_code: CY_MISSING, cc_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return CycleCheck { cc_code: CY_BROKEN,
+                        cc_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  got = part_instances(ld.wl_world);
+  if got.ir_code == MR_MALFORMED {
+    return CycleCheck { cc_code: CY_BROKEN, cc_why: "'{name}': {got.ir_why}" };
+  }
+  here = path;
+  here += [name];
+  for c in got.ir_items {
+    down = walk(root, c.pi_part, here);
+    if down.cc_code != CY_OK { return down; }
+  }
+  // ⚠ A BINDING IS THE SECOND KIND OF EDGE, AND FOLLOWING ONLY THE FIRST ANSWERS
+  // ABOUT A DIFFERENT GRAPH THAN THE RENDERER WALKS — plan 17 `A7.3f3`. `expand`
+  // and `bake` both derive a bound leaf's cells (`A4.3`), so a part reachable only
+  // through a socket is as much *contained* as one reachable through an instance.
+  //
+  // ⚠ MEASURED BEFORE IT WAS FIXED, and the symptom is the one `A3.4` worked to
+  // rule out: a part bound into its own socket answered `CY_OK` here and came back
+  // from the renderer as *"'f/frame' is nested 9 deep; the bound is 8 (P8)"* — a
+  // DEPTH overflow standing in for a cycle, which is unactionable because it names
+  // no reference to cut. `part_expand` converts a depth overflow into a cycle
+  // report by asking `part_cycle`, so a blindness here made that conversion fail
+  // too. It went unnoticed because nothing could author a binding until `f3`.
+  bnd = part_bindings(ld.wl_world);
+  if bnd.br_code == MR_MALFORMED {
+    return CycleCheck { cc_code: CY_BROKEN, cc_why: "'{name}': {bnd.br_why}" };
+  }
+  for b in bnd.br_items {
+    downb = walk(root, b.bd_part, here);
+    if downb.cc_code != CY_OK { return downb; }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}
+
+// Does this part contain itself? ⚠ THE REFUSAL NAMES THE CYCLE (§P8), because
+// *"this part contains itself"* is unactionable in a library of two hundred: the
+// author needs the chain to know which reference to cut.
+pub fn part_cycle(root: text, name: text) -> CycleCheck {
+  empty: vector<text> = [];
+  walk(root, name, empty)
+}
+
+// ⚠ WOULD THIS PART BE SOUND *IF IT WERE SAVED UNDER THIS NAME*? — plan 17
+// `A7.3d`, and it is the shape §P8's *"checked on save"* actually needs.
+// `part_cycle` walks a part that is ON DISK, so it can only ever answer about the
+// version already written; a save has to be refused BEFORE it writes, and the
+// content it would write is in memory. So the candidate's own instances are
+// walked with the path seeded by the name it is about to take.
+//
+// ⚠ THE SEED IS THE WHOLE FUNCTION. Walking the instances with an empty path
+// answers *are the parts it refers to sound*, which is a different and much
+// weaker question — `prop/shrine` saved as `prop/statue` refers only to sound
+// parts, and is a part that contains itself. One element of context is the
+// difference between the two.
+//
+// ⚠ AND IT IS REACHABLE WITH THE GESTURES THAT EXIST. There is no gesture that
+// adds an instance yet (`A7.3f`), but SAVE-AS is enough: open a frame and save it
+// under the name of one of its own leaves.
+// ⚠ AND THE BINDINGS ARE A REQUIRED ARGUMENT, NOT AN OPTIONAL ONE. A candidate is
+// its instances AND its bindings — both are edges the renderer follows — and a
+// signature that let a caller pass one and forget the other is exactly the hole
+// `walk` had for as long as nothing could author a binding. Required, so every
+// call site has to face the question; the compiler is the only guard available.
+pub fn part_cycle_of(root: text, name: text, insts: vector<PartInst>,
+                     binds: vector<Binding>) -> CycleCheck {
+  seed: vector<text> = [];
+  seed += [name];
+  for c in insts {
+    down = walk(root, c.pi_part, seed);
+    if down.cc_code != CY_OK { return down; }
+  }
+  for b in binds {
+    downb = walk(root, b.bd_part, seed);
+    if downb.cc_code != CY_OK { return downb; }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}
+
+// Every part in a library, checked. ⚠ THE FIRST FAULT IS RETURNED rather than a
+// count, and the name of the part it started from is in it — a caller told *three
+// parts are broken* has to go and find them.
+pub fn library_cycle(root: text) -> CycleCheck {
+  for n in part_list(root) {
+    got = part_cycle(root, n);
+    if got.cc_code != CY_OK {
+      return CycleCheck { cc_code: got.cc_code, cc_why: "{n}: {got.cc_why}" };
+    }
+  }
+  CycleCheck { cc_code: CY_OK, cc_why: "" }
+}

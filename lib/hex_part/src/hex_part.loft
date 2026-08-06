@@ -15,6 +15,7 @@ use sock;
 use fit;
 use inst;
 use bind;
+use cycle;
 use hinge;
 use prop;
 use stamp;

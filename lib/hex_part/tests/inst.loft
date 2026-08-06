@@ -373,7 +373,7 @@ fn test_saving_a_frame_under_its_own_leafs_name_is_a_cycle() {
   put("h/frame", ["h/leaf"]);
   // `h/frame`'s content, about to be written as `h/leaf`: it refers to `h/leaf`,
   // which would then be itself.
-  got = part_cycle_of(root(), "h/leaf", insts_for(["h/leaf"]));
+  got = part_cycle_of(root(), "h/leaf", insts_for(["h/leaf"]), no_binds());
   assert(got.cc_code == CY_CYCLE, "saving over its own leaf read {got.cc_code}: {got.cc_why}");
   assert(got.cc_why.find("h/leaf") != null, "the chain does not name the part: '{got.cc_why}'");
   wipe();
@@ -386,7 +386,7 @@ fn test_a_cycle_two_links_below_the_saved_name_is_found() {
   none: vector<text> = [];
   put("h/deep", none);
   put("h/mid", ["h/deep"]);
-  got = part_cycle_of(root(), "h/deep", insts_for(["h/mid"]));
+  got = part_cycle_of(root(), "h/deep", insts_for(["h/mid"]), no_binds());
   assert(got.cc_code == CY_CYCLE, "an indirect cycle read {got.cc_code}: {got.cc_why}");
   wipe();
 }
@@ -414,7 +414,7 @@ fn test_a_sound_save_is_not_refused() {
   wipe();
   none: vector<text> = [];
   put("h/leaf", none);
-  got = part_cycle_of(root(), "h/newframe", insts_for(["h/leaf"]));
+  got = part_cycle_of(root(), "h/newframe", insts_for(["h/leaf"]), no_binds());
   assert(got.cc_code == CY_OK, "a sound save read {got.cc_code}: {got.cc_why}");
   wipe();
 }
@@ -426,7 +426,7 @@ fn test_a_part_with_no_instances_is_always_sound() {
   none: vector<text> = [];
   put("h/leaf", none);
   empty: vector<PartInst> = [];
-  got = part_cycle_of(root(), "h/leaf", empty);
+  got = part_cycle_of(root(), "h/leaf", empty, no_binds());
   assert(got.cc_code == CY_OK, "an instance-free part read {got.cc_code}: {got.cc_why}");
   wipe();
 }
@@ -437,7 +437,101 @@ fn test_a_dangling_reference_reads_as_missing_not_as_a_cycle() {
   wipe();
   none: vector<text> = [];
   put("h/leaf", none);
-  got = part_cycle_of(root(), "h/new", insts_for(["h/typo"]));
+  got = part_cycle_of(root(), "h/new", insts_for(["h/typo"]), no_binds());
   assert(got.cc_code == CY_MISSING, "a typo read {got.cc_code}: {got.cc_why}");
+  wipe();
+}
+
+// ⚠ A CANDIDATE IS ITS INSTANCES *AND* ITS BINDINGS — plan 17 `A7.3f3`. The
+// argument is required rather than defaulted, so a call site cannot forget the
+// half that was blind for as long as nothing could author a binding.
+fn no_binds() -> vector<Binding> {
+  out: vector<Binding> = [];
+  out
+}
+
+// ── A BINDING IS THE SECOND KIND OF EDGE — plan 17 `A7.3f3` ──────────────────
+//
+// `walk` followed instances only, for as long as nothing could author a binding.
+// Measured before it was fixed: a part bound into its own socket answered `CY_OK`
+// here and came back from `part_expand` as *"'f/frame' is nested 9 deep; the bound
+// is 8 (P8)"* — a DEPTH overflow standing in for a cycle. `A3.4` spent a step
+// separating those two answers precisely because a depth overflow names no
+// reference to cut, and the separation held for one edge kind and not the other.
+
+// A part that offers a socket AND declares it fits that same class, so it can be
+// put into its own kind of hole.
+fn put_socketed(name: text) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  w = part();
+  assert(part_set_sockets(w, [Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_EDGE,
+    sk_at: 0, sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }]).sw_code == SK_OK,
+    "sockets {name}");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "2x3" }).sw_code == SK_OK,
+    "fits {name}");
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+// A part holding one instance, with that instance's socket bound to `to`.
+fn put_bound(name: text, holds: text, to: text) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  w = part();
+  assert(part_set_instances(w, [PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                           pi_part: holds }]) == PI_OK, "inst {name}");
+  assert(part_set_bindings(w, [Binding { bd_inst: 0, bd_socket: "leaf",
+                                         bd_part: to }]).bw_code == BD_OK, "bind {name}");
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+fn test_a_cycle_made_by_a_binding_is_a_cycle() {
+  wipe();
+  put_socketed("h/frame");
+  put_bound("h/loop", "h/frame", "h/loop");
+  got = part_cycle(root(), "h/loop");
+  assert(got.cc_code == CY_CYCLE,
+         "a part bound into its own socket reported {got.cc_code} — the renderer "
+         + "then meets it as a DEPTH overflow, which names no reference to cut");
+  assert(got.cc_why.find("→") != null, "the chain is missing: {got.cc_why}");
+  wipe();
+}
+
+// ⚠ THE CANDIDATE FORM TOO, because that is what a GESTURE checks — the content
+// is in memory and has not been written, so `part_cycle` cannot see it at all.
+fn test_a_candidate_binding_that_would_close_a_loop_is_refused() {
+  wipe();
+  put_socketed("h/frame");
+  put("h/holder", ["h/frame"]);
+  empty_insts: vector<PartInst> = [];
+  would = part_cycle_of(root(), "h/holder", empty_insts,
+                        [Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "h/holder" }]);
+  assert(would.cc_code == CY_CYCLE,
+         "binding a socket back to the part being edited reported {would.cc_code}");
+  wipe();
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT BOTH TESTS PASS ON A WALK THAT REFUSES EVERY
+// BINDING. A sound binding is the common case — that is the whole feature — so it
+// has to go through, and a diamond (two instances bound to one leaf) is legal for
+// the same reason two instances of one part are.
+fn test_a_sound_binding_is_not_a_cycle() {
+  wipe();
+  put_socketed("h/frame");
+  put_bound("h/door", "h/frame", "h/frame");
+  got = part_cycle(root(), "h/door");
+  assert(got.cc_code == CY_OK,
+         "an ordinary binding was refused as a cycle: ({got.cc_code}) {got.cc_why}");
+  wipe();
+}
+
+// A binding to a part that is not there is MISSING, not a cycle — `A3.1`'s
+// three-answers rule, which the new edge has to honour as well as the old one.
+fn test_a_binding_to_a_part_that_is_not_there_is_missing() {
+  wipe();
+  put_socketed("h/frame");
+  put_bound("h/door", "h/frame", "h/gone");
+  got = part_cycle(root(), "h/door");
+  assert(got.cc_code == CY_MISSING,
+         "a dangling binding reported {got.cc_code}, and a typo wants a different "
+         + "fix from a recursion");
   wipe();
 }

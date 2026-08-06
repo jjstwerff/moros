@@ -418,6 +418,25 @@ const MSG_PART = 44;
 // backwards would have produced a message that answers confidently about the
 // wrong part.
 const MSG_SOCKETS = 45;
+// ── THE JOINT ITSELF — plan 17 `A7.3f3` ──────────────────────────────────────
+//
+// `46:<inst>,<socket>,<part>` puts a part in a socket of an instance of the part
+// being edited; `46:<inst>,<socket>` with no part takes it out again.
+//
+// ⚠ THE PART HANDLE IS THE TAIL, which is `BIND`'s own record shape and for
+// `inst.loft`'s reason: a handle is a FILE PATH and a file name may contain a
+// comma, so anything after it would need escaping in both directions. The socket
+// name sits between two commas and may not hold one — `A4.1` gave it that freedom
+// and `A4.3` took it away, because a field's freedom depends on whether anything
+// ever refers to it.
+//
+// ⚠ A SECOND BIND ON ONE SOCKET REPLACES RATHER THAN REFUSING, and that is §P3's
+// own promise rather than a convenience: *composition by socket makes "swap this
+// for that" a one-field edit*. `A6.3` proved the swap needs no new code and had no
+// gesture to reach it; this is that gesture. `part_set_bindings` refuses a
+// duplicate (`BD_DUP`), so an author who could only ADD would be stuck with their
+// first choice for ever.
+const MSG_BIND = 46;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -5429,7 +5448,14 @@ fn main() {
               // ⚠ REACHABLE TODAY, WITH NO INSTANCE GESTURE: open a frame and
               // save it under the name of one of its own leaves.
               sv_inst = part_instances(wld);
-              sv_cyc = hex_part::part_cycle_of(parts_root(), sv_name, sv_inst.ir_items);
+              // ⚠ AND THE BINDINGS TOO — plan 17 `A7.3f3`. A binding is the second
+              // kind of edge in the same graph, and the walk followed only the
+              // first for as long as nothing could author one. Measured: a part
+              // bound into its own socket answered CY_OK and reached the renderer
+              // as a DEPTH overflow.
+              sv_bind = hex_part::part_bindings(wld);
+              sv_cyc = hex_part::part_cycle_of(parts_root(), sv_name, sv_inst.ir_items,
+                                               sv_bind.br_items);
               sv_mesh = hex_part::part_mesh_loads(parts_root(), wld);
               if sv_inst.ir_code == MR_MALFORMED {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
@@ -5564,6 +5590,117 @@ fn main() {
           srv.send_to(ev.cid, "S:load refused — editing part '{part_name}'; "
                             + "close it with 44: first");
           println("editor: load refused — in part mode ('{part_name}')");
+        } else if ev.msg_id == MSG_BIND {
+          // ── THE BIND GESTURE — plan 17 `A7.3f3` ─────────────────────────────
+          if !in_part {
+            srv.send_to(ev.cid, "S:bind refused — not editing a part; open one with 44:");
+          } else {
+            bg_c1 = ev.payload.find(",");
+            if bg_c1 == null {
+              srv.send_to(ev.cid, "S:bind refused — say <instance>,<socket>,<part>");
+            } else {
+              bg_itxt = ev.payload[..bg_c1];
+              bg_rest = ev.payload[bg_c1 + 1..];
+              bg_c2 = bg_rest.find(",");
+              bg_sock = bg_rest;
+              bg_part = "";
+              if bg_c2 != null {
+                bg_sock = bg_rest[..bg_c2];
+                // ⚠ THE TAIL, AND NOT A THIRD SPLIT. A part handle may contain a
+                // comma, so everything after the second one is the handle.
+                bg_part = bg_rest[bg_c2 + 1..];
+              }
+              bg_i = bg_itxt.trim() as integer?;
+              bg_ir = hex_part::part_instances(wld);
+              bg_insts = bg_ir.ir_items;
+              bg_br = hex_part::part_bindings(wld);
+              if bg_i == null {
+                srv.send_to(ev.cid, "S:bind refused — '{bg_itxt}' is not an instance number");
+              } else if bg_i < 0 || bg_i >= len(bg_insts) {
+                srv.send_to(ev.cid, "S:bind refused — '{part_name}' has {len(bg_insts)} "
+                                  + "instances, so there is no {bg_i}");
+              } else if bg_sock == "" {
+                srv.send_to(ev.cid, "S:bind refused — a binding needs a socket name");
+              } else if bg_br.br_code == MR_MALFORMED {
+                srv.send_to(ev.cid, "S:bind refused — '{part_name}' has a damaged BIND "
+                                  + "section: {bg_br.br_why}");
+              } else {
+                bg_inst = bg_insts[bg_i] ?? hex_part::PartInst {};
+                bg_frame = bg_inst.pi_part;
+                // The list this gesture would write: every binding that is not
+                // this (instance, socket), plus the new one if there is a part.
+                bg_next: vector<hex_part::Binding> = [];
+                bg_had = false;
+                for bg_old in bg_br.br_items {
+                  if bg_old.bd_inst == bg_i && bg_old.bd_socket == bg_sock {
+                    bg_had = true;
+                  } else {
+                    bg_next += [bg_old];
+                  }
+                }
+                if bg_part == "" {
+                  // ── THE UNBIND ────────────────────────────────────────────
+                  if !bg_had {
+                    srv.send_to(ev.cid, "S:bind refused — instance {bg_i} has nothing "
+                                      + "in '{bg_sock}' to take out");
+                  } else {
+                    bg_w = hex_part::part_set_bindings(wld, bg_next);
+                    if bg_w.bw_code != hex_part::BD_OK {
+                      srv.send_to(ev.cid, "S:bind refused — ({bg_w.bw_code}) {bg_w.bw_why}");
+                    } else {
+                      mark_dirty(dirty, bg_inst.pi_q, bg_inst.pi_r, STENCIL_R + 2);
+                      srv.send_to(ev.cid, "S:unbound '{bg_sock}' of instance {bg_i} "
+                                        + "— {len(bg_next)} bindings left");
+                      println("editor: unbound '{bg_sock}' of instance {bg_i} in "
+                            + "'{part_name}'");
+                    }
+                  }
+                } else {
+                  // ── THE BIND, AND THE SWAP ────────────────────────────────
+                  //
+                  // ⚠ `socket_for_binding` AND NOT `socket_named` HERE, which is
+                  // the other half of `A7.3f2`'s finding: this call HAS a
+                  // candidate, so the question really is *may this go in that* —
+                  // and `A4.2`'s `socket_fit` is what answers it. Its four
+                  // refusals reach an author for the first time.
+                  bg_cand = hex_part::Binding { bd_inst: bg_i, bd_socket: bg_sock,
+                                                bd_part: bg_part, bd_open: 0.0 };
+                  bg_at = hex_part::socket_for_binding(parts_root(), bg_frame, bg_cand);
+                  if bg_at.sa_code != hex_part::SA_OK {
+                    srv.send_to(ev.cid, "S:bind refused — ({bg_at.sa_code}) {bg_at.sa_why}");
+                    println("editor: bind refused — ({bg_at.sa_code}) {bg_at.sa_why}");
+                  } else {
+                    // ⚠ §P8 ON THE GESTURE, over the candidate LIST — a binding is
+                    // the second kind of edge, and one that closes a loop is a
+                    // cycle the renderer would otherwise meet as a depth overflow.
+                    bg_try = bg_next;
+                    bg_try += [bg_cand];
+                    bg_cyc = hex_part::part_cycle_of(parts_root(), part_name,
+                                                     bg_insts, bg_try);
+                    if bg_cyc.cc_code != hex_part::CY_OK {
+                      srv.send_to(ev.cid, "S:bind refused — ({bg_cyc.cc_code}) "
+                                        + "{bg_cyc.cc_why}");
+                      println("editor: bind refused — ({bg_cyc.cc_code}) {bg_cyc.cc_why}");
+                    } else {
+                      bg_w = hex_part::part_set_bindings(wld, bg_try);
+                      if bg_w.bw_code != hex_part::BD_OK {
+                        srv.send_to(ev.cid, "S:bind refused — ({bg_w.bw_code}) {bg_w.bw_why}");
+                      } else {
+                        mark_dirty(dirty, bg_inst.pi_q, bg_inst.pi_r, STENCIL_R + 2);
+                        bg_verb = "bound";
+                        if bg_had { bg_verb = "swapped"; }
+                        srv.send_to(ev.cid, "S:{bg_verb} '{bg_part}' into '{bg_sock}' of "
+                                          + "instance {bg_i} '{bg_frame}' "
+                                          + "({hex_part::socket_class(bg_at.sa_socket)})");
+                        println("editor: {bg_verb} '{bg_part}' into '{bg_sock}' of "
+                              + "instance {bg_i} in '{part_name}'");
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         } else if ev.msg_id == MSG_SOCKETS {
           // ── THE JOINTS, READ BACK — plan 17 `A7.3f2` ────────────────────────
           //
@@ -6876,7 +7013,9 @@ fn main() {
               ist_new += [hex_part::PartInst { pi_q: shx2.ha_q, pi_r: shx2.ha_r,
                                                pi_h: anch, pi_facing: 0,
                                                pi_part: stamp_part }];
-              ist_cyc = hex_part::part_cycle_of(parts_root(), part_name, ist_new);
+              ist_bind = hex_part::part_bindings(wld);
+              ist_cyc = hex_part::part_cycle_of(parts_root(), part_name, ist_new,
+                                                ist_bind.br_items);
               if ist_cyc.cc_code != hex_part::CY_OK {
                 srv.send_to(ev.cid, "S:instance refused — ({ist_cyc.cc_code}) "
                                   + "{ist_cyc.cc_why}");
