@@ -543,19 +543,21 @@ const settle = async (limitMs = 8000) => {
   return { ...last, waited: limitMs };
 };
 
-async function frameStats() {
-  if (!(await browser())) return { ok: false, why: 'no browser' };
+// ⚠ SETTLE, THEN PHOTOGRAPH, ONCE — and hand back BOTH the PNG and the lag, so the
+// caller can save the very bytes that get measured. This used to capture inside
+// `frameStats`, so a `snap` and the `frame` beside it took two different pictures of
+// what was meant to be one instant, and only one of them reached the disk.
+async function capture() {
+  if (!(await browser())) return null;
   // ⚠ MEASURED BEFORE THE SHOT, so it describes the frame that is about to be taken
   // rather than the state afterwards — and WAITED FOR, so the frame is of the state
   // the script just set up rather than whatever the page had last drawn.
   const lag = await settle();
-  // ⚠ THROUGH THE SCREENSHOT, NOT `readPixels`. A WebGL context without
-  // `preserveDrawingBuffer` clears its drawing buffer at composite, so a
-  // `readPixels` from outside the render loop returns a black frame however good the
-  // picture is — measured, 49500 samples and every one black while the PNG beside it
-  // showed a house. `Page.captureScreenshot` is what the snapshots already use and
-  // what is known to work here, so the pixels come back the same way and are decoded
-  // by the page itself: no node dependency, and one small payload back.
+  // ⚠ CLIPPED TO THE CANVAS, and that is not framing — it is the difference between a
+  // picture and a blank page. An unclipped `Page.captureScreenshot` under
+  // `--use-gl=swiftshader` does not composite the WebGL layer: it returns the DOM (the
+  // HUD) over white, twice in one session, while `html_render_check.mjs` rendered the
+  // same scene at 478 distinct colours by capturing WITH a clip.
   const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
     (() => { const el = document.querySelector('${CANVAS}');
              if (!el) return null;
@@ -566,6 +568,20 @@ async function frameStats() {
   const shot = await call('Page.captureScreenshot',
                           rect ? { format: 'png', clip: { ...rect, scale: 1 } }
                                : { format: 'png' });
+  return { shot, lag };
+}
+
+// The histogram of ONE captured frame. ⚠ It does not photograph — `capture` did.
+//
+// ⚠ THROUGH THE SCREENSHOT, NOT `readPixels`. A WebGL context without
+// `preserveDrawingBuffer` clears its drawing buffer at composite, so a `readPixels`
+// from outside the render loop returns a black frame however good the picture is —
+// measured, 49500 samples and every one black while the PNG beside it showed a house.
+// So the pixels come back the same way the snapshot's do and are decoded by the page
+// itself: no node dependency, and one small payload back.
+async function frameStats(cap) {
+  if (!cap) return { ok: false, why: 'no browser' };
+  const { shot, lag } = cap;
   const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
     expression: `
     (async () => {
@@ -708,6 +724,26 @@ function judge(f, rest) {
   return { verdict, bad };
 }
 
+// ── ⚠ A PHOTOGRAPH IS TAKEN WHERE THE SCRIPT ASKS FOR ONE, AND NOWHERE ELSE ──
+//
+// `frame` used to take its OWN screenshot. So a script with a `snap` and a `frame`
+// beside it photographed the scene TWICE, at two instants, and **the picture on disk
+// was never the picture that was judged** — you could look at a PNG that passed while
+// a different, unsaved frame is what the verdict came from. `indoors.keys` did that
+// twenty times a run.
+//
+// Now `snap` is the only camera. It captures once, saves the PNG, and keeps the
+// histogram; `frame` judges what the last `snap` took. That makes the moment a
+// photograph happens something the script says — after an exact `step`, at a named
+// tick — rather than something the harness decides, and it makes every judged frame
+// an artefact you can open.
+//
+// ⚠ AND IT IS INVALIDATED BY ANYTHING THAT MOVES THE WORLD. A `frame` after a `step`
+// with no `snap` between them would otherwise judge the previous station's picture and
+// pass, which is the worst failure available here: a green row about the wrong scene.
+// So every command that sends anything clears it, and `frame` says so loudly.
+let lastShot = null;
+
 async function snap(name) {
   snaps += 1;
   const tag = name ?? `s${snaps}`;
@@ -715,30 +751,13 @@ async function snap(name) {
   ws.send('31:');
   await ack('snapshot', 10000);
   if (!shots) { console.log(`  … snap ${tag} — state only (pass --shots for a picture)`); return; }
-  if (!(await browser())) return;
-  // ⚠ THE SAME WAIT THE MEASUREMENT DOES, so the PNG and the numbers are of one
-  // instant. A picture taken a frame early is the worst kind of evidence here: it
-  // looks like a rendering fault and it is a race, and it would disagree with a
-  // `frame` row two lines below it that had waited.
-  await settle();
-  // ⚠ CLIPPED TO THE CANVAS, and that is not framing — it is the difference
-  // between a picture and a blank page. An unclipped `Page.captureScreenshot`
-  // under `--use-gl=swiftshader` does not composite the WebGL layer: it returns
-  // the DOM (the HUD) over white, twice in this session, while
-  // `html_render_check.mjs` rendered the same scene at 478 distinct colours by
-  // capturing WITH a clip. Ask the canvas where it is and photograph that.
-  const rect = (await call('Runtime.evaluate', { returnByValue: true, expression: `
-    (() => { const el = document.querySelector('${CANVAS}');
-             if (!el) return null;
-             const r = el.getBoundingClientRect();
-             if (r.width < 1 || r.height < 1) return null;
-             return { x: r.x, y: r.y, width: r.width, height: r.height }; })()` }))
-    ?.result?.value;
-  const shot = await call('Page.captureScreenshot',
-                          rect ? { format: 'png', clip: { ...rect, scale: 1 } }
-                               : { format: 'png' });
+  const cap = await capture();
+  if (!cap) return;
   fs.mkdirSync('shots', { recursive: true });
-  fs.writeFileSync(`shots/${tag}.png`, Buffer.from(shot.data, 'base64'));
+  fs.writeFileSync(`shots/${tag}.png`, Buffer.from(cap.shot.data, 'base64'));
+  // ⚠ THE HISTOGRAM OF *THIS* PNG. The picture on disk and the numbers a `frame` row
+  // judges are now one capture, so a passing row can be looked at.
+  lastShot = { tag, stats: await frameStats(cap) };
   console.log(`  … snap ${tag} → shots/${tag}.png`);
 }
 
@@ -801,6 +820,14 @@ for (const raw of lines) {
   if (line === '' || line.startsWith('#')) continue;
   const [cmd, ...rest] = line.split(/\s+/);
   console.log(`> ${line}`);
+  // ⚠ ANYTHING THAT MOVES THE WORLD DISCARDS THE PICTURE. `frame` judges the last
+  // `snap`, so a stale one would be a green row about the previous station's scene —
+  // and every reading of it would be wrong in a way no threshold could catch. The
+  // list is *what sends*: `cam`, `mesh`, `feet`, `wait`, `echo` and `frame` itself
+  // only read, so they leave it standing.
+  if (['at', 'key', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save'].includes(cmd)) {
+    lastShot = null;
+  }
   if (cmd === 'at') {
     const [x, z, yaw = 0] = rest.map(Number);
     ws.send(`7:${x},${z},${(yaw * Math.PI) / 180}`);
@@ -867,7 +894,17 @@ for (const raw of lines) {
     // `frame` reports; `frame <minSubject> <maxLargest>` also JUDGES, which is what
     // turns the instrument into a gate. Both print the whole histogram, because a
     // pass/fail with no numbers behind it is the thing this replaced.
-    let fs2 = await frameStats();
+    // ⚠ IT JUDGES THE PICTURE THE SCRIPT ASKED FOR, and takes none of its own. A
+    // `frame` with no `snap` since the last thing that moved the world is a row about
+    // an unknown scene, so it FAILS rather than photographing one — silently judging
+    // the previous station's frame is the one outcome worse than no row at all.
+    if (!lastShot) {
+      console.log('  !! no picture to judge — put a `snap <name>` on the tick this row '
+                + 'is about. A photograph is taken where the script asks for one.');
+      if (rest[0] !== undefined) { frameFails += 1; }
+      continue;
+    }
+    let fs2 = lastShot.stats;
     if (fs2.ok === false) {
       console.log(`  !! ${fs2.why}`);
       if (rest[0] !== undefined) { frameFails += 1; }
@@ -898,13 +935,21 @@ for (const raw of lines) {
     // one. A genuine defect fails both; a sampling artefact does not. And a retry
     // that fires SAYS SO on the row, so "it passed on the second look" is never
     // silent — that would be a gate quietly lowering its own bar.
+    //
+    // ⚠ THE RETRY IS THE SAME REQUESTED PHOTOGRAPH TAKEN AGAIN, not a new one the
+    // script did not ask for — and the second PNG REPLACES the first on disk, because
+    // the evidence must be the frame that produced the verdict.
     if (bad > 0) {
-      const again = await frameStats();
+      const cap2 = await capture();
+      const again = await frameStats(cap2);
       if (again.ok !== false) {
         const re = judge(again, rest);
         console.log(`  ⟳ re-shot after ${bad} failed check(s): now ${re.bad}`
                   + ` — ${re.bad === 0 ? 'the first frame was a sampling artefact'
                                        : 'the failure is real'}`);
+        fs.writeFileSync(`shots/${lastShot.tag}.png`,
+                         Buffer.from(cap2.shot.data, 'base64'));
+        lastShot = { tag: lastShot.tag, stats: again };
         fs2 = again; verdict = re.verdict; bad = re.bad;
         if (wantSub !== null && bad === 0) verdict = ' PASS';
       }

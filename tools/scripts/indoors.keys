@@ -140,6 +140,9 @@ frame 0 0.85 figure 0 0.002 lum 0.05 0.22 sd 0.125 1.0 sd:masonry 0.03 1.0 black
 echo --- and back out: the degradation is not a one-way door
 at 0 0 90
 step 120
+# ⚠ THE PICTURE IS ASKED FOR HERE, at this tick. `frame` judges the last `snap`
+# and takes none of its own, so a row without one is a row about an unknown scene.
+snap s10-auto-back
 frame 0.005 0.60 figure 0.02 1.0 lum 0.24 1.0 sd 0 0.115 sky 0 0.001
 
 # ── CUTAWAY — seeing a plan while you build it ───────────────────────────────
@@ -170,6 +173,7 @@ echo --- and back to AUTO: the roof returns, which no other row would notice
 send 40:0
 at 0 0 90
 step 150
+snap s10-cutaway-back
 frame 0.005 0.60 soffit 0.10 1.0 grass 0 0.001
 
 # ── EYES — being in the room, and the row the whole design ordered itself around ──
@@ -183,6 +187,7 @@ send 40:4
 at 0 -10 90
 send 3:0,-20000
 step 120
+snap s10-eyes-outdoors-up
 # ⚠ THE CONTROL IS THE POINT. "No sky" is only a result if the instrument can find
 # sky when there is some — otherwise a camera drawing nothing scores the same.
 frame 0 1.0 sky 0.99 1.0
@@ -203,6 +208,7 @@ echo --- back to AUTO with the pitch still where EYES left it
 send 3:0,-20000
 send 40:0
 step 150
+snap s10-back-to-auto
 # ⚠ THE ROW THAT CATCHES A FENCE APPLIED ONLY AT THE INPUT. EYES allows ±1.5 and
 # FOLLOW allows −0.20; leaving one for the other used to carry the out-of-fence value
 # across, because the clamp lived in the LOOK handler and a mode change is not a look.
