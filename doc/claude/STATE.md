@@ -307,6 +307,13 @@ a gate about *a part carrying its own name* is the joke telling itself.
 
 ### ⚠ THE NEXT ARC IS `A8` — §P9, and it overturns §P5's second column
 
+⚠ **THE DESIGN IS [PARTS.md §P9.0](PARTS.md) — READ THAT, NOT THE TWELVE SUBSECTIONS.** §P9.1–.12
+are the record of how it was arrived at, in the order it was learned, including **four places it
+was got wrong and corrected by the user**. They are kept because each correction was made against a
+real argument and the instinct behind each will recur; they are not a design anyone can act on.
+§P9.0 is: the part-tree model, **three limb kinds** (solid / yielding / visual-only), the joint
+kinds `moros_sim` already enumerates, seven invariants, and who owns what.
+
 **Decided with the user 2026-08-06.** ⚠ **The rule is *nothing NEEDS a custom mesh*, not *nothing
 may be one*** (§P9.3, corrected the same day). A `.glb` stays a first-class body — `21:` IMPORT,
 kit-bashing and finished art are all legitimate. What the design requires is that a part be

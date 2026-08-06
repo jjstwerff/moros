@@ -1256,6 +1256,24 @@ because a wide door is where cells have something to say. The full argument is
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
 
+⚠ **WHAT `A8` DOES NOT COVER, AND WHAT WANTS ITS OWN PLAN.** `A8` is the DOOR-shaped slice of
+§P9 — one joint kind (`Mount`), one limb kind (solid), and a leaf. The conversation that produced
+§P9 reaches much further, and the rest is a plan of its own rather than more steps here:
+
+| | what it needs |
+|---|---|
+| **three limb kinds** | `solid` / `yielding` / `visual only` on a part — `moros_sim`'s `bd_girth` 0 already spells the third (§P9.12) |
+| **the other joint kinds** | `Spring` and `Tether` reaching the part format, so a branch yields and a vine hangs |
+| **hitboxes per limb** | derived from the blockout and posed by the joint — the half an artist cannot hand back (§P9.10) |
+| **hittability as a decision** | which limbs can be struck, made consistent across a cast (§P9.11) |
+| **a material per part** | `prop_surface()` reuses `frame` for every mesh body; a library that is all one colour is not shippable (§P9.8) |
+| **the export** | final world units, pivot marked, and the check that a returned skin still contains its hitbox (§P9.5, §P9.11) |
+| **instancing budget** | one boss, thousands of trees — the first place §P9 meets a number rather than a rule (§P9.12) |
+
+⚠ **AND THE FIRST TWO ARE THE ONES THAT CHANGE THE FORMAT**, so they set the order: a limb kind
+and a joint kind are fields in `HING`/`BIND`, and everything else is derived from them. `A8`
+deliberately does not touch either, which is what keeps it a slice rather than a down payment.
+
 ⚠ **`A8.7` EXISTS BECAUSE THE CLASS CANNOT CARRY A SIZE.** `A4.2` made it NOMINAL on purpose —
 `2x3`, `round-3` and `plinth-2` share no dimension a number could compare — so the class says
 *which hole* and the exported geometry says *how big*. Both are needed, and the export is the only

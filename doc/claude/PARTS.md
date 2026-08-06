@@ -482,6 +482,76 @@ tests and gates — both above.
 
 ---
 
+## P9.0 — THE DESIGN, IN ONE PLACE
+
+⚠ **READ THIS SECTION; §P9.1–§P9.12 BELOW ARE THE RECORD OF HOW IT WAS ARRIVED AT**, in the order
+it was learned, including **four places where it was got wrong and corrected**. Those are kept —
+each correction was made by the user against a real argument, and the instinct that produced each
+mistake will recur — but they are not a design you can act on. This is.
+
+### The model
+
+**Everything with moving parts is one object: a PART-TREE.** A door, a gate, a monster, a tree and
+a cart are the same shape — a frame with limbs on joints — and differ only in how many limbs and
+which kinds.
+
+```
+    part                     a world of cells (§P1), authored with the house gestures
+      ├── SOCK               joints it OFFERS — name, cell, aim, contract class
+      ├── FITS               the one class it goes INTO
+      ├── HING               its own pivot: point + axis + limits in turns
+      ├── INST               parts it holds, by handle — cells DERIVED, never stored (§P4)
+      └── BIND               instance + socket + part, with a swing
+```
+
+**A limb is one of three kinds**, and this is the axis everything else hangs off:
+
+| kind | example | proxy | interaction |
+|---|---|---|---|
+| **solid** | trunk, boss's arm, door leaf | real | blocks, or can be struck |
+| **yielding** | branch, foliage, tall grass, vine | real | gives way **at a cost**, returns |
+| **visual only** | cape, hair, fire, electricity | none (`bd_girth` 0) | none |
+
+**A joint is one of the kinds `moros_sim::assembly` already enumerates** — `Mount` for a door,
+`Spring` for a branch, `Tether` for a vine, `Hitch`/`Shaft` for vehicles. None of that needs
+inventing.
+
+### The invariants
+
+1. **Cells are the authoring form; a mesh is the drawn one.** Which a part gets is decided by
+   **how it is attached**, not by what it is made of (§P9). A bound limb is meshed, so the
+   lattice's six-rotation limit (`A4.4`) never binds it.
+2. **A part must be authorable end to end inside the editor.** A `.glb` is an upgrade, never a
+   prerequisite (§P9.3).
+3. **Scale is derived, never authored** — `child.w_unit / parent.w_unit` (§P9.1). A unit mismatch
+   on the STAMPED path is a loud refusal.
+4. **The durable artefact is the size**, not the mesh (§P9.7). Blobs are fine; sizes are not
+   regenerable.
+5. **The export is the dimensional spec**, in final world units with the pivot marked, because the
+   contract class is deliberately nominal and cannot carry a size (§P9.5).
+6. **The hitbox is a SUBSET of the skin** (§P9.11). Art may reach past it freely; what may never
+   move is the pivot, the scale, and which limb is hittable.
+7. **One pipeline.** Ship-as-is and hand-to-an-artist differ in one field — where `MESH` points —
+   decided per part, late, reversibly (§P9.9).
+
+### What this buys, and who owns it
+
+| the editor owns | the artist owns |
+|---|---|
+| the skeleton, its joints and their ranges | the skin |
+| every size and proportion | surface, detail, material |
+| **the hitboxes** — per limb, posed, derived from the blockout (§P9.10) | |
+| which limbs are hittable at all — a design decision, made consistent across a cast (§P9.11) | |
+
+### Status
+
+**Built:** the part format, sockets, classes, bindings, the swing in the record and on screen, the
+cycle check across both edge kinds. **Designed, not built:** everything on this page — plan 17
+`A8` is the door-shaped slice of it, and the rest wants its own plan (see the plan's *what A8 does
+not cover*).
+
+---
+
 ## P9 — A LIMB IS A BUILDING, AND NOTHING IS A CUSTOM MESH
 
 **Decided 2026-08-06, and it overturns the second column of §P5's table.** A part has ONE body:
