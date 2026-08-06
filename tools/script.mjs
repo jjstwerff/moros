@@ -291,13 +291,8 @@ async function browser() {
   // COMPOSITED (the WebGL layer missing, so the shot is the DOM over white). So it
   // asks the page for the first and measures whiteness for the second.
   const ready = async () => {
-    if (!wasm) {
-      const st = await call('Runtime.evaluate', { returnByValue: true, expression:
-        `(() => (typeof parts === 'undefined') ? null
-                : { n: parts.size, cam: !!view })()` });
-      const v = st?.result?.value;
-      if (!v || v.n < 1 || !v.cam) return false;
-    }
+    const lag = await browserLag();
+    if (lag.page < 1 || !lag.cam) return false;
     const shot = await call('Page.captureScreenshot', { format: 'png' });
     if (!shot?.data) return false;
     const r = await call('Runtime.evaluate', { awaitPromise: true, returnByValue: true,
@@ -486,10 +481,29 @@ let frameFails = 0;
 // `send 3:0,-20000` then a shot: if the page has not processed those two yet, the
 // picture is of the old camera, with every mesh present and correct. That frame reads
 // as a renderer fault and is a race.
+// ⚠ AND IT ASKS THE PAGE THAT IS ACTUALLY SERVED, WHICH IT DID NOT FOR FOUR DAYS.
+//
+// This branched on `--client`: without it, the probe read `parts.size` and `view` —
+// globals of `html/editor.html`. **That file was deleted on 2026-08-02**, when `/`
+// became the wasm client (`editor_server.loft:5357`), and `/` and `/client` have
+// served the same page ever since. So the default probe asked a page that does not
+// exist, `settle()` never fired, and `snap` and `frame` each burned their full
+// 8-second limit — measured at **175 s of `camera_indoors`' 246 s, 71 %**, with the
+// diagnostic `parts -1/440, camera STALE` printed twenty times a run and read as lag.
+//
+// ⚠ THE COMMENT THAT SAID *"a sleep here would be the same mistake as the
+// `sleep(4000)` this replaced"* WAS DESCRIBING ITSELF. An accidental fixed wait is
+// what the gates have been settling on, and it passed because 8 s is long enough.
+//
+// ⚠ ONLY THE PROBE MOVED. `WIN` and `CANVAS` still follow `--client`, deliberately:
+// they decide the window size and whether the shot is clipped to the canvas, so
+// changing them shifts every histogram in every `.keys` file. This file's own §
+// measures that — *"FOLLOW read `grass 0.5336` on one and `sky 0.7734` on the
+// other"*. A speed fix must leave the numbers alone, and this one does.
 const browserLag = async () => {
-  // ⚠ THE WASM PAGE REPORTS ITSELF IN ITS OWN HUD, which is weaker than the
-  // JavaScript's globals but is NOT nothing — and "nothing" is what this used to
-  // assume. `<pre id="out">` carries `meshes M ... cameras C ... parts R`, so the
+  // ⚠ THE PAGE REPORTS ITSELF IN ITS OWN HUD, which is weaker than a JavaScript
+  // global but is NOT nothing — and "nothing" is what this used to assume.
+  // `<pre id="out">` carries `meshes M ... cameras C ... parts R`, so the
   // same two questions can be asked: has it caught up with the wire, and does it
   // have a camera at all.
   //
@@ -498,28 +512,13 @@ const browserLag = async () => {
   // place — so a shot taken early is the clear colour and nothing else: measured,
   // FOLLOW came back `sky 0.995, lum 0.5378`, which is the sky station's own number
   // at a station pointed at the ground.
-  if (wasm) {
-    const st = await call('Runtime.evaluate', { returnByValue: true, expression:
-      `(() => { const el = document.querySelector('#out');
-                return el ? el.textContent : ''; })()` });
-    const txt = st?.result?.value ?? '';
-    const m = [...txt.matchAll(/meshes (\d+),.*?cameras (\d+),.*?parts (\d+)/g)].pop();
-    if (!m) return { page: 0, wire: meshLen.size, cam: false };
-    return { page: +m[1], wire: meshLen.size, cam: +m[2] > 0 && +m[3] > 0 };
-  }
   const st = await call('Runtime.evaluate', { returnByValue: true, expression:
-    `(() => (typeof parts === 'undefined') ? null
-            : { n: parts.size, v: view ? Array.from(view) : null })()` });
-  const v = st?.result?.value;
-  const mine = view ?? null;
-  let same = false;
-  if (v?.v && mine && v.v.length === mine.length) {
-    same = true;
-    for (let i = 0; i < mine.length; i += 1) {
-      if (Math.abs(v.v[i] - mine[i]) > 1e-6) { same = false; break; }
-    }
-  }
-  return { page: v?.n ?? -1, wire: meshLen.size, cam: same };
+    `(() => { const el = document.querySelector('#out');
+              return el ? el.textContent : ''; })()` });
+  const txt = st?.result?.value ?? '';
+  const m = [...txt.matchAll(/meshes (\d+),.*?cameras (\d+),.*?parts (\d+)/g)].pop();
+  if (!m) return { page: -1, wire: meshLen.size, cam: false };
+  return { page: +m[1], wire: meshLen.size, cam: +m[2] > 0 && +m[3] > 0 };
 };
 
 // Wait until the page is showing what the runner already knows — every mesh, and
@@ -778,7 +777,24 @@ if (lines.some((l) => l.trim().startsWith('step '))) {
 }
 
 await sleep(1200);            // the opening burst
-await nextT();
+// ⚠ THIS WAS `await nextT()`, AND IT COULD NEVER SUCCEED — 15.2 s, every run.
+//
+// `nextT` waits for a `T:0;` body frame, which `editor_server.loft` broadcasts only
+// `if moved`. At this point in a script nothing has been asked to move, so the wait
+// always ran to its 15-second limit and returned `false` — into a discarded return
+// value, so it never said so. Measured: 15,185 ms on an EMPTY script, 6 % of
+// `camera_indoors`. It is right inside `hold`, where the body genuinely is moving,
+// and that is where its other four call sites are.
+//
+// What this line actually wants is *the world is up and the camera exists*, and both
+// of those DO arrive unbidden: the opening mesh burst and the first `C:`. So it waits
+// for those, and — this tree's own rule — SAYS SO on timeout rather than carrying on.
+const upBy = Date.now() + 15000;
+while (Date.now() < upBy && (view === null || meshLen.size === 0)) await sleep(25);
+if (view === null || meshLen.size === 0) {
+  console.log(`  !! the world never came up — ${meshLen.size} meshes, `
+            + `camera ${view === null ? 'MISSING' : 'present'}`);
+}
 
 for (const raw of lines) {
   const line = raw.trim();
