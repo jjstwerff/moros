@@ -479,3 +479,86 @@ tests and gates — both above.
 - [EDITOR_SUBSTRATE § The document format](EDITOR_SUBSTRATE.md#the-document-format-is-the-sharpest-clause) — where the sections-beat-a-flags-word argument was made. ⚠ Its `HXF1` anchor is superseded; the argument is not
 - [HEX_STACK](HEX_STACK.md) — the three invariants this design is an application of
 - [WIRE_PROTOCOL](WIRE_PROTOCOL.md) — `14:` as it stands today
+
+---
+
+## P9 — A LIMB IS A BUILDING, AND NOTHING IS A CUSTOM MESH
+
+**Decided 2026-08-06, and it overturns the second column of §P5's table.** A part has ONE body:
+cells. A `.glb` is a *drawn* form, never an authored one — so a door leaf, a shutter, a gate and
+a windmill sail are all authored with the gestures that build a house, because they **are**
+houses at another size.
+
+### What forced it, and what it dissolves
+
+`A5.2` could not make a door look like a door, and the reason was never the swing. It was that a
+leaf small enough to be a door is **narrower than one hex** (a hex is √3 ≈ 1.73 world units), so
+cells had nothing to say about it and a `.glb` was the only body left. That is the wrong way
+round: **the bigger the door, the better cells work.** A gate two or three hexes wide has real
+width, and planks, rails, ironwork and a wicket are all expressible in what cells already carry —
+column heights and wall-edge materials. So the design aims at the GATE, and the one-hex door is
+the degenerate case rather than the shape everything is bent around.
+
+### The lattice objection, and why it does not apply
+
+`A4.4` measured that only the six multiples of 60° move a body of cells without tearing it, so a
+cell limb has **two** positions in a door's swing — `0` and `1/6` — and can never be ajar. True,
+and irrelevant here:
+
+> ⚠ **That constraint binds only where cells must be WRITTEN BACK to a lattice. A limb never
+> writes into the world it hangs in — it hangs in space, at an arbitrary angle.**
+
+So a limb is **meshed, not stamped**: its own chunks are meshed the way `part_thumb_wire` already
+meshes a part to draw a catalogue thumbnail, and that mesh is posed on the joint continuously.
+No cell is ever written at a non-lattice angle, so `A4.4`'s refusal never fires. **Cells are the
+authoring representation; a mesh is the drawn one**, and which of the two a part gets is decided
+by HOW IT IS ATTACHED, not by what it is made of.
+
+### The joint is the one this tree already has, twice
+
+`moros_sim::assembly::Link` is `hex_part::Hinge` with a kind on it — offset, revolute axis, and
+limits **in turns** — and `A5.1` says outright that the hinge was modelled on *"a `Body` on a
+`Mount` link"*. The walker is already drawn as five independently posed meshes, beside a comment
+naming `hex_entity` as *"a part-tree whose every part carries its own transform"*. A door leaf and
+an arm are the same object.
+
+⚠ **They differ in one place and the difference is deliberate**: `Link`'s offset is in the
+PARENT's frame, `Hinge`'s point is in the CHILD's. The child is right for a library — a leaf
+carries its own hinge whatever frame it hangs in, which is what makes a left leaf and a right leaf
+two ordinary parts with mirrored axes rather than one part with a handedness flag.
+
+⚠ **And the document does not grow a simulation record.** A `Hinge` in the file is a document
+fact; an `Assembly` is a runtime one. Derive the second from an expansion — never store it — or a
+part file grows a field it cannot validate.
+
+### The two doorways
+
+| | one hex | three hexes |
+|---|---|---|
+| frame | `door/frame` — an opening, one socket | `door/gateway` — an opening, TWO sockets |
+| class | `door/1x2` | `door/3x3` |
+| sockets | `leaf` | `leaf-l`, `leaf-r` (§P3's `column-1..4` shape; `A4.3` forbids two sockets sharing a name) |
+| leaves | `door/leaf` | `door/gate-l`, `door/gate-r`, mirrored axes |
+
+⚠ **THE SOCKET SITS AT THE HINGE CELL, NOT AT THE CENTRE**, and for a three-hex opening that is a
+decision rather than an accident: the socket's position and the limb's pivot are then ONE fact
+instead of two that can disagree. A wide opening still has one socket per LEAF — a socket is the
+contract at a joint, not a description of the hole.
+
+⚠ **THE CLASS REFUSES THE MIX BY SPELLING**, which is what `A4.2`'s *nominal* decision was for:
+`door/1x2` and `door/3x3` are different things, not different amounts, so a narrow leaf offered to
+a gate is refused with the frame's actual class handed back. Nothing has to grow to support a
+bigger door.
+
+### What it costs, stated
+
+A meshed limb is **not in the store**: nothing walks on it, `sight_clear` cannot see it, and
+collision does not know it is there. For a swinging door that is arguably correct — a moving
+obstacle is not something a voxel store can express — but it is a consequence, not a discovery.
+And `bake` already refuses a nest holding a mesh (`BK_MESH`), so a meshed limb falls under the
+same rule and `expand == bake` (`A3.3`) stays coherent.
+
+⚠ **`MESH` AND `.glb` AUTHORING ARE ON THE WAY OUT UNDER THIS RULE.** `prop/statue` and
+`prop/seated` are the remaining custom meshes; they become cell parts, and `MESH` survives only
+as the *import* path (`21:`) it was before parts existed. Until they are converted the two forms
+coexist, and this section is the statement of which one is the design.

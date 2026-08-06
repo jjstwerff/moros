@@ -305,6 +305,33 @@ and `door/` sorts before `house/`. The name moved to `aaa_annexe/wing`, and the 
 spelled a leaf name out now derive it from the constant, because a second spelling of one fact in
 a gate about *a part carrying its own name* is the joke telling itself.
 
+### ⚠ THE NEXT ARC IS `A8` — §P9, and it overturns §P5's second column
+
+**Decided with the user 2026-08-06.** A part has ONE body: **cells**. A `.glb` is a drawn form,
+never an authored one — so a door leaf, a shutter and a gate are authored with the gestures that
+build a house, because they ARE houses at another size. [PARTS.md §P9](PARTS.md) is the argument;
+[plan 17 `A8`](../../plans/17-parts/README.md) is the five steps.
+
+⚠ **THE LATTICE OBJECTION DOES NOT APPLY, AND THAT IS THE WHOLE DESIGN.** `A4.4` measured that a
+body of cells has only six exact rotations, so a cell limb has two positions in a door's swing —
+true, and it binds **only where cells must be written back to a lattice.** A limb never writes
+into the world it hangs in; it hangs in space at an arbitrary angle. So a limb is **meshed, not
+stamped** — its own chunks meshed the way `part_thumb_wire` already meshes a part for a thumbnail
+— and posed on the joint continuously. Cells are the AUTHORING form, a mesh is the DRAWN one, and
+which a part gets is decided by **how it is attached**, not by what it is made of.
+
+⚠ **AND THE DESIGN AIMS AT THE GATE.** A door narrow enough to be a door is **narrower than one
+hex**, which is why cells had nothing to say about it and why today's leaf is a `.glb`. A two- or
+three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
+carry. The one-hex door is the degenerate case, not the shape everything is bent around.
+
+⚠ **THE JOINT ALREADY EXISTS TWICE.** `moros_sim::assembly::Link` is `hex_part::Hinge` with a kind
+on it — offset, revolute axis, limits in TURNS — and `A5.1` says the hinge was modelled on it. The
+walker is already five independently posed meshes beside a comment naming `hex_entity` as *"a
+part-tree whose every part carries its own transform"*. A door leaf and an arm are one object. ⚠
+Keep the document record where it is and DERIVE an assembly; a part file must not grow a
+simulation record it cannot validate.
+
 ⚠ **`A5.2`'s gate is a COLD-RECOGNITION test and needs the user's eyes**, not a gate: *does a
 person call it a door.* It cannot be reached until a leaf can be drawn ajar. Render it and hand
 over the picture; do not claim it from a green suite.

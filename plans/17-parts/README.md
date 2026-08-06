@@ -934,6 +934,7 @@ leave the library holding the variant. Measured: `shrine.hxw`'s md5 is unchanged
 | ✅ `A7.1` | The server lists `data/parts/` and sends it. | **DONE**, and the step was not where it looked. The list already arrived (#18 `B5.1`) — what was missing is that **nothing checked it was the whole library**, and that the list could not CHANGE. `tools/gates/world/library.mjs`, 13 checks; `library_moved` in the server; every gate now gets its own copy of `data/parts/`. | S |
 | `A7.2` | The picker in the editor — ⚠ **this is #18 `B5`**, not a second widget. | one catalogue, both families | S |
 | `A7.3` | A part-editing mode: open a part as a world, edit, save back. | **a house authored end-to-end without touching loft** — the acceptance test for the whole plan | M |
+| `A8` | **§P9 — a limb is a building, and nothing is a custom mesh.** Broken down below. | a one-hex door and a three-hex gate with two leaves, all cells, all swinging | L |
 | `A7.4` | Keyed reads, if two hundred parts make whole-file loading hurt (§P2). | measured in `w_tau` and milliseconds **before** it is built — the deferral from `A1` closed with a number, or closed as unnecessary | M |
 
 ### `A7.3` broken down, and the probe that shaped it
@@ -1234,6 +1235,38 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### `A8` broken down — §P9, the limb that is a building
+
+**Decided with the user 2026-08-06.** A part has ONE body: cells. A limb is meshed rather than
+stamped, so the lattice's six-rotation limit never binds it, and the design aims at the GATE
+because a wide door is where cells have something to say. The full argument is
+[PARTS.md §P9](../../doc/claude/PARTS.md).
+
+| | step | proves it | size |
+|---|---|---|---|
+| `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | a cell leaf comes out of an expansion posed, with its hinge and swing, and its cells are in no world | M |
+| `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | a cell-built leaf is DRAWN, ajar, with no `.glb` anywhere | M |
+| `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
+| `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
+| `A8.5` | `prop/statue` and `prop/seated` become cell parts; `MESH` reverts to the import path it was before parts existed. | §P9 holds for the whole library, not just for doors | M |
+
+⚠ **`A8.1` IS WHERE THE LAYERING BITES, AND IT IS WHY THE STEP EXISTS.** `hex_part` is a document
+package and the mesher is `moros_terrain`'s, so `expand` **cannot** mesh a limb — it must hand
+back a record and let the consumer do it. That is the same split `MeshAt` already has (`A6.2`:
+*"the store holds columns; a mesh is a transform and a file name, so the only place it can be
+delivered is back to the caller"*), with the file name replaced by a part handle.
+
+⚠ **AND `MeshAt` LOSES `ma_mesh` IN THE END, WHICH IS THE SIMPLIFICATION §P9 BUYS.** While both
+forms coexist the record carries a part handle *or* a mesh name; when `A8.5` lands there is only
+the handle, and the `.glb` reader goes back to being `21:` IMPORT's.
+
+⚠ **THE SOCKET SITS AT THE HINGE CELL.** For a three-hex opening that is a decision, not an
+accident: the socket's position and the limb's pivot become one fact rather than two that can
+disagree. A wide opening still has one socket per LEAF.
+
+⚠ **A MESHED LIMB IS NOT IN THE STORE** — nothing walks on it, `sight_clear` cannot see it, and
+collision does not know it is there. Stated in §P9 as a consequence rather than left to be found.
 
 ### What `A5.2`'s record half turned up
 
