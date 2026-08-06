@@ -226,7 +226,7 @@ address (or the hostname `make browser` prints) cannot connect.
 ## Scene tools
 
 - [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,
-  decisions taken, what is open. Short on purpose; the eight-session record is
+  decisions taken, what is open. Short on purpose; the thirteen-session record is
   [Journal](doc/claude/JOURNAL.md), which nothing thins
 - [Scripted editor](doc/claude/SCRIPTED_EDITOR.md) — **how the editor is driven and verified**: a script of key presses with ticks, every run recorded, a clock that can be stepped or sped up, and a PNG at every step. ⚠ Its §0 is the finding that reframes the structural work — `hex_draw` and friends already do what the editor hand-rolls
 - [Catalogue](doc/claude/CATALOGUE.md) — **what you are working on, what it is called, and what is available**: the always-visible subject line, names as author-facing handles that are not identities, one list over parts and materials, and why every image is rendered rather than loaded. Plan 18

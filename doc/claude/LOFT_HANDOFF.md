@@ -1,99 +1,80 @@
-> ## ✅ H7, H8, H9 and H10 are FIXED upstream (verified 2026-07-27)
->
-> loft `a1a07dcf` ("Fix three defects moros reported: H7, H9 and H10's diagnostic") and
-> `b4f0cfa7` ("loops: give each `for _` its own counter") — on branch
-> `tuxedo-h7-localization`, so check they have reached the branch you build from.
->
-> All four verified against the installed binary with a four-line probe: nested `for _`
-> counts 6, `acc = f(acc, x)` in a loop keeps 5, an implicit tail `mk().inn` returns its
-> value, and `s[2..5]` slices. Entries below are kept as the record of what was found and
-> how; the ⚠ notes say what each cost us.
->
-> **Two workarounds in this tree are now unnecessary** and are noted where they live rather
-> than ripped out: `hex_world`'s explicit `return` in `sp_world` (H9) and `editor_server`'s
-> struct-wrapped `DirtySet` (H7). The latter STAYS regardless — it mutates in place, which
-> is O(1) per append, where the temp-routing workaround loft's own commit calls out is
-> O(len) and quadratic.
-
-> **Scope: loft the LANGUAGE and its TOOLING — never a library gap.** A compiler bug, a
-> debugger that cannot reach a server, a missing `seek`: those belong here. A library that
-> lacks a capability we need does **not**. We create and update libraries ourselves,
-> because upstream cannot verify one against our use — verification is only possible where
-> the consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
-> battle-tested.
-
-> ## Status at 2026-08-03 (evening — re-measured against the newly installed binary)
->
-> | | |
-> |---|---|
-> | ✅ fixed and verified | `H5`(=`H8`), `H6`–`H15`, and **`H16`–`H19`** — [#667](https://github.com/loft-lang/loft/issues/667), [#668](https://github.com/loft-lang/loft/issues/668), [#669](https://github.com/loft-lang/loft/issues/669), [#670](https://github.com/loft-lang/loft/issues/670) all closed |
-> | ✅ **fixed, and STILL LABELLED OPEN** | [#744](https://github.com/loft-lang/loft/issues/744) `const X = some_fn()` · [#745](https://github.com/loft-lang/loft/issues/745) a struct field into a `&`-parameter · [#749](https://github.com/loft-lang/loft/issues/749) the two text-slice panics. All three re-run against `/usr/local/bin/loft`, which is byte-identical to a release build of loft `5aa59023` |
-> | ⚠ **filed and WRONG** | [#748](https://github.com/loft-lang/loft/issues/748) — `text_from_bytes` and `byte_at` had shipped **two releases** before the report. They were missing from the *generated* stdlib reference, which is the page that was swept. A `grep` over `default/*.loft` finds both. Corrected on the ticket |
-> | unverified | `H4` — the silent-null class; was plausibly `H12`'s family, so likely closed with it |
->
-> ⚠ **A GENERATED REFERENCE IS AN INSTRUMENT, AND IT WAS TRUSTED TO REPORT AN ABSENCE.**
-> That is #748 in one line, and it is this file's own rule broken on a language question
-> rather than on a picture. **Grep `default/*.loft` before filing "there is no way to …".**
-> Two of the four entries above also say something about the labels: the code was fixed
-> hours before the tracker moved, exactly as #737/#738 did. Measure, do not read.
->
-> ⚠ **THE "WRITE IT UP HERE, FILE IT LATER" WORKFLOW IS RETIRED, and this file is now a
-> record rather than a queue.** A closed ticket costs nothing, so a finding is filed the
-> moment it is found — holding one back to write it up well, or to check for duplicates, is
-> how `H16`–`H19` sat here for a week. The long-form entries below are still worth keeping:
-> each carries a reproducer and the controls already run, which an issue body cannot hold
-> comfortably and which is exactly what a maintainer asks for second.
->
-> ⚠ **#737 and #738 are the same shape as `H16`–`H19` and it has now cost two sessions:
-> `--html` is a SECOND IMPLEMENTATION, not a build flag.** Both are stubs that return a
-> plausible value rather than failing — `text_height` returns `ceil(size * 1.2)` for a font
-> that does not exist — so the absence reads as a layout bug in the consumer. And `loft
-> targets` states the opposite of the truth for that target, which is worse than silence
-> because it is the thing people check *instead of* reading the shell.
->
-> Everything filed before 2026-07-29 is fixed, every row re-run against the installed
-> binary rather than taken from a commit message. `H11` and `H12` closed by loft
-> `58b66993`; the workarounds they forced in `hex_world` are removed and the suite is green
-> without them.
->
-> **`H16`–`H19` are the wasm client's four**, and three of them are one shape: **a sentinel
-> or a contract that differs between native and browser, with nothing at the boundary to say
-> so.** `--html` is not a build flag, it is a second implementation. Every one of the four
-> presented as the same symptom — a canvas holding one flat colour — which is why the
-> session needed a second instrument (`tools/page_console.mjs`) before it could tell them
-> apart at all.
-
 # LOFT_HANDOFF.md — findings for the loft side, ready to file
 
-> Moros is a **consumer** of loft. This document holds defects Moros surfaced that belong
+> Moros is a **consumer** of loft. This file holds defects Moros surfaced that belong
 > upstream, written so they can be filed cold — by a human or an agent — without re-deriving
 > anything. **Nothing here is a Moros bug**; each entry says what was ruled out.
 >
-> Move an entry to "Filed" (with its issue number) once it is opened; delete it once the fix
-> ships *and* is re-verified here.
+> ⚠ **Scope: loft the LANGUAGE and its TOOLING — never a library gap.** A compiler bug, a
+> debugger that cannot reach a server, a missing `seek`: those belong here. A library that
+> lacks a capability we need does **not**. We create and update libraries ourselves, because
+> upstream cannot verify one against our use — verification is only possible where the
+> consumer lives. Build it under `lib/<name>/`, gate it, and promote it once it is
+> battle-tested.
+>
+> ⚠ **THIS IS A RECORD, NOT A QUEUE, AND A FIXED ENTRY STAYS.** The old workflow — *write it
+> up here, file it later, delete it when the fix ships* — is retired. A closed ticket costs
+> nothing, so a finding is filed the moment it is found; holding one back to write it up
+> well, or to hunt for duplicates, is how `H16`–`H19` sat here for a week. And a fixed entry
+> is not clutter: its reproducer and its already-run controls are what a maintainer asks for
+> second, and they are what re-verifies the fix on the next toolchain.
+>
+> ⚠ **TRACKER STATUS FOR `loft#nnn` ISSUES LIVES IN [STATE.md](STATE.md), NOT HERE.** The
+> `H`-numbers below are this file's own and never move; the tracker's labels move on someone
+> else's schedule, and were being restated in two documents that then disagreed.
 
-## Context
+## Where every entry stands
 
-**Re-tested 2026-07-22 on a newer `loft 2026.7.2` build (binary dated 15:05): H1, H2 and H3
-are all FIXED.** They are kept below, struck through, until the fix is released and the
-entries can be deleted — the reproducers are the re-verification.
+⚠ **STATUS IS RE-RUN, NEVER READ OFF A COMMIT MESSAGE OR A LABEL.** The tracker has lagged
+the code twice — #737/#738, then #744–#749 — so each ✅ below is a reproducer re-run against
+the installed binary, and the entry itself says which build.
 
-**H4 is open and re-confirmed on the 16:34 build** — the one carrying `@PLN116`'s `x?`
-postfix default-fallback operator and `@PLN105`'s scratch-freeing series. Neither touches it:
-still **3 of 32** accessors, with `native-auto/`, `.loft/` and `~/.loft/build-cache` cleared.
-Our suite is green on that build (435 tests, five packages) and Moros HEAD exports 0/32
-nulls, so the `5e677b7` reproducer remains the only way to see it.
+| | | |
+|---|---|---|
+| **H4** | a null reaches exported glTF while the analysis reports clean | ⚠ **the only one not verified fixed** — plausibly `H12`'s family and closed with it, but never re-measured |
+| H1 · H2 · H3 | `graphics::sphere()` · three consumer-level crashes · a misattributed crash location | ✅ fixed / moot, `2026.7.2` 15:05 |
+| H5 = H8 | nested `for _ in …` — outer body once, and one shared counter | ✅ fixed, `b4f0cfa7` |
+| H6 · H7 · H9 · H10 | a chained struct call · a vector accumulated in a loop · a `loft test` SIGSEGV · the text-slice diagnostic | ✅ fixed, `a1a07dcf`, verified 2026-07-27 |
+| H11 · H12 · H13 | `seek` missing · a dead vector element returned · `loft debug` cannot reach a server | ✅ fixed, `58b66993`, 2026-07-27 |
+| H14 · H15 | a `while true` past ~32 KB of body · a mutated `&boolean` parameter | ✅ fixed |
+| H16–H19 | the wasm client's four | ✅ fixed — [#667](https://github.com/loft-lang/loft/issues/667), [#668](https://github.com/loft-lang/loft/issues/668), [#669](https://github.com/loft-lang/loft/issues/669), [#670](https://github.com/loft-lang/loft/issues/670) closed |
+| #708 · #709 | `File.size` reads 0 for a file the program wrote · a target-unservable builtin refuses the BUILD | filed 2026-07-31, not re-measured here — the section at the foot |
 
-Originally found **2026-07-22** on the earlier 2026.7.2 build, while recovering the
-`moros_*` packages ([moros#2](https://github.com/jjstwerff/moros/issues/2)). The package test
-suites are unaffected — **435 tests green across five packages, zero warnings**. Everything
-below fails only when a program actually *runs*: the same code compiles clean and its unit
-tests pass.
+**Two workarounds these bought are noted where they live rather than ripped out**:
+`hex_world`'s explicit `return` in `sp_world` (H9) and `editor_server`'s struct-wrapped
+`DirtySet` (H7). ⚠ The second **stays regardless** — it mutates in place, O(1) per append,
+where the temp-routing workaround loft's own commit suggests is O(len) and quadratic. A fix
+upstream does not automatically make our workaround the worse code.
 
-That split was the useful signal for H1–H3: `loft test` exercised these libraries thoroughly
-and stayed green, while the moment a `fn main()` built a scene and wrote a file, the store
-layer fell over. **H4 is the same split without the crash** — green suite, clean analysis,
-and a null in the output file — which is why it outlived the fixes.
+### The three lessons that outlived their entries
+
+⚠ **A GENERATED REFERENCE IS AN INSTRUMENT, AND IT WAS TRUSTED TO REPORT AN ABSENCE.** That
+is [#748](https://github.com/loft-lang/loft/issues/748) in one line — `text_from_bytes` and
+`byte_at` had shipped **two releases** before we reported them missing; they simply sat after
+the `--- Environment ---` marker in `default/03_text.loft`, past where the generated page
+stops. **Grep `default/*.loft` before filing *"there is no way to…"***.
+
+⚠ **`--html` IS A SECOND IMPLEMENTATION, NOT A BUILD FLAG**, and not knowing that cost two
+sessions. #737, #738 and three of `H16`–`H19` are one shape: a stub that returns a *plausible*
+value instead of failing — `text_height` answering `ceil(size * 1.2)` for a font that does not
+exist — so the absence reads as a layout bug in the consumer. And `loft targets` stated the
+opposite of the truth for that target, which is worse than silence because it is the thing
+people check *instead of* reading the shell.
+
+⚠ **A GREEN SUITE AND A BROKEN PROGRAM ARE THE SAME BUILD, and that split is the signal.**
+H1–H3 all had `loft test` exercising the libraries thoroughly and staying green, while the
+moment a `fn main()` built a scene and wrote a file the store layer fell over. **H4 is that
+split without the crash** — green suite, clean analysis, and a null in the output file — which
+is exactly why it outlived every fix around it.
+
+### H4's own context, kept because it is the one still open
+
+Found **2026-07-22** while recovering the `moros_*` packages
+([moros#2](https://github.com/jjstwerff/moros/issues/2)), and re-confirmed on the 16:34
+`2026.7.2` build carrying `@PLN116`'s `x?` operator and `@PLN105`'s scratch-freeing series.
+Neither touched it: still **3 of 32** accessors, with `native-auto/`, `.loft/` and
+`~/.loft/build-cache` cleared. ⚠ **Moros HEAD exports 0/32 nulls**, so the `5e677b7`
+reproducer is the only way to see it at all — which is also why nobody has re-measured it
+since.
 
 ---
 

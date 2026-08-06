@@ -8,7 +8,7 @@ read it first after a break.
 | the durable *architecture* | [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) |
 | the *changes* | the tracker — `gh issue list -R jjstwerff/moros --label plan --state all` |
 | the *order of work* | [EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work) |
-| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — twelve sessions, newest first |
+| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — thirteen sessions, newest first |
 
 ⚠ **This file was 2,446 lines**, which made the one document a reader is told to open the
 longest in the tree, with the current state buried in session logs. The record moved to
@@ -22,460 +22,76 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f` — **A7.3 COMPLETE**
+## ⏭ PICK UP HERE — plan 18 COMPLETE · plan 17 through `A7.3f` and `A5.2` · **next is `A8.1`**
 
-`make gate` **44 green** · `make lib-test` **2632, both backends** · `make parts` green
-(`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-**2026-08-06 12:34 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
-every stage and unchanged throughout. `cache` was a startup miss in the suite and passed **alone**
-with `agree 24 bad 0 layers 42` — `bd41374b`, branch `tuxedo-catalogue`,
-`c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
-and the single warm start before the suite was the only preparation. ⚠ **SIX BUILDS LANDED IN ELEVEN HOURS** — `b619b909` 00:26, `9dfd0280` 00:33,
-`bd41374b` 08:57, `cf6ccd53` 10:04, `bd911fa1` 10:40, and the sibling's head moved again at
-10:44 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
-cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** What that build changed for us is
-measured below.
+**Green as of 2026-08-06**, all on one loft install with its hash stamped at both ends
+(`bd911fa1`): `make gate` **44** · `make lib-test` **2632, both backends** · `make parts` green,
+`data/parts/` byte-identical across all six files · `npm test` **53** · layering silent.
 
-⚠ **AND THERE IS A FOURTH FACE OF THE GATE FLAKE, WHICH ONLY APPEARS AFTER A LOFT INSTALL.**
-The first suite run on a new toolchain was **25 pass, 2 fail, 14 `SERVER NEVER LISTENED`**; the
-second, with nothing changed, was **40 of 41**. The cause is in each gate's own log and is not a
-timeout in disguise: `cdylib loft_web rebuilt: cached artifact rejected (stamped loft-ffi
-fp=none != current fp=…)`. Every gate server rebuilds a **Rust** cdylib inside its 60-second wait
-for `listening on port`, four at a time, on a box already at load 13. **Warm it once after any
-loft install** — start one server, let it build, stop it — then run the suite. A first run on a
-fresh toolchain measures the compiler's cache, not the tree. ⚠ **This is the LAST cold-cache trap
-standing**: the `native-auto` half of it went with loft#777.
-
-⚠ **`walk` failed the warm run with `{"frames":0}` and passed ALONE with 38 frames**, which is
-STATE's own third face and is why running the failure alone is not optional: `0` says *nothing
-happened*, not *the wrong thing happened*.
-
-**What the 08:57 build changed for us, measured rather than read.** ✅ **loft#781 is FIXED and
-verified here** — the copy notice landed 29 of its 67 rows on a comment, a blank line or a `const`
-in the WRONG FILE, and it is now **67 rows, 0 misattributed**, each naming the library the copy is
-actually in. ⚠ **Their fix went further than the report**: the same `fallback_file` mistake sat in
-`warn_dead_stores`, which is a **warning** rather than advice — and a warning gates a library's CI
-under `LOFT_DENY_WARNINGS`, so a dependency's dead store could fail a consumer's build at a line
-holding a `const`. ⚠ **AND THE MEASUREMENT NEARLY WENT THE OTHER WAY**: diagnostics now carry a
-CODE, so the prefix is `advice[avoidable-copy]:` and a grep for `^advice: copy of` returns **zero**
-— which reads as *the notice is gone* rather than *my pattern is stale*. This tree's own rule, on
-its own ticket: **match a line you know is there before believing a count of zero.**
-
-⚠ **A SUITE TAKEN ACROSS AN INSTALL SWAP IS NOT A RESULT, AND ONLY A HASH AT BOTH ENDS SAYS SO.**
-A run started on `cf6ccd53` finished on `bd911fa1` — a build landed while the gates were going,
-invalidating the `loft_web` cdylib underneath them — and reported **12 `SERVER NEVER LISTENED`**,
-which reads as twelve broken gates. Three of the twelve logs name the rebuild. **Stamp
-`sha256sum /usr/local/bin/loft` at every stage**; when the toolchain is being rebuilt every few
-minutes, that is the difference between a failure and a moving target.
-
-⚠ **AND INSTRUMENTING THE PIPELINE BROKE WHAT THE PIPELINE MEASURED.** Adding the stamp put a
-command between `make gate` and `echo "GATE rc=$?"`, so `$?` reported the STAMP's exit code: the
-summary said `rc=0` for a run whose own log ends `make: *** [gate] Error 123`. A green line over a
-red run, introduced by the fix for the previous instrument problem. Capture the code on the line
-after the command, before anything else runs.
-
-⚠ **THE DIAGNOSTIC OUTPUT SHAPE HAS CHANGED IN TWO CONSECUTIVE BUILDS, AND TWO OF OUR TOOLS GREP
-IT.** `08:57` added the `[code]` bracket; `10:04` (`@PLN131`) trimmed every message's *what to
-write instead* into an opt-in `--explain` fix line and added one `note: N diagnostics above
-suggest…` per run. **Checked rather than assumed, because a miss here is silent**:
-`tools/run-gates.sh:75` filters `^advice`, which still matches the coded form, and
-`Makefile:420` greps `^error:` to report a `make parts` failure — errors are still UNCODED, so it
-still fires. The Makefile's own comment says a silent failure there is *"a gate you cannot act
-on"*, which is exactly what a coded `error[…]:` would have made it. **Re-check both after any
-install that touches diagnostics.**
-
-The census on `src/editor_server.loft` today, as a baseline: **39 warnings · 167 advice** (67
-`avoidable-copy`, 100 uncoded) **· 1 note**. Nothing here sets `LOFT_DENY_WARNINGS`, but loft's
-unified library CI does, so 39 is the debt if a package of ours ever goes through it.
-
-**What the 00:33 build changed, still true**: `b = a` still COPIES and
-`c = v[0]` still ALIASES (loft#774's asymmetry stands, now as a decided rule — `@PLN130` F7,
-*"`&` is the aliasing spelling"*); **loft#772 is FIXED** (a `&` parameter reassigned from a local
-compiles and the caller sees the value) while the tracker still reads OPEN; the new
-`B-Ref-Reshape` refusal cannot reach us — there are **zero** `.remove(` calls in `lib/`; and the
-copy notice is **default-on**, 67 rows over `src/editor_server.loft`, of which **29 point at a
-comment, a blank line or a `const` in the wrong file**
-([loft#781](https://github.com/loft-lang/loft/issues/781), filed). ⚠ **The "drop the `&`" lint is
-back at 4 sites, all `wld: &World`** — the exact class loft#760 burned; not touched.
-
-✅ **loft#777 IS FIXED — MEASURED 2026-08-06 ON THE 08:57 BUILD, AND THE `rm -rf lib/*/native-auto`
-DANCE IS OVER.** A body-only edit under `lib/` used to be invisible to `src/editor_server.loft`
-while an 8-line consumer saw it, because `lib/*/native-auto/*.so` served the stale build and did
-not self-clear. Re-measured with the same decisive experiment — warm the cache on the new binary,
-sabotage `hex_part`'s fence, run WITHOUT clearing — and the sabotage bit immediately; restoring it
-bit too, which is the control a one-way fix would fail. ⚠ **This also ends the collision it caused**:
-clearing the cache and going straight to `make gate` gave 4 `SERVER NEVER LISTENED`, because each
-gate then rebuilt the packages inside its 60-second wait for `listening on port`. Neither the clear
-nor the warm-up is needed any more. ⚠ **A LOFT INSTALL STILL NEEDS THE WARM-UP**, for the different
-reason below — the `loft_web` cdylib.
-
-⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
-`SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
-interpret a 5,900-line `editor_server.loft`. Measured this session: **10 of 35 failed at
-`GATE_JOBS=10`**, and the *same suite* went green at **`GATE_JOBS=4` on a HIGHER load** (26 →
-40). One gate alone takes **2 m 33 s**, nearly all of it startup. ⚠ **There is a SECOND face**:
-`FAIL cache … {"agree":0,"bad":24,"layers":0}` — no layers ever arrived, so nothing was compared,
-which reads as a measured disagreement and is a startup miss. ⚠ It also failed at load ~4 and
-passed at load 33 earlier the same day, so *check the load first* was never the rule.
-**`GATE_JOBS=4 make gate` is the reliable form**; a single gate at `GATE_JOBS=1` is the cheap
-discriminator when one fails. ⚠ **AND 4 IS NOT IMMUNE** — 2026-08-04, `cache` failed with that
-exact second face (`agree 0 bad 24 layers 0`) at `GATE_JOBS=4` and passed **alone** on the same
-build minutes later. So *"reliable"* means *fails rarely*, and the discriminator is not optional:
-a `cache` failure whose `layers` is **0** compared nothing and is a startup miss, whatever the
-job count. ⚠ **AND ONE FACE OF IT WAS OURS, NOT THE RUNNER'S.** `part_fence` and `part_check` passed alone
-and failed at `GATE_JOBS=4` because they waited a fixed 1.8–2.5 s for an acknowledgement rather
-than polling for it — a gate that sleeps reports the machine. Ack-driven, they are also **faster
-when the box is idle**: 58 s → 21 s and 34 s → 11 s. ⚠ **Write a new gate that way**; a fixed
-sleep is a flake waiting for a busy afternoon.
-
-⚠ **AND THERE IS A THIRD FACE, in the CHARACTER gates**: `walk` and `hipskin` failed
-together at `GATE_JOBS=4` with `{"frames":1,"bodyMoved":false}` — one frame in the whole run, so
-the simulation never ticked while four interpreted servers shared the box. Both passed **alone**
-on the same build, in 12 s and 8 s. The tell is the same as the other two: a number that says
-*nothing happened*, not a number that says *the wrong thing happened*.
-
-| | | | |
-|---|---|---|---|
 | `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **253** |
+|---|---|---|---|
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
-⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
-here ahead of `main` on purpose, so that a language defect is fixed in the language rather than
-worked around in **our** libraries. When a library suddenly fails on a shape that has been fine
-for months, the move is to measure it, file it, and wait for a toolchain — **not** to start
-editing `lib/*` around it. Mutating the libraries to dodge a compiler bug is the failure this
-setup exists to prevent, and it looks exactly like ordinary work while you are doing it.
+### What to do next
 
-✅ **The instance that earned this note is CLOSED (2026-08-04).** The redundancy lint asked for
-the `&` off any parameter whose binding is never reassigned; `503723a` did that at all 50 sites
-it flags, and every one needed a store fix that was then on a branch only — on a `main`-built
-loft this tree read as broken, `hex_world` **114 green → 96 failed** with `Delete on locked
-store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
-(`store.rs`: `let frozen = self.read_only;`), so any loft builds this tree.
-[loft#760](https://github.com/loft-lang/loft/issues/760), closed — and the measurement that
-found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
-in one day**, so re-measure rather than trust an earlier run in the same session.
+**`A8.1`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building).
+`expand` hands a bound leaf back as a **placement** naming a PART rather than stamping its cells:
+a limb is meshed, not stamped, so `A4.4`'s six-rotation limit never binds it. Everything `A8`
+needs is built and gated; nothing is waiting on loft.
 
-### The next thing to do is #17 `A5.2`'s renderer half, or `A7.4`
+⚠ **READ [PARTS.md §P9.0](PARTS.md#p90--the-design-in-one-place) FIRST, AND NOT THE TWELVE
+SUBSECTIONS.** §P9.0 is the design in one place — the part-tree, three limb kinds, the joint kinds
+`moros_sim` already enumerates, seven invariants, and who owns what. §P9.1–.12 are the *record* of
+how it was arrived at, including four places it was got wrong and corrected by the user; they are
+not a design anyone can act on. The plan's `A8` table is the five steps, and the section under it
+says what `A8` deliberately does **not** cover.
 
-**`A7.3` IS COMPLETE — a–f, and a part can now be opened, edited, referenced, jointed, saved
-under a name that did not exist, and placed, without touching loft.** `f3` added `46:` — bind,
-swap, unbind — and `A4.2`'s `socket_fit` reaches an author for the first time, naming what a
-socket **takes** rather than what was wrong with the offer.
+⚠ **`A8` IS THE DOOR-SHAPED SLICE ONLY** — one joint kind (`Mount`), one limb kind (solid), and a
+leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
+own plan. **The first two are the ones that change the FORMAT**, so they set the order.
 
-⚠ **§P8's CYCLE CHECK WAS BLIND TO BINDINGS, AND IT IS THE FINDING OF THE STEP.** `walk`
-descended instances only, while `expand` and `bake` both derive a bound leaf's cells — so a part
-reachable through a socket was not *contained* as far as the check was concerned. Measured: a
-part bound into its own socket answered **`CY_OK`**, and the renderer met it as *"nested 9 deep;
-the bound is 8"*, which is exactly the depth-overflow-standing-in-for-a-cycle that `A3.4` spent a
-step removing. It held for one edge kind and not the other because nothing could author a
-binding until now. ⚠ **The check could not be fixed in place** — `bind.loft` already calls
-`part_instances`, so `inst.loft` reading `part_bindings` makes them mutually dependent and loft
-resolves a package's files in declaration order. It lives in `cycle.loft` now, after both, which
-is where the whole graph is visible. ⚠ **`part_cycle_of` gained a REQUIRED fourth argument**, so
-the compiler makes all seven call sites face the half that was blind.
+### What plan 17 is still short of, and it is one thing
 
-⚠ **A BOUND LEAF IS NOT DRAWN, AND THAT IS MEASURED RATHER THAN OVERLOOKED.** Both parts in the
-library that fit the plinth's socket are mesh-only — `prop/statue` and `prop/seated` have **0
-columns** — so an expansion delivers them as `ex_meshes` and `f1`'s display world is a `World`,
-which has nowhere to put a mesh. The gap predates `f3` (`A5.2`'s renderer half, `A6.2`'s *a mesh
-is not on the lattice*), and no gesture can author a `FITS`, so a cell-bodied leaf that fits
-cannot be made from the editor either. **This is the strongest argument for `A5.2`'s renderer
-half being next.**
+⚠ **A BOUND LEAF IS NOT DRAWN IF ITS BODY IS CELLS — measured, not overlooked.** Both parts in the
+library that fit the plinth's socket are mesh-only (`prop/statue` and `prop/seated` have **0
+columns**), so an expansion delivers them as `ex_meshes` and the display world is a `World`, which
+has nowhere to put a mesh. No gesture can author a `FITS` either, so a cell-bodied leaf that fits
+cannot be made from the editor. **This is what `A8.1`/`A8.2` exist to close.**
 
-### `A7.3f` is three steps, and `f1`/`f2` are done
-
-**`A7.3f1` is built: a part inside a part is a REFERENCE, and you can see it.** In part mode
-`14:<roof>,<part>` writes an `INST` instead of being refused — the same message, with the MODE
-deciding what it means, which is `A7.3c`'s rule and not a new one. §P8 is checked on the
-gesture, so a part given an instance of itself is refused with the chain while the author's
-hand is still on it. `part_inst.mjs` 21 checks, four sabotages seen red.
-
-⚠ **WHAT SAVES AND WHAT DRAWS ARE NOW TWO STORES**, and that is forced by §P4 rather than
-chosen: the authored part holds an `INST` and no cells for it, so the client is shown a DISPLAY
-world — the authored one copied, with every instance expanded into it. Expanding into `wld`
-itself is the corruption `A7.3b`'s fence existed for. ⚠ **The cache and the mesh come from the
-same store**, or `S3`'s checksum reports it as a *cache* disagreement naming nothing about
-instances.
-
-⚠ **THE EDIT CLOCK IS BLIND TO A SECTION WRITE — MEASURED, AND IT HAD ALREADY BROKEN
-SOMETHING.** A part loads at `tau 20`; an `INST` write leaves it at **20**, a `PART` write at
-**20**, one cell write takes it to 21. `w_tau` counts writes to the store's CELLS, which is
-what makes it exact as a cost measure and useless as *did anything change*. It cost this step
-an hour (the display trigger watched the clock, so the picture never moved while every
-acknowledgement said it had) and it had ALREADY been wrong in the close: an author who placed
-an instance and nothing else was told **`0 edits discarded`** and then had it discarded.
-`hex_world::world_sections_key` is the other half and has both consumers. ⚠ **Anything that
-asks *has this changed* about a part must ask BOTH.**
-
-`f1` the gesture that makes a reference ✅ · `f2` the joints read back ✅ · `f3` the `BIND`
-gesture, where `A4.2`'s `socket_fit` finally reaches an author and `A5.2`'s leaf gets somewhere
-to hang. The per-step record is
-[plan 17 § *What `A7.3f2` turned up*](../../plans/17-parts/README.md).
-
-**`A7.3a`–`A7.3e` are built: a part can be opened, edited, saved under a name that did not exist,
-the save is checked, and the library follows while the editor watches.** `A7.3e` is the acceptance
-test for the whole plan — *a house authored end-to-end without touching loft* — and it found
-**three live defects, two of them silent data loss**, none of which any existing gate could see:
-
-- ⚠ **a save into a family that does not exist reported success over a file that was never
-  created.** `8:newfam/thing` answered *"saved — 1 chunks, 2 sections"*, renamed the subject line
-  and re-anchored the edit clock; `file()` on a path whose directory is missing hands back a
-  usable handle, the writes go to **stderr**, and `world_save` returned `WS_OK`. Now
-  `hex_world::WS_IO` — the file's length compared against the format's own `SZ_*`, which also
-  catches a truncated write that `exists` reads as a good save — and the editor makes the family
-  directory, because *did the bytes land* is the library's question and *which directories exist*
-  is the consumer's.
-- ⚠ **a name the catalogue can never show was accepted.** `8:a/b/c` landed on disk and
-  `part_list` walks **one level** — in the library, in no catalogue, placeable by nothing.
-  `hex_part::part_name_ok` is the inverse of the lister, and it subsumes the `..` fence three
-  handlers each spelled out.
-- ⚠ **a save-as carried the ancestor's `PART.name`**, so `house/annexe` announced itself as
-  *'cottage'* at every placement and two catalogue rows claimed one name.
-
-`part_new.mjs` 33 checks, four sabotages seen red · `world_file_size` 3 tests · `part_name_ok`
-5 tests. The per-step record is [plan 17 § *What `A7.3e` turned up*](../../plans/17-parts/README.md).
-
-**How the mode works, in one paragraph.**
-`44:<name>` opens a part as the store the gestures reach and `44:` closes back, with the world, the
-renderer's nine registries and the feet held aside by assignment. The fence refuses
-`14:<roof>,<part>` (a part inside a part is a reference, not a stamp), `18:` and `21:` (state the
-mode does not hold aside) and `9:`; everything else still edits. `8:` routes by mode and writes
-`parts_root()/<name>.hxw`, sections and all, with an empty payload meaning *the part that is open* —
-after §P8's check, **before** the write. `part_mode.mjs` 31 · `part_fence.mjs` 17 ·
-`part_save.mjs` 19 · `part_check.mjs` 18 · `save_edit.loft` 6 · `part_cycle_of` 6, seventeen
-sabotages seen red across them. `8:<newname>` writes a part that did not exist, makes its family
-directory if it has to, and gives it the leaf of that name as its own — and a name the catalogue
-could not list is refused before anything is written (`A7.3e`).
-
-✅ **`A3.4` IS CLOSED.** §P8's *"checked on save"* has its save, and it needed a function `A3.4`
-could not have written: `part_cycle` walks a part that is on DISK, which is the version a save
-replaces, so the check a save needs is about the content in memory **under the name it is about to
-take**. `part_cycle_of` seeds the path with that name. ⚠ And the cycle is reachable with no
-instance gesture at all — `prop/shrine` saved AS `prop/plinth` is a part that contains itself.
-
-**`A7.3` is six steps** — [plan 17 § `A7.3` broken down](../../plans/17-parts/README.md#a73-broken-down-and-the-probe-that-shaped-it):
-✅ the store swap and the subject (`a`), ✅ the fence (`b`), ✅ the save (`c`), ✅ the save check
-(`d`), ✅ a part that did not exist before (`e`), the joints (`f`). `A7.4` (keyed reads) stays deferred
-until a number says it hurts; `src/part_build.loft` prints the cost every run.
-
-⚠ **THE OWNER GUARD IS NOT IN, AND THAT WAS MEASURED RATHER THAN ASSUMED.** `world_save_as(…, port)`
-stamps an owner field INTO the file, so saving a part nobody edited rewrites its bytes and leaves a
-diff `make parts` then reverts. `X2` is the right idea for a shared library and the wrong trade at
-this size; what it wants is a save that knows whether anything was authored.
-
-⚠ **`A7.3f2`/`f3` ARE WHERE THE JOINTS GO ON THE WIRE.** `parts_for_socket` has been built and
-tested since `A4.2` with no consumer, and `A7.1` deliberately did **not** send `FITS`/`SOCK` — a
-message no client reads is this tree's own trap. The first gesture that BINDS something is what
-earns them. ✅ **`A7.3b`'s fence is already gone**: `14:<roof>,<part>` in part mode writes an
-`INST` (`f1`), so the reference exists and what is missing is the joint it hangs on.
-
-**One step is ◐ rather than done, and what is left of it is now ONE thing:**
-
-- **`A5.2`** — its state half was done, and **the record half landed 2026-08-06**. It was never
-  blocked on a number but on a FIELD: `ma_facing` is a turn about the part's origin about the
-  vertical, while a hinge carries its own POINT and its own AXIS — a trapdoor turns about a
-  horizontal one — so folding `bd_open` into `ma_facing` would swing every door about its centre.
-  `MeshAt` carries the hinge and `ma_swing` now. ⚠ **The hinge is the PART's and the angle is the
-  BINDING's**, which is what made it free: the expansion that opened the leaf stamps the hinge
-  while the world is in hand, and the angle comes from `sa_offer` — the value
-  `socket_for_binding` has already fenced, so the number checked and the number drawn are one
-  number. ⚠ **A zero axis is *not hinged***, which is `hinge.loft`'s own `HG_AXIS` rule rather
-  than a new sentinel.
-
-✅ **AND THE DRAWING LANDED TOO (2026-08-06).** `hex_part::mesh_swing` turns a leaf on its own
-hinge, `posed_mesh` adds the socket's aim and the lattice position, and the display rebuild
-broadcasts the result into the reserved low mesh block (eleven slots, and the cap says what it
-drops). ⚠ **THE OPEN PART WAS LOSING ITS OWN BINDINGS**, which is the bug the picture found and
-no test would have: the rebuild walked `part_instances(wld)` and expanded each one, so every cell
-derived correctly and **every bound leaf vanished** — a binding belongs to the FRAME, not to the
-instance it hangs on, and nothing refused because nothing was asked. `part_expand_of` is the
-in-memory entry, the same shape `part_cycle_of` needed for the same reason: the library's entry
-takes a NAME and a gesture holds a WORLD.
-
-⚠ **THE LIBRARY HAD NO HINGED PART AT ALL**, which is why this half could not be SEEN however
-finished it was — `swing_fit` had been fencing an angle since the state half with nothing in
-`data/parts/` declaring a hinge for it to fence. `door/oak` (hinged down one edge, not through its
-centre — which is the wrong composition's own picture), `door/frame`, `door/doorway` at 0.125 of a
-turn.
-
-⚠ **AND ADDING THAT FAMILY TURNED A GATE RED, WHICH IS THE GATE WORKING.** `part_new` asserts the
-part it authors **sorts first** — that is what makes *every row was re-addressed* mean anything —
-and `door/` sorts before `house/`. The name moved to `aaa_annexe/wing`, and the two checks that
-spelled a leaf name out now derive it from the constant, because a second spelling of one fact in
-a gate about *a part carrying its own name* is the joke telling itself.
-
-### ⚠ THE NEXT ARC IS `A8` — §P9, and it overturns §P5's second column
-
-⚠ **THE DESIGN IS [PARTS.md §P9.0](PARTS.md) — READ THAT, NOT THE TWELVE SUBSECTIONS.** §P9.1–.12
-are the record of how it was arrived at, in the order it was learned, including **four places it
-was got wrong and corrected by the user**. They are kept because each correction was made against a
-real argument and the instinct behind each will recur; they are not a design anyone can act on.
-§P9.0 is: the part-tree model, **three limb kinds** (solid / yielding / visual-only), the joint
-kinds `moros_sim` already enumerates, seven invariants, and who owns what.
-
-**Decided with the user 2026-08-06.** ⚠ **The rule is *nothing NEEDS a custom mesh*, not *nothing
-may be one*** (§P9.3, corrected the same day). A `.glb` stays a first-class body — `21:` IMPORT,
-kit-bashing and finished art are all legitimate. What the design requires is that a part be
-authorable **end to end inside the editor**, with the gestures that build a house and nothing
-else: a mesh is an UPGRADE to a part, never a prerequisite for one. ⚠ **The driver is RAPID
-PROTOTYPING** — a gesture round-trip is seconds inside one tool, a modelling round-trip is minutes
-and needs a second one — so the test is not *can a mesh be used* but **can the whole thing be
-built without ever opening one**. §P5's table is RE-RANKED, not overturned. ⚠ And §P9's useful
-half still holds: *how a part is attached decides how it is drawn*, so a cell leaf and a `.glb`
-leaf hang in the same socket and swing on the same joint — **which is what makes the upgrade path
-free**: author in cells, replace with art later, and the binding does not move.
-
-Cells are the default — so a door leaf, a shutter and a gate are authored with the gestures that
-build a house, because they ARE houses at another size. [PARTS.md §P9](PARTS.md) is the argument;
-[plan 17 `A8`](../../plans/17-parts/README.md) is the five steps.
-
-⚠ **THE LATTICE OBJECTION DOES NOT APPLY, AND THAT IS THE WHOLE DESIGN.** `A4.4` measured that a
-body of cells has only six exact rotations, so a cell limb has two positions in a door's swing —
-true, and it binds **only where cells must be written back to a lattice.** A limb never writes
-into the world it hangs in; it hangs in space at an arbitrary angle. So a limb is **meshed, not
-stamped** — its own chunks meshed the way `part_thumb_wire` already meshes a part for a thumbnail
-— and posed on the joint continuously. Cells are the AUTHORING form, a mesh is the DRAWN one, and
-which a part gets is decided by **how it is attached**, not by what it is made of.
-
-⚠ **AND THE SAME DECISION BUYS THE RESOLUTION, WHICH IS WHY A DOOR CAN HAVE DETAIL AT ALL** (§P9.1).
-A leaf is authored on a FINER lattice — many small hexes — and shrunk to fit the opening. That
-works only because a limb is meshed: a stamped child is written into the parent's world and a fine
-lattice cannot be written into a coarse one, while a limb is never written back, so the parent's
-hex size is not a fact about it. ⚠ **The scale is DERIVED, never authored** — a part is a world and
-a world has `w_unit`, so the ratio between child and parent IS the scale, and a `scale` field
-would be a second authority on a fact both files already state. ⚠ **A unit mismatch on the STAMPED
-path must be a loud refusal**: it is the one shape that silently places cells at the wrong size,
-every count agreeing and the geometry a quarter of what was meant.
-
-⚠ **AND A FRAME IS TWO THINGS** (§P9.2): the OPENING is structure — the building's own coarse
-cells, in the store, walked through — and the JOINERY (jambs, lintel, moulding) is a fine meshed
-part that never needed to be in the store, because the wall beside the opening already does the
-collision. Three different answers to *how detailed may this be*, each following from whether
-anything must walk on it.
-
-⚠ **AND THE ROUND TRIP IS THE POINT OF ALL OF IT** (§P9.4). Block out a leaf in cells, export its
-mesh (`22:`, and a limb is already meshed to be drawn), hand it to a 3D artist, and point the
-part's `MESH` at what comes back. **The `.hxw` is the CONTRACT and the `.glb` is the SKIN** —
-`PART`, `FITS`, `HING` and `SOCK` all stay as authored, so the artist is handed geometry and
-returns geometry and never touches a contract they could get wrong. `A6.3` already measured the
-swap as a one-field edit; this is that finding arriving at a workflow. ⚠ **And the blockout's
-cells are not thrown away — they become the COLLISION body**, which is §P5's *"a `.glb` for the
-eye and a one-cell column for the walker"* finally having a use.
-
-⚠ **AND THE EXPORT MUST BE AT FINAL GAME SIZE** (§P9.5). §P9.1 shrinks a fine-lattice limb at the
-placement, so exporting its own frame would hand an artist geometry several times too big plus a
-ratio to apply by hand — *"two units for one quantity is how a conversion goes missing"*. The
-scale is applied BEFORE the file is written, and the hinge goes out in the same units or the pivot
-does not survive. ⚠ **This is why the size cannot ride in the contract**: `A4.2` made the class
-NOMINAL on purpose, so it says *which hole* and can never say *how big*. The class and the export
-are complementary and both are needed. ⚠ **And a returned mesh is checked against the exported
-extents** — refused with the difference, never quietly rescaled — with `mesh_aabb`, because a
-thumbnail fits its camera per part and is structurally blind to size.
-
-⚠ **AND THE DESIGN AIMS AT THE GATE.** A door narrow enough to be a door is **narrower than one
-hex**, which is why cells had nothing to say about it and why today's leaf is a `.glb`. A two- or
-three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
-carry. The one-hex door is the degenerate case, not the shape everything is bent around.
-
-⚠ **AND VEGETATION IS THE SAME SHAPE, WITH A THIRD KIND OF LIMB — §P9.12.** A tree has a solid
-core that blocks and **branches that can be moved aside with some effort**, so a limb is one of
-**three** things: **solid** (a trunk, a boss's arm), **visual only** (a cape — `bd_girth` 0), or
-⚠ **YIELDING** — gives way at a cost and returns. That third one is a SPRING, and
-`moros_sim::assembly` already enumerates `LinkKind { NoLink, Mount, Hitch, Shaft, Spring, Tether }`
-with a note that flattening the families was *"what the design's first draft got wrong"*. A door is
-a `Mount`, a branch a `Spring`, a vine a `Tether` — **the vocabulary for vegetation was written
-before there was a door to use it on.** ⚠ **The one new constraint is a number, not a rule**: there
-is one boss and there are thousands of trees, so a species is authored once and instanced free
-(§P4 stores no geometry per instance) while only near-field branches are simulated.
-
-⚠ **LIMBS ARE HITBOXES, WHICH IS THE SHARPEST ARGUMENT FOR ANY OF THIS — §P9.10.** A spectacle
-fighter needs to know *which limb hit which limb*, so it needs per-limb volumes that follow the
-pose. **A finished `.glb` is one skinned mesh and cannot give you that** — the hitboxes have to be
-recovered afterwards, by hand, and usually badly — while a creature built as parts is ALREADY
-decomposed. It is gameplay, not art, so it stays ours however much visual work goes out. ⚠ **And
-§P9.4 was undersold**: for a door *the blockout becomes the collision body* means walk through it;
-for a creature it means **each limb's blockout is that limb's hitbox, posed by the joint**, derived
-rather than authored twice. ⚠ **The pieces exist in three packages** — the part-tree
-(decomposition), `moros_sim::assembly`'s `ShapeKind`/`bd_girth` (proxy, already *"derived, not
-inherited"*), and the joint plus a renderer that already poses a part-tree. ⚠ **AND THE SKIN EXCEEDS THE HITBOX, WHICH §P9.11 CORRECTS ME ON.** I wrote *"the skin must fit
-the hitboxes"*; that is backwards. Every Bloodborne boss has cloth, hair, fire and flailing
-appendages reaching well past what can be struck, and **the player learns which part is hittable**
-— that is how a boss reads as enormous while the fight stays fair. The relationship is SUBSET, not
-equality. So the check is not *extents match* but: **the hitbox stays INSIDE the skin** (a hitbox
-in thin air is the real fault), **the pivot does not move**, and **the scale does not change**. ⚠
-And what is hittable is a DESIGN decision per limb — a cape is a limb with no hitbox at all, which
-`moros_sim` already spells as *"a girth of 0 means no shape declared, which is a real case"*. ⚠
-That makes readability ours too: consistent hittability across a cast is what makes it learnable
-rather than arbitrary.
-
-⚠ **AND IT IS ONE PIPELINE, NOT TWO — §P9.9.** Almost everything falls into the same categories
-either way: size, proportion, joint range, socket class, the part-tree, the blockout-as-collision,
-the export at final size, a material per part. **The destinations differ in ONE field — where
-`MESH` points** — so the choice is made per part, late, and reversibly (`A6.3`'s one-field swap at
-project scale). A project can be MIXED — an artist on the five assets a player looks at, the
-engine's own output for the other two hundred — and can SHIP FIRST and upgrade later without
-touching a socket, a size or a binding. ⚠ **Which is why building for both is not double work**:
-the export is simultaneously the shipped mesh and the artist's brief, written once.
-
-⚠ **THERE ARE TWO DESTINATIONS AND THE INDIE ONE IS *SHIP AS-IS* — §P9.8, which amends §P9.4 and
-§P9.7.** An indie game has real pressure to diminish the 3D artist's role, often to nothing, so the
-engine's own output must be shippable as it stands. The hand-over stays available; it stops being
-the assumed ending. ⚠ **What makes it work is CONSISTENCY, not detail** — a flat-shaded hex world
-already has a coherent look, and a door built the same way matches by construction, which is what
-makes a stylised game read as intentional rather than unfinished. ⚠ **And it explains a misreading
-from `A5.2`**: the hand-written `box()` leaf looked wrong in the render and I blamed missing
-detail. It lacked nothing — it was a *different kind of object*, a smooth slab among faceted
-hexes. A cell-built leaf matches with no extra geometry. ⚠ **The smallest real gap is a MATERIAL
-PER PART**: `prop_surface()` reuses `frame` for every mesh body, and `A6.2` already recorded that
-*"a statue and a window surround are ONE bucket … separate them in the RENDERER when something
-draws a statue in the world"*. Something does now, and a library whose every asset is one colour
-is not shippable.
-
-⚠ **THE DURABLE ARTEFACT IS THE SCALE — §P9.7, and it reorders the rest.** The designer's goal is
-framing and relative scale, and they can work with **red blobs** throughout; the SIZE they set is
-what everyone downstream builds against, and it is the one output here that cannot be regenerated.
-So a blockout's job is to be dimensionally honest, not pretty. ⚠ **This corrects a day's work,
-recorded rather than absorbed**: `A5.2`'s renderer half ended *"it reads as a panel at an angle,
-not yet as a door"* with a note that the fix was a better `leaf_mesh()` — wrong worry. The leaf's
-proportions and its swing were the deliverable and they were right; *looking like a door* is the
-artist's hour. ⚠ **A size change arriving with new art is the worst bug this pipeline can have**,
-so §P9.5's extent check is not a nicety but the guard on the only artefact that cannot be
-regenerated. ⚠ **And relative scale cannot be judged from the catalogue**: `part_thumb_view` fits
-its camera per part and is structurally blind to size (measured at `A6.3`), so it takes things seen
-TOGETHER, at one scale, beside something known — which is why the walker figure belongs in a shot.
-
-⚠ **AND THE GOAL IS THE ARTIST'S WORK SURFACE — §P9.6, which is what the rest of §P9 was
-serving.** Self-contained was never about avoiding the 3D artist; it is about handing them a
-surface they can start on immediately, so their expensive hours go on craft rather than on
-reconstructing decisions somebody already made. What they get: **a `.glb` at final size with a
-pivot in it**, plus limits in turns, a `FITS` class and a name — and a part file they never open.
-⚠ **A MONSTER IS A GATEWAY**: a frame with limbs, same sockets, same joints, same export, same
-blockout-then-skin. Doors are just the smallest case that has all the parts. ⚠ **And the
-child's-frame hinge is what makes a LIMB LIBRARY possible** — an arm is swappable between
-creatures exactly as a leaf is between frames (`arm/humanoid-2`, `head/beast-3`), with `A6.3`'s
-one-field swap as the kit-bash, and a left arm and a right arm two ordinary parts with mirrored
-axes rather than a handedness flag.
-
-⚠ **THE JOINT ALREADY EXISTS TWICE.** `moros_sim::assembly::Link` is `hex_part::Hinge` with a kind
-on it — offset, revolute axis, limits in TURNS — and `A5.1` says the hinge was modelled on it. The
-walker is already five independently posed meshes beside a comment naming `hex_entity` as *"a
-part-tree whose every part carries its own transform"*. A door leaf and an arm are one object. ⚠
-Keep the document record where it is and DERIVE an assembly; a part file must not grow a
-simulation record it cannot validate.
-
-⚠ **`A5.2`'s gate is a COLD-RECOGNITION test and needs the user's eyes**, not a gate: *does a
-person call it a door.* It cannot be reached until a leaf can be drawn ajar. Render it and hand
-over the picture; do not claim it from a green suite.
+⚠ **`A5.2`'s ACCEPTANCE IS A COLD-RECOGNITION TEST AND NEEDS THE USER'S EYES**: *does a person call
+it a door.* Render it and hand over the picture; do not claim it from a green suite.
 
 ### ⚠ The per-step record is in the PLAN, not here
 
 [plans/17-parts/README.md](../../plans/17-parts/README.md) carries a **What `Ax.y` turned up**
 section for every step — the findings, the controls, and what each sabotage cost. This file
 carries only what is true *now* and what bites regardless of which step you pick up. The arc's
-narrative is [JOURNAL.md](JOURNAL.md) § *Sessions 10–12*.
+narrative is [JOURNAL.md](JOURNAL.md); **session 13 is its newest entry.**
+
+⚠ **THIS FILE GROWS BACK, AND IT HAS THREE TIMES.** 2,446 lines → split to a handoff; 785 across
+sessions 10–12 → ~400; **907 at the end of session 13 → ~300 here.** Every regrowth was the same
+shape: per-step findings the plan already carried, and a session narrative that belongs in the
+journal. **When a session ends, its entry moves out.** Moving is not thinning — nothing is ever
+deleted on the way, which is why the journal is 3,000 lines and this is not.
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put here
+ahead of `main` on purpose, so that a language defect is fixed **in the language** rather than
+worked around in **our** libraries. When a library suddenly fails on a shape that has been fine
+for months, the move is to measure it, file it, and wait for a toolchain — **not** to start
+editing `lib/*` around it. Mutating the libraries to dodge a compiler bug is the failure this
+setup exists to prevent, and it looks exactly like ordinary work while you are doing it.
+
+✅ **The instance that earned that note is CLOSED, and it is the reason the note exists.** The
+redundancy lint asked for the `&` off any parameter whose binding is never reassigned; doing that
+at all 50 sites it flags took `hex_world` from **114 green to 96 failed** with `Delete on locked
+store`, and `src/editor_run.loft` from exit 0 to SIGABRT — while `--native` passed all 114 on the
+same source, so a per-backend green said nothing. It was *right* at some sites and wrong at others
+**in identical words**. Measured, filed as
+[loft#760](https://github.com/loft-lang/loft/issues/760), fixed within hours, and the 50 `&`s are
+now dropped. ⚠ **The lint is back at 4 sites, all `wld: &World`** — the exact class; not touched.
+**The compiler's advice is a hypothesis. Run the suite against it; the check costs one run.**
 
 ⚠ **A RAISE LEAVES 22 OF 48 CHUNK GROUNDS STALE ON THE CLIENT, AND NOTHING EVER CORRECTS THEM.**
 Found 2026-08-04 by `A7.3a`, whose picture comparison was the first instrument to re-mesh a whole
@@ -576,16 +192,17 @@ Workaround: put the inner string in a variable first.
 named, and one list holds parts and materials alike, each row with a name, an image and its
 availability.
 
-**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1`, `A2`, `A3`, all of
-`A4`, `A5.1`, `A5.2`'s state half, all of `A6`, and `A7.1`/`A7.2` complete.** `A3.4` and `A5.2` are ◐; the
-reasons are under *the next thing to do* above. In order: `A1.1` region copy · `A1.2` round-trip
-and `part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk ·
-`A2.2` the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check ·
-`A3.2` expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1`
-`SOCK`/`FITS` · `A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading
-measurement · `A5.1` the hinge · `A5.2`'s state half · `A6.1` the `MESH` section · `A6.2` the
-statue on the plinth · `A6.3` the swap · `A7.1` the catalogue IS the library, and can change ·
-`A7.2` the picker, which is #18's `B5`.
+**[#17 parts](https://github.com/jjstwerff/moros/issues/17)** — **`A1` through `A7.3` complete,
+and `A3.4` and `A5.2` are closed too.** In order: `A1.1` region copy · `A1.2` round-trip and
+`part_diff` · `A1.3` store sections · `A1.4` `PART`/`ANCH` · `A2.1` the cottage on disk · `A2.2`
+the stamp and the wire · `A2.3` one placement path · `A3.1` `INST` and the cycle check · `A3.2`
+expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A4.1` `SOCK`/`FITS` ·
+`A4.2` `socket_fit` · `A4.3` `BIND` and the derived position · `A4.4` the heading measurement ·
+`A5.1` the hinge · `A5.2` the swing, record half then drawing half · `A6.1` the `MESH` section ·
+`A6.2` the statue on the plinth · `A6.3` the swap · `A7.1` the catalogue IS the library, and can
+change · `A7.2` the picker, which is #18's `B5` · `A7.3a`–`f3` part mode, from the store swap to
+the `BIND` gesture. **`A7.4` (keyed reads) stays deferred until a number says it hurts** —
+`src/part_build.loft` prints the cost every run. **What is left of the plan is `A8`.**
 
 ⚠ **`data/parts/` NOW HOLDS TWO FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`)
 and `prop/{statue,seated,plinth,shrine}.hxw` + two `.glb` (by `src/prop_build.loft`). `make parts`
@@ -634,14 +251,17 @@ half (`pa_q/pa_r/pa_h`) is still uncalled, on purpose**: a part's origin is what
 is placed (`part_stamp`'s rule), and reading the position for a mesh but not for cells would make
 `ANCH` mean two things depending on what the part is made of.
 
-⚠ **`part_expand` ITSELF STILL HAS NO CONSUMER outside tests and `src/prop_build.loft`** — the
-editor does not call it. That is `A7`'s, and it is the reason `A6.2`'s work is gated by a build
-program rather than by a picture.
+✅ **`part_expand_of` HAS A CONSUMER, as of `A5.2`'s drawing half** — the editor's display rebuild
+calls it once per edit (`editor_server.loft:7864`). ⚠ **`part_expand` itself, the by-NAME entry,
+still has none outside tests and `src/prop_build.loft`**, and the two are not interchangeable: the
+library's entry takes a name and a gesture holds a world, which is the same split `part_cycle_of`
+needed. A thumbnail that drew what a part *holds* would be `part_expand`'s first real consumer.
 
-⚠ **`part_mesh_loads` IS CALLED AT BUILD TIME AND NOWHERE ELSE.** `part_expand` deliberately does
-not open the `.glb` it names — it runs per edit, and a glb parse per placement per edit is a cost
-the record cannot pay — so a library shipping a dangling mesh reference is caught by `make parts`
-and by nothing at load time yet. `A3.4`'s save check is where it belongs.
+✅ **`part_mesh_loads` HAS ONE TOO, as of `A7.3d`** — the save check calls it
+(`editor_server.loft:5505`) as well as `make parts`. ⚠ **`part_expand` still deliberately does not
+open the `.glb` it names**: it runs per edit, and a glb parse per placement per edit is a cost the
+record cannot pay. So a dangling mesh reference is caught **on save and at build**, and still not
+at load.
 
 ✅ **`glb_read` HAS A CONSUMER THAT IS NOT A TEST, as of `A6.2`** — the catalogue thumbnail draws a
 part's `.glb` body. It cost almost nothing because `chunk_mesh_slot` and `glb_read` both hand back
@@ -799,6 +419,37 @@ loft --interpret --lib lib/ --lib ../loft-libs-world/ prog.loft
 `loft test` resolves relative paths from the **test file's** directory, not the package root
 — `tests/fixtures/x` doubles the `tests/`.
 
+### ⚠ `make gate` FLAKES, and every face of it says *nothing happened* rather than *the wrong thing happened*
+
+**`GATE_JOBS=4` is the knob, and it is not the load average.** Measured: **10 of 35 failed at
+`GATE_JOBS=10`**, and the *same suite* went green at **4 on a HIGHER load** (26 → 40). It also
+failed at load ~4 and passed at load 33 earlier the same day, so *check the load first* was never
+the rule. ⚠ **And 4 is not immune** — the discriminator is to **run the one that failed alone**,
+at `GATE_JOBS=1`.
+
+| the face | what it looks like | what it is |
+|---|---|---|
+| **the wait** | `SERVER NEVER LISTENED` | a 60-second wait for `listening on port` while `GATE_JOBS` servers each interpret a 5,900-line `editor_server.loft`. One gate alone takes 2 m 33 s, nearly all of it startup |
+| **the empty compare** | `FAIL cache … {"agree":0,"bad":24,"layers":0}` | **no layers ever arrived**, so nothing was compared. Reads as a measured disagreement; is a startup miss. ⚠ A `cache` failure whose `layers` is **0** is always this, whatever the job count |
+| **the still simulation** | `walk`/`hipskin` at `{"frames":1,"bodyMoved":false}`, or `{"frames":0}` | one frame, or none, in the whole run — the simulation never ticked while four interpreted servers shared the box. Both passed alone in 12 s and 8 s |
+| **the cold cdylib** | ⚠ **only after a loft install** | each gate rebuilds a **Rust** cdylib inside its own 60-second wait: `cdylib loft_web rebuilt: cached artifact rejected (stamped loft-ffi fp=none != current fp=…)`. First run on a new toolchain was 25 pass / 2 fail / **14 never listened**; the second, nothing changed, was 40 of 41 |
+
+⚠ **WARM THE TOOLCHAIN ONCE AFTER ANY LOFT INSTALL** — start one server, let it build, stop it —
+then run the suite. A first run on a fresh toolchain measures the compiler's cache, not the tree.
+This is the **last** cold-cache trap standing; the `native-auto` half of it went with loft#777.
+
+⚠ **AND ONE FACE OF IT WAS OURS, NOT THE RUNNER'S.** `part_fence` and `part_check` passed alone
+and failed at `GATE_JOBS=4` because they waited a **fixed** 1.8–2.5 s for an acknowledgement
+rather than polling for it — a gate that sleeps reports the machine. Ack-driven, they are also
+*faster* when the box is idle: 58 s → 21 s and 34 s → 11 s. **Write a new gate that way.**
+
+⚠ **STAMP `sha256sum /usr/local/bin/loft` AT BOTH ENDS OF A SUITE RUN.** `loft --version` says
+`2026.8.0` for every build — six landed in eleven hours once — so the version string cannot tell
+two installs apart and a run that finished on a different binary than it started on is not a
+result. ⚠ **And capture the exit code on the line AFTER the command**: adding the stamp between
+`make gate` and `echo "GATE rc=$?"` made `$?` report the *stamp's* status, printing `rc=0` over a
+run whose log ends `Error 123`.
+
 
 ## Working with the siblings
 
@@ -887,21 +538,30 @@ edges — neither of which the mechanism's own eight gates had caught.
 
 ## The record
 
-Twelve sessions of how this got here, newest first, is **[JOURNAL.md](JOURNAL.md)** — the
+Thirteen sessions of how this got here, newest first, is **[JOURNAL.md](JOURNAL.md)** — the
 per-session entries, the numbered item log, and the superseded planning sections. Nothing
 was thinned on the way out; ⚠ read a dated claim in it as dated. **Sessions 10–12** are the
-arc from *a part is a world* to *a part with joints, a hinge and a mesh*.
+arc from *a part is a world* to *a part with joints, a hinge and a mesh*; **session 13** is the
+door on screen, §P9 argued out, and six loft installs in eleven hours.
 
 ⚠ **This file grows back, and the answer is always the same move.** It was 2,446 lines once,
 split to a handoff, and had returned to 632 by the end of session 8. Session 8's full record
 moved to the journal on 2026-08-03 and this came back to ~210. It reached **785** across
-sessions 10–12 and came back to ~400 on 2026-08-04. **When a session ends, its entry moves
-out** — the handoff describes the present, and the record keeps the past. Moving is not
-thinning: a finding that cost a day is worth more than the lines it takes, which is why
-nothing is ever deleted on the way.
+sessions 10–12 and came back to ~400 on 2026-08-04. It reached **907** in session 13 and came
+back to ~500 on 2026-08-06. **When a session ends, its entry moves out** — the handoff describes
+the present, and the record keeps the past. Moving is not thinning: a finding that cost a day is
+worth more than the lines it takes, which is why nothing is ever deleted on the way.
 
-⚠ **AND MOST OF WHAT GREW BACK WAS ALREADY WRITTEN DOWN TWICE.** The 447 lines moved out on
-2026-08-04 were per-step findings that `plans/17-parts/README.md` already carried, section for
-section. A handoff that repeats the plan is a handoff nobody can skim — so when a step lands,
-its finding goes in the PLAN, and this file gets only what a reader needs whichever step they
-pick up next.
+⚠ **AND EVERY TIME, MOST OF WHAT GREW BACK WAS ALREADY WRITTEN DOWN TWICE.** The 447 lines moved
+out on 2026-08-04 were per-step findings that `plans/17-parts/README.md` already carried, section
+for section; the ~400 moved out on 2026-08-06 were the same thing plus a 110-line restatement of
+[PARTS.md §P9.0](PARTS.md#p90--the-design-in-one-place). A handoff that repeats the plan is a
+handoff nobody can skim — so when a step lands, its finding goes in the PLAN, and this file gets
+only what a reader needs whichever step they pick up next.
+
+⚠ **AND OPERATIONAL KNOWLEDGE WAS THE THING THAT NEARLY WENT WITH IT.** The gate flake's four
+faces and *warm the toolchain after a loft install* were written inside a dated session narrative,
+so moving the narrative would have taken them too. They are not a record of a session; they are
+how you run the suite. **Before moving a block out, ask of each ⚠ in it: is this what happened, or
+is this how the tree works?** The second kind goes to *How to run things* or *What bites*, never
+to the journal.

@@ -5,9 +5,27 @@
 it, and that it allows me to design doors, door-frames, windows, window-frames, statues,
 pillars, that can be placed in the world or used in other houses")*
 
-Plan [#17](https://github.com/jjstwerff/moros/issues/17). **Design only** — nothing here is
-built yet. This doc holds the decisions; **the order of work is in
-[the plan](../../plans/17-parts/README.md)**, step by step with its gates.
+Plan [#17](https://github.com/jjstwerff/moros/issues/17). This doc holds the decisions; **the
+order of work is in [the plan](../../plans/17-parts/README.md)**, step by step with its gates.
+
+> ## ⚠ Read this file in TWO passes, and start with the second half
+>
+> | you want | go to |
+> |---|---|
+> | **the design as it stands today** | **[§P9.0 — the design, in one place](#p90--the-design-in-one-place)** |
+> | how a part is stored, composed and bounded | §P1–§P4, §P7, §P8 — **built**, and each says so |
+> | why the design is what it is, in the order it was learned | §P5, §P6, then §P9–§P9.12 |
+>
+> ⚠ **THE FIRST HALF IS OLDER THAN THE SECOND, AND TWO OF ITS DECISIONS ARE RE-RANKED.** This
+> file opened 2026-08-02 saying *"design only — nothing here is built yet"*, which stopped
+> being true within days: §P1–§P4, §P7 and §P8 are built and gated. §P5 and §P6 are the two
+> that moved — §P9 re-ranks §P5's second column and generalises §P6 — and each now says so at
+> its own heading rather than only 600 lines further down.
+>
+> ⚠ **§P9.1–§P9.12 ARE A RECORD, NOT A SPEC.** They are the conversation that produced §P9.0,
+> in the order it happened, **including four places the design was got wrong and corrected by
+> the user**. They are kept because each correction was made against a real argument and the
+> instinct behind it will recur. Do not act on them; act on §P9.0.
 
 **What this replaces.** `hex_editor::stencil_place` is a *procedural* house: a radius, a
 `roof_height(anchor, roof_up, rad, d)` curve, two materials. The only house that can be
@@ -17,9 +35,11 @@ it is a thing you do by editing `gesture.loft`. Everything below exists to make 
 
 ---
 
-## The eight decisions
+## The first eight decisions
 
 Stated as calls with their trade-off, because that is cheaper to argue with than a survey.
+⚠ **There is a ninth, and it is the load-bearing one** — [§P9.0](#p90--the-design-in-one-place),
+below these. §P1–§P4, §P7 and §P8 are built and unchanged; §P5 and §P6 are the two §P9 moved.
 
 ### P1 — A part IS a world
 
@@ -294,6 +314,12 @@ is the strongest test in this design, because the two paths share nothing but th
 
 ### P5 — Two kinds of part, one mechanism
 
+> ⚠ **RE-RANKED BY [§P9](#p9--a-limb-is-a-building-and-a-mesh-is-an-upgrade-never-a-requirement),
+> AND THE TABLE BELOW READS AS A CHOICE WHEN IT IS A DEFAULT.** Both bodies survive — a `.glb`
+> is still first-class (§P9.3) — but **cells are the authoring form and a mesh is the drawn
+> one**, and which a part gets is decided by *how it is attached*, not by what it is made of.
+> Read the second column as *the upgrade*, never as *the other option*.
+
 |  | cell part | prop part |
 |---|---|---|
 | examples | house, wall, door-frame, window-frame, stair, arch | statue, pillar, finial, sign, bracket |
@@ -329,6 +355,12 @@ socket at an offset — never *is this a prop*. ⚠ The pillar above is exactly 
 it still may not be turned to 18.
 
 ### P6 — A fitting is a part with a moving sub-part
+
+> ⚠ **GENERALISED BY §P9, AND THE WORD *fitting* IS WHAT NARROWED IT.** A door, a gate, a
+> monster, a tree and a cart are **one shape** — a frame with limbs on joints — so *fitting*
+> names the door-sized case of something with no size. The hinge below is exactly right and is
+> built (`A5.1`, `A5.2`); what §P9 adds is that a limb has **three kinds** (solid, yielding,
+> visual-only) and a joint has the kinds `moros_sim::assembly` already enumerates.
 
 The one thing that distinguishes a door from a pillar, and the only piece of
 [FITTINGS](FITTINGS.md) that survived its own inventory: `F-FIT`, `F-SWING`, `F-STATE` — a
@@ -552,12 +584,27 @@ not cover*).
 
 ---
 
-## P9 — A LIMB IS A BUILDING, AND NOTHING IS A CUSTOM MESH
+## P9 — A limb is a building, and a mesh is an UPGRADE, never a requirement
 
-**Decided 2026-08-06, and it overturns the second column of §P5's table.** A part has ONE body:
-cells. A `.glb` is a *drawn* form, never an authored one — so a door leaf, a shutter, a gate and
-a windmill sail are all authored with the gestures that build a house, because they **are**
-houses at another size.
+> ⚠ **THIS SECTION'S OWN HEADLINE WAS WRONG FOR HALF A DAY, AND [§P9.3](#p93---the-rule-is-nothing-needs-a-custom-mesh-not-nothing-may-be-one)
+> IS THE CORRECTION.** It read *"…and NOTHING IS A CUSTOM MESH"*, and the paragraph under it
+> said a part has one body and a `.glb` is *"never an authored one"*. The user corrected that
+> the same day: the rule is **nothing NEEDS a custom mesh**, not *nothing may be one*. `21:`
+> IMPORT, kit-bashing and finished art all stay legitimate. What the design requires is that a
+> part be authorable **end to end inside the editor** — a mesh is an upgrade to a part, never a
+> prerequisite for one.
+>
+> The strike-through below is kept rather than rewritten, because the mistake is instructive:
+> the *reason* cells win is rapid prototyping (a gesture round-trip is seconds in one tool; a
+> modelling round-trip is minutes across two), and that argument makes cells the **default**.
+> Reading it as a prohibition is the over-reach, and it will recur.
+
+**Decided 2026-08-06.** ~~A part has ONE body: cells. A `.glb` is a *drawn* form, never an
+authored one~~ — **cells are the DEFAULT body, and a `.glb` stays first-class beside them.** A
+door leaf, a shutter, a gate and a windmill sail can all be authored with the gestures that
+build a house, because they **are** houses at another size. §P5's table is re-ranked, not
+overturned: which body a part gets is decided by **how it is attached**, not by what it is
+made of.
 
 ### What forced it, and what it dissolves
 
@@ -628,10 +675,12 @@ obstacle is not something a voxel store can express — but it is a consequence,
 And `bake` already refuses a nest holding a mesh (`BK_MESH`), so a meshed limb falls under the
 same rule and `expand == bake` (`A3.3`) stays coherent.
 
-⚠ **`MESH` AND `.glb` AUTHORING ARE ON THE WAY OUT UNDER THIS RULE.** `prop/statue` and
-`prop/seated` are the remaining custom meshes; they become cell parts, and `MESH` survives only
-as the *import* path (`21:`) it was before parts existed. Until they are converted the two forms
-coexist, and this section is the statement of which one is the design.
+⚠ ~~**`MESH` AND `.glb` AUTHORING ARE ON THE WAY OUT UNDER THIS RULE.**~~ **Corrected by §P9.3
+within the day, and this sentence is the over-reach itself.** `MESH` is not going anywhere;
+`prop/statue` and `prop/seated` are not converted but **joined** — `A8.5` adds a cell-built
+statue *beside* the `.glb` one, both fitting `statue/plinth-2` and swappable, so what is proved
+is that neither body is required. The two forms coexist permanently, and §P9.9 is why that costs
+nothing: the destinations differ in one field.
 
 ### P9.1 — A limb is authored at its OWN scale, and the ratio is already in the file
 

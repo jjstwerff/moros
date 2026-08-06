@@ -940,9 +940,15 @@ direction, making targeting any one of them nearly impossible. A character with 
 can calm one and receive a clear sense of what has recently moved through the area — the spirit's
 speed-awareness makes them unwitting scouts.
 
-### Sphinx
+### Sphinx (spirit construct)
 *A spirit that found a lion's body and a human skull and understood enough about human faces to
 want one. The voice is the worst part. It almost sounds like someone speaking.*
+
+> ⚠ **There are two sphinxes in this document and they are different creatures.** This one is an
+> assembled chaos spirit — Will 9, and it is *trying to ask a question it cannot form*. The other
+> is the **[desert sphinx](#sphinx-desert)** under *Creatures of the Southern Desert* — Will 12,
+> ancient, and it asks questions it already knows the answer to. Same name, opposite situation;
+> pick by which one the scene needs, never by the heading alone.
 
 | Char | Dex | Endu | Hand | Might | Perc | Speed | Will |
 |---|---|---|---|---|---|---|---|
@@ -1629,7 +1635,7 @@ now — tenants of someone else's former lives. Combat against them is a fight i
 former home; the DM should let that weight land. See `doc/places/southern_desert.md` for the
 region and its specific sites.*
 
-### Sphinx
+### Sphinx (desert)
 *A patient intelligence that sits at the edge of a sanded village or ruin and watches. Has
 been here since just after the settlers were not. Speaks in a register that drifts between
 conversation and riddle. Remembers what the sand is covering.*

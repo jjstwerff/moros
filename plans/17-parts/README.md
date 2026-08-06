@@ -1340,12 +1340,38 @@ are swung*. **The order of a fixture is part of the test**, which is `D`'s lesso
 and a reorder of the package's file list would have broken it silently — which is the same
 declaration-order rule that forced the cycle check into its own file one step earlier.
 
-**What is left of `A5.2` is the DRAWING**, and it is now the only thing left: the editor discards
-`ex_meshes` entirely, so no expanded mesh is drawn at all — bound, swung or otherwise. The
-precedent exists and is small: the catalogue thumbnail already draws a part's `.glb` through
-`glb_read` + `mesh_wire`, and `chunk_mesh_slot` and `glb_read` hand back the same `mesh3d::Mesh`.
-⚠ **Its acceptance is a COLD-RECOGNITION test and needs the user's eyes** — *does a person call it
-a door* — so it ends in a picture handed over, not in a green suite.
+**What was left of `A5.2` was the DRAWING** — the editor discarded `ex_meshes` entirely, so no
+expanded mesh was drawn at all, bound, swung or otherwise. That half landed the same day; its
+record is below.
+
+### What `A5.2`'s drawing half turned up (2026-08-06)
+
+**Built:** `hex_part::mesh_swing` turns a leaf on its own hinge, `posed_mesh` adds the socket's
+aim and the lattice position, and the display rebuild broadcasts the result into the reserved
+low mesh block — eleven slots, with the cap saying out loud what it drops.
+
+⚠ **THE OPEN PART WAS LOSING ITS OWN BINDINGS, AND IT IS THE BUG THE PICTURE FOUND THAT NO TEST
+WOULD HAVE.** The rebuild walked `part_instances(wld)` and expanded each one, so every cell
+derived correctly and **every bound leaf vanished** — a binding belongs to the FRAME, not to the
+instance it hangs on, and nothing refused because nothing was asked. `part_expand_of` is the
+in-memory entry, the same shape `part_cycle_of` needed for the same reason: **the library's entry
+takes a NAME and a gesture holds a WORLD.**
+
+⚠ **THE LIBRARY HAD NO HINGED PART AT ALL**, which is why this half could not be SEEN however
+finished it was — `swing_fit` had been fencing an angle since the record half with nothing in
+`data/parts/` declaring a hinge for it to fence. Added: `door/oak` (hinged down one edge, **not**
+through its centre — a leaf hinged at its own origin is a revolving door, which is exactly the
+picture a wrong composition produces, so the content has to be able to tell the two apart),
+`door/frame`, and `door/doorway` at 0.125 of a turn.
+
+⚠ **AND ADDING THAT FAMILY TURNED A GATE RED, WHICH IS THE GATE WORKING.** `part_new` asserts the
+part it authors **sorts first** — that is what makes *every row was re-addressed* mean anything —
+and `door/` sorts before `house/`. The name moved to `aaa_annexe/wing`, and the two checks that
+spelled a leaf name out now derive it from the constant: a second spelling of one fact, inside a
+gate about *a part carrying its own name*, is the joke telling itself.
+
+⚠ **Its acceptance is still a COLD-RECOGNITION test and needs the user's eyes** — *does a person
+call it a door* — so it ends in a picture handed over, not in a green suite.
 
 ### What `A7.3f3` turned up
 

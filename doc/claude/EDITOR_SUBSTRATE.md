@@ -1027,70 +1027,12 @@ that honest is not the name but `tests/boundary.loft`, which fails if the packag
 `moros_*` dependency or grows any identifier the ownership audit put on the consumer's
 side — clause 1 of the extraction bar, checkable today.
 
-### The extraction bar, per group
-
-A group leaves this tree when **all four** hold. Three of them are cheap to check continuously;
-the fourth is the one that actually takes time, and is why extraction waits.
-
-1. **It builds and its gates pass with the Moros tree absent.** Checkable from day one — if a
-   gate reaches for a Moros type or fixture, the boundary has already been crossed.
-2. **Its dependencies point only outward** — at loft's stdlib, `hex_grid`, or another group
-   below it. No group depends on `edit`, `view`, `ui` or Moros content.
-3. **It has been battle-tested** — used in anger, through a real rung of the ladder, long
-   enough for its shape to stop moving. A package whose API changed last week is a package
-   still being designed.
-4. **It has a second consumer**, or a concrete one waiting. The DoD clause already says a
-   package validated against exactly one caller has not been shown to be general. `world` has
-   the crystal (`#8` V8); `ui` and `view` do not yet have one, and naming who they would serve
-   is part of earning the move.
-
-### Build beside, do not migrate
-
-A group whose target shape is already specified is **written fresh alongside** the code it
-will replace, not refactored out of it. The old package stays green and in service until the
-new one supersedes it.
-
-The reason is that the existing packages are at *predecessors* of their target designs, not
-merely in the wrong place — `moros_map`'s chunks are keyed one-layer-per-chunk with game
-state packed inside the voxel. Reshaping such code means carrying its compromises forward or
-clearing them as side-quests; writing beside it means the new package never has them.
-
-**Being in one tree is for design reuse, not code reuse.** A month of settled decisions —
-the scene model, stencils, the palette rule, the facing clock, the document format — is why
-this work happens here rather than in a fresh repository. hexbody's lesson was that leaving
-early costs you the *back-references*; it was never that the code had to travel.
-
-⚠ **Clause 3 is the whole reason for this section.** hexbody was extracted from crawler early
-and needed repeated back-references for data it had left behind. The cost of extracting late
-is a rename; the cost of extracting early is a seam that has to be renegotiated while both
-sides are moving.
-
-### Naming, while they are here
-
-The groups keep a Moros-owned prefix until they leave, because that is what they honestly
-are: Moros's packages, shaped for a journey they have not made.
-
-⚠ **`world` is the exception, and the exception is diagnostic.** `edit`, `view`, `ui` and
-`actor` are being extracted *from* Moros code full of Moros configuration — the prefix is
-accurate about what they contain today. `world` was written **fresh against a universal
-contract** with Moros deliberately excluded: it has zero dependencies, no game semantics, and
-a second consumer already scheduled. It never had Moros content to justify the prefix, so
-`moros_world` is a placeholder rather than a description.
-
-**It keeps the name anyway, because the alternative is renaming twice.** Its destination is
-`hex_world`, currently occupied by the audience-crystal package that V8 reshapes; renaming
-now would mean `moros_world` → something → `hex_world`.
-
-**But a wrong name is an active hazard, not merely untidy** — a package called `moros_world`
-invites Moros semantics to drift in, which is exactly how spawn flags ended up packed into
-`moros_map`'s voxel against `L15`. So the hazard is answered with a **guard rather than a
-name**, since a guard makes the leak impossible where a name only discourages it:
-`tests/boundary.loft` fails if the package gains a `moros_*` dependency or grows any of the
-identifiers the audit put on the consumer's side. That is clause 1 of the extraction bar,
-checkable today instead of at extraction time. Each carries a header naming
-its destination and its outstanding bar, so the intent is in the file rather than only in this
-document. The rename is part of the extraction, not a claim made in advance — `hex_world` in
-particular is a name that is currently occupied.
+⚠ **THIS FILE CARRIED TWO COPIES OF THE THREE SECTIONS ABOVE, AND THEY DISAGREED.** The
+second copy — *the extraction bar*, *build beside*, and a *"Naming, while they are here"*
+that said the groups **keep a `moros_*` prefix until they leave** — sat 60 lines below this
+one, so a reader scrolling met the correction first and the refuted version second, with
+nothing marking which was which. Removed 2026-08-06. What the refuted copy argued is already
+recorded in the paragraph above; the duplicate is gone, and the correction is not.
 
 ## The editor server has its own world model — and that is the design failure (2026-07-30)
 

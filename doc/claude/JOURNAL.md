@@ -17,6 +17,78 @@ were true when written. STATE.md carries the current ones.
 
 ---
 
+## Session 13 — the door is drawn, §P9 is argued out, and the toolchain moved six times under it
+
+⚠ Counts in this entry were true when written; STATE.md carries the current ones. The per-step
+record is [plans/17-parts/README.md](../../plans/17-parts/README.md).
+
+**What it did.** `A5.2` closed — record half then drawing half, so a leaf is on screen and ajar.
+`A7.3f1`–`f3` landed, which is the joints reaching an author. And the whole of **§P9** was argued
+out with the user across twelve subsections and **four corrections**, ending in
+[PARTS.md §P9.0](PARTS.md) and plan 17's `A8`.
+
+### The toolchain moved under the measurements, and only a hash could tell
+
+⚠ **SIX BUILDS LANDED IN ELEVEN HOURS** — `b619b909` 00:26, `9dfd0280` 00:33, `bd41374b` 08:57,
+`cf6ccd53` 10:04, `bd911fa1` 10:40, and the sibling's head moved again at 10:44 — and
+`loft --version` says `2026.8.0` for **every one of them**. The version string cannot tell two
+installs apart; `sha256sum /usr/local/bin/loft` can.
+
+⚠ **A SUITE TAKEN ACROSS AN INSTALL SWAP IS NOT A RESULT.** A run started on `cf6ccd53` finished
+on `bd911fa1` — a build landed while the gates were going, invalidating the `loft_web` cdylib
+underneath them — and reported **12 `SERVER NEVER LISTENED`**, which reads as twelve broken gates.
+Three of the twelve logs name the rebuild. **Stamp the hash at every stage.**
+
+⚠ **AND INSTRUMENTING THE PIPELINE BROKE WHAT THE PIPELINE MEASURED.** Adding that stamp put a
+command between `make gate` and `echo "GATE rc=$?"`, so `$?` reported the *stamp's* exit code: the
+summary said `rc=0` for a run whose own log ends `make: *** [gate] Error 123`. A green line over a
+red run, introduced by the fix for the previous instrument problem. **Capture the code on the line
+after the command, before anything else runs.**
+
+### What each build changed for us, measured rather than read
+
+✅ **loft#777 IS FIXED, AND THE `rm -rf lib/*/native-auto` DANCE IS OVER.** A body-only edit under
+`lib/` used to be invisible to `src/editor_server.loft` while an 8-line consumer saw it, because
+`lib/*/native-auto/*.so` served the stale build and did not self-clear. Re-measured with the same
+decisive experiment — warm the cache on the new binary, sabotage `hex_part`'s fence, run WITHOUT
+clearing — and the sabotage bit immediately; restoring it bit too, which is the control a one-way
+fix would fail. ⚠ **This also ended the collision it caused**: clearing the cache and going
+straight to `make gate` gave 4 `SERVER NEVER LISTENED`, because each gate then rebuilt the
+packages inside its 60-second wait.
+
+✅ **loft#781 IS FIXED.** The copy notice had landed 29 of its 67 rows on a comment, a blank line
+or a `const` **in the wrong file**; it is now 67 rows, 0 misattributed. ⚠ **Their fix went further
+than the report**: the same `fallback_file` mistake sat in `warn_dead_stores`, which is a
+*warning* rather than advice — and a warning gates a library's CI under `LOFT_DENY_WARNINGS`, so a
+dependency's dead store could have failed a consumer's build at a line holding a `const`.
+
+⚠ **AND THAT MEASUREMENT NEARLY WENT THE OTHER WAY.** Diagnostics now carry a CODE, so the prefix
+is `advice[avoidable-copy]:` and a grep for `^advice: copy of` returns **zero** — which reads as
+*the notice is gone* rather than *my pattern is stale*. This tree's own rule, broken on its own
+ticket: **match a line you know is there before believing a count of zero.**
+
+⚠ **THE DIAGNOSTIC OUTPUT SHAPE CHANGED IN TWO CONSECUTIVE BUILDS, AND TWO OF OUR TOOLS GREP IT.**
+`08:57` added the `[code]` bracket; `10:04` (`@PLN131`) trimmed every message's *what to write
+instead* into an opt-in `--explain` fix line and added one `note: N diagnostics above suggest…`
+per run. Checked rather than assumed, because a miss here is silent: `tools/run-gates.sh:75`
+filters `^advice`, which still matches the coded form, and `Makefile:420` greps `^error:` —
+errors are still UNCODED, so it still fires. **Re-check both after any install that touches
+diagnostics.** The Makefile's own comment says a silent failure there is *"a gate you cannot act
+on"*, which is exactly what a coded `error[…]:` would have made it.
+
+The census on `src/editor_server.loft` at the end of the session, as a baseline: **39 warnings ·
+167 advice** (67 `avoidable-copy`, 100 uncoded) **· 1 note**.
+
+### A grep over a log is an instrument, and its default answer is "absent"
+
+Three were blind in one session, each reading as a clean result rather than a miss: `^advice:`
+found nothing because `loft test` indents diagnostics as `  Advice:`; `test result: .*total`
+scored four *passing* runs as "no result", because only the FAILED line carries a total; and
+`sort -u` on the message text collapsed two distinct sites into one, because the text is identical
+at every site and only the location line differs.
+
+---
+
 ## Sessions 10–12 — plan 18 closes, and plan 17 goes from a part on disk to a part with joints
 
 ⚠ Counts in this entry were true when written; STATE.md carries the current ones.
