@@ -44,7 +44,11 @@ use graphics;
 // second implementation of the model that has to be kept in step. Sharing the code is
 // not sharing the AUTHORITY — the server still owns every write.
 use hex_world;
-use gridmesh;   // enc_coord — the SAME chunk key the server packs mesh ids with
+// ⚠ QUALIFIER ONLY, as in `editor_server`. `gridmesh` and `hex_world` both declare
+// `world_chunk_of`, with different arities and different meanings; plainly imported, whichever
+// `use` came first decided what a bare call meant — here it was `hex_world`, in the server
+// it was `gridmesh`, from the same two packages. A qualifier adds no bare name at all.
+use gridmesh as gm;   // enc_coord — the SAME chunk key the server packs mesh ids with
 // ⚠ S3: the SERVER'S OWN mesher, not a second implementation. The whole claim is
 // that the client derives the same triangles, and that is only checkable while there
 // is one function — two copies that agree today are two copies.
@@ -492,13 +496,13 @@ fn mesh_bit(mid: integer) -> integer {
 // ⚠ THE SAME ID ON PURPOSE. `X:` still drops a chunk that streams out of range, and a
 // rebuild still replaces one — both address the mesh by id, and a client that filed its
 // own ground under a private id would accumulate ground nobody can remove. So the id
-// arithmetic is the server's, from the same `gridmesh::enc_coord`.
+// arithmetic is the server's, from the same `gm::enc_coord`.
 //
 // ⚠ AND IT GOES THROUGH `graphics::mesh_to_floats`, which is what `mesh_wire` calls on
 // the other side. Two orderings of the same vertices is a difference no checksum here
 // would catch — S3 compares `mesh_crc`, which is computed BEFORE either flattening.
 fn install_ground(st: Client, cx: integer, cz: integer, gm: Mesh) {
-  gmid = gridmesh::enc_coord(cx, cz) * SURFACES + FIGURE_MAX + 1;
+  gmid = gm::enc_coord(cx, cz) * SURFACES + FIGURE_MAX + 1;
   gverts = graphics::mesh_to_floats(gm);
   if len(gverts) < 6 { return; }
   drop_part(st, gmid);

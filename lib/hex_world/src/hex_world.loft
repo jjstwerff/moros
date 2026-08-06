@@ -247,12 +247,18 @@ pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) ->
 // cell −1 would land in chunk 0 instead of chunk −1, and every negative
 // coordinate would fold onto its positive neighbour's tile. The same trap is
 // documented on `hex_world`'s public copy; see the note at the top of this file.
-pub fn chunk_of(v: integer) -> integer {
+// ⚠ `world_chunk_of`, NOT `chunk_of` — plan 19 `L6`. `gridmesh` publishes a
+// `chunk_of` too, and it is a different function: `chunk_of(x, y, shift) -> ChunkKey`
+// packs a chunk KEY, where this one floor-divides ONE axis. Both programs import both
+// packages, so which one a bare call meant was decided by the order of the `use` block
+// — `gridmesh` won in the server and this package won in the client, from the same two
+// names. `tools/names.sh` found it; the rest of this API is `world_*` anyway.
+pub fn world_chunk_of(v: integer) -> integer {
   if v >= 0 { v / CHUNK_W ?? 0 } else { 0 - ((CHUNK_W - 1 - v) / CHUNK_W ?? 0) }
 }
 
 // The non-negative remainder, likewise: `v % 32` is negative for negative `v`.
-pub fn local_of(v: integer) -> integer { v - chunk_of(v) * CHUNK_W }
+pub fn local_of(v: integer) -> integer { v - world_chunk_of(v) * CHUNK_W }
 
 pub fn cell_index(q: integer, r: integer) -> integer {
   local_of(q) * CHUNK_W + local_of(r)
@@ -280,7 +286,7 @@ fn reindex(w: World) {
 }
 
 pub fn world_has_chunk(w: World, q: integer, r: integer) -> boolean {
-  find_chunk(w, chunk_of(q), chunk_of(r)) >= 0
+  find_chunk(w, world_chunk_of(q), world_chunk_of(r)) >= 0
 }
 
 fn empty_cells() -> vector<StoredHex> {
@@ -337,7 +343,7 @@ fn named_label(w: World, ci: integer, new_id: integer) -> integer {
 // The label of the layer at index `l`, so a caller can tell one layer from another
 // across an insert that renumbers them.
 pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
   w.w_chunks[ci].ck_layers[l].ly_id
@@ -350,7 +356,7 @@ pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
 // and hands back an absent cell, which is height 0 — the flat plane, and exactly
 // what unauthored ground has always read as. Callers pass it straight through.
 pub fn world_ground_layer(w: World, q: integer, r: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0 - 1; }
   for i in 0..len(w.w_chunks[ci].ck_layers) {
     if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
@@ -367,7 +373,7 @@ pub fn world_ground_layer(w: World, q: integer, r: integer) -> integer {
 // NOT build a `Column`: doing that per sample once slowed chunk rebuilds enough to
 // reorder the editor's own gates.
 pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Hex {}; }
   gl = 0 - 1;
   for i in 0..len(w.w_chunks[ci].ck_layers) {
@@ -419,7 +425,7 @@ pub struct SurfaceAt {
 // terrain layer's smoothed surface and its cell's stored integer height — on any
 // slope the interpolated surface sits BELOW the cell's own value.
 pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> SurfaceAt {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
   ix = cell_index(q, r);
   base = w.w_chunks[ci].ck_base;
@@ -460,7 +466,7 @@ pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> SurfaceAt
 }
 
 pub fn world_column(w: World, q: integer, r: integer) -> Column {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   // A missing chunk is an empty column, never a refusal: unauthored ground is a
   // legal answer, and `E1` makes absent and all-zero indistinguishable.
   if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
@@ -495,7 +501,7 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
 // own gates. The column is the unit the WRITE path needs, because every invariant
 // is a column property; the read path needs one cell and should pay for one.
 pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Hex {}; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
   if w.w_chunks[ci].ck_layers[l].ly_kind != KIND_TERRAIN { return Hex {}; }
@@ -726,8 +732,8 @@ pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
     }
   }
 
-  cx = chunk_of(col.co_q);
-  cz = chunk_of(col.co_r);
+  cx = world_chunk_of(col.co_q);
+  cz = world_chunk_of(col.co_r);
   ix = cell_index(col.co_q, col.co_r);
   ci = find_chunk(w, cx, cz);
   if ci < 0 {
@@ -775,7 +781,7 @@ pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
 
 // The dressing at a cell — its own index space, over dressing layers only.
 pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
   ch = w.w_chunks[ci];
   ix = cell_index(q, r);
@@ -822,7 +828,7 @@ pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
 // place**. Rebuilding a column to change one cell was the departure.
 pub fn world_set_cell(w: World, q: integer, r: integer, li: integer,
                       c: Hex) -> ColumnWrite {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   // No chunk, or no such layer yet — the slow path materialises both.
   if ci < 0 || li < 0 || li >= len(w.w_chunks[ci].ck_layers) {
     return set_cell_slow(w, q, r, li, c);
@@ -940,8 +946,8 @@ pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrit
   chk = check_column(w, col);
   if chk.cw_code != CW_OK { return chk; }
 
-  cx = chunk_of(col.co_q);
-  cz = chunk_of(col.co_r);
+  cx = world_chunk_of(col.co_q);
+  cz = world_chunk_of(col.co_r);
   ix = cell_index(col.co_q, col.co_r);
 
   // The column's own extent, needed before the chunk exists so a NEW chunk can be
@@ -1148,7 +1154,7 @@ pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrit
 // The newest write anywhere in the tile holding (q, r). 0 when the tile does not
 // exist, which is the right answer — nothing has happened there.
 pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   hi = 0;
   for ly in w.w_chunks[ci].ck_layers { if ly.ly_ver > hi { hi = ly.ly_ver; } }
@@ -1162,14 +1168,14 @@ pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
 // that is what the slot WILL be, and a caller reasoning about a future slot must
 // get the same answer as one reasoning about a present one.
 pub fn world_layer_kind(w: World, q: integer, r: integer, l: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return KIND_TERRAIN; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return KIND_TERRAIN; }
   w.w_chunks[ci].ck_layers[l].ly_kind
 }
 
 pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
   w.w_chunks[ci].ck_layers[l].ly_ver
@@ -1215,7 +1221,7 @@ pub fn world_chunk_layers(w: World, cx: integer, cz: integer) -> integer {
 }
 
 pub fn world_layer_crc(w: World, q: integer, r: integer, l: integer) -> integer {
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
   layer_crc(w.w_chunks[ci].ck_layers[l])
@@ -1232,7 +1238,7 @@ pub const LAYER_FIELDS = 7;
 
 pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector<integer> {
   out: vector<integer> = [];
-  ci = find_chunk(w, chunk_of(q), chunk_of(r));
+  ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return out; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return out; }
   for c in w.w_chunks[ci].ck_layers[l].ly_cells {

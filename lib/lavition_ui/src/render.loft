@@ -19,7 +19,7 @@ use panel;
 // A packed 0xRRGGBB colour, the same packing `graphics::rgb` produces. Kept as a
 // plain integer so this package needs no graphics dependency to name one.
 pub struct DrawRect {
-  dr_rect:   Rect,
+  dr_rect:   UiRect,
   dr_colour: integer,
 }
 

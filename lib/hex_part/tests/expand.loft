@@ -70,10 +70,10 @@ fn target() -> World {
   w
 }
 
-// How many layers in the whole store carry this label. ⚠ READ FROM THE STORE,
+// How many layers the whole store carries. ⚠ READ FROM THE STORE,
 // never from what `part_expand` returned: a writer's own tally only ever agrees
 // with the writer, which is `part_stamp`'s rule one arc over.
-fn layer_count(w: World) -> integer {
+fn store_layers(w: World) -> integer {
   n = 0;
   for ch in w.w_chunks {
     for ly in ch.ck_layers { n = n + 1; }
@@ -128,11 +128,11 @@ fn test_two_parts_in_one_chunk_share_a_layer_and_that_is_fine() {
   put("h/leaf", 7, no_kids());
   put("h/nest", 3, [at("h/leaf", 2, 0, 0)]);
   w = target();
-  before = layer_count(w);
+  before = store_layers(w);
   ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
   assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
-  assert(layer_count(w) - before == 1,
-         "two parts cost {layer_count(w) - before} layers, not 1 — the sheet no "
+  assert(store_layers(w) - before == 1,
+         "two parts cost {store_layers(w) - before} layers, not 1 — the sheet no "
          + "longer holds them both, which changes the cost model");
 }
 

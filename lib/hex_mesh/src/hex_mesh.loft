@@ -429,7 +429,7 @@ pub const MESH_MARGIN = 2;
 // chunk known to be empty is an ANSWER — the mesher reads absent cells there and so
 // does the server, and the two agree.
 pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
-  hex_world::world_chunk_known(w, hex_world::chunk_of(q), hex_world::chunk_of(r))
+  hex_world::world_chunk_known(w, hex_world::world_chunk_of(q), hex_world::world_chunk_of(r))
 }
 
 // Every store chunk the mesher will read for this tile is present.
@@ -451,16 +451,16 @@ pub fn tile_why(w: World, cx: integer, cz: integer) -> text {
   r1 = cz * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
   out = "";
   if !chunk_present(w, q0, r0) {
-    out = out + " -{hex_world::chunk_of(q0)},{hex_world::chunk_of(r0)}";
+    out = out + " -{hex_world::world_chunk_of(q0)},{hex_world::world_chunk_of(r0)}";
   }
   if !chunk_present(w, q1, r0) {
-    out = out + " -{hex_world::chunk_of(q1)},{hex_world::chunk_of(r0)}";
+    out = out + " -{hex_world::world_chunk_of(q1)},{hex_world::world_chunk_of(r0)}";
   }
   if !chunk_present(w, q0, r1) {
-    out = out + " -{hex_world::chunk_of(q0)},{hex_world::chunk_of(r1)}";
+    out = out + " -{hex_world::world_chunk_of(q0)},{hex_world::world_chunk_of(r1)}";
   }
   if !chunk_present(w, q1, r1) {
-    out = out + " -{hex_world::chunk_of(q1)},{hex_world::chunk_of(r1)}";
+    out = out + " -{hex_world::world_chunk_of(q1)},{hex_world::world_chunk_of(r1)}";
   }
   out
 }

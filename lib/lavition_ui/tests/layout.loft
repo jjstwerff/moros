@@ -30,7 +30,7 @@ fn demo_spec() -> PanelSpec {
   }
 }
 
-// ── Rect helpers ─────────────────────────────────────────────────
+// ── UiRect helpers ─────────────────────────────────────────────────
 
 fn test_rect_contains_inside() {
   r = rect(10, 10, 100, 50);

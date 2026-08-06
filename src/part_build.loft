@@ -156,7 +156,7 @@ fn main() {
   // question until there is a number and this is where the number comes from.
   //
   // A part is ORIGIN-CENTRED by construction (`part_from_region`), so its cells
-  // run from −rad to +rad and `chunk_of(-1)` is −1 — which puts every part, of
+  // run from −rad to +rad and `world_chunk_of(-1)` is −1 — which puts every part, of
   // any size, across FOUR chunks. A chunk's layer is a dense 1024-cell page, so
   // the smallest possible part still pays 4 x layers x 8 KB. Measured rather than
   // reasoned, and printed every run so it cannot drift: 19 columns of cottage

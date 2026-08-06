@@ -27,13 +27,13 @@ fn test_c1_refuses_a_world_that_would_fail_b1_silently() {
 // ── addressing — floor division, both signs ─────────────────────────────────
 
 fn test_chunk_of_floors_rather_than_truncating() {
-  assert(chunk_of(0) == 0, "0");
-  assert(chunk_of(31) == 0, "31");
-  assert(chunk_of(32) == 1, "32");
+  assert(world_chunk_of(0) == 0, "0");
+  assert(world_chunk_of(31) == 0, "31");
+  assert(world_chunk_of(32) == 1, "32");
   // The trap: C-style division rounds toward zero, which would put -1 in chunk 0.
-  assert(chunk_of(0 - 1) == 0 - 1, "-1 must be chunk -1, not chunk 0");
-  assert(chunk_of(0 - 32) == 0 - 1, "-32");
-  assert(chunk_of(0 - 33) == 0 - 2, "-33");
+  assert(world_chunk_of(0 - 1) == 0 - 1, "-1 must be chunk -1, not chunk 0");
+  assert(world_chunk_of(0 - 32) == 0 - 1, "-32");
+  assert(world_chunk_of(0 - 33) == 0 - 2, "-33");
   // and the local part must stay non-negative, or cell_index goes out of range
   assert(local_of(0 - 1) == 31, "-1 is local 31");
   assert(local_of(0 - 32) == 0, "-32 is local 0");

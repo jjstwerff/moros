@@ -18,6 +18,12 @@ entry = "src/hex_part.loft"
 [dependencies]
 hex_world = { path = "../hex_world" }
 
+# ⚠ FOR ONE FUNCTION, AND THAT IS THE POINT — plan 19 `L6`. `hex_dist` was written
+# out here a second time, identically, while `hex_field`'s sat in every consumer's
+# graph beside it. `tools/names.sh` is what found the pair; the family owns the
+# lattice, so the copy went rather than the dependency.
+hex_field = ">=0.1"
+
 # ⚠ THE PREMISE ABOVE MOVED AT `A6.1`, AND THAT IS WORTH SAYING RATHER THAN
 # QUIETLY EDITING. *"A part IS a world … so this package needs the store and
 # nothing else"* is true of a CELL part and is only half of §P5, which gives a

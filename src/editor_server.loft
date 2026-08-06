@@ -19,8 +19,14 @@
 // Run:  make editor      (or: loft --interpret --lib lib/ src/editor_server.loft)
 use server;
 use web;          // sleep_ms — the idle tick of the manual connection pool
-use gridmesh;     // chunk_of / enc_coord — the chunk table is the LIBRARY's
-use moros_map;
+// ⚠ QUALIFIER ONLY, for `msim`'s reason below and one of its own. `gridmesh` declares
+// `world_chunk_of` — and so does `hex_world`, with a different arity and a different meaning
+// (`world_chunk_of(v)` is ours, the floor-divide; gridmesh’s `chunk_of(x, y, shift)` is the chunk KEY). Plainly
+// imported, `gridmesh` came first and won, so `hex_world`'s was reachable only when
+// spelled out, and an innocent reorder of this block would have silently swapped which
+// one every bare call meant. It also declares `seg_len`, which `hex_way` declares too.
+// A qualifier adds no bare name at all — `tools/names.sh`.
+use gridmesh as gm;
 use hex_world;
 use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's query
@@ -914,6 +920,14 @@ fn rec_flush(path: text, buf: text) {
 // It was wrong for the road width, the scatter disc, the storey disc and the house
 // footprint too — every one of them had been drawing a sheared shape. `hex_grid`
 // owns the lattice (decision 2); the parity-blind copy is moros#3's to remove.
+//
+// ✅ **AND THE SHADOW ITSELF IS GONE NOW — plan 19 `L6`.** `use moros_map;` was at the
+// top of this file and **nothing in these 8,283 lines used a single one of its 81
+// names.** Its only remaining effect was to put `hex_distance`, `Hex` and `Chunk` in
+// scope ahead of the ones this program means, so every call had to spell out which it
+// wanted. `tools/names.sh` found it. ⚠ **The qualifiers stay** — they say which lattice
+// is meant, which is worth reading — but the hazard is now removed where it arrived
+// rather than answered at each of its call sites.
 // `edge_owner` is `hex_editor`'s now — the write layer moved with the gestures.
 
 // `edge_layer` is `hex_editor`'s now — the write layer moved with the gestures.
@@ -1476,8 +1490,8 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
   wmat = payload as integer ?? FENCE_MAT;
   wfit = fit_nominal(wmat, FENCE_MAT, "wall material");
   if !wfit.ft_ok {
-    srv.send_to(cid, "S:road refused — {fit_text(wfit)}");
-    println("editor: road refused — {fit_text(wfit)}");
+    srv.send_to(cid, "S:road refused — {fit_why(wfit)}");
+    println("editor: road refused — {fit_why(wfit)}");
     return;
   }
   if !draft.wd_open {
@@ -2748,7 +2762,7 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   srv.broadcast("S:cart pose y {cs_y} bank {cs_bank} gapl {cs_el} gapr {cs_er}");
 }
 
-// The doorstep — `Fit`, `fit_ordinal`, `fit_nominal`, `fit_text` — is
+// The doorstep — `Fit`, `fit_ordinal`, `fit_nominal`, `fit_why` — is
 // `hex_editor`'s now. It is invariant I's shape, so it belongs beside the gestures
 // that owe it rather than in the program that happens to send the words.
 
@@ -3332,14 +3346,14 @@ fn mark_dirty_id(d: DirtySet, cid: integer) {
 }
 
 fn mark_dirty(d: DirtySet, mq: integer, mr: integer, reach: integer) {
-  mc = chunk_of(mq, mr, CHUNK_SHIFT);
+  mc = gm::chunk_of(mq, mr, CHUNK_SHIFT);
   span = (reach / CHUNK ?? 0) + 1;
   for dz in 0 - span..span + 1 {
     for dx in 0 - span..span + 1 {
       ccx = mc.cx + dx;
       ccz = mc.cy + dz;
       if chunk_within(ccx, ccz, mq, mr, reach) {
-        cid = enc_coord(ccx, ccz);
+        cid = gm::enc_coord(ccx, ccz);
         seen = false;
         for dc in d.items { if dc.id == cid { seen = true; } }
         if !seen { d.items += [DirtyChunk { id: cid, cx: ccx, cz: ccz }]; }
@@ -3498,8 +3512,8 @@ fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
   r1 = cz * CHUNK + CHUNK - 1 + hex_mesh::MESH_MARGIN;
   // At most 2x2 store chunks: the footprint is CHUNK + 2*MARGIN wide and a store chunk
   // is CHUNK_W, which `hex_mesh/tests/mesh.loft` pins apart so this stays true.
-  for sz in hex_world::chunk_of(r0)..hex_world::chunk_of(r1) + 1 {
-    for sx in hex_world::chunk_of(q0)..hex_world::chunk_of(q1) + 1 {
+  for sz in hex_world::world_chunk_of(r0)..hex_world::world_chunk_of(r1) + 1 {
+    for sx in hex_world::world_chunk_of(q0)..hex_world::world_chunk_of(q1) + 1 {
       send_one_chunk(srv, wld, sx, sz);
     }
   }
@@ -3518,13 +3532,13 @@ fn digest_wire(wld: World, chunks: vector<DirtyChunk>) -> text {
     // ⚠ STORE CHUNKS, for the same reason `layer_wire` sends them: the digest is over
     // LAYERS, and a layer belongs to a store chunk. The client multiplies by
     // `CHUNK_W`, so anything else here is off by the ratio of the two tiles.
-    q0 = hex_world::chunk_of(dch.cx * CHUNK) * hex_world::CHUNK_W;
-    r0 = hex_world::chunk_of(dch.cz * CHUNK) * hex_world::CHUNK_W;
+    q0 = hex_world::world_chunk_of(dch.cx * CHUNK) * hex_world::CHUNK_W;
+    r0 = hex_world::world_chunk_of(dch.cz * CHUNK) * hex_world::CHUNK_W;
     for li in 0..len(world_column(wld, q0, r0).co_ids) {
       if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
         if n > 0 { out += ";"; }
-        out += "{hex_world::chunk_of(dch.cx * CHUNK)},"
-             + "{hex_world::chunk_of(dch.cz * CHUNK)},{li},"
+        out += "{hex_world::world_chunk_of(dch.cx * CHUNK)},"
+             + "{hex_world::world_chunk_of(dch.cz * CHUNK)},{li},"
              + "{hex_world::world_layer_crc(wld, q0, r0, li)}";
         n = n + 1;
       }
@@ -6394,8 +6408,8 @@ fn main() {
           // doorstep refuses it without an offer (`X68`).
           pfit = fit_nominal(pitem, PROP_ITEM_MAX, "prop");
           if !pfit.ft_ok {
-            srv.send_to(ev.cid, "S:prop refused — {fit_text(pfit)}");
-            println("editor: prop refused — {fit_text(pfit)}");
+            srv.send_to(ev.cid, "S:prop refused — {fit_why(pfit)}");
+            println("editor: prop refused — {fit_why(pfit)}");
             continue;
           }
           phx = world_to_hex(px, pz);
@@ -7019,8 +7033,8 @@ fn main() {
           // owed the reason, the offer and the residual.
           rfit = fit_ordinal(roof_up, W_EPS, WINDOW_MAX_ROOF, "roof");
           if !rfit.ft_ok {
-            srv.send_to(ev.cid, "S:stencil refused — {fit_text(rfit)}");
-            println("editor: stencil refused — {fit_text(rfit)}");
+            srv.send_to(ev.cid, "S:stencil refused — {fit_why(rfit)}");
+            println("editor: stencil refused — {fit_why(rfit)}");
           } else {
           shx2 = world_to_hex(px, pz);
           anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
@@ -7141,14 +7155,14 @@ fn main() {
           }
           dfit = fit_ordinal(sc_dn, 0, 100, "density");
           if !dfit.ft_ok {
-            srv.send_to(ev.cid, "S:scatter refused — {fit_text(dfit)}");
-            println("editor: scatter refused — {fit_text(dfit)}");
+            srv.send_to(ev.cid, "S:scatter refused — {fit_why(dfit)}");
+            println("editor: scatter refused — {fit_why(dfit)}");
             continue;
           }
           sfit = fit_nominal(sc_sp, SPECIES_BUSH, "species");
           if !sfit.ft_ok {
-            srv.send_to(ev.cid, "S:scatter refused — {fit_text(sfit)}");
-            println("editor: scatter refused — {fit_text(sfit)}");
+            srv.send_to(ev.cid, "S:scatter refused — {fit_why(sfit)}");
+            println("editor: scatter refused — {fit_why(sfit)}");
             continue;
           }
           vhx = world_to_hex(px, pz);
@@ -8093,7 +8107,7 @@ fn main() {
         }
         py = (level_h as float) * HEIGHT_SCALE;
       }
-      home = chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
+      home = gm::chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
       // ⚠ THE COORDS BESIDE THE IDS, because `enc_coord` packs and nothing unpacks.
       // The digest needs `(cx, cz)` and this is the one loop that has them for the
@@ -8109,7 +8123,7 @@ fn main() {
       for scz in home.cy - CHUNK_R..home.cy + CHUNK_R + 1 {
         for scx in home.cx - CHUNK_R..home.cx + CHUNK_R + 1 {
           if chunk_in_range(scx, scz, hxa.ha_q, hxa.ha_r) {
-            cid = enc_coord(scx, scz);
+            cid = gm::enc_coord(scx, scz);
             next_loaded += [cid];
             next_coords += [DirtyChunk { id: cid, cx: scx, cz: scz }];
             seen = false;

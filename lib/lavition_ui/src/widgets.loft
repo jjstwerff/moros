@@ -2,18 +2,23 @@
 // Pure data + hit-test helpers; no rendering (that lives in
 // panel_render once loft_gl's sprite / text bridges are wired).
 
-pub struct Rect {
+// ⚠ `UiRect`, NOT `Rect` — plan 19 `L6`. The registry's `shapes` publishes a `Rect`
+// of four FLOATS; this one is four integer pixels, and a UI that snapped to a float
+// rectangle would be the whole reason this package has its own. Nothing imports both
+// today, which is exactly when the rename is still free: `lavition_ui` is published at
+// `L7`, and a published name cannot be renamed. `tools/names.sh` found it.
+pub struct UiRect {
   r_x: integer,
   r_y: integer,
   r_w: integer,
   r_h: integer,
 }
 
-pub fn rect(x: integer, y: integer, w: integer, h: integer) -> Rect {
-  Rect { r_x: x, r_y: y, r_w: w, r_h: h }
+pub fn rect(x: integer, y: integer, w: integer, h: integer) -> UiRect {
+  UiRect { r_x: x, r_y: y, r_w: w, r_h: h }
 }
 
-pub fn rect_contains(r: Rect, mx: integer, my: integer) -> boolean {
+pub fn rect_contains(r: UiRect, mx: integer, my: integer) -> boolean {
   mx >= r.r_x && mx < r.r_x + r.r_w && my >= r.r_y && my < r.r_y + r.r_h
 }
 
@@ -21,7 +26,7 @@ pub fn rect_contains(r: Rect, mx: integer, my: integer) -> boolean {
 // identity the panel uses in hit-test results (0..5 = ToolKind).
 pub struct Button {
   btn_id:           integer,
-  btn_rect:         Rect,
+  btn_rect:         UiRect,
   btn_label:        text,
   btn_hotkey_label: text,      // e.g. "1" shown left of the label
   btn_selected:     boolean,
@@ -75,7 +80,7 @@ pub fn entry_blocked_of(kind: text, label: text, why: text) -> Entry {
 // Scrollable list of catalogue entries.  `lb_selected` is the currently
 // highlighted index, or -1 for no selection.
 pub struct ListBox {
-  lb_rect:        Rect,
+  lb_rect:        UiRect,
   lb_items:       vector<Entry>,
   lb_selected:    integer,
   lb_scroll:      integer,   // pixel scroll offset
@@ -84,6 +89,6 @@ pub struct ListBox {
 
 // Single-line status strip at the bottom of the side panel.
 pub struct StatusStrip {
-  ss_rect: Rect,
+  ss_rect: UiRect,
   ss_text: text,
 }

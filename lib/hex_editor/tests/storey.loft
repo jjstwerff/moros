@@ -258,7 +258,7 @@ fn test_a_room_does_not_end_at_a_chunk_seam() {
   hi = 40 - hex_editor::SLAB_THICK;
   a = world_column(w, 0, 0);
   b = world_column(w, 0, 0 - 1);
-  assert(hex_world::chunk_of(0) != hex_world::chunk_of(0 - 1),
+  assert(hex_world::world_chunk_of(0) != hex_world::world_chunk_of(0 - 1),
          "the disc really does straddle a seam, or this proves nothing");
   assert((a.co_ids[0] ?? 0) == (b.co_ids[0] ?? 0),
          "ONE cellar, ONE label across the seam: "

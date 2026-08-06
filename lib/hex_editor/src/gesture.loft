@@ -131,7 +131,19 @@ pub fn fit_nominal(v: integer, hi: integer, what: text) -> Fit {
 
 // One rendering of a refusal, so every tool says it the same way and a NOMINAL
 // refusal cannot accidentally grow an offer.
-pub fn fit_text(f: Fit) -> text {
+// ⚠ `fit_why`, NOT `fit_text` — plan 19 `L6`. `lavition_ui` exports a `fit_text` too,
+// and it is a different question entirely: *how much of this label fits in this many
+// pixels*, against this one's *why was the gesture refused*. Both were in
+// `editor_client`'s graph, where `hex_editor` came first and won, so the panel's own
+// truncation was reachable only by spelling it out. `tools/names.sh` found the pair.
+//
+// ⚠ AND `fit_reason` WAS THE FIRST NAME TRIED, WHICH THE SAME TOOL REFUSED: the
+// registry's `hex_fit` already publishes one. That is worth more than a near miss —
+// `hex_fit` IS a doorstep, *"refuse at authoring time … with a named reason, an offer
+// of the nearest fitting alternative, and the residual"*, which is this `Fit` field for
+// field. Whether the two converge is a real question and not a rename; it is written up
+// in plan 19 rather than settled by picking a third spelling.
+pub fn fit_why(f: Fit) -> text {
   if f.ft_ordinal {
     return "{f.ft_reason} (offer {f.ft_offer}, residual {f.ft_residual})";
   }
@@ -458,9 +470,9 @@ pub fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: inte
 // gets one.
 pub fn fence_ring(w: World, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
   mfit = fit_nominal(mat, FENCE_MAT, "wall material");
-  if !mfit.ft_ok { return ack_no(fit_text(mfit)); }
+  if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   rfit = fit_ordinal(rad, 1, 12, "radius");
-  if !rfit.ft_ok { return ack_no(fit_text(rfit)); }
+  if !rfit.ft_ok { return ack_no(fit_why(rfit)); }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   fence_disc(w, cq, cr, rad, mat, ref);
   outside = 0;
@@ -485,9 +497,9 @@ pub fn fence_outside(w: World, a: Author, mat: integer, rad: integer, ref: float
 pub fn edge_set(w: World, a: Author, dir: integer, mat: integer, ref: float,
                 h: integer) -> Ack {
   dfit = fit_nominal(dir, 5, "direction");
-  if !dfit.ft_ok { return ack_no(fit_text(dfit)); }
+  if !dfit.ft_ok { return ack_no(fit_why(dfit)); }
   mfit = fit_nominal(mat, FENCE_MAT, "wall material");
-  if !mfit.ft_ok { return ack_no(fit_text(mfit)); }
+  if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   code = wall_set(w, cq, cr, dir, mat, h, ref);
   if code != 0 { return ack_no("the world declined the write ({code})"); }
@@ -1879,7 +1891,7 @@ pub fn edge_mat_at(w: World, x: float, z: float, ref: float) -> integer {
 pub fn open_ahead(w: World, a: Author, kind: integer, nedges: integer) -> Ack {
   if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");
-  if !nfit.ft_ok { return ack_no(fit_text(nfit)); }
+  if !nfit.ft_ok { return ack_no(fit_why(nfit)); }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   ref = (ground_h(w, cq, cr) as float) * w.w_unit;
 

@@ -6,6 +6,7 @@
 // that grows an operation for every consumer's idea of a selection stops being a
 // store.
 use hex_world;
+use hex_field;   // hex_dist — the family owns the parity rule; see `in_disc` below
 
 pub const PR_OK      = 0;
 pub const PR_WORLD   = 1;        // the new world's constants were refused
@@ -107,26 +108,20 @@ pub fn part_from_region(w: World, cq: integer, cr: integer, rad: integer) -> Par
 // ⚠ VIA THE CUBE FORM, because an offset rectangle is not a disc and a naive
 // `|dq| + |dr|` is not a hex distance. Parity is where this codebase breaks —
 // four separate bugs, all right for non-negative coordinates and wrong below
-// zero or on odd rows — so the conversion is written once, here, and tested on
-// both signs and both parities.
+// zero or on odd rows — so the conversion is written once and tested on both
+// signs and both parities.
+//
+// ⚠ AND *ONCE* MEANS IN `hex_field`, NOT HERE — plan 19 `L6`. This package carried
+// its own `pub fn hex_dist`: the same twelve lines, the same odd-r cube conversion,
+// the same answer, sitting in `hex_editor`'s graph **beside** `hex_field::hex_dist`
+// the whole time. Two copies of a parity rule is precisely what the paragraph above
+// exists to prevent, and neither package's suite could see it — `hex_part` was green
+// and so was `hex_field`. `tools/names.sh` found it, and it was already decided by
+// import order: a bare `hex_dist` in `hex_editor` bound to `hex_field`'s, because
+// `use hex_field;` sits three lines above `use hex_part;`. The copy that was never
+// being called is the one that was deleted.
 fn in_disc(cq: integer, cr: integer, q: integer, r: integer, rad: integer) -> boolean {
   hex_dist(cq, cr, q, r) <= rad
-}
-
-pub fn hex_dist(q1: integer, r1: integer, q2: integer, r2: integer) -> integer {
-  x1 = q1 - ((r1 - (r1 & 1)) / 2 ?? 0);
-  z1 = r1;
-  y1 = 0 - x1 - z1;
-  x2 = q2 - ((r2 - (r2 & 1)) / 2 ?? 0);
-  z2 = r2;
-  y2 = 0 - x2 - z2;
-  dx = if x1 > x2 { x1 - x2 } else { x2 - x1 };
-  dy = if y1 > y2 { y1 - y2 } else { y2 - y1 };
-  dz = if z1 > z2 { z1 - z2 } else { z2 - z1 };
-  m = dx;
-  if dy > m { m = dy; }
-  if dz > m { m = dz; }
-  m
 }
 
 // ── comparing two parts ──────────────────────────────────────────────────────

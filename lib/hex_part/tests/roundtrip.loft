@@ -10,6 +10,7 @@
 // one-cell change that must break it.
 use hex_part;
 use hex_world;
+use hex_field;   // hex_dist — the family owns it, not this package
 
 const U = 0.25;
 const RESERVE = 8;

@@ -46,8 +46,8 @@ fn test_the_patch_really_does_straddle_a_seam() {
   // ⚠ THE CONTROL FOR EVERY TEST BELOW. If these two landed in one chunk the seam
   // would never be crossed and the whole file would pass on a world that cannot
   // exhibit the defect.
-  assert(chunk_of(0) != chunk_of(0 - 1),
-         "r = 0 and r = -1 are in different chunks, got {chunk_of(0)} and {chunk_of(0 - 1)}");
+  assert(world_chunk_of(0) != world_chunk_of(0 - 1),
+         "r = 0 and r = -1 are in different chunks, got {world_chunk_of(0)} and {world_chunk_of(0 - 1)}");
   w = seeded();
   assert(world_layer_id(w, 0, 0, 0) == LABEL_GROUND, "ground labelled on one side");
   assert(world_layer_id(w, 0, 0 - 1, 0) == LABEL_GROUND, "and on the other");
