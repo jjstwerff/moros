@@ -1041,6 +1041,12 @@ recorded in the paragraph above; the duplicate is gone, and the correction is no
 > `f64` heights, and the store⇄window "adapter with a commit half" do not. `HEX_STACK.md` §2 lists
 > every superseded claim. This document keeps the seam rules, the five groups, the per-package
 > Definition of Done and the ownership audits.
+>
+> ⚠ **AND THE TWO SUBSECTIONS THAT CALL THEMSELVES BLOCKING ARE NOT BLOCKING ANY MORE** — *Five
+> documents disagree* and *Four representations of the map now exist*, both below, and each
+> carries the resolution at its own heading now. They were the most expensive thing in this file
+> to leave standing: a reader arriving at *"this is the one decision that gates the rest"* has
+> been told the foundation is unmade, when it was made a week later and probed.
 
 The ownership audit above adjudicated `lib/moros_*`. It never looked at
 **`src/editor_server.loft`**, which is 4,238 lines, 89 functions, and a `main()` of 1,228
@@ -1218,7 +1224,13 @@ A **procedural generator** is the same composition with the first and last lines
 the capability being asked for, and it falls out of the adapter rather than needing a
 generator framework.
 
-### Five documents disagree about where things go. Reconciling them is the design.
+### ✅ RESOLVED — Five documents disagreed about where things go, and [`HEX_STACK.md` §2](HEX_STACK.md#2-what-this-supersedes) is the reconciliation
+
+> ⚠ **The heading below used to end *"Reconciling them is the design"*, and that reconciliation
+> was written on 2026-07-30.** `HEX_STACK.md` §2 dispositions every claim in the table below, row
+> by row, *"so that none of them can be read as still standing"* — which is exactly what this
+> subsection was letting happen. **The survey is kept**: it is the evidence for what got
+> superseded, and it is the only place the ten packages that appear in no roadmap are listed.
 
 ⚠ **An earlier draft of this section invented a six-phase order of its own.** That was the
 same error as the code it describes — building a parallel structure beside one that exists.
@@ -1239,7 +1251,21 @@ its L4 `hex_stencil` as `hex_field`'s `Stencil`, and its L3 `hex_render` as `hex
 `hex_walls` arrived as `hex_edge` + `hex_shape`, `W.7`'s `hex_items` as `hex_place`. Those
 steps are **done under other names**, and the roadmaps have not caught up.
 
-### ⚠ Four representations of the map now exist. That is the blocking decision.
+### ✅ RESOLVED — four representations of the map existed, and the column store won
+
+> ⚠ **This heading read *"That is the blocking decision"* and the paragraph under it ends *"this
+> audit does not choose"*. Both are out of date, and leaving them standing said the foundation was
+> unmade for a week after it was settled.** The answer is
+> [`HEX_STACK.md` I1/I2](HEX_STACK.md#1-the-three-invariants): **the store is the only authority
+> and everything else is derived**, so the column store is the world and `hex_field`'s bundle is a
+> *derived window* — §2 dispositions the bundle explicitly, as *"the basis for crawler, whose
+> levels are bounded and 2D; for a streamed world it is scratch"*.
+>
+> ⚠ **AND IT WAS SETTLED BY A PROBE, NOT BY THIS TABLE** — [STATE § decision 1](STATE.md): the
+> dense 8-byte cell and the parallel arrays **do not conflict**, because the cell is *storage and
+> serialisation* over the field model; material and height round-trip with zero differences. The
+> table below framed it as a choice between rivals, which is why it read as blocking. **The table
+> is kept** — it is the only inventory of the four, and two of them still have no consumers.
 
 | representation | where | shape |
 |---|---|---|
