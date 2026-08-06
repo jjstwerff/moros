@@ -26,10 +26,11 @@ when the step landed, and this file duplicating it is how it grows back.
 
 `make gate` **43 green** · `make lib-test` **2602, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All re-measured
-**2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`), which is a
-different binary from the one installed at 00:26 the same night — `loft --version` says `2026.8.0`
-for both, so **the version string cannot tell two installs apart; `sha256sum /usr/local/bin/loft`
-can.**
+**2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`). ⚠ **THREE
+BUILDS LANDED IN NINE HOURS** — `b619b909` at 00:26, `9dfd0280` at 00:33, `bd41374b` at 08:57
+(`c73eb1c3`) — and `loft --version` says `2026.8.0` for every one of them, so **the version string
+cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** The counts above predate the
+08:57 build; what that build changed is measured below and nothing in it touches a suite.
 
 ⚠ **AND THERE IS A FOURTH FACE OF THE GATE FLAKE, WHICH ONLY APPEARS AFTER A LOFT INSTALL.**
 The first suite run on a new toolchain was **25 pass, 2 fail, 14 `SERVER NEVER LISTENED`**; the
@@ -38,13 +39,25 @@ timeout in disguise: `cdylib loft_web rebuilt: cached artifact rejected (stamped
 fp=none != current fp=…)`. Every gate server rebuilds a **Rust** cdylib inside its 60-second wait
 for `listening on port`, four at a time, on a box already at load 13. **Warm it once after any
 loft install** — start one server, let it build, stop it — then run the suite. A first run on a
-fresh toolchain measures the compiler's cache, not the tree.
+fresh toolchain measures the compiler's cache, not the tree. ⚠ **This is the LAST cold-cache trap
+standing**: the `native-auto` half of it went with loft#777.
 
 ⚠ **`walk` failed the warm run with `{"frames":0}` and passed ALONE with 38 frames**, which is
 STATE's own third face and is why running the failure alone is not optional: `0` says *nothing
 happened*, not *the wrong thing happened*.
 
-**What the new loft changed for us, measured rather than read**: `b = a` still COPIES and
+**What the 08:57 build changed for us, measured rather than read.** ✅ **loft#781 is FIXED and
+verified here** — the copy notice landed 29 of its 67 rows on a comment, a blank line or a `const`
+in the WRONG FILE, and it is now **67 rows, 0 misattributed**, each naming the library the copy is
+actually in. ⚠ **Their fix went further than the report**: the same `fallback_file` mistake sat in
+`warn_dead_stores`, which is a **warning** rather than advice — and a warning gates a library's CI
+under `LOFT_DENY_WARNINGS`, so a dependency's dead store could fail a consumer's build at a line
+holding a `const`. ⚠ **AND THE MEASUREMENT NEARLY WENT THE OTHER WAY**: diagnostics now carry a
+CODE, so the prefix is `advice[avoidable-copy]:` and a grep for `^advice: copy of` returns **zero**
+— which reads as *the notice is gone* rather than *my pattern is stale*. This tree's own rule, on
+its own ticket: **match a line you know is there before believing a count of zero.**
+
+**What the 00:33 build changed, still true**: `b = a` still COPIES and
 `c = v[0]` still ALIASES (loft#774's asymmetry stands, now as a decided rule — `@PLN130` F7,
 *"`&` is the aliasing spelling"*); **loft#772 is FIXED** (a `&` parameter reassigned from a local
 compiles and the caller sees the value) while the tracker still reads OPEN; the new
@@ -54,25 +67,16 @@ comment, a blank line or a `const` in the wrong file**
 ([loft#781](https://github.com/loft-lang/loft/issues/781), filed). ⚠ **The "drop the `&`" lint is
 back at 4 sites, all `wld: &World`** — the exact class loft#760 burned; not touched.
 
-⚠ **A LIBRARY EDIT MAY NOT REACH THE EDITOR, AND A GREEN SUITE CAN BE MEASURING THE PREVIOUS
-LIBRARY.** [loft#777](https://github.com/loft-lang/loft/issues/777), filed 2026-08-05. A
-**body-only** edit under `lib/` is invisible to `src/editor_server.loft` — `lib/*/native-auto/*.so`
-serves the stale build and does **not** self-clear on the next run — while the *same source* is
-picked up correctly by an 8-line consumer, and by the package's own `loft test` on both backends.
-⚠ **It inverted the suite in both directions inside one hour**: a deliberate sabotage of a
-library rule looked like a **blind gate**, and restoring the rule then looked like a **broken
-feature**, three checks red against correct source. ⚠ The compile is FRESH while the execution is
-STALE — appending garbage to the library file fails startup with a parse error naming that exact
-file, so it is read, parsed and then not used. **`rm -rf lib/*/native-auto` before any run that
-must reflect a `lib/` edit**, and re-run before believing either colour. The rebuild is minutes
-and ~5 GB, which is why `make gate` does not do it for you.
-
-⚠ **AND THAT WORKAROUND COLLIDES WITH THE GATE RUNNER, WHICH IS THE SAME COLD-CACHE FACE AS A
-LOFT INSTALL.** Clearing `native-auto` and going straight to `make gate` gave **4 `SERVER NEVER
-LISTENED`**, because each gate then rebuilds the packages inside its 60-second wait for
-`listening on port`, four at a time. The two rules fight, and the cure is one line between them:
-**start ONE server, let it build, stop it, then run the suite.** A run taken across a cold cache
-measures the compiler.
+✅ **loft#777 IS FIXED — MEASURED 2026-08-06 ON THE 08:57 BUILD, AND THE `rm -rf lib/*/native-auto`
+DANCE IS OVER.** A body-only edit under `lib/` used to be invisible to `src/editor_server.loft`
+while an 8-line consumer saw it, because `lib/*/native-auto/*.so` served the stale build and did
+not self-clear. Re-measured with the same decisive experiment — warm the cache on the new binary,
+sabotage `hex_part`'s fence, run WITHOUT clearing — and the sabotage bit immediately; restoring it
+bit too, which is the control a one-way fix would fail. ⚠ **This also ends the collision it caused**:
+clearing the cache and going straight to `make gate` gave 4 `SERVER NEVER LISTENED`, because each
+gate then rebuilt the packages inside its 60-second wait for `listening on port`. Neither the clear
+nor the warm-up is needed any more. ⚠ **A LOFT INSTALL STILL NEEDS THE WARM-UP**, for the different
+reason below — the `loft_web` cdylib.
 
 ⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
 `SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
