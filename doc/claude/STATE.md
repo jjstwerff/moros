@@ -371,6 +371,15 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **AND IT IS ONE PIPELINE, NOT TWO — §P9.9.** Almost everything falls into the same categories
+either way: size, proportion, joint range, socket class, the part-tree, the blockout-as-collision,
+the export at final size, a material per part. **The destinations differ in ONE field — where
+`MESH` points** — so the choice is made per part, late, and reversibly (`A6.3`'s one-field swap at
+project scale). A project can be MIXED — an artist on the five assets a player looks at, the
+engine's own output for the other two hundred — and can SHIP FIRST and upgrade later without
+touching a socket, a size or a binding. ⚠ **Which is why building for both is not double work**:
+the export is simultaneously the shipped mesh and the artist's brief, written once.
+
 ⚠ **THERE ARE TWO DESTINATIONS AND THE INDIE ONE IS *SHIP AS-IS* — §P9.8, which amends §P9.4 and
 §P9.7.** An indie game has real pressure to diminish the 3D artist's role, often to nothing, so the
 engine's own output must be shippable as it stands. The hand-over stays available; it stops being

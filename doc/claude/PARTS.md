@@ -844,3 +844,35 @@ lattice.
 
 > **The one sentence.** The engine's look is not a placeholder for a better one; for the indie
 > destination it is the product, and the editor's job is to make everything belong to it.
+
+### P9.9 — ONE pipeline, and the destinations differ in a single field
+
+**Added 2026-08-06 with the user, and it corrects §P9.8's own framing.** That section presents two
+destinations as a table, which reads as a fork you must choose between. It is not one. **Almost
+all of the work falls into the same categories either way**, and the two endings differ in one
+field.
+
+| | ship as-is | hand over | shared? |
+|---|---|---|---|
+| size, proportion, joint range | needed | needed | **yes** — §P9.7's durable artefacts |
+| socket class and contract | needed | needed | **yes** |
+| the part-tree, limbs, hinges | needed | needed | **yes** |
+| the blockout's cells as collision | needed | needed | **yes** — §P9.4 |
+| export at final size with pivot | it *is* the asset | it is the brief | **yes**, and for both reasons at once |
+| a material per part | the look | the reference for what it should read as | **yes** |
+| where `MESH` points | the engine's own file | the artist's file | **the only difference** |
+
+⚠ **SO THE CHOICE IS ONE FIELD, MADE LATE, AND REVERSIBLE.** `A6.3` measured that a swap is a
+one-field edit and this is that finding at the scale of a whole project: the destination is
+decided **per part**, after the thing exists, and changed again afterwards. A project can be
+**mixed** — an artist on the five assets a player looks at, the engine's own output for the other
+two hundred — and it can **ship first and upgrade later**, one part at a time, without touching a
+socket, a size or a binding.
+
+⚠ **WHICH IS WHY BUILDING FOR BOTH IS NOT DOUBLE WORK.** Nothing above is
+destination-specific, so nothing has to be decided up front — and a design that forced the choice
+early would be spending its own flexibility to buy nothing. The export is the clearest case: it is
+simultaneously *the shipped mesh* and *the artist's brief*, and it is one file written once.
+
+> **The one sentence.** Build the thing once, correctly sized and jointed; whether its skin comes
+> from this engine or from a person is a decision you can defer until after you have played it.
