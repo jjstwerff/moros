@@ -307,8 +307,19 @@ a gate about *a part carrying its own name* is the joke telling itself.
 
 ### ⚠ THE NEXT ARC IS `A8` — §P9, and it overturns §P5's second column
 
-**Decided with the user 2026-08-06.** A part has ONE body: **cells**. A `.glb` is a drawn form,
-never an authored one — so a door leaf, a shutter and a gate are authored with the gestures that
+**Decided with the user 2026-08-06.** ⚠ **The rule is *nothing NEEDS a custom mesh*, not *nothing
+may be one*** (§P9.3, corrected the same day). A `.glb` stays a first-class body — `21:` IMPORT,
+kit-bashing and finished art are all legitimate. What the design requires is that a part be
+authorable **end to end inside the editor**, with the gestures that build a house and nothing
+else: a mesh is an UPGRADE to a part, never a prerequisite for one. ⚠ **The driver is RAPID
+PROTOTYPING** — a gesture round-trip is seconds inside one tool, a modelling round-trip is minutes
+and needs a second one — so the test is not *can a mesh be used* but **can the whole thing be
+built without ever opening one**. §P5's table is RE-RANKED, not overturned. ⚠ And §P9's useful
+half still holds: *how a part is attached decides how it is drawn*, so a cell leaf and a `.glb`
+leaf hang in the same socket and swing on the same joint — **which is what makes the upgrade path
+free**: author in cells, replace with art later, and the binding does not move.
+
+Cells are the default — so a door leaf, a shutter and a gate are authored with the gestures that
 build a house, because they ARE houses at another size. [PARTS.md §P9](PARTS.md) is the argument;
 [plan 17 `A8`](../../plans/17-parts/README.md) is the five steps.
 

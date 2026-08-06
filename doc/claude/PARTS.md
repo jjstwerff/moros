@@ -601,3 +601,40 @@ in the store — which is why it may be as fine as the author likes. This is §P
 arriving with consequences: *"a socket is not a hole … the socket is the contract at that
 opening."* The hole is structure, the joinery is dressing, and the leaf is a limb; three different
 answers to *how detailed may this be*, each following from whether anything must walk on it.
+
+### P9.3 — ⚠ The rule is *nothing NEEDS a custom mesh*, not *nothing may be one*
+
+**Corrected 2026-08-06, same day, by the user.** §P9's headline says *nothing is a custom mesh*
+and that is too strong. It is left standing above rather than quietly rewritten, because the
+argument it carries — a limb is a building, cells are the authoring form — is right and is what
+decided the shape. What was wrong is the absolutism.
+
+**A custom mesh stays a first-class body.** `21:` IMPORT exists, kit-bashing is a real workflow,
+and finished art is a legitimate thing to bring in. §P5's box is still true: what a `.glb` gains by
+being a PART is that it can be *placed in a niche*, *listed in a library*, *swapped for another
+that fits the same socket*, and *carry a name an author chose*.
+
+⚠ **THE ACTUAL RULE IS ABOUT WHAT THE EDITOR REQUIRES.** A part must be authorable **end to end
+inside the editor**, with the gestures that build a house and nothing else. A mesh is an *upgrade*
+to a part, never a prerequisite for one. So:
+
+| | |
+|---|---|
+| cells | the DEFAULT, and the only body the editor ever requires |
+| a `.glb` | always allowed, never needed — imported art, or a shape cells genuinely cannot say |
+
+### The driver is RAPID PROTOTYPING, and that is why cells are the default
+
+The editor is meant to be **self-contained**. A gesture round-trip is seconds and stays inside one
+tool; a modelling round-trip is minutes and needs a second one. Anything the editor cannot author
+is a thing a prototype has to leave the editor to get — so the test of this design is not *can a
+mesh be used* but **can the whole thing be built without ever opening one**.
+
+That is the same sentence plan 17 already answers for houses — *a house authored end-to-end
+without touching loft* — extended one tool further: **without touching a modelling tool either.**
+
+⚠ **SO §P5's TABLE IS RE-RANKED, NOT OVERTURNED.** Both bodies remain; what changed is which one
+is the default and which is the escape hatch. §P9's *how it is attached decides how it is drawn*
+still holds and is the useful half: a bound limb is meshed whatever it is made of, so a cell leaf
+and a `.glb` leaf hang in the same socket and swing on the same joint. **That is what makes the
+upgrade path free** — author in cells, replace with art later, and the binding does not move.

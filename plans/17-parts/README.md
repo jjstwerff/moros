@@ -934,7 +934,7 @@ leave the library holding the variant. Measured: `shrine.hxw`'s md5 is unchanged
 | ✅ `A7.1` | The server lists `data/parts/` and sends it. | **DONE**, and the step was not where it looked. The list already arrived (#18 `B5.1`) — what was missing is that **nothing checked it was the whole library**, and that the list could not CHANGE. `tools/gates/world/library.mjs`, 13 checks; `library_moved` in the server; every gate now gets its own copy of `data/parts/`. | S |
 | `A7.2` | The picker in the editor — ⚠ **this is #18 `B5`**, not a second widget. | one catalogue, both families | S |
 | `A7.3` | A part-editing mode: open a part as a world, edit, save back. | **a house authored end-to-end without touching loft** — the acceptance test for the whole plan | M |
-| `A8` | **§P9 — a limb is a building, and nothing is a custom mesh.** Broken down below. | a one-hex door and a three-hex gate with two leaves, all cells, all swinging | L |
+| `A8` | **§P9 — a limb is a building, and nothing NEEDS a custom mesh** (§P9.3: a mesh stays allowed; the editor must never require one). Broken down below. | a one-hex door and a three-hex gate with two leaves, all cells, all swinging | L |
 | `A7.4` | Keyed reads, if two hundred parts make whole-file loading hurt (§P2). | measured in `w_tau` and milliseconds **before** it is built — the deferral from `A1` closed with a number, or closed as unnecessary | M |
 
 ### `A7.3` broken down, and the probe that shaped it
@@ -1250,7 +1250,7 @@ because a wide door is where cells have something to say. The full argument is
 | `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | a leaf authored on a fine lattice fits the opening, and a fine part stamped is refused with both units named | S |
 | `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
-| `A8.5` | `prop/statue` and `prop/seated` become cell parts; `MESH` reverts to the import path it was before parts existed. | §P9 holds for the whole library, not just for doors | M |
+| `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
 
 ⚠ **`A8.1` IS WHERE THE LAYERING BITES, AND IT IS WHY THE STEP EXISTS.** `hex_part` is a document
 package and the mesher is `moros_terrain`'s, so `expand` **cannot** mesh a limb — it must hand
