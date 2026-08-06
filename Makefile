@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld probe-text play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check probe-text play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -347,6 +347,49 @@ gate-world:
 
 gate-character:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh tools/gates/character/*.mjs
+
+# ── ⚠ THE FAST PATH — USE THIS WHILE ITERATING, NOT `make gate` ──────────────
+#
+# `make gate` is 44 gates and takes 10–20 minutes. It is the thing you run BEFORE
+# YOU COMMIT, once. It is not an iteration tool, and using it as one is how a
+# session spends an hour proving something a one-minute run already showed.
+#
+#   make gate-one G="cache"              one gate, ~1 min
+#   make gate-one G="walk hipskin"       several, by bare name, either directory
+#   make gate-rep G="cache" N=5          the SAME gate five times — the flake hunt
+#   make check P=hex_part                layering + one package, interpreter only
+#   make check P=hex_part G="part_bind"  …and the gates that cover it
+#
+# ⚠ `gate-rep` IS THE INSTRUMENT FOR A FLAKE, and it exists because the obvious
+# alternative is wrong: a flake in ONE gate is not evidence you gather by running
+# the other 43 again. Five runs of one gate is five minutes; five full suites is
+# an hour and a half, and says no more about that gate.
+gate-one:
+	@test -n "$(G)" || { echo 'usage: make gate-one G="cache walk"'; exit 2; }
+	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
+	  $(foreach g,$(G),$(wildcard tools/gates/*/$(g).mjs))
+	@$(MAKE) -s stop-editor >/dev/null
+
+gate-rep:
+	@test -n "$(G)" || { echo 'usage: make gate-rep G="cache" N=5'; exit 2; }
+	@n=$${N:-5}; i=1; bad=0; \
+	  while [ $$i -le $$n ]; do \
+	    printf 'run %s/%s ' "$$i" "$$n"; \
+	    if GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
+	         $(foreach g,$(G),$(wildcard tools/gates/*/$(g).mjs)); \
+	      then echo 'ok'; else echo 'FAILED'; bad=$$((bad+1)); fi; \
+	    i=$$((i+1)); \
+	  done; \
+	  $(MAKE) -s stop-editor >/dev/null; \
+	  echo "gate-rep: $$bad of $$n failed"; \
+	  [ $$bad -eq 0 ]
+
+check:
+	@sh tools/layering.sh
+	@test -n "$(P)" || { echo 'usage: make check P=hex_part [G="part_bind"]'; exit 2; }
+	@printf '=== %s ===\n' "$(P)"
+	@cd lib/$(P) && $(LOFT) test 2>&1 | grep -viE '^  (Warning|Advice)'
+	@if [ -n "$(G)" ]; then $(MAKE) -s gate-one G="$(G)"; fi
 
 # ⚠ THE SUITE STOPS WHAT IT STARTED. Each gate gets a fresh server and the last one
 # used to be left running — for days, at 76% of a core once a client had connected

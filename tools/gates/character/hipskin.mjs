@@ -31,6 +31,24 @@ const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`
 let bodyMinY = null, legHalfW = null;
 let bodyT = null, legT = null;
 let maxSwing = 0, poses = 0, phase = 0;
+// ── ⚠ DRIVEN BY POSES, NEVER BY THE WALL CLOCK — plan 19 `L5` ──────────────
+//
+// This gate held W for 1500 ms and judged at 2000 ms. A wall clock measures the
+// MACHINE: with four interpreted servers on the box the same 2000 ms delivered
+// **one** pose instead of 58, and it reported `{"poses":1,"maxSwing":0}` — which
+// reads as *the gait is dead* and means *nothing happened yet*. It passed alone on
+// the same build, every time.
+//
+// So the phases advance on poses OBSERVED — the very quantity the verdict is
+// computed from. Measured healthy: 58. A busy box makes this slower and never
+// wrong.
+// ⚠ ONE COUNT, NOT TWO, AND MEASURING IT IS WHAT SAID SO. The first version held
+// for 34 poses and judged at 52 — and hung at 34, because **the server sends a
+// transform only while the body is moving**: releasing W stops the stream, so a
+// count taken after the release can never be reached. W is held until the verdict's
+// own evidence exists, and released in the same breath as judging it.
+const JUDGE_POSES = 44;   // poses observed WHILE walking, then release and judge
+let judged = false;
 
 ws.onopen = () => ws.send('1:');
 ws.onmessage = (e) => {
@@ -75,8 +93,14 @@ ws.onmessage = (e) => {
     // waiting is not. (STATE.md: three rates, byte-identical worlds.)
     ws.send('34:8');
     ws.send('4:1');                                    // hold W
-    setTimeout(() => ws.send('4:0'), 1500);            // release
-    setTimeout(finish, 2000);
+  }
+  // ⚠ THE PHASES ADVANCE ON THE MEASUREMENT ITSELF. `poses` is incremented above
+  // for every leg transform that arrives, and it is what `finish` judges — so the
+  // gate cannot judge a run it has not yet observed.
+  if (phase === 1 && !judged && poses >= JUDGE_POSES) {
+    judged = true;
+    ws.send('4:0');                                    // release
+    finish();
   }
 };
 
@@ -105,4 +129,11 @@ function finish() {
 const r = (v) => v === null ? null : Number(v.toFixed(6));
 
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+// ⚠ THE BACKSTOP SAYS HOW FAR IT GOT — `TIMEOUT` alone cannot tell *the simulation
+// never ticked* from *the gait is broken*, which is the whole distinction this
+// change is about.
+setTimeout(() => {
+  console.log(JSON.stringify({ verdict: 'TIMEOUT waiting for poses',
+                               poses, want: JUDGE_POSES, ok: false }));
+  process.exit(3);
+}, 240000);

@@ -21,4 +21,17 @@ wait rebuilt
 step 20
 snap s2-cache
 step 20
-wait cache
+# ⚠ WAIT FOR THE EVIDENCE, THEN READ THE NEWEST VERDICT — plan 19 `L5`, and this
+# line was `wait cache`, which is what made this gate the suite's flakiest.
+#
+# The client re-answers on EVERY `D:` digest, so the verdict is a running one. Its
+# FIRST value is `agree 0 bad 24 layers 0`: nothing cached yet, so all 24 chunks
+# disagree. `wait` returns the first status matching a prefix — so whether this gate
+# passed depended on which digest happened to land first, and the failure reported
+# `agree 0 bad 24` as if it had measured a disagreement. Measured on 2026-08-06: the
+# SERVER's own log read `agree 24 bad 0 layers 42` throughout the same run.
+#
+# `until` blocks until the client has actually cached something; `last` then reads
+# where the running verdict ended up. Neither sleeps.
+until cache layers > 0
+last cache

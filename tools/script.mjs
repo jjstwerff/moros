@@ -418,6 +418,36 @@ const ack = async (prefix, limitMs = 40000) => {
   }
   return `(no "${prefix}" in ${limitMs}ms)`;
 };
+// ── ⚠ WAIT FOR THE EVIDENCE, NOT FOR A DURATION — plan 19 `L5` ──────────────
+//
+// `wait` answers *has this happened* and `last` answers *where did it end up*.
+// Neither answers **has the thing being measured actually occurred yet**, and that
+// is the gap the `cache` flake lived in: the client re-answers on every `D:` digest,
+// and the FIRST answer is `agree 0 bad 24 layers 0` — it has cached nothing, so
+// everything disagrees. Read at the wrong moment that is a confident, wrong verdict
+// with the right shape, which is the worst kind.
+//
+// So: poll the newest status line starting with `prefix` until one of its numbered
+// fields satisfies a comparison. ⚠ **On timeout it says what it DID see** — an
+// instrument that reports only *nothing* cannot be told from one that is blind.
+const untilField = async (prefix, field, op, want, limitMs = 60000) => {
+  const read = () => {
+    const hits = status.filter((x) => x.startsWith(prefix));
+    if (hits.length === 0) return null;
+    const m = hits[hits.length - 1].match(new RegExp(`${field}\\s+(-?\\d+)`));
+    return m ? { line: hits[hits.length - 1], v: +m[1] } : null;
+  };
+  const holds = (v) => op === '>' ? v > want : op === '>=' ? v >= want
+                     : op === '<' ? v < want : op === '<=' ? v <= want : v === want;
+  for (let t = 0; t < limitMs; t += 50) {
+    const r = read();
+    if (r && holds(r.v)) return r.line;
+    await sleep(50);
+  }
+  const r = read();
+  return `(never saw '${prefix}' with ${field} ${op} ${want} in ${limitMs}ms; `
+       + `newest was ${r ? `'${r.line}'` : 'nothing at all'})`;
+};
 const nextT = async (limitMs = 15000) => {
   const before = tCount;
   for (let t = 0; t < limitMs; t += 5) { if (tCount !== before) return true; await sleep(5); }
@@ -965,6 +995,15 @@ for (const raw of lines) {
     const want = rest.join(' ');
     const seen = status.find((x) => x.startsWith(want));
     console.log('  ' + (seen ?? await ack(want)));
+  } else if (cmd === 'until') {
+    // `until <prefix> <field> <op> <value>` — e.g. `until cache layers > 0`.
+    // ⚠ IT FAILS THE RUN rather than printing and carrying on. A gate that waited
+    // for evidence, did not get it, and then judged anyway is exactly the shape
+    // this verb exists to remove.
+    const [uPrefix, uField, uOp, uVal] = [rest[0], rest[1], rest[2], Number(rest[3])];
+    const got = await untilField(uPrefix, uField, uOp, uVal);
+    console.log('  ' + got);
+    if (got.startsWith('(never saw')) frameFails += 1;
   } else if (cmd === 'last') {
     // ⚠ `wait` ANSWERS "HAS THIS HAPPENED", `last` ANSWERS "WHERE DID IT END UP", and
     // a running tally needs the second. The client's cache and ground verdicts are

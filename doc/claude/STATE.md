@@ -101,12 +101,26 @@ to zero.** The warm-up rule above is written for an install; it applies to a new
 **What is left**: `L4` (the two `hex_world` lineages — **not ours alone**, raise it with
 `loft-libs-world`), `L5` (the gate flake), then `L6`–`L8`, all of which wait for `A8`.
 
-⚠ **AND `L5` — THE GATE FLAKE — COMES BEFORE ANY REQUIRED PR CHECK.** Measured this session:
-`cache` failed **2 of 3** suite runs and passed alone both times, and the *server's own log* read
-`agree 24 bad 0 layers 42` while the gate reported `agree 0 bad 24 layers 0`. **The world was
-right and the gate never read it** — so it is gate-side and fixable by the change `part_fence`
-and `part_check` already got (poll for the acknowledgement, never sleep a fixed time; it also
-took them 58 s → 21 s and 34 s → 11 s).
+✅ **AND `L5` — THE GATE FLAKE — IS FIXED, so a required PR check is now possible.** Three gates,
+two bugs, neither a timeout that wanted raising:
+
+- **`cache` read the FIRST value of a running verdict.** The client re-answers on every `D:`
+  digest and its first answer is `agree 0 bad 24 layers 0` — nothing cached yet. ⚠ The `last`
+  verb's own comment already described this class and `clientmesh.keys` had already learned it.
+  New `until <prefix> <field> <op> <value>` verb waits for the evidence and **fails saying what it
+  did see**; the gate now reads the LAST match, not the first (`String.match` without `/g`).
+- **`walk` and `hipskin` slept on the WALL CLOCK, which measures the machine.** Under four
+  interpreted servers 1700 ms delivered one frame instead of 44. They advance on **frames
+  received** now — the very quantity the verdict is computed from.
+
+⚠ **AND A TRANSFORM ONLY ARRIVES WHILE THE BODY IS MOVING**, which the first fix did not know: a
+count taken *after* releasing `W` can never be reached. Hold until the evidence exists, then
+release and judge together.
+
+**Evidence: 4 consecutive clean full suites** (44, rc=0, zero failures, zero never-listened) plus
+3 contended `gate-rep` runs. ⚠ **And gathering it that way was itself waste** — see the fast path
+under *How to run things*: three contended repeats answer in **2m54s** what four full suites took
+~80 minutes to say.
 
 ### What plan 17 is still short of, and it is one thing
 
@@ -453,6 +467,25 @@ of the identical expression is correct. Both were invisible until something read
 
 
 ## How to run things
+
+### ⚠ The FAST path — use this while iterating; `make gate` is not an iteration tool
+
+```sh
+make check P=hex_part            # layering + one package, interpreter only — SECONDS
+make check P=hex_part G=part_bind   # …and the gates that cover it
+make gate-one G="cache walk"     # just those gates, by bare name, either directory
+make gate-rep  G="cache walk hipskin" N=5   # the SAME set, N times — the FLAKE HUNT
+```
+
+⚠ **THE FULL SUITE IS 10–20 MINUTES AND IS A PRE-COMMIT CHECK, ONCE.** Using it to
+iterate is how a session spends an hour proving what a one-minute run already showed —
+`make check P=hex_proj` is **0.3 s**, and three contended repeats of three gates is
+**2m54s** against ~60 minutes for three full suites.
+
+⚠ **A FLAKE IS HUNTED WITH `gate-rep`, AND THE SET MATTERS.** Running the suspect gate
+**alone** does not reproduce a contention flake — that is the *discriminator*, not the
+test. `gate-rep` runs the named set together at `GATE_JOBS`, which is the condition the
+flake lives in.
 
 ```sh
 GATE_JOBS=4 make gate  # ⚠ 40 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:

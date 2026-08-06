@@ -5,7 +5,8 @@
 
 ## Status
 
-✅ **`L1`, `L2` and `L3′` are BUILT (2026-08-06); `L3` as designed was refuted by its own probe.**
+✅ **`L1`, `L2`, `L3′` and `L5` are BUILT (2026-08-06); `L3` as designed was refuted by its own
+probe.**
 `layering.sh` is silent with `KNOWN=""`, which means **the lavition stack has no Moros dependency
 at all** — the first time that has been true, and the thing that made the rest of this plan a move
 rather than an argument.
@@ -65,7 +66,7 @@ repo, a file move, and documentation. Said in a line so the silence does not rea
 | ✅ **`L3′`** — a small `hex_proj` package: `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`, the corner map | M | **DONE.** `layering.sh` is silent with `KNOWN=""` — **zero Moros dependencies left in the lavition stack**. 8 new tests; the control (put the dep back) fails the build | ✅ Done |
 | **`L3p`** — ⚠ **the probe** | XS | ✅ **RUN 2026-08-06, and it fired.** `L3` as designed was wrong | ✅ Done |
 | **`L4`** — settle the `hex_world` lineage with `loft-libs-world` | S | a decision on the ticket; ours is 0.1.0, theirs 0.2.0 | Blocked on nobody, but **not ours alone** |
-| **`L5`** — fix the gate flake: poll for the acknowledgement, never sleep | M | `cache` green in 5 consecutive suite runs; `part_fence`'s 58 s → 21 s is the precedent | Open — **do before any PR gate** |
+| ✅ **`L5`** — fix the gate flake: wait for the evidence, never for a duration | M | **DONE.** 4 consecutive clean full suites (44, rc=0, zero failures), plus 3 contended `gate-rep` runs of the three fixed gates | ✅ Done |
 | **`L6`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on `L1`–`L5` and #17 `A8` |
 | **`L7`** — Moros becomes a consumer: published deps + one configuration file | M | Moros green against published packages, no path dependency into lavition | Blocked on `L6` |
 | **`L8`** — the documentation, and what is deliberately left behind | S | the eight travelling docs present; the four superseded ones **absent** | Blocked on `L6` |
@@ -75,7 +76,7 @@ repo, a file move, and documentation. Said in a line so the silence does not rea
 banner-marked on 2026-08-06 and **none of them travels.** Copying them over is how the new tree
 starts with the rot the old one just cleaned out.
 
-⚠ **`L5` before any required PR check.** Measured 2026-08-06: `cache` failed **2 of 3** suite runs
+✅ **`L5` IS DONE, so a required PR check is now possible.** Measured 2026-08-06 before the fix: `cache` failed **2 of 3** suite runs
 and passed alone both times, and the *server's own log* read `agree 24 bad 0 layers 42` while the
 gate reported `agree 0 bad 24 layers 0` — so the world was right and the gate never read it. A
 required check that goes red two runs in three teaches everyone to hit re-run, which is worse than
@@ -167,6 +168,46 @@ new package too, and that is new.
 ⚠ **AND AN INSTRUMENT READ ITSELF.** `pgrep -f "run-gates.sh tools/gates"` matched the *shell
 command containing that string* — my own — so a finished suite reported as still running for two
 polls. A pattern that appears in the query is a pattern the query will find.
+
+### What `L5` turned up
+
+**Three gates, two distinct bugs, and neither was a timeout that wanted raising.**
+
+⚠ **`cache` READ THE FIRST VERDICT OF A RUNNING ONE.** The client re-answers on every `D:`
+digest, and its first answer is `agree 0 bad 24 layers 0` — nothing cached yet, so all 24 chunks
+disagree. `wait` returns the **first** status matching a prefix, so whether the gate passed
+depended on which digest happened to land first, and a failure reported *a measured
+disagreement*. ⚠ **The `last` verb's own comment already described this exact class** — *"`wait`
+answers has this happened, `last` answers where did it end up"* — and `clientmesh.keys` had
+already learned it. `cache.keys` never did.
+
+⚠ **AND THE GATE HAD THE SAME BUG A SECOND TIME, IN JAVASCRIPT.** `out.match(/…/)` without `/g`
+returns the **first** occurrence, so even a script that printed the settled verdict last would
+have been read at its first. Now `matchAll` and take the last.
+
+**New verb `until <prefix> <field> <op> <value>`** — polls the newest matching status until a
+numbered field satisfies a comparison, and ⚠ **fails the run on timeout while saying what it DID
+see**, because an instrument that reports only *nothing* cannot be told from a blind one.
+`cache.keys` is now `until cache layers > 0` then `last cache`. Control: an unsatisfiable
+condition fails with `(never saw 'cache' with layers > 99999 in 60000ms; newest was …)`.
+
+⚠ **`walk` AND `hipskin` SLEPT ON THE WALL CLOCK, WHICH MEASURES THE MACHINE.** They held `W` for
+1200/1500 ms and judged at 1700/2000 ms; under four interpreted servers the same wall time
+delivered **one** frame instead of 44, reporting `{"frames":1,"bodyMoved":false}` — *the walk is
+broken* when it means *nothing happened yet*. They advance on **frames received** now, which is
+the very quantity the verdict is computed from, so a busy box makes them slower and never wrong.
+
+⚠ **AND THE FIRST FIX WAS WRONG IN A WAY ONLY RUNNING IT SHOWED.** Splitting into *hold for N,
+judge at M* hung at N — **the server sends a transform only while the body is moving**, so a count
+taken after the release can never be reached. One count: hold until the evidence exists, release
+and judge in the same breath. Both backstops now report how far they got, because `TIMEOUT` alone
+cannot separate the two failures.
+
+⚠ **AND THE WAY I GATHERED THE EVIDENCE WAS ITSELF THE WASTE THE USER CALLED OUT.** Four full
+44-gate suites were run to prove three gates — ~80 minutes for what three contended repeats of
+those three gates answer in **2m54s**. Hence `make gate-one`, `make gate-rep` and `make check`
+(0.3 s for one package). ⚠ **The set matters**: running the suspect gate ALONE is the
+*discriminator*, not the test — a contention flake needs contention to reproduce.
 
 ## Cross-repo coordination
 

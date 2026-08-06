@@ -24,6 +24,25 @@
 // body" and kept PASSING, because a leg does move. Named constants and this
 // note, because the failure was invisible: green, for the wrong reason.
 const BODY = '0;', LEG_L = '1;';
+// ── ⚠ DRIVEN BY FRAMES, NEVER BY THE WALL CLOCK — plan 19 `L5` ──────────────
+//
+// This gate used to hold W for 1200 ms and judge at 1700 ms. A wall clock measures
+// the MACHINE: with four interpreted servers sharing the box the same 1700 ms
+// delivered **one** frame instead of 44, and the gate reported
+// `{"frames":1,"bodyMoved":false}` — which reads as *the walk is broken* and means
+// *nothing happened yet*. It passed alone on the same build, every time.
+//
+// So the phases advance on frames RECEIVED. A busy box now makes this gate slower
+// and never wrong, which is the trade a gate should always take. Measured healthy:
+// 44 leg frames; the counts below sit under that with room, and the run still has
+// the 240 s backstop underneath it.
+// ⚠ ONE COUNT, NOT TWO, AND MEASURING IT IS WHAT SAID SO. The first version held
+// for 26 frames and judged at 40 — and hung at 27, because **the server sends a
+// transform only while the body is moving**: releasing W stops the stream, so a
+// count taken after the release can never be reached. So W is held until the
+// verdict's own evidence exists, and released in the same breath as judging it.
+const JUDGE_FRAMES = 34;   // frames observed WHILE walking, then release and judge
+let judged = false;
 const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 const body = [], legL = [], bodyPos = [];
 let phase = 0;
@@ -45,8 +64,14 @@ ws.onmessage = (e) => {
     // waiting is not. (STATE.md: three rates, byte-identical worlds.)
     ws.send('34:8');
     ws.send('4:1');                                   // hold W
-    setTimeout(() => ws.send('4:0'), 1200);           // release
-    setTimeout(() => {
+  }
+  // ⚠ THE PHASES ADVANCE HERE, on the frames this gate is already counting, so the
+  // instrument and the clock are the same thing. `legL.length` is exactly what the
+  // verdict is computed from.
+  if (phase === 1 && !judged && legL.length >= JUDGE_FRAMES) {
+    judged = true;
+    ws.send('4:0');                                   // release
+    {
       const bodyMoved = bodyPos.length > 1 && bodyPos[0] !== bodyPos[bodyPos.length - 1];
       // Distinct leg ROTATIONS. With no gait this is 1, because a limb's
       // rotation is the body's rotation when the joint angle is zero.
@@ -56,8 +81,15 @@ ws.onmessage = (e) => {
       console.log(JSON.stringify({ frames: legL.length, bodyMoved,
                                    bodyRots, legRots, ok }));
       ws.close(); process.exit(ok ? 0 : 1);
-    }, 1700);
+    }
   }
 };
 ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+// ⚠ THE BACKSTOP SAYS HOW FAR IT GOT. `TIMEOUT` alone cannot tell *the simulation
+// never ticked* from *the walk is broken*, which is the distinction that cost this
+// gate its reputation.
+setTimeout(() => {
+  console.log(JSON.stringify({ verdict: 'TIMEOUT waiting for frames',
+                               frames: legL.length, want: JUDGE_FRAMES, ok: false }));
+  process.exit(3);
+}, 240000);

@@ -25,7 +25,13 @@ if (b.status !== 0) {
 const r = spawnSync('node', ['tools/script.mjs', 'tools/scripts/cache.keys', '--shots'],
                     { encoding: 'utf8', env: process.env });
 const out = r.stdout ?? '';
-const m = out.match(/cache agree (\d+) bad (\d+) layers (\d+)/);
+// ⚠ THE **LAST** MATCH, NOT THE FIRST — plan 19 `L5`, and this was the second half
+// of the same bug. `String.match` without `/g` returns the FIRST occurrence, so even
+// once the script started reporting the settled verdict, an earlier premature line
+// in the same stdout would have been the one read. The verdict is a running one;
+// only its final value is a claim about the cache.
+const all = [...out.matchAll(/cache agree (\d+) bad (\d+) layers (\d+)/g)];
+const m = all.length ? all[all.length - 1] : null;
 const agree = m ? +m[1] : -1, bad = m ? +m[2] : -1, layers = m ? +m[3] : -1;
 // ⚠ `agree === layers` WAS RIGHT AND STOPPED BEING RIGHT, which is worth stating
 // rather than quietly relaxing. `D:` digests the VISIBLE set; the client now also
