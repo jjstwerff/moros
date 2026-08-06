@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check probe-text play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -9,6 +9,10 @@ SHELL := /bin/bash
 PORT ?= 8000
 PY ?= python3
 LOFT ?= loft
+# One job per test FILE for `make fast`. 16 is the measured knee on a 24-core box:
+# 8 jobs 22.9 s, 16 jobs 16.5 s, 24 jobs 15.9 s over 113 files. Below the knee the
+# cores idle; above it the wall is the slowest single file and nothing else moves.
+TEST_JOBS ?= 16
 
 # The loft packages under lib/, in dependency order.
 #
@@ -383,6 +387,33 @@ gate-rep:
 	  $(MAKE) -s stop-editor >/dev/null; \
 	  echo "gate-rep: $$bad of $$n failed"; \
 	  [ $$bad -eq 0 ]
+
+# ── ⚠ THE HOT PATH — run this after every step; it starts NO servers ─────────
+#
+# `make fast` is layering plus every package's tests, one job per test FILE, on the
+# interpreter. 113 files, and measured on this box: **16.5 s** at 16 jobs against
+# ~140 s for the same tests serially, because the files are independent — `loft test`
+# over `hex_part` and the sum of its sixteen files run one at a time agree at 35-39 s,
+# so the parallelism costs nothing to buy.
+#
+# ⚠ NO GATES, DELIBERATELY, AND THAT IS THE POINT OF THE SPLIT. Every gate starts a
+# server, waits for a port and drives a world; 44 of them are minutes. A check you run
+# after each step must not do that, and a check that takes minutes is one you stop
+# running. The gates are `make gate` and they belong to CI and to the moment before a
+# commit — not to the loop.
+#
+# ⚠ AND NOT `--native`, ALSO DELIBERATELY. `make lib-test` is what runs both backends
+# and it stays the pre-commit proof: the two are two implementations of one language,
+# and loft#760 took `hex_world` from 114 green to 96 failed while `--native` passed all
+# 114 on the same source. This is the fast loop, not the proof.
+#
+#   make fast                     the whole tree
+#   make fast P=hex_part          one package (or several, quoted)
+#   TEST_JOBS=8 make fast         fewer jobs, for a loaded box
+#   TEST_VERBOSE=1 make fast      per-file seconds
+fast:
+	@sh tools/layering.sh
+	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 
 check:
 	@sh tools/layering.sh
