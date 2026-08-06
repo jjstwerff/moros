@@ -26,10 +26,10 @@ when the step landed, and this file duplicating it is how it grows back.
 
 `make gate` **44 green** · `make lib-test` **2610, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-**2026-08-06 09:47 on the loft installed at 08:57** — `bd41374b`, branch `tuxedo-catalogue`,
+**2026-08-06 09:47 on the loft installed at 08:57** — ⚠ **not yet re-run on the 10:04 build** — `bd41374b`, branch `tuxedo-catalogue`,
 `c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
-and the single warm start before the suite was the only preparation. ⚠ **THREE BUILDS LANDED IN NINE HOURS** — `b619b909` at 00:26, `9dfd0280` at
-00:33, `bd41374b` at 08:57 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
+and the single warm start before the suite was the only preparation. ⚠ **FOUR BUILDS LANDED IN TEN HOURS** — `b619b909` at 00:26, `9dfd0280` at
+00:33, `bd41374b` at 08:57, `cf6ccd53` at 10:04 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
 cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** What that build changed for us is
 measured below.
 
@@ -57,6 +57,20 @@ holding a `const`. ⚠ **AND THE MEASUREMENT NEARLY WENT THE OTHER WAY**: diagno
 CODE, so the prefix is `advice[avoidable-copy]:` and a grep for `^advice: copy of` returns **zero**
 — which reads as *the notice is gone* rather than *my pattern is stale*. This tree's own rule, on
 its own ticket: **match a line you know is there before believing a count of zero.**
+
+⚠ **THE DIAGNOSTIC OUTPUT SHAPE HAS CHANGED IN TWO CONSECUTIVE BUILDS, AND TWO OF OUR TOOLS GREP
+IT.** `08:57` added the `[code]` bracket; `10:04` (`@PLN131`) trimmed every message's *what to
+write instead* into an opt-in `--explain` fix line and added one `note: N diagnostics above
+suggest…` per run. **Checked rather than assumed, because a miss here is silent**:
+`tools/run-gates.sh:75` filters `^advice`, which still matches the coded form, and
+`Makefile:420` greps `^error:` to report a `make parts` failure — errors are still UNCODED, so it
+still fires. The Makefile's own comment says a silent failure there is *"a gate you cannot act
+on"*, which is exactly what a coded `error[…]:` would have made it. **Re-check both after any
+install that touches diagnostics.**
+
+The census on `src/editor_server.loft` today, as a baseline: **39 warnings · 167 advice** (67
+`avoidable-copy`, 100 uncoded) **· 1 note**. Nothing here sets `LOFT_DENY_WARNINGS`, but loft's
+unified library CI does, so 39 is the debt if a package of ours ever goes through it.
 
 **What the 00:33 build changed, still true**: `b = a` still COPIES and
 `c = v[0]` still ALIASES (loft#774's asymmetry stands, now as a decided rule — `@PLN130` F7,
