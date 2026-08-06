@@ -347,6 +347,15 @@ part that never needed to be in the store, because the wall beside the opening a
 collision. Three different answers to *how detailed may this be*, each following from whether
 anything must walk on it.
 
+⚠ **AND THE ROUND TRIP IS THE POINT OF ALL OF IT** (§P9.4). Block out a leaf in cells, export its
+mesh (`22:`, and a limb is already meshed to be drawn), hand it to a 3D artist, and point the
+part's `MESH` at what comes back. **The `.hxw` is the CONTRACT and the `.glb` is the SKIN** —
+`PART`, `FITS`, `HING` and `SOCK` all stay as authored, so the artist is handed geometry and
+returns geometry and never touches a contract they could get wrong. `A6.3` already measured the
+swap as a one-field edit; this is that finding arriving at a workflow. ⚠ **And the blockout's
+cells are not thrown away — they become the COLLISION body**, which is §P5's *"a `.glb` for the
+eye and a one-cell column for the walker"* finally having a use.
+
 ⚠ **AND THE DESIGN AIMS AT THE GATE.** A door narrow enough to be a door is **narrower than one
 hex**, which is why cells had nothing to say about it and why today's leaf is a `.glb`. A two- or
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already

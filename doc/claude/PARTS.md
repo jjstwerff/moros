@@ -638,3 +638,37 @@ is the default and which is the escape hatch. §P9's *how it is attached decides
 still holds and is the useful half: a bound limb is meshed whatever it is made of, so a cell leaf
 and a `.glb` leaf hang in the same socket and swing on the same joint. **That is what makes the
 upgrade path free** — author in cells, replace with art later, and the binding does not move.
+
+### P9.4 — The round trip: blockout in cells, skin from an artist, contract unchanged
+
+**Added 2026-08-06 with the user.** The editor's cell-built door is a good *prototype*. A game
+wanting realistic graphics hands that mesh to a 3D artist and gets a finished asset back. So the
+design owes the round trip, and it is shorter than it looks:
+
+1. **Block out** the leaf in cells, inside the editor, with the house gestures.
+2. **Export** its mesh as a `.glb` — a limb is already meshed to be drawn (§P9), so the export is
+   that same mesh through `save_glb`, and `22:` EXPORT is the gesture that exists for it.
+3. The **artist** refines it: same silhouette, same pivot, real material.
+4. **Point the part's `MESH` at the returned file.** Nothing else changes.
+
+⚠ **THE `.hxw` IS THE CONTRACT AND THE `.glb` IS THE SKIN**, and that is the whole reason step 4
+is one line. `PART`, `FITS`, `HING` and `SOCK` all stay exactly as authored — the class it fits,
+the hinge it swings on, the name it carries. The artist is handed geometry and returns geometry;
+they are never handed a contract to preserve, so there is nothing for them to get wrong. `A6.3`
+already measured that a swap is a **one-field edit**, and this is that finding arriving at a
+workflow.
+
+⚠ **AND THE BLOCKOUT'S CELLS ARE NOT THROWN AWAY — THEY BECOME THE COLLISION BODY.** §P5 says a
+part may be **both**: *"a pillar that is a `.glb` for the eye and a one-cell column for the
+walker."* That sentence was written before any of this and had no use; here it is the payoff. The
+cells the author blocked out keep earning their keep as the thing the walker meets, while the
+artist's mesh is what the eye meets. A prototype is not a draft that gets deleted — it is the
+half of the finished object that nobody would have enjoyed modelling.
+
+⚠ **THE ARTIST NEEDS THE SCALE, AND THE FILE CARRIES IT** (§P9.1). A part is a world and a world
+has `w_unit`, so the exported mesh is in real world units and the returned one can be checked
+against them. A hinge point in the same units is what makes the pivot survive the trip.
+
+> **What this makes the editor.** Not a modelling tool and not a level editor, but the place a
+> thing is *designed* — its size, its joint, its socket, its name — with geometry good enough to
+> judge it by. The art is a later, optional, replaceable layer on a decision that is already made.

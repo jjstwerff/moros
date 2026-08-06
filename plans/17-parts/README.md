@@ -1252,6 +1252,13 @@ because a wide door is where cells have something to say. The full argument is
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
 | `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
 
+| `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
+
+⚠ **`A8.6` IS THE ONE THAT MAKES THE PROTOTYPE PERMANENT.** The blockout's cells are not deleted
+when the art arrives — they become the COLLISION body, which is §P5's *"a `.glb` for the eye and a
+one-cell column for the walker"* finally having a use. A prototype is not a draft that gets thrown
+away; it is the half of the finished object nobody would have enjoyed modelling.
+
 ⚠ **`A8.1` IS WHERE THE LAYERING BITES, AND IT IS WHY THE STEP EXISTS.** `hex_part` is a document
 package and the mesher is `moros_terrain`'s, so `expand` **cannot** mesh a limb — it must hand
 back a record and let the consumer do it. That is the same split `MeshAt` already has (`A6.2`:
