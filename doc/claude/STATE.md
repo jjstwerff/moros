@@ -67,6 +67,58 @@ times; `place.loft` gave 18.9 s once and 6.8 s four times running. Other agents 
 `place_phases` now times each path **twice, on either side of the other**, and prints both — a
 spread there is drift, not a result.
 
+## ⏭ AND THE GATES — 1838 s → 741 s, with the hot path taken off them entirely
+
+⚠ **THE USER'S SECOND REDIRECT, 2026-08-06**: *"go at the gates instead"*, then *"they can
+run on CI that's fine but not on the hot path we use for after each step we build"*, then
+*"photographs should never be automatically taken, but requested in the testing script as
+specific ticks"*, and the standing one — ***"where possible I want tests outside the
+server"***. The last is the open thread; everything else below is landed.
+
+✅ **TWO WAITS THAT COULD NEVER SUCCEED WERE 71 % OF THE SLOWEST GATE.** Profiled per
+command (`camera_indoors`, 247 s, 99 % accounted): `frame` 12× at 8.5 s = 41 %, `snap` 8×
+at 8.3 s = 36 %, `step` 12× at 2.7 s = 13 %, and 15.2 s before the first command. Only the
+`step` rows were work.
+
+- **`nextT()` waited for a `T:0;` body frame**, which the server broadcasts only `if
+  moved`. Nothing has been asked to move at that point, so it ran its full 15 s and
+  returned `false` into a discarded return value. **15,185 ms on an EMPTY script.** It is
+  correct at its other four call sites, inside `hold`.
+- **`browserLag()` interrogated a page that does not exist.** It branched on `--client`:
+  without it, it read `parts.size` and `view` — globals of `html/editor.html`, ⚠ **deleted
+  on 2026-08-02** when `/` became the wasm client. So `settle()` never fired and every
+  `snap` and `frame` burned its full 8 s. Its own comment — *"a sleep here would be the
+  same mistake as the `sleep(4000)` this replaced"* — was describing itself.
+
+⚠ **THE CONTROL IS THAT THE HISTOGRAM DID NOT MOVE**: `subject 0.0188, grass 0.5873, sky
+0.3615` before and after. Only the *probe* changed — `WIN` and `CANVAS` still follow
+`--client`, because they decide the window size and the clip, and this tree already
+measured what that costs (`grass 0.5336` against `sky 0.7734` for one scene).
+
+✅ **AND A PHOTOGRAPH IS NOW TAKEN WHERE THE SCRIPT ASKS FOR ONE.** `frame` took its own
+screenshot, so a `snap` and the `frame` beside it photographed one instant **twice** and
+the PNG on disk was never the frame that was judged. `snap` is the only camera now;
+`frame` judges what it took and fails loudly if anything moved the world since. Checked
+both ways: judged row identical, orphan row `rc=1`.
+
+| | before | after |
+|---|---|---|
+| `camera_indoors` | 240 s | **74 s** |
+| `cache` · `client_mesh` · `cellar_ceiling` · `deck_soffit` | 201 · 206 · 159 · 114 s | **49 · 37 · 50 · 27 s** |
+| **44 gates, sum of work** | **1838 s** | **741 s** (188 s wall at 4 jobs) |
+
+⚠ **AND RUNNING THE GATE SERVER NATIVELY DOES NOT HELP — measured, and it was the first
+hypothesis.** `camera_indoors` is 240 s interpreted against **248 s native**, identical
+rows; a light gate is 5.4 s against 5.7 s. Startup alone is 6 s against 3.5 s, so a
+pre-built native runner is worth ~110 s across the suite and nothing more. `GATE_LOFT`
+already exists if that is ever wanted. **The server was never the bottleneck.**
+
+⚠ **WHAT IS STILL OPEN IS THE STRUCTURAL HALF** — *"most should be tested outside the
+server"*. 44 gates still start 44 servers for claims most of which are not about a running
+server. The rule for moving them is [CLAUDE.md](../../CLAUDE.md)'s: **the store's rules are
+loft tests; the drawn result and the sentences are gates**, and ⚠ **move before you
+remove** — three gates once held claims no loft test made.
+
 ⚠ **AND `G1`(b) REFUTED A SENTENCE OF ITS OWN DESIGN.** *"If synthesising a column is not far
 cheaper than reading a stored one, there is nothing here"* — measured over 102,400 reads each
 way, an absent-chunk read is only 1.1–2.1× cheaper (`world_surface` 1103 ns stored against 947
@@ -94,7 +146,7 @@ it was drift.
 |---|---|
 | nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms** |
 | compile tracks the **dependency cone** | `lavition_ui` 20 ms · `hex_world` 119 ms · `hex_part` 492 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
-| gates are a different, larger problem | 44 gates ≈ **1838 s** of work: **984 s** is five browser gates, **~238 s** is 44 servers reaching *listening* and buys nothing |
+| gates — ✅ **taken, see below** | 44 gates were **1838 s** of work and are now **741 s**, 188 s wall at `GATE_JOBS=4`, 44 PASS / 0 FAIL / 0 never-listened |
 
 ⚠ **THREE HYPOTHESES ABOUT THE WRITE PATH WERE EACH REFUTED BY THEIR OWN PROBE**, so do not
 re-derive them: the step-4 window scan is worth 3 %, step-6 elision 6 %, **both together 12 %**,
@@ -591,14 +643,32 @@ of the identical expression is correct. Both were invisible until something read
 
 ## How to run things
 
-### ⚠ The FAST path — use this while iterating; `make gate` is not an iteration tool
+### ⚠ THE HOT PATH IS `make fast`, AND IT STARTS NO SERVERS
 
 ```sh
-make check P=hex_part            # layering + one package, interpreter only — SECONDS
+make fast                        # layering + ALL 113 test files in parallel — 16 s
+make fast P=hex_part             # one package (or several, quoted) — under a second
+make check P=hex_part            # layering + one package the old way, interpreter only
 make check P=hex_part G=part_bind   # …and the gates that cover it
 make gate-one G="cache walk"     # just those gates, by bare name, either directory
 make gate-rep  G="cache walk hipskin" N=5   # the SAME set, N times — the FLAKE HUNT
 ```
+
+⚠ **`make fast` IS WHAT YOU RUN AFTER EVERY STEP.** 113 test files, one job per file:
+**16.5 s** at 16 jobs (22.9 s at 8, 15.9 s at 24) against ~140 s for the same tests
+serially. The parallelism costs nothing to buy — `loft test` over `hex_part` and the sum
+of its sixteen files run one at a time agree at 35–39 s, so there is no per-file penalty.
+
+⚠ **IT DELIBERATELY RUNS NO GATES AND ONE BACKEND.** A gate starts a server, waits for a
+port and drives a world; a check you run after each step must not, and a check that takes
+minutes is one you stop running. `make lib-test` stays the pre-commit proof across both
+backends — loft#760 took `hex_world` from 114 green to 96 failed while `--native` passed
+all 114 on the same source, so a one-backend green is a fast loop and not a proof.
+
+⚠ **THE RUNNER WAS CHECKED AGAINST TWO THINGS IT MUST FIND**, because its default answer
+is silence: a seeded failing assert, and a seeded compile error — which prints no
+`test result:` line at all, so a missing line is a FAILURE here rather than a pass. That
+is how a package that will not build otherwise reports as healthy.
 
 ⚠ **THE FULL SUITE IS 10–20 MINUTES AND IS A PRE-COMMIT CHECK, ONCE.** Using it to
 iterate is how a session spends an hour proving what a one-minute run already showed —
