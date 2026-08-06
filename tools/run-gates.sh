@@ -57,7 +57,88 @@
 # nothing in 4 s* (`library`) and *a refused toggle sends no `H:` at all* (`subject`)
 # have no event to wait for, and polling would either return at once, proving nothing,
 # or hang. There the window IS the instrument, and both say so where they sit.
-set -u
+# ── ⚠ THE SERVER IS BUILT ONCE AND EXEC'D 44 TIMES ──────────────────────────
+#
+# Startup was 5-6 s a gate — ~220 s of the suite — because every one of them started
+# an INTERPRETED server: `loft` parsing a 5,900-line file, 44 times, for a program
+# that had already been compiled. Exec'ing the compiled binary straight out of loft's
+# cache reaches `listening` in **217-273 ms**, measured; `loft --native` is ~3500 ms
+# and `loft --interpret` ~6000 ms. Nothing is shared and no isolation is given up:
+# every gate still gets its own process, its own port and its own `EDITOR_PARTS`.
+#
+# ⚠ AND A STALE BINARY RUNS OLD CODE SILENTLY, which is the one way this is fatally
+# wrong. Measured: with `editor_server.loft` edited to answer `placed 0,0 STALEPROBE`,
+# exec'ing the cached path still answered `placed 0,0` — a whole suite green against
+# yesterday's server.
+#
+# What makes it safe is that loft's cache is CONTENT-ADDRESSED AND SELF-CLEANING:
+# editing the source produced `editor_server-879386d85355772e` and REMOVED
+# `editor_server-25acec083708faca`; reverting the source restored `25acec083708faca`
+# exactly. So the binary is rebuilt HERE, once, before anything fans out — a stale one
+# cannot survive that, and the glob below cannot find one that does not exist.
+#
+# ⚠ THE BUILD IS NEVER SKIPPED ON A GUESS. A timestamp comparison against the source
+# would be a heuristic standing in for a content hash, and the failure it admits is the
+# silent one above. It costs ~3.5 s when nothing changed and ~29 s when it did, against
+# ~220 s saved.
+#
+# ⚠ AND THE BINARY IS COPIED TO `.gatebin/server` BEFORE IT IS RUN, WHICH IS NOT
+# TIDINESS — IT IS THE WHOLE THING WORKING AT ALL.
+#
+# A compiled loft program roots its relative file I/O at **its own directory's parent**,
+# baked in at compile time. Exec'd from `src/.loft/cache/`, that root is `src/.loft/`,
+# so `shots/`, `recordings/` and every saved world go somewhere that does not exist:
+# `loft: cannot create .../src/.loft/cache/../shots/shot-1.txt — write skipped`. Neither
+# `--project` nor an environment variable overrides it; measured, both are ignored.
+#
+# ⚠ AND IT DOES NOT ANNOUNCE ITSELF AS A PATH FAULT. The first full suite this way was
+# **7 gates red**, and their verdicts read like rendering and streaming defects:
+# `cache` and `client_mesh` reported nothing at all, `camera_indoors` and `deck_soffit`
+# came back `subject 0.0001` — a near-empty frame — and `persist` failed both its acks.
+# Every one of them was a file the server could not read or write.
+#
+# A copy at `<repo>/.gatebin/server` puts that baked-in root back on the repository.
+# Measured: zero path errors from the same probe that produced them.
+#
+# ⚠ `GATE_LOFT` STILL WINS, so the old path is one variable away — `GATE_LOFT=--interpret`
+# is how you compare the two backends, and it is what a bisect wants.
+free_port() {
+  p=$1
+  while [ "$p" -lt $((${1} + 200)) ]; do
+    if ! ss -ltn "sport = :$p" 2>/dev/null | grep -q ":$p"; then echo "$p"; return 0; fi
+    p=$((p + 1))
+  done
+  echo ""; return 1
+}
+
+build_server() {
+  bport=$(free_port 18700)
+  [ -n "$bport" ] || { echo "gates: no free port to build the server on"; return 1; }
+  blog=$(mktemp)
+  # ⚠ THE PID IS KEPT AND THE KILL IS BY PID. This box runs other agents' work, and a
+  # port is not an identity — `pkill -f` matches the shell running it as well.
+  EDITOR_PORT="$bport" loft --native --lib lib/ src/editor_server.loft > "$blog" 2>&1 &
+  bpid=$!
+  i=0
+  while [ "$i" -lt 1200 ]; do
+    grep -q 'listening on port' "$blog" 2>/dev/null && break
+    kill -0 "$bpid" 2>/dev/null || break
+    sleep 0.25
+    i=$((i + 1))
+  done
+  ok=0
+  grep -q 'listening on port' "$blog" 2>/dev/null && ok=1
+  kill "$bpid" 2>/dev/null
+  wait "$bpid" 2>/dev/null
+  # ⚠ `loft --native` FORKS: killing the wrapper leaves the compiled child running.
+  for c in $(pgrep -P "$bpid" 2>/dev/null); do kill "$c" 2>/dev/null; done
+  if [ "$ok" -eq 0 ]; then
+    echo "gates: the server would not build — falling back to the interpreter"
+    grep -vE '^warning|^ *\||^ *-->|^ *=|^advice|^note:' "$blog" | tail -6
+    rm -f "$blog"; return 1
+  fi
+  rm -f "$blog"; return 0
+}
 
 self=$0
 
@@ -95,8 +176,14 @@ if [ "${1:-}" = "--one" ]; then
   parts=$(mktemp -d)
   cp -r data/parts/. "$parts/" 2>/dev/null || true
 
-  EDITOR_PORT="$port" EDITOR_PARTS="$parts" \
-    loft ${GATE_LOFT:---interpret} --lib lib/ src/editor_server.loft > "$log" 2>&1 &
+  # The parent set `GATE_SERVER_BIN` if it built one; otherwise this is the old path,
+  # unchanged, which is what `GATE_LOFT=--interpret` and every fallback below take.
+  if [ -n "${GATE_SERVER_BIN:-}" ]; then
+    EDITOR_PORT="$port" EDITOR_PARTS="$parts" "$GATE_SERVER_BIN" > "$log" 2>&1 &
+  else
+    EDITOR_PORT="$port" EDITOR_PARTS="$parts" \
+      loft ${GATE_LOFT:---interpret} --lib lib/ src/editor_server.loft > "$log" 2>&1 &
+  fi
   pid=$!
   listening=0
   i=0
@@ -150,6 +237,45 @@ fi
 
 jobs=${GATE_JOBS:-8}
 base=${GATE_PORT_BASE:-18200}
+
+# ── build the server once, and resolve it by GLOB rather than by a name ─────
+#
+# ⚠ EXACTLY ONE, OR THE OLD PATH. loft removes the previous binary when it makes a new
+# one, so two matches means something else is going on — a concurrent build, a partial
+# write — and picking one of them arbitrarily is how the stale case gets in through the
+# side door. Zero matches means the build did not produce what it said it did.
+# ⚠ COUNTED WITHOUT `set --`, which would eat the gate list this script was called
+# with. That is not a style point: it silently ran zero gates and reported success.
+GATE_SERVER_BIN=""
+if [ -z "${GATE_LOFT:-}" ]; then
+  if build_server; then
+    found=$(ls -1d src/.loft/cache/editor_server-* 2>/dev/null | wc -l)
+    if [ "$found" -eq 1 ]; then
+      cand=$(ls -1d src/.loft/cache/editor_server-* 2>/dev/null)
+      if [ -x "$cand" ]; then
+        # ⚠ AND THE CLIENT PAGE TRAVELS WITH IT. `read_client()` looks in
+        # `{source_dir()}/.loft/editor_client.html`, and `source_dir()` follows the
+        # binary — so from `.gatebin/` the server served its own *404, the wasm client
+        # is not built* page, 178 bytes instead of 2.3 MB. The browser then drew
+        # nothing, which reached the verdicts as `subject 0.0001` and *(no cache
+        # report)*: a missing FILE wearing a renderer's clothes.
+        mkdir -p .gatebin/.loft
+        cp "$cand" .gatebin/server.new && mv .gatebin/server.new .gatebin/server \
+          && GATE_SERVER_BIN=$(pwd)/.gatebin/server
+        if [ -f src/.loft/editor_client.html ]; then
+          cp src/.loft/editor_client.html .gatebin/.loft/editor_client.html.new \
+            && mv .gatebin/.loft/editor_client.html.new .gatebin/.loft/editor_client.html
+        else
+          echo "gates: src/.loft/editor_client.html is missing — run 'make client'"
+          GATE_SERVER_BIN=""
+        fi
+      fi
+    else
+      echo "gates: expected one built server, found $found — using the interpreter"
+    fi
+  fi
+fi
+export GATE_SERVER_BIN
 
 i=0
 for g in "$@"; do

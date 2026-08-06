@@ -89,3 +89,8 @@ probe/*.png
 
 # loft build artefacts beside a probe
 **/.loft/
+
+# The gate suite copies the compiled server here — a loft binary roots its file I/O
+# at its own directory's parent, so it has to sit one level under the repository or
+# every snapshot and save lands in src/.loft/. Rebuilt every run; never committed.
+.gatebin/
