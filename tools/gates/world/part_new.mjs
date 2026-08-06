@@ -47,12 +47,19 @@ const rows = [];
 let bad = 0;
 const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
 
-// ⚠ `house/annexe` SORTS FIRST in a library of `house/` and `prop/`, and that is
-// the whole of `A7.1`'s row argument reused: a catalogue row index is positional,
-// so an insert at the FRONT renames every row after it. A part inserted at the end
-// would pass a server that re-addressed only the new row.
+// ⚠ THE AUTHORED PART MUST SORT FIRST, and that is the whole of `A7.1`'s row
+// argument reused: a catalogue row index is positional, so an insert at the FRONT
+// renames every row after it. A part inserted at the END would pass a server that
+// re-addressed only the new row.
+//
+// ⚠ THIS WAS `house/annexe` AND THE LIBRARY OUTGREW IT. `A5.2` added a `door/`
+// family, which sorts before `house/`, so the check went red naming the new
+// content — the gate doing exactly its job, and a reminder that this assertion is
+// a claim about the WHOLE library rather than about the part it authors. Any name
+// chosen here is a hostage to the next family somebody adds; what keeps it honest
+// is that the failure is loud and says which part took first place.
 const FROM = 'house/cottage';
-const NEW  = 'house/annexe';
+const NEW  = 'aaa_annexe/wing';
 const FAM  = 'annex/lean_to';        // a family directory that does not exist yet
 
 function open() {
@@ -180,7 +187,7 @@ a.ws.send('7:0,0,0.5236');
 await wait(400);
 const placedFrom = await ask(`14:12,${FROM}`, 'stencil ');
 check(placedFrom.includes('placed'), `the part it came from places (${placedFrom})`);
-check(placedFrom.includes("'cottage'"),
+check(placedFrom.includes(`'${FROM.split('/').pop()}'`),
       `and names ITSELF, not the new part (${placedFrom})`);
 const wallsFrom = await ask('16:0,0', 'walls ');
 check(wallsFrom === authoredBefore,
@@ -190,7 +197,10 @@ const placedNew = await ask(`14:12,${NEW}`, 'stencil ');
 check(placedNew.includes('placed'), `the new part places in the same session (${placedNew})`);
 // ⚠ A7.3e-iii's real check: the acknowledgement is the author's only confirmation
 // of WHICH part landed, and it used to say 'cottage' for both.
-check(placedNew.includes("'annexe'"),
+// ⚠ DERIVED FROM `NEW`, NOT SPELLED OUT. This read `'annexe'` and broke the day
+// the constant above changed — a second spelling of one fact, in a gate whose own
+// subject is a part carrying its own name.
+check(placedNew.includes(`'${NEW.split('/').pop()}'`),
       `and it announces its own name, not its ancestor's (${placedNew})`);
 const wallsNew = await ask('16:0,0', 'walls ');
 check(wallsNew === authored,

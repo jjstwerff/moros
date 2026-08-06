@@ -24,9 +24,9 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f` — **A7.3 COMPLETE**
 
-`make gate` **44 green** · `make lib-test` **2618, both backends** · `make parts` green
+`make gate` **44 green** · `make lib-test` **2632, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-**2026-08-06 11:25 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
+**2026-08-06 12:34 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
 every stage and unchanged throughout. `cache` was a startup miss in the suite and passed **alone**
 with `agree 24 bad 0 layers 42` — `bd41374b`, branch `tuxedo-catalogue`,
 `c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
@@ -136,7 +136,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **246** |
+| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **253** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -283,12 +283,27 @@ earns them. ✅ **`A7.3b`'s fence is already gone**: `14:<roof>,<part>` in part 
   number. ⚠ **A zero axis is *not hinged***, which is `hinge.loft`'s own `HG_AXIS` rule rather
   than a new sentinel.
 
-⚠ **WHAT IS LEFT IS THE DRAWING, AND IT IS THE SAME GAP `A7.3f3` MEASURED.** The editor discards
-`ex_meshes` entirely, so **no** expanded mesh is drawn — bound, swung or otherwise — and every
-part in the library that fits a socket is mesh-only (`prop/statue` and `prop/seated` have 0
-columns). The precedent is small and exists: the catalogue thumbnail already draws a part's
-`.glb` through `glb_read` + `mesh_wire`, and `chunk_mesh_slot` and `glb_read` hand back the same
-`mesh3d::Mesh`, both `+Y` up.
+✅ **AND THE DRAWING LANDED TOO (2026-08-06).** `hex_part::mesh_swing` turns a leaf on its own
+hinge, `posed_mesh` adds the socket's aim and the lattice position, and the display rebuild
+broadcasts the result into the reserved low mesh block (eleven slots, and the cap says what it
+drops). ⚠ **THE OPEN PART WAS LOSING ITS OWN BINDINGS**, which is the bug the picture found and
+no test would have: the rebuild walked `part_instances(wld)` and expanded each one, so every cell
+derived correctly and **every bound leaf vanished** — a binding belongs to the FRAME, not to the
+instance it hangs on, and nothing refused because nothing was asked. `part_expand_of` is the
+in-memory entry, the same shape `part_cycle_of` needed for the same reason: the library's entry
+takes a NAME and a gesture holds a WORLD.
+
+⚠ **THE LIBRARY HAD NO HINGED PART AT ALL**, which is why this half could not be SEEN however
+finished it was — `swing_fit` had been fencing an angle since the state half with nothing in
+`data/parts/` declaring a hinge for it to fence. `door/oak` (hinged down one edge, not through its
+centre — which is the wrong composition's own picture), `door/frame`, `door/doorway` at 0.125 of a
+turn.
+
+⚠ **AND ADDING THAT FAMILY TURNED A GATE RED, WHICH IS THE GATE WORKING.** `part_new` asserts the
+part it authors **sorts first** — that is what makes *every row was re-addressed* mean anything —
+and `door/` sorts before `house/`. The name moved to `aaa_annexe/wing`, and the two checks that
+spelled a leaf name out now derive it from the constant, because a second spelling of one fact in
+a gate about *a part carrying its own name* is the joke telling itself.
 
 ⚠ **`A5.2`'s gate is a COLD-RECOGNITION test and needs the user's eyes**, not a gate: *does a
 person call it a door.* It cannot be reached until a leaf can be drawn ajar. Render it and hand
