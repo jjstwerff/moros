@@ -41,9 +41,11 @@ fn target() -> World {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in (0 - 4)..14 {
     for r in (0 - 4)..14 {
-      assert(world_set_column(w, Column { co_q: q, co_r: r,
-        co_cells: [Hex { h_height: 5 as u16? ?? 0,
-                         h_material: 1 as u8? ?? 0 }] }).cw_code == CW_OK, "ground");
+      // ⚠ `world_set_cell`, not a one-cell column write — 25 us against 415, and
+      // this loop runs per test. See `probe/perf/place_phases.loft` `G1`.
+      assert(world_set_cell(w, q, r, 0,
+        Hex { h_height: 5 as u16? ?? 0,
+              h_material: 1 as u8? ?? 0 }).cw_code == CW_OK, "ground");
     }
   }
   w

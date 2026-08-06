@@ -21,9 +21,12 @@ fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
   PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
 }
 
+fn probe_hex(h: integer, mat: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }
+}
+
 fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
-  world_set_column(w, Column { co_q: q, co_r: r,
-    co_cells: [Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }] });
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: [probe_hex(h, mat)] });
 }
 
 fn save_part(name: text, w: World) {
@@ -75,6 +78,202 @@ fn target() -> World {
   w
 }
 
+// The SAME 256 cells through the in-place single-cell write. See `G1` below for
+// why this is the instrument and not a rival fixture.
+fn target_cells() -> World {
+  w = blank();
+  for q in (0 - 2)..14 { for r in (0 - 2)..14 { world_set_cell(w, q, r, 0, probe_hex(5, 1)); } }
+  w
+}
+
+fn per_us(ms: integer, count: integer) -> integer { ms * 1000 / count ?? 0 }
+
+// ⚠ NANOSECONDS, BECAUSE THE FIRST READ MEASUREMENT PRINTED `0 us` FOR THE
+// ABSENT PATH and 0 is what a floor and a free operation look like alike. The
+// clock is still milliseconds — this only divides the total by more reads.
+fn per_ns(ms: integer, count: integer) -> integer { ms * 1000000 / count ?? 0 }
+
+// ── `G1` — the probe that can refute GROUND_DEFAULT ──────────────────────────
+//
+// [GROUND_DEFAULT.md](../../doc/claude/GROUND_DEFAULT.md) claims the 109 ms of
+// `target()` is per-CALL overhead paid 256 times, so folding 256 calls into one
+// (`G2`'s `world_fill`) recovers most of it. If the cost is per-CELL instead,
+// `G2` buys nothing and every step after it delivers a fraction of what it
+// promises. This runs FIRST for exactly that reason.
+//
+// ⚠ `G1` ADDS NO LIBRARY CODE, so there is no `world_fill` to time. The bulk
+// cost is therefore BOUNDED FROM ABOVE rather than measured: `world_set_cell`
+// is the existing in-place write, and a `world_fill` inner loop can only be
+// cheaper than it — it would hoist the `find_chunk`, the layer-kind test, the
+// window test and the `F1` walk out of the loop, and pay step 4's and step 6's
+// 1024-cell scans once instead of 256 times. An upper bound is enough to answer
+// the question: if even the loose bound is far under the baseline, the cost is
+// per-call.
+//
+// ⚠ AND THE TWO PATHS MUST BUILD THE SAME WORLD, or the comparison is between a
+// fixture and a cheaper thing that is not it. The control below compares all 256
+// cells and each chunk's layer CRC, which is the byte-level answer.
+// ⚠ THE FIRST VERSION OF THIS WAS ORDER-DEPENDENT AND SAID SO BY ACCIDENT. Two
+// runs of unchanged code reported 107 ms and 271 ms for the same loop, while
+// `PHASE target` — the SAME `target()` call, the same count, earlier in the same
+// process — said 108 ms in both. A measurement whose value depends on how much
+// the process has already allocated is not a measurement of the call.
+//
+// So each path is timed TWICE, on either side of the other, and both are
+// printed. If `A1 ≈ A2` and `B1 ≈ B2` the instrument is stable and the
+// comparison stands; if they diverge, the number to believe is the FIRST of
+// each, and the spread is the honest error bar.
+fn write_probe() {
+  N = 20;
+
+  a = now();
+  for i in 0..N { wa = target(); }
+  b = now();
+
+  c = now();
+  for i in 0..N { wb = target_cells(); }
+  d = now();
+
+  c2 = now();
+  for i2 in 0..N { wb2 = target_cells(); }
+  d2 = now();
+
+  a2 = now();
+  for i3 in 0..N { wa2 = target(); }
+  b2 = now();
+
+  // The fixed cost of ONE `world_set_column` on a chunk that already exists —
+  // what a bulk fill pays once instead of 256 times. Alternating the material
+  // keeps every call a real write, so this is the full path (check, window scan,
+  // encode, elision scan) and not a no-change short circuit.
+  fx = target();
+  M = 200;
+  e = now();
+  for i in 0..M {
+    mat = 1; if i % 2 == 1 { mat = 2; }
+    world_set_column(fx, Column { co_q: 3, co_r: 3, co_cells: [probe_hex(5, mat)] });
+  }
+  f = now();
+
+  wr_col = b - a; wr_cel = d - c; wr_fix = f - e;
+
+  println("");
+  println("G1(a) — is the 256-cell fixture PER CALL or PER CELL?");
+  println("  ORDER column {wr_col / N ?? 0} then {(b2 - a2) / N ?? 0} ms   cell {wr_cel / N ?? 0} then {(d2 - c2) / N ?? 0} ms   — a spread here is DRIFT, not a result");
+  println("  WRITE 256x world_set_column   {wr_col / N ?? 0} ms each   ({per_us(wr_col, N * 256)} us per cell)  — today");
+  println("  WRITE 256x world_set_cell     {wr_cel / N ?? 0} ms each   ({per_us(wr_cel, N * 256)} us per cell)  — in place");
+  println("  WRITE   1x world_set_column   {per_us(wr_fix, M)} us        — the fixed cost a bulk fill pays ONCE");
+  bound = per_us(wr_fix, M) + per_us(wr_cel, N * 256) * 256;
+  base = per_us(wr_col, N);
+  println("  BOUND a 256-cell world_fill <= {bound} us   against {base} us today");
+  if bound > 0 { println("  SPEEDUP at least {base / bound ?? 0}x   — under 2x REFUTES G2"); }
+
+  // ⚠ THE CONTROL. Two write paths, one world — or the numbers above compare
+  // different work.
+  ca = target(); cb = target_cells();
+  diff = 0;
+  for q in (0 - 2)..14 {
+    for r in (0 - 2)..14 {
+      ha = world_cell(ca, q, r, 0); hb = world_cell(cb, q, r, 0);
+      if ha.h_height != hb.h_height || ha.h_material != hb.h_material { diff = diff + 1; }
+    }
+  }
+  crc = 0;
+  for q2 in [0 - 1, 0] {
+    for r2 in [0 - 1, 0] {
+      if world_layer_crc(ca, q2 * 32, r2 * 32, 0) != world_layer_crc(cb, q2 * 32, r2 * 32, 0) {
+        crc = crc + 1;
+      }
+    }
+  }
+  // ⚠ THE NUMBERS ABOVE UNDERSTATE THE WIN, AND ALLOCATION PRESSURE IS NOT WHY —
+  // this loop is the refuted hypothesis, kept because it is the control.
+  //
+  // `place.loft` calls `target()` 46 times (counted, with a `println` in the
+  // body) and timed IN PLACE it cost **372 ms** a call, not the 105 ms measured
+  // here — 84 % of the whole file. The guess was that a process holding many
+  // live worlds makes the column write dearer while the in-place write stays
+  // flat. Measured, with a hundred worlds held: **both are unchanged.** So the
+  // gap between 105 ms here and 372 ms there belongs to the test harness, not to
+  // the store, and this probe is a LOWER BOUND on what a test pays.
+  held: vector<World> = [];
+  for i4 in 0..100 { held += [target_cells()]; }
+  p = now();
+  for i5 in 0..N { wp = target(); }
+  q = now();
+  s = now();
+  for i6 in 0..N { wq = target_cells(); }
+  t = now();
+  println("  UNDER PRESSURE (100 live worlds held): column {(q - p) / N ?? 0} ms   cell {(t - s) / N ?? 0} ms");
+  println("    against {wr_col / N ?? 0} ms and {wr_cel / N ?? 0} ms on an empty process — {len(held)} worlds held");
+
+  // ⚠ AND THE CLOCK, which neither the cells nor the CRC can see. `w_tau` is the
+  // cost every `hex_editor` timing test asserts on, so a fixture that swapped
+  // write paths and moved it would break them with every cell agreeing.
+  println("  CONTROL same world: {diff} of 256 cells differ, {crc} of 4 chunk CRCs differ  — both must be 0");
+  println("  CONTROL same clock: w_tau {ca.w_tau} by column, {cb.w_tau} by cell  — must be equal");
+}
+
+// ── `G1`(b) — is a synthesised read cheaper, or only NOT DEARER? ─────────────
+//
+// Under GROUND_DEFAULT a column over untouched ground is SYNTHESISED from the
+// world's default rather than read out of a chunk. Today that path already
+// exists in its cheapest possible form: `find_chunk` misses and the accessor
+// returns nothing. That is a LOWER bound on a synthesised read — the real one
+// also builds the default's `Hex` — and the stored read beside it is exactly
+// what `G5` would replace, since a defaulted column and a written one of the
+// same value are the same cell.
+//
+// ⚠ THE DESIGN ASKED THE WRONG QUESTION OF THIS HALF. It says *"if synthesising
+// a column is not far cheaper than reading a stored one, there is nothing
+// here"* — but the read is not what the design removes. It removes the WRITE:
+// a fixture that declares its ground pays for no columns at all. What the read
+// has to be is NOT DEARER, and a stored read is the ceiling for that, because a
+// miss does strictly less work than a hit.
+fn read_probe() {
+  N = 400;
+  hit = target();
+  miss = blank();
+
+  acc = 0;
+  a = now();
+  for i in 0..N { for q in (0 - 2)..14 { for r in (0 - 2)..14 {
+    acc = acc + len(world_column(hit, q, r).co_cells); } } }
+  b = now();
+  c = now();
+  for i2 in 0..N { for q2 in (0 - 2)..14 { for r2 in (0 - 2)..14 {
+    acc = acc + len(world_column(miss, q2, r2).co_cells); } } }
+  d = now();
+
+  e = now();
+  for i3 in 0..N { for q3 in (0 - 2)..14 { for r3 in (0 - 2)..14 {
+    acc = acc + world_surface(hit, q3, r3, 5.0).sf_units; } } }
+  f = now();
+  g = now();
+  for i4 in 0..N { for q4 in (0 - 2)..14 { for r4 in (0 - 2)..14 {
+    acc = acc + world_surface(miss, q4, r4, 5.0).sf_units; } } }
+  h = now();
+
+  j = now();
+  for i5 in 0..N { for q5 in (0 - 2)..14 { for r5 in (0 - 2)..14 {
+    acc = acc + (world_cell(hit, q5, r5, 0).h_height as integer ?? 0); } } }
+  k = now();
+  l = now();
+  for i6 in 0..N { for q6 in (0 - 2)..14 { for r6 in (0 - 2)..14 {
+    acc = acc + (world_cell(miss, q6, r6, 0).h_height as integer ?? 0); } } }
+  m = now();
+
+  n = N * 256;
+  println("");
+  println("G1(b) — a read over an ABSENT chunk against the stored one it replaces ({n} reads each)");
+  println("  READ world_column    stored {per_ns(b - a, n)} ns ({b - a} ms)   absent {per_ns(d - c, n)} ns ({d - c} ms)");
+  println("  READ world_surface   stored {per_ns(f - e, n)} ns ({f - e} ms)   absent {per_ns(h - g, n)} ns ({h - g} ms)");
+  println("  READ world_cell      stored {per_ns(k - j, n)} ns ({k - j} ms)   absent {per_ns(m - l, n)} ns ({m - l} ms)");
+  println("  (accumulator {acc} — printed so no loop can be elided)");
+  println("  a synthesised read costs between the two: a miss plus ONE Hex, where");
+  println("  the stored read is a hit plus one Hex PER LAYER. Not cheaper — not dearer.");
+}
+
 fn main() {
   N = 20;
 
@@ -114,4 +313,7 @@ fn main() {
   if tot > 0 {
     println("SHARE stage {st * 100 / tot ?? 0}%  target {tg * 100 / tot ?? 0}%  expand {ep * 100 / tot ?? 0}%");
   }
+
+  write_probe();
+  read_probe();
 }

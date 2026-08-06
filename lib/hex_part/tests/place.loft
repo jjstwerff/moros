@@ -57,10 +57,17 @@ fn aimed(part: text, facing: integer) -> PartInst {
 
 fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
 
+// ⚠ `world_set_cell`, NOT a one-cell `world_set_column` — measured, 415 us a cell
+// against 25, and `target()` below pays it 256 times per test. A column write
+// re-fits the chunk's window over every layer's 1024 cells and then asks every
+// layer whether it emptied; the in-place write does neither, because a height
+// inside the window cannot move the window. `probe/perf/place_phases.loft` `G1`
+// has the numbers and the controls that say the two build the same world — same
+// cells, same layer CRCs, same `w_tau`.
 fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
-  assert(world_set_column(w, Column { co_q: q, co_r: r,
-    co_cells: [Hex { h_height: h as u16? ?? 0,
-                     h_material: mat as u8? ?? 0 }] }).cw_code == CW_OK,
+  assert(world_set_cell(w, q, r, 0,
+    Hex { h_height: h as u16? ?? 0,
+          h_material: mat as u8? ?? 0 }).cw_code == CW_OK,
     "the fixture cell at ({q},{r}) was refused");
 }
 

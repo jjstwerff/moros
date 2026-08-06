@@ -46,6 +46,70 @@ returns **milliseconds** and it was divided by 1,000,000 as though it were nanos
 as *"the store primitives are free"* and that conclusion was published before the unit was
 checked. A wrong number is worse than a guess.
 
+## `place_phases.loft` `G1` — the probe that could have killed GROUND_DEFAULT
+
+```sh
+loft --interpret --lib lib/ probe/perf/place_phases.loft
+```
+
+[GROUND_DEFAULT.md](../../doc/claude/GROUND_DEFAULT.md)'s `G1`. It adds no library
+code, so there is no `world_fill` to time: the bulk cost is **bounded from above** by
+`world_set_cell`, the existing in-place write, which a `world_fill` inner loop can only
+beat. Three runs, this box, interpreted:
+
+| | per call | per cell |
+|---|---|---|
+| 256 × `world_set_column` — today's fixture | **105–110 ms** | 410–432 us |
+| 256 × `world_set_cell` — in place | **6 ms** | 25–26 us |
+| 1 × `world_set_column` — the fixed cost a bulk fill pays once | 390–400 us | — |
+
+**The design survives**: a 256-cell `world_fill` is bounded at ~7.0 ms against 105 ms, so
+**at least 14×**, and the cost is per-CALL as claimed. ⚠ **But the mechanism it credited is
+not the one that pays.** The bound is 7,051 us of which the once-only fixed cost is 395 —
+**94 % of what is left is per-cell**, so `G2`'s own headroom over simply calling
+`world_set_cell` is at most ~2×, not the 14×. `G3` never needed `G2`.
+
+⚠ **AND AN ISOLATED PROBE OF A STORE CALL UNDERSTATES WHAT A TEST PAYS FOR IT BY 3.5×.**
+`place.loft` calls `target()` 46 times — counted with a `println` in the body, not
+inferred — and timed *in place* each call cost **372 ms**, against the 105 ms measured
+here. 46 × 372 ms is **84 % of that file's whole runtime**. The obvious explanation was
+allocation pressure, and it is **refuted**: the probe re-times both paths holding a
+hundred live worlds and both are unchanged (105 ms and 6 ms). The gap belongs to the test
+harness. That control is kept in the probe, because a refuted hypothesis with a
+measurement beats an open question.
+
+### Its controls, which are what make the comparison mean anything
+
+- **Same world** — all 256 cells compared, plus each of the 4 chunks' layer CRC. Both 0.
+- **Same clock** — `w_tau` 257 either way. Neither the cells nor the CRC can see it, and
+  it is the quantity every `hex_editor` timing test asserts on.
+- **Same in both orders** — each path is timed twice, on either side of the other. ⚠ This
+  exists because two runs of unchanged code once reported **107 ms and 271 ms** for the
+  same loop while `PHASE target` in the same process said 108 ms both times. The box is
+  shared and it drifts; a single reading is not a measurement.
+
+### `G1`(b) — and it refutes a sentence of its own design
+
+Under GROUND_DEFAULT a column over untouched ground is synthesised rather than read from a
+chunk. 102,400 reads each way:
+
+| | stored | absent |
+|---|---|---|
+| `world_column` | 2167 ns | 1035 ns |
+| `world_surface` | 1103 ns | 947 ns |
+| `world_cell` | 1376 ns | 1250 ns |
+
+⚠ **The design says *"if synthesising a column is not far cheaper than reading a stored
+one, there is nothing here"*, and by that test there is nothing here** — for the two
+accessors that get hammered it is within 20 %. **The test is the wrong one.** The design
+does not remove the read, it removes the WRITE: a fixture that declares its ground pays
+for no columns at all. What the read has to be is **not dearer**, and a stored read is the
+ceiling for that, because a miss does strictly less work than a hit.
+
+⚠ **The first version of the read measurement printed `0 us` for every absent path**,
+because the clock is milliseconds and 25,600 reads is under one. `0` is what a floor and a
+free operation look like alike.
+
 ## `profile_counts.mjs` / `profile_tau.mjs` — the instrument, and its two checks
 
 `27:2` arms a per-message profile; `27:3` reports `id count us tau` per message id. See

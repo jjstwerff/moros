@@ -1,8 +1,64 @@
 # A layer is born with a default cell — the ground's, per scenario
 
-**Status: designed, not built.** Written before the code on purpose: the failure paths below
-are what turned the first shape of this design into the third, and each turn was cheaper on
-the page than in the store.
+**Status: `G1` and `G3` built (2026-08-06); `G2` and `G4`–`G7` designed, not built.** Written
+before the code on purpose: the failure paths below are what turned the first shape of this
+design into the third, and each turn was cheaper on the page than in the store.
+
+## ⏭ What `G1` turned up, and it reordered the plan
+
+**The design survives its own falsification probe, and the mechanism it credited does not.**
+`G1` is built in [`probe/perf/place_phases.loft`](../../probe/perf/place_phases.loft); every
+number below is from it, with the controls in
+[`probe/perf/README.md`](../../probe/perf/README.md).
+
+| | per call | per cell |
+|---|---|---|
+| 256 × `world_set_column` — today's fixture | **105–110 ms** | 410–432 us |
+| 256 × `world_set_cell` — the in-place write, which already exists | **6 ms** | 25–26 us |
+| 1 × `world_set_column` — the fixed cost a bulk fill pays once | 390–400 us | — |
+
+✅ **The cost IS per-call, as claimed** — a 256-cell `world_fill` is bounded at ~7.0 ms
+against 105 ms, at least **14×**. `G2` is not refuted.
+
+⚠ **BUT `G3` NEVER NEEDED `G2`, AND THAT IS THE FINDING.** `world_set_cell` is 17× cheaper
+than a one-cell `world_set_column` **today, with no library change**, because a height inside
+the chunk's window cannot move the window — so it skips step 4's per-layer 1024-cell window
+scan and step 6's 1024-cell elision scan entirely. Of the 7,051 us the bound allows, only 395
+is the once-only fixed cost: **94 % of what a `world_fill` would still pay is per-cell**, so
+`G2`'s headroom over just calling `world_set_cell` is about **2×**, not 14×. The plan had
+`G2` as the mechanism that recovers the 109 ms; measured, it recovers the last 6 % of it.
+
+✅ **SO `G3` LANDED FIRST, AND WITHOUT `G2`.** Four fixtures, four test files, one substitution
+— measured end to end, interpreted, this box:
+
+| | before | after |
+|---|---|---|
+| `hex_part/tests/place.loft` | 20.4 s | **6.8 s** |
+| `hex_part/tests/bind.loft` (484 columns) | 12.7 s | **5.2 s** |
+| `hex_part/tests/bake.loft` (324) | 6.4 s | **4.5 s** |
+| `hex_part/tests/expand.loft` | 5.3 s | **2.5 s** |
+| **`hex_part`, all 254 tests** | **77 s** | **35 s** |
+
+⚠ **AND AN ISOLATED PROBE OF A STORE CALL UNDERSTATES WHAT A TEST PAYS FOR IT BY 3.5×.**
+`place.loft` calls `target()` **46 times** — counted with a `println` in the body, not
+inferred from the source — and timed *in place* each call cost **372 ms** against the
+probe's 105 ms, which is **84 % of that file's whole runtime**. The obvious explanation was
+allocation pressure and it is **refuted**: re-timing both paths while holding a hundred live
+worlds leaves both unchanged. The gap belongs to the test harness, not to the store. The
+refuted control stays in the probe.
+
+⚠ **THE CONTROLS ARE WHAT MAKE THE SUBSTITUTION SAFE, AND ONE OF THEM SEES WHAT THE OTHERS
+CANNOT.** The two paths build the same world — all 256 cells equal, all four chunk layer CRCs
+equal — **and the same `w_tau`, 257 either way**. A fixture that swapped write paths and moved
+the edit clock would break every `hex_editor` cost test with every cell agreeing.
+
+⚠ **AND THE BOX DRIFTS, SO A SINGLE READING IS NOT A MEASUREMENT.** Two runs of unchanged code
+reported **107 ms and 271 ms** for the same loop while `PHASE target` in the same process said
+108 ms both times, and `place.loft` came back at 18.9 s once and 6.8 s four times running.
+The probe now times each path twice, on either side of the other, and prints both.
+
+**What `G1`(b) says, and it refutes a sentence of this document.** See *The probe that could
+falsify the whole thing* below — the read half asked the wrong question.
 
 ## Why — measured, not assumed
 
@@ -116,19 +172,41 @@ everywhere is dropped**, the same rule `E1` already applies to an emptied one.
    born full has different bytes than one born empty — which is right, and it means the digest
    moves, which is what a digest is for. → nothing to do, but the `cache` gate is the check.
 
-## The probe that could falsify the whole thing
+## The probe that could falsify the whole thing — ✅ built, and it fired
 
 **Before any of it: does one bulk write actually recover the 109 ms?** The claim is that the
 cost is per-call overhead paid 256 times. If a single call that lays the same 256 cells still
 costs ~100 ms, then the cost is per-*cell* and this design is aimed at the wrong thing —
 every step below would deliver a fraction of what it promises.
 
-`probe/perf/place_phases.loft` already measures the baseline; the probe adds one column to it.
-An afternoon, and it is step `G1`.
+**Answered: it is per-call, and the design stands.** The numbers are at the top of this
+document. What it moved is *which step* recovers the cost — `world_set_cell` already does,
+so `G3` went first and `G2` is now worth ~2× rather than 14×.
 
-⚠ **Expect it to fire.** Three hypotheses about this write path have already been refuted by
-their own probes today, and the floor measurement (0.09 ms of a 0.41 ms call) says only ~78 %
-of a call is body at all.
+⚠ **AND THE READ HALF OF THIS SECTION ASKED THE WRONG QUESTION.** It said: *"(b) is the floor
+the whole design is reaching for: if synthesising a column is not far cheaper than reading a
+stored one, there is nothing here."* Measured over 102,400 reads each way — `world_column`
+2167 ns stored against 1035 ns absent, `world_surface` 1103 against 947, `world_cell` 1376
+against 1250 — **synthesising is not far cheaper, and for the two accessors that get hammered
+it is within 20 %.** By the sentence's own test there is nothing here.
+
+**The sentence is wrong, not the design.** GROUND_DEFAULT does not remove the read; it removes
+the **write**. A fixture or a scenario that declares its ground pays for no columns at all,
+which is the 105 ms, and the reads afterwards cost what they cost today. What the read has to
+be is **not dearer** — and a stored read is the ceiling for that, because a miss does strictly
+less work than a hit, and a synthesised read is a miss plus one `Hex` where a stored read is a
+hit plus one `Hex` per layer.
+
+⚠ **WHICH MOVES THE REAL COST OF THIS DESIGN TO `G6`, WHERE IT WAS NOT PRICED.** An infinite
+plane of ground means the mesher builds chunks it skips today — that is *new* work, not saved
+work, bounded by view distance rather than by what was authored. It is also the product
+behaviour being asked for (you want to see the ground you are standing on), so it is a cost to
+measure at `G6`, not an objection. `G6` is already last for a different reason.
+
+⚠ **The first version of the read measurement printed `0 us` for every absent path**, because
+`now()` is milliseconds and 25,600 reads is under one. `0` is what a floor and a free
+operation look like alike — the same unit trap that made the first `place_phases` run report
+`0 ms` for everything.
 
 ## The steps — each one green, each one revertible
 
@@ -138,9 +216,9 @@ step can still read.
 
 | | | why it is safe alone |
 |---|---|---|
-| **`G1`** | **The probe, and it can kill the design.** Two columns added to `place_phases`: *(a)* lay the same 256 cells in one call, *(b)* read 256 columns from a world where the chunk does **not exist**. **No library change.** | (a) says whether the 109 ms is per-call overhead — if one call still costs ~100 ms the cost is per-*cell* and `G2` is pointless. (b) is the floor the whole design is reaching for: if synthesising a column is not far cheaper than reading a stored one, there is nothing here |
-| **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is also the mechanism `G5` needs, which is why it is not skipped even though `G5` supersedes its use in fixtures |
-| **`G3`** | The fixtures use it — `target()` becomes one call. | tests only. The suite time moves and nothing shipped changed |
+| ✅ **`G1`** | **The probe, and it could kill the design.** Two columns added to `place_phases`: *(a)* lay the same 256 cells without the per-call overhead, *(b)* read 256 columns from a world where the chunk does **not exist**. **No library change.** | (a) says whether the 109 ms is per-call overhead — if one call still costs ~100 ms the cost is per-*cell* and `G2` is pointless. (b) is the floor the design was thought to be reaching for. **Built. (a) confirmed the design and reordered the plan; (b) refuted its own question.** ⚠ There is no `world_fill` at this step, so (a) bounds a bulk write from ABOVE with `world_set_cell` — an upper bound is enough to answer a *"is it at least"* question |
+| ⏭ **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is the mechanism `G5` needs, which is the only reason it survives `G1` — ⚠ **its speed argument is spent.** `G3` took the 14× without it, and what is left for `world_fill` to win is the ~2× between 25 us a cell and whatever a hoisted inner loop costs. Build it for `G5`, and measure it before claiming a number |
+| ✅ **`G3`** | The fixtures use it — `target()` stops paying the column write. | tests only. The suite time moves and nothing shipped changed. **Built with `world_set_cell`, not with `G2`'s `world_fill`** — `hex_part` 77 s → 35 s, 254 tests green, with cells, layer CRCs and `w_tau` all equal either way |
 | **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | absent = today, byte for byte. Negative control: every suite at the same count, and a file written here loads in the previous build |
 | **`G5`** | **The accessors consult it**: `world_column`, `world_cell`, `world_surface` synthesise the ground where the chunk is absent. A write equal to the default does not allocate; a layer equal to it everywhere is dropped. | the model change, but still invisible to any world that has not set a ground. ⚠ **This is where `E1` is restated** — and the restatement belongs in `WORLD_MODEL` Part II, not only here |
 | **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | the step that changes what you SEE, and the one the gates are for. ⚠ It is last because everything before it is inert until a scenario sets a ground — so a regression here cannot be blamed on the four steps below it |

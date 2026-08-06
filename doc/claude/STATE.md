@@ -22,20 +22,61 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — the live thread is **SPEED**: `GROUND_DEFAULT` `G1`, a probe that can kill its own design
+## ⏭ PICK UP HERE — **SPEED**: `G1` and `G3` are built, `hex_part` is 77 s → 35 s. Next is `G2`/`G4`
 
 ⚠ **THE USER REDIRECTED ON 2026-08-06 AND THIS IS THE CURRENT THREAD.** *"If these tests are slow,
 we need to optimize them"* / *"I want 0.1 s tests running parallel instead"* / *"if we ever want to
 build a full editor … those should not include starting a server, waiting for ports"*. Plan 17
 `A8.2` is still the next *parts* step and is described below, but it is not what was asked for last.
 
-**Start at [GROUND_DEFAULT.md](GROUND_DEFAULT.md) § the steps, `G1`.** It is a probe with no
-library change, and it is written to be able to refute the design it belongs to.
+✅ **`G1` FIRED, THE DESIGN SURVIVED, AND THE PLAN REORDERED.**
+[GROUND_DEFAULT.md](GROUND_DEFAULT.md) § *What `G1` turned up* has it in full. The cost of a
+fixture **is** per-call as the design claimed — but the mechanism that recovers it was already in
+the tree, so `G3` landed **without `G2`**:
 
-| measured 2026-08-06, this box, interpreted | |
+| | per call | per cell |
+|---|---|---|
+| 256 × `world_set_column` — the old fixture | 105–110 ms | 410–432 us |
+| 256 × **`world_set_cell`** — in place, and it already existed | **6 ms** | 25–26 us |
+| 1 × `world_set_column` — the fixed cost a bulk fill pays once | 390–400 us | — |
+
+**A height inside the chunk's window cannot move the window**, so the in-place write skips step
+4's per-layer 1024-cell window scan and step 6's 1024-cell elision scan outright. ⚠ **Which
+spends `G2`'s speed argument**: of the 7.0 ms a `world_fill` is bounded at, only 0.4 is the
+once-only fixed cost, so **94 % of what is left is per-cell** and `world_fill`'s headroom over
+`world_set_cell` is ~2×, not 14×. Build `G2` because `G5` needs it — and measure it before
+claiming a number for it.
+
+| landed 2026-08-06, interpreted, this box | before | after |
+|---|---|---|
+| `hex_part/tests/place.loft` | 20.4 s | **6.8 s** |
+| `bind.loft` (484 columns) · `bake.loft` (324) · `expand.loft` | 12.7 · 6.4 · 5.3 s | **5.2 · 4.5 · 2.5 s** |
+| **`hex_part`, all 254 tests** | **77 s** | **35 s** |
+
+`make lib-test` green afterwards — 11 packages, both backends, same loft hash at both ends.
+
+⚠ **AN ISOLATED PROBE OF A STORE CALL UNDERSTATES WHAT A TEST PAYS FOR IT BY 3.5×.** `place.loft`
+calls `target()` **46 times** (counted with a `println` in the body, not inferred) and *in place*
+each call cost **372 ms** against the probe's 105 — **84 % of the file**. The obvious explanation
+was allocation pressure and it is **refuted**: both paths are unchanged holding a hundred live
+worlds. The gap is the test harness, and the refuted control stays in the probe.
+
+⚠ **THE BOX DRIFTS, AND A SINGLE READING IS NOT A MEASUREMENT.** Two runs of unchanged code gave
+**107 ms and 271 ms** for the same loop while `PHASE target` in the same process said 108 both
+times; `place.loft` gave 18.9 s once and 6.8 s four times running. Other agents share this box.
+`place_phases` now times each path **twice, on either side of the other**, and prints both — a
+spread there is drift, not a result.
+
+⚠ **AND `G1`(b) REFUTED A SENTENCE OF ITS OWN DESIGN.** *"If synthesising a column is not far
+cheaper than reading a stored one, there is nothing here"* — measured over 102,400 reads each
+way, an absent-chunk read is only 1.1–2.1× cheaper (`world_surface` 1103 ns stored against 947
+absent). **The sentence is wrong, not the design**: GROUND_DEFAULT removes the *write*, not the
+read, and the read only has to be **not dearer**. ⚠ Which moves the design's real cost to `G6`,
+where it was not priced — an infinite ground plane means the mesher builds chunks it skips today.
+
+| still true, measured 2026-08-06 | |
 |---|---|
-| the fixture costs **ten times** the subject | `hex_part/tests/place.loft`: `target()` 109 ms (**85 %**), `part_expand` 11 ms (8 %), `stage()` 6 ms (5 %) — `probe/perf/place_phases.loft` |
-| nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms**. `hex_part` runs 254 in **77 s** |
+| nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms** |
 | compile tracks the **dependency cone** | `lavition_ui` 20 ms · `hex_world` 119 ms · `hex_part` 492 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
 | gates are a different, larger problem | 44 gates ≈ **1838 s** of work: **984 s** is five browser gates, **~238 s** is 44 servers reaching *listening* and buys nothing |
 
@@ -43,8 +84,11 @@ library change, and it is written to be able to refute the design it belongs to.
 re-derive them: the step-4 window scan is worth 3 %, step-6 elision 6 %, **both together 12 %**,
 against a **0.09 ms floor** for a call whose body does nothing. A calibration says those scans
 should cost more than the whole write, and that disagreement is **unresolved** —
-`probe/perf/README.md` has it. ⚠ And the first version of that measurement printed `0 ms` for
-everything because `now()` returns **milliseconds** and was divided by 1,000,000.
+`probe/perf/README.md` has it. ⚠ **`G1` did not resolve it and did not need to**: the in-place
+write skips both scans *and* the column machinery around them, which is why it wins 17× where
+removing the two scans alone won 12 %. ⚠ And the first version of that measurement printed `0 ms`
+for everything because `now()` returns **milliseconds** and was divided by 1,000,000 — the same
+unit trap that made `G1`'s first read column print `0 us`.
 
 ✅ **THE EDITOR CAN NOW SAY WHERE A MESSAGE'S TIME GOES** — `27:2` arms a per-message profile,
 `27:3` reports `id count us tau`. [WIRE_PROTOCOL § `27:`](WIRE_PROTOCOL.md). It carries `w_tau`
