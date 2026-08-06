@@ -154,8 +154,11 @@ what our own docs say.
 (364-line source + 8 test files), `lib/moros_editor` (456 + 5), `lib/moros_render`
 (1340 + 5 + 3 examples), `lib/moros_sim` (5 sources + 11 tests), `lib/moros_ui` (6 + 4).
 Its commit message states the rule it applied — *shared → registry, game-specific → the
-game's repo* — and routed "the moros-specific remainder" to **this repo**. That move never
-happened; `moros/lib/` does not exist. The code is recoverable at `ade530c2^`.
+game's repo* — and routed "the moros-specific remainder" to **this repo**. ⚠ **This next
+sentence read *"That move never happened; `moros/lib/` does not exist"*, and it has been done
+since [moros#2](https://github.com/jjstwerff/moros/issues/2) closed**: `lib/` holds ten packages,
+and `moros_ui` among them is now **`lavition_ui`**. The recovery point `ade530c2^` is kept
+because it is the provenance, not because anything is still waiting there.
 
 **2. Four implementations agree on the hex convention; one of our documents does not.**
 The deleted `moros_render.loft` computes `x = q·√3 + (r&1)·√3/2`, `z = 1.5·r` — **pointy-top,

@@ -6,9 +6,16 @@ things a name and there is a list of things that are known with name and image. 
 for possible walls, floors, etc")*
 
 Plan [#18](https://github.com/jjstwerff/moros/issues/18), a sub-arc of
-[#7](https://github.com/jjstwerff/moros/issues/7). **Design only.** This doc holds the
-decisions; **the order of work is in [the plan](../../plans/18-catalogue/README.md)**, step by
-step with its gates.
+[#7](https://github.com/jjstwerff/moros/issues/7). This doc holds the decisions; **the order of
+work is in [the plan](../../plans/18-catalogue/README.md)**, step by step with its gates.
+
+> ✅ **BUILT — every step of #18 is done** (`B1`, `B1.2b`, `B2`–`B6`), and this line said *"design
+> only"* until 2026-08-06. The editor has a subject line the **server** authors, six labelled
+> buttons, one list holding parts and materials alike with a name, a rendered image and its
+> availability, and greyed rows that say why. `probe/b1/client_live.png` is what it looks like;
+> `make probe-text` regenerates it. ⚠ **The paragraph below opens *"start from what is true
+> today: the editor tells you nothing"* — that is the BEFORE picture, kept because it is what the
+> design was answering.**
 
 **Start from what is true today: the editor tells you nothing.** The browser client binds
 fourteen keys — `w s a d`, `↑ ↓`, `l f g e q b c r` — and documents none of them, shows no
@@ -307,8 +314,14 @@ rebuilds every line every frame is the failure mode, and it is invisible in a pi
 
 ## C6 — Do not redesign the panel; wire the one that exists
 
-`lib/moros_ui` already has, tested: a 240 px left strip, a six-button toolbar, a scrollable
-list, a status line, `panel_hit_test`, `route_click`, `editor_click`. What is missing is
+> ⚠ **THE PACKAGE IS `lavition_ui`, AND EVERY `moros_ui` BELOW IS ITS OLD NAME.** Renaming it was
+> step `B1.2b` of this very plan and the rename was a **mechanism, not a tidy-up**:
+> `tools/layering.sh` skips `moros_*` by design, so the package sat exempt for months from the
+> exact check that existed to catch its dependency arrow. [EDITOR_UI.md](EDITOR_UI.md) is the
+> record. `panel_render` is built; the panel is on screen.
+
+`lib/lavition_ui` already has, tested: a 240 px left strip, a six-button toolbar, a scrollable
+list, a status line, `panel_hit_test`, `route_click`, `editor_click`. What was missing was
 `panel_render`.
 
 ⚠ **THE DEPENDENCY ARROW HERE POINTED THE WRONG WAY, and `B1.2` measured it.** This said

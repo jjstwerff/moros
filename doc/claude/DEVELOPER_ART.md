@@ -3,6 +3,34 @@
 
 # Moros — Developer Art Guide
 
+> ## ⚠ READ THIS FIRST — the ITEM and GLB pipelines here were never built
+>
+> **Measured 2026-08-06, by checking every path this document names**: `tools/svg_to_3d.py`,
+> `tools/item_geometry.py`, `lib/moros_render/src/glb_export.loft`,
+> `lib/moros_render/src/moros_glb_tool.loft`, `html/glb-viewer.html` and `html/icons/items/`
+> **do not exist and are not gitignored** — they were never committed. `html/icons/` holds
+> `npcs/`, `cards/` and `places/` and no items at all. So §*Item Icons*, §*3-D Geometry — GLB
+> Export* and all three §*3-D Item Icons* sections describe a workflow **nobody can run**, and
+> this file was linked from `CLAUDE.md` as *the placeholder-art workflow*.
+>
+> | what IS real | where |
+> |---|---|
+> | NPC / place / card art, generated and committed | `tools/generate_card_art.py`, `html/icons/{npcs,cards,places}/` |
+> | the card PDFs | `tools/build_*_pdf.py` — see [CARDS.md](CARDS.md) |
+> | **glb READING**, in anger | `lib/glb_read` — the catalogue thumbnail draws a part's `.glb` |
+> | **glb WRITING**, in anger | `save_glb(…)` called from `src/prop_build.loft`, which builds `data/parts/prop/*.glb` byte-identically every run |
+> | **material swatches** | ✅ real, and better than described — they are drawn by the **world's own shader** now, not in JavaScript ([CATALOGUE.md](CATALOGUE.md)) |
+>
+> ⚠ **AND THE `.glb` STORY MOVED WHILE THIS PAGE STOOD STILL.** `.gitignore:47` ignores every
+> `.glb` **except the part library's**, so an item-GLB directory of the kind below could not be
+> committed even if it were generated. The live design for art hand-off is
+> [PARTS.md §P9.4–§P9.9](PARTS.md) — block out in cells, export at final size, point a part's
+> `MESH` at what an artist returns — and it makes a different bet from this document: **the
+> engine's own output is shippable**, so placeholder art is not a stage you pass through.
+>
+> **Kept, not deleted.** §*Material Swatches* is live, the item-icon *taxonomy* is the only list
+> of what items need art at all, and the Meshy/AI sections record what was tried.
+
 Three layers of developer art cover every visual element needed to use the map
 editor and renderer without final assets. None of them require a 3-D modelling
 tool — items use an existing free SVG library, materials are drawn procedurally

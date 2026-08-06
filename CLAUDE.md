@@ -229,7 +229,7 @@ address (or the hostname `make browser` prints) cannot connect.
   decisions taken, what is open. Short on purpose; the thirteen-session record is
   [Journal](doc/claude/JOURNAL.md), which nothing thins
 - [Scripted editor](doc/claude/SCRIPTED_EDITOR.md) — **how the editor is driven and verified**: a script of key presses with ticks, every run recorded, a clock that can be stepped or sped up, and a PNG at every step. ⚠ Its §0 is the finding that reframes the structural work — `hex_draw` and friends already do what the editor hand-rolls
-- [Catalogue](doc/claude/CATALOGUE.md) — **what you are working on, what it is called, and what is available**: the always-visible subject line, names as author-facing handles that are not identities, one list over parts and materials, and why every image is rendered rather than loaded. Plan 18
+- [Catalogue](doc/claude/CATALOGUE.md) — **what you are working on, what it is called, and what is available**: the always-visible subject line, names as author-facing handles that are not identities, one list over parts and materials, and why every image is rendered rather than loaded. Plan 18, **every step built**
 - [Editor UI](doc/claude/EDITOR_UI.md) — **the panel, and why it is not Moros's**: a UI package whose dependencies pointed at the headless half while its purpose belonged to the drawing half, and which `tools/layering.sh` waved through for months **because it was named `moros_*`**. The rename to `lavition_ui` is what put it back under the check. Plan 18 `B1.2b`, **built**
 - [Parts](doc/claude/PARTS.md) — **a house drawn away from the world, and the things it is made of**: parts as small worlds, composition by SOCKET rather than coordinate, an instance as a reference whose cells are derived, and the order of work. Plan 17
 - [Fittings](doc/claude/FITTINGS.md) — doors, windows, shutters as hinged assemblies. ⚠ Read its banner first: most of it is superseded by `hex_draw`
@@ -246,11 +246,23 @@ address (or the hostname `make browser` prints) cannot connect.
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
-- [Scene map](doc/claude/SCENE_MAP.md) — scene model
-- [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — renderer rules
-- [Scene editor](doc/claude/SCENE_EDITOR.md) — editor docs
 - [Editor ladder](doc/claude/EDITOR_LADDER.md) — **the rungs, their plans, and [the order of work](doc/claude/EDITOR_LADDER.md#the-order-of-work)** with the checkpoints that need the user's eyes
-- [Scene editor plan](doc/claude/SCENE_EDITOR_PLAN.md) — editor roadmap
+
+⚠ **The four below are HISTORY, and this index called them reference for months.** Each was
+written before the architecture it describes was settled, each is superseded by a document above,
+and each now opens with a banner saying by what. **They are kept, and read for one thing each**:
+- [Scene map](doc/claude/SCENE_MAP.md) — ⚠ **not the scene model.** Its format (`HexCell`,
+  `Blueprint`, `cy` layers) appears in **zero** source files and was never built —
+  [World model](doc/claude/WORLD_MODEL.md) is the model. Read it for the **marketplace and inn
+  layouts**, the **stair geometry**, and the `NpcRoutine` sketch that plan 15 still wants
+- [Scene map renderer](doc/claude/SCENE_MAP_RENDER.md) — pseudocode on the **wrong lattice**
+  (flat-top axial, where the tree is pointy-top odd-r); its own banner says so. Read it for the
+  wall/roof narrative behind `moros_render`, never for a coordinate
+- [Scene editor](doc/claude/SCENE_EDITOR.md) — a UI design for a page that **was not built**.
+  Read it for the layout thinking
+- [Scene editor plan](doc/claude/SCENE_EDITOR_PLAN.md) — a roadmap for an architecture we did not
+  take: **fourteen of the paths it names do not exist.** Read it for the *tool inventory* —
+  which editing tools a building-scale editor needs, and in what order
 - [Generator](doc/claude/GENERATOR.md) — random scenario/NPC generator
 
 ## The browser toolkit

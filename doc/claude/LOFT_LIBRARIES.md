@@ -9,9 +9,11 @@
 > accurate as a description of the recovered `moros_*` packages
 > ([moros#2](https://github.com/jjstwerff/moros/issues/2)).
 
-Five loft packages implement the Moros scene system. **They exist and are tested** — in
-loft's git history at `ade530c2^`, awaiting recovery into `lib/` by
-[moros#2](https://github.com/jjstwerff/moros/issues/2).
+Five loft packages implement the Moros scene system. **They exist and are tested** — ⚠ **and
+they are IN `lib/` now**; this said *"in loft's git history at `ade530c2^`, awaiting recovery"*,
+and [moros#2](https://github.com/jjstwerff/moros/issues/2) closed. `lib/` holds **ten** packages
+today: these four, plus `hex_world`, `hex_editor`, `hex_part`, `hex_field`'s family in
+`../loft-libs-world/`, `glb_read` and `lavition_ui`.
 
 ```
 moros/
@@ -21,8 +23,13 @@ moros/
     moros_editor/    ← undo/redo stack and stencils only  (456 lines)
     moros_render/    ← 3-D geometry generation  (1340 lines, 5 test files, 3 examples)
     moros_sim/       ← collision, player, tools, editor state  (5 sources, 11 tests)
-    moros_ui/        ← panel, widgets, font, editor panel + click  (6 sources, 4 tests)
+    lavition_ui/     ← panel, widgets, font, editor panel + click  (6 sources, 4 tests)
 ```
+
+⚠ **`moros_ui` IS GONE AND THE RENAME WAS A MECHANISM, NOT A TIDY-UP** — `tools/layering.sh`
+skips `moros_*` by design, so the package was exempt for months from the very check that existed
+to catch it. It is `lavition_ui`; see [EDITOR_UI.md](EDITOR_UI.md). References to `moros_ui` still
+in the source are deliberate historical comments, not live names.
 
 **There is no WASM-module-per-package story.** That was this document's original design and
 it does not match how loft ships a program: `loft --html prog.loft` compiles the *whole
@@ -72,13 +79,17 @@ target has no filesystem.
 moros_map  ←── moros_editor
            ←── moros_render ←── graphics (registry, 0.5.0)
            ←── moros_sim
-                moros_ui
+                lavition_ui
 ```
 
 `moros_map` has no loft-package dependencies. **This split is not final**: the data model,
-stencils and renderer are moving to the shared substrate (`hex_field`, `hex_scene`,
-`hex_editor`), which is [moros#1](https://github.com/jjstwerff/moros/issues/1). Read the
-package boundaries here as *what the recovered code does today*, not as the target.
+stencils and renderer moved to the shared substrate, which was
+[moros#1](https://github.com/jjstwerff/moros/issues/1) (closed). ⚠ **Two of the three names this
+line predicted are wrong, and that is worth keeping:** it said `hex_field`, `hex_scene`,
+`hex_editor` — `hex_field` and `hex_editor` are real, and **`hex_scene` was never built at all**.
+The stencil went into `hex_field`'s `Stencil` and the renderer into `hex_draw`. Read the package
+boundaries here as *what the recovered code does today*, and
+[EDITOR_SUBSTRATE § The package map](EDITOR_SUBSTRATE.md#the-package-map) for the real family.
 
 ---
 

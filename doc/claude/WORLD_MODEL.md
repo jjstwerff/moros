@@ -7,9 +7,18 @@ among several. `loft/doc/claude/LAVITION.md` publishes the family inventory this
 **Part II is normative.** Where any other document disagrees with it, this one is right.
 Rules are numbered so a gate, a refusal and a bug report can name the same thing.
 
-> **Status:** the model is specified; the code is not written. [Plan
-> 8](../../plans/8-voxel-world/README.md) builds it and holds the steps, the struggles and
-> the probe tables. This document endures — it is what the plan is built *against*, not a
+> **Status: the model is specified AND BUILT.** ⚠ This line read *"the code is not written"*
+> until 2026-08-06, which was the first thing a reader met in a 1,300-line normative document
+> and had been false for weeks. `lib/hex_world/src/hex_world.loft` is **2,041 lines** carrying
+> `Column`, `Layer`, `StoredHex`, the palette, windowed heights and the `w_tau` edit clock, with
+> **120 tests on both backends**; its suite cites the rule ids below by name — `T1`, `T2`, `L13`,
+> `L14`, `L15`, `W1`, `B1` — which is what makes the numbering load-bearing rather than
+> decorative.
+>
+> [Plan 8](../../plans/8-voxel-world/README.md) is still **open**, and what is left of it is the
+> *convergence* work rather than the model: `chunk_idx_32` / `hex_idx_32` folding into `hex_grid`
+> from their two homes, the crystal's `c_age` moving to a side table, and `gridmesh` taking the
+> dirty set. **This document endures either way** — it is what the plan is built *against*, not a
 > part of the building.
 
 ---
@@ -1334,5 +1343,7 @@ proves nothing about windowing at all.
 
 - [Editor ladder](EDITOR_LADDER.md) — the rungs built on this model
 - [Editor substrate](EDITOR_SUBSTRATE.md) — the package family and its seams
-- [Scene map](SCENE_MAP.md) — the scene model built on these cells
+- [Scene map](SCENE_MAP.md) — ⚠ **not** the scene model, and this line said it was. Its format
+  half is superseded by *this* document and was never built; read it for the marketplace/inn
+  layouts, the stair geometry and the `NpcRoutine` sketch, which nothing has replaced
 - [Data](DATA.md) — every data structure and where it lives

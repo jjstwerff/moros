@@ -1,6 +1,38 @@
 # SCENE_MAP — Map Format Design
 
-A hex-based scene format for Moros, supporting multi-layer terrain, multi-story structures, and multi-chunk maps.
+> ## ⚠ READ THIS FIRST — the FORMAT half of this document was never built, and something else won
+>
+> This is the longest document in the scene set and it was the only one carrying no marker at
+> all, while `CLAUDE.md` linked it as *"the scene model"*. **It is not the scene model.**
+>
+> **Measured 2026-08-06, not recalled:** `HexCell`, `Blueprint`, `SceneMap` and the `cy`-layer
+> chunk appear in **zero** `.loft` source files in this tree. `EDITOR_SUBSTRATE`'s inventory of
+> the four map representations lists this one as *"plan 73 L2 sketch — **never built**"*, and
+> [`HEX_STACK.md` §2](HEX_STACK.md#2-what-this-supersedes) dispositions it: *"L2 `hex_map` is the
+> map data shape → **superseded.** Realised as `hex_field`, which is a derived window, not the
+> world."*
+>
+> | if you came here for | go to |
+> |---|---|
+> | **the world's data model** | **[WORLD_MODEL.md](WORLD_MODEL.md)** — Part II is normative, and `lib/hex_world` is 2,041 lines implementing it |
+> | how it is stored, transported and derived | [HEX_STACK.md](HEX_STACK.md) — the single authority, and its three invariants |
+> | the hex lattice | ⚠ **this document was the OUTLIER and is reconciled** — pointy-top, odd-r, `L = √3`, owned by `hex_grid` ([moros#3](https://github.com/jjstwerff/moros/issues/3), closed). Four implementations already agreed; this one did not |
+> | walls, roofs, openings from a plan | `hex_draw` — see [FITTINGS.md](FITTINGS.md)'s banner |
+> | stencils and the 12 orientations | `hex_field`'s `Stencil` ([moros#5](https://github.com/jjstwerff/moros/issues/5), closed) |
+>
+> ### ⚠ But TWO halves of it are unreplaced, and that is why nothing here is deleted
+>
+> **§ Marketplace and Inn Layouts** and **§ Stair Geometry** are *authoring* content — ASCII
+> layout patterns with hex counts, item facings and wall runs — and they exist **nowhere else in
+> this tree**. They were never a format claim, so nothing superseded them.
+>
+> **§ NPC Routines** is a design sketch (`NpcRoutine` / `NpcWaypoint` / `WaypointActivity`) for
+> **[plan 15 — Routines](https://github.com/jjstwerff/moros/issues/15), which is still open.**
+> Read it as an input to that plan, not as a description of anything running.
+>
+> ⚠ **So the split is: every section about BYTES is superseded; every section about LAYOUT is
+> live.** The `Hex Structure`, `Chunk Structure`, `Palette System`, `Blueprints`, `Storage
+> Layout` and `Summary — Key Constants` sections describe a format that does not exist.
 
 ---
 

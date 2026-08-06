@@ -99,10 +99,18 @@ Design first: [STATE.md](STATE.md), then [HEX_STACK.md](HEX_STACK.md) and
 | `src/editor_server.loft` | The server: the world, the wire's 30 messages, the tick, meshing. One file, and [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) is the map of it |
 | `src/editor_client.loft` | The wasm/loft renderer, served at `/client` |
 | `lib/hex_world/` | **lavition** — the voxel landscape: columns, layers, windowed heights, the file format |
+| `lib/hex_editor/` | **lavition** — the editor library: gestures, stencils, materials, the catalogue |
+| `lib/hex_part/` | **lavition** — parts: sockets, bindings, hinges, expand and bake ([PARTS.md](PARTS.md)) |
+| `lib/lavition_ui/` | **lavition** — the panel, widgets, font, hit-testing. ⚠ This row said `lib/moros_ui/`, which has not existed since the rename that put it back under `tools/layering.sh` ([EDITOR_UI.md](EDITOR_UI.md)) |
 | `lib/moros_sim/` | Simulation: cliffs and stairs, the fall, ground contact, rigs, assemblies |
 | `lib/moros_render/` | Mesh emission — hex fans, wall quads, slope faces |
-| `lib/moros_map/`, `lib/moros_editor/`, `lib/moros_ui/` | The scene model, editor state, UI helpers |
+| `lib/moros_map/`, `lib/moros_editor/` | The scene model and editor state, as recovered |
+| `lib/moros_terrain/` | Procedural generation — noise, fbm, hydrology, rivers; and `surface_at` |
 | `lib/glb_read/` | `.glb` import, ours because upstream cannot verify it |
+
+⚠ **A `hex_*` name is lavition's and a `moros_*` name is the game's**, and that is enforced rather
+than conventional: `tools/layering.sh` skips `moros_*` by design, so a universal package carrying
+a Moros prefix is exempt from the check that exists to catch it.
 
 ## Tooling (Python)
 

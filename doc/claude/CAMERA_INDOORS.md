@@ -702,9 +702,13 @@ a broom cupboard picked it on purpose.
 
 ## The measurement that says it worked
 
-`tools/gates/world/camera_modes.mjs` — build a house, stand inside, and assert **per
-mode**, because the modes disagree by design and a single expectation would be wrong
-for two of them:
+⚠ **THE GATE IS `tools/gates/world/camera_indoors.mjs`** — this line named
+`camera_modes.mjs`, which has never existed, so anyone following it found nothing and
+would reasonably have concluded the measurement was never written. ⚠ **And the *(today: …)*
+notes in the table below are the BEFORE state**, from when the section was written; the
+banner at the top of this file is the after. Build a house, stand inside, and assert **per
+mode**, because the modes disagree by design and a single expectation would be wrong for
+two of them:
 
 | | FOLLOW | SNUG | EYES | CUTAWAY |
 |---|---|---|---|---|

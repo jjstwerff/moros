@@ -5,15 +5,29 @@ three loft WASM libraries plus a JavaScript front-end. The existing world-level
 editor (`html/hex-map-editor.html`) will eventually share canvas and data format
 but stays separate for now.
 
-> **This plan predates two facts and is being rebased on them** — see
-> [moros#6](https://github.com/jjstwerff/moros/issues/6).
-> **(a)** Most of phases 1, 3, 4 and 6a are already written and tested: the
-> `moros_map` / `moros_editor` / `moros_render` / `moros_sim` / `moros_ui` packages live in
-> loft's git history at `ade530c2^` and are recovered by
-> [moros#2](https://github.com/jjstwerff/moros/issues/2).
-> **(b)** The data model, stencils and the renderer are now shared with crawler rather than
-> Moros-private — see [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md). Treat the phase tables
-> below as the UI/tool checklist, not as a from-scratch build order.
+> ## ⚠ THE REBASE THIS BANNER PROMISED NEVER HAPPENED — read the phase tables as HISTORY
+>
+> **Measured 2026-08-06:** of the paths this plan names, **fourteen do not exist** —
+> `html/scene-editor.html`, `html/scene-editor.js`, `html/scene-canvas.js`,
+> `html/scene-stencils.js`, `html/moros_map.wasm`, `html/moros_editor.wasm`,
+> `src/moros_map.loft`, `src/moros_editor.loft`, and six `lib/moros_editor/src/*.loft` files.
+> Not *not yet*: the architecture went a different way. There is **no JavaScript front-end and
+> no wasm-module-per-package** — the editor is a loft **server** (`src/editor_server.loft`) and
+> one wasm renderer (`src/editor_client.loft`), and `loft --html` compiles the *whole program*
+> to one file, so packages are compile-time dependencies rather than loadable modules.
+>
+> | for the real thing | go to |
+> |---|---|
+> | where the editor stands and what is next | [STATE.md](STATE.md) |
+> | the order of work | [EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work) |
+> | the packages that actually exist | [EDITOR_SUBSTRATE.md § The package map](EDITOR_SUBSTRATE.md#the-package-map) |
+> | the wire between server and client | [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) |
+>
+> ⚠ **`moros_ui` is `lavition_ui`** and `moros#2`'s recovery is **done** — both were named below
+> as pending. What is still worth reading here is the *tool inventory*: which editing tools a
+> building-scale editor needs, and in what order a person would reach for them. That question
+> outlived the architecture, and [moros#6](https://github.com/jjstwerff/moros/issues/6) is still
+> open against it.
 
 References:
 - [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) — the shared package map and the seam rules
