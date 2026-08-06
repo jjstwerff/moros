@@ -876,3 +876,52 @@ simultaneously *the shipped mesh* and *the artist's brief*, and it is one file w
 
 > **The one sentence.** Build the thing once, correctly sized and jointed; whether its skin comes
 > from this engine or from a person is a decision you can defer until after you have played it.
+
+### P9.10 — Limbs are HITBOXES, which is the half an artist can never hand back
+
+**Added 2026-08-06 with the user, and it is the sharpest argument for the whole of §P9.** A
+spectacle fighter needs to know *which limb hit which limb* — a sword arm on a head is not a sword
+arm on a shoulder — so it needs **per-limb volumes that follow the pose**. A part-tree already has
+them.
+
+⚠ **A FINISHED `.glb` IS ONE SKINNED MESH AND CANNOT GIVE YOU THIS.** Per-limb hitboxes have to be
+recovered from it afterwards, by hand, and are usually approximated badly. But a creature built as
+parts is **already decomposed**: each limb is its own part, with its own body, its own extent and
+its own transform. The thing a fighter most needs is the thing the format hands over for free —
+and it is squarely **gameplay, not art**, so it stays ours however much of the visual work goes
+out.
+
+⚠ **AND §P9.4's *"the blockout becomes the collision body"* WAS UNDERSOLD.** For a door it means
+*walk through it*. For a creature it means **each limb's blockout is that limb's hitbox, posed by
+the joint** — and it is *derived*, so there is no second authoring step and nothing to keep in
+step. The prototype geometry is not merely kept; it becomes the data the art could never supply.
+
+### The pieces already exist, in three packages
+
+- **the decomposition** — a part-tree of limbs, each a part (§P9);
+- **the proxy** — `moros_sim::assembly` already gives a body a `ShapeKind` (`Box`, `Disc`,
+  `Capsule`) and a `bd_girth`, and already records why: *"a proxy that misses an overlap is the one
+  thing `I4` forbids, so a body carries its shape KIND and derives its proxy from that — inherited
+  was wrong, derived is not"*;
+- **the pose** — the joint, with limits in turns (`A5.1`), and a renderer that already poses a
+  part-tree (the walker's five meshes).
+
+Dynamic bounding boxes are the composition of three things that are each already here.
+
+### So the division of labour is crisp
+
+| the editor owns | the artist owns |
+|---|---|
+| the skeleton and its joints | the skin |
+| every size and proportion | the surface, the detail, the material |
+| the joint ranges — what an animation *may* do | |
+| **the hitboxes** | |
+
+⚠ **AND THE SKIN MUST FIT THE HITBOXES, NOT THE OTHER WAY ROUND.** §P9.5's extent check is a
+gameplay rule here, not a tidiness one: a returned mesh that outgrows its blockout is a monster you
+cannot hit where it looks like you should, and a player reads that as the game being broken rather
+than as an asset being 8% large. **The size is the contract; the art is the thing that must
+honour it.**
+
+> **The one sentence.** The artist makes it beautiful; the editor decides what it *is* — how big,
+> how it bends, and where it can be hit — and only the first of those three is safe to hand over.

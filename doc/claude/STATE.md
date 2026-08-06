@@ -371,6 +371,20 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **LIMBS ARE HITBOXES, WHICH IS THE SHARPEST ARGUMENT FOR ANY OF THIS — §P9.10.** A spectacle
+fighter needs to know *which limb hit which limb*, so it needs per-limb volumes that follow the
+pose. **A finished `.glb` is one skinned mesh and cannot give you that** — the hitboxes have to be
+recovered afterwards, by hand, and usually badly — while a creature built as parts is ALREADY
+decomposed. It is gameplay, not art, so it stays ours however much visual work goes out. ⚠ **And
+§P9.4 was undersold**: for a door *the blockout becomes the collision body* means walk through it;
+for a creature it means **each limb's blockout is that limb's hitbox, posed by the joint**, derived
+rather than authored twice. ⚠ **The pieces exist in three packages** — the part-tree
+(decomposition), `moros_sim::assembly`'s `ShapeKind`/`bd_girth` (proxy, already *"derived, not
+inherited"*), and the joint plus a renderer that already poses a part-tree. ⚠ **So the skin must
+fit the hitboxes, not the reverse**: §P9.5's extent check is a GAMEPLAY rule, because a mesh that
+outgrows its blockout is a monster you cannot hit where it looks like you should, and a player
+reads that as a broken game rather than an 8% asset.
+
 ⚠ **AND IT IS ONE PIPELINE, NOT TWO — §P9.9.** Almost everything falls into the same categories
 either way: size, proportion, joint range, socket class, the part-tree, the blockout-as-collision,
 the export at final size, a material per part. **The destinations differ in ONE field — where
