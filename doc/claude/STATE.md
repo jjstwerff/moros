@@ -320,6 +320,22 @@ stamped** — its own chunks meshed the way `part_thumb_wire` already meshes a p
 — and posed on the joint continuously. Cells are the AUTHORING form, a mesh is the DRAWN one, and
 which a part gets is decided by **how it is attached**, not by what it is made of.
 
+⚠ **AND THE SAME DECISION BUYS THE RESOLUTION, WHICH IS WHY A DOOR CAN HAVE DETAIL AT ALL** (§P9.1).
+A leaf is authored on a FINER lattice — many small hexes — and shrunk to fit the opening. That
+works only because a limb is meshed: a stamped child is written into the parent's world and a fine
+lattice cannot be written into a coarse one, while a limb is never written back, so the parent's
+hex size is not a fact about it. ⚠ **The scale is DERIVED, never authored** — a part is a world and
+a world has `w_unit`, so the ratio between child and parent IS the scale, and a `scale` field
+would be a second authority on a fact both files already state. ⚠ **A unit mismatch on the STAMPED
+path must be a loud refusal**: it is the one shape that silently places cells at the wrong size,
+every count agreeing and the geometry a quarter of what was meant.
+
+⚠ **AND A FRAME IS TWO THINGS** (§P9.2): the OPENING is structure — the building's own coarse
+cells, in the store, walked through — and the JOINERY (jambs, lintel, moulding) is a fine meshed
+part that never needed to be in the store, because the wall beside the opening already does the
+collision. Three different answers to *how detailed may this be*, each following from whether
+anything must walk on it.
+
 ⚠ **AND THE DESIGN AIMS AT THE GATE.** A door narrow enough to be a door is **narrower than one
 hex**, which is why cells had nothing to say about it and why today's leaf is a `.glb`. A two- or
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already

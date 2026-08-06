@@ -562,3 +562,42 @@ same rule and `expand == bake` (`A3.3`) stays coherent.
 `prop/seated` are the remaining custom meshes; they become cell parts, and `MESH` survives only
 as the *import* path (`21:`) it was before parts existed. Until they are converted the two forms
 coexist, and this section is the statement of which one is the design.
+
+### P9.1 — A limb is authored at its OWN scale, and the ratio is already in the file
+
+**Added 2026-08-06 with the user.** A door at the parent's hex size is one column wide and has no
+room for detail; the answer is to author the leaf on a **finer lattice** — many small hexes — and
+shrink it to fit the opening.
+
+⚠ **THIS WORKS FOR THE SAME REASON THE ROTATION LIMIT DIED, AND ONLY FOR MESHED LIMBS.** A
+stamped child is written into the parent's world, and a cell is a cell: a fine lattice cannot be
+written into a coarse one at all. A **limb is never written back** — it is meshed in its own frame
+and posed — so the parent's hex size is simply not a fact about it. §P9's decision buys the
+resolution as well as the angle.
+
+⚠ **AND NOTHING NEW IS AUTHORED, BECAUSE THE FORMAT ALREADY CARRIES IT.** A part is a world and a
+world has `w_unit`; the parent has one too. **The scale is the ratio** —
+`child.w_unit / parent.w_unit` — derived at the placement the way every other composed quantity in
+this design is derived (§P4). A `scale` field on the record would be a second authority on a fact
+both files already state, and the first thing to go stale.
+
+⚠ **A UNIT MISMATCH ON THE STAMPED PATH MUST BE REFUSED, LOUDLY.** It is the one shape that
+silently places cells at the wrong size — every count agreeing, the geometry a quarter of what the
+author meant. `part_diff` already treats a differing unit as a difference (`region.loft`); the
+stamping path owes the same answer as a REFUSAL with both units named. A fine part is a limb or it
+is nothing.
+
+### P9.2 — A frame is two things, and only one of them is structure
+
+The user asked for the FRAME to be finely detailed too, and that splits it:
+
+| | what it is | body | in the store |
+|---|---|---|---|
+| the opening | a hole in a wall — what you walk through | the building's own cells, coarse | **yes** — it is the wall |
+| the joinery | jambs, lintel, threshold moulding, ironwork | a fine-lattice part, meshed | no |
+
+⚠ **THE WALL BESIDE THE OPENING ALREADY DOES THE COLLISION**, so the joinery never needed to be
+in the store — which is why it may be as fine as the author likes. This is §P3's own sentence
+arriving with consequences: *"a socket is not a hole … the socket is the contract at that
+opening."* The hole is structure, the joinery is dressing, and the leaf is a limb; three different
+answers to *how detailed may this be*, each following from whether anything must walk on it.

@@ -1247,6 +1247,7 @@ because a wide door is where cells have something to say. The full argument is
 |---|---|---|---|
 | `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | a cell leaf comes out of an expansion posed, with its hinge and swing, and its cells are in no world | M |
 | `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | a cell-built leaf is DRAWN, ajar, with no `.glb` anywhere | M |
+| `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | a leaf authored on a fine lattice fits the opening, and a fine part stamped is refused with both units named | S |
 | `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
 | `A8.5` | `prop/statue` and `prop/seated` become cell parts; `MESH` reverts to the import path it was before parts existed. | §P9 holds for the whole library, not just for doors | M |
@@ -1264,6 +1265,12 @@ the handle, and the `.glb` reader goes back to being `21:` IMPORT's.
 ⚠ **THE SOCKET SITS AT THE HINGE CELL.** For a three-hex opening that is a decision, not an
 accident: the socket's position and the limb's pivot become one fact rather than two that can
 disagree. A wide opening still has one socket per LEAF.
+
+⚠ **THE SCALE IS DERIVED, NEVER AUTHORED** (§P9.1). A part is a world and a world has `w_unit`;
+the ratio between the child's and the parent's IS the scale, so a `scale` field would be a second
+authority on a fact both files already state. ⚠ **And a unit mismatch on the STAMPED path is the
+one shape that silently places cells at the wrong size** — every count agreeing, the geometry a
+quarter of what the author meant — so it is a refusal naming both units.
 
 ⚠ **A MESHED LIMB IS NOT IN THE STORE** — nothing walks on it, `sight_clear` cannot see it, and
 collision does not know it is there. Stated in §P9 as a consequence rather than left to be found.
