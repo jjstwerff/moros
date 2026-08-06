@@ -1,3 +1,13 @@
+// ⚠ THINNED, AND THIS IS THE ROUTING HALF — the file already says so below, and this
+// line is here because the rule is that it says so at the TOP. The format claim — a
+// cell edit leaves every section untouched, with a dropped section and a changed byte
+// as its controls — is `lib/hex_part/tests/save_edit.loft`.
+//
+// What needs a server is which FILE a save lands in: the mode decides the root, the
+// same rule that already decides where a raise lands. And the null-edit check, which is
+// a claim about bytes after a gesture — open, save, change nothing, and the file is what
+// it was. A writer that reorders its sections passes every *it round-trips* test and
+// still churns a committed file on every open.
 // `8:` IN PART MODE SAVES THE PART — AND THE WORLD'S FILE NEVER MOVES.
 //
 // Plan 17 `A7.3c`. §P2 says a part is saved the way a world is saved, because it

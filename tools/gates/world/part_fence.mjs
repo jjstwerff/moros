@@ -1,3 +1,12 @@
+// ⚠ CHECKED AND LEFT WHOLE, and it could not be otherwise — the subject IS the mode.
+// Part mode is a property of the running server: which store the gestures reach, which
+// registries are held aside, and which messages are refused while one is open. There is
+// no library function that has a mode, so there is nothing here to move.
+//
+// The rule it gates is one sentence: a gesture whose state part mode does not hold
+// aside LEAKS out of the mode, and a gesture that writes cells where the format wants a
+// REFERENCE corrupts the part silently. Both are statements about routing, and routing
+// is what a server does.
 // WHAT PART MODE REFUSES, AND — THE HARDER HALF — WHAT IT STILL LETS THROUGH.
 //
 // Plan 17 `A7.3b`. `A7.3a` opened a part as the edited store and shut the two doors

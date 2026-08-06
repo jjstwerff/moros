@@ -1,3 +1,14 @@
+// ⚠ CHECKED AND LEFT WHOLE — the claim is *when* the check runs, not what it decides.
+// §P8's rules are `hex_part`'s and are tested there; `library_cycle` and
+// `part_mesh_loads` are pure functions over a library on disk. What cannot be posed
+// without a server is the sentence this file is named for: **checked ON SAVE, with the
+// author still holding the thing being refused**.
+//
+// Before `A7.3c` there was no save gesture for that to hang on, so `library_cycle` had
+// exactly one caller — the server's startup sweep — and `part_mesh_loads` was called
+// by `make parts` and by nothing else. A rule that runs where nobody is standing is a
+// different rule. And *a refused save leaves the file alone* is a claim about bytes on
+// disk after a gesture, which is why this gate hashes files rather than reading a store.
 // §P8, CHECKED ON SAVE — AND A REFUSED SAVE LEAVES THE FILE ALONE.
 //
 // Plan 17 `A7.3d`, which closes `A3.4`. Until `A7.3c` there was no save gesture

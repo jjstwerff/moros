@@ -1,3 +1,12 @@
+// ⚠ CHECKED AND LEFT WHOLE — the subject line is AUTHORED BY THE SERVER, which is the
+// whole point of it (plan 18 `B1.5`), so every claim here is about what the server sent
+// and when. A client that echoed its own keystroke would show the same words and mean
+// nothing; that is the failure the control below exists for.
+//
+// ⚠ AND ITS REFUSAL CHECK IS A FIXED WAIT ON PURPOSE. *A REFUSED toggle sends no `H:`
+// at all* is a claim about something NOT arriving: there is no event to poll for, so
+// the window IS the instrument. The other four waits poll for the line the server sends
+// unprompted.
 // `H:` — THE SUBJECT LINE COMES FROM THE SERVER, AND ONLY FROM THE SERVER.
 //
 // Plan 18 `B2`. CATALOGUE §C1 asks that every field of the line be what the

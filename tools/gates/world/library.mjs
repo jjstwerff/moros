@@ -1,3 +1,13 @@
+// ⚠ CHECKED AND LEFT WHOLE — the subject is the SERVER's own filesystem sweep, and
+// there is no library function to test instead. *The catalogue is exactly what is on
+// disk* is a claim about a process watching a directory once a second and broadcasting
+// `N:` when it changes; a part appearing or disappearing is the input, and the wire is
+// the output. Nothing here restates a store rule.
+//
+// ⚠ AND ITS LAST WAIT IS A FIXED DURATION ON PURPOSE. *An unchanged library sends
+// nothing in 4 s* is a claim about an ABSENCE over a window — there is no event to
+// wait for, so a duration is the instrument rather than a shortcut. The other three
+// waits poll for the `N:` the sweep announces itself with.
 // `N:` — THE CATALOGUE IS THE LIBRARY, AND THE LIBRARY CAN CHANGE.
 //
 // Plan 17 `A7.1`. Two claims, and the second is the one that was false:

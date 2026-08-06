@@ -1,3 +1,14 @@
+// ⚠ THINNED, AND THIS IS THE WIRE HALF. The fit rule is `lib/hex_part/tests/fit.loft`
+// entirely — a leaf of the frame's class fits, the right kind at the wrong size is
+// refused, the right size of the wrong kind is refused, a refusal says what the frame
+// actually TAKES, and the library answers which parts fit a socket. Eleven tests, none
+// of which needs a world.
+//
+// What is left is that `46:` reaches any of it. `A4.2` built `socket_fit` and `A4.3`
+// built `socket_for_binding`, and until this gesture existed **nothing an author could
+// type called either** — which is this tree's own trap, so the gate that proves the
+// call happens is the gate that matters. Plus the two things only a wire shows: a
+// second bind SWAPS rather than refusing, and a refusal arrives carrying its offer.
 // THE JOINT ITSELF — AND `socket_fit` REACHES AN AUTHOR.
 //
 // Plan 17 `A7.3f3`. `46:<inst>,<socket>,<part>` puts a part into a socket of an

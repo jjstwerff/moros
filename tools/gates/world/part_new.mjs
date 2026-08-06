@@ -1,3 +1,10 @@
+// ⚠ CHECKED AND LEFT WHOLE — every claim is about a chain of things outside the store.
+// A gesture edits, a save writes a file under a name that did not exist, the server's
+// sweep notices it, the catalogue is re-sent unasked, the new row sorts first so every
+// other row moved, and it arrives OFFERED rather than greyed. That is the editor,
+// the filesystem and the wire in one line, and no part of it is arithmetic over a world.
+//
+// The part FORMAT it writes is `hex_part`'s and is tested there.
 // A PART THAT DID NOT EXIST BEFORE — AUTHORED, LISTED, AND PLACED IN ONE SESSION.
 //
 // Plan 17 `A7.3e`, and it is the acceptance test for the whole plan: *a house

@@ -20,6 +20,43 @@
 # Each gate's server log is `.gate-<name>.log`, kept on failure and otherwise just
 # overwritten next run. The per-gate seconds are printed because a suite that takes
 # minutes deserves to say WHERE they went.
+#
+# ── ⚠ WHAT BELONGS IN A GATE AT ALL — audited 2026-08-06, all 44 ─────────────
+#
+# CLAUDE.md's rule: *the store's rules are loft tests; the drawn result and the
+# sentences are gates*, and every gate says at its top which it is — **because
+# without that the next reader thins the honest ones by symmetry.** Seventeen said
+# nothing. All 44 now do.
+#
+# ⚠ CLASSIFY BY WHAT THE VERDICT ASSERTS, NEVER BY WHAT THE HEADER SAYS. Two gates
+# were found claiming more than they check — `vegetation` argues four properties and
+# judges three, and `cart` argues the wheel law while its verdict is
+# `grounded && banked && bankSigned`. A header describing coverage that has already
+# moved is worse than none: the next person to thin the file would be thinning
+# something already gone. The discriminator is what the verdict READS:
+#
+#   acknowledgement strings only   a WIRE gate. The rule is a loft test; this is the
+#                                  gesture reaching it. `fence`, `field`, `storey`.
+#   the store, via `26:`/`15:`     a claim that COULD move — check whether it has.
+#                                  Kept in three places, each for a stated reason:
+#                                  `doorstep` (the sentence and the store must be
+#                                  shown disagreeing), `part_inst` (one message,
+#                                  two meanings, decided by the mode) and
+#                                  `part_mode` (the world came back exactly).
+#   a file's bytes                 a claim about disk after a gesture — routing and
+#                                  null-edits. `part_save`, `part_check`, `part_new`.
+#   the emitted mesh or a picture  needs a server by construction. The five browser
+#                                  gates, plus `part_mode`'s registry comparison —
+#                                  the wall runs, roof plans, annexes and props that
+#                                  NO message reads back, so the only instrument
+#                                  that can see them restored is every surface
+#                                  re-meshing to what it was.
+#
+# ⚠ AND A FIXED WAIT IS RIGHT WHEN THE CLAIM IS AN ABSENCE. Everything else polls for
+# evidence — a gate that sleeps reports the machine. But *an unchanged library sends
+# nothing in 4 s* (`library`) and *a refused toggle sends no `H:` at all* (`subject`)
+# have no event to wait for, and polling would either return at once, proving nothing,
+# or hang. There the window IS the instrument, and both say so where they sit.
 set -u
 
 self=$0

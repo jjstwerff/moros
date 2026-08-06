@@ -1,3 +1,12 @@
+// ⚠ CHECKED AND LEFT WHOLE, and the picture is why. The store's half of a swap is
+// restorable by any snapshot and `hex_part` tests the format; what no library test can
+// reach is the rest of the world the SERVER holds beside the store — the wall runs, the
+// roof plans, the leaves, the openings, the annexes, the props, the slabs and the holes.
+// No message reads any of them back, so the only instrument that can see them come back
+// is every surface re-meshing to exactly what it was.
+//
+// That is the check this gate ends on, and it is the one a world restored *except for
+// its roof* would fail. Nothing here restates a store rule.
 // `44:` — A PART OPENS AS THE STORE THE GESTURES REACH, AND THE WORLD COMES BACK.
 //
 // Plan 17 `A7.3a`. A part IS a world (§P1), so part mode is a SWAP rather than a

@@ -1,3 +1,14 @@
+// ⚠ THINNED, AND THIS IS THE POSE HALF — the wheel law below is no longer its claim.
+// `lib/moros_sim/tests/cart_as_data.loft` holds it in eleven tests, several of them
+// BIT-IDENTICAL: doubling the travel doubles the value, out and back closes exactly,
+// the value is linear in travel across the range, and the rim, offset, axis and radius
+// each come from the rig rather than from a constant.
+//
+// ⚠ AND THE HEADER BELOW STILL ARGUES FOR THAT LAW WHILE THE VERDICT IS
+// `grounded && banked && bankSigned` — the travel figures are printed here and not
+// judged. A header claiming more than the verdict checks reads as coverage that is not
+// there. What is left, and what needs a world, is the cart's POSE: on the ground it is
+// standing on, banked on a slope, and banked the right way round.
 // Cart gate (rung W7, moros#14) — a cart whose wheels turn from DISTANCE
 // TRAVELLED, not from elapsed time or accumulated steps.
 //

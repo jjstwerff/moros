@@ -1,3 +1,12 @@
+// ⚠ CHECKED AND LEFT WHOLE, and the file already argues it in its second sentence —
+// this line is here because the rule is that it argues it at the TOP. `P1`'s band rule
+// on a column is the model's, and `hex_world` tests it there; what this proves is that
+// the EDITOR places a real structure by it, on ground someone walked to.
+//
+// The cases are the ones a column test states and cannot stage: a house over a deep
+// cave keeps the cave, a house under a high bridge keeps the deck, and a house under a
+// deck too close to fit is refused WHOLE rather than built halfway. Plus the roof, which
+// is derived geometry and has to actually be drawn.
 // Stencil gate (rung W4, moros#12) — `P1` end to end in a running world.
 //
 // The model's tests prove the band rule on a column. This proves the EDITOR

@@ -113,11 +113,38 @@ rows; a light gate is 5.4 s against 5.7 s. Startup alone is 6 s against 3.5 s, s
 pre-built native runner is worth ~110 s across the suite and nothing more. `GATE_LOFT`
 already exists if that is ever wanted. **The server was never the bottleneck.**
 
-⚠ **WHAT IS STILL OPEN IS THE STRUCTURAL HALF** — *"most should be tested outside the
-server"*. 44 gates still start 44 servers for claims most of which are not about a running
-server. The rule for moving them is [CLAUDE.md](../../CLAUDE.md)'s: **the store's rules are
-loft tests; the drawn result and the sentences are gates**, and ⚠ **move before you
-remove** — three gates once held claims no loft test made.
+✅ **AND THE STRUCTURAL AUDIT IS DONE — all 44 gates are classified, and the answer was
+not the expected one.** Seventeen carried no declaration; auditing them by *what the
+verdict asserts* rather than by what the header says found that **most were already
+thinned** and only the declaration was missing. Nothing needed moving out; what was
+missing was the sentence saying it had been. The classification and its discriminator
+now live at the top of [`tools/run-gates.sh`](../../tools/run-gates.sh), where a reader
+of the gates starts.
+
+| the verdict reads | what that makes it | examples |
+|---|---|---|
+| acknowledgement strings only | a **wire** gate — the rule is a loft test, this is the gesture reaching it | `fence`, `field`, `storey` |
+| the store, via `26:`/`15:` | a claim that **could** move — three are kept, each for a stated reason | `doorstep`, `part_inst`, `part_mode` |
+| a file's bytes | disk **routing** after a gesture, and null-edits | `part_save`, `part_check`, `part_new` |
+| the emitted mesh or a picture | needs a server **by construction** | the five browser gates, `part_mode` |
+
+⚠ **TWO GATES CLAIMED MORE THAN THEY CHECKED, and that is the hazard this audit is
+for.** `vegetation` argues four properties and judges three — two moved to
+`hex_editor/tests/field.loft`. `cart` argues the wheel law while its verdict is
+`grounded && banked && bankSigned`; the law is eleven tests in
+`moros_sim/tests/cart_as_data.loft`, several bit-identical. **A header describing
+coverage that has already moved is worse than none**: the next person to thin the file
+would be thinning something already gone. Both headers now say what is true.
+
+⚠ **AND A FIXED WAIT IS RIGHT WHEN THE CLAIM IS AN ABSENCE.** Everything else polls for
+evidence, because a gate that sleeps reports the machine — but *an unchanged library
+sends nothing in 4 s* and *a refused toggle sends no `H:` at all* have no event to wait
+for. There the window **is** the instrument.
+
+⚠ **WHAT REMAINS IS NOT A THINNING PROBLEM, IT IS THE SERVER COUNT.** 44 gates start 44
+servers, ~5 s each, and that floor is now a third of the suite. `keyonly` and `walk` are
+5.0 s and 5.7 s — essentially startup alone. The next real reduction is fewer server
+starts, not fewer claims.
 
 ⚠ **AND `G1`(b) REFUTED A SENTENCE OF ITS OWN DESIGN.** *"If synthesising a column is not far
 cheaper than reading a stored one, there is nothing here"* — measured over 102,400 reads each

@@ -1,3 +1,13 @@
+// ⚠ THINNED, AND THIS IS THE WIRE HALF. The socket record is
+// `lib/hex_part/tests/sock.loft` (22 tests — an edge and a heading with the same index
+// are different sockets, two sockets may not share a name, a comma is refused because a
+// binding names one) and the matching rule is `fit.loft` (11 tests, including *the
+// library answers which parts fit a socket*).
+//
+// What is left is that `45:` reaches them, and one thing the library cannot pose at
+// all: a query aimed at an INSTANCE resolves through the reference to the LEAF, so the
+// answer is about the part being pointed at rather than the frame holding it. That is a
+// question about the store the server currently has open.
 // THE JOINTS, READ BACK — AND `parts_for_socket` FINALLY HAS A CONSUMER.
 //
 // Plan 17 `A7.3f2`. `socket_fit` and `parts_for_socket` were built and tested at

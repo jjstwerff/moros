@@ -1,3 +1,14 @@
+// ⚠ CHECKED AND LEFT WHOLE — the claim is that ONE message means two things, and the
+// mode is what decides. `INST` itself is `lib/hex_part/tests/inst.loft` (34 tests: it
+// survives a save and a load, a comma in a part name survives, a part with no section
+// reads as absent) and the composition is `place.loft` and `stamp.loft`. None of that
+// is restated here.
+//
+// What only a server can pose is `A7.3c`'s rule for one message keeping one meaning per
+// store: in a WORLD, `14:` stamps cells; in a PART it writes an `INST` and stamps
+// nothing. Both halves are checked at the same cell, with the world's stamp taken FIRST
+// as the control — without it every check below passes on a server that stopped placing
+// parts at all.
 // A PART INSIDE A PART IS A REFERENCE, AND YOU CAN SEE IT.
 //
 // Plan 17 `A7.3f`, first half. `A7.3b` fenced `14:<roof>,<part>` off in part mode

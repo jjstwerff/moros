@@ -1,3 +1,14 @@
+// ⚠ CHECKED AND LEFT WHOLE — it is invariant I, and invariant I is about the WIRE.
+// The rule *no edit is ever silently corrected* is a statement about what reaches the
+// author, so a store test cannot pose it: `w_tau` proves in `hex_editor`'s own tests
+// that a refused gesture writes nothing, and that is exactly half the claim. The other
+// half is that the sentence said so, with a NAMED reason, an OFFER and a RESIDUAL for
+// an ordinal parameter and no offer at all for a nominal one.
+//
+// Its one store read is deliberate and the file already says why, further down: a
+// refusal that reached the author as words while the world moved anyway is the precise
+// failure this forbids, and only a running editor can show the sentence and the store
+// disagreeing.
 // Doorstep gate (`K-FIT`, invariant I) — no edit is ever silently corrected.
 //
 // > Every author action ends in exactly one of three states: applied exactly,
