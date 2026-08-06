@@ -371,6 +371,20 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **THERE ARE TWO DESTINATIONS AND THE INDIE ONE IS *SHIP AS-IS* — §P9.8, which amends §P9.4 and
+§P9.7.** An indie game has real pressure to diminish the 3D artist's role, often to nothing, so the
+engine's own output must be shippable as it stands. The hand-over stays available; it stops being
+the assumed ending. ⚠ **What makes it work is CONSISTENCY, not detail** — a flat-shaded hex world
+already has a coherent look, and a door built the same way matches by construction, which is what
+makes a stylised game read as intentional rather than unfinished. ⚠ **And it explains a misreading
+from `A5.2`**: the hand-written `box()` leaf looked wrong in the render and I blamed missing
+detail. It lacked nothing — it was a *different kind of object*, a smooth slab among faceted
+hexes. A cell-built leaf matches with no extra geometry. ⚠ **The smallest real gap is a MATERIAL
+PER PART**: `prop_surface()` reuses `frame` for every mesh body, and `A6.2` already recorded that
+*"a statue and a window surround are ONE bucket … separate them in the RENDERER when something
+draws a statue in the world"*. Something does now, and a library whose every asset is one colour
+is not shippable.
+
 ⚠ **THE DURABLE ARTEFACT IS THE SCALE — §P9.7, and it reorders the rest.** The designer's goal is
 framing and relative scale, and they can work with **red blobs** throughout; the SIZE they set is
 what everyone downstream builds against, and it is the one output here that cannot be regenerated.

@@ -798,3 +798,49 @@ known thing, and is why it belongs in a shot rather than being cropped out of it
 
 > **The one sentence.** Get the sizes right with blobs, because the blobs are thrown away and the
 > sizes are not.
+
+### P9.8 — Two destinations, and the indie one is SHIP AS-IS
+
+**Added 2026-08-06 with the user, and it amends §P9.4 and §P9.7.** An indie game has real pressure
+to **diminish the 3D artist's role** — often to nothing. So the engine's own output has to be
+**shippable as it stands**, or need as few touch-ups as it can. The hand-over of §P9.4 stays
+available; it stops being the assumed ending.
+
+| destination | what the blockout is | who finishes it |
+|---|---|---|
+| **ship as-is** (indie, stylised) | **the asset** | nobody — the engine's look IS the look |
+| **hand over** (realism) | a rigged, correctly-sized blockout | a 3D artist (§P9.4) |
+
+⚠ **AND THE THING THAT MAKES *SHIP AS-IS* WORK IS CONSISTENCY, NOT DETAIL.** A flat-shaded hex
+world already has a coherent look. A door built the same way **matches by construction** — which
+is exactly what makes a stylised game read as *intentional* rather than *unfinished*. More detail
+on one object does not help; it is the thing that breaks the effect.
+
+⚠ **SO §P9.7's *"looking like a door is the artist's hour"* IS TOO STRONG, AND THIS IS THE
+CORRECTION.** Sizes first is still right. But appearance is not entirely deferred: **coherence** is
+the engine's job, and it is bought with a shared palette and shading rather than with modelled
+detail. §P9.7's real claim survives — *do not hand-carve geometry that is going to be replaced* —
+and it is now joined by *do make the whole set look like one set*.
+
+⚠ **THIS ALSO EXPLAINS A MISREADING FROM `A5.2`.** The hand-written `box()` leaf looked wrong in
+the render and I put it down to lacking detail. It lacked nothing: it was **a different kind of
+object** from the cell world around it — a smooth slab among faceted hexes. A cell-built leaf
+would have matched without a line of extra geometry, which is §P9's own argument arriving at the
+picture.
+
+### What ship-as-is actually owes, and it is small
+
+⚠ **A MATERIAL PER PART, WHICH THE EDITOR DOES NOT YET HAVE.** `prop_surface()` reuses `frame` for
+every mesh body, and the consequence is already recorded at `A6.2`: *"a statue and a window
+surround are ONE bucket to every chromaticity gate … when something does draw a statue in the
+world, separate them in the RENDERER and not in the classifier."* Something draws one now. A
+library whose every asset is the same colour is not shippable, and this is the smallest real gap
+between where the editor is and where §P9.8 needs it.
+
+⚠ **AND THE SHAPE VOCABULARY IS ALREADY THERE**: a column's heights, a cell's five materials, and
+wall-edge materials per side. That is enough for planks, rails, panels and ironwork at gate scale
+(§P9) — the resolution question §P9.1 already answered by letting a limb be authored on a finer
+lattice.
+
+> **The one sentence.** The engine's look is not a placeholder for a better one; for the indie
+> destination it is the product, and the editor's job is to make everything belong to it.
