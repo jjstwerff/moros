@@ -755,3 +755,46 @@ with mirrored axes; there is no handedness flag anywhere, and there does not nee
 > **The one sentence.** The editor is where a thing's *size, joints, sockets and name* are decided,
 > fast, by the person who knows what it is for — and the artist is handed a rigged blockout at
 > final scale, so their first hour is modelling rather than measuring.
+
+### P9.7 — The durable artefact is the SCALE. A red blob at the right size beats a good mesh at the wrong one
+
+**Added 2026-08-06 with the user, and it reorders everything above.** The game designer's goal is
+**framing and relative scale** — how big things are against each other, and what that does to a
+shot. They can work with red-blob meshes the whole way through. But **the scale they set is what
+every other person then works from**, so it is the one output of this editor that is not
+replaceable.
+
+⚠ **SO THE BLOCKOUT'S JOB IS TO BE DIMENSIONALLY HONEST, NOT TO BE PRETTY**, and that frees the
+whole design: a cell body does not have to look like a door, it has to be *the size of one*. Every
+effort spent making a blockout handsome is effort spent on the layer that gets replaced, taken
+from the layer that does not.
+
+⚠ **THIS IS A CORRECTION TO A DAY'S WORK, RECORDED RATHER THAN QUIETLY ABSORBED.** `A5.2`'s
+renderer half ended with *"it reads as a panel at an angle, not yet as a door"* and a note that the
+fix was a better `leaf_mesh()`. By this rule that was the wrong worry: the leaf's **proportions and
+its swing** were the deliverable and they were correct. *Looking like a door* is the artist's hour,
+and buying it early with hand-written `box()` calls is buying the cheap half twice.
+
+### What follows for the editor
+
+| | |
+|---|---|
+| a mesh | replaceable, and expected to be replaced |
+| a **size** | permanent — everything downstream is built against it |
+| a **proportion** | permanent, and the thing a shot is actually composed of |
+| a joint's range | permanent — it decides what an animation may do |
+
+⚠ **A SIZE CHANGE THAT ARRIVES WITH NEW ART IS THEREFORE THE WORST BUG THIS PIPELINE CAN HAVE**,
+because it silently invalidates decisions taken in a completely different tool by a different
+person weeks earlier. §P9.5's extent check is not a nicety: it is the guard on the only artefact
+here that cannot be regenerated.
+
+⚠ **AND THE EDITOR OWES A WAY TO JUDGE RELATIVE SCALE, WHICH THE CATALOGUE CANNOT GIVE.**
+`part_thumb_view` solves the camera to fill the frame **per part**, which is right for
+recognisability and makes it **structurally blind to size** — two props differing only in how big
+they are produce one picture. Measured already, at `A6.3`. So relative scale can only be judged
+with things **seen together, at one scale, beside something known**; the walker figure is that
+known thing, and is why it belongs in a shot rather than being cropped out of it.
+
+> **The one sentence.** Get the sizes right with blobs, because the blobs are thrown away and the
+> sizes are not.

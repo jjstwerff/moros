@@ -371,6 +371,19 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **THE DURABLE ARTEFACT IS THE SCALE — §P9.7, and it reorders the rest.** The designer's goal is
+framing and relative scale, and they can work with **red blobs** throughout; the SIZE they set is
+what everyone downstream builds against, and it is the one output here that cannot be regenerated.
+So a blockout's job is to be dimensionally honest, not pretty. ⚠ **This corrects a day's work,
+recorded rather than absorbed**: `A5.2`'s renderer half ended *"it reads as a panel at an angle,
+not yet as a door"* with a note that the fix was a better `leaf_mesh()` — wrong worry. The leaf's
+proportions and its swing were the deliverable and they were right; *looking like a door* is the
+artist's hour. ⚠ **A size change arriving with new art is the worst bug this pipeline can have**,
+so §P9.5's extent check is not a nicety but the guard on the only artefact that cannot be
+regenerated. ⚠ **And relative scale cannot be judged from the catalogue**: `part_thumb_view` fits
+its camera per part and is structurally blind to size (measured at `A6.3`), so it takes things seen
+TOGETHER, at one scale, beside something known — which is why the walker figure belongs in a shot.
+
 ⚠ **AND THE GOAL IS THE ARTIST'S WORK SURFACE — §P9.6, which is what the rest of §P9 was
 serving.** Self-contained was never about avoiding the 3D artist; it is about handing them a
 surface they can start on immediately, so their expensive hours go on craft rather than on
