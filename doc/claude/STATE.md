@@ -380,10 +380,16 @@ decomposed. It is gameplay, not art, so it stays ours however much visual work g
 for a creature it means **each limb's blockout is that limb's hitbox, posed by the joint**, derived
 rather than authored twice. ⚠ **The pieces exist in three packages** — the part-tree
 (decomposition), `moros_sim::assembly`'s `ShapeKind`/`bd_girth` (proxy, already *"derived, not
-inherited"*), and the joint plus a renderer that already poses a part-tree. ⚠ **So the skin must
-fit the hitboxes, not the reverse**: §P9.5's extent check is a GAMEPLAY rule, because a mesh that
-outgrows its blockout is a monster you cannot hit where it looks like you should, and a player
-reads that as a broken game rather than an 8% asset.
+inherited"*), and the joint plus a renderer that already poses a part-tree. ⚠ **AND THE SKIN EXCEEDS THE HITBOX, WHICH §P9.11 CORRECTS ME ON.** I wrote *"the skin must fit
+the hitboxes"*; that is backwards. Every Bloodborne boss has cloth, hair, fire and flailing
+appendages reaching well past what can be struck, and **the player learns which part is hittable**
+— that is how a boss reads as enormous while the fight stays fair. The relationship is SUBSET, not
+equality. So the check is not *extents match* but: **the hitbox stays INSIDE the skin** (a hitbox
+in thin air is the real fault), **the pivot does not move**, and **the scale does not change**. ⚠
+And what is hittable is a DESIGN decision per limb — a cape is a limb with no hitbox at all, which
+`moros_sim` already spells as *"a girth of 0 means no shape declared, which is a real case"*. ⚠
+That makes readability ours too: consistent hittability across a cast is what makes it learnable
+rather than arbitrary.
 
 ⚠ **AND IT IS ONE PIPELINE, NOT TWO — §P9.9.** Almost everything falls into the same categories
 either way: size, proportion, joint range, socket class, the part-tree, the blockout-as-collision,

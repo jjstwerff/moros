@@ -925,3 +925,44 @@ honour it.**
 
 > **The one sentence.** The artist makes it beautiful; the editor decides what it *is* — how big,
 > how it bends, and where it can be hit — and only the first of those three is safe to hand over.
+
+### P9.11 — ⚠ The skin EXCEEDS the hitbox, and that is normal. §P9.5 and §P9.10 had it backwards
+
+**Corrected 2026-08-06 by the user, and it is a fact about how action games work rather than a
+preference.** §P9.10 ended *"the skin must fit the hitboxes"* and §P9.5 asks for a returned mesh to
+match the exported extents. **Both are wrong.** Look at any Bloodborne boss: cloth, hair, fur,
+capes, fire, electricity and vast flailing appendages all reach well past what can actually be
+struck, and **the player learns which part of the boss is hittable.** That is not a defect being
+tolerated — it is how a boss reads as *enormous* while the fight stays fair and legible.
+
+⚠ **SO THE RELATIONSHIP IS SUBSET, NOT EQUALITY.** The hitbox is authoritative and deliberately
+smaller; the silhouette is free to exceed it, often by a lot.
+
+### What the check actually is
+
+| | verdict |
+|---|---|
+| skin extends past the hitbox | **normal** — expected, and often the point |
+| **hitbox extends past the skin** | **a fault** — you are struck by nothing, or you strike nothing visible |
+| the pivot moved | **a fault** — the joint no longer matches the geometry |
+| the overall scale changed | **a fault** — a boss twice the size is a different fight, and every framing decision built on it is void |
+
+So §P9.5's rule is replaced: **the hitbox must remain INSIDE the skin, the pivot must not move, and
+the scale must not change.** Extents that grow outward are not measured against anything, because
+there is nothing to measure them against.
+
+⚠ **AND WHAT IS HITTABLE IS A DESIGN DECISION, NOT A CONSEQUENCE OF THE ART.** That is the deeper
+half of the correction, and it is more work for §P9 rather than less: the editor decides *this arm
+can be hit, this cloak cannot*, which is per-limb again — and it means a limb may legitimately
+exist as **visual only**, with no hitbox at all. `moros_sim::assembly` already has the spelling
+for it: *"a girth of 0 means **no shape declared**, which is a real case (a marker, a trigger) and
+not a defaulted one."* A cape is a limb with a girth of 0.
+
+⚠ **AND *"the player has to learn"* MAKES READABILITY A DESIGN GOAL WITH A HOME.** If which parts
+are hittable is decided per limb in the editor, it can be made *consistent* across a cast — the
+same visual language meaning the same thing on every monster — which is what makes it learnable
+rather than arbitrary. That is a thing the editor can own and an artist cannot, for the same
+reason the hitboxes are ours (§P9.10).
+
+> **The one sentence, replacing §P9.10's.** The art may reach as far past the hitbox as it likes;
+> what may never move is the pivot, the scale, and which limb is hittable at all.
