@@ -250,6 +250,12 @@ address (or the hostname `make browser` prints) cannot connect.
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
 - [Lavition split](doc/claude/LAVITION_SPLIT.md) — **extracting the editor into its own project, and keeping the Moros name out of it**: the one invariant is *build, test **and gate** with the Moros tree absent*, the four blockers in the order the facts force them (a `Surface` collision that already merges, `moros_terrain` misnamed by the mechanism that hid `moros_ui`, 64 lattice calls, and two `hex_world` lineages), and the probe that could falsify the whole design in an afternoon. Plan 19, **designed not built**
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
+- [Ground default](doc/claude/GROUND_DEFAULT.md) — **a layer is born with a default cell, per
+  scenario**: why the fixture costs ten times the subject it tests (85% of the slowest test
+  file), why the fix is one bulk call rather than a cheaper write (three hypotheses about the
+  write path were each refuted by a probe), and why the *elegant* version — a default stored
+  once and applied at read — is last: it redefines presence at **108 sites, 78 outside the
+  store**. Designed, not built
 - [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **five camera settings over one query**: AUTO,
   FOLLOW, SNUG (claustrophobic), CUTAWAY (de-roofed, for editing) and EYES (first person) want
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.

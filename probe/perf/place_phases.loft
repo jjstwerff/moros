@@ -1,0 +1,117 @@
+// WHERE THE SLOWEST TEST FILE'S TIME GOES.
+//
+// `hex_part/tests/place.loft` is 21.5 s for 33 tests — the slowest file in the
+// slowest package (254 tests, 77 s, 303 ms each). This replicates its scaffolding
+// exactly and times the three phases separately, because the whole point of the day
+// was that guessing which one it is has been wrong three times running.
+//
+//   loft --interpret --lib lib/ probe/perf/place_phases.loft
+//
+// ⚠ `now()` IS MILLISECONDS. The first version of this measurement divided by
+// 1,000,000 as though it were nanoseconds, printed `0 ms` for every phase, and was
+// believed long enough to be said out loud.
+use hex_part;
+use hex_world;
+
+fn root() -> text { "{temp_dir()}/perf_place_lib" }
+fn no_palette() -> vector<integer> { [] }
+fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
+
+fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
+  PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
+}
+
+fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
+  world_set_column(w, Column { co_q: q, co_r: r,
+    co_cells: [Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }] });
+}
+
+fn save_part(name: text, w: World) {
+  mkdir_all("{root()}/{name.dir()}");
+  world_save(w, "{root()}/{name}.hxw", no_palette());
+}
+
+fn put_statue(name: text, mesh: text, own: integer) {
+  w = blank();
+  part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: name });
+  part_set_mesh(w, mesh);
+  part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" });
+  part_set_anchor(w, PartAnchor { pa_q: 0, pa_r: 0, pa_h: 0, pa_facing: own });
+  save_part(name, w);
+}
+
+fn put_plinth(name: text, top: integer, look: integer) {
+  w = blank();
+  with_cell(w, 0, 0, top, 9);
+  part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: name });
+  part_set_sockets(w, [Socket { sk_q: 0, sk_r: 0, sk_h: top, sk_mount: SM_HEAD,
+                                sk_at: look, sk_kind: "statue", sk_size: "plinth-2",
+                                sk_name: "top" }]);
+  save_part(name, w);
+}
+
+fn put_yard(name: text, plinth: text, pq: integer, pr: integer, holds: text) {
+  w = blank();
+  with_cell(w, 0, 0, 5, 1);
+  part_set_meta(w, PartMeta { pm_kind: PK_PROP, pm_name: name });
+  part_set_instances(w, [at(plinth, pq, pr, 0)]);
+  part_set_bindings(w, [Binding { bd_inst: 0, bd_open: 0.0,
+                                 bd_socket: "top", bd_part: holds }]);
+  save_part(name, w);
+}
+
+fn wipe(r: text) {
+  for d in list_dir(r) ?? [] {
+    for e in list_dir("{r}/{d}") ?? [] { delete("{r}/{d}/{e}"); }
+    delete("{r}/{d}");
+  }
+  delete(r);
+}
+
+// The fixture's terrain: 16x16 columns, laid fresh for EVERY test.
+fn target() -> World {
+  w = blank();
+  for q in (0 - 2)..14 { for r in (0 - 2)..14 { with_cell(w, q, r, 5, 1); } }
+  w
+}
+
+fn main() {
+  N = 20;
+
+  // Phase 1 — `stage()`: three part documents written to disk.
+  a = now();
+  for i in 0..N {
+    wipe(root());
+    put_statue("p/statue", "marble", 0);
+    put_plinth("p/plinth", 20, 18);
+    put_yard("p/yard", "p/plinth", 2, 1, "p/statue");
+  }
+  b = now();
+
+  // Phase 2 — `target()`: the 256-column terrain.
+  c = now();
+  for i in 0..N { w = target(); }
+  d = now();
+
+  // Phase 3 — `part_expand`: what the tests actually assert about.
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  put_plinth("p/plinth", 20, 18);
+  put_yard("p/yard", "p/plinth", 2, 1, "p/statue");
+  tw = target();
+  e = now();
+  for i in 0..N { ex = part_expand(tw, root(), at("p/yard", 5, 5, 0), 0); }
+  f = now();
+
+  wipe(root());
+
+  st = b - a; tg = d - c; ep = f - e;
+  tot = st + tg + ep;
+  println("PHASE stage      {st} ms   ({st / N ?? 0} ms each)");
+  println("PHASE target     {tg} ms   ({tg / N ?? 0} ms each)");
+  println("PHASE expand     {ep} ms   ({ep / N ?? 0} ms each)");
+  println("PHASE total      {tot} ms  — one test's scaffolding is stage+target+expand");
+  if tot > 0 {
+    println("SHARE stage {st * 100 / tot ?? 0}%  target {tg * 100 / tot ?? 0}%  expand {ep * 100 / tot ?? 0}%");
+  }
+}
