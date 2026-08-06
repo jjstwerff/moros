@@ -178,6 +178,99 @@ fn turned_by(aim: integer, own: integer) -> integer {
   (d + FACINGS) % FACINGS ?? 0
 }
 
+// ── A LIMB IS PLACED, NEVER STAMPED — plan 17 `A8.1`, §P9 ────────────────────
+//
+// ⚠ **HOW A PART IS ATTACHED DECIDES HOW IT IS DRAWN**, and this function is that
+// sentence in code. A part held by `INST` is COMPOSITION: its cells are written
+// into the parent's world, on the parent's lattice, and `A4.4`'s six-rotation
+// limit binds it. A part held by `BIND` is a **LIMB**: it hangs in space on a
+// joint at an arbitrary angle, and **nothing of it is ever written to a lattice**
+// — so the limit does not apply, and all 24 headings are exact for it *however
+// many cells it has*. That is why `part_lattice_free` is not consulted here, and
+// its absence is the whole step rather than an omission.
+//
+// ⚠ **THE WALK STOPS HERE, AND §P9.1 FORCES IT RATHER THAN CHOOSING IT.** A limb
+// may be authored on a FINER lattice and shrunk to fit the opening, so its own
+// nested parts must be composed in ITS frame at ITS `w_unit` — which the parent's
+// expansion cannot do, because it is working in the parent's units. The consumer
+// has to open the part to mesh it anyway; expanding it *there* is where a limb's
+// own limbs come back, in the frame they belong to.
+//
+// ⚠ **SO THE DEPTH BOUND MOVED WITH THE RECURSION, AND THAT IS STATED RATHER THAN
+// LEFT TO BE FOUND.** Nothing here can loop, because nothing here recurses — but a
+// consumer that follows `ma_part` can, and what makes that safe is §P8's save-time
+// check: `part_cycle_of` has walked BOTH edge kinds since `A7.3f3`, so a saved
+// library cannot contain a cycle through bindings at all.
+fn limb_at(root: text, name: text, bq: integer, br: integer, h: integer,
+           aim: integer, swing: float, depth: integer) -> Expand {
+  if depth > EX_MAX_DEPTH {
+    return Expand { ex_code: EX_DEPTH, ex_depth: depth,
+                    ex_why: "'{name}' is nested {depth} deep; the bound is "
+                          + "{EX_MAX_DEPTH} (P8)" };
+  }
+  onto = part_file(root, name);
+  if !exists(onto) {
+    return Expand { ex_code: EX_MISSING, ex_why: "'{name}' is not in {root}" };
+  }
+  ld = world_load(onto);
+  if ld.wl_code != WL_OK {
+    return Expand { ex_code: EX_BROKEN,
+                    ex_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
+  }
+  p = ld.wl_world;
+
+  // ⚠ THE LEAF IS OPENED A SECOND TIME AND THAT IS NOT NEW COST.
+  // `socket_for_binding` has already loaded it to read `FITS` and the hinge; the
+  // path this replaces then loaded it again inside `expand_at`. Two loads before,
+  // two loads now. Folding them means putting a `Hinge` and a `PartAnchor` on
+  // `SocketAt`, which `bake` shares and does not want — so the duplication is
+  // named here rather than paid for with a wider contract.
+  an = part_anchor(p);
+  if an.ar_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {an.ar_why}" };
+  }
+  body = part_mesh(p);
+  if body.pr_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {body.pr_why}" };
+  }
+  held = part_instances(p);
+  if held.ir_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {held.ir_why}" };
+  }
+  hg = part_hinge(p);
+  if hg.hr_code == MR_MALFORMED {
+    return Expand { ex_code: EX_BROKEN, ex_why: "'{name}': {hg.hr_why}" };
+  }
+
+  // ⚠ A LIMB WITH NO BODY AT ALL IS STILL A MISTAKE WORTH NAMING, and it is the
+  // same rule the stamped path already keeps: *nothing to place* is `EX_FIT`
+  // there. Without it a limb that draws nothing is a silent absence in the
+  // picture — and a picture is the only instrument that could ever have seen it.
+  // The three bodies are §P5's two plus §P4's composition, counted exactly as
+  // `expand_loaded` counts them.
+  if len(part_columns(p)) == 0 && body.pr_code != MR_OK && len(held.ir_items) == 0 {
+    return Expand { ex_code: EX_FIT,
+      ex_why: "'{name}' at ({bq},{br}) has no body at all — no cells, no mesh and no "
+            + "parts of its own — so there is nothing to hang on the joint" };
+  }
+
+  // ⚠ ABSENT IS A ZERO HINGE, which is `hinge.loft`'s own `HG_AXIS` rule doing its
+  // second job rather than a new sentinel: a zero-length axis can never be a real
+  // hinge, so *not hinged* and *hinged but shut* draw by one code path.
+  hgh = Hinge {};
+  if hg.hr_code == MR_OK { hgh = hg.hr_hinge; }
+  skin = "";
+  if body.pr_code == MR_OK { skin = body.pr_name; }
+
+  Expand { ex_code: EX_OK, ex_parts: 1, ex_depth: depth,
+           ex_meshes: [MeshAt { ma_part: name, ma_mesh: skin,
+                                ma_q: bq, ma_r: br, ma_h: h,
+                                ma_facing: turned_by(aim, an.ar_anchor.pa_facing),
+                                ma_ox: hgh.hg_ox, ma_oy: hgh.hg_oy, ma_oz: hgh.hg_oz,
+                                ma_ax: hgh.hg_ax, ma_ay: hgh.hg_ay, ma_az: hgh.hg_az,
+                                ma_swing: swing }] }
+}
+
 // ⚠ FIVE ANSWERS AND NOT ONE, because they want five different fixes: the part is
 // not there, it is damaged, the socket is misspelled, the thing does not go in that
 // hole, or it goes in and is swung past what its own hinge allows. Collapsing them
@@ -361,29 +454,28 @@ fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: in
       if sa.sa_code != SA_OK { return bind_fault(sa); }
       sk = sa.sa_socket;
       (bq, br) = un_origin(nq, nr, sk.sk_q, sk.sk_r);
-      // ⚠ THE SOCKET'S HEADING IS AN AIM AND IS PASSED AS ONE — this is where
-      // `A6.2`'s *facing out* actually happens. It used to be refused outright
-      // unless it was 0, which meant a socket could point somewhere and nothing
-      // could ever be put in it pointing that way. The refusal now lives one level
-      // down, where the bound part is open and it can be asked whether it has
-      // anything a turn would displace.
-      into = expand_at(w, root, b.bd_part, bq, br,
-                       anchor + c.pi_h + sk.sk_h, lo,
-                       turn + socket_heading(sk), depth + 1);
+      // ⚠ THE SOCKET'S HEADING IS AN AIM AND ALL 24 OF THEM NOW LAND — plan 17
+      // `A8.1`. `A6.2` moved this refusal one level down, to where the bound part
+      // was open and could be asked what a turn would displace; §P9 removes it
+      // for this edge kind entirely, because a limb is never written to a lattice
+      // and so has nothing a rotation could tear. ⚠ **The `INST` path above still
+      // refuses**, and the pair is the design: same 24 headings, opposite answers,
+      // decided by how the part is attached.
+      //
+      // ⚠ AND THE SWING GOES IN WITH IT RATHER THAN BEING PAINTED ON AFTERWARDS.
+      // This used to walk everything the leaf's expansion returned and set
+      // `ma_swing` on each — correct, and only because the walk happened to
+      // produce exactly the leaf's own meshes. One binding is now one placement,
+      // so the angle is an argument. `sa_offer` is the value `socket_for_binding`
+      // has already fenced, so the number checked and the number drawn are one.
+      into = limb_at(root, b.bd_part, bq, br, anchor + c.pi_h + sk.sk_h,
+                     turn + socket_heading(sk), sa.sa_offer, depth + 1);
       if into.ex_code != EX_OK { return into; }
       parts = parts + into.ex_parts;
-      cols = cols + into.ex_cols;
-      // ⚠ THE ANGLE IS THE BINDING'S, AND IT LANDS ON WHAT CAME BACK. The leaf's
-      // own expansion knows nothing about the socket it is hanging in, so the
-      // swing is written here — onto every mesh that came out of THAT leaf, and
-      // onto none that came from elsewhere. `sa_offer` is the fenced value
-      // `socket_for_binding` already returned, so the range check and the number
-      // drawn are the same number.
-      for m2 in into.ex_meshes {
-        swung_m = m2;
-        swung_m.ma_swing = sa.sa_offer;
-        meshes += [swung_m];
-      }
+      // ⚠ `cols` IS DELIBERATELY NOT ADDED TO. A limb writes no columns — that is
+      // the claim of the whole step — so a binding that increased the count would
+      // be the one number able to say the cells went in when they did not.
+      for m2 in into.ex_meshes { meshes += [m2]; }
       if into.ex_depth > deepest { deepest = into.ex_depth; }
     }
   }

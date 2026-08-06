@@ -1245,7 +1245,7 @@ because a wide door is where cells have something to say. The full argument is
 
 | | step | proves it | size |
 |---|---|---|---|
-| `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | a cell leaf comes out of an expansion posed, with its hinge and swing, and its cells are in no world | M |
+| ✅ `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | **DONE.** `limb_at` in `expand.loft`, `MeshAt.ma_part`, `BK_LIMB` in `bake.loft`. 254 tests in the package, four sabotages seen red. ⚠ **Twelve existing tests went red and five of them now assert the OPPOSITE** — see below | M |
 | `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | a cell-built leaf is DRAWN, ajar, with no `.glb` anywhere | M |
 | `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | a leaf authored on a fine lattice fits the opening, and a fine part stamped is refused with both units named | S |
 | `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
@@ -1255,6 +1255,70 @@ because a wide door is where cells have something to say. The full argument is
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.1` turned up
+
+**Built:** `limb_at` in `expand.loft` — a part reached through a `BIND` is loaded, read for its
+`ANCH`/`HING`/`MESH`, and handed back as ONE `MeshAt` naming it. `MeshAt` gained `ma_part`;
+`bake.loft` gained `BK_LIMB`. The invariant, stated once so its sites can be counted: **a part
+reached through a `BIND` is never written into the world it hangs in.** Three sites assert it —
+`expand`, `bake`, and the editor's display path.
+
+⚠ **TWELVE TESTS WENT RED AND FIVE NOW ASSERT THE EXACT OPPOSITE, WHICH IS THE STEP'S REAL
+SHAPE.** `place.loft` held five tests named *"…is still refused a heading"*, all of them `A6.2`'s
+controls for the narrowing — and **every one reached its part through a SOCKET**, so every one is
+now a placement rather than a refusal. ⚠ **The danger was deleting `A4.4` while it looked like
+housekeeping**: each of the five keeps the old claim as an **`INST` control inside the same test**,
+so one part at one heading now produces two opposite answers in one function, and the only
+difference is the edge it came in on. That is the whole of §P9 in a test body.
+
+⚠ **`expand == bake` NARROWED FOR THE SECOND TIME, AND THE COVERAGE NEARLY WALKED OUT WITH IT.**
+`A6.2` made it a claim about cell nests; `A8.1` makes it about **`INST`** cell nests, because
+`expand` writes no cell of a bound part and there is no second composition left to agree with — so
+`bake` must refuse (`BK_LIMB`) rather than flatten. ⚠ **`BK_MESH` was asserted in exactly ONE place
+in the package, and that place now answers `BK_LIMB`.** Flipping it and stopping would have left
+the whole *a mesh would be lost* rule untested with every suite green.
+`test_baking_a_nest_that_instances_a_prop_still_refuses_with_the_mesh_named` is the replacement,
+on the edge where a flattening really can lose a body.
+
+⚠ **THE WALK STOPS AT A LIMB, AND §P9.1 FORCES THAT RATHER THAN CHOOSING IT.** A limb may be
+authored on a finer lattice, so its interior must be composed in ITS frame at ITS `w_unit` — which
+a parent working in its own units cannot do. Measured consequence:
+`test_a_mesh_part_whose_child_and_socket_sit_at_the_origin_turns_freely` returned **2** placements
+and now returns **1**. Its point was *the turn carries DOWN through the nest*; `A8.1` makes that
+composition unnecessary rather than wrong, because the whole limb is posed as one object and its
+contents turn with it by construction. ⚠ **The depth bound moved with the recursion** — nothing in
+`limb_at` recurses, so a consumer that follows `ma_part` is what could loop, and §P8's save-time
+check (`part_cycle_of`, both edge kinds since `A7.3f3`) is what makes that safe.
+
+⚠ **`ma_h` IS A LIFT AND NOT A CELL HEIGHT, and that cost the one genuinely wrong assertion.** The
+old test read `material_at(…, 46)` — the leaf's cell sits at 40 in its own frame and the socket
+adds 6 — and the placement carries the composed ORIGIN, so the same fact is `ma_h == 6`. Writing
+`46` into the new assertion was *two units for one quantity* (§P9.5) at the smallest possible
+scale, and the suite caught it immediately.
+
+⚠ **FOUR SABOTAGES, EACH SEEN RED AND RESTORED**: drop `ma_part` → 5 red; revert the binding loop
+to `expand_at` (i.e. stamp again) → **12** red; drop the swing → 3 red, and they were `A5.2`'s
+existing tests, which is the check that the swing path survived the rewrite; make `bake` descend
+again → 2 red. ⚠ **And two loft rules bit while writing the tests**: a function name may not carry
+upper case, and `now` is a builtin that cannot be shadowed by a variable.
+
+⚠ **THE EDITOR IS THE THIRD SITE AND IT IS DELIBERATELY INCOMPLETE.** A cell limb has an empty
+`ma_mesh`, so the display path would have called `load_glb("")` once per edit. It now counts them
+and **says so on the wire** — *"N bound limb(s) are cell-bodied and not drawn yet"* — because a
+silent skip reads as *there was nothing there*. Meshing them is `A8.2`. ⚠ The cap message was
+fixed with it: it compared `len(disp_meshes)` and would have blamed the eleven-slot block for
+limbs that were never going to take a slot.
+
+⚠ **AND A DOC CLAIM DIED WITH THE STEP**: `src/prop_build.loft` printed *"turned 18 of 24 — a
+heading no cell part can take"* every run. A cell part **bound** takes 18 exactly; what cannot is a
+cell part **instanced**.
+
+**Verified** on loft `7f6968e8`, hash stamped at both ends of every stage: `make lib-test` **20 of
+20** (10 packages × both backends) · `make gate` **44, rc=0, zero failures** · `make parts` green
+with `data/parts/` byte-identical. ⚠ **An earlier gate run was VOID and only the stamp said so** —
+it started on `bd911fa1` and ended on `7f6968e8`, reporting 8 `SERVER NEVER LISTENED` and a
+`collect2: ld returned 1`, because the toolchain was replaced underneath it.
 
 ⚠ **WHAT `A8` DOES NOT COVER, AND WHAT WANTS ITS OWN PLAN.** `A8` is the DOOR-shaped slice of
 §P9 — one joint kind (`Mount`), one limb kind (solid), and a leaf. The conversation that produced

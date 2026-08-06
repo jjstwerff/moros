@@ -124,6 +124,12 @@ fn test_the_tag_constant_is_the_tag_it_names() {
 
 // ── The claim ────────────────────────────────────────────────────────────────
 
+// ⚠ **THE LEAF IS PLACED, NOT STAMPED — plan 17 `A8.1`.** This asserted a MATERIAL
+// at the composed cell until §P9: a bound part is a LIMB, meshed and posed on its
+// joint, and nothing of it is written to the lattice it hangs in. The composition
+// claim is unchanged and is what still matters — the leaf's position is the house's
+// centre, composed with the frame's offset, composed with the SOCKET's cell — so
+// the assertion moved from `material_at` to the placement and nothing else did.
 fn test_a_bound_leaf_lands_at_its_sockets_composed_position() {
   library(3, 0);
   w = target();
@@ -133,35 +139,66 @@ fn test_a_bound_leaf_lands_at_its_sockets_composed_position() {
   (fq, fr) = un_origin(0, 0, 3, 0);
   assert(material_at(w, 0, 0, 40) == 3, "the house's own cell moved");
   assert(material_at(w, fq, fr, 40) == 5, "the frame is not at its instance offset");
+
   (lq, lr) = leaf_cell(3, 0);
+  assert(len(ex.ex_meshes) == 1,
+         "{len(ex.ex_meshes)} placements, not 1 — the bound leaf must come back as one");
+  m = ex.ex_meshes[0] ?? MeshAt {};
   // The socket lifts the leaf by 6 as well as moving it, so the height is part of
   // the composition and not decoration.
-  assert(material_at(w, lq, lr, 46) == 7,
-         "the leaf is not at ({lq},{lr}) height 46 — the socket did not place it");
+  //
+  // ⚠ `ma_h` IS THE LIFT, NOT A CELL HEIGHT, and that is the one number this test
+  // got wrong on the way over. The old assertion read `material_at(…, 46)` — the
+  // leaf's own cell sits at 40 in its own frame and the socket adds 6 — but a
+  // placement carries the composed ORIGIN, so the same fact is `ma_h == 6` here and
+  // `6 + 40` in the world. Mixing the two is exactly the *two units for one
+  // quantity* §P9.5 warns about, at the smallest possible scale.
+  assert(m.ma_q == lq && m.ma_r == lr && m.ma_h == 6,
+         "the leaf is placed at ({m.ma_q},{m.ma_r},{m.ma_h}) and the socket composes to "
+         + "({lq},{lr}) lifted by 6");
+  assert(m.ma_part == "d/oak",
+         "the placement names '{m.ma_part}' — with no mesh, the handle is the only way "
+         + "to reach the cells that have to be drawn");
+
+  // ⚠ **AND ITS CELL IS IN NO WORLD, which is the whole of `A8.1`.** Asserted at the
+  // exact cell the leaf would have been stamped into, and the frame's cell above is
+  // the control that keeps it from passing on an empty world.
+  assert(material_at(w, lq, lr, 46) == 0,
+         "the leaf's cell was stamped at ({lq},{lr}) height 46 — a limb is meshed, "
+         + "never written to the lattice it hangs in");
+  assert(ex.ex_cols == 2,
+         "{ex.ex_cols} columns written, not 2 — the house and the frame write one "
+         + "each and the limb writes none");
 }
 
 // ⚠ THIS IS §P3, AND IT IS THE WHOLE STEP. The frame moves from `(3,0)` to `(4,2)`
 // and **the binding is not touched**: the leaf follows because it never had a
 // coordinate to leave behind. A design that stored the leaf's position would pass
 // every other test in this file and fail exactly here.
+fn leaf_placement(w: World) -> MeshAt {
+  ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  ex.ex_meshes[0] ?? MeshAt {}
+}
+
 fn test_moving_the_frame_moves_the_leaf() {
   library(3, 0);
-  a = target();
-  assert(part_expand(a, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK, "first");
+  first = leaf_placement(target());
   (aq, ar) = leaf_cell(3, 0);
-  assert(material_at(a, aq, ar, 46) == 7, "the leaf is not where it started");
+  assert(first.ma_q == aq && first.ma_r == ar, "the leaf is not where it started");
 
   library(4, 2);
-  b = target();
-  assert(part_expand(b, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK, "second");
+  second = leaf_placement(target());
   (bq, br) = leaf_cell(4, 2);
   assert(aq != bq || ar != br,
          "the fixture moved the frame and the two leaf cells are the same — this "
          + "test cannot fail as written");
-  assert(material_at(b, bq, br, 46) == 7,
-         "the frame moved to (4,2) and the leaf stayed behind — a bound part is "
-         + "carrying a coordinate of its own");
-  assert(material_at(b, aq, ar, 46) != 7, "the leaf is still at its old cell too");
+  assert(second.ma_q == bq && second.ma_r == br,
+         "the frame moved to (4,2) and the leaf is still placed at "
+         + "({second.ma_q},{second.ma_r}) — a bound part is carrying a coordinate "
+         + "of its own");
+  assert(second.ma_q != aq || second.ma_r != ar, "the leaf is still at its old cell");
 }
 
 // ⚠ THE INVARIANT IS AN ABSENCE, so it is asserted as one: the `BIND` bytes are
@@ -188,39 +225,41 @@ fn test_a_binding_stores_no_position() {
 
 // ── `expand == bake` still holds over a bound part ───────────────────────────
 
-// ⚠ WITHOUT THIS, `A3.3`'s STRONGEST TEST QUIETLY STOPS COVERING THE NEW PATH. Its
-// fixtures have no bindings, so adding bindings to `expand` alone would have left
-// all 135 tests green while the two paths disagreed about every bound leaf. The
-// two compositions stay separate — world coordinates against part-local ones — and
-// only the socket LOOKUP is shared.
-fn test_expand_and_bake_agree_over_a_binding() {
+// ⚠ **`expand == bake` NO LONGER HOLDS OVER A BINDING, AND THAT IS THE STEP RATHER
+// THAN A REGRESSION.** This test used to stamp both paths and compare cell for cell.
+// §P9 makes a bound part a LIMB — `expand` writes none of its cells, so there is no
+// second composition left to agree with — and `bake` must therefore REFUSE rather
+// than flatten. Refusing is not a nicety: a flattened part is cells on a lattice, so
+// writing a limb back would snap a door leaf to whichever of the six rotations was
+// nearest **and agree with every count while doing it**.
+//
+// ⚠ The equivalence survives, narrowed twice and stated both times: `A6.2` made it a
+// claim about cell nests, `A8.1` makes it a claim about **`INST`** cell nests. Those
+// are covered by `expand.loft` and `bake.loft`, whose fixtures have no bindings.
+fn test_baking_a_nest_that_binds_a_leaf_is_refused_by_name() {
   library(3, 0);
-  w = target();
-  assert(part_expand(w, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK, "expand");
   bk = part_bake(root(), "h/house");
-  assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
-  assert(bk.bk_parts == 3, "{bk.bk_parts} parts flattened, not 3");
-  b = target();
-  assert(part_stamp(b, bk.bk_world, 0, 0, 0, 10).ps_code == PS_OK, "the baked stamp");
-  d = part_diff(w, b, 10);
-  assert(d.pd_same, "expand and bake disagree over a bound leaf: {d.pd_why}");
+  assert(bk.bk_code == BK_LIMB, "a bound leaf was flattened ({bk.bk_code}): {bk.bk_why}");
+  assert(bk.bk_why.find("d/oak") != null && bk.bk_why.find("leaf") != null,
+         "the refusal names neither the limb nor the joint: '{bk.bk_why}'");
 }
 
-// ⚠ AND THE CONTROL, because `part_diff` over two mostly-ground worlds says `same`
-// for a great many wrong answers. A bake of the house with its BINDING REMOVED must
-// compare UNEQUAL — otherwise the agreement above is about the ground.
-fn test_the_control_a_bake_without_the_binding_disagrees() {
+// ⚠ AND THE CONTROL, WHICH IS WHAT MAKES THE REFUSAL MEAN ANYTHING. The identical
+// house with its BINDING REMOVED bakes, flattens two parts and agrees with `expand`
+// cell for cell — so `BK_LIMB` is about the binding and not about houses. Without
+// this the refusal above would pass just as well on a `bake` that refused everything.
+fn test_the_control_the_same_house_without_the_binding_bakes_and_agrees() {
   library(3, 0);
+  put_house("h/house", 3, [at("d/frame", 3, 0, 0)], no_binds());
   w = target();
   assert(part_expand(w, root(), at("h/house", 0, 0, 0), 10).ex_code == EX_OK, "expand");
-  put_house("h/house", 3, [at("d/frame", 3, 0, 0)], no_binds());
   bk = part_bake(root(), "h/house");
   assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
   assert(bk.bk_parts == 2, "{bk.bk_parts} parts without the binding, not 2");
   b = target();
   assert(part_stamp(b, bk.bk_world, 0, 0, 0, 10).ps_code == PS_OK, "stamp");
-  assert(!part_diff(w, b, 10).pd_same,
-         "a house with its door and one without compare equal");
+  assert(part_diff(w, b, 10).pd_same,
+         "expand and bake disagree over an INST-only nest: {part_diff(w, b, 10).pd_why}");
 }
 
 // ── Refusals ─────────────────────────────────────────────────────────────────
@@ -260,11 +299,17 @@ fn test_a_socket_that_is_not_offered_is_refused_with_the_ones_that_are() {
   assert(part_bake(root(), "h/house").bk_code == BK_SOCKET, "bake let it through");
 }
 
-// ⚠ THE SCOPE BOUNDARY, STATED AS A TEST. A socket that hands out a non-zero
-// heading is refused rather than expanded flat — the same rule `pi_facing` already
-// follows, because placing a door at the wrong orientation is a failure every count
-// agrees with. `A4.4` is where the heading gets applied and measured.
-fn test_a_socket_with_a_heading_is_refused_until_a4_4() {
+// ⚠ **THE SCOPE BOUNDARY MOVED, AND THIS TEST IS WHERE IT SHOWS.** It asserted
+// `EX_FACING` — *a socket that hands out a non-zero heading is refused rather than
+// expanded flat* — and that was right for as long as a bound part's cells were
+// written to the parent's lattice. §P9 ends it: a limb is meshed and posed
+// continuously, so `sk_at: 6` is applied exactly, and so would 1, 7 or 23 be.
+//
+// ⚠ **THE FEAR THE OLD REFUSAL ANSWERED IS STILL REAL AND IS STILL ANSWERED** —
+// *placing a door at the wrong orientation is a failure every count agrees with.*
+// What changed is where: the heading now LANDS on the placement, so it is a number
+// a test can read, which is strictly better than a refusal that made it unreachable.
+fn test_a_socket_with_a_heading_now_aims_the_limb_it_holds() {
   wipe();
   w = one_cell(5);
   turned = Socket { sk_q: 2, sk_r: 1, sk_h: 6, sk_mount: SM_HEAD, sk_at: 6,
@@ -276,8 +321,24 @@ fn test_a_socket_with_a_heading_is_refused_until_a4_4() {
             [Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf", bd_part: "d/oak" }]);
   t = target();
   ex = part_expand(t, root(), at("h/house", 0, 0, 0), 10);
-  assert(ex.ex_code == EX_FACING, "a turned socket expanded flat ({ex.ex_code})");
-  assert(part_bake(root(), "h/house").bk_code == BK_FACING, "bake expanded it flat");
+  assert(ex.ex_code == EX_OK, "a turned socket was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_facing == 6,
+         "the leaf came back aimed at {(ex.ex_meshes[0] ?? MeshAt {}).ma_facing}, "
+         + "not the socket's 6");
+
+  // ⚠ AND A HEADING NO LATTICE ROTATION COULD EVER SERVE — 7 is in neither the 60°
+  // family nor any other exact one, and `A4.4` measured its family tearing 12 of a
+  // body's 90 adjacencies. It lands, because nothing is on a lattice to tear.
+  odd = Socket { sk_q: 2, sk_r: 1, sk_h: 6, sk_mount: SM_HEAD, sk_at: 7,
+                 sk_kind: "door", sk_size: "2x3", sk_name: "leaf" };
+  f2 = one_cell(5);
+  assert(part_set_sockets(f2, [odd]).sw_code == SK_OK, "sockets");
+  save("d/frame", f2);
+  o = part_expand(target(), root(), at("h/house", 0, 0, 0), 10);
+  assert(o.ex_code == EX_OK, "heading 7 was refused: {o.ex_why}");
+  assert((o.ex_meshes[0] ?? MeshAt {}).ma_facing == 7,
+         "heading 7 came back as {(o.ex_meshes[0] ?? MeshAt {}).ma_facing}");
 }
 
 fn test_a_binding_onto_a_part_that_offers_nothing_is_refused() {

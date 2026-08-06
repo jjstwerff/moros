@@ -578,7 +578,10 @@ inventing.
 ### Status
 
 **Built:** the part format, sockets, classes, bindings, the swing in the record and on screen, the
-cycle check across both edge kinds. **Designed, not built:** everything on this page — plan 17
+cycle check across both edge kinds. ✅ **And as of `A8.1`, invariant 1 is real in code**: a part
+reached through a `BIND` is never written into the world it hangs in — it comes back as a
+placement naming the part, posed, and all 24 headings are exact for it however many cells it has.
+**Designed, not built:** the rest of this page — plan 17
 `A8` is the door-shaped slice of it, and the rest wants its own plan (see the plan's *what A8 does
 not cover*).
 

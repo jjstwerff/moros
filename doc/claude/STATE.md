@@ -22,22 +22,34 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 18 COMPLETE · plan 17 through `A7.3f` and `A5.2` · **next is `A8.1`**
+## ⏭ PICK UP HERE — plan 18 CLOSED · plan 17 through `A8.1` · **next is `A8.2`**
 
-**Green as of 2026-08-06**, all on one loft install with its hash stamped at both ends
-(`bd911fa1`): `make gate` **44** · `make lib-test` **2632, both backends** · `make parts` green,
-`data/parts/` byte-identical across all six files · `npm test` **53** · layering silent.
+**Green as of 2026-08-06** on loft `7f6968e8`, hash stamped at both ends of every stage:
+`make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
+`make parts` green, `data/parts/` byte-identical across all six files · layering silent.
 
-| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **253** |
+| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **254** |
 |---|---|---|---|
-| `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
+| `moros_sim` **310** | `moros_render` **167** | `moros_map` **92** | `moros_editor` **56** |
+
+⚠ **THE TOOLCHAIN WAS REPLACED MID-SUITE AGAIN and only the stamp said so** — a run that started
+on `bd911fa1` finished on `7f6968e8`, reporting 8 `SERVER NEVER LISTENED` and a `collect2: ld
+returned 1`, which reads as eight broken gates and a build break. It was neither. **Warm the new
+binary** (`make client`, then one server up and down) and re-run; that run was 44 green.
 
 ### What to do next
 
-**`A8.1`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building).
-`expand` hands a bound leaf back as a **placement** naming a PART rather than stamping its cells:
-a limb is meshed, not stamped, so `A4.4`'s six-rotation limit never binds it. Everything `A8`
-needs is built and gated; nothing is waiting on loft.
+**`A8.2`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building).
+`A8.1` is **done**: a bound leaf comes out of an expansion as a **placement naming a PART**, posed,
+with its hinge and swing, and its cells in no world. What is missing is the *drawing* — the editor
+counts cell-bodied limbs and says on the wire that it is not drawing them. `part_thumb_wire`
+already meshes a part for a thumbnail; `A8.2` is that call in the display path.
+
+⚠ **`A8.1` FLIPPED FIVE TESTS TO THEIR OPPOSITE, AND THAT IS THE MODEL FOR THE REST OF `A8`.** Every
+*"a cell part in a turned socket is refused"* is now *"…is placed and turned"*, with the old claim
+kept as an **`INST` control in the same test** — one part, one heading, two answers, decided by the
+edge it came in on. Read [plan 17 § *What `A8.1` turned up*](../../plans/17-parts/README.md) before
+touching `expand.loft` or `bake.loft`.
 
 ⚠ **READ [PARTS.md §P9.0](PARTS.md#p90--the-design-in-one-place) FIRST, AND NOT THE TWELVE
 SUBSECTIONS.** §P9.0 is the design in one place — the part-tree, three limb kinds, the joint kinds
@@ -52,11 +64,12 @@ own plan. **The first two are the ones that change the FORMAT**, so they set the
 
 ### What plan 17 is still short of, and it is one thing
 
-⚠ **A BOUND LEAF IS NOT DRAWN IF ITS BODY IS CELLS — measured, not overlooked.** Both parts in the
-library that fit the plinth's socket are mesh-only (`prop/statue` and `prop/seated` have **0
-columns**), so an expansion delivers them as `ex_meshes` and the display world is a `World`, which
-has nowhere to put a mesh. No gesture can author a `FITS` either, so a cell-bodied leaf that fits
-cannot be made from the editor. **This is what `A8.1`/`A8.2` exist to close.**
+⚠ **A BOUND LEAF IS STILL NOT DRAWN IF ITS BODY IS CELLS, and `A8.1` moved the gap rather than
+closing it.** The placement now exists and names the part; what has nowhere to go is the geometry —
+the display world is a `World`, which cannot hold a mesh. The editor counts these and broadcasts
+*"N bound limb(s) are cell-bodied and not drawn yet"*, so the gap is visible instead of silent.
+**`A8.2` closes it.** ⚠ Also still true: no gesture can author a `FITS`, so a cell-bodied leaf that
+fits a socket cannot yet be made from the editor at all.
 
 ⚠ **`A5.2`'s ACCEPTANCE IS A COLD-RECOGNITION TEST AND NEEDS THE USER'S EYES**: *does a person call
 it a door.* Render it and hand over the picture; do not claim it from a green suite.

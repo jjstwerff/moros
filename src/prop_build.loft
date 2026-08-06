@@ -617,8 +617,13 @@ fn main() {
 
   println("  statue: {ck.mc_verts} vertices, {after} bytes -> {path}");
   println("  seated: {sck.mc_verts} vertices, {seatf#size} bytes -> {seat}");
+  // ⚠ THIS LINE READ *"a heading no cell part can take"* AND `A8.1` MADE IT FALSE.
+  // A cell part BOUND into this socket takes 18 exactly, because a limb is meshed
+  // and never written to a lattice; what still cannot take it is a cell part
+  // INSTANCED, whose cells go into the parent's grid (`A4.4`). The distinction is
+  // the edge, not the body — §P9.
   println("  shrine: statue on prop/plinth at ({m.ma_q},{m.ma_r}), height {m.ma_h}, "
-        + "turned {m.ma_facing} of 24 — a heading no cell part can take");
+        + "turned {m.ma_facing} of 24 — a heading no INSTANCED part can take");
   println("  swap:   prop/seated lands at ({am.ma_q},{am.ma_r}) height {am.ma_h} "
         + "turned {am.ma_facing} — one field of the document, one field of the result");
 }

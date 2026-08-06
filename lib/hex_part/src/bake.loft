@@ -42,6 +42,7 @@ pub const BK_SOCKET  = 6;   // a binding names a socket the framing part does no
 pub const BK_NOFIT   = 7;   // the bound part does not fit that socket (A4.2)
 pub const BK_SWING   = 8;   // the leaf is swung past its own hinge (A5.2)
 pub const BK_MESH    = 9;   // a mesh body, which no flattening can carry (A6.2)
+pub const BK_LIMB    = 10;  // a bound limb, which is posed rather than stamped (A8.1)
 
 // The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
@@ -188,25 +189,40 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
     if down.bk_code != BK_OK { return down; }
     here = down;
 
-    // ⚠ THE SAME JOINT, RESOLVED THE SAME WAY AND COMPOSED DIFFERENTLY — which is
-    // exactly the line `A3.3` draws. `socket_for_binding` is shared, because *which
-    // socket, and does this fit it* is a fact about the documents; the composition
-    // below is part-LOCAL where `expand`'s is world, so `expand == bake` over a
-    // bound part is still a claim about two independent compositions.
-    for b in bindings_of(bound.br_items, i) {
+    // ── A BOUND LIMB CANNOT BE FLATTENED — plan 17 `A8.1`, §P9 ───────────────
+    //
+    // ⚠ **THIS USED TO COMPOSE THE BINDING PART-LOCALLY, AND `A3.3`'s `expand ==
+    // bake` WAS A CLAIM ABOUT BOTH EDGE KINDS.** §P9 ends that for one of them: a
+    // bound part is a LIMB, meshed and posed on its joint at an arbitrary angle,
+    // and `expand` no longer writes a single cell of it. So there is no second
+    // composition left to agree with, and the equivalence narrows to `INST` nests
+    // — **stated here rather than quietly true**, which is the mistake `BK_MESH`
+    // was created to stop: before that check, meshes were simply DROPPED, `bake`
+    // returned `BK_OK`, every cell matched, and the statues were gone.
+    //
+    // ⚠ **REFUSING IS THE ONLY HONEST ANSWER, and stamping would be worse than
+    // dropping.** A flattened part is cells on a lattice; a limb is posed
+    // continuously, so writing it back would place a door leaf at whichever of the
+    // six rotations was nearest and agree with every count while doing it.
+    //
+    // ⚠ **THE CONTRACT IS CHECKED FIRST, ON EVERY BINDING, AND THEN WE REFUSE.** A
+    // wrong document outranks an unflattenable one — a bake of a house whose leaf
+    // does not fit its socket must still say `BK_NOFIT`, because that is the fault
+    // the author can act on. Refusing on the first binding without looking would
+    // have hidden a broken second one behind a structural answer.
+    joints = bindings_of(bound.br_items, i);
+    for b in joints {
       sa = socket_for_binding(root, c.pi_part, b);
       if sa.sa_code != SA_OK { return bind_fault_bake(sa); }
-      sk = sa.sa_socket;
-      if socket_heading(sk) != 0 {
-        return Bake { bk_code: BK_FACING,
-                      bk_why: "socket '{b.bd_socket}' faces {socket_heading(sk)}; only 0 is "
-                            + "applied today, and only the six 60° multiples ever (A4.4)" };
-      }
-      (bq, br2) = un_origin(nq, nr, sk.sk_q, sk.sk_r);
-      into = bake_at(root, b.bd_part, bq, br2, anchor + c.pi_h + sk.sk_h,
-                     depth + 1, tab, here);
-      if into.bk_code != BK_OK { return into; }
-      here = into;
+    }
+    if len(joints) > 0 {
+      b0 = joints[0] ?? Binding {};
+      return Bake { bk_code: BK_LIMB,
+        bk_why: "'{name}' binds '{b0.bd_part}' into '{c.pi_part}' socket "
+              + "'{b0.bd_socket}'. A bound part is a LIMB — meshed and posed on its "
+              + "joint, never stamped onto the lattice (P9) — so a flattening either "
+              + "loses it or writes its cells at an angle the lattice cannot hold. "
+              + "`part_expand` places it instead (A8.1)" };
     }
   }
   here

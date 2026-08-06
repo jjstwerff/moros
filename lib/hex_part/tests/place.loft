@@ -17,6 +17,20 @@
 //      ⚠ And what makes that a rule rather than a hole is the control: a part with
 //      cells is still refused *whether or not it also carries a mesh*.
 //
+// ⚠ **`A8.1` SPLIT CLAIM 3 IN TWO, BY EDGE KIND, AND HALF OF THIS FILE MOVED WITH
+// IT.** §P9: how a part is ATTACHED decides how it is drawn. A part held by `INST`
+// is stamped onto the parent's lattice and `A4.4` binds it exactly as before; a
+// part held by `BIND` is a **LIMB**, meshed and posed on its joint, and **nothing
+// of it is ever written to a lattice** — so all 24 headings are exact for it
+// *however many cells it has*.
+//
+// ⚠ Five tests here were written as *"…is still refused a heading"* and every one
+// of them reached the part through a **socket**, so every one now asserts the
+// opposite. That is not coverage lost: each keeps the old claim as an **`INST`
+// control in the same test**, which is the only place it was ever really about.
+// Getting that wrong would have deleted `A6.2`'s narrowing while looking like
+// housekeeping.
+//
 // ⚠ NO `.glb` IS WRITTEN BY THIS FILE, and that is a measurement rather than a
 // saving. `part_expand` deliberately does not OPEN the mesh it names — it is the
 // per-edit path and a glb parse per placement per edit is a cost the record cannot
@@ -276,7 +290,14 @@ fn test_a_statue_that_needs_no_turn_is_still_placed() {
 // part may face anywhere"* would turn that pillar to 18, tear the walker's column,
 // and agree with every count in the document. The question asked is *what is
 // displaced*, and a cell is displaced whatever else the part carries.
-fn test_a_part_with_both_bodies_is_still_refused_a_heading() {
+// ⚠ §P5's PILLAR — a `.glb` for the eye and a cell for the walker — IS THE SHARPEST
+// CASE FOR THE SPLIT, and it is why this test kept its fixture and swapped its
+// claim. **Bound**, it is a limb: its cell is part of its own body, meshed with the
+// rest of it, and the parent's lattice never sees it — so heading 18 is exact.
+// **Instanced**, that same cell is written into the parent and heading 18 tears it.
+// One part, one heading, two answers, and the only difference is the edge it came
+// in on.
+fn test_a_part_with_both_bodies_is_placed_when_bound_and_refused_when_instanced() {
   wipe(root());
   put_plinth("p/plinth", 20, 18);
   put_yard("p/yard", "p/plinth", 2, 1, "p/pillar");
@@ -290,16 +311,35 @@ fn test_a_part_with_both_bodies_is_still_refused_a_heading() {
 
   t = target();
   ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
-  assert(ex.ex_code == EX_FACING,
-         "a part with cells AND a mesh was turned 18 (code {ex.ex_code}): {ex.ex_why}");
-  assert(ex.ex_why.find("column") != null,
-         "the refusal does not say the cells are what stop it: '{ex.ex_why}'");
-  assert(len(ex.ex_meshes) == 0, "a refused expansion still handed back a placement");
+  assert(ex.ex_code == EX_OK,
+         "a BOUND part with cells was refused heading 18: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_facing == 18, "the limb came back turned {m.ma_facing}, not 18");
+  assert(m.ma_part == "p/pillar" && m.ma_mesh == "marble",
+         "the placement names part '{m.ma_part}' and mesh '{m.ma_mesh}' — a part that "
+         + "is BOTH must carry both, or the swap in A6.3 loses one of them");
+
+  // ⚠ THE CONTROL, AND IT IS THE HALF `A6.2` MEASURED. The identical part reached
+  // through `INST` at the identical heading is still refused, still because of the
+  // cells, and still citing the measurement. Without this the test above reads as
+  // "A4.4 was repealed", which is the opposite of what §P9 says.
+  inst = part_expand(target(), root(), aimed("p/pillar", 18), 0);
+  assert(inst.ex_code == EX_FACING,
+         "an INSTANCED part with cells AND a mesh was turned 18 (code {inst.ex_code})");
+  assert(inst.ex_why.find("column") != null,
+         "the refusal does not say the cells are what stop it: '{inst.ex_why}'");
+  assert(len(inst.ex_meshes) == 0, "a refused expansion still handed back a placement");
   wipe(root());
 }
 
 // The same socket, a plain cell part in it — refused exactly as before `A6.2`.
-fn test_a_cell_part_in_a_turned_socket_is_refused_as_it_always_was() {
+// ⚠ **THIS IS `A8.1`'s HEADLINE, AND IT USED TO ASSERT THE OPPOSITE.** A cell-bodied
+// leaf in a socket aimed at 18 is the exact shape `A4.4` measured as tearing a body
+// — and it never tears, because a limb is meshed rather than stamped. The test kept
+// its name's shape and inverted its claim, which is worth more than a new test: the
+// diff is the design change.
+fn test_a_cell_part_in_a_turned_socket_is_placed_because_a_limb_is_never_stamped() {
   wipe(root());
   put_plinth("p/plinth", 20, 18);
   put_yard("p/yard", "p/plinth", 2, 1, "p/block");
@@ -311,9 +351,23 @@ fn test_a_cell_part_in_a_turned_socket_is_refused_as_it_always_was() {
 
   t = target();
   ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
-  assert(ex.ex_code == EX_FACING, "a cell part was turned 18 (code {ex.ex_code})");
-  assert(ex.ex_why.find("A4.4") != null,
-         "the refusal no longer cites the measurement: '{ex.ex_why}'");
+  assert(ex.ex_code == EX_OK, "a cell leaf in a turned socket was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1,
+         "{len(ex.ex_meshes)} placements, not 1 — a cell limb must come back as one");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_facing == 18, "the limb came back turned {m.ma_facing}, not 18");
+  assert(m.ma_part == "p/block",
+         "the placement names '{m.ma_part}' — with no mesh to name, the part handle is "
+         + "the ONLY way a consumer can reach the cells it has to draw");
+  assert(m.ma_mesh == "", "a cell part named a mesh '{m.ma_mesh}'");
+
+  // ⚠ THE CONTROL: the same cell part reached through `INST` at 18 is still refused,
+  // still citing the measurement. A4.4 was narrowed by edge kind, not repealed.
+  inst = part_expand(target(), root(), aimed("p/block", 18), 0);
+  assert(inst.ex_code == EX_FACING,
+         "an INSTANCED cell part was turned 18 (code {inst.ex_code})");
+  assert(inst.ex_why.find("A4.4") != null,
+         "the refusal no longer cites the measurement: '{inst.ex_why}'");
   wipe(root());
 }
 
@@ -335,9 +389,18 @@ fn test_a_mesh_part_holding_something_at_an_offset_may_not_be_turned() {
 
   t = target();
   ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
-  assert(ex.ex_code == EX_FACING, "a group with an offset child was turned ({ex.ex_code})");
-  assert(ex.ex_why.find("(1,0)") != null,
-         "the refusal does not name the offset: '{ex.ex_why}'");
+  assert(ex.ex_code == EX_OK,
+         "a BOUND group with an offset child was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_facing == 18, "the limb was not turned");
+
+  // ⚠ THE CONTROL, and the offset is why it exists: instanced, that child at (1,0)
+  // has to be ROTATED onto the lattice, which is the thing `A4.4` left unbuilt.
+  inst = part_expand(target(), root(), aimed("p/group", 18), 0);
+  assert(inst.ex_code == EX_FACING,
+         "an INSTANCED group with an offset child was turned ({inst.ex_code})");
+  assert(inst.ex_why.find("(1,0)") != null,
+         "the refusal does not name the offset: '{inst.ex_why}'");
   wipe(root());
 }
 
@@ -355,9 +418,18 @@ fn test_a_mesh_part_offering_a_socket_at_an_offset_may_not_be_turned() {
 
   t = target();
   ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
-  assert(ex.ex_code == EX_FACING, "a holder with an offset socket was turned ({ex.ex_code})");
-  assert(ex.ex_why.find("hand") != null,
-         "the refusal does not name the socket: '{ex.ex_why}'");
+  assert(ex.ex_code == EX_OK,
+         "a BOUND holder with an offset socket was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
+  assert((ex.ex_meshes[0] ?? MeshAt {}).ma_facing == 18, "the limb was not turned");
+
+  // ⚠ THE CONTROL: instanced, the socket at (3,0) is a lattice position that a turn
+  // would have to rotate, so it is still refused and still names the socket.
+  inst = part_expand(target(), root(), aimed("p/holder", 18), 0);
+  assert(inst.ex_code == EX_FACING,
+         "an INSTANCED holder with an offset socket was turned ({inst.ex_code})");
+  assert(inst.ex_why.find("hand") != null,
+         "the refusal does not name the socket: '{inst.ex_why}'");
   wipe(root());
 }
 
@@ -381,16 +453,24 @@ fn test_a_mesh_part_whose_child_and_socket_sit_at_the_origin_turns_freely() {
   t = target();
   ex = part_expand(t, root(), at("p/yard", 0, 0, 0), 0);
   assert(ex.ex_code == EX_OK, "a body with nothing off its origin was refused: {ex.ex_why}");
-  assert(len(ex.ex_meshes) == 2,
-         "{len(ex.ex_meshes)} placements, not 2 (the pedestal and the statue on it)");
-  // ⚠ AND THE TURN COMPOSES. The group is aimed at 18 by the socket; the statue
-  // inside it faces 0 in the GROUP's frame, so it is turned 18 in the world too.
-  // A version that reset the turn at each level would place the pedestal facing out
-  // and the statue on it facing forward, and every count would still be 2.
-  for m in ex.ex_meshes {
-    assert(m.ma_facing == 18,
-           "'{m.ma_mesh}' is turned {m.ma_facing}; the turn did not carry down to it");
-  }
+  // ⚠ **ONE PLACEMENT, AND IT USED TO BE TWO — the walk STOPS at a limb.** This
+  // asserted *the pedestal and the statue on it*, with the point being that the
+  // turn carried DOWN through the nest. `A8.1` makes the composition unnecessary
+  // rather than wrong: the whole limb is posed as one object, so the statue inside
+  // it turns with the pedestal by construction, and there is nothing left to carry.
+  // ⚠ **§P9.1 is what forces the stop** — a limb may be authored on a finer lattice,
+  // so its interior has to be composed in ITS frame at ITS `w_unit`, which a parent
+  // working in its own units cannot do. The consumer opens the part to mesh it and
+  // gets the interior there. **The turn-composes claim still has a home**: it is
+  // `expand.loft`'s `INST` nests, which is the edge it was ever about.
+  assert(len(ex.ex_meshes) == 1,
+         "{len(ex.ex_meshes)} placements, not 1 — the limb is one posed object and its "
+         + "own contents are the consumer's to derive");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_facing == 18, "the limb is turned {m.ma_facing}, not 18");
+  assert(m.ma_part == "p/group" && m.ma_mesh == "pedestal",
+         "the placement names part '{m.ma_part}' / mesh '{m.ma_mesh}' — without the "
+         + "handle there is no way to reach the statue it holds");
   wipe(root());
 }
 
@@ -585,18 +665,52 @@ fn test_a_hand_edited_escape_stops_the_expansion() {
 //
 // ⚠ SO `expand == bake` IS NOW A CLAIM ABOUT CELL NESTS, stated rather than
 // quietly narrowed.
-fn test_baking_a_nest_that_holds_a_prop_is_refused_rather_than_dropping_it() {
-  // ⚠ THE SOCKET LOOKS STRAIGHT AHEAD HERE, so the mesh is the ONLY reason there
-  // is to refuse. `bake` keeps `A4.4`'s blanket facing rule — it produces cells,
-  // and a lattice-free body produces none, so the narrowing buys it nothing — and
-  // with the socket at 18 it answers `BK_FACING` first. Measured, and the test read
-  // green-for-the-wrong-reason until it was pinned to one variable.
+// ⚠ **`BK_MESH` USED TO BE THE ANSWER HERE AND `BK_LIMB` IS NOW, because the
+// binding is refused BEFORE the bound part is ever opened.** The intent is
+// unchanged and is the one `A6.2` built `BK_MESH` for: **refused, never dropped.**
+// Before that check, meshes were silently discarded — `bake` returned `BK_OK`,
+// every cell matched `expand`, and the statues were gone.
+//
+// ⚠ AND `expand == bake` NARROWS AGAIN, which is stated rather than left true by
+// accident. `A6.2` made it a claim about cell nests only; `A8.1` makes it a claim
+// about **`INST`** cell nests only, because `expand` no longer writes a single cell
+// of a bound part and so there is no second composition to agree with.
+fn test_baking_a_nest_that_binds_a_limb_is_refused_rather_than_dropping_it() {
   stage("marble", 0, 0);
   bk = part_bake(root(), "p/yard");
+  assert(bk.bk_code == BK_LIMB,
+         "a nest with a bound limb baked with code {bk.bk_code}: {bk.bk_why}");
+  assert(bk.bk_why.find("p/statue") != null && bk.bk_why.find("top") != null,
+         "the refusal names neither the limb nor the joint: '{bk.bk_why}'");
+  wipe(root());
+}
+
+// ⚠ **THE COVERAGE THAT WOULD OTHERWISE HAVE WALKED OUT WITH THE TEST ABOVE.**
+// `BK_MESH` was asserted in exactly ONE place in this package, and that place now
+// answers `BK_LIMB` — so flipping it and stopping would have left the whole
+// mesh-would-be-lost rule untested while every suite stayed green. `BK_MESH` is
+// still live on the `INST` edge, which is where a flattening really could lose a
+// body: one part, one `MESH` section, and no position for a second.
+fn test_baking_a_nest_that_instances_a_prop_still_refuses_with_the_mesh_named() {
+  wipe(root());
+  put_statue("p/statue", "marble", 0);
+  nest = blank();
+  with_cell(nest, 0, 0, 5, 1);
+  assert(part_set_instances(nest, [at("p/statue", 2, 1, 0)]) == PI_OK, "inst");
+  save_part("p/holder", nest);
+
+  bk = part_bake(root(), "p/holder");
   assert(bk.bk_code == BK_MESH,
-         "a nest with a statue in it baked with code {bk.bk_code}: {bk.bk_why}");
+         "a nest INSTANCING a statue baked with code {bk.bk_code}: {bk.bk_why}");
   assert(bk.bk_why.find("marble") != null,
          "the refusal does not name what would have been lost: '{bk.bk_why}'");
+  // ⚠ The control: the same nest with the instance removed bakes fine, so the
+  // refusal is about the mesh and not about nests.
+  bare = blank();
+  with_cell(bare, 0, 0, 5, 1);
+  save_part("p/holder", bare);
+  assert(part_bake(root(), "p/holder").bk_code == BK_OK,
+         "a plain cell part would not bake either, so the refusal proves nothing");
   wipe(root());
 }
 
@@ -813,16 +927,42 @@ fn test_a_cell_part_swaps_into_the_socket_a_statue_came_out_of() {
   b = target();
   ex = part_expand(b, root(), at("p/yard", 5, 5, 0), 0);
   assert(ex.ex_code == EX_OK, "a cell part in a statue socket was refused: {ex.ex_why}");
-  assert(len(ex.ex_meshes) == 0,
+  // ⚠ **THIS ASSERTED `== 0` AND THE GAP IT DESCRIBED IS WHAT `A8.1` CLOSES.** A
+  // cell body in a socket used to be STAMPED, so it produced no placement at all
+  // and the editor — whose display world has nowhere to put a mesh — drew nothing
+  // for it. Now the swap is symmetric: mesh body or cell body, one placement either
+  // way, and only the field naming the body differs. That symmetry is what makes
+  // §P9.9's *"the destinations differ in ONE field"* true of the code and not just
+  // of the design.
+  assert(len(ex.ex_meshes) == 1,
          "{len(ex.ex_meshes)} placements after swapping a mesh body for a cell one");
-  // The block's cell lands at the socket — the SAME cell the statue was placed at.
-  assert(material_at(b, was.ma_q, was.ma_r, was.ma_h + 4) == 7,
-         "the block is not in the socket the statue vacated");
-  // ⚠ AND THE CELLS DID CHANGE, which is the control on `part_diff` above: that
-  // test asserts *same* for a mesh-for-mesh swap, and an always-same comparison
-  // would satisfy it forever.
+  limb = ex.ex_meshes[0] ?? MeshAt {};
+  assert(limb.ma_part == "p/block" && limb.ma_mesh == "",
+         "the placement names part '{limb.ma_part}' / mesh '{limb.ma_mesh}'");
+  // ⚠ AND IT LANDS WHERE THE STATUE DID, which is §P3: the position is the
+  // socket's, so swapping the body does not move the joint.
+  assert(limb.ma_q == was.ma_q && limb.ma_r == was.ma_r && limb.ma_h == was.ma_h,
+         "the cell limb is at ({limb.ma_q},{limb.ma_r},{limb.ma_h}) and the statue was at "
+         + "({was.ma_q},{was.ma_r},{was.ma_h}) — swapping the body moved the joint");
+  // ⚠ **AND ITS CELL IS IN NO WORLD.** This is the claim of the whole step, and it
+  // is asserted at the exact cell the block would have been stamped into.
+  assert(material_at(b, was.ma_q, was.ma_r, was.ma_h + 4) == 0,
+         "the block's cell was stamped into the world at ({was.ma_q},{was.ma_r}) — a "
+         + "limb is meshed, not stamped");
+  // ⚠ AND THE CONTROL THAT KEEPS THAT FROM PASSING ON AN EMPTY WORLD: the two
+  // expansions limb agree cell-for-cell, because NEITHER body writes one. Before
+  // `A8.1` this asserted the opposite, and it was the block's cells that made the
+  // difference.
   d = part_diff(a, b, 12);
-  assert(!d.pd_same, "swapping a mesh body for a CELL one changed no cell at all");
+  assert(d.pd_same,
+         "a mesh limb and a cell limb wrote different cells: {d.pd_why} — neither "
+         + "should write any");
+  // …and the control on THAT, because `pd_same` over two mostly-ground worlds is
+  // true for a great many wrong answers. Compared against a target nothing was
+  // expanded into, the SAME call must say different — so it can see the cells the
+  // yard and its plinth do write, and its silence above is about the limb.
+  assert(!part_diff(a, target(), 12).pd_same,
+         "part_diff cannot even see the yard's own cells, so it can never fail");
   wipe(root());
 }
 

@@ -121,8 +121,21 @@ pub fn part_mesh(w: World) -> MeshRead {
 // the difference — how far to turn the `.glb` about the vertical. Handing back the
 // aim would be right only for a statue modelled facing heading 0, and nothing
 // enforces that or could.
+// ⚠ AND `ma_part` IS THE OTHER BODY REFERENCE, NOT AN IDENTITY — plan 17 `A8.1`.
+// The paragraph above says a placement carries no part handle, and §P9 is what
+// changed that: a LIMB's body is cells in its own file, so the handle is the only
+// way a consumer can reach the thing it has to draw. That is exactly the role
+// `ma_mesh` plays for a `.glb`, and it is still not identity — re-deriving
+// regenerates the whole list and there is nothing to keep in step.
+//
+// ⚠ **THE `.hxw` IS THE CONTRACT AND THE `.glb` IS THE SKIN** (§P9.4). Both may be
+// set: `ma_mesh` is what to DRAW when there is one, `ma_part` is where the part
+// came from and its cells are the body when there is not. A placement from an
+// `INST` carries no handle, because that part's cells are stamped in the world
+// beside it and there is nothing left to fetch.
 pub struct MeshAt {
   ma_mesh:   text,        // the name the part's `MESH` gave, unresolved
+  ma_part:   text,        // the part handle, for a LIMB whose body is its own cells
   ma_q:      integer,
   ma_r:      integer,
   ma_h:      integer,
