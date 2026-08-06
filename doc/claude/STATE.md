@@ -111,7 +111,29 @@ Two loft defects fell out — [#788](https://github.com/loft-lang/loft/issues/78
 dependent name) and [#789](https://github.com/loft-lang/loft/issues/789) (the suggester reading
 the registry index, advising `use hex_world;` on a file that has it).
 
-**What is left**: `L6`–`L8`, all of which wait for `A8`.
+✅ **AND `L6.1` IS BUILT — [`tools/names.sh`](../../tools/names.sh), the public-name check the
+design has listed since it was written.** A public name is global, and a bare one binds to the
+first `use` (loft#788), so the check runs over the *graph* — which is the thing no package suite
+can see. ⚠ **Its first run found a live defect with nothing to do with the split**:
+`editor_server.loft` imported `moros_map` and used **none of its 81 names**, the import's only
+effect being to shadow `hex_distance` with the AXIAL copy whose sheared discs the file's own
+comment already records — 34 boundary edges where a hex disc has 30, wrong for the road, the
+scatter, the storey and the house footprint. It is gone; the qualifiers stay because they say
+which lattice is meant. ⚠ **`gridmesh` and `hex_world` both declare `chunk_of`, and `gridmesh`
+won in the server while `hex_world` won in the client** — same two packages, opposite answers,
+decided by the `use` order alone. Both aliased now. Also `hex_part`'s duplicate `hex_dist`
+deleted, and `fit_text`→`fit_why`, `Rect`→`UiRect`, `chunk_of`→`world_chunk_of`.
+
+⚠ **THE INSTRUMENT WAS WRONG THREE TIMES FIRST, AND THAT IS WHY THE LIST IS SHORT.** An aliased
+import exposes **no** bare name (measured); a method resolves by **receiver** (`server` declares
+`close` twice by itself); and the replacement name I first picked, `fit_reason`, was refused by
+the tool because the registry's `hex_fit` publishes one. ⚠ **That last one is a finding**:
+`hex_fit` *is* a doorstep, field for field with `hex_editor::Fit`, and whether they converge is
+now an open question on the plan rather than a spelling.
+
+**What is left**: `L6.2` (the `hex_voxel` rename — **not blocked**), then `L6.3`–`L8`, which wait
+for `A8`. ⚠ **The gates have not been run since `L6.1`** — a new dependency edge invalidates the
+build cache exactly as a new package does, so they need a warm-up first.
 
 ✅ **AND `L5` — THE GATE FLAKE — IS FIXED, so a required PR check is now possible.** Three gates,
 two bugs, neither a timeout that wanted raising:

@@ -221,15 +221,31 @@ it.*
 2. **A `boundary.loft` per package**, which `hex_world` already has: the package must build with
    the consumer absent, and its source must import nothing of one. Clause 1 of the extraction bar,
    checkable on every commit instead of at extraction time.
-3. **A public-name registry check.** The collision class this session met three times —
-   `Fit`, `Surface`, `hex_world` — is a *global* namespace problem, so the guard is a grep of
-   `lib/`, the siblings and the registry **before** a public name is added. ⚠ A package suite
-   cannot see it: `hex_part` was 131 green while `hex_editor` would not build at all.
+3. ✅ **A public-name registry check — [`tools/names.sh`](../../tools/names.sh), built at `L6.1`.**
+   The collision class this session met three times — `Fit`, `Surface`, `hex_world` — is a
+   *global* namespace problem, so the guard is a grep of `lib/`, the siblings and the registry
+   **before** a public name is added. ⚠ A package suite cannot see it: `hex_part` was 131 green
+   while `hex_editor` would not build at all.
    ⚠ **AND THE GREP HAS TO COVER TYPES, NOT JUST PACKAGES.** `L4` measured what a package rename
    buys and what it does not: two packages may co-exist, but a bare `Chunk { … }` still binds to
    whichever was `use`d first ([loft#788](https://github.com/loft-lang/loft/issues/788)). A
    published `World` cannot be renamed afterwards, so the check runs on **every** exported name
    at the moment of publishing, not on the package line.
+
+   **It answers two questions, and they are not the same one.** *Live* — a program already
+   imports both packages, so one name is unreachable and the `use` block decided which. *Latent*
+   — a name lavition will publish is already taken in the registry; nothing is broken today and
+   nothing can be fixed once it is published. ⚠ **The first run found a live one that had nothing
+   to do with the split**: `editor_server.loft` imported `moros_map`, used **none of its 81
+   names**, and the import's only effect was shadowing `hex_distance` with an axial copy that had
+   already drawn measurably sheared discs.
+
+   ⚠ **AND WHAT IT MUST *NOT* REPORT TOOK THREE CORRECTIONS.** An **aliased** import exposes no
+   bare name (`use hex_world as hw;` + `world_new(…)` → `Unknown function`), and a **method**
+   resolves by receiver rather than import order — `server` declares `close` twice by itself, on
+   two receivers, which it could not if the name alone decided. A check that cries wolf on five
+   names nobody can fix is a check that gets a blanket `KNOWN` entry, which is how the pattern
+   skip in `layering.sh` happened.
 4. **Plans keep their identity as tracker issues**, and every step keeps its *What `Ax.y` turned
    up* section. The rule this tree learned the expensive way: **the per-step record belongs to the
    plan, the handoff describes only the present, and the journal keeps the past.** STATE.md grew

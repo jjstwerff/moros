@@ -5,16 +5,24 @@
 
 ## Status
 
-✅ **`L1`, `L2`, `L3′` and `L5` are BUILT and `L4` is RAISED (2026-08-06); `L3` as designed was
-refuted by its own probe.**
+✅ **`L1`, `L2`, `L3′`, `L5` and `L6.1` are BUILT and `L4` is RAISED (2026-08-06); `L3` as designed
+was refuted by its own probe.**
 `layering.sh` is silent with `KNOWN=""`, which means **the lavition stack has no Moros dependency
 at all** — the first time that has been true, and the thing that made the rest of this plan a move
 rather than an argument.
 
 **The last blocker that was not ours to clear is now a ticket with a probe behind it**:
 [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13) — theirs keeps
-`hex_world`, ours becomes **`hex_voxel`**, and `L6` renames its `World` and `Chunk` too. Every
+`hex_world`, ours becomes **`hex_voxel`**, and `L6.2` renames its `World` and `Chunk` too. Every
 `L1`–`L5` blocker is either done or answered.
+
+⚠ **`L6` SPLIT IN THREE ONCE THE NAMES WERE MEASURED, AND ONLY THE THIRD IS BLOCKED.** `L6.1`
+built the public-name check and fixed what it found — including **a dead import that had been
+shadowing the odd-r lattice**, which is a defect today and had nothing to do with the split.
+`L6.2` is the `hex_voxel` rename, which is mechanical and wants doing *before* anything is
+published. `L6.3` is the repo itself, and that is the one waiting on #17 `A8`. **The gates have
+not been run since `L6.1`** — a new dependency edge invalidates the build cache, so they need a
+warm-up first (`L3′`'s lesson).
 
 **The MOVE is still blocked on plan [#17](https://github.com/jjstwerff/moros/issues/17) `A8`
 landing** — `MeshAt` changed shape on 2026-08-06 (`A8.1`) and `A8.2`–`A8.7` will change it again,
@@ -58,7 +66,7 @@ with the same counts, before and after.
 | ~~`L3`~~ → `L3′` | same counts after the projection moves to `hex_proj` | `hex_to_world`'s plane **is** `hex_grid::hex_to_px`, on **both parities and both signs** — lesson `E` | ⚠ two: negative odd rows must shift the same way as positive ones, **and the `(6 - i) % 6` corner map must not be the identity** — without the second, a package that merely forwarded the call would pass every corner test |
 | `L5` | the 39 gates green **with `lib/moros_*` deleted from the tree** | clause 1 of the extraction bar, for the *gates* | keep one `moros_*` reference in the server and confirm the build **fails** — a boundary check that cannot fail is not one |
 
-⚠ **`L6`–`L8` have no exact-invariant surface** — a file move and documentation. Said in a line
+⚠ **`L6.3`–`L8` have no exact-invariant surface** — a file move and documentation. Said in a line
 so the silence does not read as *gate done*.
 
 ⚠ **`L4` WAS PUT HERE TOO, AND THAT WAS WRONG.** *"A naming decision with another repo"* is what
@@ -69,6 +77,8 @@ now in the table above, with the control that would have caught the answer every
 | phase | concrete expected result | the invariant it pins | negative control |
 |---|---|---|---|
 | `L4` | `probe/l4/run.sh` exits 0 on all 8 | a package name resolves to **one** package, and the rename makes the two co-installable | ⚠ two: `F` — the two `World` structs must **fail** to substitute (`expected World, got World`), or they merged and this is `L1` at library scale; and `G`/`H` — the same literal at both import orders must give **opposite** results, or bare-name binding is not order-dependent and loft#788 is wrong |
+| `L6.1` | `tools/names.sh` silent, and every suite at the same count as before | **one public name, one thing** — across the graph, not the package | ⚠ **the instrument was checked in both directions, and needed it three times.** It must FIND a known pair (`Hex`/`Chunk` between `hex_world` and `moros_map`) and must NOT report `seg_len` (an aliased import exposes no bare name — measured: `use hex_world as hw;` + `world_new(…)` fails) or `close`/`send`/`send_binary`/`last_opcode` (a method resolves by receiver — `server` declares `close` **twice by itself**) |
+| `L6.2` | `names.sh` silent, `probe/l4/run.sh` 8 of 8, every count unchanged | **a rename changes no behaviour** — as `L1` and `L2` | the `L4` probe is the control and already exists: with `hex_voxel` real rather than staged, `E`–`H` must give the same eight answers |
 
 ## Phases
 
@@ -81,7 +91,9 @@ now in the table above, with the control that would have caught the answer every
 | **`L3p`** — ⚠ **the probe** | XS | ✅ **RUN 2026-08-06, and it fired.** `L3` as designed was wrong | ✅ Done |
 | ✅ **`L4`** — settle the `hex_world` lineage with `loft-libs-world` | S | **RAISED 2026-08-06** with an 8-control probe: [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13). Recommendation: **ours renames to `hex_voxel`** | ✅ Raised — awaiting their word |
 | ✅ **`L5`** — fix the gate flake: wait for the evidence, never for a duration | M | **DONE.** 4 consecutive clean full suites (44, rc=0, zero failures), plus 3 contended `gate-rep` runs of the three fixed gates | ✅ Done |
-| **`L6`** — the new repo: packages, program, gates, content, `CLAUDE.md`, **and `hex_world` → `hex_voxel` with its `World`/`Chunk`** | MH | 678 tests **and 49 gates** green with no Moros tree present; `probe/l4/run.sh` still 8 of 8 | Blocked on `L1`–`L5` and #17 `A8` |
+| ✅ **`L6.1`** — `tools/names.sh`, and every collision it found | M | **DONE.** The check is silent; 686 lavition + 625 Moros tests green on both backends, counts unchanged | ✅ Done |
+| **`L6.2`** — `hex_world` → `hex_voxel`, and its `World` / `Chunk` | M | `names.sh` still silent, the same counts, and `probe/l4/run.sh` still 8 of 8 | **Next, and NOT blocked** |
+| **`L6.3`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on #17 `A8` |
 | **`L7`** — Moros becomes a consumer: published deps + one configuration file | M | Moros green against published packages, no path dependency into lavition | Blocked on `L6` |
 | **`L8`** — the documentation, and what is deliberately left behind | S | the eight travelling docs present; the four superseded ones **absent** | Blocked on `L6` |
 
@@ -271,6 +283,58 @@ had to treat a compiler suggestion as a hypothesis.
 **why this package exists**. The lavition editor uses the other lineage and never depended on
 this one.
 
+### What `L6.1` turned up
+
+**Built: [`tools/names.sh`](../../tools/names.sh)** — the public-name check
+[LAVITION_SPLIT § mechanism 3](../../doc/claude/LAVITION_SPLIT.md) has listed since the design
+was written, and the tree never had. It separates two debts that look alike and are not:
+**LIVE** (a program already imports both packages, so one name is unreachable and which one is
+decided by the `use` block) from **LATENT** (a name lavition will publish is already taken in the
+registry — nothing is broken today, and it becomes unfixable on the day it is published).
+
+⚠ **THE WORST ONE WAS AN IMPORT OF NOTHING.** `editor_server.loft` carried `use moros_map;` and
+used **none of its 81 names**. Its only effect was to put `Hex`, `Chunk` and `hex_distance` in
+scope ahead of the ones the program means — and the file's own comment records what that already
+cost: an **axial** `hex_distance` shadowing the odd-r one drew *"a sheared blob whose true
+boundary is 34 edges rather than the 30 a hex disc has"*, wrong for the road width, the scatter
+disc, the storey disc and the house footprint. It was answered by qualifying every call site.
+**The import is gone, so the hazard is removed where it arrived** rather than at each place it is
+spent — this tree's own rule about where a guard belongs, applied to an import list.
+
+⚠ **AND THE SAME TWO PACKAGES DISAGREED IN TWO FILES.** `gridmesh` and `hex_world` both declare
+`chunk_of` — different arity, different meaning — and **`gridmesh` won in the server while
+`hex_world` won in the client**, decided by nothing but the order of the `use` block. Both are
+`use gridmesh as gm;` now. ⚠ The answer was already in the tree: `use moros_sim as msim;` carries
+a comment working the same thing out for `edgeset_new`, *"a qualifier adds no bare name at all"*.
+Nobody had generalised it, because nothing could see the next instance.
+
+**Latent, and fixed while a rename is still possible.** `hex_part` carried its own `hex_dist` —
+the same twelve lines as `hex_field`'s, in the same graph the whole time, and a bare call already
+bound to `hex_field`'s because `use hex_field;` sits three lines above `use hex_part;`. The copy
+that was never being called is the one that went. Then `hex_editor::fit_text` → **`fit_why`**,
+`lavition_ui::Rect` → **`UiRect`**, `hex_world::chunk_of` → **`world_chunk_of`**.
+
+⚠ **THREE INSTRUMENT CORRECTIONS, EACH CAUGHT BEFORE IT WAS ACTED ON**, which is the only reason
+the list above is short. An **aliased import exposes no bare name** — measured, `use hex_world as
+hw;` then `world_new(…)` fails with `Unknown function` — so `seg_len` was a false positive. A
+**method resolves by receiver, not import order**: `server` declares `close` **twice by itself**,
+on `Server` and on `WebSocket`, which it could not if the name alone decided — four more.
+⚠ And the third was mine: **`fit_reason`, the replacement name I picked, was refused by the tool**
+because the registry's `hex_fit` already publishes one.
+
+⚠ **AND THAT REFUSAL IS A FINDING, NOT A NEAR MISS.** `hex_fit` **is** a doorstep — its README:
+*"refuse at authoring time … with a named reason, an offer of the nearest fitting alternative,
+and the residual"* — which is `hex_editor::Fit` field for field (`ft_ok`, `ft_reason`, `ft_offer`,
+`ft_residual`). Whether the two converge is a **design question for the split**, and it is written
+down rather than settled by picking a third spelling. See the open questions.
+
+⚠ **ADDING THE DEPENDENCY BROKE A TEST FILE, AND LOUDLY**, which is the shape worth contrasting:
+`hex_field::layer_count` collided with a private helper in `hex_part/tests/expand.loft` and gave
+`Cannot redefine 'layer_count'` — the `Cannot redefine 'fabs'` shape from `L3`. **A redefinition
+inside one compilation unit is an error; the same name across two packages is a silent bind.**
+That asymmetry is the whole reason this check has to exist, and it is why `names.sh` scans `src/`
+rather than `tests/`: the test case reports itself.
+
 ## Cross-repo coordination
 
 | repo | owns | what "done" means |
@@ -293,6 +357,16 @@ this one.
 3. **Where does `data/parts/` live?** It is lavition's test content *and* Moros's authored
    content, and the gates drive it. *Resolved by `L6`; the likely answer is a small fixture
    library in lavition and Moros's own under Moros, which `EDITOR_PARTS` already supports.*
-4. **Does `moros_sim` split too?** `assembly`'s `LinkKind` is the joint vocabulary §P9 builds on,
+4. **Is `hex_editor::Fit` a re-derivation of the published `hex_fit`?** ⚠ **New, from `L6.1`, and
+   found by a name check refusing a rename.** `hex_fit` 0.1.0 is in the registry and describes
+   itself as the doorstep — *"refuse at authoring time what would not round-trip … a named
+   reason, an offer of the nearest fitting alternative, and the residual"* — which is
+   `hex_editor::Fit`'s four fields exactly. Against that: `hex_fit`'s reasons are a **code table**
+   over geometry (`FIT_BAD_T`, `FIT_BAD_SHELL`, `FIT_BAD_HEIGHT`), where the editor's are free
+   text about **gesture parameters**. So it may be one concept at two altitudes, or two things
+   that read alike. **Not decided here** — the collision was routed around by naming ours
+   `fit_why`, which is honest but is not an answer. *Wants measuring before `L7` publishes
+   `hex_editor`*, because after that neither side can move.
+5. **Does `moros_sim` split too?** `assembly`'s `LinkKind` is the joint vocabulary §P9 builds on,
    and the walker is the only thing that exercises a part-tree pose. *Not this plan* — flagged
    because §P9's *what `A8` does not cover* will reach it.
