@@ -22,7 +22,36 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 18 CLOSED · plan 17 through `A8.1` · **next is `A8.2`**
+## ⏭ PICK UP HERE — the live thread is **SPEED**: `GROUND_DEFAULT` `G1`, a probe that can kill its own design
+
+⚠ **THE USER REDIRECTED ON 2026-08-06 AND THIS IS THE CURRENT THREAD.** *"If these tests are slow,
+we need to optimize them"* / *"I want 0.1 s tests running parallel instead"* / *"if we ever want to
+build a full editor … those should not include starting a server, waiting for ports"*. Plan 17
+`A8.2` is still the next *parts* step and is described below, but it is not what was asked for last.
+
+**Start at [GROUND_DEFAULT.md](GROUND_DEFAULT.md) § the steps, `G1`.** It is a probe with no
+library change, and it is written to be able to refute the design it belongs to.
+
+| measured 2026-08-06, this box, interpreted | |
+|---|---|
+| the fixture costs **ten times** the subject | `hex_part/tests/place.loft`: `target()` 109 ms (**85 %**), `part_expand` 11 ms (8 %), `stage()` 6 ms (5 %) — `probe/perf/place_phases.loft` |
+| nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms**. `hex_part` runs 254 in **77 s** |
+| compile tracks the **dependency cone** | `lavition_ui` 20 ms · `hex_world` 119 ms · `hex_part` 492 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
+| gates are a different, larger problem | 44 gates ≈ **1838 s** of work: **984 s** is five browser gates, **~238 s** is 44 servers reaching *listening* and buys nothing |
+
+⚠ **THREE HYPOTHESES ABOUT THE WRITE PATH WERE EACH REFUTED BY THEIR OWN PROBE**, so do not
+re-derive them: the step-4 window scan is worth 3 %, step-6 elision 6 %, **both together 12 %**,
+against a **0.09 ms floor** for a call whose body does nothing. A calibration says those scans
+should cost more than the whole write, and that disagreement is **unresolved** —
+`probe/perf/README.md` has it. ⚠ And the first version of that measurement printed `0 ms` for
+everything because `now()` returns **milliseconds** and was divided by 1,000,000.
+
+✅ **THE EDITOR CAN NOW SAY WHERE A MESSAGE'S TIME GOES** — `27:2` arms a per-message profile,
+`27:3` reports `id count us tau`. [WIRE_PROTOCOL § `27:`](WIRE_PROTOCOL.md). It carries `w_tau`
+beside the microseconds because the edit clock is exact and a millisecond figure measures the box.
+Checked in both directions before being believed (`probe/perf/profile_*.mjs`).
+
+## Plan 17 — `A8.2` is the next parts step
 
 **Green as of 2026-08-06** on loft `de2dd9e9`, hash stamped at both ends of every stage:
 `make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
@@ -64,7 +93,7 @@ says what `A8` deliberately does **not** cover.
 leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
 own plan. **The first two are the ones that change the FORMAT**, so they set the order.
 
-### Plan 19 — the lavition split: `L1`–`L5` DONE or RAISED, the move waits for `A8`
+### Plan 19 — `L1`–`L5` done or raised, `L6.1` built; only `L6.3` waits for `A8`
 
 [#19](https://github.com/jjstwerff/moros/issues/19) · design
 [LAVITION_SPLIT.md](LAVITION_SPLIT.md) · steps
@@ -520,6 +549,24 @@ iterate is how a session spends an hour proving what a one-minute run already sh
 **alone** does not reproduce a contention flake — that is the *discriminator*, not the
 test. `gate-rep` runs the named set together at `GATE_JOBS`, which is the condition the
 flake lives in.
+
+### ⚠ WHEN SOMETHING IS SLOW, GET THE NUMBER FIRST — there are three instruments now
+
+```sh
+loft --interpret --lib lib/ probe/perf/place_phases.loft   # a test's phases: fixture vs subject
+cd lib/<pkg> && loft --lib ../ --tests tests/<file>.loft::<test_name>   # ONE test
+GATE_VERBOSE=1 make gate                                    # per-gate seconds
+# and in a running editor: 27:2 arms, 27:3 reports `id count us tau` per message
+```
+
+⚠ **`w_tau` BEFORE MILLISECONDS.** The edit clock is an exact integer, the same on any box
+and on a world of any size; a millisecond figure measures the machine. The `27:` profile
+carries both, and the pair is what separates *doing too much work* from *the work being
+expensive*. ⚠ **And a COUNT before either** — a total cannot be read without one.
+
+⚠ **DO NOT RE-DERIVE THE WRITE PATH.** Three hypotheses about why `world_set_column` costs
+0.45 ms were each refuted by their own probe (12 % for both O(1024) scans together; a 0.09 ms
+floor). `probe/perf/README.md` has the numbers and the one disagreement still unresolved.
 
 ```sh
 GATE_JOBS=4 make gate  # ⚠ 40 gates, SILENT when green. THE DEFAULT IS 10 AND THAT FLAKES:

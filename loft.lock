@@ -148,3 +148,27 @@ url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_way-v0
 sha256 = "03cc160ba0d34076403a4e862f78ea59a39a4dbb2fad0767acdfdb4268de060f"
 source = "registry"
 deps = ["hex_edge", "hex_field"]
+
+[[package]]
+name = "hex_draw"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_draw-v0.1.0/hex_draw-0.1.0.tar.gz"
+sha256 = "81496e503b17973e865f959da3bb4e4c63374c622c31377d4995ebbb23034f30"
+source = "registry"
+deps = ["hex_field", "hex_form", "hex_grid", "hex_roof", "hex_way"]
+
+[[package]]
+name = "hex_roof"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_roof-v0.1.0/hex_roof-0.1.0.tar.gz"
+sha256 = "88119b2e3922993c1c8f21282024c695c5ecfef2e16d076042b2f89df830fde3"
+source = "registry"
+deps = ["hex_field", "hex_way"]
+
+[[package]]
+name = "hex_place"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_place-v0.1.0/hex_place-0.1.0.tar.gz"
+sha256 = "f56ebeed07e81c6f7702ab867c72494c19ee5ddfeaf639343f12f4cf68a5fd67"
+source = "registry"
+deps = ["hex_field", "hex_form"]

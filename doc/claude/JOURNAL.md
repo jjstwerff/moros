@@ -17,6 +17,119 @@ were true when written. STATE.md carries the current ones.
 
 ---
 
+## Session 14 — a name that meant two things, and the day speed became the thread
+
+**2026-08-06.** Started on plan 19 `L4`, ended on a design for the store, and the middle was
+a series of measurements that each refuted the one before.
+
+### Plan 19 `L4` — the name goes to whoever cannot rename
+
+`hex_world` names two unrelated packages. Raised at
+[loft-libs-world#13](https://github.com/loft-lang/loft-libs-world/issues/13) rather than
+decided here, with an 8-control probe (`probe/l4/run.sh`) that stages the rename in a
+`mktemp -d` and touches no tree. Recommendation: **theirs keeps the name, ours becomes
+`hex_voxel`** — and the reason is not merit. Ours is 2,041 lines and 102 public names to
+their 400 and 17, and is what `WORLD_MODEL` Part II specifies. They have published three
+versions since 2026-06-14 and **loft's own test suite consumes them**, so theirs is the
+rename that cannot be done.
+
+⚠ **A package rename says nothing about the TYPES.** Four public names are declared by both
+— `Chunk`, `World`, `world_save`, `world_load` — over incompatible formats (`'WTTH'` against
+`'WRLD'`). Measured: the two `World` structs do **not** merge (`expected World, got World`).
+Also measured: a **bare** `Chunk { … }` binds to whichever package was `use`d **first**, and
+the same file with its two imports swapped compiles something different, no ambiguity error at
+either order — `Unknown field Chunk.ck_cells`, which is `L1`'s `Surface` diagnostic verbatim,
+one rename later. Filed as [loft#788](https://github.com/loft-lang/loft/issues/788), with
+[#789](https://github.com/loft-lang/loft/issues/789) for a suggester that reads the registry
+index rather than the resolved graph and advises `use hex_world;` on a file that has it.
+
+### Plan 19 `L6.1` — a dead import was shadowing the lattice
+
+Built `tools/names.sh`, the public-name check the design has listed since it was written.
+It separates **live** (a program already imports both packages) from **latent** (a name
+lavition will publish is taken in the registry).
+
+⚠ **The worst find was an import of nothing.** `editor_server.loft` carried `use moros_map;`
+and used **none of its 81 names**; its only effect was putting `Hex`, `Chunk` and
+`hex_distance` in scope ahead of the ones the program means — and the file's own comment
+already recorded what that cost: an axial `hex_distance` shadowing the odd-r one drew *"a
+sheared blob whose true boundary is 34 edges rather than the 30 a hex disc has"*, wrong for the
+road width, the scatter disc, the storey disc and the house footprint, answered by qualifying
+every call site. The import is gone, so the hazard is removed where it arrived.
+
+⚠ **The same two packages disagreed in two files.** `gridmesh` and `hex_world` both declare
+`chunk_of`; `gridmesh` won in the server and `hex_world` won in the client, decided by the
+`use` order alone. Both aliased now — and `use moros_sim as msim;` had already worked out
+*"a qualifier adds no bare name at all"* for `edgeset_new` without anyone generalising it.
+
+Also: `hex_part`'s duplicate `hex_dist` deleted (identical to `hex_field`'s, in the same graph
+the whole time), `fit_text`→`fit_why`, `Rect`→`UiRect`, `chunk_of`→`world_chunk_of`.
+
+⚠ **The instrument was wrong three times before the list was short.** An aliased import
+exposes **no** bare name (measured: `use hex_world as hw;` + `world_new(…)` → `Unknown
+function`). A method resolves by **receiver** — `server` declares `close` twice by itself, on
+`Server` and `WebSocket`, which it could not if the name alone decided. And `fit_reason`, the
+replacement name picked, was refused by the tool because the registry's `hex_fit` publishes
+one. ⚠ That last refusal is a finding: `hex_fit` **is** a doorstep, field for field with
+`hex_editor::Fit`, and whether they converge is now an open question on the plan.
+
+### The user redirected: speed
+
+*"These are far too slow"* → *"I want 0.1 s tests running parallel"* → *"if we ever want to
+build a full editor … those should not include starting a server, waiting for ports"* →
+*"if these tests are slow, we need to optimize them"*.
+
+Measured, this box, interpreted:
+
+| | |
+|---|---|
+| 44 gates | ≈ **1838 s** of work; **984 s** is five browser gates (`camera_indoors` 303 s, `client_mesh` 206 s, `cache` 201 s); **~238 s** is 44 servers reaching *listening* |
+| the loft harness | **2.2 ms** marginal per test, 62 ms for a whole trivial package |
+| compile | tracks the **dependency cone**: `lavition_ui` 20 ms · `hex_world` 119 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
+| the suites | `lavition_ui` 65 tests / **447 ms**; `hex_part` 254 / **77 s** |
+| **the slowest file, broken down** | `place.loft`: `target()` **109 ms (85 %)**, `part_expand` 11 ms (8 %), `stage()` 6 ms (5 %) |
+
+⚠ **The fixture costs ten times the subject**, and the filesystem — the obvious suspect —
+costs **0 ms**.
+
+⚠ **AND THREE HYPOTHESES ABOUT THE WRITE PATH WERE EACH REFUTED BY THEIR OWN PROBE.**
+`world_set_column` costs 0.45 ms; the step-4 window scan is worth 3 %, step-6 elision 6 %,
+**both together 12 %**, against a **0.09 ms floor** for a call whose body does nothing. A
+calibration says a 1024-scan costs 0.3 ms, which is more than the whole write — **that
+disagreement is unresolved** and is written down rather than rounded off.
+
+⚠ **AND THE FIRST VERSION OF THAT MEASUREMENT PRINTED `0 ms` FOR EVERYTHING**, because `now()`
+returns **milliseconds** and it was divided by 1,000,000. It read as *"the store primitives are
+free"* and was said out loud before the unit was checked. A wrong number is worse than a guess.
+
+### The instrument, then the design
+
+`27:2` arms a per-message profile in the editor, `27:3` reports `id count us tau`. One timer
+around the whole dispatch chain in **one** place. ⚠ It carries `w_tau` beside the microseconds
+because the edit clock is exact and a millisecond figure measures the box, and a **count**
+because a total cannot be read without one. ⚠ Checked in both directions before being believed:
+five `7:` and three `15:` reported `7 5` and `15 3`; every `tau` read 0 — right for a read, and
+indistinguishable from a broken column — so three raises were sent: `5 3 17326 273`.
+
+[GROUND_DEFAULT.md](GROUND_DEFAULT.md), three drafts, each turn cheaper on the page:
+
+1. *a default cell applied at read* — refuted by counting: presence is decided at **108 sites,
+   78 outside `hex_world`**, and getting one wrong is silent.
+2. *materialise the default when a layer is created* — safe, but still charges for every chunk
+   nobody touched.
+3. **the user's**: *a world is an infinite plane of its ground, and storage holds only what
+   differs*. ⚠ The format does **not** move in either direction — an absent chunk is already
+   absent from a sparse file, and the default rides in a **section**, which is tagged, carried
+   even when unreadable, and already distinguishes present-and-empty. Checked against
+   `world_set_section`, not assumed.
+
+⚠ **The risk is not presence — it is EXTENT.** Today *what exists* and *which chunks exist* are
+the same question, and this separates them: the mesher, the streamer and the accessors are the
+class that must learn it. Seven steps, `G1` a probe written to be able to refute the design it
+belongs to.
+
+---
+
 ## Session 13 — the door is drawn, §P9 is argued out, and the toolchain moved six times under it
 
 ⚠ Counts in this entry were true when written; STATE.md carries the current ones. The per-step
