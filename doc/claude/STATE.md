@@ -371,6 +371,18 @@ hex**, which is why cells had nothing to say about it and why today's leaf is a 
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already
 carry. The one-hex door is the degenerate case, not the shape everything is bent around.
 
+⚠ **AND THE GOAL IS THE ARTIST'S WORK SURFACE — §P9.6, which is what the rest of §P9 was
+serving.** Self-contained was never about avoiding the 3D artist; it is about handing them a
+surface they can start on immediately, so their expensive hours go on craft rather than on
+reconstructing decisions somebody already made. What they get: **a `.glb` at final size with a
+pivot in it**, plus limits in turns, a `FITS` class and a name — and a part file they never open.
+⚠ **A MONSTER IS A GATEWAY**: a frame with limbs, same sockets, same joints, same export, same
+blockout-then-skin. Doors are just the smallest case that has all the parts. ⚠ **And the
+child's-frame hinge is what makes a LIMB LIBRARY possible** — an arm is swappable between
+creatures exactly as a leaf is between frames (`arm/humanoid-2`, `head/beast-3`), with `A6.3`'s
+one-field swap as the kit-bash, and a left arm and a right arm two ordinary parts with mirrored
+axes rather than a handedness flag.
+
 ⚠ **THE JOINT ALREADY EXISTS TWICE.** `moros_sim::assembly::Link` is `hex_part::Hinge` with a kind
 on it — offset, revolute axis, limits in TURNS — and `A5.1` says the hinge was modelled on it. The
 walker is already five independently posed meshes beside a comment naming `hex_entity` as *"a

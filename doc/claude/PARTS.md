@@ -706,3 +706,52 @@ one image — a thumbnail is structurally blind to exactly the thing this check 
 > **What travels, in one line.** The artist gets *geometry at final size, with the pivot marked*.
 > They never get a contract, a class, a lattice or a unit conversion — and so there is nothing in
 > the hand-off they can get wrong that a number will not catch on the way back.
+
+### P9.6 — The editor is the artist's WORK SURFACE, and a monster is a gateway
+
+**Added 2026-08-06 with the user, and it is the goal the rest of §P9 was serving.** Being
+self-contained was never about avoiding the 3D artist. It is about handing them a surface they can
+start on **immediately** — so that the slow, expensive, irreversible part of their work is spent
+on craft rather than on reconstructing decisions somebody else already made.
+
+⚠ **WHAT "READY TO WORK" MEANS, CONCRETELY.** Every one of these is carried by the design above,
+and each is a question an artist would otherwise have to ask and wait for an answer to:
+
+| they need | the design's answer |
+|---|---|
+| how big is it, exactly | the export, in final world units (§P9.5) |
+| where does it pivot | the hinge, in the same units, marked in the export (§P9.4) |
+| how far does it move | `hg_lo`/`hg_hi`, in turns (`A5.1`) |
+| what does it have to fit | the `FITS` class, and a frame that refuses by spelling (`A4.2`) |
+| what is it called | `PART.name` (§C2) |
+| what happens when I hand it back | the `MESH` is repointed; nothing else moves (`A6.3`) |
+
+**None of that is a document they have to read.** It is a `.glb` at the right size with a pivot in
+it, and a part file they never open.
+
+### A creature is the same object, and the tree already models it three times
+
+⚠ **A MONSTER IS A FRAME WITH LIMBS — WHICH IS A GATEWAY WITH LEAVES.** Same sockets, same joints,
+same export at final size, same *blockout in cells, skin from an artist*. Nothing about §P9 is
+about doors; doors are just the smallest case that has all the parts.
+
+The machinery exists and is currently three descriptions of one thing:
+
+- `hex_body::Rig` — bones, and `rig_admissible`;
+- `moros_sim::assembly::Link` — offset, revolute axis, limits **in turns**, plus a kind;
+- `hex_part::Hinge` — the same joint, narrowed, in the child's frame.
+
+…and the editor **already draws a part-tree**: the walker is five independently posed meshes, next
+to a comment naming `hex_entity` as *"a part-tree whose every part carries its own transform"*.
+So the renderer half of a creature is proven; a door was the first thing to reach it through the
+part format.
+
+⚠ **AND THE CHILD'S-FRAME HINGE IS WHAT MAKES A LIMB LIBRARY POSSIBLE** (§P9). Because a limb
+carries its own pivot, an arm is swappable between creatures exactly as a leaf is between frames —
+`arm/humanoid-2`, `head/beast-3`, `wing/bat-4` are socket classes like any other, and `A6.3`'s
+one-field swap is how a monster is kit-bashed. A left arm and a right arm are two ordinary parts
+with mirrored axes; there is no handedness flag anywhere, and there does not need to be.
+
+> **The one sentence.** The editor is where a thing's *size, joints, sockets and name* are decided,
+> fast, by the person who knows what it is for — and the artist is handed a rigged blockout at
+> final scale, so their first hour is modelling rather than measuring.
