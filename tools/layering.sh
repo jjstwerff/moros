@@ -36,8 +36,10 @@
 #     it to `lavition_ui` is what put it back under this script (plan 18 `B1.2b`).
 #   · `moros_terrain` was lavition's mesher — `emit_tri`, `chunk_mesh_mat`,
 #     `surface_at`, not one game concept in any name — and likewise exempt. It is
-#     `hex_mesh` now (plan 19 `L2`), which is how the `moros_render` dependency
-#     below became visible at all.
+#     `hex_mesh` now (plan 19 `L2`), and renaming it is **what made its own
+#     `moros_render` dependency visible at all** — which `L3′` then removed. The
+#     rename did not create that dependency; it had been there, unseen, the whole
+#     time.
 #
 # So the lists are explicit and the default is to CHECK. A new package is checked
 # unless somebody writes it into `CONSUMERS` on purpose, and a violation is either
@@ -53,20 +55,12 @@ CONSUMERS="moros_map moros_editor moros_render moros_sim"
 # step that removes it. An entry here is a debt with a name on it; a pattern skip
 # was a debt nobody could see.
 #
-#   hex_mesh -> moros_render : `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`.
-#     ⚠ These are NOT lattice functions, which plan 19's design got wrong and the
-#     measurement corrected: `hex_to_world` already calls `hex_grid::hex_to_px`,
-#     and `mr_corner_offset`'s own comment says its six corners COME FROM hex_grid
-#     with a `(6 - i) % 6` map applied — which every call site then compensates for
-#     again. What they really add is the vertical scale and the Y-up `Vec3`, i.e.
-#     the 3-D PROJECTION. Substituting `hex_grid::hex_corner_px` would rotate every
-#     corner and drop the height, with every count still agreeing.
-#     ⚠ And the projection cannot simply move into `hex_mesh`: `lib/hex_mesh`'s own
-#     manifest records that putting this code under `moros_render` was tried and
-#     REVERTED, because `moros_sim` depends on `moros_render` and inherited
-#     `hex_editor`'s whole cone (`Cannot redefine 'fabs'`). The reverse arrow has
-#     the same shape. It wants a small package of its own — plan 19 `L3`.
-KNOWN="hex_mesh:moros_render"
+# ✅ **EMPTY, AND IT HELD ONE ENTRY FOR THE LENGTH OF ONE SESSION.**
+# `hex_mesh -> moros_render` was the last Moros dependency in the whole lavition
+# stack — `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`. Plan 19 `L3′` moved
+# them into `hex_proj` (hex_grid + graphics, nothing else) and the debt is paid.
+# ⚠ Keep this list EMPTY if you can: it works because it is short enough to read.
+KNOWN=""
 
 fail=0
 
@@ -116,7 +110,7 @@ done
 # script's own history is about. They do not fail the build; they are named every
 # run so the list cannot quietly become permanent.
 if [ -n "$KNOWN" ]; then
-  echo "layering: tracked, not fixed — $KNOWN  (plan 19 L3; see the head of this script)"
+  echo "layering: tracked, not fixed — $KNOWN  (see the head of this script)"
 fi
 
 if [ "$fail" -ne 0 ]; then

@@ -1,0 +1,91 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// THE PROJECTION — a hex lattice position seen as a point in a 3-D world.
+//
+// Plan 19 `L3′`. This package holds exactly three facts, and none of them is the
+// lattice:
+//
+//   1. how far one height unit is in world units  (`HEIGHT_SCALE`)
+//   2. which axis is up                            (`+Y`, and hex_grid's plane `y`
+//                                                   IS our world `z`)
+//   3. which way the corner ring is numbered here  (`proj_corner_offset`)
+//
+// ⚠ **THE LATTICE IS NOT HERE AND MUST NEVER COME HERE.** `hex_grid` owns
+// axial↔pixel, the parity of the odd-row shift, the neighbour table and the corner
+// table, for the whole `hex_*` family. Everything below CALLS it. A second copy of
+// any of that is the bug this family already paid for five times — `STATE.md`
+// lesson `E`: right for non-negative coordinates, wrong below zero or on odd rows.
+//
+// ── ⚠ WHY THIS PACKAGE EXISTS AT ALL, WHICH IS A CORRECTION ──────────────────
+//
+// Plan 19's design called these *"three lattice calls"* and proposed replacing them
+// with `hex_grid::px_to_hex` / `hex_to_px` / `hex_corner_px`. **Measured, that was
+// wrong**, and wrong in the most expensive way this tree knows:
+//
+//   · `hex_to_world` ALREADY calls `hex_grid::hex_to_px`. What it adds is the
+//     height axis, and nothing else.
+//   · the corner ring here is numbered the OTHER WAY from `hex_grid`'s, so index
+//     `i` is its `(6 - i) % 6` — and callers compensate for that a second time at
+//     the call site.
+//
+// So a substitution would have **rotated every corner and dropped every height,
+// with every count still agreeing**. The projection is a real thing that has to
+// live somewhere; it is here.
+use hex_grid;
+use graphics;
+
+// ── The height axis ──────────────────────────────────────────────────────────
+//
+// One height unit in world units. ⚠ THE ONE NUMBER THAT CANNOT BE DERIVED from
+// `hex_grid`, which is entirely 2-D by design — and the reason a package is
+// needed rather than a call. It had 83 uses in the editor alone when this was
+// measured, so it is also the value least able to afford a second home.
+pub HEIGHT_SCALE = 0.25;
+
+// ── A hex, projected ─────────────────────────────────────────────────────────
+//
+// Hex `(q, r)` at integer `height`, as a world-space centre.
+//
+// ⚠ THE PARITY IS `hex_grid`'s, AND THAT IS LOAD-BEARING. This used to compute
+// the odd-row shift with `(r % 2)`, which is `-1` for a negative odd `r` in loft
+// where `(r & 1)` is `1` — so every negative odd row sat a full hex step (√3) west
+// of where it belonged. `hex_grid` is correct for both signs; the test below pins
+// us to it rather than re-checking the arithmetic.
+pub fn hex_to_world(q: integer, r: integer, height: integer) -> Vec3 {
+  (htw_x, htw_z) = hex_to_px(q, r);
+  vec3(htw_x, height as float * HEIGHT_SCALE, htw_z)
+}
+
+// The 6 corner offsets of a POINTY-TOP unit hex, in THIS family's index order —
+// a vertex at top and bottom, flat edges left and right:
+//
+//   corner 0: (0, +1)         top           corner 3: (0, -1)         bottom
+//   corner 1: (+√3/2, +0.5)   top-right     corner 4: (-√3/2, -0.5)   bottom-left
+//   corner 2: (+√3/2, -0.5)   bottom-right  corner 5: (-√3/2, +0.5)   top-left
+//
+// ⚠ `hex_grid` HOLDS THE SAME SIX CORNERS AND WALKS THE RING THE OTHER WAY, so
+// this index `i` is its `(6 - i) % 6`. The values COME FROM `hex_grid` with that
+// map applied — there is no second table — and applying it **here** is what keeps
+// every caller's indices intact: wall emission reads corners 5→0, 0→1, 1→2 and
+// still lands on the same three edges it always did.
+//
+// ⚠ IT IS `pub` BECAUSE `moros_render::emit_hex_surface` NEEDS IT. It was private
+// while the code lived beside its only two callers; splitting the package makes
+// one of them external, and a re-derived copy on the other side would be the
+// second table this comment exists to prevent.
+pub fn proj_corner_offset(i: integer) -> Vec2 {
+  (pco_x, pco_y) = hex_corner_offset((6 - i) % 6);
+  vec2(pco_x, pco_y)
+}
+
+// World-space position of hex corner `ci` (0–5) of hex `(q, r)` at `height`.
+//
+// ⚠ THE HEIGHT DOES NOT CHANGE ACROSS A HEX HERE — the corner sits at the
+// centre's `y`. A sloped cell interpolates its own four corners and is the
+// caller's geometry, not this package's; `hex_mesh::corner_heights` is where that
+// lives. Doing it here would put a terrain rule inside a coordinate transform.
+pub fn hex_corner_world(q: integer, r: integer, height: integer, ci: integer) -> Vec3 {
+  hcw_centre = hex_to_world(q, r, height);
+  hcw_off = proj_corner_offset(ci);
+  vec3(hcw_centre.x + hcw_off.x, hcw_centre.y, hcw_centre.z + hcw_off.y)
+}

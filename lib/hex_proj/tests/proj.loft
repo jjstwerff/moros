@@ -1,0 +1,104 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 19 `L3′` — the projection, and the two things it must never re-derive.
+//
+// ⚠ THESE TESTS CAME WITH THE CODE FROM `moros_render/tests/geometry.loft`, and
+// that is deliberate: a function that moves house without its tests arrives
+// unverified, and the two claims below are exactly the ones a re-derived copy
+// would break. `moros_render` keeps its own, now asserting that what it re-exports
+// is the same projection — see `test_moros_render_re_exports_this_projection`
+// there.
+use hex_proj;
+use hex_grid;
+
+fn test_the_origin_projects_to_the_origin() {
+  w = hex_to_world(0, 0, 0);
+  assert(w.x == 0.0 && w.y == 0.0 && w.z == 0.0,
+         "origin projects to ({w.x},{w.y},{w.z})");
+}
+
+// ⚠ THE LATTICE IS `hex_grid`'s AND THIS IS THE TEST THAT SAYS SO. It compares
+// against `hex_to_px` rather than against a literal, so the day `hex_grid` changes
+// its convention this package follows instead of silently disagreeing.
+fn test_the_plane_is_hex_grids_and_is_never_re_derived() {
+  for tpq in 0..4 {
+    for tpi in 0..8 {
+      tpr = tpi - 4;
+      w = hex_to_world(tpq, tpr, 0);
+      (gx, gy) = hex_to_px(tpq, tpr);
+      assert(abs(w.x - gx) < 0.000001, "({tpq},{tpr}) x is {w.x}, hex_grid says {gx}");
+      assert(abs(w.z - gy) < 0.000001, "({tpq},{tpr}) z is {w.z}, hex_grid says {gy}");
+    }
+  }
+}
+
+// ⚠ BOTH PARITIES AND BOTH SIGNS — `STATE.md` lesson `E`, five bugs of this exact
+// shape. The odd-row shift was once computed with `(r % 2)`, which is `-1` for a
+// negative odd `r` in loft where `(r & 1)` is `1`, so every negative odd row sat a
+// full hex step west. The loop above covers `r` in `-4..3`; this one states the
+// claim on its own so a shortened loop cannot quietly drop it.
+fn test_a_negative_odd_row_is_shifted_the_same_way_as_a_positive_one() {
+  pos = hex_to_world(0, 1, 0);
+  neg = hex_to_world(0, 0 - 1, 0);
+  assert(abs(pos.x - neg.x) < 0.000001,
+         "row 1 sits at x {pos.x} and row -1 at x {neg.x} — the shift changed sign");
+  assert(pos.x > 0.0, "an odd row is not shifted at all, so this test cannot fail");
+}
+
+fn test_height_is_the_only_thing_this_package_adds() {
+  flat = hex_to_world(2, 3, 0);
+  up   = hex_to_world(2, 3, 10);
+  assert(up.y == 10.0 * HEIGHT_SCALE, "10 units of height is y {up.y}");
+  assert(up.x == flat.x && up.z == flat.z, "height moved the point sideways");
+}
+
+// ⚠ THE CORNER RING IS NUMBERED THE OTHER WAY FROM `hex_grid`'s, and this is the
+// claim a naive `hex_corner_px` substitution would have broken — silently, because
+// six corners would still come back and every count would agree. Corner 0 is the
+// TOP vertex in this family's order.
+fn test_corner_zero_is_the_top_vertex() {
+  c = proj_corner_offset(0);
+  assert(abs(c.x) < 0.000001 && abs(c.y - 1.0) < 0.000001,
+         "corner 0 is ({c.x},{c.y}), not the top vertex (0,1)");
+}
+
+// …and the whole ring, against `hex_grid`'s own table under the documented map.
+// ⚠ Written as `hex_corner_offset((6 - i) % 6)` rather than as six literals, so it
+// is a claim about the MAP and not a copy of the table.
+fn test_the_ring_is_hex_grids_table_under_the_documented_map() {
+  for tri in 0..6 {
+    got = proj_corner_offset(tri);
+    (gx, gy) = hex_corner_offset((6 - tri) % 6);
+    assert(abs(got.x - gx) < 0.000001 && abs(got.y - gy) < 0.000001,
+           "corner {tri} is ({got.x},{got.y}); hex_grid's (6-i)%6 says ({gx},{gy})");
+  }
+}
+
+// ⚠ AND THE CONTROL THAT KEEPS THAT FROM PASSING ON AN IDENTITY. If the two rings
+// wound the same way, the map would be a no-op and the test above would hold for a
+// package that had simply forwarded the call — which is the mistake plan 19's
+// design nearly made. At least one index must MOVE.
+fn test_the_control_the_map_is_not_the_identity() {
+  moved = 0;
+  for tci in 0..6 {
+    a = proj_corner_offset(tci);
+    (bx, by) = hex_corner_offset(tci);
+    if abs(a.x - bx) > 0.000001 || abs(a.y - by) > 0.000001 { moved = moved + 1; }
+  }
+  assert(moved > 0,
+         "hex_grid's ring and this one agree at every index, so the (6-i)%6 map is "
+         + "a no-op and every corner test here is vacuous");
+}
+
+fn test_a_corner_is_the_centre_plus_its_offset() {
+  centre = hex_to_world(3, 2, 4);
+  for tai in 0..6 {
+    c = hex_corner_world(3, 2, 4, tai);
+    off = proj_corner_offset(tai);
+    assert(abs(c.x - (centre.x + off.x)) < 0.000001, "corner {tai} x");
+    assert(abs(c.z - (centre.z + off.y)) < 0.000001, "corner {tai} z");
+    // ⚠ THE CORNER SITS AT THE CENTRE'S HEIGHT. A sloped cell interpolates its
+    // own corners and that belongs to `hex_mesh`, not to a coordinate transform.
+    assert(abs(c.y - centre.y) < 0.000001, "corner {tai} left the centre's height");
+  }
+}

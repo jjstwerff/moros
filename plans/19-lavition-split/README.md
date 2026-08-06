@@ -5,20 +5,20 @@
 
 ## Status
 
-Nothing built. **Blocked on plan [#17](https://github.com/jjstwerff/moros/issues/17) `A8`
+✅ **`L1`, `L2` and `L3′` are BUILT (2026-08-06); `L3` as designed was refuted by its own probe.**
+`layering.sh` is silent with `KNOWN=""`, which means **the lavition stack has no Moros dependency
+at all** — the first time that has been true, and the thing that made the rest of this plan a move
+rather than an argument.
+
+**The MOVE is still blocked on plan [#17](https://github.com/jjstwerff/moros/issues/17) `A8`
 landing** — `MeshAt` changed shape on 2026-08-06 (`A8.1`) and `A8.2`–`A8.7` will change it again,
 and this tree's own rule is that *the cost of extracting late is a rename; the cost of extracting
-early is a seam renegotiated while both sides are moving.*
+early is a seam renegotiated while both sides are moving.* The corrections were not blocked,
+because they are right whether or not the split ever happens.
 
-⚠ **`L1`–`L3` are the exception and can start now**, because they are corrections that are right
-whether or not the split ever happens: a struct-name collision that already merges silently, a
-package whose prefix exempts it from the layering check, and 64 call sites reaching past the
-package that owns the lattice. Doing them early also **runs the probe that could falsify the whole
-design** (below) for free.
-
-Today: five lavition packages (678 tests) with **zero** functional `moros_*` dependencies, one
-8,283-line editor program whose only Moros coupling is `moros_terrain` plus three lattice calls,
-49 gates of which 39 need that program, and `data/parts/` behind them.
+Today: **six** lavition packages (686 tests) with zero `moros_*` dependencies, one 8,283-line
+editor program with **none left either**, 49 gates of which 39 need that program, and
+`data/parts/` behind them.
 
 ## Goal
 
@@ -49,7 +49,7 @@ with the same counts, before and after.
 |---|---|---|---|
 | `L1` | `make lib-test` 20 of 20 and `make gate` 44, unchanged, after `Surface` is renamed on one side | **a rename changes no behaviour** | write the `Surface` literal in `editor_server.loft` **before** the rename — it must still fail with *"Unknown field `Surface.sf_r`"*, or the collision was already gone and `L1` is testing nothing |
 | `L2` | same counts after `moros_terrain` → `hex_mesh`, and `make parts` still byte-identical | a package's **name** is not part of its behaviour | run `layering.sh` with the `moros_*` skip removed **before** the rename — it must report `hex_editor`→`moros_terrain`, or the check cannot see the class it exists for |
-| `L3` | same counts after 64 lattice call sites move to `hex_grid` | `px_to_hex ≡ world_to_hex` on **both parities and both signs** — lesson `E`, five bugs of this exact shape | a fixture at negative `q`/`r` and an odd row: the two must agree there too, or the substitution is right only where it was tested |
+| ~~`L3`~~ → `L3′` | same counts after the projection moves to `hex_proj` | `hex_to_world`'s plane **is** `hex_grid::hex_to_px`, on **both parities and both signs** — lesson `E` | ⚠ two: negative odd rows must shift the same way as positive ones, **and the `(6 - i) % 6` corner map must not be the identity** — without the second, a package that merely forwarded the call would pass every corner test |
 | `L5` | the 39 gates green **with `lib/moros_*` deleted from the tree** | clause 1 of the extraction bar, for the *gates* | keep one `moros_*` reference in the server and confirm the build **fails** — a boundary check that cannot fail is not one |
 
 ⚠ **`L4` and `L6`–`L8` have no exact-invariant surface** — they are a naming decision with another
@@ -59,10 +59,10 @@ repo, a file move, and documentation. Said in a line so the silence does not rea
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`L1`** — rename one of the two `Surface` structs | S | `make lib-test` + `make gate` unchanged; the negative control above seen red first | Open — **can start now** |
-| **`L2`** — `moros_terrain` → `hex_mesh`, and delete the `moros_*` skip from `layering.sh` | M | `layering.sh` silent with the skip gone; `make parts` byte-identical | Open — **can start now** |
+| ✅ **`L1`** — rename one of the two `Surface` structs | S | **DONE.** `hex_world::SurfaceAt`; the negative control produced its five errors first | ✅ Done |
+| ✅ **`L2`** — `moros_terrain` → `hex_mesh`, and flip `layering.sh`'s default | M | **DONE.** Explicit `CONSUMERS` list; `make parts` byte-identical; both controls run | ✅ Done |
 | ~~**`L3`** — the 64 lattice call sites → `hex_grid`~~ | ~~S~~ | ⚠ **REFUTED BY THE PROBE — see below.** Replaced by `L3′` | Withdrawn 2026-08-06 |
-| **`L3′`** — a small `hex_proj` package: `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`, the corner map | M | `layering.sh` with `KNOWN` **empty** is silent; suites and gates unchanged | Open |
+| ✅ **`L3′`** — a small `hex_proj` package: `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world`, the corner map | M | **DONE.** `layering.sh` is silent with `KNOWN=""` — **zero Moros dependencies left in the lavition stack**. 8 new tests; the control (put the dep back) fails the build | ✅ Done |
 | **`L3p`** — ⚠ **the probe** | XS | ✅ **RUN 2026-08-06, and it fired.** `L3` as designed was wrong | ✅ Done |
 | **`L4`** — settle the `hex_world` lineage with `loft-libs-world` | S | a decision on the ticket; ours is 0.1.0, theirs 0.2.0 | Blocked on nobody, but **not ours alone** |
 | **`L5`** — fix the gate flake: poll for the acknowledgement, never sleep | M | `cache` green in 5 consecutive suite runs; `part_fence`'s 58 s → 21 s is the precedent | Open — **do before any PR gate** |
@@ -131,6 +131,42 @@ nothing else, which both `moros_render` and `hex_mesh` can take without inheriti
 `layering.sh`, printed on every run with its reason and its plan step, so the list cannot quietly
 become permanent. ⚠ That is the whole difference from the pattern skip it replaced — **a debt with
 a name on it beats a debt nobody can see.**
+
+### What `L3′` turned up
+
+**Built:** `lib/hex_proj` — `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world` and
+`proj_corner_offset`, depending on `hex_grid` and `graphics` and **nothing else**. 8 tests.
+`moros_render` and `hex_mesh` both take it; `KNOWN` in `layering.sh` is now `""`, which means
+**the lavition stack has no Moros dependency at all** — the first time that has been true.
+
+⚠ **THE PACKAGE EXISTS BECAUSE BOTH OBVIOUS HOMES WERE ALREADY-FAILED EXPERIMENTS.** Putting the
+projection in `moros_render` is what `hex_mesh`'s manifest records being reverted (`moros_sim`
+inherits `hex_editor`'s cone, `Cannot redefine 'fabs'`); moving it into `hex_mesh` points the same
+arrow the other way for the same result. A third, tiny package is not architecture astronomy here
+— it is the only shape the cones allow, and its manifest says so in place.
+
+⚠ **`proj_corner_offset` HAD TO BECOME `pub`, AND THAT IS THE SPLIT SHOWING.** It was private in
+`moros_render` because both its callers were in the same file; `emit_hex_surface` stayed behind and
+is now external. **A re-derived copy on the other side would be the second corner table** the
+comment has warned about since `hex_grid` took ownership — so it is exported rather than copied.
+
+⚠ **THE TESTS TRAVELLED WITH THE CODE.** `moros_render/tests/geometry.loft`'s negative-row parity
+test is the one that pins `hex_to_world` to `hex_grid` — lesson `E`, five bugs of that shape — and
+a function that moves house without its tests arrives unverified. `hex_proj`'s suite adds the
+control the old one lacked: **the `(6 - i) % 6` map must not be the identity**, or every corner
+assertion is vacuous and a package that merely forwarded the call would pass. That control is
+exactly the mistake the original `L3` would have made.
+
+⚠ **AND ADDING A PACKAGE INVALIDATES THE BUILD CACHE EXACTLY LIKE A LOFT INSTALL DOES.** The first
+gate suite after `hex_proj` appeared gave **3 `SERVER NEVER LISTENED` and the `walk`/`hipskin`
+pair** (`{"frames":1,"bodyMoved":false}` — STATE's third face, verbatim), with every log ending
+mid-diagnostics inside the 60-second wait. **Warming once — one server up and down — took it to
+zero never-listened.** The warm-up rule in STATE is written for a loft install; it applies to a
+new package too, and that is new.
+
+⚠ **AND AN INSTRUMENT READ ITSELF.** `pgrep -f "run-gates.sh tools/gates"` matched the *shell
+command containing that string* — my own — so a finished suite reported as still running for two
+polls. A pattern that appears in the query is a pattern the query will find.
 
 ## Cross-repo coordination
 

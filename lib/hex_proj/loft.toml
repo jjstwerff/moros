@@ -1,0 +1,25 @@
+[package]
+name    = "hex_proj"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/hex_proj.loft"
+
+# ⚠ TWO DEPENDENCIES, AND THE SHORTNESS OF THIS LIST IS THE WHOLE POINT — plan 19
+# `L3′`. This package exists because the projection had to be reachable from BOTH
+# `moros_render` and `hex_mesh` without either inheriting the other's cone.
+#
+# `lib/hex_mesh`'s own manifest records the experiment: putting this code under
+# `moros_render` was tried and REVERTED, because `moros_sim` depends on
+# `moros_render` and so inherited `hex_editor`'s whole cone — its tests went red on
+# `Cannot redefine 'fabs'` (from `hex_form`), then on `seg_len`. Moving the
+# projection into `hex_mesh` instead would have pointed the same arrow the other
+# way with the same result.
+#
+# So: `hex_grid` for the lattice — which this package does NOT re-derive, it only
+# projects — and `graphics` for `Vec3`/`Vec2`. Nothing else, ever. A dependency
+# added here is inherited by everything that draws.
+[dependencies]
+hex_grid = ">=0.1"
+graphics = ">=0.1"

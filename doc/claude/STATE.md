@@ -88,9 +88,18 @@ a reverted experiment (`moros_sim` inherits `hex_editor`'s cone and dies on `Can
 'fabs'`). Until then the debt is `KNOWN="hex_mesh:moros_render"` in `layering.sh`, **printed every
 run** with its reason.
 
-**What is left**: `L3′` (the `hex_proj` package), `L4` (the two `hex_world` lineages — **not ours
-alone**, raise it with `loft-libs-world`), `L5` (the gate flake), then `L6`–`L8`, all of which wait
-for `A8`.
+✅ **AND `L3′` LANDED THE SAME DAY.** `lib/hex_proj` holds the projection — `HEIGHT_SCALE`,
+`hex_to_world`, `hex_corner_world`, the corner map — on `hex_grid` + `graphics` and nothing else,
+because **both obvious homes were already-failed experiments** (either direction pulls
+`hex_editor`'s cone into `moros_sim`). `layering.sh` is now silent with `KNOWN=""`: **the lavition
+stack has no Moros dependency at all**, for the first time.
+
+⚠ **ADDING A PACKAGE INVALIDATES THE BUILD CACHE LIKE A LOFT INSTALL DOES** — the first suite after
+`hex_proj` gave 3 `SERVER NEVER LISTENED` plus the `walk`/`hipskin` pair; **one warm server took it
+to zero.** The warm-up rule above is written for an install; it applies to a new package too.
+
+**What is left**: `L4` (the two `hex_world` lineages — **not ours alone**, raise it with
+`loft-libs-world`), `L5` (the gate flake), then `L6`–`L8`, all of which wait for `A8`.
 
 ⚠ **AND `L5` — THE GATE FLAKE — COMES BEFORE ANY REQUIRED PR CHECK.** Measured this session:
 `cache` failed **2 of 3** suite runs and passed alone both times, and the *server's own log* read
