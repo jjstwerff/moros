@@ -26,10 +26,13 @@ when the step landed, and this file duplicating it is how it grows back.
 
 `make gate` **44 green** · `make lib-test` **2610, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All measured
-**2026-08-06 09:47 on the loft installed at 08:57** — ⚠ **not yet re-run on the 10:04 build** — `bd41374b`, branch `tuxedo-catalogue`,
+**2026-08-06 10:55 on the loft installed at 10:40** (`bd911fa1`), with the binary's hash stamped at
+every stage and unchanged throughout. `cache` was a startup miss in the suite and passed **alone**
+with `agree 24 bad 0 layers 42` — `bd41374b`, branch `tuxedo-catalogue`,
 `c73eb1c3` — in **one pass, no reruns**, which is itself the loft#777 fix showing: no cache clear,
-and the single warm start before the suite was the only preparation. ⚠ **FOUR BUILDS LANDED IN TEN HOURS** — `b619b909` at 00:26, `9dfd0280` at
-00:33, `bd41374b` at 08:57, `cf6ccd53` at 10:04 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
+and the single warm start before the suite was the only preparation. ⚠ **SIX BUILDS LANDED IN ELEVEN HOURS** — `b619b909` 00:26, `9dfd0280` 00:33,
+`bd41374b` 08:57, `cf6ccd53` 10:04, `bd911fa1` 10:40, and the sibling's head moved again at
+10:44 — and `loft --version` says `2026.8.0` for every one of them, so **the version string
 cannot tell two installs apart; `sha256sum /usr/local/bin/loft` can.** What that build changed for us is
 measured below.
 
@@ -57,6 +60,19 @@ holding a `const`. ⚠ **AND THE MEASUREMENT NEARLY WENT THE OTHER WAY**: diagno
 CODE, so the prefix is `advice[avoidable-copy]:` and a grep for `^advice: copy of` returns **zero**
 — which reads as *the notice is gone* rather than *my pattern is stale*. This tree's own rule, on
 its own ticket: **match a line you know is there before believing a count of zero.**
+
+⚠ **A SUITE TAKEN ACROSS AN INSTALL SWAP IS NOT A RESULT, AND ONLY A HASH AT BOTH ENDS SAYS SO.**
+A run started on `cf6ccd53` finished on `bd911fa1` — a build landed while the gates were going,
+invalidating the `loft_web` cdylib underneath them — and reported **12 `SERVER NEVER LISTENED`**,
+which reads as twelve broken gates. Three of the twelve logs name the rebuild. **Stamp
+`sha256sum /usr/local/bin/loft` at every stage**; when the toolchain is being rebuilt every few
+minutes, that is the difference between a failure and a moving target.
+
+⚠ **AND INSTRUMENTING THE PIPELINE BROKE WHAT THE PIPELINE MEASURED.** Adding the stamp put a
+command between `make gate` and `echo "GATE rc=$?"`, so `$?` reported the STAMP's exit code: the
+summary said `rc=0` for a run whose own log ends `make: *** [gate] Error 123`. A green line over a
+red run, introduced by the fix for the previous instrument problem. Capture the code on the line
+after the command, before anything else runs.
 
 ⚠ **THE DIAGNOSTIC OUTPUT SHAPE HAS CHANGED IN TWO CONSECUTIVE BUILDS, AND TWO OF OUR TOOLS GREP
 IT.** `08:57` added the `[code]` bracket; `10:04` (`@PLN131`) trimmed every message's *what to
