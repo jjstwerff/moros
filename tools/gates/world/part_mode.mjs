@@ -73,7 +73,7 @@ function open() {
 const a = open();
 await a.ready;
 a.ws.send('1:');
-await wait(2000);
+await meshesQuiet();
 
 // A read-back, taken by asking rather than by believing — a mesh is a picture and
 // a chunk count is not a cell.
@@ -92,6 +92,57 @@ async function ask(msg, prefix) {
     await wait(50);
   }
   return a.says.slice(before).find((s) => s.startsWith(prefix)) ?? '<none>';
+}
+
+// ── ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK — `part_check`'s rule, applied here ──
+//
+// This gate spent **25.1 s of its 30.2 s asleep**, in seventeen fixed waits. That is
+// the fault `part_check` and `part_fence` were already fixed for: a gate that sleeps
+// reports the machine, so it passes alone and fails at `GATE_JOBS=4` when four
+// interpreted servers answer slower than the guess — and ack-driven it is also FASTER
+// when the box is idle (those two went 58 s → 21 s and 34 s → 11 s).
+//
+// ⚠ IT TAKES SEVERAL PREFIXES BECAUSE A REFUSAL IS AN ANSWER TOO. Half the waits here
+// are on negative controls, and polling only for the success line makes every one of
+// them pay the whole timeout — which is slower than the sleep it replaced. The check
+// after the call is what decides which answer was wanted.
+//
+// ⚠ AND IT SAYS SO ON TIMEOUT. A wait that never fires and a wait that is not wired
+// look identical from outside.
+async function sendUntil(msg, prefixes, maxMs = 15000) {
+  const before = a.says.length;
+  a.ws.send(msg);
+  for (let t = 0; t < maxMs; t += 25) {
+    if (a.says.slice(before).some((s) => prefixes.some((p) => s.includes(p)))) {
+      return a.says.slice(before);
+    }
+    await wait(25);
+  }
+  console.log(`  !! no answer to ${JSON.stringify(msg)} matching `
+            + `${prefixes.join(' | ')} in ${maxMs}ms — saw `
+            + JSON.stringify(a.says.slice(before).slice(-3)));
+  return a.says.slice(before);
+}
+
+// The picture, SETTLED — mesh traffic gone quiet, rather than a guess at how long a
+// rebuild takes.
+//
+// ⚠ THE COMPARISON THIS GATE ENDS ON IS A PICTURE, so what it waits for here decides
+// whether it measures part mode or the box. A raise leaves 22 of 48 chunk grounds
+// stale on the client for ever (OPEN_ISSUES), which is why the save/load below forces
+// a full rebuild first — and a full rebuild is exactly the thing whose duration a
+// fixed sleep cannot know.
+async function meshesQuiet(quietMs = 400, maxMs = 20000) {
+  let last = a.meshes.length, still = 0;
+  for (let t = 0; t < maxMs; t += 50) {
+    await wait(50);
+    if (a.meshes.length === last) {
+      still += 50;
+      if (still >= quietMs) return true;
+    } else { last = a.meshes.length; still = 0; }
+  }
+  console.log(`  !! the picture never went quiet (${a.meshes.length} meshes)`);
+  return false;
 }
 const readStore = async () => ({
   cell: await ask('26:0,0', 'cell '),
@@ -114,10 +165,9 @@ const hash0 = md5(partFile);
 // so a house at yaw 0 is refused — `32:` answers *turn one step*. 30° is one of the
 // six, and a gate that took the refusal for an answer would go on to compare two
 // empty registries. See the acceptance check below.
-a.ws.send('7:0,0,0.5236');
-await wait(400);
-for (let i = 0; i < 3; i++) { a.ws.send('5:1'); await wait(150); }
-await wait(1200);
+await sendUntil('7:0,0,0.5236', ['placed ']);
+for (let i = 0; i < 3; i++) await sendUntil('5:1', ['rebuilt ']);
+await meshesQuiet();
 
 // ⚠ AND A HOUSE, BECAUSE THE STORE IS NOT ALL OF THE WORLD. Wall runs, roof plans,
 // leaves, openings, annexes, props, slabs and holes are the SERVER's records for
@@ -126,8 +176,8 @@ await wait(1200);
 // them leaves the author's house drawn as bare edge panels with no roof. `32:`
 // fills two of those registries in one gesture, and no read-back on this wire
 // reaches any of them: the only instrument that can see them is the PICTURE.
-a.ws.send('32:');
-await wait(2500);
+await sendUntil('32:', ['house placed', 'house refused']);
+await meshesQuiet();
 // ⚠ ACCEPTED, NOT MERELY ANSWERED. The first version of this check matched
 // /house|placed/, which the REFUSAL *"house refused — a footprint at this facing
 // has no mitred corners"* satisfies perfectly — an instrument that reports success
@@ -149,10 +199,9 @@ check(a.says.some((s) => s.startsWith('house placed')),
 // So the swap gets photographed against a settled picture rather than a stale one.
 // Without this the comparison below reports 22 differences that part mode did not
 // cause — a true measurement of the wrong thing, which is worse than no check.
-a.ws.send('8:part_mode_probe');
-await wait(1500);
-a.ws.send('9:part_mode_probe');
-await wait(5000);
+await sendUntil('8:part_mode_probe', ['saved ', 'save refused']);
+await sendUntil('9:part_mode_probe', ['loaded ', 'load refused']);
+await meshesQuiet();
 
 const worldBefore = await readStore();
 check(worldBefore.cell.startsWith('cell '), `the world answers a cell read (${worldBefore.cell})`);
@@ -171,16 +220,14 @@ check((a.huds[hudsBefore - 1] ?? '').includes('world '),
 // ⚠ Taken before the real open on purpose: run afterwards it could pass on a
 // server that simply never sends `H:` twice.
 const saysBeforeBad = a.says.length;
-a.ws.send('44:nosuch/part');
-await wait(1200);
+await sendUntil('44:nosuch/part', ['part refused']);
 const badSay = a.says.slice(saysBeforeBad).find((s) => s.startsWith('part refused')) ?? '';
 check(badSay !== '', `a part that is not there is refused: ${JSON.stringify(badSay)}`);
 check(a.huds.length === hudsBefore,
       `and the subject line does not move (${a.huds.length - hudsBefore} extra H:)`);
 
 // ⚠ THE OTHER REFUSAL WITH TEETH: a name that climbs out of the library.
-a.ws.send('44:../../etc/passwd');
-await wait(800);
+await sendUntil('44:../../etc/passwd', ['leaves the part library', 'part refused']);
 // ⚠ `A7.3e` moved the wording with the rule — `hex_part::part_name_ok` owns it now.
 check(a.says.some((s) => s.includes('leaves the part library')),
       'a name containing .. is refused rather than normalised');
@@ -191,8 +238,8 @@ const meshesBeforeOpen = new Set(a.meshes.filter((m) => m > MESH_FIGURE_MAX));
 const meshCountAtOpen = a.meshes.length;
 const pictureBeforeOpen = new Map(a.picture);
 const saysBeforeOpen = a.says.length;
-a.ws.send(`44:${PART}`);
-await wait(3000);
+await sendUntil(`44:${PART}`, [`part '${PART}'`, 'part refused']);
+await meshesQuiet();
 
 const openSay = a.says.slice(saysBeforeOpen).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
 check(openSay.includes('opened'), `the part opens: ${JSON.stringify(openSay)}`);
@@ -236,22 +283,20 @@ check(stale.length === 0,
 // here sends `8:` while a part is open, because saving would change the library
 // this gate photographs.
 const saysBeforeGuards = a.says.length;
-a.ws.send('9:probe_world');
-await wait(600);
+await sendUntil('9:probe_world', ['load refused', 'loaded ']);
 check(a.says.slice(saysBeforeGuards).some((s) => s.startsWith('load refused')),
       'a load in part mode is refused — it would make the subject line lie');
-a.ws.send(`44:${PART}`);
-await wait(600);
+await sendUntil(`44:${PART}`, ['already editing', `part '${PART}'`]);
 check(a.says.slice(saysBeforeGuards).some((s) => s.includes('already editing')),
       'and a second part is refused while one is open');
 
 // ── A7.3a-iii — edit the part, then close ───────────────────────────────────
-for (let i = 0; i < 3; i++) { a.ws.send('5:1'); await wait(150); }
-await wait(1200);
+for (let i = 0; i < 3; i++) await sendUntil('5:1', ['rebuilt ']);
+await meshesQuiet();
 
 const saysBeforeClose = a.says.length;
-a.ws.send('44:');
-await wait(3000);
+await sendUntil('44:', [`part '${PART}'`, 'part close refused']);
+await meshesQuiet();
 
 const closeSay = a.says.slice(saysBeforeClose).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
 check(closeSay.includes('closed'), `the part closes: ${JSON.stringify(closeSay)}`);
@@ -296,15 +341,13 @@ check(changed.length === 0,
 
 // A close with nothing open is refused rather than silently doing nothing.
 const saysBeforeSecond = a.says.length;
-a.ws.send('44:');
-await wait(800);
+await sendUntil('44:', ['part close refused', `part '${PART}'`]);
 check(a.says.slice(saysBeforeSecond).some((s) => s.startsWith('part close refused')),
       'closing when nothing is open is refused');
 
 // And the world is editable again, which is what "restored" has to mean.
 const saysBeforeSave = a.says.length;
-a.ws.send('8:probe_world');
-await wait(1000);
+await sendUntil('8:probe_world', ['saved ', 'save refused']);
 check(a.says.slice(saysBeforeSave).some((s) => s.startsWith('saved ')),
       'the world takes a save again once the part is closed');
 

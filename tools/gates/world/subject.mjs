@@ -45,7 +45,19 @@ function open() {
 
 const a = open();
 await a.ready;
-await wait(1500);
+// ── ⚠ WAIT FOR THE LINE, NOT FOR A CLOCK — except where the claim IS an absence ──
+//
+// This gate slept 6.9 s in five waits. Four were waiting for an `H:` subject line that
+// the server sends unprompted, so they poll for it. ⚠ THE FIFTH STAYS A FIXED WAIT AND
+// MUST: *"a REFUSED toggle sends no H: at all"* is a claim about something NOT
+// arriving, and there is no event to wait for. A duration is the instrument there.
+const until = async (fn, what, maxMs = 20000) => {
+  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
+  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
+  return false;
+};
+await until(() => a.huds.length >= 1 && a.mats.length >= 1,
+            'the opening subject line and catalogue never arrived');
 
 // ── B2.2 — an arriving client is told, before it has touched anything ────────
 // ⚠ The re-send is placed where the client JOINS THE LIST, not in the `1:`
@@ -117,7 +129,7 @@ check(mats.filter((r) => r.avail === '1').length === 6,
 // ── B2.1 — an accepted toggle moves it ───────────────────────────────────────
 const before = a.huds.length;
 a.ws.send('6:1');                       // level ON
-await wait(1200);
+await until(() => a.huds.length > before, 'the accepted toggle sent no H:');
 const afterLevel = a.huds.slice(before);
 check(afterLevel.length >= 1, `an accepted toggle sends H: (${afterLevel.length})`);
 check((afterLevel[afterLevel.length - 1] ?? '').includes('level ON'),
@@ -126,7 +138,7 @@ check((afterLevel[afterLevel.length - 1] ?? '').includes('level ON'),
 // A mode the server accepts, so the control below is not the only mode traffic.
 const beforeMode = a.huds.length;
 a.ws.send('40:4');                      // EYES
-await wait(1200);
+await until(() => a.huds.length > beforeMode, 'the accepted mode sent no H:');
 const okMode = a.huds.slice(beforeMode);
 check((okMode[okMode.length - 1] ?? '').includes('EYES'),
       `an accepted mode shows in the line: ${JSON.stringify(okMode[okMode.length - 1] ?? '')}`);
@@ -152,7 +164,7 @@ check(refusedHuds.length === 0,
 // be told what is true now rather than what was true at boot.
 const b = open();
 await b.ready;
-await wait(1500);
+await until(() => b.huds.length >= 1, 'the second client was never told');
 const bFirst = b.huds[0] ?? '';
 check(b.huds.length >= 1, `a client joining mid-session is told (${b.huds.length} H:)`);
 check(bFirst.includes('level ON') && bFirst.includes('EYES'),

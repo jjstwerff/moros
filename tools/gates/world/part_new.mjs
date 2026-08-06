@@ -77,7 +77,16 @@ function open() {
 const a = open();
 await a.ready;
 a.ws.send('1:');
-await wait(2000);
+// ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
+// how long the opening burst takes, so a loaded box made it a guess that was wrong.
+// Every gesture below waits for its own acknowledgement; this only has to see the
+// server answer at all, and it SAYS SO if it never does.
+const untilSaid = async (fn, what, maxMs = 20000) => {
+  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
+  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
+  return false;
+};
+await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
 
 // ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK — `A7.3d`'s finding, and it is the third
 // face of the `GATE_JOBS` flake. A gate written with fixed sleeps passes alone and
@@ -184,7 +193,8 @@ check(closed.includes(NEW), `the close names the part that is open (${closed})`)
 // and the first is the control that keeps the second from passing on a server that
 // placed the ancestor either time.
 a.ws.send('7:0,0,0.5236');
-await wait(400);
+await untilSaid(() => a.says.some((s2) => s2.startsWith('placed ')),
+                'the walker was never placed');
 const placedFrom = await ask(`14:12,${FROM}`, 'stencil ');
 check(placedFrom.includes('placed'), `the part it came from places (${placedFrom})`);
 check(placedFrom.includes(`'${FROM.split('/').pop()}'`),

@@ -71,7 +71,35 @@ const partsOf = (n) => (n ?? 'N:').slice(2).split(';').filter(Boolean)
 
 const a = open();
 await a.ready;
-await wait(2000);
+// ── ⚠ WAIT FOR THE EVIDENCE, NOT FOR A CLOCK — except where the claim IS a duration ──
+//
+// This gate slept 14 s in four waits. Three of them were waiting for the server's
+// once-a-second library sweep to notice a file, which is evidence that arrives on the
+// wire as an `N:` — so they poll for it and finish in a fraction of the guess.
+//
+// ⚠ THE FOURTH ONE STAYS A FIXED WAIT, AND MUST. *"An unchanged library sends
+// nothing"* is a claim about an ABSENCE over a window: there is no event to wait for,
+// and polling for one would either return immediately (proving nothing) or hang. A
+// duration is the instrument there, not a shortcut — see the control at the end.
+const until = async (fn, what, maxMs = 20000) => {
+  for (let t = 0; t < maxMs; t += 50) { if (fn()) return true; await wait(50); }
+  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
+  return false;
+};
+// The thumbnails, settled: `W:` traffic gone quiet rather than a guess at how long a
+// re-mesh of every row takes.
+const camsQuiet = async (quietMs = 600, maxMs = 20000) => {
+  let last = a.cams.length, still = 0;
+  for (let t = 0; t < maxMs; t += 50) {
+    await wait(50);
+    if (a.cams.length === last) { still += 50; if (still >= quietMs) return true; }
+    else { last = a.cams.length; still = 0; }
+  }
+  console.log(`  !! the thumbnails never went quiet (${a.cams.length} W:)`);
+  return false;
+};
+await until(() => a.cats.length >= 1, 'the catalogue never arrived');
+await camsQuiet();
 
 // ── A7.1a — the list IS the library ──────────────────────────────────────────
 
@@ -103,8 +131,10 @@ const camsBefore = a.cams.length;
 mkdirSync(NEWDIR, { recursive: true });
 copyFileSync(seed, `${NEWDIR}/first.hxw`);
 
-// The server sweeps once a second; two seconds is a sweep plus the re-mesh.
-await wait(4000);
+// The server sweeps once a second, and the sweep announces itself with an `N:`.
+const catsBeforeAdd = a.cats.length;
+await until(() => a.cats.length > catsBeforeAdd, 'the added part was never noticed');
+await camsQuiet();
 
 check(a.cats.length >= 2, `a part appearing re-sends the catalogue (${a.cats.length} N:)`);
 const after = partsOf(a.cats[a.cats.length - 1]);
@@ -129,7 +159,8 @@ check(freshRows.size === after.length,
 
 const catsBeforeRm = a.cats.length;
 rmSync(NEWDIR, { recursive: true, force: true });
-await wait(4000);
+await until(() => a.cats.length > catsBeforeRm, 'the removed part was never noticed');
+await camsQuiet();
 
 check(a.cats.length > catsBeforeRm,
       `a part disappearing re-sends the catalogue (${a.cats.length} N:)`);

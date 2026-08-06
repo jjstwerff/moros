@@ -55,7 +55,32 @@ function open() {
 const a = open();
 await a.ready;
 a.ws.send('1:');
-await wait(2000);
+// ── ⚠ WAIT FOR THE DISPLAY, NOT FOR A CLOCK ─────────────────────────────────
+//
+// This gate slept 12 s in five waits, four of them "let the display settle before
+// sampling" — which is a guess at how long a re-mesh takes and therefore a
+// measurement of the box. The display announces itself: `L:` lines arrive per layer,
+// so the evidence is traffic going quiet, and it SAYS SO if it never does.
+const until = async (fn, what, maxMs = 20000) => {
+  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
+  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
+  return false;
+};
+const lsQuiet = async (quietMs = 500, maxMs = 20000) => {
+  let last = a.ls.length, still = 0;
+  for (let t = 0; t < maxMs; t += 50) {
+    await wait(50);
+    if (a.ls.length === last) { still += 50; if (still >= quietMs) return true; }
+    else { last = a.ls.length; still = 0; }
+  }
+  console.log(`  !! the display never went quiet (${a.ls.length} L:)`);
+  return false;
+};
+// ⚠ NOT `lsQuiet` HERE — measured, a bare `1:` produces ZERO `L:` lines, so a wait
+// on them would return the moment it was asked and prove nothing. The opening
+// traffic is status; and every gesture below is ack-driven anyway, so this only has
+// to see the server answer at all.
+await until(() => a.says.length >= 1, 'the server never said anything after 1:');
 
 // Ack-driven, never a fixed sleep — `A7.3d`'s finding, and the only face of the
 // `GATE_JOBS` flake that was ours: a gate that sleeps reports the machine.
@@ -83,8 +108,7 @@ const lastBy = (arr) => { const m = {}; for (const s of arr) m[lkey(s)] = lbody(
 check(existsSync(`${ROOT}/${FRAME}.hxw`) && existsSync(`${ROOT}/${LEAF}.hxw`),
       'the frame and the leaf are both in the library');
 
-a.ws.send('7:0,0,0.5236');
-await wait(500);
+await stepFor('7:0,0,0.5236', 'placed ');
 
 // ── the CONTROL first: out of part mode the gesture still STAMPS ────────────
 // Taken before anything else so it cannot be contaminated, and it is what keeps
@@ -99,7 +123,7 @@ check(worldCell1 !== worldCell0,
 // ── A7.3f-i — in part mode it writes a reference ────────────────────────────
 let lines = await stepFor(`44:${FRAME}`, `part '${FRAME}'`);
 check(said(lines, `part '${FRAME}'`).includes('opened'), 'the frame opens');
-await wait(2500);                     // let the first display settle before sampling
+await lsQuiet();                      // the first display, settled — not a guess at it
 
 const partCell0 = await ask('26:0,0', 'cell ');
 const before = lastBy(a.ls);
@@ -115,7 +139,7 @@ check(partCell1 === partCell0,
     + `reference stamps nothing`);
 
 // ── A7.3f-ii — and the picture DID ──────────────────────────────────────────
-await wait(3500);
+await lsQuiet();
 const after = lastBy(a.ls.slice(nls));
 const shared = Object.keys(after).filter((k) => before[k] !== undefined);
 const moved = shared.filter((k) => before[k] !== after[k]);
@@ -172,7 +196,7 @@ await stepFor('44:', "part '");
 
 lines = await stepFor(`44:${SAVED}`, `part '${SAVED}'`);
 check(said(lines, `part '${SAVED}'`).includes('opened'), 'the saved part reopens');
-await wait(3500);
+await lsQuiet();
 const reCell = await ask('26:0,0', 'cell ');
 check(reCell === partCell0,
       `and its store STILL does not hold the leaf's cell (${reCell}) — it came back `

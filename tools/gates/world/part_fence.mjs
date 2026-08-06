@@ -61,7 +61,16 @@ function open() {
 const a = open();
 await a.ready;
 a.ws.send('1:');
-await wait(2000);
+// ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
+// how long the opening burst takes, so a loaded box made it a guess that was wrong.
+// Every gesture below waits for its own acknowledgement; this only has to see the
+// server answer at all, and it SAYS SO if it never does.
+const untilSaid = async (fn, what, maxMs = 20000) => {
+  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
+  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
+  return false;
+};
+await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
 
 // Everything the gate asks is answered on `S:`, so a step is "send, then read what
 // arrived because of it".
@@ -105,8 +114,11 @@ async function cycle(inside) {
 }
 
 const hash0 = md5(`${ROOT}/${PART}.hxw`);
+// ⚠ AND THE PLACEMENT IS ACKNOWLEDGED, so this waits for `placed` rather than
+// guessing half a second at it.
 a.ws.send('7:0,0,0.5236');
-await wait(500);
+await untilSaid(() => a.says.some((s2) => s2.startsWith('placed ')),
+                'the walker was never placed');
 
 // ── the fence must not leak into the WORLD ──────────────────────────────────
 // ⚠ FIRST, AND IT IS A CONTROL FOR EVERY REFUSAL BELOW. Each of these three is
