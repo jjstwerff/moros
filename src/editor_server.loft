@@ -395,6 +395,29 @@ const MSG_DERIVES = 43;
 // so an edit made to a part is discarded when the mode closes and says how many
 // it discarded. The save is `A7.3c`, and its check is `A7.3d`.
 const MSG_PART = 44;
+// ── THE JOINTS, READ BACK — plan 17 `A7.3f2` ─────────────────────────────────
+//
+// ⚠ A QUERY AND NOT A BROADCAST, WHICH IS THE WHOLE REASON IT CAN EXIST YET.
+// `A7.1` deliberately did NOT push `SOCK`/`FITS` on connect, because a message no
+// client reads is this tree's own trap — and `parts_for_socket` has been built and
+// tested since `A4.2` with no consumer at all. A read-back has a consumer by
+// construction: whoever asked. So this joins the `15:`/`16:`/`26:` family rather
+// than the `N:`/`W:` one, and it needs no client change to be honest.
+//
+// Three forms, escalating, which is `44:`'s one-message-two-forms precedent one
+// step further — and they are exactly the three questions a binding is made of:
+//
+//   `45:`                    what THIS part offers, and what it goes into
+//   `45:<inst>`              the sockets of instance <inst>'s part
+//   `45:<inst>,<socket>`     what in the library fits that socket
+//
+// ⚠ THE FRAME IS THE INSTANCE'S PART, NOT THE OPEN ONE. `socket_for_binding`
+// consults the sockets of the part the instance REFERS to — a cottage does not
+// offer the door-frame's `leaf`, the door-frame does — so a query about the open
+// part's own sockets could never reach the joint a bind needs. Getting that
+// backwards would have produced a message that answers confidently about the
+// wrong part.
+const MSG_SOCKETS = 45;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -5541,6 +5564,126 @@ fn main() {
           srv.send_to(ev.cid, "S:load refused — editing part '{part_name}'; "
                             + "close it with 44: first");
           println("editor: load refused — in part mode ('{part_name}')");
+        } else if ev.msg_id == MSG_SOCKETS {
+          // ── THE JOINTS, READ BACK — plan 17 `A7.3f2` ────────────────────────
+          //
+          // ⚠ ONE RECORD PER LINE, AND NEVER A SEPARATOR THE PAYLOAD MAY CARRY. A
+          // part is addressed by its catalogue handle, which is a FILE PATH, and a
+          // file name may hold a comma — `inst.loft` puts the handle last in its
+          // own record for exactly that reason. So a list of handles joined by
+          // anything is a list that mis-splits on the day somebody names a part
+          // `oak,2/leaf`; a line each cannot.
+          //
+          // ⚠ AND IT IS PART MODE ONLY, because the question is about the part
+          // being edited. Out here there is no frame to ask about, and answering
+          // with the world's non-existent sockets would be a message inventing its
+          // own subject.
+          if !in_part {
+            srv.send_to(ev.cid, "S:sockets refused — not editing a part; open one with 44:");
+          } else if ev.payload == "" {
+            // ── FORM ONE: what this part offers, and what it goes into ────────
+            sk_read = hex_part::part_sockets(wld);
+            if sk_read.sr_code == MR_MALFORMED {
+              srv.send_to(ev.cid, "S:sockets refused — '{part_name}' has a damaged "
+                                + "SOCK section: {sk_read.sr_why}");
+            } else {
+              sk_items = sk_read.sr_items;
+              srv.send_to(ev.cid, "S:sockets of '{part_name}' = {len(sk_items)}");
+              for sk_one in sk_items {
+                // ⚠ THE FILE'S OWN SPELLING, from the library's own function. A
+                // second rendering of a socket here is the two-spellings trap
+                // `part_file` was moved to `catalogue.loft` to end.
+                srv.send_to(ev.cid, "S:{hex_part::sock_text(sk_one)}");
+              }
+              // ⚠ `FITS` IS ONE OR NONE, never a list — `A4.1`'s rule, and the
+              // absence is said rather than left to be inferred from silence.
+              fi_read = hex_part::part_fits(wld);
+              if fi_read.fr_code == MR_OK {
+                srv.send_to(ev.cid, "S:fits {hex_part::fits_class(fi_read.fr_fits)}");
+              } else {
+                srv.send_to(ev.cid, "S:fits nothing — '{part_name}' declares no FITS");
+              }
+            }
+          } else {
+            // ── FORMS TWO AND THREE — about an INSTANCE of this part ──────────
+            sq_comma = ev.payload.find(",");
+            sq_itxt = ev.payload;
+            sq_name = "";
+            if sq_comma != null {
+              sq_itxt = ev.payload[..sq_comma];
+              sq_name = ev.payload[sq_comma + 1..];
+            }
+            sq_i = sq_itxt.trim() as integer?;
+            sq_ir = hex_part::part_instances(wld);
+            sq_items = sq_ir.ir_items;
+            if sq_i == null {
+              srv.send_to(ev.cid, "S:sockets refused — '{sq_itxt}' is not an instance number");
+            } else if sq_i < 0 || sq_i >= len(sq_items) {
+              // ⚠ THE COUNT, NOT JUST A REFUSAL. `no instance 4` on a part with
+              // two of them is unactionable; the number of instances is the one
+              // fact that makes it actionable, and it is `A4.3`'s rule for a
+              // misspelled socket applied to an index.
+              srv.send_to(ev.cid, "S:sockets refused — '{part_name}' has "
+                                + "{len(sq_items)} instances, so there is no {sq_i}");
+            } else {
+              sq_inst = sq_items[sq_i] ?? hex_part::PartInst {};
+              if sq_name == "" {
+                // FORM TWO — list what that instance's part offers.
+                sq_ld = world_load(hex_part::part_file(parts_root(), sq_inst.pi_part));
+                if sq_ld.wl_code != WL_OK {
+                  srv.send_to(ev.cid, "S:sockets refused — instance {sq_i} names "
+                                    + "'{sq_inst.pi_part}', which does not load "
+                                    + "({sq_ld.wl_code})");
+                } else {
+                  sq_own = sq_ld.wl_world;
+                  sq_sk = hex_part::part_sockets(sq_own);
+                  if sq_sk.sr_code == MR_MALFORMED {
+                    srv.send_to(ev.cid, "S:sockets refused — '{sq_inst.pi_part}': "
+                                      + "{sq_sk.sr_why}");
+                  } else {
+                    sq_list = sq_sk.sr_items;
+                    srv.send_to(ev.cid, "S:sockets of instance {sq_i} "
+                                      + "'{sq_inst.pi_part}' = {len(sq_list)}");
+                    for sq_one in sq_list {
+                      srv.send_to(ev.cid, "S:{hex_part::sock_text(sq_one)}");
+                    }
+                  }
+                }
+              } else {
+              // ⚠ `socket_named` AND NOT `socket_for_binding`, AND THE DIFFERENCE
+              // COST AN HOUR. The binding check answers TWO questions in one pass —
+              // *does this part offer that socket* and *may this other part go in
+              // it* — so asking it with no candidate returns `'' is not in <root>`,
+              // which reads as *the framing part is missing* and is really *the
+              // candidate is nothing*. The library was right; the premise was not,
+              // which is `A7.3d`'s finding at a second site. The lookup half is its
+              // own function now, so there is still one place a socket is found by
+              // name and one spelling of the refusal that lists what is offered.
+              sq_handle = sq_inst.pi_part;
+              sq_at = hex_part::socket_named(parts_root(), sq_handle, sq_name);
+              if sq_at.sa_code == hex_part::SA_NOSOCKET {
+                // ⚠ THE REFUSAL LISTS WHAT IS ON OFFER — `A4.3`'s finding, and the
+                // library already composes that sentence, so it is passed through
+                // rather than rebuilt here.
+                srv.send_to(ev.cid, "S:sockets refused — {sq_at.sa_why}");
+              } else if sq_at.sa_code == hex_part::SA_MISSING
+                     || sq_at.sa_code == hex_part::SA_BROKEN {
+                srv.send_to(ev.cid, "S:sockets refused — ({sq_at.sa_code}) {sq_at.sa_why}");
+              } else {
+                // FORM THREE — what fits it. ⚠ `A4.2`'s `parts_for_socket` FINALLY
+                // GETS A CONSUMER: built and tested at `A4.2`, called by nothing
+                // until this line. Exact and complete rather than near and ranked —
+                // a size class is NOMINAL, so *the nearest leaf that fits* presumes
+                // an ordering the design does not have.
+                sq_fit = hex_part::parts_for_socket(parts_root(), sq_at.sa_socket);
+                srv.send_to(ev.cid, "S:socket '{sq_name}' of instance {sq_i} "
+                                  + "{hex_part::socket_class(sq_at.sa_socket)} = "
+                                  + "{len(sq_fit)} fit");
+                for sq_p in sq_fit { srv.send_to(ev.cid, "S:fit {sq_p}"); }
+              }
+              }
+            }
+          }
         } else if ev.msg_id == MSG_PART {
           // ── PART MODE — plan 17 `A7.3a` ──────────────────────────────────────
           //

@@ -964,7 +964,7 @@ both stores in a vector and take `[i]`.
 | ✅ `A7.3e` | Save under a name that did not exist: the library grows while the editor watches. | **DONE.** `tools/gates/world/part_new.mjs`, 33 checks, four sabotages seen red. ⚠ **Three live defects found, two of them silent data loss** — a save into a family that does not exist reported success over a file that was never created; a name the catalogue can never list was accepted; and a save-as carried the ancestor's `PART.name`. New: `hex_world::WS_IO` + `world_file_size` (3 tests), `hex_part::part_name_ok` + `part_dir` (5 tests) | S |
 | ◐ `A7.3f` | The joints on the wire — `SOCK`/`FITS` out, `parts_for_socket` answering, a `BIND` gesture. | `A4.2`'s function gets its first consumer and `A5.2`'s leaf gets somewhere to hang | M |
 | ✅ `A7.3f1` | The gesture that makes a REFERENCE: in part mode `14:<roof>,<part>` writes an `INST`, and the picture comes from a DISPLAY world. **Lifts `A7.3b`'s fence.** | **DONE.** `tools/gates/world/part_inst.mjs`, 21 checks, four sabotages seen red. New: `hex_world::world_sections_key` (3 tests). ⚠ **Two live defects found, and the edit clock is blind to both** — see below | M |
-| `A7.3f2` | `SOCK`/`FITS` on the wire for the open part, and `parts_for_socket` answering for a named socket. | a client can see a joint, and what may go in it | S |
+| ✅ `A7.3f2` | `SOCK`/`FITS` on the wire for the open part, and `parts_for_socket` answering for a named socket. | **DONE.** `45:` with three forms; `tools/gates/world/part_sock.mjs`, 19 checks, four sabotages seen red. New library function `hex_part::socket_named` (4 tests) because the binding check asks two questions at once. ⚠ **`A4.2`'s `parts_for_socket` has its first consumer** | S |
 | `A7.3f3` | The `BIND` gesture — instance, socket, part — with `socket_for_binding`'s four refusals. | `A4.2`'s `socket_fit` reaches an author | S |
 
 ⚠ **`44` IS THE NEXT FREE ID — 1 through 43 are all taken**, and it is one message with two forms
@@ -1234,6 +1234,62 @@ editor is reverted by the next `make parts`, and the gate that checks the edit s
 flaky rather than as the collision it is. The end-to-end house is a **new name with no generator**;
 `data/parts/` holding both authored and generated content is fine, and which is which has to stay
 legible.
+
+### What `A7.3f2` turned up
+
+⚠ **A READ-BACK AND NOT A BROADCAST, WHICH IS THE WHOLE REASON IT CAN EXIST YET.** `A7.1`
+deliberately did not push `SOCK`/`FITS` on connect, because a message no client reads is this
+tree's own trap — and `socket_fit`/`parts_for_socket` had been built and tested since `A4.2`
+with no consumer at all. A query has a consumer by construction: whoever asked. So `45:` joins
+the `15:`/`16:`/`26:` read-back family rather than the `N:`/`W:` push family, and it needs no
+client change to be honest. **`parts_for_socket` is called by something now.**
+
+⚠ **THE FRAME IS THE INSTANCE'S PART, NOT THE OPEN ONE**, and getting it backwards produces a
+message that answers confidently about the wrong part with every count agreeing. A cottage does
+not offer the door-frame's `leaf`; the door-frame does. Sabotaged to ask about the open part:
+four checks fail, and one of them reads `'prop/shrine' offers no socket called 'leef'; it
+offers none` — a sentence that is true, about the wrong subject.
+
+⚠ **ONE RECORD PER LINE, AND NEVER A SEPARATOR THE PAYLOAD MAY CARRY.** A part is addressed by
+its catalogue handle, which is a FILE PATH and may hold a comma — `inst.loft` puts the handle
+last in its own record for exactly that reason — and a socket name is free text. So a list
+joined by anything mis-splits the day somebody names a part `oak,2/leaf`. A line each cannot,
+and the lead line carries the count so a reader knows when the burst is complete.
+
+⚠ **`socket_for_binding` ANSWERS TWO QUESTIONS AT ONCE, AND THE WIRE ASKS THEM APART.** *Does
+this part offer a socket of that name* and *may this other part go in it* are one pass in the
+library, because a binding always has both. A client listing what fits a joint has no candidate
+yet — and asking with an empty one returns `'' is not in <root>`, which **reads as *the framing
+part is missing*** and is really *the candidate is nothing*. An hour went into that, through
+three wrong hypotheses (a later argument's temporary, a first-call effect, an aliased instance
+record), each of which the measurement refuted: the caller's handle printed correctly at the
+call site every time. ⚠ **The tell was in the data all along** — `45:0,top` failed and
+`45:0,leef` succeeded, so it was never the arguments; it was how far into the function the two
+got. **The library was right and the premise was wrong**, which is `A7.3d`'s finding at a
+second site.
+
+⚠ **SO THE SPLIT IS THE FIX, NOT A SECOND SPELLING.** `hex_part::socket_named` is the lookup
+half; `socket_for_binding` is now that plus the fit check. The alternative was for the server to
+call `socket_index` and compose the *lists what is offered* refusal itself — a second copy of a
+sentence `A4.3` had already got right once, which is precisely how the two ends of a joint
+drift apart. ⚠ **The old function's 157 tests are the control** and they stayed green through
+the extraction, which is what says it was a refactor.
+
+⚠ **AND THE FIXTURE WAS ALREADY IN THE COMMITTED LIBRARY**, which is what makes the answer
+non-vacuous: `prop/plinth` offers `top @ statue/plinth-2` on heading 18, and `prop/statue` and
+`prop/seated` both declare they fit it — `A6.3`'s swap. The answer is **2 of 5 parts**, and
+that count is the discriminator: a lookup returning the whole library says 5, one finding
+nothing says 0, and both pass a gate that only asks whether the list is non-empty. Sabotaged to
+return `part_list(root)`: three checks fail.
+
+**The four sabotages, each seen red:**
+
+| what was broken | checks that failed |
+|---|---|
+| the query asks about the OPEN part instead of the instance's | 4 |
+| `parts_for_socket` returns the whole library | 3 |
+| the refusal stops listing what is offered (`A4.3` undone) | 1 |
+| a missing `FITS` reported as silence rather than said | 1 |
 
 ### What `A7.3f1` turned up
 

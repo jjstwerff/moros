@@ -22,9 +22,9 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f1`
+## ⏭ PICK UP HERE (2026-08-06, session 13) — plan 18 COMPLETE, plan 17 through `A7.3f2`
 
-`make gate` **42 green** · `make lib-test` **2594, both backends** · `make parts` green
+`make gate` **43 green** · `make lib-test` **2602, both backends** · `make parts` green
 (`data/parts/` byte-identical, all six files) · `npm test` **53** · layering silent. All re-measured
 **2026-08-06 on the loft installed at 00:33** (branch `tuxedo-catalogue`, `67239ef1`), which is a
 different binary from the one installed at 00:26 the same night — `loft --version` says `2026.8.0`
@@ -67,6 +67,13 @@ file, so it is read, parsed and then not used. **`rm -rf lib/*/native-auto` befo
 must reflect a `lib/` edit**, and re-run before believing either colour. The rebuild is minutes
 and ~5 GB, which is why `make gate` does not do it for you.
 
+⚠ **AND THAT WORKAROUND COLLIDES WITH THE GATE RUNNER, WHICH IS THE SAME COLD-CACHE FACE AS A
+LOFT INSTALL.** Clearing `native-auto` and going straight to `make gate` gave **4 `SERVER NEVER
+LISTENED`**, because each gate then rebuilds the packages inside its 60-second wait for
+`listening on port`, four at a time. The two rules fight, and the cure is one line between them:
+**start ONE server, let it build, stop it, then run the suite.** A run taken across a cold cache
+measures the compiler.
+
 ⚠ **`make gate` FLAKES, AND `GATE_JOBS` IS THE KNOB — NOT THE LOAD AVERAGE.** The symptom is
 `SERVER NEVER LISTENED`: a 60-second wait for `listening on port` while `GATE_JOBS` servers each
 interpret a 5,900-line `editor_server.loft`. Measured this session: **10 of 35 failed at
@@ -94,7 +101,7 @@ on the same build, in 12 s and 8 s. The tell is the same as the other two: a num
 
 | | | | |
 |---|---|---|---|
-| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **234** |
+| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **238** |
 | `hex_field` **51** | `hex_grid` **14** | `moros_terrain` **14** | `moros_map` **92** |
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put
@@ -114,7 +121,26 @@ store` and `src/editor_run.loft` exit 0 → SIGABRT. That fix is now on `main`
 found it is why the note above exists at all. ⚠ **The installed binary was replaced three times
 in one day**, so re-measure rather than trust an earlier run in the same session.
 
-### The next thing to do is #17 `A7.3f2` — the sockets on the wire
+### The next thing to do is #17 `A7.3f3` — the `BIND` gesture
+
+**`A7.3f2` is built: the joints can be read back.** `45:` has three forms — the open part's own
+`SOCK`/`FITS`, the sockets of instance `<n>`'s part, and what in the library fits a named socket
+— which are the three questions a binding is made of. ⚠ **A READ-BACK AND NOT A BROADCAST, which
+is why it can exist before the bind gesture**: `A7.1` refused to push `SOCK`/`FITS` on connect
+because a message no client reads is this tree's own trap, and a query's consumer is whoever
+asked. ✅ **`A4.2`'s `parts_for_socket` is called by something now** — `prop/plinth`'s `top`
+answers `prop/statue` and `prop/seated`, 2 of the library's 5.
+
+⚠ **`socket_for_binding` ANSWERS TWO QUESTIONS AT ONCE AND THE WIRE ASKS THEM APART.** *Which
+socket is this* and *may that part go in it* are one pass in the library, because a binding
+always has both — so asking with no candidate returns `'' is not in <root>`, which reads as *the
+framing part is missing* and means *the candidate is nothing*. An hour and three refuted
+hypotheses went into that; the tell was that `45:0,top` failed while `45:0,leef` succeeded, so
+it was never the arguments but how far into the function each got. `hex_part::socket_named` is
+the lookup half now, `socket_for_binding` is that plus the fit check, and the old function's 157
+tests are what say it was a refactor.
+
+### `A7.3f` is three steps, and `f1`/`f2` are done
 
 **`A7.3f1` is built: a part inside a part is a REFERENCE, and you can see it.** In part mode
 `14:<roof>,<part>` writes an `INST` instead of being refused — the same message, with the MODE
@@ -139,12 +165,10 @@ an instance and nothing else was told **`0 edits discarded`** and then had it di
 `hex_world::world_sections_key` is the other half and has both consumers. ⚠ **Anything that
 asks *has this changed* about a part must ask BOTH.**
 
-### `A7.3f` is three steps, and `f1` is done
-
-`f1` the gesture that makes a reference ✅ · `f2` `SOCK`/`FITS` on the wire and
-`parts_for_socket` answering · `f3` the `BIND` gesture, where `A4.2`'s `socket_fit` finally
-reaches an author. The per-step record is
-[plan 17 § *What `A7.3f1` turned up*](../../plans/17-parts/README.md).
+`f1` the gesture that makes a reference ✅ · `f2` the joints read back ✅ · `f3` the `BIND`
+gesture, where `A4.2`'s `socket_fit` finally reaches an author and `A5.2`'s leaf gets somewhere
+to hang. The per-step record is
+[plan 17 § *What `A7.3f2` turned up*](../../plans/17-parts/README.md).
 
 **`A7.3a`–`A7.3e` are built: a part can be opened, edited, saved under a name that did not exist,
 the save is checked, and the library follows while the editor watches.** `A7.3e` is the acceptance

@@ -277,7 +277,22 @@ pub struct SocketAt { sa_code: integer, sa_socket: Socket, sa_why: text,
 // called by nothing; a binding is the moment a part is actually offered to a joint,
 // so it is the moment the question has to be asked. A contract nothing consults is
 // a contract about nothing.
-pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
+// ── WHICH SOCKET, WITHOUT ASKING WHAT GOES IN IT — plan 17 `A7.3f2` ──────────
+//
+// `socket_for_binding` answers TWO questions in one pass: *does this part offer a
+// socket of that name* and *may this other part go in it*. The wire asks them
+// separately — a client listing what fits a joint has no candidate yet — and
+// asking the second with an empty candidate produces a confident, wrong refusal:
+// `'' is not in <root>`, which reads as *the framing part is missing* and is
+// actually *the bound part is nothing*. That cost a debugging hour, and the
+// function was right the whole time; the premise was not.
+//
+// ⚠ SO THE SPLIT IS THE FIX, NOT A SECOND SPELLING. The alternative was for the
+// server to call `socket_index` and compose the *lists what is offered* sentence
+// itself — a second copy of a refusal `A4.3` had already got right once, which is
+// exactly how the two ends of a joint drift apart. `socket_for_binding` is this
+// plus the fit check now, and there is one place a socket is looked up by name.
+pub fn socket_named(root: text, framing: text, name: text) -> SocketAt {
   onto = part_file(root, framing);
   if !exists(onto) {
     return SocketAt { sa_code: SA_MISSING, sa_socket: Socket {},
@@ -293,7 +308,7 @@ pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
     return SocketAt { sa_code: SA_BROKEN, sa_socket: Socket {},
                       sa_why: "'{framing}': {offered.sr_why}" };
   }
-  at = socket_index(offered.sr_items, b.bd_socket);
+  at = socket_index(offered.sr_items, name);
   if at < 0 {
     // ⚠ THE REFUSAL LISTS WHAT IS ON OFFER, because *no socket called 'leef'* in a
     // part with four of them is a typo the author cannot see without the list.
@@ -304,9 +319,15 @@ pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
     }
     if have == "" { have = "none"; }
     return SocketAt { sa_code: SA_NOSOCKET, sa_socket: Socket {},
-      sa_why: "'{framing}' offers no socket called '{b.bd_socket}'; it offers {have}" };
+      sa_why: "'{framing}' offers no socket called '{name}'; it offers {have}" };
   }
-  sk = offered.sr_items[at] ?? Socket {};
+  SocketAt { sa_code: SA_OK, sa_socket: offered.sr_items[at] ?? Socket {}, sa_why: "" }
+}
+
+pub fn socket_for_binding(root: text, framing: text, b: Binding) -> SocketAt {
+  found = socket_named(root, framing, b.bd_socket);
+  if found.sa_code != SA_OK { return found; }
+  sk = found.sa_socket;
 
   leaf = part_file(root, b.bd_part);
   if !exists(leaf) {

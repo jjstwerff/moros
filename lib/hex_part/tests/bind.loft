@@ -563,3 +563,60 @@ fn test_a_swing_that_is_not_a_number_is_refused_at_the_write() {
                                          bd_part: "d/oak" }]).bw_code == BD_OK,
          "a large FINITE swing was refused, so the guard is a magnitude fence");
 }
+
+// ── WHICH SOCKET, WITHOUT A CANDIDATE — plan 17 `A7.3f2` ────────────────────
+//
+// `socket_for_binding` answers two questions at once, and the wire asks them
+// apart: a client listing what fits a joint has nothing to offer it yet. These
+// pin the half that was extracted, and the last one pins WHY.
+fn test_socket_named_finds_it_and_carries_its_class() {
+  wipe();
+  put_frame("f/frame", 3, 1, 2, 0);
+  got = socket_named(root(), "f/frame", "leaf");
+  assert(got.sa_code == SA_OK, "({got.sa_code}) {got.sa_why}");
+  assert(socket_class(got.sa_socket) == "door/2x3",
+         "the socket came back without its class: {socket_class(got.sa_socket)}");
+  assert(got.sa_socket.sk_q == 1 && got.sa_socket.sk_r == 2,
+         "and without its position");
+  wipe();
+}
+
+fn test_socket_named_lists_what_is_offered() {
+  wipe();
+  put_frame("f/frame", 3, 0, 0, 0);
+  got = socket_named(root(), "f/frame", "leef");
+  assert(got.sa_code == SA_NOSOCKET, "a misspelling resolved: {got.sa_code}");
+  assert(got.sa_why.find("'leaf'") != null,
+         "the refusal does not say what IS offered: {got.sa_why}");
+  wipe();
+}
+
+fn test_socket_named_refuses_a_part_that_is_not_there() {
+  wipe();
+  got = socket_named(root(), "f/nothing", "leaf");
+  assert(got.sa_code == SA_MISSING, "an absent part resolved: {got.sa_code}");
+  wipe();
+}
+
+// ⚠ THE ONE THAT MADE THE SPLIT NECESSARY, and it is a control on the OLD
+// function as much as a test of the new one. Asking *which socket* through
+// `socket_for_binding` means passing a candidate; passing none is refused —
+// correctly, and with a sentence that reads as *the framing part is missing*
+// when what is missing is the candidate. A server that took that answer at face
+// value reported a joint as broken on a part that was perfectly sound.
+fn test_the_binding_check_needs_a_candidate_and_the_lookup_does_not() {
+  wipe();
+  put_frame("f/frame", 3, 0, 0, 0);
+  bare = Binding { bd_inst: 0, bd_socket: "leaf", bd_part: "" };
+  viaBind = socket_for_binding(root(), "f/frame", bare);
+  assert(viaBind.sa_code == SA_MISSING,
+         "an empty candidate was accepted as a binding: {viaBind.sa_code}");
+  assert(viaBind.sa_why.find("''") != null,
+         "and the refusal is about the CANDIDATE, which is what made it "
+         + "misreadable: {viaBind.sa_why}");
+  viaLookup = socket_named(root(), "f/frame", "leaf");
+  assert(viaLookup.sa_code == SA_OK,
+         "the lookup wants a candidate too, so nothing was actually split "
+         + "({viaLookup.sa_code}) {viaLookup.sa_why}");
+  wipe();
+}
