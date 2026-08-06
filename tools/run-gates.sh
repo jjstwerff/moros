@@ -130,8 +130,20 @@ build_server() {
   grep -q 'listening on port' "$blog" 2>/dev/null && ok=1
   kill "$bpid" 2>/dev/null
   wait "$bpid" 2>/dev/null
-  # ⚠ `loft --native` FORKS: killing the wrapper leaves the compiled child running.
-  for c in $(pgrep -P "$bpid" 2>/dev/null); do kill "$c" 2>/dev/null; done
+  # ⚠ `loft --native` FORKS, AND `pgrep -P` CANNOT SEE THE CHILD ONCE THE WRAPPER IS
+  # DEAD — it has been reparented, so the first version of this leaked one server per
+  # invocation. Five were found running at 189 s to 1039 s old, all on this port range,
+  # after a handful of suite runs: the "stop what you start" rule broken by the code
+  # written to enforce it.
+  #
+  # So the child is found by the PORT IT HOLDS and killed by pid — and only after its
+  # command line is checked, because a port is not an identity and this box runs other
+  # agents' editors. That is `run-gates.sh`'s own rule, one function up.
+  for c in $(ss -lptn "sport = :$bport" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u); do
+    case "$(tr '\0' ' ' < "/proc/$c/cmdline" 2>/dev/null)" in
+      *editor_server*|*loft_native_bin_*) kill "$c" 2>/dev/null ;;
+    esac
+  done
   if [ "$ok" -eq 0 ]; then
     echo "gates: the server would not build — falling back to the interpreter"
     grep -vE '^warning|^ *\||^ *-->|^ *=|^advice|^note:' "$blog" | tail -6
