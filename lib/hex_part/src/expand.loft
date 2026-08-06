@@ -214,7 +214,20 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
     return Expand { ex_code: EX_BROKEN,
                     ex_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
   }
-  p = ld.wl_world;
+  return expand_loaded(w, root, ld.wl_world, name, cq, cr, anchor, lo, aim, depth);
+}
+
+// ── THE WALK, OVER A PART THAT IS ALREADY OPEN — plan 17 `A5.2` ──────────────
+//
+// ⚠ SPLIT OFF BECAUSE A PART BEING EDITED IS NOT ON DISK, which is the same shape
+// `part_cycle_of` has: the library's entry point takes a NAME, and what a gesture
+// holds is a WORLD. Expanding an open part's instances one at a time — the obvious
+// way round it — silently loses the part's OWN `BIND` section, because a binding
+// belongs to the frame and not to the instance it hangs on. Measured in the
+// editor: a doorway opened, its threshold derived, and its leaf drawn nowhere,
+// with no refusal anywhere to say why.
+fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: integer,
+                 anchor: integer, lo: integer, aim: integer, depth: integer) -> Expand {
 
   // ⚠ THE PART'S OWN FACING IS READ BEFORE ANYTHING IS WRITTEN, so a refused turn
   // leaves the world untouched — which `A3.2`'s facing test already asserts by
@@ -311,7 +324,7 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
     // the `.glb` and would have no better reason to pay here.
     // ⚠ AND ABSENT IS 0.0 EVERYWHERE, which is *not hinged* by `hinge.loft`'s own
     // rule: a zero axis is `HG_AXIS`, a joint with nothing to turn about.
-    hg = part_hinge(ld.wl_world);
+    hg = part_hinge(p);
     hgh = hg.hr_hinge;
     if hg.hr_code != MR_OK { hgh = Hinge {}; }
     meshes += [MeshAt { ma_mesh: body.pr_name, ma_q: cq, ma_r: cr, ma_h: anchor,
@@ -398,6 +411,20 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
 // deepest nest is TWO. Measured before it was fixed: `h/a → h/b → h/a` reported
 // `EX_DEPTH`. The walk runs only on the error path, so a healthy expansion pays
 // nothing for it, and `part_cycle` already names the chain.
+// ── EXPAND A PART THAT IS OPEN, NOT ONE THAT IS NAMED — plan 17 `A5.2` ───────
+//
+// The editor holds the part it is editing in memory; `part_expand` takes an
+// instance and reaches for a file. Expanding the open part's instances one at a
+// time loses its own `BIND` section — a binding belongs to the FRAME, not to the
+// instance it hangs on — so a doorway's leaf is derived by nothing and refused by
+// nothing. This is the in-memory entry, at the part's own origin.
+//
+// ⚠ DEPTH STARTS AT 1, matching `part_expand`: the open part is level one, so a
+// nest eight deep inside it is refused at the same place it would be on disk.
+pub fn part_expand_of(w: World, root: text, p: World, lo: integer) -> Expand {
+  expand_loaded(w, root, p, "<open>", 0, 0, 0, lo, 0, 1)
+}
+
 pub fn part_expand(w: World, root: text, i: PartInst, lo: integer) -> Expand {
   got = expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, i.pi_facing, 1);
   if got.ex_code == EX_DEPTH {

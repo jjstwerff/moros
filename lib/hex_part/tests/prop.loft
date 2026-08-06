@@ -277,3 +277,103 @@ fn test_a_part_can_carry_cells_a_mesh_a_name_and_a_fit_at_once() {
          "the walker's column was lost when the eye's mesh arrived");
   wipe(root());
 }
+
+// ── THE SWING TURNS THE MESH — plan 17 `A5.2` ───────────────────────────────
+//
+// ⚠ THE FIXTURE IS A DOOR, NOT A CUBE, AND THE HINGE IS OFF THE ORIGIN. A leaf
+// hinged at its own origin turns about its centre, and every wrong composition
+// this field exists to prevent looks correct on it: the point would never be read.
+// One vertex a known distance from a known hinge is what makes the arithmetic
+// answerable, so this puts the hinge at x=0 and the far edge at x=1.
+fn leaf_mesh() -> Mesh {
+  m = mesh("leaf");
+  add_vertex(m, vertex(math::vec3(0.0, 0.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(0.0, 0.0)));
+  add_vertex(m, vertex(math::vec3(1.0, 0.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(1.0, 0.0)));
+  add_vertex(m, vertex(math::vec3(1.0, 2.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(1.0, 1.0)));
+  add_triangle(m, 0, 1, 2);
+  m
+}
+
+// A quarter turn about the vertical, hinged at the origin edge: the far edge
+// swings from +x to -z (or +z, by the handedness) and its DISTANCE from the hinge
+// is unchanged. Distance is the claim that does not depend on which way round the
+// convention runs; the sign is asserted separately and named as a convention.
+fn test_a_quarter_turn_moves_the_far_edge_a_quarter_circle() {
+  at = MeshAt { ma_mesh: "leaf", ma_ax: 0.0, ma_ay: 1.0, ma_az: 0.0, ma_swing: 0.25 };
+  got = mesh_swing(leaf_mesh(), at);
+  assert(len(got.vertices) == 3, "{len(got.vertices)} vertices came back, not 3");
+  hinge = got.vertices[0] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+  far = got.vertices[1] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+  // ⚠ THE HINGE ITSELF DOES NOT MOVE. That is what makes it a hinge rather than a
+  // turn about the origin, and it is the assertion a composition into `ma_facing`
+  // would fail.
+  assert(near(hinge.pos.x, 0.0) && near(hinge.pos.y, 0.0) && near(hinge.pos.z, 0.0),
+         "the hinge moved to ({hinge.pos.x},{hinge.pos.y},{hinge.pos.z})");
+  assert(near(far.pos.x, 0.0), "a quarter turn left the far edge at x={far.pos.x}");
+  assert(near(abs_f(far.pos.z), 1.0),
+         "the far edge is {far.pos.z} from the hinge, and it was 1.0 — a swing "
+       + "must not change the leaf's size");
+  assert(near(far.pos.y, 0.0), "the swing moved the leaf vertically to {far.pos.y}");
+}
+
+// ⚠ THE HINGE POINT IS READ, AND THIS IS THE TEST THAT SAYS SO. Same leaf, same
+// angle, hinge moved to the FAR edge: now the other end is what travels. A
+// composition that ignored the point passes the test above and fails this one.
+fn test_the_hinge_point_is_what_stays_still() {
+  at = MeshAt { ma_mesh: "leaf", ma_ox: 1.0, ma_ax: 0.0, ma_ay: 1.0, ma_az: 0.0,
+                ma_swing: 0.25 };
+  got = mesh_swing(leaf_mesh(), at);
+  near_edge = got.vertices[0] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+  far_edge = got.vertices[1] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+  assert(near(far_edge.pos.x, 1.0) && near(far_edge.pos.z, 0.0),
+         "the hinge at x=1 moved to ({far_edge.pos.x},{far_edge.pos.z})");
+  assert(near(abs_f(near_edge.pos.z - 0.0), 1.0) || near(abs_f(near_edge.pos.x - 1.0), 1.0),
+         "the free edge did not travel: ({near_edge.pos.x},{near_edge.pos.z})");
+}
+
+// ⚠ A HORIZONTAL AXIS IS THE TRAPDOOR, and it is the whole reason this could not
+// ride in `ma_facing` — which turns about the VERTICAL and could never express it.
+fn test_a_horizontal_axis_lifts_the_leaf_instead_of_sweeping_it() {
+  at = MeshAt { ma_mesh: "leaf", ma_ax: 1.0, ma_ay: 0.0, ma_az: 0.0, ma_swing: 0.25 };
+  got = mesh_swing(leaf_mesh(), at);
+  top = got.vertices[2] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+  // The vertex was at (1,2,0): about the x axis a quarter turn takes y into z.
+  assert(near(top.pos.x, 1.0), "an x-axis hinge moved x to {top.pos.x}");
+  assert(near(top.pos.y, 0.0), "the trapdoor did not come down: y={top.pos.y}");
+  assert(near(abs_f(top.pos.z), 2.0), "and it should be 2 out: z={top.pos.z}");
+}
+
+// ⚠ THE CONTROLS. Not hinged and hinged-but-shut must produce the SAME geometry,
+// by the same path — and the normal must turn with the face, or the lighting says
+// the leaf is somewhere it is not, which is the one error a picture gate cannot
+// see and a person can.
+fn test_an_unhinged_or_shut_leaf_is_returned_unmoved() {
+  none = MeshAt { ma_mesh: "leaf", ma_swing: 0.25 };          // zero axis
+  shut = MeshAt { ma_mesh: "leaf", ma_ay: 1.0, ma_swing: 0.0 };
+  for at in [none, shut] {
+    got = mesh_swing(leaf_mesh(), at);
+    v = got.vertices[1] ?? vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0));
+    assert(near(v.pos.x, 1.0) && near(v.pos.z, 0.0),
+           "an unhinged or shut leaf moved to ({v.pos.x},{v.pos.z})");
+  }
+}
+
+fn test_the_normal_turns_with_the_face() {
+  at = MeshAt { ma_mesh: "leaf", ma_ax: 0.0, ma_ay: 1.0, ma_az: 0.0, ma_swing: 0.25 };
+  got = mesh_swing(leaf_mesh(), at);
+  v = got.vertices[0] ?? vertex(math::vec3(0.0, 0.0, 0.0), math::vec3(9.0, 9.0, 9.0), math::vec2(0.0, 0.0));
+  // It faced +z; a quarter turn about +y takes it onto the x axis.
+  assert(near(abs_f(v.normal.x), 1.0) && near(v.normal.z, 0.0),
+         "the normal stayed at ({v.normal.x},{v.normal.y},{v.normal.z}) — the face "
+       + "turned and its lighting did not");
+  // ⚠ AND ITS LENGTH IS 1: subtracting the hinge point from a DIRECTION would
+  // leave it neither unit nor pointing anywhere meaningful.
+  nlen = sqrt(v.normal.x * v.normal.x + v.normal.y * v.normal.y + v.normal.z * v.normal.z) ?? 0.0;
+  assert(near(nlen, 1.0), "the normal is {nlen} long, so the offset was applied to it");
+}
+
+fn near(a: float, b: float) -> boolean { abs_f(a - b) < 0.0001 }
+fn abs_f(v: float) -> float { if v < 0.0 { return 0.0 - v; } v }

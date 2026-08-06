@@ -940,3 +940,45 @@ fn test_the_swing_lands_only_on_the_leaf_it_was_bound_to() {
                    + "reached something it was not bound to");
   wipe(root());
 }
+
+// ── AN OPEN PART EXPANDS WITH ITS OWN BINDINGS — plan 17 `A5.2` ─────────────
+//
+// ⚠ THE BUG THIS EXISTS FOR IS AN ABSENCE. Expanding an open part's instances one
+// at a time derives every cell correctly and loses every bound leaf, because a
+// binding belongs to the frame rather than to the instance it hangs on — and
+// nothing refuses, because nothing was asked.
+fn test_an_open_part_expands_its_own_bindings() {
+  wipe(root());
+  put_hinged("p/leaf", "oak", 0.0, 0.25);
+  put_plinth("p/plinth", 20, 18);
+  yard_swung("p/yard", "p/plinth", "p/leaf", 0.125);
+  yard = world_load("{root()}/p/yard.hxw");
+  assert(yard.wl_code == WL_OK, "the fixture did not load");
+  ex = part_expand_of(target(), root(), yard.wl_world, 0);
+  assert(ex.ex_code == EX_OK, "refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1,
+         "{len(ex.ex_meshes)} mesh placements from the open part, not 1 — a bound "
+       + "leaf is derived by nothing when the frame's own BIND is not read");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_swing == 0.125, "and it is swung {m.ma_swing}, not 0.125");
+  wipe(root());
+}
+
+// ⚠ THE CONTROL: expanded from disk as an instance, the same fixture gives the
+// same answer. If these two ever disagree the editor is drawing a different
+// document from the one it saves.
+fn test_the_open_form_and_the_named_form_agree() {
+  wipe(root());
+  put_hinged("p/leaf", "oak", 0.0, 0.25);
+  put_plinth("p/plinth", 20, 18);
+  yard_swung("p/yard", "p/plinth", "p/leaf", 0.125);
+  named = part_expand(target(), root(), at("p/yard", 0, 0, 0), 0);
+  yard = world_load("{root()}/p/yard.hxw");
+  opened = part_expand_of(target(), root(), yard.wl_world, 0);
+  assert(named.ex_code == opened.ex_code, "the two forms disagree on the code");
+  assert(len(named.ex_meshes) == len(opened.ex_meshes),
+         "{len(named.ex_meshes)} meshes named against {len(opened.ex_meshes)} open");
+  assert(named.ex_cols == opened.ex_cols,
+         "{named.ex_cols} columns named against {opened.ex_cols} open");
+  wipe(root());
+}

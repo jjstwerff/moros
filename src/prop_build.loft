@@ -282,6 +282,100 @@ fn write_shrine(root: text, holds: text) {
 // building is put on a landscape; the anchor is how.
 const GROUND = 2;
 
+// ── A DOOR — plan 17 `A5.2`, and the first content with a HINGE ─────────────
+//
+// ⚠ THE LIBRARY HAD NO HINGED PART AT ALL, which is why `A5.2`'s renderer half
+// could not be SEEN however finished it was: `swing_fit` had been fencing an angle
+// since `A5.2`'s state half and nothing in `data/parts/` declared a hinge for it to
+// fence. A door leaf is the smallest content that makes the field visible, and its
+// acceptance is a person's eye — *does that look like a door, and is it ajar*.
+//
+// ⚠ THE HINGE IS DOWN ONE EDGE, NOT THROUGH THE CENTRE. A leaf hinged at its own
+// origin turns about its middle, which is a revolving door — and it is exactly the
+// picture a wrong composition produces, so the content has to be able to tell the
+// two apart.
+// ⚠ WORLD UNITS, LIKE THE STATUE'S. `HEIGHT_SCALE` belongs to `moros_render` and
+// this program does not depend on it; the other meshes here are literal too, so a
+// second unit system would be one more thing to keep in step for no gain.
+const LEAF_W = 0.9;      // a touch under a hex across, so it swings clear
+const LEAF_H = 2.0;      // about a person and a half — a door, not a hatch
+const LEAF_T = 0.08;
+
+fn leaf_mesh() -> Mesh {
+  m = mesh("leaf");
+  // A slab, its hinge edge on x = 0 so the `Hinge` point below is a corner and not
+  // a guess. Two rails and a panel would read better still; a slab is enough to
+  // answer *is it ajar*, which is the question this content exists for.
+  box(m, 0.0, 0.0, 0.0 - LEAF_T / 2.0, LEAF_W, LEAF_H, LEAF_T / 2.0);
+  m
+}
+
+fn write_leaf(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "oak",
+    pm_desc: "a door leaf, hinged on its left edge, swinging a quarter turn"
+  }) == PM_OK, "the leaf's meta was refused");
+  assert(part_set_mesh(w, "door/oak").pw_code == PR_OK, "the leaf's mesh was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "the leaf's FITS was refused");
+  // ⚠ THE AXIS IS VERTICAL AND THE POINT IS THE HINGE CORNER. `A5.1` stores the
+  // axis as given, so `(0,1,0)` is written rather than normalised; `mesh_swing`
+  // normalises where it needs to.
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0, hg_hi: 0.25
+  }).hw_code == HG_OK, "the leaf's hinge was refused");
+  assert(world_save(w, "{root}/door/oak.hxw", []) == WS_OK, "the leaf was not saved");
+}
+
+// The frame: a threshold cell with a socket where the leaf hangs.
+fn write_frame(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 1 as u16? ?? 0,
+                     h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }] }).cw_code == CW_OK,
+    "the frame's threshold was refused");
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "frame",
+    pm_desc: "a door frame — a threshold and a socket for a 1x2 leaf"
+  }) == PM_OK, "the frame's meta was refused");
+  assert(part_set_sockets(w, [Socket {
+    sk_q: 0, sk_r: 0, sk_h: 1, sk_mount: SM_HEAD, sk_at: 0,
+    sk_kind: "door", sk_size: "1x2", sk_name: "leaf"
+  }]).sw_code == SK_OK, "the frame's socket was refused");
+  assert(world_save(w, "{root}/door/frame.hxw", []) == WS_OK, "the frame was not saved");
+}
+
+// A doorway: the frame standing on paving, with the leaf hung in it and AJAR.
+//
+// ⚠ THE SWING IS IN THE DOCUMENT, so what a person sees is the format's own value
+// and not a number the renderer invented. 0.125 of a turn is 45°, which is what
+// `A5.2`'s state half already round-trips.
+fn write_doorway(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in 0..3 {
+    for pr in 0..3 {
+      assert(world_set_column(w, Column { co_q: pq, co_r: pr,
+        co_cells: [Hex { h_height: 1 as u16? ?? 0,
+                         h_material: hex_editor::ROAD_MAT as u8? ?? 0 }] }).cw_code == CW_OK,
+        "the doorway's paving was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "doorway",
+    pm_desc: "a frame on paving with an oak leaf hung in it, ajar"
+  }) == PM_OK, "the doorway's meta was refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 1, pi_r: 1, pi_h: 0, pi_facing: 0, pi_part: "door/frame" }]) == PI_OK,
+    "the doorway's instance was refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "door/oak"
+  }]).bw_code == BD_OK, "the doorway's binding was refused");
+  assert(world_save(w, "{root}/door/doorway.hxw", []) == WS_OK, "the doorway was not saved");
+}
+
 fn ground() -> World {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   for q in (0 - 2)..12 {
@@ -298,6 +392,47 @@ fn ground() -> World {
 fn main() {
   root = out_root();
   assert(mkdir_all("{root}/prop").ok(), "could not make {root}/prop");
+  assert(mkdir_all("{root}/door").ok(), "could not make {root}/door");
+
+  // ── the door, and the library's first hinge — plan 17 `A5.2` ──────────────
+  //
+  // ⚠ WRITTEN BEFORE THE PROPS so a failure here names itself rather than showing
+  // up as a statue that will not build. Same byte-identity rule as the statue's:
+  // the `.glb` is committed, so the build has to repeat.
+  leafp = "{root}/door/oak.glb";
+  lbefore = 0;
+  if exists(leafp) {
+    lwas = file(leafp);
+    lbefore = lwas#size;
+  }
+  save_glb(leaf_mesh(), leafp);
+  lonf = file(leafp);
+  lafter = lonf#size;
+  assert(lafter > 0, "save_glb wrote nothing to {leafp}");
+  if lbefore > 0 {
+    assert(lbefore == lafter,
+           "the leaf's glb was {lbefore} bytes and is now {lafter} — a build that "
+         + "does not repeat cannot be committed");
+  }
+  write_leaf(root);
+  write_frame(root);
+  write_doorway(root, 0.125);
+  // ⚠ THE EXPANSION IS THE GATE, not three files that load. A doorway whose leaf
+  // is not bound, or is bound and not swung, writes and reads back perfectly.
+  dw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  dex = part_expand(dw, root, PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                         pi_part: "door/doorway" }, 0);
+  assert(dex.ex_code == EX_OK, "the doorway does not expand: {dex.ex_why}");
+  assert(len(dex.ex_meshes) == 1,
+         "{len(dex.ex_meshes)} mesh placements came out of the doorway, not 1");
+  dm = dex.ex_meshes[0] ?? MeshAt {};
+  assert(dm.ma_swing == 0.125,
+         "the leaf is drawn at {dm.ma_swing} and the document says 0.125");
+  assert(dm.ma_ay != 0.0,
+         "the leaf's hinge axis did not reach its placement, so it can only be shut");
+  println("  doorway: leaf '{dm.ma_mesh}' at ({dm.ma_q},{dm.ma_r},{dm.ma_h}) "
+        + "aim {dm.ma_facing}, swung {dm.ma_swing} of a turn about "
+        + "({dm.ma_ax},{dm.ma_ay},{dm.ma_az})");
 
   // ── the mesh, and the proof that writing it is repeatable ──────────────────
   //

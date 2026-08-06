@@ -208,3 +208,60 @@ pub fn part_mesh_loads(root: text, w: World) -> MeshCheck {
   }
   MeshCheck { mc_code: MC_OK, mc_why: "", mc_verts: len(gr.gr_mesh.vertices) }
 }
+
+// ── THE SWING, APPLIED — plan 17 `A5.2`, the renderer's half ─────────────────
+//
+// `MeshAt` carries the hinge and the angle; this turns them into geometry. It is
+// the PART's half of the pose and stops there: the hinge is in the leaf's own
+// frame, so no lattice and no world position appear here at all. The consumer
+// applies `ma_facing` and puts the result where `(ma_q, ma_r, ma_h)` says, because
+// where a hex lands in world units is the consumer's convention and never this
+// package's — the same line `part_stamp` draws for cells.
+//
+// ⚠ A ZERO AXIS RETURNS THE MESH UNTOUCHED, which is `hinge.loft`'s `HG_AXIS`
+// rule doing its second job: a part with no hinge is one whose axis is zero, and
+// *not hinged* and *hinged but shut* then produce identical geometry by the same
+// code path rather than by two.
+//
+// ⚠ RODRIGUES, AND THE AXIS IS NORMALISED HERE. `A5.1` stores the axis AS GIVEN
+// and says so — *"the length of the axis carries no meaning; a consumer that needs
+// a unit vector normalises where it needs one"*. This is that consumer. An axis
+// written `(0, 2, 0)` and one written `(0, 1, 0)` are the same hinge, and a leaf
+// that swung twice as far for a longer arrow would be the format's units leaking
+// into the picture.
+pub fn mesh_swing(m: Mesh, at: MeshAt) -> Mesh {
+  ax = at.ma_ax; ay = at.ma_ay; az = at.ma_az;
+  len2 = ax * ax + ay * ay + az * az;
+  if len2 == 0.0 || at.ma_swing == 0.0 { return m; }
+  inv = 1.0 / sqrt(len2);
+  ux = ax * inv; uy = ay * inv; uz = az * inv;
+  // TURNS to radians — `A5.1` chose turns for the limits, so this is the one
+  // place the two units meet, and it meets them once.
+  ang = at.ma_swing * 6.283185307179586;
+  cs = cos(ang); sn = sin(ang);
+  out = mesh(m.name);
+  for v in m.vertices {
+    px = v.pos.x - at.ma_ox; py = v.pos.y - at.ma_oy; pz = v.pos.z - at.ma_oz;
+    dt = ux * px + uy * py + uz * pz;
+    cx = uy * pz - uz * py; cy = uz * px - ux * pz; cz = ux * py - uy * px;
+    rx = px * cs + cx * sn + ux * dt * (1.0 - cs);
+    ry = py * cs + cy * sn + uy * dt * (1.0 - cs);
+    rz = pz * cs + cz * sn + uz * dt * (1.0 - cs);
+    // ⚠ THE NORMAL TURNS TOO, AND WITHOUT THE OFFSET. A normal is a DIRECTION, so
+    // subtracting the hinge point from it would bend the lighting round the door
+    // — the shading would say the leaf is somewhere it is not, which is the one
+    // thing a picture gate cannot see and a person immediately can.
+    ndt = ux * v.normal.x + uy * v.normal.y + uz * v.normal.z;
+    ncx = uy * v.normal.z - uz * v.normal.y;
+    ncy = uz * v.normal.x - ux * v.normal.z;
+    ncz = ux * v.normal.y - uy * v.normal.x;
+    add_vertex(out, vertex(
+      math::vec3(rx + at.ma_ox, ry + at.ma_oy, rz + at.ma_oz),
+      math::vec3(v.normal.x * cs + ncx * sn + ux * ndt * (1.0 - cs),
+                 v.normal.y * cs + ncy * sn + uy * ndt * (1.0 - cs),
+                 v.normal.z * cs + ncz * sn + uz * ndt * (1.0 - cs)),
+      math::vec2(v.uv.x, v.uv.y)));
+  }
+  for t in m.triangles { add_triangle(out, t.a, t.b, t.c); }
+  out
+}

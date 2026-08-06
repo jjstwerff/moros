@@ -691,6 +691,20 @@ const PART_LEG_R = 2;
 const PART_ARM_L = 3;
 const PART_ARM_R = 4;
 
+// ── AN EXPANSION'S MESHES, DRAWN — plan 17 `A5.2`, the renderer's half ───────
+//
+// ⚠ THE EDITOR DISCARDED `ex_meshes` ENTIRELY UNTIL NOW, which `A7.3f3` measured
+// rather than assumed: every part in the library that fits a socket is mesh-only,
+// so a bound leaf was invisible however it was bound or swung. The display world
+// is a `World` and a mesh cannot go in one, so it goes on the wire beside it.
+//
+// ⚠ THE IDS COME OUT OF THE RESERVED LOW BLOCK, which is what it was reserved
+// for: 0-4 are the figure, and a chunk's ids start above `MESH_FIGURE_MAX`. Eleven
+// slots is a cap, and a cap that is silent is a lie — `part_meshes_drawn` says
+// what it dropped.
+const PART_MESH_BASE = 5;
+const PART_MESH_MAX  = 11;
+
 // ── THE DIRTY SET ──────────────────────────────────────────────────────────
 // One routine that answers "what changed?", instead of the question being
 // re-answered inline at every site that changes something.
@@ -3332,6 +3346,38 @@ fn mark_dirty(d: DirtySet, mq: integer, mr: integer, reach: integer) {
       }
     }
   }
+}
+
+// ── A PLACEMENT, POSED INTO THE WORLD — plan 17 `A5.2` ───────────────────────
+//
+// Three turns in a fixed order, and the order is the design: the leaf swings on
+// its own hinge FIRST, in its own frame, then the whole thing takes the socket's
+// aim about the vertical, then it lands where the lattice says. Reversing the
+// first two would swing a door about the world's vertical through the part's
+// origin, which is exactly the composition `ma_swing` exists to avoid.
+//
+// ⚠ THE SWING IS `hex_part`'s AND THE REST IS OURS. A hinge is part-local, so the
+// library turns it with no lattice in sight; where a hex lands in world units is
+// this file's convention and never the library's. The yaw reuses the same
+// function — an axis of `(0,1,0)` through the origin is a yaw — so there is one
+// Rodrigues in the tree rather than two that can disagree.
+fn posed_mesh(pm_g: Mesh, pm_at: hex_part::MeshAt) -> Mesh {
+  pm_sw = hex_part::mesh_swing(pm_g, pm_at);
+  pm_yaw = hex_part::mesh_swing(pm_sw, hex_part::MeshAt {
+    ma_mesh: "", ma_ay: 1.0, ma_swing: (pm_at.ma_facing as float) / 24.0 });
+  // ⚠ `hex_to_world` APPLIES `HEIGHT_SCALE` ITSELF, so the height goes in as the
+  // store's own integer and is not pre-scaled here — one conversion, in the one
+  // function that owns the lattice.
+  pm_o = hex_to_world(pm_at.ma_q, pm_at.ma_r, pm_at.ma_h);
+  pm_out = mesh(pm_yaw.name);
+  for pv in pm_yaw.vertices {
+    add_vertex(pm_out, vertex(
+      math::vec3(pv.pos.x + pm_o.x, pv.pos.y + pm_o.y, pv.pos.z + pm_o.z),
+      math::vec3(pv.normal.x, pv.normal.y, pv.normal.z),
+      math::vec2(pv.uv.x, pv.uv.y)));
+  }
+  for pt in pm_yaw.triangles { add_triangle(pm_out, pt.a, pt.b, pt.c); }
+  pm_out
 }
 
 fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
@@ -7804,21 +7850,61 @@ fn main() {
     // as the expansion having no effect.
     if in_part && (wld.w_tau != disp_tau || hex_world::world_sections_key(wld) != disp_key) {
       disp_t0 = ticks();
-      disp_ir = hex_part::part_instances(wld);
-      disp_items = disp_ir.ir_items;
+      // ⚠ THE OPEN PART IS EXPANDED AS A PART, NOT AS A LIST OF INSTANCES. The
+      // first version walked `part_instances(wld)` and expanded each one — which
+      // derives every cell correctly and loses every BOUND leaf, because a binding
+      // belongs to the frame and not to the instance it hangs on. Measured in the
+      // editor: a doorway opened, its threshold appeared, and its door was drawn
+      // nowhere with no refusal anywhere to say why. `part_expand_of` is the
+      // in-memory entry, and it is the same shape `part_cycle_of` needed for the
+      // same reason — the library's entry takes a NAME and a gesture holds a WORLD.
       part_disp = wld;
+      disp_meshes: vector<hex_part::MeshAt> = [];
       disp_n = 0;
-      for disp_i in disp_items {
-        disp_ex = hex_part::part_expand(part_disp, parts_root(), disp_i, 0);
-        if disp_ex.ex_code == hex_part::EX_OK {
-          disp_n = disp_n + disp_ex.ex_cols;
-        } else {
-          srv.broadcast("S:instance '{disp_i.pi_part}' is not drawn — "
-                      + "({disp_ex.ex_code}) {disp_ex.ex_why}");
-        }
+      disp_ex = hex_part::part_expand_of(part_disp, parts_root(), wld, 0);
+      if disp_ex.ex_code == hex_part::EX_OK {
+        disp_n = disp_ex.ex_cols;
+        for disp_mm in disp_ex.ex_meshes { disp_meshes += [disp_mm]; }
+      } else {
+        srv.broadcast("S:'{part_name}' is not fully drawn — "
+                    + "({disp_ex.ex_code}) {disp_ex.ex_why}");
       }
       disp_tau = wld.w_tau;
       disp_key = hex_world::world_sections_key(wld);
+      // ── AND THE OTHER BODY GOES OUT — plan 17 `A5.2` ────────────────────
+      //
+      // ⚠ THE DISPLAY WORLD CANNOT HOLD A MESH, so the meshes ride beside it.
+      // Collected here rather than in the flush because they are derived from the
+      // same expansion, once per edit, and a second walk would be a second answer
+      // that can disagree with the first.
+      //
+      // ⚠ EVERY SLOT IS RE-SENT, INCLUDING THE EMPTY ONES. A leaf that was
+      // unbound leaves its mesh on the client for ever otherwise — the same
+      // stale-geometry trap `A7.3a` met when a part opened over a world, and the
+      // reason `44:` marks every loaded chunk dirty.
+      disp_drawn = 0;
+      for disp_m in disp_meshes {
+        if disp_drawn < PART_MESH_MAX {
+          disp_gl = load_glb(hex_part::mesh_file(parts_root(), disp_m.ma_mesh));
+          if disp_gl.gr_code != GR_OK {
+            println("editor: part display — '{disp_m.ma_mesh}' will not load "
+                  + "({disp_gl.gr_code}) {disp_gl.gr_detail}");
+          } else {
+            disp_ps = moros_terrain::surface_at(prop_surface());
+            srv.broadcast("M:{PART_MESH_BASE + disp_drawn};0;"
+              + "{mesh_wire(posed_mesh(disp_gl.gr_mesh, disp_m), disp_ps.sf_r, disp_ps.sf_g, disp_ps.sf_b)}");
+            disp_drawn = disp_drawn + 1;
+          }
+        }
+      }
+      if len(disp_meshes) > PART_MESH_MAX {
+        // ⚠ SAID, NOT SWALLOWED — a silent cap reads as *that is all there is*.
+        srv.broadcast("S:{len(disp_meshes) - PART_MESH_MAX} mesh placements are not "
+                    + "drawn — the reserved block holds {PART_MESH_MAX}");
+      }
+      for disp_c in disp_drawn..PART_MESH_MAX {
+        srv.broadcast("M:{PART_MESH_BASE + disp_c};0;");
+      }
       if tracing {
         println("editor: part display rebuilt — {disp_n} derived columns over "
               + "{len(part_disp.w_chunks)} chunks in {(ticks() - disp_t0) / 1000 ?? 0} ms");
