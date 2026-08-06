@@ -356,6 +356,16 @@ swap as a one-field edit; this is that finding arriving at a workflow. ⚠ **And
 cells are not thrown away — they become the COLLISION body**, which is §P5's *"a `.glb` for the
 eye and a one-cell column for the walker"* finally having a use.
 
+⚠ **AND THE EXPORT MUST BE AT FINAL GAME SIZE** (§P9.5). §P9.1 shrinks a fine-lattice limb at the
+placement, so exporting its own frame would hand an artist geometry several times too big plus a
+ratio to apply by hand — *"two units for one quantity is how a conversion goes missing"*. The
+scale is applied BEFORE the file is written, and the hinge goes out in the same units or the pivot
+does not survive. ⚠ **This is why the size cannot ride in the contract**: `A4.2` made the class
+NOMINAL on purpose, so it says *which hole* and can never say *how big*. The class and the export
+are complementary and both are needed. ⚠ **And a returned mesh is checked against the exported
+extents** — refused with the difference, never quietly rescaled — with `mesh_aabb`, because a
+thumbnail fits its camera per part and is structurally blind to size.
+
 ⚠ **AND THE DESIGN AIMS AT THE GATE.** A door narrow enough to be a door is **narrower than one
 hex**, which is why cells had nothing to say about it and why today's leaf is a `.glb`. A two- or
 three-hex gate has real width, so planks, rails and ironwork are expressible in what cells already

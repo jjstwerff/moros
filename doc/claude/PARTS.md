@@ -672,3 +672,37 @@ against them. A hinge point in the same units is what makes the pivot survive th
 > **What this makes the editor.** Not a modelling tool and not a level editor, but the place a
 > thing is *designed* — its size, its joint, its socket, its name — with geometry good enough to
 > judge it by. The art is a later, optional, replaceable layer on a decision that is already made.
+
+### P9.5 — The export is the DIMENSIONAL spec, because the contract deliberately is not
+
+**Added 2026-08-06 with the user.** The `.glb` handed to an artist must already carry **the exact
+sizes the game needs**, or what comes back is art at the wrong scale and the round trip costs a
+second pass.
+
+⚠ **SO THE EXPORT IS IN FINAL WORLD UNITS, NOT THE PART'S OWN.** §P9.1 derives a limb's scale as
+`child.w_unit / parent.w_unit` — a leaf authored on a fine lattice is *shrunk* at the placement.
+Exporting the leaf's own frame would hand the artist geometry several times too big and a ratio to
+apply by hand, which is a conversion waiting to go missing (`A5.1`'s own words: *"two units for
+one quantity is how a conversion goes missing"*). **The scale is applied before the file is
+written**, and the hinge point goes out in the same units, or the pivot does not survive the trip.
+
+⚠ **AND THIS IS WHY THE SIZE CANNOT RIDE IN THE CONTRACT.** `A4.2` made a size class **nominal** on
+purpose — `door/1x2` and `door/3x3` are different *things*, not different *amounts*, and the whole
+argument was that `2x3` and `round-3` and `plinth-2` share no dimension a number could compare. So
+the class says **which hole**; it cannot say **how big**, and it was never meant to. The two are
+complementary and both are needed:
+
+| | says | who reads it |
+|---|---|---|
+| `FITS` / `SOCK` class | *which hole this goes in* | `socket_fit`, at the binding |
+| the exported `.glb` | *how big it is, in metres* | the artist, at the modelling |
+
+⚠ **A RETURNED MESH IS CHECKED AGAINST THE EXPORTED EXTENTS**, and refused with the difference
+rather than accepted and quietly rescaled. A skin that came back 8% wide is a door that binds on
+its frame, and `mesh_aabb` already exists to measure it. ⚠ This is also why the check cannot be a
+picture: `part_thumb_view` fits the camera **per part**, so two props differing only in SIZE are
+one image — a thumbnail is structurally blind to exactly the thing this check is about.
+
+> **What travels, in one line.** The artist gets *geometry at final size, with the pivot marked*.
+> They never get a contract, a class, a lattice or a unit conversion — and so there is nothing in
+> the hand-off they can get wrong that a number will not catch on the way back.

@@ -1254,6 +1254,15 @@ because a wide door is where cells have something to say. The full argument is
 
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
+| `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+⚠ **`A8.7` EXISTS BECAUSE THE CLASS CANNOT CARRY A SIZE.** `A4.2` made it NOMINAL on purpose —
+`2x3`, `round-3` and `plinth-2` share no dimension a number could compare — so the class says
+*which hole* and the exported geometry says *how big*. Both are needed, and the export is the only
+one an artist can work to. ⚠ **And the check cannot be a picture**: `part_thumb_view` fits the
+camera per part, so two props differing only in SIZE are one image — a thumbnail is structurally
+blind to the thing this check is about. `mesh_aabb` is the instrument.
+
 ⚠ **`A8.6` IS THE ONE THAT MAKES THE PROTOTYPE PERMANENT.** The blockout's cells are not deleted
 when the art arrives — they become the COLLISION body, which is §P5's *"a `.glb` for the eye and a
 one-cell column for the walker"* finally having a use. A prototype is not a draft that gets thrown
