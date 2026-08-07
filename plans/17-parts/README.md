@@ -1247,7 +1247,7 @@ because a wide door is where cells have something to say. The full argument is
 |---|---|---|---|
 | ✅ `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | **DONE.** `limb_at` in `expand.loft`, `MeshAt.ma_part`, `BK_LIMB` in `bake.loft`. 254 tests in the package, four sabotages seen red. ⚠ **Twelve existing tests went red and five of them now assert the OPPOSITE** — see below | M |
 | ✅ `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | **DONE.** `part_body_meshes` shared with the thumbnail, `posed_mesh` unchanged; `door/plank` + `door/planked` are the fixture, `tools/gates/world/part_limb.mjs` the gate, two sabotages seen red | M |
-| `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | a leaf authored on a fine lattice fits the opening, and a fine part stamped is refused with both units named | S |
+| ✅ `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | **DONE.** `MeshAt.ma_scale` + `hex_part::mesh_hung`; `EX_UNIT`, `BK_UNIT` **and `PS_UNIT`** — three sites, because the editor's own gesture reaches none of the first two. `lib/hex_part/tests/scale.loft` (12 tests), rows added to `part_limb` and `part_place`, **seven sabotages seen red**. Content: `door/slat` + `door/slatted`. ⚠ **Two findings**, see below | S |
 | `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
 | `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
@@ -1255,6 +1255,86 @@ because a wide door is where cells have something to say. The full argument is
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.2b` turned up
+
+**Built:** `MeshAt.ma_scale`, derived in `limb_at` as `leaf.w_unit / parent.w_unit` and
+authored nowhere; `hex_part::mesh_hung`, which scales a limb's geometry and its hinge before
+swinging it; and the refusal on the stamped path in **three** places. `door/slat` is the
+content — the plank re-authored at half the unit, three courses and two staves — and
+`door/slatted` is the same doorway with that one field changed.
+
+⚠ **THE REFUSAL HAD TO GO WHERE THE AUTHOR'S HAND GOES, AND THE OBVIOUS SITE WAS NOT IT.**
+`EX_UNIT` in `expand_loaded` and `BK_UNIT` in `bake_at` were written first and both were
+tested green — and **the editor's own gesture reaches neither.** `14:<roof>,<part>` in a world
+calls `hex_editor::part_place` → `part_stamp` directly; `part_expand` still has no consumer
+outside tests and `src/prop_build.loft`, which this plan already records under *built and not
+called*. So a fine part placed by hand would have been stamped at the world's unit with a
+library-wide check standing green beside it. `PS_UNIT` is that third site.
+
+⚠ **AND THE THREE ARE NOT ONE CHECK COPIED.** `part_stamp`'s sees CELLS, so it cannot refuse a
+fine part whose body is a `.glb` — that part stamps nothing and walks straight past.
+`expand_loaded`'s fires before any body is read and covers the composition whatever it is made
+of. `bake_at`'s exists because `A3.3`'s whole value is that the two derivation paths are
+independent: `bake` never calls `expand`, takes the ROOT's constants, and would have flattened
+a fine child into a coarse part with every column present.
+
+⚠ **`HEIGHT_SCALE` AND `w_unit` ARE TWO AUTHORITIES ON ONE QUANTITY, AGREEING TODAY BY
+COINCIDENCE.** `hex_proj::HEIGHT_SCALE` is a constant `0.25` — *how far one height step is in
+world units* — and the store carries the same quantity per world as `w_unit`, which is `0.25`
+for the editor and for every part in `data/parts/`. **The mesher reads the constant and never
+the field**, so a part's stated unit does not reach its drawing at all. That is exactly why the
+placement carries a RATIO: `child.w_unit / parent.w_unit` converts one part's drawing into
+another's and is correct whichever of the two authorities is right. An absolute would have had
+to pick one, and would be wrong the day they diverge.
+
+⚠ **A COUNT CANNOT SEE A SIZE, SO THE GATE MEASURES AN EXTENT.** A leaf drawn at twice its
+opening has exactly the same triangles as one drawn right — `part_limb`'s float counts agree
+with a door hanging through the wall. The new row reads the limb block's bounding box off the
+wire and compares heights: **2.1667 both ways**, and with the display path back on `mesh_swing`
+it reads **4.33** — a clean factor of two, which is why the 15 % window is not a tuned
+threshold.
+
+⚠ **AND THE SHUT LEAF IS THE TRAP THE LIBRARY HALF EXISTS FOR.** `mesh_swing` returns the mesh
+untouched when there is no angle, and every door in a library is drawn shut at rest — so a
+scale applied only along the swinging path would draw the ordinary case at full size and only
+the ajar ones correctly. `mesh_hung` scales first and swings after, and the hinge is scaled
+with the geometry it belongs to: swinging first would open a leaf away from its own jamb by an
+offset that grows with the ratio, with every length in the picture still looking plausible.
+
+⚠ **AND A `??` ON A DIVISION IS NOT A DIVIDE-BY-ZERO GUARD, WHICH THIS STEP LEARNED TWICE.** The
+first version read `ma_scale: p.w_unit / punit ?? 1.0` with a comment saying the `??` kept a
+broken world from producing an infinity. Probed: **`0.125 / 0.0` is `inf`**, not null, so the `??`
+discharges a nullability the compiler infers and catches nothing — and `world_new` accepts a unit
+of zero, since only `C1` (ε and θ) is checked there. The guard is an explicit `if`.
+⚠ **THEN THE TEST WRITTEN FOR IT WAS BLIND, AND PASSED WITH THE GUARD REMOVED.** It set the
+leaf's unit to zero as well, making the division `0.0 / 0.0` — which **is** null, so `??` answered
+1.0 and the sabotage went green. The two shapes are indistinguishable in the source and behave
+oppositely; the frame at zero with the leaf at 0.125 is the one that reaches `inf`.
+
+**The eight sabotages, each seen red:**
+
+| what was broken | what failed |
+|---|---|
+| the scale hard-coded to 1.0 | 2 tests — *came back at scale 1, not 0.5* |
+| the ratio taken the wrong way up | the same 2 — *scale 2* |
+| `EX_UNIT` removed | 3 tests |
+| `BK_UNIT` removed | 1 |
+| `PS_UNIT` removed | 1 test **and** the `part_place` gate |
+| the shut leaf takes the swing path unscaled | 1 |
+| the hinge not scaled with the leaf | 1 |
+| the zero-unit `if` back to a bare `??` | 1 — ⚠ **and 0 the first time, because the test used `0.0 / 0.0`** |
+| *(and on the wire)* the display path back on `mesh_swing` | `part_limb`, at ratio 2.0 |
+
+⚠ **ONE OF THOSE SABOTAGE RUNS WAS ITSELF A BLIND INSTRUMENT.** The first `PS_UNIT` run printed
+nothing and read as a pass — the shell's working directory had persisted from an earlier `cd`,
+so `loft --tests` ran from the wrong root and matched no line at all. *A grep over a log
+answers "absent" by default*, which STATE.md already records three times; this is the fourth,
+and it happened while checking a check.
+
+**Verified**: `hex_part` 267 tests, `make fast` 116 files green, `make lib-test` 22 of 22 on both
+backends with the same loft hash at both ends, `make parts` byte-identical on all six previously
+committed files with the two new ones repeatable, layering and `names.sh` clean.
 
 ### What `A8.2` turned up
 

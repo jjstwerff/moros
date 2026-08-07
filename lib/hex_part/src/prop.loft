@@ -169,6 +169,36 @@ pub struct MeshAt {
   ma_ox: float = 0.0, ma_oy: float = 0.0, ma_oz: float = 0.0,
   ma_ax: float = 0.0, ma_ay: float = 0.0, ma_az: float = 0.0,
   ma_swing: float = 0.0,   // in TURNS, the unit `A5.1` chose for the limits
+  // ── THE SCALE, DERIVED FROM TWO FILES AND AUTHORED IN NEITHER — `A8.2b`, §P9.1
+  //
+  // ⚠ A LIMB IS AUTHORED AT ITS OWN SCALE. A door at the parent's hex size is one
+  // column wide with no room for detail, so a leaf is authored on a FINER lattice
+  // — many small hexes — and shrunk to fit the opening. That is possible only for
+  // a limb: a limb is never written to a lattice, so the parent's hex size is
+  // simply not a fact about it, exactly as `A8.1` found for the rotation limit.
+  //
+  // ⚠ IT IS A RATIO AND NEVER AN ABSOLUTE, which is what makes it correct against
+  // a renderer that does not read `w_unit` at all. `hex_proj::HEIGHT_SCALE` is a
+  // CONSTANT 0.25 — one height step, in world units — and the store carries the
+  // same quantity per world as `w_unit`, which is 0.25 for everything in this
+  // tree. **Two authorities on one quantity, agreeing today by coincidence.** So
+  // a mesh built from a part's cells comes out on the drawing's fixed lattice
+  // whatever unit the file states, and `child.w_unit / parent.w_unit` is what
+  // converts one part's drawing into another's. An absolute would have to pick
+  // one of the two authorities and would be wrong the day they diverge.
+  //
+  // ⚠ AND IT IS DERIVED AT THE PLACEMENT RATHER THAN AUTHORED ON THE RECORD
+  // (§P9.1): both files already state their unit, so a field the author sets
+  // would be a second authority on a fact the pair already fixes — and the first
+  // thing to go stale when a leaf is re-authored finer.
+  //
+  // ⚠ 1.0 IS THE `INST` ANSWER, NOT A DEFAULT NOBODY MEANS. A composed part's
+  // cells are written into the parent's world, and a cell is a cell: a fine
+  // lattice cannot be written into a coarse one at all, so that path REFUSES a
+  // unit mismatch (`EX_UNIT`) rather than carrying a ratio. Every placement that
+  // is not a limb is therefore at 1.0 because the units are equal, which the
+  // refusal is what guarantees.
+  ma_scale: float = 1.0,
 }
 
 // ── Does the mesh it names actually load? ────────────────────────────────────
@@ -277,4 +307,61 @@ pub fn mesh_swing(m: Mesh, at: MeshAt) -> Mesh {
   }
   for t in m.triangles { add_triangle(out, t.a, t.b, t.c); }
   out
+}
+
+// A uniform scale about the leaf's OWN origin.
+//
+// ⚠ THE NORMALS ARE NOT TOUCHED, and that is a property of a UNIFORM scale rather
+// than an omission. A non-uniform one would need the inverse transpose, and a
+// normal scaled by `s` and re-normalised is the normal it already was — but a
+// reader who sees positions change and directions not is owed the reason, because
+// `mesh_swing` above turns both and the asymmetry looks like the bug this file
+// already records once ("the normal turns too, and without the offset").
+//
+// ⚠ AND THE ORIGIN IS THE PART'S, NOT THE HINGE'S. A part's origin is what lands
+// where it is placed — `part_stamp`'s rule, kept by `A6.2` for a mesh body — so
+// the scale has to leave that point fixed and carry everything else, the hinge
+// included. Scaling about the hinge instead would move a leaf's origin away from
+// the cell that placed it, by an amount that depends on how the author drew the
+// hinge, which is a coupling no file states.
+fn mesh_scaled(m: Mesh, s: float) -> Mesh {
+  if s == 1.0 { return m; }
+  out = mesh(m.name);
+  for v in m.vertices {
+    add_vertex(out, vertex(
+      math::vec3(v.pos.x * s, v.pos.y * s, v.pos.z * s),
+      math::vec3(v.normal.x, v.normal.y, v.normal.z),
+      math::vec2(v.uv.x, v.uv.y)));
+  }
+  for t in m.triangles { add_triangle(out, t.a, t.b, t.c); }
+  out
+}
+
+// ── A LIMB'S GEOMETRY, IN THE FRAME IT HANGS IN — plan 17 `A8.2b`, §P9.1 ─────
+//
+// The leaf's own drawing, converted to its parent's frame: scaled by the ratio the
+// two files state, then swung on its hinge. What the consumer still owes is the
+// aim and the lattice — `ma_facing` about the vertical and `(ma_q, ma_r, ma_h)` in
+// world units — because both of those are conventions this package does not hold.
+//
+// ⚠ THE ORDER IS FORCED AND THE HINGE MOVES WITH THE GEOMETRY. A hinge is a POINT
+// in the leaf's frame, so shrinking the leaf shrinks where its hinge is; swinging
+// first and scaling afterwards would swing about a point the scaled leaf does not
+// have, and the leaf would open away from its own jamb by an offset that grows
+// with the ratio. Scaling the hinge and then swinging is the same transform in the
+// right order, and it is why this is ONE function rather than two calls a consumer
+// composes — the composition is the claim.
+//
+// ⚠ AND A SHUT LEAF IS STILL SCALED. `mesh_swing` returns the mesh untouched when
+// there is no angle, which is correct for a swing and would be a silent full-size
+// leaf here: every door in the library is drawn shut at rest, so the failure would
+// be the ordinary case and the ajar one would be the only thing that looked right.
+pub fn mesh_hung(m: Mesh, at: MeshAt) -> Mesh {
+  s = at.ma_scale;
+  if s == 1.0 { return mesh_swing(m, at); }
+  mesh_swing(mesh_scaled(m, s), MeshAt {
+    ma_mesh: at.ma_mesh, ma_part: at.ma_part,
+    ma_ox: at.ma_ox * s, ma_oy: at.ma_oy * s, ma_oz: at.ma_oz * s,
+    ma_ax: at.ma_ax, ma_ay: at.ma_ay, ma_az: at.ma_az,
+    ma_swing: at.ma_swing })
 }

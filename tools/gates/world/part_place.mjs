@@ -62,6 +62,14 @@ const partWalls  = await walls(42, 0);
 
 const missingMsg = await ask(g, '14:12,house/nosuchthing', 'stencil');
 const escapeMsg  = await ask(g, '14:12,../../worlds/gate', 'stencil');
+// ⚠ A FINE PART IS REFUSED BY THIS GESTURE — plan 17 `A8.2b`, §P9.1. `door/slat`
+// is authored at half this world's unit, and a cell cannot cross that: stamped, it
+// would land at the world's unit with the column count, the label and the
+// footprint all exactly right and the geometry a quarter of what the author meant.
+// ⚠ IT IS HERE AND NOT ONLY IN THE LIBRARY BECAUSE THIS PATH IS NOT `expand`'s.
+// `14:` in a world reaches `part_stamp` through `hex_editor::part_place`, so the
+// refusal an author actually meets is this one.
+const unitMsg = await ask(g, '14:12,door/slat', 'stencil');
 const afterRefusals = await column(40, 0);
 
 const placedFromPart = /^stencil placed \d+ cells from part 'cottage'$/.test(partMsg);
@@ -73,11 +81,14 @@ const drawn = roofAfterPart > roofAfterProc;
 const refusedMissing = missingMsg.startsWith('stencil refused — part ')
                        && missingMsg.includes('nosuchthing');
 const refusedEscape  = escapeMsg.includes('leaves the part library');
+// Both units named, because *the units differ* sends an author hunting for which two.
+const refusedUnit = unitMsg.startsWith('stencil refused')
+                    && unitMsg.includes('0.125') && unitMsg.includes('0.25');
 const untouched = afterRefusals === partCentre;
 
 const ok = placedFromPart && sameCentre && sameEave && sameWalls && hasDoor
-           && drawn && refusedMissing && refusedEscape && untouched;
-report(g, { procMsg, partMsg, missingMsg, escapeMsg,
+           && drawn && refusedMissing && refusedEscape && refusedUnit && untouched;
+report(g, { procMsg, partMsg, missingMsg, escapeMsg, unitMsg, refusedUnit,
                                  procCentre, partCentre, procEave, partEave,
                                  procWalls, partWalls, afterRefusals,
                                  roofAfterProc, roofAfterPart,

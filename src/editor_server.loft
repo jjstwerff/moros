@@ -3384,8 +3384,13 @@ fn mark_dirty(d: DirtySet, mq: integer, mr: integer, reach: integer) {
 // this file's convention and never the library's. The yaw reuses the same
 // function — an axis of `(0,1,0)` through the origin is a yaw — so there is one
 // Rodrigues in the tree rather than two that can disagree.
+// ⚠ THE FIRST STEP IS `mesh_hung` AND NOT `mesh_swing` — plan 17 `A8.2b`. A limb
+// may be authored on a finer lattice than the frame it hangs in, so its geometry
+// and its hinge are scaled by the ratio the two files state before either turns.
+// The composition is the library's because the ORDER is the claim; what stays
+// here is the yaw and the lattice, which are this file's conventions.
 fn posed_mesh(pm_g: Mesh, pm_at: hex_part::MeshAt) -> Mesh {
-  pm_sw = hex_part::mesh_swing(pm_g, pm_at);
+  pm_sw = hex_part::mesh_hung(pm_g, pm_at);
   pm_yaw = hex_part::mesh_swing(pm_sw, hex_part::MeshAt {
     ma_mesh: "", ma_ay: 1.0, ma_swing: (pm_at.ma_facing as float) / 24.0 });
   // ⚠ `hex_to_world` APPLIES `HEIGHT_SCALE` ITSELF, so the height goes in as the

@@ -43,6 +43,7 @@ pub const BK_NOFIT   = 7;   // the bound part does not fit that socket (A4.2)
 pub const BK_SWING   = 8;   // the leaf is swung past its own hinge (A5.2)
 pub const BK_MESH    = 9;   // a mesh body, which no flattening can carry (A6.2)
 pub const BK_LIMB    = 10;  // a bound limb, which is posed rather than stamped (A8.1)
+pub const BK_UNIT    = 11;  // a composed part states a different unit (A8.2b, P9.1)
 
 // The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
@@ -107,7 +108,7 @@ fn insert_ordered(cells: vector<Hex>, h: Hex) -> vector<Hex> {
 // `anchor`, then descend. The frame is the part's own origin, so the top call
 // passes `(0, 0, 0)` and a child's centre is `un_origin` of the parent's.
 fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
-           depth: integer, tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
+           unit: float, depth: integer, tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
   if depth > EX_MAX_DEPTH {
     return Bake { bk_code: BK_DEPTH, bk_depth: depth,
                   bk_why: "'{name}' is nested {depth} deep; the bound is "
@@ -123,6 +124,20 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
                   bk_why: "'{name}' does not load ({ld.wl_code}) {ld.wl_detail}" };
   }
   p = ld.wl_world;
+
+  // ⚠ A FINE PART CANNOT BE FLATTENED INTO A COARSE ONE — plan 17 `A8.2b`, §P9.1.
+  // The result takes the ROOT's constants (see `part_bake` below), so a child at a
+  // different unit contributes its cells to a world that states another one, and
+  // the flattened part is the child at the wrong size with every column present
+  // and every count agreeing. `expand` refuses the same composition with
+  // `EX_UNIT`; the two paths owe the same answer, because `A3.3`'s whole value is
+  // that they are independent and agree.
+  if p.w_unit != unit {
+    return Bake { bk_code: BK_UNIT,
+      bk_why: "'{name}' is authored at unit {p.w_unit} and is being flattened into a "
+            + "part at unit {unit} — a cell cannot cross that (P9.1). A part at a "
+            + "different unit is a LIMB, posed at the ratio, or it is nothing" };
+  }
 
   // ⚠ A MESH BODY IS REFUSED, AND FINDING THAT OUT IS `A6.2`'s SECOND HALF.
   // Flattening produces ONE part with ONE `MESH` section and no position for it,
@@ -185,7 +200,7 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
                           + "and only 0, 4, 8, 12, 16 and 20 can ever be (A4.4)" };
     }
     (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
-    down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, depth + 1, tab, here);
+    down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, unit, depth + 1, tab, here);
     if down.bk_code != BK_OK { return down; }
     here = down;
 
@@ -249,7 +264,7 @@ pub fn part_bake(root: text, name: text) -> Bake {
 
   tab: hash<BakeCol[bc_key]> = [];
   seed = Bake { bk_code: BK_OK };
-  done = bake_at(root, name, 0, 0, 0, 1, tab, seed);
+  done = bake_at(root, name, 0, 0, 0, src.w_unit, 1, tab, seed);
   // ⚠ THE SAME UPGRADE `expand` MAKES, for the same reason: a loop exhausts the
   // depth bound, so the raw answer blames nesting in a library that has none.
   // Error path only.

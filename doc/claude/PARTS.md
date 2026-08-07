@@ -709,6 +709,20 @@ author meant. `part_diff` already treats a differing unit as a difference (`regi
 stamping path owes the same answer as a REFUSAL with both units named. A fine part is a limb or it
 is nothing.
 
+✅ **BUILT AT `A8.2b`, AND THE STAMPED PATH TURNED OUT TO BE THREE.** `MeshAt.ma_scale` carries
+the ratio — derived at the placement, authored in no document — and `hex_part::mesh_hung` applies
+it to a limb's geometry *and its hinge* before the swing. The refusal is `EX_UNIT` (composition),
+`BK_UNIT` (flattening) and **`PS_UNIT` (the direct stamp)**, and the third is the one that
+matters to a person: the editor's `14:<roof>,<part>` reaches `part_stamp` through
+`hex_editor::part_place` and enters neither of the others. `data/parts/door/slat` is the fine
+leaf; `door/slatted` is `door/planked` with that one field changed.
+
+⚠ **AND THE RATIO IS LOAD-BEARING BECAUSE NOTHING ELSE HONOURS `u` AT ALL.** `hex_proj::HEIGHT_SCALE`
+is a **constant** 0.25 — the same quantity the store carries per world as `w_unit` — and the mesher
+reads the constant, never the field. Two authorities on one number, agreeing today by coincidence.
+A ratio converts one part's drawing into another's and stays right whichever of the two is; an
+absolute would have had to choose. See [plan 17 § *What `A8.2b` turned up*](../../plans/17-parts/README.md).
+
 ### P9.2 — A frame is two things, and only one of them is structure
 
 The user asked for the FRAME to be finely detailed too, and that splits it:

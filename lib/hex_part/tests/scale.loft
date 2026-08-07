@@ -1,0 +1,356 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A8.2b`, §P9.1 — a limb authored on a finer lattice, and the cell that
+// may not cross.
+//
+// ⚠ ONE PART, TWO EDGES, OPPOSITE ANSWERS. The whole step is that `INST` and
+// `BIND` answer differently to the same pair of units: a composed part is written into
+// the parent's world, so a fine one is REFUSED; a bound one is meshed and posed,
+// so it is taken and shrunk by the ratio the two files already state. The
+// fixtures below are built so that the SAME leaf goes down both paths, because a
+// refusal tested on one part and an acceptance tested on another proves neither.
+//
+// ⚠ AND THE LIBRARY IS REBUILT WITH ONE FIELD CHANGED. `library(FINE)` and
+// `library(COARSE)` differ in the leaf's `w_unit` and in nothing else — same
+// socket, same binding, same cells — which is what makes the scale evidence
+// about DERIVATION rather than about the fixture.
+use hex_part;
+use hex_world;
+
+fn no_palette() -> vector<integer> { [] }
+fn root() -> text { "{temp_dir()}/hexpart_scale_lib" }
+
+// The frame's unit, and a leaf authored at half of it. ⚠ Both are exact in
+// binary, so every equality below is an equality and not a tolerance — the
+// format stores `u` as micro-units, so 0.125 and 0.25 round-trip bit for bit.
+const COARSE = 0.25;
+const FINE   = 0.125;
+
+fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
+  PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
+}
+
+fn one_cell(unit: float, mat: integer) -> World {
+  w = world_new(unit, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 40 as u16? ?? 0,
+                     h_material: mat as u8? ?? 0 }] }).cw_code == CW_OK, "fixture cell");
+  w
+}
+
+fn save(name: text, w: World) {
+  assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
+  assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
+}
+
+// ⚠ `sk_at: 0` UNDER `SM_EDGE`, so the heading handed out is 0. Any other one is
+// refused until a part's cells can be rotated (`A4.4`), and a fixture that tripped
+// that would be testing the facing rule instead of this one.
+fn put_frame(name: text, unit: float) {
+  w = one_cell(unit, 5);
+  assert(part_set_sockets(w, [Socket { sk_q: 2, sk_r: 1, sk_h: 6,
+    sk_mount: SM_EDGE, sk_at: 0, sk_kind: "door", sk_size: "1x2",
+    sk_name: "leaf" }]).sw_code == SK_OK, "sockets of {name}");
+  save(name, w);
+}
+
+fn put_leaf(name: text, unit: float) {
+  w = one_cell(unit, 7);
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "fits of {name}");
+  assert(part_set_hinge(w, Hinge { hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0, hg_hi: 0.25 }).hw_code == HG_OK, "hinge of {name}");
+  save(name, w);
+}
+
+fn put_house(name: text, unit: float, kids: vector<PartInst>, binds: vector<Binding>) {
+  w = one_cell(unit, 3);
+  if len(kids) > 0 {
+    assert(part_set_instances(w, kids) == PI_OK, "instances of {name}");
+  }
+  if len(binds) > 0 {
+    assert(part_set_bindings(w, binds).bw_code == BD_OK, "bindings of {name}");
+  }
+  save(name, w);
+}
+
+fn wipe(at_root: text) {
+  for d in list_dir(at_root) ?? [] {
+    for e in list_dir("{at_root}/{d}") ?? [] { delete("{at_root}/{d}/{e}"); }
+    delete("{at_root}/{d}");
+  }
+  delete(at_root);
+}
+
+// `h/hung` reaches the leaf through a SOCKET; `h/stamped` holds the same leaf as
+// an `INST`. Everything else about the two is identical.
+fn library_at(frame_unit: float, leaf_unit: float) {
+  wipe(root());
+  put_frame("d/frame", frame_unit);
+  put_leaf("d/leaf", leaf_unit);
+  put_house("h/hung", frame_unit, [at("d/frame", 3, 0, 0)],
+            [Binding { bd_inst: 0, bd_open: 0.125, bd_socket: "leaf",
+                       bd_part: "d/leaf" }]);
+  put_house("h/stamped", frame_unit, [at("d/leaf", 3, 0, 0)], []);
+}
+
+fn library(leaf_unit: float) { library_at(COARSE, leaf_unit); }
+
+fn target(unit: float) -> World {
+  w = world_new(unit, 0, 8, 3).wn_world;
+  for q in (0 - 6)..16 {
+    for r in (0 - 6)..16 {
+      assert(world_set_cell(w, q, r, 0,
+        Hex { h_height: 5 as u16? ?? 0,
+              h_material: 1 as u8? ?? 0 }).cw_code == CW_OK, "ground");
+    }
+  }
+  w
+}
+
+fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+  for c in world_column(w, q, r).co_cells {
+    if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
+  }
+  0
+}
+
+// ── THE RATIO, DERIVED ───────────────────────────────────────────────────────
+
+fn test_a_finer_leaf_is_placed_at_the_ratio_its_own_file_states() {
+  library(FINE);
+  w = target(COARSE);
+  ex = part_expand(w, root(), at("h/hung", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  assert(len(ex.ex_meshes) == 1,
+         "{len(ex.ex_meshes)} placements, not 1 — the bound leaf must come back as one");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_part == "d/leaf", "the placement names '{m.ma_part}'");
+  // 0.125 / 0.25. ⚠ EXACT, not near: both units are exact in binary and the file
+  // carries them as micro-units, so a tolerance here would hide the one arithmetic
+  // slip that matters — the ratio taken the wrong way up, which is 2.0.
+  assert(m.ma_scale == 0.5,
+         "the leaf is authored at {FINE} in a frame at {COARSE} and came back at "
+       + "scale {m.ma_scale}, not 0.5");
+}
+
+// ⚠ THE CONTROL THAT MAKES THE NUMBER ABOVE EVIDENCE. Re-author the same leaf at
+// the frame's unit — one field, nothing else in the library touched — and the same
+// binding places it unscaled. A scale read from the socket, the binding or a
+// constant would answer 0.5 here too.
+fn test_re_authoring_the_leaf_at_the_frames_unit_makes_the_scale_one() {
+  library(COARSE);
+  w = target(COARSE);
+  ex = part_expand(w, root(), at("h/hung", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_scale == 1.0,
+         "the leaf and its frame are both at {COARSE} and the placement came back "
+       + "at scale {m.ma_scale}");
+}
+
+// ── THE CELL THAT MAY NOT CROSS ──────────────────────────────────────────────
+
+fn test_a_finer_part_composed_by_inst_is_refused_with_both_units_named() {
+  library(FINE);
+  w = target(COARSE);
+  ex = part_expand(w, root(), at("h/stamped", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_UNIT,
+         "a fine part was composed into a coarse world and the answer was "
+       + "({ex.ex_code}) {ex.ex_why}");
+  // ⚠ BOTH NUMBERS, because *the units differ* sends an author looking through a
+  // library for which two, and the pair is the whole diagnosis.
+  assert(ex.ex_why.find("0.125") >= 0 && ex.ex_why.find("0.25") >= 0,
+         "the refusal does not name both units: {ex.ex_why}");
+  // ⚠ AND THE LEAF'S CELLS ARE IN NO WORLD. The house's own cell IS stamped before
+  // the walk reaches its instance — `expand` is atomic per stamp and not across a
+  // nest, which `A3.2` already writes down — so what this asserts is the narrow
+  // claim that the refused part contributed nothing, at the exact cell it would
+  // have landed in.
+  (lq, lr) = un_origin(0, 0, 3, 0);
+  assert(material_at(w, lq, lr, 40) == 0,
+         "the fine leaf's cell was stamped at ({lq},{lr}) anyway");
+}
+
+// ⚠ THE DISCRIMINATOR, AND IT IS THE STEP. One library, one leaf, one pair of
+// units: refused as a composition and taken as a limb. A check that refused on
+// unit alone would fail this, and a check that never refused would fail the test
+// above — only the pair says the answer is decided by the EDGE.
+fn test_the_same_fine_leaf_is_refused_by_inst_and_taken_by_bind() {
+  library(FINE);
+  w = target(COARSE);
+  stamped = part_expand(w, root(), at("h/stamped", 0, 0, 0), 10);
+  hung = part_expand(target(COARSE), root(), at("h/hung", 0, 0, 0), 10);
+  assert(stamped.ex_code == EX_UNIT,
+         "the composition was not refused: ({stamped.ex_code}) {stamped.ex_why}");
+  assert(hung.ex_code == EX_OK,
+         "the binding was refused: ({hung.ex_code}) {hung.ex_why}");
+  assert((hung.ex_meshes[0] ?? MeshAt {}).ma_scale == 0.5, "and it must be shrunk");
+}
+
+// ⚠ THE REFUSAL IS SYMMETRIC, and a check written as *is the child finer* would
+// pass everything above and let a coarse part into a fine world at four times the
+// size. Same library, the destination changed.
+fn test_a_coarse_part_is_refused_by_a_finer_world_too() {
+  library(COARSE);
+  ex = part_expand(target(FINE), root(), at("h/stamped", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_UNIT,
+         "a coarse part went into a fine world: ({ex.ex_code}) {ex.ex_why}");
+  ok = part_expand(target(COARSE), root(), at("h/stamped", 0, 0, 0), 10);
+  assert(ok.ex_code == EX_OK,
+         "and the same part at the world's own unit was refused: {ok.ex_why}");
+}
+
+// ⚠ THE DIRECT STAMP IS ITS OWN PATH AND ITS OWN CHECK, and finding that out is
+// what stopped this step being a refusal nobody reaches. The editor's `14:` in a
+// world calls `hex_editor::part_place` → `part_stamp`, never `expand` — so a
+// library-only check would have been green, gated, and unreachable from the one
+// gesture an author uses by hand.
+fn test_a_direct_stamp_refuses_a_part_at_another_unit() {
+  fine_part = one_cell(FINE, 7);
+  w = target(COARSE);
+  st = part_stamp(w, fine_part, 0, 0, 10, 0);
+  assert(st.ps_code == PS_UNIT,
+         "a fine part was stamped straight into a coarse world: ({st.ps_code}) "
+       + "{st.ps_why}");
+  assert(st.ps_why.find("0.125") >= 0 && st.ps_why.find("0.25") >= 0,
+         "the refusal does not name both units: {st.ps_why}");
+  assert(st.ps_cells == 0 && material_at(w, 0, 0, 40) == 0,
+         "and it wrote {st.ps_cells} cells anyway");
+  // The control: the same cell at the world's own unit lands.
+  ok = part_stamp(w, one_cell(COARSE, 7), 0, 0, 10, 0);
+  assert(ok.ps_code == PS_OK, "the same part at the world's unit was refused: {ok.ps_why}");
+}
+
+// ⚠ A ZERO UNIT MUST NOT DIVIDE, AND THE `??` THAT LOOKED LIKE THE GUARD IS NOT
+// ONE. Measured, and the two shapes differ: `0.0 / 0.0` is **null**, so `?? 1.0`
+// does catch it — but `0.125 / 0.0` is **`inf`**, which walks straight through the
+// same `??` and into every vertex of the placement. `world_new` accepts a unit of
+// zero (only `C1`, on ε and θ, is checked there), so a file can carry one. A wrong
+// scale draws the wrong size; `inf` draws nothing anywhere, which is the harder
+// failure to read back.
+//
+// ⚠ AND THE FIRST VERSION OF THIS TEST USED THE HARMLESS SHAPE. It set the leaf's
+// unit to zero as well, so the division was `0.0 / 0.0`, the `??` answered 1.0 and
+// the test passed with the guard REMOVED — an instrument aimed at the wrong one of
+// two cases that look identical in the source. The frame is zero and the leaf is
+// not, which is what puts `inf` in front of the guard.
+fn test_a_zero_unit_places_at_one_rather_than_at_infinity() {
+  library_at(0.0, FINE);
+  ex = part_expand(target(0.0), root(), at("h/hung", 0, 0, 0), 10);
+  assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  assert(m.ma_scale == 1.0,
+         "a zero unit divided into {m.ma_scale} — the guard has to be the `if`, "
+       + "because the division yields inf and not null");
+}
+
+// ── BAKE OWES THE SAME ANSWER ────────────────────────────────────────────────
+
+// ⚠ `A3.3`'s VALUE IS THAT THE TWO PATHS ARE INDEPENDENT. `bake` walks columns
+// itself and never calls `expand`, and its result takes the ROOT's constants — so
+// a fine child flattened into it is the same silent wrong size with every column
+// present, reached by different code.
+fn test_bake_refuses_the_composition_expand_refuses() {
+  library(FINE);
+  bk = part_bake(root(), "h/stamped");
+  assert(bk.bk_code == BK_UNIT,
+         "a fine child was flattened: ({bk.bk_code}) {bk.bk_why}");
+  assert(bk.bk_why.find("0.125") >= 0 && bk.bk_why.find("0.25") >= 0,
+         "the refusal does not name both units: {bk.bk_why}");
+}
+
+// ⚠ A BOUND THAT NOTHING PASSES IS A WALL. The same nest at one unit flattens, and
+// this is the control that says the check reads the units rather than the nesting.
+fn test_bake_takes_the_same_nest_at_one_unit() {
+  library(COARSE);
+  bk = part_bake(root(), "h/stamped");
+  assert(bk.bk_code == BK_OK, "the uniform nest was refused: {bk.bk_why}");
+  assert(bk.bk_cols == 2,
+         "{bk.bk_cols} columns came out, not 2 — the house's cell and the leaf's");
+}
+
+// ── THE GEOMETRY, SCALED ─────────────────────────────────────────────────────
+
+fn near(a: float, b: float) -> boolean { abs_f(a - b) < 0.0001 }
+fn abs_f(v: float) -> float { if v < 0.0 { return 0.0 - v; } v }
+
+fn a_vertex() -> Vertex {
+  vertex(math::vec3(9.0, 9.0, 9.0), math::vec3(0.0, 0.0, 0.0), math::vec2(0.0, 0.0))
+}
+
+// The hinge is at x=0 and the far edge at x=1, so a distance from the hinge is
+// answerable — `prop.loft`'s fixture, for its reason.
+fn leaf_mesh() -> Mesh {
+  m = mesh("leaf");
+  add_vertex(m, vertex(math::vec3(0.0, 0.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(0.0, 0.0)));
+  add_vertex(m, vertex(math::vec3(1.0, 0.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(1.0, 0.0)));
+  add_vertex(m, vertex(math::vec3(1.0, 2.0, 0.0), math::vec3(0.0, 0.0, 1.0),
+                       math::vec2(1.0, 1.0)));
+  add_triangle(m, 0, 1, 2);
+  m
+}
+
+// ⚠ THE TRAP THIS TEST EXISTS FOR. `mesh_swing` returns the mesh UNTOUCHED when
+// there is no angle, and every door in a library is drawn shut at rest — so a
+// scale applied only along the swing path would draw every closed leaf at full
+// size and only the ajar ones correctly. The ordinary case would be the broken one.
+fn test_a_shut_leaf_is_still_scaled() {
+  pose = MeshAt { ma_mesh: "leaf", ma_ay: 1.0, ma_swing: 0.0, ma_scale: 0.5 };
+  got = mesh_hung(leaf_mesh(), pose);
+  v = got.vertices[2] ?? a_vertex();
+  assert(near(v.pos.x, 0.5) && near(v.pos.y, 1.0),
+         "a shut leaf at scale 0.5 came back at ({v.pos.x},{v.pos.y})");
+}
+
+// ⚠ THE HINGE IS A POINT IN THE LEAF'S FRAME, SO IT SHRINKS WITH IT. Hinge at
+// x=1, scale 0.5: the hinge is at x=0.5 after the scale and must be what stays
+// still, with the free edge 0.5 away instead of 1.0. Swinging first and scaling
+// afterwards puts the leaf a growing distance from its own jamb, and every length
+// in the picture still looks plausible.
+fn test_the_hinge_scales_with_the_leaf_and_is_still_what_stays_still() {
+  pose = MeshAt { ma_mesh: "leaf", ma_ox: 1.0, ma_ay: 1.0, ma_swing: 0.25,
+                ma_scale: 0.5 };
+  got = mesh_hung(leaf_mesh(), pose);
+  hinge = got.vertices[1] ?? a_vertex();     // the vertex that sits ON the hinge
+  free = got.vertices[0] ?? a_vertex();
+  assert(near(hinge.pos.x, 0.5) && near(hinge.pos.z, 0.0),
+         "the scaled hinge moved to ({hinge.pos.x},{hinge.pos.z})");
+  assert(near(abs_f(free.pos.z), 0.5),
+         "the free edge is {free.pos.z} from the hinge, and half of 1.0 is 0.5");
+  assert(near(free.pos.x, 0.5),
+         "a quarter turn should leave the free edge over the hinge in x, not at "
+       + "{free.pos.x}");
+}
+
+// ⚠ THE CONTROL: at 1.0 this IS `mesh_swing`, and nothing drifts. A scale applied
+// as `* 1.0` through a different code path is the kind of change that costs a
+// last-bit difference in every vertex of every unscaled part in the tree.
+fn test_scale_one_is_the_swing_untouched() {
+  pose = MeshAt { ma_mesh: "leaf", ma_ox: 1.0, ma_ay: 1.0, ma_swing: 0.25 };
+  hung = mesh_hung(leaf_mesh(), pose);
+  swung = mesh_swing(leaf_mesh(), pose);
+  assert(len(hung.vertices) == len(swung.vertices), "the vertex count moved");
+  for i in 0..len(hung.vertices) {
+    a = hung.vertices[i] ?? a_vertex();
+    b = swung.vertices[i] ?? a_vertex();
+    assert(a.pos.x == b.pos.x && a.pos.y == b.pos.y && a.pos.z == b.pos.z,
+           "vertex {i} differs: ({a.pos.x},{a.pos.y},{a.pos.z}) against "
+         + "({b.pos.x},{b.pos.y},{b.pos.z})");
+  }
+}
+
+// ⚠ A UNIFORM SCALE LEAVES A DIRECTION ALONE, and the length is the instrument: a
+// normal multiplied by 0.5 with everything else still lights the leaf as if it
+// were half-facing the sun, which no count of vertices can see.
+fn test_a_uniform_scale_leaves_the_normals_unit_length() {
+  pose = MeshAt { ma_mesh: "leaf", ma_ay: 1.0, ma_swing: 0.0, ma_scale: 0.5 };
+  got = mesh_hung(leaf_mesh(), pose);
+  v = got.vertices[0] ?? a_vertex();
+  nlen = sqrt(v.normal.x * v.normal.x + v.normal.y * v.normal.y
+            + v.normal.z * v.normal.z) ?? 0.0;
+  assert(near(nlen, 1.0), "the normal is {nlen} long after a scale of 0.5");
+}

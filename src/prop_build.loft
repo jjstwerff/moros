@@ -444,6 +444,78 @@ fn write_planked(root: text, open: float) {
   assert(world_save(w, "{root}/door/planked.hxw", []) == WS_OK, "the planked doorway was not saved");
 }
 
+// ── A LEAF ON A FINER LATTICE — plan 17 `A8.2b`, §P9.1 ──────────────────────
+//
+// The same opening, the same class, the same hinge — and a leaf authored at HALF
+// the frame's unit, so it has three courses and two staves where `door/plank` has
+// two courses and one column. A door at the parent's hex size is one column wide
+// with no room for detail; this is the answer, and the shrink is derived from the
+// two files rather than authored anywhere.
+//
+// ⚠ NOTHING HERE SAYS 0.5. `w_unit` is the only field that differs from the plank
+// beyond the cells themselves, and `expand` divides the two — so re-authoring this
+// leaf at the frame's unit changes its size on screen and no other file at all.
+//
+// ⚠ AND IT IS ONLY LEGAL BECAUSE IT HANGS ON A JOINT. The same file placed by
+// `INST` is refused (`EX_UNIT`): a cell cannot be written into a world that states
+// another unit, and this leaf's cells are never written anywhere.
+//
+// ⚠ THE COURSES ARE `W_EPS` APART IN THIS WORLD'S OWN STEPS. ε is a count of
+// steps, not a length, so at half the unit the same 8 is half the separation —
+// which is exactly what makes three courses fit where two did.
+fn write_slat(root: text) {
+  w = world_new(W_UNIT / 2.0 ?? W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for sq in 0..2 {
+    for sh in 0..3 {
+      assert(world_set_cell(w, sq, 0, sh,
+        Hex { h_height: (2 + sh * W_EPS) as u16? ?? 0,
+              h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "the slat's cell ({sq},{sh}) was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "slat",
+    pm_desc: "a door leaf on a finer lattice — three courses, shrunk to the same 1x2"
+  }) == PM_OK, "the slat's meta was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "the slat's FITS was refused");
+  // The hinge corner is `door/oak`'s and `door/plank`'s — in the leaf's OWN frame,
+  // so it shrinks with the leaf and the three doors still hang on one point.
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0, hg_hi: 0.25
+  }).hw_code == HG_OK, "the slat's hinge was refused");
+  assert(world_save(w, "{root}/door/slat.hxw", []) == WS_OK, "the slat was not saved");
+}
+
+// The same doorway again, hung with the fine leaf. Three files that differ in ONE
+// field — `planked` is `doorway` with the leaf swapped, and this is `planked` with
+// it swapped once more.
+fn write_slatted(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in 0..3 {
+    for pr in 0..3 {
+      assert(world_set_cell(w, pq, pr, 0,
+        Hex { h_height: 1 as u16? ?? 0,
+              h_material: hex_editor::ROAD_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "the slatted doorway's paving was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "slatted",
+    pm_desc: "a frame on paving with a leaf authored at half the unit, ajar"
+  }) == PM_OK, "the slatted doorway's meta was refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 1, pi_r: 1, pi_h: 0, pi_facing: 0, pi_part: "door/frame" }]) == PI_OK,
+    "the slatted doorway's instance was refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "door/slat"
+  }]).bw_code == BD_OK, "the slatted doorway's binding was refused");
+  assert(world_save(w, "{root}/door/slatted.hxw", []) == WS_OK,
+         "the slatted doorway was not saved");
+}
+
 fn ground() -> World {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   for q in (0 - 2)..12 {
@@ -488,6 +560,28 @@ fn main() {
   // ── the cell-bodied leaf, and the same doorway hung with it — `A8.2` ────────
   write_plank(root);
   write_planked(root, 0.125);
+  // ── and the same leaf on a finer lattice, shrunk to fit — `A8.2b` ───────────
+  write_slat(root);
+  write_slatted(root, 0.125);
+  // ⚠ THE RATIO IS CHECKED HERE, WHERE THE TWO FILES ARE IN HAND. A slat that
+  // reached the display path at scale 1.0 is a door twice the size of its own
+  // opening, and the only instrument that would see it is a picture.
+  sw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  sex = part_expand(sw, root, PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                         pi_part: "door/slatted" }, 0);
+  assert(sex.ex_code == EX_OK, "the slatted doorway does not expand: {sex.ex_why}");
+  sm = sex.ex_meshes[0] ?? MeshAt {};
+  assert(sm.ma_scale == 0.5,
+         "the slat is authored at half the doorway's unit and came back at scale "
+       + "{sm.ma_scale}");
+  // And the composition the same file is refused for, so the pair ships together.
+  sinst = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  sbad = part_expand(sinst, root, PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                             pi_part: "door/slat" }, 0);
+  assert(sbad.ex_code == EX_UNIT,
+         "a fine part was composed into a coarse world: ({sbad.ex_code}) {sbad.ex_why}");
+  println("  slatted: leaf '{sm.ma_part}' at scale {sm.ma_scale}, and the same part "
+        + "by INST is refused — ({sbad.ex_code})");
   // ⚠ THE EXPANSION IS THE GATE, not three files that load. A doorway whose leaf
   // is not bound, or is bound and not swung, writes and reads back perfectly.
   dw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;

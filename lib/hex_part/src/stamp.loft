@@ -58,6 +58,7 @@ pub fn part_columns(p: World) -> vector<PartCell> {
 pub const PS_OK    = 0;
 pub const PS_EMPTY = 1;        // the part holds nothing to stamp
 pub const PS_FIT   = 2;        // a column would not take the band
+pub const PS_UNIT  = 3;        // the part states another unit (A8.2b, P9.1)
 
 // ⚠ `ps_below` / `ps_above` ARE WHAT THE BAND LEFT ALONE, and they are the point
 // of a band rather than a column write: a cave under the house and a bridge deck
@@ -101,6 +102,25 @@ pub struct PartStamp {
 // different layers to every by-label reader.
 pub fn part_stamp(w: World, p: World, cq: integer, cr: integer,
                   anchor: integer, lo: integer) -> PartStamp {
+  // ⚠ THE UNIT IS CHECKED HERE AS WELL AS IN `expand`, AND THE PAIR IS NOT
+  // BELT-AND-BRACES — plan 17 `A8.2b`, §P9.1. The editor's own gesture does not go
+  // through `expand` at all: `14:<roof>,<part>` in a world calls
+  // `hex_editor::part_place`, which is this function with a band floor in front of
+  // it. A check that lived only in the composition walk would have been perfectly
+  // tested and unreachable from the one path an author uses by hand — this tree's
+  // *built and not called* trap, with a refusal in it.
+  //
+  // ⚠ AND THE TWO ARE NOT THE SAME CHECK AT TWO PLACES. This one is about CELLS,
+  // so it cannot see a fine part whose body is a `.glb` — that part stamps nothing
+  // and would walk straight past. `expand_loaded`'s fires before any body is read
+  // and covers the composition whatever it is made of; this one covers the direct
+  // stamp. Neither subsumes the other, which is why both exist.
+  if p.w_unit != w.w_unit {
+    return PartStamp { ps_code: PS_UNIT,
+      ps_why: "the part is authored at unit {p.w_unit} and this world is at "
+            + "{w.w_unit} — a cell cannot cross that (P9.1). A part at a different "
+            + "unit is a LIMB, bound into a socket and posed at the ratio" };
+  }
   cols = part_columns(p);
   if len(cols) == 0 {
     return PartStamp { ps_code: PS_EMPTY, ps_why: "the part holds no cells" };

@@ -55,6 +55,7 @@ pub const EX_CYCLE   = 6;   // a part contains itself (P8's FIRST rule)
 pub const EX_SOCKET  = 7;   // a binding names a socket the framing part does not offer
 pub const EX_NOFIT   = 8;   // the bound part does not fit that socket (A4.2)
 pub const EX_SWING   = 9;   // the leaf is swung past its own hinge (A5.2)
+pub const EX_UNIT    = 10;  // a composed part states a different unit (A8.2b, P9.1)
 
 // §P8's second rule. Eight is the design's number, not a guess.
 pub const EX_MAX_DEPTH = 8;
@@ -202,7 +203,7 @@ fn turned_by(aim: integer, own: integer) -> integer {
 // check: `part_cycle_of` has walked BOTH edge kinds since `A7.3f3`, so a saved
 // library cannot contain a cycle through bindings at all.
 fn limb_at(root: text, name: text, bq: integer, br: integer, h: integer,
-           aim: integer, swing: float, depth: integer) -> Expand {
+           aim: integer, swing: float, punit: float, depth: integer) -> Expand {
   if depth > EX_MAX_DEPTH {
     return Expand { ex_code: EX_DEPTH, ex_depth: depth,
                     ex_why: "'{name}' is nested {depth} deep; the bound is "
@@ -262,13 +263,32 @@ fn limb_at(root: text, name: text, bq: integer, br: integer, h: integer,
   skin = "";
   if body.pr_code == MR_OK { skin = body.pr_name; }
 
+  // ⚠ THE RATIO IS READ OFF THE TWO FILES AND NOTHING AUTHORS IT — `A8.2b`, §P9.1.
+  // A limb is never written to a lattice, so the parent's hex size is not a fact
+  // about it and a finer leaf is legal here exactly where it is refused above.
+  // ⚠ THE DENOMINATOR IS THE FRAME THE PLACEMENT IS EXPRESSED IN, not the part
+  // this leaf hangs on — and the refusal in `expand_loaded` is what makes those
+  // the same number: every part composed into that world states its unit, so a
+  // nest that reached here at all is uniform down to the joint. Taking the
+  // immediate frame's unit instead would read the same today and would quietly
+  // start meaning something else the day the composition check is relaxed.
+  // ⚠ AND A ZERO PARENT UNIT IS GUARDED BY THE `if`, NOT BY THE `??` — measured,
+  // because the first version of this line said otherwise. `0.125 / 0.0` in this
+  // language is **`inf`**, not null, so the `??` discharges a nullability the
+  // compiler infers and catches nothing at all: the placement would carry `inf`
+  // into every vertex it touches, and `world_new` accepts a unit of zero (only
+  // `C1`, on ε and θ, is checked there). A scale of 1.0 draws a wrong size; `inf`
+  // draws nothing anywhere, which is the harder failure to read.
+  ratio = 1.0;
+  if punit != 0.0 { ratio = p.w_unit / punit ?? 1.0; }
   Expand { ex_code: EX_OK, ex_parts: 1, ex_depth: depth,
            ex_meshes: [MeshAt { ma_part: name, ma_mesh: skin,
                                 ma_q: bq, ma_r: br, ma_h: h,
                                 ma_facing: turned_by(aim, an.ar_anchor.pa_facing),
                                 ma_ox: hgh.hg_ox, ma_oy: hgh.hg_oy, ma_oz: hgh.hg_oz,
                                 ma_ax: hgh.hg_ax, ma_ay: hgh.hg_ay, ma_az: hgh.hg_az,
-                                ma_swing: swing }] }
+                                ma_swing: swing,
+                                ma_scale: ratio }] }
 }
 
 // ⚠ FIVE ANSWERS AND NOT ONE, because they want five different fixes: the part is
@@ -321,6 +341,40 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
 // with no refusal anywhere to say why.
 fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: integer,
                  anchor: integer, lo: integer, aim: integer, depth: integer) -> Expand {
+
+  // ── A CELL MAY NOT CROSS A UNIT BOUNDARY — plan 17 `A8.2b`, §P9.1 ──────────
+  //
+  // ⚠ THIS IS THE ONE SHAPE THAT PLACES CELLS AT THE WRONG SIZE WITH EVERY COUNT
+  // AGREEING. A composed part is written into the parent's world and a cell is a
+  // cell — the store has no room for *this one is half the size* — so a part
+  // authored at a finer unit lands at the parent's, and the geometry is a
+  // quarter of what the author meant while the column count, the label and the
+  // footprint are all exactly right. `part_diff` has treated a differing unit as
+  // a difference since `region.loft`; this is the same answer where it can still
+  // be refused rather than reported.
+  //
+  // ⚠ IT IS CHECKED BEFORE ANYTHING IS READ, so a refusal leaves the world
+  // untouched — the rule the facing check above already keeps.
+  //
+  // ⚠ `part_stamp` CHECKS IT TOO, AND NEITHER SITE SUBSUMES THE OTHER. That one
+  // guards the DIRECT stamp, which is the path the editor's own gesture takes
+  // (`hex_editor::part_place`) without ever entering this walk; this one guards
+  // the COMPOSITION, and fires before any body is read — so it also refuses a
+  // fine part whose body is a `.glb`, which stamps no columns and would walk
+  // straight past a check that can only see cells. This one runs first, so
+  // `PS_UNIT` is not reachable from here.
+  //
+  // ⚠ AND EXACT EQUALITY IS THE HONEST TEST. The format stores `u` as
+  // micro-units, so two files that state the same unit read back bit-identical;
+  // a pair that differs below a millionth is a pair the format cannot represent
+  // and a tolerance here would only hide which of the two the cells took.
+  if p.w_unit != w.w_unit {
+    return Expand { ex_code: EX_UNIT,
+      ex_why: "'{name}' is authored at unit {p.w_unit} and is being composed into "
+            + "a world at unit {w.w_unit} — a cell cannot cross that (P9.1). A part "
+            + "at a different unit is a LIMB, bound into a socket and posed at the "
+            + "ratio, or it is nothing" };
+  }
 
   // ⚠ THE PART'S OWN FACING IS READ BEFORE ANYTHING IS WRITTEN, so a refused turn
   // leaves the world untouched — which `A3.2`'s facing test already asserts by
@@ -469,7 +523,7 @@ fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: in
       // so the angle is an argument. `sa_offer` is the value `socket_for_binding`
       // has already fenced, so the number checked and the number drawn are one.
       into = limb_at(root, b.bd_part, bq, br, anchor + c.pi_h + sk.sk_h,
-                     turn + socket_heading(sk), sa.sa_offer, depth + 1);
+                     turn + socket_heading(sk), sa.sa_offer, w.w_unit, depth + 1);
       if into.ex_code != EX_OK { return into; }
       parts = parts + into.ex_parts;
       // ⚠ `cols` IS DELIBERATELY NOT ADDED TO. A limb writes no columns — that is

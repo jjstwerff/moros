@@ -27,7 +27,7 @@ when the step landed, and this file duplicating it is how it grows back.
 ⚠ **THE USER REDIRECTED ON 2026-08-06 AND THIS IS THE CURRENT THREAD.** *"If these tests are slow,
 we need to optimize them"* / *"I want 0.1 s tests running parallel instead"* / *"if we ever want to
 build a full editor … those should not include starting a server, waiting for ports"*. Plan 17
-`A8.2` is still the next *parts* step and is described below, but it is not what was asked for last.
+`A8.3` is the next *parts* step and is described below, but it is not what was asked for last.
 
 ✅ **`G1` FIRED, THE DESIGN SURVIVED, AND THE PLAN REORDERED.**
 [GROUND_DEFAULT.md](GROUND_DEFAULT.md) § *What `G1` turned up* has it in full. The cost of a
@@ -229,7 +229,7 @@ unit trap that made `G1`'s first read column print `0 us`.
 beside the microseconds because the edit clock is exact and a millisecond figure measures the box.
 Checked in both directions before being believed (`probe/perf/profile_*.mjs`).
 
-## Plan 17 — `A8.2` is the next parts step
+## Plan 17 — `A8.3` is the next parts step
 
 **Green as of 2026-08-06** on loft `de2dd9e9`, hash stamped at both ends of every stage:
 `make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
@@ -248,11 +248,23 @@ Neither was a real failure. **Three installs landed while this session was runni
 
 ### What to do next
 
-**`A8.2`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building).
-`A8.1` is **done**: a bound leaf comes out of an expansion as a **placement naming a PART**, posed,
-with its hinge and swing, and its cells in no world. What is missing is the *drawing* — the editor
-counts cell-bodied limbs and says on the wire that it is not drawing them. `part_thumb_wire`
-already meshes a part for a thumbnail; `A8.2` is that call in the display path.
+**`A8.3`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building):
+the one-hex doorway, `door/frame` and `door/leaf` both cells — the picture `A5.2` was always for,
+without a custom mesh. `A8.1` (a bound leaf is a placement), `A8.2` (the editor meshes and poses
+its cells) and `A8.2b` (the scale) are **done**.
+
+⚠ **`A8.2b` PUT THE SAME REFUSAL IN THREE PLACES AND THAT IS THE FINDING TO CARRY.** A unit
+mismatch is refused as `EX_UNIT` (composition), `BK_UNIT` (flattening) and `PS_UNIT` (the direct
+stamp) — and only the third is reachable from the editor's own gesture: `14:<roof>,<part>` in a
+world goes through `hex_editor::part_place` → `part_stamp`, never `part_expand`. The first two were
+written, tested and green while the path an author's hand takes had no check at all. **Check that
+what you built is called**, in this exact shape.
+
+⚠ **AND `hex_proj::HEIGHT_SCALE` IS A SECOND AUTHORITY ON `w_unit`.** Both are *how far one height
+step is in world units*, both are 0.25, and the mesher reads the **constant** and never the field —
+so a part's stated unit does not reach its drawing at all. `ma_scale` works because it is a RATIO;
+anything absolute would have to pick one of the two. Not a defect today, and it is the first thing
+to bite if a world at another unit is ever loaded.
 
 ⚠ **`A8.1` FLIPPED FIVE TESTS TO THEIR OPPOSITE, AND THAT IS THE MODEL FOR THE REST OF `A8`.** Every
 *"a cell part in a turned socket is refused"* is now *"…is placed and turned"*, with the old claim
@@ -365,12 +377,11 @@ under *How to run things*: three contended repeats answer in **2m54s** what four
 
 ### What plan 17 is still short of, and it is one thing
 
-⚠ **A BOUND LEAF IS STILL NOT DRAWN IF ITS BODY IS CELLS, and `A8.1` moved the gap rather than
-closing it.** The placement now exists and names the part; what has nowhere to go is the geometry —
-the display world is a `World`, which cannot hold a mesh. The editor counts these and broadcasts
-*"N bound limb(s) are cell-bodied and not drawn yet"*, so the gap is visible instead of silent.
-**`A8.2` closes it.** ⚠ Also still true: no gesture can author a `FITS`, so a cell-bodied leaf that
-fits a socket cannot yet be made from the editor at all.
+✅ **A BOUND LEAF WHOSE BODY IS CELLS IS DRAWN, as of `A8.2`** — the display path meshes the part's
+own chunks with `part_body_meshes` (shared with the thumbnail) and poses each surface; `A8.2b` adds
+the scale, so one authored at a finer unit is shrunk to fit its opening. ⚠ **Still true: no gesture
+can author a `FITS`**, so a cell-bodied leaf that fits a socket cannot yet be made from the editor
+at all — every one in `data/parts/` was written by `src/prop_build.loft`.
 
 ⚠ **`A5.2`'s ACCEPTANCE IS A COLD-RECOGNITION TEST AND NEEDS THE USER'S EYES**: *does a person call
 it a door.* Render it and hand over the picture; do not claim it from a green suite.
@@ -515,12 +526,16 @@ expand · `A3.3` `expand == bake` · `A3.4` telling §P8's two rules apart · `A
 `A5.1` the hinge · `A5.2` the swing, record half then drawing half · `A6.1` the `MESH` section ·
 `A6.2` the statue on the plinth · `A6.3` the swap · `A7.1` the catalogue IS the library, and can
 change · `A7.2` the picker, which is #18's `B5` · `A7.3a`–`f3` part mode, from the store swap to
-the `BIND` gesture. **`A7.4` (keyed reads) stays deferred until a number says it hurts** —
-`src/part_build.loft` prints the cost every run. **What is left of the plan is `A8`.**
+the `BIND` gesture · `A8.1` a bound leaf is a placement · `A8.2` the editor meshes and poses its
+cells · `A8.2b` the derived scale and the unit refusal. **`A7.4` (keyed reads) stays deferred until
+a number says it hurts** — `src/part_build.loft` prints the cost every run. **What is left of the
+plan is `A8.3`–`A8.7`.**
 
-⚠ **`data/parts/` NOW HOLDS TWO FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`)
-and `prop/{statue,seated,plinth,shrine}.hxw` + two `.glb` (by `src/prop_build.loft`). `make parts`
-runs both, and all six files rebuild byte-identically — which is what makes committing a generated
+⚠ **`data/parts/` NOW HOLDS THREE FAMILIES**: `house/cottage.hxw` (built by `src/part_build.loft`),
+`prop/{statue,seated,plinth,shrine}.hxw` + two `.glb`, and `door/{oak,frame,doorway,plank,planked,slat,slatted}`
+(all by `src/prop_build.loft`). ⚠ **`door/slat` is the ONLY part at another unit** — 0.125 against
+everything else's 0.25 — and it exists so the scale path has a consumer; it is a limb or it is
+refused. `make parts` runs both builders, and every committed file rebuilds byte-identically — which is what makes committing a generated
 `.glb` sane. ⚠ **`expand == bake` is now a claim about CELL nests only**: `bake` refuses a nest
 holding a mesh (`BK_MESH`) rather than dropping it, because a baked part holds one `MESH` section
 and no position for it.
@@ -570,6 +585,12 @@ calls it once per edit (`editor_server.loft:7864`). ⚠ **`part_expand` itself, 
 still has none outside tests and `src/prop_build.loft`**, and the two are not interchangeable: the
 library's entry takes a name and a gesture holds a world, which is the same split `part_cycle_of`
 needed. A thumbnail that drew what a part *holds* would be `part_expand`'s first real consumer.
+⚠ **AND THAT ABSENCE COST `A8.2b` A REFUSAL NOBODY WOULD HAVE MET.** Placing a part in a WORLD
+(`14:<roof>,<part>`) goes `hex_editor::part_place` → `hex_part::part_stamp` and never enters the
+expansion — so a check written only in `expand` is green, gated and unreachable by hand. Read this
+entry as a live hazard for any rule added to `expand`, not as bookkeeping. **A world-mode `14:`
+also composes nothing**: only the named part's own cells are stamped, and its `INST` children are
+not derived at all.
 
 ✅ **`part_mesh_loads` HAS ONE TOO, as of `A7.3d`** — the save check calls it
 (`editor_server.loft:5505`) as well as `make parts`. ⚠ **`part_expand` still deliberately does not

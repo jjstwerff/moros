@@ -1,4 +1,5 @@
-// A LIMB MADE OF CELLS IS DRAWN — plan 17 `A8.2`.
+// A LIMB MADE OF CELLS IS DRAWN, AND A FINER ONE AT THE RATIO — plan 17 `A8.2`,
+// `A8.2b`.
 //
 // ⚠ CHECKED AND LEFT WHOLE. What `expand` hands back is a `MeshAt` naming a part,
 // and `hex_part/tests/place.loft` already tests that record to death — that a bound
@@ -8,7 +9,7 @@
 // posing and the slot block all live in `editor_server.loft` and there is no
 // library function to call instead.
 //
-// Three claims:
+// Four claims:
 //
 //   A8.2-i    a limb whose body is CELLS arrives on the wire with geometry in it.
 //             `A8.1` left these counted and undrawn — the server said *"N bound
@@ -21,11 +22,18 @@
 //   A8.2-iii  the cell leaf really has no mesh — `door/plank.hxw` names no `.glb`
 //             and no `.glb` exists beside it. Otherwise (i) is satisfied by the
 //             path that already worked.
+//   A8.2b     ⚠ A COUNT CANNOT SEE A SIZE. `hex_part/tests/scale.loft` owns the
+//             ratio — that it is derived, which way up, and that the hinge scales
+//             with the leaf — and none of that says the DISPLAY path used it. A
+//             leaf drawn at twice its opening has exactly the same triangles as
+//             one drawn right, so the only instrument is the extent of what
+//             arrived: `door/slatted` must draw to `door/planked`'s height.
 //
-// ⚠ THE TWO DOORWAYS DIFFER IN ONE FIELD. `door/doorway` binds `door/oak` and
-// `door/planked` binds `door/plank`; the frame, the socket, the paving and the
-// swing are identical. So a difference in what is drawn is a difference in the
-// BODY and not in the fixture — which is `A6.3`'s rule for the statues, one step on.
+// ⚠ THE THREE DOORWAYS DIFFER IN ONE FIELD. `door/doorway` binds `door/oak`,
+// `door/planked` binds `door/plank` and `door/slatted` binds `door/slat`; the frame,
+// the socket, the paving and the swing are identical in all three. So a difference in
+// what is drawn is a difference in the BODY and not in the fixture — which is `A6.3`'s
+// rule for the statues, one step on.
 import { existsSync, readFileSync } from 'node:fs';
 import { connect, send, until, quiet, checker, verdict } from '../lib.mjs';
 
@@ -68,6 +76,32 @@ const drawnFloats = () => [...slotFloats().values()]
   .filter((n) => n > 6).reduce((a, b2) => a + b2, 0);
 const drawnSlots = () => [...slotFloats().values()].filter((n) => n > 6).length;
 
+// The limb block's bounding box, in world units — `A8.2b`.
+//
+// ⚠ A FLOAT COUNT CANNOT SEE A SIZE, which is why this exists beside `drawnFloats`.
+// A leaf drawn at twice its opening has exactly the same triangles as one drawn
+// right, so every count in this file agrees with a door hanging through the wall.
+// The stride is 6 — `graphics::mesh_to_floats` writes pos+normal per vertex — so
+// the positions are the first three of every six.
+const limbBox = () => {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (const [id, body2] of g.picture) {
+    if (id < LIMB_LO || id > LIMB_HI) continue;
+    const parts = body2.split(';');
+    if (parts.length < 3) continue;
+    const fs = parts[2].trim();
+    if (fs === '') continue;
+    const nums = fs.split(',').map(Number);
+    for (let i = 0; i + 5 < nums.length; i += 6) {
+      for (let a = 0; a < 3; a++) {
+        if (nums[i + a] < lo[a]) lo[a] = nums[i + a];
+        if (nums[i + a] > hi[a]) hi[a] = nums[i + a];
+      }
+    }
+  }
+  return lo.map((v, i) => (Number.isFinite(v) ? hi[i] - v : 0));
+};
+
 // ── A8.2-iii — the fixture is cells, checked before it is relied on ──────────
 const plankFile = `${ROOT}/door/plank.hxw`;
 check(existsSync(plankFile), 'the cell leaf is in the library');
@@ -81,6 +115,7 @@ check(!plankBytes.includes(Buffer.from('door/plank.glb')),
 // ── A8.2-i — the cell limb is drawn ─────────────────────────────────────────
 const cellSaid = await openPart('door/planked');
 const cellFloats = drawnFloats();
+const plankBox = limbBox();
 check(cellFloats > 0,
       `a cell-bodied limb reaches the wire as geometry (${cellFloats} floats in `
     + `${drawnSlots()} slot(s))`);
@@ -103,4 +138,48 @@ check(!meshSaid.some((s) => s.includes('will not load')),
       'and nothing failed to load on the way');
 await openPart('', false);
 
-verdict(g, 'part_limb', check, { cellFloats, meshFloats });
+// ── A8.2b — THE FINE LEAF IS DRAWN AT THE RATIO, NOT AT ITS OWN SIZE ────────
+//
+// `door/slat` is `door/plank` re-authored at HALF the unit: three courses and two
+// staves where the plank has two courses and one column, spanning twice as far in
+// its own frame. Shrunk by `child.w_unit / parent.w_unit` it fills the same
+// opening — so the two doorways must draw to the same HEIGHT.
+//
+// ⚠ THE HEIGHT IS THE AXIS WITH AN ANSWER. Both leaves' courses are `W_EPS` apart
+// in their own steps, so the arithmetic is exact: the plank spans heights 1..9 at
+// 0.25 and the slat 2..18 at 0.125, which is the same span once halved. The
+// horizontal extents are NOT equal and are not asserted — two fine hexes halved
+// tile no coarse hex exactly, and a check that pretended otherwise would be tuned
+// rather than derived.
+//
+// ⚠ AND THE DISCRIMINATOR IS A FACTOR OF TWO, which is why a 15% window is not a
+// tuned threshold: a display path that ignored `ma_scale` draws this leaf at 2.0×,
+// nowhere near any tolerance a reader could argue about.
+const slatFile = `${ROOT}/door/slat.hxw`;
+check(existsSync(slatFile), 'the fine leaf is in the library');
+const fineSaid = await openPart('door/slatted');
+const fineFloats = drawnFloats();
+const slatBox = limbBox();
+check(fineFloats > 0,
+      `a limb authored at another unit reaches the wire as geometry (${fineFloats} `
+    + `floats in ${drawnSlots()} slot(s))`);
+const ratio = plankBox[1] > 0 ? slatBox[1] / plankBox[1] : 0;
+check(Math.abs(ratio - 1) < 0.15,
+      `and it is drawn to the opening's height, not its own: the fine leaf spans `
+    + `${slatBox[1].toFixed(3)} against the coarse leaf's ${plankBox[1].toFixed(3)} `
+    + `(ratio ${ratio.toFixed(3)}; unscaled it would be 2.0)`);
+// ⚠ THE CONTROL THAT THE FIXTURE IS REALLY FINER. Two staves and three courses is
+// more geometry than one column and two courses; if the slat were a copy of the
+// plank, the row above would pass on a scale of 1.0 applied to identical cells.
+check(fineFloats > cellFloats,
+      `and the fine leaf really is more geometry than the coarse one `
+    + `(${fineFloats} floats against ${cellFloats}) — otherwise the ratio above `
+    + `is a claim about two identical parts`);
+check(!fineSaid.some((s) => s.includes('is not fully drawn')),
+      'and nothing in the doorway was refused on the way');
+await openPart('', false);
+
+verdict(g, 'part_limb', check,
+        { cellFloats, meshFloats, fineFloats,
+          plankH: Number(plankBox[1].toFixed(4)), slatH: Number(slatBox[1].toFixed(4)),
+          ratio: Number(ratio.toFixed(4)) });
