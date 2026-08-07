@@ -1,0 +1,55 @@
+# A8.3 — DOES A PART READ AS A DOOR, WITH NOTHING BUT CELLS IN IT?
+#
+# `door.keys` asks the same question of the editor's own wall-opening gesture. This
+# asks it of a PART: a doorway authored in `data/parts/`, opened in part mode, and
+# photographed from where a person would stand.
+#
+# ⚠ PART MODE IS THE ONLY PLACE THIS PICTURE EXISTS. `14:<roof>,<part>` in a WORLD
+# stamps the named part's own cells and expands nothing — no instance, no limb — so
+# a doorway placed that way is its paving and nothing else. `44:` swaps the store
+# and the display world IS the expansion, which is what puts the frame and the leaf
+# in one picture.
+#
+# ⚠ AND THE CAMERA HAS TO BE PLACED AFTER THE SWAP. The part is three hexes across
+# at the origin; the author standing where a world put them is outside it looking at
+# nothing.
+
+echo --- flat ground, so the swap has something to come back to
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- open the doorway as a part
+send 44:door/planked
+wait part
+
+# ⚠ THE PAIR BELOW IS AN INSTRUMENT CHECK, NOT TWO VIEWS. A limb's mesh id is
+# 5..15 and the client's `mesh_bit` answers `1` — the FIGURE's bit — for every id at
+# or below 15. So EYES, which is the obvious way to get the walker out of the
+# picture, hides the leaf along with the body: the first shot taken that way was a
+# paving slab with nothing standing on it, and it read as *the limb is not drawn*
+# while the wire said it had been. AUTO is the mode that can see this subject.
+echo --- AUTO, from far enough back that the walker is not the subject
+# ⚠ THE MODE IS SET, NEVER ASSUMED. A server keeps its state between runs, so the
+# first version of this script photographed a station it had left in EYES on the
+# previous run and labelled the picture AUTO. The subject line in the shot is the
+# control: it names the mode the server thinks it is in.
+send 40:0
+wait mode
+at 2.598 -6.0 90
+snap a83-doorway
+
+echo --- the same station in EYES, which by construction cannot see a limb
+send 40:4
+wait mode
+snap a83-doorway-eyes
+send 40:0
+wait mode
+
+echo --- from the side, where a swung leaf casts its line
+at -2.5 1.5 0
+snap a83-doorway-side
+
+echo --- back to the world, so nothing is left open
+send 44:
+wait part

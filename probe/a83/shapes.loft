@@ -1,0 +1,86 @@
+// A8.3 — WHAT DOES A COLUMN OF CELLS ACTUALLY DRAW?
+//
+// Three questions the design of a cell doorway turns on, and none of them is
+// answerable by reading `hex_mesh`: a doorway needs a HOLE, and a hole in this
+// model is an absence between two things that are drawn.
+//
+//   gap     a column with cells at 1 and 17 — does the skirt FILL the space
+//           between them (no doorway is possible in one column) or does each cell
+//           draw its own plate with a short drop (a lintel is possible)?
+//   pier    two columns either side of an empty one — what a jamb looks like, and
+//           whether the empty cell between them reads as an opening
+//   edge    a cell carrying `h_wall_ne` — does a part's own WALL byte draw at all
+//           in part mode, where the server's run and opening registries are the
+//           part's and therefore empty?
+//
+// ⚠ THE THIRD IS THE ONE THAT COULD CHANGE THE STEP. `WIRE_PROTOCOL`'s `Y:` note
+// says four of a chunk's nine surfaces come from `chunk_mesh_props`, which reads
+// wall edges AND the server's registries — so a part may be unable to carry a wall
+// at all, and a doorway would have to be piers and a lintel rather than a wall with
+// a hole in it (§P9.2's first row).
+//
+//   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/shapes.loft
+use hex_world;
+use hex_part;
+use hex_editor;
+
+const W_EPS   = 8;
+const W_THETA = 3;
+const W_UNIT  = 0.25;
+
+fn cell(w: World, q: integer, r: integer, i: integer, h: integer, mat: integer) {
+  assert(world_set_cell(w, q, r, i,
+    Hex { h_height: h as u16? ?? 0,
+          h_material: mat as u8? ?? 0 }).cw_code == CW_OK,
+    "cell ({q},{r}) layer {i} at {h} refused");
+}
+
+fn save(root: text, name: text, w: World) {
+  assert(mkdir_all("{root}/{name.dir()}").ok(), "mkdir for {name}");
+  assert(world_save(w, "{root}/{name}.hxw", []) == WS_OK, "save {name}");
+  println("  wrote {root}/{name}.hxw");
+}
+
+fn main() {
+  root = env_variable("PROBE_PARTS") ?? "";
+  assert(root != "", "set PROBE_PARTS to the parts root");
+
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+
+  // ── the floor everything stands on, so a hole reads as a hole ──────────────
+  for fq in (0 - 1)..12 {
+    for fr in (0 - 1)..3 {
+      cell(w, fq, fr, 0, 1, hex_editor::ROAD_MAT);
+    }
+  }
+
+  // ── gap: one column, cells at 1 and 17, nothing between ───────────────────
+  cell(w, 1, 1, 1, 9, hex_editor::FLOOR_MAT);
+  cell(w, 1, 1, 2, 25, hex_editor::FLOOR_MAT);
+
+  // ── pier: two columns two courses tall with an empty cell between them ────
+  cell(w, 4, 1, 1, 9, hex_editor::FLOOR_MAT);
+  cell(w, 4, 1, 2, 17, hex_editor::FLOOR_MAT);
+  cell(w, 6, 1, 1, 9, hex_editor::FLOOR_MAT);
+  cell(w, 6, 1, 2, 17, hex_editor::FLOOR_MAT);
+
+  // ── edge: a cell carrying a WALL byte, and its neighbour carrying none ────
+  //
+  // ⚠ SLOT NAMES, NOT FIELD NAMES. `hex_world`'s three wall fields are misnamed
+  // (`doc/Todo.txt`) — read from the renderer's corners they are NW, NE and E —
+  // and `hex_editor` reads them only through `SLOT_*`, which is what this does.
+  assert(world_set_cell(w, 9, 1, 0,
+    Hex { h_height: 1 as u16? ?? 0,
+          h_material: hex_editor::ROAD_MAT as u8? ?? 0,
+          h_wall_n:  hex_editor::WALL_MAT as u8? ?? 0,
+          h_wall_ne: hex_editor::WALL_MAT as u8? ?? 0,
+          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+    "the walled cell was refused");
+
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "shapes",
+    pm_desc: "A8.3 probe — a gapped column, a pair of piers, and a walled cell"
+  }) == PM_OK, "the probe's meta was refused");
+  save(root, "probe/shapes", w);
+  println("  gap at (1,1) · piers at (4,1) and (6,1) · wall byte at (9,1)");
+}

@@ -1248,13 +1248,79 @@ because a wide door is where cells have something to say. The full argument is
 | ✅ `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | **DONE.** `limb_at` in `expand.loft`, `MeshAt.ma_part`, `BK_LIMB` in `bake.loft`. 254 tests in the package, four sabotages seen red. ⚠ **Twelve existing tests went red and five of them now assert the OPPOSITE** — see below | M |
 | ✅ `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | **DONE.** `part_body_meshes` shared with the thumbnail, `posed_mesh` unchanged; `door/plank` + `door/planked` are the fixture, `tools/gates/world/part_limb.mjs` the gate, two sabotages seen red | M |
 | ✅ `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | **DONE.** `MeshAt.ma_scale` + `hex_part::mesh_hung`; `EX_UNIT`, `BK_UNIT` **and `PS_UNIT`** — three sites, because the editor's own gesture reaches none of the first two. `lib/hex_part/tests/scale.loft` (12 tests), rows added to `part_limb` and `part_place`, **seven sabotages seen red**. Content: `door/slat` + `door/slatted`. ⚠ **Two findings**, see below | S |
-| `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
+| ◐ `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
 | `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
 
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.3` turned up — ◐ **the content is built, the picture needs the user's eyes**
+
+**Built:** `door/frame` is a WALL with a one-hex doorway in it (five cells, north edges walled,
+the middle cell's NE edge `DOOR_MAT`) where it used to be a single threshold cell; `door/leaf` is
+a leaf whose entire body is one wall panel; `door/hung` hangs the one in the other, ajar. Two live
+defects fell out, both fixed and both gated. **What is NOT settled is the acceptance** — *does a
+person call it a door* — and §A5.2's rule applies: render it and hand over the picture, never
+claim it from a green suite. The pictures are `shots/a83-door-{w,sw,s}.png`.
+
+⚠ **A CELL IS A HORIZONTAL PLATE AND A WALL BYTE IS A VERTICAL PANEL, AND THAT REFRAMES THE
+STEP.** `probe/a83/shapes.loft` photographed a column with cells at 1 and 17: **two floating
+slabs with sky between them**, not a voxel stack. So a leaf built by stacking cells — which is
+exactly what `A8.2`'s `door/plank` is — can never be a door; the picture of it is *a lump on a
+paving slab*. What draws vertically is a cell's `h_wall_*` byte, through `emit_wall_panel`, and
+`part_body_meshes` takes that fallback because a part carries no wall RUNS. Its own comment said
+so all along: *"walls draw as per-edge panels"*.
+
+⚠ **AND A ROW OF CELLS CARRYING THEIR EAST EDGE IS NOT A WALL — it is a row of parallel FINS.**
+`SLOT_E` is the edge a row's cells share with each other, so the first candidate photographed as
+four posts with a door hanging beside them. A wall along a row is `SLOT_NW` + `SLOT_NE`, which
+meet end to end and zigzag at 60°. A hex wall zigzags; that is what the run registry exists to
+hide in a world, and a part has no runs.
+
+⚠ **THE LEAF IS AUTHORED ON THE CANONICAL EDGE AND THE SOCKET TURNS IT.** Authoring it on the
+edge it will finally occupy is the trap: the socket's heading then turns it OFF the opening, and
+it lands a sixth of a turn away with every number in both documents agreeing. Heading 0 is
+direction 0 is `SLOT_E`, so the leaf carries its panel there. Measured shut, it lands on
+x 0.00..0.87, z 0.50..1.00 — the doorway edge, corner to corner.
+
+⚠ **`CART_BODY` IS 5 AND `PART_MESH_BASE` WAS 5 — THE LIMB BLOCK AND THE CART SHARED IDS.**
+`A8.2` read *0-4 are the figure* and took 5; the cart is 5, 6, 7. Both directions happened:
+opening a part deleted the cart, and the cart the `MSG_READY` handler sends a joining client
+**overwrote that client's limbs**. ⚠ **Nothing could see it** — the wire carries both, every
+count was right, and `part_limb` was reading slot 5 and cannot tell a door panel from a cart
+body. The band is now spelled out where it is spent: 0-4 figure, 5-7 cart, **8-15 limbs**.
+
+⚠ **AND THE LIMB BLOCK WAS NEVER RE-SENT TO A CLIENT THAT JOINED LATER.** The display rebuild
+broadcasts `M:8`…`M:15` and then says nothing until the authored part changes — so a page loaded
+after `44:` got the wall and no door. That is the case a PERSON is, and it is why every picture
+taken the ordinary way had an empty doorway in it while the gate was green. The chunk stream
+already restarts for a joining client; the limbs were the half that was forgotten. Fixed by
+invalidating `disp_tau` in `MSG_READY` — the rebuild stays the one place that meshes and poses a
+limb, and it sits where the client has ARRIVED rather than in the connect handler, which
+CLAUDE.md already records as a re-send that reached nobody.
+
+⚠ **WHAT A PART STILL CANNOT SAY, AND IT IS WHY THIS STEP IS ◐.** The per-edge fallback has
+exactly two heights — `WALL_UP` (3.0) and `FENCE_UP` (1.0) — and `wall_up(DOOR_MAT)` is 0, which
+draws nothing. So:
+
+| what a doorway wants | what a part can say today |
+|---|---|
+| an opening of door height, with a HEAD over it | a hole the full height of the wall — there is no lintel |
+| a leaf of door height | a panel `WALL_UP` tall, the same height as the wall |
+| a leaf that reads as joinery | `WALL_MAT` — **the same grey as the wall it hangs in** |
+
+**A shut cell leaf is invisible by construction**: same height, same material, same plane as the
+wall. That is decision 12's rule arriving from the other side — *separate them in the RENDERER,
+never in the classifier* — and it wants either an `Opening` profile in the part format or a
+per-part wall height and material. Neither exists, and approximating one in the content would be
+a picture that lies about what the format can carry.
+
+**Verified**: `make parts` green with the expansion asserted (`leaf 'door/leaf' … turned 20 onto
+the doorway edge, ajar 0.125 — no mesh anywhere`), `part_limb` extended with the late-client row,
+**two sabotages seen red** (the re-send removed → the gate fails; the id band back at 5 → the
+gate reads the cart).
 
 ### What `A8.2b` turned up
 

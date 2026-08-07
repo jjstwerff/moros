@@ -229,7 +229,7 @@ unit trap that made `G1`'s first read column print `0 us`.
 beside the microseconds because the edit clock is exact and a millisecond figure measures the box.
 Checked in both directions before being believed (`probe/perf/profile_*.mjs`).
 
-## Plan 17 — `A8.3` is the next parts step
+## Plan 17 — `A8.3` is built and ◐ **waiting on the user's eyes**
 
 **Green as of 2026-08-06** on loft `de2dd9e9`, hash stamped at both ends of every stage:
 `make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
@@ -248,10 +248,33 @@ Neither was a real failure. **Three installs landed while this session was runni
 
 ### What to do next
 
-**`A8.3`** — [plan 17 § `A8` broken down](../../plans/17-parts/README.md#a8-broken-down--p9-the-limb-that-is-a-building):
-the one-hex doorway, `door/frame` and `door/leaf` both cells — the picture `A5.2` was always for,
-without a custom mesh. `A8.1` (a bound leaf is a placement), `A8.2` (the editor meshes and poses
-its cells) and `A8.2b` (the scale) are **done**.
+**`A8.3` is ◐** — the content is built (`door/frame` is a wall with a doorway in it, `door/leaf`
+is a leaf that is one wall panel, `door/hung` hangs them ajar) and **the acceptance is a
+cold-recognition test that needs the user**: `shots/a83-door-{w,sw,s}.png`. Read
+[plan 17 § *What `A8.3` turned up*](../../plans/17-parts/README.md) before touching it — three
+measurements reframe the whole area, and the honest answer today is *a wall with a leaf in it*
+rather than *a door*. Then `A8.4` (the three-hex gateway).
+
+⚠ **A CELL IS A HORIZONTAL PLATE; A WALL BYTE IS A VERTICAL PANEL.** Two cells stacked in one
+column draw as two floating slabs with sky between them — photographed, `probe/a83/shapes.loft` —
+so nothing vertical can be built by stacking cells, and `A8.2`'s `door/plank` is exactly that
+stack. Every vertical surface a part can carry is an `h_wall_*` byte, drawn by the per-edge
+fallback because a part has no wall RUNS. ⚠ **And a row of cells carrying their EAST edge is a
+row of fins, not a wall** — a wall along a row is `SLOT_NW` + `SLOT_NE`, zigzagging at 60°.
+
+⚠ **A PART CANNOT SAY *DOOR HEIGHT*, AND THAT IS WHY `A8.3` IS ◐.** The per-edge fallback has two
+heights — `WALL_UP` 3.0 and `FENCE_UP` 1.0 — and `wall_up(DOOR_MAT)` is 0. So the opening runs
+the full height of the wall with no head, and the leaf is the same height AND the same grey as
+the wall it hangs in: **a shut cell leaf is invisible by construction.** It wants an `Opening`
+profile in the part format or a per-part wall height and material; approximating one in the
+content would be a picture that lies about the format.
+
+⚠ **AND TWO LIVE DEFECTS CAME OUT OF LOOKING AT A PICTURE, both fixed and gated.** `CART_BODY` is
+5 and `PART_MESH_BASE` was 5, so the limb block and the cart overwrote each other — **no count
+could see it**, because the wire carried both and a float count cannot tell a door panel from a
+cart body. And the limb block was **never re-sent to a client that joins after `44:`**, which is
+the case a person is: the door was missing from every picture taken the ordinary way while the
+gate was green. The reserved band is now 0-4 figure, 5-7 cart, 8-15 limbs.
 
 ⚠ **`A8.2b` PUT THE SAME REFUSAL IN THREE PLACES AND THAT IS THE FINDING TO CARRY.** A unit
 mismatch is refused as `EX_UNIT` (composition), `BK_UNIT` (flattening) and `PS_UNIT` (the direct

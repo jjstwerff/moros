@@ -40,9 +40,16 @@ import { connect, send, until, quiet, checker, verdict } from '../lib.mjs';
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
 const check = checker();
 
-// The reserved block the display path draws limbs into — `PART_MESH_BASE` 5,
-// `PART_MESH_MAX` 11, so ids 5..15. Kept in step with `editor_server.loft`.
-const LIMB_LO = 5, LIMB_HI = 15;
+// The reserved block the display path draws limbs into — `PART_MESH_BASE` 8,
+// `PART_MESH_MAX` 8, so ids 8..15. Kept in step with `editor_server.loft`.
+//
+// ⚠ IT WAS 5..15 AND THAT INCLUDED THE CART — plan 17 `A8.3`. `CART_BODY`,
+// `CART_WHEEL_L` and `CART_WHEEL_R` are 5, 6 and 7, so the limb block and the cart
+// wrote to one another's slots: opening a part deleted the cart, and the cart the
+// `MSG_READY` handler sends a joining client overwrote the limbs. This gate passed
+// throughout, because a float count cannot tell a door panel from a cart body — it
+// was reading the cart and reporting a drawn limb.
+const LIMB_LO = 8, LIMB_HI = 15;
 
 const g = await connect();
 // The limb slots, as float counts. `M:<id>;<flag>;<r>,<g>,<b>;<floats>` — an empty
@@ -177,6 +184,26 @@ check(fineFloats > cellFloats,
     + `is a claim about two identical parts`);
 check(!fineSaid.some((s) => s.includes('is not fully drawn')),
       'and nothing in the doorway was refused on the way');
+
+// ── A8.3 — A CLIENT THAT JOINS WHILE A PART IS OPEN GETS THE LIMBS ──────────
+//
+// ⚠ THE CASE A PERSON IS. The display rebuild BROADCASTS the limb block and then
+// says nothing until the authored part changes, so a page loaded after `44:`
+// received the wall and no door — every picture taken that way was a doorway with
+// nothing in it, and no count anywhere could see it because the wire had carried
+// the limbs correctly to the client that was already listening.
+//
+// ⚠ AND IT IS A SECOND CLIENT, NOT A RE-READ. `g.picture` holds what THIS socket
+// was sent; asking the same client again can only ever confirm what it already has.
+const late = await connect();
+await quiet(() => late.picture.size, 400, 15000, 'the late client');
+const lateFloats = [...late.picture.entries()]
+  .filter(([id]) => id >= LIMB_LO && id <= LIMB_HI)
+  .filter(([, b]) => (b.split(';')[2] ?? '').trim() !== '').length;
+check(lateFloats > 0,
+      `a client that joins while a part is open is sent the limb block too `
+    + `(${lateFloats} slot(s))`);
+try { late.ws.close(); } catch { /* already gone */ }
 await openPart('', false);
 
 verdict(g, 'part_limb', check,

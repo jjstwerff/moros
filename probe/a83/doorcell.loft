@@ -1,0 +1,139 @@
+// A8.3 — A DOORWAY AND A LEAF, BOTH CELLS. The candidate, before it is content.
+//
+// What the probes measured, and what each one changed:
+//
+//   · a cell is a horizontal PLATE with a short skirt, not a voxel — two cells in
+//     one column draw as two floating slabs, so a stack of them can never be a
+//     door leaf. `door/plank` is exactly that stack, and the picture of it is a
+//     lump on a paving slab.
+//   · a cell's WALL BYTE draws a vertical panel, in part mode, with the server's
+//     registries empty — `part_body_meshes` says so in its own comment (*"walls
+//     draw as per-edge panels"*) and the probe photographed one.
+//   · ⚠ AND A ROW OF CELLS CARRYING THEIR EAST EDGE IS NOT A WALL. It is a row of
+//     parallel FINS: the east edge of every cell in a row is a north-south plane,
+//     and consecutive cells in a row are neighbours across exactly that edge. The
+//     first candidate photographed as four posts with a door hanging beside them.
+//
+// So a wall along a row is the two NORTH edges of each cell — `SLOT_NW` (dir 4) and
+// `SLOT_NE` (dir 5) — which meet end to end and zigzag at 60°, and the opening is
+// ONE of those edges left bare. The leaf is a part whose whole body is a panel on
+// that same edge, so shut it completes the wall and ajar it swings out of it.
+//
+//   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/doorcell.loft
+use hex_world;
+use hex_part;
+use hex_editor;
+
+const W_EPS   = 8;
+const W_THETA = 3;
+const W_UNIT  = 0.25;
+
+// `slot_dir` in `editor_server.loft`: SLOT_NW is dir 4, SLOT_NE is dir 5, SLOT_E is
+// dir 0 — and a socket's heading is `dir * (FACINGS / EDGES)`, so 24/6 = 4 per step.
+const DIR_NE  = 5;
+const HEAD_NE = 20;
+
+fn walled(w: World, q: integer, r: integer, nw: integer, ne: integer, e: integer) {
+  assert(world_set_cell(w, q, r, 0,
+    Hex { h_height: 1 as u16? ?? 0,
+          h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
+          h_wall_n:  nw as u8? ?? 0,
+          h_wall_ne: ne as u8? ?? 0,
+          h_wall_se: e as u8? ?? 0 }).cw_code == CW_OK,
+    "wall cell ({q},{r}) refused");
+}
+
+fn save(root: text, name: text, w: World) {
+  assert(mkdir_all("{root}/{name.dir()}").ok(), "mkdir for {name}");
+  assert(world_save(w, "{root}/{name}.hxw", []) == WS_OK, "save {name}");
+  println("  wrote {root}/{name}.hxw");
+}
+
+// The leaf: ONE cell whose NE edge carries a wall byte, so its body is a single
+// vertical panel — and the hinge is at one END of that edge rather than at the
+// part's origin, which is what makes it swing like a door instead of spinning like
+// a turnstile.
+//
+// The NE edge of hex (0,0) runs between two of the six corners; the hinge is the
+// corner shared with the NW edge, so the leaf opens away from the jamb it touches.
+fn write_leaf(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  walled(w, 0, 0, 0, 0, hex_editor::WALL_MAT);
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "cellleaf",
+    pm_desc: "A8.3 probe — a leaf whose body is one wall panel"
+  }) == PM_OK, "meta refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "fits refused");
+  // Corner 0 of a pointy-top hex is (0, +1) — the north vertex, which is where the
+  // NW and NE edges meet. That is the jamb the leaf hangs on.
+  hx = (env_variable("PROBE_HX") as float?) ?? 0.8660254037844386;
+  hz = (env_variable("PROBE_HZ") as float?) ?? 0.5;
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: hx, hg_oy: 0.0, hg_oz: hz,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0 - 0.25, hg_hi: 0.25
+  }).hw_code == HG_OK, "hinge refused");
+  save(root, "probe/cellleaf", w);
+}
+
+// The frame: a row of cells whose north edges make a continuous zigzag wall, with
+// ONE edge — the NE of the middle cell — left bare. That bare edge is the opening,
+// and the socket sits on the cell that owns it.
+fn write_frame(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for q in (0 - 2)..3 {
+    walled(w, q, 0, hex_editor::WALL_MAT,
+           if q == 0 { hex_editor::DOOR_MAT } else { hex_editor::WALL_MAT }, 0);
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "cellframe",
+    pm_desc: "A8.3 probe — a wall with one edge left open"
+  }) == PM_OK, "meta refused");
+  assert(part_set_sockets(w, [Socket {
+    sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: HEAD_NE,
+    sk_kind: "door", sk_size: "1x2", sk_name: "leaf"
+  }]).sw_code == SK_OK, "socket refused");
+  save(root, "probe/cellframe", w);
+}
+
+// The two together, with the leaf ajar — and paving so the picture has a floor.
+fn write_hung(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in (0 - 3)..5 {
+    for pr in (0 - 2)..3 {
+      assert(world_set_cell(w, pq, pr, 0,
+        Hex { h_height: 1 as u16? ?? 0,
+              h_material: hex_editor::ROAD_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "paving refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "cellhung",
+    pm_desc: "A8.3 probe — the cell leaf hung in the cell frame, ajar"
+  }) == PM_OK, "meta refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: "probe/cellframe" }]) == PI_OK,
+    "instance refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "probe/cellleaf"
+  }]).bw_code == BD_OK, "binding refused");
+  save(root, "probe/cellhung", w);
+}
+
+fn main() {
+  root = env_variable("PROBE_PARTS") ?? "";
+  assert(root != "", "set PROBE_PARTS to the parts root");
+  swing = (env_variable("PROBE_OPEN") as float?) ?? 0.125;
+  write_leaf(root);
+  write_frame(root);
+  write_hung(root, swing);
+
+  ex = part_expand(world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world, root,
+                   PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                              pi_part: "probe/cellhung" }, 0);
+  assert(ex.ex_code == EX_OK, "the hung doorway does not expand: {ex.ex_why}");
+  m = ex.ex_meshes[0] ?? MeshAt {};
+  println("  leaf '{m.ma_part}' at ({m.ma_q},{m.ma_r},{m.ma_h}) facing {m.ma_facing} "
+        + "swung {m.ma_swing} about ({m.ma_ox},{m.ma_oy},{m.ma_oz})");
+}

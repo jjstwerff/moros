@@ -715,11 +715,23 @@ const PART_ARM_R = 4;
 // is a `World` and a mesh cannot go in one, so it goes on the wire beside it.
 //
 // ⚠ THE IDS COME OUT OF THE RESERVED LOW BLOCK, which is what it was reserved
-// for: 0-4 are the figure, and a chunk's ids start above `MESH_FIGURE_MAX`. Eleven
-// slots is a cap, and a cap that is silent is a lie — `part_meshes_drawn` says
-// what it dropped.
-const PART_MESH_BASE = 5;
-const PART_MESH_MAX  = 11;
+// for: 0-4 are the figure, and a chunk's ids start above `MESH_FIGURE_MAX`. A cap
+// that is silent is a lie — `part_meshes_drawn` says what it dropped.
+//
+// ⚠ AND IT STARTS AT 8, NOT AT 5, BECAUSE THE CART IS ALREADY THERE — plan 17
+// `A8.3`, found by a picture. `A8.2` read *0-4 are the figure* and took 5, but
+// `CART_BODY`, `CART_WHEEL_L` and `CART_WHEEL_R` are 5, 6 and 7: the limb block
+// and the cart were writing to one another's slots. Both directions happened —
+// opening a part deleted the cart, and every client that joined afterwards had
+// its limbs overwritten by the cart the `MSG_READY` handler sends it, so the door
+// was missing from every picture taken the way a person takes one. ⚠ **Nothing
+// could see it**: the wire carries both, the counts were right, and the gate that
+// reads slot 5 cannot tell a door panel from a cart body.
+//
+// The reserved band 0-15 is now spelled out where it is spent: 0-4 the figure,
+// 5-7 the cart, 8-15 the limbs.
+const PART_MESH_BASE = 8;
+const PART_MESH_MAX  = 8;
 
 // ── THE DIRTY SET ──────────────────────────────────────────────────────────
 // One routine that answers "what changed?", instead of the question being
@@ -5457,6 +5469,24 @@ fn main() {
           loaded = [];
           have_hex = false;
           moved = true;
+          // ⚠ AND THE LIMB BLOCK HAS TO START OVER TOO — plan 17 `A8.3`. The
+          // display rebuild BROADCASTS `M:5`…`M:15` and then does nothing until
+          // the authored part changes, so a client that joins while a part is
+          // open never receives a single limb: the doorway arrived with its wall
+          // and no door in it, on every picture taken this way. The chunk stream
+          // above already re-runs for exactly this reason; the limbs are the half
+          // that was forgotten, and re-deriving is what this editor does anyway.
+          //
+          // ⚠ IT IS DONE BY INVALIDATING THE CLOCK, not by re-sending here. The
+          // rebuild is the ONE place that meshes and poses a limb, and a second
+          // send site would be a second answer able to disagree with it — the
+          // trap `part_body_meshes` was shared with the thumbnail to avoid.
+          // `disp_tau = -1` is the same signal `44:` itself uses.
+          //
+          // ⚠ AND IT SITS WHERE THE CLIENT HAS ARRIVED, in `MSG_READY`, rather
+          // than in the connect handler — CLAUDE.md records a re-send that fired
+          // before the client had joined the list and reached nobody.
+          disp_tau = -1;
           cbm = mesh("cart");
           emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
           srv.send_to(ev.cid, "M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}");

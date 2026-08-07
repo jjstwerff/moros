@@ -330,22 +330,125 @@ fn write_leaf(root: text) {
   assert(world_save(w, "{root}/door/oak.hxw", []) == WS_OK, "the leaf was not saved");
 }
 
-// The frame: a threshold cell with a socket where the leaf hangs.
+// ── THE ONE-HEX DOORWAY — plan 17 `A8.3`, §P9.2 ─────────────────────────────
+//
+// A wall with a hole in it, and the hole is where the leaf hangs. Until `A8.3` this
+// part was a single threshold cell and a socket: the leaf hung in mid-air over a
+// paving slab, which is why every picture of it read as *a lump on the pavement*
+// rather than as a door.
+//
+// ⚠ A CELL IS A HORIZONTAL PLATE AND A WALL BYTE IS A VERTICAL PANEL, which is the
+// measurement the whole step turns on (`probe/a83/shapes.loft`). Two cells stacked
+// in one column draw as two floating slabs — never a jamb, never a leaf — while a
+// cell's `h_wall_*` byte draws a panel `WALL_UP` tall through `emit_wall_panel`,
+// and `part_body_meshes` takes exactly that fallback because a part carries no wall
+// RUNS. So every vertical surface in a part is an edge byte, and the wall below is
+// the part's own comment on §P9.2's first row: *the opening is the wall*.
+//
+// ⚠ AND A WALL ALONG A ROW IS THE TWO NORTH EDGES, NOT THE EAST ONE. `SLOT_E` is
+// the edge a row's cells share with each other, so a row carrying it draws parallel
+// FINS — photographed, four posts with a door hanging beside them. `SLOT_NW` and
+// `SLOT_NE` meet end to end and zigzag at 60°, which is what a hex wall is.
+//
+// ⚠ THE OPENING IS `DOOR_MAT`, NOT AN ABSENT BYTE. `wall_up(DOOR_MAT)` is 0, so it
+// draws no panel — the same hole either way — but the document then SAYS there is a
+// door there, which is what an opening profile will need when a part can carry one.
+// ⚠ What it cannot yet say is a HEAD: the per-edge fallback has two heights, `WALL_UP`
+// and `FENCE_UP`, so the opening runs the full height of the wall and there is no
+// lintel over it. That wants either an `Opening` in the part format or a per-part
+// wall height, and neither exists — written down rather than approximated.
 fn write_frame(root: text) {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
-  assert(world_set_column(w, Column { co_q: 0, co_r: 0,
-    co_cells: [Hex { h_height: 1 as u16? ?? 0,
-                     h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }] }).cw_code == CW_OK,
-    "the frame's threshold was refused");
+  for fq in (0 - 2)..3 {
+    // The middle cell's NE edge is the doorway; every other north edge is wall.
+    assert(world_set_cell(w, fq, 0, 0,
+      Hex { h_height: 1 as u16? ?? 0,
+            h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
+            h_wall_n:  hex_editor::WALL_MAT as u8? ?? 0,
+            h_wall_ne: (if fq == 0 { hex_editor::DOOR_MAT }
+                        else { hex_editor::WALL_MAT }) as u8? ?? 0
+          }).cw_code == CW_OK, "the frame's cell ({fq},0) was refused");
+  }
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_FITTING, pm_name: "frame",
-    pm_desc: "a door frame — a threshold and a socket for a 1x2 leaf"
+    pm_desc: "a wall with a one-hex doorway in it, and a socket for a 1x2 leaf"
   }) == PM_OK, "the frame's meta was refused");
+  // ⚠ THE HEADING IS THE OPENING'S EDGE. `slot_dir` maps SLOT_NE to direction 5 and
+  // a socket's heading is `dir * (FACINGS / EDGES)` = 4 per step, so 20 — and a leaf
+  // authored on its own EAST edge (heading 0, the canonical one) is turned onto this
+  // one. Measured: shut, the leaf's panel lands on x 0.00..0.87, z 0.50..1.00, which
+  // is the doorway edge to the corner.
   assert(part_set_sockets(w, [Socket {
-    sk_q: 0, sk_r: 0, sk_h: 1, sk_mount: SM_HEAD, sk_at: 0,
+    sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 20,
     sk_kind: "door", sk_size: "1x2", sk_name: "leaf"
   }]).sw_code == SK_OK, "the frame's socket was refused");
   assert(world_save(w, "{root}/door/frame.hxw", []) == WS_OK, "the frame was not saved");
+}
+
+// ── THE LEAF, AND IT IS ONE PANEL — plan 17 `A8.3` ──────────────────────────
+//
+// A cell whose EAST edge carries a wall byte: its whole body is a single vertical
+// panel, which is what a door is. `door/plank` is the same claim made with plates
+// and it draws a lump; this is the shape that reads.
+//
+// ⚠ THE EAST EDGE IS THE CANONICAL ORIENTATION, and getting that wrong is the trap
+// this comment exists for. A socket's heading TURNS the leaf, so a leaf authored on
+// the edge it will finally occupy is turned OFF it — measured, the panel landed a
+// sixth of a turn away from the doorway with every number in the document agreeing.
+// Heading 0 is direction 0 is `SLOT_E`, so the leaf is authored there and the socket
+// says where it really goes.
+//
+// ⚠ AND THE HINGE IS AN END OF THAT EDGE, not the part's origin. `door/plank`'s
+// hinge is its origin, so it spins about its own middle like a turnstile; a door
+// turns about its jamb. The east edge of hex (0,0) runs between the corners
+// (√3/2, +0.5) and (√3/2, −0.5), and the hinge is the first of them.
+fn write_cell_leaf(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  assert(world_set_cell(w, 0, 0, 0,
+    Hex { h_height: 1 as u16? ?? 0,
+          h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
+          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+    "the leaf's cell was refused");
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "leaf",
+    pm_desc: "a door leaf that is one wall panel — cells, and no mesh anywhere"
+  }) == PM_OK, "the leaf's meta was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "the leaf's FITS was refused");
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: 0.8660254037844386, hg_oy: 0.0, hg_oz: 0.5,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0 - 0.25, hg_hi: 0.25
+  }).hw_code == HG_OK, "the leaf's hinge was refused");
+  assert(world_save(w, "{root}/door/leaf.hxw", []) == WS_OK, "the leaf was not saved");
+}
+
+// The doorway a person is shown: the wall, the leaf hung in its hole, ajar.
+//
+// ⚠ THE PAVING IS WIDER THAN THE WALL so the picture has a floor under both jambs —
+// the wall is five cells and the old 3×3 slab left its ends hanging over grass.
+fn write_hung(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in (0 - 2)..5 {
+    for pr in (0 - 2)..3 {
+      assert(world_set_cell(w, pq, pr, 0,
+        Hex { h_height: 1 as u16? ?? 0,
+              h_material: hex_editor::ROAD_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "the hung doorway's paving was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "hung",
+    pm_desc: "a wall with a door in it, ajar — every part of it cells"
+  }) == PM_OK, "the hung doorway's meta was refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 1, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: "door/frame" }]) == PI_OK,
+    "the hung doorway's instance was refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "door/leaf"
+  }]).bw_code == BD_OK, "the hung doorway's binding was refused");
+  assert(world_save(w, "{root}/door/hung.hxw", []) == WS_OK,
+         "the hung doorway was not saved");
 }
 
 // A doorway: the frame standing on paving, with the leaf hung in it and AJAR.
@@ -557,6 +660,29 @@ fn main() {
   write_leaf(root);
   write_frame(root);
   write_doorway(root, 0.125);
+  // ── the doorway that is cells all the way down — `A8.3` ────────────────────
+  write_cell_leaf(root);
+  write_hung(root, 0.125);
+  // ⚠ THE LEAF MUST LAND ON THE OPENING, and that is a claim about the pair rather
+  // than about either file. The socket turns a leaf authored on its own EAST edge
+  // onto the doorway's NE one — get the canonical orientation wrong and the panel
+  // sits a sixth of a turn away with every number in both documents agreeing.
+  hw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  hex_ = part_expand(hw, root, PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                          pi_part: "door/hung" }, 0);
+  assert(hex_.ex_code == EX_OK, "the hung doorway does not expand: {hex_.ex_why}");
+  assert(len(hex_.ex_meshes) == 1,
+         "{len(hex_.ex_meshes)} placements came out of the hung doorway, not 1");
+  hm = hex_.ex_meshes[0] ?? MeshAt {};
+  assert(hm.ma_part == "door/leaf" && hm.ma_mesh == "",
+         "the hung leaf is '{hm.ma_part}' / mesh '{hm.ma_mesh}' — it must be cells "
+       + "and no mesh at all, which is the whole of A8.3");
+  assert(hm.ma_facing == 20,
+         "the leaf is turned {hm.ma_facing}, and the doorway's edge is heading 20");
+  assert(hm.ma_swing == 0.125 && hm.ma_ay != 0.0,
+         "the leaf is drawn at {hm.ma_swing} about ({hm.ma_ax},{hm.ma_ay},{hm.ma_az})");
+  println("  hung:   leaf '{hm.ma_part}' at ({hm.ma_q},{hm.ma_r},{hm.ma_h}) turned "
+        + "{hm.ma_facing} onto the doorway edge, ajar {hm.ma_swing} — no mesh anywhere");
   // ── the cell-bodied leaf, and the same doorway hung with it — `A8.2` ────────
   write_plank(root);
   write_planked(root, 0.125);
