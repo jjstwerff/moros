@@ -260,7 +260,14 @@ leaf), `door/gate-l`/`door/gate-r` (mirrored by ONE number), `door/gated`. ⚠ *
 the leaf count**: the two edges are 60° apart, so a single leaf spanning the opening cannot exist.
 ⚠ **And *they do not overlap* is not *they are mirrored*** — the first gate row passed a sabotage
 with both leaves on one hinge; it measures the jamb-to-jamb SPAN now (√3 against 1.12). Next is
-`A8.7` (the export in FINAL world units with the pivot marked).
+**`A8` is complete** — `A8.7` was the last row.
+
+⚠ **AND `A8.7`'s PLAN ROW QUOTED A RULE THE DESIGN HAD ALREADY REPLACED.** It asks for *a returned
+mesh checked against the exported extents, refused with the difference*; **§P9.11 replaces that
+with containment** — a skin may exceed the blockout as far as it likes (cloth, hair, capes), and
+the fault is the blockout poking out of the SKIN. Building the row as written would have shipped a
+check that refuses a cape and looked exactly like the design. **The plan table is not the design**:
+read the § a row cites before implementing it.
 
 ◐ **`A8.6` IS HALF DONE, AND THE OTHER HALF IS A MISSING GESTURE.** `22:` in part mode now exports
 the open part's own cells — `part_body_meshes`, the same call the display and the thumbnail make,

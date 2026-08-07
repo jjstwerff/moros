@@ -1,0 +1,123 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A8.7`, §P9.11 — a returned skin must COVER the blockout, and may exceed
+// it as far as it likes.
+//
+// ⚠ THE CONTROL IS THE ONE THAT LOOKS LIKE A HOLE. *A skin twice the size passes*
+// reads like a check that is not checking, and it is the whole correction §P9.11
+// made to §P9.5: cloth, hair and capes reach past what can be struck, and a rule
+// that refused them would train an artist to trim a cape to a box. Without that
+// test this file is an equality check that happens to be spelled as containment,
+// and the next reader would "tighten" it.
+use hex_part;
+use hex_world;
+
+fn box_of(x0: float, y0: float, z0: float,
+          x1: float, y1: float, z1: float) -> PartBox {
+  PartBox { pb_x0: x0, pb_y0: y0, pb_z0: z0, pb_x1: x1, pb_y1: y1, pb_z1: z1 }
+}
+
+// A blockout a metre across, two high, half a metre deep — a door leaf's shape.
+fn blockout() -> PartBox { box_of(0.0, 0.0, 0.0, 1.0, 2.0, 0.5) }
+
+fn test_a_skin_that_covers_the_blockout_is_taken() {
+  got = skin_covers(blockout(), box_of(0.0, 0.0, 0.0, 1.0, 2.0, 0.5), 0.001);
+  assert(got.kc_code == KC_COVERS,
+         "a skin traced exactly around the blockout was refused: {got.kc_why}");
+}
+
+// ⚠ THE CONTROL §P9.11 EXISTS FOR. Growth is not measured against anything.
+fn test_a_skin_that_exceeds_it_everywhere_is_still_taken() {
+  got = skin_covers(blockout(), box_of(0.0 - 3.0, 0.0 - 1.0, 0.0 - 3.0,
+                                       4.0, 6.0, 3.5), 0.001);
+  assert(got.kc_code == KC_COVERS,
+         "a cape was refused for being a cape: {got.kc_why}");
+  assert(got.kc_dx == 0.0 && got.kc_dy == 0.0 && got.kc_dz == 0.0,
+         "growth was reported as a shortfall ({got.kc_dx},{got.kc_dy},{got.kc_dz})");
+}
+
+// ⚠ AND THE FAULT IS THE OTHER DIRECTION: the hitbox poking out of the skin, which
+// is being struck by nothing you can see.
+fn test_a_skin_the_blockout_pokes_out_of_is_refused_with_the_shortfall() {
+  got = skin_covers(blockout(), box_of(0.1, 0.0, 0.0, 0.8, 2.0, 0.5), 0.001);
+  assert(got.kc_code == KC_SHORT,
+         "a skin narrower than the hitbox was accepted");
+  // 0.1 short at the near end, 0.2 at the far one — the WORST per axis, not a sum.
+  assert(got.kc_dx > 0.19 && got.kc_dx < 0.21,
+         "the shortfall came back as {got.kc_dx}, and the skin is 0.2 short at its "
+       + "widest gap");
+  assert(got.kc_dy == 0.0 && got.kc_dz == 0.0,
+         "axes that cover were reported short ({got.kc_dy},{got.kc_dz})");
+  assert(got.kc_why.find("P9.11") >= 0,
+         "the refusal does not say which rule it is: {got.kc_why}");
+}
+
+// ⚠ EVERY AXIS IS ITS OWN ANSWER, because *it does not fit* sends an artist to look
+// at the whole model.
+fn test_the_shortfall_is_reported_per_axis() {
+  got = skin_covers(blockout(), box_of(0.0, 0.5, 0.0, 1.0, 2.0, 0.5), 0.001);
+  assert(got.kc_code == KC_SHORT, "a skin that starts above the floor was accepted");
+  assert(got.kc_dy > 0.49 && got.kc_dy < 0.51,
+         "the height shortfall is {got.kc_dy}, and the skin starts 0.5 up");
+  assert(got.kc_dx == 0.0, "x was reported short at {got.kc_dx}");
+}
+
+// ⚠ A TOLERANCE, BECAUSE A HARD `>` ON FLOATS REFUSES AN EXACT TRACE. A skin
+// modelled on the box it was given comes back a rounding away from it.
+fn test_float_noise_is_not_an_artists_mistake() {
+  got = skin_covers(blockout(), box_of(0.0000001, 0.0, 0.0, 1.0, 2.0, 0.5), 0.001);
+  assert(got.kc_code == KC_COVERS, "a rounding was refused: {got.kc_why}");
+}
+
+// ⚠ AND AN EMPTY BOX IS ITS OWN ANSWER, never a pass. A `.glb` that read back empty
+// covers nothing, and a comparison that only looks for a shortfall says it fits.
+fn test_an_empty_skin_is_not_a_covering_skin() {
+  got = skin_covers(blockout(), box_of(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.001);
+  assert(got.kc_code == KC_EMPTY, "an empty mesh was read as covering the blockout");
+}
+
+fn test_a_part_with_no_blockout_says_so() {
+  got = skin_covers(box_of(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                    box_of(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), 0.001);
+  assert(got.kc_code == KC_EMPTY, "a part with no cells claimed a covered blockout");
+}
+
+// ── the box a part's own cells make ─────────────────────────────────────────
+
+fn one_cell_part(unit: float, q: integer, r: integer, h: integer) -> World {
+  w = world_new(unit, 0, 8, 3).wn_world;
+  assert(world_set_column(w, Column { co_q: q, co_r: r,
+    co_cells: [Hex { h_height: h as u16? ?? 0,
+                     h_material: 1 as u8? ?? 0 }] }).cw_code == CW_OK, "fixture");
+  w
+}
+
+// A hex is `hex_w` across and a height step is `step_h`, both the caller's — so one
+// cell at the origin is a box half a hex either side of it.
+fn test_one_cell_is_a_hex_wide_box_at_its_own_height() {
+  got = part_box(one_cell_part(0.25, 0, 0, 4), 1.732, 0.25, 0.25);
+  assert(got.pb_x0 > 0.0 - 0.87 && got.pb_x0 < 0.0 - 0.86,
+         "the box starts at x={got.pb_x0}, and half a hex is 0.866");
+  assert(got.pb_x1 > 0.86 && got.pb_x1 < 0.87, "and ends at {got.pb_x1}");
+  assert(got.pb_y0 > 0.99 && got.pb_y0 < 1.01,
+         "height 4 at 0.25 a step is 1.0, not {got.pb_y0}");
+}
+
+// ⚠ THE SCALE IS `A8.2b`'s, AND THIS IS THE TEST THAT SAYS SO. A part authored at a
+// quarter of the world's unit is a quarter of the size where it lands — so the box
+// an artist is handed and the box the game uses are one number.
+fn test_a_finer_part_measures_a_quarter_of_the_size() {
+  coarse = part_box(one_cell_part(0.25, 0, 0, 4), 1.732, 0.25, 0.25);
+  fine = part_box(one_cell_part(0.0625, 0, 0, 4), 1.732, 0.25, 0.25);
+  assert(fine.pb_x1 > 0.0 && fine.pb_x1 < coarse.pb_x1,
+         "the fine part measures {fine.pb_x1} against the coarse one's {coarse.pb_x1}");
+  ratio = fine.pb_x1 / coarse.pb_x1 ?? 0.0;
+  assert(ratio > 0.249 && ratio < 0.251,
+         "the ratio is {ratio}, and 0.0625 / 0.25 is 0.25");
+}
+
+fn test_a_part_with_no_cells_has_no_box() {
+  got = part_box(world_new(0.25, 0, 8, 3).wn_world, 1.732, 0.25, 0.25);
+  assert(got.pb_x0 == 0.0 && got.pb_x1 == 0.0,
+         "an empty part measured ({got.pb_x0}..{got.pb_x1})");
+}

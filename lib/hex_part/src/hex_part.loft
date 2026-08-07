@@ -21,3 +21,4 @@ use prop;
 use stamp;
 use expand;
 use bake;
+use skin;   // A8.7 — what a returned skin may and may not do (P9.11)

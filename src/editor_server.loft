@@ -499,6 +499,7 @@ const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
 // ⚠ ε IS ALSO MORE HONEST AT 10. It is standing headroom: 8 units is 2.0 wu against a
 // figure of about 1.8, which is a doorway to duck through. 10 is 2.5 wu. And `F1`
 // still has room — a storey is `STOREY_H` 12, so consecutive floors clear ε by 2.
+const W_UNIT       = 0.25;        // A8.7 — the unit a part is exported AGAINST
 const W_EPS        = 10;
 const W_THETA      = 4;
 // ⚠ THERE IS NO `SURFACE` LAYER INDEX ANY MORE, and its absence is the point.
@@ -547,7 +548,7 @@ fn new_world() -> World {
   // anything, because the store is correct either way.
   cw = "";
   if !constants_fit(cw) { println("editor: ⚠ WORLD CONSTANTS — {cw}"); }
-  n = world_new(0.25, W_RESERVE, W_EPS, W_THETA);
+  n = world_new(W_UNIT, W_RESERVE, W_EPS, W_THETA);
   n.wn_world
 }
 
@@ -4106,6 +4107,40 @@ fn part_body_meshes(pbm_w: World) -> vector<PartSurf> {
   pbm_out
 }
 
+// ── DOES A PART'S SKIN COVER ITS BLOCKOUT? — plan 17 `A8.7`, §P9.11 ─────────
+//
+// ⚠ THE RULE IS `hex_part::skin_covers` AND THIS IS ONLY THE TWO BOXES. The
+// containment law, the per-axis shortfall and the sentence are a library function
+// with ten tests; what a server is for is knowing where the two meshes come from —
+// the cells out of the part, the skin out of a `.glb` on disk.
+//
+// ⚠ AND THE BLOCKOUT IS THE CELLS, NOT THE MESHED CELLS. What must stay inside the
+// silhouette is what can be HIT, so measuring the drawing would compare a drawing
+// against a drawing. `part_box` takes the hex width and the height step from here,
+// because a lattice constant in `hex_part` would be the second copy `hex_proj`
+// exists to prevent.
+fn skin_check(sc_w: World) -> hex_part::SkinCheck {
+  sc_ref = hex_part::part_mesh(sc_w);
+  if sc_ref.pr_code != hex_part::MR_OK {
+    return hex_part::SkinCheck { kc_code: hex_part::KC_EMPTY,
+                                 kc_why: "the part names no mesh" };
+  }
+  sc_gl = load_glb(hex_part::mesh_file(parts_root(), sc_ref.pr_name));
+  if sc_gl.gr_code != GR_OK {
+    // A mesh that will not load is `part_mesh_loads`' answer, not this one's — and
+    // it is refused before this is ever reached.
+    return hex_part::SkinCheck { kc_code: hex_part::KC_EMPTY,
+                                 kc_why: "the mesh does not load" };
+  }
+  sc_box = moros_render::mesh_aabb(sc_gl.gr_mesh);
+  hex_part::skin_covers(
+    hex_part::part_box(sc_w, hex_grid::SQRT3 * hex_grid::HEX_SIZE, HEIGHT_SCALE, W_UNIT),
+    hex_part::PartBox {
+      pb_x0: sc_box.aabb_min.x, pb_y0: sc_box.aabb_min.y, pb_z0: sc_box.aabb_min.z,
+      pb_x1: sc_box.aabb_max.x, pb_y1: sc_box.aabb_max.y, pb_z1: sc_box.aabb_max.z },
+    0.001)
+}
+
 fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   ptw_out: vector<text> = [];
   ptw_ld = world_load(part_path(name));
@@ -5646,6 +5681,23 @@ fn main() {
                                   + "will not load ({sv_mesh.mc_code}) {sv_mesh.mc_why}");
                 println("editor: part save refused — '{sv_name}' mesh ({sv_mesh.mc_code}) "
                       + "{sv_mesh.mc_why}");
+              } else if sv_mesh.mc_code == hex_part::MC_OK
+                     && skin_check(wld).kc_code == hex_part::KC_SHORT {
+                // ── ⚠ A RETURNED SKIN MUST COVER THE BLOCKOUT — `A8.7`, §P9.11 ──
+                //
+                // The part names a mesh AND has cells: the cells are what can be
+                // struck and the mesh is what can be seen, so the hitbox has to stay
+                // inside the silhouette. ⚠ **Growth is not checked, and that is the
+                // rule rather than a gap** — §P9.11 replaced §P9.5's *matches the
+                // exported extents* precisely because cloth, hair and capes are
+                // supposed to reach past the hitbox.
+                //
+                // ⚠ AND IT IS REFUSED, NEVER RESCALED. Scaling the skin to cover the
+                // cells would move the one thing §P9.11 says may never move, and do
+                // it silently.
+                sv_fit = skin_check(wld);
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}': {sv_fit.kc_why}");
+                println("editor: part save refused — '{sv_name}' skin {sv_fit.kc_why}");
               } else {
               // ── A NEW FAMILY IS A THING AN AUTHOR MAKES — plan 17 `A7.3e` ──
               //
@@ -6458,12 +6510,22 @@ fn main() {
           // a mesh whose faces point at another surface's corners — geometry that
           // loads, counts right, and is scrambled.
           xbm = mesh("export");
+          // ── ⚠ IN FINAL WORLD UNITS, NOT THE PART'S OWN — `A8.7`, §P9.5 ────────
+          //
+          // A leaf authored on a fine lattice is SHRUNK at the placement (`A8.2b`),
+          // so exporting its own frame hands an artist geometry several times too
+          // big and a ratio to apply by hand — *"two units for one quantity is how a
+          // conversion goes missing"* (`A5.1`). The same ratio a placement derives is
+          // applied here, before the file is written, and the acknowledgement states
+          // the extent and the pivot in those units so the artist never computes one.
+          xscale = 1.0;
+          if in_part && W_UNIT != 0.0 { xscale = wld.w_unit / W_UNIT ?? 1.0; }
           if in_part {
             for xps in part_body_meshes(wld) {
               xbase = len(xbm.vertices);
               for xv in xps.ps_mesh.vertices {
                 add_vertex(xbm, vertex(
-                  math::vec3(xv.pos.x, xv.pos.y, xv.pos.z),
+                  math::vec3(xv.pos.x * xscale, xv.pos.y * xscale, xv.pos.z * xscale),
                   math::vec3(xv.normal.x, xv.normal.y, xv.normal.z),
                   math::vec2(xv.uv.x, xv.uv.y)));
               }
@@ -6485,9 +6547,27 @@ fn main() {
             continue;
           }
           save_glb(xbm, ev.payload);
+          // ⚠ THE PIVOT TRAVELS AS A NUMBER, and saying which number is the honest
+          // part. `save_glb` writes a bare mesh — there is no node to hang a marker
+          // on — so what an artist gets is the part's ORIGIN at the file's origin and
+          // the hinge point stated here, both in the units the geometry is in. A
+          // marker inside the `.glb` wants writer support that does not exist, and
+          // an unstated pivot is the trip §P9.5 says it must survive.
+          xhg = hex_part::part_hinge(wld);
+          xpx = 0.0; xpy = 0.0; xpz = 0.0;
+          if in_part && xhg.hr_code == hex_part::MR_OK {
+            xpx = xhg.hr_hinge.hg_ox * xscale;
+            xpy = xhg.hr_hinge.hg_oy * xscale;
+            xpz = xhg.hr_hinge.hg_oz * xscale;
+          }
+          xbb = moros_render::mesh_aabb(xbm);
           srv.send_to(ev.cid,
-            "S:exported {len(xbm.vertices)} vertices to {ev.payload}");
-          println("editor: exported {len(xbm.vertices)} vertices to {ev.payload}");
+            "S:exported {len(xbm.vertices)} vertices to {ev.payload} — extent "
+          + "{xbb.aabb_max.x - xbb.aabb_min.x},{xbb.aabb_max.y - xbb.aabb_min.y},"
+          + "{xbb.aabb_max.z - xbb.aabb_min.z} pivot {xpx},{xpy},{xpz} "
+          + "(final world units)");
+          println("editor: exported {len(xbm.vertices)} vertices to {ev.payload} at "
+                + "scale {xscale}");
         } else if ev.msg_id == MSG_IMPORT {
           // ⚠ THE GUARD GOES WHERE THE MESSAGE ARRIVES, not in a branch of its own
           // further down the chain. Written as a second `else if ev.msg_id ==

@@ -1,0 +1,148 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Plan 17 `A8.7`, §P9.11 — WHAT A RETURNED SKIN MAY AND MAY NOT DO.
+//
+// A part's cells are blocked out in the editor, exported at final size (`A8.6`,
+// §P9.5), and an artist hands back a `.glb`. This is the rule that meets it.
+//
+// ⚠ **THE RULE IS CONTAINMENT, NOT EQUALITY, AND THE PLAN'S OWN ROW SAYS OTHERWISE
+// BECAUSE IT WAS WRITTEN FROM A SUPERSEDED SECTION.** §P9.5 asked for *a returned
+// mesh checked against the exported extents — refused with the difference*, and
+// **§P9.11 replaces it**: cloth, hair, capes and flailing appendages reach well past
+// what can be struck, and that is how a boss reads as enormous while the fight stays
+// legible. So:
+//
+// | | verdict |
+// |---|---|
+// | the skin extends past the blockout | **normal**, and often the point |
+// | the BLOCKOUT extends past the skin | **a fault** — you strike nothing visible |
+// | the pivot moved | a fault (`A8.7`'s other half, on the wire) |
+// | the overall scale changed | a fault |
+//
+// ⚠ **SO GROWTH IS NOT MEASURED, AND SAYING SO IS THE POINT.** §P9.11: *"extents
+// that grow outward are not measured against anything, because there is nothing to
+// measure them against."* A check that reported growth would train an artist to
+// trim a cape to a box, which is the failure the correction exists to prevent.
+//
+// ⚠ **AND NOTHING IS EVER RESCALED.** A skin that does not cover the blockout is
+// REFUSED with the shortfall named per axis; quietly scaling it to fit would move
+// the one thing §P9.11 says may never move — and it would do it silently, which is
+// this tree's most expensive failure shape.
+use hex_world;
+use stamp;   // part_columns — the cells that are the hitbox
+
+// A box in FINAL world units — the units the export writes and the artist models
+// in. ⚠ NOT `moros_render::Aabb`: that is a Moros package and this is a lavition
+// one, so the type would be an arrow `tools/layering.sh` forbids. Six floats cross
+// the seam instead, which is also what makes this callable from a test with no
+// renderer in sight.
+pub struct PartBox {
+  pb_x0: float, pb_y0: float, pb_z0: float,
+  pb_x1: float, pb_y1: float, pb_z1: float,
+}
+
+pub const KC_COVERS = 0;   // the skin contains the blockout — the ordinary answer
+pub const KC_SHORT  = 1;   // the blockout pokes out of the skin on some axis
+pub const KC_EMPTY  = 2;   // one of the two has no extent at all
+
+// ⚠ THE SHORTFALL IS PER AXIS AND SIGNED BY CONSTRUCTION: how far the blockout
+// reaches past the skin, never how far the skin reaches past the blockout. A single
+// *"does not fit"* number would send an artist looking at the whole model; three say
+// which way it is short.
+pub struct SkinCheck {
+  kc_code: integer,
+  kc_dx: float = 0.0,
+  kc_dy: float = 0.0,
+  kc_dz: float = 0.0,
+  kc_why: text = "",
+}
+
+fn over(lo_in: float, hi_in: float, lo_out: float, hi_out: float, tol: float) -> float {
+  // How far `[lo_in, hi_in]` reaches outside `[lo_out, hi_out]`, on one axis.
+  d = 0.0;
+  if lo_out - lo_in > d { d = lo_out - lo_in; }
+  if hi_in - hi_out > d { d = hi_in - hi_out; }
+  if d <= tol { return 0.0; }
+  d
+}
+
+// Does the returned skin cover the blockout?
+//
+// `tol` is the slack in FINAL world units — a millimetre of float noise is not an
+// artist's mistake, and a hard `>` on floats would refuse a skin traced exactly
+// around the box it was given.
+pub fn skin_covers(blockout: PartBox, skin: PartBox, tol: float) -> SkinCheck {
+  // ⚠ AN EMPTY BOX IS ITS OWN ANSWER RATHER THAN A PASS. A part with no cells has
+  // no blockout to be outside of, and a `.glb` that read back empty is a broken
+  // file — both would sail through a comparison that only looks for a shortfall,
+  // and both are things an author needs told.
+  if blockout.pb_x1 <= blockout.pb_x0 && blockout.pb_y1 <= blockout.pb_y0
+     && blockout.pb_z1 <= blockout.pb_z0 {
+    return SkinCheck { kc_code: KC_EMPTY,
+      kc_why: "the part has no blockout to check a skin against" };
+  }
+  if skin.pb_x1 <= skin.pb_x0 && skin.pb_y1 <= skin.pb_y0
+     && skin.pb_z1 <= skin.pb_z0 {
+    return SkinCheck { kc_code: KC_EMPTY,
+      kc_why: "the returned mesh has no extent at all" };
+  }
+  dx = over(blockout.pb_x0, blockout.pb_x1, skin.pb_x0, skin.pb_x1, tol);
+  dy = over(blockout.pb_y0, blockout.pb_y1, skin.pb_y0, skin.pb_y1, tol);
+  dz = over(blockout.pb_z0, blockout.pb_z1, skin.pb_z0, skin.pb_z1, tol);
+  if dx == 0.0 && dy == 0.0 && dz == 0.0 {
+    return SkinCheck { kc_code: KC_COVERS };
+  }
+  return SkinCheck { kc_code: KC_SHORT, kc_dx: dx, kc_dy: dy, kc_dz: dz,
+    kc_why: "the blockout reaches past the skin by ({dx},{dy},{dz}) world units — "
+          + "what can be struck must stay inside what can be seen (P9.11), and a "
+          + "skin is never rescaled to cover it" };
+}
+
+// The blockout's own box, from a part's cells, in FINAL world units.
+//
+// ⚠ THE CELLS AND NOT THE MESH, DELIBERATELY. What must stay inside the skin is
+// what can be HIT, and that is the part's cells — a mesh body is already skin.
+// Deriving it from the blockout mesh instead would compare a drawing against a
+// drawing and say nothing about the hitbox.
+//
+// ⚠ AND THE SCALE IS `A8.2b`'s, APPLIED HERE. A part authored at a quarter of the
+// world's unit is a quarter of the size where it lands, so its box is too — the
+// same ratio a placement derives, so the box an artist is given and the box the
+// game uses are one number.
+//
+// ⚠ THE HEX GEOMETRY IS THE CONSUMER'S, WHICH IS WHY THIS TAKES A WIDTH. A hex's
+// size in world units is `hex_proj`'s, and this package does not depend on it —
+// `A8.6`'s export passes what it drew with. Re-deriving it here would be the second
+// copy of a lattice constant `hex_proj` exists to prevent.
+pub fn part_box(p: World, hex_w: float, step_h: float, unit: float) -> PartBox {
+  cols = part_columns(p);
+  if len(cols) == 0 { return PartBox {}; }
+  scale = 1.0;
+  if unit != 0.0 { scale = p.w_unit / unit ?? 1.0; }
+  qlo = cols[0].pk_q; qhi = qlo;
+  rlo = cols[0].pk_r; rhi = rlo;
+  hlo = 0; hhi = 0;
+  first = true;
+  for c in cols {
+    if c.pk_q < qlo { qlo = c.pk_q; }
+    if c.pk_q > qhi { qhi = c.pk_q; }
+    if c.pk_r < rlo { rlo = c.pk_r; }
+    if c.pk_r > rhi { rhi = c.pk_r; }
+    for e in column_cells(world_column(p, c.pk_q, c.pk_r)) {
+      eh = e.h_height as integer ?? 0;
+      if first { hlo = eh; hhi = eh; first = false; }
+      if eh < hlo { hlo = eh; }
+      if eh > hhi { hhi = eh; }
+    }
+  }
+  // A cell is a hex WIDE, so the extent runs half a hex past the outermost centres
+  // on each side. The caller's `hex_w` is that width and `step_h` one height step.
+  return PartBox {
+    pb_x0: ((qlo as float) * hex_w - hex_w * 0.5) * scale,
+    pb_x1: ((qhi as float) * hex_w + hex_w * 0.5) * scale,
+    pb_y0: (hlo as float) * step_h * scale,
+    pb_y1: (hhi as float) * step_h * scale,
+    pb_z0: ((rlo as float) * hex_w - hex_w * 0.5) * scale,
+    pb_z1: ((rhi as float) * hex_w + hex_w * 0.5) * scale,
+  }
+}

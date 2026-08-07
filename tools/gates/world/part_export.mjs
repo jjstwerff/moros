@@ -55,6 +55,31 @@ check(bytes.length >= partVerts * 24,
       `and it is big enough for the ${partVerts} vertices it claims (${bytes.length} `
     + `bytes against ${partVerts * 24} of raw position and normal)`);
 
+// ── A8.7 — FINAL WORLD UNITS, AND THE PIVOT STATED ─────────────────────────
+//
+// ⚠ THE SCALE IS THE ONE THING AN ARTIST CANNOT SEE IN THE FILE, so it is what this
+// row is for. `prop/carved` is authored at a QUARTER of the world's unit and spans
+// three hexes in its own frame — about 5.2 world units unscaled. Exported at final
+// size it is about 1.3, and a handler that skipped `A8.2b`'s ratio answers the big
+// number with every vertex count still right.
+const extentOf = (line) => {
+  const m = line.match(/extent ([\d.eE+-]+),([\d.eE+-]+),([\d.eE+-]+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+};
+await send(g, '44:', ['part ']);
+await send(g, '44:prop/carved', ["part 'prop/carved'"]);
+const FINE = `${process.env.TMPDIR ?? '/tmp'}/a86-fine.glb`;
+if (existsSync(FINE)) unlinkSync(FINE);
+const fineSaid = said(await send(g, `22:${FINE}`, ['exported', 'refused']), 'exported');
+const [fx, fy] = extentOf(fineSaid);
+check(fx > 0.1 && fx < 2.0,
+      `a quarter-unit part exports at final size (${fx.toFixed(3)} across; its own `
+    + `frame is about 5.2, so an unscaled export reads four times this)`);
+check(fy > 0,
+      `and it has a height (${fy.toFixed(3)})`);
+check(fineSaid.includes('pivot ') && fineSaid.includes('final world units'),
+      `and the pivot travels as a number beside it (${fineSaid.slice(fineSaid.indexOf('extent'))})`);
+
 // ── and a part with NO cells is refused rather than written ────────────────
 //
 // ⚠ `prop/statue` IS A MESH AND NOTHING ELSE, so there is no blockout to hand over.

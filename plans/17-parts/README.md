@@ -1254,7 +1254,55 @@ because a wide door is where cells have something to say. The full argument is
 
 | ◐ `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | **THE EXPORT HALF IS DONE**: in part mode `22:` writes the open part's own cells, meshed by `part_body_meshes` — the same call the display and the thumbnail make — welded into one glb; `tools/gates/world/part_export.mjs`, 8 checks, one sabotage seen red. ⚠ **The return half is BLOCKED and not on this step**: no gesture writes a `MESH` section, so a returned skin cannot be dropped in from the editor at all | M |
 
-| `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+| ✅ `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | **DONE, AND THE ROW'S SECOND HALF WAS WRITTEN FROM A SUPERSEDED SECTION** — §P9.11 replaces *matches the extents* with **containment**. `hex_part::skin_covers` + `part_box` (10 tests, three sabotages seen red), wired into the `8:` save refusal; the export applies `A8.2b`'s ratio and states the extent and pivot. `part_export` 11 checks | S |
+
+### What `A8.7` turned up — ⚠ **the plan's own row quoted a rule the design had already replaced**
+
+**Built:** `22:` exports at **final world units** — `A8.2b`'s ratio applied before the file is
+written — and acknowledges with the extent and the pivot in those units. `hex_part::skin_covers`
+and `part_box` are the rule a returned mesh meets, wired into the `8:` save refusal.
+
+⚠ **AND THE RULE IS CONTAINMENT, NOT EQUALITY.** The plan wrote this row from §P9.5 — *a returned
+mesh is checked against the exported extents, refused with the difference* — and **§P9.11 replaces
+that**: cloth, hair, capes and flailing appendages reach well past what can be struck, and that is
+how a boss reads as enormous while the fight stays legible. So the verdicts are:
+
+| | |
+|---|---|
+| the skin extends past the blockout | **normal**, and often the point — *not measured against anything* |
+| the BLOCKOUT extends past the skin | **a fault** — you strike nothing visible |
+
+Implementing the row as written would have shipped a check that refuses a cape, and it would have
+looked exactly like the design. ⚠ **The plan table is not the design**, and a row that quotes a
+superseded § is this tree's *reason that outlived its fact*, one level up from the gate headers
+`A8.2`'s audit found.
+
+⚠ **THE BLOCKOUT IS THE CELLS, NOT THE MESHED CELLS.** What must stay inside the silhouette is
+what can be HIT, and that is the part's cells; measuring the drawing instead would compare a
+drawing against a drawing and say nothing about a hitbox. `part_box` derives it from columns and
+heights — and applies the unit ratio, so the box an artist is handed and the box the game uses are
+one number.
+
+⚠ **THE CONTROL IS THE ONE THAT LOOKS LIKE A HOLE.** *A skin twice the size passes* reads like a
+check that is not checking, and without it `tests/skin.loft` is an equality check spelled as
+containment that the next reader would "tighten". It is the first test in the file for that reason.
+
+⚠ **AND THE PIVOT TRAVELS AS A NUMBER, WHICH IS THE HONEST HALF-ANSWER.** §P9.5 asks for the pivot
+*marked*; `save_glb` writes a bare mesh with no node to hang a marker on. What ships is the part's
+origin at the file's origin and the hinge stated on the wire in the same units — and the gap
+(a marker inside the `.glb`) is named rather than approximated.
+
+⚠ **`PartBox` AND SIX FLOATS, NOT `moros_render::Aabb`.** That type is a Moros package's and
+`hex_part` is a lavition one, so the arrow `tools/layering.sh` forbids would have been the price
+of reusing it. Six floats cross the seam, which is also what makes the rule testable with no
+renderer in sight. ⚠ **And `SkinFit` was taken** — `moros_sim::skin` declares one — so the record
+is `SkinCheck`: the collision was found by grepping before adding a public name, which is the
+routine this tree pays for when it is skipped.
+
+**Verified**: `hex_part` 277 tests, **three sabotages seen red** (growth measured → the cape test
+fails; no tolerance → an exact trace is refused; the scale ignored → the fine part measures four
+times its size), plus a fourth on the wire (the export left in the part's own frame → `part_export`
+fails at 5.2 across).
 
 ### What `A8.6` turned up — ◐ **the export lands, the return needs a gesture that does not exist**
 
