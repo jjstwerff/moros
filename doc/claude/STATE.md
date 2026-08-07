@@ -96,6 +96,13 @@ hangs on"*, quoting a cottage across the field). Five headless tests hold them n
 sabotages were seen red. The script's own numbers are unchanged — `cupboard at (-2,4) — 5 walls
 for 2 boxes`.
 
+✅ **AND THE SLAB'S HOLE FOLLOWED** — `hex_editor::slab_hole` holds the three claims that used to
+need a socket and none of which is geometry: **the host is the LAST slab laid**, the kind chooses
+the profile (`HOLE_THROUGH`/`COFFER`/`SUNK`, named where the gesture is), and cutting with no slab
+is refused by name. ⚠ **The tests reproduced the handler's own recorded trap first**: a footprint
+is placed AHEAD of the author, so a hole cut at the author's position is refused for reaching past
+the slab's end — the refusal is right, and a test has to ask the slab where it is.
+
 ⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
 comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
 is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under

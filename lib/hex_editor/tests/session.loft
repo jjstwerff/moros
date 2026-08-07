@@ -361,3 +361,68 @@ fn test_no_wall_and_no_trunk_is_no_host() {
   got = annex_host(WallRuns { items: [] }, 0.0, 0.0, 0.0, no_trunk());
   assert(!got.ah_ok, "an annex found a host in an empty world");
 }
+
+// ── `slab.keys` / `39:` — WHICH SLAB A HOLE GOES IN, AND WHICH HOLE IT IS ────
+//
+// ⚠ THREE CLAIMS THAT USED TO NEED A SOCKET, and none of them is geometry: the host
+// is the LAST slab laid, the kind chooses the profile, and cutting with no slab is
+// refused by name. `hole_rect` and friends were always library functions; what was
+// on the wire was the choosing.
+fn a_slab(x: float, z: float) -> Slab {
+  slab_over(pose_footprint(x, z, 0.0, 5, 4), 1, 12, SLAB_THICK)
+}
+
+// ⚠ A HOLE IS CUT AT THE SLAB'S CENTRE, NOT WHERE ITS AUTHOR STOOD, and the first
+// version of these tests got that wrong in exactly the way the handler's own comment
+// records: *"a footprint is placed AHEAD of the author … the first hole cut at the
+// author's own position was refused for reaching past the slab's end by 4.87. The
+// refusal was right; what was missing was any way to know where to stand."* The
+// refusal is real, so the test asks the slab where it is.
+fn cut(slabs: Slabs, kind: integer) -> HoleAt {
+  at = slabs.items[len(slabs.items) - 1] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
+  slab_hole(slabs, kind, at.sl_x, at.sl_z, 2.0, 2.0)
+}
+
+fn test_a_hole_is_cut_in_the_last_slab_laid() {
+  slabs = Slabs { items: [] };
+  slabs.items += [a_slab(0.0, 0.0)];
+  slabs.items += [a_slab(40.0, 0.0)];
+  // The author stands at the SECOND slab. If the host were the first, this is a
+  // hole 40 units off the end of it — which is the refusal, not a hole.
+  got = cut(slabs, HOLE_THROUGH);
+  assert(got.hx_ok, "a hole in the last slab was refused: {got.hx_why}");
+  // …and the control: the same cut against a world holding only the FIRST slab is
+  // refused, which is what makes the row above about the host rather than the point.
+  only = Slabs { items: [] };
+  only.items += [a_slab(0.0, 0.0)];
+  second = slabs.items[1] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
+  far = slab_hole(only, HOLE_THROUGH, second.sl_x, second.sl_z, 2.0, 2.0);
+  assert(!far.hx_ok,
+         "a hole 40 units off the end of the only slab was accepted");
+}
+
+fn test_the_kind_chooses_the_profile_and_only_one_goes_through() {
+  slabs = Slabs { items: [] };
+  slabs.items += [a_slab(0.0, 0.0)];
+  through = cut(slabs, HOLE_THROUGH);
+  coffer = cut(slabs, HOLE_COFFER);
+  sunk = cut(slabs, HOLE_SUNK);
+  assert(through.hx_ok && coffer.hx_ok && sunk.hx_ok, "a kind was refused");
+  // ⚠ THE DISCRIMINATOR IS `hole_through`, not the kind number — a table that
+  // returned the same profile for all three would satisfy any check on `hx_kind`.
+  assert(hole_through(through.hx_hole),
+         "a stairwell does not go through the slab");
+  assert(!hole_through(coffer.hx_hole) && !hole_through(sunk.hx_hole),
+         "a coffer or a sunken panel went all the way through");
+  // …and the two recesses are cut from OPPOSITE faces, which is the whole of the
+  // difference between them.
+  assert(hole_at_top(coffer.hx_hole) != hole_at_top(sunk.hx_hole),
+         "the coffer and the sunken panel are cut from the same face");
+}
+
+fn test_cutting_with_no_slab_is_refused_by_name() {
+  got = slab_hole(Slabs { items: [] }, HOLE_THROUGH, 0.0, 0.0, 2.0, 2.0);
+  assert(!got.hx_ok, "a hole was cut in a world with no slab in it");
+  assert(got.hx_why.find("press X") >= 0,
+         "the refusal does not say what to do: {got.hx_why}");
+}

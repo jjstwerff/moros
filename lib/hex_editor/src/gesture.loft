@@ -3412,6 +3412,45 @@ pub fn hole_cuts(s: Slab, h: Hole, x: float, z: float,
 // ⚠ REFUSED WITH WHAT FITS. A hole wider than the slab it is cut in is a slab with a
 // corner missing, and the reveal it needs has nothing to be cut into on one side —
 // the same fault as a window overrunning its embrasure, one axis over.
+// ── WHICH SLAB, AND WHICH HOLE — `39:1`…`39:3`, the headless thread ─────────
+//
+// ⚠ THREE CLAIMS THAT ONLY A SOCKET COULD REACH, and none of them is geometry. The
+// `39:` handler held the host choice, the kind table and the *nothing to cut* answer
+// inline, so a test that wanted any of them had to lay a slab over a wire first.
+// The geometry underneath — `hole_rect`, `hole_coffer`, `hole_sunk`, `hole_fits_in`
+// — has been here all along.
+//
+// ⚠ THE HOST IS THE LAST SLAB LAID, which is a rule and not an accident: a hole is
+// cut in the thing you just made, the way `39:1` follows `39:0`. Naming it here is
+// what lets a test say so.
+pub const HOLE_THROUGH = 1;   // a stairwell — open at both faces
+pub const HOLE_COFFER  = 2;   // a recess in the ceiling
+pub const HOLE_SUNK    = 3;   // …and one in the floor above
+
+pub struct HoleAt {
+  hx_ok:   boolean,
+  hx_hole: Hole = Hole {},
+  hx_kind: integer = 0,
+  hx_why:  text = "",
+}
+
+pub fn slab_hole(slabs: Slabs, kind: integer, x: float, z: float,
+                 u: float, v: float) -> HoleAt {
+  if len(slabs.items) < 1 {
+    return HoleAt { hx_ok: false, hx_kind: kind,
+                    hx_why: "no slab to cut — press X first" };
+  }
+  sh_host = slabs.items[len(slabs.items) - 1] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
+  sh_hole = hole_rect(x, z, u, v);
+  if kind == HOLE_COFFER { sh_hole = hole_coffer(x, z, u, v, 0.5); }
+  if kind == HOLE_SUNK   { sh_hole = hole_sunk(x, z, u, v, 0.5); }
+  sh_fit = hole_fits_in(sh_host, sh_hole);
+  if !sh_fit.ak_ok {
+    return HoleAt { hx_ok: false, hx_kind: kind, hx_hole: sh_hole, hx_why: sh_fit.ak_why };
+  }
+  return HoleAt { hx_ok: true, hx_hole: sh_hole, hx_kind: kind };
+}
+
 pub fn hole_fits_in(s: Slab, h: Hole) -> Ack {
   hu = 0.0;
   hv = 0.0;

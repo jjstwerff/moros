@@ -6987,24 +6987,20 @@ fn main() {
                     + "{sslab.sl_lo}..{sslab.sl_hi}, clear "
                     + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)} of {STOREY_H}");
           } else {
-            if len(wall_slabs.items) < 1 {
-              srv.send_to(ev.cid, "S:no slab to cut — press X first");
+            // ⚠ THE HOST, THE KIND AND THE REFUSAL ARE `hex_editor::slab_hole` NOW
+            // — the headless thread. All three were inline here, so a test that
+            // wanted any of them had to lay a slab over a wire first; the geometry
+            // they stand on has been in the library all along.
+            shl = hex_editor::slab_hole(wall_slabs, skind, px, pz, 2.0, 2.0);
+            if !shl.hx_ok {
+              srv.send_to(ev.cid, "S:hole refused — {shl.hx_why}");
+              println("editor: hole refused — {shl.hx_why}");
             } else {
-              shost = wall_slabs.items[len(wall_slabs.items) - 1] ?? hex_editor::slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
-              shole = hex_editor::hole_rect(px, pz, 2.0, 2.0);
-              if skind == 2 { shole = hex_editor::hole_coffer(px, pz, 2.0, 2.0, 0.5); }
-              if skind == 3 { shole = hex_editor::hole_sunk(px, pz, 2.0, 2.0, 0.5); }
-              shfit = hex_editor::hole_fits_in(shost, shole);
-              if !shfit.ak_ok {
-                srv.send_to(ev.cid, "S:hole refused — {shfit.ak_why}");
-                println("editor: hole refused — {shfit.ak_why}");
-              } else {
-                wall_holes.items += [shole];
-                shx2 = world_to_hex(shole.ho_x, shole.ho_z);
-                mark_dirty(dirty, shx2.ha_q, shx2.ha_r, HOUSE_W + HOUSE_D + 4);
-                srv.send_to(ev.cid, "S:a hole of kind {skind} through the slab");
-                println("editor: slab hole kind {skind} at ({shx2.ha_q},{shx2.ha_r})");
-              }
+              wall_holes.items += [shl.hx_hole];
+              shx2 = world_to_hex(shl.hx_hole.ho_x, shl.hx_hole.ho_z);
+              mark_dirty(dirty, shx2.ha_q, shx2.ha_r, HOUSE_W + HOUSE_D + 4);
+              srv.send_to(ev.cid, "S:a hole of kind {skind} through the slab");
+              println("editor: slab hole kind {skind} at ({shx2.ha_q},{shx2.ha_r})");
             }
           }
         } else if ev.msg_id == MSG_SEAT {
