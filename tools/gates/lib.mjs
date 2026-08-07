@@ -56,6 +56,8 @@ export async function absenceWindow(ms, why) {
 //   ys      `Y:` thumbnail bodies
 //   ts      `T:` transforms, WITHOUT the prefix — `traceOf(g, '0;')` picks a part
 //   views   `C:` camera matrices, in arrival order
+//   gone    `X:` chunk ids the server RETIRED — a mesh it drops must leave the
+//           picture too, so anything reading `picture` has to subtract these
 //   all     every message, verbatim, for the checks that need the raw wire
 export async function connect(opts = {}) {
   const port = opts.port ?? PORT;
@@ -63,7 +65,7 @@ export async function connect(opts = {}) {
   const g = {
     ws, port,
     says: [], huds: [], cats: [], cams: [], ls: [], ys: [], ts: [], views: [],
-    all: [], meshes: [], picture: new Map(),
+    all: [], meshes: [], picture: new Map(), gone: new Set(),
   };
   ws.addEventListener('message', (ev) => {
     const s = String(ev.data);
@@ -79,6 +81,7 @@ export async function connect(opts = {}) {
     else if (t === 'Y') g.ys.push(s);
     else if (t === 'T') g.ts.push(b);
     else if (t === 'C') g.views.push(b);
+    else if (t === 'X') g.gone.add(Number(b));
     // ⚠ THE ASPECT IS ANSWERED HERE OR NO CAMERA EVER COMES. The server asks with
     // `E:` and sends no `C:` until a client states one — and a gate that never
     // answered would sit on a world that draws nothing, which reads as a broken
@@ -224,3 +227,18 @@ export const rot9 = (b) => {
   const m = b.slice(b.indexOf(';') + 1).split(',').map(Number);
   return [0, 1, 2, 4, 5, 6, 8, 9, 10].map((i) => m[i].toFixed(4)).join(',');
 };
+
+// Every live chunk mesh's vertex floats — `picture` minus what `X:` retired, and minus
+// the fixed ids below `1000` (the figure and the cart), which are not terrain.
+// ⚠ SUBTRACTING `gone` IS NOT OPTIONAL. A gate that reads the picture without it sees
+// geometry the server has already told the client to forget, which is exactly how a
+// ground that sank would stay hidden behind a stale chunk.
+export function chunkFloats(g, minId = 1000) {
+  const out = [];
+  for (const [id, body] of g.picture) {
+    if (id <= minId || g.gone.has(id)) continue;
+    const p = body.split(';');
+    if (p.length >= 3) out.push(p[2].split(',').map(Number));
+  }
+  return out;
+}

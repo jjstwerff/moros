@@ -22,68 +22,56 @@
 // ⚠ And it asserts the ground held at its EXACT height, not merely that it stayed
 // above the cellars. "Did not sink" is the claim; a tolerance wide enough to
 // admit some sinking would be measuring something else.
-const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
-const wait = (ms) => new Promise(r => setTimeout(r, ms));
-const chunks = new Map(); const status = []; let st = 0;
-// Mesh parsing and the peak are persist.mjs's, unchanged — stride 6 is position
-// plus normal, and every chunk mesh counts, so a cellar floor drawn LOWER cannot
-// hide a ground that sank.
-const hi = () => { let h = -1e9;
-  for (const d of chunks.values()) for (let i = 1; i < d.length; i += 6) h = Math.max(h, d[i]);
-  return +h.toFixed(3); };
-const ack = async (p, l = 40000) => { const f = status.length;
-  for (let t = 0; t < l; t += 60) { await wait(60);
-    const m = status.slice(f).find(x => x.startsWith(p)); if (m) return m; }
-  return `(no "${p}" in ${l}ms)`; };
 
-ws.onmessage = async (e) => { const s=e.data,i=s.indexOf(':'),t=s.slice(0,i),b=s.slice(i+1);
-  if (t === 'M') { const h = b.indexOf(';'), id = Number(b.slice(0, h));
-    let rest = b.slice(h + 1); rest = rest.slice(rest.indexOf(';') + 1);
-    if (id > 1000) chunks.set(id, rest.slice(rest.indexOf(';') + 1).split(',').map(Number)); }
-  if (t === 'X') chunks.delete(Number(b));
-  if (t === 'S') status.push(b);
-  if (t === 'E') ws.send('2:1.5,');
-  if (t === 'C' && !st) { st = 1;
-    // A hill, raised one step at a time — `5:` has no ack of its own, so `rebuilt`
-    // is the barrier, and two raises in one flush produce only one of them.
-    ws.send('7:0,0,1.5708'); await ack('placed');
-    for (let k = 0; k < 8; k++) { ws.send('5:1'); await ack('rebuilt'); }
-    const peakBefore = hi();
-    ws.send('26:0,10'); const cellBefore = await ack('cell 0,10 =');
-    ws.send('15:0,10'); const colBefore  = await ack('column 0,10 =');
+import { connect, send, ask, report, chunkFloats } from '../lib.mjs';
 
-    // Dig three cellars under the hill's flank. The character moves off the summit
-    // first: a cellar needs headroom above it, and `storey refused` names the case.
-    ws.send('7:0,15,0'); await ack('placed');
-    const digs = [];
-    for (let k = 0; k < 3; k++) { ws.send('12:-1'); digs.push(await ack('storey')); }
-    await ack('rebuilt');
-    const peakAfter = hi();
-    ws.send('26:0,10'); const cellAfter = await ack('cell 0,10 =');
-    ws.send('15:0,10'); const colAfter  = await ack('column 0,10 =');
-    ws.send('29:0,10'); const labels    = await ack('labels 0,10 =');
+const g = await connect({ camera: true });
+// The highest vertex the client was told about, over the CHUNK meshes only — the
+// figure and the cart sit below id 1000 and would hide a ground that sank.
+// ⚠ `X:` DROPS A CHUNK, and `chunkFloats` subtracts what the server retired — a mesh
+// still in the picture after that is geometry the client has been told to forget.
+const hi = () => {
+  let h = -1e9;
+  for (const d of chunkFloats(g)) for (let k = 1; k < d.length; k += 6) h = Math.max(h, d[k]);
+  return +h.toFixed(3);
+};
 
-    // THE WRITE SIDE. Back to the summit and raise once more.
-    ws.send('7:0,0,1.5708'); await ack('placed');
-    ws.send('5:1'); await ack('rebuilt');
-    const peakRaised = hi();
+// A hill, raised one step at a time — `5:` has no ack of its own, so `rebuilt` is the
+// barrier, and two raises in one flush produce only one of them.
+await send(g, '7:0,0,1.5708', ['placed']);
+for (let k = 0; k < 8; k++) await send(g, '5:1', ['rebuilt']);
+const peakBefore = hi();
+const cellBefore = await ask(g, '26:0,10', 'cell 0,10 =');
+const colBefore  = await ask(g, '15:0,10', 'column 0,10 =');
 
-    const dug = digs.every((d) => d.startsWith('storey -1'));
-    // four layers, and the cellars really are BELOW — otherwise "held" is vacuous
-    const stacked = colAfter.slice(colAfter.indexOf('=') + 1).trim().split(',').map(Number);
-    const inserted = stacked.length === 4 && stacked[3] > stacked[0];
-    // the ground carries the reserved label 1, and it is LAST — at the top, with
-    // its own height, which is the identity claim stated as a number
-    const lbls = labels.slice(labels.indexOf('=') + 1).trim().split(',').map(Number);
-    const groundLabelled = lbls.length === 4 && lbls[3] === 1;
-    const held = Math.abs(peakAfter - peakBefore) < 0.001;
-    const cellHeld = cellAfter === cellBefore;
-    const writeReaches = peakRaised > peakBefore + 0.1;
-    const ok = dug && inserted && groundLabelled && held && cellHeld && writeReaches;
-    console.log(JSON.stringify({ cellBefore, cellAfter, colBefore, colAfter, labels,
-      peakBefore, peakAfter, peakRaised,
-      dug, inserted, groundLabelled, held, cellHeld, writeReaches, ok }));
-    ws.close(); process.exit(ok ? 0 : 1); } };
-ws.onopen = () => ws.send('1:');
-ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+// Dig three cellars under the hill's flank. The character moves off the summit first:
+// a cellar needs headroom above it, and `storey refused` names the case.
+await send(g, '7:0,15,0', ['placed']);
+const digs = [];
+for (let k = 0; k < 3; k++) digs.push(await ask(g, '12:-1', 'storey'));
+await send(g, '26:0,10', ['cell 0,10 =']);      // an ordered read is the rebuild barrier
+const peakAfter = hi();
+const cellAfter = await ask(g, '26:0,10', 'cell 0,10 =');
+const colAfter  = await ask(g, '15:0,10', 'column 0,10 =');
+const labels    = await ask(g, '29:0,10', 'labels 0,10 =');
+
+// THE WRITE SIDE. Back to the summit and raise once more.
+await send(g, '7:0,0,1.5708', ['placed']);
+await send(g, '5:1', ['rebuilt']);
+const peakRaised = hi();
+
+const dug = digs.every((d) => d.startsWith('storey -1'));
+// four layers, and the cellars really are BELOW — otherwise "held" is vacuous
+const stacked = colAfter.slice(colAfter.indexOf('=') + 1).trim().split(',').map(Number);
+const inserted = stacked.length === 4 && stacked[3] > stacked[0];
+// the ground carries the reserved label 1, and it is LAST — at the top, with its own
+// height, which is the identity claim stated as a number
+const lbls = labels.slice(labels.indexOf('=') + 1).trim().split(',').map(Number);
+const groundLabelled = lbls.length === 4 && lbls[3] === 1;
+const held = Math.abs(peakAfter - peakBefore) < 0.001;
+const cellHeld = cellAfter === cellBefore;
+const writeReaches = peakRaised > peakBefore + 0.1;
+const ok = dug && inserted && groundLabelled && held && cellHeld && writeReaches;
+report(g, { cellBefore, cellAfter, colBefore, colAfter, labels,
+            peakBefore, peakAfter, peakRaised,
+            dug, inserted, groundLabelled, held, cellHeld, writeReaches, ok }, ok);
