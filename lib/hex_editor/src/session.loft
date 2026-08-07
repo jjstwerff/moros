@@ -135,6 +135,29 @@ pub fn session_open(s: EditSession, w: World, kind: integer, nedges: integer) ->
   open_ahead(w, s.es_author, kind, nedges)
 }
 
+// `12:` — a storey up, or a cellar down, under where the author is STANDING.
+//
+// ⚠ THIS ONE DERIVES A CELL, and it is the only wrapper that does — so it is the only
+// one that could disagree with the server. It does not, and here is why in full: the
+// handler is `shx = world_to_hex(px, pz); storey_add(wld, shx.ha_q, shx.ha_r, …)`, and
+// `moros_render::world_to_hex` is a two-line delegation to `hex_grid::px_to_hex` — the
+// same mapping, checked, not assumed. `hex_editor` cannot call `world_to_hex` itself:
+// that would point this package at `moros_render`, which is the arrow the layering
+// guard exists to forbid.
+//
+// ⚠ AND THE RADIUS IS COUPLED BY A LITERAL. The handler writes a bare `2`
+// (`src/editor_server.loft`, the `MSG_STOREY` branch); `STENCIL_R` is that 2, because a
+// cellar is dug under the built-in house's footprint. If either moves without the
+// other, this wrapper and the wire stop describing the same gesture — and no test can
+// see it, because both sides would still be internally consistent. Named here because a
+// grep is the only instrument there is.
+//
+// Returns `storey_add`'s count: negative is a refusal, and `why` says which.
+pub fn session_storey(s: EditSession, w: World, dir: integer, why: &text) -> integer {
+  (sq, sr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
+  storey_add(w, sq, sr, dir, STENCIL_R, why)
+}
+
 // ── the read-backs a gate asks for over the wire ─────────────────────────────
 //
 // `15:` `16:` `26:` `29:` — the four queries every socket gate uses to see what a

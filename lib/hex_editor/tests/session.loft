@@ -123,28 +123,80 @@ fn test_a_refused_ring_is_refused_and_writes_nothing() {
 //
 // The gate digs cellars under a hill and requires the ground's height and its cell to
 // be unchanged, with the reserved label still on top. Same claim, no wire.
+// ⚠ EVERY COORDINATE HERE IS THE GATE'S, AND THREE OF THEM WERE WRONG when this test
+// was written — it could not compile at the time, so nothing said so. Each is measured,
+// not reasoned:
+//
+//   the YAW    `7:0,0,1.5708` faces +z, and `peak_cell` lands the stroke on cell
+//              (0,10). At yaw 0 it lands on (10,0) — so the hill was raised beside
+//              every cell this test reads, and *the ground held* held trivially.
+//   the CELL   `7:0,15,0` is WORLD UNITS; `px_to_hex(0.0, 15.0)` is cell (0,10), the
+//              summit itself. The dig passed the literal (0,15) into a cell parameter
+//              — five hexes from anything measured, outside a radius-2 disc, so
+//              nothing was dug. The test's own control caught this and nothing else
+//              could: the two claims below would both have passed on a world that
+//              never changed.
+//   the NUMBERS  the gate requires FOUR layers with the cellars below and FOUR labels
+//              with the ground's on top. "grew" and "the last one is ground" are
+//              weaker claims that a half-dug column satisfies.
+//
+// ⚠ AND THE DIG GOES THROUGH `session_storey`, which derives the cell from the author
+// exactly as the `MSG_STOREY` handler does. A literal here is what made this wrong; a
+// second copy of the derivation would be the same mistake with better arithmetic.
 fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, 0.0, 0.0, 1.5708);                  // the gate's `7:0,0,1.5708`
   for k in 0..8 { session_raise(s, w, 1); }
   before_cell = session_cell(w, 0, 10);
   before_col = session_column(w, 0, 10);
+  // ⚠ THE PRECONDITION, because everything below is a claim about a HILL. If the raise
+  // landed elsewhere this is flat ground and the test measures nothing — which is
+  // exactly what it did.
+  assert(len(before_col) == 1,
+         "{len(before_col)} layers before the dig, not 1 — this is not undug ground");
+  assert(before_cell[1] > 0,
+         "the ground at (0,10) is at height {before_cell[1]} — the hill was raised somewhere else");
 
-  // Dig beneath, from off the summit — a cellar needs headroom above it.
-  session_at(s, 0.0, 15.0, 0.0);
+  // Dig beneath, from ON the summit — a cellar needs headroom above it, and the
+  // author's own cell is what the handler digs under.
+  session_at(s, 0.0, 15.0, 0.0);                    // the gate's `7:0,15,0`
   dwhy = "";
-  for k in 0..3 { storey_add(w, 0, 15, 0 - 1, STENCIL_R, dwhy); }
+  for k in 0..3 {
+    nb = session_storey(s, w, 0 - 1, dwhy);
+    assert(nb >= 0, "the cellar was refused ({nb}) — {dwhy}");
+  }
 
+  // ── the gate's own numbers ────────────────────────────────────────────────
   after_cell = session_cell(w, 0, 10);
   assert(after_cell[0] == before_cell[0] && after_cell[1] == before_cell[1],
          "the ground's cell moved from {before_cell} to {after_cell}");
   after_col = session_column(w, 0, 10);
-  assert(len(after_col) > len(before_col),
-         "nothing was dug — {len(before_col)} layers before and {len(after_col)} after, "
-       + "so *the ground held* is a claim about a world nothing happened to");
-  // The reserved label is LAST: at the top, with its own height.
+  // `inserted` — four layers, and the cellars really are BELOW the ground. Without the
+  // second half, "four layers" is satisfied by four cellars stacked on top of it.
+  assert(len(after_col) == 4,
+         "{len(before_col)} layers before and {len(after_col)} after, not 4 — "
+       + "the gate reads a four-layer column here");
+  assert((after_col[3] ?? 0) > (after_col[0] ?? 0),
+         "the column is not stacked with the ground on top: {after_col}");
+  // `groundLabelled` — the reserved label is LAST: at the top, with its own height.
   lbl = session_labels(w, 0, 10);
-  assert(len(lbl) > 0 && (lbl[len(lbl) - 1] ?? 0) == hex_world::LABEL_GROUND,
+  assert(len(lbl) == 4, "{len(lbl)} layer labels, not 4: {lbl}");
+  assert((lbl[3] ?? 0) == hex_world::LABEL_GROUND,
          "the ground's reserved label is not on top: {lbl}");
+
+  // ── `writeReaches` — THE WRITE SIDE, and it is the half a picture misses ───
+  //
+  // Fixing only the READ would draw a ground that editing no longer moves: the write
+  // went to index 0, positionally, so after a cellar a raise would have raised the
+  // CELLAR FLOOR while the drawn ground held still. A test that only checked the
+  // ground held would pass that perfectly. So raise once more and require it to follow.
+  session_at(s, 0.0, 0.0, 1.5708);
+  session_raise(s, w, 1);
+  raised = session_cell(w, 0, 10);
+  assert(raised[1] > after_cell[1],
+         "the ground stayed at {after_cell[1]} through a raise — the write reached the "
+       + "cellar floor and not the ground");
+  assert(len(session_column(w, 0, 10)) == 4,
+         "the raise changed the column's depth: {session_column(w, 0, 10)}");
 }
