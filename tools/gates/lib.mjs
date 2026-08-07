@@ -67,6 +67,12 @@ export async function connect(opts = {}) {
     says: [], huds: [], cats: [], cams: [], ls: [], ys: [], ts: [], views: [],
     all: [], meshes: [], picture: new Map(), gone: new Set(),
   };
+  // ⚠ `watch` IS REGISTERED BEFORE THE HELLO IS SENT, and that is the whole reason it
+  // exists rather than the caller adding its own listener afterwards. A gate measuring a
+  // HIGH-WATER MARK — the most chunks live at once — has to see the opening burst; added
+  // from outside `connect`, `stream` counted 306 arrivals where the truth was 738 and its
+  // peak read 306 against 468. A snapshot at the end cannot recover a maximum over time.
+  if (opts.watch) ws.addEventListener('message', (ev) => opts.watch(String(ev.data), g));
   ws.addEventListener('message', (ev) => {
     const s = String(ev.data);
     g.all.push(s);
