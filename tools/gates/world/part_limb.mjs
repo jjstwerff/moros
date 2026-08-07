@@ -27,78 +27,46 @@
 // swing are identical. So a difference in what is drawn is a difference in the
 // BODY and not in the fixture — which is `A6.3`'s rule for the statues, one step on.
 import { existsSync, readFileSync } from 'node:fs';
+import { connect, send, until, quiet, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 // The reserved block the display path draws limbs into — `PART_MESH_BASE` 5,
 // `PART_MESH_MAX` 11, so ids 5..15. Kept in step with `editor_server.loft`.
 const LIMB_LO = 5, LIMB_HI = 15;
 
-const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-const says = [];
-let slots = new Map();
-ws.addEventListener('message', (e) => {
-  const s = String(e.data);
-  if (s.startsWith('S:')) says.push(s.slice(2));
-  if (s.startsWith('M:')) {
-    const b = s.slice(2), i = b.indexOf(';');
-    const id = +b.slice(0, i);
-    if (id < LIMB_LO || id > LIMB_HI) return;
-    // `M:<id>;<flag>;<r>,<g>,<b>;<floats>` — an empty slot carries no float list at
-    // all, which is how the display path clears one.
-    const parts = b.slice(i + 1).split(';');
-    const floats = parts.length >= 3 ? parts[2] : '';
-    slots.set(id, floats.trim() === '' ? 0 : floats.split(',').length);
+const g = await connect();
+// The limb slots, as float counts. `M:<id>;<flag>;<r>,<g>,<b>;<floats>` — an empty
+// slot carries no float list at all, which is how the display path clears one.
+const slotFloats = () => {
+  const out = new Map();
+  for (const [id, body2] of g.picture) {
+    if (id < LIMB_LO || id > LIMB_HI) continue;
+    // `picture` holds everything after the id: `<flag>;<r>,<g>,<b>;<floats>`, so the
+    // float list is the THIRD field. Reading the second gives the colour, which
+    // always has three commas — a slot that looks drawn whatever is in it.
+    const parts = body2.split(';');
+    const f = parts.length >= 3 ? parts[2] : '';
+    out.set(id, f.trim() === '' ? 0 : f.split(',').length);
   }
-});
-
-// ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK — the suite's own rule.
-const until = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
+  return out;
 };
 const openPart = async (name, want = true) => {
-  slots = new Map();
-  const before = says.length;
-  ws.send(`44:${name}`);
-  // ⚠ A CLOSE ACKNOWLEDGES WITH THE NAME IT HAD OPEN, NOT WITH THE EMPTY ONE IT WAS
-  // SENT. Waiting for `part ''` matches nothing, so both closes ran the full 20 s
-  // limit and the gate cost 43 s of which 40 was waiting for a string the server
-  // will never say. The prefix is what the answer looks like, not what was asked.
-  const want_ack = name === '' ? "part '" : `part '${name}'`;
-  await until(() => says.slice(before).some((s) => s.startsWith(want_ack)),
-              `'${name || '(close)'}' was never acknowledged`);
-  // The display rebuild follows the open; wait for the slot block to stop moving
-  // rather than guessing how long a mesh takes.
-  //
-  // ⚠ ONLY WHEN GEOMETRY IS EXPECTED. The first version waited for the total to
-  // settle at a NON-ZERO value, so every close — where zero is the right answer —
-  // ran the loop to its limit and the gate took 74 s instead of 12. A settle
-  // condition that cannot be met by the correct outcome is a sleep with a reason
-  // attached, which is the fault this suite spent a day removing.
-  if (want) {
-    let last = -1;
-    for (let t = 0; t < 15000; t += 100) {
-      const n = [...slots.values()].reduce((a, b2) => a + b2, 0);
-      if (n === last && n > 0) break;
-      last = n; await wait(100);
-    }
-  }
-  return says.slice(before);
+  g.picture.clear();
+  // ⚠ A CLOSE ACKNOWLEDGES WITH THE NAME IT HAD OPEN, not with the empty one it was
+  // sent — so the prefix is what the ANSWER looks like. Waiting for `part ''` cost
+  // this gate 40 of its 43 seconds before the harness made the shape explicit.
+  const lines = await send(g, `44:${name}`, [name === '' ? "part '" : `part '${name}'`]);
+  // ⚠ SETTLE ONLY WHERE GEOMETRY IS EXPECTED, and count ARRIVALS rather than judging
+  // them: a close settles at zero, which is the right answer, and a settle that
+  // cannot accept it is a sleep with a reason attached.
+  if (want) await quiet(() => g.meshes.length, 400, 15000, 'the limb block');
+  return lines;
 };
-const drawnFloats = () => [...slots.entries()]
-  .filter(([, n]) => n > 6).reduce((a, [, n]) => a + n, 0);
-
-await new Promise((r) => ws.addEventListener('open', r));
-ws.send('1:');
-await until(() => says.length >= 1, 'the server never answered 1:');
+const drawnFloats = () => [...slotFloats().values()]
+  .filter((n) => n > 6).reduce((a, b2) => a + b2, 0);
+const drawnSlots = () => [...slotFloats().values()].filter((n) => n > 6).length;
 
 // ── A8.2-iii — the fixture is cells, checked before it is relied on ──────────
 const plankFile = `${ROOT}/door/plank.hxw`;
@@ -115,7 +83,7 @@ const cellSaid = await openPart('door/planked');
 const cellFloats = drawnFloats();
 check(cellFloats > 0,
       `a cell-bodied limb reaches the wire as geometry (${cellFloats} floats in `
-    + `${[...slots.entries()].filter(([, n]) => n > 6).length} slot(s))`);
+    + `${drawnSlots()} slot(s))`);
 // ⚠ `A8.1`'s APOLOGY MUST BE GONE, and it is a separate check from the floats: a
 // server that drew the limb AND still said it could not would be telling an author
 // to look for something that is on their screen.
@@ -123,7 +91,7 @@ check(!cellSaid.some((s) => s.includes('cell-bodied and not drawn')),
       'and the server no longer says it cannot draw them');
 check(!cellSaid.some((s) => s.includes('no body that can be drawn')),
       'and does not report it as bodyless');
-await openPart('', false);   // close — no geometry expected, so nothing to settle for
+await openPart('', false);
 
 // ── A8.2-ii — THE CONTROL: the .glb path still draws ────────────────────────
 const meshSaid = await openPart('door/doorway');
@@ -135,8 +103,4 @@ check(!meshSaid.some((s) => s.includes('will not load')),
       'and nothing failed to load on the way');
 await openPart('', false);
 
-ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_limb', cellFloats, meshFloats,
-                             checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_limb', check, { cellFloats, meshFloats });

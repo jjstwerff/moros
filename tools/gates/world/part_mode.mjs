@@ -37,15 +37,12 @@
 // claim *an edit in part mode reaches no disk* is about bytes and not about acks.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
 const PART = 'house/cottage';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 // The figure, the cart and anything fixed live below this id; everything above is
 // a chunk surface. Without the split the figure's five meshes — sent once, at
@@ -54,34 +51,10 @@ const MESH_FIGURE_MAX = 15;
 
 const md5 = (p) => createHash('md5').update(readFileSync(p)).digest('hex');
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const huds = [];
-  const says = [];
-  const meshes = [];
-  // The last body sent for each mesh id — the client's picture, as the server
-  // last stated it. Two of these compared is how the restore gets checked on
-  // things no read-back reaches: the wall runs, the roof plans and the feet.
-  const picture = new Map();
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('H:')) huds.push(s);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-    if (s.startsWith('M:')) {
-      const body = s.slice(2);
-      const semi = body.indexOf(';');
-      const id = +body.slice(0, semi);
-      meshes.push(id);
-      picture.set(id, body.slice(semi + 1));
-    }
-  });
-  return { ws, huds, says, meshes, picture,
-           ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+const meshesQuiet = (quietMs = 400) => quiet(() => g.meshes.length, quietMs, 20000, 'the picture');
+g.ws.send('1:');
 await meshesQuiet();
 
 // A read-back, taken by asking rather than by believing — a mesh is a picture and
@@ -94,14 +67,7 @@ await meshesQuiet();
 // the cell's material and height, which is what a raise actually moves. Both are
 // asked below: the claim is about the store, and one read that cannot see the
 // edit is not evidence the store was restored.
-async function ask(msg, prefix) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  for (let i = 0; i < 40 && !a.says.slice(before).some((s) => s.startsWith(prefix)); i++) {
-    await wait(50);
-  }
-  return a.says.slice(before).find((s) => s.startsWith(prefix)) ?? '<none>';
-}
+const askOne = (msg, prefix) => ask(g, msg, prefix);
 
 // ── ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK — `part_check`'s rule, applied here ──
 //
@@ -118,20 +84,7 @@ async function ask(msg, prefix) {
 //
 // ⚠ AND IT SAYS SO ON TIMEOUT. A wait that never fires and a wait that is not wired
 // look identical from outside.
-async function sendUntil(msg, prefixes, maxMs = 15000) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  for (let t = 0; t < maxMs; t += 25) {
-    if (a.says.slice(before).some((s) => prefixes.some((p) => s.includes(p)))) {
-      return a.says.slice(before);
-    }
-    await wait(25);
-  }
-  console.log(`  !! no answer to ${JSON.stringify(msg)} matching `
-            + `${prefixes.join(' | ')} in ${maxMs}ms — saw `
-            + JSON.stringify(a.says.slice(before).slice(-3)));
-  return a.says.slice(before);
-}
+const sendUntil = (msg, prefixes, maxMs = 15000) => send(g, msg, prefixes, maxMs);
 
 // The picture, SETTLED — mesh traffic gone quiet, rather than a guess at how long a
 // rebuild takes.
@@ -141,21 +94,9 @@ async function sendUntil(msg, prefixes, maxMs = 15000) {
 // stale on the client for ever (OPEN_ISSUES), which is why the save/load below forces
 // a full rebuild first — and a full rebuild is exactly the thing whose duration a
 // fixed sleep cannot know.
-async function meshesQuiet(quietMs = 400, maxMs = 20000) {
-  let last = a.meshes.length, still = 0;
-  for (let t = 0; t < maxMs; t += 50) {
-    await wait(50);
-    if (a.meshes.length === last) {
-      still += 50;
-      if (still >= quietMs) return true;
-    } else { last = a.meshes.length; still = 0; }
-  }
-  console.log(`  !! the picture never went quiet (${a.meshes.length} meshes)`);
-  return false;
-}
 const readStore = async () => ({
-  cell: await ask('26:0,0', 'cell '),
-  column: await ask('15:0,0', 'column '),
+  cell: await askOne('26:0,0', 'cell '),
+  column: await askOne('15:0,0', 'column '),
 });
 
 const partFile = `${ROOT}/${PART}.hxw`;
@@ -191,9 +132,9 @@ await meshesQuiet();
 // /house|placed/, which the REFUSAL *"house refused — a footprint at this facing
 // has no mitred corners"* satisfies perfectly — an instrument that reports success
 // on the sentence saying it failed.
-check(a.says.some((s) => s.startsWith('house placed')),
+check(g.says.some((s) => s.startsWith('house placed')),
       `the world has a house in it, so the registries are not empty (${
-        a.says.filter((s) => /house/.test(s)).slice(-1)[0] ?? 'none'})`);
+        g.says.filter((s) => /house/.test(s)).slice(-1)[0] ?? 'none'})`);
 
 // ── settle the picture before photographing it ──────────────────────────────
 //
@@ -220,42 +161,42 @@ check(worldBefore.cell.startsWith('cell '), `the world answers a cell read (${wo
 check(worldBefore.cell !== 'cell 0,0 = 0,0',
       `and the raise is visible in it (${worldBefore.cell})`);
 
-const hudsBefore = a.huds.length;
+const hudsBefore = g.huds.length;
 check(hudsBefore >= 1, `the subject line arrived (${hudsBefore} H:)`);
-check((a.huds[hudsBefore - 1] ?? '').includes('world '),
-      `and it names the world: ${JSON.stringify(a.huds[hudsBefore - 1])}`);
+check((g.huds[hudsBefore - 1] ?? '').includes('world '),
+      `and it names the world: ${JSON.stringify(g.huds[hudsBefore - 1])}`);
 
 // ── A7.3a-ii, the control FIRST — a refused open renames nothing ────────────
 // ⚠ Taken before the real open on purpose: run afterwards it could pass on a
 // server that simply never sends `H:` twice.
-const saysBeforeBad = a.says.length;
+const saysBeforeBad = g.says.length;
 await sendUntil('44:nosuch/part', ['part refused']);
-const badSay = a.says.slice(saysBeforeBad).find((s) => s.startsWith('part refused')) ?? '';
+const badSay = g.says.slice(saysBeforeBad).find((s) => s.startsWith('part refused')) ?? '';
 check(badSay !== '', `a part that is not there is refused: ${JSON.stringify(badSay)}`);
-check(a.huds.length === hudsBefore,
-      `and the subject line does not move (${a.huds.length - hudsBefore} extra H:)`);
+check(g.huds.length === hudsBefore,
+      `and the subject line does not move (${g.huds.length - hudsBefore} extra H:)`);
 
 // ⚠ THE OTHER REFUSAL WITH TEETH: a name that climbs out of the library.
 await sendUntil('44:../../etc/passwd', ['leaves the part library', 'part refused']);
 // ⚠ `A7.3e` moved the wording with the rule — `hex_part::part_name_ok` owns it now.
-check(a.says.some((s) => s.includes('leaves the part library')),
+check(g.says.some((s) => s.includes('leaves the part library')),
       'a name containing .. is refused rather than normalised');
-check(a.huds.length === hudsBefore, 'and that one does not move the line either');
+check(g.huds.length === hudsBefore, 'and that one does not move the line either');
 
 // ── A7.3a-i — the part opens ────────────────────────────────────────────────
-const meshesBeforeOpen = new Set(a.meshes.filter((m) => m > MESH_FIGURE_MAX));
-const meshCountAtOpen = a.meshes.length;
-const pictureBeforeOpen = new Map(a.picture);
-const saysBeforeOpen = a.says.length;
+const meshesBeforeOpen = new Set(g.meshes.filter((m) => m > MESH_FIGURE_MAX));
+const meshCountAtOpen = g.meshes.length;
+const pictureBeforeOpen = new Map(g.picture);
+const saysBeforeOpen = g.says.length;
 await sendUntil(`44:${PART}`, [`part '${PART}'`, 'part refused']);
 await meshesQuiet();
 
-const openSay = a.says.slice(saysBeforeOpen).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
+const openSay = g.says.slice(saysBeforeOpen).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
 check(openSay.includes('opened'), `the part opens: ${JSON.stringify(openSay)}`);
 check(openSay.includes('world held aside'), 'and says the world was held, not closed');
 
-check(a.huds.length > hudsBefore, `an accepted open moves the subject line (${a.huds.length} H:)`);
-const hudPart = a.huds[a.huds.length - 1] ?? '';
+check(g.huds.length > hudsBefore, `an accepted open moves the subject line (${g.huds.length} H:)`);
+const hudPart = g.huds[g.huds.length - 1] ?? '';
 check(hudPart.includes(`part ${PART}`), `and it now names the part: ${JSON.stringify(hudPart)}`);
 check(!hudPart.includes('world '), 'and no longer the world');
 
@@ -268,11 +209,11 @@ check(partStore.column !== worldBefore.column,
 
 // ── A7.3a-iv — nothing of the world is left drawn ───────────────────────────
 // ⚠ FROM THE OPEN ONWARDS, AND THE FIRST VERSION OF THIS LINE READ THE WHOLE
-// STREAM. `a.meshes` is cumulative, so a set built from all of it always contains
+// STREAM. `g.meshes` is cumulative, so a set built from all of it always contains
 // every id seen before the swap and the check below could not fail — sabotaging
 // the invalidation away left the gate green. Slicing at the open is the whole
 // difference between *these ids were re-addressed* and *these ids exist*.
-const meshesAfterOpen = new Set(a.meshes.slice(meshCountAtOpen).filter((m) => m > MESH_FIGURE_MAX));
+const meshesAfterOpen = new Set(g.meshes.slice(meshCountAtOpen).filter((m) => m > MESH_FIGURE_MAX));
 const stale = [...meshesBeforeOpen].filter((m) => !meshesAfterOpen.has(m));
 // Every id the client held before the swap was re-addressed after it. An id that
 // was not is a surface still carrying the world's triangles.
@@ -291,23 +232,23 @@ check(stale.length === 0,
 // `tools/gates/world/part_save.mjs`, where the rest of the save lives. Nothing
 // here sends `8:` while a part is open, because saving would change the library
 // this gate photographs.
-const saysBeforeGuards = a.says.length;
+const saysBeforeGuards = g.says.length;
 await sendUntil('9:probe_world', ['load refused', 'loaded ']);
-check(a.says.slice(saysBeforeGuards).some((s) => s.startsWith('load refused')),
+check(g.says.slice(saysBeforeGuards).some((s) => s.startsWith('load refused')),
       'a load in part mode is refused — it would make the subject line lie');
 await sendUntil(`44:${PART}`, ['already editing', `part '${PART}'`]);
-check(a.says.slice(saysBeforeGuards).some((s) => s.includes('already editing')),
+check(g.says.slice(saysBeforeGuards).some((s) => s.includes('already editing')),
       'and a second part is refused while one is open');
 
 // ── A7.3a-iii — edit the part, then close ───────────────────────────────────
 for (let i = 0; i < 3; i++) await sendUntil('5:1', ['rebuilt ']);
 await meshesQuiet();
 
-const saysBeforeClose = a.says.length;
+const saysBeforeClose = g.says.length;
 await sendUntil('44:', [`part '${PART}'`, 'part close refused']);
 await meshesQuiet();
 
-const closeSay = a.says.slice(saysBeforeClose).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
+const closeSay = g.says.slice(saysBeforeClose).find((s) => s.startsWith(`part '${PART}'`)) ?? '';
 check(closeSay.includes('closed'), `the part closes: ${JSON.stringify(closeSay)}`);
 // ⚠ THE NUMBER IS THE POINT. `A7.3a` has no save, so a close discards — and a
 // close that discarded silently would be the editor eating an author's work. The
@@ -315,7 +256,7 @@ check(closeSay.includes('closed'), `the part closes: ${JSON.stringify(closeSay)}
 const discarded = +(closeSay.match(/(\d+) edits discarded/)?.[1] ?? -1);
 check(discarded > 0, `and says how many edits it threw away (${discarded})`);
 
-const hudBack = a.huds[a.huds.length - 1] ?? '';
+const hudBack = g.huds[g.huds.length - 1] ?? '';
 check(hudBack.includes('world '), `the subject names the world again: ${JSON.stringify(hudBack)}`);
 
 const worldAfter = await readStore();
@@ -334,8 +275,8 @@ check(md5(partFile) === hash0,
 // comparison covering the store, the registries and the feet at once, and the only
 // check here that a world restored *except for its roof* would fail.
 const changed = [...pictureBeforeOpen.keys()]
-  .filter((id) => id > MESH_FIGURE_MAX && a.picture.has(id))
-  .filter((id) => a.picture.get(id) !== pictureBeforeOpen.get(id));
+  .filter((id) => id > MESH_FIGURE_MAX && g.picture.has(id))
+  .filter((id) => g.picture.get(id) !== pictureBeforeOpen.get(id));
 check(pictureBeforeOpen.size > MESH_FIGURE_MAX,
       `the gate holds a picture to compare (${pictureBeforeOpen.size} meshes)`);
 // ⚠ NAMED BY SURFACE WHEN IT FAILS. A mesh id is `chunk * 9 + 16 + surface`, so
@@ -349,18 +290,15 @@ check(changed.length === 0,
     + `${changed.length ? `, surfaces ${kinds.join(',')}, ids ${changed.slice(0, 4).join(',')}` : ''})`);
 
 // A close with nothing open is refused rather than silently doing nothing.
-const saysBeforeSecond = a.says.length;
+const saysBeforeSecond = g.says.length;
 await sendUntil('44:', ['part close refused', `part '${PART}'`]);
-check(a.says.slice(saysBeforeSecond).some((s) => s.startsWith('part close refused')),
+check(g.says.slice(saysBeforeSecond).some((s) => s.startsWith('part close refused')),
       'closing when nothing is open is refused');
 
 // And the world is editable again, which is what "restored" has to mean.
-const saysBeforeSave = a.says.length;
+const saysBeforeSave = g.says.length;
 await sendUntil('8:probe_world', ['saved ', 'save refused']);
-check(a.says.slice(saysBeforeSave).some((s) => s.startsWith('saved ')),
+check(g.says.slice(saysBeforeSave).some((s) => s.startsWith('saved ')),
       'the world takes a save again once the part is closed');
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_mode', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_mode', check);

@@ -43,43 +43,23 @@
 // copy of the library; this one only opens parts and is refused.
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
 const PART = 'house/cottage';
 const LEAF = 'prop/plinth';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 const md5 = (p) => createHash('md5').update(readFileSync(p)).digest('hex');
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const huds = [];
-  const says = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('H:')) huds.push(s);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-  });
-  return { ws, huds, says, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+g.ws.send('1:');
 // ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
 // how long the opening burst takes, so a loaded box made it a guess that was wrong.
 // Every gesture below waits for its own acknowledgement; this only has to see the
 // server answer at all, and it SAYS SO if it never does.
-const untilSaid = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
-await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
+await until(() => g.says.length >= 1, 'the server never answered 1:');
 
 // Everything the gate asks is answered on `S:`, so a step is "send, then read what
 // arrived because of it".
@@ -90,16 +70,15 @@ await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
 // and correct on a busy one. ⚠ The few gestures that answer nothing of their own
 // still take a fixed wait, which is what `null` selects.
 async function step(msg, prefix = null, maxMs = 12000) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  if (prefix === null) { await wait(1200); return a.says.slice(before); }
+  const before = g.says.length;
+  g.ws.send(msg);
+  if (prefix === null) { await absenceWindow(1200, 'no event marks this — see the check below'); return g.says.slice(before); }
   for (let waited = 0; waited < maxMs; waited += 50) {
-    if (a.says.slice(before).some((s) => s.startsWith(prefix))) break;
-    await wait(50);
+    if (g.says.slice(before).some((s) => s.startsWith(prefix))) break;
+    await absenceWindow(50, 'no event marks this — see the check below');
   }
-  return a.says.slice(before);
+  return g.says.slice(before);
 }
-const said = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
 
 // One open→close cycle, returning what the close counted. `K` is the whole
 // instrument: 0 means the store was never written.
@@ -116,7 +95,7 @@ async function cycle(inside) {
   // ⚠ TAKEN WHILE THE PART IS STILL OPEN. Read after the close it is the world's
   // line, which passes any subject check by accident — the first version of the
   // blanking check below did exactly that.
-  const hudInside = a.huds[a.huds.length - 1] ?? '';
+  const hudInside = g.huds[g.huds.length - 1] ?? '';
   const closed = said(await step('44:', `part '${PART}'`), `part '${PART}'`);
   return { opened, closed, lines, hudInside,
            edits: +(closed.match(/(-?\d+) edits discarded/)?.[1] ?? NaN) };
@@ -125,8 +104,8 @@ async function cycle(inside) {
 const hash0 = md5(`${ROOT}/${PART}.hxw`);
 // ⚠ AND THE PLACEMENT IS ACKNOWLEDGED, so this waits for `placed` rather than
 // guessing half a second at it.
-a.ws.send('7:0,0,0.5236');
-await untilSaid(() => a.says.some((s2) => s2.startsWith('placed ')),
+g.ws.send('7:0,0,0.5236');
+await until(() => g.says.some((s2) => s2.startsWith('placed ')),
                 'the walker was never placed');
 
 // ── the fence must not leak into the WORLD ──────────────────────────────────
@@ -206,7 +185,4 @@ check(procSay !== '' && !procSay.includes('editing part'),
 check(md5(`${ROOT}/${PART}.hxw`) === hash0,
       'and the part on disk is byte-identical through all of it');
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_fence', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_fence', check);

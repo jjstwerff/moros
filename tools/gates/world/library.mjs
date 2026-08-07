@@ -36,14 +36,11 @@
 // hands every gate its own copy of the library; editing the committed one would
 // corrupt a tree two agents share and leave the repository dirty on failure.
 import { readdirSync, copyFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 // What is on disk, read by the GATE rather than asked of the server — the two must
 // agree and only one of them can be wrong at a time. ⚠ It mirrors
@@ -62,25 +59,13 @@ function onDisk(root) {
   return out.sort();
 }
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const cats = [];
-  const cams = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('N:')) cats.push(s);
-    if (s.startsWith('W:')) cams.push(s);
-  });
-  return { ws, cats, cams, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
 const partsOf = (n) => (n ?? 'N:').slice(2).split(';').filter(Boolean)
     .map((r) => r.split('|'))
     .filter((f) => f[0] === 'part')
     .map((f) => f[1]);
 
-const a = open();
-await a.ready;
+const g = await connect();
 // ── ⚠ WAIT FOR THE EVIDENCE, NOT FOR A CLOCK — except where the claim IS a duration ──
 //
 // This gate slept 14 s in four waits. Three of them were waiting for the server's
@@ -91,24 +76,10 @@ await a.ready;
 // nothing"* is a claim about an ABSENCE over a window: there is no event to wait for,
 // and polling for one would either return immediately (proving nothing) or hang. A
 // duration is the instrument there, not a shortcut — see the control at the end.
-const until = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 50) { if (fn()) return true; await wait(50); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
 // The thumbnails, settled: `W:` traffic gone quiet rather than a guess at how long a
 // re-mesh of every row takes.
-const camsQuiet = async (quietMs = 600, maxMs = 20000) => {
-  let last = a.cams.length, still = 0;
-  for (let t = 0; t < maxMs; t += 50) {
-    await wait(50);
-    if (a.cams.length === last) { still += 50; if (still >= quietMs) return true; }
-    else { last = a.cams.length; still = 0; }
-  }
-  console.log(`  !! the thumbnails never went quiet (${a.cams.length} W:)`);
-  return false;
-};
-await until(() => a.cats.length >= 1, 'the catalogue never arrived');
+const camsQuiet = (quietMs = 600) => quiet(() => g.cams.length, quietMs, 20000, 'the thumbnails');
+await until(() => g.cats.length >= 1, 'the catalogue never arrived');
 await camsQuiet();
 
 // ── A7.1a — the list IS the library ──────────────────────────────────────────
@@ -120,8 +91,8 @@ const disk = onDisk(ROOT);
 check(disk.includes('house/cottage'),
       `the gate can read the library itself (${disk.length} parts: ${disk.join(',')})`);
 
-check(a.cats.length === 1, `the catalogue arrives once on connect (${a.cats.length})`);
-const listed = partsOf(a.cats[0]).sort();
+check(g.cats.length === 1, `the catalogue arrives once on connect (${g.cats.length})`);
+const listed = partsOf(g.cats[0]).sort();
 const missing = disk.filter((p) => !listed.includes(p));
 const invented = listed.filter((p) => !disk.includes(p));
 check(missing.length === 0,
@@ -137,17 +108,17 @@ const NEWPART = 'aaa_probe/first';
 const seed = existsSync(`${ROOT}/house/cottage.hxw`)
   ? `${ROOT}/house/cottage.hxw` : `${ROOT}/${disk[0]}.hxw`;
 
-const camsBefore = a.cams.length;
+const camsBefore = g.cams.length;
 mkdirSync(NEWDIR, { recursive: true });
 copyFileSync(seed, `${NEWDIR}/first.hxw`);
 
 // The server sweeps once a second, and the sweep announces itself with an `N:`.
-const catsBeforeAdd = a.cats.length;
-await until(() => a.cats.length > catsBeforeAdd, 'the added part was never noticed');
+const catsBeforeAdd = g.cats.length;
+await until(() => g.cats.length > catsBeforeAdd, 'the added part was never noticed');
 await camsQuiet();
 
-check(a.cats.length >= 2, `a part appearing re-sends the catalogue (${a.cats.length} N:)`);
-const after = partsOf(a.cats[a.cats.length - 1]);
+check(g.cats.length >= 2, `a part appearing re-sends the catalogue (${g.cats.length} N:)`);
+const after = partsOf(g.cats[g.cats.length - 1]);
 check(after.includes(NEWPART),
       `and the new part is in it: ${JSON.stringify(after)}`);
 check(after.length === listed.length + 1,
@@ -159,7 +130,7 @@ check(after[0] === NEWPART,
 // ⚠ EVERY ROW'S PICTURE CAME AGAIN, NOT JUST THE NEW ONE. A `W:` leads each part's
 // thumbnail set, so counting the DISTINCT rows carried by the cameras that arrived
 // after the insert says how many parts were re-addressed. One is the bug.
-const fresh = a.cams.slice(camsBefore);
+const fresh = g.cams.slice(camsBefore);
 const freshRows = new Set(fresh.map((s) => s.slice(2).split(';')[0]));
 check(freshRows.size === after.length,
       `every row's thumbnail was re-sent, not only the new one `
@@ -167,14 +138,14 @@ check(freshRows.size === after.length,
 
 // ── the part goes away again ─────────────────────────────────────────────────
 
-const catsBeforeRm = a.cats.length;
+const catsBeforeRm = g.cats.length;
 rmSync(NEWDIR, { recursive: true, force: true });
-await until(() => a.cats.length > catsBeforeRm, 'the removed part was never noticed');
+await until(() => g.cats.length > catsBeforeRm, 'the removed part was never noticed');
 await camsQuiet();
 
-check(a.cats.length > catsBeforeRm,
-      `a part disappearing re-sends the catalogue (${a.cats.length} N:)`);
-const back = partsOf(a.cats[a.cats.length - 1]).sort();
+check(g.cats.length > catsBeforeRm,
+      `a part disappearing re-sends the catalogue (${g.cats.length} N:)`);
+const back = partsOf(g.cats[g.cats.length - 1]).sort();
 check(!back.includes(NEWPART), `and it is gone from the list (${back.join(',')})`);
 check(back.join(',') === listed.join(','),
       `the catalogue is what it was before (${back.join(',')} vs ${listed.join(',')})`);
@@ -183,12 +154,9 @@ check(back.join(',') === listed.join(','),
 // BROADCASTS THE CATALOGUE EVERY TICK. Nothing changed in this window, so nothing
 // may be sent — a list that re-sends unprompted is a list the client must re-render
 // once a second, and every check above passes on it.
-const quiet = a.cats.length;
-await wait(4000);
-check(a.cats.length === quiet,
-      `an unchanged library sends nothing (${a.cats.length - quiet} extra N: in 4 s)`);
+const catsBeforeQuiet = g.cats.length;
+await absenceWindow(4000, 'no event marks this — see the check below');
+check(g.cats.length === catsBeforeQuiet,
+      `an unchanged library sends nothing (${g.cats.length - catsBeforeQuiet} extra N: in 4 s)`);
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'library', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'library', check);

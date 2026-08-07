@@ -42,15 +42,12 @@
 // what is open.
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
 const PART = 'house/cottage';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 const md5 = (p) => (existsSync(p) ? createHash('md5').update(readFileSync(p)).digest('hex') : '<none>');
 
 const partFile = `${ROOT}/${PART}.hxw`;
@@ -59,45 +56,21 @@ const partFile = `${ROOT}/${PART}.hxw`;
 const WORLDNAME = 'part_save_probe';
 const worldFile = `worlds/${WORLDNAME}.hxw`;
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const huds = [];
-  const says = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('H:')) huds.push(s);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-  });
-  return { ws, huds, says, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+g.ws.send('1:');
 // ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
 // how long the opening burst takes, so a loaded box made it a guess that was wrong.
 // Every gesture below waits for its own acknowledgement; this only has to see the
 // server answer at all, and it SAYS SO if it never does.
-const untilSaid = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
-await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
+await until(() => g.says.length >= 1, 'the server never answered 1:');
 
-async function step(msg, ms = 1800) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  await wait(ms);
-  return a.says.slice(before);
-}
-const said = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
-const ask = async (msg, prefix) => said(await step(msg), prefix);
+const askOne = (msg, prefix) => ask(g, msg, prefix);
 
 // ⚠ AND THE PLACEMENT IS ACKNOWLEDGED, so this waits for `placed` rather than
 // guessing half a second at it.
-a.ws.send('7:0,0,0.5236');
-await untilSaid(() => a.says.some((s2) => s2.startsWith('placed ')),
+g.ws.send('7:0,0,0.5236');
+await until(() => g.says.some((s2) => s2.startsWith('placed ')),
                 'the walker was never placed');
 
 const worldBefore = md5(worldFile);
@@ -109,17 +82,17 @@ const worldBefore = md5(worldFile);
 const hash0 = md5(partFile);
 check(hash0 !== '<none>', `the gate can see the part on disk (${partFile})`);
 
-let lines = await step(`44:${PART}`, 2500);
+let lines = await send(g, `44:${PART}`, [`part '${PART}'`, 'part refused']);
 check(said(lines, `part '${PART}'`).includes('opened'), 'the part opens');
-const nullSave = await ask('8:', 'part ');
+const nullSave = await askOne('8:', 'part ');
 check(nullSave.includes('saved'), `a save with no edit is accepted: ${JSON.stringify(nullSave)}`);
 check(md5(partFile) === hash0,
       'and it wrote the same bytes — a null edit does not churn the file');
-const nullClose = await ask('44:', `part '${PART}'`);
+const nullClose = await askOne('44:', `part '${PART}'`);
 check(/0 edits discarded/.test(nullClose), `and the clock agrees (${nullClose})`);
 
 // ── A7.3c-i / -ii — an edit, saved, and still there on reopening ────────────
-lines = await step(`44:${PART}`, 2500);
+lines = await send(g, `44:${PART}`, [`part '${PART}'`, 'part refused']);
 const openedAs = said(lines, `part '${PART}'`);
 check(openedAs.includes("opened as 'cottage'"),
       `the part opens under its authored name (${openedAs})`);
@@ -130,16 +103,16 @@ check(openedAs.includes("opened as 'cottage'"),
 // `cell 0,0 = 4,0` on both sides of three raises and called it "no edit". `24:`
 // writes an edge of the cell the walker is standing IN, which `16:` reads back at
 // exactly that cell: one gesture, one coordinate, one instrument.
-const wallsBefore = await ask('16:0,0', 'walls ');
-await step('24:0,wall', 1200);
-await wait(1200);
-const wallsEdited = await ask('16:0,0', 'walls ');
+const wallsBefore = await askOne('16:0,0', 'walls ');
+await send(g, '24:0,wall', ['edge ']);
+await absenceWindow(1200, 'no event marks this — see the check below');
+const wallsEdited = await askOne('16:0,0', 'walls ');
 // The instrument, checked against something it should find: if the gesture did
 // not move the edge then *the edit survived* below is comparing nothing.
 check(wallsEdited !== wallsBefore,
       `an edge gesture changes the part (${wallsBefore} → ${wallsEdited})`);
 
-const saved = await ask('8:', 'part ');
+const saved = await askOne('8:', 'part ');
 check(saved.includes('saved'), `the edited part saves: ${JSON.stringify(saved)}`);
 check(/(\d+) sections/.test(saved) && +saved.match(/(\d+) sections/)[1] > 0,
       `and says how many sections went with it (${saved})`);
@@ -148,19 +121,19 @@ check(md5(partFile) !== hash0, 'and the file on disk changed');
 // ⚠ 0 AFTER A SAVE. The close counts from the store's own clock, re-anchored by
 // the save — so this is where a save that reported success without writing, or
 // one that re-anchored at the wrong moment, shows up.
-const closeAfterSave = await ask('44:', `part '${PART}'`);
+const closeAfterSave = await askOne('44:', `part '${PART}'`);
 check(/0 edits discarded/.test(closeAfterSave),
       `and closing straight after a save discards nothing (${closeAfterSave})`);
 
 // Reopen: the edit is in the file, and the NAME came with it.
-lines = await step(`44:${PART}`, 2500);
+lines = await send(g, `44:${PART}`, [`part '${PART}'`, 'part refused']);
 const reopened = said(lines, `part '${PART}'`);
 check(reopened.includes("opened as 'cottage'"),
       `reopening still reads the part's own name — the sections survived (${reopened})`);
-const wallsReloaded = await ask('16:0,0', 'walls ');
+const wallsReloaded = await askOne('16:0,0', 'walls ');
 check(wallsReloaded === wallsEdited,
       `and the edit came back from disk (${wallsReloaded} vs ${wallsEdited})`);
-await step('44:', 2500);
+await send(g, '44:', ["part '", 'part close refused']);
 
 // ── A7.3c-iv — the world's file was never written ──────────────────────────
 check(md5(worldFile) === worldBefore,
@@ -169,15 +142,15 @@ check(md5(worldFile) === worldBefore,
 // ⚠ AND THE ROUTING BOTH WAYS. Out of part mode the same message must still save
 // a WORLD — a mode check that routed everything to the parts root would pass every
 // check above and quietly stop the editor saving worlds at all.
-const worldSave = await ask(`8:${WORLDNAME}`, 'saved ');
+const worldSave = await askOne(`8:${WORLDNAME}`, 'saved ');
 check(worldSave.startsWith('saved '), `out of part mode, 8: still saves a world (${worldSave})`);
 check(existsSync(worldFile), `and the world file exists now (${worldFile})`);
 check(!existsSync(`${ROOT}/${WORLDNAME}.hxw`),
       'and no part of that name was created in the library');
 
 // ── the name fence, which the world's save does not need ───────────────────
-lines = await step(`44:${PART}`, 2500);
-const escape = await ask('8:../../escaped', 'part save refused');
+lines = await send(g, `44:${PART}`, [`part '${PART}'`, 'part refused']);
+const escape = await askOne('8:../../escaped', 'part save refused');
 // ⚠ THE WORDING MOVED WITH THE RULE, plan 17 `A7.3e`. The three handlers each
 // spelled out their own `..` check; the fence is `hex_part::part_name_ok` now —
 // one rule, in the package that owns what a part name is — and it says *the part
@@ -186,9 +159,6 @@ check(escape.includes('leaves the part library'),
       `a save under a name that climbs out is refused (${JSON.stringify(escape)})`);
 check(!existsSync('escaped.hxw') && !existsSync('../escaped.hxw'),
       'and nothing was written outside the library');
-await step('44:', 2500);
+await send(g, '44:', ["part '", 'part close refused']);
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_save', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_save', check);

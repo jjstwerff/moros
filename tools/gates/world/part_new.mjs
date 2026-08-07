@@ -45,14 +45,11 @@
 // `tools/run-gates.sh` hands every gate one. This gate adds parts on purpose, and
 // doing that to `data/parts/` would leave a tree two agents share dirty.
 import { readdirSync, existsSync } from 'node:fs';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 // ⚠ THE AUTHORED PART MUST SORT FIRST, and that is the whole of `A7.1`'s row
 // argument reused: a catalogue row index is positional, so an insert at the FRONT
@@ -69,57 +66,31 @@ const FROM = 'house/cottage';
 const NEW  = 'aaa_annexe/wing';
 const FAM  = 'annex/lean_to';        // a family directory that does not exist yet
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const says = [], cats = [], cams = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-    if (s.startsWith('N:')) cats.push(s);
-    if (s.startsWith('W:')) cams.push(s);
-  });
-  return { ws, says, cats, cams, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+g.ws.send('1:');
 // ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
 // how long the opening burst takes, so a loaded box made it a guess that was wrong.
 // Every gesture below waits for its own acknowledgement; this only has to see the
 // server answer at all, and it SAYS SO if it never does.
-const untilSaid = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
-await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
+await until(() => g.says.length >= 1, 'the server never answered 1:');
 
 // ⚠ WAIT FOR THE ANSWER, NOT FOR A CLOCK — `A7.3d`'s finding, and it is the third
 // face of the `GATE_JOBS` flake. A gate written with fixed sleeps passes alone and
 // fails at four jobs, because four interpreted servers answer slower than the
 // sleep: it reports the machine rather than the claim. Polling is also faster when
 // the box is idle.
-async function stepFor(msg, prefix, maxMs = 20000) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  for (let waited = 0; waited < maxMs; waited += 50) {
-    const hit = a.says.slice(before).find((s) => s.startsWith(prefix));
-    if (hit !== undefined) return a.says.slice(before);
-    await wait(50);
-  }
-  return a.says.slice(before);
-}
-const said = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
-const ask = async (msg, prefix) => said(await stepFor(msg, prefix), prefix);
+// One implementation of *wait for the answer* now — `lib.mjs`'s `send`.
+const stepFor = (msg, prefix, maxMs = 12000) => send(g, msg, [prefix], maxMs);
+const askOne = (msg, prefix) => ask(g, msg, prefix);
 
 // Wait for the library sweep to notice, rather than sleeping through it: the
 // server checks once a second and says so when the set moved.
 async function libraryFollows(maxMs = 12000) {
-  const before = a.cats.length;
+  const before = g.cats.length;
   for (let waited = 0; waited < maxMs; waited += 100) {
-    if (a.cats.length > before) { await wait(400); return true; }   // let the W: land
-    await wait(100);
+    if (g.cats.length > before) { await absenceWindow(400, 'no event marks this — see the check below'); return true; }   // let the W: land
+    await absenceWindow(100, 'no event marks this — see the check below');
   }
   return false;
 }
@@ -143,7 +114,7 @@ const onDisk = () => {
 // every check would be measuring something else.
 check(existsSync(`${ROOT}/${FROM}.hxw`), `the part to author from is there (${FROM})`);
 check(!existsSync(`${ROOT}/${NEW}.hxw`), `and the new one is not, yet (${NEW})`);
-const listed0 = partsOf(a.cats[0]).map((f) => f[1]);
+const listed0 = partsOf(g.cats[0]).map((f) => f[1]);
 check(listed0.length > 0 && !listed0.includes(NEW),
       `the catalogue arrived without it (${listed0.join(',')})`);
 
@@ -155,22 +126,22 @@ check(said(lines, `part '${FROM}'`).includes('opened'), 'the part opens');
 // raises AHEAD of the walker, so `26:0,0` under their feet answers the same before
 // and after; `24:` writes an edge of the cell the walker is standing IN, which
 // `16:` reads back at exactly that cell.
-const authoredBefore = await ask('16:0,0', 'walls ');
+const authoredBefore = await askOne('16:0,0', 'walls ');
 await stepFor('24:0,wall', 'edge ');
-const authored = await ask('16:0,0', 'walls ');
+const authored = await askOne('16:0,0', 'walls ');
 // The instrument, checked against something it should find: with no edit, *the
 // authored thing arrived* below compares nothing.
 check(authored !== authoredBefore,
       `the gesture changes the part (${authoredBefore} → ${authored})`);
 
-const camsBefore = a.cams.length;
-const saved = await ask(`8:${NEW}`, 'part ');
+const camsBefore = g.cams.length;
+const saved = await askOne(`8:${NEW}`, 'part ');
 check(saved.includes('saved'), `it saves under a name that did not exist: ${JSON.stringify(saved)}`);
 check(existsSync(`${ROOT}/${NEW}.hxw`), `and the file is on disk (${NEW}.hxw)`);
 
 // ── A7.3e-i — the library follows, while the editor is still running ────────
 check(await libraryFollows(), 'the catalogue is re-sent without being asked');
-const after = partsOf(a.cats[a.cats.length - 1]).map((f) => f[1]);
+const after = partsOf(g.cats[g.cats.length - 1]).map((f) => f[1]);
 check(after.includes(NEW), `and it names the new part (${after.join(',')})`);
 check(after.length === listed0.length + 1,
       `the list grew by exactly one (${listed0.length} → ${after.length})`);
@@ -178,17 +149,17 @@ check(after[0] === NEW, `and it sorts FIRST, so every other row moved (${after[0
 // ⚠ EVERY ROW'S PICTURE CAME AGAIN. A `W:` leads each part's thumbnail set and
 // addresses a ROW; re-sending only the new one leaves every later picture aimed at
 // its neighbour — all drawn, all but one wrong, every count agreeing.
-const freshRows = new Set(a.cams.slice(camsBefore).map((s) => s.slice(2).split(';')[0]));
+const freshRows = new Set(g.cams.slice(camsBefore).map((s) => s.slice(2).split(';')[0]));
 check(freshRows.size === after.length,
       `every row's thumbnail was re-addressed (${freshRows.size} of ${after.length})`);
 // The availability column, because a part nobody can select is not in the library
 // in any sense that matters.
-const avail = partsOf(a.cats[a.cats.length - 1]).find((f) => f[1] === NEW);
+const avail = partsOf(g.cats[g.cats.length - 1]).find((f) => f[1] === NEW);
 check(avail !== undefined && avail[2] === '1',
       `and it is offered rather than greyed (${JSON.stringify(avail)})`);
 
 // ── A7.3e-iii — it is its own part, by name ────────────────────────────────
-const closed = await ask('44:', "part '");
+const closed = await askOne('44:', "part '");
 check(closed.includes(NEW), `the close names the part that is open (${closed})`);
 
 // ── A7.3e-ii — and by CONTENT, placed in the same session ──────────────────
@@ -199,18 +170,18 @@ check(closed.includes(NEW), `the close names the part that is open (${closed})`)
 // the edge arrived through the part. One cell, two placements, one instrument —
 // and the first is the control that keeps the second from passing on a server that
 // placed the ancestor either time.
-a.ws.send('7:0,0,0.5236');
-await untilSaid(() => a.says.some((s2) => s2.startsWith('placed ')),
+g.ws.send('7:0,0,0.5236');
+await until(() => g.says.some((s2) => s2.startsWith('placed ')),
                 'the walker was never placed');
-const placedFrom = await ask(`14:12,${FROM}`, 'stencil ');
+const placedFrom = await askOne(`14:12,${FROM}`, 'stencil ');
 check(placedFrom.includes('placed'), `the part it came from places (${placedFrom})`);
 check(placedFrom.includes(`'${FROM.split('/').pop()}'`),
       `and names ITSELF, not the new part (${placedFrom})`);
-const wallsFrom = await ask('16:0,0', 'walls ');
+const wallsFrom = await askOne('16:0,0', 'walls ');
 check(wallsFrom === authoredBefore,
       `the ancestor does not carry the edit (${wallsFrom} vs ${authoredBefore})`);
 
-const placedNew = await ask(`14:12,${NEW}`, 'stencil ');
+const placedNew = await askOne(`14:12,${NEW}`, 'stencil ');
 check(placedNew.includes('placed'), `the new part places in the same session (${placedNew})`);
 // ⚠ A7.3e-iii's real check: the acknowledgement is the author's only confirmation
 // of WHICH part landed, and it used to say 'cottage' for both.
@@ -219,14 +190,14 @@ check(placedNew.includes('placed'), `the new part places in the same session (${
 // subject is a part carrying its own name.
 check(placedNew.includes(`'${NEW.split('/').pop()}'`),
       `and it announces its own name, not its ancestor's (${placedNew})`);
-const wallsNew = await ask('16:0,0', 'walls ');
+const wallsNew = await askOne('16:0,0', 'walls ');
 check(wallsNew === authored,
       `what was authored is in the cells it stamped (${wallsNew} vs ${authored})`);
 
 // ── A7.3e-iv — a family that does not exist yet ────────────────────────────
 lines = await stepFor(`44:${FROM}`, `part '${FROM}'`);
 check(said(lines, `part '${FROM}'`).includes('opened'), 'the part opens again');
-const famSaved = await ask(`8:${FAM}`, 'part ');
+const famSaved = await askOne(`8:${FAM}`, 'part ');
 check(famSaved.includes('saved'),
       `a save into a family that does not exist goes through: ${JSON.stringify(famSaved)}`);
 // ⚠ THE HALF THAT WAS SILENT. The acknowledgement said this before the fix too,
@@ -235,7 +206,7 @@ check(famSaved.includes('saved'),
 check(existsSync(`${ROOT}/${FAM}.hxw`),
       `and the bytes are actually there (${FAM}.hxw)`);
 check(await libraryFollows(), 'the new family reaches the catalogue too');
-const withFam = partsOf(a.cats[a.cats.length - 1]).map((f) => f[1]);
+const withFam = partsOf(g.cats[g.cats.length - 1]).map((f) => f[1]);
 check(withFam.includes(FAM), `and is listed (${withFam.join(',')})`);
 check(onDisk().includes(FAM), 'the gate can see it on disk itself');
 
@@ -244,24 +215,21 @@ check(onDisk().includes(FAM), 'the gate can see it on disk itself');
 // ⚠ REFUSED BEFORE THE WRITE, not cleaned up after. `part_list` walks ONE level,
 // so `a/b/c` would be a file in the library that no catalogue can offer and no
 // `14:` can place: the author's work, gone, with the save reporting success.
-const deep = await ask('8:a/b/c', 'part save refused');
+const deep = await askOne('8:a/b/c', 'part save refused');
 check(deep !== '', `a two-level name is refused: ${JSON.stringify(deep)}`);
 check(deep.includes('one level'), `and says what to type instead (${deep})`);
 check(!existsSync(`${ROOT}/a/b/c.hxw`) && !existsSync(`${ROOT}/a`),
       'and nothing was written, not even the directory');
-const empty = await ask('8:house/', 'part save refused');
+const empty = await askOne('8:house/', 'part save refused');
 check(empty !== '', `an empty part name is refused (${JSON.stringify(empty)})`);
 check(!existsSync(`${ROOT}/house/.hxw`), 'and no `.hxw` was left in the family');
 
 // ⚠ THE CONTROL FOR THE WHOLE FENCE, and without it every check above passes on a
 // server that refuses every save-as. A bare name with no family at all is legal —
 // `part_list` lists the top level too.
-const bare = await ask('8:leanto_probe', 'part ');
+const bare = await askOne('8:leanto_probe', 'part ');
 check(bare.includes('saved'), `a part with no family still saves (${bare})`);
 check(existsSync(`${ROOT}/leanto_probe.hxw`), 'and lands at the library root');
 await stepFor('44:', "part '");
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_new', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_new', check);

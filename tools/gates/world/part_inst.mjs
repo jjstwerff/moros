@@ -39,74 +39,37 @@
 // must still place CELLS — that is `A7.3b`'s over-fence lesson from the other
 // direction: the interesting half of removing a fence is what it leaves alone.
 import { existsSync } from 'node:fs';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 const FRAME = 'house/cottage';       // opened, never overwritten — `make parts` owns it
 const LEAF  = 'prop/plinth';         // one column, height 6, at its own origin
 const SAVED = 'house/withprop';      // what this gate authors
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const says = [], ls = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-    if (s.startsWith('L:')) ls.push(s.slice(2));
-  });
-  return { ws, says, ls, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+g.ws.send('1:');
 // ── ⚠ WAIT FOR THE DISPLAY, NOT FOR A CLOCK ─────────────────────────────────
 //
 // This gate slept 12 s in five waits, four of them "let the display settle before
 // sampling" — which is a guess at how long a re-mesh takes and therefore a
 // measurement of the box. The display announces itself: `L:` lines arrive per layer,
 // so the evidence is traffic going quiet, and it SAYS SO if it never does.
-const until = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
-const lsQuiet = async (quietMs = 500, maxMs = 20000) => {
-  let last = a.ls.length, still = 0;
-  for (let t = 0; t < maxMs; t += 50) {
-    await wait(50);
-    if (a.ls.length === last) { still += 50; if (still >= quietMs) return true; }
-    else { last = a.ls.length; still = 0; }
-  }
-  console.log(`  !! the display never went quiet (${a.ls.length} L:)`);
-  return false;
-};
+const lsQuiet = (quietMs = 500) => quiet(() => g.ls.length, quietMs, 20000, 'the display');
 // ⚠ NOT `lsQuiet` HERE — measured, a bare `1:` produces ZERO `L:` lines, so a wait
 // on them would return the moment it was asked and prove nothing. The opening
 // traffic is status; and every gesture below is ack-driven anyway, so this only has
 // to see the server answer at all.
-await until(() => a.says.length >= 1, 'the server never said anything after 1:');
+await until(() => g.says.length >= 1, 'the server never said anything after 1:');
 
 // Ack-driven, never a fixed sleep — `A7.3d`'s finding, and the only face of the
 // `GATE_JOBS` flake that was ours: a gate that sleeps reports the machine.
-async function stepFor(msg, prefix, maxMs = 20000) {
-  const before = a.says.length;
-  a.ws.send(msg);
-  for (let waited = 0; waited < maxMs; waited += 50) {
-    const hit = a.says.slice(before).find((s) => s.startsWith(prefix));
-    if (hit !== undefined) return a.says.slice(before);
-    await wait(50);
-  }
-  return a.says.slice(before);
-}
-const said = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
-const ask = async (msg, prefix) => said(await stepFor(msg, prefix), prefix);
+// One implementation of *wait for the answer* now — `lib.mjs`'s `send`.
+const stepFor = (msg, prefix, maxMs = 12000) => send(g, msg, [prefix], maxMs);
+const askOne = (msg, prefix) => ask(g, msg, prefix);
 
 // ⚠ THE LAYER KEY IS THE CHUNK AND THE LAYER, NOT THE WHOLE HEADER. `L:` carries
 // `cx,cz,li,id,kind,VERSION,base;<bytes>` — the version moves with the content, so
@@ -124,10 +87,10 @@ await stepFor('7:0,0,0.5236', 'placed ');
 // ── the CONTROL first: out of part mode the gesture still STAMPS ────────────
 // Taken before anything else so it cannot be contaminated, and it is what keeps
 // every check below from passing on a server that stopped placing parts at all.
-const worldCell0 = await ask('26:0,0', 'cell ');
-const stamped = await ask(`14:12,${LEAF}`, 'stencil ');
+const worldCell0 = await askOne('26:0,0', 'cell ');
+const stamped = await askOne(`14:12,${LEAF}`, 'stencil ');
 check(stamped.includes('placed'), `out of part mode it still places cells (${stamped})`);
-const worldCell1 = await ask('26:0,0', 'cell ');
+const worldCell1 = await askOne('26:0,0', 'cell ');
 check(worldCell1 !== worldCell0,
       `and the WORLD's store moved (${worldCell0} → ${worldCell1}) — a stamp, not a reference`);
 
@@ -136,22 +99,22 @@ let lines = await stepFor(`44:${FRAME}`, `part '${FRAME}'`);
 check(said(lines, `part '${FRAME}'`).includes('opened'), 'the frame opens');
 await lsQuiet();                      // the first display, settled — not a guess at it
 
-const partCell0 = await ask('26:0,0', 'cell ');
-const before = lastBy(a.ls);
-const nls = a.ls.length;
+const partCell0 = await askOne('26:0,0', 'cell ');
+const before = lastBy(g.ls);
+const nls = g.ls.length;
 
-const inst = await ask(`14:12,${LEAF}`, 'instance ');
+const inst = await askOne(`14:12,${LEAF}`, 'instance ');
 check(inst.includes('reference'), `the gesture makes a reference: ${JSON.stringify(inst)}`);
 check(inst.includes(LEAF), `and names what it refers to (${inst})`);
 
-const partCell1 = await ask('26:0,0', 'cell ');
+const partCell1 = await askOne('26:0,0', 'cell ');
 check(partCell1 === partCell0,
       `the authored store did NOT move (${partCell0} → ${partCell1}) — §P4, a `
     + `reference stamps nothing`);
 
 // ── A7.3f-ii — and the picture DID ──────────────────────────────────────────
 await lsQuiet();
-const after = lastBy(a.ls.slice(nls));
+const after = lastBy(g.ls.slice(nls));
 const shared = Object.keys(after).filter((k) => before[k] !== undefined);
 const moved = shared.filter((k) => before[k] !== after[k]);
 // ⚠ THE INSTRUMENT, CHECKED AGAINST SOMETHING IT SHOULD FIND. If no layer came
@@ -171,34 +134,34 @@ if (moved.length > 0) {
 }
 
 // ── A7.3f-iv — the close can see a section-only edit ────────────────────────
-const closed = await ask('44:', "part '");
+const closed = await askOne('44:', "part '");
 check(closed.includes('plus its sections'),
       `closing says the instance is being discarded (${closed})`);
 // ⚠ THE CONTROL FOR IT, and without this the phrase could be unconditional: an
 // open and an immediate close touched nothing and must say so.
 await stepFor(`44:${FRAME}`, `part '${FRAME}'`);
-const quiet = await ask('44:', "part '");
-check(!quiet.includes('plus its sections'),
-      `and an untouched part does not claim otherwise (${quiet})`);
+const closedAgain = await askOne('44:', "part '");
+check(!closedAgain.includes('plus its sections'),
+      `and an untouched part does not claim otherwise (${closedAgain})`);
 
 // ── A7.3f-iii — §P8 on the gesture ──────────────────────────────────────────
 lines = await stepFor(`44:${FRAME}`, `part '${FRAME}'`);
 check(said(lines, `part '${FRAME}'`).includes('opened'), 'the frame opens again');
-const self = await ask(`14:12,${FRAME}`, 'instance refused');
+const self = await askOne(`14:12,${FRAME}`, 'instance refused');
 check(self !== '', `a part given an instance of ITSELF is refused: ${JSON.stringify(self)}`);
 check(self.includes('→'), `and the refusal carries the chain (${self})`);
 // ⚠ AND NOTHING WAS WRITTEN — *it said no* and *the part is unchanged* are
 // different claims, which is `A7.3d`'s ordering lesson at a second site.
-const stillQuiet = await ask('44:', "part '");
+const stillQuiet = await askOne('44:', "part '");
 check(!stillQuiet.includes('plus its sections'),
       `and the refused instance left no section behind (${stillQuiet})`);
 
 // ── A7.3f-v — it survives a save and a reopen, still derived ────────────────
 lines = await stepFor(`44:${FRAME}`, `part '${FRAME}'`);
 check(said(lines, `part '${FRAME}'`).includes('opened'), 'the frame opens once more');
-const secs0 = +((await ask('8:', 'part ')).match(/(\d+) sections/)?.[1] ?? -1);
+const secs0 = +((await askOne('8:', 'part ')).match(/(\d+) sections/)?.[1] ?? -1);
 await stepFor(`14:12,${LEAF}`, 'instance ');
-const savedMsg = await ask(`8:${SAVED}`, 'part ');
+const savedMsg = await askOne(`8:${SAVED}`, 'part ');
 check(savedMsg.includes('saved'), `the framed part saves (${savedMsg})`);
 const secs1 = +(savedMsg.match(/(\d+) sections/)?.[1] ?? -1);
 check(secs1 === secs0 + 1,
@@ -208,13 +171,10 @@ await stepFor('44:', "part '");
 lines = await stepFor(`44:${SAVED}`, `part '${SAVED}'`);
 check(said(lines, `part '${SAVED}'`).includes('opened'), 'the saved part reopens');
 await lsQuiet();
-const reCell = await ask('26:0,0', 'cell ');
+const reCell = await askOne('26:0,0', 'cell ');
 check(reCell === partCell0,
       `and its store STILL does not hold the leaf's cell (${reCell}) — it came back `
     + `as a reference, not as the cells it draws`);
 await stepFor('44:', "part '");
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_inst', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_inst', check);

@@ -35,59 +35,41 @@
 // library would say 5 and one that found nothing would say 0, and both would pass a
 // gate that only checked the list was non-empty.
 import { existsSync } from 'node:fs';
+import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
-const PORT = +(process.env.EDITOR_PORT ?? 18090);
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const rows = [];
-let bad = 0;
-const check = (ok, msg) => { rows.push(`${msg} ${ok ? 'PASS' : 'FAIL'}`); if (!ok) bad++; };
+const check = checker();
 
 const FRAME = 'prop/plinth';    // offers `top`
 const HOLDER = 'prop/shrine';   // holds one instance, of the plinth
 const LEAF = 'prop/statue';     // fits statue/plinth-2
 const LEAF2 = 'prop/seated';    // and so does this one
 
-function open() {
-  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
-  const says = [];
-  ws.addEventListener('message', (ev) => {
-    const s = String(ev.data);
-    if (s.startsWith('S:')) says.push(s.slice(2));
-  });
-  return { ws, says, ready: new Promise((r) => ws.addEventListener('open', r)) };
-}
 
-const a = open();
-await a.ready;
-a.ws.send('1:');
+const g = await connect();
+g.ws.send('1:');
 // ⚠ WAIT FOR THE SERVER, NOT FOR A CLOCK. This was `await wait(2000)` — a guess at
 // how long the opening burst takes, so a loaded box made it a guess that was wrong.
 // Every gesture below waits for its own acknowledgement; this only has to see the
 // server answer at all, and it SAYS SO if it never does.
-const untilSaid = async (fn, what, maxMs = 20000) => {
-  for (let t = 0; t < maxMs; t += 25) { if (fn()) return true; await wait(25); }
-  console.log(`  !! ${what} — never happened in ${maxMs}ms`);
-  return false;
-};
-await untilSaid(() => a.says.length >= 1, 'the server never answered 1:');
+await until(() => g.says.length >= 1, 'the server never answered 1:');
 
 // ⚠ A BURST, NOT A LINE. `45:` answers with a LEAD line and then one line per
 // record — never a delimiter, because a part handle is a file path and may hold a
 // comma, and a socket name is free text. So the gate waits for the lead and then
 // lets the rest land, which is also why it is ack-driven rather than timed.
 async function burst(msg, prefix, maxMs = 20000) {
-  const before = a.says.length;
-  a.ws.send(msg);
+  const before = g.says.length;
+  g.ws.send(msg);
   for (let waited = 0; waited < maxMs; waited += 50) {
-    if (a.says.slice(before).some((s) => s.startsWith(prefix))) {
-      await wait(700);
-      return a.says.slice(before);
+    if (g.says.slice(before).some((s) => s.startsWith(prefix))) {
+      await absenceWindow(700, 'no event marks this — see the check below');
+      return g.says.slice(before);
     }
-    await wait(50);
+    await absenceWindow(50, 'no event marks this — see the check below');
   }
-  return a.says.slice(before);
+  return g.says.slice(before);
 }
 const lead = (lines, prefix) => lines.find((s) => s.startsWith(prefix)) ?? '';
 
@@ -169,7 +151,4 @@ check(notANumber.includes('not an instance number'),
       `and a non-number says so rather than reading as 0 (${notANumber})`);
 await burst('44:', "part '");
 
-a.ws.close();
-for (const r of rows) console.log(`  ${r.replace(/ (PASS|FAIL)$/, (m) => m === ' PASS' ? '' : '  <-- FAIL')}`);
-console.log(JSON.stringify({ gate: 'part_sock', checks: rows.length, bad, ok: bad === 0 }));
-process.exit(bad === 0 ? 0 : 1);
+verdict(g, 'part_sock', check);
