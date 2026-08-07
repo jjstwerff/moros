@@ -459,16 +459,42 @@ fn test_a_stair_stops_when_it_reaches_the_surface_rather_than_leaving_it() {
       hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT);
     }
   }
+  // ⚠ THE HILLSIDE IS READ BEFORE THE WELL IS CUT, because the cut REMOVES it.
+  // A stairwell clears the ground cell at every tread, so `terrain_h` afterwards
+  // asks about a hole. It used to answer the height the cleared cell still carried
+  // in its bytes — material 0, height 37 — and that is a GHOST: `E1e` says a cell
+  // holding only a height is not present, so a save elides it and the identical
+  // read comes back 0 on the next load. The claim here is about the slope the stair
+  // descends INTO, which is a quantity only the pre-cut world holds.
+  pre: vector<integer> = [];
+  for d in 0..24 {
+    (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    pre += [hex_editor::terrain_h(pq, pr, w)];
+  }
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
   n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
   assert(n >= 0, "the stair is not an error on a slope: {why}");
+  assert(n < 24, "the stair is no longer than the profile read ahead of it ({n} treads)");
   for d in 1..(n + 1) {
     (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
-    gnd = hex_editor::terrain_h(tq, tr, w);
-    sf = hex_world::world_surface(w, tq, tr, (gnd - 1) as float);
-    assert(sf.sf_units < gnd,
-           "tread {d} at {sf.sf_units} is under its own ground at {gnd}, not over it");
+    gnd = pre[d] ?? 0;
+    // ⚠ THE TOP OF THE COLUMN, NOT `world_surface` — the query alone cannot make
+    // this claim. Asked for the surface under the ground, it answers the highest
+    // layer AT OR BELOW those feet, and falls back to the LOWEST when none
+    // qualifies. A tread floating above the hillside is exactly the case that
+    // qualifies for neither, so it comes back as the cellar floor far below and
+    // reads as a pass. `F1″` makes layer order height order, so the last occupied
+    // cell is the topmost (`E1r`) — and that is the number the claim is about.
+    col = world_column(w, tq, tr);
+    top = 0 - 1;
+    for c in col.co_cells {
+      if hex_world::hex_occupied(c) { top = c.h_height as integer ?? 0; }
+    }
+    assert(top >= 0, "tread {d} at ({tq},{tr}) put something in its column");
+    assert(top < gnd,
+           "tread {d}'s column tops out at {top}, under the ground it came "
+           + "through at {gnd}, not over it");
   }
 }
 

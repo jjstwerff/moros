@@ -1,0 +1,50 @@
+// WHAT THE STAIR TEST IS ACTUALLY READING, cell by cell.
+//
+// `storey.loft`'s stair test asserts a tread never stands above "its own ground",
+// and reads that ground with `terrain_h` AFTER the stair has cut its well. If the
+// cut clears the ground cell, that read is of a hole — and before the window-base
+// fix a hole answered `ck_base`, a height nobody wrote.
+use hex_world;
+use hex_editor;
+
+fn gmat(w: World, q: integer, r: integer) -> integer {
+  c = hex_world::world_ground_cell(w, q, r);
+  m = c.h_material;
+  m
+}
+
+fn main() {
+  w = hex_world::world_new(0.25, 0, 8, 3).wn_world;
+  for q in 0 - 10..11 {
+    for r in 0 - 10..11 {
+      h = 40 - 3 * q;
+      if h < 14 { h = 14; }
+      hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT);
+    }
+  }
+  println("chunks {len(w.w_chunks)}");
+  for ch in w.w_chunks { println("  chunk ({ch.ck_cx},{ch.ck_cz}) base {ch.ck_base}"); }
+
+  // The ground BEFORE the stair touches anything — the profile the treads climb through.
+  pre: vector<integer> = [];
+  for d in 0..12 {
+    (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    pre += [hex_editor::terrain_h(pq, pr, w)];
+  }
+
+  why = "";
+  hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  println("stair treads n={n}  why={why}");
+  for d in 1..(n + 1) {
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    gnd = hex_editor::terrain_h(tq, tr, w);
+    sf = hex_world::world_surface(w, tq, tr, (gnd - 1) as float);
+    col = hex_world::world_column(w, tq, tr);
+    top = 0 - 1;
+    for c in col.co_cells { if hex_world::hex_occupied(c) { top = c.h_height as integer ?? 0; } }
+    println("  tread {d} cell ({tq},{tr})  ground BEFORE {pre[d] ?? 0}  ground NOW {gnd}"
+            + "  present now {gmat(w, tq, tr) != 0}  sf_units {sf.sf_units} layer {sf.sf_layer}"
+            + "  TOP occupied {top}  layers {len(col.co_cells)}");
+  }
+}

@@ -1,0 +1,100 @@
+// HOW FAR DOES ONE RAISE REACH — the STORE, not the mesh.
+//
+// `probe_fit` (src/editor_server.loft, EDITOR_PROBE=fit) reports 81 of 81 chunk
+// MESHES changed after a brush of radius 7. That is either a store that writes far
+// beyond its disc, or a mesh that disagrees with the store. This asks the store
+// directly, so the two cannot be confused.
+//
+//   terrain_h over a wide field, before and after ONE brush at the origin
+//   the extent of every cell whose height moved
+//   every chunk's ck_base, because a windowed height is `ck_base + sv_height`
+//
+// ⚠ THE CONTROL COMES FIRST. Reading a world materialises columns, so a second
+// read can differ from the first with no edit at all. Any nonzero control voids
+// every number under it — probe_fit learned this the hard way and says so.
+use hex_world;
+use hex_editor;
+
+const SPAN = 40;                 // cells each way — well past the brush and its chunk
+
+// The material of the ground cell — 0 means nothing was ever written there.
+// ⚠ Bound to a local rather than projected off the call, which is loft H9's shape
+// and aborts the interpreter (`terrain_h` carries the same note).
+fn gmat(w: World, q: integer, r: integer) -> integer {
+  c = hex_world::world_ground_cell(w, q, r);
+  m = c.h_material;
+  m
+}
+
+fn read_field(w: World, out: &vector<integer>) {
+  out = [];
+  for r in (0 - SPAN)..(SPAN + 1) {
+    for q in (0 - SPAN)..(SPAN + 1) { out += [hex_editor::terrain_h(q, r, w)]; }
+  }
+}
+
+fn main() {
+  wld = hex_world::world_new(0.25, 0, 10, 4).wn_world;
+
+  before: vector<integer> = [];
+  read_field(wld, before);
+
+  ctrl: vector<integer> = [];
+  read_field(wld, ctrl);
+  nctrl = 0;
+  for i in 0..len(ctrl) { if (ctrl[i] ?? 0) != (before[i] ?? 0) { nctrl = nctrl + 1; } }
+
+  clamped = 0;
+  residual = 0;
+  hex_editor::brush(wld, 0, 0, hex_editor::PEAK_STEP, hex_editor::PEAK_R, clamped, residual);
+
+  after: vector<integer> = [];
+  read_field(wld, after);
+
+  // WHERE THE BRUSH ACTUALLY WROTE — cells whose material says a write landed.
+  wminq = 999; wmaxq = 0 - 999; wminr = 999; wmaxr = 0 - 999; nwrote = 0;
+  // WHERE THE HEIGHT MOVED — which is what the mesher reads.
+  cminq = 999; cmaxq = 0 - 999; cminr = 999; cmaxr = 0 - 999; nmoved = 0;
+  i = 0;
+  for r in (0 - SPAN)..(SPAN + 1) {
+    for q in (0 - SPAN)..(SPAN + 1) {
+      if gmat(wld, q, r) != 0 {
+        nwrote = nwrote + 1;
+        if q < wminq { wminq = q; }
+        if q > wmaxq { wmaxq = q; }
+        if r < wminr { wminr = r; }
+        if r > wmaxr { wmaxr = r; }
+      }
+      if (after[i] ?? 0) != (before[i] ?? 0) {
+        nmoved = nmoved + 1;
+        if q < cminq { cminq = q; }
+        if q > cmaxq { cmaxq = q; }
+        if r < cminr { cminr = r; }
+        if r > cmaxr { cmaxr = r; }
+      }
+      i = i + 1;
+    }
+  }
+
+  println("probe stale/extent - ONE brush at (0,0), radius PEAK_R={hex_editor::PEAK_R}, amp {hex_editor::PEAK_STEP}");
+  println("  CONTROL, re-read with no edit: {nctrl} cells differ  (must be 0)");
+  println("  cells WRITTEN (material set):  {nwrote}   over q {wminq}..{wmaxq}  r {wminr}..{wmaxr}");
+  println("  cells whose HEIGHT MOVED:      {nmoved}   over q {cminq}..{cmaxq}  r {cminr}..{cmaxr}");
+  println("  chunks in the store: {len(wld.w_chunks)}");
+  for ch in wld.w_chunks {
+    println("    chunk ({ch.ck_cx},{ch.ck_cz}) base {ch.ck_base} layers {len(ch.ck_layers)}");
+  }
+  // A few named samples, so the shape is readable rather than inferred.
+  println("  terrain_h(0,0)   {hex_editor::terrain_h(0, 0, wld)}");
+  println("  terrain_h(20,20) {hex_editor::terrain_h(20, 20, wld)}   (written? {gmat(wld, 20, 20) != 0})");
+  println("  terrain_h(31,31) {hex_editor::terrain_h(31, 31, wld)}   (written? {gmat(wld, 31, 31) != 0})");
+  println("  terrain_h(32,32) {hex_editor::terrain_h(32, 32, wld)}   (written? {gmat(wld, 32, 32) != 0})");
+
+  if nctrl > 0 {
+    println("PROBE FAIL - the control moved, so this run measured the probe");
+  } else if nmoved > nwrote {
+    println("PROBE FAIL - {nmoved - nwrote} cells the brush never wrote changed height");
+  } else {
+    println("PROBE PASS - the height moved exactly where the brush wrote");
+  }
+}

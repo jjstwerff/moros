@@ -92,6 +92,74 @@ fn test_a_chunk_with_no_terrain_reads_as_absent() {
   assert(world_ground_cell(w, 5, 5).h_height == 0, "which is height 0, the flat plane");
 }
 
+// ── `E1`(3) binds the READER, and the window is where it was broken ──────────
+
+fn test_an_unwritten_cell_of_a_written_chunk_is_absent_not_the_window_base() {
+  // ⚠ THE READER HALF OF `E1`(3) — *reading an absent cell yields exactly what
+  // reading a stored all-zero one would*. A height is stored RELATIVE to its
+  // chunk's base (`S1`), and ONE base serves the whole 32×32 tile, so a decode that
+  // adds the base unconditionally hands back `ck_base` for the 1023 cells nobody
+  // ever wrote. The write path already asks `stored_present` to fit the window and
+  // to rebase (`W1`); for a long time the read path asked nothing.
+  //
+  // Measured before the fix (`probe/stale/extent.loft`): a brush of radius 7 WROTE
+  // 91 cells over q -5..5 and MOVED 4096 — every cell of the four chunks it opened,
+  // out to q,r -32..31 — so the editor drew a plateau nothing had authored. It read
+  // as a dirty-marking defect for four days, because the mark really does contain
+  // the write; what escaped it was a height no gesture had produced.
+  //
+  // ⚠ AND EVERY STORE-READING GATE STAYED GREEN, because they all asked this same
+  // reader. Only a picture disagreed with it.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(500, 1)] });
+  base = world_chunk_base(w, 0, 0);
+  // The control: with a zero base there is nothing to leak and this proves nothing.
+  assert(base > 0, "the chunk rebased to a non-zero floor, got {base}");
+  assert(world_ground_cell(w, 0, 0).h_height == 500,
+         "the written cell still decodes against its base");
+  assert(!hex_present(world_ground_cell(w, 7, 9)),
+         "a cell of the SAME chunk that nobody wrote is absent");
+  assert(world_ground_cell(w, 7, 9).h_height == 0,
+         "and its height is 0, not the chunk's base {base} — got {world_ground_cell(w, 7, 9).h_height}");
+}
+
+fn test_every_reader_decodes_an_absent_cell_the_same_way() {
+  // Four readers added the base to a stored height, and the guard lived in none of
+  // them. The rule has one home now (`hex_of`); this is the check that they all
+  // reach it, rather than three of them being fixed and the fourth found later.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(500, 1)] });
+  assert(world_chunk_base(w, 0, 0) > 0, "there is a base to leak");
+  assert(world_ground_cell(w, 7, 9).h_height == 0, "world_ground_cell");
+  assert(world_cell(w, 7, 9, 0).h_height == 0, "world_cell");
+  col = world_column(w, 7, 9);
+  assert(len(col.co_cells) == 1, "the column carries the chunk's one layer");
+  assert((col.co_cells[0] ?? Hex {}).h_height == 0, "world_column");
+}
+
+fn test_clearing_a_cell_leaves_no_height_behind_it() {
+  // ⚠ THE GHOST, and it is the one that cost a test its meaning. Clearing writes
+  // material 0 and leaves `sv_height` sitting in the bytes. `E1e` says a cell
+  // holding only a height is NOT present, so elision drops it — which means a
+  // reader handing that height back was answering with something no later load
+  // could reproduce. `storey.loft`'s stair test read exactly this ghost and called
+  // it "the tread's own ground".
+  //
+  // The second cell is what keeps the layer alive: clear the only occupied cell and
+  // the layer is dropped whole, so the read comes back 0 for a different reason and
+  // the test proves nothing.
+  w = mk_world();
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [cell_at(400, 1)] });
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(500, 1)] });
+  assert(world_ground_cell(w, 0, 0).h_height == 500, "written, and reading back");
+  world_set_column(w, Column { co_q: 0, co_r: 0, co_cells: [cell_at(500, 0)] });
+  assert(world_ground_layer(w, 1, 1) >= 0, "the layer survives — its other cell holds it up");
+  assert(!hex_present(world_ground_cell(w, 0, 0)), "the cleared cell is absent");
+  assert(world_ground_cell(w, 0, 0).h_height == 0,
+         "and carries no height — got {world_ground_cell(w, 0, 0).h_height}");
+  assert(world_ground_cell(w, 1, 1).h_height == 400, "while its neighbour is untouched");
+}
+
 fn test_each_chunk_names_its_own_ground() {
   // The label is a NAME shared across chunks (`I1`), not a world-wide singleton —
   // every chunk that holds terrain carries one.

@@ -298,6 +298,38 @@ fn empty_cells() -> vector<StoredHex> {
 // Every height gets `ck_base` ADDED here. This is the only addition in the
 // design (`S1`); above this line a height is absolute and the window does not
 // exist.
+
+// ONE stored cell, decoded against its chunk's window base — the single place the
+// addition happens, so `E1`(3) has one home instead of four.
+//
+// ⚠ AN ABSENT CELL HAS NO HEIGHT, AND THE BASE IS NOT ONE. `sv_height` is
+// meaningless unless the cell is present (`S1`), so adding the base to a stored
+// zero hands back a cell standing at `ck_base` — and ONE base serves the whole
+// 32×32 tile. Four readers did exactly that, which made a single brush stroke
+// silently raise the apparent ground of every unwritten cell in every chunk it
+// touched.
+//
+// Measured (`probe/stale/extent.loft`): a radius-7 brush at the origin WROTE 91
+// cells over q -5..5, r -5..5 and MOVED 4096 — the whole 64×64 block of the four
+// chunks it opened, out to q,r -32..31. `terrain_h(20,20)` read 6 with nothing
+// ever written there, because chunk (0,0) had rebased to 6.
+//
+// ⚠ IT IS THE READ THAT WAS WRONG, NOT THE MARKING. The dirty radius is `PEAK_R + 2`
+// around a brush of `PEAK_R`, and it contains the write exactly; what escaped it was
+// a height nobody wrote. That is why the editor's stale chunks sat ~48 units out,
+// far past any plausible brush, and why every store-reading gate stayed green — the
+// gates asked the same lying reader.
+//
+// `E1`(3) is the rule — *reading an absent cell yields exactly what reading a stored
+// all-zero one would* — and `stored_present` is the predicate the WRITE path already
+// uses to fit the window and to rebase (`W1`). Both ends now ask the same question.
+fn hex_of(base: integer, e: StoredHex) -> Hex {
+  if !stored_present(e) { return Hex {}; }
+  return Hex { h_height: (base + e.sv_height) as u16? ?? 0,
+               h_material: e.sv_material, h_item: e.sv_item,
+               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
+               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
+}
 // `ν` — the next free label. The field existed, was persisted, and was never
 // incremented: every layer's label was 0, so nothing could be identified across a
 // shift. Labels are equality-only (`I1`), so a monotonic counter is the whole of
@@ -382,10 +414,7 @@ pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
   }
   if gl < 0 { return Hex {}; }
   e = w.w_chunks[ci].ck_layers[gl].ly_cells[cell_index(q, r)];
-  return Hex { h_height: (w.w_chunks[ci].ck_base + e.sv_height) as u16? ?? 0,
-               h_material: e.sv_material, h_item: e.sv_item,
-               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
-               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
+  return hex_of(w.w_chunks[ci].ck_base, e);
 }
 
 // ── The OTHER surface question — the one that takes a height ─────────────────
@@ -478,11 +507,7 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
     ids += [ly.ly_id];
     if ly.ly_kind == KIND_TERRAIN {
       c = ly.ly_cells[ix];
-      out += [Hex { h_height: (ch.ck_base + c.sv_height) as u16? ?? 0,
-                    h_material: c.sv_material, h_item: c.sv_item,
-                    h_item_rotation: c.sv_item_rotation,
-                    h_wall_n: c.sv_wall_n, h_wall_ne: c.sv_wall_ne,
-                    h_wall_se: c.sv_wall_se }];
+      out += [hex_of(ch.ck_base, c)];
     } else {
       out += [Hex {}];   // dressing holds no cell here; see #14
     }
@@ -509,10 +534,7 @@ pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
   // is the conversion, not a workaround. (It also WAS a workaround for loft H12,
   // now fixed: returning `local.vec[i]` used to hand back a dead value.)
   e = w.w_chunks[ci].ck_layers[l].ly_cells[cell_index(q, r)];
-  return Hex { h_height: (w.w_chunks[ci].ck_base + e.sv_height) as u16? ?? 0,
-               h_material: e.sv_material, h_item: e.sv_item,
-               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
-               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
+  return hex_of(w.w_chunks[ci].ck_base, e);
 }
 
 // ── Write — the whole routine ────────────────────────────────────────────────
@@ -789,11 +811,7 @@ pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
   for ly in ch.ck_layers {
     if ly.ly_kind == KIND_DRESSING {
       c = ly.ly_cells[ix];
-      out += [Hex { h_height: (ch.ck_base + c.sv_height) as u16? ?? 0,
-                    h_material: c.sv_material, h_item: c.sv_item,
-                    h_item_rotation: c.sv_item_rotation,
-                    h_wall_n: c.sv_wall_n, h_wall_ne: c.sv_wall_ne,
-                    h_wall_se: c.sv_wall_se }];
+      out += [hex_of(ch.ck_base, c)];
     }
   }
   Column { co_q: q, co_r: r, co_cells: out }
