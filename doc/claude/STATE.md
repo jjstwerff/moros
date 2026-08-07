@@ -22,156 +22,49 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — **SPEED**: `G1` and `G3` are built, `hex_part` is 77 s → 35 s. Next is `G2`/`G4`
+## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE; the headless thread has five gestures off the socket
 
-⚠ **THE USER REDIRECTED ON 2026-08-06 AND THIS IS THE CURRENT THREAD.** *"If these tests are slow,
-we need to optimize them"* / *"I want 0.1 s tests running parallel instead"* / *"if we ever want to
-build a full editor … those should not include starting a server, waiting for ports"*. Plan 17
-`A8.3` is the next *parts* step and is described below, but it is not what was asked for last.
+**Session 14 (2026-08-07/08) is in [JOURNAL.md](JOURNAL.md)** — what it found, in full. What is
+true *now*:
 
-✅ **`G1` FIRED, THE DESIGN SURVIVED, AND THE PLAN REORDERED.**
-[GROUND_DEFAULT.md](GROUND_DEFAULT.md) § *What `G1` turned up* has it in full. The cost of a
-fixture **is** per-call as the design claimed — but the mechanism that recovers it was already in
-the tree, so `G3` landed **without `G2`**:
+| | |
+|---|---|
+| **plan 17** | `A1`–`A7.3` and **all of `A8`** are built. Two rows are ◐ and both need something other than code — see below |
+| **the headless thread** | `prop`, `annex`, `slab`, `seat` and the wall run moved into `hex_editor`; the server's scene state IS an `EditSession`; `tests/session.loft` is 31 tests over nine gates'/scripts' claims with no port |
+| **the user's standing redirect** | *"where possible I want tests outside the server"* — still the thread, and its floor is now the picture gates, which need a server by construction |
 
-| | per call | per cell |
-|---|---|---|
-| 256 × `world_set_column` — the old fixture | 105–110 ms | 410–432 us |
-| 256 × **`world_set_cell`** — in place, and it already existed | **6 ms** | 25–26 us |
-| 1 × `world_set_column` — the fixed cost a bulk fill pays once | 390–400 us | — |
+⚠ **TWO THINGS ARE WAITING ON THE USER, NOT ON WORK.**
+1. **`A8.3`'s acceptance is a cold-recognition test** — *does a person call it a door*
+   (`shots/a83-door-{w,sw,s}.png`, regenerate with `tools/scripts/doorway.keys`). My own read is
+   that it does **not** yet: a cell leaf is the same height and the same grey as the wall it hangs
+   in, because the per-edge fallback has one wall height and one wall colour. That wants an
+   `Opening` profile in the part format or a per-part wall height — a format question.
+2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
+   the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 
-**A height inside the chunk's window cannot move the window**, so the in-place write skips step
-4's per-layer 1024-cell window scan and step 6's 1024-cell elision scan outright. ⚠ **Which
-spends `G2`'s speed argument**: of the 7.0 ms a `world_fill` is bounded at, only 0.4 is the
-once-only fixed cost, so **94 % of what is left is per-cell** and `world_fill`'s headroom over
-`world_set_cell` is ~2×, not 14×. Build `G2` because `G5` needs it — and measure it before
-claiming a number for it.
+⚠ **AND THE STALE-CHUNK ISSUE'S CAUSE IS WITHDRAWN, ITS SYMPTOM IS NOT.**
+[OPEN_ISSUES](OPEN_ISSUES.md) said `raise_ahead` walks a RAY; it brushes a **disc** of radius 7 at
+the peak and the handler marks a disc of radius 9 at the same centre, so the mark contains the
+write. The 22-of-48 measurement stands. **Next step there is the instrument, not a fix** — re-run
+`A7.3a`'s comparison and see whether it still reproduces.
 
-| landed 2026-08-06, interpreted, this box | before | after |
-|---|---|---|
-| `hex_part/tests/place.loft` | 20.4 s | **6.8 s** |
-| `bind.loft` (484 columns) · `bake.loft` (324) · `expand.loft` | 12.7 · 6.4 · 5.3 s | **5.2 · 4.5 · 2.5 s** |
-| **`hex_part`, all 254 tests** | **77 s** | **35 s** |
+## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
-`make lib-test` green afterwards — 11 packages, both backends, same loft hash at both ends.
+`EditSession` (`lib/hex_editor/src/session.loft`) holds the eight registries the renderer needs
+beside the store, the two-press draft, and a driver's pose. **The server holds one too** — the
+same type, so the wire and a headless test cannot disagree about what a scene is. Five gestures'
+CHOOSING moved with it (`prop`, `annex`, `slab`, `seat`, the wall run); each kept its sentence on
+the wire and each verdict is byte-identical across the move.
 
-⚠ **AN ISOLATED PROBE OF A STORE CALL UNDERSTATES WHAT A TEST PAYS FOR IT BY 3.5×.** `place.loft`
-calls `target()` **46 times** (counted with a `println` in the body, not inferred) and *in place*
-each call cost **372 ms** against the probe's 105 — **84 % of the file**. The obvious explanation
-was allocation pressure and it is **refuted**: both paths are unchanged holding a hundred live
-worlds. The gap is the test harness, and the refuted control stays in the probe.
+**The pattern, for the next one:** move the choosing and the proportions, keep the sentence, prove
+the wire unchanged, sabotage every new claim. **What is left in the server is transport** — the
+dirty set, the client list, part mode's flags, and the pose (deliberately: a server has a walker,
+a test teleports). The floor of the thread is the picture gates, which need a server by
+construction.
 
-⚠ **THE BOX DRIFTS, AND A SINGLE READING IS NOT A MEASUREMENT.** Two runs of unchanged code gave
-**107 ms and 271 ms** for the same loop while `PHASE target` in the same process said 108 both
-times; `place.loft` gave 18.9 s once and 6.8 s four times running. Other agents share this box.
-`place_phases` now times each path **twice, on either side of the other**, and prints both — a
-spread there is drift, not a result.
-
-## ⏭ THE HEADLESS THREAD — a gesture moves, and its claim moves with it
-
-⚠ **THE USER'S STANDING REDIRECT: *"where possible I want tests outside the server"*.**
-`EditSession` (`lib/hex_editor/src/session.loft`) holds the eight registries the server keeps
-beside the store, so a gate's structural claim can be made with no port, no browser and no tick.
-`tests/session.loft` reproduces **five gates' own numbers** — `opening`, `fence`, `ground`,
-`stencil` and now `prop`.
-
-✅ **`prop` IS THE FIRST GATE TO ASK FOR ITS OWN MOVE AND GET IT.** Its header read *"it is not
-thinned further because the prop gesture itself has not moved into `hex_editor` yet — when it
-does, the accumulation claim goes with it"*. `hex_editor::prop_at` is now the gesture, with
-`PROP_MAT` and `PROP_ITEM_MAX` beside it — ⚠ **and the compiler is what proved the move was
-real**: both constants collided the moment the library declared them, because the server still
-had its own copies. A palette is part of what a prop IS.
-
-⚠ **NOTHING WAS REMOVED FROM THE GATE, WHICH IS *move before you remove* WORKING.** The count
-travels in `say_prop`'s own words and *the same cell answers differently to `20:` and `15:`* is a
-claim about two messages; a gate dropping those because a library test exists would be a coverage
-cut wearing a tidy-up's clothes. **The verdict is byte-identical across the move.**
-
-✅ **AND THE ANNEX'S HOST FOLLOWED IT** — `hex_editor::annex_host`, the pure geometry the `37:`
-handler chose a wall or a trunk with. ⚠ **That half had no test at all, only a picture**
-(`tools/scripts/annex.keys`), and its own comments recorded BOTH ways it has been wrong: a normal
-taken from the run rather than from where the author stands (the annex built inside the room they
-are not in), and a trunk read as *no host* (a balcony refused for being *"wider than the wall it
-hangs on"*, quoting a cottage across the field). Five headless tests hold them now, and both
-sabotages were seen red. The script's own numbers are unchanged — `cupboard at (-2,4) — 5 walls
-for 2 boxes`.
-
-✅ **AND THE SLAB'S HOLE FOLLOWED** — `hex_editor::slab_hole` holds the three claims that used to
-need a socket and none of which is geometry: **the host is the LAST slab laid**, the kind chooses
-the profile (`HOLE_THROUGH`/`COFFER`/`SUNK`, named where the gesture is), and cutting with no slab
-is refused by name. ⚠ **The tests reproduced the handler's own recorded trap first**: a footprint
-is placed AHEAD of the author, so a hole cut at the author's position is refused for reaching past
-the slab's end — the refusal is right, and a test has to ask the slab where it is.
-
-✅ **AND THE SEAT'S CHOOSING TOO** — `seat_bed` and `seat_statue`. The void was always asked for
-its dimensions (`bed_in_annex`); what needed a socket was **which void**: the nearest CLOSED box
-(a deck is an annex too, and a bed on a balcony is not what `37:1` built), and the nearest niche
-that HAS a back — so a doorway is passed over without the code knowing what a doorway is. ⚠ **And
-which way a figure faces is the AUTHOR's**, not the opening's, with the same control `annex_host`
-uses: the author moves to the other side and the facing must flip.
-
-⚠ **A TEST MUST PASS THE BAND THE HANDLER PASSES.** The niche test invented one and was refused
-*"too shallow to stand in"* — the editor cuts with `hex_draw::BAND_SIDES` (√3/2), so a test with
-its own number measures a niche the editor never makes.
-
-✅ **AND THE WALL RUN COMPLETES THE SET** — `run_between`. The snap was always the library's; what
-needed a socket was the **length**, and it is a decision rather than arithmetic: the reach is what
-the author walked **measured along the snapped heading**, never the straight-line distance, or the
-way runs past where they stopped by exactly their drift. Plus *a way needs two ends* — two presses
-in one place would snap a heading out of a zero vector.
-
-⚠ **AND *SHORTER THAN THE DISTANCE* IS A WEAK CLAIM BY CONSTRUCTION.** The snap is never more than
-half a heading off (7.5°), so the projection is at most **0.86 %** short whatever the walk — 6.3132
-against 6.3246 in the test. The claim with teeth is the IDENTITY: `reach = d·cos(residual)`, which
-separates a projection from a distance at any residual at all. The first version used a margin that
-could not be met.
-
-✅ **AND THE ANNEX'S PLACEMENT HALF FOLLOWED ITS HOST** — `annex_build` and `annex_cupboard`. The
-proportions had a recorded reason and **no reader**: *"a balcony at ankle height is a doorstep —
-the first version put the deck at 2 units and the picture showed a crate beside a tree"*. A number
-only a screenshot can check is a number that drifts. Six headless tests hold the three ways the
-kinds differ — a deck stands higher, BITES INTO the host (which leaves a flat for straight wood),
-and opens through the HOST rather than through its own face — plus the cupboard inheriting the
-last BOX and ignoring a deck.
-
-⚠ **AND THE OPENING TEST WAS BACKWARDS UNTIL IT WAS MEASURED.** An annex's `an_x/an_z` is the point
-ON THE HOST, so the DECK's door sits at 0 from it and the BOX's mouth is pushed out to its own face,
-1.96 away — the reverse of the obvious guess, and the assertion went red saying so.
-
-⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
-comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
-is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under
-their feet is never touched by it: the test passed on a cell nothing happened to until it used the
-`Ack`'s own `ak_q`/`ak_r`, which exists because *the caller must not re-derive it*.
-
-✅ **AND THE SERVER'S OWN STATE IS AN `EditSession` NOW.** Nine parallel registries were nine
-places to forget one — `chunk_meshes_all` takes all nine at four call sites, and part mode held
-each aside by hand. One type, two drivers: the wire and a headless test can no longer disagree
-about what a scene IS.
-
-⚠ **AND THE SWAP INTRODUCED A REAL BUG THAT `part_mode` CAUGHT — loft#774/#775, live.** Holding
-the registries aside still read `held_roofs = sess.es_roofs`, and reading a struct **FIELD ALIASES
-where reading a plain local COPIES**. So clearing the live registry for part mode emptied the held
-copy too and a close restored nothing: *6 of 440 surfaces differ, surfaces 4, 5 and 8* — the roof,
-the wall and the soffit, which are exactly the ones drawn from those registries. **The cure is the
-refactor's own point**: `held_sess = sess` is a plain local read, so it copies — the same shape as
-`held = wld` one line over, and the same reason `A7.3a` wrote it that way.
-
-✅ **AND THE TWO-PRESS DRAFT WENT WITH IT.** `WallDraft` was declared in
-`editor_server.loft`, so *what a first press does*, *what a second does* and — the one nobody
-could see — *what a REFUSED second press leaves behind* were reachable only by pressing a key over
-a wire twice. ⚠ **The refusal CLOSES the draft**, so the next press starts a new one: an author who
-reads *a way needs two ends* as *try the second press again* gets a run from where they stand to
-wherever they walk next, and nothing in the acknowledgement says which state they are in.
-Deliberate, and now pinned.
-
-⚠ **AND A TYPE MUST BE DECLARED BEFORE THE STRUCT THAT DEFAULTS TO IT.** `DraftStep` holds a
-`RunDraft = RunDraft {}` and was inserted above it: *Undefined type RunDraft*, then twenty-four
-files failing on types that were fine. No forward references — put a new type after what it uses.
-
-⚠ **WHAT THE SESSION DELIBERATELY DOES NOT HOLD IS THE POSE.** `es_author` is a driver's stand-in
-for a walker; this server has one, and `px`/`pz`/`yaw` are the tick's. A session author kept in
-step would be a second authority on where the author is.
+⚠ **`es_author` IS A DRIVER'S POSE, NEVER THE EDITOR'S.** A test has no tick, so it teleports; the
+server writes `px`/`pz`/`yaw` from its walker. Keeping a session author in step there would be a
+second authority on where the author is.
 
 ## ⏭ AND THE GATES — 1838 s → 741 s, with the hot path taken off them entirely
 
@@ -335,118 +228,31 @@ unit trap that made `G1`'s first read column print `0 us`.
 beside the microseconds because the edit clock is exact and a millisecond figure measures the box.
 Checked in both directions before being believed (`probe/perf/profile_*.mjs`).
 
-## Plan 17 — `A8.3` is built and ◐ **waiting on the user's eyes**
+## Plan 17 — **`A8` is complete**; two rows are ◐ and both wait on the user
 
-**Green as of 2026-08-06** on loft `de2dd9e9`, hash stamped at both ends of every stage:
-`make gate` **44, rc=0** · `make lib-test` **20 of 20** (10 packages × both backends) ·
-`make parts` green, `data/parts/` byte-identical across all six files · layering silent.
+**Green as of 2026-08-08** on loft `9f416d7c`, hash stamped at both ends of every stage:
+`make gate` **45, rc=0** · `make lib-test` **22 of 22** (11 packages × both backends) ·
+`make fast` 117 files · `make parts` green, `data/parts/` byte-identical · layering and
+`names.sh` silent.
 
-| `hex_editor` **235** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **254** |
+| `hex_editor` **266** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **277** |
 |---|---|---|---|
 | `moros_sim` **310** | `moros_render` **167** | `moros_map` **92** | `moros_editor` **56** |
 
-⚠ **THE TOOLCHAIN WAS REPLACED MID-SUITE TWICE IN ONE SESSION and only the stamp said so.** One
-run started on `bd911fa1` and finished on `7f6968e8`, reporting 8 `SERVER NEVER LISTENED` and a
-`collect2: ld returned 1`; another started on `7f6968e8` and finished on `de2dd9e9` with 9 more.
-Neither was a real failure. **Three installs landed while this session was running**, so:
-**stamp `sha256sum /usr/local/bin/loft` at both ends of every suite, and warm the new binary**
-(`make client`, then one server up and down) before believing anything.
+⚠ **THE TOOLCHAIN WAS REPLACED THREE TIMES IN ONE SESSION and only the stamp said so** —
+`4c93f40e` → `6ef016ba` → `9f416d7c` on 2026-08-07/08. `loft --version` says `2026.8.0` for every
+build, so the version string cannot tell two installs apart. **Stamp `sha256sum
+/usr/local/bin/loft` at both ends of every suite, and warm a new binary** (`make client`, then one
+server up and down) before believing anything. ⚠ **And capture the exit code on the line AFTER the
+command** — a stamp between `make gate` and `echo "rc=$?"` reports the STAMP's status.
 
 ### What to do next
 
-**`A8.3` is ◐** — the content is built (`door/frame` is a wall with a doorway in it, `door/leaf`
-is a leaf that is one wall panel, `door/hung` hangs them ajar) and **the acceptance is a
-cold-recognition test that needs the user**: `shots/a83-door-{w,sw,s}.png`. Read
-[plan 17 § *What `A8.3` turned up*](../../plans/17-parts/README.md) before touching it — three
-measurements reframe the whole area, and the honest answer today is *a wall with a leaf in it*
-rather than *a door*.
-
-✅ **`A8.4` IS DONE** — `door/gateway` (a two-edge gateway at the zigzag's peak, a socket per
-leaf), `door/gate-l`/`door/gate-r` (mirrored by ONE number), `door/gated`. ⚠ **The geometry chose
-the leaf count**: the two edges are 60° apart, so a single leaf spanning the opening cannot exist.
-⚠ **And *they do not overlap* is not *they are mirrored*** — the first gate row passed a sabotage
-with both leaves on one hinge; it measures the jamb-to-jamb SPAN now (√3 against 1.12). Next is
-**`A8` is complete** — `A8.7` was the last row.
-
-⚠ **AND `A8.7`'s PLAN ROW QUOTED A RULE THE DESIGN HAD ALREADY REPLACED.** It asks for *a returned
-mesh checked against the exported extents, refused with the difference*; **§P9.11 replaces that
-with containment** — a skin may exceed the blockout as far as it likes (cloth, hair, capes), and
-the fault is the blockout poking out of the SKIN. Building the row as written would have shipped a
-check that refuses a cape and looked exactly like the design. **The plan table is not the design**:
-read the § a row cites before implementing it.
-
-◐ **`A8.6` IS HALF DONE, AND THE OTHER HALF IS A MISSING GESTURE.** `22:` in part mode now exports
-the open part's own cells — `part_body_meshes`, the same call the display and the thumbnail make,
-welded into one glb, with an empty export refused rather than written. ⚠ **What is left needs a
-gesture nobody has written**: *point a part's `MESH` at a returned file* requires something that
-writes a `MESH` section, and the editor has none — the same gap as *no gesture can author a
-`FITS`*. ⚠ **And `make parts` cannot stand in for it**, because the blockout mesher lives in
-`editor_server.loft` and a build program cannot reach it.
-
-✅ **`A8.5` IS DONE** — `prop/carved` is a statue whose body is cells and which names no mesh at
-all, in the same `statue/plinth-2` socket as the two `.glb` ones, with `prop/shrine-cell` beside
-`prop/shrine` as the committed pair. ⚠ **`A8.2b` is what makes it a figure**: a cell is a hex
-wide, so a statue at the world's own unit is 1.73 across — authored at `W_UNIT / 4` the derived
-scale draws it at 0.43. ⚠ **And a part is drawn at its OWN scale in part mode**, because the
-shrink belongs to the placement; the picture that shows the claim is the shrine, not the statue.
-
-⚠ **THE GATE HARNESS READ A REFUSED OPEN AS AN OPEN.** `openPart` waits for `part '`, and
-`part refused — already editing 'X'` contains it — so a block inserted before the previous close
-measured an empty picture and reported *0 panels*, which looks exactly like a limb nobody drew.
-`tools/gates/world/part_limb.mjs` now says it out loud. ⚠ **And settle on the EVIDENCE**: the
-display rebuild that meshes a limb runs in the tick loop after the mesh arrivals stop, so a gate
-that waits for the stream to go quiet reads a part before its leaves exist.
-
-⚠ **A CELL IS A HORIZONTAL PLATE; A WALL BYTE IS A VERTICAL PANEL.** Two cells stacked in one
-column draw as two floating slabs with sky between them — photographed, `probe/a83/shapes.loft` —
-so nothing vertical can be built by stacking cells, and `A8.2`'s `door/plank` is exactly that
-stack. Every vertical surface a part can carry is an `h_wall_*` byte, drawn by the per-edge
-fallback because a part has no wall RUNS. ⚠ **And a row of cells carrying their EAST edge is a
-row of fins, not a wall** — a wall along a row is `SLOT_NW` + `SLOT_NE`, zigzagging at 60°.
-
-⚠ **A PART CANNOT SAY *DOOR HEIGHT*, AND THAT IS WHY `A8.3` IS ◐.** The per-edge fallback has two
-heights — `WALL_UP` 3.0 and `FENCE_UP` 1.0 — and `wall_up(DOOR_MAT)` is 0. So the opening runs
-the full height of the wall with no head, and the leaf is the same height AND the same grey as
-the wall it hangs in: **a shut cell leaf is invisible by construction.** It wants an `Opening`
-profile in the part format or a per-part wall height and material; approximating one in the
-content would be a picture that lies about the format.
-
-⚠ **AND TWO LIVE DEFECTS CAME OUT OF LOOKING AT A PICTURE, both fixed and gated.** `CART_BODY` is
-5 and `PART_MESH_BASE` was 5, so the limb block and the cart overwrote each other — **no count
-could see it**, because the wire carried both and a float count cannot tell a door panel from a
-cart body. And the limb block was **never re-sent to a client that joins after `44:`**, which is
-the case a person is: the door was missing from every picture taken the ordinary way while the
-gate was green. The reserved band is now 0-4 figure, 5-7 cart, 8-15 limbs.
-
-⚠ **`A8.2b` PUT THE SAME REFUSAL IN THREE PLACES AND THAT IS THE FINDING TO CARRY.** A unit
-mismatch is refused as `EX_UNIT` (composition), `BK_UNIT` (flattening) and `PS_UNIT` (the direct
-stamp) — and only the third is reachable from the editor's own gesture: `14:<roof>,<part>` in a
-world goes through `hex_editor::part_place` → `part_stamp`, never `part_expand`. The first two were
-written, tested and green while the path an author's hand takes had no check at all. **Check that
-what you built is called**, in this exact shape.
-
-⚠ **AND `hex_proj::HEIGHT_SCALE` IS A SECOND AUTHORITY ON `w_unit`.** Both are *how far one height
-step is in world units*, both are 0.25, and the mesher reads the **constant** and never the field —
-so a part's stated unit does not reach its drawing at all. `ma_scale` works because it is a RATIO;
-anything absolute would have to pick one of the two. Not a defect today, and it is the first thing
-to bite if a world at another unit is ever loaded.
-
-⚠ **`A8.1` FLIPPED FIVE TESTS TO THEIR OPPOSITE, AND THAT IS THE MODEL FOR THE REST OF `A8`.** Every
-*"a cell part in a turned socket is refused"* is now *"…is placed and turned"*, with the old claim
-kept as an **`INST` control in the same test** — one part, one heading, two answers, decided by the
-edge it came in on. Read [plan 17 § *What `A8.1` turned up*](../../plans/17-parts/README.md) before
-touching `expand.loft` or `bake.loft`.
-
-⚠ **READ [PARTS.md §P9.0](PARTS.md#p90--the-design-in-one-place) FIRST, AND NOT THE TWELVE
-SUBSECTIONS.** §P9.0 is the design in one place — the part-tree, three limb kinds, the joint kinds
-`moros_sim` already enumerates, seven invariants, and who owns what. §P9.1–.12 are the *record* of
-how it was arrived at, including four places it was got wrong and corrected by the user; they are
-not a design anyone can act on. The plan's `A8` table is the five steps, and the section under it
-says what `A8` deliberately does **not** cover.
-
-⚠ **`A8` IS THE DOOR-SHAPED SLICE ONLY** — one joint kind (`Mount`), one limb kind (solid), and a
-leaf. Three limb kinds, `Spring`/`Tether`, per-limb hitboxes and a material per part want their
-own plan. **The first two are the ones that change the FORMAT**, so they set the order.
+**The per-step record is [plan 17](../../plans/17-parts/README.md)** — every `Ax.y` carries a
+*What it turned up*, and `A8.2b`–`A8.7`'s are the newest. **The session narrative is
+[JOURNAL.md](JOURNAL.md) § session 14.** What is not in either, because it is a decision rather
+than a record, is at the top of this file: `A8.3` needs the user's eyes and `A8.6` needs a gesture
+nobody has written.
 
 ### Plan 19 — `L1`–`L5` done or raised, `L6.1` built; only `L6.3` waits for `A8`
 
@@ -565,6 +371,32 @@ journal. **When a session ends, its entry moves out.** Moving is not thinning �
 deleted on the way, which is why the journal is 3,000 lines and this is not.
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **READING A STRUCT FIELD ALIASES; READING A PLAIN LOCAL COPIES** — loft#774/#775, and it bit
+again on 2026-08-08. `held = sess.es_roofs` shares its vector with the live one, so clearing the
+live registry emptied the held copy and part mode restored nothing: *6 of 440 surfaces differ*.
+`held = sess` (a whole local) copies. **When you hold something aside, hold the OWNER, not a
+field of it.**
+
+⚠ **A TYPE MUST BE DECLARED BEFORE THE STRUCT THAT DEFAULTS TO IT.** A `DraftStep` holding
+`RunDraft = RunDraft {}` inserted above `RunDraft` gives *Undefined type RunDraft* — and then
+twenty-four test files failing on types that were fine, because a parse error in `gesture.loft`
+takes every consumer's types with it. No forward references.
+
+⚠ **A RAISE LANDS TEN HEXES AHEAD OF THE AUTHOR** (`peak_cell`), and a stencil's footprint is
+placed ahead of them too. A test that raises and then reads the author's own cell measures a cell
+nothing happened to; take the cell from the `Ack`'s `ak_q`/`ak_r`, which exists for that reason.
+
+⚠ **`Fit.ft_offer` IS AN INTEGER *"meaningless unless ft_ordinal"*.** Asserting on it for a NOMINAL
+refusal asserts nothing — `ft_ordinal` is the field that carries the claim.
+
+⚠ **PASS THE CONSTANT THE HANDLER PASSES.** A niche test that invented its own band was refused
+*"too shallow to stand in"*; the editor cuts with `hex_draw::BAND_SIDES` (√3/2). A test with its
+own number measures a thing the editor never makes.
+
+⚠ **THE PLAN TABLE IS NOT THE DESIGN.** `A8.7`'s row quoted §P9.5 after §P9.11 had replaced it, and
+building the row as written would have shipped a check that refuses a cape. Read the § a row cites
+before implementing it.
 
 ⚠ **THE INSTALLED LOFT LEADS `main`, AND THAT IS DELIBERATE.** `/usr/local/bin/loft` is put here
 ahead of `main` on purpose, so that a language defect is fixed **in the language** rather than
