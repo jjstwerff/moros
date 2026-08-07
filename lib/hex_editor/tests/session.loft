@@ -493,3 +493,56 @@ fn test_a_figure_faces_whoever_is_looking_at_it() {
          "the figure faces {front.se_prop.pr_nz} and {back.se_prop.pr_nz} — a facing "
        + "taken from the opening is the same from both sides");
 }
+
+// ── `25:` — A RUN FROM TWO ENDS, and the length that is not the distance ─────
+//
+// ⚠ THE SNAP WAS ALWAYS THE LIBRARY'S; what needed a socket was the LENGTH, and it
+// is a decision rather than arithmetic: the reach is what the author walked measured
+// ALONG the snapped heading. A run built from the straight-line distance is longer
+// than the walk by exactly their drift — and every number in the acknowledgement
+// still agrees with itself, which is why no gate could see it.
+fn test_a_run_snaps_to_one_of_the_twenty_four_headings() {
+  got = run_between(0.0, 0.0, 6.0, 0.0, WALL_MAT);
+  assert(got.rd_ok, "a run six units long was refused: {got.rd_why}");
+  assert(got.rd_step >= 0 && got.rd_step < HEADINGS,
+         "the heading is {got.rd_step}, and there are {HEADINGS}");
+  // Dead along the axis, so there is nothing to snap away and no residual.
+  assert(got.rd_resid < 0.001,
+         "a run straight down an axis has residual {got.rd_resid}°");
+  assert(got.rd_reach > 5.99 && got.rd_reach < 6.01,
+         "the reach is {got.rd_reach} for a six-unit walk");
+}
+
+// ⚠ THE ROW WITH TEETH. The author drifts off the line; the run must end where the
+// PROJECTION says, not where they stood. Straight-line distance here is 6.32 —
+// which is a way running past the end of the walk.
+fn test_the_length_is_measured_along_the_heading_and_not_as_the_distance() {
+  drift = run_between(0.0, 0.0, 6.0, 2.0, WALL_MAT);
+  assert(drift.rd_ok, "the drifted run was refused: {drift.rd_why}");
+  straight = sqrt(6.0 * 6.0 + 2.0 * 2.0) ?? 0.0;
+  // ⚠ *SHORTER THAN THE DISTANCE* IS A WEAK CLAIM BY CONSTRUCTION, and the first
+  // version of this test used it with a margin that could not be met. The snap is
+  // never more than half a heading off — 7.5° — so the projection is at most 0.86%
+  // short whatever the walk: here 6.3132 against 6.3246, a difference of 0.011.
+  // The claim with teeth is the IDENTITY the projection satisfies and a distance
+  // does not: reach = d·cos(residual), which separates them at any residual at all.
+  along = straight * cos(drift.rd_resid * PI / 180.0 ?? 0.0);
+  assert(drift.rd_reach > along - 0.005 && drift.rd_reach < along + 0.005,
+         "the reach is {drift.rd_reach} and d·cos(residual) is {along} — a run "
+       + "measured as the straight-line distance ({straight}) runs past where the "
+       + "author stopped, by exactly their drift");
+  assert(drift.rd_reach < straight - 0.005,
+         "and it must be SHORTER than the distance: {drift.rd_reach} against {straight}");
+  // …and the residual says how far off the line they were, which is the number the
+  // acknowledgement quotes.
+  assert(drift.rd_resid > 0.5,
+         "a two-unit drift over six reported residual {drift.rd_resid}°");
+}
+
+// ⚠ AND TWO PRESSES IN ONE PLACE IS A REFUSAL, NOT A DEGENERATE RUN — a heading
+// snapped out of a zero vector is a direction nobody asked for.
+fn test_a_run_with_both_ends_in_one_place_is_refused() {
+  got = run_between(3.0, 3.0, 3.1, 3.1, WALL_MAT);
+  assert(!got.rd_ok, "a run of a tenth of a unit was accepted");
+  assert(got.rd_why.find("two ends") >= 0, "the refusal reads: {got.rd_why}");
+}

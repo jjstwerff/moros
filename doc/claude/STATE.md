@@ -114,6 +114,18 @@ uses: the author moves to the other side and the facing must flip.
 *"too shallow to stand in"* — the editor cuts with `hex_draw::BAND_SIDES` (√3/2), so a test with
 its own number measures a niche the editor never makes.
 
+✅ **AND THE WALL RUN COMPLETES THE SET** — `run_between`. The snap was always the library's; what
+needed a socket was the **length**, and it is a decision rather than arithmetic: the reach is what
+the author walked **measured along the snapped heading**, never the straight-line distance, or the
+way runs past where they stopped by exactly their drift. Plus *a way needs two ends* — two presses
+in one place would snap a heading out of a zero vector.
+
+⚠ **AND *SHORTER THAN THE DISTANCE* IS A WEAK CLAIM BY CONSTRUCTION.** The snap is never more than
+half a heading off (7.5°), so the projection is at most **0.86 %** short whatever the walk — 6.3132
+against 6.3246 in the test. The claim with teeth is the IDENTITY: `reach = d·cos(residual)`, which
+separates a projection from a distance at any residual at all. The first version used a margin that
+could not be met.
+
 ⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
 comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
 is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under

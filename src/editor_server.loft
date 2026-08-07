@@ -1527,22 +1527,20 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
     return;
   }
   draft.wd_open = false;
-  dx = px - draft.wd_x;
-  dz = pz - draft.wd_z;
-  if dx * dx + dz * dz < 0.25 {
-    srv.send_to(cid, "S:road refused — a way needs two ends; walk away from the first");
+  // ⚠ THE RUN IS `hex_editor::run_between` NOW — the headless thread. The snap was
+  // always the library's; what was here is the refusal and the LENGTH, and the
+  // length is a decision: the reach is measured ALONG the snapped heading, never as
+  // the straight-line distance, or the way runs past where the author stopped by
+  // exactly their drift.
+  wdr = hex_editor::run_between(draft.wd_x, draft.wd_z, px, pz, wmat);
+  if !wdr.rd_ok {
+    srv.send_to(cid, "S:road refused — {wdr.rd_why}");
     return;
   }
-  step = 0;
-  resid = 0.0;
-  ang = snap_heading(dx, dz, step, resid);
-  // The length is what the author walked measured ALONG the snapped heading, not
-  // the straight-line distance — which would run the way past where they stopped
-  // whenever they drifted off the line.
-  reach = dx * cos(ang) + dz * sin(ang);
-  run = WallRun { wr_base: 0, wr_up: 0, wr_x0: draft.wd_x, wr_z0: draft.wd_z,
-                  wr_x1: draft.wd_x + cos(ang) * reach, wr_z1: draft.wd_z + sin(ang) * reach,
-                  wr_mat: wmat, wr_step: step };
+  step = wdr.rd_step;
+  resid = wdr.rd_resid;
+  reach = wdr.rd_reach;
+  run = wdr.rd_run;
   grade = py_of(wld, draft.wd_x, draft.wd_z);
 
   // ⚠ THE MATERIAL DECIDES, and until S3 it did not. `25:1` is a WALL and `25:3` a

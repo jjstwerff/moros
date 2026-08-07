@@ -1574,6 +1574,49 @@ pub struct WallRun {
 pub struct WallRuns { items: vector<WallRun> }
 
 // The nearest of the 24 headings to (dx, dz), and how far off the author was.
+// ── A RUN FROM TWO ENDS — `25:`, the headless thread ────────────────────────
+//
+// ⚠ THE ONE CLAIM HERE THAT IS NOT `snap_heading`'s IS THE LENGTH, and it is a
+// decision with a reason the handler already wrote down: the reach is what the
+// author walked **measured along the snapped heading**, not the straight-line
+// distance — *"which would run the way past where they stopped whenever they
+// drifted off the line."* A run built from the distance is longer than the walk by
+// exactly the drift, and every number in the acknowledgement still agrees with
+// itself. Nothing could see that without a socket until now.
+//
+// ⚠ AND *A WAY NEEDS TWO ENDS* IS A REFUSAL, NOT A DEGENERATE RUN. Two presses in
+// one place would snap a heading out of a zero vector, which is a direction nobody
+// asked for pointing wherever the arithmetic lands.
+pub const RUN_SHORT = 0.25;   // …squared: half a world unit between the two ends
+
+pub struct RunDraft {
+  rd_ok:    boolean,
+  rd_run:   WallRun = WallRun {},
+  rd_step:  integer = 0,       // the snapped heading, 0..HEADINGS
+  rd_resid: float = 0.0,       // how far off it the author actually walked, degrees
+  rd_reach: float = 0.0,       // the length, ALONG the heading
+  rd_why:   text = "",
+}
+
+pub fn run_between(x0: float, z0: float, x1: float, z1: float,
+                   mat: integer) -> RunDraft {
+  rb_dx = x1 - x0;
+  rb_dz = z1 - z0;
+  if rb_dx * rb_dx + rb_dz * rb_dz < RUN_SHORT {
+    return RunDraft { rd_ok: false,
+      rd_why: "a way needs two ends; walk away from the first" };
+  }
+  rb_step = 0;
+  rb_res = 0.0;
+  rb_ang = snap_heading(rb_dx, rb_dz, rb_step, rb_res);
+  rb_reach = rb_dx * cos(rb_ang) + rb_dz * sin(rb_ang);
+  return RunDraft { rd_ok: true, rd_step: rb_step, rd_resid: rb_res, rd_reach: rb_reach,
+    rd_run: WallRun { wr_base: 0, wr_up: 0, wr_x0: x0, wr_z0: z0,
+                      wr_x1: x0 + cos(rb_ang) * rb_reach,
+                      wr_z1: z0 + sin(rb_ang) * rb_reach,
+                      wr_mat: mat, wr_step: rb_step } };
+}
+
 pub fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float {
   a = atan2(dz, dx);
   k = a / WALL_SNAP ?? 0.0;
