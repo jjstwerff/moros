@@ -4045,6 +4045,51 @@ fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) -> T
 // the previous chunk's triangles under it; a thumbnail is accumulated per part
 // from nothing, so an absent surface is an absent surface. Four chunks × nine
 // surfaces is 36 messages of which a cottage fills six.
+// ── A PART'S OWN CELLS, MESHED — plan 17 `A8.2` ─────────────────────────────
+//
+// One surface mesh per chunk per occupied surface, in the PART's own frame. Two
+// consumers want exactly this and they used to have one copy each in prospect: the
+// catalogue thumbnail, which frames it, and the display path, which POSES it on a
+// joint. A second copy is a second answer that can disagree with the first — and
+// disagree invisibly, since one draws a 212 px row and the other draws a door.
+//
+// ⚠ IT RETURNS THE MESHES RATHER THAN WIRING THEM, because the two callers differ
+// in every step after this one: the thumbnail accumulates a camera fit and speaks
+// `Y:`, the display path applies `mesh_swing` and a translate and speaks `M:`. What
+// they share is *which triangles a part's cells make*, and that is all this owns.
+//
+// ⚠ THE EMPTY SURFACES ARE DROPPED HERE. A part of four chunks offers 36 slots and
+// a cottage fills six; carrying the empties would make every caller test for them.
+struct PartSurf { ps_surface: integer, ps_mesh: Mesh }
+
+fn part_body_meshes(pbm_w: World) -> vector<PartSurf> {
+  pbm_out: vector<PartSurf> = [];
+  // A part has no wall runs, no roof plans, no leaves and no dressing of its own —
+  // those are the server's registries for the world being edited. Empty is the
+  // honest argument, and `chunk_mesh_props` already keeps the fallback paths it
+  // makes it take: walls draw as per-edge panels and a roof from its own cells.
+  pbm_runs = WallRuns { items: [] };
+  pbm_roofs = hex_editor::RoofPlans { items: [] };
+  pbm_leaves = hex_editor::DoorLeaves { items: [] };
+  pbm_open = hex_editor::Openings { items: [] };
+  pbm_annex = hex_editor::Annexes { items: [] };
+  pbm_awalls = WallRuns { items: [] };
+  pbm_props = hex_editor::Props { items: [] };
+  pbm_slabs = hex_editor::Slabs { items: [] };
+  pbm_holes = hex_editor::Holes { items: [] };
+  for pbm_ch in pbm_w.w_chunks {
+    pbm_ms = chunk_meshes_all(pbm_ch.ck_cx, pbm_ch.ck_cz, pbm_w, true,
+               pbm_runs, pbm_roofs, pbm_leaves, pbm_open, pbm_annex,
+               pbm_awalls, pbm_props, pbm_slabs, pbm_holes);
+    for pbm_si in 0..SURFACES {
+      pbm_m = chunk_mesh_slot(pbm_ms, pbm_si);
+      if len(mesh_to_floats(pbm_m)) < 6 { continue; }
+      pbm_out += [PartSurf { ps_surface: pbm_si, ps_mesh: pbm_m }];
+    }
+  }
+  pbm_out
+}
+
 fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   ptw_out: vector<text> = [];
   ptw_ld = world_load(part_path(name));
@@ -4053,20 +4098,6 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
     return ptw_out;
   }
   ptw_pw = ptw_ld.wl_world;
-  // A part has no wall runs, no roof plans, no leaves and no dressing of its
-  // own — those are the server's registries for the world being edited. Empty is
-  // the honest argument, and `chunk_mesh_props` already keeps the fallback paths
-  // it makes it take: walls draw as per-edge panels and a roof from its own
-  // cells, which is exactly how the stencil's house has always been drawn.
-  ptw_runs = WallRuns { items: [] };
-  ptw_roofs = hex_editor::RoofPlans { items: [] };
-  ptw_leaves = hex_editor::DoorLeaves { items: [] };
-  ptw_open = hex_editor::Openings { items: [] };
-  ptw_annex = hex_editor::Annexes { items: [] };
-  ptw_awalls = WallRuns { items: [] };
-  ptw_props = hex_editor::Props { items: [] };
-  ptw_slabs = hex_editor::Slabs { items: [] };
-  ptw_holes = hex_editor::Holes { items: [] };
   ptw_ax = thumb_axes();
   // ⚠ EVERY VERTEX, IN THE CAMERA'S AXES — not a bounding box in the world's. See
   // `part_thumb_view` for the three framings this replaced and the picture each
@@ -4075,23 +4106,18 @@ fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
   // the eye may come to it.
   ptw_fit = ThumbFit {};
   ptw_bodies: vector<text> = [];
-  for ptw_ch in ptw_pw.w_chunks {
-    ptw_ms = chunk_meshes_all(ptw_ch.ck_cx, ptw_ch.ck_cz, ptw_pw, true,
-               ptw_runs, ptw_roofs, ptw_leaves, ptw_open, ptw_annex,
-               ptw_awalls, ptw_props, ptw_slabs, ptw_holes);
-    for ptw_si in 0..SURFACES {
-      ptw_m = chunk_mesh_slot(ptw_ms, ptw_si);
-      ptw_fs = mesh_to_floats(ptw_m);
-      if len(ptw_fs) < 6 { continue; }
-      thumb_take(ptw_fit, ptw_fs, ptw_ax);
-      ptw_sf = hex_mesh::surface_at(ptw_si);
-      // The ground keeps the height ramp it is drawn with in the world, so a
-      // part's lawn is the same green as the lawn it will stand on.
-      ptw_ramp = "0";
-      if ptw_si == 0 { ptw_ramp = "1"; }
-      ptw_bodies += ["Y:{idx};{ptw_ramp};"
-                     + "{mesh_wire(ptw_m, ptw_sf.sf_r, ptw_sf.sf_g, ptw_sf.sf_b)}"];
-    }
+  // ⚠ THE MESHING IS `part_body_meshes`, SHARED WITH THE DISPLAY PATH — `A8.2`.
+  // What stays here is what a thumbnail does with it and a joint does not: the
+  // camera fit, the ground's ramp, and the `Y:` wire.
+  for ptw_bm in part_body_meshes(ptw_pw) {
+    thumb_take(ptw_fit, mesh_to_floats(ptw_bm.ps_mesh), ptw_ax);
+    ptw_sf = hex_mesh::surface_at(ptw_bm.ps_surface);
+    // The ground keeps the height ramp it is drawn with in the world, so a
+    // part's lawn is the same green as the lawn it will stand on.
+    ptw_ramp = "0";
+    if ptw_bm.ps_surface == 0 { ptw_ramp = "1"; }
+    ptw_bodies += ["Y:{idx};{ptw_ramp};"
+                   + "{mesh_wire(ptw_bm.ps_mesh, ptw_sf.sf_r, ptw_sf.sf_g, ptw_sf.sf_b)}"];
   }
   // ── §P5's OTHER BODY — plan 17 `A6.2` ──────────────────────────────────────
   //
@@ -7995,10 +8021,58 @@ fn main() {
       // cap below already avoids, and this tree's own rule about a count of zero.
       disp_drawn = 0;
       disp_unskinned = 0;
+      disp_want = 0;
       for disp_m in disp_meshes {
         if disp_m.ma_mesh == "" {
-          disp_unskinned = disp_unskinned + 1;
-        } else if disp_drawn < PART_MESH_MAX {
+          // ── ⚠ A CELL LIMB IS MESHED FROM ITS OWN CELLS — plan 17 `A8.2` ────
+          //
+          // `A8.1` left this counted and undrawn. The part named by `ma_part` is
+          // loaded and meshed by `part_body_meshes` — the same call the catalogue
+          // thumbnail makes, so a door and its own picture cannot disagree — and
+          // each surface is posed by `posed_mesh`, which is body-agnostic: it
+          // swings about the hinge, turns by the facing and translates to the
+          // composed origin, and never asked where the triangles came from.
+          //
+          // ⚠ ITS SURFACES KEEP THEIR OWN COLOURS rather than taking the prop's.
+          // A cell-built door IS the material it was authored in, and every
+          // picture gate classifies on chromaticity — drawing it as `frame` would
+          // put a door and a statue in one bucket for no reason but the body it
+          // happens to have.
+          //
+          // ⚠ AND A CELL LIMB TAKES ONE SLOT PER SURFACE, not one per limb. A
+          // one-hex leaf is one or two; the cap below counts what was actually
+          // sent, so the message stays true whichever body reached it.
+          if disp_m.ma_part == "" {
+            disp_unskinned = disp_unskinned + 1;
+          } else {
+            disp_lw = world_load(part_path(disp_m.ma_part));
+            if disp_lw.wl_code != WL_OK {
+              println("editor: part display — limb '{disp_m.ma_part}' will not load "
+                    + "({disp_lw.wl_code}) {disp_lw.wl_detail}");
+              disp_unskinned = disp_unskinned + 1;
+            } else {
+              disp_body = part_body_meshes(disp_lw.wl_world);
+              if len(disp_body) == 0 {
+                // ⚠ SAID, NOT SWALLOWED. A limb with neither a mesh nor a cell is
+                // what `A3.1`'s *empty part* refusal already forbids on save, so
+                // reaching here means the library changed under a live editor.
+                println("editor: part display — limb '{disp_m.ma_part}' has no body to draw");
+                disp_unskinned = disp_unskinned + 1;
+              }
+              disp_want = disp_want + len(disp_body);
+              for disp_pb in disp_body {
+                if disp_drawn < PART_MESH_MAX {
+                  disp_bs = hex_mesh::surface_at(disp_pb.ps_surface);
+                  srv.broadcast("M:{PART_MESH_BASE + disp_drawn};0;"
+                    + "{mesh_wire(posed_mesh(disp_pb.ps_mesh, disp_m), disp_bs.sf_r, disp_bs.sf_g, disp_bs.sf_b)}");
+                  disp_drawn = disp_drawn + 1;
+                }
+              }
+            }
+          }
+        } else {
+          disp_want = disp_want + 1;
+          if disp_drawn < PART_MESH_MAX {
           disp_gl = load_glb(hex_part::mesh_file(parts_root(), disp_m.ma_mesh));
           if disp_gl.gr_code != GR_OK {
             println("editor: part display — '{disp_m.ma_mesh}' will not load "
@@ -8009,20 +8083,29 @@ fn main() {
               + "{mesh_wire(posed_mesh(disp_gl.gr_mesh, disp_m), disp_ps.sf_r, disp_ps.sf_g, disp_ps.sf_b)}");
             disp_drawn = disp_drawn + 1;
           }
+          }
         }
       }
-      // ⚠ THE CAP COUNTS SKINNED PLACEMENTS, NOT ALL OF THEM. Comparing
-      // `len(disp_meshes)` would blame the eleven-slot block for limbs that were
-      // never going to occupy a slot, and send an author looking for a limit that
-      // is not the one they hit.
-      if (len(disp_meshes) - disp_unskinned) > PART_MESH_MAX {
-        // ⚠ SAID, NOT SWALLOWED — a silent cap reads as *that is all there is*.
-        srv.broadcast("S:{len(disp_meshes) - disp_unskinned - PART_MESH_MAX} mesh "
-                    + "placements are not drawn — the reserved block holds {PART_MESH_MAX}");
+      // ⚠ THE CAP IS COUNTED IN SLOTS NOW, NOT IN PLACEMENTS — `A8.2`. A `.glb`
+      // limb takes one slot and a cell limb takes one PER SURFACE, so *how many
+      // placements are there* stopped being the same question as *what did not
+      // fit*. `disp_want` is what the loop would have sent with an unbounded block,
+      // and the difference is what an author is actually missing.
+      //
+      // ⚠ SAID, NOT SWALLOWED — a silent cap reads as *that is all there is*.
+      // ⚠ COUNTED AS THE LOOP GOES, NOT BY WALKING IT AGAIN. A second pass would
+      // re-`world_load` every limb once per edit, which is the cost `part_expand`
+      // refuses on the same grounds — a parse per placement per edit is not a price
+      // a per-edit path can pay.
+      if disp_want > PART_MESH_MAX {
+        srv.broadcast("S:{disp_want - PART_MESH_MAX} limb surface(s) are not drawn "
+                    + "— the reserved block holds {PART_MESH_MAX}");
       }
+      // What is left here is a limb with NEITHER body, or one whose part would not
+      // load. `A8.1`'s *cell-bodied and not drawn yet* is gone: they are drawn.
       if disp_unskinned > 0 {
-        srv.broadcast("S:{disp_unskinned} bound limb(s) are cell-bodied and not drawn "
-                    + "yet — the placement is derived, the meshing is A8.2");
+        srv.broadcast("S:{disp_unskinned} bound limb(s) have no body that can be "
+                    + "drawn — no mesh, and no part whose cells load");
       }
       for disp_c in disp_drawn..PART_MESH_MAX {
         srv.broadcast("M:{PART_MESH_BASE + disp_c};0;");

@@ -376,6 +376,74 @@ fn write_doorway(root: text, open: float) {
   assert(world_save(w, "{root}/door/doorway.hxw", []) == WS_OK, "the doorway was not saved");
 }
 
+// ── A LEAF MADE OF CELLS — plan 17 `A8.2` ───────────────────────────────────
+//
+// The same door, the other body. `door/oak` is a `.glb` and this is a column of
+// wall cells, and §P9.3's point is that NEITHER is required: both carry the same
+// `FITS` (`door/1x2`) and the same hinge, so the binding does not know which it
+// got and a doorway can swap one for the other without moving.
+//
+// ⚠ IT IS WHAT MAKES `A8.2` TESTABLE AT ALL. The display path can now mesh a
+// limb's own cells, and until something in the library HAS cells for a body that
+// code has no consumer — which is this tree's own trap, and the reason the step
+// ships content beside the mechanism rather than after it.
+//
+// ⚠ THE HINGE IS THE SAME CORNER AS `door/oak`'s, deliberately. If the two leaves
+// hung on different points, a swap would move the door and the difference would
+// read as the cell path being wrong.
+fn write_plank(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  // Two cells tall at the hinge cell — a leaf, not a hatch, and the same 1x2 the
+  // class is named for. `W_EPS` apart or the store merges them into one layer.
+  //
+  // ⚠ `FLOOR_MAT` AND NOT `WALL_MAT`. A cell's material is a small named set and
+  // `wall` is not in it — walls are an EDGE material, so a leaf asking for one
+  // would be asking for something a cell cannot hold. The five a cell may take are
+  // SURFACE, ROAD, FIELD, FLOOR and ROOF; a door is joinery, so FLOOR.
+  for lh in 0..2 {
+    assert(world_set_cell(w, 0, 0, lh,
+      Hex { h_height: (1 + lh * W_EPS) as u16? ?? 0,
+            h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }).cw_code == CW_OK,
+      "the plank's cell {lh} was refused");
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "plank",
+    pm_desc: "a door leaf built from cells — the same 1x2 class as door/oak"
+  }) == PM_OK, "the plank's meta was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "the plank's FITS was refused");
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: 0.0, hg_oy: 0.0, hg_oz: 0.0,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0, hg_hi: 0.25
+  }).hw_code == HG_OK, "the plank's hinge was refused");
+  assert(world_save(w, "{root}/door/plank.hxw", []) == WS_OK, "the plank was not saved");
+}
+
+// The same doorway, hung with the cell leaf. Two files that differ in ONE field.
+fn write_planked(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in 0..3 {
+    for pr in 0..3 {
+      assert(world_set_cell(w, pq, pr, 0,
+        Hex { h_height: 1 as u16? ?? 0,
+              h_material: hex_editor::ROAD_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "the planked doorway's paving was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "planked",
+    pm_desc: "a frame on paving with a CELL leaf hung in it, ajar"
+  }) == PM_OK, "the planked doorway's meta was refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 1, pi_r: 1, pi_h: 0, pi_facing: 0, pi_part: "door/frame" }]) == PI_OK,
+    "the planked doorway's instance was refused");
+  assert(part_set_bindings(w, [Binding {
+    bd_inst: 0, bd_open: open, bd_socket: "leaf", bd_part: "door/plank"
+  }]).bw_code == BD_OK, "the planked doorway's binding was refused");
+  assert(world_save(w, "{root}/door/planked.hxw", []) == WS_OK, "the planked doorway was not saved");
+}
+
 fn ground() -> World {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   for q in (0 - 2)..12 {
@@ -417,6 +485,9 @@ fn main() {
   write_leaf(root);
   write_frame(root);
   write_doorway(root, 0.125);
+  // ── the cell-bodied leaf, and the same doorway hung with it — `A8.2` ────────
+  write_plank(root);
+  write_planked(root, 0.125);
   // ⚠ THE EXPANSION IS THE GATE, not three files that load. A doorway whose leaf
   // is not bound, or is bound and not swung, writes and reads back perfectly.
   dw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;

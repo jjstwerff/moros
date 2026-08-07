@@ -1246,7 +1246,7 @@ because a wide door is where cells have something to say. The full argument is
 | | step | proves it | size |
 |---|---|---|---|
 | ✅ `A8.1` | `expand` hands back a bound leaf as a PLACEMENT rather than stamping its cells — a record naming a PART, not a `.glb`. | **DONE.** `limb_at` in `expand.loft`, `MeshAt.ma_part`, `BK_LIMB` in `bake.loft`. 254 tests in the package, four sabotages seen red. ⚠ **Twelve existing tests went red and five of them now assert the OPPOSITE** — see below | M |
-| `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | a cell-built leaf is DRAWN, ajar, with no `.glb` anywhere | M |
+| ✅ `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | **DONE.** `part_body_meshes` shared with the thumbnail, `posed_mesh` unchanged; `door/plank` + `door/planked` are the fixture, `tools/gates/world/part_limb.mjs` the gate, two sabotages seen red | M |
 | `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | a leaf authored on a fine lattice fits the opening, and a fine part stamped is refused with both units named | S |
 | `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
@@ -1255,6 +1255,54 @@ because a wide door is where cells have something to say. The full argument is
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.2` turned up
+
+**Built:** `part_body_meshes(World) -> vector<PartSurf>` in `editor_server.loft` — one
+surface mesh per chunk per occupied surface, in the part's own frame — and the display path
+calls it for any limb whose `ma_mesh` is empty and `ma_part` is not, posing each surface
+with `posed_mesh`. Measured on the wire: `door/planked` draws **540 floats in 2 slots**,
+`door/doorway` (the same frame, `.glb` leaf) **216 in 1**.
+
+⚠ **`posed_mesh` NEEDED NO CHANGE, AND THAT IS THE STEP'S ONE PIECE OF LUCK.** It swings
+about the hinge, turns by the facing and translates to the composed origin, and it never
+asked where the triangles came from — so the cell path and the `.glb` path pose
+identically by construction rather than by two implementations agreeing.
+
+⚠ **THE MESHING IS SHARED WITH THE THUMBNAIL, DELIBERATELY.** `part_thumb_wire` had the
+same loop inline; a second copy would be a second answer that can disagree *invisibly*,
+since one draws a 212 px row and the other draws a door. What stayed in the thumbnail is
+what a joint does not want: the camera fit, the ground's ramp and the `Y:` wire.
+
+⚠ **A CELL LIMB TAKES ONE SLOT PER SURFACE AND THE CAP HAD TO LEARN THAT.** `A8.1` counted
+placements; a `.glb` limb is one slot and a cell limb is one per surface, so *how many
+placements* stopped being the same question as *what did not fit*. It counts what the loop
+would have sent. ⚠ The first version answered that with a second pass that re-`world_load`ed
+every limb per edit — the exact cost `part_expand` refuses.
+
+⚠ **THE STEP SHIPS CONTENT BECAUSE OTHERWISE IT HAS NO CONSUMER.** Every part in the
+library had a `.glb` or no body at all, so the new path could not be reached — this tree's
+*built and not called* trap, live. `door/plank` (cells, `door/1x2`, the same hinge corner as
+`door/oak`) and `door/planked` (the same doorway, one field different) are the fixture.
+⚠ **`WALL_MAT` WAS THE FIRST TRY AND A CELL CANNOT HOLD IT** — walls are an EDGE material;
+the five a cell may take are SURFACE, ROAD, FIELD, FLOOR and ROOF.
+
+⚠ **TWO SABOTAGES, EACH SEEN RED AND EACH FAILING ONE ROW**: stop drawing the cell body →
+`cellFloats 0`, and break the `.glb` load → `meshFloats 0`. The second is why the control
+row exists: a change that drew cells by breaking meshes passes every other check.
+
+⚠ **AND THE NEW GATE HAD THE SUITE'S OWN DISEASE TWICE, WITHIN AN HOUR OF IT BEING CURED.**
+It cost **74 s**, then 43 s, then 5.3 s. First a settle loop whose condition — *the total
+stopped moving AND is non-zero* — cannot be met by a close, where zero is the right answer;
+then a wait for `part ''`, which the server never says because a close acknowledges with the
+name it HAD open. Both are the same fault as the 82 s of sleeps removed the day before, and
+neither was visible without timing it. **That recurrence is the argument for a shared gate
+harness**: 37 of 45 gates hand-roll their own ack-poller, so the primitive that keeps going
+wrong is written 37 times.
+
+**Verified**: `make gate` **45, rc=0**, zero failures, same loft hash at both ends ·
+`make fast` 113 files green · `make parts` green with `data/parts/` byte-identical and the
+two new files repeatable.
 
 ### What `A8.1` turned up
 
