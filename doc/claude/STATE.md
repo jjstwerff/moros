@@ -126,6 +126,18 @@ against 6.3246 in the test. The claim with teeth is the IDENTITY: `reach = d·co
 separates a projection from a distance at any residual at all. The first version used a margin that
 could not be met.
 
+✅ **AND THE ANNEX'S PLACEMENT HALF FOLLOWED ITS HOST** — `annex_build` and `annex_cupboard`. The
+proportions had a recorded reason and **no reader**: *"a balcony at ankle height is a doorstep —
+the first version put the deck at 2 units and the picture showed a crate beside a tree"*. A number
+only a screenshot can check is a number that drifts. Six headless tests hold the three ways the
+kinds differ — a deck stands higher, BITES INTO the host (which leaves a flat for straight wood),
+and opens through the HOST rather than through its own face — plus the cupboard inheriting the
+last BOX and ignoring a deck.
+
+⚠ **AND THE OPENING TEST WAS BACKWARDS UNTIL IT WAS MEASURED.** An annex's `an_x/an_z` is the point
+ON THE HOST, so the DECK's door sits at 0 from it and the BOX's mouth is pushed out to its own face,
+1.96 away — the reverse of the obvious guess, and the assertion went red saying so.
+
 ⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
 comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
 is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under

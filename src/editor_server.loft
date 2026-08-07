@@ -7041,100 +7041,40 @@ fn main() {
           // direction, and the ring's centre is the nearest thing the author can be
           // standing outside of. One code path, because a tree is not a special host.
           akind = ev.payload as integer ?? hex_editor::AN_BOX;
-          // ⚠ KIND 2 IS A CUPBOARD BESIDE THE LAST BOX — the first gesture that
-          // takes an existing annex as its host rather than a wall. It inherits the
-          // depth, the floor and the lid line, which is what makes a bedstee and its
-          // cupboard read as one piece of joinery rather than two boxes that touch.
-          if akind == 2 {
-            alast = 0 - 1;
-            ali = 0;
-            for aprev in wall_annexes.items {
-              if aprev.an_kind == hex_editor::AN_BOX { alast = ali; }
-              ali = ali + 1;
-            }
-            if alast < 0 {
-              srv.send_to(ev.cid, "S:nothing to stand a cupboard beside — press J first");
-              println("editor: cupboard refused — no box");
-            } else {
-              ahost = wall_annexes.items[alast] ?? hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, hex_editor::AN_BOX);
-              acup = hex_editor::annex_beside(ahost, 1.2, 1, hex_editor::AN_BOX);
-              wall_annexes.items += [acup];
-              annex_walls.items = [];
-              hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
-              // A cupboard's doors are flat — an arched cupboard is a shrine.
-              wall_openings.items += [hex_editor::annex_mouth(
-                acup, 0.9, hex_editor::OP_FLAT, HEIGHT_SCALE)];
-              achex = world_to_hex(acup.an_x, acup.an_z);
-              mark_dirty(dirty, achex.ha_q, achex.ha_r, 4);
+          // ⚠ WHAT AN ANNEX IS — its proportions, its way in, and the cupboard that
+          // takes an existing one as its host — is `hex_editor` now. The numbers had
+          // a recorded reason and nothing but a screenshot could read them back: *"a
+          // balcony at ankle height is a doorstep"*. What stays here is the scene
+          // state this file owns, the dirty mark and the sentence.
+          abuilt = if akind == 2 {
+                     hex_editor::annex_cupboard(wall_annexes, HEIGHT_SCALE)
+                   } else {
+                     hex_editor::annex_build(
+                       hex_editor::annex_host(wall_runs, px, pz, yaw,
+                         hex_editor::Trunk { tk_live: ring_live, tk_x: ring_x,
+                                             tk_z: ring_z, tk_r: ring_r }),
+                       akind, hex_draw::BAND_SIDES, HEIGHT_SCALE)
+                   };
+          if !abuilt.ab_ok {
+            srv.send_to(ev.cid, "S:{abuilt.ab_why}");
+            println("editor: annex refused — {abuilt.ab_why}");
+          } else {
+            wall_annexes.items += [abuilt.ab_annex];
+            annex_walls.items = [];
+            hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
+            wall_openings.items += [abuilt.ab_open];
+            ahex = world_to_hex(abuilt.ab_annex.an_x, abuilt.ab_annex.an_z);
+            mark_dirty(dirty, ahex.ha_q, ahex.ha_r, 4);
+            if akind == 2 {
               srv.send_to(ev.cid, "S:a cupboard beside it — {len(annex_walls.items)} "
                                 + "walls for {len(wall_annexes.items)} boxes");
-              println("editor: cupboard at ({achex.ha_q},{achex.ha_r}) — "
-                      + "{len(annex_walls.items)} walls for {len(wall_annexes.items)} boxes");
-            }
-          } else {
-          // ⚠ THE HOST IS `hex_editor::annex_host` NOW — the headless thread. What
-          // was inline here is pure geometry over the run set and the live ring, and
-          // both ways it has been wrong (the normal taken from the run rather than
-          // from where the author stands; a trunk read as *no host*) are held by
-          // `tests/session.loft` with no port in sight. What stays is the scene state
-          // this file owns and the sentence.
-          ahost0 = hex_editor::annex_host(wall_runs, px, pz, yaw,
-            hex_editor::Trunk { tk_live: ring_live, tk_x: ring_x, tk_z: ring_z,
-                                tk_r: ring_r });
-          abest = if ahost0.ah_ok { 0.0 } else { 1000000.0 };
-          around = ahost0.ah_round;
-          anx = ahost0.ah_nx;
-          anz = ahost0.ah_nz;
-          ahx = ahost0.ah_x;
-          ahz = ahost0.ah_z;
-          alen = ahost0.ah_len;
-          aat = ahost0.ah_at;
-          if abest > 900000.0 {
-            srv.send_to(ev.cid, "S:nothing to attach to — stand at a wall or a trunk");
-            println("editor: annex refused — no host");
-          } else {
-            afloor = 2;
-            ahead = 11;
-            aout = 1.4;
-            ain = 0.0;
-            if akind == hex_editor::AN_DECK {
-              // A deck is mostly outside and bites a little into a round host, which
-              // is what leaves a flat for straight wood to land on.
-              // ⚠ A BALCONY AT ANKLE HEIGHT IS A DOORSTEP. The first version put the
-              // deck at 2 units and the picture showed a crate beside a tree — the
-              // primitive was right and the number made it unreadable. Six units is
-              // most of the way up what a wall run stands, which is the only height
-              // this world has to be proportional to yet.
-              ain = 0.30;
-              afloor = 6;
-              ahead = afloor + hex_editor::ANNEX_RAIL;
-            }
-            aan = hex_editor::annex_at(ahx, ahz, anx, anz, 2.2, aout, ain,
-                                       afloor, ahead, akind);
-            afit = hex_editor::annex_fits(aan, alen, aat, hex_draw::BAND_SIDES);
-            if !afit.ak_ok {
-              srv.send_to(ev.cid, "S:annex refused — {afit.ak_why}");
-              println("editor: annex refused — {afit.ak_why}");
+              println("editor: cupboard at ({ahex.ha_q},{ahex.ha_r}) — "
+                    + "{len(annex_walls.items)} walls for {len(wall_annexes.items)} boxes");
             } else {
-              wall_annexes.items += [aan];
-              annex_walls.items = [];
-              hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
-              if akind == hex_editor::AN_BOX {
-                wall_openings.items += [hex_editor::annex_mouth(
-                  aan, 1.5, hex_editor::OP_ROUND, HEIGHT_SCALE)];
-              } else {
-                // The way in: an opening in the HOST, cut from the SEAT the annex
-                // bit out of it rather than from the host's outer face.
-                wall_openings.items += [hex_editor::annex_door(
-                  aan, hex_draw::BAND_SIDES, 0.9, hex_editor::OP_ROUND, HEIGHT_SCALE)];
-              }
-              ahex = world_to_hex(ahx, ahz);
-              mark_dirty(dirty, ahex.ha_q, ahex.ha_r, 4);
               srv.send_to(ev.cid, "S:an annex of kind {akind} at "
                                 + "{ahex.ha_q},{ahex.ha_r} — 3 walls, a deck");
               println("editor: annex kind {akind} at ({ahex.ha_q},{ahex.ha_r})");
             }
-          }
           }
         } else if ev.msg_id == MSG_HOUSE {
           // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is

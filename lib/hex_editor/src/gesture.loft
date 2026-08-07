@@ -3042,6 +3042,75 @@ pub fn annex_mouth(a: Annex, width: float, kind: integer, unit: float) -> Openin
 // ⚠ IT HAS TO FIT ITS HOST, and the two ways it does not are different. Too wide
 // and it overhangs the wall it hangs on; too deep a seat and it cuts clean through
 // the host, which for a trunk means a tree severed by its own balcony.
+// ── WHAT AN ANNEX IS, ONCE ITS HOST IS KNOWN — `37:`, the headless thread ───
+//
+// ⚠ THE PROPORTIONS ARE A DESIGN DECISION WITH A RECORDED REASON, and they sat in
+// the handler where nothing could read them back. The handler's own comment: *"A
+// BALCONY AT ANKLE HEIGHT IS A DOORSTEP. The first version put the deck at 2 units
+// and the picture showed a crate beside a tree — the primitive was right and the
+// number made it unreadable."* A number that only a screenshot can check is a
+// number that drifts.
+//
+// ⚠ AND THE TWO KINDS DIFFER IN THREE WAYS, none of them the width: a deck stands
+// HIGHER, it BITES INTO the host (which is what leaves a flat for straight wood to
+// land on), and its way in is cut in the HOST rather than in itself. A box hangs off
+// the wall with its mouth in its own face.
+pub struct AnnexBuilt {
+  ab_ok:    boolean,
+  ab_annex: Annex = Annex {},
+  ab_open:  Opening = Opening {},
+  ab_why:   text = "",
+}
+
+pub fn annex_build(host: AnnexHost, kind: integer, band: float,
+                   unit: float) -> AnnexBuilt {
+  if !host.ah_ok {
+    return AnnexBuilt { ab_ok: false,
+      ab_why: "nothing to attach to — stand at a wall or a trunk" };
+  }
+  ab_floor = 2;
+  ab_head = 11;
+  ab_out = 1.4;
+  ab_in = 0.0;
+  if kind == AN_DECK {
+    // Six units is most of the way up what a wall run stands, which is the only
+    // height this world has to be proportional to yet.
+    ab_in = 0.30;
+    ab_floor = 6;
+    ab_head = ab_floor + ANNEX_RAIL;
+  }
+  ab_a = annex_at(host.ah_x, host.ah_z, host.ah_nx, host.ah_nz, 2.2,
+                  ab_out, ab_in, ab_floor, ab_head, kind);
+  ab_fit = annex_fits(ab_a, host.ah_len, host.ah_at, band);
+  if !ab_fit.ak_ok { return AnnexBuilt { ab_ok: false, ab_why: ab_fit.ak_why }; }
+  // The way in. A box opens through its own face; a deck opens through the host,
+  // cut from the SEAT it bit out of it rather than from the host's outer face.
+  ab_o = if kind == AN_BOX { annex_mouth(ab_a, 1.5, OP_ROUND, unit) }
+         else { annex_door(ab_a, band, 0.9, OP_ROUND, unit) };
+  return AnnexBuilt { ab_ok: true, ab_annex: ab_a, ab_open: ab_o };
+}
+
+// ⚠ A CUPBOARD TAKES AN EXISTING ANNEX AS ITS HOST — the first gesture that does.
+// It inherits the depth, the floor and the lid line, which is what makes a bedstee
+// and its cupboard read as one piece of joinery rather than two boxes that touch.
+pub fn annex_cupboard(annexes: Annexes, unit: float) -> AnnexBuilt {
+  ac_last = 0 - 1;
+  ac_i = 0;
+  for ac_a in annexes.items {
+    if ac_a.an_kind == AN_BOX { ac_last = ac_i; }
+    ac_i = ac_i + 1;
+  }
+  if ac_last < 0 {
+    return AnnexBuilt { ab_ok: false,
+      ab_why: "nothing to stand a cupboard beside — press J first" };
+  }
+  ac_host = annexes.items[ac_last] ?? annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, AN_BOX);
+  ac_cup = annex_beside(ac_host, 1.2, 1, AN_BOX);
+  // A cupboard's doors are flat — an arched cupboard is a shrine.
+  return AnnexBuilt { ab_ok: true, ab_annex: ac_cup,
+                      ab_open: annex_mouth(ac_cup, 0.9, OP_FLAT, unit) };
+}
+
 pub fn annex_fits(a: Annex, host_len: float, at: float, band: float) -> Ack {
   room = opening_room(host_len, at);
   if a.an_w > room {

@@ -546,3 +546,87 @@ fn test_a_run_with_both_ends_in_one_place_is_refused() {
   assert(!got.rd_ok, "a run of a tenth of a unit was accepted");
   assert(got.rd_why.find("two ends") >= 0, "the refusal reads: {got.rd_why}");
 }
+
+// ── `37:` — WHAT AN ANNEX IS, once its host is known ────────────────────────
+//
+// ⚠ THE PROPORTIONS HAD A RECORDED REASON AND NO READER. *"A balcony at ankle height
+// is a doorstep. The first version put the deck at 2 units and the picture showed a
+// crate beside a tree — the primitive was right and the number made it unreadable."*
+// A number only a screenshot can check is a number that drifts.
+fn a_host() -> AnnexHost {
+  annex_host(a_run(0.0, 0.0, 12.0, 0.0), 6.0, 1.5, 0.0, no_trunk())
+}
+
+fn test_a_deck_stands_higher_than_a_box_and_bites_into_its_host() {
+  band = 0.8660254037844386;
+  box = annex_build(a_host(), AN_BOX, band, 0.25);
+  deck = annex_build(a_host(), AN_DECK, band, 0.25);
+  assert(box.ab_ok && deck.ab_ok,
+         "an annex was refused: {box.ab_why} / {deck.ab_why}");
+  assert(deck.ab_annex.an_floor > box.ab_annex.an_floor,
+         "the deck's floor is {deck.ab_annex.an_floor} and the box's is "
+       + "{box.ab_annex.an_floor} — a balcony at ankle height is a doorstep");
+  // ⚠ AND IT BITES IN, which is what leaves a flat for straight wood to land on. A
+  // box hangs off the wall and takes nothing out of it.
+  assert(deck.ab_annex.an_in > 0.0 && box.ab_annex.an_in == 0.0,
+         "the deck bites {deck.ab_annex.an_in} and the box {box.ab_annex.an_in}");
+  assert(deck.ab_annex.an_head > deck.ab_annex.an_floor,
+         "a deck's rail is at {deck.ab_annex.an_head}, below its own floor");
+}
+
+// ⚠ THE WAY IN IS THE OTHER DIFFERENCE, and it is not a parameter: a box opens
+// through its OWN face, a deck through the HOST it bit into. A build that cut the
+// same opening for both passes every check on the annex itself.
+fn test_a_box_opens_through_itself_and_a_deck_through_its_host() {
+  band = 0.8660254037844386;
+  box = annex_build(a_host(), AN_BOX, band, 0.25);
+  deck = annex_build(a_host(), AN_DECK, band, 0.25);
+  bd = (box.ab_open.op_z - box.ab_annex.an_z) * (box.ab_open.op_z - box.ab_annex.an_z)
+     + (box.ab_open.op_x - box.ab_annex.an_x) * (box.ab_open.op_x - box.ab_annex.an_x);
+  dd = (deck.ab_open.op_z - deck.ab_annex.an_z) * (deck.ab_open.op_z - deck.ab_annex.an_z)
+     + (deck.ab_open.op_x - deck.ab_annex.an_x) * (deck.ab_open.op_x - deck.ab_annex.an_x);
+  // ⚠ MEASURED, AND IT IS THE REVERSE OF THE OBVIOUS GUESS. An annex's `an_x/an_z`
+  // is the point ON THE HOST, so the DECK's door sits at 0 from it — it is cut in
+  // the host — while the BOX's mouth is pushed out to its own face, 1.96 away. The
+  // first version of this assertion had it the other way round and went red saying
+  // so, which is the whole reason to measure rather than reason about a geometry.
+  assert(bd > dd + 1.0,
+         "the box's mouth sits {bd} from the host point and the deck's door {dd} — a "
+       + "box opens through its OWN face and a deck through the host it bit into");
+  assert(dd < 0.01, "the deck's door is {dd} from the host, and it is cut IN it");
+}
+
+// ⚠ A CUPBOARD TAKES AN EXISTING ANNEX AS ITS HOST — the first gesture that does —
+// and inherits its depth, floor and lid line, which is what makes a bedstee and its
+// cupboard read as one piece of joinery rather than two boxes that touch.
+fn test_a_cupboard_inherits_the_box_it_stands_beside() {
+  boxes = Annexes { items: [] };
+  built = annex_build(a_host(), AN_BOX, 0.8660254037844386, 0.25);
+  boxes.items += [built.ab_annex];
+  cup = annex_cupboard(boxes, 0.25);
+  assert(cup.ab_ok, "a cupboard beside a box was refused: {cup.ab_why}");
+  assert(cup.ab_annex.an_floor == built.ab_annex.an_floor
+         && cup.ab_annex.an_head == built.ab_annex.an_head,
+         "the cupboard sits at {cup.ab_annex.an_floor}..{cup.ab_annex.an_head} and the "
+       + "box at {built.ab_annex.an_floor}..{built.ab_annex.an_head}");
+  // …and it stands BESIDE it rather than on it.
+  assert(cup.ab_annex.an_x != built.ab_annex.an_x
+         || cup.ab_annex.an_z != built.ab_annex.an_z,
+         "the cupboard was built on top of the box");
+}
+
+fn test_a_cupboard_with_no_box_is_refused_by_name() {
+  got = annex_cupboard(Annexes { items: [] }, 0.25);
+  assert(!got.ab_ok, "a cupboard stood beside nothing");
+  assert(got.ab_why.find("press J") >= 0, "the refusal reads: {got.ab_why}");
+}
+
+// ⚠ AND A DECK IS ONLY A DECK BESIDE A BOX — the cupboard walks the list for the
+// last BOX, so a balcony must not be adopted as one.
+fn test_a_cupboard_ignores_a_deck() {
+  decks = Annexes { items: [] };
+  built = annex_build(a_host(), AN_DECK, 0.8660254037844386, 0.25);
+  decks.items += [built.ab_annex];
+  got = annex_cupboard(decks, 0.25);
+  assert(!got.ab_ok, "a cupboard was stood beside a balcony");
+}
