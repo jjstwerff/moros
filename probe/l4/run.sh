@@ -86,16 +86,21 @@ check "F World structs merge" err "expected World, got World" \
 
 echo
 echo "── the bare type name, at both import orders ─────────────────────────────"
-check "G voxel first"        err "Unknown field Chunk.ck_cells" \
-  "bare-name resolution stopped preferring the first use — loft#788 may be fixed" \
+# ⚠ THESE TWO FLIPPED ON 2026-08-07, AND THE FLIP IS THE FIX. loft#788 was that a bare
+# `Chunk { … }` bound silently to whichever package was `use`d FIRST — so `H` (world
+# first) compiled and took theirs, and only `G` failed, on a missing field. loft 2026.8.0
+# refuses the bare name at BOTH orders and names the two packages. What these now hold is
+# the fix itself: the order no longer decides, and the diagnostic says why.
+check "G voxel first"        err "declared by more than one package" \
+  "the ambiguity error is gone — bare-name binding went back to preferring one use, and loft#788 is back" \
   --lib "$STAGE/lib" probe/l4/literal_voxel_first.loft
-check "H world first"        ok  "PROBE bare literal took THEIRS" \
-  "bare-name resolution stopped preferring the first use — loft#788 may be fixed" \
+check "H world first"        err "declared by more than one package" \
+  "the import ORDER decides again — that is loft#788 exactly, re-file it against this build" \
   --lib "$STAGE/lib" probe/l4/literal_world_first.loft
 
 echo
 if [ $fail -eq 0 ]; then
-  echo "all 8 controls behaved as L4 measured on 2026-08-06"
+  echo "all 8 controls behaved as L4 measured (A-F on 2026-08-06; G/H re-measured 2026-08-07, loft#788 fixed)"
 else
   echo "a control flipped — read the line above before believing anything downstream"
 fi

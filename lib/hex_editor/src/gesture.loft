@@ -3121,6 +3121,22 @@ pub struct Hole {
 
 pub struct Holes { items: vector<Hole> }
 
+// The roof over one footprint. ⚠ IT LIVES HERE WITH THE OTHER EIGHT REGISTRIES rather
+// than beside `roof_plan_of` in `hex_editor.loft`, because `EditSession` holds one and
+// `session.loft` cannot import the entry that imports it. Declared there, `es_roofs`
+// resolved by name and got no storage — see the note at `roof_plan_of`.
+pub struct RoofPlan {
+  rp_cq:    integer,
+  rp_cr:    integer,
+  rp_wid:   integer,
+  rp_dep:   integer,
+  rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
+  rp_eave:  float,       // world units
+  rp_pitch: float,
+}
+
+pub struct RoofPlans { items: vector<RoofPlan> }
+
 pub fn slab_thick(s: Slab) -> integer { s.sl_hi - s.sl_lo }
 
 // ⚠ THE CLAIM THE WHOLE THING EXISTS FOR: a room's clear height is its storey's

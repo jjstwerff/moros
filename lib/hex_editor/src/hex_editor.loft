@@ -32,6 +32,7 @@ use hex_grid;
 use hex_part;
 use names;
 // ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
+use session;
 // The sentences the editor says — plan: the wire becomes transport.
 use say;
 
@@ -391,17 +392,16 @@ pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts w
 // The heights stay the cells' business — `roof_over` writes them, the walk and the
 // camera read them. This is the PICTURE, and the two agree because both take the
 // ridge height from the same `eave + pitch * hd`.
-pub struct RoofPlan {
-  rp_cq:    integer,
-  rp_cr:    integer,
-  rp_wid:   integer,
-  rp_dep:   integer,
-  rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
-  rp_eave:  float,       // world units
-  rp_pitch: float,
-}
-
-pub struct RoofPlans { items: vector<RoofPlan> }
+// ⚠ `RoofPlan` AND `RoofPlans` ARE DECLARED IN `gesture.loft`, not here, and that is
+// not tidiness — it is the one thing that made `EditSession` unbuildable. This file
+// imports `session`, so `session` cannot import this one; a field it declares as a
+// type from HERE resolves by name (struct names are global) but gets **no storage**,
+// and the record is then written past. That was loft#796's SIGSEGV — non-monotonic in
+// scene size, fine as a program, fatal under `--tests`. loft 2026.8.0 refuses it by
+// name instead: *"field 'es_roofs' of 'EditSession' has no storage in that type's
+// layout"*. The other eight registries were always in `gesture.loft` and were always
+// fine, which is the control. A type a session holds belongs where the session can
+// reach it without a cycle.
 
 pub fn roof_plan_of(f: Footprint, eave: float, pitch: float) -> RoofPlan {
   r = f.fp_rot;
