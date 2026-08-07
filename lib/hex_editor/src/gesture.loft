@@ -2729,6 +2729,93 @@ pub struct Annex {
 
 pub struct Annexes { items: vector<Annex> }
 
+// ── WHAT AN ANNEX HANGS ON — the host, chosen from the scene ────────────────
+//
+// ⚠ THIS IS THE HALF WITH A HISTORY, WHICH IS WHY IT MOVED FIRST. The `37:` handler
+// held it inline, and its own comments record two ways it has been wrong:
+//
+//   the NORMAL   is the one pointing AT the author, never the one the run happens
+//                to store — otherwise the annex is built on the far side of the
+//                wall, inside the room the author is not in.
+//   a ROUND host is not *no host*. `abest` measures the distance to the nearest
+//                wall LINE and a trunk has none, so a balcony asked for beside a
+//                ring of wall was refused for being *"wider than the wall it hangs
+//                on"* — quoting the cottage across the field. Measured: offer −0.2
+//                on a 2.2-wide deck, a refusal naming the wrong wall.
+//
+// Neither can be seen from a socket without building the whole scene first, and both
+// are pure geometry over state a session already holds.
+//
+// ⚠ A TRUNK IS A HOST AND NOT A SPECIAL CASE. One code path answers both, because a
+// tree is a ring of wall and the ring's centre is the nearest thing an author can be
+// standing outside of.
+pub struct Trunk {
+  tk_live: boolean = false,
+  tk_x:    float = 0.0,
+  tk_z:    float = 0.0,
+  tk_r:    float = 0.0,
+}
+
+pub struct AnnexHost {
+  ah_ok:    boolean,
+  ah_round: boolean = false,   // a trunk rather than a straight run
+  ah_x:     float = 0.0,       // the point on the host the annex grows from
+  ah_z:     float = 0.0,
+  ah_nx:    float = 0.0,       // the outward normal — TOWARD the author
+  ah_nz:    float = 0.0,
+  ah_len:   float = 0.0,       // how much host there is, for the width doorstep
+  ah_at:    float = 0.0,       // how far along it the author stands
+}
+
+pub fn annex_host(runs: WallRuns, x: float, z: float, yaw: float,
+                  ring: Trunk) -> AnnexHost {
+  ah_best = 1000000.0;
+  ah_len = 0.0;
+  ah_at = 0.0;
+  ah_hx = x;
+  ah_hz = z;
+  ah_nx = cos(yaw);
+  ah_nz = sin(yaw);
+  for ah_run in runs.items {
+    ah_t = hex_way::track_new();
+    hex_way::track_straight(ah_t, ah_run.wr_x0, ah_run.wr_z0, ah_run.wr_x1, ah_run.wr_z1);
+    ah_d = hex_way::seg_distance(ah_t, 0, x, z);
+    if ah_d < ah_best {
+      ah_best = ah_d;
+      ah_len = hex_way::seg_len(ah_t, 0);
+      (ah_tx, ah_tz) = hex_way::seg_tangent(ah_t, 0, 0.0);
+      ah_s = (x - ah_run.wr_x0) * ah_tx + (z - ah_run.wr_z0) * ah_tz;
+      if ah_s < 0.0 { ah_s = 0.0; }
+      if ah_s > ah_len { ah_s = ah_len; }
+      ah_at = ah_s;
+      (ah_hx, ah_hz) = hex_way::seg_point(ah_t, 0, ah_s);
+      ah_nx = x - ah_hx;
+      ah_nz = z - ah_hz;
+      ah_l = sqrt(ah_nx * ah_nx + ah_nz * ah_nz) ?? 0.0;
+      if ah_l > 0.001 { ah_nx = ah_nx / ah_l ?? 0.0; ah_nz = ah_nz / ah_l ?? 0.0; }
+    }
+  }
+  if ring.tk_live {
+    ah_dx = x - ring.tk_x;
+    ah_dz = z - ring.tk_z;
+    ah_dr = sqrt(ah_dx * ah_dx + ah_dz * ah_dz) ?? 0.0;
+    if ah_dr < ring.tk_r + 4.0 && (ah_best > ah_dr || ah_best > 900000.0) {
+      // The circumference is the run it hangs on, and it has no ends — so *how much
+      // room is there* is answered by the whole way round.
+      ah_ang = atan2(ah_dz, ah_dx);
+      ah_cnx = cos(ah_ang);
+      ah_cnz = sin(ah_ang);
+      return AnnexHost { ah_ok: true, ah_round: true,
+        ah_x: ring.tk_x + ah_cnx * ring.tk_r, ah_z: ring.tk_z + ah_cnz * ring.tk_r,
+        ah_nx: ah_cnx, ah_nz: ah_cnz,
+        ah_len: 2.0 * PI * ring.tk_r, ah_at: PI * ring.tk_r };
+    }
+  }
+  if ah_best > 900000.0 { return AnnexHost { ah_ok: false }; }
+  return AnnexHost { ah_ok: true, ah_x: ah_hx, ah_z: ah_hz,
+                     ah_nx: ah_nx, ah_nz: ah_nz, ah_len: ah_len, ah_at: ah_at };
+}
+
 pub fn annex_at(x: float, z: float, nx: float, nz: float, w: float,
                 out: float, into: float, floor: integer, head: integer,
                 kind: integer) -> Annex {

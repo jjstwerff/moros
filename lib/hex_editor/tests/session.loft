@@ -285,3 +285,79 @@ fn test_raising_the_ground_under_a_prop_does_not_delete_it() {
   assert(len(held) == 1 && held[0] == 3,
          "the raise took the dressing with it — the cell holds {held}");
 }
+
+// ── `annex.keys` — WHAT AN ANNEX HANGS ON, and the two ways it has been wrong ──
+//
+// ⚠ THIS HALF HAD NO TEST AT ALL, only a picture. The `37:` handler chose the host
+// inline, so the only instrument was a scripted screenshot — and its own comments
+// record both failures: a normal taken from the run rather than from where the
+// author stands (the annex built inside the room they are not in), and a trunk read
+// as *no host* (a balcony refused for being "wider than the wall it hangs on",
+// quoting a cottage across the field). Neither is visible without building a scene,
+// and both are pure geometry over state a session already holds.
+fn a_run(x0: float, z0: float, x1: float, z1: float) -> WallRuns {
+  out = WallRuns { items: [] };
+  out.items += [WallRun { wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1 }];
+  out
+}
+
+fn no_trunk() -> Trunk { Trunk {} }
+
+// A wall along x, the author standing to the +z side of it.
+fn test_the_hosts_normal_points_at_the_author_and_not_where_the_run_faces() {
+  runs = a_run(0.0, 0.0, 6.0, 0.0);
+  near = annex_host(runs, 3.0, 1.5, 0.0, no_trunk());
+  assert(near.ah_ok, "a wall two units away was not found");
+  assert(near.ah_nz > 0.9,
+         "the normal is ({near.ah_nx},{near.ah_nz}) and the author stands at +z — an "
+       + "annex on the far side is inside the room they are not in");
+  // ⚠ THE CONTROL, AND IT IS THE WHOLE CLAIM: the same wall, the author on the other
+  // side, and the normal must FLIP. A normal taken from the run would be identical
+  // in both, which is the bug this reproduces.
+  far = annex_host(runs, 3.0, 0.0 - 1.5, 0.0, no_trunk());
+  assert(far.ah_ok, "the same wall was not found from the other side");
+  assert(far.ah_nz < 0.0 - 0.9,
+         "the normal did not flip: {near.ah_nz} then {far.ah_nz}");
+}
+
+// ⚠ AND THE HOST POINT IS ON THE WALL, not under the author — an annex grows from
+// the host outward, so a point that drifted would take the whole box with it.
+fn test_the_host_point_is_the_nearest_point_on_the_run() {
+  got = annex_host(a_run(0.0, 0.0, 6.0, 0.0), 4.0, 2.0, 0.0, no_trunk());
+  assert(got.ah_x > 3.99 && got.ah_x < 4.01,
+         "the host point is at x={got.ah_x}, and the author stands at x=4");
+  assert(got.ah_z > 0.0 - 0.01 && got.ah_z < 0.01,
+         "and it should be ON the wall, at z=0, not {got.ah_z}");
+  assert(got.ah_len > 5.99 && got.ah_len < 6.01,
+         "the run is 6 long and the host reports {got.ah_len}");
+}
+
+// ⚠ A TRUNK IS A HOST. `abest` measures the distance to a wall LINE and a ring has
+// none, so without this the answer is *nothing to attach to* — or worse, the far
+// cottage, whose width then refuses the balcony.
+fn test_a_ring_of_wall_is_a_host_and_its_run_is_the_circumference() {
+  ring = Trunk { tk_live: true, tk_x: 0.0, tk_z: 0.0, tk_r: 2.0 };
+  got = annex_host(WallRuns { items: [] }, 3.0, 0.0, 0.0, ring);
+  assert(got.ah_ok && got.ah_round, "a trunk was not read as a host");
+  assert(got.ah_x > 1.99 && got.ah_x < 2.01 && got.ah_z > 0.0 - 0.01 && got.ah_z < 0.01,
+         "the host point ({got.ah_x},{got.ah_z}) is not on the ring at radius 2");
+  assert(got.ah_nx > 0.9, "the normal points back at the author: {got.ah_nx}");
+  // The circumference is the run it hangs on, and it has no ends.
+  assert(got.ah_len > 12.5 && got.ah_len < 12.6,
+         "the ring's run is {got.ah_len}, and 2πr at r=2 is 12.566");
+}
+
+// ⚠ AND A FAR WALL DOES NOT WIN OVER A NEAR TRUNK, which is the refusal that named
+// the wrong wall. The cottage is twenty units away; the author is beside the tree.
+fn test_a_near_trunk_beats_a_far_wall() {
+  ring = Trunk { tk_live: true, tk_x: 0.0, tk_z: 0.0, tk_r: 2.0 };
+  got = annex_host(a_run(20.0, 20.0, 26.0, 20.0), 3.0, 0.0, 0.0, ring);
+  assert(got.ah_round,
+         "the far wall won: the host is at ({got.ah_x},{got.ah_z}) and the trunk is "
+       + "two units from the author");
+}
+
+fn test_no_wall_and_no_trunk_is_no_host() {
+  got = annex_host(WallRuns { items: [] }, 0.0, 0.0, 0.0, no_trunk());
+  assert(!got.ah_ok, "an annex found a host in an empty world");
+}

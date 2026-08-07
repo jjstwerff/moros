@@ -87,6 +87,15 @@ travels in `say_prop`'s own words and *the same cell answers differently to `20:
 claim about two messages; a gate dropping those because a library test exists would be a coverage
 cut wearing a tidy-up's clothes. **The verdict is byte-identical across the move.**
 
+✅ **AND THE ANNEX'S HOST FOLLOWED IT** — `hex_editor::annex_host`, the pure geometry the `37:`
+handler chose a wall or a trunk with. ⚠ **That half had no test at all, only a picture**
+(`tools/scripts/annex.keys`), and its own comments recorded BOTH ways it has been wrong: a normal
+taken from the run rather than from where the author stands (the annex built inside the room they
+are not in), and a trunk read as *no host* (a balcony refused for being *"wider than the wall it
+hangs on"*, quoting a cottage across the field). Five headless tests hold them now, and both
+sabotages were seen red. The script's own numbers are unchanged — `cupboard at (-2,4) — 5 walls
+for 2 boxes`.
+
 ⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
 comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
 is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under

@@ -7123,59 +7123,23 @@ fn main() {
                       + "{len(annex_walls.items)} walls for {len(wall_annexes.items)} boxes");
             }
           } else {
-          anx = cos(yaw);
-          anz = sin(yaw);
-          abest = 1000000.0;
-          alen = 0.0;
-          aat = 0.0;
-          ahx = px;
-          ahz = pz;
-          for arun in wall_runs.items {
-            at2 = hex_way::track_new();
-            hex_way::track_straight(at2, arun.wr_x0, arun.wr_z0, arun.wr_x1, arun.wr_z1);
-            ad = hex_way::seg_distance(at2, 0, px, pz);
-            if ad < abest {
-              abest = ad;
-              alen = hex_way::seg_len(at2, 0);
-              (atx, atz) = hex_way::seg_tangent(at2, 0, 0.0);
-              asx = (px - arun.wr_x0) * atx + (pz - arun.wr_z0) * atz;
-              if asx < 0.0 { asx = 0.0; }
-              if asx > alen { asx = alen; }
-              aat = asx;
-              (ahx, ahz) = hex_way::seg_point(at2, 0, asx);
-              // The outward normal is the one pointing AT the author, never the one
-              // the run happens to store: an annex built on the far side of the wall
-              // is inside the room the author is not in.
-              anx = px - ahx;
-              anz = pz - ahz;
-              anl = sqrt(anx * anx + anz * anz) ?? 0.0;
-              if anl > 0.001 { anx = anx / anl ?? 0.0; anz = anz / anl ?? 0.0; }
-            }
-          }
-          // ⚠ NO RUN NEARBY MEANS A ROUND HOST, not "no host". `abest` measures the
-          // distance to the nearest wall LINE, and a trunk has none — so a balcony
-          // asked for beside a ring of wall was refused for being "wider than the
-          // wall it hangs on", quoting the cottage across the field. Measured: offer
-          // -0.2 on a 2.2-wide deck, which is a refusal that names the wrong wall.
-          around = false;
-          if ring_live {
-            adx = px - ring_x;
-            adz = pz - ring_z;
-            adr = sqrt(adx * adx + adz * adz) ?? 0.0;
-            if adr < ring_r + 4.0 && (abest > adr || abest > 900000.0) {
-              around = true;
-              abest = 0.0;
-              // The circumference is the run it hangs on, and it has no ends — so
-              // "how much room is there" is answered by the whole way round.
-              alen = 2.0 * PI * ring_r;
-              aat = alen * 0.5;
-              aang = atan2(adz, adx);
-              anx = cos(aang);
-              anz = sin(aang);
-              ahx = ring_x + anx * ring_r;
-              ahz = ring_z + anz * ring_r;
-            }
-          }
+          // ⚠ THE HOST IS `hex_editor::annex_host` NOW — the headless thread. What
+          // was inline here is pure geometry over the run set and the live ring, and
+          // both ways it has been wrong (the normal taken from the run rather than
+          // from where the author stands; a trunk read as *no host*) are held by
+          // `tests/session.loft` with no port in sight. What stays is the scene state
+          // this file owns and the sentence.
+          ahost0 = hex_editor::annex_host(wall_runs, px, pz, yaw,
+            hex_editor::Trunk { tk_live: ring_live, tk_x: ring_x, tk_z: ring_z,
+                                tk_r: ring_r });
+          abest = if ahost0.ah_ok { 0.0 } else { 1000000.0 };
+          around = ahost0.ah_round;
+          anx = ahost0.ah_nx;
+          anz = ahost0.ah_nz;
+          ahx = ahost0.ah_x;
+          ahz = ahost0.ah_z;
+          alen = ahost0.ah_len;
+          aat = ahost0.ah_at;
           if abest > 900000.0 {
             srv.send_to(ev.cid, "S:nothing to attach to — stand at a wall or a trunk");
             println("editor: annex refused — no host");
