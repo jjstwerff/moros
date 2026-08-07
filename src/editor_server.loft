@@ -6436,8 +6436,54 @@ fn main() {
         } else if ev.msg_id == MSG_EXPORT {
           // The other half of kit-bashing: editor geometry OUT, so an author can
           // take a shape into Blender, work on it, and bring it back through 21.
-          xbm = mesh("cart");
-          emit_box(xbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+          //
+          // ── ⚠ IN PART MODE IT EXPORTS THE PART'S OWN BLOCKOUT — `A8.6`, §P9.4 ──
+          //
+          // The mode decides what the gesture means, which is `8:`'s rule (`A7.3c`)
+          // and not a new one: in a world this hands out a box, and in a part it
+          // hands out **the cells the author just built**, meshed. That is the round
+          // trip §P9.4 is for — block out in cells, give the geometry to an artist,
+          // drop the skin back in — and it is why `A8.3`–`A8.5`'s blockouts are worth
+          // building at all.
+          //
+          // ⚠ IT IS `part_body_meshes`, THE SAME CALL THE DISPLAY AND THE THUMBNAIL
+          // MAKE. A second mesher here would be a second answer able to disagree with
+          // the picture the author is looking at — exactly what `A8.2` shared this
+          // function to avoid. What an artist receives is what the editor draws.
+          //
+          // ⚠ AND THE SURFACES ARE WELDED INTO ONE MESH, because a `.glb` is handed
+          // over as a thing rather than as nine. The index offset is the whole of the
+          // welding and is the one place it can go wrong: triangles carry indices into
+          // their own surface's vertex list, so appending without shifting them builds
+          // a mesh whose faces point at another surface's corners — geometry that
+          // loads, counts right, and is scrambled.
+          xbm = mesh("export");
+          if in_part {
+            for xps in part_body_meshes(wld) {
+              xbase = len(xbm.vertices);
+              for xv in xps.ps_mesh.vertices {
+                add_vertex(xbm, vertex(
+                  math::vec3(xv.pos.x, xv.pos.y, xv.pos.z),
+                  math::vec3(xv.normal.x, xv.normal.y, xv.normal.z),
+                  math::vec2(xv.uv.x, xv.uv.y)));
+              }
+              for xt in xps.ps_mesh.triangles {
+                add_triangle(xbm, xbase + xt.a, xbase + xt.b, xbase + xt.c);
+              }
+            }
+          } else {
+            emit_box(xbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+          }
+          // ⚠ AN EMPTY EXPORT IS REFUSED RATHER THAN WRITTEN. A part whose body is a
+          // `.glb` has no cells to block out, and `save_glb` on an empty mesh leaves a
+          // file an author would take to be their work — the silent-absence shape this
+          // tree keeps paying for.
+          if len(xbm.vertices) == 0 {
+            srv.send_to(ev.cid, "S:export refused — '{part_name}' has no cells to "
+                              + "mesh; a blockout is what its own cells draw");
+            println("editor: export refused — '{part_name}' has no cells");
+            continue;
+          }
           save_glb(xbm, ev.payload);
           srv.send_to(ev.cid,
             "S:exported {len(xbm.vertices)} vertices to {ev.payload}");

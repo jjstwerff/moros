@@ -260,7 +260,15 @@ leaf), `door/gate-l`/`door/gate-r` (mirrored by ONE number), `door/gated`. ⚠ *
 the leaf count**: the two edges are 60° apart, so a single leaf spanning the opening cannot exist.
 ⚠ **And *they do not overlap* is not *they are mirrored*** — the first gate row passed a sabotage
 with both leaves on one hinge; it measures the jamb-to-jamb SPAN now (√3 against 1.12). Next is
-`A8.6` (export a limb's blockout as a `.glb`).
+`A8.7` (the export in FINAL world units with the pivot marked).
+
+◐ **`A8.6` IS HALF DONE, AND THE OTHER HALF IS A MISSING GESTURE.** `22:` in part mode now exports
+the open part's own cells — `part_body_meshes`, the same call the display and the thumbnail make,
+welded into one glb, with an empty export refused rather than written. ⚠ **What is left needs a
+gesture nobody has written**: *point a part's `MESH` at a returned file* requires something that
+writes a `MESH` section, and the editor has none — the same gap as *no gesture can author a
+`FITS`*. ⚠ **And `make parts` cannot stand in for it**, because the blockout mesher lives in
+`editor_server.loft` and a build program cannot reach it.
 
 ✅ **`A8.5` IS DONE** — `prop/carved` is a statue whose body is cells and which names no mesh at
 all, in the same `statue/plinth-2` socket as the two `.glb` ones, with `prop/shrine-cell` beside

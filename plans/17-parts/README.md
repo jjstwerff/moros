@@ -1252,9 +1252,42 @@ because a wide door is where cells have something to say. The full argument is
 | ✅ `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | **DONE.** `door/gateway` (both north edges of one cell open, a socket per leaf at headings 16 and 20), `door/gate-l`/`door/gate-r` (one panel each, mirrored by ONE number), `door/gated`. `make parts` asserts two placements, their headings, the mirroring and the class refusal; `part_limb` gained two rows. ⚠ **The gate's own harness was hiding a refused open** — see below | M |
 | ✅ `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | **DONE.** `prop/carved` (cells, authored at a QUARTER of the unit so `A8.2b` shrinks it to the mesh statue's size) and `prop/shrine-cell` beside `prop/shrine` — two committed files a field apart. `make parts` asserts same socket, same position, same heading, scale 0.25, no cell moved, and that `socket_for_binding` takes BOTH bodies | M |
 
-| `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
+| ◐ `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | **THE EXPORT HALF IS DONE**: in part mode `22:` writes the open part's own cells, meshed by `part_body_meshes` — the same call the display and the thumbnail make — welded into one glb; `tools/gates/world/part_export.mjs`, 8 checks, one sabotage seen red. ⚠ **The return half is BLOCKED and not on this step**: no gesture writes a `MESH` section, so a returned skin cannot be dropped in from the editor at all | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.6` turned up — ◐ **the export lands, the return needs a gesture that does not exist**
+
+**Built:** `22:` in part mode exports the open part's blockout. The mode decides what the gesture
+means, which is `8:`'s rule from `A7.3c` rather than a new one: in a world it still hands out the
+placeholder box, and in a part it hands out the cells the author just built.
+
+⚠ **IT IS `part_body_meshes`, THE SAME CALL THE DISPLAY AND THE THUMBNAIL MAKE.** A second mesher
+in the export path would be a second answer able to disagree with the picture the author is
+looking at — what `A8.2` shared that function to avoid. What an artist receives is what the editor
+draws.
+
+⚠ **THE SURFACES ARE WELDED AND THE INDEX OFFSET IS THE WHOLE OF IT.** Triangles carry indices
+into their own surface's vertex list, so appending nine surfaces without shifting them builds a
+mesh whose faces point at another surface's corners — geometry that loads, counts right, and is
+scrambled. Measured: `door/leaf` exports 19 vertices against the world box's 24, which is also the
+gate's discriminator (a handler ignoring the mode answers 24 twice).
+
+⚠ **AND AN EMPTY EXPORT IS REFUSED RATHER THAN WRITTEN.** `prop/statue` is a `.glb` and nothing
+else, so it has no blockout; `save_glb` on an empty mesh would leave an author a file they would
+take to be their work.
+
+⚠ **WHAT IS LEFT IS NOT AN OVERSIGHT: NOTHING AUTHORS A `MESH` SECTION.** *Point its `MESH` at a
+returned file without touching `PART`/`FITS`/`HING`/`SOCK`* needs a gesture that writes one, and
+the editor has none — `part_set_mesh` is called by `src/prop_build.loft` and by tests. So the
+round trip's second half is a **new gesture**, and it belongs with the other missing authoring
+verb this plan already records (`no gesture can author a FITS`) rather than being bolted onto an
+export. ⚠ **And the build cannot stand in for it**: `make parts` must be reproducible, and the
+blockout mesher lives in `editor_server.loft`, so a build program cannot produce the same `.glb`
+the editor exports without that mesher moving to a library.
+
+**Verified**: `part_export` 8 checks, **one sabotage seen red** (the mode ignored → the part
+export answers the box's 24 vertices and three rows fail).
 
 ### What `A8.5` turned up
 
