@@ -27,112 +27,62 @@
 //      name, not a magnitude: 255 is not "nearly" 256, and offering it reads as
 //      a small correction while changing what the thing is made of (`X68`). The
 //      gate asks for species 9 and requires a refusal WITHOUT an offer.
-const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
-const wait = (ms) => new Promise(r => setTimeout(r, ms));
-const status = [];
-let st = 0;
-const ack = async (needle, limitMs = 40000) => {
-  const from = status.length;
-  for (let t = 0; t < limitMs; t += 2) {
-    await wait(2);
-    const m = status.slice(from).find(x => x.includes(needle));
-    if (m) return m;
-  }
-  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
-};
-const placeAck = async (x, z, yaw) => { ws.send(`7:${x},${z},${yaw}`); return ack('placed'); };
+
+import { connect, send, ask, report } from '../lib.mjs';
+
+const g = await connect({ camera: true });
 const column = async (q, r) => {
-  ws.send(`15:${q},${r}`);
-  const m = await ack(`column ${q},${r} =`);
+  const m = await ask(g, `15:${q},${r}`, `column ${q},${r} =`);
   return m.slice(m.indexOf('=') + 1).trim();
 };
 
-ws.onmessage = async (e) => {
-  const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'S') status.push(b);
-  if (t === 'E') ws.send('2:1.5,');
-  if (t === 'C' && !st) { st = 1;
-    await placeAck(0, 0, 0);
+await send(g, '7:0,0,0', ['placed']);
 
-    // ── leak 1: an inadmissible ORDINAL value
-    const before = await column(0, 0);
-    ws.send('14:5');
-    const short = await ack('stencil');
-    const after = await column(0, 0);
+const before = await column(0, 0);
+const short = await ask(g, '14:5', 'stencil');
+const after = await column(0, 0);
 
-    // ── leak 2: an inadmissible NOMINAL value
-    ws.send('13:9,30');
-    const species = await ack('scatter');
+const species = await ask(g, '13:9,30', 'scatter');
+const dense = await ask(g, '13:1,500', 'scatter');
 
-    // ── leak 1 again, on a tool that had NO check at all: the scatter's
-    //    density was unvalidated, so `13:1,500` placed on every cell and called
-    //    it density 500. Ordinal, so it refuses with an offer and a residual.
-    ws.send('13:1,500');
-    const dense = await ack('scatter');
+await send(g, '7:0,0,0', ['placed']);
+const lowered = await ask(g, '5:-1', 'ground approximated');
 
-    // ── invariant I's THIRD state: applied as an explicit approximation, with
-    //    the residual REPORTED. Lowering ground that is already at the floor
-    //    cannot deliver what was asked; clamping is legitimate, silence is not.
-    await placeAck(0, 0, 0);
-    ws.send('5:-1');
-    const lowered = await ack('ground approximated');
+await send(g, '7:0,0,0', ['placed']);
+for (let k = 0; k < 3; k++) await send(g, '5:1', ['rebuilt']);
+await send(g, '7:14,0,0', ['placed']);            // partway up the hill's flank
+const road = await ask(g, '10:1', 'road true');
+await send(g, '10:0', ['road false']);
 
-    // ── the LAST approximation: a grade is an integer frozen from a real foot
-    //    height, so switching a road on loses up to half a unit. Stand on a
-    //    slope, where the feet are genuinely between grades, and require the
-    //    residual to be reported rather than quietly discarded.
-    await placeAck(0, 0, 0);
-    for (let k = 0; k < 3; k++) ws.send('5:1');   // ordered; `placeAck` below is the barrier
-    await placeAck(14, 0, 0);                      // partway up the hill's flank
-    ws.send('10:1');
-    const road = await ack('road true');
-    ws.send('10:0'); await ack('road false');
+const good = await ask(g, '14:12', 'stencil');
 
-    // ── and the doorstep lets a good value through untouched
-    ws.send('14:12');
-    const good = await ack('stencil');
-
-    // ⚠ THE SHAPE, NOT THE NUMBER. This read `minimum 8` / `offer 8` / `residual 3`
-    // spelled out, and the 8 was `W_EPS` — so raising ε to 10 turned a gate about
-    // *whether a refusal explains itself* into a gate about one constant's value, and
-    // it went red on a change that made every one of its claims MORE true.
-    //
-    // What `X68` actually requires is that a refusal names the bound it broke, offers
-    // the nearest legal value, and reports what that offer costs. So the bound is
-    // read out of the message and the other two are checked AGAINST it — still exact,
-    // and now it is the three numbers agreeing that passes rather than three literals.
-    const asked = 5;
-    const min = Number((short.match(/below the minimum (\d+)/) ?? [])[1]);
-    const named    = short.includes(`roof ${asked}`) && Number.isFinite(min) && min > asked;
-    const offered  = short.includes(`offer ${min}`);
-    const residual = short.includes(`residual ${min - asked}`);
-    const wroteNothing = after === before;
-    // the nominal refusal must NOT carry an offer — that is the whole of X68
-    const nominalRefused = species.includes('refused') && species.includes('species 9');
-    const noOffer = !species.includes('offer');
-    const applied = good.startsWith('stencil placed');
-    const densityRefused = dense.includes('density 500')
-                           && dense.includes('above the maximum 100')
-                           && dense.includes('offer 100') && dense.includes('residual 400');
-    // the approximation must NAME itself and carry a residual — it is not a refusal
-    const approxReported = lowered.includes('ground approximated')
-                           && lowered.includes('residual');
-    // the grade must say what it quantised FROM and by how much
-    const gradeReported = road.includes('quantised from') && road.includes('residual');
-    // ⚠ `wroteNothing` STAYS, and deliberately, though `w_tau` now proves the same
-    // thing in `hex_editor`'s tests for every gesture. Here it is checked at the
-    // END of the wire: a refusal that reached the author as words while the world
-    // moved anyway is the exact failure invariant I forbids, and only a running
-    // editor can show the sentence and the store disagreeing.
-    const ok = named && offered && residual && wroteNothing
-               && nominalRefused && noOffer && applied
-               && densityRefused && approxReported && gradeReported;
-    console.log(JSON.stringify({ short, species, dense, lowered, road, good,
-                                 named, offered, residual, wroteNothing,
-                                 nominalRefused, noOffer, applied,
-                                 densityRefused, approxReported, gradeReported, ok }));
-    ws.close(); process.exit(ok ? 0 : 1); }
-};
-ws.onopen = () => ws.send('1:');
-ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+const asked = 5;
+const min = Number((short.match(/below the minimum (\d+)/) ?? [])[1]);
+const named    = short.includes(`roof ${asked}`) && Number.isFinite(min) && min > asked;
+const offered  = short.includes(`offer ${min}`);
+const residual = short.includes(`residual ${min - asked}`);
+const wroteNothing = after === before;
+// the nominal refusal must NOT carry an offer — that is the whole of X68
+const nominalRefused = species.includes('refused') && species.includes('species 9');
+const noOffer = !species.includes('offer');
+const applied = good.startsWith('stencil placed');
+const densityRefused = dense.includes('density 500')
+                       && dense.includes('above the maximum 100')
+                       && dense.includes('offer 100') && dense.includes('residual 400');
+// the approximation must NAME itself and carry a residual — it is not a refusal
+const approxReported = lowered.includes('ground approximated')
+                       && lowered.includes('residual');
+// the grade must say what it quantised FROM and by how much
+const gradeReported = road.includes('quantised from') && road.includes('residual');
+// ⚠ `wroteNothing` STAYS, and deliberately, though `w_tau` now proves the same thing in
+// `hex_editor`'s tests for every gesture. Here it is checked at the END of the wire: a
+// refusal that reached the author as words while the world moved anyway is the exact
+// failure invariant I forbids, and only a running editor can show the sentence and the
+// store disagreeing.
+const ok = named && offered && residual && wroteNothing
+           && nominalRefused && noOffer && applied
+           && densityRefused && approxReported && gradeReported;
+report(g, { short, species, dense, lowered, road, good,
+            named, offered, residual, wroteNothing,
+            nominalRefused, noOffer, applied,
+            densityRefused, approxReported, gradeReported, ok }, ok);
