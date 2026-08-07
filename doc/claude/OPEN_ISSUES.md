@@ -390,9 +390,31 @@ everything at once and made the disagreement visible.
 up.** `MSG_RAISE` marks `PEAK_R + 2` — a comment there records the ring just outside
 `PEAK_R` holding a stale mesh and the gap you see through it. The measurement says
 the write still reaches further than the mark: the stale chunks are ~48 world units
-out, far past any plausible brush radius, and `raise_ahead` walks a **ray** while
-`mark_dirty` marks a **disc** around where that ray lands. Everything the ray
-crossed on the way is written and not marked.
+out, far past any plausible brush radius.
+
+⚠ **BUT THE MECHANISM NAMED BELOW IS CONTRADICTED BY THE CODE — read on 2026-08-08.**
+This entry said *"`raise_ahead` walks a **ray** while `mark_dirty` marks a **disc**
+around where that ray lands; everything the ray crossed on the way is written and not
+marked."* Read again:
+
+    raise_ahead   peak_cell(a) → ONE cell, ten hexes ahead; then
+                  brush(w, tq, tr, dir * PEAK_STEP, PEAK_R, …)
+    brush         a DISC: `for dq in -rad..rad`, `if hex_distance(q,r,tq,tr) < rad`
+    MSG_RAISE     mark_dirty(dirty, rack.ak_q, rack.ak_r, PEAK_R + 2)
+
+**The write is a disc of radius 7 at the peak and the mark is a disc of radius 9 at
+the same centre**, so the mark CONTAINS the write and nothing is written along the
+way. There is no ray. ⚠ **The 22-of-48 SYMPTOM is not withdrawn** — it was measured
+with a real instrument and stands until re-measured — but its stated CAUSE is a
+hypothesis the code refutes, and anyone starting from it will be looking for
+something that is not there.
+
+⚠ **So the next step is the instrument, not a fix.** Re-run `A7.3a`'s comparison
+(fresh server · `7:0,0,0` · three `5:1` · compare every loaded chunk's ground against
+the store) and find out whether the 22 still reproduce at all. A stale chunk 48 units
+from a brush of radius 7 is far more likely to be a chunk that was STREAMED and never
+re-sent — the same class as the limb block that reached no client joining after `44:`
+(fixed 2026-08-07) — than a marking radius.
 
 ⚠ **It is invisible to every existing gate**, because each one checks the store and
 the store is right. `G` again: *a count is not a picture* — and here the count is
