@@ -90,13 +90,31 @@ const sendUntil = (msg, prefixes, maxMs = 15000) => send(g, msg, prefixes, maxMs
 // rebuild takes.
 //
 // ⚠ THE COMPARISON THIS GATE ENDS ON IS A PICTURE, so what it waits for here decides
-// whether it measures part mode or the box. A raise leaves 22 of 48 chunk grounds
-// stale on the client for ever (OPEN_ISSUES), which is why the save/load below forces
-// a full rebuild first — and a full rebuild is exactly the thing whose duration a
-// fixed sleep cannot know.
+// whether it measures part mode or the box — and a full rebuild is exactly the thing
+// whose duration a fixed sleep cannot know.
+//
+// ⚠ THE 22-OF-48 STALE CHUNKS ARE FIXED, and their cause was never the dirty radius.
+// A chunk's window base leaked through every unwritten cell of the chunk, so one
+// brush of radius 7 moved the apparent ground of all 4096 cells of the four chunks
+// it opened — a plateau `mark_dirty` had no reason to mark and no gesture had asked
+// for. `lib/hex_world/tests/ground.loft` holds the rule now. The save/load below
+// stays: settling the picture before photographing it is right whatever the reason.
+// ⚠ (7,5) IS WHERE THE RAISE LANDS, AND (0,0) IS NOT. `raise_ahead` brushes
+// `PEAK_AHEAD` = 10 hexes along the author's facing, so from the pose below —
+// `7:0,0,0.5236` — the stroke lands on cell (7,5), which is what the server's own
+// `editor: brush (7,5)` line says. Reading the author's own cell reads a cell
+// nothing happened to.
+//
+// ⚠ AND THAT IS THE SECOND TIME THIS EXACT TRAP HAS BEEN SPRUNG HERE. The comment
+// below already records it once — *"the world came back exactly" passed on `column
+// 0,0 = ` against `column 0,0 = `* — and (0,0) went on being read anyway, because
+// it had started answering. It answered because a chunk's window base leaked into
+// every unwritten cell of the chunk, so writing anything anywhere lifted (0,0) too.
+// With that fixed the cell is honestly absent, and every comparison over it is once
+// again between two empty answers.
 const readStore = async () => ({
-  cell: await askOne('26:0,0', 'cell '),
-  column: await askOne('15:0,0', 'column '),
+  cell: await askOne('26:7,5', 'cell '),
+  column: await askOne('15:7,5', 'column '),
 });
 
 const partFile = `${ROOT}/${PART}.hxw`;
@@ -138,17 +156,15 @@ check(g.says.some((s) => s.startsWith('house placed')),
 
 // ── settle the picture before photographing it ──────────────────────────────
 //
-// ⚠ A RAISE LEAVES CHUNK GROUNDS STALE ON THE CLIENT, AND THAT IS NOT THIS
-// FEATURE'S DOING. Measured on a fresh server: after `5:1` and any amount of
-// waiting, 22 of 48 loaded chunks hold a ground mesh that does not match the
-// store, and they stay that way for ever — until *anything* forces a full
-// rebuild. Attributed away from part mode by forcing one with `8:`/`9:` instead,
-// which produces the SAME 22. See OPEN_ISSUES § *A raise marks fewer chunks than
-// it writes*.
+// A save and a load, so the swap is photographed against a SETTLED picture.
 //
-// So the swap gets photographed against a settled picture rather than a stale one.
-// Without this the comparison below reports 22 differences that part mode did not
-// cause — a true measurement of the wrong thing, which is worse than no check.
+// ⚠ THIS USED TO BE HERE FOR A DEFECT THAT IS NOW FIXED — *a raise leaves 22 of 48
+// chunk grounds stale on the client for ever*. The cause was not the marking radius
+// it was blamed on for four days: an unwritten cell read back its chunk's window
+// base, so one brush moved 4096 cells' apparent ground and only 4 chunks were dirty.
+// It stays because forcing a full rebuild before a picture comparison is right on
+// its own merits, and because it is the only thing here that would notice the class
+// coming back.
 await sendUntil('8:part_mode_probe', ['saved ', 'save refused']);
 await sendUntil('9:part_mode_probe', ['loaded ', 'load refused']);
 await meshesQuiet();
@@ -158,7 +174,7 @@ check(worldBefore.cell.startsWith('cell '), `the world answers a cell read (${wo
 // ⚠ THE INSTRUMENT, CHECKED AGAINST SOMETHING IT SHOULD FIND. The raise just
 // happened, so the cell under the walker must have moved off the floor — and if
 // it has not, every comparison below is between two identical empty answers.
-check(worldBefore.cell !== 'cell 0,0 = 0,0',
+check(worldBefore.cell !== 'cell 7,5 = 0,0',
       `and the raise is visible in it (${worldBefore.cell})`);
 
 const hudsBefore = g.huds.length;

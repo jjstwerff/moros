@@ -372,7 +372,103 @@ with its own documentation:
 | The socket, message by message | [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) |
 | The plans themselves | `gh issue list -R jjstwerff/moros --label plan --state all` |
 
-### Open: a raise marks fewer chunks than it writes, and the client keeps the stale ground
+### ✅ FIXED 2026-08-08 — a raise moved 4096 cells and marked 4, and the marking was never wrong
+
+⚠ **THE TITLE THIS ENTRY CARRIED FOR FOUR DAYS NAMED THE WRONG ORGAN.** It read *"a raise
+marks fewer chunks than it writes"*. The marking was right all along — `mark_dirty` covers
+`PEAK_R + 2` around a brush of `PEAK_R` and **contains** the write exactly. What escaped it was
+a height **no gesture had produced**.
+
+**A height is stored relative to its chunk's window base** (`S1`), and **one base serves the
+whole 32×32 tile**. Four readers — `world_ground_cell`, `world_cell`, `world_column`,
+`world_dressing` — decoded `ck_base + sv_height` unconditionally, so every cell nobody had
+written answered `ck_base`. Writing one cell lifted the apparent ground of the other 1023 in
+its chunk. `world_surface` was the **one** reader that guarded (on `stored_occupied`), which is
+exactly why the class stayed invisible: the question was already being asked, in one place, and
+nobody noticed the other four did not ask it.
+
+Measured, one brush of radius 7 at the origin (`probe/stale/extent.loft`):
+
+| | before | after |
+|---|---|---|
+| cells **written** (material set) | 91, over q −5..5 r −5..5 | 91, same extent |
+| cells whose **height moved** | **4096**, over q −32..31 r −32..31 | **91**, same extent |
+| `terrain_h(20,20)`, never written | **6** | 0 |
+| chunk meshes CHANGED vs MARKED (`EDITOR_PROBE=fit`) | **81 of 81** vs 4 | 4 vs 4, **0 stale** |
+
+The two stale-mesh magnitudes the mesh probe reported, `1.500` and `0.250` wu, are exactly the
+two chunk bases — 6 and 1 — times the 0.25 wu height unit. That is the whole of the 22-of-48.
+
+⚠ **AND IT CORRUPTED THE RAISE ITSELF, WHICH NOTHING HAD NOTICED.** `brush` reads `ground_h`
+before adding its delta, so once a chunk had rebased, every later stroke read the base back as
+existing ground and built on top of it. Measured (`probe/stale/raise3.loft`): one press of
+`PEAK_STEP = 6` stood **7** units high, three presses **19** instead of 18, and a cell twelve
+hexes out — never written — stood at **1**. Every terrain number in the tree was one height
+unit high.
+
+**The fix is one decode**, `hex_of`, asking the predicate the write path already asks
+(`stored_present`), with `E1`(3) as its rule — *reading an absent cell yields exactly what
+reading a stored all-zero one would*. Three tests in `lib/hex_world/tests/ground.loft`, all
+seen red against the old reader.
+
+⚠ **FOUR THINGS WERE RESTING ON IT**, and each is worth more than the fix:
+- **`storey.loft`'s stair test** read `terrain_h` at a cell the stairwell had just cleared, and
+  called the leftover `sv_height` "the tread's own ground". It reads the hillside *before* the
+  cut now, and takes the top of the column — `world_surface` cannot make that claim at all,
+  because asked for the surface under the ground it falls back to the **lowest** layer, so a
+  tread floating over the hillside came back as the cellar floor and read as a pass.
+- **`part_mode.mjs`** checked *"the raise is visible"* by reading cell **(0,0)** — the author's
+  own cell, which a raise never touches (it lands ten hexes ahead, at (7,5) for that pose). It
+  answered only because the base leaked. ⚠ The gate's own comment already records this exact
+  trap being sprung once before.
+- **`cart.mjs`** banked its cart on the **step between two artificial plateaus**. With the
+  plateaus gone its fixture met no slope at all — `maxBank 0, banked false`, the gate's own
+  void-guard firing correctly. See the new entry below.
+- **`cellar.keys`'s `meshy` split** separated two vertex populations by a fixed world-y, which
+  worked because a large part of the ground under the disc was flat at exactly one height. See
+  the new entry below.
+
+### Open: the cart's wheels leave the ground on a real slope
+
+⚠ **Found 2026-08-08, and only because the window-base fix took away the fake slope it had
+been tested on.** `cart.mjs` asserts `grounded` — every wheel within a millimetre of the drawn
+ground — and that clause had **never been asked about a genuine gradient**. Its hill landed
+~14 wu off the cart's line and never reached it; what banked the cart was the step between two
+chunk-wide plateaus, and on flat ground the contact solve is exact.
+
+Measured on a real dome flank, and **identical before and after the fix**, so it is nothing to
+do with it:
+
+| raises | bank (rad) | worst gap |
+|---|---|---|
+| 1 | 0.083 | 1.5e−8 |
+| 3 | 0.245 | 3.5e−5 |
+| 5 | 0.396 | **1.3e−3** — `grounded` fails |
+| 5, nearer the peak | 0.833 | **9.8e−2** — a hand's width |
+
+The error grows sharply with slope. The gate now drives a real 0.245 rad flank (`3:106,0`,
+three raises), which is a stronger fixture than the artifact's 0.083 — but the solve above
+0.25 rad is unfixed, and a cart on a steep hillside floats. It is `msim::ground_gap` and the
+`asm_frames` contact solve that own it.
+
+### Open: `cellar.keys`'s soffit split lost its exact reading
+
+⚠ **Same cause, 2026-08-08.** `meshy soffit` split 648 vertices into 306 and 342 — 17 fans of
+18, and those 17 ceilings plus the two treads' undersides — by a fixed world-y at 1.75. That
+worked because every cell the brush's falloff rounded to zero sat at one constant height, so
+the ceilings clustered. On the dome's real curve they interleave with the floor undersides, and
+**no threshold reads a multiple of 18**:
+
+    T       0.75  1.0  1.125  1.25  1.375  1.5  1.625  1.75  1.875  2.0  2.25
+    count    198  256   292    292   310   310   314    314   332    332  352
+
+The 4-vertex step from 310 to 314 is the tell — fans arrive 18 at a time, so a step of 4 is one
+fan straddling the boundary. The rows read 310/338 at 1.5 now and say in the file that they no
+longer count fans; the 36-fan total is still pinned exactly by `mesh soffit 648`. **The repair
+is to level the ground under the disc in the fixture**, so the ceilings cluster by construction
+rather than by luck.
+
+### Was: a raise marks fewer chunks than it writes, and the client keeps the stale ground
 
 ⚠ **Found 2026-08-04 by plan 17 `A7.3a`, and only because a new instrument compared
 two pictures of the same world.** On a **fresh** server: `7:0,0,0` · three `5:1`
@@ -409,18 +505,25 @@ with a real instrument and stands until re-measured — but its stated CAUSE is 
 hypothesis the code refutes, and anyone starting from it will be looking for
 something that is not there.
 
-⚠ **So the next step is the instrument, not a fix.** Re-run `A7.3a`'s comparison
-(fresh server · `7:0,0,0` · three `5:1` · compare every loaded chunk's ground against
-the store) and find out whether the 22 still reproduce at all. A stale chunk 48 units
-from a brush of radius 7 is far more likely to be a chunk that was STREAMED and never
-re-sent — the same class as the limb block that reached no client joining after `44:`
-(fixed 2026-08-07) — than a marking radius.
+⚠ **So the next step is the instrument, not a fix.** *(Written 2026-08-08, and it was the
+right call — but the instrument to reach for was already in the tree.* `EDITOR_PROBE=fit`
+in `src/editor_server.loft` compares CHANGED against MARKED with a negative control, and
+answered in one run: **81 of 81 chunk meshes changed against 4 marked.** The guess recorded
+here — a chunk STREAMED and never re-sent — was wrong too, and it is the third wrong cause
+this entry carried. What the probe could not say was **why** 81 changed, and that took one
+more instrument: read the STORE, not the mesh, and the 4096-cell plateau is immediate.
+⚠ **Both guesses blamed transport. The defect was in the READ, and the store was never
+right — every gate that "checked the store and found it correct" was asking the same
+lying reader.)*
 
 ⚠ **It is invisible to every existing gate**, because each one checks the store and
 the store is right. `G` again: *a count is not a picture* — and here the count is
-correct and the picture is not. `tools/gates/world/part_mode.mjs` works around it
-by settling the picture with a save/load before it photographs anything, and says
-so; the fix belongs with whoever owns `raise_ahead`'s extent.
+correct and the picture is not. *(⚠ **This sentence was false and it is the reason the
+entry survived four days.** The store was NOT right: `terrain_h(20,20)` answered 6 where
+nothing had ever been written. The gates agreed with the picture's producer because they
+asked it the same question through the same broken decode — not because the store held
+one truth and the screen another. `G`'s real lesson here is the opposite of the one
+recorded: **when a count and a picture agree, they may share an instrument.**)*
 
 ### Open: `stencil_place`'s roof fence admits roofs the walls cannot reach
 

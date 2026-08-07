@@ -1,0 +1,38 @@
+// WHAT THREE RAISES ACTUALLY BUILD — the store, with no server and no picture.
+//
+// `cellar.keys` builds its hill with three `ArrowUp` presses and then asserts where
+// a walker's feet land. Those bands were written against a terrain the window-base
+// leak inflated: `brush` reads `ground_h` before adding its delta, so once a chunk
+// had rebased, every later stroke read the base back as existing ground and built on
+// top of it. This prints the peak so the honest number is a measurement rather than
+// an argument: three strokes of PEAK_STEP must stand exactly 3 * PEAK_STEP high.
+use hex_world;
+use hex_editor;
+
+fn peak_of(w: World, tq: integer, tr: integer) -> integer {
+  hex_editor::terrain_h(tq, tr, w)
+}
+
+fn main() {
+  w = hex_world::world_new(0.25, 0, 10, 4).wn_world;
+  a = hex_editor::author_at(0.0, 0.0, 0.0);
+  tq = 0;
+  tr = 0;
+  hex_editor::peak_cell(a, tq, tr);
+  println("author at (0,0) facing +x — the peak lands on cell ({tq},{tr})");
+  println("  before any stroke: {peak_of(w, tq, tr)}");
+  for i in 1..4 {
+    ack = hex_editor::raise_ahead(w, a, 1);
+    println("  after stroke {i}: peak cell = {peak_of(w, tq, tr)}   ack ({ack.ak_q},{ack.ak_r}) {ack.ak_why}");
+  }
+  got = peak_of(w, tq, tr);
+  want = 3 * hex_editor::PEAK_STEP;
+  println("  three strokes of PEAK_STEP={hex_editor::PEAK_STEP} want {want}, got {got}");
+  // And the skirt: a cell just outside the brush must still be untouched ground.
+  println("  a cell 12 hexes out: {peak_of(w, tq + 12, tr)}  (must be 0)");
+  if got == want && peak_of(w, tq + 12, tr) == 0 {
+    println("PROBE PASS - the hill is exactly what was asked for, and the skirt is flat");
+  } else {
+    println("PROBE FAIL - got {got} against {want}");
+  }
+}

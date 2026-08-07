@@ -42,11 +42,16 @@ true *now*:
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 
-⚠ **AND THE STALE-CHUNK ISSUE'S CAUSE IS WITHDRAWN, ITS SYMPTOM IS NOT.**
-[OPEN_ISSUES](OPEN_ISSUES.md) said `raise_ahead` walks a RAY; it brushes a **disc** of radius 7 at
-the peak and the handler marks a disc of radius 9 at the same centre, so the mark contains the
-write. The 22-of-48 measurement stands. **Next step there is the instrument, not a fix** — re-run
-`A7.3a`'s comparison and see whether it still reproduces.
+✅ **AND THE STALE-CHUNK ISSUE IS FIXED — the cause was in the READ, and it was never the
+marking.** An unwritten cell decoded as `ck_base + 0` and one base serves a whole 32×32 tile, so
+a brush of radius 7 **wrote 91 cells and moved 4096**. The fix is one decode (`hex_of`) asking
+the predicate the write path already asks. ⚠ **It also made every terrain number in the tree one
+height unit high** — three presses of `PEAK_STEP = 6` stood 19 units, not 18 — because `brush`
+adds its delta to `ground_h` and read the leaked base back as existing ground.
+[OPEN_ISSUES](OPEN_ISSUES.md) carries the measurements and the four things that were resting on
+it. **Two follow-ups came out of it, both live**: the cart's wheels leave the ground on a real
+slope (pre-existing, and the fake slope is why nobody saw it), and `cellar.keys`'s soffit split
+lost its exact fan count.
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
@@ -415,15 +420,15 @@ same source, so a per-backend green said nothing. It was *right* at some sites a
 now dropped. ⚠ **The lint is back at 4 sites, all `wld: &World`** — the exact class; not touched.
 **The compiler's advice is a hypothesis. Run the suite against it; the check costs one run.**
 
-⚠ **A RAISE LEAVES 22 OF 48 CHUNK GROUNDS STALE ON THE CLIENT, AND NOTHING EVER CORRECTS THEM.**
-Found 2026-08-04 by `A7.3a`, whose picture comparison was the first instrument to re-mesh a whole
-world at once. Attributed away from part mode by forcing the same rebuild with `8:`/`9:` — the same
-22. `raise_ahead` writes along a **ray**; `mark_dirty` marks a **disc** around where the ray lands.
-Invisible to every existing gate, because they all check the store and the store is right — `G`,
-with the count correct and the picture wrong.
-[OPEN_ISSUES § *A raise marks fewer chunks than it writes*](OPEN_ISSUES.md). ⚠ Any gate that
-photographs the world must **settle the picture first**, or it reports 22 differences its own
-feature did not cause.
+✅ **THE 22-OF-48 STALE CHUNKS ARE FIXED (2026-08-08), AND THE ENTRY HERE NAMED THE WRONG ORGAN
+FOR FOUR DAYS.** Not a marking radius, and not a ray: `mark_dirty` covers `PEAK_R + 2` around a
+brush of `PEAK_R` and contains the write exactly. **An unwritten cell read back its chunk's window
+base** — one base per 32×32 tile — so one brush moved 4096 cells' apparent ground. ⚠ **The line
+that kept it alive was *"they all check the store and the store is right"*: the store was NOT
+right, and the gates agreed with the picture because they asked the same broken reader.** When a
+count and a picture agree, ask whether they share an instrument.
+[OPEN_ISSUES](OPEN_ISSUES.md) has the numbers. ⚠ Settling a photographed world is still right on
+its own merits, and `part_mode.mjs` still does it.
 
 **A struct name is GLOBAL across a consumer's dependency graph, and a package suite cannot see
 it.** `hex_part` was 131 green while `hex_editor` would not build, because both declared `Fit`.
