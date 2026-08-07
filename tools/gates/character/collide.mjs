@@ -40,38 +40,29 @@
 // ⚠ And it is a DISTANCE, not an arrival. A character that never moved also fails
 // to arrive; the difference between "stopped at the fence" and "stopped at its own
 // feet" is the entire feature, so the stop is checked against where the fence is.
-const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
-const wait = (ms) => new Promise(r => setTimeout(r, ms));
-const status = [];
-let st = 0, body = null, tCount = 0;
-const settleFailures = [];
+
+import { connect, send, ask, until, report, traceOf } from '../lib.mjs';
+
 const TARGET = 12.0;      // wu asked of an unobstructed walk; > fenceAt + 1
-const ack = async (needle, limitMs = 40000) => {
-  const from = status.length;
-  for (let t = 0; t < limitMs; t += 2) {
-    await wait(2);
-    const m = status.slice(from).find(x => x.includes(needle));
-    if (m) return m;
-  }
-  console.error(`GATE-TIMEOUT ${needle} ${limitMs}ms`); return `(no "${needle}" in ${limitMs}ms)`;
-};
 const SQ3 = Math.sqrt(3);
 const cellXZ = (q, r) => [SQ3 * q + (SQ3 / 2) * (r & 1), 1.5 * r];
-// The body's model matrix is column-major, so the translation is elements 12/13/14.
-const posOf = () => (body ? [body[12], body[14]] : [NaN, NaN]);
-// ⚠ `T:` IS BROADCAST ONLY FROM INSIDE `if moved`, so a standing character produces
-// no next transform and waiting for one times out. `2:<aspect>,` sets `moved`, so
-// the following tick broadcasts — a position can be REQUESTED. Two requests that
-// agree is a fixed point on the observable, and there is no deceleration to wait
-// out: `if fwd != 0.0` means key-up stops the walk in the same tick.
+
+const g = await connect({ camera: true });
+const settleFailures = [];
+// The body's x,z — `T:0;` is its own transform, and the id is a CONTRACT that has
+// moved once before (PART_BODY slid 1 -> 0 when the world went infinite).
+const bodies = () => traceOf(g, '0;').map((b) => b.slice(2).split(',').map(Number));
+const posOf = () => { const t = bodies(); if (!t.length) return null;
+                      const m = t[t.length - 1]; return [m[12], m[14]]; };
+const nextT = async (limitMs = 8000) => {
+  const before = bodies().length;
+  return until(() => bodies().length !== before, 'no transform (the body is at rest)', limitMs);
+};
 const freshPos = async (limitMs = 8000) => {
-  const before = tCount;
-  ws.send('2:1.5,');
-  for (let t = 0; t < limitMs; t += 2) {
-    if (tCount !== before) return posOf();
-    await wait(2);
-  }
-  return null;
+  const before = bodies().length;
+  g.ws.send('2:1.5,');
+  const got = await until(() => bodies().length !== before, 'no fresh transform', limitMs);
+  return got ? posOf() : null;
 };
 const restingPos = async (limit = 200) => {
   let a = await freshPos();
@@ -82,18 +73,9 @@ const restingPos = async (limit = 200) => {
   }
   return { pos: a, ok: false };
 };
-const nextT = async (limitMs = 8000) => {
-  const before = tCount;
-  for (let t = 0; t < limitMs; t += 1) {
-    if (tCount !== before) return true;
-    await wait(1);
-  }
-  return false;
-};
 const placeAt = async (q, r) => {
   const [x, z] = cellXZ(q, r);
-  ws.send(`7:${x.toFixed(4)},${z.toFixed(4)},0`);
-  await ack('placed');
+  await send(g, `7:${x.toFixed(4)},${z.toFixed(4)},0`, ['placed']);
   // The place handler sets px/pz and acks in the same breath, but the TRANSFORM
   // follows on a later tick — so read the position back rather than sleeping and
   // hoping, and check it is the one that was asked for.
@@ -114,8 +96,8 @@ const walkUntil = async (target, stillFor = 4) => {
   // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
   // faster, so the world is the one this gate has always measured and the
   // waiting is not. (STATE.md: three rates, byte-identical worlds.)
-  ws.send('34:8');
-  ws.send('4:1');
+  g.ws.send('34:8');
+  g.ws.send('4:1');
   let still = 0, stopped = false, reached = false;   // `reached` is concluded below
   for (let k = 0; k < 4000; k++) {
     if (!(await nextT())) break;
@@ -126,7 +108,7 @@ const walkUntil = async (target, stillFor = 4) => {
     if (still >= stillFor) { stopped = true; break; }
     if (Math.hypot(now[0] - from[0], now[1] - from[1]) >= target) break;
   }
-  ws.send('4:0');
+  g.ws.send('4:0');
   const end = await restingPos();
   // ⚠ REPORT THE DISTANCE THE REASON IMPLIES. Reached means the walk covered exactly
   // `target` — the overshoot past the sample that crossed it is an artifact of when
@@ -149,66 +131,50 @@ const walkUntil = async (target, stillFor = 4) => {
            stopped, reached, settled: start.ok && end.ok };
 };
 
-ws.onmessage = async (e) => {
-  const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'S') status.push(b);
-  if (t === 'T') {
-    const k = b.indexOf(';');
-    if (Number(b.slice(0, k)) === 0) { body = b.slice(k + 1).split(',').map(Number); tCount++; }
-  }
-  if (t === 'E') ws.send('2:1.5,');
-  if (t === 'C' && !st) { st = 1;
-    const R = 3;
-    // The ring's outermost edge is half a hex beyond the last cell it contains, so
-    // a walker leaving the centre due east meets it at (R + 0.5)·√3.
-    const fenceAt = (R + 0.5) * SQ3;
-    const out = { fenceAt: +fenceAt.toFixed(3) };
+const R = 3;
+// The ring's outermost edge is half a hex beyond the last cell it contains, so
+// a walker leaving the centre due east meets it at (R + 0.5)·√3.
+const fenceAt = (R + 0.5) * SQ3;
+const out = { fenceAt: +fenceAt.toFixed(3) };
 
-    // ── 3: the control first — open ground, nothing in the way.
-    await placeAt(0, 0);
-    const free = await walkUntil(TARGET);
-    out.free = free;
+// ── 3: the control first — open ground, nothing in the way.
+await placeAt(0, 0);
+const free = await walkUntil(TARGET);
+out.free = free;
 
-    // ── 1: inside a fence ring, well away from the control's tracks.
-    await placeAt(60, 0);
-    ws.send(`23:3,${R}`);
-    out.fenced = await ack('fenced');
-    await placeAt(60, 0);
-    const blocked = await walkUntil(TARGET);
-    out.blocked = blocked;
+// ── 1: inside a fence ring, well away from the control's tracks.
+await placeAt(60, 0);
+out.fenced = (await send(g, `23:3,${R}`, ['fenced'])).find((x) => x.startsWith('fenced')) ?? '';
+await placeAt(60, 0);
+const blocked = await walkUntil(TARGET);
+out.blocked = blocked;
 
-    // ── 2: a gateway in the ring, on the cell due east of the centre.
-    // `24:0,2` sets that cell's E edge — the outward one, since it is on the ring.
-    await placeAt(60 + R, 0);
-    ws.send('24:0,2');
-    out.gate = await ack('edge 0 of');
-    await placeAt(60, 0);
-    const through = await walkUntil(TARGET);
-    out.through = through;
+// ── 2: a gateway in the ring, on the cell due east of the centre.
+// `24:0,2` sets that cell's E edge — the outward one, since it is on the ring.
+await placeAt(60 + R, 0);
+out.gate = (await send(g, '24:0,2', ['edge 0 of'])).find((x) => x.startsWith('edge 0 of')) ?? '';
+await placeAt(60, 0);
+const through = await walkUntil(TARGET);
+out.through = through;
 
-    // ── 4: the SLIDE. Meet the wall at an angle and travel ALONG it.
-    // Straight on it stops (clause 1) because there is no tangential component to
-    // keep; obliquely it must not. The measurement is that the walker keeps moving
-    // while the distance to the wall stops changing.
-    await placeAt(60, 0);
-    ws.send(`23:3,${R}`); await ack('fenced');
-    await placeAt(60, 0);
-    ws.send(`3:0,0`);                      // no look change; yaw is set by place
-    const oblique = await walkUntil(TARGET);
-    out.oblique = oblique;
+// ── 4: the SLIDE. Meet the wall at an angle and travel ALONG it.
+// Straight on it stops (clause 1) because there is no tangential component to
+// keep; obliquely it must not. The measurement is that the walker keeps moving
+// while the distance to the wall stops changing.
+await placeAt(60, 0);
+await send(g, `23:3,${R}`, ['fenced']);
+await placeAt(60, 0);
+g.ws.send(`3:0,0`);                      // no look change; yaw is set by place
+const oblique = await walkUntil(TARGET);
+out.oblique = oblique;
 
-    const controlRuns = free.reached && !free.stopped && TARGET > fenceAt + 1.0;
-    const stops = blocked.stopped && !blocked.reached;
-    const stopsAtTheFence = blocked.gone > fenceAt - 1.2 && blocked.gone < fenceAt + 0.2;
-    const gatewayPasses = through.reached && !through.stopped;
-    const settled = settleFailures.length === 0
-                    && [free, blocked, through, oblique].every((w) => w.settled);
-    const ok = controlRuns && stops && stopsAtTheFence && gatewayPasses && settled;
-    console.log(JSON.stringify({ ...out, target: TARGET, controlRuns, stops,
+const controlRuns = free.reached && !free.stopped && TARGET > fenceAt + 1.0;
+const stops = blocked.stopped && !blocked.reached;
+const stopsAtTheFence = blocked.gone > fenceAt - 1.2 && blocked.gone < fenceAt + 0.2;
+const gatewayPasses = through.reached && !through.stopped;
+const settled = settleFailures.length === 0
+                && [free, blocked, through, oblique].every((w) => w.settled);
+const ok = controlRuns && stops && stopsAtTheFence && gatewayPasses && settled;
+report(g, { ...out, target: TARGET, controlRuns, stops,
                                  stopsAtTheFence, gatewayPasses, settled,
-                                 settleFailures, ok }));
-    ws.close(); process.exit(ok ? 0 : 1); }
-};
-ws.onopen = () => ws.send('1:');
-ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+                                 settleFailures, ok }, ok);
