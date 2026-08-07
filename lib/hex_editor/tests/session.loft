@@ -630,3 +630,52 @@ fn test_a_cupboard_ignores_a_deck() {
   got = annex_cupboard(decks, 0.25);
   assert(!got.ab_ok, "a cupboard was stood beside a balcony");
 }
+
+// ── `25:` — THE TWO-PRESS MACHINE, and what a REFUSAL leaves behind ─────────
+//
+// ⚠ THE STATE BETWEEN TWO PRESSES WAS THE SERVER'S, so the only way to ask what a
+// first press does — or what a refused second one leaves behind — was to press a key
+// over a wire twice. The last is the one nobody could see, and it is deliberate
+// behaviour rather than an accident.
+fn test_the_first_press_records_and_builds_nothing() {
+  s = session_new();
+  session_at(s, 2.0, 0.0, 0.0);
+  got = session_wall(s, WALL_MAT);
+  assert(got.ds_code == DS_STARTED, "the first press answered {got.ds_code}");
+  assert(s.es_draft.wd_open, "the draft is not open after the first press");
+  assert(s.es_draft.wd_x > 1.99 && s.es_draft.wd_x < 2.01,
+         "the near end is at {s.es_draft.wd_x}, and the author stood at 2");
+}
+
+fn test_the_second_press_builds_the_run_and_closes_the_draft() {
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  session_wall(s, WALL_MAT);
+  session_at(s, 6.0, 0.0, 0.0);
+  got = session_wall(s, WALL_MAT);
+  assert(got.ds_code == DS_RUN, "the second press answered {got.ds_code}");
+  assert(got.ds_run.rd_reach > 5.99 && got.ds_run.rd_reach < 6.01,
+         "the run is {got.ds_run.rd_reach} long for a six-unit walk");
+  assert(!s.es_draft.wd_open, "the draft is still open after a run was built");
+}
+
+// ⚠ AND A REFUSED SECOND PRESS CLOSES IT TOO. An author who reads *a way needs two
+// ends* as *try the second press again* gets a run from where they stand to wherever
+// they walk next — so the machine ends the draft either way, and the next press
+// STARTS one. Nothing in the acknowledgement says which state you are in, which is
+// exactly why the behaviour is worth pinning.
+fn test_a_refused_second_press_closes_the_draft_too() {
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  session_wall(s, WALL_MAT);
+  session_at(s, 0.1, 0.1, 0.0);
+  refused = session_wall(s, WALL_MAT);
+  assert(refused.ds_code == DS_REFUSED, "two presses in one place answered {refused.ds_code}");
+  assert(!s.es_draft.wd_open, "the draft survived a refusal");
+  // The control: the next press STARTS a draft rather than completing the old one.
+  session_at(s, 9.0, 0.0, 0.0);
+  next = session_wall(s, WALL_MAT);
+  assert(next.ds_code == DS_STARTED,
+         "the press after a refusal answered {next.ds_code} — it completed a draft "
+       + "the refusal was supposed to have closed");
+}

@@ -1617,6 +1617,47 @@ pub fn run_between(x0: float, z0: float, x1: float, z1: float,
                       wr_mat: mat, wr_step: rb_step } };
 }
 
+// ── THE TWO-PRESS MACHINE — `25:`, the headless thread ─────────────────────
+//
+// ⚠ A RUN IS TWO PRESSES AND THE STATE BETWEEN THEM WAS THE SERVER'S. `WallDraft`
+// was declared in `editor_server.loft`, so *what a first press does*, *what a second
+// press does* and — the one nobody could see — *what a REFUSED second press leaves
+// behind* were reachable only by pressing a key over a wire twice.
+//
+// ⚠ THE REFUSAL CLOSES THE DRAFT, AND THAT IS THE INTERESTING ONE. Two presses in
+// one place answer *a way needs two ends* AND end the draft, so the next press
+// STARTS a new one rather than completing the old. An author who read the refusal as
+// *try the second press again* gets a run from where they are standing to wherever
+// they walk next — and nothing in the acknowledgement says which state they are in.
+// It is behaviour worth keeping deliberately, so it is worth a test.
+pub struct WallDraft { wd_open: boolean = false, wd_x: float = 0.0, wd_z: float = 0.0 }
+
+pub const DS_STARTED = 0;   // the first press: the near end is remembered
+pub const DS_RUN     = 1;   // the second: here is the run
+pub const DS_REFUSED = 2;   // …and the draft is closed either way
+
+pub struct DraftStep {
+  ds_code: integer,
+  ds_run:  RunDraft = RunDraft {},
+  ds_why:  text = "",
+}
+
+pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftStep {
+  if !draft.wd_open {
+    draft.wd_open = true;
+    draft.wd_x = x;
+    draft.wd_z = z;
+    return DraftStep { ds_code: DS_STARTED };
+  }
+  // ⚠ CLOSED BEFORE THE RUN IS JUDGED, never after. A refusal that left the draft
+  // open would make the next press mean something different from what it means
+  // after a success, which is a mode an author cannot see.
+  draft.wd_open = false;
+  rb = run_between(draft.wd_x, draft.wd_z, x, z, mat);
+  if !rb.rd_ok { return DraftStep { ds_code: DS_REFUSED, ds_why: rb.rd_why }; }
+  return DraftStep { ds_code: DS_RUN, ds_run: rb };
+}
+
 pub fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float {
   a = atan2(dz, dx);
   k = a / WALL_SNAP ?? 0.0;

@@ -1018,7 +1018,9 @@ fn wall_up(mat: integer) -> integer {
 // `&boolean` that is assigned, while `&integer`, `&float` and `&text` all worked.
 // **Fixed upstream (`5565278f`) and verified here on both backends.** That fix too
 // was wider than the report — four sites, where this consumer hit one.
-struct WallDraft { wd_open: boolean, wd_x: float, wd_z: float }
+// ⚠ `WallDraft` IS `hex_editor`'s NOW — the two-press machine went with the
+// gesture. What a first press does, what a second does, and what a REFUSED second
+// press leaves behind were reachable only by pressing a key over a wire twice.
 
 // `snap_heading` is `hex_editor`'s now — the wall run went with the gesture.
 
@@ -1518,29 +1520,25 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
     println("editor: road refused — {fit_why(wfit)}");
     return;
   }
-  if !draft.wd_open {
-    draft.wd_open = true;
-    draft.wd_x = px;
-    draft.wd_z = pz;
+  // ⚠ THE MACHINE IS `hex_editor::wall_step` — the headless thread. It records the
+  // near end on the first press and answers with the run on the second, and it
+  // CLOSES the draft either way: a refusal that left it open would make the next
+  // press mean something different from what it means after a success, which is a
+  // mode an author cannot see.
+  wstep = hex_editor::wall_step(draft, px, pz, wmat);
+  if wstep.ds_code == hex_editor::DS_STARTED {
     srv.send_to(cid, "S:road started at {px},{pz}");
     println("editor: road started at {px},{pz}");
     return;
   }
-  draft.wd_open = false;
-  // ⚠ THE RUN IS `hex_editor::run_between` NOW — the headless thread. The snap was
-  // always the library's; what was here is the refusal and the LENGTH, and the
-  // length is a decision: the reach is measured ALONG the snapped heading, never as
-  // the straight-line distance, or the way runs past where the author stopped by
-  // exactly their drift.
-  wdr = hex_editor::run_between(draft.wd_x, draft.wd_z, px, pz, wmat);
-  if !wdr.rd_ok {
-    srv.send_to(cid, "S:road refused — {wdr.rd_why}");
+  if wstep.ds_code == hex_editor::DS_REFUSED {
+    srv.send_to(cid, "S:road refused — {wstep.ds_why}");
     return;
   }
-  step = wdr.rd_step;
-  resid = wdr.rd_resid;
-  reach = wdr.rd_reach;
-  run = wdr.rd_run;
+  step = wstep.ds_run.rd_step;
+  resid = wstep.ds_run.rd_resid;
+  reach = wstep.ds_run.rd_reach;
+  run = wstep.ds_run.rd_run;
   grade = py_of(wld, draft.wd_x, draft.wd_z);
 
   // ⚠ THE MATERIAL DECIDES, and until S3 it did not. `25:1` is a WALL and `25:3` a
@@ -5172,7 +5170,6 @@ fn main() {
   ring_x = 0.0;
   ring_z = 0.0;
   ring_r = 0.0;
-  wall_draft = WallDraft { wd_open: false, wd_x: 0.0, wd_z: 0.0 };
 
   // ── PART MODE — plan 17 `A7.3a` ────────────────────────────────────────────
   //
@@ -6365,8 +6362,8 @@ fn main() {
             sn_txt += "  run mat {sn_run.wr_mat} heading {sn_run.wr_step}/24"
                     + "  ({sn_run.wr_x0},{sn_run.wr_z0}) -> ({sn_run.wr_x1},{sn_run.wr_z1})\n";
           }
-          sn_txt += "draft open {wall_draft.wd_open}"
-                  + " at ({wall_draft.wd_x},{wall_draft.wd_z})\n";
+          sn_txt += "draft open {sess.es_draft.wd_open}"
+                  + " at ({sess.es_draft.wd_x},{sess.es_draft.wd_z})\n";
           sn_txt += "\ncolumns around the character — heights / labels / owned edges\n";
           for sn_dr in (0 - 2)..3 {
             for sn_dq in (0 - 2)..3 {
@@ -7096,7 +7093,7 @@ fn main() {
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
           }
         } else if ev.msg_id == MSG_WALL {
-          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess.es_runs, wall_draft);
+          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess.es_runs, sess.es_draft);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: `<roof_up>` — the roof height above the floor, in height
           // units — or `<roof_up>,<part>`, which places a SAVED part instead of

@@ -78,6 +78,10 @@ pub struct EditSession {
   es_props:   Props,
   es_slabs:   Slabs,
   es_holes:   Holes,
+  // ⚠ THE TWO-PRESS DRAFT IS STATE TOO, and it was the server's until `25:`'s
+  // machine moved. A run is two presses; what sits between them belongs with the
+  // rest of the scene rather than beside the socket that delivered the keys.
+  es_draft:   WallDraft = WallDraft {},
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -167,6 +171,11 @@ pub fn session_open(s: EditSession, w: World, kind: integer, nedges: integer) ->
 pub fn session_storey(s: EditSession, w: World, dir: integer, why: &text) -> integer {
   (sq, sr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
   storey_add(w, sq, sr, dir, STENCIL_R, why)
+}
+
+// `25:` — a press of the wall key, at wherever this driver stands.
+pub fn session_wall(s: EditSession, mat: integer) -> DraftStep {
+  wall_step(s.es_draft, s.es_author.au_x, s.es_author.au_z, mat)
 }
 
 // `19:` — a prop where the author is STANDING.

@@ -157,6 +157,18 @@ the wall and the soffit, which are exactly the ones drawn from those registries.
 refactor's own point**: `held_sess = sess` is a plain local read, so it copies — the same shape as
 `held = wld` one line over, and the same reason `A7.3a` wrote it that way.
 
+✅ **AND THE TWO-PRESS DRAFT WENT WITH IT.** `WallDraft` was declared in
+`editor_server.loft`, so *what a first press does*, *what a second does* and — the one nobody
+could see — *what a REFUSED second press leaves behind* were reachable only by pressing a key over
+a wire twice. ⚠ **The refusal CLOSES the draft**, so the next press starts a new one: an author who
+reads *a way needs two ends* as *try the second press again* gets a run from where they stand to
+wherever they walk next, and nothing in the acknowledgement says which state they are in.
+Deliberate, and now pinned.
+
+⚠ **AND A TYPE MUST BE DECLARED BEFORE THE STRUCT THAT DEFAULTS TO IT.** `DraftStep` holds a
+`RunDraft = RunDraft {}` and was inserted above it: *Undefined type RunDraft*, then twenty-four
+files failing on types that were fine. No forward references — put a new type after what it uses.
+
 ⚠ **WHAT THE SESSION DELIBERATELY DOES NOT HOLD IS THE POSE.** `es_author` is a driver's stand-in
 for a walker; this server has one, and `px`/`pz`/`yaw` are the tick's. A session author kept in
 step would be a second authority on where the author is.
