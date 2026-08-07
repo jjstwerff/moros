@@ -1,0 +1,38 @@
+// SIGSEGV under `loft --tests` — four tests that each pass ALONE crash when they share
+// one file. Nothing is shared between them: each builds its own world and its own
+// session.
+//
+//   cd lib/hex_editor && loft --lib ../ --tests ../../probe/loft/session_segv.loft
+//
+// ⚠ IT IS THE COUNT, NOT ANY ONE TEST. Each of the four passes on its own
+// (`--tests file::name`); the first three together pass; adding the fourth crashes. So
+// it is accumulation inside the runner process rather than anything a test does.
+use hex_editor;
+use hex_world;
+
+fn ground() -> World {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  session_ground(w, 12, 1, SURFACE_MAT);
+  w
+}
+
+fn test_one() {
+  w = ground(); s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  assert(session_fence(s, w, FENCE_MAT, 2, 10.0).ak_n == 30, "one");
+}
+fn test_two() {
+  w = ground(); s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  assert(session_fence(s, w, FENCE_MAT, 2, 10.0).ak_n == 30, "two");
+}
+fn test_three() {
+  w = ground(); s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  assert(session_fence(s, w, FENCE_MAT, 2, 10.0).ak_n == 30, "three");
+}
+fn test_four() {
+  w = ground(); s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  assert(session_fence(s, w, FENCE_MAT, 2, 10.0).ak_n == 30, "four");
+}

@@ -1,0 +1,150 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE GATES' OWN CLAIMS, HEADLESS — no server, no browser, no port.
+//
+// ⚠ EACH TEST BELOW NAMES THE GATE IT REPRODUCES AND ASSERTS THAT GATE'S OWN NUMBERS,
+// not numbers chosen to pass. `opening.mjs` reports `ringCells 12, expected 36, edges
+// 36, doors 1, cleared 0, inner [0,0,0]`; so does the first test here. A headless
+// version that agreed with itself and not with the gate would be a second opinion,
+// which is the one thing this must not become.
+//
+// What is deliberately NOT here, and stays a wire gate:
+//   · the SENTENCE. `hex_editor` returns an `Ack` of numbers and `editor_server`
+//     composes the text, so *"a refusal names its reason, offers and states a
+//     residual"* is a claim about the server. `doorstep.mjs` owns it.
+//   · anything that ticks — the walk, the fall, the camera's ease.
+//   · anything a viewer decides — which chunks were streamed.
+use hex_editor;
+use hex_world;
+
+const UNIT = 0.25;
+const EPS = 8;
+const THETA = 3;
+
+// ⚠ NOT `scene` — that is a PACKAGE name (`graphics` uses it), and loft refuses the
+// redefinition. Grep before naming, even a test helper.
+// ⚠ THE WORLD AND THE SESSION ARE TWO THINGS, and loft#796 is only half the reason —
+// the store is the only authority (`HEX_STACK.md`), so a session that owned a world
+// would be a second place one can live.
+fn a_world() -> World {
+  w = world_new(UNIT, 0, EPS, THETA).wn_world;
+  session_ground(w, 12, 1, SURFACE_MAT);
+  w
+}
+
+// ── `opening.mjs` — a wall run keeps every edge and one of them reads as a door ──
+//
+// The footprint is a radius-2 disc, so its perimeter is the twelve cells at distance
+// 2 and each owns three edges: 36. ⚠ DISTANCE IS ODD-R OFFSET, not axial — the gate's
+// own header records that reading it as axial agreed with a bug in the editor.
+fn ring_at(rad: integer) -> vector<vector<integer>> {
+  out: vector<vector<integer>> = [];
+  for dq in 0 - 3..4 {
+    for dr in 0 - 3..4 {
+      if hex_grid::hex_distance(0, 0, dq, dr) == rad { out += [[dq, dr]]; }
+    }
+  }
+  out
+}
+
+fn test_a_stencil_leaves_the_ring_intact_with_exactly_one_door() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  kb = 0; ka = 0; why = "";
+  n = stencil_place(w, 0, 0, STENCIL_R, 1, STOREY_H, kb, ka, why);
+  assert(n > 0, "the stencil placed nothing, so there is no ring to count");
+
+  ring = ring_at(2);
+  assert(len(ring) == 12, "{len(ring)} cells on the ring, not 12 — the gate says 12");
+
+  edges = 0; doors = 0; cleared = 0;
+  for cell in ring {
+    for m in session_walls(w, cell[0] ?? 0, cell[1] ?? 0) {
+      if m == 0 { cleared = cleared + 1; } else { edges = edges + 1; }
+      if m == DOOR_MAT { doors = doors + 1; }
+    }
+  }
+  // The gate's own numbers: `{"ringCells":12,"expected":36,"edges":36,"doors":1,"cleared":0}`
+  assert(edges == 36, "{edges} owned edges, not 36 — the run lost some");
+  assert(cleared == 0, "{cleared} edges were CLEARED — a door is a material, never a hole");
+  assert(doors == 1, "{doors} doors, not 1");
+}
+
+// ⚠ THE CONTROL, AND WITHOUT IT *everything has walls* PASSES. An interior cell owns
+// no edge at all; the gate checks the same thing and calls it `innerBare`.
+fn test_an_interior_cell_owns_no_wall() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  kb2 = 0; ka2 = 0; why2 = "";
+  stencil_place(w, 0, 0, STENCIL_R, 1, STOREY_H, kb2, ka2, why2);
+  edges = session_walls(w, 0, 0);
+  assert(len(edges) == 3, "a hex owns three edges, this reports {len(edges)}");
+  for m in edges { assert(m == 0, "an interior cell owns a wall of material {m}"); }
+}
+
+// ── `fence.mjs` — the exact perimeter, and who stores it ─────────────────────
+//
+// ⚠ THIS IS THE HALF THAT DID **NOT** MOVE WHEN `hex_editor/tests/fence.loft` WAS
+// WRITTEN. That file rings a disc through `fence_ring` and counts; this reaches it
+// through a SESSION, which is what a wire gate does — so if threading the registries
+// ever changed the answer, the two would disagree here rather than in production.
+fn test_a_ring_through_a_session_counts_what_the_geometry_says() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  r = 2;
+  ack = session_fence(s, w, FENCE_MAT, r, 10.0);
+  assert(ack.ak_ok, "the ring was refused: {ack.ak_why}");
+  // 6(2R+1) boundary edges — the gate reports `fenced 30 edges` at R=2.
+  assert(ack.ak_n == 6 * (2 * r + 1),
+         "{ack.ak_n} edges, not {6 * (2 * r + 1)} — the gate says 30 at radius 2");
+}
+
+// ⚠ A REFUSAL IS A NUMBER HERE AND A SENTENCE ON THE WIRE, and the split is the point.
+// `fence.mjs` asserts the wording — *a nominal refusal carries no offer* — because that
+// is what reaches an author. What a headless test can settle is that it was refused at
+// all and that nothing was written, which is the half a sentence cannot show.
+fn test_a_refused_ring_is_refused_and_writes_nothing() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  before = w.w_tau;
+  ack = session_fence(s, w, 9, 2, 10.0);            // 9 is not a fence material
+  assert(!ack.ak_ok, "a nominal material was accepted");
+  assert(w.w_tau == before,
+         "the refusal moved the edit clock from {before} to {w.w_tau} — "
+       + "it wrote something on the way to saying no");
+}
+
+// ── `ground.mjs` — the drawn ground is the GROUND, not layer 0 ───────────────
+//
+// The gate digs cellars under a hill and requires the ground's height and its cell to
+// be unchanged, with the reserved label still on top. Same claim, no wire.
+fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  for k in 0..8 { session_raise(s, w, 1); }
+  before_cell = session_cell(w, 0, 10);
+  before_col = session_column(w, 0, 10);
+
+  // Dig beneath, from off the summit — a cellar needs headroom above it.
+  session_at(s, 0.0, 15.0, 0.0);
+  dwhy = "";
+  for k in 0..3 { storey_add(w, 0, 15, 0 - 1, STENCIL_R, dwhy); }
+
+  after_cell = session_cell(w, 0, 10);
+  assert(after_cell[0] == before_cell[0] && after_cell[1] == before_cell[1],
+         "the ground's cell moved from {before_cell} to {after_cell}");
+  after_col = session_column(w, 0, 10);
+  assert(len(after_col) > len(before_col),
+         "nothing was dug — {len(before_col)} layers before and {len(after_col)} after, "
+       + "so *the ground held* is a claim about a world nothing happened to");
+  // The reserved label is LAST: at the top, with its own height.
+  lbl = session_labels(w, 0, 10);
+  assert(len(lbl) > 0 && (lbl[len(lbl) - 1] ?? 0) == hex_world::LABEL_GROUND,
+         "the ground's reserved label is not on top: {lbl}");
+}

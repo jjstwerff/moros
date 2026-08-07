@@ -31,6 +31,8 @@ use hex_place;
 use hex_grid;
 use hex_part;
 use names;
+// ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
+use session;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
