@@ -111,6 +111,68 @@ free_port() {
   echo ""; return 1
 }
 
+# ── WHAT WE STARTED, BY PID, WRITTEN DOWN ───────────────────────────────────
+#
+# ⚠ A PID WE RECORDED BEATS A PATTERN WE GUESSED, and this script had only the guess.
+# Both port sweeps below matched `*editor_server*|*loft_native_bin_*` — the two forms
+# that existed when they were written. Then the server started being COPIED to
+# `.gatebin/server` (see `build_server`), whose command line contains NEITHER. The
+# guard did exactly what it promised — it refuses to kill what it cannot identify —
+# and what it could no longer identify was *our own servers*. Nothing was reclaimed,
+# and they accumulated across runs: 30+ seen alive at once.
+#
+# ⚠ AND THERE WAS NO TRAP ANYWHERE IN THIS FILE, which is the bigger half. The normal
+# path kills its server on the line after the gate returns, so a run that finishes is
+# clean — every leak came from a run that did NOT finish: a Ctrl-C, a `timeout`, a
+# killed `make`. Those are the runs nobody is watching, so the servers were found
+# hours later by somebody else.
+#
+# So: every spawn is appended to `$GATE_PIDS` the moment it is made, and every exit
+# path sweeps that file. The list is the identity.
+#
+# ⚠ THE CMDLINE CHECK STAYS, AND IT IS NOW GUARDING SOMETHING ELSE. A recorded pid can
+# be REUSED by the kernel once the process is gone — on a box running other agents'
+# work, killing a stale pid is killing a stranger. So the pid says *this was ours* and
+# the cmdline says *it still is*. Neither alone is enough: the pattern went stale, and
+# a bare pid is a name the OS hands out again.
+server_is_ours() {
+  sio=$(tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null) || return 1
+  case "$sio" in
+    "")                                     return 1 ;;
+    *"${GATE_SERVER_BIN:-__no_such_bin__}"*) return 0 ;;
+    *.gatebin/server*)                      return 0 ;;
+    *editor_server*|*loft_native_bin_*)     return 0 ;;
+  esac
+  return 1
+}
+
+# Kill one pid we started, if it is still alive and still the thing we started.
+kill_server() {
+  [ -n "${1:-}" ] || return 0
+  kill -0 "$1" 2>/dev/null || return 0
+  server_is_ours "$1" || return 0
+  kill "$1" 2>/dev/null
+}
+
+# Remember a pid the moment it exists. ⚠ APPEND, never rewrite: ten `--one` children
+# share this file, and `>>` of one short line is atomic where a read-modify-write is a
+# race that silently drops somebody's server.
+remember_server() {
+  [ -n "${GATE_PIDS:-}" ] || return 0
+  echo "$1" >> "$GATE_PIDS" 2>/dev/null || true
+}
+
+# Kill everything the file remembers. Safe to call twice — `kill_server` no-ops on a
+# pid that is already gone.
+sweep_servers() {
+  [ -n "${GATE_PIDS:-}" ] || return 0
+  [ -f "$GATE_PIDS" ] || return 0
+  while read -r sp; do
+    case "$sp" in ''|*[!0-9]*) continue ;; esac
+    kill_server "$sp"
+  done < "$GATE_PIDS"
+}
+
 build_server() {
   bport=$(free_port 18700)
   [ -n "$bport" ] || { echo "gates: no free port to build the server on"; return 1; }
@@ -119,6 +181,7 @@ build_server() {
   # port is not an identity — `pkill -f` matches the shell running it as well.
   EDITOR_PORT="$bport" loft --native --lib lib/ src/editor_server.loft > "$blog" 2>&1 &
   bpid=$!
+  remember_server "$bpid"
   i=0
   while [ "$i" -lt 1200 ]; do
     grep -q 'listening on port' "$blog" 2>/dev/null && break
@@ -140,9 +203,8 @@ build_server() {
   # command line is checked, because a port is not an identity and this box runs other
   # agents' editors. That is `run-gates.sh`'s own rule, one function up.
   for c in $(ss -lptn "sport = :$bport" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u); do
-    case "$(tr '\0' ' ' < "/proc/$c/cmdline" 2>/dev/null)" in
-      *editor_server*|*loft_native_bin_*) kill "$c" 2>/dev/null ;;
-    esac
+    remember_server "$c"
+    kill_server "$c"
   done
   if [ "$ok" -eq 0 ]; then
     echo "gates: the server would not build — falling back to the interpreter"
@@ -168,9 +230,7 @@ if [ "${1:-}" = "--one" ]; then
   # only a process whose command line says it is an editor: this box runs other
   # people's work, and a port number is not an identity.
   for pid in $(ss -lptn "sport = :$port" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u); do
-    case "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" in
-      *editor_server*|*loft_native_bin_*) kill "$pid" 2>/dev/null ;;
-    esac
+    kill_server "$pid"
   done
 
   # ⚠ EVERY GATE GETS ITS OWN COPY OF THE PART LIBRARY — plan 17 `A7.1`.
@@ -197,6 +257,13 @@ if [ "${1:-}" = "--one" ]; then
       loft ${GATE_LOFT:---interpret} --lib lib/ src/editor_server.loft > "$log" 2>&1 &
   fi
   pid=$!
+  remember_server "$pid"
+  # ⚠ THE TRAP IS WHAT MAKES THE OTHER EXIT PATHS OPTIONAL. The `kill`s further down
+  # already handle the two paths this script THINKS about — the gate returned, or the
+  # server never listened. What leaked was every path it does not think about: INT
+  # from a Ctrl-C, TERM from a `timeout` or a killed `make`. Those cannot be written
+  # out one at a time, which is exactly what a trap is for.
+  trap 'kill_server "$pid"; rm -rf "$parts" 2>/dev/null' EXIT INT TERM HUP
   listening=0
   i=0
   while [ "$i" -lt 240 ]; do
@@ -249,6 +316,32 @@ fi
 
 jobs=${GATE_JOBS:-8}
 base=${GATE_PORT_BASE:-18200}
+
+# ── THE LIST OF WHAT WE STARTED ─────────────────────────────────────────────
+#
+# ⚠ SWEEP THE PREVIOUS RUN'S LIST BEFORE TRUNCATING IT. This is the half that fixes
+# the servers already on the box rather than preventing the next ones: a run that was
+# interrupted left its file behind with live pids in it, and until now nothing ever
+# read it. Killing them here means the leak is self-healing on the next `make gate`
+# instead of needing somebody to notice `ss` output hours later.
+#
+# ⚠ THE PATH IS ABSOLUTE, because `--one` children run under `xargs` and inherit this
+# by export; a relative path would resolve against whatever cwd they happen to have.
+GATE_PIDS=$(pwd)/.gate-pids
+export GATE_PIDS
+if [ -f "$GATE_PIDS" ]; then
+  stale=0
+  while read -r sp; do
+    case "$sp" in ''|*[!0-9]*) continue ;; esac
+    if kill -0 "$sp" 2>/dev/null && server_is_ours "$sp"; then stale=$((stale + 1)); fi
+    kill_server "$sp"
+  done < "$GATE_PIDS"
+  [ "$stale" -eq 0 ] || echo "gates: reclaimed $stale server(s) left by an interrupted run"
+fi
+: > "$GATE_PIDS"
+
+# Every exit path, including the ones this script cannot name.
+trap 'sweep_servers' EXIT INT TERM HUP
 
 # ── build the server once, and resolve it by GLOB rather than by a name ─────
 #

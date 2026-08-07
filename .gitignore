@@ -83,6 +83,11 @@ probe/*.png
 # Per-gate stderr from the parallel runner, beside its .log twin.
 .gate-*.err
 
+# The pids of every server the gate runner started this run. ⚠ NOT `.gate-*.log`'s
+# sibling by accident — it deliberately SURVIVES a crashed run, because the next run
+# reads it to reclaim the servers that run leaked. Machine state, never committed.
+.gate-pids
+
 # The two transcripts `make headless-same` compares.
 .headless.txt
 .served.txt
