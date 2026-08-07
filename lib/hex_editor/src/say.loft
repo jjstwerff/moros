@@ -1,0 +1,146 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT THE EDITOR SAYS — the sentences, as functions.
+//
+// ⚠ THIS IS THE HALF `CLAUDE.md` CALLED A GATE'S. *"The store's rules are loft tests;
+// the drawn result and the sentences are gates."* The drawn result still is. The
+// sentences were, and only because they were composed in `editor_server`'s message
+// loop — so the only way to ask what the editor SAYS was to start one and listen.
+//
+// They are pure functions of values the library already produced. Moving them here
+// makes the server transport and nothing else, and makes invariant I — *every author
+// action ends in exactly one of three states: applied exactly, refused with a named
+// reason, an offer and a residual, or applied as an explicit approximation with its
+// residual shown* — a property with a test rather than a property with a gate.
+//
+// ⚠ THE TEXT IS BYTE-FOR-BYTE WHAT THE WIRE ALREADY CARRIED. Forty-five gates assert
+// on these strings; a "tidier" wording here is a suite going red for no defect. Each
+// function below is the server's own interpolation, moved, and `tools/gates` is the
+// control that says so.
+//
+// ⚠ AND `fit_why` IS ALREADY HERE — see `gesture.loft`. The offer-and-residual
+// rendering, and the rule that a NOMINAL refusal never grows an offer, were library
+// property before this file existed. What the server kept was the verb in front of it,
+// which is why `say_refused` takes both.
+use gesture;
+
+// ── the shape of every refusal ───────────────────────────────────────────────
+//
+// `<verb> refused — <reason>`. The reason is the library's; the verb names which
+// gesture the author asked for. One function so a new gesture cannot invent a
+// different punctuation, which is how a client parsing these would break.
+pub fn say_refused(verb: text, why: text) -> text { "{verb} refused — {why}" }
+
+// The ordinal form, where a code is worth carrying: `<verb> refused (<code>) <why>`.
+// ⚠ TWO SHAPES, NOT ONE, AND THAT IS THE FORMAT RATHER THAN AN INCONSISTENCY. A code
+// is what a script matches on when the wording may still be tuned; a bare reason is
+// what a person reads. `storey` and `stair` carry codes because their refusals are
+// enumerated; `fence` and `road` do not.
+pub fn say_refused_code(verb: text, code: integer, why: text) -> text {
+  "{verb} refused ({code}) {why}"
+}
+
+// ── the gestures, when they work ─────────────────────────────────────────────
+
+// A hex owns three of its six edges, so half of any ring is stored in the cells
+// OUTSIDE it — which is why the count says both numbers.
+pub fn say_fenced(edges: integer, outside: integer, rad: integer, mat: integer) -> text {
+  "fenced {edges} edges, {outside} stored outside, radius {rad} material {mat}"
+}
+
+pub fn say_edge(dir: integer, q: integer, r: integer, mat: integer) -> text {
+  "edge {dir} of {q},{r} = {mat}"
+}
+
+// ⚠ `{dir:+}` — the SIGN IS THE POINT, so `+1` and `-1` read differently. A storey up
+// and a cellar down are the same gesture with one field flipped, and a sentence that
+// dropped the sign would make them indistinguishable to a reader and to a gate.
+pub fn say_storey(dir: integer, cells: integer) -> text {
+  "storey {dir:+} on {cells} cells"
+}
+
+// A cellar comes with its stair, and the count says so. ⚠ `storey.mjs` matches this
+// with an anchored pattern precisely so that the gesture's contract cannot grow a
+// clause silently.
+pub fn say_storey_stair(dir: integer, cells: integer, stair: integer) -> text {
+  "storey {dir:+} on {cells} cells, stair of {stair}"
+}
+
+// ⚠ A CELLAR WITH NO WAY IN IS NAMED, not swallowed. It is the defect the whole rung
+// exists to close, so it gets its own sentence rather than reading as a plain storey.
+pub fn say_cellar_no_stair(cells: integer, code: integer, why: text) -> text {
+  "cellar {cells} cells, but no stair ({code}) {why}"
+}
+
+pub fn say_stair(dir: integer, q: integer, r: integer, to: integer, from: integer) -> text {
+  "stair {dir:+} at {q},{r} height {to} from {from}"
+}
+
+// `P1` in one line: a stencil owns a band, and what it KEPT is what it did not
+// destroy — the cave below and the deck above.
+pub fn say_stencil(cells: integer, below: integer, above: integer) -> text {
+  "stencil placed {cells} cells, kept {below} below and {above} above"
+}
+
+pub fn say_stencil_part(cells: integer, part: text) -> text {
+  "stencil placed {cells} cells from part '{part}'"
+}
+
+pub fn say_scattered(n: integer, species: integer, density: integer) -> text {
+  "scattered {n} of species {species} at density {density}"
+}
+
+pub fn say_field(cells: integer) -> text { "field filled {cells} cells" }
+
+// ── the third state of invariant I: applied, as an explicit approximation ────
+//
+// ⚠ NOT A REFUSAL AND NOT A SILENT SNAP. The value was admissible after quantising, so
+// the gesture ran — and the sentence says what it quantised FROM and by how much, which
+// is the whole difference between an approximation an author can see and a correction
+// they cannot. `doorstep.mjs` asserts exactly this shape.
+pub fn say_quantised(what: text, state: text, at: text, to: integer,
+                     from: float, residual: float) -> text {
+  "{what} {state} at {at} {to} (quantised from {from}, residual {residual})"
+}
+
+pub fn say_plain(what: text, state: text, at: text, to: integer) -> text {
+  "{what} {state} at {at} {to}"
+}
+
+// ── the read-backs ───────────────────────────────────────────────────────────
+//
+// `15:` `16:` `26:` `29:` `20:` — what the store holds here, as the wire words it. The
+// server built each of these inline; they are answers about a world and nothing else.
+
+// A comma-joined list, which every read-back below is. ⚠ Written once because four
+// copies of *"if it is not the first, put a comma"* is four chances to differ, and a
+// reader comparing two answers cannot see punctuation.
+pub fn say_joined(vs: vector<integer>) -> text {
+  out = "";
+  for v in vs {
+    if out != "" { out = out + ","; }
+    out = out + "{v}";
+  }
+  out
+}
+
+pub fn say_column(q: integer, r: integer, heights: vector<integer>) -> text {
+  "column {q},{r} = {say_joined(heights)}"
+}
+
+pub fn say_labels(q: integer, r: integer, ids: vector<integer>) -> text {
+  "labels {q},{r} = {say_joined(ids)}"
+}
+
+pub fn say_cell(q: integer, r: integer, mat: integer, h: integer) -> text {
+  "cell {q},{r} = {mat},{h}"
+}
+
+pub fn say_walls(q: integer, r: integer, body: text) -> text {
+  "walls {q},{r} = {body}"
+}
+
+pub fn say_dressing(q: integer, r: integer, body: text) -> text {
+  "dressing {q},{r} = {body}"
+}

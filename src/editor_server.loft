@@ -622,7 +622,7 @@ fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
   m = part_meta(pw);
   shown = name;
   if m.mr_code == MR_OK && m.mr_meta.pm_name != "" { shown = m.mr_meta.pm_name; }
-  srv.send_to(cid, "S:stencil placed {st.ps_cells} cells from part '{shown}'");
+  srv.send_to(cid, "S:{say_stencil_part(st.ps_cells, shown)}");
   println("editor: stencil placed {st.ps_cells} cells from part '{shown}'");
 }
 
@@ -1453,14 +1453,13 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
   fa = hex_editor::author_at(px, pz, 0.0);
   fack = hex_editor::fence_ring(wld, fa, fmat, frad, py);
   if !fack.ak_ok {
-    srv.send_to(cid, "S:fence refused — {fack.ak_why}");
+    srv.send_to(cid, "S:{say_refused(\"fence\", fack.ak_why)}");
     println("editor: fence refused — {fack.ak_why}");
     return;
   }
   fout = hex_editor::fence_outside(wld, fa, fmat, frad, py);
   mark_dirty(dirty, fack.ak_q, fack.ak_r, frad + 2);
-  srv.send_to(cid, "S:fenced {fack.ak_n} edges, {fout} stored outside, "
-                 + "radius {frad} material {fmat}");
+  srv.send_to(cid, "S:{say_fenced(fack.ak_n, fout, frad, fmat)}");
   println("editor: fenced {fack.ak_n} edges ({fout} stored outside) "
         + "at ({fack.ak_q},{fack.ak_r}) radius {frad}");
 }
@@ -1480,12 +1479,12 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
   eack = hex_editor::edge_set(wld, hex_editor::author_at(px, pz, 0.0), edir, emat, py,
                               terrain_h(ehx.ha_q, ehx.ha_r, wld));
   if !eack.ak_ok {
-    srv.send_to(cid, "S:edge refused — {eack.ak_why}");
+    srv.send_to(cid, "S:{say_refused(\"edge\", eack.ak_why)}");
     println("editor: edge refused — {eack.ak_why}");
     return;
   }
   mark_dirty(dirty, eack.ak_q, eack.ak_r, 2);
-  srv.send_to(cid, "S:edge {edir} of {eack.ak_q},{eack.ak_r} = {emat}");
+  srv.send_to(cid, "S:{say_edge(edir, eack.ak_q, eack.ak_r, emat)}");
   println("editor: edge {edir} at ({eack.ak_q},{eack.ak_r}) material {emat}");
 }
 
@@ -6192,7 +6191,7 @@ fn main() {
           swhy = "";
           nb = storey_add(wld, shx.ha_q, shx.ha_r, sdir, 2, swhy);
           if nb < 0 {
-            srv.send_to(ev.cid, "S:storey refused ({nb}) {swhy}");
+            srv.send_to(ev.cid, "S:{say_refused_code(\"storey\", nb, swhy)}");
             println("editor: storey refused ({nb}) at ({shx.ha_q},{shx.ha_r}) — {swhy}");
           } else {
             // ⚠ A CELLAR COMES WITH ITS STAIR, because without one it is a room
@@ -6211,15 +6210,15 @@ fn main() {
               ns = hex_editor::cellar_stair(wld,
                      hex_editor::author_at(px, pz, yaw), cliff_step(), st_why2);
               if ns < 0 {
-                srv.send_to(ev.cid, "S:cellar {nb} cells, but no stair ({ns}) {st_why2}");
+                srv.send_to(ev.cid, "S:{say_cellar_no_stair(nb, ns, st_why2)}");
                 println("editor: cellar dug on {nb} cells, stair refused ({ns}) — {st_why2}");
               } else {
                 mark_dirty(dirty, shx.ha_q, shx.ha_r, 6);
-                srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells, stair of {ns}");
+                srv.send_to(ev.cid, "S:{say_storey_stair(sdir, nb, ns)}");
                 println("editor: cellar on {nb} cells with a stair of {ns} treads");
               }
             } else {
-              srv.send_to(ev.cid, "S:storey {sdir:+} on {nb} cells");
+              srv.send_to(ev.cid, "S:{say_storey(sdir, nb)}");
               println("editor: storey {sdir:+} on {nb} cells");
             }
             mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
@@ -6246,12 +6245,12 @@ fn main() {
             st_new = stair_cut(wld, st_q, st_r, py, st_here, st_dir,
                                cliff_step(), st_why);
             if st_new < 0 {
-              srv.send_to(ev.cid, "S:stair refused ({st_new}) {st_why}");
+              srv.send_to(ev.cid, "S:{say_refused_code(\"stair\", st_new, st_why)}");
               println("editor: stair refused ({st_new}) at ({st_q},{st_r}) — {st_why}");
             } else {
               mark_dirty(dirty, st_q, st_r, 3);
               srv.send_to(ev.cid,
-                "S:stair {st_dir:+} at {st_q},{st_r} height {st_new} from {st_here}");
+                "S:{say_stair(st_dir, st_q, st_r, st_new, st_here)}");
               println("editor: stair {st_dir:+} at ({st_q},{st_r}) "
                     + "{st_here} -> {st_new}");
             }
@@ -6391,14 +6390,14 @@ fn main() {
             pr = ev.payload[pci + 1..] as integer ?? 0;
           }
           pcol = world_column(wld, pq, pr);
-          phs = "";
+          // ⚠ THE VALUES GO TO THE LIBRARY, NOT A STRING. The joining used to happen
+          // here, four times over for four read-backs; `say_joined` is one copy of
+          // *"if it is not the first, put a comma"* instead of four.
+          phv: vector<integer> = [];
           for pe in pcol.co_cells {
-            if hex_world::hex_occupied(pe) {
-              if phs != "" { phs += ","; }
-              phs += "{pe.h_height}";
-            }
+            if hex_world::hex_occupied(pe) { phv += [pe.h_height as integer ?? 0]; }
           }
-          srv.send_to(ev.cid, "S:column {pq},{pr} = {phs}");
+          srv.send_to(ev.cid, "S:{say_column(pq, pr, phv)}");
         } else if ev.msg_id == MSG_EXPORT {
           // The other half of kit-bashing: editor geometry OUT, so an author can
           // take a shape into Blender, work on it, and bring it back through 21.
@@ -6522,7 +6521,7 @@ fn main() {
               dtxt += "{dd.h_height}/{dd.h_item}";
             }
           }
-          srv.send_to(ev.cid, "S:dressing {dq2},{dr2} = {dtxt}");
+          srv.send_to(ev.cid, "S:{say_dressing(dq2, dr2, dtxt)}");
         } else if ev.msg_id == MSG_TRIGGER {
           // ⚠ THE FENCE'S OTHER RULE — plan 17 `A7.3b`: a gesture whose state is
           // NOT held aside leaks out of the mode. `trigs` is the world's list and
@@ -6589,7 +6588,7 @@ fn main() {
             wq = ev.payload[..wci] as integer ?? 0;
             wr = ev.payload[wci + 1..] as integer ?? 0;
           }
-          srv.send_to(ev.cid, "S:walls {wq},{wr} = {walls_text(wld, wq, wr)}");
+          srv.send_to(ev.cid, "S:{say_walls(wq, wr, walls_text(wld, wq, wr))}");
         } else if ev.msg_id == MSG_FENCE {
           do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
           // ⚠ A RING OF WALL IS A CYLINDER, AND A CYLINDER IS A HOST. The ring is
@@ -6683,12 +6682,9 @@ fn main() {
             lbr = ev.payload[lbi + 1..] as integer ?? 0;
           }
           lbcol = world_column(wld, lbq, lbr);
-          lbtxt = "";
-          for lbid in lbcol.co_ids {
-            if lbtxt != "" { lbtxt = lbtxt + ","; }
-            lbtxt = lbtxt + "{lbid}";
-          }
-          srv.send_to(ev.cid, "S:labels {lbq},{lbr} = {lbtxt}");
+          lbv: vector<integer> = [];
+          for lbid in lbcol.co_ids { lbv += [lbid]; }
+          srv.send_to(ev.cid, "S:{say_labels(lbq, lbr, lbv)}");
         } else if ev.msg_id == MSG_CAMREST {
           // The boom and the lift each ease toward a target, so the eye is in
           // transit for some ticks after anything disturbs it and NOTHING on the
@@ -6712,7 +6708,7 @@ fn main() {
             cr2 = ev.payload[cci + 1..] as integer ?? 0;
           }
           ccell = world_ground_cell(wld, cq2, cr2);
-          srv.send_to(ev.cid, "S:cell {cq2},{cr2} = {ccell.h_material},{ccell.h_height}");
+          srv.send_to(ev.cid, "S:{say_cell(cq2, cr2, ccell.h_material as integer ?? 0, ccell.h_height as integer ?? 0)}");
         } else if ev.msg_id == MSG_OPEN {
           // ⚠ THE PAYLOAD IS A PROFILE NOW, not a material. `36:<kind>` picks the
           // outline — 0 flat, 1 round, 2 pointed, 3 segmental, 4 an oculus — and the
@@ -7232,8 +7228,7 @@ fn main() {
           } else {
             mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
             srv.send_to(ev.cid,
-              "S:stencil placed {stst.ps_cells} cells, kept {stst.ps_below} below and "
-              + "{stst.ps_above} above");
+              "S:{say_stencil(stst.ps_cells, stst.ps_below, stst.ps_above)}");
             println("editor: stencil placed {stst.ps_cells} cells, kept {stst.ps_below} "
                   + "below, {stst.ps_above} above");
           }
@@ -7266,7 +7261,7 @@ fn main() {
           vhx = world_to_hex(px, pz);
           nv = scatter(wld, vhx.ha_q, vhx.ha_r, SCATTER_R, sc_sp, sc_dn);
           mark_dirty(dirty, vhx.ha_q, vhx.ha_r, SCATTER_R + 1);
-          srv.send_to(ev.cid, "S:scattered {nv} of species {sc_sp} at density {sc_dn}");
+          srv.send_to(ev.cid, "S:{say_scattered(nv, sc_sp, sc_dn)}");
           println("editor: scattered {nv} of species {sc_sp} at density {sc_dn}");
         } else if ev.msg_id == MSG_FIELD {
           fhx = world_to_hex(px, pz);
@@ -7297,7 +7292,7 @@ fn main() {
             // Everything the fill touched changed, and it is bounded by
             // construction — so one dirty mark over its extent is honest.
             mark_dirty(dirty, fhx.ha_q, fhx.ha_r, DRAW_HEXES);
-            srv.send_to(ev.cid, "S:field filled {nfilled} cells");
+            srv.send_to(ev.cid, "S:{say_field(nfilled)}");
             println("editor: field filled {nfilled} cells");
           }
         } else if ev.msg_id == MSG_ROAD {
