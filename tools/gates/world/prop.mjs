@@ -5,9 +5,22 @@
 // prop where the author stands, that two props ACCUMULATE in one cell rather than
 // replacing, and that the acknowledgement says so.
 //
-// It is not thinned further because the prop gesture itself has not moved into
+// ⚠ **THE GESTURE HAS MOVED, AND THIS HEADER USED TO SAY IT HAD NOT.** It read *"it
+// is not thinned further because the prop gesture itself has not moved into
 // `hex_editor` yet — when it does, the accumulation claim goes with it and what is
-// left here is the sentence.
+// left here is the sentence."* That move is done: `hex_editor::prop_at` is the
+// gesture, `hex_editor/tests/session.loft` holds the accumulation and the nominal
+// refusal headlessly, and `editor_server` derives the cell and says the sentence.
+//
+// ⚠ **AND NOTHING WAS REMOVED HERE, WHICH IS THE POINT OF *move before you remove*.**
+// What is left is the WIRE half and it is not a duplicate of the loft test: the
+// count travels in `say_prop`'s own words, and *the same cell answers differently to
+// `20:` and to `15:`* is a claim about two messages. A gate that dropped those
+// because a library test exists would be a coverage cut wearing a tidy-up's clothes.
+//
+// ⚠ **THE VERDICT IS BYTE-IDENTICAL ACROSS THE MOVE** — `prop 3 placed at 10,0
+// height 13 (1 in this cell)` before and after — which is what says the gesture
+// changed address and not behaviour.
 // Prop gate (rung W6, moros#14) — `D1` in a running editor.
 //
 // The model can hold dressing; this is the first time the EDITOR puts anything

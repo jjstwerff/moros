@@ -1888,6 +1888,68 @@ pub fn edge_mat_at(w: World, x: float, z: float, ref: float) -> integer {
 // where they stand rather than where a parameter says. A refusal when there is no
 // wall there — never a door in mid-air, which is what writing the material blind
 // would give.
+// ── A PROP IN THE DRESSING LAYER — `19:`, rung W6, moros#14 ─────────────────
+//
+// ⚠ THE GESTURE MOVES HERE BECAUSE ITS CLAIM CANNOT BE TESTED ON A SOCKET. The
+// prop gate's own header asked for this: *"it is not thinned further because the
+// prop gesture itself has not moved into `hex_editor` yet — when it does, the
+// accumulation claim goes with it and what is left here is the sentence."* What
+// was in `editor_server` is a doorstep, a read, an append and a write; none of it
+// needs a port, and only the sentence does.
+//
+// ⚠ A PROP IS ADDED, NEVER SUBSTITUTED. `world_set_dressing` writes the WHOLE
+// dressing column, so a handler that built a fresh one-element column would drop
+// everything already in the cell — and the wire would still say *placed*. Reading,
+// extending and writing back is the accumulation, and it is the half that a
+// headless test can now hold.
+//
+// ⚠ AND THE HEIGHT IS THE TERRAIN'S TOP, not the author's. A prop sits ON the
+// ground under the author's feet; taking `au_y` would float it wherever the camera
+// happened to be, which is a number that looks right in every acknowledgement.
+pub const PROP_MAT      = 7;   // dressing's own material — never terrain's
+pub const PROP_ITEM_MAX = 8;   // the palette; NOMINAL, so a refusal offers nothing
+
+pub const DR_OK    = 0;
+pub const DR_ITEM  = 1;        // not in the palette
+pub const DR_STORE = 2;        // the store declined the write
+
+// ⚠ THE `Fit` TRAVELS OUT, because the sentence is `fit_why`'s and the doorstep's
+// rule is that a NOMINAL refusal never grows an offer (`X68`). Handing back a
+// finished string here would put the wire's words in the library twice.
+pub struct Dressed {
+  dr_code:   integer,
+  dr_q:      integer = 0,
+  dr_r:      integer = 0,
+  dr_height: integer = 0,
+  dr_count:  integer = 0,      // how many props are in the cell NOW
+  dr_fit:    Fit = Fit {},
+  dr_why:    text = "",
+}
+
+pub fn prop_at(w: World, q: integer, r: integer, item: integer) -> Dressed {
+  pa_fit = fit_nominal(item, PROP_ITEM_MAX, "prop");
+  if !pa_fit.ft_ok {
+    return Dressed { dr_code: DR_ITEM, dr_q: q, dr_r: r, dr_fit: pa_fit };
+  }
+  pa_top = 0;
+  for pa_e in column_cells(world_column(w, q, r)) {
+    if hex_world::hex_occupied(pa_e) { pa_top = pa_e.h_height as integer ?? 0; }
+  }
+  pa_cells: vector<Hex> = [];
+  for pa_k in world_dressing(w, q, r).co_cells {
+    if hex_world::hex_occupied(pa_k) { pa_cells += [pa_k]; }
+  }
+  pa_cells += [Hex { h_height: (pa_top as u16? ?? 0),
+                     h_material: (PROP_MAT as u8? ?? 0),
+                     h_item: (item as u8? ?? 0) }];
+  pa_w = world_set_dressing(w, Column { co_q: q, co_r: r, co_cells: pa_cells });
+  if pa_w.cw_code != CW_OK {
+    return Dressed { dr_code: DR_STORE, dr_q: q, dr_r: r, dr_why: pa_w.cw_detail };
+  }
+  return Dressed { dr_code: DR_OK, dr_q: q, dr_r: r, dr_height: pa_top,
+                   dr_count: len(pa_cells), dr_fit: pa_fit };
+}
+
 pub fn open_ahead(w: World, a: Author, kind: integer, nedges: integer) -> Ack {
   if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");

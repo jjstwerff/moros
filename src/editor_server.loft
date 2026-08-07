@@ -694,8 +694,10 @@ const CART_WHEEL_L = 6;
 const CART_WHEEL_R = 7;
 const CART_RADIUS  = 0.40;       // wheel radius in world units
 const CART_HALF_W  = 0.55;       // half the axle, body centre to wheel
-const PROP_MAT     = 7;          // dressing's own material — never terrain's
-const PROP_ITEM_MAX = 8;         // the prop palette; NOMINAL, so no offers
+// ⚠ `PROP_MAT` AND `hex_editor::PROP_ITEM_MAX` MOVED TO `hex_editor` with the gesture that uses
+// them — a palette is part of what a prop IS, not of how it reaches the wire, and
+// keeping a copy here is how the two come to disagree. The compiler said so: both
+// names collided the moment `prop_at` landed.
 // Imported props get mesh ids of their own out of the reserved 0-15 block. The
 // cart holds 5-7, so 8-15 is eight imports — enough to kit-bash with, and the
 // bound is CHECKED rather than trusted, because running off the end would
@@ -6611,8 +6613,8 @@ fn main() {
                 if hex_world::hex_occupied(ik) { icells += [ik]; }
               }
               icells += [hex_world::Hex { h_height: (itop as u16? ?? 0),
-                                          h_material: (PROP_MAT as u8? ?? 0),
-                                          h_item: (PROP_ITEM_MAX as u8? ?? 0) }];
+                                          h_material: (hex_editor::PROP_MAT as u8? ?? 0),
+                                          h_item: (hex_editor::PROP_ITEM_MAX as u8? ?? 0) }];
               world_set_dressing(wld, hex_world::Column { co_q: ihx.ha_q,
                                                           co_r: ihx.ha_r,
                                                           co_cells: icells });
@@ -6628,43 +6630,29 @@ fn main() {
             }
           }
         } else if ev.msg_id == MSG_PROP {
-          pitem = ev.payload as integer ?? 1;
-          // A prop's identity is a NAME in a palette, not a magnitude — so the
-          // doorstep refuses it without an offer (`X68`).
-          pfit = fit_nominal(pitem, PROP_ITEM_MAX, "prop");
-          if !pfit.ft_ok {
-            srv.send_to(ev.cid, "S:prop refused — {fit_why(pfit)}");
-            println("editor: prop refused — {fit_why(pfit)}");
+          // ⚠ THE GESTURE IS `hex_editor::prop_at` NOW — plan 17's headless thread.
+          // What was here was a doorstep, a read, an append and a write, none of
+          // which needs a port; what is left is deriving the cell from where the
+          // author stands and saying the sentence. The prop gate asked for this move
+          // in its own header, and `tests/session.loft` holds the accumulation claim
+          // that came with it.
+          phx = world_to_hex(px, pz);
+          pdr = hex_editor::prop_at(wld, phx.ha_q, phx.ha_r,
+                                    ev.payload as integer ?? 1);
+          if pdr.dr_code == hex_editor::DR_ITEM {
+            // A prop's identity is a NAME in a palette, not a magnitude — so the
+            // doorstep refuses it without an offer (`X68`).
+            srv.send_to(ev.cid, "S:prop refused — {fit_why(pdr.dr_fit)}");
+            println("editor: prop refused — {fit_why(pdr.dr_fit)}");
             continue;
           }
-          phx = world_to_hex(px, pz);
-          pcl = world_column(wld, phx.ha_q, phx.ha_r);
-          ptop = 0;
-          for pe2 in pcl.co_cells {
-            if hex_world::hex_occupied(pe2) { ptop = pe2.h_height as integer ?? 0; }
-          }
-          // Everything already in this cell's dressing stays; a prop is ADDED to
-          // the set, not a replacement for it. `world_set_dressing` writes the
-          // whole dressing column, so read it, extend it, write it back.
-          pcur = world_dressing(wld, phx.ha_q, phx.ha_r);
-          pcells: vector<hex_world::Hex> = [];
-          for pk in pcur.co_cells {
-            if hex_world::hex_occupied(pk) { pcells += [pk]; }
-          }
-          pcells += [hex_world::Hex { h_height: (ptop as u16? ?? 0),
-                                      h_material: (PROP_MAT as u8? ?? 0),
-                                      h_item: (pitem as u8? ?? 0) }];
-          pw = world_set_dressing(wld, hex_world::Column { co_q: phx.ha_q,
-                                                           co_r: phx.ha_r,
-                                                           co_cells: pcells });
-          if pw.cw_code != CW_OK {
-            srv.send_to(ev.cid, "S:prop refused — {pw.cw_detail}");
+          if pdr.dr_code != hex_editor::DR_OK {
+            srv.send_to(ev.cid, "S:prop refused — {pdr.dr_why}");
           } else {
-            mark_dirty(dirty, phx.ha_q, phx.ha_r, 2);
-            srv.send_to(ev.cid,
-              "S:prop {pitem} placed at {phx.ha_q},{phx.ha_r} height {ptop} "
-              + "({len(pcells)} in this cell)");
-            println("editor: prop {pitem} at ({phx.ha_q},{phx.ha_r}) height {ptop}");
+            mark_dirty(dirty, pdr.dr_q, pdr.dr_r, 2);
+            srv.send_to(ev.cid, "S:{say_prop(ev.payload as integer ?? 1, pdr.dr_q,
+                                            pdr.dr_r, pdr.dr_height, pdr.dr_count)}");
+            println("editor: prop at ({pdr.dr_q},{pdr.dr_r}) height {pdr.dr_height}");
           }
         } else if ev.msg_id == MSG_DRESSING {
           dci = ev.payload.find(",");

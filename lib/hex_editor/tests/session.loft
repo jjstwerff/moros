@@ -200,3 +200,88 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
   assert(len(session_column(w, 0, 10)) == 4,
          "the raise changed the column's depth: {session_column(w, 0, 10)}");
 }
+
+// ── `prop.mjs` — dressing ACCUMULATES, and the palette refuses NOMINALLY ─────
+//
+// ⚠ THE GATE ASKED FOR THIS BY NAME. Its header reads *"it is not thinned further
+// because the prop gesture itself has not moved into `hex_editor` yet — when it
+// does, the accumulation claim goes with it and what is left here is the sentence."*
+// This is that move: `prop_at` is the gesture, and what stays on the wire is
+// `say_prop` and the two views of one cell.
+//
+// ⚠ AND THE SEPARATION ITSELF IS `hex_world`'s (`tests/dressing.loft`), not restated
+// here. What this holds is the EDITOR's half — that the gesture appends rather than
+// replaces, and that a terrain write leaves what it appended alone.
+fn test_two_props_in_one_cell_accumulate_rather_than_replacing() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  first = session_prop(s, w, 1);
+  assert(first.dr_code == DR_OK, "the first prop was refused: {first.dr_why}");
+  assert(first.dr_count == 1, "{first.dr_count} in the cell after one prop");
+  second = session_prop(s, w, 2);
+  assert(second.dr_code == DR_OK, "the second prop was refused: {second.dr_why}");
+  // ⚠ THE COUNT IS THE CLAIM. `world_set_dressing` writes the WHOLE column, so a
+  // gesture that built a fresh one-element column would answer `1` here and the
+  // wire would still say *placed*.
+  assert(second.dr_count == 2,
+         "{second.dr_count} in the cell after two props — a prop is ADDED to the "
+       + "dressing, never substituted for it");
+  held = session_dressing(w, second.dr_q, second.dr_r);
+  assert(len(held) == 2 && held[0] == 1 && held[1] == 2,
+         "the cell holds {held}, and both props went in in order");
+}
+
+// ⚠ A PROP IS A NAME IN A PALETTE, NOT A MAGNITUDE — so the doorstep refuses it
+// without an offer (`X68`). The gate reports the sentence; this holds the rule that
+// produces it.
+fn test_a_prop_outside_the_palette_is_refused_without_an_offer() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  got = session_prop(s, w, PROP_ITEM_MAX + 1);
+  assert(got.dr_code == DR_ITEM,
+         "a prop outside the palette was placed ({got.dr_code})");
+  assert(!got.dr_fit.ft_ok, "the doorstep passed it");
+  // ⚠ THE FIELD TO ASSERT ON IS `ft_ordinal`, NOT `ft_offer`. `ft_offer` is an
+  // INTEGER the struct's own comment calls *"meaningless unless ft_ordinal"* — so a
+  // test reading it for a nominal refusal is asserting on a field the design says
+  // says nothing, and this one did until it went red for that reason.
+  assert(!got.dr_fit.ft_ordinal,
+         "a NOMINAL refusal was marked ordinal — a prop is a name in a palette, not "
+       + "a magnitude, so there is no nearest admissible value to offer (X68)");
+  // …and nothing was written, which is the half a refusal string cannot say.
+  (nq, nr) = hex_grid::px_to_hex(0.0, 0.0);
+  assert(len(session_dressing(w, nq, nr)) == 0,
+         "the refused prop was written anyway");
+}
+
+// ⚠ AND A TERRAIN WRITE LEAVES DRESSING ALONE — the same claim the gate makes by
+// raising the ground under a prop, and `D1`'s reason for a separate view: the write
+// that raises terrain is exactly the one that used to blank a dressing slot.
+fn test_raising_the_ground_under_a_prop_does_not_delete_it() {
+  w = a_world();
+  s = session_new();
+  session_at(s, 0.0, 0.0, 0.0);
+  // ⚠ THE PROP GOES WHERE THE RAISE LANDS, AND THE ACK IS WHAT SAYS WHERE THAT IS.
+  // `raise_ahead` writes along a RAY — `peak_cell` puts the stroke ten hexes in
+  // front of the author — so a prop under the author's feet is never touched by it
+  // and this test passed on a cell nothing happened to. `Ack` carries `ak_q`/`ak_r`
+  // for exactly this reason (*"the caller must not re-derive it"*), and the first
+  // version of this test re-derived it as *the author's own cell*.
+  lift = session_raise(s, w, 1);
+  assert(lift.ak_ok, "the raise was refused: {lift.ak_why}");
+  put = prop_at(w, lift.ak_q, lift.ak_r, 3);
+  assert(put.dr_code == DR_OK, "the prop was refused: {put.dr_why}");
+  before = session_column(w, put.dr_q, put.dr_r);
+  session_raise(s, w, 1);
+  after = session_column(w, put.dr_q, put.dr_r);
+  // The control: the raise really happened. Without it this passes on a world
+  // nothing touched, which is the shape the cellar test was written wrong in.
+  assert(len(after) > 0 && len(before) > 0
+         && after[len(after) - 1] > before[len(before) - 1],
+         "the ground did not move: {before} then {after}");
+  held = session_dressing(w, put.dr_q, put.dr_r);
+  assert(len(held) == 1 && held[0] == 3,
+         "the raise took the dressing with it — the cell holds {held}");
+}

@@ -141,6 +141,12 @@ pub fn say_walls(q: integer, r: integer, body: text) -> text {
   "walls {q},{r} = {body}"
 }
 
+// `19:` — a prop placed. ⚠ THE COUNT IS IN IT, because *placed* alone cannot tell
+// an author whether the last one replaced this one or joined it.
+pub fn say_prop(item: integer, q: integer, r: integer, h: integer, n: integer) -> text {
+  "prop {item} placed at {q},{r} height {h} ({n} in this cell)"
+}
+
 pub fn say_dressing(q: integer, r: integer, body: text) -> text {
   "dressing {q},{r} = {body}"
 }

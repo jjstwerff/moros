@@ -67,6 +67,32 @@ times; `place.loft` gave 18.9 s once and 6.8 s four times running. Other agents 
 `place_phases` now times each path **twice, on either side of the other**, and prints both — a
 spread there is drift, not a result.
 
+## ⏭ THE HEADLESS THREAD — a gesture moves, and its claim moves with it
+
+⚠ **THE USER'S STANDING REDIRECT: *"where possible I want tests outside the server"*.**
+`EditSession` (`lib/hex_editor/src/session.loft`) holds the eight registries the server keeps
+beside the store, so a gate's structural claim can be made with no port, no browser and no tick.
+`tests/session.loft` reproduces **five gates' own numbers** — `opening`, `fence`, `ground`,
+`stencil` and now `prop`.
+
+✅ **`prop` IS THE FIRST GATE TO ASK FOR ITS OWN MOVE AND GET IT.** Its header read *"it is not
+thinned further because the prop gesture itself has not moved into `hex_editor` yet — when it
+does, the accumulation claim goes with it"*. `hex_editor::prop_at` is now the gesture, with
+`PROP_MAT` and `PROP_ITEM_MAX` beside it — ⚠ **and the compiler is what proved the move was
+real**: both constants collided the moment the library declared them, because the server still
+had its own copies. A palette is part of what a prop IS.
+
+⚠ **NOTHING WAS REMOVED FROM THE GATE, WHICH IS *move before you remove* WORKING.** The count
+travels in `say_prop`'s own words and *the same cell answers differently to `20:` and `15:`* is a
+claim about two messages; a gate dropping those because a library test exists would be a coverage
+cut wearing a tidy-up's clothes. **The verdict is byte-identical across the move.**
+
+⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
+comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
+is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under
+their feet is never touched by it: the test passed on a cell nothing happened to until it used the
+`Ack`'s own `ak_q`/`ak_r`, which exists because *the caller must not re-derive it*.
+
 ## ⏭ AND THE GATES — 1838 s → 741 s, with the hot path taken off them entirely
 
 ⚠ **THE USER'S SECOND REDIRECT, 2026-08-06**: *"go at the gates instead"*, then *"they can

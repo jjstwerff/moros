@@ -158,6 +158,30 @@ pub fn session_storey(s: EditSession, w: World, dir: integer, why: &text) -> int
   storey_add(w, sq, sr, dir, STENCIL_R, why)
 }
 
+// `19:` — a prop where the author is STANDING.
+//
+// ⚠ THE CELL IS DERIVED THE WAY THE HANDLER DERIVES IT, which is `session_storey`'s
+// note one gesture over: `world_to_hex(px, pz)` in the server is a two-line
+// delegation to `hex_grid::px_to_hex`, checked rather than assumed. A wrapper that
+// took a cell would let a test agree with itself about a mapping the wire does
+// differently.
+pub fn session_prop(s: EditSession, w: World, item: integer) -> Dressed {
+  (pq, pr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
+  prop_at(w, pq, pr, item)
+}
+
+// `20:` — the dressing at a cell, as `height/item` pairs. ⚠ THE DRESSING VIEW AND
+// NOT THE TERRAIN ONE: two answers about one cell is the whole of `D1`, and a test
+// that read the column would be asking the question the separation exists to keep
+// apart.
+pub fn session_dressing(w: World, q: integer, r: integer) -> vector<integer> {
+  sd_out: vector<integer> = [];
+  for sd_e in world_dressing(w, q, r).co_cells {
+    if hex_world::hex_occupied(sd_e) { sd_out += [sd_e.h_item as integer ?? 0]; }
+  }
+  sd_out
+}
+
 // ── the read-backs a gate asks for over the wire ─────────────────────────────
 //
 // `15:` `16:` `26:` `29:` — the four queries every socket gate uses to see what a
