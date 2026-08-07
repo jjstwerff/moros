@@ -53,6 +53,17 @@ use hex_grid;
 // takes, and the server's own registries are what nothing else could hold. A session
 // that owned the world too would be a second place a world can live, which is the thing
 // `HEX_STACK.md`'s first invariant forbids — the store is the only authority.
+// ⚠ AND THE SERVER HOLDS ONE OF THESE NOW — not a parallel set of nine locals.
+// `editor_server.loft` carried each registry as its own variable and passed all nine
+// to `chunk_meshes_all` at four call sites; part mode held each aside by hand. Two
+// shapes of one state is how the wire and a headless test come to disagree about
+// what a scene IS, so there is one type with two drivers.
+//
+// ⚠ EXCEPT THE POSE, DELIBERATELY. `es_author` is a driver's stand-in for a walker —
+// a test has no tick, so it teleports. The server HAS a walker and writes `px`/`pz`/
+// `yaw` from it, and a session author kept in step there would be a second authority
+// on where the author is. Read `es_author` as *this driver's pose*, never as *the
+// editor's*.
 pub struct EditSession {
   es_author: Author,
   // The eight the server holds beside the store. Empty is a legal scene: a world with

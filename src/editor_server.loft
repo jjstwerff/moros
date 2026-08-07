@@ -5153,29 +5153,20 @@ fn main() {
   // The wall runs authored so far, and the run being drawn. A run is the RECORD —
   // the cells' edge bytes are derived from it — so this is what a save has to
   // carry, and what a bounce reads its exact normal from.
-  wall_runs = hex_editor::WallRuns { items: [] };
   // ⚠ ROOFS ARE KEPT LIKE WALL RUNS, and for the same reason: the drawn shape is
   // the PLAN's, so the renderer needs the plan rather than the cells under it.
-  roof_plans = hex_editor::RoofPlans { items: [] };
   // ⚠ AND THE LEAVES. A door's ANGLE is not in the world — the store says an edge
   // is a door, which is the boundary's business, and how far it stands open is the
   // fitting's. Kept beside the roofs for the same reason: the renderer needs the
   // thing, not the cells under it.
-  door_leaves = hex_editor::DoorLeaves { items: [] };
   // The holes, as PROFILES. The store's edge materials say which boundary is
   // passable; these say what shape the hole through it is.
-  wall_openings = hex_editor::Openings { items: [] };
-  wall_annexes = hex_editor::Annexes { items: [] };
   // ⚠ DERIVED, NEVER APPENDED TO. The annexes are the truth and their walls follow
   // from them, because adding a cupboard has to REMOVE the bedstee's side wall —
   // and a list that was appended to could only grow. Rebuilding the whole row is
   // the same rule the store keeps: one authority, everything else derived.
-  annex_walls = WallRuns { items: [] };
-  wall_props = hex_editor::Props { items: [] };
   // The storeys' own floors and the holes through them — a slab is the wall band
-  // rotated, so these are `wall_runs` and `wall_openings` one axis over.
-  wall_slabs = hex_editor::Slabs { items: [] };
-  wall_holes = hex_editor::Holes { items: [] };
+  // rotated, so these are `sess.es_runs` and `sess.es_open` one axis over.
   // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
   ring_live = false;
   ring_x = 0.0;
@@ -5228,6 +5219,25 @@ fn main() {
   // because a whole-value bind COPIES (loft#774, now `@PLN130` F7's decided rule);
   // if it ever aliases, this design silently becomes the baking it exists to
   // prevent.
+  // ── THE SCENE STATE IS ONE THING NOW — the headless thread ─────────────────
+  //
+  // ⚠ NINE PARALLEL VARIABLES WERE NINE PLACES TO FORGET ONE. Every registry the
+  // renderer needs beside the store — wall runs, roof plans, door leaves, openings,
+  // annexes and their walls, props, slabs, holes — lived here as its own local, and
+  // `chunk_meshes_all` takes all nine as arguments at four call sites. A tenth would
+  // have been ten edits, and part mode already holds each one aside by hand.
+  //
+  // ⚠ AND IT IS THE SAME TYPE A HEADLESS TEST DRIVES. `EditSession` was built for
+  // `tests/session.loft` — the state a gate needs without a socket — and the server
+  // holding a DIFFERENT shape of the same state is how the two come to disagree
+  // about what a scene is. One type, two drivers.
+  //
+  // ⚠ WHAT IT DOES NOT HOLD IS THE POSE, and that is deliberate rather than
+  // unfinished. `es_author` is a driver's stand-in for a walker; this server HAS a
+  // walker, and `px`/`pz`/`yaw` are written by the tick. A session author kept in
+  // step here would be a second authority on where the author is — the same argument
+  // `HEX_STACK.md`'s first invariant makes for the store.
+  sess = hex_editor::session_new();
   part_disp = new_world();
   disp_tau = -1;                 // the authored clock the display was built from,
                                  // so a rebuild happens once per edit and not per tick
@@ -5240,15 +5250,18 @@ fn main() {
   // had. `world_sections_key` is the other half.
   disp_key = "";
   held_world = new_world();
-  held_runs = WallRuns { items: [] };
-  held_roofs = hex_editor::RoofPlans { items: [] };
-  held_leaves = hex_editor::DoorLeaves { items: [] };
-  held_openings = hex_editor::Openings { items: [] };
-  held_annexes = hex_editor::Annexes { items: [] };
-  held_awalls = WallRuns { items: [] };
-  held_props = hex_editor::Props { items: [] };
-  held_slabs = hex_editor::Slabs { items: [] };
-  held_holes = hex_editor::Holes { items: [] };
+  // ⚠ ONE SESSION HELD ASIDE, NOT NINE REGISTRIES — and the nine were WRONG the
+  // moment the live ones became fields. `held_roofs = sess.es_roofs` reads a struct
+  // FIELD, which ALIASES where reading a plain local COPIES (loft#774/#775) — so
+  // clearing `sess.es_roofs.items` for part mode emptied the held copy too, and a
+  // close restored nothing. Measured by `part_mode`: *6 of 440 surfaces differ*,
+  // surfaces 4, 5 and 8 — the roof, the wall and the soffit, which are exactly the
+  // ones drawn from these registries.
+  //
+  // ⚠ THE CURE IS THE REFACTOR'S OWN POINT. A whole session is a plain local, so
+  // `held_sess = sess` copies — the same shape as `held = wld` for the world one
+  // line over, and the same reason it was written that way (`A7.3a` measured it).
+  held_sess = hex_editor::session_new();
   // The feet too: a part sits at its own origin, so opening one teleports the
   // walker there and closing puts them back where they were standing. Without it
   // you open a cottage from across the valley and look at empty ground.
@@ -5259,9 +5272,9 @@ fn main() {
   // The collision proxy and its validity, keyed on the cell, the edit clock and
   // the LEVEL the walker is on.
   coll_sf = surfaces_new();
-  coll_rt = runs_track(wall_runs);
-  coll_move = edges_walk(wld, 0, 0, COLL_R, wall_runs, coll_sf, 0.0);
-  coll_view = edges_around(wld, 0, 0, COLL_R, true, wall_runs, surfaces_new(), 0.0);
+  coll_rt = runs_track(sess.es_runs);
+  coll_move = edges_walk(wld, 0, 0, COLL_R, sess.es_runs, coll_sf, 0.0);
+  coll_view = edges_around(wld, 0, 0, COLL_R, true, sess.es_runs, surfaces_new(), 0.0);
   coll_q = 0;
   coll_r = 0;
   coll_tau = 0 - 1;                   // never a real clock value, so the first
@@ -6073,15 +6086,7 @@ fn main() {
               }
               pt_shown = part_name;
               wld = held_world;
-              wall_runs = held_runs;
-              roof_plans = held_roofs;
-              door_leaves = held_leaves;
-              wall_openings = held_openings;
-              wall_annexes = held_annexes;
-              annex_walls = held_awalls;
-              wall_props = held_props;
-              wall_slabs = held_slabs;
-              wall_holes = held_holes;
+              sess = held_sess;
               px = held_px;
               pz = held_pz;
               py = ground_under(wld, px, pz, held_py);
@@ -6130,15 +6135,7 @@ fn main() {
               println("editor: part refused — '{ev.payload}' ({pt_ld.wl_code}) {pt_ld.wl_detail}");
             } else {
               held_world = wld;
-              held_runs = wall_runs;
-              held_roofs = roof_plans;
-              held_leaves = door_leaves;
-              held_openings = wall_openings;
-              held_annexes = wall_annexes;
-              held_awalls = annex_walls;
-              held_props = wall_props;
-              held_slabs = wall_slabs;
-              held_holes = wall_holes;
+              held_sess = sess;
               held_px = px;
               held_py = py;
               held_pz = pz;
@@ -6157,15 +6154,15 @@ fn main() {
               // Empty, per `part_thumb_wire`'s argument — a part has no runs, roofs,
               // leaves or dressing of its own, and the world's would be drawn
               // standing in it.
-              wall_runs = WallRuns { items: [] };
-              roof_plans = hex_editor::RoofPlans { items: [] };
-              door_leaves = hex_editor::DoorLeaves { items: [] };
-              wall_openings = hex_editor::Openings { items: [] };
-              wall_annexes = hex_editor::Annexes { items: [] };
-              annex_walls = WallRuns { items: [] };
-              wall_props = hex_editor::Props { items: [] };
-              wall_slabs = hex_editor::Slabs { items: [] };
-              wall_holes = hex_editor::Holes { items: [] };
+              sess.es_runs = WallRuns { items: [] };
+              sess.es_roofs = hex_editor::RoofPlans { items: [] };
+              sess.es_leaves = hex_editor::DoorLeaves { items: [] };
+              sess.es_open = hex_editor::Openings { items: [] };
+              sess.es_annex = hex_editor::Annexes { items: [] };
+              sess.es_awalls = WallRuns { items: [] };
+              sess.es_props = hex_editor::Props { items: [] };
+              sess.es_slabs = hex_editor::Slabs { items: [] };
+              sess.es_holes = hex_editor::Holes { items: [] };
               in_part = true;
               part_name = ev.payload;
               disp_tau = -1;              // the same reason, the other way round
@@ -6363,8 +6360,8 @@ fn main() {
             + "  rested {cam_rested}  residual {cam_res_d},{cam_res_p}\n"
             + "modes      levelling {levelling} (grade {level_h})  roading {roading}"
             + " (grade {road_h})\n"
-            + "wall runs  {len(wall_runs.items)}\n";
-          for sn_run in wall_runs.items {
+            + "wall runs  {len(sess.es_runs.items)}\n";
+          for sn_run in sess.es_runs.items {
             sn_txt += "  run mat {sn_run.wr_mat} heading {sn_run.wr_step}/24"
                     + "  ({sn_run.wr_x0},{sn_run.wr_z0}) -> ({sn_run.wr_x1},{sn_run.wr_z1})\n";
           }
@@ -6893,7 +6890,7 @@ fn main() {
             owx = px;
             owz = pz;
             obest = 1000000.0;
-            for orun in wall_runs.items {
+            for orun in sess.es_runs.items {
               ot = hex_way::track_new();
               hex_way::track_straight(ot, orun.wr_x0, orun.wr_z0, orun.wr_x1, orun.wr_z1);
               od = hex_way::seg_distance(ot, 0, px, pz);
@@ -6913,7 +6910,7 @@ fn main() {
               // short, because that is the only kind with a back to cut into.
               ohost = 0 - 1;
               ohi = 0;
-              for ohn in wall_openings.items {
+              for ohn in sess.es_open.items {
                 if hex_editor::opening_at_front(ohn) && !hex_editor::opening_at_back(ohn) {
                   ohost = ohi;
                 }
@@ -6923,14 +6920,14 @@ fn main() {
                 srv.send_to(ev.cid, "S:no niche to cut into — make one with N first");
                 println("editor: embrasure refused — no niche");
               } else {
-                ohostop = wall_openings.items[ohost] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
+                ohostop = sess.es_open.items[ohost] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
                 owin = hex_editor::opening_in_back(ohostop, 0.7, 4, 9, okind, HEIGHT_SCALE);
                 ofit = hex_editor::opening_fits_in(ohostop, owin);
                 if !ofit.ak_ok {
                   srv.send_to(ev.cid, "S:window refused — {ofit.ak_why}");
                   println("editor: embrasure refused — {ofit.ak_why}");
                 } else {
-                  wall_openings.items += [owin];
+                  sess.es_open.items += [owin];
                   mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
                   srv.send_to(ev.cid, "S:a window in the niche's back at "
                                     + "{oack.ak_q},{oack.ak_r}");
@@ -6938,16 +6935,16 @@ fn main() {
                 }
               }
             } else if okind == hex_editor::OP_CIRCLE {
-              wall_openings.items += [hex_editor::oculus_opening(
+              sess.es_open.items += [hex_editor::oculus_opening(
                 ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, odepth)];
             } else if okind == hex_editor::OP_FLAT && odepth >= 1.0 {
-              wall_openings.items += [hex_editor::door_opening(ow.x, ow.z, 0.9, WALL_UP)];
+              sess.es_open.items += [hex_editor::door_opening(ow.x, ow.z, 0.9, WALL_UP)];
             } else {
               // A niche starts at a seat's height rather than at the floor: a sleeping
               // alcove is cut into the wall above the bed, not into the skirting.
               onlo = 0;
               if odepth < 1.0 { onlo = 2; }
-              wall_openings.items += [hex_editor::profile_opening(
+              sess.es_open.items += [hex_editor::profile_opening(
                 ow.x, ow.z, 1.1, onlo, 7 + onlo, okind, 0.0, HEIGHT_SCALE, odepth)];
             }
             mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
@@ -6969,7 +6966,7 @@ fn main() {
             sslab = hex_editor::slab_over(
               hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
               py_of(wld, px, pz), STOREY_H, hex_editor::SLAB_THICK);
-            wall_slabs.items += [sslab];
+            sess.es_slabs.items += [sslab];
             shx = world_to_hex(sslab.sl_x, sslab.sl_z);
             mark_dirty(dirty, shx.ha_q, shx.ha_r, HOUSE_W + HOUSE_D + 4);
             // ⚠ AND WHERE IT LANDED. A footprint is placed AHEAD of the author —
@@ -6989,12 +6986,12 @@ fn main() {
             // — the headless thread. All three were inline here, so a test that
             // wanted any of them had to lay a slab over a wire first; the geometry
             // they stand on has been in the library all along.
-            shl = hex_editor::slab_hole(wall_slabs, skind, px, pz, 2.0, 2.0);
+            shl = hex_editor::slab_hole(sess.es_slabs, skind, px, pz, 2.0, 2.0);
             if !shl.hx_ok {
               srv.send_to(ev.cid, "S:hole refused — {shl.hx_why}");
               println("editor: hole refused — {shl.hx_why}");
             } else {
-              wall_holes.items += [shl.hx_hole];
+              sess.es_holes.items += [shl.hx_hole];
               shx2 = world_to_hex(shl.hx_hole.ho_x, shl.hx_hole.ho_z);
               mark_dirty(dirty, shx2.ha_q, shx2.ha_r, HOUSE_W + HOUSE_D + 4);
               srv.send_to(ev.cid, "S:a hole of kind {skind} through the slab");
@@ -7013,15 +7010,15 @@ fn main() {
           // here, and neither could be reached without building a scene over a wire.
           // What stays is the registry, the dirty mark and the sentence.
           pseat = if pkind == hex_editor::PROP_BED {
-                    hex_editor::seat_bed(wall_annexes, px, pz)
+                    hex_editor::seat_bed(sess.es_annex, px, pz)
                   } else {
-                    hex_editor::seat_statue(wall_openings, px, pz, hex_draw::BAND_SIDES)
+                    hex_editor::seat_statue(sess.es_open, px, pz, hex_draw::BAND_SIDES)
                   };
           if !pseat.se_ok {
             srv.send_to(ev.cid, "S:{pseat.se_why}");
             println("editor: seat refused — {pseat.se_why}");
           } else {
-            wall_props.items += [pseat.se_prop];
+            sess.es_props.items += [pseat.se_prop];
             pshex = world_to_hex(pseat.se_prop.pr_x, pseat.se_prop.pr_z);
             mark_dirty(dirty, pshex.ha_q, pshex.ha_r, 3);
             if pkind == hex_editor::PROP_BED {
@@ -7047,10 +7044,10 @@ fn main() {
           // balcony at ankle height is a doorstep"*. What stays here is the scene
           // state this file owns, the dirty mark and the sentence.
           abuilt = if akind == 2 {
-                     hex_editor::annex_cupboard(wall_annexes, HEIGHT_SCALE)
+                     hex_editor::annex_cupboard(sess.es_annex, HEIGHT_SCALE)
                    } else {
                      hex_editor::annex_build(
-                       hex_editor::annex_host(wall_runs, px, pz, yaw,
+                       hex_editor::annex_host(sess.es_runs, px, pz, yaw,
                          hex_editor::Trunk { tk_live: ring_live, tk_x: ring_x,
                                              tk_z: ring_z, tk_r: ring_r }),
                        akind, hex_draw::BAND_SIDES, HEIGHT_SCALE)
@@ -7059,17 +7056,17 @@ fn main() {
             srv.send_to(ev.cid, "S:{abuilt.ab_why}");
             println("editor: annex refused — {abuilt.ab_why}");
           } else {
-            wall_annexes.items += [abuilt.ab_annex];
-            annex_walls.items = [];
-            hex_editor::annexes_runs(wall_annexes, hex_editor::WALL_MAT, annex_walls);
-            wall_openings.items += [abuilt.ab_open];
+            sess.es_annex.items += [abuilt.ab_annex];
+            sess.es_awalls.items = [];
+            hex_editor::annexes_runs(sess.es_annex, hex_editor::WALL_MAT, sess.es_awalls);
+            sess.es_open.items += [abuilt.ab_open];
             ahex = world_to_hex(abuilt.ab_annex.an_x, abuilt.ab_annex.an_z);
             mark_dirty(dirty, ahex.ha_q, ahex.ha_r, 4);
             if akind == 2 {
-              srv.send_to(ev.cid, "S:a cupboard beside it — {len(annex_walls.items)} "
-                                + "walls for {len(wall_annexes.items)} boxes");
+              srv.send_to(ev.cid, "S:a cupboard beside it — {len(sess.es_awalls.items)} "
+                                + "walls for {len(sess.es_annex.items)} boxes");
               println("editor: cupboard at ({ahex.ha_q},{ahex.ha_r}) — "
-                    + "{len(annex_walls.items)} walls for {len(wall_annexes.items)} boxes");
+                    + "{len(sess.es_awalls.items)} walls for {len(sess.es_annex.items)} boxes");
             } else {
               srv.send_to(ev.cid, "S:an annex of kind {akind} at "
                                 + "{ahex.ha_q},{ahex.ha_r} — 3 walls, a deck");
@@ -7085,12 +7082,12 @@ fn main() {
           // swing of their building.
           hgrade = py_of(wld, px, pz);
           hack = hex_editor::place_house(wld, hex_editor::author_at(px, pz, yaw),
-                                         HOUSE_W, HOUSE_D, hgrade, wall_runs);
+                                         HOUSE_W, HOUSE_D, hgrade, sess.es_runs);
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
           } else {
-            roof_plans.items += [hex_editor::roof_plan_of(
+            sess.es_roofs.items += [hex_editor::roof_plan_of(
               hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
               ((hgrade + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
               hex_editor::ROOF_PITCH_DEFAULT)];
@@ -7099,7 +7096,7 @@ fn main() {
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
           }
         } else if ev.msg_id == MSG_WALL {
-          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, wall_runs, wall_draft);
+          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess.es_runs, wall_draft);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: `<roof_up>` — the roof height above the floor, in height
           // units — or `<roof_up>,<part>`, which places a SAVED part instead of
@@ -7534,15 +7531,15 @@ fn main() {
          || coll_tau != wld.w_tau || coll_surf != surf_u {
         nrebuild = nrebuild + 1;
         coll_sf = surfaces_new();
-        coll_rt = runs_track(wall_runs);
-        coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, wall_runs, coll_sf,
+        coll_rt = runs_track(sess.es_runs);
+        coll_move = edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, sess.es_runs, coll_sf,
                                ref_u);
         // ⚠ The camera's set takes the WALKER's level, not the eye's. The eye
         // orbits a character who is on one storey, and the walls that can swallow
         // it are that storey's; an eye-height reference would pick the deck above
         // whenever the boom rose. Same reference, two predicates.
         coll_view = edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
-                                 wall_runs, surfaces_new(), ref_u);
+                                 sess.es_runs, surfaces_new(), ref_u);
         coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau;
         coll_surf = surf_u; coll_have = true;
       }
@@ -7597,7 +7594,7 @@ fn main() {
       // for it* — so with nothing to climb over, intent is simply what is left. The
       // ease and the rate cap below are untouched, which is what makes walking
       // through a doorway a drift rather than a snap.
-      cam_shelter = hex_editor::shelter_at(wld, roof_plans, cpx, cpz,
+      cam_shelter = hex_editor::shelter_at(wld, sess.es_roofs, cpx, cpz,
                                            (cpy / HEIGHT_SCALE ?? 0.0) as integer,
                                            HEIGHT_SCALE);
       // ── ⚠ THE ROOM ALL ROUND, WHICH IS NOT THE RAY THE BOOM IS ON ────────────
@@ -8158,13 +8155,13 @@ fn main() {
             send_layers(srv, wld, dc2.cx, dc2.cz);
           }
           dms = if in_part {
-                  chunk_meshes_all(dc2.cx, dc2.cz, part_disp, false, wall_runs, roof_plans,
-                    door_leaves, wall_openings, wall_annexes, annex_walls,
-                    wall_props, wall_slabs, wall_holes)
+                  chunk_meshes_all(dc2.cx, dc2.cz, part_disp, false, sess.es_runs, sess.es_roofs,
+                    sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+                    sess.es_props, sess.es_slabs, sess.es_holes)
                 } else {
-                  chunk_meshes_all(dc2.cx, dc2.cz, wld, false, wall_runs, roof_plans,
-                    door_leaves, wall_openings, wall_annexes, annex_walls,
-                    wall_props, wall_slabs, wall_holes)
+                  chunk_meshes_all(dc2.cx, dc2.cz, wld, false, sess.es_runs, sess.es_roofs,
+                    sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+                    sess.es_props, sess.es_slabs, sess.es_holes)
                 };
           dm = chunk_mesh_slot(dms, 0);
           // ⚠ S3: the checksum of the ground mesh THIS SERVER just built, so the
@@ -8303,13 +8300,13 @@ fn main() {
                 send_layers(srv, wld, scx, scz);
               }
               cms = if in_part {
-                      chunk_meshes_all(scx, scz, part_disp, false, wall_runs, roof_plans,
-                        door_leaves, wall_openings, wall_annexes, annex_walls,
-                        wall_props, wall_slabs, wall_holes)
+                      chunk_meshes_all(scx, scz, part_disp, false, sess.es_runs, sess.es_roofs,
+                        sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+                        sess.es_props, sess.es_slabs, sess.es_holes)
                     } else {
-                      chunk_meshes_all(scx, scz, wld, false, wall_runs, roof_plans,
-                        door_leaves, wall_openings, wall_annexes, annex_walls,
-                        wall_props, wall_slabs, wall_holes)
+                      chunk_meshes_all(scx, scz, wld, false, sess.es_runs, sess.es_roofs,
+                        sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+                        sess.es_props, sess.es_slabs, sess.es_holes)
                     };
               cmesh = chunk_mesh_slot(cms, 0);
               srv.broadcast("Q:{scx},{scz},{hex_mesh::mesh_crc(cmesh)}");

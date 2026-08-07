@@ -144,6 +144,23 @@ is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`),
 their feet is never touched by it: the test passed on a cell nothing happened to until it used the
 `Ack`'s own `ak_q`/`ak_r`, which exists because *the caller must not re-derive it*.
 
+✅ **AND THE SERVER'S OWN STATE IS AN `EditSession` NOW.** Nine parallel registries were nine
+places to forget one — `chunk_meshes_all` takes all nine at four call sites, and part mode held
+each aside by hand. One type, two drivers: the wire and a headless test can no longer disagree
+about what a scene IS.
+
+⚠ **AND THE SWAP INTRODUCED A REAL BUG THAT `part_mode` CAUGHT — loft#774/#775, live.** Holding
+the registries aside still read `held_roofs = sess.es_roofs`, and reading a struct **FIELD ALIASES
+where reading a plain local COPIES**. So clearing the live registry for part mode emptied the held
+copy too and a close restored nothing: *6 of 440 surfaces differ, surfaces 4, 5 and 8* — the roof,
+the wall and the soffit, which are exactly the ones drawn from those registries. **The cure is the
+refactor's own point**: `held_sess = sess` is a plain local read, so it copies — the same shape as
+`held = wld` one line over, and the same reason `A7.3a` wrote it that way.
+
+⚠ **WHAT THE SESSION DELIBERATELY DOES NOT HOLD IS THE POSE.** `es_author` is a driver's stand-in
+for a walker; this server has one, and `px`/`pz`/`yaw` are the tick's. A session author kept in
+step would be a second authority on where the author is.
+
 ## ⏭ AND THE GATES — 1838 s → 741 s, with the hot path taken off them entirely
 
 ⚠ **THE USER'S SECOND REDIRECT, 2026-08-06**: *"go at the gates instead"*, then *"they can
