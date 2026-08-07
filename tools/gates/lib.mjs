@@ -54,14 +54,16 @@ export async function absenceWindow(ms, why) {
 //   meshes  every `M:` id in arrival order
 //   picture id -> the last body sent for it, which is the client's picture
 //   ys      `Y:` thumbnail bodies
+//   ts      `T:` transforms, WITHOUT the prefix — `traceOf(g, '0;')` picks a part
+//   views   `C:` camera matrices, in arrival order
 //   all     every message, verbatim, for the checks that need the raw wire
 export async function connect(opts = {}) {
   const port = opts.port ?? PORT;
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
   const g = {
     ws, port,
-    says: [], huds: [], cats: [], cams: [], ls: [], ys: [], all: [],
-    meshes: [], picture: new Map(),
+    says: [], huds: [], cats: [], cams: [], ls: [], ys: [], ts: [], views: [],
+    all: [], meshes: [], picture: new Map(),
   };
   ws.addEventListener('message', (ev) => {
     const s = String(ev.data);
@@ -75,6 +77,13 @@ export async function connect(opts = {}) {
     else if (t === 'W') g.cams.push(s);
     else if (t === 'L') g.ls.push(b);
     else if (t === 'Y') g.ys.push(s);
+    else if (t === 'T') g.ts.push(b);
+    else if (t === 'C') g.views.push(b);
+    // ⚠ THE ASPECT IS ANSWERED HERE OR NO CAMERA EVER COMES. The server asks with
+    // `E:` and sends no `C:` until a client states one — and a gate that never
+    // answered would sit on a world that draws nothing, which reads as a broken
+    // renderer. Every gate in the old shape had this line in its own handler.
+    else if (t === 'E') { try { ws.send(`2:${opts.aspect ?? 1.5},`); } catch { /* closing */ } }
     else if (t === 'M') {
       const semi = b.indexOf(';');
       const id = +b.slice(0, semi);
@@ -90,6 +99,13 @@ export async function connect(opts = {}) {
   // server answer at all — and it SAYS SO if it never does.
   if (opts.hello !== false) {
     await until(() => g.says.length >= 1, 'the server never answered 1:');
+  }
+  // ⚠ THE CAMERA IS EVIDENCE, AND THE OLD SHAPE DROVE FROM IT. Gates in the
+  // `ws.onmessage` family started work inside `if (t === 'C' && !phase)`, which is
+  // "the world is up and a view exists" expressed as a callback. Asking for it here
+  // lets the body of a gate be straight-line code with the same guarantee.
+  if (opts.camera) {
+    await until(() => g.views.length >= 1, 'the server never sent a camera');
   }
   return g;
 }
@@ -196,3 +212,15 @@ export function report(g, obj, ok) {
   console.log(JSON.stringify(obj));
   process.exit(ok ? 0 : 1);
 }
+
+// The `T:` transforms for one part — `traceOf(g, '0;')` is the body, `'1;'` a leg.
+// ⚠ A PART ID IS A CONTRACT WITH THE SERVER AND THEY HAVE MOVED ONCE: when the world
+// went infinite `PART_BODY` slid from 1 to 0, so a probe reading "the body" silently
+// began reading the LEFT LEG and kept passing, because a leg does move.
+export const traceOf = (g, prefix) => g.ts.filter((b) => b.startsWith(prefix));
+
+// The upper-3x3 of a column-major mat4, rounded so float noise is not a pose.
+export const rot9 = (b) => {
+  const m = b.slice(b.indexOf(';') + 1).split(',').map(Number);
+  return [0, 1, 2, 4, 5, 6, 8, 9, 10].map((i) => m[i].toFixed(4)).join(',');
+};

@@ -27,55 +27,42 @@
 // TRANSFORMS now, with a bound that is a failure timeout rather than a
 // measurement. This is the last clock-paced gate; `hipskin` and `walk` count
 // what arrived in a fixed window by design and are a different class.
-const BODY = '0;', LEG_L = '1;';
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-// Distinct values of `arr` reaching `n`, or the bound elapsing. The expiry is the
-// gate's red path — a strafing A/D never turns, and must not hang.
-const until = async (arr, n, limitMs = 15000) => {
-  for (let t = 0; t < limitMs; t += 2) {
-    if (new Set(arr).size >= n) return true;
-    await wait(2);
-  }
-  return false;
-};
-const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
-const rot = [], pos = [];
-let stage = 0, sentLook = false;
-const send = (m) => { if (m.startsWith('3:')) sentLook = true; ws.send(m); };
-const rot9 = (b) => {
-  const m = b.slice(b.indexOf(';') + 1).split(',').map(Number);
-  return [0,1,2, 4,5,6, 8,9,10].map(i => m[i].toFixed(4)).join(',');
-};
+const BODY = '0;';
+
+import { connect, until, report, traceOf, rot9 } from '../lib.mjs';
+
+// ⚠ THE MOUSE IS NEVER TOUCHED, AND THAT IS THE CLAIM. Every `3:` this gate could
+// send goes through here, so *no look message was sent* is a fact about the run and
+// not an intention — a bare `g.ws.send` would let one slip past unrecorded.
+let sentLook = false;
+const key = (m) => { if (m.startsWith('3:')) sentLook = true; g.ws.send(m); };
+
+// The x,z of a column-major mat4 — where the body IS, as opposed to which way it faces.
 const xz = (b) => {
   const m = b.slice(b.indexOf(';') + 1).split(',').map(Number);
   return m[12].toFixed(4) + ',' + m[14].toFixed(4);
 };
-ws.onopen = () => send('1:');
-ws.onmessage = (e) => {
-  const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'T' && b.startsWith(BODY)) { rot.push(rot9(b)); pos.push(xz(b)); }
-  if (t === 'E') send('2:1.5,');
-  if (t === 'C' && stage === 0) {
-    stage = 1;
-    (async () => {
-      send('4:8');                                 // hold D — turn
-      await until(rot, 3);
-      send('4:0');
-      const facings = new Set(rot).size;
-      send('4:1');                                 // hold W — walk
-      await until(pos, 3);
-      send('4:0');
-      const turned = facings >= 3;
-      const walked = new Set(pos).size >= 3;
-      const ok = turned && walked && !sentLook;
-      console.log(JSON.stringify({ facings,
-                                   positions: new Set(pos).size,
-                                   turnedWithoutMouse: turned,
-                                   walkedWithoutMouse: walked,
-                                   everSentLook: sentLook, ok }));
-      ws.close(); process.exit(ok ? 0 : 1);
-    })();
-  }
-};
-ws.onerror = () => process.exit(2);
-setTimeout(() => { console.log('TIMEOUT'); process.exit(3); }, 240000);
+
+const g = await connect({ camera: true });
+const rot = () => traceOf(g, BODY).map(rot9);
+const pos = () => traceOf(g, BODY).map(xz);
+// Distinct values reaching `n`, or the bound elapsing. ⚠ THE EXPIRY IS THE GATE'S RED
+// PATH — a strafing A/D never turns, and must not hang.
+const distinct = (pick, n) =>
+  until(() => new Set(pick()).size >= n, `only ${new Set(pick()).size} distinct of ${n}`, 15000);
+
+key('4:8');                                 // hold D — turn
+await distinct(rot, 3);
+key('4:0');
+const facings = new Set(rot()).size;
+
+key('4:1');                                 // hold W — walk
+await distinct(pos, 3);
+key('4:0');
+
+const turned = facings >= 3;
+const walked = new Set(pos()).size >= 3;
+const ok = turned && walked && !sentLook;
+report(g, { facings, positions: new Set(pos()).size,
+            turnedWithoutMouse: turned, walkedWithoutMouse: walked,
+            everSentLook: sentLook, ok }, ok);

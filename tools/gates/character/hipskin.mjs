@@ -26,11 +26,7 @@
 // at EVERY angle, not just the widest — is
 // plans/14-props-dressing/probe/skin_joint.loft, which needs no server.
 const BODY = 0, LEG_L = 1;
-const ws = new WebSocket(`ws://127.0.0.1:${process.env.EDITOR_PORT ?? 18090}/ws`);
 
-let bodyMinY = null, legHalfW = null;
-let bodyT = null, legT = null;
-let maxSwing = 0, poses = 0, phase = 0;
 // ── ⚠ DRIVEN BY POSES, NEVER BY THE WALL CLOCK — plan 19 `L5` ──────────────
 //
 // This gate held W for 1500 ms and judged at 2000 ms. A wall clock measures the
@@ -48,92 +44,73 @@ let maxSwing = 0, poses = 0, phase = 0;
 // count taken after the release can never be reached. W is held until the verdict's
 // own evidence exists, and released in the same breath as judging it.
 const JUDGE_POSES = 44;   // poses observed WHILE walking, then release and judge
-let judged = false;
 
-ws.onopen = () => ws.send('1:');
-ws.onmessage = (e) => {
-  const s = e.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
-  if (t === 'M') {
-    const p = b.split(';');
-    const id = Number(p[0]);
-    if (p.length < 4) return;
-    if (id === BODY && bodyMinY === null) {
-      let lo = Infinity;
-      const f = p[3].split(',').map(Number);
-      for (let k = 1; k + 4 < f.length; k += 6) lo = Math.min(lo, f[k]);
-      bodyMinY = lo;
-    }
-    if (id === LEG_L && legHalfW === null) {
-      let hi = 0;
-      const f = p[3].split(',').map(Number);
-      for (let k = 0; k + 5 < f.length; k += 6) hi = Math.max(hi, Math.abs(f[k]));
-      legHalfW = hi;
-    }
+import { connect, send, until, report, traceOf } from '../lib.mjs';
+
+const g = await connect({ camera: true });
+const r = (v) => (v === null ? null : Number(v.toFixed(6)));
+
+// The static geometry each part was DRAWN with, taken from the first `M:` for it.
+// `M:<id>;<flag>;<r>,<g>,<b>;<floats>` — the fourth field is the vertex data.
+const firstMesh = (id) => {
+  for (const [mid, body] of g.picture) {
+    if (mid !== id) continue;
+    const p = body.split(';');
+    return p.length >= 3 ? p[2].split(',').map(Number) : null;
   }
-  if (t === 'T') {
-    const p = b.split(';');
-    const id = Number(p[0]);
-    const m = p[1].split(',').map(Number);
-    if (id === BODY) bodyT = m;
-    if (id === LEG_L) {
-      legT = m;
-      // R_leg = Ry(yaw)·Rz(swing). Ry leaves the y row alone, so the y
-      // components of the first two columns are (sin θ, cos θ) whatever the
-      // yaw — the joint angle falls out with no need to undo the turn.
-      const sw = Math.atan2(m[1], m[5]);
-      if (Math.abs(sw) > maxSwing) maxSwing = Math.abs(sw);
-      poses++;
-    }
-  }
-  if (t === 'E') ws.send('2:1.5,');
-  if (t === 'C' && phase === 0) {
-    phase = 1;
-    // The clock, not the walk: `34:8` consumes the same FIXED ticks eight times
-    // faster, so the world is the one this gate has always measured and the
-    // waiting is not. (STATE.md: three rates, byte-identical worlds.)
-    ws.send('34:8');
-    ws.send('4:1');                                    // hold W
-  }
-  // ⚠ THE PHASES ADVANCE ON THE MEASUREMENT ITSELF. `poses` is incremented above
-  // for every leg transform that arrives, and it is what `finish` judges — so the
-  // gate cannot judge a run it has not yet observed.
-  if (phase === 1 && !judged && poses >= JUDGE_POSES) {
-    judged = true;
-    ws.send('4:0');                                    // release
-    finish();
-  }
+  return null;
 };
+const bodyMinY = () => {
+  const f = firstMesh(BODY); if (!f) return null;
+  let lo = Infinity;
+  for (let k = 1; k + 4 < f.length; k += 6) lo = Math.min(lo, f[k]);
+  return lo;
+};
+const legHalfW = () => {
+  const f = firstMesh(LEG_L); if (!f) return null;
+  let hi = 0;
+  for (let k = 0; k + 5 < f.length; k += 6) hi = Math.max(hi, Math.abs(f[k]));
+  return hi;
+};
+// Every leg pose that arrived, as its joint angle. R_leg = Ry(yaw)·Rz(swing); Ry
+// leaves the y row alone, so the y components of the first two columns are
+// (sin θ, cos θ) whatever the yaw — the joint angle falls out with no need to
+// undo the turn.
+const mat = (b) => b.slice(b.indexOf(';') + 1).split(',').map(Number);
+const legPoses = () => traceOf(g, `${LEG_L};`).map(mat);
+const swings = () => legPoses().map((m) => Math.abs(Math.atan2(m[1], m[5])));
 
-function finish() {
-  const pivotY = (legT && bodyT) ? legT[13] - bodyT[13] : null;
-  // what the widest observed angle demands, and what the pelvis actually gives
-  const need = (legHalfW !== null) ? legHalfW * Math.sin(maxSwing) : null;
-  const have = (pivotY !== null && bodyMinY !== null) ? pivotY - bodyMinY : null;
-  // ⚠ THE MARGIN HERE IS MICRONS, AND THAT IS CORRECT, NOT SLACK. The overlap
-  // is derived from the gait's own peak, so `have` and `need` are the SAME
-  // number whenever the sampled pose lands on the peak — the design is exactly
-  // tangent and this gate sits on the tangency. The tolerance is the wire's
-  // own precision (~8 significant digits), so the comparison is not decided by
-  // formatting; it is not room for the pelvis to be short.
-  const FLOOR = 1e-6;
-  const ok = need !== null && have !== null && poses > 0
-    && maxSwing > 0.05                                 // the gait really swung
-    && have >= need - FLOOR;
-  console.log(JSON.stringify({
-    poses, maxSwing: r(maxSwing), legHalfW: r(legHalfW), pivotY: r(pivotY),
-    bodyMinY: r(bodyMinY), need: r(need), have: r(have),
-    margin: r(have === null || need === null ? null : have - need), ok }));
-  ws.close();
-  process.exit(ok ? 0 : 1);
-}
-const r = (v) => v === null ? null : Number(v.toFixed(6));
+// The clock, not the walk: `34:8` consumes the same FIXED ticks eight times faster,
+// so the world is the one this gate has always measured and the waiting is not.
+await send(g, '34:8', ['rate ']);
+g.ws.send('4:1');                                    // hold W
 
-ws.onerror = () => process.exit(2);
-// ⚠ THE BACKSTOP SAYS HOW FAR IT GOT — `TIMEOUT` alone cannot tell *the simulation
-// never ticked* from *the gait is broken*, which is the whole distinction this
-// change is about.
-setTimeout(() => {
-  console.log(JSON.stringify({ verdict: 'TIMEOUT waiting for poses',
-                               poses, want: JUDGE_POSES, ok: false }));
-  process.exit(3);
-}, 240000);
+// ⚠ THE PHASE ADVANCES ON THE MEASUREMENT ITSELF — `poses` is what the verdict is
+// computed from, so the gate cannot judge a run it has not yet observed. And W is
+// held until that evidence exists: the server sends a transform only while the body
+// is MOVING, so a count taken after releasing can never be reached.
+const arrived = await until(() => legPoses().length >= JUDGE_POSES,
+  `only ${legPoses().length} of ${JUDGE_POSES} leg poses arrived while walking`, 240000);
+g.ws.send('4:0');                                    // release
+
+const poses = legPoses().length;
+const maxSwing = swings().length ? Math.max(...swings()) : 0;
+const legT = legPoses().length ? legPoses()[legPoses().length - 1] : null;
+const bodyTs = traceOf(g, `${BODY};`).map(mat);
+const bodyT = bodyTs.length ? bodyTs[bodyTs.length - 1] : null;
+const pivotY = (legT && bodyT) ? legT[13] - bodyT[13] : null;
+const lhw = legHalfW(), bmy = bodyMinY();
+// what the widest observed angle demands, and what the pelvis actually gives
+const need = (lhw !== null) ? lhw * Math.sin(maxSwing) : null;
+const have = (pivotY !== null && bmy !== null) ? pivotY - bmy : null;
+// ⚠ THE MARGIN HERE IS MICRONS, AND THAT IS CORRECT, NOT SLACK. The overlap is
+// derived from the gait's own peak, so `have` and `need` are the SAME number
+// whenever the sampled pose lands on the peak — the design is exactly tangent and
+// this gate sits on the tangency. The tolerance is the wire's own precision.
+const FLOOR = 1e-6;
+const ok = arrived && need !== null && have !== null && poses > 0
+  && maxSwing > 0.05                                 // the gait really swung
+  && have >= need - FLOOR;
+report(g, { poses, maxSwing: r(maxSwing), legHalfW: r(lhw), pivotY: r(pivotY),
+            bodyMinY: r(bmy), need: r(need), have: r(have),
+            margin: r(have === null || need === null ? null : have - need), ok }, ok);
