@@ -1249,12 +1249,50 @@ because a wide door is where cells have something to say. The full argument is
 | ✅ `A8.2` | The editor meshes that part's own chunks and poses it. `part_thumb_wire` already meshes a part; this is the same call in the display path. | **DONE.** `part_body_meshes` shared with the thumbnail, `posed_mesh` unchanged; `door/plank` + `door/planked` are the fixture, `tools/gates/world/part_limb.mjs` the gate, two sabotages seen red | M |
 | ✅ `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | **DONE.** `MeshAt.ma_scale` + `hex_part::mesh_hung`; `EX_UNIT`, `BK_UNIT` **and `PS_UNIT`** — three sites, because the editor's own gesture reaches none of the first two. `lib/hex_part/tests/scale.loft` (12 tests), rows added to `part_limb` and `part_place`, **seven sabotages seen red**. Content: `door/slat` + `door/slatted`. ⚠ **Two findings**, see below | S |
 | ◐ `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
-| `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | a wide opening, two limbs, one joint each — and the class refusing a narrow leaf by spelling | M |
+| ✅ `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | **DONE.** `door/gateway` (both north edges of one cell open, a socket per leaf at headings 16 and 20), `door/gate-l`/`door/gate-r` (one panel each, mirrored by ONE number), `door/gated`. `make parts` asserts two placements, their headings, the mirroring and the class refusal; `part_limb` gained two rows. ⚠ **The gate's own harness was hiding a refused open** — see below | M |
 | `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
 
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.4` turned up
+
+**Built:** `door/gateway` is a wall with BOTH north edges of one cell left open — a `Λ` two
+edges wide whose ends are the jambs and whose apex is where the leaves meet — offering
+`leaf-l` and `leaf-r` at headings 16 and 20. `door/gate-l` and `door/gate-r` are one panel
+each, mirrored, and `door/gated` hangs both swung apart.
+
+⚠ **THE OPENING IS THE ZIGZAG'S OWN PEAK, WHICH IS WHY TWO LEAVES IS THE NATURAL NUMBER.** A
+wall along a row alternates NW and NE edges (`A8.3`), so opening both edges of one cell gives a
+two-edge gateway — and a single leaf spanning it **cannot exist**, because a leaf is a panel and
+the two edges are 60° apart. The geometry chose the leaf count, not the design.
+
+⚠ **THE TWO LEAVES DIFFER IN ONE NUMBER AND IT IS THE HINGE END.** Both are authored on their
+own east edge, the canonical heading-0 orientation; one takes `+0.5` of that edge and the other
+`−0.5`. ⚠ **The first version had them backwards and the pictures did not say so** — measured off
+the wire, both panels pivoted at the APEX (x 1.47..1.73 and 1.73..1.99), which is a pair of
+saloon doors swinging from the middle rather than a gate closing on it. Hinged at the jambs they
+read x 0.87..1.12 and 2.34..2.60.
+
+⚠ **AND *THEY DO NOT OVERLAP* IS NOT *THEY ARE MIRRORED*.** The first gate row checked
+disjointness and **passed the sabotage**: with both leaves on one hinge end the panels are still
+apart (0.87..1.12 and 1.73..1.99). What only mirroring produces is a pair reaching from one jamb
+to the other — √3 across, against 1.12 for the broken one. The row measures the SPAN now, and the
+number the sabotage produces is in the message.
+
+⚠ **AND THE GATE HARNESS WAS READING A REFUSED OPEN AS AN OPEN.** `openPart` waits for a line
+containing `part '` — and `part refused — already editing 'door/slatted'` contains it. The
+gateway block was inserted before the previous part's close, so every check in it measured an
+empty picture and reported *0 panels*, which looks exactly like a limb that was never drawn. The
+helper now says so out loud. ⚠ **Two settle bugs in one step, both the same shape**: the block
+also polls for the leaves rather than for the mesh stream to go quiet, because the display
+rebuild that meshes a limb runs in the tick loop *after* the arrivals stop.
+
+**Verified**: `make parts` green with `'door/gate-l' turned 16 swung -0.125 and 'door/gate-r'
+turned 20 swung 0.125; a 1x2 leaf is refused by class (4)`, `part_limb` 17 checks,
+**two sabotages seen red** (both leaves on one hinge → the span row fails at 1.12; the class
+refusal is the content's own assertion). Picture: `shots/a84-gate-{w,sw,s}.png`.
 
 ### What `A8.3` turned up — ◐ **the content is built, the picture needs the user's eyes**
 

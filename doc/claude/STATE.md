@@ -253,7 +253,21 @@ is a leaf that is one wall panel, `door/hung` hangs them ajar) and **the accepta
 cold-recognition test that needs the user**: `shots/a83-door-{w,sw,s}.png`. Read
 [plan 17 § *What `A8.3` turned up*](../../plans/17-parts/README.md) before touching it — three
 measurements reframe the whole area, and the honest answer today is *a wall with a leaf in it*
-rather than *a door*. Then `A8.4` (the three-hex gateway).
+rather than *a door*.
+
+✅ **`A8.4` IS DONE** — `door/gateway` (a two-edge gateway at the zigzag's peak, a socket per
+leaf), `door/gate-l`/`door/gate-r` (mirrored by ONE number), `door/gated`. ⚠ **The geometry chose
+the leaf count**: the two edges are 60° apart, so a single leaf spanning the opening cannot exist.
+⚠ **And *they do not overlap* is not *they are mirrored*** — the first gate row passed a sabotage
+with both leaves on one hinge; it measures the jamb-to-jamb SPAN now (√3 against 1.12). Next is
+`A8.5` (a cell statue beside the `.glb` one).
+
+⚠ **THE GATE HARNESS READ A REFUSED OPEN AS AN OPEN.** `openPart` waits for `part '`, and
+`part refused — already editing 'X'` contains it — so a block inserted before the previous close
+measured an empty picture and reported *0 panels*, which looks exactly like a limb nobody drew.
+`tools/gates/world/part_limb.mjs` now says it out loud. ⚠ **And settle on the EVIDENCE**: the
+display rebuild that meshes a limb runs in the tick loop after the mesh arrivals stop, so a gate
+that waits for the stream to go quiet reads a part before its leaves exist.
 
 ⚠ **A CELL IS A HORIZONTAL PLATE; A WALL BYTE IS A VERTICAL PANEL.** Two cells stacked in one
 column draw as two floating slabs with sky between them — photographed, `probe/a83/shapes.loft` —

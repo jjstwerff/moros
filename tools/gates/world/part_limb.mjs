@@ -73,6 +73,13 @@ const openPart = async (name, want = true) => {
   // sent — so the prefix is what the ANSWER looks like. Waiting for `part ''` cost
   // this gate 40 of its 43 seconds before the harness made the shape explicit.
   const lines = await send(g, `44:${name}`, [name === '' ? "part '" : `part '${name}'`]);
+  // ⚠ A REFUSAL CONTAINS THE SAME WORDS AS AN OPEN, and that cost this gate a whole
+  // section: `part refused — already editing 'door/slatted'` matches a wait for
+  // `part '`, so an open that never happened read as one that did and every check
+  // after it measured an empty picture. Said out loud rather than left to the rows.
+  if (lines.some((s2) => s2.includes('refused'))) {
+    console.log(`  !! 44:${name} was REFUSED — ${lines.find((s2) => s2.includes('refused'))}`);
+  }
   // ⚠ SETTLE ONLY WHERE GEOMETRY IS EXPECTED, and count ARRIVALS rather than judging
   // them: a close settles at zero, which is the right answer, and a settle that
   // cannot accept it is a sleep with a reason attached.
@@ -185,6 +192,58 @@ check(fineFloats > cellFloats,
 check(!fineSaid.some((s) => s.includes('is not fully drawn')),
       'and nothing in the doorway was refused on the way');
 
+await openPart('', false);
+
+// ── A8.4 — TWO LIMBS, ONE JOINT EACH, HINGED AT OPPOSITE JAMBS ─────────────
+//
+// ⚠ A COUNT OF PLACEMENTS IS `hex_part`'s AND IS NOT RESTATED HERE — `make parts`
+// asserts that the gateway expands to two, which leaf each is, and that a `door/1x2`
+// is refused from a `door/3x3` socket by spelling. What only a running display path
+// can answer is that BOTH reached the wire as geometry and that they are hinged at
+// opposite ends: a gateway whose leaves both pivoted on the same jamb draws two
+// panels, counts two limbs, and is a pair of doors on one hinge.
+const gateSaid = await openPart('door/gated');
+// ⚠ WAIT FOR THE EVIDENCE, NOT FOR THE STREAM TO GO QUIET. `openPart` settles on
+// mesh ARRIVALS, and the display rebuild that meshes a limb runs in the tick loop
+// afterwards — so a gateway read at the settle is read before its leaves exist and
+// reports `0 panels`, which looks exactly like a limb that was never drawn.
+const gateLeaves = () => [...g.picture.entries()]
+  .filter(([id]) => id >= LIMB_LO && id <= LIMB_HI)
+  .map(([, b]) => (b.split(';')[2] ?? '').trim())
+  .filter((f) => f !== '')
+  .map((f) => f.split(',').map(Number))
+  .map((n) => {
+    let lo = Infinity, hi = -Infinity, ylo = Infinity, yhi = -Infinity;
+    for (let i = 0; i + 5 < n.length; i += 6) {
+      if (n[i] < lo) lo = n[i];
+      if (n[i] > hi) hi = n[i];
+      if (n[i + 1] < ylo) ylo = n[i + 1];
+      if (n[i + 1] > yhi) yhi = n[i + 1];
+    }
+    return { lo, hi, tall: yhi - ylo };
+  })
+  // A leaf is the PANEL, not the floor plate it stands on: the panel is the full
+  // wall height and the plate is a hand's breadth.
+  .filter((b) => b.tall > 1)
+  .sort((a, b2) => a.lo - b2.lo);
+await until(() => gateLeaves().length >= 2, 'both gate leaves on the wire', 20000);
+const gatePanels = gateLeaves();
+check(gatePanels.length === 2,
+      `both gate leaves reach the wire as panels (${gatePanels.length})`);
+// ⚠ THE SPAN, NOT DISJOINTNESS — and the sabotage is what taught this row the
+// difference. Hang BOTH leaves on the same end and the two panels are still apart
+// (0.87..1.12 and 1.73..1.99), so a check for *they do not overlap* passes a gateway
+// whose leaves both swing from one jamb. What only mirroring produces is a pair
+// reaching from one jamb to the other: the gateway is two hex edges across, so the
+// jamb-to-jamb distance is √3 ≈ 1.73, and one hinge for both collapses it to 1.12.
+const span = gatePanels.length === 2 ? gatePanels[1].hi - gatePanels[0].lo : 0;
+check(span > 1.5,
+      `and they hang at OPPOSITE jambs — x ${gatePanels.map((b) => `${b.lo.toFixed(2)}..${b.hi.toFixed(2)}`).join(' and ')}`
+    + `, reaching ${span.toFixed(2)} of the gateway's √3 (one hinge for both reads 1.12)`);
+check(!gateSaid.some((s) => s.includes('is not fully drawn')),
+      'and nothing in the gateway was refused on the way');
+await openPart('', false);
+
 // ── A8.3 — A CLIENT THAT JOINS WHILE A PART IS OPEN GETS THE LIMBS ──────────
 //
 // ⚠ THE CASE A PERSON IS. The display rebuild BROADCASTS the limb block and then
@@ -195,6 +254,7 @@ check(!fineSaid.some((s) => s.includes('is not fully drawn')),
 //
 // ⚠ AND IT IS A SECOND CLIENT, NOT A RE-READ. `g.picture` holds what THIS socket
 // was sent; asking the same client again can only ever confirm what it already has.
+await openPart('door/hung');
 const late = await connect();
 await quiet(() => late.picture.size, 400, 15000, 'the late client');
 const lateFloats = [...late.picture.entries()]

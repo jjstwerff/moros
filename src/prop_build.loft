@@ -619,6 +619,113 @@ fn write_slatted(root: text, open: float) {
          "the slatted doorway was not saved");
 }
 
+// ── THE THREE-HEX GATEWAY — plan 17 `A8.4`, §P9 ─────────────────────────────
+//
+// A wide opening with TWO limbs, one joint each, and a class that refuses a narrow
+// leaf by spelling.
+//
+// ⚠ THE OPENING IS THE ZIGZAG'S OWN PEAK, and that is what makes two leaves the
+// natural number rather than an arbitrary one. A wall along a row is a chain of
+// alternating NW and NE edges (`A8.3`), so leaving BOTH edges of one cell bare
+// opens a `Λ` two edges wide whose ends are the jambs and whose apex is where the
+// leaves meet. Hinge each leaf at its own outer end and shut they close on the
+// apex; a single leaf spanning both edges could not exist, because a leaf is a
+// panel and the two edges are 60° apart.
+//
+// ⚠ THE CLASS IS NOMINAL AND SAYS `3x3`, WHICH IS THE POINT OF `A4.2`. The opening
+// is two hex edges across a three-cell frontage; the class carries no size at all
+// and never could (§A8.7), so what it buys is that `door/leaf` — a `door/1x2` —
+// is refused here BY SPELLING rather than by anything geometric. That refusal is
+// asserted below against the real library.
+fn write_gate_leaf(root: text, name: text, hinge_z: float, desc: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  assert(world_set_cell(w, 0, 0, 0,
+    Hex { h_height: 1 as u16? ?? 0,
+          h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
+          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+    "the gate leaf's cell was refused");
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: name, pm_desc: desc
+  }) == PM_OK, "the gate leaf's meta was refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "3x3" }).sw_code == SK_OK,
+         "the gate leaf's FITS was refused");
+  // ⚠ THE TWO LEAVES DIFFER IN ONE NUMBER, AND IT IS THE HINGE END. Both are
+  // authored on their own EAST edge — the canonical heading-0 orientation `A8.3`
+  // settled — and that edge runs between the corners (√3/2, ±0.5). Taking one end
+  // for the left leaf and the other for the right is what mirrors them, and it is
+  // the whole difference between the two files.
+  assert(part_set_hinge(w, Hinge {
+    hg_ox: 0.8660254037844386, hg_oy: 0.0, hg_oz: hinge_z,
+    hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+    hg_lo: 0.0 - 0.25, hg_hi: 0.25
+  }).hw_code == HG_OK, "the gate leaf's hinge was refused");
+  assert(world_save(w, "{root}/{name}.hxw", []) == WS_OK, "{name} was not saved");
+}
+
+fn write_gateway(root: text) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for gq in (0 - 2)..3 {
+    // Both north edges of the middle cell are the gateway; everything else is wall.
+    open_here = gq == 0;
+    assert(world_set_cell(w, gq, 0, 0,
+      Hex { h_height: 1 as u16? ?? 0,
+            h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
+            h_wall_n:  (if open_here { hex_editor::DOOR_MAT }
+                        else { hex_editor::WALL_MAT }) as u8? ?? 0,
+            h_wall_ne: (if open_here { hex_editor::DOOR_MAT }
+                        else { hex_editor::WALL_MAT }) as u8? ?? 0
+          }).cw_code == CW_OK, "the gateway's cell ({gq},0) was refused");
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_FITTING, pm_name: "gateway",
+    pm_desc: "a wall with a two-edge gateway in it, and a socket for each leaf"
+  }) == PM_OK, "the gateway's meta was refused");
+  // ⚠ ONE SOCKET PER LEAF, AND THE HEADINGS ARE THE TWO EDGES. `slot_dir` maps
+  // SLOT_NW to direction 4 and SLOT_NE to 5, and a heading is `dir * 4` — so 16
+  // and 20. Each leaf is turned onto its own edge by its own socket, which is why
+  // two sockets rather than one wide one: a socket is a place, not a span.
+  assert(part_set_sockets(w, [
+    Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 16,
+             sk_kind: "door", sk_size: "3x3", sk_name: "leaf-l" },
+    Socket { sk_q: 0, sk_r: 0, sk_h: 0, sk_mount: SM_HEAD, sk_at: 20,
+             sk_kind: "door", sk_size: "3x3", sk_name: "leaf-r" }
+  ]).sw_code == SK_OK, "the gateway's sockets were refused");
+  assert(world_save(w, "{root}/door/gateway.hxw", []) == WS_OK,
+         "the gateway was not saved");
+}
+
+// The gateway standing on paving with both leaves hung, swung apart.
+//
+// ⚠ THE TWO SWINGS ARE OPPOSITE, which is what makes a double gate read as one
+// gesture rather than two doors that happen to be adjacent. Each leaf turns about
+// its own jamb, so the same sign would send one out and one in.
+fn write_gated(root: text, open: float) {
+  w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  for pq in (0 - 2)..5 {
+    for pr in (0 - 2)..3 {
+      assert(world_set_cell(w, pq, pr, 0,
+        Hex { h_height: 1 as u16? ?? 0,
+              h_material: hex_editor::ROAD_MAT as u8? ?? 0 }).cw_code == CW_OK,
+        "the gated wall's paving was refused");
+    }
+  }
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_HOUSE, pm_name: "gated",
+    pm_desc: "a gateway with both leaves hung and swung apart — all of it cells"
+  }) == PM_OK, "the gated wall's meta was refused");
+  assert(part_set_instances(w, [PartInst {
+    pi_q: 1, pi_r: 0, pi_h: 0, pi_facing: 0, pi_part: "door/gateway" }]) == PI_OK,
+    "the gated wall's instance was refused");
+  assert(part_set_bindings(w, [
+    Binding { bd_inst: 0, bd_open: 0.0 - open, bd_socket: "leaf-l",
+              bd_part: "door/gate-l" },
+    Binding { bd_inst: 0, bd_open: open, bd_socket: "leaf-r",
+              bd_part: "door/gate-r" }
+  ]).bw_code == BD_OK, "the gated wall's bindings were refused");
+  assert(world_save(w, "{root}/door/gated.hxw", []) == WS_OK,
+         "the gated wall was not saved");
+}
+
 fn ground() -> World {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   for q in (0 - 2)..12 {
@@ -683,6 +790,59 @@ fn main() {
          "the leaf is drawn at {hm.ma_swing} about ({hm.ma_ax},{hm.ma_ay},{hm.ma_az})");
   println("  hung:   leaf '{hm.ma_part}' at ({hm.ma_q},{hm.ma_r},{hm.ma_h}) turned "
         + "{hm.ma_facing} onto the doorway edge, ajar {hm.ma_swing} — no mesh anywhere");
+
+  // ── the gateway: two limbs, one joint each — `A8.4` ────────────────────────
+  write_gate_leaf(root, "door/gate-l",
+    0.5, "the left leaf of a gateway — cells, hinged at its own jamb");
+  write_gate_leaf(root, "door/gate-r",
+    0.0 - 0.5, "the right leaf of a gateway — the same panel, the other hinge");
+  write_gateway(root);
+  write_gated(root, 0.125);
+
+  gw = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  gex = part_expand(gw, root, PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: 0,
+                                         pi_part: "door/gated" }, 0);
+  assert(gex.ex_code == EX_OK, "the gateway does not expand: {gex.ex_why}");
+  // ⚠ TWO PLACEMENTS, AND THAT IS THE STEP. One binding is one limb (`A8.2`), so a
+  // gateway that came back as one placement would be a leaf missing with every
+  // other number agreeing — `bindings_of` returning only the first is exactly the
+  // shape this catches.
+  assert(len(gex.ex_meshes) == 2,
+         "{len(gex.ex_meshes)} placements came out of the gateway, not 2");
+  gl = gex.ex_meshes[0] ?? MeshAt {};
+  gr = gex.ex_meshes[1] ?? MeshAt {};
+  assert(gl.ma_part == "door/gate-l" && gr.ma_part == "door/gate-r",
+         "the gateway hung '{gl.ma_part}' and '{gr.ma_part}'");
+  // ⚠ EACH LEAF IS TURNED ONTO ITS OWN EDGE, and the pair of headings is what says
+  // the two sockets were read separately rather than the first one twice.
+  assert(gl.ma_facing == 16 && gr.ma_facing == 20,
+         "the leaves are turned {gl.ma_facing} and {gr.ma_facing}, and the gateway's "
+       + "two edges are headings 16 and 20");
+  // ⚠ AND THEIR HINGES DIFFER, which is the mirroring. Same panel, same class, same
+  // cell — one number apart in the file and opposite ends in the world.
+  assert(gl.ma_oz != gr.ma_oz,
+         "both leaves hinge at z={gl.ma_oz}, so they are not mirrored at all");
+  assert(gl.ma_swing == 0.0 - gr.ma_swing && gr.ma_swing != 0.0,
+         "the leaves swing {gl.ma_swing} and {gr.ma_swing} — a double gate opens "
+       + "outward on both sides or it is two doors in one hole");
+
+  // ⚠ THE CLASS REFUSES A NARROW LEAF BY SPELLING — `A4.2`'s nominal fit, on the
+  // real library rather than on a fixture. `door/leaf` is a `door/1x2` and the
+  // gateway's sockets are `door/3x3`: nothing about the geometry is consulted, and
+  // nothing about it could be, since a class carries no size (§A8.7).
+  gnarrow = socket_for_binding(root, "door/gateway",
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf-l", bd_part: "door/leaf" });
+  assert(gnarrow.sa_code == SA_NOFIT,
+         "a 1x2 leaf was accepted into a 3x3 gateway: ({gnarrow.sa_code}) {gnarrow.sa_why}");
+  assert(gnarrow.sa_why.find("1x2") >= 0 && gnarrow.sa_why.find("3x3") >= 0,
+         "the refusal names neither class: {gnarrow.sa_why}");
+  // The control: the gate leaf the socket IS for goes in.
+  gwide = socket_for_binding(root, "door/gateway",
+    Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "leaf-l", bd_part: "door/gate-l" });
+  assert(gwide.sa_code == SA_OK, "the gate's own leaf was refused: {gwide.sa_why}");
+  println("  gated:  '{gl.ma_part}' turned {gl.ma_facing} swung {gl.ma_swing} and "
+        + "'{gr.ma_part}' turned {gr.ma_facing} swung {gr.ma_swing}; a 1x2 leaf is "
+        + "refused by class ({gnarrow.sa_code})");
   // ── the cell-bodied leaf, and the same doorway hung with it — `A8.2` ────────
   write_plank(root);
   write_planked(root, 0.125);
