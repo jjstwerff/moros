@@ -1250,11 +1250,47 @@ because a wide door is where cells have something to say. The full argument is
 | ✅ `A8.2b` | The placement carries the SCALE, derived as `child.w_unit / parent.w_unit`, and the stamped path REFUSES a unit mismatch instead of placing cells at the wrong size. | **DONE.** `MeshAt.ma_scale` + `hex_part::mesh_hung`; `EX_UNIT`, `BK_UNIT` **and `PS_UNIT`** — three sites, because the editor's own gesture reaches none of the first two. `lib/hex_part/tests/scale.loft` (12 tests), rows added to `part_limb` and `part_place`, **seven sabotages seen red**. Content: `door/slat` + `door/slatted`. ⚠ **Two findings**, see below | S |
 | ◐ `A8.3` | The one-hex doorway: `door/frame` (opening, socket `door/1x2` at the hinge cell) and `door/leaf`, both cells. | the picture `A5.2` was always for, without a custom mesh | S |
 | ✅ `A8.4` | The three-hex gateway: `door/gateway` with `leaf-l`/`leaf-r` at class `door/3x3`, and two mirrored cell leaves. | **DONE.** `door/gateway` (both north edges of one cell open, a socket per leaf at headings 16 and 20), `door/gate-l`/`door/gate-r` (one panel each, mirrored by ONE number), `door/gated`. `make parts` asserts two placements, their headings, the mirroring and the class refusal; `part_limb` gained two rows. ⚠ **The gate's own harness was hiding a refused open** — see below | M |
-| `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | the library exercises both paths, and the upgrade path is free: author in cells, replace with art, the binding does not move | M |
+| ✅ `A8.5` | A cell-built statue beside the `.glb` one, both fitting `statue/plinth-2` and swappable. ⚠ **NOT a conversion** — §P9.3: a mesh stays first-class, and what is proved is that neither body is REQUIRED. | **DONE.** `prop/carved` (cells, authored at a QUARTER of the unit so `A8.2b` shrinks it to the mesh statue's size) and `prop/shrine-cell` beside `prop/shrine` — two committed files a field apart. `make parts` asserts same socket, same position, same heading, scale 0.25, no cell moved, and that `socket_for_binding` takes BOTH bodies | M |
 
 | `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | the round trip: block out in cells, hand the geometry to an artist, drop the skin back in, and the binding does not move | M |
 
 | `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | an artist models to metres and what comes back drops in, or says by how much it does not | S |
+
+### What `A8.5` turned up
+
+**Built:** `prop/carved` — a statue whose body is cells and which names no mesh at all — beside
+the two `.glb` ones, in the same `statue/plinth-2` socket; and `prop/shrine-cell` beside
+`prop/shrine`, two committed shrines differing in one field.
+
+⚠ **`A8.2b` IS WHAT MAKES A CELL STATUE A FIGURE AND NOT A BOULDER.** A cell is a hex wide, so a
+statue authored at the world's own unit is 1.73 world units across. Authored at `W_UNIT / 4` the
+placement derives 0.25 from the two files and the same cells draw 0.43 across — the mesh statue's
+shoulders. The step needed no new mechanism at all: the scale, the socket and the swap were each
+built by an earlier step, and `A8.5` is the first place all three carry one claim.
+
+⚠ **AND THE CLAIM IS THE PAIR, NEVER EITHER HALF.** A cell statue that fits proves nothing on its
+own — `A6.2` already put a mesh in this socket. What §P9.3 says is that the socket does not CARE,
+so the assertion that matters is `socket_for_binding` accepting *both* bodies for the same socket,
+and the two expansions agreeing on position, height and heading while differing in `ma_mesh` /
+`ma_part`.
+
+⚠ **A PART IS DRAWN AT ITS OWN SCALE IN PART MODE, WHICH IS NOT A BUG AND DOES SURPRISE.** Opening
+`prop/carved` with `44:` shows hex plates 1.73 across, because the shrink belongs to the
+PLACEMENT — a part has no parent to be scaled against. The picture that shows the claim is the
+shrine, which is why `prop/shrine-cell` is a committed part rather than a variant this program
+expands and throws away.
+
+⚠ **AND A GATE FAILED BECAUSE CONTENT ARRIVED, WHICH IS A GATE WORTH FIXING RATHER THAN
+RE-PINNING.** `part_sock` asserted *exactly two of the five library parts fit* `statue/plinth-2`;
+`prop/carved` made it three. A number edited to match is a gate that trains its reader to edit the
+number, so the row now DERIVES the expected set from the library — the parts on disk that declare
+the class — and stays a discriminator: a lookup returning the whole library, or nothing, still
+fails. ⚠ **And the first derived version answered four**, because the FRAME names the class too, in
+its `SOCK`: the part that offers a socket is not a candidate for it.
+
+**Verified**: `make parts` green with `carved: a body of CELLS in the same socket at (8,6) height
+8 turned 18, scale 0.25 — no mesh anywhere, and the plinth takes both bodies`, and `part_diff`
+finding no cell moved. Pictures: `shots/a85-shrine-{cell,mesh}.png`, one station, one field apart.
 
 ### What `A8.4` turned up
 

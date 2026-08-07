@@ -29,12 +29,27 @@
 // message that answers confidently about the wrong part, and every count agrees.
 //
 // ⚠ AND THE FIXTURE IS THE COMMITTED LIBRARY, WHICH ALREADY HELD A REAL JOINT:
-// `prop/plinth` offers `top @ statue/plinth-2` on heading 18, and `prop/statue` and
-// `prop/seated` both declare they fit it — that is `A6.3`'s swap. So the answer
-// here is 2 of 5 parts, which is a discriminator: a lookup that returned the whole
-// library would say 5 and one that found nothing would say 0, and both would pass a
-// gate that only checked the list was non-empty.
-import { existsSync } from 'node:fs';
+// `prop/plinth` offers `top @ statue/plinth-2` on heading 18, and every part that
+// declares that class fits it — `A6.3`'s swap, and `A8.5`'s cell statue after it.
+//
+// ⚠ THE COUNT IS DERIVED FROM THE LIBRARY, NOT PINNED. It was `2 of 5`, and
+// `A8.5` made it three by adding `prop/carved` — a gate that fails because CONTENT
+// arrived is a gate that trains its reader to edit the number, which is how a real
+// regression gets waved through next time. What is a discriminator is the same
+// either way: the parts on disk that declare this class, and nothing else. A lookup
+// returning the whole library, or nothing, still fails.
+//
+// ⚠ THE CLASS IS READ OUT OF THE FILE'S BYTES. `FITS` is a tagged section holding
+// text, so the class name appears verbatim — the same trick `part_limb` uses to ask
+// whether a part names a mesh.
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+
+// Every part in the library, as `family/name`.
+const libraryParts = () => readdirSync(ROOT, { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .flatMap((d) => readdirSync(`${ROOT}/${d.name}`)
+    .filter((f) => f.endsWith('.hxw'))
+    .map((f) => `${d.name}/${f.slice(0, -4)}`));
 import { connect, send, ask, said, until, quiet, absenceWindow, checker, verdict } from '../lib.mjs';
 
 const ROOT = process.env.EDITOR_PARTS ?? 'data/parts';
@@ -128,11 +143,20 @@ lines = await burst('45:0,top', 'socket ');
 const fitLead = lead(lines, "socket 'top'");
 check(fitLead.includes('statue/plinth-2'),
       `the socket's class comes back (${fitLead})`);
-check(fitLead.includes('= 2 fit'),
-      `and exactly two of the five library parts fit it (${fitLead})`);
+// ⚠ THE FRAME NAMES THE CLASS TOO, IN ITS `SOCK`, so a byte search alone answers
+// four and the wire answers three. The part that OFFERS the socket is not a
+// candidate for it — and a first version of this row called that a failure.
+const declared = libraryParts()
+  .filter((n) => n !== FRAME)
+  .filter((n) => readFileSync(`${ROOT}/${n}.hxw`).includes(Buffer.from('plinth-2')))
+  .sort();
+check(fitLead.includes(`= ${declared.length} fit`),
+      `and exactly the ${declared.length} library parts declaring that class fit it `
+    + `(${fitLead})`);
 const fits = lines.filter((s) => s.startsWith('fit ')).map((s) => s.slice(4)).sort();
-check(fits.length === 2 && fits[0] === LEAF2 && fits[1] === LEAF,
-      `named, one per line: ${JSON.stringify(fits)}`);
+check(JSON.stringify(fits) === JSON.stringify(declared),
+      `named, one per line: ${JSON.stringify(fits)} against the library's `
+    + `${JSON.stringify(declared)}`);
 // ⚠ THE CONTROL THAT MAKES THE COUNT MEAN SOMETHING. `house/cottage` declares no
 // FITS at all, so a lookup that listed the library would include it — and *2 of 5*
 // is only evidence if the other three are genuinely excluded.

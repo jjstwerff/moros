@@ -260,7 +260,14 @@ leaf), `door/gate-l`/`door/gate-r` (mirrored by ONE number), `door/gated`. ⚠ *
 the leaf count**: the two edges are 60° apart, so a single leaf spanning the opening cannot exist.
 ⚠ **And *they do not overlap* is not *they are mirrored*** — the first gate row passed a sabotage
 with both leaves on one hinge; it measures the jamb-to-jamb SPAN now (√3 against 1.12). Next is
-`A8.5` (a cell statue beside the `.glb` one).
+`A8.6` (export a limb's blockout as a `.glb`).
+
+✅ **`A8.5` IS DONE** — `prop/carved` is a statue whose body is cells and which names no mesh at
+all, in the same `statue/plinth-2` socket as the two `.glb` ones, with `prop/shrine-cell` beside
+`prop/shrine` as the committed pair. ⚠ **`A8.2b` is what makes it a figure**: a cell is a hex
+wide, so a statue at the world's own unit is 1.73 across — authored at `W_UNIT / 4` the derived
+scale draws it at 0.43. ⚠ **And a part is drawn at its OWN scale in part mode**, because the
+shrink belongs to the placement; the picture that shows the claim is the shrine, not the statue.
 
 ⚠ **THE GATE HARNESS READ A REFUSED OPEN AS AN OPEN.** `openPart` waits for `part '`, and
 `part refused — already editing 'X'` contains it — so a block inserted before the previous close

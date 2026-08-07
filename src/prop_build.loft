@@ -193,6 +193,68 @@ fn write_statue(root: text, name: text, desc: text) {
   assert(world_save(w, "{root}/prop/{name}.hxw", []) == WS_OK, "{name} was not saved");
 }
 
+fn write_shrine(root: text, holds: text) { write_shrine_named(root, "shrine", holds); }
+
+// ── A STATUE WITH NO MESH IN IT — plan 17 `A8.5`, §P9.3 ─────────────────────
+//
+// ⚠ NOT A CONVERSION. `prop/statue` and `prop/seated` stay exactly as they are:
+// §P9.3's rule is *nothing NEEDS a custom mesh*, never *nothing may be one*. What
+// this proves is that the socket does not care — a body of cells and a body of
+// `.glb` go in the same plinth, and the shrine that holds one holds the other with
+// one field changed.
+//
+// ⚠ IT IS AUTHORED AT A QUARTER OF THE UNIT, and that is `A8.2b` earning its keep
+// rather than a flourish. A cell is a hex wide, so a statue built at the world's
+// own unit is 1.73 world units across — a boulder, not a figure. At `W_UNIT / 4`
+// the placement derives a scale of 0.25 from the two files and the same cells draw
+// 0.43 across, which is the mesh statue's shoulders.
+//
+// ⚠ AND IT IS A BLOCKOUT, WHICH IS THE POINT AND NOT AN APOLOGY (§P9.7): *a red
+// blob at the right size beats a good mesh at the wrong one*. A stack of plates
+// with a wider course for the arms is what cells can say; what matters is that it
+// is the right SIZE, in the right socket, swappable for art that has not been made
+// yet.
+//
+// ⚠ AND THE SILHOUETTE HAS TO DIFFER FROM THE MESH ONE, which is `A6.3`'s rule for
+// the two statues restated: a swap nobody can see is a swap no picture can check.
+// A cross — column, arms, head — against the mesh figure's box and single arm.
+fn write_cell_statue(root: text) {
+  w = world_new(W_UNIT / 4.0 ?? W_UNIT, 0, W_EPS, W_THETA).wn_world;
+  // The column: two courses `W_EPS` apart, which is the closest this world's own
+  // minimum layer separation allows.
+  for ci in 0..2 {
+    assert(world_set_cell(w, 0, 0, ci,
+      Hex { h_height: (1 + ci * W_EPS) as u16? ?? 0,
+            h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }).cw_code == CW_OK,
+      "the carved statue's column cell {ci} was refused");
+  }
+  // The arms: one course, three hexes wide, at shoulder height.
+  for aq in (0 - 1)..2 {
+    assert(world_set_cell(w, aq, 0, if aq == 0 { 2 } else { 0 },
+      Hex { h_height: (1 + 2 * W_EPS) as u16? ?? 0,
+            h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }).cw_code == CW_OK,
+      "the carved statue's arm at {aq} was refused");
+  }
+  // And the head, one course above the shoulders.
+  assert(world_set_cell(w, 0, 0, 3,
+    Hex { h_height: (1 + 3 * W_EPS) as u16? ?? 0,
+          h_material: hex_editor::FLOOR_MAT as u8? ?? 0 }).cw_code == CW_OK,
+    "the carved statue's head was refused");
+  assert(part_set_meta(w, PartMeta {
+    pm_kind: PK_PROP, pm_name: "carved",
+    pm_desc: "a statue built from cells — the same plinth, and no mesh anywhere"
+  }) == PM_OK, "the carved statue's meta was refused");
+  // ⚠ THE SAME `FITS`, BYTE FOR BYTE, AS THE MESH STATUES. That is the whole claim:
+  // the socket is a contract about a CLASS, and a body is not part of it.
+  assert(part_set_fits(w, PartFits { pf_kind: "statue", pf_size: "plinth-2" }).sw_code == SK_OK,
+         "the carved statue's fit was refused");
+  assert(part_set_anchor(w, PartAnchor {
+    pa_q: 0, pa_r: 0, pa_h: 0, pa_facing: 0
+  }) == PM_OK, "the carved statue's anchor was refused");
+  assert(world_save(w, "{root}/prop/carved.hxw", []) == WS_OK,
+         "the carved statue was not saved");
+}
+
 fn write_plinth(root: text) {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   // A single built column. ⚠ ITS TOP AND THE SOCKET'S HEIGHT ARE ONE NUMBER — a
@@ -227,7 +289,7 @@ fn write_plinth(root: text) {
 // ⚠ THE SHRINE STORES NO COORDINATE FOR THE STATUE, and that absence is §P3's
 // whole mechanism (`bind.loft`). Move the plinth and the statue follows, because
 // there is no second position that could be forgotten.
-fn write_shrine(root: text, holds: text) {
+fn write_shrine_named(root: text, name: text, holds: text) {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   // A paved base. ⚠ NOT DECORATION — a part with no cells of its own has no
   // thumbnail, because the editor meshes a part's own chunks and does not expand
@@ -267,7 +329,7 @@ fn write_shrine(root: text, holds: text) {
   assert(part_set_bindings(w, [Binding {
     bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: holds
   }]).bw_code == BD_OK, "the shrine's binding was refused");
-  assert(world_save(w, "{root}/prop/shrine.hxw", []) == WS_OK, "the shrine was not saved");
+  assert(world_save(w, "{root}/prop/{name}.hxw", []) == WS_OK, "the shrine was not saved");
 }
 
 // ── The gate ─────────────────────────────────────────────────────────────────
@@ -960,6 +1022,18 @@ fn main() {
   // shrine is left holding `prop/statue` by the LAST write, before a single
   // comparison is asserted. An assertion that fires cannot leave `data/parts/`
   // holding the variant.
+  // ── A8.5 — THE SAME SOCKET, A BODY OF CELLS ────────────────────────────────
+  //
+  // ⚠ THE VARIANT ORDER IS `A6.3`'s AND FOR ITS REASON: every shrine that is not
+  // the committed one is expanded BEFORE `prop/statue` is written back, so an
+  // assertion that fires cannot leave `data/parts/` holding a variant.
+  write_cell_statue(root);
+  write_shrine(root, "prop/carved");
+  cst_world = ground();
+  cst = part_expand(cst_world, root, PartInst {
+    pi_q: 5, pi_r: 5, pi_h: GROUND, pi_facing: 0, pi_part: "prop/shrine"
+  }, 0);
+
   write_shrine(root, "prop/seated");
   alt_world = ground();
   alt = part_expand(alt_world, root, PartInst {
@@ -1066,6 +1140,44 @@ fn main() {
   df = part_diff(w, alt_world, 12);
   assert(df.pd_same, "swapping the statue changed the world's cells: {df.pd_why}");
 
+  // ── A8.5 — NEITHER BODY IS REQUIRED ────────────────────────────────────────
+  //
+  // ⚠ THE PAIR IS THE CLAIM, not either half. A cell statue that fits proves
+  // nothing on its own — `A6.2` already put a MESH in this socket — and what §P9.3
+  // says is that the socket does not CARE: same class, same position, same heading,
+  // and the only difference is what the thing is made of.
+  assert(cst.ex_code == EX_OK, "the carved shrine did not expand: {cst.ex_why}");
+  assert(len(cst.ex_meshes) == 1, "{len(cst.ex_meshes)} placements, not 1");
+  cm = cst.ex_meshes[0] ?? MeshAt {};
+  // ⚠ NO MESH AT ALL, AND THAT IS THE FIELD THAT MUST CHANGE. `ma_part` names the
+  // part whose CELLS are the body; a statue that arrived here with `ma_mesh` set
+  // would be `A6.2`'s path wearing a new name.
+  assert(cm.ma_mesh == "" && cm.ma_part == "prop/carved",
+         "the carved statue came back as mesh '{cm.ma_mesh}' / part '{cm.ma_part}'");
+  // …and the three that must not, exactly as the `.glb` swap asserts them.
+  assert(cm.ma_q == m.ma_q && cm.ma_r == m.ma_r && cm.ma_h == m.ma_h,
+         "the carved statue landed at ({cm.ma_q},{cm.ma_r},{cm.ma_h}) and the mesh one "
+       + "at ({m.ma_q},{m.ma_r},{m.ma_h}) — one socket, two positions");
+  assert(cm.ma_facing == m.ma_facing,
+         "turns {cm.ma_facing} and {m.ma_facing} — a cell BODY may take all 24 "
+       + "because a limb is meshed, never stamped (A8.1)");
+  // ⚠ AND THE SCALE IS DERIVED, WHICH IS WHY IT IS A FIGURE AND NOT A BOULDER. The
+  // carved statue is authored at a quarter of the world's unit, so `A8.2b` shrinks
+  // it at the placement — 1.73 world units across becomes 0.43.
+  assert(cm.ma_scale == 0.25,
+         "the carved statue came back at scale {cm.ma_scale}, not the 0.25 its own "
+       + "file states against the shrine's");
+  cdf = part_diff(w, cst_world, 12);
+  assert(cdf.pd_same, "the carved statue changed the world's cells: {cdf.pd_why}");
+  // ⚠ AND THE SOCKET TAKES BOTH, ASKED DIRECTLY. The expansions above each used one
+  // body; this is the one question §P9.3 actually poses, put to `socket_fit`.
+  for cst_holds in ["prop/statue", "prop/carved"] {
+    cst_fit = socket_for_binding(root, "prop/plinth",
+      Binding { bd_inst: 0, bd_open: 0.0, bd_socket: "top", bd_part: cst_holds });
+    assert(cst_fit.sa_code == SA_OK,
+           "'{cst_holds}' does not fit the plinth: {cst_fit.sa_why}");
+  }
+
   println("  statue: {ck.mc_verts} vertices, {after} bytes -> {path}");
   println("  seated: {sck.mc_verts} vertices, {seatf#size} bytes -> {seat}");
   // ⚠ THIS LINE READ *"a heading no cell part can take"* AND `A8.1` MADE IT FALSE.
@@ -1077,4 +1189,12 @@ fn main() {
         + "turned {m.ma_facing} of 24 — a heading no INSTANCED part can take");
   println("  swap:   prop/seated lands at ({am.ma_q},{am.ma_r}) height {am.ma_h} "
         + "turned {am.ma_facing} — one field of the document, one field of the result");
+  // ⚠ AND BOTH PATHS ARE IN THE LIBRARY, not just in this program's assertions.
+  // `prop/shrine` holds the mesh statue and `prop/shrine-cell` holds the carved
+  // one — two committed files differing in a single field, which is what makes the
+  // catalogue, a thumbnail and a picture able to show the claim at all.
+  write_shrine_named(root, "shrine-cell", "prop/carved");
+  println("  carved: a body of CELLS in the same socket at ({cm.ma_q},{cm.ma_r}) "
+        + "height {cm.ma_h} turned {cm.ma_facing}, scale {cm.ma_scale} — no mesh "
+        + "anywhere, and the plinth takes both bodies");
 }
