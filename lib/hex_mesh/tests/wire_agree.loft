@@ -1,0 +1,142 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// THE CLIENT'S STORE IS THE SERVER'S, AND ITS MESH FOLLOWS — with no server in it.
+//
+// ⚠ THE GATES THAT OWN THIS CLAIM COST 67 s BETWEEN THEM AND THEIR HEADERS SAY IT
+// CANNOT MOVE. `cache.mjs`: *"the CLIENT is the only thing that can compare its cache
+// against the digest, and it is a wasm page."* `client_mesh.mjs`: *"only the wasm
+// client can mesh the wasm client's cache."* Both were true of an editor whose client
+// had its own mesher. **It does not.**
+//
+//     server   `hex_mesh::chunk_mesh_mat(cx, cz, wld,      SURFACE_MAT)`
+//     client   `hex_mesh::chunk_mesh_mat(cx, cz, st.cache, SURFACE_MAT)`
+//
+// One function, two stores. So *"the client's mesh is the server's, triangle for
+// triangle"* is not a comparison of two meshers at all — it reduces to **the client's
+// store agrees with the server's**, which is the other gate's claim. The two are one
+// claim wearing two hats, and neither half needs a server, a browser or a socket:
+// `world_layer_bytes` is what the wire carries and `world_put_layer` is what the
+// client does with it, and both are library functions.
+//
+// What this therefore does NOT settle, stated so nobody reads it as more than it is:
+//   · that the WASM build of these functions behaves as the interpreted one does.
+//     That is a per-target claim and it belongs to the target matrix, not to a gate
+//     that also drives a camera.
+//   · that a browser composited the result.
+//   · WHICH layers the server chooses to send. That is streaming policy and it lives
+//     in `editor_server`; this feeds the client every layer by construction, so a
+//     server that sent nothing would still pass here. See `stream.mjs`.
+use hex_mesh;
+use hex_world;
+use hex_editor;
+
+// A world with relief, because a flat one meshes to one height and a copy that lost
+// the heights would agree with it. ⚠ The east-west ramp is `40 + q`: it varies along
+// the axis the mesher walks, so a transposed or truncated payload shows up.
+fn server_world() -> World {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 4..13 {
+    for r in 0 - 4..13 { hex_editor::ground_set(w, q, r, 40 + q, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// What the client ends up holding, built the way the client builds it: for every layer
+// of every chunk the server has, take the bytes the wire would carry and put them into
+// a fresh store. This is `editor_client.loft`'s own `world_put_layer` call, with the
+// socket taken out from between.
+fn client_of(srv: World) -> World {
+  cl = world_new(0.25, 0, 10, 4).wn_world;
+  for ch in srv.w_chunks {
+    li = 0 - 1;
+    for ly in ch.ck_layers {
+      li = li + 1;
+      q = ch.ck_cx * hex_world::CHUNK_W;
+      r = ch.ck_cz * hex_world::CHUNK_W;
+      flat = world_layer_bytes(srv, q, r, li);
+      world_put_layer(cl, ch.ck_cx, ch.ck_cz, ch.ck_base,
+                      ly.ly_id, ly.ly_kind, ly.ly_ver, flat);
+    }
+  }
+  cl
+}
+
+// The mesh tiles the two stores are compared over. ⚠ `MESH_CHUNK` is NOT `CHUNK_W` —
+// the store tiles for windowing and the renderer tiles for what a rebuild costs — so a
+// comparison that walked store chunks would be asking about the wrong squares.
+fn tiles() -> vector<integer> { [0 - 1, 0, 1] }
+
+fn test_every_meshed_tile_agrees_triangle_for_triangle() {
+  srv = server_world();
+  cl = client_of(srv);
+  n = 0;
+  for cx in tiles() {
+    for cz in tiles() {
+      sm = hex_mesh::chunk_mesh_mat(cx, cz, srv, hex_editor::SURFACE_MAT);
+      cm = hex_mesh::chunk_mesh_mat(cx, cz, cl, hex_editor::SURFACE_MAT);
+      assert(hex_mesh::mesh_crc(sm) == hex_mesh::mesh_crc(cm),
+             "tile ({cx},{cz}) meshes differently: server crc "
+           + "{hex_mesh::mesh_crc(sm)}, client crc {hex_mesh::mesh_crc(cm)}");
+      n = n + 1;
+    }
+  }
+  assert(n == 9, "{n} tiles compared, not 9");
+}
+
+// ⚠ THE INSTRUMENT, CHECKED AGAINST SOMETHING IT SHOULD FIND. Two empty stores mesh
+// to nothing and agree perfectly, so the test above passes on a world that was never
+// built — which is exactly how a comparison gate goes green having compared nothing.
+fn test_the_comparison_has_something_to_compare() {
+  srv = server_world();
+  m = hex_mesh::chunk_mesh_mat(0, 0, srv, hex_editor::SURFACE_MAT);
+  assert(hex_mesh::mesh_crc(m) != 0,
+         "the fixture meshes to nothing, so agreement would mean nothing");
+}
+
+// ⚠ AND THE CONTROL THAT MAKES THE AGREEMENT A CLAIM: one changed cell must break it.
+// Without this, a `world_put_layer` that ignored its payload and a `mesh_crc` that
+// returned a constant would both pass.
+fn test_one_cell_of_difference_is_seen() {
+  srv = server_world();
+  cl = client_of(srv);
+  // Move one cell in the CLIENT only — the shape a dropped or reordered payload takes.
+  hex_editor::ground_set(cl, 2, 2, 99, hex_editor::SURFACE_MAT);
+  sm = hex_mesh::chunk_mesh_mat(0, 0, srv, hex_editor::SURFACE_MAT);
+  cm = hex_mesh::chunk_mesh_mat(0, 0, cl, hex_editor::SURFACE_MAT);
+  assert(hex_mesh::mesh_crc(sm) != hex_mesh::mesh_crc(cm),
+         "one moved cell left the two meshes identical — the comparison is blind");
+}
+
+// The store-level half, stated on its own so a mesh change cannot mask it. `cache.mjs`
+// compares layer checksums rather than triangles, and this is that comparison.
+fn test_every_layer_checksum_survives_the_wire() {
+  srv = server_world();
+  cl = client_of(srv);
+  n = 0;
+  for ch in srv.w_chunks {
+    li = 0 - 1;
+    for ly in ch.ck_layers {
+      li = li + 1;
+      q = ch.ck_cx * hex_world::CHUNK_W;
+      r = ch.ck_cz * hex_world::CHUNK_W;
+      assert(world_layer_crc(srv, q, r, li) == world_layer_crc(cl, q, r, li),
+             "layer {li} of chunk ({ch.ck_cx},{ch.ck_cz}) differs: "
+           + "{world_layer_crc(srv, q, r, li)} vs {world_layer_crc(cl, q, r, li)}");
+      n = n + 1;
+    }
+  }
+  assert(n > 0, "no layers were compared at all");
+}
+
+// ⚠ THE ORACLE IS PART OF THE CLAIM, and it is what `client_mesh`'s `wait 0` reports.
+// A tile whose neighbourhood has not arrived must be refused rather than meshed short,
+// because a mesh built from a partial cache is wrong at its seams and looks right
+// everywhere else.
+fn test_a_tile_the_client_has_not_finished_receiving_is_refused() {
+  srv = server_world();
+  bare = world_new(0.25, 0, 10, 4).wn_world;
+  assert(!hex_mesh::tile_ready(bare, 0, 0),
+         "an empty cache called itself ready, so the client would mesh a hole");
+  assert(hex_mesh::tile_ready(srv, 0, 0),
+         "a complete world called itself unready, so the check is vacuous");
+}
