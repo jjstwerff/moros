@@ -3131,6 +3131,78 @@ pub fn prop_facing(p: Prop, nx: float, nz: float) -> Prop {
 // ⚠ REFUSED WITH THE ROOM IT WOULD NEED. A void too small for what is asked of it
 // is the ordinary case — a shallow alcove, a short box — and the honest answer names
 // the shortfall rather than drawing a bed through the front of a cupboard.
+// ── WHAT A SEAT PICKS — `38:`, the headless thread ──────────────────────────
+//
+// ⚠ THE VOID IS ASKED, NOT THE AUTHOR — that rule was already true and already in
+// this package: `bed_in_annex` and `statue_in_niche` take every dimension from the
+// thing they go in. What was on the wire is the CHOOSING, and it carries two claims
+// no socketless test could reach:
+//
+//   a bed    goes in the nearest CLOSED BOX. A deck is an annex too, and a bed on a
+//            balcony is not what `37:1` built — the kind is the filter.
+//   a statue goes in the nearest niche that HAS A BACK, so a doorway is passed over
+//            without this having to know what a doorway is (`opening_at_back`).
+//
+// ⚠ AND WHICH WAY A FIGURE FACES IS THE AUTHOR'S, NOT THE OPENING'S. A void cut in a
+// wall does not know which side of it anybody is standing on, so the facing is the
+// direction from the niche to the person looking at it — the same rule `annex_host`
+// keeps for its normal, and the same bug if it is taken from the stored geometry.
+pub struct Seated {
+  se_ok:   boolean,
+  se_prop: Prop = Prop {},
+  se_why:  text = "",
+}
+
+pub fn seat_bed(annexes: Annexes, x: float, z: float) -> Seated {
+  sb_best = 0 - 1;
+  sb_d = 1000000.0;
+  sb_i = 0;
+  for sb_an in annexes.items {
+    if sb_an.an_kind == AN_BOX {
+      sb_dx = sb_an.an_x - x;
+      sb_dz = sb_an.an_z - z;
+      sb_dd = sb_dx * sb_dx + sb_dz * sb_dz;
+      if sb_dd < sb_d { sb_d = sb_dd; sb_best = sb_i; }
+    }
+    sb_i = sb_i + 1;
+  }
+  if sb_best < 0 {
+    return Seated { se_ok: false, se_why: "no box to put a bed in — press J first" };
+  }
+  sb_box = annexes.items[sb_best] ?? annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, AN_BOX);
+  sb_bed = bed_in_annex(sb_box);
+  sb_ack = prop_fits(sb_bed);
+  if !sb_ack.ak_ok { return Seated { se_ok: false, se_why: sb_ack.ak_why }; }
+  return Seated { se_ok: true, se_prop: sb_bed };
+}
+
+pub fn seat_statue(openings: Openings, x: float, z: float, band: float) -> Seated {
+  ss_best = 0 - 1;
+  ss_d = 1000000.0;
+  ss_i = 0;
+  for ss_op in openings.items {
+    ss_dx = ss_op.op_x - x;
+    ss_dz = ss_op.op_z - z;
+    ss_dd = ss_dx * ss_dx + ss_dz * ss_dz;
+    if ss_dd < ss_d && !opening_at_back(ss_op) { ss_d = ss_dd; ss_best = ss_i; }
+    ss_i = ss_i + 1;
+  }
+  if ss_best < 0 {
+    return Seated { se_ok: false,
+                    se_why: "no niche to stand a figure in — press N first" };
+  }
+  ss_niche = openings.items[ss_best] ?? door_opening(0.0, 0.0, 0.9, 12);
+  ss_st = statue_in_niche(ss_niche, band);
+  ss_nx = x - ss_st.pr_x;
+  ss_nz = z - ss_st.pr_z;
+  ss_l = sqrt(ss_nx * ss_nx + ss_nz * ss_nz) ?? 0.0;
+  if ss_l > 0.001 { ss_nx = ss_nx / ss_l ?? 0.0; ss_nz = ss_nz / ss_l ?? 0.0; }
+  ss_st = prop_facing(ss_st, ss_nx, ss_nz);
+  ss_ack = prop_fits(ss_st);
+  if !ss_ack.ak_ok { return Seated { se_ok: false, se_why: ss_ack.ak_why }; }
+  return Seated { se_ok: true, se_prop: ss_st };
+}
+
 pub fn prop_fits(p: Prop) -> Ack {
   if p.pr_kind == PROP_BED {
     if p.pr_len < BED_MIN_LEN {

@@ -426,3 +426,70 @@ fn test_cutting_with_no_slab_is_refused_by_name() {
   assert(got.hx_why.find("press X") >= 0,
          "the refusal does not say what to do: {got.hx_why}");
 }
+
+// ── `38:` — WHICH VOID A SEAT PICKS, and which way a figure looks ────────────
+//
+// ⚠ THE VOID IS ASKED, NOT THE AUTHOR — already true, already tested: `bed_in_annex`
+// takes every dimension from the box. What had no test is the CHOOSING, and it
+// carries the two rules a scene had to be built over a wire to see.
+fn a_box(x: float, z: float, kind: integer) -> Annex {
+  annex_at(x, z, 0.0, 1.0, 2.2, 1.4, 0.0, 2, 11, kind)
+}
+
+fn test_a_bed_goes_in_the_nearest_box() {
+  boxes = Annexes { items: [] };
+  boxes.items += [a_box(0.0, 0.0, AN_BOX)];
+  boxes.items += [a_box(20.0, 0.0, AN_BOX)];
+  near = seat_bed(boxes, 19.0, 0.0);
+  assert(near.se_ok, "a bed beside the far box was refused: {near.se_why}");
+  assert(near.se_prop.pr_x > 15.0,
+         "the bed landed at x={near.se_prop.pr_x}, and the nearest box is at 20");
+  // The control: from the other end it must pick the other one, or "nearest" is a
+  // word for "the first in the list".
+  far = seat_bed(boxes, 1.0, 0.0);
+  assert(far.se_ok && far.se_prop.pr_x < 5.0,
+         "from x=1 the bed landed at {far.se_prop.pr_x}");
+}
+
+// ⚠ A DECK IS AN ANNEX TOO, and a bed on a balcony is not what `37:1` built. The
+// kind is the filter, and without this row the selection is *nearest annex*.
+fn test_a_deck_is_not_a_box_and_holds_no_bed() {
+  decks = Annexes { items: [] };
+  decks.items += [a_box(0.0, 0.0, AN_DECK)];
+  got = seat_bed(decks, 0.0, 0.0);
+  assert(!got.se_ok, "a bed was laid on a balcony");
+  assert(got.se_why.find("press J") >= 0,
+         "the refusal does not say what to do: {got.se_why}");
+}
+
+// ⚠ A DOORWAY IS PASSED OVER WITHOUT THIS KNOWING WHAT A DOORWAY IS — `opening_at_back`
+// is the whole test, and a figure standing in a doorway is the bug it prevents.
+fn test_a_figure_skips_an_opening_with_no_back() {
+  holes = Openings { items: [] };
+  holes.items += [door_opening(0.0, 0.0, 0.9, 12)];          // a doorway: no back
+  got = seat_statue(holes, 0.0, 0.0, 0.35);
+  assert(!got.se_ok, "a figure was stood in a doorway");
+  assert(got.se_why.find("press N") >= 0, "the refusal reads: {got.se_why}");
+}
+
+// ⚠ AND WHICH WAY IT FACES IS THE AUTHOR'S. A void cut in a wall does not know which
+// side of it anybody stands on — the same rule `annex_host` keeps for its normal,
+// and the same bug if it is taken from the stored geometry. The control is the
+// author moving to the other side.
+fn test_a_figure_faces_whoever_is_looking_at_it() {
+  holes = Openings { items: [] };
+  // ⚠ AN ALCOVE, NOT A DOOR — `alcove_opening` is the one with a back, which is
+  // exactly the difference `opening_at_back` reads.
+  holes.items += [alcove_opening(0.0, 0.0, 0.9, 2, 12, 0.6)];
+  // ⚠ THE BAND IS THE ONE THE HANDLER PASSES — `hex_draw::BAND_SIDES`, √3/2. A test
+  // that invented a band would be measuring a niche the editor never cuts, and the
+  // first version of this one refused for being *"too shallow to stand in"* with a
+  // number nobody could look up.
+  front = seat_statue(holes, 0.0, 4.0, 0.8660254037844386);
+  back = seat_statue(holes, 0.0, 0.0 - 4.0, 0.8660254037844386);
+  assert(front.se_ok && back.se_ok,
+         "the niche took no figure: {front.se_why} / {back.se_why}");
+  assert(front.se_prop.pr_nz * back.se_prop.pr_nz < 0.0,
+         "the figure faces {front.se_prop.pr_nz} and {back.se_prop.pr_nz} — a facing "
+       + "taken from the opening is the same from both sides");
+}

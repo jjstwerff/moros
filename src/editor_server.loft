@@ -7009,76 +7009,31 @@ fn main() {
           // dimension comes back from `hex_editor`. Nothing here knows how long a
           // bed is, which is the point: the box does.
           pkind = ev.payload as integer ?? hex_editor::PROP_BED;
-          if pkind == hex_editor::PROP_BED {
-            pbest = 0 - 1;
-            pbd = 1000000.0;
-            pbi = 0;
-            for pan in wall_annexes.items {
-              if pan.an_kind == hex_editor::AN_BOX {
-                pdx = pan.an_x - px;
-                pdz = pan.an_z - pz;
-                pdd = pdx * pdx + pdz * pdz;
-                if pdd < pbd { pbd = pdd; pbest = pbi; }
-              }
-              pbi = pbi + 1;
-            }
-            if pbest < 0 {
-              srv.send_to(ev.cid, "S:no box to put a bed in — press J first");
-            } else {
-              pbox = wall_annexes.items[pbest] ?? hex_editor::annex_at(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2, 10, hex_editor::AN_BOX);
-              pbed = hex_editor::bed_in_annex(pbox);
-              pack = hex_editor::prop_fits(pbed);
-              if !pack.ak_ok {
-                srv.send_to(ev.cid, "S:no bed — {pack.ak_why}");
-                println("editor: bed refused — {pack.ak_why}");
-              } else {
-                wall_props.items += [pbed];
-                phex = world_to_hex(pbed.pr_x, pbed.pr_z);
-                mark_dirty(dirty, phex.ha_q, phex.ha_r, 3);
-                srv.send_to(ev.cid, "S:a bed {pbed.pr_len} long in the box");
-                println("editor: bed {pbed.pr_len} long at ({phex.ha_q},{phex.ha_r})");
-              }
-            }
+          // ⚠ THE CHOOSING IS `hex_editor` NOW — the headless thread. Which void a
+          // seat goes in (the nearest CLOSED box; the nearest niche that HAS a back,
+          // so a doorway is passed over) and which way a figure faces were inline
+          // here, and neither could be reached without building a scene over a wire.
+          // What stays is the registry, the dirty mark and the sentence.
+          pseat = if pkind == hex_editor::PROP_BED {
+                    hex_editor::seat_bed(wall_annexes, px, pz)
+                  } else {
+                    hex_editor::seat_statue(wall_openings, px, pz, hex_draw::BAND_SIDES)
+                  };
+          if !pseat.se_ok {
+            srv.send_to(ev.cid, "S:{pseat.se_why}");
+            println("editor: seat refused — {pseat.se_why}");
           } else {
-            // A statue goes in the nearest void that HAS a back — which is what
-            // `niche_room` answers, so a doorway is passed over without this having
-            // to know what a doorway is.
-            sbest = 0 - 1;
-            sbd = 1000000.0;
-            sbi = 0;
-            for sop in wall_openings.items {
-              sdx = sop.op_x - px;
-              sdz = sop.op_z - pz;
-              sdd = sdx * sdx + sdz * sdz;
-              if sdd < sbd && !hex_editor::opening_at_back(sop) {
-                sbd = sdd;
-                sbest = sbi;
-              }
-              sbi = sbi + 1;
-            }
-            if sbest < 0 {
-              srv.send_to(ev.cid, "S:no niche to stand a figure in — press N first");
+            wall_props.items += [pseat.se_prop];
+            pshex = world_to_hex(pseat.se_prop.pr_x, pseat.se_prop.pr_z);
+            mark_dirty(dirty, pshex.ha_q, pshex.ha_r, 3);
+            if pkind == hex_editor::PROP_BED {
+              srv.send_to(ev.cid, "S:a bed {pseat.se_prop.pr_len} long in the box");
+              println("editor: bed {pseat.se_prop.pr_len} long at "
+                    + "({pshex.ha_q},{pshex.ha_r})");
             } else {
-              sniche = wall_openings.items[sbest] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
-              sst = hex_editor::statue_in_niche(sniche, hex_draw::BAND_SIDES);
-              // Which way it faces is the RUN's, not the opening's — a void cut in a
-              // wall does not know which side of it anybody is standing on.
-              snx = px - sst.pr_x;
-              snz = pz - sst.pr_z;
-              snl = sqrt(snx * snx + snz * snz) ?? 0.0;
-              if snl > 0.001 { snx = snx / snl ?? 0.0; snz = snz / snl ?? 0.0; }
-              sst = hex_editor::prop_facing(sst, snx, snz);
-              sack = hex_editor::prop_fits(sst);
-              if !sack.ak_ok {
-                srv.send_to(ev.cid, "S:no figure — {sack.ak_why}");
-                println("editor: statue refused — {sack.ak_why}");
-              } else {
-                wall_props.items += [sst];
-                sshex = world_to_hex(sst.pr_x, sst.pr_z);
-                mark_dirty(dirty, sshex.ha_q, sshex.ha_r, 3);
-                srv.send_to(ev.cid, "S:a figure {sst.pr_up} units tall in the niche");
-                println("editor: statue {sst.pr_up} tall at ({sshex.ha_q},{sshex.ha_r})");
-              }
+              srv.send_to(ev.cid, "S:a figure {pseat.se_prop.pr_up} units tall in the niche");
+              println("editor: statue {pseat.se_prop.pr_up} tall at "
+                    + "({pshex.ha_q},{pshex.ha_r})");
             }
           }
         } else if ev.msg_id == MSG_ANNEX {

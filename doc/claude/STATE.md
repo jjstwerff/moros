@@ -103,6 +103,17 @@ is refused by name. ⚠ **The tests reproduced the handler's own recorded trap f
 is placed AHEAD of the author, so a hole cut at the author's position is refused for reaching past
 the slab's end — the refusal is right, and a test has to ask the slab where it is.
 
+✅ **AND THE SEAT'S CHOOSING TOO** — `seat_bed` and `seat_statue`. The void was always asked for
+its dimensions (`bed_in_annex`); what needed a socket was **which void**: the nearest CLOSED box
+(a deck is an annex too, and a bed on a balcony is not what `37:1` built), and the nearest niche
+that HAS a back — so a doorway is passed over without the code knowing what a doorway is. ⚠ **And
+which way a figure faces is the AUTHOR's**, not the opening's, with the same control `annex_host`
+uses: the author moves to the other side and the facing must flip.
+
+⚠ **A TEST MUST PASS THE BAND THE HANDLER PASSES.** The niche test invented one and was refused
+*"too shallow to stand in"* — the editor cuts with `hex_draw::BAND_SIDES` (√3/2), so a test with
+its own number measures a niche the editor never makes.
+
 ⚠ **AND TWO OF THE THREE NEW TESTS WERE BLIND FIRST.** `ft_offer` is an integer the struct's own
 comment calls *"meaningless unless `ft_ordinal`"* — asserting on it says nothing, and `ft_ordinal`
 is the field. And a raise lands **ten hexes ahead of the author** (`peak_cell`), so a prop under
