@@ -17,6 +17,8 @@ fn flat_ground(x: float, z: float) -> float { 0.0 }
 fn slope_15(x: float, z: float) -> float { 0.15 * z }
 fn slope_84(x: float, z: float) -> float { 0.084 * z }
 fn slope_60(x: float, z: float) -> float { 0.60 * z }
+// steeper than 45 degrees: the old fixed point REFUSED this one on round zero
+fn slope_350(x: float, z: float) -> float { 3.5 * z }
 // nonlinear, so the fixed point has something to iterate ON
 fn ridge(x: float, z: float) -> float { 0.9 - 0.9 / (1.0 + z * z) ?? 0.0 }
 fn bumpy(x: float, z: float) -> float { 0.25 * sin(z * 1.7) + 0.1 * cos(x * 2.1) }
@@ -99,47 +101,89 @@ fn test_an_inverted_bank_is_caught_by_the_gap() {
          "by 2*w*sin(bank), which on the editor's 4.8 degree slope was 0.0914 wu");
 }
 
-// ── convergence: Φ′(0) = 0, and the rate is s² at the fixed point ───────────
+// ── convergence: the answer does not depend on the slope ────────────────────
+//
+// ⚠ THREE CLAUSES HERE USED TO DESCRIBE A CONVERGENCE RATE, and the rate was the
+// defect. The solve was a fixed point on `β` with `Φ′(β*) ≈ s²` in the terrain
+// slope: quadratic near level, useless by `s = 0.6`, and DIVERGENT past `s = 1`
+// — where it did not merely converge slowly but refused outright, because the
+// `A-FIT` doorstep was asked at the seed, which is the widest span the axle ever
+// has. What replaced them is not a faster rate but a different guarantee: the
+// solve brackets a chord length on `[0, w]`, so it cannot fail at any slope.
+//
+// The old clauses are gone rather than loosened because they were TRUE of an
+// algorithm that no longer exists — and one of them would have gone on passing:
+// `test_the_step_shrinks_by_s_squared_each_round` guarded its ratio with
+// `if prev > 0.0`, so against a solve that settles in one round it compares
+// nothing at all and reports green.
 
-// The prediction is a RATE, not a magnitude: `Φ′` at the fixed point is `≈ s²`,
-// so each round should shrink the step by about `s²`. Asserting the ratio checks
-// the claim; asserting a threshold would only check a guess — and the first
-// version of this clause guessed 1e-6 and was wrong.
-fn test_the_step_shrinks_by_s_squared_each_round() {
-  s2 = 0.084 * 0.084;
-  prev = 0.0;
-  for n in 3..=6 {
-    g = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, n);
-    if prev > 0.0 {
-      ratio = g.rt_resid / prev ?? 0.0;
-      assert(ratio < s2 * 4.0, "each round shrinks the step by about s^2");
-      assert(ratio > s2 / 4.0 ?? 0.0, "and not faster than that either");
-    }
-    prev = g.rt_resid;
+fn test_the_rest_is_exact_at_every_slope_a_cart_can_meet() {
+  // ⚠ THE CLAUSE THE WHOLE REWRITE IS FOR. Every one of these is a plane, so the
+  // answer is `−atan(s)` in closed form and there is nothing to argue about. The
+  // old solve got the first two slowly, the third badly, and REFUSED the last
+  // three outright — `ok false`, bank 0, wheels up to 1.9 wu off the ground.
+  slopes: vector<float> = [0.2, 0.6, 0.9, 1.1, 2.0, 3.5];
+  for k in 0..len(slopes) {
+    s = slopes[k] ?? 0.0;
+    // ⚠ THE TYPED FORM IS REQUIRED AT AN ASSIGNMENT — there is no expected type
+    // at this site, only at a call. The capture of `s` is what makes one clause
+    // cover six planes.
+    tilt = fn(px: float, pz: float) -> float { s * pz };
+    g = ground_axle(tilt, 3.0, 0.0, 0.0, HALF, RADIUS, 12);
+    assert(g.rt_ok, "a plane of slope {s} is rideable — a cart tilts to meet it");
+    assert(fabs(g.rt_bank + atan(s)) < BOUND,
+           "and rests at -atan({s}): got {g.rt_bank}, want {0.0 - atan(s)}");
   }
 }
 
-fn test_three_rounds_is_enough_on_a_shallow_slope() {
-  g = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
-  assert(g.rt_rounds == 3, "three rounds");
-  // with a per-round rate of s^2 ~ 0.007 and a first step of ~s, the third step
-  // is around s^5 — so the wheels are down to well inside a millimetre
-  assert(ground_worst_gap(g, HALF, RADIUS, slope_84) < 0.001,
-         "and both wheels are on the ground to inside a millimetre");
-  assert(g.rt_resid < 0.0001, "with the step already five orders below the bank");
+fn test_a_plane_needs_one_round_however_steep_it_is() {
+  // ⚠ THE REASON THE VARIABLE IS `u = t²`. `H = 4(1+s²)·u − 4w²` is LINEAR in u
+  // on any plane, so one false-position step is not fast — it is exact. This is
+  // the clause that would notice the variable being changed back to `t` or `β`
+  // for tidiness.
+  slopes: vector<float> = [0.2, 0.9, 2.0, 3.5];
+  for k in 0..len(slopes) {
+    s = slopes[k] ?? 0.0;
+    tilt = fn(px: float, pz: float) -> float { s * pz };
+    one = ground_axle(tilt, 3.0, 0.0, 0.0, HALF, RADIUS, 1);
+    assert(one.rt_rounds == 1, "one round was taken at slope {s}");
+    assert(fabs(one.rt_bank + atan(s)) < BOUND,
+           "and it is already the exact answer at slope {s}: {one.rt_bank}");
+  }
 }
 
-// The rate at the fixed point is `≈ s²`, so a steeper slope needs more rounds
-// for the same residual — a prediction, not a hope.
-fn test_a_steeper_slope_converges_more_slowly() {
-  shallow = ground_axle(slope_84, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
-  steep = ground_axle(slope_60, 3.0, 0.0, 0.0, HALF, RADIUS, 3);
-  assert(steep.rt_resid > shallow.rt_resid * 100.0,
-         "the steep slope is far from settled after the same three rounds");
-  more = ground_axle(slope_60, 3.0, 0.0, 0.0, HALF, RADIUS, 40);
-  assert(fabs(more.rt_bank + atan(0.60)) < BOUND,
-         "and given rounds it finds -atan(s) too");
-  assert(ground_worst_gap(more, HALF, RADIUS, slope_60) < BOUND, "with both wheels down");
+fn test_curved_ground_settles_inside_the_cap() {
+  // A plane is exact in one step, so the cap is only ever spent on CURVATURE.
+  // These are the two nonlinear terrains above, and the claim is that the default
+  // cap is not a number anyone has to think about.
+  for k in 0..5 {
+    cz = 0.0 - 1.0 + (k as float) * 0.5;
+    r = ground_axle(ridge, 0.0, cz, 0.0, HALF, RADIUS);
+    assert(r.rt_ok, "the ridge is rideable at z={cz}");
+    assert(ground_worst_gap(r, HALF, RADIUS, ridge) < BOUND,
+           "both wheels down on the ridge at z={cz}, in {r.rt_rounds} rounds");
+    b = ground_axle(bumpy, 1.0 + (k as float), cz, 0.4, HALF, RADIUS);
+    assert(b.rt_ok, "the bumps are rideable at z={cz}");
+    assert(ground_worst_gap(b, HALF, RADIUS, bumpy) < BOUND,
+           "both wheels down on the bumps at z={cz}, in {b.rt_rounds} rounds");
+  }
+}
+
+fn test_the_bracket_is_what_makes_the_guarantee() {
+  // `H(0) = −(2w)²` and `H(w) = d(w)² ≥ 0`, so a root exists on `[0, w]` for any
+  // continuous terrain — that is the whole argument, and it is checked here on
+  // the steepest plane above rather than left in a comment. At full span the
+  // chord already exceeds the axle; at zero span it is zero.
+  full_l = slope_350(0.0, 0.0 - HALF);
+  full_r = slope_350(0.0, HALF);
+  chord_full = 4.0 * HALF * HALF + (full_l - full_r) * (full_l - full_r);
+  assert(chord_full > 4.0 * HALF * HALF,
+         "at full span the chord is longer than the axle, so H(w) > 0");
+  // and the solve lands strictly inside, where the chord IS the axle
+  g = ground_axle(slope_350, 0.0, 0.0, 0.0, HALF, RADIUS, 12);
+  t = HALF * cos(g.rt_bank);
+  assert(t > 0.0 && t < HALF,
+         "the contacts pull in to {t}, inside the axle's own half-length {HALF}");
 }
 
 // ── A-FIT: the steep case refuses with a reason, an offer and a residual ────

@@ -54,28 +54,32 @@ const skid = Math.max(num(a, 'skid'), num(b2, 'skid'), num(back, 'skid'));
 const doubles = Math.abs(v2 - 2 * v1) < 1e-12 && t2 === 20 && t1 === 10;
 const closes = t0 === 0 && v0 === 0;
 const noSlip = skid < 1e-9;
-// ⚠ THE HILL HAS TO REACH THE CART, AND FOR YEARS IT DID NOT. `3:200,0` turns the
+// ⚠ THE HILL HAS TO REACH THE CART, AND FOR YEARS IT DID NOT. `3:200,0` turned the
 // author 1.2 rad, which puts the brush's centre about 14 wu off the cart's line —
 // its 7-hex dome never came near. What banked the cart was an ARTIFACT: an unwritten
 // cell read back its chunk's window base, so raising anywhere lifted whole 32-hex
-// chunks to a plateau and the cart crossed the step between two of them. Measured
-// with that fixed, this fixture reports `maxBank 0, banked false` — the gate's own
+// chunks to a plateau and the cart crossed the step between two of them. With that
+// fixed the old fixture reported `maxBank 0, banked false` — the gate's own
 // void-guard, correctly firing on a run that met no slope at all.
 //
-// `3:106,0` puts the dome's flank across the cart's path. Measured, turn 106:
+// ⚠ AND THE SLOPE IT HAD BEEN MEETING WAS A STEP BETWEEN TWO FLAT PLATEAUS, so
+// `grounded` — every wheel within a millimetre — had never once been asked about a
+// real gradient. Pointed at one it failed, and that turned out to be the contact
+// solve rather than the fixture. `3:60,0` with five raises now puts the cart across
+// a genuine 0.695 rad flank — 40°, four times the bank the artifact ever produced:
 //
-//    raises   bank (rad)   worst gap
-//      1        0.083       1.5e-8     ← what the artifact used to give
-//      3        0.245       3.5e-5     ← here
-//      5        0.396       1.3e-3     ← `grounded` fails
+//    bank (rad)     worst gap, old solve      worst gap, now
+//      0.083            1.5e-8                  (the artifact's step)
+//      0.245            3.5e-5                   5.6e-17
+//      0.395            1.3e-3  ← failed         1.1e-16
+//      0.695            9.8e-2  ← failed         4.4e-16
 //
-// ⚠ AND THE LAST ROW IS A REAL DEFECT, NOT A TUNING CHOICE. The contact solve
-// degrades with slope — 9.8e-2 at 0.83 rad — and it does so IDENTICALLY before and
-// after the window fix, so it is nothing to do with it. It has never been caught
-// because `grounded` had only ever been asked about a step between two FLAT
-// plateaus, where the solve is exact. Recorded in OPEN_ISSUES; not fixed here.
-g.ws.send('3:106,0');                       // turn, so the hill lands off-axis
-for (let k = 0; k < 3; k++) g.ws.send('5:1');
+// The solve brackets a chord length now instead of iterating on the bank, so the
+// answer is exact at any slope rather than converging as `s²` and refusing past 45°.
+// `lib/moros_sim/tests/ground.loft` owns the rule; this is the cart meeting a real
+// hillside with it.
+g.ws.send('3:60,0');                        // turn, so the hill lands off-axis
+for (let k = 0; k < 5; k++) g.ws.send('5:1');
 
 const poses = [], axleEnds = [];
 for (let k = 0; k < 10; k++) {

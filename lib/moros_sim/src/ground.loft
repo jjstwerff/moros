@@ -5,21 +5,53 @@
 // Step `A6` of plans/14-props-dressing/CONNECTOR.md, proving `A-GROUND` and
 // `A-FIT`.
 //
-// ── the solve, in closed form ───────────────────────────────────────────────
+// ── the solve: a CHORD LENGTH, on the horizontal half-span ──────────────────
 //
 // For one axle — half-length `w`, wheel radius `R`, axle direction `u` in the
-// ground plane, body centre `c`, terrain `g(·)`:
+// ground plane, body centre `c`, terrain `g(·)` — put the two contacts at
+// horizontal offset `±t` and ask what `t` makes the axle fit between them:
 //
-//     x_L(β) = c − u·w·cos β        g_L = g(x_L)
-//     x_R(β) = c + u·w·cos β        g_R = g(x_R)      d = g_L − g_R
+//     g_L(t) = g(c − u·t)     g_R(t) = g(c + u·t)     d(t) = g_L − g_R
 //
-//     sin β = d / 2w                y = (g_L + g_R)/2 + R
+//     H(t) = (2t)² + d(t)² − (2w)² = 0        the chord IS the axle
 //
-// The contacts depend on `β` and `β` on the contacts, so it is a fixed point
-// seeded at `β₀ = 0`. `Φ′(0) = 0`, so it is quadratically convergent near level;
-// at the fixed point the rate is `≈ s²` in the terrain slope, which is why three
-// rounds on a 4.8° slope leave a residual around `10⁻⁸` rather than something
-// linear in the slope.
+//     β = atan2(d, 2t)        y = (g_L + g_R)/2 + R
+//
+// ⚠ **THE POINT OF SOLVING FOR `t` RATHER THAN FOR `β` IS THAT THE BRACKET IS
+// FREE**, and with it the guarantee:
+//
+//     H(0)  = −(2w)² < 0      both contacts coincide, so the chord is zero
+//     H(w)  = d(w)²   ≥ 0     at full span the chord is at least the axle
+//
+// so a root exists on `[0, w]` for **any** continuous terrain, at any slope, and
+// a bracketed method cannot fail to find it.
+//
+// ⚠ **THE ITERATION RUNS ON `u = t²`, WHICH MAKES A PLANE EXACT IN ONE STEP.**
+// For `g = s·z` the contacts give `d = −2st`, so
+//
+//     H = 4t² + 4s²t² − 4w² = 4(1+s²)·u − 4w²
+//
+// — LINEAR in `u`. One false-position step lands on the root, and a heightfield
+// is planar between its samples. Illinois keeps it superlinear on curved ground
+// without ever losing the bracket.
+//
+// ⚠ **WHAT THIS REPLACED, AND WHY IT HAD TO GO.** The solve was a fixed point on
+// `β` with the contacts at `±w·cos β`, seeded at `β₀ = 0`. Two failures, both
+// measured (`probe/cart/converge.loft`):
+//
+//   · `Φ′(β*) ≈ s²` in the terrain slope — quadratic only near level. At `s = 0.6`
+//     three rounds left the wheels **8.9 mm** off the ground and forty left `10⁻⁸`;
+//     at `s = 0.9` forty rounds still left `7.3e−5`. The editor asked for the
+//     DEFAULT THREE, on terrain of unknown slope.
+//   · Past `s = 1` it did not converge at all — it REFUSED, on round one. The
+//     `A-FIT` doorstep asks whether the ground drops further than the axle is long
+//     across the span at the CURRENT iterate, and the seed is the widest span the
+//     axle ever has. A plane of slope 2.0 rests perfectly well at `β = −1.107`;
+//     it came back `ok false` with the wheels **1.1 wu** off the ground.
+//
+// The doorstep is a real rule and it is kept — a drop longer than the axle is
+// unrideable however the cart is turned. It is asked at the CONVERGED span now,
+// which is the only span at which it means anything.
 //
 // ⚠ **The formula above is correct in the STANDARD rotation sense**, which is
 // what `A3`'s `rot_axis` uses. The editor applied it through mesh3d's
@@ -75,43 +107,101 @@ pub fn ground_gap(f: Frame, half: float, radius: float, side: float,
   hub.y - radius - sample(hub.x, hub.z)
 }
 
-// ── the fixed point ─────────────────────────────────────────────────────────
+// ── the bracketed solve ─────────────────────────────────────────────────────
+//
+// `rounds` is a CAP, not a count: the iteration stops when the bracket can no
+// longer be halved in `u`, so `rt_rounds` says what it actually cost. Twelve is
+// generous — a plane takes one, and the whole point of the `u = t²` variable is
+// that a heightfield is a plane between its samples.
 pub fn ground_axle(sample: fn(float, float) -> float,
                    cx: float, cz: float, yaw: float,
-                   half: float, radius: float, rounds: integer = 3) -> Rest {
+                   half: float, radius: float, rounds: integer = 12) -> Rest {
   // the axle runs ACROSS the travel direction
   ux = sin(yaw);
   uz = cos(yaw);
-  bank = 0.0;
-  cy = radius;
-  resid = 0.0;
+  axle2 = 4.0 * half * half;                    // (2w)²
+
+  // The bracket, in `u = t²` over `[0, w²]`. `H(0) = −(2w)²` needs no sample:
+  // both contacts coincide there, so `d = 0` by construction.
+  ua = 0.0;
+  ha = 0.0 - axle2;
+  ub = half * half;
+  gl = sample(cx - ux * half, cz - uz * half);
+  gr = sample(cx + ux * half, cz + uz * half);
+  hb = (gl - gr) * (gl - gr);
+
+  ut = ub;
+  glt = gl;
+  grt = gr;
+  bank = atan2(gl - gr, 2.0 * half);
+  resid = fabs(bank);
   used = 0;
-  for it in 0..rounds {
-    span = half * cos(bank);
-    gl = sample(cx - ux * span, cz - uz * span);
-    gr = sample(cx + ux * span, cz + uz * span);
-    d = gl - gr;
-    flat = 4.0 * half * half - d * d;
-    if flat <= 0.0 {
-      // ⚠ `A-FIT`. `sin β = d/2w` has NO solution when the ground drops more
-      // across the axle than the axle is long, and this is not a margin case:
-      // the raise brush's own documentation records flanks of 74–83° against an
-      // axle of 1.1 wu. So it is a named refusal with an OFFER and a RESIDUAL,
-      // not a clamp — and it keeps the last admissible bank rather than emitting
-      // a NaN, because the GROUND is what has to give here, not the cart.
-      off = 2.0 * half;
-      if d < 0.0 { off = 0.0 - off; }
-      return Rest { rt_ok: false,
-                      rt_frame: ground_frame(cx, cy, cz, yaw, bank),
-                      rt_bank: bank, rt_rounds: used, rt_resid: resid,
-                      rt_reason: "ground drops {fabs(d)} across an axle of {2.0 * half}",
-                      rt_offer: off, rt_over: fabs(d) - 2.0 * half };
+  // `hb == 0` is flat across the axle: full span already fits, nothing to solve.
+  if hb > 0.0 {
+    // Illinois: when the same endpoint is kept twice its stored value is halved,
+    // which is what stops false position stagnating on curved ground.
+    held = 0;
+    for it in 0..rounds {
+      wide = ub - ua;
+      den = hb - ha;
+      un = (ua + ub) * 0.5;
+      if den != 0.0 { un = (ua * hb - ub * ha) / den ?? un; }
+      // Kept strictly inside the bracket: a stagnant endpoint otherwise parks the
+      // step on the edge and the iteration stops moving without converging.
+      lo = ua + wide * 0.001;
+      hi = ub - wide * 0.001;
+      if un < lo { un = lo; }
+      if un > hi { un = hi; }
+      tn = sqrt(un) ?? 0.0;
+      nl = sample(cx - ux * tn, cz - uz * tn);
+      nr = sample(cx + ux * tn, cz + uz * tn);
+      dn = nl - nr;
+      hn = 4.0 * un + dn * dn - axle2;
+      nb = atan2(dn, 2.0 * tn);
+      resid = fabs(nb - bank);
+      bank = nb;
+      ut = un;
+      glt = nl;
+      grt = nr;
+      used = it + 1;
+      if hn == 0.0 { break; }
+      if hn > 0.0 {
+        ub = un;
+        hb = hn;
+        if held == 1 { ha = ha * 0.5; }
+        held = 1;
+      } else {
+        ua = un;
+        ha = hn;
+        if held == 0 - 1 { hb = hb * 0.5; }
+        held = 0 - 1;
+      }
+      // The bracket is down to the last representable step in `u`; another round
+      // would sample the same two points and change nothing.
+      if ub - ua >= wide { break; }
     }
-    nb = atan2(d, sqrt(flat) ?? 0.0);
-    resid = fabs(nb - bank);
-    bank = nb;
-    cy = (gl + gr) * 0.5 + radius;
-    used = it + 1;
+  }
+
+  t = sqrt(ut) ?? 0.0;
+  d = glt - grt;
+  cy = (glt + grt) * 0.5 + radius;
+  // ⚠ `A-FIT`, ASKED AT THE CONVERGED SPAN. A drop longer than the axle admits no
+  // bank whatever — the raise brush's own documentation records flanks of 74–83°
+  // against an axle of 1.1 wu — so it is a named refusal with an OFFER and a
+  // RESIDUAL, not a clamp, and it keeps a real bank rather than emitting a NaN,
+  // because the GROUND is what has to give here, not the cart.
+  //
+  // ⚠ AND ASKING IT AT THE SEED IS WHAT MADE IT WRONG. `t` shrinks as the axle
+  // tilts, so the span at `β = 0` is the widest the question is ever asked about:
+  // every plane steeper than 45° failed it and was refused a rest it has.
+  if fabs(d) > 2.0 * half {
+    off = 2.0 * half;
+    if d < 0.0 { off = 0.0 - off; }
+    return Rest { rt_ok: false,
+                    rt_frame: ground_frame(cx, cy, cz, yaw, bank),
+                    rt_bank: bank, rt_rounds: used, rt_resid: resid,
+                    rt_reason: "ground drops {fabs(d)} across an axle of {2.0 * half}",
+                    rt_offer: off, rt_over: fabs(d) - 2.0 * half };
   }
   Rest { rt_ok: true, rt_frame: ground_frame(cx, cy, cz, yaw, bank),
            rt_bank: bank, rt_rounds: used, rt_resid: resid,

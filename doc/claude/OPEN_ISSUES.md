@@ -428,28 +428,84 @@ seen red against the old reader.
   worked because a large part of the ground under the disc was flat at exactly one height. See
   the new entry below.
 
-### Open: the cart's wheels leave the ground on a real slope
+### ✅ FIXED 2026-08-08 — the cart's wheels left the ground on a real slope, and above 45° it refused one
 
-⚠ **Found 2026-08-08, and only because the window-base fix took away the fake slope it had
-been tested on.** `cart.mjs` asserts `grounded` — every wheel within a millimetre of the drawn
-ground — and that clause had **never been asked about a genuine gradient**. Its hill landed
-~14 wu off the cart's line and never reached it; what banked the cart was the step between two
-chunk-wide plateaus, and on flat ground the contact solve is exact.
+⚠ **Found only because the window-base fix took away the fake slope it had been tested on.**
+`cart.mjs` asserts `grounded` — every wheel within a millimetre of the drawn ground — and that
+clause had **never been asked about a genuine gradient**. Its hill landed ~14 wu off the cart's
+line and never reached it; what banked the cart was the step between two chunk-wide plateaus,
+and on flat ground the solve is exact.
 
-Measured on a real dome flank, and **identical before and after the fix**, so it is nothing to
-do with it:
+⚠ **AND "NOT ENOUGH ROUNDS" WAS THE WRONG READING, WHICH IS WHY THE PROBE CAME FIRST.** The
+editor took `ground_axle`'s default of 3 while the library's own tests pass 30–40, so the
+obvious fix was to pass more. Swept over planes, where the answer is closed form
+(`probe/cart/converge.loft`), there were **three** regimes and more rounds only reaches the
+first two:
 
-| raises | bank (rad) | worst gap |
+| terrain slope `s` | before, at any round count |
+|---|---|
+| ≤ 0.2 | fine — 3 rounds reach `3.6e−6` |
+| 0.6 – 0.9 | converges as `s²`: **40 rounds still leave `7.3e−5`** |
+| **≥ 1.0** | **`ok false` on round ONE** — refused, bank 0, wheels 0.6–1.9 wu off the ground |
+
+A plane of slope 2.0 rests perfectly well at `β = −1.107` and was refused. **The `A-FIT`
+doorstep was asked at the wrong place**: *does the ground drop further than the axle is long
+across the span* is a real rule, but it was evaluated at the CURRENT iterate, and the seed
+`β = 0` is the widest span the axle ever has. The span shrinks as the axle tilts; the question
+was asked before any tilting had happened. The raise brush's own documented flanks are 74–83°.
+
+**The fix changes the variable.** Solve for the horizontal half-span `t`, not the bank:
+
+    H(t) = (2t)² + d(t)² − (2w)² = 0     the chord between the contacts IS the axle
+    H(0) = −(2w)² < 0                     H(w) = d(w)² ≥ 0
+
+so a root exists on `[0, w]` for any continuous terrain at any slope and a bracketed method
+cannot fail. Iterating on `u = t²` makes a plane **exact in one step** — `H = 4(1+s²)·u − 4w²`
+is linear in `u`, and a heightfield is a plane between its samples. Illinois keeps it
+superlinear on curved ground without losing the bracket. The doorstep is kept and asked at the
+converged span, which is the only span at which it means anything.
+
+| bank (rad) | worst gap before | worst gap now |
 |---|---|---|
-| 1 | 0.083 | 1.5e−8 |
-| 3 | 0.245 | 3.5e−5 |
-| 5 | 0.396 | **1.3e−3** — `grounded` fails |
-| 5, nearer the peak | 0.833 | **9.8e−2** — a hand's width |
+| 0.083 | 1.5e−8 | *(the artifact's step)* |
+| 0.245 | 3.5e−5 | **5.6e−17** |
+| 0.395 | 1.3e−3 — failed | **1.1e−16** |
+| 0.695 | 9.8e−2 — failed | **4.4e−16** |
 
-The error grows sharply with slope. The gate now drives a real 0.245 rad flank (`3:106,0`,
-three raises), which is a stronger fixture than the artifact's 0.083 — but the solve above
-0.25 rad is unfixed, and a cart on a steep hillside floats. It is `msim::ground_gap` and the
-`asm_frames` contact solve that own it.
+`cart.mjs` now drives a real **0.695 rad (40°)** flank — four times the bank the artifact ever
+produced — and `lib/moros_sim/tests/ground.loft` owns the rule, four of its clauses seen red
+against the old solve.
+
+⚠ **THREE OF ITS OLD CLAUSES DESCRIBED THE DEFECT AS A FEATURE** and were replaced, not
+loosened: they asserted the `s²` convergence RATE, which was true of an algorithm that no
+longer exists. One of them —
+`test_the_step_shrinks_by_s_squared_each_round` — guarded its ratio with `if prev > 0.0`, so
+against a solve that settles in one round it compares nothing and **reports green**.
+
+### Open: the towed trailer's rest solve has all of the above, and no consumer
+
+⚠ **Measured 2026-08-08 with the same probe shape, after fixing the cart's.**
+`msim::hitched_rest` refuses a plane from slope **0.9** upward — *"ground drops 0.946 across an
+axle of 0.903"* — and leaves `3e−4` at 0.6:
+
+| slope | `rt_ok` | worst gap |
+|---|---|---|
+| 0.2 | true | 1.2e−8 |
+| 0.6 | true | 3.0e−4 |
+| **0.9** | **false** | 0.340 |
+| 1.1 / 2.0 / 3.5 | false | 1.41 / 1.90 / 2.73 |
+
+Same cause: a doorstep asked at the current iterate's span, and a fixed point whose rate falls
+away with slope. **Not fixed by analogy**, because it is not the same problem — a hitched body
+has *two* coupled unknowns (pitch about the pin, roll across the axle) rather than one root to
+bracket, so the chord trick does not transfer unchanged. It has **no caller outside its own
+tests**, which is why it is filed rather than forced.
+
+### Note: `part_limb` fails under full-suite contention and passes 4/4 alone
+
+Seen twice on 2026-08-08 in `make gate` at `GATE_JOBS=16`, including in a run **before** any of
+this session's changes, and green 4/4 under `make gate-rep G=part_limb`. Recorded so the next
+person does not attribute it to whatever they just changed. Not diagnosed.
 
 ### Open: `cellar.keys`'s soffit split lost its exact reading
 

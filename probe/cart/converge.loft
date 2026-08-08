@@ -1,0 +1,45 @@
+// DOES THE REST SOLVE CONVERGE, OR ONLY CONVERGE ON GENTLE GROUND?
+//
+// `ground_axle` is a fixed point seeded at β=0, and `ground.loft`'s own header
+// states its rate: `Φ′(β*) ≈ s²` in the terrain slope. That is a quadratic rate
+// for `s < 1` and a DIVERGENT one for `s > 1` — a 45° slope, which the raise
+// brush clears easily (its documented flanks are 74–83°). If that is right, the
+// editor's wheels-off-the-ground defect is not a round count at all: no number of
+// rounds fixes a divergent iteration.
+//
+// For a plane `g = s·z` the answer is closed form, `β = −atan(s)`, so every row
+// below has a known right answer to be wrong against.
+use moros_sim;
+
+const HALF = 0.55;
+const RADIUS = 0.4;
+
+fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+fn s02(x: float, z: float) -> float { 0.2 * z }
+fn s06(x: float, z: float) -> float { 0.6 * z }
+fn s09(x: float, z: float) -> float { 0.9 * z }
+fn s11(x: float, z: float) -> float { 1.1 * z }
+fn s20(x: float, z: float) -> float { 2.0 * z }
+fn s35(x: float, z: float) -> float { 3.5 * z }
+
+fn row(name: text, sample: fn(float, float) -> float, s: float) {
+  want = 0.0 - atan(s);
+  println("slope {name}  (want bank {want})");
+  for n in [1, 2, 3, 5, 10, 20, 40] {
+    g = ground_axle(sample, 3.0, 0.0, 0.0, HALF, RADIUS, n);
+    gap = ground_worst_gap(g, HALF, RADIUS, sample);
+    println("   rounds {n}   worst gap {gap}   bank {g.rt_bank}   resid {g.rt_resid}   ok {g.rt_ok}");
+  }
+}
+
+fn main() {
+  println("THE REST SOLVE vs TERRAIN SLOPE — worst wheel gap, in world units");
+  println("(the editor asks for the DEFAULT 3 rounds, on terrain of unknown slope)");
+  row("0.2", s02, 0.2);
+  row("0.6", s06, 0.6);
+  row("0.9", s09, 0.9);
+  row("1.1", s11, 1.1);
+  row("2.0", s20, 2.0);
+  row("3.5", s35, 3.5);
+}

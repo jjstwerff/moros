@@ -49,9 +49,21 @@ the predicate the write path already asks. ⚠ **It also made every terrain numb
 height unit high** — three presses of `PEAK_STEP = 6` stood 19 units, not 18 — because `brush`
 adds its delta to `ground_h` and read the leaked base back as existing ground.
 [OPEN_ISSUES](OPEN_ISSUES.md) carries the measurements and the four things that were resting on
-it. **Two follow-ups came out of it, both live**: the cart's wheels leave the ground on a real
-slope (pre-existing, and the fake slope is why nobody saw it), and `cellar.keys`'s soffit split
-lost its exact fan count.
+it.
+
+✅ **AND THE FIRST FOLLOW-UP IT EXPOSED IS FIXED TOO — the cart's rest solve.** Taking away the
+fake slope showed that `grounded` had never been asked about a real gradient, and pointed at one
+it failed. ⚠ **"Not enough rounds" was the wrong reading and a probe over planes killed it in one
+run**: the solve iterated on the BANK and its `A-FIT` doorstep was asked at the seed, which is the
+widest span the axle ever has — so every plane steeper than **45°** was *refused* a rest it has,
+on round one, at any round count. It brackets a CHORD LENGTH on the half-span now
+(`H(t) = (2t)² + d² − (2w)²`, root guaranteed on `[0, w]`), iterated on `u = t²` so a plane is
+exact in **one** step. Worst gap on a 0.695 rad flank: `9.8e−2` → `4.4e−16`, and `cart.mjs` drives
+that flank instead of the artifact's 0.083. `probe/cart/README.md`.
+
+**Two follow-ups remain**: `msim::hitched_rest` (the towed trailer) has the identical defect and
+no consumer — it is a coupled two-unknown solve, so the chord trick does not transfer unchanged —
+and `cellar.keys`'s soffit split lost its exact fan count.
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
