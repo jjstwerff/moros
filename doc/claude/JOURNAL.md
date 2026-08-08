@@ -14,6 +14,225 @@ sections that were durable in form and stale in fact (§ *What exists*, § *What
 
 ---
 
+## Session 15 — 2026-08-08: a read that invented ground, and four fixtures that were living on it
+
+**One defect, and everything downstream of it.** The session began with *"detect and fix
+the bug"* and the only live one in the tree: *a raise leaves 22 of 48 chunk grounds stale
+on the client*. Its cause had been withdrawn the day before with the note **the next step
+is the instrument, not a fix**. That was right, and the instrument was already in the tree.
+
+### The bug was in the READ, and it was never the marking
+
+`mark_dirty` covers `PEAK_R + 2` around a brush of `PEAK_R` and **contains** the write
+exactly. What escaped it was a height **no gesture had produced**.
+
+A height is stored relative to its chunk's window base (`S1`) and **one base serves the
+whole 32×32 tile**. Four readers — `world_ground_cell`, `world_cell`, `world_column`,
+`world_dressing` — decoded `ck_base + sv_height` unconditionally, so every cell nobody had
+written answered `ck_base`. `world_surface` was the **one** reader that guarded, on
+`stored_occupied`, which is exactly why the class stayed invisible: the question was
+already being asked, in one place, and nobody noticed the other four never asked it.
+
+One brush of radius 7 at the origin, measured (`probe/stale/extent.loft`):
+
+| | before | after |
+|---|---|---|
+| cells **written** (material set) | 91, over q −5..5 r −5..5 | 91, same extent |
+| cells whose **height moved** | **4096**, over q −32..31 r −32..31 | **91**, same extent |
+| `terrain_h(20,20)`, never written | **6** | 0 |
+| chunk meshes CHANGED vs MARKED (`EDITOR_PROBE=fit`) | **81 of 81** vs 4 | 4 vs 4, **0 stale** |
+
+The two stale-mesh magnitudes the mesh probe reported, `1.500` and `0.250` wu, are exactly
+the two chunk bases — 6 and 1 — times the 0.25 wu height unit. That is the whole of the
+22-of-48. The fix is one decode, `hex_of`, asking the predicate the write path already
+asks (`stored_present`), with `E1`(3) as its rule: *reading an absent cell yields exactly
+what reading a stored all-zero one would*.
+
+⚠ **THE ORDER THE INSTRUMENTS HAD TO BE RUN IN IS THE WHOLE LESSON.** `EDITOR_PROBE=fit`
+was already in the source and answered in one run — **81 of 81 chunk meshes CHANGED against
+4 MARKED**, with a clean negative control. That killed the marking hypothesis immediately,
+and could not say *why*, because it measures **meshes**: a mesh disagreeing with a mark is
+equally consistent with a bad mark and a bad mesh. `extent.loft` is the instrument that
+separates them — it asks the **store** the same question, and the answer is not subtle once
+asked.
+
+⚠ **AND IT CORRUPTED THE RAISE ITSELF, WHICH NOBODY HAD NOTICED IN MONTHS.** `brush` reads
+`ground_h` before adding its delta, so once a chunk had rebased, every later stroke read the
+base back as existing ground and built on top of it. Measured (`probe/stale/raise3.loft`):
+one press of `PEAK_STEP = 6` stood **7** units high, three presses **19** instead of 18, and
+a cell twelve hexes out — never written — stood at **1**. **Every terrain number in the tree
+was one height unit high.**
+
+### The sentence that kept it alive for four days
+
+OPEN_ISSUES said the gates stayed green because *"they all check the store and the store is
+right"*. **The store was never right** — `terrain_h(20,20)` answered 6 with nothing ever
+written there. The gates agreed with the picture because they asked **the same broken
+decode**. `G`'s recorded lesson here was *a count is not a picture*; the real one is the
+opposite:
+
+> **When a count and a picture agree, they may share an instrument.**
+
+### Four fixtures were resting on the bug, and each hid something different
+
+Attributed by running each gate twice on both sides of the fix — pre-fix 2/2 pass, post-fix
+2/2 fail — so none of it is the suite's known flake.
+
+- **`storey.loft`'s stair test** read `terrain_h` at a cell the stairwell had just *cleared*
+  and called the leftover `sv_height` "the tread's own ground" — pre-fix it answered 37, a
+  ghost `E1e` elides on save, so the read was of something no later load could reproduce. It
+  reads the hillside **before** the cut now, and takes the **top of the column**: ⚠
+  `world_surface` cannot make that claim at all, because asked for the surface under the
+  ground it falls back to the **lowest** layer, so a tread floating over the hillside came
+  back as the cellar floor and read as a pass.
+- **`part_mode`** checked *"the raise is visible"* by reading cell **(0,0)** — the author's
+  own cell, which a raise never touches (it lands ten hexes ahead, at (7,5) for that pose,
+  which is what the server's own `editor: brush (7,5)` line says). ⚠ The gate's own comment
+  **already records this trap being sprung once before** — and (0,0) went on being read,
+  because it had started answering.
+- **`cart`** banked its cart on the **step between two artificial plateaus**. Its hill landed
+  ~14 wu off the cart's line and never reached it; with the plateaus gone the fixture reported
+  `maxBank 0, banked false` — the gate's own void-guard firing correctly on a run that met no
+  slope at all.
+- **`cellar.keys`** — every `feet` band came down 0.25 wu. The **relation** survived untouched:
+  the three tread stations read 3.250, 2.250, 1.250, still exactly 1.0 apart and now exactly on
+  the quarter-unit grid a cell top sits on. It is the spacing that was ever the claim.
+
+> **A fixture built by a gesture inherits that gesture's bugs** — and a clause that has only
+> ever been asked easy questions reports the same green as one that has been asked hard ones.
+
+### The cart's rest solve — where the obvious fix was refuted by a probe
+
+Taking away the fake slope showed `grounded` (every wheel within a millimetre) had never been
+asked about a real gradient, and pointed at one it failed. The editor took `ground_axle`'s
+default of **3** rounds while the library's own tests pass 30–40, so *pass more rounds* looked
+like the whole fix. Swept over planes, where the answer is closed form (`β = −atan(s)`), there
+were **three** regimes and more rounds only reaches the first two:
+
+| terrain slope `s` | before, at any round count |
+|---|---|
+| ≤ 0.2 | fine — 3 rounds reach `3.6e−6` |
+| 0.6 – 0.9 | converges as `s²`: **40 rounds still leave `7.3e−5`** |
+| **≥ 1.0** | **`ok false` on round ONE** — refused, bank 0, wheels 0.6–1.9 wu off the ground |
+
+A plane of slope 2.0 rests perfectly well at `β = −1.107` and was **refused**. ⚠ **The `A-FIT`
+doorstep was asked in the wrong place**: *does the ground drop further than the axle is long
+across the span* is a real rule, but it was evaluated at the CURRENT iterate, and the seed
+`β = 0` is the widest span the axle ever has. The span shrinks as the axle tilts; the question
+was asked before any tilting had happened. The raise brush's own documented flanks are 74–83°.
+
+**The fix changes the variable.** Solve for the horizontal half-span `t`, not the bank:
+
+    H(t) = (2t)² + d(t)² − (2w)² = 0     the chord between the contacts IS the axle
+    H(0) = −(2w)² < 0                     H(w) = d(w)² ≥ 0
+
+so a root exists on `[0, w]` for any continuous terrain at any slope and a bracketed method
+cannot fail. Iterating on `u = t²` makes a plane **exact in one step** — `H = 4(1+s²)·u − 4w²`
+is linear in `u`, and a heightfield is a plane between its samples.
+
+| bank (rad) | before | now |
+|---|---|---|
+| 0.245 | 3.5e−5 | **5.6e−17** |
+| 0.395 | 1.3e−3 — failed | **1.1e−16** |
+| 0.695 | 9.8e−2 — failed | **4.4e−16** |
+
+⚠ **THREE OF THE OLD TEST CLAUSES DESCRIBED THE DEFECT AS A FEATURE.** They asserted the `s²`
+convergence RATE — true of an algorithm that no longer exists — so they were replaced, not
+loosened. One would have gone on passing for ever:
+`test_the_step_shrinks_by_s_squared_each_round` guards its ratio with `if prev > 0.0`, so
+against a solve that settles in one round it **compares nothing and reports green**.
+
+### The towed trailer — two nested brackets, and a trap the cart does not have
+
+`hitched_rest` had the identical pair of defects and refused a plane from slope **0.9** up. It
+is genuinely not the cart's problem: two unknowns, coupled **through the sampling**, because
+the wheels move along the travel direction by `∓k·sin θ` as the body rolls. ⚠ That term
+vanishes at `θ = 0`, so a single-axis fixture cannot see it — **the same trap the file already
+records being sprung once**, when a dropped `cos θ` gave a solve that worked on terrain sloping
+along one axis and failed on two.
+
+Two nested brackets: the **pitch** on `sin θ ∈ [−1, +1]`, where a sign change *is* the
+drawbar's reach, and the **roll** on `k = w·sin φ ∈ [−w, +w]`, the cart's chord question one
+pitch down. Every slope from 0.2 to 3.5 now rests at machine epsilon, and a yawed cross-slope
+with both unknowns engaged reaches exactly 0 in 14 rounds.
+
+⚠ **AND ITS CLIFF FOUND THE BETTER HALF OF THE LESSON.** A discontinuity makes `Q`
+discontinuous, so the bracket collapses **onto the jump** — and that jump sits at `|k| = w`,
+where the axle is vertical and **the solve's own two contacts coincide**. It read `d = 0` there
+and reported a rest: roll `−π/2`, `ok true`, while the FRAME put the wheels at `z = ∓3.4e−17`,
+either side of the edge, with a 3.0 drop and gaps of −0.55 and −2.45. The doorstep reads the
+**frame's** wheels now, which is `A-GROUND`'s own rule — *a wrong pose cannot report a right
+gap* — load-bearing rather than tidy. `ground_axle` needs none of it: its bracket runs on
+`[0, w²]`, so its step stays strictly positive and its contacts can never coincide.
+
+> **A solver's parametrisation is not the pose, and the place the two disagree is exactly the
+> degenerate configuration a refusal is about.**
+
+### The cellar's split — levelling built, refuted, backed out, and then fixed from the datum
+
+The remaining follow-up was `cellar.keys`'s `meshy` split falling from an exact 306/342 to a
+knife-edge 310/338. The obvious repair — *level the ground under the disc* — was **built and
+measured**. A teleport sweep of the 19 dig cells, three passes, does flatten them (a six-unit
+spread, 14..19, to all exactly 17; 1 pass leaves 17/18/19, 2 leaves 16/17, a 4th confirms a
+fixed point) and widens the boundary six-fold. **And the count stays 310.**
+
+⚠ **THE TREADS ARE WHY, AND NO LEVELLING REACHES THEM.** A tread is a **step**: its own fan has
+corners at different heights by construction, so four of its vertices hang below any world-y
+split whatever the ground under it does. The exact 306/342 was never a property of flat ground —
+it needed the treads' fans wholly above the boundary, which the buggy geometry gave **by luck**.
+
+⚠ **AND FLATTENING WIDER IS REFUTED OUTRIGHT.** A ground fan's corners average **three** cells,
+so the disc's outer ring is pulled by terrain outside it — and levelling radius 3 changes what
+the gesture **digs** (`mesh soffit` 648 → 666) and destroys the plateau. **A fixture cannot
+flatten past the dig without changing the dig.** (Combing the rows instead of teleporting is
+worse still: entering the plateau from low ground hands the brush a large gap whose radius-5
+dome lifts everything around it — one comb left the disc spread from 14 to **26**.)
+
+It was backed out on the user's call, because the price was four other rows moving, two to
+numbers nobody could derive. **Then it was fixed from the other end.** `tools/script.mjs` grew
+**`meshr <surf> <r0> <r1> [lo hi]`** — the same wire count banded on height *above the ground at
+each vertex's own `(x, z)`*. Both populations are a fixed distance under the ground and both
+ride the terrain, which is precisely why world y could not separate them and this can:
+
+    meshr soffit -0.6 -0.4  →  306    = 17 fans of 18, on the BUMPY fixture
+
+and 306 is **derived**, not lucky: a ceiling is `SLAB_THICK` (2 units) × `HEIGHT_SCALE` (0.25)
+= **0.50 wu** under its own ground. It holds across `−0.75..−0.45`, and widening to
+`−1.0..−0.45` adds exactly 12, so the population is localised. ⚠ It **reports what it cannot
+measure**: the 12 vertices over the opened stairwell have no datum, are counted by no band, and
+are printed on every row — `306 + 314 + 16` under the ground plus those `12` is the `648`.
+Seen red three ways first: a pre-dig baseline requiring **0**, the count sabotaged to 305, and
+the band moved somewhere empty.
+
+The two `meshy` rows were then **dropped**: they read 310/338, which are not fan counts, so they
+claimed *less* than `mesh soffit 648` and `meshr 306` prove together — the undersides fall out
+as `648 − 306 = 342`, 19 fans.
+
+> **When a measurement will not separate two things, suspect the DATUM before the fixture.**
+
+### And a red gate that was a statement about the machine
+
+`part_limb` failed repeatedly at `GATE_JOBS=16` with `cellFloats: 0` — no data at all — and
+passed 3–4/4 alone. **Attributed**: `uptime` read a load average of **26–52**, and the load was
+*other trees'* `rustc` (`../loft`, `../loft2` building the compiler, nothing of ours). The same
+full suite at **`GATE_JOBS=2` came back 44 PASS, rc=0, zero failures** on the same loaded box.
+**Check `uptime` before believing a full-suite red here** — three agents share this machine.
+
+### What this session is worth carrying forward
+
+1. **When a count and a picture agree, they may share an instrument.** The entry survived four
+   days on *"they all check the store and the store is right."*
+2. **A fixture built by a gesture inherits that gesture's bugs**, and a clause only ever asked
+   easy questions reports the same green as one asked hard ones.
+3. **The obvious fix was refuted by a cheap probe twice** — *more rounds* for the cart, *level
+   the fixture* for the cellar. Both would have been days of work in the wrong direction.
+4. **A solver's parametrisation is not the pose.**
+5. **When a measurement will not separate two things, suspect the datum before the fixture.**
+6. **Tests can describe a defect as a feature.** Three clauses asserted a convergence rate that
+   *was* the bug, and one of them would have gone on passing against any correct solve.
+
+---
+
 ## Session 14 — 2026-08-07/08: all of `A8`, and five gestures come off the socket
 
 **Two threads, both finished to a stopping point.** Plan 17's `A8` is complete —

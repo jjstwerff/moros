@@ -22,16 +22,21 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE; the headless thread has five gestures off the socket
+## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
 
-**Session 14 (2026-08-07/08) is in [JOURNAL.md](JOURNAL.md)** — what it found, in full. What is
-true *now*:
+**Sessions 14 and 15 are in [JOURNAL.md](JOURNAL.md)**, newest first — what each found, in full.
+What is true *now*:
 
 | | |
 |---|---|
 | **plan 17** | `A1`–`A7.3` and **all of `A8`** are built. Two rows are ◐ and both need something other than code — see below |
 | **the headless thread** | `prop`, `annex`, `slab`, `seat` and the wall run moved into `hex_editor`; the server's scene state IS an `EditSession`; `tests/session.loft` is 31 tests over nine gates'/scripts' claims with no port |
+| **defects** | **none open.** The stale-chunk read, the cart's rest solve, the towed trailer's and the cellar split are all closed — session 15 |
 | **the user's standing redirect** | *"where possible I want tests outside the server"* — still the thread, and its floor is now the picture gates, which need a server by construction |
+
+⚠ **THE NEXT PIECE OF WORK IS A CHOICE, NOT A QUEUE.** Nothing is blocked on a bug any more.
+The open threads are `A8.3` and `A8.6` (both waiting on the user, below), plan 19's `L6.2`
+onward (**not** blocked), and the two ◐ format questions that want a plan rather than a step.
 
 ⚠ **TWO THINGS ARE WAITING ON THE USER, NOT ON WORK.**
 1. **`A8.3`'s acceptance is a cold-recognition test** — *does a person call it a door*
@@ -42,68 +47,20 @@ true *now*:
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 
-✅ **AND THE STALE-CHUNK ISSUE IS FIXED — the cause was in the READ, and it was never the
-marking.** An unwritten cell decoded as `ck_base + 0` and one base serves a whole 32×32 tile, so
-a brush of radius 7 **wrote 91 cells and moved 4096**. The fix is one decode (`hex_of`) asking
-the predicate the write path already asks. ⚠ **It also made every terrain number in the tree one
-height unit high** — three presses of `PEAK_STEP = 6` stood 19 units, not 18 — because `brush`
-adds its delta to `ground_h` and read the leaked base back as existing ground.
-[OPEN_ISSUES](OPEN_ISSUES.md) carries the measurements and the four things that were resting on
-it.
+✅ **THE STALE-CHUNK DEFECT IS FIXED, AND SO IS EVERYTHING IT WAS HIDING.** An absent cell
+decoded as `ck_base + 0` and one base serves a whole 32×32 tile, so a brush of radius 7 **wrote
+91 cells and moved 4096**. One decode (`hex_of`) now asks the predicate the write path already
+asks. ⚠ **It had also made every terrain number in the tree one height unit high** — three
+presses of `PEAK_STEP = 6` stood 19 units, not 18 — because `brush` adds its delta to `ground_h`
+and read the leaked base back as existing ground. Four fixtures were resting on it, the cart's
+rest solve and the towed trailer's were both rebuilt on brackets, and `tools/script.mjs` grew
+`meshr`. **All of it is [JOURNAL.md](JOURNAL.md) § session 15** — including the two obvious
+fixes that a probe refuted, which is most of the value.
 
-✅ **AND THE FIRST FOLLOW-UP IT EXPOSED IS FIXED TOO — the cart's rest solve.** Taking away the
-fake slope showed that `grounded` had never been asked about a real gradient, and pointed at one
-it failed. ⚠ **"Not enough rounds" was the wrong reading and a probe over planes killed it in one
-run**: the solve iterated on the BANK and its `A-FIT` doorstep was asked at the seed, which is the
-widest span the axle ever has — so every plane steeper than **45°** was *refused* a rest it has,
-on round one, at any round count. It brackets a CHORD LENGTH on the half-span now
-(`H(t) = (2t)² + d² − (2w)²`, root guaranteed on `[0, w]`), iterated on `u = t²` so a plane is
-exact in **one** step. Worst gap on a 0.695 rad flank: `9.8e−2` → `4.4e−16`, and `cart.mjs` drives
-that flank instead of the artifact's 0.083. `probe/cart/README.md`.
-
-✅ **AND THE TOWED TRAILER TOO** — `msim::hitched_rest` had the identical pair of defects and
-refused a plane from slope 0.9 up. It is genuinely a two-unknown problem, coupled *through the
-sampling* (the wheels move along the travel direction by `∓k·sin θ` as the body rolls, a term
-that vanishes at `θ = 0`, which is why a single-axis fixture cannot see it), so it takes **two
-nested brackets**: the pitch on `sin θ ∈ [−1, 1]` — where a sign change *is* the drawbar's reach —
-and the roll on `k = w·sin φ ∈ [−w, w]`, the cart's chord question one pitch down. Every slope
-now rests at machine epsilon. ⚠ **Its cliff exposed a trap the cart does not have**: a
-discontinuity collapses the bracket ONTO the jump, which sits where the axle is vertical and the
-solve's own two contacts coincide — it read `d = 0` and reported a rest while the frame had the
-wheels either side of a 3.0 drop. The doorstep reads the **frame's** wheels now.
-
-✅ **AND THE LAST FOLLOW-UP IS CLOSED BY BEING TRIED AND BACKED OUT.** `cellar.keys`'s soffit
-split was to be repaired by *levelling the ground under the disc*. It was built: a teleport sweep
-of the 19 dig cells, three passes, brings them from a six-unit spread to all exactly 17, and the
-boundary widens six-fold (310 holds over `1.0..1.75` instead of `1.375..1.5`). ⚠ **The count
-stays 310 either way** — a tread is a STEP, so its own fan has corners at different heights and
-four of its vertices hang below the split whatever the ground does. The exact 306/342 was never a
-property of flat ground; it needed the treads' fans wholly above the boundary, which the buggy
-geometry gave **by luck**. ⚠ **And flattening wider is REFUTED**: at radius 3 the gesture digs a
-different disc (`mesh soffit` 648 → 666) and the plateau vanishes — **a fixture cannot flatten
-past the dig without changing the dig.** It was backed out because the price was four rows
-moving, two to numbers nobody could derive. **The knife edge is a decision now, recorded in the
-fixture itself so it is not re-proposed.**
-
-✅ **AND THE EXACT READING CAME BACK ANYWAY, FROM THE DATUM RATHER THAN THE TERRAIN.**
-`tools/script.mjs` grew **`meshr <surf> <r0> <r1> [lo hi]`** — the same wire count banded on
-height *above the ground at each vertex's own `(x, z)`*. Both populations ride the terrain a
-fixed distance under it, which is why world y could never separate them and this does: on the
-**bumpy** fixture it reads **306 — 17 fans of 18** — across the whole band `−0.75..−0.45`, and
-306 is derived, not lucky (`SLAB_THICK` 2 × `HEIGHT_SCALE` 0.25 = 0.50 wu). ⚠ **It reports the
-12 vertices over the OPENED stairwell separately** instead of dropping them, because they have
-no datum; and it was seen red three ways first — a pre-dig baseline requiring 0, the count
-sabotaged, and the band moved somewhere empty. ✅ **The two `meshy` rows are dropped**: they read
-310/338, which are not fan counts, so they claimed *less* than `mesh soffit 648` and `meshr 306`
-already prove together (the undersides fall out as 648 − 306 = 342, 19 fans). **The lesson
-generalises: when a measurement will not separate two things, suspect the DATUM before the
-fixture.**
-
-⚠ **AND A RED `part_limb` IS A STATEMENT ABOUT THE BOX.** It failed repeatedly at `GATE_JOBS=16`
-with `cellFloats: 0` — no data at all — while `uptime` read a load average of **26–52** from
-*other trees'* `rustc` (`../loft`, `../loft2` building the compiler). The same suite at
-**`GATE_JOBS=2` is 44 PASS, rc=0** on the same loaded box. **Check `uptime` before believing a
-full-suite red here**; three agents share this machine.
+⚠ **THE ONE SENTENCE TO CARRY OUT OF IT**: the entry survived four days on *"they all check the
+store and the store is right"*, and the store was never right — the gates agreed with the picture
+because they asked **the same broken reader**. **When a count and a picture agree, they may share
+an instrument.**
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
@@ -421,11 +378,20 @@ section for every step — the findings, the controls, and what each sabotage co
 carries only what is true *now* and what bites regardless of which step you pick up. The arc's
 narrative is [JOURNAL.md](JOURNAL.md); **session 13 is its newest entry.**
 
-⚠ **THIS FILE GROWS BACK, AND IT HAS THREE TIMES.** 2,446 lines → split to a handoff; 785 across
-sessions 10–12 → ~400; **907 at the end of session 13 → ~300 here.** Every regrowth was the same
-shape: per-step findings the plan already carried, and a session narrative that belongs in the
-journal. **When a session ends, its entry moves out.** Moving is not thinning — nothing is ever
-deleted on the way, which is why the journal is 3,000 lines and this is not.
+⚠ **THIS FILE GROWS BACK, AND IT HAS FOUR TIMES.** 2,446 lines → split to a handoff; 785 across
+sessions 10–12 → ~400; 907 at the end of session 13 → ~300; **1,011 at the end of session 15 →
+~960 here.** Every regrowth is the same shape: per-step findings the plan already carried, and a
+session narrative that belongs in the journal. **When a session ends, its entry moves out.**
+Moving is not thinning — nothing is ever deleted on the way, which is why the journal is 3,800
+lines and this is not.
+
+⚠ **AND THE LAST MOVE WAS ONLY HALF DONE, WHICH IS WHY THE NUMBER BARELY FELL.** Session 15's
+narrative moved out; **§ *AND THE GATES — 1838 s → 741 s* below did not, and it is session 14's,
+not the present.** It is ~160 lines describing work that is finished — `nextT`, `browserLag`,
+the structural audit, the `.gatebin` copy, the stale-binary control. Some of it is durable
+(*a fixed wait is right when the claim is an absence*; the `.gatebin` trap; **the gates exercise
+the NATIVE server now**), and most of it is a record of getting there. **Whoever next thins this
+file: that block is the work, and the durable sentences go to § *What bites*, not to the bin.**
 
 ### ⚠ What bites regardless of which step you pick up
 
