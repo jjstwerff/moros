@@ -529,10 +529,11 @@ Seen twice on 2026-08-08 in `make gate` at `GATE_JOBS=16`, including in a run **
 this session's changes, and green 4/4 under `make gate-rep G=part_limb`. Recorded so the next
 person does not attribute it to whatever they just changed. Not diagnosed.
 
-### ◐ `cellar.keys`'s soffit split — levelled, and the exact fan count is NOT recoverable
+### ✅ CLOSED 2026-08-08 — `cellar.keys`'s soffit split keeps its knife edge, on purpose
 
-⚠ **The repair this entry proposed was *level the ground under the disc*. It was done, it
-helped, and it does not do what the entry claimed it would.** Both halves are measured.
+⚠ **The repair this entry proposed was *level the ground under the disc*. It was built,
+measured, and BACKED OUT** — the fixture is the bumpy one and the boundary is deliberately
+where it is. Everything below is why, kept so nobody re-proposes it.
 
 **What levelling bought.** The fixture levels its plateau by walking a CROSS, and a cross levels
 its arms and nothing else — `brush` scales the gap by `f²` and truncates, so only the cell the
@@ -559,13 +560,21 @@ what the gesture **digs** — `mesh soffit` 648 → 666, 37 fans instead of 36 �
 disappears entirely (36, 148, 220, 310, 328, 332 …). **A fixture cannot flatten past the dig
 without changing the dig.**
 
-⚠ **The levelling moved four other rows, and two are measurements rather than derivations** —
-marked as such in the file. `mesh floor` 564 → **438** (the same 342 of top fan, with 96 of rim
-and riser instead of 222: most of that 222 was risers the bumpy disc owed, since `solid_at`
-draws one wherever the neighbour is not solid at this height). `mesh wall` 174 → **162** (27
-quads of 6 against 29; the arithmetic holds, *which* two edges stopped being walled does not
-have a derivation here). Two `feet` stations moved with the plateau. **Nobody has derived 96 or
-27 — derive them before believing any further move.**
+⚠ **AND THAT IS WHY IT WAS BACKED OUT.** Levelling moved four other rows, two of them to numbers
+nobody could derive: `mesh floor` 564 → **438** (the same 342 of top fan, with 96 of rim and
+riser instead of 222 — most of that 222 was risers the bumpy disc owed, since `solid_at` draws
+one wherever the neighbour is not solid at this height) and `mesh wall` 174 → **162** (27 quads
+of 6 against 29; the arithmetic holds, *which* two edges stopped being walled does not). Two
+`feet` stations moved with the plateau.
+
+**Trading two underived constants for margin on a boundary that is not a fan count either way is
+a bad trade**, so the fixture stays bumpy and the boundary stays at 1.5 with one step of margin.
+The knife edge is a decision, not an oversight — and `mesh soffit 648` is what still pins the
+36 fans exactly, whatever the split reads.
+
+⚠ **What would actually restore an exact reading is not a fixture change at all**: it is a
+`meshy`-like verb that bands on a height RELATIVE to each cell's own ground, so the two
+populations separate by construction instead of by a shared world-y. Nobody needs that today.
 
 ### Was: a raise marks fewer chunks than it writes, and the client keeps the stale ground
 
