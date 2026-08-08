@@ -24,6 +24,20 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
 
+⛔ **THE TOOLCHAIN IS BROKEN AS OF 2026-08-08 17:25, AND NO SERVER WILL START.**
+`/usr/local/bin/loft` was replaced under a running session — `9f416d7c…` → `0fba02c1…`, and
+`loft --version` says `2026.8.0` for **both**, which is the trap this file already warns about.
+The new build's native-auto emits `t_5float_sin` / `t_5float_cos` into `hex_way`'s cdylib and the
+shim defines neither, so **every `loft --interpret <program>` in the tree exits 1** — the editor
+server and all 44 gates. Filed as [loft#815](https://github.com/loft-lang/loft/issues/815) with a
+five-line repro; `wa:none`, because a consumer cannot route around a missing shim function.
+
+⚠ **THE BLAST RADIUS IS PRECISE AND COUNTER-INTUITIVE: `loft test` IS UNAFFECTED.** `make fast` is
+121 files green under the broken toolchain, because tests do not trigger the native-auto build.
+**A green suite says nothing about whether anything can RUN.** Type-checking also still happens
+first — a seeded `Unknown function` is still reported — so code can be written and compile-checked
+while this is open; it just cannot be driven or photographed.
+
 **Sessions 14 and 15 are in [JOURNAL.md](JOURNAL.md)**, newest first — what each found, in full.
 What is true *now*:
 

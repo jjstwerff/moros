@@ -371,10 +371,24 @@ multi-part run is suspect until this is fixed; take them on a fresh server, or o
 ⚠ **`44:` (close) does not clear them either** — measured; the script closes between subjects and
 the walls survive it.
 
-**Where it lives**: the part display rebuild in `src/editor_server.loft` clears the LIMB block
-(`for disp_c in disp_drawn..PART_MESH_MAX { … "M:{…};0;" }`) and has no equivalent for chunk ids.
-The fix wants the same shape: remember how many chunk slots were sent last time and blank the
-tail. Not attempted — it is a different organ from the `A8.9` work that surfaced it.
+**Where it lives — and ⚠ the obvious story is REFUTED by the code.** The guess was *the rebuild
+clears the LIMB block and has no equivalent for chunk ids*. But **both** `44:` forms already do the
+invalidation: the open path runs `for pod in loaded { mark_dirty_id(dirty, pod); }` and the close
+path the same with `pcd`, and the flush rebuilds every dirty chunk that is `live`. So the chunks
+around the author SHOULD be re-sent with the new part's (empty) meshes, and the walls should go.
+Something else is keeping them.
+
+⚠ **AND THE WIRE PROBE CANNOT SEE THIS.** `panels.mjs` clears its map per subject and records what
+ARRIVES, so a mesh nobody re-sends is simply absent from its answer — it reports *what was sent for
+this subject*, which is a different question from *what is on screen*. Under `door/frame` then
+`door/leaf` it says `floor=30` and no wall while the picture shows the frame's walls standing.
+`probe/a83/leaf_visible/held.mjs` is the instrument that can: it keeps the client's own bookkeeping
+(an `M:` with a payload adds an id, an empty one or an `X:` removes it, nothing else) and never
+clears between subjects, so what is left after a switch is what a viewer sees.
+
+⚠ **BLOCKED ON [loft#815](https://github.com/loft-lang/loft/issues/815) AS OF 2026-08-08 17:25** —
+no server will start, so `held.mjs` has never been run and the diagnosis is one symptom and two
+screenshots. **Do not write the fix before running it**: the simple story is already refuted once.
 
 ## Scene editor — this file is NOT where its plan lives
 
