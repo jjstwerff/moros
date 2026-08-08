@@ -1332,5 +1332,37 @@ The per-edge path stays; it gains the one question it never asked.
 | a curve drawn at span resolution | a staircase instead of an arch | the edge is subdivided `OPEN_SUB` ways, the same constant and the same reason as `emit_run_wall` |
 | the profile applied to a `WALL_MAT` edge | every wall in the part gains a hole | it is asked **only** where the edge is `DOOR_MAT` — the negative control is a frame whose wall edges are untouched, counted |
 
+#### `A8.9a` — and then the arch was measured, and it was not one
+
+⚠ **THE FIRST BUILD'S ARCH WAS A FLAT HEAD WITH A NOTCH AT EACH JAMB.** Printed across one doorway
+edge, `opening_cuts` answered `7 7 8 8 … 8 7 7` — **two levels**. Two things caused it and both are
+now fixed:
+
+| | what it was | what it is |
+|---|---|---|
+| **one opening per EDGE** | a two-edge gateway got two small arches with a pier between. An arch's rise **is** its half-width, so halving the span quarters the rise | `hex_editor::open_run_for` groups doorway edges that share a corner, transitively, and the run is ONE opening. ⚠ The half-width is half the **chord** between the two furthest endpoints — hex edges meet at 120°, and half the summed path length would claim a wider hole than the geometry has |
+| **truncation at the crown** | `(sqrt(a²−d²) / unit) as integer` computes `0.49999999999999994 / 0.25` = `1.9999999999999998` and takes **1**. A whole height unit, lost to floating point, worst exactly where a shallow rise has fewest units to lose | `round`, at all five sites. It cost `emit_run_wall`'s arches the same unit |
+
+⚠ **AND THE TEST WRITTEN FOR THE ROUNDING COULD NOT SEE IT.** In `hex_editor` it used
+`profile_opening`, which adds `OPENING_CLEAR` and gives a half-width of 0.6 — `0.6/0.25` is 2.4,
+and truncation and rounding agree on 2. **It passed with the fix reverted.** The case only exists
+at half a hex edge, which is `hex_corner_world`'s arithmetic, so the test moved to
+`lib/hex_mesh/tests/arch.loft` — the package where the projection meets the policy — and asserts
+its own precondition (*half an edge is below 0.5*) so it cannot go vacuous.
+
+⚠ **ROUNDING THEN BROKE A FRAME, AND THAT WAS A REAL GAP IT HAD BEEN HIDING.** `opening_frame`
+assumed widening always lifts the crown by a whole unit — true for a ROUND head, whose rise is its
+half-width, and false for POINTED and SEGMENT, which are struck from a radius and gain a fraction.
+The ring is drawn as frame-minus-opening, so a crown that fails to clear leaves the moulding **open
+at the top**. `opening_frame` now measures both crowns and raises its own springing until it
+clears; the circle is exempt, because its centre is derived from the springing and moving it makes
+a crescent.
+
+⚠ **WHAT IT STILL IS: A STEPPED ARCH.** `opening_cuts` answers in whole height units, so at
+`HEIGHT_SCALE` 0.25 a two-edge gateway sprung at 7 reaches a crown of 10 — four levels, and it
+reads as an arch cut in steps rather than a smooth curve. That is the world's own quantum, the same
+one every wall and floor is built on; a finer arch wants a part authored at a finer unit (§P9.1),
+not a change here.
+
 > **The one sentence.** A doorway stopped being a gap in the wall and became a wall with a hole in
 > it, which is the only shape a lintel can sit on.

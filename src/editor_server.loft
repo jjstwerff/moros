@@ -2454,6 +2454,40 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
+  // ⚠ THE DOORWAY EDGES ARE GATHERED FIRST, BECAUSE AN OPENING IS A RUN — plan 17
+  // `A8.9a`, §P9.14. The first build gave every edge its own opening and a two-edge
+  // gateway came out as two small arches with a pier between them; an arch's rise
+  // IS its half-width, so halving the span quarters the rise and each one read as a
+  // flat head with a notch at either jamb. `open_run_for` groups edges that share a
+  // corner, so the pass has to know every doorway edge before it draws any of them.
+  // ⚠ ONLY WHEN A PROFILE IS STATED. Without one this is an empty vector and the
+  // whole mechanism costs a comparison per chunk.
+  dsegs: vector<hex_editor::OpenSeg> = [];
+  dq: vector<integer> = [];
+  dr: vector<integer> = [];
+  ddir: vector<integer> = [];
+  if pohead > 0 {
+    for gq in q0..q0 + CHUNK {
+      for gr in r0..r0 + CHUNK {
+        for ge in world_column(wld, gq, gr).co_cells {
+          gws: vector<integer> = [ge.h_wall_n as integer ?? 0,
+                                  ge.h_wall_ne as integer ?? 0,
+                                  ge.h_wall_se as integer ?? 0];
+          for gi in 0..3 {
+            if gws[gi] != DOOR_MAT { continue; }
+            (gea, geb) = hex_grid::hex_edge_corners(slot_dir[gi] ?? 0);
+            gc1 = hex_corner_world(gq, gr, 0, (6 - gea) % 6 ?? 0);
+            gc2 = hex_corner_world(gq, gr, 0, (6 - geb) % 6 ?? 0);
+            dsegs += [hex_editor::OpenSeg { og_ax: gc1.x, og_az: gc1.z,
+                                            og_bx: gc2.x, og_bz: gc2.z }];
+            dq += [gq];
+            dr += [gr];
+            ddir += [slot_dir[gi] ?? 0];
+          }
+        }
+      }
+    }
+  }
   for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
   for arun in awalls.items { emit_run_wall(wm, am, arun, wld, q0, r0, openings); }
   for slb in slabs.items {
@@ -2563,12 +2597,20 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
                 // cannot drift. The half-width is measured off the two corners
                 // rather than taken from a lattice constant, because a constant
                 // here would be `hex_proj`'s a second time.
-                (dea, deb) = hex_grid::hex_edge_corners(slot_dir[si]);
-                dw1 = hex_corner_world(cq, cr, 0, (6 - dea) % 6 ?? 0);
-                dw2 = hex_corner_world(cq, cr, 0, (6 - deb) % 6 ?? 0);
-                dhx = dw2.x - dw1.x;
-                dhz = dw2.z - dw1.z;
-                dhalf = (sqrt(dhx * dhx + dhz * dhz) ?? 0.0) * 0.5;
+                // ⚠ THE RUN'S OPENING, NOT THIS EDGE'S — `A8.9a`. Every doorway
+                // edge in the chunk was gathered above; this finds the one that is
+                // here and asks for the whole run it belongs to, so a gateway of
+                // two or three edges is ONE arch across the lot.
+                dfound = 0 - 1;
+                for dk in 0..len(dsegs) {
+                  if (dq[dk] ?? 0) == cq && (dr[dk] ?? 0) == cr
+                     && (ddir[dk] ?? 0) == slot_dir[si] { dfound = dk; }
+                }
+                drun = hex_editor::OpenRun {};
+                if dfound >= 0 {
+                  drun = hex_editor::open_run_for(dsegs, 0.001, dfound);
+                }
+                dhalf = drun.ou_half;
                 // ⚠ A DOORWAY EDGE HAS NO WALL HEIGHT OF ITS OWN — `wall_up_part`
                 // answers 0 for `DOOR_MAT` and must keep doing so (§P9.13's failure
                 // path). The wall it is cut OUT of is the part's, so the head is
@@ -2578,7 +2620,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
                 sispring = 0 - 1;
                 if pospring > 0 { sispring = pospring; }
                 siop = hex_editor::Opening {
-                  op_x: (dw1.x + dw2.x) * 0.5, op_z: (dw1.z + dw2.z) * 0.5,
+                  op_x: drun.ou_cx, op_z: drun.ou_cz,
                   op_half: dhalf, op_lo: posill, op_hi: pohead,
                   op_depth: 1.0, op_near: 0.0, op_spring: sispring,
                   op_kind: pokind, op_radius: poradius };

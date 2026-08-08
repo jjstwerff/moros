@@ -1,0 +1,61 @@
+# EVERY DOOR PART, ON ITS OWN — plan 17 `A8.9a`.
+#
+# ⚠ A COMPOSITE HIDES ITS PARTS, and this file exists because of it: with the
+# opening profile on `door/frame` alone, the frame went 108 -> 300 vertices while
+# the composed `door/hung` stayed at 108 and its picture said *nothing changed*.
+# Only the element on its own showed the difference. So each part is opened and
+# photographed by itself, and the assemblies after them.
+#
+#   node tools/script.mjs tools/scripts/doorparts.keys --port <p> --shots
+#
+# ⚠ CLOSE BEFORE OPENING — a server keeps its mode between runs and `44:<name>`
+# refuses while a part is already open, so the previous subject's picture comes
+# back under the new name with no error anyone reads.
+# ⚠ AUTO, NOT EYES: a limb's mesh id is 8..15 and the client's `mesh_bit` answers
+# the FIGURE's bit for every id at or below 15, so EYES hides a leaf with the body.
+
+send 44:
+at 0 0 0
+key ArrowUp
+wait rebuilt
+send 40:0
+wait mode
+
+echo --- the wall with a hole in it, and its head
+send 44:door/frame
+wait part 'door/frame' opened
+at 0.0 -5.5 70
+snap part-frame
+snap part-frame
+send 44:
+
+echo --- the leaf, one timber panel
+send 44:door/leaf
+wait part 'door/leaf' opened
+at -2.5 -2.5 35
+snap part-leaf
+snap part-leaf
+send 44:
+
+echo --- the gateway: two doorway edges, one arch across both
+send 44:door/gateway
+wait part 'door/gateway' opened
+at 0.0 -6.0 70
+snap part-gateway
+snap part-gateway
+send 44:
+
+echo --- and the assemblies
+send 44:door/hung
+wait part 'door/hung' opened
+at 0.0 -5.5 70
+snap part-hung
+snap part-hung
+send 44:
+
+send 44:door/gated
+wait part 'door/gated' opened
+at 0.0 -6.5 70
+snap part-gated
+snap part-gated
+send 44:

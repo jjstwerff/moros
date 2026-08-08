@@ -1,0 +1,77 @@
+// An arch over ONE HEX EDGE — plan 17 `A8.9a`.
+//
+// ⚠ THIS FILE EXISTS BECAUSE THE TEST WRITTEN IN `hex_editor` COULD NOT SEE THE
+// BUG. There it used `profile_opening`, which adds `OPENING_CLEAR` and yields a
+// half-width of 0.6: `0.6 / 0.25` is 2.4, and truncation and rounding agree on 2.
+// The defect lives at a half-width of half a HEX EDGE — `0.49999999999999994`,
+// where `/ 0.25` lands on `1.9999999999999998` and `as integer` takes 1. So the
+// test has to build the edge the emitter builds, out of `hex_corner_world`, and
+// that is `hex_proj`'s geometry meeting `hex_editor`'s policy — which is this
+// package.
+//
+// ⚠ THE FIRST VERSION OF THESE TWO PASSED WITH THE FIX REVERTED. That is the whole
+// reason they are worth their lines: an instrument checked against something it
+// should find, and found not to.
+use hex_mesh;
+use hex_editor;
+use hex_grid;
+use hex_proj;
+
+const U = 0.25;
+
+// The half-width a doorway edge gives its opening — measured off the two corners,
+// exactly as `emit_wall_panel_cut`'s caller does, never from a lattice constant.
+fn edge_half() -> float {
+  a = hex_corner_world(0, 0, 0, 0);
+  b = hex_corner_world(0, 0, 0, 1);
+  dx = b.x - a.x;
+  dz = b.z - a.z;
+  (sqrt(dx * dx + dz * dz) ?? 0.0) * 0.5
+}
+
+fn arch_at(half: float, spring: integer, d: float) -> integer {
+  o = hex_editor::Opening { op_x: 0.0, op_z: 0.0, op_half: half, op_lo: 0, op_hi: 11,
+                            op_depth: 1.0, op_near: 0.0, op_spring: spring,
+                            op_kind: hex_editor::OP_ROUND, op_radius: 0.0 };
+  lo = 0;
+  hi = 0;
+  hex_editor::opening_cuts(o, d, 0.0, U, lo, hi);
+  hi
+}
+
+fn test_the_hex_edge_is_one_world_unit_and_its_half_falls_just_short() {
+  // ⚠ THE PRECONDITION, ASSERTED RATHER THAN ASSUMED. If the projection ever makes
+  // this land exactly on 0.5, the two tests below stop exercising the rounding at
+  // all and would pass on a truncating build — silently, which is how the first
+  // pair of them went green against the bug they were written for.
+  h = edge_half();
+  assert(h > 0.4999 && h < 0.5001, "half a hex edge is {h}, not about 0.5");
+  assert(h < 0.5, "it lands at or above 0.5, so nothing here tests the rounding");
+}
+
+fn test_the_crown_of_a_one_edge_arch_is_two_units_and_not_one() {
+  h = edge_half();
+  got = arch_at(h, 7, 0.0);
+  assert(got == 9,
+         "the crown over one hex edge sprung at 7 is {got}, not 9 — a whole height "
+       + "unit lost to truncation, and no count can see it");
+}
+
+fn test_a_one_edge_arch_has_three_levels_and_not_two() {
+  // ⚠ THE SHAPE, NOT ONE SAMPLE. Truncated, the head across one doorway edge came
+  // back `7 7 8 8 … 8 7 7` — two levels, which is a flat head with a notch at each
+  // jamb and reads as no arch at all. Three distinct levels is the least a curve
+  // can be. Measured from a ZOOMED screenshot first; this is that picture as a number.
+  h = edge_half();
+  seen: vector<integer> = [];
+  for i in 0..17 {
+    d = 0.0 - h + (2.0 * h) * (i as float) / 16.0 ?? 0.0;
+    v = arch_at(h, 7, d);
+    fresh = true;
+    for s in seen { if s == v { fresh = false; } }
+    if fresh { seen += [v]; }
+  }
+  assert(len(seen) >= 3,
+         "the head across one hex edge takes {len(seen)} distinct levels, "
+       + "which is not a curve");
+}

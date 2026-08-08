@@ -1257,6 +1257,7 @@ because a wide door is where cells have something to say. The full argument is
 | ✅ `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | **DONE, AND THE ROW'S SECOND HALF WAS WRITTEN FROM A SUPERSEDED SECTION** — §P9.11 replaces *matches the extents* with **containment**. `hex_part::skin_covers` + `part_box` (10 tests, three sabotages seen red), wired into the `8:` save refusal; the export applies `A8.2b`'s ratio and states the extent and pivot. `part_export` 11 checks | S |
 | ✅ `A8.8` | **A part says how tall its walls are and what they are made of** — a `WALL` section, `up=` and `surface=`, and the mesher honours it (§P9.13). | **DONE.** `A8.3` photographed as a hole and the measurement said why: the leaf **is** drawn, in colour `0.55,0.52,0.46` at `y 0.00..3.25` — the `wall` surface byte for byte, at one `WALL_UP`. `door/leaf` now states `surface=floor` and reads as timber. `probe/a83/leaf_visible/run.sh` is seven controls; `bake` gained `BK_WALL` | M |
 | ✅ `A8.9` | **The opening is a wall with a hole in it, and the hole has a head** — an `OPEN` section, and the per-edge path asks `opening_cuts` (§P9.14). | **DONE.** A `DOOR_MAT` edge used to draw NOTHING, so a lintel was impossible by construction; it now draws the wall above the head and below the sill. `door/frame`/`door/hung` carry a flat head at 10, `door/gateway`/`door/gated` a round one sprung at 7, and `A8.8`'s `up` gets its consumer at last. `bake` gained `BK_OPEN` | M |
+| ✅ `A8.9a` | **…and then the arch was measured, and it was not one** — one opening per RUN of doorway edges, and the crown rounded instead of truncated. | **DONE.** `opening_cuts` answered `7 7 8 8 … 8 7 7` over one edge — two levels, a flat head with a notch at each jamb. Two causes: an opening per EDGE (an arch's rise IS its half-width, so halving the span quarters the rise) and `1.9999999999999998 as integer` = 1. `hex_editor::open_run_for` + `round` at five sites | S |
 
 ### What `A8.7` turned up — ⚠ **the plan's own row quoted a rule the design had already replaced**
 
@@ -1412,6 +1413,41 @@ rebuild that meshes a limb runs in the tick loop *after* the arrivals stop.
 turned 20 swung 0.125; a 1x2 leaf is refused by class (4)`, `part_limb` 17 checks,
 **two sabotages seen red** (both leaves on one hinge → the span row fails at 1.12; the class
 refusal is the content's own assertion). Picture: `shots/a84-gate-{w,sw,s}.png`.
+
+### What `A8.9a` turned up — ⚠ **a test that passed with the fix reverted**
+
+⚠ **THE TEST WRITTEN FOR THE ROUNDING COULD NOT SEE THE BUG.** In `hex_editor` it used
+`profile_opening`, which adds `OPENING_CLEAR` and gives a half-width of 0.6 — `0.6/0.25` is 2.4,
+and truncation and rounding agree on 2. **It passed with `round` reverted to `as integer`**, and
+the sabotage was applied with an `assert count == 1` so there is no doubt it landed. The defect
+only exists at half a HEX EDGE (`0.49999999999999994`), which is `hex_corner_world`'s arithmetic —
+so the test moved to `lib/hex_mesh/tests/arch.loft`, the package where the projection meets the
+policy, and now asserts **its own precondition** (*half an edge is below 0.5*) so it cannot go
+vacuous if the projection changes.
+
+⚠ **AND ROUNDING BROKE A FRAME, WHICH WAS A REAL GAP IT HAD BEEN HIDING.** `opening_frame` assumed
+widening always lifts the crown by a whole unit — true for ROUND, whose rise *is* its half-width;
+false for POINTED and SEGMENT, struck from a radius, which gain a fraction that can round to
+nothing. The ring is frame-minus-opening, so a crown that fails to clear leaves the moulding open
+at the top. It now measures both crowns and raises its own springing until it clears. The circle is
+exempt: its centre is derived from the springing, so moving it makes a crescent.
+
+⚠ **THE HALF-WIDTH OF A RUN IS A CHORD, NOT A PATH LENGTH.** Hex edges meet at 120°, so a run of
+two is a shallow V and `opening_cuts` measures straight-line distance from the centre. Half the
+summed length would claim a wider hole than the geometry has and cut the jambs off the wall.
+Gated in `open_run.loft`, with the two-separate-doorways control that stops the function from
+merging everything it is given.
+
+⚠ **WHAT IT STILL IS: A STEPPED ARCH.** Whole height units at `HEIGHT_SCALE` 0.25 give a two-edge
+gateway a crown of 10 over a springing of 7 — four levels, an arch cut in steps. That is the
+world's own quantum; a smoother one wants a part authored at a finer unit (§P9.1), not a change
+here. **Judged from a ZOOMED screenshot, because the full-frame one was read as a curve when it was
+two levels** — which is the reason the per-element screenshot rule exists.
+
+⚠ **AND PHOTOGRAPHING EVERY PART TURNED UP A DEFECT THAT IS NOT OURS TO FIX HERE**: part mode
+leaves the PREVIOUS part's chunk meshes on screen, so `door/leaf` opened after `door/frame`
+photographs as a wall with a doorway. `shots/leafonly.png` against `shots/part-leaf.png` is the
+evidence, and it is filed in [OPEN_ISSUES](../../doc/claude/OPEN_ISSUES.md).
 
 ### What `A8.9` turned up — ⚠ **the profile was on the wrong part, and only a count showed it**
 

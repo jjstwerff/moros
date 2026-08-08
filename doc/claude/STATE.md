@@ -73,6 +73,16 @@ onward (**not** blocked), and the two ◐ format questions that want a plan rath
    frame inside a `flat` house is drawn flat and says nothing; `bake` refuses that pair (`BK_OPEN`),
    the display path deliberately does not. ⚠ **A world has no gesture for a profile yet**, so a
    doorway stamped into the actual landscape still cuts full height.
+   ✅ **AND `A8.9a` MADE THE ARCH AN ARCH.** It was `7 7 8 8 … 8 7 7` over one edge — two levels, a
+   flat head with a notch at each jamb — from two causes: **an opening per EDGE** (a rise IS its
+   half-width, so halving the span quarters it; `hex_editor::open_run_for` now groups doorway edges
+   that share a corner and takes the CHORD across the run) and **`1.9999999999999998 as integer`
+   = 1** (`round` at all five sites in `opening_cuts`, which cost `emit_run_wall`'s arches the same
+   unit). ⚠ **It is still a STEPPED arch** — whole height units at 0.25 — and that is the world's
+   own quantum rather than a defect.
+   ⚠ **AND THE TEST FOR THE ROUNDING PASSED WITH THE FIX REVERTED**: written in `hex_editor` it used
+   `profile_opening`, which adds `OPENING_CLEAR` and makes truncation and rounding agree. It lives
+   in `lib/hex_mesh/tests/arch.loft` now and asserts its own precondition so it cannot go vacuous.
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 
@@ -423,6 +433,14 @@ the NATIVE server now**), and most of it is a record of getting there. **Whoever
 file: that block is the work, and the durable sentences go to § *What bites*, not to the bin.**
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **PART MODE LEAVES THE PREVIOUS PART'S CHUNKS ON SCREEN — open, 2026-08-08.** Opening a second
+part draws it on top of the first: the display rebuild clears the LIMB block and has no equivalent
+for chunk ids, so a part with fewer chunks than its predecessor keeps the orphans' geometry.
+`door/leaf` after `door/frame` photographs as a wall with a doorway, **with the subject line saying
+`door/leaf`**. `shots/leafonly.png` (fresh server) against `shots/part-leaf.png` is the evidence.
+⚠ **Every per-element screenshot from a multi-part run is suspect** — take them on a fresh server,
+or one part per run. [OPEN_ISSUES](OPEN_ISSUES.md) has the shape of the fix.
 
 ⚠ **A `Mesh` COPIES THROUGH A LOCAL *AND* THROUGH A VECTOR READ — only a PARAMETER aliases.**
 Measured 2026-08-08, `probe/a83/leaf_visible/meshalias.loft`: `la = a; emit(la)` leaves `a` empty,

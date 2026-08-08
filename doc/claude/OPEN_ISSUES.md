@@ -24,6 +24,7 @@ found — an unrevised design reads like a finding.
 - [Power and focus system](#power-and-focus-system)
 - [Contact system](#contact-system)
 - [World map editor](#world-map-editor)
+- [Part mode leaves the previous part's chunks on screen](#part-mode-leaves-the-previous-parts-chunks-on-screen--open-2026-08-08)
 - [Scene editor — this file is NOT where its plan lives](#scene-editor--this-file-is-not-where-its-plan-lives)
 
 ---
@@ -349,6 +350,31 @@ tiles across both parities, screenshot — because a pure test cannot say whethe
 the page still *wires* the geometry after the extraction.
 
 ---
+
+## Part mode leaves the PREVIOUS part's chunks on screen — open, 2026-08-08
+
+⚠ **Opening a second part draws it on top of the first.** `44:<name>` swaps the store and the
+display rebuild sends `M:` for the chunks the new part derives — but the chunk mesh ids of chunks
+the new part does **not** have are never cleared, so the old geometry stays. `door/frame` is 2
+chunks and `door/leaf` is 1, so opening the leaf after the frame photographs as *a wall with a
+doorway and a timber panel in it*.
+
+**Evidence, and it is why this was found at all**: `shots/part-leaf.png` (taken after `door/frame`
+in the same run) against `shots/leafonly.png` (a fresh server, nothing opened before it). The
+second is the truth — one hex plate and one timber panel. Both are stable across a repeat, so it is
+not a settle miss.
+
+⚠ **The subject line is correct while the picture is wrong**, which is what makes it dangerous: the
+panel says `part door/leaf` over the frame's walls. Every per-element screenshot taken in a
+multi-part run is suspect until this is fixed; take them on a fresh server, or one part per run.
+
+⚠ **`44:` (close) does not clear them either** — measured; the script closes between subjects and
+the walls survive it.
+
+**Where it lives**: the part display rebuild in `src/editor_server.loft` clears the LIMB block
+(`for disp_c in disp_drawn..PART_MESH_MAX { … "M:{…};0;" }`) and has no equivalent for chunk ids.
+The fix wants the same shape: remember how many chunk slots were sent last time and blank the
+tail. Not attempted — it is a different organ from the `A8.9` work that surfaced it.
 
 ## Scene editor — this file is NOT where its plan lives
 

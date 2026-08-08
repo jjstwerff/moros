@@ -333,3 +333,30 @@ fn test_the_datum_survives_being_framed() {
   assert(f.op_near == w.op_near, "the frame keeps the datum: {f.op_near}");
   assert(!hex_editor::opening_at_front(f), "so it stays off the near face");
 }
+
+// ── the head is ROUNDED to a height unit, never truncated — `A8.9a` ──────────
+//
+// ⚠ THIS COST A WHOLE HEIGHT UNIT AT THE CROWN, and it was invisible to every
+// count: the number of bands a head produces does not change when the head is one
+// unit lower. It showed only in a ZOOMED picture of one doorway, and then in the
+// profile printed across its span.
+
+// ⚠ THE TWO TESTS THAT MEASURE THE ROUNDING ITSELF LIVE IN `hex_mesh`, and they had
+// to move: written here they used `profile_opening`, which adds `OPENING_CLEAR` and
+// gives a half-width of 0.6 — 0.6/0.25 is 2.4, and truncation and rounding agree on
+// 2. **They passed with the fix reverted.** The case only exists at a half-width of
+// half a hex edge, which is `hex_corner_world`'s arithmetic and `hex_proj`'s
+// package. `lib/hex_mesh/tests/arch.loft` builds the edge the emitter builds.
+
+fn test_the_crown_is_never_lower_than_the_jamb_after_rounding() {
+  // ⚠ THE CONTROL FOR THE TWO ABOVE. Rounding could in principle lift a jamb past a
+  // crown on some span; this walks the whole profile and asserts it never rises
+  // away from the centre, which is what "arch" means whatever the arithmetic.
+  o = hex_editor::profile_opening(0.0, 0.0, 2.4, 0, 8, hex_editor::OP_ROUND, 0.0, U, 1.0);
+  crown = head_at(o, 0.0);
+  for i in 0..17 {
+    d = (o.op_half * (i as float) / 16.0) ?? 0.0;
+    assert(head_at(o, d) <= crown,
+           "the head at {d} is {head_at(o, d)}, above the crown's {crown}");
+  }
+}

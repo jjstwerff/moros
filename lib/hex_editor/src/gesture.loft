@@ -2320,11 +2320,20 @@ pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
   // ⚠ AN ARCH NARROWS AS IT RISES. At distance `d` from the centre the head stands
   // `sqrt(half² - d²)` above the springing — the semicircle itself, not a curve
   // approximating one — so the cut closes at the jambs and is tallest at the crown.
+  // ⚠ ROUND, NEVER TRUNCATE — plan 17 `A8.9a`, and it cost a whole height unit at
+  // the crown. A round head of half-width 0.5 world rises 0.5, which at
+  // `HEIGHT_SCALE` 0.25 is exactly 2 height units — except the division lands on
+  // `1.9999999999999998`, and `as integer` truncates that to **1**. Measured, the
+  // head across one hex edge came back `7 7 8 8 … 8 7 7`: two levels where there
+  // should be three, so an arch over a small opening drew as a flat head with a
+  // notch at each jamb. ⚠ The error is worst exactly where it shows most — a
+  // shallow rise has few units to lose — and it is invisible to any count, because
+  // the number of bands does not change.
   if o.op_spring >= 0 {
     a = o.op_half;
     d = sqrt(d2) ?? 0.0;
     if o.op_kind == OP_ROUND {
-      hi = o.op_spring + (((sqrt(a * a - d2) ?? 0.0) / unit ?? 0.0) as integer);
+      hi = o.op_spring + (round((sqrt(a * a - d2) ?? 0.0) / unit ?? 0.0) as integer);
     } else if o.op_kind == OP_POINTED {
       // ⚠ TWO ARCS, AND THE LOWER ONE GOVERNS. Each is struck from the OPPOSITE
       // springing, so they cross at the crown and close at the jambs — which is
@@ -2334,7 +2343,7 @@ pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
       g = sqrt(r * r - (d + a) * (d + a)) ?? 0.0;
       m = l;
       if g < m { m = g; }
-      hi = o.op_spring + ((m / unit ?? 0.0) as integer);
+      hi = o.op_spring + (round(m / unit ?? 0.0) as integer);
     } else if o.op_kind == OP_SEGMENT {
       // One shallow arc, struck from BELOW the springing — so it rises less than a
       // half-round of the same span, which is the whole reason to use it.
@@ -2342,13 +2351,13 @@ pub fn opening_cuts(o: Opening, x: float, z: float, unit: float,
       c = sqrt(r * r - a * a) ?? 0.0;
       y = (sqrt(r * r - d2) ?? 0.0) - c;
       if y < 0.0 { y = 0.0; }
-      hi = o.op_spring + ((y / unit ?? 0.0) as integer);
+      hi = o.op_spring + (round(y / unit ?? 0.0) as integer);
     } else if o.op_kind == OP_CIRCLE {
       // ⚠ IT CLOSES AT THE BOTTOM TOO, which no "head on a rectangle" can express.
       h = sqrt(a * a - d2) ?? 0.0;
       mid = (o.op_spring as float) + (a / unit ?? 0.0);
-      lo = (mid - (h / unit ?? 0.0)) as integer;
-      hi = (mid + (h / unit ?? 0.0)) as integer;
+      lo = round(mid - (h / unit ?? 0.0)) as integer;
+      hi = round(mid + (h / unit ?? 0.0)) as integer;
     }
   }
   true
@@ -2393,6 +2402,31 @@ pub fn opening_frame(o: Opening, margin: float, unit: float) -> Opening {
   };
   if o.op_radius > 0.0 { g.op_radius = o.op_radius + ef; }
   if o.op_kind == OP_CIRCLE { g.op_spring = o.op_spring - mu; }
+  // ⚠ AND THE CROWN IS ENFORCED RATHER THAN ASSUMED — plan 17 `A8.9a`. Widening a
+  // ROUND head lifts its crown by exactly `mu`, because the rise IS the half-width;
+  // a POINTED or SEGMENT head is struck from a radius, and widening buys it a
+  // fraction of a unit that can round to nothing. The ring is drawn as
+  // frame-minus-opening, so a crown that fails to clear leaves the moulding OPEN at
+  // the top — which reads as damage, not as a thinner ring.
+  //
+  // ⚠ IT WAS TRUNCATION THAT HID THIS. Both crowns rounded down, the shortfall fell
+  // in the same unit, and the property held by luck for the profiles anyone had
+  // measured. Rounding put the pointed frame level with its own opening (13 over
+  // 13) — the test caught it, which is what the test is for.
+  //
+  // ⚠ THE CIRCLE IS EXEMPT, and it must be: an oculus is struck about a centre
+  // DERIVED from the springing, so moving the springing moves the whole ring off
+  // concentric — the crescent `test_an_oculus_frame_is_concentric_and_not_a_crescent`
+  // exists for.
+  if o.op_spring >= 0 && o.op_kind != OP_CIRCLE {
+    olo = 0;
+    ohi = 0;
+    glo = 0;
+    ghi = 0;
+    opening_cuts(o, o.op_x, o.op_z, unit, olo, ohi);
+    opening_cuts(g, g.op_x, g.op_z, unit, glo, ghi);
+    if ghi <= ohi { g.op_spring = g.op_spring + (ohi - ghi) + 1; }
+  }
   g
 }
 
@@ -3858,4 +3892,85 @@ pub fn auto_snug(inside: boolean, room: float, want: float, min_frac: float,
   if !inside { return false; }
   if was { return room < snug_leave(want, min_frac); }
   room < snug_enter(want, min_frac)
+}
+
+// ── A RUN OF DOORWAY EDGES IS ONE OPENING — plan 17 `A8.9a`, §P9.14 ─────────
+//
+// ⚠ THE FIRST BUILD GAVE EVERY EDGE ITS OWN OPENING, and the picture said what no
+// count could: a two-edge gateway came out as two small arches side by side rather
+// than one wide one, and each was so shallow it read as a flat head with a notch at
+// each jamb. An arch's rise IS its half-width, so halving the span quarters the
+// rise — the geometry punishes per-edge grouping twice over.
+//
+// ⚠ AND THE SPAN IS A CHORD, NOT A PATH LENGTH. Hex edges meet at 120°, so a run of
+// two is a shallow V and `opening_cuts` measures straight-line distance from the
+// centre. The half-width is therefore half the distance between the two ENDPOINTS
+// FURTHEST APART, which is what the renderer will actually sample against — taking
+// half the summed edge lengths would claim a wider opening than the geometry has
+// and cut the jambs off the wall.
+pub struct OpenSeg { og_ax: float, og_az: float, og_bx: float, og_bz: float }
+pub struct OpenRun { ou_cx: float, ou_cz: float, ou_half: float }
+
+fn og_near(ax: float, az: float, bx: float, bz: float, eps: float) -> boolean {
+  dx = ax - bx;
+  dz = az - bz;
+  dx * dx + dz * dz <= eps * eps
+}
+
+// Do two segments share an endpoint, to within `eps`?
+fn og_touches(a: OpenSeg, b: OpenSeg, eps: float) -> boolean {
+  if og_near(a.og_ax, a.og_az, b.og_ax, b.og_az, eps) { return true; }
+  if og_near(a.og_ax, a.og_az, b.og_bx, b.og_bz, eps) { return true; }
+  if og_near(a.og_bx, a.og_bz, b.og_ax, b.og_az, eps) { return true; }
+  og_near(a.og_bx, a.og_bz, b.og_bx, b.og_bz, eps)
+}
+
+// The opening that spans the run `idx` belongs to: every segment reachable from it
+// through shared endpoints, taken together.
+//
+// ⚠ TRANSITIVE, AND THAT IS THE POINT. A three-edge gateway is one opening even
+// though its first and last edges do not touch each other — so the walk grows the
+// set until it stops growing rather than testing pairs once.
+pub fn open_run_for(segs: vector<OpenSeg>, eps: float, idx: integer) -> OpenRun {
+  n = len(segs);
+  inrun: vector<boolean> = [];
+  for i in 0..n { inrun += [i == idx]; }
+  grew = true;
+  while grew {
+    grew = false;
+    for i in 0..n {
+      if !(inrun[i] ?? false) { continue; }
+      for j in 0..n {
+        if inrun[j] ?? false { continue; }
+        if og_touches(segs[i] ?? OpenSeg {}, segs[j] ?? OpenSeg {}, eps) {
+          inrun[j] = true;
+          grew = true;
+        }
+      }
+    }
+  }
+  // The two endpoints furthest apart, over every segment in the run.
+  xs: vector<float> = [];
+  zs: vector<float> = [];
+  for i in 0..n {
+    if !(inrun[i] ?? false) { continue; }
+    s = segs[i] ?? OpenSeg {};
+    xs += [s.og_ax]; zs += [s.og_az];
+    xs += [s.og_bx]; zs += [s.og_bz];
+  }
+  bx0 = 0.0; bz0 = 0.0; bx1 = 0.0; bz1 = 0.0; best = 0.0 - 1.0;
+  for i in 0..len(xs) {
+    for j in 0..len(xs) {
+      dx = (xs[i] ?? 0.0) - (xs[j] ?? 0.0);
+      dz = (zs[i] ?? 0.0) - (zs[j] ?? 0.0);
+      d2 = dx * dx + dz * dz;
+      if d2 > best {
+        best = d2;
+        bx0 = xs[i] ?? 0.0; bz0 = zs[i] ?? 0.0;
+        bx1 = xs[j] ?? 0.0; bz1 = zs[j] ?? 0.0;
+      }
+    }
+  }
+  OpenRun { ou_cx: (bx0 + bx1) * 0.5, ou_cz: (bz0 + bz1) * 0.5,
+            ou_half: (sqrt(best) ?? 0.0) * 0.5 }
 }
