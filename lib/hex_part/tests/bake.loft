@@ -316,3 +316,63 @@ fn test_a_library_with_no_profiles_at_all_still_bakes() {
   assert(bk.bk_code == BK_OK, "a profile-free nest was refused: {bk.bk_why}");
   wipe();
 }
+
+// ── `BK_OPEN` — a head profile cannot survive a flattening — `A8.9`, §P9.14 ──
+
+fn open_lib(rootopen: PartOpen, kidopen: PartOpen, kidhas: boolean) {
+  assert(mkdir_all("{root()}/pair").ok(), "mkdir");
+  kid = one_cell(4);
+  if kidhas {
+    assert(part_set_open(kid, kidopen) == PO_OK, "the child's head was refused");
+  }
+  assert(world_save(kid, "{root()}/pair/kid.hxw", no_palette()) == WS_OK, "save kid");
+  top = one_cell(4);
+  assert(part_set_instances(top, [at("pair/kid", 1, 0, 0)]) == PI_OK, "instances");
+  assert(part_set_open(top, rootopen) == PO_OK, "the root's head was refused");
+  assert(world_save(top, "{root()}/pair/top.hxw", no_palette()) == WS_OK, "save top");
+}
+
+fn test_a_round_headed_child_in_a_flat_headed_root_is_refused() {
+  wipe();
+  // The real composition, and the one the display path draws FLAT without saying
+  // so: an arched frame inside a square-headed house. Flattened, the arch is gone
+  // with every cell present.
+  open_lib(PartOpen { po_head: 10, po_sill: 0, po_kind: "flat" },
+           PartOpen { po_head: 11, po_sill: 0, po_kind: "round", po_spring: 7 }, true);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OPEN,
+         "a differing head profile baked with code {bk.bk_code}: {bk.bk_why}");
+  assert(bk.bk_why.find("round") != null && bk.bk_why.find("flat") != null,
+         "the reason names neither profile: {bk.bk_why}");
+  wipe();
+}
+
+fn test_a_head_that_differs_only_in_its_height_is_refused() {
+  wipe();
+  // ⚠ THE KIND ALONE IS NOT THE PROFILE. Two flat heads at different heights are
+  // two different doorways, and a check that compared only `kind` would pass this.
+  open_lib(PartOpen { po_head: 10, po_kind: "flat" },
+           PartOpen { po_head: 8, po_kind: "flat" }, true);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OPEN, "two flat heads at 10 and 8 baked as one");
+  wipe();
+}
+
+fn test_an_unstated_child_under_a_stated_root_is_refused_too() {
+  wipe();
+  open_lib(PartOpen { po_head: 10, po_kind: "flat" }, PartOpen {}, false);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OPEN, "an unstated child under a stated root baked");
+  wipe();
+}
+
+fn test_the_same_head_on_both_bakes_fine() {
+  wipe();
+  // ⚠ THE CONTROL. Without it the three above are satisfied by a `bake` that
+  // refuses every composition.
+  open_lib(PartOpen { po_head: 10, po_sill: 0, po_kind: "flat" },
+           PartOpen { po_head: 10, po_sill: 0, po_kind: "flat" }, true);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OK, "matching heads were refused: {bk.bk_why}");
+  wipe();
+}

@@ -1230,3 +1230,107 @@ also handles the lintel"* is exactly the absorption that would make this § read
 
 > **The one sentence.** A part already carries what it is called and where it stands; this is what
 > it is made of, and it is the difference between a door and a hole with a slab in it.
+
+### P9.14 — The opening is a wall with a hole in it, and the hole has a head
+
+**Plan 17 `A8.9`.** §P9.13 gave a part its own wall height and material and said plainly what it
+did **not** buy: *a **lintel** is a per-edge profile over one opening and is still not
+expressible.* This is that profile.
+
+⚠ **AND ALMOST NONE OF IT IS NEW.** `hex_editor::Opening` already carries the position, the
+half-width, the band, the depth, the datum, the springing, the striking radius and five head
+profiles — `OP_FLAT`, `OP_ROUND`, `OP_POINTED`, `OP_SEGMENT`, `OP_CIRCLE` — and `opening_cuts`
+already answers the only question a wall ever asks: *at this point, between which heights am I
+cut.* `emit_run_wall` has consulted it since `A8`. What was missing is that **a part has no wall
+runs**, so it takes the per-edge fallback, and that path never asked.
+
+#### The invariant
+
+> **Every `DOOR_MAT` edge is cut to the `OPEN` profile of the world being DRAWN, and the wall
+> around that cut is drawn; a world that declares no profile leaves its doorway edges open full
+> height, exactly as today.**
+
+#### The reframing that makes it one rule
+
+Today `wall_up(DOOR_MAT)` is `0`, so a doorway edge draws **nothing** — the opening is the
+*absence* of a wall, and an absence has no head by construction. Under the profile a doorway edge
+draws the wall **above the head and below the sill**, and the hole is what is left between them.
+That is §P9.2's own sentence — *the opening is the wall* — arriving as geometry rather than as
+prose.
+
+#### The section
+
+`OPEN`, `key=value` like `WALL` beside it:
+
+| key | meaning | absent |
+|---|---|---|
+| `head` | the top of the opening, in height units | the wall's own height — a full-height gap, today's behaviour |
+| `sill` | its bottom | `0`, the ground |
+| `kind` | `flat` · `round` · `pointed` · `segment` · `circle`, **by name** | `flat` |
+| `spring` | the height an arch springs from | none — a flat head |
+| `radius` | the striking radius, for `pointed` and `segment` | `0` |
+
+⚠ **THE POSITION IS NOT IN THE SECTION, AND THAT IS THE DESIGN.** The `DOOR_MAT` edge already says
+*where*; the section says only *what shape*. Writing an `x`/`z` here would state the opening's
+place **twice** — once in the cell grid and once in a section — and the two can drift. So each
+doorway edge instantiates the profile at **its own midpoint**, with `op_half` half that edge's
+length, and there is nothing to keep in step.
+
+⚠ **AND THE PROFILE BELONGS TO THE WORLD BEING DRAWN, NOT TO THE PART THAT OWNS THE EDGE.** The
+first build put it on `door/frame` and the composed doorway came back **unchanged, 108 vertices**:
+`door/hung` INSTANCES the frame, expansion STAMPS its cells into the display world, and stamped
+cells have no owner left to ask. The display world is the edited part's own (`part_disp = wld`), so
+it carries the **root's** sections — which is the right grain rather than a workaround. A house has
+many doorways from one frame part and one style; the frame is reusable across buildings that cut
+their heads differently. **A building states how its doorways are cut, and a fragment states how
+its own are.**
+
+⚠ **THE CONSEQUENCE IS A RULE WITH A DRIFT IN IT, so it is written down rather than discovered.**
+A composed part takes the ROOT's profile and a stamped child's is never consulted — so a frame that
+says `round` inside a house that says `flat` is drawn flat, silently. `bake` refuses that pair
+(`BK_OPEN`, `BK_WALL`'s shape one section along); the display path does not, because the root's
+profile is what it was asked to draw, and refusing would refuse the ordinary case of a fragment
+used in a building that overrides it.
+
+⚠ **THE KIND IS A NAME, for §P9.13's reason exactly.** `OP_ROUND` is `hex_editor`'s and
+`hex_editor` → `hex_part`, so a `hex_part` that resolved the name would close a dependency cycle.
+The section carries the word and the consumer resolves it — refused on save and at `make parts`,
+where the five spellings are visible.
+
+#### What it does NOT buy, stated before someone assumes it
+
+⚠ **ONE PROFILE PER PART, so a wall cannot have a door and a window of different shapes.** That is
+not a shortfall against the edge materials, it is exactly level with them: an edge may be `WALL`,
+`DOOR` or `FENCE`, and there is no `WINDOW_MAT`, so a part cannot mark two *kinds* of opening in
+the first place. When the edge materials grow, the profile grain can follow them; inventing a
+per-edge profile before there is a per-edge material would be a second, richer copy of a
+distinction the cell format cannot yet make.
+
+⚠ **AND `op_depth` / `op_near` ARE NOT READ HERE.** A part's per-edge panel is a zero-thickness
+quad drawn front and back, so *how far into the wall the void reaches* has no plane to stop at. An
+alcove is a run's affair (`emit_run_wall` cuts one properly) and a part that wants one is asking
+for a thickness the fallback does not have. Named rather than silently defaulted, because a field
+that is read in one path and ignored in another is how a document comes to say something the
+picture does not.
+
+#### The design that was considered and refused
+
+**Give the part a synthetic wall RUN and let `emit_run_wall` do all of it** — openings, reveals,
+frames, arches, the lot. It is the tempting one, and it is wrong: a run is a straight centreline,
+and a part's walls are hex edges that meet end to end at 60° (`write_frame`'s own comment, and
+`A8.3`'s measurement that `SLOT_E` along a row draws parallel fins). Forcing a run through them
+would **re-cut the geometry of every part wall in the library** to make one feature reachable.
+The per-edge path stays; it gains the one question it never asked.
+
+#### What breaks, and where it is caught
+
+| failure path | what happens | the answer |
+|---|---|---|
+| `head` ≥ the wall's height | no lintel — the gap reaches the top, which is today | allowed and correct: it *is* today's picture, and the control asserts the head band appears only when `head` is lower |
+| an arch with no `spring` | a flat head wearing a curved name | `spring` absent ⇒ `op_spring = -1` ⇒ `opening_cuts` returns the flat band. Refused on save when `kind` is curved and `spring` is absent |
+| an unknown `kind` | a silent fallback to `flat` | refused on save and at `make parts`, naming the five |
+| a curve drawn at span resolution | a staircase instead of an arch | the edge is subdivided `OPEN_SUB` ways, the same constant and the same reason as `emit_run_wall` |
+| the profile applied to a `WALL_MAT` edge | every wall in the part gains a hole | it is asked **only** where the edge is `DOOR_MAT` — the negative control is a frame whose wall edges are untouched, counted |
+
+> **The one sentence.** A doorway stopped being a gap in the wall and became a wall with a hole in
+> it, which is the only shape a lintel can sit on.

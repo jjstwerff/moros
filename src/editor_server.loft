@@ -1693,6 +1693,90 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
   hex_mesh::emit_tri(m, a, bck, d, bck, c, bck);
 }
 
+// THE SAME PANEL WITH A HOLE IN IT — plan 17 `A8.9`, §P9.14.
+//
+// ⚠ A DOORWAY USED TO BE THE ABSENCE OF A PANEL, and an absence has no head by
+// construction: `wall_up(DOOR_MAT)` is 0, the emit site skipped the edge, and the
+// opening ran the full height of the wall with nothing over it. Here the edge
+// draws the wall ABOVE the head and BELOW the sill, and the hole is what is left
+// between them — §P9.2's own sentence, *the opening is the wall*, as geometry.
+//
+// ⚠ IT ASKS `opening_cuts`, THE SAME CALL `emit_run_wall` HAS ASKED SINCE `A8`.
+// Five head profiles, the springing and the striking radius are already in that
+// function; nothing about an arch is re-derived here. What this adds is the one
+// thing a part could not do — reach it, because a part has no wall RUNS.
+//
+// ⚠ AND IT SUBDIVIDES, for `emit_run_wall`'s reason and with its constant. A curve
+// sampled once per edge is two steps and a lie; `OPEN_SUB` pieces is local, cheap,
+// and the difference between an arch and a staircase. A FLAT head needs none of
+// it and gets it anyway, because a second code path for the easy case is how the
+// two come to disagree.
+//
+// ⚠ THE SKIRT IS NEVER CUT. A panel stands from the LOWER of the two ground
+// heights to `up` above the HIGHER, so the piece below the higher ground is what
+// fills a step in the terrain — retaining, not wall. Bands are measured from that
+// datum, so a sill of 0 sits on the wall's foot and not in the middle of a slope.
+fn emit_wall_panel_cut(m: Mesh, cq: integer, cr: integer, dir: integer,
+                       up: integer, o: hex_editor::Opening, wld: World) {
+  (nq, nr) = hex_grid::hex_neighbor(cq, cr, dir);
+  hs = terrain_h(cq, cr, wld);
+  hn = terrain_h(nq, nr, wld);
+  lo = hs; if hn < lo { lo = hn; }
+  hi = hs; if hn > hi { hi = hn; }
+  yfoot = (lo as float) * HEIGHT_SCALE;
+  (ea, eb) = hex_grid::hex_edge_corners(dir);
+  w1 = hex_corner_world(cq, cr, 0, (6 - ea) % 6 ?? 0);
+  w2 = hex_corner_world(cq, cr, 0, (6 - eb) % 6 ?? 0);
+  cs = hex_to_world(cq, cr, 0);
+  cn = hex_to_world(nq, nr, 0);
+  nrm = hex_mesh::nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+  bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
+  for j in 0..OPEN_SUB {
+    t0 = (j as float) / (OPEN_SUB as float) ?? 0.0;
+    t1 = ((j + 1) as float) / (OPEN_SUB as float) ?? 0.0;
+    ax = w1.x + (w2.x - w1.x) * t0;
+    az = w1.z + (w2.z - w1.z) * t0;
+    bx = w1.x + (w2.x - w1.x) * t1;
+    bz = w1.z + (w2.z - w1.z) * t1;
+    mx = (ax + bx) * 0.5;
+    mz = (az + bz) * 0.5;
+    colo = 0;
+    cohi = 0;
+    if !hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+      // Outside the opening: this slice is solid, foot to head.
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+      continue;
+    }
+    if colo > 0 {
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + colo) as float) * HEIGHT_SCALE, nrm, bck);
+    } else {
+      // ⚠ THE SKIRT SURVIVES A SILL OF ZERO. `yfoot` is below the datum wherever the
+      // ground steps, so "no wall under the opening" still means "down to the datum".
+      emit_slice(m, ax, az, bx, bz, yfoot, (hi as float) * HEIGHT_SCALE, nrm, bck);
+    }
+    if cohi < up {
+      emit_slice(m, ax, az, bx, bz, ((hi + cohi) as float) * HEIGHT_SCALE,
+                 ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+    }
+  }
+}
+
+// One rectangle of wall, front and back — the four triangles `emit_wall_panel`
+// writes, taken out so the cut version does not restate them per band.
+// ⚠ A ZERO-HEIGHT BAND EMITS NOTHING rather than a degenerate quad: a head at the
+// wall's own top and a sill at its foot are both ordinary, and two coincident
+// triangles are a z-fighting artefact no count would show.
+fn emit_slice(m: Mesh, ax: float, az: float, bx: float, bz: float,
+              ylo: float, yhi: float, nrm: Vec3, bck: Vec3) {
+  if yhi - ylo <= 0.0001 { return; }
+  a = vec3(ax, ylo, az); b = vec3(bx, ylo, bz);
+  c = vec3(bx, yhi, bz); d = vec3(ax, yhi, az);
+  hex_mesh::emit_tri(m, a, nrm, b, nrm, c, nrm);
+  hex_mesh::emit_tri(m, a, nrm, c, nrm, d, nrm);
+  hex_mesh::emit_tri(m, a, bck, c, bck, b, bck);
+  hex_mesh::emit_tri(m, a, bck, d, bck, c, bck);
+}
+
 // ── A WALL IS DRAWN FROM ITS RUN, AND ITS HOLES FROM THEIR PROFILES ─────────
 //
 // **The edges are the index; the run is the truth.** A wall panel per hex edge is a
@@ -2328,17 +2412,45 @@ fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
 // `make parts`.
 fn emit_panel_into(pwi: integer, vm: Mesh, km: Mesh, wm: Mesh, fm: Mesh, am: Mesh,
                    sm: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
-                   wld: World) {
-  if pwi == 3 { emit_wall_panel(vm, cq, cr, dir, up, wld); return; }   // tree
-  if pwi == 4 { emit_wall_panel(km, cq, cr, dir, up, wld); return; }   // roof
-  if pwi == 6 { emit_wall_panel(fm, cq, cr, dir, up, wld); return; }   // floor
-  if pwi == 7 { emit_wall_panel(am, cq, cr, dir, up, wld); return; }   // frame
-  if pwi == 8 { emit_wall_panel(sm, cq, cr, dir, up, wld); return; }   // soffit
-  emit_wall_panel(wm, cq, cr, dir, up, wld);                           // wall, and the default
+                   ocut: boolean, o: hex_editor::Opening, wld: World) {
+  if pwi == 3 { panel_one(vm, cq, cr, dir, up, ocut, o, wld); return; }   // tree
+  if pwi == 4 { panel_one(km, cq, cr, dir, up, ocut, o, wld); return; }   // roof
+  if pwi == 6 { panel_one(fm, cq, cr, dir, up, ocut, o, wld); return; }   // floor
+  if pwi == 7 { panel_one(am, cq, cr, dir, up, ocut, o, wld); return; }   // frame
+  if pwi == 8 { panel_one(sm, cq, cr, dir, up, ocut, o, wld); return; }   // soffit
+  panel_one(wm, cq, cr, dir, up, ocut, o, wld);                           // wall, the default
+}
+
+// ⚠ THE UNCUT PATH IS THE OLD FUNCTION, UNTOUCHED — plan 17 `A8.9`. The cut one
+// subdivides `OPEN_SUB` ways and emits per band, so a plain wall routed through it
+// would draw the same surface out of eight times the triangles: every picture
+// identical, every vertex COUNT changed, and the gates that count panels rewritten
+// for no reason. One `if`, and a wall with no opening over it is byte for byte what
+// it was.
+fn panel_one(m: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
+             ocut: boolean, o: hex_editor::Opening, wld: World) {
+  if ocut { emit_wall_panel_cut(m, cq, cr, dir, up, o, wld); return; }
+  emit_wall_panel(m, cq, cr, dir, up, wld);
+}
+
+// The five head profiles by NAME — §P9.14, and §P9.13's reason for a name rather
+// than an index: `hex_part` cannot see `hex_editor`'s constants without closing a
+// dependency cycle, so the section carries the word and this resolves it.
+// ⚠ −1 RATHER THAN A FALLBACK TO FLAT: a misspelt arch that silently drew square
+// is a document saying something the picture does not.
+fn opening_kind_index(name: text) -> integer {
+  if name == "" || name == "flat" { return hex_editor::OP_FLAT; }
+  if name == "round" { return hex_editor::OP_ROUND; }
+  if name == "pointed" { return hex_editor::OP_POINTED; }
+  if name == "segment" { return hex_editor::OP_SEGMENT; }
+  if name == "circle" { return hex_editor::OP_CIRCLE; }
+  0 - 1
 }
 
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, sm: Mesh, pwi: integer, pwup: integer, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
+                    fm: Mesh, am: Mesh, sm: Mesh, pwi: integer, pwup: integer,
+                    pohead: integer, posill: integer, pokind: integer,
+                    pospring: integer, poradius: float, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
@@ -2426,7 +2538,13 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
         // `emit_run_wall` above draws those, and a part carries no runs at all,
         // which is why the profile lands exactly on the fallback a part uses.
         for si in 0..3 {
-          if ews[si] != 0 && wall_up_part(ews[si], pwup) > 0 {
+          // ⚠ A DOORWAY IS NOW A CASE, NOT A SKIP — plan 17 `A8.9`, §P9.14. It used
+          // to fall out here because `wall_up(DOOR_MAT)` is 0, which is what made a
+          // head impossible: an absence cannot carry a lintel. With a profile the
+          // edge draws the wall around its hole; with none it is skipped exactly as
+          // before, which is every part in the library that states nothing.
+          sidoor = ews[si] == DOOR_MAT && pohead > 0;
+          if ews[si] != 0 && (sidoor || wall_up_part(ews[si], pwup) > 0) {
             (fq, fr) = hex_grid::hex_neighbor(cq, cr, slot_dir[si]);
             aw = hex_to_world(cq, cr, 0);
             bw = hex_to_world(fq, fr, 0);
@@ -2436,8 +2554,37 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
                                                     (aw.z + bw.z) * 0.5) < 0.9;
             }
             if !carried {
+              siup = wall_up_part(ews[si], pwup);
+              siop = hex_editor::Opening {};
+              if sidoor {
+                // ⚠ THE OPENING IS BUILT AT THE EDGE'S OWN MIDPOINT, AND ITS WIDTH
+                // IS THAT EDGE — §P9.14. The `DOOR_MAT` byte already says WHERE, so
+                // nothing about the position comes out of the section and the two
+                // cannot drift. The half-width is measured off the two corners
+                // rather than taken from a lattice constant, because a constant
+                // here would be `hex_proj`'s a second time.
+                (dea, deb) = hex_grid::hex_edge_corners(slot_dir[si]);
+                dw1 = hex_corner_world(cq, cr, 0, (6 - dea) % 6 ?? 0);
+                dw2 = hex_corner_world(cq, cr, 0, (6 - deb) % 6 ?? 0);
+                dhx = dw2.x - dw1.x;
+                dhz = dw2.z - dw1.z;
+                dhalf = (sqrt(dhx * dhx + dhz * dhz) ?? 0.0) * 0.5;
+                // ⚠ A DOORWAY EDGE HAS NO WALL HEIGHT OF ITS OWN — `wall_up_part`
+                // answers 0 for `DOOR_MAT` and must keep doing so (§P9.13's failure
+                // path). The wall it is cut OUT of is the part's, so the head is
+                // measured against that.
+                siup = pwup;
+                if siup <= 0 { siup = WALL_UP; }
+                sispring = 0 - 1;
+                if pospring > 0 { sispring = pospring; }
+                siop = hex_editor::Opening {
+                  op_x: (dw1.x + dw2.x) * 0.5, op_z: (dw1.z + dw2.z) * 0.5,
+                  op_half: dhalf, op_lo: posill, op_hi: pohead,
+                  op_depth: 1.0, op_near: 0.0, op_spring: sispring,
+                  op_kind: pokind, op_radius: poradius };
+              }
               emit_panel_into(pwi, vm, km, wm, fm, am, sm, cq, cr, slot_dir[si],
-                              wall_up_part(ews[si], pwup), wld);
+                              siup, sidoor, siop, wld);
             }
           }
         }
@@ -3281,8 +3428,18 @@ fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
   if cma_pw.wa_surface != "" {
     cma_pwi = hex_mesh::surface_index(cma_pw.wa_surface);
   }
+  // ⚠ AND THE OPENING PROFILE BESIDE IT — `A8.9`, §P9.14. Read once per chunk from
+  // the same world, for the same reason: a section decode per EDGE per rebuild is
+  // the cost `part_expand` refuses a glb parse for. A world with no `OPEN` section
+  // reads `MR_ABSENT`, `head` stays 0, and every doorway is the full-height gap it
+  // has always been.
+  cma_po = hex_part::part_open(wld).or_open;
+  cma_pok = opening_kind_index(cma_po.po_kind);
+  if cma_pok < 0 { cma_pok = hex_editor::OP_FLAT; }
   chunk_mesh_props(cx, cz, wld, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s,
                    cma_pwi, cma_pw.wa_up,
+                   cma_po.po_head, cma_po.po_sill, cma_pok,
+                   cma_po.po_spring, cma_po.po_radius,
                    runs, roofs, leaves, openings, annexes, awalls, props, slabs, holes);
   [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s]
 }
@@ -5749,6 +5906,23 @@ fn main() {
               if sv_wall.wr_code == hex_part::MR_OK && sv_wsurf != "" {
                 sv_wbad = hex_mesh::surface_index(sv_wsurf) < 0;
               }
+              // ⚠ AND THE OPENING PROFILE'S KIND, for the WALL surface's reason —
+              // `A8.9`, §P9.14. `OP_ROUND` is `hex_editor`'s and `hex_part` cannot
+              // see it without closing a cycle, so the word is judged here.
+              sv_open = hex_part::part_open(wld);
+              sv_okind = sv_open.or_open.po_kind;
+              sv_obad = false;
+              sv_ospring = false;
+              if sv_open.or_code == hex_part::MR_OK {
+                sv_obad = opening_kind_index(sv_okind) < 0;
+                // ⚠ A CURVED HEAD WITH NO SPRINGING IS A FLAT ONE WEARING ITS NAME.
+                // `opening_cuts` only strikes an arc when `op_spring >= 0`, so this
+                // would save clean, draw square, and leave its author looking for a
+                // renderer bug. `circle` too: it derives its centre from the
+                // springing, so without one it is a rectangle called an oculus.
+                if !sv_obad && sv_okind != "" && sv_okind != "flat"
+                   && sv_open.or_open.po_spring <= 0 { sv_ospring = true; }
+              }
               if sv_inst.ir_code == MR_MALFORMED {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
                                   + "INST section: {sv_inst.ir_why}");
@@ -5766,6 +5940,20 @@ fn main() {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
                                   + "WALL section: {sv_wall.wr_why}");
                 println("editor: part save refused — '{sv_name}' WALL: {sv_wall.wr_why}");
+              } else if sv_open.or_code == MR_MALFORMED {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
+                                  + "OPEN section: {sv_open.or_why}");
+                println("editor: part save refused — '{sv_name}' OPEN: {sv_open.or_why}");
+              } else if sv_obad {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' cuts its doorways "
+                                  + "'{sv_okind}', which is not a head profile: "
+                                  + "flat round pointed segment circle");
+                println("editor: part save refused — '{sv_name}' head kind '{sv_okind}'");
+              } else if sv_ospring {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' asks for a "
+                                  + "'{sv_okind}' head and states no springing, which "
+                                  + "draws as a flat one");
+                println("editor: part save refused — '{sv_name}' '{sv_okind}' with no spring");
               } else if sv_wbad {
                 // ⚠ THE SIX ARE NAMED IN THE REFUSAL. A part reaches this by being
                 // hand-edited or written by something else, and its author needs

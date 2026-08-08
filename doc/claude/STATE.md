@@ -59,10 +59,20 @@ onward (**not** blocked), and the two ◐ format questions that want a plan rath
    behind. The probe's `door/leaf`-as-subject control is what caught it.
    ✅ **AND `A8.8` FIXED IT (2026-08-08).** A part now says how tall its walls are and what they
    are made of — a `WALL` section, [PARTS.md §P9.13](PARTS.md#p913--a-part-says-how-tall-its-walls-are-and-what-they-are-made-of).
-   `door/leaf` states `surface=floor` and the doorway reads as timber in stone; `run.sh` is seven
-   controls. ⚠ **What `A8.3` still wants is the user's eyes on the NEW picture** —
-   `shots/a83-door-{w,sw,s}.png`, regenerated — and ⚠ **the opening still has no HEAD**: a per-part
-   height and an `Opening` profile are two capabilities, and only the first is built.
+   `door/leaf` states `surface=floor` and the doorway reads as timber in stone.
+   ✅ **AND `A8.9` GAVE IT A HEAD (2026-08-08)** — an `OPEN` section, and the per-edge path now asks
+   `hex_editor::opening_cuts`, the same call `emit_run_wall` has always asked
+   ([§P9.14](PARTS.md#p914--the-opening-is-a-wall-with-a-hole-in-it-and-the-hole-has-a-head)).
+   A `DOOR_MAT` edge used to draw NOTHING — an absence cannot carry a lintel — and now draws the
+   wall above the head and below the sill. `door/frame`/`door/hung` cut a flat head at 10,
+   `door/gateway`/`door/gated` a round one sprung at 7, and `A8.8`'s `up` finally has its consumer.
+   `probe/a83/leaf_visible/run.sh` is nine controls. ⚠ **What `A8.3` still wants is the user's eyes
+   on the picture** — `shots/a83-door-{w,sw,s}.png` and `shots/a89-arch-{s,sw}.png`, regenerated.
+   ⚠ **AND THE PROFILE BELONGS TO THE WORLD BEING DRAWN, NOT THE PART THAT OWNS THE EDGE** — a
+   stamped cell has no owner left to ask, so a composed part takes the ROOT's profile. A `round`
+   frame inside a `flat` house is drawn flat and says nothing; `bake` refuses that pair (`BK_OPEN`),
+   the display path deliberately does not. ⚠ **A world has no gesture for a profile yet**, so a
+   doorway stamped into the actual landscape still cuts full height.
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 

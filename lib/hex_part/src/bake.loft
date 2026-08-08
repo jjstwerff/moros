@@ -31,6 +31,7 @@ use stamp;
 use meta;
 use prop;
 use expand;
+use open;    // A8.9 — the head profile a flattening cannot carry either (P9.14)
 use wall;    // A8.8 — the profile a flattening cannot carry (P9.13)
 
 pub const BK_OK      = 0;
@@ -46,6 +47,7 @@ pub const BK_MESH    = 9;   // a mesh body, which no flattening can carry (A6.2)
 pub const BK_LIMB    = 10;  // a bound limb, which is posed rather than stamped (A8.1)
 pub const BK_UNIT    = 11;  // a composed part states a different unit (A8.2b, P9.1)
 pub const BK_WALL    = 12;  // …or a different wall profile (A8.8, P9.13)
+pub const BK_OPEN    = 13;  // …or a different opening profile (A8.9, P9.14)
 
 // The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
@@ -110,7 +112,7 @@ fn insert_ordered(cells: vector<Hex>, h: Hex) -> vector<Hex> {
 // `anchor`, then descend. The frame is the part's own origin, so the top call
 // passes `(0, 0, 0)` and a child's centre is `un_origin` of the parent's.
 fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
-           unit: float, rootwall: PartWall, depth: integer,
+           unit: float, rootwall: PartWall, rootopen: PartOpen, depth: integer,
            tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
   if depth > EX_MAX_DEPTH {
     return Bake { bk_code: BK_DEPTH, bk_depth: depth,
@@ -159,6 +161,24 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
             + "(up={rootwall.wa_up} surface='{rootwall.wa_surface}') — one bake is one "
             + "WALL section (P9.13). A part with its own wall profile is a LIMB, posed, "
             + "or it is nothing" };
+  }
+
+  // ⚠ AND NEITHER CAN A DIFFERENT OPENING PROFILE — plan 17 `A8.9`, §P9.14. The
+  // display path takes the ROOT's profile and never asks a stamped child's, which
+  // is the right grain for DRAWING (a building states how its doorways are cut)
+  // and a silent loss for FLATTENING: bake a round-headed frame into a flat-headed
+  // house and the result is one part with one `OPEN` section, so the arch is gone
+  // with every cell present. `BK_WALL`'s shape one section along, and unstated is a
+  // value here too — a child with no profile inside a root that has one is redrawn
+  // just the same.
+  co = part_open(p).or_open;
+  if co.po_head != rootopen.po_head || co.po_sill != rootopen.po_sill
+     || co.po_kind != rootopen.po_kind || co.po_spring != rootopen.po_spring {
+    return Bake { bk_code: BK_OPEN,
+      bk_why: "'{name}' cuts its doorways head={co.po_head} sill={co.po_sill} "
+            + "'{co.po_kind}' and the part it is being flattened into cuts "
+            + "head={rootopen.po_head} sill={rootopen.po_sill} '{rootopen.po_kind}' "
+            + "— one bake is one OPEN section (P9.14)" };
   }
 
   // ⚠ A MESH BODY IS REFUSED, AND FINDING THAT OUT IS `A6.2`'s SECOND HALF.
@@ -223,7 +243,7 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
     }
     (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
     down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, unit, rootwall,
-                   depth + 1, tab, here);
+                   rootopen, depth + 1, tab, here);
     if down.bk_code != BK_OK { return down; }
     here = down;
 
@@ -290,7 +310,8 @@ pub fn part_bake(root: text, name: text) -> Bake {
   // ⚠ THE ROOT'S PROFILE, READ ONCE AND THREADED — the same shape as `w_unit`
   // above it, for the same reason: the result takes the root's, so every child
   // is measured against the root rather than against its own parent.
-  done = bake_at(root, name, 0, 0, 0, src.w_unit, part_wall(src).wr_wall, 1, tab, seed);
+  done = bake_at(root, name, 0, 0, 0, src.w_unit, part_wall(src).wr_wall,
+                 part_open(src).or_open, 1, tab, seed);
   // ⚠ THE SAME UPGRADE `expand` MAKES, for the same reason: a loop exhausts the
   // depth bound, so the raw answer blames nesting in a library that has none.
   // Error path only.

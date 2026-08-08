@@ -1,0 +1,169 @@
+// `OPEN` — what shape a part's doorways are cut to.
+//
+// Plan 17 `A8.9`, [PARTS.md §P9.14]. `A8.8` gave a part its own wall height and
+// material and said plainly what it did not buy — a lintel — because a head is a
+// per-EDGE profile over one opening. This is that profile's record half.
+//
+// ⚠ EVERY CLAIM IS PAIRED WITH THE THING IT MUST REFUSE, `roundtrip.loft`'s rule.
+use hex_part;
+use hex_world;
+
+const U = 0.25;
+const EPS = 5;
+const THETA = 2;
+
+fn fresh() -> World { world_new(U, 0, EPS, THETA).wn_world }
+
+fn no_palette() -> vector<integer> {
+  p: vector<integer> = [];
+  p
+}
+
+fn test_the_tag_is_the_four_characters() {
+  assert(TAG_OPEN == section_tag("OPEN"),
+         "TAG_OPEN is {TAG_OPEN}, not {section_tag(\"OPEN\")}");
+}
+
+fn test_a_flat_head_comes_back_as_it_went_in() {
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 10, po_sill: 0, po_kind: "flat" }) == PO_OK,
+         "the profile was refused");
+  r = part_open(w);
+  assert(r.or_code == MR_OK, "it did not read back: {r.or_why}");
+  assert(r.or_open.po_head == 10 && r.or_open.po_sill == 0,
+         "head {r.or_open.po_head} sill {r.or_open.po_sill}");
+  assert(r.or_open.po_kind == "flat", "'{r.or_open.po_kind}'");
+}
+
+fn test_an_arch_carries_its_springing_and_radius() {
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 11, po_sill: 0, po_kind: "pointed",
+                                     po_spring: 7, po_radius: 1.4 }) == PO_OK, "refused");
+  r = part_open(w);
+  assert(r.or_code == MR_OK, "{r.or_why}");
+  assert(r.or_open.po_spring == 7, "spring {r.or_open.po_spring}");
+  assert(r.or_open.po_radius > 1.39 && r.or_open.po_radius < 1.41,
+         "radius {r.or_open.po_radius}");
+  assert(r.or_open.po_kind == "pointed", "'{r.or_open.po_kind}'");
+}
+
+fn test_a_window_states_its_sill() {
+  // The sill is what makes this a window and not a door, and it is the field a
+  // "head on a full-height gap" design has nowhere to put.
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 9, po_sill: 4, po_kind: "round",
+                                     po_spring: 7 }) == PO_OK, "refused");
+  r = part_open(w);
+  assert(r.or_code == MR_OK && r.or_open.po_sill == 4, "sill {r.or_open.po_sill}");
+}
+
+fn test_it_survives_a_save_and_a_load() {
+  w = fresh();
+  assert(world_set_cell(w, 0, 0, 0,
+    Hex { h_height: 1 as u16? ?? 0, h_material: 4 as u8? ?? 0,
+          h_wall_ne: 2 as u8? ?? 0 }).cw_code == CW_OK, "the cell was refused");
+  assert(part_set_open(w, PartOpen { po_head: 10, po_kind: "round",
+                                     po_spring: 8 }) == PO_OK, "refused");
+  path = "{temp_dir()}/hexpart-open-roundtrip.hxw";
+  assert(world_save(w, path, no_palette()) == WS_OK, "the part did not save");
+  ld = world_load(path);
+  assert(ld.wl_code == WL_OK, "the part did not load: {ld.wl_detail}");
+  r = part_open(ld.wl_world);
+  assert(r.or_code == MR_OK, "the profile is gone after a save: {r.or_why}");
+  assert(r.or_open.po_head == 10 && r.or_open.po_kind == "round"
+         && r.or_open.po_spring == 8,
+         "it came back head={r.or_open.po_head} '{r.or_open.po_kind}' spring={r.or_open.po_spring}");
+}
+
+// ⚠ §P2's TAGGED SECTIONS, TESTED RATHER THAN ASSERTED — and this one has TWO
+// neighbours it has never heard of, because `A8.8` put `WALL` in beside it.
+fn test_it_sits_between_two_sections_that_never_heard_of_it() {
+  w = fresh();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_FITTING, pm_name: "frame",
+                                     pm_desc: "a wall with a hole" }) == PM_OK, "meta");
+  assert(part_set_open(w, PartOpen { po_head: 10, po_kind: "flat" }) == PO_OK, "open");
+  assert(part_set_wall(w, PartWall { wa_up: 12, wa_surface: "wall" }) == WA_OK, "wall");
+  m = part_meta(w);
+  assert(m.mr_code == MR_OK && m.mr_meta.pm_name == "frame",
+         "the name did not survive an OPEN beside it: {m.mr_why}");
+  wr = part_wall(w);
+  assert(wr.wr_code == MR_OK && wr.wr_wall.wa_up == 12 && wr.wr_wall.wa_surface == "wall",
+         "the WALL profile did not survive an OPEN beside it: {wr.wr_why}");
+  o = part_open(w);
+  assert(o.or_code == MR_OK && o.or_open.po_head == 10,
+         "and the OPEN section did not survive its own neighbours: {o.or_why}");
+}
+
+fn test_no_section_is_absent_and_still_usable() {
+  r = part_open(fresh());
+  assert(r.or_code == MR_ABSENT, "a part with no OPEN read {r.or_code}");
+  assert(r.or_open.po_head == 0 && r.or_open.po_kind == "",
+         "the absent profile is not unstated: head={r.or_open.po_head} '{r.or_open.po_kind}'");
+}
+
+// ── what it refuses ─────────────────────────────────────────────────────────
+
+fn test_a_head_at_or_below_its_sill_is_refused() {
+  // ⚠ NOT A SMALL OPENING — NONE. It would reach the emitter as a band of negative
+  // height, which draws inside out rather than not at all.
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 4, po_sill: 4, po_kind: "flat" }) == PO_HEAD,
+         "a head level with its sill was accepted");
+  assert(part_set_open(w, PartOpen { po_head: 3, po_sill: 9, po_kind: "flat" }) == PO_HEAD,
+         "a head below its sill was accepted");
+  assert(part_open(w).or_code == MR_ABSENT, "a refused profile was written anyway");
+}
+
+fn test_an_unstated_head_is_not_that_refusal() {
+  // The control for the two above: `head=0` is the *unstated* case, and a check
+  // that refused it would refuse every part that only wants a sill.
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_sill: 0, po_kind: "flat" }) == PO_OK,
+         "an unstated head was refused");
+}
+
+fn test_negative_numbers_are_refused() {
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 0 - 2 }) == PO_NEG, "a negative head");
+  assert(part_set_open(w, PartOpen { po_head: 8, po_sill: 0 - 1 }) == PO_NEG, "a negative sill");
+  assert(part_set_open(w, PartOpen { po_head: 8, po_spring: 0 - 3 }) == PO_NEG, "a negative spring");
+  assert(part_set_open(w, PartOpen { po_head: 8, po_radius: 0.0 - 1.0 }) == PO_NEG, "a negative radius");
+  assert(part_open(w).or_code == MR_ABSENT, "a refused profile was written anyway");
+}
+
+fn test_a_newline_in_the_kind_is_refused() {
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 8, po_kind: "flat\nhead=99" }) == PO_NEWLINE,
+         "a forged line was accepted");
+  assert(part_open(w).or_code == MR_ABSENT, "a refused profile was written anyway");
+}
+
+fn test_a_hand_written_head_that_is_not_a_number_is_malformed() {
+  w = fresh();
+  set_section_text(w, TAG_OPEN, "head=tall\nsill=0\nkind=flat\nspring=0\nradius=0.0");
+  r = part_open(w);
+  assert(r.or_code == MR_MALFORMED, "'head=tall' read as {r.or_code}");
+  assert(r.or_why.find("tall") != null, "the reason does not name the value: {r.or_why}");
+}
+
+fn test_a_hand_written_head_below_its_sill_is_malformed() {
+  // The writer cannot produce this; a hand-edited file can, and it must not reach
+  // the emitter as a negative band.
+  w = fresh();
+  set_section_text(w, TAG_OPEN, "head=2\nsill=7\nkind=flat\nspring=0\nradius=0.0");
+  r = part_open(w);
+  assert(r.or_code == MR_MALFORMED, "a hand-written head under its sill read {r.or_code}");
+}
+
+// ⚠ AN UNKNOWN KIND IS *NOT* THIS PACKAGE'S REFUSAL — §P9.14, and §P9.13's reason
+// verbatim. `OP_ROUND` is `hex_editor`'s and `hex_editor` -> `hex_part`, so
+// resolving the word here closes a cycle. It is refused on save and at `make
+// parts`, where the five spellings are visible.
+fn test_an_unknown_kind_is_carried_not_judged() {
+  w = fresh();
+  assert(part_set_open(w, PartOpen { po_head: 8, po_kind: "ogee" }) == PO_OK,
+         "this package judged a name it cannot see the list for");
+  r = part_open(w);
+  assert(r.or_code == MR_OK && r.or_open.po_kind == "ogee",
+         "the kind was not carried through verbatim");
+}

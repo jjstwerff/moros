@@ -1,0 +1,131 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `OPEN` — what shape a part's doorways are cut to.
+//
+// Plan 17 `A8.9`, [PARTS.md §P9.14](../../../doc/claude/PARTS.md#p914--the-opening-is-a-wall-with-a-hole-in-it-and-the-hole-has-a-head).
+//
+// ⚠ THE POSITION IS NOT IN HERE, AND THAT IS THE DESIGN. A `DOOR_MAT` edge already
+// says WHERE the opening is; this says only WHAT SHAPE it is. An `x`/`z` here would
+// state the opening's place twice — once in the cell grid, once in a section — and
+// two statements of one fact drift. Each doorway edge instantiates this profile at
+// its own midpoint, with the half-width taken from that edge's own length, so
+// there is nothing to keep in step.
+//
+// ⚠ AND ALMOST NONE OF THE GEOMETRY IS NEW. `hex_editor::Opening` carries the band,
+// the springing, the striking radius and five head profiles, and `opening_cuts`
+// answers the only question a wall ever asks — *at this point, between which
+// heights am I cut*. `emit_run_wall` has consulted it since `A8`. What was missing
+// is that a part has no wall RUNS, so it takes the per-edge fallback, and that path
+// never asked. This section is what lets it.
+use hex_world;
+use codec;
+use meta;
+
+// ⚠ A LITERAL, held equal to `section_tag("OPEN")` by a test — `meta.loft`'s rule
+// and its reason: a file-scope constant is an inlined expression re-evaluated at
+// every reference, so a derived tag re-runs the packing loop at each use.
+pub const TAG_OPEN = 1313165391;    // 'OPEN', low byte first
+
+// ⚠ `po_head` OF 0 MEANS *NOT STATED*, and it collapses nothing: an opening whose
+// head is at the ground is not an opening. Absent, the edge is left open its full
+// height — which is exactly the picture before this section existed.
+//
+// ⚠ `po_spring` OF 0 MEANS *NO SPRINGING*, i.e. a flat head. `hex_editor` spells
+// that −1 and this spells it 0, because a springing AT the ground is not a thing
+// either: an arch springs from somewhere up the jamb. The consumer maps one to the
+// other, and the test that keeps them honest is the one asserting a curved kind
+// with no springing is refused rather than silently flattened.
+//
+// ⚠ AND THE KIND IS A NAME, for §P9.13's reason exactly. `OP_ROUND` is
+// `hex_editor`'s, and `hex_editor` -> `hex_part`: a package that resolved the name
+// here would close a dependency CYCLE. The word is carried and the consumer
+// resolves it, refused on save and at `make parts` where the five are visible.
+pub struct PartOpen {
+  po_head:   integer = 0,    // the top of the opening, in height units
+  po_sill:   integer = 0,    // its bottom
+  po_kind:   text = "",      // flat · round · pointed · segment · circle
+  po_spring: integer = 0,    // the height an arch springs from; 0 is a flat head
+  po_radius: float = 0.0,    // the striking radius, for pointed and segment
+}
+
+pub const PO_OK      = 0;
+pub const PO_HEAD    = 1;   // a head at or below its own sill
+pub const PO_NEG     = 2;   // a negative height or radius
+pub const PO_NEWLINE = 3;   // a newline in the kind would forge a line
+
+fn has_newline(t: text) -> boolean {
+  t.find("\n") != null
+}
+
+pub fn part_set_open(w: World, p: PartOpen) -> integer {
+  if p.po_head < 0 || p.po_sill < 0 || p.po_spring < 0 || p.po_radius < 0.0 {
+    return PO_NEG;
+  }
+  // ⚠ A HEAD AT OR UNDER THE SILL IS NOT A SMALL OPENING, IT IS NONE — and it would
+  // reach the emitter as a band of negative height, which draws inside out rather
+  // than not at all. `po_head` of 0 is the *unstated* case and is not this.
+  if p.po_head > 0 && p.po_head <= p.po_sill { return PO_HEAD; }
+  if has_newline(p.po_kind) { return PO_NEWLINE; }
+  set_section_text(w, TAG_OPEN,
+    "head={p.po_head}\nsill={p.po_sill}\nkind={p.po_kind}\n"
+  + "spring={p.po_spring}\nradius={p.po_radius}");
+  PO_OK
+}
+
+// ⚠ `or_open` IS USABLE ON `MR_ABSENT` AS WELL AS `MR_OK` — it reads *unstated* —
+// and only `MR_MALFORMED` means *do not trust this*. `sock.loft`'s rule: a part
+// written before this section existed cuts its doorways full height and is fine,
+// while one whose `OPEN` says `head=tall` is damaged, and one code for both makes
+// the damaged one look ordinary.
+pub struct OpenRead { or_code: integer, or_open: PartOpen, or_why: text }
+
+fn open_bad(why: text) -> OpenRead {
+  OpenRead { or_code: MR_MALFORMED, or_open: PartOpen {}, or_why: why }
+}
+
+fn open_int(t: text, key: text, out: &integer, why: &text) -> boolean {
+  raw = meta_field(t, key);
+  if raw == null { return true; }
+  n = (raw ?? "") as i32?;
+  if n == null {
+    why = "{key} '{raw}' is not a number";
+    return false;
+  }
+  if (n ?? 0) < 0 {
+    why = "{key} {n} is negative";
+    return false;
+  }
+  out = n ?? 0;
+  true
+}
+
+pub fn part_open(w: World) -> OpenRead {
+  if world_section_at(w, TAG_OPEN) < 0 {
+    return OpenRead { or_code: MR_ABSENT, or_open: PartOpen {},
+                      or_why: "no OPEN section" };
+  }
+  t = section_text(w, TAG_OPEN);
+  head = 0;
+  sill = 0;
+  spring = 0;
+  why = "";
+  if !open_int(t, "head", head, why) { return open_bad(why); }
+  if !open_int(t, "sill", sill, why) { return open_bad(why); }
+  if !open_int(t, "spring", spring, why) { return open_bad(why); }
+  radius = 0.0;
+  rraw = meta_field(t, "radius");
+  if rraw != null {
+    rn = (rraw ?? "") as float?;
+    if rn == null { return open_bad("radius '{rraw}' is not a number"); }
+    if (rn ?? 0.0) < 0.0 { return open_bad("radius {rn} is negative"); }
+    radius = rn ?? 0.0;
+  }
+  if head > 0 && head <= sill {
+    return open_bad("head {head} is at or below sill {sill}, which is not an opening");
+  }
+  OpenRead { or_code: MR_OK,
+             or_open: PartOpen { po_head: head, po_sill: sill,
+                                 po_kind: meta_field(t, "kind") ?? "",
+                                 po_spring: spring, po_radius: radius },
+             or_why: "" }
+}

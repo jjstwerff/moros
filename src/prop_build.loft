@@ -431,6 +431,16 @@ fn write_frame(root: text) {
                         else { hex_editor::WALL_MAT }) as u8? ?? 0
           }).cw_code == CW_OK, "the frame's cell ({fq},0) was refused");
   }
+  // ⚠ THE HEAD, AND IT IS WHAT `A8.3` WAS ACTUALLY SHORT OF — plan 17 `A8.9`,
+  // §P9.14. Until this line `wall_up(DOOR_MAT)` was 0, the edge drew nothing, and
+  // the opening ran the full height of the wall with no lintel over it: a gap in
+  // an unfinished wall rather than a doorway. 10 of the wall's 12 units, so two
+  // units of masonry stand over the door — and the comment above that says *what
+  // it cannot yet say is a HEAD* is now out of date, deliberately left standing
+  // above so the reader can see what moved.
+  assert(part_set_open(w, PartOpen { po_head: 10, po_sill: 0,
+                                     po_kind: "flat" }) == PO_OK,
+         "the frame's opening profile was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_FITTING, pm_name: "frame",
     pm_desc: "a wall with a one-hex doorway in it, and a socket for a 1x2 leaf"
@@ -485,11 +495,13 @@ fn write_cell_leaf(root: text) {
   // `hex_mesh`'s own note says the floor was separated from the wall in the
   // RENDERER precisely so the two can be told apart in a picture.
   //
-  // ⚠ AND `up` IS DELIBERATELY UNSTATED. A leaf shorter than its opening would be
-  // right if the opening had a HEAD, and it has none — §P9.13 says so — so a
-  // short leaf here buys a hole above the door rather than a lintel. `up` waits
-  // for the opening profile; the surface is what `A8.3` was actually short of.
-  assert(part_set_wall(w, PartWall { wa_surface: "floor" }) == WA_OK,
+  // ⚠ AND `up` IS NOW STATED, WHICH IS `A8.9` ARRIVING. §P9.13 said this field
+  // would wait for the opening profile, because a leaf shorter than its opening
+  // buys a hole above the door rather than a lintel — and with `door/frame`
+  // carrying `head=10` the opening is 10 units and the leaf fills it exactly.
+  // The two numbers are the same number on purpose: a leaf that did not match its
+  // own frame's head is the one thing a picture shows and no count does.
+  assert(part_set_wall(w, PartWall { wa_up: 10, wa_surface: "floor" }) == WA_OK,
          "the leaf's wall profile was refused");
   assert(part_set_hinge(w, Hinge {
     hg_ox: 0.8660254037844386, hg_oy: 0.0, hg_oz: 0.5,
@@ -513,6 +525,17 @@ fn write_hung(root: text, open: float) {
         "the hung doorway's paving was refused");
     }
   }
+  // ⚠ THE PROFILE IS ON THE ASSEMBLY, NOT ONLY ON THE FRAME — plan 17 `A8.9`,
+  // §P9.14, and the first build got it wrong in a way only a count showed. The
+  // frame is INSTANCED here, expansion STAMPS its cells into the display world,
+  // and a stamped cell has no owner left to ask: `door/frame`'s head alone left
+  // this doorway at 108 vertices, exactly as before. The world being DRAWN owns
+  // the profile. Same numbers as the frame's on purpose — a building and the
+  // fragment it is made of that disagreed would be drawn the building's way and
+  // say nothing.
+  assert(part_set_open(w, PartOpen { po_head: 10, po_sill: 0,
+                                     po_kind: "flat" }) == PO_OK,
+         "the hung doorway's opening profile was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_HOUSE, pm_name: "hung",
     pm_desc: "a wall with a door in it, ajar — every part of it cells"
@@ -752,6 +775,14 @@ fn write_gateway(root: text) {
                         else { hex_editor::WALL_MAT }) as u8? ?? 0
           }).cw_code == CW_OK, "the gateway's cell ({gq},0) was refused");
   }
+  // ⚠ AND THE GATEWAY IS ARCHED, which is the other half of §P9.14's family with a
+  // consumer rather than a test. `opening_cuts` strikes a semicircle of the
+  // opening's own half-width above the springing, so the head narrows to the jambs
+  // and stands tallest at the crown — a gateway is where that reads, because it is
+  // two hex edges wide and an arch over a one-hex door is barely a curve.
+  assert(part_set_open(w, PartOpen { po_head: 11, po_sill: 0,
+                                     po_kind: "round", po_spring: 7 }) == PO_OK,
+         "the gateway's opening profile was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_FITTING, pm_name: "gateway",
     pm_desc: "a wall with a two-edge gateway in it, and a socket for each leaf"
@@ -785,6 +816,10 @@ fn write_gated(root: text, open: float) {
         "the gated wall's paving was refused");
     }
   }
+  // The arch, on the assembly, for the same reason as `hung` above.
+  assert(part_set_open(w, PartOpen { po_head: 11, po_sill: 0,
+                                     po_kind: "round", po_spring: 7 }) == PO_OK,
+         "the gated gateway's opening profile was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_HOUSE, pm_name: "gated",
     pm_desc: "a gateway with both leaves hung and swung apart — all of it cells"

@@ -1256,6 +1256,7 @@ because a wide door is where cells have something to say. The full argument is
 
 | ✅ `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | **DONE, AND THE ROW'S SECOND HALF WAS WRITTEN FROM A SUPERSEDED SECTION** — §P9.11 replaces *matches the extents* with **containment**. `hex_part::skin_covers` + `part_box` (10 tests, three sabotages seen red), wired into the `8:` save refusal; the export applies `A8.2b`'s ratio and states the extent and pivot. `part_export` 11 checks | S |
 | ✅ `A8.8` | **A part says how tall its walls are and what they are made of** — a `WALL` section, `up=` and `surface=`, and the mesher honours it (§P9.13). | **DONE.** `A8.3` photographed as a hole and the measurement said why: the leaf **is** drawn, in colour `0.55,0.52,0.46` at `y 0.00..3.25` — the `wall` surface byte for byte, at one `WALL_UP`. `door/leaf` now states `surface=floor` and reads as timber. `probe/a83/leaf_visible/run.sh` is seven controls; `bake` gained `BK_WALL` | M |
+| ✅ `A8.9` | **The opening is a wall with a hole in it, and the hole has a head** — an `OPEN` section, and the per-edge path asks `opening_cuts` (§P9.14). | **DONE.** A `DOOR_MAT` edge used to draw NOTHING, so a lintel was impossible by construction; it now draws the wall above the head and below the sill. `door/frame`/`door/hung` carry a flat head at 10, `door/gateway`/`door/gated` a round one sprung at 7, and `A8.8`'s `up` gets its consumer at last. `bake` gained `BK_OPEN` | M |
 
 ### What `A8.7` turned up — ⚠ **the plan's own row quoted a rule the design had already replaced**
 
@@ -1411,6 +1412,44 @@ rebuild that meshes a limb runs in the tick loop *after* the arrivals stop.
 turned 20 swung 0.125; a 1x2 leaf is refused by class (4)`, `part_limb` 17 checks,
 **two sabotages seen red** (both leaves on one hinge → the span row fails at 1.12; the class
 refusal is the content's own assertion). Picture: `shots/a84-gate-{w,sw,s}.png`.
+
+### What `A8.9` turned up — ⚠ **the profile was on the wrong part, and only a count showed it**
+
+**Built:** `OPEN` — `head`, `sill`, `kind` (by name), `spring`, `radius` — and the per-edge panel
+path now asks `hex_editor::opening_cuts`, the same call `emit_run_wall` has asked since `A8`.
+⚠ **Almost none of the geometry is new**: five head profiles, the springing and the striking radius
+were already in that function. What was missing is that **a part has no wall RUNS**, so it takes
+the per-edge fallback, and that path never asked.
+
+⚠ **THE REFRAMING IS THE WHOLE STEP.** `wall_up(DOOR_MAT)` is 0, so a doorway edge drew *nothing* —
+the opening was the ABSENCE of a wall, and an absence cannot carry a lintel. Now the edge draws the
+wall **above the head and below the sill** and the hole is what is left between them, which is
+§P9.2's own sentence — *the opening is the wall* — arriving as geometry.
+
+⚠ **AND THE FIRST BUILD PUT IT ON THE WRONG PART.** With the profile on `door/frame`, the frame
+opened alone went 108 → **300** and the composed `door/hung` stayed at **108**. `door/hung`
+INSTANCES the frame, expansion STAMPS its cells, and a stamped cell has no owner left to ask. The
+display world is the edited part's own (`part_disp = wld`), so it carries the ROOT's sections —
+which turned out to be the right *grain* rather than a workaround: a house has many doorways from
+one frame part and one style, and the frame is reusable across buildings that cut their heads
+differently. **A building states how its doorways are cut; a fragment states how its own are.**
+⚠ The picture said *nothing changed*; the count said *300 here and 108 there*, which is what
+located it.
+
+⚠ **THE CONSEQUENCE IS A RULE WITH A DRIFT IN IT**, written down rather than discovered: a composed
+part takes the root's profile and a stamped child's is never consulted, so a `round` frame inside a
+`flat` house is drawn flat and says nothing. `bake` refuses that pair — `BK_OPEN`, `BK_WALL`'s shape
+one section along — and the display path deliberately does not, because refusing would refuse the
+ordinary case of a fragment used in a building that overrides it.
+
+⚠ **A COUNT CANNOT SEE A CURVE.** A round head and a flat one emit the same band per slice, so no
+number in the gate separates an arch from a lintel — `door/gated`'s 312 proves both edges are cut
+and subdivided and nothing more. The arch is a PICTURE claim (`shots/a89-arch-{s,sw}.png`), and the
+gate says so at the line where it is made.
+
+⚠ **AND A CURVED KIND WITH NO SPRINGING IS A FLAT HEAD WEARING ITS NAME.** `opening_cuts` only
+strikes an arc when `op_spring >= 0`, so such a part saves clean, draws square, and leaves its
+author hunting a renderer bug. Refused on save beside the unknown-kind check.
 
 ### What `A8.8` turned up — ⚠ **the obvious mesh selection would have drawn nothing**
 
