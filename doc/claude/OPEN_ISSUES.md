@@ -523,11 +523,20 @@ its contacts can never coincide.
 
 Two clauses in `lib/moros_sim/tests/hitch.loft`, both seen red against the old solve.
 
-### Note: `part_limb` fails under full-suite contention and passes 4/4 alone
+### Note: `part_limb` fails when the BOX is loaded, not when the suite is — `GATE_JOBS=2` settles it
 
-Seen twice on 2026-08-08 in `make gate` at `GATE_JOBS=16`, including in a run **before** any of
-this session's changes, and green 4/4 under `make gate-rep G=part_limb`. Recorded so the next
-person does not attribute it to whatever they just changed. Not diagnosed.
+Seen repeatedly on 2026-08-08 in `make gate` at `GATE_JOBS=16`, including in a run **before** any
+of that session's changes, and green 3–4/4 every time under `make gate-rep G=part_limb`.
+**Attributed**: `uptime` during the failures read a load average of **26–52**, and the load was
+other trees' `rustc` — `/home/jurjens/workspace/loft` and `loft2` building the compiler, nothing
+of ours. The same full suite at **`GATE_JOBS=2` came back 44 PASS, rc=0, zero failures** on the
+same loaded box.
+
+⚠ **So a red `part_limb` is a statement about the machine, and `cellFloats: 0` is what it looks
+like** — the gate getting no data at all rather than wrong data. Two things follow: do not
+attribute it to whatever you just changed, and **check `uptime` before believing any full-suite
+red on this box**, because three agents share it. `GATE_JOBS=2` is the way to get a trustworthy
+answer while someone else is compiling.
 
 ### ✅ CLOSED 2026-08-08 — `cellar.keys`'s soffit split keeps its knife edge, on purpose
 
@@ -595,8 +604,14 @@ A verb that silently shrank its own set would report a clean number about the wr
 the band to read **0** — an instrument never seen empty cannot report a ceiling — and the
 expected count sabotaged to 305, and the band moved to an empty `−2.0..−1.9`, both fail the gate.
 
-The two `meshy` rows are kept as a second, independent reading. **If they break again, the
-`meshr` row is the one carrying the claim and the pair can go.**
+✅ **AND THE TWO `meshy` ROWS ARE GONE.** They read 310/338, which are not fan counts, so they
+claimed *less* than what remains — `mesh soffit 648` and `meshr … 306` pin **both** populations
+exactly, the undersides falling out as `648 − 306 = 342`, which is 19 fans. Keeping a brittle
+world-y pair as a "second opinion" would only have meant a row that breaks on the next terrain
+change while proving nothing the other two do not. ⚠ The `meshy` **verb** stays in
+`tools/script.mjs` with no caller, like `turn` and `hold` — it is a verb vocabulary, not an API
+— and it now says at its definition that a world-y band is the wrong instrument whenever the two
+populations share a moving datum.
 
 ### Was: a raise marks fewer chunks than it writes, and the client keeps the stale ground
 

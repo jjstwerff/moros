@@ -22,11 +22,19 @@
 //   `mesh soffit`     what reached the surface. 0 before anything is dug — the row
 //                     that catches the ground emitting an underside everywhere, for
 //                     a face nothing can ever see. Blind to WHERE those faces are.
-//   `meshy soffit`    the same count inside a band of world y, and the reason that
-//                     command exists. Digging a cellar puts 342 vertices into
-//                     `soffit` whether or not a ceiling is drawn — the cellar
-//                     FLOOR's own underside, same surface, same colour. Seen red:
-//                     342, every one of them 3.0 wu BELOW the ground.
+//   `meshr soffit`    the same count inside a band of height ABOVE THE GROUND, and
+//                     the reason that command exists. Digging a cellar puts 342
+//                     vertices into `soffit` whether or not a ceiling is drawn — the
+//                     cellar FLOOR's own underside, same surface, same colour. Seen
+//                     red: 342, every one of them 3.0 wu BELOW the ground.
+//                     ⚠ IT WAS A WORLD-y BAND (`meshy`) AND THAT COULD NOT HOLD.
+//                     Both populations are a fixed distance UNDER the ground, so
+//                     both ride the terrain and a fixed y smears them together the
+//                     moment the plateau is not flat — which it stopped being when
+//                     a window-base read was fixed. Banding on height above the
+//                     ground makes the terrain drop out: 306, exactly 17 fans, on
+//                     the bumpy fixture. The `meshy` rows are gone; they had fallen
+//                     to 310/338, which are not fan counts.
 //   `feet`            where the walker is STANDING, four stations one stride apart.
 //                     The claim the whole feature exists for, and neither count can
 //                     stand in for it: the store held a perfect stair the walker

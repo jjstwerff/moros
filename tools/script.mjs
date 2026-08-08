@@ -410,6 +410,14 @@ const surfaceVerts = (name) => {
 };
 // The same count, restricted to a band of world y. `[ylo, yhi)` — half-open, so two
 // adjacent bands partition the surface and a vertex is never counted twice.
+//
+// ⚠ NO SCRIPT USES THIS TODAY, and that is said here rather than left to be noticed.
+// Its one caller was `cellar.keys`, which now bands on height above the GROUND
+// (`meshr` below) because both of the things it separates ride the terrain. It is
+// kept for the same reason `turn` and `hold` are kept with no callers — this is a
+// verb vocabulary, not an API — but a world-y band is the wrong instrument whenever
+// the two populations share a moving datum, which is worth reading before reaching
+// for it again.
 const surfaceVertsY = (name, ylo, yhi) => {
   const k = SURF.indexOf(name);
   if (k < 0) return -1;

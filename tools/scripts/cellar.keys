@@ -122,81 +122,51 @@ mesh floor 564 564
 
 echo --- and the room's own floor is a storey under everything else
 # The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
-# underside is `FLOOR_THICK` below its own layer. 1.75 is the middle of a measured
-# gap — histogrammed here, the lower set runs out at 1.5 and the upper starts at 2.0,
-# so the boundary has a full height unit of margin either side.
-#
-# ⚠ THE UPPER BAND IS TWO POPULATIONS AND SAYS SO: 306 ceilings plus the two TREADS'
-# own undersides, because a tread is a cellar-layer cell and carries one like any
-# other. A first version tried to separate those two at 3.5 and could not — the
-# plateau is not perfectly flat, so the ceilings scatter from 2.0 to 4.0 and swallow
-# the treads. What pins the stair's rise instead is the `feet` rows below, which
-# measure it where it is actually load-bearing: under the walker.
-# ⚠ THE CLEAN 306/342 SPLIT WAS RESTING ON THE PLATEAU, AND THE PLATEAU WAS A BUG.
-# 306 was 17 fans of 18 and 342 was those 17 ceilings plus the two treads' own
-# undersides — an exact structural reading, and it needed the two populations to sit
-# in tight clusters with a gap between them. They did because a large part of the
-# ground under the disc was FLAT at exactly one height: an unwritten cell read back
-# its chunk's window base, so every cell the brush's falloff rounded to zero sat at
-# that one constant. With that fixed the ground under the disc is the dome's real
-# curve, the ceilings follow it, and the two populations interleave.
-#
-# Histogrammed here, `meshy soffit -100 T` against T — there is no gap left to bisect:
-#
-#   T      0.75  1.0  1.125  1.25  1.375  1.5  1.625  1.75  1.875  2.0  2.25
-#   count   198  256   292    292   310   310   314    314   332    332  352
-#
-# The 4-vertex step from 310 to 314 is the tell: fans arrive 18 at a time, so a step
-# of 4 is one fan STRADDLING the boundary. No threshold reads a multiple of 18.
-#
-# ⚠ SO THESE TWO ROWS NO LONGER COUNT FANS, AND SAY SO RATHER THAN PRETENDING TO.
-# What they still catch is the defect they were written for — every soffit vertex
-# down at the cellar floor with nothing overhead, which would empty the upper band —
-# and the total above (`mesh soffit 648`) still pins 36 fans exactly.
-#
-# ⚠ AND LEVELLING THE DISC DOES NOT BRING THE FAN COUNT BACK. That was the obvious
-# repair and it was BUILT AND MEASURED before being backed out; do not re-propose it
-# without reading this. A teleport sweep of the 19 dig cells, three passes, does
-# flatten them — from a six-unit spread (14..19) to all exactly 17 — and it widens
-# this boundary six-fold, 310 holding over `1.0..1.75` instead of `1.375..1.5`. But
-# the count stays 310:
-#
-#   · THE TREADS ARE WHY, AND NO LEVELLING REACHES THEM. A tread is a STEP, so its
-#     own fan has corners at different heights by construction and four of its
-#     vertices hang below the split whatever the ground under it does. The exact
-#     306/342 was never a property of flat ground — it needed the treads' fans to
-#     sit wholly above the boundary, which the buggy geometry gave BY LUCK.
-#   · FLATTENING WIDER IS REFUTED. A ground fan's corners average THREE cells, so
-#     the disc's outer ring is pulled by terrain outside it — and levelling radius 3
-#     changes what the gesture DIGS (`mesh soffit` 648 → 666) and destroys the
-#     plateau outright. A fixture cannot flatten past the dig without changing it.
-#
-# It was backed out because the price was four other rows moving, two of them to
-# numbers nobody could derive (`mesh floor` 564 → 438, `mesh wall` 174 → 162) — a
-# poor trade for margin on a boundary that is not a fan count either way. The
-# knife edge is deliberate. OPEN_ISSUES carries the measurements.
-meshy soffit -100 1.5 310 310
-meshy soffit 1.5 100 338 338
-
-# ⚠ AND HERE IS THE EXACT READING, BACK — by changing the DATUM rather than the
-# fixture. `meshr` bands on height above the ground at each vertex's own x,z, so a
-# ceiling and the terrain it rides move together and the terrain drops out of the
-# answer. Both things this surface carries are a fixed distance under the ground;
-# that is precisely why world y could not separate them and this can.
+# underside is `SLAB_THICK` below its own layer. So the surface carries two things a
+# fixed distance apart, and ONE ROW SEPARATES THEM — banded on height above the
+# ground at each vertex's own x,z rather than on world y:
 #
 #   306 = 17 fans of 18, each exactly SLAB_THICK under its own ground
 #   SLAB_THICK 2 units x HEIGHT_SCALE 0.25 = 0.50 wu, which is where they measure
 #
-# ⚠ IT IS THE SAME 306 THE BUMPY PLATEAU LOST, and it is derived now rather than
-# lucky: it reads 306 across the whole band -0.75..-0.45, so it is a plateau 0.3 wu
-# wide rather than the one-step knife edge above. The two `meshy` rows are kept as a
-# second, independent reading — ⚠ but if they ever break again, THIS is the row that
-# carries the claim and that pair can go.
+# ⚠ AND WITH `mesh soffit 648` ABOVE, BOTH POPULATIONS ARE PINNED EXACTLY: the
+# undersides are 648 − 306 = 342, which is 19 fans. That is why the two `meshy` rows
+# that used to sit here are GONE rather than kept as a second opinion — they read
+# 310/338, which are not fan counts at all, so they claimed less than these two rows
+# already prove and would have broken again on any terrain change.
+#
+# ⚠ THE HISTORY IS WHY THIS ROW IS NOT A `meshy`, and it is worth the lines because
+# the obvious repair is the wrong one:
+#
+#   · 306/342 USED TO COME OUT OF A WORLD-y BAND AT 1.75, and that was resting on a
+#     BUG. An unwritten cell read back its chunk's window base, so every cell the
+#     raise brush's falloff rounded to zero sat at one constant height and the two
+#     populations clustered. With that fixed the disc is the dome's real curve, they
+#     interleave, and no threshold in world y reads a multiple of 18.
+#   · LEVELLING THE FIXTURE WAS BUILT AND BACKED OUT. A teleport sweep of the 19 dig
+#     cells, three passes, does flatten them (a six-unit spread, 14..19, to all
+#     exactly 17) and widens a world-y boundary six-fold — and the count still is not
+#     a fan count. THE TREADS ARE WHY: a tread is a STEP, so its own fan has corners
+#     at different heights by construction and four of its vertices hang below any
+#     world-y split whatever the ground under them does.
+#   · FLATTENING WIDER IS REFUTED OUTRIGHT. A ground fan's corners average THREE
+#     cells, so the disc's outer ring is pulled by terrain outside it — and levelling
+#     radius 3 changes what the gesture DIGS (`mesh soffit` 648 → 666) and destroys
+#     the plateau. A fixture cannot flatten past the dig without changing the dig.
+#
+# The datum was the problem, not the terrain. `meshr` measures against the datum, so
+# it reads 306 on the BUMPY fixture, unchanged — across the whole band -0.75..-0.45,
+# and widening to -1.0..-0.45 adds exactly 12, so the population is localised and not
+# a match-anything. OPEN_ISSUES carries the measurements.
 #
 # ⚠ AND THE 12 IT REPORTS AS "OVER OPEN GROUND" ARE NOT A ROUNDING ERROR — they are
 # the stairwell. A vertex over a cell whose ground has been opened has no datum at
-# all, so it is counted by neither band and said out loud instead. 306 + 314 + 16
-# under the ground, plus those 12, is the 648 above.
+# all, so it is counted by no band and said out loud instead: 306 + 314 + 16 under
+# the ground, plus those 12, is the 648 above. A verb that silently dropped them
+# would report a clean number about a set it had quietly shrunk.
+#
+# ⚠ ITS CONTROL IS THE `meshr … 0 0` ROW BEFORE THE DIG. A band never seen empty
+# cannot be trusted to report a ceiling.
 meshr soffit -0.6 -0.4 306 306
 
 echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.

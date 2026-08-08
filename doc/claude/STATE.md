@@ -93,8 +93,17 @@ fixed distance under it, which is why world y could never separate them and this
 306 is derived, not lucky (`SLAB_THICK` 2 × `HEIGHT_SCALE` 0.25 = 0.50 wu). ⚠ **It reports the
 12 vertices over the OPENED stairwell separately** instead of dropping them, because they have
 no datum; and it was seen red three ways first — a pre-dig baseline requiring 0, the count
-sabotaged, and the band moved somewhere empty. **The lesson generalises: when a measurement will
-not separate two things, suspect the DATUM before the fixture.**
+sabotaged, and the band moved somewhere empty. ✅ **The two `meshy` rows are dropped**: they read
+310/338, which are not fan counts, so they claimed *less* than `mesh soffit 648` and `meshr 306`
+already prove together (the undersides fall out as 648 − 306 = 342, 19 fans). **The lesson
+generalises: when a measurement will not separate two things, suspect the DATUM before the
+fixture.**
+
+⚠ **AND A RED `part_limb` IS A STATEMENT ABOUT THE BOX.** It failed repeatedly at `GATE_JOBS=16`
+with `cellFloats: 0` — no data at all — while `uptime` read a load average of **26–52** from
+*other trees'* `rustc` (`../loft`, `../loft2` building the compiler). The same suite at
+**`GATE_JOBS=2` is 44 PASS, rc=0** on the same loaded box. **Check `uptime` before believing a
+full-suite red here**; three agents share this machine.
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
