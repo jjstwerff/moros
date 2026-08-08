@@ -49,7 +49,12 @@ const report = (label) => {
   }
   const rows = [...by.entries()].sort((a, b) => b[1] - a[1])
     .map(([c, n]) => `${c}=${n}`).join('  ');
-  console.log(`${label.padEnd(26)} ${rows}`);
+  // ⚠ THE CART'S OWN IDS, NAMED — `A8.9b`. 0-4 are the figure, 5-7 the cart, 8-15
+  // the limbs, and a colour cannot separate the cart's brown from the figure's:
+  // both sit next to `figure` in chromaticity, which is the whole reason the cart
+  // was read as part geometry twice. The id is the discriminator, not the pixel.
+  const cart = [5, 6, 7].filter((i) => held.has(i));
+  console.log(`${label.padEnd(26)} cart ids ${cart.length ? cart.join(',') : 'NONE'}   ${rows}`);
 };
 
 await new Promise((r) => ws.addEventListener('open', r));

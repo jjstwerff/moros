@@ -7,9 +7,9 @@
 # says how tall its walls are and what they are made of) and §P9.14 (the opening is
 # a wall with a hole in it, and the hole has a head).
 #
-#   probe/a83/leaf_visible/run.sh        # exit 0 = all nine behaved as on 2026-08-08
+#   probe/a83/leaf_visible/run.sh        # exit 0 = all eleven behaved as on 2026-08-08
 #
-# ⚠ THIS IS THE WIRE HALF ONLY, and that is deliberate rather than a gap: the nine
+# ⚠ THIS IS THE WIRE HALF ONLY, and that is deliberate rather than a gap: the eleven
 # claims below are exact integers and need no browser. The PICTURE half is
 # `leaf_field.keys` and `early_late.keys` beside this file, `tools/scripts/doorway.keys`
 # is the acceptance shot, and `shots/a89-arch-{s,sw}.png` is the arch — ⚠ which a
@@ -134,13 +134,34 @@ grep -q '^door/leaf .*NONE' "$TMP/wire.out" \
   || say FAIL "door/leaf filled the limb block — the probe cannot attribute what it sees"
 
 echo
+echo "── the cart is world dressing, and does not stand in a part ──"
+start ""
+node probe/a83/leaf_visible/held.mjs "$PORT" door/frame | tee "$TMP/cart.out"
+stop
+
+# 7/8. HIDDEN IN A PART, AND BACK IN THE WORLD — `A8.9b`, and BOTH halves matter.
+#    Part open empties eight registries because *a part has no dressing of its own*;
+#    the cart is the ninth. ⚠ The restore is the control: without it "hidden" is
+#    satisfied by a server that never sends the cart at all, and the fault would be
+#    a cart nobody ever sees again after the first `44:`.
+#    ⚠ AND THE TEST IS BY ID, NOT BY COLOUR. The cart's brown sits next to the
+#    figure's in chromaticity — which is exactly why it was read as part geometry
+#    twice before anyone counted its wheels.
+grep -q "under door/frame .*cart ids NONE" "$TMP/cart.out" \
+  && say PASS "no cart stands in an open part" \
+  || say FAIL "the cart is still drawn in part mode — read cart.out"
+grep -q "back in the world .*cart ids 5,6,7" "$TMP/cart.out" \
+  && say PASS "and it is back the moment the world is" \
+  || say FAIL "the cart did not come back on close — read cart.out"
+
+echo
 echo "── a variant library: door/hung states NO opening profile ──"
 variant no-open
 start "$TMP/no-open"
 node probe/a83/leaf_visible/panels.mjs "$PORT" door/hung | tee "$TMP/no-open.out"
 stop
 
-# 7. THE HEAD IS THE PROFILE'S DOING AND NOTHING ELSE'S. Take the `OPEN` section
+# 9. THE HEAD IS THE PROFILE'S DOING AND NOTHING ELSE'S. Take the `OPEN` section
 #    away and the composed doorway drops from 204 straight back to 108 — the
 #    pre-`A8.9` number, an opening running the full height of its wall. ⚠ Without
 #    this, claim 2 is satisfied by any change that happened to add geometry.
@@ -155,7 +176,7 @@ start "$TMP/frame-wall"
 node probe/a83/leaf_visible/panels.mjs "$PORT" door/frame | tee "$TMP/frame-wall.out"
 stop
 
-# 8. THE SURFACE ROUTING IS WHOLESALE — `A8.8`. Every panel the frame draws moves to
+# 10/11. THE SURFACE ROUTING IS WHOLESALE — `A8.8`. Every panel the frame draws moves to
 #    dressed stone and none is left behind in the wall surface. ⚠ The COUNT moves too
 #    and that is not a regression: `up=6` is below the `head=10` this frame carries,
 #    so the head band is empty and only the skirt is drawn — the wall height and the
@@ -169,7 +190,7 @@ grep -q '^door/frame .*0.55,0.52,0.46' "$TMP/frame-wall.out" \
 
 echo
 if [ "$fails" -eq 0 ]; then
-  echo "all nine behaved as on 2026-08-08"
+  echo "all eleven behaved as on 2026-08-08"
   exit 0
 fi
 echo "$fails changed — read probe/a83/leaf_visible/README.md before assuming a regression"

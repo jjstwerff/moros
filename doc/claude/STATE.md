@@ -456,6 +456,14 @@ file: that block is the work, and the durable sentences go to § *What bites*, n
 
 ### ⚠ What bites regardless of which step you pick up
 
+✅ **AND THE CART NO LONGER STANDS IN AN OPEN PART (2026-08-08).** Part open already empties eight
+registries because *a part has no runs, roofs, leaves or dressing of its own*; a cart is dressing,
+and it was the ninth thing that argument covers. It is `X:`-ed on open and re-sent on close, and a
+client that joins **while** a part is open is not given one either. ⚠ **It had occluded the subject
+in every part picture in this tree, and was read as part geometry twice in one session** before
+anyone zoomed in far enough to count its wheels. Gated by id, not by colour — the cart's brown sits
+next to the figure's in chromaticity, which is why no pixel test could have told them apart.
+
 ✅ **PART MODE LEFT THE PREVIOUS PART'S CHUNKS ON SCREEN — FIXED 2026-08-08, AND IT WAS THE
 CLIENT.** Every guess about the server was wrong: both `44:` forms already mark every loaded chunk
 dirty, and `probe/a83/leaf_visible/held.mjs` proved the **wire is correct** — under `door/leaf` the

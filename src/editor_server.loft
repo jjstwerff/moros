@@ -710,6 +710,34 @@ const PART_LEG_R = 2;
 const PART_ARM_L = 3;
 const PART_ARM_R = 4;
 
+// THE CART'S THREE MESHES AS WIRE LINES — plan 17 `A8.9b`.
+//
+// ⚠ ONE BUILDER, THREE CALLERS: the joining client, and part mode's close. It was
+// written inline in `MSG_READY` and the moment part mode had to put the cart BACK
+// there would have been a second copy of the geometry — two answers able to
+// disagree about what a cart is, which is the trap `part_body_meshes` was shared
+// with the thumbnail to avoid.
+fn cart_mesh_lines() -> vector<text> {
+  cbm = mesh("cart");
+  emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+  cwm = mesh("wheel");
+  emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
+                          vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
+  ["M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}",
+   "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}",
+   "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}"]
+}
+
+// ⚠ `X:`, NOT AN EMPTY `M:` — plan 17 `A8.9b`. Both work now that the client drops
+// on an empty vertex list, but `X:` is the message that MEANS retire, it worked
+// before that fix, and a reader of the wire can tell "this went away" from "this
+// was rebuilt to nothing" without knowing the client's parsing rules.
+fn cart_hide(srv: Server) {
+  srv.broadcast("X:{CART_BODY}");
+  srv.broadcast("X:{CART_WHEEL_L}");
+  srv.broadcast("X:{CART_WHEEL_R}");
+}
+
 // ── AN EXPANSION'S MESHES, DRAWN — plan 17 `A5.2`, the renderer's half ───────
 //
 // ⚠ THE EDITOR DISCARDED `ex_meshes` ENTIRELY UNTIL NOW, which `A7.3f3` measured
@@ -5797,15 +5825,15 @@ fn main() {
           // than in the connect handler — CLAUDE.md records a re-send that fired
           // before the client had joined the list and reached nobody.
           disp_tau = -1;
-          cbm = mesh("cart");
-          emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
-          srv.send_to(ev.cid, "M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}");
-          cwm = mesh("wheel");
-          emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
-                                  vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
-          srv.send_to(ev.cid, "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
-          srv.send_to(ev.cid, "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}");
-          cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, 0.0, wld);
+          // ⚠ AND A CLIENT THAT JOINS WHILE A PART IS OPEN MUST NOT GET THE CART
+          // EITHER — `A8.9b`. Sending it here and hiding it only at `44:` would
+          // put the world's cart in the middle of whatever part was already
+          // being edited, for that client alone: the exact per-client skew
+          // CLAUDE.md records for a re-send that fired at the wrong moment.
+          if !in_part {
+            for cml in cart_mesh_lines() { srv.send_to(ev.cid, cml); }
+            cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, 0.0, wld);
+          }
           println("editor: client {ev.cid} — figure sent");
         } else if ev.msg_id == MSG_CAM {
           ci = ev.payload.find(",");
@@ -6421,6 +6449,11 @@ fn main() {
               // the same routine: everything visible is derived from the store, and
               // the store just became a different one.
               for pcd in loaded { mark_dirty_id(dirty, pcd); }
+              // The world is back, so its dressing is too — meshes first, then the
+              // pose, because a `T:` for a mesh the client does not hold is dropped
+              // without a word and would leave the cart stuck at the origin.
+              for cml in cart_mesh_lines() { srv.broadcast(cml); }
+              cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, 0.0, wld);
               vy = 0.0;
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
@@ -6496,6 +6529,14 @@ fn main() {
               py = ground_under(wld, px, pz, 0.0);
               vy = 0.0;
               for pod in loaded { mark_dirty_id(dirty, pod); }
+              // ⚠ AND THE CART GOES WITH THE WORLD — plan 17 `A8.9b`. The eight
+              // registries above are emptied because *a part has no runs, roofs,
+              // leaves or dressing of its own*; a cart is dressing, and it was the
+              // ninth thing that argument covers. It stood in the middle of every
+              // part photographed in this tree, occluding the subject — and it was
+              // read as part geometry twice in one session before anyone zoomed in
+              // far enough to count its wheels.
+              cart_hide(srv);
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
                                      levelling, roading, tracing));
