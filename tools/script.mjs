@@ -37,6 +37,11 @@
 //                           of these, and `cam` cannot say it
 //   meshy <surf> <y0> <y1> [lo hi]   the same, inside a band of world y — for when
 //                           one surface carries two things of one colour
+//   meshr <surf> <r0> <r1> [lo hi]   the same, inside a band of height ABOVE THE
+//                           GROUND at each vertex's own x,z — for when both things
+//                           ride the terrain, so world y cannot separate them.
+//                           Reports how many sat over OPEN ground, which have no
+//                           datum and are counted by neither band
 import http from 'node:http';
 import fs from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -348,6 +353,8 @@ const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame'
 const meshLen = new Map();
 // Every vertex's y, per mesh — one float of the six, so a sixth of the traffic kept.
 const meshY = new Map();
+const meshX = new Map();
+const meshZ = new Map();
 ws.addEventListener('message', (ev) => {
   const s = ev.data, i = s.indexOf(':'), t = s.slice(0, i), b = s.slice(i + 1);
   if (t === 'S') status.push(b);
@@ -370,8 +377,23 @@ ws.addEventListener('message', (ev) => {
     const ys = new Array(f.length / 6);
     for (let v = 0; v < ys.length; v += 1) ys[v] = Number(f[v * 6 + 1]);
     meshY.set(id, ys);
+    // ⚠ AND x AND z, WHICH `meshr` NEEDS AND NOTHING ELSE DOES. Three floats of six
+    // instead of one — still nothing off the wire, which is unchanged; this is what
+    // is KEPT. A band on world y cannot separate two things whose separation is
+    // vertical but whose datum moves, and the datum here is the ground itself.
+    const xs = new Array(f.length / 6);
+    const zs = new Array(f.length / 6);
+    for (let v = 0; v < xs.length; v += 1) {
+      xs[v] = Number(f[v * 6]);
+      zs[v] = Number(f[v * 6 + 2]);
+    }
+    meshX.set(id, xs);
+    meshZ.set(id, zs);
   }
-  if (t === 'X') { meshLen.delete(Number(b)); meshY.delete(Number(b)); }
+  if (t === 'X') {
+    meshLen.delete(Number(b)); meshY.delete(Number(b));
+    meshX.delete(Number(b)); meshZ.delete(Number(b));
+  }
 });
 // Vertices in one surface, summed over every loaded chunk. ⚠ A COUNT OF WHAT WAS
 // EMITTED, not of what a producer says it emitted — the same rule the gates already
@@ -398,6 +420,66 @@ const surfaceVertsY = (name, ylo, yhi) => {
     for (const y of ys) if (y >= ylo && y < yhi) n += 1;
   }
   return n;
+};
+// ── `meshr` — a band on height ABOVE THE GROUND AT THE SAME POINT ────────────
+//
+// ⚠ WHY A SECOND BANDING VERB EXISTS. `meshy` bands on world y, so it can only
+// separate two populations whose datum does not move. The cellar's do not qualify:
+// a ceiling sits `FLOOR_THICK` under the ground and a cellar floor's underside a
+// storey below that, so the two are a fixed distance apart and BOTH ride the
+// terrain. Over a plateau that is not flat they smear across each other, and no
+// threshold in world y reads a whole number of fans — measured on `cellar.keys`,
+// where the split fell from an exact 306/342 to 310/338 the moment the ground under
+// the disc stopped being artificially flat.
+//
+// ⚠ AND LEVELLING THE FIXTURE IS NOT THE FIX — that was built and backed out. The
+// datum is the problem, not the terrain, so this measures against the datum.
+//
+// The ground's own vertices are the datum, and they are already on the wire: an
+// underside fan is emitted at the SAME (x, z) as the ground fan above it, because
+// both are the same cell's corners. So no geometry is needed — just the ground's y
+// at that exact point.
+const GKEY = (x, z) => `${Math.round(x * 1e4)},${Math.round(z * 1e4)}`;
+const groundMap = () => {
+  const k = SURF.indexOf('ground');
+  const m = new Map();
+  for (const [id, ys] of meshY) {
+    if (id <= 15) continue;
+    if ((id - 16) % SURFACES !== k) continue;
+    const xs = meshX.get(id), zs = meshZ.get(id);
+    // ⚠ THE HIGHEST GROUND AT A SHARED CORNER, not the first seen. A corner belongs
+    // to three cells and arrives once per chunk that draws it; taking whichever came
+    // last would make the answer depend on chunk order.
+    for (let v = 0; v < ys.length; v += 1) {
+      const key = GKEY(xs[v], zs[v]);
+      const prev = m.get(key);
+      if (prev === undefined || ys[v] > prev) m.set(key, ys[v]);
+    }
+  }
+  return m;
+};
+// ⚠ IT RETURNS THE UNMATCHED COUNT TOO, AND THAT IS NOT OPTIONAL. A vertex over a
+// point where the ground was OPENED — a stairwell — has no datum, and silently
+// dropping it would let this verb report a clean number about a set it had quietly
+// shrunk. The caller prints it, so a lookup that stops matching is visible as a
+// number rather than as a wrong count.
+const surfaceVertsR = (name, rlo, rhi) => {
+  const k = SURF.indexOf(name);
+  if (k < 0) return { n: -1, miss: -1 };
+  const g = groundMap();
+  let n = 0, miss = 0;
+  for (const [id, ys] of meshY) {
+    if (id <= 15) continue;
+    if ((id - 16) % SURFACES !== k) continue;
+    const xs = meshX.get(id), zs = meshZ.get(id);
+    for (let v = 0; v < ys.length; v += 1) {
+      const gy = g.get(GKEY(xs[v], zs[v]));
+      if (gy === undefined) { miss += 1; continue; }
+      const r = ys[v] - gy;
+      if (r >= rlo && r < rhi) n += 1;
+    }
+  }
+  return { n, miss };
 };
 await new Promise((r) => ws.addEventListener('open', r));
 ws.send('1:');
@@ -1028,6 +1110,21 @@ for (const raw of lines) {
       } else verdict = ' PASS';
     }
     console.log(`  meshy ${name} y ${ylo}..${yhi} = ${n} vertices${verdict}`);
+  } else if (cmd === 'meshr') {
+    // `meshr <surface> <rlo> <rhi> [lo hi]` — the same count, banded on height
+    // ABOVE THE GROUND at each vertex's own (x, z) rather than on world y.
+    const name = rest[0], rlo = Number(rest[1]), rhi = Number(rest[2]);
+    const { n, miss } = surfaceVertsR(name, rlo, rhi);
+    let verdict = '';
+    if (rest[3] !== undefined) {
+      const lo = Number(rest[3]), hi = Number(rest[4]);
+      if (n < lo || n > hi) {
+        verdict = ` FAIL ${name} at ${rlo}..${rhi} above ground is ${n}, outside ${lo}..${hi}`;
+        frameFails += 1;
+      } else verdict = ' PASS';
+    }
+    console.log(`  meshr ${name} r ${rlo}..${rhi} = ${n} vertices `
+              + `(${miss} over open ground)${verdict}`);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.

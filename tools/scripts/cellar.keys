@@ -34,6 +34,11 @@ step 10
 # in the world for a face nothing can ever see, and this row is what catches that.
 echo --- BASELINE: nothing dug anywhere, so the ground owes no underside
 mesh soffit 0 0
+# ⚠ AND THE SAME CONTROL FOR `meshr` BELOW, which is what makes its 306 mean
+# something. A band that has never been seen empty cannot be trusted to report a
+# ceiling: this is the row that says the instrument answers 0 when there is nothing
+# there, taken before anything is dug.
+meshr soffit -0.6 -0.4 0 0
 # ⚠ AND NO WALLS EITHER, which is the control for the room wall below: it is owed
 # only where a void has earth beside it, and open country is neither.
 mesh wall 0 0
@@ -172,6 +177,27 @@ echo --- and the room's own floor is a storey under everything else
 # knife edge is deliberate. OPEN_ISSUES carries the measurements.
 meshy soffit -100 1.5 310 310
 meshy soffit 1.5 100 338 338
+
+# ⚠ AND HERE IS THE EXACT READING, BACK — by changing the DATUM rather than the
+# fixture. `meshr` bands on height above the ground at each vertex's own x,z, so a
+# ceiling and the terrain it rides move together and the terrain drops out of the
+# answer. Both things this surface carries are a fixed distance under the ground;
+# that is precisely why world y could not separate them and this can.
+#
+#   306 = 17 fans of 18, each exactly SLAB_THICK under its own ground
+#   SLAB_THICK 2 units x HEIGHT_SCALE 0.25 = 0.50 wu, which is where they measure
+#
+# ⚠ IT IS THE SAME 306 THE BUMPY PLATEAU LOST, and it is derived now rather than
+# lucky: it reads 306 across the whole band -0.75..-0.45, so it is a plateau 0.3 wu
+# wide rather than the one-step knife edge above. The two `meshy` rows are kept as a
+# second, independent reading — ⚠ but if they ever break again, THIS is the row that
+# carries the claim and that pair can go.
+#
+# ⚠ AND THE 12 IT REPORTS AS "OVER OPEN GROUND" ARE NOT A ROUNDING ERROR — they are
+# the stairwell. A vertex over a cell whose ground has been opened has no datum at
+# all, so it is counted by neither band and said out loud instead. 306 + 314 + 16
+# under the ground, plus those 12, is the 648 above.
+meshr soffit -0.6 -0.4 306 306
 
 echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 # ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:

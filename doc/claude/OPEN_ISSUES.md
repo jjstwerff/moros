@@ -572,9 +572,31 @@ a bad trade**, so the fixture stays bumpy and the boundary stays at 1.5 with one
 The knife edge is a decision, not an oversight — and `mesh soffit 648` is what still pins the
 36 fans exactly, whatever the split reads.
 
-⚠ **What would actually restore an exact reading is not a fixture change at all**: it is a
-`meshy`-like verb that bands on a height RELATIVE to each cell's own ground, so the two
-populations separate by construction instead of by a shared world-y. Nobody needs that today.
+✅ **AND THE EXACT READING IS BACK — by changing the DATUM, not the fixture.** `tools/script.mjs`
+grew **`meshr <surf> <r0> <r1> [lo hi]`**: the same wire count, banded on height above the ground
+at each vertex's own `(x, z)`. Both things this surface carries are a fixed distance under the
+ground, which is exactly why world y could not separate them and this can — the terrain drops
+out of the answer.
+
+    meshr soffit -0.6 -0.4  →  306   = 17 fans of 18, on the BUMPY fixture
+
+and 306 is derived rather than lucky: a ceiling is `SLAB_THICK` (2 units) × `HEIGHT_SCALE`
+(0.25) = **0.50 wu** under its own ground, which is where they measure. It reads 306 across the
+whole band `−0.75..−0.45` — a plateau 0.3 wu wide against the `meshy` pair's one step — and the
+histogram either side confirms the population is localised: widening to `−1.0..−0.45` adds
+exactly 12, so nothing at all sits in `(−0.75, −0.51)`.
+
+⚠ **It needs no datum where the ground was OPENED, and says so rather than dropping them.** The
+12 vertices over the stairwell have no ground above them, are counted by neither band, and are
+reported on every row: `306 + 314 + 16` under the ground plus those `12` is the `648` total.
+A verb that silently shrank its own set would report a clean number about the wrong thing.
+
+⚠ **Seen red both ways before being believed**: a baseline row taken *before* the dig requires
+the band to read **0** — an instrument never seen empty cannot report a ceiling — and the
+expected count sabotaged to 305, and the band moved to an empty `−2.0..−1.9`, both fail the gate.
+
+The two `meshy` rows are kept as a second, independent reading. **If they break again, the
+`meshr` row is the one carrying the claim and the pair can go.**
 
 ### Was: a raise marks fewer chunks than it writes, and the client keeps the stale ground
 

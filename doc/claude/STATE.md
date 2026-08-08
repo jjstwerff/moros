@@ -85,6 +85,17 @@ past the dig without changing the dig.** It was backed out because the price was
 moving, two to numbers nobody could derive. **The knife edge is a decision now, recorded in the
 fixture itself so it is not re-proposed.**
 
+✅ **AND THE EXACT READING CAME BACK ANYWAY, FROM THE DATUM RATHER THAN THE TERRAIN.**
+`tools/script.mjs` grew **`meshr <surf> <r0> <r1> [lo hi]`** — the same wire count banded on
+height *above the ground at each vertex's own `(x, z)`*. Both populations ride the terrain a
+fixed distance under it, which is why world y could never separate them and this does: on the
+**bumpy** fixture it reads **306 — 17 fans of 18** — across the whole band `−0.75..−0.45`, and
+306 is derived, not lucky (`SLAB_THICK` 2 × `HEIGHT_SCALE` 0.25 = 0.50 wu). ⚠ **It reports the
+12 vertices over the OPENED stairwell separately** instead of dropping them, because they have
+no datum; and it was seen red three ways first — a pre-dig baseline requiring 0, the count
+sabotaged, and the band moved somewhere empty. **The lesson generalises: when a measurement will
+not separate two things, suspect the DATUM before the fixture.**
+
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
 `EditSession` (`lib/hex_editor/src/session.loft`) holds the eight registries the renderer needs
