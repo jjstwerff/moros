@@ -1,55 +1,77 @@
-# `A8.3` — is the leaf drawn, and why can nobody see it
+# `A8.3` / `A8.8` — is the leaf drawn, and is it drawn as the wall
 
-Plan [17](../../../plans/17-parts/README.md) `A8.3`. The acceptance shots
-(`shots/a83-door-{w,sw,s}.png`) show a grey wall with a gap in it and nothing in the
-opening a person would call a door. This settles **why**, and the answer is not the
-one the pictures suggest.
+Plan [17](../../../plans/17-parts/README.md). It began as a **diagnosis** — `A8.3`'s doorway
+photographed as a wall with an empty hole — and it is now the **regression gate** for the fix,
+[PARTS.md §P9.13](../../../doc/claude/PARTS.md#p913--a-part-says-how-tall-its-walls-are-and-what-they-are-made-of).
 
 ```sh
-probe/a83/leaf_visible/run.sh        # exit 0 = all four controls behaved as on 2026-08-08
+probe/a83/leaf_visible/run.sh        # exit 0 = all seven behaved as on 2026-08-08
 ```
 
-It builds a variant part library in a `mktemp -d` — `door/leaf`'s cell recoloured
-`FLOOR_MAT` → `FIELD_MAT` — and drives a server against it with `EDITOR_PARTS`.
-**It writes nothing inside `data/parts/`**, which is committed and shared.
+⚠ **It writes nothing inside `data/parts/`**, which is committed and shared: the variant library
+the last control needs is a `mktemp -d` copy reached through `EDITOR_PARTS`.
 
-## What it measured
+## What it found (`A8.3`, the diagnosis)
 
-| | what it shows |
+The acceptance shots showed a grey wall with a gap and nothing nameable in the opening, and the
+obvious reading — *the leaf never reaches the picture* — was **wrong**.
+
+| | what it showed |
 |---|---|
-| the picture | `door/hung` with a bright yellow-green leaf: **0 field-coloured pixels** from all three A8.3 stations. `door/leaf` alone: **841**. So the recolour is visible and the composed doorway does not show it |
-| early vs late | the same station shot seconds apart is **0 both times** — not a settle miss, which was the obvious second hypothesis |
-| the limb block | `door/hung` broadcasts **two** limb meshes, ids 8 and 9. `door/leaf` opened as a subject broadcasts **none** — the control that proves the probe can tell the two apart |
-| the payload | id 9 is colour **`0.55,0.52,0.46`** spanning **y 0.00..3.25** |
+| the picture | `door/hung` with the leaf's cell recoloured `FIELD_MAT`: **0** field-coloured pixels from all three stations. `door/leaf` **alone**: 841 |
+| early vs late | the same station seconds apart is **0 both times** — not a settle miss, which was the obvious second hypothesis |
+| the limb block | `door/hung` broadcast **two** limb meshes. `door/leaf` opened as a subject broadcast **none** — the control proving the probe can attribute what it sees |
+| the payload | colour **`0.55,0.52,0.46`** spanning **y 0.00..3.25** |
 
-## The finding
+**The leaf was drawn. It was drawn as the wall.** `0.55,0.52,0.46` is `hex_mesh`'s `wall` entry
+byte for byte; `y 0.00..3.25` is one `WALL_UP` (12 × `HEIGHT_SCALE` 0.25) on the 0.25 paving. Same
+colour, same height, hung in a hole in that wall.
 
-**The leaf is drawn. It is drawn as the wall.**
+⚠ **And the recolour could not have fixed it, which is the second finding.** A cell's `h_material`
+colours a horizontal PLATE; a leaf's body is a vertical PANEL, and `part_body_meshes` sent every
+per-edge panel to the one `wall` slot — the edge material only picked a height through `wall_up`.
+The green was the leaf's floor, not its face. **No value an author could write reached a panel's
+colour**, which is what made it a format question rather than a content one.
 
-`0.55,0.52,0.46` is `hex_mesh::surfaces()`'s `wall` entry, byte for byte — the same
-colour the frame's own wall is painted. `y 0.00..3.25` is one `WALL_UP`
-(12 × `HEIGHT_SCALE` 0.25 = 3.0) standing on the 0.25 paving — the same height as the
-wall it hangs in. A leaf that is the wall's colour and the wall's height, in a hole in
-that wall, is not a door to any eye. The striped wedge visible in the west shot is that
-panel z-fighting with the frame's.
+## What it now gates (`A8.8`, the fix)
 
-⚠ **AND THE RECOLOUR COULD NOT HAVE FIXED IT, WHICH IS THE SECOND FINDING.** A cell's
-`h_material` colours its horizontal PLATE. A leaf's body is a vertical PANEL, and
-`part_body_meshes` sends every per-edge panel to the one `wall` slot — the edge material
-only picks a height through `wall_up`. So **no cell material can recolour a leaf**: the
-green plate in these runs is the leaf's floor, not its face, and it is buried among the
-paving. Changing `WALL_MAT` to `FENCE_MAT` would change the height and not the colour.
+`door/leaf` carries `WALL` with `surface=floor`, and the seven claims are:
 
-That is what makes this a **format** question rather than a content one, exactly as
-[STATE](../../../doc/claude/STATE.md) records: it wants an `Opening` profile in the part
-format, or a per-part wall height and material. Nothing an author can write today reaches it.
+| | |
+|---|---|
+| `door/frame` draws **108** wall vertices | nine panels of twelve, not ten — **the doorway is still a hole** |
+| `door/leaf` is **30** vertices of `0.65,0.4,0.25` | an 18-vertex plate and a 12-vertex panel, both timber |
+| …and **nothing** in the wall surface | the routing is wholesale, not a blend |
+| the limb block carries `0.65,0.4,0.25` | it reaches the composed doorway as timber |
+| `door/leaf` as a subject: **NONE** | the attribution control |
+| a variant `door/frame` with `up=6 surface=frame`: **108**, moved to `0.78,0.74,0.65` | the count is unchanged, so `up` did **not** override `DOOR_MAT` — a profile that did would draw a panel across the opening (10 × 12 = 120), a part whose whole purpose is a hole drawn solid |
 
-## Why the instruments are here and not in a gate
+⚠ **The count is the instrument for that last one and a picture cannot be.** *The opening is a
+hole* and *the opening is a panel the same colour as the wall* photograph identically — which is
+the trap this whole probe exists because of.
 
-`mesh <surface>` in `tools/script.mjs` counts the **chunk** id space and a bound limb is
-broadcast on its own reserved block (`PART_MESH_BASE`..`+MAX`, ids 8..15) — so that verb
-reports `0` for every limb no matter what was sent, and reported `field 18` for a part
-whose cells hold no field at all, one subject behind. ⚠ **It was checked against something
-it should find before it was believed**, and it failed that check; these two `.mjs` files
-are what replaced it. A picture cannot see a colour it is not painted in, and a count of
-the wrong id space cannot see a limb.
+## The instruments, and why they are these
+
+- **`panels.mjs`** — every mesh a subject emits, grouped by the colour it is painted in. Six
+  floats a vertex, not three: `emit_tri` writes a position *and* a normal, and dividing by 3 gave
+  `231.33` — a fractional vertex count is the tell that a stride is wrong.
+- **`limbwire.mjs` / `limbwhere.mjs`** — the limb block (ids 8..15) and its payload.
+  ⚠ `script.mjs`'s `mesh <surface>` **cannot see a limb at all**: it counts the CHUNK id space
+  while a limb goes to `PART_MESH_BASE`..`+MAX`, so it answers `0` for every limb whatever was
+  sent — and answered `field 18` for a part whose cells hold no field, one subject behind. It was
+  checked against something it should find, and it failed that check; these replaced it.
+- **`meshalias.loft`** — ⚠ **a `Mesh` COPIES through a local *and* through a vector read.** Only a
+  parameter aliases. The obvious way to route a panel — `pwm = all[i]; emit_wall_panel(pwm, …)` —
+  therefore drops every triangle with no diagnostic, every count agreeing, and a blank wall in the
+  picture. It is also *not* what [loft#774](https://github.com/loft-lang/loft/issues/774) records
+  for a plain struct (*copies on `b = a`, **aliases** on `c = v[0]`*), so that note must not be
+  relied on for a Mesh. This probe is why `emit_panel_into` takes all six candidates as parameters.
+⚠ **AND ALL THREE SETTLE ON THE EVIDENCE, NEVER ON A CLOCK.** The first version slept 4 s after
+each `44:` and produced a **flake in a gate**, which is worse than no gate: under load three claims
+came back false and then true on a rerun. They now return when no `M:` has landed for 900 ms —
+⚠ *and only once something has arrived since the wait began*, because without that half the second
+subject settles instantly on the FIRST subject's silence and reads as an empty part. Both faults
+were measured, one after the other, and the second looked exactly like the change under test.
+
+- **`leaf_field.keys` / `early_late.keys`** — the picture half, run by hand with `--shots`.
+  `tools/scripts/doorway.keys` is the acceptance shot itself.

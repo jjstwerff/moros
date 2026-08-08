@@ -1144,3 +1144,89 @@ is the first place §P9 meets a number rather than a rule.
 
 > **The one sentence.** Solid, yielding and visual are the three things a limb can be, and the
 > difference between a boss and a bush is which of them it is mostly made of.
+
+### P9.13 — A part says how tall its walls are, and what they are made of
+
+**Plan 17 `A8.8`.** `A8.3`'s acceptance failed a cold-recognition test, and
+[`probe/a83/leaf_visible/`](../../probe/a83/leaf_visible/README.md) measured why: the leaf **is**
+drawn — `door/hung` puts two meshes in the limb block — and it is drawn in colour
+`0.55,0.52,0.46` spanning `y 0.00..3.25`. That is `hex_mesh`'s `wall` entry byte for byte, and one
+`WALL_UP` standing on the paving: **the wall's own colour at the wall's own height, hung in a hole
+in that wall.** Nothing about it can read as a door.
+
+⚠ **AND NO CONTENT CAN FIX IT, which is what makes this a format §.** A cell's `h_material`
+colours a horizontal PLATE; a leaf's body is a vertical PANEL, and every per-edge panel is emitted
+into the one `wall` slot with its height from `wall_up(mat)` — the edge material picks a height and
+nothing else. So an author has no reachable way to say *this panel is timber* or *this panel is
+shorter than the wall*. Measured: a leaf whose cell was set to `FIELD_MAT` put 841 green pixels on
+screen **alone** and exactly **0** in the composed doorway, from all three stations, early and late.
+
+#### The invariant
+
+> **A part's own per-edge wall panels take their height and their surface from the part's own
+> `WALL` section, and a part that declares none draws exactly as it does today.**
+
+One rule, and it is why an untested case behaves: the profile is read **once, from the world the
+panels are being built out of**, and applied at the **one** line where a panel's height and its
+destination mesh are decided.
+
+#### The section
+
+`WALL`, `key=value` lines like every other one-thing section (`PART`, `ANCH`, `FITS`):
+
+```
+up=10
+surface=floor
+```
+
+| key | meaning | absent |
+|---|---|---|
+| `up` | the height of this part's `WALL_MAT` panels, in height units | `WALL_UP` (12) |
+| `surface` | the surface they are drawn in, **by name** from `hex_mesh::surfaces()` | `wall` |
+
+⚠ **`up` REPLACES THE `WALL_MAT` HEIGHT AND NOTHING ELSE.** `DOOR_MAT` stays `0` — it is an
+*absence*, not a height, and a profile that overrode it would **fill the doorway in**. `FENCE_MAT`
+keeps `FENCE_UP`, because a fence is a different kind of boundary and a part that wants a low panel
+says so with `up`. This is the failure path the § exists to state; it has a negative control.
+
+⚠ **AND THE SURFACE IS ONE OF SIX, NOT ONE OF NINE.** `chunk_mesh_props` is handed the veg, roof,
+wall, floor, frame and soffit meshes — the ground, road and field meshes are terrain and never
+reach it. A part naming one of those three is **refused with a reason** rather than silently drawn
+as wall: `grass` is not a thing a vertical panel is made of, and a silent fallback is how a
+document comes to say something the picture does not.
+
+⚠ **BUT NOT REFUSED IN `hex_part`, AND THE REASON IS STRUCTURAL RATHER THAN A CHOICE.** The list
+lives in `hex_mesh`, and `hex_mesh` → `hex_editor` → `hex_part`: a `hex_part` that checked the
+name against the list would close a **dependency cycle**. So the section stores the name as text
+and refuses only what it can see — empty, or a newline that would forge a line — and the *name* is
+resolved where the list is visible: **on save and at `make parts`**. That is exactly
+`part_mesh_loads`' bargain for a dangling `.glb` (a parse per placement per edit is not a price the
+per-edit path can pay), reached here for a different reason and landing in the same place. ⚠ The
+consequence is worth stating: **a hand-edited part with `surface=grass` loads**, and the mesher
+draws it as `wall` because that is the only honest thing an unrouted name can become. What must not
+happen is that arriving silently, so the mesher says so once per rebuild.
+
+#### Why per-PART is the right grain, and what it does NOT buy
+
+A leaf is its own part file, so per-part granularity already separates the leaf from the wall it
+hangs in — which is the whole of `A8.3`'s failure. Per-cell would be a world-format change and
+per-edge is what an `Opening` is for.
+
+⚠ **THIS DOES NOT GIVE THE OPENING A HEAD.** [STATE](STATE.md) names the gap as *"an `Opening`
+profile in the part format **or** a per-part wall height"*, and those are two capabilities, not one
+described twice. A per-part height makes the **leaf** distinguishable from the wall; a **lintel**
+is a per-edge profile over one opening and is still not expressible. Written down because *"and it
+also handles the lintel"* is exactly the absorption that would make this § read cleaner than it is.
+
+#### What breaks, and where it is caught
+
+| failure path | what happens | the answer |
+|---|---|---|
+| a profile overrides `DOOR_MAT` | the doorway fills in | `up` is the `WALL_MAT` height only — negative control in `wall.loft` |
+| a part names `grass` | a vertical panel in terrain green, or a silent fallback | refused, `WA_SURFACE`, naming the six |
+| an older reader meets `WALL` | — | §P2's tagged sections: skipped by its length. Round-tripped and `part_diff`-ed |
+| a nest with a different profile is **baked** | the child's cells merge into the root and are redrawn at the ROOT's height and colour — `expand` and `bake` would differ | **`BK_WALL`**, the same shape as `BK_UNIT`: a composed part stating a different one is refused, not silently flattened |
+| the profile is read per edge | a section decode per panel per rebuild | read **once per chunk**, in `chunk_meshes_all`, from the world it already holds |
+
+> **The one sentence.** A part already carries what it is called and where it stands; this is what
+> it is made of, and it is the difference between a door and a hole with a slab in it.

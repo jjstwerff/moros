@@ -92,6 +92,23 @@ pub fn surface_at(i: integer) -> Surface {
   surfaces()[i] ?? Surface { sf_name: "?", sf_r: 0.0, sf_g: 0.0, sf_b: 0.0, sf_bucket: "?" }
 }
 
+// The index a NAME sits at, or −1. ⚠ Plan 17 `A8.8` (§P9.13): a part's `WALL`
+// section names its surface in words — `surface=floor` — because a stored INDEX
+// would be a second copy of this list's order, and the header three lines up says
+// re-ordering renumbers every mesh on the wire. A name survives a re-order; an
+// index silently becomes a different colour.
+//
+// ⚠ −1 RATHER THAN A FALLBACK. A misspelt surface must reach its author as a
+// refusal with the six spellings in it; falling back to `wall` is how a document
+// comes to say something the picture does not.
+pub fn surface_index(name: text) -> integer {
+  ss = surfaces();
+  for i in 0..len(ss) {
+    if surface_at(i).sf_name == name { return i; }
+  }
+  0 - 1
+}
+
 // Chromaticity — the colour with the brightness divided out, which is what the
 // picture gates classify on so a lit surface and a shadowed one land together.
 pub struct Chroma { ch_r: float, ch_g: float, ch_b: float }

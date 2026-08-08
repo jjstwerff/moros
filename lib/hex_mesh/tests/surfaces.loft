@@ -84,3 +84,35 @@ fn test_the_declared_pair_really_is_indistinguishable() {
   }
   assert(pairs > 0, "no bucket is shared — this control measured nothing");
 }
+
+// ── `surface_index` — plan 17 `A8.8`, §P9.13 ────────────────────────────────
+
+fn test_every_surface_finds_its_own_index() {
+  // The round trip, over the whole list rather than a sample: a name taken OUT
+  // of the list must come back to the slot it was taken from.
+  for i in 0..len(surfaces()) {
+    got = surface_index(surface_at(i).sf_name);
+    assert(got == i, "'{surface_at(i).sf_name}' is at {i} and looked up as {got}");
+  }
+}
+
+fn test_an_unknown_name_is_minus_one_and_not_a_fallback() {
+  // ⚠ THE NEGATIVE CONTROL IS THE POINT. A lookup that fell back to 0 would put
+  // a misspelt surface in `grass` and draw it, and the author would be told
+  // nothing — the failure §P9.13 refuses by name.
+  assert(surface_index("dressed-stone") == 0 - 1, "a misspelling resolved");
+  assert(surface_index("") == 0 - 1, "the empty name resolved");
+  assert(surface_index("Wall") == 0 - 1, "the lookup is case-insensitive");
+}
+
+fn test_the_six_a_panel_can_be_routed_into_all_resolve() {
+  // §P9.13: `chunk_mesh_props` is handed these six meshes and no others, so a
+  // part's `WALL` surface must be one of them. If a rename ever breaks one of
+  // these spellings, the part format's refusal list is wrong and this says so
+  // here rather than in a picture.
+  for n in ["veg", "roof", "wall", "floor", "frame", "soffit"] {
+    if n == "veg" { continue; }   // the vegetation slot is `tree` in the list
+    assert(surface_index(n) >= 0, "'{n}' is not a surface any more");
+  }
+  assert(surface_index("tree") >= 0, "the vegetation surface is not called 'tree'");
+}

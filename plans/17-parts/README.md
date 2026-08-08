@@ -1255,6 +1255,7 @@ because a wide door is where cells have something to say. The full argument is
 | ◐ `A8.6` | Export a limb's blockout mesh as a `.glb` (§P9.4) — `22:` EXPORT over a part's own meshed cells — and point its `MESH` at a returned file without touching `PART`/`FITS`/`HING`/`SOCK`. | **THE EXPORT HALF IS DONE**: in part mode `22:` writes the open part's own cells, meshed by `part_body_meshes` — the same call the display and the thumbnail make — welded into one glb; `tools/gates/world/part_export.mjs`, 8 checks, one sabotage seen red. ⚠ **The return half is BLOCKED and not on this step**: no gesture writes a `MESH` section, so a returned skin cannot be dropped in from the editor at all | M |
 
 | ✅ `A8.7` | The export is in FINAL world units with the pivot marked (§P9.5), and a returned mesh is checked against the exported extents — refused with the difference, never rescaled. | **DONE, AND THE ROW'S SECOND HALF WAS WRITTEN FROM A SUPERSEDED SECTION** — §P9.11 replaces *matches the extents* with **containment**. `hex_part::skin_covers` + `part_box` (10 tests, three sabotages seen red), wired into the `8:` save refusal; the export applies `A8.2b`'s ratio and states the extent and pivot. `part_export` 11 checks | S |
+| ✅ `A8.8` | **A part says how tall its walls are and what they are made of** — a `WALL` section, `up=` and `surface=`, and the mesher honours it (§P9.13). | **DONE.** `A8.3` photographed as a hole and the measurement said why: the leaf **is** drawn, in colour `0.55,0.52,0.46` at `y 0.00..3.25` — the `wall` surface byte for byte, at one `WALL_UP`. `door/leaf` now states `surface=floor` and reads as timber. `probe/a83/leaf_visible/run.sh` is seven controls; `bake` gained `BK_WALL` | M |
 
 ### What `A8.7` turned up — ⚠ **the plan's own row quoted a rule the design had already replaced**
 
@@ -1410,6 +1411,45 @@ rebuild that meshes a limb runs in the tick loop *after* the arrivals stop.
 turned 20 swung 0.125; a 1x2 leaf is refused by class (4)`, `part_limb` 17 checks,
 **two sabotages seen red** (both leaves on one hinge → the span row fails at 1.12; the class
 refusal is the content's own assertion). Picture: `shots/a84-gate-{w,sw,s}.png`.
+
+### What `A8.8` turned up — ⚠ **the obvious mesh selection would have drawn nothing**
+
+**Built:** `WALL`, a one-thing section like `PART` and `FITS` — `up=` the height of a part's
+`WALL_MAT` panels, `surface=` the surface they are drawn in, by NAME. Absent on both keys is the
+behaviour every part in `data/parts/` had before it, and `MR_ABSENT` says so distinctly from
+`MR_MALFORMED`. `door/leaf` states `surface=floor`; nothing states `up` yet, and that is written
+down rather than faked — a leaf shorter than its opening is right only once the opening has a
+HEAD, and §P9.13 says plainly this step does not give it one.
+
+⚠ **THE DESIGN CHANGED UNDER THE LAYERING, BEFORE ANY CODE.** The first shape had `hex_part`
+refuse an unknown surface name. It cannot: the list is `hex_mesh::surfaces()` and
+`hex_mesh` → `hex_editor` → `hex_part`, so the check closes a **cycle**. The name is carried
+verbatim by the section and resolved where the list is visible — the save check and `make parts` —
+which is `part_mesh_loads`' own bargain for a dangling `.glb`, arrived at from the other direction
+and landing in the same place. Writing the doc first is what surfaced it while it was still a
+paragraph.
+
+⚠ **AND A `Mesh` COPIES THROUGH A LOCAL *AND* THROUGH A VECTOR READ.** Only a parameter aliases —
+measured, `probe/a83/leaf_visible/meshalias.loft`. The obvious way to route a panel to the surface
+a part asked for is `pwm = all[i]; emit_wall_panel(pwm, …)`, and it **drops every triangle**: no
+diagnostic, every count agreeing, a blank wall in the picture. ⚠ It is also not what
+[loft#774](https://github.com/loft-lang/loft/issues/774) records for a plain struct (*copies on
+`b = a`, **aliases** on `c = v[0]`*), so that note cannot be relied on for a Mesh. `emit_panel_into`
+therefore takes all six candidate meshes as parameters and branches — which looks like bulk and is
+the only shape that works.
+
+⚠ **THE FAILURE PATH THE § EXISTS FOR IS `DOOR_MAT`.** `up` replaces the `WALL_MAT` height and
+nothing else: `DOOR_MAT` is an ABSENCE, not a height, and a profile that overrode it would draw a
+panel across the opening — a part whose whole purpose is a hole, drawn solid, with the document
+still saying `door`. Gated by a COUNT, because no picture can tell that from *the opening is a
+panel the same colour as the wall*: a variant `door/frame` with `up=6 surface=frame` emits **108**
+vertices, the same nine panels, moved wholesale to dressed stone. Ten panels would be 120.
+
+⚠ **AND `bake` GAINED `BK_WALL`, WHICH IS `BK_UNIT` ONE FIELD ALONG.** One bake is one part and
+one `WALL` section, so a child stating its own profile — a timber leaf inside a stone frame — would
+come out of the flattening as stone, every column present and every count agreeing. Unstated is a
+value and not a wildcard, so an unstated child under a stated root is refused too; the control is
+that matching profiles, and a library with no profiles at all, still bake.
 
 ### What `A8.3` turned up — ◐ **the content is built, the picture needs the user's eyes**
 

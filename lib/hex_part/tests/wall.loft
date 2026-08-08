@@ -1,0 +1,171 @@
+// `WALL` — how tall a part's walls are, and what they are made of.
+//
+// Plan 17 `A8.8`, [PARTS.md §P9.13]. The step exists because a door photographed
+// as a hole: `A8.3`'s leaf is drawn in the `wall` surface at one `WALL_UP`, which
+// is the colour and the height of the wall it hangs in.
+//
+// ⚠ EVERY CLAIM HERE IS PAIRED WITH THE THING IT MUST REFUSE. A section that
+// accepts everything round-trips perfectly and says nothing — `roundtrip.loft`'s
+// rule, and `A6.3` is where a test about an ABSENCE was found unable to fail.
+use hex_part;
+use hex_world;
+
+const U = 0.25;
+const EPS = 5;
+const THETA = 2;
+
+fn fresh() -> World { world_new(U, 0, EPS, THETA).wn_world }
+
+fn no_palette() -> vector<integer> {
+  p: vector<integer> = [];
+  p
+}
+
+// ── the tag ─────────────────────────────────────────────────────────────────
+
+fn test_the_tag_is_the_four_characters() {
+  // ⚠ THE LITERAL IS HELD EQUAL TO THE FUNCTION HERE rather than derived from it
+  // in the source — `meta.loft`'s rule, because a file-scope constant is an
+  // inlined expression re-evaluated at every reference.
+  assert(TAG_WALL == section_tag("WALL"),
+         "TAG_WALL is {TAG_WALL}, not {section_tag(\"WALL\")}");
+}
+
+// ── the round trip ──────────────────────────────────────────────────────────
+
+fn test_a_profile_comes_back_as_it_went_in() {
+  w = fresh();
+  assert(part_set_wall(w, PartWall { wa_up: 10, wa_surface: "floor" }) == WA_OK,
+         "the profile was refused");
+  r = part_wall(w);
+  assert(r.wr_code == MR_OK, "the profile did not read back: {r.wr_why}");
+  assert(r.wr_wall.wa_up == 10, "up came back {r.wr_wall.wa_up}, not 10");
+  assert(r.wr_wall.wa_surface == "floor",
+         "surface came back '{r.wr_wall.wa_surface}', not 'floor'");
+}
+
+fn test_it_survives_a_save_and_a_load() {
+  w = fresh();
+  assert(world_set_cell(w, 0, 0, 0,
+    Hex { h_height: 1 as u16? ?? 0, h_material: 4 as u8? ?? 0,
+          h_wall_se: 1 as u8? ?? 0 }).cw_code == CW_OK, "the cell was refused");
+  assert(part_set_wall(w, PartWall { wa_up: 7, wa_surface: "frame" }) == WA_OK,
+         "the profile was refused");
+  path = "{temp_dir()}/hexpart-wall-roundtrip.hxw";
+  assert(world_save(w, path, no_palette()) == WS_OK, "the part did not save");
+  ld = world_load(path);
+  assert(ld.wl_code == WL_OK, "the part did not load: {ld.wl_detail}");
+  r = part_wall(ld.wl_world);
+  assert(r.wr_code == MR_OK, "the profile is gone after a save: {r.wr_why}");
+  assert(r.wr_wall.wa_up == 7 && r.wr_wall.wa_surface == "frame",
+         "the profile came back as up={r.wr_wall.wa_up} surface='{r.wr_wall.wa_surface}'");
+}
+
+// ⚠ THE POINT OF §P2's TAGGED SECTIONS, TESTED RATHER THAN ASSERTED. A reader
+// that has never heard of `WALL` skips it by its length and finds everything
+// else where it was — which is the property a flags word cannot demonstrate at
+// all. `part_meta`, `part_fits` and `part_hinge` ARE that reader: none of them
+// knows this section exists.
+fn test_a_reader_that_never_heard_of_it_is_unharmed() {
+  w = fresh();
+  assert(part_set_meta(w, PartMeta { pm_kind: PK_FITTING, pm_name: "leaf",
+                                     pm_desc: "one panel" }) == PM_OK, "meta refused");
+  assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
+         "fits refused");
+  // The section goes in BETWEEN two others, not at the end, so a length that was
+  // wrong would land the next reader in the middle of this payload.
+  assert(part_set_wall(w, PartWall { wa_up: 11, wa_surface: "floor" }) == WA_OK,
+         "the profile was refused");
+  assert(part_set_hinge(w, Hinge { hg_ox: 0.5, hg_oy: 0.0, hg_oz: 0.5,
+                                   hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
+                                   hg_lo: 0.0, hg_hi: 0.25 }).hw_code == HG_OK,
+         "hinge refused");
+  m = part_meta(w);
+  assert(m.mr_code == MR_OK && m.mr_meta.pm_name == "leaf",
+         "the name did not survive a WALL beside it: {m.mr_why}");
+  f = part_fits(w);
+  assert(f.fr_code == MR_OK && f.fr_fits.pf_kind == "door" && f.fr_fits.pf_size == "1x2",
+         "the FITS did not survive a WALL beside it: {f.fr_why}");
+  h = part_hinge(w);
+  assert(h.hr_code == MR_OK && h.hr_hinge.hg_hi == 0.25,
+         "the hinge did not survive a WALL beside it: {h.hr_why}");
+}
+
+// ── unstated is a real answer, and it is not zero ───────────────────────────
+
+fn test_no_section_is_absent_and_still_usable() {
+  // ⚠ `MR_ABSENT` AND `MR_MALFORMED` ARE DIFFERENT ANSWERS — `meta.loft`'s rule.
+  // Every part in `data/parts/` predates this section; each one must read as
+  // *states no profile*, never as *damaged*.
+  r = part_wall(fresh());
+  assert(r.wr_code == MR_ABSENT, "a part with no WALL read {r.wr_code}");
+  assert(r.wr_wall.wa_up == 0 && r.wr_wall.wa_surface == "",
+         "the absent profile is not unstated: up={r.wr_wall.wa_up} '{r.wr_wall.wa_surface}'");
+}
+
+fn test_a_section_may_state_one_key_and_not_the_other() {
+  w = fresh();
+  assert(part_set_wall(w, PartWall { wa_surface: "roof" }) == WA_OK, "refused");
+  r = part_wall(w);
+  assert(r.wr_code == MR_OK, "{r.wr_why}");
+  assert(r.wr_wall.wa_up == 0, "an unstated height came back {r.wr_wall.wa_up}");
+  assert(r.wr_wall.wa_surface == "roof", "'{r.wr_wall.wa_surface}'");
+
+  w2 = fresh();
+  assert(part_set_wall(w2, PartWall { wa_up: 4 }) == WA_OK, "refused");
+  r2 = part_wall(w2);
+  assert(r2.wr_code == MR_OK, "{r2.wr_why}");
+  assert(r2.wr_wall.wa_up == 4, "{r2.wr_wall.wa_up}");
+  assert(r2.wr_wall.wa_surface == "", "an unstated surface came back '{r2.wr_wall.wa_surface}'");
+}
+
+// ── what it refuses, which is what makes the rest mean anything ─────────────
+
+fn test_a_negative_height_is_refused() {
+  w = fresh();
+  assert(part_set_wall(w, PartWall { wa_up: 0 - 3, wa_surface: "wall" }) == WA_UP,
+         "a negative height was accepted");
+  // …and nothing was written. A refusal that still wrote would leave the part
+  // holding a profile its author was told had been rejected.
+  assert(part_wall(w).wr_code == MR_ABSENT, "a refused profile was written anyway");
+}
+
+fn test_a_newline_in_the_surface_is_refused() {
+  // The `WS_PALETTE` rule: a name that would forge a line is refused rather than
+  // stripped, because stripping hands back a different value than the one given.
+  w = fresh();
+  assert(part_set_wall(w, PartWall { wa_up: 6, wa_surface: "floor\nup=99" }) == WA_NEWLINE,
+         "a forged line was accepted");
+  assert(part_wall(w).wr_code == MR_ABSENT, "a refused profile was written anyway");
+}
+
+fn test_a_height_that_is_not_a_number_is_malformed() {
+  // Hand-written, because `part_set_wall` cannot produce this — which is the
+  // case that matters: a file edited by hand, or written by something else.
+  w = fresh();
+  set_section_text(w, TAG_WALL, "up=tall\nsurface=floor");
+  r = part_wall(w);
+  assert(r.wr_code == MR_MALFORMED, "'up=tall' read as {r.wr_code}");
+  assert(r.wr_why.find("tall") != null, "the reason does not name the value: {r.wr_why}");
+}
+
+fn test_a_negative_height_in_a_hand_written_file_is_malformed() {
+  w = fresh();
+  set_section_text(w, TAG_WALL, "up=-2\nsurface=floor");
+  r = part_wall(w);
+  assert(r.wr_code == MR_MALFORMED, "'up=-2' read as {r.wr_code}");
+}
+
+// ⚠ AN UNKNOWN SURFACE NAME IS *NOT* THIS PACKAGE'S REFUSAL, and the test says so
+// on purpose. The list is `hex_mesh::surfaces()` and `hex_mesh` -> `hex_editor`
+// -> `hex_part`, so checking it here closes a dependency cycle. It is resolved on
+// save and at `make parts`, where the list is visible — `part_mesh_loads`' bargain
+// for a dangling `.glb`, reached from the other direction.
+fn test_an_unknown_surface_name_is_carried_not_judged() {
+  w = fresh();
+  assert(part_set_wall(w, PartWall { wa_up: 6, wa_surface: "dressed-stone" }) == WA_OK,
+         "this package judged a name it cannot see the list for");
+  r = part_wall(w);
+  assert(r.wr_code == MR_OK && r.wr_wall.wa_surface == "dressed-stone",
+         "the name was not carried through verbatim");
+}

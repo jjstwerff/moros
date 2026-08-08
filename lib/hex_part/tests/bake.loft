@@ -250,3 +250,69 @@ fn test_the_control_a_deep_nest_with_no_cycle_still_reports_depth() {
          "a cycle-free nine-deep nest reported {bk.bk_code} — the two rules "
          + "have been collapsed into one");
 }
+
+// ── `BK_WALL` — a wall profile cannot survive a flattening — `A8.8`, §P9.13 ──
+//
+// ⚠ A REFUSAL WITH NO TEST IS THE TRAP THIS TREE HAS A NAME FOR. `A6.3` found a
+// test about an ABSENCE that started out unable to fail, so each claim below is
+// paired with the composition that must go the OTHER way.
+
+fn wall_lib(rootwall: PartWall, kidwall: PartWall, kidhas: boolean) {
+  assert(mkdir_all("{root()}/pair").ok(), "mkdir");
+  kid = one_cell(4);
+  if kidhas {
+    assert(part_set_wall(kid, kidwall) == WA_OK, "the child's profile was refused");
+  }
+  assert(world_save(kid, "{root()}/pair/kid.hxw", no_palette()) == WS_OK, "save kid");
+  top = one_cell(4);
+  assert(part_set_instances(top, [at("pair/kid", 1, 0, 0)]) == PI_OK, "instances");
+  assert(part_set_wall(top, rootwall) == WA_OK, "the root's profile was refused");
+  assert(world_save(top, "{root()}/pair/top.hxw", no_palette()) == WS_OK, "save top");
+}
+
+fn test_a_child_with_its_own_wall_profile_is_refused_by_bake() {
+  wipe();
+  // The real composition: a timber leaf inside a stone frame. Flattened, the
+  // leaf comes out stone — every column present, every count agreeing.
+  wall_lib(PartWall { wa_up: 12, wa_surface: "wall" },
+           PartWall { wa_up: 10, wa_surface: "floor" }, true);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_WALL,
+         "a differing wall profile baked with code {bk.bk_code}: {bk.bk_why}");
+  assert(bk.bk_why.find("floor") != null && bk.bk_why.find("wall") != null,
+         "the reason names neither profile: {bk.bk_why}");
+  wipe();
+}
+
+fn test_an_unstated_child_inside_a_stated_root_is_refused_too() {
+  wipe();
+  // ⚠ UNSTATED IS A VALUE, NOT A WILDCARD. The child would be redrawn at the
+  // root's height and colour, which is the same silent loss one field along.
+  wall_lib(PartWall { wa_up: 9, wa_surface: "frame" }, PartWall {}, false);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_WALL,
+         "an unstated child under a stated root baked with code {bk.bk_code}");
+  wipe();
+}
+
+fn test_the_same_profile_on_both_bakes_fine() {
+  wipe();
+  // ⚠ THE CONTROL, and without it the two above are satisfied by a `bake` that
+  // refuses everything. Identical profiles lose nothing, so they must pass.
+  wall_lib(PartWall { wa_up: 10, wa_surface: "floor" },
+           PartWall { wa_up: 10, wa_surface: "floor" }, true);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OK, "matching profiles were refused: {bk.bk_why}");
+  wipe();
+}
+
+fn test_a_library_with_no_profiles_at_all_still_bakes() {
+  wipe();
+  // Every part in `data/parts/` today. The section is new, so *absent on both*
+  // is the overwhelmingly common case and it must be untouched by any of this.
+  put("pair/kid", 4, no_kids());
+  put("pair/top", 4, [at("pair/kid", 1, 0, 0)]);
+  bk = part_bake(root(), "pair/top");
+  assert(bk.bk_code == BK_OK, "a profile-free nest was refused: {bk.bk_why}");
+  wipe();
+}

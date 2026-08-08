@@ -987,6 +987,22 @@ fn wall_up(mat: integer) -> integer {
   WALL_UP
 }
 
+// The same question with a part's own `WALL` section in hand — plan 17 `A8.8`,
+// §P9.13. `pup` is the part's stated height, or 0 for *unstated*.
+//
+// ⚠ IT REPLACES THE `WALL_MAT` ANSWER AND NOTHING ELSE, and that is the failure
+// path the § exists to state. `DOOR_MAT` is an ABSENCE, not a height: a profile
+// that overrode it would put a panel across the doorway and **fill the opening
+// in** — a part whose whole purpose is a hole, drawn solid, with the document
+// still saying `door`. `FENCE_MAT` keeps `FENCE_UP` because a fence is a
+// different kind of boundary; a part that wants a low panel says `up`.
+fn wall_up_part(mat: integer, pup: integer) -> integer {
+  if mat == FENCE_MAT { return FENCE_UP; }
+  if mat == DOOR_MAT { return 0; }
+  if pup > 0 { return pup; }
+  WALL_UP
+}
+
 // ── A WALL IS A STRAIGHT LINE (rung W2, moros#10) ───────────────────────────
 //
 // **A wall is an analytic straight run, and the marked hex edges are its INDEX.**
@@ -2292,8 +2308,37 @@ fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
   emit_hex_under(m, cq, cr, ((csum / 6.0 ?? 0.0) - drop) * HEIGHT_SCALE, uy);
 }
 
+// WHICH SURFACE A PART'S PANELS ARE DRAWN IN — plan 17 `A8.8`, §P9.13.
+//
+// ⚠ EVERY CANDIDATE IS A PARAMETER, AND THAT IS NOT A STYLE CHOICE. Measured
+// (`probe/a83/leaf_visible/meshalias.loft`): a `Mesh` **copies** through a local
+// AND through a vector read — `la = a; emit(la)` leaves `a` empty, and so does
+// `v[0]`. Only a parameter aliases. The obvious selection —
+// `pwm = all[i]; emit_wall_panel(pwm, …)` — therefore drops every triangle it is
+// handed, with no diagnostic, every count agreeing and a blank wall in the
+// picture. ⚠ It is also NOT what loft#774 records for a plain struct (*copies on
+// `b = a`, aliases on `c = v[0]`*): a Mesh copies both ways, so that note cannot
+// be relied on for one.
+//
+// ⚠ AND THE SIX ARE THE SIX THIS FUNCTION IS HANDED. Grass, road and field are
+// terrain surfaces the props mesher never receives, and a vertical panel is not
+// made of grass. An index outside the six — including the −1 an unknown name
+// resolves to — draws as `wall`, which is the only honest thing an unrouted name
+// can become; the NAME is refused where the list is visible, on save and at
+// `make parts`.
+fn emit_panel_into(pwi: integer, vm: Mesh, km: Mesh, wm: Mesh, fm: Mesh, am: Mesh,
+                   sm: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
+                   wld: World) {
+  if pwi == 3 { emit_wall_panel(vm, cq, cr, dir, up, wld); return; }   // tree
+  if pwi == 4 { emit_wall_panel(km, cq, cr, dir, up, wld); return; }   // roof
+  if pwi == 6 { emit_wall_panel(fm, cq, cr, dir, up, wld); return; }   // floor
+  if pwi == 7 { emit_wall_panel(am, cq, cr, dir, up, wld); return; }   // frame
+  if pwi == 8 { emit_wall_panel(sm, cq, cr, dir, up, wld); return; }   // soffit
+  emit_wall_panel(wm, cq, cr, dir, up, wld);                           // wall, and the default
+}
+
 fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
-                    fm: Mesh, am: Mesh, sm: Mesh, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
+                    fm: Mesh, am: Mesh, sm: Mesh, pwi: integer, pwup: integer, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
   q0 = cx * CHUNK;
   r0 = cz * CHUNK;
   slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
@@ -2374,8 +2419,14 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
         // for: the stencil's house walls, a single edge placed by hand. Where a
         // run carries the edge the run is drawn instead, once, straight — drawing
         // both would put a staircase inside a wall.
+        // ⚠ AND THE PART'S OWN PROFILE IS APPLIED HERE, AT THE ONE PLACE A
+        // PANEL'S HEIGHT AND DESTINATION ARE DECIDED — `A8.8`, §P9.13. `pwm` is
+        // the mesh the part asked its panels to be drawn in (`wm` when it asked
+        // for nothing) and `pwup` its stated height. A wall RUN is untouched:
+        // `emit_run_wall` above draws those, and a part carries no runs at all,
+        // which is why the profile lands exactly on the fallback a part uses.
         for si in 0..3 {
-          if ews[si] != 0 && wall_up(ews[si]) > 0 {
+          if ews[si] != 0 && wall_up_part(ews[si], pwup) > 0 {
             (fq, fr) = hex_grid::hex_neighbor(cq, cr, slot_dir[si]);
             aw = hex_to_world(cq, cr, 0);
             bw = hex_to_world(fq, fr, 0);
@@ -2385,7 +2436,8 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
                                                     (aw.z + bw.z) * 0.5) < 0.9;
             }
             if !carried {
-              emit_wall_panel(wm, cq, cr, slot_dir[si], wall_up(ews[si]), wld);
+              emit_panel_into(pwi, vm, km, wm, fm, am, sm, cq, cr, slot_dir[si],
+                              wall_up_part(ews[si], pwup), wld);
             }
           }
         }
@@ -3216,7 +3268,21 @@ fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
   cma_l = hex_mesh::chunk_mesh_mat(cx, cz, wld, FLOOR_MAT);
   cma_a = mesh("frame");
   cma_s = mesh("soffit");
+  // ⚠ THE PART'S OWN WALL PROFILE, READ ONCE PER CHUNK FROM THE WORLD ALREADY IN
+  // HAND — plan 17 `A8.8`, §P9.13. Every one of this function's five callers
+  // already passes the world the panels are being built out of (`part_disp`, a
+  // part's own load, or the game world), so the profile needs no new argument
+  // anywhere and no caller changed. A game world carries no `WALL` section, so
+  // `MR_ABSENT` gives the unstated profile and the mesher behaves as it always
+  // did. ⚠ Read HERE and not in the per-edge loop: a section decode per panel per
+  // rebuild is the cost `part_expand` refuses a glb parse for.
+  cma_pw = hex_part::part_wall(wld).wr_wall;
+  cma_pwi = 5;                                       // `wall`, the default
+  if cma_pw.wa_surface != "" {
+    cma_pwi = hex_mesh::surface_index(cma_pw.wa_surface);
+  }
   chunk_mesh_props(cx, cz, wld, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s,
+                   cma_pwi, cma_pw.wa_up,
                    runs, roofs, leaves, openings, annexes, awalls, props, slabs, holes);
   [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s]
 }
@@ -5668,6 +5734,21 @@ fn main() {
               sv_cyc = hex_part::part_cycle_of(parts_root(), sv_name, sv_inst.ir_items,
                                                sv_bind.br_items);
               sv_mesh = hex_part::part_mesh_loads(parts_root(), wld);
+              // ⚠ AND THE WALL PROFILE'S SURFACE, WHICH `hex_part` CANNOT JUDGE —
+              // plan 17 `A8.8`, §P9.13. The list is `hex_mesh::surfaces()` and
+              // `hex_mesh` -> `hex_editor` -> `hex_part`, so a check inside the
+              // part package closes a dependency cycle. Here the list is in
+              // scope, and here is where an author is still holding the part —
+              // `part_mesh_loads`' own bargain for a dangling `.glb`, reached
+              // from the other direction. The mesher's fallback for a name it
+              // cannot route is `wall`, which is the only honest thing an
+              // unrouted name can become; this is what stops one being SAVED.
+              sv_wall = hex_part::part_wall(wld);
+              sv_wsurf = sv_wall.wr_wall.wa_surface;
+              sv_wbad = false;
+              if sv_wall.wr_code == hex_part::MR_OK && sv_wsurf != "" {
+                sv_wbad = hex_mesh::surface_index(sv_wsurf) < 0;
+              }
               if sv_inst.ir_code == MR_MALFORMED {
                 srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
                                   + "INST section: {sv_inst.ir_why}");
@@ -5681,6 +5762,18 @@ fn main() {
                 println("editor: part save refused — '{sv_name}' ({sv_cyc.cc_code}) {sv_cyc.cc_why}");
               // ⚠ `MC_NONE` IS NOT A FAULT. Most parts name no mesh at all, and a
               // check that refused them would refuse the whole cell family.
+              } else if sv_wall.wr_code == MR_MALFORMED {
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' has a damaged "
+                                  + "WALL section: {sv_wall.wr_why}");
+                println("editor: part save refused — '{sv_name}' WALL: {sv_wall.wr_why}");
+              } else if sv_wbad {
+                // ⚠ THE SIX ARE NAMED IN THE REFUSAL. A part reaches this by being
+                // hand-edited or written by something else, and its author needs
+                // the spellings rather than the fact that theirs is not one.
+                srv.send_to(ev.cid, "S:part save refused — '{sv_name}' draws its walls in "
+                                  + "'{sv_wsurf}', which is not a surface a panel can be "
+                                  + "routed into: tree roof wall floor frame soffit");
+                println("editor: part save refused — '{sv_name}' wall surface '{sv_wsurf}'");
               } else if sv_mesh.mc_code != hex_part::MC_OK
                      && sv_mesh.mc_code != hex_part::MC_NONE {
                 // ⚠ THE OTHER HALF OF `A3.4`, and until now `part_mesh_loads` was

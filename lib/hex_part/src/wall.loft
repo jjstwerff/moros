@@ -1,0 +1,98 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// `WALL` — how tall a part's walls are, and what they are made of.
+//
+// Plan 17 `A8.8`, [PARTS.md §P9.13](../../../doc/claude/PARTS.md#p913--a-part-says-how-tall-its-walls-are-and-what-they-are-made-of).
+//
+// ⚠ THE STEP EXISTS BECAUSE A DOOR PHOTOGRAPHED AS A HOLE. `A8.3`'s leaf reaches
+// the wire and is drawn in colour `0.55,0.52,0.46` spanning `y 0.00..3.25` — the
+// `wall` surface byte for byte, at one `WALL_UP` standing on the paving. Same
+// colour as the wall it hangs in, same height as the wall it hangs in.
+// `probe/a83/leaf_visible/run.sh` is the measurement, and its second finding is
+// why this is a FORMAT change and not content: a cell's `h_material` colours a
+// horizontal PLATE, a leaf's body is a vertical PANEL, and every per-edge panel
+// goes to the one `wall` slot with its height from `wall_up(mat)`. No value an
+// author can write reaches a panel's colour.
+//
+// ⚠ AND IT IS PER PART BECAUSE A LEAF IS ITS OWN PART FILE. That is the whole of
+// the grain argument: the leaf and the wall it hangs in are two documents, so one
+// profile each already separates them. Per-cell would be a WORLD-format change,
+// and per-edge is what an `Opening` is for — which this deliberately is not.
+use hex_world;
+use codec;
+use meta;
+
+// ⚠ A LITERAL, held equal to `section_tag("WALL")` by a test — `meta.loft`'s rule
+// and its reason: a file-scope constant is an inlined expression re-evaluated at
+// every reference, so a derived tag re-runs the packing loop at each use.
+pub const TAG_WALL = 1280065879;    // 'WALL', low byte first
+
+// ⚠ `0` MEANS *NOT STATED*, AND THAT COLLAPSES NOTHING. A zero-height wall panel
+// is not a thing this format needs to say: `DOOR_MAT` already says *no panel
+// here*, per EDGE, which is strictly more expressive than a per-part zero. So the
+// two readings of `up=0` are one reading, and the sentinel costs no meaning.
+// The same for `wa_surface`: `""` is not a surface, so it can only mean *unstated*.
+//
+// ⚠ THE SURFACE IS A NAME AND NOT AN INDEX, and that is `hex_mesh`'s own header
+// speaking: re-ordering `surfaces()` renumbers every mesh on the wire, so a stored
+// index would silently become a different colour on a re-order while a name
+// survives it.
+pub struct PartWall {
+  wa_up:      integer = 0,    // the height of this part's WALL_MAT panels
+  wa_surface: text = "",      // the surface they are drawn in, by name
+}
+
+pub const WA_OK      = 0;
+pub const WA_UP      = 1;   // a negative height, which is not a height
+pub const WA_NEWLINE = 2;   // a newline in the surface name would forge a line
+
+fn has_newline(t: text) -> boolean {
+  t.find("\n") != null
+}
+
+// ⚠ THE NAME IS NOT CHECKED AGAINST THE SURFACE LIST HERE, AND THAT IS STRUCTURAL
+// RATHER THAN AN OVERSIGHT. The list is `hex_mesh::surfaces()`, and
+// `hex_mesh` -> `hex_editor` -> `hex_part`: a check here closes a dependency
+// CYCLE. So this refuses what it can see — empty is unstated, a newline forges a
+// line — and the name is resolved where the list is visible, on save and at
+// `make parts`. That is `part_mesh_loads`' bargain for a dangling `.glb` arrived at
+// from a different direction: caught at the two moments an author is authoring,
+// and not on every load.
+pub fn part_set_wall(w: World, p: PartWall) -> integer {
+  if p.wa_up < 0 { return WA_UP; }
+  if has_newline(p.wa_surface) { return WA_NEWLINE; }
+  set_section_text(w, TAG_WALL, "up={p.wa_up}\nsurface={p.wa_surface}");
+  WA_OK
+}
+
+// ⚠ `wr_wall` IS USABLE ON `MR_ABSENT` AS WELL AS `MR_OK` — both fields read
+// *unstated* — and only `MR_MALFORMED` means *do not trust this*. `sock.loft`'s
+// rule, for its reason: a part written before this section existed states no
+// profile and is fine, while a part whose `WALL` says `up=tall` is damaged, and
+// one code for both makes the damaged one look ordinary.
+pub struct WallRead { wr_code: integer, wr_wall: PartWall, wr_why: text }
+
+pub fn part_wall(w: World) -> WallRead {
+  if world_section_at(w, TAG_WALL) < 0 {
+    return WallRead { wr_code: MR_ABSENT, wr_wall: PartWall {},
+                      wr_why: "no WALL section" };
+  }
+  t = section_text(w, TAG_WALL);
+  up = 0;
+  raw = meta_field(t, "up");
+  if raw != null {
+    n = (raw ?? "") as i32?;
+    if n == null {
+      return WallRead { wr_code: MR_MALFORMED, wr_wall: PartWall {},
+                        wr_why: "up '{raw}' is not a number" };
+    }
+    if (n ?? 0) < 0 {
+      return WallRead { wr_code: MR_MALFORMED, wr_wall: PartWall {},
+                        wr_why: "up {n} is negative, and a height is not" };
+    }
+    up = n ?? 0;
+  }
+  WallRead { wr_code: MR_OK,
+             wr_wall: PartWall { wa_up: up, wa_surface: meta_field(t, "surface") ?? "" },
+             wr_why: "" }
+}

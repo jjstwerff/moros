@@ -1,0 +1,29 @@
+// Does a Mesh survive being SELECTED? loft#774 — a plain struct copies on `b = a`
+// and aliases on `c = v[0]`. If a Mesh copies, choosing a panel's destination
+// through a local or a vector silently drops every triangle emitted into it.
+use graphics;
+use hex_mesh;
+
+fn one(m: Mesh) {
+  n = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
+  hex_mesh::emit_tri(m, Vec3 { x: 0.0, y: 0.0, z: 0.0 }, n,
+                        Vec3 { x: 1.0, y: 0.0, z: 0.0 }, n,
+                        Vec3 { x: 0.0, y: 0.0, z: 1.0 }, n);
+}
+
+fn main() {
+  a = mesh("a");
+  la = a;                      // through a LOCAL
+  one(la);
+  println("local:  a = {len(mesh_to_floats(a))} floats  (0 means a local COPIES)");
+
+  b = mesh("b");
+  v: vector<Mesh> = [b];
+  vb = v[0] ?? mesh("z");      // through a VECTOR read
+  one(vb);
+  println("vector: b = {len(mesh_to_floats(b))} floats  (0 means a vector read COPIES)");
+
+  c = mesh("c");
+  one(c);                      // the control
+  println("direct: c = {len(mesh_to_floats(c))} floats  (must be > 0 or the probe is blind)");
+}

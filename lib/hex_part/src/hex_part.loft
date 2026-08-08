@@ -21,4 +21,5 @@ use prop;
 use stamp;
 use expand;
 use bake;
+use wall;   // A8.8 — how tall a part's walls are, and what they are made of (P9.13)
 use skin;   // A8.7 — what a returned skin may and may not do (P9.11)

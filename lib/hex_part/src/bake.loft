@@ -31,6 +31,7 @@ use stamp;
 use meta;
 use prop;
 use expand;
+use wall;    // A8.8 — the profile a flattening cannot carry (P9.13)
 
 pub const BK_OK      = 0;
 pub const BK_MISSING = 1;   // the part is not in the library
@@ -44,6 +45,7 @@ pub const BK_SWING   = 8;   // the leaf is swung past its own hinge (A5.2)
 pub const BK_MESH    = 9;   // a mesh body, which no flattening can carry (A6.2)
 pub const BK_LIMB    = 10;  // a bound limb, which is posed rather than stamped (A8.1)
 pub const BK_UNIT    = 11;  // a composed part states a different unit (A8.2b, P9.1)
+pub const BK_WALL    = 12;  // …or a different wall profile (A8.8, P9.13)
 
 // The same five answers `expand` keeps apart, in this path's code space. ⚠ Two
 // tables rather than one shared mapping, because the two paths' code spaces are
@@ -108,7 +110,8 @@ fn insert_ordered(cells: vector<Hex>, h: Hex) -> vector<Hex> {
 // `anchor`, then descend. The frame is the part's own origin, so the top call
 // passes `(0, 0, 0)` and a child's centre is `un_origin` of the parent's.
 fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
-           unit: float, depth: integer, tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
+           unit: float, rootwall: PartWall, depth: integer,
+           tab: hash<BakeCol[bc_key]>, acc: Bake) -> Bake {
   if depth > EX_MAX_DEPTH {
     return Bake { bk_code: BK_DEPTH, bk_depth: depth,
                   bk_why: "'{name}' is nested {depth} deep; the bound is "
@@ -137,6 +140,25 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
       bk_why: "'{name}' is authored at unit {p.w_unit} and is being flattened into a "
             + "part at unit {unit} — a cell cannot cross that (P9.1). A part at a "
             + "different unit is a LIMB, posed at the ratio, or it is nothing" };
+  }
+
+  // ⚠ AND A DIFFERENT WALL PROFILE CANNOT BE FLATTENED EITHER — plan 17 `A8.8`,
+  // §P9.13. `part_bake`'s result is ONE part, so it carries ONE `WALL` section,
+  // and the flattened cells are drawn at the ROOT's height and in the ROOT's
+  // surface. A child that states its own — a timber leaf inside a stone frame —
+  // would come out of the bake as stone, at the frame's height, with every column
+  // present and every count agreeing. `BK_UNIT`'s shape exactly, one field along:
+  // a property that lives on the PART and not on the cell cannot survive a merge
+  // of cells. ⚠ Unstated is a value here, not a wildcard: a child with no profile
+  // inside a root that has one is still redrawn, so it is refused too.
+  cw = part_wall(p).wr_wall;
+  if cw.wa_up != rootwall.wa_up || cw.wa_surface != rootwall.wa_surface {
+    return Bake { bk_code: BK_WALL,
+      bk_why: "'{name}' states a wall profile (up={cw.wa_up} surface='{cw.wa_surface}') "
+            + "and the part it is being flattened into states "
+            + "(up={rootwall.wa_up} surface='{rootwall.wa_surface}') — one bake is one "
+            + "WALL section (P9.13). A part with its own wall profile is a LIMB, posed, "
+            + "or it is nothing" };
   }
 
   // ⚠ A MESH BODY IS REFUSED, AND FINDING THAT OUT IS `A6.2`'s SECOND HALF.
@@ -200,7 +222,8 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
                           + "and only 0, 4, 8, 12, 16 and 20 can ever be (A4.4)" };
     }
     (nq, nr) = un_origin(cq, cr, c.pi_q, c.pi_r);
-    down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, unit, depth + 1, tab, here);
+    down = bake_at(root, c.pi_part, nq, nr, anchor + c.pi_h, unit, rootwall,
+                   depth + 1, tab, here);
     if down.bk_code != BK_OK { return down; }
     here = down;
 
@@ -264,7 +287,10 @@ pub fn part_bake(root: text, name: text) -> Bake {
 
   tab: hash<BakeCol[bc_key]> = [];
   seed = Bake { bk_code: BK_OK };
-  done = bake_at(root, name, 0, 0, 0, src.w_unit, 1, tab, seed);
+  // ⚠ THE ROOT'S PROFILE, READ ONCE AND THREADED — the same shape as `w_unit`
+  // above it, for the same reason: the result takes the root's, so every child
+  // is measured against the root rather than against its own parent.
+  done = bake_at(root, name, 0, 0, 0, src.w_unit, part_wall(src).wr_wall, 1, tab, seed);
   // ⚠ THE SAME UPGRADE `expand` MAKES, for the same reason: a loop exhausts the
   // depth bound, so the raw answer blames nesting in a library that has none.
   // Error path only.

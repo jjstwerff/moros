@@ -57,6 +57,12 @@ onward (**not** blocked), and the two ◐ format questions that want a plan rath
    the CHUNK id space while a limb goes to `PART_MESH_BASE`..`+MAX` — so it reports `0` for every
    limb whatever was sent, and reported `field 18` for a part holding no field at all, one subject
    behind. The probe's `door/leaf`-as-subject control is what caught it.
+   ✅ **AND `A8.8` FIXED IT (2026-08-08).** A part now says how tall its walls are and what they
+   are made of — a `WALL` section, [PARTS.md §P9.13](PARTS.md#p913--a-part-says-how-tall-its-walls-are-and-what-they-are-made-of).
+   `door/leaf` states `surface=floor` and the doorway reads as timber in stone; `run.sh` is seven
+   controls. ⚠ **What `A8.3` still wants is the user's eyes on the NEW picture** —
+   `shots/a83-door-{w,sw,s}.png`, regenerated — and ⚠ **the opening still has no HEAD**: a per-part
+   height and an `Opening` profile are two capabilities, and only the first is built.
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 
@@ -407,6 +413,14 @@ the NATIVE server now**), and most of it is a record of getting there. **Whoever
 file: that block is the work, and the durable sentences go to § *What bites*, not to the bin.**
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **A `Mesh` COPIES THROUGH A LOCAL *AND* THROUGH A VECTOR READ — only a PARAMETER aliases.**
+Measured 2026-08-08, `probe/a83/leaf_visible/meshalias.loft`: `la = a; emit(la)` leaves `a` empty,
+and so does `v[0]`. ⚠ **That is NOT what loft#774 records for a plain struct** (*copies on `b = a`,
+**aliases** on `c = v[0]`*), so the note below must not be relied on for one. It matters because
+selecting a destination mesh is the natural way to route geometry — `m = all[i];
+emit_wall_panel(m, …)` — and it **drops every triangle** with no diagnostic, every count agreeing,
+and a blank wall in the picture. Pass every candidate as a parameter and branch (`emit_panel_into`).
 
 ⚠ **READING A STRUCT FIELD ALIASES; READING A PLAIN LOCAL COPIES** — loft#774/#775, and it bit
 again on 2026-08-08. `held = sess.es_roofs` shares its vector with the live one, so clearing the

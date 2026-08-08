@@ -13,10 +13,30 @@ const subjects = process.argv.slice(3);
 
 const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// ⚠ SETTLE ON THE EVIDENCE, NEVER ON A CLOCK. A fixed wait after `44:` reports the
+// MACHINE: under load the meshes had not all arrived at 4 s and three claims came
+// back false, then true on a rerun — a flake in a gate, which is worse than no
+// gate. This returns when no `M:` has landed for `quiet` ms, capped, so it is fast
+// when the box is idle and correct when it is not. (A fixed wait is right only
+// when the claim is an ABSENCE; every claim here is a presence.)
+const settle = async (quiet = 900, cap = 20000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < cap) {
+    // ⚠ `lastMsg > t0` IS THE HALF THAT MATTERS. Without it the second subject
+    // settles instantly on the FIRST subject's silence — measured: `door/leaf`
+    // came back with no meshes at all, three runs running. Quiet is only evidence
+    // once something has actually arrived.
+    if (lastMsg > t0 && Date.now() - lastMsg >= quiet) return;
+    await sleep(100);
+  }
+};
+
 const limb = new Map();   // id -> payload length of the LAST frame seen
 const status = [];
 
+let lastMsg = Date.now();
 ws.addEventListener('message', (ev) => {
+  lastMsg = Date.now();
   const s = typeof ev.data === 'string' ? ev.data : '';
   if (s.startsWith('S:')) status.push(s.slice(2));
   if (!s.startsWith('M:')) return;
@@ -36,10 +56,10 @@ for (const name of subjects) {
   limb.clear();
   status.length = 0;
   ws.send('44:');
-  await sleep(1200);
+  await settle(500, 8000);
   limb.clear();
   ws.send(`44:${name}`);
-  await sleep(4000);          // the display rebuild runs on the tick after the open
+  await settle();          // the display rebuild runs on the tick after the open
   const live = [...limb.entries()].filter(([, n]) => n > 0).sort((a, b) => a[0] - b[0]);
   const empty = [...limb.entries()].filter(([, n]) => n === 0).map(([id]) => id);
   console.log(`${name.padEnd(14)} limb ids with geometry: ` +

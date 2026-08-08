@@ -477,6 +477,20 @@ fn write_cell_leaf(root: text) {
   }) == PM_OK, "the leaf's meta was refused");
   assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
          "the leaf's FITS was refused");
+  // ⚠ THE WHOLE OF `A8.8`, AND IT IS ONE LINE — §P9.13. Without it this leaf is
+  // drawn in the `wall` surface at one `WALL_UP`: measured, colour
+  // `0.55,0.52,0.46` spanning `y 0.00..3.25`, which is the colour AND the height
+  // of the wall it hangs in (`probe/a83/leaf_visible/`). A door is joinery, so it
+  // is timber — the same `floor` surface `door/plank`'s cells already take, and
+  // `hex_mesh`'s own note says the floor was separated from the wall in the
+  // RENDERER precisely so the two can be told apart in a picture.
+  //
+  // ⚠ AND `up` IS DELIBERATELY UNSTATED. A leaf shorter than its opening would be
+  // right if the opening had a HEAD, and it has none — §P9.13 says so — so a
+  // short leaf here buys a hole above the door rather than a lintel. `up` waits
+  // for the opening profile; the surface is what `A8.3` was actually short of.
+  assert(part_set_wall(w, PartWall { wa_surface: "floor" }) == WA_OK,
+         "the leaf's wall profile was refused");
   assert(part_set_hinge(w, Hinge {
     hg_ox: 0.8660254037844386, hg_oy: 0.0, hg_oz: 0.5,
     hg_ax: 0.0, hg_ay: 1.0, hg_az: 0.0,
