@@ -118,6 +118,49 @@ fn test_curved_ground_under_a_hitched_cart() {
   }
 }
 
+// ── the slope guarantee, which this solve did NOT have ──────────────────────
+//
+// ⚠ THE TRAILER INHERITED EVERY FAILURE `A6` HAD, and kept them for a while after
+// the cart's were fixed, because it has no consumer to notice. It alternated two
+// closed forms — pitch from the sum of the contacts, roll from their difference —
+// which is block Gauss–Seidel, and both of its doorsteps were asked at the CURRENT
+// iterate. Measured on planes: **refused a slope of 0.9** — *"ground drops 0.946
+// across an axle of 0.903"* — and left `3e−4` at 0.6.
+//
+// Both are brackets now, nested: the pitch on `sin θ ∈ [−1, +1]`, where a sign
+// change IS the drawbar's reach, and the roll on `k = w·sin φ ∈ [−w, +w]`, which
+// is `ground_axle`'s chord question one pitch down.
+
+fn test_a_hitched_cart_rests_at_every_slope_a_plane_can_have() {
+  slopes: vector<float> = [0.2, 0.6, 0.9, 1.1, 2.0, 3.5];
+  for k in 0..len(slopes) {
+    s = slopes[k] ?? 0.0;
+    tilt = fn(px: float, pz: float) -> float { s * pz };
+    cart = hitched_rest(tilt, 0.0, 1.2, 0.0, 0.0, DRAWBAR, HALF, RADIUS, 20);
+    assert(cart.rt_ok,
+           "a plane of slope {s} is rideable by a TOWED cart too: {cart.rt_reason}");
+    gl = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 0.0 - 1.0, tilt);
+    gr = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, tilt);
+    assert(fabs(gl) < BOUND && fabs(gr) < BOUND,
+           "and both its wheels are down at slope {s}: {gl}, {gr}");
+  }
+}
+
+fn test_both_unknowns_at_once_on_a_steep_cross_slope() {
+  // ⚠ THE CASE A SINGLE-AXIS FIXTURE CANNOT SEE. The wheels move ALONG the travel
+  // direction as the body rolls, by `∓k·sin θ`, so pitch and roll are coupled
+  // through the sampling itself — and that term vanishes at `θ = 0`. This one
+  // slopes along both axes AND is yawed, so neither unknown is zero.
+  steep = fn(px: float, pz: float) -> float { 0.9 * pz + 0.5 * px };
+  cart = hitched_rest(steep, 0.0, 1.2, 0.0, 0.3, DRAWBAR, HALF, RADIUS, 20);
+  assert(cart.rt_ok, "a steep cross-slope is rideable: {cart.rt_reason}");
+  assert(fabs(cart.rt_bank) > 0.3, "the cart really is rolled over ({cart.rt_bank})");
+  gl = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 0.0 - 1.0, steep);
+  gr = hitched_gap(cart.rt_frame, DRAWBAR, HALF, RADIUS, 1.0, steep);
+  assert(fabs(gl) < BOUND && fabs(gr) < BOUND,
+         "and both wheels are down: {gl}, {gr}");
+}
+
 // ── A-FIT: the hitched body has TWO doorsteps, not one ──────────────────────
 
 fn test_a_cliff_across_the_axle_is_refused() {

@@ -291,65 +291,243 @@ pub fn hitched_gap(f: Frame, drawbar: float, half: float, radius: float,
   w.y - radius - sample(w.x, w.z)
 }
 
-// The fixed point for a hitched body. Two unknowns, two closed forms, seeded
-// level — and it refuses on the same doorstep `A6` has, because a drop the axle
-// cannot straddle is a drop the axle cannot straddle whoever is towing.
+// ── the hitched solve: TWO nested brackets ──────────────────────────────────
+//
+// ⚠ **IT USED TO ALTERNATE TWO CLOSED FORMS, AND INHERITED EVERY FAILURE `A6`
+// HAD.** Measured on planes, where the answer is closed form: it refused a slope
+// of **0.9** outright — *"ground drops 0.946 across an axle of 0.903"* — and left
+// `3e−4` at 0.6. Both doorsteps were asked at the CURRENT iterate, so the seed
+// (level, `θ = φ = 0`) decided admissibility for a body that had not yet been
+// allowed to tilt.
+//
+// The unknowns really are two, and they do not separate: a wheel centre sits at
+//
+//     y = P_y − L·sin θ − side·w·sin φ·cos θ
+//
+// so summing the two contacts gives the PITCH and differencing them the ROLL:
+//
+//     sin θ = (P_y − R − m) / L        m = (g_L + g_R)/2      … the sum
+//     2·w·sin φ·cos θ = g_L − g_R = d                         … the difference
+//
+// ⚠ **The `cos θ` is not decoration** — dropping it gave a solve that converged on
+// terrain sloping along ONE axis and failed on terrain sloping along two, and the
+// single-axis clauses passed, which is how the omission nearly survived.
+//
+// Alternating those two is block Gauss–Seidel and diverges exactly as `A6`'s did.
+// What replaces it is a bracket on each, nested — the outer on the pitch, the
+// inner on the roll — because each has an interval whose endpoints are known:
+//
+//   PITCH, on `sin θ ∈ [−1, +1]`, where `F(sin θ) = (P_y − L·sin θ − R) − m`
+//     is decreasing: at `−1` the axle is a full drawbar ABOVE the pin, at `+1` a
+//     full drawbar below. A sign change is exactly *the ground is within the
+//     drawbar's reach*, which is the second refusal, asked once instead of per
+//     round.
+//
+//   ROLL, on `k = w·sin φ ∈ [−w, +w]`, where `Q(k) = 2k·cos θ − d(k)` is the same
+//     chord question `ground_axle` answers, one pitch down. `Q(−w) = −2w·cos θ −
+//     d` and `Q(+w) = +2w·cos θ − d`, so on any terrain gentle enough to bracket
+//     it, it brackets.
+//
+// The `A-FIT` doorstep is kept and asked where it means something: at the
+// converged pose, against the reach the axle actually has there.
+
+struct RollFit {
+  rf_k: float,             // w·sin φ — the roll, as a height offset
+  rf_gl: float,
+  rf_gr: float
+}
+
+// The two ground samples under a hitched body at a given pitch and roll.
+//
+// ⚠ THE WHEELS MOVE ALONG THE TRAVEL DIRECTION AS THEY ROLL, by `∓k·sin θ`, and
+// that term is what makes this a genuinely two-dimensional problem rather than
+// two independent ones. It vanishes at `θ = 0`, which is why a single-axis
+// fixture cannot see it.
+fn hitched_pair(sample: fn(float, float) -> float,
+                px: float, pz: float, yaw: float,
+                drawbar: float, half: float,
+                theta: float, k: float) -> (float, float) {
+  ct = cos(theta);
+  st = sin(theta);
+  cw = cos(yaw);
+  sw = sin(yaw);
+  c2 = half * half - k * k;
+  if c2 < 0.0 { c2 = 0.0; }
+  c = sqrt(c2) ?? 0.0;                      // the across half-offset, w·cos φ
+  blx = 0.0 - drawbar * ct - k * st;
+  brx = 0.0 - drawbar * ct + k * st;
+  lx = px + blx * cw - c * sw;
+  lz = pz - blx * sw - c * cw;
+  rx = px + brx * cw + c * sw;
+  rz = pz - brx * sw + c * cw;
+  (sample(lx, lz), sample(rx, rz))
+}
+
+// The roll that puts both wheels down at a GIVEN pitch.
+fn hitched_roll(sample: fn(float, float) -> float,
+                px: float, pz: float, yaw: float,
+                drawbar: float, half: float,
+                theta: float, rounds: integer) -> RollFit {
+  ct = cos(theta);
+  ka = 0.0 - half;
+  kb = half;
+  (al, ar) = hitched_pair(sample, px, pz, yaw, drawbar, half, theta, ka);
+  (bl, br) = hitched_pair(sample, px, pz, yaw, drawbar, half, theta, kb);
+  qa = 2.0 * ka * ct - (al - ar);
+  qb = 2.0 * kb * ct - (bl - br);
+  // No sign change: no roll closes it. Hand back the level axle and let the
+  // caller's `A-FIT` clause name it — a refusal is the CALLER's to report, so it
+  // is reported once, against the converged pose.
+  if qa > 0.0 || qb < 0.0 {
+    (ll, rr) = hitched_pair(sample, px, pz, yaw, drawbar, half, theta, 0.0);
+    return RollFit { rf_k: 0.0, rf_gl: ll, rf_gr: rr };
+  }
+  kt = 0.0;
+  gl = al;
+  gr = ar;
+  held = 0;
+  for it in 0..rounds {
+    wide = kb - ka;
+    den = qb - qa;
+    kn = (ka + kb) * 0.5;
+    if den != 0.0 { kn = (ka * qb - kb * qa) / den ?? kn; }
+    lo = ka + wide * 0.001;
+    hi = kb - wide * 0.001;
+    if kn < lo { kn = lo; }
+    if kn > hi { kn = hi; }
+    (nl, nr) = hitched_pair(sample, px, pz, yaw, drawbar, half, theta, kn);
+    qn = 2.0 * kn * ct - (nl - nr);
+    kt = kn;
+    gl = nl;
+    gr = nr;
+    if qn == 0.0 { break; }
+    if qn > 0.0 {
+      kb = kn;
+      qb = qn;
+      if held == 1 { qa = qa * 0.5; }
+      held = 1;
+    } else {
+      ka = kn;
+      qa = qn;
+      if held == 0 - 1 { qb = qb * 0.5; }
+      held = 0 - 1;
+    }
+    if kb - ka >= wide { break; }
+  }
+  RollFit { rf_k: kt, rf_gl: gl, rf_gr: gr }
+}
+
 pub fn hitched_rest(sample: fn(float, float) -> float,
                     px: float, py: float, pz: float, yaw: float,
                     drawbar: float, half: float, radius: float,
-                    rounds: integer = 6) -> Rest {
-  pitch = 0.0;
-  roll = 0.0;
+                    rounds: integer = 20) -> Rest {
+  // ── the outer bracket: is the ground within the drawbar's reach at all ─────
+  sa = 0.0 - 1.0;                              // sin θ = −1: axle a drawbar UP
+  sb = 1.0;                                    // sin θ = +1: axle a drawbar DOWN
+  ta = asin(sa) ?? 0.0;
+  tb = asin(sb) ?? 0.0;
+  ra = hitched_roll(sample, px, pz, yaw, drawbar, half, ta, rounds);
+  rb = hitched_roll(sample, px, pz, yaw, drawbar, half, tb, rounds);
+  fa = (py - drawbar * sa - radius) - (ra.rf_gl + ra.rf_gr) * 0.5;
+  fb = (py - drawbar * sb - radius) - (rb.rf_gl + rb.rf_gr) * 0.5;
+
+  // ⚠ ASKED ONCE, ON THE INTERVAL, INSTEAD OF EVERY ROUND ON A GUESS. `F` falls
+  // as the axle swings down, so a sign change IS reachability. Without one the
+  // pin is out of range in the direction the sign says, and the offer is the
+  // pitch that came closest.
+  if fb > 0.0 {
+    h = (rb.rf_gl + rb.rf_gr) * 0.5 + radius;
+    return Rest { rt_ok: false,
+                  rt_frame: hitched_frame(px, py, pz, yaw, tb, 0.0),
+                  rt_bank: 0.0, rt_rounds: 0, rt_resid: 0.0,
+                  rt_reason: "the pin is {fabs(py - h)} above the axle, past a drawbar of {drawbar}",
+                  rt_offer: tb, rt_over: fabs(py - h) - drawbar };
+  }
+  if fa < 0.0 {
+    h = (ra.rf_gl + ra.rf_gr) * 0.5 + radius;
+    return Rest { rt_ok: false,
+                  rt_frame: hitched_frame(px, py, pz, yaw, ta, 0.0),
+                  rt_bank: 0.0, rt_rounds: 0, rt_resid: 0.0,
+                  rt_reason: "the pin is {fabs(py - h)} below the axle, past a drawbar of {drawbar}",
+                  rt_offer: ta, rt_over: fabs(py - h) - drawbar };
+  }
+
+  // ── the pitch, by Illinois on sin θ ────────────────────────────────────────
+  sp = sb;
+  fit = rb;
+  theta = tb;
   resid = 0.0;
   used = 0;
+  held = 0;
   for it in 0..rounds {
-    f = hitched_frame(px, py, pz, yaw, pitch, roll);
-    gl = 0.0;
-    gr = 0.0;
-    wl = hitched_wheel(f, drawbar, half, 0.0 - 1.0);
-    wr = hitched_wheel(f, drawbar, half, 1.0);
-    gl = sample(wl.x, wl.z);
-    gr = sample(wr.x, wr.z);
-    d = gl - gr;
-    // ⚠ THE `cos(pitch)` IS NOT DECORATION. A wheel centre sits at
-    //     y = P_y − L·sin(pitch) − side·w·sin(roll)·cos(pitch)
-    // so the height DIFFERENCE across the axle is `2w·sin(roll)·cos(pitch)`, and
-    // the two closed forms are coupled through it. Dropping the factor gave a
-    // solve that converged on terrain sloping along ONE axis and failed on
-    // terrain sloping along two — four clauses, and the single-axis ones passed,
-    // which is how the omission nearly survived.
-    reach = 2.0 * half * cos(pitch);
-    flat = reach * reach - d * d;
-    if flat <= 0.0 {
-      off = reach;
-      if d < 0.0 { off = 0.0 - off; }
-      return Rest { rt_ok: false, rt_frame: f, rt_bank: roll,
-                    rt_rounds: used, rt_resid: resid,
-                    rt_reason: "ground drops {fabs(d)} across an axle of {reach}",
-                    rt_offer: off, rt_over: fabs(d) - reach };
-    }
-    // sin(roll) = d / reach, so the angle is atan2(d, sqrt(reach² − d²))
-    nroll = atan2(d, sqrt(flat) ?? 0.0);
-    // the axle centre must reach `h`; it hangs `drawbar` behind the pin, so the
-    // pitch that gets it there is a sine away
-    h = (gl + gr) * 0.5 + radius;
-    sp = (py - h) / drawbar ?? 0.0;
-    if sp > 1.0 || sp < 0.0 - 1.0 {
-      npitch = 0.0;
-      if sp > 0.0 { npitch = TURN * 0.25; } else { npitch = 0.0 - TURN * 0.25; }
-      return Rest { rt_ok: false, rt_frame: f, rt_bank: roll,
-                    rt_rounds: used, rt_resid: resid,
-                    rt_reason: "the pin is {fabs(py - h)} above the axle, past a drawbar of {drawbar}",
-                    rt_offer: npitch, rt_over: fabs(py - h) - drawbar };
-    }
-    npitch = asin(sp) ?? 0.0;
-    resid = fabs(nroll - roll) + fabs(npitch - pitch);
-    roll = nroll;
-    pitch = npitch;
+    wide = sb - sa;
+    den = fb - fa;
+    sn = (sa + sb) * 0.5;
+    if den != 0.0 { sn = (sa * fb - sb * fa) / den ?? sn; }
+    lo = sa + wide * 0.001;
+    hi = sb - wide * 0.001;
+    if sn < lo { sn = lo; }
+    if sn > hi { sn = hi; }
+    tn = asin(sn) ?? 0.0;
+    rn = hitched_roll(sample, px, pz, yaw, drawbar, half, tn, rounds);
+    fn2 = (py - drawbar * sn - radius) - (rn.rf_gl + rn.rf_gr) * 0.5;
+    resid = fabs(sn - sp);
+    sp = sn;
+    theta = tn;
+    fit = rn;
     used = it + 1;
+    if fn2 == 0.0 { break; }
+    // `F` DECREASES with sin θ, so the signs go the other way round from `Q`.
+    if fn2 < 0.0 {
+      sb = sn;
+      fb = fn2;
+      if held == 1 { fa = fa * 0.5; }
+      held = 1;
+    } else {
+      sa = sn;
+      fa = fn2;
+      if held == 0 - 1 { fb = fb * 0.5; }
+      held = 0 - 1;
+    }
+    if sb - sa >= wide { break; }
+  }
+
+  reach = 2.0 * half * cos(theta);
+  roll = asin(fit.rf_k / half ?? 0.0) ?? 0.0;
+  rf = hitched_frame(px, py, pz, yaw, theta, roll);
+  // ⚠ THE DROP IS READ OFF THE FRAME, NOT OFF THE SOLVE'S OWN SAMPLES, and that
+  // is the same rule `A-GROUND` states at the top of this file — *a wrong pose
+  // cannot report a right gap*. It is load-bearing HERE and not merely tidy.
+  //
+  // A cliff makes `Q` discontinuous, so the bracket collapses ONTO the jump, and
+  // the jump sits at `|k| = w` where the axle is vertical and the solve's own two
+  // contacts coincide: it reads `d = 0` and reports a rest. Measured on the test
+  // cliff — roll `−π/2`, both sampled contacts at `z = 0`, `d = 0`, `ok true` —
+  // while the frame puts the wheels at `z = ∓3.4e−17`, either side of the edge,
+  // with a 3.0 drop between them and gaps of −0.55 and −2.45.
+  //
+  // ⚠ `ground_axle` does NOT need this and is left alone: its bracket runs on
+  // `[0, w²]`, so the inside-the-bracket step stays strictly positive and its
+  // contacts can never coincide. Here the bracket is `[−w, +w]` and the low end
+  // IS the degenerate pose.
+  wl = hitched_wheel(rf, drawbar, half, 0.0 - 1.0);
+  wr = hitched_wheel(rf, drawbar, half, 1.0);
+  d = sample(wl.x, wl.z) - sample(wr.x, wr.z);
+  // ⚠ `A-FIT`, AT THE CONVERGED POSE. A drop the axle cannot straddle is a drop
+  // the axle cannot straddle whoever is towing — but the reach it is measured
+  // against is `2w·cos θ` at the pitch the body actually settled to, not at the
+  // level seed the old solve asked from.
+  if fabs(d) > reach {
+    off = reach;
+    if d < 0.0 { off = 0.0 - off; }
+    return Rest { rt_ok: false,
+                  rt_frame: hitched_frame(px, py, pz, yaw, theta, roll),
+                  rt_bank: roll, rt_rounds: used, rt_resid: resid,
+                  rt_reason: "ground drops {fabs(d)} across an axle of {reach}",
+                  rt_offer: off, rt_over: fabs(d) - reach };
   }
   Rest { rt_ok: true,
-         rt_frame: hitched_frame(px, py, pz, yaw, pitch, roll),
+         rt_frame: hitched_frame(px, py, pz, yaw, theta, roll),
          rt_bank: roll, rt_rounds: used, rt_resid: resid,
          rt_reason: "", rt_offer: 0.0, rt_over: 0.0 }
 }

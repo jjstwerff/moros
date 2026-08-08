@@ -482,24 +482,46 @@ longer exists. One of them —
 `test_the_step_shrinks_by_s_squared_each_round` — guarded its ratio with `if prev > 0.0`, so
 against a solve that settles in one round it compares nothing and **reports green**.
 
-### Open: the towed trailer's rest solve has all of the above, and no consumer
+### ✅ FIXED 2026-08-08 — the towed trailer had all of the above, and kept it a while longer
 
-⚠ **Measured 2026-08-08 with the same probe shape, after fixing the cart's.**
-`msim::hitched_rest` refuses a plane from slope **0.9** upward — *"ground drops 0.946 across an
-axle of 0.903"* — and leaves `3e−4` at 0.6:
+⚠ **Measured with the same probe shape, after fixing the cart's.** `msim::hitched_rest` refused
+a plane from slope **0.9** upward — *"ground drops 0.946 across an axle of 0.903"* — and left
+`3e−4` at 0.6. Same causes: two doorsteps asked at the CURRENT iterate, and an alternation of
+two closed forms (pitch from the contacts' sum, roll from their difference) that is block
+Gauss–Seidel and diverges exactly as `A6`'s did.
 
-| slope | `rt_ok` | worst gap |
+⚠ **AND IT IS GENUINELY NOT THE SAME PROBLEM**, which is why the chord trick could not simply be
+copied: a hitched body has **two** coupled unknowns, and they are coupled *through the sampling* —
+the wheels move along the travel direction by `∓k·sin θ` as the body rolls. That term vanishes
+at `θ = 0`, so a single-axis fixture cannot see it. (The file already records this once: dropping
+a `cos θ` gave a solve that worked on terrain sloping along one axis and failed on two.)
+
+**Two nested brackets**, each with endpoints that are known rather than guessed:
+
+- **pitch**, on `sin θ ∈ [−1, +1]`, where `F = (P_y − L·sin θ − R) − m` is decreasing — at `−1`
+  the axle is a full drawbar above the pin, at `+1` a full drawbar below. A sign change **is**
+  the drawbar's reach, so the second doorstep is asked once on the interval instead of every
+  round on a guess.
+- **roll**, on `k = w·sin φ ∈ [−w, +w]`, which is `ground_axle`'s chord question one pitch down.
+
+| slope | before | now (20 rounds) |
 |---|---|---|
-| 0.2 | true | 1.2e−8 |
-| 0.6 | true | 3.0e−4 |
-| **0.9** | **false** | 0.340 |
-| 1.1 / 2.0 / 3.5 | false | 1.41 / 1.90 / 2.73 |
+| 0.2 | 1.2e−8 | machine ε |
+| 0.6 | 3.0e−4 | machine ε |
+| **0.9** | **refused** | machine ε |
+| 1.1 / 2.0 / 3.5 | **refused** | machine ε |
 
-Same cause: a doorstep asked at the current iterate's span, and a fixed point whose rate falls
-away with slope. **Not fixed by analogy**, because it is not the same problem — a hitched body
-has *two* coupled unknowns (pitch about the pin, roll across the axle) rather than one root to
-bracket, so the chord trick does not transfer unchanged. It has **no caller outside its own
-tests**, which is why it is filed rather than forced.
+⚠ **AND THE CLIFF EXPOSED A TRAP THE CART DOES NOT HAVE.** A discontinuity makes `Q`
+discontinuous, so the bracket collapses **onto the jump** — and the jump sits at `|k| = w`, where
+the axle is vertical and the solve's own two contacts coincide. It read `d = 0` there and
+reported a rest: roll `−π/2`, both sampled contacts at `z = 0`, `ok true`, while the FRAME put
+the wheels at `z = ∓3.4e−17`, either side of the edge, with a 3.0 drop and gaps of −0.55 and
+−2.45. The doorstep reads the **frame's** wheels now, which is `A-GROUND`'s own rule — *a wrong
+pose cannot report a right gap* — load-bearing rather than tidy. `ground_axle` needs none of
+this and is left alone: its bracket runs on `[0, w²]`, so its step stays strictly positive and
+its contacts can never coincide.
+
+Two clauses in `lib/moros_sim/tests/hitch.loft`, both seen red against the old solve.
 
 ### Note: `part_limb` fails under full-suite contention and passes 4/4 alone
 

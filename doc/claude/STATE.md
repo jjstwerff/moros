@@ -61,9 +61,18 @@ on round one, at any round count. It brackets a CHORD LENGTH on the half-span no
 exact in **one** step. Worst gap on a 0.695 rad flank: `9.8e−2` → `4.4e−16`, and `cart.mjs` drives
 that flank instead of the artifact's 0.083. `probe/cart/README.md`.
 
-**Two follow-ups remain**: `msim::hitched_rest` (the towed trailer) has the identical defect and
-no consumer — it is a coupled two-unknown solve, so the chord trick does not transfer unchanged —
-and `cellar.keys`'s soffit split lost its exact fan count.
+✅ **AND THE TOWED TRAILER TOO** — `msim::hitched_rest` had the identical pair of defects and
+refused a plane from slope 0.9 up. It is genuinely a two-unknown problem, coupled *through the
+sampling* (the wheels move along the travel direction by `∓k·sin θ` as the body rolls, a term
+that vanishes at `θ = 0`, which is why a single-axis fixture cannot see it), so it takes **two
+nested brackets**: the pitch on `sin θ ∈ [−1, 1]` — where a sign change *is* the drawbar's reach —
+and the roll on `k = w·sin φ ∈ [−w, w]`, the cart's chord question one pitch down. Every slope
+now rests at machine epsilon. ⚠ **Its cliff exposed a trap the cart does not have**: a
+discontinuity collapses the bracket ONTO the jump, which sits where the axle is vertical and the
+solve's own two contacts coincide — it read `d = 0` and reported a rest while the frame had the
+wheels either side of a 3.0 drop. The doorstep reads the **frame's** wheels now.
+
+**One follow-up remains**: `cellar.keys`'s soffit split lost its exact fan count.
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 
