@@ -74,12 +74,150 @@ at 17 0 270
 keys 1
 step 25
 keys 0
+echo --- and SWEEP the dig disc itself, cell by cell, three times
+# ⚠ THE CROSS LEVELS ITS ARMS AND NOTHING ELSE, which is exactly what the comment
+# above says and not what this fixture needed. `brush` scales the gap by `f²` and
+# truncates, so only the cell the walker STEPS ON closes; measured across the 19
+# cells the dig actually uses, the cross left them spread over SIX height units —
+# 14 to 19 — and a heightfield that varied by 1.5 wu is what stopped the `meshy`
+# rows below reading a whole number of fans.
+#
+# ⚠ IT IS A TELEPORT PER CELL, NOT A WALK, and combing the rows was tried first and
+# is WORSE: entering the plateau from low ground gives the brush a large gap, whose
+# radius-5 dome then lifts everything around it. Measured, one comb from x=13 left
+# the disc spread from 14 to 26. A teleport visits only the cells that matter, with
+# the small gaps the cross has already left.
+#
+# ⚠ AND THREE PASSES, BECAUSE ONE IS NOT ENOUGH AND THE REASON IS THE SAME `f²`.
+# Levelling a cell lifts its neighbours by `gap·f²`, so each pass perturbs what the
+# last one settled — but the perturbation shrinks with the gap, and a gap of 1 gives
+# neighbours `0.92` which truncates to nothing. Measured: 1 pass leaves 17/18/19,
+# 2 leaves 16/17, 3 leaves ALL NINETEEN AT 17, and a 4th confirms that is a fixed
+# point rather than a coincidence.
+# pass 1
+at 15.588 -3.0 0
+step 2
+at 17.321 -3.0 0
+step 2
+at 19.053 -3.0 0
+step 2
+at 14.722 -1.5 0
+step 2
+at 16.454 -1.5 0
+step 2
+at 18.187 -1.5 0
+step 2
+at 19.919 -1.5 0
+step 2
+at 13.856 0.0 0
+step 2
+at 15.588 0.0 0
+step 2
+at 17.321 0.0 0
+step 2
+at 19.053 0.0 0
+step 2
+at 20.785 0.0 0
+step 2
+at 14.722 1.5 0
+step 2
+at 16.454 1.5 0
+step 2
+at 18.187 1.5 0
+step 2
+at 19.919 1.5 0
+step 2
+at 15.588 3.0 0
+step 2
+at 17.321 3.0 0
+step 2
+at 19.053 3.0 0
+step 2
+# pass 2
+at 15.588 -3.0 0
+step 2
+at 17.321 -3.0 0
+step 2
+at 19.053 -3.0 0
+step 2
+at 14.722 -1.5 0
+step 2
+at 16.454 -1.5 0
+step 2
+at 18.187 -1.5 0
+step 2
+at 19.919 -1.5 0
+step 2
+at 13.856 0.0 0
+step 2
+at 15.588 0.0 0
+step 2
+at 17.321 0.0 0
+step 2
+at 19.053 0.0 0
+step 2
+at 20.785 0.0 0
+step 2
+at 14.722 1.5 0
+step 2
+at 16.454 1.5 0
+step 2
+at 18.187 1.5 0
+step 2
+at 19.919 1.5 0
+step 2
+at 15.588 3.0 0
+step 2
+at 17.321 3.0 0
+step 2
+at 19.053 3.0 0
+step 2
+# pass 3
+at 15.588 -3.0 0
+step 2
+at 17.321 -3.0 0
+step 2
+at 19.053 -3.0 0
+step 2
+at 14.722 -1.5 0
+step 2
+at 16.454 -1.5 0
+step 2
+at 18.187 -1.5 0
+step 2
+at 19.919 -1.5 0
+step 2
+at 13.856 0.0 0
+step 2
+at 15.588 0.0 0
+step 2
+at 17.321 0.0 0
+step 2
+at 19.053 0.0 0
+step 2
+at 20.785 0.0 0
+step 2
+at 14.722 1.5 0
+step 2
+at 16.454 1.5 0
+step 2
+at 18.187 1.5 0
+step 2
+at 19.919 1.5 0
+step 2
+at 15.588 3.0 0
+step 2
+at 17.321 3.0 0
+step 2
+at 19.053 3.0 0
+step 2
+
 # ⚠ FACING +x AGAIN BEFORE THE DIG, because the stair runs along the author's facing
 # and the stations below are written for it.
 at 17 0 0
 send 6:0
 step 30
-feet 4.25 4.45
+feet 4.10 4.30
 
 echo --- dig, facing +x, and the stair goes in with it
 key C
@@ -113,7 +251,15 @@ mesh soffit 648 648
 # ⚠ AND `mesh wall` READ 174 THROUGH ALL OF IT, which is the same measurement making
 # the opposite point: the room wall asked §5's geometric question from the start, so
 # it was never sensitive to any of this. That is the argument that converged the two.
-mesh floor 564 564
+# ⚠ AND A FOURTH TIME, 564 → 438, WHEN THE DISC WAS LEVELLED. This one is a
+# MEASUREMENT of a new fixture, not a derivation, and it is marked as such rather
+# than dressed up: 438 is the same 342 of top fan (19 cells at 18) with 96 of rim
+# and riser instead of 222. Most of that 222 was risers the BUMPY plateau owed —
+# `solid_at` draws one wherever the neighbour is not solid at this height, and a
+# disc spread over six height units owes a great many. A flat disc owes far fewer,
+# which is the number moving for the right reason even though nobody has derived
+# 96 from the geometry. ⚠ If it moves again, derive it before believing it.
+mesh floor 438 438
 
 echo --- and the room's own floor is a storey under everything else
 # The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
@@ -127,31 +273,44 @@ echo --- and the room's own floor is a storey under everything else
 # plateau is not perfectly flat, so the ceilings scatter from 2.0 to 4.0 and swallow
 # the treads. What pins the stair's rise instead is the `feet` rows below, which
 # measure it where it is actually load-bearing: under the walker.
-# ⚠ THE CLEAN 306/342 SPLIT WAS RESTING ON THE PLATEAU, AND THE PLATEAU WAS A BUG.
-# 306 was 17 fans of 18 and 342 was those 17 ceilings plus the two treads' own
-# undersides — an exact structural reading, and it needed the two populations to sit
-# in tight clusters with a gap between them. They did because a large part of the
-# ground under the disc was FLAT at exactly one height: an unwritten cell read back
-# its chunk's window base, so every cell the brush's falloff rounded to zero sat at
-# that one constant. With that fixed the ground under the disc is the dome's real
-# curve, the ceilings follow it, and the two populations interleave.
+# ⚠ THE BOUNDARY IS ROBUST NOW, AND THE FAN COUNT IS NOT COMING BACK. Both halves
+# are measured, and the second one refutes what this comment used to propose.
 #
-# Histogrammed here, `meshy soffit -100 T` against T — there is no gap left to bisect:
+# 306/342 was an exact structural reading — 17 fans of 18, and those 17 ceilings plus
+# the two treads' own undersides — and it needed the two populations to sit in tight
+# clusters. They did because a large part of the ground under the disc was FLAT at
+# exactly one height: an unwritten cell read back its chunk's window base, so every
+# cell the raise brush's falloff rounded to zero sat at that one constant. That was a
+# bug, and with it fixed the disc was the dome's real curve, spread over SIX height
+# units. The rows fell to 310/338 with the boundary on a knife edge — 310 held over
+# 1.375..1.5 and nowhere else.
 #
-#   T      0.75  1.0  1.125  1.25  1.375  1.5  1.625  1.75  1.875  2.0  2.25
-#   count   198  256   292    292   310   310   314    314   332    332  352
+# ⚠ LEVELLING THE DISC FIXED THE KNIFE EDGE AND NOT THE COUNT. With the sweep above,
+# all nineteen cells at height 17, the same 310 now holds across 1.0..1.75 — SIX TIMES
+# the margin, for the same numbers:
 #
-# The 4-vertex step from 310 to 314 is the tell: fans arrive 18 at a time, so a step
-# of 4 is one fan STRADDLING the boundary. No threshold reads a multiple of 18.
+#   T      0.5  0.75  1.0  1.25  1.5  1.75  2.0  2.25  2.5  3.0  3.5  4.0
+#   count    0   162  310   310  310   310  332   336  356  396  512  648
 #
-# ⚠ SO THESE TWO ROWS NO LONGER COUNT FANS, AND SAY SO RATHER THAN PRETENDING TO.
-# What they still catch is the defect they were written for — every soffit vertex
-# down at the cellar floor with nothing overhead, which would empty the upper band —
-# and the total above (`mesh soffit 648`) still pins 36 fans exactly. Giving the row
-# its exact reading back means levelling the ground under the disc in this fixture,
-# so the ceilings cluster by construction instead of by luck: OPEN_ISSUES.
-meshy soffit -100 1.5 310 310
-meshy soffit 1.5 100 338 338
+# ⚠ AND 310 IS NOT 306 BECAUSE OF THE TREADS, WHICH NO LEVELLING REACHES. A tread is
+# a STEP: its own fan has corners at different heights by construction, so four of its
+# vertices hang below the boundary whatever the ground under it does. The exact
+# 306/342 was never a property of flat ground — it needed the treads' fans to sit
+# wholly above the split, which was true of the buggy geometry by luck.
+#
+# ⚠ AND FLATTENING WIDER IS REFUTED, not merely unattempted. The ceilings stay spread
+# because a ground fan's corner heights average THREE cells, so the disc's outer ring
+# is pulled by terrain outside it. Levelling a ring further out (radius 3, 37 cells)
+# was measured: it changes what the gesture DIGS — `mesh soffit` goes 648 → 666, 37
+# fans instead of 36 — and the plateau disappears entirely (36, 148, 220, 310, 328,
+# 332 …). A fixture cannot flatten past the dig without changing the dig.
+#
+# So these two rows pin a boundary that is now six times harder to nudge, and they
+# still catch what they were written for: every soffit vertex down at the cellar floor
+# with nothing overhead would empty the upper band. `mesh soffit 648` above is what
+# still pins 36 fans exactly.
+meshy soffit -100 1.375 310 310
+meshy soffit 1.375 100 338 338
 
 echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 # ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:
@@ -175,7 +334,7 @@ echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 echo --- on the plateau, beside the stairwell
 at 22.5 0 180
 step 20
-feet 2.40 2.60
+feet 2.88 3.08
 echo --- the top tread
 at 20.8 0 180
 step 20
@@ -213,10 +372,16 @@ step 90
 snap s16-cellar-wall
 frame 0 1.0 masonry 0.40 1.0 sky 0 0.001 grass 0 0.001
 
-# 29 exposed edges of the dug disc's perimeter, at 6 vertices a quad. A hexagonal
-# disc of radius 2 has 30, and the stairwell accounts for the difference: a tread
+# Exposed edges of the dug disc's perimeter, at 6 vertices a quad. A hexagonal disc
+# of radius 2 has 30 of them, and the stairwell accounts for the difference: a tread
 # with its ceiling opened is not walled, because the room there runs up to daylight.
-mesh wall 174 174
+#
+# ⚠ 174 (29 edges) ON THE BUMPY PLATEAU, 162 (27) ON THE LEVELLED ONE. The quad
+# arithmetic still holds exactly — 162 is 27 × 6 — but WHICH two edges stopped being
+# walled is a measurement here, not a derivation: a wall is owed where a void has
+# earth beside it, and levelling changed the neighbours' heights as well as the
+# disc's. ⚠ Derive it before believing any further move.
+mesh wall 162 162
 
 echo --- and STRAIGHT UP, at the ceiling
 # ⚠ THE PICTURE THAT COULD NOT BE TAKEN BEFORE ANY OF THIS. Nothing could stand in a

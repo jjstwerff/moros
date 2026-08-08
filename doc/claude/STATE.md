@@ -72,7 +72,16 @@ discontinuity collapses the bracket ONTO the jump, which sits where the axle is 
 solve's own two contacts coincide — it read `d = 0` and reported a rest while the frame had the
 wheels either side of a 3.0 drop. The doorstep reads the **frame's** wheels now.
 
-**One follow-up remains**: `cellar.keys`'s soffit split lost its exact fan count.
+◐ **AND THE LAST FOLLOW-UP IS ANSWERED RATHER THAN CLOSED.** `cellar.keys`'s soffit split was to
+be repaired by *levelling the ground under the disc*. It was — a teleport sweep of the 19 dig
+cells, three passes, brings them from a six-unit spread to all exactly 17 — and the boundary went
+from **one step wide to six times that** (310 holds over `1.0..1.75` instead of `1.375..1.5`).
+⚠ **But the count stays 310 and the exact 306/342 is not recoverable**: a tread is a STEP, so its
+own fan has corners at different heights and four of its vertices hang below the split whatever
+the ground does. That reading was never a property of flat ground — it needed the treads' fans
+wholly above the boundary, which the buggy geometry gave by luck. ⚠ **And flattening wider is
+REFUTED**: at radius 3 the gesture digs a different disc (`mesh soffit` 648 → 666) and the
+plateau vanishes. **A fixture cannot flatten past the dig without changing the dig.**
 
 ## ⏭ THE HEADLESS THREAD — where it stands, in five lines
 

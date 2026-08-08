@@ -529,22 +529,43 @@ Seen twice on 2026-08-08 in `make gate` at `GATE_JOBS=16`, including in a run **
 this session's changes, and green 4/4 under `make gate-rep G=part_limb`. Recorded so the next
 person does not attribute it to whatever they just changed. Not diagnosed.
 
-### Open: `cellar.keys`'s soffit split lost its exact reading
+### ◐ `cellar.keys`'s soffit split — levelled, and the exact fan count is NOT recoverable
 
-⚠ **Same cause, 2026-08-08.** `meshy soffit` split 648 vertices into 306 and 342 — 17 fans of
-18, and those 17 ceilings plus the two treads' undersides — by a fixed world-y at 1.75. That
-worked because every cell the brush's falloff rounded to zero sat at one constant height, so
-the ceilings clustered. On the dome's real curve they interleave with the floor undersides, and
-**no threshold reads a multiple of 18**:
+⚠ **The repair this entry proposed was *level the ground under the disc*. It was done, it
+helped, and it does not do what the entry claimed it would.** Both halves are measured.
 
-    T       0.75  1.0  1.125  1.25  1.375  1.5  1.625  1.75  1.875  2.0  2.25
-    count    198  256   292    292   310   310   314    314   332    332  352
+**What levelling bought.** The fixture levels its plateau by walking a CROSS, and a cross levels
+its arms and nothing else — `brush` scales the gap by `f²` and truncates, so only the cell the
+walker steps on closes. Measured across the 19 cells the dig uses, that left them spread over
+**six height units**, 14 to 19. Sweeping the disc cell by cell (a teleport each, three passes)
+brings all nineteen to exactly 17 — 1 pass leaves 17/18/19, 2 leaves 16/17, 3 leaves them flat,
+and a 4th confirms it is a fixed point. The boundary went from a knife edge to a real gap:
 
-The 4-vertex step from 310 to 314 is the tell — fans arrive 18 at a time, so a step of 4 is one
-fan straddling the boundary. The rows read 310/338 at 1.5 now and say in the file that they no
-longer count fans; the 36-fan total is still pinned exactly by `mesh soffit 648`. **The repair
-is to level the ground under the disc in the fixture**, so the ceilings cluster by construction
-rather than by luck.
+| | 310 holds over |
+|---|---|
+| bumpy | `1.375..1.5` — one step wide |
+| levelled | **`1.0..1.75`** — six times the margin |
+
+**What it did not buy: the count is still 310, not 306.** ⚠ **Because of the treads, which no
+levelling reaches.** A tread is a STEP — its own fan has corners at different heights by
+construction — so four of its vertices hang below the boundary whatever the ground under it
+does. The exact 306/342 was never a property of flat ground; it needed the treads' fans to sit
+wholly above the split, which was true of the buggy geometry **by luck**.
+
+⚠ **AND FLATTENING WIDER IS REFUTED, not merely unattempted.** The ceilings stay spread because
+a ground fan's corner heights average **three** cells, so the disc's outer ring is pulled by
+terrain outside it. Levelling a ring further out (radius 3, 37 cells) was measured: it changes
+what the gesture **digs** — `mesh soffit` 648 → 666, 37 fans instead of 36 — and the plateau
+disappears entirely (36, 148, 220, 310, 328, 332 …). **A fixture cannot flatten past the dig
+without changing the dig.**
+
+⚠ **The levelling moved four other rows, and two are measurements rather than derivations** —
+marked as such in the file. `mesh floor` 564 → **438** (the same 342 of top fan, with 96 of rim
+and riser instead of 222: most of that 222 was risers the bumpy disc owed, since `solid_at`
+draws one wherever the neighbour is not solid at this height). `mesh wall` 174 → **162** (27
+quads of 6 against 29; the arithmetic holds, *which* two edges stopped being walled does not
+have a derivation here). Two `feet` stations moved with the plateau. **Nobody has derived 96 or
+27 — derive them before believing any further move.**
 
 ### Was: a raise marks fewer chunks than it writes, and the client keeps the stale ground
 
