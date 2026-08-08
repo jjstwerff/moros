@@ -44,6 +44,19 @@ onward (**not** blocked), and the two ◐ format questions that want a plan rath
    that it does **not** yet: a cell leaf is the same height and the same grey as the wall it hangs
    in, because the per-edge fallback has one wall height and one wall colour. That wants an
    `Opening` profile in the part format or a per-part wall height — a format question.
+   ✅ **AND IT IS MEASURED NOW, NOT READ** (2026-08-08, `probe/a83/leaf_visible/run.sh`, exit 0).
+   The leaf **is** drawn: `door/hung` puts two meshes in the limb block, and id 9 — the leaf's
+   panel — is broadcast in colour **`0.55,0.52,0.46`**, `hex_mesh`'s `wall` entry byte for byte,
+   spanning **y 0.00..3.25**, one `WALL_UP` (12 × `HEIGHT_SCALE`) on the 0.25 paving. Same colour
+   as the wall, same height as the wall, in a hole in that wall. ⚠ **And no cell material can fix
+   it**: `h_material` colours a horizontal PLATE, a leaf's body is a vertical PANEL, and
+   `part_body_meshes` sends every per-edge panel to the one `wall` slot — the edge material only
+   picks a height through `wall_up`. The format question is the whole question.
+   ⚠ **Two instruments were blind before this one answered**, and both read as findings: a picture
+   cannot see a leaf painted in the wall's own colour, and `script.mjs`'s `mesh <surface>` counts
+   the CHUNK id space while a limb goes to `PART_MESH_BASE`..`+MAX` — so it reports `0` for every
+   limb whatever was sent, and reported `field 18` for a part holding no field at all, one subject
+   behind. The probe's `door/leaf`-as-subject control is what caught it.
 2. **`A8.6`'s return half is blocked on a gesture nobody wrote**: nothing authors a `MESH` section,
    the same gap as *no gesture can author a `FITS`*. Both want a plan rather than a step.
 

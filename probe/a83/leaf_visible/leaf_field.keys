@@ -1,0 +1,50 @@
+# IS THE LEAF DRAWN AT ALL? — a probe behind A8.3's cold-recognition test
+#
+# The acceptance shots show a grey wall with a gap in it and nothing nameable in
+# the opening. `door/leaf`'s body is a wall-material panel and `door/frame`'s wall
+# is the same material, and `part_body_meshes` sends EVERY edge panel to the one
+# `wall` surface — so a drawn leaf and an undrawn leaf photograph identically.
+# A colour cannot see a count.
+#
+# This run gives the leaf's own cell FIELD_MAT (0.55,0.62,0.24 — yellow-green,
+# the furthest thing in the palette from the wall's grey, the paving's dark red
+# and the frame's orange floor). The leaf's PANEL is still grey: the per-edge
+# fallback has one slot and the material only picks a height.
+#
+# ⚠ THE CONTROL COMES FIRST, and it is the point. If `door/hung` shows no green,
+# that is only evidence when the recoloured leaf is known to draw green on its
+# own — otherwise "no green" reports a failed recolour as an absent leaf.
+
+send 44:
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- CONTROL: the recoloured leaf ALONE. Green here means the probe can see.
+send 44:door/leaf
+wait part 'door/leaf' opened
+send 40:0
+wait mode
+at -2.5 -2.5 35
+snap probe-leaf-alone
+at -1.5 -3.0 60
+snap probe-leaf-alone2
+send 44:
+
+echo --- SUBJECT: the hung doorway, at A8.3's own three stations
+send 44:door/hung
+wait part 'door/hung' opened
+send 40:0
+wait mode
+
+at -4.9 -1.3 15
+snap probe-hung-w
+
+at -3.0 -4.0 40
+snap probe-hung-sw
+
+at 0.0 -5.5 70
+snap probe-hung-s
+
+echo --- back to the world, so nothing is left open
+send 44:
