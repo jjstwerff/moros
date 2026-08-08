@@ -24,19 +24,27 @@ when the step landed, and this file duplicating it is how it grows back.
 
 ## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
 
-⛔ **THE TOOLCHAIN IS BROKEN AS OF 2026-08-08 17:25, AND NO SERVER WILL START.**
-`/usr/local/bin/loft` was replaced under a running session — `9f416d7c…` → `0fba02c1…`, and
-`loft --version` says `2026.8.0` for **both**, which is the trap this file already warns about.
-The new build's native-auto emits `t_5float_sin` / `t_5float_cos` into `hex_way`'s cdylib and the
-shim defines neither, so **every `loft --interpret <program>` in the tree exits 1** — the editor
-server and all 44 gates. Filed as [loft#815](https://github.com/loft-lang/loft/issues/815) with a
-five-line repro; `wa:none`, because a consumer cannot route around a missing shim function.
+✅ **THE TOOLCHAIN BREAK OF 17:25 IS FIXED — [loft#815](https://github.com/loft-lang/loft/issues/815),
+filed and landed the same evening.** `/usr/local/bin/loft` went `9f416d7c…` → `0fba02c1…` (broken,
+17:25) → `0d4fa4af…` (20:56, fixed), with `loft --version` saying `2026.8.0` for **all three**.
+Green on the new one: `make fast` 121 files · `make lib-test` 22 of 22 · `make gate` 44 rc=0.
 
-⚠ **THE BLAST RADIUS IS PRECISE AND COUNTER-INTUITIVE: `loft test` IS UNAFFECTED.** `make fast` is
-121 files green under the broken toolchain, because tests do not trigger the native-auto build.
-**A green suite says nothing about whether anything can RUN.** Type-checking also still happens
-first — a seeded `Unknown function` is still reported — so code can be written and compile-checked
-while this is open; it just cannot be driven or photographed.
+⚠ **THE CAUSE IS WORTH KNOWING BECAUSE IT WILL RECUR IN A NEW SHAPE.** Three reachability walkers
+in loft's `generation/mod.rs` each re-derived the IR's tree shape as a whitelist ending in
+`_ => {}`, and none listed `Tuple` — so a callee reached ONLY from a tuple element was pruned while
+its call site was still emitted, and rustc failed E0425. `hex_way` hit it on
+`(0.0 - sin(a) * dir, cos(a) * dir)`. `Parallel`, `BreakWith`, `TuplePut` and `ParFor` were missing
+from all three too; the program path escaped only by luck. The fix is an exhaustive
+`for_each_child` twin so a new variant forces a decision. **Both of the small things the report
+asked for landed as well**: the refusal used to advise `--interpret`, which was the command that
+had just failed (it now names `LOFT_NO_NATIVE_LIBS=1`), and the whole-function advices pointed
+their caret at the following `fn`.
+
+⚠ **AND THE BLAST RADIUS IS THE DURABLE LESSON: `loft test` WAS UNAFFECTED.** `make fast` was 121
+files green while **every program in the tree exited 1**. A green suite says nothing about whether
+anything can RUN — worth remembering the next time a suite is used as evidence that a toolchain is
+healthy.
+
 
 **Sessions 14 and 15 are in [JOURNAL.md](JOURNAL.md)**, newest first — what each found, in full.
 What is true *now*:
@@ -448,13 +456,18 @@ file: that block is the work, and the durable sentences go to § *What bites*, n
 
 ### ⚠ What bites regardless of which step you pick up
 
-⚠ **PART MODE LEAVES THE PREVIOUS PART'S CHUNKS ON SCREEN — open, 2026-08-08.** Opening a second
-part draws it on top of the first: the display rebuild clears the LIMB block and has no equivalent
-for chunk ids, so a part with fewer chunks than its predecessor keeps the orphans' geometry.
-`door/leaf` after `door/frame` photographs as a wall with a doorway, **with the subject line saying
-`door/leaf`**. `shots/leafonly.png` (fresh server) against `shots/part-leaf.png` is the evidence.
-⚠ **Every per-element screenshot from a multi-part run is suspect** — take them on a fresh server,
-or one part per run. [OPEN_ISSUES](OPEN_ISSUES.md) has the shape of the fix.
+✅ **PART MODE LEFT THE PREVIOUS PART'S CHUNKS ON SCREEN — FIXED 2026-08-08, AND IT WAS THE
+CLIENT.** Every guess about the server was wrong: both `44:` forms already mark every loaded chunk
+dirty, and `probe/a83/leaf_visible/held.mjs` proved the **wire is correct** — under `door/leaf` the
+client is told to hold 30 floor vertices and no wall. The fault was one line in
+`src/editor_client.loft`: `add_mesh` returned on `len(mverts) < 6` **before** `drop_part`, so the
+server's clearing message (a colour and no vertices) was discarded and the old buffer kept drawing.
+⚠ **The limb block's own comment — *"a leaf that was unbound leaves its mesh on the client for ever
+otherwise"* — described a mechanism that had never once fired**, for the same reason.
+⚠ **NO WIRE PROBE COULD HAVE FOUND IT, and the two instruments disagreeing is what located it.**
+`held.mjs` said the id was gone; the screenshot said 300 vertices of wall were standing. Both were
+right. **When the wire and the picture disagree, the client is between them.** Gated by
+`probe/a83/leaf_visible/switch.sh` — 13014 wall pixels broken, 394 fixed, measured both ways.
 
 ⚠ **A `Mesh` COPIES THROUGH A LOCAL *AND* THROUGH A VECTOR READ — only a PARAMETER aliases.**
 Measured 2026-08-08, `probe/a83/leaf_visible/meshalias.loft`: `la = a; emit(la)` leaves `a` empty,

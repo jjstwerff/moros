@@ -24,7 +24,7 @@ found — an unrevised design reads like a finding.
 - [Power and focus system](#power-and-focus-system)
 - [Contact system](#contact-system)
 - [World map editor](#world-map-editor)
-- [Part mode leaves the previous part's chunks on screen](#part-mode-leaves-the-previous-parts-chunks-on-screen--open-2026-08-08)
+- [Part mode left the previous part's chunks on screen — fixed](#-part-mode-left-the-previous-parts-chunks-on-screen--fixed-2026-08-08)
 - [Scene editor — this file is NOT where its plan lives](#scene-editor--this-file-is-not-where-its-plan-lives)
 
 ---
@@ -351,44 +351,44 @@ the page still *wires* the geometry after the extraction.
 
 ---
 
-## Part mode leaves the PREVIOUS part's chunks on screen — open, 2026-08-08
+## ✅ Part mode left the PREVIOUS part's chunks on screen — FIXED 2026-08-08
 
-⚠ **Opening a second part draws it on top of the first.** `44:<name>` swaps the store and the
-display rebuild sends `M:` for the chunks the new part derives — but the chunk mesh ids of chunks
-the new part does **not** have are never cleared, so the old geometry stays. `door/frame` is 2
-chunks and `door/leaf` is 1, so opening the leaf after the frame photographs as *a wall with a
-doorway and a timber panel in it*.
+⚠ **AND IT WAS THE CLIENT, NOT THE SERVER — every guess about the server was wrong.** The entry
+here first blamed the display rebuild for having no chunk-id equivalent of the limb-block clear.
+Reading the code refuted that: both `44:` forms already run
+`for … in loaded { mark_dirty_id(dirty, …) }`. Running `probe/a83/leaf_visible/held.mjs` refuted it
+again from the other side — **the wire is correct**: under `door/leaf` the client is told to hold
+30 floor vertices and no wall, and the server's clearing messages all arrive.
 
-**Evidence, and it is why this was found at all**: `shots/part-leaf.png` (taken after `door/frame`
-in the same run) against `shots/leafonly.png` (a fresh server, nothing opened before it). The
-second is the truth — one hex plate and one timber panel. Both are stable across a repeat, so it is
-not a settle miss.
+**The fault is one line in `src/editor_client.loft`.** `add_mesh` parsed the vertex list and did
 
-⚠ **The subject line is correct while the picture is wrong**, which is what makes it dangerous: the
-panel says `part door/leaf` over the frame's walls. Every per-element screenshot taken in a
-multi-part run is suspect until this is fixed; take them on a fresh server, or one part per run.
+```loft
+mverts = parse_singles(…);
+if len(mverts) < 6 { return; }     // ← returns BEFORE drop_part
+…
+drop_part(st, mid);
+```
 
-⚠ **`44:` (close) does not clear them either** — measured; the script closes between subjects and
-the walls survive it.
+The server retires a surface by re-sending its id with a colour and **no vertices**. That message
+failed the `< 6` guard and returned before `drop_part`, so the old buffer stayed bound and kept
+drawing. An empty vertex list is a **clear**, not a malformed message; a 1..5-float payload still
+is one and is still refused.
 
-**Where it lives — and ⚠ the obvious story is REFUTED by the code.** The guess was *the rebuild
-clears the LIMB block and has no equivalent for chunk ids*. But **both** `44:` forms already do the
-invalidation: the open path runs `for pod in loaded { mark_dirty_id(dirty, pod); }` and the close
-path the same with `pcd`, and the flush rebuilds every dirty chunk that is `live`. So the chunks
-around the author SHOULD be re-sent with the new part's (empty) meshes, and the walls should go.
-Something else is keeping them.
+⚠ **TWO MECHANISMS DEPENDED ON IT AND BOTH HAD NEVER WORKED.** Opening a second part left the first
+on screen — `door/leaf` after `door/frame` photographed as a wall with a doorway, with the subject
+line saying `door/leaf`. And `editor_server.loft`'s own comment beside the limb block says *"EVERY
+SLOT IS RE-SENT, INCLUDING THE EMPTY ONES. A leaf that was unbound leaves its mesh on the client
+for ever otherwise"* — describing a mechanism that had never once fired.
 
-⚠ **AND THE WIRE PROBE CANNOT SEE THIS.** `panels.mjs` clears its map per subject and records what
-ARRIVES, so a mesh nobody re-sends is simply absent from its answer — it reports *what was sent for
-this subject*, which is a different question from *what is on screen*. Under `door/frame` then
-`door/leaf` it says `floor=30` and no wall while the picture shows the frame's walls standing.
-`probe/a83/leaf_visible/held.mjs` is the instrument that can: it keeps the client's own bookkeeping
-(an `M:` with a payload adds an id, an empty one or an `X:` removes it, nothing else) and never
-clears between subjects, so what is left after a switch is what a viewer sees.
+⚠ **NO WIRE PROBE COULD HAVE FOUND IT**, and the two instruments disagreeing is what located it:
+`held.mjs` says the id is gone, the screenshot says 300 vertices of wall are standing. Both were
+right. **When the wire and the picture disagree, the client is between them.**
 
-⚠ **BLOCKED ON [loft#815](https://github.com/loft-lang/loft/issues/815) AS OF 2026-08-08 17:25** —
-no server will start, so `held.mjs` has never been run and the diagnosis is one symptom and two
-screenshots. **Do not write the fix before running it**: the simple story is already refuted once.
+**Gated**: `probe/a83/leaf_visible/switch.sh` — opens `door/frame`, then `door/leaf`, and counts
+wall-classified pixels. ⚠ The threshold is measured, not chosen: **13014 broken, 394 fixed** (the
+cart's dark faces and the figure's shaded edges, in frame either way), taken by reverting the one
+line and rebuilding the client. The frame's own 9314 is the control, without which a blank canvas
+would pass.
 
 ## Scene editor — this file is NOT where its plan lives
 

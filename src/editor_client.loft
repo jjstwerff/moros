@@ -538,6 +538,29 @@ fn add_mesh(st: Client, body: text) {
   mcol = parse_floats(body[h2 + 1..h3]);
   if len(mcol) < 3 { return; }
   mverts = parse_singles(body[h3 + 1..body.size()]);
+  // ⚠ AN EMPTY VERTEX LIST IS A CLEAR, NOT A MALFORMED MESSAGE — and the guard
+  // below ate it for as long as the guard has existed. The server retires a
+  // surface by re-sending its id with a colour and NO vertices; that message
+  // reached here, failed `len < 6`, and returned **before** `drop_part`, so the
+  // old buffer stayed bound and kept drawing.
+  //
+  // ⚠ TWO THINGS DEPENDED ON IT AND BOTH WERE SILENTLY BROKEN. Opening a second
+  // part left the first one's chunks on screen — `door/leaf` after `door/frame`
+  // photographed as a wall with a doorway, with the subject line saying
+  // `door/leaf`. And `editor_server.loft`'s own comment beside the limb block
+  // says *"EVERY SLOT IS RE-SENT, INCLUDING THE EMPTY ONES. A leaf that was
+  // unbound leaves its mesh on the client for ever otherwise"* — that mechanism
+  // had never once worked.
+  //
+  // ⚠ IT IS INVISIBLE TO EVERY WIRE PROBE, because the wire is CORRECT: the
+  // server sends the clear, and a probe that models the client's bookkeeping
+  // reports the id gone. Only a picture disagrees. `probe/a83/leaf_visible/held.mjs`
+  // says `door/leaf` holds 30 floor vertices and no wall; the screenshot showed
+  // 300 vertices of wall.
+  //
+  // A malformed 1..5 floats stays a refusal — that is a different message and a
+  // different fault, and dropping the mesh for it would hide it.
+  if len(mverts) == 0 { drop_part(st, mid); return; }
   if len(mverts) < 6 { return; }
 
   // Replacing an id must free the old buffer FIRST — the server re-sends a chunk
