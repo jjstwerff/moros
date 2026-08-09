@@ -1,0 +1,52 @@
+// WHAT DOES A LIMIT ACTUALLY DO TO A ROAD? — the profile, printed.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+fn lay(mat: integer, amp: integer, rad: integer, item: integer) {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // a strip of the surface under test, running east-west through the centre
+  for q in (0 - 24)..25 {
+    ground_set(w, q, 0, G, mat);
+    if item != 0 {
+      c = world_ground_cell(w, q, 0);
+      ground_write(w, q, 0, hex_world::Hex { h_height: c.h_height, h_material: c.h_material,
+        h_item: item as u8? ?? 0, h_item_rotation: c.h_item_rotation,
+        h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });
+    }
+  }
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, amp, rad, cl, rs);
+  out = "";
+  worst = 0;
+  prev = 0;
+  for q in 0..(rad + 1) {
+    h = ground_h(w, q, 0);
+    out += "{h - G} ";
+    if q > 0 {
+      st = prev - (h - G);
+      if st < 0 { st = 0 - st; }
+      if st > worst { worst = st; }
+    }
+    prev = h - G;
+  }
+  println("mat {mat} item {item} amp {amp} rad {rad}: {out}  steepest step {worst}  "
+        + "clamped {cl} residual {rs}");
+}
+
+fn main() {
+  println("profile from the centre outward, as a delta from {G}:");
+  lay(SURFACE_MAT, 12, 7, 0);
+  lay(ROAD_MAT,    12, 7, 0);
+  lay(FIELD_MAT,   12, 7, 0);
+  lay(ROAD_MAT,    12, 7, 1);       // a road with something planted on it
+  println("");
+  println("a stroke that already fits — the road must be untouched:");
+  lay(SURFACE_MAT, 3, 12, 0);
+  lay(ROAD_MAT,    3, 12, 0);
+}

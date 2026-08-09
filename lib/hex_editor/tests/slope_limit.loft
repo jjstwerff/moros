@@ -1,0 +1,165 @@
+// A SURFACE MAY ONLY BE GIVEN THE SLOPE IT CAN TAKE — plan 20 `A2`.
+//
+// *Roads and fields can slope with a limit, grass has a higher limit, forest even
+// more* — and *the current routine is the start for an unlimited grass type
+// terrain*. So the falloff is not replaced by a table: it becomes the **grass row**
+// of one, and every number below was measured (`probe/house/slope.loft`) before it
+// was asserted.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn strip(mat: integer, item: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  for q2 in (0 - 24)..25 {
+    ground_set(w, q2, 0, G, mat);
+    if item != 0 {
+      c = world_ground_cell(w, q2, 0);
+      ground_write(w, q2, 0, hex_world::Hex {
+        h_height: c.h_height, h_material: c.h_material,
+        h_item: item as u8? ?? 0, h_item_rotation: c.h_item_rotation,
+        h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });
+    }
+  }
+  w
+}
+
+// The steepest step along the strip, outward from the centre.
+fn steepest(w: World, rad: integer) -> integer {
+  worst = 0;
+  prev = ground_h(w, 0, 0);
+  for q in 1..(rad + 1) {
+    h = ground_h(w, q, 0);
+    st = prev - h;
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+    prev = h;
+  }
+  worst
+}
+
+fn profile(w: World, rad: integer) -> text {
+  out = "";
+  for q in 0..(rad + 1) { out += "{ground_h(w, q, 0) - G} "; }
+  out
+}
+
+// ── the table ───────────────────────────────────────────────────────────────
+
+fn test_a_road_climbs_at_one_unit_a_hex() {
+  w = strip(ROAD_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(steepest(w, 7) <= ground_kind_of(ROAD_MAT).tr_slope,
+         "the road's steepest step is {steepest(w, 7)}, over its limit of {ground_kind_of(ROAD_MAT).tr_slope}: "
+       + "{profile(w, 7)}");
+  // ⚠ AND IT SAYS WHAT IT COULD NOT DO. A limit that silently delivers less than was
+  // asked is the `K-FIT` failure this tree has a rule for.
+  assert(cl > 0 && rs > 0,
+         "the road was clamped to {steepest(w, 7)} and reported clamped={cl} residual={rs}");
+}
+
+fn test_a_field_may_tilt_twice_as_far_as_a_road() {
+  w = strip(FIELD_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(steepest(w, 7) <= ground_kind_of(FIELD_MAT).tr_slope,
+         "the field's steepest step is {steepest(w, 7)}: {profile(w, 7)}");
+  assert(ground_kind_of(FIELD_MAT).tr_slope > ground_kind_of(ROAD_MAT).tr_slope,
+         "a field must be allowed more than a road");
+  // ⚠ THE ORDERING IS THE CLAIM, not the constants. A field takes the same stroke
+  // further up than a road does — if both merely "passed their own limit" the table
+  // could be all ones and every test here would still be green.
+  wr = strip(ROAD_MAT, 0);
+  cl2 = 0;
+  rs2 = 0;
+  brush(wr, 0, 0, 12, 7, cl2, rs2);
+  assert(ground_h(w, 0, 0) > ground_h(wr, 0, 0),
+         "the field reached {ground_h(w, 0, 0) - G} and the road {ground_h(wr, 0, 0) - G} "
+       + "— a field must get further up the same hill");
+}
+
+fn test_grass_is_the_unlimited_row_and_is_untouched() {
+  // ⚠ `A3`'s CLAIM, ASSERTED HERE ALREADY: the plain raise over grass must be what
+  // it always was. If the table ever grows a grass limit this test is the one that
+  // has to be changed on purpose.
+  w = strip(SURFACE_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(cl == 0 && rs == 0,
+         "grass was clamped: clamped={cl} residual={rs} — {profile(w, 7)}");
+  assert(steepest(w, 7) == 3,
+         "the grass profile changed shape: steepest {steepest(w, 7)}, {profile(w, 7)}");
+  assert(slope_limit(w, 3, 3) == SLOPE_FREE, "open grass carries a limit");
+}
+
+fn test_anything_planted_loosens_the_limit() {
+  // *forest even more* — and the species palette stays in the server, so the library
+  // asks only whether something is planted here.
+  w = strip(ROAD_MAT, 1);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(cl == 0 && rs == 0,
+         "a planted cell was still held to the road's limit: clamped={cl} residual={rs}");
+  assert(slope_limit(w, 3, 0) == SLOPE_FREE, "a planted road still carries a limit");
+}
+
+// ── the negative control, which is what makes the rest mean anything ────────
+
+fn test_a_stroke_that_already_fits_is_left_exactly_alone() {
+  // ⚠ A LIMIT THAT ALTERS A LEGAL EDIT IS A BUG, NOT A LIMIT. A gentle stroke is
+  // within every row of the table, so a road and open grass must come out
+  // IDENTICAL — and neither may report a residual.
+  wg = strip(SURFACE_MAT, 0);
+  wr = strip(ROAD_MAT, 0);
+  cg = 0;
+  rg = 0;
+  cr = 0;
+  rr = 0;
+  brush(wg, 0, 0, 3, 12, cg, rg);
+  brush(wr, 0, 0, 3, 12, cr, rr);
+  assert(cr == 0 && rr == 0,
+         "a stroke a road can take still reported clamped={cr} residual={rr}");
+  for q in 0..13 {
+    assert(ground_h(wg, q, 0) == ground_h(wr, q, 0),
+           "at {q} the road is {ground_h(wr, q, 0)} and the grass {ground_h(wg, q, 0)} — "
+         + "a limit that binds on a legal stroke");
+  }
+}
+
+fn test_the_relaxation_never_pushes_past_where_it_started() {
+  // A raise may be reduced to nothing; it may never become a cut. The road here is
+  // asked for far more than it can take, so every cell is clamped hard.
+  w = strip(ROAD_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 40, 5, cl, rs);
+  for q in 0..6 {
+    assert(ground_h(w, q, 0) >= G,
+           "the road at {q} ended at {ground_h(w, q, 0)}, BELOW where it started ({G})");
+  }
+}
+
+fn test_lowering_is_limited_the_same_way() {
+  // The gesture is signed and `LEVEL` uses the negative half constantly; a limit
+  // enforced only on the way up would let a road be cut to a cliff downhill.
+  w = strip(ROAD_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 0 - 12, 7, cl, rs);
+  assert(steepest(w, 7) <= ground_kind_of(ROAD_MAT).tr_slope,
+         "lowering left the road at {steepest(w, 7)} a hex: {profile(w, 7)}");
+  for q in 0..8 {
+    assert(ground_h(w, q, 0) <= G,
+           "a lowering raised the road at {q} to {ground_h(w, q, 0)}");
+  }
+}

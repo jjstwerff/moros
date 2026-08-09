@@ -13,6 +13,8 @@
 // `chunk * SURFACES + MESH_FIGURE_MAX + (index + 1)`, so re-ordering this list
 // renumbers every mesh on the wire. Add at the END.
 
+use hex_editor;
+
 pub struct Surface {
   sf_name:  text,        // author-facing, and what the catalogue lists
   sf_r:     float,
@@ -22,11 +24,24 @@ pub struct Surface {
   // warm greys are not a classifier failure, they are a fact about the palette —
   // see `test_surfaces_are_separable_or_declared_alike`.
   sf_bucket: text,
+  // ⚠ THE CELL MATERIAL THIS SURFACE DRAWS, or 0 for one that no cell can hold.
+  //
+  // A surface is what the MESHER can draw; a terrain is what a CELL can be, and the
+  // second is a proper subset of the first — four short. `tree` is an ITEM
+  // (`h_item`), `wall` is an EDGE material in its own numbering (where `1` means
+  // wall while `1` on this axis means grass), and `frame` and `soffit` are derived
+  // and stored nowhere.
+  //
+  // ⚠ AND THE OVERLAP IS SCRAMBLED, WHICH IS WHY IT IS WRITTEN DOWN. Materials
+  // 1,2,3,4,5 land on surfaces 0,1,2,**6**,**4** — not an offset, not order-
+  // preserving. Every site that needed it used to re-derive it; `hex_editor::ground_kinds()`
+  // owns the material axis and this is the one place the two are joined.
+  sf_mat: integer = 0,
 }
 
 pub fn surfaces() -> vector<Surface> {
   [
-    Surface { sf_name: "grass",  sf_r: 0.42, sf_g: 0.50, sf_b: 0.30, sf_bucket: "grass" },
+    Surface { sf_name: "grass",  sf_r: 0.42, sf_g: 0.50, sf_b: 0.30, sf_bucket: "grass" , sf_mat: hex_editor::SURFACE_MAT },
     // ⚠ A DIRT ROAD, AND THE COLOUR IS A MEASUREMENT NOT A TASTE. It was
     // `0.28,0.26,0.24` — a neutral dark grey — which sits **0.00009** from the
     // wall in chromaticity, an order of magnitude INSIDE the 0.0009 the picture
@@ -38,10 +53,10 @@ pub fn surfaces() -> vector<Surface> {
     // skin (0.00014 away), which is what pushed it to a red earth — and an earth
     // track is what these roads are: `freeze_grade` CUTS one into a hill rather
     // than painting a stripe on it. Nearest neighbour is now the floor at 0.0032.
-    Surface { sf_name: "road",   sf_r: 0.30, sf_g: 0.18, sf_b: 0.15, sf_bucket: "road" },
-    Surface { sf_name: "field",  sf_r: 0.55, sf_g: 0.62, sf_b: 0.24, sf_bucket: "field" },
+    Surface { sf_name: "road",   sf_r: 0.30, sf_g: 0.18, sf_b: 0.15, sf_bucket: "road" , sf_mat: hex_editor::ROAD_MAT },
+    Surface { sf_name: "field",  sf_r: 0.55, sf_g: 0.62, sf_b: 0.24, sf_bucket: "field" , sf_mat: hex_editor::FIELD_MAT },
     Surface { sf_name: "tree",   sf_r: 0.16, sf_g: 0.34, sf_b: 0.14, sf_bucket: "tree" },
-    Surface { sf_name: "roof",   sf_r: 0.45, sf_g: 0.20, sf_b: 0.17, sf_bucket: "roof" },
+    Surface { sf_name: "roof",   sf_r: 0.45, sf_g: 0.20, sf_b: 0.17, sf_bucket: "roof" , sf_mat: hex_editor::ROOF_MAT },
     // ⚠ wall and frame are ONE bucket on purpose: a frame is a jamb and a soffit,
     // and it reads as a wall with its reveals in the picture as well as in the
     // histogram. Pretending them apart is what a classifier cannot do honestly.
@@ -52,7 +67,7 @@ pub fn surfaces() -> vector<Surface> {
     // AND the floor it stands on, and no threshold over it could mean what it
     // said. It was separated in the RENDERER rather than in the classifier, which
     // is why the fix survives.
-    Surface { sf_name: "floor",  sf_r: 0.65, sf_g: 0.40, sf_b: 0.25, sf_bucket: "floor" },
+    Surface { sf_name: "floor",  sf_r: 0.65, sf_g: 0.40, sf_b: 0.25, sf_bucket: "floor" , sf_mat: hex_editor::FLOOR_MAT },
     // ⚠ DRESSED STONE, AND IT IS THE POINT OF THE MESH. `F-READ`'s second cue is
     // *a frame that is a different VALUE from the wall* — the eye finds an opening
     // by the band of lighter stone around it before it resolves the hole at all.
@@ -101,6 +116,21 @@ pub fn surface_at(i: integer) -> Surface {
 // ⚠ −1 RATHER THAN A FALLBACK. A misspelt surface must reach its author as a
 // refusal with the six spellings in it; falling back to `wall` is how a document
 // comes to say something the picture does not.
+// The surface that draws a cell material, or −1 for a material nothing draws.
+//
+// ⚠ THE JOIN GOES THIS WAY ROUND BECAUSE THE PACKAGES DO. `hex_mesh` depends on
+// `hex_editor`, so the drawn list may point at the material axis and never the
+// reverse — which is also why `hex_editor::slope_limit` cannot read a colour and
+// does not need to.
+pub fn surface_for_mat(mat: integer) -> integer {
+  if mat == 0 { return 0 - 1; }
+  ss = surfaces();
+  for i in 0..len(ss) {
+    if surface_at(i).sf_mat == mat { return i; }
+  }
+  0 - 1
+}
+
 pub fn surface_index(name: text) -> integer {
   ss = surfaces();
   for i in 0..len(ss) {

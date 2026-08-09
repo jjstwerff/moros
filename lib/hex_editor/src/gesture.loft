@@ -2752,7 +2752,9 @@ pub const LIFT_CAP = 4096;
 // or a fence is stored as an edge on a cell, so a cell carrying one is fabric even
 // where its ground is ordinary. A cell with a road on it and no edges is not.
 pub fn is_fabric(w: World, q: integer, r: integer) -> boolean {
-  if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT { return true; }
+  // ⚠ THE TABLE SAYS WHICH MATERIALS ARE FABRIC — see `ground_kinds()`. This was a
+  // literal `== FLOOR_MAT`, which is the same hard-coded terrain one predicate over.
+  if ground_kind_of(world_ground_cell(w, q, r).h_material as integer ?? 0).tr_fabric { return true; }
   // ⚠ ALL SIX DIRECTIONS, NOT THE THREE A CELL OWNS. An edge is stored ONCE, on a
   // canonical owner — measured: `wall_set(w, 3, 0, SLOT_NE, …)` lands on cell
   // (3,−1)'s NORTH slot — so a cell with a fence along its west side carries no
@@ -2800,7 +2802,7 @@ pub fn lift_column(w: World, q: integer, r: integer, delta: integer) -> integer 
 // moved the ring by 4 and the middle by 6 — the yard came up **two units above its
 // own fence**, which is the same tearing a floor suffered before `A1`.
 //
-// *Terrain that is surrounded (mostly) by fences counts as the floor of a house.*
+// *GroundKind that is surrounded (mostly) by fences counts as the floor of a house.*
 //
 // ⚠ THE FLOOD NEEDS NO KNOWLEDGE OF EDGES, and that is what makes it cheap. A
 // fence's owner cell is already fabric, so a flood that walks only NON-fabric cells
@@ -2881,6 +2883,176 @@ fn absorb_enclosed(w: World, mq: &vector<integer>, mr: &vector<integer>,
   }
 }
 
+// ── HOW STEEP MAY THIS SURFACE GET? — plan 20 `A2` ─────────────────────────
+//
+// *Roads and fields can slope with a limit, grass has a higher limit, forest even
+// more* — and *the current routine is the start for an unlimited grass type
+// terrain*. So today's falloff is not replaced by a table: it becomes the **grass
+// row** of one, and the rows below it are the surfaces that may not take it.
+//
+// ⚠ IT IS A FUNCTION, NOT A LOOKUP, and plan 20's open question 1 is why: *forest*
+// is in neither material list. It is an ITEM scattered on ordinary ground
+// (`h_item`), so "forest slopes more" is a claim about a cell's CONTENTS and not
+// about its material — a table keyed on material alone cannot express it.
+//
+// ⚠ AND IT KEYS ON THE STORED MATERIAL, NOT THE DRAWN SURFACE. `hex_mesh` has nine
+// surfaces and a cell has five materials; they are deliberately different lists and
+// this tree has been bitten by treating one as the other. What a slope limit is
+// about is what the GROUND is, which is the stored one.
+//
+// ⚠ THE SPECIES PALETTE STAYS IN THE SERVER. `SPECIES_TREE`/`SPECIES_BUSH` are
+// `editor_server`'s, and a copy here would be the second list the tree's own rule
+// forbids — so this asks only *is anything planted here*, which is the question a
+// slope limit actually has.
+pub const SLOPE_FREE = 0;      // no limit — see the note on `GroundKind.tr_slope`
+
+// ⚠ ONE LIST, AND EVERYTHING DERIVED FROM IT. The first build of `A2` asked
+// `if m == ROAD_MAT { … } if m == FIELD_MAT { … }` inside the gesture, which is a
+// second copy of a set nobody owned — and this tree has the rule already:
+// `hex_mesh::surfaces()` is the authority for what a surface LOOKS like and its
+// count is the list's own length, because a catalogue kept beside the list is the
+// copy that drifts. This is that argument one layer down, for what a material IS.
+//
+// Adding a terrain is a ROW. Nothing in the gestures needs to hear about it.
+pub struct GroundKind {
+  tr_mat:    integer,   // the stored material index — `h_material`
+  tr_name:   text,      // author-facing, and what a refusal can say
+  // ⚠ `SLOPE_FREE` IS 0 AND THAT COLLAPSES NOTHING. A limit of zero would mean
+  // *may not slope at all*, which is what a FLOOR is — and a floor is fabric, moves
+  // rigidly, and never reaches the relaxation. So zero is free to mean *no limit*
+  // and the reading it could be confused with is unreachable by construction.
+  tr_slope:  integer,   // the steepest step it may be given, in height units
+  // Does it move RIGIDLY with the structure it belongs to (`A1`), rather than
+  // taking the falloff? A floor does; ground does not.
+  tr_fabric: boolean,
+}
+
+// ⚠ THE ORDER IS NOT THE INDEX. A material is named by `tr_mat`, not by its position
+// here, because the constants are a wire-and-storage fact that predates this table —
+// so a row may be added or reordered without renumbering anything.
+pub fn ground_kinds() -> vector<GroundKind> {
+  [
+    GroundKind { tr_mat: SURFACE_MAT, tr_name: "grass",  tr_slope: SLOPE_FREE, tr_fabric: false },
+    // A road is the gentlest thing on the map: it may climb, but slowly.
+    GroundKind { tr_mat: ROAD_MAT,    tr_name: "road",   tr_slope: 1, tr_fabric: false },
+    // A field may be worked on a bank, so it may tilt further than a road.
+    GroundKind { tr_mat: FIELD_MAT,   tr_name: "field",  tr_slope: 2, tr_fabric: false },
+    // A floor is level or it is not a floor — and being fabric is what makes that
+    // true, rather than a limit of zero it would have to be clamped against.
+    GroundKind { tr_mat: FLOOR_MAT,   tr_name: "floor",  tr_slope: SLOPE_FREE, tr_fabric: true },
+    GroundKind { tr_mat: ROOF_MAT,    tr_name: "roof",   tr_slope: SLOPE_FREE, tr_fabric: true },
+  ]
+}
+
+// ⚠ THE FALLBACK IS *GROUND*, NOT A REFUSAL. Material 0 is absence — a cell nobody
+// has written — and the raise that builds a hill out of open ground meets it on
+// every stroke. A material this table has never heard of is the same case: it draws
+// as something, so it must slope as something.
+pub fn ground_kind_of(mat: integer) -> GroundKind {
+  for t in ground_kinds() {
+    if t.tr_mat == mat { return t; }
+  }
+  GroundKind { tr_mat: mat, tr_name: "grass", tr_slope: SLOPE_FREE, tr_fabric: false }
+}
+
+// ── HOW STEEP MAY THIS CELL GET? ────────────────────────────────────────────
+//
+// *Roads and fields can slope with a limit, grass has a higher limit, forest even
+// more* — and *the current routine is the start for an unlimited grass type
+// terrain*. So the falloff is not replaced by a table: it becomes the **ground row**
+// of one.
+//
+// ⚠ THE PLANTED RULE IS NOT A TERRAIN AND IS NOT IN THE TABLE. *Forest* is in no
+// material list — it is an ITEM scattered on ordinary ground (`h_item`), so "forest
+// slopes more" is a claim about a cell's CONTENTS. A row for it would be a terrain
+// that no cell's `h_material` can ever hold. ⚠ And the species palette stays in the
+// server: `SPECIES_TREE`/`SPECIES_BUSH` are `editor_server`'s, so this asks only
+// *is anything planted here*, which is the question a slope limit actually has.
+pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  if (c.h_item as integer ?? 0) != 0 { return SLOPE_FREE; }
+  ground_kind_of(c.h_material as integer ?? 0).tr_slope
+}
+
+// ⚠ A CELL IS HELD TO ITS *OWN* LIMIT, NOT TO THE STRICTER OF THE PAIR, and this is
+// the one real design call in `A2`. Where a limited road meets unlimited grass the
+// edge between them must break somebody's rule, and the question is which side
+// moves. Taking the stricter would let a road flatten the hill AROUND it — the
+// terrain bending to the road. Taking the cell's own leaves the grass alone and
+// pulls the ROAD back to what it can take, which is *"roads should get an incline
+// themselves"* read literally, and it is also what a cutting or an embankment IS: a
+// road holds its grade and lets the ground beside it stand where it likes.
+//
+// ⚠ THE CONSEQUENCE IS A STEP AT THE ROAD EDGE, and it is deliberate rather than
+// unnoticed. That step is exactly what `A5`'s rock faces are for; until then it is a
+// visible seam, and a seam that says *the road refused this slope* is better than a
+// hill quietly reshaped by a path somebody drew across it.
+
+// How many relaxation passes a stroke may spend. ⚠ A CAP, NOT A CONVERGENCE TEST:
+// each pass only ever moves a cell back TOWARD where it started and the start
+// satisfied every limit, so the loop is monotone and terminates on its own — the cap
+// is a bound on cost, and reaching it is reported rather than swallowed.
+const SLOPE_PASSES = 12;
+
+struct OrigAt { oa_key: integer, oa_h: integer }
+struct Origs  { o_by: hash<OrigAt[oa_key]> }
+
+// Pull every moved, unlimited-by-fabric cell back until no edge breaks its surface's
+// own limit. Returns the largest amount any cell had to give up.
+fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
+               taken: Seen, origs: Origs,
+               clamped: &integer, residual: &integer) {
+  for pass in 0..SLOPE_PASSES {
+    moved = false;
+    for dq in (0 - rad)..(rad + 1) {
+      for dr in (0 - rad)..(rad + 1) {
+        q = tq + dq;
+        r = tr + dr;
+        if hex_distance(q, r, tq, tr) >= rad { continue; }
+        // ⚠ FABRIC IS EXEMPT. A building's pad is rigid by `A1`; relaxing it would
+        // put the shear back that `A1` exists to remove, one rule later.
+        if taken.s_by[age_like_key(q, r)] != null { continue; }
+        lim = slope_limit(w, q, r);
+        if lim == SLOPE_FREE { continue; }
+        rec = origs.o_by[age_like_key(q, r)];
+        if rec == null { continue; }
+        h0 = rec.oa_h;
+        h = ground_h(w, q, r);
+        if h == h0 { continue; }
+        want = h;
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          nh = ground_h(w, nq, nr);
+          if h > h0 {
+            if want > nh + lim { want = nh + lim; }
+          } else {
+            if want < nh - lim { want = nh - lim; }
+          }
+        }
+        // Never pushed past where it started — the edit is reduced, never reversed.
+        if h > h0 && want < h0 { want = h0; }
+        if h < h0 && want > h0 { want = h0; }
+        if want != h {
+          give = h - want;
+          if give < 0 { give = 0 - give; }
+          // ⚠ THE SAME TWO COUNTERS THE HEIGHT CLAMPS USE. A limit that silently
+          // delivers less than was asked is the `K-FIT` failure this tree has a rule
+          // for: say what could not be done and by how much. The server already
+          // warns on these, so a refused slope reaches the author by the path a
+          // refused height always has.
+          clamped = clamped + 1;
+          if give > residual { residual = give; }
+          bm2 = world_ground_cell(w, q, r).h_material as integer ?? 0;
+          if bm2 == 0 { bm2 = SURFACE_MAT; }
+          ground_set(w, q, r, want, bm2);
+          moved = true;
+        }
+      }
+    }
+    if !moved { break; }
+  }
+}
+
 // The falloff a hill takes at distance `d` — the one place the shape is written.
 fn brush_delta(amp: integer, d: integer, rad: integer) -> integer {
   if d >= rad { return 0; }
@@ -2906,6 +3078,18 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
   // side of one*.
   taken = Seen { s_by: [] };
   memo = FabMemo { fm_yes: Seen { s_by: [] }, fm_no: Seen { s_by: [] } };
+  // ⚠ RECORDED BEFORE ANYTHING MOVES, because the relaxation's whole rule is *pull
+  // back toward where this started* — and the start is the one state known to
+  // satisfy every limit already. Without it the loop has no floor to converge on.
+  origs = Origs { o_by: [] };
+  for oq in (0 - rad)..(rad + 1) {
+    for orr in (0 - rad)..(rad + 1) {
+      q1 = tq + oq;
+      r1 = tr + orr;
+      if hex_distance(q1, r1, tq, tr) >= rad { continue; }
+      origs.o_by += OrigAt { oa_key: age_like_key(q1, r1), oa_h: ground_h(w, q1, r1) };
+    }
+  }
   for sq in (0 - rad)..(rad + 1) {
     for sr in (0 - rad)..(rad + 1) {
       q0 = tq + sq;
@@ -2991,6 +3175,9 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
       }
     }
   }
+
+  // ── and then the surfaces that may not take what they were given ──────────
+  slope_relax(w, tq, tr, rad, taken, origs, clamped, residual);
 }
 
 // The cell `PEAK_AHEAD` hexes along the author's facing, or a refusal.

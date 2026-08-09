@@ -5,7 +5,7 @@
 
 ## Status
 
-`A1` and `A1b` are **shipped**: a raise no longer repaints or shears what it lifts, and a
+`A1`, `A1b` and `A2` are **shipped**: a raise no longer repaints or shears what it lifts, and a
 connected structure — floor, walls, fences — rides the terrain rigidly and ends up on its
 own level pad. `A2`–`A5` are **designed, not built**. Today's unlimited falloff is not
 wrong and is not going away: `A2` makes it **one row of a table** — the grass row.
@@ -54,6 +54,7 @@ argued from a picture alone.
 | `A1` ✅ | a raise of 6 over a 27-cell floor leaves all 27 at `40+6`, spread **0** | *a body moves rigidly or not at all* | a road under the same stroke must come out **not** level — it takes the incline |
 | `A1b` ✅ | a raise of 6 over a yard fenced at radius 4 leaves ring, middle and halfway all at `40+6` | *what a structure encloses moves with it* | the pocket OUTSIDE the fence is unbounded and must **not** be absorbed — it escapes the reach, and an open fence LINE encloses nothing |
 | `A2` | on a `limit=2` surface, a stroke asking for 6 over one hex step leaves **2** per step and reports the residual | *no edge exceeds its surface's limit* | a stroke that already fits must be **unchanged** — a limit that alters a legal edit is a bug, not a limit |
+| `A2c` | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall and its along-limit unchanged | *a road has an axis; its limit is not a scalar* | a road cell with no road neighbour has no axis — it must fall back to the scalar limit, not to flat |
 | `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient is limited* | a corridor under a BUILDING must still move **rigidly** with it — it is that house's cellar, not a run of its own |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | a cycle must terminate — a fixed iteration cap, and the cap being hit is a **refusal**, not a silent stop |
@@ -69,7 +70,8 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 |---|---|---|---|
 | **`A1`** — a building rides the terrain rigidly | M | `tests/raise_structure.loft` (7 claims), `raise_keeps.loft` (4) | ✅ shipped `cab574d` |
 | **`A1b`** — ground a structure encloses is part of it | S | `tests/raise_structure.loft` — a fenced yard comes up level with its fence, and the outside still slopes | ✅ shipped |
-| **`A2`** — a slope limit per surface | M | a loft test per surface row + the residual report | Open |
+| **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` (7 claims) + `hex_mesh/tests/terrain_link.loft` (6) | ✅ shipped |
+| **`A2c`** — a road is ANISOTROPIC: it bends along its run and is flat across it | M | a two-wide road under a cross-stroke stays level across, and bends along | Open |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor under a raise keeps its cover within a band, and its gradient within its limit | Blocked on `A2` |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
@@ -91,17 +93,24 @@ be done and by how much, or the author is told a lie in the shape of a picture.
    their own delta today with no interaction. A pad's edge constraining its neighbours is
    iterative by nature; the cap and its refusal are named in the invariant gate above.
    Decided by building the one-pass version and measuring where it disagrees with itself.
-4. **What does a corridor hold constant — its cover, or its gradient?** They are two
+4. **How is a road's AXIS derived, given it is not stored?** *Roads do not flow: along the
+   road they can bend, across it they are flat* — and the same for corridors. A cell knows it
+   is `ROAD_MAT` and nothing more, so the axis has to come from which neighbours are also
+   road. ⚠ That makes the limit a property of an EDGE rather than of a cell, which is a
+   different shape from what `A2` shipped: `slope_limit` answers per cell today. Decided by
+   `A2c`, and the fallback for a road cell with no road neighbour — no axis — has to be the
+   scalar limit rather than flat, or a single stray road cell pins the terrain around it.
+5. **What does a corridor hold constant — its cover, or its gradient?** They are two
    constraints and they fight: keeping a fixed cover under a new hill means climbing at the
    hill's own slope, which may exceed the corridor's limit; keeping the gradient means the
    cover thickens. Provisional reading of *"the same treatment as a road"*: the **gradient
    limit wins** and the cover is free between a floor and a ceiling, because that is what a
    road does — it holds its grade and lets the cutting get deeper. Decided by `A2b`.
-5. **And what happens when the cover runs out?** A corridor that would surface is the
+6. **And what happens when the cover runs out?** A corridor that would surface is the
    underground case of `A5`: a face, a refusal, or an entrance. ⚠ It is also the only place
    in this plan where the limit breaking has a *gameplay* meaning rather than a visual one —
    a corridor that opens to the sky is a way in.
-6. **Should the pad extend past the building?** A real terrace has an apron. Today the pad
+7. **Should the pad extend past the building?** A real terrace has an apron. Today the pad
    is exactly the fabric, so the ground steps at the wall. `A2`'s limits may make this
    answer itself — a step is an edge, and an edge has a limit.
 
@@ -138,6 +147,39 @@ larger bound costs the outside flood proportionally. 42 ms is that trade at toda
 directions — so the rigid band is the fence line plus one cell either way. That is right (a
 post sits in ground on both sides) and it is a cell wider than it looks; the outside-slope
 test samples clear of it and says why.
+
+## What `A2` turned up
+
+**Built:** `ground_kinds()` — one row per stored material carrying `tr_slope` and `tr_fabric`
+— and `slope_relax`, which pulls every moved cell back toward where it started until no edge
+breaks its own surface's limit, reporting through the two counters the height clamps already
+use. Measured profiles from the centre out, as deltas, for `amp 12 rad 7`:
+
+| | profile | steepest | clamped | residual |
+|---|---|---|---|---|
+| grass | `12 11 10 7 5 2 0` | 3 | 0 | 0 |
+| road | `6 5 4 3 2 1 0` | **1** | 19 | 6 |
+| field | `12 10 8 6 4 2 0` | **2** | 9 | 2 |
+| road with something planted | `12 11 10 7 5 2 0` | 3 | 0 | 0 |
+
+⚠ **THE FIRST BUILD HARD-CODED THE TERRAINS** — `if m == ROAD_MAT { … }` inside the gesture —
+and that is a second copy of a set nobody owned. The five materials were five loose `pub
+const`s scattered across 1,400 lines with no way to enumerate them, which is *why* the limit
+came out as a switch: there was nothing to hang an attribute on. `is_fabric`'s `== FLOOR_MAT`
+was the same hard-coded terrain one predicate over, and now reads `tr_fabric`.
+
+⚠ **AND A SURFACE IS NOT A TERRAIN, WHICH IS WORTH WRITING DOWN ONCE.** A surface is what the
+mesher can DRAW (9); a terrain is what a cell can BE (5). `tree` is an item, `wall` is an edge
+material in its own numbering — where `1` means wall while `1` on the cell axis means grass —
+and `frame`/`soffit` are derived and stored nowhere. ⚠ **The overlap is SCRAMBLED**: materials
+1,2,3,4,5 land on surfaces 0,1,2,**6**,**4**, which is not an offset and not order-preserving.
+It was re-derived at every site that needed it and written down at none. `Surface.sf_mat` is
+now the one join, `hex_mesh/tests/terrain_link.loft` keeps it total in both directions, and
+the scramble itself is pinned so a future re-order announces itself.
+
+⚠ **`names.sh` CAUGHT THE STRUCT NAME, WHICH IS WHAT IT IS FOR.** `Terrain` is already
+published by the registry's `hex_terrain`; a public name is global across a consumer's whole
+graph, so it became `GroundKind`. The check found it before the suite did.
 
 ## What is already measured for `A2b`
 
