@@ -5,7 +5,10 @@
 
 ## Status
 
-**Designed, not built.** Nothing here is started. It is filed now because every day it waits,
+**Designed, not built.** Nothing here is started — and ⚠ `R1` was **reshaped before any code**
+by finding that the palette already exists in the predecessor model (see below). What stopped
+the build is worth more than the build would have been: a fresh palette in `hex_editor` would
+have been the third implementation of one idea, and the third list in three days. It is filed now because every day it waits,
 the thing it has to undo gets bigger — and two of the sites it has to undo are three days old.
 
 ## Goal
@@ -45,6 +48,51 @@ hanging off it. They were the right answer to *"do not hard-code terrains, make 
 attribute"* and the wrong answer to this one — **the attribute belongs to the identity and the
 identity belongs to the region**. Plan 20 is not wrong; it is one level short.
 
+## ⚠ The design already exists — in the PREDECESSOR model, unconsumed by the editor
+
+**Found before `R1` was built, and it reshapes it.** `lib/moros_map/src/palette.loft` already
+holds exactly the object this plan describes:
+
+> *"The voxel is seven integers and NOTHING ELSE: a `u16` height and six `u8`s. Those `u8`s
+> are not values, they are INDEXES — every name, every category, every float lives here
+> instead, stored ONCE per definition rather than once per cell."*
+> *"SLOT 0 IS ABSENCE, IN ALL THREE TABLES … Getting this wrong would not crash — it would
+> make empty space render as whatever material happened to be defined first, which is
+> precisely the kind of failure that looks like a texture bug for a week."*
+
+Three tables — `MaterialDef`, `WallDef`, `ItemDef` — one palette per `Map`, `PALETTE_MAX` 256
+because that is what a `u8` can name, and a refusal rather than an append past it. The user's
+constraint, already written down, already gated (`moros_map/tests/palette.loft`).
+
+⚠ **AND THE LIVE EDITOR DOES NOT USE ANY OF IT.** Measured — this tree carries **two world
+models**, split cleanly by consumer:
+
+| model | palette? | consumed by |
+|---|---|---|
+| `moros_map`'s `Map` | **yes**, three index tables | `moros_editor`, `moros_render`, `moros_sim` |
+| `hex_world`'s voxel | **no**, compile-time constants | `editor_server`, `hex_editor`, `hex_mesh`, `hex_part` |
+
+`hex_world`'s own header says why: *"THIS IS NOT A REFACTOR OF `moros_map` … `moros_map` sits
+at a PREDECESSOR of the contract … Being in one tree buys DESIGN reuse, not code reuse."* The
+successor deliberately did not carry the palette across, and used constants instead.
+
+⚠ **SO `R1` IS NOT *DESIGN A MAPPING* — IT IS *CARRY ONE ACROSS*.** Building a fresh palette in
+`hex_editor` would be the **third** implementation of one idea in a tree already spending plan
+19 on removing exactly that kind of duplicate. It would also have been the third list in three
+days, after `ground_kinds()` and `edge_kinds()`.
+
+⚠ **AND IT CANNOT SIMPLY BE ADOPTED WHERE IT SITS.** `moros_map` is a Moros package and the
+editor is lavition; a universal editor depending on the game's package is the arrow
+`tools/layering.sh` exists to refuse, and the one `moros_ui`/`moros_terrain` already cost this
+tree a rename each. The palette has to land in a `hex_*` package, which entangles `R1` with
+[plan 19](../19-lavition-split/README.md).
+
+⚠ **WHAT DOES *NOT* CARRY ACROSS IS THE PAYLOAD.** `md_texture` and `md_tint_r/g/b` are the
+predecessor's rendering answer; this tree's colour now comes from `hex_mesh::surfaces()`, and
+`sf_mat` joins it to the material axis. So the STRUCTURE carries (three tables, index-not-value,
+slot 0 absence, a 256 refusal) and the FIELDS are a fresh decision — which is `R1`'s real
+design work, and is smaller than it looked.
+
 ## Anchors
 
 | | |
@@ -53,6 +101,8 @@ identity belongs to the region**. Plan 20 is not wrong; it is one level short.
 | how a world is stored | [HEX_STACK.md](../../doc/claude/HEX_STACK.md) — the store is the only authority; a mapping is a section, not a second store |
 | the tagged-section rule this rides on | [PARTS.md §P2](../../doc/claude/PARTS.md) — an unknown section is skipped by its length, so a mapping can arrive without breaking an older reader |
 | what currently owns the attributes | `hex_editor::ground_kinds()`, `edge_kinds()`; `hex_mesh::surfaces()` and its `sf_mat` join |
+| **the palette that already exists** | `lib/moros_map/src/palette.loft` + `moros_map/tests/palette.loft` — the predecessor's version, gated, unconsumed by the editor |
+| why it cannot be adopted in place | [LAVITION_SPLIT.md](../../doc/claude/LAVITION_SPLIT.md) — a universal package may not depend on a Moros one |
 
 ## Invariant gate
 
@@ -71,7 +121,7 @@ target and a negative control.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`R1`** — a mapping is a section on the world; one region, resolved through it | M | round-trip test + the refusal of an unmapped byte | Open |
+| **`R1`** — carry the palette across into a `hex_*` package; one region, resolved through it | MH | round-trip test + the refusal of an unmapped byte, and `moros_map`'s own palette gate still green | Open — ⚠ **reshaped**: see the section above |
 | **`R2`** — many regions, and a cell knows which it is in | MH | the same byte resolving differently either side of a seam | Blocked on `R1` |
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
