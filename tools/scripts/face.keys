@@ -1,0 +1,92 @@
+# ROCK FACES WHERE THE LIMIT BREAKS — plan 20 `A5`, and its acceptance is a PICTURE.
+#
+# ⚠ THE COUNT AND THE PICTURE ANSWER DIFFERENT QUESTIONS, and this tree has the scar:
+# `A8.3`'s door passed every count and read as a hole for four days. So `mesh rock` is
+# what says the geometry EXISTS and the shots are what say it reads as rock — and the
+# shots are taken of the cliff ALONE, zoomed, not of a landscape with one in it.
+#
+# ⚠ AND THE CONTROL IS THE FIRST THING SHOT, not an afterthought. `A5`'s negative
+# control is *a slope that fits its limit must never become a face*, and a hillside
+# that quietly turned to rock would be the loudest possible failure of it — every
+# world in the tree re-shaped. One stroke of the raise brush is 23°, and 23° is grass.
+
+echo --- CONTROL: one stroke of the brush is a hillside, and grass holds it
+at 0 0 0
+key ArrowUp
+wait rebuilt
+step 20
+# The steepest step a single stroke makes is 3 (23.4°), where grass stands to 6
+# (40.9°). Nothing here may face.
+mesh rock 0 0
+
+echo --- and look at it, so the control is a picture too
+# ⚠ THE ROW IS `masonry`, NOT `rock`, AND THAT IS THE DECLARATION BEING HONOURED.
+# `hex_mesh::surfaces()` puts the rock face in the MASONRY bucket on purpose — every
+# hue this palette leaves free is a saturated one, so a rock that separates in
+# chromaticity from dressed stone is a rock that is visibly green. The eye separates
+# them by VALUE, which chromaticity divides out by construction.
+#
+# ⚠ AND `rock` IN THE CLASSIFIER IS A DIFFERENT THING ENTIRELY — it is the GROUND
+# mesh's height ramp (`ROCK_R/G/B`, the colour high ground fades toward), which has
+# nothing to do with this surface. Reading it here would report the mountain's tint
+# and call it the cliff.
+#
+# So the instrument is: this scene has no masonry in it. A wall, a frame and a rock
+# face are one bucket, there is no building here, and the control below says that
+# bucket is EMPTY before a single face exists.
+at 2 0 0
+step 40
+snap a5-control-hillside
+# ⚠ 0.01 AND NOT 0, AND THE REASON IS THE FIGURE'S OWN EDGE. Anti-aliased pixels
+# along the character's silhouette blend skin against grass, and the midpoints land
+# in the pale-grey bucket — measured 0.0022 with the camera this close and 0.0000
+# from twenty hexes back. The mountain below reads 0.26, which is 26x this bound, so
+# the control still separates the two by two orders of magnitude.
+frame 0 1.0 grass 0.15 1.0 masonry 0 0.01
+
+echo --- SIX MORE STROKES ON THE SAME HILL: a mountain, and grass does not hold one
+# ⚠ THE STROKE IS APPLIED, NOT RECORDED, so holding the key adds each time — twenty
+# presses is the same dome scaled twenty times vertically. Seven is enough to take the
+# flanks past what soil stands at, which is the whole claim.
+at 0 0 0
+step 10
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+wait rebuilt
+step 30
+# ⚠ A LOWER BOUND, NOT A FIXED COUNT. The exact quad count depends on where the
+# falloff's integer truncation lands, and pinning it would make this row a test of
+# `brush_delta`'s rounding rather than of the face rule. What is being claimed is that
+# a mountain's flanks are rock at all — 0 is the failure this catches, and
+# `lib/hex_mesh/tests/face_mesh.loft` owns the exact counts on an exact fixture.
+mesh rock 60 100000
+
+echo --- ZOOMED ON THE FLANK, which is the only place the claim can be read
+# ⚠ SHOT FROM CLOSE AND LOW. A mountain photographed from far enough away to see all
+# of it is a silhouette, and a silhouette cannot say what its surface is — the same
+# reason the door had to be zoomed before anyone could tell a leaf from a hole.
+at 4 0 0
+send 40:1
+send 3:0,2500
+step 40
+snap a5-mountain-flank
+frame 0 1.0 masonry 0.10 1.0
+
+echo --- AND FROM ON TOP OF IT, which is where an author stands
+# ⚠ A SECOND PICTURE OF THE SAME ANGLE IS NOISE, and the first draft of this file
+# took one: a levelled plateau shot from the foot is the flank above with a different
+# caption. What is genuinely a different claim is the view an author actually has —
+# standing on the ground they just raised and looking down the cut they just made.
+# From up here a face is seen edge-on and from ABOVE, which is the angle a
+# `max(dot(N, L), 0)` of zero would hide completely.
+at 14 0 0
+send 40:1
+step 30
+send 3:0,-2500
+step 40
+snap a5-from-the-crest
+frame 0 1.0 masonry 0.02 1.0

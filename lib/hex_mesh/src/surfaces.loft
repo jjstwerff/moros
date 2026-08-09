@@ -98,13 +98,23 @@ pub fn surfaces() -> vector<Surface> {
     // clears the wall lands inside 2.5x of the sky or the soffit instead.
     //
     // So it is declared alike rather than faked apart — the wall/frame rule one
-    // surface over — and the separation that IS real is carried by VALUE: this is
-    // 0.34/0.32/0.29 against the wall's 0.55/0.52/0.46, a little over half as
-    // bright, which is a weathered outcrop beside dressed stone and is what the
-    // eye uses. ⚠ The consequence, said rather than discovered: a gate cannot ask
-    // a histogram whether a face appeared. It counts the mesh's triangles, which
-    // is exact — the second instrument, not a looser threshold.
-    Surface { sf_name: "rock",   sf_r: 0.34, sf_g: 0.32, sf_b: 0.29, sf_bucket: "masonry" },
+    // surface over — and the separation that IS real is carried by VALUE.
+    //
+    // ⚠ AND IT IS LIGHT, WHICH IS THE OPPOSITE OF THE FIRST ANSWER AND THE PICTURE
+    // IS WHY. `0.34/0.32/0.29` was chosen to sit *below* the wall's `0.55/0.52/0.46`
+    // — a weathered outcrop beside dressed stone — and it photographed as a BLACK
+    // HOLE in the hillside. A face is vertical by construction, so its normal is
+    // horizontal, so `max(dot(N, L), 0.0)` is **zero** on every face turned away
+    // from the light and the whole of it is the 0.45 ambient: `0.34 x 0.45` is
+    // `0.153`, which is not a dark rock, it is a hole. `A5`'s own invariant is *a
+    // face is a surface, not an absence*, and the first colour failed it in the one
+    // instrument that can see it.
+    //
+    // Light stone reads as stone at ambient — `0.68 x 0.45` is `0.306` — and it is
+    // also the truer picture: an outdoor cliff in daylight is brighter than a wall
+    // in shade, not darker. ⚠ A gate still cannot ask a histogram whether a face
+    // appeared; it counts the mesh's triangles, which is exact.
+    Surface { sf_name: "rock",   sf_r: 0.68, sf_g: 0.65, sf_b: 0.59, sf_bucket: "masonry" },
   ]
 }
 
