@@ -1,0 +1,79 @@
+// WHAT DOES ASKING FOR A FACE COST A CHUNK REBUILD? — plan 20 `A5`
+//
+// The mesher already reads a two-cell halo of heights once per chunk per
+// material, and the doc records why: 920 ms to rebuild 36 chunks before that
+// existed. A face mask needs the same cells' face LIMITS, and a limit is a
+// palette lookup rather than a field read — so the question is whether it can
+// ride along or has to be cached.
+//
+// ⚠ `now()` IS MILLISECONDS. Every number below is a total over `REPS`, printed
+// per rebuild, so a sub-millisecond cost is still visible.
+use hex_editor;
+use hex_world;
+use hex_mesh;
+const U = 0.25;
+const G = 40;
+const GW = 12;             // MESH_CHUNK + 4, the halo the mesher actually reads
+const REPS = 400;
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+
+  // 1. the read the mesher already does
+  t0 = now();
+  acc = 0;
+  for k1 in 0..REPS {
+    for hr in 0..GW {
+      for hq in 0..GW { acc = acc + terrain_h(hq - 2, hr - 2, w); }
+    }
+  }
+  t1 = now();
+
+  // 2. the same cells' face limits, asked one at a time
+  lim = 0;
+  for k2 in 0..REPS {
+    for hr2 in 0..GW {
+      for hq2 in 0..GW { lim = lim + face_limit(w, hq2 - 2, hr2 - 2); }
+    }
+  }
+  t2 = now();
+
+  // 3. the same, with the limit memoised on the MATERIAL — the shape the mesher
+  //    would use, since a region is a property of the chunk and a chunk holds a
+  //    handful of materials at most.
+  memo = 0;
+  for k3 in 0..REPS {
+    ms: vector<integer> = [0 - 1, 0 - 1, 0 - 1, 0 - 1, 0 - 1, 0 - 1, 0 - 1, 0 - 1];
+    for hr3 in 0..GW {
+      for hq3 in 0..GW {
+        c = world_ground_cell(w, hq3 - 2, hr3 - 2);
+        m = c.h_material as integer ?? 0;
+        if (c.h_item as integer ?? 0) != 0 {
+          memo = memo + face_limit(w, hq3 - 2, hr3 - 2);
+          continue;
+        }
+        if m > 7 { m = 0; }
+        got = ms[m] ?? (0 - 1);
+        if got < 0 {
+          got = ground_kind_at(w, hq3 - 2, hr3 - 2, m).tr_face;
+          ms[m] = got;
+        }
+        memo = memo + got;
+      }
+    }
+  }
+  t3 = now();
+
+  cells = (GW * GW * REPS) as float;
+  println("over {REPS} rebuilds of a {GW}x{GW} halo ({cells as integer} cell reads each way):");
+  println("  heights, as the mesher reads them now : {(t1 - t0) as float / (REPS as float) ?? 0.0:6.3} ms a rebuild");
+  println("  face_limit, one call per cell         : {(t2 - t1) as float / (REPS as float) ?? 0.0:6.3} ms a rebuild");
+  println("  face limit memoised on the material   : {(t3 - t2) as float / (REPS as float) ?? 0.0:6.3} ms a rebuild");
+  println("  (sums {acc} {lim} {memo} — printed so nothing above is optimised away)");
+}
