@@ -5628,7 +5628,11 @@ fn main() {
   level_stalled = false;
   level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
-  road_h = 0;                  // the road's grade, frozen when it was switched on
+  road_h = 0;                  // the road's grade — set when road mode goes on and
+                               // then FOLLOWING the landscape, one stroke at a time
+  // One stall report per road run, not per stroke — the same shape `level_stalled`
+  // has, and reset with the mode rather than with the stroke.
+  road_stalled = false;
   dirty = DirtySet { items: [] };
   clients: vector<Client> = [];
   live_clients = 0;            // what the LIBRARY says is connected, not our list
@@ -6637,9 +6641,55 @@ fn main() {
               // followed the path.
               if roading {
                 rhx = world_to_hex(px, pz);
+                // ── A ROAD FOLLOWS THE LANDSCAPE — plan 20 ────────────────────────
+                //
+                // > *"A road will follow the landscape the way a road builder works,
+                // > so it flows upwards with the hills with its own rules about how
+                // > much."*
+                //
+                // ⚠ `road_h` WAS FROZEN ONCE, WHEN ROAD MODE WENT ON, and every
+                // stroke used it — so the strip was FLAT however far it ran.
+                // Measured, a road across a hill of 24 was a plateau cutting **160**
+                // and filling **0**, breaking no limit and therefore never settling
+                // and never balancing. `A7`'s settle and `A8`'s spoil were both
+                // correct, both tested, and unreachable through the only gesture
+                // that lays road.
+                //
+                // ⚠ AND RE-FREEZING FROM THE FEET CHANGES NOTHING, which is the trap
+                // worth naming: the author RIDES THE ROAD THEY ARE LAYING.
+                // `road_lay` stamps a disc of `ROAD_HALF` centred on them, so the
+                // ground they stand on next stroke is road laid on the last one and
+                // `ground_under` hands back the grade that was just written. It is
+                // `TERRAIN_EDITS`'s own sampling trap — *a probe that samples as it
+                // writes measures its own output* — living inside the gesture.
+                //
+                // So the grade is read from ONE CELL PAST THE STRIP, which is the
+                // nearest place the natural ground still survives.
+                //
+                // ⚠ AND *ITS OWN RULES ABOUT HOW MUCH* ARE NOT REPEATED HERE. A road
+                // may climb at `ground_kinds()`'s `tr_slope` and no more, and
+                // `slope_settle` inside `road_lay` is what holds it there — one rule,
+                // in the library, asked by every writer. Clamping here as well would
+                // be the second copy `A7` exists to remove.
+                rd_look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
+                road_h = py_of(wld, px + cos(yaw) * rd_look, pz + sin(yaw) * rd_look);
                 hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, hex_editor::ROAD_HALF, py);
-                mark_dirty(dirty, rhx.ha_q, rhx.ha_r, hex_editor::ROAD_HALF);
+                // ⚠ THE RUN MAY HAVE MOVED BEYOND THE DISC. `road_lay` settles the
+                // whole connected run, so a stroke that broke the limit can lower
+                // cells far behind the author — marking only the disc leaves those
+                // chunks holding the mesh they had before the cut.
+                mark_dirty(dirty, rhx.ha_q, rhx.ha_r,
+                           hex_editor::ROAD_HALF + hex_editor::PEAK_R);
                 py = (road_h as float) * HEIGHT_SCALE;
+                // ⚠ AND WHETHER THE RUN COULD BE HELD TO ITS LIMIT AT ALL — `A4`'s
+                // refusal, on the gesture that can now reach it.
+                rd_owed = hex_editor::slope_owed(wld, rhx.ha_q, rhx.ha_r);
+                if rd_owed > 0 && !road_stalled {
+                  road_stalled = true;
+                  srv.broadcast("S:road did not settle — the run is still {rd_owed} "
+                                + "per hex over its limit");
+                  println("editor: road did not settle — owed {rd_owed}");
+                }
               }
               if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
@@ -7704,6 +7754,7 @@ fn main() {
             rvf = py / HEIGHT_SCALE ?? 0.0;
             rres0 = 0.0;
             road_h = hex_editor::freeze_grade(rvf, rres0);
+            road_stalled = false;
           }
           // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
           // height and a grade is an integer, so freezing one from the other

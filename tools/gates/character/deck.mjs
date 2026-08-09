@@ -153,11 +153,24 @@ const steps = [await col(1, 0), await col(2, 0), await col(3, 0)];
 
 // ── the platform: paved from the FIRST step, so its ground is one stride up and
 //    its deck one stride above the stair's top
+// ⚠ LEVELLING MAKES THE PLATFORM NOW, NOT THE ROAD, and plan 20 is why. This phase
+// used to switch road mode on and walk — because a road's grade was FROZEN when the
+// mode went on, so the strip came out dead level and made a pad by accident. A road
+// follows the landscape now (*"it flows upwards with the hills with its own rules
+// about how much"*), so a strip laid from the first step out over open ground RAMPS,
+// which is what a road should do and is useless for standing a deck on.
+//
+// Levelling is the gesture whose whole job is a flat pad: switched on here it freezes
+// the floor at the step's own height and carries the ground to it. ⚠ AND THE
+// PLATFORM WAS NEVER ASSERTED TO BE ROAD-SURFACED — the claim below is about its
+// HEIGHT — so nothing is lost by making it with the gesture that owns height.
 await place(1 * HEX, 0, 0);
 const roadMark = mark();
-const roadOn = await ask(g, '10:1', 'road true');
+const roadOn = await ask(g, '6:1', 'level true');
+await place(3 * HEX, 0, 0);
+await place(5 * HEX, 0, 0);
 await place(6 * HEX, 0, 0);
-await send(g, '10:0', ['road false']);
+await send(g, '6:0', ['level false']);
 // The paving rebuild lands on the PLACEMENT, before `road false` is even sent,
 // so this asks whether one happened during the phase — not whether another
 // follows it.
@@ -286,7 +299,7 @@ const deckCutCol = await col(cutQ, 0);
 // ── the claims
 const [gnd0, deck0] = nums(deckCol);
 const platform = storey.startsWith('storey +1')
-  && roadOn.startsWith(`road true at grade ${GRADE}`)
+  && roadOn.startsWith(`level true at height ${GRADE}`)
   && gnd0 === GRADE && deck0 === DECK;
 // each cut is one stride above the last, and each landed on ONE occupied layer —
 // a stair that made a layer of its own would read two heights here
