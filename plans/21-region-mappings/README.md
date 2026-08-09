@@ -5,7 +5,7 @@
 
 ## Status
 
-**Designed, not built.** Nothing here is started — and ⚠ `R1` was **reshaped before any code**
+**`R1` is shipped; `R2`–`R5` are designed, not built.** ⚠ `R1` was **reshaped before any code** — and ⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
 have been the third implementation of one idea, and the third list in three days. It is filed now because every day it waits,
@@ -93,6 +93,38 @@ predecessor's rendering answer; this tree's colour now comes from `hex_mesh::sur
 slot 0 absence, a 256 refusal) and the FIELDS are a fresh decision — which is `R1`'s real
 design work, and is smaller than it looked.
 
+## What `R1` turned up
+
+**Built:** the palette lives in `hex_world`, beside the voxel whose bytes are its indices —
+the user's call, *"hex_world, keep them together"*. Three axes on three section tags
+(`PALM`/`PALW`/`PALI`), `PAL_MAX` 256 because that is what a `u8` can name, slot 0 absence on
+all three, and `world_palette_check` refusing a byte no entry names.
+
+⚠ **THE STORE OWNS IDENTITY AND THE CONSUMER OWNS POLICY**, which is what lets plan 20 and
+plan 21 both be right. `hex_world` says byte 2 is called *road*; `hex_editor` says what a road
+may do. A palette carrying slope limits would be a store with an opinion about its consumers —
+the thing the section mechanism exists to avoid — and the split means two worlds may number
+their ground differently and still agree about slopes.
+
+⚠ **AND A WORLD WITH NO PALETTE KEEPS THE BUILT-IN NUMBERING.** That is not a default to tidy
+away: every world written before this is one, and the fallback is what lets the change arrive
+with no migration. When a world *does* carry a palette, the byte constants stop meaning
+anything — gated by a test that names byte **5** `road` and gets a road's limit on it, and by
+its control, which names byte **2** (`ROAD_MAT` in code) `grass` and must get grass's freedom.
+Sabotaged: ignoring the palette fails both.
+
+⚠ **A SIBLING FILE COULD NOT SEE `World`.** The palette started as `src/palette.loft`, and a
+sibling cannot import its own package's entry — `use palette;` in the entry makes the sibling's
+names visible to it, not the reverse. So it is folded into `hex_world.loft`, which is also
+where the user wanted it.
+
+⚠ **AND THE NAMES ARE PROVISIONAL BECAUSE `moros_map` IS BOUND FOR DELETION.** `PALETTE_MAX`
+and `ABSENT_NAME` are its, and `editor_server`'s graph reaches both packages today, so this
+took `PAL_MAX` and `PAL_ABSENT`. When the predecessor goes, they can take the natural names.
+
+**What `R1` does not do**: nothing writes a palette yet — no gesture, no editor command, and
+`data/` carries none. It is reachable and gated, and its first real author is `R2`.
+
 ## Anchors
 
 | | |
@@ -121,7 +153,7 @@ target and a negative control.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`R1`** — carry the palette across into a `hex_*` package; one region, resolved through it | MH | round-trip test + the refusal of an unmapped byte, and `moros_map`'s own palette gate still green | Open — ⚠ **reshaped**: see the section above |
+| **`R1`** — the palette lands in `hex_world`; identity resolved through it | MH | `hex_world/tests/palette.loft` (12) + `hex_editor/tests/slope_limit.loft`'s three palette claims | ✅ shipped |
 | **`R2`** — many regions, and a cell knows which it is in | MH | the same byte resolving differently either side of a seam | Blocked on `R1` |
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |

@@ -2063,3 +2063,176 @@ pub fn world_load(path: text) -> WorldLoad {
   }
   WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// THE PALETTE — what a cell's bytes MEAN, and the only thing fixed in code is 0.
+//
+// Plan [21](../../../plans/21-region-mappings/README.md) `R1`.
+//
+// > *"We have 256 terrains and walls and that will be plenty for many games,
+// > however open world games give their own problems … so there cannot be
+// > hard-coded mappings left outside 0 = nothing for terrain/wall/items."*
+//
+// A cell holds a `u16` height and six `u8`s. Those `u8`s are **indices**, not
+// values: which ground `2` is, which wall `1` is, which thing `3` is, are facts
+// about the WORLD and not about the code that reads it. Two worlds may use the
+// same byte for different things and neither is wrong.
+//
+// ⚠ THE STORE OWNS IDENTITY AND NOT POLICY, which is this package's own rule
+// arriving intact. `hex_world` says a byte is called `road`; whether a road may
+// slope, and how steeply, is `hex_editor`'s business and stays there. A palette
+// carrying gameplay attributes would be a store with an opinion about its
+// consumers — the thing the section mechanism exists to avoid.
+//
+// ⚠ SLOT 0 IS ABSENCE ON ALL THREE AXES, AND IT IS THE ONE FIXED FACT. It is
+// already load-bearing everywhere: `h_material == 0` is *no cell*, a zero wall
+// byte is *no boundary* (`E1`), `h_item == 0` is *nothing placed*, and a
+// freshly-defaulted `Hex` is all zeroes and must read as empty because that is
+// what an unwritten cell IS. So slot 0 can never be a definition, and a palette
+// that tried would make empty space resolve to whatever was defined first.
+
+pub const PAL_MAX = 256;        // a `u8` names no more, so a 257th is unaddressable
+pub const PAL_ABSENT = "-";     // what slot 0 answers, named so a reader can say so
+
+// The three axes. ⚠ Separate tables rather than one, because the same byte on two
+// axes is two unrelated things — `1` may be grass on the cell axis while `1` is a
+// wall on the edge axis, and they are already numbered independently today.
+pub const PAL_MATERIAL = 0;
+pub const PAL_EDGE     = 1;
+pub const PAL_ITEM     = 2;
+
+// ⚠ LITERALS, held equal to `section_tag(…)` by a test — the same rule and the same
+// reason as the part sections: a file-scope constant is an inlined expression,
+// re-evaluated at every reference, so a derived tag re-runs the packing loop at
+// each use.
+pub const TAG_PALM = 1296843088;   // 'PALM', low byte first — materials
+pub const TAG_PALW = 1464615248;   // 'PALW' — edges
+pub const TAG_PALI = 1229734224;   // 'PALI' — items
+
+pub struct PalEntry { pl_slot: integer, pl_name: text }
+
+pub const PAL_OK       = 0;
+pub const PAL_SLOT     = 1;   // a slot outside 1..255 — 0 is absence and is not writable
+pub const PAL_DUP      = 2;   // two entries claiming one slot
+pub const PAL_NEWLINE  = 3;   // a newline in a name would forge a line
+pub const PAL_ABSENT_C = 4;   // a byte a cell uses that the palette does not name
+
+fn pal_tag(kind: integer) -> integer {
+  if kind == PAL_EDGE { return TAG_PALW; }
+  if kind == PAL_ITEM { return TAG_PALI; }
+  TAG_PALM
+}
+
+// ⚠ TWO LINES EACH WAY, and no text view in the store. `text_from_bytes` and
+// `byte_at` have shipped since before this file (loft#748 reported them missing and
+// was wrong); the store carries the section as opaque bytes and this is the only
+// place that decides they are text.
+fn pal_write(w: World, tag: integer, t: text) {
+  b: vector<u8> = [];
+  for i in 0..t.size() { b += [t.byte_at(i) as u8? ?? 0]; }
+  world_set_section(w, tag, b);
+}
+
+fn pal_read(w: World, tag: integer) -> text {
+  text_from_bytes(world_section_bytes(w, tag))
+}
+
+pub fn world_set_palette(w: World, kind: integer, items: vector<PalEntry>) -> integer {
+  seen: vector<integer> = [];
+  body = "";
+  for e in items {
+    // ⚠ SLOT 0 IS NOT WRITABLE. Absence is not a definition, and a palette that
+    // let one be written would make an unwritten cell resolve to a real thing.
+    if e.pl_slot < 1 || e.pl_slot >= PAL_MAX { return PAL_SLOT; }
+    if e.pl_name.find("\n") != null { return PAL_NEWLINE; }
+    for s in seen { if s == e.pl_slot { return PAL_DUP; } }
+    seen += [e.pl_slot];
+    body += "{e.pl_slot}={e.pl_name}\n";
+  }
+  pal_write(w, pal_tag(kind), body);
+  PAL_OK
+}
+
+pub struct PalRead { pr_code: integer, pr_items: vector<PalEntry>, pr_why: text }
+
+// ⚠ ABSENT AND MALFORMED ARE DIFFERENT ANSWERS, and `pr_items` is usable on both
+// `PAL_ABSENT_C`-free readings: a world written before palettes exist names nothing
+// and is fine; one whose section says `x=road` is damaged. Collapsing them makes the
+// damaged one look ordinary.
+pub fn world_palette(w: World, kind: integer) -> PalRead {
+  none: vector<PalEntry> = [];
+  tag = pal_tag(kind);
+  if world_section_at(w, tag) < 0 {
+    return PalRead { pr_code: PAL_OK, pr_items: none, pr_why: "no palette on this axis" };
+  }
+  out: vector<PalEntry> = [];
+  for line in pal_read(w, tag).split('\n') {
+    if line == "" { continue; }
+    i = line.find("=");
+    if i == null {
+      return PalRead { pr_code: PAL_SLOT, pr_items: none, pr_why: "line '{line}' has no =" };
+    }
+    n = line[0..i] as i32?;
+    if n == null {
+      return PalRead { pr_code: PAL_SLOT, pr_items: none,
+                       pr_why: "slot '{line[0..i]}' is not a number" };
+    }
+    if (n ?? 0) < 1 || (n ?? 0) >= PAL_MAX {
+      return PalRead { pr_code: PAL_SLOT, pr_items: none, pr_why: "slot {n} is out of range" };
+    }
+    out += [PalEntry { pl_slot: n ?? 0, pl_name: line[(i + 1)..] }];
+  }
+  PalRead { pr_code: PAL_OK, pr_items: out, pr_why: "" }
+}
+
+// What this world calls `slot` on this axis. `PAL_ABSENT` for 0; **empty for a byte
+// the palette does not name**, which a caller must treat as a fault rather than as
+// a default.
+pub fn world_palette_name(w: World, kind: integer, slot: integer) -> text {
+  if slot == 0 { return PAL_ABSENT; }
+  for e in world_palette(w, kind).pr_items {
+    if e.pl_slot == slot { return e.pl_name; }
+  }
+  ""
+}
+
+// ── DOES EVERY BYTE THIS WORLD USES HAVE A NAME? ────────────────────────────
+//
+// ⚠ THE NEGATIVE CONTROL OF THE WHOLE DESIGN, and it is why this is a refusal and
+// not a default. A byte the palette does not name must be REFUSED, because the
+// alternative — resolving it to ground, or to the first definition, or to nothing —
+// is exactly how a world loaded against the WRONG palette looks correct: every cell
+// draws something, no error is raised, and the map is quietly a different place.
+//
+// Returns "" when every used byte is named, or a sentence naming the first that is
+// not — the axis, the byte, and where it was found, because "a byte is unmapped" is
+// not actionable and "material 7 at (12,-3)" is.
+pub fn world_palette_check(w: World) -> text {
+  for ch in w.w_chunks {
+    q0 = ch.ck_cx * CHUNK_W;
+    r0 = ch.ck_cz * CHUNK_W;
+    for dq in 0..CHUNK_W {
+      for dr in 0..CHUNK_W {
+        q = q0 + dq;
+        r = r0 + dr;
+        for c in world_column(w, q, r).co_cells {
+          m = c.h_material as integer ?? 0;
+          if m != 0 && world_palette_name(w, PAL_MATERIAL, m) == "" {
+            return "material {m} at ({q},{r}) is not in this world's palette";
+          }
+          it = c.h_item as integer ?? 0;
+          if it != 0 && world_palette_name(w, PAL_ITEM, it) == "" {
+            return "item {it} at ({q},{r}) is not in this world's palette";
+          }
+          for e in [c.h_wall_n as integer ?? 0, c.h_wall_ne as integer ?? 0,
+                    c.h_wall_se as integer ?? 0] {
+            if e != 0 && world_palette_name(w, PAL_EDGE, e) == "" {
+              return "edge material {e} at ({q},{r}) is not in this world's palette";
+            }
+          }
+        }
+      }
+    }
+  }
+  ""
+}

@@ -163,3 +163,51 @@ fn test_lowering_is_limited_the_same_way() {
            "a lowering raised the road at {q} to {ground_h(w, q, 0)}");
   }
 }
+
+// ── the identity comes from the WORLD — plan 21 `R1` ────────────────────────
+
+fn test_a_world_palette_decides_which_byte_is_a_road() {
+  // ⚠ THE WHOLE OF PLAN 21, AS ONE ASSERTION. Byte 2 is a road only because this
+  // file says so; a world that calls byte 5 `road` must get a road's limit on 5 and
+  // none on 2. If this passes with the palette ignored, nothing has been decoupled.
+  w = strip(SURFACE_MAT, 0);
+  for q in (0 - 24)..25 { ground_set(w, q, 0, G, 5); }
+  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL,
+           [hex_world::PalEntry { pl_slot: 5, pl_name: "road" },
+            hex_world::PalEntry { pl_slot: 1, pl_name: "grass" }]) == hex_world::PAL_OK,
+         "the palette was refused");
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(steepest(w, 7) <= ground_kind_of(ROAD_MAT).tr_slope,
+         "byte 5 was named 'road' and still took {steepest(w, 7)} a hex: {profile(w, 7)}");
+  assert(cl > 0, "a road by another number was not clamped at all");
+}
+
+fn test_the_same_byte_is_ordinary_ground_when_the_world_says_so() {
+  // ⚠ THE CONTROL, and it is the half that proves the constant stopped deciding.
+  // Byte 2 is `ROAD_MAT` in this file; a world that calls it `grass` must get
+  // grass's freedom, or the palette is being read and then ignored.
+  w = strip(ROAD_MAT, 0);
+  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL,
+           [hex_world::PalEntry { pl_slot: 2, pl_name: "grass" },
+            hex_world::PalEntry { pl_slot: 1, pl_name: "grass" }]) == hex_world::PAL_OK,
+         "the palette was refused");
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(cl == 0 && rs == 0,
+         "byte 2 was named 'grass' and was still held to a road's limit "
+       + "(clamped {cl}, residual {rs})");
+}
+
+fn test_a_world_with_no_palette_keeps_the_built_in_numbering() {
+  // Every world written before palettes existed is one of these, and the fallback
+  // is what lets the change arrive without a migration.
+  w = strip(ROAD_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  assert(steepest(w, 7) <= ground_kind_of(ROAD_MAT).tr_slope,
+         "a palette-free world stopped treating byte 2 as a road");
+}

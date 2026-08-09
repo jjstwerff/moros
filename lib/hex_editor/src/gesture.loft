@@ -2754,7 +2754,7 @@ pub const LIFT_CAP = 4096;
 pub fn is_fabric(w: World, q: integer, r: integer) -> boolean {
   // ⚠ THE TABLE SAYS WHICH MATERIALS ARE FABRIC — see `ground_kinds()`. This was a
   // literal `== FLOOR_MAT`, which is the same hard-coded terrain one predicate over.
-  if ground_kind_of(world_ground_cell(w, q, r).h_material as integer ?? 0).tr_fabric { return true; }
+  if ground_kind_at(w, world_ground_cell(w, q, r).h_material as integer ?? 0).tr_fabric { return true; }
   // ⚠ ALL SIX DIRECTIONS, NOT THE THREE A CELL OWNS. An edge is stored ONCE, on a
   // canonical owner — measured: `wall_set(w, 3, 0, SLOT_NE, …)` lands on cell
   // (3,−1)'s NORTH slot — so a cell with a fence along its west side carries no
@@ -2955,6 +2955,32 @@ pub fn ground_kind_of(mat: integer) -> GroundKind {
   GroundKind { tr_mat: mat, tr_name: "grass", tr_slope: SLOPE_FREE, tr_fabric: false }
 }
 
+// The kind a byte means IN THIS WORLD — plan 21 `R1`.
+//
+// ⚠ THE IDENTITY COMES FROM THE WORLD, THE POLICY FROM HERE, and that split is what
+// lets both plans be right at once. `hex_world`'s palette says byte 2 is called
+// *road*; this file says what a road may do. So two worlds may number their ground
+// differently and still agree about slopes, which is the whole of
+// [plan 21](../../../plans/21-region-mappings/README.md).
+//
+// ⚠ A WORLD WITH NO PALETTE FALLS BACK TO THE BUILT-IN NUMBERING, and that is not a
+// default to be tidied away later: every world written before palettes existed is
+// one, and the fallback is what makes the change arrive without a migration. When a
+// world DOES carry a palette, the byte constants in this file stop meaning anything
+// — which is the point.
+pub fn ground_kind_at(w: World, mat: integer) -> GroundKind {
+  nm = hex_world::world_palette_name(w, hex_world::PAL_MATERIAL, mat);
+  if nm == "" || nm == hex_world::PAL_ABSENT { return ground_kind_of(mat); }
+  for t in ground_kinds() {
+    if t.tr_name == nm { return t; }
+  }
+  // ⚠ NAMED BUT UNKNOWN IS *GROUND*, NOT A REFUSAL — here. A world may legitimately
+  // call byte 2 `dune road` and this table has no policy for that yet; refusing
+  // would make an unmapped NAME fatal to a gesture, where `world_palette_check` is
+  // the place that refuses an unmapped BYTE at load. One refusal, at the boundary.
+  GroundKind { tr_mat: mat, tr_name: nm, tr_slope: SLOPE_FREE, tr_fabric: false }
+}
+
 // ── AND THE SAME FOR AN EDGE — plan 20 `A2c` ───────────────────────────────
 //
 // *A wall (city or castle) can slope too like a road (see the great wall of china).*
@@ -3017,7 +3043,7 @@ pub fn run_slope(w: World, q: integer, r: integer) -> integer {
 pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_item as integer ?? 0) != 0 { return SLOPE_FREE; }
-  ground_kind_of(c.h_material as integer ?? 0).tr_slope
+  ground_kind_at(w, c.h_material as integer ?? 0).tr_slope
 }
 
 // ⚠ A CELL IS HELD TO ITS *OWN* LIMIT, NOT TO THE STRICTER OF THE PAIR, and this is
@@ -3067,7 +3093,7 @@ fn same_run(w: World, aq: integer, ar: integer, bq: integer, br: integer,
   ma = world_ground_cell(w, aq, ar).h_material as integer ?? 0;
   mb = world_ground_cell(w, bq, br).h_material as integer ?? 0;
   if ma == 0 || ma != mb { return false; }
-  ground_kind_of(ma).tr_slope != SLOPE_FREE
+  ground_kind_at(w, ma).tr_slope != SLOPE_FREE
 }
 
 fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
@@ -3245,7 +3271,7 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
       // bound. Both are already computed, so the discriminator costs a comparison.
       encloses = false;
       for fi in 0..len(mq) {
-        if ground_kind_of(world_ground_cell(w, mq[fi] ?? 0, mr[fi] ?? 0).h_material
+        if ground_kind_at(w, world_ground_cell(w, mq[fi] ?? 0, mr[fi] ?? 0).h_material
                           as integer ?? 0).tr_fabric { encloses = true; }
       }
       before_pockets = len(mq);
