@@ -53,6 +53,7 @@ to the built-in numbering.
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | Open |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | Blocked on `A4` |
+| **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Blocked on `A5` |
 
 ## Invariant gate — for the phases still open
 
@@ -67,6 +68,7 @@ argued from a picture.
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop |
 | `A5` | where the limit cannot be met the column carries a face rather than a slope | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
+| `A9` | a road cut into a face leaves the rock above it standing: the column has the road on a lower layer and terrain above, and the walk still passes | *cutting a shelf is not lowering the ground* | at overhang 0 the result must be **byte-identical** to today's open cut — the continuum has to contain what already works |
 
 ⚠ **`A8`'s ACCEPTANCE IS NOT ITS INVARIANT.** *"This will make the roads look more natural to
 human eyes"* — so the volume balance is what makes it **correct**, and whether it **works** is a
@@ -74,6 +76,31 @@ cold-recognition test: render a road across a slope and hand over the picture. T
 scar: `A8.3`'s door passed every count and read as a hole for four days, and the verdict was
 delivered twice against the wrong object before anyone zoomed in. Shoot the road ALONE, and
 zoom to the cutting before saying it reads.
+
+### `A9` — the shape a road takes where it cannot go round
+
+> *"Especially in Switzerland a road along a cliff face is cut into it, getting an overhang
+> above it. In Austria those overhangs often end up in a half tunnel because of their more
+> brittle rocks, but in both the roads often got real tunnels too."*
+
+⚠ **THAT IS ONE AXIS, NOT THREE FEATURES** — how much rock stays above the road:
+
+| rock above | what it is |
+|---|---|
+| none | today's open cut (`T5`) |
+| some | a Swiss **overhang** |
+| most | an Austrian **gallery** — a half tunnel, which is what brittle rock forces |
+| all | a **tunnel** — and that is already [`A2b`](#phases)'s sub-surface run, arriving from the other end |
+
+⚠ **AND THE MODEL ALREADY EXPRESSES IT.** A road with rock above it is a column whose road sits
+on a lower layer with terrain above — structurally identical to a cellar under a house, which
+the layer stack has carried since `8a`. So `A9` is not new storage; it is a rule about **which
+layer a cut writes to**, and today `slope_settle` lowers the whole column because nothing ever
+asked it not to.
+
+⚠ **THE FAR END MEETING `A2b` IS THE CHECK ON BOTH.** If a full-overhang road and a corridor
+are not the same object, one of the two designs is wrong — so they are gated against each
+other rather than built twice.
 
 ## Open questions
 
@@ -101,7 +128,13 @@ zoom to the cutting before saying it reads.
    See TERRAIN_EDITS §T3 for why the naive version collapses runs.
 6. **Does `A4` need a real relaxation, or is one pass enough?** Decided by building the
    one-pass version and measuring where it disagrees with itself.
-7. **Should the pad extend past the building?** A real terrace has an apron; today the pad is
+7. **What decides the overhang — the rock, or the author?** Switzerland gets an overhang from
+   the geology and Austria a gallery from *brittler* rock, so the natural model is a property
+   of the region's stone rather than a per-road choice — which lands it in
+   [plan 21](../21-region-mappings/README.md)'s palette, as an attribute of an identity, and
+   not in a gesture. ⚠ That would make *how a road crosses a cliff* a fact about **where in the
+   world you are**, which is the same shape as the slope limit and is probably the point.
+8. **Should the pad extend past the building?** A real terrace has an apron; today the pad is
    exactly the fabric, so the ground steps at the wall. The limits may answer it — a step is an
    edge, and an edge has a limit.
 

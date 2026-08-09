@@ -185,6 +185,13 @@ needs no new concept — a wall below a road is an EDGE material on the downhill
 ⚠ **AND IT SCOPES ITSELF TO THE RUN, NOT TO A RADIUS.** A stroke is a disc and a road is a
 line: settling a disc leaves the step at its rim, which is exactly where the violation lives.
 
+⚠ **AND A CUT IS NOT ALWAYS A LOWERING.** A road along a cliff face is cut *into* the face and
+the rock above it stays — an overhang, a gallery where the stone is brittler, and a tunnel at
+the far end. `slope_settle` lowers the whole column today because nothing ever asked it not to,
+and the layer stack already carries the alternative: a road on a lower layer with terrain above
+is structurally a cellar. Plan 20 `A9`, and its far end is `A2b`'s corridor arriving from the
+other direction.
+
 ## ⚠ Order does not commute, and here is exactly where
 
 *Placing hills then buildings* is **not** the same as *placing the same hill afterwards*.
