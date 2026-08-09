@@ -185,9 +185,45 @@ that picture cannot honestly be taken from the editor — a shot of the current 
 gesture shows a flat cut plateau, which is not what `A8` does.
 
 **What is missing is one gesture change, not a rule**: the road's grade has to follow
-the author as they walk, re-frozen per stroke or graded within its own limit, instead of
-being frozen once for the run. That is a change to what a road IS for the author, so it
-wants its own step and its own before/after rather than being smuggled in here.
+the author as they walk instead of being frozen once for the run.
+
+### ⚠ That change was BUILT, MEASURED AND BACKED OUT — 2026-08-09
+
+It works, and it is not landable as it stands. Recorded here so the next attempt starts
+from the facts rather than rediscovering them.
+
+**The naive version does nothing, and the reason is a feedback loop inside the gesture.**
+Re-freezing the grade from the author's feet changes nothing at all, because *the author
+rides the road they are laying*: `road_lay` stamps a disc of `ROAD_HALF` centred on them,
+so the ground they stand on next stroke is road laid on the last one, and `ground_under`
+hands back the grade that was just written. It is `TERRAIN_EDITS`'s own sampling trap —
+*a probe that samples as it writes measures its own output* — living in the gesture
+instead of in a probe.
+
+**Taking the grade from ahead of the strip does work.** One cell past the stamp is the
+nearest place the natural ground survives. Measured through the editor: a walk over a
+hill of 3 raises laid **2448 vertices** of road, graded, cut into the hill with `A5`'s
+rock face on its bank and `A8`'s embankment below it — the first time either rule had
+ever fired from a gesture. `shots/a8-road-over-a-hill.png` was taken from that build.
+
+**And it breaks two gates, because the frozen grade is load-bearing for something else.**
+`road` mode is being used as a *paving* tool as well as a road tool:
+
+| gate | what it uses road mode for | why it breaks |
+|---|---|---|
+| `character/deck` | a flat PAVED platform one stride up | its own header says it: *"a road is the authoring gesture that GRADES, and its grade is frozen from the feet, which is what lets this gate choose the platform's height by standing on the first step"*. A grade that follows the author ramps off the pad |
+| `world/surface` | a road over dug cellars | same dependency, one layer down |
+
+Three repairs were tried and measured, and none is clean: averaging the grade over the
+strip's own length (still 5.917 of 8 on `road`'s scene — and that gate's range proxy is
+polluted by the mesh lip it documents, so it cannot measure a gradient at all); a short
+lookahead inside `LEVEL_R`; and *levelling outranks the ground*, which is the most
+promising — with levelling on the author has already declared the height they want — but
+`deck` does not level, it paves.
+
+**So the open decision is what road mode IS**, and it is the author's to make: one
+gesture that grades and a separate one that paves, or one gesture with the grade rule
+switched by levelling. The rules underneath are built and green either way.
 
 ⚠ **AND IT IS THE SAME SHAPE AS THE THREE MISSING CONSUMERS `A4` TURNED UP.** A rule
 that no gesture can reach is a rule the editor does not have, and it passes CI exactly
