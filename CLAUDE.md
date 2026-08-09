@@ -249,6 +249,12 @@ address (or the hostname `make browser` prints) cannot connect.
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
 - [Lavition split](doc/claude/LAVITION_SPLIT.md) — **extracting the editor into its own project, and keeping the Moros name out of it**: the one invariant is *build, test **and gate** with the Moros tree absent*, the four blockers in the order the facts force them (a `Surface` collision that already merges, `moros_terrain` misnamed by the mechanism that hid `moros_ui`, 64 lattice calls, and two `hex_world` lineages), and the probe that could falsify the whole design in an afternoon. Plan 19, **designed not built**
+- [Terrain edits](doc/claude/TERRAIN_EDITS.md) — **how the ground moves, and what moves with it**:
+  a building rides rigidly and ends on its own pad, a road or a wall bends along its run within
+  a limit that belongs to the SURFACE, and the ground it encloses comes with it. ⚠ Its last two
+  sections are the ones to read before touching a gesture — the **order-divergence table**
+  (hill-then-build is *not* build-then-hill, and exactly where), and the traps: a `Mesh` that
+  copies, a test that measured the wrong thing and passed, a probe that sampled its own output
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
 - [Ground default](doc/claude/GROUND_DEFAULT.md) — **the world is an infinite plane of its
   ground, and storage holds only what differs**: a chunk nobody wrote returns the default
