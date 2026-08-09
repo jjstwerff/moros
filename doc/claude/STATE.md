@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-06)
+# STATE.md — where the editor work stands (2026-08-09)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -22,31 +22,85 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ MOST RECENT — plan 20 `A5` shipped (2026-08-09): rock faces where the ground cannot hold
+## ⏭ PICK UP HERE — plan 20 is four phases further on, and ONE question blocks the rest
 
-**The rules are in [TERRAIN_EDITS.md §T6](TERRAIN_EDITS.md), not here.** What a reader
-needs from this file is the three things that would otherwise be rediscovered:
+**2026-08-09. `A4`, `A5`, `A7`'s wiring and `A8`'s rule all landed.** The rules are in
+[TERRAIN_EDITS.md](TERRAIN_EDITS.md) §T5–§T8, not here; the per-step record is
+[plan 20](../../plans/20-verticality-last/README.md). What this file owes a reader is
+what would otherwise be rediscovered.
 
-1. **`A5` was listed as blocked on `A4` and was not.** `A4` is a *source* of break
-   sites, not a prerequisite for the rule. Measured: a road walked up a hill already
-   leaves 41 edges breaking a limit.
-2. **The plan's own reading was refuted by measuring it.** Hanging the face off
-   `tr_slope` gives **zero** faces on a 71° grass mountain (grass has no slope limit)
-   and a rock face on a 16° verge (a road's limit is 1). It takes a second column,
-   `tr_face` — *how steep it can STAND* against *how steep it may be GIVEN*.
-3. **Two instruments were wrong before the thing they measured**, both in the usual
-   direction: the first probe compared corner `k` of one cell against corner `k` of the
-   other, which are different corners, and reported seams of 3.00 and 0.00 that meant
-   nothing; and the first rock colour was chosen *darker* than the wall to separate by
-   value, then photographed as a **black hole** — `A5`'s own invariant failing, because
-   a vertical face's normal is horizontal and `max(dot(N,L),0)` is zero.
+### ⚠ The one thing to settle first
 
-⚠ **AND IT LEFT ONE FINDING IT DID NOT CAUSE**: the ground's height ramp is **0.77× the
+**Which layer does a road write to once its grade has left the author's feet?**
+`road_lay` takes the HEIGHT from `road_h` and the LAYER from `py`, and the road-follows
+branch decouples them — so a road can be written against the wrong layer. Measured:
+`cell 12,0 = 1,30` — grass where a road was laid. `gates/world/surface` exists to catch
+exactly that ("the write must land on the layer those feet are on") and it did. The
+attempt is on **`plan/20-road-follows`**, which is pushed and NOT green; `plan/7-hex-editor`
+is clean. Settle that question and the other two blockers there are fixture work.
+
+### The rule the road is being built to — the author's, and it removes a toggle
+
+> *"A road will follow the landscape the way a road builder works, so it flows upwards
+> with the hills with its own rules about how much."* … **"It spans or it caves."**
+
+One gesture, always following the landscape. Where it cannot: it **caves** (cutting →
+overhang → gallery → tunnel, `A9`) or it **spans** (embankment → viaduct → bridge). That
+is `A9`'s axis and its mirror, and it is why the 20-metre canyon `A8` measured is not a
+bug in the balance — past the point where a fill is a fill, the road spans.
+
+### ⚠ THREE SHIPPED RULES HAD NO CONSUMER, AND FINDING THEM WAS WORTH MORE THAN THE STEP
+
+`A4` was asked for; the audit it forced is the durable half. `slope_settle` — `A7`'s
+**entire deliverable** — was called by five tests, three probes and nothing else, so the
+editor's roads never had the limits `A7` shipped to give them. `footprint_seat` was
+built, tested and called by nobody, so a pad was seated at the author's FEET and a house
+on a slope was buried by up to 22 units. And the relaxation's pass cap was a silent stop
+whose own comment claimed the opposite. All three passed CI the whole time.
+
+⚠ **AND WIRING THEM EXPOSED A FOURTH, WHICH IS THE BLOCKER ABOVE**: the editor's road is
+one frozen grade, so it is flat however far it runs and can break no limit — `A7` and
+`A8` are correct, tested, and still unreachable through the only gesture that lays road.
+
+### What a measurement changed about a design, twice
+
+1. **`A5` needed a SECOND limit.** Hanging a rock face off `tr_slope` gives **zero**
+   faces on a 71° grass mountain and a face on a 16° verge. `tr_face` is *how steep it
+   can STAND*; `tr_slope` is *how steep it may be GIVEN*.
+2. **`A4`'s row was half already-true and half a defect nobody had a number for.** Two
+   pads on a slope already ended level, and the ground between them already carried no
+   more reversals than the bare control — only a CONTROL could show that.
+
+### ⚠ Instruments that were wrong before the thing they measured — five, this session
+
+Same session, same direction every time:
+
+- a probe compared corner `k` of one cell against corner `k` of the other, which are
+  **different corners**, and reported seams of 3.00 and 0.00 that meant nothing;
+- the first rock colour was chosen *darker* than the wall to separate by value, then
+  photographed as a **black hole** — a vertical face's normal is horizontal, so
+  `max(dot(N,L),0)` is zero and the whole of it is ambient;
+- a fixture measured a road climbing AWAY from the settle's seed, which converges in one
+  pass at any length, and reported `worst step 1` at 40 cells;
+- a guard asked *is this cell too high above its neighbour*, which is true climbing and
+  false descending — **twice**, once in `faced_between` and once in `stroke_over_limit`;
+- a picture script's houses were all REFUSED (yaw 0 is the odd orbit) and the frame rows
+  went red on a scene with no house in it.
+
+⚠ **AND ONE FINDING THIS SESSION DID NOT CAUSE**: the ground's height ramp is **0.77× the
 classifier's tolerance** from the character, and the test written to catch exactly that
 cannot see it because the ramp's colour is in neither `surfaces()` nor `classified()`.
 [OPEN_ISSUES](OPEN_ISSUES.md#-the-grounds-height-ramp-is-inside-the-classifiers-tolerance-of-the-character).
 
-## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
+### ⚠ The toolchain moved mid-session, and every green needs its sha
+
+`/usr/local/bin/loft` was replaced at 19:43 — three minutes after a commit — while
+`--version` said `2026.8.0` before and after, exactly as it did across the broken and
+fixed builds of loft#815. Everything here was re-verified on **`e467be19cd4409f4`**, with
+the hash pinned before and after the gate run. The loft agent rebuilds often, so: a green
+claim carries the sha, and a red result gets the sha checked before the code.
+
+## ⏭ EARLIER — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
 
 ✅ **THE TOOLCHAIN BREAK OF 17:25 IS FIXED — [loft#815](https://github.com/loft-lang/loft/issues/815),
 filed and landed the same evening.** `/usr/local/bin/loft` went `9f416d7c…` → `0fba02c1…` (broken,
@@ -77,7 +131,7 @@ What is true *now*:
 |---|---|
 | **plan 17** | `A1`–`A7.3` and **all of `A8`** are built. Two rows are ◐ and both need something other than code — see below |
 | **the headless thread** | `prop`, `annex`, `slab`, `seat` and the wall run moved into `hex_editor`; the server's scene state IS an `EditSession`; `tests/session.loft` is 31 tests over nine gates'/scripts' claims with no port |
-| **defects** | **none open.** The stale-chunk read, the cart's rest solve, the towed trailer's and the cellar split are all closed — session 15 |
+| **defects** | **one open, and it is named at the top**: a road whose grade has left the author's feet can be written against the wrong layer (`plan/20-road-follows`). Session 15's four are all still closed |
 | **the user's standing redirect** | *"where possible I want tests outside the server"* — still the thread, and its floor is now the picture gates, which need a server by construction |
 
 ⚠ **THE NEXT PIECE OF WORK IS A CHOICE, NOT A QUEUE.** Nothing is blocked on a bug any more.

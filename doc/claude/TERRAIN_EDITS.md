@@ -457,9 +457,12 @@ fabric* makes a yard tear again at random.
 
 | | |
 |---|---|
-| the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `slope_limit`, `slope_relax`, `slope_settle`, `ground_kinds`, `edge_kinds`, `face_limit`, `face_at`, `faces_here` |
+| the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `ground_kinds`, `edge_kinds` |
+| the slope, and what it owes | same file — `slope_limit`, `lim_at`, `slope_relax`, `slope_settle`, `spoil_place`, `slope_owed`, `stroke_over_limit` |
+| where a face IS | same file — `face_limit`, `face_at`, `faces_here` |
+| seating a pad | `lib/hex_editor/src/hex_editor.loft` — `place_house`, via `footprint_seat` |
 | where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall` |
-| the tests | `lib/hex_editor/tests/` — `raise_keeps.loft`, `raise_structure.loft`, `slope_limit.loft`, `run_slope.loft`, `face.loft`; `lib/hex_mesh/tests/face_mesh.loft` |
+| the tests | `lib/hex_editor/tests/` — `raise_keeps`, `raise_structure`, `slope_limit`, `run_slope`, `face`, `settle_owed`, `seat_pad`; `lib/hex_mesh/tests/face_mesh.loft` |
 | the pictures | `tools/scripts/face.keys` (rock faces) and `tools/scripts/seat.keys` (a house on a flank) — the control first in both |
-| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost` |
+| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost`, `pads`, `passes`, `roadcost`, `spoil` |
 | what a byte MEANS | [plan 21](../../plans/21-region-mappings/README.md) — identity belongs to a region; these rules hang off the **name**, never the byte |

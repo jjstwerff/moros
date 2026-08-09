@@ -82,10 +82,25 @@ wire half, or *checked and left whole* — because without that the next reader 
 honest ones by symmetry. ⚠ **Move before you remove**: three gates held claims no loft test
 made, and dropping one is a coverage cut wearing a tidy-up's clothes.
 
-**Check that what you built is called.** Twice this session a function was written, tested
-green, and never wired to a consumer — `op_depth` reached the library and the emitter still
-cut every opening through; `boom_take` was tested and the camera still eased straight to the
-raw sweep. A tested claim no consumer honours is a claim about nothing, and it passes CI.
+**Check that what you built is called.** A function written, tested green and never wired
+to a consumer — `op_depth` reached the library and the emitter still cut every opening
+through; `boom_take` was tested and the camera still eased straight to the raw sweep. A
+tested claim no consumer honours is a claim about nothing, and it passes CI.
+
+⚠ **AND IT IS THE COMMONEST DEFECT IN THIS TREE, NOT AN OCCASIONAL ONE.** One audit of
+plan 20 found **three more at once**, and one of them was an entire phase's deliverable:
+`slope_settle` — *the* thing `A7` shipped — was called by five tests, three probes and no
+gesture, so the editor's roads never had the limits it exists to give them.
+`footprint_seat` was built for seating a pad and called by nobody, so every house on a
+slope was buried by up to 22 units. Both had been green for weeks. **When a step lands,
+grep for its callers before saying it is done.**
+
+⚠ **AND A TEST THAT REPAIRS ITS OWN SUBJECT IS HOW THIS HIDES.** `A7`'s test laid a road
+and then called `slope_settle` itself — proving the RULE and saying nothing about whether
+any gesture used it. It went red on its own fixture guard the moment the gesture was
+wired (*"the fixture did not violate anything — nothing is being tested"*), which is
+exactly what a self-repairing test says once the subject repairs itself. **A test that
+performs the fix cannot see that nothing else does.**
 
 **Give a claim the instrument that can SEE it, and check that instrument against something it
 should find before trusting it to report an absence.** Three times in session 8 the obvious
@@ -104,6 +119,15 @@ avoiding nothing, and it parks the eye under the object it just removed — meas
 wrong in one session while looking right: a re-send for "the arriving client" fired in the
 handler *before* a client joins the list, and a pitch fence applied only at the input let a
 mode change carry an out-of-fence value straight past it.
+
+**A guard that works in ONE DIRECTION reads exactly like a guard.** Asked *is this cell too
+high above its neighbour*, a rule is right when a road climbs and blind when it descends —
+because descending, the high cell is the previous stroke's and sits outside the disc just
+stamped. That is one bug and this tree has now written it twice, in `faced_between` and in
+`stroke_over_limit`. ⚠ **And the direct test cannot see it**: asking the guard about a
+finished road puts both ends inside the window, so a one-sided rule trips either way. Only
+the INCREMENTAL shape — the one the gesture actually has — can. Ask a guard from both ends,
+and test it in the shape it runs in.
 
 **An instrument gets checked against something it SHOULD find before it is trusted to report
 an absence.** Four separate instruments were wrong before the thing they measured this

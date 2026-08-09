@@ -14,6 +14,158 @@ sections that were durable in form and stale in fact (§ *What exists*, § *What
 
 ---
 
+## Session 16 — 2026-08-09: four phases of plan 20, and three shipped rules that reached nobody
+
+**The session was asked for `A5`, then `A4`, then `A8`, then the gesture that would make
+two of them reachable.** What it is actually about is the last of those: a rule that no
+gesture calls is a rule the editor does not have, and it passes CI exactly as happily as
+one that works.
+
+### `A5` — and the plan's own reading was refuted by measuring it
+
+`A5` says *where the limit cannot be met the column carries a face rather than a slope*,
+and it was written as though the face hangs off `tr_slope`. Measured
+(`probe/house/faces.loft`), that fails at both ends:
+
+- a **twenty-press grass hill** has steps of 20, standing at **71°**, and breaks no slope
+  limit anywhere — because grass has none. The steepest object the editor can make would
+  carry no face at all.
+- a **2-step grassy verge** beside a road (16°) breaks the ROAD's limit of 1, so it would
+  be cut as rock.
+
+So `GroundKind` gained `tr_face` — *what the surface can STAND at* against `tr_slope`'s
+*what a gesture may GIVE it*. A road may only be given a 1-in-1 grade because a cart has
+to climb it, and a road embankment nevertheless stands at far more. The plan's negative
+control — *a slope that fits its limit must never become a face* — became a property of
+the **table** (`tr_face >= tr_slope`) rather than something a scenario samples.
+
+**And the picture had to change with it.** The drawn ground was CONTINUOUS everywhere,
+because every corner is the mean of the three cells touching it, so both sides of an edge
+compute the same number: a stored step of 11 — 57.8° as a face — arrived as a **5.56**
+drop between smoothed centres. The store had a cliff and the picture had a hillside. One
+rule fixes it in the two places that smooth: *a corner does not average across a faced
+edge, and neither does a normal.* Cost, measured: **+6%** on a chunk rebuild, because the
+face limits ride in a grid beside the heights (asking `face_limit` per cell is 1.080 ms
+against 0.265 ms for the whole height read; memoised on (region, material), 0.278).
+
+⚠ **THE FIRST ROCK COLOUR PHOTOGRAPHED AS A HOLE, WHICH IS THE INVARIANT FAILING.**
+`0.34/0.32/0.29` was chosen to sit BELOW the wall's value — a weathered outcrop beside
+dressed stone, separating by VALUE where chromaticity cannot separate at all. Shot, it is
+a black hole in the hillside: a face is vertical, so its normal is horizontal, so
+`max(dot(N, L), 0)` is **zero** on every face turned from the light and the whole of it
+is the 0.45 ambient. `0.34 × 0.45 = 0.153` is not a dark rock, it is a hole — and `A5`'s
+own invariant is *a face is a surface, not an absence*.
+
+### `A4` — half already true, half a defect nobody had a number for
+
+Only a CONTROL could show the first half. Two pads on a slope already ended level
+(spread 0) and the ground between them already carried **no more reversals than the bare
+ramp under the same stroke** — a dome on a ramp is non-monotonic whether or not there are
+buildings on it.
+
+The second half was the burial: a house on a slope was buried on its uphill side by
+**7, 12, 17, 22** units as the ramp went 1 to 4 per hex, growing without bound and
+one-sided. Cause: `place_house` seated its pad at the caller's `grade`, which is the
+author's FEET — and the house is not where the author stands. `footprint_seat` was built
+for exactly this, tested, and called by nobody. Seated on its own footprint at
+`SEAT_MEAN` the burial halves and becomes symmetric (5/7/10/13 against a proud of
+7/10/12/14), and what remains is geometry: a level pad seven cells across on a 4-per-hex
+slope spans 28 units of ground, so it must cut 14 or fill 14. The content of the fix is
+that the number is now **reported**.
+
+⚠ **AND `ak_residual` CARRIED THE WALL COUNT** — a success tally in the field documented
+as *what the author asked for and did not get*, with a test asserting it `> 0` under the
+name "and it marked wall edges".
+
+### The relaxation's cap was a silent stop, and its own comment said otherwise
+
+`SLOPE_PASSES` is 12 and both loops ended `if !moved { break; }`, while the constant's
+comment claimed *"reaching it is reported rather than swallowed"*. Propagation is local
+and one pass buys one unit, so the boundary is exactly the cap: a 12-cell road settles, a
+14-cell one does not, and a 40-cell one comes back **correct at one end and untouched at
+the other** — `clamped 1184`, `residual 4`, 27 cells still 2 units a hex too steep.
+
+⚠ **THE FIRST FIXTURE PROVED NOTHING, AND THE DIRECTION IS WHY.** A road climbing AWAY
+from the settle's seed converges in one pass at ANY length, because the fix propagates the
+way the walk does — measured, 40 cells against a step of 20 came back `worst step 1`. Only
+a run FALLING away is slow.
+
+⚠ **AND THE FIRST FIX DID NOT CARRY THE CLAIM.** Bumping `clamped`/`residual` from inside
+the loop took `clamped` from 1184 to 1317 and left `residual` at 4 — no consumer can tell
+a relaxation that ran out of passes from one that merely worked hard. `slope_owed` asks
+the WORLD instead: it reads the heights that are already there, so it cannot disagree with
+them, and it cost the 54 `brush` call sites nothing.
+
+### `A7`'s entire deliverable had no consumer
+
+`slope_settle` shipped with its point written down — *any gesture that paints a limited
+surface can hand the world back inside its own rules* — and five tests, three probes and
+nothing else called it. `road_lay` settles its own run now, guarded, because the settle
+walks the whole run and calling it per stroke is quadratic (`w_tau` 190/380/760/1520
+unwired against 415/1330/4660/17320). On the editor's own FLAT road the guard's answer is
+always no: **414 either way, not one write.**
+
+⚠ **THE GUARD WAS ONE-SIDED, WHICH IS `faced_between`'s BUG A SECOND TIME.** It asked *is
+this cell too high above its neighbour* — true climbing, false descending, because
+descending the high cell is the previous stroke's and sits OUTSIDE the disc just stamped.
+And the test that should have caught it could not: asking the guard directly lays the
+whole road first, so the disc holds both ends. Only the INCREMENTAL walk can see it.
+
+⚠ **AND THE `A7` TEST REPAIRED ITS OWN SUBJECT**, which is how the missing consumer hid:
+it laid a road and then called `slope_settle` itself, proving the RULE and saying nothing
+about whether any gesture used it. It failed on its own fixture guard the moment the
+gesture was wired — *"the fixture did not violate anything — nothing is being tested"* —
+which is exactly what a self-repairing test should say once the subject repairs itself.
+
+### `A8` — spoil is conserved, and the datum is not what it looks like
+
+The settle only ever LOWERED. Reading the natural ground back from BESIDE the road was
+the obvious datum and is refuted (`probe/house/spoil.loft`): a road is `2 × ROAD_HALF + 1`
+cells wide, so a cell in the middle has NO neighbour that is not also road, and the
+estimate falls back to the road's own height — worst error **36** on a fall line, exactly
+what the control scores.
+
+So the datum is the profile the settle starts from, and the whole run shifts by the MEAN
+it removed. Every height moves by the same amount, so every DIFFERENCE is unchanged and
+the limit survives by construction. Measured: `12 11 10 … 0` became `19 18 17 … 7` — a
+cutting at the crest and an embankment at the foot. And the embankment's side is a FACE,
+which answers plan 20's open question 2 by itself: the retaining wall is what `A5` already
+draws there.
+
+### And the gesture that would make any of it reachable
+
+`road_h` is frozen ONCE when road mode goes on, so the editor's road is a flat plateau:
+across a hill of 24 it cuts **160**, fills **0**, owes **0**, and therefore never settles
+and never balances.
+
+⚠ **RE-FREEZING FROM THE FEET CHANGES NOTHING, AND THE REASON IS A FEEDBACK LOOP INSIDE
+THE GESTURE**: the author RIDES the road they are laying, so `ground_under` hands back the
+grade just written. It is `TERRAIN_EDITS`'s own sampling trap — *a probe that samples as it
+writes measures its own output* — living in a gesture instead of a probe. Reading the
+grade one cell past the strip works: measured through the editor, **2448 vertices** of
+graded road cut into a hillside with a rock face on its bank, the first time `A7` or `A8`
+had ever fired from a gesture.
+
+It is not landed. Three gates leaned on the frozen grade, and the third is a defect rather
+than a fixture: `road_lay` takes the HEIGHT from `road_h` and the LAYER from `py`, and
+decoupling them can write a road against the wrong layer — which `gates/world/surface`
+exists to catch, and did. On `plan/20-road-follows`, pushed, not green.
+
+**The author's rule, which removes a toggle rather than adding one**: *"A road will follow
+the landscape the way a road builder works… it spans or it caves."* One gesture; where it
+cannot follow it caves (`A9`) or spans (embankment → viaduct → bridge). That is `A9`'s
+axis and its mirror, and it is why the 20-metre canyon `A8` measured is not a bug in the
+balance — past the point where a fill is a fill, the road spans.
+
+### ⚠ The toolchain moved mid-session
+
+`/usr/local/bin/loft` was replaced at 19:43, three minutes after a commit, with
+`--version` reading `2026.8.0` before and after — exactly as it did across the broken and
+fixed builds of loft#815. Everything was re-verified on `e467be19cd4409f4` with the hash
+pinned around the gate run. Every green claim in this session carries its sha.
+
+---
+
 ## Session 15 — 2026-08-08: a read that invented ground, and four fixtures that were living on it
 
 **One defect, and everything downstream of it.** The session began with *"detect and fix

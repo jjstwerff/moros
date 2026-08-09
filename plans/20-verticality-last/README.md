@@ -5,14 +5,25 @@
 
 ## Status
 
-`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5` and `A7` are **shipped**. `A2b`,
-`A2c`'s **across** half, `A3` and `A8` are designed and not built.
+`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5` and `A7` are **shipped**. `A8`'s
+rule is built and its picture is blocked (◐). `A2b`, `A2c`'s **across** half and `A3` are
+designed and not built.
 
 ⚠ **AND THE AUDIT `A4` FORCED IS THE LOUDEST THING IN THIS PLAN.** Three of its shipped
-rules have no consumer at all: `slope_settle` (`A7`'s entire deliverable), `footprint_seat`
-/ `seat_residual`, and — until `e0d1881` — any report that the relaxation ran out of
-passes. A rule that reaches no gesture is a rule the editor does not have, and all three
-passed CI the whole time.
+rules had no consumer at all — a rule that reaches no gesture is a rule the editor does
+not have, and all three passed CI the whole time:
+
+| the rule | its consumer |
+|---|---|
+| the relaxation reporting that it ran out of passes | ✅ `e0d1881` — `slope_owed`, wired into LEVEL |
+| `footprint_seat` / `seat_residual` | ✅ `fb76d51` — `place_house` seats on its own footprint |
+| `slope_settle` — **`A7`'s entire deliverable** | ✅ `dd508ff` — `road_lay` settles its own run |
+
+⚠ **AND WIRING THE THIRD EXPOSED A FOURTH, WHICH IS STILL OPEN.** The editor's road is
+laid at ONE frozen grade, so it is flat however far it runs and can never break a limit —
+so `A7`'s settle and `A8`'s balance are correct, tested, and *still* unreachable through
+the only gesture that lays road. The fix is the road's own rule, below; the attempt is on
+`plan/20-road-follows` and is not green.
 
 ⚠ **`A5` WAS LISTED AS BLOCKED ON `A4` AND WAS NOT.** `A4` is a SOURCE of break sites,
 not a prerequisite for the rule — measured, a road walked up a hill already leaves 41
