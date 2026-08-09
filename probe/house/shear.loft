@@ -1,0 +1,50 @@
+// DOES A RAISE SHEAR A HOUSE? — the delta across one footprint.
+//
+// `brush` is a smooth bump: `(1 - (d/R)^2)^2` falloff. A hill wants that. A
+// BUILDING does not — if the cells of one floor take different deltas the house is
+// torn rather than lifted, and "elevate the whole house like a hill" cannot mean
+// the same arithmetic a hill gets.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  runs = WallRuns { items: [] };
+  yaw = 0.5235987755982988;                 // 30°, a placeable facing
+  ack = place_house(w, author_at(0.0, 0.0, yaw), 5, 4, G, runs);
+  if !ack.ak_ok { println("refused: {ack.ak_why}"); return; }
+
+  // the footprint, remembered before the raise repaints it
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT {
+        fq += [q]; fr += [r];
+      }
+    }
+  }
+  before: vector<integer> = [];
+  for i in 0..len(fq) { before += [ground_h(w, fq[i] ?? 0, fr[i] ?? 0)]; }
+
+  clamped = 0;
+  residual = 0;
+  brush(w, ack.ak_q, ack.ak_r, 6, 7, clamped, residual);
+
+  lo = 9999;
+  hi = 0 - 9999;
+  for i in 0..len(fq) {
+    d = ground_h(w, fq[i] ?? 0, fr[i] ?? 0) - (before[i] ?? 0);
+    if d < lo { lo = d; }
+    if d > hi { hi = d; }
+  }
+  println("the house is {len(fq)} cells, all at height {G} before the raise");
+  println("a raise of 6 centred on it moves them by {lo}..{hi} height units");
+  println("so the floor is left {hi - lo} units out of level — {if hi != lo { \"SHEARED\" } else { \"rigid\" }}");
+}

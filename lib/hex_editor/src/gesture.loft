@@ -2715,17 +2715,156 @@ pub const PEAK_STEP  = 6;      // height units per press (1.5 wu, about 1.3 m)
 // at both ends, so one stroke is a gentle dome; twenty presses is that dome scaled
 // twenty times vertically, which is where the steep flanks come from. They are
 // wanted — the author's call, confirmed 2026-07-29 — so do not soften this.
+// ── A BUILDING IS NOT A HILL — the structure a raise carries rigidly ────────
+//
+// Reported as *a house cannot be elevated or lowered like a normal hill*, and
+// measured before it was designed. Three facts came out of `probe/house/`:
+//
+//   1. the raise REPAINTED what it lifted — road, field, floor and roof all became
+//      grass (fixed in `brush` below, and it was never a house bug: `LEVEL` walks
+//      the same function, so levelling along a road erased the road)
+//   2. the raise SHEARED what it lifted — a raise of 6 over a 27-cell floor moved
+//      its cells by 3..6, leaving the floor three units out of level. A smooth
+//      falloff is exactly what a hill wants and exactly what a building cannot take
+//   3. the roof did not follow at all
+//
+// ⚠ SO "LIKE A HILL" CANNOT MEAN A HILL'S ARITHMETIC. The end result asked for is
+// **a house on its own hill**: the fabric moves rigidly by ONE delta and ends
+// level, and the ground around it takes the falloff and flares away beneath. A
+// flat pad with slopes falling off it is what a terrace is, and it is the only
+// shape under which a building both moves and stays a building.
+//
+// ⚠ AND THE STRUCTURE IS READ LIBERALLY, which is the other half of the ask. A
+// fence running off the porch is part of what must not be torn, so the flood
+// spreads through anything with FABRIC — a floor cell, or a cell carrying a wall
+// or fence edge — and keeps going while it can. **A road is deliberately not
+// fabric**: a road takes the incline, because a road may slope and a floor may not.
+//
+// ⚠ AND IT LEAVES THE DISC. A fence that runs out past the brush's rim is still one
+// fence; lifting only the half inside would tear it exactly where the falloff would
+// have. So the flood follows the structure wherever it goes and the whole of it
+// moves — which is why the cap below is a real bound and not a formality.
+pub const LIFT_CAP = 4096;
+
+// Is this cell part of a building's fabric — something that must stay level?
+//
+// ⚠ THE EDGE BYTES COUNT, AND THAT IS WHAT MAKES A FENCE PART OF THE HOUSE. A wall
+// or a fence is stored as an edge on a cell, so a cell carrying one is fabric even
+// where its ground is ordinary. A cell with a road on it and no edges is not.
+pub fn is_fabric(w: World, q: integer, r: integer) -> boolean {
+  if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT { return true; }
+  // ⚠ ALL SIX DIRECTIONS, NOT THE THREE A CELL OWNS. An edge is stored ONCE, on a
+  // canonical owner — measured: `wall_set(w, 3, 0, SLOT_NE, …)` lands on cell
+  // (3,−1)'s NORTH slot — so a cell with a fence along its west side carries no
+  // byte of its own and a three-slot test calls it open ground. That would take
+  // every second post of a run out of the structure and tear the fence on exactly
+  // the seam the fix exists to remove. `wall_of` asks the owner, whichever side it
+  // is on.
+  ref = (terrain_h(q, r, w) as float) * w.w_unit;
+  for d in 0..6 {
+    if wall_of(w, q, r, d, ref) != 0 { return true; }
+  }
+  false
+}
+
+// Move EVERY layer of one column, so a floor and the roof over it keep their gap.
+//
+// ⚠ THE ROOF IS IN THE SAME COLUMN, ABOVE THE FLOOR — `roof_over` writes a band per
+// column rather than a mesh — so shifting the column is what carries a house whole.
+// Moving only the ground cell is what left 27 roof cells hanging at their old
+// height with the floor risen through them.
+pub fn lift_column(w: World, q: integer, r: integer, delta: integer) -> integer {
+  if delta == 0 { return 0; }
+  col = world_column(w, q, r);
+  out: vector<hex_world::Hex> = [];
+  for c in col.co_cells {
+    nh = (c.h_height as integer ?? 0) + delta;
+    if nh < W_RESERVE { nh = W_RESERVE; }
+    if nh > H_CEILING { nh = H_CEILING; }
+    out += [hex_world::Hex { h_height: nh as u16? ?? 0,
+                             h_material: c.h_material,
+                             h_item: c.h_item,
+                             h_item_rotation: c.h_item_rotation,
+                             h_wall_n: c.h_wall_n,
+                             h_wall_ne: c.h_wall_ne,
+                             h_wall_se: c.h_wall_se }];
+  }
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: out }).cw_code
+}
+
+// The falloff a hill takes at distance `d` — the one place the shape is written.
+fn brush_delta(amp: integer, d: integer, rad: integer) -> integer {
+  if d >= rad { return 0; }
+  t = (d as float) / (rad as float) ?? 0.0;
+  f = 1.0 - t * t;
+  ((amp as float) * f * f) as integer
+}
+
+fn bigger(a: integer, b: integer) -> boolean {
+  aa = a; if aa < 0 { aa = 0 - aa; }
+  bb = b; if bb < 0 { bb = 0 - bb; }
+  aa > bb
+}
+
 pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
              clamped: &integer, residual: &integer) {
+  // ── the fabric first, so the ground can be told what not to touch ─────────
+  //
+  // ⚠ EVERY MEMBER TAKES THE SAME DELTA, and it is the LARGEST the disc offers any
+  // of them — so a house whose porch clips the rim rises by what its middle was
+  // asked for and sits on the crest, rather than by what its furthest corner got.
+  // That is the difference between *a house on its own hill* and *a house on the
+  // side of one*.
+  taken = Seen { s_by: [] };
+  for sq in (0 - rad)..(rad + 1) {
+    for sr in (0 - rad)..(rad + 1) {
+      q0 = tq + sq;
+      r0 = tr + sr;
+      if hex_distance(q0, r0, tq, tr) >= rad { continue; }
+      if !is_fabric(w, q0, r0) { continue; }
+      if taken.s_by[age_like_key(q0, r0)] != null { continue; }
+      // flood this structure — ⚠ WHEREVER IT GOES, disc or no disc. A fence that
+      // runs out past the rim is one fence, and lifting only the half inside would
+      // tear it exactly where the falloff would have.
+      mq: vector<integer> = [q0];
+      mr: vector<integer> = [r0];
+      taken.s_by += SeenAt { sa_key: age_like_key(q0, r0) };
+      head = 0;
+      while head < len(mq) {
+        cq = mq[head] ?? 0;
+        cr = mr[head] ?? 0;
+        head = head + 1;
+        for dir in 0..6 {
+          (aq, ar) = hex_grid::hex_neighbor(cq, cr, dir);
+          if !is_fabric(w, aq, ar) { continue; }
+          if taken.s_by[age_like_key(aq, ar)] != null { continue; }
+          if len(mq) >= LIFT_CAP { continue; }
+          taken.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
+          mq += [aq];
+          mr += [ar];
+        }
+      }
+      best = 0;
+      for i in 0..len(mq) {
+        cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
+        if bigger(cand, best) { best = cand; }
+      }
+      // ⚠ THE WHOLE COLUMN, so the roof over a floor keeps its gap — `lift_column`.
+      for j in 0..len(mq) { lift_column(w, mq[j] ?? 0, mr[j] ?? 0, best); }
+    }
+  }
+
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = tq + dq;
       r = tr + dr;
       d = hex_distance(q, r, tq, tr);
       if d < rad {
-        t = (d as float) / (rad as float) ?? 0.0;
-        f = 1.0 - t * t;
-        delta = ((amp as float) * f * f) as integer;
+        // ⚠ ASKED OF `taken`, NOT OF `is_fabric`. The lift preserves materials, so
+        // a floor cell is still fabric after it has moved — testing the predicate
+        // again would give it the falloff on top of its rigid delta.
+        if taken.s_by[age_like_key(q, r)] != null { continue; }
+        delta = brush_delta(amp, d, rad);
         if delta != 0 {
           h = ground_h(w, q, r) + delta;
           if h < W_RESERVE {
@@ -2740,7 +2879,20 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
             clamped = clamped + 1;
             h = H_CEILING;
           }
-          ground_set(w, q, r, h, SURFACE_MAT);
+          // ⚠ A RAISE MOVES GROUND; IT DOES NOT REPAINT IT. This was
+          // `ground_set(w, q, r, h, SURFACE_MAT)` unconditionally, so raising a
+          // hill under anything turned it to grass — measured over every material
+          // a cell may hold (`probe/house/mats.loft`): road, field, floor and roof
+          // all came back `surface`, and a house's 27 floor cells went to 0.
+          // ⚠ IT IS NOT A HOUSE BUG. The same line is what `LEVEL` walks with, so
+          // levelling along a road erased the road as you walked it.
+          // ⚠ AND THE DEFAULT MUST STAY, or the gesture that builds hills out of
+          // nothing stops working: a cell nobody has written holds material 0, and
+          // 0 is absence rather than a colour. Absent becomes surface; anything
+          // already chosen is kept.
+          bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
+          if bm == 0 { bm = SURFACE_MAT; }
+          ground_set(w, q, r, h, bm);
         }
       }
     }

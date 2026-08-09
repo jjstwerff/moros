@@ -1,0 +1,90 @@
+// WHAT MOVES WHEN THE GROUND UNDER A HOUSE IS RAISED — and what does not.
+//
+// A placed house anchors FOUR things to one absolute `grade`, the ground under the
+// author at the moment of placement: the floor cells, the wall runs, the roof's
+// cells, and the roof PLAN's world-Y. This prints each of them before and after a
+// `brush`, so the report is a table rather than a reading of the code.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;          // the grade the house is placed at
+const LIFT = 6;        // one press of the raise
+
+fn flat(w: World, rad: integer, h: integer) {
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      ground_set(w, q, r, h, SURFACE_MAT);
+    }
+  }
+}
+
+fn floor_cells(w: World, rad: integer) -> integer {
+  n = 0;
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT { n = n + 1; }
+    }
+  }
+  n
+}
+
+fn roof_cells(w: World, rad: integer) -> integer {
+  n = 0;
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      for c in world_column(w, q, r).co_cells {
+        if (c.h_material as integer ?? 0) == ROOF_MAT { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  flat(w, 20, G);
+  runs = WallRuns { items: [] };
+  // ⚠ A FACING CAN BE REFUSED — only six of twelve rotations have mitred corners,
+  // and the refusal names the one to turn to. Walk them rather than guess.
+  placed = false;
+  yaw = 0.0;
+  for i in 0..12 {
+    ty = (i as float) * 0.5235987755982988;      // 30° in radians
+    probe = world_new(U, 0, 8, 3).wn_world;
+    flat(probe, 20, G);
+    pruns = WallRuns { items: [] };
+    pa = place_house(probe, author_at(0.0, 0.0, ty), 5, 4, G, pruns);
+    if pa.ak_ok && !placed { placed = true; yaw = ty; }
+  }
+  if !placed { println("no facing places a house at all"); return; }
+
+  ack = place_house(w, author_at(0.0, 0.0, yaw), 5, 4, G, runs);
+  println("placed: {ack.ak_why}");
+  println("");
+  println("                          before   after   moved?");
+
+  f0 = floor_cells(w, 20);
+  r0 = roof_cells(w, 20);
+  b0 = 0;
+  for rn in runs.items { b0 = rn.wr_base; }
+  // a floor cell's height: the ack's own cell, which is where the house is
+  h0 = ground_h(w, ack.ak_q, ack.ak_r);
+
+  clamped = 0;
+  residual = 0;
+  brush(w, ack.ak_q, ack.ak_r, LIFT, 7, clamped, residual);
+
+  h1 = ground_h(w, ack.ak_q, ack.ak_r);
+  f1 = floor_cells(w, 20);
+  r1 = roof_cells(w, 20);
+  b1 = 0;
+  for rn2 in runs.items { b1 = rn2.wr_base; }
+
+  println("ground under the house       {h0}      {h1}     {if h1 != h0 { \"YES\" } else { \"no\" }}");
+  println("cells still FLOOR_MAT        {f0}      {f1}     {if f1 != f0 { \"CHANGED\" } else { \"no\" }}");
+  println("cells still ROOF_MAT         {r0}      {r1}     {if r1 != r0 { \"CHANGED\" } else { \"no\" }}");
+  println("wall run base                {b0}      {b1}     {if b1 != b0 { \"YES\" } else { \"no\" }}");
+  println("");
+  println("the raise asked for {LIFT}; the ground moved {h1 - h0}");
+}

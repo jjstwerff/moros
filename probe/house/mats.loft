@@ -1,0 +1,47 @@
+// DOES A RAISE REPAINT WHAT IT LIFTS? — every material a cell may hold.
+//
+// `brush` ends in `ground_set(w, q, r, h, SURFACE_MAT)`. If that is unconditional
+// then raising a hill under ANYTHING turns it to grass, and a house floor is only
+// the case somebody noticed.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+
+fn name(m: integer) -> text {
+  if m == SURFACE_MAT { return "surface"; }
+  if m == ROAD_MAT { return "road"; }
+  if m == FIELD_MAT { return "field"; }
+  if m == FLOOR_MAT { return "floor"; }
+  if m == ROOF_MAT { return "roof"; }
+  "absent({m})"
+}
+
+fn main() {
+  println("material    before -> after a raise of 6");
+  for m in [SURFACE_MAT, ROAD_MAT, FIELD_MAT, FLOOR_MAT, ROOF_MAT] {
+    w = world_new(U, 0, 8, 3).wn_world;
+    for q in (0 - 12)..13 {
+      for r in (0 - 12)..13 { ground_set(w, q, r, 40, m); }
+    }
+    before = world_ground_cell(w, 0, 0).h_material as integer ?? 0;
+    h0 = ground_h(w, 0, 0);
+    clamped = 0;
+    residual = 0;
+    brush(w, 0, 0, 6, 7, clamped, residual);
+    after = world_ground_cell(w, 0, 0).h_material as integer ?? 0;
+    h1 = ground_h(w, 0, 0);
+    kept = if after == before { "kept" } else { "REPAINTED" };
+    println("{name(before)}  h {h0}->{h1}   {name(before)} -> {name(after)}   {kept}");
+  }
+  // And the cell nobody has written yet: a raise on open ground must still MAKE
+  // surface, or the gesture that builds hills out of nothing stops working.
+  w2 = world_new(U, 0, 8, 3).wn_world;
+  c0 = world_ground_cell(w2, 0, 0).h_material as integer ?? 0;
+  cl2 = 0;
+  rs2 = 0;
+  brush(w2, 0, 0, 6, 7, cl2, rs2);
+  c1 = world_ground_cell(w2, 0, 0).h_material as integer ?? 0;
+  println("");
+  println("untouched ground: {name(c0)} -> {name(c1)}  (must become surface)");
+}

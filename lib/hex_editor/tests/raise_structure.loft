@@ -1,0 +1,219 @@
+// A HOUSE ENDS UP ON ITS OWN HILL.
+//
+// The ask, in the reporter's words: *a house cannot be elevated or lowered like a
+// normal hill*, then *the end result should be a house on its own hill*, then *be
+// liberal about what a house is — fences connected to it count — but roads should
+// get an incline themselves.* Every one of those is a claim with a number.
+//
+// ⚠ A SMOOTH FALLOFF IS WHAT A HILL WANTS AND WHAT A BUILDING CANNOT TAKE. Measured
+// before the change (`probe/house/shear.loft`): a raise of 6 moved a 27-cell floor
+// by 3..6, leaving it three units out of level. So the fabric takes ONE delta and
+// the ground around it keeps the falloff — a flat pad with slopes falling away,
+// which is what a terrace is.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+const LIFT = 6;
+const RAD = 7;
+
+fn world_at(h: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, h, SURFACE_MAT); }
+  }
+  w
+}
+
+fn raise(w: World, q: integer, r: integer, amp: integer) {
+  clamped = 0;
+  residual = 0;
+  brush(w, q, r, amp, RAD, clamped, residual);
+}
+
+// Every cell of a given material, as two parallel vectors.
+fn cells_of(w: World, mat: integer, q: &vector<integer>, r: &vector<integer>) {
+  for cq in (0 - 24)..25 {
+    for cr in (0 - 24)..25 {
+      if (world_ground_cell(w, cq, cr).h_material as integer ?? 0) == mat {
+        q += [cq];
+        r += [cr];
+      }
+    }
+  }
+}
+
+fn house(w: World, runs: WallRuns) -> Ack {
+  place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, G, runs)
+}
+
+fn test_the_floor_ends_level() {
+  w = world_at(G);
+  runs = WallRuns { items: [] };
+  ack = house(w, runs);
+  assert(ack.ak_ok, "the fixture did not place: {ack.ak_why}");
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  cells_of(w, FLOOR_MAT, fq, fr);
+  assert(len(fq) > 20, "the fixture has only {len(fq)} floor cells");
+  raise(w, ack.ak_q, ack.ak_r, LIFT);
+  lo = 99999;
+  hi = 0 - 99999;
+  for i in 0..len(fq) {
+    h = ground_h(w, fq[i] ?? 0, fr[i] ?? 0);
+    if h < lo { lo = h; }
+    if h > hi { hi = h; }
+  }
+  assert(hi == lo, "the floor came out {hi - lo} units out of level ({lo}..{hi})");
+  assert(hi == G + LIFT, "the floor is at {hi}, not {G + LIFT} — it did not take the crest");
+}
+
+fn test_the_roof_comes_with_it() {
+  // ⚠ THE ROOF IS IN THE SAME COLUMN, ABOVE THE FLOOR. Before this it was left
+  // hanging at its old height while the floor rose through it — and a COUNT of
+  // roof cells could not see that, because none of them was lost.
+  w = world_at(G);
+  runs = WallRuns { items: [] };
+  ack = house(w, runs);
+  assert(ack.ak_ok, "{ack.ak_why}");
+  rq: vector<integer> = [];
+  rr: vector<integer> = [];
+  cells_of(w, FLOOR_MAT, rq, rr);
+  probe_q = rq[0] ?? 0;
+  probe_r = rr[0] ?? 0;
+  before = 0 - 1;
+  for c in world_column(w, probe_q, probe_r).co_cells {
+    if (c.h_material as integer ?? 0) == ROOF_MAT { before = c.h_height as integer ?? 0; }
+  }
+  assert(before >= 0, "the fixture has no roof over ({probe_q},{probe_r})");
+  raise(w, ack.ak_q, ack.ak_r, LIFT);
+  after = 0 - 1;
+  for c2 in world_column(w, probe_q, probe_r).co_cells {
+    if (c2.h_material as integer ?? 0) == ROOF_MAT { after = c2.h_height as integer ?? 0; }
+  }
+  assert(after == before + LIFT,
+         "the roof went {before} -> {after}; the floor moved {LIFT}, so the gap changed");
+}
+
+fn test_a_road_takes_the_incline_instead() {
+  // ⚠ THE ONE THING THAT MUST *NOT* BE RIGID, and it is the reporter's own line:
+  // *roads should get an incline themselves*. A road may slope; a floor may not.
+  w = world_at(G);
+  for q in (0 - 12)..13 { ground_set(w, q, 0, G, ROAD_MAT); }
+  raise(w, 0, 0, LIFT);
+  lo = 99999;
+  hi = 0 - 99999;
+  for q2 in (0 - RAD + 1)..RAD {
+    h = ground_h(w, q2, 0);
+    if h < lo { lo = h; }
+    if h > hi { hi = h; }
+  }
+  assert(hi > lo, "the road came out dead level ({lo}..{hi}) — it was carried, not inclined");
+  assert(mat_of(w, 0, 0) == ROAD_MAT, "and it is no longer a road: {mat_of(w, 0, 0)}");
+}
+
+fn mat_of(w: World, q: integer, r: integer) -> integer {
+  world_ground_cell(w, q, r).h_material as integer ?? 0
+}
+
+fn test_a_fence_off_the_porch_goes_with_the_house() {
+  // *Be liberal about what a house is* — a fence connected to it counts. The fence
+  // is written as EDGE bytes, which is what makes a cell fabric even where its
+  // ground is ordinary.
+  w = world_at(G);
+  runs = WallRuns { items: [] };
+  ack = house(w, runs);
+  assert(ack.ak_ok, "{ack.ak_why}");
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  cells_of(w, FLOOR_MAT, fq, fr);
+  // run a fence east from the house's own edge, out past the brush rim
+  ex = 0;
+  for i in 0..len(fq) { if (fq[i] ?? 0) > ex { ex = fq[i] ?? 0; } }
+  fence_r = fr[0] ?? 0;
+  for k in 1..12 {
+    wall_set(w, ex + k, fence_r, SLOT_NE, FENCE_MAT, G, (G as float) * U);
+  }
+  far_before = ground_h(w, ex + 11, fence_r);
+  raise(w, ack.ak_q, ack.ak_r, LIFT);
+  floor_after = ground_h(w, fq[0] ?? 0, fr[0] ?? 0);
+  far_after = ground_h(w, ex + 11, fence_r);
+  assert(far_after - far_before == LIFT,
+         "the far fence post moved {far_after - far_before}, the house moved {LIFT}");
+  assert(far_after == floor_after,
+         "the fence ended at {far_after} and the floor at {floor_after} — the run is bent");
+}
+
+fn test_the_ground_around_it_still_makes_a_hill() {
+  // ⚠ THE CONTROL FOR ALL OF THE ABOVE. A `brush` that had simply become rigid
+  // everywhere would satisfy every claim so far and would have stopped making
+  // hills at all — so the ground OUTSIDE the fabric must still fall away.
+  w = world_at(G);
+  runs = WallRuns { items: [] };
+  ack = house(w, runs);
+  assert(ack.ak_ok, "{ack.ak_why}");
+  raise(w, ack.ak_q, ack.ak_r, LIFT);
+  near = ground_h(w, ack.ak_q + 5, ack.ak_r);
+  far = ground_h(w, ack.ak_q + RAD - 1, ack.ak_r);
+  assert(near > G, "the ground beside the house did not rise at all ({near})");
+  assert(far < near, "the hill does not fall away: {near} at 5, {far} at {RAD - 1}");
+}
+
+fn test_a_hill_with_no_building_in_it_is_untouched() {
+  // The other control: open ground must keep exactly the falloff it always had, or
+  // this change has quietly restyled every hill in the world.
+  w = world_at(G);
+  raise(w, 0, 0, LIFT);
+  assert(ground_h(w, 0, 0) == G + LIFT, "the crest is {ground_h(w, 0, 0)}");
+  assert(ground_h(w, 3, 0) > G && ground_h(w, 3, 0) < G + LIFT,
+         "the slope at 3 is {ground_h(w, 3, 0)}, not between {G} and {G + LIFT}");
+  assert(ground_h(w, RAD, 0) == G, "the rim moved: {ground_h(w, RAD, 0)}");
+}
+
+fn test_a_second_building_down_the_slope_gets_its_own_level_pad() {
+  // ⚠ *Lower on a hill there can be other buildings that act the same way as the
+  // original one.* Each connected structure is its own body: it takes its own
+  // single delta and comes out level, at ITS height rather than at the crest's.
+  // Two houses, one under the middle of the stroke and one out on the slope.
+  w = world_at(G);
+  runs = WallRuns { items: [] };
+  a1 = place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, G, runs);
+  assert(a1.ak_ok, "the first house: {a1.ak_why}");
+  // far enough that the two floors cannot touch, and inside the same stroke
+  a2 = place_house(w, author_at(0.0, 15.0, 0.5235987755982988), 5, 4, G, runs);
+  assert(a2.ak_ok, "the second house: {a2.ak_why}");
+
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  cells_of(w, FLOOR_MAT, fq, fr);
+  assert(len(fq) > 40, "the two fixtures share cells: only {len(fq)} floor cells");
+
+  // ⚠ A WIDER STROKE THAN THE OTHER TESTS, on purpose: both buildings have to sit
+  // INSIDE one raise for the claim to mean anything, and two 5x4 houses need room
+  // between them or their roofs foul each other before the raise is even reached.
+  wide = 0;
+  wres = 0;
+  brush(w, a1.ak_q, a1.ak_r, LIFT, 18, wide, wres);
+
+  // group the floor cells by the height they ended at — one height per building
+  levels: vector<integer> = [];
+  for i in 0..len(fq) {
+    h = ground_h(w, fq[i] ?? 0, fr[i] ?? 0);
+    fresh = true;
+    for l in levels { if l == h { fresh = false; } }
+    if fresh { levels += [h]; }
+  }
+  assert(len(levels) == 2,
+         "the two buildings came out at {len(levels)} distinct heights, not 2 — "
+       + "either one of them sheared or they were merged into one body");
+  hi = 0;
+  lo = 99999;
+  for l2 in levels {
+    if l2 > hi { hi = l2; }
+    if l2 < lo { lo = l2; }
+  }
+  assert(hi == G + LIFT, "the near building is at {hi}, not the crest {G + LIFT}");
+  assert(lo > G && lo < hi,
+         "the far building is at {lo} — it should be lifted, and by less than the crest");
+}

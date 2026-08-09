@@ -1,0 +1,34 @@
+// WHERE DOES `wall_set` PUT A FENCE, AND CAN `is_fabric` SEE IT?
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  rc = wall_set(w, 3, 0, SLOT_NE, FENCE_MAT, G, (G as float) * U);
+  println("wall_set rc {rc}");
+  found = 0;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 {
+      c0 = world_ground_cell(w, q, r);
+      if (c0.h_wall_n as integer ?? 0) != 0 || (c0.h_wall_ne as integer ?? 0) != 0
+         || (c0.h_wall_se as integer ?? 0) != 0 {
+        println("EDGE at ({q},{r}): n={c0.h_wall_n} ne={c0.h_wall_ne} se={c0.h_wall_se}");
+        found = found + 1;
+      }
+    }
+  }
+  println("cells carrying an edge anywhere: {found}");
+  for q in 2..5 {
+    c = world_ground_cell(w, q, 0);
+    println("cell ({q},0) ground layer: n={c.h_wall_n} ne={c.h_wall_ne} se={c.h_wall_se}  "
+          + "fabric={is_fabric(w, q, 0)}");
+    println("   column has {len(world_column(w, q, 0).co_cells)} cells");
+    for cc in world_column(w, q, 0).co_cells {
+      println("     h={cc.h_height} mat={cc.h_material} n={cc.h_wall_n} ne={cc.h_wall_ne} se={cc.h_wall_se}");
+    }
+  }
+}

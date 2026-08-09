@@ -1,0 +1,80 @@
+// A RAISE MOVES GROUND; IT DOES NOT REPAINT IT.
+//
+// Reported as *a house cannot be elevated like a hill*. Measured, the first half
+// of that is not about houses at all: `brush` ended in
+// `ground_set(w, q, r, h, SURFACE_MAT)` unconditionally, so raising — or LEVELLING,
+// which walks the same function — turned road, field, floor and roof alike into
+// grass. A house's 27 floor cells went to 0.
+//
+// ⚠ THE SECOND HALF IS NOT FIXED HERE AND MUST NOT BE READ AS IF IT WERE: a smooth
+// falloff over a rigid footprint SHEARS it (`probe/house/shear.loft` — a raise of 6
+// leaves a 27-cell floor 3 units out of level), and the roof does not follow at
+// all. Keeping the material is a prerequisite for moving a house, not the move.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn flat(m: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 { ground_set(w, q, r, G, m); }
+  }
+  w
+}
+
+fn raised(w: World, amp: integer) {
+  clamped = 0;
+  residual = 0;
+  brush(w, 0, 0, amp, 7, clamped, residual);
+}
+
+fn mat_at(w: World, q: integer, r: integer) -> integer {
+  world_ground_cell(w, q, r).h_material as integer ?? 0
+}
+
+fn test_a_raise_keeps_every_material_it_lifts() {
+  // ⚠ THE WHOLE SET, NOT A SAMPLE. The bug was one unconditional argument, so any
+  // single material would have caught it — and a loop over the five says which
+  // ones the claim covers without a reader having to trust that they behave alike.
+  for m in [SURFACE_MAT, ROAD_MAT, FIELD_MAT, FLOOR_MAT, ROOF_MAT] {
+    w = flat(m);
+    raised(w, 6);
+    assert(mat_at(w, 0, 0) == m,
+           "a raise turned material {m} into {mat_at(w, 0, 0)}");
+  }
+}
+
+fn test_a_raise_still_lifts_the_ground() {
+  // The control for the test above: a `brush` that had stopped writing at all
+  // would keep every material perfectly and move nothing.
+  w = flat(ROAD_MAT);
+  before = ground_h(w, 0, 0);
+  raised(w, 6);
+  assert(ground_h(w, 0, 0) == before + 6,
+         "the ground went {before} -> {ground_h(w, 0, 0)}, not {before + 6}");
+}
+
+fn test_untouched_ground_still_becomes_surface() {
+  // ⚠ AND THIS IS THE HALF A NAIVE FIX BREAKS. A cell nobody has written holds
+  // material 0, and 0 is ABSENCE rather than a colour — so "keep what is there"
+  // must not keep nothing, or the gesture that builds a hill out of open ground
+  // stops producing ground.
+  w = world_new(U, 0, 8, 3).wn_world;
+  assert(mat_at(w, 0, 0) == 0, "the fixture is not empty: {mat_at(w, 0, 0)}");
+  raised(w, 6);
+  assert(mat_at(w, 0, 0) == SURFACE_MAT,
+         "a raise on open ground made material {mat_at(w, 0, 0)}, not surface");
+}
+
+fn test_lowering_keeps_it_too() {
+  // The gesture is signed and `LEVEL` uses the negative half every time it walks
+  // downhill; a fix that only read the material on the way up would erase a road
+  // in one direction and keep it in the other.
+  w = flat(ROAD_MAT);
+  raised(w, 0 - 6);
+  assert(mat_at(w, 0, 0) == ROAD_MAT,
+         "lowering turned road into {mat_at(w, 0, 0)}");
+  assert(ground_h(w, 0, 0) == G - 6, "the ground did not drop: {ground_h(w, 0, 0)}");
+}
