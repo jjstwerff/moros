@@ -1,0 +1,145 @@
+// IS "HILL THEN BUILD" THE SAME AS "BUILD THEN HILL"?
+//
+// The whole of plan 20 rests on an assumption nobody has stated: that you may
+// author flat, place everything, and add the verticality LAST — which is only
+// worth doing if the result is the same one you would have got by shaping the
+// ground first. This measures it instead of assuming it.
+//
+// Two worlds per scenario, identical inputs, opposite order. Compared cell by cell
+// over the whole affected area: heights AND materials, because a divergence that
+// only moves a material is still a different map.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+const AMP = 12;
+const RAD = 7;
+
+fn plain() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn hill(w: World) {
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, AMP, RAD, cl, rs);
+}
+
+fn diff(a: World, b: World, what: text) {
+  worst = 0;
+  cells = 0;
+  mats = 0;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 {
+      ha = ground_h(a, q, r);
+      hb = ground_h(b, q, r);
+      d = ha - hb;
+      if d < 0 { d = 0 - d; }
+      if d != 0 { cells = cells + 1; }
+      if d > worst { worst = d; }
+      if (world_ground_cell(a, q, r).h_material as integer ?? 0)
+         != (world_ground_cell(b, q, r).h_material as integer ?? 0) { mats = mats + 1; }
+    }
+  }
+  if cells == 0 && mats == 0 {
+    println("{what}: IDENTICAL");
+  } else {
+    println("{what}: {cells} cells differ in height (worst {worst}), {mats} in material");
+  }
+}
+
+// ── a house ────────────────────────────────────────────────────────────────
+fn house_case() {
+  a = plain();                      // hill first, then build
+  hill(a);
+  ra = WallRuns { items: [] };
+  ga = ground_h(a, 0, 0);
+  place_house(a, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, ga, ra);
+
+  b = plain();                      // build first, then hill
+  rb = WallRuns { items: [] };
+  gb = ground_h(b, 0, 0);
+  place_house(b, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, gb, rb);
+  hill(b);
+
+  println("  grade chosen: hill-first {ga}, build-first {gb}");
+  // where does the divergence actually LIE — in the building, or around it?
+  fa = 0;
+  fb = 0;
+  fn_diff = 0;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 {
+      ma = (world_ground_cell(a, q, r).h_material as integer ?? 0) == FLOOR_MAT;
+      mb = (world_ground_cell(b, q, r).h_material as integer ?? 0) == FLOOR_MAT;
+      if ma { fa = ground_h(a, q, r); }
+      if ma && mb && ground_h(a, q, r) != ground_h(b, q, r) { fn_diff = fn_diff + 1; }
+      if mb { fb = ground_h(b, q, r); }
+    }
+  }
+  println("  the floor itself: hill-first {fa}, build-first {fb}, "
+        + "{fn_diff} floor cells differ");
+  diff(a, b, "a house");
+}
+
+// ── a road ─────────────────────────────────────────────────────────────────
+fn road_case() {
+  a = plain();                      // hill first, then lay the road
+  hill(a);
+  for q in (0 - 25)..26 { ground_set(a, q, 0, ground_h(a, q, 0), ROAD_MAT); }
+
+  b = plain();                      // lay the road, then hill
+  for q2 in (0 - 25)..26 { ground_set(b, q2, 0, G, ROAD_MAT); }
+  hill(b);
+
+  sa = 0;
+  sb = 0;
+  pa = ground_h(a, 0, 0);
+  pb = ground_h(b, 0, 0);
+  for q3 in 1..(RAD + 1) {
+    da = pa - ground_h(a, q3, 0); if da < 0 { da = 0 - da; }
+    db = pb - ground_h(b, q3, 0); if db < 0 { db = 0 - db; }
+    if da > sa { sa = da; }
+    if db > sb { sb = db; }
+    pa = ground_h(a, q3, 0);
+    pb = ground_h(b, q3, 0);
+  }
+  println("  road steepest step: hill-first {sa}, build-first {sb} "
+        + "(its limit is {ground_kind_of(ROAD_MAT).tr_slope})");
+  diff(a, b, "a road");
+}
+
+// ── a fenced yard ──────────────────────────────────────────────────────────
+fn yard_case() {
+  a = plain();
+  hill(a);
+  for q in (0 - 4)..5 {
+    for r in (0 - 4)..5 {
+      if hex_distance(q, r, 0, 0) == 4 {
+        for s in 0..3 { wall_set(a, q, r, s, FENCE_MAT, ground_h(a, q, r),
+                                 (ground_h(a, q, r) as float) * U); }
+      }
+    }
+  }
+  b = plain();
+  for q2 in (0 - 4)..5 {
+    for r2 in (0 - 4)..5 {
+      if hex_distance(q2, r2, 0, 0) == 4 {
+        for s2 in 0..3 { wall_set(b, q2, r2, s2, FENCE_MAT, G, (G as float) * U); }
+      }
+    }
+  }
+  hill(b);
+  diff(a, b, "a fenced yard");
+}
+
+fn main() {
+  println("hill-first against build-first, same inputs, {AMP} over radius {RAD}:");
+  house_case();
+  road_case();
+  yard_case();
+}

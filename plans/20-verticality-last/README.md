@@ -39,6 +39,35 @@ map byte 2 to *road* and byte 1 to *wall*, are one level short. The attributes a
 is wrong is that the identity is decided in code. Nothing here needs undoing before then: the
 slope limit stays an attribute, it just stops hanging off a constant.
 
+## ⚠ Order does NOT commute — measured, and the divergences are named here
+
+*"Evaluate if we can prove that placing hills and then buildings and roads is equal to placing
+the same hill afterwards. Or at least make deviations from that model explicit instead of
+something we will hit after the fact."*
+
+**It is not equal.** `probe/house/commute.loft` runs each scenario twice — hill→build against
+build→hill, identical inputs, a stroke of 12 over radius 7 — and compares every cell:
+
+| | divergence | where it comes from |
+|---|---|---|
+| **a house** | the floor sits at **52** hill-first and **51** build-first; all 27 floor cells differ, plus 41 cells of surrounding ground (worst 11) | hill-first takes the grade **under the author**; build-first takes the largest delta over the **footprint** — and `pose_footprint` puts the house *ahead* of the author, so those are two different cells. The surrounding difference is the model working as designed: hill-first the house **flattens** a disc of the hill, build-first the hill **flows around** a rigid pad |
+| **a road** | 11 cells, worst 6 — and the road's steepest step is **3 hill-first against 1 build-first**, where **1 is its limit** | ⚠ **a defect, not a difference.** The slope limit is enforced by the RAISE and by nothing else, so laying a road across an existing hill produces a road steeper than a road may be. The invariant belongs to the world; today it is a property of one gesture |
+| **a fenced yard** | 79 cells, worst 10 | the enclosure is rigid when the raise finds it and absent when the fence is drawn afterwards — the same shape as the house |
+
+⚠ **NO MATERIAL EVER DIVERGES** — `0 in material` in all three. Only heights move, which says
+the palettes and the identities are order-independent and it is the *geometry* that is not.
+
+### What follows, and it is one thing
+
+⚠ **A SLOPE LIMIT MUST BE AN INVARIANT OF THE WORLD, NOT A RULE ONE GESTURE APPLIES.** The road
+row is the only divergence that is a fault rather than a choice, and it has one cause: `brush`
+enforces the limit and the gesture that paints a road does not. Make the limit a property
+checked wherever a limited surface is written — refuse, or re-grade — and that row converges.
+The house and yard rows do **not** converge and should not: they are two different things to
+have asked for, and the plan says which is which rather than leaving it to be discovered.
+
+| **`A7`** — the slope limit becomes a world invariant, not a gesture's rule | MH | `probe/house/commute.loft`'s road row converging: the same steepest step both orders | Open |
+
 ## Anchors
 
 | | |
@@ -83,6 +112,7 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | Blocked on `A4` |
+| **`A7`** — the slope limit becomes a world invariant, not a gesture's rule | MH | `probe/house/commute.loft`'s road row converging | Open — ⚠ the only measured **defect** in the order model |
 
 ## Open questions
 
