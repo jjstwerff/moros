@@ -2608,6 +2608,76 @@ pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
 // and the gate can only witness the half that IS reachable (a road over a cellar
 // grading the ground, not the cellar). The deck half is correct by construction
 // and untested, which is a weaker claim and belongs written down as one.
+// ── A SLOPE LIMIT IS THE WORLD'S, NOT ONE GESTURE'S — plan 20 `A7` ─────────
+//
+// ⚠ MEASURED BEFORE IT WAS BUILT (`probe/house/commute.loft`, `roadwalk.loft`).
+// `brush` enforced the limits and nothing else did, so the two authoring orders
+// disagreed: a road WALKED up a hill came out with a steepest step of **3** where
+// a road's limit is **1**. The invariant was a property of one gesture, and any
+// other way of writing a road simply did not have it.
+//
+// This settles the RUN a stroke lands in, so a gesture that paints a limited
+// surface can hand the world back inside its own rules.
+//
+// ⚠ IT ONLY EVER LOWERS. A road that cannot climb a hill within its limit gets CUT
+// into it, which is what a road does; raising the low end instead would be filling
+// ground the author never asked to move, and the two are not interchangeable — a
+// cutting is local to the road and an embankment is a change to the valley.
+//
+// ⚠ AND IT SCOPES ITSELF TO THE RUN rather than to a radius, because a stroke is
+// one disc and a road is a line: settling a disc would leave the step at its rim,
+// which is precisely where the violation lives.
+pub fn slope_settle(w: World, cq: integer, cr: integer,
+                    clamped: &integer, residual: &integer) {
+  lim0 = slope_limit(w, cq, cr);
+  if lim0 == SLOPE_FREE { return; }
+  mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
+  seen = Seen { s_by: [] };
+  mq: vector<integer> = [cq];
+  mr: vector<integer> = [cr];
+  seen.s_by += SeenAt { sa_key: age_like_key(cq, cr) };
+  head = 0;
+  while head < len(mq) {
+    aq = mq[head] ?? 0;
+    ar = mr[head] ?? 0;
+    head = head + 1;
+    for d in 0..6 {
+      (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
+      if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+      if seen.s_by[age_like_key(nq, nr)] != null { continue; }
+      if len(mq) >= LIFT_CAP { continue; }
+      seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
+      mq += [nq];
+      mr += [nr];
+    }
+  }
+  for pass in 0..SLOPE_PASSES {
+    moved = false;
+    for i in 0..len(mq) {
+      q = mq[i] ?? 0;
+      r = mr[i] ?? 0;
+      h = ground_h(w, q, r);
+      want = h;
+      for d2 in 0..6 {
+        (nq2, nr2) = hex_grid::hex_neighbor(q, r, d2);
+        if seen.s_by[age_like_key(nq2, nr2)] == null { continue; }
+        nh = ground_h(w, nq2, nr2);
+        if want > nh + lim0 { want = nh + lim0; }
+      }
+      if want != h {
+        clamped = clamped + 1;
+        give = h - want;
+        if give > residual { residual = give; }
+        bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
+        if bm == 0 { bm = SURFACE_MAT; }
+        ground_set(w, q, r, want, bm);
+        moved = true;
+      }
+    }
+    if !moved { break; }
+  }
+}
+
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
             feet: float) {
   for dq in (0 - rad)..(rad + 1) {

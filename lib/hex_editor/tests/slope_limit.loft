@@ -254,3 +254,107 @@ fn test_a_gesture_reads_the_identity_of_the_region_it_is_standing_in() {
          "byte 3 gave {road_steep} named as a road and {steepest(w2, 7)} unnamed — "
        + "the region is not deciding");
 }
+
+// ── `A7` — the limit is the WORLD's, not one gesture's ──────────────────────
+
+fn test_a_road_laid_on_an_existing_hill_can_be_settled_into_its_limit() {
+  // ⚠ THE ONE MEASURED DEFECT IN THE ORDER MODEL. `brush` enforced the limits and
+  // nothing else did, so a road WALKED up a hill came out at a steepest step of 3
+  // where its limit is 1 — the invariant was a property of one gesture, and any
+  // other way of writing a road simply did not have it.
+  w = strip(SURFACE_MAT, 0);
+  cl0 = 0;
+  rs0 = 0;
+  brush(w, 0, 0, 24, 12, cl0, rs0);          // a hill first, on unlimited grass
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  for q in 0..13 {
+    x = 12 - q;
+    h = hs[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U);
+  }
+  before = steepest(w, 12);
+  assert(before > ground_kind_of(ROAD_MAT).tr_slope,
+         "the fixture did not violate anything ({before}) — nothing is being tested");
+
+  cl = 0;
+  rs = 0;
+  slope_settle(w, 0, 0, cl, rs);
+  assert(steepest(w, 12) <= ground_kind_of(ROAD_MAT).tr_slope,
+         "after settling the road is still {steepest(w, 12)} a hex: {profile(w, 12)}");
+  assert(cl > 0 && rs > 0, "it settled silently — clamped {cl}, residual {rs}");
+}
+
+fn test_settling_only_ever_cuts_and_never_fills() {
+  // ⚠ A ROAD THAT CANNOT CLIMB A HILL GETS CUT INTO IT — raising the low end
+  // instead would be filling ground the author never asked to move, and a cutting
+  // is local to the road while an embankment is a change to the valley.
+  w = strip(SURFACE_MAT, 0);
+  cl0 = 0;
+  rs0 = 0;
+  brush(w, 0, 0, 24, 12, cl0, rs0);
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  for q in 0..13 {
+    x = 12 - q;
+    h = hs[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U);
+  }
+  was: vector<integer> = [];
+  for s1 in 0..13 { was += [ground_h(w, s1, 0)]; }
+  cl = 0;
+  rs = 0;
+  slope_settle(w, 0, 0, cl, rs);
+  for q2 in 0..13 {
+    assert(ground_h(w, q2, 0) <= (was[q2] ?? 0),
+           "settling RAISED ({q2},0) from {was[q2]} to {ground_h(w, q2, 0)}");
+  }
+}
+
+fn test_settling_a_surface_with_no_limit_does_nothing() {
+  // ⚠ THE CONTROL. A settle that moved open grass would be a terrain edit nobody
+  // asked for, fired by a gesture that only meant to lay a path.
+  w = strip(SURFACE_MAT, 0);
+  cl0 = 0;
+  rs0 = 0;
+  brush(w, 0, 0, 24, 12, cl0, rs0);
+  was: vector<integer> = [];
+  for s in 0..13 { was += [ground_h(w, s, 0)]; }
+  cl = 0;
+  rs = 0;
+  slope_settle(w, 0, 0, cl, rs);
+  assert(cl == 0 && rs == 0, "grass was settled: clamped {cl}, residual {rs}");
+  for q in 0..13 {
+    assert(ground_h(w, q, 0) == (was[q] ?? 0), "grass moved at ({q},0)");
+  }
+}
+
+fn test_both_orders_now_agree_about_the_limit() {
+  // ⚠ THE CONVERGENCE PLAN 20 NAMED: *the same steepest step both orders*. They do
+  // not produce the same HEIGHTS — a road cut into a hill and a road that shaped
+  // the hill are different places — but they now agree about the one thing that
+  // was a fault rather than a choice.
+  a = strip(SURFACE_MAT, 0);        // hill first, then the road, then settle
+  c1 = 0;
+  r1 = 0;
+  brush(a, 0, 0, 24, 12, c1, r1);
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(a, s0, 0)]; }
+  for q in 0..13 {
+    x = 12 - q;
+    h = hs[x] ?? G;
+    road_lay(a, x, 0, h, 1, (h as float) * U);
+  }
+  c2 = 0;
+  r2 = 0;
+  slope_settle(a, 0, 0, c2, r2);
+
+  b = strip(ROAD_MAT, 0);           // the road first, then the hill
+  c3 = 0;
+  r3 = 0;
+  brush(b, 0, 0, 24, 12, c3, r3);
+
+  assert(steepest(a, 12) == steepest(b, 12),
+         "hill-first settles to {steepest(a, 12)} a hex and build-first to "
+       + "{steepest(b, 12)} — the orders still disagree about the limit");
+}

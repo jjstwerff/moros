@@ -66,7 +66,41 @@ checked wherever a limited surface is written — refuse, or re-grade — and th
 The house and yard rows do **not** converge and should not: they are two different things to
 have asked for, and the plan says which is which rather than leaving it to be discovered.
 
-| **`A7`** — the slope limit becomes a world invariant, not a gesture's rule | MH | `probe/house/commute.loft`'s road row converging: the same steepest step both orders | Open |
+✅ **`A7` IS SHIPPED**, and the road row converges — see below.
+
+## What `A7` turned up
+
+**Built:** `slope_settle(w, q, r, …)` — a public entry that settles the RUN a stroke lands in,
+so any gesture that paints a limited surface can hand the world back inside its own rules.
+
+⚠ **THE COMMUTE PROBE'S ROAD ROW WAS RIGHT FOR THE WRONG REASON, AND THE REAL GESTURE IS
+WORSE.** That probe hand-painted a road following the ground, which `road_lay` never does — it
+writes one frozen grade per stroke. Re-measured through the actual gesture
+(`probe/house/roadwalk.loft`): a road **walked up** a hill of 24 comes out
+`24 24 23 22 21 18 16 13 10 7 4 2 0` — **steepest step 3, where a road's limit is 1.** So the
+defect is reachable from the editor, not an artefact of my fixture.
+
+⚠ **AND THE FIRST VERSION OF THAT PROBE MEASURED NOTHING.** Walking uphill while reading
+`ground_h` reads the road *just laid*, so the starting grade was dragged to the crest and the
+whole hill came out flat — `steepest 0, within its limit`, a green answer to a question never
+asked. The grades have to be sampled before any of them is laid, which is what a walker's own
+feet do.
+
+**After settling**: `12 11 10 9 8 7 6 5 4 3 2 1 0` — a 1-per-hex ramp **cut** into the hill,
+211 cells clamped, residual 2.
+
+⚠ **IT ONLY EVER CUTS.** A road that cannot climb a hill within its limit is cut into it, which
+is what a road is; raising the low end instead would be filling ground the author never asked
+to move — a cutting is local to the road and an embankment is a change to the valley. Gated,
+and sabotaged by making it fill as well.
+
+⚠ **AND IT SCOPES ITSELF TO THE RUN, NOT TO A RADIUS.** A stroke is a disc and a road is a
+line: settling a disc leaves the step at its rim, which is exactly where the violation lives.
+
+**What converges and what does not.** The two orders now agree about the **limit** — the same
+steepest step either way, which was the only row that was a fault. They still produce different
+**heights**, and should: a road cut into a hill and a road that shaped the hill are different
+places. The plan says which is which rather than leaving it to be found.
 
 ## Anchors
 
@@ -112,7 +146,7 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | Blocked on `A4` |
-| **`A7`** — the slope limit becomes a world invariant, not a gesture's rule | MH | `probe/house/commute.loft`'s road row converging | Open — ⚠ the only measured **defect** in the order model |
+| **`A7`** — the slope limit becomes a world invariant, not a gesture's rule | MH | `tests/slope_limit.loft`'s four settle claims — both orders agree about the limit | ✅ shipped |
 
 ## Open questions
 

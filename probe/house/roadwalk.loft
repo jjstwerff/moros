@@ -1,0 +1,57 @@
+// A ROAD LAID BY ITS OWN GESTURE, ALONG A HILL.
+//
+// The commute probe hand-painted a road following the ground, which `road_lay`
+// never does — it writes ONE frozen grade per stroke. So the honest question is
+// what a WALKED road does: a series of flat discs at the grades the walker froze,
+// and whether the steps between them can exceed the road's own limit.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 40)..41 {
+    for r in (0 - 40)..41 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // a hill first, unlimited grass
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  out = "";
+  for q in 0..13 { out += "{ground_h(w, q, 0) - G} "; }
+  println("the hill, from the crest: {out}");
+
+  // ⚠ THE GRADES ARE SAMPLED BEFORE ANY OF THEM IS LAID. A walker climbing the
+  // hill freezes the grade under their OWN feet; reading the ground as we go reads
+  // the road we just laid, and the first version of this probe did exactly that —
+  // it dragged the starting grade to the crest and levelled the whole hill.
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  for q2 in 0..13 {
+    x = 12 - q2;
+    h = hs[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U);
+  }
+  cl2 = 0;
+  rs2 = 0;
+  slope_settle(w, 0, 0, cl2, rs2);
+  road = "";
+  worst = 0;
+  prev = ground_h(w, 0, 0);
+  for q3 in 1..13 {
+    st = prev - ground_h(w, q3, 0);
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+    prev = ground_h(w, q3, 0);
+  }
+  for q4 in 0..13 { road += "{ground_h(w, q4, 0) - G} "; }
+  println("the road after walking it and settling: {road}");
+  println("  settle clamped {cl2} cells, residual {rs2}");
+  println("steepest step {worst}, and a road's limit is {ground_kind_of(ROAD_MAT).tr_slope}");
+  if worst > ground_kind_of(ROAD_MAT).tr_slope {
+    println("=> VIOLATED: the gesture laid a road steeper than a road may be");
+  } else {
+    println("=> within its limit");
+  }
+}
