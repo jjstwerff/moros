@@ -2976,6 +2976,30 @@ fn absorb_enclosed(w: World, mq: &vector<integer>, mr: &vector<integer>,
 // slope limit actually has.
 pub const SLOPE_FREE = 0;      // no limit — see the note on `GroundKind.tr_slope`
 
+// ── AND WHERE NO SLOPE WILL DO AT ALL — plan 20 `A5` ───────────────────────
+//
+// *Where the limit cannot be met the column carries a FACE rather than a slope*,
+// and a face is a surface rather than an absence. Measured before it was designed
+// (`probe/house/faces.loft`), and the measurement moved the design:
+//
+//   · a road walked up a hill leaves **41** edges breaking somebody's slope
+//     limit, the worst over by 11 — so the subject is real and reachable today;
+//   · a road on flat ground and a single-stroke grass hill leave **zero** — the
+//     two negative controls are clean;
+//   · a twenty-press grass hill has steps of 20, standing at **71°**, and breaks
+//     **no** slope limit at all, because grass has none.
+//
+// So the face cannot hang off `tr_slope`. It hangs off `tr_face`, and the pair of
+// numbers is what makes both readings true at once — see the field's own note.
+pub const FACE_NONE = 0;       // this surface never carries a face
+
+// ⚠ ROOTS HOLD SOIL; NOTHING HOLDS SOIL ON A WALL. `slope_limit` lets anything
+// planted off its limit entirely, because a forest genuinely may sit on any
+// gradeable slope. A face is the other case — there is no soil left to root in —
+// so planting LOOSENS the threshold and never removes it. The two rules have
+// deliberately different shapes and that difference is the whole content.
+pub const FACE_ROOTED = 2;     // extra steps a planted cell holds before it faces
+
 // ⚠ ONE LIST, AND EVERYTHING DERIVED FROM IT. The first build of `A2` asked
 // `if m == ROAD_MAT { … } if m == FIELD_MAT { … }` inside the gesture, which is a
 // second copy of a set nobody owned — and this tree has the rule already:
@@ -2992,6 +3016,25 @@ pub struct GroundKind {
   // rigidly, and never reaches the relaxation. So zero is free to mean *no limit*
   // and the reading it could be confused with is unreachable by construction.
   tr_slope:  integer,   // the steepest step it may be given, in height units
+  // ⚠ THE SECOND LIMIT, AND IT ANSWERS A DIFFERENT QUESTION — plan 20 `A5`.
+  // `tr_slope` is what a GESTURE may give this surface; this is what the surface
+  // can STAND at before it stops being that surface and shows rock. They are not
+  // the same number and cannot be one: a road may only be *given* a 1-in-1 grade
+  // because a cart has to climb it, and a road embankment nevertheless *stands*
+  // at far more than that. One is a rule about authoring, the other is an angle
+  // of repose.
+  //
+  // ⚠ AND MEASURING SETTLED WHICH IS WHICH (`probe/house/faces.loft`). Tying the
+  // face to `tr_slope` — the reading plan 20 was written with — gives **zero**
+  // faces on a twenty-press grass mountain whose steps stand at **71°**, because
+  // grass's `tr_slope` is `SLOPE_FREE`; and it gives a rock face to a 16° grassy
+  // verge beside a road, because a road's is 1. Both are wrong, both were
+  // measured, and one number cannot fix either without breaking the other.
+  //
+  // `FACE_NONE` means *this surface never carries a face*, checked explicitly for
+  // the same reason `SLOPE_FREE` is: a step of 0 is a step, so 0 cannot be read
+  // as a threshold.
+  tr_face:   integer,
   // Does it move RIGIDLY with the structure it belongs to (`A1`), rather than
   // taking the falloff? A floor does; ground does not.
   tr_fabric: boolean,
@@ -3002,16 +3045,45 @@ pub struct GroundKind {
 // so a row may be added or reordered without renumbering anything.
 pub fn ground_kinds() -> vector<GroundKind> {
   [
-    GroundKind { tr_mat: SURFACE_MAT, tr_name: "grass",  tr_slope: SLOPE_FREE, tr_fabric: false },
-    // A road is the gentlest thing on the map: it may climb, but slowly.
-    GroundKind { tr_mat: ROAD_MAT,    tr_name: "road",   tr_slope: 1, tr_fabric: false },
-    // A field may be worked on a bank, so it may tilt further than a road.
-    GroundKind { tr_mat: FIELD_MAT,   tr_name: "field",  tr_slope: 2, tr_fabric: false },
+    // Grass may be given any slope the author likes and stands at 41° before the
+    // soil goes; past that the column is rock. That pair is what lets the raise
+    // brush keep making the steep flanks it was asked for AND stop pretending a
+    // 71° wall of them is a meadow.
+    GroundKind { tr_mat: SURFACE_MAT, tr_name: "grass",  tr_slope: SLOPE_FREE, tr_face: 6, tr_fabric: false },
+    // A road is the gentlest thing on the map: it may climb, but slowly. Its own
+    // sides are made ground — an embankment — so they stand where grass does.
+    GroundKind { tr_mat: ROAD_MAT,    tr_name: "road",   tr_slope: 1, tr_face: 6, tr_fabric: false },
+    // A field may be worked on a bank, so it may tilt further than a road. Ploughed
+    // soil gives way sooner than rough grass, which is why terraces have walls.
+    GroundKind { tr_mat: FIELD_MAT,   tr_name: "field",  tr_slope: 2, tr_face: 5, tr_fabric: false },
     // A floor is level or it is not a floor — and being fabric is what makes that
     // true, rather than a limit of zero it would have to be clamped against.
-    GroundKind { tr_mat: FLOOR_MAT,   tr_name: "floor",  tr_slope: SLOPE_FREE, tr_fabric: true },
-    GroundKind { tr_mat: ROOF_MAT,    tr_name: "roof",   tr_slope: SLOPE_FREE, tr_fabric: true },
+    //
+    // ⚠ FABRIC CARRIES NO FACE, AND THAT IS NOT AN OMISSION. A built edge above
+    // the ground is a WALL, and the storey geometry already draws it — a rock face
+    // there would be a second thing in the same place. A face is what raw ground
+    // does where it cannot hold; masonry holds by being masonry.
+    GroundKind { tr_mat: FLOOR_MAT,   tr_name: "floor",  tr_slope: SLOPE_FREE, tr_face: FACE_NONE, tr_fabric: true },
+    GroundKind { tr_mat: ROOF_MAT,    tr_name: "roof",   tr_slope: SLOPE_FREE, tr_face: FACE_NONE, tr_fabric: true },
   ]
+}
+
+// The row an unrecognised material falls back to, wearing that material's index.
+//
+// ⚠ IT READS THE GRASS ROW RATHER THAN RESTATING IT. The two fallbacks below used
+// to spell the policy out as literals, which is two more copies of the numbers this
+// table exists to be the only home of — and the moment a SECOND number joined
+// `tr_slope` the copies stopped agreeing by inspection. It looks the row up by
+// material, never by position, for the reason the header three paragraphs up gives.
+fn ground_kind_default(mat: integer, name: text) -> GroundKind {
+  for g in ground_kinds() {
+    if g.tr_mat == SURFACE_MAT {
+      return GroundKind { tr_mat: mat, tr_name: name, tr_slope: g.tr_slope,
+                          tr_face: g.tr_face, tr_fabric: g.tr_fabric };
+    }
+  }
+  GroundKind { tr_mat: mat, tr_name: name, tr_slope: SLOPE_FREE,
+               tr_face: FACE_NONE, tr_fabric: false }
 }
 
 // ⚠ THE FALLBACK IS *GROUND*, NOT A REFUSAL. Material 0 is absence — a cell nobody
@@ -3022,7 +3094,7 @@ pub fn ground_kind_of(mat: integer) -> GroundKind {
   for t in ground_kinds() {
     if t.tr_mat == mat { return t; }
   }
-  GroundKind { tr_mat: mat, tr_name: "grass", tr_slope: SLOPE_FREE, tr_fabric: false }
+  ground_kind_default(mat, "grass")
 }
 
 // The kind a byte means IN THIS WORLD — plan 21 `R1`.
@@ -3053,7 +3125,7 @@ pub fn ground_kind_at(w: World, q: integer, r: integer, mat: integer) -> GroundK
   // call byte 2 `dune road` and this table has no policy for that yet; refusing
   // would make an unmapped NAME fatal to a gesture, where `world_palette_check` is
   // the place that refuses an unmapped BYTE at load. One refusal, at the boundary.
-  GroundKind { tr_mat: mat, tr_name: nm, tr_slope: SLOPE_FREE, tr_fabric: false }
+  ground_kind_default(mat, nm)
 }
 
 // ── AND THE SAME FOR AN EDGE — plan 20 `A2c` ───────────────────────────────
@@ -3131,9 +3203,60 @@ pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
 // road holds its grade and lets the ground beside it stand where it likes.
 //
 // ⚠ THE CONSEQUENCE IS A STEP AT THE ROAD EDGE, and it is deliberate rather than
-// unnoticed. That step is exactly what `A5`'s rock faces are for; until then it is a
-// visible seam, and a seam that says *the road refused this slope* is better than a
-// hill quietly reshaped by a path somebody drew across it.
+// unnoticed. Measured, a road walked up a hill leaves **41** such edges, the worst
+// over by 11. `face_at` below is what those become: past what the ground can stand
+// they are drawn as rock, and below it they are a grassy bank, which is what a
+// cutting's sides actually look like.
+
+// ── AND WHERE NO SLOPE WILL DO — plan 20 `A5` ──────────────────────────────
+//
+// How steep this cell can STAND, as opposed to how steep it may be given. See the
+// note on `GroundKind.tr_face` for why those are two numbers.
+//
+// ⚠ THE PLANTED RULE IS THE OTHER SHAPE HERE, ON PURPOSE. `slope_limit` lets a
+// planted cell off entirely, because a forest may genuinely sit on any gradeable
+// slope; a face is where there is no soil left to root in, so planting adds
+// `FACE_ROOTED` and never removes the threshold. Two rules, deliberately unlike.
+pub fn face_limit(w: World, q: integer, r: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  lim = ground_kind_at(w, q, r, c.h_material as integer ?? 0).tr_face;
+  if lim == FACE_NONE { return FACE_NONE; }
+  if (c.h_item as integer ?? 0) != 0 { return lim + FACE_ROOTED; }
+  lim
+}
+
+// The height of the rock face on the edge leaving `(q,r)` in direction `d`, or 0
+// where the ground simply slopes.
+//
+// ⚠ THE FACE BELONGS TO THE HIGHER SIDE, and that is the one design call here. A
+// face is the exposed SIDE of a column, so what it is made of is what the standing
+// ground is made of — the cutting through a hillside is the hillside's rock, and
+// the embankment below a road is the road's own fill. Asking the lower cell would
+// paint a cliff the colour of the valley floor it happens to end on.
+//
+// ⚠ AND IT IS DERIVED, NOT STORED. `HEX_STACK`'s first invariant is that the store
+// is the only authority; the heights already say where a face is, so storing one
+// would be a second answer that can disagree with the first. It also means a face
+// appears and disappears as the ground moves, with no gesture having to remember.
+pub fn face_at(w: World, q: integer, r: integer, d: integer) -> integer {
+  (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+  drop = ground_h(w, q, r) - ground_h(w, nq, nr);
+  if drop <= 0 { return 0; }
+  lim = face_limit(w, q, r);
+  if lim == FACE_NONE { return 0; }
+  if drop <= lim { return 0; }
+  drop
+}
+
+// Does this cell stand above a face on ANY of its six sides? The question the
+// mesher asks per cell before it asks per edge, and the one a gate can count.
+pub fn faces_here(w: World, q: integer, r: integer) -> integer {
+  n = 0;
+  for fd in 0..6 {
+    if face_at(w, q, r, fd) > 0 { n = n + 1; }
+  }
+  n
+}
 
 // How many relaxation passes a stroke may spend. ⚠ A CAP, NOT A CONVERGENCE TEST:
 // each pass only ever moves a cell back TOWARD where it started and the start

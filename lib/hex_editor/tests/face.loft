@@ -1,0 +1,244 @@
+// WHERE THE GROUND CANNOT HOLD, THE COLUMN CARRIES A FACE — plan 20 `A5`.
+//
+// *Where the limit cannot be met the column carries a face rather than a slope*,
+// and a face is a SURFACE rather than an absence. Everything below was measured
+// (`probe/house/faces.loft`) before it was asserted, and the measurement changed
+// the design — see the note on `GroundKind.tr_face` for the two readings and why
+// only one of them survives contact with a twenty-press hill.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+// One height unit over one hex step, in degrees — the unit every threshold in the
+// table is really written in. `HEIGHT_SCALE` is 0.25 wu, hex spacing is √3 wu.
+fn steps_deg(steps: integer) -> float {
+  atan(((steps as float) * 0.25 / 1.7320508075688772) ?? 0.0) * 180.0 / 3.14159265358979
+}
+
+fn plain() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+// A single cell raised by `up` out of a flat plain of `mat`, which puts the same
+// step on all six of its sides at once.
+fn pillar(mat: integer, up: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, mat); }
+  }
+  ground_set(w, 0, 0, G + up, mat);
+  w
+}
+
+fn plant(w: World, q: integer, r: integer, sp: integer) {
+  c = world_ground_cell(w, q, r);
+  ground_write(w, q, r, hex_world::Hex {
+    h_height: c.h_height, h_material: c.h_material,
+    h_item: sp as u8? ?? 0, h_item_rotation: c.h_item_rotation,
+    h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });
+}
+
+// ── the table's own invariant, which is the plan's negative control ─────────
+
+// ⚠ THIS IS THE NEGATIVE CONTROL AS A PROPERTY OF THE TABLE, NOT OF A SCENE.
+// Plan 20 asks that *a slope that fits its limit must never become a face*, and a
+// scenario can only ever sample that. Here it is the one thing that makes it true
+// everywhere: nothing a gesture is ALLOWED to create can exceed what the surface
+// can stand. Break the ordering in a row and this fails without a world existing.
+fn test_no_grantable_slope_can_ever_be_a_face() {
+  n = 0;
+  for t in ground_kinds() {
+    if t.tr_face == FACE_NONE { continue; }
+    if t.tr_slope == SLOPE_FREE { continue; }
+    assert(t.tr_face >= t.tr_slope,
+      "{t.tr_name} may be GIVEN {t.tr_slope} but only STANDS at {t.tr_face} — "
+      + "a legal gesture would carve rock");
+    n = n + 1;
+  }
+  assert(n >= 2, "only {n} rows carry both limits; the ordering is untested");
+}
+
+// ⚠ AND A THRESHOLD OF ZERO WOULD MAKE EVERY STEP A FACE. `FACE_NONE` is 0 and is
+// checked by name, exactly as `SLOPE_FREE` is, because a step of 0 is a step — so
+// a row that means *never* must not be readable as *always*.
+fn test_a_row_that_faces_at_all_faces_above_zero() {
+  for t in ground_kinds() {
+    if t.tr_face == FACE_NONE { continue; }
+    assert(t.tr_face > 0, "{t.tr_name} carries a face threshold of {t.tr_face}");
+  }
+  assert(FACE_NONE == 0, "FACE_NONE stopped being the sentinel the readers check");
+}
+
+// ── a face appears where the ground cannot hold ─────────────────────────────
+
+fn test_grass_holds_its_bank_and_then_stops_being_grass() {
+  lim = ground_kind_of(SURFACE_MAT).tr_face;
+  hold = pillar(SURFACE_MAT, lim);
+  assert(faces_here(hold, 0, 0) == 0,
+    "grass at exactly {lim} steps ({steps_deg(lim):4.1}°) already faces");
+  give = pillar(SURFACE_MAT, lim + 1);
+  assert(faces_here(give, 0, 0) == 6,
+    "grass at {lim + 1} steps ({steps_deg(lim + 1):4.1}°) faces on "
+    + "{faces_here(give, 0, 0)} of its six sides, not all six");
+  assert(face_at(give, 0, 0, 0) == lim + 1,
+    "the face is {face_at(give, 0, 0, 0)} tall where the column stands {lim + 1} proud");
+}
+
+// ⚠ THE MEASUREMENT THAT MOVED THE DESIGN. A twenty-press grass hill has steps of
+// 20 — they stand at 71° — and it breaks NO slope limit anywhere, because grass
+// has none. Hanging the face off `tr_slope` would leave the steepest object the
+// editor can make without a single face on it.
+fn test_the_steepest_grass_the_brush_can_make_is_rock() {
+  w = plain();
+  cl = 0;
+  rs = 0;
+  for k in 0..20 { brush(w, 0, 0, 6, 12, cl, rs); }
+  steep = 0;
+  faces = 0;
+  for q in (0 - 14)..15 {
+    for r in (0 - 14)..15 {
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        st = ground_h(w, q, r) - ground_h(w, nq, nr);
+        if st > steep { steep = st; }
+        if face_at(w, q, r, d) > 0 { faces = faces + 1; }
+      }
+    }
+  }
+  assert(steep >= 12,
+    "the twenty-press hill is only {steep} steps steep — the scene stopped being the subject");
+  assert(slope_limit(w, 0, 0) == SLOPE_FREE,
+    "grass grew a slope limit, and this test no longer says what it says");
+  assert(faces > 0,
+    "a hill whose steepest step stands at {steps_deg(steep):4.1}° carries no face at all");
+}
+
+// ── and nowhere else ────────────────────────────────────────────────────────
+
+fn test_a_road_on_flat_ground_faces_nothing() {
+  w = plain();
+  for q in (0 - 12)..13 { ground_set(w, q, 0, G, ROAD_MAT); }
+  n = 0;
+  for q2 in (0 - 14)..15 {
+    for r2 in (0 - 3)..4 { n = n + faces_here(w, q2, r2); }
+  }
+  assert(n == 0, "{n} faces on ground with no height in it at all");
+}
+
+// ⚠ TODAY'S HILL IS UNCHANGED, which is plan 20 `A3`'s claim arriving early: one
+// stroke of the raise brush makes steps of 3 (23°), and 23° of grass is a
+// hillside. A rule that faced it would have re-shaped every world in the tree.
+fn test_one_stroke_of_the_brush_faces_nothing() {
+  w = plain();
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  n = 0;
+  worst = 0;
+  for q in (0 - 14)..15 {
+    for r in (0 - 14)..15 {
+      n = n + faces_here(w, q, r);
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        st = ground_h(w, q, r) - ground_h(w, nq, nr);
+        if st > worst { worst = st; }
+      }
+    }
+  }
+  assert(worst > 0, "the stroke landed nothing; the negative control is vacuous");
+  assert(n == 0,
+    "one stroke of the brush cut {n} faces — its steepest step is {worst} "
+    + "({steps_deg(worst):4.1}°), and grass stands to {ground_kind_of(SURFACE_MAT).tr_face}");
+}
+
+// ── which side the face belongs to ──────────────────────────────────────────
+
+// ⚠ THE HIGHER SIDE OWNS IT. A face is the exposed side of a column, so it is made
+// of what the STANDING ground is made of — and reading it from the low side would
+// paint a cutting the colour of the road at its foot.
+fn test_the_face_belongs_to_the_column_that_stands() {
+  w = pillar(SURFACE_MAT, 12);
+  assert(face_at(w, 0, 0, 0) == 12, "the raised cell carries no face");
+  (nq, nr) = hex_grid::hex_neighbor(0, 0, 0);
+  back = hex_grid::hex_neighbor_dir(nq, nr, 0, 0);
+  assert(face_at(w, nq, nr, back) == 0,
+    "the low cell claims a face of {face_at(w, nq, nr, back)} looking UP at one");
+}
+
+// ⚠ FABRIC DRAWS ITS OWN EDGES. A floor standing proud of the ground is a WALL and
+// the storey geometry already draws one; a rock face there would be a second thing
+// in the same place.
+fn test_a_built_floor_never_carries_a_rock_face() {
+  w = pillar(SURFACE_MAT, 0);
+  ground_set(w, 0, 0, G + 20, FLOOR_MAT);
+  assert(ground_kind_of(FLOOR_MAT).tr_face == FACE_NONE,
+    "the floor row grew a face threshold");
+  assert(faces_here(w, 0, 0) == 0,
+    "a floor 20 units proud cut {faces_here(w, 0, 0)} rock faces");
+}
+
+// ── what grows on it ────────────────────────────────────────────────────────
+
+fn test_roots_hold_two_steps_more_and_never_a_wall() {
+  lim = ground_kind_of(SURFACE_MAT).tr_face;
+  bare = pillar(SURFACE_MAT, lim + 1);
+  assert(faces_here(bare, 0, 0) == 6, "the bare control does not face");
+  wood = pillar(SURFACE_MAT, lim + 1);
+  plant(wood, 0, 0, 1);
+  assert(faces_here(wood, 0, 0) == 0,
+    "a planted cell faced at {lim + 1}, where roots should hold to {lim + FACE_ROOTED}");
+  // ⚠ AND NEVER OFF THE HOOK ENTIRELY, which is where this rule parts company with
+  // `slope_limit`'s. There is no soil on a wall for a root to be in.
+  cliff = pillar(SURFACE_MAT, lim + FACE_ROOTED + 1);
+  plant(cliff, 0, 0, 1);
+  assert(faces_here(cliff, 0, 0) == 6,
+    "planting took the face off a {steps_deg(lim + FACE_ROOTED + 1):4.1}° wall");
+  assert(slope_limit(wood, 0, 0) == SLOPE_FREE,
+    "the two planted rules converged; the comment on FACE_ROOTED is now wrong");
+}
+
+// ── the subject the plan names: a road cut into a hill ───────────────────────
+
+fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
+  w = plain();
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  for wq in 0..13 {
+    x = 12 - wq;
+    h = hs[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U);
+  }
+  cl2 = 0;
+  rs2 = 0;
+  slope_settle(w, 0, 0, cl2, rs2);
+
+  // The bank stands above the road, so the face is read from the bank's cells.
+  banked = 0;
+  onroad = 0;
+  for q in 0..13 {
+    for r in (0 - 4)..5 {
+      n = faces_here(w, q, r);
+      if n == 0 { continue; }
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) == ROAD_MAT {
+        onroad = onroad + n;
+      } else {
+        banked = banked + n;
+      }
+    }
+  }
+  assert(banked > 0, "the cutting has no face on its bank at all");
+  // ⚠ THE ROAD ITSELF IS NOT A CLIFF. Its own surface was settled to 1 per hex, so
+  // every face here has to be on the ground BESIDE it — if the road carries one,
+  // the settle and this rule disagree about the same cells.
+  assert(onroad == 0,
+    "{onroad} faces stand on the road surface, which `slope_settle` just flattened");
+}

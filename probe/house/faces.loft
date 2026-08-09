@@ -1,0 +1,194 @@
+// WHERE DOES A LIMIT BREAK, AND WHAT DOES THE PICTURE DO THERE? — plan 20 `A5`
+//
+// `A5` says *a face appears exactly where the limit cannot be met, and nowhere
+// else*. Before any rule is written, three things have to be measured rather
+// than assumed:
+//
+//   1. do break sites EXIST today, after the settle has done all it can?
+//   2. are the two negative controls clean — a road on flat ground, and a plain
+//      grass hill with no limited surface anywhere in it?
+//   3. what does the DRAWN surface do at a break? The mesher averages every
+//      corner over the three cells touching it, so a step in the store may not
+//      be a step in the picture at all.
+//
+// ⚠ THE SAMPLING TRAP IS THE ONE `roadwalk` HIT. The grades are frozen from a
+// read taken BEFORE any road is laid; reading as we walk reads the road we just
+// laid and drags the starting grade to the crest.
+use hex_editor;
+use hex_world;
+use hex_mesh;
+const U = 0.25;
+const G = 40;
+const HALF = 22;          // the window every scan walks, in hexes from the origin
+
+fn flat(w: World) {
+  for fq in (0 - 40)..41 {
+    for fr in (0 - 40)..41 { ground_set(w, fq, fr, G, SURFACE_MAT); }
+  }
+}
+
+// Walk a road from the far side of the hill to the crest, the way `roadwalk`
+// does, then hand the run back to the world's own rules.
+fn walk_road(w: World) {
+  hs: vector<integer> = [];
+  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  for wq in 0..13 {
+    x = 12 - wq;
+    h = hs[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U);
+  }
+  cl = 0;
+  rs = 0;
+  slope_settle(w, 0, 0, cl, rs);
+}
+
+// Does this edge break somebody's rule? A cell with no limit imposes nothing,
+// so the answer is *the step exceeds the limit of a cell that HAS one*.
+//
+// ⚠ ASKED OF BOTH CELLS, NOT OF THE PAIR. `T4`'s rule is that a cell is held to
+// its OWN limit, so the question has two answers and the edge breaks if either
+// says so.
+fn edge_break(w: World, aq: integer, ar: integer, bq: integer, br: integer) -> integer {
+  step = ground_h(w, aq, ar) - ground_h(w, bq, br);
+  if step < 0 { step = 0 - step; }
+  la = slope_limit(w, aq, ar);
+  lb = slope_limit(w, bq, br);
+  over = 0;
+  if la != SLOPE_FREE && step - la > over { over = step - la; }
+  if lb != SLOPE_FREE && step - lb > over { over = step - lb; }
+  over
+}
+
+// Every edge in the window, counted once: only directions 0..3 are walked, which
+// is what stops each edge being seen from both ends.
+fn scan(w: World, what: text) -> integer {
+  n = 0;
+  worst = 0;
+  wq = 0;
+  wr = 0;
+  wd = 0;
+  for sq in (0 - HALF)..(HALF + 1) {
+    for sr in (0 - HALF)..(HALF + 1) {
+      for sd in 0..3 {
+        (nq, nr) = hex_grid::hex_neighbor(sq, sr, sd);
+        over = edge_break(w, sq, sr, nq, nr);
+        if over > 0 {
+          n = n + 1;
+          if over > worst { worst = over; wq = sq; wr = sr; wd = sd; }
+        }
+      }
+    }
+  }
+  println("{what}: {n} edges break a limit, worst by {worst} at ({wq},{wr}) dir {wd}");
+  n
+}
+
+// The angle a drop of `dh` height units over `run` world units stands at.
+fn degs(dh: float, run: float) -> float {
+  a = dh; if a < 0.0 { a = 0.0 - a; }
+  atan((a * 0.25 / run) ?? 0.0) * 180.0 / 3.14159265358979
+}
+
+// The drawn height at a cell's centre — the mean of its six smoothed corners,
+// which is what `emit_hex_sloped` puts there and not the stored height.
+fn drawn_centre(w: World, cq: integer, cr: integer) -> float {
+  cs = hex_mesh::corner_heights(cq, cr, w);
+  s = 0.0;
+  for ci in 0..6 { s = s + (cs[ci] ?? 0.0); }
+  (s / 6.0) ?? 0.0
+}
+
+// What the eye is actually shown where the store has a step.
+//
+// ⚠ THE FIRST VERSION OF THIS WAS BLIND, AND IT REPORTED FINDINGS. It compared
+// corner `k` of one cell against corner `k` of the other, which are two
+// DIFFERENT corners — `hex_edge_corners(d)` numbers them in the asking cell's
+// own ring — so it read a seam of 3.00 where a step of 11 is stored and a seam
+// of 0.00 where a step of 6 is, and neither number meant anything.
+//
+// The shared corner is corner `ka` of this cell and corner of the neighbour's
+// ring for the OPPOSITE direction, and the two are equal by construction: both
+// average the same three cells. So the check below is the instrument checking
+// itself against something it should find — continuity — before it is trusted
+// to report a steepness.
+fn drawn(w: World, aq: integer, ar: integer, ad: integer) {
+  (bq, br) = hex_grid::hex_neighbor(aq, ar, ad);
+  ha = ground_h(w, aq, ar);
+  hb = ground_h(w, bq, br);
+  step = (ha - hb) as float;
+  (ka, kb) = hex_grid::hex_edge_corners(ad);
+  (kc, kd) = hex_grid::hex_edge_corners((ad + 3) % 6 ?? 0);
+  ca = hex_mesh::corner_heights(aq, ar, w);
+  cb = hex_mesh::corner_heights(bq, br, w);
+  // The shared pair, from each side. Corner rings run opposite ways, so `ka`
+  // pairs with `kd` and `kb` with `kc`.
+  s1a = ca[ka] ?? 0.0;
+  s1b = cb[kd] ?? 0.0;
+  s2a = ca[kb] ?? 0.0;
+  s2b = cb[kc] ?? 0.0;
+  seam = s1a - s1b;
+  if seam < 0.0 { seam = 0.0 - seam; }
+  seam2 = s2a - s2b;
+  if seam2 < 0.0 { seam2 = 0.0 - seam2; }
+  dca = drawn_centre(w, aq, ar);
+  dcb = drawn_centre(w, bq, br);
+  // Centre-to-centre is HEX_LEN; centre-to-corner is the circumradius, 1.0.
+  fall = degs(s1a - dca, 1.0);
+  fallb = degs(s1b - dcb, 1.0);
+  if degs(s2a - dca, 1.0) > fall { fall = degs(s2a - dca, 1.0); }
+  if degs(s2b - dcb, 1.0) > fallb { fallb = degs(s2b - dcb, 1.0); }
+  println("  ({aq},{ar})->({bq},{br}): stored step {ha - hb}, which as a face stands at {degs(step, 1.7320508075688772):5.1}°");
+  println("    the drawn surface is CONTINUOUS here: seam {seam:4.2} and {seam2:4.2} height units");
+  println("    drawn centres {dca:6.2} -> {dcb:6.2} (a drop of {dca - dcb:5.2} against a stored {ha - hb})");
+  println("    steepest drawn triangle either side: {fall:5.1}° and {fallb:5.1}°");
+}
+
+fn main() {
+  // ── 1. the subject: a road walked up a hill ────────────────────────────
+  w = world_new(U, 0, 8, 3).wn_world;
+  flat(w);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  walk_road(w);
+  prof = "";
+  for pq in 0..13 { prof += "{ground_h(w, pq, 0) - G} "; }
+  println("the road, from the crest: {prof}");
+  hill = "";
+  for hq in 0..13 { hill += "{ground_h(w, hq, 0 - 3) - G} "; }
+  println("the hill three cells beside it: {hill}");
+  n1 = scan(w, "road walked up a hill");
+
+  // ── 2. the negative controls ───────────────────────────────────────────
+  w2 = world_new(U, 0, 8, 3).wn_world;
+  flat(w2);
+  walk_road(w2);
+  n2 = scan(w2, "the same road on FLAT ground");
+
+  w3 = world_new(U, 0, 8, 3).wn_world;
+  flat(w3);
+  cl3 = 0;
+  rs3 = 0;
+  brush(w3, 0, 0, 24, 12, cl3, rs3);
+  n3 = scan(w3, "the hill alone, no road");
+
+  // A hill twenty presses deep — the shape the author asked for, all of it grass.
+  w4 = world_new(U, 0, 8, 3).wn_world;
+  flat(w4);
+  cl4 = 0;
+  rs4 = 0;
+  for k in 0..20 { brush(w4, 0, 0, 6, 12, cl4, rs4); }
+  steep = "";
+  for kq in 0..13 { steep += "{ground_h(w4, kq, 0) - G} "; }
+  println("twenty presses of grass: {steep}");
+  n4 = scan(w4, "a twenty-press grass hill");
+
+  // ── 3. what the picture does at the worst break ────────────────────────
+  println("what the eye is shown at the road's edge:");
+  drawn(w, 0, 0 - 1, 1);
+  drawn(w, 4, 0 - 1, 1);
+  drawn(w, 8, 0 - 1, 1);
+
+  println("");
+  println("subject {n1}, flat road {n2}, hill alone {n3}, steep grass {n4}");
+}
