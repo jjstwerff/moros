@@ -59,7 +59,7 @@ to the built-in numbering.
 | **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` + `hex_mesh/tests/terrain_link.loft` | ✅ `db871b6` |
 | **`A2c`** — a linear run bends ALONG itself | MH | `tests/run_slope.loft` | ◐ along shipped `4f43a79`; **across not built** |
 | **`A7`** — the limit is the world's, not one gesture's | MH | `tests/slope_limit.loft`'s four settle claims | ✅ `0743c1a` |
-| **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | Open |
+| **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | Open — and now MEASURED: cut-only carves a **20-metre canyon** at the top of a descending road (`probe/house/roadcost.loft`) |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
@@ -158,12 +158,15 @@ said out loud (*"seated at 10 (10 from your feet, cut and fill 10)"*), which is 
 `ak_residual` is for. **Open question 8 is closed by that**: the pad does not want an
 apron, it wants an honest residual and `A5`'s faces on the cut.
 
-⚠ **`slope_settle` HAS NO CONSUMER EITHER**, and that is `A7`'s whole deliverable —
-*any gesture that paints a limited surface can hand the world back inside its own
-rules*. Five tests and three probes call it; no gesture and no server code does. The
-editor's roads still do not have their limits, which is the defect `A7` shipped to
-close. Not fixed here because wiring it changes what every road in the tree looks like
-and wants its own before/after.
+✅ **`slope_settle` IS WIRED (`dd508ff`)** — `road_lay` settles its own run, guarded by
+a constant-cost check so the editor's flat road pays nothing (`w_tau` 414 either way on
+80 cells) and a road that varies with the ground settles as `A7` intended. See
+[TERRAIN_EDITS §T5](../../doc/claude/TERRAIN_EDITS.md).
+
+⚠ **AND IT PUT A NUMBER ON WHAT `A8` IS FOR.** Cut-only cannot lay a descending road:
+walked down a 3-per-hex ramp it satisfies its limit by cutting its top end **80 units —
+20 metres — below the natural ground.** That stretch wants an embankment, which is
+exactly `A8`'s fill.
 
 ## Open questions
 

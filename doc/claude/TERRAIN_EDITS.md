@@ -158,6 +158,29 @@ road's limit is 1**.
 surface can hand the world back inside its own rules. After it:
 `12 11 10 9 8 7 6 5 4 3 2 1 0` — a 1-per-hex ramp cut into the hill.
 
+⚠ **AND IT IS WIRED NOW — `road_lay` SETTLES ITS OWN RUN.** It shipped with no
+consumer: five tests and three probes called it and no gesture did, so a road written
+by the editor did not have the limits this rule exists to give it.
+
+**Guarded, and the guard is what makes it affordable.** `slope_settle` walks the whole
+connected run, so calling it per stroke is linear work on a run that grows with the
+strokes — measured (`probe/house/roadcost.loft`), `w_tau` over 10/20/40/80 cells goes
+`190 / 380 / 760 / 1520` unwired against `415 / 1330 / 4660 / 17320` per stroke, which
+is quadratic. `stroke_over_limit` asks a constant-cost question first.
+
+⚠ **AND ON THE EDITOR'S OWN ROAD THE ANSWER IS ALWAYS NO.** `road_h` is frozen ONCE
+when road mode is switched on and every stroke uses it, so the strip is FLAT however
+far it runs and can never break its own limit. Measured, an 80-cell flat road costs
+`w_tau` **414 either way — not one write.** The guard also ignores the seam to the
+ground alongside, which is `T4`'s deliberate step: counting it would fire on every
+footfall of every road.
+
+⚠ **THE GUARD WAS ONE-SIDED FIRST, AND IT IS THE SAME BUG `faced_between` HAD.** It
+asked *is this cell too high above its neighbour* — true climbing, false descending,
+because descending the high cell is the previous stroke's and sits OUTSIDE the disc
+just stamped. Only the INCREMENTAL walk can see it: asking the guard directly lays the
+whole road first, so the disc holds both ends and a one-sided test trips either way.
+
 ⚠ **IT ONLY EVER CUTS — TODAY, AND THAT IS KNOWN TO BE HALF THE ANSWER.** A road that cannot
 climb a hill within its limit is cut into it, which is what a road mostly is. But a real one
 balances:
