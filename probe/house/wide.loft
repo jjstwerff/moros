@@ -1,0 +1,39 @@
+// A ROAD TWO CELLS WIDE — flat across, bending along.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // a road two cells wide, running east-west
+  for q2 in (0 - 25)..26 {
+    ground_set(w, q2, 0, G, ROAD_MAT);
+    ground_set(w, q2, 1, G, ROAD_MAT);
+  }
+  cl = 0;
+  rs = 0;
+  // ⚠ THE STROKE IS OFFSET ACROSS THE ROAD, which is the only way a cross-fall can
+  // appear at all: centred on it, both sides get the same falloff and "flat across"
+  // is satisfied by symmetry rather than by the rule.
+  brush(w, 0, 4, 12, 9, cl, rs);
+  worstx = 0;
+  along = "";
+  across = "";
+  for q3 in 0..8 {
+    a = ground_h(w, q3, 0);
+    b = ground_h(w, q3, 1);
+    d = a - b;
+    if d < 0 { d = 0 - d; }
+    if d > worstx { worstx = d; }
+    along += "{a - G} ";
+    across += "{d} ";
+  }
+  println("along the near lane: {along}");
+  println("cross-fall per station: {across}");
+  println("worst cross-fall {worstx}  (clamped {cl}, residual {rs})");
+  if worstx == 0 { println("=> the road is FLAT ACROSS its width"); }
+  else { println("=> the road tilts {worstx} across its width"); }
+}

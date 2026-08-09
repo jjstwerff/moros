@@ -5,7 +5,7 @@
 
 ## Status
 
-`A1`, `A1b` and `A2` are **shipped**: a raise no longer repaints or shears what it lifts, and a
+`A1`, `A1b`, `A2` and `A2c`'s along half are **shipped**: a raise no longer repaints or shears what it lifts, and a
 connected structure — floor, walls, fences — rides the terrain rigidly and ends up on its
 own level pad. `A2`–`A5` are **designed, not built**. Today's unlimited falloff is not
 wrong and is not going away: `A2` makes it **one row of a table** — the grass row.
@@ -71,7 +71,7 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 | **`A1`** — a building rides the terrain rigidly | M | `tests/raise_structure.loft` (7 claims), `raise_keeps.loft` (4) | ✅ shipped `cab574d` |
 | **`A1b`** — ground a structure encloses is part of it | S | `tests/raise_structure.loft` — a fenced yard comes up level with its fence, and the outside still slopes | ✅ shipped |
 | **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` (7 claims) + `hex_mesh/tests/terrain_link.loft` (6) | ✅ shipped |
-| **`A2c`** — LINEAR features bend along their run and are flat across it | MH | a road, a corridor and a city wall each climb along and stay level across; an ENCLOSING wall stays rigid | Open |
+| **`A2c`** — a linear run bends ALONG itself; a building stays rigid | MH | `tests/run_slope.loft` (5 claims) | ◐ the along half is shipped; **across is not built** — see below |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor under a raise keeps its cover within a band, and its gradient within its limit | Blocked on `A2` |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
@@ -180,6 +180,39 @@ the scramble itself is pinned so a future re-order announces itself.
 ⚠ **`names.sh` CAUGHT THE STRUCT NAME, WHICH IS WHAT IT IS FOR.** `Terrain` is already
 published by the registry's `hex_terrain`; a public name is global across a consumer's whole
 graph, so it became `GroundKind`. The check found it before the suite did.
+
+## What `A2c` turned up — ⚠ **the across half was built twice and removed twice**
+
+**Shipped:** the discriminator, and it is not about length. A component that ENCLOSES
+something — a floor cell, or any pocket the flood can bound — is a building and stays rigid.
+A component that merely RUNS is a linear feature and is handed back to the ground: it takes
+the falloff and is then held to its own limit. `edge_kinds()` gives a wall 1 and a fence 2,
+the same table treatment the ground kinds got. Measured, a 51-cell wall went from **one slab,
+every cell +12** to `6 5 4 3 2 1 0` — a road's profile, which is what *a wall can slope like
+a road* asks for.
+
+⚠ **AND THE ACROSS HALF IS NOT BUILT, WHICH IS THE REAL FINDING.** *Flat in the other
+direction* was implemented, measured, and removed — twice. **In a hex grid the two lanes of a
+road are offset by half a station**: there is no cell "directly across", so every sideways
+test also couples cells at different points ALONG the run. The equalities chain down the line
+and the whole run collapses to its original height with every count agreeing — a 51-cell wall
+did it first, and after the rule was narrowed to material runs a genuinely two-wide road did
+it again.
+
+⚠ **A TWO-WIDE ROAD COMES OUT LEVEL ANYWAY, and that is emergent rather than enforced.** The
+lanes are neighbours, so the along-limit already ties them to within one unit; under a stroke
+offset across the road they come out equal. The gate asserts *within the limit*, not *zero*,
+and says why — asserting zero would be claiming a rule that is not there.
+
+**What across still needs**: a PROJECTION onto the run's own axis, so that *same station* is a
+fact rather than a guess about which of six directions is sideways. Written down rather than
+approximated, because an across-rule that flattens roads is worse than none.
+
+⚠ **AND IT COST 262 ms A STROKE BEFORE THE LIMIT WAS MEMOISED.** A cell's limit is constant
+for a stroke and costs a material read plus six `wall_of` calls for a marked run; the
+relaxation was asking up to twelve times. Memoised: **69 ms** with a yard in the disc, 4 ms on
+open ground. ⚠ Still above the 42/2 that `A1b` measured, and that is the price of `A2c` —
+recorded rather than rounded away, because `LEVEL` calls `brush` on every footfall.
 
 ## What is already measured for `A2c`
 

@@ -2955,6 +2955,52 @@ pub fn ground_kind_of(mat: integer) -> GroundKind {
   GroundKind { tr_mat: mat, tr_name: "grass", tr_slope: SLOPE_FREE, tr_fabric: false }
 }
 
+// ── AND THE SAME FOR AN EDGE — plan 20 `A2c` ───────────────────────────────
+//
+// *A wall (city or castle) can slope too like a road (see the great wall of china).*
+// A wall is not a terrain — it is an EDGE material, in its own numbering where `1`
+// means wall while `1` on the cell axis means grass — so it gets its own table for
+// the same reason the ground kinds got theirs: a limit written into a gesture is a
+// second copy of a set nobody owns.
+//
+// ⚠ ONLY THE SLOPE LIVES HERE YET. `wall_up` in the server still hard-codes the
+// HEIGHT of each kind (`WALL_UP` 12, `FENCE_UP` 4, a door 0), which is the same
+// shape of hard-coding one attribute over — named rather than fixed, because moving
+// it is a server change and this row is a library one.
+pub struct EdgeKind { ek_mat: integer, ek_name: text, ek_slope: integer }
+
+pub fn edge_kinds() -> vector<EdgeKind> {
+  [
+    // A city wall climbs like a road: slowly, and it may climb a long way.
+    EdgeKind { ek_mat: WALL_MAT,  ek_name: "wall",  ek_slope: 1 },
+    EdgeKind { ek_mat: DOOR_MAT,  ek_name: "door",  ek_slope: 1 },
+    // A fence follows the ground more willingly than masonry does.
+    EdgeKind { ek_mat: FENCE_MAT, ek_name: "fence", ek_slope: 2 },
+  ]
+}
+
+pub fn edge_kind_of(mat: integer) -> EdgeKind {
+  for e in edge_kinds() {
+    if e.ek_mat == mat { return e; }
+  }
+  EdgeKind { ek_mat: mat, ek_name: "wall", ek_slope: 1 }
+}
+
+// The steepest step the run through this cell may take — the STRICTEST of the edges
+// it carries, because a wall and a fence meeting at a post are one run and the
+// masonry is what cannot bend.
+pub fn run_slope(w: World, q: integer, r: integer) -> integer {
+  ref = (terrain_h(q, r, w) as float) * w.w_unit;
+  lim = SLOPE_FREE;
+  for d in 0..6 {
+    m = wall_of(w, q, r, d, ref);
+    if m == 0 { continue; }
+    e = edge_kind_of(m).ek_slope;
+    if lim == SLOPE_FREE || e < lim { lim = e; }
+  }
+  lim
+}
+
 // ── HOW STEEP MAY THIS CELL GET? ────────────────────────────────────────────
 //
 // *Roads and fields can slope with a limit, grass has a higher limit, forest even
@@ -2994,13 +3040,38 @@ pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
 // is a bound on cost, and reaching it is reported rather than swallowed.
 const SLOPE_PASSES = 12;
 
+// ⚠ THE LIMIT IS MEMOISED FOR THE SAME REASON `is_fabric` IS. A cell's limit is
+// constant for a stroke, and computing it means a material read plus — for a marked
+// run — six `wall_of` calls. The relaxation asks up to `SLOPE_PASSES` times, so the
+// same answer was being recomputed twelvefold: measured, `A2c` took a stroke over a
+// yard from 42 ms to 262 ms before this, and `LEVEL` calls `brush` every footfall.
+struct LimAt  { la_key: integer, la_lim: integer }
+struct Lims   { l_by: hash<LimAt[la_key]> }
+
 struct OrigAt { oa_key: integer, oa_h: integer }
 struct Origs  { o_by: hash<OrigAt[oa_key]> }
 
 // Pull every moved, unlimited-by-fabric cell back until no edge breaks its surface's
 // own limit. Returns the largest amount any cell had to give up.
+// Are these two cells part of the SAME run? — plan 20 `A2c`.
+//
+// ⚠ A RUN IS EITHER A MARKED ONE OR A MATERIAL ONE. A wall or fence line is decided
+// by the component walk and arrives here in `runs`; a road is decided by its
+// material and never entered that walk at all. Both are runs, and *roads do not
+// flow* applies to both.
+fn same_run(w: World, aq: integer, ar: integer, bq: integer, br: integer,
+            runs: Seen) -> boolean {
+  if runs.s_by[age_like_key(aq, ar)] != null && runs.s_by[age_like_key(bq, br)] != null {
+    return true;
+  }
+  ma = world_ground_cell(w, aq, ar).h_material as integer ?? 0;
+  mb = world_ground_cell(w, bq, br).h_material as integer ?? 0;
+  if ma == 0 || ma != mb { return false; }
+  ground_kind_of(ma).tr_slope != SLOPE_FREE
+}
+
 fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
-               taken: Seen, origs: Origs,
+               taken: Seen, runs: Seen, origs: Origs, lims: &Lims,
                clamped: &integer, residual: &integer) {
   for pass in 0..SLOPE_PASSES {
     moved = false;
@@ -3012,8 +3083,41 @@ fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
         // ⚠ FABRIC IS EXEMPT. A building's pad is rigid by `A1`; relaxing it would
         // put the shear back that `A1` exists to remove, one rule later.
         if taken.s_by[age_like_key(q, r)] != null { continue; }
-        lim = slope_limit(w, q, r);
+        lk = age_like_key(q, r);
+        lrec = lims.l_by[lk];
+        if lrec == null {
+          lim0 = slope_limit(w, q, r);
+          // A marked run carries its own limit, from the EDGE it is built of.
+          if runs.s_by[lk] != null {
+            rl = run_slope(w, q, r);
+            if rl != SLOPE_FREE && (lim0 == SLOPE_FREE || rl < lim0) { lim0 = rl; }
+          }
+          lims.l_by += LimAt { la_key: lk, la_lim: lim0 };
+          lim = lim0;
+        } else {
+          lim = lrec.la_lim;
+        }
         if lim == SLOPE_FREE { continue; }
+        // ⚠ ALONG WORKS; ACROSS IS NOT BUILT, AND THE REASON IS THE LATTICE.
+        // *Roads do not flow: in the direction of the road they can bend but are
+        // flat in the other direction.* The ALONG half is what the limit above
+        // delivers, and it is what makes a city wall climb its hill instead of
+        // moving as one slab.
+        //
+        // The ACROSS half was built and removed TWICE, each time after measuring
+        // it: in a hex grid the two lanes of a road are offset by HALF A STATION,
+        // so there is no cell "directly across" — every sideways test also couples
+        // cells at different points ALONG the run, the equalities chain down the
+        // line, and the whole run collapses to its original height with every count
+        // agreeing. A 51-cell wall did it first; a genuinely two-wide road did it
+        // again after the rule was narrowed to material runs.
+        //
+        // What it needs is a PROJECTION onto the run's own axis, so that *same
+        // station* is a fact rather than a guess about which of six directions is
+        // sideways. That is `A2c`'s remaining half, written down in plan 20 rather
+        // than approximated here: an across-rule that flattens roads is worse than
+        // none.
+
         rec = origs.o_by[age_like_key(q, r)];
         if rec == null { continue; }
         h0 = rec.oa_h;
@@ -3076,7 +3180,15 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
   // asked for and sits on the crest, rather than by what its furthest corner got.
   // That is the difference between *a house on its own hill* and *a house on the
   // side of one*.
-  taken = Seen { s_by: [] };
+  // ⚠ THREE SETS, AND THE SPLIT IS LOAD-BEARING. The flood claims a cell into
+  // `visited` so no component is walked twice; only when the component has been
+  // JUDGED does it become `taken` (rigid) or `runs` (linear). The first build wrote
+  // straight into `taken` during the flood, so a run was already marked rigid before
+  // the discriminator saw it — and the falloff pass, which skips `taken`, then left
+  // a 51-cell wall standing exactly where it was.
+  visited = Seen { s_by: [] };   // every fabric cell any component has claimed
+  taken = Seen { s_by: [] };     // rigid bodies — a building and what it encloses
+  runs = Seen { s_by: [] };      // linear runs — a road, a wall, a fence line
   memo = FabMemo { fm_yes: Seen { s_by: [] }, fm_no: Seen { s_by: [] } };
   // ⚠ RECORDED BEFORE ANYTHING MOVES, because the relaxation's whole rule is *pull
   // back toward where this started* — and the start is the one state known to
@@ -3096,13 +3208,13 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
       r0 = tr + sr;
       if hex_distance(q0, r0, tq, tr) >= rad { continue; }
       if !fabric_memo(w, q0, r0, memo) { continue; }
-      if taken.s_by[age_like_key(q0, r0)] != null { continue; }
+      if visited.s_by[age_like_key(q0, r0)] != null { continue; }
       // flood this structure — ⚠ WHEREVER IT GOES, disc or no disc. A fence that
       // runs out past the rim is one fence, and lifting only the half inside would
       // tear it exactly where the falloff would have.
       mq: vector<integer> = [q0];
       mr: vector<integer> = [r0];
-      taken.s_by += SeenAt { sa_key: age_like_key(q0, r0) };
+      visited.s_by += SeenAt { sa_key: age_like_key(q0, r0) };
       head = 0;
       while head < len(mq) {
         cq = mq[head] ?? 0;
@@ -3111,24 +3223,58 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
         for dir in 0..6 {
           (aq, ar) = hex_grid::hex_neighbor(cq, cr, dir);
           if !fabric_memo(w, aq, ar, memo) { continue; }
-          if taken.s_by[age_like_key(aq, ar)] != null { continue; }
+          if visited.s_by[age_like_key(aq, ar)] != null { continue; }
           if len(mq) >= LIFT_CAP { continue; }
-          taken.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
+          visited.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
           mq += [aq];
           mr += [ar];
         }
       }
+      // ⚠ DOES THIS COMPONENT ENCLOSE ANYTHING? — plan 20 `A2c`, and it is the whole
+      // discriminator. *A wall (city or castle) can slope too, like a road.*
+      // `A1`'s rule — follow a run wherever it goes and move it rigidly — is right
+      // for a garden fence bounding a yard and wrong for a wall crossing a county:
+      // measured, a 51-cell wall came up as ONE SLAB, every cell +12, floating at
+      // its ends. What separates them is not length, it is whether the thing has an
+      // INSIDE.
+      //
+      //   encloses — a floor, its walls, a fenced yard → a building, rigid
+      //   runs     — a road, a corridor, a city wall   → a linear feature, it bends
+      //
+      // A floor makes it a building outright; so does any pocket the flood can
+      // bound. Both are already computed, so the discriminator costs a comparison.
+      encloses = false;
+      for fi in 0..len(mq) {
+        if ground_kind_of(world_ground_cell(w, mq[fi] ?? 0, mr[fi] ?? 0).h_material
+                          as integer ?? 0).tr_fabric { encloses = true; }
+      }
+      before_pockets = len(mq);
       // ⚠ THE ENCLOSURE JOINS BEFORE THE DELTA IS CHOSEN, so a yard's own cells
       // count toward which delta the body takes — a paddock whose middle sits under
       // the stroke rises by what its middle was asked for.
-      absorb_enclosed(w, mq, mr, taken, tq, tr, 2 * rad, memo);
-      best = 0;
-      for i in 0..len(mq) {
-        cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
-        if bigger(cand, best) { best = cand; }
+      absorb_enclosed(w, mq, mr, visited, tq, tr, 2 * rad, memo);
+      if len(mq) > before_pockets { encloses = true; }
+
+      if encloses {
+        for ti in 0..len(mq) {
+          taken.s_by += SeenAt { sa_key: age_like_key(mq[ti] ?? 0, mr[ti] ?? 0) };
+        }
+        best = 0;
+        for i in 0..len(mq) {
+          cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
+          if bigger(cand, best) { best = cand; }
+        }
+        // ⚠ THE WHOLE COLUMN, so the roof over a floor keeps its gap.
+        for j in 0..len(mq) { lift_column(w, mq[j] ?? 0, mr[j] ?? 0, best); }
+      } else {
+        // ⚠ A RUN IS HANDED BACK TO THE GROUND. It takes the falloff like the earth
+        // it is built on, and `slope_relax` then holds it to its own limit ALONG the
+        // run and level ACROSS it. Marked rather than lifted, so the falloff pass
+        // below does not skip it.
+        for k in 0..len(mq) {
+          runs.s_by += SeenAt { sa_key: age_like_key(mq[k] ?? 0, mr[k] ?? 0) };
+        }
       }
-      // ⚠ THE WHOLE COLUMN, so the roof over a floor keeps its gap — `lift_column`.
-      for j in 0..len(mq) { lift_column(w, mq[j] ?? 0, mr[j] ?? 0, best); }
     }
   }
 
@@ -3177,7 +3323,8 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
   }
 
   // ── and then the surfaces that may not take what they were given ──────────
-  slope_relax(w, tq, tr, rad, taken, origs, clamped, residual);
+  lims = Lims { l_by: [] };
+  slope_relax(w, tq, tr, rad, taken, runs, origs, lims, clamped, residual);
 }
 
 // The cell `PEAK_AHEAD` hexes along the author's facing, or a refusal.

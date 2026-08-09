@@ -1,0 +1,140 @@
+// A LINEAR RUN BENDS ALONG ITSELF; A BUILDING STAYS RIGID — plan 20 `A2c`.
+//
+// *A wall (city or castle) can slope too like a road (see the great wall of china).*
+// `A1` moved every connected fabric component rigidly, which is right for a garden
+// fence bounding a yard and wrong for a wall crossing a county: measured, a 51-cell
+// wall came up as ONE SLAB, every cell +12, floating at its ends.
+//
+// What separates them is not length — it is whether the thing has an INSIDE.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn plain() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn line(w: World, mat: integer, from: integer, to: integer) {
+  for q in from..to { wall_set(w, q, 0, SLOT_NE, mat, G, (G as float) * U); }
+}
+
+fn raise(w: World, q: integer, r: integer, amp: integer, rad: integer) -> integer {
+  cl = 0;
+  rs = 0;
+  brush(w, q, r, amp, rad, cl, rs);
+  cl
+}
+
+fn steepest_along(w: World, n: integer) -> integer {
+  worst = 0;
+  prev = ground_h(w, 0, 0);
+  for q in 1..n {
+    st = prev - ground_h(w, q, 0);
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+    prev = ground_h(w, q, 0);
+  }
+  worst
+}
+
+fn test_a_city_wall_climbs_instead_of_moving_as_one_slab() {
+  w = plain();
+  line(w, WALL_MAT, 0 - 25, 26);
+  raise(w, 0, 0, 12, 7);
+  // ⚠ THE SLAB IS THE THING BEING REFUSED. Before `A2c` every cell of this wall
+  // came out at +12, including the ones far outside the stroke.
+  assert(ground_h(w, 20, 0) == G,
+         "the wall moved {ground_h(w, 20, 0) - G} at 20 hexes out — it is still a slab");
+  assert(steepest_along(w, 8) <= edge_kind_of(WALL_MAT).ek_slope,
+         "the wall's steepest step is {steepest_along(w, 8)}, over its limit");
+  assert(ground_h(w, 0, 0) > G, "the wall did not climb at all");
+}
+
+fn test_a_fence_is_allowed_a_steeper_climb_than_masonry() {
+  // ⚠ THE ORDERING IS THE CLAIM. If both merely "passed their own limit" the table
+  // could be all ones and this file would still be green.
+  assert(edge_kind_of(FENCE_MAT).ek_slope > edge_kind_of(WALL_MAT).ek_slope,
+         "a fence must be allowed more than a wall");
+  ww = plain();
+  line(ww, WALL_MAT, 0 - 25, 26);
+  raise(ww, 0, 0, 12, 7);
+  wf = plain();
+  line(wf, FENCE_MAT, 0 - 25, 26);
+  raise(wf, 0, 0, 12, 7);
+  assert(ground_h(wf, 0, 0) > ground_h(ww, 0, 0),
+         "the fence reached {ground_h(wf, 0, 0) - G} and the wall {ground_h(ww, 0, 0) - G} "
+       + "— a fence must get further up the same hill");
+}
+
+fn test_a_building_still_moves_rigidly() {
+  // ⚠ THE CONTROL THAT KEEPS `A1` ALIVE. A discriminator that called everything a
+  // run would satisfy every claim above and would put back the shear `A1` removed.
+  w = plain();
+  runs = WallRuns { items: [] };
+  ack = place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, G, runs);
+  assert(ack.ak_ok, "{ack.ak_why}");
+  fq: vector<integer> = [];
+  fr: vector<integer> = [];
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT {
+        fq += [q];
+        fr += [r];
+      }
+    }
+  }
+  raise(w, ack.ak_q, ack.ak_r, 6, 7);
+  lo = 99999;
+  hi = 0 - 99999;
+  for i in 0..len(fq) {
+    h = ground_h(w, fq[i] ?? 0, fr[i] ?? 0);
+    if h < lo { lo = h; }
+    if h > hi { hi = h; }
+  }
+  assert(hi == lo, "the floor sheared by {hi - lo} — a building was read as a run");
+}
+
+fn test_a_fenced_yard_still_moves_rigidly() {
+  // An enclosure is a building however thin its walls: it has an INSIDE.
+  w = plain();
+  for q in (0 - 4)..5 {
+    for r in (0 - 4)..5 {
+      if hex_distance(q, r, 0, 0) == 4 {
+        for slot in 0..3 { wall_set(w, q, r, slot, FENCE_MAT, G, (G as float) * U); }
+      }
+    }
+  }
+  raise(w, 0, 0, 6, 7);
+  assert(ground_h(w, 0, 0) == ground_h(w, 4, 0),
+         "the yard ({ground_h(w, 0, 0)}) and its fence ({ground_h(w, 4, 0)}) came apart "
+       + "— an enclosure was read as a run");
+}
+
+fn test_a_two_wide_road_comes_out_level_across() {
+  // ⚠ EMERGENT, NOT ENFORCED, AND THE COMMENT IN `slope_relax` SAYS SO. The lanes
+  // are neighbours, so the along-limit already ties them to within one unit — and
+  // under a stroke offset across the road they come out equal. A rule that FORCED
+  // them equal was built and removed twice: in a hex grid the lanes are offset by
+  // half a station, so every sideways test also couples different points along the
+  // run and the whole road collapses.
+  w = plain();
+  for q in (0 - 25)..26 {
+    ground_set(w, q, 0, G, ROAD_MAT);
+    ground_set(w, q, 1, G, ROAD_MAT);
+  }
+  raise(w, 0, 4, 12, 9);
+  worst = 0;
+  for q2 in 0..8 {
+    d = ground_h(w, q2, 0) - ground_h(w, q2, 1);
+    if d < 0 { d = 0 - d; }
+    if d > worst { worst = d; }
+  }
+  assert(worst <= ground_kind_of(ROAD_MAT).tr_slope,
+         "the road tilts {worst} across its width");
+}

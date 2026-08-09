@@ -35,4 +35,27 @@ fn main() {
   for q3 in 0..8 { if ground_h(w, q3, 0) != ground_h(w, 0, 0) { flat = false; } }
   if flat { println("=> the wall moved RIGIDLY — one slab, no slope along its run"); }
   else { println("=> the wall took a slope along its run"); }
+  inspect();
+}
+
+fn inspect() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  for q2 in (0 - 25)..26 { wall_set(w, q2, 0, SLOT_NE, WALL_MAT, G, (G as float) * U); }
+  println("");
+  println("before the stroke:");
+  for q3 in 0..4 {
+    println("  ({q3},0)  fabric={is_fabric(w, q3, 0)}  run_slope={run_slope(w, q3, 0)}  h={ground_h(w, q3, 0)}");
+    println("  ({q3},-1) fabric={is_fabric(w, q3, 0 - 1)} run_slope={run_slope(w, q3, 0 - 1)} h={ground_h(w, q3, 0 - 1)}");
+  }
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  println("after (clamped {cl}, residual {rs}):");
+  for q4 in 0..8 {
+    println("  ({q4},0) h={ground_h(w, q4, 0)}  ({q4},-1) h={ground_h(w, q4, 0 - 1)}  "
+          + "({q4},2) h={ground_h(w, q4, 2)}  run_slope={run_slope(w, q4, 0)}");
+  }
 }
