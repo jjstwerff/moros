@@ -206,10 +206,16 @@ fn test_roots_hold_two_steps_more_and_never_a_wall() {
 // ── the subject the plan names: a road cut into a hill ───────────────────────
 
 fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
+  // ⚠ THE HILL GOT STEEPER WHEN `A8` LANDED, AND THAT IS THE FEATURE. A road that
+  // balances its cut against a fill sits HIGHER than a cut-only one — measured on
+  // this fixture, `12 11 10 … 0` became `19 18 17 … 7` — so its cutting is shallower
+  // and a hill of 24 no longer banks steeply enough for grass to give way. A face
+  // is still what a cutting has; it just takes a real hill now. If this fixture is
+  // ever made gentle again, this test goes quiet rather than red.
   w = plain();
   cl = 0;
   rs = 0;
-  brush(w, 0, 0, 24, 12, cl, rs);
+  brush(w, 0, 0, 60, 10, cl, rs);
   hs: vector<integer> = [];
   for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
   for wq in 0..13 {
@@ -224,21 +230,39 @@ fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
   // The bank stands above the road, so the face is read from the bank's cells.
   banked = 0;
   onroad = 0;
+  road_to_road = 0;
   for q in 0..13 {
     for r in (0 - 4)..5 {
       n = faces_here(w, q, r);
       if n == 0 { continue; }
       if (world_ground_cell(w, q, r).h_material as integer ?? 0) == ROAD_MAT {
         onroad = onroad + n;
+        // ⚠ AND WHICH SIDE, which is the whole of the distinction below.
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != ROAD_MAT { continue; }
+          if face_at(w, q, r, d) > 0 { road_to_road = road_to_road + 1; }
+        }
       } else {
         banked = banked + n;
       }
     }
   }
   assert(banked > 0, "the cutting has no face on its bank at all");
-  // ⚠ THE ROAD ITSELF IS NOT A CLIFF. Its own surface was settled to 1 per hex, so
-  // every face here has to be on the ground BESIDE it — if the road carries one,
-  // the settle and this rule disagree about the same cells.
-  assert(onroad == 0,
-    "{onroad} faces stand on the road surface, which `slope_settle` just flattened");
+  // ⚠ THIS ROW USED TO SAY `onroad == 0`, AND `A8` IS WHY IT NO LONGER CAN. When the
+  // settle only ever CUT, a road sat at or below the ground everywhere and could not
+  // stand over anything. Now it balances its cut against a fill, so its downhill
+  // side is an EMBANKMENT — and the side of an embankment steeper than earth will
+  // stand at is a face, which is plan 20's open question 2 answering itself: *"often
+  // using stones to create a wall below the road"* is what `A5` already draws there.
+  //
+  // What must still be zero is a face between two ROAD cells. That is the surface
+  // the settle flattened, and a face on it would mean the settle and the face rule
+  // disagree about the same pair of cells.
+  assert(road_to_road == 0,
+    "{road_to_road} faces stand BETWEEN road cells, which `slope_settle` just "
+    + "settled to {ground_kind_of(ROAD_MAT).tr_slope} a hex");
+  assert(onroad > 0,
+    "the road stands over nothing anywhere — `A8`'s fill placed no embankment, so "
+    + "this fixture is back to cut-only");
 }

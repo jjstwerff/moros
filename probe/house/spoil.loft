@@ -1,0 +1,113 @@
+// CAN THE GROUND A ROAD WAS CUT INTO BE RECOVERED FROM BESIDE IT? — plan 20 `A8`.
+//
+// `A8`'s invariant is *spoil is conserved: the volume removed above the grade equals
+// the volume added below it*. Both volumes are measured against the ground the road
+// REPLACED — and `road_lay` overwrites exactly that, one stroke at a time, so by the
+// time a run is settled the natural profile under it is gone.
+//
+// ⚠ STORING IT IS THE WRONG ANSWER, because `HEX_STACK`'s first invariant says the
+// store is the only authority and a saved copy is a second one that can disagree.
+// The hypothesis is that it does not need storing: **a road is a narrow strip, so
+// the ground it was cut into is still standing either side of it.**
+//
+// This is the probe that could kill that. Two orientations, because they fail
+// differently:
+//
+//   ALONG the fall line   the cells across the road are at the SAME natural height,
+//                         so a mean of them should be exact.
+//   ALONG a contour       one neighbour is uphill and one downhill, so the mean is
+//                         only as good as the terrain's local symmetry.
+//
+// If the estimate is bad in either, the design is wrong and `A8` needs something
+// else — which is cheaper to find out here than after it is built.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+
+// The ground a road cell was cut into, estimated from the cells beside it: the mean
+// of every neighbour that is NOT part of the run.
+fn ground_beside(w: World, q: integer, r: integer) -> integer {
+  sum = 0;
+  n = 0;
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+    if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) == ROAD_MAT { continue; }
+    sum = sum + ground_h(w, nq, nr);
+    n = n + 1;
+  }
+  if n == 0 { return ground_h(w, q, r); }
+  (sum / n) ?? 0
+}
+
+// Lay a road along +q on a ramp that falls `dq` per hex along the run and `dr` per
+// hex across it. `dr = 0` is the fall line; `dq = 0` is a contour.
+fn spoil_scene(n: integer, dq: integer, dr: integer, truth: &vector<integer>) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 6)..(n + 8) {
+    for r in (0 - 8)..9 { ground_set(w, q, r, G + q * dq + r * dr, SURFACE_MAT); }
+  }
+  for s in 0..n { truth += [ground_h(w, s, 0)]; }
+  // ⚠ THE GRADES ARE READ BEFORE ANY ROAD IS LAID — `roadwalk`'s trap, and it would
+  // make this probe measure its own output.
+  hs: vector<integer> = [];
+  for s2 in 0..n { hs += [ground_h(w, s2, 0)]; }
+  for i in 0..n {
+    h = hs[i] ?? G;
+    road_lay(w, i, 0, h, ROAD_HALF, (h as float) * U);
+  }
+  w
+}
+
+fn report(name: text, n: integer, dq: integer, dr: integer) {
+  truth: vector<integer> = [];
+  w = spoil_scene(n, dq, dr, truth);
+  worst = 0;
+  total = 0;
+  for i in 0..n {
+    e = ground_beside(w, i, 0) - (truth[i] ?? 0);
+    if e < 0 { e = 0 - e; }
+    if e > worst { worst = e; }
+    total = total + e;
+  }
+  mean = (total / n) ?? 0;
+  println("  {name:<26} worst error {worst:>4}, mean {mean:>4}   over {n} cells");
+}
+
+fn main() {
+  println("recovering the natural ground from the cells BESIDE the road:");
+  report("flat", 20, 0, 0);
+  report("fall line, 1 a hex", 20, 1, 0);
+  report("fall line, 3 a hex", 20, 3, 0);
+  report("fall line, -3 a hex", 20, 0 - 3, 0);
+  report("contour, 3 across", 20, 0, 3);
+  report("diagonal, 2 and 2", 20, 2, 2);
+  println("");
+  // ⚠ AND THE CONTROL THAT SAYS THE ESTIMATE IS DOING ANY WORK AT ALL: on a ramp the
+  // road ends up nothing like the ground, so an estimator that simply returned the
+  // ROAD's own height would score terribly here and perfectly on the flat.
+  truth2: vector<integer> = [];
+  w2 = spoil_scene(20, 3, 0, truth2);
+  worst2 = 0;
+  for i2 in 0..20 {
+    e2 = ground_h(w2, i2, 0) - (truth2[i2] ?? 0);
+    if e2 < 0 { e2 = 0 - e2; }
+    if e2 > worst2 { worst2 = e2; }
+  }
+  println("  CONTROL — the road's own height against the ground it replaced: worst {worst2}");
+  println("  (a big number here is what makes the small ones above mean something)");
+  println("");
+  // What the balance would be worth, on the case that drove `A8`.
+  truth3: vector<integer> = [];
+  w3 = spoil_scene(40, 0 - 3, 0, truth3);
+  cut = 0;
+  fill = 0;
+  for i3 in 0..40 {
+    d = (truth3[i3] ?? 0) - ground_h(w3, i3, 0);
+    if d > 0 { cut = cut + d; }
+    if d < 0 { fill = fill - d; }
+  }
+  println("a 40-cell road walked DOWN a 3-per-hex ramp, as it settles today:");
+  println("  cut {cut} units, fill {fill} units — imbalance {cut - fill}");
+  println("  a shift of {(cut - fill) / 40 ?? 0} would balance it exactly");
+}

@@ -329,30 +329,71 @@ fn test_a_flat_road_is_never_settled_because_it_never_breaks() {
   assert(steepest(w, 12) == 0, "a road at ONE frozen grade is flat, got {steepest(w, 12)}");
 }
 
-fn test_settling_only_ever_cuts_and_never_fills() {
-  // ⚠ A ROAD THAT CANNOT CLIMB A HILL GETS CUT INTO IT — raising the low end
-  // instead would be filling ground the author never asked to move, and a cutting
-  // is local to the road while an embankment is a change to the valley.
+fn test_a_settled_road_conserves_its_spoil() {
+  // ⚠ THIS ROW USED TO ASSERT THE OPPOSITE — *settling only ever cuts and never
+  // fills* — and plan 20 `A8` is the step that reverses it on purpose. Cut-only is
+  // what a cutting is and is half the answer: *"the builders had a lot of materials
+  // over after cutting into the hill, using it to heighten the lower side a bit"*.
+  //
+  // ⚠ AND THE OLD ROW HAD ALREADY GONE VACUOUS BEFORE IT WAS REPLACED. `road_lay`
+  // settles its own run since `A7` was wired, so by the time the test called
+  // `slope_settle` itself the road was already settled — it was asserting that a
+  // second settle of a settled road raises nothing, which is true of doing nothing.
   w = strip(SURFACE_MAT, 0);
   cl0 = 0;
   rs0 = 0;
   brush(w, 0, 0, 24, 12, cl0, rs0);
-  hs: vector<integer> = [];
-  for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  ground: vector<integer> = [];
+  for s0 in 0..13 { ground += [ground_h(w, s0, 0)]; }
   for q in 0..13 {
     x = 12 - q;
-    h = hs[x] ?? G;
+    h = ground[x] ?? G;
     road_lay(w, x, 0, h, 1, (h as float) * U);
   }
-  was: vector<integer> = [];
-  for s1 in 0..13 { was += [ground_h(w, s1, 0)]; }
+  cut = 0;
+  fill = 0;
+  for q2 in 0..13 {
+    d = (ground[q2] ?? 0) - ground_h(w, q2, 0);
+    if d > 0 { cut = cut + d; }
+    if d < 0 { fill = fill - d; }
+  }
+  assert(cut > 0 && fill > 0,
+         "a road across a hill must both cut and fill, got cut {cut} fill {fill}");
+  // The stated tolerance: a height is an integer and a mean is not, so the balance
+  // is exact only up to one unit a cell.
+  gap = cut - fill;
+  if gap < 0 { gap = 0 - gap; }
+  assert(gap <= 13,
+         "cut {cut} against fill {fill} — out of balance by {gap} over 13 cells");
+}
+
+// ⚠ THE NEGATIVE CONTROL THE PLAN NAMES, and it is the half that makes the row
+// above mean anything: *a road on flat ground must cut nothing and fill nothing — a
+// balance that moves earth where none was needed is not a balance.*
+fn test_a_road_on_flat_ground_moves_no_earth_at_all() {
+  w = strip(SURFACE_MAT, 0);
+  ground: vector<integer> = [];
+  for s0 in 0..13 { ground += [ground_h(w, s0, 0)]; }
+  for q in 0..13 { road_lay(w, q, 0, ground[q] ?? G, 1, ((ground[q] ?? G) as float) * U); }
+  for q2 in 0..13 {
+    assert(ground_h(w, q2, 0) == (ground[q2] ?? 0),
+           "flat ground moved at ({q2},0): {ground[q2]} -> {ground_h(w, q2, 0)}");
+  }
+  // ⚠ AND AGAIN WITH THE GUARD OUT OF THE WAY, because the row above passes for a
+  // reason that is not the one being claimed: on flat ground `road_lay`'s guard says
+  // *nothing broke* and no settle runs at all, so `spoil_place`'s own control is
+  // never reached. Measured — a mutation that forced the shift to 1 was caught only
+  // by the BALANCE row, and this one stayed green. Calling the settle directly is
+  // what asks the question the row's name asks.
   cl = 0;
   rs = 0;
   slope_settle(w, 0, 0, cl, rs);
-  for q2 in 0..13 {
-    assert(ground_h(w, q2, 0) <= (was[q2] ?? 0),
-           "settling RAISED ({q2},0) from {was[q2]} to {ground_h(w, q2, 0)}");
+  for q3 in 0..13 {
+    assert(ground_h(w, q3, 0) == (ground[q3] ?? 0),
+           "a settle on FLAT ground moved ({q3},0): {ground[q3]} -> {ground_h(w, q3, 0)}");
   }
+  assert(cl == 0 && rs == 0,
+         "and it reported clamped {cl} residual {rs} for moving nothing");
 }
 
 fn test_settling_a_surface_with_no_limit_does_nothing() {

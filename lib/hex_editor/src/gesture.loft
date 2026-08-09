@@ -2651,6 +2651,22 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
       mr += [nr];
     }
   }
+  // ⚠ THE PROFILE THIS STARTS FROM IS THE DATUM — plan 20 `A8`. Spoil is conserved
+  // against the ground the road REPLACED, and `road_lay` overwrote exactly that one
+  // stroke at a time, so the natural profile is gone by the time this runs.
+  //
+  // ⚠ READING IT BACK FROM BESIDE THE ROAD WAS TRIED, MEASURED AND DOES NOT WORK
+  // (`probe/house/spoil.loft`). A road is `2 * ROAD_HALF + 1` cells wide, so a cell
+  // in the middle of the strip has NO neighbour that is not also road — the estimate
+  // falls back to the road's own height and scores worst error **36** on a 3-per-hex
+  // fall line, which is exactly what the control (the road's own height) scores. It
+  // is exact on the flat and along a contour, and useless where it is needed.
+  //
+  // So the datum is what this function already has in hand. Cut is what it lowers,
+  // fill is what it puts back, and both are measured against one profile that cannot
+  // disagree with the store because it IS the store, a moment earlier.
+  was: vector<integer> = [];
+  for wi in 0..len(mq) { was += [ground_h(w, mq[wi] ?? 0, mr[wi] ?? 0)]; }
   moved = false;
   for _ in 0..SLOPE_PASSES {
     moved = false;
@@ -2677,6 +2693,7 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
     }
     if !moved { break; }
   }
+  spoil_place(w, mq, mr, was, clamped, residual);
 }
 
 // Did the disc just stamped at `(cq, cr)` leave any cell steeper than its own
@@ -2718,6 +2735,76 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
     }
   }
   false
+}
+
+// ── THE SPOIL GOES BACK — plan 20 `A8` ──────────────────────────────────────
+//
+// > *"The builders had a lot of materials over after cutting into the hill, using it
+// > to heighten the lower side a bit, and often using stones to create a wall below
+// > the road too."* … *"So most of it will still be cutting into the hill."*
+//
+// The pass above only ever LOWERS, which is what a cutting is and is half the
+// answer. Measured (`probe/house/roadcost.loft`), the other half: a road walked DOWN
+// a 3-per-hex ramp satisfies its limit by cutting its top end **80 units — 20
+// metres — below the natural ground.** You cannot cut your way downhill.
+//
+// ⚠ THE WHOLE RUN SHIFTS BY THE MEAN, AND THAT IS WHY THE LIMIT SURVIVES. Every
+// height moves by the same amount, so every DIFFERENCE is unchanged — the profile
+// the relaxation just made legal is still legal, by construction rather than by a
+// second relaxation that could fight the first. There is no iteration here and
+// nothing to converge.
+//
+// ⚠ AND CUT EQUALS FILL EXACTLY, ALSO BY CONSTRUCTION. After a shift of `V / n` the
+// displacement of cell `i` is `(was_i - h_i) - V/n`, and those sum to `V - n(V/n)`,
+// which is zero up to the integer division. That remainder is the *stated tolerance*
+// the plan asks for — at most one unit a cell — and it is reported rather than
+// absorbed.
+//
+// ⚠ ON FLAT GROUND IT MOVES NOTHING, which is the negative control the plan names:
+// the pass above cuts nothing, so `V` is 0, so the shift is 0. A balance that moved
+// earth where none was needed would not be a balance.
+fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
+               was: vector<integer>, clamped: &integer, residual: &integer) {
+  n = len(mq);
+  if n == 0 { return; }
+  cut = 0;
+  for i in 0..n {
+    cut = cut + ((was[i] ?? 0) - ground_h(w, mq[i] ?? 0, mr[i] ?? 0));
+  }
+  // ⚠ ONLY EVER PUTS BACK WHAT WAS TAKEN. A negative total would mean the pass above
+  // raised something, which it cannot; guarding it anyway keeps this from inventing
+  // earth if that ever changes.
+  if cut <= 0 { return; }
+  shift = (cut / n) ?? 0;
+  // ⚠ A SHIFT OF ZERO IS STILL SPOIL, AND RETURNING HERE SILENTLY LOSES IT. When a
+  // run is long and one stroke's cut is small, `cut / n` truncates to 0 and every
+  // unit taken out is discarded — measured on a road walked DOWN a 40-cell ramp,
+  // where the settle fires per stroke: **cut 1260, fill 23.** The balance is exact
+  // for ONE settle and does not accumulate across many, because a uniform shift is
+  // the only kind that keeps the limit and a uniform shift of less than one unit
+  // does not exist. That is the honest boundary of this rule, and it is said rather
+  // than hidden behind an early return.
+  if shift <= 0 {
+    clamped = clamped + 1;
+    if cut > residual { residual = cut; }
+    return;
+  }
+  for j in 0..n {
+    q = mq[j] ?? 0;
+    r = mr[j] ?? 0;
+    hh = ground_h(w, q, r) + shift;
+    if hh > H_CEILING { hh = H_CEILING; }
+    bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
+    if bm == 0 { bm = SURFACE_MAT; }
+    ground_set(w, q, r, hh, bm);
+  }
+  // What the balance could not place, because a height is an integer and a mean is
+  // not. ⚠ Reported through the same two counters a refused height uses.
+  over = cut - shift * n;
+  if over > 0 {
+    clamped = clamped + 1;
+    if over > residual { residual = over; }
+  }
 }
 
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
