@@ -1,0 +1,38 @@
+// WHAT DOES A FREE-STANDING WALL DO UNDER A RAISE TODAY?
+//
+// `A1` makes any cell carrying a wall or fence edge FABRIC, and fabric moves
+// rigidly — which is right for the walls that bound a house floor. A city or castle
+// wall running across country is a different animal: *it can slope too, like a road
+// (see the great wall of china)*. This asks what the shipped rule does to one.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // a wall running east-west across the whole stroke and far beyond it
+  n = 0;
+  for q in (0 - 25)..26 {
+    wall_set(w, q, 0, SLOT_NE, WALL_MAT, G, (G as float) * U);
+    n = n + 1;
+  }
+  println("a wall {n} cells long, straight across open ground");
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  out = "";
+  for q in 0..10 { out += "{ground_h(w, q, 0) - G} "; }
+  println("along the wall, from the centre: {out}");
+  off = "";
+  for q2 in 0..10 { off += "{ground_h(w, q2, 3) - G} "; }
+  println("open ground three rows away:     {off}");
+  println("");
+  flat = true;
+  for q3 in 0..8 { if ground_h(w, q3, 0) != ground_h(w, 0, 0) { flat = false; } }
+  if flat { println("=> the wall moved RIGIDLY — one slab, no slope along its run"); }
+  else { println("=> the wall took a slope along its run"); }
+}

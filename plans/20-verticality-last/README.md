@@ -54,7 +54,7 @@ argued from a picture alone.
 | `A1` ✅ | a raise of 6 over a 27-cell floor leaves all 27 at `40+6`, spread **0** | *a body moves rigidly or not at all* | a road under the same stroke must come out **not** level — it takes the incline |
 | `A1b` ✅ | a raise of 6 over a yard fenced at radius 4 leaves ring, middle and halfway all at `40+6` | *what a structure encloses moves with it* | the pocket OUTSIDE the fence is unbounded and must **not** be absorbed — it escapes the reach, and an open fence LINE encloses nothing |
 | `A2` | on a `limit=2` surface, a stroke asking for 6 over one hex step leaves **2** per step and reports the residual | *no edge exceeds its surface's limit* | a stroke that already fits must be **unchanged** — a limit that alters a legal edit is a bug, not a limit |
-| `A2c` | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall and its along-limit unchanged | *a road has an axis; its limit is not a scalar* | a road cell with no road neighbour has no axis — it must fall back to the scalar limit, not to flat |
+| `A2c` | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall and its along-limit unchanged; a 51-cell wall climbs at its limit instead of moving as one slab | *a linear feature has an AXIS; its limit is not a scalar, and it is not rigid* | a wall that ENCLOSES a floor must still move rigidly — it is a building's fabric, not a run. And a road cell with no road neighbour has no axis: it falls back to the scalar limit, not to flat |
 | `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient is limited* | a corridor under a BUILDING must still move **rigidly** with it — it is that house's cellar, not a run of its own |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | a cycle must terminate — a fixed iteration cap, and the cap being hit is a **refusal**, not a silent stop |
@@ -71,7 +71,7 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 | **`A1`** — a building rides the terrain rigidly | M | `tests/raise_structure.loft` (7 claims), `raise_keeps.loft` (4) | ✅ shipped `cab574d` |
 | **`A1b`** — ground a structure encloses is part of it | S | `tests/raise_structure.loft` — a fenced yard comes up level with its fence, and the outside still slopes | ✅ shipped |
 | **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` (7 claims) + `hex_mesh/tests/terrain_link.loft` (6) | ✅ shipped |
-| **`A2c`** — a road is ANISOTROPIC: it bends along its run and is flat across it | M | a two-wide road under a cross-stroke stays level across, and bends along | Open |
+| **`A2c`** — LINEAR features bend along their run and are flat across it | MH | a road, a corridor and a city wall each climb along and stay level across; an ENCLOSING wall stays rigid | Open |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor under a raise keeps its cover within a band, and its gradient within its limit | Blocked on `A2` |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
@@ -180,6 +180,30 @@ the scramble itself is pinned so a future re-order announces itself.
 ⚠ **`names.sh` CAUGHT THE STRUCT NAME, WHICH IS WHAT IT IS FOR.** `Terrain` is already
 published by the registry's `hex_terrain`; a public name is global across a consumer's whole
 graph, so it became `GroundKind`. The check found it before the suite did.
+
+## What is already measured for `A2c`
+
+⚠ **A FREE-STANDING WALL IS ONE RIGID SLAB TODAY** — `probe/house/wall.loft`. A 51-cell wall
+across open ground, under a raise of 12 at radius 7: **every cell +12**, including the cells
+far outside the stroke, because `A1`'s flood follows a run wherever it goes. The ground three
+rows away falls away normally (`7 7 5 2 0 …`). A Great Wall built this way floats at its ends.
+
+⚠ **AND `A1` MEANT TO DO THAT, WHICH IS WHY `A2c` IS A MODEL CHANGE AND NOT A BUG FIX.** The
+rule *follow the structure wherever it goes, because a fence running past the rim is one
+fence* is right for a garden fence bounding a yard and wrong for a wall crossing a county.
+The distinction the three notes share — *roads do not flow*, *the same for corridors*, *a
+city or castle wall can slope too* — is **enclosing versus running**:
+
+| | what it is | how it moves |
+|---|---|---|
+| fabric that **encloses** — a floor, its walls, a fenced yard | a building | rigid, one delta (`A1`, shipped) |
+| fabric that **runs** — a road, a corridor, a city wall | a linear feature | bends **along** its axis within a limit, flat **across** it |
+
+⚠ **THE AXIS IS NOT STORED ANYWHERE**, for any of the three. A cell knows it is `ROAD_MAT`,
+or that it carries a wall edge; it does not know which way the run goes. So the axis has to be
+derived from which neighbours are also part of the same run — which makes the limit a property
+of an **edge** rather than of a cell, and that is a different shape from what `A2` shipped
+(`slope_limit` answers per cell). That reshaping is the bulk of `A2c`.
 
 ## What is already measured for `A2b`
 
