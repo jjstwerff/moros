@@ -37,29 +37,29 @@ fn test_the_tags_are_their_four_characters() {
 
 fn test_a_palette_comes_back_as_it_went_in() {
   w = fresh();
-  assert(world_set_palette(w, PAL_MATERIAL,
+  assert(world_set_palette(w, PAL_MATERIAL, 0,
            [pal(1, "sand"), pal(2, "dune road"), pal(7, "oasis")]) == PAL_OK, "refused");
-  got = world_palette(w, PAL_MATERIAL);
+  got = world_palette(w, PAL_MATERIAL, 0);
   assert(got.pr_code == PAL_OK, "{got.pr_why}");
   assert(len(got.pr_items) == 3, "{len(got.pr_items)} entries came back, not 3");
-  assert(world_palette_name(w, PAL_MATERIAL, 1) == "sand", "slot 1");
-  assert(world_palette_name(w, PAL_MATERIAL, 2) == "dune road", "a name with a space");
-  assert(world_palette_name(w, PAL_MATERIAL, 7) == "oasis", "a sparse slot");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 1) == "sand", "slot 1");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 2) == "dune road", "a name with a space");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 7) == "oasis", "a sparse slot");
 }
 
 fn test_it_survives_a_save_and_a_load() {
   w = fresh();
   ground(w, 0, 0, 40, 1);
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(1, "sand")]) == PAL_OK, "refused");
-  assert(world_set_palette(w, PAL_EDGE, [pal(1, "mud brick")]) == PAL_OK, "refused");
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(1, "sand")]) == PAL_OK, "refused");
+  assert(world_set_palette(w, PAL_EDGE, 0, [pal(1, "mud brick")]) == PAL_OK, "refused");
   path = "{temp_dir()}/hexworld-palette.hxw";
   none: vector<integer> = [];
   assert(world_save(w, path, none) == WS_OK, "the world did not save");
   ld = world_load(path);
   assert(ld.wl_code == WL_OK, "{ld.wl_detail}");
-  assert(world_palette_name(ld.wl_world, PAL_MATERIAL, 1) == "sand",
+  assert(world_palette_name(ld.wl_world, PAL_MATERIAL, 0, 1) == "sand",
          "the material palette is gone after a save");
-  assert(world_palette_name(ld.wl_world, PAL_EDGE, 1) == "mud brick",
+  assert(world_palette_name(ld.wl_world, PAL_EDGE, 0, 1) == "mud brick",
          "the edge palette is gone after a save");
 }
 
@@ -68,22 +68,22 @@ fn test_the_three_axes_do_not_share_a_table() {
   // numbered independently today — `1` is grass on the cell axis and a wall on the
   // edge axis. One shared table would silently rename one of them.
   w = fresh();
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(1, "grass")]) == PAL_OK, "m");
-  assert(world_set_palette(w, PAL_EDGE, [pal(1, "wall")]) == PAL_OK, "e");
-  assert(world_set_palette(w, PAL_ITEM, [pal(1, "pine")]) == PAL_OK, "i");
-  assert(world_palette_name(w, PAL_MATERIAL, 1) == "grass", "material 1");
-  assert(world_palette_name(w, PAL_EDGE, 1) == "wall", "edge 1");
-  assert(world_palette_name(w, PAL_ITEM, 1) == "pine", "item 1");
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(1, "grass")]) == PAL_OK, "m");
+  assert(world_set_palette(w, PAL_EDGE, 0, [pal(1, "wall")]) == PAL_OK, "e");
+  assert(world_set_palette(w, PAL_ITEM, 0, [pal(1, "pine")]) == PAL_OK, "i");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 1) == "grass", "material 1");
+  assert(world_palette_name(w, PAL_EDGE, 0, 1) == "wall", "edge 1");
+  assert(world_palette_name(w, PAL_ITEM, 0, 1) == "pine", "item 1");
 }
 
 fn test_two_worlds_may_call_the_same_byte_different_things() {
   // The whole point of the plan, as one assertion.
   a = fresh();
   b = fresh();
-  assert(world_set_palette(a, PAL_MATERIAL, [pal(2, "desert road")]) == PAL_OK, "a");
-  assert(world_set_palette(b, PAL_MATERIAL, [pal(2, "mountain scree")]) == PAL_OK, "b");
-  assert(world_palette_name(a, PAL_MATERIAL, 2) == "desert road", "a's 2");
-  assert(world_palette_name(b, PAL_MATERIAL, 2) == "mountain scree", "b's 2");
+  assert(world_set_palette(a, PAL_MATERIAL, 0, [pal(2, "desert road")]) == PAL_OK, "a");
+  assert(world_set_palette(b, PAL_MATERIAL, 0, [pal(2, "mountain scree")]) == PAL_OK, "b");
+  assert(world_palette_name(a, PAL_MATERIAL, 0, 2) == "desert road", "a's 2");
+  assert(world_palette_name(b, PAL_MATERIAL, 0, 2) == "mountain scree", "b's 2");
 }
 
 // ── slot 0, which is the one fixed fact ─────────────────────────────────────
@@ -91,33 +91,33 @@ fn test_two_worlds_may_call_the_same_byte_different_things() {
 fn test_slot_zero_is_absence_on_every_axis_and_cannot_be_written() {
   w = fresh();
   for k in [PAL_MATERIAL, PAL_EDGE, PAL_ITEM] {
-    assert(world_palette_name(w, k, 0) == PAL_ABSENT,
-           "axis {k} slot 0 is '{world_palette_name(w, k, 0)}', not absence");
-    assert(world_set_palette(w, k, [pal(0, "nothing")]) == PAL_SLOT,
+    assert(world_palette_name(w, k, 0, 0) == PAL_ABSENT,
+           "axis {k} slot 0 is '{world_palette_name(w, k, 0, 0)}', not absence");
+    assert(world_set_palette(w, k, 0, [pal(0, "nothing")]) == PAL_SLOT,
            "axis {k} let slot 0 be defined");
   }
   // ⚠ AND A REFUSED WRITE MUST NOT HAVE WRITTEN. Absence is what an unwritten cell
   // IS; a palette that defined it would make empty space resolve to a real thing.
-  assert(world_palette_name(w, PAL_MATERIAL, 0) == PAL_ABSENT, "absence was overwritten");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 0) == PAL_ABSENT, "absence was overwritten");
 }
 
 fn test_a_slot_past_the_byte_is_refused() {
   w = fresh();
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(PAL_MAX, "unreachable")]) == PAL_SLOT,
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(PAL_MAX, "unreachable")]) == PAL_SLOT,
          "slot {PAL_MAX} was accepted — no cell could ever name it");
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(PAL_MAX - 1, "the last one")]) == PAL_OK,
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(PAL_MAX - 1, "the last one")]) == PAL_OK,
          "slot {PAL_MAX - 1} should be the highest usable");
 }
 
 fn test_a_duplicate_slot_is_refused() {
   w = fresh();
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(3, "road"), pal(3, "river")]) == PAL_DUP,
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(3, "road"), pal(3, "river")]) == PAL_DUP,
          "one slot was allowed two names — the second would silently win");
 }
 
 fn test_a_newline_in_a_name_is_refused() {
   w = fresh();
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(3, "road\n4=river")]) == PAL_NEWLINE,
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(3, "road\n4=river")]) == PAL_NEWLINE,
          "a forged line was accepted");
 }
 
@@ -130,7 +130,7 @@ fn test_a_byte_the_palette_does_not_name_is_refused() {
   // different place.
   w = fresh();
   ground(w, 3, 0 - 2, 40, 7);
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(1, "grass")]) == PAL_OK, "refused");
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(1, "grass")]) == PAL_OK, "refused");
   why = world_palette_check(w);
   assert(why != "", "a cell using material 7 passed a palette that names only 1");
   assert(why.find("7") != null, "the reason does not name the byte: {why}");
@@ -143,7 +143,7 @@ fn test_a_world_whose_bytes_are_all_named_passes() {
   w = fresh();
   ground(w, 0, 0, 40, 1);
   ground(w, 1, 0, 40, 2);
-  assert(world_set_palette(w, PAL_MATERIAL, [pal(1, "grass"), pal(2, "road")]) == PAL_OK, "refused");
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(1, "grass"), pal(2, "road")]) == PAL_OK, "refused");
   assert(world_palette_check(w) == "",
          "a fully named world was refused: {world_palette_check(w)}");
 }
@@ -153,4 +153,87 @@ fn test_an_empty_cell_needs_no_entry() {
   w = fresh();
   ground(w, 0, 0, 40, 0);
   assert(world_palette_check(w) == "", "an empty cell demanded a palette entry");
+}
+
+// ── REGIONS — plan 21 `R2` ──────────────────────────────────────────────────
+
+fn test_the_same_byte_means_different_things_in_two_regions() {
+  // ⚠ THE WHOLE OF `R2`, AS ONE ASSERTION. *A desert biome beside a mountain one,
+  // beside an oceanic one* — byte 3 is sand in one and scree in the other, and
+  // neither is wrong.
+  w = fresh();
+  assert(world_set_palette(w, PAL_MATERIAL, 1, [pal(3, "sand")]) == PAL_OK, "region 1");
+  assert(world_set_palette(w, PAL_MATERIAL, 2, [pal(3, "scree")]) == PAL_OK, "region 2");
+  assert(world_palette_name(w, PAL_MATERIAL, 1, 3) == "sand", "region 1's 3");
+  assert(world_palette_name(w, PAL_MATERIAL, 2, 3) == "scree", "region 2's 3");
+}
+
+fn test_setting_one_region_leaves_its_neighbours_alone() {
+  // ⚠ THE TRAP A SINGLE SECTION INVITES: one write per region into one section, so
+  // a careless writer drops every other region's lines and the world silently
+  // loses a biome.
+  w = fresh();
+  assert(world_set_palette(w, PAL_MATERIAL, 1, [pal(3, "sand")]) == PAL_OK, "1");
+  assert(world_set_palette(w, PAL_MATERIAL, 2, [pal(3, "scree")]) == PAL_OK, "2");
+  assert(world_set_palette(w, PAL_MATERIAL, 1, [pal(3, "dune")]) == PAL_OK, "rewrite 1");
+  assert(world_palette_name(w, PAL_MATERIAL, 1, 3) == "dune", "region 1 did not update");
+  assert(world_palette_name(w, PAL_MATERIAL, 2, 3) == "scree",
+         "rewriting region 1 destroyed region 2");
+}
+
+fn test_a_chunk_carries_the_region_and_a_hex_inherits_it() {
+  w = fresh();
+  assert(world_region_at(w, 0, 0) == 0, "an unassigned world is not region 0");
+  assert(world_set_region(w, 0, 0, 1) == PAL_OK, "assign");
+  assert(world_set_region(w, 1, 0, 2) == PAL_OK, "assign");
+  assert(world_region_at(w, 0, 0) == 1, "hex (0,0) is in chunk (0,0)");
+  assert(world_region_at(w, 31, 0) == 1, "hex (31,0) is still chunk (0,0)");
+  assert(world_region_at(w, 32, 0) == 2, "hex (32,0) is chunk (1,0)");
+  // ⚠ NEGATIVE COORDINATES ARE THE PARITY TRAP THIS TREE HAS FIVE OF. Chunk −1 is
+  // not `-32/32`, and a region that stopped at the origin would be invisible in
+  // every test written on the positive side.
+  assert(world_region_at(w, 0 - 1, 0) == 0, "hex (−1,0) is chunk (−1,0), unassigned");
+}
+
+fn test_the_region_survives_a_save_and_a_load() {
+  w = fresh();
+  ground(w, 0, 0, 40, 3);
+  assert(world_set_region(w, 0, 0, 1) == PAL_OK, "assign");
+  assert(world_set_palette(w, PAL_MATERIAL, 1, [pal(3, "sand")]) == PAL_OK, "palette");
+  path = "{temp_dir()}/hexworld-regions.hxw";
+  none: vector<integer> = [];
+  assert(world_save(w, path, none) == WS_OK, "save");
+  ld = world_load(path);
+  assert(ld.wl_code == WL_OK, "{ld.wl_detail}");
+  assert(world_region_at(ld.wl_world, 0, 0) == 1, "the region label is gone");
+  assert(world_palette_name(ld.wl_world, PAL_MATERIAL, 1, 3) == "sand",
+         "region 1's palette is gone");
+}
+
+fn test_the_check_asks_each_cell_its_own_region() {
+  // ⚠ THE REFUSAL HAS TO FOLLOW THE REGION TOO, or a cell in the mountains passes
+  // because the desert happens to name its byte.
+  w = fresh();
+  ground(w, 0, 0, 40, 3);          // chunk (0,0)
+  ground(w, 40, 0, 40, 3);         // chunk (1,0)
+  assert(world_set_region(w, 0, 0, 1) == PAL_OK, "assign 1");
+  assert(world_set_region(w, 1, 0, 2) == PAL_OK, "assign 2");
+  assert(world_set_palette(w, PAL_MATERIAL, 1, [pal(3, "sand")]) == PAL_OK, "palette 1");
+  why = world_palette_check(w);
+  assert(why != "", "region 2 names no byte 3 and the check passed anyway");
+  assert(why.find("2") != null, "the reason does not name the region: {why}");
+  assert(world_set_palette(w, PAL_MATERIAL, 2, [pal(3, "scree")]) == PAL_OK, "palette 2");
+  assert(world_palette_check(w) == "",
+         "both regions name byte 3 and it still refused: {world_palette_check(w)}");
+}
+
+fn test_a_world_with_no_regions_resolves_exactly_as_before() {
+  // ⚠ `R2`'s NEGATIVE CONTROL, and it is true by construction rather than by care:
+  // an unassigned chunk is region 0, and region 0 is where `R1` wrote everything.
+  w = fresh();
+  ground(w, 0, 0, 40, 2);
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(2, "road")]) == PAL_OK, "palette");
+  assert(world_region_at(w, 0, 0) == 0, "an unassigned chunk is not region 0");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 2) == "road", "region 0 lookup");
+  assert(world_palette_check(w) == "", "a region-free world was refused");
 }

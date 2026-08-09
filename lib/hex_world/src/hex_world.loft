@@ -2108,6 +2108,7 @@ pub const PAL_ITEM     = 2;
 pub const TAG_PALM = 1296843088;   // 'PALM', low byte first — materials
 pub const TAG_PALW = 1464615248;   // 'PALW' — edges
 pub const TAG_PALI = 1229734224;   // 'PALI' — items
+pub const TAG_RGNS = 1397638994;   // 'RGNS' — which region each chunk belongs to
 
 pub struct PalEntry { pl_slot: integer, pl_name: text }
 
@@ -2137,9 +2138,40 @@ fn pal_read(w: World, tag: integer) -> text {
   text_from_bytes(world_section_bytes(w, tag))
 }
 
-pub fn world_set_palette(w: World, kind: integer, items: vector<PalEntry>) -> integer {
+// ── AND A PALETTE BELONGS TO A REGION — plan 21 `R2` ───────────────────────
+//
+// > *"So we need to be able to define regions with their own mapping of walls and
+// > terrains … see desert biome beside a mountain one, beside an oceanic one."*
+//
+// A line is `region:slot=name`. ⚠ **Region 0 is the default and is what a world
+// with no regions uses**, so everything `R1` wrote keeps resolving unchanged — the
+// negative control of this phase is that a one-region world is byte-for-byte what
+// it was, and that is true by construction rather than by care.
+//
+// ⚠ A REGION IS A PROPERTY OF THE CHUNK, NOT OF THE CELL, and that is the one real
+// decision here. There is no room in the cell — it is a `u16` and six `u8`s, all
+// spoken for — and a per-cell answer has to be cheap: `A2c` measured what a
+// six-lookup question per cell costs a stroke (262 ms). The mesher, the streamer and
+// the dirty set already iterate chunk by chunk, so a chunk label is resolved ONCE
+// where they already stand. The cost is 32-hex granularity at a seam, which is what
+// `R3`'s blend band is for.
+pub fn world_set_palette(w: World, kind: integer, region: integer,
+                         items: vector<PalEntry>) -> integer {
+  if region < 0 { return PAL_SLOT; }
+  keep = "";
+  // every OTHER region's lines survive this write — a palette is set per region,
+  // and setting one must not silently drop its neighbours
+  if world_section_at(w, pal_tag(kind)) >= 0 {
+    for line in pal_read(w, pal_tag(kind)).split('\n') {
+      if line == "" { continue; }
+      c = line.find(":");
+      lr = 0;
+      if c != null { lr = (line[0..c] as i32?) ?? 0; }
+      if lr != region { keep += "{line}\n"; }
+    }
+  }
   seen: vector<integer> = [];
-  body = "";
+  body = keep;
   for e in items {
     // ⚠ SLOT 0 IS NOT WRITABLE. Absence is not a definition, and a palette that
     // let one be written would make an unwritten cell resolve to a real thing.
@@ -2147,10 +2179,42 @@ pub fn world_set_palette(w: World, kind: integer, items: vector<PalEntry>) -> in
     if e.pl_name.find("\n") != null { return PAL_NEWLINE; }
     for s in seen { if s == e.pl_slot { return PAL_DUP; } }
     seen += [e.pl_slot];
-    body += "{e.pl_slot}={e.pl_name}\n";
+    body += "{region}:{e.pl_slot}={e.pl_name}\n";
   }
   pal_write(w, pal_tag(kind), body);
   PAL_OK
+}
+
+// ── WHICH REGION IS THIS CHUNK IN? — plan 21 `R2` ──────────────────────────
+//
+// A sparse list, `cx,cz=region`; a chunk nobody has assigned is region **0**. That
+// default is what makes `R1`'s worlds keep working untouched and is the negative
+// control of this phase stated as a mechanism rather than as care.
+pub fn world_set_region(w: World, cx: integer, cz: integer, region: integer) -> integer {
+  if region < 0 { return PAL_SLOT; }
+  keep = "";
+  if world_section_at(w, TAG_RGNS) >= 0 {
+    for line in pal_read(w, TAG_RGNS).split('\n') {
+      if line == "" { continue; }
+      if line.find("{cx},{cz}=") == 0 { continue; }
+      keep += "{line}\n";
+    }
+  }
+  pal_write(w, TAG_RGNS, keep + "{cx},{cz}={region}\n");
+  PAL_OK
+}
+
+// The region a hex falls in — its CHUNK's, because that is where the label lives.
+pub fn world_region_at(w: World, q: integer, r: integer) -> integer {
+  if world_section_at(w, TAG_RGNS) < 0 { return 0; }
+  cx = world_chunk_of(q);
+  cz = world_chunk_of(r);
+  want = "{cx},{cz}=";
+  for line in pal_read(w, TAG_RGNS).split('\n') {
+    if line == "" { continue; }
+    if line.find(want) == 0 { return (line[want.size()..] as i32?) ?? 0; }
+  }
+  0
 }
 
 pub struct PalRead { pr_code: integer, pr_items: vector<PalEntry>, pr_why: text }
@@ -2159,15 +2223,23 @@ pub struct PalRead { pr_code: integer, pr_items: vector<PalEntry>, pr_why: text 
 // `PAL_ABSENT_C`-free readings: a world written before palettes exist names nothing
 // and is fine; one whose section says `x=road` is damaged. Collapsing them makes the
 // damaged one look ordinary.
-pub fn world_palette(w: World, kind: integer) -> PalRead {
+pub fn world_palette(w: World, kind: integer, region: integer) -> PalRead {
   none: vector<PalEntry> = [];
   tag = pal_tag(kind);
   if world_section_at(w, tag) < 0 {
     return PalRead { pr_code: PAL_OK, pr_items: none, pr_why: "no palette on this axis" };
   }
   out: vector<PalEntry> = [];
-  for line in pal_read(w, tag).split('\n') {
-    if line == "" { continue; }
+  for line0 in pal_read(w, tag).split('\n') {
+    if line0 == "" { continue; }
+    c0 = line0.find(":");
+    lr0 = 0;
+    line = line0;
+    if c0 != null {
+      lr0 = (line0[0..c0] as i32?) ?? 0;
+      line = line0[(c0 + 1)..];
+    }
+    if lr0 != region { continue; }
     i = line.find("=");
     if i == null {
       return PalRead { pr_code: PAL_SLOT, pr_items: none, pr_why: "line '{line}' has no =" };
@@ -2188,10 +2260,24 @@ pub fn world_palette(w: World, kind: integer) -> PalRead {
 // What this world calls `slot` on this axis. `PAL_ABSENT` for 0; **empty for a byte
 // the palette does not name**, which a caller must treat as a fault rather than as
 // a default.
-pub fn world_palette_name(w: World, kind: integer, slot: integer) -> text {
+pub fn world_palette_name(w: World, kind: integer, region: integer,
+                          slot: integer) -> text {
   if slot == 0 { return PAL_ABSENT; }
-  for e in world_palette(w, kind).pr_items {
-    if e.pl_slot == slot { return e.pl_name; }
+  tag = pal_tag(kind);
+  if world_section_at(w, tag) < 0 { return ""; }
+  for line in pal_read(w, tag).split('\n') {
+    if line == "" { continue; }
+    c = line.find(":");
+    lr = 0;
+    rest = line;
+    if c != null {
+      lr = (line[0..c] as i32?) ?? 0;
+      rest = line[(c + 1)..];
+    }
+    if lr != region { continue; }
+    i = rest.find("=");
+    if i == null { continue; }
+    if ((rest[0..i] as i32?) ?? 0) == slot { return rest[(i + 1)..]; }
   }
   ""
 }
@@ -2217,17 +2303,18 @@ pub fn world_palette_check(w: World) -> text {
         r = r0 + dr;
         for c in world_column(w, q, r).co_cells {
           m = c.h_material as integer ?? 0;
-          if m != 0 && world_palette_name(w, PAL_MATERIAL, m) == "" {
-            return "material {m} at ({q},{r}) is not in this world's palette";
+          rg = world_region_at(w, q, r);
+          if m != 0 && world_palette_name(w, PAL_MATERIAL, rg, m) == "" {
+            return "material {m} at ({q},{r}) is not in region {rg}'s palette";
           }
           it = c.h_item as integer ?? 0;
-          if it != 0 && world_palette_name(w, PAL_ITEM, it) == "" {
-            return "item {it} at ({q},{r}) is not in this world's palette";
+          if it != 0 && world_palette_name(w, PAL_ITEM, rg, it) == "" {
+            return "item {it} at ({q},{r}) is not in region {rg}'s palette";
           }
           for e in [c.h_wall_n as integer ?? 0, c.h_wall_ne as integer ?? 0,
                     c.h_wall_se as integer ?? 0] {
-            if e != 0 && world_palette_name(w, PAL_EDGE, e) == "" {
-              return "edge material {e} at ({q},{r}) is not in this world's palette";
+            if e != 0 && world_palette_name(w, PAL_EDGE, rg, e) == "" {
+              return "edge material {e} at ({q},{r}) is not in region {rg}'s palette";
             }
           }
         }

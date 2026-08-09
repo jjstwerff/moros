@@ -5,7 +5,7 @@
 
 ## Status
 
-**`R1` is shipped; `R2`–`R5` are designed, not built.** ⚠ `R1` was **reshaped before any code** — and ⚠ `R1` was **reshaped before any code**
+**`R1` and `R2` are shipped; `R3`–`R5` are designed, not built.** ⚠ `R1` was **reshaped before any code** — and ⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
 have been the third implementation of one idea, and the third list in three days. It is filed now because every day it waits,
@@ -140,6 +140,39 @@ took `PAL_MAX` and `PAL_ABSENT`. When the predecessor goes, they can take the na
 **What `R1` does not do**: nothing writes a palette yet — no gesture, no editor command, and
 `data/` carries none. It is reachable and gated, and its first real author is `R2`.
 
+## What `R2` turned up
+
+**Built:** a palette line is `region:slot=name`, and a chunk carries its region in an `RGNS`
+section (`cx,cz=region`). A gesture asks `world_region_at(w, q, r)` and resolves the byte
+through that region's table.
+
+⚠ **OPEN QUESTION 1 IS ANSWERED, AND COST DECIDED IT: A REGION IS A PROPERTY OF THE CHUNK.**
+There is no room in the cell — a `u16` and six `u8`s, all spoken for — and a per-cell answer
+has to be cheap: `A2c` measured what a six-lookup question per cell costs a stroke (262 ms).
+The mesher, the streamer and the dirty set already iterate chunk by chunk, so the label is
+resolved once where they already stand. **The price is 32-hex granularity at a seam**, which
+is exactly what `R3`'s blend band is for — so the coarse answer is not a compromise, it is the
+input the next phase needs.
+
+⚠ **REGION 0 IS THE DEFAULT, SO `R2`'s NEGATIVE CONTROL HOLDS BY CONSTRUCTION.** An unassigned
+chunk is region 0 and region 0 is where `R1` wrote everything, so a world with no regions
+resolves byte-for-byte as before — not because anything was careful, but because there was
+nowhere else for it to go.
+
+⚠ **AND A REGION WITH NO PALETTE FALLS BACK TO THE BUILT-IN NUMBERING** — `R1`'s rule applied
+per region rather than per world. That is what lets a world name one biome without naming them
+all. ⚠ My first test asserted the opposite (*an unnamed region clamps nothing*) and was wrong
+about the code rather than the other way round; the claim it became is sharper — the same byte
+gives a **road's** limit where the region names it one and the **built-in field's** where no
+region does, and the two must differ.
+
+⚠ **ONE SECTION PER AXIS MEANS A WRITE MUST PRESERVE ITS NEIGHBOURS.** Setting region 1's
+palette rewrites the whole `PALM` section, so a careless writer drops every other biome —
+gated, and sabotaged by making the write start from empty.
+
+**Cost after `R2`**: 4 ms a stroke on open ground, 46 ms with a fenced yard in the disc —
+unchanged from `A2c`, because the region lookup rides the paths already memoised.
+
 ## Anchors
 
 | | |
@@ -169,7 +202,7 @@ target and a negative control.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **`R1`** — the palette lands in `hex_world`; identity resolved through it | MH | `hex_world/tests/palette.loft` (12) + `hex_editor/tests/slope_limit.loft`'s three palette claims | ✅ shipped |
-| **`R2`** — many regions, and a cell knows which it is in | MH | the same byte resolving differently either side of a seam | Blocked on `R1` |
+| **`R2`** — many regions, and a cell knows which it is in | MH | `hex_world/tests/palette.loft`'s six region claims + a gesture reading its own region | ✅ shipped |
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
 | **`R5`** — the 22 comparisons move to the mapping, and a check keeps them there | MH | `tools/` check, seeded with a violation | Blocked on `R1` |

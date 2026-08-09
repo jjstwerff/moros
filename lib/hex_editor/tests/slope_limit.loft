@@ -172,7 +172,7 @@ fn test_a_world_palette_decides_which_byte_is_a_road() {
   // none on 2. If this passes with the palette ignored, nothing has been decoupled.
   w = strip(SURFACE_MAT, 0);
   for q in (0 - 24)..25 { ground_set(w, q, 0, G, 5); }
-  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL,
+  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL, 0,
            [hex_world::PalEntry { pl_slot: 5, pl_name: "road" },
             hex_world::PalEntry { pl_slot: 1, pl_name: "grass" }]) == hex_world::PAL_OK,
          "the palette was refused");
@@ -189,7 +189,7 @@ fn test_the_same_byte_is_ordinary_ground_when_the_world_says_so() {
   // Byte 2 is `ROAD_MAT` in this file; a world that calls it `grass` must get
   // grass's freedom, or the palette is being read and then ignored.
   w = strip(ROAD_MAT, 0);
-  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL,
+  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL, 0,
            [hex_world::PalEntry { pl_slot: 2, pl_name: "grass" },
             hex_world::PalEntry { pl_slot: 1, pl_name: "grass" }]) == hex_world::PAL_OK,
          "the palette was refused");
@@ -210,4 +210,47 @@ fn test_a_world_with_no_palette_keeps_the_built_in_numbering() {
   brush(w, 0, 0, 12, 7, cl, rs);
   assert(steepest(w, 7) <= ground_kind_of(ROAD_MAT).tr_slope,
          "a palette-free world stopped treating byte 2 as a road");
+}
+
+fn test_a_gesture_reads_the_identity_of_the_region_it_is_standing_in() {
+  // ⚠ PLAN 21 `R2` REACHING A GESTURE. The same byte 3 is a road in one chunk and
+  // ordinary ground in the next, and the slope limit follows the REGION rather than
+  // the byte — which is the whole claim, one gesture down.
+  w = strip(SURFACE_MAT, 0);
+  for q in (0 - 24)..25 { ground_set(w, q, 0, G, 3); }
+  assert(hex_world::world_set_region(w, 0, 0, 1) == hex_world::PAL_OK, "assign");
+  assert(hex_world::world_set_palette(w, hex_world::PAL_MATERIAL, 1,
+           [hex_world::PalEntry { pl_slot: 3, pl_name: "road" },
+            hex_world::PalEntry { pl_slot: 1, pl_name: "grass" }]) == hex_world::PAL_OK,
+         "region 1's palette was refused");
+  cl = 0;
+  rs = 0;
+  brush(w, 4, 4, 12, 7, cl, rs);
+  assert(cl > 0, "byte 3 is a road in region 1 and was not clamped at all");
+
+  road_steep = steepest(w, 7);
+
+  // ⚠ AND THE CONTROL IS THE SAME BYTE IN AN UNASSIGNED CHUNK. Region 0 names
+  // nothing here, so byte 3 falls back to the BUILT-IN numbering, where 3 is a
+  // field — a different limit, from a different authority. If both come out the
+  // same the region is being ignored and the first half proves nothing.
+  //
+  // ⚠ A REGION WITH NO PALETTE FALLING BACK IS `R1`'s RULE APPLIED PER REGION, and
+  // it is what lets a world name one biome without having to name them all. The
+  // first version of this test asserted *no clamp at all* and was wrong about the
+  // code rather than the other way round.
+  w2 = strip(SURFACE_MAT, 0);
+  for q2 in (0 - 24)..25 { ground_set(w2, q2, 0, G, 3); }
+  assert(hex_world::world_set_palette(w2, hex_world::PAL_MATERIAL, 1,
+           [hex_world::PalEntry { pl_slot: 3, pl_name: "road" }]) == hex_world::PAL_OK,
+         "palette");
+  cl2 = 0;
+  rs2 = 0;
+  brush(w2, 4, 4, 12, 7, cl2, rs2);
+  assert(steepest(w2, 7) == ground_kind_of(FIELD_MAT).tr_slope,
+         "the unassigned chunk took {steepest(w2, 7)} a hex, not the built-in field's "
+       + "{ground_kind_of(FIELD_MAT).tr_slope}");
+  assert(road_steep < steepest(w2, 7),
+         "byte 3 gave {road_steep} named as a road and {steepest(w2, 7)} unnamed — "
+       + "the region is not deciding");
 }
