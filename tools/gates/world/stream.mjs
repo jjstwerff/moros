@@ -47,7 +47,7 @@ const settled = await freshView();
 // count here moved by exactly 4/3 (peak 156 -> 208) while the streaming behaviour was
 // unchanged. A bound expressed in meshes silently re-tunes itself whenever a surface is
 // added; a bound expressed in chunks does not.
-const SURFACES = 9;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit — keep
+const SURFACES = 10;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock — keep
                       // equal to `SURFACES` in `src/editor_server.loft`
 const liveChunks = new Set([...live].map((id) => Math.floor((id - 16) / SURFACES)));
 const ok = added > 0 && dropped > 0 && live.size <= peak

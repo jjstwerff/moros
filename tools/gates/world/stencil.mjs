@@ -24,7 +24,7 @@
 // draws one mesh per surface on consecutive ids, so every decoder here depends on
 // how many there are — and when the roof made it five, three decoders moved and
 // the gates did not. Keep this equal to `SURFACES` in `src/editor_server.loft`.
-const SURFACES = 9;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit
+const SURFACES = 10;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock
 
 import { connect, send, ask, report } from '../lib.mjs';
 

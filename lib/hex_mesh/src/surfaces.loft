@@ -84,6 +84,27 @@ pub fn surfaces() -> vector<Surface> {
     // — the pale warm greys are crowded, so a ceiling that reads as shadow is the
     // one that also separates.
     Surface { sf_name: "soffit", sf_r: 0.34, sf_g: 0.30, sf_b: 0.36, sf_bucket: "soffit" },
+    // ⚠ THE ONE SURFACE NO CELL CAN HOLD *AND* NO REGISTRY LISTS — plan 20 `A5`.
+    // A rock face is DERIVED: `hex_editor::face_at` reads it off two heights and a
+    // threshold, so `sf_mat` is 0 not because rock is unimplemented but because
+    // storing it would be a second answer that can disagree with the first.
+    //
+    // ⚠ AND IT SHARES THE MASONRY BUCKET ON PURPOSE, which is the honest reading of
+    // what chromaticity can do. Every hue this palette leaves free is a SATURATED
+    // one — the crowded region is exactly the near-neutrals — so a rock that
+    // separates in chroma from dressed stone is a rock that is visibly green or
+    // blue. Measured over `classified()`: a neutral sits 2.0x the tolerance from
+    // the wall where the palette's own tightest pair is 3.5x, and every grey that
+    // clears the wall lands inside 2.5x of the sky or the soffit instead.
+    //
+    // So it is declared alike rather than faked apart — the wall/frame rule one
+    // surface over — and the separation that IS real is carried by VALUE: this is
+    // 0.34/0.32/0.29 against the wall's 0.55/0.52/0.46, a little over half as
+    // bright, which is a weathered outcrop beside dressed stone and is what the
+    // eye uses. ⚠ The consequence, said rather than discovered: a gate cannot ask
+    // a histogram whether a face appeared. It counts the mesh's triangles, which
+    // is exact — the second instrument, not a looser threshold.
+    Surface { sf_name: "rock",   sf_r: 0.34, sf_g: 0.32, sf_b: 0.29, sf_bucket: "masonry" },
   ]
 }
 

@@ -666,16 +666,22 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // mesh cannot serve both, and that is `CAMERA_INDOORS.md`'s own reason for the
 // split — the geometry followed from the requirement rather than the other way
 // round. Nine gate files carry this number beside a "keep this equal to" note.
+// ⚠ AND AGAIN, 9 → 10, FOR THE ROCK FACE — plan 20 `A5`. `emit_room_wall` chose
+// the wall surface over earning a tenth, and the argument there does not carry
+// here: a cellar wall IS masonry, while a cliff drawn in dressed stone is a
+// cutting that reads as a building. It is also the first surface whose CELLS do
+// not exist — a face is derived from two heights and a threshold, so it has no
+// material to be selected by and its mesh is its own pass.
 // ⚠ AND `hex_mesh::surface_count()` IS THE AUTHORITY (plan 18 B3.1); this
 // is a copy, held equal by a loft test rather than by the compiler. That began as
 // a workaround for `const X = some_fn()` aborting (loft#744) and it OUTLIVED the
 // fix, which landed 2026-08-03: a file-scope constant is an inlined expression
 // **re-evaluated at every reference**, so `const SURFACES = surface_count()` would
 // walk the surface list once per mesh id computed. A test costs one run.
-const SURFACES = 9;              // ⚠ the frame took the eighth, the soffit the
-                                 // ninth: an id-space stride, so a chunk's meshes
-                                 // stay contiguous and nothing renumbers when a
-                                 // surface is added.
+const SURFACES = 10;             // ⚠ the frame took the eighth, the soffit the
+                                 // ninth and the rock face the tenth: an id-space
+                                 // stride, so a chunk's meshes stay contiguous and
+                                 // nothing renumbers when a surface is added.
 // ── THE CART (rung W7, moros#14) — a multi-rig, and its wheels ──────────────
 //
 // Three rigs that move as one: a body and two wheels. The connector is the
@@ -3511,7 +3517,16 @@ fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
                    cma_po.po_head, cma_po.po_sill, cma_pok,
                    cma_po.po_spring, cma_po.po_radius,
                    runs, roofs, leaves, openings, annexes, awalls, props, slabs, holes);
-  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s]
+  // ⚠ THE TENTH TAKES NO REGISTRY AND NO MATERIAL — plan 20 `A5`. Where a column
+  // stands higher than the ground beneath it can hold, the side of it is rock, and
+  // `hex_editor::face_at` reads that off the heights alone. So this is the only
+  // surface nothing has to remember to write: move the ground and the rock follows.
+  //
+  // ⚠ AND `bounded` REACHES IT TOO, for the same reason it reaches the ground. A
+  // part's unwritten cells are OUTSIDE it, not ground at zero — without this every
+  // part would come back ringed in cliff.
+  cma_x = hex_mesh::chunk_mesh_faces(cx, cz, wld, bounded);
+  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x]
 }
 
 // One surface's mesh out of that set, by index. ⚠ The fallback is an EMPTY mesh

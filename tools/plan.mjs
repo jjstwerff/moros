@@ -134,7 +134,13 @@ ws.onmessage = async (e) => {
     // The staircase below is the index; this is the wall. Seeing both at once is
     // the point — they must agree in position and disagree in shape.
     let wallVerts = 0;
-    const SURF = 8;   // keep equal to `SURFACES` in src/editor_server.loft
+    // ⚠ THIS SAID 8 FOR AS LONG AS THE SERVER SAID 9, beside its own "keep equal
+    // to" note — found while taking it to 10 for plan 20 `A5`'s rock face. A
+    // stride in the wrong unit does not fail, it re-tunes: `(id - 16) % 8 !== 5`
+    // selected a rotating mix of surfaces and drew them as "the wall mesh", so
+    // every overlay this diagnostic has produced since the soffit landed was of
+    // something else. The comment was right and nobody ran it.
+    const SURF = 10;  // keep equal to `SURFACES` in src/editor_server.loft
     for (const [id, d] of meshes) {
       if (id <= 15 || (id - 16) % SURF !== 5) continue;
       for (let k = 0; k + 11 < d.length; k += 12) {         // two verts of a tri

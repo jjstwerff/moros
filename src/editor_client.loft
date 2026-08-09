@@ -252,7 +252,7 @@ void main() {{
 // `html/editor.html` carries; a client holding a stale `SURFACES` hides the wrong
 // surface, which looks like a camera fault.
 const FIGURE_MAX = 15;
-const SURFACES   = 9;
+const SURFACES   = 10;
 
 // The catalogue's family names, as they arrive in `N:`.
 //

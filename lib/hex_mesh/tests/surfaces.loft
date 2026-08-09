@@ -12,7 +12,7 @@ fn test_the_stride_is_the_list_length() {
          "the stride is {surface_count()} and the list holds {len(surfaces())}");
   // The number the wire is currently built on. ⚠ If a surface is added this
   // fails, and it SHOULD: the id space renumbers and every decoder moves.
-  assert(surface_count() == 9, "surfaces: {surface_count()}, want 9");
+  assert(surface_count() == 10, "surfaces: {surface_count()}, want 10");
 }
 
 fn test_every_surface_is_named_once() {

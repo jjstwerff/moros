@@ -1,0 +1,309 @@
+// THE ROCK IS DRAWN, AND ONLY WHERE THE GROUND CANNOT HOLD — plan 20 `A5`.
+//
+// `hex_editor/tests/face.loft` owns the RULE — where a face is. This owns the
+// PICTURE — that something is emitted there, that it is vertical, that it meets
+// the ground it fills the gap in, and that a world with no face is drawn exactly
+// as it was before any of this existed.
+//
+// ⚠ THE LAST OF THOSE IS THE ONE THAT MATTERS MOST. The corner rule changed on
+// the hot path every chunk of every world goes through, and its divisor went from
+// the constant 3 to a count. If that count is ever anything but 3 on ordinary
+// ground, every world in the tree quietly re-meshes.
+use hex_mesh;
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn flat(h: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// One cell standing `up` proud of a flat plain, which puts the same step on all
+// six of its sides at once.
+fn pillar(up: integer) -> World {
+  w = flat(G);
+  hex_editor::ground_set(w, 4, 4, G + up, hex_editor::SURFACE_MAT);
+  w
+}
+
+// ── the negative control, first, because it guards everything already shipped ──
+
+fn test_ordinary_ground_still_averages_over_exactly_three_cells() {
+  w = flat(G);
+  cl = 0;
+  rs = 0;
+  hex_editor::brush(w, 4, 4, 24, 12, cl, rs);
+  checked = 0;
+  for cq in 0..8 {
+    for cr in 0..8 {
+      hs = hex_mesh::corner_heights(cq, cr, w);
+      // The mean of the three cells touching each corner, derived here rather than
+      // read from the thing under test.
+      sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(cq, cr, d);
+        (ca, cb) = hex_grid::hex_edge_corners(d);
+        nh = (hex_editor::ground_h(w, nq, nr) as float);
+        sums[ca] = (sums[ca] ?? 0.0) + nh;
+        sums[cb] = (sums[cb] ?? 0.0) + nh;
+      }
+      own = (hex_editor::ground_h(w, cq, cr) as float);
+      for ci in 0..6 {
+        want = (own + (sums[ci] ?? 0.0)) / 3.0 ?? 0.0;
+        got = hs[ci] ?? 0.0;
+        d2 = got - want;
+        if d2 < 0.0 { d2 = 0.0 - d2; }
+        assert(d2 < 0.0001,
+          "corner {ci} of ({cq},{cr}) is {got}, and the three-cell mean is {want}");
+        checked = checked + 1;
+      }
+    }
+  }
+  assert(checked == 384, "only {checked} corners were compared");
+}
+
+fn test_a_world_with_no_face_emits_no_rock() {
+  w = flat(G);
+  cl = 0;
+  rs = 0;
+  hex_editor::brush(w, 4, 4, 24, 12, cl, rs);
+  m = hex_mesh::chunk_mesh_faces(0, 0, w);
+  assert(len(m.triangles) == 0,
+    "one stroke of the raise brush cut {len(m.triangles)} triangles of rock");
+  // ⚠ AND THE CONTROL ON THE CONTROL: the scene has to have height in it, or the
+  // assertion above is about a flat plain and says nothing.
+  gm = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  for v in gm.vertices {
+    if v.pos.y < lo { lo = v.pos.y; }
+    if v.pos.y > hi { hi = v.pos.y; }
+  }
+  assert(hi - lo > 1.0, "the tile is flat, so nothing was controlled: {lo}..{hi}");
+}
+
+fn test_dead_flat_ground_emits_no_rock() {
+  m = hex_mesh::chunk_mesh_faces(0, 0, flat(G));
+  assert(len(m.triangles) == 0, "{len(m.triangles)} triangles of rock on a plain");
+}
+
+// ── and where it does break ─────────────────────────────────────────────────
+
+fn test_a_column_that_cannot_hold_is_walled_on_all_six_sides() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  m = hex_mesh::chunk_mesh_faces(0, 0, pillar(up));
+  // Six sides, one quad each, two triangles a quad.
+  assert(len(m.triangles) == 12,
+    "a column {up} proud of its plain drew {len(m.triangles)} triangles, not 12");
+}
+
+fn test_the_face_is_vertical() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  m = hex_mesh::chunk_mesh_faces(0, 0, pillar(up));
+  // Every quad stands on one plan-line: exactly two distinct (x,z) among its four
+  // corners, so no triangle leans. Checked as *every vertex shares its x,z with
+  // another at a different height*.
+  n = 0;
+  for v in m.vertices {
+    twin = false;
+    for u in m.vertices {
+      dx = u.pos.x - v.pos.x;
+      dz = u.pos.z - v.pos.z;
+      dy = u.pos.y - v.pos.y;
+      if dx < 0.0 { dx = 0.0 - dx; }
+      if dz < 0.0 { dz = 0.0 - dz; }
+      if dy < 0.0 { dy = 0.0 - dy; }
+      if dx < 0.0001 && dz < 0.0001 && dy > 0.0001 { twin = true; }
+    }
+    assert(twin, "a face vertex at ({v.pos.x},{v.pos.y},{v.pos.z}) stands alone in plan");
+    n = n + 1;
+  }
+  assert(n == 36, "{n} face vertices, and six quads at two triangles is 36");
+}
+
+// ⚠ THE ONE THAT SAYS IT IS A FACE AND NOT A DECORATION. The corner rule is what
+// opens the gap; this is what proves the rock fills exactly it. Both ends are read
+// from `corner_heights`, which is the function the ground fan itself uses — so a
+// face that met the ground *nearly* would show up here as a hairline.
+fn test_the_rock_fills_the_gap_the_ground_leaves() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  w = pillar(up);
+  hi = hex_mesh::corner_heights(4, 4, w);
+  (nq, nr) = hex_grid::hex_neighbor(4, 4, 0);
+  lo = hex_mesh::corner_heights(nq, nr, w);
+  (ka, kb) = hex_grid::hex_edge_corners(0);
+  (kc, kd) = hex_grid::hex_edge_corners(3);
+  top = hi[ka] ?? 0.0;
+  bot = lo[kd] ?? 0.0;
+  assert(top - bot > 0.5,
+    "the ground draws no gap at a face: {top} above, {bot} below");
+
+  m = hex_mesh::chunk_mesh_faces(0, 0, w);
+  seen = false;
+  for v in m.vertices {
+    d1 = v.pos.y - top * hex_proj::HEIGHT_SCALE;
+    if d1 < 0.0 { d1 = 0.0 - d1; }
+    if d1 < 0.0001 { seen = true; }
+  }
+  assert(seen, "no rock vertex sits on the top corner the ground fan drew ({top})");
+  low = false;
+  for v2 in m.vertices {
+    d2 = v2.pos.y - bot * hex_proj::HEIGHT_SCALE;
+    if d2 < 0.0 { d2 = 0.0 - d2; }
+    if d2 < 0.0001 { low = true; }
+  }
+  assert(low, "no rock vertex sits on the bottom corner the ground fan drew ({bot})");
+  assert(kb >= 0 && kc >= 0, "the corner rings were read");
+}
+
+// ⚠ THE OTHER HALF OF THE SAME CLAIM: before `A5` the drawn surface was continuous
+// EVERYWHERE, which is why a stored cliff arrived as a hillside. It must still be
+// continuous where there is no face, and must not be where there is.
+fn test_the_drawn_surface_parts_only_at_a_face() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  w = pillar(up);
+  // across the faced edge
+  gap = seam(w, 4, 4, 0);
+  assert(gap > 0.5, "the two sides of a cliff still agree about its corner: {gap}");
+  // and two cells away, over ordinary flat ground
+  calm = seam(w, 1, 1, 0);
+  assert(calm < 0.0001, "the ground parted where nothing faces it: {calm}");
+}
+
+// The distance between the two sides' copies of one shared corner.
+fn seam(w: World, aq: integer, ar: integer, d: integer) -> float {
+  (bq, br) = hex_grid::hex_neighbor(aq, ar, d);
+  (ka, kb) = hex_grid::hex_edge_corners(d);
+  (kc, kd) = hex_grid::hex_edge_corners((d + 3) % 6 ?? 0);
+  ca = hex_mesh::corner_heights(aq, ar, w);
+  cb = hex_mesh::corner_heights(bq, br, w);
+  g1 = (ca[ka] ?? 0.0) - (cb[kd] ?? 0.0);
+  if g1 < 0.0 { g1 = 0.0 - g1; }
+  g2 = (ca[kb] ?? 0.0) - (cb[kc] ?? 0.0);
+  if g2 < 0.0 { g2 = 0.0 - g2; }
+  if g2 > g1 { return g2; }
+  g1
+}
+
+// A straight cliff: everything west of q=5 stands `up` above everything east of it.
+// Unlike a pillar this has an ALONG direction, which is what makes an asymmetry
+// visible at all.
+fn terrace(up: integer, ramp: boolean) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 {
+      h = G;
+      if q < 5 { h = G + up; }
+      // ⚠ THE LOW SIDE TILTS ALONG THE CLIFF, by one unit a row — well inside what
+      // grass holds, so it adds no face of its own. Without it the two corners of
+      // every faced edge are equal and a mesher that swapped them would draw the
+      // identical picture.
+      else if ramp { h = G + (r % 3 ?? 0); }
+      hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT);
+    }
+  }
+  w
+}
+
+// ⚠ THE FACE IS FULL HEIGHT, AND ONLY ASKING FROM BOTH ENDS MAKES IT SO. A rule
+// that asked *does the cell I am standing on face its neighbour* would leave the
+// LOW side still averaging the cliff top into its corners — the ground ramping up
+// to meet the rock, which buries the bottom third of every face. Measured on a
+// flat-topped terrace the seam must be the stored step exactly; under the
+// one-way rule it comes out a third short.
+fn test_a_cliff_parts_the_ground_by_its_whole_step() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  w = terrace(up, false);
+  got = seam(w, 4, 2, 0);
+  assert(got > (up as float) - 0.0001 && got < (up as float) + 0.0001,
+    "a step of {up} parts the drawn ground by {got}");
+  // The control: two cells back from the edge, nothing parts.
+  assert(seam(w, 2, 2, 0) < 0.0001, "the plateau parted where it is flat");
+}
+
+// ⚠ THE QUAD IS NOT TWISTED, and a pillar cannot say so. Corner `ka` here is `kd`
+// there, not `kc`; pair them the obvious way and each face becomes an hourglass,
+// crossing itself in the middle. On a symmetric scene the two orderings draw the
+// same triangles, so this needs the tilted low side to have anything to see.
+fn test_the_face_is_not_twisted() {
+  up = hex_editor::ground_kind_of(hex_editor::SURFACE_MAT).tr_face + 6;
+  w = terrace(up, true);
+  m = hex_mesh::chunk_mesh_faces(0, 0, w);
+  assert(len(m.triangles) > 0, "the terrace drew no rock at all");
+  asym = 0;
+  checked = 0;
+  for cr in 1..7 {
+    tops = hex_mesh::corner_heights(4, cr, w);
+    (bq, br) = hex_grid::hex_neighbor(4, cr, 0);
+    bots = hex_mesh::corner_heights(bq, br, w);
+    (ka, kb) = hex_grid::hex_edge_corners(0);
+    (kc, kd) = hex_grid::hex_edge_corners(3);
+    // Only worth checking where the two bottom corners actually differ.
+    d = (bots[kc] ?? 0.0) - (bots[kd] ?? 0.0);
+    if d < 0.0 { d = 0.0 - d; }
+    if d < 0.0001 { continue; }
+    asym = asym + 1;
+    p = hex_proj::hex_corner_world(4, cr, 0, (6 - ka) % 6 ?? 0);
+    lo = 1000000.0;
+    hi = 0.0 - 1000000.0;
+    for v in m.vertices {
+      ex = v.pos.x - p.x;
+      ez = v.pos.z - p.z;
+      if ex < 0.0 { ex = 0.0 - ex; }
+      if ez < 0.0 { ez = 0.0 - ez; }
+      if ex > 0.0001 || ez > 0.0001 { continue; }
+      if v.pos.y < lo { lo = v.pos.y; }
+      if v.pos.y > hi { hi = v.pos.y; }
+    }
+    want_lo = (bots[kd] ?? 0.0) * hex_proj::HEIGHT_SCALE;
+    want_hi = (tops[ka] ?? 0.0) * hex_proj::HEIGHT_SCALE;
+    wrong = (bots[kc] ?? 0.0) * hex_proj::HEIGHT_SCALE;
+    e1 = lo - want_lo; if e1 < 0.0 { e1 = 0.0 - e1; }
+    e2 = hi - want_hi; if e2 < 0.0 { e2 = 0.0 - e2; }
+    assert(e1 < 0.0001,
+      "the rock at corner {ka} of (4,{cr}) starts at {lo}; the ground there is "
+      + "{want_lo} and the OTHER end of the edge is {wrong}");
+    assert(e2 < 0.0001, "the rock tops out at {hi}, the ground at {want_hi}");
+    checked = checked + 1;
+    assert(kb >= 0, "the corner ring was read");
+  }
+  assert(asym >= 2,
+    "only {asym} edges had two different bottom corners — the scene is symmetric "
+    + "and a twisted quad would be invisible to it");
+  assert(checked == asym, "not every asymmetric edge was checked");
+}
+
+// ⚠ THE PAIRING IS NOT THE OBVIOUS ONE, and this is what says so. The two corner
+// rings run opposite ways across an edge, so corner `ka` of one cell is `kd` of the
+// other and pairing `ka` with `kc` twists the quad into an hourglass. Proved from
+// the WORLD POSITIONS rather than from the heights, which is the only reading that
+// cannot be satisfied by two numbers that happen to be equal.
+fn test_the_two_sides_number_a_shared_corner_differently() {
+  for d in 0..6 {
+    (bq, br) = hex_grid::hex_neighbor(3, 3, d);
+    (ka, kb) = hex_grid::hex_edge_corners(d);
+    (kc, kd) = hex_grid::hex_edge_corners((d + 3) % 6 ?? 0);
+    pa = hex_proj::hex_corner_world(3, 3, 0, (6 - ka) % 6 ?? 0);
+    pd = hex_proj::hex_corner_world(bq, br, 0, (6 - kd) % 6 ?? 0);
+    dx = pa.x - pd.x;
+    dz = pa.z - pd.z;
+    if dx < 0.0 { dx = 0.0 - dx; }
+    if dz < 0.0 { dz = 0.0 - dz; }
+    assert(dx < 0.0001 && dz < 0.0001,
+      "dir {d}: corner {ka} here and {kd} there are {dx},{dz} apart, not one point");
+    pb = hex_proj::hex_corner_world(3, 3, 0, (6 - kb) % 6 ?? 0);
+    pc = hex_proj::hex_corner_world(bq, br, 0, (6 - kc) % 6 ?? 0);
+    ex = pb.x - pc.x;
+    ez = pb.z - pc.z;
+    if ex < 0.0 { ex = 0.0 - ex; }
+    if ez < 0.0 { ez = 0.0 - ez; }
+    assert(ex < 0.0001 && ez < 0.0001,
+      "dir {d}: corner {kb} here and {kc} there are {ex},{ez} apart, not one point");
+  }
+}

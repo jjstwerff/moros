@@ -52,14 +52,20 @@ fn test_one_concept_has_one_name() {
 fn test_the_surfaces_no_cell_can_hold_are_named_and_expected() {
   // ⚠ THE NEGATIVE CONTROL, and it is the half that makes the rest mean anything: a
   // join that mapped EVERY surface to some material would pass all three tests above
-  // and would be inventing four terrains that no cell can store. These four are
-  // expected to have none, and if that list ever changes it must change on purpose.
+  // and would be inventing terrains that no cell can store. These five are expected
+  // to have none, and if that list ever changes it must change on purpose.
+  //
+  // ⚠ `rock` IS THE FIFTH AND ITS REASON IS NOT THE OTHERS'. `tree` is an item,
+  // `wall` is an edge material in its own numbering, `frame` and `soffit` are
+  // derived from a roof — but a rock FACE is derived from the ground's own heights
+  // (`hex_editor::face_at`), so plan 20 `A5` gives it no material on purpose: the
+  // store already answers where it is, and a byte for it would be a second answer.
   free: vector<text> = [];
   for i in 0..len(surfaces()) {
     if surface_at(i).sf_mat == 0 { free += [surface_at(i).sf_name]; }
   }
-  assert(len(free) == 4, "{len(free)} surfaces map to no material, not 4: {free}");
-  for want in ["tree", "wall", "frame", "soffit"] {
+  assert(len(free) == 5, "{len(free)} surfaces map to no material, not 5: {free}");
+  for want in ["tree", "wall", "frame", "soffit", "rock"] {
     found = false;
     for f in free { if f == want { found = true; } }
     assert(found, "'{want}' should be drawable but not storable in a cell");

@@ -33,19 +33,20 @@ use surfaces;
 // The renderer's tile, in hexes. See the banner: NOT the store's `CHUNK_W`.
 pub const MESH_CHUNK = 8;
 
+// The same corners for a caller with no grid in hand — `emit_ground_reveal`, and
+// every probe and test that asks what the ground is drawn as at one cell.
+//
+// ⚠ IT DELEGATES RATHER THAN RESTATING THE RULE, and that is the whole point of
+// the three lines. Written out longhand it was a SECOND implementation of the
+// face rule against `corner_heights_from`'s, and this tree's scar is exactly that
+// shape: two derivations of one quantity agree the day they are written. A 3x3
+// box holds all six neighbours of a cell in odd-r offset, which is every cell the
+// corner mean can reach, so the delegation is exact rather than approximate.
 pub fn corner_heights(cq: integer, cr: integer, wld: World) -> vector<float> {
-  sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-  for cd2 in 0..6 {
-    (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
-    nh2 = (terrain_h(nq2, nr2, wld) as float);
-    (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
-    sums[ca2] = sums[ca2] + nh2;
-    sums[cb2] = sums[cb2] + nh2;
-  }
-  selfh = (terrain_h(cq, cr, wld) as float);
-  out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
-  out
+  gh: vector<integer> = [];
+  gl: vector<integer> = [];
+  face_grid(wld, cq - 1, cr - 1, 3, gh, gl);
+  corner_heights_from(gh, gl, cq - 1, cr - 1, 3, cq, cr)
 }
 
 pub fn nrm3(nx: float, ny: float, nz: float) -> Vec3 {
@@ -70,13 +71,122 @@ pub fn grid_h(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
   gh[lr * gw + lq] ?? 0
 }
 
-pub fn cell_normal_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+// ── A FACE IS A SURFACE, NOT AN ABSENCE — plan 20 `A5` ──────────────────────
+//
+// ⚠ MEASURED BEFORE ANY OF THIS EXISTED (`probe/house/faces.loft`): the drawn
+// ground is CONTINUOUS everywhere, because every corner is the mean of the three
+// cells touching it and both sides of an edge therefore compute the same number.
+// A stored step of 11 — which stands at 57.8° if it is a face — arrived as a 5.56
+// drop between smoothed centres, roughly halved and smeared across two hexes.
+// The store had a cliff and the picture had a hillside, so `A5`'s invariant was
+// failing in the strongest possible sense: the face was literally absent.
+//
+// The fix is one rule, applied in the two places that smooth: **a corner does not
+// average across a faced edge, and neither does a normal.** That makes the drawn
+// surface discontinuous at exactly the edges `face_at` names, and the gap it
+// leaves is what `emit_face_wall` fills with rock.
+//
+// ⚠ AND A CELL THAT IS NOT THERE IS NOT A CLIFF. In a BOUNDED world — a part —
+// an unwritten cell is outside the thing rather than ground at zero, so a face
+// against it would ring every part in rock the moment `A5` landed. It is refused
+// from BOTH sides, which `FACE_NONE` cannot be: fabric carries no face of its own
+// and must still be faced *by* the bank standing over it.
+const FACE_ABSENT = 0 - 1;
+
+// The halo's heights AND its face limits, in one pass over the store.
+//
+// ⚠ THE LIMITS HAVE TO RIDE ALONG, they cannot be asked for. Measured, one
+// `face_limit` call per halo cell costs **1.080 ms** a rebuild against **0.265 ms**
+// for the heights the mesher already reads — four times the whole read, on a path
+// that runs once per material per chunk. Memoised it is **0.278 ms**, which is the
+// height read itself.
+//
+// ⚠ THAT IS BECAUSE ONE `world_ground_cell` PER CELL IS WHAT `terrain_h` ALREADY
+// COST. The height read was throwing the material and the item away, and both are
+// on the record it already had in hand — so the grid gains a column for the price
+// of the arithmetic and only the KIND lookup is new.
+//
+// ⚠ THE MEMO IS KEYED ON THE REGION AS WELL AS THE MATERIAL — plan 21 `R2`. A
+// byte means what its region says, and a two-cell halo can reach into a
+// neighbouring chunk with a different one, so a memo keyed on the material alone
+// would paint a desert's byte 3 with a mountain's threshold on exactly the cells
+// at a border. Measured, `world_region_at` costs 0.065 ms over the halo — a
+// twentieth of what asking `face_limit` per cell costs.
+fn face_grid_in(wld: World, gq0: integer, gr0: integer, gw: integer,
+                bounded: boolean, gh: &vector<integer>, gl: &vector<integer>) {
+  ks: vector<integer> = [];
+  vs: vector<integer> = [];
+  for hr in gr0..gr0 + gw {
+    for hq in gq0..gq0 + gw {
+      c = world_ground_cell(wld, hq, hr);
+      gh += [c.h_height as integer ?? 0];
+      if bounded && (c.h_material as integer ?? 0) == 0 {
+        gl += [FACE_ABSENT];
+        continue;
+      }
+      // Anything planted roots the soil, so it is part of the key rather than a
+      // second lookup — `hex_editor::face_limit` is the one place that decides by
+      // how much, and this only has to ask it once per distinct answer.
+      if (c.h_item as integer ?? 0) != 0 {
+        gl += [hex_editor::face_limit(wld, hq, hr)];
+        continue;
+      }
+      m = c.h_material as integer ?? 0;
+      k = hex_world::world_region_at(wld, hq, hr) * 256 + m;
+      hit = 0 - 1;
+      for ki in 0..len(ks) {
+        if (ks[ki] ?? 0) == k { hit = vs[ki] ?? 0; }
+      }
+      if hit < 0 {
+        hit = hex_editor::ground_kind_at(wld, hq, hr, m).tr_face;
+        ks += [k];
+        vs += [hit];
+      }
+      gl += [hit];
+    }
+  }
+}
+
+// The unbounded reading — the outdoors is everywhere, so every cell is ground.
+fn face_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
+             gh: &vector<integer>, gl: &vector<integer>) {
+  face_grid_in(wld, gq0, gr0, gw, false, gh, gl);
+}
+
+fn faced_between(gh: vector<integer>, gl: vector<integer>,
+                 gq0: integer, gr0: integer, gw: integer,
+                 aq: integer, ar: integer, bq: integer, br: integer) -> boolean {
+  ha = gh_at(gh, gq0, gr0, gw, aq, ar);
+  hb = gh_at(gh, gq0, gr0, gw, bq, br);
+  if gh_at(gl, gq0, gr0, gw, aq, ar) == FACE_ABSENT { return false; }
+  if gh_at(gl, gq0, gr0, gw, bq, br) == FACE_ABSENT { return false; }
+  // Asked from BOTH ends: the face belongs to whichever column stands higher, and
+  // a smoothing rule that only looked one way would blend the low side into the
+  // cliff it is standing under.
+  if ha > hb {
+    la = gh_at(gl, gq0, gr0, gw, aq, ar);
+    return la != hex_editor::FACE_NONE && ha - hb > la;
+  }
+  if hb > ha {
+    lb = gh_at(gl, gq0, gr0, gw, bq, br);
+    return lb != hex_editor::FACE_NONE && hb - ha > lb;
+  }
+  false
+}
+
+pub fn cell_normal_from(gh: vector<integer>, gl: vector<integer>,
+                    gq0: integer, gr0: integer, gw: integer,
                     cq: integer, cr: integer) -> Vec3 {
   c0 = hex_to_world(cq, cr, 0);
   h0 = (gh_at(gh, gq0, gr0, gw, cq, cr) as float) * HEIGHT_SCALE;
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
   for nd in 0..6 {
     (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
+    // ⚠ A CELL ON A CLIFF TOP IS FLAT, NOT TILTED INTO THE VOID. Fitting the drop
+    // to a cliff neighbour would light the last row of a plateau as though it
+    // poured over the edge — the lighting saying *slope* where the geometry now
+    // says *face*, which is the one thing this change exists to stop.
+    if faced_between(gh, gl, gq0, gr0, gw, cq, cr, nnq, nnr) { continue; }
     nw = hex_to_world(nnq, nnr, 0);
     dx = nw.x - c0.x;
     dz = nw.z - c0.z;
@@ -99,29 +209,47 @@ pub fn gh_at(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
   gh[lr * gw + lq] ?? 0
 }
 
-pub fn corner_heights_from(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
+// ⚠ THE DIVISOR IS COUNTED, NOT THE CONSTANT 3 — plan 20 `A5`. Every corner used
+// to be the mean of the three cells touching it, which is what makes the drawn
+// ground continuous and is exactly why a cliff could not be drawn. A neighbour
+// across a FACED edge is dropped from the mean and from the count, so this cell's
+// copy of a shared corner keeps its own side's height and the neighbour's copy
+// keeps the other — the discontinuity `emit_face_wall` then fills.
+//
+// ⚠ AND IT TAPERS BY ITSELF, which is the geometry a cutting actually has. Where
+// the face runs on, both of a corner's other cells are across it and the corner is
+// this cell's own height: a full-height cliff. Where it peters out, one of them is
+// still shared and the corner is a mean of two: the face closes to nothing over one
+// hex instead of ending in a vertical scar.
+pub fn corner_heights_from(gh: vector<integer>, gl: vector<integer>,
+                       gq0: integer, gr0: integer, gw: integer,
                        cq: integer, cr: integer) -> vector<float> {
   sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+  cnt:  vector<float> = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
   for cd2 in 0..6 {
     (nq2, nr2) = hex_grid::hex_neighbor(cq, cr, cd2);
-    nh2 = (gh_at(gh, gq0, gr0, gw, nq2, nr2) as float);
     (ca2, cb2) = hex_grid::hex_edge_corners(cd2);
+    if faced_between(gh, gl, gq0, gr0, gw, cq, cr, nq2, nr2) { continue; }
+    nh2 = (gh_at(gh, gq0, gr0, gw, nq2, nr2) as float);
     sums[ca2] = sums[ca2] + nh2;
     sums[cb2] = sums[cb2] + nh2;
+    cnt[ca2] = (cnt[ca2] ?? 1.0) + 1.0;
+    cnt[cb2] = (cnt[cb2] ?? 1.0) + 1.0;
   }
   selfh = (gh_at(gh, gq0, gr0, gw, cq, cr) as float);
   out: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-  for ci2 in 0..6 { out[ci2] = (selfh + sums[ci2]) / 3.0 ?? 0.0; }
+  for ci2 in 0..6 { out[ci2] = (selfh + (sums[ci2] ?? 0.0)) / (cnt[ci2] ?? 1.0) ?? 0.0; }
   out
 }
 
 pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                    nx: vector<float>, ny: vector<float>, nz: vector<float>,
                    q0: integer, r0: integer,
-                   gh: vector<integer>, gq0: integer, gr0: integer, gw: integer) {
+                   gh: vector<integer>, gl: vector<integer>,
+                   gq0: integer, gr0: integer, gw: integer) {
   chh = grid_h(gh, gq0, gr0, gw, cq, cr, wld);
   cw = hex_to_world(cq, cr, chh);
-  hs = corner_heights_from(gh, gq0, gr0, gw, cq, cr);
+  hs = corner_heights_from(gh, gl, gq0, gr0, gw, cq, cr);
 
   // ⚠ THE CENTRE IS THE MEAN OF ITS OWN CORNERS, NOT THE RAW CELL HEIGHT.
   //
@@ -251,16 +379,15 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
   gq0 = q0 - 2;
   gr0 = r0 - 2;
   gh: vector<integer> = [];
-  for hr in gr0..gr0 + gw {
-    for hq in gq0..gq0 + gw { gh += [terrain_h(hq, hr, wld)]; }
-  }
+  gl: vector<integer> = [];
+  face_grid_in(wld, gq0, gr0, gw, bounded, gh, gl);
 
   nx: vector<float> = [];
   ny: vector<float> = [];
   nz: vector<float> = [];
   for hr in r0 - 1..r0 + MESH_CHUNK + 1 {
     for hq in q0 - 1..q0 + MESH_CHUNK + 1 {
-      hn = cell_normal_from(gh, gq0, gr0, gw, hq, hr);
+      hn = cell_normal_from(gh, gl, gq0, gr0, gw, hq, hr);
       nx += [hn.x];
       ny += [hn.y];
       nz += [hn.z];
@@ -303,7 +430,7 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
         mat = hex_editor::SURFACE_MAT;
       }
       if !open && !absent && mat == want_mat {
-        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gq0, gr0, gw);
+        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw);
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
         // one surface over. The ground has no skirts because it is continuous and
         // its edges are somebody else's cells — but a stairwell is where the ground
@@ -314,6 +441,89 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
     }
   }
   cm
+}
+
+// ── THE ROCK ITSELF — plan 20 `A5` ──────────────────────────────────────────
+//
+// One chunk's faces, as triangles. A face is DERIVED, so this reads no registry
+// and nothing had to remember to write one: move the ground and the rock moves
+// with it, appears where the limit breaks and is gone the moment it does not.
+//
+// ⚠ IT IS ITS OWN PASS, NOT A SIXTH MATERIAL. `chunk_mesh_mat` walks the cells
+// carrying one material; a face belongs to an EDGE and to the column that stands
+// above it, so it has no material to be selected by. Running it once per chunk
+// also keeps the limit grid read once rather than once per surface.
+pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: World,
+                        bounded: boolean = false) -> Mesh {
+  fm = mesh("faces");
+  q0 = cx * MESH_CHUNK;
+  r0 = cz * MESH_CHUNK;
+  gw = MESH_CHUNK + 4;
+  gq0 = q0 - 2;
+  gr0 = r0 - 2;
+  gh: vector<integer> = [];
+  gl: vector<integer> = [];
+  face_grid_in(wld, gq0, gr0, gw, bounded, gh, gl);
+  for fr in r0..r0 + MESH_CHUNK {
+    for fq in q0..q0 + MESH_CHUNK {
+      for fd in 0..6 {
+        (fnq, fnr) = hex_grid::hex_neighbor(fq, fr, fd);
+        // ⚠ ONLY FROM THE SIDE THAT STANDS. `faced_between` answers for the edge
+        // and would emit the same quad twice, once from each cell — and the second
+        // copy is back-facing, so it is invisible and pure cost.
+        hh = gh_at(gh, gq0, gr0, gw, fq, fr);
+        nh = gh_at(gh, gq0, gr0, gw, fnq, fnr);
+        if hh <= nh { continue; }
+        if !faced_between(gh, gl, gq0, gr0, gw, fq, fr, fnq, fnr) { continue; }
+        emit_face_wall(fm, gh, gl, gq0, gr0, gw, fq, fr, fd, fnq, fnr);
+      }
+    }
+  }
+  fm
+}
+
+// One face, filling the gap the corner rule leaves between two columns.
+//
+// ⚠ THE TOP AND THE BOTTOM ARE THE TWO SIDES' OWN COPIES OF THE SAME TWO CORNERS,
+// which is what makes this quad meet the ground exactly rather than nearly. Both
+// sides are asked with the identical function the fans use, so a face cannot leave
+// a hairline: whatever `corner_heights_from` says the ground is here, this starts
+// there.
+//
+// ⚠ AND THE CORNER RINGS RUN OPPOSITE WAYS ACROSS AN EDGE — `emit_wall_panel`'s
+// rule, and it bites here too. Corner `ka` of this cell is corner `kd` of the
+// neighbour, not `kc`: `hex_edge_corners` numbers them in the ASKING cell's own
+// ring. Pairing them the obvious way twists the quad into an hourglass.
+fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
+                  gq0: integer, gr0: integer, gw: integer,
+                  cq: integer, cr: integer, d: integer,
+                  nq: integer, nr: integer) {
+  (ka, kb) = hex_grid::hex_edge_corners(d);
+  (kc, kd) = hex_grid::hex_edge_corners((d + 3) % 6 ?? 0);
+  tops = corner_heights_from(gh, gl, gq0, gr0, gw, cq, cr);
+  bots = corner_heights_from(gh, gl, gq0, gr0, gw, nq, nr);
+  w1 = hex_corner_world(cq, cr, 0, (6 - ka) % 6 ?? 0);
+  w2 = hex_corner_world(cq, cr, 0, (6 - kb) % 6 ?? 0);
+  t1 = (tops[ka] ?? 0.0) * HEIGHT_SCALE;
+  t2 = (tops[kb] ?? 0.0) * HEIGHT_SCALE;
+  b1 = (bots[kd] ?? 0.0) * HEIGHT_SCALE;
+  b2 = (bots[kc] ?? 0.0) * HEIGHT_SCALE;
+  // A degenerate quad is not a face. It happens where the taper closes: one
+  // corner is still shared, the other is not, and the shared end has no height.
+  if t1 - b1 <= 0.0 && t2 - b2 <= 0.0 { return; }
+  // ⚠ OUTWARD, FROM THE NEIGHBOUR — the same reason `emit_ground_reveal` does it.
+  // The two libraries walk the corner ring in opposite senses, so a normal taken
+  // off the winding faces into the hill for half the six directions, and a cliff
+  // lit from inside the rock reads as a hole.
+  cs = hex_to_world(cq, cr, 0);
+  cn = hex_to_world(nq, nr, 0);
+  nm = nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+  pa = vec3(w1.x, b1, w1.z);
+  pb = vec3(w2.x, b2, w2.z);
+  pc = vec3(w2.x, t2, w2.z);
+  pd = vec3(w1.x, t1, w1.z);
+  emit_tri(m, pa, nm, pb, nm, pc, nm);
+  emit_tri(m, pa, nm, pc, nm, pd, nm);
 }
 
 pub fn emit_ground_reveal(m: Mesh, wld: World, cq: integer, cr: integer) {

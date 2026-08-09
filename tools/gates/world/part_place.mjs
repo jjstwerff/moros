@@ -18,7 +18,7 @@
 // ⚠ THE SURFACE STRIDE IS NAMED, not spelled. A chunk draws one mesh per surface
 // on consecutive ids, so every decoder here depends on how many there are. Keep
 // equal to `SURFACES` in `src/editor_server.loft`.
-const SURFACES = 9;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit
+const SURFACES = 10;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock
 
 import { connect, send, ask, report, chunkFloats } from '../lib.mjs';
 
