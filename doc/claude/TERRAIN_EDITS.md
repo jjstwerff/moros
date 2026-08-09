@@ -312,6 +312,40 @@ no gesture in the picture, and it cost the 54 `brush` call sites nothing.
 ⚠ **AND A SURFACE WITH NO LIMIT OWES NOTHING.** Grass at 20 a hex is not a debt, it is a
 cliff — `face_at` is what has an opinion about that, and the two must never both claim it.
 
+## T8 — A pad is seated on its own footprint, not on the author's feet
+
+`place_house` took the caller's `grade`, which is the ground under the **author's
+feet** — and a house is not where the author stands: `pose_footprint` puts it *ahead*
+of them. So a pad was seated at the height of a point several cells away, and its own
+uphill edge stood over it by that many cells of gradient.
+
+Measured (`probe/house/pads.loft`), earth standing OVER the floor at the wall:
+
+| ramp | buried before | buried after | proud before | proud after |
+|---|---|---|---|---|
+| 1/hex | 7 | **5** | 5 | 7 |
+| 2/hex | 12 | **7** | 5 | 10 |
+| 3/hex | 17 | **10** | 5 | 12 |
+| 4/hex | 22 | **13** | 5 | 14 |
+
+Halved, and **symmetric** — which is what `SEAT_MEAN` means, and what makes the
+residual a cut-and-fill rather than all of one. `SEAT_LOW` is the buried case this
+removes; `SEAT_HIGH` is a house on a plinth with its whole footprint filled.
+
+⚠ **WHAT REMAINS IS GEOMETRY, NOT A DEFECT.** A level pad seven cells across on a
+4-per-hex slope spans 28 units of ground, so it must cut 14 or fill 14. The content of
+the fix is that the number is **reported** — *"seated at 10 (10 from your feet, cut and
+fill 10)"* — instead of silently absorbed.
+
+⚠ **AND `ak_residual` NOW MEANS WHAT ITS DOC SAYS.** It carried the WALL COUNT: a
+success tally in the field documented as *what the author asked for and did not get*,
+with a test asserting it `> 0` under the name "and it marked wall edges".
+
+⚠ **THE ROOF PLAN HAD TO FOLLOW THE SEAT.** The server built the drawn gable from the
+author's feet while the roof's stored cells sit at the seat — on any slope the picture
+and the store would have disagreed by the whole cut-and-fill. It reads the seated floor
+back out of the world rather than carrying a second copy through the ack.
+
 ## ⚠ Order does not commute, and here is exactly where
 
 *Placing hills then buildings* is **not** the same as *placing the same hill afterwards*.
@@ -370,6 +404,6 @@ fabric* makes a yard tear again at random.
 | the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `slope_limit`, `slope_relax`, `slope_settle`, `ground_kinds`, `edge_kinds`, `face_limit`, `face_at`, `faces_here` |
 | where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall` |
 | the tests | `lib/hex_editor/tests/` — `raise_keeps.loft`, `raise_structure.loft`, `slope_limit.loft`, `run_slope.loft`, `face.loft`; `lib/hex_mesh/tests/face_mesh.loft` |
-| the pictures | `tools/scripts/face.keys` — the control first, then the flank from the foot, then the crest |
+| the pictures | `tools/scripts/face.keys` (rock faces) and `tools/scripts/seat.keys` (a house on a flank) — the control first in both |
 | the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost` |
 | what a byte MEANS | [plan 21](../../plans/21-region-mappings/README.md) — identity belongs to a region; these rules hang off the **name**, never the byte |

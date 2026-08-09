@@ -5,9 +5,8 @@
 
 ## Status
 
-`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A7` and `A5` are **shipped**. `A2b`, `A2c`'s
-**across** half, `A3` and `A8` are designed and not built. `A4` is **half** — see its
-own section below.
+`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5` and `A7` are **shipped**. `A2b`,
+`A2c`'s **across** half, `A3` and `A8` are designed and not built.
 
 ⚠ **AND THE AUDIT `A4` FORCED IS THE LOUDEST THING IN THIS PLAN.** Three of its shipped
 rules have no consumer at all: `slope_settle` (`A7`'s entire deliverable), `footprint_seat`
@@ -63,7 +62,7 @@ to the built-in numbering.
 | **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | Open |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
-| **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ◐ **half** — the relaxation half is ✅ `e0d1881` (`slope_owed`); the PAD half is measured and not built, below |
+| **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
 | **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Open — `A5` shipped, so a cut face is now drawn and `A9` decides what stands ABOVE it |
 
@@ -114,7 +113,7 @@ asked it not to.
 are not the same object, one of the two designs is wrong — so they are gated against each
 other rather than built twice.
 
-### ⚠ What `A4` measured, and what is left
+### ⚠ What `A4` measured, and what it turned out to be
 
 **Half of the row was already true.** Measured (`probe/house/pads.loft`), two houses
 on a ramp: each pad ends level (spread **0**) on every gradient tried, and the ground
@@ -139,9 +138,25 @@ grade above it. `footprint_seat` / `seat_residual` were built for exactly this, 
 tested in `tests/footprint.loft`, and have **no consumer anywhere**. The
 cut-and-fill a placement owes is computed by nobody and shown to no one.
 
-**So the pad half of `A4` is: seat a footprint on its OWN terrain, report the residual,
-and cut the ring of ground that still stands over the pad.** No new constant is needed
-for any of it — which is why it is worth doing as one step rather than three.
+✅ **BUILT (`fb76d51`): the pad is seated on its own footprint at `SEAT_MEAN`, and the
+cut-and-fill is reported.** After:
+
+| ramp | buried | proud |
+|---|---|---|
+| 1/hex | 5 | 7 |
+| 2/hex | 7 | 10 |
+| 3/hex | 10 | 12 |
+| 4/hex | **13** | 14 |
+
+Halved, and **symmetric** — which is the whole difference between a mean and an end.
+
+⚠ **AND NO RING-CUT WAS NEEDED, WHICH THE MEASUREMENT IS WHAT SETTLED.** A level pad
+seven cells across on a 4-per-hex slope spans 28 units of ground, so it *must* cut 14
+or fill 14: what remains is geometry, not a defect. Cutting an apron on top of it would
+be moving earth to hide a number rather than to fix anything — and the number is now
+said out loud (*"seated at 10 (10 from your feet, cut and fill 10)"*), which is what
+`ak_residual` is for. **Open question 8 is closed by that**: the pad does not want an
+apron, it wants an honest residual and `A5`'s faces on the cut.
 
 ⚠ **`slope_settle` HAS NO CONSUMER EITHER**, and that is `A7`'s whole deliverable —
 *any gesture that paints a limited surface can hand the world back inside its own
