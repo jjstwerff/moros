@@ -59,7 +59,7 @@ to the built-in numbering.
 | **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` + `hex_mesh/tests/terrain_link.loft` | ✅ `db871b6` |
 | **`A2c`** — a linear run bends ALONG itself | MH | `tests/run_slope.loft` | ◐ along shipped `4f43a79`; **across not built** |
 | **`A7`** — the limit is the world's, not one gesture's | MH | `tests/slope_limit.loft`'s four settle claims | ✅ `0743c1a` |
-| **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | Open — and now MEASURED: cut-only carves a **20-metre canyon** at the top of a descending road (`probe/house/roadcost.loft`) |
+| **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | ◐ `dda9055` — the RULE is built, exact and tested; the **picture cannot be taken** because no editor gesture reaches it (below) |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
@@ -168,19 +168,49 @@ walked down a 3-per-hex ramp it satisfies its limit by cutting its top end **80 
 20 metres — below the natural ground.** That stretch wants an embankment, which is
 exactly `A8`'s fill.
 
+### ⚠ `A7` and `A8` are both built and both UNREACHABLE from the editor
+
+`road_h` is frozen ONCE when road mode is switched on and every stroke uses it, so the
+strip is **flat** however far it runs. Measured — the editor's road across a hill of 24:
+
+| | |
+|---|---|
+| profile | flat, end to end |
+| cut / fill | **160 / 0** |
+| `slope_owed` | **0** — it breaks no limit |
+| settles | **none**, so no balance either |
+
+Both rules are correct and tested; neither can fire. `A8`'s acceptance is a PICTURE and
+that picture cannot honestly be taken from the editor — a shot of the current road
+gesture shows a flat cut plateau, which is not what `A8` does.
+
+**What is missing is one gesture change, not a rule**: the road's grade has to follow
+the author as they walk, re-frozen per stroke or graded within its own limit, instead of
+being frozen once for the run. That is a change to what a road IS for the author, so it
+wants its own step and its own before/after rather than being smuggled in here.
+
+⚠ **AND IT IS THE SAME SHAPE AS THE THREE MISSING CONSUMERS `A4` TURNED UP.** A rule
+that no gesture can reach is a rule the editor does not have, and it passes CI exactly
+as happily as one that works.
+
 ## Open questions
 
-1. **How much of the spoil goes back?** *"The builders had a lot of materials over after
+1. ~~**How much of the spoil goes back?**~~ ✅ **ALL OF IT, and the rule needed no number.**
+   The run shifts by the MEAN it lost, so cut equals fill exactly up to the integer division —
+   no fraction to choose, and the shift is uniform so the limit survives by construction. The
+   original question below is kept because it is what the answer had to beat.
+   ~~**How much of the spoil goes back?**~~ *"The builders had a lot of materials over after
    cutting into the hill, using it to heighten the lower side a bit"* — and *"most of it will
    still be cutting into the hill"*. So the fill is real but secondary, and `A8` needs a number
    or a rule: all of it until the grade is met, a fixed fraction, or whatever the cut yields
    capped by the road's own limit on the low side. ⚠ `footprint_seat`/`seat_residual` already
    balance a cut against a fill for a house footprint — the arithmetic exists and the policy
    does not.
-2. **Is the retaining wall geometry or dressing?** *"Often using stones to create a wall below
-   the road."* A wall below a road is an EDGE material on the downhill cells, which the model
-   already has — so the question is whether `A8` stamps one, and on which side, rather than
-   whether it can.
+2. ~~**Is the retaining wall geometry or dressing?**~~ ✅ **ANSWERED BY ITSELF.** With `A8`'s
+   fill placed, the road stands proud on its downhill side — and the side of an embankment
+   steeper than earth will stand at is a FACE, which `A5` already draws as rock. `A8` stamps
+   nothing: the wall is what the geometry does. `tests/face.loft` had to stop asserting that a
+   road never carries a face, which was only ever true because the settle could not fill.
 3. **What does a corridor hold constant — its cover, or its gradient?** They fight: a fixed
    cover under a new hill means climbing at the hill's slope, which may break the corridor's
    limit. Provisional reading of *"the same treatment as a road"*: the **gradient wins** and

@@ -181,7 +181,40 @@ because descending the high cell is the previous stroke's and sits OUTSIDE the d
 just stamped. Only the INCREMENTAL walk can see it: asking the guard directly lays the
 whole road first, so the disc holds both ends and a one-sided test trips either way.
 
-⚠ **IT ONLY EVER CUTS — TODAY, AND THAT IS KNOWN TO BE HALF THE ANSWER.** A road that cannot
+✅ **AND IT PUTS THE SPOIL BACK — `A8`, and the cut-only rule below is history.**
+The settle records the profile it starts from, cuts to satisfy the limit, then shifts
+the **whole run by the mean** it removed. Every height moves by the same amount, so
+every DIFFERENCE is unchanged — the profile the relaxation just made legal is still
+legal by construction, with no second relaxation to fight the first. Cut equals fill
+exactly, up to the integer division, which is the stated tolerance.
+
+Measured on a road walked up a hill of 24: `12 11 10 … 0` became `19 18 17 … 7` — a
+cutting at the crest and an embankment at the foot.
+
+⚠ **THE DATUM IS THE PROFILE AT ENTRY, NOT THE NATURAL GROUND, AND A PROBE SETTLED
+THAT** (`probe/house/spoil.loft`). Reading the natural ground back from BESIDE the road
+is refuted: a road is `2 × ROAD_HALF + 1` cells wide, so a cell in the middle has no
+neighbour that is not also road, and the estimate falls back to the road's own height —
+worst error **36** on a 3-per-hex fall line, identical to the control.
+
+⚠ **AND THE EMBANKMENT'S SIDE IS A FACE, WHICH IS THE RETAINING WALL ARRIVING FOR
+FREE.** *"Often using stones to create a wall below the road"* — with the fill placed,
+the road stands proud on its downhill side and `A5` already draws that as rock.
+
+⚠ **THE BALANCE IS PER SETTLE AND DOES NOT ACCUMULATE.** When a run is long and one
+stroke's cut is small, `cut / n` truncates to zero — a uniform shift is the only kind
+that keeps the limit, and a uniform shift of less than one unit does not exist.
+Measured on a 40-cell descending road settled per stroke: **cut 1260, fill 23.** It is
+reported, not hidden.
+
+⚠ **AND NEITHER `A7` NOR `A8` CAN BE REACHED FROM THE EDITOR TODAY.** `road_h` is
+frozen ONCE when road mode is switched on, so the strip is FLAT however far it runs:
+measured, the editor's road across a hill of 24 is a flat plateau that cuts **160** and
+fills **0**, breaks no limit (`slope_owed` 0) and therefore never settles and never
+balances. Both rules are correct, tested and unreachable until the gesture re-freezes
+its grade as the author walks — which is a change to the gesture, not to the rules.
+
+⚠ **IT ONLY EVER CUT, AND THAT WAS KNOWN TO BE HALF THE ANSWER:** A road that cannot
 climb a hill within its limit is cut into it, which is what a road mostly is. But a real one
 balances:
 
