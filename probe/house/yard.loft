@@ -1,0 +1,59 @@
+// DOES A FENCED YARD TEAR WHEN IT IS LIFTED?
+//
+// `A1` makes a fence fabric and moves it rigidly. The grass INSIDE a ring of fence
+// carries no edge of its own, so it is not fabric — it takes the falloff. If that
+// is what happens, the ring rises rigidly while the ground it encloses slopes, and
+// the yard is torn exactly the way a floor was before `A1`.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+const RING = 4;          // the yard's radius, in hexes
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // a ring of fence at radius RING — every cell on the ring gets all three of its
+  // own edges, which is the crudest possible enclosure and enough to ask the
+  // question.
+  posts = 0;
+  for q in (0 - RING)..(RING + 1) {
+    for r in (0 - RING)..(RING + 1) {
+      if hex_distance(q, r, 0, 0) == RING {
+        for slot in 0..3 {
+          wall_set(w, q, r, slot, FENCE_MAT, G, (G as float) * U);
+        }
+        posts = posts + 1;
+      }
+    }
+  }
+  println("a yard fenced with {posts} posts at radius {RING}");
+  println("fabric on the ring: {is_fabric(w, RING, 0)}");
+  println("fabric in the middle: {is_fabric(w, 0, 0)}");
+  println("");
+
+  ring0 = ground_h(w, RING, 0);
+  mid0 = ground_h(w, 0, 0);
+  inner0 = ground_h(w, 2, 0);
+  clamped = 0;
+  residual = 0;
+  brush(w, 0, 0, 6, 8, clamped, residual);
+  ring1 = ground_h(w, RING, 0);
+  mid1 = ground_h(w, 0, 0);
+  inner1 = ground_h(w, 2, 0);
+
+  println("a raise of 6 centred on the yard:");
+  println("  the fence ring  {ring0} -> {ring1}   (moved {ring1 - ring0})");
+  println("  the middle      {mid0} -> {mid1}   (moved {mid1 - mid0})");
+  println("  halfway out     {inner0} -> {inner1}   (moved {inner1 - inner0})");
+  println("");
+  if ring1 == mid1 && mid1 == inner1 {
+    println("=> the yard came up LEVEL with its fence");
+  } else {
+    println("=> TORN: the yard is {mid1 - ring1} above its own fence, and the ground");
+    println("   inside it spans {inner1 - ring1} — the ring is rigid, the grass is not");
+  }
+}

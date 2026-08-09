@@ -1,0 +1,86 @@
+// WHAT HAPPENS TO AN UNDERGROUND CORRIDOR WHEN THE GROUND OVER IT MOVES?
+//
+// A corridor should behave like a ROAD — it may take a new slope, within a limit —
+// rather than like a building, which moves rigidly. Before designing that, this
+// asks what it does TODAY, in the two places it can be: under open ground, and
+// under a building's own footprint.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+fn flat(w: World, rad: integer) {
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+}
+
+// the lowest cell of a column — the cellar floor once one has been dug
+fn deepest(w: World, q: integer, r: integer) -> integer {
+  lo = 99999;
+  for c in world_column(w, q, r).co_cells {
+    h = c.h_height as integer ?? 0;
+    if h < lo { lo = h; }
+  }
+  lo
+}
+
+fn layers(w: World, q: integer, r: integer) -> integer {
+  len(world_column(w, q, r).co_cells)
+}
+
+fn main() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  flat(w, 20);
+  why = "";
+  // dig a cellar under a run of cells — `dir < 0` is the cellar half of the gesture
+  n = storey_add(w, 0, 0, 0 - 1, 4, why);
+  println("cellar dug: {n} cells ({why})");
+  println("column (0,0): {layers(w, 0, 0)} layers, deepest {deepest(w, 0, 0)}, "
+        + "outdoors {ground_h(w, 0, 0)}");
+  println("is_fabric over the corridor: {is_fabric(w, 0, 0)}");
+  println("");
+
+  d0 = deepest(w, 0, 0);
+  g0 = ground_h(w, 0, 0);
+  clamped = 0;
+  residual = 0;
+  brush(w, 0, 0, 6, 7, clamped, residual);
+  d1 = deepest(w, 0, 0);
+  g1 = ground_h(w, 0, 0);
+
+  println("a raise of 6 centred on it:");
+  println("  the outdoors went {g0} -> {g1}   (moved {g1 - g0})");
+  println("  the corridor went {d0} -> {d1}   (moved {d1 - d0})");
+  println("  the cover over it went {g0 - d0} -> {g1 - d1}");
+  println("");
+  if d1 == d0 { println("=> the corridor is UNTOUCHED: the ground moves over it and it does not"); }
+  else { println("=> the corridor moved with the ground"); }
+  under_a_house();
+}
+
+// ── and the other place a corridor can be: under a building's own footprint ──
+fn under_a_house() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  flat(w, 24);
+  runs = WallRuns { items: [] };
+  ack = place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, G, runs);
+  if !ack.ak_ok { println("house refused: {ack.ak_why}"); return; }
+  why2 = "";
+  storey_add(w, ack.ak_q, ack.ak_r, 0 - 1, 3, why2);
+  println("");
+  println("under a house:");
+  println("  fabric at the house cell: {is_fabric(w, ack.ak_q, ack.ak_r)}");
+  d0 = deepest(w, ack.ak_q, ack.ak_r);
+  g0 = ground_h(w, ack.ak_q, ack.ak_r);
+  cl = 0;
+  rs = 0;
+  brush(w, ack.ak_q, ack.ak_r, 6, 7, cl, rs);
+  d1 = deepest(w, ack.ak_q, ack.ak_r);
+  g1 = ground_h(w, ack.ak_q, ack.ak_r);
+  println("  the floor went {g0} -> {g1}   (moved {g1 - g0})");
+  println("  the cellar went {d0} -> {d1}   (moved {d1 - d0})");
+  if d1 - d0 == g1 - g0 { println("  => the cellar rides with its house, and the storey height is kept"); }
+  else { println("  => the cellar and its house came apart by {(g1 - g0) - (d1 - d0)}"); }
+}

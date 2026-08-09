@@ -5,7 +5,7 @@
 
 ## Status
 
-`A1` is **shipped** (`cab574d`): a raise no longer repaints or shears what it lifts, and a
+`A1` and `A1b` are **shipped**: a raise no longer repaints or shears what it lifts, and a
 connected structure — floor, walls, fences — rides the terrain rigidly and ends up on its
 own level pad. `A2`–`A5` are **designed, not built**. Today's unlimited falloff is not
 wrong and is not going away: `A2` makes it **one row of a table** — the grass row.
@@ -52,7 +52,9 @@ argued from a picture alone.
 | Phase | Concrete expected result | Invariant it pins | Negative control |
 |---|---|---|---|
 | `A1` ✅ | a raise of 6 over a 27-cell floor leaves all 27 at `40+6`, spread **0** | *a body moves rigidly or not at all* | a road under the same stroke must come out **not** level — it takes the incline |
+| `A1b` ✅ | a raise of 6 over a yard fenced at radius 4 leaves ring, middle and halfway all at `40+6` | *what a structure encloses moves with it* | the pocket OUTSIDE the fence is unbounded and must **not** be absorbed — it escapes the reach, and an open fence LINE encloses nothing |
 | `A2` | on a `limit=2` surface, a stroke asking for 6 over one hex step leaves **2** per step and reports the residual | *no edge exceeds its surface's limit* | a stroke that already fits must be **unchanged** — a limit that alters a legal edit is a bug, not a limit |
+| `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient is limited* | a corridor under a BUILDING must still move **rigidly** with it — it is that house's cellar, not a run of its own |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | a cycle must terminate — a fixed iteration cap, and the cap being hit is a **refusal**, not a silent stop |
 | `A5` | where the limit cannot be met the column carries a face rather than a slope, and the face's own height is exact | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
@@ -66,7 +68,9 @@ be done and by how much, or the author is told a lie in the shape of a picture.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **`A1`** — a building rides the terrain rigidly | M | `tests/raise_structure.loft` (7 claims), `raise_keeps.loft` (4) | ✅ shipped `cab574d` |
+| **`A1b`** — ground a structure encloses is part of it | S | `tests/raise_structure.loft` — a fenced yard comes up level with its fence, and the outside still slopes | ✅ shipped |
 | **`A2`** — a slope limit per surface | M | a loft test per surface row + the residual report | Open |
+| **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor under a raise keeps its cover within a band, and its gradient within its limit | Blocked on `A2` |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; the other rows differ | Blocked on `A2` |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two-building fixture already in `raise_structure.loft`, extended to assert monotonic ground between them | Blocked on `A2` |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | Blocked on `A4` |
@@ -87,9 +91,72 @@ be done and by how much, or the author is told a lie in the shape of a picture.
    their own delta today with no interaction. A pad's edge constraining its neighbours is
    iterative by nature; the cap and its refusal are named in the invariant gate above.
    Decided by building the one-pass version and measuring where it disagrees with itself.
-4. **Should the pad extend past the building?** A real terrace has an apron. Today the pad
+4. **What does a corridor hold constant — its cover, or its gradient?** They are two
+   constraints and they fight: keeping a fixed cover under a new hill means climbing at the
+   hill's own slope, which may exceed the corridor's limit; keeping the gradient means the
+   cover thickens. Provisional reading of *"the same treatment as a road"*: the **gradient
+   limit wins** and the cover is free between a floor and a ceiling, because that is what a
+   road does — it holds its grade and lets the cutting get deeper. Decided by `A2b`.
+5. **And what happens when the cover runs out?** A corridor that would surface is the
+   underground case of `A5`: a face, a refusal, or an entrance. ⚠ It is also the only place
+   in this plan where the limit breaking has a *gameplay* meaning rather than a visual one —
+   a corridor that opens to the sky is a way in.
+6. **Should the pad extend past the building?** A real terrace has an apron. Today the pad
    is exactly the fabric, so the ground steps at the wall. `A2`'s limits may make this
    answer itself — a step is an edge, and an edge has a limit.
+
+## What `A1b` turned up
+
+⚠ **`A1` SHIPPED WITH A TEAR AND THIS CLOSED IT.** A fence is fabric and moved rigidly; the
+grass it enclosed carried no edge of its own and took the falloff — measured
+(`probe/house/yard.loft`): a raise of 6 moved the ring by 4 and the middle by 6, leaving the
+yard **two units above its own fence**. *Terrain surrounded (mostly) by fences counts as the
+floor of a house.*
+
+⚠ **THE FLOOD NEEDS NO KNOWLEDGE OF EDGES.** A fence's owner cell is already fabric, so a
+flood walking only NON-fabric cells stops at the ring by construction — and a **gate** stops
+it too, because an opening is a `DOOR_MAT` edge on an owner that is still fabric. `X70`
+arriving for free: *an opening is not an absence*. That is also what "mostly" buys: a
+doorway does not break an enclosure, only a missing stretch of fence does.
+
+⚠ **AND IT COST 891 ms A STROKE BEFORE IT WAS MEASURED.** `is_fabric` is a cell read plus
+six `wall_of` calls, and a flood asks each cell once per neighbour that touches it — the same
+answer computed up to seven times. Timed over 200 strokes with a fenced yard in the disc:
+**891 ms**, against 9 ms on open ground. `LEVEL` calls `brush` on every footfall, so that is
+not a slow gesture, it is an unusable editor. A per-stroke memo took it to **42 ms**, and
+open ground to **2 ms** — faster than before the yard rule existed, because the memo also
+serves the disc scan. ⚠ The memo is **two sets, not one**: the question has three states
+(fabric, not fabric, not asked), and collapsing *not asked* into *not fabric* is exactly the
+bug that would make a yard tear again at random.
+
+⚠ **THE REMAINING KNOB IS `reach`, AND IT CUTS BOTH WAYS.** The enclosure test is bounded at
+`2 * rad`: a yard that does not close within that is not absorbed and tears again, and a
+larger bound costs the outside flood proportionally. 42 ms is that trade at today's numbers;
+`A2`'s limits may make it moot by giving the ground its own rule at the fence line.
+
+⚠ **A FENCE MAKES THE CELLS ON BOTH SIDES FABRIC**, because `is_fabric` asks all six
+directions — so the rigid band is the fence line plus one cell either way. That is right (a
+post sits in ground on both sides) and it is a cell wider than it looks; the outside-slope
+test samples clear of it and says why.
+
+## What is already measured for `A2b`
+
+⚠ **A CORRIDOR UNDER OPEN GROUND IS IGNORED TODAY** — `probe/house/cellar.loft`. A raise of
+6 over a dug cellar moves the outdoors `40 → 46` and leaves the corridor at `28`: **the
+cover over it goes from 12 to 18.** Lower the ground instead and the same arithmetic runs
+the other way until the ground passes through the corridor's ceiling and opens it to the
+sky, with nothing in the gesture to notice.
+
+✅ **AND A CELLAR UNDER A HOUSE IS ALREADY RIGHT**, which is the half that could have been a
+defect in shipped code and is not: the house cell is fabric, `lift_column` moves every layer
+of the column, and floor and cellar both move `+6` — the storey height is kept. So `A2b` is
+about a run that leaves its building, not about cellars in general.
+
+⚠ **`is_fabric` CORRECTLY SAYS `false` OVER A CORRIDOR**, and that is not an oversight to
+fix: `ground_h` reads the outdoors **by label, never layer 0** — layer 0 is the outdoors
+right up until a cellar is dug beneath it — so the predicate sees grass, which is what is
+actually up there. A corridor is not part of the building above it unless a building is
+above it.
 
 ## What `A1` turned up
 

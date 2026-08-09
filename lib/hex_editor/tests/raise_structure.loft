@@ -217,3 +217,68 @@ fn test_a_second_building_down_the_slope_gets_its_own_level_pad() {
   assert(lo > G && lo < hi,
          "the far building is at {lo} — it should be lifted, and by less than the crest");
 }
+
+fn yard_fence(w: World, rad: integer) {
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      if hex_distance(q, r, 0, 0) == rad {
+        for slot in 0..3 { wall_set(w, q, r, slot, FENCE_MAT, G, (G as float) * U); }
+      }
+    }
+  }
+}
+
+fn test_a_fenced_yard_comes_up_level_with_its_fence() {
+  // ⚠ `A1` SHIPPED WITH THIS TEAR. A fence is fabric and moved rigidly; the grass
+  // it encloses carries no edge of its own, so it took the falloff — measured, a
+  // raise of 6 moved the ring by 4 and the middle by 6, leaving the yard TWO UNITS
+  // ABOVE ITS OWN FENCE. *Terrain that is surrounded (mostly) by fences counts as
+  // the floor of a house.*
+  w = world_at(G);
+  yard_fence(w, 4);
+  raise(w, 0, 0, LIFT);
+  ring = ground_h(w, 4, 0);
+  mid = ground_h(w, 0, 0);
+  half = ground_h(w, 2, 0);
+  assert(ring == mid && mid == half,
+         "the yard is not level: ring {ring}, middle {mid}, halfway {half}");
+  assert(mid == G + LIFT, "the yard came up to {mid}, not {G + LIFT}");
+}
+
+fn test_the_ground_outside_the_fence_is_still_a_hill() {
+  // ⚠ THE CONTROL, and it is the one that stops the flood swallowing the world: the
+  // pocket OUTSIDE a fence is unbounded, and the only honest way to tell it from an
+  // enclosed one is that it gets out. If the outside were absorbed too, every raise
+  // near a fence would become one rigid slab.
+  w = world_at(G);
+  yard_fence(w, 4);
+  // ⚠ A WIDER STROKE THAN `RAD`, because the claim is about ground OUTSIDE a yard
+  // of radius 4 and a radius-7 falloff has already rounded to zero by then: at
+  // distance 6 of 7 the delta is 0.42, which truncates to nothing. Sampling there
+  // would have "proved" the outside was untouched by measuring a stroke that never
+  // reached it.
+  wide = 0;
+  wres = 0;
+  brush(w, 0, 0, LIFT, 12, wide, wres);
+  // ⚠ SAMPLED CLEAR OF THE FENCE, AND THE REASON IS A FINDING. `is_fabric` asks all six
+  // directions, so a fence makes the cells on BOTH sides of it fabric — the rigid
+  // band is the ring plus one cell either way, which is right (a post sits in the
+  // ground on both sides of the line) and is a cell wider than it looks.
+  near = ground_h(w, 6, 0);
+  far = ground_h(w, 9, 0);
+  assert(near > G, "the ground outside the fence did not rise at all ({near})");
+  assert(far < near, "outside the fence is not a slope: {near} at 6, {far} at 9");
+  assert(near < G + LIFT, "the outside came up rigid with the yard ({near})");
+}
+
+fn test_an_open_fence_line_encloses_nothing() {
+  // A line of fence is not a yard. ⚠ Without this the enclosure test is satisfied by
+  // "any non-fabric pocket the flood happens to bound", which a big enough reach
+  // would make true of everything.
+  w = world_at(G);
+  for q in (0 - 4)..5 { wall_set(w, q, 0, SLOT_NE, FENCE_MAT, G, (G as float) * U); }
+  raise(w, 0, 0, LIFT);
+  a = ground_h(w, 0, 3);
+  b = ground_h(w, 0, 5);
+  assert(a != b, "the ground beside an open fence line came out rigid ({a} at 3, {b} at 5)");
+}

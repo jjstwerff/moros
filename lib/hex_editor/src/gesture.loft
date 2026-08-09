@@ -2792,6 +2792,95 @@ pub fn lift_column(w: World, q: integer, r: integer, delta: integer) -> integer 
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: out }).cw_code
 }
 
+// GROUND A STRUCTURE ENCLOSES IS PART OF IT — the yard rule.
+//
+// ⚠ `A1` SHIPPED WITH A TEAR AND THIS IS IT. A fence is fabric and moves rigidly;
+// the grass INSIDE a ring of fence carries no edge of its own, so it took the
+// falloff. Measured (`probe/house/yard.loft`): a raise of 6 over a fenced yard
+// moved the ring by 4 and the middle by 6 — the yard came up **two units above its
+// own fence**, which is the same tearing a floor suffered before `A1`.
+//
+// *Terrain that is surrounded (mostly) by fences counts as the floor of a house.*
+//
+// ⚠ THE FLOOD NEEDS NO KNOWLEDGE OF EDGES, and that is what makes it cheap. A
+// fence's owner cell is already fabric, so a flood that walks only NON-fabric cells
+// stops at the ring by construction — and a GATE stops it too, because an opening
+// is a `DOOR_MAT` edge on an owner that is still fabric. That is `X70` arriving for
+// free: *an opening is not an absence*.
+//
+// ⚠ AND IT IS BOUNDED BY THE STROKE, not by a global cap. An enclosure that does
+// not close within `reach` of the stroke is not a yard, it is terrain with a fence
+// somewhere in it — and flooding to a 4000-cell cap on every footfall of a LEVEL
+// walk is a cost the gesture cannot pay. The bound is what makes "is this enclosed"
+// answerable in the neighbourhood the author is actually editing.
+// ⚠ MEASURED BEFORE IT WAS BELIEVED, AND IT HAD TO BE. `is_fabric` is a cell read
+// plus SIX `wall_of` calls, each an `edge_owner` + `edge_layer` + `world_cell`, and
+// the flood asks about every cell once per neighbour that touches it — so the same
+// answer was computed up to seven times. Timed over 200 strokes: **891 ms a stroke**
+// with a fenced yard in the disc, against 9 ms on open ground. `LEVEL` calls `brush`
+// on every footfall, so that is not a slow gesture, it is an unusable editor.
+//
+// The memo makes each cell's answer once per stroke. It is two sets rather than one
+// map because `Seen` answers *present or not* and the question has three states —
+// fabric, not fabric, not asked yet — and collapsing "not asked" into "not fabric"
+// is the bug that would make a yard tear again at random.
+struct FabMemo { fm_yes: Seen, fm_no: Seen }
+
+fn fabric_memo(w: World, q: integer, r: integer, memo: &FabMemo) -> boolean {
+  k = age_like_key(q, r);
+  if memo.fm_yes.s_by[k] != null { return true; }
+  if memo.fm_no.s_by[k] != null { return false; }
+  ans = is_fabric(w, q, r);
+  if ans { memo.fm_yes.s_by += SeenAt { sa_key: k }; }
+  else { memo.fm_no.s_by += SeenAt { sa_key: k }; }
+  ans
+}
+
+fn absorb_enclosed(w: World, mq: &vector<integer>, mr: &vector<integer>,
+                   taken: &Seen, tq: integer, tr: integer, reach: integer,
+                   memo: &FabMemo) {
+  tested = Seen { s_by: [] };
+  seeds = mq.len();
+  for i in 0..seeds {
+    for dir in 0..6 {
+      (nq, nr) = hex_grid::hex_neighbor(mq[i] ?? 0, mr[i] ?? 0, dir);
+      if fabric_memo(w, nq, nr, memo) { continue; }
+      if tested.s_by[age_like_key(nq, nr)] != null { continue; }
+      // flood this pocket
+      pq: vector<integer> = [nq];
+      pr: vector<integer> = [nr];
+      tested.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
+      escaped = false;
+      head = 0;
+      while head < len(pq) {
+        cq = pq[head] ?? 0;
+        cr = pr[head] ?? 0;
+        head = head + 1;
+        if hex_distance(cq, cr, tq, tr) >= reach { escaped = true; }
+        if escaped { continue; }
+        for d2 in 0..6 {
+          (aq, ar) = hex_grid::hex_neighbor(cq, cr, d2);
+          if fabric_memo(w, aq, ar, memo) { continue; }
+          if tested.s_by[age_like_key(aq, ar)] != null { continue; }
+          tested.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
+          pq += [aq];
+          pr += [ar];
+        }
+      }
+      // ⚠ ENCLOSED MEANS IT NEVER REACHED THE BOUND. The outside of a fence is not
+      // a big pocket, it is an unbounded one — and the only honest way to tell them
+      // apart in a hex field is that one of them gets out.
+      if escaped { continue; }
+      for j in 0..len(pq) {
+        if taken.s_by[age_like_key(pq[j] ?? 0, pr[j] ?? 0)] != null { continue; }
+        taken.s_by += SeenAt { sa_key: age_like_key(pq[j] ?? 0, pr[j] ?? 0) };
+        mq += [pq[j] ?? 0];
+        mr += [pr[j] ?? 0];
+      }
+    }
+  }
+}
+
 // The falloff a hill takes at distance `d` — the one place the shape is written.
 fn brush_delta(amp: integer, d: integer, rad: integer) -> integer {
   if d >= rad { return 0; }
@@ -2816,12 +2905,13 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
   // That is the difference between *a house on its own hill* and *a house on the
   // side of one*.
   taken = Seen { s_by: [] };
+  memo = FabMemo { fm_yes: Seen { s_by: [] }, fm_no: Seen { s_by: [] } };
   for sq in (0 - rad)..(rad + 1) {
     for sr in (0 - rad)..(rad + 1) {
       q0 = tq + sq;
       r0 = tr + sr;
       if hex_distance(q0, r0, tq, tr) >= rad { continue; }
-      if !is_fabric(w, q0, r0) { continue; }
+      if !fabric_memo(w, q0, r0, memo) { continue; }
       if taken.s_by[age_like_key(q0, r0)] != null { continue; }
       // flood this structure — ⚠ WHEREVER IT GOES, disc or no disc. A fence that
       // runs out past the rim is one fence, and lifting only the half inside would
@@ -2836,7 +2926,7 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
         head = head + 1;
         for dir in 0..6 {
           (aq, ar) = hex_grid::hex_neighbor(cq, cr, dir);
-          if !is_fabric(w, aq, ar) { continue; }
+          if !fabric_memo(w, aq, ar, memo) { continue; }
           if taken.s_by[age_like_key(aq, ar)] != null { continue; }
           if len(mq) >= LIFT_CAP { continue; }
           taken.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
@@ -2844,6 +2934,10 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
           mr += [ar];
         }
       }
+      // ⚠ THE ENCLOSURE JOINS BEFORE THE DELTA IS CHOSEN, so a yard's own cells
+      // count toward which delta the body takes — a paddock whose middle sits under
+      // the stroke rises by what its middle was asked for.
+      absorb_enclosed(w, mq, mr, taken, tq, tr, 2 * rad, memo);
       best = 0;
       for i in 0..len(mq) {
         cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
