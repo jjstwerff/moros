@@ -88,6 +88,41 @@ scar: `A8.3`'s door passed every count and read as a hole for four days, and the
 delivered twice against the wrong object before anyone zoomed in. Shoot the road ALONE, and
 zoom to the cutting before saying it reads.
 
+### The road's own rule, and it is ONE rule — 2026-08-09
+
+> *"A road will follow the landscape the way a road builder works, so it flows upwards
+> with the hills with its own rules about how much. If for example a waterway is
+> encountered a bridge will be built."* … **"It spans or it caves."**
+
+⚠ **THAT SETTLES THE DESIGN FORK AND REMOVES A TOGGLE RATHER THAN ADDING ONE.** Three
+options were on the table — a second paving gesture, a grade rule switched by levelling,
+or one toggle with two values — and all three were the wrong shape. There is one road
+gesture, it always follows the landscape, and what it does where it cannot follow is
+not a mode but a *consequence*:
+
+| the ground does this | the road does this |
+|---|---|
+| rises faster than the road may climb | **caves** — a cutting, then an overhang, a gallery, a tunnel (`A9`) |
+| falls away faster than the road may descend | **spans** — an embankment, then a viaduct, a bridge |
+
+⚠ **AND THAT IS ONE AXIS, TWICE — `A9`'s AXIS AND ITS MIRROR.** `A9` already walks *how
+much rock stays above the road* from none to all. The other direction walks *how much
+ground stays under it* from all to none: `A8`'s spoil fill is the shallow end of
+spanning, and a bridge is the deep end. Neither is a new storage question — a road with
+rock above it and a road with air below it are both a column whose road sits on a layer
+of its own, which the stack has carried since `8a`.
+
+⚠ **IT ALSO ANSWERS `A8`'s MEASURED ABSURDITY.** Cut-only carves a **20-metre canyon**
+at the top of a road walked down a 3-per-hex ramp, and the balance only halves it. The
+road was never supposed to move that earth: past the point where a fill is a fill, it
+**spans**. So the canyon is not a bug in the balance, it is the balance being asked a
+question that belongs to the span.
+
+⚠ **AND THERE IS NO WATER YET.** `ground_kinds()` holds grass, road, field, floor and
+roof; a waterway is not a terrain this world can store. So the bridge's trigger does not
+exist to be detected — which makes *span* the half to design second, after `A9` has
+established what a road sitting on its own layer looks like.
+
 ### `A9` — the shape a road takes where it cannot go round
 
 > *"Especially in Switzerland a road along a cliff face is cut into it, getting an overhang
