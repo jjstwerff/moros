@@ -4027,15 +4027,21 @@ fn mode_name(m: integer) -> text {
 // what `hex_mesh::surfaces()` says it is, so it cannot list a material the
 // renderer cannot draw or miss one it can. A hand-kept list beside the mesher is
 // the tenth copy of a number that has already drifted 4 → 5 → 7 → 9.
-// ⚠ AND SOME OF THEM YOU CANNOT PAINT, which is §C3's availability. Three of the
-// nine surfaces the mesher emits are DERIVED — they appear because something
+// ⚠ AND SOME OF THEM YOU CANNOT PAINT, which is §C3's availability. Four of the
+// ten surfaces the mesher emits are DERIVED — they appear because something
 // else was built, not because an author chose them — and an author who picks one
 // expecting a brush is owed the reason rather than a silent nothing.
 //
 // It is a real rule, not a demonstration: a soffit is a roof's underside, a
-// frame is an opening's reveal, and trees are scattered by `13:`. Hiding them
+// frame is an opening's reveal, trees are scattered by `13:`, and a rock face is
+// what the ground shows where it is too steep to hold (plan 20 `A5`). Hiding them
 // would be worse — the catalogue is supposed to say what the renderer can draw,
-// and it can draw all nine.
+// and it can draw all ten.
+//
+// ⚠ ROCK IS THE ONE WHOSE REASON IS ABOUT THE TERRAIN RATHER THAN A BUILDING, and
+// that is why it says `too steep` and not `derived`. The other three tell an author
+// *something else made this*; this one has to tell them *the ground did, and the
+// way to get one is to make the ground steeper* — which is a brush they DO have.
 // ⚠ THE REASON IS A LABEL, NOT A SENTENCE, AND THE ROW IS WHY. A list row has
 // **212px** — twenty-one characters at the editor's advance — and the name has
 // to fit in it too. The first draft wrote "scattered, not painted (13:)" and the
@@ -4049,6 +4055,7 @@ fn surface_block(name: text) -> text {
   if name == "soffit" { return "derived"; }
   if name == "frame"  { return "derived"; }
   if name == "tree"   { return "scattered"; }
+  if name == "rock"   { return "too steep"; }
   ""
 }
 

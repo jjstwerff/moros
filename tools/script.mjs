@@ -349,7 +349,8 @@ const status = []; const trace = []; let tCount = 0; let view = null;
 // separates them is WHERE THEY ARE: a cellar floor's underside is twelve units down,
 // a ceiling is at the ground. Hence `meshy`, which counts inside a y band.
 const SURFACES = 10;
-const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame', 'soffit'];
+const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame', 'soffit',
+              'rock'];
 const meshLen = new Map();
 // Every vertex's y, per mesh — one float of the six, so a sixth of the traffic kept.
 const meshY = new Map();
@@ -458,10 +459,32 @@ const groundMap = () => {
     // ⚠ THE HIGHEST GROUND AT A SHARED CORNER, not the first seen. A corner belongs
     // to three cells and arrives once per chunk that draws it; taking whichever came
     // last would make the answer depend on chunk order.
+    //
+    // ⚠ AND SINCE plan 20 `A5` THAT IS A CHOICE RATHER THAN THE ONLY ANSWER, because
+    // the drawn ground is no longer continuous: where it is too steep to hold it
+    // parts and shows rock, so one (x, z) can carry two or three different heights.
+    // A vertex hanging under the LOW side is then measured against the HIGH one.
+    //
+    // ⚠ THREE CLEVERER RULES WERE MEASURED AGAINST `cellar.keys` AND ALL THREE ARE
+    // WORSE. Its 306 ceiling vertices are 17 fans of 18: a [min,max] RANGE reads
+    // 302, recovering four and missing the four whose own ground is the MIDDLE of
+    // three (measured at (16.454, ±3.5): 3.250, 3.583 and 4.125 at one point, the
+    // ceiling exactly 0.5 under the middle); accepting ANY member reads 310,
+    // because `emit_ground_reveal`'s cut face is in the GROUND mesh too and its
+    // bottom edge is itself one SLAB_THICK down, so a stairwell puts phantom
+    // datums into the set; and REFUSING to band a parted corner reads 262,
+    // throwing away 44 ceilings that were measured correctly.
+    //
+    // The wire carries no ownership — a vertex does not say which cell emitted it
+    // — so no rule over these numbers can always pick the right one of three. The
+    // highest is kept because it is the one rule that has not changed under any
+    // caller, and `split` below reports how often the premise is shaky — a number
+    // beside the count, never folded into it.
     for (let v = 0; v < ys.length; v += 1) {
       const key = GKEY(xs[v], zs[v]);
       const prev = m.get(key);
-      if (prev === undefined || ys[v] > prev) m.set(key, ys[v]);
+      if (prev === undefined) m.set(key, [ys[v]]);
+      else if (!prev.some((y) => Math.abs(y - ys[v]) < 1e-6)) prev.push(ys[v]);
     }
   }
   return m;
@@ -473,9 +496,9 @@ const groundMap = () => {
 // number rather than as a wrong count.
 const surfaceVertsR = (name, rlo, rhi) => {
   const k = SURF.indexOf(name);
-  if (k < 0) return { n: -1, miss: -1 };
+  if (k < 0) return { n: -1, miss: -1, split: -1 };
   const g = groundMap();
-  let n = 0, miss = 0;
+  let n = 0, miss = 0, split = 0;
   for (const [id, ys] of meshY) {
     if (id <= 15) continue;
     if ((id - 16) % SURFACES !== k) continue;
@@ -483,11 +506,12 @@ const surfaceVertsR = (name, rlo, rhi) => {
     for (let v = 0; v < ys.length; v += 1) {
       const gy = g.get(GKEY(xs[v], zs[v]));
       if (gy === undefined) { miss += 1; continue; }
-      const r = ys[v] - gy;
+      if (gy.length > 1) split += 1;
+      const r = ys[v] - Math.max(...gy);
       if (r >= rlo && r < rhi) n += 1;
     }
   }
-  return { n, miss };
+  return { n, miss, split };
 };
 await new Promise((r) => ws.addEventListener('open', r));
 ws.send('1:');
@@ -1122,7 +1146,7 @@ for (const raw of lines) {
     // `meshr <surface> <rlo> <rhi> [lo hi]` — the same count, banded on height
     // ABOVE THE GROUND at each vertex's own (x, z) rather than on world y.
     const name = rest[0], rlo = Number(rest[1]), rhi = Number(rest[2]);
-    const { n, miss } = surfaceVertsR(name, rlo, rhi);
+    const { n, miss, split } = surfaceVertsR(name, rlo, rhi);
     let verdict = '';
     if (rest[3] !== undefined) {
       const lo = Number(rest[3]), hi = Number(rest[4]);
@@ -1132,7 +1156,7 @@ for (const raw of lines) {
       } else verdict = ' PASS';
     }
     console.log(`  meshr ${name} r ${rlo}..${rhi} = ${n} vertices `
-              + `(${miss} over open ground)${verdict}`);
+              + `(${miss} over open ground, ${split} at a parted corner)${verdict}`);
   } else if (cmd === 'send') {
     // ⚠ Raw wire, for the messages a KEY should not exist for. `27:1` turns the
     // server's tracer on; binding a key to it would put a diagnostic in the page.

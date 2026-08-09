@@ -73,8 +73,9 @@ check(g.cats.length === 1, `the catalogue is sent once on connect (${g.cats.leng
 const cat = (g.cats[0] ?? 'N:').slice(2).split(';').filter(Boolean)
     .map((r) => { const [kind, name, avail, why] = r.split('|'); return { kind, name, avail, why }; });
 const mats = cat.filter((r) => r.kind === 'material');
-check(mats.length === 9, `nine materials, the mesher's own surfaces (${mats.length})`);
-for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit']) {
+check(mats.length === 10, `ten materials, the mesher's own surfaces (${mats.length})`);
+for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit',
+                    'rock']) {
   check(mats.some((r) => r.name === want), `the catalogue lists '${want}'`);
 }
 
@@ -104,12 +105,19 @@ check(cat.length === mats.length + parts.length, 'and no entry is in neither fam
 // ⚠ AND AN UNAVAILABLE ENTRY IS STILL IN THE LIST. §C3: shown greyed with its
 // reason, never hidden — hiding it makes the author think the thing is missing.
 // ⚠ SCOPED TO THE MATERIALS, like the count above. `B6` is a claim about the
-// three DERIVED surfaces; counted over the whole catalogue it would move the day
-// a part is unavailable, and go red for something it is not about.
+// DERIVED surfaces; counted over the whole catalogue it would move the day a part
+// is unavailable, and go red for something it is not about.
+//
+// ⚠ FOUR SINCE plan 20 `A5`. `rock` is a face the GROUND grows where it is too
+// steep to hold, so it is derived like the other three — but its reason has to
+// point at a brush the author does have, which is why it reads `too steep` and
+// not `derived`.
 const blocked = mats.filter((r) => r.avail === '0');
-check(blocked.length === 3, `three derived surfaces are unavailable (${blocked.length})`);
+check(blocked.length === 4, `four derived surfaces are unavailable (${blocked.length})`);
 check(blocked.every((r) => (r.why ?? '') !== ''),
       `every unavailable entry carries a reason (${blocked.map((r) => r.name + '=' + r.why)})`);
+check(blocked.some((r) => r.name === 'rock' && r.why === 'too steep'),
+      `rock says how to get one, not merely that it is derived`);
 check(mats.filter((r) => r.avail === '1').length === 6,
       'the other six are paintable');
 

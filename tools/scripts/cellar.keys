@@ -38,7 +38,7 @@ mesh soffit 0 0
 # something. A band that has never been seen empty cannot be trusted to report a
 # ceiling: this is the row that says the instrument answers 0 when there is nothing
 # there, taken before anything is dug.
-meshr soffit -0.6 -0.4 0 0
+meshr soffit -0.6 -0.4 0 0 
 # ⚠ AND NO WALLS EITHER, which is the control for the room wall below: it is owed
 # only where a void has earth beside it, and open country is neither.
 mesh wall 0 0
@@ -167,7 +167,30 @@ echo --- and the room's own floor is a storey under everything else
 #
 # ⚠ ITS CONTROL IS THE `meshr … 0 0` ROW BEFORE THE DIG. A band never seen empty
 # cannot be trusted to report a ceiling.
-meshr soffit -0.6 -0.4 306 306
+# ⚠ 306 → 298 WITH plan 20 `A5`, AND THE CEILING DID NOT MOVE. The plateau this
+# fixture levels into a hill now has a rim too steep for grass to hold, so the ground
+# there PARTS and shows rock (`mesh rock` below). A corner on that rim is drawn two or
+# three times at different heights, and this verb's datum takes the highest — so eight
+# ceiling vertices are measured against a cliff top they do not hang from. Measured:
+# at (16.454, ±3.5) the ground draws 3.250, 3.583 and 4.125 at one point and the
+# ceiling sits at 3.083, exactly SLAB_THICK under the middle one.
+#
+# ⚠ THREE REPAIRS TO THE DATUM WERE MEASURED AND ALL THREE ARE WORSE — the argument
+# is in `script.mjs` beside `groundMap`, and it ends where it has to: the wire carries
+# no ownership, so nothing reading these numbers can always pick the right one of
+# three. The verb now says `at a parted corner` out loud, which is the same answer it
+# already gives for a vertex over opened ground.
+#
+# ⚠ SO THE 298 IS 306 MINUS AN ARTEFACT OF THE DATUM, and the row that keeps it
+# honest is the one below it: `mesh rock` pins the cliff that causes it, so the pair
+# cannot both drift. 84 = 14 quads of 6, the rim of the levelled plateau.
+meshr soffit -0.6 -0.4 298 298
+# ⚠ THE FACES THE FIXTURE NOW GROWS, COUNTED — plan 20 `A5`. Without this row the
+# `meshr` number above is 298 for no stated reason, and the next reader would take it
+# for a ceiling defect. A rock face is DERIVED from the ground's own heights, so this
+# is also the row that catches the face rule firing where it should not: it was 0 for
+# every scene in this suite until a plateau was cut into a hill.
+mesh rock 84 84
 
 echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 # ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:
