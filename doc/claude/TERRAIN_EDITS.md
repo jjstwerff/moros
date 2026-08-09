@@ -192,6 +192,93 @@ and the layer stack already carries the alternative: a road on a lower layer wit
 is structurally a cellar. Plan 20 `A9`, and its far end is `A2b`'s corridor arriving from the
 other direction.
 
+## T6 — Where no slope will do, the column carries a FACE
+
+*Where the limit cannot be met the column carries a face rather than a slope*, and a
+face is a **surface, not an absence**.
+
+**It needs a second number, and measuring is what settled that** (`probe/house/faces.loft`).
+Plan 20 was written as though the face hung off `tr_slope`. It cannot, and both ends
+break:
+
+| | measured |
+|---|---|
+| a road walked up a hill | **41** edges break somebody's slope limit, worst over by 11 — so the subject is real and reachable today |
+| a road on flat ground | **0** — clean |
+| one stroke of the raise brush | **0** — clean; its steepest step is 3, which is 23° |
+| **a twenty-press grass hill** | **0**, and its steps stand at **71°** — because grass has no slope limit at all |
+
+So the steepest object the editor can make would carry no face, and a 16° grassy verge
+beside a road would be cut as rock. One number cannot fix either without breaking the
+other.
+
+**`tr_slope` is what a gesture may GIVE a surface; `tr_face` is what it can STAND at.**
+A road may only be *given* a 1-in-1 grade because a cart has to climb it, and a road
+embankment nevertheless *stands* at far more. One is a rule about authoring, the other
+is an angle of repose.
+
+| | may be given | stands to | which is |
+|---|---|---|---|
+| grass | free | 6 | 40.9° |
+| road | 1 | 6 | 40.9° |
+| field | 2 | 5 | 35.8° |
+| floor, roof | free (fabric) | **never** | a built edge is a WALL, and the storey draws it |
+
+⚠ **The plan's negative control became a property of the TABLE.** *A slope that fits
+its limit must never become a face* is `tr_face >= tr_slope` on every row that has
+both — checked without a world existing, where a scenario could only ever sample it.
+
+⚠ **THE FACE BELONGS TO THE HIGHER SIDE.** It is the exposed side of a column, so it is
+made of what the *standing* ground is made of: a cutting through a hillside is the
+hillside's rock, and the embankment below a road is the road's own fill. Asking the
+lower cell would paint a cliff the colour of the valley floor it happens to end on.
+
+⚠ **AND IT IS DERIVED, NEVER STORED.** The heights already say where a face is, so a
+stored one would be a second answer that can disagree. It also means no gesture has to
+remember: move the ground and the rock follows.
+
+⚠ **The planted rule has the OTHER shape here, on purpose.** `slope_limit` lets a
+planted cell off its limit entirely, because a forest may sit on any gradeable slope.
+A face is where there is no soil left to root in, so planting adds `FACE_ROOTED` and
+never removes the threshold.
+
+⚠ **AND `CLIFF_STEP_DEFAULT` IS THE SAME NUMBER, ARRIVED AT INDEPENDENTLY.**
+`moros_sim`'s walker refuses a step over **6** — *"about 40° across a hex east–west and
+45° north–south, so ordinary rolling ground stays walkable while an authored ledge does
+not"* — and grass's `tr_face` is 6 for the same reason in the same units. They are not
+one number (a step is a property of the CREATURE, an angle of repose a property of the
+SURFACE), but they answer the same question from two sides, and a face is very nearly
+*exactly what a walker cannot climb*. Worth knowing before either is tuned.
+
+### And the picture had to change with it
+
+⚠ **THE DRAWN GROUND WAS CONTINUOUS EVERYWHERE, so a cliff could not be drawn at all.**
+Every corner is the mean of the three cells touching it, so both sides of an edge
+compute the same number. Measured: a stored step of 11 — 57.8° if it were a face —
+arrived as a **5.56** drop between smoothed centres, roughly halved and smeared over
+two hexes. The store had a cliff and the picture had a hillside.
+
+One rule fixes it, in the two places that smooth: **a corner does not average across a
+faced edge, and neither does a normal.** The divisor goes from the constant 3 to a
+count, the surface parts at exactly the edges `face_at` names, and `chunk_mesh_faces`
+fills the gap with rock. It **tapers by itself** where the face peters out, which is the
+shape a cutting has.
+
+- **Cost**: 87.8 → 93.4 ms over 9 chunks of four material meshes — about 6%, 0.6 ms a
+  chunk. The limits ride in a grid beside the heights because they must: one
+  `face_limit` call per halo cell is **1.080 ms** against **0.265 ms** for the whole
+  height read; memoised on (region, material), **0.278 ms**. `world_ground_cell` was
+  already being made for the height alone.
+- **`rock` is the tenth surface and the first whose cells do not exist.** It shares the
+  `masonry` bucket, declared rather than faked apart: every hue this palette leaves free
+  is a saturated one, so a rock that separates in chroma from dressed stone is a rock
+  that is visibly green. A gate counts its triangles instead.
+- ⚠ **AND IT IS LIGHT, WHICH WAS THE SECOND ANSWER.** The first colour sat *below* the
+  wall's value and photographed as a **black hole**: a face is vertical, so its normal
+  is horizontal, so `max(dot(N, L), 0)` is zero on every face turned from the light and
+  all of it is the 0.45 ambient. `0.34 × 0.45 = 0.153` is not a dark rock, it is a hole
+  — `A5`'s own invariant failing in the one instrument that can see it.
+
 ## ⚠ Order does not commute, and here is exactly where
 
 *Placing hills then buildings* is **not** the same as *placing the same hill afterwards*.
@@ -247,7 +334,9 @@ fabric* makes a yard tear again at random.
 
 | | |
 |---|---|
-| the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `slope_limit`, `slope_relax`, `slope_settle`, `ground_kinds`, `edge_kinds` |
-| the tests | `lib/hex_editor/tests/` — `raise_keeps.loft`, `raise_structure.loft`, `slope_limit.loft`, `run_slope.loft` |
-| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk` |
+| the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `slope_limit`, `slope_relax`, `slope_settle`, `ground_kinds`, `edge_kinds`, `face_limit`, `face_at`, `faces_here` |
+| where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall` |
+| the tests | `lib/hex_editor/tests/` — `raise_keeps.loft`, `raise_structure.loft`, `slope_limit.loft`, `run_slope.loft`, `face.loft`; `lib/hex_mesh/tests/face_mesh.loft` |
+| the pictures | `tools/scripts/face.keys` — the control first, then the flank from the foot, then the crest |
+| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost` |
 | what a byte MEANS | [plan 21](../../plans/21-region-mappings/README.md) — identity belongs to a region; these rules hang off the **name**, never the byte |

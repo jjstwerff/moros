@@ -5,8 +5,13 @@
 
 ## Status
 
-`A1`, `A1b`, `A2`, `A2c`'s **along** half and `A7` are **shipped**. `A2b`, `A2c`'s **across**
-half, `A3`, `A4`, `A5` and `A8` are designed and not built.
+`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A7` and `A5` are **shipped**. `A2b`, `A2c`'s
+**across** half, `A3`, `A4` and `A8` are designed and not built.
+
+⚠ **`A5` WAS LISTED AS BLOCKED ON `A4` AND WAS NOT.** `A4` is a SOURCE of break sites,
+not a prerequisite for the rule — measured, a road walked up a hill already leaves 41
+edges breaking a limit, worst over by 11. `A4` will produce more of them and they will
+be faced by the same rule with no further work.
 
 ⚠ **THE SHIPPED RULES LIVE IN [TERRAIN_EDITS.md](../../doc/claude/TERRAIN_EDITS.md), NOT HERE.**
 Everything a reader needs about how the ground moves — the rigid-body rule, what counts as
@@ -52,8 +57,8 @@ to the built-in numbering.
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | Open |
-| **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | Blocked on `A4` |
-| **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Blocked on `A5` |
+| **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
+| **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Open — `A5` shipped, so a cut face is now drawn and `A9` decides what stands ABOVE it |
 
 ## Invariant gate — for the phases still open
 
@@ -67,7 +72,7 @@ argued from a picture.
 | `A2c` across | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall | *a run has an AXIS; its limit is not a scalar* | a road cell with no road neighbour has no axis — it falls back to the scalar limit, not to flat |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop |
-| `A5` | where the limit cannot be met the column carries a face rather than a slope | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
+| ~~`A5`~~ | ✅ shipped, and the row is kept because the MEASUREMENT refuted it: hanging the face off `tr_slope` gives **zero** faces on a 71° grass mountain and a rock face on a 16° verge. It needs `tr_face` beside it, and then the negative control becomes a property of the TABLE — `tr_face >= tr_slope` on every row that has both | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
 | `A9` | a road cut into a face leaves the rock above it standing: the column has the road on a lower layer and terrain above, and the walk still passes | *cutting a shelf is not lowering the ground* | at overhang 0 the result must be **byte-identical** to today's open cut — the continuum has to contain what already works |
 
 ⚠ **`A8`'s ACCEPTANCE IS NOT ITS INVARIANT.** *"This will make the roads look more natural to

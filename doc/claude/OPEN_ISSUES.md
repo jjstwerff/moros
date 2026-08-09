@@ -25,6 +25,7 @@ found — an unrevised design reads like a finding.
 - [Contact system](#contact-system)
 - [World map editor](#world-map-editor)
 - [Part mode left the previous part's chunks on screen — fixed](#-part-mode-left-the-previous-parts-chunks-on-screen--fixed-2026-08-08)
+- [The ground's height ramp is inside the classifier's tolerance of the character](#-the-grounds-height-ramp-is-inside-the-classifiers-tolerance-of-the-character)
 - [Scene editor — this file is NOT where its plan lives](#scene-editor--this-file-is-not-where-its-plan-lives)
 
 ---
@@ -389,6 +390,42 @@ wall-classified pixels. ⚠ The threshold is measured, not chosen: **13014 broke
 cart's dark faces and the figure's shaded edges, in frame either way), taken by reverting the one
 line and rebuilding the client. The frame's own 9314 is the control, without which a blank canvas
 would pass.
+
+## ⚠ The ground's height RAMP is inside the classifier's tolerance of the CHARACTER
+
+**Measured 2026-08-09, while adding plan 20 `A5`'s rock face. Not caused by it — exposed by it.**
+
+`editor_server.loft` fades the ground mesh from `GRASS_R/G/B` at sea level toward
+`ROCK_R/G/B = 0.46, 0.38, 0.26` at `RAMP_TOP`, and the picture gates classify on
+chromaticity against a **0.0009** tolerance. That rock end sits **0.000697** from the
+figure's `0.80, 0.60, 0.45` — **0.77× the tolerance, so inside it.**
+
+**The consequence is not subtle**: on high ground no picture gate can tell the character
+from the ground it is standing on. Every `subject` row in the suite is a share of a
+bucket that the terrain joins as the terrain gets higher, and the gates that bound the
+subject from *below* would read a pass off the hillside.
+
+⚠ **AND THE TEST WRITTEN TO CATCH EXACTLY THIS CANNOT SEE IT.**
+`hex_mesh/tests/surfaces.loft::test_surfaces_are_separable_or_declared_alike` walks
+`classified()`, which is `surfaces()` plus the figure and the sky — and the ramp's colour
+is **in neither list**. It is not a mesh, so it never joined the list of things a mesh
+can draw, and the guard's scope is *what the mesher emits*. A guard with an exemption,
+and this is what the exemption let through by accident — the same shape as
+`tools/layering.sh` skipping every `moros_*` package.
+
+⚠ **AND THERE ARE NOW TWO ROCKS THAT DISAGREE.** `shots/a5-from-the-crest.png` has them
+side by side: the ground on top of the mountain is the ramp's **brown** rock, and the
+cliff falling away from it is `hex_mesh::surfaces()`'s **grey** `rock` at
+`0.68, 0.65, 0.59`. One outcrop, two colours, because one is a shader lerp on the grass
+mesh and the other is a surface.
+
+**Why it is not fixed here.** Both repairs move every picture gate's histogram — putting
+the ramp into `classified()` makes the suite red until the colour moves, and moving the
+colour re-tunes every scene with height in it. That is its own step with its own
+before/after, not a rider on `A5`. What `A5` has already done is make the ramp
+**redundant in principle**: high ground is drawn as rock because it *is* too steep to
+hold grass, not because it is high, so the honest end state is probably to delete the
+ramp rather than re-tune it — which is a design question, not a constant.
 
 ## Scene editor — this file is NOT where its plan lives
 

@@ -22,6 +22,30 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ⏭ MOST RECENT — plan 20 `A5` shipped (2026-08-09): rock faces where the ground cannot hold
+
+**The rules are in [TERRAIN_EDITS.md §T6](TERRAIN_EDITS.md), not here.** What a reader
+needs from this file is the three things that would otherwise be rediscovered:
+
+1. **`A5` was listed as blocked on `A4` and was not.** `A4` is a *source* of break
+   sites, not a prerequisite for the rule. Measured: a road walked up a hill already
+   leaves 41 edges breaking a limit.
+2. **The plan's own reading was refuted by measuring it.** Hanging the face off
+   `tr_slope` gives **zero** faces on a 71° grass mountain (grass has no slope limit)
+   and a rock face on a 16° verge (a road's limit is 1). It takes a second column,
+   `tr_face` — *how steep it can STAND* against *how steep it may be GIVEN*.
+3. **Two instruments were wrong before the thing they measured**, both in the usual
+   direction: the first probe compared corner `k` of one cell against corner `k` of the
+   other, which are different corners, and reported seams of 3.00 and 0.00 that meant
+   nothing; and the first rock colour was chosen *darker* than the wall to separate by
+   value, then photographed as a **black hole** — `A5`'s own invariant failing, because
+   a vertical face's normal is horizontal and `max(dot(N,L),0)` is zero.
+
+⚠ **AND IT LEFT ONE FINDING IT DID NOT CAUSE**: the ground's height ramp is **0.77× the
+classifier's tolerance** from the character, and the test written to catch exactly that
+cannot see it because the ramp's colour is in neither `surfaces()` nor `classified()`.
+[OPEN_ISSUES](OPEN_ISSUES.md#-the-grounds-height-ramp-is-inside-the-classifiers-tolerance-of-the-character).
+
 ## ⏭ PICK UP HERE — plan 17 `A8` is COMPLETE, and the tree's one live defect is closed
 
 ✅ **THE TOOLCHAIN BREAK OF 17:25 IS FIXED — [loft#815](https://github.com/loft-lang/loft/issues/815),
