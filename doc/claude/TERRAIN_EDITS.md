@@ -279,6 +279,39 @@ shape a cutting has.
   all of it is the 0.45 ambient. `0.34 × 0.45 = 0.153` is not a dark rock, it is a hole
   — `A5`'s own invariant failing in the one instrument that can see it.
 
+## T7 — A relaxation that runs out of passes says so
+
+`SLOPE_PASSES` is 12, and both loops ended `if !moved { break; }` — so a stroke that ran
+out of passes handed back a world still breaking its own limits and said nothing. The
+constant's own comment claimed *"reaching it is reported rather than swallowed"*.
+
+Measured (`probe/house/passes.loft`). The propagation is **local**: one pass buys one
+unit, so the boundary is exactly the cap.
+
+| road cells | worst step (limit 1) | clamped | residual | owed |
+|---|---|---|---|---|
+| 12 | 1 | 178 | 4 | 0 |
+| 14 | **3** | 248 | 4 | **2** |
+| 40 | **3** | 1184 | 4 | **2** |
+
+The 40-cell run comes back correct at one end and untouched at the other.
+
+⚠ **THE DIRECTION IS WHY IT HID FOR SO LONG.** A run *climbing away* from the settle's
+seed converges in **one pass at any length**, because the fix propagates the way the walk
+does. Only a run *falling away* is slow — and the first fixture measured the fast case
+and reported `worst step 1` at 40 cells, a green answer to a question never asked.
+
+⚠ **IT IS A QUESTION ASKED OF THE WORLD, NOT A NUMBER CARRIED OUT OF THE GESTURE.** The
+first build bumped `clamped`/`residual` from inside the loop, on `T4`'s rule that a
+refused slope reports the way a refused height does. Measured, that does not carry the
+claim: `clamped` went 1184 → 1317 and `residual` stayed 4, and no consumer can tell a
+relaxation that *ran out* from one that merely *worked hard*. `slope_owed(w, q, r)` reads
+the heights that are already there — so it cannot disagree with them, it is testable with
+no gesture in the picture, and it cost the 54 `brush` call sites nothing.
+
+⚠ **AND A SURFACE WITH NO LIMIT OWES NOTHING.** Grass at 20 a hex is not a debt, it is a
+cliff — `face_at` is what has an opinion about that, and the two must never both claim it.
+
 ## ⚠ Order does not commute, and here is exactly where
 
 *Placing hills then buildings* is **not** the same as *placing the same hill afterwards*.

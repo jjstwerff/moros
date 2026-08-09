@@ -6,7 +6,14 @@
 ## Status
 
 `A1`, `A1b`, `A2`, `A2c`'s **along** half, `A7` and `A5` are **shipped**. `A2b`, `A2c`'s
-**across** half, `A3`, `A4` and `A8` are designed and not built.
+**across** half, `A3` and `A8` are designed and not built. `A4` is **half** — see its
+own section below.
+
+⚠ **AND THE AUDIT `A4` FORCED IS THE LOUDEST THING IN THIS PLAN.** Three of its shipped
+rules have no consumer at all: `slope_settle` (`A7`'s entire deliverable), `footprint_seat`
+/ `seat_residual`, and — until `e0d1881` — any report that the relaxation ran out of
+passes. A rule that reaches no gesture is a rule the editor does not have, and all three
+passed CI the whole time.
 
 ⚠ **`A5` WAS LISTED AS BLOCKED ON `A4` AND WAS NOT.** `A4` is a SOURCE of break sites,
 not a prerequisite for the rule — measured, a road walked up a hill already leaves 41
@@ -56,7 +63,7 @@ to the built-in numbering.
 | **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | Open |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
-| **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | Open |
+| **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ◐ **half** — the relaxation half is ✅ `e0d1881` (`slope_owed`); the PAD half is measured and not built, below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
 | **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Open — `A5` shipped, so a cut face is now drawn and `A9` decides what stands ABOVE it |
 
@@ -71,7 +78,7 @@ argued from a picture.
 | `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient limited* | a corridor under a BUILDING must still move **rigidly** — it is that house's cellar, not a run |
 | `A2c` across | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall | *a run has an AXIS; its limit is not a scalar* | a road cell with no road neighbour has no axis — it falls back to the scalar limit, not to flat |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
-| `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop |
+| `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop — ✅ it WAS a silent stop; `slope_owed` is the refusal, and the two halves of the row turned out to be already-true and not-built respectively |
 | ~~`A5`~~ | ✅ shipped, and the row is kept because the MEASUREMENT refuted it: hanging the face off `tr_slope` gives **zero** faces on a 71° grass mountain and a rock face on a 16° verge. It needs `tr_face` beside it, and then the negative control becomes a property of the TABLE — `tr_face >= tr_slope` on every row that has both | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
 | `A9` | a road cut into a face leaves the rock above it standing: the column has the road on a lower layer and terrain above, and the walk still passes | *cutting a shelf is not lowering the ground* | at overhang 0 the result must be **byte-identical** to today's open cut — the continuum has to contain what already works |
 
@@ -107,6 +114,42 @@ asked it not to.
 are not the same object, one of the two designs is wrong — so they are gated against each
 other rather than built twice.
 
+### ⚠ What `A4` measured, and what is left
+
+**Half of the row was already true.** Measured (`probe/house/pads.loft`), two houses
+on a ramp: each pad ends level (spread **0**) on every gradient tried, and the ground
+between them carries **no more reversals than the bare control** — a dome on a ramp is
+non-monotonic whether or not there are buildings on it, so "monotonic between them"
+had to be read against a control before it meant anything.
+
+**The other half is a defect nobody had a number for.** A house on a slope is BURIED
+on its uphill side, and it grows without bound with the gradient:
+
+| ramp | earth standing OVER the floor | floor standing proud |
+|---|---|---|
+| 1/hex | 7 | 5 |
+| 2/hex | 12 | 5 |
+| 3/hex | 17 | 5 |
+| 4/hex | **22** — 5.5 wu of soil against the wall | 5 |
+
+⚠ **AND THE CAUSE IS A FUNCTION THAT EXISTS AND IS NEVER CALLED.** `place_house` seats
+its pad at the grade passed in — the AUTHOR'S FEET — so the pad sits at the height of
+wherever the author stood, and the footprint's own uphill edge is that many cells of
+grade above it. `footprint_seat` / `seat_residual` were built for exactly this, are
+tested in `tests/footprint.loft`, and have **no consumer anywhere**. The
+cut-and-fill a placement owes is computed by nobody and shown to no one.
+
+**So the pad half of `A4` is: seat a footprint on its OWN terrain, report the residual,
+and cut the ring of ground that still stands over the pad.** No new constant is needed
+for any of it — which is why it is worth doing as one step rather than three.
+
+⚠ **`slope_settle` HAS NO CONSUMER EITHER**, and that is `A7`'s whole deliverable —
+*any gesture that paints a limited surface can hand the world back inside its own
+rules*. Five tests and three probes call it; no gesture and no server code does. The
+editor's roads still do not have their limits, which is the defect `A7` shipped to
+close. Not fixed here because wiring it changes what every road in the tree looks like
+and wants its own before/after.
+
 ## Open questions
 
 1. **How much of the spoil goes back?** *"The builders had a lot of materials over after
@@ -140,8 +183,12 @@ other rather than built twice.
    not in a gesture. ⚠ That would make *how a road crosses a cliff* a fact about **where in the
    world you are**, which is the same shape as the slope limit and is probably the point.
 8. **Should the pad extend past the building?** A real terrace has an apron; today the pad is
-   exactly the fabric, so the ground steps at the wall. The limits may answer it — a step is an
-   edge, and an edge has a limit.
+   exactly the fabric, so the ground steps at the wall. ⚠ **MEASURED NOW** — the step is 7 to 22
+   units of earth standing OVER the floor as the ramp goes 1 to 4 per hex, and it is one-sided:
+   the "proud" direction stays bounded at 5. And the limits do NOT answer it — grass's
+   `tr_slope` is `SLOPE_FREE` and its `tr_face` of 6 is looser than the ramps that produce the
+   burial, so neither number bites. What answers it is seating the pad on its own footprint
+   (`footprint_seat`, which nothing calls) rather than on the author's feet.
 
 ## Closure record
 
