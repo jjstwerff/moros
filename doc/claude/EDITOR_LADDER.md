@@ -84,6 +84,8 @@ eyes**, not a report: something to open, drive, and judge.
 | — | ✋ | | | |
 | 17 | **parts** — a house drawn away from the world, composed by socket | [#17](https://github.com/jjstwerff/moros/issues/17) | XL | a house authored end-to-end without touching loft — [PARTS.md](PARTS.md) |
 | 18 | **catalogue** — what you are working on, names, and a list with images | [#18](https://github.com/jjstwerff/moros/issues/18) | L | the subject line reads correctly in a PNG — [CATALOGUE.md](CATALOGUE.md) |
+| 20 | **verticality last** — terrain that carries what is built on it, with a slope limit per surface | [#20](https://github.com/jjstwerff/moros/issues/20) | H | start on a flat plane, place everything, and add the hills at the END — [plan 20](../../plans/20-verticality-last/README.md) |
+| 20a | ↳ a building rides the terrain rigidly and ends on its own pad | [#20](https://github.com/jjstwerff/moros/issues/20) | ✅ | `hex_editor/tests/raise_structure.loft`; three sabotages seen red |
 | ∞ | convergences: chunk helpers → `hex_grid`, dirty set → `gridmesh`, `input` adopted; the crystal ports; groups extract once battle-tested | #8 V6-V9, #7 | — | the family has no duplicate function |
 
 **Two things deliberately not in the order.** *Extraction* has no row: a group leaves when it
