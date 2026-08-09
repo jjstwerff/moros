@@ -5621,6 +5621,11 @@ fn main() {
   rec_n = 0;
   levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
+  // ⚠ ITS OWN FLAG, NOT `level_warned`. A stroke can clamp against the floor without
+  // stalling and stall without clamping, so one flag would let whichever happened
+  // first silence the other — and the two sentences say different things to the
+  // author. Same shape as the pair itself: two questions, two answers.
+  level_stalled = false;
   level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
   road_h = 0;                  // the road's grade, frozen when it was switched on
@@ -8646,6 +8651,25 @@ fn main() {
             srv.broadcast("S:level approximated — {lclamp} cells hit the floor "
                           + "(residual {lvres})");
             println("editor: level approximated — {lclamp} clamped, residual {lvres}");
+          }
+          // ⚠ AND WHETHER THE RELAXATION FINISHED AT ALL — plan 20 `A4`, and it is a
+          // DIFFERENT question from `lclamp`. A big clamp count is what a big stroke
+          // looks like; running out of `SLOPE_PASSES` is the stroke handing back a
+          // world that still breaks its own rules, and the two were indistinguishable
+          // because nothing asked. Measured (`probe/house/passes.loft`): a road
+          // falling away from the seed settles one unit a pass, so a 12-cell run
+          // finishes and a 14-cell one does not — and the 40-cell case came back
+          // `clamped 1184, residual 4` with 27 cells still 2 units a hex too steep.
+          //
+          // ⚠ ASKED OF THE WORLD, NOT CARRIED OUT OF THE GESTURE. `slope_owed` reads
+          // the heights that are already there, so it cannot disagree with them, and
+          // it costs the 54 `brush` call sites no new argument.
+          owed = hex_editor::slope_owed(wld, last_hq, last_hr);
+          if owed > 0 && !level_stalled {
+            level_stalled = true;
+            srv.broadcast("S:level did not settle — the run is still {owed} "
+                          + "per hex over its limit");
+            println("editor: level did not settle — owed {owed}");
           }
         }
         py = (level_h as float) * HEIGHT_SCALE;

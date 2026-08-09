@@ -1,0 +1,97 @@
+// DOES THE RELAXATION TERMINATE, AND IS THE CAP A REFUSAL? — plan 20 `A4`.
+//
+// `A4`'s invariant is *the relaxation terminates and never re-steepens a settled
+// edge*, and its negative control is *the iteration cap being hit is a REFUSAL,
+// not a silent stop*. `slope_relax` and `slope_settle` both run
+// `for pass in 0..SLOPE_PASSES { … if !moved { break; } }`, and the comment above
+// the constant says reaching the cap "is reported rather than swallowed".
+//
+// ⚠ THAT SENTENCE IS THE HYPOTHESIS UNDER TEST, and it is testable because the
+// propagation is LOCAL: one pass moves a clamp one cell along a run, so a run
+// longer than `SLOPE_PASSES` cells cannot converge in `SLOPE_PASSES` passes. If
+// that is right, a long enough road comes back still breaking its own limit, and
+// nothing anywhere says so.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+// A road of `n` cells laid along `r = 0` down a ramp of `fall` per hex, settled
+// from the TOP.
+//
+// ⚠ THE DIRECTION IS THE WHOLE FIXTURE, and the first version got it backwards and
+// therefore proved nothing: a road climbing AWAY from the seed converges in one
+// pass at any length, because `slope_settle` only lowers and the fix propagates in
+// the same direction the BFS walks. Measured, 40 cells against a step of 20 came
+// back at worst step 1 — a green answer to a question never asked.
+//
+// A road FALLING away from the seed is the slow case: each cell is pulled against
+// its neighbour's OLD height, so one pass buys one unit and the run needs about
+// `(fall - limit) x length` of them.
+fn road_run(n: integer, fall: integer, cl: &integer, rs: &integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 4)..(n + 8) {
+    for r in (0 - 6)..7 { ground_set(w, q, r, G + 400 - q * fall, SURFACE_MAT); }
+  }
+  for q3 in 0..n {
+    for r3 in (0 - 1)..2 {
+      ground_set(w, q3, r3, ground_h(w, q3, r3), ROAD_MAT);
+    }
+  }
+  slope_settle(w, 0, 0, cl, rs);
+  w
+}
+
+// The steepest step between two ROAD cells along the run — a road's limit is 1, so
+// anything above 1 is an edge the settle was supposed to remove and did not.
+fn worst_road_step(w: World, n: integer) -> integer {
+  worst = 0;
+  for q in 0..(n - 1) {
+    st = ground_h(w, q + 1, 0) - ground_h(w, q, 0);
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+  }
+  worst
+}
+
+fn profile(w: World, lo: integer, hi: integer) -> text {
+  out = "";
+  for q in lo..(hi + 1) { out += "{ground_h(w, q, 0) - G} "; }
+  out
+}
+
+fn main() {
+  lim = ground_kind_of(ROAD_MAT).tr_slope;
+  println("a road's limit is {lim} per hex, and the pass cap is what bounds the settle.");
+  println("");
+  println("  cells   fall   worst step   clamped   residual   owed   verdict");
+  for n in [6, 10, 12, 14, 20, 30, 40] {
+    cl = 0;
+    rs = 0;
+    w = road_run(n, 3, cl, rs);
+    worst = worst_road_step(w, n);
+    owed = slope_owed(w, 0, 0);
+    v = "settled";
+    if worst > lim { v = "STILL BROKEN"; }
+    agree = "";
+    if (owed > 0) != (worst > lim) { agree = "  ⚠ THE QUERY AND THE GROUND DISAGREE"; }
+    println("  {n:>5}   {3:>4}   {worst:>10}   {cl:>7}   {rs:>8}   {owed:>5}   {v}{agree}");
+  }
+  println("");
+  // ⚠ THE PROFILE OF THE ONE THAT FAILS, so the shape of the failure is on the
+  // record rather than only its verdict: a settle that ran out of passes leaves a
+  // ramp that is correct near the violation and untouched far from it.
+  cl2 = 0;
+  rs2 = 0;
+  w2 = road_run(40, 3, cl2, rs2);
+  println("a 40-cell road down a 3-per-hex ramp, after settling — owed {slope_owed(w2, 0, 0)}:");
+  println("  {profile(w2, 0, 41)}");
+  println("");
+  // ⚠ AND THE CONTROL: the SAME road with a rise it can absorb inside the cap.
+  cl3 = 0;
+  rs3 = 0;
+  w3 = road_run(6, 3, cl3, rs3);
+  println("the CONTROL — six cells of the same ramp, short enough to finish:");
+  println("  {profile(w3, 0, 7)}");
+  println("  worst step {worst_road_step(w3, 6)}, clamped {cl3}, residual {rs3}, owed {slope_owed(w3, 0, 0)}");
+}

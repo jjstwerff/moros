@@ -1,0 +1,135 @@
+// THE RELAXATION SAYS WHEN IT DID NOT FINISH — plan 20 `A4`.
+//
+// `A4`'s invariant is *the relaxation terminates and never re-steepens a settled
+// edge*, and its negative control is *the iteration cap being hit is a REFUSAL, not
+// a silent stop*. It was a silent stop: both loops ended `if !moved { break; }` and
+// said nothing whatever, while `SLOPE_PASSES`' own comment claimed reaching the cap
+// "is reported rather than swallowed".
+//
+// Measured before any of this was written (`probe/house/passes.loft`): a road
+// falling away from the settle's seed comes down one unit a pass, so the boundary
+// is exactly the cap — 12 cells settle, 14 do not, and a 40-cell run comes back
+// correct at one end and untouched at the other with `clamped 1184, residual 4`.
+//
+// ⚠ AND THE DIRECTION IS WHY IT HID. A road CLIMBING away from the seed converges
+// in one pass at any length, because the fix propagates the way the walk does. The
+// first fixture measured that case and reported `worst step 1` at 40 cells — a
+// green answer to a question never asked.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+
+// A road of `n` cells falling away from the seed at `fall` per hex — the slow
+// direction, and the only one that can reach the cap.
+fn falling_road(n: integer, fall: integer, cl: &integer, rs: &integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 4)..(n + 8) {
+    for r in (0 - 6)..7 { ground_set(w, q, r, G + 400 - q * fall, SURFACE_MAT); }
+  }
+  for q3 in 0..n {
+    for r3 in (0 - 1)..2 { ground_set(w, q3, r3, ground_h(w, q3, r3), ROAD_MAT); }
+  }
+  slope_settle(w, 0, 0, cl, rs);
+  w
+}
+
+// The largest step between adjacent road cells along the run — the ground truth
+// `slope_owed` has to agree with.
+fn worst_step(w: World, n: integer) -> integer {
+  worst = 0;
+  for q in 0..(n - 1) {
+    st = ground_h(w, q + 1, 0) - ground_h(w, q, 0);
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+  }
+  worst
+}
+
+// ── the negative control first, because it is what the row is about ──────────
+
+fn test_a_run_that_settles_owes_nothing() {
+  cl = 0;
+  rs = 0;
+  w = falling_road(6, 3, cl, rs);
+  assert(worst_step(w, 6) <= ground_kind_of(ROAD_MAT).tr_slope,
+    "the control run did not settle: worst step {worst_step(w, 6)}");
+  assert(slope_owed(w, 0, 0) == 0,
+    "a settled run says it owes {slope_owed(w, 0, 0)}");
+  // ⚠ AND IT DID REAL WORK, or the assertion above is about a road that was
+  // already flat and the instrument has been shown nothing.
+  assert(cl > 0, "the control settled nothing at all — the fixture is not a slope");
+}
+
+fn test_a_run_that_ran_out_of_passes_says_so() {
+  cl = 0;
+  rs = 0;
+  w = falling_road(40, 3, cl, rs);
+  lim = ground_kind_of(ROAD_MAT).tr_slope;
+  ws = worst_step(w, 40);
+  assert(ws > lim,
+    "the fixture settled after all, so there is no stall to report: {ws}");
+  assert(slope_owed(w, 0, 0) == ws - lim,
+    "the run is {ws - lim} per hex over its limit and the query says "
+    + "{slope_owed(w, 0, 0)}");
+}
+
+// ⚠ THE BOUNDARY IS THE CAP ITSELF, and pinning it is what makes the two rows above
+// more than a pair of examples: the query has to flip exactly where the passes run
+// out, not somewhere near it.
+fn test_the_boundary_is_the_pass_cap() {
+  short = 0;
+  long = 0;
+  for n in [6, 10, 12, 14, 20, 30, 40] {
+    cl = 0;
+    rs = 0;
+    w = falling_road(n, 3, cl, rs);
+    owed = slope_owed(w, 0, 0);
+    over = worst_step(w, n) - ground_kind_of(ROAD_MAT).tr_slope;
+    if over < 0 { over = 0; }
+    // ⚠ THE QUERY AND THE GROUND, EVERY TIME. A query that agreed on the two rows
+    // above and drifted in between would pass both and still be wrong.
+    assert(owed == over,
+      "{n} cells: the ground is {over} over its limit and the query says {owed}");
+    if owed == 0 { short = short + 1; } else { long = long + 1; }
+  }
+  assert(short >= 2 && long >= 2,
+    "the sweep found {short} settled and {long} stalled — it did not cross the cap, "
+    + "so it is measuring one side of a boundary that has to have two");
+}
+
+// ── and the query is about the WORLD, not about a gesture ───────────────────
+
+// ⚠ NO GESTURE ANYWHERE IN THIS ONE. `slope_owed` reads the heights that are there,
+// which is what lets it be asked after any writer at all — and is why it could be
+// added without touching the 54 `brush` call sites.
+fn test_it_reads_the_world_and_not_a_gesture() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 10)..11 {
+    for r in (0 - 4)..5 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  for q2 in 0..6 { ground_set(w, q2, 0, G + q2 * 4, ROAD_MAT); }
+  assert(slope_owed(w, 0, 0) == 3,
+    "a hand-written road at 4 per hex against a limit of 1 owes "
+    + "{slope_owed(w, 0, 0)}, not 3");
+  // Flatten it by hand and the same query goes quiet.
+  for q3 in 0..6 { ground_set(w, q3, 0, G + q3, ROAD_MAT); }
+  assert(slope_owed(w, 0, 0) == 0,
+    "a road laid inside its limit owes {slope_owed(w, 0, 0)}");
+}
+
+// ⚠ A SURFACE WITH NO LIMIT CAN OWE NOTHING, and that is the other half of the
+// `SLOPE_FREE` sentinel. Grass at 20 a hex is a cliff, not a debt — `A5`'s
+// `face_at` is what has an opinion about that, and the two must not both claim it.
+fn test_a_surface_with_no_limit_owes_nothing() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 10)..11 {
+    for r in (0 - 4)..5 { ground_set(w, q, r, G + q * 20, SURFACE_MAT); }
+  }
+  assert(slope_limit(w, 0, 0) == SLOPE_FREE, "grass grew a slope limit");
+  assert(slope_owed(w, 0, 0) == 0,
+    "unlimited grass owes {slope_owed(w, 0, 0)}");
+  assert(faces_here(w, 0, 0) > 0,
+    "and the thing that DOES have an opinion about it found nothing");
+}

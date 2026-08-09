@@ -1,0 +1,224 @@
+// TWO BUILDINGS ON ONE SLOPE — plan 20 `A4`, measured before it is designed.
+//
+// `A4` asks for *two buildings on one slope, each ending level, and the ground
+// between them monotonic*, pinning *the relaxation terminates and never
+// re-steepens a settled edge*, with the negative control *the iteration cap being
+// hit is a REFUSAL, not a silent stop*.
+//
+// Four things have to be measured rather than assumed, and every one of them can
+// come back saying `A4` is already true:
+//
+//   1. does each pad end LEVEL when there are two of them on a grade?
+//   2. is the ground BETWEEN them monotonic, or does it ripple?
+//   3. does the relaxation CONVERGE — is any edge still breaking its own limit
+//      after the stroke returns?
+//   4. what does the pad's own edge do — the step at the wall, which is open
+//      question 8, and which `A5` now draws as rock if it is steep enough.
+//
+// ⚠ THE SAMPLING TRAP IS `roadwalk`'s AND IT APPLIES HERE. Every house is placed
+// at the grade the ground held BEFORE any of them was placed; reading the ground
+// as each goes in would seat the second house on the first one's pad.
+use hex_editor;
+use hex_world;
+use hex_mesh;
+const U = 0.25;
+const G = 40;
+const RAD = 7;
+const HALF = 26;
+
+// A linear ramp: one height unit per hex along +q, flat across. Two units a hex
+// would already be steeper than a field may take, so this is deliberately gentle —
+// a slope nothing refuses, so anything that breaks is `A4`'s doing and not the
+// fixture's.
+fn ramp(step: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - HALF)..(HALF + 1) {
+    for r in (0 - HALF)..(HALF + 1) {
+      ground_set(w, q, r, G + q * step, SURFACE_MAT);
+    }
+  }
+  w
+}
+
+// Every floor cell of the world, and the spread of heights within each connected
+// pad — a pad is level exactly when its spread is 0.
+fn pad_spread(w: World, lo: integer, hi: integer) -> integer {
+  best = 0 - 1;
+  worst = 0;
+  for q in lo..(hi + 1) {
+    for r in (0 - 6)..7 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      h = ground_h(w, q, r);
+      if best < 0 { best = h; worst = h; }
+      if h < best { best = h; }
+      if h > worst { worst = h; }
+    }
+  }
+  if best < 0 { return 0 - 1; }
+  worst - best
+}
+
+fn pad_height(w: World, lo: integer, hi: integer) -> integer {
+  for q in lo..(hi + 1) {
+    for r in (0 - 6)..7 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT {
+        return ground_h(w, q, r);
+      }
+    }
+  }
+  0 - 1
+}
+
+// Is the ground along `r = 0` monotonic between two q's? Reports the number of
+// REVERSALS — a run that goes up, down and up again has one.
+fn reversals(w: World, lo: integer, hi: integer) -> integer {
+  dir = 0;
+  n = 0;
+  prev = ground_h(w, lo, 0);
+  for q in (lo + 1)..(hi + 1) {
+    h = ground_h(w, q, 0);
+    d = 0;
+    if h > prev { d = 1; }
+    if h < prev { d = 0 - 1; }
+    if d != 0 && dir != 0 && d != dir { n = n + 1; }
+    if d != 0 { dir = d; }
+    prev = h;
+  }
+  n
+}
+
+// Every edge in the window that still breaks the limit of a cell that HAS one,
+// after the gesture has returned. A relaxation that converged leaves none.
+fn unsettled(w: World) -> integer {
+  n = 0;
+  for q in (0 - HALF + 1)..HALF {
+    for r in (0 - 8)..9 {
+      for d in 0..3 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        step = ground_h(w, q, r) - ground_h(w, nq, nr);
+        if step < 0 { step = 0 - step; }
+        la = slope_limit(w, q, r);
+        lb = slope_limit(w, nq, nr);
+        if la != SLOPE_FREE && step > la { n = n + 1; continue; }
+        if lb != SLOPE_FREE && step > lb { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ SIGNED, AND THE FIRST VERSION TOOK AN ABSOLUTE VALUE — which folded the two
+// halves of the defect into one number and hid the half that matters. Earth
+// standing ABOVE a floor is a house in a trench; a floor standing above the ground
+// is a house on a plinth. They are different faults with different fixes and a
+// magnitude cannot tell them apart.
+//
+// `up` is the most the ground stands OVER a floor cell at the wall — the burial.
+// `down` is the most a floor stands PROUD of the ground beside it.
+fn pad_edge_step(w: World, up: &integer, down: &integer) {
+  for q in (0 - HALF + 1)..HALF {
+    for r in (0 - 8)..9 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) == FLOOR_MAT { continue; }
+        st = ground_h(w, nq, nr) - ground_h(w, q, r);
+        if st > up { up = st; }
+        if 0 - st > down { down = 0 - st; }
+      }
+    }
+  }
+}
+
+fn faces(w: World) -> integer {
+  n = 0;
+  for q in (0 - HALF + 1)..HALF {
+    for r in (0 - 8)..9 { n = n + faces_here(w, q, r); }
+  }
+  n
+}
+
+fn profile(w: World, lo: integer, hi: integer) -> text {
+  out = "";
+  for q in lo..(hi + 1) { out += "{ground_h(w, q, 0) - G} "; }
+  out
+}
+
+fn main() {
+  // ── the fixture: a gentle ramp with two houses on it ──────────────────────
+  w = ramp(1);
+  runs = WallRuns { items: [] };
+  // ⚠ BOTH GRADES READ FIRST. Placing house A changes the ground under where B is
+  // going; sampling as we place would seat B on A's pad and the whole measurement
+  // would be about the fixture.
+  ga = ground_h(w, 0 - 8, 0);
+  gb = ground_h(w, 8, 0);
+  ha = place_house(w, author_at(((0 - 8) as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
+                   3, 3, ga, runs);
+  hb = place_house(w, author_at((8 as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
+                   3, 3, gb, runs);
+  println("house A: ok={ha.ak_ok} at ({ha.ak_q},{ha.ak_r}) grade {ga - G}  {ha.ak_why}");
+  println("house B: ok={hb.ak_ok} at ({hb.ak_q},{hb.ak_r}) grade {gb - G}  {hb.ak_why}");
+  println("the ramp, from q=-14 to q=14: {profile(w, 0 - 14, 14)}");
+  println("");
+
+  println("BEFORE any stroke:");
+  println("  pad A spread {pad_spread(w, 0 - 14, 0 - 2)} at height {pad_height(w, 0 - 14, 0 - 2) - G}");
+  println("  pad B spread {pad_spread(w, 2, 14)} at height {pad_height(w, 2, 14) - G}");
+  println("  reversals between them: {reversals(w, 0 - 6, 6)}");
+  println("  edges still breaking a limit: {unsettled(w)}");
+  bu = 0;
+  bd = 0;
+  pad_edge_step(w, bu, bd);
+  println("  earth standing OVER a floor: {bu}   floor standing PROUD: {bd}");
+  println("  rock faces: {faces(w)}");
+  println("");
+
+  // ── one stroke centred BETWEEN the two, so both are inside the disc ────────
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, RAD, cl, rs);
+  println("AFTER one raise of 12 centred between them (clamped {cl}, residual {rs}):");
+  println("  the ground, q=-14..14: {profile(w, 0 - 14, 14)}");
+  println("  pad A spread {pad_spread(w, 0 - 14, 0 - 2)} at height {pad_height(w, 0 - 14, 0 - 2) - G}");
+  println("  pad B spread {pad_spread(w, 2, 14)} at height {pad_height(w, 2, 14) - G}");
+  println("  reversals between them: {reversals(w, 0 - 6, 6)}");
+  println("  edges still breaking a limit: {unsettled(w)}");
+  bu = 0;
+  bd = 0;
+  pad_edge_step(w, bu, bd);
+  println("  earth standing OVER a floor: {bu}   floor standing PROUD: {bd}");
+  println("  rock faces: {faces(w)}");
+  println("");
+
+  // ── the negative control: the SAME stroke on the same ramp, no houses ──────
+  w2 = ramp(1);
+  cl2 = 0;
+  rs2 = 0;
+  brush(w2, 0, 0, 12, RAD, cl2, rs2);
+  println("CONTROL — the same stroke on the bare ramp:");
+  println("  the ground, q=-14..14: {profile(w2, 0 - 14, 14)}");
+  println("  reversals: {reversals(w2, 0 - 6, 6)}");
+  println("  edges still breaking a limit: {unsettled(w2)}");
+  println("");
+
+  // ── and a steeper ramp, to find where it stops converging ──────────────────
+  for st in 1..5 {
+    w3 = ramp(st);
+    g3a = ground_h(w3, 0 - 8, 0);
+    g3b = ground_h(w3, 8, 0);
+    place_house(w3, author_at(((0 - 8) as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
+                3, 3, g3a, runs);
+    place_house(w3, author_at((8 as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
+                3, 3, g3b, runs);
+    cl3 = 0;
+    rs3 = 0;
+    brush(w3, 0, 0, 12, RAD, cl3, rs3);
+    bu3 = 0;
+    bd3 = 0;
+    pad_edge_step(w3, bu3, bd3);
+    println("ramp {st}/hex: pads {pad_spread(w3, 0 - 14, 0 - 2)}/{pad_spread(w3, 2, 14)} spread, "
+          + "{reversals(w3, 0 - 6, 6)} reversals, {unsettled(w3)} unsettled, "
+          + "buried {bu3}, proud {bd3}, {faces(w3)} faces");
+  }
+}

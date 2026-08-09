@@ -2651,7 +2651,8 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
       mr += [nr];
     }
   }
-  for pass in 0..SLOPE_PASSES {
+  moved = false;
+  for _ in 0..SLOPE_PASSES {
     moved = false;
     for i in 0..len(mq) {
       q = mq[i] ?? 0;
@@ -3260,8 +3261,25 @@ pub fn faces_here(w: World, q: integer, r: integer) -> integer {
 
 // How many relaxation passes a stroke may spend. ⚠ A CAP, NOT A CONVERGENCE TEST:
 // each pass only ever moves a cell back TOWARD where it started and the start
-// satisfied every limit, so the loop is monotone and terminates on its own — the cap
-// is a bound on cost, and reaching it is reported rather than swallowed.
+// satisfied every limit, so the loop is monotone and would reach a fixed point on
+// its own — the cap is a bound on cost.
+//
+// ⚠ AND IT USED TO SAY "reaching it is reported rather than swallowed", WHICH WAS
+// FALSE — plan 20 `A4`, measured in `probe/house/passes.loft`. Both loops ended
+// `if !moved { break; }` and said nothing whatever when they ran out of passes
+// instead. The propagation is LOCAL and one pass buys one unit, so the boundary is
+// exactly the cap: a 12-cell road down a 3-per-hex ramp settles, a 14-cell one does
+// not, and a 40-cell one comes back **correct at one end and untouched at the
+// other** — `clamped 1184`, `residual 4`, and no word that the run never finished.
+// A residual of 4 is the largest single give; what the author actually did not get
+// was a road 2 units a hex too steep over 27 cells.
+//
+// ⚠ THE DIRECTION IS WHY IT HID FOR SO LONG. A road climbing AWAY from the seed
+// converges in one pass at ANY length, because the fix propagates the same way the
+// walk does. Only a run falling away from the seed is slow, so every fixture in the
+// tree happened to be the fast case — the first version of the probe measured 40
+// cells against a step of 20 and reported `worst step 1`, a green answer to a
+// question never asked.
 const SLOPE_PASSES = 12;
 
 // ⚠ THE LIMIT IS MEMOISED FOR THE SAME REASON `is_fabric` IS. A cell's limit is
@@ -3275,106 +3293,164 @@ struct Lims   { l_by: hash<LimAt[la_key]> }
 struct OrigAt { oa_key: integer, oa_h: integer }
 struct Origs  { o_by: hash<OrigAt[oa_key]> }
 
-// Pull every moved, unlimited-by-fabric cell back until no edge breaks its surface's
-// own limit. Returns the largest amount any cell had to give up.
-// Are these two cells part of the SAME run? — plan 20 `A2c`.
+// A cell's limit, memoised — the block that used to sit inline in `slope_relax`.
 //
-// ⚠ A RUN IS EITHER A MARKED ONE OR A MATERIAL ONE. A wall or fence line is decided
-// by the component walk and arrives here in `runs`; a road is decided by its
-// material and never entered that walk at all. Both are runs, and *roads do not
-// flow* applies to both.
-fn same_run(w: World, aq: integer, ar: integer, bq: integer, br: integer,
-            runs: Seen) -> boolean {
-  if runs.s_by[age_like_key(aq, ar)] != null && runs.s_by[age_like_key(bq, br)] != null {
-    return true;
+// ⚠ FACTORED OUT BECAUSE THERE ARE TWO READERS NOW, and two copies of *which* limit
+// applies is exactly the second-list defect `ground_kinds` exists to prevent. The
+// relaxation asks it up to `SLOPE_PASSES` times a cell, and the stall sweep asks it
+// once more; both must get the same answer or the sweep reports a violation the
+// relaxation was never trying to fix.
+fn lim_at(w: World, q: integer, r: integer, runs: Seen, lims: Lims) -> integer {
+  lk = age_like_key(q, r);
+  lrec = lims.l_by[lk];
+  if lrec != null { return lrec.la_lim; }
+  lim0 = slope_limit(w, q, r);
+  // A marked run carries its own limit, from the EDGE it is built of.
+  if runs.s_by[lk] != null {
+    rl = run_slope(w, q, r);
+    if rl != SLOPE_FREE && (lim0 == SLOPE_FREE || rl < lim0) { lim0 = rl; }
   }
-  ma = world_ground_cell(w, aq, ar).h_material as integer ?? 0;
-  mb = world_ground_cell(w, bq, br).h_material as integer ?? 0;
-  if ma == 0 || ma != mb { return false; }
-  ground_kind_at(w, aq, ar, ma).tr_slope != SLOPE_FREE
+  lims.l_by += LimAt { la_key: lk, la_lim: lim0 };
+  lim0
+}
+
+// ⚠ WHAT A STALLED RELAXATION LEFT OWING — plan 20 `A4`, and it is DERIVED rather
+// than reported out of the loop.
+//
+// The first build of this bumped `clamped` and `residual` from inside the pass loop
+// when the cap ran out, on `T4`'s rule that a refused slope reports by the path a
+// refused height has. Measured, that does not carry the claim: a stalled 40-cell
+// road took `clamped` from 1184 to 1317 and left `residual` at 4, and no consumer
+// can tell a relaxation that ran out of passes from one that merely worked hard.
+// Folding *how much was given up* and *how much is still wrong* into one number
+// loses the half that matters — the second is the one nobody had.
+//
+// So it is a QUESTION ASKED OF THE WORLD, which is `HEX_STACK`'s first invariant
+// and `A5`'s shape one rule over: the heights already say whether a run breaks its
+// own limit, so a second answer carried out of the gesture could disagree with the
+// first. It also makes the claim testable with no gesture in the picture, and it
+// costs the 54 `brush` call sites nothing.
+//
+// Returns the largest amount by which any edge of the run through `(cq, cr)`
+// exceeds that run's own limit — 0 when the settle finished.
+pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
+  lim0 = slope_limit(w, cq, cr);
+  if lim0 == SLOPE_FREE { return 0; }
+  mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
+  seen = Seen { s_by: [] };
+  mq: vector<integer> = [cq];
+  mr: vector<integer> = [cr];
+  seen.s_by += SeenAt { sa_key: age_like_key(cq, cr) };
+  head = 0;
+  while head < len(mq) {
+    aq = mq[head] ?? 0;
+    ar = mr[head] ?? 0;
+    head = head + 1;
+    for d in 0..6 {
+      (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
+      if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+      if seen.s_by[age_like_key(nq, nr)] != null { continue; }
+      if len(mq) >= LIFT_CAP { continue; }
+      seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
+      mq += [nq];
+      mr += [nr];
+    }
+  }
+  worst = 0;
+  for i in 0..len(mq) {
+    q = mq[i] ?? 0;
+    r = mr[i] ?? 0;
+    for d2 in 0..6 {
+      (nq2, nr2) = hex_grid::hex_neighbor(q, r, d2);
+      if seen.s_by[age_like_key(nq2, nr2)] == null { continue; }
+      over = ground_h(w, q, r) - ground_h(w, nq2, nr2) - lim0;
+      if over > worst { worst = over; }
+    }
+  }
+  worst
 }
 
 fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
-               taken: Seen, runs: Seen, origs: Origs, lims: &Lims,
+               taken: Seen, runs: Seen, origs: Origs, lims: Lims,
                clamped: &integer, residual: &integer) {
-  for pass in 0..SLOPE_PASSES {
+  // ⚠ THE DISC IS WALKED ONCE, NOT ONCE A PASS. It was `hex_distance` and a `taken`
+  // lookup per cell per pass, twelve times over — the same answer recomputed for
+  // every one of `SLOPE_PASSES`, which is the shape both memos in this file exist
+  // to remove.
+  rq: vector<integer> = [];
+  rr: vector<integer> = [];
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q0 = tq + dq;
+      r0 = tr + dr;
+      if hex_distance(q0, r0, tq, tr) >= rad { continue; }
+      // ⚠ FABRIC IS EXEMPT. A building's pad is rigid by `A1`; relaxing it would
+      // put the shear back that `A1` exists to remove, one rule later.
+      if taken.s_by[age_like_key(q0, r0)] != null { continue; }
+      rq += [q0];
+      rr += [r0];
+    }
+  }
+  moved = false;
+  for _ in 0..SLOPE_PASSES {
     moved = false;
-    for dq in (0 - rad)..(rad + 1) {
-      for dr in (0 - rad)..(rad + 1) {
-        q = tq + dq;
-        r = tr + dr;
-        if hex_distance(q, r, tq, tr) >= rad { continue; }
-        // ⚠ FABRIC IS EXEMPT. A building's pad is rigid by `A1`; relaxing it would
-        // put the shear back that `A1` exists to remove, one rule later.
-        if taken.s_by[age_like_key(q, r)] != null { continue; }
-        lk = age_like_key(q, r);
-        lrec = lims.l_by[lk];
-        if lrec == null {
-          lim0 = slope_limit(w, q, r);
-          // A marked run carries its own limit, from the EDGE it is built of.
-          if runs.s_by[lk] != null {
-            rl = run_slope(w, q, r);
-            if rl != SLOPE_FREE && (lim0 == SLOPE_FREE || rl < lim0) { lim0 = rl; }
-          }
-          lims.l_by += LimAt { la_key: lk, la_lim: lim0 };
-          lim = lim0;
-        } else {
-          lim = lrec.la_lim;
-        }
-        if lim == SLOPE_FREE { continue; }
-        // ⚠ ALONG WORKS; ACROSS IS NOT BUILT, AND THE REASON IS THE LATTICE.
-        // *Roads do not flow: in the direction of the road they can bend but are
-        // flat in the other direction.* The ALONG half is what the limit above
-        // delivers, and it is what makes a city wall climb its hill instead of
-        // moving as one slab.
-        //
-        // The ACROSS half was built and removed TWICE, each time after measuring
-        // it: in a hex grid the two lanes of a road are offset by HALF A STATION,
-        // so there is no cell "directly across" — every sideways test also couples
-        // cells at different points ALONG the run, the equalities chain down the
-        // line, and the whole run collapses to its original height with every count
-        // agreeing. A 51-cell wall did it first; a genuinely two-wide road did it
-        // again after the rule was narrowed to material runs.
-        //
-        // What it needs is a PROJECTION onto the run's own axis, so that *same
-        // station* is a fact rather than a guess about which of six directions is
-        // sideways. That is `A2c`'s remaining half, written down in plan 20 rather
-        // than approximated here: an across-rule that flattens roads is worse than
-        // none.
+    for ri in 0..len(rq) {
+      q = rq[ri] ?? 0;
+      r = rr[ri] ?? 0;
+      lim = lim_at(w, q, r, runs, lims);
+      if lim == SLOPE_FREE { continue; }
+      // ⚠ ALONG WORKS; ACROSS IS NOT BUILT, AND THE REASON IS THE LATTICE.
+      // *Roads do not flow: in the direction of the road they can bend but are
+      // flat in the other direction.* The ALONG half is what the limit above
+      // delivers, and it is what makes a city wall climb its hill instead of
+      // moving as one slab.
+      //
+      // The ACROSS half was built and removed TWICE, each time after measuring
+      // it: in a hex grid the two lanes of a road are offset by HALF A STATION,
+      // so there is no cell "directly across" — every sideways test also couples
+      // cells at different points ALONG the run, the equalities chain down the
+      // line, and the whole run collapses to its original height with every count
+      // agreeing. A 51-cell wall did it first; a genuinely two-wide road did it
+      // again after the rule was narrowed to material runs.
+      //
+      // What it needs is a PROJECTION onto the run's own axis, so that *same
+      // station* is a fact rather than a guess about which of six directions is
+      // sideways. That is `A2c`'s remaining half, written down in plan 20 rather
+      // than approximated here: an across-rule that flattens roads is worse than
+      // none.
 
-        rec = origs.o_by[age_like_key(q, r)];
-        if rec == null { continue; }
-        h0 = rec.oa_h;
-        h = ground_h(w, q, r);
-        if h == h0 { continue; }
-        want = h;
-        for d in 0..6 {
-          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-          nh = ground_h(w, nq, nr);
-          if h > h0 {
-            if want > nh + lim { want = nh + lim; }
-          } else {
-            if want < nh - lim { want = nh - lim; }
-          }
+      rec = origs.o_by[age_like_key(q, r)];
+      if rec == null { continue; }
+      h0 = rec.oa_h;
+      h = ground_h(w, q, r);
+      if h == h0 { continue; }
+      want = h;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        nh = ground_h(w, nq, nr);
+        if h > h0 {
+          if want > nh + lim { want = nh + lim; }
+        } else {
+          if want < nh - lim { want = nh - lim; }
         }
-        // Never pushed past where it started — the edit is reduced, never reversed.
-        if h > h0 && want < h0 { want = h0; }
-        if h < h0 && want > h0 { want = h0; }
-        if want != h {
-          give = h - want;
-          if give < 0 { give = 0 - give; }
-          // ⚠ THE SAME TWO COUNTERS THE HEIGHT CLAMPS USE. A limit that silently
-          // delivers less than was asked is the `K-FIT` failure this tree has a rule
-          // for: say what could not be done and by how much. The server already
-          // warns on these, so a refused slope reaches the author by the path a
-          // refused height always has.
-          clamped = clamped + 1;
-          if give > residual { residual = give; }
-          bm2 = world_ground_cell(w, q, r).h_material as integer ?? 0;
-          if bm2 == 0 { bm2 = SURFACE_MAT; }
-          ground_set(w, q, r, want, bm2);
-          moved = true;
-        }
+      }
+      // Never pushed past where it started — the edit is reduced, never reversed.
+      if h > h0 && want < h0 { want = h0; }
+      if h < h0 && want > h0 { want = h0; }
+      if want != h {
+        give = h - want;
+        if give < 0 { give = 0 - give; }
+        // ⚠ THE SAME TWO COUNTERS THE HEIGHT CLAMPS USE. A limit that silently
+        // delivers less than was asked is the `K-FIT` failure this tree has a rule
+        // for: say what could not be done and by how much. The server already
+        // warns on these, so a refused slope reaches the author by the path a
+        // refused height always has.
+        clamped = clamped + 1;
+        if give > residual { residual = give; }
+        bm2 = world_ground_cell(w, q, r).h_material as integer ?? 0;
+        if bm2 == 0 { bm2 = SURFACE_MAT; }
+        ground_set(w, q, r, want, bm2);
+        moved = true;
       }
     }
     if !moved { break; }
