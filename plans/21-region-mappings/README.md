@@ -113,10 +113,25 @@ anything — gated by a test that names byte **5** `road` and gets a road's limi
 its control, which names byte **2** (`ROAD_MAT` in code) `grass` and must get grass's freedom.
 Sabotaged: ignoring the palette fails both.
 
-⚠ **A SIBLING FILE COULD NOT SEE `World`.** The palette started as `src/palette.loft`, and a
-sibling cannot import its own package's entry — `use palette;` in the entry makes the sibling's
-names visible to it, not the reverse. So it is folded into `hex_world.loft`, which is also
-where the user wanted it.
+⚠ **A SIBLING FILE COULD NOT CALL THE ENTRY'S FUNCTIONS — and my first reading of that was
+wrong.** The palette started as `src/palette.loft` and was folded into `hex_world.loft`; I
+recorded the reason as *a sibling cannot see its own package's entry*, then built the repro
+and found that is **not** what happens. Measured
+([loft#826](https://github.com/loft-lang/loft/issues/826)):
+
+| a sibling uses | result |
+|---|---|
+| a **type** from the entry | **ok** — `World` was always visible |
+| a **function** from the entry | **refused** — `Unknown function` |
+
+So the palette had to be folded in because it calls `world_set_section`,
+`world_section_bytes`, `world_section_at` and `world_column` — entry *functions* — not because
+types were invisible. ⚠ The distinction matters for the next split: a sibling that only names
+types is fine, and one that calls a single entry function is not.
+
+⚠ **And a second, plainer defect fell out of the repro**: with two siblings present, a type
+declared **once in the entry** is reported as *"declared by more than one package — write
+`helper::Thing` or `second::Thing`"*, naming two packages that do not declare it.
 
 ⚠ **AND THE NAMES ARE PROVISIONAL BECAUSE `moros_map` IS BOUND FOR DELETION.** `PALETTE_MAX`
 and `ABSENT_NAME` are its, and `editor_server`'s graph reaches both packages today, so this
