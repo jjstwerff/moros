@@ -32,6 +32,13 @@ the ground is chosen first, and the buildings are then fitted to it. Reversing t
 possible if the terrain gesture is **non-destructive to what stands on it** — which is what
 `A1` bought and what `A2`–`A5` keep true as the terrain gets more opinionated.
 
+⚠ **AND PLAN 21 WILL MOVE THE TABLES THIS PLAN BUILT.**
+[#21](https://github.com/jjstwerff/moros/issues/21) says a byte's identity belongs to a
+REGION, with `0 = nothing` the only fixed one — so `ground_kinds()` and `edge_kinds()`, which
+map byte 2 to *road* and byte 1 to *wall*, are one level short. The attributes are right; what
+is wrong is that the identity is decided in code. Nothing here needs undoing before then: the
+slope limit stays an attribute, it just stops hanging off a constant.
+
 ## Anchors
 
 | | |
