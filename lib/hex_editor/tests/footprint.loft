@@ -165,7 +165,14 @@ fn test_a_house_lands_with_a_floor_and_four_walls() {
                                 HOUSE_W, HOUSE_D, 12, runs);
   assert(ack.ak_ok, "the house went down: {ack.ak_why}");
   assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
-  assert(ack.ak_residual > 0, "and it marked wall edges, got {ack.ak_residual}");
+  // ⚠ THIS ROW USED TO READ `ak_residual > 0` AND CALL IT "it marked wall edges",
+  // which is a success count wearing the refusal field — `Ack.ak_residual`'s own
+  // doc says it is *what the author asked for and did not get*. Plan 20 `A4` gave
+  // it the meaning it is documented to have: the cut-and-fill the placement owed.
+  // On flat ground that is 0, and the wall count is asserted where it actually
+  // lives, which is the run list the renderer is handed.
+  assert(ack.ak_residual == 0,
+         "flat ground owes no cut-and-fill, got {ack.ak_residual}");
   assert(len(runs.items) == hex_editor::PLAN_SIDES,
          "four runs for the renderer, got {len(runs.items)}");
 }

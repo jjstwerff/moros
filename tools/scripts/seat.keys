@@ -1,0 +1,60 @@
+# A HOUSE ON A SLOPE SITS ON ITS OWN TERRACE — plan 20 `A4`.
+#
+# ⚠ THE COUNT AND THE PICTURE ANSWER DIFFERENT QUESTIONS. `lib/hex_editor/tests/seat_pad.loft`
+# owns the numbers — the seat is the footprint's own mean, the cut balances the fill,
+# the residual is reported. What only a picture can say is whether the result reads as
+# a building standing on ground, rather than as one sunk into it.
+#
+# ⚠ AND THE CONTROL IS A HOUSE ON THE FLAT, shot first. Seating on the footprint has to
+# be a NO-OP where the footprint's own terrain is the author's grade — otherwise every
+# house in every world already built moves — so the flat case is the row that guards
+# everything already made.
+
+echo --- CONTROL: a house on flat ground, which must be exactly as it always was
+at 0 0 30
+step 20
+key H
+wait rebuilt
+step 30
+at -6 1 0
+step 40
+snap a4-control-flat
+frame 0 1.0 masonry 0.03 1.0 roof 0.01 1.0
+
+echo --- now a hill, and a house on its FLANK
+# ⚠ THE AUTHOR STANDS OFF THE PEAK AND LOOKS ACROSS IT, so the footprint lands on
+# ground that is several cells of gradient away from their feet. That gap IS the
+# defect this step removed: the pad used to be seated at the height under the author,
+# which on this slope is a different number entirely.
+at 40 0 30
+step 20
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+wait rebuilt
+step 30
+
+echo --- stand on the flank and place it
+at 46 0 30
+step 30
+key H
+wait rebuilt
+step 40
+
+echo --- and look at it from DOWNHILL, where the cut and the fill are both in frame
+# ⚠ FROM BELOW AND CLOSE. From above a pad is a rectangle and any seat looks the same;
+# the claim is about what happens at the WALL, so the shot has to have the wall's foot
+# in it. The dark band under the uphill side is the cut, and `A5` draws it as rock the
+# moment it passes what grass can stand.
+at 34 3 0
+send 40:1
+step 40
+snap a4-house-on-a-flank
+frame 0 1.0 masonry 0.02 1.0
+
+echo --- and from the uphill side, which is where a house used to be buried
+at 64 3 180
+step 40
+snap a4-from-uphill
+frame 0 1.0 masonry 0.02 1.0

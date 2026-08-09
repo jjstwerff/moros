@@ -285,9 +285,58 @@ pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
   pad = wid + dep + 4;
   cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
   n = footprint_fill(f, cells);
+
+  // ── A PAD IS SEATED ON ITS OWN FOOTPRINT — plan 20 `A4` ───────────────────
+  //
+  // ⚠ IT USED TO TAKE THE CALLER'S `grade`, WHICH IS THE AUTHOR'S FEET, and the
+  // house is not where the author is standing — `pose_footprint` puts it AHEAD of
+  // them. So the pad was seated at the ground under a point several cells away and
+  // the footprint's own uphill edge stood over it by that many cells of gradient.
+  //
+  // Measured before this existed (`probe/house/pads.loft`), earth standing OVER the
+  // floor at the wall: **7, 12, 17, 22** units as the ramp goes 1, 2, 3, 4 per hex
+  // — 5.5 wu of soil against the wall at the steepest, growing without bound, and
+  // one-sided: the PROUD direction stayed at 5 throughout.
+  //
+  // ⚠ AND THE FUNCTION THAT ANSWERS IT HAS BEEN HERE ALL ALONG WITH NO CALLER.
+  // `footprint_seat` picks the height under a policy, returns the cut-and-fill, and
+  // writes the seat — built for this, tested in `tests/footprint.loft`, and called
+  // by nothing until now. A tested claim no consumer honours is a claim about
+  // nothing, and it passed CI for as long as it has existed.
+  //
+  // ⚠ `SEAT_MEAN`, NOT `LOW` OR `HIGH`, AND THE TWO ENDS SAY WHY. `SEAT_LOW` seats
+  // at the bottom of the footprint, which is the buried case this exists to remove;
+  // `SEAT_HIGH` seats at the top, which is a house on a plinth with its whole
+  // footprint filled. The mean is the one that balances what it cuts against what
+  // it fills, and it is the only one whose residual means *cut-and-fill* rather
+  // than *all of one*.
+  terr = heights_new(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  seat_q = f.fp_cq;
+  seat_r = f.fp_cr;
+  for hr in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for hq in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, hq, hr) {
+        height_set(terr, hq, hr, (terrain_h(hq, hr, w) as float) * w.w_unit);
+        seat_q = hq;
+        seat_r = hr;
+      }
+    }
+  }
+  cost = footprint_seat(cells, terr, SEAT_MEAN);
+  // ⚠ READ BACK FROM THE FIELD `footprint_seat` JUST WROTE, never re-derived by
+  // calling `seat_height` a second time. Two derivations of one quantity is the
+  // shape this tree has been bitten by three times; the seat is whatever the seat
+  // function said it was.
+  seat_res = 0.0;
+  seat = freeze_grade(height_get(terr, seat_q, seat_r) / w.w_unit ?? 0.0, seat_res);
+  // What the author asked for against what the ground under the house can give.
+  moved = seat - grade;
+  if moved < 0 { moved = 0 - moved; }
+  owed = (cost / w.w_unit ?? 0.0) as integer;
+
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
     for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
-      if hexset_get(cells, q, r) { ground_set(w, q, r, grade, FLOOR_MAT); }
+      if hexset_get(cells, q, r) { ground_set(w, q, r, seat, FLOOR_MAT); }
     }
   }
   qs = footprint_walls(f, cells);
@@ -298,7 +347,7 @@ pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
     wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: side.wq_x0, wr_z0: side.wq_y0,
                             wr_x1: side.wq_x1, wr_z1: side.wq_y1,
                             wr_mat: WALL_MAT, wr_step: 0 },
-               WALL_MAT, grade, runs, m);
+               WALL_MAT, seat, runs, m);
     marked = marked + m;
   }
   // ⚠ S6 — AND IT GETS A ROOF, because that is what makes it read as a house
@@ -306,10 +355,17 @@ pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
   // exactly where the wall stops: lower would cut into it, higher would leave a
   // band of daylight. A refusal here refuses the HOUSE — half a house is not an
   // answer — and the footprint's cells are already the ones the roof covers.
-  rf = roof_over(w, f, cells, grade, ROOF_EAVE_UP, ROOF_PITCH_DEFAULT, 0);
+  rf = roof_over(w, f, cells, seat, ROOF_EAVE_UP, ROOF_PITCH_DEFAULT, 0);
   if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
+  // ⚠ THE RESIDUAL IS THE CUT-AND-FILL NOW, not the wall count. `Ack.ak_residual`
+  // is documented as *what the author asked for and did not get*, and a tally of
+  // stamped edges is neither — it is a success count wearing the refusal field. The
+  // cut-and-fill is exactly what that field is for: the ground this house had to
+  // move to stand level, which on flat ground is 0 and on a slope is the number the
+  // author is owed.
   ack_at(ack_about(n, "house placed {n} cells, {marked} wall edges, "
-                    + "ridge at {rf.ak_residual}", marked),
+                    + "ridge at {rf.ak_residual}, seated at {seat} "
+                    + "({moved} from your feet, cut and fill {owed})", owed),
          f.fp_cq, f.fp_cr)
 }
 

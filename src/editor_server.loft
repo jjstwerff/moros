@@ -7475,9 +7475,21 @@ fn main() {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
           } else {
+            // ⚠ THE EAVE COMES FROM THE SEATED FLOOR, NOT FROM THE FEET — plan 20
+            // `A4`. `place_house` seats the pad on its OWN footprint now, so on any
+            // slope the floor is not at `hgrade`; a plan built from the feet would
+            // put the DRAWN gable at one height and the roof's stored cells at
+            // another, and the two would disagree by the whole cut-and-fill.
+            //
+            // ⚠ READ BACK OUT OF THE WORLD rather than returned in the ack. The pad
+            // was just written, so the store already answers it — and a second copy
+            // travelling in an `Ack` field is a number that can disagree with the
+            // thing it describes. `ak_q`/`ak_r` is the footprint's centre, which is
+            // a floor cell by construction.
+            hseat = hex_editor::terrain_h(hack.ak_q, hack.ak_r, wld);
             sess.es_roofs.items += [hex_editor::roof_plan_of(
               hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
-              ((hgrade + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
+              ((hseat + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
               hex_editor::ROOF_PITCH_DEFAULT)];
             mark_dirty(dirty, hack.ak_q, hack.ak_r, HOUSE_W + HOUSE_D + 4);
             srv.send_to(ev.cid, "S:{hack.ak_why}");

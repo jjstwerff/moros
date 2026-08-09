@@ -1,0 +1,203 @@
+// A PAD IS SEATED ON ITS OWN FOOTPRINT — plan 20 `A4`.
+//
+// `place_house` took the caller's `grade`, which is the ground under the AUTHOR'S
+// FEET — and the house is not where the author stands: `pose_footprint` puts it
+// ahead of them. So a pad was seated at the height of a point several cells away,
+// and the footprint's own uphill edge stood over it by that many cells of gradient.
+//
+// Measured before it changed (`probe/house/pads.loft`), earth standing OVER the
+// floor at the wall as the ramp goes 1, 2, 3, 4 per hex: **7, 12, 17, 22** — 5.5 wu
+// of soil against the wall at the steepest, growing without bound, and one-sided
+// (the PROUD direction stayed at 5 throughout). After: **5, 7, 10, 13**, against a
+// proud of **7, 10, 12, 14** — halved, and symmetric, which is what `SEAT_MEAN`
+// means and what makes the residual a cut-and-fill rather than all of one.
+//
+// ⚠ WHAT IS LEFT IS NOT A DEFECT. A level pad seven cells across on a 4-per-hex
+// slope spans 28 units of ground, so it MUST cut 14 or fill 14 — that is geometry,
+// not a bug, and the whole of `A4`'s remaining content is that the number is now
+// REPORTED instead of silently absorbed.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 40;
+const W = 5;
+const D = 4;
+const YAW = 0.5235987755982988;      // 30°, an even orbit — the lattice's own rule
+
+fn flat() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn ramp(step: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G + q * step, SURFACE_MAT); }
+  }
+  w
+}
+
+// The most the ground stands OVER a floor cell at the wall, and the most a floor
+// stands PROUD of the ground beside it. ⚠ SIGNED AND SEPARATE: earth above a floor
+// is a house in a trench and a floor above the ground is a house on a plinth, and
+// an absolute value cannot tell the two apart.
+fn pad_wall_step(w: World, up: &integer, down: &integer) {
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) == FLOOR_MAT { continue; }
+        st = ground_h(w, nq, nr) - ground_h(w, q, r);
+        if st > up { up = st; }
+        if 0 - st > down { down = 0 - st; }
+      }
+    }
+  }
+}
+
+fn floor_spread(w: World) -> integer {
+  lo = 0 - 1;
+  hi = 0;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      h = ground_h(w, q, r);
+      if lo < 0 { lo = h; hi = h; }
+      if h < lo { lo = h; }
+      if h > hi { hi = h; }
+    }
+  }
+  hi - lo
+}
+
+fn house(w: World, x: float, grade: integer) -> Ack {
+  runs = WallRuns { items: [] };
+  place_house(w, author_at(x, 0.0, YAW), W, D, grade, runs)
+}
+
+// ── flat ground is the control, and it must be untouched ────────────────────
+
+// ⚠ THE ROW THAT GUARDS EVERY WORLD ALREADY BUILT. Seating on the footprint must
+// be a no-op where the footprint's own terrain IS the author's grade, or every
+// house in the tree moves.
+fn test_on_flat_ground_the_seat_is_the_grade_and_owes_nothing() {
+  w = flat();
+  ack = house(w, 0.0, G);
+  assert(ack.ak_ok, "the fixture did not place: {ack.ak_why}");
+  assert(ground_h(w, ack.ak_q, ack.ak_r) == G,
+    "flat ground seated at {ground_h(w, ack.ak_q, ack.ak_r)}, not {G}");
+  assert(ack.ak_residual == 0,
+    "flat ground owes a cut-and-fill of {ack.ak_residual}");
+  up = 0;
+  down = 0;
+  pad_wall_step(w, up, down);
+  assert(up == 0 && down == 0,
+    "flat ground buried the house by {up} and stood it {down} proud");
+}
+
+// ── on a slope it seats where the FOOTPRINT is, not where the author is ─────
+
+fn test_the_seat_follows_the_footprint_and_not_the_feet() {
+  w = ramp(3);
+  // The author stands at the origin; the footprint lands ahead of them, on ground
+  // that is several cells of gradient higher.
+  feet = ground_h(w, 0, 0);
+  ack = house(w, 0.0, feet);
+  assert(ack.ak_ok, "the fixture did not place: {ack.ak_why}");
+  seat = ground_h(w, ack.ak_q, ack.ak_r);
+  assert(seat != feet,
+    "the footprint is at ({ack.ak_q},{ack.ak_r}) and seated at the feet's own "
+    + "height {feet} — the fixture puts the house on level ground, so it proves "
+    + "nothing");
+  // ⚠ AND IT IS THE FOOTPRINT'S OWN MEAN, not merely *somewhere else*. A seat that
+  // moved for any other reason would pass the row above.
+  lo = 0;
+  hi = 0;
+  first = true;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) == FLOOR_MAT { continue; }
+        h = ground_h(w, nq, nr);
+        if first { lo = h; hi = h; first = false; }
+        if h < lo { lo = h; }
+        if h > hi { hi = h; }
+      }
+    }
+  }
+  assert(seat > lo && seat < hi,
+    "the seat {seat} is not between the ground around it ({lo}..{hi}) — "
+    + "`SEAT_MEAN` would put it inside, `LOW` or `HIGH` at an end");
+}
+
+fn test_a_pad_is_still_level_on_any_slope() {
+  for st in 1..5 {
+    w = ramp(st);
+    ack = house(w, 0.0, ground_h(w, 0, 0));
+    assert(ack.ak_ok, "ramp {st}: {ack.ak_why}");
+    assert(floor_spread(w) == 0,
+      "ramp {st} left the floor {floor_spread(w)} out of level");
+  }
+}
+
+// ⚠ THE CLAIM THE WHOLE STEP IS ABOUT, AS A COMPARISON RATHER THAN A CONSTANT.
+// Seating on the footprint has to make the burial SYMMETRIC — cut about equal to
+// fill — because that is the difference between a mean and an end. Pinning an
+// absolute number here would make this a test of `pose_footprint`'s offset.
+fn test_the_cut_and_the_fill_are_balanced() {
+  for st in 1..5 {
+    w = ramp(st);
+    ack = house(w, 0.0, ground_h(w, 0, 0));
+    assert(ack.ak_ok, "ramp {st}: {ack.ak_why}");
+    up = 0;
+    down = 0;
+    pad_wall_step(w, up, down);
+    assert(up > 0 && down > 0,
+      "ramp {st}: a level pad on a slope must both cut and fill, got {up}/{down}");
+    gap = up - down;
+    if gap < 0 { gap = 0 - gap; }
+    assert(gap <= st + 1,
+      "ramp {st}: buried {up} against proud {down} — a seat at the MEAN cannot be "
+      + "that lopsided, so it is seating at an end");
+  }
+}
+
+// ── and the cut-and-fill is reported ────────────────────────────────────────
+
+// ⚠ THE FIELD IS `ak_residual` AND IT USED TO CARRY THE WALL COUNT. `Ack`'s own doc
+// says the residual is *what the author asked for and did not get*; a tally of
+// stamped edges is a success count in the refusal field, and `tests/footprint.loft`
+// was asserting it `> 0` under the name "it marked wall edges".
+fn test_the_cut_and_fill_is_reported_and_grows_with_the_slope() {
+  prev = 0 - 1;
+  for st in 1..5 {
+    w = ramp(st);
+    ack = house(w, 0.0, ground_h(w, 0, 0));
+    assert(ack.ak_ok, "ramp {st}: {ack.ak_why}");
+    assert(ack.ak_residual > 0,
+      "ramp {st} moved earth and reported a residual of {ack.ak_residual}");
+    assert(ack.ak_residual > prev,
+      "ramp {st} owes {ack.ak_residual}, no more than ramp {st - 1}'s {prev} — "
+      + "a residual that does not follow the slope is not measuring the slope");
+    prev = ack.ak_residual;
+  }
+}
+
+fn test_the_sentence_says_where_it_seated() {
+  w = ramp(3);
+  ack = house(w, 0.0, ground_h(w, 0, 0));
+  seat = ground_h(w, ack.ak_q, ack.ak_r);
+  assert(ack.ak_why != "", "the placement said nothing");
+  // The author is owed the height it chose, not only that it chose one.
+  assert(ack.ak_why.contains("seated at {seat}"),
+    "the sentence does not name the seat: {ack.ak_why}");
+  assert(ack.ak_why.contains("cut and fill"),
+    "the sentence does not name the cut-and-fill: {ack.ak_why}");
+}
