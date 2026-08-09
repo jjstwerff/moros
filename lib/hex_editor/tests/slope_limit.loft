@@ -257,32 +257,76 @@ fn test_a_gesture_reads_the_identity_of_the_region_it_is_standing_in() {
 
 // ── `A7` — the limit is the WORLD's, not one gesture's ──────────────────────
 
-fn test_a_road_laid_on_an_existing_hill_can_be_settled_into_its_limit() {
+fn test_a_road_walked_up_a_hill_lands_inside_its_limit_by_itself() {
   // ⚠ THE ONE MEASURED DEFECT IN THE ORDER MODEL. `brush` enforced the limits and
   // nothing else did, so a road WALKED up a hill came out at a steepest step of 3
   // where its limit is 1 — the invariant was a property of one gesture, and any
   // other way of writing a road simply did not have it.
+  //
+  // ⚠ AND THIS TEST USED TO CALL `slope_settle` ITSELF, which is what let `A7` ship
+  // with no consumer: it proved the RULE worked and said nothing about whether any
+  // gesture used it. `road_lay` settles its own run now, so the fixture below lays
+  // a road and asks the world — no repair call anywhere in it. The old shape
+  // failed the moment the gesture was wired, on its own fixture guard: *"the
+  // fixture did not violate anything — nothing is being tested"*, which is exactly
+  // what a test that repairs its own subject should say once the subject repairs
+  // itself.
   w = strip(SURFACE_MAT, 0);
   cl0 = 0;
   rs0 = 0;
   brush(w, 0, 0, 24, 12, cl0, rs0);          // a hill first, on unlimited grass
+  // ⚠ THE GRADES ARE FROZEN BEFORE ANY ROAD IS LAID. Reading the ground as the walk
+  // proceeds reads the road just laid, drags the starting grade to the crest and
+  // flattens the hill — a green answer to a question never asked.
   hs: vector<integer> = [];
   for s0 in 0..13 { hs += [ground_h(w, s0, 0)]; }
+  hilly = 0;
+  for hq in 0..12 {
+    st = (hs[hq + 1] ?? G) - (hs[hq] ?? G);
+    if st < 0 { st = 0 - st; }
+    if st > hilly { hilly = st; }
+  }
+  assert(hilly > ground_kind_of(ROAD_MAT).tr_slope,
+         "the HILL is only {hilly} a hex, so a road along it breaks nothing and "
+         + "this fixture tests nothing");
+
   for q in 0..13 {
     x = 12 - q;
     h = hs[x] ?? G;
     road_lay(w, x, 0, h, 1, (h as float) * U);
   }
-  before = steepest(w, 12);
-  assert(before > ground_kind_of(ROAD_MAT).tr_slope,
-         "the fixture did not violate anything ({before}) — nothing is being tested");
-
-  cl = 0;
-  rs = 0;
-  slope_settle(w, 0, 0, cl, rs);
   assert(steepest(w, 12) <= ground_kind_of(ROAD_MAT).tr_slope,
-         "after settling the road is still {steepest(w, 12)} a hex: {profile(w, 12)}");
-  assert(cl > 0 && rs > 0, "it settled silently — clamped {cl}, residual {rs}");
+         "the gesture handed back a road at {steepest(w, 12)} a hex: {profile(w, 12)}");
+  assert(slope_owed(w, 0, 0) == 0,
+         "and it owes {slope_owed(w, 0, 0)} — the run did not settle");
+}
+
+// ⚠ AND THE GUARD IS A CLAIM, NOT AN OPTIMISATION. `road_lay` asks a constant-cost
+// question before it asks the linear one, and the answer has to be NO for the road
+// the editor actually lays: `road_h` is frozen once when road mode is switched on,
+// so every stroke uses the same grade and the strip is flat however far it runs.
+// Measured (`probe/house/roadcost.loft`): an 80-cell flat road costs `w_tau` 414
+// with the settle wired and 414 without — not one write — while an unguarded call
+// walked the whole run on every stroke for a 1.7x wall clock.
+fn test_a_flat_road_is_never_settled_because_it_never_breaks() {
+  w = strip(SURFACE_MAT, 0);
+  cl0 = 0;
+  rs0 = 0;
+  brush(w, 0, 0, 24, 12, cl0, rs0);          // a hill, so the ground is not flat
+  grade = ground_h(w, 0, 0);                 // frozen ONCE, as the server does it
+  before = w.w_tau;
+  for q in 0..13 { road_lay(w, q, 0, grade, 1, (grade as float) * U); }
+  laid = w.w_tau - before;
+
+  // The same strokes again change nothing, so a settle firing would show up as
+  // writes with no cause.
+  mid = w.w_tau;
+  for q2 in 0..13 { road_lay(w, q2, 0, grade, 1, (grade as float) * U); }
+  assert(w.w_tau == mid,
+         "re-laying the identical flat road wrote {w.w_tau - mid} times — the "
+         + "settle is firing on a run that breaks nothing");
+  assert(laid > 0, "the fixture laid no road at all");
+  assert(steepest(w, 12) == 0, "a road at ONE frozen grade is flat, got {steepest(w, 12)}");
 }
 
 fn test_settling_only_ever_cuts_and_never_fills() {
@@ -357,4 +401,91 @@ fn test_both_orders_now_agree_about_the_limit() {
   assert(steepest(a, 12) == steepest(b, 12),
          "hill-first settles to {steepest(a, 12)} a hex and build-first to "
        + "{steepest(b, 12)} — the orders still disagree about the limit");
+}
+
+// ── THE GUARD ITSELF — plan 20 `A7`'s wiring ────────────────────────────────
+//
+// ⚠ `w_tau` CANNOT SEE A WALK, ONLY A WRITE, so the cost claim above is only half
+// testable through it: a settle that fires on an already-flat road writes nothing
+// and the clock does not move. What decides whether the walk happens at all is
+// `stroke_over_limit`, so that is what these ask — directly, on the four shapes it
+// has to separate.
+
+fn road_at(w: World, q0: integer, n: integer, h0: integer, step: integer) {
+  for i in 0..n {
+    for r in (0 - 1)..2 { ground_set(w, q0 + i, r, h0 + i * step, ROAD_MAT); }
+  }
+}
+
+fn test_the_guard_is_quiet_on_the_road_the_editor_lays() {
+  // One frozen grade, which is what `road_h` is: flat however far it runs.
+  w = strip(SURFACE_MAT, 0);
+  road_at(w, 0, 13, G, 0);
+  assert(!stroke_over_limit(w, 6, 0, 2),
+         "the guard fired on a flat road, so every stroke would walk the whole run");
+}
+
+fn test_the_guard_fires_whichever_way_the_road_runs() {
+  // ⚠ BOTH DIRECTIONS, AND THIS IS THE ROW THAT CAUGHT THE REAL BUG. The first
+  // guard asked only *is this cell too high above its neighbour*, which is true
+  // climbing and false descending — because descending, the high cell is the OLDER
+  // one and sits outside the disc just stamped. Measured, a road walked downhill
+  // slipped past it entirely and came back at its raw 3-per-hex.
+  up = strip(SURFACE_MAT, 0);
+  road_at(up, 0, 13, G, 3);
+  assert(stroke_over_limit(up, 6, 0, 2),
+         "a road climbing at 3 a hex did not trip its own limit of "
+         + "{ground_kind_of(ROAD_MAT).tr_slope}");
+  down = strip(SURFACE_MAT, 0);
+  road_at(down, 0, 13, G + 40, 0 - 3);
+  assert(stroke_over_limit(down, 6, 0, 2),
+         "a road falling at 3 a hex did not trip its own limit — the guard is "
+         + "one-sided, and downhill is the side it cannot see");
+}
+
+// ⚠ AND IT MUST IGNORE THE SEAM TO THE GROUND BESIDE IT, which is the difference
+// between a guard and a tripwire. A road cut into a hill has a big step to the
+// grass alongside ON PURPOSE — `T4`'s deliberate seam, and what `A5` draws as rock.
+// Counting that would ask for a full run settle on every footfall of every road.
+fn test_the_guard_ignores_the_seam_to_unlimited_ground() {
+  w = strip(SURFACE_MAT, 0);
+  road_at(w, 0, 13, G, 0);
+  // a cliff of grass alongside, far steeper than a road may ever be
+  for q in 0..13 {
+    for r in 2..5 { ground_set(w, q, r, G + 40, SURFACE_MAT); }
+  }
+  assert(ground_h(w, 6, 2) - ground_h(w, 6, 1) > ground_kind_of(ROAD_MAT).tr_slope * 10,
+         "the fixture has no seam in it, so it controls nothing");
+  assert(!stroke_over_limit(w, 6, 0, 2),
+         "the guard counted the seam to the grass beside the road");
+}
+
+// ⚠ THE INCREMENTAL WALK IS THE ONLY SHAPE THAT CAN SEE THE ONE-SIDED GUARD, and
+// the direct guard rows above cannot: they lay the whole road first, so the disc
+// they ask about contains the high cell AND the low one and a one-sided test trips
+// on it either way. The bug lives in the walk — stamping ONE disc at a time, where
+// on a descending road the higher cell is the previous stroke's and sits OUTSIDE
+// the disc just laid. Measured with the guard one-sided, a road walked downhill
+// came back at its raw 3 a hex with `w_tau` unchanged at the unwired numbers.
+fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 4)..30 {
+    for r in (0 - 6)..7 { ground_set(w, q, r, G + 200 - q * 3, SURFACE_MAT); }
+  }
+  hs: vector<integer> = [];
+  for s in 0..24 { hs += [ground_h(w, s, 0)]; }
+  for i in 0..24 {
+    h = hs[i] ?? G;
+    road_lay(w, i, 0, h, 2, (h as float) * U);
+  }
+  worst = 0;
+  for q2 in 0..23 {
+    st = ground_h(w, q2 + 1, 0) - ground_h(w, q2, 0);
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+  }
+  assert(worst <= ground_kind_of(ROAD_MAT).tr_slope,
+         "a road walked downhill came back at {worst} a hex — the guard cannot see "
+       + "the direction where the high cell is the PREVIOUS stroke's");
+  assert(slope_owed(w, 0, 0) == 0, "and it owes {slope_owed(w, 0, 0)}");
 }

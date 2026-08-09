@@ -2679,6 +2679,47 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
   }
 }
 
+// Did the disc just stamped at `(cq, cr)` leave any cell steeper than its own
+// surface may be — measured against neighbours of the SAME run?
+//
+// ⚠ THE SAME-MATERIAL TEST IS THE WHOLE OF IT, and without it this fires on every
+// stroke of every road. A road cut into a hill has a big step to the grass beside
+// it *on purpose* — `T4`'s deliberate seam, and what `A5` draws as rock. Counting
+// that as a violation would ask for a full run settle on every footfall for a run
+// that is already correct.
+//
+// ⚠ AND IT IS LOCAL BY CONSTRUCTION. The disc is a handful of cells whatever the
+// run behind it has grown to, so this is the constant-cost question that decides
+// whether the linear-cost one gets asked at all.
+pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> boolean {
+  for dq in (0 - rad)..(rad + 1) {
+    for dr in (0 - rad)..(rad + 1) {
+      q = cq + dq;
+      r = cr + dr;
+      if hex_grid::hex_distance(q, r, cq, cr) > rad { continue; }
+      lim = slope_limit(w, q, r);
+      if lim == SLOPE_FREE { continue; }
+      mat = world_ground_cell(w, q, r).h_material as integer ?? 0;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+        // ⚠ BOTH WAYS ROUND, AND THE FIRST VERSION ASKED ONLY ONE. It tested
+        // `h - nh > lim` — *is this cell too high above its neighbour* — which is
+        // true when a road CLIMBS and false when it DESCENDS, because then the
+        // high cell is the older one and sits OUTSIDE the disc just stamped. So a
+        // road walked downhill slipped past the guard entirely: measured, the
+        // descending run's `w_tau` was unchanged at 190/380/760/1520, exactly the
+        // unwired numbers, while the ascending one settled correctly. A guard that
+        // works in one direction reads as a guard.
+        st = ground_h(w, q, r) - ground_h(w, nq, nr);
+        if st < 0 { st = 0 - st; }
+        if st > lim { return true; }
+      }
+    }
+  }
+  false
+}
+
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
             feet: float) {
   for dq in (0 - rad)..(rad + 1) {
@@ -2692,6 +2733,32 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
         surface_set(wld, q, r, feet, hh, ROAD_MAT);
       }
     }
+  }
+  // ── AND THE RUN IS HANDED BACK INSIDE ITS OWN RULES — plan 20 `A7` ────────
+  //
+  // ⚠ `slope_settle` SHIPPED WITH NO CONSUMER. Its whole point is *any gesture that
+  // paints a limited surface can hand the world back inside its own rules*, and
+  // until this line five tests and three probes called it and no gesture did — so a
+  // road written by the editor simply did not have the limits `A7` exists to give
+  // it. A tested claim no consumer honours is a claim about nothing.
+  //
+  // ⚠ GUARDED, AND THE GUARD IS NOT AN OPTIMISATION — IT IS WHAT MAKES THIS
+  // AFFORDABLE AT ALL. `slope_settle` walks the whole connected run, so calling it
+  // per stroke is linear work on a run that grows with the strokes: measured
+  // (`probe/house/roadcost.loft`), a walked road of 10/20/40/80 cells costs
+  // **415 / 1330 / 4660 / 17320** in `w_tau` against **190 / 380 / 760 / 1520**
+  // without — quadratic.
+  //
+  // ⚠ AND ON THE EDITOR'S OWN ROAD IT WOULD HAVE BEEN PURE COST. `road_h` is frozen
+  // ONCE when road mode is switched on and every stroke uses it, so the strip is
+  // FLAT however far it runs and can never break its own limit. Measured, an
+  // 80-cell flat road settles to `w_tau` **414 either way** — not one write — while
+  // the wall clock went up **1.7x** for the walking alone. The guard asks a
+  // constant-cost question first, and on that road the answer is always no.
+  if stroke_over_limit(wld, cq, cr, rad) {
+    rl_clamped = 0;
+    rl_residual = 0;
+    slope_settle(wld, cq, cr, rl_clamped, rl_residual);
   }
 }
 
