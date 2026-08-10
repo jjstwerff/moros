@@ -367,7 +367,25 @@ never were.
    drawn as rock is an overburden that stands as a roof. ⚠ The plan-21 reading is still
    available and is now a **row**, not a mechanism: give a region's stone its own `tr_face` and
    *how a road crosses a cliff* becomes a fact about where in the world you are, for free.
-9. **Does the settle hold the grade, or take the lower envelope?** ⚠ **NEW, and it is
+9. **Does the settle hold the grade, or take the lower envelope?** ✅ **MEASURED, AND
+   THE ANCHOR IS NOT WHERE THIS ROW SAID** (`probe/house/envelope.loft`). On a 6-per-hex
+   descent of 26 cells, every legal answer moves earth and the question is how much:
+
+   | | cut | fill | earth moved |
+   |---|---|---|---|
+   | lower envelope — what ships | 1625 (worst 125) | 0 | **1625** |
+   | upper envelope — the mirror | 0 | 1625 (worst 125) | **1625** |
+   | held at the START of the run | 0 | 1625 | **1625** |
+   | **held at the MIDDLE** | 455 (worst 65) | 390 (worst 60) | **845** |
+
+   ⚠ **Holding at the start is exactly as bad as the mirror**, which this row's wording
+   — *the author's own cell* — hides: as the author walks, their cell is the END of the
+   run, not its middle. The anchor that halves the earth is the run's MIDDLE, and what
+   it produces is a cutting at the top and an embankment at the foot — which is what a
+   road builder does and what `A8`'s spoil balance is already trying to reach.
+   ⚠ And every row satisfies the limit, so the profile is not what separates them.
+
+   The original question, kept because the measurement is what answered it: ⚠ **NEW, and it is
    what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a
    road walked down a 6-per-hex ramp is cut 120 units at its top and stands proud by 1 —
    it digs a canyon instead of standing up and spanning. Both envelopes are legal

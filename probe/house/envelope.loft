@@ -1,0 +1,125 @@
+// WHICH ENVELOPE SHOULD A SETTLE TAKE? — plan 20, open question 9.
+//
+// `slope_settle` only ever LOWERS, so a road walked DOWN a ramp it cannot follow is
+// satisfied by cutting its top end into the hill: measured (`probe/house/span.loft`),
+// a 6-per-hex descent comes out **cut 120 units and proud 1**. That is the twenty-metre
+// canyon, and plan 20 claimed spanning would answer it — it does not, because spanning
+// is a road ABOVE the ground and the canyon is a road below it.
+//
+// Both envelopes are legal profiles. This one measures all three side by side on the
+// same natural ground so the choice is made against numbers rather than against an
+// argument, and it computes them HERE rather than in the library — nothing is changed
+// until the answer is known.
+//
+//   lower    every cell at most `lim` above its lowest neighbour   — what ships
+//   upper    every cell at least `lim` below its highest neighbour — the mirror
+//   held     the grade at the author's own cell, both ways from it — the candidate
+//
+// ⚠ THE FIGURE OF MERIT IS EARTH MOVED, not the profile's shape: all three satisfy the
+// limit by construction, so what separates them is how much ground each asks a builder
+// to shift and how far the road ends from the ground it was walked over.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+const LIM = 1;                   // a road's own limit, `ground_kinds()`'s road row
+
+// The natural ground along a fall line: `n` cells falling `k` a hex.
+fn natural(k: integer, n: integer) -> vector<integer> {
+  out: vector<integer> = [];
+  for i in 0..n { out += [G - k * i]; }
+  out
+}
+
+fn report(name: text, nat: vector<integer>, prof: vector<integer>) {
+  cut = 0;
+  fill = 0;
+  worst_cut = 0;
+  worst_fill = 0;
+  moved = 0;
+  for i in 0..len(nat) {
+    d = (nat[i] ?? 0) - (prof[i] ?? 0);
+    if d > 0 { cut = cut + d; if d > worst_cut { worst_cut = d; } }
+    else { fill = fill - d; if 0 - d > worst_fill { worst_fill = 0 - d; } }
+    if d < 0 { moved = moved - d; } else { moved = moved + d; }
+  }
+  // and the profile is legal — asserted rather than assumed, or the row means nothing
+  bad = 0;
+  for j in 1..len(prof) {
+    st = (prof[j - 1] ?? 0) - (prof[j] ?? 0);
+    if st < 0 { st = 0 - st; }
+    if st > LIM { bad = bad + 1; }
+  }
+  println("    {name}  cut {cut} (worst {worst_cut})  fill {fill} (worst {worst_fill})"
+        + "  earth moved {moved}  edges over the limit {bad}");
+}
+
+// every cell at most `lim` above its lowest neighbour — what `slope_settle` does
+fn lower(nat: vector<integer>) -> vector<integer> {
+  out: vector<integer> = [];
+  for v in nat { out += [v]; }
+  for _ in 0..len(nat) {
+    for i in 0..len(out) {
+      if i == 0 { continue; }
+      a = out[i - 1] ?? 0;
+      b = out[i] ?? 0;
+      if a > b + LIM { out[i - 1] = b + LIM; }
+      if b > a + LIM { out[i] = a + LIM; }
+    }
+  }
+  out
+}
+
+// every cell at least `lim` below its highest neighbour — the mirror
+fn upper(nat: vector<integer>) -> vector<integer> {
+  out: vector<integer> = [];
+  for v in nat { out += [v]; }
+  for _ in 0..len(nat) {
+    for i in 0..len(out) {
+      if i == 0 { continue; }
+      a = out[i - 1] ?? 0;
+      b = out[i] ?? 0;
+      if a > b + LIM { out[i] = a - LIM; }
+      if b > a + LIM { out[i - 1] = b - LIM; }
+    }
+  }
+  out
+}
+
+// the grade held at the author's own cell, falling away from it in both directions at
+// the limit — the candidate open question 9 names
+fn held(nat: vector<integer>, at: integer) -> vector<integer> {
+  out: vector<integer> = [];
+  h0 = nat[at] ?? 0;
+  for i in 0..len(nat) {
+    d = i - at;
+    if d < 0 { d = 0 - d; }
+    v = nat[i] ?? 0;
+    hi = h0 + d * LIM;
+    lo = h0 - d * LIM;
+    if v > hi { v = hi; }
+    if v < lo { v = lo; }
+    out += [v];
+  }
+  out
+}
+
+fn main() {
+  println("A road may climb {LIM} a hex. Walked down a ramp it cannot follow, three");
+  println("legal answers — and the question is which one a builder would recognise.");
+  for k in [1, 3, 6] {
+    n = 26;
+    nat = natural(k, n);
+    println("");
+    println("  ramp {k} per hex over {n} cells — the ground falls {k * (n - 1)}");
+    report("lower (ships) ", nat, lower(nat));
+    report("upper (mirror)", nat, upper(nat));
+    report("held at start ", nat, held(nat, 0));
+    report("held at middle", nat, held(nat, (n / 2) ?? 0));
+  }
+  println("");
+  println("⚠ READ THE `earth moved` COLUMN. Every row satisfies the limit, so the");
+  println("   profile is not what separates them — what a builder would do is the one");
+  println("   that moves least, and where that earth ends up decides whether the");
+  println("   answer is a cutting, an embankment, or a bit of both.");
+}
