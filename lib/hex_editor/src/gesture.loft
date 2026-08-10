@@ -3963,22 +3963,19 @@ pub fn water_set_deep(wld: World, q: integer, r: integer, h: integer, dir: integ
   gc = world_ground_cell(wld, q, r);
   bm = gc.h_material as integer ?? 0;
   if bm == 0 || is_water(bm) { bm = SURFACE_MAT; }
-  // ⚠ THE BED IS KEPT WHERE IT IS IF IT IS ALREADY DEEPER, and that is what makes a
-  // depth exist at all. The first build cut every bed to exactly `WATER_DEPTH`, so
-  // every cell of every river was the same depth and *deeper water is darker* had
-  // nothing to say. A channel cut before the water goes in keeps its shape; a cell
-  // with no bed yet gets the minimum, which is the store's `ε` floor and not a taste.
+  // ⚠ THE DEPTH IS THE RUN'S ALONE — the caller's number, and nothing else. This kept
+  // a deeper PRE-EXISTING bed, so a channel cut before the water went in kept its
+  // shape. Measured, that made a river BORN DEEP on any slope: a cell's own ground is
+  // already well below its uphill neighbours', so on a mountain no cell of a river was
+  // ever under 24 units deep — no spring was ever a trickle, and the inset that draws
+  // one was unreachable on the only scene that photographs it.
+  //
+  // ⚠ AND THE PROPERTY TRADED AWAY IS NAMED. A pre-cut channel no longer survives the
+  // water going into it: a river is as deep as its run says and no deeper. What that
+  // buys is a spring that is a spring wherever it is, which is the half an author can
+  // see. A fixture that wants a shaped bed states it — `water_set_deep` takes the
+  // depth — rather than smuggling it through the terrain.
   bed = h - depth;
-  // ⚠ THE BED IS THE GROUND THE RIVER WAS CUT INTO, and asking `water_bed` alone was
-  // not enough: it answers only where the surface is ALREADY water, so the ordinary
-  // authoring — cut a channel, then put water in it — came back at the minimum depth
-  // everywhere and the ramp had nothing to say. Measured in the emitted mesh: every
-  // water normal exactly 1, which is the channel being there and carrying nothing.
-  had = water_bed(wld, q, r);
-  if had < 0 && !is_water(gc.h_material as integer ?? 0) {
-    had = gc.h_height as integer ?? 0;
-  }
-  if had >= 0 && had < bed { bed = had; }
   if bed < W_RESERVE {
     why = "water at {h} leaves no room for a bed {depth} deep above the reserve";
     return hex_world::CW_RESERVE;

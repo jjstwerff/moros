@@ -23,17 +23,16 @@ fn pond(deeper: integer) -> World {
     for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
   }
   why = "";
-  // A channel cut BEFORE the water goes in — its middle deeper than its edges, which
-  // is what gives the ramp something to say.
-  for q2 in 0..8 {
-    for r2 in 0..3 {
-      d = hex_editor::WATER_DEPTH;
-      if r2 == 1 { d = d + deeper; }
-      ground_set(w, q2, r2, G - 4 - d, SURFACE_MAT);
-    }
-  }
+  // ⚠ THE FIXTURE STATES THE DEPTH IT WANTS. It used to cut a channel first and let
+  // `water_set` keep it — but the depth is the RUN'S alone now, so a pre-cut channel
+  // does not survive the water going into it, and a fixture that smuggled its depth
+  // through the terrain would come back uniform and test nothing.
   for q3 in 0..8 {
-    for r3 in 0..3 { hex_editor::water_set(w, q3, r3, G - 4, 0, why); }
+    for r3 in 0..3 {
+      d = hex_editor::WATER_DEPTH;
+      if r3 == 1 { d = d + deeper; }
+      hex_editor::water_set_deep(w, q3, r3, G - 4, 0, d, why);
+    }
   }
   w
 }
