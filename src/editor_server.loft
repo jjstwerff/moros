@@ -4096,6 +4096,16 @@ fn mode_name(m: integer) -> text {
 //
 // ⚠ It is the shape this tree keeps finding — a rule built, tested and reachable by
 // nobody — and putting it in the catalogue is what stops it being invisible.
+// Which ramp a surface is drawn with — 0 flat, 1 by height, 2 by DEPTH.
+//
+// ⚠ ONLY THE GROUND AND THE WATER RAMP AT ALL. A road is a surface rather than a
+// reading of the terrain, which is why every other slot is flat; water is the second
+// thing in this world whose colour says something about the shape it is on.
+fn surface_ramp(name: text) -> integer {
+  if name == "water" { return 2; }
+  0
+}
+
 fn surface_block(name: text) -> text {
   if name == "soffit" { return "derived"; }
   if name == "frame"  { return "derived"; }
@@ -8704,7 +8714,11 @@ fn main() {
           for si in 1..SURFACES {
             sfc = hex_mesh::surface_at(si);
             smid = dc2.id * SURFACES + MESH_FIGURE_MAX + 1 + si;
-            srv.broadcast("M:{smid};0;"
+            // ⚠ THE RAMP SLOT IS A MODE, NOT A FLAG — plan 20 `A10`. It has carried
+            // `0` flat and `1` height-ramped since the ground had one; `2` is the
+            // DEPTH ramp, which needs no field of its own and no format change on a
+            // wire thirteen decoders already split on three fields.
+            srv.broadcast("M:{smid};{surface_ramp(sfc.sf_name)};"
               + "{mesh_wire(chunk_mesh_slot(dms, si), sfc.sf_r, sfc.sf_g, sfc.sf_b)}");
             // ⚠ AFTER ITS OWN `M:`, ALWAYS. A placement for a mesh the client does
             // not hold is dropped without a word, so a `T:` that overtook its mesh

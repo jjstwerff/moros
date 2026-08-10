@@ -179,6 +179,7 @@ in vec3 vWorld;
 uniform vec3 uColor, uFogCentre, uFogColor, uRampLo, uRampHi;
 uniform vec3 uEye;
 uniform float uFogFrom, uFogTo, uRampY0, uRampY1, uUseRamp, uAmb, uLamp;
+uniform float uDepthRamp;
 out vec4 frag;
 void main() {{
   // One directional light, flat-shaded -- the reference look: matte, no specular.
@@ -188,7 +189,15 @@ void main() {{
   // heights) came from the server as data; only the lerp happens here -- the
   // same split as the camera, where the solve is server-side and the multiply
   // is not.
-  float g = clamp((vWorld.y - uRampY0) / max(uRampY1 - uRampY0, 0.001), 0.0, 1.0);
+  float gy = clamp((vWorld.y - uRampY0) / max(uRampY1 - uRampY0, 0.001), 0.0, 1.0);
+  // -- AND WATER RAMPS BY DEPTH, WHICH RIDES IN THE NORMAL'S LENGTH. Both uses of the
+  // normal above normalize it and the model matrix is rigid, so the magnitude survives
+  // the pipeline unread: the mesher writes 1 + shade there and nothing else in the
+  // world writes anything but 1, so this term is exactly 0 for every other surface.
+  // A seventh float per vertex was the alternative, on a format thirteen decoders
+  // index by six.
+  float gd = clamp(length(vNrm) - 1.0, 0.0, 1.0);
+  float g = mix(gy, gd, uDepthRamp);
   vec3 base = mix(uColor, mix(uRampLo, uRampHi, g), uUseRamp);
   // -- THE AMBIENT IS A UNIFORM, not the 0.45 that was baked in here. 0.45 is what
   // the server sends for FOLLOW, so every earlier frame is reproduced exactly and
@@ -709,7 +718,26 @@ fn draw_world(st: Client) {
     if dp.vao >= 0 && (st.hide & dp.bit) == 0 {
       graphics::gl_set_uniform_mat4(st.prog, "uModel", dp.model);
       graphics::gl_set_uniform_vec3(st.prog, "uColor", dp.cr, dp.cg, dp.cb);
-      graphics::gl_set_uniform_float(st.prog, "uUseRamp", dp.ramped);
+      // ⚠ MODE 2 IS THE DEPTH RAMP — plan 20 `A10`, and it is the ramp SLOT rather
+      // than a new field. The deep end is the surface's own colour darkened, not a
+      // second colour on the wire: a chromaticity classifier divides value out, so a
+      // ramp that changes only brightness leaves every picture gate reading the same
+      // bucket it always read.
+      if dp.ramped > 1.5 {
+        graphics::gl_set_uniform_float(st.prog, "uUseRamp", 1.0);
+        graphics::gl_set_uniform_float(st.prog, "uDepthRamp", 1.0);
+        graphics::gl_set_uniform_vec3(st.prog, "uRampLo", dp.cr, dp.cg, dp.cb);
+        graphics::gl_set_uniform_vec3(st.prog, "uRampHi",
+          dp.cr * hex_mesh::WATER_DARK, dp.cg * hex_mesh::WATER_DARK,
+          dp.cb * hex_mesh::WATER_DARK);
+      } else {
+        graphics::gl_set_uniform_float(st.prog, "uUseRamp", dp.ramped);
+        graphics::gl_set_uniform_float(st.prog, "uDepthRamp", 0.0);
+        graphics::gl_set_uniform_vec3(st.prog, "uRampLo",
+          st.ramp_lo_r, st.ramp_lo_g, st.ramp_lo_b);
+        graphics::gl_set_uniform_vec3(st.prog, "uRampHi",
+          st.ramp_hi_r, st.ramp_hi_g, st.ramp_hi_b);
+      }
       graphics::gl_draw(dp.vao, dp.vcount);
     }
   }
@@ -1375,6 +1403,7 @@ fn render_thumb(st: Client, row: integer, fbo: integer) -> integer {
     if rm.tb_row == row && rm.tb_vao >= 0 {
       graphics::gl_set_uniform_vec3(st.prog, "uColor", rm.tb_r, rm.tb_g, rm.tb_b);
       graphics::gl_set_uniform_float(st.prog, "uUseRamp", rm.tb_ramp);
+      graphics::gl_set_uniform_float(st.prog, "uDepthRamp", 0.0);
       graphics::gl_draw(rm.tb_vao, rm.tb_n);
     }
   }
@@ -1400,6 +1429,7 @@ fn render_swatch(st: Client, mat: integer, vao: integer, fbo: integer) -> intege
   // Flat: the material's own colour, not the terrain height ramp.
   graphics::gl_set_uniform_vec3(st.prog, "uColor", sf.sf_r, sf.sf_g, sf.sf_b);
   graphics::gl_set_uniform_float(st.prog, "uUseRamp", 0.0);
+  graphics::gl_set_uniform_float(st.prog, "uDepthRamp", 0.0);
   // ⚠ THE WORLD'S CURRENT LIGHT, which is §C4's clause and the reason a swatch
   // can be trusted: these are the values the server last sent for the scene the
   // author is standing in, so the swatch dims when the world does.

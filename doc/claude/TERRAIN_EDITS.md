@@ -392,12 +392,42 @@ silently rose is the `road_clearance` scar again.
 ([loft#772](https://github.com/loft-lang/loft/issues/772)), so a helper that both takes the two
 counters and returns a total cannot be written — it counts through a third out-parameter.
 
+### Deeper water is darker, and the channel it rides in
+
+**The bed is the ground the river was cut into**, so a channel cut before the water goes in
+keeps its shape and `WATER_DEPTH` is only the shallowest a river can be. That is what gives the
+depth something to say — the first build cut every bed to exactly the minimum, so every cell of
+every river was the same depth and *deeper is darker* had nothing to report.
+
+⚠ **THE SHADE RIDES IN THE NORMAL'S LENGTH, AND IT IS A RENDERING CHANNEL RATHER THAN A SECOND
+MEANING.** The fragment shader uses the normal twice and `normalize`s it both times, and the
+vertex shader's model matrix is a rigid placement — so a normal's magnitude survives the whole
+pipeline unread. Water needs one number per vertex; the alternative was a **seventh float** on a
+format thirteen decoders index by six. The mesher writes `1 + shade` there and nothing else in
+the world writes anything but `1`, so the shader's `length(vNrm) - 1.0` is exactly zero for every
+other surface. ⚠ `soffit.loft` asserts every face normal IS a unit vector — a different surface,
+and it must stay that way.
+
+⚠ **AND THE RAMP SLOT IS A MODE, NOT A FLAG.** `M:<id>;<ramp>;r,g,b;…` has carried `0` flat and
+`1` height-ramped since the ground had one; `2` is the depth ramp. No new field, no format change
+on a wire thirteen decoders split on three fields.
+
+⚠ **THE DEEP COLOUR IS THE SHALLOW ONE SCALED, WHICH IS WHAT KEEPS EVERY PICTURE GATE WORKING.**
+A chromaticity classifier divides value out by construction — it is why `wall` and `frame` are one
+bucket — so a ramp in BRIGHTNESS is invisible to it and the water bucket keeps reading the share
+it always read. A ramp in hue would have made it unmeasurable the day it landed. **This is also
+why the answer to *should water be semi-transparent* is not yet**: a translucent surface blends
+with whatever is behind it, so every pixel over water becomes a mixture the classifier cannot
+attribute, and alpha needs a back-to-front sort the renderer does not do. The depth ramp gets the
+reading of depth with neither cost, and transparency stays available because nothing about the
+store changes.
+
+⚠ **AND IT IS MEASURED WHERE IT IS EMITTED** (`hex_mesh/tests/water_mesh.loft`): the longest and
+shortest normal in a water chunk differ, and every normal of the GROUND chunk beside it is exactly
+one. A number written into a vertex nothing reads back is the shape this tree keeps finding.
+
 ### What is NOT built
 
-- **Water is not drawn.** It has no row in `hex_mesh::surfaces()`, so a river meshes as whatever
-  its material falls back to. The stride `SURFACES = 10` is carried by **thirteen** files and
-  every decoder reads it by modulo, which is the change that broke three decoders silently when
-  the roof made it five. That is the next step, not a detail.
 - **No gesture authors water.** `water_set` is the library's writer and nothing on the wire calls
   it — the same gap `A8.6`'s `MESH` section has. Until then a river is a fixture.
 - **The fall-line canyon is NOT answered by this**, and the plan says it is. Measured
@@ -619,7 +649,7 @@ fabric* makes a yard tear again at random.
 | the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `ground_kinds`, `edge_kinds` |
 | the slope, and what it owes | same file — `slope_limit`, `lim_at`, `slope_relax`, `slope_settle`, `spoil_place`, `slope_owed`, `stroke_over_limit` |
 | a road through rock (`T9`) | same file — `CAVE_HEAD`, `cave_stands`, `cave_backed`, `cave_at`, `col_dug`, `road_cave`, `run_unshelf`, `shelf_head`, `caved_h`, and the surface accessors `off_layer`/`run_h`/`run_set` |
-| water and the bridge (`T10`) | same file — `WATER_MAT`, `WATER_FLOW`, `WATER_DEPTH`, `is_water`, `water_dir`, `water_of`, `water_set`, `water_bed`, `water_falls`, `water_uphill`, `tr_fixed`, `BRIDGE_CLEAR`, `road_span`, `spanned_h` |
+| water and the bridge (`T10`) | same file — `WATER_MAT`, `WATER_FLOW`, `WATER_DEPTH`, `is_water`, `water_dir`, `water_of`, `water_set`, `water_bed`, `water_depth_at`, `water_falls`, `water_uphill`, `tr_fixed`, `BRIDGE_CLEAR`, `road_span`, `spanned_h`; the shade is `hex_mesh::water_shade`/`WATER_DEEP`/`WATER_DARK` and the channel is `emit_hex_sloped`'s `nscale` |
 | where a face IS | same file — `face_limit`, `face_at`, `faces_here` |
 | seating a pad | `lib/hex_editor/src/hex_editor.loft` — `place_house`, via `footprint_seat` |
 | where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `face_grid_for`, `under_grid`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall`; and `emit_room_wall` in `src/editor_server.loft` |

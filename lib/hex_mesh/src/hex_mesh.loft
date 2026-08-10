@@ -217,6 +217,27 @@ fn chunk_dug(wld: World, gq0: integer, gr0: integer, gw: integer) -> boolean {
   false
 }
 
+// ── HOW DARK THIS WATER IS — plan 20 `A10` ─────────────────────────────────
+//
+// Deep water is darker. `WATER_DEPTH` is the shallowest a river can be (the store's
+// `ε` floor forces it), so that end is 0; `WATER_DEEP` is where it stops getting
+// darker, four times the minimum — about ten metres at this scale.
+//
+// ⚠ THE DEEP COLOUR IS THE SHALLOW ONE SCALED, AND THAT IS WHAT KEEPS THE GATES
+// WORKING. A chromaticity classifier divides value out by construction — it is why
+// `wall` and `frame` are one bucket — so a ramp that changes only BRIGHTNESS is
+// invisible to it. Every picture gate in this tree reads shares by chromaticity, and
+// a ramp in hue would have made the water bucket unmeasurable the day it landed.
+pub const WATER_DEEP = 4 * hex_editor::WATER_DEPTH;
+pub const WATER_DARK = 0.45;            // how much of the shallow colour is left deep
+
+pub fn water_shade(depth: integer) -> float {
+  if depth <= hex_editor::WATER_DEPTH { return 0.0; }
+  if depth >= WATER_DEEP { return 1.0; }
+  ((depth - hex_editor::WATER_DEPTH) as float)
+    / ((WATER_DEEP - hex_editor::WATER_DEPTH) as float) ?? 0.0
+}
+
 // The unbounded reading — the outdoors is everywhere, so every cell is ground.
 fn face_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
              gh: &vector<integer>, gl: &vector<integer>) {
@@ -367,11 +388,25 @@ pub fn corner_heights_from(gh: vector<integer>, gl: vector<integer>,
   out
 }
 
+// ⚠ `nscale` IS A PER-VERTEX CHANNEL THAT COSTS NOTHING ON THE WIRE — plan 20 `A10`.
+// The fragment shader uses the normal twice and `normalize`s it both times, and the
+// vertex shader's model matrix is a rigid placement, so a normal's LENGTH survives the
+// whole pipeline and is read by nobody. Water needs one number per vertex — how deep
+// it is here — and the alternative is a seventh float on a format thirteen decoders
+// index by six.
+//
+// ⚠ IT IS A RENDERING CHANNEL AND NOT A SECOND MEANING FOR A NORMAL. Nothing in the
+// store, the walk or the camera reads it; the one consumer is the shader's depth ramp,
+// which is switched on per draw and off for everything else. Stated here because a
+// reader who finds a normal of length 1.4 deserves to know why — and because
+// `soffit.loft` asserts every face normal IS a unit vector, which is a different
+// surface and must stay that way.
 pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                    nx: vector<float>, ny: vector<float>, nz: vector<float>,
                    q0: integer, r0: integer,
                    gh: vector<integer>, gl: vector<integer>,
-                   gq0: integer, gr0: integer, gw: integer) {
+                   gq0: integer, gr0: integer, gw: integer,
+                   nscale: float = 1.0) {
   chh = grid_h(gh, gq0, gr0, gw, cq, cr, wld);
   cw = hex_to_world(cq, cr, chh);
   hs = corner_heights_from(gh, gl, gq0, gr0, gw, cq, cr);
@@ -428,11 +463,14 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
   // them. The triangles index the same seven points and the picture is identical:
   // 15,466 triangles before and after, same bounds.
   base = len(m.vertices);
-  m.vertices += [vertex(vec3(cw.x, cy, cw.z), nc0, vec2(0.0, 0.0))];
+  m.vertices += [vertex(vec3(cw.x, cy, cw.z),
+                        vec3(nc0.x * nscale, nc0.y * nscale, nc0.z * nscale),
+                        vec2(0.0, 0.0))];
   for ci in 0..6 {
     wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    cn = nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0);
     m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
-                          nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0),
+                          vec3(cn.x * nscale, cn.y * nscale, cn.z * nscale),
                           vec2(1.0, 0.0))];
   }
   for fi in 0..6 {
@@ -570,7 +608,14 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
         mat = hex_editor::SURFACE_MAT;
       }
       if !open && !absent && mat == want_mat {
-        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw);
+        // ⚠ ONE PLUS THE SHADE, so an ordinary surface is exactly 1.0 and the shader's
+        // `length(vNrm) - 1.0` is exactly 0 for everything that is not water. The
+        // channel is inert unless something puts a number in it.
+        nsc = 1.0;
+        if want_mat == hex_editor::WATER_MAT {
+          nsc = 1.0 + water_shade(hex_editor::water_depth_at(wld, cq, cr));
+        }
+        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw, nsc);
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
         // one surface over. The ground has no skirts because it is continuous and
         // its edges are somebody else's cells — but a stairwell is where the ground

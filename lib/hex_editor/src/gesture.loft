@@ -3950,7 +3950,22 @@ pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
   gc = world_ground_cell(wld, q, r);
   bm = gc.h_material as integer ?? 0;
   if bm == 0 || is_water(bm) { bm = SURFACE_MAT; }
+  // ⚠ THE BED IS KEPT WHERE IT IS IF IT IS ALREADY DEEPER, and that is what makes a
+  // depth exist at all. The first build cut every bed to exactly `WATER_DEPTH`, so
+  // every cell of every river was the same depth and *deeper water is darker* had
+  // nothing to say. A channel cut before the water goes in keeps its shape; a cell
+  // with no bed yet gets the minimum, which is the store's `ε` floor and not a taste.
   bed = h - WATER_DEPTH;
+  // ⚠ THE BED IS THE GROUND THE RIVER WAS CUT INTO, and asking `water_bed` alone was
+  // not enough: it answers only where the surface is ALREADY water, so the ordinary
+  // authoring — cut a channel, then put water in it — came back at the minimum depth
+  // everywhere and the ramp had nothing to say. Measured in the emitted mesh: every
+  // water normal exactly 1, which is the channel being there and carrying nothing.
+  had = water_bed(wld, q, r);
+  if had < 0 && !is_water(gc.h_material as integer ?? 0) {
+    had = gc.h_height as integer ?? 0;
+  }
+  if had >= 0 && had < bed { bed = had; }
   if bed < W_RESERVE {
     why = "water at {h} leaves no room for a bed {WATER_DEPTH} deep above the reserve";
     return hex_world::CW_RESERVE;
@@ -4006,6 +4021,16 @@ pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
   }
   hex_world::world_set_column(wld,
     hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+}
+
+// How deep the water is here — surface to bed — or −1 where this is not water.
+//
+// ⚠ IT IS DERIVED, like every other water fact: the two heights already say it, so a
+// stored depth would be a second answer that can disagree with the first.
+pub fn water_depth_at(w: World, q: integer, r: integer) -> integer {
+  b = water_bed(w, q, r);
+  if b < 0 { return 0 - 1; }
+  ground_h(w, q, r) - b
 }
 
 // Does the water here run UPHILL — the one state a waterway may never be left in?

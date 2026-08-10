@@ -1,0 +1,134 @@
+// DEEPER WATER IS DARKER — plan 20 `A10`, and the channel it rides in.
+//
+// The shade is a pure function of the depth and the pipeline carries it in the
+// NORMAL'S LENGTH: the fragment shader normalizes the normal at both its uses and the
+// vertex shader's model matrix is rigid, so the magnitude survives unread. Water needs
+// one number per vertex and the alternative was a seventh float on a format thirteen
+// decoders index by six.
+//
+// ⚠ SO THE CHANNEL HAS TO BE MEASURED WHERE IT IS EMITTED, not argued from the source.
+// A number written into a vertex nothing reads back is the shape this tree keeps
+// finding — a rule built, green, and reaching nobody.
+use hex_mesh;
+use hex_editor;
+use hex_world;
+use graphics;
+
+const U = 0.25;
+const G = 200;
+
+fn pond(deeper: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  why = "";
+  // A channel cut BEFORE the water goes in — its middle deeper than its edges, which
+  // is what gives the ramp something to say.
+  for q2 in 0..8 {
+    for r2 in 0..3 {
+      d = hex_editor::WATER_DEPTH;
+      if r2 == 1 { d = d + deeper; }
+      ground_set(w, q2, r2, G - 4 - d, SURFACE_MAT);
+    }
+  }
+  for q3 in 0..8 {
+    for r3 in 0..3 { hex_editor::water_set(w, q3, r3, G - 4, 0, why); }
+  }
+  w
+}
+
+// ── the shade itself ────────────────────────────────────────────────────────
+
+fn test_the_shallowest_water_is_not_shaded_at_all() {
+  assert(water_shade(hex_editor::WATER_DEPTH) == 0.0,
+         "water at its minimum depth is already shaded {water_shade(hex_editor::WATER_DEPTH)}");
+  assert(water_shade(hex_editor::WATER_DEPTH - 4) == 0.0,
+         "a depth under the minimum shaded anyway");
+}
+
+fn test_it_reaches_full_dark_and_stops() {
+  assert(water_shade(WATER_DEEP) == 1.0, "the deep end is {water_shade(WATER_DEEP)}");
+  assert(water_shade(WATER_DEEP * 4) == 1.0,
+         "past the deep end it kept getting darker: {water_shade(WATER_DEEP * 4)}");
+}
+
+fn test_it_only_ever_gets_darker() {
+  prev = 0.0 - 1.0;
+  for d in 0..(WATER_DEEP + 8) {
+    v = water_shade(d);
+    assert(v >= prev, "the shade fell from {prev} to {v} at depth {d}");
+    prev = v;
+  }
+}
+
+// ⚠ THE ONE THAT KEEPS EVERY PICTURE GATE WORKING. Each gate reads shares by
+// CHROMATICITY, which divides value out by construction — it is why `wall` and `frame`
+// are one bucket. A ramp in brightness is therefore invisible to the classifier, and a
+// ramp in hue would have made the water bucket unmeasurable the day it landed.
+fn test_the_deep_colour_is_the_shallow_one_at_the_same_chromaticity() {
+  i = surface_for_mat(hex_editor::WATER_MAT);
+  assert(i >= 0, "water has no surface");
+  sf = surface_at(i);
+  s0 = sf.sf_r + sf.sf_g + sf.sf_b;
+  dr = sf.sf_r * WATER_DARK;
+  dg = sf.sf_g * WATER_DARK;
+  db = sf.sf_b * WATER_DARK;
+  s1 = dr + dg + db;
+  assert(s1 < s0, "the deep end is not darker at all");
+  // exact, because the deep colour is a SCALAR multiple: r/s is unchanged
+  for pair in [[sf.sf_r, dr], [sf.sf_g, dg], [sf.sf_b, db]] {
+    a = (pair[0] ?? 0.0) / s0 ?? 0.0;
+    b = (pair[1] ?? 0.0) / s1 ?? 0.0;
+    d = a - b;
+    if d < 0.0 { d = 0.0 - d; }
+    assert(d < 0.0001,
+           "the deep colour moved in chromaticity by {d} — every gate that reads "
+           + "shares by hue would move with it");
+  }
+}
+
+// ── and the channel, measured where it is emitted ───────────────────────────
+
+// The longest and shortest normal in a mesh, as a pair — the channel, read back off
+// the vertices rather than taken from the emitter's word.
+fn normal_span(m: Mesh, lo: &float, hi: &float) {
+  lo = 1000.0;
+  hi = 0.0;
+  for v in m.vertices {
+    n = v.normal;
+    l = sqrt(n.x * n.x + n.y * n.y + n.z * n.z) ?? 0.0;
+    if l < lo { lo = l; }
+    if l > hi { hi = l; }
+  }
+}
+
+fn test_a_water_mesh_carries_its_depth_and_a_ground_mesh_does_not() {
+  w = pond(24);
+  wm = chunk_mesh_mat(0, 0, w, hex_editor::WATER_MAT);
+  assert(len(wm.vertices) > 0, "no water was meshed at all");
+  wlo = 0.0;
+  whi = 0.0;
+  normal_span(wm, wlo, whi);
+  assert(whi > 1.0 + 0.05,
+         "no water vertex carries a depth: the longest normal is {whi}");
+  assert(wlo >= 1.0 - 0.0001,
+         "a water normal came out SHORTER than one ({wlo}), so the channel is signed "
+         + "where the shader clamps it at zero");
+  assert(whi - wlo > 0.05,
+         "every water vertex carries the same depth ({wlo}..{whi}) — the channel is "
+         + "there and the fixture has no channel to show");
+
+  // ⚠ AND THE CONTROL IS THE GROUND, in the same world and the same chunk. The shader
+  // reads `length(vNrm) - 1.0`, so every other surface must be exactly one or it would
+  // be quietly ramped too.
+  gm = chunk_mesh_mat(0, 0, w, SURFACE_MAT);
+  assert(len(gm.vertices) > 0, "no ground was meshed, so the control is empty");
+  glo = 0.0;
+  ghi = 0.0;
+  normal_span(gm, glo, ghi);
+  d = ghi - 1.0;
+  if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.0001,
+         "a ground normal is {ghi} long, so the ground would take the depth ramp too");
+}

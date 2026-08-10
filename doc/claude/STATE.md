@@ -44,6 +44,7 @@ what a chasm is.
 |---|---|
 | **no gesture authors water** | `water_set` is the library's writer and nothing on the wire calls it, so a river is a fixture. The same gap as *no gesture can author a `FITS`*, and it is what stands between the bridge and a picture |
 | **the bridge has no picture** | its acceptance is a cold-recognition test, exactly as `A9`'s was |
+| ✅ **water IS drawn, and deeper water is darker** | an eleventh surface, and the shade rides in the NORMAL'S LENGTH — the shader normalizes it at both uses and the model matrix is rigid, so the magnitude survives unread. A seventh float per vertex was the alternative, on a format thirteen decoders index by six |
 | **the fall-line canyon is still there** | and plan 20 claimed the span would answer it — measured, it does not; see below |
 
 ⚠ **THE SETTLE TAKES THE LOWER ENVELOPE, AND THAT IS THE OPEN QUESTION.** Measured
@@ -67,6 +68,14 @@ no reading would have:
   fails, and it SHOULD*. It is the only thing that would have said the id space had
   moved: **thirteen** files carry `SURFACES` and every one reads the id space by
   modulo. Water is APPENDED so nothing already numbered moved.
+
+⚠ **AND *SHOULD WATER BE SEMI-TRANSPARENT* IS ANSWERED *NOT YET*, WITH A REASON.** Every
+picture claim in this tree is a chromaticity histogram; a translucent surface blends
+with whatever is behind it, so each pixel over water becomes a mixture the classifier
+cannot attribute — and alpha needs a back-to-front sort the renderer does not do. The
+depth ramp gets the reading of depth at neither cost, **because a scalar darkening
+leaves chromaticity untouched** and the gates read the same bucket they always read.
+Transparency stays available: nothing about the store changes.
 
 ⚠ **AND `cross` IS ALREADY A PUBLIC NAME IN THE GRAPH.** Defining one in a test file
 reports as `Syntax error: unexpected '->'` at the return arrow — not as a collision.
