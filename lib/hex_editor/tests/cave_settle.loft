@@ -1,0 +1,127 @@
+// A RUN HOLDS ITS LIMIT EVEN WHERE `A9` HAS CUT SHELVES INTO IT — plan 20.
+//
+// A road walked UP a hill it cannot climb cuts into it, deeper every cell, and a road
+// cut deep enough into a hillside caves: that is `A9`, and it is correct. What was not
+// correct is what happened to the run afterwards.
+//
+// ⚠ THE MECHANISM, MEASURED. `spoil_place` returns the settle's spoil by shifting the
+// WHOLE run by one amount — *every height moves by the same amount, so every DIFFERENCE
+// is unchanged*, which is the only reason the profile the relaxation just made legal
+// survives it. A caved cell has rock over it, and a raise that would come within `ε` of
+// that rock is refused. So the shift lands on some cells and not others, **and a
+// non-uniform uniform shift destroys exactly the limit the relaxation had established.**
+// Measured on a road walked up a 6-per-hex rise: a lift of 4 is refused by 4 cells, a
+// lift of 40 by all 41 caved ones, and the finished run carried a **26-unit step where
+// its limit is 1**, with each further settle recovering only ONE unit.
+//
+// ⚠ AND THE SWEEP THAT EXISTS FOR THIS COULD NOT SEE IT. `run_unsqueeze` runs after the
+// lift and takes the lid off any cell that has risen into its own roof — so it sees
+// cells that DID rise and is blind, by construction, to cells that FAILED to. The cure
+// is the same rule applied where the failure happens: `A9`'s own continuum says that
+// where a road rises into its roof the rock comes off, so a refused lift takes the lid
+// off and asks again.
+use hex_editor;
+use hex_world;
+const U   = 0.25;
+const G   = 400;
+const EPS = 10;
+const N   = 26;
+
+// `n` cells of ground rising `k` a hex along +q — the walk goes UP it.
+fn rise(k: integer) -> World {
+  w = world_new(U, 0, EPS, 4).wn_world;
+  for q in (0 - 8)..40 {
+    for r in (0 - 8)..9 { ground_set(w, q, r, G + k * q, SURFACE_MAT); }
+  }
+  w
+}
+
+// The road walked up it, as the gesture lays one: two reads beyond the strip for the
+// gradient, and the author's own grade extrapolated back along it.
+fn walk_up(w: World, k: integer) {
+  cl = 0;
+  rs = 0;
+  for i in 0..N {
+    h1 = ground_h(w, i + ROAD_HALF + 1, 0);
+    h2 = ground_h(w, i + ROAD_HALF + 2, 0);
+    sl = ((h2 - h1) as float) / hex_grid::HEX_LEN;
+    look = ((ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
+    hh = h1 - (round(sl * look) as integer ?? 0);
+    road_lay(w, i, 0, hh, ROAD_HALF, (hh as float) * U, sl, 0.0, cl, rs);
+  }
+}
+
+// How many cells of the run carry rock over the road.
+fn caved_cells(w: World) -> integer {
+  n = 0;
+  for q in (0 - 3)..(N + 4) {
+    for r in (0 - 4)..5 {
+      rh = run_h(w, q, r, ROAD_MAT);
+      if rh < 0 { continue; }
+      if ground_h(w, q, r) != rh { n = n + 1; }
+    }
+  }
+  n
+}
+
+// The worst step between two road cells of the run — ⚠ asked of the COLUMN, because a
+// caved cell's GROUND is the rock over it and a ground reader answers about the hill.
+fn worst_step(w: World) -> integer {
+  worst = 0;
+  for q in (0 - 3)..(N + 4) {
+    for r in (0 - 4)..5 {
+      a = run_h(w, q, r, ROAD_MAT);
+      if a < 0 { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        b = run_h(w, nq, nr, ROAD_MAT);
+        if b < 0 { continue; }
+        st = a - b;
+        if st < 0 { st = 0 - st; }
+        if st > worst { worst = st; }
+      }
+    }
+  }
+  worst
+}
+
+fn test_a_run_holds_its_limit_where_it_has_caved() {
+  w = rise(6);
+  walk_up(w, 6);
+  // ⚠ THE PRECONDITION IS ASSERTED, or this row is a claim about a road that never
+  // caved and would pass on flat ground.
+  assert(caved_cells(w) > 0,
+         "the fixture cut no shelves at all, so it cannot say anything about a caved "
+         + "run — the row is vacuous");
+  assert(worst_step(w) <= 1,
+         "a road whose limit is 1 came out with a step of {worst_step(w)} across its "
+         + "own run after it caved");
+}
+
+fn test_and_the_world_agrees_that_nothing_is_owing() {
+  // ⚠ A SECOND INSTRUMENT ON THE SAME CLAIM. `slope_owed` asks the world rather than
+  // walking the run here, and the two disagreeing is what would say one of them is
+  // wrong. ⚠ It takes its material from the GROUND at the seed, so it is seeded at a
+  // cell the walk left uncaved — at a caved one it would follow the hillside.
+  w = rise(6);
+  walk_up(w, 6);
+  seed = 0 - 1;
+  for q in 0..N {
+    if run_h(w, q, 0, ROAD_MAT) < 0 { continue; }
+    if ground_h(w, q, 0) != run_h(w, q, 0, ROAD_MAT) { continue; }
+    seed = q;
+    break;
+  }
+  assert(seed >= 0, "every cell of the run caved, so there is no uncaved seed to ask");
+  assert(slope_owed(w, seed, 0) == 0,
+         "the run still owes {slope_owed(w, seed, 0)} per hex at ({seed},0)");
+}
+
+fn test_a_gentler_rise_still_caves_nothing_and_is_the_control() {
+  // Without this the two rows above could pass on a build where NOTHING ever caves.
+  w = rise(1);
+  walk_up(w, 1);
+  assert(caved_cells(w) == 0,
+         "a road that can climb its hill must cut no shelves, got {caved_cells(w)}");
+  assert(worst_step(w) <= 1, "and it holds its limit, got {worst_step(w)}");
+}

@@ -402,10 +402,44 @@ never were.
    can no longer hold its own limit** — `run_set` is refused under a shelf. That is
    `A9`'s own recorded failure (*"a shelf blinded the settle to half its own road… a
    27-unit step in a road whose limit is 1"*) reappearing because the plane is what
-   finally makes the road cut where a road builder would. ⚠ The author **is** told —
-   the refusal is counted and the server already broadcasts `slope_owed` — but a step no
-   cart can take is still there. **Settling a run that `A9` has cut shelves into is the
-   next step**, and it is not a reason to go back to laying plates.
+   finally makes the road cut where a road builder would.
+
+   ✅ **FIXED — a shift that lands on some cells and not others is not a uniform shift.**
+   `spoil_place` moves the whole run by one amount, and that is the *only* reason the
+   profile the relaxation just made legal survives it: every height moves the same, so
+   every difference is unchanged. The raise was refused at exactly the cells with the
+   least room, and the code **counted the refusal and carried on**, destroying the limit
+   it had just established. It now shifts by what every cell can take.
+
+   | rising, 26 cells | before | after |
+   |---|---|---|
+   | 3 per hex | step 1, caved 71 | step 1, caved 71 |
+   | 4 per hex | step **5**, caved 199 | step **1**, caved 206 |
+   | 6 per hex | step **26**, caved 277 | step **1**, caved 280 |
+
+   **Legal at every gradient in both directions, and more shelves survive than before** —
+   the balance no longer squeezes them at all. `tests/cave_settle.loft` pins it, with a
+   gentle-rise control so it cannot pass on a build where nothing ever caves, and an
+   asserted precondition so it cannot pass on a fixture that never cut a shelf.
+
+   ⚠ **AND THE CURE IS TO SHIFT LESS, NOT TO TAKE THE LID OFF.** `A9`'s continuum argues
+   for the lid — but it was written about a road that *has* risen into its roof, not one
+   that has not yet. Removing lids on refusal was built and measured: `gates/world/cave`
+   went from **13 shelves to 6** and the rock above the mouth **lost** faces (618 against
+   630). The gallery `A9` exists to build was being dismantled to return spoil a stroke
+   later.
+
+   ⚠ **AND THE CAP IS `CAVE_HEAD`, NOT `ε`.** Capping at `ε` stops the refusals and keeps
+   the shift uniform — and leaves cells squeezed between `ε` and `CAVE_HEAD`, whose lids
+   `run_unsqueeze` then takes off. Measured, that still cost the gate: **7** shelves and
+   `lidFaced` still false. **`ε` is what the STORE needs; `CAVE_HEAD` is what a WALKER
+   needs**, and a balance has no business eating a walker's headroom. Sabotaging the cap
+   back to `ε` takes `gates/world/cave` red, so the choice is gated rather than asserted.
+
+   ⚠ **AND `run_unsqueeze` COULD NEVER HAVE CAUGHT IT** — it runs *after* the lift and
+   reads the headroom that resulted, so it sees cells that **did** rise into their roof
+   and is blind, by construction, to cells that **failed** to. A cell whose raise was
+   refused still has all of its headroom and looks perfectly healthy.
 
    ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
    rule that runs when nobody is walking. Nothing above touches it.

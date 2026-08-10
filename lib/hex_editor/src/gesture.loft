@@ -2945,6 +2945,31 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   // earth if that ever changes.
   if cut <= 0 { return; }
   shift = (cut / n) ?? 0;
+  // ── AND THE SHIFT IS ONLY EVER WHAT *EVERY* CELL CAN TAKE — plan 20 ────────
+  //
+  // ⚠ A SHIFT THAT LANDS ON SOME CELLS AND NOT OTHERS IS NOT A UNIFORM SHIFT, and
+  // uniformity is the ONLY reason the profile the relaxation just made legal survives
+  // this: *every height moves by the same amount, so every DIFFERENCE is unchanged*.
+  // A caved cell has rock over it and `F1` needs `ε` under that rock, so a raise at
+  // exactly the cells with the least room is refused — and this used to COUNT the
+  // refusal and carry on, which quietly destroyed the limit it had just established.
+  //
+  // ⚠ MEASURED, on a road walked up a 6-per-hex rise: a lift of 4 refused by 4 cells,
+  // a lift of 40 by all 41 caved ones, and the finished run left with a **26-unit step
+  // where its limit is 1** — every further settle recovering one single unit.
+  //
+  // ⚠ AND `run_unsqueeze` BELOW COULD NEVER HAVE CAUGHT IT. It runs after the lift and
+  // reads the headroom that RESULTED, so it sees cells that did rise and is blind, by
+  // construction, to cells that failed to: a cell whose raise was refused still has
+  // all of its headroom and looks perfectly healthy.
+  //
+  // ⚠ AND THE CURE IS TO SHIFT LESS, NOT TO TAKE THE LID OFF. Both keep uniformity and
+  // `A9`'s own continuum argues for the lid — but that was written about a road that
+  // HAS risen into its roof, and this is one that has not yet. Taking lids off here
+  // was tried and measured: `gates/world/cave` went from **13 shelves to 6** and the
+  // rock above the mouth LOST faces (618 against 630), so the gallery `A9` exists to
+  // build was being dismantled to return spoil a stroke later. Shifting less costs
+  // only time — the settle runs again on every stroke.
   // ⚠ A SHIFT OF ZERO IS STILL SPOIL, AND RETURNING HERE SILENTLY LOSES IT. When a
   // run is long and one stroke's cut is small, `cut / n` truncates to 0 and every
   // unit taken out is discarded — measured on a road walked DOWN a 40-cell ramp,
@@ -2953,6 +2978,26 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   // the only kind that keeps the limit and a uniform shift of less than one unit
   // does not exist. That is the honest boundary of this rule, and it is said rather
   // than hidden behind an early return.
+  for j0 in 0..n {
+    q0 = mq[j0] ?? 0;
+    r0 = mr[j0] ?? 0;
+    // ⚠ −1 IS *NO LID*, NOT *NO ROOM*. A road on the open ground has nothing above it
+    // and bounds this not at all; only a cell with a layer over it does.
+    hd0 = shelf_head(w, q0, r0, mat);
+    if hd0 < 0 { continue; }
+    // ⚠ `CAVE_HEAD`, NOT `ε`, AND THAT IS THE WHOLE DIFFERENCE BETWEEN KEEPING A
+    // GALLERY AND DISMANTLING ONE. `ε` is what the STORE needs — a lift that leaves
+    // more than that is accepted, so capping there is enough to stop the refusals and
+    // keep this shift uniform. But a cell squeezed between `ε` and `CAVE_HEAD` is then
+    // taken by `run_unsqueeze` below, which is right on its own terms and means the
+    // balance would be paying for its spoil in ROOFS. Measured: capping at `ε` left
+    // `gates/world/cave` with **7** shelves where it cuts 13, and the rock above the
+    // mouth lost faces. `CAVE_HEAD` is what a WALKER needs, and a balance has no
+    // business eating it.
+    room = hd0 - CAVE_HEAD;
+    if room < 0 { room = 0; }
+    if room < shift { shift = room; }
+  }
   if shift <= 0 {
     clamped = clamped + 1;
     if cut > residual { residual = cut; }
@@ -2963,13 +3008,6 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
     r = mr[j] ?? 0;
     hh = run_h(w, q, r, mat) + shift;
     if hh > H_CEILING { hh = H_CEILING; }
-    // ⚠ AND THE VERDICT IS READ — plan 20 `A9`. Under a shelf the rock above is
-    // `F1`'s upper neighbour, so a uniform shift can be refused at exactly the cells
-    // that have the least room: `CAVE_HEAD` is 12 and `ε` is 8 to 10, which leaves a
-    // caved cell only two to four units of lift before the road meets its own roof.
-    // A refused raise breaks the uniformity this balance rests on, so it is COUNTED
-    // rather than swallowed — the same two counters the truncation remainder below
-    // is reported through.
     if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
       clamped = clamped + 1;
       if shift > residual { residual = shift; }
