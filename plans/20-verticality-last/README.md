@@ -441,6 +441,43 @@ never were.
    and is blind, by construction, to cells that **failed** to. A cell whose raise was
    refused still has all of its headroom and looks perfectly healthy.
 
+   ### ⛔ AND `plan/20-run-debt` WAS MERGED ON TOP OF ALL THIS AND BACKED OUT
+
+   **Attempted, resolved in full, measured, aborted.** The hope was reasonable: the
+   branch was red on `test_a_settled_road_conserves_its_spoil` (*cut 8 against fill 56*)
+   because the stamp displacement was left over once the settle's spoil was actually
+   returned, and the plane removes exactly that displacement. **It did not fix it.**
+
+   | the fixture | cut | fill | out of balance |
+   |---|---|---|---|
+   | as the branch left it — a flat plate on a dome | 8 | 56 | 48 |
+   | laid as a PLANE on the same dome | 13 | 48 | **35** |
+   | a plane on a CONSTANT gradient, where the stamp is exact | 20 | 72 | **52** |
+
+   ⚠ **The third row is what settles it**: on a ramp the plane lays the road exactly on
+   the ground, so there is nothing left for a stamp to displace — and the imbalance got
+   *worse*. The stamp was never the cause of this particular failure.
+
+   ⚠ **IT IS A RATCHET, AND THE DATUM IS WHY.** `spoil_place` measures its cut against
+   `was`, the profile at entry to **this** settle — correct for one settle, and wrong the
+   moment a debt accumulates across them, because `was` already contains whatever the
+   balance raised on the previous stroke. Earth already returned is counted as spoil
+   again and returned again. Measured, a 3-per-hex ramp walked uphill:
+
+   | after stroke | 0 | 3 | 6 | 9 | 12 |
+   |---|---|---|---|---|---|
+   | run stands above natural | −2 | 0 | **8** | **22** | **52** |
+   | debt still owing | 0 | 2 | 6 | 16 | **32** |
+
+   **Both columns climb** — a debt that drained would fall. Earth is being invented.
+
+   **What a merge needs first**: the debt's datum must be *the profile the author asked
+   for* — the stamped grade of the whole run, carried across strokes — not the profile at
+   entry to each settle. That is a per-run registry, a design piece rather than a merge.
+   ⚠ And it is **not** the telescoping accumulator either: that measures against the
+   natural ground, which is the term five tests refuse because returning it undoes a
+   deliberate cut.
+
    ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
    rule that runs when nobody is walking. Nothing above touches it.
 6. **Does `A4` need a real relaxation, or is one pass enough?** Decided by building the

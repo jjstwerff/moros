@@ -236,6 +236,48 @@ the headroom that resulted, so it sees cells that **did** rise into their roof a
 blind, by construction, to cells that **failed** to — a cell whose raise was refused still
 has all of its headroom and looks perfectly healthy.
 
+## ⛔ `plan/20-run-debt` WAS MERGED ON TOP AND THE MERGE WAS ABORTED — it RATCHETS
+
+**Attempted 2026-08-11, resolved in full, measured, and backed out.** The hope was
+reasonable and is now refuted: the branch was red on
+`test_a_settled_road_conserves_its_spoil` (*cut 8 against fill 56*) because the stamp
+displacement was left over once the settle's spoil was actually returned — and the plane
+removes exactly that displacement. **It did not fix it.**
+
+| the fixture | cut | fill | out of balance |
+|---|---|---|---|
+| as the branch left it — a flat plate on a dome | 8 | 56 | 48 |
+| laid as a PLANE on the same dome | 13 | 48 | **35** |
+| a plane on a CONSTANT gradient, where the stamp is exact | 20 | 72 | **52** |
+
+⚠ **SO THE STAMP WAS NEVER THE CAUSE OF *THIS* FAILURE, and the third row is what says
+so** — on a ramp the plane lays the road exactly on the ground, so nothing is left for a
+stamp to displace, and the imbalance got *worse*.
+
+⚠ **IT IS A RATCHET, AND THE DATUM IS WHY.** `spoil_place` measures its cut against
+`was` — the profile at entry to **this** settle — which is correct for ONE settle and
+wrong the moment a debt accumulates across them, because `was` already contains whatever
+the balance raised on the previous stroke. So earth that was already returned is counted
+as spoil **again** and returned **again**. Measured on a 3-per-hex ramp walked uphill:
+
+| after stroke | 0 | 3 | 6 | 9 | 12 |
+|---|---|---|---|---|---|
+| run stands above natural | −2 | 0 | **8** | **22** | **52** |
+| debt still owing | 0 | 2 | 6 | 16 | **32** |
+
+**Both columns climb.** A debt that drains would fall; this one grows while the road it
+is inflating also grows. Earth is being invented.
+
+**What a merge would need first**: the debt's datum must be *the profile the author asked
+for* — the stamped grade of the whole run, carried across strokes — not the profile at
+entry to each settle. That is a per-run registry of what each cell was stamped at, which
+is a design piece and not a merge. ⚠ And it is **not** the telescoping accumulator either:
+that measures against the natural ground, which is the term five tests refuse because
+returning it undoes a deliberate cut.
+
+**The branch is left pushed and unmerged**; `main` keeps the plane and the caved-run fix,
+both of which stand on their own.
+
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
 **This cost three changes reverted on false evidence in one session.** Editing a
