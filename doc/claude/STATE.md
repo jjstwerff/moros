@@ -84,6 +84,37 @@ two**, and neither is an envelope.
 That matters because the row that was nearly believed is the one where both said the
 run was unfinished and the earth-moved column looked best.
 
+### ✅ AND THE FIX IS NAMED AND MEASURED — the settle is not the half to change
+
+Left **exactly as it ships**, per stroke, and followed by **one two-sided balance** over
+the whole run against the natural ground the road replaced:
+
+| 26 cells | per stroke — ships | | **+ one balance** | |
+|---|---|---|---|---|
+| 6 per hex, walked **down** | 1508 | −120 … +7 | **848** | −63 … +64 |
+| 6 per hex, walked **up** | 1439 | +117 … −8 | **845** | +63 … −62 |
+| 1 per hex, either way | 127 | −5 … −3 | **25** | |
+
+**845 is the optimum the envelope probe computed**, so the run's *shape* was right all
+along — the per-stroke settle produces a correct limit-slope profile and leaves it 57
+units too low. **Only its datum was wrong.**
+
+⚠ **AND AT 1 PER HEX THE ROAD CAN FOLLOW THE GROUND AND STILL SINKS FIVE UNITS.** A
+cell's grade comes from the **last disc that covered it**, and that disc trails the
+author by `ROAD_HALF` — so the effective lookahead is `2 * ROAD_HALF + 1` = five cells,
+not the one the gesture's comment describes.
+
+⚠ **AND THE ONE-SIDED GUARD GOT WRITTEN A THIRD TIME, in the instrument this time.**
+`if owed > 0` fires on a descent and does nothing on an ascent, where the run is net
+FILLED — `shift 0` and every column unchanged, which reads exactly like an arm with
+nothing to fix. `spoil_place` has the same shape and is right *within its scope*; a
+**run-level** balance sees both signs and must answer to both.
+
+**The build's one open piece**: a run-level balance needs the natural ground, and the
+stamp has overwritten it. `road_lay` already samples `snat` per disc *before* writing
+and those samples **telescope**, so one accumulator threaded through the run gives the
+exact total with no registry.
+
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
 **This cost three changes reverted on false evidence in one session.** Editing a

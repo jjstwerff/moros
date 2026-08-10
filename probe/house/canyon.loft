@@ -58,6 +58,37 @@
 // finding: the per-stroke call is ALSO the only reason the run ends up legal at all —
 // twenty-six calls of twelve passes is what converges it. Repetition is standing in
 // for passes, and paying for it with the balance.
+//
+// ── AND WHICH HALF OF THE REPETITION COSTS THE EARTH — the `+ one balance` arm ───
+//
+// The settle is NOT the half to change. Left exactly as it ships, per stroke, and
+// followed by ONE balance over the whole run against the natural ground:
+//
+//   6 per hex, walked DOWN   per stroke 1508   -120 … +7    -> one balance  848   -63 … +64
+//   6 per hex, walked UP     per stroke 1439   +117 … -8    -> one balance  845   +63 … -62
+//   3 per hex, walked DOWN   per stroke  777    -55 … -3    -> one balance  341
+//   1 per hex, either way    per stroke  127     -5 … -3    -> one balance   25
+//
+// ⚠ **845 AND 848 ARE THE OPTIMUM `envelope.loft` COMPUTED** — `held at middle` and
+// `lower + shift` both move 845 at this gradient. So the run's SHAPE was already right
+// all along: the per-stroke settle produces a correct limit-slope profile and simply
+// leaves it 57 units too low. One shift recovers the whole of the gap, and no envelope,
+// anchor or relaxation changes at all.
+//
+// ⚠ AND THE LAST ROW IS WORTH ITS OWN LINE: at 1 per hex the road CAN follow the ground
+// inside its own limit and the settle never fires — yet the shipped path still moves
+// 127 units, because a cell's grade comes from the last disc that covered it and that
+// disc trails the author by `ROAD_HALF`. The road sinks a uniform five units into
+// ground it could have followed exactly. The same balance takes that to 25.
+//
+// ⚠ AND THE BALANCE MUST BE TWO-SIDED, which the mirror is what caught. The first
+// version of this arm read `if owed > 0`, fired on the descent and did NOTHING on the
+// ascent — `shift 0`, every column unchanged, reading exactly like an arm with nothing
+// to fix. That is this tree's one-sided guard for the third time, in the instrument
+// rather than in the rule. `spoil_place` has the same shape and is right within its
+// scope: it measures after the stamp, and the settle it measures can only lower. A
+// RUN-level balance is measured against the natural ground, where both signs are
+// reachable, so it must answer to both.
 use hex_editor;
 use hex_world;
 const U   = 0.25;
@@ -159,9 +190,17 @@ fn stamp(w: World) {
 fn main() {
   println("A road may climb 1 a hex. Walked down a ramp it cannot follow, the same");
   println("strip laid three ways — and the question is where the balance goes.");
-  for k in [1, 3, 6] {
+  // ⚠ AND WALKED UP AS WELL AS DOWN. This tree has written a one-sided guard twice —
+  // `faced_between` and `stroke_over_limit` — and both read exactly like a guard until
+  // they were asked from the other end. A negative `k` is a ramp that RISES away from
+  // the author, so every row below is run against its own mirror.
+  for k in [1, 3, 6, 0 - 1, 0 - 6] {
     println("");
-    println("  ramp {k} per hex over {N} cells — the ground falls {k * (N - 1)}");
+    if k < 0 {
+      println("  ramp {0 - k} per hex over {N} cells, RISING — the mirror");
+    } else {
+      println("  ramp {k} per hex over {N} cells — the ground falls {k * (N - 1)}");
+    }
 
     // stamp only — no settle, so this is what the LOOKAHEAD alone costs
     wa = ramp_q(k);
@@ -207,6 +246,57 @@ fn main() {
     }
     report("to convergence", natd, wd);
     println("                  ({rounds} calls to converge — one is what the gesture makes)");
+
+    // ⚠ AND WHICH HALF OF THE REPETITION COSTS THE EARTH? Two mechanisms are folded
+    // together above — the balance truncated away per stroke (`cut / n` with `n` the
+    // whole run) and the disc re-lowering already-balanced cells. This arm separates
+    // them: the per-stroke settle EXACTLY as it ships, and then `A8`'s balance applied
+    // once at the end against the natural ground the road replaced.
+    //
+    // ⚠ A UNIFORM SHIFT CANNOT BREAK THE LIMIT, which is the property `spoil_place`
+    // already rests on — so this arm's legality column is a check on the arithmetic
+    // rather than on the idea.
+    we = ramp_q(k);
+    nate = natural(we);
+    cle = 0;
+    rse = 0;
+    for i in 0..N {
+      ahead = ground_h(we, i + hex_editor::ROAD_HALF + 1, 0);
+      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cle, rse);
+    }
+    owed_e = 0;
+    cells = 0;
+    for eq in (0 - hex_editor::ROAD_HALF)..(N + hex_editor::ROAD_HALF) {
+      for er in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+        eh = run_h(we, eq, er, ROAD_MAT);
+        if eh < 0 { continue; }
+        cells = cells + 1;
+        owed_e = owed_e + ((G - k * eq) - eh);
+      }
+    }
+    // ⚠ TWO-SIDED, AND THE FIRST VERSION WAS NOT — which is this tree's one-sided
+    // guard written a third time, in the instrument this time rather than in the rule.
+    // `if owed > 0` fires on a road walked DOWN, where the run is net cut, and does
+    // nothing at all on one walked UP, where the run is net FILLED: the mirror came
+    // back `shift 0` and unchanged, reading exactly like an arm with nothing to fix.
+    // `spoil_place` has the same shape (`if cut <= 0 { return; }`) and it is right
+    // WITHIN ITS SCOPE — it measures after the stamp, and the settle it measures can
+    // only lower. A RUN-level balance is measured against the natural ground, where
+    // both signs are reachable, so it has to answer to both.
+    eshift = 0;
+    if cells > 0 { eshift = (owed_e / cells) ?? 0; }
+    if eshift != 0 {
+      for eq2 in (0 - hex_editor::ROAD_HALF)..(N + hex_editor::ROAD_HALF) {
+        for er2 in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+          eh2 = run_h(we, eq2, er2, ROAD_MAT);
+          if eh2 < 0 { continue; }
+          run_set(we, eq2, er2, ROAD_MAT, eh2 + eshift);
+        }
+      }
+    }
+    report("+ one balance", nate, we);
+    println("                  (the shipped settle, then ONE shift of {eshift} over "
+          + "{cells} cells)");
   }
   println("");
   println("⚠ COMPARE `per stroke` WITH `to convergence`, and ONLY those two — they are");
@@ -216,4 +306,8 @@ fn main() {
   println("⚠ The same rule run to the end once moves a third less earth and puts a");
   println("   cutting at the head and an embankment at the foot. The canyon is the");
   println("   repetition, and no choice of envelope can close it.");
+  println("⚠ AND `+ one balance` IS THE ROW THAT MATTERS: the shipped settle untouched,");
+  println("   per stroke, then ONE two-sided shift over the whole run. 848 walked down");
+  println("   and 845 walked up, against `envelope.loft`'s optimum of 845 — so the");
+  println("   profile was always right and only its DATUM was wrong.");
 }

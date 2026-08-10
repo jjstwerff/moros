@@ -424,6 +424,45 @@ never were.
    twenty-six calls of twelve passes is what converges it. Repetition is standing in
    for passes and paying for it with the balance, and the two only look like one rule.
 
+   ✅ **AND THE SETTLE IS NOT THE HALF TO CHANGE — MEASURED.** Left exactly as it ships,
+   per stroke, and followed by **one two-sided balance** over the whole run against the
+   natural ground the road replaced:
+
+   | 26 cells | per stroke — ships | | **+ one balance** | |
+   |---|---|---|---|---|
+   | 6 per hex, walked **down** | 1508 | −120 … +7 | **848** | −63 … +64 |
+   | 6 per hex, walked **up** | 1439 | +117 … −8 | **845** | +63 … −62 |
+   | 3 per hex, down | 777 | −55 … −3 | **341** | |
+   | 1 per hex, either way | 127 | −5 … −3 | **25** | |
+
+   **845 and 848 are the optimum the envelope probe computed.** So the run's *shape*
+   was right all along — the per-stroke settle produces a correct limit-slope profile
+   and leaves it 57 units too low. **Only its DATUM was wrong.** No envelope, no anchor,
+   no change to the relaxation.
+
+   ⚠ **AND THE LAST ROW EARNS ITS OWN LINE.** At 1 per hex the road *can* follow the
+   ground inside its own limit and the settle never fires — yet the shipped path still
+   moves 127 units, because a cell's grade comes from the **last disc that covered it**
+   and that disc trails the author by `ROAD_HALF`. So the effective lookahead is
+   `2 * ROAD_HALF + 1` = five cells, and the road sinks a uniform five units into ground
+   it could have followed exactly. The same balance takes it to 25.
+
+   ⚠ **AND THE BALANCE MUST BE TWO-SIDED, WHICH ONLY THE MIRROR CAUGHT.** The first
+   version of the arm read `if owed > 0`: it fired on the descent and did **nothing** on
+   the ascent — `shift 0`, every column unchanged, reading exactly like an arm with
+   nothing left to fix. **That is this tree's one-sided guard for the third time**, after
+   `faced_between` and `stroke_over_limit`, and this time in the instrument rather than
+   in the rule. `spoil_place` has the same shape (`if cut <= 0 { return; }`) and is right
+   *within its scope* — it measures after the stamp, and the settle it measures can only
+   lower. A **run-level** balance is measured against the natural ground, where both
+   signs are reachable, so it must answer to both.
+
+   **What is left is the build, and it is one open piece**: the run-level balance needs
+   the natural ground the road replaced, and the stamp has overwritten it. `road_lay`
+   already samples `snat` for its disc *before* writing, and those samples **telescope**
+   — a later stroke reading the same cell reads the road the earlier one left — so a
+   single accumulator threaded through the run gives the exact total with no registry.
+
    The original question, kept because the measurement is what answered it: ⚠ **NEW, and it is
    what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a
    road walked down a 6-per-hex ramp is cut 120 units at its top and stands proud by 1 —
