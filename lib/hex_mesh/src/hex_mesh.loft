@@ -529,6 +529,51 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
   }
 }
 
+// ── THE BANK A TRICKLE IS CUT INTO — plan 20 `A10` ─────────────────────────
+//
+// A spring is drawn inset, so the water no longer fills its cell — and the BED does,
+// which reads as a dark trench flanking the thread. What the cell wants is an ANNULUS:
+// bank at the rim, water in the middle, and the cut sloping between them.
+//
+// ⚠ IT IS ADDED, NOT SUBSTITUTED, and that is what keeps it small. The bed's own fan
+// still fills the cell at the channel floor; this skirt hangs from the rim at the BANK
+// down to the inset boundary at that floor, and covers the annulus that was the trench.
+//
+// ⚠ EVERY HEIGHT IS DERIVED. The bank is `bed + depth + WATER_FREE` — the store says
+// how deep the channel is and how far a surface sits below its banks — so nothing here
+// is a second copy of a number the cells already carry.
+fn emit_hex_bank(m: Mesh, cq: integer, cr: integer, floor_y: float, bank_y: float,
+                 inset: float, iax: float, iaz: float) {
+  cw = hex_to_world(cq, cr, 0);
+  for bi in 0..6 {
+    bj = (bi + 1) % 6 ?? 0;
+    o1 = hex_corner_world(cq, cr, 0, (6 - bi) % 6 ?? 0);
+    o2 = hex_corner_world(cq, cr, 0, (6 - bj) % 6 ?? 0);
+    // the same across-flow squeeze the water's own fan takes, so the two boundaries
+    // meet exactly rather than nearly
+    x1 = o1.x - cw.x;
+    z1 = o1.z - cw.z;
+    a1 = x1 * iax + z1 * iaz;
+    i1x = cw.x + a1 * iax + (x1 - a1 * iax) * inset;
+    i1z = cw.z + a1 * iaz + (z1 - a1 * iaz) * inset;
+    x2 = o2.x - cw.x;
+    z2 = o2.z - cw.z;
+    a2 = x2 * iax + z2 * iaz;
+    i2x = cw.x + a2 * iax + (x2 - a2 * iax) * inset;
+    i2z = cw.z + a2 * iaz + (z2 - a2 * iaz) * inset;
+    // outward and upward — a cut bank is lit as a slope, not as a wall
+    mx = (o1.x + o2.x) * 0.5 - cw.x;
+    mz = (o1.z + o2.z) * 0.5 - cw.z;
+    nm = nrm3(mx, bank_y - floor_y, mz);
+    pa = vec3(i1x, floor_y, i1z);
+    pb = vec3(i2x, floor_y, i2z);
+    pc = vec3(o2.x, bank_y, o2.z);
+    pd = vec3(o1.x, bank_y, o1.z);
+    emit_tri(m, pa, nm, pb, nm, pc, nm);
+    emit_tri(m, pa, nm, pc, nm, pd, nm);
+  }
+}
+
 // THE OUTDOORS IS EVERYWHERE — one chunk's cells of one material, as triangles.
 //
 // ⚠ AN UNWRITTEN CELL COUNTS AS GROUND HERE, which is what makes an unauthored
@@ -665,9 +710,15 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
         wins = 1.0;
         wax = 1.0;
         waz = 0.0;
-        if want_mat == hex_editor::WATER_MAT {
+        wdep = 0;
+        // ⚠ ASKED OF THE CELL, NOT OF THE PASS. The water's own pass wants the shade
+        // and the inset; the GROUND pass draws that same cell's BED and wants the same
+        // inset to hang the bank from. Computing it only under `want_mat == WATER_MAT`
+        // leaves the skirt unreachable — the shape this tree keeps finding, one pass
+        // over, and `mesh ground` is what says whether it fires.
+        if hex_editor::is_water(world_ground_cell(wld, cq, cr).h_material as integer ?? 0) {
           wdep = hex_editor::water_depth_at(wld, cq, cr);
-          nsc = 1.0 + water_shade(wdep);
+          if want_mat == hex_editor::WATER_MAT { nsc = 1.0 + water_shade(wdep); }
           wins = water_inset(wdep);
           // The flow's own axis, from the material — a still pool has none and keeps
           // its full cell, which is what a pool is.
@@ -685,6 +736,15 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
         }
         emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw, nsc,
                         wins, wax, waz);
+        // ⚠ AND THE BANK THE TRICKLE IS CUT INTO, in the GROUND pass rather than the
+        // water's — the annulus is earth, not river. Only where the water is inset: at
+        // full width there is no annulus and the skirt would be zero-area.
+        if want_mat == SURFACE_MAT && wins < 1.0 && wdep > 0 {
+          wbed = (grid_h(gh, gq0, gr0, gw, cq, cr, wld) as float) * HEIGHT_SCALE;
+          emit_hex_bank(cm, cq, cr, wbed,
+                        wbed + ((wdep + hex_editor::WATER_FREE) as float) * HEIGHT_SCALE,
+                        wins, wax, waz);
+        }
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
         // one surface over. The ground has no skirts because it is continuous and
         // its edges are somebody else's cells — but a stairwell is where the ground
