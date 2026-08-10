@@ -1,0 +1,385 @@
+// A ROAD THROUGH ROCK — plan 20 `A9`.
+//
+// > *"Especially in Switzerland a road along a cliff face is cut into it, getting an
+// > overhang above it. In Austria those overhangs often end up in a half tunnel
+// > because of their more brittle rocks, but in both the roads often got real
+// > tunnels too."*
+//
+// ONE AXIS — how much rock stays above the road — and every number below was
+// measured (`probe/house/cave.loft`, `probe/house/cavewalk.loft`) before it was
+// asserted. The two probes are what the rows here are the frozen half of:
+//
+//   · walked ALONG a contour the strip is half cut and half fill, so the cut has a
+//     transverse gradient — `6 3 0 -3 -6` on a 3-per-hex flank, `48 24 0 -24 -48`
+//     on a 24 — and the number of cells deep enough to stand under walks with the
+//     steepness of the flank rather than with a dial;
+//   · walked UP the fall line the transverse spread is **1**, so a road over a hill
+//     has no cliff side to roof at all.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 200;                 // high enough that a deep cut cannot reach `ρ`
+
+// A LINEAR RAMP: the ground falls by `k` per hex of `r`, so the fall line runs along
+// `r` and every contour is a line of constant `r`. That is the cliff-road case, and
+// a dome would mix it with the fall-line one in a single strip.
+fn ramp(k: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
+  }
+  w
+}
+
+// Walk a road ALONG the contour at r = 0, reading the grade one cell PAST the strip
+// — which is what `editor_server`'s `rd_look` does, and the only place the natural
+// ground still survives after the stroke before it.
+fn walk_contour(w: World, from: integer, to: integer) -> integer {
+  cl = 0;
+  rs = 0;
+  n = 0;
+  for q in from..to {
+    ahead = ground_h(w, q + ROAD_HALF + 1, 0);
+    n = n + road_lay(w, q, 0, ahead, ROAD_HALF, (ahead as float) * U, cl, rs);
+  }
+  n
+}
+
+// How many cells of the strip at `q` are shelves — the axis, counted.
+fn shelves_across(w: World, q: integer) -> integer {
+  n = 0;
+  for i in 0..(2 * ROAD_HALF + 1) {
+    if caved_h(w, q, i - ROAD_HALF) >= 0 { n = n + 1; }
+  }
+  n
+}
+
+fn columns(w: World, q: integer, r: integer) -> integer {
+  n = 0;
+  for e in world_column(w, q, r).co_cells {
+    if hex_world::hex_occupied(e) { n = n + 1; }
+  }
+  n
+}
+
+// ── the shape of a caved column ─────────────────────────────────────────────
+
+fn test_a_shelf_is_the_road_below_and_the_hillside_above() {
+  w = ramp(12);
+  // ⚠ THE FIXTURE'S OWN PRECONDITION, ASSERTED. A flank this steep is what makes the
+  // subject exist at all; on a gentle one every row below would pass vacuously.
+  before = ground_h(w, 0, 0 - ROAD_HALF);
+  assert(before - ground_h(w, 0, ROAD_HALF) == 4 * 12,
+         "the fixture is not a flank — the strip spans {before - ground_h(w, 0, ROAD_HALF)}");
+  walk_contour(w, 0 - 6, 7);
+
+  cut = 0;
+  for i in 0..(2 * ROAD_HALF + 1) {
+    r = i - ROAD_HALF;
+    if caved_h(w, 0, r) >= 0 { cut = r; }
+  }
+  assert(caved_h(w, 0, cut) >= 0, "no cell of the strip was caved at all");
+  col = world_column(w, 0, cut);
+  assert(columns(w, 0, cut) == 2,
+         "a caved column holds {columns(w, 0, cut)} occupied layers, not two");
+  // ⚠ THE ORDER IS THE CLAIM: road BELOW, hillside ABOVE. `F1″` makes layer order
+  // height order, so this is also what the store guarantees — and asserting it is
+  // what would catch a write that put the pair in the other order.
+  assert(caved_h(w, 0, cut) < ground_h(w, 0, cut),
+         "the road at {caved_h(w, 0, cut)} is not below the rock at {ground_h(w, 0, cut)}");
+  assert((world_ground_cell(w, 0, cut).h_material as integer ?? 0) == SURFACE_MAT,
+         "the standing ground over the shelf is not the hillside it was cut into");
+  // ⚠ AND THE RENDERER'S OWN TWO QUESTIONS, ASKED HERE. `col_has_below` is what
+  // gives the ground an underside — without it the rock over the road is a lid with
+  // no inside — and `col_underground` is what gives the shelf its walls.
+  li = sub_layer(w, 0, cut, ROAD_MAT);
+  assert(col_has_below(col, li + 1),
+         "nothing reads as being under the ground here, so the overhang gets no soffit");
+  assert(col_underground(col, li),
+         "the shelf does not read as underground, so its cut face is never drawn");
+}
+
+fn test_the_rock_above_stands_where_the_hillside_stood() {
+  w = ramp(12);
+  was = ground_h(w, 0, 0 - ROAD_HALF);
+  walk_contour(w, 0 - 6, 7);
+  assert(caved_h(w, 0, 0 - ROAD_HALF) >= 0,
+         "the uphill edge of the strip was not caved, so this row tests nothing");
+  assert(ground_h(w, 0, 0 - ROAD_HALF) == was,
+         "the rock over the shelf ended at {ground_h(w, 0, 0 - ROAD_HALF)}, where the "
+         + "hillside stood at {was} — a shelf moves the road, never the mountain");
+}
+
+// ── the headroom, which is a promise about the future ───────────────────────
+
+fn test_every_shelf_keeps_a_storey_of_headroom() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  assert(CAVE_HEAD >= w.w_eps,
+         "CAVE_HEAD {CAVE_HEAD} is under the store's own fold separation {w.w_eps}, so "
+         + "a shelf cut to it would be refused before a walker ever saw it");
+  seen = 0;
+  for q in (0 - 6)..7 {
+    for i in 0..(2 * ROAD_HALF + 1) {
+      r = i - ROAD_HALF;
+      hd = shelf_head(w, q, r, ROAD_MAT);
+      if hd < 0 { continue; }
+      seen = seen + 1;
+      assert(hd >= CAVE_HEAD,
+             "a shelf at ({q},{r}) has {hd} units of air under {CAVE_HEAD}");
+    }
+  }
+  assert(seen > 0, "there were no shelves at all, so nothing was measured");
+}
+
+// ⚠ THE ONE THE BALANCE BROKE, AND IT IS WHY THE SWEEP EXISTS. `A8` shifts the whole
+// settled run up by the mean it cut, which walks a shelf's clearance DOWN — measured
+// on a road up a hill of 60, from 9 to 8, which is `ε` exactly: legal to the store
+// and under what the shelf was cut for. The rule is that the lid comes off, so this
+// asks the settle directly rather than through a gesture that might not reach it.
+fn test_a_shelf_the_fill_squeezes_is_taken_off() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  // ⚠ THE SHALLOWEST SHELF IS THE SUBJECT, AND PICKING THE DEEPEST BROKE THE ROW.
+  // The lift is measured from the target, so aiming at the deepest shelf lifts every
+  // other one by more than it has room for — `run_set` refuses those on `F1`, the
+  // profile stops being uniform, and the relaxation then puts the target back down.
+  // Measured: the head came out 15 where the fixture had set it to 11.
+  q0 = 0;
+  r0 = 0;
+  minhead = 0;
+  for i0 in 0..(2 * ROAD_HALF + 1) {
+    rr = i0 - ROAD_HALF;
+    hd0 = shelf_head(w, 0, rr, ROAD_MAT);
+    if hd0 < 0 { continue; }
+    if minhead == 0 || hd0 < minhead { minhead = hd0; r0 = rr; }
+  }
+  assert(caved_h(w, q0, r0) >= 0, "nothing was caved, so the sweep has no subject");
+  rock = ground_h(w, q0, r0);
+  road = caved_h(w, q0, r0);
+  // ⚠ THE WHOLE RUN IS LIFTED, NOT ONE CELL, AND THE FIRST VERSION OF THIS ROW
+  // LIFTED ONE. That is not the state `A8` produces — a uniform shift is the only
+  // kind that keeps the limit — and the relaxation simply put the single cell back,
+  // so the sweep never had a squeezed shelf to find and the row failed saying the
+  // lid had stayed on. It had, and correctly.
+  lift = rock - CAVE_HEAD + 1 - road;
+  assert(lift > 0, "the fixture's shelf already has less than a storey of air");
+  for q in (0 - 8)..9 {
+    for i in 0..(2 * ROAD_HALF + 1) {
+      r = i - ROAD_HALF;
+      hh = run_h(w, q, r, ROAD_MAT);
+      if hh >= 0 { run_set(w, q, r, ROAD_MAT, hh + lift); }
+    }
+  }
+  assert(shelf_head(w, q0, r0, ROAD_MAT) == CAVE_HEAD - 1,
+         "the fixture did not squeeze anything: head is "
+         + "{shelf_head(w, q0, r0, ROAD_MAT)}, and it was {rock - road}");
+  cl = 0;
+  rs = 0;
+  slope_settle(w, q0, 0, cl, rs);
+  assert(caved_h(w, q0, r0) < 0,
+         "a shelf with {shelf_head(w, q0, r0, ROAD_MAT)} of air under {CAVE_HEAD} kept its lid");
+  assert((world_ground_cell(w, q0, r0).h_material as integer ?? 0) == ROAD_MAT,
+         "the lid came off and the road did not come back to the ground layer");
+}
+
+// ── the walk ────────────────────────────────────────────────────────────────
+
+fn test_feet_on_a_shelf_find_the_road_and_not_the_rock() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  seen = 0;
+  for q in (0 - 6)..7 {
+    for i in 0..(2 * ROAD_HALF + 1) {
+      r = i - ROAD_HALF;
+      rh = caved_h(w, q, r);
+      if rh < 0 { continue; }
+      seen = seen + 1;
+      sf = hex_world::world_surface(w, q, r, rh as float);
+      assert(sf.sf_units == rh,
+             "standing on the shelf at ({q},{r}) the surface answered {sf.sf_units}, "
+             + "not the road at {rh} — the walker is inside the rock");
+      assert(sf.sf_layer == sub_layer(w, q, r, ROAD_MAT),
+             "the surface named layer {sf.sf_layer} where the road is on "
+             + "{sub_layer(w, q, r, ROAD_MAT)}");
+    }
+  }
+  assert(seen > 0, "no shelf was walked on");
+}
+
+// ⚠ THE STEP IS MEASURED WITH `run_h`, AND THE FIRST INSTRUMENT COULD NOT SEE IT.
+// A count over ground materials skips a cell whose ground is the rock over it, so it
+// reported `steepest step 1` on a road that stepped **27** into a shelf
+// (`probe/house/cavewalk.loft`). The blind version is asserted BESIDE the real one so
+// that a regression cannot hide in the difference.
+fn test_the_road_is_one_surface_through_its_shelves() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  lim = ground_kind_of(ROAD_MAT).tr_slope;
+  worst = 0;
+  crossed = 0;
+  for q in (0 - 5)..6 {
+    for i in 0..(2 * ROAD_HALF + 1) {
+      r = i - ROAD_HALF;
+      hh = run_h(w, q, r, ROAD_MAT);
+      if hh < 0 { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        nh = run_h(w, nq, nr, ROAD_MAT);
+        if nh < 0 { continue; }
+        // ⚠ ONLY THE EDGES THE SHELF IS ON EITHER SIDE OF COUNT AS EVIDENCE — an
+        // all-open road would satisfy the step claim without saying anything about
+        // caving at all.
+        if (caved_h(w, q, r) >= 0) != (caved_h(w, nq, nr) >= 0) { crossed = crossed + 1; }
+        st = hh - nh;
+        if st < 0 { st = 0 - st; }
+        if st > worst { worst = st; }
+      }
+    }
+  }
+  assert(crossed > 0,
+         "no edge of this road runs from open cut to shelf, so the claim is vacuous");
+  assert(worst <= lim,
+         "the road surface steps {worst} somewhere, where a road's limit is {lim}");
+}
+
+// ⚠ AND THE RULES THAT WALK THE RUN MUST SEE THROUGH A SHELF. Without it a stalled
+// stretch beyond one reads as nothing owing — `slope_owed` is what the editor
+// broadcasts and what `gates/world/road` measures its gradient with.
+fn test_what_the_run_still_owes_is_measured_through_a_shelf() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  // ⚠ A COORDINATE IS A BAD SENTINEL — this was `found = -1` tested with `found >= 0`,
+  // and the shelf is at `r = -2`, so the row failed claiming the fixture had no shelf
+  // in it while looking straight at one.
+  found = 0;
+  any = false;
+  for i in 0..(2 * ROAD_HALF + 1) {
+    r = i - ROAD_HALF;
+    if caved_h(w, 0, r) >= 0 { found = r; any = true; }
+  }
+  assert(any, "no shelf in the fixture, so the walk cannot be blocked by one");
+  assert(slope_owed(w, 0, ROAD_HALF) == 0,
+         "the settled road already owes {slope_owed(w, 0, ROAD_HALF)}");
+  // ⚠ THE BREAK GOES IN A SHELF, AND IT GOES DOWN. Raising one is refused by `F1`
+  // against its own rock — measured, the first version of this row raised by 20, the
+  // write never happened, and the row failed reporting the very blindness it was
+  // written to catch. ⚠ And the seed is an OPEN cell on the far side of the strip,
+  // so the walk has to reach the shelf from outside it.
+  run_set(w, 3, found, ROAD_MAT, run_h(w, 3, found, ROAD_MAT) - 20);
+  assert(caved_h(w, 3, found) >= 0, "the break did not land in a shelf");
+  assert(slope_owed(w, 0, ROAD_HALF) > 0,
+         "a 20-unit break in a shelf reads as nothing owing — the run walk cannot "
+         + "see a cell whose ground is the rock over it");
+}
+
+// ── the axis, walked ────────────────────────────────────────────────────────
+
+// ⚠ THIS IS THE PHASE'S OWN VERIFY LINE: *one parameter — how much rock stays above
+// the road — walked from 0 to full.* The parameter is the FLANK, and what walks is
+// the count of roofed cells across the strip.
+fn test_the_cover_grows_with_the_flank_and_starts_at_none() {
+  prev = 0 - 1;
+  out = "";
+  for k in [0, 3, 6, 12, 24] {
+    w = ramp(k);
+    walk_contour(w, 0 - 6, 7);
+    n = shelves_across(w, 0);
+    out += "{k}:{n} ";
+    assert(n >= prev, "the cover went backwards as the flank steepened: {out}");
+    prev = n;
+  }
+  assert(prev >= 2, "the steepest flank roofed only {prev} cells of the strip: {out}");
+}
+
+// ⚠ AND THE NEGATIVE CONTROL THE PLAN NAMES — *at overhang 0 the result must be
+// byte-identical to today's open cut.* On flat ground and on a flank too gentle to
+// stand a roof, every column holds exactly one occupied layer and every road cell is
+// on the ground, which is what the whole editor did before `A9`.
+fn test_a_gentle_flank_caves_nothing_at_all() {
+  for k in [0, 3] {
+    w = ramp(k);
+    n = walk_contour(w, 0 - 6, 7);
+    assert(n == 0, "a {k}-per-hex flank caved {n} cells");
+    for q in (0 - 6)..7 {
+      for i in 0..(2 * ROAD_HALF + 1) {
+        r = i - ROAD_HALF;
+        assert(caved_h(w, q, r) < 0, "a {k}-per-hex flank put a shelf at ({q},{r})");
+        assert(columns(w, q, r) == 1,
+               "({q},{r}) holds {columns(w, q, r)} occupied layers on a {k}-per-hex flank");
+      }
+    }
+    // ⚠ AND THE CHUNK ITSELF HOLDS ONE LAYER, WHICH IS THE BYTE HALF OF THE CONTROL.
+    // *At overhang 0 the result must be byte-identical to today's open cut*, and a
+    // column of one occupied cell does not say that: a layer created and then left
+    // empty is 8196 bytes on disk and reads as nothing at every cell. This is the
+    // claim `storey_add`'s scar is about, asked of the gesture that could repeat it.
+    assert(hex_world::world_chunk_layers(w, 0, 0) == 1,
+           "a {k}-per-hex flank left {hex_world::world_chunk_layers(w, 0, 0)} layers in "
+           + "the chunk where an open cut needs one");
+  }
+}
+
+// ⚠ THE ROW A TEST CAUGHT, AND IT IS THE DIFFERENCE BETWEEN A CLIFF AND A TRENCH.
+// Cut 20 units into FLAT ground satisfies every other condition — deep enough to
+// stand under, grass, nothing dug below — and the first build roofed it, taking
+// `slope_limit.loft`'s open-ground control red. An open cut in level ground is open
+// because there is nothing above to hold a lid up.
+fn test_a_trench_in_flat_ground_never_roofs_itself() {
+  w = ramp(0);
+  cl = 0;
+  rs = 0;
+  n = road_lay(w, 0, 0, G - 20, 1, (G as float) * U, cl, rs);
+  assert(ground_h(w, 0, 0) == G - 20,
+         "the trench ended at {ground_h(w, 0, 0)}, not {G - 20}");
+  assert(n == 0, "a trench in flat ground roofed {n} of its own cells");
+  assert(!cave_backed(w, 0, 0, G),
+         "flat ground reports something for the lid to hang from");
+}
+
+// ── the two pure rules ──────────────────────────────────────────────────────
+
+fn test_rock_stands_and_soil_and_fabric_do_not() {
+  grass = ground_kind_of(SURFACE_MAT);
+  assert(!cave_stands(grass, grass.tr_face),
+         "an overburden exactly at what grass can STAND at was called rock");
+  assert(!cave_stands(grass, CAVE_HEAD - 1),
+         "an overburden of {CAVE_HEAD - 1} was roofed under a headroom of {CAVE_HEAD}");
+  assert(cave_stands(grass, CAVE_HEAD),
+         "an overburden of a whole storey over what grass stands at is not rock");
+  // ⚠ FABRIC NEVER CAVES, and `FACE_NONE` is the same test `face_at` makes. A road
+  // cut under a house is not an overhang.
+  for kk in ground_kinds() {
+    if kk.tr_fabric {
+      assert(!cave_stands(kk, 400),
+             "{kk.tr_name} is fabric and roofed a road anyway");
+    }
+  }
+  // ⚠ ONE AUTHORITY FOR *IS THIS ROCK*. `A5` derives rock from the drop because
+  // there is no rock material in this world; if these two ever part company the
+  // picture and the rule stop agreeing about the same stone.
+  assert(ground_kind_of(FLOOR_MAT).tr_face == FACE_NONE,
+         "a floor grew an angle of repose, and `cave_stands` leans on it not having one");
+}
+
+fn test_a_shelf_is_never_cut_under_a_road_already_laid() {
+  w = ramp(12);
+  walk_contour(w, 0 - 6, 7);
+  // A road cell, at the grade it was paved: the natural material a second stroke
+  // would sample there is ROAD, and a road slab is not a roof.
+  assert(!cave_at(w, 0, 0, ground_h(w, 0, 0) + 40, ROAD_MAT, ground_h(w, 0, 0)),
+         "a road already laid was treated as the rock over a second one");
+}
+
+fn test_nothing_caves_where_something_is_already_dug() {
+  w = ramp(12);
+  why = "";
+  // a cellar under the strip's uphill edge
+  storey_add(w, 0, 0 - ROAD_HALF, 0 - 1, 0, why);
+  assert(col_dug(w, 0, 0 - ROAD_HALF),
+         "the fixture dug nothing, so this row controls nothing: {why}");
+  nat = ground_h(w, 0, 0 - ROAD_HALF);
+  assert(!cave_at(w, 0, 0 - ROAD_HALF, nat, SURFACE_MAT, nat - 40),
+         "a shelf was cut into a column that already has a room under it");
+}

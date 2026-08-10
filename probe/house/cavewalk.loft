@@ -1,0 +1,101 @@
+// WHAT DOES THE SHELF DO TO THE RUN? — plan 20 `A9`, the second measurement.
+//
+// `tests/face.loft` went red the moment `road_lay` caved: **2 faces between two
+// ROAD cells**, on a surface `slope_settle` had just settled to 1 a hex. The
+// suspicion is that a caved cell leaves the run — its GROUND is the rock overhead,
+// so the same-material walk stops there and the road beyond keeps an unsettled
+// grade. This prints the column at every cell of that exact fixture so the guess
+// can be checked rather than argued.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+fn plain() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn row(w: World, r: integer) {
+  out = "";
+  for q in 0..14 {
+    m = world_ground_cell(w, q, r).h_material as integer ?? 0;
+    g = ground_h(w, q, r) - G;
+    c = caved_h(w, q, r);
+    tag = "{g}";
+    if m == ROAD_MAT { tag = "R{g}"; }
+    if c >= 0 { tag = "[{c - G}/{g}]"; }
+    out += "{tag} ";
+  }
+  println("  r={r}: {out}");
+}
+
+fn main() {
+  rl_c = 0;
+  rl_r = 0;
+  w = plain();
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 60, 10, cl, rs);
+  println("the hill, from the crest:");
+  hs: vector<integer> = [];
+  for s0 in 0..14 { hs += [ground_h(w, s0, 0)]; }
+  nat = "";
+  for s1 in 0..14 { nat += "{(hs[s1] ?? G) - G} "; }
+  println("  {nat}");
+
+  caved = 0;
+  for wq in 0..13 {
+    x = 12 - wq;
+    h = hs[x] ?? G;
+    caved = caved + road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+  }
+  println("");
+  println("after the walk — `R` is road on the ground, `[road/rock]` is a shelf:");
+  for rr in (0 - 2)..3 { row(w, rr); }
+  println("  cells caved: {caved}");
+
+  cl2 = 0;
+  rs2 = 0;
+  slope_settle(w, 0, 0, cl2, rs2);
+  println("");
+  println("after an explicit settle from the crest (clamped {cl2}, residual {rs2}):");
+  for rr2 in (0 - 2)..3 { row(w, rr2); }
+
+  // ⚠ THE INSTRUMENT HAD THE SAME BLIND SPOT AS THE BUG, AND THAT IS THE FINDING.
+  // Counting over `world_ground_cell` materials cannot see a cell whose ground is
+  // the rock over it, so the first version of this reported `steepest step 1` on a
+  // road that stepped **27** into a shelf. It asks `run_h` now — the surface
+  // wherever the column keeps it — which is the same question the settle asks.
+  worst = 0;
+  ground_worst = 0;
+  low = 0;
+  for q in 0..14 {
+    for r in (0 - 4)..5 {
+      if run_h(w, q, r, ROAD_MAT) < 0 { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if run_h(w, nq, nr, ROAD_MAT) < 0 { continue; }
+        st = run_h(w, q, r, ROAD_MAT) - run_h(w, nq, nr, ROAD_MAT);
+        if st > worst { worst = st; }
+        if (world_ground_cell(w, q, r).h_material as integer ?? 0) == ROAD_MAT
+           && (world_ground_cell(w, nq, nr).h_material as integer ?? 0) == ROAD_MAT {
+          gs = ground_h(w, q, r) - ground_h(w, nq, nr);
+          if gs > ground_worst { ground_worst = gs; }
+        }
+      }
+      hd = shelf_head(w, q, r, ROAD_MAT);
+      if hd >= 0 {
+        if low == 0 || hd < low { low = hd; }
+      }
+    }
+  }
+  println("");
+  println("steepest step in the ROAD SURFACE (run_h): {worst}");
+  println("  the same measured over ground materials only: {ground_worst} — the blind version");
+  println("thinnest headroom left under any shelf: {low}, and CAVE_HEAD is {CAVE_HEAD}");
+  println("a road's limit is {ground_kind_of(ROAD_MAT).tr_slope}, and it stands to {ground_kind_of(ROAD_MAT).tr_face}");
+}

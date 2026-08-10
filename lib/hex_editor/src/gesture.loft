@@ -205,6 +205,64 @@ pub fn ground_set(w: World, q: integer, r: integer, h: integer, mat: integer) ->
   ground_write(w, q, r, nc)
 }
 
+// ── A SURFACE IS ONE RUN WHATEVER LAYER EACH CELL IS ON — plan 20 `A9` ──────
+//
+// A road cut into a cliff keeps the rock above it, so its cells live on a layer
+// BELOW the ground and `ground_h` at one of them answers *the rock overhead*. Every
+// rule that walks a run — the settle, its guard, what it still owes — therefore has
+// to ask for the surface by name or it walks off the end of its own road.
+//
+// ⚠ MEASURED BEFORE THESE EXISTED (`probe/house/cavewalk.loft`). With the walkers
+// still asking `ground_h`, four shelves cut one run into islands: an explicit settle
+// came back `clamped 0` having reached nothing past the first shelf, and the road was
+// left with a **27-unit step in its own surface** where its limit is 1. ⚠ And the
+// instrument agreed with the bug — every road-to-road count read 0, because a count
+// over ground materials cannot see a cell whose ground is rock.
+//
+// ⚠ AND THE COST IS ONE CHUNK LOOKUP WHERE NOTHING IS CAVED. `world_ground_layer` is
+// 0 exactly when no layer sits under the ground anywhere in this chunk — the same
+// derivation `ground_open` and the mesher's `can_open` already make.
+
+// Which layer BELOW the ground carries this material here, or −1 for none.
+pub fn sub_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
+  gl = hex_world::world_ground_layer(w, q, r);
+  if gl <= 0 { return 0 - 1; }
+  for j in 0..gl {
+    i = gl - 1 - j;
+    c = hex_world::world_cell(w, q, r, i);
+    if hex_world::hex_occupied(c) && (c.h_material as integer ?? 0) == mat { return i; }
+  }
+  0 - 1
+}
+
+// The height of this material's surface at a cell, wherever the column keeps it —
+// −1 where the column carries none. The ground first, because that is where all but
+// a caved road lives.
+pub fn run_h(w: World, q: integer, r: integer, mat: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  if (c.h_material as integer ?? 0) == mat { return c.h_height as integer ?? 0; }
+  li = sub_layer(w, q, r, mat);
+  if li < 0 { return 0 - 1; }
+  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+}
+
+// Move it, wherever it is. ⚠ THE VERDICT IS RETURNED AND MUST NOT BE THROWN AWAY:
+// under a shelf the rock above is `F1`'s upper neighbour, so a raise that would come
+// within `ε` of it is `CW_FOLD` — a refused write, which is the failure `road_lay`
+// already carries a scar for.
+pub fn run_set(w: World, q: integer, r: integer, mat: integer, h: integer) -> integer {
+  c = world_ground_cell(w, q, r);
+  if (c.h_material as integer ?? 0) == mat { return ground_set(w, q, r, h, mat); }
+  li = sub_layer(w, q, r, mat);
+  if li < 0 { return hex_world::CW_FOLD; }
+  lc = hex_world::world_cell(w, q, r, li);
+  layer_write(w, q, r, li,
+    hex_world::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0,
+                     h_item: lc.h_item, h_item_rotation: lc.h_item_rotation,
+                     h_wall_n: lc.h_wall_n, h_wall_ne: lc.h_wall_ne,
+                     h_wall_se: lc.h_wall_se })
+}
+
 // ── the surface and edge writers the gestures share ─────────────────────────
 
 // The three edge slots a hex owns, and the height unit everything is measured in.
@@ -2643,7 +2701,10 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
     head = head + 1;
     for d in 0..6 {
       (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
-      if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+      // ⚠ ASKED OF THE COLUMN, NOT OF THE GROUND — plan 20 `A9`. A shelf's ground is
+      // the rock over it, so a ground-material test walks off the road at the first
+      // caved cell and settles an island.
+      if run_h(w, nq, nr, mat) < 0 { continue; }
       if seen.s_by[age_like_key(nq, nr)] != null { continue; }
       if len(mq) >= LIFT_CAP { continue; }
       seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
@@ -2666,34 +2727,60 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
   // fill is what it puts back, and both are measured against one profile that cannot
   // disagree with the store because it IS the store, a moment earlier.
   was: vector<integer> = [];
-  for wi in 0..len(mq) { was += [ground_h(w, mq[wi] ?? 0, mr[wi] ?? 0)]; }
+  for wi in 0..len(mq) { was += [run_h(w, mq[wi] ?? 0, mr[wi] ?? 0, mat)]; }
   moved = false;
   for _ in 0..SLOPE_PASSES {
     moved = false;
     for i in 0..len(mq) {
       q = mq[i] ?? 0;
       r = mr[i] ?? 0;
-      h = ground_h(w, q, r);
+      h = run_h(w, q, r, mat);
       want = h;
       for d2 in 0..6 {
         (nq2, nr2) = hex_grid::hex_neighbor(q, r, d2);
         if seen.s_by[age_like_key(nq2, nr2)] == null { continue; }
-        nh = ground_h(w, nq2, nr2);
+        nh = run_h(w, nq2, nr2, mat);
         if want > nh + lim0 { want = nh + lim0; }
       }
       if want != h {
         clamped = clamped + 1;
         give = h - want;
         if give > residual { residual = give; }
-        bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
-        if bm == 0 { bm = SURFACE_MAT; }
-        ground_set(w, q, r, want, bm);
+        // ⚠ THE MATERIAL IS THE RUN'S, and it no longer has to be re-read: the walk
+        // above admitted this cell because it carries `mat`, so asking the ground
+        // again would answer *rock* at a shelf and repaint the road as hillside.
+        run_set(w, q, r, mat, want);
         moved = true;
       }
     }
     if !moved { break; }
   }
-  spoil_place(w, mq, mr, was, clamped, residual);
+  spoil_place(w, mq, mr, was, mat, clamped, residual);
+  // ── A SHELF THAT HAS BEEN SQUEEZED IS NO LONGER ONE — plan 20 `A9` ────────
+  //
+  // ⚠ `CAVE_HEAD` IS A PROMISE ABOUT THE FUTURE, NOT ONLY ABOUT THE MOMENT OF
+  // CUTTING, and this sweep is what keeps it one. A shelf is cut with a storey of
+  // air over it, and then `A8`'s balance raises the whole run by the mean it removed
+  // — measured on a road walked up a hill of 60, that took one shelf's clearance from
+  // 9 to **8**, which is `ε` exactly: legal to the store, and under the headroom the
+  // shelf was made for. `F1` cannot be the guard here, because ε is what a LAYER
+  // needs and this is what a WALKER needs.
+  //
+  // ⚠ AND THE ANSWER IS TO TAKE THE LID OFF, NOT TO REFUSE THE FILL. Refusing would
+  // leave one cell of the run un-shifted, and a uniform shift is the only kind that
+  // keeps the limit `slope_settle` just established. So the continuum walks BACK:
+  // where the road has risen into its own roof the rock comes off and the cell is an
+  // open cut again, which is the same axis read from the other end.
+  for si in 0..len(mq) {
+    sqq = mq[si] ?? 0;
+    srr = mr[si] ?? 0;
+    hd = shelf_head(w, sqq, srr, mat);
+    if hd >= 0 && hd < CAVE_HEAD {
+      run_unshelf(w, sqq, srr, mat);
+      clamped = clamped + 1;
+      if CAVE_HEAD - hd > residual { residual = CAVE_HEAD - hd; }
+    }
+  }
 }
 
 // Did the disc just stamped at `(cq, cr)` leave any cell steeper than its own
@@ -2719,7 +2806,11 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
       mat = world_ground_cell(w, q, r).h_material as integer ?? 0;
       for d in 0..6 {
         (nq, nr) = hex_grid::hex_neighbor(q, r, d);
-        if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+        // ⚠ THE COLUMN, NOT THE GROUND — plan 20 `A9`. A stroke's own cells are on
+        // the ground (`road_lay` takes any rock off before it paves), but a
+        // neighbour just outside the disc may be a shelf, and a guard that cannot
+        // see the road there under-fires exactly where the run needs settling.
+        if run_h(w, nq, nr, mat) < 0 { continue; }
         // ⚠ BOTH WAYS ROUND, AND THE FIRST VERSION ASKED ONLY ONE. It tested
         // `h - nh > lim` — *is this cell too high above its neighbour* — which is
         // true when a road CLIMBS and false when it DESCENDS, because then the
@@ -2728,7 +2819,7 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
         // descending run's `w_tau` was unchanged at 190/380/760/1520, exactly the
         // unwired numbers, while the ascending one settled correctly. A guard that
         // works in one direction reads as a guard.
-        st = ground_h(w, q, r) - ground_h(w, nq, nr);
+        st = run_h(w, q, r, mat) - run_h(w, nq, nr, mat);
         if st < 0 { st = 0 - st; }
         if st > lim { return true; }
       }
@@ -2764,12 +2855,13 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
 // the pass above cuts nothing, so `V` is 0, so the shift is 0. A balance that moved
 // earth where none was needed would not be a balance.
 fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
-               was: vector<integer>, clamped: &integer, residual: &integer) {
+               was: vector<integer>, mat: integer,
+               clamped: &integer, residual: &integer) {
   n = len(mq);
   if n == 0 { return; }
   cut = 0;
   for i in 0..n {
-    cut = cut + ((was[i] ?? 0) - ground_h(w, mq[i] ?? 0, mr[i] ?? 0));
+    cut = cut + ((was[i] ?? 0) - run_h(w, mq[i] ?? 0, mr[i] ?? 0, mat));
   }
   // ⚠ ONLY EVER PUTS BACK WHAT WAS TAKEN. A negative total would mean the pass above
   // raised something, which it cannot; guarding it anyway keeps this from inventing
@@ -2792,11 +2884,19 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   for j in 0..n {
     q = mq[j] ?? 0;
     r = mr[j] ?? 0;
-    hh = ground_h(w, q, r) + shift;
+    hh = run_h(w, q, r, mat) + shift;
     if hh > H_CEILING { hh = H_CEILING; }
-    bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
-    if bm == 0 { bm = SURFACE_MAT; }
-    ground_set(w, q, r, hh, bm);
+    // ⚠ AND THE VERDICT IS READ — plan 20 `A9`. Under a shelf the rock above is
+    // `F1`'s upper neighbour, so a uniform shift can be refused at exactly the cells
+    // that have the least room: `CAVE_HEAD` is 12 and `ε` is 8 to 10, which leaves a
+    // caved cell only two to four units of lift before the road meets its own roof.
+    // A refused raise breaks the uniformity this balance rests on, so it is COUNTED
+    // rather than swallowed — the same two counters the truncation remainder below
+    // is reported through.
+    if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
+      clamped = clamped + 1;
+      if shift > residual { residual = shift; }
+    }
   }
   // What the balance could not place, because a height is an integer and a mean is
   // not. ⚠ Reported through the same two counters a refused height uses.
@@ -2846,29 +2946,304 @@ pub fn road_clearance(wld: World, q: integer, r: integer, feet: float,
   need - h
 }
 
+// ── A CUT IS NOT ALWAYS A LOWERING — plan 20 `A9` ───────────────────────────
+//
+// > *"Especially in Switzerland a road along a cliff face is cut into it, getting an
+// > overhang above it. In Austria those overhangs often end up in a half tunnel
+// > because of their more brittle rocks, but in both the roads often got real
+// > tunnels too."*
+//
+// ONE AXIS, NOT THREE FEATURES — how much rock stays above the road: none is
+// today's open cut, some is an overhang, most is a gallery, all is a tunnel. And
+// the model already expresses it: a road with rock above it is a column whose road
+// sits on a LOWER layer with terrain above, which is structurally a cellar under a
+// house. So none of this is new storage; it is a rule about WHICH LAYER A CUT
+// WRITES TO, and `slope_settle` lowers the whole column today only because nothing
+// ever asked it not to.
+//
+// ⚠ AND THE AXIS COMES FROM THE TERRAIN, NOT FROM A DIAL — measured before it was
+// built (`probe/house/cave.loft`). Walked ALONG a contour the strip is half cut and
+// half fill, so the cut has a TRANSVERSE gradient across it: `6 3 0 -3 -6` on a
+// 3-per-hex flank, `12 6 0 -6 -12` on a 6, `48 24 0 -24 -48` on a 24. The number of
+// cells cut deep enough to stand under therefore walks 0 → 1 → 2 → … with the
+// steepness of the flank, with nothing to choose. ⚠ Walked UP the fall line the
+// transverse spread is **1** — a road over a hill has no cliff side to roof at all,
+// which is the case `A8`'s fill answers and which every earlier road probe measured.
+//
+// ⚠ THE HEADROOM AND `ε` ARE TWO CLAIMS AND THE LOOSER ONE IS NOT THE RULE. `F1`
+// needs the ground `w_eps` above the road or the write is refused; a walker needs
+// somewhere to walk. This is the walker's number, and it is one storey for the
+// reason a room is: the drawn ceiling hangs `SLAB_THICK` under the ground, so a
+// storey of cut leaves ten units — 2.5 wu — of air over the road.
+pub const CAVE_HEAD = STOREY_H;
+
+// Will a roof of `over` height units of THIS ground stand over a road cut beneath it?
+//
+// ⚠ THE ROCK DECIDES, WHICH IS OPEN QUESTION 7 ANSWERED BY WHAT IS ALREADY BUILT.
+// There is no rock MATERIAL in this world — `A5` derives rock from the drop, because
+// *a face is a surface, not an absence* — so "is this rock" already has exactly one
+// authority and it is `tr_face`. An overburden deeper than what this ground can stand
+// at is drawn as rock by `chunk_mesh_faces`, and this says the same stone will stand
+// as a roof. The picture and the rule cannot disagree, because they are one number.
+//
+// ⚠ AND FABRIC NEVER CAVES. A floor is somebody's building; a road cut under a house
+// is not an overhang, and `FACE_NONE` is the same test `face_at` makes.
+pub fn cave_stands(k: GroundKind, over: integer) -> boolean {
+  if k.tr_fabric { return false; }
+  if k.tr_face == FACE_NONE { return false; }
+  over >= CAVE_HEAD && over > k.tr_face
+}
+
+// Is anything already dug under this column?
+//
+// ⚠ THE SAME SHAPE AS `ground_open`'s SECOND HALF, AND DELIBERATELY NOT IT.
+// `ground_open` asks *was the ground cut through here*, which needs the ground to be
+// absent; this asks only *is the space below already spoken for*. A world with no
+// cellars pays one chunk lookup and a label scan, which is what a per-cell question
+// on a stroke path has to cost.
+pub fn col_dug(w: World, q: integer, r: integer) -> boolean {
+  gl = hex_world::world_ground_layer(w, q, r);
+  if gl <= 0 { return false; }
+  for i in 0..gl {
+    // ⚠ TERRAIN ONLY — a shrub filed below the ground is not a room, and `F1` does
+    // not constrain a dressing layer at all.
+    if hex_world::world_layer_kind(w, q, r, i) == hex_world::KIND_TERRAIN
+       && hex_world::hex_occupied(hex_world::world_cell(w, q, r, i)) { return true; }
+  }
+  false
+}
+
+// Does the hillside keep RISING away from this cell — is there anything for the
+// rock left overhead to be attached to?
+//
+// ⚠ THIS IS THE ROW A TEST CAUGHT, AND IT IS THE DIFFERENCE BETWEEN A CLIFF AND A
+// TRENCH. Without it `test_a_road_over_open_ground_is_never_lifted` went red: a road
+// cut 20 units into FLAT ground satisfies every other condition — deep enough to
+// stand under, grass, nothing dug below — and roofed itself. An open cut in level
+// ground is open because there is nothing above to hold the lid up; a cutting in a
+// cliff face has the whole mountain. So the question is not *how deep is the cut*
+// but *does the ground continue upward beside it*.
+//
+// ⚠ ASKED OF THE NATURAL PROFILE, WHICH MEANS BEFORE THE STROKE WRITES. Every cell
+// of the disc is about to be paved to one grade, so asked afterwards no cell has a
+// neighbour above it and the answer is always no — and asked half-way through, the
+// answer would depend on which cell the loop reached first.
+pub fn cave_backed(w: World, q: integer, r: integer, nat: integer) -> boolean {
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+    if ground_h(w, nq, nr) > nat { return true; }
+  }
+  false
+}
+
+// May the road at grade `h` be cut as a SHELF here — the rock above left standing —
+// given the ground that was here before the stroke wrote over it?
+//
+// ⚠ IT TAKES THE NATURAL GROUND RATHER THAN READING IT, and that is `spoil_place`'s
+// rule in a second place: `road_lay` has already overwritten this cell by the time
+// the shelf is decided, so the only honest datum is the one sampled before the write.
+// Reading it back here would measure the road's own height and answer *never*.
+//
+// ⚠ AND A COLUMN THAT IS ALREADY DUG IS LEFT ALONE. A road over a cellar stays an
+// open cut: `road_clearance` lifts it clear of the room, and inserting a shelf
+// BETWEEN two occupied layers is a different write with a different failure. Named
+// rather than attempted.
+pub fn cave_at(w: World, q: integer, r: integer, nat: integer, nmat: integer,
+               h: integer) -> boolean {
+  // ⚠ A SHELF IS CUT INTO THE HILLSIDE, NEVER INTO A ROAD ALREADY LAID. Discs
+  // overlap, so on the second stroke of a descending run the *natural* ground at a
+  // cell is the road the stroke before it wrote — and `tr_face` says a road bank
+  // stands at 40°, which would happily leave the older road hanging over the newer
+  // one as a slab of rock. `tr_face` is an angle of repose for a BANK; it says
+  // nothing about paving as a roof.
+  if nmat == ROAD_MAT { return false; }
+  if col_dug(w, q, r) { return false; }
+  if hex_world::world_ground_layer(w, q, r) < 0 { return false; }
+  cave_stands(ground_kind_at(w, q, r, nmat), nat - h)
+}
+
+// Put the road on a layer of its own UNDER the ground, and stand the ground back up.
+//
+// The cell arrives holding the road at `h` on the GROUND layer — an open cut, which
+// is what `road_lay` wrote. This restores `nat`/`nmat` there and inserts the road
+// beneath, so the column reads *road, then terrain above* and everything that asks
+// what is overhead gets the rock: `col_has_below` gives the ground its underside,
+// `col_underground` gives the shelf its walls, and `world_surface` puts the feet on
+// the road because it is the highest occupied layer at or below them.
+//
+// ⚠ ONE LAYER PER CHUNK, NOT ONE PER CELL, and that is `storey_add`'s scar. Blindly
+// inserting gave every column of one cellar its own layer — measured, a single disc
+// took a chunk from 1 layer to 34, against a `LAYER_CAP` of 64. A column read hands
+// back one cell per layer INCLUDING absent ones, so an empty terrain slot below the
+// ground IS the layer a neighbour already made: fill it, and pass its label back so
+// the store knows this is not a new one.
+//
+// ⚠ AND THE LABEL IS THE STORE'S. Nothing reads this layer BY label — the renderer
+// asks `col_underground`, `room_continues` asks by height (`I1` is a claim about the
+// match, not the match itself) — so there is no cross-chunk identity to keep and no
+// reason for the gesture to name one.
+pub fn road_cave(wld: World, q: integer, r: integer, h: integer,
+                 nat: integer, nmat: integer) -> integer {
+  col = hex_world::world_column(wld, q, r);
+  gi = 0 - 1;
+  for i in 0..len(col.co_ids) {
+    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+  }
+  if gi < 0 { return hex_world::CW_FOLD; }
+  gc = col.co_cells[gi] ?? hex_world::Hex {};
+  // The ground stands where it stood, keeping everything else the cell holds — a
+  // shelf must not take a fence or a tree off the clifftop with it.
+  up = hex_world::Hex { h_height: nat as u16? ?? 0,
+                        h_material: nmat as u8? ?? 0,
+                        h_item: gc.h_item,
+                        h_item_rotation: gc.h_item_rotation,
+                        h_wall_n: gc.h_wall_n,
+                        h_wall_ne: gc.h_wall_ne,
+                        h_wall_se: gc.h_wall_se };
+  down = hex_world::Hex { h_height: h as u16? ?? 0,
+                          h_material: ROAD_MAT as u8? ?? 0 };
+  fill = 0 - 1;
+  for j in 0..gi {
+    k = gi - 1 - j;
+    if hex_world::world_layer_kind(wld, q, r, k) == hex_world::KIND_TERRAIN
+       && !hex_world::hex_occupied(col.co_cells[k] ?? hex_world::Hex {}) {
+      fill = k;
+      break;
+    }
+  }
+  cells: vector<hex_world::Hex> = [];
+  ids: vector<integer> = [];
+  for i2 in 0..len(col.co_cells) {
+    if i2 == gi { cells += [up]; }
+    else if i2 == fill { cells += [down]; }
+    else { cells += [col.co_cells[i2] ?? hex_world::Hex {}]; }
+    ids += [col.co_ids[i2] ?? 0];
+  }
+  if fill < 0 {
+    // the first column of this chunk to be caved: a genuinely new layer, labelled 0
+    ncells: vector<hex_world::Hex> = [];
+    nids: vector<integer> = [];
+    for i3 in 0..len(cells) {
+      if i3 == gi { ncells += [down]; nids += [0]; }
+      ncells += [cells[i3] ?? hex_world::Hex {}];
+      nids += [ids[i3] ?? 0];
+    }
+    return hex_world::world_set_column(wld,
+             hex_world::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
+  }
+  hex_world::world_set_column(wld,
+    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+}
+
+// How much air stands between this surface and whatever is over it, or −1 where it
+// is not under anything at all. The measure of a shelf, and what says when one has
+// stopped being one.
+pub fn shelf_head(w: World, q: integer, r: integer, mat: integer) -> integer {
+  li = sub_layer(w, q, r, mat);
+  if li < 0 { return 0 - 1; }
+  col = hex_world::world_column(w, q, r);
+  above = col_next_above(col, li);
+  if above < 0 { return 0 - 1; }
+  ((col.co_cells[above] ?? hex_world::Hex {}).h_height as integer ?? 0)
+    - ((col.co_cells[li] ?? hex_world::Hex {}).h_height as integer ?? 0)
+}
+
+// Take the rock back off — the surface returns to the ground layer, where an open
+// cut keeps it, at the height it had under the shelf.
+//
+// ⚠ THE PAIR WITH `road_cave` IS WHAT MAKES THE SHELF REVISABLE, and without it `A9`
+// would have to freeze every cell it ever caved. A caved cell keeps its own hillside
+// on the ground layer, so this is lossless in the direction that matters: the natural
+// profile a re-cut needs is recovered by reading it. It is NOT lossless the other way
+// — the rock that was over the road is gone, which is what taking a lid off means.
+//
+// ⚠ IT CLEARS THE LOWER CELL AND KEEPS ITS EDGES, which is `clear_in_layer`'s rule
+// for its reason: a cleared record is absence, `F1` skips it and elision drops it on
+// save, while a wall stored in that cell is content in its own right (`E1e`) and is
+// nobody's to delete.
+pub fn run_unshelf(wld: World, q: integer, r: integer, mat: integer) -> integer {
+  li = sub_layer(wld, q, r, mat);
+  if li < 0 { return hex_world::CW_OK; }
+  c = hex_world::world_cell(wld, q, r, li);
+  h = c.h_height as integer ?? 0;
+  code = layer_write(wld, q, r, li,
+           hex_world::Hex { h_height: c.h_height, h_material: 0,
+                            h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne,
+                            h_wall_se: c.h_wall_se });
+  if code != hex_world::CW_OK { return code; }
+  ground_set(wld, q, r, h, mat)
+}
+
+// The height of a road stored UNDER the ground here, or −1 where there is none.
+//
+// ⚠ IT IS THE QUESTION `ground_h` CANNOT ANSWER, and that asymmetry is the point: at
+// a caved cell the ground IS the rock overhead, so every reader that wants the
+// surface a cart rolls on has to ask for it by name.
+pub fn caved_h(w: World, q: integer, r: integer) -> integer {
+  li = sub_layer(w, q, r, ROAD_MAT);
+  if li < 0 { return 0 - 1; }
+  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+}
+
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float, clamped: &integer, residual: &integer) {
-  for dq in (0 - rad)..(rad + 1) {
-    for dr in (0 - rad)..(rad + 1) {
-      q = cq + dq;
-      r = cr + dr;
-      if hex_grid::hex_distance(q, r, cq, cr) <= rad {
-        hh = h;
-        if hh < W_RESERVE { hh = W_RESERVE; }
-        if hh > 65535 { hh = 65535; }
-        // ⚠ ASKED BEFORE THE WRITE, NOT AFTER A REFUSAL. Retrying on a code would
-        // work too, and it would make the common case pay for the rare one — every
-        // cell of every stroke doing a failed column write first. This is one read
-        // of a column the writer is about to read anyway.
-        lift = road_clearance(wld, q, r, feet, hh);
-        if lift > 0 {
-          clamped = clamped + 1;
-          if lift > residual { residual = lift; }
-          hh = hh + lift;
-        }
-        surface_set(wld, q, r, feet, hh, ROAD_MAT);
+            feet: float, clamped: &integer, residual: &integer) -> integer {
+  // ── THE DATUM, SAMPLED BEFORE THE FIRST WRITE — plan 20 `A9` ──────────────
+  //
+  // The shelf is decided from the ground that was here, and the stroke below is
+  // about to overwrite exactly that. `spoil_place` learned the same thing one rule
+  // up: the only datum that cannot disagree with the store is the one taken a
+  // moment earlier.
+  sq: vector<integer> = [];
+  sr: vector<integer> = [];
+  snat: vector<integer> = [];
+  smat: vector<integer> = [];
+  sback: vector<boolean> = [];
+  for aq in (0 - rad)..(rad + 1) {
+    for ar in (0 - rad)..(rad + 1) {
+      q0 = cq + aq;
+      r0 = cr + ar;
+      if hex_grid::hex_distance(q0, r0, cq, cr) <= rad {
+        nh0 = ground_h(wld, q0, r0);
+        sq += [q0];
+        sr += [r0];
+        snat += [nh0];
+        smat += [world_ground_cell(wld, q0, r0).h_material as integer ?? 0];
+        // ⚠ THE BACKING IS A QUESTION ABOUT THE HILL AND THE DEPTH IS A QUESTION
+        // ABOUT THE GRADE, and the two have to be asked at different moments: this
+        // one before the disc is paved flat, the other after the settle has finished
+        // moving it. Asking both at either moment gets one of them wrong.
+        sback += [cave_backed(wld, q0, r0, nh0)];
       }
     }
+  }
+  for si in 0..len(sq) {
+    q = sq[si] ?? 0;
+    r = sr[si] ?? 0;
+    // ⚠ THE ROCK COMES OFF FIRST, AND THAT IS WHAT KEEPS THE RUN WHOLE. Discs
+    // overlap four deep at `ROAD_HALF` 2, so a stroke meets cells an earlier one
+    // already caved. Leaving them alone was tried and MEASURED
+    // (`probe/house/cavewalk.loft`): four shelves broke the connected run into
+    // islands, an explicit settle from the crest came back `clamped 0` having
+    // reached nothing past the first shelf, and the road was left with a
+    // **27-unit step across its own width** where its limit is 1. A caved cell's
+    // ground IS its original hillside, so taking the shelf off recovers exactly the
+    // datum the re-cut needs — and everything is back on one layer for
+    // `slope_settle` and `spoil_place`, which is where they have always worked.
+    run_unshelf(wld, q, r, ROAD_MAT);
+    hh = h;
+    if hh < W_RESERVE { hh = W_RESERVE; }
+    if hh > 65535 { hh = 65535; }
+    // ⚠ ASKED BEFORE THE WRITE, NOT AFTER A REFUSAL. Retrying on a code would
+    // work too, and it would make the common case pay for the rare one — every
+    // cell of every stroke doing a failed column write first. This is one read
+    // of a column the writer is about to read anyway.
+    lift = road_clearance(wld, q, r, feet, hh);
+    if lift > 0 {
+      clamped = clamped + 1;
+      if lift > residual { residual = lift; }
+      hh = hh + lift;
+    }
+    surface_set(wld, q, r, feet, hh, ROAD_MAT);
   }
   // ── AND THE RUN IS HANDED BACK INSIDE ITS OWN RULES — plan 20 `A7` ────────
   //
@@ -2896,6 +3271,37 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     rl_residual = 0;
     slope_settle(wld, cq, cr, rl_clamped, rl_residual);
   }
+  // ── AND THE ROCK ABOVE IT STAYS — plan 20 `A9` ───────────────────────────
+  //
+  // ⚠ AFTER THE SETTLE, NOT BEFORE, AND THAT ORDER IS THE WHOLE DESIGN. The shelf
+  // is decided from the road's FINAL grade, so the settle and the spoil balance run
+  // exactly as they did — on the ground layer, over a run they can still walk — and
+  // the shelf is a re-draping of the rock over cells the cut has already finished
+  // with. Caving first would take those cells off the ground layer and blind
+  // `slope_settle` to half its own road: the run walks same-material neighbours, and
+  // a caved cell's ground is the rock.
+  //
+  // ⚠ AND THAT IS WHY A CAVED CELL NEVER MOVES AGAIN. It is outside the run from
+  // here on, deliberately — a shelf driven into rock is built, and a later stroke
+  // re-grading the road ahead does not re-cut it. The bound: a cell gets its one
+  // chance at a shelf when its own stroke wrote it, so a cell that just misses
+  // `CAVE_HEAD` and is deepened by a later settle stays an open cut. Stated rather
+  // than hidden, because the alternative is a rule that revisits the whole run.
+  caved = 0;
+  for ci in 0..len(sq) {
+    q2 = sq[ci] ?? 0;
+    r2 = sr[ci] ?? 0;
+    // Only a cell this stroke actually paved, and only where it is still road: a
+    // shelf is cut under a road, and the disc's rim may have been skipped above.
+    if (world_ground_cell(wld, q2, r2).h_material as integer ?? 0) != ROAD_MAT { continue; }
+    if !(sback[ci] ?? false) { continue; }
+    nat2 = snat[ci] ?? 0;
+    mat2 = smat[ci] ?? 0;
+    grade = ground_h(wld, q2, r2);
+    if !cave_at(wld, q2, r2, nat2, mat2, grade) { continue; }
+    if road_cave(wld, q2, r2, grade, nat2, mat2) == hex_world::CW_OK { caved = caved + 1; }
+  }
+  caved
 }
 
 // ── TRIGGERS AND THEIR ANCHORS (rung W8, moros#15) — invariant II ───────────
@@ -3551,7 +3957,10 @@ pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
     head = head + 1;
     for d in 0..6 {
       (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
-      if (world_ground_cell(w, nq, nr).h_material as integer ?? 0) != mat { continue; }
+      // ⚠ THE COLUMN, NOT THE GROUND — plan 20 `A9`, the same reason the settle's
+      // own walk asks it: what this reports must be measured over the run the settle
+      // actually worked on, or a stall on a caved stretch reads as nothing owing.
+      if run_h(w, nq, nr, mat) < 0 { continue; }
       if seen.s_by[age_like_key(nq, nr)] != null { continue; }
       if len(mq) >= LIFT_CAP { continue; }
       seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
@@ -3566,7 +3975,7 @@ pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
     for d2 in 0..6 {
       (nq2, nr2) = hex_grid::hex_neighbor(q, r, d2);
       if seen.s_by[age_like_key(nq2, nr2)] == null { continue; }
-      over = ground_h(w, q, r) - ground_h(w, nq2, nr2) - lim0;
+      over = run_h(w, q, r, mat) - run_h(w, nq2, nr2, mat) - lim0;
       if over > worst { worst = over; }
     }
   }

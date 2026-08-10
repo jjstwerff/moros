@@ -1,0 +1,131 @@
+// CAN A ROAD BE CAVED AT ALL? — plan 20 `A9`, the probe that could kill it.
+//
+// `A9` says a road cut into a cliff leaves the rock above it standing: the column
+// gets the road on a LOWER layer and terrain above, and one parameter — how much
+// rock stays over the road — walks from an open cut to a tunnel. Every part of
+// that rests on a fact nobody has measured: **is the cut the editor's own road
+// gesture makes ever deep enough to stand under, and does its depth vary ACROSS
+// the strip so that a cover has something to grade against?**
+//
+// ⚠ THE PREDICTION, WRITTEN BEFORE THE RUN, so the probe can refute it:
+//
+//   1. Walked ALONG a contour, the strip is half cut and half fill — the uphill
+//      cells are cut, the downhill ones filled — so the cut depth has a
+//      TRANSVERSE gradient of about `2 * ROAD_HALF * grade` units across it.
+//   2. On a flank steeper than grass can stand (`tr_face` 6), the uphill cell's
+//      cut clears `ε` (10) and a storey (12), so rock can be left over it with
+//      room to walk under.
+//   3. Walked UP the fall line, the cut is LONGITUDINAL instead — deepest at the
+//      crest — and the transverse spread is near zero, so a road up a hill has no
+//      cliff side to roof. That is the case `A8` already answers with a fill.
+//
+// If (1) or (2) fails the cover is decorative: there would be nothing to put rock
+// over, exactly as `road_h`'s frozen grade left `A7` and `A8` unreachable.
+use hex_editor;
+use hex_world;
+const U   = 0.25;
+const G   = 200;                 // a datum high enough that a deep cut cannot hit ρ
+const EPS = 10;                  // the editor's own ε — `editor_server`'s W_EPS
+const HEAD = hex_editor::STOREY_H;   // headroom a walker wants under the rock
+
+// A LINEAR RAMP: height falls by `k` per hex of `r`, so the fall line runs along
+// `r` and every contour is a line of constant `r`. That is the cliff-road case —
+// a dome would mix the two questions in one strip.
+fn ramp(k: integer) -> World {
+  w = world_new(U, 0, EPS, 4).wn_world;
+  for q in (0 - 30)..31 {
+    for r in (0 - 30)..31 {
+      ground_set(w, q, r, G - k * r, SURFACE_MAT);
+    }
+  }
+  w
+}
+
+// The strip's transverse profile at `q`: natural ground before, road after, and
+// the cut (positive) or fill (negative) at each `r`.
+fn across(w: World, nat: vector<integer>, q: integer) -> text {
+  out = "";
+  for i in 0..len(nat) {
+    r = i - hex_editor::ROAD_HALF;
+    cut = (nat[i] ?? 0) - ground_h(w, q, r);
+    out += "{cut} ";
+  }
+  out
+}
+
+fn deepest(w: World, nat: vector<integer>, q: integer) -> integer {
+  d = 0;
+  for i in 0..len(nat) {
+    r = i - hex_editor::ROAD_HALF;
+    cut = (nat[i] ?? 0) - ground_h(w, q, r);
+    if cut > d { d = cut; }
+  }
+  d
+}
+
+// Walk a road ALONG the contour at r = 0, from q = -6 to q = 6, reading the grade
+// one cell PAST the strip along the walk — which is what the gesture does
+// (`editor_server`'s `rd_look`), and the only place the natural ground survives.
+fn contour(k: integer) {
+  w = ramp(k);
+  // ⚠ SAMPLED BEFORE ANY STROKE. Reading as we go reads the road we just laid —
+  // `roadwalk.loft`'s trap, and the gesture's own.
+  nat: vector<integer> = [];
+  for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
+    nat += [ground_h(w, 0, i - hex_editor::ROAD_HALF)];
+  }
+  cl = 0;
+  rs = 0;
+  for q in (0 - 6)..7 {
+    ahead = ground_h(w, q + hex_editor::ROAD_HALF + 1, 0);
+    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+  }
+  d = deepest(w, nat, 0);
+  standable = "no";
+  if d >= HEAD { standable = "YES"; }
+  else { if d >= EPS { standable = "ε only"; } }
+  println("  grade {k}/hex  cut across the strip (uphill→downhill): {across(w, nat, 0)}");
+  println("                 deepest cut {d}   ε {EPS}  headroom {HEAD}  ->  rock can stand: {standable}");
+}
+
+// The control: the same ramp walked UP the fall line, which is what every road
+// probe in this tree has measured so far.
+fn fallline(k: integer) {
+  w = ramp(k);
+  nat: vector<integer> = [];
+  for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
+    nat += [ground_h(w, i - hex_editor::ROAD_HALF, 0)];
+  }
+  cl = 0;
+  rs = 0;
+  for r in (0 - 6)..7 {
+    rr = 0 - r;
+    ahead = ground_h(w, 0, rr - hex_editor::ROAD_HALF - 1);
+    road_lay(w, 0, rr, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+  }
+  // transverse spread at the middle of the run, measured along `q` where the ramp
+  // is flat — so any spread here is the gesture's, not the ground's
+  lo = 0;
+  hi = 0;
+  first = true;
+  for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
+    hh = ground_h(w, i - hex_editor::ROAD_HALF, 0);
+    if first { lo = hh; hi = hh; first = false; }
+    if hh < lo { lo = hh; }
+    if hh > hi { hi = hh; }
+  }
+  println("  grade {k}/hex  transverse spread of the road ACROSS the fall line: {hi - lo}");
+}
+
+fn main() {
+  println("A. ALONG A CONTOUR — the cliff road, and the case `A9` is about");
+  println("   grass stands at {ground_kind_of(SURFACE_MAT).tr_face}, so a grade past that is already rock");
+  for k in [3, 6, 12, 24] { contour(k); }
+  println("");
+  println("B. UP THE FALL LINE — the control, and every earlier road probe's shape");
+  for k2 in [3, 6, 12, 24] { fallline(k2); }
+  println("");
+  println("C. WHAT THE STORE WOULD HAVE TO HOLD");
+  println("   a caved column is road at the grade with the ground {EPS}+ above it;");
+  println("   `F1` needs ε = {EPS}, a walker wants {HEAD}. Anything shallower cannot be roofed.");
+}
