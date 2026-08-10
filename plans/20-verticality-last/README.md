@@ -476,6 +476,64 @@ never were.
    | a new `road_balance` | walk the run, shift by `debt / n` **two-sided**, subtract `shift * n` so the remainder carries |
    | **the decision** | fire it **per stroke** (the road reads right continuously, and the carried remainder is what stops truncation losing it) or **at run end** (cheaper, but the road is visibly wrong until the author releases). ⚠ `roadcost.loft` is the gate either way — the per-stroke settle is already quadratic (**17320** `w_tau` at 80 cells), and a uniform lift per stroke adds another O(run) of writes |
 
+   ### ⚠⚠ AND THEN IT WAS BUILT — PER STROKE, AS CHOSEN — AND THE BUILD REFUTED IT
+
+   On branch [`plan/20-run-debt`](https://github.com/jjstwerff/moros/tree/plan/20-run-debt),
+   **kept and deliberately not merged.** `slope_settle` returns the earth it took (so no
+   call site changes — fourteen already ignore `road_lay`'s return), `road_lay` carries a
+   run-level `spoil` the caller owns, a two-sided `road_balance` walks the run every
+   stroke and leaves the remainder owing, and `run_walk` / `run_unsqueeze` are extracted
+   so the balance and the settle cannot disagree about which cells are the run.
+
+   **374 of 375 pass. It works, the debt drains, and it is not enough:**
+
+   | | before | after |
+   |---|---|---|
+   | 6 per hex, walked down | 1508 | **1486** |
+   | 3 per hex | 777 | **675** |
+   | 6 per hex, rising | 1439 | **1439** |
+
+   ⚠ **THE 848 NEEDS THE STROKE'S OWN CUT IN THE DEBT, AND FIVE TESTS REFUSE IT.** With
+   the stamp term in, the debt telescopes to (natural − current) exactly and reaches the
+   optimum — and it undoes every deliberate cut:
+
+   | the test | what it reported |
+   |---|---|
+   | `test_a_road_over_open_ground_is_never_lifted` | a road cut **20 into open ground ended at 40** |
+   | `test_a_road_step_paves_its_band_at_the_frozen_grade` | the centre is cut to 14, **got 20** |
+   | `test_a_trench_in_flat_ground_never_roofs_itself` | the trench ended at **200, not 180** |
+   | `test_a_road_is_lifted_clear_of_a_room_rather_than_refused` | lifted to **40** where 36 clears |
+   | `test_a_flat_road_is_never_settled_because_it_never_breaks` | **1258** writes |
+
+   The first is `A8`'s own negative control — *a balance that moves earth where none was
+   needed is not a balance*. **The author's grade is not spoil.**
+
+   ✅ **SO THE CANYON IS THE STAMP** — not the envelope, not the repetition, not the
+   balance. `road_lay` writes its whole disc at ONE grade, so a cell ends at the height
+   of whichever stroke covered it **last** — a neighbour's, not its own. Measured alone
+   (`probe/house/conserve.loft`, against shipped code): on a road walked down a brushed
+   hill, **the stamp displaces 75 units of fill over a 43-cell run with nothing settled
+   and nothing balanced at all**, against the shipped road's net of −47.
+
+   ⚠ **AND THAT IS ONE TERM WITH TWO OPPOSITE REQUIREMENTS.** It is the earth the canyon
+   is made of *and* the earth the balance must never return. No choice of datum, anchor,
+   envelope or timing satisfies both, because they are the same units of ground.
+
+   ⚠ **AND THE ONE FAILING TEST IS THAT SAME FACT.** `test_a_settled_road_conserves_its_spoil`
+   reads **cut 8 against fill 56**: with the settle's spoil actually returned, what is
+   left over is the stamp's displacement — which used to be masked because the
+   *unreturned* cut cancelled it. **Two wrongs were agreeing**, and fixing one exposed the
+   other. Left unmerged rather than weakening a shipped claim to land it.
+
+   ⚠ **THE DEBT ITSELF IS CORRECT, WHICH IS WHY THIS IS A REDIRECT AND NOT A BUG.** Traced
+   per stroke it accumulates and drains (92 → 9 at stroke 16, **2** still owing over 43
+   cells at the end), and the road at the author's own cell tracks the ground within 7
+   units the whole way. **What sinks is the tail** — every stroke overwrites thirteen
+   already-lifted cells at a flat grade.
+
+   **So the fix belongs in the grade the gesture stamps** — a run has an AXIS and wants a
+   per-cell grade along it, which is **open question 5** — and not in the balance at all.
+
    The original question, kept because the measurement is what answered it: ⚠ **NEW, and it is
    what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a
    road walked down a 6-per-hex ramp is cut 120 units at its top and stands proud by 1 —

@@ -1,0 +1,119 @@
+// HOW MUCH OF A LAID ROAD'S DISPLACEMENT IS THE STAMP'S? — plan 20, open question 9.
+//
+// This is the probe that ended the balance thread, and it answers a question nobody
+// had asked because the answer looked obvious: `road_lay` writes its whole disc at ONE
+// grade, so a cell ends up at the height of whichever stroke last covered it — a
+// NEIGHBOUR's, not its own. How much earth does that move on its own, with nothing
+// settled and nothing balanced?
+//
+// ⚠ WHY IT MATTERS, AND IT IS THE WHOLE OF WHY `A8`'s BALANCE CANNOT FIX THE CANYON.
+// The fall-line canyon was measured to the envelope (refuted), then to the repetition
+// (refuted), then to the balance being truncated away per stroke — and a run-level
+// debt that carries the remainder WAS built, on `plan/20-run-debt`. It works, drains
+// correctly, and takes a road walked down a 6-per-hex ramp from 1508 units moved to
+// 1486. Nothing like the 848 the same measurement said was reachable.
+//
+// The 848 needs the STROKE's own cut in the debt, and five tests refuse it — starting
+// with `A8`'s own negative control, *a balance that moves earth where none was needed
+// is not a balance*: a road deliberately cut 20 into open ground ended at 40, the
+// balance having handed the earth straight back. **The author's grade is not spoil.**
+//
+// So the earth the canyon is made of and the earth the balance must not touch are the
+// same earth, and this measures it: lay the road three ways on one hill and read the
+// stamp alone.
+//
+// ⚠ AND ITS OWN RUN ROW WAS BLIND FIRST, which is worth more than the number. It read
+// the natural ground from the world it had just PAVED, so its `is this still ground`
+// guard threw every road cell away and it reported `cut 0 fill 0` — a balanced-looking
+// pair of zeroes summed over ZERO cells. A third world that no road is ever laid in is
+// what a datum has to be.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+
+fn strip_world() -> World {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn hill() -> World {
+  w = strip_world();
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  w
+}
+
+fn main() {
+  // ⚠ THREE WORLDS ON ONE GROUND. `wn` is never paved and is the datum; `ws` gets the
+  // stamp and nothing else; `w` gets the gesture as it ships.
+  wn = hill();
+  ws = hill();
+  w  = hill();
+
+  ground: vector<integer> = [];
+  for s0 in 0..13 { ground += [ground_h(wn, s0, 0)]; }
+
+  // the stamp alone — the same strokes in the same order, no settle and no balance can
+  // fire because the road is laid AT the natural ground of the author's own cell
+  for qs in 0..13 {
+    xs = 12 - qs;
+    hs = ground[xs] ?? G;
+    for aq in (0 - 1)..2 {
+      for ar in (0 - 1)..2 {
+        if hex_grid::hex_distance(xs + aq, ar, xs, 0) > 1 { continue; }
+        ground_set(ws, xs + aq, ar, hs, ROAD_MAT);
+      }
+    }
+  }
+
+  // and the gesture, which is that stamp plus `A7`'s settle and `A8`'s balance
+  rl_c = 0;
+  rl_r = 0;
+  for q in 0..13 {
+    x = 12 - q;
+    h = ground[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+  }
+
+  cut = 0;
+  fill = 0;
+  scut = 0;
+  sfill = 0;
+  cells = 0;
+  for rq in (0 - 1)..14 {
+    for rr in (0 - 1)..2 {
+      rh = run_h(w, rq, rr, ROAD_MAT);
+      if rh < 0 { continue; }
+      cells = cells + 1;
+      nat = ground_h(wn, rq, rr);       // ⚠ the world with no road in it, never `ws`
+      d = nat - rh;
+      if d > 0 { cut = cut + d; } else { fill = fill - d; }
+      sh = run_h(ws, rq, rr, ROAD_MAT);
+      if sh < 0 { continue; }
+      sd = nat - sh;
+      if sd > 0 { scut = scut + sd; } else { sfill = sfill - sd; }
+    }
+  }
+
+  println("A road walked down a brushed hill, {cells} cells of run, measured against");
+  println("the ground of a world that was never paved.");
+  println("");
+  println("  as it ships   cut {cut}  fill {fill}   net {cut - fill}");
+  println("  THE STAMP ALONE, nothing settled and nothing balanced:");
+  println("                cut {scut}  fill {sfill}   net {scut - sfill}");
+  println("");
+  println("⚠ THE STAMP MOVES EARTH BY ITSELF, and it is not a rounding term. A disc");
+  println("   of one grade laid over ground that varies flattens it, and a cell keeps");
+  println("   whichever stroke covered it LAST — its neighbour's height, not its own.");
+  println("⚠ THAT IS THE EARTH THE CANYON IS MADE OF *AND* THE EARTH `A8`'s BALANCE");
+  println("   MUST NOT RETURN, because returning it undoes a deliberate cut — five");
+  println("   tests say so, `A8`'s own negative control first. One term, two rules,");
+  println("   opposite requirements: so the fix belongs in the GRADE the gesture");
+  println("   stamps — a run has an axis and wants a per-cell grade along it, which");
+  println("   is open question 5 — and not in the balance at all.");
+}

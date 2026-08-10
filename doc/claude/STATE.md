@@ -118,12 +118,46 @@ Exact, both signs, no registry of original heights anywhere. ⚠ The negative su
 two-sidedness arriving from a second direction: an accumulator clamped at zero would
 have read 0 on both mirrors.
 
-**What is left is the build**, and its one decision is *when the balance fires* — per
-stroke (the road reads right continuously, and the carried remainder is what stops
-truncation losing it) or at run end (cheaper, but the road is visibly wrong until the
-author releases). ⚠ **`roadcost.loft` is the gate either way**: the per-stroke settle is
-already quadratic — **17320** `w_tau` at 80 cells against 1520 unwired — and a uniform
-lift per stroke adds another O(run) of writes. The plan carries the full shape.
+### ⚠⚠ AND IT WAS BUILT — PER STROKE, AS ASKED — AND THE BUILD REFUTED THE FIX
+
+**Branch [`plan/20-run-debt`](https://github.com/jjstwerff/moros/tree/plan/20-run-debt),
+pushed and deliberately NOT merged.** `slope_settle` returns the earth it took, `road_lay`
+carries a run-level debt the caller owns, a two-sided `road_balance` fires every stroke
+and leaves the remainder owing, and `run_walk` / `run_unsqueeze` are extracted so the
+balance and the settle cannot disagree about which cells are the run. **374 of 375 pass.
+It works, the debt drains — and the canyon stays**: 1508 → **1486** at 6 per hex.
+
+⚠ **THE 848 NEEDS THE STROKE'S OWN CUT IN THE DEBT, AND FIVE TESTS REFUSE IT.** With the
+stamp term in, the debt telescopes exactly and reaches the optimum — and undoes every
+deliberate cut. `test_a_road_over_open_ground_is_never_lifted`, which is **`A8`'s own
+negative control**, reported *a road cut 20 into open ground ended at 40*. Four more said
+the same in four other words. **The author's grade is not spoil.**
+
+✅ **SO THE CANYON IS THE STAMP** — not the envelope, not the repetition, not the balance.
+`road_lay` writes its whole disc at ONE grade, so a cell keeps the height of whichever
+stroke covered it **last**: a neighbour's, not its own. Measured alone against shipped
+code (`probe/house/conserve.loft`): **the stamp displaces 75 units of fill over a 43-cell
+run with nothing settled and nothing balanced at all.**
+
+⚠ **AND THAT IS ONE TERM WITH TWO OPPOSITE REQUIREMENTS** — the earth the canyon is made
+of *and* the earth the balance must never return. No datum, anchor, envelope or timing
+satisfies both, because they are the same units of ground. **The fix belongs in the grade
+the gesture stamps** — a run has an AXIS and wants a per-cell grade along it, which is
+plan 20's **open question 5** — and not in the balance.
+
+⚠ **THE ONE FAILING TEST IS THAT SAME FACT, AND IT IS WHY THE BRANCH IS UNMERGED.**
+`test_a_settled_road_conserves_its_spoil` reads *cut 8 against fill 56*: with the settle's
+spoil actually returned, what is left is the stamp's displacement — masked until now
+because the **unreturned cut cancelled it**. Two wrongs were agreeing, and fixing one
+exposed the other. ⚠ **The debt itself is correct** (traced: 92 → 9 at stroke 16, 2 owing
+at the end, the author's own cell within 7 units of the ground the whole way) — **what
+sinks is the tail**, thirteen already-lifted cells overwritten at a flat grade every
+stroke.
+
+⚠ **AND A PROBE'S OWN RUN ROW WAS BLIND FIRST.** It read the natural ground from the world
+it had just paved, so its guard threw every road cell away and it reported a
+balanced-looking **`cut 0 fill 0` summed over ZERO cells**. A third world that no road is
+ever laid in is what a datum has to be.
 
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
