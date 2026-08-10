@@ -80,7 +80,7 @@ to the built-in numbering.
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
 | **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | ✅ — and the parameter turned out to be the TERRAIN, not a dial; see below and [TERRAIN_EDITS §T9](../../doc/claude/TERRAIN_EDITS.md) |
-| **`A10`** — water, and the bridge that crosses it | H | a road walked across a waterway paves none of it and comes out carried over it: bed · water · deck, clear by `BRIDGE_CLEAR` | ✅ the rule, 11 tests. ⚠ **Water is not DRAWN and no gesture authors it** — see below and [TERRAIN_EDITS §T10](../../doc/claude/TERRAIN_EDITS.md) |
+| **`A10`** — water, and the bridge that crosses it | H | a road walked across a waterway paves none of it and comes out carried over it: bed · water · deck, clear by `BRIDGE_CLEAR` | ✅ **complete** — the terrain, the `47:` gesture, the drawing and the picture. 23 tests; [TERRAIN_EDITS §T10](../../doc/claude/TERRAIN_EDITS.md) |
 
 ## Invariant gate — for the phases still open
 
@@ -212,13 +212,18 @@ strip that gives `A9` its shelves on the uphill side gives fills on the downhill
 `-12 -6 0 6 12` at 6 per hex, `-48 -24 0 24 48` at 24 — so a height-keyed viaduct has
 something to trigger on whenever it is wanted.
 
-### ⚠ What `A10` still owes
+### ✅ What `A10` owed, and what it cost to pay
 
 | | |
 |---|---|
-| **water is not drawn** | no row in `hex_mesh::surfaces()`. ⚠ The stride `SURFACES = 10` is carried by **thirteen** files and every decoder reads it by modulo — the change that broke three decoders silently when the roof made it five |
-| **no gesture authors water** | `water_set` is the library's writer and nothing on the wire calls it, so a river is a fixture. The same gap as *no gesture can author a `FITS`* |
-| **the bridge has no picture** | and its acceptance is a cold-recognition test, exactly as `A9`'s was |
+| water is drawn | an **eleventh** surface. ⚠ `SURFACES` turned out to be carried by **fourteen** files — the fourteenth was `editor_client.loft`, spelled with different spacing, whose own comment warns that a stale copy hides the wrong one. Missing it turned `camera_indoors` into `roof 0.8007` |
+| a gesture authors it | `47:`, and the catalogue followed: water was unavailable with the reason `no gesture` for exactly one commit |
+| the bridge has a picture | `tools/scripts/bridge.keys` builds it with the gestures an author has, in the order they have them. Nothing in the script names a bridge |
+
+⚠ **AND THE RENDERING HALF COST THREE CHANGES REVERTED ON FALSE EVIDENCE**, because
+`.gatebin/server` is built by the gate runner and not by an edit — so `mesh ground`
+read the same number every time and it looked like the code was doing nothing. It was
+doing nothing: to a binary from before the edit. See STATE.
 
 ### ⚠ What `A4` measured, and what it turned out to be
 

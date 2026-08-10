@@ -22,7 +22,7 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20 is built in BOTH directions; water needs a gesture
+## ⏭ PICK UP HERE — plan 20 is built in BOTH directions, `A10` included
 
 **2026-08-10. `A9` and its mirror `A10` are both in.** *It spans or it caves* is one
 axis twice and both halves are built: a road cut into a cliff keeps the rock above it
@@ -38,22 +38,42 @@ not a threshold anybody has to choose. Water carries its flow DIRECTION as its m
 thing there is to hill creation — a raise lifts the banks and leaves the river, which is
 what a chasm is.
 
-### The next piece of work — and `A10` owes three things
+### `A10` is complete, picture and all
 
 | | |
 |---|---|
-| ✅ **water has a gesture** | `47:` lays a waterway as you walk — and its ROUTE is the ground's: *when there are hills already it takes the lowest path, but without them we still have to draw them like a road.* One rule, and the hint breaks a tie but never beats a drop |
-| **the bridge has no picture** | its acceptance is a cold-recognition test, exactly as `A9`'s was |
-| ✅ **water IS drawn, and deeper water is darker** | an eleventh surface, and the shade rides in the NORMAL'S LENGTH — the shader normalizes it at both uses and the model matrix is rigid, so the magnitude survives unread. A seventh float per vertex was the alternative, on a format thirteen decoders index by six |
-| **the fall-line canyon is still there** | and plan 20 claimed the span would answer it — measured, it does not; see below |
+| the terrain | seven rows — still water and one per flow direction — with a DEPTH, so it defines a layer under it: a river is bed · water, and bed · water · deck where a road crosses |
+| it resists hill creation | `tr_fixed`, a third behaviour beside fabric: fabric MOVES rigidly, this does not move at all, so a raise lifts the banks and leaves the river — a chasm |
+| it never flows upwards | derived from the heights and the material, and the GESTURE cannot produce one: the walk only steps to a cell no higher than the one it stands on |
+| the gesture | `47:` — *when there are hills already it takes the lowest path, but without them we still have to draw them like a road.* One rule: **the hint breaks a tie and never beats a drop** |
+| it widens and deepens as it runs | the count outlives the stroke, so a river laid over many placements keeps growing; the bed steps up toward the banks, so the edges are shallow and the middle deep |
+| a road cannot be laid on it | so it is carried over — `A9` upside down, the same column and the same `F1` |
+| and it is DRAWN | an eleventh surface, a depth ramp, a trickle at the spring and banks framing it. `shots/a10-*.png` |
 
-⚠ **THE SETTLE TAKES THE LOWER ENVELOPE, AND THAT IS THE OPEN QUESTION.** Measured
-(`probe/house/span.loft`): a road walked down a 6-per-hex ramp comes out **cut by 120
-units and proud by 1**. `slope_settle` only ever lowers, so a descent DIGS rather than
-standing up — and spanning is about a road above the ground while the canyon is a road
-below it. They are not the same defect. What would answer it is a settle that holds the
-grade at the author's own cell and lets both directions fall away from it, which is a
-change to `A7`'s rule.
+### The next piece of work
+
+**The fall-line canyon**, which is open question 9 and the one measurement that
+refuted a sentence of the plan: a road walked down a 6-per-hex ramp comes out **cut by
+120 units and proud by 1**, because `slope_settle` takes the LOWER envelope. Spanning
+does not answer it — that is a road ABOVE the ground and the canyon is a road below it.
+What would is a settle that holds the grade at the author's own cell and lets both
+directions fall away from it, which is a change to `A7`'s rule.
+
+### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
+
+**This cost three changes reverted on false evidence in one session.** Editing a
+library and then running `./.gatebin/server` measures **yesterday's binary** — and it
+reads as a working instrument reporting a null result, which is the worst possible
+shape. Measured: the same annulus code emitted `mesh ground 48384` stale and **48600**
+after a rebuild, +216 vertices, six cells of six quads.
+
+⚠ **`make gate-one G=<any>` is what rebuilds it**, and `md5sum .gatebin/server` is how
+you check. A vertex count settles in seconds what a photograph cannot — *but only if
+the thing under it is the thing that was edited.*
+
+⚠ **AND REACHING FOR THE PHOTOGRAPH FIRST IS WHAT COST THE DETOUR.** Two changes were
+judged by eye ("the picture is unchanged") when the cheap question was *did it emit
+anything at all*.
 
 ### ⚠ WHAT ADDING A TERRAIN ACTUALLY COSTS, MEASURED
 
@@ -86,6 +106,17 @@ Transparency stays available: nothing about the store changes.
 ⚠ **AND `cross` IS ALREADY A PUBLIC NAME IN THE GRAPH.** Defining one in a test file
 reports as `Syntax error: unexpected '->'` at the return arrow — not as a collision.
 Grep before naming reaches test helpers too.
+
+⚠ **AND A TEST CALIBRATED TO A CONSTANT IS A SNAPSHOT OF ONE SETTING.** The water's
+across-flow bound was `< 4.0`, measured at `WATER_TRICKLE` 0.34; turning the dial to
+0.6 took the span to 4.2 and the row went red reporting *every cell drawn full width*
+about a river that was perfectly correct. It predicts the span from the constant now —
+`3.0 + 2 × WATER_TRICKLE` — so the dial moves either way and a build that stopped
+insetting at all still fails it.
+
+⚠ **AND THE TOOLCHAIN MOVED TWICE IN ONE DAY**, `e467be19cd4409f4` →
+`0965d6a07ea72c69` (12:33) → `3b12d2298232c4f1` (14:39), with `--version` saying
+`2026.8.0` for all three. Stamp at both ends of every suite.
 
 ### ⚠ FOUR THINGS `A9` TURNED UP, AND EACH LOOKED LIKE WORKING CODE
 
