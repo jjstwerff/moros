@@ -1,0 +1,102 @@
+# A ROAD CROSSING A RIVER — plan 20 `A10`, and its acceptance is a PICTURE.
+#
+# ⚠ THE COUNTS ARE SOMEBODY ELSE'S JOB. `lib/hex_editor/tests/water.loft` owns the rule
+# — sixteen tests over the direction, the depth, the chasm, the route and the crossing —
+# and what NEITHER a test nor a count can answer is the only question left: **does a
+# person call it a bridge.** This tree has the scar twice over: `A8.3`'s door passed
+# every count and read as a hole for four days, and `A9`'s gallery was sealed by three
+# separate things while the store was right the whole time.
+#
+# So the scene is built by the gestures an author has, in the order an author has them:
+# a river first, then a road walked across it.
+
+echo --- A MOUNTAIN FIRST, because a river has to be cut INTO something
+# ⚠ THE DEFAULT WORLD IS AT THE RESERVE, AND THAT IS WHY THIS SCENE STARTS WITH A HILL.
+# The first draft of this script laid the river on unraised ground and got
+# `water refused after 0 cells — water at -2 leaves no room for a bed 12 deep above the
+# reserve`, three times, one per stroke. Heights are unsigned and `ρ` is the floor, so
+# there is nothing to cut a channel into until the land has been raised. The gesture
+# said so; the script was what had not listened.
+at 0 0 0
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+wait rebuilt
+step 20
+mesh water 0 0
+
+echo --- A RIVER DOWN THE FLANK — `47:`, and the ground chooses every step
+# ⚠ THE WALK IS ONLY A HINT HERE, which is the author's rule at its other end: *when
+# there are hills already it takes the lowest path.* One stroke, one facing, and the
+# route is the mountain's — measured, it runs (10,0) → (12,4), from 64 down to 22.
+send 47:1
+at 17 0 90
+wait rebuilt
+send 47:0
+step 20
+# The river reached the mesh — the eleventh surface. An empty count here means the
+# scene was never built rather than that the picture is wrong.
+mesh water 40 100000
+
+echo --- AND THE RIVER ALONE, before a road touches it
+at 26 14 -140
+send 40:1
+send 3:0,-500
+step 30
+snap a10-river-alone
+
+echo --- A ROAD WALKED ACROSS IT — the crossing the author never asks for
+# ⚠ THE AUTHOR LAYS A ROAD, NOT A BRIDGE. *A road needs a bridge to cross it because it
+# cannot place the road there* — so this is the ordinary road gesture, the water refuses
+# to be paved, and the deck is what happens instead. Nothing in this script names one.
+send 10:1
+at 10 4.5 0
+at 14 4.5 0
+at 17 4.5 0
+at 20 4.5 0
+at 24 4.5 0
+at 28 4.5 0
+wait rebuilt
+send 10:0
+step 20
+# ⚠ THE STORE SAYS WHAT THE PICTURE CANNOT: a bridged river column holds THREE occupied
+# layers — the bed, the water, and the deck over it. Measured at (11,3): **22, 34, 66**.
+#
+# ⚠ AND IT IS NOT READ BACK HERE, DELIBERATELY. `send` does not wait for a reply, so
+# `last column` answered from a line taken before the road existed and reported
+# `column 11,3 = 5` — one layer, where the store holds three. A read-back that can be
+# a stroke behind is worse than none: it reads as a finding. `tests/water.loft` asserts
+# the three layers where a test can wait for nothing at all.
+
+echo --- THE BRIDGE, FROM DOWNSTREAM — low and close, the only angle that says it
+# ⚠ `A9` COST FOUR CAMERA ANGLES BEFORE ONE COULD BE READ. A scene shot far enough away
+# to see all of it is a silhouette, and a silhouette cannot say whether the road goes
+# OVER the river or merely up to it.
+at 26 12 -150
+send 40:1
+send 3:0,-500
+step 30
+snap a10-bridge-from-downstream
+
+echo --- AND FROM THE OTHER BANK, along the water
+at 14 12 -60
+send 40:1
+send 3:0,-500
+step 30
+snap a10-bridge-across-the-water
+
+echo --- ARRIVING ALONG THE ROAD, which is what a traveller sees
+at 8 4.5 0
+send 40:1
+send 3:0,-300
+step 30
+snap a10-bridge-along-the-road

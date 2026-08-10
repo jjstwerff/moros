@@ -2753,6 +2753,16 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // heightfield instead, so the shelf is smoothed by the rule the road
             // beside it already uses.
             if e.h_material == ROAD_MAT {
+              // ⚠ A SPAN IS A DECK AND OWES A DECK'S EDGES; A SHELF OWES NEITHER.
+              // The road's own top is drawn by `chunk_mesh_mat`'s pass either way —
+              // but a bridge has air under it and a shelf has solid rock, so only the
+              // one ABOVE the ground gets a rim and an underside. Without them the
+              // deck is a fan alone, which is a hairline: photographed, the bridge
+              // was a plank with daylight through its own edge.
+              if !hex_editor::col_underground(c, e#index) {
+                emit_floor_slab(fm, wld, cq, cr, fh);
+                emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+              }
             } else {
             emit_hex_surface(fm, cq, cr, fh);
             emit_floor_slab(fm, wld, cq, cr, fh);
