@@ -1,0 +1,219 @@
+// WHERE DOES THE FALL-LINE CANYON ACTUALLY COME FROM? — plan 20, open question 9.
+//
+// `probe/house/envelope.loft` compared four PROFILES and concluded that the anchor
+// should be the run's middle. Then it grew two more rows and refuted its own
+// conclusion:
+//
+//   held at middle   cut 455  fill 390  earth moved 845
+//   lower + shift    cut 429  fill 416  earth moved 845   <- what already ships
+//
+// The lower envelope followed by `A8`'s uniform shift by the mean moves EXACTLY as
+// much earth as anchoring at the middle. So the anchor is not what halves the earth —
+// the settle and the balance together already reach it, and open question 9 was
+// comparing the settle against half of itself.
+//
+// ⚠ WHICH LEAVES THE MEASUREMENT UNEXPLAINED. `probe/house/span.loft` walks a road
+// down a 6-per-hex ramp through the real gesture and gets **cut 120, proud 1** — a
+// road pinned at the BOTTOM of the run with no lift in it at all, which is neither
+// row above. Something between the rule and the gesture is losing the balance.
+//
+// So this stops arguing about envelopes and asks where the earth goes, by laying the
+// SAME strip three ways on the SAME ground:
+//
+//   stamp only    the strokes' writes, no settle at all — what the lookahead costs
+//   per stroke    `road_lay`, which settles the whole run on every stroke — SHIPS
+//   settled once  the same writes, then ONE `slope_settle` over the finished run
+//
+// ⚠ THE PREDICTION, WRITTEN BEFORE THE RUN. If `settled once` comes back balanced
+// (cut and fill within a few units of each other) while `per stroke` comes back
+// pinned at the bottom, then the canyon is the balance being applied per stroke and
+// truncated away — `spoil_place`'s `cut / n` with `n` the whole run — and not the
+// envelope the open question blames. If BOTH come back pinned, the balance is not
+// firing at all and the envelope is still in the frame.
+//
+// ── WHAT IT FOUND, AND THE FIRST READING OF IT WAS WRONG ────────────────────────
+//
+// `settled once` did come back balanced — and the legality column, added because a row
+// that moves least by not finishing is not a candidate, said it had **192 road-to-road
+// edges over the limit, worst step 6**. It moved less earth because it did LESS WORK.
+// ⚠ `SLOPE_PASSES` is 12 and a correction travels one cell a pass, so no single call
+// can settle a 26-cell run however right its rule is. Without that column the probe
+// would have recommended the arm that leaves a road with a six-fold step in it.
+//
+// The fair comparison is `to convergence`, and with both arms legal (`slope_owed 0`):
+//
+//   6 per hex   per stroke      cut 1500  fill   8   moved 1508   -120 … +7
+//               to convergence  cut  855  fill 143   moved  998    -90 … +37
+//   3 per hex   per stroke      cut  777  fill   0   moved  777    -55 … -3
+//               to convergence  cut  400  fill  39   moved  439    -39 … +13
+//
+// ⚠ SO THE CANYON IS THE REPETITION, NOT THE ENVELOPE. The same rule run to the end
+// once moves a third less earth and produces the profile a road builder does — a
+// cutting at the head and an embankment at the foot — where the per-stroke version
+// produces a pure cutting. Every disc overwrites four strokes' worth of already
+// balanced cells with the raw lookahead grade, and each shift is then diluted across
+// the whole growing run.
+//
+// ⚠ AND THE TWO GOALS ARE COUPLED IN THE CURRENT SHAPE, which is the finding under the
+// finding: the per-stroke call is ALSO the only reason the run ends up legal at all —
+// twenty-six calls of twelve passes is what converges it. Repetition is standing in
+// for passes, and paying for it with the balance.
+use hex_editor;
+use hex_world;
+const U   = 0.25;
+const G   = 400;                 // a datum high enough that a deep cut cannot reach ρ
+const EPS = 10;                  // the editor's own ε
+const N   = 26;                  // cells walked, matching `span.loft`
+
+// The fall line the road is walked down: `n` cells falling `k` a hex along `q`.
+fn ramp_q(k: integer) -> World {
+  w = world_new(U, 0, EPS, 4).wn_world;
+  for q in (0 - 40)..41 {
+    for r in (0 - 8)..9 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
+  }
+  w
+}
+
+// The ground along the walked line, sampled before anything is written to it.
+fn natural(w: World) -> vector<integer> {
+  out: vector<integer> = [];
+  for s in 0..N { out += [ground_h(w, s, 0)]; }
+  out
+}
+
+// ⚠ MEASURED DOWN THE CENTRE LINE, and that is fair here for one stated reason: the
+// ground falls along `q` only, so every cell of the strip at a given `q` starts at the
+// same height and the cross-section carries no information the centre line does not.
+fn report(name: text, nat: vector<integer>, w: World) {
+  cut = 0;
+  fill = 0;
+  worst_cut = 0;
+  worst_fill = 0;
+  prof = "";
+  for j in 0..N {
+    // ⚠ `run_h`, NOT `ground_h` — `A9`'s instrument lesson: a caved cell's ground is
+    // the rock over it, so the ground reader answers about the hillside.
+    rh = run_h(w, j, 0, ROAD_MAT);
+    if rh < 0 { continue; }
+    d = rh - (nat[j] ?? 0);
+    if j % 5 == 0 { prof += "{d} "; }
+    if d < 0 {
+      cut = cut - d;
+      if 0 - d > worst_cut { worst_cut = 0 - d; }
+    } else {
+      fill = fill + d;
+      if d > worst_fill { worst_fill = d; }
+    }
+  }
+  // ⚠ AND THE PROFILE IS ASSERTED LEGAL RATHER THAN ASSUMED, over the whole STRIP and
+  // not only the centre line. Without this the rows are a comparison of how much earth
+  // three rules move without anyone checking that any of them finished the job — and a
+  // row that moves least by leaving the run steeper than its limit is not a candidate,
+  // it is a bug. `A9` measured a 27-unit step in a road whose limit is 1 while every
+  // count read 0, so this asks the question in the shape the violation lives in.
+  bad = 0;
+  worst_step = 0;
+  for bj in 0..N {
+    for br in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+      hh = run_h(w, bj, br, ROAD_MAT);
+      if hh < 0 { continue; }
+      for dir in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(bj, br, dir);
+        nh = run_h(w, nq, nr, ROAD_MAT);
+        if nh < 0 { continue; }
+        st = hh - nh;
+        if st < 0 { st = 0 - st; }
+        if st > 1 { bad = bad + 1; }
+        if st > worst_step { worst_step = st; }
+      }
+    }
+  }
+  // ⚠ AND `slope_owed` BESIDE IT, because that is the tree's OWN answer to *did the
+  // relaxation finish* — `A4` built it precisely so a stalled settle is a refusal
+  // rather than a silent stop. Counting edges here and asking `slope_owed` there are
+  // two instruments on one claim, and a row where they disagree is a row to distrust.
+  owed = slope_owed(w, 0, 0);
+  println("    {name}  cut {cut} (worst {worst_cut})  fill {fill} (worst {worst_fill})"
+        + "  earth moved {cut + fill}   edges over the limit {bad}"
+        + " (worst step {worst_step})  slope_owed {owed}");
+  println("                  road minus natural, every 5th cell: {prof}");
+}
+
+// The strokes' writes and nothing else — the disc `road_lay` stamps, at the grade it
+// reads one cell past the strip. ⚠ Later strokes overwrite earlier ones, so a cell's
+// final grade comes from the LAST disc that covered it, which trails the author by
+// `ROAD_HALF` — the lookahead a cell actually gets is `2 * ROAD_HALF + 1`, not one.
+fn stamp(w: World) {
+  for i in 0..N {
+    ahead = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
+    for aq in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+      for ar in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+        q0 = i + aq;
+        if hex_grid::hex_distance(q0, ar, i, 0) > hex_editor::ROAD_HALF { continue; }
+        ground_set(w, q0, ar, ahead, ROAD_MAT);
+      }
+    }
+  }
+}
+
+fn main() {
+  println("A road may climb 1 a hex. Walked down a ramp it cannot follow, the same");
+  println("strip laid three ways — and the question is where the balance goes.");
+  for k in [1, 3, 6] {
+    println("");
+    println("  ramp {k} per hex over {N} cells — the ground falls {k * (N - 1)}");
+
+    // stamp only — no settle, so this is what the LOOKAHEAD alone costs
+    wa = ramp_q(k);
+    nat = natural(wa);
+    stamp(wa);
+    report("stamp only  ", nat, wa);
+
+    // per stroke — `road_lay`, settling the whole run on every stroke. SHIPS.
+    wb = ramp_q(k);
+    natb = natural(wb);
+    cl = 0;
+    rs = 0;
+    for i in 0..N {
+      ahead = ground_h(wb, i + hex_editor::ROAD_HALF + 1, 0);
+      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    }
+    report("per stroke  ", natb, wb);
+
+    // settled once — the same writes, then one settle over the finished run
+    wc = ramp_q(k);
+    natc = natural(wc);
+    stamp(wc);
+    cl2 = 0;
+    rs2 = 0;
+    slope_settle(wc, 0, 0, cl2, rs2);
+    report("settled once", natc, wc);
+
+    // ⚠ AND ONCE IS NOT ENOUGH TO FINISH, which the legality column is what said.
+    // `SLOPE_PASSES` is 12 and a correction propagates one cell a pass, so a 26-cell
+    // run cannot converge in one call however right its rule is. This arm keeps
+    // calling until the world reports nothing owing — the same rule, run to the end,
+    // which is the only version that can fairly be compared with `per stroke`.
+    wd = ramp_q(k);
+    natd = natural(wd);
+    stamp(wd);
+    rounds = 0;
+    for _ in 0..40 {
+      if slope_owed(wd, 0, 0) == 0 { break; }
+      cl3 = 0;
+      rs3 = 0;
+      slope_settle(wd, 0, 0, cl3, rs3);
+      rounds = rounds + 1;
+    }
+    report("to convergence", natd, wd);
+    println("                  ({rounds} calls to converge — one is what the gesture makes)");
+  }
+  println("");
+  println("⚠ COMPARE `per stroke` WITH `to convergence`, and ONLY those two — they are");
+  println("   the rows where `slope_owed` is 0. `settled once` is kept because it is");
+  println("   the reading that was nearly believed: it moves the least earth of all");
+  println("   and it leaves a road with a six-fold step in it.");
+  println("⚠ The same rule run to the end once moves a third less earth and puts a");
+  println("   cutting at the head and an embankment at the foot. The canyon is the");
+  println("   repetition, and no choice of envelope can close it.");
+}

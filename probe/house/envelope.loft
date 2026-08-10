@@ -18,6 +18,28 @@
 // ⚠ THE FIGURE OF MERIT IS EARTH MOVED, not the profile's shape: all three satisfy the
 // limit by construction, so what separates them is how much ground each asks a builder
 // to shift and how far the road ends from the ground it was walked over.
+//
+// ── AND THE FIRST FOUR ROWS COMPARED THE SETTLE AGAINST HALF OF ITSELF ──────────
+//
+// ⚠ `slope_settle` IS NOT THE WHOLE OF WHAT SHIPS. It ends by calling `spoil_place`,
+// `A8`'s balance, which shifts the WHOLE run up by the mean it cut — so the profile
+// the store actually ends with is `lower` TRANSLATED, and the four rows above never
+// measured it. Two rows are added for that, and the prediction is written here so the
+// run can refute it:
+//
+//   1. `lower + shift` moves EXACTLY as much earth as `held at middle` — 845 at
+//      6 per hex, 338 at 3 — because a uniform shift by the mean is what turns a
+//      profile pinned at the bottom into one pinned at the middle. If that comes
+//      back, the anchor is not what halves the earth and open question 9 is asking
+//      about the wrong half of the rule.
+//   2. `per stroke` — the same two rules in the order the GESTURE applies them, the
+//      run growing a cell at a time — moves far MORE, because `cut / n` truncates to
+//      zero once the run is long, and `spoil_place`'s own comment already records the
+//      shape (*"cut 1260, fill 23"*). If that comes back, the canyon is a truncated
+//      balance rather than a chosen envelope.
+//
+// ⚠ The two predictions are not alternatives: 1 says the anchor is already reached,
+// 2 says the thing that reaches it is discarded before it arrives.
 use hex_editor;
 use hex_world;
 const U = 0.25;
@@ -104,6 +126,47 @@ fn held(nat: vector<integer>, at: integer) -> vector<integer> {
   out
 }
 
+// `A8`'s balance, as `spoil_place` states it: total what the settle cut, and put it
+// back as ONE uniform shift of the whole run — uniform because that is the only kind
+// of lift that keeps the limit the settle just established.
+//
+// ⚠ THE INTEGER DIVISION IS THE RULE, NOT A ROUNDING SLIP. A shift of less than one
+// unit does not exist, so a long run with a small cut shifts by nothing at all.
+fn shift_by_mean(nat: vector<integer>, prof: vector<integer>) -> vector<integer> {
+  out: vector<integer> = [];
+  for v in prof { out += [v]; }
+  n = len(out);
+  if n == 0 { return out; }
+  cut = 0;
+  for i in 0..n { cut = cut + ((nat[i] ?? 0) - (out[i] ?? 0)); }
+  if cut <= 0 { return out; }
+  shift = (cut / n) ?? 0;
+  if shift <= 0 { return out; }
+  for j in 0..n { out[j] = (out[j] ?? 0) + shift; }
+  out
+}
+
+// The lower envelope followed by that balance — what the store is left holding after
+// ONE settle over the whole run.
+fn shipped(nat: vector<integer>) -> vector<integer> {
+  shift_by_mean(nat, lower(nat))
+}
+
+// And the same two rules in the order the GESTURE applies them. `road_lay` settles the
+// whole connected run on every stroke, so the run grows a cell at a time under a rule
+// that re-enters with a longer `n` each time — and each settle's own `was` profile is
+// the one the previous stroke left, not the natural ground.
+fn per_stroke(nat: vector<integer>) -> vector<integer> {
+  cur: vector<integer> = [];
+  for s in 0..len(nat) {
+    cur += [nat[s] ?? 0];
+    was: vector<integer> = [];
+    for v in cur { was += [v]; }
+    cur = shift_by_mean(was, lower(cur));
+  }
+  cur
+}
+
 fn main() {
   println("A road may climb {LIM} a hex. Walked down a ramp it cannot follow, three");
   println("legal answers — and the question is which one a builder would recognise.");
@@ -116,10 +179,18 @@ fn main() {
     report("upper (mirror)", nat, upper(nat));
     report("held at start ", nat, held(nat, 0));
     report("held at middle", nat, held(nat, (n / 2) ?? 0));
+    report("lower + shift ", nat, shipped(nat));
+    report("per stroke    ", nat, per_stroke(nat));
   }
   println("");
   println("⚠ READ THE `earth moved` COLUMN. Every row satisfies the limit, so the");
   println("   profile is not what separates them — what a builder would do is the one");
   println("   that moves least, and where that earth ends up decides whether the");
   println("   answer is a cutting, an embankment, or a bit of both.");
+  println("");
+  println("⚠ AND READ THE LAST TWO AGAINST `held at middle`. `lower + shift` is the");
+  println("   settle AND `A8`'s balance, which is what the store is left holding —");
+  println("   the first four rows compared the settle against half of itself.");
+  println("   `per stroke` is those same two rules in the order a walking author");
+  println("   applies them, and the gap between the two is the canyon.");
 }

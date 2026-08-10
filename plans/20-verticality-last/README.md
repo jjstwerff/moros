@@ -385,6 +385,45 @@ never were.
    road builder does and what `A8`'s spoil balance is already trying to reach.
    ⚠ And every row satisfies the limit, so the profile is not what separates them.
 
+   ⚠⚠ **AND THEN THE PROBE REFUTED ITS OWN CONCLUSION, TWICE.** Two rows were missing,
+   and the first of them is the whole answer: `slope_settle` is not what ships alone —
+   it ends by calling `spoil_place`, and the settle **with its own second half** moves
+   exactly the same earth as anchoring at the middle.
+
+   | | cut | fill | earth moved |
+   |---|---|---|---|
+   | held at middle — the candidate | 455 | 390 | **845** |
+   | **lower + `A8`'s shift — what already ships** | 429 | 416 | **845** |
+
+   **So the anchor is not the lever, and this question was comparing the settle against
+   half of itself.** A uniform shift by the mean is precisely what turns a profile
+   pinned at the bottom into one pinned at the middle. No change to `A7`'s rule.
+
+   ⚠ **WHICH LEFT THE CANYON UNEXPLAINED, AND `probe/house/canyon.loft` FOUND IT.** The
+   same strip laid three ways on the same ground — stamped, settled per stroke as
+   `road_lay` does, and settled once at the end **to convergence**:
+
+   | 6 per hex, 26 cells | cut | fill | moved | profile | `slope_owed` |
+   |---|---|---|---|---|---|
+   | per stroke — **what ships** | 1500 | 8 | **1508** | −120 … +7 | 0 |
+   | to convergence | 855 | 143 | **998** | −90 … **+37** | 0 |
+
+   **The canyon is the repetition.** Every disc overwrites four strokes' worth of
+   already-balanced cells with the raw lookahead grade, and each shift is then diluted
+   across the whole growing run — so the balance is undone as fast as it is applied.
+   Run to the end **once**, the same rule moves a third less earth and produces the
+   cutting-at-the-head, embankment-at-the-foot profile this row was asking the anchor
+   for.
+
+   ⚠ **AND THE FIRST READING OF THAT PROBE WAS WRONG, WHICH IS WHY IT HAS A LEGALITY
+   COLUMN.** A single settle looked best of all — 830 moved, the smallest figure on the
+   board — and it had **192 road-to-road edges over the limit, worst step 6**. It moved
+   least because it did least: `SLOPE_PASSES` is 12 and a correction travels one cell a
+   pass, so no single call can settle a 26-cell run. ⚠ **That is the finding under the
+   finding: the per-stroke call is also the only reason the run is legal at all** —
+   twenty-six calls of twelve passes is what converges it. Repetition is standing in
+   for passes and paying for it with the balance, and the two only look like one rule.
+
    The original question, kept because the measurement is what answered it: ⚠ **NEW, and it is
    what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a
    road walked down a 6-per-hex ramp is cut 120 units at its top and stands proud by 1 —

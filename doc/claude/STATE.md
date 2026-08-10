@@ -50,14 +50,39 @@ what a chasm is.
 | a road cannot be laid on it | so it is carried over — `A9` upside down, the same column and the same `F1` |
 | and it is DRAWN | an eleventh surface, a depth ramp, a trickle at the spring and banks framing it. `shots/a10-*.png` |
 
-### The next piece of work
+### The next piece of work — and open question 9 turned out to be the wrong question
 
-**The fall-line canyon**, which is open question 9 and the one measurement that
-refuted a sentence of the plan: a road walked down a 6-per-hex ramp comes out **cut by
-120 units and proud by 1**, because `slope_settle` takes the LOWER envelope. Spanning
-does not answer it — that is a road ABOVE the ground and the canyon is a road below it.
-What would is a settle that holds the grade at the author's own cell and lets both
-directions fall away from it, which is a change to `A7`'s rule.
+**The fall-line canyon is measured and it is NOT the envelope.** A road walked down a
+6-per-hex ramp comes out **cut by 120 units and proud by 1**, and the open question
+blamed `slope_settle` taking the lower envelope. Two probes say otherwise:
+
+- **`probe/house/envelope.loft`** — `slope_settle` is not what ships alone. It ends by
+  calling `spoil_place`, and **the settle with its own second half moves exactly as much
+  earth as anchoring at the middle**: 845 either way at 6 per hex, 338 at 3. A uniform
+  shift by the mean is what turns a profile pinned at the bottom into one pinned at the
+  middle. **The question was comparing the settle against half of itself**, and `A7`'s
+  rule needs no change.
+- **`probe/house/canyon.loft`** — the same strip laid three ways. Settling the finished
+  run **once, to convergence** moves **998** where the shipped per-stroke path moves
+  **1508**, worst cut 90 against 120, and it stands **proud by 37** at the foot instead
+  of 7 — the cutting-at-the-head, embankment-at-the-foot profile a road builder makes.
+  **The canyon is the repetition**: every disc overwrites four strokes' worth of
+  already-balanced cells with the raw lookahead grade, and each shift is diluted across
+  the whole growing run.
+
+⚠ **AND THE FIRST READING OF THE SECOND PROBE WAS WRONG, WHICH IS WHY IT GREW A
+LEGALITY COLUMN.** A single settle looked best of all — 830 moved, the smallest figure
+on the board — and left **192 road-to-road edges over the limit, worst step 6**. It
+moved least because it did least: `SLOPE_PASSES` is **12** and a correction travels one
+cell a pass, so no single call can settle a 26-cell run. ⚠ **The finding under the
+finding: the per-stroke call is also the only reason the run is legal at all.**
+Twenty-six calls of twelve passes is what converges it — repetition is standing in for
+passes and paying for it with the balance. **What the fix has to separate is those
+two**, and neither is an envelope.
+
+⚠ **`slope_owed` and a direct edge count were run side by side and agree on every row.**
+That matters because the row that was nearly believed is the one where both said the
+run was unfinished and the earth-moved column looked best.
 
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
