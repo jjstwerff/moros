@@ -258,6 +258,8 @@ fn test_a_gesture_reads_the_identity_of_the_region_it_is_standing_in() {
 // ── `A7` — the limit is the WORLD's, not one gesture's ──────────────────────
 
 fn test_a_road_walked_up_a_hill_lands_inside_its_limit_by_itself() {
+  rl_c = 0;
+  rl_r = 0;
   // ⚠ THE ONE MEASURED DEFECT IN THE ORDER MODEL. `brush` enforced the limits and
   // nothing else did, so a road WALKED up a hill came out at a steepest step of 3
   // where its limit is 1 — the invariant was a property of one gesture, and any
@@ -293,7 +295,7 @@ fn test_a_road_walked_up_a_hill_lands_inside_its_limit_by_itself() {
   for q in 0..13 {
     x = 12 - q;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U);
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
   }
   assert(steepest(w, 12) <= ground_kind_of(ROAD_MAT).tr_slope,
          "the gesture handed back a road at {steepest(w, 12)} a hex: {profile(w, 12)}");
@@ -309,19 +311,21 @@ fn test_a_road_walked_up_a_hill_lands_inside_its_limit_by_itself() {
 // with the settle wired and 414 without — not one write — while an unguarded call
 // walked the whole run on every stroke for a 1.7x wall clock.
 fn test_a_flat_road_is_never_settled_because_it_never_breaks() {
+  rl_c = 0;
+  rl_r = 0;
   w = strip(SURFACE_MAT, 0);
   cl0 = 0;
   rs0 = 0;
   brush(w, 0, 0, 24, 12, cl0, rs0);          // a hill, so the ground is not flat
   grade = ground_h(w, 0, 0);                 // frozen ONCE, as the server does it
   before = w.w_tau;
-  for q in 0..13 { road_lay(w, q, 0, grade, 1, (grade as float) * U); }
+  for q in 0..13 { road_lay(w, q, 0, grade, 1, (grade as float) * U, rl_c, rl_r); }
   laid = w.w_tau - before;
 
   // The same strokes again change nothing, so a settle firing would show up as
   // writes with no cause.
   mid = w.w_tau;
-  for q2 in 0..13 { road_lay(w, q2, 0, grade, 1, (grade as float) * U); }
+  for q2 in 0..13 { road_lay(w, q2, 0, grade, 1, (grade as float) * U, rl_c, rl_r); }
   assert(w.w_tau == mid,
          "re-laying the identical flat road wrote {w.w_tau - mid} times — the "
          + "settle is firing on a run that breaks nothing");
@@ -330,6 +334,8 @@ fn test_a_flat_road_is_never_settled_because_it_never_breaks() {
 }
 
 fn test_a_settled_road_conserves_its_spoil() {
+  rl_c = 0;
+  rl_r = 0;
   // ⚠ THIS ROW USED TO ASSERT THE OPPOSITE — *settling only ever cuts and never
   // fills* — and plan 20 `A8` is the step that reverses it on purpose. Cut-only is
   // what a cutting is and is half the answer: *"the builders had a lot of materials
@@ -348,7 +354,7 @@ fn test_a_settled_road_conserves_its_spoil() {
   for q in 0..13 {
     x = 12 - q;
     h = ground[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U);
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
   }
   cut = 0;
   fill = 0;
@@ -371,10 +377,12 @@ fn test_a_settled_road_conserves_its_spoil() {
 // above mean anything: *a road on flat ground must cut nothing and fill nothing — a
 // balance that moves earth where none was needed is not a balance.*
 fn test_a_road_on_flat_ground_moves_no_earth_at_all() {
+  rl_c = 0;
+  rl_r = 0;
   w = strip(SURFACE_MAT, 0);
   ground: vector<integer> = [];
   for s0 in 0..13 { ground += [ground_h(w, s0, 0)]; }
-  for q in 0..13 { road_lay(w, q, 0, ground[q] ?? G, 1, ((ground[q] ?? G) as float) * U); }
+  for q in 0..13 { road_lay(w, q, 0, ground[q] ?? G, 1, ((ground[q] ?? G) as float) * U, rl_c, rl_r); }
   for q2 in 0..13 {
     assert(ground_h(w, q2, 0) == (ground[q2] ?? 0),
            "flat ground moved at ({q2},0): {ground[q2]} -> {ground_h(w, q2, 0)}");
@@ -415,6 +423,8 @@ fn test_settling_a_surface_with_no_limit_does_nothing() {
 }
 
 fn test_both_orders_now_agree_about_the_limit() {
+  rl_c = 0;
+  rl_r = 0;
   // ⚠ THE CONVERGENCE PLAN 20 NAMED: *the same steepest step both orders*. They do
   // not produce the same HEIGHTS — a road cut into a hill and a road that shaped
   // the hill are different places — but they now agree about the one thing that
@@ -428,7 +438,7 @@ fn test_both_orders_now_agree_about_the_limit() {
   for q in 0..13 {
     x = 12 - q;
     h = hs[x] ?? G;
-    road_lay(a, x, 0, h, 1, (h as float) * U);
+    road_lay(a, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
   }
   c2 = 0;
   r2 = 0;
@@ -509,6 +519,8 @@ fn test_the_guard_ignores_the_seam_to_unlimited_ground() {
 // the disc just laid. Measured with the guard one-sided, a road walked downhill
 // came back at its raw 3 a hex with `w_tau` unchanged at the unwired numbers.
 fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
+  rl_c = 0;
+  rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 4)..30 {
     for r in (0 - 6)..7 { ground_set(w, q, r, G + 200 - q * 3, SURFACE_MAT); }
@@ -517,7 +529,7 @@ fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
   for s in 0..24 { hs += [ground_h(w, s, 0)]; }
   for i in 0..24 {
     h = hs[i] ?? G;
-    road_lay(w, i, 0, h, 2, (h as float) * U);
+    road_lay(w, i, 0, h, 2, (h as float) * U, rl_c, rl_r);
   }
   worst = 0;
   for q2 in 0..23 {
@@ -529,4 +541,62 @@ fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
          "a road walked downhill came back at {worst} a hex — the guard cannot see "
        + "the direction where the high cell is the PREVIOUS stroke's");
   assert(slope_owed(w, 0, 0) == 0, "and it owes {slope_owed(w, 0, 0)}");
+}
+
+// ── A ROAD CANNOT BE CUT THROUGH THE ROOM UNDER IT — plan 20 ────────────────
+//
+// ⚠ `road_lay` THREW `surface_set`'s VERDICT AWAY, and while the grade was frozen
+// from the author's feet that could never bite: the road was never asked for a
+// height far below them. A grade that follows the landscape asks for exactly that,
+// and a write landing within `ε` of a layer beneath is refused — `CW_FOLD`, code 1,
+// with nothing said. Measured (`probe/house/roadlayer.loft`) against a cellar floor
+// at 28: a grade 4 below the ground is written; 8, 10, 11 and 12 below are all
+// refused, and the column comes back byte for byte unchanged.
+//
+// ⚠ AND THE ANSWER IS AN OFFER, NOT A REFUSAL. `ε` is the model's own minimum layer
+// separation, so the lowest a road can sit here is the room's floor plus one of
+// them. The road is laid there and the author is told by how much it came up.
+
+fn cellared(depth: integer) -> World {
+  w = strip(SURFACE_MAT, 0);
+  why = "";
+  storey_add(w, 0, 0, 0 - 1, 3, why);
+  w
+}
+
+fn test_a_road_is_lifted_clear_of_a_room_rather_than_refused() {
+  w = cellared(1);
+  col = world_column(w, 0, 0);
+  assert(len(col.co_cells) >= 2, "the fixture dug no cellar: {len(col.co_cells)} layers");
+  floor = (col.co_cells[0] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  // A grade far below the ground — deep enough that it would fold into the room.
+  want = floor + 1;
+  cl = 0;
+  rs = 0;
+  road_lay(w, 0, 0, want, 1, (G as float) * U, cl, rs);
+  got = ground_h(w, 0, 0);
+  assert((world_ground_cell(w, 0, 0).h_material as integer ?? 0) == ROAD_MAT,
+         "the road was not laid at all — the write was refused and swallowed");
+  assert(got >= floor + w.w_eps,
+         "the road sits at {got}, less than one eps ({w.w_eps}) above a room floor "
+         + "at {floor}");
+  assert(cl > 0 && rs > 0,
+         "it was lifted silently — clamped {cl}, residual {rs}");
+  // ⚠ AND THE OFFER IS THE LOWEST LEGAL ONE, not merely a legal one. A road shoved
+  // to the surface would pass every row above and would not be a cutting at all.
+  assert(got == floor + w.w_eps,
+         "the road was lifted to {got} where {floor + w.w_eps} clears the room");
+}
+
+// ⚠ THE NEGATIVE CONTROL: nothing dug, nothing lifted. Without it a `road_lay` that
+// lifted every road everywhere would pass the row above.
+fn test_a_road_over_open_ground_is_never_lifted() {
+  w = strip(SURFACE_MAT, 0);
+  cl = 0;
+  rs = 0;
+  road_lay(w, 0, 0, G - 20, 1, (G as float) * U, cl, rs);
+  assert(ground_h(w, 0, 0) == G - 20,
+         "a road cut 20 into open ground ended at {ground_h(w, 0, 0)}, not {G - 20}");
+  assert(cl == 0 && rs == 0,
+         "open ground reported a lift: clamped {cl}, residual {rs}");
 }

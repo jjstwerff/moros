@@ -150,7 +150,28 @@ const span = xhi - xlo;
 const groundRange = ground0.hi - ground0.lo;
 const roadRange   = road.hi - road.lo;
 const laid    = road.n > 0;
-const graded  = laid && roadRange < groundRange * 0.6;
+// ⚠ `graded` USED TO BE `roadRange < groundRange * 0.6`, AND THAT PROXY DIED WITH
+// THE FLAT ROAD. `road_h` was frozen once when road mode went on, so the strip was
+// level end to end and its mesh range was nothing but the lip described above —
+// which made any threshold look like a claim about grading. A road follows the
+// landscape now, so one climbing a hill legitimately RISES: measured on this scene,
+// 5.417 against a ground range of 8.
+//
+// ⚠ AND THE RANGE CANNOT BE REPAIRED BY MOVING THE NUMBER, because it is polluted by
+// exactly the lip this file already documents: where a graded road meets ungraded
+// ground the corner mean lifts the road's own edge vertices toward the hill, and
+// near a crest that is worth whole world-units. A bound derived from the limit —
+// `span / HEX_LEN × tr_slope` — comes out at 3.75 wu against a measured 5.417, and
+// the difference is the lip rather than the road.
+//
+// So the flatness claim moves to the instrument that can state it exactly, and it is
+// the one the library now owns: `slope_owed` is 0 for the whole run, and the server
+// SAYS SO by not reporting a stall. That is a claim about the road's own gradient
+// rather than about the silhouette of its mesh — and the range keeps a loose sanity
+// bound beside it, because a road that rose MORE than the hill it crosses would be
+// something else again.
+const stalled = g.says.some((l) => l.startsWith('road did not settle'));
+const graded  = laid && !stalled && roadRange < groundRange;
 const crossed = groundRange > 2.0;                 // there WAS relief to cut
 const connected = comps === 1;
 const follows   = span > 18;          // the walk ran x = 2 … 26
@@ -158,4 +179,4 @@ const ok = laid && graded && crossed && connected && follows;
 report(g, { off, groundRange: +groundRange.toFixed(3),
                              roadRange: +roadRange.toFixed(3),
                              verts: road.n, components: comps, span,
-                             laid, graded, crossed, connected, follows, ok }, ok);
+                             laid, graded, stalled, crossed, connected, follows, ok }, ok);

@@ -2807,8 +2807,47 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   }
 }
 
+// How far a road at `h` must RISE at this cell to clear whatever is under it — 0
+// when nothing is.
+//
+// ⚠ THIS EXISTS BECAUSE A REFUSED WRITE WAS SILENT, which is the `K-FIT` failure
+// this tree has a rule for. `surface_set` hands back `world_set_column`'s verdict
+// and `road_lay` threw it away, so a road whose grade came within `ε` of a room
+// beneath it was simply **not laid** — measured (`probe/house/roadlayer.loft`)
+// against a cellar floor at 28: a grade 4 below the ground is written, and 8, 10,
+// 11 and 12 below are all `CW_FOLD`, code 1, with nothing said.
+//
+// ⚠ AND IT WAS UNREACHABLE UNTIL THE GRADE FOLLOWED THE LANDSCAPE. While `road_h`
+// was frozen from the author's feet the road could never be asked for a height far
+// below them, so the refusal had no way to fire. `gates/world/surface` — which digs
+// cellars under a hill and lays a road over them — is what caught it, and its
+// column came back byte for byte unchanged.
+//
+// ⚠ THE OFFER, NOT A BLANK NO. `ε` is the model's own minimum layer separation, so
+// the lowest height this column can take is the layer below plus one of them. A
+// road that cannot be cut as deep as its grade asked still gets laid, one `ε` clear
+// of the room, and the author is told by how much it came up.
+pub fn road_clearance(wld: World, q: integer, r: integer, feet: float,
+                      h: integer) -> integer {
+  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  if sf.sf_layer <= 0 { return 0; }
+  col = hex_world::world_column(wld, q, r);
+  // The nearest OCCUPIED layer below the one this write lands on. Absent layers are
+  // gaps rather than constraints — `check_column`'s own rule, and asking the same
+  // question the refusal asked is the whole point of this function.
+  below = 0 - 1;
+  for i in 0..sf.sf_layer {
+    if hex_world::hex_occupied(col.co_cells[i] ?? hex_world::Hex {}) { below = i; }
+  }
+  if below < 0 { return 0; }
+  floor = (col.co_cells[below] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  need = floor + wld.w_eps;
+  if h >= need { return 0; }
+  need - h
+}
+
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float) {
+            feet: float, clamped: &integer, residual: &integer) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -2817,6 +2856,16 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
         hh = h;
         if hh < W_RESERVE { hh = W_RESERVE; }
         if hh > 65535 { hh = 65535; }
+        // ⚠ ASKED BEFORE THE WRITE, NOT AFTER A REFUSAL. Retrying on a code would
+        // work too, and it would make the common case pay for the rare one — every
+        // cell of every stroke doing a failed column write first. This is one read
+        // of a column the writer is about to read anyway.
+        lift = road_clearance(wld, q, r, feet, hh);
+        if lift > 0 {
+          clamped = clamped + 1;
+          if lift > residual { residual = lift; }
+          hh = hh + lift;
+        }
         surface_set(wld, q, r, feet, hh, ROAD_MAT);
       }
     }
