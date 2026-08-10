@@ -2752,13 +2752,22 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // SKY the length of the run. `face_grid_for` gives the road pass its own
             // heightfield instead, so the shelf is smoothed by the rule the road
             // beside it already uses.
-            if e.h_material == ROAD_MAT {
-              // ⚠ A SPAN IS A DECK AND OWES A DECK'S EDGES; A SHELF OWES NEITHER.
-              // The road's own top is drawn by `chunk_mesh_mat`'s pass either way —
-              // but a bridge has air under it and a shelf has solid rock, so only the
-              // one ABOVE the ground gets a rim and an underside. Without them the
-              // deck is a fan alone, which is a hairline: photographed, the bridge
-              // was a plank with daylight through its own edge.
+            // ⚠ ONLY FABRIC IS A DECK — plan 20 `A10`, and the riverbed is what said
+            // so. This clause is *the layer is not the ground*, and before water there
+            // was nothing under one but a cellar floor, so every such cell was drawn as
+            // JOINERY. A river's bed is a non-ground terrain layer too: photographed,
+            // it came out as orange planking under the water. What decides is
+            // `tr_fabric` — the same line `A1` draws between what moves rigidly and
+            // what takes the falloff — and everything else belongs to the terrain pass,
+            // which meshes it in its own material.
+            //
+            // ⚠ A SPAN IS THE ONE NON-FABRIC CELL THAT STILL OWES A DECK'S EDGES. Its
+            // top is the terrain pass's either way, but a bridge has AIR under it while
+            // a shelf and a bed have solid ground — so only the one ABOVE the ground
+            // gets a rim and an underside. Without them the deck is a fan alone, which
+            // is a hairline: photographed, the bridge was a plank with daylight through
+            // its own edge.
+            if !hex_editor::ground_kind_of(e.h_material as integer ?? 0).tr_fabric {
               if !hex_editor::col_underground(c, e#index) {
                 emit_floor_slab(fm, wld, cq, cr, fh);
                 emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
