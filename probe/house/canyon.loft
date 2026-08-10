@@ -198,6 +198,7 @@ fn stamp(w: World, took: &integer) {
 }
 
 fn main() {
+  rl_grades = Grades { gr_by: [] };
   println("A road may climb 1 a hex. Walked down a ramp it cannot follow, the same");
   println("strip laid three ways — and the question is where the balance goes.");
   // ⚠ AND WALKED UP AS WELL AS DOWN. This tree has written a one-sided guard twice —
@@ -241,7 +242,7 @@ fn main() {
     rs = 0;
     for i in 0..N {
       ahead = ground_h(wb, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
+      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs, rl_grades);
     }
     report("per stroke  ", natb, wb);
 
@@ -263,7 +264,7 @@ fn main() {
       look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
       hh = h1 - (round(sl * look) as integer ?? 0);
       road_lay(wp, i, 0, hh, hex_editor::ROAD_HALF, (hh as float) * U,
-               cos(0.0) * sl, sin(0.0) * sl, clp, rsp);
+               cos(0.0) * sl, sin(0.0) * sl, clp, rsp, rl_grades);
     }
     report("as a PLANE  ", natp, wp);
 
@@ -312,7 +313,7 @@ fn main() {
     rse = 0;
     for i in 0..N {
       ahead = ground_h(we, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cle, rse);
+      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cle, rse, rl_grades);
     }
     owed_e = 0;
     cells = 0;

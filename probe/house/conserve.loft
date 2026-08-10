@@ -49,6 +49,7 @@ fn hill() -> World {
 }
 
 fn main() {
+  rl_grades = Grades { gr_by: [] };
   // ⚠ THREE WORLDS ON ONE GROUND. `wn` is never paved and is the datum; `ws` gets the
   // stamp and nothing else; `w` gets the gesture as it ships.
   wn = hill();
@@ -77,7 +78,7 @@ fn main() {
   for q in 0..13 {
     x = 12 - q;
     h = ground[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r, rl_grades);
   }
 
   cut = 0;

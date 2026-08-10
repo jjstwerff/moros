@@ -40,13 +40,14 @@ fn ramp_grad(k: integer) -> float {
 }
 
 fn test_a_flat_gradient_is_the_plate_it_always_was() {
+  rl_grades = Grades { gr_by: [] };
   // ⚠ THE COMPATIBILITY CLAIM, AND IT IS WHAT LETS EVERY OTHER CALLER PASS ZERO. With
   // no gradient the disc is written at one height, exactly as it was before a plane
   // existed — so a caller with no run to speak of loses nothing.
   w = ramp(1);
   cl = 0;
   rs = 0;
-  road_lay(w, 4, 0, 300, 1, 75.0, 0.0, 0.0, cl, rs);
+  road_lay(w, 4, 0, 300, 1, 75.0, 0.0, 0.0, cl, rs, rl_grades);
   for d in 0..6 {
     (nq, nr) = hex_grid::hex_neighbor(4, 0, d);
     assert(run_h(w, nq, nr, ROAD_MAT) == 300,
@@ -57,6 +58,7 @@ fn test_a_flat_gradient_is_the_plate_it_always_was() {
 }
 
 fn test_a_later_stroke_writes_the_height_its_neighbour_already_wrote() {
+  rl_grades = Grades { gr_by: [] };
   // ⚠ THE THEOREM, AND IT IS WHAT KILLS THE DISPLACEMENT. When consecutive strokes lie
   // on the run's own gradient, `h_i + (w - p_i).g` does not mention `i` — so the four
   // discs that overlap at `ROAD_HALF` 2 all write the SAME height and a later stroke
@@ -67,9 +69,9 @@ fn test_a_later_stroke_writes_the_height_its_neighbour_already_wrote() {
   b = ramp(k);
   cl = 0;
   rs = 0;
-  road_lay(a, 0, 0, G, 1, 0.0, g, 0.0, cl, rs);
-  road_lay(b, 0, 0, G, 1, 0.0, g, 0.0, cl, rs);
-  road_lay(b, 1, 0, G - k, 1, 0.0, g, 0.0, cl, rs);
+  road_lay(a, 0, 0, G, 1, 0.0, g, 0.0, cl, rs, rl_grades);
+  road_lay(b, 0, 0, G, 1, 0.0, g, 0.0, cl, rs, rl_grades);
+  road_lay(b, 1, 0, G - k, 1, 0.0, g, 0.0, cl, rs, rl_grades);
   for j in 0..2 {
     assert(run_h(a, j, 0, ROAD_MAT) == run_h(b, j, 0, ROAD_MAT),
            "cell ({j},0) was written {run_h(a, j, 0, ROAD_MAT)} by its own stroke and "
@@ -80,9 +82,9 @@ fn test_a_later_stroke_writes_the_height_its_neighbour_already_wrote() {
   // above is a fixture in which nothing could have moved anyway
   fa = ramp(k);
   fb = ramp(k);
-  road_lay(fa, 0, 0, G, 1, 0.0, 0.0, 0.0, cl, rs);
-  road_lay(fb, 0, 0, G, 1, 0.0, 0.0, 0.0, cl, rs);
-  road_lay(fb, 1, 0, G - k, 1, 0.0, 0.0, 0.0, cl, rs);
+  road_lay(fa, 0, 0, G, 1, 0.0, 0.0, 0.0, cl, rs, rl_grades);
+  road_lay(fb, 0, 0, G, 1, 0.0, 0.0, 0.0, cl, rs, rl_grades);
+  road_lay(fb, 1, 0, G - k, 1, 0.0, 0.0, 0.0, cl, rs, rl_grades);
   moved = 0;
   for j2 in 0..2 {
     if run_h(fa, j2, 0, ROAD_MAT) != run_h(fb, j2, 0, ROAD_MAT) { moved = moved + 1; }
@@ -93,6 +95,7 @@ fn test_a_later_stroke_writes_the_height_its_neighbour_already_wrote() {
 }
 
 fn test_a_walked_road_sits_on_the_ground_it_was_walked_over() {
+  rl_grades = Grades { gr_by: [] };
   // ⚠ THE SINK, AND IT IS FIVE CELLS DEEP RATHER THAN ONE. The grade is read past the
   // strip, and the disc that finally owns a cell TRAILS the author by `rad` — so a
   // cell's effective lookahead is `2 * rad + 1`, and on a ramp the road sank that many
@@ -104,8 +107,8 @@ fn test_a_walked_road_sits_on_the_ground_it_was_walked_over() {
   cl = 0;
   rs = 0;
   for i in 0..12 {
-    road_lay(w, i, 0, G - k * i, 1, 0.0, g, 0.0, cl, rs);
-    road_lay(f, i, 0, G - k * i, 1, 0.0, 0.0, 0.0, cl, rs);
+    road_lay(w, i, 0, G - k * i, 1, 0.0, g, 0.0, cl, rs, rl_grades);
+    road_lay(f, i, 0, G - k * i, 1, 0.0, 0.0, 0.0, cl, rs, rl_grades);
   }
   // the interior of the run, away from the two ends where the walk simply stopped
   worst = 0;

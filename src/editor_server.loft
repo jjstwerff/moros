@@ -5711,6 +5711,13 @@ fn main() {
   // a stroke lays a handful of cells, so the count has to outlive the stroke. Reset on
   // `47:1`, exactly as `road_h` freezes there.
   water_run = 0;
+  // ⚠ WHAT THE ROAD RUN WAS ASKED FOR, CELL BY CELL — plan 20, open question 9, and it
+  // is held here for the reason `water_run` is: `A8`'s balance is exact for ONE settle
+  // and the gesture makes one per stroke, so the datum it balances against has to
+  // outlive the stroke. It is what the author asked for, never the natural ground:
+  // asking for the natural ground hands back a deliberate cut, and asking the previous
+  // stroke's profile ratchets. Reset on `26:1`, where `road_h` is frozen.
+  road_grades = hex_editor::Grades { gr_by: [] };
   road_h = 0;                  // the road's grade — set when road mode goes on and
                                // then FOLLOWING the landscape, one stroke at a time
   // One stall report per road run, not per stroke — the same shape `level_stalled`
@@ -6816,7 +6823,7 @@ fn main() {
                 hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
                                      hex_editor::ROAD_HALF, py,
                                      cos(yaw) * rd_slope, sin(yaw) * rd_slope,
-                                     rd_clamp, rd_res);
+                                     rd_clamp, rd_res, road_grades);
                 // ⚠ A ROAD THAT COULD NOT BE CUT AS DEEP AS ITS GRADE ASKED SAYS SO.
                 // `road_lay` used to throw `surface_set`'s verdict away, so a grade
                 // landing within `ε` of a room beneath was simply not laid — and it
@@ -7912,6 +7919,9 @@ fn main() {
             road_h = hex_editor::freeze_grade(rvf, rres0);
             road_stalled = false;
             road_lifted = false;
+            // ⚠ A NEW RUN IS ASKED FOR NOTHING YET. Carrying the previous road's
+            // grades into it would balance a run against a road somewhere else.
+            road_grades = hex_editor::Grades { gr_by: [] };
           }
           // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
           // height and a grade is an integer, so freezing one from the other

@@ -278,6 +278,56 @@ returning it undoes a deliberate cut.
 **The branch is left pushed and unmerged**; `main` keeps the plane and the caved-run fix,
 both of which stand on their own.
 
+## ✅ AND THE DATUM THE MERGE NEEDED IS BUILT — `Grades`, what the author ASKED for
+
+**The debt is a QUESTION now, not an accumulator**, which is `slope_owed`'s shape one rule
+over and for its reason: *the heights already say* what a run owes, so a number carried out
+of a gesture could disagree with them. `road_lay` records the grade it stamped at each cell
+(`grade_note`), and `road_balance` asks `Σ(asked − current)` **afresh every stroke**. There
+is no accumulator, so there is nothing to drift.
+
+**Three datums were tried and only the third works — each failed in its own direction:**
+
+| datum | what it does |
+|---|---|
+| the **natural ground** | undoes a deliberate cut. Five tests refuse it, `A8`'s own negative control first: *a road cut 20 into open ground ended at 40* |
+| the **previous profile** (`spoil_place`'s) | **ratchets** — the run climbed −2 → 0 → 8 → 22 → 52 while the debt itself grew 0 → 2 → 6 → 16 → 32, both still rising when the walk ended |
+| **what the author asked** | stable under the balance, so it cannot ratchet; equal to the current height wherever the author chose a cut, so it cannot undo one |
+
+**Measured, and the falling side is now exactly the optimum `envelope.loft` computed:**
+
+| 26 cells | plate | plane | **plane + registry** | optimum |
+|---|---|---|---|---|
+| 6 per hex, falling | 1508 | 1141 | **845** | 845 |
+| 3 per hex, falling | 777 | 538 | **338** | 338 |
+| 1 per hex, either way | 127 | 0 | **0** | 0 |
+
+⚠ **AND `test_a_settled_road_conserves_its_spoil` PASSES**, which the run-debt branch could
+never make it do. `tests/road_debt.loft` pins the rest: a deliberate cut owes nothing, and
+the part of a run standing above its asked grade **plateaus** instead of climbing (4, 6, 11,
+11, 57, 45, 102, **117, 117, 117, 117, 117**). Sabotaging the datum back to the natural
+ground takes it red at *258 halfway, 344 at the end* — the ratchet, caught.
+
+⚠ **THE CLAIM IS *IT STOPS*, NOT *IT IS ZERO*, deliberately.** A uniform shift lifts cells
+already at their grade along with the cut ones, so some overshoot is inherent to any
+balance that keeps a run legal. What a ratchet does and this must not is keep going.
+
+### ⚠ TWO THINGS THIS LEFT OPEN, AND BOTH ARE MEASURED RATHER THAN SUSPECTED
+
+1. **There are still TWO balances with two datums.** `spoil_place` runs per settle against
+   the old datum and `road_balance` per run against the new one, and the first can lift a
+   run *above* its asked grade for the stroke it takes the second to correct — measured, 5
+   units by the third stroke of an uphill walk. ⚠ **Removing `spoil_place` was tried and
+   383 tests still passed**, so nothing depends on it any more; the overshoot got *later
+   and larger* rather than going away, so it is not the only source. One balance and one
+   datum is the right shape and it wants its own step.
+2. **A rising walk cannot return its spoil.** The `CAVE_HEAD` cap refuses to bury the road
+   under its own roof, and a road cut deep into a rising hillside has no headroom to give —
+   so at 6 per hex rising the run comes out cut 1221 / filled 38. **The profile is the
+   physically right one** (a road climbing at 1 per hex on a 6 per hex hill *must* end far
+   below the ground) where the plate floated 117 units above it, but `A8`'s balance does not
+   hold there and the plan should say so.
+
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
 **This cost three changes reverted on false evidence in one session.** Editing a

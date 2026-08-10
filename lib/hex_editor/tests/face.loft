@@ -206,6 +206,7 @@ fn test_roots_hold_two_steps_more_and_never_a_wall() {
 // ── the subject the plan names: a road cut into a hill ───────────────────────
 
 fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
+  rl_grades = Grades { gr_by: [] };
   rl_c = 0;
   rl_r = 0;
   // ⚠ THE HILL GOT STEEPER WHEN `A8` LANDED, AND THAT IS THE FEATURE. A road that
@@ -223,7 +224,7 @@ fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
   for wq in 0..13 {
     x = 12 - wq;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r, rl_grades);
   }
   cl2 = 0;
   rs2 = 0;

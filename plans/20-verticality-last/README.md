@@ -478,6 +478,39 @@ never were.
    natural ground, which is the term five tests refuse because returning it undoes a
    deliberate cut.
 
+   ### ✅ AND THE REGISTRY IS BUILT — `Grades`, what the author ASKED for
+
+   **The debt is a QUESTION now, not an accumulator** — `slope_owed`'s shape one rule over
+   and for its reason: *the heights already say* what a run owes. `road_lay` records the
+   grade it stamped at each cell (`grade_note`) and `road_balance` asks
+   `Σ(asked − current)` afresh every stroke, so there is nothing to drift.
+
+   | datum | what it does |
+   |---|---|
+   | the **natural ground** | undoes a deliberate cut — five tests refuse it |
+   | the **previous profile** | **ratchets**: run −2 → 0 → 8 → 22 → 52, debt 0 → 2 → 6 → 16 → 32 |
+   | **what the author asked** | stable under the balance, and equal to the current height wherever the author chose a cut |
+
+   | 26 cells | plate | plane | **plane + registry** | optimum |
+   |---|---|---|---|---|
+   | 6 per hex, falling | 1508 | 1141 | **845** | 845 |
+   | 3 per hex, falling | 777 | 538 | **338** | 338 |
+   | 1 per hex, either way | 127 | 0 | **0** | 0 |
+
+   **The falling side is now exactly the optimum `envelope.loft` computed**, and
+   `test_a_settled_road_conserves_its_spoil` passes — which the run-debt branch could never
+   make it do. `tests/road_debt.loft` pins the rest, and sabotaging the datum back to the
+   natural ground takes it red at *258 halfway, 344 at the end*.
+
+   ⚠ **Two things left open, both measured**: there are still **two balances with two
+   datums** (`spoil_place` per settle, `road_balance` per run) and the first can lift a run
+   5 units above its asked grade for the stroke it takes the second to correct — removing
+   `spoil_place` leaves 383 tests passing, so nothing depends on it and one balance is the
+   right shape; and **a rising walk cannot return its spoil**, because the `CAVE_HEAD` cap
+   refuses to bury the road under its own roof (6 per hex rising: cut 1221, fill 38). The
+   profile is the physically right one — the plate floated 117 units *above* the hill — but
+   `A8`'s balance does not hold there.
+
    ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
    rule that runs when nobody is walking. Nothing above touches it.
 6. **Does `A4` need a real relaxation, or is one pass enough?** Decided by building the

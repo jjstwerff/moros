@@ -28,6 +28,7 @@ use hex_world;
 const U = 0.25;
 const G = 400;
 fn one(k: integer) {
+  rl_grades = Grades { gr_by: [] };
   w = world_new(U, 0, 10, 4).wn_world;
   for q in (0 - 40)..41 {
     for r in (0 - 8)..9 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
@@ -40,7 +41,7 @@ fn one(k: integer) {
     sl = ((h2 - h1) as float) / hex_grid::HEX_LEN;
     look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
     hh = h1 - (round(sl * look) as integer ?? 0);
-    caved = caved + road_lay(w, i, 0, hh, hex_editor::ROAD_HALF, (hh as float) * U, sl, 0.0, cl, rs);
+    caved = caved + road_lay(w, i, 0, hh, hex_editor::ROAD_HALF, (hh as float) * U, sl, 0.0, cl, rs, rl_grades);
   }
   worst = 0;
   for j in 1..26 {

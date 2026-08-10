@@ -1,0 +1,158 @@
+// WHAT A RUN OWES IS ASKED, NOT CARRIED — plan 20, open question 9.
+//
+// `A8`'s balance is exact for ONE settle and the gesture makes one per stroke, so the
+// earth it could not place was discarded as often as the author took steps — which is
+// what dug the fall-line canyon. Two datums were built for the debt and both were wrong,
+// each in its own direction, and this file pins the third:
+//
+//   the NATURAL ground        undoes a deliberate cut — five tests refuse it, `A8`'s own
+//                             negative control first: *a road cut 20 into open ground
+//                             ended at 40*
+//   the PREVIOUS PROFILE      ratchets. `spoil_place` measures against the profile at
+//                             entry to THIS settle, which already contains what the
+//                             balance raised last stroke, so earth already returned is
+//                             counted and returned again. Measured on a 3-per-hex ramp
+//                             walked uphill, the run climbed −2 → 0 → 8 → 22 → 52 while
+//                             the debt itself grew 0 → 2 → 6 → 16 → 32
+//   what the AUTHOR ASKED     `Grades`, recorded by the stroke that stamped the cell.
+//                             Stable under the balance, so it cannot ratchet; equal to
+//                             the current height wherever the author chose a cut, so it
+//                             cannot undo one
+use hex_editor;
+use hex_world;
+const U   = 0.25;
+const G   = 400;
+const EPS = 10;
+
+fn flat() -> World {
+  w = world_new(U, 0, EPS, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 6)..7 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn ramp(k: integer) -> World {
+  w = world_new(U, 0, EPS, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 6)..7 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
+  }
+  w
+}
+
+// What the run is still short of the grade it was laid at — `road_balance`'s own
+// question, asked here of the same registry.
+fn owed(w: World, g: Grades, n: integer) -> integer {
+  t = 0;
+  for q in (0 - 2)..(n + 2) {
+    for r in (0 - 2)..3 {
+      h = run_h(w, q, r, ROAD_MAT);
+      if h < 0 { continue; }
+      rec = g.gr_by[age_like_key(q, r)];
+      if rec == null { continue; }
+      t = t + (rec.ga_h - h);
+    }
+  }
+  t
+}
+
+fn cells(w: World, n: integer) -> integer {
+  c = 0;
+  for q in (0 - 2)..(n + 2) {
+    for r in (0 - 2)..3 { if run_h(w, q, r, ROAD_MAT) >= 0 { c = c + 1; } }
+  }
+  c
+}
+
+fn test_a_deliberate_cut_owes_nothing() {
+  // ⚠ THE ROW THE *NATURAL GROUND* DATUM CANNOT PASS. The author asks for a road 20
+  // below flat ground; that is a cutting, not spoil, and a balance that hands it back
+  // has undone the gesture. Against a stamped datum the question does not even arise —
+  // asked IS current.
+  w = flat();
+  cl = 0;
+  rs = 0;
+  g = Grades { gr_by: [] };
+  road_lay(w, 0, 0, G - 20, 2, (G as float) * U, 0.0, 0.0, cl, rs, g);
+  assert(run_h(w, 0, 0, ROAD_MAT) == G - 20,
+         "the cut the author asked for must stay cut, got {run_h(w, 0, 0, ROAD_MAT)}");
+  assert(owed(w, g, 1) == 0, "a road at its own grade owes {owed(w, g, 1)}");
+}
+
+fn test_the_debt_stops_growing_instead_of_ratcheting() {
+  // ⚠ THE ROW THE *PREVIOUS PROFILE* DATUM CANNOT PASS. With a datum that moves when
+  // the balance moves, earth already returned is counted and returned again, so the
+  // road climbs past the grade it was asked for WITHOUT BOUND — measured on a 3-per-hex
+  // ramp, the run reached 52 above the natural ground while the debt itself grew
+  // 0 → 2 → 6 → 16 → 32, both still climbing when the walk ended. Against a stamped
+  // datum the part of the run standing above its own asked grade PLATEAUS: measured on
+  // the same walk, 4, 6, 11, 11, 57, 45, 102, 117, 117, 117, 117, 117, 117.
+  //
+  // ⚠ SO THE CLAIM IS *IT STOPS*, NOT *IT IS ZERO*, and that is deliberate. A uniform
+  // shift lifts cells that were already at their grade along with the cut ones, so some
+  // overshoot is inherent to any balance that keeps a run legal. What a ratchet does and
+  // this must not is keep going.
+  n = 20;
+  k = 3;
+  w = ramp(k);
+  cl = 0;
+  rs = 0;
+  g = Grades { gr_by: [] };
+  gx = 0.0 - ((k as float) / hex_grid::HEX_LEN);
+  early = 0;
+  late = 0;
+  for i in 0..n {
+    x = n - 1 - i;                        // walked UP the ramp, the harder direction
+    h = ground_h(w, x, 0);
+    road_lay(w, x, 0, h, 1, (h as float) * U, gx, 0.0, cl, rs, g);
+    over = above_asked(w, g, n);
+    if i == (n / 2) ?? 0 { early = over; }
+    if i == n - 1 { late = over; }
+  }
+  assert(early > 0, "nothing ever rose above its asked grade, so this fixture cannot "
+                  + "tell a ratchet from a balance and the row is vacuous");
+  assert(late <= early,
+         "the run stood {early} above its asked grade halfway through and {late} at the "
+         + "end — a balance that keeps climbing is returning earth it already returned");
+}
+
+// How much of the run stands ABOVE the grade it was asked for.
+fn above_asked(w: World, g: Grades, n: integer) -> integer {
+  t = 0;
+  for q in (0 - 2)..(n + 2) {
+    for r in (0 - 2)..3 {
+      h = run_h(w, q, r, ROAD_MAT);
+      if h < 0 { continue; }
+      rec = g.gr_by[age_like_key(q, r)];
+      if rec == null { continue; }
+      if h > rec.ga_h { t = t + (h - rec.ga_h); }
+    }
+  }
+  t
+}
+
+fn test_and_the_ramp_really_does_make_the_settle_fire() {
+  // Without this the row above could pass on a walk that never settled anything, where
+  // no debt could arise however wrong the datum was.
+  n = 13;
+  k = 3;
+  w = ramp(k);
+  cl = 0;
+  rs = 0;
+  g = Grades { gr_by: [] };
+  moved = 0;
+  for i in 0..n {
+    x = n - 1 - i;
+    h = ground_h(w, x, 0);
+    gx = 0.0 - ((k as float) / hex_grid::HEX_LEN);
+    road_lay(w, x, 0, h, 1, (h as float) * U, gx, 0.0, cl, rs, g);
+  }
+  for q in 0..n {
+    rec = g.gr_by[age_like_key(q, 0)];
+    if rec == null { continue; }
+    if run_h(w, q, 0, ROAD_MAT) != rec.ga_h { moved = moved + 1; }
+  }
+  assert(moved > 0,
+         "nothing was ever moved off the grade it was asked for, so this ramp cannot "
+         + "produce a debt and the row above proves nothing");
+}

@@ -10,6 +10,7 @@ const U = 0.25;
 const G = 40;
 
 fn main() {
+  rl_grades = Grades { gr_by: [] };
   rl_c = 0;
   rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
@@ -33,7 +34,7 @@ fn main() {
   for q2 in 0..13 {
     x = 12 - q2;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r, rl_grades);
   }
   cl2 = 0;
   rs2 = 0;

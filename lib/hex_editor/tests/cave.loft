@@ -36,12 +36,13 @@ fn ramp(k: integer) -> World {
 // — which is what `editor_server`'s `rd_look` does, and the only place the natural
 // ground still survives after the stroke before it.
 fn walk_contour(w: World, from: integer, to: integer) -> integer {
+  rl_grades = Grades { gr_by: [] };
   cl = 0;
   rs = 0;
   n = 0;
   for q in from..to {
     ahead = ground_h(w, q + ROAD_HALF + 1, 0);
-    n = n + road_lay(w, q, 0, ahead, ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
+    n = n + road_lay(w, q, 0, ahead, ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs, rl_grades);
   }
   n
 }
@@ -327,10 +328,11 @@ fn test_a_gentle_flank_caves_nothing_at_all() {
 // `slope_limit.loft`'s open-ground control red. An open cut in level ground is open
 // because there is nothing above to hold a lid up.
 fn test_a_trench_in_flat_ground_never_roofs_itself() {
+  rl_grades = Grades { gr_by: [] };
   w = ramp(0);
   cl = 0;
   rs = 0;
-  n = road_lay(w, 0, 0, G - 20, 1, (G as float) * U, 0.0, 0.0, cl, rs);
+  n = road_lay(w, 0, 0, G - 20, 1, (G as float) * U, 0.0, 0.0, cl, rs, rl_grades);
   assert(ground_h(w, 0, 0) == G - 20,
          "the trench ended at {ground_h(w, 0, 0)}, not {G - 20}");
   assert(n == 0, "a trench in flat ground roofed {n} of its own cells");

@@ -30,6 +30,7 @@ fn flat(w: World) {
 // Walk a road from the far side of the hill to the crest, the way `roadwalk`
 // does, then hand the run back to the world's own rules.
 fn walk_road(w: World) {
+  rl_grades = Grades { gr_by: [] };
   rl_c = 0;
   rl_r = 0;
   hs: vector<integer> = [];
@@ -37,7 +38,7 @@ fn walk_road(w: World) {
   for wq in 0..13 {
     x = 12 - wq;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r, rl_grades);
   }
   cl = 0;
   rs = 0;
