@@ -164,6 +164,12 @@ const PALETTE = {
   floor:  [0.65, 0.40, 0.25],
   frame:  [0.78, 0.74, 0.65],
   sky:    [0.48, 0.55, 0.64],
+  // ⚠ THE ELEVENTH, AND IT HAD TO BE ADDED HERE TOO — plan 20 `A10`. This table is the
+  // THIRD copy of `hex_mesh::surfaces()` and nothing checks it across the language
+  // boundary, so a classifier without water assigns every river pixel to whatever is
+  // nearest — which is the SKY, the only other blue. Its own header says it: a
+  // classifier holding last month's colours reports a frame nobody is looking at.
+  water:  [0.24, 0.42, 0.66],
 };
 const CHROMA = Object.entries(PALETTE).map(([k, c]) => {
   const s = c[0] + c[1] + c[2];

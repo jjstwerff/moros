@@ -229,7 +229,11 @@ fn chunk_dug(wld: World, gq0: integer, gr0: integer, gw: integer) -> boolean {
 // invisible to it. Every picture gate in this tree reads shares by chromaticity, and
 // a ramp in hue would have made the water bucket unmeasurable the day it landed.
 pub const WATER_DEEP = 4 * hex_editor::WATER_DEPTH;
-pub const WATER_DARK = 0.45;            // how much of the shallow colour is left deep
+// ⚠ RAISED FROM 0.45 WITH THE SURFACE COLOUR — a deep end at 0.45 of a colour that was
+// already dark read as a hole rather than as deep water, which is `A5`'s rock lesson in
+// a different hue. The ramp still spans a full stop of brightness and the deep end now
+// sits about where the shallow one used to.
+pub const WATER_DARK = 0.60;            // how much of the shallow colour is left deep
 
 pub fn water_shade(depth: integer) -> float {
   if depth <= hex_editor::WATER_DEPTH { return 0.0; }

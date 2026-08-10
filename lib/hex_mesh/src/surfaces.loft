@@ -132,7 +132,12 @@ pub fn surfaces() -> vector<Surface> {
     // pale desaturated blue, so water goes DARKER and more saturated. Water seen from
     // above is mostly reflected sky, and a river the colour of the sky is a river no
     // histogram can find.
-    Surface { sf_name: "water",  sf_r: 0.16, sf_g: 0.28, sf_b: 0.45, sf_bucket: "water",
+    // ⚠ LIGHTENED, AND ONLY IN VALUE — the first blue photographed as a navy trench
+    // rather than as water. `0.24/0.42/0.66` is `0.16/0.28/0.45` times 1.48, so the
+    // CHROMATICITY is unchanged to three decimals and everything that reads by hue —
+    // the classifier's buckets, the separation from the sky — is exactly where it was.
+    // That is the same property the depth ramp leans on, used once more.
+    Surface { sf_name: "water",  sf_r: 0.24, sf_g: 0.42, sf_b: 0.66, sf_bucket: "water",
               sf_mat: hex_editor::WATER_MAT },
   ]
 }
