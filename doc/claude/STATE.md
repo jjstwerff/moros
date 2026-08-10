@@ -22,22 +22,37 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20 is four phases further on, and ONE question blocks the rest
+## ⏭ PICK UP HERE — plan 20's road thread is closed; `A9` is next
 
 **2026-08-09. `A4`, `A5`, `A7`'s wiring and `A8`'s rule all landed.** The rules are in
 [TERRAIN_EDITS.md](TERRAIN_EDITS.md) §T5–§T8, not here; the per-step record is
 [plan 20](../../plans/20-verticality-last/README.md). What this file owes a reader is
 what would otherwise be rediscovered.
 
-### ⚠ The one thing to settle first
+### ⚠ Nothing is blocked. The road thread closed on 2026-08-10
 
-**Which layer does a road write to once its grade has left the author's feet?**
-`road_lay` takes the HEIGHT from `road_h` and the LAYER from `py`, and the road-follows
-branch decouples them — so a road can be written against the wrong layer. Measured:
-`cell 12,0 = 1,30` — grass where a road was laid. `gates/world/surface` exists to catch
-exactly that ("the write must land on the layer those feet are on") and it did. The
-attempt is on **`plan/20-road-follows`**, which is pushed and NOT green; `plan/7-hex-editor`
-is clean. Settle that question and the other two blockers there are fixture work.
+`plan/20-road-follows` is merged (`314bebe`) and `plan/7-hex-editor` is 44 of 44. The
+road's grade follows the landscape, which is what finally made `A7`'s settle and `A8`'s
+spoil balance fire from a gesture — and closing it turned up three more defects of the
+same class, each hidden behind the frozen grade:
+
+| | |
+|---|---|
+| a road landing within `ε` of a room beneath was **silently not laid** | `road_lay` threw `surface_set`'s verdict away; it is lifted one `ε` clear and said |
+| `world/road` could not measure a gradient at all | its range proxy only ever measured the FLAT road; it asks `slope_owed` now |
+| **levelling could not make a flat pad** | a falloff is a hill's shape; `brush_level` SETS its disc |
+
+⚠ **AND THE LAST ONE PAID BACK A NUMBER I HAD ALREADY EXPLAINED AWAY.**
+`cellar_ceiling`'s `meshr soffit` had been re-baselined 306 → 298 with a careful note
+about `A5`'s parted corners. With levelling actually levelling it returned to **306** —
+`342 + 306 = 648`, the gate's own relation. **The 298 was never a fact about ceilings; it
+was a fact about a plateau that was never level.** A re-baseline with a good story
+attached is still a re-baseline, and this one was wrong.
+
+### The next piece of work
+
+`A9` and its mirror. The author's rule below makes them one axis, and the 20-metre canyon
+`A8` measured is the case that wants the span half.
 
 ### The rule the road is being built to — the author's, and it removes a toggle
 
@@ -131,7 +146,7 @@ What is true *now*:
 |---|---|
 | **plan 17** | `A1`–`A7.3` and **all of `A8`** are built. Two rows are ◐ and both need something other than code — see below |
 | **the headless thread** | `prop`, `annex`, `slab`, `seat` and the wall run moved into `hex_editor`; the server's scene state IS an `EditSession`; `tests/session.loft` is 31 tests over nine gates'/scripts' claims with no port |
-| **defects** | **one open, and it is named at the top**: a road whose grade has left the author's feet can be written against the wrong layer (`plan/20-road-follows`). Session 15's four are all still closed |
+| **defects** | **none open.** The road-layer suspicion turned out to be a refused write and is fixed; session 15's four are still closed |
 | **the user's standing redirect** | *"where possible I want tests outside the server"* — still the thread, and its floor is now the picture gates, which need a server by construction |
 
 ⚠ **THE NEXT PIECE OF WORK IS A CHOICE, NOT A QUEUE.** Nothing is blocked on a bug any more.
