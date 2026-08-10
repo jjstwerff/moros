@@ -128,15 +128,55 @@ const floorHeights = () => {
   return [...ys].sort((a, b) => a - b);
 };
 
-// ── the stair first: cut, step onto what you cut, cut again
+// ── ONE STEP, THEN THE PLATFORM, THEN THE REST OF THE STAIR
+//
+// ⚠ THE ORDER CHANGED WITH plan 20, AND IT IS THE FIXTURE THAT MOVED, NOT A CLAIM.
+// The platform used to be PAVED: road mode was switched on while standing on the
+// first step and the strip came out dead level, because a road's grade was FROZEN
+// when the mode went on. A road follows the landscape now — *"it flows upwards with
+// the hills with its own rules about how much"* — so a strip laid from the step out
+// over open ground RAMPS, which is what a road should do and is useless to stand a
+// deck on.
+//
+// Levelling is the gesture that owns HEIGHT, and it can make the pad — but its brush
+// is `LEVEL_R = 5`, so it reaches back over anything already cut. Levelling after the
+// whole stair would flatten steps 2 and 3 into it. So the stair is cut around it:
+// ONE step to stand on and give the pad its height, then the pad, then the rest of
+// the stair up from it. That is also the order a builder would use.
+//
+// ⚠ AND THE PAD IS WALKED AS A CROSS, which is `cellar.keys`'s own idiom and for its
+// reason: `brush` scales the gap by `f²` and truncates, so only the cell the walker
+// STEPS ON closes exactly — a cell one hex off the path stalls a unit short. A deck
+// follows each column's own top, so a bumpy pad is a bumpy deck and no single stair
+// height meets it.
 const cuts = [];
 const layerReads = [];
-for (const k of [0, 1, 2]) {
+
+// step one, from the plain
+await place(0, 0, 0);
+cuts.push(await ask(g, '30:1', 'stair'));
+// ⚠ LAYERS ARE CHUNK-WIDE, so this is the chunk's stack and not the column's.
+// Read after every cut: the claim is that a STEP IS THE GROUND, MOVED — the
+// first cut authors the chunk's ground layer and no cut after it adds one.
+layerReads.push(await labels(2, 0));
+
+// the platform, levelled from that step so it takes the step's own height
+await place(1 * HEX, 0, 0);
+const roadMark = mark();
+const roadOn = await ask(g, '6:1', 'level true');
+await place(6 * HEX, 0, 0);
+await place(6 * HEX, 2 * HEX, 0);
+await place(6 * HEX, 0, 0);
+await place(6 * HEX, -2 * HEX, 0);
+await place(6 * HEX, 0, 0);
+await place(8 * HEX, 0, 0);
+await place(6 * HEX, 0, 0);
+await send(g, '6:0', ['level false']);
+
+// and the rest of the stair, cut UP from the step the pad was levelled to
+for (const k of [1, 2]) {
   await place(k * HEX, 0, 0);
   cuts.push(await ask(g, '30:1', 'stair'));
-  // ⚠ LAYERS ARE CHUNK-WIDE, so this is the chunk's stack and not the column's.
-  // Read after every cut: the claim is that a STEP IS THE GROUND, MOVED — the
-  // first cut authors the chunk's ground layer and no cut after it adds one.
   layerReads.push(await labels(2, 0));
 }
 // ⚠ AND ONE PRESS TOO MANY, from the same spot. The gesture SETS the cell ahead;
@@ -150,31 +190,14 @@ const again = await ask(g, '30:1', 'stair');
 // never coming. The reads below are store reads over the socket; they do not
 // need the picture to have caught up.
 const steps = [await col(1, 0), await col(2, 0), await col(3, 0)];
-
-// ── the platform: paved from the FIRST step, so its ground is one stride up and
-//    its deck one stride above the stair's top
-// ⚠ LEVELLING MAKES THE PLATFORM NOW, NOT THE ROAD, and plan 20 is why. This phase
-// used to switch road mode on and walk — because a road's grade was FROZEN when the
-// mode went on, so the strip came out dead level and made a pad by accident. A road
-// follows the landscape now (*"it flows upwards with the hills with its own rules
-// about how much"*), so a strip laid from the first step out over open ground RAMPS,
-// which is what a road should do and is useless for standing a deck on.
-//
-// Levelling is the gesture whose whole job is a flat pad: switched on here it freezes
-// the floor at the step's own height and carries the ground to it. ⚠ AND THE
-// PLATFORM WAS NEVER ASSERTED TO BE ROAD-SURFACED — the claim below is about its
-// HEIGHT — so nothing is lost by making it with the gesture that owns height.
-await place(1 * HEX, 0, 0);
-const roadMark = mark();
-const roadOn = await ask(g, '6:1', 'level true');
-await place(3 * HEX, 0, 0);
-await place(5 * HEX, 0, 0);
-await place(6 * HEX, 0, 0);
-await send(g, '6:0', ['level false']);
-// The paving rebuild lands on the PLACEMENT, before `road false` is even sent,
+// The levelling rebuild lands on the PLACEMENT, before `level false` is even sent,
 // so this asks whether one happened during the phase — not whether another
 // follows it.
 await after(roadMark, 'rebuilt');
+// ⚠ AND THE DECK GOES OVER THE PLATFORM, WHICH IS NO LONGER WHERE THE AUTHOR IS.
+// `12:` builds where the character stands, and the reorder above leaves them on the
+// stair — so the walk back out is part of the gesture now, not scene-setting.
+await place(6 * HEX, 0, 0);
 const storey = await ask(g, '12:1', 'storey');
 // Nothing is sent for this: the gesture above already dirtied the chunks, so the
 // rebuild is on its way — an ordered read is the barrier.
