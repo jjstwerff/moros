@@ -258,7 +258,11 @@ pub const WATER_DARK = 0.60;            // how much of the shallow colour is lef
 // ⚠ AND IT IS DERIVED FROM THE DEPTH, which is derived from the run. Nothing stores a
 // width; the store says how deep the channel is here and the picture follows, so a
 // river re-cut deeper widens to match with nothing to remember.
-pub const WATER_TRICKLE = 0.34;         // how wide a spring is, as a fraction of its cell
+// ⚠ 0.34 → 0.6 ON THE AUTHOR'S EYE. At a third of its cell the spring read as a wide
+// earthwork with a thread in it: the bank the annulus fills grows as the water narrows,
+// so the two are one dial and turning it down makes the CUT the subject rather than the
+// stream. At 0.6 the water keeps most of its cell and the bank is a rim.
+pub const WATER_TRICKLE = 0.6;          // how wide a spring is, as a fraction of its cell
 
 pub fn water_inset(depth: integer) -> float {
   if depth <= hex_editor::WATER_DEPTH { return WATER_TRICKLE; }

@@ -164,10 +164,23 @@ fn test_a_spring_is_drawn_narrower_than_the_cell_it_is_in() {
     if v.pos.z > hi { hi = v.pos.z; }
   }
   span = hi - lo;
-  // three rows of cells, 1.5 world units apart, so a full-width river spans 4.0
-  assert(span < 4.0,
-         "the water spans {span} across the flow, which is every cell drawn full width");
-  assert(span > 1.0, "the water spans only {span} — the inset ate the river");
+  // ⚠ DERIVED FROM THE DIAL, NOT CALIBRATED TO IT. This was `< 4.0`, measured at
+  // `WATER_TRICKLE` 0.34 — and turning the dial to 0.6 took the span to 4.2 and the row
+  // red, reporting *every cell drawn full width* about a river that was not. A bound
+  // that has to be re-measured whenever the number it bounds moves is not a test of the
+  // rule, it is a snapshot of one setting.
+  //
+  // Three rows 1.5 apart put the outer centres 3.0 apart, and a pointy-top hex reaches
+  // 1.0 in `z` either way — so full width is 5.0 and the inset ones give
+  // `3.0 + 2 x WATER_TRICKLE`. The middle row is deep, hence full width, and does not
+  // reach past them.
+  want = 3.0 + 2.0 * WATER_TRICKLE;
+  off = span - want;
+  if off < 0.0 { off = 0.0 - off; }
+  assert(off < 0.2,
+         "the water spans {span} across the flow against the {want} that "
+         + "WATER_TRICKLE {WATER_TRICKLE} predicts");
+  assert(span < 4.9, "the water spans {span} — every cell is drawn full width");
   // ⚠ AND ALONG THE FLOW IT IS UNTOUCHED. The fixture's cells run `q = 0..7`, so their
   // centres span `7 x √3 = 12.12` and a full-width hex adds half a width at each end:
   // **13.85**.
