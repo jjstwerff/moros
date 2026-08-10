@@ -22,47 +22,52 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20's road thread is closed; `A9` is next
+## ⏭ PICK UP HERE — plan 20 `A9` has landed; the MIRROR is what is left
 
-**2026-08-09. `A4`, `A5`, `A7`'s wiring and `A8`'s rule all landed.** The rules are in
-[TERRAIN_EDITS.md](TERRAIN_EDITS.md) §T5–§T8, not here; the per-step record is
-[plan 20](../../plans/20-verticality-last/README.md). What this file owes a reader is
-what would otherwise be rediscovered.
-
-### ⚠ Nothing is blocked. The road thread closed on 2026-08-10
-
-`plan/20-road-follows` is merged (`314bebe`) and `plan/7-hex-editor` is 44 of 44. The
-road's grade follows the landscape, which is what finally made `A7`'s settle and `A8`'s
-spoil balance fire from a gesture — and closing it turned up three more defects of the
-same class, each hidden behind the frozen grade:
-
-| | |
-|---|---|
-| a road landing within `ε` of a room beneath was **silently not laid** | `road_lay` threw `surface_set`'s verdict away; it is lifted one `ε` clear and said |
-| `world/road` could not measure a gradient at all | its range proxy only ever measured the FLAT road; it asks `slope_owed` now |
-| **levelling could not make a flat pad** | a falloff is a hill's shape; `brush_level` SETS its disc |
-
-⚠ **AND THE LAST ONE PAID BACK A NUMBER I HAD ALREADY EXPLAINED AWAY.**
-`cellar_ceiling`'s `meshr soffit` had been re-baselined 306 → 298 with a careful note
-about `A5`'s parted corners. With levelling actually levelling it returned to **306** —
-`342 + 306 = 648`, the gate's own relation. **The 298 was never a fact about ceilings; it
-was a fact about a plateau that was never level.** A re-baseline with a good story
-attached is still a re-baseline, and this one was wrong.
+**2026-08-10. `A9` is built, wired, gated and photographed.** A road cut into a cliff
+leaves the rock above it standing: the column holds the road on a lower layer with
+terrain over it, `world_surface` puts the feet on the road, and a walk along a
+mountain's flank comes out with **13 shelves** and a road that is one surface through
+them. The rule is [TERRAIN_EDITS §T9](TERRAIN_EDITS.md); the per-step record is
+[plan 20](../../plans/20-verticality-last/README.md).
 
 ### The next piece of work
 
-`A9` and its mirror. The author's rule below makes them one axis, and the 20-metre canyon
-`A8` measured is the case that wants the span half.
+**The mirror.** *It spans or it caves* is one axis twice, and `A9` walked the caving
+half from an open cut to a gallery. The other direction — how much ground stays UNDER
+the road, from all to none — is `A8`'s spoil fill at the shallow end and a bridge at
+the deep one, and it is **not** a new storage question: a road with rock above it and a
+road with air below it are both a column whose road sits on a layer of its own. ⚠ There
+is still no water (`ground_kinds()` holds grass, road, field, floor and roof), so the
+bridge's trigger does not exist to be detected.
 
-### The rule the road is being built to — the author's, and it removes a toggle
+### ⚠ FOUR THINGS `A9` TURNED UP, AND EACH LOOKED LIKE WORKING CODE
 
-> *"A road will follow the landscape the way a road builder works, so it flows upwards
-> with the hills with its own rules about how much."* … **"It spans or it caves."**
+| | |
+|---|---|
+| **a trench in flat ground roofed itself** | deep enough, grass, nothing dug below — every condition but *is there a hillside to hold the lid up* |
+| **a shelf blinded every rule that walks a run** | four shelves cut one run into islands and left a **27-unit step** in a road whose limit is 1 — ⚠ while every road-to-road count read **0**, because a count over ground materials cannot see a cell whose ground is rock |
+| **`A8`'s fill squeezed a shelf below its headroom** | 9 → 8, which is `ε` exactly: legal to the store and under what a walker needs. `F1` is what a LAYER needs; `CAVE_HEAD` is what a WALKER needs |
+| **the store was right and the gallery was invisible** | for **three** separate reasons at once — drawn as a timber deck, sealed from outside by `A5`'s own face, sealed from inside by the room wall |
 
-One gesture, always following the landscape. Where it cannot: it **caves** (cutting →
-overhang → gallery → tunnel, `A9`) or it **spans** (embankment → viaduct → bridge). That
-is `A9`'s axis and its mirror, and it is why the 20-metre canyon `A8` measured is not a
-bug in the balance — past the point where a fill is a fill, the road spans.
+⚠ **AND THE INSTRUMENT HAD TO BE BUILT TWICE, WHICH IS THE DURABLE HALF.** Counting rock
+vertices *inside* the mouth cannot see a sealed one: a face is one quad and its six
+vertices sit at its CORNERS — at the road and at the rock, with nothing in between. It
+reported `+3` either way, which reads as a clean result. **A count inside a band cannot
+see a quad that spans the band.** What separates them is where the face BEGINS, so
+`gates/world/cave.mjs` counts rock at the FOOT of a cell that has a road under it: 3,
+against the 78 a sealed set of thirteen would cost.
+
+⚠ **AND FOUR CAMERA ANGLES WERE READ BY EYE FIRST AND EVERY ONE WAS AMBIGUOUS.** A
+mountain shot far enough away to see all of it is a silhouette; from inside the gallery
+it is a wall of rock either way; from the road at eye level the ceiling is out of frame,
+because a low wide mouth seen from just inside shows nothing but daylight.
+`shots/a9-*.png` are the ones that read, and `tools/scripts/cave.keys` says why in its
+own comments.
+
+⚠ **A PLACEMENT THAT ARRIVES FROM ABOVE STANDS ON THE ROOF**, and that is not a defect:
+`ground_under` asks `world_surface` with the feet it already has, so a teleport from over
+the summit finds the rock. Approach along the road and the walker lands on the shelf.
 
 ### ⚠ THREE SHIPPED RULES HAD NO CONSUMER, AND FINDING THEM WAS WORTH MORE THAN THE STEP
 

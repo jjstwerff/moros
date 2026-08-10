@@ -1,0 +1,117 @@
+# A ROAD THROUGH ROCK — plan 20 `A9`, and its acceptance is a PICTURE.
+#
+# ⚠ THE COUNTS ARE SOMEBODY ELSE'S JOB. `lib/hex_editor/tests/cave.loft` owns the
+# rule — thirteen tests over the column's shape, the headroom, the walk, the axis and
+# the negative control — and `tools/gates/world/cave.mjs` owns *does the gesture reach
+# it*, in `15:` columns and a soffit count. What NEITHER can answer is the only
+# question left: **does a person call it a road under an overhang.** That is a cold
+# recognition test, and this tree has the scar — `A8.3`'s door passed every count and
+# read as a hole for four days, with the verdict delivered twice against the wrong
+# object before anyone zoomed in.
+#
+# So: shoot the shelf ALONE, close, and from the two places an author actually
+# stands — beside it looking at the mouth, and on the road looking along it.
+
+echo --- CONTROL: a road on flat ground, which is what an open cut looks like
+# ⚠ THIRTY UNITS CLEAR OF WHERE THE MOUNTAIN GOES. A road's slope limit is 1 and the
+# raise brush enforces it, so a control road laid where the summit is about to be
+# holds the whole mountain down to a ramp — measured through the gate, thirteen
+# shelves became one. The control was deciding the subject.
+at 0 -30 0
+send 10:1
+at 4 -30 0
+at 8 -30 0
+at 12 -30 0
+at 16 -30 0
+at 20 -30 0
+wait rebuilt
+send 10:0
+step 20
+at 10 -22 0
+step 30
+snap a9-control-open-cut
+# nothing here has an underside: an open cut is open
+mesh soffit 0 0
+
+echo --- A MOUNTAIN — fourteen strokes, because grass has to stop being grass
+# ⚠ `cave_stands` HANGS OFF `tr_face`, so a flank soil can stand on has no rock in it
+# to leave overhead. Six strokes is the hill the road gate uses and it is not enough;
+# fourteen puts the flank well past 41°.
+at 0 0 0
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+key ArrowUp
+wait rebuilt
+step 20
+
+echo --- AND THE ROAD WALKED ALONG ITS FLANK, not over it
+# ⚠ ALONG, AND `probe/house/cave.loft` IS WHY. On a contour the strip is half cut and
+# half fill, so the cut has a TRANSVERSE gradient and the uphill cells have rock to
+# keep; up the fall line the transverse spread is **1** and there is no cliff side to
+# roof at all. ⚠ And z = 7 is swept rather than chosen: 5 gives five shelves, 7 and 9
+# give thirteen.
+at 0 7 0
+send 10:1
+at 4 7 0
+at 8 7 0
+at 12 7 0
+at 16 7 0
+at 20 7 0
+at 24 7 0
+at 28 7 0
+at 32 7 0
+wait rebuilt
+send 10:0
+step 20
+# The rock over the road, DRAWN — its underside is the ceiling `emit_ground_ceiling`
+# hangs under the ground, and an open cut has none. This is the count the gate owns;
+# it is repeated here only so a picture that looks wrong can be told from a scene that
+# was never built.
+mesh soffit 100 100000
+
+echo --- THE GALLERY, from the valley — the only angle that can say it
+# ⚠ FOUR ANGLES WERE READ BY EYE FIRST AND EVERY ONE WAS AMBIGUOUS, which is why the
+# gate carries a number and this file carries a caption. A mountain shot from far
+# enough away to see all of it is a silhouette; shot from inside the gallery it is a
+# wall of rock either way; and shot from the road at eye level the ceiling is out of
+# frame entirely, because a low wide mouth seen from just inside shows nothing but
+# daylight. What reads is from OUTSIDE, from the valley, high enough to see the band
+# cut into the face and low enough that the rock above it is still overhead.
+at 30 9 180
+step 10
+at 22 12 -110
+send 40:1
+send 3:0,-600
+step 25
+snap a9-gallery-from-the-valley
+
+echo --- AND THE EAST END, where the lid stands out over the road
+at 26 11 -140
+send 40:1
+send 3:0,-600
+step 25
+snap a9-overhang-east
+
+echo --- FROM UNDER IT, looking at the back wall of the cut
+# ⚠ APPROACHED ALONG THE ROAD, NOT TELEPORTED IN FROM ABOVE, and the difference is
+# the whole picture. `ground_under` asks `world_surface` with the feet it already has,
+# so a placement that arrives from over the summit finds the ROCK and stands on the
+# roof — measured, twice, and both shots were of a hilltop. Coming along the road
+# keeps the reference low and the walker lands on the shelf.
+at 20 9 180
+step 10
+at 18 6 -90
+send 40:4
+step 25
+snap a9-under-the-rock

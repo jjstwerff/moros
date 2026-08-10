@@ -2326,6 +2326,19 @@ fn emit_room_wall(m: Mesh, wld: World, cq: integer, cr: integer, floor_h: intege
     // `WORLD_MODEL.md` §5 actually defines — do the two voids overlap in height —
     // and cannot be misled by a label the writer got wrong.
     if !hex_editor::room_continues(wld, wnq, wnr, floor_h, ceil_h) {
+      // ⚠ A MOUTH IS NOT A WALL — plan 20 `A9`. A road cut into a cliff is a void
+      // with a floor and a ceiling, so every rule above calls it a room and walls
+      // it in — including the side the road comes OUT of. Without this the store
+      // holds a gallery and the picture is a sealed pocket, which is the same
+      // failure `emit_face_wall` has from outside.
+      //
+      // ⚠ AND THE TEST IS *IS THE NEIGHBOUR SOLID JUST ABOVE MY FLOOR*, which is
+      // deliberately narrower than *is my ceiling above its ground*. A cellar under
+      // a hillside is buried — the earth beside it reaches well past its floor — so
+      // every cellar keeps the wall it has, and only a void whose floor runs out
+      // into the open loses one. The wider reading opens a slit around the top of
+      // every cellar wall and moves four gated pictures; nothing has asked for it.
+      if !hex_editor::solid_at(wld, wnq, wnr, floor_h + 1) { continue; }
       (wka, wkb) = hex_grid::hex_edge_corners(wd);
       ww1 = hex_corner_world(cq, cr, 0, (6 - wka) % 6 ?? 0);
       ww2 = hex_corner_world(cq, cr, 0, (6 - wkb) % 6 ?? 0);
@@ -2720,12 +2733,29 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // `co_ids` was added so a WRITE could keep a layer's identity; this is
             // the first reader to want the same fact, and it needs no second query.
             fh = e.h_height as integer ?? 0;
+            // ⚠ A SHELF IS A ROAD, NOT A DECK — plan 20 `A9`, and it is drawn by
+            // `chunk_mesh_mat`'s ROAD pass rather than here. This clause is *the
+            // layer is not the ground*, and until `A9` the only thing that could be
+            // was a built floor — so a road cut into a cliff came out drawn in the
+            // JOINERY, a timber platform under a mountain, with a slab rim and an
+            // underside it can never be seen from.
+            //
+            // ⚠ AND DRAWING IT HERE AS A FLAT FAN WAS TRIED, PHOTOGRAPHED AND BACKED
+            // OUT. Every other non-ground layer is a DECK, which is flat because the
+            // feet are flat on it; a road is a heightfield and its neighbours are
+            // smoothed. The two do not meet — the seam photographed as a zigzag of
+            // SKY the length of the run. `face_grid_for` gives the road pass its own
+            // heightfield instead, so the shelf is smoothed by the rule the road
+            // beside it already uses.
+            if e.h_material == ROAD_MAT {
+            } else {
             emit_hex_surface(fm, cq, cr, fh);
             emit_floor_slab(fm, wld, cq, cr, fh);
             // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
             // or the two part company and the deck shows a slot from below.
             emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+            }
             // ⚠ AND A ROOM ENDS IN A WALL, WHICH NOTHING DREW. Measured from the
             // cellar floor, looking level: `sky 0.2360` and `grass 0.1033` — a
             // QUARTER of the frame was daylight, from inside a room twelve units

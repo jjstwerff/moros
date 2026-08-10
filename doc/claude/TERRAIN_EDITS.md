@@ -241,12 +241,105 @@ needs no new concept — a wall below a road is an EDGE material on the downhill
 ⚠ **AND IT SCOPES ITSELF TO THE RUN, NOT TO A RADIUS.** A stroke is a disc and a road is a
 line: settling a disc leaves the step at its rim, which is exactly where the violation lives.
 
-⚠ **AND A CUT IS NOT ALWAYS A LOWERING.** A road along a cliff face is cut *into* the face and
-the rock above it stays — an overhang, a gallery where the stone is brittler, and a tunnel at
-the far end. `slope_settle` lowers the whole column today because nothing ever asked it not to,
-and the layer stack already carries the alternative: a road on a lower layer with terrain above
-is structurally a cellar. Plan 20 `A9`, and its far end is `A2b`'s corridor arriving from the
-other direction.
+## T9 — A cut is not always a lowering: the rock above the road stays
+
+> *"Especially in Switzerland a road along a cliff face is cut into it, getting an overhang
+> above it. In Austria those overhangs often end up in a half tunnel because of their more
+> brittle rocks, but in both the roads often got real tunnels too."*
+
+**ONE AXIS, NOT THREE FEATURES** — how much rock stays above the road: none is `T5`'s open
+cut, some is an overhang, most is a gallery, all is a tunnel, and the far end is `A2b`'s
+sub-surface run arriving from the other direction. **The model already expresses it**: a road
+with rock above it is a column whose road sits on a lower layer with terrain above, which is
+structurally a cellar under a house. So none of it is new storage — it is a rule about *which
+layer a cut writes to*, and `slope_settle` lowered the whole column only because nothing had
+ever asked it not to.
+
+⚠ **AND THE AXIS COMES FROM THE TERRAIN, NOT FROM A DIAL.** Measured before it was built
+(`probe/house/cave.loft`): walked **along a contour** the strip is half cut and half fill, so
+the cut has a *transverse* gradient across it — `6 3 0 -3 -6` on a 3-per-hex flank,
+`12 6 0 -6 -12` on a 6, `48 24 0 -24 -48` on a 24. The number of cells cut deep enough to
+stand under therefore walks 0 → 1 → 2 with the steepness of the flank, with nothing to choose.
+⚠ Walked **up the fall line** the transverse spread is **1**: a road over a hill has no cliff
+side to roof at all, which is the case `A8`'s fill answers and which every earlier road probe
+in this tree measured.
+
+**The rock decides, and it is `A5`'s number.** There is no rock *material* in this world — a
+face is derived from the drop, because *a face is a surface, not an absence* — so *is this
+rock* already has exactly one authority, and `cave_stands` uses it: an overburden deeper than
+what this ground can stand at is drawn as rock by `chunk_mesh_faces`, and the same stone will
+stand as a roof. The picture and the rule cannot disagree, because they are one number. Fabric
+never caves: `FACE_NONE` is the same test `face_at` makes.
+
+| the condition | why |
+|---|---|
+| `over > tr_face` | it is rock rather than soil, by `A5`'s own reading |
+| `over >= CAVE_HEAD` (12, one storey) | a walker needs somewhere to walk. ⚠ `F1`'s `ε` is what a LAYER needs and is 8 to 10; this is what a WALKER needs, and the drawn ceiling hangs `SLAB_THICK` under the ground so a storey of cut leaves ten units of air |
+| the hillside keeps rising beside it | ⚠ **the row a test caught.** Without it a road cut 20 units into FLAT ground roofed itself: deep enough, grass, nothing dug below. An open cut in level ground is open because there is nothing above to hold a lid up |
+| nothing already dug under the column | a road over a cellar stays an open cut and `road_clearance` lifts it clear; inserting a shelf *between* two occupied layers is a different write with a different failure |
+| the natural ground is not itself a road | discs overlap, so on a second stroke the "natural" ground at a cell is the road the stroke before wrote. `tr_face` is an angle of repose for a BANK and says nothing about paving as a roof |
+
+**A stroke takes the rock off before it paves and puts it back after the settle**, and that
+order is the whole design. `slope_settle` and `spoil_place` keep working on one layer over a
+whole run, and a caved cell keeps its own hillside on the ground layer — so uncaving is
+lossless in the direction a re-cut needs.
+
+⚠ **A SHELF BLINDS EVERY RULE THAT WALKS A RUN, AND THAT WAS MEASURED BEFORE IT WAS FIXED**
+(`probe/house/cavewalk.loft`). The walk asks *is my neighbour the same material*, and a caved
+cell's ground is the rock over it: four shelves cut one run into islands, an explicit settle
+came back `clamped 0` having reached nothing past the first, and the road was left with a
+**27-unit step in its own surface** where its limit is 1. ⚠ **And the instrument agreed with
+the bug** — every road-to-road count read 0, because a count over ground materials cannot see
+a cell whose ground is rock. `run_h`/`run_set` ask the COLUMN, and `slope_settle`,
+`stroke_over_limit` and `slope_owed` all use them.
+
+⚠ **AND `CAVE_HEAD` IS A PROMISE ABOUT THE FUTURE, NOT ONLY ABOUT THE MOMENT OF CUTTING.**
+`A8`'s balance raises the whole settled run by the mean it removed, which walks a shelf's
+clearance *down* — measured, from 9 to **8**, which is `ε` exactly: legal to the store and
+under what the shelf was cut for. The settle sweeps its own run and takes the lid off any
+shelf that has been squeezed, so the continuum walks back as well as forward. Refusing the
+fill instead would leave one cell un-shifted, and a uniform shift is the only kind that keeps
+the limit.
+
+### What it took to DRAW, and what could not see it
+
+⚠ **THREE SEPARATE THINGS SEALED THE GALLERY, and the store was right the whole time.**
+
+1. **A shelf was drawn as a timber deck.** The renderer's *this layer is not the ground*
+   clause had only ever meant a built floor, so a road cut into a cliff came out in the
+   joinery with a slab rim and an underside nothing can see.
+2. **`emit_face_wall` ran its quad from the neighbour's ground to the rock**, walling the
+   mouth in. The face's foot is the ceiling now where a column keeps a road beneath it
+   (`under_grid`). ⚠ The cellar case is the same shape and is **named rather than taken**: a
+   room under a hillside undercuts its column too, and the general answer is two bands with
+   the void between them — a change to pictures four gates already judge.
+3. **`emit_room_wall` sealed it from inside**, because a void with a floor and a ceiling is a
+   room and every side of a room is a wall. A mouth is not: the test is *is the neighbour
+   solid just above my floor*, which is deliberately narrower than *is my ceiling above its
+   ground* — a cellar is buried, so every cellar keeps the wall it has.
+
+⚠ **AND DRAWING THE SHELF AS A FLAT FAN WAS TRIED, PHOTOGRAPHED AND BACKED OUT.** Every other
+non-ground layer is a DECK, which is flat because the feet are flat on it; a road is a
+heightfield and its neighbours are smoothed. The two do not meet — the seam photographed as a
+**zigzag of sky the length of the run**. `face_grid_for` gives each material pass its own
+heightfield instead, so the grass pass reads the rock overhead, the road pass reads the road
+under it, and both are smoothed by the rules that already exist.
+
+⚠ **FOUR PICTURES WERE READ BY EYE AND EVERY ONE WAS AMBIGUOUS.** A mountain shot far enough
+away to see all of it is a silhouette; shot from inside the gallery it is a wall of rock
+either way; and shot from the road at eye level the ceiling is out of frame entirely, because
+a low wide mouth seen from just inside shows nothing but daylight. ⚠ **And the obvious
+instrument was blind by construction**: counting rock vertices *inside* the mouth cannot see a
+sealed one, because a face is one quad and its six vertices sit at its corners — at the road
+and at the rock, with nothing in between. It reported `+3` either way. What separates them is
+where the face BEGINS, so the gate counts rock at the FOOT of a cell that has a road under it:
+**3**, against the 78 a sealed set of thirteen would cost.
+
+⚠ **AND A PLACEMENT THAT ARRIVES FROM ABOVE STANDS ON THE ROOF.** `ground_under` asks
+`world_surface` with the feet it already has, so teleporting into a caved cell from over the
+summit finds the rock — twice, and both shots were of a hilltop. Approaching along the road
+keeps the reference low and the walker lands on the shelf, which is what `world_surface`'s
+*at or below the feet* means and not a defect.
 
 ## T6 — Where no slope will do, the column carries a FACE
 
@@ -459,10 +552,12 @@ fabric* makes a yard tear again at random.
 |---|---|
 | the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `ground_kinds`, `edge_kinds` |
 | the slope, and what it owes | same file — `slope_limit`, `lim_at`, `slope_relax`, `slope_settle`, `spoil_place`, `slope_owed`, `stroke_over_limit` |
+| a road through rock (`T9`) | same file — `CAVE_HEAD`, `cave_stands`, `cave_backed`, `cave_at`, `col_dug`, `road_cave`, `run_unshelf`, `shelf_head`, `caved_h`, and the surface accessors `sub_layer`/`run_h`/`run_set` |
 | where a face IS | same file — `face_limit`, `face_at`, `faces_here` |
 | seating a pad | `lib/hex_editor/src/hex_editor.loft` — `place_house`, via `footprint_seat` |
-| where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall` |
-| the tests | `lib/hex_editor/tests/` — `raise_keeps`, `raise_structure`, `slope_limit`, `run_slope`, `face`, `settle_owed`, `seat_pad`; `lib/hex_mesh/tests/face_mesh.loft` |
-| the pictures | `tools/scripts/face.keys` (rock faces) and `tools/scripts/seat.keys` (a house on a flank) — the control first in both |
-| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost`, `pads`, `passes`, `roadcost`, `spoil` |
+| where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `face_grid_for`, `under_grid`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall`; and `emit_room_wall` in `src/editor_server.loft` |
+| the tests | `lib/hex_editor/tests/` — `raise_keeps`, `raise_structure`, `slope_limit`, `run_slope`, `face`, `settle_owed`, `seat_pad`, `cave`; `lib/hex_mesh/tests/face_mesh.loft` |
+| the pictures | `tools/scripts/face.keys` (rock faces), `tools/scripts/seat.keys` (a house on a flank) and `tools/scripts/cave.keys` (a road through rock) — the control first in all three |
+| does the GESTURE reach it | `tools/gates/world/cave.mjs` — `15:` columns and the rock at the foot of a shelf |
+| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost`, `pads`, `passes`, `roadcost`, `spoil`, `cave`, `cavewalk` |
 | what a byte MEANS | [plan 21](../../plans/21-region-mappings/README.md) — identity belongs to a region; these rules hang off the **name**, never the byte |

@@ -114,11 +114,60 @@ const FACE_ABSENT = 0 - 1;
 // twentieth of what asking `face_limit` per cell costs.
 fn face_grid_in(wld: World, gq0: integer, gr0: integer, gw: integer,
                 bounded: boolean, gh: &vector<integer>, gl: &vector<integer>) {
+  face_grid_for(wld, gq0, gr0, gw, bounded, 0, gh, gl)
+}
+
+// ── ONE SURFACE, ONE HEIGHTFIELD — plan 20 `A9` ─────────────────────────────
+//
+// A road cut into a cliff lives on a layer BELOW the ground, so *the ground here* and
+// *the road here* are two different heights at one cell. Every pass of the mesher
+// builds its own grid, once per material, so the honest answer is that each pass
+// answers for ITS OWN surface: the grass pass reads the rock overhead, the road pass
+// reads the road under it, and both are then smoothed, normalled and faced by the
+// rules that already exist.
+//
+// ⚠ MEASURED, AND IT IS WHY THE FLAT-FAN VERSION WAS BACKED OUT. Drawing the shelf as
+// a flat hexagon in the props pass — which is what every other non-ground layer gets,
+// because every other one is a DECK — leaves it unsmoothed beside a road that is
+// smoothed, and the two do not meet: photographed from the road, the seam was a
+// zigzag of **sky** running the length of the run. A fan alone is a hairline, and this
+// tree already has that scar one surface over.
+//
+// ⚠ `want` OF 0 MEANS *ASK THE GROUND*, which is every caller but the road's. Material
+// 0 is absence and no cell can carry it, so it cannot collide with a real request.
+fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
+                 bounded: boolean, want: integer,
+                 gh: &vector<integer>, gl: &vector<integer>) {
   ks: vector<integer> = [];
   vs: vector<integer> = [];
+  // ⚠ ASKED ONCE PER TILE, NOT ONCE PER CELL, and the header above is why: a per-cell
+  // lookup on this path is what cost four times the whole grid read when `tr_face`
+  // was asked that way. `world_ground_layer > 0` is exactly *something is stored under
+  // the ground in this tile*, the halo reaches four tiles, and a world with nothing
+  // dug in it therefore pays four chunk lookups for the whole grid.
+  dug = chunk_dug(wld, gq0, gr0, gw);
   for hr in gr0..gr0 + gw {
     for hq in gq0..gq0 + gw {
       c = world_ground_cell(wld, hq, hr);
+      // ⚠ A SURFACE BELOW THE GROUND IS THIS PASS'S ONLY IF IT IS NOT FABRIC, and
+      // leaving that out drew every cellar floor TWICE — measured, `cellar_ceiling`
+      // came back `floor 786` where the baseline is 390. A deck is drawn by the props
+      // pass, with the slab rim and the underside a deck owes; a road is a
+      // heightfield and belongs here. `tr_fabric` is the same line `A1` already draws
+      // between what bends and what moves rigidly.
+      sub = 0 - 1;
+      if dug && want != 0 && (c.h_material as integer ?? 0) != want {
+        sub = hex_editor::sub_layer(wld, hq, hr, want);
+        if sub >= 0 && hex_editor::ground_kind_at(wld, hq, hr, want).tr_fabric {
+          sub = 0 - 1;
+        }
+      }
+      if sub >= 0 {
+        sc = hex_world::world_cell(wld, hq, hr, sub);
+        gh += [sc.h_height as integer ?? 0];
+        gl += [hex_editor::ground_kind_at(wld, hq, hr, want).tr_face];
+        continue;
+      }
       gh += [c.h_height as integer ?? 0];
       if bounded && (c.h_material as integer ?? 0) == 0 {
         gl += [FACE_ABSENT];
@@ -147,10 +196,80 @@ fn face_grid_in(wld: World, gq0: integer, gr0: integer, gw: integer,
   }
 }
 
+// Is anything stored UNDER the ground in any tile this grid spans? A layer below the
+// ground moves the ground off index 0, so `world_ground_layer > 0` answers it exactly
+// — `chunk_mesh_mat`'s own `can_open` derivation, asked of the halo's four corners
+// rather than of every cell in it.
+fn chunk_dug(wld: World, gq0: integer, gr0: integer, gw: integer) -> boolean {
+  for i in 0..2 {
+    for j in 0..2 {
+      if hex_world::world_ground_layer(wld, gq0 + i * (gw - 1), gr0 + j * (gw - 1)) > 0 {
+        return true;
+      }
+    }
+  }
+  false
+}
+
 // The unbounded reading — the outdoors is everywhere, so every cell is ground.
 fn face_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
              gh: &vector<integer>, gl: &vector<integer>) {
   face_grid_in(wld, gq0, gr0, gw, false, gh, gl);
+}
+
+// ── WHERE A COLUMN IS NOT SOLID UNDER ITS OWN GROUND — plan 20 `A9` ────────
+//
+// A road cut into a cliff keeps the rock over it, so the ground at that cell is a
+// LID and the only exposed side it has is the lid's. Without this `emit_face_wall`
+// runs its quad from the neighbour's height straight up to the rock and **seals the
+// shelf**: the store holds a gallery and the picture shows a cliff, which is this
+// tree's own scar — a door that passed every count and read as a hole.
+//
+// The underside is the one the renderer already draws. `emit_ground_ceiling` hangs
+// it `SLAB_THICK` under the smoothed ground, so this is that number rather than a
+// second one that could drift from it.
+//
+// ⚠ A SHELF ONLY, AND THE CELLAR CASE IS NAMED RATHER THAN TAKEN. A room under a
+// hillside undercuts its column exactly as much, and the general answer is TWO
+// bands — solid below the room's floor, solid above its ceiling, the void between
+// them left to `emit_room_wall`. That is a change to pictures four gates already
+// judge, and nothing has asked for it; a road under rock is what `A9` adds and what
+// has never been drawn at all.
+//
+// ⚠ AND A CHUNK WITH NOTHING UNDER ITS GROUND PAYS ONE LOOKUP PER TILE. A layer
+// below the ground moves the ground off index 0, so `world_ground_layer > 0` is
+// exactly *something is dug in this tile*, which is `chunk_mesh_mat`'s own `can_open`
+// derivation. The halo reaches four tiles at most, so the memo is four entries — and
+// the alternative is a column scan per cell, which took first-client service from a
+// few seconds to seventy-one the last time one was put on a per-cell path.
+const FACE_SOLID = 0 - 1000000;         // solid all the way down: no undercut here
+
+fn under_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
+              gu: &vector<integer>) {
+  cks: vector<integer> = [];
+  cvs: vector<boolean> = [];
+  for hr in gr0..gr0 + gw {
+    for hq in gq0..gq0 + gw {
+      // ⚠ THE KEY IS BIASED, because a chunk index is signed and `cx * N + cz`
+      // collides across zero — the same packing `hex_world`'s own chunk index makes.
+      k = (hex_world::world_chunk_of(hq) + 32768) * 65536
+        + (hex_world::world_chunk_of(hr) + 32768);
+      dug = false;
+      hit = false;
+      for ki in 0..len(cks) {
+        if (cks[ki] ?? 0) == k { dug = cvs[ki] ?? false; hit = true; }
+      }
+      if !hit {
+        dug = hex_world::world_ground_layer(wld, hq, hr) > 0;
+        cks += [k];
+        cvs += [dug];
+      }
+      if !dug { gu += [FACE_SOLID]; continue; }
+      if hex_editor::caved_h(wld, hq, hr) < 0 { gu += [FACE_SOLID]; continue; }
+      gu += [(world_ground_cell(wld, hq, hr).h_height as integer ?? 0)
+             - hex_editor::SLAB_THICK];
+    }
+  }
 }
 
 fn faced_between(gh: vector<integer>, gl: vector<integer>,
@@ -380,7 +499,10 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
   gr0 = r0 - 2;
   gh: vector<integer> = [];
   gl: vector<integer> = [];
-  face_grid_in(wld, gq0, gr0, gw, bounded, gh, gl);
+  // ⚠ THIS PASS'S OWN SURFACE — plan 20 `A9`. Where a column keeps `want_mat` under
+  // its ground, this grid answers for THAT and not for the outdoors, so a road shelf
+  // is smoothed, normalled and skirted by the same rules the open road is.
+  face_grid_for(wld, gq0, gr0, gw, bounded, want_mat, gh, gl);
 
   nx: vector<float> = [];
   ny: vector<float> = [];
@@ -410,6 +532,14 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
   for cr in r0..r0 + MESH_CHUNK {
     for cq in q0..q0 + MESH_CHUNK {
       mat = world_ground_cell(wld, cq, cr).h_material;
+      // ⚠ AND A CELL CARRIES ITS SURFACE WHEREVER THE COLUMN KEEPS IT. The ground at a
+      // caved cell is the rock overhead; the road is a layer down, and without this
+      // the pass that draws roads skips exactly the cells `A9` exists to make.
+      if can_open && (mat as integer ?? 0) != want_mat
+         && !hex_editor::ground_kind_at(wld, cq, cr, want_mat).tr_fabric
+         && hex_editor::sub_layer(wld, cq, cr, want_mat) >= 0 {
+        mat = want_mat as u8? ?? 0;
+      }
       // ⚠ AN UNWRITTEN CELL IS ABSENCE AND COUNTS AS GROUND — that is what makes an
       // unauthored world a flat plane rather than a hole to fall through, and it is
       // exactly why a stairwell cannot simply be a cleared cell: the two are the
@@ -464,6 +594,11 @@ pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: World,
   gh: vector<integer> = [];
   gl: vector<integer> = [];
   face_grid_in(wld, gq0, gr0, gw, bounded, gh, gl);
+  // ⚠ ONLY THIS PASS PAYS FOR IT. `chunk_mesh_mat` reads the same halo four times a
+  // rebuild for its corners and normals and has no use for an undercut, so the third
+  // column rides with the pass that draws the rock rather than with the grid itself.
+  gu: vector<integer> = [];
+  under_grid(wld, gq0, gr0, gw, gu);
   for fr in r0..r0 + MESH_CHUNK {
     for fq in q0..q0 + MESH_CHUNK {
       for fd in 0..6 {
@@ -475,7 +610,7 @@ pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: World,
         nh = gh_at(gh, gq0, gr0, gw, fnq, fnr);
         if hh <= nh { continue; }
         if !faced_between(gh, gl, gq0, gr0, gw, fq, fr, fnq, fnr) { continue; }
-        emit_face_wall(fm, gh, gl, gq0, gr0, gw, fq, fr, fd, fnq, fnr);
+        emit_face_wall(fm, gh, gl, gu, gq0, gr0, gw, fq, fr, fd, fnq, fnr);
       }
     }
   }
@@ -495,6 +630,7 @@ pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: World,
 // neighbour, not `kc`: `hex_edge_corners` numbers them in the ASKING cell's own
 // ring. Pairing them the obvious way twists the quad into an hourglass.
 fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
+                  gu: vector<integer>,
                   gq0: integer, gr0: integer, gw: integer,
                   cq: integer, cr: integer, d: integer,
                   nq: integer, nr: integer) {
@@ -508,6 +644,19 @@ fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
   t2 = (tops[kb] ?? 0.0) * HEIGHT_SCALE;
   b1 = (bots[kd] ?? 0.0) * HEIGHT_SCALE;
   b2 = (bots[kc] ?? 0.0) * HEIGHT_SCALE;
+  // ⚠ A LID IS EXPOSED ONLY WHERE IT IS SOLID — plan 20 `A9`. Where this column is a
+  // road shelf the rock over it starts at the underside the ceiling is drawn at, and
+  // running the quad down to the neighbour's ground would wall the shelf's mouth in.
+  // Clamped to the top as well, so a lid thinner than its own smoothing cannot turn
+  // the quad inside out.
+  uu = gh_at(gu, gq0, gr0, gw, cq, cr);
+  if uu > FACE_SOLID {
+    uy = (uu as float) * HEIGHT_SCALE;
+    if b1 < uy { b1 = uy; }
+    if b2 < uy { b2 = uy; }
+    if b1 > t1 { b1 = t1; }
+    if b2 > t2 { b2 = t2; }
+  }
   // A degenerate quad is not a face. It happens where the taper closes: one
   // corner is still shared, the other is not, and the shared end has no height.
   if t1 - b1 <= 0.0 && t2 - b2 <= 0.0 { return; }

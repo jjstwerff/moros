@@ -5,10 +5,11 @@
 
 ## Status
 
-`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7` and `A8` are **shipped**, and
-so is the road gesture that makes the last two reachable. `A2b`, `A2c`'s **across** half
-and `A3` are designed and not built; `A9` is next, and its mirror — *it spans or it
-caves* — is the shape both halves take.
+`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8` and **`A9`** are
+**shipped**, and so is the road gesture that makes them reachable. `A2b`, `A2c`'s
+**across** half and `A3` are designed and not built. What is left of *it spans or it
+caves* is the **mirror**: `A9` walked the caving half from an open cut to a gallery, and
+the spanning half — embankment → viaduct → bridge — is still only `A8`'s shallow end.
 
 ⚠ **AND THE AUDIT `A4` FORCED IS THE LOUDEST THING IN THIS PLAN.** Three of its shipped
 rules had no consumer at all — a rule that reaches no gesture is a rule the editor does
@@ -76,7 +77,7 @@ to the built-in numbering.
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
-| **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | Open — `A5` shipped, so a cut face is now drawn and `A9` decides what stands ABOVE it |
+| **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | ✅ — and the parameter turned out to be the TERRAIN, not a dial; see below and [TERRAIN_EDITS §T9](../../doc/claude/TERRAIN_EDITS.md) |
 
 ## Invariant gate — for the phases still open
 
@@ -91,7 +92,7 @@ argued from a picture.
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop — ✅ it WAS a silent stop; `slope_owed` is the refusal, and the two halves of the row turned out to be already-true and not-built respectively |
 | ~~`A5`~~ | ✅ shipped, and the row is kept because the MEASUREMENT refuted it: hanging the face off `tr_slope` gives **zero** faces on a 71° grass mountain and a rock face on a 16° verge. It needs `tr_face` beside it, and then the negative control becomes a property of the TABLE — `tr_face >= tr_slope` on every row that has both | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
-| `A9` | a road cut into a face leaves the rock above it standing: the column has the road on a lower layer and terrain above, and the walk still passes | *cutting a shelf is not lowering the ground* | at overhang 0 the result must be **byte-identical** to today's open cut — the continuum has to contain what already works |
+| ~~`A9`~~ | ✅ shipped. The column holds road-then-rock, `world_surface` puts the feet on the road, and a walk along a contour of a mountain comes out with **13** shelves and a road that is one surface through them. ⚠ The negative control became **two** claims, because one column of one occupied cell does not say *byte-identical*: the chunk must also hold **one layer**, or a layer created and left empty is 8196 bytes that read as nothing at every cell | *cutting a shelf is not lowering the ground* | a gentle flank and flat ground cave nothing, and a trench in level ground never roofs itself |
 
 ⚠ **`A8`'s ACCEPTANCE IS NOT ITS INVARIANT.** *"This will make the roads look more natural to
 human eyes"* — so the volume balance is what makes it **correct**, and whether it **works** is a
@@ -135,30 +136,42 @@ roof; a waterway is not a terrain this world can store. So the bridge's trigger 
 exist to be detected — which makes *span* the half to design second, after `A9` has
 established what a road sitting on its own layer looks like.
 
-### `A9` — the shape a road takes where it cannot go round
+### ✅ `A9` — the shape a road takes where it cannot go round, and it is BUILT
 
-> *"Especially in Switzerland a road along a cliff face is cut into it, getting an overhang
-> above it. In Austria those overhangs often end up in a half tunnel because of their more
-> brittle rocks, but in both the roads often got real tunnels too."*
+> *"Especially in Switzerland a road along a cliff face is cut into it, getting an
+> overhang above it. In Austria those overhangs often end up in a half tunnel because of
+> their more brittle rocks, but in both the roads often got real tunnels too."*
 
-⚠ **THAT IS ONE AXIS, NOT THREE FEATURES** — how much rock stays above the road:
+**The rule lives in [TERRAIN_EDITS §T9](../../doc/claude/TERRAIN_EDITS.md)** — every
+condition, every measurement, and the three separate things that had to change before a
+gallery could be SEEN. What belongs here is what the phase turned up.
 
-| rock above | what it is |
+⚠ **THE PARAMETER IS THE TERRAIN, AND MEASURING IS WHAT SAID SO.** The row asked for *one
+parameter walked from 0 to full*, and the probe (`probe/house/cave.loft`) found the walk
+already there: on a contour the cut has a transverse gradient — `6 3 0 -3 -6` at 3 per
+hex, `48 24 0 -24 -48` at 24 — so the number of cells deep enough to stand under goes
+0 → 1 → 2 with the steepness of the flank. **Open question 7 is closed by that**: the rock
+decides, and it needs no palette entry, because `A5` already derives *is this rock* from
+the drop and `cave_stands` uses that one number.
+
+⚠ **AND THE FULL END OF THE AXIS IS NOT REACHABLE FROM THIS GESTURE, WHICH IS RIGHT.** All
+of the strip roofed is a tunnel, and a road gesture that drives one is `A2b` arriving from
+the other direction. What a walk produces is an open cut, an overhang and a gallery.
+
+⚠ **THREE DEFECTS THE TESTS AND PROBES CAUGHT, EACH OF WHICH LOOKED LIKE WORKING CODE:**
+
+| | |
 |---|---|
-| none | today's open cut (`T5`) |
-| some | a Swiss **overhang** |
-| most | an Austrian **gallery** — a half tunnel, which is what brittle rock forces |
-| all | a **tunnel** — and that is already [`A2b`](#phases)'s sub-surface run, arriving from the other end |
+| **a trench in flat ground roofed itself** | deep enough, grass, nothing dug below — every condition but *is there a hillside to hold the lid up*. `slope_limit.loft`'s open-ground control went red |
+| **a shelf blinded the settle to half its own road** | four shelves cut one run into islands and left a **27-unit step** in a road whose limit is 1 — ⚠ while every road-to-road count read **0**, because a count over ground materials cannot see a cell whose ground is rock |
+| **`A8`'s fill squeezed a shelf below its own headroom** | 9 to 8, which is `ε` exactly: legal to the store, under what a walker needs. The settle sweeps its run and takes the lid off |
 
-⚠ **AND THE MODEL ALREADY EXPRESSES IT.** A road with rock above it is a column whose road sits
-on a lower layer with terrain above — structurally identical to a cellar under a house, which
-the layer stack has carried since `8a`. So `A9` is not new storage; it is a rule about **which
-layer a cut writes to**, and today `slope_settle` lowers the whole column because nothing ever
-asked it not to.
-
-⚠ **THE FAR END MEETING `A2b` IS THE CHECK ON BOTH.** If a full-overhang road and a corridor
-are not the same object, one of the two designs is wrong — so they are gated against each
-other rather than built twice.
+⚠ **AND THE PICTURE COST MORE THAN THE RULE.** The store was right and the gallery was
+invisible for three separate reasons at once, and *four* camera angles were read by eye
+before any of them settled anything. The instrument that finally did is in
+`tools/gates/world/cave.mjs`, and it had to be built twice: counting rock *inside* the
+mouth cannot see a sealed one, because a face is one quad and its six vertices sit at its
+corners. **A count inside a band cannot see a quad that spans it.**
 
 ### ⚠ What `A4` measured, and what it turned out to be
 
@@ -263,182 +276,6 @@ The 298 was never a fact about ceilings; it was a fact about a plateau that was 
 level. Its four `feet` stations are now one stride apart all the way down, which they
 never were.
 
-### The road's own rule, and it is ONE rule — 2026-08-09
-
-> *"A road will follow the landscape the way a road builder works, so it flows upwards
-> with the hills with its own rules about how much. If for example a waterway is
-> encountered a bridge will be built."* … **"It spans or it caves."**
-
-⚠ **THAT SETTLES THE DESIGN FORK AND REMOVES A TOGGLE RATHER THAN ADDING ONE.** Three
-options were on the table — a second paving gesture, a grade rule switched by levelling,
-or one toggle with two values — and all three were the wrong shape. There is one road
-gesture, it always follows the landscape, and what it does where it cannot follow is
-not a mode but a *consequence*:
-
-| the ground does this | the road does this |
-|---|---|
-| rises faster than the road may climb | **caves** — a cutting, then an overhang, a gallery, a tunnel (`A9`) |
-| falls away faster than the road may descend | **spans** — an embankment, then a viaduct, a bridge |
-
-⚠ **AND THAT IS ONE AXIS, TWICE — `A9`'s AXIS AND ITS MIRROR.** `A9` already walks *how
-much rock stays above the road* from none to all. The other direction walks *how much
-ground stays under it* from all to none: `A8`'s spoil fill is the shallow end of
-spanning, and a bridge is the deep end. Neither is a new storage question — a road with
-rock above it and a road with air below it are both a column whose road sits on a layer
-of its own, which the stack has carried since `8a`.
-
-⚠ **IT ALSO ANSWERS `A8`'s MEASURED ABSURDITY.** Cut-only carves a **20-metre canyon**
-at the top of a road walked down a 3-per-hex ramp, and the balance only halves it. The
-road was never supposed to move that earth: past the point where a fill is a fill, it
-**spans**. So the canyon is not a bug in the balance, it is the balance being asked a
-question that belongs to the span.
-
-⚠ **AND THERE IS NO WATER YET.** `ground_kinds()` holds grass, road, field, floor and
-roof; a waterway is not a terrain this world can store. So the bridge's trigger does not
-exist to be detected — which makes *span* the half to design second, after `A9` has
-established what a road sitting on its own layer looks like.
-
-### `A9` — the shape a road takes where it cannot go round
-
-> *"Especially in Switzerland a road along a cliff face is cut into it, getting an overhang
-> above it. In Austria those overhangs often end up in a half tunnel because of their more
-> brittle rocks, but in both the roads often got real tunnels too."*
-
-⚠ **THAT IS ONE AXIS, NOT THREE FEATURES** — how much rock stays above the road:
-
-| rock above | what it is |
-|---|---|
-| none | today's open cut (`T5`) |
-| some | a Swiss **overhang** |
-| most | an Austrian **gallery** — a half tunnel, which is what brittle rock forces |
-| all | a **tunnel** — and that is already [`A2b`](#phases)'s sub-surface run, arriving from the other end |
-
-⚠ **AND THE MODEL ALREADY EXPRESSES IT.** A road with rock above it is a column whose road sits
-on a lower layer with terrain above — structurally identical to a cellar under a house, which
-the layer stack has carried since `8a`. So `A9` is not new storage; it is a rule about **which
-layer a cut writes to**, and today `slope_settle` lowers the whole column because nothing ever
-asked it not to.
-
-⚠ **THE FAR END MEETING `A2b` IS THE CHECK ON BOTH.** If a full-overhang road and a corridor
-are not the same object, one of the two designs is wrong — so they are gated against each
-other rather than built twice.
-
-### ⚠ What `A4` measured, and what it turned out to be
-
-**Half of the row was already true.** Measured (`probe/house/pads.loft`), two houses
-on a ramp: each pad ends level (spread **0**) on every gradient tried, and the ground
-between them carries **no more reversals than the bare control** — a dome on a ramp is
-non-monotonic whether or not there are buildings on it, so "monotonic between them"
-had to be read against a control before it meant anything.
-
-**The other half is a defect nobody had a number for.** A house on a slope is BURIED
-on its uphill side, and it grows without bound with the gradient:
-
-| ramp | earth standing OVER the floor | floor standing proud |
-|---|---|---|
-| 1/hex | 7 | 5 |
-| 2/hex | 12 | 5 |
-| 3/hex | 17 | 5 |
-| 4/hex | **22** — 5.5 wu of soil against the wall | 5 |
-
-⚠ **AND THE CAUSE IS A FUNCTION THAT EXISTS AND IS NEVER CALLED.** `place_house` seats
-its pad at the grade passed in — the AUTHOR'S FEET — so the pad sits at the height of
-wherever the author stood, and the footprint's own uphill edge is that many cells of
-grade above it. `footprint_seat` / `seat_residual` were built for exactly this, are
-tested in `tests/footprint.loft`, and have **no consumer anywhere**. The
-cut-and-fill a placement owes is computed by nobody and shown to no one.
-
-✅ **BUILT (`fb76d51`): the pad is seated on its own footprint at `SEAT_MEAN`, and the
-cut-and-fill is reported.** After:
-
-| ramp | buried | proud |
-|---|---|---|
-| 1/hex | 5 | 7 |
-| 2/hex | 7 | 10 |
-| 3/hex | 10 | 12 |
-| 4/hex | **13** | 14 |
-
-Halved, and **symmetric** — which is the whole difference between a mean and an end.
-
-⚠ **AND NO RING-CUT WAS NEEDED, WHICH THE MEASUREMENT IS WHAT SETTLED.** A level pad
-seven cells across on a 4-per-hex slope spans 28 units of ground, so it *must* cut 14
-or fill 14: what remains is geometry, not a defect. Cutting an apron on top of it would
-be moving earth to hide a number rather than to fix anything — and the number is now
-said out loud (*"seated at 10 (10 from your feet, cut and fill 10)"*), which is what
-`ak_residual` is for. **Open question 8 is closed by that**: the pad does not want an
-apron, it wants an honest residual and `A5`'s faces on the cut.
-
-✅ **`slope_settle` IS WIRED (`dd508ff`)** — `road_lay` settles its own run, guarded by
-a constant-cost check so the editor's flat road pays nothing (`w_tau` 414 either way on
-80 cells) and a road that varies with the ground settles as `A7` intended. See
-[TERRAIN_EDITS §T5](../../doc/claude/TERRAIN_EDITS.md).
-
-⚠ **AND IT PUT A NUMBER ON WHAT `A8` IS FOR.** Cut-only cannot lay a descending road:
-walked down a 3-per-hex ramp it satisfies its limit by cutting its top end **80 units —
-20 metres — below the natural ground.** That stretch wants an embankment, which is
-exactly `A8`'s fill.
-
-### ⚠ `A7` and `A8` are both built and both UNREACHABLE from the editor
-
-`road_h` is frozen ONCE when road mode is switched on and every stroke uses it, so the
-strip is **flat** however far it runs. Measured — the editor's road across a hill of 24:
-
-| | |
-|---|---|
-| profile | flat, end to end |
-| cut / fill | **160 / 0** |
-| `slope_owed` | **0** — it breaks no limit |
-| settles | **none**, so no balance either |
-
-Both rules are correct and tested; neither can fire. `A8`'s acceptance is a PICTURE and
-that picture cannot honestly be taken from the editor — a shot of the current road
-gesture shows a flat cut plateau, which is not what `A8` does.
-
-**What is missing is one gesture change, not a rule**: the road's grade has to follow
-the author as they walk instead of being frozen once for the run.
-
-### ⚠ That change was BUILT, MEASURED AND BACKED OUT — 2026-08-09
-
-It works, and it is not landable as it stands. Recorded here so the next attempt starts
-from the facts rather than rediscovering them.
-
-**The naive version does nothing, and the reason is a feedback loop inside the gesture.**
-Re-freezing the grade from the author's feet changes nothing at all, because *the author
-rides the road they are laying*: `road_lay` stamps a disc of `ROAD_HALF` centred on them,
-so the ground they stand on next stroke is road laid on the last one, and `ground_under`
-hands back the grade that was just written. It is `TERRAIN_EDITS`'s own sampling trap —
-*a probe that samples as it writes measures its own output* — living in the gesture
-instead of in a probe.
-
-**Taking the grade from ahead of the strip does work.** One cell past the stamp is the
-nearest place the natural ground survives. Measured through the editor: a walk over a
-hill of 3 raises laid **2448 vertices** of road, graded, cut into the hill with `A5`'s
-rock face on its bank and `A8`'s embankment below it — the first time either rule had
-ever fired from a gesture. `shots/a8-road-over-a-hill.png` was taken from that build.
-
-**And it breaks two gates, because the frozen grade is load-bearing for something else.**
-`road` mode is being used as a *paving* tool as well as a road tool:
-
-| gate | what it uses road mode for | why it breaks |
-|---|---|---|
-| `character/deck` | a flat PAVED platform one stride up | its own header says it: *"a road is the authoring gesture that GRADES, and its grade is frozen from the feet, which is what lets this gate choose the platform's height by standing on the first step"*. A grade that follows the author ramps off the pad |
-| `world/surface` | a road over dug cellars | same dependency, one layer down |
-
-Three repairs were tried and measured, and none is clean: averaging the grade over the
-strip's own length (still 5.917 of 8 on `road`'s scene — and that gate's range proxy is
-polluted by the mesh lip it documents, so it cannot measure a gradient at all); a short
-lookahead inside `LEVEL_R`; and *levelling outranks the ground*, which is the most
-promising — with levelling on the author has already declared the height they want — but
-`deck` does not level, it paves.
-
-**So the open decision is what road mode IS**, and it is the author's to make: one
-gesture that grades and a separate one that paves, or one gesture with the grade rule
-switched by levelling. The rules underneath are built and green either way.
-
-⚠ **AND IT IS THE SAME SHAPE AS THE THREE MISSING CONSUMERS `A4` TURNED UP.** A rule
-that no gesture can reach is a rule the editor does not have, and it passes CI exactly
-as happily as one that works.
-
 ## Open questions
 
 1. ~~**How much of the spoil goes back?**~~ ✅ **ALL OF IT, and the rule needed no number.**
@@ -470,12 +307,14 @@ as happily as one that works.
    See TERRAIN_EDITS §T3 for why the naive version collapses runs.
 6. **Does `A4` need a real relaxation, or is one pass enough?** Decided by building the
    one-pass version and measuring where it disagrees with itself.
-7. **What decides the overhang — the rock, or the author?** Switzerland gets an overhang from
-   the geology and Austria a gallery from *brittler* rock, so the natural model is a property
-   of the region's stone rather than a per-road choice — which lands it in
-   [plan 21](../21-region-mappings/README.md)'s palette, as an attribute of an identity, and
-   not in a gesture. ⚠ That would make *how a road crosses a cliff* a fact about **where in the
-   world you are**, which is the same shape as the slope limit and is probably the point.
+7. ~~**What decides the overhang — the rock, or the author?**~~ ✅ **THE ROCK, AND IT NEEDED
+   NO PALETTE ENTRY.** The answer was expected to land in
+   [plan 21](../21-region-mappings/README.md) as an attribute of an identity — and there is no
+   rock *material* in this world at all, because `A5` derives rock from the DROP. So *is this
+   rock* already had exactly one authority, `tr_face`, and `cave_stands` uses it: an overburden
+   drawn as rock is an overburden that stands as a roof. ⚠ The plan-21 reading is still
+   available and is now a **row**, not a mechanism: give a region's stone its own `tr_face` and
+   *how a road crosses a cliff* becomes a fact about where in the world you are, for free.
 8. **Should the pad extend past the building?** A real terrace has an apron; today the pad is
    exactly the fabric, so the ground steps at the wall. ⚠ **MEASURED NOW** — the step is 7 to 22
    units of earth standing OVER the floor as the ramp goes 1 to 4 per hex, and it is one-sided:
