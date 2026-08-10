@@ -4051,6 +4051,29 @@ pub fn water_depth_at(w: World, q: integer, r: integer) -> integer {
 // have the ground moved under it — but the gesture cannot produce one.
 pub const WATER_FREE = 2;        // how far a river's surface sits below its banks
 
+// ── AND IT WIDENS AS IT GOES ────────────────────────────────────────────────
+//
+// A river is wider downstream because there is more water in it, so the width is a
+// function of how far it has RUN — not of where it is, and not of how steep it is.
+//
+// ⚠ WHICH MEANS THE COUNT HAS TO OUTLIVE THE STROKE. `water_lay` lays a handful of
+// cells per placement and the author walks a river over many of them, so a width taken
+// from the index within one call would reset to a trickle at every footfall. The
+// gesture carries the total instead and hands it in — the same shape `road_h` has,
+// frozen when the mode goes on and spent as the author walks.
+//
+// ⚠ AND IT IS NOT STORED. Nothing writes a width anywhere: the cells that are water
+// ARE the width, and a second answer could disagree with them. `HEX_STACK`'s first
+// invariant, and `A5`'s rule for the third time.
+pub const WATER_WIDEN    = 6;    // cells of run per extra half-width
+pub const WATER_WIDE_MAX = 2;    // and it stops there — five cells across
+
+pub fn water_half(run: integer) -> integer {
+  h = (run / WATER_WIDEN) ?? 0;
+  if h > WATER_WIDE_MAX { return WATER_WIDE_MAX; }
+  h
+}
+
 // Which way the water goes from here — a `hex_grid` direction, or −1 when nothing
 // around is lower and the run ends in a pool.
 //
@@ -4116,13 +4139,34 @@ pub fn water_next(w: World, q: integer, r: integer, hint: integer,
 // stops where it has already been: a river does not cross itself, and without that
 // guard the cell just written — now a freeboard lower than its banks — is the lowest
 // thing around and the walk turns straight back into it.
+// ⚠ `done` IS HOW FAR THE RIVER HAS ALREADY RUN, and it is what makes the widening
+// survive a stroke boundary. Pass 0 for a fresh river.
 pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: integer,
+                 done: integer,
                  clamped: &integer, residual: &integer, why: &text) -> integer {
   q = cq;
   r = cr;
   seen = Seen { s_by: [] };
   n = 0;
+  // ⚠ A STROKE THAT STARTS BESIDE A RIVER CAME FROM IT — and without this a walked
+  // river is two cells long however far the author goes. The channel already laid sits
+  // a freeboard below its banks, so from the next cell along it is strictly the lowest
+  // thing around: the run turned into it, found water, and called that a confluence.
+  // Measured, four strokes of five laid **8** cells instead of twenty.
+  //
+  // ⚠ THE HIGHEST ADJACENT WATER IS THE UPSTREAM ONE, which is where a continuation
+  // comes from — and taking the lowest would point at whatever this river is about to
+  // flow into, which is exactly the direction it must be free to take.
   back = WATER_NOBACK;
+  bw = 0 - 1;
+  bwh = 0;
+  for d0 in 0..6 {
+    (wq0, wr0) = hex_grid::hex_neighbor(cq, cr, d0);
+    if !is_water(world_ground_cell(wld, wq0, wr0).h_material as integer ?? 0) { continue; }
+    h0 = ground_h(wld, wq0, wr0);
+    if bw < 0 || h0 > bwh { bw = d0; bwh = h0; }
+  }
+  if bw >= 0 { back = bw; }
   for _ in 0..steps {
     if seen.s_by[age_like_key(q, r)] != null { break; }
     seen.s_by += SeenAt { sa_key: age_like_key(q, r) };
@@ -4145,6 +4189,34 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
       clamped = clamped + 1;
       if WATER_DEPTH > residual { residual = WATER_DEPTH; }
       break;
+    }
+    // ── the width, out to each side of the line it is taking ────────────────
+    //
+    // ⚠ THE TWO FLANKING DIRECTIONS ARE `d ± 2`, WHICH IS AS PERPENDICULAR AS A HEX
+    // LATTICE HAS. Directions are 60° apart, so across the flow is `d + 3` halves —
+    // not a direction — and the nearest pair sits 30° off square either way. It is the
+    // same reason `T3`'s *across* rule founders: in a hex grid there is no cell
+    // directly beside a line.
+    //
+    // ⚠ AND IT WIDENS INTO GROUND, NOT INTO A CLIFF. A river widens by wearing its
+    // banks away, and a gorge wall is not a bank — so a flank whose ground stands more
+    // than one depth above the water is left alone and the river stays narrow there.
+    // That is the chasm rule read from the other side.
+    hw = water_half(done + n);
+    if hw > 0 && d >= 0 {
+      for sd in 0..2 {
+        side = (d + 2 + sd * 2) % 6 ?? 0;
+        fq = q;
+        fr = r;
+        for _k in 0..hw {
+          (gq2, gr2) = hex_grid::hex_neighbor(fq, fr, side);
+          fq = gq2;
+          fr = gr2;
+          if is_water(world_ground_cell(wld, fq, fr).h_material as integer ?? 0) { continue; }
+          if ground_h(wld, fq, fr) > surf + WATER_DEPTH { break; }
+          water_set(wld, fq, fr, surf, dw, why);
+        }
+      }
     }
     n = n + 1;
     if ended { break; }

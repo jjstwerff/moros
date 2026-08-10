@@ -5698,6 +5698,10 @@ fn main() {
   // like a road.* So the gesture is a road's — walk and it lays — and the DIRECTION at
   // every step is the ground's wherever the ground has an answer.
   watering = false;            // laying a waterway as the character walks
+  // ⚠ HOW FAR THE RIVER HAS RUN SINCE THE MODE WENT ON — a river widens downstream and
+  // a stroke lays a handful of cells, so the count has to outlive the stroke. Reset on
+  // `47:1`, exactly as `road_h` freezes there.
+  water_run = 0;
   road_h = 0;                  // the road's grade — set when road mode goes on and
                                // then FOLLOWING the landscape, one stroke at a time
   // One stall report per road run, not per stroke — the same shape `level_stalled`
@@ -6729,8 +6733,9 @@ fn main() {
                 wrs = 0;
                 wwhy = "";
                 wn = hex_editor::water_lay(wld, whx.ha_q, whx.ha_r,
-                       hex_editor::snap_dir(cos(yaw), sin(yaw)), wsteps,
+                       hex_editor::snap_dir(cos(yaw), sin(yaw)), wsteps, water_run,
                        wcl, wrs, wwhy);
+                water_run = water_run + wn;
                 // ⚠ THE RUN MAY LEAVE THE DISC ENTIRELY, because its length is the
                 // ground's business and not the stroke's — so the dirty mark covers
                 // the steps it was allowed rather than a brush radius.
@@ -7893,6 +7898,7 @@ fn main() {
           srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
         } else if ev.msg_id == MSG_WATER {
           watering = (ev.payload as integer ?? 0) != 0;
+          if watering { water_run = 0; }
           if watering {
             srv.send_to(ev.cid, "S:water true");
             println("editor: water on");

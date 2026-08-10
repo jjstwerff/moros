@@ -308,7 +308,7 @@ fn route(w: World, q0: integer, r0: integer, hint: integer, steps: integer) -> t
   cl = 0;
   rs = 0;
   why = "";
-  water_lay(w, q0, r0, hint, steps, cl, rs, why);
+  water_lay(w, q0, r0, hint, steps, 0, cl, rs, why);
   out = "";
   for r in 0..12 {
     for q in (0 - 6)..7 {
@@ -328,7 +328,7 @@ fn test_on_a_slope_the_water_ignores_the_walk_and_takes_the_fall_line() {
   // ⚠ THE HINT POINTS THE WRONG WAY ON PURPOSE — east, along the contour, where the
   // ground says south. If the walk could steer the river this row would find it going
   // east, which is the whole claim inverted.
-  n = water_lay(w, 0, 0, 0, 8, cl, rs, why);
+  n = water_lay(w, 0, 0, 0, 8, 0, cl, rs, why);
   assert(n >= 6, "the river ran {n} cells and gave up");
   assert(!is_water(world_ground_cell(w, 4, 0).h_material as integer ?? 0),
          "the river went EAST along the contour — the author's walk steered it");
@@ -352,7 +352,14 @@ fn test_on_a_slope_the_water_ignores_the_walk_and_takes_the_fall_line() {
       if !is_water(m) { continue; }
       d = water_dir(m);
       if d < 0 { continue; }
+      // ⚠ ASKED ONLY WHERE THE NEXT CELL IS WATER, and the widening is what taught
+      // this row the difference. A FLANK cell carries the centre's direction, and at
+      // the edge of the widening the cell downstream of it is a BANK — higher, and not
+      // part of the river. `water_falls` answers `WATER_STILL` there, which is the run
+      // ending rather than water climbing; asserting on the ground alone made this row
+      // stronger than the rule it exists to check.
       (aq, ar) = hex_grid::hex_neighbor(q2, r2, d);
+      if !is_water(world_ground_cell(w, aq, ar).h_material as integer ?? 0) { continue; }
       assert(ground_h(w, aq, ar) <= ground_h(w, q2, r2),
              "the water at ({q2},{r2}) points at a cell above it");
     }
@@ -364,7 +371,7 @@ fn test_on_flat_ground_it_follows_the_walk_exactly() {
   cl = 0;
   rs = 0;
   why = "";
-  n = water_lay(w, 0, 0, 0, 6, cl, rs, why);      // hint EAST
+  n = water_lay(w, 0, 0, 0, 6, 0, cl, rs, why);      // hint EAST
   assert(n == 6, "a canal on the flat ran {n} cells, not the 6 it was asked for");
   for q in 0..6 {
     assert(is_water(world_ground_cell(w, q, 0).h_material as integer ?? 0),
@@ -376,7 +383,7 @@ fn test_on_flat_ground_it_follows_the_walk_exactly() {
   cl2 = 0;
   rs2 = 0;
   why2 = "";
-  water_lay(w2, 0, 0, 3, 6, cl2, rs2, why2);      // hint WEST
+  water_lay(w2, 0, 0, 3, 6, 0, cl2, rs2, why2);      // hint WEST
   assert(is_water(world_ground_cell(w2, 0 - 3, 0).h_material as integer ?? 0),
          "a westward walk still laid the canal eastward");
   assert(!is_water(world_ground_cell(w2, 3, 0).h_material as integer ?? 0),
@@ -392,7 +399,7 @@ fn test_a_river_the_gesture_laid_never_climbs() {
   cl = 0;
   rs = 0;
   why = "";
-  water_lay(w, 0, 0, 0, 10, cl, rs, why);
+  water_lay(w, 0, 0, 0, 10, 0, cl, rs, why);
   bad = 0;
   seen = 0;
   for q in (0 - 6)..7 {
@@ -413,7 +420,7 @@ fn test_it_ends_in_a_pool_where_nothing_is_lower() {
   cl = 0;
   rs = 0;
   why = "";
-  n = water_lay(w, 0, 0, 0, 12, cl, rs, why);
+  n = water_lay(w, 0, 0, 0, 12, 0, cl, rs, why);
   assert(is_water(world_ground_cell(w, 3, 0).h_material as integer ?? 0),
          "the run never reached the bowl");
   assert(water_dir(world_ground_cell(w, 3, 0).h_material as integer ?? 0) < 0,
@@ -429,13 +436,97 @@ fn test_a_river_does_not_cross_itself() {
   // ⚠ WITHOUT THE GUARD THIS IS AN INFINITE SHUFFLE, not a wrong route: the cell just
   // written sits a freeboard below its banks, so it is the lowest thing around and the
   // walk turns straight back into it.
-  n = water_lay(w, 0, 0, 0, 12, cl, rs, why);
+  n = water_lay(w, 0, 0, 0, 12, 0, cl, rs, why);
   wet = 0;
   for q in (0 - 16)..17 {
     for r in (0 - 4)..5 {
       if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { wet = wet + 1; }
     }
   }
-  assert(wet == n, "the run reports {n} cells and the world holds {wet}");
+  // ⚠ THE RUN REPORTS A LENGTH AND THE WORLD HOLDS AN AREA, which is what the widening
+  // separated: this row asserted them EQUAL when a river was one cell wide, and a wider
+  // one made the identity false without anything being wrong.
+  assert(wet >= n, "the run reports {n} cells and the world holds only {wet}");
   assert(n == 12, "the guard cut the run short at {n} cells");
+}
+
+// ── AND IT WIDENS AS IT FLOWS DOWN ──────────────────────────────────────────
+
+// How many cells across the river is at this point along a flat easterly canal — the
+// column of cells at `q`, counted across `r`.
+fn across(w: World, q: integer) -> integer {
+  n = 0;
+  for r in (0 - 6)..7 {
+    if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { n = n + 1; }
+  }
+  n
+}
+
+fn test_the_width_is_a_function_of_how_far_it_has_run() {
+  assert(water_half(0) == 0, "a river starts wider than one cell");
+  assert(water_half(WATER_WIDEN - 1) == 0, "it widened before its first {WATER_WIDEN} cells");
+  assert(water_half(WATER_WIDEN) == 1, "it did not widen at {WATER_WIDEN} cells");
+  assert(water_half(WATER_WIDEN * 40) == WATER_WIDE_MAX,
+         "it kept widening past its cap: {water_half(WATER_WIDEN * 40)}");
+  prev = 0;
+  for k in 0..(WATER_WIDEN * 6) {
+    assert(water_half(k) >= prev, "the width fell at {k}");
+    prev = water_half(k);
+  }
+}
+
+fn test_a_long_canal_is_wider_at_its_foot_than_at_its_head() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0 - 8, 0, 0, 20, 0, cl, rs, why);
+  assert(n >= 18, "the canal ran {n} cells, too short to widen at all");
+  head = across(w, 0 - 7);
+  foot = across(w, 8);
+  assert(head == 1, "the head is {head} cells across, not one");
+  assert(foot > head, "the foot is {foot} across and the head {head} — it never widened");
+  assert(foot <= 2 * WATER_WIDE_MAX + 1,
+         "the foot is {foot} across, past the {2 * WATER_WIDE_MAX + 1} cap");
+}
+
+// ⚠ THE COUNT OUTLIVES THE STROKE, which is the half a single call cannot show. An
+// author walks a river over many placements, and a width taken from the index within
+// one of them resets to a trickle at every footfall.
+fn test_the_widening_survives_a_stroke_boundary() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  // four strokes of five, exactly as the gesture drives it
+  done = 0;
+  for k in 0..4 {
+    q0 = 0 - 8 + done;
+    got = water_lay(w, q0, 0, 0, 5, done, cl, rs, why);
+    done = done + got;
+  }
+  assert(done >= 18, "the four strokes laid {done} cells");
+  assert(across(w, 8) > across(w, 0 - 7),
+         "the river is the same width at its foot as at its head, so the run count "
+         + "did not survive the stroke");
+}
+
+// ⚠ AND IT WIDENS INTO GROUND, NEVER INTO A CLIFF. A river widens by wearing its banks
+// away and a gorge wall is not a bank — which is the chasm rule read from the other
+// side.
+fn test_it_stays_narrow_in_a_gorge() {
+  w = slope(0);
+  // walls either side of the line the canal will take
+  for q in (0 - 10)..12 {
+    ground_set(w, q, 0 - 1, G + 60, SURFACE_MAT);
+    ground_set(w, q, 1, G + 60, SURFACE_MAT);
+  }
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0 - 8, 0, 0, 20, 0, cl, rs, why);
+  assert(n >= 18, "the canal ran {n} cells");
+  assert(across(w, 8) == 1,
+         "the river widened to {across(w, 8)} cells inside a gorge whose walls stand "
+         + "60 units over it");
 }
