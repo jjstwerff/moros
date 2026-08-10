@@ -132,3 +132,66 @@ fn test_a_water_mesh_carries_its_depth_and_a_ground_mesh_does_not() {
   assert(d < 0.0001,
          "a ground normal is {ghi} long, so the ground would take the depth ramp too");
 }
+
+// ── A SPRING IS A TRICKLE, NOT A FULL HEX ───────────────────────────────────
+
+fn test_the_inset_narrows_a_spring_and_lets_a_full_channel_alone() {
+  assert(water_inset(hex_editor::WATER_DEPTH) == WATER_TRICKLE,
+         "a spring is drawn {water_inset(hex_editor::WATER_DEPTH)} of its cell wide");
+  full = hex_editor::WATER_DEPTH + hex_editor::WATER_STEP;
+  assert(water_inset(full) == 1.0,
+         "a channel one widening deep is {water_inset(full)} of its cell");
+  assert(water_inset(full * 4) == 1.0, "a deep channel narrowed again");
+  prev = 0.0;
+  for d in hex_editor::WATER_DEPTH..(full + 2) {
+    assert(water_inset(d) >= prev, "the width fell at depth {d}");
+    prev = water_inset(d);
+  }
+}
+
+// ⚠ MEASURED IN THE EMITTED MESH, and ACROSS THE FLOW rather than in the round. The
+// inset keeps the along-flow component of every corner exactly — insetting both ways
+// would leave a river of consecutive cells as a line of islands rather than a thread —
+// so a bounding box in the round cannot see it and a spread along `z` can.
+fn test_a_spring_is_drawn_narrower_than_the_cell_it_is_in() {
+  w = pond(24);
+  wm = chunk_mesh_mat(0, 0, w, hex_editor::WATER_MAT);
+  assert(len(wm.vertices) > 0, "no water was meshed");
+  // the river in `pond` runs EAST, so across the flow is `z`
+  lo = 1000.0;
+  hi = 0.0 - 1000.0;
+  for v in wm.vertices {
+    if v.pos.z < lo { lo = v.pos.z; }
+    if v.pos.z > hi { hi = v.pos.z; }
+  }
+  span = hi - lo;
+  // three rows of cells, 1.5 world units apart, so a full-width river spans 4.0
+  assert(span < 4.0,
+         "the water spans {span} across the flow, which is every cell drawn full width");
+  assert(span > 1.0, "the water spans only {span} — the inset ate the river");
+  // ⚠ AND ALONG THE FLOW IT IS UNTOUCHED. The fixture's cells run `q = 0..7`, so their
+  // centres span `7 x √3 = 12.12` and a full-width hex adds half a width at each end:
+  // **13.85**.
+  //
+  // ⚠ THIS ROW IS NOT KNOWN TO DISCRIMINATE, AND THAT IS SAID RATHER THAN ASSUMED. The
+  // sabotage it was written for — insetting in the round, which would leave a river of
+  // consecutive cells as a line of ISLANDS — passes it, and two attempts at a fixture
+  // that would separate them did not. So what is gated below is the across-flow inset
+  // (the row above, which the sabotage does fail); this bound is a sanity check on the
+  // along-flow extent and is worth keeping for that alone. A test whose header claims
+  // coverage it does not have is worse than no test.
+  // ⚠ AN ALL-SHALLOW FIXTURE, because `pond(24)` has a deep middle row drawn at FULL
+  // width — and that row alone sets the along-flow extent, so the round-inset sabotage
+  // passed this row until the fixture stopped hiding it.
+  w0 = pond(0);
+  wm0 = chunk_mesh_mat(0, 0, w0, hex_editor::WATER_MAT);
+  xlo = 1000.0;
+  xhi = 0.0 - 1000.0;
+  for v2 in wm0.vertices {
+    if v2.pos.x < xlo { xlo = v2.pos.x; }
+    if v2.pos.x > xhi { xhi = v2.pos.x; }
+  }
+  assert(xhi - xlo > 13.2,
+         "the water spans {xhi - xlo} ALONG the flow against 13.85 at full width — the "
+         + "inset is being applied in the round, so the river is stepping stones");
+}

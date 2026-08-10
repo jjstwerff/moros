@@ -242,6 +242,33 @@ pub const WATER_DEEP = hex_editor::WATER_DEPTH
 // sits about where the shallow one used to.
 pub const WATER_DARK = 0.60;            // how much of the shallow colour is left deep
 
+// ── A SPRING IS A TRICKLE, NOT A FULL HEX ───────────────────────────────────
+//
+// The width of a river is quantised to the cell until it is wide enough to take a
+// second one, so its first cells are as wide as its fifth and a stream comes out of the
+// mountain at full width. This insets the fan toward the cell's own centre — a rendering
+// answer to a storage floor, and the only one available: `F1` and the lattice both
+// forbid anything narrower being STORED.
+//
+// ⚠ ACROSS THE FLOW ONLY, AND INSETTING BOTH WAYS IS STEPPING STONES. A hexagon shrunk
+// toward its centre no longer touches its neighbour, so a river of consecutive inset
+// cells is a line of islands rather than a thread. The along-flow component of every
+// corner is kept exactly and only the across-flow one is squeezed.
+//
+// ⚠ AND IT IS DERIVED FROM THE DEPTH, which is derived from the run. Nothing stores a
+// width; the store says how deep the channel is here and the picture follows, so a
+// river re-cut deeper widens to match with nothing to remember.
+pub const WATER_TRICKLE = 0.34;         // how wide a spring is, as a fraction of its cell
+
+pub fn water_inset(depth: integer) -> float {
+  if depth <= hex_editor::WATER_DEPTH { return WATER_TRICKLE; }
+  full = hex_editor::WATER_DEPTH + hex_editor::WATER_STEP;
+  if depth >= full { return 1.0; }
+  t = ((depth - hex_editor::WATER_DEPTH) as float)
+    / ((full - hex_editor::WATER_DEPTH) as float) ?? 0.0;
+  WATER_TRICKLE + (1.0 - WATER_TRICKLE) * t
+}
+
 pub fn water_shade(depth: integer) -> float {
   if depth <= hex_editor::WATER_DEPTH { return 0.0; }
   if depth >= WATER_DEEP { return 1.0; }
@@ -417,7 +444,8 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                    q0: integer, r0: integer,
                    gh: vector<integer>, gl: vector<integer>,
                    gq0: integer, gr0: integer, gw: integer,
-                   nscale: float = 1.0) {
+                   nscale: float = 1.0,
+                   inset: float = 1.0, iax: float = 1.0, iaz: float = 0.0) {
   chh = grid_h(gh, gq0, gr0, gw, cq, cr, wld);
   cw = hex_to_world(cq, cr, chh);
   hs = corner_heights_from(gh, gl, gq0, gr0, gw, cq, cr);
@@ -479,8 +507,19 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
                         vec2(0.0, 0.0))];
   for ci in 0..6 {
     wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    // ⚠ THE ACROSS-FLOW COMPONENT ALONE. `al` is how far along the flow this corner
+    // sits and is kept exactly; what is left is across, and only that is squeezed.
+    px2 = wc.x;
+    pz2 = wc.z;
+    if inset < 1.0 {
+      ox = wc.x - cw.x;
+      oz = wc.z - cw.z;
+      al = ox * iax + oz * iaz;
+      px2 = cw.x + al * iax + (ox - al * iax) * inset;
+      pz2 = cw.z + al * iaz + (oz - al * iaz) * inset;
+    }
     cn = nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0);
-    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
+    m.vertices += [vertex(vec3(px2, (hs[ci] ?? 0.0) * HEIGHT_SCALE, pz2),
                           vec3(cn.x * nscale, cn.y * nscale, cn.z * nscale),
                           vec2(1.0, 0.0))];
   }
@@ -623,10 +662,29 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
         // `length(vNrm) - 1.0` is exactly 0 for everything that is not water. The
         // channel is inert unless something puts a number in it.
         nsc = 1.0;
+        wins = 1.0;
+        wax = 1.0;
+        waz = 0.0;
         if want_mat == hex_editor::WATER_MAT {
-          nsc = 1.0 + water_shade(hex_editor::water_depth_at(wld, cq, cr));
+          wdep = hex_editor::water_depth_at(wld, cq, cr);
+          nsc = 1.0 + water_shade(wdep);
+          wins = water_inset(wdep);
+          // The flow's own axis, from the material — a still pool has none and keeps
+          // its full cell, which is what a pool is.
+          wd = hex_editor::water_dir(world_ground_cell(wld, cq, cr).h_material as integer ?? 0);
+          if wd < 0 { wins = 1.0; }
+          else {
+            (wnq, wnr) = hex_grid::hex_neighbor(cq, cr, wd);
+            wn = hex_to_world(wnq, wnr, 0);
+            wc0 = hex_to_world(cq, cr, 0);
+            wdx = wn.x - wc0.x;
+            wdz = wn.z - wc0.z;
+            wl = sqrt(wdx * wdx + wdz * wdz) ?? 1.0;
+            if wl > 0.0 { wax = wdx / wl ?? 1.0; waz = wdz / wl ?? 0.0; }
+          }
         }
-        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw, nsc);
+        emit_hex_sloped(cm, cq, cr, wld, nx, ny, nz, q0, r0, gh, gl, gq0, gr0, gw, nsc,
+                        wins, wax, waz);
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
         // one surface over. The ground has no skirts because it is continuous and
         // its edges are somebody else's cells — but a stairwell is where the ground
