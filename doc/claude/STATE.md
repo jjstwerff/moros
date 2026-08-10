@@ -159,6 +159,55 @@ it had just paved, so its guard threw every road cell away and it reported a
 balanced-looking **`cut 0 fill 0` summed over ZERO cells**. A third world that no road is
 ever laid in is what a datum has to be.
 
+## ✅ AND THE PER-CELL GRADE IS BUILT — a stroke lays a PLANE, not a plate
+
+**Open question 5's authoring half, and it needed no axis derivation at all.** The
+question assumed the axis has to be recovered from stored cells; while a run is being
+*laid* it does not — the author is walking. `road_lay` takes the run's **gradient** (height
+units per world unit) and writes every disc cell at `h + round((w − p) · g)`.
+
+**Why it is exact rather than merely better:** with consecutive strokes on the run's own
+gradient, `h_i + (w − p_i)·g = h₀ + (w − p₀)·g` — **`i` does not appear**, so all four
+overlapping discs write the same height and a later stroke has nothing left to displace.
+⚠ `g = 0` is the old flat plate **byte for byte**, which is what all 30 existing callers
+pass — `lib/hex_editor/tests/road_plane.loft` pins that, and it is why 375 tests and
+`make fast`'s 135 files were unmoved.
+
+⚠ **AND THE AUTHOR'S OWN GRADE IS EXTRAPOLATED BACK FROM TWO SAMPLES BEYOND THE STRIP,
+NEVER SAMPLED UNDERFOOT** — which is how it escapes the trap this tree already records:
+*the author RIDES the road they are laying*, so `ground_under` hands back the grade just
+written.
+
+| 26 cells | plate — what shipped | **plane** |
+|---|---|---|
+| 1 per hex, either way | 127 | **0** |
+| 3 per hex, falling | 777 | **538** |
+| 6 per hex, falling | 1508 | **1141** |
+
+**At a gradient a road can follow, a walk now moves no earth at all.**
+
+### ⚠ AND IT REACHES A REGIME THE PLATE NEVER DID — the next step
+
+A plate laid at the lookahead grade **floats** above a rising hill (117 units proud at 6
+per hex — a road on stilts, and why `A8`'s balance never fired there). A plane follows the
+ground, so walking UP it **cuts**, and a road cut ever deeper into a hillside is `A9`: it
+caves. Measured (`probe/house/plane.loft`) — **falling is legal at every gradient and
+caves nothing; rising is legal to 3**:
+
+| rising | caved | worst step | `slope_owed` |
+|---|---|---|---|
+| 3 per hex | 71 | 1 | 0 |
+| 4 per hex | 199 | **5** | 4 |
+| 6 per hex | 277 | **26** | 25 |
+
+**Once a run caves, the settle can no longer hold its own limit** — `run_set` is refused
+under a shelf. That is `A9`'s own recorded failure (*"a shelf blinded the settle to half
+its own road… a 27-unit step in a road whose limit is 1"*) reappearing because the plane
+is what finally makes the road cut where a road builder would. ⚠ The author **is** told
+(the refusal is counted and the server broadcasts `slope_owed`), but a step no cart can
+take is still there. **Settling a run that `A9` has cut shelves into is the next piece of
+work** — not a reason to go back to laying plates.
+
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
 **This cost three changes reverted on false evidence in one session.** Editing a

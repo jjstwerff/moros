@@ -3345,8 +3345,43 @@ pub fn spanned_h(w: World, q: integer, r: integer) -> integer {
   hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
 }
 
+// ── A STROKE LAYS A PLANE, NOT A PLATE — plan 20, open question 5 ───────────
+//
+// `h` is the grade at the author's OWN cell, and `(gx, gz)` is the run's gradient in
+// height units per world unit. Every cell of the disc is written at
+//
+//     h + round((w - p) . g)
+//
+// with `p` the author's cell and `w` the cell's own world position. ⚠ `(0, 0)` is the
+// flat plate this used to lay, byte for byte, which is what every caller that has no
+// gradient to give passes — and `tests/road_plane.loft` pins that.
+//
+// ⚠ THIS IS THE FALL-LINE CANYON'S ACTUAL CAUSE, and it took three refuted answers to
+// reach. A disc of ONE grade laid over ground that varies flattens it, and a cell
+// keeps whichever stroke covered it LAST — a neighbour's height, not its own.
+// Measured alone (`probe/house/conserve.loft`), that displaced **75 units** of fill
+// over a 43-cell run with nothing settled and nothing balanced at all. It was blamed
+// on the settle's envelope (refuted: the settle plus `A8`'s balance already move the
+// same earth as anchoring at the middle), then on the balance being applied per
+// stroke (refuted: built on `plan/20-run-debt`, 1508 -> 1486), and the reason no
+// balance could ever fix it is that the same units of ground are the earth the canyon
+// is made of AND the earth a balance must never return — returning it undoes a
+// deliberate cut, which five tests say, `A8`'s own negative control first.
+//
+// ⚠ AND THE OVERWRITE BECOMES A NO-OP BY CONSTRUCTION RATHER THAN BY MEASUREMENT.
+// When consecutive strokes lie on the run's own gradient — `h_i = h_0 + (p_i - p_0).g`
+// — a cell written from stroke `i` gets
+//
+//     h_i + (w - p_i).g  =  h_0 + (p_i - p_0).g + (w - p_i).g  =  h_0 + (w - p_0).g
+//
+// which does not mention `i` at all. Four strokes overlap at `ROAD_HALF` 2 and all
+// four now write the same height, so there is nothing left for a later one to
+// displace. ⚠ It also gives `A2c`'s across half for free: a cell offset PERPENDICULAR
+// to the run has zero component along `g`, so the strip comes out level across.
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float, clamped: &integer, residual: &integer) -> integer {
+            feet: float, gx: float, gz: float,
+            clamped: &integer, residual: &integer) -> integer {
+  (rl_px, rl_pz) = hex_grid::hex_to_px(cq, cr);
   // ── THE DATUM, SAMPLED BEFORE THE FIRST WRITE — plan 20 `A9` ──────────────
   //
   // The shelf is decided from the ground that was here, and the stroke below is
@@ -3396,7 +3431,12 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     // datum the re-cut needs — and everything is back on one layer for
     // `slope_settle` and `spoil_place`, which is where they have always worked.
     run_unshelf(wld, q, r, ROAD_MAT);
-    hh = h;
+    // ⚠ THE CELL'S OWN GRADE, not the author's. `round` rather than a truncation
+    // because a height is an integer and a plane is not: truncating toward zero puts
+    // a systematic half-unit lean on one side of the author and `opening_cuts`
+    // already paid for that mistake once (`1.9999999999999998 as integer` = 1).
+    (rl_wx, rl_wz) = hex_grid::hex_to_px(q, r);
+    hh = h + round((rl_wx - rl_px) * gx + (rl_wz - rl_pz) * gz) as integer ?? 0;
     if hh < W_RESERVE { hh = W_RESERVE; }
     if hh > 65535 { hh = 65535; }
     // ⚠ ASKED BEFORE THE WRITE, NOT AFTER A REFUSAL. Retrying on a code would

@@ -78,7 +78,7 @@ fn contour(k: integer) {
   rs = 0;
   for q in (0 - 6)..7 {
     ahead = ground_h(w, q + hex_editor::ROAD_HALF + 1, 0);
-    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
   }
   d = deepest(w, nat, 0);
   standable = "no";
@@ -101,7 +101,7 @@ fn fallline(k: integer) {
   for r in (0 - 6)..7 {
     rr = 0 - r;
     ahead = ground_h(w, 0, rr - hex_editor::ROAD_HALF - 1);
-    road_lay(w, 0, rr, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, 0, rr, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
   }
   // transverse spread at the middle of the run, measured along `q` where the ramp
   // is flat — so any spread here is the gesture's, not the ground's

@@ -77,7 +77,7 @@ fn main() {
   for q in 0..13 {
     x = 12 - q;
     h = ground[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
 
   cut = 0;

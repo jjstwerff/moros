@@ -41,7 +41,7 @@ fn walk_contour(w: World, from: integer, to: integer) -> integer {
   n = 0;
   for q in from..to {
     ahead = ground_h(w, q + ROAD_HALF + 1, 0);
-    n = n + road_lay(w, q, 0, ahead, ROAD_HALF, (ahead as float) * U, cl, rs);
+    n = n + road_lay(w, q, 0, ahead, ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
   }
   n
 }
@@ -330,7 +330,7 @@ fn test_a_trench_in_flat_ground_never_roofs_itself() {
   w = ramp(0);
   cl = 0;
   rs = 0;
-  n = road_lay(w, 0, 0, G - 20, 1, (G as float) * U, cl, rs);
+  n = road_lay(w, 0, 0, G - 20, 1, (G as float) * U, 0.0, 0.0, cl, rs);
   assert(ground_h(w, 0, 0) == G - 20,
          "the trench ended at {ground_h(w, 0, 0)}, not {G - 20}");
   assert(n == 0, "a trench in flat ground roofed {n} of its own cells");

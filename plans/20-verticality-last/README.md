@@ -357,6 +357,58 @@ never were.
    it carries a wall edge; it does not know which way the run goes. ⚠ That makes the limit a
    property of an **edge** rather than of a cell — a different shape from what `A2` shipped.
    See TERRAIN_EDITS §T3 for why the naive version collapses runs.
+
+   ✅ **THE AUTHORING HALF IS ANSWERED AND BUILT, AND IT NEEDED NO DERIVATION AT ALL.**
+   The question assumed the axis has to be recovered from stored cells. While a run is
+   being *laid* it does not: the author is walking, so the gesture already knows the
+   direction, and `road_lay` now takes the run's **gradient** — height units per world
+   unit — rather than one grade.
+
+   | | |
+   |---|---|
+   | the rule | every disc cell is written at `h + round((w − p) · g)`, `p` the author's cell, `w` the cell's own world position |
+   | why it is exact | with consecutive strokes on the run's own gradient, `h_i + (w − p_i)·g = h₀ + (w − p₀)·g` — **`i` does not appear**, so all four overlapping discs write the same height and a later stroke has nothing to displace |
+   | `A2c`'s across half, free | a cell offset **perpendicular** to the run has zero component along `g`, so the strip is level across by construction |
+   | the compatibility claim | `g = 0` is the flat plate it always was, byte for byte — which is what all 30 existing callers pass, and why 375 tests and `make fast`'s 135 files were unmoved |
+   | the author's own grade | **extrapolated back from two samples beyond the strip, never sampled underfoot** — which is how it escapes the trap the plan already records, *the author RIDES the road they are laying* |
+
+   **Measured** (`probe/house/canyon.loft`, 26 cells):
+
+   | | plate — what shipped | **plane** |
+   |---|---|---|
+   | 1 per hex, either way | 127 | **0** |
+   | 3 per hex, falling | 777 | **538** |
+   | 6 per hex, falling | 1508 | **1141** |
+
+   **At a gradient a road can follow, a walk now moves no earth at all** — the five-cell
+   sink is gone, because a cell's grade is its own rather than the grade of whichever
+   disc covered it last.
+
+   ⚠ **AND IT REACHES A REGIME THE PLATE NEVER DID, WHICH IS THE NEXT PIECE OF WORK.** A
+   plate laid at the lookahead grade **floats** above a rising hill — 117 units proud at
+   6 per hex, a road on stilts, which is why `A8`'s balance never fired there. A plane
+   follows the ground, so walking UP it **cuts**, and a road cut ever deeper into a
+   hillside is `A9`: it caves. Measured (`probe/house/plane.loft`):
+
+   | walked | caved cells | worst step | `slope_owed` |
+   |---|---|---|---|
+   | falling, 1 → 6 per hex | 0 | 1 | 0 |
+   | rising 1–2 | 0 | 1 | 0 |
+   | rising 3 | 71 | 1 | 0 |
+   | rising 4 | 199 | **5** | 4 |
+   | rising 6 | 277 | **26** | 25 |
+
+   **A road walked up a hill steeper than 3 per hex caves, and once it caves the settle
+   can no longer hold its own limit** — `run_set` is refused under a shelf. That is
+   `A9`'s own recorded failure (*"a shelf blinded the settle to half its own road… a
+   27-unit step in a road whose limit is 1"*) reappearing because the plane is what
+   finally makes the road cut where a road builder would. ⚠ The author **is** told —
+   the refusal is counted and the server already broadcasts `slope_owed` — but a step no
+   cart can take is still there. **Settling a run that `A9` has cut shelves into is the
+   next step**, and it is not a reason to go back to laying plates.
+
+   ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
+   rule that runs when nobody is walking. Nothing above touches it.
 6. **Does `A4` need a real relaxation, or is one pass enough?** Decided by building the
    one-pass version and measuring where it disagrees with itself.
 7. ~~**What decides the overhang — the rock, or the author?**~~ ✅ **THE ROCK, AND IT NEEDED

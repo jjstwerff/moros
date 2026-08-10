@@ -241,9 +241,31 @@ fn main() {
     rs = 0;
     for i in 0..N {
       ahead = ground_h(wb, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cl, rs);
     }
     report("per stroke  ", natb, wb);
+
+    // ⚠ AND THE SAME WALK WITH A GRADIENT — plan 20, open question 5, and it is the
+    // row the other five exist to be compared against. The stroke reads the ground
+    // TWICE beyond the strip, takes the gradient from the pair, and extrapolates the
+    // author's own grade back along it rather than sampling under their feet — which
+    // is the sampling trap `road_h` has always had. Nothing about the settle or the
+    // balance changes; only what the disc writes.
+    wp = ramp_q(k);
+    natp = natural(wp);
+    clp = 0;
+    rsp = 0;
+    gp = 0.0 - ((k as float) / hex_grid::HEX_LEN);
+    for i in 0..N {
+      h1 = ground_h(wp, i + hex_editor::ROAD_HALF + 1, 0);
+      h2 = ground_h(wp, i + hex_editor::ROAD_HALF + 2, 0);
+      sl = ((h2 - h1) as float) / hex_grid::HEX_LEN;
+      look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
+      hh = h1 - (round(sl * look) as integer ?? 0);
+      road_lay(wp, i, 0, hh, hex_editor::ROAD_HALF, (hh as float) * U,
+               cos(0.0) * sl, sin(0.0) * sl, clp, rsp);
+    }
+    report("as a PLANE  ", natp, wp);
 
     // settled once — the same writes, then one settle over the finished run
     wc = ramp_q(k);
@@ -290,7 +312,7 @@ fn main() {
     rse = 0;
     for i in 0..N {
       ahead = ground_h(we, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cle, rse);
+      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, 0.0, 0.0, cle, rse);
     }
     owed_e = 0;
     cells = 0;

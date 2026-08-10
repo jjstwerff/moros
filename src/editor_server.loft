@@ -6786,12 +6786,37 @@ fn main() {
                 // `slope_settle` inside `road_lay` is what holds it there — one rule,
                 // in the library, asked by every writer. Clamping here as well would
                 // be the second copy `A7` exists to remove.
+                // ── AND A STROKE LAYS A PLANE — plan 20, open question 5 ─────
+                //
+                // ⚠ ONE SAMPLE CANNOT SAY WHICH WAY THE GROUND IS GOING, and that is
+                // the whole of what was missing. `road_lay` used to be handed one
+                // grade and stamp its whole disc flat with it, so a cell kept the
+                // height of whichever stroke covered it LAST — a neighbour's, not its
+                // own. Measured alone (`probe/house/conserve.loft`) that displaced 75
+                // units of fill over a 43-cell run with nothing settled and nothing
+                // balanced, and it is the fall-line canyon's actual cause.
+                //
+                // So the ground is read TWICE along the walk, both times beyond the
+                // strip where it is still natural, and the pair gives a gradient.
                 rd_look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
-                road_h = py_of(wld, px + cos(yaw) * rd_look, pz + sin(yaw) * rd_look);
+                rd_far = rd_look + hex_grid::HEX_LEN;
+                rd_h1 = py_of(wld, px + cos(yaw) * rd_look, pz + sin(yaw) * rd_look);
+                rd_h2 = py_of(wld, px + cos(yaw) * rd_far, pz + sin(yaw) * rd_far);
+                rd_slope = ((rd_h2 - rd_h1) as float) / hex_grid::HEX_LEN;
+                // ⚠ AND THE AUTHOR'S OWN GRADE IS EXTRAPOLATED BACK, NEVER SAMPLED.
+                // *Re-freezing from the FEET changes nothing* — the author RIDES the
+                // road they are laying, so `ground_under` hands back the grade just
+                // written, which is `TERRAIN_EDITS`'s sampling trap living inside the
+                // gesture. Two samples ahead and a straight line back to the author
+                // reach the natural ground under their feet without ever asking what
+                // is under their feet. On a ramp of constant gradient this is exact.
+                road_h = rd_h1 - (round(rd_slope * rd_look) as integer ?? 0);
                 rd_clamp = 0;
                 rd_res = 0;
                 hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
-                                     hex_editor::ROAD_HALF, py, rd_clamp, rd_res);
+                                     hex_editor::ROAD_HALF, py,
+                                     cos(yaw) * rd_slope, sin(yaw) * rd_slope,
+                                     rd_clamp, rd_res);
                 // ⚠ A ROAD THAT COULD NOT BE CUT AS DEEP AS ITS GRADE ASKED SAYS SO.
                 // `road_lay` used to throw `surface_set`'s verdict away, so a grade
                 // landing within `ε` of a room beneath was simply not laid — and it

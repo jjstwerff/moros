@@ -196,7 +196,7 @@ fn test_a_raise_leaves_the_river_and_lifts_its_banks() {
 // that both takes the two counters and returns a total would have to do exactly that.
 fn cross_river(w: World, clamped: &integer, residual: &integer, off: &integer) {
   for r in (0 - 5)..6 {
-    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, clamped, residual);
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, 0.0, 0.0, clamped, residual);
     off = off + k;
   }
 }
@@ -275,7 +275,7 @@ fn test_a_road_on_dry_ground_spans_nothing() {
   // the same walk, five hexes clear of the water
   n = 0;
   for r in 6..12 {
-    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, cl, rs);
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, 0.0, 0.0, cl, rs);
     n = n + k;
   }
   assert(n == 0, "a road on dry ground left the ground {n} times");

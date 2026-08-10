@@ -51,7 +51,7 @@ fn main() {
   for wq in 0..13 {
     x = 12 - wq;
     h = hs[x] ?? G;
-    caved = caved + road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    caved = caved + road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
   println("");
   println("after the walk — `R` is road on the ground, `[road/rock]` is a shelf:");

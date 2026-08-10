@@ -295,7 +295,7 @@ fn test_a_road_walked_up_a_hill_lands_inside_its_limit_by_itself() {
   for q in 0..13 {
     x = 12 - q;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
   assert(steepest(w, 12) <= ground_kind_of(ROAD_MAT).tr_slope,
          "the gesture handed back a road at {steepest(w, 12)} a hex: {profile(w, 12)}");
@@ -319,13 +319,13 @@ fn test_a_flat_road_is_never_settled_because_it_never_breaks() {
   brush(w, 0, 0, 24, 12, cl0, rs0);          // a hill, so the ground is not flat
   grade = ground_h(w, 0, 0);                 // frozen ONCE, as the server does it
   before = w.w_tau;
-  for q in 0..13 { road_lay(w, q, 0, grade, 1, (grade as float) * U, rl_c, rl_r); }
+  for q in 0..13 { road_lay(w, q, 0, grade, 1, (grade as float) * U, 0.0, 0.0, rl_c, rl_r); }
   laid = w.w_tau - before;
 
   // The same strokes again change nothing, so a settle firing would show up as
   // writes with no cause.
   mid = w.w_tau;
-  for q2 in 0..13 { road_lay(w, q2, 0, grade, 1, (grade as float) * U, rl_c, rl_r); }
+  for q2 in 0..13 { road_lay(w, q2, 0, grade, 1, (grade as float) * U, 0.0, 0.0, rl_c, rl_r); }
   assert(w.w_tau == mid,
          "re-laying the identical flat road wrote {w.w_tau - mid} times — the "
          + "settle is firing on a run that breaks nothing");
@@ -354,7 +354,7 @@ fn test_a_settled_road_conserves_its_spoil() {
   for q in 0..13 {
     x = 12 - q;
     h = ground[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    road_lay(w, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
   cut = 0;
   fill = 0;
@@ -382,7 +382,7 @@ fn test_a_road_on_flat_ground_moves_no_earth_at_all() {
   w = strip(SURFACE_MAT, 0);
   ground: vector<integer> = [];
   for s0 in 0..13 { ground += [ground_h(w, s0, 0)]; }
-  for q in 0..13 { road_lay(w, q, 0, ground[q] ?? G, 1, ((ground[q] ?? G) as float) * U, rl_c, rl_r); }
+  for q in 0..13 { road_lay(w, q, 0, ground[q] ?? G, 1, ((ground[q] ?? G) as float) * U, 0.0, 0.0, rl_c, rl_r); }
   for q2 in 0..13 {
     assert(ground_h(w, q2, 0) == (ground[q2] ?? 0),
            "flat ground moved at ({q2},0): {ground[q2]} -> {ground_h(w, q2, 0)}");
@@ -438,7 +438,7 @@ fn test_both_orders_now_agree_about_the_limit() {
   for q in 0..13 {
     x = 12 - q;
     h = hs[x] ?? G;
-    road_lay(a, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    road_lay(a, x, 0, h, 1, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
   c2 = 0;
   r2 = 0;
@@ -529,7 +529,7 @@ fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
   for s in 0..24 { hs += [ground_h(w, s, 0)]; }
   for i in 0..24 {
     h = hs[i] ?? G;
-    road_lay(w, i, 0, h, 2, (h as float) * U, rl_c, rl_r);
+    road_lay(w, i, 0, h, 2, (h as float) * U, 0.0, 0.0, rl_c, rl_r);
   }
   worst = 0;
   for q2 in 0..23 {
@@ -573,7 +573,7 @@ fn test_a_road_is_lifted_clear_of_a_room_rather_than_refused() {
   want = floor + 1;
   cl = 0;
   rs = 0;
-  road_lay(w, 0, 0, want, 1, (G as float) * U, cl, rs);
+  road_lay(w, 0, 0, want, 1, (G as float) * U, 0.0, 0.0, cl, rs);
   got = ground_h(w, 0, 0);
   assert((world_ground_cell(w, 0, 0).h_material as integer ?? 0) == ROAD_MAT,
          "the road was not laid at all — the write was refused and swallowed");
@@ -594,7 +594,7 @@ fn test_a_road_over_open_ground_is_never_lifted() {
   w = strip(SURFACE_MAT, 0);
   cl = 0;
   rs = 0;
-  road_lay(w, 0, 0, G - 20, 1, (G as float) * U, cl, rs);
+  road_lay(w, 0, 0, G - 20, 1, (G as float) * U, 0.0, 0.0, cl, rs);
   assert(ground_h(w, 0, 0) == G - 20,
          "a road cut 20 into open ground ended at {ground_h(w, 0, 0)}, not {G - 20}");
   assert(cl == 0 && rs == 0,

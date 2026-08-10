@@ -1,0 +1,63 @@
+// WHERE DOES A ROAD LAID AS A PLANE STOP SETTLING? — plan 20, open question 5.
+//
+// `road_lay` writes each disc cell at `h + round((w - p) . g)` now, so a stroke lays a
+// PLANE rather than a flat plate and a later disc writes the same height its neighbour
+// already wrote. That removes the stamp displacement — the fall-line canyon's actual
+// cause — and on ground a road can follow it is exact: at 1 per hex the walk moves
+// **zero** earth either way, where the plate moved 127.
+//
+// ⚠ AND IT REACHES A REGIME THE PLATE NEVER DID, WHICH IS WHAT THIS MEASURES. A plate
+// laid at the lookahead grade FLOATS above a rising hill — measured, 117 units proud at
+// 6 per hex, which is a road on stilts and is why `A8`'s balance never fired there. A
+// plane follows the ground, so on a rising hill it CUTS, and a road cut ever deeper
+// into a hillside is `A9`: it caves.
+//
+// ⚠ AND ONCE IT CAVES THE SETTLE CANNOT HOLD ITS OWN LIMIT. That is `A9`'s own recorded
+// failure — *"a shelf blinded the settle to half its own road… a 27-unit step in a road
+// whose limit is 1"* — reappearing because the plane is what finally makes the road cut
+// where a road builder would. `run_set` is refused under a shelf, the refusal is
+// counted, and `slope_owed` says so, so the author IS told; the run is still left with
+// a step no cart can take.
+//
+// ⚠ THE ASYMMETRY IS THE FINDING: falling is legal at every gradient tried and caves
+// nothing. Rising is legal to 3. So the boundary is not the gesture and not the plane —
+// it is what happens to a run after `A9` has cut shelves into it, and that is the next
+// piece of work rather than a reason to keep laying plates.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+fn one(k: integer) {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in (0 - 40)..41 {
+    for r in (0 - 8)..9 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
+  }
+  cl = 0; rs = 0;
+  caved = 0;
+  for i in 0..26 {
+    h1 = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
+    h2 = ground_h(w, i + hex_editor::ROAD_HALF + 2, 0);
+    sl = ((h2 - h1) as float) / hex_grid::HEX_LEN;
+    look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
+    hh = h1 - (round(sl * look) as integer ?? 0);
+    caved = caved + road_lay(w, i, 0, hh, hex_editor::ROAD_HALF, (hh as float) * U, sl, 0.0, cl, rs);
+  }
+  worst = 0;
+  for j in 1..26 {
+    a = run_h(w, j - 1, 0, ROAD_MAT);
+    b = run_h(w, j, 0, ROAD_MAT);
+    if a < 0 || b < 0 { continue; }
+    st = a - b;
+    if st < 0 { st = 0 - st; }
+    if st > worst { worst = st; }
+  }
+  dir = "falling";
+  if k < 0 { dir = "RISING "; }
+  kk = k;
+  if kk < 0 { kk = 0 - kk; }
+  println("  {dir} {kk}/hex   caved {caved}   worst step {worst}   slope_owed {slope_owed(w, 0, 0)}");
+}
+fn main() {
+  println("the plane, walked over ramps both ways — where does the run stop settling?");
+  for k in [1, 2, 3, 4, 6, 0 - 1, 0 - 2, 0 - 3, 0 - 4, 0 - 6] { one(k); }
+}
