@@ -10,6 +10,8 @@ const U = 0.25;
 const G = 40;
 
 fn main() {
+  rl_c = 0;
+  rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 40)..41 {
     for r in (0 - 40)..41 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -31,7 +33,7 @@ fn main() {
   for q2 in 0..13 {
     x = 12 - q2;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U);
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
   }
   cl2 = 0;
   rs2 = 0;

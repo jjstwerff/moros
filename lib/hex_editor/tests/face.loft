@@ -206,6 +206,8 @@ fn test_roots_hold_two_steps_more_and_never_a_wall() {
 // ── the subject the plan names: a road cut into a hill ───────────────────────
 
 fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
+  rl_c = 0;
+  rl_r = 0;
   // ⚠ THE HILL GOT STEEPER WHEN `A8` LANDED, AND THAT IS THE FEATURE. A road that
   // balances its cut against a fill sits HIGHER than a cut-only one — measured on
   // this fixture, `12 11 10 … 0` became `19 18 17 … 7` — so its cutting is shallower
@@ -221,7 +223,7 @@ fn test_a_road_walked_up_a_hill_cuts_a_face_along_its_bank() {
   for wq in 0..13 {
     x = 12 - wq;
     h = hs[x] ?? G;
-    road_lay(w, x, 0, h, 1, (h as float) * U);
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
   }
   cl2 = 0;
   rs2 = 0;

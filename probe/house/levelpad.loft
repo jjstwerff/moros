@@ -1,0 +1,51 @@
+// CAN LEVELLING AUTHOR A FLAT PAD AT A CHOSEN HEIGHT? — no, and this is why.
+//
+// `gates/character/deck.mjs` needs flat ground at one stride up, so that `12:` can
+// build a deck one stride above the stair's top. It used to get it from ROAD mode:
+// the grade was frozen when the mode went on and `road_lay` stamps a DISC, so a pad
+// came out flat by accident. Plan 20's road follows the landscape, so that is gone —
+// and the author's decision was *no more toggles*, so the pad has to come from a
+// gesture that already exists.
+//
+// Levelling is the obvious candidate: its whole job is to make ground level. It
+// cannot do this one. `brush` scales the gap by `(1-t²)²` and truncates, so only the
+// cell the walker STEPS ON closes exactly — which `cellar.keys` already records as
+// the reason it walks a CROSS rather than a line.
+//
+// ⚠ THE MEASUREMENT BELOW IS THE WALL. Walking the cross closes r = 0 exactly and
+// leaves r = ±2 two units short, so the 19-cell disc a deck covers is not flat and
+// no number of passes makes it so.
+//
+// ⚠ AND THE FIX IS NOT A NEW GESTURE. A falloff is right for a HILL, which has no
+// edge, and wrong for LEVELLING, whose whole purpose is a flat pad with an edge.
+// Making the level path SET its disc rather than add a falloff is one rule — and it
+// is a change to what levelling is, with `cellar.keys`'s numbers downstream of it.
+use hex_editor;
+use hex_world;
+fn main() {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 { for r in (0 - 20)..21 { ground_set(w, q, r, 0, SURFACE_MAT); } }
+  // the author stands on a step at 4 and levels outward, entering each hex of a
+  // cross — exactly what `cellar.keys` does and what the deck fixture now tries
+  for c in [6, 7, 8, 7, 6, 5, 4, 5, 6] {
+    cl = 0;
+    rs = 0;
+    brush_level(w, c, 0, 4, 5, cl, rs);
+  }
+  println("along the walk (r=0), hexes 3..9:");
+  out = "";
+  for q2 in 3..10 { out += "{ground_h(w, q2, 0)} "; }
+  println("  {out}");
+  println("across it (q=6), r=-2..2:");
+  out2 = "";
+  for r2 in (0 - 2)..3 { out2 += "{ground_h(w, 6, r2)} "; }
+  println("  {out2}");
+  flat = true;
+  for q3 in 4..9 {
+    for r3 in (0 - 2)..3 {
+      if hex_grid::hex_distance(q3, r3, 6, 0) > 2 { continue; }
+      if ground_h(w, q3, r3) != 4 { flat = false; }
+    }
+  }
+  println("is the 19-cell disc at exactly 4? {flat}");
+}

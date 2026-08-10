@@ -2807,8 +2807,47 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   }
 }
 
+// How far a road at `h` must RISE at this cell to clear whatever is under it — 0
+// when nothing is.
+//
+// ⚠ THIS EXISTS BECAUSE A REFUSED WRITE WAS SILENT, which is the `K-FIT` failure
+// this tree has a rule for. `surface_set` hands back `world_set_column`'s verdict
+// and `road_lay` threw it away, so a road whose grade came within `ε` of a room
+// beneath it was simply **not laid** — measured (`probe/house/roadlayer.loft`)
+// against a cellar floor at 28: a grade 4 below the ground is written, and 8, 10,
+// 11 and 12 below are all `CW_FOLD`, code 1, with nothing said.
+//
+// ⚠ AND IT WAS UNREACHABLE UNTIL THE GRADE FOLLOWED THE LANDSCAPE. While `road_h`
+// was frozen from the author's feet the road could never be asked for a height far
+// below them, so the refusal had no way to fire. `gates/world/surface` — which digs
+// cellars under a hill and lays a road over them — is what caught it, and its
+// column came back byte for byte unchanged.
+//
+// ⚠ THE OFFER, NOT A BLANK NO. `ε` is the model's own minimum layer separation, so
+// the lowest height this column can take is the layer below plus one of them. A
+// road that cannot be cut as deep as its grade asked still gets laid, one `ε` clear
+// of the room, and the author is told by how much it came up.
+pub fn road_clearance(wld: World, q: integer, r: integer, feet: float,
+                      h: integer) -> integer {
+  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  if sf.sf_layer <= 0 { return 0; }
+  col = hex_world::world_column(wld, q, r);
+  // The nearest OCCUPIED layer below the one this write lands on. Absent layers are
+  // gaps rather than constraints — `check_column`'s own rule, and asking the same
+  // question the refusal asked is the whole point of this function.
+  below = 0 - 1;
+  for i in 0..sf.sf_layer {
+    if hex_world::hex_occupied(col.co_cells[i] ?? hex_world::Hex {}) { below = i; }
+  }
+  if below < 0 { return 0; }
+  floor = (col.co_cells[below] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  need = floor + wld.w_eps;
+  if h >= need { return 0; }
+  need - h
+}
+
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float) {
+            feet: float, clamped: &integer, residual: &integer) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -2817,6 +2856,16 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
         hh = h;
         if hh < W_RESERVE { hh = W_RESERVE; }
         if hh > 65535 { hh = 65535; }
+        // ⚠ ASKED BEFORE THE WRITE, NOT AFTER A REFUSAL. Retrying on a code would
+        // work too, and it would make the common case pay for the rare one — every
+        // cell of every stroke doing a failed column write first. This is one read
+        // of a column the writer is about to read anyway.
+        lift = road_clearance(wld, q, r, feet, hh);
+        if lift > 0 {
+          clamped = clamped + 1;
+          if lift > residual { residual = lift; }
+          hh = hh + lift;
+        }
         surface_set(wld, q, r, feet, hh, ROAD_MAT);
       }
     }
@@ -3625,8 +3674,42 @@ fn bigger(a: integer, b: integer) -> boolean {
   aa > bb
 }
 
+// ── RAISE A HILL, OR LEVEL A PAD — one machine, two shapes ──────────────────
+//
+// ⚠ THE FALLOFF IS A HILL'S SHAPE AND IT IS WRONG FOR LEVELLING. `(1 - t²)²` is
+// smooth at both ends, which is exactly what a hill wants and exactly what a PAD
+// cannot have: a pad has an EDGE. Measured (`probe/house/levelpad.loft`), levelling
+// a disc by walking it closes only the cells the walker steps on —
+// `2 4 4 4 4 4 2` along the path and `2 4 4 4 2` across it — because the gap is
+// scaled by `f²` and truncated, so a cell one hex off stalls a unit short and no
+// number of passes moves it. `cellar.keys` walks a CROSS for exactly that reason,
+// and it still cannot flatten the 19 cells a deck covers.
+//
+// So levelling SETS its disc. Everything else about the gesture is unchanged —
+// the fabric flood, the rigid bodies, the runs, the slope relaxation — because
+// none of that is about the falloff. What differs is one question: how far does
+// THIS cell move? A hill asks the falloff; a level asks the target.
 pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
              clamped: &integer, residual: &integer) {
+  brush_in(w, tq, tr, amp, rad, false, clamped, residual);
+}
+
+// Level the disc to `target` — every cell in it ends there, fabric included.
+//
+// ⚠ THE TARGET IS ABSOLUTE, WHERE `brush` TAKES A DELTA, and that is the whole
+// difference between the two faces. A delta cannot express *make all of this one
+// height*: each cell needs its own, and only the target knows them.
+pub fn brush_level(w: World, tq: integer, tr: integer, target: integer, rad: integer,
+                   clamped: &integer, residual: &integer) {
+  brush_in(w, tq, tr, target, rad, true, clamped, residual);
+}
+
+// ⚠ `amp` IS A DELTA WHEN `flat` IS FALSE AND AN ABSOLUTE HEIGHT WHEN IT IS TRUE,
+// which is why this is not the public name. The two faces above say which they
+// mean; a caller that had to pass the flag would be choosing between two meanings
+// of one argument, and that is how a raise comes to level something.
+fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
+            flat: boolean, clamped: &integer, residual: &integer) {
   // ── the fabric first, so the ground can be told what not to touch ─────────
   //
   // ⚠ EVERY MEMBER TAKES THE SAME DELTA, and it is the LARGEST the disc offers any
@@ -3715,9 +3798,18 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
           taken.s_by += SeenAt { sa_key: age_like_key(mq[ti] ?? 0, mr[ti] ?? 0) };
         }
         best = 0;
-        for i in 0..len(mq) {
-          cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
-          if bigger(cand, best) { best = cand; }
+        if flat {
+          // ⚠ A BODY IS ALREADY LEVEL (`A1`), so its delta is one subtraction and
+          // not a search: whatever height it stands at, it ends at the target. The
+          // *largest offered* rule below is a hill's — it exists so a house whose
+          // porch clips the rim rises by what its middle was asked for — and a
+          // level has no rim to clip.
+          best = amp - ground_h(w, mq[0] ?? 0, mr[0] ?? 0);
+        } else {
+          for i in 0..len(mq) {
+            cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
+            if bigger(cand, best) { best = cand; }
+          }
         }
         // ⚠ THE WHOLE COLUMN, so the roof over a floor keeps its gap.
         for j in 0..len(mq) { lift_column(w, mq[j] ?? 0, mr[j] ?? 0, best); }
@@ -3744,7 +3836,18 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
         // again would give it the falloff on top of its rigid delta.
         if taken.s_by[age_like_key(q, r)] != null { continue; }
         delta = brush_delta(amp, d, rad);
-        if delta != 0 {
+        // ⚠ A LEVEL WRITES EVEN WHERE THE DELTA IS ZERO, AND A RAISE MUST NOT.
+        // `delta != 0` is the right guard for a hill: a stroke that asks a cell for
+        // nothing should leave it alone, unwritten cells included, or every raise
+        // would author the whole disc of an infinite plane. A LEVEL is the other
+        // case — its job is *there is ground here, at this height*, and a cell that
+        // is already at the target but has never been WRITTEN has no ground at all.
+        // Measured: `storey_add` counts only columns with a top, and the deck gate's
+        // 19-cell disc came back as `storey +1 on 14 cells` because five of them had
+        // been skipped for asking for nothing.
+        wrote = flat;
+        if flat { delta = amp - ground_h(w, q, r); }
+        if delta != 0 || wrote {
           h = ground_h(w, q, r) + delta;
           if h < W_RESERVE {
             lost = W_RESERVE - h;

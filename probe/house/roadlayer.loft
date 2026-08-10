@@ -1,0 +1,102 @@
+// WHICH LAYER DOES A ROAD WRITE TO WHEN ITS GRADE HAS LEFT THE AUTHOR'S FEET?
+//
+// `road_lay` passes TWO numbers that used to be the same one: `h`, the height it
+// writes, and `feet`, which `surface_set` hands to `world_surface` to pick the
+// LAYER. While the grade was frozen from the feet they agreed by construction.
+// Plan 20's road follows the landscape, so they no longer do — and
+// `gates/world/surface` went red with `cell 12,0 = 1,30`: grass, where a road had
+// just been laid.
+//
+// ⚠ THAT GATE EXISTS FOR EXACTLY THIS. Its own header: *"the road grades the
+// SURFACE the author is walking on… the write has to land on the layer those feet
+// are on."* So the question is not whether to keep `feet` — it is what happens at
+// a cell whose ground is nowhere near the author.
+//
+// Three columns, one question each:
+//   plain      one layer, ground at 40
+//   cellar     a room dug under it — two layers, and the road must not fall in
+//   high       ground at 60, well ABOVE an author standing at 40
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 40;
+
+fn plain_world() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+// What every layer of a column holds, as text — the instrument, and it shows the
+// WHOLE column so a write that landed one layer down cannot hide.
+fn column_of(w: World, q: integer, r: integer) -> text {
+  col = world_column(w, q, r);
+  out = "";
+  for i in 0..len(col.co_cells) {
+    c = col.co_cells[i] ?? hex_world::Hex {};
+    out += "[{i}] mat {c.h_material as integer ?? 0} h {c.h_height as integer ?? 0}  ";
+  }
+  if out == "" { return "(no column)"; }
+  out
+}
+
+fn report(name: text, w: World, q: integer, r: integer, feet: float, h: integer) {
+  before = column_of(w, q, r);
+  // ⚠ THE RETURN CODE, WHICH `road_lay` THROWS AWAY. `surface_set` hands back
+  // `world_set_column`'s verdict, and a refusal there is a write that did not
+  // happen — silently, from every caller that ignores it.
+  code = surface_set(w, q, r, feet, h, ROAD_MAT);
+  println("  {name}");
+  println("    feet {feet:5.2} wu ({(feet / U ?? 0.0) as integer} units), writing h {h}");
+  println("    before {before}");
+  println("    after  {column_of(w, q, r)}");
+  verdict = "written";
+  if code != 0 { verdict = "⚠ REFUSED, code {code}, and nothing said so"; }
+  println("    -> {verdict}");
+}
+
+fn main() {
+  println("A. ONE LAYER — the ordinary case, and the control");
+  w1 = plain_world();
+  report("grade equals the feet", w1, 0, 0, (G as float) * U, G);
+  w2 = plain_world();
+  report("grade 8 BELOW the feet (a cut)", w2, 0, 0, (G as float) * U, G - 8);
+  w3 = plain_world();
+  report("grade 8 ABOVE the feet (a fill)", w3, 0, 0, (G as float) * U, G + 8);
+  println("");
+
+  println("B. GROUND WELL ABOVE THE AUTHOR — the shape the surface gate reads");
+  w4 = plain_world();
+  for q in (0 - 12)..13 {
+    for r in (0 - 12)..13 { ground_set(w4, q, r, G + 20, SURFACE_MAT); }
+  }
+  report("ground 60, author's feet at 40", w4, 0, 0, (G as float) * U, G + 4);
+  println("");
+
+  println("C. A CELLAR UNDER IT — the road must not fall into the room");
+  w5 = plain_world();
+  // a room a storey down, written as a second layer beneath the ground
+  why = "";
+  st = storey_add(w5, 0, 0, 0 - 1, 2, why);
+  println("  (the cellar gesture cut {st} cells: {why})");
+  println("    column now {column_of(w5, 0, 0)}");
+  report("feet on the GROUND, grade 4 below it", w5, 0, 0, (G as float) * U, G - 4);
+  println("");
+
+  println("D. AND A GRADE THAT LANDS NEAR THE LAYER BELOW — the surface gate's shape");
+  // The gate digs cellars under a hill and then lays a road whose grade, now that it
+  // follows the landscape, is taken from the hill's FAR flank — far lower than the
+  // ground it is being written into, and close to the room beneath it.
+  for drop in [4, 8, 10, 11, 12] {
+    w6 = plain_world();
+    why6 = "";
+    storey_add(w6, 0, 0, 0 - 1, 2, why6);
+    report("grade {drop} below the ground, cellar floor at 28", w6, 0, 0,
+           (G as float) * U, G - drop);
+  }
+  println("");
+  println("⚠ what to look for: the road must land on the layer the AUTHOR is on,");
+  println("   whatever height it writes there — and never on the cellar's.");
+}

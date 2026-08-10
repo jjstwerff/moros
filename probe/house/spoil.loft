@@ -43,6 +43,8 @@ fn ground_beside(w: World, q: integer, r: integer) -> integer {
 // Lay a road along +q on a ramp that falls `dq` per hex along the run and `dr` per
 // hex across it. `dr = 0` is the fall line; `dq = 0` is a contour.
 fn spoil_scene(n: integer, dq: integer, dr: integer, truth: &vector<integer>) -> World {
+  rl_c = 0;
+  rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 6)..(n + 8) {
     for r in (0 - 8)..9 { ground_set(w, q, r, G + q * dq + r * dr, SURFACE_MAT); }
@@ -54,7 +56,7 @@ fn spoil_scene(n: integer, dq: integer, dr: integer, truth: &vector<integer>) ->
   for s2 in 0..n { hs += [ground_h(w, s2, 0)]; }
   for i in 0..n {
     h = hs[i] ?? G;
-    road_lay(w, i, 0, h, ROAD_HALF, (h as float) * U);
+    road_lay(w, i, 0, h, ROAD_HALF, (h as float) * U, rl_c, rl_r);
   }
   w
 }

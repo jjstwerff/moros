@@ -5628,7 +5628,14 @@ fn main() {
   level_stalled = false;
   level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
-  road_h = 0;                  // the road's grade, frozen when it was switched on
+  road_h = 0;                  // the road's grade — set when road mode goes on and
+                               // then FOLLOWING the landscape, one stroke at a time
+  // One stall report per road run, not per stroke — the same shape `level_stalled`
+  // has, and reset with the mode rather than with the stroke.
+  road_stalled = false;
+  // One lift report per road run, like the stall — a cellar under a long road is
+  // one fact about the run, not a fact about every stroke that crosses it.
+  road_lifted = false;
   dirty = DirtySet { items: [] };
   clients: vector<Client> = [];
   live_clients = 0;            // what the LIBRARY says is connected, not our list
@@ -6637,9 +6644,71 @@ fn main() {
               // followed the path.
               if roading {
                 rhx = world_to_hex(px, pz);
-                hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h, hex_editor::ROAD_HALF, py);
-                mark_dirty(dirty, rhx.ha_q, rhx.ha_r, hex_editor::ROAD_HALF);
+                // ── A ROAD FOLLOWS THE LANDSCAPE — plan 20 ────────────────────────
+                //
+                // > *"A road will follow the landscape the way a road builder works,
+                // > so it flows upwards with the hills with its own rules about how
+                // > much."*
+                //
+                // ⚠ `road_h` WAS FROZEN ONCE, WHEN ROAD MODE WENT ON, and every
+                // stroke used it — so the strip was FLAT however far it ran.
+                // Measured, a road across a hill of 24 was a plateau cutting **160**
+                // and filling **0**, breaking no limit and therefore never settling
+                // and never balancing. `A7`'s settle and `A8`'s spoil were both
+                // correct, both tested, and unreachable through the only gesture
+                // that lays road.
+                //
+                // ⚠ AND RE-FREEZING FROM THE FEET CHANGES NOTHING, which is the trap
+                // worth naming: the author RIDES THE ROAD THEY ARE LAYING.
+                // `road_lay` stamps a disc of `ROAD_HALF` centred on them, so the
+                // ground they stand on next stroke is road laid on the last one and
+                // `ground_under` hands back the grade that was just written. It is
+                // `TERRAIN_EDITS`'s own sampling trap — *a probe that samples as it
+                // writes measures its own output* — living inside the gesture.
+                //
+                // So the grade is read from ONE CELL PAST THE STRIP, which is the
+                // nearest place the natural ground still survives.
+                //
+                // ⚠ AND *ITS OWN RULES ABOUT HOW MUCH* ARE NOT REPEATED HERE. A road
+                // may climb at `ground_kinds()`'s `tr_slope` and no more, and
+                // `slope_settle` inside `road_lay` is what holds it there — one rule,
+                // in the library, asked by every writer. Clamping here as well would
+                // be the second copy `A7` exists to remove.
+                rd_look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
+                road_h = py_of(wld, px + cos(yaw) * rd_look, pz + sin(yaw) * rd_look);
+                rd_clamp = 0;
+                rd_res = 0;
+                hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
+                                     hex_editor::ROAD_HALF, py, rd_clamp, rd_res);
+                // ⚠ A ROAD THAT COULD NOT BE CUT AS DEEP AS ITS GRADE ASKED SAYS SO.
+                // `road_lay` used to throw `surface_set`'s verdict away, so a grade
+                // landing within `ε` of a room beneath was simply not laid — and it
+                // was unreachable until the grade left the author's feet, which is
+                // why `gates/world/surface` is what found it. The road is laid one
+                // `ε` clear of the room now, and this is the *offer and residual*
+                // half of that: reason, offer, residual, never a blank no.
+                if rd_clamp != 0 && !road_lifted {
+                  road_lifted = true;
+                  srv.broadcast("S:road lifted over {rd_clamp} cells — something is "
+                                + "dug beneath (up to {rd_res} units)");
+                  println("editor: road lifted {rd_clamp} cells, residual {rd_res}");
+                }
+                // ⚠ THE RUN MAY HAVE MOVED BEYOND THE DISC. `road_lay` settles the
+                // whole connected run, so a stroke that broke the limit can lower
+                // cells far behind the author — marking only the disc leaves those
+                // chunks holding the mesh they had before the cut.
+                mark_dirty(dirty, rhx.ha_q, rhx.ha_r,
+                           hex_editor::ROAD_HALF + hex_editor::PEAK_R);
                 py = (road_h as float) * HEIGHT_SCALE;
+                // ⚠ AND WHETHER THE RUN COULD BE HELD TO ITS LIMIT AT ALL — `A4`'s
+                // refusal, on the gesture that can now reach it.
+                rd_owed = hex_editor::slope_owed(wld, rhx.ha_q, rhx.ha_r);
+                if rd_owed > 0 && !road_stalled {
+                  road_stalled = true;
+                  srv.broadcast("S:road did not settle — the run is still {rd_owed} "
+                                + "per hex over its limit");
+                  println("editor: road did not settle — owed {rd_owed}");
+                }
               }
               if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
@@ -7704,6 +7773,8 @@ fn main() {
             rvf = py / HEIGHT_SCALE ?? 0.0;
             rres0 = 0.0;
             road_h = hex_editor::freeze_grade(rvf, rres0);
+            road_stalled = false;
+            road_lifted = false;
           }
           // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
           // height and a grade is an integer, so freezing one from the other
@@ -8643,16 +8714,23 @@ fn main() {
       // leave behind.
       if levelling {
         cur_h = terrain_h(last_hq, last_hr, wld);
-        // The amplitude is the DIFFERENCE between the frozen foot height and
-        // what is here: positive builds the ground up to you (a ridge across
-        // low ground), negative cuts it down to you (a crevice through a hill).
-        // Zero where the ground already matches, which is why it does nothing
-        // where you switched it on and cannot deepen a path walked twice.
-        gap = level_h - cur_h;
-        if gap != 0 {
+        // ⚠ IT SETS THE DISC NOW, IT DOES NOT BLEND TOWARD IT. This passed a
+        // DIFFERENCE to `brush` — positive to build the ground up to you, negative
+        // to cut it down — and took the hill's `(1 - t²)²` falloff with it. A hill
+        // wants that shape and a PAD cannot have it: measured
+        // (`probe/house/levelpad.loft`), walking a disc closed only the cells the
+        // walker stepped on, `2 4 4 4 4 4 2` along the path and `2 4 4 4 2` across
+        // it, because the gap is scaled by `f²` and truncated. `cellar.keys` walks
+        // a CROSS for exactly that reason and still could not flatten the 19 cells
+        // a deck covers.
+        //
+        // ⚠ AND IT IS STILL ZERO WHERE THE GROUND ALREADY MATCHES, which is what
+        // keeps it from doing anything where you switched it on and from deepening
+        // a path walked twice — the guard just asks the question one level up.
+        if cur_h != level_h {
           lclamp = 0;
           lvres = 0;
-          brush(wld, last_hq, last_hr, gap, LEVEL_R, lclamp, lvres);
+          brush_level(wld, last_hq, last_hr, level_h, LEVEL_R, lclamp, lvres);
           mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
           // Levelling runs per STEP as the character walks, so a per-cell report
           // here would be a stream of noise. It is still an approximation and
