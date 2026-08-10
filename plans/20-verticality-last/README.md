@@ -457,11 +457,24 @@ never were.
    lower. A **run-level** balance is measured against the natural ground, where both
    signs are reachable, so it must answer to both.
 
-   **What is left is the build, and it is one open piece**: the run-level balance needs
-   the natural ground the road replaced, and the stamp has overwritten it. `road_lay`
-   already samples `snat` for its disc *before* writing, and those samples **telescope**
-   — a later stroke reading the same cell reads the road the earlier one left — so a
-   single accumulator threaded through the run gives the exact total with no registry.
+   ✅ **AND THE BUILD'S ONE OPEN PIECE IS MEASURED TOO, NOT ASSUMED.** A run-level
+   balance needs the natural ground the road replaced, and the stamp has overwritten it.
+   `road_lay` already samples `snat` for its disc *before* writing, and those samples
+   **telescope** — a later stroke reading the same cell reads the road the earlier one
+   left — so one accumulator threaded through the run should give the exact total with
+   no registry of original heights anywhere. Checked against the store on all five
+   ramps: **636/636, 1908/1908, 3816/3816, and −636/−636, −3816/−3816 rising.** Exact,
+   both signs. ⚠ And the negative sums are the two-sidedness arriving from a second
+   direction — an accumulator that clamped at zero would have read 0 on both mirrors.
+
+   **What is left is the build.** Its shape, and the one decision in it:
+
+   | | |
+   |---|---|
+   | `road_lay` | accumulate the disc term (`snat` − written) into a run-level `&integer` |
+   | `slope_settle` / `spoil_place` | add their own cut and subtract their lift from it, so the accumulator is exactly *earth taken and not yet returned* |
+   | a new `road_balance` | walk the run, shift by `debt / n` **two-sided**, subtract `shift * n` so the remainder carries |
+   | **the decision** | fire it **per stroke** (the road reads right continuously, and the carried remainder is what stops truncation losing it) or **at run end** (cheaper, but the road is visibly wrong until the author releases). ⚠ `roadcost.loft` is the gate either way — the per-stroke settle is already quadratic (**17320** `w_tau` at 80 cells), and a uniform lift per stroke adds another O(run) of writes |
 
    The original question, kept because the measurement is what answered it: ⚠ **NEW, and it is
    what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a

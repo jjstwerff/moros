@@ -174,13 +174,23 @@ fn report(name: text, nat: vector<integer>, w: World) {
 // reads one cell past the strip. ⚠ Later strokes overwrite earlier ones, so a cell's
 // final grade comes from the LAST disc that covered it, which trails the author by
 // `ROAD_HALF` — the lookahead a cell actually gets is `2 * ROAD_HALF + 1`, not one.
-fn stamp(w: World) {
+//
+// ⚠ AND IT ACCUMULATES WHAT IT TOOK, which is the load-bearing claim of the fix rather
+// than a convenience: a run-level balance needs the natural ground and the stamp has
+// overwritten it, so the proposal is that `road_lay`'s own `snat` — sampled per disc
+// BEFORE writing — telescopes. A later stroke re-reading a paved cell reads the road
+// the earlier one left, so the per-stroke differences should sum to
+// (natural − final) exactly, with no registry of original heights anywhere.
+// `main` checks that sum against the profile the world actually ends up holding, so
+// the claim is measured before anything is built on it.
+fn stamp(w: World, took: &integer) {
   for i in 0..N {
     ahead = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
     for aq in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
       for ar in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
         q0 = i + aq;
         if hex_grid::hex_distance(q0, ar, i, 0) > hex_editor::ROAD_HALF { continue; }
+        took = took + (ground_h(w, q0, ar) - ahead);
         ground_set(w, q0, ar, ahead, ROAD_MAT);
       }
     }
@@ -205,8 +215,24 @@ fn main() {
     // stamp only — no settle, so this is what the LOOKAHEAD alone costs
     wa = ramp_q(k);
     nat = natural(wa);
-    stamp(wa);
+    took = 0;
+    stamp(wa, took);
     report("stamp only  ", nat, wa);
+    // ⚠ THE TELESCOPING CLAIM, CHECKED AGAINST THE WORLD IT CLAIMS TO DESCRIBE.
+    // `took` is the sum of per-stroke differences a `road_lay`-side accumulator would
+    // see; `held` is what the store actually ends up short of the natural ground over
+    // the SAME cells. They must agree exactly, or the fix has no datum.
+    held = 0;
+    for tq in (0 - hex_editor::ROAD_HALF)..(N + hex_editor::ROAD_HALF) {
+      for tr in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {
+        th = run_h(wa, tq, tr, ROAD_MAT);
+        if th < 0 { continue; }
+        held = held + ((G - k * tq) - th);
+      }
+    }
+    verdict = "AGREE";
+    if took != held { verdict = "DISAGREE — the accumulator has no datum"; }
+    println("                  telescoped {took} vs the store's {held} -> {verdict}");
 
     // per stroke — `road_lay`, settling the whole run on every stroke. SHIPS.
     wb = ramp_q(k);
@@ -222,7 +248,8 @@ fn main() {
     // settled once — the same writes, then one settle over the finished run
     wc = ramp_q(k);
     natc = natural(wc);
-    stamp(wc);
+    tookc = 0;
+    stamp(wc, tookc);
     cl2 = 0;
     rs2 = 0;
     slope_settle(wc, 0, 0, cl2, rs2);
@@ -235,7 +262,8 @@ fn main() {
     // which is the only version that can fairly be compared with `per stroke`.
     wd = ramp_q(k);
     natd = natural(wd);
-    stamp(wd);
+    tookd = 0;
+    stamp(wd, tookd);
     rounds = 0;
     for _ in 0..40 {
       if slope_owed(wd, 0, 0) == 0 { break; }

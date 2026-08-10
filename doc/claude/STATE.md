@@ -110,10 +110,20 @@ FILLED — `shift 0` and every column unchanged, which reads exactly like an arm
 nothing to fix. `spoil_place` has the same shape and is right *within its scope*; a
 **run-level** balance sees both signs and must answer to both.
 
-**The build's one open piece**: a run-level balance needs the natural ground, and the
-stamp has overwritten it. `road_lay` already samples `snat` per disc *before* writing
-and those samples **telescope**, so one accumulator threaded through the run gives the
-exact total with no registry.
+✅ **AND THE BUILD'S DATUM IS MEASURED, NOT ASSUMED.** A run-level balance needs the
+natural ground and the stamp has overwritten it — but `road_lay` already samples `snat`
+per disc *before* writing, and those samples **telescope**. Checked against the store on
+all five ramps: **636/636, 1908/1908, 3816/3816, and −636/−636, −3816/−3816 rising.**
+Exact, both signs, no registry of original heights anywhere. ⚠ The negative sums are the
+two-sidedness arriving from a second direction: an accumulator clamped at zero would
+have read 0 on both mirrors.
+
+**What is left is the build**, and its one decision is *when the balance fires* — per
+stroke (the road reads right continuously, and the carried remainder is what stops
+truncation losing it) or at run end (cheaper, but the road is visibly wrong until the
+author releases). ⚠ **`roadcost.loft` is the gate either way**: the per-stroke settle is
+already quadratic — **17320** `w_tau` at 80 cells against 1520 unwired — and a uniform
+lift per stroke adds another O(run) of writes. The plan carries the full shape.
 
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
