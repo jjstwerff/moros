@@ -575,3 +575,46 @@ fn test_a_wide_river_is_deeper_in_the_middle_than_at_its_banks() {
          "the widest point has {len(ds)} distinct depths ({ds}), so its bed is a step "
          + "and not a slope");
 }
+
+// ⚠ THE SOURCE HAS NO WIDTH TO CARRY A GRADIENT, SO IT CARRIES ONE ALONG ITSELF. A
+// river is one cell wide until it has run `WATER_WIDEN` cells, and one cell of one
+// depth draws one colour — so while the depth was tied to `water_half` the head of
+// every river was a flat light band whatever the ramp did. A step function is constant
+// between its steps.
+fn test_a_river_deepens_from_its_source_before_it_is_wide_enough_to_show_it() {
+  // the head, where the width is still one cell
+  assert(water_half(0) == 0 && water_half(WATER_WIDEN - 1) == 0,
+         "the fixture's head is already wide, so this row tests nothing");
+  a = water_deep_at(0);
+  b = water_deep_at(WATER_WIDEN - 1);
+  assert(a == WATER_DEPTH, "a spring is {a} deep, not the {WATER_DEPTH} floor");
+  assert(b > a,
+         "the head runs {WATER_WIDEN} cells at one depth ({a} to {b}) — one cell of one "
+         + "depth is one colour, so the source shows no gradient at all");
+  // and it still stops where the widening does
+  cap = WATER_DEPTH + WATER_WIDE_MAX * WATER_STEP;
+  assert(water_deep_at(WATER_WIDEN * WATER_WIDE_MAX) == cap,
+         "the channel is {water_deep_at(WATER_WIDEN * WATER_WIDE_MAX)} at full width, "
+         + "not the {cap} the ramp's deep end is derived from");
+  assert(water_deep_at(WATER_WIDEN * 40) == cap, "it kept deepening past its cap");
+  prev = 0;
+  for k in 0..(WATER_WIDEN * 6) {
+    assert(water_deep_at(k) >= prev, "the channel got shallower at {k}");
+    prev = water_deep_at(k);
+  }
+}
+
+fn test_the_source_of_a_laid_river_really_does_deepen() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0 - 8, 0, 0, 20, 0, cl, rs, why);
+  assert(n >= 18, "the canal ran {n} cells");
+  head = water_depth_at(w, 0 - 8, 0);
+  next = water_depth_at(w, 0 - 8 + WATER_WIDEN - 1, 0);
+  assert(head == WATER_DEPTH, "the spring is {head} deep, not the floor");
+  assert(next > head,
+         "the first {WATER_WIDEN} cells are all {head} deep, so the source is a flat "
+         + "band of one colour");
+}

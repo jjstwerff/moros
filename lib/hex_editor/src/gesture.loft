@@ -4078,7 +4078,7 @@ pub const WATER_FREE = 2;        // how far a river's surface sits below its ban
 // ⚠ AND IT IS NOT STORED. Nothing writes a width anywhere: the cells that are water
 // ARE the width, and a second answer could disagree with them. `HEX_STACK`'s first
 // invariant, and `A5`'s rule for the third time.
-pub const WATER_WIDEN    = 6;    // cells of run per extra half-width
+pub const WATER_WIDEN    = 4;    // cells of run per extra half-width
 pub const WATER_WIDE_MAX = 2;    // and it stops there — five cells across
 // ⚠ AND A WIDER RIVER IS A DEEPER ONE, WHICH IS WHAT MAKES THE EDGES READ AS SHALLOW.
 // `WATER_DEPTH` is the store's floor and cannot be undercut, so the banks are already
@@ -4090,6 +4090,22 @@ pub fn water_half(run: integer) -> integer {
   h = (run / WATER_WIDEN) ?? 0;
   if h > WATER_WIDE_MAX { return WATER_WIDE_MAX; }
   h
+}
+
+// How deep the CHANNEL is at this point along the run — continuous, where the width is
+// necessarily a whole number of cells.
+//
+// ⚠ THE SOURCE HAS NO WIDTH TO CARRY A GRADIENT, SO IT CARRIES ONE ALONG ITSELF. A
+// river is one cell wide until it has run `WATER_WIDEN` cells, and one cell of one
+// depth draws one colour — so the head of every river was a flat light band whatever
+// the ramp did. Tying the depth to `water_half` made that unavoidable: a step function
+// is constant between its steps. This is the same value AT the steps and rises between
+// them, so a stream deepens visibly from its spring.
+pub fn water_deep_at(run: integer) -> integer {
+  d = ((run * WATER_STEP) / WATER_WIDEN) ?? 0;
+  cap = WATER_WIDE_MAX * WATER_STEP;
+  if d > cap { d = cap; }
+  WATER_DEPTH + d
 }
 
 // Which way the water goes from here — a `hex_grid` direction, or −1 when nothing
@@ -4202,8 +4218,7 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
     // which is the other half of why `water_dir` answers −1 for it.
     dw = d;
     if ended { dw = 0 - 1; }
-    code = water_set_deep(wld, q, r, surf, dw,
-                          WATER_DEPTH + water_half(done + n) * WATER_STEP, why);
+    code = water_set_deep(wld, q, r, surf, dw, water_deep_at(done + n), why);
     if code != hex_world::CW_OK {
       clamped = clamped + 1;
       if WATER_DEPTH > residual { residual = WATER_DEPTH; }
@@ -4235,8 +4250,11 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
           if ground_h(wld, fq, fr) > surf + WATER_DEPTH { break; }
           // ⚠ THE BED STEPS UP TOWARD THE BANK, so the outermost cell is at the
           // minimum — the shallowest a river can be, and the lightest the ramp draws.
-          water_set_deep(wld, fq, fr, surf, dw,
-                         WATER_DEPTH + (hw - 1 - _k) * WATER_STEP, why);
+          // ⚠ MEASURED DOWN FROM THE CENTRE'S OWN DEPTH, not up from the floor, so
+          // the cross-section keeps its shape wherever the channel has got to.
+          fd = water_deep_at(done + n) - (_k + 1) * WATER_STEP;
+          if fd < WATER_DEPTH { fd = WATER_DEPTH; }
+          water_set_deep(wld, fq, fr, surf, dw, fd, why);
         }
       }
     }
