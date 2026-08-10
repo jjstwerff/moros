@@ -195,8 +195,9 @@ fn test_a_raise_leaves_the_river_and_lifts_its_banks() {
 // than a style: a `&` parameter reassigned from a CALL is a hard error, and a helper
 // that both takes the two counters and returns a total would have to do exactly that.
 fn cross_river(w: World, clamped: &integer, residual: &integer, off: &integer) {
+  rl_spoil = 0;
   for r in (0 - 5)..6 {
-    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, clamped, residual);
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, clamped, residual, rl_spoil);
     off = off + k;
   }
 }
@@ -269,13 +270,14 @@ fn test_the_bridge_is_part_of_the_run() {
 // ⚠ THE NEGATIVE CONTROL: dry ground is never bridged. Without it a build that spanned
 // everything would pass every row above.
 fn test_a_road_on_dry_ground_spans_nothing() {
+  rl_spoil = 0;
   w = river(0);
   cl = 0;
   rs = 0;
   // the same walk, five hexes clear of the water
   n = 0;
   for r in 6..12 {
-    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, cl, rs);
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, cl, rs, rl_spoil);
     n = n + k;
   }
   assert(n == 0, "a road on dry ground left the ground {n} times");

@@ -5711,6 +5711,13 @@ fn main() {
   // a stroke lays a handful of cells, so the count has to outlive the stroke. Reset on
   // `47:1`, exactly as `road_h` freezes there.
   water_run = 0;
+  // ⚠ WHAT THE ROAD RUN STILL OWES THE GROUND — plan 20, open question 9, and it is
+  // held here for the same reason `water_run` is: `A8`'s balance is exact for ONE
+  // settle and the gesture makes one per stroke, so a debt that died with the stroke
+  // was discarded twenty-six times over and dug the fall-line canyon. What a stroke
+  // cannot place — a shift of under one unit across a long run — stays owing here and
+  // is placed by a later one. Reset on `26:1`, exactly as `road_h` freezes there.
+  road_spoil = 0;
   road_h = 0;                  // the road's grade — set when road mode goes on and
                                // then FOLLOWING the landscape, one stroke at a time
   // One stall report per road run, not per stroke — the same shape `level_stalled`
@@ -6791,7 +6798,8 @@ fn main() {
                 rd_clamp = 0;
                 rd_res = 0;
                 hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
-                                     hex_editor::ROAD_HALF, py, rd_clamp, rd_res);
+                                     hex_editor::ROAD_HALF, py, rd_clamp, rd_res,
+                                     road_spoil);
                 // ⚠ A ROAD THAT COULD NOT BE CUT AS DEEP AS ITS GRADE ASKED SAYS SO.
                 // `road_lay` used to throw `surface_set`'s verdict away, so a grade
                 // landing within `ε` of a room beneath was simply not laid — and it
@@ -7887,6 +7895,10 @@ fn main() {
             road_h = hex_editor::freeze_grade(rvf, rres0);
             road_stalled = false;
             road_lifted = false;
+            // ⚠ AND THE RUN'S DEBT STARTS AT NOTHING — plan 20, open question 9. A new
+            // run owes the ground nothing, and carrying the previous road's remainder
+            // into it would shift a run by earth taken from somewhere else entirely.
+            road_spoil = 0;
           }
           // ⚠ A QUANTISATION IS AN APPROXIMATION. The feet stand at a REAL
           // height and a grade is an integer, so freezing one from the other

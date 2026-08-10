@@ -2755,14 +2755,22 @@ pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
 // ⚠ AND IT SCOPES ITSELF TO THE RUN rather than to a radius, because a stroke is
 // one disc and a road is a line: settling a disc would leave the step at its rim,
 // which is precisely where the violation lives.
-pub fn slope_settle(w: World, cq: integer, cr: integer,
-                    clamped: &integer, residual: &integer) {
-  lim0 = slope_limit(w, cq, cr);
-  if lim0 == SLOPE_FREE { return; }
-  mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
+// Every cell of the connected run of `mat` that `(cq, cr)` belongs to, breadth first.
+//
+// ⚠ EXTRACTED BECAUSE THERE ARE TWO READERS NOW — `slope_settle` and `road_balance` —
+// and *which cells are the run* is exactly the kind of second list this file already
+// keeps one copy of for a cell's limit (`lim_at`) and for the terrain table. Two walks
+// that disagreed by one condition would put the balance on a different set of cells
+// from the settle it is balancing, and every count would still add up.
+//
+// ⚠ ASKED OF THE COLUMN, NOT OF THE GROUND — plan 20 `A9`. A shelf's ground is the
+// rock over it, so a ground-material test walks off the road at the first caved cell
+// and settles an island.
+fn run_walk(w: World, cq: integer, cr: integer, mat: integer,
+            mq: &vector<integer>, mr: &vector<integer>) -> Seen {
   seen = Seen { s_by: [] };
-  mq: vector<integer> = [cq];
-  mr: vector<integer> = [cr];
+  mq += [cq];
+  mr += [cr];
   seen.s_by += SeenAt { sa_key: age_like_key(cq, cr) };
   head = 0;
   while head < len(mq) {
@@ -2771,9 +2779,6 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
     head = head + 1;
     for d in 0..6 {
       (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
-      // ⚠ ASKED OF THE COLUMN, NOT OF THE GROUND — plan 20 `A9`. A shelf's ground is
-      // the rock over it, so a ground-material test walks off the road at the first
-      // caved cell and settles an island.
       if run_h(w, nq, nr, mat) < 0 { continue; }
       if seen.s_by[age_like_key(nq, nr)] != null { continue; }
       if len(mq) >= LIFT_CAP { continue; }
@@ -2782,6 +2787,24 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
       mr += [nr];
     }
   }
+  seen
+}
+
+// ⚠ AND IT REPORTS THE EARTH IT MOVED — plan 20, open question 9. The return is the
+// net height this took OUT of the run: what the relaxation cut, less what the balance
+// below put back. It exists because `A8`'s balance is exact for ONE settle and the
+// gesture makes twenty-six of them, so the run's debt has to survive the stroke that
+// incurred it. ⚠ Callers that do not carry a run debt ignore the return exactly as
+// fourteen of them already ignore `road_lay`'s, so no existing call site changes.
+pub fn slope_settle(w: World, cq: integer, cr: integer,
+                    clamped: &integer, residual: &integer) -> integer {
+  lim0 = slope_limit(w, cq, cr);
+  if lim0 == SLOPE_FREE { return 0; }
+  mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
+  mq: vector<integer> = [];
+  mr: vector<integer> = [];
+  seen = run_walk(w, cq, cr, mat, mq, mr);
+  took = 0;
   // ⚠ THE PROFILE THIS STARTS FROM IS THE DATUM — plan 20 `A8`. Spoil is conserved
   // against the ground the road REPLACED, and `road_lay` overwrote exactly that one
   // stroke at a time, so the natural profile is gone by the time this runs.
@@ -2827,12 +2850,13 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
           if give > residual { residual = give; }
           continue;
         }
+        took = took + give;
         moved = true;
       }
     }
     if !moved { break; }
   }
-  spoil_place(w, mq, mr, was, mat, clamped, residual);
+  took = took - spoil_place(w, mq, mr, was, mat, clamped, residual);
   // ── A SHELF THAT HAS BEEN SQUEEZED IS NO LONGER ONE — plan 20 `A9` ────────
   //
   // ⚠ `CAVE_HEAD` IS A PROMISE ABOUT THE FUTURE, NOT ONLY ABOUT THE MOMENT OF
@@ -2848,6 +2872,16 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
   // keeps the limit `slope_settle` just established. So the continuum walks BACK:
   // where the road has risen into its own roof the rock comes off and the cell is an
   // open cut again, which is the same axis read from the other end.
+  run_unsqueeze(w, mq, mr, mat, clamped, residual);
+  took
+}
+
+// The sweep above, as its own rule — because `road_balance` lifts the same run by the
+// same kind of uniform shift and owes the same promise. ⚠ A LIFT THAT LEAVES A SHELF
+// UNDER ITS OWN HEADROOM IS THE DEFECT WHETHER THE BALANCE OR THE SETTLE MADE IT, and
+// a second copy of this loop would have been the one nobody updated.
+fn run_unsqueeze(w: World, mq: vector<integer>, mr: vector<integer>, mat: integer,
+                 clamped: &integer, residual: &integer) {
   for si in 0..len(mq) {
     sqq = mq[si] ?? 0;
     srr = mr[si] ?? 0;
@@ -2858,6 +2892,70 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
       if CAVE_HEAD - hd > residual { residual = CAVE_HEAD - hd; }
     }
   }
+}
+
+// ── AND THE RUN'S DEBT OUTLIVES THE STROKE — plan 20, open question 9 ────────
+//
+// `A8`'s balance is exact for ONE settle and the gesture makes one per stroke, so the
+// earth it could not place — `cut / n` truncated to nothing on a long run — was thrown
+// away twenty-six times over. Measured (`probe/house/canyon.loft`), a road walked down
+// a 6-per-hex ramp moved **1508** units and came out pinned at the bottom of its run,
+// cut 120 deep at the head and standing proud by 1 at the foot: the fall-line canyon.
+//
+// ⚠ THE SETTLE WAS NEVER THE HALF TO CHANGE, WHICH IS WHAT THE MEASUREMENT SAID. Left
+// exactly as it ships and followed by ONE balance of the whole run against the natural
+// ground, the same walk moves **848** and comes out −63 … +64 — a cutting at the head
+// and an embankment at the foot. And 848 is the optimum `probe/house/envelope.loft`
+// computed for anchoring the profile at the run's middle, so the run's SHAPE was right
+// all along and only its DATUM was wrong. No envelope, no anchor, no relaxation change.
+//
+// ⚠ IT IS TWO-SIDED, AND THAT IS NOT SYMMETRY FOR ITS OWN SAKE. A road walked UP stands
+// **117 units proud** at its head — the exact mirror — and the first version of this
+// measurement read `if owed > 0`, fired on the descent and did NOTHING on the ascent.
+// `spoil_place` has that one-sided shape and is RIGHT within its scope: it measures
+// after the stamp, and the settle it measures can only lower. This one is measured
+// against the ground the road replaced, where both signs are reachable.
+//
+// ⚠ THE REMAINDER CARRIES, which is the whole point of the debt being the caller's. A
+// shift of less than one unit does not exist, so a long run with a small debt shifts by
+// nothing — and `spoil_place` says so and discards it. Here what is not placed stays
+// owing and is placed by a later stroke.
+//
+// ⚠ AND A UNIFORM SHIFT CANNOT BREAK THE LIMIT, which is the property `spoil_place`
+// already rests on: every height moves by the same amount, so every difference is
+// unchanged and the profile the relaxation just made legal is still legal.
+pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
+                    spoil: &integer, clamped: &integer, residual: &integer) -> integer {
+  if spoil == 0 { return 0; }
+  if run_h(w, cq, cr, mat) < 0 { return 0; }
+  mq: vector<integer> = [];
+  mr: vector<integer> = [];
+  run_walk(w, cq, cr, mat, mq, mr);
+  n = len(mq);
+  if n == 0 { return 0; }
+  // ⚠ TRUNCATED TOWARD ZERO ON PURPOSE, in both directions — the remainder is what
+  // stays owing, and rounding it away is the loss this whole rule exists to stop.
+  shift = (spoil / n) ?? 0;
+  if shift == 0 { return 0; }
+  for j in 0..n {
+    q = mq[j] ?? 0;
+    r = mr[j] ?? 0;
+    hh = run_h(w, q, r, mat) + shift;
+    if hh > H_CEILING { hh = H_CEILING; }
+    if hh < W_RESERVE { hh = W_RESERVE; }
+    // ⚠ THE VERDICT IS READ AND THE DEBT ONLY FALLS FOR EARTH THAT ACTUALLY MOVED.
+    // Under a shelf or over a bridge a raise can be refused, and a debt reduced for a
+    // write that did not happen is earth this rule believes it returned and did not.
+    if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
+      clamped = clamped + 1;
+      if shift > residual { residual = shift; }
+      if 0 - shift > residual { residual = 0 - shift; }
+      continue;
+    }
+    spoil = spoil - shift;
+  }
+  run_unsqueeze(w, mq, mr, mat, clamped, residual);
+  shift
 }
 
 // Did the disc just stamped at `(cq, cr)` leave any cell steeper than its own
@@ -2931,11 +3029,16 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
 // ⚠ ON FLAT GROUND IT MOVES NOTHING, which is the negative control the plan names:
 // the pass above cuts nothing, so `V` is 0, so the shift is 0. A balance that moved
 // earth where none was needed would not be a balance.
+//
+// ⚠ AND IT REPORTS WHAT IT PLACED — plan 20, open question 9. `slope_settle` nets this
+// off the earth it cut, so the run debt it hands back is what is still OWING rather
+// than what was moved. Returning 0 from every early exit is the whole of the contract:
+// a balance that placed nothing owes the caller nothing to subtract.
 fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
                was: vector<integer>, mat: integer,
-               clamped: &integer, residual: &integer) {
+               clamped: &integer, residual: &integer) -> integer {
   n = len(mq);
-  if n == 0 { return; }
+  if n == 0 { return 0; }
   cut = 0;
   for i in 0..n {
     cut = cut + ((was[i] ?? 0) - run_h(w, mq[i] ?? 0, mr[i] ?? 0, mat));
@@ -2943,7 +3046,7 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   // ⚠ ONLY EVER PUTS BACK WHAT WAS TAKEN. A negative total would mean the pass above
   // raised something, which it cannot; guarding it anyway keeps this from inventing
   // earth if that ever changes.
-  if cut <= 0 { return; }
+  if cut <= 0 { return 0; }
   shift = (cut / n) ?? 0;
   // ⚠ A SHIFT OF ZERO IS STILL SPOIL, AND RETURNING HERE SILENTLY LOSES IT. When a
   // run is long and one stroke's cut is small, `cut / n` truncates to 0 and every
@@ -2956,8 +3059,9 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
   if shift <= 0 {
     clamped = clamped + 1;
     if cut > residual { residual = cut; }
-    return;
+    return 0;
   }
+  put = 0;
   for j in 0..n {
     q = mq[j] ?? 0;
     r = mr[j] ?? 0;
@@ -2973,7 +3077,9 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
     if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
       clamped = clamped + 1;
       if shift > residual { residual = shift; }
+      continue;
     }
+    put = put + shift;
   }
   // What the balance could not place, because a height is an integer and a mean is
   // not. ⚠ Reported through the same two counters a refused height uses.
@@ -2982,6 +3088,7 @@ fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
     clamped = clamped + 1;
     if over > residual { residual = over; }
   }
+  put
 }
 
 // How far a road at `h` must RISE at this cell to clear whatever is under it — 0
@@ -3346,7 +3453,8 @@ pub fn spanned_h(w: World, q: integer, r: integer) -> integer {
 }
 
 pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
-            feet: float, clamped: &integer, residual: &integer) -> integer {
+            feet: float, clamped: &integer, residual: &integer,
+            spoil: &integer) -> integer {
   // ── THE DATUM, SAMPLED BEFORE THE FIRST WRITE — plan 20 `A9` ──────────────
   //
   // The shelf is decided from the ground that was here, and the stroke below is
@@ -3409,6 +3517,19 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
       if lift > residual { residual = lift; }
       hh = hh + lift;
     }
+    // ⚠ AND THE STROKE'S OWN CUT IS *NOT* SPOIL, WHICH FIVE TESTS SETTLED AGAINST A
+    // MEASUREMENT THAT SAID OTHERWISE. Adding `ground_h - hh` here — the earth this
+    // stamp removes — makes the run debt telescope to (natural − current) exactly
+    // (measured: 636/636, 1908/1908, 3816/3816, and both mirrors) and takes a road
+    // walked down a 6-per-hex ramp from 1508 units moved to **848**, the optimum.
+    // It is still wrong, because it conflates *the author asked for this grade* with
+    // *the ground was taken as spoil*: the balance then hands the earth back and the
+    // cut is undone. `test_a_road_over_open_ground_is_never_lifted` — `A8`'s own
+    // negative control, *a balance that moves earth where none was needed is not a
+    // balance* — reported `cut 20 into open ground ended at 40`, and four more said
+    // the same in four other words. So the debt below is the SETTLE's cut alone.
+    // ⚠ The five-unit sink a walked road still carries is a LOOKAHEAD defect, not a
+    // balance one — see `road_balance` — and fixing it here would cost exactly this.
     surface_set(wld, q, r, feet, hh, ROAD_MAT);
   }
   // ── AND THE RUN IS HANDED BACK INSIDE ITS OWN RULES — plan 20 `A7` ────────
@@ -3435,8 +3556,21 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
   if stroke_over_limit(wld, cq, cr, rad) {
     rl_clamped = 0;
     rl_residual = 0;
-    slope_settle(wld, cq, cr, rl_clamped, rl_residual);
+    spoil = spoil + slope_settle(wld, cq, cr, rl_clamped, rl_residual);
   }
+  // ── AND THE RUN IS HANDED BACK THE EARTH IT OWES — plan 20, open question 9 ──
+  //
+  // ⚠ EVERY STROKE, SO THE ROAD READS RIGHT AS IT IS WALKED rather than snapping
+  // when the author releases. The debt is the CALLER's, so what a stroke cannot
+  // place — a shift of less than one unit over a long run — stays owing instead of
+  // being discarded, which is the loss that dug the canyon twenty-six times over.
+  //
+  // ⚠ AND THE DEBT IS THE SETTLE'S CUT ALONE, so this is silent wherever the settle
+  // is. A road laid at a grade the author chose — cut into flat ground, frozen over
+  // a hill, dropped clear of a room — breaks no limit, settles nothing, owes nothing
+  // and is not touched. That is not an optimisation: handing THAT earth back undoes
+  // the cut, which is what five tests said when it was tried.
+  road_balance(wld, cq, cr, ROAD_MAT, spoil, clamped, residual);
   // ── AND THE ROCK ABOVE IT STAYS — plan 20 `A9` ───────────────────────────
   //
   // ⚠ AFTER THE SETTLE, NOT BEFORE, AND THAT ORDER IS THE WHOLE DESIGN. The shelf

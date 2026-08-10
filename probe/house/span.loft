@@ -47,6 +47,7 @@ fn ramp_q(k: integer) -> World {
 
 // ── ALONG A CONTOUR: the strip's downhill half is a fill ────────────────────
 fn contour(k: integer) {
+  rl_spoil = 0;
   w = ramp(k);
   nat: vector<integer> = [];
   for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
@@ -56,7 +57,7 @@ fn contour(k: integer) {
   rs = 0;
   for q in (0 - 6)..7 {
     ahead = ground_h(w, q + hex_editor::ROAD_HALF + 1, 0);
-    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs, rl_spoil);
   }
   out = "";
   proud = 0;
@@ -79,6 +80,7 @@ fn contour(k: integer) {
 
 // ── DOWN THE FALL LINE: the limit holds the road up and the balance lifts it ─
 fn fallline(k: integer) {
+  rl_spoil = 0;
   w = ramp_q(k);
   n = 26;
   nat: vector<integer> = [];
@@ -87,7 +89,7 @@ fn fallline(k: integer) {
   rs = 0;
   for i in 0..n {
     ahead = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
-    road_lay(w, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs, rl_spoil);
   }
   worst_cut = 0;
   worst_proud = 0;

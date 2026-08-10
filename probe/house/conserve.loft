@@ -1,0 +1,140 @@
+// WHERE DID THE SPOIL BALANCE GO OUT OF BALANCE? — plan 20, open question 9.
+//
+// `slope_limit.loft::test_a_settled_road_conserves_its_spoil` lays a road down a
+// brushed hill and asserts that what it cut equals what it filled, within one unit a
+// cell, measured against the ground that was there before. With the run-level balance
+// wired it reports **cut 8 against fill 56**, out of balance by 48 over 13 cells.
+//
+// Two hypotheses, and they want different fixes:
+//
+//   A  THE INSTRUMENT. The test measures the CENTRE LINE — 13 cells — while the
+//      balance is computed over the whole RUN, which at `rad` 1 is three times that.
+//      If the run balances and the centre line does not, the row is sampling a
+//      quantity that was never conserved along one line.
+//
+//   B  THE STAMP. `road_lay` writes its whole disc at the author's grade, so a cell
+//      ends up at the height of whichever stroke last covered it — a neighbour's,
+//      not its own. That displacement is real earth and it is NOT in the debt, which
+//      carries the settle's cut alone. If it accounts for the gap, then two wrongs
+//      were cancelling before: the settle's unreturned cut and the stamp's
+//      displacement, in opposite directions.
+//
+// ⚠ THE PREDICTION: B. The five tests that refused the stamp term did so because the
+// author's grade is not spoil — but that does not make the stamp's displacement zero,
+// it makes it something the balance must not touch. If B is right the gap should be
+// close to the stamp's own displacement, and the run-wide figures should show the
+// settle's earth conserved to within the stated tolerance.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+
+fn strip_world() -> World {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+fn main() {
+  // the fixture, cell for cell
+  w = strip_world();
+  cl0 = 0;
+  rs0 = 0;
+  brush(w, 0, 0, 24, 12, cl0, rs0);
+  ground: vector<integer> = [];
+  for s0 in 0..13 { ground += [ground_h(w, s0, 0)]; }
+
+  // ⚠ AND THE STAMP ALONE, ON ITS OWN COPY OF THE SAME GROUND — the control that
+  // tells hypothesis B from hypothesis A. Same strokes, same order, no settle and no
+  // balance can fire because nothing here breaks a limit: the road is laid AT the
+  // natural ground of the author's own cell every time.
+  // ⚠ AND A THIRD, LEFT ALONE — the natural ground every row is measured against.
+  // A world that has had a road laid in it cannot answer what was there before.
+  wn = strip_world();
+  cln = 0;
+  rsn = 0;
+  brush(wn, 0, 0, 24, 12, cln, rsn);
+
+  ws = strip_world();
+  cls = 0;
+  rss = 0;
+  brush(ws, 0, 0, 24, 12, cls, rss);
+  for qs in 0..13 {
+    xs = 12 - qs;
+    hs = ground[xs] ?? G;
+    for aq in (0 - 1)..2 {
+      for ar in (0 - 1)..2 {
+        if hex_grid::hex_distance(xs + aq, ar, xs, 0) > 1 { continue; }
+        ground_set(ws, xs + aq, ar, hs, ROAD_MAT);
+      }
+    }
+  }
+
+  rl_c = 0;
+  rl_r = 0;
+  rl_spoil = 0;
+  for q in 0..13 {
+    x = 12 - q;
+    h = ground[x] ?? G;
+    road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r, rl_spoil);
+  }
+
+  // the row's own instrument: the centre line, against the natural ground
+  cut = 0;
+  fill = 0;
+  scut = 0;
+  sfill = 0;
+  for q2 in 0..13 {
+    d = (ground[q2] ?? 0) - ground_h(w, q2, 0);
+    if d > 0 { cut = cut + d; } else { fill = fill - d; }
+    // the same question asked of the stamp-only world
+    sd = (ground[q2] ?? 0) - ground_h(ws, q2, 0);
+    if sd > 0 { scut = scut + sd; } else { sfill = sfill - sd; }
+  }
+
+  // and the same question asked of the whole RUN, which is what the balance divides
+  // by. ⚠ THE NATURAL GROUND COMES FROM A THIRD WORLD THAT HAS NO ROAD IN IT — the
+  // first version of this block read it from the stamp-only world, where every road
+  // cell is road, so its guard threw every cell away and it reported `cut 0 fill 0`
+  // from ZERO cells. A balanced-looking pair of zeroes from an empty sum is exactly
+  // what a blind instrument reads like.
+  rcut = 0;
+  rfill = 0;
+  cells = 0;
+  for rq in (0 - 1)..14 {
+    for rr in (0 - 1)..2 {
+      rh = run_h(w, rq, rr, ROAD_MAT);
+      if rh < 0 { continue; }
+      cells = cells + 1;
+      d2 = ground_h(wn, rq, rr) - rh;
+      if d2 > 0 { rcut = rcut + d2; } else { rfill = rfill - d2; }
+    }
+  }
+  // the same over the stamp-only world, so the run row has its control too
+  scut2 = 0;
+  sfill2 = 0;
+  for sq in (0 - 1)..14 {
+    for sr in (0 - 1)..2 {
+      sh = run_h(ws, sq, sr, ROAD_MAT);
+      if sh < 0 { continue; }
+      d3 = ground_h(wn, sq, sr) - sh;
+      if d3 > 0 { scut2 = scut2 + d3; } else { sfill2 = sfill2 - d3; }
+    }
+  }
+
+  println("THE ROW'S OWN INSTRUMENT — the centre line, 13 cells");
+  println("  laid    cut {cut}  fill {fill}   out of balance by {cut - fill}");
+  println("  STAMP ONLY, same strokes, nothing settled or balanced:");
+  println("          cut {scut}  fill {sfill}   displaced by {scut - sfill}");
+  println("");
+  println("  ⚠ IF THE TWO IMBALANCES MATCH, the gap is the stamp's displacement —");
+  println("     earth the disc moved because it writes a neighbour at the author's");
+  println("     grade — and the debt is right to leave it alone.");
+  println("");
+  println("THE RUN — {cells} cells, which is what the balance divides by");
+  println("  laid       cut {rcut}  fill {rfill}   out of balance by {rcut - rfill}");
+  println("  STAMP ONLY cut {scut2}  fill {sfill2}   displaced by {scut2 - sfill2}");
+  println("  debt still owing {rl_spoil}");
+}

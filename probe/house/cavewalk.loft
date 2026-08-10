@@ -34,6 +34,7 @@ fn row(w: World, r: integer) {
 }
 
 fn main() {
+  rl_spoil = 0;
   rl_c = 0;
   rl_r = 0;
   w = plain();
@@ -51,7 +52,7 @@ fn main() {
   for wq in 0..13 {
     x = 12 - wq;
     h = hs[x] ?? G;
-    caved = caved + road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r);
+    caved = caved + road_lay(w, x, 0, h, 1, (h as float) * U, rl_c, rl_r, rl_spoil);
   }
   println("");
   println("after the walk — `R` is road on the ground, `[road/rock]` is a shelf:");

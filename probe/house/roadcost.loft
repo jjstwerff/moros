@@ -18,6 +18,7 @@ const G = 400;
 // A road walked up a ramp of `fall` per hex, laid one stroke at a time, settling
 // after each stroke if `settle` is set. Returns nothing; reports as it goes.
 fn road_cost(n: integer, fall: integer, settle: boolean, tau: &integer, ms: &integer) {
+  rl_spoil = 0;
   rl_c = 0;
   rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
@@ -33,7 +34,7 @@ fn road_cost(n: integer, fall: integer, settle: boolean, tau: &integer, ms: &int
   before = w.w_tau;
   for i in 0..n {
     h = hs[i] ?? G;
-    road_lay(w, i, 0, h, ROAD_HALF, (h as float) * U, rl_c, rl_r);
+    road_lay(w, i, 0, h, ROAD_HALF, (h as float) * U, rl_c, rl_r, rl_spoil);
     if settle {
       cl = 0;
       rs = 0;
@@ -48,6 +49,7 @@ fn road_cost(n: integer, fall: integer, settle: boolean, tau: &integer, ms: &int
 // every stroke is laid at that same grade, so the strip is FLAT however far it runs
 // and can never break its own limit. This is the case a wired settle actually meets.
 fn flat_road_cost(n: integer, settle: boolean, tau: &integer, ms: &integer) {
+  rl_spoil = 0;
   rl_c = 0;
   rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
@@ -58,7 +60,7 @@ fn flat_road_cost(n: integer, settle: boolean, tau: &integer, ms: &integer) {
   t0 = now();
   before = w.w_tau;
   for i in 0..n {
-    road_lay(w, i, 0, grade, ROAD_HALF, (grade as float) * U, rl_c, rl_r);
+    road_lay(w, i, 0, grade, ROAD_HALF, (grade as float) * U, rl_c, rl_r, rl_spoil);
     if settle {
       cl = 0;
       rs = 0;
@@ -70,6 +72,7 @@ fn flat_road_cost(n: integer, settle: boolean, tau: &integer, ms: &integer) {
 }
 
 fn main() {
+  rl_spoil = 0;
   rl_c = 0;
   rl_r = 0;
   println("⚠ `road_lay` NOW SETTLES ITSELF, so the `plain` column is the WIRED gesture");
@@ -121,11 +124,11 @@ fn main() {
   for s2 in 0..n2 { hs2 += [ground_h(wa, s2, 0)]; }
   for i2 in 0..n2 {
     h2 = hs2[i2] ?? G;
-    road_lay(wa, i2, 0, h2, ROAD_HALF, (h2 as float) * U, rl_c, rl_r);
+    road_lay(wa, i2, 0, h2, ROAD_HALF, (h2 as float) * U, rl_c, rl_r, rl_spoil);
     ca = 0;
     ra = 0;
     slope_settle(wa, i2, 0, ca, ra);
-    road_lay(wb, i2, 0, h2, ROAD_HALF, (h2 as float) * U, rl_c, rl_r);
+    road_lay(wb, i2, 0, h2, ROAD_HALF, (h2 as float) * U, rl_c, rl_r, rl_spoil);
   }
   cb = 0;
   rb = 0;

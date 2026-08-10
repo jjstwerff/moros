@@ -67,6 +67,7 @@ fn deepest(w: World, nat: vector<integer>, q: integer) -> integer {
 // one cell PAST the strip along the walk — which is what the gesture does
 // (`editor_server`'s `rd_look`), and the only place the natural ground survives.
 fn contour(k: integer) {
+  rl_spoil = 0;
   w = ramp(k);
   // ⚠ SAMPLED BEFORE ANY STROKE. Reading as we go reads the road we just laid —
   // `roadwalk.loft`'s trap, and the gesture's own.
@@ -78,7 +79,7 @@ fn contour(k: integer) {
   rs = 0;
   for q in (0 - 6)..7 {
     ahead = ground_h(w, q + hex_editor::ROAD_HALF + 1, 0);
-    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs, rl_spoil);
   }
   d = deepest(w, nat, 0);
   standable = "no";
@@ -91,6 +92,7 @@ fn contour(k: integer) {
 // The control: the same ramp walked UP the fall line, which is what every road
 // probe in this tree has measured so far.
 fn fallline(k: integer) {
+  rl_spoil = 0;
   w = ramp(k);
   nat: vector<integer> = [];
   for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
@@ -101,7 +103,7 @@ fn fallline(k: integer) {
   for r in (0 - 6)..7 {
     rr = 0 - r;
     ahead = ground_h(w, 0, rr - hex_editor::ROAD_HALF - 1);
-    road_lay(w, 0, rr, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+    road_lay(w, 0, rr, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs, rl_spoil);
   }
   // transverse spread at the middle of the run, measured along `q` where the ramp
   // is flat — so any spread here is the gesture's, not the ground's

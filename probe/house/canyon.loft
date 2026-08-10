@@ -198,6 +198,7 @@ fn stamp(w: World, took: &integer) {
 }
 
 fn main() {
+  rl_spoil = 0;
   println("A road may climb 1 a hex. Walked down a ramp it cannot follow, the same");
   println("strip laid three ways — and the question is where the balance goes.");
   // ⚠ AND WALKED UP AS WELL AS DOWN. This tree has written a one-sided guard twice —
@@ -239,9 +240,12 @@ fn main() {
     natb = natural(wb);
     cl = 0;
     rs = 0;
+    // ⚠ A DEBT PER ARM AND PER RAMP. It is run state, so one shared across the arms
+    // would shift a world by earth taken out of a different one.
+    rl_spoil = 0;
     for i in 0..N {
       ahead = ground_h(wb, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+      road_lay(wb, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs, rl_spoil);
     }
     report("per stroke  ", natb, wb);
 
@@ -288,9 +292,10 @@ fn main() {
     nate = natural(we);
     cle = 0;
     rse = 0;
+    rl_spoil = 0;
     for i in 0..N {
       ahead = ground_h(we, i + hex_editor::ROAD_HALF + 1, 0);
-      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cle, rse);
+      road_lay(we, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cle, rse, rl_spoil);
     }
     owed_e = 0;
     cells = 0;
