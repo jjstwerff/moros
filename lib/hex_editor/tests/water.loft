@@ -1,0 +1,289 @@
+// WATER, AND WHY A ROAD NEEDS A BRIDGE — plan 20, `A9`'s mirror.
+//
+// > *"Waterways should be the most resistant to hill creation from anything else, it
+// > can break into a waterfall but will normally just create chasms. So a road needs a
+// > bridge to cross it because it cannot place the road there. And the water will
+// > never flow upwards."* … *"even on this scale we have to model the direction of flow
+// > probably as separate ground materials."* … *"water has a depth so it should define
+// > a layer under it."*
+//
+// Four claims, and each is a row below: the direction is the MATERIAL, the depth is a
+// LAYER, a raise does not move it, and a road is carried over it rather than laid on
+// it. ⚠ The last one is what makes the mirror reachable at all — plan 20 recorded that
+// *span* could not be designed because nothing could detect a waterway.
+use hex_editor;
+use hex_world;
+
+const U = 0.25;
+const G = 200;                 // the bank
+const BED = 8;                 // how far the water's surface sits below its banks
+
+// Flat ground with a river running EAST along `r = 0` — `hex_grid` direction 0, so
+// each cell's downstream neighbour is `(q + 1, r)`.
+fn river(fall: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 14)..15 {
+    for r in (0 - 14)..15 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  why = "";
+  for q2 in (0 - 12)..13 {
+    // ⚠ THE VERDICT IS ASSERTED, IN THE FIXTURE. The first version of this helper
+    // threw it away and a later row failed saying a waterfall had a step of 0 — the
+    // water had simply not been written, and the test was measuring an unbuilt
+    // fixture. A refused write swallowed is this tree's oldest scar and a test
+    // helper is not exempt from it.
+    code = water_set(w, q2, 0, G - BED - fall * q2, 0, why);
+    assert(code == 0, "the fixture could not write water at ({q2},0): ({code}) {why}");
+  }
+  w
+}
+
+fn columns(w: World, q: integer, r: integer) -> integer {
+  n = 0;
+  for e in world_column(w, q, r).co_cells {
+    if hex_world::hex_occupied(e) { n = n + 1; }
+  }
+  n
+}
+
+// ── the direction is the material ───────────────────────────────────────────
+
+fn test_every_flow_direction_is_its_own_material_and_round_trips() {
+  for d in 0..WATER_DIRS {
+    m = water_of(d);
+    assert(is_water(m), "the material for direction {d} is not water");
+    assert(water_dir(m) == d,
+           "direction {d} came back as {water_dir(m)} — the material and the direction "
+           + "have parted company");
+    assert(ground_kind_of(m).tr_fixed,
+           "water flowing {d} is not fixed, so a raise would carry the river uphill");
+  }
+  // ⚠ STILL WATER IS WATER AND HAS NO DIRECTION, and the two answers must not be one:
+  // a pool that read as *a river that had stopped* would be asked whether it flows
+  // uphill and there is no downstream cell to ask about.
+  assert(is_water(WATER_MAT), "still water is not water");
+  assert(water_dir(WATER_MAT) < 0, "still water was given a direction");
+  // and the control: nothing that is not water reads as water
+  for k in ground_kinds() {
+    if k.tr_name == "grass" || k.tr_name == "road" || k.tr_name == "field"
+       || k.tr_name == "floor" || k.tr_name == "roof" {
+      assert(!is_water(k.tr_mat), "{k.tr_name} reads as water");
+      assert(!k.tr_fixed, "{k.tr_name} is fixed, so a raise no longer moves it");
+    }
+  }
+}
+
+// ── the depth is a layer ────────────────────────────────────────────────────
+
+fn test_water_has_a_depth_and_defines_a_layer_under_it() {
+  w = river(0);
+  assert(WATER_DEPTH >= w.w_eps,
+         "WATER_DEPTH {WATER_DEPTH} is under the store's own fold separation "
+         + "{w.w_eps}, so a river could not be written at all");
+  assert(columns(w, 0, 0) == 2,
+         "a river column holds {columns(w, 0, 0)} occupied layers, not the bed and the "
+         + "surface");
+  assert(water_bed(w, 0, 0) == ground_h(w, 0, 0) - WATER_DEPTH,
+         "the bed is at {water_bed(w, 0, 0)} where the surface is at "
+         + "{ground_h(w, 0, 0)} and the depth is {WATER_DEPTH}");
+  assert(is_water(world_ground_cell(w, 0, 0).h_material as integer ?? 0),
+         "the surface of the river is not water");
+  // ⚠ THE BED IS THE GROUND THE RIVER CUT, not a substance of its own — a river runs
+  // over what was there.
+  bl = off_layer(w, 0, 0, SURFACE_MAT);
+  assert(bl >= 0, "the bed is not made of the ground the river was cut into");
+  // and the bank beside it is untouched, one layer, at the bank height
+  assert(columns(w, 0, 2) == 1, "the bank grew a layer it was never given");
+  assert(ground_h(w, 0, 2) == G, "the bank moved when the river was written");
+}
+
+// ── the water never flows upwards ───────────────────────────────────────────
+
+fn test_a_river_laid_downhill_never_flows_up() {
+  w = river(1);
+  seen = 0;
+  for q in (0 - 10)..11 {
+    f = water_falls(w, q, 0);
+    if f == WATER_STILL { continue; }
+    seen = seen + 1;
+    assert(f >= 0, "the water at ({q},0) climbs {0 - f} to the cell it flows into");
+    assert(!water_uphill(w, q, 0), "({q},0) reads as flowing uphill");
+  }
+  assert(seen > 0, "no cell of the fixture flows anywhere, so nothing was measured");
+}
+
+// ⚠ AND THE INSTRUMENT IS CHECKED AGAINST SOMETHING IT SHOULD FIND. A rule that only
+// ever answers *fine* is not a rule, and this tree has the scar: a probe that samples
+// its own output reports a green answer to a question never asked.
+fn test_a_river_laid_the_wrong_way_is_caught() {
+  w = river(0 - 1);              // the bed RISES downstream
+  bad = 0;
+  for q in (0 - 10)..11 {
+    if water_uphill(w, q, 0) { bad = bad + 1; }
+  }
+  assert(bad > 0,
+         "a river written climbing one unit a hex reported nothing wrong — the rule "
+         + "cannot see the only state it exists to forbid");
+}
+
+// ⚠ THE MOUTH IS NOT A VIOLATION, AND NO ROW COVERED IT UNTIL A SABOTAGE SAID SO.
+// Removing *the next cell must be water too* left every test green: a river's last
+// cell flows into whatever is there, and measuring the drop to a dry bank would make
+// the end of every river either a waterfall or — where the bank is higher — water
+// running uphill. The run has ENDED there; that is a different answer from *it is
+// flat here*, which is why `WATER_STILL` is its own value.
+fn test_the_last_cell_of_a_river_is_its_mouth_and_not_a_fall() {
+  w = river(0);
+  // one cell past the fixture's easternmost water, and the bank there stands ABOVE
+  // the river — the shape that would read as flowing uphill
+  assert(!is_water(world_ground_cell(w, 13, 0).h_material as integer ?? 0),
+         "the fixture's river runs past its own end, so this row tests nothing");
+  assert(ground_h(w, 13, 0) > ground_h(w, 12, 0),
+         "the bank at the mouth is not above the water, so a bad rule would pass here");
+  assert(water_falls(w, 12, 0) == WATER_STILL,
+         "the river's mouth reports a drop of {water_falls(w, 12, 0)} into dry ground");
+  assert(!water_uphill(w, 12, 0),
+         "the last cell of a river was called water flowing uphill");
+}
+
+// ⚠ A WATERFALL IS A BIG FALL, NOT A DIFFERENT THING. It is worth a row because the
+// author named it: *it can break into a waterfall.* What separates it from a river is
+// the size of one drop, and the rule that forbids climbing has to leave it alone.
+fn test_a_waterfall_is_a_legal_drop_and_not_a_violation() {
+  w = river(0);
+  why = "";
+  for q in 1..13 {
+    c2 = water_set(w, q, 0, G - BED - 40, 0, why);
+    assert(c2 == 0, "the lip could not be cut at ({q},0): ({c2}) {why}");
+  }
+  assert(water_falls(w, 0, 0) == 40,
+         "the step at the lip is {water_falls(w, 0, 0)}, not the 40 the fixture built");
+  assert(!water_uphill(w, 0, 0), "a waterfall was called water flowing uphill");
+}
+
+// ── a raise does not move it: the chasm ─────────────────────────────────────
+
+fn test_a_raise_leaves_the_river_and_lifts_its_banks() {
+  w = river(0);
+  was = ground_h(w, 0, 0);
+  bank0 = ground_h(w, 0, 3);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 40, 7, cl, rs);
+  assert(ground_h(w, 0, 0) == was,
+         "the raise carried the river from {was} to {ground_h(w, 0, 0)} — water is the "
+         + "most resistant thing there is to hill creation");
+  assert(water_bed(w, 0, 0) == was - WATER_DEPTH,
+         "the raise moved the river BED, so the water is a different depth than it was");
+  assert(ground_h(w, 0, 3) > bank0,
+         "the bank did not rise at all, so the fixture raised nothing and this row "
+         + "controls nothing");
+  // ⚠ THE CHASM IS THE POINT, and it is a DIFFERENCE rather than a height: what the
+  // author asked for is that the ground goes up around the water, which is exactly a
+  // gorge deepening.
+  assert(ground_h(w, 0, 3) - ground_h(w, 0, 0) > bank0 - was,
+         "the gorge did not deepen: bank to water was {bank0 - was} and is now "
+         + "{ground_h(w, 0, 3) - ground_h(w, 0, 0)}");
+}
+
+// ── and the road: carried over, never laid on ───────────────────────────────
+
+// Walk a road SOUTH to NORTH across the river at `q = 0`, reading the grade from the
+// bank — which is what a road builder has: the ground they are standing on.
+//
+// ⚠ IT COUNTS THROUGH AN OUT-PARAMETER AND NOT A RETURN, and that is loft#772 rather
+// than a style: a `&` parameter reassigned from a CALL is a hard error, and a helper
+// that both takes the two counters and returns a total would have to do exactly that.
+fn cross_river(w: World, clamped: &integer, residual: &integer, off: &integer) {
+  for r in (0 - 5)..6 {
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, clamped, residual);
+    off = off + k;
+  }
+}
+
+fn test_a_road_is_never_laid_on_water() {
+  w = river(0);
+  cl = 0;
+  rs = 0;
+  nn = 0;
+  cross_river(w, cl, rs, nn);
+  wet = 0;
+  paved = 0;
+  for q in (0 - 3)..4 {
+    m = world_ground_cell(w, q, 0).h_material as integer ?? 0;
+    if is_water(m) { wet = wet + 1; }
+    if m == ROAD_MAT { paved = paved + 1; }
+  }
+  assert(wet > 0, "the crossing never reached the river, so this row tests nothing");
+  assert(paved == 0,
+         "{paved} cells of the waterway were paved — a road cannot be placed there");
+}
+
+fn test_and_it_is_carried_over_instead() {
+  w = river(0);
+  cl = 0;
+  rs = 0;
+  n = 0;
+  cross_river(w, cl, rs, n);
+  assert(n > 0, "the crossing spanned nothing at all");
+  seen = 0;
+  for q in (0 - 2)..3 {
+    d = spanned_h(w, q, 0);
+    if d < 0 { continue; }
+    seen = seen + 1;
+    // ⚠ THE COLUMN IS THREE: the bed, the water, and the deck over it. That is `A9`'s
+    // shelf and its mirror in one place, and asserting the COUNT is what would catch a
+    // deck that replaced the water instead of standing over it.
+    assert(columns(w, q, 0) == 3,
+           "a bridged river column holds {columns(w, q, 0)} occupied layers, not three");
+    assert(is_water(world_ground_cell(w, q, 0).h_material as integer ?? 0),
+           "the river stopped being water where the road crossed it");
+    assert(d - ground_h(w, q, 0) >= BRIDGE_CLEAR,
+           "the deck at {d} stands {d - ground_h(w, q, 0)} over water at "
+           + "{ground_h(w, q, 0)}, under the {BRIDGE_CLEAR} a bridge is built to");
+  }
+  assert(seen > 0, "no cell of the river carries a deck");
+  // ⚠ AND THE LIFT IS SAID OUT LOUD. A bridge that had to come up to clear the water
+  // is an offer, and this tree's scar is a refused write that was swallowed.
+  assert(cl > 0 && rs > 0,
+         "the deck was lifted clear of the water silently — clamped {cl}, residual {rs}");
+}
+
+// ⚠ THE DECK IS PART OF THE ROAD'S RUN, and without this the settle would walk off the
+// road at the riverbank exactly as it walked off at a shelf — measured once already,
+// and it left a 27-unit step in a road whose limit is 1.
+fn test_the_bridge_is_part_of_the_run() {
+  w = river(0);
+  cl = 0;
+  rs = 0;
+  n2 = 0;
+  cross_river(w, cl, rs, n2);
+  assert(run_h(w, 0, 0, ROAD_MAT) == spanned_h(w, 0, 0),
+         "the run reader cannot see the deck: it answers {run_h(w, 0, 0, ROAD_MAT)} "
+         + "where the deck is at {spanned_h(w, 0, 0)}");
+  assert(ground_h(w, 0, 0) != run_h(w, 0, 0, ROAD_MAT),
+         "the ground and the road answer the same height, so this row cannot tell a "
+         + "deck from a paved river");
+}
+
+// ⚠ THE NEGATIVE CONTROL: dry ground is never bridged. Without it a build that spanned
+// everything would pass every row above.
+fn test_a_road_on_dry_ground_spans_nothing() {
+  w = river(0);
+  cl = 0;
+  rs = 0;
+  // the same walk, five hexes clear of the water
+  n = 0;
+  for r in 6..12 {
+    k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, cl, rs);
+    n = n + k;
+  }
+  assert(n == 0, "a road on dry ground left the ground {n} times");
+  for r2 in 7..11 {
+    assert(spanned_h(w, 0, r2) < 0, "dry ground at (0,{r2}) was bridged");
+    assert(columns(w, 0, r2) == 1,
+           "(0,{r2}) holds {columns(w, 0, r2)} occupied layers on dry ground");
+  }
+  assert(cl == 0 && rs == 0,
+         "dry ground reported a lift: clamped {cl}, residual {rs}");
+}

@@ -223,12 +223,20 @@ pub fn ground_set(w: World, q: integer, r: integer, h: integer, mat: integer) ->
 // 0 exactly when no layer sits under the ground anywhere in this chunk — the same
 // derivation `ground_open` and the mesher's `can_open` already make.
 
-// Which layer BELOW the ground carries this material here, or −1 for none.
-pub fn sub_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
+// Which layer OTHER THAN THE GROUND carries this material here, or −1 for none.
+//
+// ⚠ IT SEARCHES BOTH WAYS, AND THAT IS THE MIRROR — plan 20. A road cut into a cliff
+// keeps its rock and lives BELOW the ground; a road carried over a gap keeps the
+// ground and lives ABOVE it. They are one axis twice, so every reader that asks
+// *where is this surface* has to ask the whole column and not one half of it.
+pub fn off_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
   gl = hex_world::world_ground_layer(w, q, r);
-  if gl <= 0 { return 0 - 1; }
-  for j in 0..gl {
-    i = gl - 1 - j;
+  if gl < 0 { return 0 - 1; }
+  n = hex_world::world_chunk_layers(w, hex_world::world_chunk_of(q),
+                                       hex_world::world_chunk_of(r));
+  if n <= 1 { return 0 - 1; }
+  for i in 0..n {
+    if i == gl { continue; }
     c = hex_world::world_cell(w, q, r, i);
     if hex_world::hex_occupied(c) && (c.h_material as integer ?? 0) == mat { return i; }
   }
@@ -241,7 +249,7 @@ pub fn sub_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
 pub fn run_h(w: World, q: integer, r: integer, mat: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_material as integer ?? 0) == mat { return c.h_height as integer ?? 0; }
-  li = sub_layer(w, q, r, mat);
+  li = off_layer(w, q, r, mat);
   if li < 0 { return 0 - 1; }
   hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
 }
@@ -253,8 +261,20 @@ pub fn run_h(w: World, q: integer, r: integer, mat: integer) -> integer {
 pub fn run_set(w: World, q: integer, r: integer, mat: integer, h: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_material as integer ?? 0) == mat { return ground_set(w, q, r, h, mat); }
-  li = sub_layer(w, q, r, mat);
+  li = off_layer(w, q, r, mat);
   if li < 0 { return hex_world::CW_FOLD; }
+  // ⚠ A DECK DOES NOT COME DOWN TO WHAT IT CROSSES — plan 20, the mirror, and this is
+  // the same lesson `CAVE_HEAD` taught one axis over: `F1`'s `ε` is what a LAYER needs
+  // and `BRIDGE_CLEAR` is what the crossing is built to. Measured without it, a settle
+  // walked a bridge from 12 units over the water down to **9** — legal to the store,
+  // under the clearance, and silent. ⚠ And the answer here is a REFUSAL rather than
+  // the shelf's *take the lid off*: a lid may come off, a bridge may not, because what
+  // is under it is water and a road can never be laid there.
+  gl = hex_world::world_ground_layer(w, q, r);
+  if gl >= 0 && li > gl {
+    under = (hex_world::world_cell(w, q, r, gl).h_height as integer ?? 0);
+    if h < under + BRIDGE_CLEAR { return hex_world::CW_FOLD; }
+  }
   lc = hex_world::world_cell(w, q, r, li);
   layer_write(w, q, r, li,
     hex_world::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0,
@@ -1245,6 +1265,56 @@ pub fn col_top_index(c: hex_world::Column) -> integer {
 pub const FIELD_MAT    = 3;           // an enclosed field
 pub const FIELD_CAP    = 4000;        // the most cells one fill may claim
 pub const ROOF_MAT     = 5;           // a roof — its own material, its own geometry
+
+// ── WATER, AND IT CARRIES ITS OWN DIRECTION — plan 20, `A9`'s mirror ────────
+//
+// > *"waterways should be the most resistant to hill creation from anything else, it
+// > can break into a waterfall but will normally just create chasms. So a road needs
+// > a bridge to cross it because it cannot place the road there. And the water will
+// > never flow upwards."* … *"even on this scale we have to model the direction of
+// > flow probably as separate ground materials."*
+//
+// ⚠ THE DIRECTION IS THE MATERIAL, which is the author's own call and is the only
+// shape that needs no second field. A cell already says what it is made of and a
+// `Hex` has no spare byte that means direction — `h_item_rotation` is the item's, and
+// giving it a second meaning is how two facts come to disagree. Seven rows in
+// `ground_kinds()` instead, six flowing and one still, and every rule that reads a
+// material gets the direction for free.
+//
+// ⚠ AND IT IS WHAT MAKES THE BRIDGE'S TRIGGER EXIST AT ALL. Plan 20 recorded that
+// *span* could not be designed because `ground_kinds()` held no waterway, so nothing
+// could be detected. A road refuses to be laid on water; what it does instead is the
+// mirror of a cutting.
+pub const WATER_MAT  = 6;             // still water — a pool, a lake, no direction
+pub const WATER_FLOW = 7;             // 7..12: flowing, one per `hex_grid` direction
+pub const WATER_DIRS = 6;
+
+// ⚠ WATER HAS A DEPTH, SO IT DEFINES A LAYER UNDER IT. A river is three things in one
+// column — the BED, the SURFACE you see, and, where a road crosses, the DECK over it —
+// and the layer stack has carried exactly that shape since `8a`. It is `A9`'s shelf and
+// `A9`'s mirror in one place: something below the ground and something above it.
+//
+// ⚠ AND THE NUMBER HAS A FLOOR THAT IS NOT TASTE. `F1` keeps occupied layers `ε` apart
+// — 8 to 10 in the worlds this tree builds — so a brook shallower than that is not
+// representable at all, whatever anyone would like. A storey is the next unit up and
+// the one this model already uses for a height a person relates to.
+pub const WATER_DEPTH = STOREY_H;
+
+pub fn is_water(mat: integer) -> boolean {
+  mat == WATER_MAT || (mat >= WATER_FLOW && mat < WATER_FLOW + WATER_DIRS)
+}
+
+// Which way it flows — a `hex_grid` direction, or −1 for still water and for
+// anything that is not water at all.
+pub fn water_dir(mat: integer) -> integer {
+  if mat < WATER_FLOW || mat >= WATER_FLOW + WATER_DIRS { return 0 - 1; }
+  mat - WATER_FLOW
+}
+
+pub fn water_of(dir: integer) -> integer {
+  if dir < 0 || dir >= WATER_DIRS { return WATER_MAT; }
+  WATER_FLOW + dir
+}
 pub const FOUNDATION   = 12;          // how far a structure may cut into the ground
 pub const ROOF_PITCH   = 4;           // height units gained per ring toward the ridge
 pub const STENCIL_R    = 2;           // hexes, the footprint of the built-in house
@@ -2749,7 +2819,14 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
         // ⚠ THE MATERIAL IS THE RUN'S, and it no longer has to be re-read: the walk
         // above admitted this cell because it carries `mat`, so asking the ground
         // again would answer *rock* at a shelf and repaint the road as hillside.
-        run_set(w, q, r, mat, want);
+        // ⚠ AND THE VERDICT IS READ. A deck over water refuses to come down inside
+        // its own clearance, so this is a write that can legitimately not happen —
+        // and a refusal thrown away here is the defect `road_clearance` exists for.
+        if run_set(w, q, r, mat, want) != hex_world::CW_OK {
+          clamped = clamped + 1;
+          if give > residual { residual = give; }
+          continue;
+        }
         moved = true;
       }
     }
@@ -3139,7 +3216,7 @@ pub fn road_cave(wld: World, q: integer, r: integer, h: integer,
 // is not under anything at all. The measure of a shelf, and what says when one has
 // stopped being one.
 pub fn shelf_head(w: World, q: integer, r: integer, mat: integer) -> integer {
-  li = sub_layer(w, q, r, mat);
+  li = off_layer(w, q, r, mat);
   if li < 0 { return 0 - 1; }
   col = hex_world::world_column(w, q, r);
   above = col_next_above(col, li);
@@ -3162,7 +3239,7 @@ pub fn shelf_head(w: World, q: integer, r: integer, mat: integer) -> integer {
 // save, while a wall stored in that cell is content in its own right (`E1e`) and is
 // nobody's to delete.
 pub fn run_unshelf(wld: World, q: integer, r: integer, mat: integer) -> integer {
-  li = sub_layer(wld, q, r, mat);
+  li = off_layer(wld, q, r, mat);
   if li < 0 { return hex_world::CW_OK; }
   c = hex_world::world_cell(wld, q, r, li);
   h = c.h_height as integer ?? 0;
@@ -3174,14 +3251,97 @@ pub fn run_unshelf(wld: World, q: integer, r: integer, mat: integer) -> integer 
   ground_set(wld, q, r, h, mat)
 }
 
+// ── AND THE MIRROR: A ROAD CARRIED OVER WHAT IT CANNOT BE LAID ON ──────────
+//
+// > *"A road needs a bridge to cross it because it cannot place the road there."*
+//
+// `A9` walked the caving half — how much ROCK stays above the road, from none to all.
+// This is the other direction: how much GROUND stays under it. And the trigger is not
+// a height, it is a REFUSAL: a road may not be laid on water, so where the strip meets
+// a waterway the road is carried over it instead. Plan 20 recorded that this half
+// could not be designed at all because `ground_kinds()` held no waterway; it does now.
+//
+// ⚠ STRUCTURALLY IT IS `A9` UPSIDE DOWN, which is what *one axis twice* means. A shelf
+// is the road on a layer BELOW the ground with rock above; a deck is the road on a
+// layer ABOVE it with the water below. Neither is new storage — the same column, the
+// same `F1`, the same `off_layer` — and a river crossed by a road is a column of
+// three: the bed, the water, and the deck.
+//
+// ⚠ THE CLEARANCE IS A STOREY AND `ε` IS ONLY ITS FLOOR. `F1` refuses a deck within ε
+// of the water whatever anyone intends; this is the number a bridge is actually built
+// to, and the difference between them is what a settle may shave off before the deck
+// is reported as squeezed.
+pub const BRIDGE_CLEAR = STOREY_H;
+
+// Carry the road over this cell at `h`, keeping whatever is under it. Returns the
+// store's verdict; the LIFT is reported through the same two counters a refused height
+// uses, because a bridge that had to come up is an offer and not a silent change.
+pub fn road_span(wld: World, q: integer, r: integer, h: integer,
+                 clamped: &integer, residual: &integer) -> integer {
+  col = hex_world::world_column(wld, q, r);
+  gi = 0 - 1;
+  for i in 0..len(col.co_ids) {
+    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+  }
+  if gi < 0 { return hex_world::CW_FOLD; }
+  under = (col.co_cells[gi] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  hh = h;
+  need = under + BRIDGE_CLEAR;
+  if hh < need {
+    clamped = clamped + 1;
+    if need - hh > residual { residual = need - hh; }
+    hh = need;
+  }
+  deck = hex_world::Hex { h_height: hh as u16? ?? 0, h_material: ROAD_MAT as u8? ?? 0 };
+  // ⚠ THE FIRST TERRAIN SLOT ABOVE THE TOP OCCUPIED ONE IS A NEIGHBOUR'S LAYER, and
+  // filling it is what keeps a bridge one layer per chunk instead of one per pier.
+  // `storey_add` measured the other way round: a single disc took a chunk from 1 layer
+  // to 34, and upward it was worse — nineteen columns, nineteen layers.
+  top_i = 0 - 1;
+  for ci in 0..len(col.co_cells) {
+    if hex_world::hex_occupied(col.co_cells[ci] ?? hex_world::Hex {}) { top_i = ci; }
+  }
+  fill = 0 - 1;
+  for cj in (top_i + 1)..len(col.co_cells) {
+    if fill < 0
+       && !hex_world::hex_occupied(col.co_cells[cj] ?? hex_world::Hex {})
+       && hex_world::world_layer_kind(wld, q, r, cj) == hex_world::KIND_TERRAIN {
+      fill = cj;
+    }
+  }
+  cells: vector<hex_world::Hex> = [];
+  ids: vector<integer> = [];
+  if fill >= 0 {
+    for k in 0..len(col.co_cells) {
+      if k == fill { cells += [deck]; } else { cells += [col.co_cells[k] ?? hex_world::Hex {}]; }
+      ids += [col.co_ids[k] ?? 0];
+    }
+  } else {
+    cells += col.co_cells;
+    ids += col.co_ids;
+    cells += [deck];
+    ids += [0];
+  }
+  hex_world::world_set_column(wld,
+    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+}
+
 // The height of a road stored UNDER the ground here, or −1 where there is none.
 //
 // ⚠ IT IS THE QUESTION `ground_h` CANNOT ANSWER, and that asymmetry is the point: at
 // a caved cell the ground IS the rock overhead, so every reader that wants the
 // surface a cart rolls on has to ask for it by name.
 pub fn caved_h(w: World, q: integer, r: integer) -> integer {
-  li = sub_layer(w, q, r, ROAD_MAT);
-  if li < 0 { return 0 - 1; }
+  li = off_layer(w, q, r, ROAD_MAT);
+  if li < 0 || li > hex_world::world_ground_layer(w, q, r) { return 0 - 1; }
+  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+}
+
+// And the mirror: the height of a road stored ABOVE the ground here — a deck carried
+// over the gap it crosses — or −1 where there is none.
+pub fn spanned_h(w: World, q: integer, r: integer) -> integer {
+  li = off_layer(w, q, r, ROAD_MAT);
+  if li < 0 || li < hex_world::world_ground_layer(w, q, r) { return 0 - 1; }
   hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
 }
 
@@ -3219,6 +3379,12 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
   for si in 0..len(sq) {
     q = sq[si] ?? 0;
     r = sr[si] ?? 0;
+    // ⚠ A ROAD IS NEVER LAID ON WATER — plan 20, the mirror. *It cannot place the road
+    // there*, so the stroke leaves the waterway exactly as it is and the post-pass
+    // below carries the road over it. ⚠ Asked of the material SAMPLED before the
+    // stroke, because a cell an earlier stroke already bridged has a deck over water
+    // and `run_unshelf` would bring that deck down onto the river.
+    if is_water(smat[si] ?? 0) { continue; }
     // ⚠ THE ROCK COMES OFF FIRST, AND THAT IS WHAT KEEPS THE RUN WHOLE. Discs
     // overlap four deep at `ROAD_HALF` 2, so a stroke meets cells an earlier one
     // already caved. Leaving them alone was tried and MEASURED
@@ -3288,11 +3454,21 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
   // `CAVE_HEAD` and is deepened by a later settle stays an open cut. Stated rather
   // than hidden, because the alternative is a rule that revisits the whole run.
   caved = 0;
+  spanned = 0;
   for ci in 0..len(sq) {
     q2 = sq[ci] ?? 0;
     r2 = sr[ci] ?? 0;
     // Only a cell this stroke actually paved, and only where it is still road: a
     // shelf is cut under a road, and the disc's rim may have been skipped above.
+    // ── the bridge, where the road could not be laid at all ────────────────
+    if is_water(smat[ci] ?? 0) {
+      // ⚠ THE STROKE'S OWN GRADE, NOT THE GROUND — the ground here is the river.
+      // `road_span` lifts it clear of the water and says by how much.
+      if road_span(wld, q2, r2, h, clamped, residual) == hex_world::CW_OK {
+        spanned = spanned + 1;
+      }
+      continue;
+    }
     if (world_ground_cell(wld, q2, r2).h_material as integer ?? 0) != ROAD_MAT { continue; }
     if !(sback[ci] ?? false) { continue; }
     nat2 = snat[ci] ?? 0;
@@ -3301,7 +3477,10 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     if !cave_at(wld, q2, r2, nat2, mat2, grade) { continue; }
     if road_cave(wld, q2, r2, grade, nat2, mat2) == hex_world::CW_OK { caved = caved + 1; }
   }
-  caved
+  // ⚠ ONE NUMBER FOR BOTH HALVES OF ONE AXIS. A stroke either cuts into what it
+  // cannot climb or is carried over what it cannot be laid on, and a caller that
+  // wants to say *the road left the ground here* wants the sum.
+  caved + spanned
 }
 
 // ── TRIGGERS AND THEIR ANCHORS (rung W8, moros#15) — invariant II ───────────
@@ -3648,6 +3827,26 @@ pub struct GroundKind {
   // Does it move RIGIDLY with the structure it belongs to (`A1`), rather than
   // taking the falloff? A floor does; ground does not.
   tr_fabric: boolean,
+  // ⚠ A THIRD BEHAVIOUR, AND IT IS NOT FABRIC WITH A DIFFERENT NAME. Fabric MOVES —
+  // rigidly, all of it together. This does not move at all: *waterways should be the
+  // most resistant to hill creation from anything else… it will normally just create
+  // chasms.* Raise a hill across a stream and the stream stays where it is while the
+  // ground around it goes up, which is what a gorge is.
+  //
+  // ⚠ Defaulted, so every row and every fallback that predates water keeps compiling
+  // and keeps meaning what it meant.
+  tr_fixed: boolean = false,
+  // ⚠ WHICH SURFACE DRAWS IT, when that is not its own name — and it exists because
+  // **a direction is not a colour**. Seven water rows are seven terrains and one
+  // picture: a river flowing east and one flowing west are drawn identically, so
+  // giving each its own surface would put six always-empty meshes in every chunk and
+  // six entries on a stride thirteen files already carry.
+  //
+  // ⚠ `hex_mesh/tests/terrain_link.loft` is what forced this to be said rather than
+  // assumed — *every terrain is drawn by exactly one surface* went red the moment the
+  // water rows landed, which is the check earning its place. The join is many-to-one
+  // now and stated as such, not loosened.
+  tr_drawn: text = "",
 }
 
 // ⚠ THE ORDER IS NOT THE INDEX. A material is named by `tr_mat`, not by its position
@@ -3675,7 +3874,144 @@ pub fn ground_kinds() -> vector<GroundKind> {
     // does where it cannot hold; masonry holds by being masonry.
     GroundKind { tr_mat: FLOOR_MAT,   tr_name: "floor",  tr_slope: SLOPE_FREE, tr_face: FACE_NONE, tr_fabric: true },
     GroundKind { tr_mat: ROOF_MAT,    tr_name: "roof",   tr_slope: SLOPE_FREE, tr_face: FACE_NONE, tr_fabric: true },
+    // ── and the water ─────────────────────────────────────────────────────
+    //
+    // ⚠ `tr_slope` OF 1 IS NOT WHAT MAKES IT RESISTANT — `tr_fixed` is. A limit says
+    // how steep a gesture may GIVE this surface; water's answer is that no gesture
+    // moves it at all, and the limit is there for the relaxation that reaches it by
+    // way of a neighbour rather than for the raise.
+    //
+    // ⚠ AND `FACE_NONE`, WHICH IS THE WATERFALL'S ROW. Water standing over water is
+    // where it *breaks into a waterfall*, and a waterfall is water — drawing it as
+    // rock would put a cliff in the middle of a river. The chasm's walls belong to
+    // the GROUND beside it, and `face_at` asks the higher side, which is never the
+    // water.
+    GroundKind { tr_mat: WATER_MAT,     tr_name: "water",    tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW,     tr_name: "water-e",  tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW + 1, tr_name: "water-se", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW + 2, tr_name: "water-sw", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW + 3, tr_name: "water-w",  tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW + 4, tr_name: "water-nw", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
+    GroundKind { tr_mat: WATER_FLOW + 5, tr_name: "water-ne", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
   ]
+}
+
+// ── WATER NEVER FLOWS UPWARDS ───────────────────────────────────────────────
+//
+// How far the water at this cell DROPS to the next cell along its own flow. A
+// negative answer is water running uphill, which is the one thing it never does; a
+// large one is a waterfall. `WATER_STILL` is *this cell is not flowing water*, which
+// is a different answer from *it is flat here* and has to be, or a pool would read as
+// a river that had stopped.
+//
+// ⚠ IT IS DERIVED, NEVER STORED — `A5`'s rule one terrain over. The heights and the
+// material already say which way the water goes and how far it falls, so a stored
+// answer would be a second one that can disagree. Move the ground and the fall
+// follows.
+pub const WATER_STILL = 0 - 1000000;
+
+pub fn water_falls(w: World, q: integer, r: integer) -> integer {
+  d = water_dir(world_ground_cell(w, q, r).h_material as integer ?? 0);
+  if d < 0 { return WATER_STILL; }
+  (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+  // ⚠ THE NEXT CELL MUST BE WATER TOO, or the run has ended and there is nothing to
+  // fall to. A river's last cell flows into whatever is there; that is the mouth, not
+  // a violation.
+  if !is_water(world_ground_cell(w, nq, nr).h_material as integer ?? 0) { return WATER_STILL; }
+  ground_h(w, q, r) - ground_h(w, nq, nr)
+}
+
+// The bed under the water at this cell, or −1 where there is none — the mirror of
+// `caved_h`, one terrain over.
+pub fn water_bed(w: World, q: integer, r: integer) -> integer {
+  gl = hex_world::world_ground_layer(w, q, r);
+  if gl <= 0 { return 0 - 1; }
+  if !is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { return 0 - 1; }
+  for j in 0..gl {
+    i = gl - 1 - j;
+    c = hex_world::world_cell(w, q, r, i);
+    if hex_world::hex_occupied(c) { return c.h_height as integer ?? 0; }
+  }
+  0 - 1
+}
+
+// Put water at a cell: the surface on the ground layer, the BED on a layer under it.
+//
+// ⚠ THE BED IS WHAT WAS ALREADY THERE, dropped by `WATER_DEPTH` and keeping its own
+// material — a river runs over the ground it cut, not over a new substance. An
+// unwritten cell takes the ground's default, which is the rule `T1` already makes for
+// every other writer.
+//
+// ⚠ ONE LAYER PER CHUNK, NOT ONE PER CELL — `storey_add`'s scar, and `road_cave` pays
+// the same debt: an empty terrain slot below the ground IS the layer a neighbour
+// already made, so it is filled rather than doubled.
+pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
+                 why: &text) -> integer {
+  gc = world_ground_cell(wld, q, r);
+  bm = gc.h_material as integer ?? 0;
+  if bm == 0 || is_water(bm) { bm = SURFACE_MAT; }
+  bed = h - WATER_DEPTH;
+  if bed < W_RESERVE {
+    why = "water at {h} leaves no room for a bed {WATER_DEPTH} deep above the reserve";
+    return hex_world::CW_RESERVE;
+  }
+  col = hex_world::world_column(wld, q, r);
+  gi = 0 - 1;
+  for i in 0..len(col.co_ids) {
+    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+  }
+  top = hex_world::Hex { h_height: h as u16? ?? 0,
+                         h_material: water_of(dir) as u8? ?? 0,
+                         h_wall_n: gc.h_wall_n, h_wall_ne: gc.h_wall_ne,
+                         h_wall_se: gc.h_wall_se };
+  low = hex_world::Hex { h_height: bed as u16? ?? 0, h_material: bm as u8? ?? 0 };
+  if gi < 0 {
+    // nothing here at all: the store names both layers it creates
+    return hex_world::world_set_column(wld,
+             hex_world::Column { co_q: q, co_r: r, co_cells: [low, top],
+                                 co_ids: [0, 0] }).cw_code;
+  }
+  // ⚠ AN OCCUPIED BED IS MOVED, NOT DOUBLED, and the first version only looked for an
+  // EMPTY slot. Re-cutting a river deeper then inserted a SECOND bed under the first —
+  // measured, the column came back `180, 140, 152`, which is not height order, and
+  // `F1` refused the whole write with code 1 while the test read a waterfall of 0.
+  // ⚠ AND THE FIXTURE SWALLOWED THE VERDICT, which is why it looked like a rule bug
+  // rather than a write that never happened.
+  fill = 0 - 1;
+  for j in 0..gi {
+    k = gi - 1 - j;
+    if hex_world::world_layer_kind(wld, q, r, k) == hex_world::KIND_TERRAIN {
+      fill = k;
+      break;
+    }
+  }
+  cells: vector<hex_world::Hex> = [];
+  ids: vector<integer> = [];
+  for i2 in 0..len(col.co_cells) {
+    if i2 == gi { cells += [top]; }
+    else if i2 == fill { cells += [low]; }
+    else { cells += [col.co_cells[i2] ?? hex_world::Hex {}]; }
+    ids += [col.co_ids[i2] ?? 0];
+  }
+  if fill < 0 {
+    ncells: vector<hex_world::Hex> = [];
+    nids: vector<integer> = [];
+    for i3 in 0..len(cells) {
+      if i3 == gi { ncells += [low]; nids += [0]; }
+      ncells += [cells[i3] ?? hex_world::Hex {}];
+      nids += [ids[i3] ?? 0];
+    }
+    return hex_world::world_set_column(wld,
+             hex_world::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
+  }
+  hex_world::world_set_column(wld,
+    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+}
+
+// Does the water here run UPHILL — the one state a waterway may never be left in?
+pub fn water_uphill(w: World, q: integer, r: integer) -> boolean {
+  f = water_falls(w, q, r);
+  f != WATER_STILL && f < 0
 }
 
 // The row an unrecognised material falls back to, wearing that material's index.
@@ -4244,6 +4580,16 @@ fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
         // a floor cell is still fabric after it has moved — testing the predicate
         // again would give it the falloff on top of its rigid delta.
         if taken.s_by[age_like_key(q, r)] != null { continue; }
+        // ⚠ WATER DOES NOT MOVE, AND THE GROUND AROUND IT DOES — plan 20, the mirror.
+        // *Waterways should be the most resistant to hill creation from anything
+        // else… it will normally just create chasms.* This is that sentence: a raise
+        // that meets a stream leaves the stream where it is and lifts the banks, and
+        // what is left behind is a gorge. ⚠ It is asked of the KIND and not of a
+        // material list, so a world whose palette names its own water gets the same
+        // answer — and `tr_fixed` is a third behaviour beside fabric rather than a
+        // second name for it: fabric MOVES, rigidly; this does not move at all.
+        if ground_kind_at(w, q, r,
+             world_ground_cell(w, q, r).h_material as integer ?? 0).tr_fixed { continue; }
         delta = brush_delta(amp, d, rad);
         // ⚠ A LEVEL WRITES EVEN WHERE THE DELTA IS ZERO, AND A RAISE MUST NOT.
         // `delta != 0` is the right guard for a hill: a stroke that asks a cell for

@@ -93,7 +93,7 @@ fn test_a_shelf_is_the_road_below_and_the_hillside_above() {
   // ⚠ AND THE RENDERER'S OWN TWO QUESTIONS, ASKED HERE. `col_has_below` is what
   // gives the ground an underside — without it the rock over the road is a lid with
   // no inside — and `col_underground` is what gives the shelf its walls.
-  li = sub_layer(w, 0, cut, ROAD_MAT);
+  li = off_layer(w, 0, cut, ROAD_MAT);
   assert(col_has_below(col, li + 1),
          "nothing reads as being under the ground here, so the overhang gets no soffit");
   assert(col_underground(col, li),
@@ -200,9 +200,9 @@ fn test_feet_on_a_shelf_find_the_road_and_not_the_rock() {
       assert(sf.sf_units == rh,
              "standing on the shelf at ({q},{r}) the surface answered {sf.sf_units}, "
              + "not the road at {rh} — the walker is inside the rock");
-      assert(sf.sf_layer == sub_layer(w, q, r, ROAD_MAT),
+      assert(sf.sf_layer == off_layer(w, q, r, ROAD_MAT),
              "the surface named layer {sf.sf_layer} where the road is on "
-             + "{sub_layer(w, q, r, ROAD_MAT)}");
+             + "{off_layer(w, q, r, ROAD_MAT)}");
     }
   }
   assert(seen > 0, "no shelf was walked on");

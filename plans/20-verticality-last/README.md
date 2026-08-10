@@ -5,11 +5,13 @@
 
 ## Status
 
-`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8` and **`A9`** are
-**shipped**, and so is the road gesture that makes them reachable. `A2b`, `A2c`'s
-**across** half and `A3` are designed and not built. What is left of *it spans or it
-caves* is the **mirror**: `A9` walked the caving half from an open cut to a gallery, and
-the spanning half — embankment → viaduct → bridge — is still only `A8`'s shallow end.
+`A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8`, **`A9`** and
+**`A10`** are **shipped**, and so is the road gesture that makes them reachable.
+`A2b`, `A2c`'s **across** half and `A3` are designed and not built.
+
+*It spans or it caves* is now built in both directions. `A9` walked the caving half
+from an open cut to a gallery; `A10` is the mirror, and the author settled what the
+plan could not: **the trigger is water, and it is a refusal rather than a height.**
 
 ⚠ **AND THE AUDIT `A4` FORCED IS THE LOUDEST THING IN THIS PLAN.** Three of its shipped
 rules had no consumer at all — a rule that reaches no gesture is a rule the editor does
@@ -78,6 +80,7 @@ to the built-in numbering.
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
 | **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | ✅ — and the parameter turned out to be the TERRAIN, not a dial; see below and [TERRAIN_EDITS §T9](../../doc/claude/TERRAIN_EDITS.md) |
+| **`A10`** — water, and the bridge that crosses it | H | a road walked across a waterway paves none of it and comes out carried over it: bed · water · deck, clear by `BRIDGE_CLEAR` | ✅ the rule, 11 tests. ⚠ **Water is not DRAWN and no gesture authors it** — see below and [TERRAIN_EDITS §T10](../../doc/claude/TERRAIN_EDITS.md) |
 
 ## Invariant gate — for the phases still open
 
@@ -172,6 +175,50 @@ before any of them settled anything. The instrument that finally did is in
 `tools/gates/world/cave.mjs`, and it had to be built twice: counting rock *inside* the
 mouth cannot see a sealed one, because a face is one quad and its six vertices sit at its
 corners. **A count inside a band cannot see a quad that spans it.**
+
+### ✅ `A10` — the mirror, and the author answered the question the plan could not
+
+> *"Waterways should be the most resistant to hill creation from anything else, it can
+> break into a waterfall but will normally just create chasms. So a road needs a bridge
+> to cross it because it cannot place the road there. And the water will never flow
+> upwards."* … *"even on this scale we have to model the direction of flow probably as
+> separate ground materials."* … *"water has a depth so it should define a layer under
+> it."*
+
+**The rule lives in [TERRAIN_EDITS §T10](../../doc/claude/TERRAIN_EDITS.md).** What
+belongs here is what the phase turned up.
+
+⚠ **THE TRIGGER IS A REFUSAL, NOT A HEIGHT, AND THAT IS THE DESIGN CHANGING.** This file
+had the span as *how much ground stays under the road, from all to none* — an
+embankment, then a viaduct, then a bridge, keyed on how far the road stands proud. The
+author's answer is simpler and stronger: **a road cannot be placed on water**, so the
+crossing is not a threshold anybody has to choose. The height-keyed viaduct is still
+available and is now a second, smaller question.
+
+⚠ **AND IT UNBLOCKS WHAT THIS FILE SAID WAS BLOCKED.** *"There is no water yet…so the
+bridge's trigger does not exist to be detected"* — it does now, and it took seven rows
+in `ground_kinds()` rather than a mechanism.
+
+⚠ **THE FALL-LINE CANYON IS NOT ANSWERED BY THE SPAN, AND THIS FILE CLAIMED IT WAS.**
+Measured (`probe/house/span.loft`): a road walked down a 6-per-hex ramp comes out **cut
+by 120 units and proud by 1**. `slope_settle` takes the LOWER envelope, so a descent
+digs rather than stands up — and spanning is about a road standing above the ground
+while the canyon is a road cut below it. They are not the same defect. What would
+answer it is a settle that holds the grade at the author's own cell and lets both
+directions fall away from it, which is a change to `A7` and is now the open question.
+
+⚠ **AND THE CONTOUR HALF *IS* SYMMETRIC, WHICH IS WHY THE MIRROR IS REAL.** The same
+strip that gives `A9` its shelves on the uphill side gives fills on the downhill one —
+`-12 -6 0 6 12` at 6 per hex, `-48 -24 0 24 48` at 24 — so a height-keyed viaduct has
+something to trigger on whenever it is wanted.
+
+### ⚠ What `A10` still owes
+
+| | |
+|---|---|
+| **water is not drawn** | no row in `hex_mesh::surfaces()`. ⚠ The stride `SURFACES = 10` is carried by **thirteen** files and every decoder reads it by modulo — the change that broke three decoders silently when the roof made it five |
+| **no gesture authors water** | `water_set` is the library's writer and nothing on the wire calls it, so a river is a fixture. The same gap as *no gesture can author a `FITS`* |
+| **the bridge has no picture** | and its acceptance is a cold-recognition test, exactly as `A9`'s was |
 
 ### ⚠ What `A4` measured, and what it turned out to be
 
@@ -315,6 +362,13 @@ never were.
    drawn as rock is an overburden that stands as a roof. ⚠ The plan-21 reading is still
    available and is now a **row**, not a mechanism: give a region's stone its own `tr_face` and
    *how a road crosses a cliff* becomes a fact about where in the world you are, for free.
+9. **Does the settle hold the grade, or take the lower envelope?** ⚠ **NEW, and it is
+   what `A10` measured rather than what it built.** `slope_settle` only ever lowers, so a
+   road walked down a 6-per-hex ramp is cut 120 units at its top and stands proud by 1 —
+   it digs a canyon instead of standing up and spanning. Both envelopes are legal
+   profiles; a road builder holds the grade under their own feet and lets the ground fall
+   away from it in both directions. That is a change to `A7`'s rule, and the two-sided
+   relaxation is the shape it would take.
 8. **Should the pad extend past the building?** A real terrace has an apron; today the pad is
    exactly the fabric, so the ground steps at the wall. ⚠ **MEASURED NOW** — the step is 7 to 22
    units of earth standing OVER the floor as the ramp goes 1 to 4 per hex, and it is one-sided:

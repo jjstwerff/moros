@@ -17,14 +17,41 @@
 use hex_mesh;
 use hex_editor;
 
+// ⚠ THE JOIN IS MANY-TO-ONE NOW, AND IT IS STATED RATHER THAN LOOSENED — plan 20
+// `A10`. Water carries its flow DIRECTION as its material, which is seven terrains and
+// one picture: a river flowing east and one flowing west are drawn identically. A
+// surface each would put six always-empty meshes in every chunk and six entries on a
+// stride thirteen files carry. So a terrain may name the surface that draws it
+// (`tr_drawn`) when that is not its own name, and what stays exact is that EVERY
+// terrain has exactly one.
+fn drawn_name(t: hex_editor::GroundKind) -> text {
+  if t.tr_drawn == "" { return t.tr_name; }
+  t.tr_drawn
+}
+
 fn test_every_terrain_is_drawn_by_exactly_one_surface() {
   for t in hex_editor::ground_kinds() {
+    i = surface_for_mat(t.tr_mat);
+    assert(i >= 0, "material {t.tr_mat} ('{t.tr_name}') is drawn by no surface");
     hits = 0;
-    for i in 0..len(surfaces()) {
-      if surface_at(i).sf_mat == t.tr_mat { hits = hits + 1; }
+    for j in 0..len(surfaces()) {
+      if surface_at(j).sf_name == drawn_name(t) { hits = hits + 1; }
     }
     assert(hits == 1,
-           "material {t.tr_mat} ('{t.tr_name}') is drawn by {hits} surfaces, not 1");
+           "material {t.tr_mat} ('{t.tr_name}') is drawn by {hits} surfaces named "
+         + "'{drawn_name(t)}', not 1");
+  }
+}
+
+// ⚠ AND THE FAMILY IS EXACTLY THE ONE THAT ASKED FOR IT. A `tr_drawn` on any other row
+// would be a second name for one thing, which is the drift this file exists to stop.
+fn test_only_water_shares_a_surface() {
+  for t in hex_editor::ground_kinds() {
+    if t.tr_drawn == "" { continue; }
+    assert(hex_editor::is_water(t.tr_mat),
+           "'{t.tr_name}' is drawn as '{t.tr_drawn}' and is not water");
+    assert(t.tr_drawn == "water",
+           "'{t.tr_name}' is drawn as '{t.tr_drawn}', which is not the water surface");
   }
 }
 
@@ -32,8 +59,10 @@ fn test_the_join_round_trips_both_ways() {
   for t in hex_editor::ground_kinds() {
     i = surface_for_mat(t.tr_mat);
     assert(i >= 0, "'{t.tr_name}' ({t.tr_mat}) has no surface");
-    assert(surface_at(i).sf_mat == t.tr_mat,
-           "material {t.tr_mat} -> surface {i} -> material {surface_at(i).sf_mat}");
+    if t.tr_drawn == "" {
+      assert(surface_at(i).sf_mat == t.tr_mat,
+             "material {t.tr_mat} -> surface {i} -> material {surface_at(i).sf_mat}");
+    }
   }
 }
 
@@ -43,8 +72,8 @@ fn test_one_concept_has_one_name() {
   // it `grass`; a reader of either would have been sure they were separate things.
   for t in hex_editor::ground_kinds() {
     i = surface_for_mat(t.tr_mat);
-    assert(surface_at(i).sf_name == t.tr_name,
-           "material {t.tr_mat} is '{t.tr_name}' on one axis and "
+    assert(surface_at(i).sf_name == drawn_name(t),
+           "material {t.tr_mat} is '{drawn_name(t)}' on one axis and "
          + "'{surface_at(i).sf_name}' on the other");
   }
 }

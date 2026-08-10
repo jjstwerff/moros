@@ -73,7 +73,10 @@ check(g.cats.length === 1, `the catalogue is sent once on connect (${g.cats.leng
 const cat = (g.cats[0] ?? 'N:').slice(2).split(';').filter(Boolean)
     .map((r) => { const [kind, name, avail, why] = r.split('|'); return { kind, name, avail, why }; });
 const mats = cat.filter((r) => r.kind === 'material');
-check(mats.length === 10, `ten materials, the mesher's own surfaces (${mats.length})`);
+// ⚠ TEN → ELEVEN FOR WATER (plan 20 `A10`). The count is the claim and it moves with
+// the mesher's list on purpose: this gate exists so that the catalogue cannot name a
+// material the renderer cannot draw or miss one it can.
+check(mats.length === 11, `eleven materials, the mesher's own surfaces (${mats.length})`);
 for (const want of ['grass', 'road', 'field', 'tree', 'roof', 'wall', 'floor', 'frame', 'soffit',
                     'rock']) {
   check(mats.some((r) => r.name === want), `the catalogue lists '${want}'`);
@@ -113,11 +116,17 @@ check(cat.length === mats.length + parts.length, 'and no entry is in neither fam
 // point at a brush the author does have, which is why it reads `too steep` and
 // not `derived`.
 const blocked = mats.filter((r) => r.avail === '0');
-check(blocked.length === 4, `four derived surfaces are unavailable (${blocked.length})`);
+// ⚠ FIVE SINCE `A10`, AND WATER'S REASON IS OF A FOURTH KIND. The other four say
+// *something else made this*; water says **nothing makes it yet** — the renderer can
+// draw a river and no message on the wire authors one. An entry hidden for that would
+// be the invisible-rule failure this tree keeps finding.
+check(blocked.length === 5, `five surfaces are unavailable (${blocked.length})`);
 check(blocked.every((r) => (r.why ?? '') !== ''),
       `every unavailable entry carries a reason (${blocked.map((r) => r.name + '=' + r.why)})`);
 check(blocked.some((r) => r.name === 'rock' && r.why === 'too steep'),
       `rock says how to get one, not merely that it is derived`);
+check(blocked.some((r) => r.name === 'water' && r.why === 'no gesture'),
+      `water says WHY it cannot be painted, and it is not because it is derived`);
 check(mats.filter((r) => r.avail === '1').length === 6,
       'the other six are paintable');
 

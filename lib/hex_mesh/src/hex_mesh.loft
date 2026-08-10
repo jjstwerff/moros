@@ -156,8 +156,14 @@ fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
       // heightfield and belongs here. `tr_fabric` is the same line `A1` already draws
       // between what bends and what moves rigidly.
       sub = 0 - 1;
+      if want == hex_editor::WATER_MAT
+         && hex_editor::is_water(c.h_material as integer ?? 0) {
+        gh += [c.h_height as integer ?? 0];
+        gl += [hex_editor::ground_kind_at(wld, hq, hr, want).tr_face];
+        continue;
+      }
       if dug && want != 0 && (c.h_material as integer ?? 0) != want {
-        sub = hex_editor::sub_layer(wld, hq, hr, want);
+        sub = hex_editor::off_layer(wld, hq, hr, want);
         if sub >= 0 && hex_editor::ground_kind_at(wld, hq, hr, want).tr_fabric {
           sub = 0 - 1;
         }
@@ -535,9 +541,13 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
       // ⚠ AND A CELL CARRIES ITS SURFACE WHEREVER THE COLUMN KEEPS IT. The ground at a
       // caved cell is the rock overhead; the road is a layer down, and without this
       // the pass that draws roads skips exactly the cells `A9` exists to make.
+      // ⚠ THE WATER FAMILY IS ONE PASS — plan 20 `A10`. Seven materials, one picture,
+      // asked through the join rather than by a list this file would have to keep.
+      if want_mat == hex_editor::WATER_MAT
+         && hex_editor::is_water(mat as integer ?? 0) { mat = want_mat as u8? ?? 0; }
       if can_open && (mat as integer ?? 0) != want_mat
          && !hex_editor::ground_kind_at(wld, cq, cr, want_mat).tr_fabric
-         && hex_editor::sub_layer(wld, cq, cr, want_mat) >= 0 {
+         && hex_editor::off_layer(wld, cq, cr, want_mat) >= 0 {
         mat = want_mat as u8? ?? 0;
       }
       // ⚠ AN UNWRITTEN CELL IS ABSENCE AND COUNTS AS GROUND — that is what makes an

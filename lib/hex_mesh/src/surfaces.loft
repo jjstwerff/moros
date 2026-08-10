@@ -115,6 +115,25 @@ pub fn surfaces() -> vector<Surface> {
     // in shade, not darker. ⚠ A gate still cannot ask a histogram whether a face
     // appeared; it counts the mesh's triangles, which is exact.
     Surface { sf_name: "rock",   sf_r: 0.68, sf_g: 0.65, sf_b: 0.59, sf_bucket: "masonry" },
+    // ── AND THE WATER, WHICH IS SEVEN TERRAINS AND ONE PICTURE ──────────────
+    //
+    // ⚠ IT IS APPENDED, NOT INSERTED, and that is not tidiness: the index of a
+    // surface IS its id on the wire (`chunk * SURFACES + base + k`), so putting it
+    // anywhere but the end would renumber every decoder in the tree at once. The
+    // stride grows by one and nothing already numbered moves.
+    //
+    // ⚠ AND IT CLAIMS THE WHOLE FAMILY THROUGH `surface_for_mat`, because a flow
+    // DIRECTION is not a colour. `sf_mat` names the still row and `is_water` is what
+    // the join asks, so six materials that differ only in which way the river runs
+    // share one mesh.
+    //
+    // ⚠ THE BLUE HAS TO SEPARATE FROM THE SKY IN CHROMATICITY, which is the one
+    // constraint a picture gate puts on a new colour — `sky` is `0.48/0.55/0.64`, a
+    // pale desaturated blue, so water goes DARKER and more saturated. Water seen from
+    // above is mostly reflected sky, and a river the colour of the sky is a river no
+    // histogram can find.
+    Surface { sf_name: "water",  sf_r: 0.16, sf_g: 0.28, sf_b: 0.45, sf_bucket: "water",
+              sf_mat: hex_editor::WATER_MAT },
   ]
 }
 
@@ -156,8 +175,16 @@ pub fn surface_at(i: integer) -> Surface {
 pub fn surface_for_mat(mat: integer) -> integer {
   if mat == 0 { return 0 - 1; }
   ss = surfaces();
+  // ⚠ THE WATER FAMILY IS MANY-TO-ONE, and it is asked here so that every reader of
+  // the join gets it — the mesher, the gates and `terrain_link` alike. A river's
+  // direction is a fact about the terrain and not about how it looks.
   for i in 0..len(ss) {
     if surface_at(i).sf_mat == mat { return i; }
+  }
+  if hex_editor::is_water(mat) {
+    for j in 0..len(ss) {
+      if surface_at(j).sf_mat == hex_editor::WATER_MAT { return j; }
+    }
   }
   0 - 1
 }

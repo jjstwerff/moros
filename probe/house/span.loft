@@ -1,0 +1,117 @@
+// CAN A ROAD SPAN AT ALL? — plan 20, `A9`'s MIRROR, and the probe that could kill it.
+//
+// *It spans or it caves.* `A9` walked the caving half — how much ROCK stays above the
+// road, from none to all. This is the other direction: how much GROUND stays under it,
+// from all to none. An embankment is the shallow end (`A8`'s spoil, already built) and
+// a bridge is the deep one, and neither is a new storage question: a road with rock
+// above it and a road with air below it are both a column whose road sits on a layer
+// of its own.
+//
+// ⚠ THE PREDICTION, WRITTEN BEFORE THE RUN, so the probe can refute it:
+//
+//   1. Along a contour the strip is half cut and half FILL — `A9`'s own measurement
+//      read from the other side — so the downhill edge stands proud by about
+//      `ROAD_HALF * grade`: 6 at a 3-per-hex flank, 12 at 6, 48 at 24.
+//   2. Walked DOWN a ramp the road is held up by its own limit and then LIFTED by
+//      `A8`'s balance, so its lower end stands proud of the natural ground — this is
+//      the 20-metre canyon read from the other end, and the proud figure should grow
+//      with the ramp.
+//   3. On flat ground nothing stands proud at all.
+//
+// If (1) and (2) both come back small, there is nothing for a span to trigger on and
+// the mirror is decorative — which is exactly what `road_h`'s frozen grade did to `A7`
+// and `A8`, and what a trench in flat ground nearly did to `A9`.
+use hex_editor;
+use hex_world;
+const U    = 0.25;
+const G    = 400;                // a datum high enough that a deep cut cannot reach ρ
+const EPS  = 10;                 // the editor's own ε
+const HEAD = hex_editor::STOREY_H;
+
+fn ramp(k: integer) -> World {
+  w = world_new(U, 0, EPS, 4).wn_world;
+  for q in (0 - 34)..35 {
+    for r in (0 - 34)..35 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
+  }
+  w
+}
+
+// A ramp that falls along `q` instead — the fall line the road is WALKED down.
+fn ramp_q(k: integer) -> World {
+  w = world_new(U, 0, EPS, 4).wn_world;
+  for q in (0 - 34)..35 {
+    for r in (0 - 34)..35 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
+  }
+  w
+}
+
+// ── ALONG A CONTOUR: the strip's downhill half is a fill ────────────────────
+fn contour(k: integer) {
+  w = ramp(k);
+  nat: vector<integer> = [];
+  for i in 0..(2 * hex_editor::ROAD_HALF + 1) {
+    nat += [ground_h(w, 0, i - hex_editor::ROAD_HALF)];
+  }
+  cl = 0;
+  rs = 0;
+  for q in (0 - 6)..7 {
+    ahead = ground_h(w, q + hex_editor::ROAD_HALF + 1, 0);
+    road_lay(w, q, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+  }
+  out = "";
+  proud = 0;
+  for i2 in 0..(2 * hex_editor::ROAD_HALF + 1) {
+    r = i2 - hex_editor::ROAD_HALF;
+    // ⚠ `run_h`, NOT `ground_h` — a caved cell's ground is the rock over it, so the
+    // ground reader answers about the mountain and not about the road. `A9`'s own
+    // instrument lesson, and this probe would have inherited it.
+    rh = run_h(w, 0, r, ROAD_MAT);
+    over = rh - (nat[i2] ?? 0);
+    if rh < 0 { over = 0; }
+    out += "{over} ";
+    if over > proud { proud = over; }
+  }
+  spans = "no";
+  if proud >= HEAD { spans = "YES"; }
+  println("  grade {k}/hex  road minus natural, uphill→downhill: {out}");
+  println("                 stands proud by {proud}   ε {EPS}  a storey {HEAD}  ->  can be a deck: {spans}");
+}
+
+// ── DOWN THE FALL LINE: the limit holds the road up and the balance lifts it ─
+fn fallline(k: integer) {
+  w = ramp_q(k);
+  n = 26;
+  nat: vector<integer> = [];
+  for s in 0..n { nat += [ground_h(w, s, 0)]; }
+  cl = 0;
+  rs = 0;
+  for i in 0..n {
+    ahead = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
+    road_lay(w, i, 0, ahead, hex_editor::ROAD_HALF, (ahead as float) * U, cl, rs);
+  }
+  worst_cut = 0;
+  worst_proud = 0;
+  prof = "";
+  for j in 0..n {
+    rh = run_h(w, j, 0, ROAD_MAT);
+    d = rh - (nat[j] ?? 0);
+    if rh < 0 { d = 0; }
+    if j % 4 == 0 { prof += "{d} "; }
+    if d > worst_proud { worst_proud = d; }
+    if 0 - d > worst_cut { worst_cut = 0 - d; }
+  }
+  println("  grade {k}/hex  road minus natural every 4th cell: {prof}");
+  println("                 deepest cut {worst_cut}, stands proud by up to {worst_proud}");
+}
+
+fn main() {
+  println("A. ALONG A CONTOUR — the fill side of `A9`'s own strip");
+  for k in [0, 3, 6, 12, 24] { contour(k); }
+  println("");
+  println("B. WALKED DOWN THE FALL LINE — the limit holds it up, the balance lifts it");
+  for k2 in [0, 1, 3, 6] { fallline(k2); }
+  println("");
+  println("C. WHAT THE STORE WOULD HAVE TO HOLD");
+  println("   a spanned column is ground at the natural height with the road {EPS}+ above it —");
+  println("   a DECK, which is what every non-ground layer above the ground already is.");
+}

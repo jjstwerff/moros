@@ -12,7 +12,12 @@ fn test_the_stride_is_the_list_length() {
          "the stride is {surface_count()} and the list holds {len(surfaces())}");
   // The number the wire is currently built on. ⚠ If a surface is added this
   // fails, and it SHOULD: the id space renumbers and every decoder moves.
-  assert(surface_count() == 10, "surfaces: {surface_count()}, want 10");
+  // ⚠ 10 → 11 FOR WATER (plan 20 `A10`), and this row is what made the sweep
+  // complete rather than remembered: **thirteen** files carry the stride and every
+  // one of them reads the id space by modulo. Water is APPENDED, so nothing already
+  // numbered moved — but the stride itself is in each of those thirteen, and this
+  // assertion is the only thing that would have said so.
+  assert(surface_count() == 11, "surfaces: {surface_count()}, want 11");
 }
 
 fn test_every_surface_is_named_once() {

@@ -678,7 +678,7 @@ const MESH_FIGURE_MAX = 15;      // 0-15 reserved: the figure and anything fixed
 // fix, which landed 2026-08-03: a file-scope constant is an inlined expression
 // **re-evaluated at every reference**, so `const SURFACES = surface_count()` would
 // walk the surface list once per mesh id computed. A test costs one run.
-const SURFACES = 10;             // ⚠ the frame took the eighth, the soffit the
+const SURFACES = 11;             // ⚠ the frame took the eighth, the soffit the
                                  // ninth and the rock face the tenth: an id-space
                                  // stride, so a chunk's meshes stay contiguous and
                                  // nothing renumbers when a surface is added.
@@ -3556,7 +3556,13 @@ fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
   // part's unwritten cells are OUTSIDE it, not ground at zero — without this every
   // part would come back ringed in cliff.
   cma_x = hex_mesh::chunk_mesh_faces(cx, cz, wld, bounded);
-  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x]
+  // ⚠ THE ELEVENTH, AND IT IS APPENDED — plan 20 `A10`. A surface's index IS its id on
+  // the wire, so water goes on the end and nothing already numbered moves. ⚠ And the
+  // pass asks for the STILL material while `chunk_mesh_mat` accepts the whole family:
+  // a flow direction is a terrain fact and not a colour, so six rivers and a pool are
+  // one mesh.
+  cma_wt = hex_mesh::chunk_mesh_mat(cx, cz, wld, hex_editor::WATER_MAT);
+  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x, cma_wt]
 }
 
 // One surface's mesh out of that set, by index. ⚠ The fallback is an EMPTY mesh
@@ -4081,11 +4087,21 @@ fn mode_name(m: integer) -> text {
 // belongs wherever there is room for one — a status line or a tooltip, neither
 // of which exists yet. Measured, not guessed: a sentence in a 212px row is not a
 // design that needs shortening, it is a design that does not fit.
+// ⚠ AND WATER IS THE FIFTH, WITH A REASON OF A FOURTH KIND — plan 20 `A10`. The
+// other four say *something else made this*; water says **nothing makes it yet**.
+// `water_set` is the library's writer and no message on the wire calls it, so the
+// renderer can draw a river and an author cannot put one anywhere. Hiding it would be
+// worse than saying so: the catalogue's rule is that an unavailable entry is shown
+// greyed WITH its reason, and *no gesture* is exactly the fact a reader needs.
+//
+// ⚠ It is the shape this tree keeps finding — a rule built, tested and reachable by
+// nobody — and putting it in the catalogue is what stops it being invisible.
 fn surface_block(name: text) -> text {
   if name == "soffit" { return "derived"; }
   if name == "frame"  { return "derived"; }
   if name == "tree"   { return "scattered"; }
   if name == "rock"   { return "too steep"; }
+  if name == "water"  { return "no gesture"; }
   ""
 }
 

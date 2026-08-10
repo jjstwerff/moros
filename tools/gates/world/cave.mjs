@@ -21,7 +21,7 @@
 // ⚠ AND THE CONTROL IS A ROAD ON FLAT GROUND, run first. An open cut in level ground
 // has nothing above to hold a lid up, so both instruments must read zero there — and
 // without that row a build that roofed every road would pass this gate.
-const SURFACES = 10;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock
+const SURFACES = 11;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock, water
 
 import { connect, send, ask, until, report } from '../lib.mjs';
 

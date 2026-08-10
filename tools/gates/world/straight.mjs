@@ -19,7 +19,7 @@
 
 import { connect, send, ask, until, report } from '../lib.mjs';
 
-const SURFACES = 10;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock
+const SURFACES = 11;   // ground, road, field, vegetation, roof, wall, floor, frame, soffit, rock, water
                       // — keep equal to `SURFACES` in `src/editor_server.loft`
 
 const g = await connect({ camera: true });

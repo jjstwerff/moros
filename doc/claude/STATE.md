@@ -22,24 +22,55 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20 `A9` has landed; the MIRROR is what is left
+## ⏭ PICK UP HERE — plan 20 is built in BOTH directions; water needs a gesture
 
-**2026-08-10. `A9` is built, wired, gated and photographed.** A road cut into a cliff
-leaves the rock above it standing: the column holds the road on a lower layer with
-terrain over it, `world_surface` puts the feet on the road, and a walk along a
-mountain's flank comes out with **13 shelves** and a road that is one surface through
-them. The rule is [TERRAIN_EDITS §T9](TERRAIN_EDITS.md); the per-step record is
+**2026-08-10. `A9` and its mirror `A10` are both in.** *It spans or it caves* is one
+axis twice and both halves are built: a road cut into a cliff keeps the rock above it
+(`A9`), and a road that meets a waterway is carried over it (`A10`). The rules are
+[TERRAIN_EDITS §T9 and §T10](TERRAIN_EDITS.md); the per-step record is
 [plan 20](../../plans/20-verticality-last/README.md).
 
-### The next piece of work
+⚠ **THE AUTHOR SETTLED THE THING THIS FILE SAID WAS BLOCKED.** *"There is no water yet…
+so the bridge's trigger does not exist to be detected."* It does now, and the trigger is
+**a refusal rather than a height**: a road cannot be placed on water, so the crossing is
+not a threshold anybody has to choose. Water carries its flow DIRECTION as its material
+(seven rows), has a DEPTH so it defines a layer under it, and is the most resistant
+thing there is to hill creation — a raise lifts the banks and leaves the river, which is
+what a chasm is.
 
-**The mirror.** *It spans or it caves* is one axis twice, and `A9` walked the caving
-half from an open cut to a gallery. The other direction — how much ground stays UNDER
-the road, from all to none — is `A8`'s spoil fill at the shallow end and a bridge at
-the deep one, and it is **not** a new storage question: a road with rock above it and a
-road with air below it are both a column whose road sits on a layer of its own. ⚠ There
-is still no water (`ground_kinds()` holds grass, road, field, floor and roof), so the
-bridge's trigger does not exist to be detected.
+### The next piece of work — and `A10` owes three things
+
+| | |
+|---|---|
+| **no gesture authors water** | `water_set` is the library's writer and nothing on the wire calls it, so a river is a fixture. The same gap as *no gesture can author a `FITS`*, and it is what stands between the bridge and a picture |
+| **the bridge has no picture** | its acceptance is a cold-recognition test, exactly as `A9`'s was |
+| **the fall-line canyon is still there** | and plan 20 claimed the span would answer it — measured, it does not; see below |
+
+⚠ **THE SETTLE TAKES THE LOWER ENVELOPE, AND THAT IS THE OPEN QUESTION.** Measured
+(`probe/house/span.loft`): a road walked down a 6-per-hex ramp comes out **cut by 120
+units and proud by 1**. `slope_settle` only ever lowers, so a descent DIGS rather than
+standing up — and spanning is about a road above the ground while the canyon is a road
+below it. They are not the same defect. What would answer it is a settle that holds the
+grade at the author's own cell and lets both directions fall away from it, which is a
+change to `A7`'s rule.
+
+### ⚠ WHAT ADDING A TERRAIN ACTUALLY COSTS, MEASURED
+
+Water is the first new terrain since the tree was written, and two guards caught things
+no reading would have:
+
+- **`hex_mesh/tests/terrain_link.loft`** — *every terrain is drawn by exactly one
+  surface* — went red the moment the seven water rows landed. That forced the join to
+  be **stated as many-to-one** rather than quietly loosened: a flow direction is not a
+  colour, so seven terrains share one picture, and `tr_drawn` says so on the row.
+- **`hex_mesh/tests/surfaces.loft`** pins the stride with *if a surface is added this
+  fails, and it SHOULD*. It is the only thing that would have said the id space had
+  moved: **thirteen** files carry `SURFACES` and every one reads the id space by
+  modulo. Water is APPENDED so nothing already numbered moved.
+
+⚠ **AND `cross` IS ALREADY A PUBLIC NAME IN THE GRAPH.** Defining one in a test file
+reports as `Syntax error: unexpected '->'` at the return arrow — not as a collision.
+Grep before naming reaches test helpers too.
 
 ### ⚠ FOUR THINGS `A9` TURNED UP, AND EACH LOOKED LIKE WORKING CODE
 

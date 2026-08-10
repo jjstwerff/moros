@@ -348,9 +348,9 @@ const status = []; const trace = []; let tCount = 0; let view = null;
 // the same colour, and `mesh soffit` cannot tell one total from the other. What
 // separates them is WHERE THEY ARE: a cellar floor's underside is twelve units down,
 // a ceiling is at the ground. Hence `meshy`, which counts inside a y band.
-const SURFACES = 10;
+const SURFACES = 11;
 const SURF = ['ground', 'road', 'field', 'veg', 'roof', 'wall', 'floor', 'frame', 'soffit',
-              'rock'];
+              'rock', 'water'];
 const meshLen = new Map();
 // Every vertex's y, per mesh — one float of the six, so a sixth of the traffic kept.
 const meshY = new Map();

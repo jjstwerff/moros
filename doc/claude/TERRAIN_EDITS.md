@@ -341,6 +341,72 @@ summit finds the rock — twice, and both shots were of a hilltop. Approaching a
 keeps the reference low and the walker lands on the shelf, which is what `world_surface`'s
 *at or below the feet* means and not a defect.
 
+## T10 — Water, and why a road needs a bridge
+
+> *"Waterways should be the most resistant to hill creation from anything else, it can break
+> into a waterfall but will normally just create chasms. So a road needs a bridge to cross it
+> because it cannot place the road there. And the water will never flow upwards."* … *"even on
+> this scale we have to model the direction of flow probably as separate ground materials."* …
+> *"water has a depth so it should define a layer under it."*
+
+**This is what makes `T9`'s mirror reachable at all.** Plan 20 recorded that *span* could not be
+designed because `ground_kinds()` held no waterway, so the bridge's trigger did not exist to be
+detected. It does now, and the trigger is not a height — it is a **refusal**.
+
+| the claim | how it is built |
+|---|---|
+| the direction of flow is a **material** | seven rows: `water` (still) and `water-e` … `water-ne`, one per `hex_grid` direction. ⚠ A cell already says what it is made of and a `Hex` has no spare byte that means direction — `h_item_rotation` is the item's, and a second meaning is how two facts come to disagree |
+| water has a **depth**, so it defines a layer under it | `water_set` writes the surface on the ground layer and the BED `WATER_DEPTH` below it. ⚠ `F1` keeps occupied layers `ε` apart, so a brook shallower than that is not representable whatever anyone would like — the floor is the store's, not a preference |
+| it is the **most resistant** thing to hill creation | `tr_fixed` — a third behaviour beside fabric rather than a second name for it. **Fabric moves**, rigidly, all together; this does not move at all. Raise a hill across a stream and the stream stays while the banks go up, which is exactly *it will normally just create chasms* |
+| it **never flows upwards** | `water_falls` is DERIVED from the heights and the material — `A5`'s rule one terrain over — so no gesture has to remember and moving the ground moves the fall. A big drop is a **waterfall** and is legal; a negative one is the single state a waterway may never be left in |
+| a road **cannot be placed there** | `road_lay` never paves a water cell, and the post-pass carries the road over it instead |
+
+**The bridge is `T9` upside down, which is what *one axis twice* means.** A shelf is the road on
+a layer **below** the ground with rock above; a deck is the road on a layer **above** it with the
+water below. Neither is new storage — the same column, the same `F1`, the same `off_layer` — and
+a river crossed by a road is a column of **three**: the bed, the water, and the deck.
+
+⚠ **`BRIDGE_CLEAR` IS WHAT THE CROSSING IS BUILT TO AND `ε` IS ONLY ITS FLOOR**, which is
+`CAVE_HEAD`'s lesson one axis over. Measured without the rule: a settle walked a deck from twelve
+units over the water down to **nine** — legal to the store, under the clearance, and silent.
+⚠ **And the answer here is a REFUSAL where the shelf's was *take the lid off*.** A lid may come
+off; a bridge may not, because what is under it is water and a road can never be laid there.
+
+⚠ **THE LIFT IS SAID OUT LOUD.** A deck that had to come up to clear the water reports through
+the same two counters a refused height uses — reason, offer, residual — because a bridge that
+silently rose is the `road_clearance` scar again.
+
+### ⚠ Two things this cost, and both were the same shape
+
+- **A fixture swallowed a write's verdict.** The waterfall row failed saying the step at the lip
+  was `0`; the water had simply never been written. `water_set` was inserting a SECOND bed under
+  an existing one when a river was re-cut deeper — the column came back `180, 140, 152`, which is
+  not height order, and `F1` refused the whole write with code 1. **A test helper is not exempt
+  from the rule that a refused write is never swallowed**, and asserting the code in the fixture
+  is what turned a rule bug into a write that never happened.
+- **`cross` is already a public name** somewhere in the graph, and redefining it in a test file
+  reports as `Syntax error: unexpected '->'` at the return arrow rather than as a collision. The
+  grep-before-you-name rule reaches test helpers too.
+
+⚠ **AND A `&` PARAMETER REASSIGNED FROM A CALL IS A HARD ERROR**
+([loft#772](https://github.com/loft-lang/loft/issues/772)), so a helper that both takes the two
+counters and returns a total cannot be written — it counts through a third out-parameter.
+
+### What is NOT built
+
+- **Water is not drawn.** It has no row in `hex_mesh::surfaces()`, so a river meshes as whatever
+  its material falls back to. The stride `SURFACES = 10` is carried by **thirteen** files and
+  every decoder reads it by modulo, which is the change that broke three decoders silently when
+  the roof made it five. That is the next step, not a detail.
+- **No gesture authors water.** `water_set` is the library's writer and nothing on the wire calls
+  it — the same gap `A8.6`'s `MESH` section has. Until then a river is a fixture.
+- **The fall-line canyon is NOT answered by this**, and the plan says it is. Measured
+  (`probe/house/span.loft`): a road walked down a 6-per-hex ramp comes out **cut by 120 units**
+  and proud by **1** — `slope_settle` takes the lower envelope, so a descent digs rather than
+  stands up. Spanning is about a road standing ABOVE the ground and the canyon is a road cut
+  BELOW it; they are not the same defect. What would answer it is a settle that holds the grade
+  at the author's own cell and lets both directions fall away from it — a change to `A7`.
+
 ## T6 — Where no slope will do, the column carries a FACE
 
 *Where the limit cannot be met the column carries a face rather than a slope*, and a
@@ -552,12 +618,13 @@ fabric* makes a yard tear again at random.
 |---|---|
 | the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `ground_kinds`, `edge_kinds` |
 | the slope, and what it owes | same file — `slope_limit`, `lim_at`, `slope_relax`, `slope_settle`, `spoil_place`, `slope_owed`, `stroke_over_limit` |
-| a road through rock (`T9`) | same file — `CAVE_HEAD`, `cave_stands`, `cave_backed`, `cave_at`, `col_dug`, `road_cave`, `run_unshelf`, `shelf_head`, `caved_h`, and the surface accessors `sub_layer`/`run_h`/`run_set` |
+| a road through rock (`T9`) | same file — `CAVE_HEAD`, `cave_stands`, `cave_backed`, `cave_at`, `col_dug`, `road_cave`, `run_unshelf`, `shelf_head`, `caved_h`, and the surface accessors `off_layer`/`run_h`/`run_set` |
+| water and the bridge (`T10`) | same file — `WATER_MAT`, `WATER_FLOW`, `WATER_DEPTH`, `is_water`, `water_dir`, `water_of`, `water_set`, `water_bed`, `water_falls`, `water_uphill`, `tr_fixed`, `BRIDGE_CLEAR`, `road_span`, `spanned_h` |
 | where a face IS | same file — `face_limit`, `face_at`, `faces_here` |
 | seating a pad | `lib/hex_editor/src/hex_editor.loft` — `place_house`, via `footprint_seat` |
 | where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `face_grid_for`, `under_grid`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall`; and `emit_room_wall` in `src/editor_server.loft` |
-| the tests | `lib/hex_editor/tests/` — `raise_keeps`, `raise_structure`, `slope_limit`, `run_slope`, `face`, `settle_owed`, `seat_pad`, `cave`; `lib/hex_mesh/tests/face_mesh.loft` |
+| the tests | `lib/hex_editor/tests/` — `raise_keeps`, `raise_structure`, `slope_limit`, `run_slope`, `face`, `settle_owed`, `seat_pad`, `cave`, `water`; `lib/hex_mesh/tests/face_mesh.loft` |
 | the pictures | `tools/scripts/face.keys` (rock faces), `tools/scripts/seat.keys` (a house on a flank) and `tools/scripts/cave.keys` (a road through rock) — the control first in all three |
 | does the GESTURE reach it | `tools/gates/world/cave.mjs` — `15:` columns and the rock at the foot of a shelf |
-| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost`, `pads`, `passes`, `roadcost`, `spoil`, `cave`, `cavewalk` |
+| the measurements | `probe/house/` — `mats`, `shear`, `lift`, `fence`, `yard`, `slope`, `wall`, `wide`, `cost`, `commute`, `roadwalk`, `faces`, `facecost`, `pads`, `passes`, `roadcost`, `spoil`, `cave`, `cavewalk`, `span` |
 | what a byte MEANS | [plan 21](../../plans/21-region-mappings/README.md) — identity belongs to a region; these rules hang off the **name**, never the byte |
