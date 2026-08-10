@@ -287,3 +287,155 @@ fn test_a_road_on_dry_ground_spans_nothing() {
   assert(cl == 0 && rs == 0,
          "dry ground reported a lift: clamped {cl}, residual {rs}");
 }
+
+// ── THE ROUTE IS THE GROUND'S, AND THE WALK ONLY BREAKS TIES ────────────────
+//
+// > *"Water is different because when there are hills already it takes the lowest path,
+// > but without them we still have to draw them like a road."*
+
+// A ramp falling along `r`, so the fall line runs south and every contour is a line of
+// constant `r`. Nothing is authored on it, so a river laid here has only the ground.
+fn slope(k: integer) -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 20)..21 {
+    for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
+  }
+  w
+}
+
+// Where the water actually went — the cells it wrote, in order, as a text.
+fn route(w: World, q0: integer, r0: integer, hint: integer, steps: integer) -> text {
+  cl = 0;
+  rs = 0;
+  why = "";
+  water_lay(w, q0, r0, hint, steps, cl, rs, why);
+  out = "";
+  for r in 0..12 {
+    for q in (0 - 6)..7 {
+      if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) {
+        out += "({q},{r}) ";
+      }
+    }
+  }
+  out
+}
+
+fn test_on_a_slope_the_water_ignores_the_walk_and_takes_the_fall_line() {
+  w = slope(6);
+  cl = 0;
+  rs = 0;
+  why = "";
+  // ⚠ THE HINT POINTS THE WRONG WAY ON PURPOSE — east, along the contour, where the
+  // ground says south. If the walk could steer the river this row would find it going
+  // east, which is the whole claim inverted.
+  n = water_lay(w, 0, 0, 0, 8, cl, rs, why);
+  assert(n >= 6, "the river ran {n} cells and gave up");
+  assert(!is_water(world_ground_cell(w, 4, 0).h_material as integer ?? 0),
+         "the river went EAST along the contour — the author's walk steered it");
+  // ⚠ THE FALL LINE ZIGZAGS, AND ASSUMING IT DID NOT IS WHAT THIS ROW FAILED ON FIRST.
+  // `hex_grid`'s six are E, SE, SW, W, NW, NE — there is no straight SOUTH neighbour in
+  // odd-r offset, so a river running down `r` alternates between `q` and `q − 1` and a
+  // count taken at `q = 0` finds **one** cell of the run.
+  rows = 0;
+  for r in 0..8 {
+    here = 0;
+    for q in (0 - 4)..5 {
+      if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { here = here + 1; }
+    }
+    if here > 0 { rows = rows + 1; }
+  }
+  assert(rows >= 6, "the run touched {rows} rows of the fall line, not 6");
+  // and every cell points DOWNHILL, which is the direction it actually stepped
+  for q2 in (0 - 4)..5 {
+    for r2 in 0..8 {
+      m = world_ground_cell(w, q2, r2).h_material as integer ?? 0;
+      if !is_water(m) { continue; }
+      d = water_dir(m);
+      if d < 0 { continue; }
+      (aq, ar) = hex_grid::hex_neighbor(q2, r2, d);
+      assert(ground_h(w, aq, ar) <= ground_h(w, q2, r2),
+             "the water at ({q2},{r2}) points at a cell above it");
+    }
+  }
+}
+
+fn test_on_flat_ground_it_follows_the_walk_exactly() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0, 0, 0, 6, cl, rs, why);      // hint EAST
+  assert(n == 6, "a canal on the flat ran {n} cells, not the 6 it was asked for");
+  for q in 0..6 {
+    assert(is_water(world_ground_cell(w, q, 0).h_material as integer ?? 0),
+           "({q},0) is dry, so the walk did not decide the route on flat ground");
+  }
+  // ⚠ AND THE CONTROL IS THE OTHER HINT. Without it, "it went east" is equally well
+  // explained by east being the first direction the loop happens to try.
+  w2 = slope(0);
+  cl2 = 0;
+  rs2 = 0;
+  why2 = "";
+  water_lay(w2, 0, 0, 3, 6, cl2, rs2, why2);      // hint WEST
+  assert(is_water(world_ground_cell(w2, 0 - 3, 0).h_material as integer ?? 0),
+         "a westward walk still laid the canal eastward");
+  assert(!is_water(world_ground_cell(w2, 3, 0).h_material as integer ?? 0),
+         "a westward walk laid water to the EAST as well");
+}
+
+// ⚠ THE INVARIANT IS NOW TRUE BY CONSTRUCTION, AND THAT IS WORTH ASSERTING ANYWAY. The
+// walk only steps to a cell no higher than the one it is on, so a river it lays cannot
+// climb — but the rule stays for water authored by hand or with the ground moved under
+// it, and a row here is what would catch the walk losing the property.
+fn test_a_river_the_gesture_laid_never_climbs() {
+  w = slope(6);
+  cl = 0;
+  rs = 0;
+  why = "";
+  water_lay(w, 0, 0, 0, 10, cl, rs, why);
+  bad = 0;
+  seen = 0;
+  for q in (0 - 6)..7 {
+    for r in (0 - 2)..12 {
+      if !is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { continue; }
+      seen = seen + 1;
+      if water_uphill(w, q, r) { bad = bad + 1; }
+    }
+  }
+  assert(seen > 0, "no water was laid, so nothing was measured");
+  assert(bad == 0, "{bad} of {seen} cells the gesture laid run uphill");
+}
+
+fn test_it_ends_in_a_pool_where_nothing_is_lower() {
+  // a bowl: one cell lower than everything around it
+  w = slope(0);
+  ground_set(w, 3, 0, G - 20, SURFACE_MAT);
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0, 0, 0, 12, cl, rs, why);
+  assert(is_water(world_ground_cell(w, 3, 0).h_material as integer ?? 0),
+         "the run never reached the bowl");
+  assert(water_dir(world_ground_cell(w, 3, 0).h_material as integer ?? 0) < 0,
+         "the last cell of the run still claims to flow somewhere");
+  assert(n <= 4, "the run carried on {n} cells past a basin it should have stopped in");
+}
+
+fn test_a_river_does_not_cross_itself() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  // ⚠ WITHOUT THE GUARD THIS IS AN INFINITE SHUFFLE, not a wrong route: the cell just
+  // written sits a freeboard below its banks, so it is the lowest thing around and the
+  // walk turns straight back into it.
+  n = water_lay(w, 0, 0, 0, 12, cl, rs, why);
+  wet = 0;
+  for q in (0 - 16)..17 {
+    for r in (0 - 4)..5 {
+      if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { wet = wet + 1; }
+    }
+  }
+  assert(wet == n, "the run reports {n} cells and the world holds {wet}");
+  assert(n == 12, "the guard cut the run short at {n} cells");
+}

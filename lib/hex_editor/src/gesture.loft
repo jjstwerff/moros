@@ -4033,6 +4033,131 @@ pub fn water_depth_at(w: World, q: integer, r: integer) -> integer {
   ground_h(w, q, r) - b
 }
 
+// ── A WATERWAY FINDS ITS OWN ROUTE — plan 20 `A10` ──────────────────────────
+//
+// > *"Water is different because when there are hills already it takes the lowest
+// > path, but without them we still have to draw them like a road."*
+//
+// ONE RULE, AND THE TWO CASES ARE ITS ENDS: the route is the **lowest path**, and where
+// the ground is flat there is no lowest, so the author's own walk breaks the tie. A
+// river laid across a hillside runs down the fall line with nobody steering it; one
+// laid on a plain follows the stroke exactly as a road does. That is not two gestures
+// with a switch — it is one rule whose answer the terrain supplies when it has one.
+//
+// ⚠ AND IT MAKES *WATER NEVER FLOWS UPWARDS* TRUE BY CONSTRUCTION RATHER THAN BY A
+// CHECK. The walk only ever steps to a cell no higher than the one it stands on, so the
+// surfaces it writes are non-increasing along the run and `water_uphill` has nothing to
+// find. The rule that forbids it stays, because a river may also be authored by hand or
+// have the ground moved under it — but the gesture cannot produce one.
+pub const WATER_FREE = 2;        // how far a river's surface sits below its banks
+
+// Which way the water goes from here — a `hex_grid` direction, or −1 when nothing
+// around is lower and the run ends in a pool.
+//
+// ⚠ THE HINT BREAKS A TIE AND NEVER BEATS A DROP. On a slope the ground decides and the
+// author's walk is ignored, which is the whole of *it takes the lowest path*; on the
+// flat every neighbour ties and the hint is the only thing left, which is *we still
+// have to draw them like a road*. One comparison separates the two cases.
+// ⚠ `back` IS THE DIRECTION IT CAME FROM, AND LEAVING IT OUT MADE EVERY RIVER TWO
+// CELLS LONG. The run cuts its channel a freeboard below the banks, so the cell just
+// written is by construction the lowest thing around — the walk turned straight back
+// into it, found water, and called that a confluence. Measured: `a canal on the flat
+// ran 2 cells, not the 6 it was asked for`. Pass `WATER_NOBACK` where there is none.
+pub const WATER_NOBACK = 6;      // not a direction: `hex_grid` has six, 0..5
+
+// Which of `hex_grid`'s six directions a facing points along — the tie-breaker a
+// waterway's walk hands to `water_next`.
+//
+// ⚠ IT IS THE SIX AND NOT THE TWENTY-FOUR. `snap_heading` snaps a wall run to `d24`,
+// which is a space of LINE directions a run may staircase along; a river steps from
+// cell to cell and there are six of those. Using the wrong one would hand the tie
+// a number that is not a neighbour.
+pub fn snap_dir(dx: float, dz: float) -> integer {
+  best = 0;
+  bd = 0.0 - 1000000000.0;
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(0, 0, d);
+    (ox, oz) = hex_grid::hex_to_px(nq, nr);
+    l = sqrt(ox * ox + oz * oz) ?? 1.0;
+    if l == 0.0 { continue; }
+    dot = (dx * ox + dz * oz) / l ?? 0.0;
+    if dot > bd { bd = dot; best = d; }
+  }
+  best
+}
+
+pub fn water_next(w: World, q: integer, r: integer, hint: integer,
+                  back: integer) -> integer {
+  here = ground_h(w, q, r);
+  best = 0 - 1;
+  bh = 0;
+  for d in 0..6 {
+    if d == back { continue; }
+    (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+    nh = ground_h(w, nq, nr);
+    // ⚠ NEVER UPWARD. A neighbour level with this cell is allowed — that is a canal on
+    // a plain — and one above it is not, which is what ends a run in a basin.
+    if nh > here { continue; }
+    if best < 0 || nh < bh { best = d; bh = nh; }
+    else if nh == bh && d == hint { best = d; }
+  }
+  best
+}
+
+// Lay a waterway from here, following the lowest path for up to `steps` cells.
+// Returns how many cells were written.
+//
+// ⚠ ONE CELL WIDE, and it is stated rather than defaulted. A road is a disc of
+// `ROAD_HALF` because a cart needs a width; a stream is a line, and making it a band
+// would blur the one claim this gesture is about — that the ROUTE is the ground's and
+// not the author's.
+//
+// ⚠ IT STOPS WHERE IT REACHES WATER, which is a confluence and not a failure. And it
+// stops where it has already been: a river does not cross itself, and without that
+// guard the cell just written — now a freeboard lower than its banks — is the lowest
+// thing around and the walk turns straight back into it.
+pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: integer,
+                 clamped: &integer, residual: &integer, why: &text) -> integer {
+  q = cq;
+  r = cr;
+  seen = Seen { s_by: [] };
+  n = 0;
+  back = WATER_NOBACK;
+  for _ in 0..steps {
+    if seen.s_by[age_like_key(q, r)] != null { break; }
+    seen.s_by += SeenAt { sa_key: age_like_key(q, r) };
+    d = water_next(wld, q, r, hint, back);
+    // ⚠ THE SURFACE IS A FREEBOARD BELOW THE BANK IT IS CUT INTO, so a river runs in a
+    // channel rather than standing proud of the ground beside it. `water_set` takes the
+    // bed from there.
+    surf = ground_h(wld, q, r) - WATER_FREE;
+    ended = d < 0;
+    if !ended {
+      (aq, ar) = hex_grid::hex_neighbor(q, r, d);
+      if is_water(world_ground_cell(wld, aq, ar).h_material as integer ?? 0) { ended = true; }
+    }
+    // A run that has nowhere lower to go is a POOL, and still water has no direction —
+    // which is the other half of why `water_dir` answers −1 for it.
+    dw = d;
+    if ended { dw = 0 - 1; }
+    code = water_set(wld, q, r, surf, dw, why);
+    if code != hex_world::CW_OK {
+      clamped = clamped + 1;
+      if WATER_DEPTH > residual { residual = WATER_DEPTH; }
+      break;
+    }
+    n = n + 1;
+    if ended { break; }
+    (nq2, nr2) = hex_grid::hex_neighbor(q, r, d);
+    q = nq2;
+    r = nr2;
+    // The reverse of the step just taken. `hex_grid`'s six run E, SE, SW, W, NW, NE, so
+    // the opposite of `d` is three round.
+    back = (d + 3) % 6 ?? 0;
+  }
+  n
+}
+
 // Does the water here run UPHILL — the one state a waterway may never be left in?
 pub fn water_uphill(w: World, q: integer, r: integer) -> boolean {
   f = water_falls(w, q, r);

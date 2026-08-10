@@ -426,10 +426,46 @@ store changes.
 shortest normal in a water chunk differ, and every normal of the GROUND chunk beside it is exactly
 one. A number written into a vertex nothing reads back is the shape this tree keeps finding.
 
+### A waterway finds its own route
+
+> *"Water is different because when there are hills already it takes the lowest path, but
+> without them we still have to draw them like a road."*
+
+**ONE RULE, AND THE TWO CASES ARE ITS ENDS.** The route is the **lowest path**, and where the
+ground is flat there is no lowest, so the author's own walk breaks the tie. A river laid across
+a hillside runs down the fall line with nobody steering it; one laid on a plain follows the
+stroke exactly as a road does. That is not two gestures with a switch — it is one rule whose
+answer the terrain supplies when it has one, and one comparison separates them: **the hint
+breaks a tie and never beats a drop.**
+
+⚠ **AND IT MAKES *WATER NEVER FLOWS UPWARDS* TRUE BY CONSTRUCTION.** The walk only steps to a
+cell no higher than the one it stands on, so the surfaces it writes are non-increasing along the
+run and `water_uphill` has nothing to find. The rule stays — water can be authored by hand or
+have the ground moved under it — but the gesture cannot produce one.
+
+⚠ **`back` IS THE DIRECTION IT CAME FROM, AND LEAVING IT OUT MADE EVERY RIVER TWO CELLS LONG.**
+The run cuts its channel a freeboard below the banks, so the cell just written is *by
+construction* the lowest thing around: the walk turned straight back into it, found water, and
+called that a confluence. Measured — `a canal on the flat ran 2 cells, not the 6 it was asked
+for`. A river also does not cross itself, which is a `Seen` guard rather than a length.
+
+⚠ **THE RUN ENDS IN A POOL OR A CONFLUENCE**, and still water has no direction — which is the
+other half of why `water_dir` answers −1 for it. A basin is where nothing around is lower.
+
+⚠ **THE FALL LINE ZIGZAGS, AND A TEST ASSUMED IT DID NOT.** `hex_grid`'s six are E, SE, SW, W,
+NW, NE — there is no straight SOUTH neighbour in odd-r offset — so a river running down `r`
+alternates between `q` and `q − 1`, and a count taken at `q = 0` finds **one** cell of the run.
+
+⚠ **AND THE TIE-BREAKER IS THE SIX, NOT THE TWENTY-FOUR.** `snap_heading` snaps a wall run to
+`d24`, a space of LINE directions a run may staircase along; a river steps from cell to cell and
+there are six of those. `snap_dir` is the other one.
+
+The gesture is `47:` — a toggle like road's, and it lays as the character walks.
+
 ### What is NOT built
 
-- **No gesture authors water.** `water_set` is the library's writer and nothing on the wire calls
-  it — the same gap `A8.6`'s `MESH` section has. Until then a river is a fixture.
+- **The bridge has no picture yet**, and its acceptance is a cold-recognition test exactly as
+  `A9`'s was.
 - **The fall-line canyon is NOT answered by this**, and the plan says it is. Measured
   (`probe/house/span.loft`): a road walked down a 6-per-hex ramp comes out **cut by 120 units**
   and proud by **1** — `slope_settle` takes the lower envelope, so a descent digs rather than
@@ -649,7 +685,7 @@ fabric* makes a yard tear again at random.
 | the gesture and its rules | `lib/hex_editor/src/gesture.loft` — `brush`, `brush_delta`, `is_fabric`, `lift_column`, `absorb_enclosed`, `ground_kinds`, `edge_kinds` |
 | the slope, and what it owes | same file — `slope_limit`, `lim_at`, `slope_relax`, `slope_settle`, `spoil_place`, `slope_owed`, `stroke_over_limit` |
 | a road through rock (`T9`) | same file — `CAVE_HEAD`, `cave_stands`, `cave_backed`, `cave_at`, `col_dug`, `road_cave`, `run_unshelf`, `shelf_head`, `caved_h`, and the surface accessors `off_layer`/`run_h`/`run_set` |
-| water and the bridge (`T10`) | same file — `WATER_MAT`, `WATER_FLOW`, `WATER_DEPTH`, `is_water`, `water_dir`, `water_of`, `water_set`, `water_bed`, `water_depth_at`, `water_falls`, `water_uphill`, `tr_fixed`, `BRIDGE_CLEAR`, `road_span`, `spanned_h`; the shade is `hex_mesh::water_shade`/`WATER_DEEP`/`WATER_DARK` and the channel is `emit_hex_sloped`'s `nscale` |
+| water and the bridge (`T10`) | same file — `WATER_MAT`, `WATER_FLOW`, `WATER_DEPTH`, `is_water`, `water_dir`, `water_of`, `water_set`, `water_bed`, `water_depth_at`, `water_falls`, `water_uphill`, `tr_fixed`, `BRIDGE_CLEAR`, `road_span`, `spanned_h`, `water_next`, `water_lay`, `snap_dir`, `WATER_FREE`; the shade is `hex_mesh::water_shade`/`WATER_DEEP`/`WATER_DARK` and the channel is `emit_hex_sloped`'s `nscale` |
 | where a face IS | same file — `face_limit`, `face_at`, `faces_here` |
 | seating a pad | `lib/hex_editor/src/hex_editor.loft` — `place_house`, via `footprint_seat` |
 | where a face is DRAWN | `lib/hex_mesh/src/hex_mesh.loft` — `face_grid_in`, `face_grid_for`, `under_grid`, `faced_between`, `corner_heights_from`, `chunk_mesh_faces`, `emit_face_wall`; and `emit_room_wall` in `src/editor_server.loft` |

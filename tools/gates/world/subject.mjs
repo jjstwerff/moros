@@ -116,19 +116,16 @@ check(cat.length === mats.length + parts.length, 'and no entry is in neither fam
 // point at a brush the author does have, which is why it reads `too steep` and
 // not `derived`.
 const blocked = mats.filter((r) => r.avail === '0');
-// ⚠ FIVE SINCE `A10`, AND WATER'S REASON IS OF A FOURTH KIND. The other four say
-// *something else made this*; water says **nothing makes it yet** — the renderer can
-// draw a river and no message on the wire authors one. An entry hidden for that would
-// be the invisible-rule failure this tree keeps finding.
-check(blocked.length === 5, `five surfaces are unavailable (${blocked.length})`);
+// ⚠ BACK TO FOUR: water was the fifth for one commit, reason `no gesture`, and `47:`
+// now lays a waterway. The count is the claim and it moves when the editor gains a
+// gesture — which is exactly what it is for.
+check(blocked.length === 4, `four derived surfaces are unavailable (${blocked.length})`);
 check(blocked.every((r) => (r.why ?? '') !== ''),
       `every unavailable entry carries a reason (${blocked.map((r) => r.name + '=' + r.why)})`);
 check(blocked.some((r) => r.name === 'rock' && r.why === 'too steep'),
       `rock says how to get one, not merely that it is derived`);
-check(blocked.some((r) => r.name === 'water' && r.why === 'no gesture'),
-      `water says WHY it cannot be painted, and it is not because it is derived`);
-check(mats.filter((r) => r.avail === '1').length === 6,
-      'the other six are paintable');
+check(mats.filter((r) => r.avail === '1').length === 7,
+      'the other seven are paintable — water joined them with `47:`');
 
 // ── B2.1 — an accepted toggle moves it ───────────────────────────────────────
 const before = g.huds.length;

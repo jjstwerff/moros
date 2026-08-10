@@ -42,7 +42,7 @@ what a chasm is.
 
 | | |
 |---|---|
-| **no gesture authors water** | `water_set` is the library's writer and nothing on the wire calls it, so a river is a fixture. The same gap as *no gesture can author a `FITS`*, and it is what stands between the bridge and a picture |
+| ✅ **water has a gesture** | `47:` lays a waterway as you walk — and its ROUTE is the ground's: *when there are hills already it takes the lowest path, but without them we still have to draw them like a road.* One rule, and the hint breaks a tie but never beats a drop |
 | **the bridge has no picture** | its acceptance is a cold-recognition test, exactly as `A9`'s was |
 | ✅ **water IS drawn, and deeper water is darker** | an eleventh surface, and the shade rides in the NORMAL'S LENGTH — the shader normalizes it at both uses and the model matrix is rigid, so the magnitude survives unread. A seventh float per vertex was the alternative, on a format thirteen decoders index by six |
 | **the fall-line canyon is still there** | and plan 20 claimed the span would answer it — measured, it does not; see below |
@@ -68,6 +68,12 @@ no reading would have:
   fails, and it SHOULD*. It is the only thing that would have said the id space had
   moved: **thirteen** files carry `SURFACES` and every one reads the id space by
   modulo. Water is APPENDED so nothing already numbered moved.
+
+⚠ **AND THE WALK MAKES *NEVER UPWARDS* TRUE BY CONSTRUCTION.** The run only steps to
+a cell no higher than the one it stands on, so a river the gesture lays cannot climb.
+⚠ **`back` — the direction it came from — is what made a river longer than two cells**:
+the channel is cut a freeboard below its banks, so the cell just written is by
+construction the lowest thing around and the walk turned straight back into it.
 
 ⚠ **AND *SHOULD WATER BE SEMI-TRANSPARENT* IS ANSWERED *NOT YET*, WITH A REASON.** Every
 picture claim in this tree is a chromaticity histogram; a translucent surface blends

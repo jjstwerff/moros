@@ -453,6 +453,11 @@ const MSG_SOCKETS = 45;
 // duplicate (`BD_DUP`), so an author who could only ADD would be stuck with their
 // first choice for ever.
 const MSG_BIND = 46;
+
+// ⚠ 47 IS THE NEXT FREE ID, and water gets its own toggle rather than sharing road's:
+// they write different terrains, one is a disc and one is a line, and a mode that meant
+// two things would make every acknowledgement ambiguous.
+const MSG_WATER = 47;     // waterways: lay a stream as you walk (plan 20 `A10`)
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -4087,15 +4092,10 @@ fn mode_name(m: integer) -> text {
 // belongs wherever there is room for one — a status line or a tooltip, neither
 // of which exists yet. Measured, not guessed: a sentence in a 212px row is not a
 // design that needs shortening, it is a design that does not fit.
-// ⚠ AND WATER IS THE FIFTH, WITH A REASON OF A FOURTH KIND — plan 20 `A10`. The
-// other four say *something else made this*; water says **nothing makes it yet**.
-// `water_set` is the library's writer and no message on the wire calls it, so the
-// renderer can draw a river and an author cannot put one anywhere. Hiding it would be
-// worse than saying so: the catalogue's rule is that an unavailable entry is shown
-// greyed WITH its reason, and *no gesture* is exactly the fact a reader needs.
-//
-// ⚠ It is the shape this tree keeps finding — a rule built, tested and reachable by
-// nobody — and putting it in the catalogue is what stops it being invisible.
+// ⚠ WATER WAS THE FIFTH FOR ONE COMMIT, WITH THE REASON `no gesture`, AND IT IS NOT ANY
+// MORE — `47:` lays a waterway. Worth remembering rather than deleting: it is the shape
+// this tree keeps finding (a rule built, green and reachable by nobody), and the
+// catalogue is where it was visible instead of invisible.
 // Which ramp a surface is drawn with — 0 flat, 1 by height, 2 by DEPTH.
 //
 // ⚠ ONLY THE GROUND AND THE WATER RAMP AT ALL. A road is a surface rather than a
@@ -4111,7 +4111,6 @@ fn surface_block(name: text) -> text {
   if name == "frame"  { return "derived"; }
   if name == "tree"   { return "scattered"; }
   if name == "rock"   { return "too steep"; }
-  if name == "water"  { return "no gesture"; }
   ""
 }
 
@@ -5684,6 +5683,11 @@ fn main() {
   level_stalled = false;
   level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
+  // ⚠ WATER IS A MODE LIKE ROAD AND ITS ROUTE IS NOT — plan 20 `A10`. *When there are
+  // hills already it takes the lowest path, but without them we still have to draw them
+  // like a road.* So the gesture is a road's — walk and it lays — and the DIRECTION at
+  // every step is the ground's wherever the ground has an answer.
+  watering = false;            // laying a waterway as the character walks
   road_h = 0;                  // the road's grade — set when road mode goes on and
                                // then FOLLOWING the landscape, one stroke at a time
   // One stall report per road run, not per stroke — the same shape `level_stalled`
@@ -6698,6 +6702,34 @@ fn main() {
               // blob instead of a line. Row 5's gate passed anyway, because it
               // asked whether road cells existed and were flat, not whether they
               // followed the path.
+              if watering {
+                // ── A WATERWAY TAKES THE LOWEST PATH — plan 20 `A10` ──────────
+                //
+                // > *"Water is different because when there are hills already it
+                // > takes the lowest path, but without them we still have to draw
+                // > them like a road."*
+                //
+                // ⚠ THE WALK IS ONLY A HINT, and that is the whole difference from
+                // the road above. `road_lay` stamps where the author is; this
+                // FOLLOWS THE GROUND and uses the facing only to break a tie — which
+                // on a plain is every step and on a hillside is none of them.
+                whx = world_to_hex(px, pz);
+                wsteps = 6;
+                wcl = 0;
+                wrs = 0;
+                wwhy = "";
+                wn = hex_editor::water_lay(wld, whx.ha_q, whx.ha_r,
+                       hex_editor::snap_dir(cos(yaw), sin(yaw)), wsteps,
+                       wcl, wrs, wwhy);
+                // ⚠ THE RUN MAY LEAVE THE DISC ENTIRELY, because its length is the
+                // ground's business and not the stroke's — so the dirty mark covers
+                // the steps it was allowed rather than a brush radius.
+                mark_dirty(dirty, whx.ha_q, whx.ha_r, wsteps + 2);
+                if wcl != 0 {
+                  srv.broadcast("S:water refused after {wn} cells — {wwhy}");
+                  println("editor: water refused after {wn} cells: {wwhy}");
+                }
+              }
               if roading {
                 rhx = world_to_hex(px, pz);
                 // ── A ROAD FOLLOWS THE LANDSCAPE — plan 20 ────────────────────────
@@ -7849,6 +7881,15 @@ fn main() {
             println("editor: road off at grade {road_h}");
           }
           srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
+        } else if ev.msg_id == MSG_WATER {
+          watering = (ev.payload as integer ?? 0) != 0;
+          if watering {
+            srv.send_to(ev.cid, "S:water true");
+            println("editor: water on");
+          } else {
+            srv.send_to(ev.cid, "S:water false");
+            println("editor: water off");
+          }
         } else if ev.msg_id == MSG_LEVEL {
           levelling = (ev.payload as integer ?? 0) != 0;
           if levelling { level_warned = false; }
