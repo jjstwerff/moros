@@ -30,8 +30,7 @@ fn main() {
   for c in [6, 7, 8, 7, 6, 5, 4, 5, 6] {
     cl = 0;
     rs = 0;
-    gap = 4 - ground_h(w, c, 0);
-    if gap != 0 { brush(w, c, 0, gap, 5, cl, rs); }
+    brush_level(w, c, 0, 4, 5, cl, rs);
   }
   println("along the walk (r=0), hexes 3..9:");
   out = "";

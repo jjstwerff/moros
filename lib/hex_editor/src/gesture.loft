@@ -3674,8 +3674,42 @@ fn bigger(a: integer, b: integer) -> boolean {
   aa > bb
 }
 
+// ── RAISE A HILL, OR LEVEL A PAD — one machine, two shapes ──────────────────
+//
+// ⚠ THE FALLOFF IS A HILL'S SHAPE AND IT IS WRONG FOR LEVELLING. `(1 - t²)²` is
+// smooth at both ends, which is exactly what a hill wants and exactly what a PAD
+// cannot have: a pad has an EDGE. Measured (`probe/house/levelpad.loft`), levelling
+// a disc by walking it closes only the cells the walker steps on —
+// `2 4 4 4 4 4 2` along the path and `2 4 4 4 2` across it — because the gap is
+// scaled by `f²` and truncated, so a cell one hex off stalls a unit short and no
+// number of passes moves it. `cellar.keys` walks a CROSS for exactly that reason,
+// and it still cannot flatten the 19 cells a deck covers.
+//
+// So levelling SETS its disc. Everything else about the gesture is unchanged —
+// the fabric flood, the rigid bodies, the runs, the slope relaxation — because
+// none of that is about the falloff. What differs is one question: how far does
+// THIS cell move? A hill asks the falloff; a level asks the target.
 pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
              clamped: &integer, residual: &integer) {
+  brush_in(w, tq, tr, amp, rad, false, clamped, residual);
+}
+
+// Level the disc to `target` — every cell in it ends there, fabric included.
+//
+// ⚠ THE TARGET IS ABSOLUTE, WHERE `brush` TAKES A DELTA, and that is the whole
+// difference between the two faces. A delta cannot express *make all of this one
+// height*: each cell needs its own, and only the target knows them.
+pub fn brush_level(w: World, tq: integer, tr: integer, target: integer, rad: integer,
+                   clamped: &integer, residual: &integer) {
+  brush_in(w, tq, tr, target, rad, true, clamped, residual);
+}
+
+// ⚠ `amp` IS A DELTA WHEN `flat` IS FALSE AND AN ABSOLUTE HEIGHT WHEN IT IS TRUE,
+// which is why this is not the public name. The two faces above say which they
+// mean; a caller that had to pass the flag would be choosing between two meanings
+// of one argument, and that is how a raise comes to level something.
+fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
+            flat: boolean, clamped: &integer, residual: &integer) {
   // ── the fabric first, so the ground can be told what not to touch ─────────
   //
   // ⚠ EVERY MEMBER TAKES THE SAME DELTA, and it is the LARGEST the disc offers any
@@ -3764,9 +3798,18 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
           taken.s_by += SeenAt { sa_key: age_like_key(mq[ti] ?? 0, mr[ti] ?? 0) };
         }
         best = 0;
-        for i in 0..len(mq) {
-          cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
-          if bigger(cand, best) { best = cand; }
+        if flat {
+          // ⚠ A BODY IS ALREADY LEVEL (`A1`), so its delta is one subtraction and
+          // not a search: whatever height it stands at, it ends at the target. The
+          // *largest offered* rule below is a hill's — it exists so a house whose
+          // porch clips the rim rises by what its middle was asked for — and a
+          // level has no rim to clip.
+          best = amp - ground_h(w, mq[0] ?? 0, mr[0] ?? 0);
+        } else {
+          for i in 0..len(mq) {
+            cand = brush_delta(amp, hex_distance(mq[i] ?? 0, mr[i] ?? 0, tq, tr), rad);
+            if bigger(cand, best) { best = cand; }
+          }
         }
         // ⚠ THE WHOLE COLUMN, so the roof over a floor keeps its gap.
         for j in 0..len(mq) { lift_column(w, mq[j] ?? 0, mr[j] ?? 0, best); }
@@ -3793,7 +3836,18 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
         // again would give it the falloff on top of its rigid delta.
         if taken.s_by[age_like_key(q, r)] != null { continue; }
         delta = brush_delta(amp, d, rad);
-        if delta != 0 {
+        // ⚠ A LEVEL WRITES EVEN WHERE THE DELTA IS ZERO, AND A RAISE MUST NOT.
+        // `delta != 0` is the right guard for a hill: a stroke that asks a cell for
+        // nothing should leave it alone, unwritten cells included, or every raise
+        // would author the whole disc of an infinite plane. A LEVEL is the other
+        // case — its job is *there is ground here, at this height*, and a cell that
+        // is already at the target but has never been WRITTEN has no ground at all.
+        // Measured: `storey_add` counts only columns with a top, and the deck gate's
+        // 19-cell disc came back as `storey +1 on 14 cells` because five of them had
+        // been skipped for asking for nothing.
+        wrote = flat;
+        if flat { delta = amp - ground_h(w, q, r); }
+        if delta != 0 || wrote {
           h = ground_h(w, q, r) + delta;
           if h < W_RESERVE {
             lost = W_RESERVE - h;

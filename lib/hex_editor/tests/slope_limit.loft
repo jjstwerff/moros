@@ -600,3 +600,75 @@ fn test_a_road_over_open_ground_is_never_lifted() {
   assert(cl == 0 && rs == 0,
          "open ground reported a lift: clamped {cl}, residual {rs}");
 }
+
+// ── LEVELLING SETS ITS DISC; A RAISE BLENDS INTO ONE — plan 20 ──────────────
+//
+// ⚠ A FALLOFF IS A HILL'S SHAPE AND IT IS WRONG FOR A PAD. `(1 - t²)²` is smooth
+// at both ends, which is what a hill wants and what a pad cannot have: a pad has an
+// EDGE. Measured (`probe/house/levelpad.loft`) before this existed, levelling a
+// disc by walking it closed only the cells the walker stepped on — `2 4 4 4 4 4 2`
+// along the path and `2 4 4 4 2` across it — so the 19 cells a deck covers were
+// never flat and no number of passes made them so.
+
+fn test_levelling_sets_every_cell_of_its_disc() {
+  w = strip(SURFACE_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush_level(w, 0, 0, G + 9, 5, cl, rs);
+  n = 0;
+  for q in (0 - 5)..6 {
+    for r in (0 - 5)..6 {
+      if hex_grid::hex_distance(q, r, 0, 0) >= 5 { continue; }
+      assert(ground_h(w, q, r) == G + 9,
+             "({q},{r}) ended at {ground_h(w, q, r)}, not the target {G + 9}");
+      n = n + 1;
+    }
+  }
+  assert(n > 40, "the disc was only {n} cells — this is not testing a disc");
+  // ⚠ AND IT STOPS AT THE RIM. A set that ran past its radius would be a level
+  // gesture that flattens the county, and every row above would still pass.
+  assert(ground_h(w, 7, 0) == G, "the level reached {ground_h(w, 7, 0)} at radius 7");
+}
+
+// ⚠ THE CONTROL, AND IT IS THE HALF THAT KEEPS THE HILL A HILL. `brush` must be
+// untouched: a raise still blends, so its rim is still tangent to the plain and a
+// stroke still reads as a dome. If this ever comes out flat, the two faces have
+// been collapsed into one.
+fn test_a_raise_still_blends_and_is_not_a_disc() {
+  w = strip(SURFACE_MAT, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 24, 12, cl, rs);
+  assert(ground_h(w, 0, 0) == G + 24, "the raise did not reach its amplitude");
+  assert(ground_h(w, 6, 0) > G && ground_h(w, 6, 0) < G + 24,
+         "half way out the raise is {ground_h(w, 6, 0) - G}, which is not a falloff");
+  assert(ground_h(w, 11, 0) < ground_h(w, 6, 0),
+         "the falloff does not fall: {ground_h(w, 6, 0) - G} then {ground_h(w, 11, 0) - G}");
+}
+
+// ⚠ AND A BUILDING IN THE DISC STILL MOVES RIGIDLY (`A1`), which the flat path has
+// its own arm for: a body is already level, so its delta is one subtraction rather
+// than the *largest the disc offers* search a hill needs for a porch on the rim.
+fn test_a_levelled_pad_carries_a_building_rigidly() {
+  w = strip(SURFACE_MAT, 0);
+  runs = WallRuns { items: [] };
+  ack = place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 3, 3, G, runs);
+  assert(ack.ak_ok, "the fixture did not place: {ack.ak_why}");
+  cl = 0;
+  rs = 0;
+  brush_level(w, ack.ak_q, ack.ak_r, G + 6, 6, cl, rs);
+  lo = 0 - 1;
+  hi = 0;
+  for q in (0 - 8)..9 {
+    for r in (0 - 8)..9 {
+      if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
+      h = ground_h(w, q, r);
+      if lo < 0 { lo = h; hi = h; }
+      if h < lo { lo = h; }
+      if h > hi { hi = h; }
+    }
+  }
+  assert(lo >= 0, "the fixture has no floor left");
+  assert(hi - lo == 0, "levelling sheared the floor by {hi - lo}");
+  assert(lo == G + 6, "the floor ended at {lo}, not the level target {G + 6}");
+}

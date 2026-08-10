@@ -8714,16 +8714,23 @@ fn main() {
       // leave behind.
       if levelling {
         cur_h = terrain_h(last_hq, last_hr, wld);
-        // The amplitude is the DIFFERENCE between the frozen foot height and
-        // what is here: positive builds the ground up to you (a ridge across
-        // low ground), negative cuts it down to you (a crevice through a hill).
-        // Zero where the ground already matches, which is why it does nothing
-        // where you switched it on and cannot deepen a path walked twice.
-        gap = level_h - cur_h;
-        if gap != 0 {
+        // ⚠ IT SETS THE DISC NOW, IT DOES NOT BLEND TOWARD IT. This passed a
+        // DIFFERENCE to `brush` — positive to build the ground up to you, negative
+        // to cut it down — and took the hill's `(1 - t²)²` falloff with it. A hill
+        // wants that shape and a PAD cannot have it: measured
+        // (`probe/house/levelpad.loft`), walking a disc closed only the cells the
+        // walker stepped on, `2 4 4 4 4 4 2` along the path and `2 4 4 4 2` across
+        // it, because the gap is scaled by `f²` and truncated. `cellar.keys` walks
+        // a CROSS for exactly that reason and still could not flatten the 19 cells
+        // a deck covers.
+        //
+        // ⚠ AND IT IS STILL ZERO WHERE THE GROUND ALREADY MATCHES, which is what
+        // keeps it from doing anything where you switched it on and from deepening
+        // a path walked twice — the guard just asks the question one level up.
+        if cur_h != level_h {
           lclamp = 0;
           lvres = 0;
-          brush(wld, last_hq, last_hr, gap, LEVEL_R, lclamp, lvres);
+          brush_level(wld, last_hq, last_hr, level_h, LEVEL_R, lclamp, lvres);
           mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
           // Levelling runs per STEP as the character walks, so a per-cell report
           // here would be a stream of noise. It is still an approximation and

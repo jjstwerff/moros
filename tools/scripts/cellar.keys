@@ -84,7 +84,7 @@ keys 0
 at 17 0 0
 send 6:0
 step 30
-feet 4.25 4.45
+feet 4.15 4.35
 
 echo --- dig, facing +x, and the stair goes in with it
 key C
@@ -118,7 +118,14 @@ mesh soffit 648 648
 # ⚠ AND `mesh wall` READ 174 THROUGH ALL OF IT, which is the same measurement making
 # the opposite point: the room wall asked §5's geometric question from the start, so
 # it was never sensitive to any of this. That is the argument that converged the two.
-mesh floor 564 564
+# ⚠ 564 → 390 WHEN LEVELLING STARTED SETTING ITS DISC. The rim-and-riser half of
+# this number is a fact about how BUMPY the dug floor is: a riser is drawn wherever
+# a neighbour is not solid at this height, and a cellar floor follows each column's
+# own top. The plateau this fixture levels was never flat — `brush`'s falloff closed
+# only the cells the walker stepped on — so the floor under it stepped too, and every
+# one of those steps was a riser. A flat pad has none of them. 390 is 342 of top fan
+# (19 cells at 18) and 48 of rim.
+mesh floor 390 390
 
 echo --- and the room's own floor is a storey under everything else
 # The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
@@ -167,30 +174,35 @@ echo --- and the room's own floor is a storey under everything else
 #
 # ⚠ ITS CONTROL IS THE `meshr … 0 0` ROW BEFORE THE DIG. A band never seen empty
 # cannot be trusted to report a ceiling.
-# ⚠ 306 → 298 WITH plan 20 `A5`, AND THE CEILING DID NOT MOVE. The plateau this
-# fixture levels into a hill now has a rim too steep for grass to hold, so the ground
-# there PARTS and shows rock (`mesh rock` below). A corner on that rim is drawn two or
-# three times at different heights, and this verb's datum takes the highest — so eight
-# ceiling vertices are measured against a cliff top they do not hang from. Measured:
-# at (16.454, ±3.5) the ground draws 3.250, 3.583 and 4.125 at one point and the
-# ceiling sits at 3.083, exactly SLAB_THICK under the middle one.
+# 306 = 17 fans of 18, each exactly SLAB_THICK under its own ground.
+# SLAB_THICK 2 units x HEIGHT_SCALE 0.25 = 0.50 wu, which is where they measure.
 #
-# ⚠ THREE REPAIRS TO THE DATUM WERE MEASURED AND ALL THREE ARE WORSE — the argument
-# is in `script.mjs` beside `groundMap`, and it ends where it has to: the wire carries
-# no ownership, so nothing reading these numbers can always pick the right one of
-# three. The verb now says `at a parted corner` out loud, which is the same answer it
-# already gives for a vertex over opened ground.
+# ⚠ AND WITH `mesh soffit 648` ABOVE, BOTH POPULATIONS ARE PINNED EXACTLY: the
+# undersides are 648 − 306 = 342, which is 19 fans. That relation is the whole
+# reason these two rows are kept together.
 #
-# ⚠ SO THE 298 IS 306 MINUS AN ARTEFACT OF THE DATUM, and the row that keeps it
-# honest is the one below it: `mesh rock` pins the cliff that causes it, so the pair
-# cannot both drift. 84 = 14 quads of 6, the rim of the levelled plateau.
-meshr soffit -0.6 -0.4 298 298
+# ⚠ IT READ 298 FOR ONE DAY, AND THE CAUSE IS WORTH KEEPING. Plan 20 `A5` made the
+# drawn ground part where it is too steep to hold, so one (x, z) can carry two or
+# three ground heights — and this verb's datum takes the highest. Eight ceiling
+# vertices were then measured against a cliff top they do not hang from, and the
+# row was re-baselined to 298 with that written down. Levelling then started SETTING
+# its disc instead of blending toward it, the plateau became genuinely flat, the
+# parted corners over the dug cells went away, and the structural number came back
+# on its own. **The 298 was never a fact about ceilings; it was a fact about a
+# plateau that was never level.** The `at a parted corner` count the verb now prints
+# is what made that legible.
+meshr soffit -0.6 -0.4 306 306
 # ⚠ THE FACES THE FIXTURE NOW GROWS, COUNTED — plan 20 `A5`. Without this row the
 # `meshr` number above is 298 for no stated reason, and the next reader would take it
 # for a ceiling defect. A rock face is DERIVED from the ground's own heights, so this
 # is also the row that catches the face rule firing where it should not: it was 0 for
 # every scene in this suite until a plateau was cut into a hill.
-mesh rock 84 84
+# ⚠ 84 → 384 WHEN THE PLATEAU BECAME FLAT. A pad that steps down to the hill in
+# ones has nothing steep enough to face; a pad with a real EDGE has a rim all the way
+# round it that grass cannot stand at. That is `A5` reading a sharper world, not a
+# different rule — and it is the other half of why `mesh floor` fell: the risers that
+# were inside the floor are now one clean face outside it.
+mesh rock 384 384
 
 echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 # ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:
@@ -212,9 +224,17 @@ echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
 # a cell top actually sits on. It is the SPACING that is the claim; the absolute
 # numbers were only ever where the arithmetic happened to land.
 echo --- on the plateau, beside the stairwell
+# ⚠ 2.500 → 4.250 WHEN LEVELLING STARTED SETTING ITS DISC, AND THE ROW GOT ITS OWN
+# CLAIM BACK. This station stands on the PLATEAU, outside the dig — and the plateau
+# was never level: `brush`'s falloff closed only the cells the walker stepped on, so
+# a station one hex off the path sat 1.75 wu low. The four numbers below then read
+# 2.500, 3.250, 2.250, 1.250 — which is not a descent at all, the first station being
+# BELOW the second, and the header's claim that each is "exactly one stride below the
+# last" was true of three of them. On a flat pad they are 4.250, 3.250, 2.250, 1.250:
+# one stride apart, all the way down.
 at 22.5 0 180
 step 20
-feet 2.40 2.60
+feet 4.15 4.35
 echo --- the top tread
 at 20.8 0 180
 step 20
@@ -255,7 +275,14 @@ frame 0 1.0 masonry 0.40 1.0 sky 0 0.001 grass 0 0.001
 # 29 exposed edges of the dug disc's perimeter, at 6 vertices a quad. A hexagonal
 # disc of radius 2 has 30, and the stairwell accounts for the difference: a tread
 # with its ceiling opened is not walled, because the room there runs up to daylight.
-mesh wall 174 174
+# ⚠ 174 → 162 WHEN THE PLATEAU BECAME FLAT: 29 exposed edges became 27, at 6
+# vertices a quad. A hexagonal disc of radius 2 has 30 of them and the stairwell
+# accounts for the rest — a tread with its ceiling opened is not walled, because the
+# room there runs up to daylight. On a pad that was never level the stair's treads
+# fell on ground of three different heights and only one cell opened; on a flat one
+# they fall together and three do. The relation is *30 minus what the stair opens*,
+# and it is the stair that moved, not the wall.
+mesh wall 162 162
 
 echo --- and STRAIGHT UP, at the ceiling
 # ⚠ THE PICTURE THAT COULD NOT BE TAKEN BEFORE ANY OF THIS. Nothing could stand in a
