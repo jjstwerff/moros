@@ -3947,6 +3947,19 @@ pub fn water_bed(w: World, q: integer, r: integer) -> integer {
 // already made, so it is filled rather than doubled.
 pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
                  why: &text) -> integer {
+  water_set_deep(wld, q, r, h, dir, WATER_DEPTH, why)
+}
+
+// ── AND A WIDE RIVER IS DEEPER IN THE MIDDLE ────────────────────────────────
+//
+// ⚠ THE EDGES CANNOT BE MADE SHALLOWER, SO THE MIDDLE HAS TO BE MADE DEEPER, and that
+// is the whole of this parameter. `WATER_DEPTH` is a FLOOR — `F1` keeps occupied layers
+// `ε` apart, so nothing thinner is representable — which means every cell of a river
+// cut to the minimum has the same depth and the same shade, and *lighter at the shallow
+// edges* has nothing to say. A channel that deepens with its width gives the banks the
+// minimum and the middle the rest.
+pub fn water_set_deep(wld: World, q: integer, r: integer, h: integer, dir: integer,
+                      depth: integer, why: &text) -> integer {
   gc = world_ground_cell(wld, q, r);
   bm = gc.h_material as integer ?? 0;
   if bm == 0 || is_water(bm) { bm = SURFACE_MAT; }
@@ -3955,7 +3968,7 @@ pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
   // every cell of every river was the same depth and *deeper water is darker* had
   // nothing to say. A channel cut before the water goes in keeps its shape; a cell
   // with no bed yet gets the minimum, which is the store's `ε` floor and not a taste.
-  bed = h - WATER_DEPTH;
+  bed = h - depth;
   // ⚠ THE BED IS THE GROUND THE RIVER WAS CUT INTO, and asking `water_bed` alone was
   // not enough: it answers only where the surface is ALREADY water, so the ordinary
   // authoring — cut a channel, then put water in it — came back at the minimum depth
@@ -3967,7 +3980,7 @@ pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
   }
   if had >= 0 && had < bed { bed = had; }
   if bed < W_RESERVE {
-    why = "water at {h} leaves no room for a bed {WATER_DEPTH} deep above the reserve";
+    why = "water at {h} leaves no room for a bed {depth} deep above the reserve";
     return hex_world::CW_RESERVE;
   }
   col = hex_world::world_column(wld, q, r);
@@ -4067,6 +4080,11 @@ pub const WATER_FREE = 2;        // how far a river's surface sits below its ban
 // invariant, and `A5`'s rule for the third time.
 pub const WATER_WIDEN    = 6;    // cells of run per extra half-width
 pub const WATER_WIDE_MAX = 2;    // and it stops there — five cells across
+// ⚠ AND A WIDER RIVER IS A DEEPER ONE, WHICH IS WHAT MAKES THE EDGES READ AS SHALLOW.
+// `WATER_DEPTH` is the store's floor and cannot be undercut, so the banks are already
+// as shallow as a river gets; the only way to have a shallow edge is a deep middle.
+// The bed steps up by one of these per cell out from the line the water is taking.
+pub const WATER_STEP = WATER_DEPTH;
 
 pub fn water_half(run: integer) -> integer {
   h = (run / WATER_WIDEN) ?? 0;
@@ -4184,7 +4202,8 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
     // which is the other half of why `water_dir` answers −1 for it.
     dw = d;
     if ended { dw = 0 - 1; }
-    code = water_set(wld, q, r, surf, dw, why);
+    code = water_set_deep(wld, q, r, surf, dw,
+                          WATER_DEPTH + water_half(done + n) * WATER_STEP, why);
     if code != hex_world::CW_OK {
       clamped = clamped + 1;
       if WATER_DEPTH > residual { residual = WATER_DEPTH; }
@@ -4214,7 +4233,10 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
           fr = gr2;
           if is_water(world_ground_cell(wld, fq, fr).h_material as integer ?? 0) { continue; }
           if ground_h(wld, fq, fr) > surf + WATER_DEPTH { break; }
-          water_set(wld, fq, fr, surf, dw, why);
+          // ⚠ THE BED STEPS UP TOWARD THE BANK, so the outermost cell is at the
+          // minimum — the shallowest a river can be, and the lightest the ramp draws.
+          water_set_deep(wld, fq, fr, surf, dw,
+                         WATER_DEPTH + (hw - 1 - _k) * WATER_STEP, why);
         }
       }
     }

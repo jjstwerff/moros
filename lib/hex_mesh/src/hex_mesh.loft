@@ -228,7 +228,14 @@ fn chunk_dug(wld: World, gq0: integer, gr0: integer, gw: integer) -> boolean {
 // `wall` and `frame` are one bucket — so a ramp that changes only BRIGHTNESS is
 // invisible to it. Every picture gate in this tree reads shares by chromaticity, and
 // a ramp in hue would have made the water bucket unmeasurable the day it landed.
-pub const WATER_DEEP = 4 * hex_editor::WATER_DEPTH;
+// ⚠ DERIVED FROM THE CHANNEL THE GESTURE ACTUALLY CUTS, not chosen. The widening
+// deepens the bed by `WATER_STEP` per half-width, so the deepest a river ever gets is
+// `WATER_DEPTH + WATER_WIDE_MAX * WATER_STEP` — and putting the ramp's deep end
+// anywhere past that spends most of its range on water no gesture makes. Measured
+// before this line: a river at its widest reached **0.67** of the ramp, so the middle
+// was only a quarter darker than its banks and the shallow edges did not read.
+pub const WATER_DEEP = hex_editor::WATER_DEPTH
+                     + hex_editor::WATER_WIDE_MAX * hex_editor::WATER_STEP;
 // ⚠ RAISED FROM 0.45 WITH THE SURFACE COLOUR — a deep end at 0.45 of a colour that was
 // already dark read as a hole rather than as deep water, which is `A5`'s rock lesson in
 // a different hue. The ramp still spans a full stop of brightness and the deep end now

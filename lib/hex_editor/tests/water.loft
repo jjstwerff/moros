@@ -530,3 +530,48 @@ fn test_it_stays_narrow_in_a_gorge() {
          "the river widened to {across(w, 8)} cells inside a gorge whose walls stand "
          + "60 units over it");
 }
+
+// ⚠ AND THE EDGES ARE THE SHALLOW PART, WHICH IS THE ONLY WAY THE RAMP CAN SHOW ONE.
+// `WATER_DEPTH` is the store's floor — `F1` keeps occupied layers `ε` apart, so nothing
+// thinner is representable — which means a river cut to the minimum everywhere has one
+// depth and one colour. A shallow edge is therefore a claim about the MIDDLE.
+fn test_a_wide_river_is_deeper_in_the_middle_than_at_its_banks() {
+  w = slope(0);
+  cl = 0;
+  rs = 0;
+  why = "";
+  n = water_lay(w, 0 - 8, 0, 0, 20, 0, cl, rs, why);
+  assert(n >= 18, "the canal ran {n} cells, too short to widen at all");
+  // the widest point, and its two edges
+  mid = water_depth_at(w, 8, 0);
+  assert(mid > 0, "there is no water at the middle of the widest point");
+  seen = 0;
+  for r in (0 - 4)..5 {
+    if r == 0 { continue; }
+    d = water_depth_at(w, 8, r);
+    if d < 0 { continue; }
+    seen = seen + 1;
+    assert(d < mid,
+           "the bank at (8,{r}) is {d} deep against {mid} in the middle — the channel "
+           + "is flat-bottomed, so every cell of it draws the same colour");
+    assert(d >= WATER_DEPTH,
+           "the bank at (8,{r}) is {d} deep, under the {WATER_DEPTH} floor `F1` forces");
+  }
+  assert(seen > 0, "the river never widened, so it has no banks to be shallow");
+  // ⚠ AND THE BED STEPS RATHER THAN DROPPING IN ONE GO, which the row above cannot
+  // see: with the flanks all cut to the floor the middle is still deeper, so *deeper in
+  // the middle* passed a build where the cross-section was a trench with a lip. Three
+  // distinct depths across the widest point is the profile — bank, shoulder, channel —
+  // and a sabotage that flattens the flanks leaves two.
+  ds: vector<integer> = [];
+  for r2 in (0 - 4)..5 {
+    d2 = water_depth_at(w, 8, r2);
+    if d2 < 0 { continue; }
+    have = false;
+    for e in ds { if e == d2 { have = true; } }
+    if !have { ds += [d2]; }
+  }
+  assert(len(ds) >= 3,
+         "the widest point has {len(ds)} distinct depths ({ds}), so its bed is a step "
+         + "and not a slope");
+}
