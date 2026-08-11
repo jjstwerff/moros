@@ -18,6 +18,28 @@ found — an unrevised design reads like a finding.
 
 ---
 
+## ⚠ `gates/world/part_limb` is FLAKY under contention — three times, never alone
+
+**Seen 2026-08-10/11, three times in `make gate` at `GATE_JOBS=4`, and never once when run
+by itself.** It passes alone at HEAD, alone on the branch, and under contention on every
+re-run.
+
+| run | verdict fields |
+|---|---|
+| first | `cellFloats 0, plankH 0` — a mesh that had not arrived |
+| second and third | `cellFloats 540, plankH 2.1667` — **healthy values**, a different field failing |
+
+⚠ **THE TWO SIGNATURES DIFFER, so it is not one wait.** The first reads as a verdict
+sampled before the limb meshes landed; the later two carry perfectly good numbers, so
+something else in the row is timing-dependent. `run-gates.sh` truncates the printed verdict
+to 100 characters, so the failing field is not visible from the suite output — it has to be
+re-run by hand against a server to see which of the `ok` conjuncts is false.
+
+**This is a flaky GATE, not a defect in what it gates** — but a required PR check cannot
+carry it, and `L5` fixed exactly this class once already (a verdict read before its evidence
+existed, and two gates sleeping on the wall clock). The fix is the same shape: wait for the
+evidence rather than for a duration.
+
 ## Contents
 
 - [Character editor](#character-editor)

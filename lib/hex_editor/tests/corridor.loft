@@ -91,12 +91,16 @@ fn test_and_bare_ground_takes_the_same_hollow_in_silence() {
          "bare ground reached {ground_h(w, 0, 0) - G}, not the 12 it was asked for");
 }
 
-fn test_a_raise_over_a_corridor_buries_it_rather_than_lifting_it() {
-  // ⚠ STATED RATHER THAN CLAIMED AS CORRECT. `A2b`'s row also wants the cover kept
-  // within a BAND, and this is the half that is not built: a raise leaves the corridor
-  // where it is and the cover simply grows. The row is recorded here as a measurement
-  // so that whoever builds the band has the before-number, and so that a change which
-  // starts moving corridors is noticed rather than absorbed.
+fn test_a_raise_over_a_corridor_takes_it_along() {
+  // ⚠ THIS ROW USED TO ASSERT THE OPPOSITE, and it fired the moment the band was built
+  // — *"the corridor floor moved to 0; if that is now intended, this row is the one to
+  // change on purpose."* That is what it was for: a measurement of the not-built state,
+  // so a change that starts moving corridors is noticed rather than absorbed.
+  //
+  // *Sub-surface runs take a slope, not a lift.* A corridor is a RUN, so it follows the
+  // ground the way a road does instead of standing still while a hill is piled over it.
+  // Before: a raise of 12 left the floor exactly where it was and the cover grew 12 → 24,
+  // without bound — a corridor buried deeper by every stroke and reachable from nowhere.
   w = flat();
   dig(w, 13);
   before = floor_at(w, 0);
@@ -104,14 +108,45 @@ fn test_a_raise_over_a_corridor_buries_it_rather_than_lifting_it() {
   cl = 0;
   rs = 0;
   brush(w, 0, 0, 12, 9, cl, rs);
-  assert(floor_at(w, 0) == before,
-         "the corridor floor moved to {floor_at(w, 0) - G}; if that is now intended, "
-         + "this row is the one to change on purpose");
-  cover1 = ground_h(w, 0, 0) - floor_at(w, 0);
-  assert(cover1 > cover0,
-         "the cover did not grow under a raise: {cover0} then {cover1}");
-  assert(cover1 == cover0 + 12,
-         "the cover grew by {cover1 - cover0} where the raise was 12 — the corridor is "
-         + "buried by exactly what the ground gained, which is what *not built* means "
-         + "for the band half of this row");
+  assert(floor_at(w, 0) > before,
+         "the corridor floor stayed at {before - G} under a raise of 12 — it was buried "
+         + "rather than taken along");
+  // ⚠ THE COVER IS THE CLAIM, ALL ALONG THE RUN AND NOT ONLY AT THE PEAK. A rule that
+  // moved the centre and left the flanks would hold at q=0 and put a step in the roof.
+  for q in 0..13 {
+    f = floor_at(w, q);
+    if f < 0 { continue; }
+    assert(ground_h(w, q, 0) - f == cover0,
+           "at q={q} the cover is {ground_h(w, q, 0) - f} where it began at {cover0} — "
+           + "the corridor did not follow the ground it was dug under");
+  }
+}
+
+fn test_and_a_cellar_under_a_building_still_rides_rigidly() {
+  // ⚠ THE ROW'S OWN NEGATIVE CONTROL: *a corridor under a BUILDING must still move
+  // rigidly — it is that house's cellar, not a run.* It holds by construction rather
+  // than by a second rule, and that is worth pinning: a house's floor is FABRIC, fabric
+  // is `taken`, and the falloff loop this band lives in has already skipped every taken
+  // cell. `A1`'s rigid path owns them, and it moves the whole column.
+  w = flat();
+  why = "";
+  for q in 0..3 {
+    for r in 0..3 { ground_set(w, q, r, G, FLOOR_MAT); }
+  }
+  for q2 in 0..3 {
+    for r2 in 0..3 { storey_add(w, q2, r2, 0 - 1, 0, why); }
+  }
+  gl = hex_world::world_ground_layer(w, 1, 1);
+  f0 = hex_world::world_cell(w, 1, 1, gl - 1).h_height as integer ?? 0;
+  g0 = ground_h(w, 1, 1);
+  cl = 0;
+  rs = 0;
+  brush(w, 6, 6, 12, 9, cl, rs);                 // a hill raised beside the house
+  gl2 = hex_world::world_ground_layer(w, 1, 1);
+  f1 = hex_world::world_cell(w, 1, 1, gl2 - 1).h_height as integer ?? 0;
+  g1 = ground_h(w, 1, 1);
+  assert(g1 > g0, "the building did not move at all, so this row tests nothing");
+  assert(g1 - g0 == f1 - f0,
+         "the house rose {g1 - g0} and its cellar {f1 - f0} — a cellar is not a run and "
+         + "must ride with the house that owns it");
 }

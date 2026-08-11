@@ -5175,6 +5175,40 @@ fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
             if asked < 0 { asked = 0 - asked; }
             clamped = clamped + 1;
             if asked > residual { residual = asked; }
+          } else {
+            // ── AND A SUB-SURFACE RUN COMES WITH IT — plan 20 `A2b` ──────────
+            //
+            // *Sub-surface runs take a slope, not a lift.* A corridor is a RUN, so
+            // it follows the ground the way a road does instead of staying at a
+            // fixed absolute height while a hill is piled over it. Measured before
+            // this existed: a raise of 12 left the floor exactly where it was and the
+            // cover grew **12 → 24**, without bound — a corridor buried deeper with
+            // every stroke and no longer reachable from anywhere.
+            //
+            // ⚠ MOVED BY THE GROUND'S OWN DELTA, which is what keeps the cover
+            // inside its band rather than measuring the band and steering for it: the
+            // separation `F1` cares about is unchanged by construction, so this can
+            // neither breach the ceiling nor be refused for closing on it.
+            //
+            // ⚠ AND A BUILDING'S CELLAR IS NOT THIS, which the row names as its
+            // negative control — *it is that house's cellar, not a run.* It needs no
+            // test here: a house's floor is fabric, fabric is `taken`, and this loop
+            // has already skipped every taken cell. The rigid path owns them.
+            gl = hex_world::world_ground_layer(w, q, r);
+            if gl > 0 {
+              below = hex_world::world_cell(w, q, r, gl - 1);
+              if hex_world::hex_occupied(below) {
+                layer_write(w, q, r, gl - 1,
+                  hex_world::Hex { h_height: ((below.h_height as integer ?? 0) + asked)
+                                              as u16? ?? 0,
+                                   h_material: below.h_material,
+                                   h_item: below.h_item,
+                                   h_item_rotation: below.h_item_rotation,
+                                   h_wall_n: below.h_wall_n,
+                                   h_wall_ne: below.h_wall_ne,
+                                   h_wall_se: below.h_wall_se });
+              }
+            }
           }
         }
       }

@@ -236,7 +236,7 @@ the headroom that resulted, so it sees cells that **did** rise into their roof a
 blind, by construction, to cells that **failed** to — a cell whose raise was refused still
 has all of its headroom and looks perfectly healthy.
 
-## ◐ `A2b` — A CORRIDOR IS NOT TOUCHED AT ALL, AND HALF OF THAT IS A BUG
+## ✅ `A2b` — A CORRIDOR WAS NOT TOUCHED AT ALL, AND HALF OF THAT WAS A BUG
 
 | measured on a 13-cell corridor | |
 |---|---|
@@ -250,11 +250,26 @@ failure `road_clearance` exists for one gesture over. Against a bare control the
 delivered **nothing** at the centre and 11, 10, 9, 7, 5 short along the corridor, reporting
 `clamped 0 residual 0`. Now **clamped 6, residual 12** — and bare ground still says nothing.
 
-◐ **The band's CEILING is not built**, and `tests/corridor.loft` asserts the not-built state
-exactly (the cover grows by precisely what the ground gained) so a change that starts moving
-corridors is noticed rather than absorbed. ⚠ **Open question 3 — cover or gradient — cannot
-be decided while the corridor never moves**: its gradient is trivially zero today. The fight
-only begins once a corridor follows the ground.
+✅ **AND THE BAND'S CEILING IS BUILT — the corridor follows.** The layer under a moved
+ground cell moves by the same delta, so the cover holds at **12 all along the run** where it
+grew 12 → 24 without bound. ⚠ By the ground's own delta rather than by steering for a
+measured band: `F1`'s separation is unchanged **by construction**.
+
+⚠ **THE ROW THAT ASSERTED THE NOT-BUILT STATE IS WHAT CAUGHT IT** — red at *"the corridor
+floor moved to 0; if that is now intended, this row is the one to change on purpose"*, which
+is exactly what it was written for. It now asserts the cover at **every** cell of the run,
+since a rule that moved the centre and left the flanks would hold at the peak and put a step
+in the roof.
+
+✅ **The negative control holds by construction**: a house's floor is fabric, fabric is
+`taken`, and this loop skips taken cells — `A1`'s rigid path owns them. Measured, the house
+rose 3 and its cellar rose 3.
+
+⚠ **OPEN QUESTION 3 IS ANSWERED BY WHAT A FLOOR IS.** *Cover or gradient?* cannot fight,
+because `FLOOR_MAT`'s `tr_slope` is `SLOPE_FREE` — a corridor has no gradient limit of its
+own, so it follows exactly and the cover is held rather than floating. The question goes
+live the day a sub-surface run carries a limited material, and the plan's answer is then one
+line: clamp the follow and let the cover open.
 
 ## ✅ `A3` — THE RULE WAS ALREADY THERE; THE PROOF WAS NOT
 
