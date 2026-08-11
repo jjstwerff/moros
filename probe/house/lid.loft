@@ -1,0 +1,65 @@
+// WHAT IS "THE LID", REALLY? — plan 20, and it refutes a design before it was built.
+//
+// A road walked UP a hill cuts into it, `A9` caves the cut, and a caved cell then refuses
+// the raise that would return its spoil — so a rising walk ends owing 363 over 43 cells
+// where the same walk downhill owes 19. The proposal for fixing that was: **when the road
+// inside a gallery rises, raise its roof with it**, so the headroom is kept and the
+// gallery survives instead of losing its lid.
+//
+// ⚠ THAT ASSUMES THERE IS A ROOF TO RAISE, AND THERE IS NOT. `road_cave` writes exactly
+// two entries into the column — the road below, and the ground layer keeping `nat`, the
+// natural ground that was already there. There is no stored ceiling: the soffit the
+// renderer draws is the UNDERSIDE of that ground layer, derived from it. **The lid IS the
+// hillside.**
+//
+// So this raises one and measures what happens to the terrain. Run it: the caved cell's
+// ground goes 400 → 412 while its neighbour stays at 400, and the mountain grows a
+// 12-unit step at the gallery. That is inventing hill, which is the one thing `A9` exists
+// not to do — its whole claim is that the rock left standing is the hill's OWN rock.
+//
+// ⚠ WHICH MAKES THE CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION. A road inside a
+// gallery is COMMITTED: it cannot rise without re-cutting the roof, and re-cutting the
+// roof means taking rock AWAY — which is `run_unshelf`, the gallery becoming an open cut
+// again — never adding hill above it. The only two answers are *keep the gallery and cart
+// the spoil off* (what ships) and *return the spoil and lose the gallery*, and spoil from
+// a mountain cutting is carted off in the world as well as in this one.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+fn main() {
+  w = world_new(U, 0, 10, 3).wn_world;
+  for q in (0 - 8)..9 {
+    for r in (0 - 8)..9 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  // cave one cell: road 30 below, the hillside left standing where it stood
+  road_cave(w, 0, 0, G - 30, G, SURFACE_MAT);
+  println("a caved column at (0,0):");
+  println("  road    (caved_h)  {caved_h(w, 0, 0)}");
+  println("  ground  (ground_h) {ground_h(w, 0, 0)}   <- the LID");
+  println("  headroom           {shelf_head(w, 0, 0, ROAD_MAT)}");
+  println("  the hillside beside it, (1,0): {ground_h(w, 1, 0)}");
+  println("");
+  // now raise the lid by 12, as "the lid rises with the road" would have to
+  col = hex_world::world_column(w, 0, 0);
+  gi = 0 - 1;
+  for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; } }
+  gc = col.co_cells[gi] ?? hex_world::Hex {};
+  layer_write(w, 0, 0, gi,
+    hex_world::Hex { h_height: ((gc.h_height as integer ?? 0) + 12) as u16? ?? 0,
+                     h_material: gc.h_material });
+  println("after raising the lid by 12:");
+  println("  ground  (ground_h) {ground_h(w, 0, 0)}");
+  println("  the hillside beside it, (1,0): {ground_h(w, 1, 0)}");
+  println("  so the terrain now steps {ground_h(w, 0, 0) - ground_h(w, 1, 0)} at the gallery");
+  println("");
+  println("⚠ THE LID *IS* THE HILLSIDE. `road_cave` writes exactly two entries — the road");
+  println("   below and the ground layer keeping `nat`, the natural ground that was here.");
+  println("   There is no stored ceiling: the soffit the renderer draws is the UNDERSIDE");
+  println("   of that ground layer, derived. So raising the lid raises the HILL, and the");
+  println("   step above is mountain that was never there.");
+  println("⚠ SO THE CAP IS CORRECT AND NOT A LIMITATION. A road inside a gallery is");
+  println("   COMMITTED: it cannot rise without re-cutting the roof, and re-cutting means");
+  println("   taking rock AWAY — `run_unshelf`, the gallery becoming an open cut — never");
+  println("   adding hill above it.");
+}

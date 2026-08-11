@@ -534,10 +534,19 @@ never were.
    returned.** It costs `gates/world/cave` **half its shelves (13 → 6)** and its `lidFaced`
    row. Capping at `ε` instead: 7 shelves, `lidFaced` still false.
 
-   ⚠ **Two shipped claims in conflict, not a defect** — lifting a road inside a gallery eats
-   the gallery. **What would settle it is raising the shelf's LID with the road**: headroom
-   kept, the cut simply shallower, and the gallery becomes an open cut on its own when the
-   lid reaches the hillside. A design step, and one wanting the user's eyes on the picture.
+   ⚠⚠ **AND *RAISE THE SHELF'S LID WITH THE ROAD* — THE FIX THIS PLAN PROPOSED — IS
+   REFUTED** (`probe/house/lid.loft`). There is no roof to raise: `road_cave` writes **two**
+   entries, the road below and the ground layer keeping `nat`, and the drawn soffit is that
+   layer's **underside**. **The lid IS the hillside**, and raising it measured a **12-unit
+   step in the terrain** at the gallery while the neighbour stayed put — inventing hill,
+   which is what `A9` exists not to do.
+
+   ✅ **So the cap is correct behaviour rather than a limitation.** A road inside a gallery
+   is **committed**: it cannot rise without re-cutting the roof, and re-cutting takes rock
+   **away** (`run_unshelf` — the gallery becomes an open cut), never adds hill. Two answers,
+   not three: keep the gallery and cart the spoil off (**ships**), or return the spoil and
+   lose the gallery (half of `cave`'s shelves). The rising walk's unreturned 363 is a
+   refusal with a reason.
 
    ⚠ **The test says so rather than being relaxed until it passes** — it runs the falling
    direction only and carries the rising measurement in its comment.

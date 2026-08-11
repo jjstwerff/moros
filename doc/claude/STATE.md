@@ -352,12 +352,26 @@ returned. It costs `gates/world/cave` **half its shelves (13 → 6)** and its `l
 — the rock above the mouth loses faces (618 against 630). Capping at `ε` instead was tried
 too: 7 shelves, `lidFaced` still false.
 
-⚠ **SO IT IS TWO SHIPPED CLAIMS IN CONFLICT** — `A8`'s conservation against `A9`'s gallery
-— and lifting a road inside a gallery eats the gallery. **What would settle it is raising
-the shelf's LID with the road**: the headroom is kept, the cut simply becomes shallower, and
-the gallery turns back into an open cut on its own when the lid reaches the hillside. That
-is a design step, not a cap, and it wants the user's eyes on the picture — `A9`'s acceptance
-always was one.
+⚠⚠ **AND THE FIX THIS FILE PROPOSED — *raise the shelf's LID with the road* — IS REFUTED.**
+`probe/house/lid.loft`: there is no roof to raise. `road_cave` writes **two** entries into
+the column — the road below, and the ground layer keeping `nat`, the natural ground that was
+already there — and the soffit the renderer draws is that layer's **underside**, derived.
+**The lid IS the hillside.** Raising it by 12 measured a **12-unit step in the terrain** at
+the gallery while its neighbour stayed at 400: inventing hill, which is the one thing `A9`
+exists not to do.
+
+✅ **WHICH MAKES THE CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION, and that is the real
+finding.** A road inside a gallery is **committed**: it cannot rise without re-cutting the
+roof, and re-cutting means taking rock **away** — `run_unshelf`, the gallery becoming an
+open cut — never adding hill above it. There are exactly two answers, not three:
+
+| | |
+|---|---|
+| keep the gallery and cart the spoil off | **what ships**, and what a road builder does with spoil from a rock cutting |
+| return the spoil and lose the gallery | costs `gates/world/cave` half its shelves and its `lidFaced` row |
+
+**Nothing is owed here.** The rising walk's unreturned 363 is a refusal with a reason, not a
+defect — and the earlier framing of it as *a conflict awaiting a design step* was wrong.
 
 ⚠ **AND THE TEST SAYS SO RATHER THAN BEING RELAXED UNTIL IT PASSES.**
 `test_a_finished_run_owes_no_more_than_the_integer_remainder` runs the **falling** direction

@@ -3319,11 +3319,20 @@ pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
   // mirror of the same walk downhill, and the optimum** — and `gates/world/cave` loses
   // half its shelves (13 to 6) and its `lidFaced` row with them.
   //
-  // ⚠ SO IT IS A CONFLICT BETWEEN TWO SHIPPED CLAIMS, NOT A BUG: `A8`'s conservation
-  // against `A9`'s gallery, and lifting a road inside a gallery eats the gallery. What
-  // would settle it is raising the shelf's LID with the road — the headroom is kept, the
-  // cut simply becomes shallower, and the gallery turns back into an open cut on its own
-  // when the lid reaches the hillside. That is a design step and not a cap.
+  // ⚠ AND RAISING THE SHELF'S LID WITH THE ROAD WAS THE PROPOSED FIX AND IS REFUTED —
+  // `probe/house/lid.loft`. There is no roof to raise: `road_cave` writes two entries,
+  // the road below and the ground layer keeping `nat`, and the soffit the renderer draws
+  // is that layer's UNDERSIDE. **The lid IS the hillside.** Raising it measured a 12-unit
+  // step in the terrain at the gallery while the neighbour stayed put — inventing hill,
+  // which is the one thing `A9` exists not to do.
+  //
+  // ⚠ WHICH MAKES THIS CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION. A road inside a
+  // gallery is COMMITTED: it cannot rise without re-cutting the roof, and re-cutting
+  // means taking rock AWAY — `run_unshelf`, the gallery becoming an open cut — never
+  // adding hill above it. The two answers are *keep the gallery and cart the spoil off*,
+  // which is this, and *return the spoil and lose the gallery*, which costs
+  // `gates/world/cave` half its shelves. Spoil from a mountain cutting is carted off in
+  // the world too.
   if shift > 0 {
     for j1 in 0..n {
       hd = shelf_head(w, mq[j1] ?? 0, mr[j1] ?? 0, mat);
