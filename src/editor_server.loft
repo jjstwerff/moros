@@ -969,10 +969,15 @@ fn rec_flush(path: text, buf: text) {
 // mapping is a second place that can be wrong about parity, and parity is where
 // this codebase breaks (four bugs, all "right for non-negative coordinates").
 //
-// ⚠ `h_wall_n` / `h_wall_ne` / `h_wall_se` are named for a FLAT-TOP reading and
-// two of the three names are simply wrong (`SCENE_MAP.md`: they hold NW, NE, E).
-// Renaming them is moros#3 and touches a shared struct; until then this function
-// is the only place that has to know, which is the point of having it.
+// ✅ `h_wall_nw` / `h_wall_ne` / `h_wall_e` SAY WHAT THEY HOLD NOW (2026-08-11).
+// They were `h_wall_n` / `h_wall_ne` / `h_wall_se` — a FLAT-TOP reading, two of the
+// three simply wrong — and were deferred for years as *"public fields of a published
+// library"*, which was a confusion of our store with the registry's unrelated
+// `hex_world`. Ours has never been published, so it was a free rename. The direction
+// of each was re-derived from the lattice rather than taken from `SCENE_MAP.md`:
+// slot 0 → dir 4 → corners 5–0 → NW, slot 1 → dir 5 → 0–1 → NE, slot 2 → dir 0 →
+// 1–2 → E. `edge_owner` is still the only place that has to know the mapping, which
+// is the point of having it.
 //
 // ⚠ AND EVERY `hex_distance` IN THIS FILE IS QUALIFIED, for a reason this rung
 // found the hard way. `moros_map` exports a `hex_distance` that is the AXIAL cube
@@ -1264,9 +1269,9 @@ fn edges_around(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
     for q in (cq - reach - 1)..(cq + reach + 2) {
       c = hex_voxel::world_cell(wld, q, r,
             edge_layer(wld, q, r, ref_units * HEIGHT_SCALE));
-      mats: vector<integer> = [c.h_wall_n as integer ?? 0,
+      mats: vector<integer> = [c.h_wall_nw as integer ?? 0,
                                c.h_wall_ne as integer ?? 0,
-                               c.h_wall_se as integer ?? 0];
+                               c.h_wall_e as integer ?? 0];
       for si in 0..3 {
         stops = wall_stops_walk(mats[si]);
         if view { stops = wall_stops_view(mats[si]); }
@@ -1645,7 +1650,7 @@ fn walls_text(wld: VoxelWorld, q: integer, r: integer) -> text {
   for we in wcol.co_cells {
     if hex_voxel::hex_present(we) {
       if wtxt != "" { wtxt += ";"; }
-      wtxt += "{we.h_wall_n},{we.h_wall_ne},{we.h_wall_se}";
+      wtxt += "{we.h_wall_nw},{we.h_wall_ne},{we.h_wall_e}";
     }
   }
   wtxt
@@ -2522,9 +2527,9 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
     for gq in q0..q0 + CHUNK {
       for gr in r0..r0 + CHUNK {
         for ge in world_column(wld, gq, gr).co_cells {
-          gws: vector<integer> = [ge.h_wall_n as integer ?? 0,
+          gws: vector<integer> = [ge.h_wall_nw as integer ?? 0,
                                   ge.h_wall_ne as integer ?? 0,
-                                  ge.h_wall_se as integer ?? 0];
+                                  ge.h_wall_e as integer ?? 0];
           for gi in 0..3 {
             if gws[gi] != DOOR_MAT { continue; }
             (gea, geb) = hex_grid::hex_edge_corners(slot_dir[gi] ?? 0);
@@ -2610,9 +2615,9 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
         // Put this line inside the `if` below and every rim wall whose owner is
         // an empty cell stops being drawn — the 17-stamped-as-8 loss, in the
         // renderer this time.
-        ews: vector<integer> = [e.h_wall_n as integer ?? 0,
+        ews: vector<integer> = [e.h_wall_nw as integer ?? 0,
                                 e.h_wall_ne as integer ?? 0,
-                                e.h_wall_se as integer ?? 0];
+                                e.h_wall_e as integer ?? 0];
         // ⚠ THE PER-EDGE PANEL IS NOW A FALLBACK, for edges nobody has a line
         // for: the stencil's house walls, a single edge placed by hand. Where a
         // run carries the edge the run is drawn instead, once, straight — drawing

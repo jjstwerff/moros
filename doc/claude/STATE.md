@@ -95,6 +95,27 @@ remembering the next time a probe goes green through a change it was aimed at.
 and `sed -i` stops on the first non-regular file — so a tree-wide rename silently skips every file
 after it, reporting nothing. `-type f`.
 
+### ⏭ AND THE `h_wall` RENAME WENT WITH IT — `h_wall_nw` / `h_wall_ne` / `h_wall_e`
+
+`h_wall_n`/`h_wall_se` were a **flat-top** reading on a **pointy-top** lattice, which has no north
+edge at all. **287 occurrences across 39 files**, four structs in three packages; counts identical,
+`make parts` byte-identical, 47 gates green. `h_wall_ne` was right and did not move. The byte
+layout and field order are untouched, so no world file, part file or wire message changed.
+
+⚠ **IT HAD BEEN DEFERRED FOR MONTHS ON A FACT NOBODY RE-READ** — *"public fields of a published
+library (hex_world 0.2.0)"*, which is the **registry's** `hex_world`, a different lineage with
+**zero** `h_wall` fields. Ours has never been published. The estimate had rotted too: *"~80 sites
+in ten files"* was 287 in 39.
+
+⚠ **TWO PACKAGES DECLARE `pub struct Hex` WITH BYTE-IDENTICAL FIELD LISTS** — `moros_map::Hex` and
+`hex_voxel::Hex` — and this is how it was found: `moros_render::emit_hex_walls` is the obvious
+instrument for *what edge is this byte*, and it draws **`moros_map`'s**, not the store's. The
+reading was right by luck. The chain that actually answers for the store is `SLOT_*` →
+`slot_dir = [4,5,0]` → `hex_grid::hex_edge_corners`, and all three agreed.
+⚠ **`names.sh` is silent about the pair, correctly** — it checks the graph, and the two never meet
+in one since `L6.1` removed `editor_server`'s dead `moros_map` import. **Re-import `moros_map`
+into the editor's graph and a bare `Hex { … }` becomes ambiguous.** Recorded, not fixed.
+
 ⚠ **`shots/a9-*.png` ARE THE SHIPPING RENDER.** Photographing the alternative overwrote them
 under the same names; the directory is gitignored so nothing wrong was committed, but the
 wrong frames on disk read as a missing gallery. Restored and verified pixel-identical.

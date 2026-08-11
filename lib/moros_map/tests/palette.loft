@@ -109,7 +109,7 @@ fn test_a_world_naming_a_missing_definition_is_caught() {
 }
 
 // Walls are the easy one to miss: three of them per cell, and a gap in any of the
-// three is a gap.  A loop that checked only `h_wall_n` would pass every test above.
+// three is a gap.  A loop that checked only `h_wall_nw` would pass every test above.
 fn test_a_missing_wall_definition_is_caught_on_every_edge() {
   for edge in 0..3 {
     m = map_empty();

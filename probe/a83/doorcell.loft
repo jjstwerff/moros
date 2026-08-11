@@ -37,9 +37,9 @@ fn walled(w: VoxelWorld, q: integer, r: integer, nw: integer, ne: integer, e: in
   assert(world_set_cell(w, q, r, 0,
     Hex { h_height: 1 as u16? ?? 0,
           h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
-          h_wall_n:  nw as u8? ?? 0,
+          h_wall_nw:  nw as u8? ?? 0,
           h_wall_ne: ne as u8? ?? 0,
-          h_wall_se: e as u8? ?? 0 }).cw_code == CW_OK,
+          h_wall_e: e as u8? ?? 0 }).cw_code == CW_OK,
     "wall cell ({q},{r}) refused");
 }
 

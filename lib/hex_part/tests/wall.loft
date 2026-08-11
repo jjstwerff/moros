@@ -48,7 +48,7 @@ fn test_it_survives_a_save_and_a_load() {
   w = fresh();
   assert(world_set_cell(w, 0, 0, 0,
     Hex { h_height: 1 as u16? ?? 0, h_material: 4 as u8? ?? 0,
-          h_wall_se: 1 as u8? ?? 0 }).cw_code == CW_OK, "the cell was refused");
+          h_wall_e: 1 as u8? ?? 0 }).cw_code == CW_OK, "the cell was refused");
   assert(part_set_wall(w, PartWall { wa_up: 7, wa_surface: "frame" }) == WA_OK,
          "the profile was refused");
   path = "{temp_dir()}/hexpart-wall-roundtrip.hxw";

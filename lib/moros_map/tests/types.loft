@@ -24,9 +24,9 @@ fn test_hex_default() {
   assert(h.h_material == 0, "default material");
   assert(h.h_item == 0, "default item");
   assert(h.h_item_rotation == 0, "default rotation");
-  assert(h.h_wall_n == 0, "default wall_n");
+  assert(h.h_wall_nw == 0, "default wall_n");
   assert(h.h_wall_ne == 0, "default wall_ne");
-  assert(h.h_wall_se == 0, "default wall_se");
+  assert(h.h_wall_e == 0, "default wall_se");
 }
 
 fn test_hex_fields() {
@@ -35,17 +35,17 @@ fn test_hex_fields() {
     h_material: 5,
     h_item: 3,
     h_item_rotation: 42,
-    h_wall_n: 1,
+    h_wall_nw: 1,
     h_wall_ne: 2,
-    h_wall_se: 3,
+    h_wall_e: 3,
   };
   assert(h.h_height == 100, "height");
   assert(h.h_material == 5, "material");
   assert(h.h_item == 3, "item");
   assert(h.h_item_rotation == 42, "rotation");
-  assert(h.h_wall_n == 1, "wall_n");
+  assert(h.h_wall_nw == 1, "wall_n");
   assert(h.h_wall_ne == 2, "wall_ne");
-  assert(h.h_wall_se == 3, "wall_se");
+  assert(h.h_wall_e == 3, "wall_se");
 }
 
 fn test_hex_rotation_extract() {

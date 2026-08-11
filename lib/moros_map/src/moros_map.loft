@@ -112,8 +112,8 @@ pub fn map_palette_gap(m: Map) -> text {
       if h.h_item >= len(m.m_item_palette) {
         return "item {h.h_item} but only {len(m.m_item_palette)} defined";
       }
-      if h.h_wall_n >= len(m.m_wall_palette) || h.h_wall_ne >= len(m.m_wall_palette)
-         || h.h_wall_se >= len(m.m_wall_palette) {
+      if h.h_wall_nw >= len(m.m_wall_palette) || h.h_wall_ne >= len(m.m_wall_palette)
+         || h.h_wall_e >= len(m.m_wall_palette) {
         return "wall index past the {len(m.m_wall_palette)} defined";
       }
     }
@@ -254,9 +254,9 @@ pub fn map_place_item(m: Map, q: integer, r: integer, cy: integer, item: u8, rot
 // Set a wall on a hex edge.  edge: 0=N, 1=NE, 2=SE.
 pub fn map_set_wall(m: Map, q: integer, r: integer, cy: integer, edge: integer, wall: u8) {
   cur = map_get_hex(m, q, r, cy);
-  if edge == 0 { cur.h_wall_n = wall; }
+  if edge == 0 { cur.h_wall_nw = wall; }
   if edge == 1 { cur.h_wall_ne = wall; }
-  if edge == 2 { cur.h_wall_se = wall; }
+  if edge == 2 { cur.h_wall_e = wall; }
   map_set_hex(m, q, r, cy, cur);
 }
 
@@ -593,9 +593,9 @@ pub fn map_read_field(path: text, cy: integer) -> MapLoad {
 // stored wall maps to a canonical slot with no re-keying.
 //
 // The field names still say n/ne/se; only `wall_ne` is accurate (moros#3).
-pub const DIR_E  = 0;      // h_wall_se
+pub const DIR_E  = 0;      // h_wall_e
 pub const DIR_NE = 2;      // h_wall_ne
-pub const DIR_NW = 3;      // h_wall_n
+pub const DIR_NW = 3;      // h_wall_nw
 
 // ── Facing: TWELVE placements, named as hours on the clock (moros#5) ─────
 //
@@ -717,9 +717,9 @@ pub fn map_to_stencil(m: Map, cy: integer, q0: integer, r0: integer, w: integer,
       // the neighbour — so the wall ringing a room is often held by the empty cell
       // outside it.  Reading walls only from material-bearing cells drops those,
       // silently and asymmetrically.
-      if cell.h_wall_n != 0  { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW), cell.h_wall_n); }
+      if cell.h_wall_nw != 0  { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NW), nb_r(cq, cr, DIR_NW), cell.h_wall_nw); }
       if cell.h_wall_ne != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_NE), nb_r(cq, cr, DIR_NE), cell.h_wall_ne); }
-      if cell.h_wall_se != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E),  cell.h_wall_se); }
+      if cell.h_wall_e != 0 { edge_set_mat(eg, cq, cr, nb_q(cq, cr, DIR_E),  nb_r(cq, cr, DIR_E),  cell.h_wall_e); }
     }
   }
   st = stencil_with_edges(cells, hz, lb, eg, true, true);
@@ -866,21 +866,21 @@ pub fn stencil_into_map_mode(m: Map, st: Stencil, aq: integer, ar: integer, cy: 
         if mode == STAMP_REPLACE {
           cur.h_height = shgt; cur.h_material = smat;
           cur.h_item = sitm; cur.h_item_rotation = srot;
-          cur.h_wall_n = swn; cur.h_wall_ne = swe; cur.h_wall_se = sws;
+          cur.h_wall_nw = swn; cur.h_wall_ne = swe; cur.h_wall_e = sws;
         }
         if mode == STAMP_OVERLAY {
           if shgt != 0 { cur.h_height = shgt; }
           if smat != 0 { cur.h_material = smat; }
           if sitm != 0 { cur.h_item = sitm; }
           if srot != 0 { cur.h_item_rotation = srot; }
-          if swn != 0 { cur.h_wall_n = swn; }
+          if swn != 0 { cur.h_wall_nw = swn; }
           if swe != 0 { cur.h_wall_ne = swe; }
-          if sws != 0 { cur.h_wall_se = sws; }
+          if sws != 0 { cur.h_wall_e = sws; }
         }
         if mode == STAMP_HEIGHTS { cur.h_height = shgt; }
         if mode == STAMP_STRUCTURE {
           cur.h_material = smat; cur.h_item = sitm; cur.h_item_rotation = srot;
-          cur.h_wall_n = swn; cur.h_wall_ne = swe; cur.h_wall_se = sws;
+          cur.h_wall_nw = swn; cur.h_wall_ne = swe; cur.h_wall_e = sws;
         }
         map_set_hex(m, cq, cr, cy, cur);
       }

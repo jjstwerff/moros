@@ -119,7 +119,7 @@ fn test_p5_emptying_a_layer_removes_it_and_leaves_reads_alone() {
 fn test_e1e_a_layer_whose_only_content_is_walls_survives() {
   w = sp_world();
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
-         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_se: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
+         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_e: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
          "a bare boundary edge");
   p = "sp_e1e.bin";
   assert(world_save(w, p, []) == WS_OK, "save");
@@ -129,7 +129,7 @@ fn test_e1e_a_layer_whose_only_content_is_walls_survives() {
          "walls alone must keep their layer: {got} want {sp_want(1, 1)}");
   col = world_column(w, 0, 0);
   assert(len(col.co_cells) == 1, "the layer is gone: {len(col.co_cells)} cells");
-  assert(col.co_cells[0].h_wall_se == 3, "the wall byte did not survive");
+  assert(col.co_cells[0].h_wall_e == 3, "the wall byte did not survive");
   // and the cell is still ABSENT as ground — present is not occupied
   assert(!hex_occupied(col.co_cells[0]), "a wall must not read as ground");
 }
@@ -137,7 +137,7 @@ fn test_e1e_a_layer_whose_only_content_is_walls_survives() {
 fn test_e1e_control_a_layer_with_no_content_at_all_is_still_removed() {
   w = sp_world();
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
-         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_se: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
+         co_cells: [Hex { h_height: 1000 as u16? ?? 0, h_wall_e: 3 as u8? ?? 0 }] }).cw_code == CW_OK,
          "a bare boundary edge");
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
          co_cells: [sp_cell(1000, 0)] }).cw_code == CW_OK, "clear the edge too");

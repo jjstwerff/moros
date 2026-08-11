@@ -199,9 +199,9 @@ pub fn ground_set(w: VoxelWorld, q: integer, r: integer, h: integer, mat: intege
                         h_material: mat as u8? ?? 0,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
-                        h_wall_n: c.h_wall_n,
+                        h_wall_nw: c.h_wall_nw,
                         h_wall_ne: c.h_wall_ne,
-                        h_wall_se: c.h_wall_se };
+                        h_wall_e: c.h_wall_e };
   ground_write(w, q, r, nc)
 }
 
@@ -279,16 +279,22 @@ pub fn run_set(w: VoxelWorld, q: integer, r: integer, mat: integer, h: integer) 
   layer_write(w, q, r, li,
     hex_voxel::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0,
                      h_item: lc.h_item, h_item_rotation: lc.h_item_rotation,
-                     h_wall_n: lc.h_wall_n, h_wall_ne: lc.h_wall_ne,
-                     h_wall_se: lc.h_wall_se })
+                     h_wall_nw: lc.h_wall_nw, h_wall_ne: lc.h_wall_ne,
+                     h_wall_e: lc.h_wall_e })
 }
 
 // ── the surface and edge writers the gestures share ─────────────────────────
 
 // The three edge slots a hex owns, and the height unit everything is measured in.
-pub const SLOT_NW = 0;                // h_wall_n
-pub const SLOT_NE = 1;                // h_wall_ne
-pub const SLOT_E  = 2;                // h_wall_se
+//
+// ⚠ THE SLOT NAMES WERE RIGHT AND THE FIELD NAMES WERE NOT, for years. These three
+// constants read NW/NE/E because that is what the edges ARE; the store's fields said
+// `h_wall_n` / `h_wall_ne` / `h_wall_se`, a flat-top leftover, so this table was the
+// translation. Renamed 2026-08-11 — the pairs are trivial now, and kept written out
+// because the slot INDEX is what the wire and the mesher carry.
+pub const SLOT_NW = 0;                // h_wall_nw — corners 5–0, lattice dir 4
+pub const SLOT_NE = 1;                // h_wall_ne — corners 0–1, lattice dir 5
+pub const SLOT_E  = 2;                // h_wall_e  — corners 1–2, lattice dir 0
 
 
 // The height of a cell: every peak's contribution, summed.
@@ -353,9 +359,9 @@ pub fn surface_set(wld: VoxelWorld, q: integer, r: integer, feet: float,
                         h_material: mat as u8? ?? 0,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
-                        h_wall_n: c.h_wall_n,
+                        h_wall_nw: c.h_wall_nw,
                         h_wall_ne: c.h_wall_ne,
-                        h_wall_se: c.h_wall_se };
+                        h_wall_e: c.h_wall_e };
   if sf.sf_layer < 0 { return ground_write(wld, q, r, nc); }
   col = hex_voxel::world_column(wld, q, r);
   cells: vector<hex_voxel::Hex> = [];
@@ -429,9 +435,9 @@ pub fn wall_set(wld: VoxelWorld, q: integer, r: integer, dir: integer,
   c = hex_voxel::world_cell(wld, oq, orr, eli);
   hh = c.h_height as integer ?? 0;
   if !hex_voxel::hex_present(c) { hh = h; }
-  wn = c.h_wall_n as integer ?? 0;
+  wn = c.h_wall_nw as integer ?? 0;
   we = c.h_wall_ne as integer ?? 0;
-  ws2 = c.h_wall_se as integer ?? 0;
+  ws2 = c.h_wall_e as integer ?? 0;
   if slot == SLOT_NW { wn = mat; }
   else if slot == SLOT_NE { we = mat; }
   else { ws2 = mat; }
@@ -439,9 +445,9 @@ pub fn wall_set(wld: VoxelWorld, q: integer, r: integer, dir: integer,
                         h_material: c.h_material,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
-                        h_wall_n: wn as u8? ?? 0,
+                        h_wall_nw: wn as u8? ?? 0,
                         h_wall_ne: we as u8? ?? 0,
-                        h_wall_se: ws2 as u8? ?? 0 };
+                        h_wall_e: ws2 as u8? ?? 0 };
   layer_write(wld, oq, orr, eli, nc)
 }
 
@@ -461,9 +467,9 @@ pub const FENCE_R   = 3;    // hexes — the paddock one press rings
 pub fn wall_of(wld: VoxelWorld, q: integer, r: integer, dir: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
   c = hex_voxel::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
-  if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
+  if slot == SLOT_NW { return c.h_wall_nw as integer ?? 0; }
   if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
-  c.h_wall_se as integer ?? 0
+  c.h_wall_e as integer ?? 0
 }
 
 // ── The exact perimeter ─────────────────────────────────────────────────────
@@ -1214,8 +1220,8 @@ fn clear_in_layer(wld: VoxelWorld, q: integer, r: integer, label: integer,
       // material — `E1e` — and a stairwell cut beside a wall must not take the wall
       // with it.
       cells += [hex_voxel::Hex { h_height: gcell.h_height, h_material: 0,
-                                 h_wall_n: gcell.h_wall_n, h_wall_ne: gcell.h_wall_ne,
-                                 h_wall_se: gcell.h_wall_se }];
+                                 h_wall_nw: gcell.h_wall_nw, h_wall_ne: gcell.h_wall_ne,
+                                 h_wall_e: gcell.h_wall_e }];
     } else {
       cells += [col.co_cells[i] ?? hex_voxel::Hex {}];
     }
@@ -1531,9 +1537,9 @@ pub fn stencil_place(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
         band2: vector<hex_voxel::Hex> = [
           hex_voxel::Hex { h_height: (anchor as u16? ?? 0),
                            h_material: (FLOOR_MAT as u8? ?? 0),
-                           h_wall_n: (wn2 as u8? ?? 0),
+                           h_wall_nw: (wn2 as u8? ?? 0),
                            h_wall_ne: (wne2 as u8? ?? 0),
-                           h_wall_se: (wse2 as u8? ?? 0) },
+                           h_wall_e: (wse2 as u8? ?? 0) },
           hex_voxel::Hex { h_height: (hi2 as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
@@ -1656,8 +1662,8 @@ pub fn scatter(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
               cells += [hex_voxel::Hex { h_height: e.h_height, h_material: e.h_material,
                                          h_item: (want as u8? ?? 0),
                                          h_item_rotation: (rot as u8? ?? 0),
-                                         h_wall_n: e.h_wall_n, h_wall_ne: e.h_wall_ne,
-                                         h_wall_se: e.h_wall_se }];
+                                         h_wall_nw: e.h_wall_nw, h_wall_ne: e.h_wall_ne,
+                                         h_wall_e: e.h_wall_e }];
             } else {
               cells += [e];
             }
@@ -3109,9 +3115,9 @@ pub fn road_cave(wld: VoxelWorld, q: integer, r: integer, h: integer,
                         h_material: nmat as u8? ?? 0,
                         h_item: gc.h_item,
                         h_item_rotation: gc.h_item_rotation,
-                        h_wall_n: gc.h_wall_n,
+                        h_wall_nw: gc.h_wall_nw,
                         h_wall_ne: gc.h_wall_ne,
-                        h_wall_se: gc.h_wall_se };
+                        h_wall_e: gc.h_wall_e };
   down = hex_voxel::Hex { h_height: h as u16? ?? 0,
                           h_material: ROAD_MAT as u8? ?? 0 };
   fill = 0 - 1;
@@ -3180,8 +3186,8 @@ pub fn run_unshelf(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> int
   h = c.h_height as integer ?? 0;
   code = layer_write(wld, q, r, li,
            hex_voxel::Hex { h_height: c.h_height, h_material: 0,
-                            h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne,
-                            h_wall_se: c.h_wall_se });
+                            h_wall_nw: c.h_wall_nw, h_wall_ne: c.h_wall_ne,
+                            h_wall_e: c.h_wall_e });
   if code != hex_voxel::CW_OK { return code; }
   ground_set(wld, q, r, h, mat)
 }
@@ -3823,9 +3829,9 @@ pub fn lift_column(w: VoxelWorld, q: integer, r: integer, delta: integer) -> int
                              h_material: c.h_material,
                              h_item: c.h_item,
                              h_item_rotation: c.h_item_rotation,
-                             h_wall_n: c.h_wall_n,
+                             h_wall_nw: c.h_wall_nw,
                              h_wall_ne: c.h_wall_ne,
-                             h_wall_se: c.h_wall_se }];
+                             h_wall_e: c.h_wall_e }];
   }
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: out }).cw_code
 }
@@ -4164,8 +4170,8 @@ pub fn water_set_deep(wld: VoxelWorld, q: integer, r: integer, h: integer, dir: 
   }
   top = hex_voxel::Hex { h_height: h as u16? ?? 0,
                          h_material: water_of(dir) as u8? ?? 0,
-                         h_wall_n: gc.h_wall_n, h_wall_ne: gc.h_wall_ne,
-                         h_wall_se: gc.h_wall_se };
+                         h_wall_nw: gc.h_wall_nw, h_wall_ne: gc.h_wall_ne,
+                         h_wall_e: gc.h_wall_e };
   low = hex_voxel::Hex { h_height: bed as u16? ?? 0, h_material: bm as u8? ?? 0 };
   if gi < 0 {
     // nothing here at all: the store names both layers it creates
@@ -5204,9 +5210,9 @@ fn brush_in(w: VoxelWorld, tq: integer, tr: integer, amp: integer, rad: integer,
                                    h_material: below.h_material,
                                    h_item: below.h_item,
                                    h_item_rotation: below.h_item_rotation,
-                                   h_wall_n: below.h_wall_n,
+                                   h_wall_nw: below.h_wall_nw,
                                    h_wall_ne: below.h_wall_ne,
-                                   h_wall_se: below.h_wall_se });
+                                   h_wall_e: below.h_wall_e });
               }
             }
           }

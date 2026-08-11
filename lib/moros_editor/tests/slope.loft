@@ -18,9 +18,9 @@ fn test_wall_dir_with_undo_neighbour() {
   // Dir 3 (S) stores on neighbour (5, 6).
   set_wall_dir_with_undo(s, m, 5, 5, 0, 3, 99);
   h = map_get_hex(m, 5, 6, 0);
-  assert(h.h_wall_n == 99, "S wall on neighbour N {h.h_wall_n}");
+  assert(h.h_wall_nw == 99, "S wall on neighbour N {h.h_wall_nw}");
   undo_pop(s, m);
-  assert(map_get_hex(m, 5, 6, 0).h_wall_n == 0, "S wall undone on neighbour");
+  assert(map_get_hex(m, 5, 6, 0).h_wall_nw == 0, "S wall undone on neighbour");
 }
 
 fn test_slope_path_with_undo() {

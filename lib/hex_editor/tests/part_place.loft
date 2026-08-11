@@ -81,10 +81,10 @@ fn same_world(a: VoxelWorld, b: VoxelWorld, cq: integer, cr: integer) -> text {
         // ⚠ THE THREE OWNED EDGES. A path that dropped every wall passes every
         // height and material comparison there is — the blindness that lost 9 of
         // a house's 17 walls, and it hid because every count agreed.
-        if ha.h_wall_n != hb.h_wall_n || ha.h_wall_ne != hb.h_wall_ne
-           || ha.h_wall_se != hb.h_wall_se {
-          return "({q},{r}) layer {i}: edges {ha.h_wall_n},{ha.h_wall_ne},{ha.h_wall_se}"
-               + " vs {hb.h_wall_n},{hb.h_wall_ne},{hb.h_wall_se}";
+        if ha.h_wall_nw != hb.h_wall_nw || ha.h_wall_ne != hb.h_wall_ne
+           || ha.h_wall_e != hb.h_wall_e {
+          return "({q},{r}) layer {i}: edges {ha.h_wall_nw},{ha.h_wall_ne},{ha.h_wall_e}"
+               + " vs {hb.h_wall_nw},{hb.h_wall_ne},{hb.h_wall_e}";
         }
       }
       // ⚠ AND THE LABELS. `I1` identity is invisible to every cell comparison

@@ -101,6 +101,53 @@ and deferred the work until moros#8 settled which tree owned the struct. Checked
 published. The entry had conflated the two lineages that `L4` later told apart — so the item was
 never blocked, and it should be done **before** publishing, because after is never.
 
+### And then the `h_wall` rename, which had been deferred for months on a fact nobody checked
+
+Asked for straight after `L6.2`, and it is the same shape one layer down. `h_wall_n` /
+`h_wall_ne` / `h_wall_se` are a **flat-top** reading on a **pointy-top** lattice: a pointy-top hex
+has no north edge at all. Two of the three were wrong. They are `h_wall_nw` / `h_wall_ne` /
+`h_wall_e` now — **287 occurrences across 39 files**, four structs in three packages — with every
+suite count identical, `make parts` byte-identical and 47 gates green. `h_wall_ne` was right all
+along and did not move.
+
+⚠ **THE BLOCKER WAS NEVER REAL.** Both `doc/Todo.txt` and `SCENE_MAP.md` parked this as *"public
+fields of a published library (hex_world 0.2.0)"*, to be done once moros#8 settled which tree
+owned the struct. That 0.2.0 is the registry's `hex_world` — **a different lineage**, with **zero**
+`h_wall` fields — and ours has never been published. There was no shared contract, no second copy
+to disagree, and nothing to wait for. **The deferral outlived its reason by months because the
+reason was written down once and never re-read.** The estimate had rotted with it: *"~80 sites in
+ten files"* was 287 in 39.
+
+### The instrument answered for the wrong struct, and it looked right
+
+The rename bakes a geometric claim into 287 identifiers, so the directions were re-derived rather
+than taken from `SCENE_MAP.md`'s table. The obvious instrument is
+`moros_render::emit_hex_walls` — it is the code that turns these bytes into geometry, and it
+helpfully names its corners `top-left` / `top` / `top-right`.
+
+⚠ **It answers for the wrong `Hex`.** `moros_render` depends on `moros_map`, not on the store, and
+**two packages declare `pub struct Hex` with byte-identical field lists** — `moros_map::Hex` and
+`hex_voxel::Hex`. Nothing at the call site says which. The reading happened to be correct, because
+`moros_map`'s three fields carry the same misnaming and are drawn on the same lattice, but it was
+correct by luck: the emitter was never looking at the struct being renamed.
+
+The chain that *does* answer for the store is three independent links, and all three agreed:
+
+| | |
+|---|---|
+| `hex_editor` | `SLOT_NW/NE/E` = 0/1/2 |
+| `editor_server` | `slot_dir = [4, 5, 0]` |
+| `hex_grid` | `hex_edge_corners(4) = (0,1)` → proj corners **5–0**, `(5)` → **0–1**, `(0)` → **1–2** |
+
+and proj corner 5 is top-left, 0 is top, 1 is top-right — so slot 0 spans NW, slot 1 NE, slot 2 E.
+`hex_to_px` puts `+r` northward, which makes dir 4 = NW and dir 5 = NE, independently.
+
+⚠ **THE SECOND `Hex` IS A LATENT COLLISION AND `names.sh` IS SILENT ABOUT IT**, correctly by its
+own rule: it checks the *graph*, and the two never meet in one — `editor_server` dropped its dead
+`moros_map` import at `L6.1`, which is what separated them. Re-import `moros_map` anywhere in the
+editor's graph and a bare `Hex { … }` becomes ambiguous. Recorded rather than fixed; the two
+lineages are genuinely different structs and the fix is a rename, not a merge.
+
 ### And one mechanical trap that reported nothing
 
 `find probe -name '*.loft'` **matches loft's `.loft` cache directory** — the glob's `*` matches

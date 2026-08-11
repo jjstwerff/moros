@@ -34,9 +34,9 @@ pub struct Hex {
   h_material:      u8,
   h_item:          u8,
   h_item_rotation: u8,
-  h_wall_n:        u8,
+  h_wall_nw:        u8,
   h_wall_ne:       u8,
-  h_wall_se:       u8,
+  h_wall_e:       u8,
 }
 
 // Extract the 5-bit rotation (0-23) from the packed item_rotation field.

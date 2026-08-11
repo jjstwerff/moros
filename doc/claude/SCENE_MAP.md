@@ -270,38 +270,43 @@ edge is stored exactly once.
 > whole window, occupied or not — the cost is one predicate and the alternative is invisible
 > data loss.
 
-**The three field names are misleading, and two of them are simply wrong.** Read from the
-renderer's corner indices, the stored edges are **NW, NE and E** — the upper-and-eastern
-half of the hex:
+A hex stores three of its six edges — **NW, NE and E**, the upper-and-eastern half:
 
-| Field | Corners it spans | Edge it actually is |
-|---|---|---|
-| `wall_n` | top-left → top | **NW** |
-| `wall_ne` | top → top-right | NE ✓ |
-| `wall_se` | top-right → bottom-right | **E** |
+| Field | Corners it spans | Lattice dir | Edge |
+|---|---|---|---|
+| `wall_nw` | top-left → top | 4 | NW |
+| `wall_ne` | top → top-right | 5 | NE |
+| `wall_e` | top-right → bottom-right | 0 | E |
 
-The *scheme* is sound — `{NW, NE, E}` is a valid partition, since each hex's SE, SW and W
-edges are exactly its neighbours' NW, NE and E — but the names are left over from the
-flat-top reading. The remaining three edges are read as:
+The scheme is sound because `{NW, NE, E}` is a valid partition: each hex's SE, SW and W edges
+are exactly its neighbours' NW, NE and E. The remaining three are read as:
 
 | Edge | Source |
 |---|---|
-| SE | SE neighbour's stored NW edge (`wall_n`) |
+| SE | SE neighbour's stored NW edge (`wall_nw`) |
 | SW | SW neighbour's stored NE edge (`wall_ne`) |
-| W | W neighbour's stored E edge (`wall_se`) |
+| W | W neighbour's stored E edge (`wall_e`) |
 
-⚠ **Trust this table over the identifiers.** The rename was scoped to
-[moros#3](https://github.com/jjstwerff/moros/issues/3) and deliberately left out of it:
-`h_wall_n/ne/se` are public fields of the store, and renaming them is ~80 sites in ten files —
-not part of reconciling a document with a convention. It is a row in
-[doc/Todo.txt](../Todo.txt).
+✅ **THE NAMES SAY THIS NOW — renamed 2026-08-11.** This section used to open *"the three field
+names are misleading, and two of them are simply wrong"*, and carried the table above under
+**"trust this table over the identifiers"**: the fields were `h_wall_n` / `h_wall_ne` /
+`h_wall_se`, a flat-top leftover, so `n` meant NW and `se` meant E. `h_wall_ne` was right all
+along and did not move.
 
-⚠ **THE REASON GIVEN HERE FOR DEFERRING IT WAS WRONG, and it is corrected 2026-08-11.** This said
-the fields belonged to a package *"which is published (0.2.0)"*. It does not: that 0.2.0 is the
-registry's `hex_world`, **a different lineage entirely** — plan 19 `L4` — and it has **zero**
-`h_wall` fields. Ours is `hex_voxel` (0.1.0, never published), so there is no shared contract and
-no second copy to disagree. The work is unblocked, and wants doing **before** publishing rather
-than after.
+⚠ **IT SAT DEFERRED ON A FACT THAT WAS NOT ONE.** The reason given was that these were *"public
+fields of a published library (hex_world 0.2.0)"*, to be done once moros#8 settled which tree
+owned the struct. That 0.2.0 is the registry's `hex_world`, **a different lineage entirely**
+(plan 19 `L4`), and it has **zero** `h_wall` fields. Ours has never been published, so it was
+always a free rename inside one tree — and `moros_map::Hex` carried the same three misnamed
+fields, which is why the rename covered it too.
+
+⚠ **AND THE DIRECTIONS WERE RE-DERIVED RATHER THAN COPIED FROM THIS TABLE**, because a rename
+bakes the claim in where a document only asserts it: slot → `slot_dir` → `hex_grid::hex_neighbor`
+and `hex_edge_corners`, checked against the corner pairs `moros_render::emit_hex_walls` actually
+spans. All three agreed with the table. ⚠ **The first reading did not, though, and it was the
+instrument's fault**: `moros_render` draws **`moros_map`'s** `Hex`, not the store's — two
+packages declare `pub struct Hex` with byte-identical field lists — so the obvious emitter
+answers for the wrong struct until you check which package it imports.
 
 The names are already fenced where it matters: `hex_editor`'s `gesture.loft` reads them
 only through `SLOT_NW` / `SLOT_NE` / `SLOT_E`, so the honest names are what callers see.

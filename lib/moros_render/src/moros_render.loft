@@ -929,20 +929,20 @@ fn emit_hex_walls(
 ) {
   floor_y = height as float * HEIGHT_SCALE;
   ceil_y = floor_y + 1.0;   // 1 unit tall walls
-  if h.h_wall_n != 0 {
+  if h.h_wall_nw != 0 {
     c1 = hex_corner_world(q, r, height, 5);   // top-left
     c2 = hex_corner_world(q, r, height, 0);   // top
-    emit_hex_wall_edge(wall_mesh, walls, h.h_wall_n, c1, c2, floor_y, ceil_y);
+    emit_hex_wall_edge(wall_mesh, walls, h.h_wall_nw, c1, c2, floor_y, ceil_y);
   }
   if h.h_wall_ne != 0 {
     c1 = hex_corner_world(q, r, height, 0);   // top
     c2 = hex_corner_world(q, r, height, 1);   // top-right
     emit_hex_wall_edge(wall_mesh, walls, h.h_wall_ne, c1, c2, floor_y, ceil_y);
   }
-  if h.h_wall_se != 0 {
+  if h.h_wall_e != 0 {
     c1 = hex_corner_world(q, r, height, 1);   // top-right
     c2 = hex_corner_world(q, r, height, 2);   // bottom-right
-    emit_hex_wall_edge(wall_mesh, walls, h.h_wall_se, c1, c2, floor_y, ceil_y);
+    emit_hex_wall_edge(wall_mesh, walls, h.h_wall_e, c1, c2, floor_y, ceil_y);
   }
 }
 

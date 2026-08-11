@@ -72,9 +72,9 @@ fn main() {
   assert(world_set_cell(w, 9, 1, 0,
     Hex { h_height: 1 as u16? ?? 0,
           h_material: hex_editor::ROAD_MAT as u8? ?? 0,
-          h_wall_n:  hex_editor::WALL_MAT as u8? ?? 0,
+          h_wall_nw:  hex_editor::WALL_MAT as u8? ?? 0,
           h_wall_ne: hex_editor::WALL_MAT as u8? ?? 0,
-          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+          h_wall_e: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
     "the walled cell was refused");
 
   assert(part_set_meta(w, PartMeta {

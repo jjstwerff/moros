@@ -80,7 +80,7 @@ fn test_roundtrip_rotation_flags() {
   hexes += [Hex {
     h_height: 50, h_material: 2, h_item: 5,
     h_item_rotation: (7 | (1 << 5)) as u8? ?? 0,
-    h_wall_n: 1, h_wall_ne: 0, h_wall_se: 3,
+    h_wall_nw: 1, h_wall_ne: 0, h_wall_e: 3,
   }];
   m.m_chunks += [Chunk { ck_cx: 0, ck_cy: 0, ck_cz: 0, ck_hexes: hexes }];
   j = map_to_json(m);
@@ -89,8 +89,8 @@ fn test_roundtrip_rotation_flags() {
   assert(hex_rotation(h) == 7, "rotation survives");
   assert(hex_spawn_flag(h) == true, "spawn flag survives");
   assert(hex_waypoint_flag(h) == false, "waypoint flag clear");
-  assert(h.h_wall_n == 1, "wall_n");
-  assert(h.h_wall_se == 3, "wall_se");
+  assert(h.h_wall_nw == 1, "wall_n");
+  assert(h.h_wall_e == 3, "wall_se");
 }
 
 fn test_roundtrip_npc_waypoints() {

@@ -119,9 +119,9 @@ fn test_place_wall_n() {
   wt.ts_wall_direction = 0;   // N
   tool_apply(vec3(0.0, 0.0, 0.0), 0, wm, wt);
   hw = map_get_hex(wm, 0, 0, 0);
-  assert(hw.h_wall_n == 5, "N wall placed");
+  assert(hw.h_wall_nw == 5, "N wall placed");
   assert(hw.h_wall_ne == 0, "NE unaffected");
-  assert(hw.h_wall_se == 0, "SE unaffected");
+  assert(hw.h_wall_e == 0, "SE unaffected");
 }
 
 fn test_place_wall_se() {
@@ -132,7 +132,7 @@ fn test_place_wall_se() {
   wt2.ts_wall_direction = 2;   // SE
   tool_apply(vec3(0.0, 0.0, 0.0), 0, wm2, wt2);
   hw2 = map_get_hex(wm2, 0, 0, 0);
-  assert(hw2.h_wall_se == 2, "SE wall placed");
+  assert(hw2.h_wall_e == 2, "SE wall placed");
 }
 
 fn test_place_wall_mirrored_s() {
@@ -144,7 +144,7 @@ fn test_place_wall_mirrored_s() {
   wt3.ts_wall_direction = 3;   // S
   tool_apply(vec3(0.0, 0.0, 0.0), 0, wm3, wt3);
   hw3 = map_get_hex(wm3, 0, 1, 0);
-  assert(hw3.h_wall_n == 3, "S mirror → (0,1).N");
+  assert(hw3.h_wall_nw == 3, "S mirror → (0,1).N");
 }
 
 // ── PlaceStencil ──────────────────────────────────────────────────
@@ -213,8 +213,8 @@ fn wall_signature(wm: Map) -> text {
   for q in 0..14 {
     for r in 0..14 {
       c = map_get_hex(wm, q, r, 0);
-      if c.h_wall_n != 0 || c.h_wall_ne != 0 || c.h_wall_se != 0 {
-        sig = "{sig}({q},{r}:{c.h_wall_n},{c.h_wall_ne},{c.h_wall_se})";
+      if c.h_wall_nw != 0 || c.h_wall_ne != 0 || c.h_wall_e != 0 {
+        sig = "{sig}({q},{r}:{c.h_wall_nw},{c.h_wall_ne},{c.h_wall_e})";
       }
     }
   }
@@ -280,9 +280,9 @@ fn test_no_facing_loses_a_wall() {
   for q in 0..14 {
     for r in 0..14 {
       c = map_get_hex(stamp_house_facing(0), q, r, 0);
-      if c.h_wall_n  != 0 { n0 = n0 + 1; }
+      if c.h_wall_nw  != 0 { n0 = n0 + 1; }
       if c.h_wall_ne != 0 { n0 = n0 + 1; }
-      if c.h_wall_se != 0 { n0 = n0 + 1; }
+      if c.h_wall_e != 0 { n0 = n0 + 1; }
     }
   }
   for n in 0..12 {
@@ -291,9 +291,9 @@ fn test_no_facing_loses_a_wall() {
     for q in 0..14 {
       for r in 0..14 {
         c = map_get_hex(fm, q, r, 0);
-        if c.h_wall_n  != 0 { cnt = cnt + 1; }
+        if c.h_wall_nw  != 0 { cnt = cnt + 1; }
         if c.h_wall_ne != 0 { cnt = cnt + 1; }
-        if c.h_wall_se != 0 { cnt = cnt + 1; }
+        if c.h_wall_e != 0 { cnt = cnt + 1; }
       }
     }
     assert(cnt == n0, "facing {facing_text(n)} stamped {cnt} walls, want {n0}");

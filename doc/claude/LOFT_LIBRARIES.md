@@ -143,9 +143,9 @@ pub struct Hex {
   h_material:      integer not null,  // MaterialPalette index
   h_item:          integer not null,  // ItemPalette index
   h_item_rotation: integer not null,  // packed: rotation | spawn<<5 | waypoint<<6
-  h_wall_n:        integer not null,  // WallPalette index, N edge
+  h_wall_nw:       integer not null,  // WallPalette index, NW edge
   h_wall_ne:       integer not null,  // WallPalette index, NE edge
-  h_wall_se:       integer not null,  // WallPalette index, SE edge
+  h_wall_e:        integer not null,  // WallPalette index, E edge
 }
 
 pub fn hex_rotation(h: Hex) -> integer { h.h_item_rotation & 31 }
@@ -395,7 +395,7 @@ enum EditKind {
 
 struct HexFieldEdit {
   fe_address:   HexAddress not null,
-  fe_field:     text not null,     // "height"|"material"|"item"|"item_rotation"|"wall_n"|"wall_ne"|"wall_se"
+  fe_field:     text not null,     // "height"|"material"|"item"|"item_rotation"|"wall_nw"|"wall_ne"|"wall_e"
   fe_old_value: integer not null,
   fe_new_value: integer not null,
 }
@@ -423,9 +423,9 @@ struct StencilHex {
   sh_material: integer not null,   // 0 = leave unchanged (overlay mode)
   sh_item:     integer not null,
   sh_item_rotation: integer not null,
-  sh_wall_n:   integer not null,
+  sh_wall_nw:  integer not null,
   sh_wall_ne:  integer not null,
-  sh_wall_se:  integer not null,
+  sh_wall_e:   integer not null,
 }
 
 struct StencilDef {
@@ -438,7 +438,7 @@ struct StencilDef {
 ```
 
 The 12 orientations are applied by rotating/mirroring each `(sh_dq, sh_dr)` offset
-and then rotating each `sh_wall_n/ne/se` direction index by the same angular step.
+and then rotating each `sh_wall_nw/ne/e` direction index by the same angular step.
 Wall palette indices are unchanged; only the edge assignment rotates.
 
 ---

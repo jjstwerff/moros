@@ -213,8 +213,8 @@ fn bake_at(root: text, name: text, cq: integer, cr: integer, anchor: integer,
         lifted = Hex { h_height: ((h.h_height as integer ?? 0) + anchor) as u16? ?? 0,
                        h_material: h.h_material, h_item: h.h_item,
                        h_item_rotation: h.h_item_rotation,
-                       h_wall_n: h.h_wall_n, h_wall_ne: h.h_wall_ne,
-                       h_wall_se: h.h_wall_se };
+                       h_wall_nw: h.h_wall_nw, h_wall_ne: h.h_wall_ne,
+                       h_wall_e: h.h_wall_e };
         got.bc_cells = insert_ordered(got.bc_cells, lifted);
       }
     }

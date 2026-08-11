@@ -426,7 +426,7 @@ fn write_frame(root: text) {
     assert(world_set_cell(w, fq, 0, 0,
       Hex { h_height: 1 as u16? ?? 0,
             h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
-            h_wall_n:  hex_editor::WALL_MAT as u8? ?? 0,
+            h_wall_nw:  hex_editor::WALL_MAT as u8? ?? 0,
             h_wall_ne: (if fq == 0 { hex_editor::DOOR_MAT }
                         else { hex_editor::WALL_MAT }) as u8? ?? 0
           }).cw_code == CW_OK, "the frame's cell ({fq},0) was refused");
@@ -479,7 +479,7 @@ fn write_cell_leaf(root: text) {
   assert(world_set_cell(w, 0, 0, 0,
     Hex { h_height: 1 as u16? ?? 0,
           h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
-          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+          h_wall_e: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
     "the leaf's cell was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_FITTING, pm_name: "leaf",
@@ -741,7 +741,7 @@ fn write_gate_leaf(root: text, name: text, hinge_z: float, desc: text) {
   assert(world_set_cell(w, 0, 0, 0,
     Hex { h_height: 1 as u16? ?? 0,
           h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
-          h_wall_se: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
+          h_wall_e: hex_editor::WALL_MAT as u8? ?? 0 }).cw_code == CW_OK,
     "the gate leaf's cell was refused");
   assert(part_set_meta(w, PartMeta {
     pm_kind: PK_FITTING, pm_name: name, pm_desc: desc
@@ -769,7 +769,7 @@ fn write_gateway(root: text) {
     assert(world_set_cell(w, gq, 0, 0,
       Hex { h_height: 1 as u16? ?? 0,
             h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
-            h_wall_n:  (if open_here { hex_editor::DOOR_MAT }
+            h_wall_nw:  (if open_here { hex_editor::DOOR_MAT }
                         else { hex_editor::WALL_MAT }) as u8? ?? 0,
             h_wall_ne: (if open_here { hex_editor::DOOR_MAT }
                         else { hex_editor::WALL_MAT }) as u8? ?? 0

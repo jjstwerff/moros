@@ -30,7 +30,7 @@ fn seeded() -> VoxelWorld {
   c0 = col.co_cells[0] ?? Hex {};
   world_set_column(w, Column { co_q: 2, co_r: 2,
     co_cells: [Hex { h_height: c0.h_height, h_material: c0.h_material,
-                     h_item: 5 as u8? ?? 0, h_wall_n: 3 as u8? ?? 0 }],
+                     h_item: 5 as u8? ?? 0, h_wall_nw: 3 as u8? ?? 0 }],
     co_ids: [col.co_ids[0] ?? 0] });
   w
 }
@@ -72,7 +72,7 @@ fn test_the_cells_themselves_survive_and_not_merely_the_checksum() {
   assert(a.h_height == b.h_height, "height {a.h_height} vs {b.h_height}");
   assert(a.h_material == b.h_material, "material");
   assert((b.h_item as integer ?? 0) == 5, "the item came with it, got {b.h_item}");
-  assert((b.h_wall_n as integer ?? 0) == 3, "and the wall byte, got {b.h_wall_n}");
+  assert((b.h_wall_nw as integer ?? 0) == 3, "and the wall byte, got {b.h_wall_nw}");
 }
 
 fn test_one_changed_cell_changes_the_checksum() {

@@ -41,7 +41,7 @@ fn plant(w: VoxelWorld, q: integer, r: integer, sp: integer) {
   ground_write(w, q, r, hex_voxel::Hex {
     h_height: c.h_height, h_material: c.h_material,
     h_item: sp as u8? ?? 0, h_item_rotation: c.h_item_rotation,
-    h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });
+    h_wall_nw: c.h_wall_nw, h_wall_ne: c.h_wall_ne, h_wall_e: c.h_wall_e });
 }
 
 // ── the table's own invariant, which is the plan's negative control ─────────

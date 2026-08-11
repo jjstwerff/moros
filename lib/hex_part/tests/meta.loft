@@ -13,7 +13,7 @@ fn part() -> VoxelWorld {
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40000 as u16? ?? 0, h_material: 3 }] }).cw_code == CW_OK, "c0");
   assert(world_set_column(w, Column { co_q: 1, co_r: 1,
-    co_cells: [Hex { h_height: 40040 as u16? ?? 0, h_material: 5, h_wall_n: 2 }] }).cw_code == CW_OK, "c1");
+    co_cells: [Hex { h_height: 40040 as u16? ?? 0, h_material: 5, h_wall_nw: 2 }] }).cw_code == CW_OK, "c1");
   w
 }
 

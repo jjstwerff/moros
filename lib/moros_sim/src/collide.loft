@@ -41,7 +41,7 @@ pub fn wall_value_on_edge(map: Map,
   dir = edge_direction(from_q, from_r, to_q, to_r);
   if dir == 0 {
     hn = map_get_hex(map, from_q, from_r, cy);
-    return hn.h_wall_n;
+    return hn.h_wall_nw;
   }
   if dir == 1 {
     hne = map_get_hex(map, from_q, from_r, cy);
@@ -49,11 +49,11 @@ pub fn wall_value_on_edge(map: Map,
   }
   if dir == 2 {
     hse = map_get_hex(map, from_q, from_r, cy);
-    return hse.h_wall_se;
+    return hse.h_wall_e;
   }
   if dir == 3 {
     hs = map_get_hex(map, from_q, from_r + 1, cy);
-    return hs.h_wall_n;
+    return hs.h_wall_nw;
   }
   if dir == 4 {
     hsw = map_get_hex(map, from_q - 1, from_r + 1, cy);
@@ -61,7 +61,7 @@ pub fn wall_value_on_edge(map: Map,
   }
   if dir == 5 {
     hnw = map_get_hex(map, from_q - 1, from_r, cy);
-    return hnw.h_wall_se;
+    return hnw.h_wall_e;
   }
   0
 }

@@ -515,7 +515,7 @@ fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
     c = col.co_cells[i] ?? hex_voxel::Hex {};
     if i == gl {
       cells += [hex_voxel::Hex { h_height: c.h_height, h_material: c.h_material,
-                                 h_wall_n: 7 as u8? ?? 0 }];
+                                 h_wall_nw: 7 as u8? ?? 0 }];
     } else { cells += [c]; }
     ids += [col.co_ids[i] ?? 0];
   }
@@ -524,8 +524,8 @@ fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
   hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
   assert(hex_editor::ground_open(w, wq, wr), "the stairwell did open that cell");
   after = hex_voxel::world_cell(w, wq, wr, hex_voxel::world_ground_layer(w, wq, wr));
-  assert((after.h_wall_n as integer ?? 0) == 7,
-         "and the wall on it is untouched, got {after.h_wall_n}");
+  assert((after.h_wall_nw as integer ?? 0) == 7,
+         "and the wall on it is untouched, got {after.h_wall_nw}");
 }
 
 fn test_a_cellar_with_no_room_below_is_refused_for_the_right_reason() {

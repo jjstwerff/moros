@@ -49,19 +49,27 @@ Map editor:
   - ~~This breaks when a non-adjacent tile is clicked.~~
 
 Wall field names (left out of moros#3 on purpose):
-- `h_wall_n` / `h_wall_ne` / `h_wall_se` in `hex_voxel` (was `hex_world`) are
-  misnamed. Read from the renderer's corner indices they are NW, NE and E —
-  leftovers from the flat-top reading the rest of SCENE_MAP.md has now been
-  re-derived away from. The scheme is right; only the three identifiers are wrong.
-- NOT a plan and NOT part of #3: it is one mechanical rename across ~80 sites in
-  ten files.
-- ⚠ THE STATED BLOCKER WAS WRONG, AND IT IS UNBLOCKED (checked 2026-08-11). This
-  said "PUBLIC fields of a published library (hex_world 0.2.0)" — which conflated
-  the two lineages that plan 19 `L4` later told apart. `h_wall_*` is OURS; the
-  registry's `hex_world` has zero `h_wall` fields, and ours is 0.1.0 and has never
-  been published. So there is no second copy to disagree, and no wait on moros#8:
-  it is a rename inside one unpublished package in this tree. Do it BEFORE
-  publishing, because after is never (plan 19 `L6.2` renamed `World`/`Chunk` for
-  exactly that reason).
-- Until then SCENE_MAP.md § edge ownership carries the mapping table, and
-  hex_editor reads the fields only through SLOT_NW / SLOT_NE / SLOT_E.
+- DONE 2026-08-11. `h_wall_n` -> `h_wall_nw` and `h_wall_se` -> `h_wall_e`, in
+  `hex_voxel` and in `moros_map`, plus the serialised `sv_wall_*` and the stencil
+  `sh_wall_*`. `h_wall_ne` was correct and did not move. 287 occurrences across
+  39 files, in four structs in three packages. Verified: `make fast` 138 files,
+  `make lib-test` 1600 tests over 11 packages on both backends with every
+  per-package count identical, `make parts` byte-identical, `make gate` 47 PASS
+  / 0 FAIL. The field ORDER and the byte layout are untouched, so no world file,
+  part file or wire message changed -- which is what the byte-identical parts
+  and the green gates say.
+- ⚠ THE BLOCKER WAS NEVER REAL, which is why this sat for months. It said "PUBLIC
+  fields of a published library (hex_world 0.2.0)", waiting on moros#8 to settle
+  which tree owned the struct. That 0.2.0 is the registry's `hex_world`, a
+  DIFFERENT lineage (plan 19 `L4`), with zero `h_wall` fields. Ours has never been
+  published. There was no shared contract and nothing to wait for.
+- ⚠ AND THE ESTIMATE WAS WRONG TOO: "~80 sites in ten files" was really 287 in
+  39, because `moros_map` declares its OWN `Hex` carrying the same three misnamed
+  fields, and `moros_editor` a `StencilHex` mirroring them. Two packages declare
+  `pub struct Hex` with byte-identical field lists -- worth knowing on its own,
+  and `tools/names.sh` is silent about it only because the two never meet in one
+  dependency graph.
+- The directions were re-derived from the lattice rather than copied from
+  SCENE_MAP.md's table: slot -> slot_dir -> hex_grid::hex_neighbor and
+  hex_edge_corners, cross-checked against the corner pairs the renderer spans.
+  All agreed. hex_editor still reads the fields only through SLOT_NW/NE/E.

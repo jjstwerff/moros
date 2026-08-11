@@ -187,12 +187,12 @@ fn test_set_wall_with_undo() {
   set_wall_with_undo(s, m, 0, 0, 0, 0, 3);    // edge 0 (N) = wall 3
   set_wall_with_undo(s, m, 0, 0, 0, 1, 4);    // edge 1 (NE) = wall 4
   h = map_get_hex(m, 0, 0, 0);
-  assert(h.h_wall_n == 3, "wall_n 3");
+  assert(h.h_wall_nw == 3, "wall_n 3");
   assert(h.h_wall_ne == 4, "wall_ne 4");
   undo_pop(s, m);
   assert(map_get_hex(m, 0, 0, 0).h_wall_ne == 0, "wall_ne undone");
   // wall_n still set.
-  assert(map_get_hex(m, 0, 0, 0).h_wall_n == 3, "wall_n preserved");
+  assert(map_get_hex(m, 0, 0, 0).h_wall_nw == 3, "wall_n preserved");
 }
 
 // ── Interaction: undo after heterogeneous edits ──────────────────

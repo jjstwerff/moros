@@ -77,9 +77,9 @@ fn test_wall_dir_local() {
   map_set_wall_dir(m, 3, 3, 0, 1, 11);   // NE — local
   map_set_wall_dir(m, 3, 3, 0, 2, 12);   // SE — local
   h = map_get_hex(m, 3, 3, 0);
-  assert(h.h_wall_n == 10, "N wall");
+  assert(h.h_wall_nw == 10, "N wall");
   assert(h.h_wall_ne == 11, "NE wall");
-  assert(h.h_wall_se == 12, "SE wall");
+  assert(h.h_wall_e == 12, "SE wall");
 }
 
 fn test_wall_dir_neighbour() {
@@ -87,7 +87,7 @@ fn test_wall_dir_neighbour() {
   // S wall (dir 3) → stored on (q, r+1) as wall_n
   map_set_wall_dir(m, 3, 3, 0, 3, 20);
   h_s = map_get_hex(m, 3, 4, 0);
-  assert(h_s.h_wall_n == 20, "S wall on southern neighbour's N");
+  assert(h_s.h_wall_nw == 20, "S wall on southern neighbour's N");
 
   // SW wall (dir 4) → stored on (q-1, r+1) as wall_ne
   map_set_wall_dir(m, 3, 3, 0, 4, 21);
@@ -97,7 +97,7 @@ fn test_wall_dir_neighbour() {
   // NW wall (dir 5) → stored on (q-1, r) as wall_se
   map_set_wall_dir(m, 3, 3, 0, 5, 22);
   h_nw = map_get_hex(m, 2, 3, 0);
-  assert(h_nw.h_wall_se == 22, "NW wall on NW neighbour's SE");
+  assert(h_nw.h_wall_e == 22, "NW wall on NW neighbour's SE");
 }
 
 // ── Slope path ───────────────────────────────────────────────────

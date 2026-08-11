@@ -46,9 +46,9 @@ pub struct Hex {
   h_material:      u8,
   h_item:          u8,
   h_item_rotation: u8,
-  h_wall_n:        u8,
+  h_wall_nw:        u8,
   h_wall_ne:       u8,
-  h_wall_se:       u8,
+  h_wall_e:       u8,
 }
 
 pub struct StoredHex {
@@ -56,9 +56,9 @@ pub struct StoredHex {
   sv_material:      u8,
   sv_item:          u8,
   sv_item_rotation: u8,
-  sv_wall_n:        u8,
+  sv_wall_nw:        u8,
   sv_wall_ne:       u8,
-  sv_wall_se:       u8,
+  sv_wall_e:       u8,
 }
 
 // A cell is OCCUPIED iff its material is not absence. Index 0 is absence in every
@@ -87,12 +87,12 @@ pub fn stored_occupied(s: StoredHex) -> boolean { s.sv_material != 0 }
 // dropped whole at step 6 — silently, since a dropped layer reads back as absence.
 pub fn hex_present(h: Hex) -> boolean {
   h.h_material != 0 || h.h_item != 0
-    || h.h_wall_n != 0 || h.h_wall_ne != 0 || h.h_wall_se != 0
+    || h.h_wall_nw != 0 || h.h_wall_ne != 0 || h.h_wall_e != 0
 }
 
 pub fn stored_present(s: StoredHex) -> boolean {
   s.sv_material != 0 || s.sv_item != 0
-    || s.sv_wall_n != 0 || s.sv_wall_ne != 0 || s.sv_wall_se != 0
+    || s.sv_wall_nw != 0 || s.sv_wall_ne != 0 || s.sv_wall_e != 0
 }
 
 // ── Layers and chunks ────────────────────────────────────────────────────────
@@ -327,8 +327,8 @@ fn hex_of(base: integer, e: StoredHex) -> Hex {
   if !stored_present(e) { return Hex {}; }
   return Hex { h_height: (base + e.sv_height) as u16? ?? 0,
                h_material: e.sv_material, h_item: e.sv_item,
-               h_item_rotation: e.sv_item_rotation, h_wall_n: e.sv_wall_n,
-               h_wall_ne: e.sv_wall_ne, h_wall_se: e.sv_wall_se };
+               h_item_rotation: e.sv_item_rotation, h_wall_nw: e.sv_wall_nw,
+               h_wall_ne: e.sv_wall_ne, h_wall_e: e.sv_wall_e };
 }
 // `ν` — the next free label. The field existed, was persisted, and was never
 // incremented: every layer's label was 0, so nothing could be identified across a
@@ -788,8 +788,8 @@ pub fn world_set_dressing(w: VoxelWorld, col: Column) -> ColumnWrite {
     nv = StoredHex { sv_height: (c3.h_height - base) as u16? ?? 0,
                      sv_material: c3.h_material, sv_item: c3.h_item,
                      sv_item_rotation: c3.h_item_rotation,
-                     sv_wall_n: c3.h_wall_n, sv_wall_ne: c3.h_wall_ne,
-                     sv_wall_se: c3.h_wall_se };
+                     sv_wall_nw: c3.h_wall_nw, sv_wall_ne: c3.h_wall_ne,
+                     sv_wall_e: c3.h_wall_e };
     prev = w.w_chunks[ci].ck_layers[l].ly_cells[ix];
     if prev.sv_height != nv.sv_height || prev.sv_material != nv.sv_material
        || prev.sv_item != nv.sv_item || prev.sv_item_rotation != nv.sv_item_rotation {
@@ -902,13 +902,13 @@ pub fn world_set_cell(w: VoxelWorld, q: integer, r: integer, li: integer,
   nv = StoredHex { sv_height: (h - base) as u16? ?? 0,
                    sv_material: c.h_material, sv_item: c.h_item,
                    sv_item_rotation: c.h_item_rotation,
-                   sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
-                   sv_wall_se: c.h_wall_se };
+                   sv_wall_nw: c.h_wall_nw, sv_wall_ne: c.h_wall_ne,
+                   sv_wall_e: c.h_wall_e };
   prev = w.w_chunks[ci].ck_layers[li].ly_cells[ix];
   if prev.sv_height != nv.sv_height || prev.sv_material != nv.sv_material
      || prev.sv_item != nv.sv_item || prev.sv_item_rotation != nv.sv_item_rotation
-     || prev.sv_wall_n != nv.sv_wall_n || prev.sv_wall_ne != nv.sv_wall_ne
-     || prev.sv_wall_se != nv.sv_wall_se {
+     || prev.sv_wall_nw != nv.sv_wall_nw || prev.sv_wall_ne != nv.sv_wall_ne
+     || prev.sv_wall_e != nv.sv_wall_e {
     w.w_tau = w.w_tau + 1;
     w.w_chunks[ci].ck_layers[li].ly_cells[ix] = nv;
     w.w_chunks[ci].ck_layers[li].ly_ver = w.w_tau;
@@ -1119,13 +1119,13 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
     nv = StoredHex { sv_height: (c.h_height - base) as u16? ?? 0,
                      sv_material: c.h_material, sv_item: c.h_item,
                      sv_item_rotation: c.h_item_rotation,
-                     sv_wall_n: c.h_wall_n, sv_wall_ne: c.h_wall_ne,
-                     sv_wall_se: c.h_wall_se };
+                     sv_wall_nw: c.h_wall_nw, sv_wall_ne: c.h_wall_ne,
+                     sv_wall_e: c.h_wall_e };
     prev = w.w_chunks[ci].ck_layers[i].ly_cells[ix];
     same = prev.sv_height == nv.sv_height && prev.sv_material == nv.sv_material
         && prev.sv_item == nv.sv_item && prev.sv_item_rotation == nv.sv_item_rotation
-        && prev.sv_wall_n == nv.sv_wall_n && prev.sv_wall_ne == nv.sv_wall_ne
-        && prev.sv_wall_se == nv.sv_wall_se;
+        && prev.sv_wall_nw == nv.sv_wall_nw && prev.sv_wall_ne == nv.sv_wall_ne
+        && prev.sv_wall_e == nv.sv_wall_e;
     if !same {
       if !changed { w.w_tau = w.w_tau + 1; changed = true; }
       w.w_chunks[ci].ck_layers[i].ly_cells[ix] = nv;
@@ -1262,8 +1262,8 @@ pub fn world_layer_bytes(w: VoxelWorld, q: integer, r: integer, l: integer) -> v
   for c in w.w_chunks[ci].ck_layers[l].ly_cells {
     out += [c.sv_height as integer ?? 0, c.sv_material as integer ?? 0,
             c.sv_item as integer ?? 0, c.sv_item_rotation as integer ?? 0,
-            c.sv_wall_n as integer ?? 0, c.sv_wall_ne as integer ?? 0,
-            c.sv_wall_se as integer ?? 0];
+            c.sv_wall_nw as integer ?? 0, c.sv_wall_ne as integer ?? 0,
+            c.sv_wall_e as integer ?? 0];
   }
   out
 }
@@ -1336,9 +1336,9 @@ pub fn world_put_layer(w: VoxelWorld, cx: integer, cz: integer, base: integer,
       sv_material: (flat[b + 1] ?? 0) as u8? ?? 0,
       sv_item: (flat[b + 2] ?? 0) as u8? ?? 0,
       sv_item_rotation: (flat[b + 3] ?? 0) as u8? ?? 0,
-      sv_wall_n: (flat[b + 4] ?? 0) as u8? ?? 0,
+      sv_wall_nw: (flat[b + 4] ?? 0) as u8? ?? 0,
       sv_wall_ne: (flat[b + 5] ?? 0) as u8? ?? 0,
-      sv_wall_se: (flat[b + 6] ?? 0) as u8? ?? 0,
+      sv_wall_e: (flat[b + 6] ?? 0) as u8? ?? 0,
     };
   }
   layer_crc(w.w_chunks[ci].ck_layers[li])
@@ -1529,9 +1529,9 @@ fn crc_cell(acc: integer, s: StoredHex) -> integer {
   a = crc32_of(a, s.sv_material);
   a = crc32_of(a, s.sv_item);
   a = crc32_of(a, s.sv_item_rotation);
-  a = crc32_of(a, s.sv_wall_n);
+  a = crc32_of(a, s.sv_wall_nw);
   a = crc32_of(a, s.sv_wall_ne);
-  crc32_of(a, s.sv_wall_se)
+  crc32_of(a, s.sv_wall_e)
 }
 
 // ⚠ CRC32 is UNSIGNED 32-bit and the file stores i32, so a checksum above
@@ -1718,9 +1718,9 @@ pub fn world_save_as(w: VoxelWorld, path: text, palette: vector<integer>,
         f += (c.sv_material as u8);
         f += (c.sv_item as u8);
         f += (c.sv_item_rotation as u8);
-        f += (c.sv_wall_n as u8);
+        f += (c.sv_wall_nw as u8);
         f += (c.sv_wall_ne as u8);
-        f += (c.sv_wall_se as u8);
+        f += (c.sv_wall_e as u8);
       }
       f += (layer_crc(ly) as i32);
     }
@@ -1878,7 +1878,7 @@ pub fn world_save_incremental(w: VoxelWorld, path: text, palette: vector<integer
         for c in ly.ly_cells {
           f += (c.sv_height as u16); f += (c.sv_material as u8);
           f += (c.sv_item as u8); f += (c.sv_item_rotation as u8);
-          f += (c.sv_wall_n as u8); f += (c.sv_wall_ne as u8); f += (c.sv_wall_se as u8);
+          f += (c.sv_wall_nw as u8); f += (c.sv_wall_ne as u8); f += (c.sv_wall_e as u8);
         }
         f += (layer_crc(ly) as i32);
       }
@@ -1995,8 +1995,8 @@ pub fn world_load(path: text) -> WorldLoad {
         rs = f#read as u8;
         cells += [StoredHex { sv_height: rh as u16? ?? 0, sv_material: rm as u8? ?? 0,
                               sv_item: ri as u8? ?? 0, sv_item_rotation: rr as u8? ?? 0,
-                              sv_wall_n: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
-                              sv_wall_se: rs as u8? ?? 0 }];
+                              sv_wall_nw: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
+                              sv_wall_e: rs as u8? ?? 0 }];
       }
       ly = Layer { ly_id: lid, ly_kind: lk, ly_ver: lver, ly_cells: cells };
       // A torn layer is refused BY NAME and the rest of the file is untouched —
@@ -2311,8 +2311,8 @@ pub fn world_palette_check(w: VoxelWorld) -> text {
           if it != 0 && world_palette_name(w, PAL_ITEM, rg, it) == "" {
             return "item {it} at ({q},{r}) is not in region {rg}'s palette";
           }
-          for e in [c.h_wall_n as integer ?? 0, c.h_wall_ne as integer ?? 0,
-                    c.h_wall_se as integer ?? 0] {
+          for e in [c.h_wall_nw as integer ?? 0, c.h_wall_ne as integer ?? 0,
+                    c.h_wall_e as integer ?? 0] {
             if e != 0 && world_palette_name(w, PAL_EDGE, rg, e) == "" {
               return "edge material {e} at ({q},{r}) is not in region {rg}'s palette";
             }

@@ -222,7 +222,7 @@ pub fn session_column(w: VoxelWorld, q: integer, r: integer) -> vector<integer> 
 // `16:` — the three edge materials this hex OWNS, in slot order.
 pub fn session_walls(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   c = world_ground_cell(w, q, r);
-  [c.h_wall_n as integer ?? 0, c.h_wall_ne as integer ?? 0, c.h_wall_se as integer ?? 0]
+  [c.h_wall_nw as integer ?? 0, c.h_wall_ne as integer ?? 0, c.h_wall_e as integer ?? 0]
 }
 
 // `29:` — the layer labels of the chunk this hex is in, in layer order. The ground's

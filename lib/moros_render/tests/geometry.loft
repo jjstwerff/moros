@@ -1084,7 +1084,7 @@ fn test_wall_dispatch_unknown_body_falls_back() {
 
 fn test_wall_dispatch_out_of_range_ref_falls_back() {
   dxm = map_empty();
-  // Palette is empty; h_wall_n = 5 points nowhere.
+  // Palette is empty; h_wall_nw = 5 points nowhere.
   map_set_wall(dxm, 0, 0, 0, 0, 5);
   dxs = build_hex_meshes(dxm);
   for dxw in dxs {

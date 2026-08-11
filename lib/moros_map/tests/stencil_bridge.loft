@@ -15,9 +15,9 @@ fn room() -> Map {
     }
   }
   map_place_item(m, 1, 1, 0, 21, 13);
-  map_set_wall(m, 1, 1, 0, 0, 5);      // h_wall_n  = the NW edge
+  map_set_wall(m, 1, 1, 0, 0, 5);      // h_wall_nw  = the NW edge
   map_set_wall(m, 1, 1, 0, 1, 6);      // h_wall_ne = the NE edge
-  map_set_wall(m, 1, 1, 0, 2, 7);      // h_wall_se = the E edge
+  map_set_wall(m, 1, 1, 0, 2, 7);      // h_wall_e = the E edge
   m
 }
 
@@ -36,9 +36,9 @@ fn test_a_region_survives_capture_and_stamp_in_place() {
       assert(a.h_height == b.h_height, "height at {q},{r}: {a.h_height} -> {b.h_height}");
       assert(a.h_item == b.h_item, "item at {q},{r}: {a.h_item} -> {b.h_item}");
       assert(a.h_item_rotation == b.h_item_rotation, "rotation at {q},{r}");
-      assert(a.h_wall_n == b.h_wall_n, "NW wall at {q},{r}: {a.h_wall_n} -> {b.h_wall_n}");
+      assert(a.h_wall_nw == b.h_wall_nw, "NW wall at {q},{r}: {a.h_wall_nw} -> {b.h_wall_nw}");
       assert(a.h_wall_ne == b.h_wall_ne, "NE wall at {q},{r}: {a.h_wall_ne} -> {b.h_wall_ne}");
-      assert(a.h_wall_se == b.h_wall_se, "E wall at {q},{r}: {a.h_wall_se} -> {b.h_wall_se}");
+      assert(a.h_wall_e == b.h_wall_e, "E wall at {q},{r}: {a.h_wall_e} -> {b.h_wall_e}");
     }
   }
 }
@@ -54,8 +54,8 @@ fn test_stamping_elsewhere_moves_everything_together() {
   cell = map_get_hex(out, tq, tr, 0);
   assert(cell.h_item == 21, "item did not arrive at {tq},{tr}: got {cell.h_item}");
   assert(cell.h_item_rotation == 13, "item rotation lost");
-  assert(cell.h_wall_n == 5 && cell.h_wall_ne == 6 && cell.h_wall_se == 7,
-         "walls did not travel with the cell: {cell.h_wall_n}/{cell.h_wall_ne}/{cell.h_wall_se}");
+  assert(cell.h_wall_nw == 5 && cell.h_wall_ne == 6 && cell.h_wall_e == 7,
+         "walls did not travel with the cell: {cell.h_wall_nw}/{cell.h_wall_ne}/{cell.h_wall_e}");
 }
 
 fn test_rotation_keeps_the_room_intact() {
@@ -145,7 +145,7 @@ fn test_replace_overwrites_every_field() {
   assert(c.h_material == 3, "material not replaced: {c.h_material}");
   assert(c.h_height == 11, "height not replaced: {c.h_height}");
   assert(c.h_item == 21, "item not replaced: {c.h_item}");
-  assert(c.h_wall_n == 5, "wall not replaced: {c.h_wall_n}");
+  assert(c.h_wall_nw == 5, "wall not replaced: {c.h_wall_nw}");
 }
 
 // REPLACE must be able to CLEAR — the old implementation did it with a recorded

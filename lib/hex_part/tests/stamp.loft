@@ -58,7 +58,7 @@ fn built_part() -> VoxelWorld {
   // an ASYMMETRIC subject: a symmetric one cannot detect a symmetric bug, which
   // is `STATE.md` decision 9 and was earned twice.
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
-    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 4, h_wall_n: 2 },
+    co_cells: [Hex { h_height: 100 as u16? ?? 0, h_material: 4, h_wall_nw: 2 },
                Hex { h_height: 140 as u16? ?? 0, h_material: 5 }] }).cw_code == CW_OK, "c0");
   // ⚠ EVERY COLUMN HAS TWO CELLS, and that is not decoration. `world_merge_band_as`
   // names *the layer this call creates, singular* — so over virgin ground a
@@ -123,8 +123,8 @@ fn test_a_part_lands_where_it_was_cut_from() {
         // ⚠ THE EDGES. A stamp that dropped every wall passes every height and
         // material comparison there is — the `map_to_stencil` blindness that lost
         // 9 of a house's 17 walls, and it hid because every count agreed.
-        assert(ha.h_wall_n == hb.h_wall_n && ha.h_wall_ne == hb.h_wall_ne
-               && ha.h_wall_se == hb.h_wall_se, "({wq},{wr}) layer {i}: an edge was lost");
+        assert(ha.h_wall_nw == hb.h_wall_nw && ha.h_wall_ne == hb.h_wall_ne
+               && ha.h_wall_e == hb.h_wall_e, "({wq},{wr}) layer {i}: an edge was lost");
       }
     }
   }

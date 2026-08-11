@@ -182,10 +182,13 @@ What changed is which axis every sentence is about: the axis-aligned edge is **E
 and the zigzag is in **y**. That is exactly why the rule was to re-derive rather than
 relabel — a relabelling would have looked almost right.
 
-Still open, and deliberately not part of #3: the three field *names*. `h_wall_n/ne/se` are
-public fields of the **published** `hex_world`, mid-migration under
-[#8](https://github.com/jjstwerff/moros/issues/8), so renaming them is a breaking change to
-a shared contract rather than a documentation fix. `doc/Todo.txt` carries it.
+✅ **AND THE THREE FIELD *NAMES* ARE FIXED TOO (2026-08-11)** — `h_wall_nw` / `h_wall_ne` /
+`h_wall_e`, which is what they hold. This paragraph used to defer them as *"public fields of the
+**published** `hex_world`, mid-migration under [#8](https://github.com/jjstwerff/moros/issues/8),
+so renaming them is a breaking change to a shared contract"*. ⚠ **Every clause of that was false
+in the same way**: the published `hex_world` is a *different lineage* (plan 19 `L4`) with **zero**
+`h_wall` fields, ours has never been published, and there was no shared contract to break. The
+deferral outlived its reason by months because the reason was never checked.
 
 **3. `hex_grid` already shipped, from crawler.** It is homed in
 `loft-lang/loft-libs-world` beside `hex_world` (chunked storage) and `hex_terrain`. Its

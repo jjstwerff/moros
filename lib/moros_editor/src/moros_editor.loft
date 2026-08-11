@@ -284,9 +284,9 @@ pub struct StencilHex {
   sh_material:      u8,
   sh_item:          u8,
   sh_item_rotation: u8,
-  sh_wall_n:        u8,
+  sh_wall_nw:        u8,
   sh_wall_ne:       u8,
-  sh_wall_se:       u8,
+  sh_wall_e:       u8,
 }
 
 // A named stamp template.
@@ -325,9 +325,9 @@ pub fn moros_stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, 
       cur.h_material = ss_sh.sh_material;
       cur.h_item = ss_sh.sh_item;
       cur.h_item_rotation = ss_sh.sh_item_rotation;
-      cur.h_wall_n = ss_sh.sh_wall_n;
+      cur.h_wall_nw = ss_sh.sh_wall_nw;
       cur.h_wall_ne = ss_sh.sh_wall_ne;
-      cur.h_wall_se = ss_sh.sh_wall_se;
+      cur.h_wall_e = ss_sh.sh_wall_e;
     }
     if mode == 1 {
       // OVERLAY — skip zero values (leave map hex unchanged for those).
@@ -335,9 +335,9 @@ pub fn moros_stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, 
       if ss_sh.sh_material != 0 { cur.h_material = ss_sh.sh_material; }
       if ss_sh.sh_item != 0 { cur.h_item = ss_sh.sh_item; }
       if ss_sh.sh_item_rotation != 0 { cur.h_item_rotation = ss_sh.sh_item_rotation; }
-      if ss_sh.sh_wall_n != 0 { cur.h_wall_n = ss_sh.sh_wall_n; }
+      if ss_sh.sh_wall_nw != 0 { cur.h_wall_nw = ss_sh.sh_wall_nw; }
       if ss_sh.sh_wall_ne != 0 { cur.h_wall_ne = ss_sh.sh_wall_ne; }
-      if ss_sh.sh_wall_se != 0 { cur.h_wall_se = ss_sh.sh_wall_se; }
+      if ss_sh.sh_wall_e != 0 { cur.h_wall_e = ss_sh.sh_wall_e; }
     }
     if mode == 2 {
       // HEIGHTS only.
@@ -348,9 +348,9 @@ pub fn moros_stencil_stamp(m: Map, stencil: StencilDef, q: integer, r: integer, 
       cur.h_material = ss_sh.sh_material;
       cur.h_item = ss_sh.sh_item;
       cur.h_item_rotation = ss_sh.sh_item_rotation;
-      cur.h_wall_n = ss_sh.sh_wall_n;
+      cur.h_wall_nw = ss_sh.sh_wall_nw;
       cur.h_wall_ne = ss_sh.sh_wall_ne;
-      cur.h_wall_se = ss_sh.sh_wall_se;
+      cur.h_wall_e = ss_sh.sh_wall_e;
     }
     map_set_hex(m, tq, tr, cy, cur);
   }
@@ -378,7 +378,7 @@ pub fn stencil_house_small() -> StencilDef {
   hexes += [StencilHex {
     sh_dq: 0, sh_dr: 0,
     sh_height: 0, sh_material: 2, sh_item: 0, sh_item_rotation: 0,
-    sh_wall_n: 0, sh_wall_ne: 0, sh_wall_se: 0,
+    sh_wall_nw: 0, sh_wall_ne: 0, sh_wall_e: 0,
   }];
   // Ring of 6 — axial neighbours with walls.
   neighbours: vector<integer> = [1, 0, 0, 1, -1, 1, -1, 0, 0, -1, 1, -1];
@@ -388,7 +388,7 @@ pub fn stencil_house_small() -> StencilDef {
     hexes += [StencilHex {
       sh_dq: dq, sh_dr: dr,
       sh_height: 0, sh_material: 1, sh_item: 0, sh_item_rotation: 0,
-      sh_wall_n: 1, sh_wall_ne: 1, sh_wall_se: 1,
+      sh_wall_nw: 1, sh_wall_ne: 1, sh_wall_e: 1,
     }];
   }
   StencilDef {
@@ -410,7 +410,7 @@ pub fn stencil_flat() -> StencilDef {
     sd_hexes: [StencilHex {
       sh_dq: 0, sh_dr: 0,
       sh_height: 5, sh_material: 3, sh_item: 0, sh_item_rotation: 0,
-      sh_wall_n: 0, sh_wall_ne: 0, sh_wall_se: 0,
+      sh_wall_nw: 0, sh_wall_ne: 0, sh_wall_e: 0,
     }],
   }
 }
@@ -423,9 +423,9 @@ pub fn stencil_spiral_stair() -> StencilDef {
     sd_origin_q: 0,
     sd_origin_r: 0,
     sd_hexes: [
-      StencilHex { sh_dq: 0, sh_dr: 0, sh_height: 0, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_n: 0, sh_wall_ne: 0, sh_wall_se: 0 },
-      StencilHex { sh_dq: 1, sh_dr: 0, sh_height: 3, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_n: 2, sh_wall_ne: 0, sh_wall_se: 0 },
-      StencilHex { sh_dq: 0, sh_dr: 1, sh_height: 6, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_n: 0, sh_wall_ne: 2, sh_wall_se: 0 },
+      StencilHex { sh_dq: 0, sh_dr: 0, sh_height: 0, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_nw: 0, sh_wall_ne: 0, sh_wall_e: 0 },
+      StencilHex { sh_dq: 1, sh_dr: 0, sh_height: 3, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_nw: 2, sh_wall_ne: 0, sh_wall_e: 0 },
+      StencilHex { sh_dq: 0, sh_dr: 1, sh_height: 6, sh_material: 4, sh_item: 0, sh_item_rotation: 0, sh_wall_nw: 0, sh_wall_ne: 2, sh_wall_e: 0 },
     ],
   }
 }
@@ -446,9 +446,9 @@ pub fn stencil_save(m: Map, name: text, category: text, q1: integer, r1: integer
         sh_material: h.h_material,
         sh_item: h.h_item,
         sh_item_rotation: h.h_item_rotation,
-        sh_wall_n: h.h_wall_n,
+        sh_wall_nw: h.h_wall_nw,
         sh_wall_ne: h.h_wall_ne,
-        sh_wall_se: h.h_wall_se,
+        sh_wall_e: h.h_wall_e,
       }];
     }
   }

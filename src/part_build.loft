@@ -124,7 +124,7 @@ fn main() {
   for wq in (0 - radius())..(radius() + 1) {
     for wr in (0 - radius())..(radius() + 1) {
       for c in column_cells(world_column(back.wl_world, wq, wr)) {
-        for e in [c.h_wall_n, c.h_wall_ne, c.h_wall_se] {
+        for e in [c.h_wall_nw, c.h_wall_ne, c.h_wall_e] {
           if e == hex_editor::WALL_MAT { walls = walls + 1; }
           if e == hex_editor::DOOR_MAT { doors = doors + 1; }
         }
