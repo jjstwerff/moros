@@ -11,10 +11,10 @@ a **permanent quick-start demo** rather than a phase. A server is coming back fo
 compilation, multi-player and debugging. See § *The server is not legacy*, which is the section
 that decides the architecture.
 
-⚠ **NO PLAN NUMBER YET, DELIBERATELY.** `plans/README.md`'s rule is *claim the issue before you
-name the directory — the number is the identity, and scanning the tree for a free one mints
-collisions.* 21 is the highest today; **the issue is claimed first, then `plans/<n>-pages-editor/`
-takes its number.**
+**Plan [#22](https://github.com/jjstwerff/moros/issues/22)** holds the steps and the per-phase
+record: [`plans/22-pages-client/`](../../plans/22-pages-client/README.md). ⏭ **It is the
+priority** — the camera library designed in [CAMERA_INDOORS](CAMERA_INDOORS.md) is phases
+`C1`–`C4` of that plan and **deliberately waits until the client can be opened and driven.**
 
 > **This file is lavition's and is written to be MOVED**, like
 > [HEX_STACK](HEX_STACK.md) and [LAVITION_SPLIT](LAVITION_SPLIT.md). It carries its own

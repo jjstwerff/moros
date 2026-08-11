@@ -836,6 +836,12 @@ drawn by `chunk_mesh_mat` on a different path entirely.
 
 # ⏭ THE CAMERA BECOMES A LIBRARY — `hex_cam`, designed 2026-08-11, not built
 
+**Plan [#22](https://github.com/jjstwerff/moros/issues/22) phases `C1`–`C4`** —
+[`plans/22-pages-client/`](../../plans/22-pages-client/README.md). ⏭ **DEFERRED ON PURPOSE.**
+The user's ordering, 2026-08-11: *"this is not the highest priority, getting our client is
+that."* Three consumers and a finished design still wait until the client can be opened and
+driven — **nothing here starts before plan 22 `B3`.**
+
 **Asked for by the user, and by three consumers at once:**
 
 > *"can you put your camera routines that prevent inside hills and inside wall situations in a

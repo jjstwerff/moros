@@ -22,7 +22,31 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20 is COMPLETE, every row built or measured and stated
+## ⏭ PICK UP HERE — plan 22, THE PAGES CLIENT, and it is the priority
+
+**[#22](https://github.com/jjstwerff/moros/issues/22) · [plan](../../plans/22-pages-client/README.md)
+· design [PAGES_EDITOR.md](PAGES_EDITOR.md).** A page you can open from `file://`, build a house
+in, close, and reopen with the house still there — produced from **the same client the server
+serves**, differing only in where a key press goes.
+
+| | |
+|---|---|
+| the invariant | **the page is the editor with the AUTHORITY LOCAL instead of REMOTE** — not the editor minus a server. A server is coming back for scripts, multi-player and debugging, so this is a MODE, never a second renderer |
+| ✅ `W1` | a world is BYTES — `world_to_bytes`/`world_from_bytes`, save and load are wrappers. `make parts` byte-identical, and `world_load` is **1.6× faster** |
+| ◐ `W4` | `hex_editor::press` — what a key means, in one place instead of **four**. `editor_run` and the server's `MSG_HOUSE` wired; `editor_client` and `script.mjs` still carry theirs |
+| ⏭ next | **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? The last probe that can reshape the work |
+
+⚠ **THE CAMERA LIBRARY IS DESIGNED AND DELIBERATELY WAITING.** `hex_cam` has three consumers
+(this client, the server, and **crawler**) and a finished design in
+[CAMERA_INDOORS](CAMERA_INDOORS.md) — and it is plan 22 `C1`–`C4`, which **do not start until the
+client can be opened and driven**. The user's ordering, 2026-08-11: *"this is not the highest
+priority, getting our client is that."*
+
+⚠ **AND ITS API IS ALREADY DECIDED BY A MEASUREMENT, so do not re-derive it**: crawler declares no
+`hex_voxel`, so `hex_cam` takes a **height sampler**, never a world. The obvious extraction — a
+pure move keeping `wld: VoxelWorld` — would be unusable by the consumer who asked for it.
+
+## ⏭ EARLIER — plan 20 is COMPLETE, every row built or measured and stated
 
 **`A9` and `A10` landed 2026-08-10; the road thread closed 2026-08-11.** Both sessions are
 in **[JOURNAL §§ 17 and 18](JOURNAL.md)**, unthinned; the per-row record is
