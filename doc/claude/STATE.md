@@ -8,7 +8,7 @@ read it first after a break.
 | the durable *architecture* | [EDITOR_SUBSTRATE.md](EDITOR_SUBSTRATE.md) |
 | the *changes* | the tracker — `gh issue list -R jjstwerff/moros --label plan --state all` |
 | the *order of work* | [EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work) |
-| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — thirteen sessions, newest first |
+| **how it got here** | **[JOURNAL.md](JOURNAL.md)** — seventeen sessions, newest first |
 
 ⚠ **This file was 2,446 lines**, which made the one document a reader is told to open the
 longest in the tree, with the current state buried in session logs. The record moved to
@@ -22,7 +22,7 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ⏭ PICK UP HERE — plan 20 is built in BOTH directions, `A10` included
+## ⏭ PICK UP HERE — plan 20 is COMPLETE
 
 **2026-08-10. `A9` and its mirror `A10` are both in.** *It spans or it caves* is one
 axis twice and both halves are built: a road cut into a cliff keeps the rock above it
@@ -50,456 +50,44 @@ what a chasm is.
 | a road cannot be laid on it | so it is carried over — `A9` upside down, the same column and the same `F1` |
 | and it is DRAWN | an eleventh surface, a depth ramp, a trickle at the spring and banks framing it. `shots/a10-*.png` |
 
-### The next piece of work — and open question 9 turned out to be the wrong question
+### ⏭ PLAN 20 IS COMPLETE — every row built, or measured and stated
 
-**The fall-line canyon is measured and it is NOT the envelope.** A road walked down a
-6-per-hex ramp comes out **cut by 120 units and proud by 1**, and the open question
-blamed `slope_settle` taking the lower envelope. Two probes say otherwise:
-
-- **`probe/house/envelope.loft`** — `slope_settle` is not what ships alone. It ends by
-  calling `spoil_place`, and **the settle with its own second half moves exactly as much
-  earth as anchoring at the middle**: 845 either way at 6 per hex, 338 at 3. A uniform
-  shift by the mean is what turns a profile pinned at the bottom into one pinned at the
-  middle. **The question was comparing the settle against half of itself**, and `A7`'s
-  rule needs no change.
-- **`probe/house/canyon.loft`** — the same strip laid three ways. Settling the finished
-  run **once, to convergence** moves **998** where the shipped per-stroke path moves
-  **1508**, worst cut 90 against 120, and it stands **proud by 37** at the foot instead
-  of 7 — the cutting-at-the-head, embankment-at-the-foot profile a road builder makes.
-  **The canyon is the repetition**: every disc overwrites four strokes' worth of
-  already-balanced cells with the raw lookahead grade, and each shift is diluted across
-  the whole growing run.
-
-⚠ **AND THE FIRST READING OF THE SECOND PROBE WAS WRONG, WHICH IS WHY IT GREW A
-LEGALITY COLUMN.** A single settle looked best of all — 830 moved, the smallest figure
-on the board — and left **192 road-to-road edges over the limit, worst step 6**. It
-moved least because it did least: `SLOPE_PASSES` is **12** and a correction travels one
-cell a pass, so no single call can settle a 26-cell run. ⚠ **The finding under the
-finding: the per-stroke call is also the only reason the run is legal at all.**
-Twenty-six calls of twelve passes is what converges it — repetition is standing in for
-passes and paying for it with the balance. **What the fix has to separate is those
-two**, and neither is an envelope.
-
-⚠ **`slope_owed` and a direct edge count were run side by side and agree on every row.**
-That matters because the row that was nearly believed is the one where both said the
-run was unfinished and the earth-moved column looked best.
-
-### ✅ AND THE FIX IS NAMED AND MEASURED — the settle is not the half to change
-
-Left **exactly as it ships**, per stroke, and followed by **one two-sided balance** over
-the whole run against the natural ground the road replaced:
-
-| 26 cells | per stroke — ships | | **+ one balance** | |
-|---|---|---|---|---|
-| 6 per hex, walked **down** | 1508 | −120 … +7 | **848** | −63 … +64 |
-| 6 per hex, walked **up** | 1439 | +117 … −8 | **845** | +63 … −62 |
-| 1 per hex, either way | 127 | −5 … −3 | **25** | |
-
-**845 is the optimum the envelope probe computed**, so the run's *shape* was right all
-along — the per-stroke settle produces a correct limit-slope profile and leaves it 57
-units too low. **Only its datum was wrong.**
-
-⚠ **AND AT 1 PER HEX THE ROAD CAN FOLLOW THE GROUND AND STILL SINKS FIVE UNITS.** A
-cell's grade comes from the **last disc that covered it**, and that disc trails the
-author by `ROAD_HALF` — so the effective lookahead is `2 * ROAD_HALF + 1` = five cells,
-not the one the gesture's comment describes.
-
-⚠ **AND THE ONE-SIDED GUARD GOT WRITTEN A THIRD TIME, in the instrument this time.**
-`if owed > 0` fires on a descent and does nothing on an ascent, where the run is net
-FILLED — `shift 0` and every column unchanged, which reads exactly like an arm with
-nothing to fix. `spoil_place` has the same shape and is right *within its scope*; a
-**run-level** balance sees both signs and must answer to both.
-
-✅ **AND THE BUILD'S DATUM IS MEASURED, NOT ASSUMED.** A run-level balance needs the
-natural ground and the stamp has overwritten it — but `road_lay` already samples `snat`
-per disc *before* writing, and those samples **telescope**. Checked against the store on
-all five ramps: **636/636, 1908/1908, 3816/3816, and −636/−636, −3816/−3816 rising.**
-Exact, both signs, no registry of original heights anywhere. ⚠ The negative sums are the
-two-sidedness arriving from a second direction: an accumulator clamped at zero would
-have read 0 on both mirrors.
-
-### ⚠⚠ AND IT WAS BUILT — PER STROKE, AS ASKED — AND THE BUILD REFUTED THE FIX
-
-**Branch [`plan/20-run-debt`](https://github.com/jjstwerff/moros/tree/plan/20-run-debt),
-pushed and deliberately NOT merged.** `slope_settle` returns the earth it took, `road_lay`
-carries a run-level debt the caller owns, a two-sided `road_balance` fires every stroke
-and leaves the remainder owing, and `run_walk` / `run_unsqueeze` are extracted so the
-balance and the settle cannot disagree about which cells are the run. **374 of 375 pass.
-It works, the debt drains — and the canyon stays**: 1508 → **1486** at 6 per hex.
-
-⚠ **THE 848 NEEDS THE STROKE'S OWN CUT IN THE DEBT, AND FIVE TESTS REFUSE IT.** With the
-stamp term in, the debt telescopes exactly and reaches the optimum — and undoes every
-deliberate cut. `test_a_road_over_open_ground_is_never_lifted`, which is **`A8`'s own
-negative control**, reported *a road cut 20 into open ground ended at 40*. Four more said
-the same in four other words. **The author's grade is not spoil.**
-
-✅ **SO THE CANYON IS THE STAMP** — not the envelope, not the repetition, not the balance.
-`road_lay` writes its whole disc at ONE grade, so a cell keeps the height of whichever
-stroke covered it **last**: a neighbour's, not its own. Measured alone against shipped
-code (`probe/house/conserve.loft`): **the stamp displaces 75 units of fill over a 43-cell
-run with nothing settled and nothing balanced at all.**
-
-⚠ **AND THAT IS ONE TERM WITH TWO OPPOSITE REQUIREMENTS** — the earth the canyon is made
-of *and* the earth the balance must never return. No datum, anchor, envelope or timing
-satisfies both, because they are the same units of ground. **The fix belongs in the grade
-the gesture stamps** — a run has an AXIS and wants a per-cell grade along it, which is
-plan 20's **open question 5** — and not in the balance.
-
-⚠ **THE ONE FAILING TEST IS THAT SAME FACT, AND IT IS WHY THE BRANCH IS UNMERGED.**
-`test_a_settled_road_conserves_its_spoil` reads *cut 8 against fill 56*: with the settle's
-spoil actually returned, what is left is the stamp's displacement — masked until now
-because the **unreturned cut cancelled it**. Two wrongs were agreeing, and fixing one
-exposed the other. ⚠ **The debt itself is correct** (traced: 92 → 9 at stroke 16, 2 owing
-at the end, the author's own cell within 7 units of the ground the whole way) — **what
-sinks is the tail**, thirteen already-lifted cells overwritten at a flat grade every
-stroke.
-
-⚠ **AND A PROBE'S OWN RUN ROW WAS BLIND FIRST.** It read the natural ground from the world
-it had just paved, so its guard threw every road cell away and it reported a
-balanced-looking **`cut 0 fill 0` summed over ZERO cells**. A third world that no road is
-ever laid in is what a datum has to be.
-
-## ✅ AND THE PER-CELL GRADE IS BUILT — a stroke lays a PLANE, not a plate
-
-**Open question 5's authoring half, and it needed no axis derivation at all.** The
-question assumed the axis has to be recovered from stored cells; while a run is being
-*laid* it does not — the author is walking. `road_lay` takes the run's **gradient** (height
-units per world unit) and writes every disc cell at `h + round((w − p) · g)`.
-
-**Why it is exact rather than merely better:** with consecutive strokes on the run's own
-gradient, `h_i + (w − p_i)·g = h₀ + (w − p₀)·g` — **`i` does not appear**, so all four
-overlapping discs write the same height and a later stroke has nothing left to displace.
-⚠ `g = 0` is the old flat plate **byte for byte**, which is what all 30 existing callers
-pass — `lib/hex_editor/tests/road_plane.loft` pins that, and it is why 375 tests and
-`make fast`'s 135 files were unmoved.
-
-⚠ **AND THE AUTHOR'S OWN GRADE IS EXTRAPOLATED BACK FROM TWO SAMPLES BEYOND THE STRIP,
-NEVER SAMPLED UNDERFOOT** — which is how it escapes the trap this tree already records:
-*the author RIDES the road they are laying*, so `ground_under` hands back the grade just
-written.
-
-| 26 cells | plate — what shipped | **plane** |
-|---|---|---|
-| 1 per hex, either way | 127 | **0** |
-| 3 per hex, falling | 777 | **538** |
-| 6 per hex, falling | 1508 | **1141** |
-
-**At a gradient a road can follow, a walk now moves no earth at all.**
-
-### ⚠ AND IT REACHES A REGIME THE PLATE NEVER DID — the next step
-
-A plate laid at the lookahead grade **floats** above a rising hill (117 units proud at 6
-per hex — a road on stilts, and why `A8`'s balance never fired there). A plane follows the
-ground, so walking UP it **cuts**, and a road cut ever deeper into a hillside is `A9`: it
-caves. Measured (`probe/house/plane.loft`) — **falling is legal at every gradient and
-caves nothing; rising is legal to 3**:
-
-| rising | caved | worst step | `slope_owed` |
-|---|---|---|---|
-| 3 per hex | 71 | 1 | 0 |
-| 4 per hex | 199 | **5** | 4 |
-| 6 per hex | 277 | **26** | 25 |
-
-✅ **AND IT IS FIXED — a shift that lands on some cells and not others is not a uniform
-shift.** `spoil_place` returns the settle's spoil by moving the whole run by one amount,
-and *that* is the only reason the profile the relaxation just made legal survives it:
-every height moves the same, so every difference is unchanged. A caved cell has rock over
-it and `F1` needs `ε` under that rock, so the raise was **refused at exactly the cells
-with the least room** — and the code counted the refusal and carried on, quietly
-destroying the limit it had just established.
-
-| rising, 26 cells | before | after |
-|---|---|---|
-| 3 per hex | step 1, caved 71 | step 1, caved 71 |
-| 4 per hex | step **5**, caved 199 | step **1**, caved 206 |
-| 6 per hex | step **26**, caved 277 | step **1**, caved 280 |
-
-**Legal at every gradient in both directions, and MORE shelves survive than before** —
-the balance no longer squeezes them at all.
-
-⚠ **AND THE CURE IS TO SHIFT LESS, NOT TO TAKE THE LID OFF.** `A9`'s continuum argues for
-the lid — but it was written about a road that *has* risen into its roof, not one that has
-not yet. Removing lids on refusal was built and measured: `gates/world/cave` went from
-**13 shelves to 6** and the rock above the mouth **lost** faces (618 against 630). The
-gallery `A9` exists to build was being dismantled to return spoil a stroke later.
-
-⚠ **AND THE CAP IS `CAVE_HEAD`, NOT `ε`, WHICH IS THE WHOLE DIFFERENCE.** Capping at `ε`
-is enough to stop the refusals and keep the shift uniform — and it leaves cells squeezed
-between `ε` and `CAVE_HEAD`, which `run_unsqueeze` then takes the lids off. Measured, that
-still cost the gate: **7** shelves and `lidFaced` still false. **`ε` is what the STORE
-needs and `CAVE_HEAD` is what a WALKER needs**, and a balance has no business eating a
-walker's headroom. Sabotaging the cap back to `ε` takes `gates/world/cave` red, so the
-choice is gated rather than asserted.
-
-⚠ **AND `run_unsqueeze` COULD NEVER HAVE CAUGHT THIS.** It runs *after* the lift and reads
-the headroom that resulted, so it sees cells that **did** rise into their roof and is
-blind, by construction, to cells that **failed** to — a cell whose raise was refused still
-has all of its headroom and looks perfectly healthy.
-
-## ✅ `A2b` — A CORRIDOR WAS NOT TOUCHED AT ALL, AND HALF OF THAT WAS A BUG
-
-| measured on a 13-cell corridor | |
-|---|---|
-| a raise of 12 over it | the floor stays put, the cover grows **12 → 24** |
-| a hollow of 12 over it | **refused outright, and it said nothing** |
-
-✅ **OPEN QUESTION 4 IS ANSWERED — THE COVER HOLDS.** `F1` will not bring the ground within
-`ε` of a corridor's ceiling, so it cannot be opened to the sky by hollowing above it. ⚠ The
-bug was that nobody was told: `brush` **threw `ground_set`'s verdict away**, the same
-failure `road_clearance` exists for one gesture over. Against a bare control the hollow
-delivered **nothing** at the centre and 11, 10, 9, 7, 5 short along the corridor, reporting
-`clamped 0 residual 0`. Now **clamped 6, residual 12** — and bare ground still says nothing.
-
-✅ **AND THE BAND'S CEILING IS BUILT — the corridor follows.** The layer under a moved
-ground cell moves by the same delta, so the cover holds at **12 all along the run** where it
-grew 12 → 24 without bound. ⚠ By the ground's own delta rather than by steering for a
-measured band: `F1`'s separation is unchanged **by construction**.
-
-⚠ **THE ROW THAT ASSERTED THE NOT-BUILT STATE IS WHAT CAUGHT IT** — red at *"the corridor
-floor moved to 0; if that is now intended, this row is the one to change on purpose"*, which
-is exactly what it was written for. It now asserts the cover at **every** cell of the run,
-since a rule that moved the centre and left the flanks would hold at the peak and put a step
-in the roof.
-
-✅ **The negative control holds by construction**: a house's floor is fabric, fabric is
-`taken`, and this loop skips taken cells — `A1`'s rigid path owns them. Measured, the house
-rose 3 and its cellar rose 3.
-
-⚠ **OPEN QUESTION 3 IS ANSWERED BY WHAT A FLOOR IS.** *Cover or gradient?* cannot fight,
-because `FLOOR_MAT`'s `tr_slope` is `SLOPE_FREE` — a corridor has no gradient limit of its
-own, so it follows exactly and the cover is held rather than floating. The question goes
-live the day a sub-surface run carries a limited material, and the plan's answer is then one
-line: clamp the follow and let the cover open.
-
-## ✅ `A3` — THE RULE WAS ALREADY THERE; THE PROOF WAS NOT
-
-**No library change.** `slope_relax` runs from `brush` and takes its limit from
-`ground_kinds()`, so plain hill creation has obeyed the per-surface table since `A2`/`A7`.
-The row stayed open because nothing gated it — and the grass test asserted three
-*properties* (`clamped == 0`, steepest step 3, unlimited row) where the row asks for
-**byte-identical**. A change that reshaped the falloff while keeping its steepest step at 3
-would have passed all three.
-
-⚠ **SO IT IS ASKED OF THE EDIT CLOCK, WHICH CANNOT BE RESHAPED.**
-
-| one raise, amp 12 rad 7 | `w_tau` | clamped | peak |
-|---|---|---|---|
-| grass — unlimited | **91**, its own disc and not one write more | 0 | 12 |
-| field — limit 2 | 100 | 9 | 12 |
-| road — limit 1 | 110 | 19 | **6** |
-
-✅ **The extra is exactly the clamp count** — every extra write is a clamp and every clamp
-is a write. That is the row that catches a relaxation reporting a clamp it never wrote:
-sabotaged so, the profile tests stayed green and this one failed at *"wrote 9 more than
-grass but reported 19 clamps"*.
-
-## ✅ `A2c` ACROSS IS BUILT — a projection, not a sideways test
-
-> *"Roads do not flow: in the direction of the road they can bend but are flat in the other
-> direction."*
-
-**The across half had been built and removed TWICE**, each time after a sideways test
-chained its equalities down the run until the whole thing sat back at its original height.
-The shipped comment already named the cure and this is it: a **projection onto the run's own
-axis**, so *same station* is a fact rather than a guess about which of six directions is
-sideways.
+**2026-08-11.** The road thread closed and the last three rows with it. The session is
+**[JOURNAL § Session 17](JOURNAL.md)**, unthinned; the per-row record is
+[plan 20](../../plans/20-verticality-last/README.md). What is true now:
 
 | | |
 |---|---|
-| the axis | `run_axis` — the one opposite pair of neighbours both carrying the run's material; **two or more and there is no axis**, so a yard or plaza is never touched |
-| across | measured: the six neighbours sit at 0°, ∓60°, ∓120°, 180°, so **no cell is directly across** — the nearest two have a MIDPOINT that is |
-| the measure | `2·h(c) − h(n₁) − h(n₂)`, in **halves**, so the midpoint stays exact |
-| the bound | **one half — the floor.** A midpoint of two integers cannot be matched closer, so the row's literal "zero cross-fall" was never reachable on this lattice |
+| a stroke lays a **plane**, not a plate | each disc cell at `h + round((w − p) · g)`, so the overwrite is a no-op by construction and a walked road sits on the ground it was walked over. Falling: **845 / 338 / 0** at 6 / 3 / 1 per hex — the optimum |
+| the spoil balance | ONE rule, `road_balance`, against ONE datum — `Grades`, the grade the author asked for. `spoil_place` is deleted |
+| a caved run | holds its limit; the balance shifts only as far as every cell can come up, capped at `CAVE_HEAD` |
+| a rising walk | does **not** return its spoil, and that is **a decision taken on the picture** — see below |
+| `A2c` across | a projection onto the run's axis; one half is the floor, and "zero cross-fall" was never reachable |
+| `A3` | needed no rule at all; the proof is the edit clock |
+| `A2b` | a corridor follows the ground, and a hollow it refuses now says so |
 
-⚠ **THE OLD TEST WAS WRONG TWICE OVER, and that is most of what this step found.** It
-differenced the two lanes — which reads the ALONG grade as camber, because lane `r+1` sits
-half a station along the run — and it asked at one stroke offset that happened to come out
-level anyway, under a bound of one whole unit that could not have caught a camber. Swept,
-offsets **0, 5 and 7 and every steep tight stroke** carried a full unit of real cross-fall.
-All read one half now.
+⚠ **THE ONE DECISION A READER MUST NOT UNDO: KEEP THE GALLERY.** A rising walk ends owing
+363 over 43 cells. Letting the lid come off returns it exactly — **845, the mirror of the
+same walk downhill** — and costs `gates/world/cave` half its shelves. **The numbers favour
+the other arm and it was still not chosen**, with both renders side by side. `road_balance`
+says so at the site; do not re-open it on the numbers alone.
 
-⚠ **AND TWO BUGS IN THE NEW RULE, THE FIRST OF WHICH READ AS A RULE WITH NOTHING TO FIX.**
-`back = (cf − 1) / 2` truncates the commonest case — one unit of camber, `cf` of 2 — to a
-correction of **zero**: it compiled, ran, and changed not a single height. `cf` is in halves,
-so a one-unit shift moves it by two. And the outer side of a two-wide road is the *hillside*,
-so without a same-material guard the road gets tied level with the ground beside it and
-`T4`'s deliberate seam closes — ⚠ that guard is load-bearing, and removing it takes
-`test_a_stroke_that_already_fits_is_left_exactly_alone` red.
+⚠ **AND *RAISE THE SHELF'S LID WITH THE ROAD* IS REFUTED** (`probe/house/lid.loft`) — there
+is no roof to raise. `road_cave` writes the road and the ground layer keeping `nat`, and the
+drawn soffit is that layer's underside: **the lid IS the hillside**, and raising it measured
+a 12-unit step of mountain that was never there.
 
-✅ **AND THE COLLAPSE CONTROL LIVES IN THE FILE THIS TIME.**
-`test_and_the_run_still_climbs_along_itself` asserts the road is **not** one height end to
-end under the same stroke — precisely what both removed attempts produced while every count
-agreed.
+### ⏭ WHAT IS OPEN
 
-## ⛔ `plan/20-run-debt` WAS MERGED ON TOP AND THE MERGE WAS ABORTED — it RATCHETS
+- **`plan/20-run-debt`** — pushed, deliberately unmerged, and now with a *measured* reason:
+  merged on top of everything above it **ratchets**, because `spoil_place`'s datum moves when
+  the balance moves. Superseded by `Grades`; kept for its measurement.
+- **plan 19 `L6.2` onward** — the `hex_voxel` rename, not blocked.
+- the two ◐ format questions on plan 17, which want a plan rather than a step.
 
-**Attempted 2026-08-11, resolved in full, measured, and backed out.** The hope was
-reasonable and is now refuted: the branch was red on
-`test_a_settled_road_conserves_its_spoil` (*cut 8 against fill 56*) because the stamp
-displacement was left over once the settle's spoil was actually returned — and the plane
-removes exactly that displacement. **It did not fix it.**
-
-| the fixture | cut | fill | out of balance |
-|---|---|---|---|
-| as the branch left it — a flat plate on a dome | 8 | 56 | 48 |
-| laid as a PLANE on the same dome | 13 | 48 | **35** |
-| a plane on a CONSTANT gradient, where the stamp is exact | 20 | 72 | **52** |
-
-⚠ **SO THE STAMP WAS NEVER THE CAUSE OF *THIS* FAILURE, and the third row is what says
-so** — on a ramp the plane lays the road exactly on the ground, so nothing is left for a
-stamp to displace, and the imbalance got *worse*.
-
-⚠ **IT IS A RATCHET, AND THE DATUM IS WHY.** `spoil_place` measures its cut against
-`was` — the profile at entry to **this** settle — which is correct for ONE settle and
-wrong the moment a debt accumulates across them, because `was` already contains whatever
-the balance raised on the previous stroke. So earth that was already returned is counted
-as spoil **again** and returned **again**. Measured on a 3-per-hex ramp walked uphill:
-
-| after stroke | 0 | 3 | 6 | 9 | 12 |
-|---|---|---|---|---|---|
-| run stands above natural | −2 | 0 | **8** | **22** | **52** |
-| debt still owing | 0 | 2 | 6 | 16 | **32** |
-
-**Both columns climb.** A debt that drains would fall; this one grows while the road it
-is inflating also grows. Earth is being invented.
-
-**What a merge would need first**: the debt's datum must be *the profile the author asked
-for* — the stamped grade of the whole run, carried across strokes — not the profile at
-entry to each settle. That is a per-run registry of what each cell was stamped at, which
-is a design piece and not a merge. ⚠ And it is **not** the telescoping accumulator either:
-that measures against the natural ground, which is the term five tests refuse because
-returning it undoes a deliberate cut.
-
-**The branch is left pushed and unmerged**; `main` keeps the plane and the caved-run fix,
-both of which stand on their own.
-
-## ✅ AND THE DATUM THE MERGE NEEDED IS BUILT — `Grades`, what the author ASKED for
-
-**The debt is a QUESTION now, not an accumulator**, which is `slope_owed`'s shape one rule
-over and for its reason: *the heights already say* what a run owes, so a number carried out
-of a gesture could disagree with them. `road_lay` records the grade it stamped at each cell
-(`grade_note`), and `road_balance` asks `Σ(asked − current)` **afresh every stroke**. There
-is no accumulator, so there is nothing to drift.
-
-**Three datums were tried and only the third works — each failed in its own direction:**
-
-| datum | what it does |
-|---|---|
-| the **natural ground** | undoes a deliberate cut. Five tests refuse it, `A8`'s own negative control first: *a road cut 20 into open ground ended at 40* |
-| the **previous profile** (`spoil_place`'s) | **ratchets** — the run climbed −2 → 0 → 8 → 22 → 52 while the debt itself grew 0 → 2 → 6 → 16 → 32, both still rising when the walk ended |
-| **what the author asked** | stable under the balance, so it cannot ratchet; equal to the current height wherever the author chose a cut, so it cannot undo one |
-
-**Measured, and the falling side is now exactly the optimum `envelope.loft` computed:**
-
-| 26 cells | plate | plane | **plane + registry** | optimum |
-|---|---|---|---|---|
-| 6 per hex, falling | 1508 | 1141 | **845** | 845 |
-| 3 per hex, falling | 777 | 538 | **338** | 338 |
-| 1 per hex, either way | 127 | 0 | **0** | 0 |
-
-⚠ **AND `test_a_settled_road_conserves_its_spoil` PASSES**, which the run-debt branch could
-never make it do. `tests/road_debt.loft` pins the rest: a deliberate cut owes nothing, and
-the part of a run standing above its asked grade **plateaus** instead of climbing (4, 6, 11,
-11, 57, 45, 102, **117, 117, 117, 117, 117**). Sabotaging the datum back to the natural
-ground takes it red at *258 halfway, 344 at the end* — the ratchet, caught.
-
-⚠ **THE CLAIM IS *IT STOPS*, NOT *IT IS ZERO*, deliberately.** A uniform shift lifts cells
-already at their grade along with the cut ones, so some overshoot is inherent to any
-balance that keeps a run legal. What a ratchet does and this must not is keep going.
-
-### ✅ AND IT IS ONE BALANCE AND ONE DATUM NOW — `spoil_place` is gone
-
-**`slope_settle` only settles.** It used to end by calling `spoil_place`, which put the
-spoil back against the profile it found *on entry* — right for one settle, wrong for a
-gesture that makes one per stroke, because that profile already holds whatever the balance
-raised last time. `road_balance` owns the fill and owns the only datum. **117 lines
-deleted**, and `A8`'s own argument moved onto the rule that now does the work rather than
-going with it.
-
-| | two balances | **one** |
-|---|---|---|
-| net first goes negative at | stroke **2** | stroke **5** |
-| the part standing above its asked grade plateaus at | 117 | **93** |
-| falling 6 / 3 / 1 per hex | 845 / 338 / 0 | **845 / 338 / 0** — unchanged |
-
-⚠ **AND THE TRANSIENT DID NOT GO AWAY, ONLY LATER AND SMALLER — SO IT IS NOT CLAIMED.** A
-uniform shift lifts cells already at their grade along with the cut ones, so mid-walk the
-total dips below zero and comes back: **−5 at stroke 2** with two balances, **−15 at
-stroke 5** with one. `tests/road_debt.loft` asserts what *is* true at every gradient and
-in both directions — a **finished** run never stands above the grade it was asked for —
-and says in its own comment that the transient is not claimed. **Writing the stronger row
-and watching it fail is what established that**, twice.
-
-### ⛔ THE RISING WALK'S SPOIL IS A CONFLICT BETWEEN `A8` AND `A9`, NOT A DEFECT
-
-**Fixed, measured, and reverted — because the fix costs a shipped claim.** The cause is
-exact: **`A9` cuts a shelf with exactly `CAVE_HEAD` of air over it**, so `room = shelf_head
-− CAVE_HEAD` is **zero** at every freshly caved cell and a single one freezes the whole
-run's balance.
-
-| 6 per hex, rising | cut | fill | moved | still owing |
-|---|---|---|---|---|
-| capped at `CAVE_HEAD` — what ships | 1221 | 38 | 1259 | **363** over 43 cells |
-| lid taken off on refusal | 442 | 403 | **845** | **19** over 43 cells |
-
-**845 is the exact mirror of the same walk downhill, and the optimum.** The spoil *can* be
-returned. It costs `gates/world/cave` **half its shelves (13 → 6)** and its `lidFaced` row
-— the rock above the mouth loses faces (618 against 630). Capping at `ε` instead was tried
-too: 7 shelves, `lidFaced` still false.
-
-⚠⚠ **AND THE FIX THIS FILE PROPOSED — *raise the shelf's LID with the road* — IS REFUTED.**
-`probe/house/lid.loft`: there is no roof to raise. `road_cave` writes **two** entries into
-the column — the road below, and the ground layer keeping `nat`, the natural ground that was
-already there — and the soffit the renderer draws is that layer's **underside**, derived.
-**The lid IS the hillside.** Raising it by 12 measured a **12-unit step in the terrain** at
-the gallery while its neighbour stayed at 400: inventing hill, which is the one thing `A9`
-exists not to do.
-
-✅ **WHICH MAKES THE CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION, and that is the real
-finding.** A road inside a gallery is **committed**: it cannot rise without re-cutting the
-roof, and re-cutting means taking rock **away** — `run_unshelf`, the gallery becoming an
-open cut — never adding hill above it. There are exactly two answers, not three.
-
-## ✅ AND THE AUTHOR HAS CHOSEN, ON THE PICTURE: **KEEP THE GALLERY**
-
-**Decided 2026-08-11, with both renders side by side** — `tools/scripts/cave.keys` on one
-mountain, same ticks, crops zoomed on where the frames differ. With the cap the road runs
-under a lid of rock with its soffit; without it that overhang is simply gone and the cliff is
-a plain buttress.
-
-| | keep the gallery — **chosen, and what ships** | return the spoil |
-|---|---|---|
-| earth moved, 6 per hex rising | 1259 | 845 |
-| spoil still owed, 43-cell run | 363 | 19 |
-| mirrors the same walk downhill | no | exactly |
-| shelves on the gate's mountain | **13** | 6 |
-| `gates/world/cave` | **passes** | fails `lidFaced` |
-
-⚠ **DO NOT RE-OPEN THIS ON THE NUMBERS ALONE — they favour the other arm.** 845 is the
-optimum and an exact mirror of the descent, and it was still not chosen: a road under rock is
-worth more here than balanced earthworks, and spoil from a rock cutting is carted off in the
-world too. The decision was taken with both pictures in view.
-
-⚠ **The other arm is one line** — drop the cap in `road_balance` and `run_unshelf` on a
-refused raise — so it stays cheap to revisit if the picture ever stops being worth it.
-`gates/world/cave`'s `lidFaced` row would need re-deriving with it, since it counts shelves
-indirectly.
-
-**So nothing is owed here.** The rising walk's unreturned 363 is a refusal with a reason, and
-the earlier framing of it as *a conflict awaiting a design step* was wrong.
-
-⚠ **AND THE TEST SAYS SO RATHER THAN BEING RELAXED UNTIL IT PASSES.**
-`test_a_finished_run_owes_no_more_than_the_integer_remainder` runs the **falling** direction
-only, and its comment carries the rising measurement and the reason. Asserting the rising
-case would either be red or would have to be loosened until it claimed nothing.
-
-⚠ **AND THE ROW IT REPLACED CAUGHT A RATCHET *AND* A CORRECT EMBANKMENT.** The earlier
-version counted how much of the run stood *above* its asked grade and asserted that it
-stopped growing — which flags the very thing `A8` exists to build, because dumping spoil
-along a road is what raises its lower end. **Earth conserved is the question; where the
-earth ended up is not.** The new row is `A8`'s own claim with `A8`'s own tolerance (one unit
-a cell, derived), and it catches both datums that were tried and rejected: the cap at 1052
-over 64 cells, the ratchet datum at 1322.
+⚠ **`shots/a9-*.png` ARE THE SHIPPING RENDER.** Photographing the alternative overwrote them
+under the same names; the directory is gitignored so nothing wrong was committed, but the
+wrong frames on disk read as a missing gallery. Restored and verified pixel-identical.
 
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 
@@ -1056,9 +644,10 @@ section for every step — the findings, the controls, and what each sabotage co
 carries only what is true *now* and what bites regardless of which step you pick up. The arc's
 narrative is [JOURNAL.md](JOURNAL.md); **session 13 is its newest entry.**
 
-⚠ **THIS FILE GROWS BACK, AND IT HAS FOUR TIMES.** 2,446 lines → split to a handoff; 785 across
-sessions 10–12 → ~400; 907 at the end of session 13 → ~300; **1,011 at the end of session 15 →
-~960 here.** Every regrowth is the same shape: per-step findings the plan already carried, and a
+⚠ **THIS FILE GROWS BACK, AND IT HAS FIVE TIMES.** 2,446 lines → split to a handoff; 785 across
+sessions 10–12 → ~400; 907 at the end of session 13 → ~300; 1,011 at the end of session 15 →
+~960; **1,684 at the end of session 17 → 1,300 here**, with 451 lines of narrative moved to
+the journal in one block. Every regrowth is the same shape: per-step findings the plan already carried, and a
 session narrative that belongs in the journal. **When a session ends, its entry moves out.**
 Moving is not thinning — nothing is ever deleted on the way, which is why the journal is 3,800
 lines and this is not.
@@ -1072,6 +661,34 @@ the NATIVE server now**), and most of it is a record of getting there. **Whoever
 file: that block is the work, and the durable sentences go to § *What bites*, not to the bin.**
 
 ### ⚠ What bites regardless of which step you pick up
+
+⚠ **A WAIT THAT SETTLES ON NOTHING REPORTS SUCCESS.** `quiet` returns as soon as a count
+stops changing, so under four contended servers — where the rebuild has not started yet — it
+settles at **zero and returns true**: no `!!`, no timeout, a clean settle on an empty block.
+That is `part_limb`'s three-time flake, and `L5` fixed the same class once already. **Wait
+for the evidence, then settle.** ⚠ And the evidence must be per-attempt: `g.meshes` is every
+`M:` id for the whole session and is never reset, so `meshes.length > 0` is true forever
+after the first one — a guard that reads exactly like a guard. `g.picture` is cleared per
+open and is what to ask.
+
+⚠ **A GATE'S FAILING ROW IS NOT IN THE SUITE OUTPUT.** `verdict()` prints its rows to stdout
+and `run-gates.sh` keeps only the last line, cut to 100 characters — so *which* conjunct
+failed can only be seen by running the gate by hand against a server. Three flakes were
+diagnosed as "some other field" before anyone did.
+
+⚠ **A ONE-SIDED GUARD READS EXACTLY LIKE A GUARD, AND THIS TREE HAS NOW WRITTEN ONE THREE
+TIMES** — `faced_between`, `stroke_over_limit`, and a balance arm reading `if owed > 0` that
+fired on a descent and did **nothing** on the mirror. Ask it from both ends before believing
+a zero.
+
+⚠ **A TEST THAT ASSERTS A NOT-BUILT STATE IS WORTH WRITING.** `A2b`'s corridor row asserted
+the cover grew by *exactly* what the ground gained — a measurement of the gap — and it went
+red one commit later at *"if that is now intended, this row is the one to change on
+purpose."* A gap nobody pinned is a gap that gets closed silently.
+
+⚠ **PHOTOGRAPHING AN ALTERNATIVE OVERWRITES `shots/` UNDER THE SAME NAMES.** The directory is
+gitignored so nothing wrong is committed, but the wrong frames on disk read as a missing
+feature to the next person who looks. Copy the shipping render back and verify it.
 
 ✅ **AND THE CART NO LONGER STANDS IN AN OPEN PART (2026-08-08).** Part open already empties eight
 registries because *a part has no runs, roofs, leaves or dressing of its own*; a cart is dressing,
