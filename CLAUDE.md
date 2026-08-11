@@ -288,6 +288,15 @@ address (or the hostname `make browser` prints) cannot connect.
   id, every acknowledgement string, the ordering guarantees, and each message's fate under the
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
+- [Editing modes](doc/claude/EDITING_MODES.md) — **what a key means depends on where you are and
+  what you have chosen**, and those are **two axes**: WHERE decides which verbs exist (derived
+  from the author's position, never set — *"a house in a cave switches to houses again"* is the
+  proof), WHAT YOU CHOSE decides what they produce (the catalogue). ⚠ Flattening them is a
+  shipped mistake: one opening gesture needs **six keys** today because the profile is encoded in
+  the key, and `O`/`P` mean *round vs pointed* on the wire and *door vs window* in the runner.
+  ⚠ And a third layer — **house types** bundle defaults and may add their own verbs — which makes
+  the verb table **data**: *adding a type must touch no code*, or the system cannot grow.
+  Designed, not built
 - [Pages editor](doc/claude/PAGES_EDITOR.md) — **the editor as a static page: the quick start, and
   one client with two authorities**. ⚠ Not *the editor minus a server* — a server is coming back
   for **script compilation, multi-player and debugging**, so the page is the same client with the

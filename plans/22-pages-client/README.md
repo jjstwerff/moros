@@ -12,7 +12,13 @@ can be opened and driven.**
 
 **Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), and `P2` is
 **run and green** — so `W5` is buildable today with no loft change.
-**Next:** `W4`'s remaining sites, then `B1` — local mode in the client.
+**Next:** `M1` — editing modes — then `W4`'s remaining sites, then `B1`.
+
+⚠ **`W4` STOPPED HALFWAY ON PURPOSE, 2026-08-11.** Wiring `editor_client` and `script.mjs` to
+`press` was attempted and **backed out**: measuring the two sides first showed `press` holds the
+RUNNER's meanings and the server disagrees on three keys. And the user's mode requirement says
+why a flat table could never have been right — see [EDITING_MODES](../../doc/claude/EDITING_MODES.md).
+**The chokepoint is right and its contents are provisional.**
 
 Today: `world_to_bytes`/`world_from_bytes` ship and `world_load` is 1.6× faster than the
 field-by-field reader it replaced; `hex_editor::press` answers what a key means for
@@ -57,7 +63,8 @@ nothing. Said in a line so the silence does not read as *gate done*.
 |---|---|---|---|
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
-| ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ · **`editor_client` and `script.mjs` open** | ◐ Two of four |
+| ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
+| **`M1`** — editing modes: the verb set is DERIVED from where the author stands | M | a key with no verb here says *why*, not nothing | ⏭ **New, and it blocks `W4`** — [EDITING_MODES](../../doc/claude/EDITING_MODES.md) |
 | ✅ **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | **RUN 2026-08-11 — it holds.** `probe/p2/run.sh` · `make probe-p2` · three exchanges, two sabotages seen red | ✅ Done |
 | **`P5`** — is `fetch()` of a sibling file blocked under `file://`? | XS | a two-file page from `file://` in headless Chrome | Open — it decides whether assets are inlined |
 | **`W2`/`W3`** — parts and `.glb` from bytes | S | a part loaded both ways is equal | ⚠ **Skip if [loft#851](https://github.com/loft-lang/loft/issues/851) lands** — then a path just works |

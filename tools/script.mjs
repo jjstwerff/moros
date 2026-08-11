@@ -116,7 +116,26 @@ const UI_STATUS  = 24;
 const UI_SUBJECT = 24;
 const CANVAS = wasm ? '#c' : '#gl';
 
-// ⚠ KEEP IN STEP WITH `html/editor.html`'s keydown handler.
+// ⚠ THIS COMMENT SAID "KEEP IN STEP WITH `html/editor.html`'s keydown handler"
+// AND THAT FILE WAS DELETED ON 2026-08-02 — the instruction naming where the truth
+// lived pointed at nothing for nine days. The truth is `hex_editor::press` now.
+//
+// ⚠ PLAN 22 `W4` TRIED TO MOVE THE PARAMETER-PICKING ENTRIES TO `48:<key>` — the
+// message that hands a keystroke to `hex_editor::press` — AND BACKED OUT, because
+// measuring the two sides first showed they do not agree:
+//
+//   `O`/`P`  `36:<kind>` is a PROFILE (0 flat, 1 round, 2 pointed) and the handler
+//            always cuts with `DOOR_MAT`. `press` reads O/P as door-versus-window.
+//            Different axes, not different spellings.
+//   `F`/`G`  `do_fence` uses the author's ground height as the ring's reference and
+//            forces yaw to 0.0, then remembers the ring as a TRUNK for annexes.
+//            `press` does none of that.
+//
+// `press` was written from `src/editor_run.loft`'s table, and the RUNNER had
+// diverged from the server. **So the chokepoint is right and its contents are the
+// runner's**; the server is the authority and reconciling it key by key is what is
+// left of `W4`. Until then this table stays as it is, and it is a KNOWN duplicate
+// rather than an unnoticed one — which is the whole difference.
 const KEYMAP = {
   ArrowUp: '5:1', ArrowDown: '5:-1',
   F: '23:3,3',            // ring a fence around you

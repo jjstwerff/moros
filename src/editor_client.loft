@@ -123,6 +123,35 @@ const KEY_WALL_RUN = 114;     // r
 const FENCE_CMD = "23:3,3";
 const WALL_CMD = "23:1,3";
 
+// ⚠ THESE STILL CARRY THEIR OWN PARAMETERS, AND `W4` TRIED TO MOVE THEM AND BACKED
+// OUT — plan 22, 2026-08-11. Routing them to `48:<key>` (`hex_editor::press`) would
+// have changed what the editor does, because `press` was written from
+// `src/editor_run.loft`'s table and the RUNNER had diverged from this server on
+// three keys, not one:
+//
+//   `F`/`G`  `do_fence` passes the author's ground height `py` as the ring's
+//            reference and forces yaw to 0.0; `press` passes 0.0 and the real yaw.
+//            `MSG_FENCE` then remembers the ring as a TRUNK for annexes — session
+//            state `press` does not keep at all.
+//   `O`/`P`  `36:<kind>` is a PROFILE — 0 flat, 1 round, 2 pointed — and the
+//            handler always cuts with `DOOR_MAT`. `press` reads O/P as
+//            door-versus-window, which is a different axis entirely.
+//
+// **So `press` is the right chokepoint holding the wrong contents**: it encodes the
+// runner's simplified meanings, and the SERVER is the authority. Reconciling it key
+// by key is `W4`'s remaining work; wiring first would have been a silent rewrite of
+// the editor wearing a refactor's clothes. The `48:<key>` message was built for it
+// and REMOVED again in the same session — an uncalled wire id is this tree's own
+// trap (`44:` has no client binding, recorded for months).
+//
+// ⚠ AND THIS CLIENT COULD NOT BUILD A HOUSE AT ALL. It had no `H`, no `O` and no
+// `P` — only `tools/script.mjs` ever sent them, so every house in every picture
+// of this editor was placed by a script and never by a person at the keyboard.
+// Found while wiring `W4`; the three keys below are new.
+const KEY_HOUSE = 104;        // h — a house where you are looking
+const KEY_DOOR  = 111;        // o — a door in the wall you face
+const KEY_WINDOW = 112;       // p — …and a window
+
 // ⚠ 1200x660 IS THE REGION THE BROWSER ACTUALLY GIVES THIS PAGE, not a taste. The
 // shell draws into the VIEWPORT — the window less the ~140px `<pre>` HUD under the
 // canvas — while the canvas backing store stays whatever these two say. At 1280x800
@@ -383,6 +412,9 @@ struct Client {
   was_storey_up: boolean,
   was_storey_down: boolean,
   was_wall_run: boolean,
+  was_house: boolean,
+  was_door: boolean,
+  was_window: boolean,
   // A path when a picture is wanted on the next frame, empty otherwise. The
   // server asks for it (`33:<path>`), so a SCRIPT can take screenshots along the
   // way without anyone at the keyboard.
@@ -1090,6 +1122,25 @@ fn poll_input(h: web::WsHandler, st: Client) {
   krun = graphics::gl_key_pressed(KEY_WALL_RUN);
   if krun && !st.was_wall_run { web::send(h, "25:1"); }
   st.was_wall_run = krun;
+
+  // ⚠ EDGES, NOT STATES — the same rule as the stair above. A held `h` would send
+  // the same house every frame; the first would place it and the rest would be
+  // refused, which reads to an author as the key not working.
+  khouse = graphics::gl_key_pressed(KEY_HOUSE);
+  // ⚠ `32:` CARRIES NO PARAMETER, so it names a message without deciding a
+  // meaning — which is why this one was always safe to send from a client. The
+  // house handler also files the ROOF PLAN, and `press` cannot own that until
+  // `hex_editor` can reach `HEIGHT_SCALE`: that lives in `hex_proj`, `hex_proj`
+  // pulls `graphics`, and putting a GL binding under the gesture library is the
+  // cone `L3'` was reverted for twice.
+  if khouse && !st.was_house { web::send(h, "32:"); }
+  st.was_house = khouse;
+  kdoor = graphics::gl_key_pressed(KEY_DOOR);
+  if kdoor && !st.was_door { web::send(h, "36:1"); }
+  st.was_door = kdoor;
+  kwin = graphics::gl_key_pressed(KEY_WINDOW);
+  if kwin && !st.was_window { web::send(h, "36:2"); }
+  st.was_window = kwin;
 
   // Drag to look. A raw delta is an input event, not a model decision.
   mbtn = graphics::gl_mouse_button();
