@@ -37,7 +37,22 @@ serves**, differing only in where a key press goes.
 | ◐ `W4` | `hex_editor::press` — what a key means, in one place instead of **four**. `editor_run` and the server's `MSG_HOUSE` wired; `editor_client` and `script.mjs` still carry theirs |
 | ✅ `R1a`/`R1b` | **the ring is reconciled.** The pose carries the ground under the feet (`au_y`), `press` rings at it instead of at `0.0`, and the ring's TRUNK is `sess.es_trunk` — the ninth registry — instead of four locals beside the socket |
 | ✅ `R3` | `O`/`P` answer **`PR_SELECT`** — *an opening needs a profile, and nothing selects one yet* — instead of cutting the runner's material where the wire means a profile |
-| ⏭ next | **`S1`** — a **selection** in `EditSession`, which is the thing `R2` is blocked on |
+| ✅ `S0` | **the scene records go with the store they describe.** `9:` used to leave the previous world's cottage in the session, and `37:` hung a balcony on it |
+| ⏭ next | **`S2`** — the selection **and** the verb that sets it **and** a consumer, in one step. `S1` alone is gone: its round-trip test rested on a premise measured false |
+
+⚠ **`S1`'s PREMISE WAS MEASURED AND IT IS FALSE.** The row said *"the session is saved and
+replayed"*, naming `world_to_bytes`. **None of the session is in those bytes** — and the load path
+did not clear it either, so `9:` left the previous world's registries in place: build a house,
+save, load a world with no house in it, and `37:` still built `annex kind 1 at (-2,1)` on a
+cottage the store no longer held. `36:` refused correctly in the same breath, **because it reads
+the store** — *which one asks the world* is the discriminator. ✅ Fixed: `session_scene_clear`,
+the one list both `9:` and part-open take.
+
+> **So a selection is DRIVER state, not world state** — `es_author`'s category, and under
+> multi-player two clients on one world hold two. That removes `S1`'s only test, so it merges
+> into `S2`. ⏭ **And the registries' own absence from the format is now an open question**: a
+> saved world reloads with no wall runs, roofs, leaves, openings, annexes, props, slabs or holes,
+> falling back to per-edge panels and a roof from cells.
 
 ⚠ **`R1b` FOUND ITS OWN ROW'S INSTRUMENT BLIND, TWICE.** The plan said *equal `w_tau` and equal
 trunk state*, and **`w_tau` cannot see a fence on the wrong layer**: the same edges, the same

@@ -6650,22 +6650,17 @@ fn main() {
               // Empty, per `part_thumb_wire`'s argument — a part has no runs, roofs,
               // leaves or dressing of its own, and the world's would be drawn
               // standing in it.
-              sess.es_runs = WallRuns { items: [] };
-              sess.es_roofs = hex_editor::RoofPlans { items: [] };
-              sess.es_leaves = hex_editor::DoorLeaves { items: [] };
-              sess.es_open = hex_editor::Openings { items: [] };
-              sess.es_annex = hex_editor::Annexes { items: [] };
-              sess.es_awalls = WallRuns { items: [] };
-              sess.es_props = hex_editor::Props { items: [] };
-              sess.es_slabs = hex_editor::Slabs { items: [] };
-              sess.es_holes = hex_editor::Holes { items: [] };
-              // ⚠ AND THE RING — plan 22 `R1b`, and the same argument a third time.
-              // It was four locals beside the socket, so part mode did not touch it
-              // and the world's tree stayed standing inside every part: `K` would
-              // have hung a balcony on a cylinder in another world. Held aside with
-              // the rest now (`held_sess = sess` copies the whole struct) and
-              // emptied here, exactly as the eight above and the cart below are.
-              sess.es_trunk = hex_editor::Trunk {};
+              //
+              // ⚠ ELEVEN LINES BECAME ONE CALL, AND THE ARGUMENT IS WHY. This block
+              // listed nine registries and `R1b` had to add a tenth to it; the load
+              // path below wanted the identical list and did not have it, which is
+              // how `9:` came to leave the previous world's cottage in the session.
+              // `session_scene_clear` is *everything the session records about one
+              // store*, so a registry added to `EditSession` is emptied by both
+              // sites or by neither. ⚠ It also clears the DRAFT, which this block
+              // did not: a two-press run whose first press is in the world you just
+              // closed lays a wall between two worlds.
+              hex_editor::session_scene_clear(sess);
               in_part = true;
               part_name = ev.payload;
               disp_tau = -1;              // the same reason, the other way round
@@ -6720,6 +6715,20 @@ fn main() {
             // distinction worth keeping.
             ld_own = lres.wl_world;
             wld = ld_own;
+            // ⚠ AND THE SCENE RECORDS GO WITH THE STORE THEY DESCRIBE. Measured
+            // through this socket, 2026-08-11: build a house, `8:` save, `9:` load a
+            // world with no house in it — and `37:` still built a balcony,
+            // `annex kind 1 at (-2,1)`, on the wall of a cottage the store no longer
+            // held. `36:` refused in the same breath, correctly, because it reads the
+            // store. Two authorities and one of them describing a world that is gone.
+            //
+            // ⚠ THE REGISTRIES ARE NOT IN THE FILE, and that is the honest half of
+            // this. A load can only give back the cells, so what it owes is to say it
+            // lost the records rather than to hand over another world's. The drawn
+            // result degrades to the fallback `chunk_mesh_props` already takes —
+            // per-edge panels and a roof from cells. Putting them in the world's own
+            // bytes is a FORMAT question and a plan of its own.
+            hex_editor::session_scene_clear(sess);
             // ⚠ ONLY ON SUCCESS. A refused load leaves the world you had, so it
             // must leave its NAME too — a subject line renamed by a load that did
             // not happen is the exact lie B2.3's control is aimed at, one message

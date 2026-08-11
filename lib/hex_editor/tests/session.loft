@@ -362,6 +362,48 @@ fn test_no_wall_and_no_trunk_is_no_host() {
   assert(!got.ah_ok, "an annex found a host in an empty world");
 }
 
+// ── THE SESSION DESCRIBES ONE STORE, AND A LOAD REPLACES THE STORE ───────────
+//
+// ⚠ MEASURED THROUGH THE SOCKET BEFORE THIS EXISTED, 2026-08-11: build a house,
+// `8:` save, `9:` load a world with no house in it — and `37:` still built a
+// balcony, `annex kind 1 at (-2,1)`, on the wall of a cottage the store no longer
+// held. `36:` refused in the same breath, correctly, because it reads the store.
+// **Two authorities and one of them was describing a world that is gone.**
+//
+// The claim here is the one a socket cannot make cheaply: after the clear there is
+// nothing left for an annex to find. ⚠ AND THE TRUNK IS IN THE FIXTURE ON PURPOSE —
+// a clear that emptied the runs and left the ring would pass a runs-only test and
+// still hang the balcony, because `annex_host` takes either.
+fn test_a_scene_clear_leaves_nothing_for_an_annex_to_hang_on() {
+  w = a_world();
+  s = session_new();
+  session_at(s, w, 0.0, 0.0, 0.0);
+  s.es_runs.items += [WallRun { wr_x0: 0.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0 }];
+  session_fence(s, w, WALL_MAT, 3, 0.0);
+  s.es_props.items += [Prop { pr_x: 1.0, pr_z: 1.0 }];
+  wall_step(s.es_draft, 2.0, 2.0, WALL_MAT);
+
+  before = annex_host(s.es_runs, 3.0, 1.5, 0.0, s.es_trunk);
+  assert(before.ah_ok, "the fixture has no host to lose — nothing is being tested");
+  assert(s.es_trunk.tk_live, "and no trunk either");
+  assert(s.es_draft.wd_open, "and no half-laid run");
+
+  session_scene_clear(s);
+
+  after = annex_host(s.es_runs, 3.0, 1.5, 0.0, s.es_trunk);
+  assert(!after.ah_ok,
+         "an annex still found a host at ({after.ah_x},{after.ah_z}) after the "
+       + "scene was cleared — round {after.ah_round}");
+  assert(len(s.es_props.items) == 0, "{len(s.es_props.items)} props survived");
+  assert(!s.es_draft.wd_open,
+         "a half-laid run survived: its first press is at a point in the world "
+       + "that was just closed");
+  // ⚠ THE POSE IS NOT SCENE STATE and must NOT be cleared — the server keeps
+  // writing it from its walker, and a load does not teleport anybody.
+  assert(s.es_author.au_x == 0.0 && s.es_author.au_z == 0.0,
+         "the clear moved the author to ({s.es_author.au_x},{s.es_author.au_z})");
+}
+
 // ── `slab.keys` / `39:` — WHICH SLAB A HOLE GOES IN, AND WHICH HOLE IT IS ────
 //
 // ⚠ THREE CLAIMS THAT USED TO NEED A SOCKET, and none of them is geometry: the host

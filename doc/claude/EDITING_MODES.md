@@ -319,9 +319,39 @@ registry — which is also what puts it under part mode's *a part has no ring of
 
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
-| **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | nothing changes behaviour yet — but the session is **saved and replayed**, so its round-trip is the test | a selection that does not survive `world_to_bytes`/`world_from_bytes` makes a script unreplayable, and every gate drives a script |
+| **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | ⚠ **NOT the byte round-trip — that premise was measured false, see below.** The selection is DRIVER state beside `es_author`, and its replay is the SCRIPT | ⚠ **`S1` alone cannot go red**, so it merges into `S2`: the field, the verb that sets it, and a consumer that reads it |
 | **`S2`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by cutting two openings with different selections and diffing the cells, never by reading the line |
 | **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
+
+### ⚠ `S1`'s premise was measured and it is FALSE — 2026-08-11
+
+The row said *"the session is **saved and replayed**, so its round-trip is the test"*, naming
+`world_to_bytes`/`world_from_bytes`. **None of the session is in those bytes.** The format holds
+the header, the palette, the chunk directory, the voxels and the tagged sections that live in
+`w_sections`; the nine registries are the editor's own and travel nowhere.
+
+⚠ **AND THE LOAD PATH DID NOT CLEAR THEM EITHER, WHICH IS THE LIVE HALF.** Measured through the
+socket: build a house, `8:` save, `9:` load a world with no house in it — and `37:` still built a
+balcony, `annex kind 1 at (-2,1)`, on the wall of a cottage the store no longer held. `36:`
+refused in the same breath, correctly, **because it reads the store**. Two authorities, one of
+them describing a world that is gone, and the discriminator between them is *which one asks the
+world*. ✅ **Fixed**: `session_scene_clear` is the one list both the load and the part-open take,
+and the same probe now answers *"nothing to attach to"*.
+
+> **So the selection is not world state at all.** It is what *this author* has chosen, which is
+> `es_author`'s category — *a driver's pose, never the editor's* — and under multi-player two
+> clients editing one world hold two selections. Putting it in the world's bytes would make one
+> client's choice the other's.
+
+⚠ **WHICH REMOVES `S1`'s ONLY TEST AND MERGES IT INTO `S2`.** A field nobody reads, whose
+round-trip claim has evaporated, is the *built and never called* defect with a planning hat on —
+[plans/README § the lower bound](../../plans/README.md#what-makes-a-step-safe--and-it-is-not-how-few-lines-it-is).
+The field, the verb that sets it and a consumer that reads it are one step.
+
+⚠ **AND THE REGISTRIES' OWN ABSENCE FROM THE FORMAT IS NOW AN OPEN QUESTION, not a bug fixed.**
+Saving a world and reloading it loses every wall run, roof plan, leaf, opening, annex, prop, slab
+and hole; what is drawn falls back to per-edge panels and a roof from cells. That is a format
+plan, and it is where plan [17](../../plans/17-parts/README.md)'s two ◐ rows already sit.
 
 ## Phase 3 — the verb layer
 

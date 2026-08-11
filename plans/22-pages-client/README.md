@@ -78,7 +78,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
 | ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
 | ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
-| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | ⏭ **Next** |
+| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds**. ⚠ **`S1` merged into `S2`** — its round-trip test rested on a premise measured false | ⏭ **Next** |
+| ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
@@ -206,6 +207,38 @@ still pass, because the library tests only cross one hop.
 ⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
 deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
 Plan 19 `L6.3a`'s bill, one line smaller for free.
+
+## What checking `S1`'s premise turned up (2026-08-11) — and it was a live defect
+
+**`S1`'s row says the session is *saved and replayed*, naming `world_to_bytes`/`world_from_bytes`.
+None of the session is in those bytes** — the format holds the header, the palette, the chunk
+directory, the voxels and the sections that live in `w_sections`, and the nine registries are the
+editor's own.
+
+⚠ **AND THE LOAD PATH DID NOT CLEAR THEM EITHER.** Measured through the socket: build a house,
+`8:` save, `9:` load a world with no house in it — and `37:` still built `annex kind 1 at (-2,1)`,
+a balcony on the wall of a cottage the store no longer held. `36:` refused in the same breath,
+**because it reads the store**. Two authorities, and *which one asks the world* is the
+discriminator between them.
+
+✅ **Fixed as `S0`.** `hex_editor::session_scene_clear` is *everything the session records about
+one store*, and it is the one list both `9:` and part-open take — the part-open block already
+listed nine registries and `R1b` had to add a tenth to it, while the load path wanted the same
+list and did not have it. It also clears the DRAFT, which part-open did not: a two-press run whose
+first press is in the world you just closed lays a wall between two worlds. The probe now answers
+*"nothing to attach to"*, and the sabotage that leaves the trunk behind is seen red.
+
+> **So the selection is not world state.** It is what *this author* has chosen — `es_author`'s
+> category, *a driver's pose, never the editor's* — and under multi-player two clients editing one
+> world hold two selections. ⚠ **Which removes `S1`'s only test**: a field nobody reads, whose
+> round-trip claim has evaporated, is the *built and never called* defect with a planning hat on.
+> `S1` merges into `S2` — the field, the verb that sets it, and a consumer that reads it.
+
+⚠ **AND THE REGISTRIES' ABSENCE FROM THE FORMAT IS AN OPEN QUESTION, not a bug fixed.** Saving a
+world and reloading it loses every wall run, roof plan, leaf, opening, annex, prop, slab and hole;
+the drawing degrades to per-edge panels and a roof from cells. A load can only give back the
+cells, so what it owes is to **say** it lost the records rather than to hand over another world's.
+Putting them in the bytes is a format plan, beside plan 17's two ◐ rows.
 
 ## What `R3` turned up (2026-08-11)
 

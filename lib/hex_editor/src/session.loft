@@ -114,6 +114,44 @@ pub fn session_new() -> EditSession {
   }
 }
 
+// Everything the session records ABOUT ONE WORLD, emptied — the nine registries and
+// the half-laid run between them.
+//
+// ⚠ THE REGISTRIES DESCRIBE THE STORE, SO A DIFFERENT STORE HAS NONE OF THEM. That
+// is `part_thumb_wire`'s argument — *a part has no runs, roofs, leaves or dressing of
+// its own* — and it is not only about parts: **loading a world is the same event**.
+// Measured 2026-08-11 through the socket: build a house, save, load a world with no
+// house in it, and `37:` still built a balcony on the vanished house's wall. The
+// store said flat ground and the session said cottage, and the annex believed the
+// session — because `annex_host` is pure geometry over `es_runs` and never asks the
+// world at all. `36:` refused correctly in the same breath, because it reads the
+// store. **Two authorities, one of them describing a world that is gone.**
+//
+// ⚠ EMPTY IS NOT A LOSS OF THE HOUSE — it is a loss of the RECORDS, and the drawn
+// result degrades to the one the fallback already gives: `chunk_mesh_props` reads
+// per-edge panels and a roof from cells when there are no plans. The alternative is
+// to put the registries in the world's own bytes, which is a FORMAT question and a
+// plan of its own; until then, admitting the loss beats describing another world.
+//
+// ⚠ THE POSE IS NOT IN HERE, deliberately. `es_author` is a driver's stand-in for a
+// walker — the server keeps writing it from its own — and a load does not teleport
+// anybody. The DRAFT is, and that is the one thing this clears that part mode did
+// not: a two-press run whose first press was in the world you just closed would lay
+// a wall between two different worlds.
+pub fn session_scene_clear(s: EditSession) {
+  s.es_runs   = WallRuns { items: [] };
+  s.es_awalls = WallRuns { items: [] };
+  s.es_roofs  = RoofPlans { items: [] };
+  s.es_leaves = DoorLeaves { items: [] };
+  s.es_open   = Openings { items: [] };
+  s.es_annex  = Annexes { items: [] };
+  s.es_props  = Props { items: [] };
+  s.es_slabs  = Slabs { items: [] };
+  s.es_holes  = Holes { items: [] };
+  s.es_trunk  = Trunk {};
+  s.es_draft  = WallDraft {};
+}
+
 // Ground under the scene. Every gate that builds anything starts by making somewhere
 // to build it, and a gesture on unauthored ground is a different test.
 pub fn session_ground(w: VoxelWorld, half: integer, h: integer, mat: integer) {
