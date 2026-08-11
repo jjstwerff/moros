@@ -36,7 +36,8 @@ serves**, differing only in where a key press goes.
 | ✅ `P2` | `host_output` → our JS → `loftPush` round-trips inside a `--html` page. `W5` needs no loft change |
 | ◐ `W4` | `hex_editor::press` — what a key means, in one place instead of **four**. `editor_run` and the server's `MSG_HOUSE` wired; `editor_client` and `script.mjs` still carry theirs |
 | ✅ `R1a`/`R1b` | **the ring is reconciled.** The pose carries the ground under the feet (`au_y`), `press` rings at it instead of at `0.0`, and the ring's TRUNK is `sess.es_trunk` — the ninth registry — instead of four locals beside the socket |
-| ⏭ next | **`R3`** — `press` answers `PR_NONE` for `O`/`P`, a deliberate regression, because `R2` cannot be reconciled without a selection |
+| ✅ `R3` | `O`/`P` answer **`PR_SELECT`** — *an opening needs a profile, and nothing selects one yet* — instead of cutting the runner's material where the wire means a profile |
+| ⏭ next | **`S1`** — a **selection** in `EditSession`, which is the thing `R2` is blocked on |
 
 ⚠ **`R1b` FOUND ITS OWN ROW'S INSTRUMENT BLIND, TWICE.** The plan said *equal `w_tau` and equal
 trunk state*, and **`w_tau` cannot see a fence on the wrong layer**: the same edges, the same
@@ -54,6 +55,15 @@ written, and `23:3` with no radius recorded nothing for a ring it did lay. One c
 through both: the working path (`G` then `K`) is **identical**, and each bug shows on its own row.
 That control is also the only thing that proves `sess` survives **two** parameter hops — a struct
 that copied anywhere along there is loft#774's shape, and the library tests cross only one.
+
+⚠ **AND `R3`'s "DELIBERATE REGRESSION" COST NOTHING, MEASURED.** `house.keys` is the only script
+`editor_run` is driven over, and its `O`/`P` were **already refused** — so the runner's world is
+byte-identical before and after, τ 3909 both, and only the sentence changed. ⚠ **Which uncovered a
+live defect nobody had measured: `house.keys` cuts NO door and NO window, in EITHER driver.** Its
+own comment says *"stand ON the wall's own cells"* and both poses answer *"no wall here to open"*
+on the server too, so `shots/s6-house.png` has never had one. **It is the pose** — the same house
+opens from `-3 2` and from `-6 -1`. ⏭ **Left for the user's eyes**: the working poses found so far
+are on a face that script's camera does not see, and picking one composes a picture.
 
 ⚠ **THE CAMERA LIBRARY IS DESIGNED AND DELIBERATELY WAITING.** `hex_cam` has three consumers
 (this client, the server, and **crawler**) and a finished design in

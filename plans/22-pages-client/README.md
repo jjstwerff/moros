@@ -11,9 +11,11 @@ consumers and a finished design and it still waits — **phases `C1`–`C4` do n
 can be opened and driven.**
 
 **Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), `R1a`/`R1b`
-(the ring reconciled — the pose carries the feet, and the trunk is the session's), and `P2` is
-**run and green** — so `W5` is buildable today with no loft change.
-**Next:** `R3` — `press` answers `PR_NONE` for `O`/`P`. The full step decomposition is
+(the ring reconciled — the pose carries the feet, and the trunk is the session's), `R3` (`O`/`P`
+say *not yet* instead of doing the wrong thing), and `P2` is **run and green** — so `W5` is
+buildable today with no loft change.
+**Next:** **`S1`** — a selection in `EditSession`, which is what `R2` waits on. The full step
+decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -75,8 +77,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
 | ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
 | ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
-| **`R3`** — `press` answers `PR_NONE` for `O`/`P` until a selection exists | XS | ⚠ **a deliberate regression** — `editor_run` says *"no gesture for key O"* rather than doing the wrong thing silently. The wire path is untouched | ⏭ **Next** |
-| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | Blocked on `R3` |
+| ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
+| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | ⏭ **Next** |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
@@ -204,6 +206,34 @@ still pass, because the library tests only cross one hop.
 ⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
 deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
 Plan 19 `L6.3a`'s bill, one line smaller for free.
+
+## What `R3` turned up (2026-08-11)
+
+**The regression it was priced for does not exist.** `house.keys` is the only script `editor_run`
+is driven over, and its `O` and `P` were **already refused** — *"no wall here to open"* — so the
+world the runner writes is **byte-identical** before and after, τ 3909 both. Only the sentence
+changed.
+
+⚠ **AND THE THIRD ANSWER IS NOT `PR_NONE`, which is a deliberate deviation from the row above.**
+`PR_NONE` means *this key is not a gesture*, and saying that about `O` tells a reader the editor
+cannot cut an opening — false, the wire cuts one on every `36:`. `PR_SELECT` is a refusal with a
+reason, and `O`/`P` stay on the *is a gesture* list. *Reason, offer, residual, never a blank no*,
+applied to a keystroke.
+
+⚠ **THE CLAIM WORTH TESTING IS A BYTE, NOT A REFUSAL.** *"`press` answers `PR_SELECT` for `O`"* is
+a table checked against itself. Underneath it: **`WINDOW_MAT` had exactly one writer in the whole
+tree** and it was `press`'s `P` — the wire always cuts with `DOOR_MAT` — so a window material on an
+edge was a world the server cannot produce. ⚠ **That test passed first time for the wrong reason**:
+seven keys pressed into ONE world left no `WINDOW_MAT` the counter could see, because `ArrowUp` and
+`H` move the ground and `open_ahead` takes its reference from the ground it finds. One fresh world
+per key, control sharing the fixture exactly — the `R1b` trap, one step later.
+
+⚠ **AND A LIVE DEFECT FELL OUT: `house.keys` CUTS NO DOOR AND NO WINDOW, IN EITHER DRIVER.** Its
+own comment says *"stand ON the wall's own cells"*; measured, both poses answer *"no wall here to
+open"* on the server too, so `shots/s6-house.png` has never had either. **It is the pose** — the
+same house opens from `-3 2` and from `-6 -1`. Not fixed here: choosing the pose composes a
+picture whose acceptance is *does a person call it a door*, and the working poses found so far are
+on a face that script's camera does not see.
 
 ## What `W4` turned up so far
 

@@ -247,7 +247,7 @@ make them much harder to see.
 | **`R1a` the pose carries the feet** — `Author` gains the ground height under it, supplied by the driver; `author_at` grows a parameter at **51 sites** | the current 3-field `Author`, until every site is moved | ⚠ a driver that forgets it passes 0.0 and every ring lands on the wrong layer — so the default must be **refused, not defaulted** |
 | ✅ **`R1b` ring** — `press`'s `F`/`G` use the pose's height as the reference and record the **trunk** the server remembers for annexes | the explicit server-equivalent call, in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both were silent** — see below |
 | **`R2` opening** — ⚠ **BLOCKED, and that is the finding**: `O`/`P` cannot be reconciled until a **selection** exists, because the server's axis is a *profile* and `press`'s is a *material*. There is no correct flat answer | — | — |
-| **`R3`** — delete `press`'s `O`/`P` branches and answer `PR_NONE` for them, until `R2` can land | `editor_run`'s scripts, which use `O`/`P` | ⚠ **A DELIBERATE REGRESSION, and the honest one**: a key that does the *wrong* thing silently is worse than a key that says *"not yet"*. `editor_run` will print `no gesture for key O` and a reader will know why |
+| ✅ **`R3`** — delete `press`'s `O`/`P` branches and answer **`PR_SELECT`** for them, until `R2` can land | `editor_run`'s scripts, which use `O`/`P` | ⚠ **A DELIBERATE REGRESSION, and the honest one**: a key that does the *wrong* thing silently is worse than a key that says *"not yet"*. ⚠ **And measured, it cost NOTHING** — see below |
 
 ### ⚠ Why `R1` split: `press` CANNOT compute the reference, and a cycle is why
 
@@ -372,3 +372,44 @@ out loud.**
 ⚠ **The alternative — reconcile `O`/`P` to *something* now and fix it at `S3`** — is the one to
 refuse. It would make the equality test at `S3` compare against a value invented at `R2`, so the
 step that is supposed to prove the collapse lossless would be proving it against a guess.
+
+### ✅ And the price, once it was measured, was a sentence — 2026-08-11
+
+**`R3` is built, and the regression it was priced for does not exist.** `tools/scripts/house.keys`
+is the only script `editor_run` is driven over (`make headless-same`), and its `O` and `P` were
+**already refused** — *"no wall here to open — stand against one"* — so the world the runner
+writes is **byte-identical** before and after, τ 3909 both. Only the wording changed, and it got
+better: *"an opening needs a profile, and nothing selects one yet"*.
+
+⚠ **AND THE THIRD ANSWER IS NOT `PR_NONE`.** `PR_NONE` means *this key is not a gesture* — a walk
+key, a camera key — and saying that about `O` tells a reader the editor cannot cut an opening,
+which is false: the wire cuts one on every `36:`. So `press` grew **`PR_SELECT`**, a refusal with
+a reason, and `O`/`P` stay on the *is a gesture* list. That is the doorstep rule (*reason, offer,
+residual, never a blank no*) applied to a keystroke, and it is a deliberate deviation from this
+row's original wording, which specified `PR_NONE` and the sentence *"no gesture for key O"*.
+
+⚠ **THE TEST THAT CAN SEE IT IS A MATERIAL, NOT A REFUSAL.** *"`press` answers `PR_SELECT` for
+`O`"* is a table checked against itself. The claim underneath is a byte: **`WINDOW_MAT` had
+exactly one writer in the whole tree**, and it was `press`'s `P`. The wire's `36:<kind>` always
+cuts with `DOOR_MAT` — the profile is recorded beside the store, not in it — so a window material
+on an edge was a world the server cannot produce. The test presses every key `press` accepts and
+requires none of them to leave one, with the same fixture opened by hand as the control.
+
+⚠ **AND IT PASSED FIRST TIME FOR THE WRONG REASON.** All seven keys pressed into ONE world left no
+`WINDOW_MAT` the counter could see — because `ArrowUp` and `H` move the ground, `open_ahead` takes
+its own reference from the ground it finds, and the reader was then looking at a layer the write
+had left. One fresh world per key, and the control sharing that fixture exactly, is what made the
+zero mean anything. **That is the `R1b` fixture trap again, one step later.**
+
+### ⚠ A live defect fell out of it: `house.keys` cuts NO door and NO window, in either driver
+
+Measured on both, 2026-08-11. The ladder's own *"does it read as a house"* script says *"a door
+and a window in its near wall (stand ON the wall's own cells)"* and stands at `-3 -1` and
+`-1 -3` — where **both drivers answer *"no wall here to open"***. So `shots/s6-house.png` has
+never had either. **It is the pose, not the gesture**: the same house opens from `-3 2` (profile 1
+at cell `(-2,1)`) and from `-6 -1` (at `(-4,-1)`), both measured through the server.
+
+⚠ **NOT FIXED HERE ON PURPOSE.** Choosing the pose is composing a PICTURE — the working poses
+found so far cut into the face the script's camera cannot see — and its acceptance is *does a
+person call it a door*. That wants the user's eyes, not a coordinate that makes a log line
+appear.

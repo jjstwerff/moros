@@ -74,6 +74,12 @@ fn test_an_unmapped_key_is_named_rather_than_refused() {
 
 // …and a real gesture must NOT answer PR_NONE, or the discriminator above passes
 // by refusing everything.
+//
+// ⚠ `O` AND `P` STAY ON THIS LIST AFTER `R3`, and that is the point of the third
+// answer. They are gestures the editor HAS and has not bound yet, so they answer
+// `PR_SELECT` — a refusal with a reason — rather than *not a gesture*. Moving them
+// to the list above would have said the editor cannot cut an opening at all, which
+// is false: the wire cuts one on every `36:`.
 fn test_every_mapped_key_is_reachable() {
   w = flat();
   sess = EditSession {};
@@ -144,6 +150,88 @@ fn test_the_pose_carries_the_ground_under_it() {
          "the shelf pose says {high.au_y}, the store says "
          + "{(ground_h(w, 11, 11) as float) * w.w_unit}");
   assert(low.au_y == 0.0, "the flat pose says {low.au_y}");
+}
+
+// ── `R3` — the opening keys, and the material only they could write ─────────
+
+// Every edge of material `mat` this cell and its neighbours OWN, at `ref`.
+fn owned_edges(w: VoxelWorld, cq: integer, cr: integer, mat: integer, ref: float) -> integer {
+  oe = 0;
+  for oq in cq - 3..cq + 4 {
+    for orr in cr - 3..cr + 4 {
+      for od in 0..6 {
+        (ooq, oor, _oslot) = edge_owner(oq, orr, od);
+        if ooq == oq && oor == orr && wall_of(w, oq, orr, od, ref) == mat { oe = oe + 1; }
+      }
+    }
+  }
+  oe
+}
+
+// A cell with one wall edge on it, which is what `open_ahead` looks for.
+fn against_a_wall(w: VoxelWorld, a: Author) {
+  edge_set(w, a, 0, WALL_MAT, a.au_y, 0);
+}
+
+// ⚠ `WINDOW_MAT` HAS EXACTLY ONE WRITER IN THIS TREE, and it is the diverged key.
+// The wire's `36:<kind>` always cuts with `DOOR_MAT` — the profile is what varies,
+// and it is recorded beside the store rather than in it — so a window material on
+// an edge is a world the server cannot produce and no gate can reach. `press`'s `P`
+// was the only thing that made one, which is `R2`'s *there is no correct flat
+// answer* stated as a byte: the server's axis is a PROFILE and this one is a
+// MATERIAL.
+fn test_no_key_writes_a_material_the_wire_cannot() {
+  (ax, az) = hex_to_px(0, 0);
+
+  // ⚠ THE INSTRUMENT FIRST, AGAINST SOMETHING IT SHOULD FIND. An absence is the
+  // easiest thing in the world to report by accident — a counter looking at the
+  // wrong layer, the wrong cell or the wrong slot answers 0 for a wall covered in
+  // windows. So the same fixture is opened with `WINDOW_MAT` by hand and the count
+  // must be 1 before a zero anywhere below is worth anything.
+  ctl = flat();
+  ctla = author_on(ctl, ax, az, 0.0);
+  against_a_wall(ctl, ctla);
+  cack = open_ahead(ctl, ctla, WINDOW_MAT, 1);
+  assert(cack.ak_ok, "the control could not open its own wall: {cack.ak_why}");
+  assert(owned_edges(ctl, 0, 0, WINDOW_MAT, ctla.au_y) == 1,
+         "the control cut a window and the counter finds "
+         + "{owned_edges(ctl, 0, 0, WINDOW_MAT, ctla.au_y)} — it is blind, so its "
+         + "zero below would mean nothing");
+
+  // ⚠ ONE FRESH WORLD PER KEY, AND THAT IS THE INSTRUMENT AGAIN. Pressing them all
+  // into one world passed with the defect intact: `ArrowUp` and `H` move the ground,
+  // `open_ahead` takes its own reference from the ground it finds, and the counter
+  // was then reading a layer the write had left. The control above shares this
+  // fixture EXACTLY — same world, same wall, nothing else pressed — so its 1 and
+  // this 0 are the same question asked twice.
+  for k in ["ArrowUp", "ArrowDown", "H", "F", "G", "O", "P"] {
+    kw = flat();
+    ks = EditSession {};
+    ka = author_on(kw, ax, az, 0.0);
+    against_a_wall(kw, ka);
+    press(ks, kw, ka, k);
+    assert(owned_edges(kw, 0, 0, WINDOW_MAT, ka.au_y) == 0,
+           "key '{k}' left {owned_edges(kw, 0, 0, WINDOW_MAT, ka.au_y)} edges "
+           + "carrying WINDOW_MAT — a material no `36:` message can produce, so the "
+           + "same key builds a different world depending on which driver ran it");
+  }
+}
+
+// ⚠ AND THE REFUSAL SAYS WHICH KIND OF NO IT IS. `PR_NONE` means *this key is not a
+// gesture* — a walk key, a camera key — and answering it for `O` would tell a reader
+// the editor has no opening at all. It has one; nothing has chosen a profile for it.
+fn test_an_opening_key_says_it_is_waiting_rather_than_unknown() {
+  w = flat();
+  sess = EditSession {};
+  a = author_on(w, 0.0, 0.0, 0.0);
+  against_a_wall(w, a);
+  for k in ["O", "P"] {
+    ack = press(sess, w, a, k);
+    assert(!ack.ak_ok, "key '{k}' cut an opening: {ack.ak_why}");
+    assert(ack.ak_why != PR_NONE,
+           "key '{k}' answered PR_NONE — that says it is a walk key, and it is not");
+    assert(ack.ak_why == PR_SELECT, "key '{k}' said '{ack.ak_why}'");
+  }
 }
 
 // ── `R1b` — the ring, at the feet, and remembered as a trunk ────────────────
