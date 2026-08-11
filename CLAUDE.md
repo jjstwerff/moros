@@ -296,7 +296,11 @@ address (or the hostname `make browser` prints) cannot connect.
   the key, and `O`/`P` mean *round vs pointed* on the wire and *door vs window* in the runner.
   ⚠ And a third layer — **house types** bundle defaults and may add their own verbs — which makes
   the verb table **data**: *adding a type must touch no code*, or the system cannot grow.
-  Designed, not built
+  **The mechanism is two levels**: a KEY names a **verb** (declared, small, remappable — the part
+  that belongs to the person), and *verb + mode + selection* binds to the gesture underneath. So
+  `O P I U N M` collapse to one verb `opening`, and ⚠ **the WIRE carries the verb, never the key**
+  — a remapped client and a server resolving the key themselves is the four-site divergence
+  rebuilt. Designed, not built
 - [Pages editor](doc/claude/PAGES_EDITOR.md) — **the editor as a static page: the quick start, and
   one client with two authorities**. ⚠ Not *the editor minus a server* — a server is coming back
   for **script compilation, multi-player and debugging**, so the page is the same client with the

@@ -122,17 +122,75 @@ expensive to retrofit**, which is why it is written down before `M1` is built ra
 
 ---
 
+## The mechanism: a KEY names a VERB, and the verb is bound underneath
+
+> *"we need a system were we have a definition of keys but with a flexible layer under it."*
+
+**Two levels, and the split is the whole design:**
+
+```
+  the DEFINITION      key  →  verb                 stable · declared · small · a person learns it
+  ────────────────────────────────────────────────────────────────────────────────────────────
+  the FLEXIBLE layer  verb + mode + selection  →  gesture + its parameters      data · grows
+```
+
+A key **never** names a gesture. It names a *verb* — `place`, `opening`, `step`, `ring` — and what
+that verb does here is resolved underneath, from the mode (where you are) and the selection (what
+you chose).
+
+| | today | with the layer |
+|---|---|---|
+| `O` `P` `I` `U` `N` `M` | **six keys**, one gesture, the profile encoded in the key | **one verb `opening`**; the profile comes from the selection |
+| a castle's gate | a seventh key, or a seventh `if` | the same verb `opening`, a different type bound under it |
+| a type's own verb | impossible without editing a library | the type declares `(key, verb)` and the definition grows |
+| remapping a key | not possible — the key IS the meaning | free, because a key only names a verb |
+
+⚠ **THE SIX-KEY OPENING FAMILY IS THE PROOF THE LAYER IS MISSING, NOT AN INCONVENIENCE.** Every
+one of `O P I U N M` calls the same gesture with a different profile number. They are not six
+verbs; they are one verb and a selection that had nowhere to live, spelled as keystrokes because
+that was the only surface available.
+
+### ⚠ And it corrects something written above: THE WIRE CARRIES THE VERB, NOT THE KEY
+
+The `W4` attempt built a `48:<key>` message so a keystroke could travel to the server intact.
+**With this layer that is wrong**, and the reason is the definition's own purpose: *key → verb* is
+the layer that belongs to the **person**, so it is the layer a person may remap. A remapped client
+sending `48:O` to a server that resolves `O` itself would mean two different things at the two
+ends — **the four-site divergence again, rebuilt on a new message.**
+
+> **The key→verb map is resolved where the KEYBOARD is; the verb travels.**
+
+So the message is `48:<verb>` — or in local mode, no message at all and the same resolution
+in-process. That is what makes the two authority modes one editor
+([PAGES_EDITOR](PAGES_EDITOR.md)) rather than two that agree by discipline.
+
+⚠ **A VERB IS THEREFORE A PUBLISHED NAME AND A KEY IS NOT.** Verbs go on the wire, into scripts and
+into a type's declaration, so renaming one breaks recordings — `tools/scripts/*.keys` drives every
+gate. A key is a local preference and costs nothing to change. **Name the verbs carefully and the
+keys casually**, which is the opposite of how a key table reads today.
+
+⚠ **AND `tools/scripts/*.keys` IS SUDDENLY A FORMAT QUESTION.** It is written in the keys a person
+presses — its own header says so — which is the layer that just became remappable. A script naming
+keys replays differently for two people; a script naming **verbs** does not. *Not decided here*,
+and it is `M1`'s first real cost: every existing `.keys` script is a recording in the wrong layer.
+
+---
+
 ## What this changes about `press` — plan 22 `W4`
 
 `hex_editor::press(sess, w, a, key)` is a **flat table** today, and it is the wrong shape: it can
 only answer *what does this key do* if that has one answer. It becomes:
 
 ```
-press(sess, w, a, key)         // mode derived inside, from `a` and the session
-  → mode_at(sess, w, a)        // outside | inside | underground
-  → the verb table for that mode
-  → the gesture, with the SELECTION's type
+verb_of(key)                   // the DEFINITION — resolved at the keyboard, remappable
+press(sess, w, a, verb)        // the flexible layer, and what travels
+  → mode_at(sess, w, a)        // outside | inside | underground — DERIVED
+  → the binding for (verb, mode, selection)
+  → the gesture, with the type's defaults
 ```
+
+⚠ **`press` TAKES A VERB, NOT A KEY** — its current signature is the shape that made the wire
+carry a key, and both are the same mistake one layer apart.
 
 ⚠ **AND `press`'s CURRENT CONTENTS ARE THE RUNNER'S, NOT THE SERVER'S.** Measured while wiring
 `W4`: `press` was written from `src/editor_run.loft`'s six-key table, and the runner had diverged

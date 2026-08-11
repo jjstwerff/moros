@@ -64,7 +64,9 @@ nothing. Said in a line so the silence does not read as *gate done*.
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
-| **`M1`** — editing modes: the verb set is DERIVED from where the author stands | M | a key with no verb here says *why*, not nothing | ⏭ **New, and it blocks `W4`** — [EDITING_MODES](../../doc/claude/EDITING_MODES.md) |
+| **`M1`** — the two levels: a key names a **verb**, and *verb + mode + selection* binds underneath | M | `O P I U N M` become **one** verb; `press` takes a verb; the wire carries a verb | ⏭ **New, and it blocks `W4`** — [EDITING_MODES](../../doc/claude/EDITING_MODES.md) |
+| **`M2`** — the mode is DERIVED from where the author stands, over `shelter_at` | S | a house in a cave reads `inside`; a key with no verb here says *why*, not nothing | Blocked on `M1` |
+| **`M3`** — ⚠ **`tools/scripts/*.keys` records the WRONG LAYER** | S | a script names verbs, so it replays the same for two people with different keymaps | Blocked on `M1` — and it touches every gate's script |
 | ✅ **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | **RUN 2026-08-11 — it holds.** `probe/p2/run.sh` · `make probe-p2` · three exchanges, two sabotages seen red | ✅ Done |
 | **`P5`** — is `fetch()` of a sibling file blocked under `file://`? | XS | a two-file page from `file://` in headless Chrome | Open — it decides whether assets are inlined |
 | **`W2`/`W3`** — parts and `.glb` from bytes | S | a part loaded both ways is equal | ⚠ **Skip if [loft#851](https://github.com/loft-lang/loft/issues/851) lands** — then a path just works |
