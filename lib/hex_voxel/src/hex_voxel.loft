@@ -1599,6 +1599,68 @@ fn file_owner(path: text) -> integer {
   f#read as i32
 }
 
+// ── THE FORMAT IS BYTES, AND A FILE IS ONE DESTINATION — plan 22 `W1` ────────
+//
+// `world_save` and `world_load` used to be the only encoder and decoder in the
+// tree, and both wrote field by field straight into a `File` — so the format was
+// reachable ONLY through a filesystem. A browser page has none
+// ([loft#851](https://github.com/loft-lang/loft/issues/851)), and a world kept in
+// web storage is bytes rather than a path.
+//
+// ⚠ **THE WRAPPER DIRECTION IS THE INVARIANT, AND IT IS THE WHOLE STEP.**
+// `world_save` is `world_to_bytes` plus one append; the bytes are **not** derived
+// by writing a file and reading it back. Done the other way there would be two
+// encoders, and a page and a server could disagree about what a world IS while
+// every test passed against one of them.
+//
+// ⚠ **`Bytes` AND `ByteReader` ARE DELIBERATELY PRIVATE.** A public name is global
+// across a consumer's whole dependency graph, and `Bytes` is the most collidable
+// name this package could possibly publish — this tree has paid for `Surface`,
+// `Fit` and `Chunk` already. The public surface added here is exactly two
+// functions, both already spelled `world_*`.
+struct Bytes { const b_data: vector<u8> }
+
+struct ByteReader {
+  const br_data: vector<u8>,
+  br_pos:  integer,
+  // ⚠ A SHORT BUFFER MUST NOT READ ZEROES AND CALL THEM DATA. Every primitive
+  // below sets this and answers 0, and the decoder asks ONCE at the end — the
+  // alternative is a null check at some forty thousand call sites, which is how a
+  // reader stops being readable and starts being trusted instead.
+  br_short: boolean,
+}
+
+// ⚠ THE WIDTHS ARE EXPLICIT AND LITTLE-ENDIAN BY HAND, matching `f#format =
+// LittleEndian` byte for byte. They are not a re-derivation of the format: the
+// format is what `world_save_as` below writes, and these are how it writes it.
+fn bw_u8(b: Bytes, v: integer) { b.b_data += [(v & 255) as u8? ?? 0]; }
+fn bw_u16(b: Bytes, v: integer) { bw_u8(b, v); bw_u8(b, v >> 8); }
+fn bw_i32(b: Bytes, v: integer) {
+  bw_u8(b, v); bw_u8(b, v >> 8); bw_u8(b, v >> 16); bw_u8(b, v >> 24);
+}
+
+fn br_u8(r: ByteReader) -> integer {
+  if r.br_pos >= len(r.br_data) { r.br_short = true; return 0; }
+  bru_v = r.br_data[r.br_pos] as integer? ?? 0;
+  r.br_pos = r.br_pos + 1;
+  bru_v
+}
+fn br_u16(r: ByteReader) -> integer {
+  brh_lo = br_u8(r); brh_hi = br_u8(r);
+  brh_lo | (brh_hi << 8)
+}
+// ⚠ SIGN-EXTENDED, because `f#read as i32` is. `w_tau`'s own reader already says
+// so — it masks the LOW half with `& 4294967295` and does NOT mask the high one,
+// which is only correct if the high half arrived signed. A reader that answered
+// unsigned here would round-trip every positive world and quietly corrupt any
+// negative chunk coordinate, which is most worlds one hex west of the origin.
+fn br_i32(r: ByteReader) -> integer {
+  bri_0 = br_u8(r); bri_1 = br_u8(r); bri_2 = br_u8(r); bri_3 = br_u8(r);
+  bri_v = bri_0 | (bri_1 << 8) | (bri_2 << 16) | (bri_3 << 24);
+  if bri_v >= 2147483648 { bri_v = bri_v - 4294967296; }
+  bri_v
+}
+
 // Returns a code because a save that cannot represent what it was handed must say
 // so. The palette is the CONSUMER's bytes and the library never interprets them —
 // but it does have to fit them in a byte, and silently masking a 300 would hand
@@ -1660,6 +1722,70 @@ fn write_sections(f: File, secs: vector<Section>) {
   }
 }
 
+// The whole world, encoded — the same bytes `world_save_as` puts on disk, in the
+// same order, and nothing else. `owner` is part of the format rather than a file
+// concern, so it is a parameter here; it defaults to `OWNER_ANY`, which is what a
+// page holding one world in web storage wants.
+//
+// ⚠ THIS IS THE ENCODER AND `world_save_as` IS A DESTINATION. While `W1` was being
+// built the two ran side by side and a test compared them byte for byte — that is
+// the only way to move a format without a period where two encoders both exist and
+// neither is known to be the authority.
+pub fn world_to_bytes(w: VoxelWorld, palette: vector<integer>,
+                      owner: integer = 0) -> vector<u8> {
+  wtb = Bytes { b_data: [] };
+  bw_i32(wtb, WORLD_MAGIC);
+  bw_i32(wtb, WORLD_VERSION);
+  bw_i32(wtb, CHUNK_W);
+  bw_i32(wtb, (w.w_unit * 1000000.0) as integer);   // `u` as micro-units, exactly
+  bw_i32(wtb, w.w_reserve);
+  bw_i32(wtb, w.w_eps);
+  bw_i32(wtb, w.w_theta);
+  bw_i32(wtb, w.w_next_id);
+  bw_i32(wtb, w.w_tau >> 32);
+  bw_i32(wtb, w.w_tau & 4294967295);
+  bw_i32(wtb, owner);
+  bw_i32(wtb, len(palette));
+  for wtb_p in palette { bw_u8(wtb, wtb_p); }
+  bw_i32(wtb, len(w.w_chunks));
+  // ── the directory: everything a cache needs, and no voxels
+  for wtb_ch in w.w_chunks {
+    bw_i32(wtb, wtb_ch.ck_cx);
+    bw_i32(wtb, wtb_ch.ck_cz);
+    bw_i32(wtb, wtb_ch.ck_base);
+    bw_i32(wtb, len(wtb_ch.ck_layers));
+    for wtb_ly in wtb_ch.ck_layers {
+      bw_i32(wtb, wtb_ly.ly_id);
+      bw_u8(wtb, wtb_ly.ly_kind);
+      bw_i32(wtb, wtb_ly.ly_ver >> 32);
+      bw_i32(wtb, wtb_ly.ly_ver & 4294967295);
+    }
+  }
+  // ── the data, at the voxel's REAL widths — see `world_save_as`
+  for wtb_c2 in w.w_chunks {
+    for wtb_l2 in wtb_c2.ck_layers {
+      for wtb_cell in wtb_l2.ly_cells {
+        bw_u16(wtb, wtb_cell.sv_height);
+        bw_u8(wtb, wtb_cell.sv_material);
+        bw_u8(wtb, wtb_cell.sv_item);
+        bw_u8(wtb, wtb_cell.sv_item_rotation);
+        bw_u8(wtb, wtb_cell.sv_wall_nw);
+        bw_u8(wtb, wtb_cell.sv_wall_ne);
+        bw_u8(wtb, wtb_cell.sv_wall_e);
+      }
+      bw_i32(wtb, layer_crc(wtb_l2));
+    }
+  }
+  // ── the sections, LAST — the forward-compatibility ordering `world_save_as`
+  // argues for, and the reason a pre-section reader stops at the final CRC.
+  for wtb_s in w.w_sections {
+    bw_i32(wtb, wtb_s.sc_tag);
+    bw_i32(wtb, len(wtb_s.sc_bytes));
+    for wtb_b in wtb_s.sc_bytes { bw_u8(wtb, wtb_b); }
+  }
+  wtb.b_data
+}
+
 pub fn world_save_as(w: VoxelWorld, path: text, palette: vector<integer>,
                      owner: integer) -> integer {
   for b in palette {
@@ -1674,67 +1800,26 @@ pub fn world_save_as(w: VoxelWorld, path: text, palette: vector<integer>,
   // back to back — the first one read back fine and the rest was silently
   // unreachable. Saving repeatedly over one path is the normal case, not an edge.
   if exists(path) { delete(path); }
+  // ⚠ ONE ENCODER. This function used to write the whole format field by field,
+  // and `world_to_bytes` was built beside it and proved byte-identical
+  // (`tests/bytes.loft`) before this call replaced ~50 lines of writes. The file
+  // is a destination; the bytes are the format.
+  //
+  // ⚠ `f += <vector<u8>>` WRITES ONE BYTE PER ELEMENT, which is the whole reason
+  // this is a single append rather than a loop. A `for` binding over the same
+  // vector widens each element to `integer` and writes EIGHT — the trap
+  // `write_sections` documents below, and the one that once sent every section out
+  // at 8× its declared length.
   f = file(path);
   f#format = LittleEndian;
-  f += (WORLD_MAGIC as i32);
-  f += (WORLD_VERSION as i32);
-  f += (CHUNK_W as i32);
-  f += ((w.w_unit * 1000000.0) as i32);      // `u` as micro-units, exactly
-  f += (w.w_reserve as i32);
-  f += (w.w_eps as i32);
-  f += (w.w_theta as i32);
-  f += (w.w_next_id as i32);
-  // `τ` as two halves. It is 64-bit deliberately: a wrapped LABEL collides and
-  // `I1` catches it at the first seam, but a wrapped CLOCK makes a stale cache
-  // report VALID — a silent wrong answer, the worst class this model has.
-  f += ((w.w_tau >> 32) as i32);
-  f += ((w.w_tau & 4294967295) as i32);
-  f += (owner as i32);
-  f += (len(palette) as i32);
-  for b in palette { f += (b as u8? ?? 0); }   // range already refused above
-  f += (len(w.w_chunks) as i32);
-  // ── the directory: everything a cache needs, and no voxels
-  for ch in w.w_chunks {
-    f += (ch.ck_cx as i32);
-    f += (ch.ck_cz as i32);
-    f += (ch.ck_base as i32);
-    f += (len(ch.ck_layers) as i32);
-    for ly in ch.ck_layers {
-      f += (ly.ly_id as i32);
-      f += (ly.ly_kind as u8? ?? 0);          // KIND_TERRAIN | KIND_DRESSING
-      f += ((ly.ly_ver >> 32) as i32);
-      f += ((ly.ly_ver & 4294967295) as i32);
-    }
-  }
-  // ── the data
-  for ch in w.w_chunks {
-    for ly in ch.ck_layers {
-      // ⚠ At their REAL widths. Writing each field as i32 padded the eight-byte
-      // voxel to twenty-eight on disk — a 3.5x bloat in the one structure the
-      // whole design exists to keep small, and invisible to a round-trip test
-      // because it read back perfectly. A layer is 1024 * 8 = 8192 bytes exactly.
-      for c in ly.ly_cells {
-        f += (c.sv_height as u16);
-        f += (c.sv_material as u8);
-        f += (c.sv_item as u8);
-        f += (c.sv_item_rotation as u8);
-        f += (c.sv_wall_nw as u8);
-        f += (c.sv_wall_ne as u8);
-        f += (c.sv_wall_e as u8);
-      }
-      f += (layer_crc(ly) as i32);
-    }
-  }
-  // ── the sections, LAST and after everything a pre-section reader reads. That
-  // ordering is the whole forward-compatibility argument: such a reader stops at
-  // the final CRC and never learns these bytes are there.
-  write_sections(f, w.w_sections);
+  f += world_to_bytes(w, palette, owner);
   // ⚠ AND THEN ASK THE DISK, because nothing above can fail out loud. See
   // `WS_IO`: a write into a directory that is not there costs a line on stderr
   // and returns here as though it had worked.
   if file(path).size != world_file_size(w, palette) { return WS_IO; }
-  WS_OK
+  return WS_OK;
 }
+
 
 // ── Versions WITHOUT the payload ─────────────────────────────────────────────
 //
@@ -1904,61 +1989,69 @@ pub fn world_save_incremental(w: VoxelWorld, path: text, palette: vector<integer
   SaveStat { ss_code: WS_OK, ss_layers: wrote }
 }
 
-pub fn world_load(path: text) -> WorldLoad {
+// A whole world from bytes — the decoder, and the only one. `world_load` reads a
+// file into a buffer and calls this; nothing decodes the format twice.
+//
+// ⚠ EVERY `f#read as X` IN THE OLD READER BECAME `br_X(r)` AND NOTHING ELSE MOVED,
+// deliberately. The comments below are the original's and are load-bearing — the
+// counter-name hazard, the explicit sequencing, the migration's position after the
+// CRC, and end-of-buffer as the section terminator. A decoder rewritten rather than
+// translated would have re-earned every one of them.
+pub fn world_from_bytes(b: vector<u8>) -> WorldLoad {
   empty = VoxelWorld { w_unit: 1.0 };
-  f = file(path);
-  if f.format == Format.NotExists {
-    return WorldLoad { wl_code: WL_MISSING, wl_world: empty, wl_palette: [], wl_detail: path };
-  }
-  f#format = LittleEndian;
-  if f#read as i32 != WORLD_MAGIC || f#read as i32 != WORLD_VERSION {
+  r = ByteReader { br_data: b, br_pos: 0, br_short: false };
+  if br_i32(r) != WORLD_MAGIC || br_i32(r) != WORLD_VERSION {
     return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [], wl_detail: "not this format" };
   }
-  cw = f#read as i32;
+  cw = br_i32(r);
   if cw != CHUNK_W {
     return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [],
                        wl_detail: "chunk width {cw}, this build is {CHUNK_W}" };
   }
-  unit = (f#read as i32) as float / 1000000.0 ?? 1.0;
-  res = f#read as i32;
-  eps = f#read as i32;
-  th  = f#read as i32;
-  nid = f#read as i32;
-  thi = f#read as i32;
-  tlo = f#read as i32;
+  unit = br_i32(r) as float / 1000000.0 ?? 1.0;
+  res = br_i32(r);
+  eps = br_i32(r);
+  th  = br_i32(r);
+  nid = br_i32(r);
+  thi = br_i32(r);
+  tlo = br_i32(r);
   tau = (thi << 32) | (tlo & 4294967295);
-  ownr = f#read as i32;
-  // ⚠ `C1` is re-checked ON OPEN, not trusted because the writer checked it. A
-  // file with eps <= 2*theta makes `B1` fail SILENTLY, and the symptom is
-  // intermittently wrong geometry at chunk borders — a wrong answer, not a crash.
+  ownr = br_i32(r);
   if eps <= 2 * th {
     return WorldLoad { wl_code: WL_CONSTANTS, wl_world: empty, wl_palette: [],
                        wl_detail: "eps {eps} <= 2*theta {th}" };
   }
   pal: vector<integer> = [];
-  pn = f#read as i32;
-  for _pi in 0..pn { pal += [f#read as u8]; }
+  pn = br_i32(r);
+  // ⚠ A COUNT OUT OF A BUFFER IS UNTRUSTED INPUT. The file reader was bounded by
+  // the file's own end; a caller-supplied buffer is bounded by nothing, and a
+  // corrupt `pn` would otherwise spin allocating a palette of two billion entries.
+  if pn < 0 || pn > len(b) {
+    return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [],
+                       wl_detail: "palette claims {pn} entries in {len(b)} bytes" };
+  }
+  for _pi in 0..pn { pal += [br_u8(r)]; }
 
-  // ⚠ `ν` IS REPAIRED WITH THE LABELS. An old world's counter is 1, so the next
-  // fresh label would BE `LABEL_GROUND` and a new layer would silently become a
-  // second outdoors. Raising it is not a heuristic — 1 is reserved, so a counter
-  // pointing at it is out of range whatever wrote the file.
   nid2 = nid;
   if nid2 < LABEL_FIRST { nid2 = LABEL_FIRST; }
   w = VoxelWorld { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
               w_theta: th, w_next_id: nid2, w_tau: tau };
-  nc = f#read as i32;
+  nc = br_i32(r);
+  if nc < 0 || nc > len(b) {
+    return WorldLoad { wl_code: WL_MAGIC, wl_world: empty, wl_palette: [],
+                       wl_detail: "directory claims {nc} chunks in {len(b)} bytes" };
+  }
   // ── the directory, read whole before any payload
   dcx: vector<integer> = []; dcz: vector<integer> = []; dcb: vector<integer> = [];
   dnl: vector<integer> = [];
   lid_all: vector<integer> = []; lk_all: vector<integer> = []; lv_all: vector<integer> = [];
   for _ci in 0..nc {
-    dcx += [f#read as i32]; dcz += [f#read as i32];
-    dcb += [f#read as i32]; dnl += [f#read as i32];
+    dcx += [br_i32(r)]; dcz += [br_i32(r)];
+    dcb += [br_i32(r)]; dnl += [br_i32(r)];
     for _li in 0..dnl[len(dnl) - 1] {
-      lid_all += [f#read as i32];
-      lk_all += [f#read as u8];
-      vhi = f#read as i32; vlo = f#read as i32;
+      lid_all += [br_i32(r)];
+      lk_all += [br_u8(r)];
+      vhi = br_i32(r); vlo = br_i32(r);
       lv_all += [(vhi << 32) | (vlo & 4294967295)];
     }
   }
@@ -1970,52 +2063,35 @@ pub fn world_load(path: text) -> WorldLoad {
     for _l2 in 0..nl {
       lid = lid_all[li_at]; lk = lk_all[li_at]; lver = lv_all[li_at];
       li_at = li_at + 1;
-      // ⚠ TWO SEQUENCING HAZARDS, both found by a round-trip that lost a layer.
-      //
-      // 1. NESTED LOOPS MUST NOT SHARE A COUNTER NAME. This reader has three
-      //    levels — chunks, layers, cells — and every one was written
-      //    `for _ in …`. The inner loops clobbered the outer counter, so a chunk
-      //    with two layers loaded exactly one and reported no error at all. Each
-      //    level now has its own name.
-      //
-      // 2. Every field is read into a LOCAL first and the record built after.
-      // `f#read` has a side effect, and field initialisers in a struct literal are
-      // not guaranteed to be evaluated in written order — so reads inside a
-      // literal can be issued in an order the file does not have, scrambling
-      // fields with nothing to show for it. Sequencing is explicit here because
-      // the format's correctness depends on it.
+      // ⚠ Nested loops must not share a counter name, and every field is read into
+      // a LOCAL before the record is built — a struct literal's initialisers are
+      // not guaranteed to evaluate in written order, and `br_*` has a side effect.
+      // Both hazards are the original reader's, found by a round trip that lost a
+      // layer; the translation keeps them answered the same way.
       cells: vector<StoredHex> = [];
       for _xi in 0..CHUNK_CELLS {
-        rh = f#read as u16;
-        rm = f#read as u8;
-        ri = f#read as u8;
-        rr = f#read as u8;
-        rn = f#read as u8;
-        re = f#read as u8;
-        rs = f#read as u8;
+        rh = br_u16(r);
+        rm = br_u8(r);
+        ri = br_u8(r);
+        rr = br_u8(r);
+        rn = br_u8(r);
+        re = br_u8(r);
+        rs = br_u8(r);
         cells += [StoredHex { sv_height: rh as u16? ?? 0, sv_material: rm as u8? ?? 0,
                               sv_item: ri as u8? ?? 0, sv_item_rotation: rr as u8? ?? 0,
                               sv_wall_nw: rn as u8? ?? 0, sv_wall_ne: re as u8? ?? 0,
                               sv_wall_e: rs as u8? ?? 0 }];
       }
       ly = Layer { ly_id: lid, ly_kind: lk, ly_ver: lver, ly_cells: cells };
-      // A torn layer is refused BY NAME and the rest of the file is untouched —
-      // a hole, never a cascade, and never a plausible wrong landscape.
-      if ((f#read as i32) & U32_MASK) != layer_crc(ly) {
+      if (br_i32(r) & U32_MASK) != layer_crc(ly) {
         return WorldLoad { wl_code: WL_CRC, wl_world: empty, wl_palette: [],
                            wl_detail: "chunk ({cx},{cz}) layer id {lid} failed CRC" };
       }
       lays += [ly];
     }
-    // ⚠ MIGRATION — a world saved before labels existed has `ly_id = 0` on every
-    // layer, so nothing carries `LABEL_GROUND` and the whole world would render
-    // FLAT. Such a chunk labels its LOWEST terrain layer, which is exactly right
-    // for those worlds and for no others: before labels, layer 0 WAS the ground by
-    // construction, because a cellar that kept the ground's identity could not be
-    // expressed. (`worlds/before-restart-2026-07-29.hxw` is one of these.)
-    //
-    // ⚠ AFTER the CRC check, never before — the checksum is over the bytes the
-    // file holds, and a label written before it would fail every layer.
+    // ⚠ MIGRATION, and AFTER the CRC — see `world_load`'s note. A pre-label world
+    // has `ly_id = 0` everywhere, so nothing carries `LABEL_GROUND` and the world
+    // would render FLAT; such a chunk labels its lowest terrain layer.
     gseen = false;
     for gl in lays { if gl.ly_id == LABEL_GROUND && gl.ly_kind == KIND_TERRAIN { gseen = true; } }
     if !gseen {
@@ -2029,39 +2105,58 @@ pub fn world_load(path: text) -> WorldLoad {
     w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
   }
-  // ── the sections, read to END OF FILE ────────────────────────────────────────
-  //
-  // ⚠ THE TERMINATOR IS THE FILE'S END, not a count — and that is what lets a file
-  // written before sections existed load unchanged. A count would have to live
-  // somewhere, and anywhere it can live is a byte a pre-section file does not
-  // have; end-of-file is the one terminator such a file already satisfies.
-  // `tests/sections.loft` pins that with committed pre-section bytes.
-  //
-  // ⚠ `f#next` is `null` until the first read, so this may only be asked AFTER the
-  // header — which is always, here, because the payload was just read.
-  while f#next < f#size {
-    left = f#size - f#next;
+  // ── the sections, read to the END OF THE BUFFER — the terminator is the end,
+  // never a count, which is what lets a pre-section file load unchanged.
+  while r.br_pos < len(b) {
+    left = len(b) - r.br_pos;
     if left < SZ_SECTION_HEAD {
       return WorldLoad { wl_code: WL_SECTION, wl_world: empty, wl_palette: [],
                          wl_detail: "{left} trailing bytes: too few for a section header" };
     }
-    stag = f#read as i32;
-    slen = f#read as i32;
-    if slen < 0 || slen > f#size - f#next {
+    stag = br_i32(r);
+    slen = br_i32(r);
+    if slen < 0 || slen > len(b) - r.br_pos {
       return WorldLoad { wl_code: WL_SECTION, wl_world: empty, wl_palette: [],
                          wl_detail: "section {stag} claims {slen} bytes, "
-                                  + "{f#size - f#next} remain" };
+                                  + "{len(b) - r.br_pos} remain" };
     }
-    // ⚠ THE SPAN IS READ ONCE. It was read TWICE for a day — as bytes and again
-    // as text through `f#read(n) as text` — because nothing was thought to decode
-    // bytes in memory. `text_from_bytes` always could (loft#748), so the second
-    // read and the seek back are gone, and with them the question of what a
-    // megabyte `MESH` payload would have cost to decode into a text nobody reads.
     sb: vector<u8> = [];
-    for _sbi in 0..slen { sb += [f#read as u8]; }
+    for _sbi in 0..slen { sb += [br_u8(r) as u8? ?? 0]; }
     w.w_sections += [Section { sc_tag: stag, sc_bytes: sb }];
   }
+  // ⚠ ASKED ONCE, HERE. Every primitive above answers 0 past the end and sets the
+  // flag; a buffer that ran out mid-record would otherwise decode as a world made
+  // of zeroes, which is the "reads cleanly and says something untrue" class this
+  // format's CRC exists to prevent. A file reader could not hit this — a caller
+  // handing over a truncated buffer can.
+  if r.br_short {
+    return WorldLoad { wl_code: WL_SECTION, wl_world: empty, wl_palette: [],
+                       wl_detail: "buffer ended mid-record: {len(b)} bytes" };
+  }
   WorldLoad { wl_code: WL_OK, wl_world: w, wl_palette: pal, wl_detail: "" }
+}
+
+pub fn world_load(path: text) -> WorldLoad {
+  empty = VoxelWorld { w_unit: 1.0 };
+  f = file(path);
+  if f.format == Format.NotExists {
+    return WorldLoad { wl_code: WL_MISSING, wl_world: empty, wl_palette: [], wl_detail: path };
+  }
+  // ⚠ ONE DECODER. This function used to read the whole format field by field, a
+  // near-exact mirror of `world_from_bytes` — two decoders that had to be kept in
+  // step by hand, which is the shape this format's own history warns about (a
+  // writer that padded the voxel to 28 bytes round-tripped perfectly for as long
+  // as both halves agreed with each other and with nothing else).
+  //
+  // ⚠ THERE IS NO `f.bytes()` IN loft, so the buffer is filled a byte at a time.
+  // That is the same number of reads the field-by-field version issued for the
+  // payload — a cell was seven reads and is now eight bytes — so it is not a new
+  // cost; `make parts` is the control and it is timed at the seam.
+  f#format = LittleEndian;
+  wl_n = f.size;
+  wl_buf: vector<u8> = [];
+  for _wli in 0..wl_n { wl_buf += [f#read as u8]; }
+  world_from_bytes(wl_buf)
 }
 
 // ════════════════════════════════════════════════════════════════════════════

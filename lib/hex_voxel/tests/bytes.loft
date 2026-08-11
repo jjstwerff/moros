@@ -1,0 +1,129 @@
+// W1 — THE BYTES ARE THE FORMAT, AND THE FILE IS ONE DESTINATION.
+//
+// plan 22 `W1`. `world_to_bytes` was added as a SECOND encoder beside the file
+// writer, and this file is what let the two exist at once without either becoming
+// the unverified one: it compares them **byte for byte**. Once green, the file
+// writer was rewritten to call the encoder — so from then on this test compares an
+// encoder with itself and its job changes to guarding the round trip.
+//
+// ⚠ THE COMPARISON IS THE POINT AND IT IS NOT A ROUND TRIP. A round trip proves
+// the decoder undoes the encoder, which two *consistently wrong* halves also do —
+// this tree has an entry for exactly that (`world_save` padded the 8-byte voxel to
+// 28 on disk and every round trip passed). Comparing against the file the OLD
+// writer produced is what pins the wire format itself.
+use hex_voxel;
+
+// A world with something in it: a negative chunk coordinate, several materials,
+// two layers and a section. ⚠ THE NEGATIVE COORDINATE IS DELIBERATE — `br_i32`
+// sign-extends, and a fixture that never goes west of the origin cannot tell a
+// sign-extending reader from an unsigned one. Lesson `E`: both parities, both signs.
+fn built() -> VoxelWorld {
+  bw = world_new(0.25, 0, 8, 3).wn_world;
+  for bx in 0 - 2..3 {
+    for bz in 0 - 2..3 {
+      world_set_cell(bw, bx, bz, 0, Hex { h_height: (10 + bx * 3) as u16? ?? 0,
+                                          h_material: ((bx + bz) & 7) as u8? ?? 0,
+                                          h_wall_ne: (bz & 3) as u8? ?? 0 });
+    }
+  }
+  world_set_section(bw, 1414414400, [1, 2, 3, 250, 255]);
+  bw
+}
+
+fn test_the_encoder_and_the_file_writer_agree_byte_for_byte() {
+  w = built();
+  pal: vector<integer> = [7, 8, 9, 255, 0];
+  path = "{source_dir()}/bytes_rt.hxw";
+  if exists(path) { delete(path); }
+
+  code = world_save(w, path, pal);
+  assert(code == WS_OK, "the file writer refused the fixture: {code}");
+
+  disk = file(path);
+  disk#format = LittleEndian;
+  n = disk.size;
+  encoded = world_to_bytes(w, pal);
+
+  // ⚠ THE LENGTH IS CHECKED FIRST AND SEPARATELY, because a length mismatch and a
+  // content mismatch want different diagnoses, and comparing to `min(a,b)` would
+  // report the interesting one as "byte 0 differs" or as nothing at all.
+  assert(len(encoded) == n,
+         "encoder wrote {len(encoded)} bytes, the file is {n} — the format diverged");
+
+  differ = 0 - 1;
+  for di in 0..n {
+    dv = disk#read as u8;
+    if (encoded[di] as integer? ?? 0) != dv { differ = di; break; }
+  }
+  assert(differ < 0,
+         "encoder and file writer differ at byte {differ} — they are two formats now");
+
+  delete(path);
+}
+
+// The fixture has to be able to FAIL this, or the test above proves nothing about
+// worlds in general. A world nobody wrote to is a legitimate world and also the one
+// shape that would pass a byte comparison by being empty at both ends.
+fn test_the_fixture_is_not_trivially_equal() {
+  w = built();
+  encoded = world_to_bytes(w, []);
+  assert(len(encoded) > 8192,
+         "the fixture encodes to {len(encoded)} bytes — too small to hold a layer, "
+         + "so the comparison above is not exercising the payload at all");
+  saw_high = false;
+  for hb in encoded { if (hb as integer? ?? 0) > 127 { saw_high = true; } }
+  assert(saw_high,
+         "no byte above 127 in the fixture — the sign-extension path is untested");
+}
+
+// ⚠ A SHORT BUFFER MUST REFUSE RATHER THAN READ ZEROES AND CALL THEM DATA.
+fn test_a_truncated_buffer_is_refused() {
+  w = built();
+  full = world_to_bytes(w, [1, 2]);
+  cut: vector<u8> = [];
+  for ci in 0..len(full) - 40 { cut += [full[ci]]; }
+  got = world_from_bytes(cut);
+  assert(got.wl_code != WL_OK,
+         "a buffer 40 bytes short loaded as WL_OK — a truncated world reads as a world");
+}
+
+// ⚠ THE SIGN CLAIM IS ASSERTED DIRECTLY, AND THE FIRST VERSION OF THIS FILE ONLY
+// IMPLIED IT. It asked `world_cell(loaded, -2, -1)` to match the original and
+// called that a sign test — but removing the sign extension from `br_i32`
+// entirely left all four tests GREEN. A negative chunk coordinate read as
+// 4294967295 lands in `ck_cx` and in a key nobody queries again, so nothing
+// downstream ever looked at it. **A claim tested only through a consumer is a
+// claim about the consumer.** This reads the coordinate back.
+fn test_a_negative_chunk_coordinate_survives_as_negative() {
+  w = built();
+  got = world_from_bytes(world_to_bytes(w, []));
+  assert(got.wl_code == WL_OK, "round trip refused: {got.wl_code} {got.wl_detail}");
+  saw_negative = false;
+  for ch in got.wl_world.w_chunks {
+    if ch.ck_cx < 0 || ch.ck_cz < 0 { saw_negative = true; }
+    // The failure this exists for: an unsigned read turns -1 into 4294967295,
+    // which is not "a bit wrong" — it is a coordinate four billion hexes east.
+    assert(ch.ck_cx < 1000000 && ch.ck_cz < 1000000,
+           "chunk coordinate ({ch.ck_cx},{ch.ck_cz}) came back unsigned — br_i32 "
+           + "is not sign-extending");
+  }
+  assert(saw_negative,
+         "no chunk west or north of the origin in the fixture — this test cannot "
+         + "see the sign bit and is not testing anything");
+}
+
+fn test_bytes_round_trip_through_the_decoder() {
+  w = built();
+  pal: vector<integer> = [3, 1, 4, 1, 5];
+  got = world_from_bytes(world_to_bytes(w, pal));
+  assert(got.wl_code == WL_OK, "round trip refused: {got.wl_code} {got.wl_detail}");
+  assert(got.wl_world.w_tau == w.w_tau, "tau moved across the round trip");
+  assert(len(got.wl_palette) == len(pal), "the palette lost entries");
+  // The cell that carries the negative coordinate AND a wall byte — the two things
+  // a lazy encoder gets wrong while every total agrees.
+  a = world_cell(w, 0 - 2, 0 - 1, 0);
+  b = world_cell(got.wl_world, 0 - 2, 0 - 1, 0);
+  assert(a.h_height == b.h_height, "height at (-2,-1) changed");
+  assert(a.h_material == b.h_material, "material at (-2,-1) changed");
+  assert(a.h_wall_ne == b.h_wall_ne, "wall_ne at (-2,-1) changed");
+}
