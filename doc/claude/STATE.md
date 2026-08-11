@@ -335,14 +335,42 @@ in both directions — a **finished** run never stands above the grade it was as
 and says in its own comment that the transient is not claimed. **Writing the stronger row
 and watching it fail is what established that**, twice.
 
-### ⚠ AND ONE THING THIS STILL LEAVES OPEN, MEASURED RATHER THAN SUSPECTED
+### ⛔ THE RISING WALK'S SPOIL IS A CONFLICT BETWEEN `A8` AND `A9`, NOT A DEFECT
 
-1. **A rising walk cannot return its spoil.** The `CAVE_HEAD` cap refuses to bury the road
-   under its own roof, and a road cut deep into a rising hillside has no headroom to give —
-   so at 6 per hex rising the run comes out cut 1221 / filled 38. **The profile is the
-   physically right one** (a road climbing at 1 per hex on a 6 per hex hill *must* end far
-   below the ground) where the plate floated 117 units above it, but `A8`'s balance does not
-   hold there and the plan should say so.
+**Fixed, measured, and reverted — because the fix costs a shipped claim.** The cause is
+exact: **`A9` cuts a shelf with exactly `CAVE_HEAD` of air over it**, so `room = shelf_head
+− CAVE_HEAD` is **zero** at every freshly caved cell and a single one freezes the whole
+run's balance.
+
+| 6 per hex, rising | cut | fill | moved | still owing |
+|---|---|---|---|---|
+| capped at `CAVE_HEAD` — what ships | 1221 | 38 | 1259 | **363** over 43 cells |
+| lid taken off on refusal | 442 | 403 | **845** | **19** over 43 cells |
+
+**845 is the exact mirror of the same walk downhill, and the optimum.** The spoil *can* be
+returned. It costs `gates/world/cave` **half its shelves (13 → 6)** and its `lidFaced` row
+— the rock above the mouth loses faces (618 against 630). Capping at `ε` instead was tried
+too: 7 shelves, `lidFaced` still false.
+
+⚠ **SO IT IS TWO SHIPPED CLAIMS IN CONFLICT** — `A8`'s conservation against `A9`'s gallery
+— and lifting a road inside a gallery eats the gallery. **What would settle it is raising
+the shelf's LID with the road**: the headroom is kept, the cut simply becomes shallower, and
+the gallery turns back into an open cut on its own when the lid reaches the hillside. That
+is a design step, not a cap, and it wants the user's eyes on the picture — `A9`'s acceptance
+always was one.
+
+⚠ **AND THE TEST SAYS SO RATHER THAN BEING RELAXED UNTIL IT PASSES.**
+`test_a_finished_run_owes_no_more_than_the_integer_remainder` runs the **falling** direction
+only, and its comment carries the rising measurement and the reason. Asserting the rising
+case would either be red or would have to be loosened until it claimed nothing.
+
+⚠ **AND THE ROW IT REPLACED CAUGHT A RATCHET *AND* A CORRECT EMBANKMENT.** The earlier
+version counted how much of the run stood *above* its asked grade and asserted that it
+stopped growing — which flags the very thing `A8` exists to build, because dumping spoil
+along a road is what raises its lower end. **Earth conserved is the question; where the
+earth ended up is not.** The new row is `A8`'s own claim with `A8`'s own tolerance (one unit
+a cell, derived), and it catches both datums that were tried and rejected: the cap at 1052
+over 64 cells, the ratchet datum at 1322.
 
 ### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
 

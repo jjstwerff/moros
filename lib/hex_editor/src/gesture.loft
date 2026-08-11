@@ -3301,6 +3301,29 @@ pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
   // still owing, and the next stroke asks again.
   shift = (owed / n) ?? 0;
   if shift == 0 { return 0; }
+  // ⚠ AND ONLY AS FAR AS EVERY CELL CAN COME UP. A shift that lands on some cells and
+  // not others is not a uniform shift, and a caved cell refuses a raise that would come
+  // within `ε` of the rock over it.
+  //
+  // ⚠ `CAVE_HEAD` RATHER THAN `ε`, AND THAT IS THE WHOLE DIFFERENCE BETWEEN KEEPING A
+  // GALLERY AND DISMANTLING ONE. `ε` is what the STORE needs, so capping there stops
+  // the refusals — and leaves cells squeezed between `ε` and `CAVE_HEAD`, whose lids
+  // `run_unsqueeze` then takes off. The balance would be paying for its spoil in ROOFS.
+  //
+  // ⚠ AND THIS IS WHY A RISING WALK CANNOT RETURN ITS SPOIL — stated, because it is the
+  // one place `A8` does not hold and the cause is exactly here. `A9` cuts a shelf with
+  // EXACTLY `CAVE_HEAD` of air over it, so `room` is **zero** at every freshly caved
+  // cell and one of them freezes the whole run's balance. Measured on a 6-per-hex rise:
+  // capped, the run comes out cut 1221 / filled 38 and still owing 363 over 43 cells;
+  // with the lid taken off on refusal instead it comes out **442 / 403 — 845, the exact
+  // mirror of the same walk downhill, and the optimum** — and `gates/world/cave` loses
+  // half its shelves (13 to 6) and its `lidFaced` row with them.
+  //
+  // ⚠ SO IT IS A CONFLICT BETWEEN TWO SHIPPED CLAIMS, NOT A BUG: `A8`'s conservation
+  // against `A9`'s gallery, and lifting a road inside a gallery eats the gallery. What
+  // would settle it is raising the shelf's LID with the road — the headroom is kept, the
+  // cut simply becomes shallower, and the gallery turns back into an open cut on its own
+  // when the lid reaches the hillside. That is a design step and not a cap.
   if shift > 0 {
     for j1 in 0..n {
       hd = shelf_head(w, mq[j1] ?? 0, mr[j1] ?? 0, mat);

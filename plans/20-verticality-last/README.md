@@ -519,10 +519,28 @@ never were.
    and say so in their own comment; writing the stronger row and watching it fail is what
    established that.
 
-   ⚠ **One thing still open**: **a rising walk cannot return its spoil**, because the
-   `CAVE_HEAD` cap refuses to bury the road under its own roof (6 per hex rising: cut 1221,
-   fill 38). The profile is the physically right one — the plate floated 117 units *above*
-   the hill — but `A8`'s balance does not hold there.
+   ### ⛔ THE RISING WALK'S SPOIL — `A8` AGAINST `A9`, fixed and reverted
+
+   The cause is exact: **`A9` cuts a shelf with exactly `CAVE_HEAD` of air**, so
+   `room = shelf_head − CAVE_HEAD` is **zero** at every freshly caved cell and one of them
+   freezes the whole run's balance.
+
+   | 6 per hex, rising | cut | fill | moved | still owing |
+   |---|---|---|---|---|
+   | capped at `CAVE_HEAD` — ships | 1221 | 38 | 1259 | **363** over 43 cells |
+   | lid off on refusal | 442 | 403 | **845** | **19** over 43 cells |
+
+   845 is the exact mirror of the same walk downhill, and the optimum — **the spoil can be
+   returned.** It costs `gates/world/cave` **half its shelves (13 → 6)** and its `lidFaced`
+   row. Capping at `ε` instead: 7 shelves, `lidFaced` still false.
+
+   ⚠ **Two shipped claims in conflict, not a defect** — lifting a road inside a gallery eats
+   the gallery. **What would settle it is raising the shelf's LID with the road**: headroom
+   kept, the cut simply shallower, and the gallery becomes an open cut on its own when the
+   lid reaches the hillside. A design step, and one wanting the user's eyes on the picture.
+
+   ⚠ **The test says so rather than being relaxed until it passes** — it runs the falling
+   direction only and carries the rising measurement in its comment.
 
    ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
    rule that runs when nobody is walking. Nothing above touches it.
