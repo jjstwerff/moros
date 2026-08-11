@@ -244,9 +244,37 @@ make them much harder to see.
 
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
-| **`R1` ring** — make `press`'s `F`/`G` match `do_fence`: the author's ground height as the ring's reference, yaw forced to 0.0, and the **trunk** the server remembers for annexes | the server's `do_fence` — unchanged, and called in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both are silent today** |
+| **`R1a` the pose carries the feet** — `Author` gains the ground height under it, supplied by the driver; `author_at` grows a parameter at **51 sites** | the current 3-field `Author`, until every site is moved | ⚠ a driver that forgets it passes 0.0 and every ring lands on the wrong layer — so the default must be **refused, not defaulted** |
+| **`R1b` ring** — `press`'s `F`/`G` use the pose's height as the reference, yaw forced to 0.0, and record the **trunk** the server remembers for annexes | the explicit server-equivalent call, in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both are silent today** |
 | **`R2` opening** — ⚠ **BLOCKED, and that is the finding**: `O`/`P` cannot be reconciled until a **selection** exists, because the server's axis is a *profile* and `press`'s is a *material*. There is no correct flat answer | — | — |
 | **`R3`** — delete `press`'s `O`/`P` branches and answer `PR_NONE` for them, until `R2` can land | `editor_run`'s scripts, which use `O`/`P` | ⚠ **A DELIBERATE REGRESSION, and the honest one**: a key that does the *wrong* thing silently is worse than a key that says *"not yet"*. `editor_run` will print `no gesture for key O` and a reader will know why |
+
+### ⚠ Why `R1` split: `press` CANNOT compute the reference, and a cycle is why
+
+**Measured 2026-08-11, and it reshapes the step.** The server's ring passes `py` — the author's
+ground height from `ground_under`, which is layer-aware and interpolates *within* a cell. `ref`
+is not decoration: `fence_ring` → `fence_disc` → `wall_set` → **`edge_layer(wld, oq, orr, ref)`**,
+so the reference picks **which layer the edge is stored on**. An approximation would put a fence
+on the wrong storey.
+
+⚠ **AND `ground_under` CANNOT MOVE INTO `hex_editor`.** It needs `terrain_y`, which needs
+`hex_mesh::corner_heights` — and **`hex_mesh` depends on `hex_editor`** (`lib/hex_mesh/loft.toml`).
+Moving it would be a **dependency cycle**, not a cone question this time.
+
+> **So the reference is not the gesture's to derive. It is part of the author's POSE.**
+
+Which is the right answer independently: *where the feet are* is a fact about the driver, and this
+tree already says `es_author` is **a driver's pose, never the editor's** — a server writes it from
+its walker, a test teleports. `Author` carries `x`, `z` and `yaw`; it should carry the ground
+height too, and then `press` needs no mesher, no `hex_proj` and no cycle.
+
+⚠ **THE SAME ARGUMENT COVERS THE ROOF PLAN**, which is still in the server's `MSG_HOUSE` for what
+looked like a different reason (`HEIGHT_SCALE` living in `hex_proj`). ✅ **And that one has a
+cheaper answer that was missed twice: `w.w_unit` IS the height scale, stored per world.**
+`world_new(0.25, …)` and `hex_proj::HEIGHT_SCALE = 0.25` are the same number, and `hex_editor`
+already depends on `hex_voxel`. ⚠ **The world's own unit is also the CORRECT one** — a part world
+may be at another unit entirely (`door/slat` is `0.125`), so anything reaching for the global
+constant on a part world is already wrong.
 
 ⚠ **`R1` IS THE TEMPLATE FOR THE REST.** Its test builds one ring through the server's helper and
 one through `press`, in two worlds, and asserts equal `w_tau` **and** equal trunk state. That
