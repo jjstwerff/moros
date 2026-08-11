@@ -178,7 +178,23 @@ measures — which is the exact defect that guard was written for this morning.
 
 Five items. **Four are in packages that already exist and one is a new tiny package.**
 
-### `W1` — `hex_voxel`: a world is BYTES, and a path is a wrapper
+### ✅ `W1` — `hex_voxel`: a world is BYTES, and a path is a wrapper — **BUILT 2026-08-11**
+
+`world_to_bytes(w, palette, owner = 0)` / `world_from_bytes(b)`, with `world_save` and
+`world_load` as thin wrappers. `make parts` byte-identical · `make lib-test` rc=0 both backends ·
+`hex_voxel` 141 → 146.
+
+⚠ **BUILT AS A SECOND ENCODER AND DIFFED BYTE FOR BYTE BEFORE THE OLD ONE WAS DELETED** — the
+capture-and-diff instrument, not a round trip. And **`world_load` came out 1.6× FASTER**
+(1763 ms against 2821 ms over 40 loads): one bulk byte read beats thousands of individual typed
+file reads. The prediction in this file said it might be slower.
+
+⚠ **AND ONE OF THE NEW TESTS CLAIMED SOMETHING IT DID NOT TEST.** It asserted the sign of a
+negative chunk coordinate *through* `world_cell`, and deleting the sign extension left it green —
+an unsigned `-1` becomes 4294967295, lands in `ck_cx`, and nothing downstream looks at it again.
+**A claim tested only through a consumer is a claim about the consumer.**
+
+
 
 **The load-bearing one.** `world_save(w, path, palette)` and `world_load(path)` are the only
 filesystem in the stack, and the browser has none.
@@ -215,7 +231,20 @@ draws nothing and reads as a geometry bug, which is a shape this tree has paid f
 lands, a `.glb` is just a file in the base tree and `load_glb(path)` already works. **Do `W3` only
 when a page actually needs a mesh and the binding has not arrived** — the house shell needs none.
 
-### `W4` — `hex_editor`: `press` — the chokepoint that collapses N from 4 to 1
+### ◐ `W4` — `hex_editor::press` — the chokepoint — **BUILT, ONE OF FOUR SITES WIRED**
+
+`press(sess, w, a, key) -> Ack` exists and owns `ArrowUp`/`ArrowDown`/`H`/`O`/`P`/`F`/`G`, plus
+`grade_under` and `HOUSE_W`/`HOUSE_D`. **`editor_run`'s six-key table is deleted.** The server,
+`editor_client` and `script.mjs` still carry theirs — **so this row is `◐`, not `✅`**, exactly as
+the warning below says.
+
+⚠ **THE DIVERGENCE WAS ALREADY REAL.** `H` built the house at two different heights: the server
+takes the grade under the author's feet, `editor_run` took it at the **origin**. Flat ground at the
+origin hid it in every fixture anyone had looked at. ⚠ **And `HOUSE_W`/`HOUSE_D` had a *third*
+copy** — in `hex_editor`'s own `tests/footprint.loft`, surfaced by the name collision when the
+constants moved into the library.
+
+
 
 ```
 pub fn press(sess: EditSession, w: VoxelWorld, a: &Author, key: text) -> Ack
@@ -345,8 +374,8 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 | | | why here |
 |---|---|---|
 | ✅ ~~`P4`~~, `P2` | the two probes that could reshape the work — **`P4` is done and it holds**, so `P2` is the only one left that can | before anything is built |
-| `W1` | world ⇄ bytes | everything else needs it, its control (`make parts` byte-identical) already exists, and it is **right on every target** — so it survives whichever way `#851` goes |
-| `W4` (house keys only) | `press` for `H`, `O`, `P`, `R`, `B`, `C`, `E`, `Q`, arrows | the smallest set that builds a house with doors, windows, walls and a storey |
+| ✅ `W1` | world ⇄ bytes | **BUILT** — and 1.6× faster, not slower |
+| ◐ `W4` (house keys) | `press` for the arrows, `H`, `O`, `P`, `F`, `G` | **BUILT, and `editor_run` wired.** ⏭ **Next: the server, `editor_client`, `script.mjs` — and delete their tables.** `R`/`B`/`C`/`E` (wall run, storey, cellar, step) need adapting: they do not return an `Ack` |
 | `W5` **or** `#851` + autosave | whichever route is available, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
 | `W2`/`W3` + the base tree | the assets | doors and props are parts; the house shell is not |
 | the rest of `W4` | every remaining key, and **delete the other three tables** | ⚠ the step is not done until they are gone |
