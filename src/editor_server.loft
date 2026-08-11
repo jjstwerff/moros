@@ -319,8 +319,16 @@ const MSG_SEAT  = 38;     // WHAT STANDS IN A VOID — `38:0` a bed, `38:1` a st
 const MSG_ANNEX = 37;     // an ATTACHED VOLUME — a bedstee, a balcony, a porch.
                           // `37:<kind>` — 0 a closed box, 1 an open deck with a rail.
 const MSG_OPEN  = 36;     // S5 — cut a door or a window into the wall you face
-const HOUSE_W = 5;        // one shape for now — the gesture is the question here,
-const HOUSE_D = 4;        // not the parameters
+// ⚠ `HOUSE_W` / `HOUSE_D` WERE DECLARED HERE AND ARE `hex_editor`'s NOW — plan 22
+// `W4`. Three files carried 5×4 (this one, `src/editor_run.loft`,
+// `hex_editor/tests/footprint.loft`); they agreed and nothing made them. The bare
+// names below now resolve to the library's.
+//
+// ⚠ AND THE SHADOW WAS INVISIBLE TO `tools/names.sh`, which is a gap worth knowing:
+// that check scans the programs for bare USES of a library name, not for a program
+// DECLARING one a library also publishes. A file-scope const here silently won over
+// `hex_editor::HOUSE_W` for the whole file, and the tool was correctly silent about
+// a collision it does not look for.
 const MSG_TRACE = 27;     // trace on/off — where the tick's time actually goes
                           // `27:2` arms the per-message profile, `27:3` reports it
 
@@ -7680,24 +7688,36 @@ fn main() {
             }
           }
         } else if ev.msg_id == MSG_HOUSE {
-          // ⚠ THE WHOLE GESTURE IS `hex_editor::place_house`. What is left here is
-          // what a server owes: the grade under the author's feet, the chunks to
-          // rebuild, and saying what happened. A refusal carries the rotation that
-          // would have worked — the lattice has six placeable facings of twelve,
-          // and the author is owed the one to turn to rather than a silent 30°
-          // swing of their building.
-          hgrade = py_of(wld, px, pz);
-          hack = hex_editor::place_house(wld, hex_editor::author_at(px, pz, yaw),
-                                         HOUSE_W, HOUSE_D, hgrade, sess.es_runs);
+          // ⚠ THE WHOLE MEANING OF `H` IS `hex_editor::press` — plan 22 `W4`. This
+          // handler used to name the gesture, its two dimensions AND its grade rule,
+          // which made it one of four places that decided what the key does. It now
+          // asks the library the same question the page and the script ask, so the
+          // three cannot answer differently.
+          //
+          // ⚠ AND THE GRADE RULE IS WHY THIS MATTERS RATHER THAN BEING TIDY. This
+          // read `py_of(wld, px, pz)`; `src/editor_run.loft` read `ground_h(w, 0, 0)`
+          // — the ORIGIN. Both are `world_ground_cell(…).h_height` under the covers,
+          // so they agree on flat ground at (0,0) and nowhere else, and every fixture
+          // stood there. `press` calls `grade_under`, which is this one.
+          //
+          // ⚠ IT ALSO DROPS A `world_to_hex` CALL SITE. `py_of` went through
+          // `moros_render`; `grade_under` goes through `hex_grid::px_to_hex`. That is
+          // one of the 42 sites plan 19 `L6.3a` has to pay — see `probe/l6`.
+          //
+          // What is left here is what a server owes: the chunks to rebuild, and
+          // saying what happened. A refusal carries the rotation that would have
+          // worked — the lattice has six placeable facings of twelve, and the author
+          // is owed the one to turn to rather than a silent 30° swing.
+          hack = hex_editor::press(sess, wld, hex_editor::author_at(px, pz, yaw), "H");
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
           } else {
             // ⚠ THE EAVE COMES FROM THE SEATED FLOOR, NOT FROM THE FEET — plan 20
             // `A4`. `place_house` seats the pad on its OWN footprint now, so on any
-            // slope the floor is not at `hgrade`; a plan built from the feet would
-            // put the DRAWN gable at one height and the roof's stored cells at
-            // another, and the two would disagree by the whole cut-and-fill.
+            // slope the floor is not at the grade under the feet; a plan built from
+            // the feet would put the DRAWN gable at one height and the roof's stored
+            // cells at another, and the two would disagree by the whole cut-and-fill.
             //
             // ⚠ READ BACK OUT OF THE WORLD rather than returned in the ack. The pad
             // was just written, so the store already answers it — and a second copy
